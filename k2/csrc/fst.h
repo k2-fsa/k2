@@ -9,14 +9,6 @@ enum {
                         * like in OpenFst. */
 };
 
-enum {
-  kTopSorted,
-  kDeterministic,
-  kConnected,
-  kArcLabelSorted,  /* true if the arcs leaving each state are sorted on label. */
-  kEpsilonFree,  /* Note: epsilons to final-state do not count. */
-  kNonempty  // ...
-} Properties;
 
 
 /* Range is what we use when we want (begin,end) indexes into some array.
@@ -40,21 +32,27 @@ struct Arc {
 
   /* Note: the costs are not stored here but outside the Fst object, in some kind
      of array indexed by arc-index.  */
+};
 
+
+
+struct ArcLabelCompare {
+  bool operator < (const Arc &a, const Arc &b) const {
+    return a.label < b.label;
+  }
 };
 
 
 /*
-  struct Fsa is an unweighted finite-state acceptor (FSA) and is at the core of operations
-  on weighted FSA's and finite state transducers (FSTs).  Note: being a final-state is
-  represented by an arc with label == kEpsilon to final_state.
+  struct Fsa is an unweighted finite-state acceptor (FSA) and is at the core of
+  operations on weighted FSA's and finite state transducers (FSTs).  Note: being
+  a final-state is represented by an arc with label == kEpsilon to final_state.
 
   The start-state is always numbered zero and the final-state is always the
-  last-numbered state.
+  last-numbered state.  However, we represent the empty FSA (the one that
+  accepts no strings) by having no states at all, so `arcs` would be empty.
  */
 struct Fsa {
-  // Note: an index into the `arcs` array is called an arc-index.
-  std::vector<Arc> arcs;
 
   // `leaving_arcs` is indexed by state-index, is of length num-states,
   // contains the first arc-index leaving this state (index into `arcs`).
@@ -63,24 +61,11 @@ struct Fsa {
   // arcs leaving it.
   std::vector<Range> leaving_arcs;
 
+  // Note: an index into the `arcs` array is called an arc-index.
+  std::vector<Arc> arcs;
 
   inline size_t NumStates() { return static_cast<int32>(leaving_arcs.size()); }
 };
-
-/*
-  Returns true if `fsa` is valid AND satisfies the list of properties
-  provided in `properties`.
-
-  TODO: create exhaustive list of what `valid` means, but it basically
-  means that the data structures make sense, e.g. `leaving_arcs` and
-  `arcs` are consistent, and only epsilon arcs enter the final state
-  (note: the final state is special, and such arcs represent
-
-
- */
-bool CheckProperties(const Fsa &fsa,
-                     const Properties &properties,
-                     bool die_on_error = false);
 
 
 /*
@@ -114,7 +99,8 @@ struct Wfst {
 struct Wfsa {
   Fsa arcs;
 
-  float *weights;  // Weights, one per arc, of the same dim as fsa.arcs.  Not
-                   // owned here..  would normally be owned in a torch.Tensor at
-                   // the python level.
+  float *weights;  // Some kind of weights or costs, one per arc, of the same
+                   // dim as fsa.arcs.  Not owned here..  would normally be
+                   // owned in a torch.Tensor at the python level.
+                  //
 };
