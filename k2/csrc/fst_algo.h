@@ -30,23 +30,59 @@ void ConnectCore(const Fsa &fsa,
      @param [out] b   Output FSA, that will be trim / connected (there are
                      two terminologies).
 
-     @param [out] state_map   If non-NULL, to here this function will
-                     output a map from state-index in `b` to the corresponding
-                     state-index in `a`.
+     @param [out] arc_map   If non-NULL, this function will
+                     output a map from the arc-index in `b` to
+                     the corresponding arc-index in `a`.
 
   Notes:
     - If `a` admitted a topological sorting, b will be topologically
-      sorted.
+      sorted.  TODO: maybe just leave in the same order as a??
     - If `a` was deterministic, `b` will be deterministic; same for
       epsilon free, obviously.
     - `b` will be arc-sorted (arcs sorted by label)
     - `b` will (obviously) be connected
-
-  Also if `a`
  */
 void Connect(const Fsa &a,
              Fsa *b,
-             std::vector<int32> *state_map = NULL);
+             std::vector<int32> *arc_map = NULL);
+
+
+/**
+   Output an Fsa that is equivalent to the input but which has no epsilons.
+
+    @param [in] a  The input FSA
+    @param [out] b  The output FSA; will be epsilon-free, and the states
+                    will be in the same order that they were in in `a`.
+    @param [out] arc_map  If non-NULL: for each arc in `b`, a list of
+                    the arc-indexes in `a` that contributed to that arc
+                    (e.g. its cost would be a sum of their costs).
+                    TODO: make it a VecOfVec, maybe?
+ */
+void RmEpsilons(const Fsa &a,
+                Fsa *b,
+                std::vector<std::vector> *arc_map = NULL);
+
+
+/**
+   Pruned version of RmEpsilons, which also uses a pruning beam.
+
+   Output an Fsa that is equivalent to the input but which has no epsilons.
+
+    @param [in] a  The input FSA
+    @param [out] b  The output FSA; will be epsilon-free, and the states
+                    will be in the same order that they were in in `a`.
+    @param [out] arc_map  If non-NULL: for each arc in `b`, a list of
+                    the arc-indexes in `a` that contributed to that arc
+                    (e.g. its cost would be a sum of their costs).
+                    TODO: make it a VecOfVec, maybe?
+ */
+void RmEpsilonsPruned(const Fsa &a,
+                      const float *a_state_forward_costs,
+                      const float *a_state_backward_costs,
+                      const float *a_arc_costs,
+                      float cutoff,
+                      Fsa *b,
+                      std::vector<std::vector> *arc_map = NULL);
 
 
 
@@ -64,18 +100,18 @@ void Connect(const Fsa &a,
                    ensures that epsilons do not have to be treated
                    differently from any other symbol.
   @param [out] c   The composed FSA will be output to here.
-  @param [out] src_a   If non-NULL, at exit will be a vector of
+  @param [out] arc_map_a   If non-NULL, at exit will be a vector of
                    size c->arcs.size(), saying for each arc in
                    `c` what the source arc in `a` was.
-  @param [out] src_b   If non-NULL, at exit will be a vector of
+  @param [out] arc_map_b   If non-NULL, at exit will be a vector of
                    size c->arcs.size(), saying for each arc in
                    `c` what the source arc in `b` was.
  */
 void Intersect(const Fsa &a,
                const Fsa &b,
                Fsa *c,
-               std::vector<int32> *src_a = NULL,
-               std::vector<int32> *src_b = NULL);
+               std::vector<int32> *arc_map_a = NULL,
+               std::vector<int32> *arc_map_b = NULL);
 
 /**
    Intersection of two weighted FSA's: the same as Intersect(), but it prunes
@@ -96,21 +132,17 @@ void Intersect(const Fsa &a,
                    where cost_a and cost_b are elements of
                    `a_cost` and `b_cost`.
   @param [out] c   The output FSA will be written to here.
-
-
-
-
-   as composition, but for finite state automata rather than transducers
-
-   This version is for where they both have weights... can also make one for
-   where just one has weights.
+  @param [out] state_map_a  Maps from arc-index in c to the corresponding
+                   arc-index in a
+  @param [out] state_map_b  Maps from arc-index in c to the corresponding
+                   arc-index in b
  */
-void IntersectPrunedWW(const Fsa &a, const float *a_cost,
-                       const Fsa &b, const float *b_cost,
-                       float cutoff,
-                       Fsa *c,
-                       std::vector<int32> *deriv_a,
-                       std::vector<int32> *deriv_b);
+void IntersectPruned2(const Fsa &a, const float *a_cost,
+                      const Fsa &b, const float *b_cost,
+                      float cutoff,
+                      Fsa *c,
+                      std::vector<int32> *state_map_a,
+                      std::vector<int32> *state_map_b);
 
 
 void RandomPath(const Fsa &a,
