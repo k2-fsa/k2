@@ -71,9 +71,17 @@ Raw training data is a list of tuples
 
  Then we compute the per-sequence objective functions from the ctc lattices via:
 
-  ctc_logprobs = k2.ForwardProb(ctc_lattices)
+  ctc_objfs = k2.ForwardProb(ctc_lattices)
 
- objf = ctc_logprobs.sum()
+ objf = ctc_objfs.sum()
  objf.backward() ...
+
+ Note: the ctc_logprobs FSA is sparse, so it makes it easier to do things with
+ (say) language models.  For instance: composing ctc_logprobs with some
+ deterministic FSA object representing a language model or an RNNLM, using that
+ as a numerator term, and for the denominator term, take `nnet_output_fsas`,
+ prune it, and compose with the same LM or RNNLM.
+
+
 
 
