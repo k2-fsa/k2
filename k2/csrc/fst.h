@@ -111,5 +111,10 @@ struct Wfst {
 
 
 
+struct Wfsa {
+  Fsa arcs;
 
-}
+  float *weights;  // Weights, one per arc, of the same dim as fsa.arcs.  Not
+                   // owned here..  would normally be owned in a torch.Tensor at
+                   // the python level.
+};

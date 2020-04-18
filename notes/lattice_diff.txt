@@ -1,0 +1,93 @@
+
+
+
+ Introduction
+ ============
+
+  Kaldi has become too complicated, and combining it with OpenFST and PyTorch maybe
+  makes it too hard to maintain.  I have a simpler, more self-contained proposal to
+  extend PyTorch in a way that could give good ASR performance and good efficiency.
+
+
+ Machine learning/modeling aspects.
+ =================================
+
+  The basic plan is something vaguely like CTC+RNN-T, but not quite.  It would
+  be trained with an interpolation of 2 or 3 objective functions, representing
+  various stages of (increasingly accurate) processing/decoding.
+
+  All of this is independent of the modeling unit (phones / letters / words /
+  word-pieces), but for now imagine they are context-independent phones.
+
+  The basic system (first pass) is close to vanilla CTC.  The reason it's not
+  100% vanilla CTC is that the supervision is a generic FSA rather than a linear
+  sequence, which enables support for things like optional-silence and makes
+  utterance splitting easier.  ALSO: at the output of the network, each time the
+  network outputs a symbol it also outputs an associated vector.  (The simplest
+  implementation would be just one vector per frame, shared between all the
+  symbols, but this could be refined).  You can imagine the vector has a
+  dimension of 100 or so.  Let's just call this a p-vector, but that's a
+  terrible name and I won't keep it.
+
+  This p-vector does not participate in the CTC objective.  Instead it
+  contributes to another objective, which incorporates a crude kind of context
+  dependency.  We use the p-vectors in some kind of computation over the lattice
+  that generates additional costs on arcs, to be added to the regular CTC costs.
+  We might decide to only have adjacent symbols' p-vectors interact with each
+  other (whether via dot-product or some additional neural-network computation
+  is TBD), and in this case it would correspond to a form of biphone context
+  dependency.  Most likely the objective at this point would be of the MMI type,
+  involving a numerator and a denominator.  This would be done fairly
+  efficiently in a *sparse* way, on lattices in which we have already used the
+  CTC costs for pruning.  Some of the algorithms we need to implement this
+  include: FST/lattice pruning, FST composition.  The CTC alignment/training
+  process can be viewed as FST composition, although with the traditional CTC
+  both FSTs are just linear; I am talking about extending this to more general
+  FSTs.
+
+  The third objective function I envisage would be one that involves an external
+  LM.  The idea is that the acoustic model also outputs, in parallel to its
+  normal CTC output, some kind of language model score *to be subtracted when we
+  add in the real LM*.  This avoids the double-counting problem that CTC
+  otherwise has, in that the CTC model already attempts to model the LM, so
+  combining with an external LM is problematic.  During training we would
+  probably find it most convenient to apply an n-gram LM as a kind of
+  fast-to-apply "dummy" LM, in order to train this correction term.  Again, the
+  third objective would probably normally be of the MMI type, although we should
+  support MPE/MWE-type alternatives as well.  When decoding we'd probably
+  interpolate the n-gram LM with an RNNLM, but all that's fairly
+  straightforward.
+
+  I would probably want to extend the objectives above with a learned measure
+  of confidence, which would be an auxiliary quantity in the lattices, with
+  its own output from the neural net.  (details later).
+
+  Some of the algorithms would involve lattice rescoring with recurrent models
+  (e.g. RNNLMs)... we'd use some of the types of approximations currently used
+  in Kaldi to make RNNLM rescoring fast.  Unlike current approaches at RNN-T
+ decoding, I want to keep around a rich representation of the output,
+ i.e. not just the 1-best but also a lattice and some measure of confidence.
+
+
+
+  Implementation aspects / integration with PyTorch
+  =================================================
+
+ The kinds of algorithms that would be implemented are: epsilon removal,
+ composition, pruning, determinization, and so on.  These would all be
+ differentiable (I have figured out the main details).  Doing this using PyTorch
+ primitives would be very slow due to irregular structure.  I have figured out
+ how to implement the core parts in C++ and (eventually) CUDA, and I know how to
+ implement autograd within the lattice parts; it's handing off the derivatives
+ to PyTorch which might be more tricky.  Part of the difficulty is that PyTorch's
+ core autograd machinery seems to be (now) written in C++, e.g. see
+ torch/csrc/autograd/{autograd.cpp,python_function.cpp}, and works directly on
+ Tensors.
+
+
+ I am not proposing to use OpenFST but would re-implement the
+ necessary parts in a way that would be easier to (eventually) code in CUDA.
+ Part of the challenge is we need someone who can deeply understand CUDA
+ programming to help with the eventual CUDA version of these algorithms.
+ I can help with formulating the algorithms in a way that's natural to
+ parallelize.

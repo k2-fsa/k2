@@ -20,4 +20,17 @@ void ConnectCore(const Fsa &fsa,
                  std::vector<int32> *state_map);
 
 
+
+/**
+   This version is for where they both have weights... can also make one for
+   where just one has weights.
+ */
+void PrunedIntersection(const Fsa &a, float *weights_a,
+                        const Fsa &b, float *weights_b,
+                        Fsa *c,
+                        std::vector<int32> *deriv_a,
+                        std::vector<int32> *deriv_b);
+
+
+
 } // namespace k2
