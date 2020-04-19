@@ -1,0 +1,93 @@
+
+Note: this should probably be read after training.txt as it relies on
+some terminology from there.
+
+The plan for decoding
+=====================
+
+ - The model
+
+
+ To make things concrete, and without implying that this is the model
+ we'll eventually use, let's assume the modeling is done in 3 stages:
+
+   (a) Vanilla CTC with phones as the symbol.
+
+   (b) Biphone context dependency implemented by taking a dot product
+       between successive phone symbols in the CTC lattice and adding it
+       to the score.  (This makes the model unnormalized, so in training
+       time it would have to be trained via MMI with a numerator and
+       denominator lattice).
+           [Note: it would be easy to extend these dot products to
+            be some kind of computation with a neural net; in any case,
+            the dot products will be computed by PyTorch].
+
+   (c) Composition with some kind of language model correction term
+       (probably a language model trained on text data, but with
+       some "simple" language model subtracted to account for the fact
+       that the CTC model already does some basic language modeling
+       of its own).  Assume we can treat this as composition with
+       an FST with a finite (but possibly very large) number of states.
+       This stage may also turn the phones into words, assuming
+       we decode with some kind of transducer.  [We'd have to have some
+       kind of backoff to OOV, or error handling, in case no valid
+       phone seq's were present.]
+
+
+ - The stages of decoding corresponding to the model above
+
+  - (a) The first decoding stage (CTC decoding) is to treat the neural network
+    output as a dense FSA, and apply beam pruning, then epsilon removal
+    with beam pruning, to obtain a sparse FSA on phones.  (The nontrivial
+    parts of all of these will happen in C++, in functions invoked
+    from Python).
+
+  - (b) The second decoding stage is to add biphone context dependency, via dot
+    products between the vectors associated with each output symbol. (For now
+    assume the distinct vectors are per frame, but we might extend them with an
+    element that's obtained via a lookup on phone identity).  This is
+    computed by
+     (i) expanding the lattice to have unique biphone left-context,
+      as in kaldi's lattice-expand-ngram, in fact to make it so that each arc is
+      preceded by exactly one such vector (this requires expanding the number
+      of states in the FSA),
+     (ii) Computing the dot products; the FSA function in (i) will output
+      a vector of pairs of integer indexes (one pair per arc in the output
+      FSA) which will tell us which pairs of vectors we need to compute the dot
+      product of, and we produce a PyTorch tensor which can serve as
+      the new vector of costs for the FSA produced in (a).  Note: in this
+      framework, the vector of costs is separate from the structural part
+      of the FSA.
+
+
+  - (c) Composition with "language model correction" FST, and possibly turning
+      the phones into words.   The actual mechanism of this will depend on what
+      kind of LM we are using.
+
+        - In the case of fully expanded language models it might just be a
+          k2.Wfst, which is basically a k2.Fsa with an associated vector of
+          costs (one per arc) and an associated vector of output labels (one
+          per arc).  [This data structure might be changed for efficiency
+          though.]
+
+        - In the case of grammar-type language models or dynamically expanded
+          graphs, we might use OpenFst, in which case it might be easiest to
+          just convert the k2.Fsa into OpenFst format.
+
+        - In the case where we're using RNNLMs, we would probably have some
+          algorithm in k2 which would decide, for each lattice, which
+          sequences or sub-sequences to compute the LM scores for: this could be
+          n-best lists, or we could do something with an n-gram approximation.
+          We'd probably have a batch-wise computation mechanism, where the
+          lattice rescoring algorithm actually operates in stages and in each
+          stage it returns a data structure convertible into a LongTensor that
+          can tell PyTorch what sequences it needs to compute LM costs for.
+
+          [Note: because we'd want to be able to extend a sequence that we
+          previously computed, we would like the neural networks used for
+          language modeling to have convenient ways of accessing their
+          hidden state; this might require reimplementing basic recurrent
+          layer types with a specialized interface, like Lingvo does.]
+
+
+
