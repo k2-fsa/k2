@@ -78,8 +78,8 @@ struct VecOfVec {
 };
 
 /*
-  Computes lists of arcs entering each state (needed for algorithms that traverse
-  the Fsa in reverse order).
+  Computes lists of arcs entering each state (needed for algorithms that
+  traverse the Fsa in reverse order).
 
   Requires that `fsa` be valid and top-sorted, i.e.
   CheckProperties(fsa, KTopSorted) == true.

@@ -1,4 +1,4 @@
-#include <k2/fst.h>
+#include <k2/fsa.h>
 
 
 namespace k2 {
