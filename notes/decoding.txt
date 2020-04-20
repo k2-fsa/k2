@@ -43,21 +43,38 @@ The plan for decoding
     from Python).
 
   - (b) The second decoding stage is to add biphone context dependency, via dot
-    products between the vectors associated with each output symbol. (For now
-    assume the distinct vectors are per frame, but we might extend them with an
-    element that's obtained via a lookup on phone identity).  This is
+    products between the vectors associated with successive pairs of output symbols.
+    (For now assume the distinct vectors are per frame, but we might extend them
+    with an element that's obtained via a lookup on phone identity).  This is
     computed by
+
      (i) expanding the lattice to have unique biphone left-context,
-      as in kaldi's lattice-expand-ngram, in fact to make it so that each arc is
-      preceded by exactly one such vector (this requires expanding the number
-      of states in the FSA),
+      as in kaldi's lattice-expand-ngram, to make it so
+      that all the arcs entering any given state have the same label on.
+      This is simply a matter of duplicating states as needed, but it
+      should be done with pruning, to avoid expanding the size of the
+      lattice too much.
+
      (ii) Computing the dot products; the FSA function in (i) will output
       a vector of pairs of integer indexes (one pair per arc in the output
       FSA) which will tell us which pairs of vectors we need to compute the dot
       product of, and we produce a PyTorch tensor which can serve as
-      the new vector of costs for the FSA produced in (a).  Note: in this
-      framework, the vector of costs is separate from the structural part
-      of the FSA.
+      the new vector of log-probs for the FSA produced in (a).  Note: in this
+      framework, the vector of log-probs is separate from the structural part
+      of the FSA.  We can then add these dot products into the vector of
+      log-probs (which would be a torch.Tensor).
+
+
+         NOTE ON NORMALIZATION.
+           We have a choice at this point whether to make the model
+         "normalized" (like CTC) or "unnormalized" (like LF-MMI).  Of course
+         we will have to do the same in training.  If we want a normalized
+         model we would have to compute the log-sum-exp of the log-probs on
+         arcs leaving each state, and subtract it from the log-probs of arcs
+         leaving those states.  There are indexing operations in pytorch
+         that can accomplish this (perhaps not super efficiently, but it
+         can be done).
+
 
 
   - (c) Composition with "language model correction" FST, and possibly turning
