@@ -113,10 +113,40 @@ void Intersect(const Fsa &a,
                std::vector<int32> *arc_map_a = NULL,
                std::vector<int32> *arc_map_b = NULL);
 
+
+/*
+  Version of Intersect where `a` is dense?
+ */
+void Intersect(const DenseFsa &a,
+               const Fsa &b,
+               Fsa *c,
+               std::vector<int32> *arc_map_a = NULL,
+               std::vector<int32> *arc_map_b = NULL);
+
+
+/*
+  Version of Intersect where `a` is dense, pruned with pruning beam `beam`.
+  Suppose states in the output correspond to pairs (s_a, s_b), and have
+  forward-weights w(s_a, s_b), i.e. best-path from the start state...
+  then if a state has a forward-weight w(s_a, s_b) that is less than
+  (the largest w(s_a, x) for any x) minus the beam, we don't expand it.
+
+  This is the same as time-synchronous Viterbi beam pruning.
+*/
+void IntersectPruned(const DenseFsa &a,
+                     const Fsa &b,
+                     float beam,
+                     Fsa *c,
+                     std::vector<int32> *arc_map_a = NULL,
+                     std::vector<int32> *arc_map_b = NULL);
+
+
+
+
 /**
    Intersection of two weighted FSA's: the same as Intersect(), but it prunes
    based on the sum of two costs.  Note: although these costs are provided per
-   arc, they would usually be a sum of forward and backward costs, that's
+   arc, they would usually be a sum of forward and backward costs, that is
    0 if this arc is on a best path and otherwise is the distance between
    the cost of this arc and the best-path cost.
 
@@ -143,6 +173,8 @@ void IntersectPruned2(const Fsa &a, const float *a_cost,
                       Fsa *c,
                       std::vector<int32> *state_map_a,
                       std::vector<int32> *state_map_b);
+
+
 
 
 void RandomPath(const Fsa &a,

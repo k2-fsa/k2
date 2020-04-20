@@ -16,14 +16,14 @@ enum {
    TODO: may store just begin and have the next element be the end.
 */
 struct Range {
-  int32 begin;
-  int32 end;
+  int32_t begin;
+  int32_t end;
 };
 
 struct Arc {
-  int32 src_state;
-  int32 dest_state;
-  int32 label;  /* 'label' as in a finite state acceptor.  For FSTs, the other
+  int32_t src_state;
+  int32_t dest_state;
+  int32_t label;  /* 'label' as in a finite state acceptor.  For FSTs, the other
                    label will be present in the aux_label array.  Which of the
                    two represents the input vs. the output can be decided
                    by the user; in general, the one that appears on the arc
@@ -64,7 +64,44 @@ struct Fsa {
   // Note: an index into the `arcs` array is called an arc-index.
   std::vector<Arc> arcs;
 
-  inline size_t NumStates() { return static_cast<int32>(leaving_arcs.size()); }
+  inline size_t NumStates() { return static_cast<int32_t>(leaving_arcs.size()); }
+};
+
+
+/*
+  DenseFsa represents an FSA stored as a matrix, representing something
+  like CTC output from a neural net.  We view `weights` as a T by N
+  matrix, where N is the number of symbols (including blank/zero).
+
+  Physically, we would access weights[t,n] as weights[t * t_stride + n].
+
+  This FSA has T + 2 states, with state 0 the start state and state T + 2
+  the final state.  (Caution: if we formulated our FSAs more normally we
+  would have T + 1 states, but because we represent final-probs via an
+  arc with symbol kFinalSymbol on it to the last state, we need one
+  more state).   For 0 <= t < T, we have an arc with symbol n on it for
+  each 0 <= n < N, from state t to state t+1, with weight equal to
+  weights[t,n].
+
+
+ */
+struct DenseFsa {
+  float *weights;  // Would typically be a log-prob or unnormalized log-prob
+  int32_t T;  // The number of time steps == rows in the matrix `weights`;
+              // this FSA has T + 2 states, see explanation above.
+  int32_t num_symbols;  // The number of symbols == columns in the matrix
+                        // `weights`.
+  int32_t t_stride;  // The stride of the matrix `weights`
+
+  /* Constructor
+     @param [in] data   Pointer to the raw data, which is a T by num_symbols matrix
+                       with stride `stride`, containing logprobs
+
+      CAUTION: we may later enforce that stride == num_symbols, in order to
+      be able to know the layout of a phantom matrix of arcs.  (?)
+   */
+  DenseFsa(float *data, int32_t T,
+           int32_t num_symbols, int32_t stride);
 };
 
 
@@ -74,24 +111,19 @@ struct Fsa {
  */
 struct VecOfVec {
   std::vector<Range> ranges;
-  std::vector<int32> values;
+  std::vector<int32_t> values;
 };
 
 
 
-struct Wfst {
+struct Fst {
   Fsa core;
-  std::vector<int32> aux_label;
+  std::vector<int32_t> aux_label;
 };
 
 
 
+using FsaVec = std::vector<Fsa>;
+using FstVec = std::vector<Fst>;
+using DenseFsaVec = std::vector<DenseFsa>;
 
-struct Wfsa {
-  Fsa arcs;
-
-  float *weights;  // Some kind of weights or costs, one per arc, of the same
-                   // dim as fsa.arcs.  Not owned here..  would normally be
-                   // owned in a torch.Tensor at the python level.
-                  //
-};
