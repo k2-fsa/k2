@@ -1,0 +1,53 @@
+# Copyright 2020 Fangjun Kuang (csukuangfj@gmail.com)
+
+# See ../../COPYING for clarification regarding multiple authors
+
+# refer to https://github.com/actions/starter-workflows/pull/47/files
+
+name: build
+
+on:
+  # the workflow is triggered on push to master
+  # or any pullrequest is opened.
+  push:
+    branches: [ master ]
+  pull_request:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # TODO(fangjun): support "windows-latest"
+        os: [ubuntu-latest, macOS-latest]
+
+    steps:
+      # refer to https://github.com/actions/checkout
+      - uses: actions/checkout@v2
+
+      - name: Create Build Directory
+        run: cmake -E make_directory ${{runner.workspace}}/build
+
+      - name: Configure CMake
+        shell: bash
+        working-directory: ${{runner.workspace}}/build
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+
+      - name: Build
+        shell: bash
+        working-directory: ${{runner.workspace}}/build
+        run: cmake --build . --config $BUILD_TYPE
+
+      - name: Test
+        working-directory: ${{runner.workspace}}/build
+        shell: bash
+        run: ctest --build-config $BUILD_TYPE
+
+      - name: Check Style
+        shell: bash
+        working-directory: ${{runner.workspace}}/build
+        run: cmake --build . --config $BUILD_TYPE --target check_style

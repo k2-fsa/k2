@@ -1,15 +1,37 @@
-#ifndef K2_FSA_H_
-#define K2_FSA_H_
+// k2/csrc/fsa.h
+
+// Copyright     2020  Daniel Povey
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABILITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef K2_CSRC_FSA_H_
+#define K2_CSRC_FSA_H_
+
+#include <cstdint>
 #include <vector>
-#include <stdint.h>
 
 namespace k2 {
 
 enum {
-  kFinalSymbol = -1,   /* final-costs are represented as arcs with kFinalSymbol as their
-                          label, to the final state (see Fst::final_state). */
-  kEpsilon = 0         /* Epsilon, which means "no symbol", is numbered zero,
-                        * like in OpenFst. */
+  kFinalSymbol = -1,   //!< final-costs are represented as arcs with
+                       //!< kFinalSymbol as their label, to the final
+                       //!< state (see Fst::final_state).
+
+  kEpsilon = 0         //!< Epsilon, which means "no symbol", is numbered zero,
+                       //!< like in OpenFst.
 };
 
 
@@ -26,12 +48,12 @@ struct Range {
 struct Arc {
   int32_t src_state;
   int32_t dest_state;
-  int32_t label;  /* 'label' as in a finite state acceptor.  For FSTs, the other
-                   label will be present in the aux_label array.  Which of the
-                   two represents the input vs. the output can be decided
-                   by the user; in general, the one that appears on the arc
-                   will be the one that participates in whatever operation
-                   you are doing */
+  int32_t label;  //!< 'label' as in a finite state acceptor.
+                  //!< For FSTs, the other label will be present in the
+                  //!< aux_label array.  Which of the two represents the input
+                  //!< vs. the output can be decided by the user; in general,
+                  //!< the one that appears on the arc will be the one that
+                  //!< participates in whatever operation you are doing
 
   /* Note: the costs are not stored here but outside the Fst object, in some kind
      of array indexed by arc-index.  */
@@ -56,7 +78,6 @@ struct ArcLabelCompare {
   accepts no strings) by having no states at all, so `arcs` would be empty.
  */
 struct Fsa {
-
   // `leaving_arcs` is indexed by state-index, is of length num-states,
   // contains the first arc-index leaving this state (index into `arcs`).
   // The next element of this array gives the end of that range.
@@ -117,18 +138,15 @@ struct VecOfVec {
   std::vector<int32_t> values;
 };
 
-
-
 struct Fst {
   Fsa core;
   std::vector<int32_t> aux_label;
 };
 
-
-
 using FsaVec = std::vector<Fsa>;
 using FstVec = std::vector<Fst>;
 using DenseFsaVec = std::vector<DenseFsa>;
-} //namespace k2
 
-#endif
+}  // namespace k2
+
+#endif  // K2_CSRC_FSA_H_

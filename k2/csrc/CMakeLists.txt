@@ -1,17 +1,17 @@
-cmake_minimum_required(VERSION 3.1)
-set(CMAKE_CXX_STANDARD 11)
-project(fsa_library)
+add_library(properties properties.cc)
+target_include_directories(properties PUBLIC ${CMAKE_SOURCE_DIR})
+target_compile_features(properties PUBLIC cxx_std_11)
 
-add_library(fsa_library SHARED
-   properties.cc 
+add_executable(properties_test properties_test.cc)
+
+target_link_libraries(properties_test
+  PRIVATE
+    properties
+    gtest
+    gtest_main
 )
 
-#TODO: replace with Google Testing Framework
-add_executable(test_properties
-    test/properties_test.cc
-)
-
-target_link_libraries(test_properties
-    PRIVATE
-        fsa_library
+add_test(NAME Test.properties_test
+  COMMAND
+    $<TARGET_FILE:properties_test>
 )

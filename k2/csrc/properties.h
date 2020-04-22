@@ -1,67 +1,80 @@
-#ifndef K2_PROPERTIES_H_
-#define K2_PROPERTIES_H_
+// k2/csrc/properties.h
 
-#include <stdint.h>
-#include "fsa.h"
+// Copyright     2020  Daniel Povey
+//                     Haowen Qiu
 
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABILITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef K2_CSRC_PROPERTIES_H_
+#define K2_CSRC_PROPERTIES_H_
+
+#include "k2/csrc/fsa.h"
 
 namespace k2 {
 
-// TODO: we might not need this.
-enum Properties{
-  kTopSorted,  // topologically sorted
-  kTopSortedAndAcyclic,  // topologically sorted and no self-loops (which implies acyclic)
-  kArcSorted,  // arcs leaving each state are sorted on label
-  kDeterministic,  // no state has two arcs leaving it with the same label
-  kConnected,  // all states are both accessible (i.e. from start state) and coaccessible
-               // (i.e. can reach final-state)
+// TODO(povey): we might not need this.
+enum Properties {
+  kTopSorted,            // topologically sorted
+  kTopSortedAndAcyclic,  // topologically sorted and no self-loops (which
+                         // implies acyclic)
+  kArcSorted,            // arcs leaving each state are sorted on label
+  kDeterministic,        // no state has two arcs leaving it with the same label
+  kConnected,    // all states are both accessible (i.e. from start state) and
+                 // coaccessible (i.e. can reach final-state)
   kEpsilonFree,  // there are no arcs with epsilon (kEpsilon == 0) as the label
-  kNonempty  // the FST does not have zero states
-} ;
-
-
+  kNonempty      // the FST does not have zero states
+};
 
 /*
   Note: the intention is that querying these properties is mostly something
   you'll do either as randomized checks, or in debug mode, and not routine,
   since the checks can be slow.
  */
-bool IsValid(const Fsa &fsa);
-
+bool IsValid(const Fsa& fsa);
 
 /*
   Returns true if the states in `fsa` are topologically sorted.
 */
-bool IsTopSorted(const Fsa &fsa);
+bool IsTopSorted(const Fsa& fsa);
 
 /*
   Returns true if `fsa` has any self-loops
  */
-bool HasSelfLoops(const Fsa &fsa);
+bool HasSelfLoops(const Fsa& fsa);
 
 /*
   Returns true if `fsa` is both topologically sorted and free
   of self-loops (together, these imply that it is acyclic, i.e.
   free of all cycles).
 */
-inline bool IsTopSortedAndAcyclic(const Fsa &fsa) {
+inline bool IsTopSortedAndAcyclic(const Fsa& fsa) {
   return IsTopSorted(fsa) && !HasSelfLoops(fsa);
 }
-
 
 /*
   Returns true if `fsa` is deterministic; an Fsa is deterministic if it has is
   no state that has multiple arcs leaving it with the same label on them.
 */
-bool IsDeterministic(const Fsa &fsa);
-
+bool IsDeterministic(const Fsa& fsa);
 
 /*
   Returns true if `fsa` is free of epsilons, i.e. if there are no arcs
   for which `label` is kEpsilon == 0.
 */
-bool IsEpsilonFree(const Fsa &fsa);
-
+bool IsEpsilonFree(const Fsa& fsa);
 
 /*
   Returns true if all states in `fsa` are both reachable from the start state
@@ -70,17 +83,13 @@ bool IsEpsilonFree(const Fsa &fsa);
   start state nor final state exist).  So you may sometimes want to check
   IsConnected() && IsNonempty().
  */
-bool IsConnected(const Fsa &fsa);
-
-
+bool IsConnected(const Fsa& fsa);
 
 /*
-  Returns true if `fsa` contains at least one state.  (Note: in this case it would
-  contain at least two states, the start state and the final state).
+  Returns true if `fsa` contains at least one state.  (Note: in this case it
+  would contain at least two states, the start state and the final state).
  */
-inline bool IsNonempty(const Fsa &fsa) { return !fsa.leaving_arcs.empty(); }
-
-
+inline bool IsNonempty(const Fsa& fsa) { return !fsa.leaving_arcs.empty(); }
 
 /*
   Returns true if `fsa` is valid AND satisfies the list of properties
@@ -92,12 +101,9 @@ inline bool IsNonempty(const Fsa &fsa) { return !fsa.leaving_arcs.empty(); }
   (note: the final state is special, and such arcs represent
 
  */
-bool CheckProperties(const Fsa &fsa,
-                     const Properties &properties,
+bool CheckProperties(const Fsa& fsa, const Properties& properties,
                      bool die_on_error = false);
 
+}  // namespace k2
 
-
-} // namespace k2
-
-#endif
+#endif  // K2_CSRC_PROPERTIES_H_
