@@ -1,4 +1,7 @@
-
+#ifndef K2_FSA_H_
+#define K2_FSA_H_
+#include <vector>
+#include <stdint.h>
 
 namespace k2 {
 
@@ -37,7 +40,7 @@ struct Arc {
 
 
 struct ArcLabelCompare {
-  bool operator < (const Arc &a, const Arc &b) const {
+  bool operator() (const Arc &a, const Arc &b) const {
     return a.label < b.label;
   }
 };
@@ -64,7 +67,7 @@ struct Fsa {
   // Note: an index into the `arcs` array is called an arc-index.
   std::vector<Arc> arcs;
 
-  inline size_t NumStates() { return static_cast<int32_t>(leaving_arcs.size()); }
+  inline std::size_t NumStates() { return leaving_arcs.size(); }
 };
 
 
@@ -126,4 +129,6 @@ struct Fst {
 using FsaVec = std::vector<Fsa>;
 using FstVec = std::vector<Fst>;
 using DenseFsaVec = std::vector<DenseFsa>;
+} //namespace k2
 
+#endif

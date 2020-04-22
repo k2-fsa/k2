@@ -1,10 +1,14 @@
-#include "k2/fsa.h"
+#ifndef K2_PROPERTIES_H_
+#define K2_PROPERTIES_H_
+
+#include <stdint.h>
+#include "fsa.h"
 
 
 namespace k2 {
 
 // TODO: we might not need this.
-enum {
+enum Properties{
   kTopSorted,  // topologically sorted
   kTopSortedAndAcyclic,  // topologically sorted and no self-loops (which implies acyclic)
   kArcSorted,  // arcs leaving each state are sorted on label
@@ -13,7 +17,7 @@ enum {
                // (i.e. can reach final-state)
   kEpsilonFree,  // there are no arcs with epsilon (kEpsilon == 0) as the label
   kNonempty  // the FST does not have zero states
-} Properties;
+} ;
 
 
 
@@ -40,7 +44,7 @@ bool HasSelfLoops(const Fsa &fsa);
   of self-loops (together, these imply that it is acyclic, i.e.
   free of all cycles).
 */
-bool IsTopSortedAndAcyclic(const Fsa &fsa) {
+inline bool IsTopSortedAndAcyclic(const Fsa &fsa) {
   return IsTopSorted(fsa) && !HasSelfLoops(fsa);
 }
 
@@ -74,7 +78,7 @@ bool IsConnected(const Fsa &fsa);
   Returns true if `fsa` contains at least one state.  (Note: in this case it would
   contain at least two states, the start state and the final state).
  */
-bool IsNonempty(const Fsa &fsa) { return !fsa.leaving_arcs.empty(); }
+inline bool IsNonempty(const Fsa &fsa) { return !fsa.leaving_arcs.empty(); }
 
 
 
@@ -95,3 +99,5 @@ bool CheckProperties(const Fsa &fsa,
 
 
 } // namespace k2
+
+#endif
