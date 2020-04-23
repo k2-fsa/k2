@@ -1,28 +1,14 @@
 // k2/csrc/weights.h
 
-// Copyright     2020  Daniel Povey
+// Copyright (c)  2020  Daniel Povey
 
-// See ../../COPYING for clarification regarding multiple authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//  http://www.apache.org/licenses/LICENSE-2.0
-//
-// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-// MERCHANTABILITY OR NON-INFRINGEMENT.
-// See the Apache 2 License for the specific language governing permissions and
-// limitations under the License.
+// See ../../LICENSE for clarification regarding multiple authors
 
 #include <vector>
 
 #include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_util.h"
 #include "k2/csrc/fsa_properties.h"
-
+#include "k2/csrc/fsa_util.h"
 
 #ifndef K2_CSRC_WEIGHTS_H_
 #define K2_CSRC_WEIGHTS_H_
@@ -38,10 +24,6 @@ namespace k2 {
   Note: weights are stored separately from the FSA.
  */
 
-
-
-
-
 /*
   Does the 'forward' computation; this is as in the tropical semiring
   but with the opposite sign, as in logprobs rather than negative logprobs.
@@ -56,8 +38,7 @@ namespace k2 {
                 to that state along any path, or +infinity if no such
                 path exists.
  */
-void ComputeForwardMaxWeights(
-    const Fsa &fsa, float *state_weights);
+void ComputeForwardMaxWeights(const Fsa& fsa, float* state_weights);
 
 /*
   Does the 'backward' computation; this is as in the tropical semiring
@@ -73,26 +54,15 @@ void ComputeForwardMaxWeights(
                 to the final state along any path, or +infinity if no such
                 path exists.
  */
-void ComputeBackwardMaxWeights(
-    const Fsa &fsa, float *state_weights);
+void ComputeBackwardMaxWeights(const Fsa& fsa, float* state_weights);
 
-
-
-
-enum {
-  kMaxWeight,
-  kLogSumWeight
-} FbWeightType;
-
-
-
-
+enum { kMaxWeight, kLogSumWeight } FbWeightType;
 
 struct WfsaWithFbWeights {
-  const Fsa *fsa;
-  const float *arc_weights;
-  const float *forward_state_weights;
-  const float *backward_state_weights;
+  const Fsa* fsa;
+  const float* arc_weights;
+  const float* forward_state_weights;
+  const float* backward_state_weights;
 
   /*
     Constructor.
@@ -106,9 +76,8 @@ struct WfsaWithFbWeights {
                         kLogSumWeight == Baum Welch, i.e. sum probs
                         over paths, treating weights as log-probs.
    */
-  WfsaWithFbWeights(const Fsa *fsa,
-                    const float *arc_weights,
-                    FbWeightType t);
+  WfsaWithFbWeights(const Fsa* fsa, const float* arc_weights, FbWeightType t);
+
  private:
   std::vector<float> mem_;
 };

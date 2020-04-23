@@ -1,5 +1,5 @@
-# Copyright 2020 Fangjun Kuang (csukuangfj@gmail.com)
-# See ../COPYING for clarification regarding multiple authors
+# Copyright (c) 2020 Fangjun Kuang (csukuangfj@gmail.com)
+# See ../LICENSE for clarification regarding multiple authors
 
 function(download_googltest)
   include(ExternalProject)
@@ -20,7 +20,7 @@ function(download_googltest)
   set(googletest_INCLUDE_DIR "${googletest_INSTALL_DIR}/include")
 
   # NOTE(fangjun): since "googletest_INCLUDE_DIR" is created during build time,
-  # we create it manually so that it can be access during configuration time.
+  # we create it manually so that it can be accessed during configuration time.
   file(MAKE_DIRECTORY ${googletest_INCLUDE_DIR})
 
   ExternalProject_Add(
@@ -28,10 +28,10 @@ function(download_googltest)
     URL               ${googletest_URL}
     PREFIX            ${googletest_DIR}
     INSTALL_DIR       ${googletest_DIR/install}
-    CMAKE_ARGS       -DCMAKE_INSTALL_PREFIX=${googletest_INSTALL_DIR}
-                     -DBUILD_GMOCK=ON
-                     -Dgtest_disable_pthreads=ON
-                     -Dgtest_force_shared_crt=ON
+    CMAKE_ARGS        -DCMAKE_INSTALL_PREFIX=${googletest_INSTALL_DIR}
+                      -DBUILD_GMOCK=ON
+                      -Dgtest_disable_pthreads=ON
+                      -Dgtest_force_shared_crt=ON
     LOG_DOWNLOAD      ON
     LOG_CONFIGURE     ON
   )

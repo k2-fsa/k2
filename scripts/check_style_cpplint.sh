@@ -2,7 +2,7 @@
 
 # Copyright 2020 Fangjun Kuang (csukuangfj@gmail.com)
 
-# See ../COPYING for clarification regarding multiple authors
+# See ../LICENSE for clarification regarding multiple authors
 
 # Usage:
 #  ./scripts/check_style_cpplint.sh
@@ -35,7 +35,7 @@ else
   # is downloaded automatically when the project is configured.
   build_dir=$k2_dir/build
 fi
-cpplint_src=$build_dir/third_party/cpplint/src/cpplint.py
+cpplint_src=$build_dir/third_party/cpplint/src/cpplint/cpplint.py
 
 function ok() {
   printf "${bold}${green}[OK]${default} $1\n"
@@ -69,7 +69,7 @@ function check_last_commit() {
 function check_current_dir() {
   files=$(git status -s -uno --porcelain | awk '{
   if (NF == 4) {
-    # a file has been removed
+    # a file has been renamed
     print $NF
   } else {
     print $2

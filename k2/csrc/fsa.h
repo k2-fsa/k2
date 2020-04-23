@@ -1,21 +1,8 @@
 // k2/csrc/fsa.h
 
-// Copyright     2020  Daniel Povey
+// Copyright (c)  2020  Daniel Povey
 
-// See ../../COPYING for clarification regarding multiple authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//  http://www.apache.org/licenses/LICENSE-2.0
-//
-// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-// MERCHANTABILITY OR NON-INFRINGEMENT.
-// See the Apache 2 License for the specific language governing permissions and
-// limitations under the License.
+// See ../../LICENSE for clarification regarding multiple authors
 
 #ifndef K2_CSRC_FSA_H_
 #define K2_CSRC_FSA_H_
@@ -26,19 +13,17 @@
 namespace k2 {
 
 enum {
-  kFinalSymbol = -1,   //!< final-costs are represented as arcs with
-                       //!< kFinalSymbol as their label, to the final
-                       //!< state (see Fst::final_state).
+  kFinalSymbol = -1,  // final-costs are represented as arcs with
+                      // kFinalSymbol as their label, to the final
+                      // state (see Fst::final_state).
 
-  kEpsilon = 0         //!< Epsilon, which means "no symbol", is numbered zero,
-                       //!< like in OpenFst.
+  kEpsilon = 0  // Epsilon, which means "no symbol", is numbered zero,
+                // like in OpenFst.
 };
-
-
 
 /* Range is what we use when we want (begin,end) indexes into some array.
    `end` is the last element plus one.
-   TODO: may store just begin and have the next element be the end.
+   TODO(Dan): may store just begin and have the next element be the end.
 */
 struct Range {
   int32_t begin;
@@ -48,25 +33,22 @@ struct Range {
 struct Arc {
   int32_t src_state;
   int32_t dest_state;
-  int32_t label;  //!< 'label' as in a finite state acceptor.
-                  //!< For FSTs, the other label will be present in the
-                  //!< aux_label array.  Which of the two represents the input
-                  //!< vs. the output can be decided by the user; in general,
-                  //!< the one that appears on the arc will be the one that
-                  //!< participates in whatever operation you are doing
+  int32_t label;  // 'label' as in a finite state acceptor.
+                  // For FSTs, the other label will be present in the
+                  // aux_label array.  Which of the two represents the input
+                  // vs. the output can be decided by the user; in general,
+                  // the one that appears on the arc will be the one that
+                  // participates in whatever operation you are doing
 
-  /* Note: the costs are not stored here but outside the Fst object, in some kind
-     of array indexed by arc-index.  */
+  /* Note: the costs are not stored here but outside the Fst object, in some
+     kind of array indexed by arc-index.  */
 };
 
-
-
 struct ArcLabelCompare {
-  bool operator() (const Arc &a, const Arc &b) const {
+  bool operator()(const Arc& a, const Arc& b) const {
     return a.label < b.label;
   }
 };
-
 
 /*
   struct Fsa is an unweighted finite-state acceptor (FSA) and is at the core of
@@ -91,7 +73,6 @@ struct Fsa {
   inline std::size_t NumStates() { return leaving_arcs.size(); }
 };
 
-
 /*
   DenseFsa represents an FSA stored as a matrix, representing something
   like CTC output from a neural net.  We view `weights` as a T by N
@@ -110,28 +91,27 @@ struct Fsa {
 
  */
 struct DenseFsa {
-  float *weights;  // Would typically be a log-prob or unnormalized log-prob
-  int32_t T;  // The number of time steps == rows in the matrix `weights`;
-              // this FSA has T + 2 states, see explanation above.
+  float* weights;  // Would typically be a log-prob or unnormalized log-prob
+  int32_t T;       // The number of time steps == rows in the matrix `weights`;
+                   // this FSA has T + 2 states, see explanation above.
   int32_t num_symbols;  // The number of symbols == columns in the matrix
                         // `weights`.
-  int32_t t_stride;  // The stride of the matrix `weights`
+  int32_t t_stride;     // The stride of the matrix `weights`
 
   /* Constructor
-     @param [in] data   Pointer to the raw data, which is a T by num_symbols matrix
-                       with stride `stride`, containing logprobs
+     @param [in] data   Pointer to the raw data, which is a T by num_symbols
+     matrix with stride `stride`, containing logprobs
 
       CAUTION: we may later enforce that stride == num_symbols, in order to
       be able to know the layout of a phantom matrix of arcs.  (?)
    */
-  DenseFsa(float *data, int32_t T,
-           int32_t num_symbols, int32_t stride);
+  DenseFsa(float* data, int32_t T, int32_t num_symbols, int32_t stride);
 };
 
-
 /*
-  this general-purpose structure conceptually the same as std::vector<std::vector>;
-  elements of `ranges` are (begin, end) indexes into `values`.
+  this general-purpose structure conceptually the same as
+  std::vector<std::vector>; elements of `ranges` are (begin, end) indexes into
+  `values`.
  */
 struct VecOfVec {
   std::vector<Range> ranges;

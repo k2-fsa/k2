@@ -1,16 +1,17 @@
-# Copyright 2020 Fangjun Kuang (csukuangfj@gmail.com)
-# See ../COPYING for clarification regarding multiple authors
+# Copyright (c) 2020 Fangjun Kuang (csukuangfj@gmail.com)
+# See ../LICENSE for clarification regarding multiple authors
 
 function(download_cpplint)
   include(ExternalProject)
 
-  set(cpplint_URL "https://raw.githubusercontent.com/cpplint/cpplint/master/cpplint.py")
+  set(cpplint_URL "https://github.com/cpplint/cpplint/archive/1.4.5.tar.gz")
+  set(cpplint_HASH "sha256= 96db293564624543a2fd3b1a0d23f663b8054c79853a5918523655721a9f6b53")
+
   set(cpplint_DIR "${k2_THIRD_PARTY_DIR}/cpplint")
 
   ExternalProject_Add(
     cpplint
     URL                 ${cpplint_URL}
-    DOWNLOAD_NO_EXTRACT NO
     TIMEOUT             10
     PREFIX              ${cpplint_DIR}
     CONFIGURE_COMMAND   ""
@@ -20,9 +21,6 @@ function(download_cpplint)
     LOG_DOWNLOAD        ON
     LOG_CONFIGURE       ON
   )
-
-  ExternalProject_Get_Property(cpplint SOURCE_DIR)
-  set(cpplint_SOURCE_DIR ${SOURCE_DIR} PARENT_SCOPE)
 endfunction()
 
 download_cpplint()
