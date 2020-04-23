@@ -1,0 +1,49 @@
+# Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+
+# See ../../LICENSE for clarification regarding multiple authors
+
+name: style_check
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.5, 3.6, 3.7, 3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install cpplint==1.4.5
+
+      - name: Create Build Directory
+        run: cmake -E make_directory ${{runner.workspace}}/build
+
+      - name: Configure CMake
+        shell: bash
+        working-directory: ${{runner.workspace}}/build
+        run: cmake -DCMAKE_CXX_CPPLINT=cpplint $GITHUB_WORKSPACE
+
+      - name: Check style
+        shell: bash
+        working-directory: ${{runner.workspace}}/build
+        # it will build all targets; while building a library, it
+        # invokes cpplint automatically to check the corresponding
+        # cc source file. If it find any errors, the return code will be 1.
+        run: cmake --build . 2>&1 | awk '/errors/ {exit 1} {print $0}'

@@ -10,7 +10,7 @@ function(download_cpplint)
   set(cpplint_DIR "${k2_THIRD_PARTY_DIR}/cpplint")
 
   ExternalProject_Add(
-    cpplint
+    cpplint_py
     URL                 ${cpplint_URL}
     TIMEOUT             10
     PREFIX              ${cpplint_DIR}
@@ -31,4 +31,4 @@ add_custom_target(check_style
   COMMAND
     ${CMAKE_SOURCE_DIR}/scripts/check_style_cpplint.sh ${CMAKE_BINARY_DIR} 1
 )
-add_dependencies(check_style cpplint)
+add_dependencies(check_style cpplint_py)
