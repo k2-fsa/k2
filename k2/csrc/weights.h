@@ -1,7 +1,17 @@
-#include <k2/fsa.h>
-#include <k2/fsa_util.h>
-#include <k2/fsa_properties.h>
+// k2/csrc/weights.h
 
+// Copyright (c)  2020  Daniel Povey
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#include <vector>
+
+#include "k2/csrc/fsa.h"
+#include "k2/csrc/fsa_properties.h"
+#include "k2/csrc/fsa_util.h"
+
+#ifndef K2_CSRC_WEIGHTS_H_
+#define K2_CSRC_WEIGHTS_H_
 
 namespace k2 {
 
@@ -13,10 +23,6 @@ namespace k2 {
 
   Note: weights are stored separately from the FSA.
  */
-
-
-
-
 
 /*
   Does the 'forward' computation; this is as in the tropical semiring
@@ -32,8 +38,7 @@ namespace k2 {
                 to that state along any path, or +infinity if no such
                 path exists.
  */
-void ComputeForwardMaxWeights(
-    const Fsa &fsa, float *state_weights);
+void ComputeForwardMaxWeights(const Fsa& fsa, float* state_weights);
 
 /*
   Does the 'backward' computation; this is as in the tropical semiring
@@ -49,26 +54,15 @@ void ComputeForwardMaxWeights(
                 to the final state along any path, or +infinity if no such
                 path exists.
  */
-void ComputeBackwardMaxWeights(
-    const Fsa &fsa, float *state_weights);
+void ComputeBackwardMaxWeights(const Fsa& fsa, float* state_weights);
 
-
-
-
-enum {
-  kMaxWeight,
-  kLogSumWeight
-} FbWeightType;
-
-
-
-
+enum { kMaxWeight, kLogSumWeight } FbWeightType;
 
 struct WfsaWithFbWeights {
-  const Fsa *fsa;
-  const float *arc_weights;
-  const float *forward_state_weights;
-  const float *backward_state_weights;
+  const Fsa* fsa;
+  const float* arc_weights;
+  const float* forward_state_weights;
+  const float* backward_state_weights;
 
   /*
     Constructor.
@@ -82,18 +76,12 @@ struct WfsaWithFbWeights {
                         kLogSumWeight == Baum Welch, i.e. sum probs
                         over paths, treating weights as log-probs.
    */
-  WfsaWithFbWeights(const Fsa *fsa,
-                    const float *arc_weights,
-                    FbWeightType t);
+  WfsaWithFbWeights(const Fsa* fsa, const float* arc_weights, FbWeightType t);
+
  private:
   std::vector<float> mem_;
 };
 
+}  // namespace k2
 
-
-
-};
-
-
-
-} // namespace k2
+#endif  // K2_CSRC_WEIGHTS_H_
