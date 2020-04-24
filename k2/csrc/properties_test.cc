@@ -39,14 +39,14 @@ TEST(Properties, IsTopSorted) {
   EXPECT_TRUE(sorted);
 }
 
-TEST(Properties, HasNotSelfLoops) {
+TEST(Properties, HasNoSelfLoops) {
   std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, {1, 2, 0}, };
   std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, };
   Fsa fsa;
   fsa.leaving_arcs = leaving_arcs;
   fsa.arcs = arcs;
-  bool hasSelfLoops = HasSelfLoops(fsa);
-  EXPECT_FALSE(hasSelfLoops);
+  bool has_self_loops = HasSelfLoops(fsa);
+  EXPECT_FALSE(has_self_loops);
 }
 
 TEST(Properties, HasSelfLoops) {
@@ -55,8 +55,8 @@ TEST(Properties, HasSelfLoops) {
   Fsa fsa;
   fsa.leaving_arcs = leaving_arcs;
   fsa.arcs = arcs;
-  bool hasSelfLoops = HasSelfLoops(fsa);
-  EXPECT_TRUE(hasSelfLoops);
+  bool has_self_loops = HasSelfLoops(fsa);
+  EXPECT_TRUE(has_self_loops);
 }
 
 TEST(Properties, IsNotDeterministic) {
@@ -65,8 +65,8 @@ TEST(Properties, IsNotDeterministic) {
   Fsa fsa;
   fsa.leaving_arcs = leaving_arcs;
   fsa.arcs = arcs;
-  bool isDeterministic = IsDeterministic(fsa);
-  EXPECT_FALSE(isDeterministic);
+  bool is_deterministic = IsDeterministic(fsa);
+  EXPECT_FALSE(is_deterministic);
 }
 
 TEST(Properties, IsDeterministic) {
@@ -75,8 +75,8 @@ TEST(Properties, IsDeterministic) {
   Fsa fsa;
   fsa.leaving_arcs = leaving_arcs;
   fsa.arcs = arcs;
-  bool isDeterministic = IsDeterministic(fsa);
-  EXPECT_TRUE(isDeterministic);
+  bool is_deterministic = IsDeterministic(fsa);
+  EXPECT_TRUE(is_deterministic);
 }
 
 TEST(Properties, IsNotEpsilonFree) {
@@ -85,8 +85,8 @@ TEST(Properties, IsNotEpsilonFree) {
   Fsa fsa;
   fsa.leaving_arcs = leaving_arcs;
   fsa.arcs = arcs;
-  bool isEpsilonFree = IsEpsilonFree(fsa);
-  EXPECT_FALSE(isEpsilonFree);
+  bool is_epsilon_free = IsEpsilonFree(fsa);
+  EXPECT_FALSE(is_epsilon_free);
 }
 
 TEST(Properties, IsEpsilonFree) {
@@ -95,6 +95,6 @@ TEST(Properties, IsEpsilonFree) {
   Fsa fsa;
   fsa.leaving_arcs = leaving_arcs;
   fsa.arcs = arcs;
-  bool isEpsilonFree = IsEpsilonFree(fsa);
-  EXPECT_TRUE(isEpsilonFree);
+  bool is_epsilon_free = IsEpsilonFree(fsa);
+  EXPECT_TRUE(is_epsilon_free);
 }

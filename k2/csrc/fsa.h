@@ -20,9 +20,8 @@ enum {
   kFinalSymbol = -1,  // final-costs are represented as arcs with
                       // kFinalSymbol as their label, to the final
                       // state (see Fst::final_state).
-
-  kEpsilon = 0  // Epsilon, which means "no symbol", is numbered zero,
-                // like in OpenFst.
+  kEpsilon = 0        // Epsilon, which means "no symbol", is numbered zero,
+                      // like in OpenFst.
 };
 
 /* Range is what we use when we want (begin,end) indexes into some array.
@@ -38,11 +37,11 @@ struct Arc {
   StateId src_state;
   StateId dest_state;
   Label label;  // 'label' as in a finite state acceptor.
-                  // For FSTs, the other label will be present in the
-                  // aux_label array.  Which of the two represents the input
-                  // vs. the output can be decided by the user; in general,
-                  // the one that appears on the arc will be the one that
-                  // participates in whatever operation you are doing
+                // For FSTs, the other label will be present in the
+                // aux_label array.  Which of the two represents the input
+                // vs. the output can be decided by the user; in general,
+                // the one that appears on the arc will be the one that
+                // participates in whatever operation you are doing
 
   /* Note: the costs are not stored here but outside the Fst object, in some
      kind of array indexed by arc-index.  */
@@ -74,7 +73,9 @@ struct Fsa {
   // Note: an index into the `arcs` array is called an arc-index.
   std::vector<Arc> arcs;
 
-  inline std::size_t NumStates() { return leaving_arcs.size(); }
+  StateId NumStates() const {
+    return static_cast<StateId>(leaving_arcs.size());
+  }
 };
 
 /*
@@ -96,8 +97,8 @@ struct Fsa {
  */
 struct DenseFsa {
   Weight* weights;  // Would typically be a log-prob or unnormalized log-prob
-  int32_t T;       // The number of time steps == rows in the matrix `weights`;
-                   // this FSA has T + 2 states, see explanation above.
+  int32_t T;        // The number of time steps == rows in the matrix `weights`;
+                    // this FSA has T + 2 states, see explanation above.
   int32_t num_symbols;  // The number of symbols == columns in the matrix
                         // `weights`.
   int32_t t_stride;     // The stride of the matrix `weights`
