@@ -12,6 +12,10 @@
 
 namespace k2 {
 
+using Label = int32_t;
+using StateId = int32_t;
+using Weight = float;
+
 enum {
   kFinalSymbol = -1,  // final-costs are represented as arcs with
                       // kFinalSymbol as their label, to the final
@@ -31,9 +35,9 @@ struct Range {
 };
 
 struct Arc {
-  int32_t src_state;
-  int32_t dest_state;
-  int32_t label;  // 'label' as in a finite state acceptor.
+  StateId src_state;
+  StateId dest_state;
+  Label label;  // 'label' as in a finite state acceptor.
                   // For FSTs, the other label will be present in the
                   // aux_label array.  Which of the two represents the input
                   // vs. the output can be decided by the user; in general,
@@ -91,7 +95,7 @@ struct Fsa {
 
  */
 struct DenseFsa {
-  float* weights;  // Would typically be a log-prob or unnormalized log-prob
+  Weight* weights;  // Would typically be a log-prob or unnormalized log-prob
   int32_t T;       // The number of time steps == rows in the matrix `weights`;
                    // this FSA has T + 2 states, see explanation above.
   int32_t num_symbols;  // The number of symbols == columns in the matrix
@@ -105,7 +109,7 @@ struct DenseFsa {
       CAUTION: we may later enforce that stride == num_symbols, in order to
       be able to know the layout of a phantom matrix of arcs.  (?)
    */
-  DenseFsa(float* data, int32_t T, int32_t num_symbols, int32_t stride);
+  DenseFsa(Weight* data, int32_t T, int32_t num_symbols, int32_t stride);
 };
 
 /*
