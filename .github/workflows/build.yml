@@ -7,10 +7,12 @@
 name: build
 
 on:
-  # the workflow is triggered on push to any branch
-  # or when any pullrequest is opened.
   push:
+    branches:
+      - master
   pull_request:
+    branches:
+      - master
 
 env:
   BUILD_TYPE: Release
@@ -44,8 +46,3 @@ jobs:
         shell: bash
         working-directory: ${{runner.workspace}}/build
         run: ctest --build-config $BUILD_TYPE
-
-      - name: Check Style
-        shell: bash
-        working-directory: ${{runner.workspace}}/build
-        run: cmake --build . --config $BUILD_TYPE --target check_style

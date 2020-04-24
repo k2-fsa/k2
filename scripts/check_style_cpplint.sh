@@ -35,7 +35,7 @@ else
   # is downloaded automatically when the project is configured.
   build_dir=$k2_dir/build
 fi
-cpplint_src=$build_dir/third_party/cpplint/src/cpplint/cpplint.py
+cpplint_src=$build_dir/third_party/cpplint/src/cpplint_py/cpplint.py
 
 function ok() {
   printf "${bold}${green}[OK]${default} $1\n"
