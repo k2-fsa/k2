@@ -12,7 +12,7 @@
 
 namespace k2 {
 
-// TODO(povey): we might not need this.
+// TODO(Dan): we might not need this.
 enum Properties {
   kTopSorted,            // topologically sorted
   kTopSortedAndAcyclic,  // topologically sorted and no self-loops (which
@@ -30,24 +30,24 @@ enum Properties {
   you'll do either as randomized checks, or in debug mode, and not routine,
   since the checks can be slow.
  */
-bool IsValid(const Fsa& fsa);
+bool IsValid(const Fsa &fsa);
 
 /*
   Returns true if the states in `fsa` are topologically sorted.
 */
-bool IsTopSorted(const Fsa& fsa);
+bool IsTopSorted(const Fsa &fsa);
 
 /*
   Returns true if `fsa` has any self-loops
  */
-bool HasSelfLoops(const Fsa& fsa);
+bool HasSelfLoops(const Fsa &fsa);
 
 /*
   Returns true if `fsa` is both topologically sorted and free
   of self-loops (together, these imply that it is acyclic, i.e.
   free of all cycles).
 */
-inline bool IsTopSortedAndAcyclic(const Fsa& fsa) {
+inline bool IsTopSortedAndAcyclic(const Fsa &fsa) {
   return IsTopSorted(fsa) && !HasSelfLoops(fsa);
 }
 
@@ -55,13 +55,13 @@ inline bool IsTopSortedAndAcyclic(const Fsa& fsa) {
   Returns true if `fsa` is deterministic; an Fsa is deterministic if it has is
   no state that has multiple arcs leaving it with the same label on them.
 */
-bool IsDeterministic(const Fsa& fsa);
+bool IsDeterministic(const Fsa &fsa);
 
 /*
   Returns true if `fsa` is free of epsilons, i.e. if there are no arcs
   for which `label` is kEpsilon == 0.
 */
-bool IsEpsilonFree(const Fsa& fsa);
+bool IsEpsilonFree(const Fsa &fsa);
 
 /*
   Returns true if all states in `fsa` are both reachable from the start state
@@ -70,25 +70,25 @@ bool IsEpsilonFree(const Fsa& fsa);
   start state nor final state exist).  So you may sometimes want to check
   IsConnected() && IsNonempty().
  */
-bool IsConnected(const Fsa& fsa);
+bool IsConnected(const Fsa &fsa);
 
 /*
   Returns true if `fsa` contains at least one state.  (Note: in this case it
   would contain at least two states, the start state and the final state).
  */
-inline bool IsNonempty(const Fsa& fsa) { return !fsa.leaving_arcs.empty(); }
+inline bool IsNonempty(const Fsa &fsa) { return !fsa.leaving_arcs.empty(); }
 
 /*
   Returns true if `fsa` is valid AND satisfies the list of properties
   provided in `properties`.
 
-  TODO: create exhaustive list of what `valid` means, but it basically
+  TODO(Dan): create exhaustive list of what `valid` means, but it basically
   means that the data structures make sense, e.g. `leaving_arcs` and
   `arcs` are consistent, and only epsilon arcs enter the final state
   (note: the final state is special, and such arcs represent
 
  */
-bool CheckProperties(const Fsa& fsa, const Properties& properties,
+bool CheckProperties(const Fsa &fsa, const Properties &properties,
                      bool die_on_error = false);
 
 }  // namespace k2

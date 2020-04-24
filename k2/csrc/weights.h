@@ -38,7 +38,7 @@ namespace k2 {
                 to that state along any path, or +infinity if no such
                 path exists.
  */
-void ComputeForwardMaxWeights(const Fsa& fsa, float* state_weights);
+void ComputeForwardMaxWeights(const Fsa &fsa, float *state_weights);
 
 /*
   Does the 'backward' computation; this is as in the tropical semiring
@@ -54,15 +54,15 @@ void ComputeForwardMaxWeights(const Fsa& fsa, float* state_weights);
                 to the final state along any path, or +infinity if no such
                 path exists.
  */
-void ComputeBackwardMaxWeights(const Fsa& fsa, float* state_weights);
+void ComputeBackwardMaxWeights(const Fsa &fsa, float *state_weights);
 
 enum { kMaxWeight, kLogSumWeight } FbWeightType;
 
 struct WfsaWithFbWeights {
-  const Fsa* fsa;
-  const float* arc_weights;
-  const float* forward_state_weights;
-  const float* backward_state_weights;
+  const Fsa *fsa;
+  const float *arc_weights;
+  const float *forward_state_weights;
+  const float *backward_state_weights;
 
   /*
     Constructor.
@@ -76,7 +76,7 @@ struct WfsaWithFbWeights {
                         kLogSumWeight == Baum Welch, i.e. sum probs
                         over paths, treating weights as log-probs.
    */
-  WfsaWithFbWeights(const Fsa* fsa, const float* arc_weights, FbWeightType t);
+  WfsaWithFbWeights(const Fsa *fsa, const float *arc_weights, FbWeightType t);
 
  private:
   std::vector<float> mem_;

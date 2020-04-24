@@ -8,6 +8,7 @@
 #define K2_CSRC_FSA_H_
 
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace k2 {
@@ -48,7 +49,7 @@ struct Arc {
 };
 
 struct ArcLabelCompare {
-  bool operator()(const Arc& a, const Arc& b) const {
+  bool operator()(const Arc &a, const Arc &b) const {
     return a.label < b.label;
   }
 };
@@ -92,11 +93,9 @@ struct Fsa {
   more state).   For 0 <= t < T, we have an arc with symbol n on it for
   each 0 <= n < N, from state t to state t+1, with weight equal to
   weights[t,n].
-
-
  */
 struct DenseFsa {
-  Weight* weights;  // Would typically be a log-prob or unnormalized log-prob
+  Weight *weights;  // Would typically be a log-prob or unnormalized log-prob
   int32_t T;        // The number of time steps == rows in the matrix `weights`;
                     // this FSA has T + 2 states, see explanation above.
   int32_t num_symbols;  // The number of symbols == columns in the matrix
@@ -110,7 +109,7 @@ struct DenseFsa {
       CAUTION: we may later enforce that stride == num_symbols, in order to
       be able to know the layout of a phantom matrix of arcs.  (?)
    */
-  DenseFsa(Weight* data, int32_t T, int32_t num_symbols, int32_t stride);
+  DenseFsa(Weight *data, int32_t T, int32_t num_symbols, int32_t stride);
 };
 
 /*
@@ -120,7 +119,7 @@ struct DenseFsa {
  */
 struct VecOfVec {
   std::vector<Range> ranges;
-  std::vector<int32_t> values;
+  std::vector<std::pair<Label, StateId>> values;
 };
 
 struct Fst {

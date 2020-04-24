@@ -18,7 +18,7 @@ namespace k2 {
   Requires that `fsa` be valid and top-sorted, i.e.
   CheckProperties(fsa, KTopSorted) == true.
 */
-void GetEnteringArcs(const Fsa& fsa, VecOfVec* entering_arcs);
+void GetEnteringArcs(const Fsa &fsa, VecOfVec *entering_arcs);
 
 }  // namespace k2
 

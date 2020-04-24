@@ -26,7 +26,7 @@ namespace k2 {
                       so the output will be topologically sorted if the input
                       was.
  */
-void ConnectCore(const Fsa& fsa, std::vector<int32>* state_map);
+void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
 
 /*
   Removes states that are not accessible (from the start state) or are not
@@ -44,13 +44,13 @@ void ConnectCore(const Fsa& fsa, std::vector<int32>* state_map);
 
   Notes:
     - If `a` admitted a topological sorting, b will be topologically
-      sorted.  TODO: maybe just leave in the same order as a??
+      sorted.  TODO(Dan): maybe just leave in the same order as a??
     - If `a` was deterministic, `b` will be deterministic; same for
       epsilon free, obviously.
     - `b` will be arc-sorted (arcs sorted by label)
     - `b` will (obviously) be connected
  */
-void Connect(const Fsa& a, Fsa* b, std::vector<int32>* arc_map = nullptr);
+void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
 
 /**
    Output an Fsa that is equivalent to the input but which has no epsilons.
@@ -61,10 +61,10 @@ void Connect(const Fsa& a, Fsa* b, std::vector<int32>* arc_map = nullptr);
     @param [out] arc_map  If non-NULL: for each arc in `b`, a list of
                     the arc-indexes in `a` that contributed to that arc
                     (e.g. its cost would be a sum of their costs).
-                    TODO: make it a VecOfVec, maybe?
+                    TODO(Dan): make it a VecOfVec, maybe?
  */
-void RmEpsilons(const Fsa& a, Fsa* b,
-                std::vector<std::vector>* arc_map = nullptr);
+void RmEpsilons(const Fsa &a, Fsa *b,
+                std::vector<std::vector> *arc_map = nullptr);
 
 /**
    Pruned version of RmEpsilons, which also uses a pruning beam.
@@ -77,12 +77,12 @@ void RmEpsilons(const Fsa& a, Fsa* b,
     @param [out] arc_map  If non-NULL: for each arc in `b`, a list of
                     the arc-indexes in `a` that contributed to that arc
                     (e.g. its cost would be a sum of their costs).
-                    TODO: make it a VecOfVec, maybe?
+                    TODO(Dan): make it a VecOfVec, maybe?
  */
-void RmEpsilonsPruned(const Fsa& a, const float* a_state_forward_costs,
-                      const float* a_state_backward_costs,
-                      const float* a_arc_costs, float cutoff, Fsa* b,
-                      std::vector<std::vector>* arc_map = nullptr);
+void RmEpsilonsPruned(const Fsa &a, const float *a_state_forward_costs,
+                      const float *a_state_backward_costs,
+                      const float *a_arc_costs, float cutoff, Fsa *b,
+                      std::vector<std::vector> *arc_map = nullptr);
 
 /*
   Compute the intersection of two FSAs; this is the equivalent of composition
@@ -104,16 +104,16 @@ void RmEpsilonsPruned(const Fsa& a, const float* a_state_forward_costs,
                    size c->arcs.size(), saying for each arc in
                    `c` what the source arc in `b` was.
  */
-void Intersect(const Fsa& a, const Fsa& b, Fsa* c,
-               std::vector<int32>* arc_map_a = nullptr,
-               std::vector<int32>* arc_map_b = nullptr);
+void Intersect(const Fsa &a, const Fsa &b, Fsa *c,
+               std::vector<int32_t> *arc_map_a = nullptr,
+               std::vector<int32_t> *arc_map_b = nullptr);
 
 /*
   Version of Intersect where `a` is dense?
  */
-void Intersect(const DenseFsa& a, const Fsa& b, Fsa* c,
-               std::vector<int32>* arc_map_a = nullptr,
-               std::vector<int32>* arc_map_b = nullptr);
+void Intersect(const DenseFsa &a, const Fsa &b, Fsa *c,
+               std::vector<int32_t> *arc_map_a = nullptr,
+               std::vector<int32_t> *arc_map_b = nullptr);
 
 /*
   Version of Intersect where `a` is dense, pruned with pruning beam `beam`.
@@ -124,9 +124,9 @@ void Intersect(const DenseFsa& a, const Fsa& b, Fsa* c,
 
   This is the same as time-synchronous Viterbi beam pruning.
 */
-void IntersectPruned(const DenseFsa& a, const Fsa& b, float beam, Fsa* c,
-                     std::vector<int32>* arc_map_a = nullptr,
-                     std::vector<int32>* arc_map_b = nullptr);
+void IntersectPruned(const DenseFsa &a, const Fsa &b, float beam, Fsa *c,
+                     std::vector<int32_t> *arc_map_a = nullptr,
+                     std::vector<int32_t> *arc_map_b = nullptr);
 
 /**
    Intersection of two weighted FSA's: the same as Intersect(), but it prunes
@@ -152,13 +152,13 @@ void IntersectPruned(const DenseFsa& a, const Fsa& b, float beam, Fsa* c,
   @param [out] state_map_b  Maps from arc-index in c to the corresponding
                    arc-index in b
  */
-void IntersectPruned2(const Fsa& a, const float* a_cost, const Fsa& b,
-                      const float* b_cost, float cutoff, Fsa* c,
-                      std::vector<int32>* state_map_a,
-                      std::vector<int32>* state_map_b);
+void IntersectPruned2(const Fsa &a, const float *a_cost, const Fsa &b,
+                      const float *b_cost, float cutoff, Fsa *c,
+                      std::vector<int32_t> *state_map_a,
+                      std::vector<int32_t> *state_map_b);
 
-void RandomPath(const Fsa& a, const float* a_cost, Fsa* b,
-                std::vector<int32>* state_map = nullptr);
+void RandomPath(const Fsa &a, const float *a_cost, Fsa *b,
+                std::vector<int32_t> *state_map = nullptr);
 
 }  // namespace k2
 
