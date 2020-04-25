@@ -61,8 +61,13 @@ enum { kMaxWeight, kLogSumWeight } FbWeightType;
 struct WfsaWithFbWeights {
   const Fsa *fsa;
   const float *arc_weights;
-  const float *forward_state_weights;
-  const float *backward_state_weights;
+  // forward_state_weights are the sum of weights along the best path from the
+  // start-state to each state.  We use double because for long FSAs roundoff
+  // effects can cause nasty errors in pruning.
+  const double *forward_state_weights;
+  // backward_state_weights are the sum of weights along the best path
+  // from each state to the final state.
+  const double *backward_state_weights;
 
   /*
     Constructor.

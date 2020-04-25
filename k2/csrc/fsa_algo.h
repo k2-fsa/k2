@@ -53,36 +53,82 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
 void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
 
 /**
-   Output an Fsa that is equivalent to the input but which has no epsilons.
+   Output an Fsa that is equivalent to the input (in the tropical semiring,
+   which here means taking the max of the weights along paths) but which has no
+   epsilons.  The input needs to have associated weights, because they will be
+   used to choose the best among alternative epsilon paths between states.
 
-    @param [in] a  The input FSA
+    @param [in]  a  The input, with weights and forward-backward weights
+                    as required by this computation.  For now we assume
+                    that `a` is topologically sorted, as required by
+                    the current constructor of WfsaWithFbWeights.
+    @param [in] beam  beam > 0 that affects pruning; this algorithm will
+                    keep paths that are within `beam` of the best path.
+                    Just make this very large if you don't want pruning.
     @param [out] b  The output FSA; will be epsilon-free, and the states
                     will be in the same order that they were in in `a`.
     @param [out] arc_map  If non-NULL: for each arc in `b`, a list of
-                    the arc-indexes in `a` that contributed to that arc
-                    (e.g. its cost would be a sum of their costs).
-                    TODO(Dan): make it a VecOfVec, maybe?
+                    the arc-indexes in `a`, in order, that contributed
+                    to that arc (e.g. its cost would be a sum of their costs).
+
+   Notes on algorithm (please rework all this when it's complete, i.e. just
+   make sure the code is clear and remove this).
+
+     The states in the output FSA will correspond to the subset of states in the
+     input FSA which are within `beam` of the best path and which have at least
+     one non-epsilon arc entering them, plus the start state.  (Note: this
+     automatically includes the final state, assuming `a` has at least one
+     successful path; if it does not, the output will be empty).
+
+     If we ever need the associated state map from calling code, we'll add an
+     extra output argument to this function.
+
+     The basic algorithm is to (1) identify the kept states, (2) from each kept
+     input-state ki, we'll iterate over all states that are reachable via zero or more
+     epsilons from this state and process the non-epsilon outgoing arcs from
+     those states, which will become the arcs in the output.  We'll also store a
+     back-pointer array that will allow us to figure out the best path back to ki,
+     in order to produce the output `arc_map`.    Assume we have arrays
+
+     local_forward_weights (float) and local_backpointers (int) indexed by
+     state-id, and that the local_forward_weights are initialized with
+     -infinity's each time we process a new ki. (we have to figure out how to do this
+     efficiently).
+
+
+      Processing input-state ki:
+         local_forward_state_weights[ki] = forward_state_weights[ki] // from WfsaWithFbWeights.
+                                                                     // Caution: we should probably use
+                                                                     // double here; these kinds of algorithms
+                                                                     // are extremely sensitive to roundoff for
+                                                                     // very long FSAs.
+         local_backpointers[ki] = -1  // will terminate a sequence..
+         queue.push_back(ki)
+         while (!queue.empty()) {
+            ji = queue.front()  // we have to be a bit careful about order here, to make sure
+                                // we always process states when they already have the
+                                // best cost they are going to get.  If
+                                // FSA was top-sorted at the start, which we assume, we could perhaps
+                                // process them in numerical order, e.g. using a heap.
+            queue.pop_front()
+            for each arc leaving state ji:
+               next_weight = local_forward_state_weights[ji] + arc_weights[this_arc_index]
+               if next_weight + backward_state_weights[arc_dest_state] < best_path_weight - beam:
+                  if arc label is epsilon:
+                     if next_weight < local_forward_state_weight[next_state]:
+                       local_forward_state_weight[next_state] = next_weight
+                       local_backpointers[next_state] = ji
+                  else:
+                     add an arc to the output FSA, and create the appropriate
+                     arc_map entry by following backpointers (hopefully you can figure out the
+                     details).  Note: the output FSA's weights can be computed later on,
+                     by calling code, using the info in arc_map.
  */
-void RmEpsilons(const Fsa &a, Fsa *b,
-                std::vector<std::vector> *arc_map = nullptr);
+void RmEpsilonsPruned(const WfsaWithFbWeights &a,
+                      float beam,
+                      Fsa *b,
+                      std::vector<std::vector> *arc_map);
 
-/**
-   Pruned version of RmEpsilons, which also uses a pruning beam.
-
-   Output an Fsa that is equivalent to the input but which has no epsilons.
-
-    @param [in] a  The input FSA
-    @param [out] b  The output FSA; will be epsilon-free, and the states
-                    will be in the same order that they were in in `a`.
-    @param [out] arc_map  If non-NULL: for each arc in `b`, a list of
-                    the arc-indexes in `a` that contributed to that arc
-                    (e.g. its cost would be a sum of their costs).
-                    TODO(Dan): make it a VecOfVec, maybe?
- */
-void RmEpsilonsPruned(const Fsa &a, const float *a_state_forward_costs,
-                      const float *a_state_backward_costs,
-                      const float *a_arc_costs, float cutoff, Fsa *b,
-                      std::vector<std::vector> *arc_map = nullptr);
 
 /*
   Compute the intersection of two FSAs; this is the equivalent of composition
@@ -159,6 +205,16 @@ void IntersectPruned2(const Fsa &a, const float *a_cost, const Fsa &b,
 
 void RandomPath(const Fsa &a, const float *a_cost, Fsa *b,
                 std::vector<int32_t> *state_map = nullptr);
+
+
+
+/**
+
+ */
+void Determinize(const Fsa &a, Fsa *b,
+                 std::vector<std::vector<StateId> > *state_map);
+
+
 
 }  // namespace k2
 
