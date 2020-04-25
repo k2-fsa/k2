@@ -116,10 +116,11 @@ struct DenseFsa {
   this general-purpose structure conceptually the same as
   std::vector<std::vector>; elements of `ranges` are (begin, end) indexes into
   `values`.
+
+
  */
 struct VecOfVec {
-  std::vector<Range> ranges;
-  std::vector<std::pair<Label, StateId>> values;
+  std::vector<std::pair<int32, int32> > elems;
 };
 
 struct Fst {
