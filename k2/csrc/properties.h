@@ -26,9 +26,12 @@ enum Properties {
 };
 
 /*
-  Note: the intention is that querying these properties is mostly something
-  you'll do either as randomized checks, or in debug mode, and not routine,
-  since the checks can be slow.
+  `fsa` is valid if:
+  1. it is empty, if not, it contains at least two states.
+  2. only epsilon arcs enter the final state.
+  3. every state contains at least one arc except the final state.
+  4. `leaving_arcs` and `arcs` in this state are not consistent.
+  TODO(haowen): add more rules?
  */
 bool IsValid(const Fsa &fsa);
 
@@ -69,14 +72,19 @@ bool IsEpsilonFree(const Fsa &fsa);
   be both connected and empty, because the empty FSA has no states (neither
   start state nor final state exist).  So you may sometimes want to check
   IsConnected() && IsNonempty().
+
+  Requires that `fsa` be valid and top-sorted.
+  TODO(haowen): implement another version for non-top-sorted `fsa`.
  */
 bool IsConnected(const Fsa &fsa);
 
 /*
-  Returns true if `fsa` contains at least one state.  (Note: in this case it
-  would contain at least two states, the start state and the final state).
+  Returns true if `fsa` is empty. (Note: if `fsa` is not empty,
+  it would contain at least two states, the start state and the final state).
  */
-inline bool IsNonempty(const Fsa &fsa) { return !fsa.leaving_arcs.empty(); }
+inline bool IsEmpty(const Fsa &fsa) {
+  return fsa.leaving_arcs.empty() && fsa.arcs.empty();
+}
 
 /*
   Returns true if `fsa` is valid AND satisfies the list of properties

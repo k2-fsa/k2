@@ -18,6 +18,131 @@ namespace k2 {
 // TODO(haowen): create Fsa examples in a more elegant way (add methods
 // addState, addArc, etc.) and use Test Fixtures by constructing
 // reusable FSA examples.
+TEST(Properties, IsNotValid) {
+  // fsa should contains at least two states.
+  {
+    Fsa fsa;
+    std::vector<Range> leaving_arcs = {{0, 2}};
+    fsa.leaving_arcs = std::move(leaving_arcs);
+    bool is_valid = IsValid(fsa);
+    EXPECT_FALSE(is_valid);
+  }
+
+  // only epsilon arcs enter the final state
+  {
+    Fsa fsa;
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 1},
+        {1, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, {3, 3}};
+    fsa.leaving_arcs = std::move(leaving_arcs);
+    fsa.arcs = std::move(arcs);
+    bool is_valid = IsValid(fsa);
+    EXPECT_FALSE(is_valid);
+  }
+
+  // every state contains at least one arc except the final state
+  {
+    Fsa fsa;
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {2, 3, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {2, 2},
+        {2, 3},
+        {3, 3},
+    };
+    fsa.leaving_arcs = std::move(leaving_arcs);
+    fsa.arcs = std::move(arcs);
+    bool is_valid = IsValid(fsa);
+    EXPECT_FALSE(is_valid);
+  }
+
+  // every state contains at least one arc except the final state (another case)
+  {
+    Fsa fsa;
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {2, 2},
+        {2, 2},
+    };
+    fsa.leaving_arcs = std::move(leaving_arcs);
+    fsa.arcs = std::move(arcs);
+    bool is_valid = IsValid(fsa);
+    EXPECT_FALSE(is_valid);
+  }
+
+  // `leaving_arcs` and `arcs` in this state are not consistent
+  {
+    Fsa fsa;
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {3, 3},
+        {2, 3},
+        {3, 3},
+    };
+    fsa.leaving_arcs = std::move(leaving_arcs);
+    fsa.arcs = std::move(arcs);
+    bool is_valid = IsValid(fsa);
+    EXPECT_FALSE(is_valid);
+  }
+
+  // `leaving_arcs` and `arcs` in this state are not consistent (another case)
+  {
+    Fsa fsa;
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {1, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {2, 3},
+        {4, 4},
+    };
+    fsa.leaving_arcs = std::move(leaving_arcs);
+    fsa.arcs = std::move(arcs);
+    bool is_valid = IsValid(fsa);
+    EXPECT_FALSE(is_valid);
+  }
+}
+
+TEST(Properties, IsValid) {
+  // empty fsa is valid.
+  {
+    Fsa fsa;
+    bool is_valid = IsValid(fsa);
+    EXPECT_TRUE(is_valid);
+  }
+
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {1, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, {3, 3}};
+    Fsa fsa;
+    fsa.leaving_arcs = std::move(leaving_arcs);
+    fsa.arcs = std::move(arcs);
+    bool is_valid = IsValid(fsa);
+    EXPECT_TRUE(is_valid);
+  }
+}
+
 TEST(Properties, IsNotTopSorted) {
   std::vector<Arc> arcs = {
       {0, 1, 0},
@@ -152,6 +277,58 @@ TEST(Properties, IsEpsilonFree) {
   fsa.arcs = std::move(arcs);
   bool is_epsilon_free = IsEpsilonFree(fsa);
   EXPECT_TRUE(is_epsilon_free);
+}
+
+TEST(Properties, IsNoConnected) {
+  // state is not accessible
+  {
+    std::vector<Arc> arcs = {
+        {0, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 1},
+        {1, 1},
+        {1, 1},
+    };
+    Fsa fsa;
+    fsa.leaving_arcs = std::move(leaving_arcs);
+    fsa.arcs = std::move(arcs);
+    bool is_connected = IsConnected(fsa);
+    EXPECT_FALSE(is_connected);
+  }
+
+  // state is not co-accessible
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {2, 2},
+        {2, 2},
+    };
+    Fsa fsa;
+    fsa.leaving_arcs = std::move(leaving_arcs);
+    fsa.arcs = std::move(arcs);
+    bool is_connected = IsConnected(fsa);
+    EXPECT_FALSE(is_connected);
+  }
+}
+
+TEST(Properties, IsConnected) {
+  std::vector<Arc> arcs = {
+      {0, 1, 0},
+      {0, 3, 0},
+      {1, 2, 0},
+      {2, 3, 0},
+  };
+  std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, {3, 4}, {4, 4}};
+  Fsa fsa;
+  fsa.leaving_arcs = std::move(leaving_arcs);
+  fsa.arcs = std::move(arcs);
+  bool is_connected = IsConnected(fsa);
+  EXPECT_TRUE(is_connected);
 }
 
 }  // namespace k2
