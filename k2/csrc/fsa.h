@@ -112,17 +112,6 @@ struct DenseFsa {
   DenseFsa(Weight *data, int32_t T, int32_t num_symbols, int32_t stride);
 };
 
-/*
-  this general-purpose structure conceptually the same as
-  std::vector<std::vector>; elements of `ranges` are (begin, end) indexes into
-  `values`.
-
-
- */
-struct VecOfVec {
-  std::vector<std::pair<int32, int32> > elems;
-};
-
 struct Fst {
   Fsa core;
   std::vector<int32_t> aux_label;
