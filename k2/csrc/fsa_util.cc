@@ -11,34 +11,29 @@
 
 namespace k2 {
 
-void GetEnteringArcs(const Fsa &fsa, VecOfVec *entering_arcs) {
+void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
+                     std::vector<int32_t> *end_index) {
   // CHECK(CheckProperties(fsa, KTopSorted));
 
   int32_t num_states = fsa.NumStates();
-  std::vector<std::vector<std::pair<Label, StateId>>> vec(num_states);
+  std::vector<std::vector<int32_t>> vec(num_states);
   int32_t num_arcs = 0;
+  int32_t k = 0;
   for (const auto &arc : fsa.arcs) {
-    auto src_state = arc.src_state;
     auto dest_state = arc.dest_state;
-    auto label = arc.label;
-    vec[dest_state].emplace_back(label, src_state);
+    vec[dest_state].push_back(k);
     ++num_arcs;
+    ++k;
   }
+  arc_index->clear();
+  end_index->clear();
+  arc_index->reserve(num_arcs);
+  end_index->reserve(num_states);
 
-  auto &ranges = entering_arcs->ranges;
-  auto &values = entering_arcs->values;
-  ranges.clear();
-  values.clear();
-  ranges.reserve(num_states);
-  values.reserve(num_arcs);
-
-  int32_t start = 0;
-  int32_t end = 0;
-  for (const auto &label_state : vec) {
-    values.insert(values.end(), label_state.begin(), label_state.end());
-    start = end;
-    end += static_cast<int32_t>(label_state.size());
-    ranges.push_back({start, end});
+  for (const auto &indices : vec) {
+    arc_index->insert(arc_index->end(), indices.begin(), indices.end());
+    auto end = static_cast<int32_t>(arc_index->size());
+    end_index->push_back(end);
   }
 }
 
