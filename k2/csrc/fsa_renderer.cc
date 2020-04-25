@@ -36,7 +36,7 @@ using k2::StateId;
 std::string ProcessState(const Fsa &fsa, int32_t state) {
   std::ostringstream os;
   os << "  " << state << " [label = \"" << state
-     << "\", shape = circle, style = bold, fontsize=14]"
+     << "\", shape = circle, style = bold, fontsize = 14]"
      << "\n";
 
   int32_t begin = fsa.leaving_arcs[state].begin;
