@@ -1,0 +1,9 @@
+The installation instructions are
+
+    mkdir build
+    cd build
+    cmake ..
+    make
+
+You can run tests with
+    make test
