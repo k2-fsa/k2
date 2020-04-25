@@ -31,7 +31,11 @@ TEST(Properties, IsNotValid) {
   // only epsilon arcs enter the final state
   {
     Fsa fsa;
-    std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 1}, {1, 2, 0}, };
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 1},
+        {1, 2, 0},
+    };
     std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, {3, 3}};
     fsa.leaving_arcs = std::move(leaving_arcs);
     fsa.arcs = std::move(arcs);
@@ -42,8 +46,17 @@ TEST(Properties, IsNotValid) {
   // every state contains at least one arc except the final state
   {
     Fsa fsa;
-    std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, {2, 3, 0}, };
-    std::vector<Range> leaving_arcs = {{0, 2}, {2, 2}, {2, 3}, {3, 3}, };
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {2, 3, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {2, 2},
+        {2, 3},
+        {3, 3},
+    };
     fsa.leaving_arcs = std::move(leaving_arcs);
     fsa.arcs = std::move(arcs);
     bool is_valid = IsValid(fsa);
@@ -53,8 +66,15 @@ TEST(Properties, IsNotValid) {
   // every state contains at least one arc except the final state (another case)
   {
     Fsa fsa;
-    std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, };
-    std::vector<Range> leaving_arcs = {{0, 2}, {2, 2}, {2, 2}, };
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {2, 2},
+        {2, 2},
+    };
     fsa.leaving_arcs = std::move(leaving_arcs);
     fsa.arcs = std::move(arcs);
     bool is_valid = IsValid(fsa);
@@ -64,8 +84,16 @@ TEST(Properties, IsNotValid) {
   // `leaving_arcs` and `arcs` in this state are not consistent
   {
     Fsa fsa;
-    std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, };
-    std::vector<Range> leaving_arcs = {{0, 2}, {3, 3}, {2, 3}, {3, 3}, };
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {3, 3},
+        {2, 3},
+        {3, 3},
+    };
     fsa.leaving_arcs = std::move(leaving_arcs);
     fsa.arcs = std::move(arcs);
     bool is_valid = IsValid(fsa);
@@ -75,8 +103,16 @@ TEST(Properties, IsNotValid) {
   // `leaving_arcs` and `arcs` in this state are not consistent (another case)
   {
     Fsa fsa;
-    std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, {1, 2, 0}, };
-    std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, {4, 4}, };
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {1, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {2, 3},
+        {4, 4},
+    };
     fsa.leaving_arcs = std::move(leaving_arcs);
     fsa.arcs = std::move(arcs);
     bool is_valid = IsValid(fsa);
@@ -93,7 +129,11 @@ TEST(Properties, IsValid) {
   }
 
   {
-    std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, {1, 2, 0}, };
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {1, 2, 0},
+    };
     std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, {3, 3}};
     Fsa fsa;
     fsa.leaving_arcs = std::move(leaving_arcs);
@@ -104,8 +144,15 @@ TEST(Properties, IsValid) {
 }
 
 TEST(Properties, IsNotTopSorted) {
-  std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, {2, 1, 0}, };
-  std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, };
+  std::vector<Arc> arcs = {
+      {0, 1, 0},
+      {0, 2, 0},
+      {2, 1, 0},
+  };
+  std::vector<Range> leaving_arcs = {
+      {0, 2},
+      {2, 3},
+  };
   Fsa fsa;
   fsa.leaving_arcs = std::move(leaving_arcs);
   fsa.arcs = std::move(arcs);
@@ -114,8 +161,15 @@ TEST(Properties, IsNotTopSorted) {
 }
 
 TEST(Properties, IsTopSorted) {
-  std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, {1, 2, 0}, };
-  std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, };
+  std::vector<Arc> arcs = {
+      {0, 1, 0},
+      {0, 2, 0},
+      {1, 2, 0},
+  };
+  std::vector<Range> leaving_arcs = {
+      {0, 2},
+      {2, 3},
+  };
   Fsa fsa;
   fsa.leaving_arcs = std::move(leaving_arcs);
   fsa.arcs = std::move(arcs);
@@ -124,8 +178,15 @@ TEST(Properties, IsTopSorted) {
 }
 
 TEST(Properties, HasNoSelfLoops) {
-  std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, {1, 2, 0}, };
-  std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, };
+  std::vector<Arc> arcs = {
+      {0, 1, 0},
+      {0, 2, 0},
+      {1, 2, 0},
+  };
+  std::vector<Range> leaving_arcs = {
+      {0, 2},
+      {2, 3},
+  };
   Fsa fsa;
   fsa.leaving_arcs = std::move(leaving_arcs);
   fsa.arcs = std::move(arcs);
@@ -134,8 +195,15 @@ TEST(Properties, HasNoSelfLoops) {
 }
 
 TEST(Properties, HasSelfLoops) {
-  std::vector<Arc> arcs = {{0, 1, 0}, {1, 2, 0}, {1, 1, 0}, };
-  std::vector<Range> leaving_arcs = {{0, 1}, {1, 3}, };
+  std::vector<Arc> arcs = {
+      {0, 1, 0},
+      {1, 2, 0},
+      {1, 1, 0},
+  };
+  std::vector<Range> leaving_arcs = {
+      {0, 1},
+      {1, 3},
+  };
   Fsa fsa;
   fsa.leaving_arcs = std::move(leaving_arcs);
   fsa.arcs = std::move(arcs);
@@ -144,8 +212,15 @@ TEST(Properties, HasSelfLoops) {
 }
 
 TEST(Properties, IsNotDeterministic) {
-  std::vector<Arc> arcs = {{0, 1, 2}, {1, 2, 0}, {1, 3, 0}, };
-  std::vector<Range> leaving_arcs = {{0, 1}, {1, 3}, };
+  std::vector<Arc> arcs = {
+      {0, 1, 2},
+      {1, 2, 0},
+      {1, 3, 0},
+  };
+  std::vector<Range> leaving_arcs = {
+      {0, 1},
+      {1, 3},
+  };
   Fsa fsa;
   fsa.leaving_arcs = std::move(leaving_arcs);
   fsa.arcs = std::move(arcs);
@@ -154,8 +229,15 @@ TEST(Properties, IsNotDeterministic) {
 }
 
 TEST(Properties, IsDeterministic) {
-  std::vector<Arc> arcs = {{0, 1, 2}, {1, 2, 0}, {1, 3, 2}, };
-  std::vector<Range> leaving_arcs = {{0, 1}, {1, 3}, };
+  std::vector<Arc> arcs = {
+      {0, 1, 2},
+      {1, 2, 0},
+      {1, 3, 2},
+  };
+  std::vector<Range> leaving_arcs = {
+      {0, 1},
+      {1, 3},
+  };
   Fsa fsa;
   fsa.leaving_arcs = std::move(leaving_arcs);
   fsa.arcs = std::move(arcs);
@@ -164,8 +246,15 @@ TEST(Properties, IsDeterministic) {
 }
 
 TEST(Properties, IsNotEpsilonFree) {
-  std::vector<Arc> arcs = {{0, 1, 2}, {0, 2, 0}, {1, 2, 1}, };
-  std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, };
+  std::vector<Arc> arcs = {
+      {0, 1, 2},
+      {0, 2, 0},
+      {1, 2, 1},
+  };
+  std::vector<Range> leaving_arcs = {
+      {0, 2},
+      {2, 3},
+  };
   Fsa fsa;
   fsa.leaving_arcs = std::move(leaving_arcs);
   fsa.arcs = std::move(arcs);
@@ -174,8 +263,15 @@ TEST(Properties, IsNotEpsilonFree) {
 }
 
 TEST(Properties, IsEpsilonFree) {
-  std::vector<Arc> arcs = {{0, 1, 2}, {0, 2, 1}, {1, 2, 1}, };
-  std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, };
+  std::vector<Arc> arcs = {
+      {0, 1, 2},
+      {0, 2, 1},
+      {1, 2, 1},
+  };
+  std::vector<Range> leaving_arcs = {
+      {0, 2},
+      {2, 3},
+  };
   Fsa fsa;
   fsa.leaving_arcs = std::move(leaving_arcs);
   fsa.arcs = std::move(arcs);
@@ -186,8 +282,14 @@ TEST(Properties, IsEpsilonFree) {
 TEST(Properties, IsNoConnected) {
   // state is not accessible
   {
-    std::vector<Arc> arcs = {{0, 2, 0}, };
-    std::vector<Range> leaving_arcs = {{0, 1}, {1, 1}, {1, 1}, };
+    std::vector<Arc> arcs = {
+        {0, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 1},
+        {1, 1},
+        {1, 1},
+    };
     Fsa fsa;
     fsa.leaving_arcs = std::move(leaving_arcs);
     fsa.arcs = std::move(arcs);
@@ -197,8 +299,15 @@ TEST(Properties, IsNoConnected) {
 
   // state is not co-accessible
   {
-    std::vector<Arc> arcs = {{0, 1, 0}, {0, 2, 0}, };
-    std::vector<Range> leaving_arcs = {{0, 2}, {2, 2}, {2, 2}, };
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+    };
+    std::vector<Range> leaving_arcs = {
+        {0, 2},
+        {2, 2},
+        {2, 2},
+    };
     Fsa fsa;
     fsa.leaving_arcs = std::move(leaving_arcs);
     fsa.arcs = std::move(arcs);
@@ -208,7 +317,12 @@ TEST(Properties, IsNoConnected) {
 }
 
 TEST(Properties, IsConnected) {
-  std::vector<Arc> arcs = {{0, 1, 0}, {0, 3, 0}, {1, 2, 0}, {2, 3, 0}, };
+  std::vector<Arc> arcs = {
+      {0, 1, 0},
+      {0, 3, 0},
+      {1, 2, 0},
+      {2, 3, 0},
+  };
   std::vector<Range> leaving_arcs = {{0, 2}, {2, 3}, {3, 4}, {4, 4}};
   Fsa fsa;
   fsa.leaving_arcs = std::move(leaving_arcs);

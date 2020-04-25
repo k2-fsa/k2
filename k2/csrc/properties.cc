@@ -7,9 +7,10 @@
 
 #include "k2/csrc/properties.h"
 
-#include <vector>
-#include <unordered_set>
 #include <algorithm>
+#include <iostream>
+#include <unordered_set>
+#include <vector>
 
 #include "k2/csrc/fsa.h"
 
@@ -98,15 +99,19 @@ bool IsConnected(const Fsa &fsa) {
       accessible.end())
     return false;
 
+  std::cout << "accessible done........." << std::endl;
   // reuse `accessible` to process co-accessible situation.
-  std::fill(accessible.begin(), accessible.end(), false);
-  accessible[num_states - 1] = true;  // the final state
-  for (int32_t i = num_states - 1; i >= 0; --i) {
+  std::vector<bool> co_accessible(num_states, false);
+  co_accessible[num_states - 1] = true;  // the final state
+  int32_t num_arcs = fsa.arcs.size();
+  for (int32_t i = num_arcs - 1; i >= 0; --i) {
     const auto &arc = fsa.arcs[i];
-    if (!accessible[arc.dest_state]) return false;
-    accessible[arc.src_state] = true;
+    if (!co_accessible[arc.dest_state]) return false;
+    co_accessible[arc.src_state] = true;
   }
-  return std::find(accessible.begin(), accessible.end(), false) ==
-         accessible.end();
+  std::cout << "co-accessible done........." << std::endl;
+  // reuse `accessible` to process co-accessible situation.
+  return std::find(co_accessible.begin(), co_accessible.end(), false) ==
+         co_accessible.end();
 }
 }  // namespace k2
