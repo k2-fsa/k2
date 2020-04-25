@@ -10,6 +10,10 @@ add_library(fsa_renderer fsa_renderer.cc)
 target_include_directories(fsa_renderer PUBLIC ${CMAKE_SOURCE_DIR})
 target_compile_features(fsa_renderer PUBLIC cxx_std_11)
 
+add_library(fsa_algo fsa_algo.cc)
+target_include_directories(fsa_algo PUBLIC ${CMAKE_SOURCE_DIR})
+target_compile_features(fsa_algo PUBLIC cxx_std_11)
+
 add_executable(properties_test properties_test.cc)
 
 target_link_libraries(properties_test
@@ -50,6 +54,21 @@ target_link_libraries(fsa_renderer_test
 add_test(NAME Test.fsa_renderer_test
   COMMAND
     $<TARGET_FILE:fsa_renderer_test>
+)
+
+add_executable(fsa_algo_test fsa_algo_test.cc)
+
+target_link_libraries(fsa_algo_test
+  PRIVATE
+    fsa_algo
+    fsa_renderer
+    gtest
+    gtest_main
+)
+
+add_test(NAME Test.fsa_algo_test
+  COMMAND
+    $<TARGET_FILE:fsa_algo_test>
 )
 
 # TODO(fangjun): write some helper functions to create targets.

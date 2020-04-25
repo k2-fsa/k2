@@ -15,7 +15,7 @@ void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
                      std::vector<int32_t> *end_index) {
   // CHECK(CheckProperties(fsa, KTopSorted));
 
-  int32_t num_states = fsa.NumStates();
+  auto num_states = fsa.NumStates();
   std::vector<std::vector<int32_t>> vec(num_states);
   int32_t k = 0;
   for (const auto &arc : fsa.arcs) {
@@ -26,8 +26,7 @@ void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
   arc_index->clear();
   end_index->clear();
 
-  std::size_t num_arcs = fsa.arcs.size();
-  arc_index->reserve(num_arcs);
+  arc_index->reserve(fsa.arcs.size());
   end_index->reserve(num_states);
 
   for (const auto &indices : vec) {
