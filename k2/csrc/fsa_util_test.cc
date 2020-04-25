@@ -18,7 +18,7 @@ TEST(FsaUtil, GetEnteringArcs) {
       {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6},
   };
   std::vector<Range> leaving_arcs = {
-      {0, 2}, {2, 4}, {4, 5}, {0, 0},  // the last state has no entering arcs
+      {0, 2}, {2, 4}, {4, 5}, {0, 0},  // the last state has no leaving arcs
   };
 
   Fsa fsa;

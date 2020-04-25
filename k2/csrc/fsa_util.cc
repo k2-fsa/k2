@@ -14,9 +14,9 @@ namespace k2 {
 void GetEnteringArcs(const Fsa &fsa, VecOfVec *entering_arcs) {
   // CHECK(CheckProperties(fsa, KTopSorted));
 
-  int num_states = fsa.NumStates();
+  int32_t num_states = fsa.NumStates();
   std::vector<std::vector<std::pair<Label, StateId>>> vec(num_states);
-  int num_arcs = 0;
+  int32_t num_arcs = 0;
   for (const auto &arc : fsa.arcs) {
     auto src_state = arc.src_state;
     auto dest_state = arc.dest_state;
@@ -27,6 +27,8 @@ void GetEnteringArcs(const Fsa &fsa, VecOfVec *entering_arcs) {
 
   auto &ranges = entering_arcs->ranges;
   auto &values = entering_arcs->values;
+  ranges.clear();
+  values.clear();
   ranges.reserve(num_states);
   values.reserve(num_arcs);
 
