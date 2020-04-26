@@ -6,6 +6,7 @@
 
 #include "k2/csrc/fsa_algo.h"
 
+#include <map>
 #include <stack>
 
 namespace {
@@ -24,6 +25,8 @@ namespace k2 {
 // The implementation of this function is inspired by
 // http://www.openfst.org/doxygen/fst/html/connect_8h_source.html
 void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
+  // DCHECK_NOTNULL(state_map)
+  state_map->clear();
   if (IsEmpty(fsa)) return;
 
   auto num_states = fsa.NumStates();
@@ -80,13 +83,58 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
     }
   }
 
-  state_map->clear();
   state_map->reserve(num_states);
 
   for (int32_t i = 0; i != num_states; ++i) {
-    if (accessible[i] && coaccessible[i]) {
-      state_map->push_back(i);
+    if (accessible[i] && coaccessible[i]) state_map->push_back(i);
+  }
+}
+
+void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
+  // DCHECK_NOTNULL(b);
+  std::vector<int32_t> state_map;
+  ConnectCore(a, &state_map);
+  if (state_map.empty()) return;
+
+  b->arc_indexes.resize(state_map.size());
+  b->arcs.clear();
+  b->arcs.reserve(a.arcs.size());
+
+  if (arc_map) {
+    arc_map->clear();
+    arc_map->reserve(a.arcs.size());
+  }
+
+  std::map<int32_t, int32_t> valid_states;  // map from state_a to state_b
+  int32_t num_states_b = b->NumStates();
+  for (int32_t i = 0; i != num_states_b; ++i) {
+    auto state_a = state_map[i];
+    valid_states.insert({state_a, i});
+  }
+
+  int32_t begin = 0;
+  int32_t end = 0;
+  int32_t final_state_a = a.NumStates() - 1;
+  for (int32_t i = 0; i != num_states_b; ++i) {
+    auto state_a = state_map[i];
+    begin = a.arc_indexes[state_a];
+    if (state_a != final_state_a)
+      end = a.arc_indexes[state_a + 1];
+    else
+      end = begin;
+
+    b->arc_indexes[i] = static_cast<int32_t>(b->arcs.size());
+    for (; begin != end; ++begin) {
+      auto arc = a.arcs[begin];
+      auto dest_state = arc.dest_state;
+      if (!valid_states.count(dest_state))
+        continue;  // dest_state is unreachable
+      arc.src_state = i;
+      arc.dest_state = valid_states[dest_state];
+      b->arcs.push_back(arc);
     }
+
+    // TODO(fangjun): handle arc_map
   }
 }
 
