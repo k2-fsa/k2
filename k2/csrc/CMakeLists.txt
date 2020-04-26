@@ -61,7 +61,6 @@ add_executable(fsa_algo_test fsa_algo_test.cc)
 target_link_libraries(fsa_algo_test
   PRIVATE
     fsa_algo
-    fsa_renderer
     gtest
     gtest_main
 )

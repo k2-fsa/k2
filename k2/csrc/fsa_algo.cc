@@ -6,8 +6,6 @@
 
 #include "k2/csrc/fsa_algo.h"
 
-#include <iostream>
-#include <sstream>
 #include <stack>
 
 namespace {
@@ -82,22 +80,14 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
     }
   }
 
-  // TODO(fangjun): remove states that are not accessible or coaccessible;
-  // the following is for debug purpose only
-  int32_t i = 0;
-  std::ostringstream os;
-  for (const auto b : accessible) {
-    if (!b) os << "state " << i << " is not accessible\n";
-    ++i;
-  }
+  state_map->clear();
+  state_map->reserve(num_states);
 
-  i = 0;
-  for (const auto b : coaccessible) {
-    if (!b) os << "state " << i << " is not coaccessible\n";
-    ++i;
+  for (int32_t i = 0; i != num_states; ++i) {
+    if (accessible[i] && coaccessible[i]) {
+      state_map->push_back(i);
+    }
   }
-
-  std::cout << os.str() << "\n";
 }
 
 }  // namespace k2

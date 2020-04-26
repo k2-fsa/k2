@@ -128,7 +128,7 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
 void RmEpsilonsPruned(const WfsaWithFbWeights &a,
                       float beam,
                       Fsa *b,
-                      std::vector<std::vector<Arc>> *arc_map);
+                      std::vector<std::vector<int32_t>> *arc_map);
 
 
 /*
