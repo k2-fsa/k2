@@ -39,8 +39,8 @@ std::string ProcessState(const Fsa &fsa, int32_t state) {
      << "\", shape = circle, style = bold, fontsize = 14]"
      << "\n";
 
-  int32_t begin = fsa.leaving_arcs[state].begin;
-  int32_t end = fsa.leaving_arcs[state].end;
+  int32_t begin = fsa.arc_indexes[state];
+  int32_t end = fsa.arc_indexes[state + 1];
 
   for (; begin != end; ++begin) {
     const auto &arc = fsa.arcs[begin];

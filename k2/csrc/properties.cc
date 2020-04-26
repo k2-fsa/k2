@@ -33,9 +33,8 @@ bool IsValid(const Fsa &fsa) {
     } else {
       // every state contains at least one arc.
       if (arc.src_state != state + 1) return false;
-      // `leaving_arcs` and `arcs` in this state are not consistent.
-      if ((fsa.leaving_arcs[state + 1].begin - fsa.leaving_arcs[state].begin) !=
-          num_arcs)
+      // `arc_indexes` and `arcs` in this state are not consistent.
+      if ((fsa.arc_indexes[state + 1] - fsa.arc_indexes[state]) != num_arcs)
         return false;
       state = arc.src_state;
       num_arcs = 1;
@@ -43,8 +42,7 @@ bool IsValid(const Fsa &fsa) {
   }
   // check the last state
   if (final_state != state + 1) return false;
-  if ((fsa.leaving_arcs[final_state].begin - fsa.leaving_arcs[state].begin) !=
-      num_arcs)
+  if ((fsa.arc_indexes[final_state] - fsa.arc_indexes[state]) != num_arcs)
     return false;
   return true;
 }

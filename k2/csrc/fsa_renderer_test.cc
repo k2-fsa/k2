@@ -27,12 +27,10 @@ TEST(FsaRenderer, Render) {
   std::vector<Arc> arcs = {
       {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6},
   };
-  std::vector<Range> leaving_arcs = {
-      {0, 2}, {2, 4}, {4, 5}, {0, 0},  // the last state has no leaving arcs
-  };
+  std::vector<int32_t> arc_indexes = {0, 2, 4, 5};
 
   Fsa fsa;
-  fsa.leaving_arcs = std::move(leaving_arcs);
+  fsa.arc_indexes = std::move(arc_indexes);
   fsa.arcs = std::move(arcs);
 
   FsaRenderer renderer(fsa);

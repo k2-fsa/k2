@@ -25,15 +25,6 @@ enum {
                       // like in OpenFst.
 };
 
-/* Range is what we use when we want (begin,end) indexes into some array.
-   `end` is the last element plus one.
-   TODO(Dan): may store just begin and have the next element be the end.
-*/
-struct Range {
-  int32_t begin;
-  int32_t end;
-};
-
 struct Arc {
   StateId src_state;
   StateId dest_state;
@@ -64,19 +55,17 @@ struct ArcLabelCompare {
   accepts no strings) by having no states at all, so `arcs` would be empty.
  */
 struct Fsa {
-  // `leaving_arcs` is indexed by state-index, is of length num-states,
+  // `arc_indexes` is indexed by state-index, is of length num-states,
   // contains the first arc-index leaving this state (index into `arcs`).
   // The next element of this array gives the end of that range.
   // Note: the final-state is numbered last, and implicitly has no
   // arcs leaving it.
-  std::vector<Range> leaving_arcs;
+  std::vector<int32_t> arc_indexes;
 
   // Note: an index into the `arcs` array is called an arc-index.
   std::vector<Arc> arcs;
 
-  StateId NumStates() const {
-    return static_cast<StateId>(leaving_arcs.size());
-  }
+  StateId NumStates() const { return static_cast<StateId>(arc_indexes.size()); }
 };
 
 /*

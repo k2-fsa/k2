@@ -30,7 +30,7 @@ enum Properties {
   1. it is empty, if not, it contains at least two states.
   2. only epsilon arcs enter the final state.
   3. every state contains at least one arc except the final state.
-  4. `leaving_arcs` and `arcs` in this state are not consistent.
+  4. `arcs_indexes` and `arcs` in this state are not consistent.
   TODO(haowen): add more rules?
  */
 bool IsValid(const Fsa &fsa);
@@ -83,7 +83,7 @@ bool IsConnected(const Fsa &fsa);
   it would contain at least two states, the start state and the final state).
  */
 inline bool IsEmpty(const Fsa &fsa) {
-  return fsa.leaving_arcs.empty() && fsa.arcs.empty();
+  return fsa.arc_indexes.empty() && fsa.arcs.empty();
 }
 
 /*
