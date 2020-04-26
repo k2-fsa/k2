@@ -17,16 +17,16 @@ void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
 
   int32_t num_states = fsa.NumStates();
   std::vector<std::vector<int32_t>> vec(num_states);
-  int32_t num_arcs = 0;
   int32_t k = 0;
   for (const auto &arc : fsa.arcs) {
     auto dest_state = arc.dest_state;
     vec[dest_state].push_back(k);
-    ++num_arcs;
     ++k;
   }
   arc_index->clear();
   end_index->clear();
+
+  std::size_t num_arcs = fsa.arcs.size();
   arc_index->reserve(num_arcs);
   end_index->reserve(num_states);
 
