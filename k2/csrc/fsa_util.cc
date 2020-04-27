@@ -13,8 +13,6 @@ namespace k2 {
 
 void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
                      std::vector<int32_t> *end_index) {
-  // CHECK(CheckProperties(fsa, KTopSorted));
-
   auto num_states = fsa.NumStates();
   std::vector<std::vector<int32_t>> vec(num_states);
   int32_t k = 0;

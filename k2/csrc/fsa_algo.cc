@@ -6,8 +6,9 @@
 
 #include "k2/csrc/fsa_algo.h"
 
-#include <map>
 #include <stack>
+
+#include "glog/logging.h"
 
 namespace {
 
@@ -25,7 +26,8 @@ namespace k2 {
 // The implementation of this function is inspired by
 // http://www.openfst.org/doxygen/fst/html/connect_8h_source.html
 void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
-  // DCHECK_NOTNULL(state_map)
+  CHECK_NOTNULL(state_map);
+
   state_map->clear();
   if (IsEmpty(fsa)) return;
 
@@ -85,18 +87,19 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
 
   state_map->reserve(num_states);
 
-  for (int32_t i = 0; i != num_states; ++i) {
+  for (auto i = 0; i != num_states; ++i) {
     if (accessible[i] && coaccessible[i]) state_map->push_back(i);
   }
 }
 
 void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
-  // DCHECK_NOTNULL(b);
-  std::vector<int32_t> state_map;
-  ConnectCore(a, &state_map);
-  if (state_map.empty()) return;
+  CHECK_NOTNULL(b);
 
-  b->arc_indexes.resize(state_map.size());
+  std::vector<int32_t> state_b_to_a;
+  ConnectCore(a, &state_b_to_a);
+  if (state_b_to_a.empty()) return;
+
+  b->arc_indexes.resize(state_b_to_a.size());
   b->arcs.clear();
   b->arcs.reserve(a.arcs.size());
 
@@ -105,18 +108,20 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
     arc_map->reserve(a.arcs.size());
   }
 
-  std::map<int32_t, int32_t> valid_states;  // map from state_a to state_b
-  int32_t num_states_b = b->NumStates();
-  for (int32_t i = 0; i != num_states_b; ++i) {
-    auto state_a = state_map[i];
-    valid_states.insert({state_a, i});
+  std::vector<int32_t> state_a_to_b(a.NumStates(), kInvalidStateId);
+
+  auto num_states_b = b->NumStates();
+  for (auto i = 0; i != num_states_b; ++i) {
+    auto state_a = state_b_to_a[i];
+    state_a_to_b[state_a] = i;
   }
 
-  int32_t begin = 0;
-  int32_t end = 0;
-  int32_t final_state_a = a.NumStates() - 1;
-  for (int32_t i = 0; i != num_states_b; ++i) {
-    auto state_a = state_map[i];
+  auto begin = 0;
+  auto end = 0;
+  auto final_state_a = a.NumStates() - 1;
+
+  for (auto i = 0; i != num_states_b; ++i) {
+    auto state_a = state_b_to_a[i];
     begin = a.arc_indexes[state_a];
     if (state_a != final_state_a)
       end = a.arc_indexes[state_a + 1];
@@ -127,14 +132,17 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
     for (; begin != end; ++begin) {
       auto arc = a.arcs[begin];
       auto dest_state = arc.dest_state;
-      if (!valid_states.count(dest_state))
-        continue;  // dest_state is unreachable
-      arc.src_state = i;
-      arc.dest_state = valid_states[dest_state];
-      b->arcs.push_back(arc);
-    }
+      auto state_b = state_a_to_b[dest_state];
 
-    // TODO(fangjun): handle arc_map
+      if (state_b == kInvalidStateId) continue;  // dest_state is unreachable
+
+      arc.src_state = i;
+      arc.dest_state = state_b;
+      b->arcs.push_back(arc);
+      if (arc_map) {
+        arc_map->push_back(begin);
+      }
+    }
   }
 }
 

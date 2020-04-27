@@ -19,10 +19,15 @@ set(k2_THIRD_PARTY_DIR "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "Directory to save & build downloaded third party libraries"
 )
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Set the build type" FORCE)
+endif()
+
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(googletest)
+include(glog)
 include(cpplint)
 
 add_subdirectory(k2)

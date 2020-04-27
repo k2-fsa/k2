@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "k2/csrc/fsa_renderer.h"
 
 namespace k2 {
 
@@ -24,7 +23,7 @@ TEST(FsaAlgo, Connect) {
 
   {
     Fsa fsa;
-    std::vector<int32_t> state_map(10);  // an arbitray number
+    std::vector<int32_t> state_map(10);  // an arbitrary number
     ConnectCore(fsa, &state_map);
     EXPECT_TRUE(state_map.empty());
   }
@@ -34,7 +33,7 @@ TEST(FsaAlgo, Connect) {
     fsa.arc_indexes = std::move(arc_indexes);
     fsa.arcs = std::move(arcs);
 
-    std::vector<int32_t> state_map(10);  // an arbitray number
+    std::vector<int32_t> state_map(10);  // an arbitrary number
     ConnectCore(fsa, &state_map);
 
     EXPECT_EQ(state_map.size(), 4u);
@@ -44,13 +43,36 @@ TEST(FsaAlgo, Connect) {
     EXPECT_EQ(state_map[3], 6);
 
     Fsa connected;
-    Connect(fsa, &connected, nullptr);
-    FsaRenderer renderer(connected);
-    std::cerr << renderer.Render();
-    // TODO(fangjun): check number of sates of "connected"
-    // and check its arcs.
-    //
-    // Check arc_map
+    std::vector<int32_t> arc_map(10);  // an arbitrary number
+    Connect(fsa, &connected, &arc_map);
+
+    EXPECT_EQ(connected.NumStates(), 4u);  // state 3,4,5 from fsa are removed
+    EXPECT_EQ(connected.arc_indexes[0], 0);
+    EXPECT_EQ(connected.arc_indexes[1], 2);
+    EXPECT_EQ(connected.arc_indexes[2], 3);
+    EXPECT_EQ(connected.arc_indexes[3], 4);
+
+    EXPECT_EQ(connected.arcs[0].src_state, 0);
+    EXPECT_EQ(connected.arcs[0].dest_state, 1);
+    EXPECT_EQ(connected.arcs[0].label, 1);
+
+    EXPECT_EQ(connected.arcs[1].src_state, 0);
+    EXPECT_EQ(connected.arcs[1].dest_state, 2);
+    EXPECT_EQ(connected.arcs[1].label, 2);
+
+    EXPECT_EQ(connected.arcs[2].src_state, 1);
+    EXPECT_EQ(connected.arcs[2].dest_state, 3);
+    EXPECT_EQ(connected.arcs[2].label, 6);
+
+    EXPECT_EQ(connected.arcs[3].src_state, 2);
+    EXPECT_EQ(connected.arcs[3].dest_state, 3);
+    EXPECT_EQ(connected.arcs[3].label, 3);
+
+    EXPECT_EQ(arc_map.size(), 4u);
+    EXPECT_EQ(arc_map[0], 0);  // arc index 0 of original state 0 -> 1
+    EXPECT_EQ(arc_map[1], 1);  // arc index 1 of original state 0 -> 2
+    EXPECT_EQ(arc_map[2], 3);  // arc index 3 of original state 1 -> 6
+    EXPECT_EQ(arc_map[3], 5);  // arc index 5 of original state 2 -> 6
   }
 }
 

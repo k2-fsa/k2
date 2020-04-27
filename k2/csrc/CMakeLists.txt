@@ -13,6 +13,7 @@ target_compile_features(fsa_renderer PUBLIC cxx_std_11)
 add_library(fsa_algo fsa_algo.cc)
 target_include_directories(fsa_algo PUBLIC ${CMAKE_SOURCE_DIR})
 target_compile_features(fsa_algo PUBLIC cxx_std_11)
+target_link_libraries(fsa_algo PRIVATE glog)
 
 add_executable(properties_test properties_test.cc)
 
@@ -61,7 +62,6 @@ add_executable(fsa_algo_test fsa_algo_test.cc)
 target_link_libraries(fsa_algo_test
   PRIVATE
     fsa_algo
-    fsa_renderer
     gtest
     gtest_main
 )
