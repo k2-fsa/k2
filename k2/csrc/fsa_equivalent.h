@@ -1,19 +1,16 @@
-// k2/csrc/tests.h
+// k2/csrc/fsa_equivalent.h
 
 // Copyright (c)  2020  Daniel Povey
 
 // See ../../LICENSE for clarification regarding multiple authors
-
-// TODO(fangjun): rename this file
-// since tests.h is not a good name
 
 #include <cstdint>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
 
-#ifndef K2_CSRC_TESTS_H_
-#define K2_CSRC_TESTS_H_
+#ifndef K2_CSRC_FSA_EQUIVALENT_H_
+#define K2_CSRC_FSA_EQUIVALENT_H_
 
 namespace k2 {
 
@@ -23,9 +20,13 @@ namespace k2 {
  */
 bool IsEquivalent(const Fsa &a, const Fsa &b);
 
-/* Gets a random path from an Fsa `a` */
-void RandomPath(const Fsa &a, Fsa *b, std::vector<int32_t> *state_map = NULL);
+/*
+  Gets a random path from an Fsa `a`, returns true if we get one path
+  successfully.
+*/
+bool RandomPath(const Fsa &a, Fsa *b,
+                std::vector<int32_t> *state_map = nullptr);
 
 }  // namespace k2
 
-#endif  // K2_CSRC_TESTS_H_
+#endif  // K2_CSRC_FSA_EQUIVALENT_H_

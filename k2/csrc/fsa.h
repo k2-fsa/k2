@@ -8,8 +8,9 @@
 #define K2_CSRC_FSA_H_
 
 #include <cstdint>
-#include <utility>
 #include <vector>
+
+#include "k2/csrc/util.h"
 
 namespace k2 {
 
@@ -37,6 +38,21 @@ struct Arc {
 
   /* Note: the costs are not stored here but outside the Fst object, in some
      kind of array indexed by arc-index.  */
+
+  bool operator==(const Arc &other) const {
+    return src_state == other.src_state && dest_state == other.dest_state &&
+           label == other.label;
+  }
+};
+
+struct ArcHash {
+  std::size_t operator()(const Arc &arc) const noexcept {
+    std::size_t result = 0;
+    hash_combine(&result, arc.src_state);
+    hash_combine(&result, arc.dest_state);
+    hash_combine(&result, arc.label);
+    return result;
+  }
 };
 
 struct ArcLabelCompare {
