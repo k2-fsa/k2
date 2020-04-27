@@ -26,8 +26,9 @@ bool IsValid(const Fsa &fsa) {
   // the number of arcs in one state
   int32_t num_arcs = 0;
   for (const auto &arc : fsa.arcs) {
-    // only epsilon arcs enter the final state
-    if (arc.dest_state == final_state && arc.label != kEpsilon) return false;
+    // only kFinalSymbol arcs enter the final state
+    if (arc.dest_state == final_state && arc.label != kFinalSymbol)
+      return false;
     if (arc.src_state == state) {
       ++num_arcs;
     } else {

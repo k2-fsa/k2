@@ -28,7 +28,7 @@ TEST(Properties, IsNotValid) {
     EXPECT_FALSE(is_valid);
   }
 
-  // only epsilon arcs enter the final state
+  // only kFinalSymbol arcs enter the final state
   {
     Fsa fsa;
     std::vector<Arc> arcs = {
@@ -113,8 +113,8 @@ TEST(Properties, IsValid) {
   {
     std::vector<Arc> arcs = {
         {0, 1, 0},
-        {0, 2, 0},
-        {1, 2, 0},
+        {0, 2, kFinalSymbol},
+        {1, 2, kFinalSymbol},
     };
     std::vector<int32_t> arc_indexes = {0, 2, 3};
     Fsa fsa;
