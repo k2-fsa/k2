@@ -7,11 +7,13 @@
 
 #include "k2/csrc/fsa_algo.h"
 
+#include <iostream>
 #include <utility>
 #include <vector>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "k2/csrc/fsa_renderer.h"
 
 namespace k2 {
 
@@ -139,6 +141,33 @@ TEST(FsaAlgo, ArcSort) {
     // 4 -> 3
     // 5 -> 5
     EXPECT_THAT(arc_map, ::testing::ElementsAre(2, 1, 0, 4, 3, 5));
+
+TEST(FsaAlgo, TopoSort) {
+  {
+    std::vector<Arc> arcs = {
+        {0, 4, 40}, {0, 2, 20}, {1, 6, 2},  {2, 3, 30},
+        {3, 6, 60}, {3, 1, 10}, {4, 5, 50}, {5, 2, 8},
+    };
+    std::vector<int32_t> arc_indexes = {0, 2, 3, 4, 6, 7, 8};
+
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+
+    Fsa topo_sorted;
+    std::vector<int32_t> state_map;
+
+    TopoSort(fsa, &topo_sorted, &state_map);
+
+    FsaRenderer renderer(topo_sorted);
+    std::cerr << renderer.Render();
+
+    // TODO(fangjun): remove the following and use EXPECT_THAT
+    // Add more test cases.
+    auto num_states = topo_sorted.NumStates();
+    for (auto i = 0; i != num_states; ++i) {
+      std::cout << i << " -> " << state_map[i] << "\n";
+    }
   }
 }
 
