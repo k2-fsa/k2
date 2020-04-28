@@ -154,18 +154,34 @@ TEST(Properties, IsTopSorted) {
 }
 
 TEST(Properties, IsNotArcSorted) {
-  std::vector<Arc> arcs = {
-      {0, 1, 0},
-      {0, 2, 0},
-      {1, 2, 2},
-      {1, 3, 1},
-  };
-  std::vector<int32_t> arc_indexes = {0, 2, 4, 4};
-  Fsa fsa;
-  fsa.arc_indexes = std::move(arc_indexes);
-  fsa.arcs = std::move(arcs);
-  bool sorted = IsArcSorted(fsa);
-  EXPECT_FALSE(sorted);
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 1},
+        {0, 2, 2},
+        {1, 2, 2},
+        {1, 3, 1},
+    };
+    std::vector<int32_t> arc_indexes = {0, 2, 4, 4};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+    bool sorted = IsArcSorted(fsa);
+    EXPECT_FALSE(sorted);
+  }
+
+  // another case with same label on two arcs
+  {
+    std::vector<Arc> arcs = {
+        {0, 2, 0},
+        {0, 1, 0},
+    };
+    std::vector<int32_t> arc_indexes = {0, 2, 2};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+    bool sorted = IsArcSorted(fsa);
+    EXPECT_FALSE(sorted);
+  }
 }
 
 TEST(Properties, IsArcSorted) {

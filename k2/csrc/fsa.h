@@ -8,6 +8,7 @@
 #define K2_CSRC_FSA_H_
 
 #include <cstdint>
+#include <tuple>
 #include <vector>
 
 #include "k2/csrc/util.h"
