@@ -18,12 +18,11 @@ using StateId = int32_t;
 using Weight = float;
 
 enum {
-  kFinalSymbol = -1,     // final-costs are represented as arcs with
-                         // kFinalSymbol as their label, to the final
-                         // state (see Fst::final_state).
-  kEpsilon = 0,          // Epsilon, which means "no symbol", is numbered zero,
-                         // like in OpenFst.
-  kInvalidStateId = -1,  // it MUST be less than zero, like in OpenFst.
+  kFinalSymbol = -1,  // final-costs are represented as arcs with
+                      // kFinalSymbol as their label, to the final
+                      // state (see Fst::final_state).
+  kEpsilon = 0,       // Epsilon, which means "no symbol", is numbered zero,
+                      // like in OpenFst.
 };
 
 struct Arc {

@@ -14,9 +14,9 @@ namespace {
 
 // depth first search state
 struct DfsState {
-  int32_t s;      // state number of the visiting node
-  int32_t begin;  // arc index of the visiting arc
-  int32_t end;    // end of the arc index of the visiting node
+  int32_t state;      // state number of the visiting node
+  int32_t arc_begin;  // arc index of the visiting arc
+  int32_t arc_end;    // end of the arc index of the visiting node
 };
 
 }  // namespace
@@ -46,42 +46,42 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
   visited[0] = true;
 
   while (!stack.empty()) {
-    auto &top = stack.top();
+    auto &current_state = stack.top();
 
-    if (top.begin == top.end) {
+    if (current_state.arc_begin == current_state.arc_end) {
       // we have finished visiting this state
-      auto s = top.s;  // get a copy since we will destroy it
+      auto state = current_state.state;  // get a copy since we will destroy it
       stack.pop();
       if (!stack.empty()) {
         // if it has a parent, set the parent's coaccessible flag
-        if (coaccessible[s]) {
+        if (coaccessible[state]) {
           auto &parent = stack.top();
-          coaccessible[parent.s] = true;
-          ++parent.begin;  // process the next child
+          coaccessible[parent.state] = true;
+          ++parent.arc_begin;  // process the next child
         }
       }
       continue;
     }
 
-    const auto &arc = fsa.arcs[top.begin];
+    const auto &arc = fsa.arcs[current_state.arc_begin];
     auto next_state = arc.dest_state;
     bool is_visited = visited[next_state];
     if (!is_visited) {
       // this is a new discovered state
       visited[next_state] = true;
-      auto begin = fsa.arc_indexes[next_state];
+      auto arc_begin = fsa.arc_indexes[next_state];
       if (next_state != final_state)
-        stack.push({next_state, begin, fsa.arc_indexes[next_state + 1]});
+        stack.push({next_state, arc_begin, fsa.arc_indexes[next_state + 1]});
       else
-        stack.push({next_state, begin, begin});
+        stack.push({next_state, arc_begin, arc_begin});
 
-      if (accessible[top.s]) accessible[next_state] = true;
+      if (accessible[current_state.state]) accessible[next_state] = true;
     } else {
       // this is a back arc or forward cross arc;
-      // update the coaccesible flag
+      // update the co-accessible flag
       auto next_state = arc.dest_state;
-      if (coaccessible[next_state]) coaccessible[top.s] = true;
-      ++top.begin;  // go to the next arc
+      if (coaccessible[next_state]) coaccessible[current_state.state] = true;
+      ++current_state.arc_begin;  // go to the next arc
     }
   }
 
@@ -94,6 +94,7 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
 
 void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   CHECK_NOTNULL(b);
+  if (arc_map) arc_map->clear();
 
   std::vector<int32_t> state_b_to_a;
   ConnectCore(a, &state_b_to_a);
@@ -108,7 +109,7 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
     arc_map->reserve(a.arcs.size());
   }
 
-  std::vector<int32_t> state_a_to_b(a.NumStates(), kInvalidStateId);
+  std::vector<int32_t> state_a_to_b(a.NumStates(), -1);
 
   auto num_states_b = b->NumStates();
   for (auto i = 0; i != num_states_b; ++i) {
@@ -116,31 +117,31 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
     state_a_to_b[state_a] = i;
   }
 
-  auto begin = 0;
-  auto end = 0;
+  auto arc_begin = 0;
+  auto arc_end = 0;
   auto final_state_a = a.NumStates() - 1;
 
   for (auto i = 0; i != num_states_b; ++i) {
     auto state_a = state_b_to_a[i];
-    begin = a.arc_indexes[state_a];
+    arc_begin = a.arc_indexes[state_a];
     if (state_a != final_state_a)
-      end = a.arc_indexes[state_a + 1];
+      arc_end = a.arc_indexes[state_a + 1];
     else
-      end = begin;
+      arc_end = arc_begin;
 
     b->arc_indexes[i] = static_cast<int32_t>(b->arcs.size());
-    for (; begin != end; ++begin) {
-      auto arc = a.arcs[begin];
+    for (; arc_begin != arc_end; ++arc_begin) {
+      auto arc = a.arcs[arc_begin];
       auto dest_state = arc.dest_state;
       auto state_b = state_a_to_b[dest_state];
 
-      if (state_b == kInvalidStateId) continue;  // dest_state is unreachable
+      if (state_b < 0) continue;  // dest_state is unreachable
 
       arc.src_state = i;
       arc.dest_state = state_b;
       b->arcs.push_back(arc);
       if (arc_map) {
-        arc_map->push_back(begin);
+        arc_map->push_back(arc_begin);
       }
     }
   }
