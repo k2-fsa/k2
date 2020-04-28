@@ -153,6 +153,45 @@ TEST(Properties, IsTopSorted) {
   EXPECT_TRUE(sorted);
 }
 
+TEST(Properties, IsNotArcSorted) {
+  std::vector<Arc> arcs = {
+      {0, 1, 0},
+      {0, 2, 0},
+      {1, 2, 2},
+      {1, 3, 1},
+  };
+  std::vector<int32_t> arc_indexes = {0, 2, 4, 4};
+  Fsa fsa;
+  fsa.arc_indexes = std::move(arc_indexes);
+  fsa.arcs = std::move(arcs);
+  bool sorted = IsArcSorted(fsa);
+  EXPECT_FALSE(sorted);
+}
+
+TEST(Properties, IsArcSorted) {
+  // empty fsa is arc-sorted.
+  {
+    Fsa fsa;
+    bool sorted = IsArcSorted(fsa);
+    EXPECT_TRUE(sorted);
+  }
+
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {1, 2, 1},
+        {1, 3, 2},
+    };
+    std::vector<int32_t> arc_indexes = {0, 2, 4, 4};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+    bool sorted = IsArcSorted(fsa);
+    EXPECT_TRUE(sorted);
+  }
+}
+
 TEST(Properties, HasNoSelfLoops) {
   std::vector<Arc> arcs = {
       {0, 1, 0},
