@@ -4,14 +4,14 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
+#ifndef K2_CSRC_WEIGHTS_H_
+#define K2_CSRC_WEIGHTS_H_
+
 #include <vector>
 
 #include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_properties.h"
 #include "k2/csrc/fsa_util.h"
-
-#ifndef K2_CSRC_WEIGHTS_H_
-#define K2_CSRC_WEIGHTS_H_
+#include "k2/csrc/properties.h"
 
 namespace k2 {
 
@@ -30,7 +30,7 @@ namespace k2 {
   It's like shortest path but with the opposite sign.
 
    @param [in] fsa  The fsa we are doing the forward computation on.
-                Must satisfy IsValid(fsa) and IsTopSorted(fsa).
+                    Must satisfy IsValid(fsa) and IsTopSorted(fsa).
    @param [out] state_weights  The per-state weights will be written to here.
                 They will be 0 for the start-state (if fsa is
                 nonempty), and for later states will be the
@@ -56,7 +56,7 @@ void ComputeForwardMaxWeights(const Fsa &fsa, float *state_weights);
  */
 void ComputeBackwardMaxWeights(const Fsa &fsa, float *state_weights);
 
-enum { kMaxWeight, kLogSumWeight } FbWeightType;
+enum FbWeightType { kMaxWeight, kLogSumWeight };
 
 struct WfsaWithFbWeights {
   const Fsa *fsa;

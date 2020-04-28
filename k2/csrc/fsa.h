@@ -22,7 +22,7 @@ enum {
   kFinalSymbol = -1,  // final-costs are represented as arcs with
                       // kFinalSymbol as their label, to the final
                       // state (see Fst::final_state).
-  kEpsilon = 0        // Epsilon, which means "no symbol", is numbered zero,
+  kEpsilon = 0,       // Epsilon, which means "no symbol", is numbered zero,
                       // like in OpenFst.
 };
 
