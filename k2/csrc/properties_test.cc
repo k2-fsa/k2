@@ -19,7 +19,7 @@ namespace k2 {
 // addState, addArc, etc.) and use Test Fixtures by constructing
 // reusable FSA examples.
 TEST(Properties, IsNotValid) {
-  // fsa should contains at least two states.
+  // fsa should contain at least two states.
   {
     Fsa fsa;
     std::vector<int32_t> arc_indexes = {0};
@@ -151,6 +151,61 @@ TEST(Properties, IsTopSorted) {
   fsa.arcs = std::move(arcs);
   bool sorted = IsTopSorted(fsa);
   EXPECT_TRUE(sorted);
+}
+
+TEST(Properties, IsNotArcSorted) {
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 1},
+        {0, 2, 2},
+        {1, 2, 2},
+        {1, 3, 1},
+    };
+    std::vector<int32_t> arc_indexes = {0, 2, 4, 4};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+    bool sorted = IsArcSorted(fsa);
+    EXPECT_FALSE(sorted);
+  }
+
+  // another case with same label on two arcs
+  {
+    std::vector<Arc> arcs = {
+        {0, 2, 0},
+        {0, 1, 0},
+    };
+    std::vector<int32_t> arc_indexes = {0, 2, 2};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+    bool sorted = IsArcSorted(fsa);
+    EXPECT_FALSE(sorted);
+  }
+}
+
+TEST(Properties, IsArcSorted) {
+  // empty fsa is arc-sorted.
+  {
+    Fsa fsa;
+    bool sorted = IsArcSorted(fsa);
+    EXPECT_TRUE(sorted);
+  }
+
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {1, 2, 1},
+        {1, 3, 2},
+    };
+    std::vector<int32_t> arc_indexes = {0, 2, 4, 4};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+    bool sorted = IsArcSorted(fsa);
+    EXPECT_TRUE(sorted);
+  }
 }
 
 TEST(Properties, HasNoSelfLoops) {

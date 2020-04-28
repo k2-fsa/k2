@@ -41,6 +41,11 @@ bool IsValid(const Fsa &fsa);
 bool IsTopSorted(const Fsa &fsa);
 
 /*
+  Returns true if arcs leaving each state in `fsa` are sorted on label.
+*/
+bool IsArcSorted(const Fsa &fsa);
+
+/*
   Returns true if `fsa` has any self-loops
  */
 bool HasSelfLoops(const Fsa &fsa);

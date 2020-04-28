@@ -26,7 +26,7 @@ TEST(Properties, RandomPathFail) {
   // TODO(haowen): add tests for non-connected fsa
 }
 
-TEST(Properties, RandomPathSuccess) {
+TEST(FsaEquivalent, RandomPathSuccess) {
   {
     Fsa fsa;
     std::vector<Arc> arcs = {
