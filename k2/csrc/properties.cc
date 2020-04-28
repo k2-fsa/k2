@@ -58,14 +58,14 @@ bool IsTopSorted(const Fsa &fsa) {
 bool IsArcSorted(const Fsa &fsa) {
   ArcLabelCompare comp;
   StateId final_state = fsa.NumStates() - 1;
-  auto begin = fsa.arcs.begin();
+  const auto begin = fsa.arcs.begin();
   const auto &arc_indexes = fsa.arc_indexes;
   // we will not check the final state as it has no arcs leaving it.
   for (StateId state = 0; state < final_state; ++state) {
     // as non-empty `fsa` contains at least two states,
     // we can always access `state + 1` validly.
-    if (!is_sorted(begin + arc_indexes[state], begin + arc_indexes[state + 1],
-                   comp))
+    if (!std::is_sorted(begin + arc_indexes[state],
+                        begin + arc_indexes[state + 1], comp))
       return false;
   }
   return true;

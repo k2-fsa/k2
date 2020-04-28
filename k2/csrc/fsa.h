@@ -58,7 +58,8 @@ struct ArcHash {
 
 struct ArcLabelCompare {
   bool operator()(const Arc &a, const Arc &b) const {
-    return a.label < b.label;
+    // compares `label` first, then `dest_state`
+    return std::tie(a.label, a.dest_state) < std::tie(b.label, b.dest_state);
   }
 };
 
