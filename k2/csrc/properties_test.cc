@@ -19,7 +19,7 @@ namespace k2 {
 // addState, addArc, etc.) and use Test Fixtures by constructing
 // reusable FSA examples.
 TEST(Properties, IsNotValid) {
-  // fsa should contains at least two states.
+  // fsa should contain at least two states.
   {
     Fsa fsa;
     std::vector<int32_t> arc_indexes = {0};
