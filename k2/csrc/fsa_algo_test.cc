@@ -1,6 +1,7 @@
 // k2/csrc/fsa_algo_test.cc
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+//                      Haowen Qiu
 
 // See ../../LICENSE for clarification regarding multiple authors
 

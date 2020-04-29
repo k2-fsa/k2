@@ -1,12 +1,14 @@
 // k2/csrc/fsa_algo.cc
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+//                      Haowen Qiu
 
 // See ../../LICENSE for clarification regarding multiple authors
 
 #include "k2/csrc/fsa_algo.h"
 
 #include <algorithm>
+#include <numeric>
 #include <stack>
 #include <utility>
 
@@ -159,8 +161,7 @@ void ArcSort(const Fsa &a, Fsa *b,
 
   using ArcWithIndex = std::pair<Arc, int32_t>;
   std::vector<int32_t> indexes(a.arcs.size());  // index mapping
-  int32_t n = 0;
-  std::generate(indexes.begin(), indexes.end(), [&n]() { return n++; });
+  std::iota(indexes.begin(), indexes.end(), 0);
   const auto arc_begin_iter = a.arcs.begin();
   const auto index_begin_iter = indexes.begin();
   // we will not process the final state as it has no arcs leaving it.
@@ -170,24 +171,24 @@ void ArcSort(const Fsa &a, Fsa *b,
     // as non-empty fsa `a` contains at least two states,
     // we can always access `state + 1` validly.
     int32_t end = a.arc_indexes[state + 1];
-    std::vector<ArcWithIndex> arc_range_to_sorted;
-    arc_range_to_sorted.reserve(end - begin);
+    std::vector<ArcWithIndex> arc_range_to_be_sorted;
+    arc_range_to_be_sorted.reserve(end - begin);
     std::transform(arc_begin_iter + begin, arc_begin_iter + end,
                    index_begin_iter + begin,
-                   std::back_inserter(arc_range_to_sorted),
+                   std::back_inserter(arc_range_to_be_sorted),
                    [](const Arc &arc, int32_t index) -> ArcWithIndex {
                      return std::make_pair(arc, index);
                    });
-    std::sort(arc_range_to_sorted.begin(), arc_range_to_sorted.end(),
+    std::sort(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
               [](const ArcWithIndex &left, const ArcWithIndex &right) {
                 return left.first < right.first;  // sort on arc
               });
     // copy index mappings back to `indexes`
-    std::transform(arc_range_to_sorted.begin(), arc_range_to_sorted.end(),
+    std::transform(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
                    index_begin_iter + begin,
                    [](const ArcWithIndex &v) { return v.second; });
     // move-copy sorted arcs to `b`
-    std::transform(arc_range_to_sorted.begin(), arc_range_to_sorted.end(),
+    std::transform(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
                    std::back_inserter(b->arcs),
                    [](ArcWithIndex &v) { return std::move(v.first); });
   }
