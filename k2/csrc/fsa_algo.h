@@ -85,16 +85,17 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
      extra output argument to this function.
 
      The basic algorithm is to (1) identify the kept states, (2) from each kept
-     input-state ki, we'll iterate over all states that are reachable via zero or more
-     epsilons from this state and process the non-epsilon outgoing arcs from
-     those states, which will become the arcs in the output.  We'll also store a
-     back-pointer array that will allow us to figure out the best path back to ki,
-     in order to produce the output `arc_map`.    Assume we have arrays
+     input-state ki, we'll iterate over all states that are reachable via zero
+     or more epsilons from this state and process the non-epsilon outgoing arcs
+     from those states, which will become the arcs in the output.  We'll also
+     store a back-pointer array that will allow us to figure out the best path
+     back to ki, in order to produce the output `arc_map`.    Assume we have
+     arrays
 
      local_forward_weights (float) and local_backpointers (int) indexed by
      state-id, and that the local_forward_weights are initialized with
-     -infinity's each time we process a new ki. (we have to figure out how to do this
-     efficiently).
+     -infinity's each time we process a new ki. (we have to figure out how to do
+     this efficiently).
 
 
       Processing input-state ki:
@@ -111,25 +112,22 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
                                 // best cost they are going to get.  If
                                 // FSA was top-sorted at the start, which we assume, we could perhaps
                                 // process them in numerical order, e.g. using a heap.
-            queue.pop_front()
+            queue.pop_front() 
             for each arc leaving state ji:
-               next_weight = local_forward_state_weights[ji] + arc_weights[this_arc_index]
-               if next_weight + backward_state_weights[arc_dest_state] < best_path_weight - beam:
-                  if arc label is epsilon:
-                     if next_weight < local_forward_state_weight[next_state]:
-                       local_forward_state_weight[next_state] = next_weight
-                       local_backpointers[next_state] = ji
-                  else:
-                     add an arc to the output FSA, and create the appropriate
-                     arc_map entry by following backpointers (hopefully you can figure out the
-                     details).  Note: the output FSA's weights can be computed later on,
-                     by calling code, using the info in arc_map.
+                next_weight = local_forward_state_weights[ji] + arc_weights[this_arc_index]
+                if next_weight + backward_state_weights[arc_dest_state] < best_path_weight - beam:
+                    if arc label is epsilon: 
+                        if next_weight < local_forward_state_weight[next_state]:
+                           local_forward_state_weight[next_state] = next_weight
+                           local_backpointers[next_state] = ji
+                else:
+                    add an arc to the output FSA, and create the appropriate
+                    arc_map entry by following backpointers (hopefully you can
+                    figure out the details).  Note: the output FSA's weights can be
+                    computed later on, by calling code, using the info in arc_map.
  */
-void RmEpsilonsPruned(const WfsaWithFbWeights &a,
-                      float beam,
-                      Fsa *b,
+void RmEpsilonsPruned(const WfsaWithFbWeights &a, float beam, Fsa *b,
                       std::vector<std::vector<int32_t>> *arc_map);
-
 
 /*
   Compute the intersection of two FSAs; this is the equivalent of composition
@@ -207,15 +205,20 @@ void IntersectPruned2(const Fsa &a, const float *a_cost, const Fsa &b,
 void RandomPath(const Fsa &a, const float *a_cost, Fsa *b,
                 std::vector<int32_t> *state_map = nullptr);
 
-
+/**
+    Sort arcs leaving each state in `fsa` on label first and then on dest_state
+    @param [in]   a   Input fsa to be arc sorted.
+    @param [out]  b   Output fsa which is an arc sorted fsa.
+    @param [out]  arc_map   Maps from arc indexes in the output fsa to
+                              arc indexes in input fsa.
+ */
+void ArcSort(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
 
 /**
 
  */
 void Determinize(const Fsa &a, Fsa *b,
-                 std::vector<std::vector<StateId> > *state_map);
-
-
+                 std::vector<std::vector<StateId>> *state_map);
 
 }  // namespace k2
 

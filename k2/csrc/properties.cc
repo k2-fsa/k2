@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "k2/csrc/fsa.h"
+#include "k2/csrc/fsa_algo.h"
 
 namespace k2 {
 
@@ -56,7 +57,6 @@ bool IsTopSorted(const Fsa &fsa) {
 }
 
 bool IsArcSorted(const Fsa &fsa) {
-  ArcLabelCompare comp;
   StateId final_state = fsa.NumStates() - 1;
   const auto begin = fsa.arcs.begin();
   const auto &arc_indexes = fsa.arc_indexes;
@@ -65,7 +65,7 @@ bool IsArcSorted(const Fsa &fsa) {
     // as non-empty `fsa` contains at least two states,
     // we can always access `state + 1` validly.
     if (!std::is_sorted(begin + arc_indexes[state],
-                        begin + arc_indexes[state + 1], comp))
+                        begin + arc_indexes[state + 1]))
       return false;
   }
   return true;
@@ -102,27 +102,8 @@ bool IsEpsilonFree(const Fsa &fsa) {
 }
 
 bool IsConnected(const Fsa &fsa) {
-  StateId num_states = fsa.NumStates();
-  std::vector<bool> accessible(num_states, false);
-  accessible[0] = true;  // the start state
-  for (const auto &arc : fsa.arcs) {
-    if (!accessible[arc.src_state]) return false;
-    accessible[arc.dest_state] = true;
-  }
-  if (std::find(accessible.begin(), accessible.end(), false) !=
-      accessible.end())
-    return false;
-
-  // reuse `accessible` to process co-accessible situation.
-  std::fill(accessible.begin(), accessible.end(), false);
-  accessible[num_states - 1] = true;  // the final state
-  int32_t num_arcs = static_cast<int32_t>(fsa.arcs.size());
-  for (int32_t i = num_arcs - 1; i >= 0; --i) {
-    const auto &arc = fsa.arcs[i];
-    if (!accessible[arc.dest_state]) return false;
-    accessible[arc.src_state] = true;
-  }
-  return std::find(accessible.begin(), accessible.end(), false) ==
-         accessible.end();
+  std::vector<int32_t> state_map;
+  ConnectCore(fsa, &state_map);
+  return static_cast<int32_t>(state_map.size()) == fsa.NumStates();
 }
 }  // namespace k2

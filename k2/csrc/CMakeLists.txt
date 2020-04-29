@@ -1,6 +1,7 @@
 add_library(properties properties.cc)
 target_include_directories(properties PUBLIC ${CMAKE_SOURCE_DIR})
 target_compile_features(properties PUBLIC cxx_std_11)
+target_link_libraries(properties PUBLIC fsa_algo)
 
 add_library(fsa_equivalent fsa_equivalent.cc)
 target_include_directories(fsa_equivalent PUBLIC ${CMAKE_SOURCE_DIR})
@@ -25,6 +26,7 @@ add_executable(properties_test properties_test.cc)
 target_link_libraries(properties_test
   PRIVATE
     properties
+    fsa_algo
     gtest
     gtest_main
 )

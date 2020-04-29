@@ -6,7 +6,9 @@
 
 #include "k2/csrc/fsa_algo.h"
 
+#include <algorithm>
 #include <stack>
+#include <utility>
 
 #include "glog/logging.h"
 
@@ -147,4 +149,48 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   }
 }
 
+void ArcSort(const Fsa &a, Fsa *b,
+             std::vector<int32_t> *arc_map /*= nullptr*/) {
+  CHECK_NOTNULL(b);
+  b->arc_indexes = a.arc_indexes;
+  b->arcs.clear();
+  b->arcs.reserve(a.arcs.size());
+  if (arc_map != nullptr) arc_map->clear();
+
+  using ArcWithIndex = std::pair<Arc, int32_t>;
+  std::vector<int32_t> indexes(a.arcs.size());  // index mapping
+  int32_t n = 0;
+  std::generate(indexes.begin(), indexes.end(), [&n]() { return n++; });
+  const auto arc_begin_iter = a.arcs.begin();
+  const auto index_begin_iter = indexes.begin();
+  // we will not process the final state as it has no arcs leaving it.
+  StateId final_state = a.NumStates() - 1;
+  for (StateId state = 0; state < final_state; ++state) {
+    int32_t begin = a.arc_indexes[state];
+    // as non-empty fsa `a` contains at least two states,
+    // we can always access `state + 1` validly.
+    int32_t end = a.arc_indexes[state + 1];
+    std::vector<ArcWithIndex> arc_range_to_sorted;
+    arc_range_to_sorted.reserve(end - begin);
+    std::transform(arc_begin_iter + begin, arc_begin_iter + end,
+                   index_begin_iter + begin,
+                   std::back_inserter(arc_range_to_sorted),
+                   [](const Arc &arc, int32_t index) -> ArcWithIndex {
+                     return std::make_pair(arc, index);
+                   });
+    std::sort(arc_range_to_sorted.begin(), arc_range_to_sorted.end(),
+              [](const ArcWithIndex &left, const ArcWithIndex &right) {
+                return left.first < right.first;  // sort on arc
+              });
+    // copy index mappings back to `indexes`
+    std::transform(arc_range_to_sorted.begin(), arc_range_to_sorted.end(),
+                   index_begin_iter + begin,
+                   [](const ArcWithIndex &v) { return v.second; });
+    // move-copy sorted arcs to `b`
+    std::transform(arc_range_to_sorted.begin(), arc_range_to_sorted.end(),
+                   std::back_inserter(b->arcs),
+                   [](ArcWithIndex &v) { return std::move(v.first); });
+  }
+  if (arc_map != nullptr) arc_map->swap(indexes);
+}
 }  // namespace k2
