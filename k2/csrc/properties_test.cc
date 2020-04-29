@@ -322,18 +322,39 @@ TEST(Properties, IsNoConnected) {
 }
 
 TEST(Properties, IsConnected) {
-  std::vector<Arc> arcs = {
-      {0, 1, 0},
-      {0, 3, 0},
-      {1, 2, 0},
-      {2, 3, 0},
-  };
-  std::vector<int32_t> arc_indexes = {0, 2, 3, 4};
-  Fsa fsa;
-  fsa.arc_indexes = std::move(arc_indexes);
-  fsa.arcs = std::move(arcs);
-  bool is_connected = IsConnected(fsa);
-  EXPECT_TRUE(is_connected);
+  // empty fsa is connected
+  {
+    Fsa fsa;
+    bool is_connected = IsConnected(fsa);
+    EXPECT_TRUE(is_connected);
+  }
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 3, 0},
+        {1, 2, 0},
+        {2, 3, 0},
+    };
+    std::vector<int32_t> arc_indexes = {0, 2, 3, 4};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+    bool is_connected = IsConnected(fsa);
+    EXPECT_TRUE(is_connected);
+  }
+
+  // another case: fsa is cyclic and not top-sorted
+  {
+    std::vector<Arc> arcs = {
+        {0, 3, 0}, {1, 2, 0}, {2, 3, 0}, {2, 4, 0}, {3, 1, 0},
+    };
+    std::vector<int32_t> arc_indexes = {0, 1, 2, 4, 5};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+    bool is_connected = IsConnected(fsa);
+    EXPECT_TRUE(is_connected);
+  }
 }
 
 }  // namespace k2

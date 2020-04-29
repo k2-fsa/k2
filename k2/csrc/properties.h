@@ -41,7 +41,8 @@ bool IsValid(const Fsa &fsa);
 bool IsTopSorted(const Fsa &fsa);
 
 /*
-  Returns true if arcs leaving each state in `fsa` are sorted on label.
+  Returns true if arcs leaving each state in `fsa` are sorted on label first and
+  then on dest_state.
 */
 bool IsArcSorted(const Fsa &fsa);
 
@@ -78,8 +79,7 @@ bool IsEpsilonFree(const Fsa &fsa);
   start state nor final state exist).  So you may sometimes want to check
   IsConnected() && IsNonempty().
 
-  Requires that `fsa` be valid and top-sorted.
-  TODO(haowen): implement another version for non-top-sorted `fsa`.
+  Requires that `fsa` be valid.
  */
 bool IsConnected(const Fsa &fsa);
 

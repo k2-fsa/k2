@@ -1,6 +1,7 @@
 // k2/csrc/fsa_algo_test.cc
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+//                      Haowen Qiu
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -47,21 +48,16 @@ TEST(FsaAlgo, Connect) {
     ASSERT_EQ(connected.NumStates(), 4u);  // state 3,4,5 from fsa are removed
     EXPECT_THAT(connected.arc_indexes, ::testing::ElementsAre(0, 2, 3, 4));
 
-    EXPECT_EQ(connected.arcs[0].src_state, 0);
-    EXPECT_EQ(connected.arcs[0].dest_state, 1);
-    EXPECT_EQ(connected.arcs[0].label, 1);
-
-    EXPECT_EQ(connected.arcs[1].src_state, 0);
-    EXPECT_EQ(connected.arcs[1].dest_state, 2);
-    EXPECT_EQ(connected.arcs[1].label, 2);
-
-    EXPECT_EQ(connected.arcs[2].src_state, 1);
-    EXPECT_EQ(connected.arcs[2].dest_state, 3);
-    EXPECT_EQ(connected.arcs[2].label, 6);
-
-    EXPECT_EQ(connected.arcs[3].src_state, 2);
-    EXPECT_EQ(connected.arcs[3].dest_state, 3);
-    EXPECT_EQ(connected.arcs[3].label, 3);
+    std::vector<Arc> target_arcs = {
+        {0, 1, 1},
+        {0, 2, 2},
+        {1, 3, 6},
+        {2, 3, 3},
+    };
+    EXPECT_EQ(connected.arcs[0], target_arcs[0]);
+    EXPECT_EQ(connected.arcs[1], target_arcs[1]);
+    EXPECT_EQ(connected.arcs[2], target_arcs[2]);
+    EXPECT_EQ(connected.arcs[3], target_arcs[3]);
 
     ASSERT_EQ(arc_map.size(), 4u);
 
@@ -94,6 +90,55 @@ TEST(FsaAlgo, Connect) {
     Connect(fsa, &connected, &arc_map);
     EXPECT_TRUE(IsEmpty(connected));
     EXPECT_TRUE(arc_map.empty());
+  }
+}
+
+TEST(FsaAlgo, ArcSort) {
+  // empty fsa
+  {
+    Fsa fsa;
+    Fsa arc_sorted;
+    // arbitrary states and arcs
+    arc_sorted.arcs = {{0, 1, 2}};
+    arc_sorted.arc_indexes = {1};
+    std::vector<int32_t> arc_map(10);  // an arbitrary number
+    ArcSort(fsa, &arc_sorted, &arc_map);
+    EXPECT_TRUE(arc_sorted.arcs.empty());
+    EXPECT_TRUE(arc_sorted.arc_indexes.empty());
+    EXPECT_TRUE(arc_map.empty());
+  }
+
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
+    };
+    std::vector<int32_t> arc_indexes = {0, 3, 5, 6, 6};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+    Fsa arc_sorted;
+    std::vector<int32_t> arc_map;
+    ArcSort(fsa, &arc_sorted, &arc_map);
+    EXPECT_THAT(arc_sorted.arc_indexes, ::testing::ElementsAre(0, 3, 5, 6, 6));
+    ASSERT_EQ(arc_sorted.arcs.size(), fsa.arcs.size());
+    std::vector<Arc> target_arcs = {
+        {0, 2, 0}, {0, 4, 0}, {0, 1, 2}, {1, 3, 0}, {1, 2, 1}, {2, 1, 0},
+    };
+    EXPECT_EQ(arc_sorted.arcs[0], target_arcs[0]);
+    EXPECT_EQ(arc_sorted.arcs[1], target_arcs[1]);
+    EXPECT_EQ(arc_sorted.arcs[2], target_arcs[2]);
+    EXPECT_EQ(arc_sorted.arcs[3], target_arcs[3]);
+    EXPECT_EQ(arc_sorted.arcs[4], target_arcs[4]);
+    EXPECT_EQ(arc_sorted.arcs[5], target_arcs[5]);
+
+    // arc index in `arc_sortd` -> arc index in original `fsa`
+    // 0 -> 2
+    // 1 -> 1
+    // 2 -> 0
+    // 3 -> 4
+    // 4 -> 3
+    // 5 -> 5
+    EXPECT_THAT(arc_map, ::testing::ElementsAre(2, 1, 0, 4, 3, 5));
   }
 }
 

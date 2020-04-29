@@ -41,8 +41,14 @@ struct Arc {
      kind of array indexed by arc-index.  */
 
   bool operator==(const Arc &other) const {
-    return src_state == other.src_state && dest_state == other.dest_state &&
-           label == other.label;
+    return std::tie(src_state, dest_state, label) ==
+           std::tie(src_state, other.dest_state, other.label);
+  }
+
+  bool operator<(const Arc &other) const {
+    // compares `label` first, then `dest_state`
+    return std::tie(label, dest_state) <
+           std::tie(other.label, other.dest_state);
   }
 };
 
@@ -53,13 +59,6 @@ struct ArcHash {
     hash_combine(&result, arc.dest_state);
     hash_combine(&result, arc.label);
     return result;
-  }
-};
-
-struct ArcLabelCompare {
-  bool operator()(const Arc &a, const Arc &b) const {
-    // compares `label` first, then `dest_state`
-    return std::tie(a.label, a.dest_state) < std::tie(b.label, b.dest_state);
   }
 };
 
