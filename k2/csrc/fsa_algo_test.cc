@@ -141,8 +141,10 @@ TEST(FsaAlgo, ArcSort) {
     // 4 -> 3
     // 5 -> 5
     EXPECT_THAT(arc_map, ::testing::ElementsAre(2, 1, 0, 4, 3, 5));
+  }
+}
 
-TEST(FsaAlgo, TopoSort) {
+TEST(FsaAlgo, TopSort) {
   {
     std::vector<Arc> arcs = {
         {0, 4, 40}, {0, 2, 20}, {1, 6, 2},  {2, 3, 30},
@@ -154,17 +156,17 @@ TEST(FsaAlgo, TopoSort) {
     fsa.arc_indexes = std::move(arc_indexes);
     fsa.arcs = std::move(arcs);
 
-    Fsa topo_sorted;
+    Fsa top_sorted;
     std::vector<int32_t> state_map;
 
-    TopoSort(fsa, &topo_sorted, &state_map);
+    TopSort(fsa, &top_sorted, &state_map);
 
-    FsaRenderer renderer(topo_sorted);
+    FsaRenderer renderer(top_sorted);
     std::cerr << renderer.Render();
 
     // TODO(fangjun): remove the following and use EXPECT_THAT
     // Add more test cases.
-    auto num_states = topo_sorted.NumStates();
+    auto num_states = top_sorted.NumStates();
     for (auto i = 0; i != num_states; ++i) {
       std::cout << i << " -> " << state_map[i] << "\n";
     }

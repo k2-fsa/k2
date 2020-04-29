@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "glog/logging.h"
+#include "k2/csrc/properties.h"
 
 namespace {
 
@@ -98,7 +99,7 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
 
 void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   CHECK_NOTNULL(b);
-  if (arc_map) arc_map->clear();
+  if (arc_map != nullptr) arc_map->clear();
 
   std::vector<int32_t> state_b_to_a;
   ConnectCore(a, &state_b_to_a);
@@ -108,7 +109,7 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   b->arcs.clear();
   b->arcs.reserve(a.arcs.size());
 
-  if (arc_map) {
+  if (arc_map != nullptr) {
     arc_map->clear();
     arc_map->reserve(a.arcs.size());
   }
@@ -144,9 +145,7 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
       arc.src_state = i;
       arc.dest_state = state_b;
       b->arcs.push_back(arc);
-      if (arc_map) {
-        arc_map->push_back(arc_begin);
-      }
+      if (arc_map != nullptr) arc_map->push_back(arc_begin);
     }
   }
 }
@@ -195,18 +194,20 @@ void ArcSort(const Fsa &a, Fsa *b,
   if (arc_map != nullptr) arc_map->swap(indexes);
 }
 
-bool TopoSort(const Fsa &a, Fsa *b,
-              std::vector<int32_t> *state_map /*= nullptr*/) {
+void TopSort(const Fsa &a, Fsa *b,
+             std::vector<int32_t> *state_map /*= nullptr*/) {
   CHECK_NOTNULL(b);
   b->arc_indexes.clear();
   b->arcs.clear();
 
-  if (state_map) state_map->clear();
+  if (state_map != nullptr) state_map->clear();
 
-  if (IsEmpty(a)) return false;
-  static constexpr int32_t kNotVisited = 0;  // a node that has not been visited
-  static constexpr int32_t kVisiting = 1;    // a node that is under visiting
-  static constexpr int32_t kVisited = 2;     // a node that has been visited
+  if (IsEmpty(a)) return;
+  if (!IsConnected(a)) return;
+
+  static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
+  static constexpr int8_t kVisiting = 1;    // a node that is under visiting
+  static constexpr int8_t kVisited = 2;     // a node that has been visited
 
   auto num_states = a.NumStates();
   auto final_state = num_states - 1;
@@ -216,8 +217,7 @@ bool TopoSort(const Fsa &a, Fsa *b,
   // state 0 has the largest order, i.e., num_states - 1
   // final_state has the least order, i.e., 0
   std::vector<int32_t> order;
-
-  order.reserve(a.NumStates());
+  order.reserve(num_states);
 
   std::stack<DfsState> stack;
   stack.push({0, a.arc_indexes[0], a.arc_indexes[1]});
@@ -261,7 +261,7 @@ bool TopoSort(const Fsa &a, Fsa *b,
     }
   }
 
-  if (!is_acyclic) return false;
+  if (!is_acyclic) return;
 
   std::vector<int32_t> state_a_to_b(num_states);
   for (auto i = 0; i != num_states; ++i) {
@@ -294,10 +294,10 @@ bool TopoSort(const Fsa &a, Fsa *b,
       b->arcs.push_back(arc);
     }
   }
-  if (state_map)
-    state_map->insert(state_map->end(), order.rbegin(), order.rend());
-
-  return true;
+  if (state_map != nullptr) {
+    std::reverse(order.begin(), order.end());
+    state_map->swap(order);
+  }
 }
 
 }  // namespace k2

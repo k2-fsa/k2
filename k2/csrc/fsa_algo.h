@@ -216,17 +216,18 @@ void ArcSort(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
 /**
     Sort the input fsa topologically.
 
-    Since we can only sort an acyclic fsa. It returns false and an empty fsa
-    when the input fsa is not acyclic; otherwise it returns true and a topo
-    sorted fsa.
+    It returns an empty fsa when the input fsa is not acyclic
+    or is not connected; otherwise it returns the topo sorted fsa in `b`.
 
     @param [in]   a   Input fsa to be topo sorted.
     @param [out]  b   Output fsa. It is set to empty if the input fsa is not
-                      acyclic; otherwise it contains a topo sorted fsa.
+                      acyclic or is not connected; otherwise it contains the
+                      topo sorted fsa.
     @param [out]  state_map   Maps from state indexes in the output fsa to
-                              state indexes in input fsa.
+                              state indexes in input fsa. It is empty if
+                              the output fsa is empty.
  */
-bool TopoSort(const Fsa& a, Fsa* b, std::vector<int32_t>* state_map = nullptr);
+void TopSort(const Fsa& a, Fsa* b, std::vector<int32_t>* state_map = nullptr);
 
 /**
 
