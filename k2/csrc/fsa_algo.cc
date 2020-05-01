@@ -194,7 +194,7 @@ void ArcSort(const Fsa &a, Fsa *b,
   if (arc_map != nullptr) arc_map->swap(indexes);
 }
 
-void TopSort(const Fsa &a, Fsa *b,
+bool TopSort(const Fsa &a, Fsa *b,
              std::vector<int32_t> *state_map /*= nullptr*/) {
   CHECK_NOTNULL(b);
   b->arc_indexes.clear();
@@ -202,8 +202,8 @@ void TopSort(const Fsa &a, Fsa *b,
 
   if (state_map != nullptr) state_map->clear();
 
-  if (IsEmpty(a)) return;
-  if (!IsConnected(a)) return;
+  if (IsEmpty(a)) return true;
+  if (!IsConnected(a)) return false;
 
   static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
   static constexpr int8_t kVisiting = 1;    // a node that is under visiting
@@ -261,7 +261,7 @@ void TopSort(const Fsa &a, Fsa *b,
     }
   }
 
-  if (!is_acyclic) return;
+  if (!is_acyclic) return false;
 
   std::vector<int32_t> state_a_to_b(num_states);
   for (auto i = 0; i != num_states; ++i) {
@@ -298,6 +298,7 @@ void TopSort(const Fsa &a, Fsa *b,
     std::reverse(order.begin(), order.end());
     state_map->swap(order);
   }
+  return true;
 }
 
 }  // namespace k2

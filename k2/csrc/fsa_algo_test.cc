@@ -146,6 +146,20 @@ TEST(FsaAlgo, ArcSort) {
 
 TEST(FsaAlgo, TopSort) {
   {
+    // case 1: empty input fsa
+    Fsa fsa;
+    Fsa top_sorted;
+    std::vector<int32_t> state_map(10);
+    bool status = TopSort(fsa, &top_sorted, &state_map);
+
+    EXPECT_TRUE(status);
+    EXPECT_TRUE(IsEmpty(top_sorted));
+    EXPECT_TRUE(state_map.empty());
+  }
+
+  {
+      // case2: non-connected fsa
+  } {
     std::vector<Arc> arcs = {
         {0, 4, 40}, {0, 2, 20}, {1, 6, 2},  {2, 3, 30},
         {3, 6, 60}, {3, 1, 10}, {4, 5, 50}, {5, 2, 8},

@@ -6,8 +6,90 @@
 
 #include "k2/csrc/fsa_util.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
 #include <utility>
 #include <vector>
+
+#include "glog/logging.h"
+
+namespace {
+
+int32_t StringToInt(const std::string &s, bool *is_ok = nullptr) {
+  CHECK_EQ(s.empty(), false);
+
+  bool ok = false;
+  char *p = nullptr;
+  // std::strtol requires a `long` type
+  long n = std::strtol(s.c_str(), &p, 10);
+  if (*p == 0) ok = true;
+
+  int32_t res = n;
+  if (n != res) ok = false;  // out of range
+  if (is_ok != nullptr) *is_ok = ok;
+
+  return res;
+}
+
+std::vector<int32_t> StringVectorToIntVector(
+    const std::vector<std::string> &in) {
+  std::vector<int32_t> res;
+  res.reserve(in.size());
+  for (const auto &s : in) {
+    bool ok = false;
+    auto n = StringToInt(s, &ok);
+    CHECK(ok);
+    res.push_back(n);
+  }
+  return res;
+}
+
+// trim leading and trailing spaces of a string
+void TrimString(std::string *s) {
+  CHECK_NOTNULL(s);
+  auto not_space = [](int c) { return std::isspace(c) == false; };
+
+  s->erase(s->begin(), std::find_if(s->begin(), s->end(), not_space));
+  s->erase(std::find_if(s->rbegin(), s->rend(), not_space).base(), s->end());
+}
+
+// split a string to a vector of string using a set of delimiters.
+//
+// Example usage:
+//
+// @code
+//  std::string in = "1 2 3";
+//  const char* delim = " \t";
+//  std::vector<std::string> out;
+//  SplitStringToVector(in, delim, &out);
+// @encode
+void SplitStringToVector(const std::string &in, const char *delim,
+                         std::vector<std::string> *out) {
+  CHECK_NOTNULL(delim);
+  CHECK_NOTNULL(out);
+  out->clear();
+  size_t start = 0;
+  size_t end = in.size();
+  while (true) {
+    auto pos = in.find_first_of(delim, start);
+    if (pos == in.npos) break;
+
+    auto sub = in.substr(start, pos - start);
+    start = pos + 1;
+
+    TrimString(&sub);
+    if (sub.empty() == false) out->emplace_back(std::move(sub));
+  }
+
+  if (start < in.size()) {
+    auto sub = in.substr(start);
+    TrimString(&sub);
+    if (sub.empty() == false) out->emplace_back(std::move(sub));
+  }
+}
+
+}  // namespace
 
 namespace k2 {
 
@@ -32,6 +114,55 @@ void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
     auto end = static_cast<int32_t>(arc_index->size());
     end_index->push_back(end);
   }
+}
+
+std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
+  static constexpr const char *kDelim = " \t";
+
+  std::istringstream is(s);
+  std::string line;
+  std::vector<std::vector<Arc>> vec;  // index is state number
+  bool finished = false;  // when the final state is read, set it to true.
+  int32_t num_arcs = 0;
+  while (std::getline(is, line)) {
+    CHECK_EQ(finished, false);
+    std::vector<std::string> splits;
+    SplitStringToVector(line, kDelim, &splits);
+    if (splits.empty()) continue;
+
+    auto fields = StringVectorToIntVector(splits);
+    auto num_fields = fields.size();
+    if (num_fields == 3u) {
+      Arc arc;
+      arc.src_state = fields[0];
+      arc.dest_state = fields[1];
+      arc.label = fields[2];
+
+      if (arc.src_state >= vec.size()) vec.resize(arc.src_state + 1);
+      if (arc.dest_state >= vec.size()) vec.resize(arc.dest_state + 1);
+
+      vec[arc.src_state].push_back(arc);
+      ++num_arcs;
+    } else if (num_fields == 1u) {
+      finished = true;
+      CHECK_EQ(fields[0] + 1, static_cast<int32_t>(vec.size()));
+    } else
+      LOG(FATAL) << "invalid line: " << line;
+  }
+
+  CHECK_EQ(finished, true) << "The last line should be the final state";
+  CHECK_GT(num_arcs, 0) << "An empty fsa is detected!";
+
+  std::unique_ptr<Fsa> fsa(new Fsa);
+  fsa->arc_indexes.resize(vec.size());
+  fsa->arcs.reserve(num_arcs);
+  int32_t i = 0;
+  for (const auto &v : vec) {
+    fsa->arc_indexes[i] = (static_cast<int32_t>(fsa->arcs.size()));
+    fsa->arcs.insert(fsa->arcs.end(), v.begin(), v.end());
+    ++i;
+  }
+  return fsa;
 }
 
 }  // namespace k2
