@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "k2/csrc/fsa_renderer.h"
 
 namespace k2 {
 
@@ -50,19 +50,33 @@ TEST(FsaUtil, GetEnteringArcs) {
 
 TEST(FsaUtil, StringToFsa) {
   std::string s = R"(
-0 1 10
-0 2 20
-1 3 30
-1 6 60
-2 6 3
+0 1 2
+0 2 10
+1 3 3
+1 6 6
+2 6 1
 2 4 2
-0 0 0
 5 0 1
 6
 )";
   auto fsa = StringToFsa(s);
-  FsaRenderer renderer(*fsa);
-  std::cerr << renderer.Render();
+  ASSERT_NE(fsa.get(), nullptr);
+
+  const auto &arc_indexes = fsa->arc_indexes;
+  const auto &arcs = fsa->arcs;
+
+  ASSERT_EQ(arc_indexes.size(), 7u);
+  EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7));
+
+  std::vector<Arc> expected_arcs = {
+      {0, 1, 2}, {0, 2, 10}, {1, 3, 3}, {1, 6, 6},
+      {2, 6, 1}, {2, 4, 2},  {5, 0, 1},
+  };
+
+  auto n = static_cast<int32_t>(expected_arcs.size());
+  for (auto i = 0; i != n; ++i) {
+    EXPECT_EQ(arcs[i], expected_arcs[i]);
+  }
 }
 
 }  // namespace k2

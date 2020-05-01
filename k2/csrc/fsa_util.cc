@@ -15,14 +15,20 @@
 #include "glog/logging.h"
 
 namespace {
+/** Convert a string to an integer.
 
+  @param [in]   s     The input string.
+  @param [out]  is    If non-null, it is set to true when the conversion
+                      is successful; false otherwise
+  @return The converted integer.
+ */
 int32_t StringToInt(const std::string &s, bool *is_ok = nullptr) {
   CHECK_EQ(s.empty(), false);
 
   bool ok = false;
   char *p = nullptr;
   // std::strtol requires a `long` type
-  long n = std::strtol(s.c_str(), &p, 10);
+  long n = std::strtol(s.c_str(), &p, 10);  // NOLINT
   if (*p == 0) ok = true;
 
   int32_t res = n;
@@ -32,6 +38,8 @@ int32_t StringToInt(const std::string &s, bool *is_ok = nullptr) {
   return res;
 }
 
+/** Convert `std::vector<std::string>` to `std::vector<int32_t>`.
+ */
 std::vector<int32_t> StringVectorToIntVector(
     const std::vector<std::string> &in) {
   std::vector<int32_t> res;
@@ -54,16 +62,21 @@ void TrimString(std::string *s) {
   s->erase(std::find_if(s->rbegin(), s->rend(), not_space).base(), s->end());
 }
 
-// split a string to a vector of string using a set of delimiters.
-//
-// Example usage:
-//
-// @code
-//  std::string in = "1 2 3";
-//  const char* delim = " \t";
-//  std::vector<std::string> out;
-//  SplitStringToVector(in, delim, &out);
-// @encode
+/** split a string to a vector of strings using a set of delimiters.
+
+   Example usage:
+
+   @code
+    std::string in = "1 2 3";
+    const char *delim = " \t";
+    std::vector<std::string> out;
+    SplitStringToVector(in, delim, &out);
+   @endcode
+
+   @param [in]  in    The input string to be split.
+   @param [in]  delim A string of delimiters.
+   @param [out] out   It saves the split result.
+*/
 void SplitStringToVector(const std::string &in, const char *delim,
                          std::vector<std::string> *out) {
   CHECK_NOTNULL(delim);
@@ -146,8 +159,9 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
     } else if (num_fields == 1u) {
       finished = true;
       CHECK_EQ(fields[0] + 1, static_cast<int32_t>(vec.size()));
-    } else
+    } else {
       LOG(FATAL) << "invalid line: " << line;
+    }
   }
 
   CHECK_EQ(finished, true) << "The last line should be the final state";
