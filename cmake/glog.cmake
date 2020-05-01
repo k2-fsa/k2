@@ -17,7 +17,7 @@ function(download_glog)
   FetchContent_Declare(glog_glog
     URL               ${glog_URL}
     URL_HASH          ${glog_HASH}
-    PATCH_COMMAND     sed -i "/include \(CTest\)/d" CMakeLists.txt
+    PATCH_COMMAND     sed -i.bak "/include \(CTest\)/d" CMakeLists.txt
   )
 
   FetchContent_GetProperties(glog_glog)
