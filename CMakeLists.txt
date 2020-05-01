@@ -23,6 +23,11 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Set the build type" FORCE)
 endif()
 
+if(WIN32 AND BUILD_SHARED_LIBS)
+  message(STATUS "Set BUILD_SHARED_LIBS to OFF for Windows")
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+endif()
+
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
