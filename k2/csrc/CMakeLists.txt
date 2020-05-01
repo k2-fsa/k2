@@ -1,95 +1,46 @@
-add_library(properties properties.cc)
-target_include_directories(properties PUBLIC ${CMAKE_SOURCE_DIR})
-target_compile_features(properties PUBLIC cxx_std_11)
-target_link_libraries(properties PUBLIC fsa_algo)
-
-add_library(fsa_equivalent fsa_equivalent.cc)
-target_include_directories(fsa_equivalent PUBLIC ${CMAKE_SOURCE_DIR})
-target_compile_features(fsa_equivalent PUBLIC cxx_std_11)
-target_link_libraries(fsa_equivalent PUBLIC properties)
-
-add_library(fsa_util fsa_util.cc)
-target_include_directories(fsa_util PUBLIC ${CMAKE_SOURCE_DIR})
-target_compile_features(fsa_util PUBLIC cxx_std_11)
-
-add_library(fsa_renderer fsa_renderer.cc)
-target_include_directories(fsa_renderer PUBLIC ${CMAKE_SOURCE_DIR})
-target_compile_features(fsa_renderer PUBLIC cxx_std_11)
-
-add_library(fsa_algo fsa_algo.cc)
-target_include_directories(fsa_algo PUBLIC ${CMAKE_SOURCE_DIR})
-target_compile_features(fsa_algo PUBLIC cxx_std_11)
-target_link_libraries(fsa_algo PRIVATE glog)
-
-add_executable(properties_test properties_test.cc)
-
-target_link_libraries(properties_test
-  PRIVATE
-    properties
-    fsa_algo
-    gtest
-    gtest_main
+# please sort the source files alphabetically
+add_library(fsa
+  fsa_algo.cc
+  fsa_equivalent.cc
+  fsa_renderer.cc
+  fsa_util.cc
+  properties.cc
 )
 
-add_test(NAME Test.properties_test
-  COMMAND
-    $<TARGET_FILE:properties_test>
+target_include_directories(fsa PUBLIC ${CMAKE_SOURCE_DIR})
+if(CMAKE_VERSION VERSION_LESS 3.8)
+  set(CMAKE_CXX_STANDARD 11)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  set(CMAKE_CXX_EXTENSIONS OFF)
+else()
+  target_compile_features(fsa PUBLIC cxx_std_11)
+endif()
+target_link_libraries(fsa PRIVATE glog)
+
+function(k2_add_fsa_test name)
+  add_executable(${name} "${name}.cc")
+  target_link_libraries(${name}
+    PRIVATE
+      fsa
+      gtest
+      gtest_main
+  )
+
+  add_test(NAME "Test.${name}"
+    COMMAND
+      $<TARGET_FILE:${name}>
+  )
+endfunction()
+
+# please sort the source files alphabetically
+set(fsa_tests
+  fsa_algo_test
+  fsa_equivalent_test
+  fsa_renderer_test
+  fsa_util_test
+  properties_test
 )
 
-add_executable(fsa_equivalent_test fsa_equivalent_test.cc)
-
-target_link_libraries(fsa_equivalent_test
-  PRIVATE
-    fsa_equivalent
-    gtest
-    gtest_main
-)
-
-add_test(NAME Test.fsa_equivalent_test
-  COMMAND
-    $<TARGET_FILE:fsa_equivalent_test>
-)
-
-add_executable(fsa_util_test fsa_util_test.cc)
-
-target_link_libraries(fsa_util_test
-  PRIVATE
-    fsa_util
-    gtest
-    gtest_main
-)
-
-add_test(NAME Test.fsa_util_test
-  COMMAND
-    $<TARGET_FILE:fsa_util_test>
-)
-
-add_executable(fsa_renderer_test fsa_renderer_test.cc)
-
-target_link_libraries(fsa_renderer_test
-  PRIVATE
-    fsa_renderer
-    gtest
-    gtest_main
-)
-
-add_test(NAME Test.fsa_renderer_test
-  COMMAND
-    $<TARGET_FILE:fsa_renderer_test>
-)
-
-add_executable(fsa_algo_test fsa_algo_test.cc)
-
-target_link_libraries(fsa_algo_test
-  PRIVATE
-    fsa_algo
-    gtest
-    gtest_main
-)
-
-add_test(NAME Test.fsa_algo_test
-  COMMAND
-    $<TARGET_FILE:fsa_algo_test>
-)
-
-# TODO(fangjun): write some helper functions to create targets.
+foreach(name IN LISTS fsa_tests)
+  k2_add_fsa_test(${name})
+endforeach()

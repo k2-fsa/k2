@@ -21,6 +21,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1
@@ -42,8 +44,5 @@ jobs:
 
       - name: Check style
         shell: bash
-        working-directory: ${{runner.workspace}}/build
-        # it will build all targets; while building a library, it
-        # invokes cpplint automatically to check the corresponding
-        # cc source file. If it find any errors, the return code will be 1.
-        run: cmake --build . 2>&1 | awk '/errors/ {exit 1} {print $0}'
+        working-directory: ${{github.workspace}}
+        run: ./scripts/check_style_cpplint.sh ${{runner.workspace}}/build 1
