@@ -2,42 +2,33 @@
 # See ../LICENSE for clarification regarding multiple authors
 
 function(download_glog)
-  include(ExternalProject)
-
-  set(glog_URL  "https://github.com/google/glog/archive/v0.4.0.tar.gz")
-  set(glog_HASH "sha256=f28359aeba12f30d73d9e4711ef356dc842886968112162bc73002645139c39c")
-
-  set(glog_DIR  "${k2_THIRD_PARTY_DIR}/glog")
-  set(glog_INSTALL_DIR  "${glog_DIR}/install")
-
-  if(WIN32)
-    set(glog_libglog "${glog_INSTALL_DIR}/lib/glog.lib")
-  else()
-    set(glog_libglog "${glog_INSTALL_DIR}/lib/libglog.a")
+  if(CMAKE_VERSION VERSION_LESS 3.11)
+    list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
   endif()
 
-  set(glog_INCLUDE_DIR "${glog_INSTALL_DIR}/include")
-  file(MAKE_DIRECTORY ${glog_INCLUDE_DIR})
+  include(FetchContent)
 
-  ExternalProject_Add(
-    glog_glog
+  set(glog_URL  "https://github.com/google/glog/archive/v0.4.0.tar.gz")
+  set(glog_HASH "SHA256=f28359aeba12f30d73d9e4711ef356dc842886968112162bc73002645139c39c")
+
+  set(WITH_GFLAGS OFF CACHE BOOL "" FORCE)
+  set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+
+  FetchContent_Declare(glog_glog
     URL               ${glog_URL}
-    PREFIX            ${glog_DIR}
-    INSTALL_DIR       ${glog_DIR/install}
-    CMAKE_ARGS        -DCMAKE_INSTALL_PREFIX=${glog_INSTALL_DIR}
-                      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-                      -DWITH_GFLAGS=OFF
-                      -DWITH_THREADS=ON
-                      -DWITH_TLS=ON
-                      -DBUILD_SHARED_LIBS=OFF
-    LOG_DOWNLOAD      ON
-    LOG_CONFIGURE     ON
+    URL_HASH          ${glog_HASH}
+    PATCH_COMMAND     sed -i "/include \(CTest\)/d" CMakeLists.txt
   )
 
-  add_library(glog STATIC IMPORTED GLOBAL)
-  set_property(TARGET glog PROPERTY IMPORTED_LOCATION ${glog_libglog})
-  target_include_directories(glog INTERFACE ${glog_INCLUDE_DIR})
-  add_dependencies(glog glog_glog)
+  FetchContent_GetProperties(glog_glog)
+  if(NOT glog_glog_POPULATED)
+    message(STATUS "Downloading glog")
+    FetchContent_Populate(glog_glog)
+  endif()
+  message(STATUS "glog is downloaded to ${glog_SOURCE_DIR}")
+  message(STATUS "glog's binary dir is ${glog_BINARY_DIR}")
+
+  add_subdirectory(${glog_glog_SOURCE_DIR} ${glog_glog_BINARY_DIR} EXCLUDE_FROM_ALL)
 endfunction()
 
 download_glog()
