@@ -144,12 +144,14 @@ void RmEpsilonsPruned(const WfsaWithFbWeights &a, float beam, Fsa *b,
   @param [out] c   The composed FSA will be output to here.
   @param [out] arc_map_a   If non-NULL, at exit will be a vector of
                    size c->arcs.size(), saying for each arc in
-                   `c` what the source arc in `a` was.
+                   `c` what the source arc in `a` was, `-1` represents
+                   there is no corresponding source arc in `a`.
   @param [out] arc_map_b   If non-NULL, at exit will be a vector of
                    size c->arcs.size(), saying for each arc in
-                   `c` what the source arc in `b` was.
+                   `c` what the source arc in `b` was, `-1` represents
+                   there is no corresponding source arc in `b`.
  */
-void Intersect(const Fsa &a, const Fsa &b, Fsa *c,
+bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
                std::vector<int32_t> *arc_map_a = nullptr,
                std::vector<int32_t> *arc_map_b = nullptr);
 

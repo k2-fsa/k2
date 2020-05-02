@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/util.h"
@@ -123,6 +124,7 @@ struct Fst {
   std::vector<int32_t> aux_label;
 };
 
+using StatePair = std::pair<StateId, StateId>;
 using FsaVec = std::vector<Fsa>;
 using FstVec = std::vector<Fst>;
 using DenseFsaVec = std::vector<DenseFsa>;
