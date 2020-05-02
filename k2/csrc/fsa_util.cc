@@ -29,7 +29,7 @@ int32_t StringToInt(const std::string &s, bool *is_ok = nullptr) {
   char *p = nullptr;
   // std::strtol requires a `long` type
   long n = std::strtol(s.c_str(), &p, 10);  // NOLINT
-  if (*p == 0) ok = true;
+  if (*p == '\0') ok = true;
 
   int32_t res = static_cast<int32_t>(n);
   if (n != res) ok = false;  // out of range

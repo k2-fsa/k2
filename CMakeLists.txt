@@ -13,6 +13,8 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 project(k2)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 
 set(k2_THIRD_PARTY_DIR "${CMAKE_BINARY_DIR}/third_party" CACHE STRING

@@ -34,6 +34,17 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install cpplint==1.4.5
 
+      - name: Install cppcheck
+        run: |
+          cd /tmp
+          git clone --depth 1 https://github.com/danmar/cppcheck.git
+          cd cppcheck
+          mkdir build
+          cd build
+          cmake ..
+          make -j
+          sudo make install
+
       - name: Create Build Directory
         run: cmake -E make_directory ${{runner.workspace}}/build
 
@@ -42,7 +53,12 @@ jobs:
         working-directory: ${{runner.workspace}}/build
         run: cmake -DCMAKE_CXX_CPPLINT=cpplint $GITHUB_WORKSPACE
 
-      - name: Check style
+      - name: Check style with cpplint
         shell: bash
         working-directory: ${{github.workspace}}
         run: ./scripts/check_style_cpplint.sh ${{runner.workspace}}/build 1
+
+      - name: Run cppcheck
+        shell: bash
+        working-directory: ${{github.workspace}}
+        run: ./scripts/run_cppcheck.sh ${{runner.workspace}}/build
