@@ -36,7 +36,14 @@ jobs:
 
       - name: Install cppcheck
         run: |
-          sudo apt-get install -y cppcheck
+          cd /tmp
+          git clone --depth 1 https://github.com/danmar/cppcheck.git
+          cd cppcheck
+          mkdir build
+          cd build
+          cmake ..
+          make -j
+          sudo make install
 
       - name: Create Build Directory
         run: cmake -E make_directory ${{runner.workspace}}/build
