@@ -92,13 +92,13 @@ void SplitStringToVector(const std::string &in, const char *delim,
     start = pos + 1;
 
     TrimString(&sub);
-    if (sub.empty() == false) out->emplace_back(std::move(sub));
+    if (!sub.empty()) out->emplace_back(std::move(sub));
   }
 
   if (start < in.size()) {
     auto sub = in.substr(start);
     TrimString(&sub);
-    if (sub.empty() == false) out->emplace_back(std::move(sub));
+    if (!sub.empty()) out->emplace_back(std::move(sub));
   }
 }
 
