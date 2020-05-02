@@ -10,10 +10,13 @@
 #include <algorithm>
 #include <numeric>
 #include <stack>
+#include <queue>
+#include <unordered_map>
 #include <utility>
 
 #include "glog/logging.h"
 #include "k2/csrc/properties.h"
+#include "k2/csrc/util.h"
 
 namespace {
 
@@ -23,6 +26,19 @@ struct DfsState {
   int32_t arc_begin;  // arc index of the visiting arc
   int32_t arc_end;    // end of the arc index of the visiting node
 };
+
+inline int32_t InsertIntersectionState(
+    const k2::StatePair &new_state, int32_t *state_index_c,
+    std::queue<k2::StatePair> *qstates,
+    std::unordered_map<k2::StatePair, int32_t, k2::PairHash> *state_pair_map) {
+  auto result = state_pair_map->insert({new_state, *state_index_c + 1});
+  if (result.second) {
+    // we have not visited `new_state` before.
+    qstates->push(new_state);
+    ++(*state_index_c);
+  }
+  return result.first->second;
+}
 
 }  // namespace
 
@@ -150,6 +166,135 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   }
 }
 
+bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
+               std::vector<int32_t> *arc_map_a /*= nullptr*/,
+               std::vector<int32_t> *arc_map_b /*= nullptr*/) {
+  CHECK_NOTNULL(c);
+  c->arc_indexes.clear();
+  c->arcs.clear();
+  if (arc_map_a != nullptr) arc_map_a->clear();
+  if (arc_map_b != nullptr) arc_map_b->clear();
+
+  if (IsEmpty(a) || IsEmpty(b)) return true;
+  if (!IsArcSorted(a) || !IsArcSorted(b)) return false;
+  // either `a` or `b` must be epsilon-free
+  if (!IsEpsilonFree(a) && !IsEpsilonFree(b)) return false;
+
+  int32_t final_state_a = a.NumStates() - 1;
+  int32_t final_state_b = b.NumStates() - 1;
+  const auto arc_a_begin = a.arcs.begin();
+  const auto arc_a_end = a.arcs.end();
+  const auto arc_b_begin = b.arcs.begin();
+  const auto arc_b_end = b.arcs.end();
+  using ArcIterator = std::vector<Arc>::const_iterator;
+
+  const int32_t final_state_c = -1;  // just as a placeholder
+  // no corresponding arc mapping from `c` to `a` or `c` to `b`
+  const int32_t arc_map_none = -1;
+  auto &arc_indexes_c = c->arc_indexes;
+  auto &arcs_c = c->arcs;
+
+  // map state pair to unique id
+  std::unordered_map<StatePair, int32_t, PairHash> state_pair_map;
+  std::queue<StatePair> qstates;
+  qstates.push({0, 0});
+  state_pair_map.insert({{0, 0}, 0});
+  state_pair_map.insert({{final_state_a, final_state_b}, final_state_c});
+  int32_t state_index_c = 0;
+  while (!qstates.empty()) {
+    arc_indexes_c.push_back(static_cast<int32_t>(arcs_c.size()));
+
+    auto curr_state_pair = qstates.front();
+    qstates.pop();
+    // as we have inserted `curr_state_pair` before.
+    int32_t curr_state_index = state_pair_map[curr_state_pair];
+
+    auto state_a = curr_state_pair.first;
+    ArcIterator a_arc_iter_begin = arc_a_begin + a.arc_indexes[state_a];
+    ArcIterator a_arc_iter_end =
+        (state_a != final_state_a) ? (arc_a_begin + a.arc_indexes[state_a + 1])
+                                   : arc_a_end;
+
+    auto state_b = curr_state_pair.second;
+    ArcIterator b_arc_iter_begin = arc_b_begin + b.arc_indexes[state_b];
+    ArcIterator b_arc_iter_end =
+        (state_b != final_state_b) ? (arc_b_begin + b.arc_indexes[state_b + 1])
+                                   : arc_b_end;
+
+    // As both `a` and `b` are arc-sorted, we first process epsilon arcs.
+    // Noted that at most one for-loop below will really run as either `a` or
+    // `b` is epsilon-free.
+    for (; a_arc_iter_begin != a_arc_iter_end; ++a_arc_iter_begin) {
+      if (kEpsilon != a_arc_iter_begin->label) break;
+
+      StatePair new_state{a_arc_iter_begin->dest_state, state_b};
+      int32_t new_state_index = InsertIntersectionState(
+          new_state, &state_index_c, &qstates, &state_pair_map);
+      arcs_c.push_back({curr_state_index, new_state_index, kEpsilon});
+      if (arc_map_a != nullptr)
+        arc_map_a->push_back(
+            static_cast<int32_t>(a_arc_iter_begin - arc_a_begin));
+      if (arc_map_b != nullptr) arc_map_b->push_back(arc_map_none);
+    }
+    for (; b_arc_iter_begin != b_arc_iter_end; ++b_arc_iter_begin) {
+      if (kEpsilon != b_arc_iter_begin->label) break;
+      StatePair new_state{state_a, b_arc_iter_begin->dest_state};
+      int32_t new_state_index = InsertIntersectionState(
+          new_state, &state_index_c, &qstates, &state_pair_map);
+      arcs_c.push_back({curr_state_index, new_state_index, kEpsilon});
+      if (arc_map_a != nullptr) arc_map_a->push_back(arc_map_none);
+      if (arc_map_b != nullptr)
+        arc_map_b->push_back(
+            static_cast<int32_t>(b_arc_iter_begin - arc_b_begin));
+    }
+
+    // as both `a` and `b` are arc-sorted, we will iterate over the state with
+    // less number of arcs.
+    bool swapped = false;
+    if ((a_arc_iter_end - a_arc_iter_begin) >
+        (b_arc_iter_end - b_arc_iter_begin)) {
+      std::swap(a_arc_iter_begin, b_arc_iter_begin);
+      std::swap(a_arc_iter_end, b_arc_iter_end);
+      swapped = true;
+    }
+
+    for (; a_arc_iter_begin != a_arc_iter_end; ++a_arc_iter_begin) {
+      Arc curr_a_arc = *a_arc_iter_begin;  // copy here as we may swap later
+      auto b_arc_range =
+          std::equal_range(b_arc_iter_begin, b_arc_iter_end, curr_a_arc,
+                           [](const Arc &left, const Arc &right) {
+            return left.label < right.label;
+          });
+      for (ArcIterator it_b = b_arc_range.first; it_b != b_arc_range.second;
+           ++it_b) {
+        Arc curr_b_arc = *it_b;
+        if (swapped) std::swap(curr_a_arc, curr_b_arc);
+        StatePair new_state{curr_a_arc.dest_state, curr_b_arc.dest_state};
+        int32_t new_state_index = InsertIntersectionState(
+            new_state, &state_index_c, &qstates, &state_pair_map);
+        arcs_c.push_back({curr_state_index, new_state_index, curr_a_arc.label});
+
+        int32_t curr_arc_index_a = static_cast<int32_t>(
+            a_arc_iter_begin - (swapped ? arc_b_begin : arc_a_begin));
+        int32_t curr_arc_index_b =
+            static_cast<int32_t>(it_b - (swapped ? arc_a_begin : arc_b_begin));
+        if (swapped) std::swap(curr_arc_index_a, curr_arc_index_b);
+        if (arc_map_a != nullptr) arc_map_a->push_back(curr_arc_index_a);
+        if (arc_map_b != nullptr) arc_map_b->push_back(curr_arc_index_b);
+      }
+    }
+  }
+
+  // push final state
+  arc_indexes_c.push_back(static_cast<int32_t>(arcs_c.size()));
+  ++state_index_c;
+  // then replace `final_state_c` with the real index of final state of `c`
+  for (auto &arc : arcs_c) {
+    if (arc.dest_state == final_state_c) arc.dest_state = state_index_c;
+  }
+  return true;
+}
+
 void ArcSort(const Fsa &a, Fsa *b,
              std::vector<int32_t> *arc_map /*= nullptr*/) {
   CHECK_NOTNULL(b);
@@ -175,13 +320,12 @@ void ArcSort(const Fsa &a, Fsa *b,
     std::transform(arc_begin_iter + begin, arc_begin_iter + end,
                    index_begin_iter + begin,
                    std::back_inserter(arc_range_to_be_sorted),
-                   [](const Arc &arc, int32_t index) -> ArcWithIndex {
-                     return std::make_pair(arc, index);
-                   });
+                   [](const Arc & arc, int32_t index)
+                       ->ArcWithIndex { return std::make_pair(arc, index); });
     std::sort(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
               [](const ArcWithIndex &left, const ArcWithIndex &right) {
-                return left.first < right.first;  // sort on arc
-              });
+      return left.first < right.first;  // sort on arc
+    });
     // copy index mappings back to `indexes`
     std::transform(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
                    index_begin_iter + begin,

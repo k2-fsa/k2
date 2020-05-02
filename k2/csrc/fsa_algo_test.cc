@@ -19,10 +19,13 @@
 namespace k2 {
 
 TEST(FsaAlgo, Connect) {
-  std::vector<Arc> arcs = {
-      {0, 1, 1}, {0, 2, 2}, {1, 3, 3}, {1, 6, 6},
-      {2, 4, 2}, {2, 6, 3}, {5, 0, 1},
-  };
+  std::vector<Arc> arcs = {{0, 1, 1},
+                           {0, 2, 2},
+                           {1, 3, 3},
+                           {1, 6, 6},
+                           {2, 4, 2},
+                           {2, 6, 3},
+                           {5, 0, 1}, };
 
   std::vector<int32_t> arc_indexes = {0, 2, 4, 6, 6, 6, 7};
 
@@ -52,11 +55,7 @@ TEST(FsaAlgo, Connect) {
     EXPECT_THAT(connected.arc_indexes, ::testing::ElementsAre(0, 2, 3, 4));
 
     std::vector<Arc> target_arcs = {
-        {0, 1, 1},
-        {0, 2, 2},
-        {1, 3, 6},
-        {2, 3, 3},
-    };
+        {0, 1, 1}, {0, 2, 2}, {1, 3, 6}, {2, 3, 3}, };
     EXPECT_EQ(connected.arcs[0], target_arcs[0]);
     EXPECT_EQ(connected.arcs[1], target_arcs[1]);
     EXPECT_EQ(connected.arcs[2], target_arcs[2]);
@@ -73,10 +72,14 @@ TEST(FsaAlgo, Connect) {
 
   {
     // A non-empty fsa that after trimming, it returns an empty fsa.
-    std::vector<Arc> arcs = {
-        {0, 1, 1}, {0, 2, 2}, {1, 3, 3}, {1, 6, 6},
-        {2, 4, 2}, {2, 6, 3}, {5, 0, 1}, {5, 7, 2},
-    };
+    std::vector<Arc> arcs = {{0, 1, 1},
+                             {0, 2, 2},
+                             {1, 3, 3},
+                             {1, 6, 6},
+                             {2, 4, 2},
+                             {2, 6, 3},
+                             {5, 0, 1},
+                             {5, 7, 2}, };
 
     std::vector<int32_t> arc_indexes = {0, 2, 4, 6, 6, 6, 8, 8};
 
@@ -93,6 +96,100 @@ TEST(FsaAlgo, Connect) {
     Connect(fsa, &connected, &arc_map);
     EXPECT_TRUE(IsEmpty(connected));
     EXPECT_TRUE(arc_map.empty());
+  }
+}
+
+TEST(FsaAlgo, Intersect) {
+  // empty fsa
+  {
+    Fsa a;
+    Fsa b;
+    Fsa c;
+    // arbitrary states and arcs
+    c.arcs = {{0, 1, 2}};
+    c.arc_indexes = {1};
+    std::vector<int32_t> arc_map_a(10);  // an arbitrary number
+    std::vector<int32_t> arc_map_b(5);
+    bool status = Intersect(a, b, &c, &arc_map_a, &arc_map_b);
+    EXPECT_TRUE(status);
+    EXPECT_TRUE(c.arc_indexes.empty());
+    EXPECT_TRUE(c.arcs.empty());
+    EXPECT_TRUE(arc_map_a.empty());
+    EXPECT_TRUE(arc_map_b.empty());
+  }
+
+  {
+    std::vector<Arc> arcs_a = {{0, 1, 1},
+                               {1, 2, 0},
+                               {1, 3, 1},
+                               {1, 4, 2},
+                               {2, 2, 1},
+                               {2, 3, 1},
+                               {2, 3, 2},
+                               {3, 3, 0},
+                               {3, 4, 1}};
+    std::vector<int32_t> arc_indexes_a = {0, 1, 4, 7, 9};
+    Fsa a;
+    a.arc_indexes = std::move(arc_indexes_a);
+    a.arcs = std::move(arcs_a);
+
+    std::vector<Arc> arcs_b = {{0, 1, 1}, {1, 3, 1}, {1, 2, 2}, {2, 3, 1}, };
+    std::vector<int32_t> arc_indexes_b = {0, 1, 3, 4, };
+    Fsa b;
+    b.arc_indexes = std::move(arc_indexes_b);
+    b.arcs = std::move(arcs_b);
+
+    Fsa c;
+    std::vector<int32_t> arc_map_a(10);  // an arbitrary number
+    std::vector<int32_t> arc_map_b(5);
+    bool status = Intersect(a, b, &c, &arc_map_a, &arc_map_b);
+    EXPECT_TRUE(status);
+
+    std::vector<Arc> arcs_c = {{0, 1, 1},
+                               {1, 2, 0},
+                               {1, 3, 1},
+                               {1, 4, 2},
+                               {2, 5, 1},
+                               {2, 6, 1},
+                               {2, 6, 2},
+                               {3, 3, 0},
+                               {6, 6, 0},
+                               {6, 7, 1}, };
+    std::vector<int32_t> arc_indexes_c = {0, 1, 4, 6, 8, 8, 8, 10};
+
+    ASSERT_EQ(c.arc_indexes.size(), arc_indexes_c.size());
+    EXPECT_THAT(c.arc_indexes, ::testing::ElementsAre(0, 1, 4, 7, 8, 8, 8, 10));
+    ASSERT_EQ(c.arcs.size(), arcs_c.size());
+    for (std::size_t i = 0; i != arcs_c.size(); ++i)
+      EXPECT_EQ(c.arcs[i], arcs_c[i]);
+
+    // arc index in `c` -> arc index in `a`
+    // 0 -> 0
+    // 1 -> 1
+    // 2 -> 2
+    // 3 -> 3
+    // 4 -> 4
+    // 5 -> 5
+    // 6 -> 6
+    // 7 -> 7
+    // 8 -> 7
+    // 9 -> 8
+    EXPECT_THAT(arc_map_a,
+                ::testing::ElementsAre(0, 1, 2, 3, 4, 5, 6, 7, 7, 8));
+
+    // arc index in `c` -> arc index in `b`
+    // 0 -> 0
+    // 1 -> -1
+    // 2 -> 1
+    // 3 -> 2
+    // 4 -> 1
+    // 5 -> 1
+    // 6 -> 2
+    // 7 -> -1
+    // 8 -> -1
+    // 9 -> 3
+    EXPECT_THAT(arc_map_b,
+                ::testing::ElementsAre(0, -1, 1, 2, 1, 1, 2, -1, -1, 3));
   }
 }
 
@@ -113,8 +210,7 @@ TEST(FsaAlgo, ArcSort) {
 
   {
     std::vector<Arc> arcs = {
-        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
-    };
+        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0}, };
     std::vector<int32_t> arc_indexes = {0, 3, 5, 6, 6};
     Fsa fsa;
     fsa.arc_indexes = std::move(arc_indexes);
@@ -125,14 +221,9 @@ TEST(FsaAlgo, ArcSort) {
     EXPECT_THAT(arc_sorted.arc_indexes, ::testing::ElementsAre(0, 3, 5, 6, 6));
     ASSERT_EQ(arc_sorted.arcs.size(), fsa.arcs.size());
     std::vector<Arc> target_arcs = {
-        {0, 2, 0}, {0, 4, 0}, {0, 1, 2}, {1, 3, 0}, {1, 2, 1}, {2, 1, 0},
-    };
-    EXPECT_EQ(arc_sorted.arcs[0], target_arcs[0]);
-    EXPECT_EQ(arc_sorted.arcs[1], target_arcs[1]);
-    EXPECT_EQ(arc_sorted.arcs[2], target_arcs[2]);
-    EXPECT_EQ(arc_sorted.arcs[3], target_arcs[3]);
-    EXPECT_EQ(arc_sorted.arcs[4], target_arcs[4]);
-    EXPECT_EQ(arc_sorted.arcs[5], target_arcs[5]);
+        {0, 2, 0}, {0, 4, 0}, {0, 1, 2}, {1, 3, 0}, {1, 2, 1}, {2, 1, 0}, };
+    for (std::size_t i = 0; i != target_arcs.size(); ++i)
+      EXPECT_EQ(arc_sorted.arcs[i], target_arcs[i]);
 
     // arc index in `arc_sortd` -> arc index in original `fsa`
     // 0 -> 2
@@ -229,10 +320,14 @@ TEST(FsaAlgo, TopSort) {
 
     ASSERT_EQ(arc_indexes.size(), 7u);
     EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 3, 4, 5, 7, 8));
-    std::vector<Arc> expected_arcs = {
-        {0, 1, 40}, {0, 3, 20}, {1, 2, 50}, {2, 3, 8},
-        {3, 4, 30}, {4, 6, 60}, {4, 5, 10}, {5, 6, 2},
-    };
+    std::vector<Arc> expected_arcs = {{0, 1, 40},
+                                      {0, 3, 20},
+                                      {1, 2, 50},
+                                      {2, 3, 8},
+                                      {3, 4, 30},
+                                      {4, 6, 60},
+                                      {4, 5, 10},
+                                      {5, 6, 2}, };
 
     for (auto i = 0; i != 8; ++i) {
       EXPECT_EQ(arcs[i], expected_arcs[i]);
