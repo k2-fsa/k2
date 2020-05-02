@@ -19,16 +19,12 @@
 #   cmake ..
 #   make check_style
 
-default='\033[0m'
-bold='\033[1m'
-red='\033[31m'
-green='\033[32m'
 
 cur_dir=$(cd $(dirname $BASH_SOURCE) && pwd)
 k2_dir=$(cd $cur_dir/.. && pwd)
 
 if [ $# -ge 1 ]; then
-  build_dir=$1
+  build_dir=$(cd $1 && pwd)
   shift
 else
   # we assume that the build dir is "./build"; cpplint
@@ -37,14 +33,7 @@ else
 fi
 cpplint_src=$build_dir/_deps/cpplint-src/cpplint.py
 
-function ok() {
-  printf "${bold}${green}[OK]${default} $1\n"
-}
-
-function error() {
-  printf "${bold}${red}[FAILED]${default} $1\n"
-  exit 1
-}
+source $k2_dir/scripts/utils.sh
 
 # return true if the given file is a c++ source file
 # return false otherwise
@@ -58,7 +47,7 @@ function is_source_code_file() {
 }
 
 function check_style() {
-  python3 $cpplint_src $1 || error $1
+  python3 $cpplint_src $1 || abort $1
 }
 
 function check_last_commit() {
@@ -97,7 +86,7 @@ function do_check() {
 
 function main() {
   if [ ! -f $cpplint_src ]; then
-    error "\n$cpplint_src does not exist.\n\
+    abort "\n$cpplint_src does not exist.\n\
 Please run
     mkdir build
     cd build

@@ -1,0 +1,3 @@
+*:build_dir/_deps/*
+unusedFunction:k2_dir/k2/csrc/*_test.cc
+useStlAlgorithm:k2_dir/k2/csrc/properties.cc
