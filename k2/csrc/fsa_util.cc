@@ -151,8 +151,8 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
       arc.dest_state = fields[1];
       arc.label = fields[2];
 
-      if (arc.src_state >= vec.size()) vec.resize(arc.src_state + 1);
-      if (arc.dest_state >= vec.size()) vec.resize(arc.dest_state + 1);
+      auto new_size = std::max(arc.src_state, arc.dest_state);
+      if (new_size >= vec.size()) vec.resize(new_size + 1);
 
       vec[arc.src_state].push_back(arc);
       ++num_arcs;
