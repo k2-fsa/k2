@@ -49,7 +49,7 @@ def main():
     #       source = graphviz.Source(dot)
     #       source.render('/tmp/lesson_01', format='png', cleanup=True)
     #
-    # (3) You will get `tmp/lesson_01.png`.
+    # (3) You will get `/tmp/lesson_01.png`.
 
 
 if __name__ == '__main__':
