@@ -67,7 +67,7 @@ void GetArcIndexes2(const std::vector<std::vector<int32_t>> &arc_map,
 
 void Swap(Fsa *a, Fsa *b);
 
-/** Build a FSA from a string.
+/** Build an FSA from a string.
 
   The input string is a transition table with the following
   format (same with OpenFST):
@@ -86,6 +86,8 @@ void Swap(Fsa *a, Fsa *b);
   @return an FSA.
  */
 std::unique_ptr<Fsa> StringToFsa(const std::string &s);
+
+std::string FsaToString(const Fsa &fsa);
 
 }  // namespace k2
 

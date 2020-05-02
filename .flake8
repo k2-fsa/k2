@@ -1,0 +1,4 @@
+[flake8]
+show-source=true
+statistics=true
+max-line-length=80

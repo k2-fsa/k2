@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "k2/csrc/properties.h"
 
 namespace {
 /** Convert a string to an integer.
@@ -186,6 +187,19 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
   }
   fsa->arc_indexes.emplace_back(fsa->arc_indexes.back());
   return fsa;
+}
+
+std::string FsaToString(const Fsa &fsa) {
+  if (IsEmpty(fsa)) return "";
+
+  static constexpr const char *kSep = " ";
+  std::ostringstream os;
+
+  for (const auto &arc : fsa.arcs) {
+    os << arc.src_state << kSep << arc.dest_state << kSep << arc.label << "\n";
+  }
+  os << fsa.NumStates() - 1 << "\n";
+  return os.str();
 }
 
 }  // namespace k2
