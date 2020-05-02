@@ -25,7 +25,6 @@ function(k2_add_fsa_test name)
       gtest
       gtest_main
   )
-
   add_test(NAME "Test.${name}"
     COMMAND
       $<TARGET_FILE:${name}>

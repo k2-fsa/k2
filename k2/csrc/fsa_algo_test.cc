@@ -7,11 +7,14 @@
 
 #include "k2/csrc/fsa_algo.h"
 
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "k2/csrc/fsa_renderer.h"
+#include "k2/csrc/fsa_util.h"
 
 namespace k2 {
 
@@ -139,6 +142,101 @@ TEST(FsaAlgo, ArcSort) {
     // 4 -> 3
     // 5 -> 5
     EXPECT_THAT(arc_map, ::testing::ElementsAre(2, 1, 0, 4, 3, 5));
+  }
+}
+
+TEST(FsaAlgo, TopSort) {
+  {
+    // case 1: empty input fsa
+    Fsa fsa;
+    Fsa top_sorted;
+    std::vector<int32_t> state_map(10);
+    bool status = TopSort(fsa, &top_sorted, &state_map);
+
+    EXPECT_TRUE(status);
+    EXPECT_TRUE(IsEmpty(top_sorted));
+    EXPECT_TRUE(state_map.empty());
+  }
+
+  {
+    // case 2: non-connected fsa (not co-accessible)
+    std::string s = R"(
+0 2 3
+1 2 1
+2
+)";
+    auto fsa = StringToFsa(s);
+    ASSERT_NE(fsa.get(), nullptr);
+
+    Fsa top_sorted;
+    std::vector<int32_t> state_map(10);
+    bool status = TopSort(*fsa, &top_sorted, &state_map);
+
+    EXPECT_FALSE(status);
+    EXPECT_TRUE(IsEmpty(top_sorted));
+    EXPECT_TRUE(state_map.empty());
+  }
+
+  {
+    // case 3: non-connected fsa (not accessible)
+    std::string s = R"(
+0 2 3
+1 0 1
+2
+)";
+    auto fsa = StringToFsa(s);
+    ASSERT_NE(fsa.get(), nullptr);
+
+    Fsa top_sorted;
+    std::vector<int32_t> state_map(10);
+    bool status = TopSort(*fsa, &top_sorted, &state_map);
+
+    EXPECT_FALSE(status);
+    EXPECT_TRUE(IsEmpty(top_sorted));
+    EXPECT_TRUE(state_map.empty());
+  }
+
+  {
+    // case 4: connected fsa
+    std::string s = R"(
+0 4 40
+0 2 20
+1 6 2
+2 3 30
+3 6 60
+3 1 10
+4 5 50
+5 2 8
+6
+)";
+    auto fsa = StringToFsa(s);
+    ASSERT_NE(fsa.get(), nullptr);
+
+    Fsa top_sorted;
+    std::vector<int32_t> state_map;
+
+    TopSort(*fsa, &top_sorted, &state_map);
+
+    ASSERT_EQ(top_sorted.NumStates(), fsa->NumStates());
+
+    ASSERT_FALSE(state_map.empty());
+    EXPECT_THAT(state_map, ::testing::ElementsAre(0, 4, 5, 2, 3, 1, 6));
+
+    ASSERT_FALSE(IsEmpty(top_sorted));
+
+    const auto &arc_indexes = top_sorted.arc_indexes;
+    const auto &arcs = top_sorted.arcs;
+
+    ASSERT_EQ(arc_indexes.size(), 7u);
+    EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 3, 4, 5, 7, 8));
+    std::vector<Arc> expected_arcs = {
+        {0, 1, 40}, {0, 3, 20}, {1, 2, 50}, {2, 3, 8},
+        {3, 4, 30}, {4, 6, 60}, {4, 5, 10}, {5, 6, 2},
+    };
+
+    for (auto i = 0; i != 8; ++i) {
+      EXPECT_EQ(arcs[i], expected_arcs[i]);
+    }
   }
 }
 

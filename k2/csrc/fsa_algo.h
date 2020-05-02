@@ -213,6 +213,24 @@ void RandomPath(const Fsa &a, const float *a_cost, Fsa *b,
                               arc indexes in input fsa.
  */
 void ArcSort(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
+/**
+    Sort the input fsa topologically.
+
+    It returns an empty fsa when the input fsa is not acyclic,
+    is not connected, or is empty; otherwise it returns the topologically
+    sorted fsa in `b`.
+
+    @param [in]   a   Input fsa to be topo sorted.
+    @param [out]  b   Output fsa. It is set to empty if the input fsa is not
+                      acyclic or is not connected; otherwise it contains the
+                      topo sorted fsa.
+    @param [out]  state_map   Maps from state indexes in the output fsa to
+                              state indexes in input fsa. It is empty if
+                              the output fsa is empty.
+    @return true if the input fsa is acyclic and connected,
+            or if the input is empty; return false otherwise.
+ */
+bool TopSort(const Fsa& a, Fsa* b, std::vector<int32_t>* state_map = nullptr);
 
 /**
 

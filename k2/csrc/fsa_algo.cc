@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "glog/logging.h"
+#include "k2/csrc/properties.h"
 
 namespace {
 
@@ -57,7 +58,7 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
       auto state = current_state.state;  // get a copy since we will destroy it
       stack.pop();
       if (!stack.empty()) {
-        // if it has a parent, set the parent's coaccessible flag
+        // if it has a parent, set the parent's co-accessible flag
         if (coaccessible[state]) {
           auto &parent = stack.top();
           coaccessible[parent.state] = true;
@@ -98,7 +99,7 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
 
 void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   CHECK_NOTNULL(b);
-  if (arc_map) arc_map->clear();
+  if (arc_map != nullptr) arc_map->clear();
 
   std::vector<int32_t> state_b_to_a;
   ConnectCore(a, &state_b_to_a);
@@ -108,7 +109,7 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   b->arcs.clear();
   b->arcs.reserve(a.arcs.size());
 
-  if (arc_map) {
+  if (arc_map != nullptr) {
     arc_map->clear();
     arc_map->reserve(a.arcs.size());
   }
@@ -144,9 +145,7 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
       arc.src_state = i;
       arc.dest_state = state_b;
       b->arcs.push_back(arc);
-      if (arc_map) {
-        arc_map->push_back(arc_begin);
-      }
+      if (arc_map != nullptr) arc_map->push_back(arc_begin);
     }
   }
 }
@@ -194,4 +193,112 @@ void ArcSort(const Fsa &a, Fsa *b,
   }
   if (arc_map != nullptr) arc_map->swap(indexes);
 }
+
+bool TopSort(const Fsa &a, Fsa *b,
+             std::vector<int32_t> *state_map /*= nullptr*/) {
+  CHECK_NOTNULL(b);
+  b->arc_indexes.clear();
+  b->arcs.clear();
+
+  if (state_map != nullptr) state_map->clear();
+
+  if (IsEmpty(a)) return true;
+  if (!IsConnected(a)) return false;
+
+  static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
+  static constexpr int8_t kVisiting = 1;    // a node that is under visiting
+  static constexpr int8_t kVisited = 2;     // a node that has been visited
+
+  auto num_states = a.NumStates();
+  auto final_state = num_states - 1;
+  std::vector<int8_t> state_status(num_states, kNotVisited);
+
+  // map order to state.
+  // state 0 has the largest order, i.e., num_states - 1
+  // final_state has the least order, i.e., 0
+  std::vector<int32_t> order;
+  order.reserve(num_states);
+
+  std::stack<DfsState> stack;
+  stack.push({0, a.arc_indexes[0], a.arc_indexes[1]});
+  state_status[0] = kVisiting;
+  bool is_acyclic = true;
+  while (is_acyclic && !stack.empty()) {
+    auto &current_state = stack.top();
+    if (current_state.arc_begin == current_state.arc_end) {
+      // we have finished visiting this state
+      state_status[current_state.state] = kVisited;
+      order.push_back(current_state.state);
+      stack.pop();
+      continue;
+    }
+    const auto &arc = a.arcs[current_state.arc_begin];
+    auto next_state = arc.dest_state;
+    auto status = state_status[next_state];
+    switch (status) {
+      case kNotVisited: {
+        // a new discovered node
+        state_status[next_state] = kVisiting;
+        auto arc_begin = a.arc_indexes[next_state];
+        if (next_state != final_state)
+          stack.push({next_state, arc_begin, a.arc_indexes[next_state + 1]});
+        else
+          stack.push({next_state, arc_begin, arc_begin});
+        ++current_state.arc_begin;
+        break;
+      }
+      case kVisiting:
+        // this is a back arc indicating a loop in the graph
+        is_acyclic = false;
+        break;
+      case kVisited:
+        // this is a forward cross arc, do nothing.
+        ++current_state.arc_begin;
+        break;
+      default:
+        LOG(FATAL) << "Unreachable code is executed!";
+        break;
+    }
+  }
+
+  if (!is_acyclic) return false;
+
+  std::vector<int32_t> state_a_to_b(num_states);
+  for (auto i = 0; i != num_states; ++i) {
+    state_a_to_b[order[num_states - 1 - i]] = i;
+  }
+
+  // start state maps to start state
+  CHECK_EQ(state_a_to_b.front(), 0);
+  // final state maps to final state
+  CHECK_EQ(state_a_to_b.back(), final_state);
+
+  b->arcs.reserve(a.arc_indexes.size());
+  b->arc_indexes.resize(num_states);
+
+  int32_t arc_begin;
+  int32_t arc_end;
+  for (auto state_b = 0; state_b != num_states; ++state_b) {
+    auto state_a = order[num_states - 1 - state_b];
+    arc_begin = a.arc_indexes[state_a];
+    if (state_a != final_state)
+      arc_end = a.arc_indexes[state_a + 1];
+    else
+      arc_end = arc_begin;
+
+    b->arc_indexes[state_b] = static_cast<int32_t>(b->arcs.size());
+    for (; arc_begin != arc_end; ++arc_begin) {
+      auto arc = a.arcs[arc_begin];
+      arc.src_state = state_b;
+      arc.dest_state = state_a_to_b[arc.dest_state];
+      b->arcs.push_back(arc);
+    }
+  }
+  if (state_map != nullptr) {
+    std::reverse(order.begin(), order.end());
+    state_map->swap(order);
+  }
+  return true;
+}
+
 }  // namespace k2
