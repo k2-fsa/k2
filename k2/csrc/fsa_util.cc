@@ -31,7 +31,7 @@ int32_t StringToInt(const std::string &s, bool *is_ok = nullptr) {
   long n = std::strtol(s.c_str(), &p, 10);  // NOLINT
   if (*p == 0) ok = true;
 
-  int32_t res = n;
+  int32_t res = static_cast<int32_t>(n);
   if (n != res) ok = false;  // out of range
   if (is_ok != nullptr) *is_ok = ok;
 
