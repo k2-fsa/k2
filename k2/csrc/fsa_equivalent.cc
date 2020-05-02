@@ -88,7 +88,7 @@ bool RandomPath(const Fsa &a, Fsa *b,
     if (state_map_a2b[state] == -1) {
       state_map_a2b[state] = num_visited_state;
       state_map_b2a.push_back(state);
-      visited_arcs.push_back(std::unordered_set<Arc, ArcHash>());
+      visited_arcs.emplace_back(std::unordered_set<Arc, ArcHash>());
       ++num_visited_state;
     }
     if (state == final_state) break;

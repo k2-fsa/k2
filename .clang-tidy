@@ -1,0 +1,96 @@
+---
+# Configurations for clang-tidy
+#
+# To use clang-tidy, you have to install it.
+#
+# (1) On Ubuntu, you can install it by
+#
+#  sudo apt-get install -y clang-tidy-9
+#
+# (2) On macOS, you can install it by
+#
+#   brew install llvm
+#   export PATH=$(brew --prefix llvm)/bin:${PATH}
+#
+# clang-tidy-9 -dump-config
+#  can be used to show the current configuration for clang-tidy
+#
+# To run clang-tidy for k2, use
+#
+#     mkdir build
+#     cd build
+#     cmake ..
+#     cd ..
+#     clang-tidy-9 -p build k2/csrc/*.cc
+#
+# ------------------------------------------------------------
+# Explanations for disabled checks
+# ------------------------------------------------------------
+# -google-readability-braces-around-statements
+#   We do not use braces for single `if` statement.
+#
+# -modernize-use-trailing-return-type
+#    We do not use trailing return type in most lambda functions.
+#
+# -cppcoreguidelines-special-member-functions
+# -cppcoreguidelines-owning-memory
+#   Disable warnings in googletest's `TEST()`
+#
+# -google-runtime-references
+# -cppcoreguidelines-pro-type-vararg
+# -cppcoreguidelines-pro-bounds-pointer-arithmetic
+#   Disable warnings in the pybind code for k2.
+#
+# -cppcoreguidelines-non-private-member-variables-in-classes
+#   We have public members for `struct`
+
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  google-*,
+  -google-readability-braces-around-statements,
+  -google-runtime-references,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-special-member-functions,
+  -cppcoreguidelines-pro-type-vararg,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-braces-around-statements,
+  -readability-uppercase-literal-suffix,
+  performance-*,
+
+HeaderFilterRegex: "k2/csrc/.*"
+
+# TODO(fangjun): when to enable this?
+#
+# If it is uncommented, it will treat warnings as errors.
+# WarningsAsErrors: "*"
+
+# refer to
+# https://clang.llvm.org/extra/clang-tidy/checks/readability-identifier-naming.html#readability-identifier-naming
+CheckOptions:
+  - { key: readability-identifier-naming.NamespaceCase,           value: lower_case }
+  - { key: readability-identifier-naming.ClassCase,               value: CamelCase  }
+  - { key: readability-identifier-naming.StructCase,              value: CamelCase  }
+  - { key: readability-identifier-naming.TemplateParameterCase,   value: CamelCase  }
+  - { key: readability-identifier-naming.FunctionCase,            value: CamelCase  }
+  - { key: readability-identifier-naming.VariableCase,            value: lower_case }
+  - { key: readability-identifier-naming.ClassMemberCase,         value: lower_case }
+  - { key: readability-identifier-naming.EnumConstantCase,        value: CamelCase  }
+  - { key: readability-identifier-naming.EnumConstantPrefix,      value: k          }
+  - { key: readability-identifier-naming.ConstexprVariableCase,   value: CamelCase  }
+  - { key: readability-identifier-naming.ConstexprVariablePrefix, value: k          }
+  - { key: readability-identifier-naming.GlobalConstantCase,      value: CamelCase  }
+  - { key: readability-identifier-naming.GlobalConstantPrefix,    value: k          }
+  - { key: readability-identifier-naming.MemberConstantCase,      value: CamelCase  }
+  - { key: readability-identifier-naming.MemberConstantPrefix,    value: k          }
+  - { key: readability-identifier-naming.StaticConstantCase,      value: CamelCase  }
+  - { key: readability-identifier-naming.StaticConstantPrefix,    value: k          }
+...

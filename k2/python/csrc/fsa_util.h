@@ -9,6 +9,6 @@
 
 #include "k2/python/csrc/k2.h"
 
-void pybind_fsa_util(py::module &m);
+void PybindFsaUtil(py::module &m);
 
 #endif  // K2_PYTHON_CSRC_FSA_UTIL_H_

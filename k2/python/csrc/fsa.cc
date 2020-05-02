@@ -9,8 +9,9 @@
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_util.h"
 
-void pybind_fsa(py::module &m) {
-  using namespace k2;
+void PybindFsa(py::module &m) {
+  using k2::Arc;
+  using k2::Fsa;
 
   py::class_<Arc>(m, "Arc")
       .def(py::init<>())

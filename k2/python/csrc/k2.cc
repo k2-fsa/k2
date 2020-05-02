@@ -12,7 +12,7 @@
 
 PYBIND11_MODULE(k2, m) {
   m.doc() = "pybind11 binding of k2";
-  pybind_fsa(m);
-  pybind_fsa_renderer(m);
-  pybind_fsa_util(m);
+  PybindFsa(m);
+  PybindFsaRenderer(m);
+  PybindFsaUtil(m);
 }

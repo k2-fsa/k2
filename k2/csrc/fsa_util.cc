@@ -32,7 +32,7 @@ int32_t StringToInt(const std::string &s, bool *is_ok = nullptr) {
   long n = std::strtol(s.c_str(), &p, 10);  // NOLINT
   if (*p == '\0') ok = true;
 
-  int32_t res = static_cast<int32_t>(n);
+  auto res = static_cast<int32_t>(n);
   if (n != res) ok = false;  // out of range
   if (is_ok != nullptr) *is_ok = ok;
 
@@ -57,7 +57,7 @@ std::vector<int32_t> StringVectorToIntVector(
 // trim leading and trailing spaces of a string
 void TrimString(std::string *s) {
   CHECK_NOTNULL(s);
-  auto not_space = [](int c) { return std::isspace(c) == false; };
+  auto not_space = [](int c) { return std::isspace(c) == 0; };
 
   s->erase(s->begin(), std::find_if(s->begin(), s->end(), not_space));
   s->erase(std::find_if(s->rbegin(), s->rend(), not_space).base(), s->end());
@@ -84,10 +84,9 @@ void SplitStringToVector(const std::string &in, const char *delim,
   CHECK_NOTNULL(out);
   out->clear();
   size_t start = 0;
-  size_t end = in.size();
   while (true) {
     auto pos = in.find_first_of(delim, start);
-    if (pos == in.npos) break;
+    if (pos == std::string::npos) break;
 
     auto sub = in.substr(start, pos - start);
     start = pos + 1;
@@ -155,7 +154,7 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
     auto fields = StringVectorToIntVector(splits);
     auto num_fields = fields.size();
     if (num_fields == 3u) {
-      Arc arc;
+      Arc arc{};
       arc.src_state = fields[0];
       arc.dest_state = fields[1];
       arc.label = fields[2];

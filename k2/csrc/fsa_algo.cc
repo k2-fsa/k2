@@ -366,8 +366,7 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
                            [](const Arc &left, const Arc &right) {
                              return left.label < right.label;
                            });
-      for (ArcIterator it_b = b_arc_range.first; it_b != b_arc_range.second;
-           ++it_b) {
+      for (auto it_b = b_arc_range.first; it_b != b_arc_range.second; ++it_b) {
         Arc curr_b_arc = *it_b;
         if (swapped) std::swap(curr_a_arc, curr_b_arc);
         StatePair new_state{curr_a_arc.dest_state, curr_b_arc.dest_state};
@@ -375,9 +374,9 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
             new_state, &state_index_c, &qstates, &state_pair_map);
         arcs_c.push_back({curr_state_index, new_state_index, curr_a_arc.label});
 
-        int32_t curr_arc_index_a = static_cast<int32_t>(
+        auto curr_arc_index_a = static_cast<int32_t>(
             a_arc_iter_begin - (swapped ? arc_b_begin : arc_a_begin));
-        int32_t curr_arc_index_b =
+        auto curr_arc_index_b =
             static_cast<int32_t>(it_b - (swapped ? arc_a_begin : arc_b_begin));
         if (swapped) std::swap(curr_arc_index_a, curr_arc_index_b);
         if (arc_map_a != nullptr) arc_map_a->push_back(curr_arc_index_a);
@@ -438,7 +437,7 @@ void ArcSort(const Fsa &a, Fsa *b,
     // move-copy sorted arcs to `b`
     std::transform(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
                    std::back_inserter(b->arcs),
-                   [](ArcWithIndex &v) { return std::move(v.first); });
+                   [](ArcWithIndex &v) { return v.first; });
   }
   if (arc_map != nullptr) arc_map->swap(indexes);
 }

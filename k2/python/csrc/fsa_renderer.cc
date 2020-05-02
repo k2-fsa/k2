@@ -8,8 +8,10 @@
 
 #include "k2/csrc/fsa_renderer.h"
 
-void pybind_fsa_renderer(py::module &m) {
-  using namespace k2;
+void PybindFsaRenderer(py::module &m) {
+  using k2::Fsa;
+  using k2::FsaRenderer;
+
   py::class_<FsaRenderer>(m, "FsaRenderer")
       .def(py::init<const Fsa &>(), py::arg("fsa"))
       .def("render", &FsaRenderer::Render);

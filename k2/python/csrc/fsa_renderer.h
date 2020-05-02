@@ -9,6 +9,6 @@
 
 #include "k2/python/csrc/k2.h"
 
-void pybind_fsa_renderer(py::module &m);
+void PybindFsaRenderer(py::module &m);
 
 #endif  // K2_PYTHON_CSRC_FSA_RENDERER_H_

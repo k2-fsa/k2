@@ -8,9 +8,7 @@
 
 #include "k2/csrc/fsa_util.h"
 
-void pybind_fsa_util(py::module &m) {
-  using namespace k2;
-
-  m.def("string_to_fsa", &StringToFsa);
-  m.def("fsa_to_string", &FsaToString);
+void PybindFsaUtil(py::module &m) {
+  m.def("string_to_fsa", &k2::StringToFsa);
+  m.def("fsa_to_string", &k2::FsaToString);
 }
