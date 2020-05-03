@@ -21,34 +21,39 @@ namespace k2 {
 
   If the resulting Fsa is empty, `state_map` will be empty at exit.
 
-     @param [in] fsa  The FSA to be connected.  Requires
+     @param [in]  fsa         The FSA to be connected.  Requires
      @param [out] state_map   Maps from state indexes in the output fsa to
-                      state indexes in `fsa`.  Will retain the original order,
-                      so the output will be topologically sorted if the input
-                      was.
+                              state indexes in `fsa`. If the input fsa is
+                              acyclic, the output fsa is topologically sorted.
  */
 void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
 
 /*
   Removes states that are not accessible (from the start state) or are not
-  coaccessible (i.e. that cannot reach the final state), and ensures that if the
+  co-accessible (i.e. that cannot reach the final state), and ensures that if the
   FSA admits a topological sorting (i.e. if contains no cycles except
   self-loops), the version that is output is topologically sorted.
 
+  If the input fsa is not topologically sorted but is acyclic, then the output
+  fsa is topologically sorted.
+
      @param [in] a    Input FSA
      @param [out] b   Output FSA, that will be trim / connected (there are
-                     two terminologies).
+                      two terminologies).
 
      @param [out] arc_map   If non-NULL, this function will
-                     output a map from the arc-index in `b` to
-                     the corresponding arc-index in `a`.
+                            output a map from the arc-index in `b` to
+                            the corresponding arc-index in `a`.
 
   Notes:
     - If `a` admitted a topological sorting, b will be topologically
-      sorted.  TODO(Dan): maybe just leave in the same order as a??
+      sorted. If `a` is not topologically sorted but is acyclic, b will
+      also be topologically sorted. TODO(Dan): maybe just leave in the
+      same order as a??
     - If `a` was deterministic, `b` will be deterministic; same for
       epsilon free, obviously.
-    - `b` will be arc-sorted (arcs sorted by label)
+    - `b` will be arc-sorted (arcs sorted by label). TODO(fangjun): this
+       has not be implemented.
     - `b` will (obviously) be connected
  */
 void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);

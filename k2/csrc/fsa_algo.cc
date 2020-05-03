@@ -9,8 +9,8 @@
 
 #include <algorithm>
 #include <numeric>
-#include <stack>
 #include <queue>
+#include <stack>
 #include <unordered_map>
 #include <utility>
 
@@ -20,6 +20,9 @@
 
 namespace {
 
+static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
+static constexpr int8_t kVisiting = 1;    // a node that is under visiting
+static constexpr int8_t kVisited = 2;     // a node that has been visited
 // depth first search state
 struct DfsState {
   int32_t state;      // state number of the visiting node
@@ -57,14 +60,21 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
 
   std::vector<bool> accessible(num_states, false);
   std::vector<bool> coaccessible(num_states, false);
-  std::vector<bool> visited(num_states, false);
+  std::vector<int8_t> state_status(num_states, kNotVisited);
 
   accessible.front() = true;
   coaccessible.back() = true;
 
   std::stack<DfsState> stack;
   stack.push({0, fsa.arc_indexes[0], fsa.arc_indexes[1]});
-  visited[0] = true;
+  state_status[0] = kVisiting;
+
+  // map order to state.
+  // state 0 has the largest order, i.e., num_states - 1
+  // final_state has the least order, i.e., 0
+  std::vector<int32_t> order;
+  order.reserve(num_states);
+  bool is_acyclic = true;  // order and is_acyclic are for topological sort
 
   while (!stack.empty()) {
     auto &current_state = stack.top();
@@ -73,6 +83,11 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
       // we have finished visiting this state
       auto state = current_state.state;  // get a copy since we will destroy it
       stack.pop();
+      state_status[state] = kVisited;
+
+      if (is_acyclic)
+        order.push_back(state);  // save the state on if it is acyclic
+
       if (!stack.empty()) {
         // if it has a parent, set the parent's co-accessible flag
         if (coaccessible[state]) {
@@ -86,30 +101,49 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
 
     const auto &arc = fsa.arcs[current_state.arc_begin];
     auto next_state = arc.dest_state;
-    bool is_visited = visited[next_state];
-    if (!is_visited) {
-      // this is a new discovered state
-      visited[next_state] = true;
-      auto arc_begin = fsa.arc_indexes[next_state];
-      if (next_state != final_state)
-        stack.push({next_state, arc_begin, fsa.arc_indexes[next_state + 1]});
-      else
-        stack.push({next_state, arc_begin, arc_begin});
+    auto status = state_status[next_state];
+    switch (status) {
+      case kNotVisited: {
+        // a new discovered node
+        state_status[next_state] = kVisiting;
+        auto arc_begin = fsa.arc_indexes[next_state];
+        if (next_state != final_state)
+          stack.push({next_state, arc_begin, fsa.arc_indexes[next_state + 1]});
+        else
+          stack.push({next_state, arc_begin, arc_begin});
 
-      if (accessible[current_state.state]) accessible[next_state] = true;
-    } else {
-      // this is a back arc or forward cross arc;
-      // update the co-accessible flag
-      auto next_state = arc.dest_state;
-      if (coaccessible[next_state]) coaccessible[current_state.state] = true;
-      ++current_state.arc_begin;  // go to the next arc
+        if (accessible[current_state.state]) accessible[next_state] = true;
+        break;
+      }
+      case kVisiting:
+        // this is a back arc, which means there is a loop in the fsa
+        is_acyclic = false;  // fall-through, no break here
+      case kVisited:
+        // this is a forward cross arc;
+        // update the co-accessible flag
+        if (coaccessible[next_state]) coaccessible[current_state.state] = true;
+        ++current_state.arc_begin;  // go to the next arc
+        break;
+      default:
+        LOG(FATAL) << "Unreachable code is executed!";
+        break;
     }
   }
 
   state_map->reserve(num_states);
+  if (!is_acyclic) {
+    for (auto i = 0; i != num_states; ++i) {
+      if (accessible[i] && coaccessible[i]) state_map->push_back(i);
+    }
+    return;
+  }
 
-  for (auto i = 0; i != num_states; ++i) {
-    if (accessible[i] && coaccessible[i]) state_map->push_back(i);
+  // now for the acyclic case,
+  // we return a state_map of a topologically sorted fsa
+  const auto rend = order.rend();
+  for (auto rbegin = order.rbegin(); rbegin != rend; ++rbegin) {
+    auto s = *rbegin;
+    if (accessible[s] && coaccessible[s]) state_map->push_back(s);
   }
 }
 
@@ -263,8 +297,8 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
       auto b_arc_range =
           std::equal_range(b_arc_iter_begin, b_arc_iter_end, curr_a_arc,
                            [](const Arc &left, const Arc &right) {
-            return left.label < right.label;
-          });
+                             return left.label < right.label;
+                           });
       for (ArcIterator it_b = b_arc_range.first; it_b != b_arc_range.second;
            ++it_b) {
         Arc curr_b_arc = *it_b;
@@ -320,12 +354,13 @@ void ArcSort(const Fsa &a, Fsa *b,
     std::transform(arc_begin_iter + begin, arc_begin_iter + end,
                    index_begin_iter + begin,
                    std::back_inserter(arc_range_to_be_sorted),
-                   [](const Arc & arc, int32_t index)
-                       ->ArcWithIndex { return std::make_pair(arc, index); });
+                   [](const Arc &arc, int32_t index) -> ArcWithIndex {
+                     return std::make_pair(arc, index);
+                   });
     std::sort(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
               [](const ArcWithIndex &left, const ArcWithIndex &right) {
-      return left.first < right.first;  // sort on arc
-    });
+                return left.first < right.first;  // sort on arc
+              });
     // copy index mappings back to `indexes`
     std::transform(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
                    index_begin_iter + begin,
@@ -348,10 +383,6 @@ bool TopSort(const Fsa &a, Fsa *b,
 
   if (IsEmpty(a)) return true;
   if (!IsConnected(a)) return false;
-
-  static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
-  static constexpr int8_t kVisiting = 1;    // a node that is under visiting
-  static constexpr int8_t kVisited = 2;     // a node that has been visited
 
   auto num_states = a.NumStates();
   auto final_state = num_states - 1;
