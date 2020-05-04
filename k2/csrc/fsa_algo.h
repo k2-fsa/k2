@@ -27,8 +27,11 @@ namespace k2 {
                               state indexes in `fsa`. If the input fsa is
                               acyclic, the output fsa is topologically sorted.
 
-     @return true if the output fsa is topsorted, or is empty;
-             false otherwise.
+      Returns true on success (i.e. the output will be topsorted).
+      The only failure condition is when the input had cycles that were not self loops.
+
+      Caution: true return status does not imply that the returned FSA is nonempty.
+
  */
 bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
 
@@ -50,8 +53,10 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
                             output a map from the arc-index in `b` to
                             the corresponding arc-index in `a`.
 
-     @return true if the output fsa is topsorted, or is empty.
-             false otherwise.
+      Returns true on success (i.e. the output is topsorted).
+      The only failure condition is when the input had cycles that were not self loops.
+
+      Caution: true return status does not imply that the returned FSA is nonempty.
 
   Notes:
     - If `a` admitted a topological sorting, b will be topologically
