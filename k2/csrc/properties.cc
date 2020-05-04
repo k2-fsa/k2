@@ -79,9 +79,9 @@ bool HasSelfLoops(const Fsa &fsa) {
   return false;
 }
 
-bool CheckCycles(StateId s, std::vector<bool> &visited, std::vector<bool> &back_arc,
-                 const std::vector<Arc> &arcs) {
-  if(visited[s] == false) {
+bool CheckCycles(StateId s, std::vector<bool> &visited,
+                 std::vector<bool> &back_arc, const std::vector<Arc> &arcs) {
+  if (visited[s] == false) {
     visited[s] = true;
     back_arc[s] = true;
 
@@ -112,8 +112,7 @@ bool IsAcyclic(const Fsa &fsa) {
     if (CheckCycles(i, visited, back_arc, arcs))
       return true;
 
-    return false;
-  return true;
+  return false;
 }
 
 bool IsDeterministic(const Fsa &fsa) {
