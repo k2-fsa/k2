@@ -79,11 +79,11 @@ bool HasSelfLoops(const Fsa &fsa) {
   return false;
 }
 
-bool CheckCycles(StateId s, std::vector<bool> &visited,
-                 std::vector<bool> &back_arc, const std::vector<Arc> &arcs) {
-  if (visited[s] == false) {
-    visited[s] = true;
-    back_arc[s] = true;
+bool CheckCycles(StateId s, std::vector<bool> *visited,
+                 std::vector<bool> *back_arc, const std::vector<Arc> &arcs) {
+  if ((*visited)[s] == false) {
+    (*visited)[s] = true;
+    (*back_arc)[s] = true;
 
     std::unordered_set<StateId> adj;
     for (const auto &arc : arcs)
@@ -91,13 +91,13 @@ bool CheckCycles(StateId s, std::vector<bool> &visited,
         adj.insert(arc.dest_state);
 
     for (auto i = adj.begin(); i != adj.end(); ++i) {
-      if (!visited[*i] && CheckCycles(*i, visited, back_arc, arcs))
+      if (!(*visited)[*i] && CheckCycles(*i, visited, back_arc, arcs))
         return true;
-      else if (back_arc[*i])
+      else if ((*back_arc)[*i])
         return true;
     }
   }
-  back_arc[s] = false;
+  (*back_arc)[s] = false;
   return false;
 }
 
@@ -110,7 +110,7 @@ bool IsCyclic(const Fsa &fsa) {
   std::vector<bool> back_arc(num_states, false);
 
   for (StateId i = 0; i < num_states; i++)
-    if (CheckCycles(i, visited, back_arc, arcs))
+    if (CheckCycles(i, &visited, &back_arc, arcs))
       return true;
 
   return false;
