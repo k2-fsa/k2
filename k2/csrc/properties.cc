@@ -79,14 +79,19 @@ bool HasSelfLoops(const Fsa &fsa) {
   return false;
 }
 
-bool CheckCycles(StateId s, std::vector<bool> visited, std::vector<bool> back_arc,
-                 std::unordered_set<StateId> *adj) {
+bool CheckCycles(StateId s, std::vector<bool> &visited, std::vector<bool> &back_arc,
+                 const std::vector<Arc> &arcs) {
   if(visited[s] == false) {
     visited[s] = true;
     back_arc[s] = true;
 
-    for (auto i = adj[s].begin(); i != adj[s].end(); ++i) {
-      if (!visited[*i] && CheckCycles(*i, visited, back_arc, adj) )
+    std::unordered_set<StateId> adj;
+    for (const auto &arc : arcs)
+      if (arc.src_state == s)
+        adj.insert(arc.dest_state);
+
+    for (auto i = adj.begin(); i != adj.end(); ++i) {
+      if (!visited[*i] && CheckCycles(*i, visited, back_arc, arcs))
         return true;
       else if (back_arc[*i])
         return true;
@@ -99,15 +104,12 @@ bool CheckCycles(StateId s, std::vector<bool> visited, std::vector<bool> back_ar
 // Detect cycles using DFS traversal
 bool IsAcyclic(const Fsa &fsa) {
   StateId num_states = fsa.NumStates();
+  const std::vector<Arc> arcs = fsa.arcs;
   std::vector<bool> visited(num_states, false);
   std::vector<bool> back_arc(num_states, false);
 
-  std::unordered_set<StateId> *adj = new std::unordered_set<StateId>[num_states];
-  for (const auto &arc : fsa.arcs)
-     adj[arc.src_state].insert(arc.dest_state);
-
   for (StateId i = 0; i < num_states; i++)
-    if (CheckCycles(i, visited, back_arc, adj))
+    if (CheckCycles(i, visited, back_arc, arcs))
       return true;
 
     return false;
