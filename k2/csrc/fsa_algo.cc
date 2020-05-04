@@ -8,6 +8,7 @@
 #include "k2/csrc/fsa_algo.h"
 
 #include <algorithm>
+#include <limits>
 #include <numeric>
 #include <queue>
 #include <stack>
