@@ -2,6 +2,7 @@
 
 // Copyright (c)  2020  Haowen Qiu
 //                      Fangjun Kuang (csukuangfj@gmail.com)
+//                      Mahsa Yarmohammadi
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -354,6 +355,42 @@ TEST(Properties, IsConnected) {
     fsa.arcs = std::move(arcs);
     bool is_connected = IsConnected(fsa);
     EXPECT_TRUE(is_connected);
+  }
+}
+TEST(FsaAlgo, IsAcyclic) {
+  // empty fsa is acyclic
+  {
+    Fsa fsa;
+    bool is_acyclic = IsAcyclic(fsa);
+    EXPECT_FALSE(is_acyclic);
+  }
+
+  // an acyclic fsa example
+  {
+    std::vector<Arc> arcs = {
+      {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6},
+    };
+    std::vector<int32_t> arc_indexes = {0, 2, 4, 5};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+
+    bool is_acyclic = IsAcyclic(fsa);
+    EXPECT_FALSE(is_acyclic);
+  }
+
+  // a cyclic fsa example
+  {
+    std::vector<Arc> arcs = {
+      {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
+    };
+    std::vector<int32_t> arc_indexes = {0, 3, 5, 6, 6};
+    Fsa fsa;
+    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.arcs = std::move(arcs);
+
+    bool is_acyclic = IsAcyclic(fsa);
+    EXPECT_TRUE(is_acyclic);
   }
 }
 

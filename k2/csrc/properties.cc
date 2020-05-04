@@ -2,6 +2,7 @@
 
 // Copyright (c)  2020 Haowen Qiu
 //                     Daniel Povey
+//                     Mahsa Yarmohammadi
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -76,6 +77,41 @@ bool HasSelfLoops(const Fsa &fsa) {
     if (arc.dest_state == arc.src_state) return true;
   }
   return false;
+}
+
+bool CheckCycles(StateId s, std::vector<bool> visited, std::vector<bool> back_arc,
+                 std::unordered_set<StateId> *adj) {
+  if(visited[s] == false) {
+    visited[s] = true;
+    back_arc[s] = true;
+
+    for (auto i = adj[s].begin(); i != adj[s].end(); ++i) {
+      if (!visited[*i] && CheckCycles(*i, visited, back_arc, adj) )
+        return true;
+      else if (back_arc[*i])
+        return true;
+    }
+  }
+  back_arc[s] = false;
+  return false;
+}
+
+// Detect cycles using DFS traversal
+bool IsAcyclic(const Fsa &fsa) {
+  StateId num_states = fsa.NumStates();
+  std::vector<bool> visited(num_states, false);
+  std::vector<bool> back_arc(num_states, false);
+
+  std::unordered_set<StateId> *adj = new std::unordered_set<StateId>[num_states];
+  for (const auto &arc : fsa.arcs)
+     adj[arc.src_state].insert(arc.dest_state);
+
+  for (StateId i = 0; i < num_states; i++)
+    if (CheckCycles(i, visited, back_arc, adj))
+      return true;
+
+    return false;
+  return true;
 }
 
 bool IsDeterministic(const Fsa &fsa) {

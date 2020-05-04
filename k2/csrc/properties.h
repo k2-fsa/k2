@@ -17,6 +17,7 @@ enum Properties {
   kTopSorted,            // topologically sorted
   kTopSortedAndAcyclic,  // topologically sorted and no self-loops (which
                          // implies acyclic)
+  kAcyclic,              // acyclic
   kArcSorted,            // arcs leaving each state are sorted on label
   kDeterministic,        // no state has two arcs leaving it with the same label
   kConnected,    // all states are both accessible (i.e. from start state) and
@@ -50,6 +51,11 @@ bool IsArcSorted(const Fsa &fsa);
   Returns true if `fsa` has any self-loops
  */
 bool HasSelfLoops(const Fsa &fsa);
+
+/*
+  Returns true if `fsa` is acyclic
+ */
+bool IsAcyclic(const Fsa &fsa);
 
 /*
   Returns true if `fsa` is both topologically sorted and free
