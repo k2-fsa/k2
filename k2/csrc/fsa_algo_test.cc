@@ -13,7 +13,6 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "k2/csrc/fsa_renderer.h"
 #include "k2/csrc/fsa_util.h"
 
 namespace k2 {
@@ -23,8 +22,9 @@ TEST(FsaAlgo, ConnectCore) {
     // case 1: an empty input fsa
     Fsa a;
     std::vector<int32_t> state_b_to_a(10);
-    ConnectCore(a, &state_b_to_a);
+    bool status = ConnectCore(a, &state_b_to_a);
     EXPECT_TRUE(state_b_to_a.empty());
+    EXPECT_TRUE(status);
   }
   {
     // case 2: a connected, acyclic FSA
@@ -39,15 +39,17 @@ TEST(FsaAlgo, ConnectCore) {
     auto a = StringToFsa(s);
     EXPECT_NE(a.get(), nullptr);
     std::vector<int32_t> state_b_to_a;
-    ConnectCore(*a, &state_b_to_a);
+    bool status = ConnectCore(*a, &state_b_to_a);
     ASSERT_EQ(state_b_to_a.size(), 5u);
     // notice that state_b_to_a maps:
     //   2 -> 3
     //   3 -> 2
     EXPECT_THAT(state_b_to_a, ::testing::ElementsAre(0, 1, 3, 2, 4));
+    EXPECT_TRUE(status);
   }
   {
     // case 3: a connected, cyclic FSA
+    // the cycle is a self-loop, the output is still topsorted.
     std::string s = R"(
       0 1 1
       1 2 2
@@ -60,9 +62,10 @@ TEST(FsaAlgo, ConnectCore) {
     auto a = StringToFsa(s);
     EXPECT_NE(a.get(), nullptr);
     std::vector<int32_t> state_b_to_a;
-    ConnectCore(*a, &state_b_to_a);
+    bool status = ConnectCore(*a, &state_b_to_a);
     ASSERT_EQ(state_b_to_a.size(), 5u);
-    EXPECT_THAT(state_b_to_a, ::testing::ElementsAre(0, 1, 2, 3, 4));
+    EXPECT_THAT(state_b_to_a, ::testing::ElementsAre(0, 1, 3, 2, 4));
+    EXPECT_TRUE(status);
   }
   {
     // case 4: a non-connected, acyclic, non-topsorted FSA
@@ -79,7 +82,8 @@ TEST(FsaAlgo, ConnectCore) {
     EXPECT_NE(a.get(), nullptr);
 
     std::vector<int32_t> state_b_to_a;
-    ConnectCore(*a, &state_b_to_a);
+    bool status = ConnectCore(*a, &state_b_to_a);
+    EXPECT_TRUE(status);
 
     ASSERT_EQ(state_b_to_a.size(), 4u);
     /*                                               0  1  2  3 */
@@ -88,6 +92,7 @@ TEST(FsaAlgo, ConnectCore) {
 
   {
     // case 5: a non-connected, cyclic, non-topsorted FSA
+    // the output fsa will contain a cycle
     std::string s = R"(
       1 0 1
       4 2 2
@@ -102,15 +107,15 @@ TEST(FsaAlgo, ConnectCore) {
     EXPECT_NE(a.get(), nullptr);
 
     std::vector<int32_t> state_b_to_a;
-    ConnectCore(*a, &state_b_to_a);
+    bool status = ConnectCore(*a, &state_b_to_a);
+    EXPECT_FALSE(status);
 
     ASSERT_EQ(state_b_to_a.size(), 4u);
-    /*                                               0  1  2  3 */
-    EXPECT_THAT(state_b_to_a, ::testing::ElementsAre(0, 3, 4, 5));  // topsorted
+    EXPECT_THAT(state_b_to_a, ::testing::ElementsAre(0, 3, 4, 5));
   }
-
   {
-    // case 6 (another one): a non-connected, cyclic, non-topsorted FSA
+    // case 6 (another one): a non-connected, cyclic, non-topsorted FSA;
+    // the cycle is removed since state 2 is not co-accessible
     std::string s = R"(
       1 0 1
       4 2 2
@@ -118,23 +123,24 @@ TEST(FsaAlgo, ConnectCore) {
       4 3 3
       0 4 4
       0 3 3
-      2 4 4
+      2 2 2
       5
     )";
     auto a = StringToFsa(s);
     EXPECT_NE(a.get(), nullptr);
 
     std::vector<int32_t> state_b_to_a;
-    ConnectCore(*a, &state_b_to_a);
+    bool status = ConnectCore(*a, &state_b_to_a);
+    EXPECT_TRUE(status);
 
     ASSERT_EQ(state_b_to_a.size(), 4u);
-    /*                                               0  1  2  3 */
-    EXPECT_THAT(state_b_to_a, ::testing::ElementsAre(0, 3, 4, 5));  // topsorted
+    EXPECT_THAT(state_b_to_a, ::testing::ElementsAre(0, 4, 3, 5));
   }
 }
 TEST(FsaAlgo, Connect) {
   {
-    // case 1: a non-connected, non-topsorted, acylic fsa
+    // case 1: a non-connected, non-topsorted, acyclic input fsa;
+    // the output fsa is topsorted.
     std::string s = R"(
       0 1 1
       0 2 2
@@ -151,15 +157,17 @@ TEST(FsaAlgo, Connect) {
     EXPECT_NE(a.get(), nullptr);
 
     std::vector<int32_t> state_b_to_a(10);  // an arbitrary number
-    ConnectCore(*a, &state_b_to_a);
+    bool status = ConnectCore(*a, &state_b_to_a);
+    EXPECT_TRUE(status);
 
     ASSERT_EQ(state_b_to_a.size(), 4u);
     EXPECT_THAT(state_b_to_a, ::testing::ElementsAre(0, 2, 1, 6));
 
     Fsa b;
     std::vector<int32_t> arc_map(10);  // an arbitrary number
-    Connect(*a, &b, &arc_map);
+    status = Connect(*a, &b, &arc_map);
     EXPECT_TRUE(IsTopSorted(b));
+    EXPECT_TRUE(status);
 
     ASSERT_EQ(b.NumStates(), 4u);  // state 3,4,5 from `a` are removed
     EXPECT_THAT(b.arc_indexes, ::testing::ElementsAre(0, 2, 4, 5));
@@ -196,9 +204,83 @@ TEST(FsaAlgo, Connect) {
 
     Fsa b;
     std::vector<int32_t> arc_map(10);  // an arbitrary number
-    Connect(*a, &b, &arc_map);
+    bool status = Connect(*a, &b, &arc_map);
     EXPECT_TRUE(IsEmpty(b));
+    EXPECT_TRUE(status);
     EXPECT_TRUE(arc_map.empty());
+  }
+  {
+    // a cyclic input fsa
+    // after trimming, the cycle is removed;
+    // so the output fsa should be topsorted.
+    std::string s = R"(
+      0 3 3
+      0 5 5
+      3 5 5
+      3 2 2
+      3 4 4
+      2 1 1
+      1 2 2
+      3 6 6
+      4 5 5
+      4 6 6
+      5 6 6
+      6
+    )";
+    auto a = StringToFsa(s);
+    EXPECT_NE(a.get(), nullptr);
+
+    Fsa b;
+    Connect(*a, &b);
+    EXPECT_TRUE(IsTopSorted(b));
+  }
+
+  {
+    // a cyclic input fsa
+    // after trimming, the cycle remains (it is not a self-loop);
+    // so the output fsa is NOT topsorted.
+    std::string s = R"(
+      1 0 1
+      0 3 3
+      0 2 2
+      3 2 2
+      3 5 5
+      5 3 3
+      5 4 4
+      4 4 4
+      2 6 6
+      6
+    )";
+    auto a = StringToFsa(s);
+    EXPECT_NE(a.get(), nullptr);
+
+    Fsa b;
+    bool status = Connect(*a, &b);
+    EXPECT_FALSE(IsTopSorted(b));
+    EXPECT_FALSE(status);
+  }
+
+  {
+    // a cyclic input fsa
+    // after trimming, the cycle remains (it is not a self-loop);
+    // so the output fsa is NOT topsorted.
+    std::string s = R"(
+      0 1 1
+      0 2 2
+      2 2 2
+      2 1 1
+      1 1 1
+      1 3 3
+      2 3 3
+      3
+    )";
+    auto a = StringToFsa(s);
+    EXPECT_NE(a.get(), nullptr);
+
+    Fsa b;
+    bool status = Connect(*a, &b);
+    EXPECT_TRUE(IsTopSorted(b));
+    EXPECT_TRUE(status);
   }
 }
 
@@ -355,10 +437,10 @@ TEST(FsaAlgo, TopSort) {
   {
     // case 2: non-connected fsa (not co-accessible)
     std::string s = R"(
-0 2 3
-1 2 1
-2
-)";
+      0 2 3
+      1 2 1
+      2
+    )";
     auto fsa = StringToFsa(s);
     ASSERT_NE(fsa.get(), nullptr);
 
@@ -374,10 +456,10 @@ TEST(FsaAlgo, TopSort) {
   {
     // case 3: non-connected fsa (not accessible)
     std::string s = R"(
-0 2 3
-1 0 1
-2
-)";
+      0 2 3
+      1 0 1
+      2
+    )";
     auto fsa = StringToFsa(s);
     ASSERT_NE(fsa.get(), nullptr);
 
@@ -393,16 +475,16 @@ TEST(FsaAlgo, TopSort) {
   {
     // case 4: connected fsa
     std::string s = R"(
-0 4 40
-0 2 20
-1 6 2
-2 3 30
-3 6 60
-3 1 10
-4 5 50
-5 2 8
-6
-)";
+      0 4 40
+      0 2 20
+      1 6 2
+      2 3 30
+      3 6 60
+      3 1 10
+      4 5 50
+      5 2 8
+      6
+    )";
     auto fsa = StringToFsa(s);
     ASSERT_NE(fsa.get(), nullptr);
 

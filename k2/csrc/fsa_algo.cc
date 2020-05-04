@@ -47,13 +47,22 @@ inline int32_t InsertIntersectionState(
 
 namespace k2 {
 
-// The implementation of this function is inspired by
+// This function uses "Tarjan's strongly connected components algorithm"
+// (see
+// https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm)
+// to find co-accessible states in a single pass of the graph.
+//
+// The notations "lowlink", "dfnumber", and "onstack" are from the book
+// "The design and analysis of computer algorithms", on page 192,
+// Fig. 5.15 "Procedure to compute LOWLINK", written by John E. Hopcroft.
+//
 // http://www.openfst.org/doxygen/fst/html/connect_8h_source.html
-void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
+// is used as a reference while implementing this function.
+bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
   CHECK_NOTNULL(state_map);
 
   state_map->clear();
-  if (IsEmpty(fsa)) return;
+  if (IsEmpty(fsa)) return true;
 
   auto num_states = fsa.NumStates();
   auto final_state = num_states - 1;
@@ -62,12 +71,31 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
   std::vector<bool> coaccessible(num_states, false);
   std::vector<int8_t> state_status(num_states, kNotVisited);
 
+  // ssc is short for "strongly connected component"
+  // the following block of variables are for
+  // "Tarjan's strongly connected components algorithm"
+  //
+  // Refer to the comment above the function for the meaning of them
+  std::vector<int32_t> ssc_stack;
+  ssc_stack.reserve(num_states);
+  std::vector<bool> onstack(num_states, false);
+  std::vector<int32_t> dfnumber(num_states,
+                                std::numeric_limits<int32_t>::max());
+  auto df_count = 0;
+  std::vector<int32_t> lowlink(num_states, std::numeric_limits<int32_t>::max());
+
   accessible.front() = true;
   coaccessible.back() = true;
 
   std::stack<DfsState> stack;
   stack.push({0, fsa.arc_indexes[0], fsa.arc_indexes[1]});
   state_status[0] = kVisiting;
+
+  dfnumber[0] = df_count;
+  lowlink[0] = df_count;
+  ++df_count;
+  ssc_stack.push_back(0);
+  onstack[0] = true;
 
   // map order to state.
   // state 0 has the largest order, i.e., num_states - 1
@@ -85,16 +113,43 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
       stack.pop();
       state_status[state] = kVisited;
 
-      if (is_acyclic)
-        order.push_back(state);  // save the state on if it is acyclic
+      order.push_back(state);
+
+      if (dfnumber[state] == lowlink[state]) {
+        // this is the root of the strongly connected component
+        bool scc_coaccessible = false;  // if any node in scc is co-accessible,
+                                        // it will be set to true
+        auto k = ssc_stack.size() - 1;
+        auto num_nodes = 0;  // number of nodes in the scc
+
+        auto tmp = 0;
+        do {
+          tmp = ssc_stack[k--];
+          if (coaccessible[tmp]) scc_coaccessible = true;
+          ++num_nodes;
+        } while (tmp != state);
+
+        // if this cycle is not removed in the output fsa
+        // set is_acyclic to false
+        if (num_nodes > 1 && scc_coaccessible) is_acyclic = false;
+
+        // now pop ssc_stack and set co-accessible of each node
+        do {
+          tmp = ssc_stack.back();
+          if (scc_coaccessible) coaccessible[tmp] = true;
+          ssc_stack.pop_back();
+          onstack[tmp] = false;
+        } while (tmp != state);
+      }
 
       if (!stack.empty()) {
         // if it has a parent, set the parent's co-accessible flag
-        if (coaccessible[state]) {
-          auto &parent = stack.top();
-          coaccessible[parent.state] = true;
-          ++parent.arc_begin;  // process the next child
-        }
+        auto &parent = stack.top();
+        if (coaccessible[state]) coaccessible[parent.state] = true;
+
+        ++parent.arc_begin;  // process the next child
+
+        lowlink[parent.state] = std::min(lowlink[parent.state], lowlink[state]);
       }
       continue;
     }
@@ -112,14 +167,33 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
         else
           stack.push({next_state, arc_begin, arc_begin});
 
+        dfnumber[next_state] = df_count;
+        lowlink[next_state] = df_count;
+        ++df_count;
+        ssc_stack.push_back(next_state);
+        onstack[next_state] = true;
+
         if (accessible[current_state.state]) accessible[next_state] = true;
         break;
       }
       case kVisiting:
-        // this is a back arc, which means there is a loop in the fsa
-        is_acyclic = false;  // fall-through, no break here
+        // this is a back arc, which means there is a loop in the fsa;
+        // but this loop may be removed in the output fsa
+        //
+        // Refer to the above book for what the meaning of back arc is
+        lowlink[current_state.state] =
+            std::min(lowlink[current_state.state], dfnumber[next_state]);
+
+        if (coaccessible[next_state]) coaccessible[current_state.state] = true;
+        ++current_state.arc_begin;  // go to the next arc
+        break;
       case kVisited:
-        // this is a forward cross arc;
+        // this is a forward or cross arc;
+        if (dfnumber[next_state] < dfnumber[current_state.state] &&
+            onstack[next_state])
+          lowlink[current_state.state] =
+              std::min(lowlink[current_state.state], dfnumber[next_state]);
+
         // update the co-accessible flag
         if (coaccessible[next_state]) coaccessible[current_state.state] = true;
         ++current_state.arc_begin;  // go to the next arc
@@ -135,7 +209,7 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
     for (auto i = 0; i != num_states; ++i) {
       if (accessible[i] && coaccessible[i]) state_map->push_back(i);
     }
-    return;
+    return false;
   }
 
   // now for the acyclic case,
@@ -145,15 +219,16 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
     auto s = *rbegin;
     if (accessible[s] && coaccessible[s]) state_map->push_back(s);
   }
+  return true;
 }
 
-void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
+bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   CHECK_NOTNULL(b);
   if (arc_map != nullptr) arc_map->clear();
 
   std::vector<int32_t> state_b_to_a;
-  ConnectCore(a, &state_b_to_a);
-  if (state_b_to_a.empty()) return;
+  bool is_acyclic = ConnectCore(a, &state_b_to_a);
+  if (state_b_to_a.empty()) return true;
 
   b->arc_indexes.resize(state_b_to_a.size());
   b->arcs.clear();
@@ -198,6 +273,7 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
       if (arc_map != nullptr) arc_map->push_back(arc_begin);
     }
   }
+  return is_acyclic;
 }
 
 bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
