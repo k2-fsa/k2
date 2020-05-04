@@ -19,39 +19,57 @@ namespace k2 {
   or are not coaccessible, i.e. not reachable from start state or cannot reach
   the final state.
 
-  If the resulting Fsa is empty, `state_map` will be empty at exit.
+  If the resulting Fsa is empty, `state_map` will be empty at exit and
+  it returns true.
 
-     @param [in] fsa  The FSA to be connected.  Requires
+     @param [in]  fsa         The FSA to be connected.  Requires
      @param [out] state_map   Maps from state indexes in the output fsa to
-                      state indexes in `fsa`.  Will retain the original order,
-                      so the output will be topologically sorted if the input
-                      was.
+                              state indexes in `fsa`. If the input fsa is
+                              acyclic, the output fsa is topologically sorted.
+
+      Returns true on success (i.e. the output will be topsorted).
+      The only failure condition is when the input had cycles that were not self loops.
+
+      Caution: true return status does not imply that the returned FSA is nonempty.
+
  */
-void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
+bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
 
 /*
   Removes states that are not accessible (from the start state) or are not
-  coaccessible (i.e. that cannot reach the final state), and ensures that if the
-  FSA admits a topological sorting (i.e. if contains no cycles except
-  self-loops), the version that is output is topologically sorted.
+  co-accessible (i.e. that cannot reach the final state), and ensures that
+  if the FSA admits a topological sorting (i.e. it contains no cycles except
+  self-loops), the version that is output is topologically sorted (states may
+  be renumbered).
+
+  Whenever the output fsa is acyclic or contains only self-loops, it is
+  topsorted.
 
      @param [in] a    Input FSA
      @param [out] b   Output FSA, that will be trim / connected (there are
-                     two terminologies).
+                      two terminologies).
 
      @param [out] arc_map   If non-NULL, this function will
-                     output a map from the arc-index in `b` to
-                     the corresponding arc-index in `a`.
+                            output a map from the arc-index in `b` to
+                            the corresponding arc-index in `a`.
+
+      Returns true on success (i.e. the output is topsorted).
+      The only failure condition is when the input had cycles that were not self loops.
+
+      Caution: true return status does not imply that the returned FSA is nonempty.
 
   Notes:
     - If `a` admitted a topological sorting, b will be topologically
-      sorted.  TODO(Dan): maybe just leave in the same order as a??
+      sorted. If `a` is not topologically sorted but is acyclic, b will
+      also be topologically sorted. TODO(Dan): maybe just leave in the
+      same order as a?? (Current implementation may **renumber** the state)
     - If `a` was deterministic, `b` will be deterministic; same for
       epsilon free, obviously.
-    - `b` will be arc-sorted (arcs sorted by label)
+    - `b` will be arc-sorted (arcs sorted by label). TODO(fangjun): this
+       has not be implemented.
     - `b` will (obviously) be connected
  */
-void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
+bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
 
 /**
    Output an Fsa that is equivalent to the input (in the tropical semiring,
