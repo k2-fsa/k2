@@ -362,7 +362,7 @@ TEST(FsaAlgo, IsAcyclic) {
   {
     Fsa fsa;
     bool is_acyclic = IsAcyclic(fsa);
-    EXPECT_FALSE(is_acyclic);
+    EXPECT_TRUE(is_acyclic);
   }
 
   // an acyclic fsa example
@@ -376,7 +376,7 @@ TEST(FsaAlgo, IsAcyclic) {
     fsa.arcs = std::move(arcs);
 
     bool is_acyclic = IsAcyclic(fsa);
-    EXPECT_FALSE(is_acyclic);
+    EXPECT_TRUE(is_acyclic);
   }
 
   // a cyclic fsa example
@@ -390,7 +390,7 @@ TEST(FsaAlgo, IsAcyclic) {
     fsa.arcs = std::move(arcs);
 
     bool is_acyclic = IsAcyclic(fsa);
-    EXPECT_TRUE(is_acyclic);
+    EXPECT_FALSE(is_acyclic);
   }
 }
 

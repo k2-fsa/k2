@@ -102,7 +102,8 @@ bool CheckCycles(StateId s, std::vector<bool> &visited,
 }
 
 // Detect cycles using DFS traversal
-bool IsAcyclic(const Fsa &fsa) {
+bool IsCyclic(const Fsa &fsa) {
+  if (IsEmpty(fsa)) return false;
   StateId num_states = fsa.NumStates();
   const std::vector<Arc> arcs = fsa.arcs;
   std::vector<bool> visited(num_states, false);
@@ -113,6 +114,14 @@ bool IsAcyclic(const Fsa &fsa) {
       return true;
 
   return false;
+}
+
+bool IsAcyclic(const Fsa &fsa) {
+  if (IsEmpty(fsa)) return true;
+  if (IsCyclic(fsa))
+    return false;
+  else
+    return true;
 }
 
 bool IsDeterministic(const Fsa &fsa) {
