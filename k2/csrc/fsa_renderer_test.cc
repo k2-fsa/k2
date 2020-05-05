@@ -25,13 +25,9 @@ namespace k2 {
 // as expected.
 TEST(FsaRenderer, Render) {
   std::vector<Arc> arcs = {
-      {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6},
-  };
-  std::vector<int32_t> arc_indexes = {0, 2, 4, 5};
+      {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6}, };
 
-  Fsa fsa;
-  fsa.arc_indexes = std::move(arc_indexes);
-  fsa.arcs = std::move(arcs);
+  Fsa fsa(std::move(arcs), 3);
 
   FsaRenderer renderer(fsa);
   std::cerr << renderer.Render();

@@ -163,10 +163,7 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
         // a new discovered node
         state_status[next_state] = kVisiting;
         auto arc_begin = fsa.arc_indexes[next_state];
-        if (next_state != final_state)
-          stack.push({next_state, arc_begin, fsa.arc_indexes[next_state + 1]});
-        else
-          stack.push({next_state, arc_begin, arc_begin});
+        stack.push({next_state, arc_begin, fsa.arc_indexes[next_state + 1]});
 
         dfnumber[next_state] = df_count;
         lowlink[next_state] = df_count;
@@ -231,7 +228,7 @@ bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   bool is_acyclic = ConnectCore(a, &state_b_to_a);
   if (state_b_to_a.empty()) return true;
 
-  b->arc_indexes.resize(state_b_to_a.size());
+  b->arc_indexes.resize(state_b_to_a.size() + 1);
   b->arcs.clear();
   b->arcs.reserve(a.arcs.size());
 
@@ -255,10 +252,7 @@ bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   for (auto i = 0; i != num_states_b; ++i) {
     auto state_a = state_b_to_a[i];
     arc_begin = a.arc_indexes[state_a];
-    if (state_a != final_state_a)
-      arc_end = a.arc_indexes[state_a + 1];
-    else
-      arc_end = arc_begin;
+    arc_end = a.arc_indexes[state_a + 1];
 
     b->arc_indexes[i] = static_cast<int32_t>(b->arcs.size());
     for (; arc_begin != arc_end; ++arc_begin) {
@@ -274,6 +268,7 @@ bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
       if (arc_map != nullptr) arc_map->push_back(arc_begin);
     }
   }
+  b->arc_indexes[num_states_b] = b->arc_indexes[num_states_b - 1];
   return is_acyclic;
 }
 
@@ -294,9 +289,7 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
   int32_t final_state_a = a.NumStates() - 1;
   int32_t final_state_b = b.NumStates() - 1;
   const auto arc_a_begin = a.arcs.begin();
-  const auto arc_a_end = a.arcs.end();
   const auto arc_b_begin = b.arcs.begin();
-  const auto arc_b_end = b.arcs.end();
   using ArcIterator = std::vector<Arc>::const_iterator;
 
   const int32_t final_state_c = -1;  // just as a placeholder
@@ -322,15 +315,10 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
 
     auto state_a = curr_state_pair.first;
     ArcIterator a_arc_iter_begin = arc_a_begin + a.arc_indexes[state_a];
-    ArcIterator a_arc_iter_end =
-        (state_a != final_state_a) ? (arc_a_begin + a.arc_indexes[state_a + 1])
-                                   : arc_a_end;
-
+    ArcIterator a_arc_iter_end = arc_a_begin + a.arc_indexes[state_a + 1];
     auto state_b = curr_state_pair.second;
     ArcIterator b_arc_iter_begin = arc_b_begin + b.arc_indexes[state_b];
-    ArcIterator b_arc_iter_end =
-        (state_b != final_state_b) ? (arc_b_begin + b.arc_indexes[state_b + 1])
-                                   : arc_b_end;
+    ArcIterator b_arc_iter_end = arc_b_begin + b.arc_indexes[state_b + 1];
 
     // As both `a` and `b` are arc-sorted, we first process epsilon arcs.
     // Noted that at most one for-loop below will really run as either `a` or
@@ -374,8 +362,8 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
       auto b_arc_range =
           std::equal_range(b_arc_iter_begin, b_arc_iter_end, curr_a_arc,
                            [](const Arc &left, const Arc &right) {
-                             return left.label < right.label;
-                           });
+            return left.label < right.label;
+          });
       for (ArcIterator it_b = b_arc_range.first; it_b != b_arc_range.second;
            ++it_b) {
         Arc curr_b_arc = *it_b;
@@ -403,6 +391,9 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
   for (auto &arc : arcs_c) {
     if (arc.dest_state == final_state_c) arc.dest_state = state_index_c;
   }
+  // push a duplicate of final state, see the constructor of `Fsa` in
+  // `k2/csrc/fsa.h`
+  arc_indexes_c.emplace_back(arc_indexes_c.back());
   return true;
 }
 
@@ -431,13 +422,12 @@ void ArcSort(const Fsa &a, Fsa *b,
     std::transform(arc_begin_iter + begin, arc_begin_iter + end,
                    index_begin_iter + begin,
                    std::back_inserter(arc_range_to_be_sorted),
-                   [](const Arc &arc, int32_t index) -> ArcWithIndex {
-                     return std::make_pair(arc, index);
-                   });
+                   [](const Arc & arc, int32_t index)
+                       ->ArcWithIndex { return std::make_pair(arc, index); });
     std::sort(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
               [](const ArcWithIndex &left, const ArcWithIndex &right) {
-                return left.first < right.first;  // sort on arc
-              });
+      return left.first < right.first;  // sort on arc
+    });
     // copy index mappings back to `indexes`
     std::transform(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
                    index_begin_iter + begin,
@@ -492,10 +482,7 @@ bool TopSort(const Fsa &a, Fsa *b,
         // a new discovered node
         state_status[next_state] = kVisiting;
         auto arc_begin = a.arc_indexes[next_state];
-        if (next_state != final_state)
-          stack.push({next_state, arc_begin, a.arc_indexes[next_state + 1]});
-        else
-          stack.push({next_state, arc_begin, arc_begin});
+        stack.push({next_state, arc_begin, a.arc_indexes[next_state + 1]});
         ++current_state.arc_begin;
         break;
       }
@@ -533,10 +520,7 @@ bool TopSort(const Fsa &a, Fsa *b,
   for (auto state_b = 0; state_b != num_states; ++state_b) {
     auto state_a = order[num_states - 1 - state_b];
     arc_begin = a.arc_indexes[state_a];
-    if (state_a != final_state)
-      arc_end = a.arc_indexes[state_a + 1];
-    else
-      arc_end = arc_begin;
+    arc_end = a.arc_indexes[state_a + 1];
 
     b->arc_indexes[state_b] = static_cast<int32_t>(b->arcs.size());
     for (; arc_begin != arc_end; ++arc_begin) {
@@ -550,6 +534,7 @@ bool TopSort(const Fsa &a, Fsa *b,
     std::reverse(order.begin(), order.end());
     state_map->swap(order);
   }
+  b->arc_indexes.emplace_back(b->arc_indexes.back());
   return true;
 }
 

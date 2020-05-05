@@ -65,13 +65,16 @@ TEST(FsaUtil, StringToFsa) {
   const auto &arc_indexes = fsa->arc_indexes;
   const auto &arcs = fsa->arcs;
 
-  ASSERT_EQ(arc_indexes.size(), 7u);
-  EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7));
+  ASSERT_EQ(arc_indexes.size(), 8u);
+  EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7, 7));
 
-  std::vector<Arc> expected_arcs = {
-      {0, 1, 2}, {0, 2, 10}, {1, 3, 3}, {1, 6, 6},
-      {2, 6, 1}, {2, 4, 2},  {5, 0, 1},
-  };
+  std::vector<Arc> expected_arcs = {{0, 1, 2},
+                                    {0, 2, 10},
+                                    {1, 3, 3},
+                                    {1, 6, 6},
+                                    {2, 6, 1},
+                                    {2, 4, 2},
+                                    {5, 0, 1}, };
 
   auto n = static_cast<int32_t>(expected_arcs.size());
   for (auto i = 0; i != n; ++i) {

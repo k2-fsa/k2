@@ -177,6 +177,7 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
     fsa->arcs.insert(fsa->arcs.end(), v.begin(), v.end());
     ++i;
   }
+  fsa->arc_indexes.emplace_back(fsa->arc_indexes.back());
   return fsa;
 }
 

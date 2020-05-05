@@ -22,6 +22,7 @@ function(k2_add_fsa_test name)
   target_link_libraries(${name}
     PRIVATE
       fsa
+      glog
       gtest
       gtest_main
   )
