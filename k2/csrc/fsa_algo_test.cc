@@ -170,16 +170,12 @@ TEST(FsaAlgo, Connect) {
     EXPECT_TRUE(status);
 
     ASSERT_EQ(b.NumStates(), 4u);  // state 3,4,5 from `a` are removed
-    EXPECT_THAT(b.arc_indexes, ::testing::ElementsAre(0, 2, 4, 5));
+    EXPECT_THAT(b.arc_indexes, ::testing::ElementsAre(0, 2, 4, 5, 5));
 
     std::vector<Arc> target_arcs = {
-        {0, 2, 1}, {0, 1, 2}, {1, 3, 3}, {1, 2, 1}, {2, 3, 6},
-    };
-    EXPECT_EQ(b.arcs[0], target_arcs[0]);
-    EXPECT_EQ(b.arcs[1], target_arcs[1]);
-    EXPECT_EQ(b.arcs[2], target_arcs[2]);
-    EXPECT_EQ(b.arcs[3], target_arcs[3]);
-    EXPECT_EQ(b.arcs[4], target_arcs[4]);
+        {0, 2, 1}, {0, 1, 2}, {1, 3, 3}, {1, 2, 1}, {2, 3, 6}, };
+    for (auto i = 0; i != target_arcs.size(); ++i)
+      EXPECT_EQ(b.arcs[i], target_arcs[i]);
 
     ASSERT_EQ(arc_map.size(), 5u);
     EXPECT_THAT(arc_map, ::testing::ElementsAre(0, 1, 5, 6, 3));
@@ -304,29 +300,19 @@ TEST(FsaAlgo, Intersect) {
   }
 
   {
-    std::vector<Arc> arcs_a = {{0, 1, 1}, {1, 2, 0}, {1, 3, 1},
-                               {1, 4, 2}, {2, 2, 1}, {2, 3, 1},
-                               {2, 3, 2}, {3, 3, 0}, {3, 4, 1}};
-    std::vector<int32_t> arc_indexes_a = {0, 1, 4, 7, 9};
-    Fsa a;
-    a.arc_indexes = std::move(arc_indexes_a);
-    a.arcs = std::move(arcs_a);
+    std::vector<Arc> arcs_a = {{0, 1, 1},
+                               {1, 2, 0},
+                               {1, 3, 1},
+                               {1, 4, 2},
+                               {2, 2, 1},
+                               {2, 3, 1},
+                               {2, 3, 2},
+                               {3, 3, 0},
+                               {3, 4, 1}};
+    Fsa a(std::move(arcs_a), 4);
 
-    std::vector<Arc> arcs_b = {
-        {0, 1, 1},
-        {1, 3, 1},
-        {1, 2, 2},
-        {2, 3, 1},
-    };
-    std::vector<int32_t> arc_indexes_b = {
-        0,
-        1,
-        3,
-        4,
-    };
-    Fsa b;
-    b.arc_indexes = std::move(arc_indexes_b);
-    b.arcs = std::move(arcs_b);
+    std::vector<Arc> arcs_b = {{0, 1, 1}, {1, 3, 1}, {1, 2, 2}, {2, 3, 1}, };
+    Fsa b(std::move(arcs_b), 3);
 
     Fsa c;
     std::vector<int32_t> arc_map_a(10);  // an arbitrary number
@@ -334,14 +320,21 @@ TEST(FsaAlgo, Intersect) {
     bool status = Intersect(a, b, &c, &arc_map_a, &arc_map_b);
     EXPECT_TRUE(status);
 
-    std::vector<Arc> arcs_c = {
-        {0, 1, 1}, {1, 2, 0}, {1, 3, 1}, {1, 4, 2}, {2, 5, 1},
-        {2, 6, 1}, {2, 6, 2}, {3, 3, 0}, {6, 6, 0}, {6, 7, 1},
-    };
-    std::vector<int32_t> arc_indexes_c = {0, 1, 4, 6, 8, 8, 8, 10};
+    std::vector<Arc> arcs_c = {{0, 1, 1},
+                               {1, 2, 0},
+                               {1, 3, 1},
+                               {1, 4, 2},
+                               {2, 5, 1},
+                               {2, 6, 1},
+                               {2, 6, 2},
+                               {3, 3, 0},
+                               {6, 6, 0},
+                               {6, 7, 1}, };
+    std::vector<int32_t> arc_indexes_c = {0, 1, 4, 6, 8, 8, 8, 10, 10};
 
     ASSERT_EQ(c.arc_indexes.size(), arc_indexes_c.size());
-    EXPECT_THAT(c.arc_indexes, ::testing::ElementsAre(0, 1, 4, 7, 8, 8, 8, 10));
+    EXPECT_THAT(c.arc_indexes,
+                ::testing::ElementsAre(0, 1, 4, 7, 8, 8, 8, 10, 10));
     ASSERT_EQ(c.arcs.size(), arcs_c.size());
     for (std::size_t i = 0; i != arcs_c.size(); ++i)
       EXPECT_EQ(c.arcs[i], arcs_c[i]);
@@ -393,20 +386,16 @@ TEST(FsaAlgo, ArcSort) {
 
   {
     std::vector<Arc> arcs = {
-        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
-    };
-    std::vector<int32_t> arc_indexes = {0, 3, 5, 6, 6};
-    Fsa fsa;
-    fsa.arc_indexes = std::move(arc_indexes);
-    fsa.arcs = std::move(arcs);
+        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0}, };
+    Fsa fsa(std::move(arcs), 4);
     Fsa arc_sorted;
     std::vector<int32_t> arc_map;
     ArcSort(fsa, &arc_sorted, &arc_map);
-    EXPECT_THAT(arc_sorted.arc_indexes, ::testing::ElementsAre(0, 3, 5, 6, 6));
+    EXPECT_THAT(arc_sorted.arc_indexes,
+                ::testing::ElementsAre(0, 3, 5, 6, 6, 6));
     ASSERT_EQ(arc_sorted.arcs.size(), fsa.arcs.size());
     std::vector<Arc> target_arcs = {
-        {0, 2, 0}, {0, 4, 0}, {0, 1, 2}, {1, 3, 0}, {1, 2, 1}, {2, 1, 0},
-    };
+        {0, 2, 0}, {0, 4, 0}, {0, 1, 2}, {1, 3, 0}, {1, 2, 1}, {2, 1, 0}, };
     for (std::size_t i = 0; i != target_arcs.size(); ++i)
       EXPECT_EQ(arc_sorted.arcs[i], target_arcs[i]);
 
@@ -503,12 +492,16 @@ TEST(FsaAlgo, TopSort) {
     const auto &arc_indexes = top_sorted.arc_indexes;
     const auto &arcs = top_sorted.arcs;
 
-    ASSERT_EQ(arc_indexes.size(), 7u);
-    EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 3, 4, 5, 7, 8));
-    std::vector<Arc> expected_arcs = {
-        {0, 1, 40}, {0, 3, 20}, {1, 2, 50}, {2, 3, 8},
-        {3, 4, 30}, {4, 6, 60}, {4, 5, 10}, {5, 6, 2},
-    };
+    ASSERT_EQ(arc_indexes.size(), 8u);
+    EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 3, 4, 5, 7, 8, 8));
+    std::vector<Arc> expected_arcs = {{0, 1, 40},
+                                      {0, 3, 20},
+                                      {1, 2, 50},
+                                      {2, 3, 8},
+                                      {3, 4, 30},
+                                      {4, 6, 60},
+                                      {4, 5, 10},
+                                      {5, 6, 2}, };
 
     for (auto i = 0; i != 8; ++i) {
       EXPECT_EQ(arcs[i], expected_arcs[i]);

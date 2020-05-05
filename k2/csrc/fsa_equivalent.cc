@@ -74,6 +74,7 @@ bool RandomPath(const Fsa &a, Fsa *b,
   if (state_map != nullptr) {
     state_map->swap(state_map_b2a);
   }
+  b->arc_indexes.emplace_back(b->arc_indexes.back());
   return true;
 }
 
