@@ -123,6 +123,34 @@ struct Fst {
   std::vector<int32_t> aux_label;
 };
 
+/*
+  This demonstrates an interface for a deterministic FSA or FST; it's similar
+  to Kaldi's DeterministicOnDemandFst class.  It can be used for things like
+  language models.  Actually we'll template on types like this.  There is no
+  need to actually inherit from this class.  */
+class DeterministicGenericFsa {
+
+  int32_t Start();
+
+
+  bool LookupArc(int32_t cur_state,
+                 int32_t label,
+                 int32_t *arc_index);
+
+
+  float GetWeightForArc(int32_t arc_index);
+
+  int32_t GetLabelForArc(int32_t arc_index);
+
+  int32_t GetPrevStateForArc(int32_t arc_index);
+
+  int32_t GetNextStateForArc(int32_t arc_index);
+
+  // Specific subclasses of this may have additional functions, e.g.
+  int32_t GetOlabelForArc(int32_t arc_index);
+
+};
+
 using FsaVec = std::vector<Fsa>;
 using FstVec = std::vector<Fst>;
 using DenseFsaVec = std::vector<DenseFsa>;

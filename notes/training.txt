@@ -67,8 +67,6 @@ Raw training data is a list of tuples
  automatically backprop derivatives w.r.t. the output k2.wsfsavec
  back to the source weights.
 
-
-
  Then we compute the per-sequence objective functions from the ctc lattices via:
 
   ctc_objfs = k2.ForwardProb(ctc_lattices)

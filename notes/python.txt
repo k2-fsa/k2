@@ -1,0 +1,87 @@
+
+  These are some notes regarding how we'll interact with Python and PyTorch.
+
+
+
+    # For composition we can rely on PyTorch's inbuilt autograd
+    def Compose(a: FsaVec, a_weights: Tensor,
+                a: FsaVec, b_weights: Tensor):
+        c, input_indexes1, input_indexes2 = fsa.FsaVecCompose(a, b)
+
+        c_weights = a_weights[input_indexes1] + b_weights[input_indexes2]
+
+        # Handle transducers:
+        if a.aux_symbol != None:
+          c.aux_symbol = a.aux_symbol[input_indexes1]
+        if b.aux_symbol != None:
+          c.aux_symbol = b.aux_symbol[input_indexes2]
+
+        return c, c_weights
+
+    def RmEpsilon(a: FsaVec, a_weights, a_aux_symbols = None):
+        # At the C++ level, RmEpsilon outputs a `vector<vector<int> > indexes` that
+        # says, for each arc in the output, what list of arcs in the input it corresponds
+        # to.  For exposition purposes, imagine we're dealing with a single FSA, not
+        # a vector of FSAs.   Suppose indexes ==  [ [ 1, 2 ], [ 6, 8, 9 ] ], we'd form
+        # indexes1 = [ 1, 2, 6, 8, 9 ], and indexes2 = [ 0, 0, 1, 1, 1 ].
+
+        b, indexes1, indexes2 = fsa.FsaVecRmEpsilon(a)
+
+        # Note: the 1st dim of a_weights must equal a.num_arcs, but it is allowed
+        # to have other dims (e.g. for non-scalar weights).
+        # In the normal case, a_weights and b_weights will have just one axis.
+
+        b_weights = torch.zeros( (b.num_arcs, *a_weights.shape[1:]) )
+        b_weights._index_add(0, a_weights[indexes1], indexes2)
+
+        # If we later need access to indexes1 and indexes2, we can
+        # create a different version of this function or extend its interface.
+
+        if a_aux_symbols is None:
+           return b, b_weights
+        else:
+           return b, b_weights, fsa.MapAuxSymbols(a_aux_symbols, indexes1, indexes2)
+
+
+
+
+    # Composing with transducers.  Assumes that A is an acceptor but B may
+    # have auxiliary symbols.
+    def TransducerCompose(a: FsaVec, a_weights: Tensor,
+                          a: FsaVec, b_weights: Tensor,
+                          b_aux_symbols = None):
+        c, indexes_a, indexes_b = fsa.FsaVecCompose(a, b)
+
+        c_weights = a_weights[indexes_a] + b_weights[indexes_b]
+        if b_aux_symbols is None:
+          return c, c_weights
+        else:
+          return c, c_weights, fsa.MapAuxSymbols(b_aux_symbols, indexes_b)
+
+
+    class TotalWeight(Function):
+       """
+       Returns the total weight of FSAs (i.e. the log-sum-exp across
+       paths) as a Tensor with shapee (num_fsas,)
+       """
+
+      @staticmethod
+      def forward(ctx, a:FsaVec, a_weights: Tensor):
+         ctx.a = a
+         ctx.fb = fsa.FsaVecWithFbWeights(a, a_weights, fsa.kLogSumWeight)
+         ans = fb.GetTotalWeights() # a Tensor
+         return ans
+
+     def backward(ctx, grad_out):
+         # `indexes` is a Tensor that would contain, for each arc in a,
+         # the index of the FSA in the FSAVec it belongs to.
+         # It would be of the form  [ 0, 0, 0 .., 0, 1, 1, 1, .. 1, 2 ... ]
+         indexes = fsa.GetFsaVecIndexes(ctx.a)
+
+         # GetArcProbs would return the probability of traversing each arc of
+         # each FSA, as a single Tensor.
+         return ctx.fb.GetArcProbs() * grad_out[indexes]
+
+         # TODO: handle transfers to/from GPU in case grad_out was on GPU.
+         # Maybe mark this only once differentiable (it's twice differentiable,
+         # I think, but this code doesn't currently support that).

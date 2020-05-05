@@ -35,6 +35,36 @@ namespace k2 {
 void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
                      std::vector<int32_t> *end_index);
 
+/*
+  Convert indexes (typically arc-mapping indexes, e.g. as output by Compose())
+  from int32 to long int; this will be needed for conversion to LongTensor.
+ */
+void ConvertIndexes1(const std::vector<int32_t> &arc_map,
+                     long int *indexes_out);
+
+/*
+  Convert indexes (typically arc-mapping indexes, e.g. as output by RmEpsilonPruned())
+  from int32 to long int; this will be needed for conversion to LongTensor.
+
+  This version is for when each arc of the output FSA may correspond to a
+  sequence of arcs in the input FSA.
+
+       @param [in] arc_map   Indexed by arc-index in the output FSA, the
+                            sequence of arc-indexes in the input FSA that
+                            it corresponds to
+       @param [out] indexes1  This vector, of length equal to the
+                           total number of int32's in arc_map, will contain
+                           arc-indexes in the input FSA
+       @param [out] indexes2  This vector, also of length equal to the
+                           total number of int32's in arc_map, will contain
+                           arc-indexes in the output FSA
+ */
+void GetArcIndexes2(const std::vector<std::vector<int32_t> > &arc_map,
+                    std::vector<long int> *indexes1,
+                    std::vector<long int> *indexes2);
+
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_UTIL_H_
