@@ -158,7 +158,7 @@ struct Fst {
   language models.  Actually we'll template on types like this.  There is no
   need to actually inherit from this class.  */
 class DeterministicGenericFsa {
-
+ public:
   int32_t Start();
 
 

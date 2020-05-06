@@ -168,7 +168,7 @@ class DetStateMap {
     }
   }
 
-  size_t size() const { return cur_output_state_; }
+  int32_t size() const { return cur_output_state_; }
 
  private:
 
