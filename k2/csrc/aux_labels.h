@@ -24,7 +24,7 @@ namespace k2 {
 
   We deal with two formats of labels: a vector of int32_t, one per arc,
   for cases where we know we have at most one label per arc; and
-  struct AuxLabels for cases where there may in general be a sequence
+  struct Auxint32_ts for cases where there may in general be a sequence
   of labels (one per arc).
 
 */
@@ -34,7 +34,7 @@ namespace k2 {
   This allows you to store auxiliary labels (e.g. olabels or ilabels)
   on each arc of an Fsa.
  */
-struct AuxLabels {
+struct Auxint32_ts {
   /* Suppose this is associated with an Fsa f.  start_pos will be of
      size f.arcs.size() + 1; start_pos[i] is the start position in
      `labels` of the label sequence on arc i.  start_pos.end()
@@ -50,28 +50,28 @@ struct AuxLabels {
 /*
   Maps auxiliary labels after an FSA operation where each arc in the output
   FSA corresponds to exactly one arc in the input FSA.
-     @param [in] labels_in   Labels on the arcs of the input FSA
+     @param [in] labels_in   int32_ts on the arcs of the input FSA
      @param [in] arc_map    Vector of size (output_fsa.arcs.size()),
                             saying which arc of the input FSA it
                             corresponds to.
-     @param [in] labels_out  Labels on the arcs of the output FSA
+     @param [in] labels_out  int32_ts on the arcs of the output FSA
  */
-void MapAuxLabels1(const AuxLabels &labels_in,
+void MapAuxint32_ts1(const Auxint32_ts &labels_in,
                    const std::vector<int32_t> &arc_map,
-                   AuxLabels *labels_out);
+                   Auxint32_ts *labels_out);
 
 /*
   Maps auxiliary labels after an FSA operation where each arc in the output
   FSA can correspond to a sequence of arcs in the input FSA.
-     @param [in] labels_in   Labels on the arcs of the input FSA
+     @param [in] labels_in   int32_ts on the arcs of the input FSA
      @param [in] arc_map    Vector of size (output_fsa.arcs.size()),
                             giving the sequence of arc-indexes in the input
                             FSA that it corresponds to.
-     @param [in] labels_out  Labels on the arcs of the output FSA
+     @param [in] labels_out  int32_ts on the arcs of the output FSA
  */
-void MapAuxLabels2(const AuxLabels &labels_in,
+void MapAuxint32_ts2(const Auxint32_ts &labels_in,
                    const std::vector<std::vector<int32_t> > &arc_map,
-                   AuxLabels *labels_out);
+                   Auxint32_ts *labels_out);
 
 
 /*
@@ -85,7 +85,7 @@ void MapAuxLabels2(const AuxLabels &labels_in,
                          fsa_in
      @param [out] fsa_out   Output FSA.  Will have a number of states
                         >= that in fsa_in.  If fsa_in was top-sorted it
-                        will be top-sorted.  Labels in the FSA will
+                        will be top-sorted.  int32_ts in the FSA will
                         correspond to those in `labels_in`.
      @param [out] aux_labels_out  Auxiliary labels on the arcs of
                         fsa_out.  Will be the same as the labels on
@@ -93,9 +93,9 @@ void MapAuxLabels2(const AuxLabels &labels_in,
                         removed.
  */
 void InvertFst(const Fsa &fsa_in,
-               const AuxLabels &labels_in,
+               const Auxint32_ts &labels_in,
                Fsa *fsa_out,
-               AuxLabels *aux_labels_out);
+               Auxint32_ts *aux_labels_out);
 
 
 

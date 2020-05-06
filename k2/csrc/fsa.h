@@ -9,15 +9,13 @@
 
 #include <cstdint>
 #include <tuple>
+#include <utility>
 #include <vector>
 
+#include "glog/logging.h"
 #include "k2/csrc/util.h"
 
 namespace k2 {
-
-using Label = int32_t;
-using StateId = int32_t;
-using Weight = float;
 
 enum {
   kFinalSymbol = -1,  // final-costs are represented as arcs with
@@ -28,9 +26,9 @@ enum {
 };
 
 struct Arc {
-  StateId src_state;
-  StateId dest_state;
-  Label label;  // 'label' as in a finite state acceptor.
+  int32_t src_state;
+  int32_t dest_state;
+  int32_t label;  // 'label' as in a finite state acceptor.
                 // For FSTs, the other label will be present in the
                 // aux_label array.  Which of the two represents the input
                 // vs. the output can be decided by the user; in general,
@@ -65,7 +63,8 @@ struct ArcHash {
 /*
   struct Fsa is an unweighted finite-state acceptor (FSA) and is at the core of
   operations on weighted FSA's and finite state transducers (FSTs).  Note: being
-  a final-state is represented by an arc with label == kEpsilon to final_state.
+  a final-state is represented by an arc with label == kFinalSymbol to
+  final_state.
 
   The start-state is always numbered zero and the final-state is always the
   last-numbered state.  However, we represent the empty FSA (the one that
@@ -76,13 +75,43 @@ struct Fsa {
   // contains the first arc-index leaving this state (index into `arcs`).
   // The next element of this array gives the end of that range.
   // Note: the final-state is numbered last, and implicitly has no
-  // arcs leaving it.
+  // arcs leaving it. For non-empty FSA, we put a duplicate of the final state
+  // at the end of `arc_indexes` to avoid boundary check for some FSA
+  // operations. Caution: users should never call `arc_indexes.size()` to get
+  // the number of states, they should call `NumStates()` to get the number.
   std::vector<int32_t> arc_indexes;
 
   // Note: an index into the `arcs` array is called an arc-index.
   std::vector<Arc> arcs;
 
-  StateId NumStates() const { return static_cast<StateId>(arc_indexes.size()); }
+  Fsa() = default;
+  // just for creating testing FSA examples for now.
+  Fsa(std::vector<Arc> fsa_arcs, int32_t final_state)
+      : arcs(std::move(fsa_arcs)) {
+    if (arcs.empty()) return;
+
+    int32_t curr_state = -1;
+    int32_t index = 0;
+    for (const auto &arc : arcs) {
+      CHECK_LE(arc.src_state, final_state);
+      CHECK_LE(arc.dest_state, final_state);
+      CHECK_LE(curr_state, arc.src_state);
+      while (curr_state < arc.src_state) {
+        arc_indexes.push_back(index);
+        ++curr_state;
+      }
+      ++index;
+    }
+    // noted that here we push two `final_state` at the end, the last element is
+    // just to avoid boundary check for some FSA operations.
+    for (; curr_state <= final_state; ++curr_state)
+      arc_indexes.push_back(index);
+  }
+
+  int32_t NumStates() const {
+    return !arc_indexes.empty() ? (static_cast<int32_t>(arc_indexes.size()) - 1)
+                                : 0;
+  }
 };
 
 /*
@@ -123,6 +152,7 @@ struct Fst {
   std::vector<int32_t> aux_label;
 };
 
+<<<<<<< HEAD
 /*
   This demonstrates an interface for a deterministic FSA or FST; it's similar
   to Kaldi's DeterministicOnDemandFst class.  It can be used for things like
@@ -140,7 +170,7 @@ class DeterministicGenericFsa {
 
   float GetWeightForArc(int32_t arc_index);
 
-  int32_t GetLabelForArc(int32_t arc_index);
+  int32_t Getint32_tForArc(int32_t arc_index);
 
   int32_t GetPrevStateForArc(int32_t arc_index);
 
@@ -150,6 +180,7 @@ class DeterministicGenericFsa {
   int32_t GetOlabelForArc(int32_t arc_index);
 
 };
+
 
 using FsaVec = std::vector<Fsa>;
 using FstVec = std::vector<Fst>;

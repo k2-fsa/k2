@@ -2,49 +2,63 @@
 # See ../LICENSE for clarification regarding multiple authors
 
 function(download_googltest)
-  include(ExternalProject)
-
-  set(googletest_URL  "https://github.com/google/googletest/archive/release-1.10.0.tar.gz")
-  set(googletest_HASH "sha256=9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb")
-  set(googletest_DIR  "${k2_THIRD_PARTY_DIR}/googletest")
-  set(googletest_INSTALL_DIR  "${googletest_DIR}/install")
-
-  if(WIN32)
-    set(googletest_libgtest "${googletest_INSTALL_DIR}/lib/gtest.lib")
-    set(googletest_libgtest_main "${googletest_INSTALL_DIR}/lib/gtest_main.lib")
-  else()
-    set(googletest_libgtest "${googletest_INSTALL_DIR}/lib/libgtest.a")
-    set(googletest_libgtest_main "${googletest_INSTALL_DIR}/lib/libgtest_main.a")
+  if(CMAKE_VERSION VERSION_LESS 3.11)
+    # FetchContent is available since 3.11,
+    # we've copied it to ${CMAKE_SOURCE_DIR}/cmake/Modules
+    # so that it can be used in lower CMake versions.
+    message(STATUS "Use FetchContent provided by k2")
+    list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
   endif()
 
-  set(googletest_INCLUDE_DIR "${googletest_INSTALL_DIR}/include")
+  include(FetchContent)
 
-  # NOTE(fangjun): since "googletest_INCLUDE_DIR" is created during build time,
-  # we create it manually so that it can be accessed during configuration time.
-  file(MAKE_DIRECTORY ${googletest_INCLUDE_DIR})
+  set(googletest_URL  "https://github.com/google/googletest/archive/release-1.10.0.tar.gz")
+  set(googletest_HASH "SHA256=9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb")
 
-  ExternalProject_Add(
-    googletest
+  set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
+  set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+  set(gtest_disable_pthreads ON CACHE BOOL "" FORCE)
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+  FetchContent_Declare(googletest
     URL               ${googletest_URL}
-    PREFIX            ${googletest_DIR}
-    INSTALL_DIR       ${googletest_DIR/install}
-    CMAKE_ARGS        -DCMAKE_INSTALL_PREFIX=${googletest_INSTALL_DIR}
-                      -DBUILD_GMOCK=ON
-                      -Dgtest_disable_pthreads=ON
-                      -Dgtest_force_shared_crt=ON
-    LOG_DOWNLOAD      ON
-    LOG_CONFIGURE     ON
+    URL_HASH          ${googletest_HASH}
   )
-  add_library(gtest STATIC IMPORTED GLOBAL)
-  set_property(TARGET gtest PROPERTY IMPORTED_LOCATION ${googletest_libgtest})
-  target_include_directories(gtest INTERFACE ${googletest_INCLUDE_DIR})
 
-  add_library(gtest_main STATIC IMPORTED GLOBAL)
-  set_property(TARGET gtest_main PROPERTY IMPORTED_LOCATION ${googletest_libgtest_main})
-  target_include_directories(gtest_main INTERFACE ${googletest_INCLUDE_DIR})
+  FetchContent_GetProperties(googletest)
+  if(NOT googletest_POPULATED)
+    message(STATUS "Downloading googletest")
+    FetchContent_Populate(googletest)
+  endif()
+  message(STATUS "googletest is downloaded to ${googletest_SOURCE_DIR}")
+  message(STATUS "googletest's binary dir is ${googletest_BINARY_DIR}")
 
-  add_dependencies(gtest googletest)
-  add_dependencies(gtest_main googletest)
+  if(APPLE)
+    set(CMAKE_MACOSX_RPATH ON) # to solve the following warning on macOS
+  endif()
+  #[==[
+  -- Generating done
+    Policy CMP0042 is not set: MACOSX_RPATH is enabled by default.  Run "cmake
+    --help-policy CMP0042" for policy details.  Use the cmake_policy command to
+    set the policy and suppress this warning.
+
+    MACOSX_RPATH is not specified for the following targets:
+
+      gmock
+      gmock_main
+      gtest
+      gtest_main
+
+  This warning is for project developers.  Use -Wno-dev to suppress it.
+  ]==]
+
+  add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR} EXCLUDE_FROM_ALL)
+
+  target_include_directories(gtest
+    INTERFACE
+      ${googletest_SOURCE_DIR}/googletest/include
+      ${googletest_SOURCE_DIR}/googlemock/include
+  )
 endfunction()
 
 download_googltest()

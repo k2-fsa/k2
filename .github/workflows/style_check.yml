@@ -21,6 +21,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v1
@@ -32,6 +34,17 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install cpplint==1.4.5
 
+      - name: Install cppcheck
+        run: |
+          cd /tmp
+          git clone --depth 1 https://github.com/danmar/cppcheck.git
+          cd cppcheck
+          mkdir build
+          cd build
+          cmake ..
+          make -j
+          sudo make install
+
       - name: Create Build Directory
         run: cmake -E make_directory ${{runner.workspace}}/build
 
@@ -40,10 +53,12 @@ jobs:
         working-directory: ${{runner.workspace}}/build
         run: cmake -DCMAKE_CXX_CPPLINT=cpplint $GITHUB_WORKSPACE
 
-      - name: Check style
+      - name: Check style with cpplint
         shell: bash
-        working-directory: ${{runner.workspace}}/build
-        # it will build all targets; while building a library, it
-        # invokes cpplint automatically to check the corresponding
-        # cc source file. If it find any errors, the return code will be 1.
-        run: cmake --build . 2>&1 | awk '/errors/ {exit 1} {print $0}'
+        working-directory: ${{github.workspace}}
+        run: ./scripts/check_style_cpplint.sh ${{runner.workspace}}/build 1
+
+      - name: Run cppcheck
+        shell: bash
+        working-directory: ${{github.workspace}}
+        run: ./scripts/run_cppcheck.sh ${{runner.workspace}}/build

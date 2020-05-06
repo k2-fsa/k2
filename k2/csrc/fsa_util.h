@@ -7,6 +7,8 @@
 #ifndef K2_CSRC_FSA_UTIL_H_
 #define K2_CSRC_FSA_UTIL_H_
 
+#include <memory>
+#include <string>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -35,6 +37,7 @@ namespace k2 {
 void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
                      std::vector<int32_t> *end_index);
 
+<<<<<<< HEAD
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by Compose())
   from int32 to long int; this will be needed for conversion to LongTensor.
@@ -64,6 +67,25 @@ void GetArcIndexes2(const std::vector<std::vector<int32_t> > &arc_map,
                     std::vector<long int> *indexes2);
 
 
+/** Build a FSA from a string.
+
+  The input string is a transition table with the following
+  format (same with OpenFST):
+
+  from_state  to_state  label
+  from_state  to_state  label
+  ... ...
+  final_state
+
+  K2 requires that the final state has the largest state number. The above
+  format requires the last line to be the final state, whose sole purpose is
+  to be compatible with OpenFST.
+
+  @param [in] s Input string representing the transition table.
+
+  @return an FSA.
+ */
+std::unique_ptr<Fsa> StringToFsa(const std::string &s);
 
 }  // namespace k2
 

@@ -30,8 +30,7 @@ std::string GenerateEpilogue() { return "}"; }
 
 using k2::Arc;
 using k2::Fsa;
-using k2::Label;
-using k2::StateId;
+
 
 std::string ProcessState(const Fsa &fsa, int32_t state) {
   std::ostringstream os;
@@ -44,9 +43,9 @@ std::string ProcessState(const Fsa &fsa, int32_t state) {
 
   for (; begin != end; ++begin) {
     const auto &arc = fsa.arcs[begin];
-    StateId src = arc.src_state;
-    StateId dest = arc.dest_state;
-    Label label = arc.label;
+    int32_t src = arc.src_state;
+    int32_t dest = arc.dest_state;
+    int32_t label = arc.label;
     os << "          " << src << " -> " << dest << " [label = \"" << label
        << "\", fontsize = 14];"
        << "\n";
