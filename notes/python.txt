@@ -3,9 +3,24 @@
 
 
 
-    # For composition we can rely on PyTorch's inbuilt autograd
+
+
+    # Assumes that A is an acceptor but B may
+    # have auxiliary symbols (i.e. may be a transducer).
+    def TransducerCompose(a: FsaVec, a_weights: Tensor,
+                          b: FsaVec, b_weights: Tensor,
+                          b_aux_symbols = None):
+        c, indexes_a, indexes_b = fsa.FsaVecCompose(a, b)
+
+        c_weights = a_weights[indexes_a] + b_weights[indexes_b]
+        if b_aux_symbols is None:
+          return c, c_weights
+        else:
+          return c, c_weights, fsa.MapAuxSymbols(b_aux_symbols, indexes_b)
+
+
     def Compose(a: FsaVec, a_weights: Tensor,
-                a: FsaVec, b_weights: Tensor):
+                b: FsaVec, b_weights: Tensor):
         c, input_indexes1, input_indexes2 = fsa.FsaVecCompose(a, b)
 
         c_weights = a_weights[input_indexes1] + b_weights[input_indexes2]
@@ -45,24 +60,10 @@
 
 
 
-    # Composing with transducers.  Assumes that A is an acceptor but B may
-    # have auxiliary symbols.
-    def TransducerCompose(a: FsaVec, a_weights: Tensor,
-                          a: FsaVec, b_weights: Tensor,
-                          b_aux_symbols = None):
-        c, indexes_a, indexes_b = fsa.FsaVecCompose(a, b)
-
-        c_weights = a_weights[indexes_a] + b_weights[indexes_b]
-        if b_aux_symbols is None:
-          return c, c_weights
-        else:
-          return c, c_weights, fsa.MapAuxSymbols(b_aux_symbols, indexes_b)
-
-
     class TotalWeight(Function):
        """
        Returns the total weight of FSAs (i.e. the log-sum-exp across
-       paths) as a Tensor with shapee (num_fsas,)
+       paths) as a Tensor with shape (num_fsas,)
        """
 
       @staticmethod
