@@ -29,11 +29,11 @@ struct Arc {
   int32_t src_state;
   int32_t dest_state;
   int32_t label;  // 'label' as in a finite state acceptor.
-                // For FSTs, the other label will be present in the
-                // aux_label array.  Which of the two represents the input
-                // vs. the output can be decided by the user; in general,
-                // the one that appears on the arc will be the one that
-                // participates in whatever operation you are doing
+                  // For FSTs, the other label will be present in the
+                  // aux_label array.  Which of the two represents the input
+                  // vs. the output can be decided by the user; in general,
+                  // the one that appears on the arc will be the one that
+                  // participates in whatever operation you are doing
 
   /* Note: the costs are not stored here but outside the Fst object, in some
      kind of array indexed by arc-index.  */
@@ -131,8 +131,8 @@ struct Fsa {
  */
 struct DenseFsa {
   float *weights;  // Would typically be a log-prob or unnormalized log-prob
-  int32_t T;        // The number of time steps == rows in the matrix `weights`;
-                    // this FSA has T + 2 states, see explanation above.
+  int32_t T;       // The number of time steps == rows in the matrix `weights`;
+                   // this FSA has T + 2 states, see explanation above.
   int32_t num_symbols;  // The number of symbols == columns in the matrix
                         // `weights`.
   int32_t t_stride;     // The stride of the matrix `weights`
@@ -161,11 +161,7 @@ class DeterministicGenericFsa {
  public:
   int32_t Start();
 
-
-  bool LookupArc(int32_t cur_state,
-                 int32_t label,
-                 int32_t *arc_index);
-
+  bool LookupArc(int32_t cur_state, int32_t label, int32_t *arc_index);
 
   float GetWeightForArc(int32_t arc_index);
 
@@ -177,9 +173,7 @@ class DeterministicGenericFsa {
 
   // Specific subclasses of this may have additional functions, e.g.
   int32_t GetOlabelForArc(int32_t arc_index);
-
 };
-
 
 using FsaVec = std::vector<Fsa>;
 using FstVec = std::vector<Fst>;

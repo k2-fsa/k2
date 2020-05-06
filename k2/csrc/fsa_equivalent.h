@@ -1,6 +1,7 @@
 // k2/csrc/fsa_equivalent.h
 
-// Copyright (c)  2020  Daniel Povey
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+//                                                   Haowen Qiu)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -15,10 +16,11 @@
 namespace k2 {
 
 /*
-  Returns true if the Fsa `a` is equivalent to `b`.
-  CAUTION: this one will be quite hard to implement.
+  Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
+  generating `npath` paths from one of them and then checking if the
+  paths exist in the other one.
  */
-bool IsEquivalent(const Fsa &a, const Fsa &b);
+bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
 
 /*
   Gets a random path from an Fsa `a`, returns true if we get one path
