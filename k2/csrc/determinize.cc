@@ -1,4 +1,4 @@
-// k2/csrc/fsa_algo.cc
+// k2/csrc/determinize.cc
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey dpove@gmail.com, Haowen Qiu qindazhu@gmail.com)
 
@@ -39,8 +39,7 @@ struct DetStateElement {
   bool operator < (const DetStateElement &other) const {
     if (weight < other.weight) return true;
     else if (weight > other.weight) return false;
-
-
+    // TODO.
   }
 
 };
@@ -178,7 +177,11 @@ class DetStateMap {
   /* Turns DetState into a compact form of 128 bits.  Technically there
      could be collisions, which would be fatal for the algorithm, but this
      is one of those lifetime-of-the-universe type of things (kind of like
-     the theoretical potential for git hash collision) that we ignore. */
+     the theoretical potential for git hash collision) that we ignore.
+
+     The normalized form
+
+  */
   void DetStateToCompact(const DetState &d,
                          std::pair<uint64_t, uint64_t> *vec) {
     assert(d.normalized);
@@ -191,9 +194,10 @@ class DetStateMap {
     // matter which element we choose to trace back.
     DetStateElement *elem = d.head;
     int32_t seq_len = d.seq_len;
-    for (int32_t i = 0; i < seq_len; i++) {
+    for (int32_t i = 0; i < seq_len; ++i) {
       a = elem->symbol + 102299 * a;
       b = elem->symbol + 102983 * b;
+      elem = elem->parent
     }
     vec->first = a;
     vec->second = b;
@@ -222,7 +226,7 @@ void DeterminizeMax(const WfsaWithFbWeights &a,
     return;
   }
   float cutoff = a.backward_state_weights[0] - beam;
-
+  // TODO.
 
 }
 
