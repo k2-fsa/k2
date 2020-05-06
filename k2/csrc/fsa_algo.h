@@ -7,6 +7,7 @@
 #ifndef K2_CSRC_FSA_ALGO_H_
 #define K2_CSRC_FSA_ALGO_H_
 
+#include <memory>
 #include <vector>
 
 #include "k2/csrc/fsa.h"

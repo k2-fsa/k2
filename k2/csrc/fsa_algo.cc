@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <numeric>
 #include <queue>
 #include <stack>
