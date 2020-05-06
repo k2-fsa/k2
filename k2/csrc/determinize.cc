@@ -1,16 +1,16 @@
 // k2/csrc/determinize.cc
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey dpove@gmail.com, Haowen Qiu qindazhu@gmail.com)
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+// dpove@gmail.com, Haowen Qiu qindazhu@gmail.com)
 
 // See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/fsa_algo.h"
 
 #include <utility>
 #include <vector>
 
-namespace k2 {
+#include "k2/csrc/fsa_algo.h"
 
+namespace k2 {
 
 struct DetStateElement {
   // Element of the doubly linked list whose start/end are
@@ -24,11 +24,11 @@ struct DetStateElement {
   int32_t symbol;     // Symbol on the arc numbered `arc_index` of the input FSA
                       // (copied here for convenience).
 
-  double weight;      // Weight from reference state to this state, along
-                      // the path taken by following the 'parent' links
-                      // (the path would have `seq_len` arcs in it).
-                      // Note: by "this state" we mean the destination-state of
-                      // the arc at `arc_index`.
+  double weight;  // Weight from reference state to this state, along
+                  // the path taken by following the 'parent' links
+                  // (the path would have `seq_len` arcs in it).
+                  // Note: by "this state" we mean the destination-state of
+                  // the arc at `arc_index`.
 
   // `prev` and `next` form the doubly linked list of DetStateElement
   DetStateElement *prev = nullptr;
@@ -36,20 +36,18 @@ struct DetStateElement {
 
   // This comparator function compares the weights, but is careful in case of
   // ties to ensure deterministic behavior.
-  bool operator < (const DetStateElement &other) const {
-    if (weight < other.weight) return true;
-    else if (weight > other.weight) return false;
-    // TODO.
+  bool operator<(const DetStateElement &other) const {
+    if (weight < other.weight)
+      return true;
+    else if (weight > other.weight)
+      return false;
+    // TODO(dpovey)
   }
-
 };
 
-
-
-
-
 /*
-  Conceptually a determinized state in weighted FSA determinization would normally
+  Conceptually a determinized state in weighted FSA determinization would
+  normally
   be a weighted subset of states in the input FSA, with the weights normalized
   somehow (e.g. subtracting the sum of the weights).
 
@@ -68,15 +66,18 @@ struct DetStateElement {
 struct DetState {
   // `base_state` is a state in the input FSA.
   int32_t base_state;
-  // seq_len is the length of symbol sequence that we follow from state `base_state`.
-  // The sequence of symbols can be found by tracing back one of the DetStateElements
-  // in the doubly linked list (it doesn't matter which you pick, the result will be the
+  // seq_len is the length of symbol sequence that we follow from state
+  // `base_state`.
+  // The sequence of symbols can be found by tracing back one of the
+  // DetStateElements
+  // in the doubly linked list (it doesn't matter which you pick, the result
+  // will be the
   // same.
   int32_t seq_len;
 
-  bool normalized { false };
+  bool normalized{false};
 
-  DetState *parent; // Maybe not needed!
+  DetState *parent;  // Maybe not needed!
 
   DetStateElement *head;
   DetStateElement *tail;
@@ -91,7 +92,8 @@ struct DetState {
        - Remove duplicates.
 
          If the DLL of DetStateElements contains duplicate elements (i.e.
-         elements whose paths end in the same state) it removes whichever has the
+         elements whose paths end in the same state) it removes whichever has
+    the
          smallest weight.  (Remember, a determinized state is, conceptually, a
          weighted subset of elements; we are implementing determinization in a
          tropical-like semiring where we take the best weight.
@@ -131,11 +133,7 @@ struct DetState {
   void Normalize(std::vector<int32_t> *leftover_arcs);
 };
 
-
-void DetState::Normalize(std::vector<int32_t> *input_arcs) {
-
-}
-
+void DetState::Normalize(std::vector<int32_t> *input_arcs) {}
 
 class DetStateMap {
  public:
@@ -156,7 +154,7 @@ class DetStateMap {
   bool GetOutputState(const DetState &a, int32_t *state_id) {
     std::pair<uint64_t, uint64_t> compact;
     DetStateToCompact(a, &compact);
-    auto p = map_.insert({compact, cur_output_state));
+    auto p = map_.insert({compact, cur_output_state});
     bool inserted = p.second;
     if (inserted) {
       *state_id = cur_output_state_++;
@@ -170,9 +168,9 @@ class DetStateMap {
   int32_t size() const { return cur_output_state_; }
 
  private:
-
-  int32_t cur_output_state_ { 0 };
-  std::unordered_map<std::pair<uint64_t, uint64_t>, int32_t, DetStateVectorHasher> map_;
+  int32_t cur_output_state_{0};
+  std::unordered_map<std::pair<uint64_t, uint64_t>, int32_t,
+                     DetStateVectorHasher> map_;
 
   /* Turns DetState into a compact form of 128 bits.  Technically there
      could be collisions, which would be fatal for the algorithm, but this
@@ -187,7 +185,7 @@ class DetStateMap {
     assert(d.normalized);
 
     uint64_t a = d.base_state + 17489 * d.seq_len,
-        b = d.base_state * 103979  + d.seq_len;
+             b = d.base_state * 103979 + d.seq_len;
 
     // We choose an arbitrary DetStateElement (the first one in the list) to
     // read the symbol sequence from; the symbol sequence will be the same no
@@ -204,31 +202,21 @@ class DetStateMap {
   }
 
   struct DetStateHasher {
-    size_t operator () (const std::pair<uint64_t, uint64_t> &p) const {
+    size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
       return p.first;
     }
   };
-
-
-
 };
 
-
-
-void DeterminizeMax(const WfsaWithFbWeights &a,
-                    float beam,
-                    Fsa *b,
+void DeterminizeMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
                     std::vector<std::vector<int32_t> > *arc_map) {
-  // TODO: use glog stuff.
+  // TODO(dpovey): use glog stuff.
   assert(IsValid(a) && IsEpsilonFree(a) && IsTopSortedAndAcyclic(a));
   if (a.arc_indexes.empty()) {
     b->Clear();
     return;
   }
   float cutoff = a.backward_state_weights[0] - beam;
-  // TODO.
-
+  // TODO(dpovey)
 }
-
-
 }  // namespace k2
