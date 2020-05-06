@@ -55,7 +55,7 @@ bool HasSelfLoops(const Fsa &fsa);
 /*
   Returns true if `fsa` is acyclic
  */
-bool IsAcyclic(const Fsa &fsa);
+bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order = nullptr);
 
 /*
   Returns true if `fsa` is both topologically sorted and free

@@ -463,44 +463,7 @@ bool TopSort(const Fsa &a, Fsa *b,
   std::vector<int32_t> order;
   order.reserve(num_states);
 
-  std::stack<DfsState> stack;
-  stack.push({0, a.arc_indexes[0], a.arc_indexes[1]});
-  state_status[0] = kVisiting;
-  bool is_acyclic = true;
-  while (is_acyclic && !stack.empty()) {
-    auto &current_state = stack.top();
-    if (current_state.arc_begin == current_state.arc_end) {
-      // we have finished visiting this state
-      state_status[current_state.state] = kVisited;
-      order.push_back(current_state.state);
-      stack.pop();
-      continue;
-    }
-    const auto &arc = a.arcs[current_state.arc_begin];
-    auto next_state = arc.dest_state;
-    auto status = state_status[next_state];
-    switch (status) {
-      case kNotVisited: {
-        // a new discovered node
-        state_status[next_state] = kVisiting;
-        auto arc_begin = a.arc_indexes[next_state];
-        stack.push({next_state, arc_begin, a.arc_indexes[next_state + 1]});
-        ++current_state.arc_begin;
-        break;
-      }
-      case kVisiting:
-        // this is a back arc indicating a loop in the graph
-        is_acyclic = false;
-        break;
-      case kVisited:
-        // this is a forward cross arc, do nothing.
-        ++current_state.arc_begin;
-        break;
-      default:
-        LOG(FATAL) << "Unreachable code is executed!";
-        break;
-    }
-  }
+  bool is_acyclic = IsAcyclic(a, &order);
 
   if (!is_acyclic) return false;
 

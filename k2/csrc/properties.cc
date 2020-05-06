@@ -113,11 +113,12 @@ bool CheckCycles(int32_t s, std::vector<bool> *visited,
 }
 
 // Detect cycles using DFS traversal
-bool IsAcyclic(const Fsa &fsa) {
+bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
   if (IsEmpty(fsa)) return true;
   
   auto num_states = fsa.NumStates();
   std::vector<int8_t> state_status(num_states, kNotVisited);
+
   std::stack<DfsState> stack;
   stack.push({0, fsa.arc_indexes[0], fsa.arc_indexes[1]});
   state_status[0] = kVisiting;
@@ -127,6 +128,8 @@ bool IsAcyclic(const Fsa &fsa) {
     if (current_state.arc_begin == current_state.arc_end) {
       // we have finished visiting this state
       state_status[current_state.state] = kVisited;
+      if (order != nullptr)
+        (*order).push_back(current_state.state);
       stack.pop();
       continue;
     }
