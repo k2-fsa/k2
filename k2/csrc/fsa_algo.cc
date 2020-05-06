@@ -364,8 +364,8 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
       auto b_arc_range =
           std::equal_range(b_arc_iter_begin, b_arc_iter_end, curr_a_arc,
                            [](const Arc &left, const Arc &right) {
-            return left.label < right.label;
-          });
+                             return left.label < right.label;
+                           });
       for (ArcIterator it_b = b_arc_range.first; it_b != b_arc_range.second;
            ++it_b) {
         Arc curr_b_arc = *it_b;
@@ -424,12 +424,13 @@ void ArcSort(const Fsa &a, Fsa *b,
     std::transform(arc_begin_iter + begin, arc_begin_iter + end,
                    index_begin_iter + begin,
                    std::back_inserter(arc_range_to_be_sorted),
-                   [](const Arc & arc, int32_t index)
-                       ->ArcWithIndex { return std::make_pair(arc, index); });
+                   [](const Arc &arc, int32_t index) -> ArcWithIndex {
+                     return std::make_pair(arc, index);
+                   });
     std::sort(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
               [](const ArcWithIndex &left, const ArcWithIndex &right) {
-      return left.first < right.first;  // sort on arc
-    });
+                return left.first < right.first;  // sort on arc
+              });
     // copy index mappings back to `indexes`
     std::transform(arc_range_to_be_sorted.begin(), arc_range_to_be_sorted.end(),
                    index_begin_iter + begin,
@@ -538,6 +539,87 @@ bool TopSort(const Fsa &a, Fsa *b,
   }
   b->arc_indexes.emplace_back(b->arc_indexes.back());
   return true;
+}
+
+std::unique_ptr<Fsa> CreateFsa(const std::vector<Arc> &arcs) {
+  if (arcs.empty()) return nullptr;
+
+  std::vector<std::vector<Arc>> vec;
+  for (const auto &arc : arcs) {
+    auto src_state = arc.src_state;
+    auto dest_state = arc.dest_state;
+    auto new_size = std::max(src_state, dest_state);
+    if (new_size >= vec.size()) vec.resize(new_size + 1);
+    vec[src_state].push_back(arc);
+  }
+
+  std::stack<DfsState> stack;
+  std::vector<char> state_status(vec.size(), kNotVisited);
+  std::vector<int32_t> order;
+
+  auto num_states = static_cast<int32_t>(vec.size());
+  for (auto i = 0; i != num_states; ++i) {
+    if (state_status[i] == kVisited) continue;
+    stack.push({i, 0, static_cast<int32_t>(vec[i].size())});
+    state_status[i] = kVisiting;
+    while (!stack.empty()) {
+      auto &current_state = stack.top();
+      auto state = current_state.state;
+
+      if (current_state.arc_begin == current_state.arc_end) {
+        state_status[state] = kVisited;
+        order.push_back(state);
+        stack.pop();
+        continue;
+      }
+
+      const auto &arc = vec[state][current_state.arc_begin];
+      auto next_state = arc.dest_state;
+      auto status = state_status[next_state];
+      switch (status) {
+        case kNotVisited:
+          state_status[next_state] = kVisiting;
+          stack.push(
+              {next_state, 0, static_cast<int32_t>(vec[next_state].size())});
+          ++current_state.arc_begin;
+          break;
+        case kVisiting:
+          LOG(FATAL) << "there is a cycle: " << state << " -> " << next_state;
+          break;
+        case kVisited:
+          ++current_state.arc_begin;
+          break;
+        default:
+          LOG(FATAL) << "Unreachable code is executed!";
+          break;
+      }
+    }
+  }
+
+  CHECK_EQ(num_states, static_cast<int32_t>(order.size()));
+
+  std::reverse(order.begin(), order.end());
+
+  std::unique_ptr<Fsa> fsa(new Fsa);
+  fsa->arc_indexes.resize(num_states + 1);
+  fsa->arcs.reserve(arcs.size());
+
+  std::vector<int32_t> old_to_new(num_states);
+  for (auto i = 0; i != num_states; ++i) old_to_new[order[i]] = i;
+
+  for (auto i = 0; i != num_states; ++i) {
+    auto old_state = order[i];
+    fsa->arc_indexes[i] = static_cast<int32_t>(fsa->arcs.size());
+    for (auto arc : vec[old_state]) {
+      arc.src_state = i;
+      arc.dest_state = old_to_new[arc.dest_state];
+      fsa->arcs.push_back(arc);
+    }
+  }
+
+  fsa->arc_indexes.back() = static_cast<int32_t>(fsa->arcs.size());
+
+  return fsa;
 }
 
 }  // namespace k2

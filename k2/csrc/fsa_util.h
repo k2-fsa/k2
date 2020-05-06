@@ -61,9 +61,11 @@ void ConvertIndexes1(const std::vector<int32_t> &arc_map, int64_t *indexes_out);
                            total number of int32's in arc_map, will contain
                            arc-indexes in the output FSA
  */
-void GetArcIndexes2(const std::vector<std::vector<int32_t> > &arc_map,
+void GetArcIndexes2(const std::vector<std::vector<int32_t>> &arc_map,
                     std::vector<int64_t> *indexes1,
                     std::vector<int64_t> *indexes2);
+
+void Swap(Fsa *a, Fsa *b);
 
 /** Build a FSA from a string.
 

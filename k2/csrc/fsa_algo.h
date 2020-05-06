@@ -258,6 +258,20 @@ bool TopSort(const Fsa& a, Fsa* b, std::vector<int32_t>* state_map = nullptr);
 void Determinize(const Fsa &a, Fsa *b,
                  std::vector<std::vector<int32_t>> *state_map);
 
+/* Create an acyclic FSA from a list of arcs.
+
+   Arcs do not need to be pre-sorted by src_state.
+   If there is a cycle, it aborts.
+
+   The start state MUST be 0. The final state will be automatically determined
+   by topological sort.
+
+   @param [in] arcs  A list of arcs
+
+   @return a topsorted acyclic fsa.
+*/
+std::unique_ptr<Fsa> CreateFsa(const std::vector<Arc> &arcs);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_
