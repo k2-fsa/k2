@@ -44,6 +44,17 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
+      - name: Install cppcheck
+        run: |
+          cd /tmp
+          git clone --depth 1 https://github.com/danmar/cppcheck.git
+          cd cppcheck
+          mkdir build
+          cd build
+          cmake ..
+          make -j
+          sudo make install
+
       - name: Create Build Directory
         run: cmake -E make_directory ${{runner.workspace}}/build
 
@@ -56,6 +67,11 @@ jobs:
         shell: bash
         working-directory: ${{github.workspace}}
         run: ./scripts/check_style_cpplint.sh ${{runner.workspace}}/build 1
+
+      - name: Run cppcheck
+        shell: bash
+        working-directory: ${{github.workspace}}
+        run: ./scripts/run_cppcheck.sh ${{runner.workspace}}/build
 
       - name: Install clang-tidy
         run: |
