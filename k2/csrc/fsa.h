@@ -130,7 +130,7 @@ struct Fsa {
   weights[t,n].
  */
 struct DenseFsa {
-  Weight *weights;  // Would typically be a log-prob or unnormalized log-prob
+  float *weights;  // Would typically be a log-prob or unnormalized log-prob
   int32_t T;        // The number of time steps == rows in the matrix `weights`;
                     // this FSA has T + 2 states, see explanation above.
   int32_t num_symbols;  // The number of symbols == columns in the matrix
@@ -144,7 +144,7 @@ struct DenseFsa {
       CAUTION: we may later enforce that stride == num_symbols, in order to
       be able to know the layout of a phantom matrix of arcs.  (?)
    */
-  DenseFsa(Weight *data, int32_t T, int32_t num_symbols, int32_t stride);
+  DenseFsa(float *data, int32_t T, int32_t num_symbols, int32_t stride);
 };
 
 struct Fst {
@@ -152,7 +152,6 @@ struct Fst {
   std::vector<int32_t> aux_label;
 };
 
-<<<<<<< HEAD
 /*
   This demonstrates an interface for a deterministic FSA or FST; it's similar
   to Kaldi's DeterministicOnDemandFst class.  It can be used for things like

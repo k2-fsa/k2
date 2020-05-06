@@ -37,7 +37,6 @@ namespace k2 {
 void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
                      std::vector<int32_t> *end_index);
 
-<<<<<<< HEAD
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by Compose())
   from int32 to long int; this will be needed for conversion to LongTensor.

@@ -31,10 +31,12 @@ struct DfsState {
   int32_t arc_end;    // end of the arc index of the visiting node
 };
 
+using StatePair = std::pair<int32_t, int32_t>;
+
 inline int32_t InsertIntersectionState(
-    const k2::StatePair &new_state, int32_t *state_index_c,
-    std::queue<k2::StatePair> *qstates,
-    std::unordered_map<k2::StatePair, int32_t, k2::PairHash> *state_pair_map) {
+    const StatePair &new_state, int32_t *state_index_c,
+    std::queue<StatePair> *qstates,
+    std::unordered_map<StatePair, int32_t, k2::PairHash> *state_pair_map) {
   auto result = state_pair_map->insert({new_state, *state_index_c + 1});
   if (result.second) {
     // we have not visited `new_state` before.
