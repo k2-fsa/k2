@@ -115,7 +115,7 @@ bool CheckCycles(int32_t s, std::vector<bool> *visited,
 // Detect cycles using DFS traversal
 bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
   if (IsEmpty(fsa)) return true;
-  
+
   auto num_states = fsa.NumStates();
   std::vector<int8_t> state_status(num_states, kNotVisited);
 
