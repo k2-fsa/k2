@@ -83,6 +83,8 @@ struct WfsaWithFbWeights {
    */
   WfsaWithFbWeights(const Fsa *fsa, const float *arc_weights, FbWeightType t);
 
+
+
  private:
   std::vector<float> mem_;
 };

@@ -19,12 +19,12 @@ namespace k2 {
 
 bool IsValid(const Fsa &fsa) {
   if (IsEmpty(fsa)) return true;
-  StateId num_states = fsa.NumStates();
+  int32_t num_states = fsa.NumStates();
   // Nonempty fsa contains at least two states,
   // the start state and the final state.
   if (num_states < 2) return false;
-  StateId state = 0;
-  StateId final_state = num_states - 1;
+  int32_t state = 0;
+  int32_t final_state = num_states - 1;
   // the number of arcs in one state
   int32_t num_arcs = 0;
   for (const auto &arc : fsa.arcs) {
@@ -58,11 +58,11 @@ bool IsTopSorted(const Fsa &fsa) {
 }
 
 bool IsArcSorted(const Fsa &fsa) {
-  StateId final_state = fsa.NumStates() - 1;
+  int32_t final_state = fsa.NumStates() - 1;
   const auto begin = fsa.arcs.begin();
   const auto &arc_indexes = fsa.arc_indexes;
   // we will not check the final state as it has no arcs leaving it.
-  for (StateId state = 0; state < final_state; ++state) {
+  for (int32_t state = 0; state < final_state; ++state) {
     // as non-empty `fsa` contains at least two states,
     // we can always access `state + 1` validly.
     if (!std::is_sorted(begin + arc_indexes[state],
@@ -125,8 +125,8 @@ bool IsAcyclic(const Fsa &fsa) {
 }
 
 bool IsDeterministic(const Fsa &fsa) {
-  std::unordered_set<Label> labels;
-  StateId state = 0;
+  std::unordered_set<int32_t> labels;
+  int32_t state = 0;
   for (const auto &arc : fsa.arcs) {
     if (arc.src_state == state) {
       if (labels.find(arc.label) != labels.end()) return false;

@@ -8,9 +8,10 @@
 #include "k2/csrc/fsa_algo.h"
 
 #include <algorithm>
+#include <limits>
 #include <numeric>
-#include <stack>
 #include <queue>
+#include <stack>
 #include <unordered_map>
 #include <utility>
 
@@ -20,6 +21,9 @@
 
 namespace {
 
+static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
+static constexpr int8_t kVisiting = 1;    // a node that is under visiting
+static constexpr int8_t kVisited = 2;     // a node that has been visited
 // depth first search state
 struct DfsState {
   int32_t state;      // state number of the visiting node
@@ -27,10 +31,12 @@ struct DfsState {
   int32_t arc_end;    // end of the arc index of the visiting node
 };
 
+using StatePair = std::pair<int32_t, int32_t>;
+
 inline int32_t InsertIntersectionState(
-    const k2::StatePair &new_state, int32_t *state_index_c,
-    std::queue<k2::StatePair> *qstates,
-    std::unordered_map<k2::StatePair, int32_t, k2::PairHash> *state_pair_map) {
+    const StatePair &new_state, int32_t *state_index_c,
+    std::queue<StatePair> *qstates,
+    std::unordered_map<StatePair, int32_t, k2::PairHash> *state_pair_map) {
   auto result = state_pair_map->insert({new_state, *state_index_c + 1});
   if (result.second) {
     // we have not visited `new_state` before.
@@ -44,27 +50,62 @@ inline int32_t InsertIntersectionState(
 
 namespace k2 {
 
-// The implementation of this function is inspired by
+// This function uses "Tarjan's strongly connected components algorithm"
+// (see
+// https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm)
+// to find co-accessible states in a single pass of the graph.
+//
+// The notations "lowlink", "dfnumber", and "onstack" are from the book
+// "The design and analysis of computer algorithms", on page 192,
+// Fig. 5.15 "Procedure to compute LOWLINK", written by John E. Hopcroft.
+//
 // http://www.openfst.org/doxygen/fst/html/connect_8h_source.html
-void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
+// is used as a reference while implementing this function.
+bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
   CHECK_NOTNULL(state_map);
 
   state_map->clear();
-  if (IsEmpty(fsa)) return;
+  if (IsEmpty(fsa)) return true;
 
   auto num_states = fsa.NumStates();
   auto final_state = num_states - 1;
 
   std::vector<bool> accessible(num_states, false);
   std::vector<bool> coaccessible(num_states, false);
-  std::vector<bool> visited(num_states, false);
+  std::vector<int8_t> state_status(num_states, kNotVisited);
+
+  // ssc is short for "strongly connected component"
+  // the following block of variables are for
+  // "Tarjan's strongly connected components algorithm"
+  //
+  // Refer to the comment above the function for the meaning of them
+  std::vector<int32_t> ssc_stack;
+  ssc_stack.reserve(num_states);
+  std::vector<bool> onstack(num_states, false);
+  std::vector<int32_t> dfnumber(num_states,
+                                std::numeric_limits<int32_t>::max());
+  auto df_count = 0;
+  std::vector<int32_t> lowlink(num_states, std::numeric_limits<int32_t>::max());
 
   accessible.front() = true;
   coaccessible.back() = true;
 
   std::stack<DfsState> stack;
   stack.push({0, fsa.arc_indexes[0], fsa.arc_indexes[1]});
-  visited[0] = true;
+  state_status[0] = kVisiting;
+
+  dfnumber[0] = df_count;
+  lowlink[0] = df_count;
+  ++df_count;
+  ssc_stack.push_back(0);
+  onstack[0] = true;
+
+  // map order to state.
+  // state 0 has the largest order, i.e., num_states - 1
+  // final_state has the least order, i.e., 0
+  std::vector<int32_t> order;
+  order.reserve(num_states);
+  bool is_acyclic = true;  // order and is_acyclic are for topological sort
 
   while (!stack.empty()) {
     auto &current_state = stack.top();
@@ -73,55 +114,123 @@ void ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
       // we have finished visiting this state
       auto state = current_state.state;  // get a copy since we will destroy it
       stack.pop();
+      state_status[state] = kVisited;
+
+      order.push_back(state);
+
+      if (dfnumber[state] == lowlink[state]) {
+        // this is the root of the strongly connected component
+        bool scc_coaccessible = false;  // if any node in scc is co-accessible,
+                                        // it will be set to true
+        auto k = ssc_stack.size() - 1;
+        auto num_nodes = 0;  // number of nodes in the scc
+
+        auto tmp = 0;
+        do {
+          tmp = ssc_stack[k--];
+          if (coaccessible[tmp]) scc_coaccessible = true;
+          ++num_nodes;
+        } while (tmp != state);
+
+        // if this cycle is not removed in the output fsa
+        // set is_acyclic to false
+        if (num_nodes > 1 && scc_coaccessible) is_acyclic = false;
+
+        // now pop ssc_stack and set co-accessible of each node
+        do {
+          tmp = ssc_stack.back();
+          if (scc_coaccessible) coaccessible[tmp] = true;
+          ssc_stack.pop_back();
+          onstack[tmp] = false;
+        } while (tmp != state);
+      }
+
       if (!stack.empty()) {
         // if it has a parent, set the parent's co-accessible flag
-        if (coaccessible[state]) {
-          auto &parent = stack.top();
-          coaccessible[parent.state] = true;
-          ++parent.arc_begin;  // process the next child
-        }
+        auto &parent = stack.top();
+        if (coaccessible[state]) coaccessible[parent.state] = true;
+
+        ++parent.arc_begin;  // process the next child
+
+        lowlink[parent.state] = std::min(lowlink[parent.state], lowlink[state]);
       }
       continue;
     }
 
     const auto &arc = fsa.arcs[current_state.arc_begin];
     auto next_state = arc.dest_state;
-    bool is_visited = visited[next_state];
-    if (!is_visited) {
-      // this is a new discovered state
-      visited[next_state] = true;
-      auto arc_begin = fsa.arc_indexes[next_state];
-      if (next_state != final_state)
+    auto status = state_status[next_state];
+    switch (status) {
+      case kNotVisited: {
+        // a new discovered node
+        state_status[next_state] = kVisiting;
+        auto arc_begin = fsa.arc_indexes[next_state];
         stack.push({next_state, arc_begin, fsa.arc_indexes[next_state + 1]});
-      else
-        stack.push({next_state, arc_begin, arc_begin});
 
-      if (accessible[current_state.state]) accessible[next_state] = true;
-    } else {
-      // this is a back arc or forward cross arc;
-      // update the co-accessible flag
-      auto next_state = arc.dest_state;
-      if (coaccessible[next_state]) coaccessible[current_state.state] = true;
-      ++current_state.arc_begin;  // go to the next arc
+        dfnumber[next_state] = df_count;
+        lowlink[next_state] = df_count;
+        ++df_count;
+        ssc_stack.push_back(next_state);
+        onstack[next_state] = true;
+
+        if (accessible[current_state.state]) accessible[next_state] = true;
+        break;
+      }
+      case kVisiting:
+        // this is a back arc, which means there is a loop in the fsa;
+        // but this loop may be removed in the output fsa
+        //
+        // Refer to the above book for what the meaning of back arc is
+        lowlink[current_state.state] =
+            std::min(lowlink[current_state.state], dfnumber[next_state]);
+
+        if (coaccessible[next_state]) coaccessible[current_state.state] = true;
+        ++current_state.arc_begin;  // go to the next arc
+        break;
+      case kVisited:
+        // this is a forward or cross arc;
+        if (dfnumber[next_state] < dfnumber[current_state.state] &&
+            onstack[next_state])
+          lowlink[current_state.state] =
+              std::min(lowlink[current_state.state], dfnumber[next_state]);
+
+        // update the co-accessible flag
+        if (coaccessible[next_state]) coaccessible[current_state.state] = true;
+        ++current_state.arc_begin;  // go to the next arc
+        break;
+      default:
+        LOG(FATAL) << "Unreachable code is executed!";
+        break;
     }
   }
 
   state_map->reserve(num_states);
-
-  for (auto i = 0; i != num_states; ++i) {
-    if (accessible[i] && coaccessible[i]) state_map->push_back(i);
+  if (!is_acyclic) {
+    for (auto i = 0; i != num_states; ++i) {
+      if (accessible[i] && coaccessible[i]) state_map->push_back(i);
+    }
+    return false;
   }
+
+  // now for the acyclic case,
+  // we return a state_map of a topologically sorted fsa
+  const auto rend = order.rend();
+  for (auto rbegin = order.rbegin(); rbegin != rend; ++rbegin) {
+    auto s = *rbegin;
+    if (accessible[s] && coaccessible[s]) state_map->push_back(s);
+  }
+  return true;
 }
 
-void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
+bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   CHECK_NOTNULL(b);
   if (arc_map != nullptr) arc_map->clear();
 
   std::vector<int32_t> state_b_to_a;
-  ConnectCore(a, &state_b_to_a);
-  if (state_b_to_a.empty()) return;
+  bool is_acyclic = ConnectCore(a, &state_b_to_a);
+  if (state_b_to_a.empty()) return true;
 
-  b->arc_indexes.resize(state_b_to_a.size());
+  b->arc_indexes.resize(state_b_to_a.size() + 1);
   b->arcs.clear();
   b->arcs.reserve(a.arcs.size());
 
@@ -145,10 +254,7 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   for (auto i = 0; i != num_states_b; ++i) {
     auto state_a = state_b_to_a[i];
     arc_begin = a.arc_indexes[state_a];
-    if (state_a != final_state_a)
-      arc_end = a.arc_indexes[state_a + 1];
-    else
-      arc_end = arc_begin;
+    arc_end = a.arc_indexes[state_a + 1];
 
     b->arc_indexes[i] = static_cast<int32_t>(b->arcs.size());
     for (; arc_begin != arc_end; ++arc_begin) {
@@ -164,6 +270,8 @@ void Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
       if (arc_map != nullptr) arc_map->push_back(arc_begin);
     }
   }
+  b->arc_indexes[num_states_b] = b->arc_indexes[num_states_b - 1];
+  return is_acyclic;
 }
 
 bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
@@ -183,9 +291,7 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
   int32_t final_state_a = a.NumStates() - 1;
   int32_t final_state_b = b.NumStates() - 1;
   const auto arc_a_begin = a.arcs.begin();
-  const auto arc_a_end = a.arcs.end();
   const auto arc_b_begin = b.arcs.begin();
-  const auto arc_b_end = b.arcs.end();
   using ArcIterator = std::vector<Arc>::const_iterator;
 
   const int32_t final_state_c = -1;  // just as a placeholder
@@ -211,15 +317,10 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
 
     auto state_a = curr_state_pair.first;
     ArcIterator a_arc_iter_begin = arc_a_begin + a.arc_indexes[state_a];
-    ArcIterator a_arc_iter_end =
-        (state_a != final_state_a) ? (arc_a_begin + a.arc_indexes[state_a + 1])
-                                   : arc_a_end;
-
+    ArcIterator a_arc_iter_end = arc_a_begin + a.arc_indexes[state_a + 1];
     auto state_b = curr_state_pair.second;
     ArcIterator b_arc_iter_begin = arc_b_begin + b.arc_indexes[state_b];
-    ArcIterator b_arc_iter_end =
-        (state_b != final_state_b) ? (arc_b_begin + b.arc_indexes[state_b + 1])
-                                   : arc_b_end;
+    ArcIterator b_arc_iter_end = arc_b_begin + b.arc_indexes[state_b + 1];
 
     // As both `a` and `b` are arc-sorted, we first process epsilon arcs.
     // Noted that at most one for-loop below will really run as either `a` or
@@ -292,6 +393,9 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
   for (auto &arc : arcs_c) {
     if (arc.dest_state == final_state_c) arc.dest_state = state_index_c;
   }
+  // push a duplicate of final state, see the constructor of `Fsa` in
+  // `k2/csrc/fsa.h`
+  arc_indexes_c.emplace_back(arc_indexes_c.back());
   return true;
 }
 
@@ -309,8 +413,8 @@ void ArcSort(const Fsa &a, Fsa *b,
   const auto arc_begin_iter = a.arcs.begin();
   const auto index_begin_iter = indexes.begin();
   // we will not process the final state as it has no arcs leaving it.
-  StateId final_state = a.NumStates() - 1;
-  for (StateId state = 0; state < final_state; ++state) {
+  int32_t final_state = a.NumStates() - 1;
+  for (int32_t state = 0; state < final_state; ++state) {
     int32_t begin = a.arc_indexes[state];
     // as non-empty fsa `a` contains at least two states,
     // we can always access `state + 1` validly.
@@ -349,10 +453,6 @@ bool TopSort(const Fsa &a, Fsa *b,
   if (IsEmpty(a)) return true;
   if (!IsConnected(a)) return false;
 
-  static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
-  static constexpr int8_t kVisiting = 1;    // a node that is under visiting
-  static constexpr int8_t kVisited = 2;     // a node that has been visited
-
   auto num_states = a.NumStates();
   auto final_state = num_states - 1;
   std::vector<int8_t> state_status(num_states, kNotVisited);
@@ -384,10 +484,7 @@ bool TopSort(const Fsa &a, Fsa *b,
         // a new discovered node
         state_status[next_state] = kVisiting;
         auto arc_begin = a.arc_indexes[next_state];
-        if (next_state != final_state)
-          stack.push({next_state, arc_begin, a.arc_indexes[next_state + 1]});
-        else
-          stack.push({next_state, arc_begin, arc_begin});
+        stack.push({next_state, arc_begin, a.arc_indexes[next_state + 1]});
         ++current_state.arc_begin;
         break;
       }
@@ -425,10 +522,7 @@ bool TopSort(const Fsa &a, Fsa *b,
   for (auto state_b = 0; state_b != num_states; ++state_b) {
     auto state_a = order[num_states - 1 - state_b];
     arc_begin = a.arc_indexes[state_a];
-    if (state_a != final_state)
-      arc_end = a.arc_indexes[state_a + 1];
-    else
-      arc_end = arc_begin;
+    arc_end = a.arc_indexes[state_a + 1];
 
     b->arc_indexes[state_b] = static_cast<int32_t>(b->arcs.size());
     for (; arc_begin != arc_end; ++arc_begin) {
@@ -442,6 +536,7 @@ bool TopSort(const Fsa &a, Fsa *b,
     std::reverse(order.begin(), order.end());
     state_map->swap(order);
   }
+  b->arc_indexes.emplace_back(b->arc_indexes.back());
   return true;
 }
 

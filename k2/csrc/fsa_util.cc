@@ -138,10 +138,11 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
   bool finished = false;  // when the final state is read, set it to true.
   int32_t num_arcs = 0;
   while (std::getline(is, line)) {
-    CHECK_EQ(finished, false);
     std::vector<std::string> splits;
     SplitStringToVector(line, kDelim, &splits);
     if (splits.empty()) continue;
+
+    CHECK_EQ(finished, false);
 
     auto fields = StringVectorToIntVector(splits);
     auto num_fields = fields.size();
@@ -176,6 +177,7 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
     fsa->arcs.insert(fsa->arcs.end(), v.begin(), v.end());
     ++i;
   }
+  fsa->arc_indexes.emplace_back(fsa->arc_indexes.back());
   return fsa;
 }
 
