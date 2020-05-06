@@ -11,11 +11,22 @@
 #include <algorithm>
 #include <unordered_set>
 #include <vector>
+#include <stack>
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
 
 namespace k2 {
+
+static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
+static constexpr int8_t kVisiting = 1;    // a node that is under visiting
+static constexpr int8_t kVisited = 2;     // a node that has been visited
+// depth first search state
+struct DfsState {
+  int32_t state;      // state number of the visiting node
+  int32_t arc_begin;  // arc index of the visiting arc
+  int32_t arc_end;    // end of the arc index of the visiting node
+};
 
 bool IsValid(const Fsa &fsa) {
   if (IsEmpty(fsa)) return true;
@@ -79,13 +90,13 @@ bool HasSelfLoops(const Fsa &fsa) {
   return false;
 }
 
-bool CheckCycles(StateId s, std::vector<bool> *visited,
+bool CheckCycles(int32_t s, std::vector<bool> *visited,
                  std::vector<bool> *back_arc, const std::vector<Arc> &arcs) {
   if ((*visited)[s] == false) {
     (*visited)[s] = true;
     (*back_arc)[s] = true;
 
-    std::unordered_set<StateId> adj;
+    std::unordered_set<int32_t> adj;
     for (const auto &arc : arcs)
       if (arc.src_state == s)
         adj.insert(arc.dest_state);
@@ -102,26 +113,50 @@ bool CheckCycles(StateId s, std::vector<bool> *visited,
 }
 
 // Detect cycles using DFS traversal
-bool IsCyclic(const Fsa &fsa) {
-  if (IsEmpty(fsa)) return false;
-  StateId num_states = fsa.NumStates();
-  const std::vector<Arc> arcs = fsa.arcs;
-  std::vector<bool> visited(num_states, false);
-  std::vector<bool> back_arc(num_states, false);
-
-  for (StateId i = 0; i < num_states; i++)
-    if (CheckCycles(i, &visited, &back_arc, arcs))
-      return true;
-
-  return false;
-}
-
 bool IsAcyclic(const Fsa &fsa) {
   if (IsEmpty(fsa)) return true;
-  if (IsCyclic(fsa))
-    return false;
-  else
-    return true;
+  
+  auto num_states = fsa.NumStates();
+  std::vector<int8_t> state_status(num_states, kNotVisited);
+  std::stack<DfsState> stack;
+  stack.push({0, fsa.arc_indexes[0], fsa.arc_indexes[1]});
+  state_status[0] = kVisiting;
+  bool is_acyclic = true;
+  while (is_acyclic && !stack.empty()) {
+    auto &current_state = stack.top();
+    if (current_state.arc_begin == current_state.arc_end) {
+      // we have finished visiting this state
+      state_status[current_state.state] = kVisited;
+      stack.pop();
+      continue;
+    }
+    const auto &arc = fsa.arcs[current_state.arc_begin];
+    auto next_state = arc.dest_state;
+    auto status = state_status[next_state];
+    switch (status) {
+      case kNotVisited: {
+        // a new discovered node
+        state_status[next_state] = kVisiting;
+        auto arc_begin = fsa.arc_indexes[next_state];
+        stack.push({next_state, arc_begin, fsa.arc_indexes[next_state + 1]});
+        ++current_state.arc_begin;
+        break;
+      }
+      case kVisiting:
+        // this is a back arc indicating a loop in the graph
+        is_acyclic = false;
+        break;
+      case kVisited:
+        // this is a forward cross arc, do nothing.
+        ++current_state.arc_begin;
+        break;
+      default:
+        LOG(FATAL) << "Unreachable code is executed!";
+        break;
+    }
+  }
+
+  return is_acyclic;
 }
 
 bool IsDeterministic(const Fsa &fsa) {
