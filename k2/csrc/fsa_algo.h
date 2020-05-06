@@ -256,7 +256,7 @@ bool TopSort(const Fsa& a, Fsa* b, std::vector<int32_t>* state_map = nullptr);
 
  */
 void Determinize(const Fsa &a, Fsa *b,
-                 std::vector<std::vector<StateId>> *state_map);
+                 std::vector<std::vector<int32_t>> *state_map);
 
 }  // namespace k2
 

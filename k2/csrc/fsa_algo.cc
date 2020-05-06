@@ -31,10 +31,12 @@ struct DfsState {
   int32_t arc_end;    // end of the arc index of the visiting node
 };
 
+using StatePair = std::pair<int32_t, int32_t>;
+
 inline int32_t InsertIntersectionState(
-    const k2::StatePair &new_state, int32_t *state_index_c,
-    std::queue<k2::StatePair> *qstates,
-    std::unordered_map<k2::StatePair, int32_t, k2::PairHash> *state_pair_map) {
+    const StatePair &new_state, int32_t *state_index_c,
+    std::queue<StatePair> *qstates,
+    std::unordered_map<StatePair, int32_t, k2::PairHash> *state_pair_map) {
   auto result = state_pair_map->insert({new_state, *state_index_c + 1});
   if (result.second) {
     // we have not visited `new_state` before.
@@ -411,8 +413,8 @@ void ArcSort(const Fsa &a, Fsa *b,
   const auto arc_begin_iter = a.arcs.begin();
   const auto index_begin_iter = indexes.begin();
   // we will not process the final state as it has no arcs leaving it.
-  StateId final_state = a.NumStates() - 1;
-  for (StateId state = 0; state < final_state; ++state) {
+  int32_t final_state = a.NumStates() - 1;
+  for (int32_t state = 0; state < final_state; ++state) {
     int32_t begin = a.arc_indexes[state];
     // as non-empty fsa `a` contains at least two states,
     // we can always access `state + 1` validly.
