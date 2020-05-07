@@ -17,12 +17,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 
-set(k2_THIRD_PARTY_DIR "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
-  "Directory to save & build downloaded third party libraries"
-)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING "Set the build type" FORCE)
+  message(STATUS "No CMAKE_BUILD_TYPE given, default to Release")
+  set(CMAKE_BUILD_TYPE Release CACHE STRING
+    "Set the build type. Available values are: Debug Release RelWithDebInfo MinSizeRel"
+    FORCE)
 endif()
 
 if(WIN32 AND BUILD_SHARED_LIBS)
@@ -33,8 +36,9 @@ endif()
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(googletest)
-include(glog)
 include(cpplint)
+include(glog)
+include(googletest)
+include(pybind11)
 
 add_subdirectory(k2)

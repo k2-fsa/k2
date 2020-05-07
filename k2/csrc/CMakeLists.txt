@@ -15,14 +15,13 @@ if(CMAKE_VERSION VERSION_LESS 3.8)
 else()
   target_compile_features(fsa PUBLIC cxx_std_11)
 endif()
-target_link_libraries(fsa PRIVATE glog)
+target_link_libraries(fsa PUBLIC glog)
 
 function(k2_add_fsa_test name)
   add_executable(${name} "${name}.cc")
   target_link_libraries(${name}
     PRIVATE
       fsa
-      glog
       gtest
       gtest_main
   )
