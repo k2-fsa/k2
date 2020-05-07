@@ -520,13 +520,14 @@ TEST(FsaAlgo, CreateFsa) {
       {7, 5, 5},
     };
     // clang-format on
-    auto fsa = CreateFsa(arcs);
+    Fsa a;
+    CreateFsa(arcs, &a);
 
-    auto num_states = fsa->NumStates();
+    auto num_states = a.NumStates();
 
     Fsa b;
-    Swap(fsa.get(), &b);
-    EXPECT_EQ(fsa->NumStates(), 0);
+    Swap(&a, &b);
+    EXPECT_EQ(a.NumStates(), 0);
     EXPECT_EQ(b.NumStates(), num_states);
   }
 }

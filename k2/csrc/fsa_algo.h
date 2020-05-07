@@ -7,7 +7,6 @@
 #ifndef K2_CSRC_FSA_ALGO_H_
 #define K2_CSRC_FSA_ALGO_H_
 
-#include <memory>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -267,11 +266,10 @@ void Determinize(const Fsa &a, Fsa *b,
    The start state MUST be 0. The final state will be automatically determined
    by topological sort.
 
-   @param [in] arcs  A list of arcs
-
-   @return a topsorted acyclic fsa.
+   @param [in] arcs  A list of arcs.
+   @param [out] fsa  Output fsa.
 */
-std::unique_ptr<Fsa> CreateFsa(const std::vector<Arc> &arcs);
+void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa);
 
 }  // namespace k2
 

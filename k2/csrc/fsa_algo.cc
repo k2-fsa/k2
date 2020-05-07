@@ -9,7 +9,6 @@
 
 #include <algorithm>
 #include <limits>
-#include <memory>
 #include <numeric>
 #include <queue>
 #include <stack>
@@ -22,9 +21,9 @@
 
 namespace {
 
-static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
-static constexpr int8_t kVisiting = 1;    // a node that is under visiting
-static constexpr int8_t kVisited = 2;     // a node that has been visited
+constexpr int8_t kNotVisited = 0;  // a node that has not been visited
+constexpr int8_t kVisiting = 1;    // a node that is under visiting
+constexpr int8_t kVisited = 2;     // a node that has been visited
 // depth first search state
 struct DfsState {
   int32_t state;      // state number of the visiting node
@@ -542,8 +541,12 @@ bool TopSort(const Fsa &a, Fsa *b,
   return true;
 }
 
-std::unique_ptr<Fsa> CreateFsa(const std::vector<Arc> &arcs) {
-  if (arcs.empty()) return nullptr;
+void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa) {
+  CHECK_NOTNULL(fsa);
+  fsa->arc_indexes.clear();
+  fsa->arcs.clear();
+
+  if (arcs.empty()) return;
 
   std::vector<std::vector<Arc>> vec;
   for (const auto &arc : arcs) {
@@ -601,7 +604,6 @@ std::unique_ptr<Fsa> CreateFsa(const std::vector<Arc> &arcs) {
 
   std::reverse(order.begin(), order.end());
 
-  std::unique_ptr<Fsa> fsa(new Fsa);
   fsa->arc_indexes.resize(num_states + 1);
   fsa->arcs.reserve(arcs.size());
 
@@ -619,8 +621,6 @@ std::unique_ptr<Fsa> CreateFsa(const std::vector<Arc> &arcs) {
   }
 
   fsa->arc_indexes.back() = static_cast<int32_t>(fsa->arcs.size());
-
-  return fsa;
 }
 
 }  // namespace k2
