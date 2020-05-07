@@ -129,6 +129,13 @@ void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
   }
 }
 
+void Swap(Fsa *a, Fsa *b) {
+  CHECK_NOTNULL(a);
+  CHECK_NOTNULL(b);
+  std::swap(a->arc_indexes, b->arc_indexes);
+  std::swap(a->arcs, b->arcs);
+}
+
 std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
   static constexpr const char *kDelim = " \t";
 

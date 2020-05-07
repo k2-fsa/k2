@@ -13,6 +13,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "k2/csrc/fsa_renderer.h"
 #include "k2/csrc/fsa_util.h"
 
 namespace k2 {
@@ -173,7 +174,8 @@ TEST(FsaAlgo, Connect) {
     EXPECT_THAT(b.arc_indexes, ::testing::ElementsAre(0, 2, 4, 5, 5));
 
     std::vector<Arc> target_arcs = {
-        {0, 2, 1}, {0, 1, 2}, {1, 3, 3}, {1, 2, 1}, {2, 3, 6}, };
+        {0, 2, 1}, {0, 1, 2}, {1, 3, 3}, {1, 2, 1}, {2, 3, 6},
+    };
     for (auto i = 0; i != target_arcs.size(); ++i)
       EXPECT_EQ(b.arcs[i], target_arcs[i]);
 
@@ -300,18 +302,17 @@ TEST(FsaAlgo, Intersect) {
   }
 
   {
-    std::vector<Arc> arcs_a = {{0, 1, 1},
-                               {1, 2, 0},
-                               {1, 3, 1},
-                               {1, 4, 2},
-                               {2, 2, 1},
-                               {2, 3, 1},
-                               {2, 3, 2},
-                               {3, 3, 0},
-                               {3, 4, 1}};
+    std::vector<Arc> arcs_a = {{0, 1, 1}, {1, 2, 0}, {1, 3, 1},
+                               {1, 4, 2}, {2, 2, 1}, {2, 3, 1},
+                               {2, 3, 2}, {3, 3, 0}, {3, 4, 1}};
     Fsa a(std::move(arcs_a), 4);
 
-    std::vector<Arc> arcs_b = {{0, 1, 1}, {1, 3, 1}, {1, 2, 2}, {2, 3, 1}, };
+    std::vector<Arc> arcs_b = {
+        {0, 1, 1},
+        {1, 3, 1},
+        {1, 2, 2},
+        {2, 3, 1},
+    };
     Fsa b(std::move(arcs_b), 3);
 
     Fsa c;
@@ -320,16 +321,10 @@ TEST(FsaAlgo, Intersect) {
     bool status = Intersect(a, b, &c, &arc_map_a, &arc_map_b);
     EXPECT_TRUE(status);
 
-    std::vector<Arc> arcs_c = {{0, 1, 1},
-                               {1, 2, 0},
-                               {1, 3, 1},
-                               {1, 4, 2},
-                               {2, 5, 1},
-                               {2, 6, 1},
-                               {2, 6, 2},
-                               {3, 3, 0},
-                               {6, 6, 0},
-                               {6, 7, 1}, };
+    std::vector<Arc> arcs_c = {
+        {0, 1, 1}, {1, 2, 0}, {1, 3, 1}, {1, 4, 2}, {2, 5, 1},
+        {2, 6, 1}, {2, 6, 2}, {3, 3, 0}, {6, 6, 0}, {6, 7, 1},
+    };
     std::vector<int32_t> arc_indexes_c = {0, 1, 4, 6, 8, 8, 8, 10, 10};
 
     ASSERT_EQ(c.arc_indexes.size(), arc_indexes_c.size());
@@ -386,7 +381,8 @@ TEST(FsaAlgo, ArcSort) {
 
   {
     std::vector<Arc> arcs = {
-        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0}, };
+        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
+    };
     Fsa fsa(std::move(arcs), 4);
     Fsa arc_sorted;
     std::vector<int32_t> arc_map;
@@ -395,7 +391,8 @@ TEST(FsaAlgo, ArcSort) {
                 ::testing::ElementsAre(0, 3, 5, 6, 6, 6));
     ASSERT_EQ(arc_sorted.arcs.size(), fsa.arcs.size());
     std::vector<Arc> target_arcs = {
-        {0, 2, 0}, {0, 4, 0}, {0, 1, 2}, {1, 3, 0}, {1, 2, 1}, {2, 1, 0}, };
+        {0, 2, 0}, {0, 4, 0}, {0, 1, 2}, {1, 3, 0}, {1, 2, 1}, {2, 1, 0},
+    };
     for (std::size_t i = 0; i != target_arcs.size(); ++i)
       EXPECT_EQ(arc_sorted.arcs[i], target_arcs[i]);
 
@@ -494,18 +491,44 @@ TEST(FsaAlgo, TopSort) {
 
     ASSERT_EQ(arc_indexes.size(), 8u);
     EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 3, 4, 5, 7, 8, 8));
-    std::vector<Arc> expected_arcs = {{0, 1, 40},
-                                      {0, 3, 20},
-                                      {1, 2, 50},
-                                      {2, 3, 8},
-                                      {3, 4, 30},
-                                      {4, 6, 60},
-                                      {4, 5, 10},
-                                      {5, 6, 2}, };
+    std::vector<Arc> expected_arcs = {
+        {0, 1, 40}, {0, 3, 20}, {1, 2, 50}, {2, 3, 8},
+        {3, 4, 30}, {4, 6, 60}, {4, 5, 10}, {5, 6, 2},
+    };
 
     for (auto i = 0; i != 8; ++i) {
       EXPECT_EQ(arcs[i], expected_arcs[i]);
     }
+  }
+}
+
+TEST(FsaAlgo, CreateFsa) {
+  {
+    // clang-format off
+    std::vector<Arc> arcs = {
+      {0, 3, 3},
+      {0, 2, 2},
+      {2, 3, 3},
+      {2, 4, 4},
+      {3, 1, 1},
+      {1, 4, 4},
+      {1, 8, 8},
+      {4, 8, 8},
+      {8, 6, 6},
+      {8, 7, 7},
+      {6, 7, 7},
+      {7, 5, 5},
+    };
+    // clang-format on
+    Fsa a;
+    CreateFsa(arcs, &a);
+
+    auto num_states = a.NumStates();
+
+    Fsa b;
+    Swap(&a, &b);
+    EXPECT_EQ(a.NumStates(), 0);
+    EXPECT_EQ(b.NumStates(), num_states);
   }
 }
 
