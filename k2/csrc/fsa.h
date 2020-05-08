@@ -165,7 +165,7 @@ class DeterministicGenericFsa {
 
   float GetWeightForArc(int32_t arc_index);
 
-  int32_t Getint32_tForArc(int32_t arc_index);
+  int32_t GetLabelForArc(int32_t arc_index);
 
   int32_t GetPrevStateForArc(int32_t arc_index);
 

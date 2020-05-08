@@ -61,13 +61,16 @@ enum FbWeightType { kMaxWeight, kLogSumWeight };
 struct WfsaWithFbWeights {
   const Fsa *fsa;
   const float *arc_weights;
-  // forward_state_weights are the sum of weights along the best path from the
+  // forward_state_weights are the log-sum or max of weights along all paths from the
   // start-state to each state.  We use double because for long FSAs roundoff
   // effects can cause nasty errors in pruning.
   const double *forward_state_weights;
-  // backward_state_weights are the sum of weights along the best path
-  // from each state to the final state.
+  // backward_state_weights are the log-sum or max of weights along all paths from
+  //  each state to the final state.
   const double *backward_state_weights;
+
+  // Records whether we use max or log-sum.
+  FbWeightType weight_type;
 
   /*
     Constructor.
