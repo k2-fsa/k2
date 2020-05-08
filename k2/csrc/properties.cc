@@ -90,28 +90,6 @@ bool HasSelfLoops(const Fsa &fsa) {
   return false;
 }
 
-bool CheckCycles(int32_t s, std::vector<bool> *visited,
-                 std::vector<bool> *back_arc, const std::vector<Arc> &arcs) {
-  if ((*visited)[s] == false) {
-    (*visited)[s] = true;
-    (*back_arc)[s] = true;
-
-    std::unordered_set<int32_t> adj;
-    for (const auto &arc : arcs)
-      if (arc.src_state == s)
-        adj.insert(arc.dest_state);
-
-    for (auto i = adj.begin(); i != adj.end(); ++i) {
-      if (!(*visited)[*i] && CheckCycles(*i, visited, back_arc, arcs))
-        return true;
-      else if ((*back_arc)[*i])
-        return true;
-    }
-  }
-  (*back_arc)[s] = false;
-  return false;
-}
-
 // Detect cycles using DFS traversal
 bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
   if (IsEmpty(fsa)) return true;
@@ -129,7 +107,7 @@ bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
       // we have finished visiting this state
       state_status[current_state.state] = kVisited;
       if (order != nullptr)
-        (*order).push_back(current_state.state);
+        order->push_back(current_state.state);
       stack.pop();
       continue;
     }
@@ -140,8 +118,8 @@ bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
       case kNotVisited: {
         // a new discovered node
         state_status[next_state] = kVisiting;
-        auto arc_begin = fsa.arc_indexes[next_state];
-        stack.push({next_state, arc_begin, fsa.arc_indexes[next_state + 1]});
+        stack.push({next_state, fsa.arc_indexes[next_state],
+                   fsa.arc_indexes[next_state + 1]});
         ++current_state.arc_begin;
         break;
       }
