@@ -179,7 +179,7 @@ void RmEpsilonsMax(const Fsa &a, float *a_weights, Fsa *b,
                      weights w.r.t. input-arc weights.
  */
 void RmEpsilonsPrunedLogSum(const WfsaWithFbWeights &a, float beam, Fsa *b,
-                            std::vector<std::vector<std::pair<int32_t, float>> *arc_derivs);
+                            std::vector<std::vector<std::pair<int32_t, float>>> *arc_derivs);
 
 
 /*
