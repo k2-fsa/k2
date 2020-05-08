@@ -1,14 +1,15 @@
 // k2/csrc/determinize.cc
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey dpove@gmail.com, Haowen Qiu qindazhu@gmail.com)
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+// dpove@gmail.com, Haowen Qiu qindazhu@gmail.com)
 
 // See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/fsa_algo.h"
 
 #include <utility>
 #include <vector>
 #include <algorithm>
+
+#include "k2/csrc/fsa_algo.h"
 
 namespace k2 {
 
@@ -16,6 +17,7 @@ using std::shared_ptr;
 using std::vector;
 using std::priority_queue;
 using std::pair
+
 
 struct MaxTracebackState {
   // Element of a path from the start state to some state in an FSA
@@ -85,6 +87,7 @@ struct LogSumTracebackState {
 
 struct DetStateElement {
 
+<<<<<<< HEAD
   double weight;      // Weight from reference state to this state, along
                       // the path taken by following the 'prev' links
                       // (the path would have `seq_len` arcs in it).
@@ -94,6 +97,13 @@ struct DetStateElement {
                       // base state, and the length of the sequence arcs from the
                       // base state to here, are known only in the DetState
                       // that owns this DetStateElement.
+=======
+  double weight;  // Weight from reference state to this state, along
+                  // the path taken by following the 'parent' links
+                  // (the path would have `seq_len` arcs in it).
+                  // Note: by "this state" we mean the destination-state of
+                  // the arc at `arc_index`.
+>>>>>>> upstream/master
 
   std::shared_ptr<PathElement> path;
                       // The path from the start state to here (actually we will
@@ -101,6 +111,7 @@ struct DetStateElement {
                       // seq_len == 0 and this belongs to the initial determinized
                       // state.
 
+<<<<<<< HEAD
 
   DetStateElement &&Advance(float arc_weight, int32_t arc_index, int32_t arc_symbol) {
     return DetStateElement(weight + arc_weight,
@@ -137,8 +148,22 @@ class Determinizer {
 
 
 
+=======
+  // This comparator function compares the weights, but is careful in case of
+  // ties to ensure deterministic behavior.
+  bool operator<(const DetStateElement &other) const {
+    if (weight < other.weight)
+      return true;
+    else if (weight > other.weight)
+      return false;
+    // TODO(dpovey)
+  }
+};
+
+>>>>>>> upstream/master
 /*
-  Conceptually a determinized state in weighted FSA determinization would normally
+  Conceptually a determinized state in weighted FSA determinization would
+  normally
   be a weighted subset of states in the input FSA, with the weights normalized
   somehow (e.g. subtracting the sum of the weights).
 
@@ -169,16 +194,32 @@ class DetState {
   // from state `base_state`, with the best weights (per reachable state) along
   // those paths.  When Normalize() is called we may advance
   int32_t base_state;
+<<<<<<< HEAD
 
   // seq_len is the length of symbol sequence that we follow from state `base_state`.
   // The sequence of symbols can be found by tracing back one of the DetStateElements
   // in the doubly linked list (it doesn't matter which you pick, the result will be the
+=======
+  // seq_len is the length of symbol sequence that we follow from state
+  // `base_state`.
+  // The sequence of symbols can be found by tracing back one of the
+  // DetStateElements
+  // in the doubly linked list (it doesn't matter which you pick, the result
+  // will be the
+>>>>>>> upstream/master
   // same.
   int32_t seq_len;
 
-  bool normalized { false };
+  bool normalized{false};
 
+<<<<<<< HEAD
   std::list<DetStateElement> elements;
+=======
+  DetState *parent;  // Maybe not needed!
+
+  DetStateElement *head;
+  DetStateElement *tail;
+>>>>>>> upstream/master
 
   // This is the weight on the best path that includes this determinized state.
   // It's needed to form a priority queue on DetStates, so we can process them
@@ -222,7 +263,8 @@ class DetState {
        - Remove duplicates.
 
          If the DLL of DetStateElements contains duplicate elements (i.e.
-         elements whose paths end in the same state) it removes whichever has the
+         elements whose paths end in the same state) it removes whichever has
+    the
          smallest weight.  (Remember, a determinized state is, conceptually, a
          weighted subset of elements; we are implementing determinization in a
          tropical-like semiring where we take the best weight.
@@ -297,6 +339,7 @@ class DetState {
 
 };
 
+<<<<<<< HEAD
 bool DetStateCompare::operator()(const shared_ptr<DetState> &a,
                                  const shared_ptr<DetState> &b) {
   return a->forward_backward_weight < b->forward_backward_weight;
@@ -331,6 +374,9 @@ void DetState::RemoveDuplicatesOfStates(const Fsa &input_fsa) {
   }
 }
 
+=======
+void DetState::Normalize(std::vector<int32_t> *input_arcs) {}
+>>>>>>> upstream/master
 
 void DetState::RemoveCommonPrefix(const Fsa &input_fsa,
                                   const float *input_fsa_weights,
@@ -435,7 +481,7 @@ class DetStateMap {
   bool GetOutputState(const DetState &a, int32_t *state_id) {
     std::pair<uint64_t, uint64_t> compact;
     DetStateToCompact(a, &compact);
-    auto p = map_.insert({compact, cur_output_state));
+    auto p = map_.insert({compact, cur_output_state});
     bool inserted = p.second;
     if (inserted) {
       *state_id = cur_output_state_++;
@@ -449,9 +495,9 @@ class DetStateMap {
   int32_t size() const { return cur_output_state_; }
 
  private:
-
-  int32_t cur_output_state_ { 0 };
-  std::unordered_map<std::pair<uint64_t, uint64_t>, int32_t, DetStateVectorHasher> map_;
+  int32_t cur_output_state_{0};
+  std::unordered_map<std::pair<uint64_t, uint64_t>, int32_t,
+                     DetStateVectorHasher> map_;
 
   /* Turns DetState into a compact form of 128 bits.  Technically there
      could be collisions, which would be fatal for the algorithm, but this
@@ -466,7 +512,7 @@ class DetStateMap {
     assert(d.normalized);
 
     uint64_t a = d.base_state + 17489 * d.seq_len,
-        b = d.base_state * 103979  + d.seq_len;
+             b = d.base_state * 103979 + d.seq_len;
 
     // We choose an arbitrary DetStateElement (the first one in the list) to
     // read the symbol sequence from; the symbol sequence will be the same no
@@ -483,31 +529,21 @@ class DetStateMap {
   }
 
   struct DetStateHasher {
-    size_t operator () (const std::pair<uint64_t, uint64_t> &p) const {
+    size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
       return p.first;
     }
   };
-
-
-
 };
 
-
-
-void DeterminizeMax(const WfsaWithFbWeights &a,
-                    float beam,
-                    Fsa *b,
+void DeterminizeMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
                     std::vector<std::vector<int32_t> > *arc_map) {
-  // TODO: use glog stuff.
+  // TODO(dpovey): use glog stuff.
   assert(IsValid(a) && IsEpsilonFree(a) && IsTopSortedAndAcyclic(a));
   if (a.arc_indexes.empty()) {
     b->Clear();
     return;
   }
   float cutoff = a.backward_state_weights[0] - beam;
-  // TODO.
-
+  // TODO(dpovey)
 }
-
-
 }  // namespace k2

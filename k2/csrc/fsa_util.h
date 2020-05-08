@@ -39,13 +39,13 @@ void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
 
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by Compose())
-  from int32 to long int; this will be needed for conversion to LongTensor.
+  from int32 to int64; this will be needed for conversion to LongTensor.
  */
-void ConvertIndexes1(const std::vector<int32_t> &arc_map,
-                     long int *indexes_out);
+void ConvertIndexes1(const std::vector<int32_t> &arc_map, int64_t *indexes_out);
 
 /*
-  Convert indexes (typically arc-mapping indexes, e.g. as output by RmEpsilonPruned())
+  Convert indexes (typically arc-mapping indexes, e.g. as output by
+  RmEpsilonPruned())
   from int32 to long int; this will be needed for conversion to LongTensor.
 
   This version is for when each arc of the output FSA may correspond to a
@@ -61,12 +61,13 @@ void ConvertIndexes1(const std::vector<int32_t> &arc_map,
                            total number of int32's in arc_map, will contain
                            arc-indexes in the output FSA
  */
-void GetArcIndexes2(const std::vector<std::vector<int32_t> > &arc_map,
-                    std::vector<long int> *indexes1,
-                    std::vector<long int> *indexes2);
+void GetArcIndexes2(const std::vector<std::vector<int32_t>> &arc_map,
+                    std::vector<int64_t> *indexes1,
+                    std::vector<int64_t> *indexes2);
 
+void Swap(Fsa *a, Fsa *b);
 
-/** Build a FSA from a string.
+/** Build an FSA from a string.
 
   The input string is a transition table with the following
   format (same with OpenFST):
@@ -85,6 +86,8 @@ void GetArcIndexes2(const std::vector<std::vector<int32_t> > &arc_map,
   @return an FSA.
  */
 std::unique_ptr<Fsa> StringToFsa(const std::string &s);
+
+std::string FsaToString(const Fsa &fsa);
 
 }  // namespace k2
 
