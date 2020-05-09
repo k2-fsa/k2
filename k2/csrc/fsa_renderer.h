@@ -16,13 +16,14 @@ namespace k2 {
 // Get a GraphViz representation of an fsa.
 class FsaRenderer {
  public:
-  explicit FsaRenderer(const Fsa &fsa);
+  explicit FsaRenderer(const Fsa &fsa, const float *arc_weights = nullptr);
 
   // Return a GraphViz representation of the fsa
   std::string Render() const;
 
  private:
   const Fsa &fsa_;
+  const float *arc_weights_;
 };
 
 }  // namespace k2

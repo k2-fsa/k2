@@ -5,19 +5,18 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
+#include <algorithm>
 #include <utility>
 #include <vector>
-#include <algorithm>
 
 #include "k2/csrc/fsa_algo.h"
 
 namespace k2 {
 
+using std::pair;
+using std::priority_queue;
 using std::shared_ptr;
 using std::vector;
-using std::priority_queue;
-using std::pair
-
 
 struct MaxTracebackState {
   // Element of a path from the start state to some state in an FSA
@@ -29,15 +28,13 @@ struct MaxTracebackState {
                       // the dest-state, or -1 if the path is empty (only
                       // possible if this element belongs to the start-state).
 
-  int32_t symbol;     // Symbol on the arc numbered `arc_index` of the input FSA
-                      // (copied here for convenience), or 0 if arc_index == -1.
+  int32_t symbol;  // Symbol on the arc numbered `arc_index` of the input FSA
+                   // (copied here for convenience), or 0 if arc_index == -1.
 
-  MaxTracebackState(std::shared_ptr<MaxTracebackState> prev,
-              int32_t arc_index, int32_t symbol):
-      prev(prev), arc_index(arc_index), symbol(symbol) { }
-
+  MaxTracebackState(std::shared_ptr<MaxTracebackState> prev, int32_t arc_index,
+                    int32_t symbol)
+      : prev(prev), arc_index(arc_index), symbol(symbol) {}
 };
-
 
 class LogSumTracebackState;
 
@@ -46,96 +43,84 @@ class LogSumTracebackState;
 // A LogSumTracebackState represents a weighted colletion of paths
 // terminating in a specific state.
 struct LogSumTracebackLink {
-
   int32_t arc_index;  // Index of most recent arc in path from start-state to
                       // the dest-state, or -1 if the path is empty (only
                       // possible if this element belongs to the start-state).
 
-  int32_t symbol;     // Symbol on the arc numbered `arc_index` of the input FSA
-                      // (copied here for convenience), or 0 if arc_index == -1.
+  int32_t symbol;  // Symbol on the arc numbered `arc_index` of the input FSA
+                   // (copied here for convenience), or 0 if arc_index == -1.
 
-  double prob;        // The probability mass associated with this incoming
-                      // arc in the LogSumTracebackState to which this belongs.
+  double prob;  // The probability mass associated with this incoming
+                // arc in the LogSumTracebackState to which this belongs.
 
   std::shared_ptr<LogSumTracebackState> prev_state;
 };
 
 struct LogSumTracebackState {
-  // LogSumTracebackState can be thought of as as a weighted set of paths from the
-  // start state to a particular state.  (It will be limited to the subset of
-  // paths that have a specific symbol sequence).
+  // LogSumTracebackState can be thought of as as a weighted set of paths from
+  // the start state to a particular state.  (It will be limited to the subset
+  // of paths that have a specific symbol sequence).
 
   // `prev_elements` is, conceptually, a list of pairs (incoming arc-index,
   // traceback link); we will keep it free of duplicates of the same incoming
   // arc.
   vector<LogSumTracebackLink> prev_elements;
 
-
   int32_t arc_index;  // Index of most recent arc in path from start-state to
                       // the dest-state, or -1 if the path is empty (only
                       // possible if this element belongs to the start-state).
 
-  int32_t symbol;     // Symbol on the arc numbered `arc_index` of the input FSA
-                      // (copied here for convenience), or 0 if arc_index == -1.
+  int32_t symbol;  // Symbol on the arc numbered `arc_index` of the input FSA
+                   // (copied here for convenience), or 0 if arc_index == -1.
 
-  MaxTracebackState(std::shared_ptr<MaxTracebackState> prev,
-              int32_t arc_index, int32_t symbol):
-      prev(prev), arc_index(arc_index), symbol(symbol) { }
-
+  MaxTracebackState(std::shared_ptr<MaxTracebackState> prev, int32_t arc_index,
+                    int32_t symbol)
+      : prev(prev), arc_index(arc_index), symbol(symbol) {}
 };
 
-
 struct DetStateElement {
-
-  double weight;      // Weight from reference state to this state, along
-                      // the path taken by following the 'prev' links
-                      // (the path would have `seq_len` arcs in it).
-                      // Note: by "this state" we mean the destination-state of
-                      // the arc at `arc_index`.
-                      // Interpret this with caution, because the
-                      // base state, and the length of the sequence arcs from the
-                      // base state to here, are known only in the DetState
-                      // that owns this DetStateElement.
+  double weight;  // Weight from reference state to this state, along
+                  // the path taken by following the 'prev' links
+                  // (the path would have `seq_len` arcs in it).
+                  // Note: by "this state" we mean the destination-state of
+                  // the arc at `arc_index`.
+                  // Interpret this with caution, because the
+                  // base state, and the length of the sequence arcs from the
+                  // base state to here, are known only in the DetState
+                  // that owns this DetStateElement.
 
   std::shared_ptr<PathElement> path;
-                      // The path from the start state to here (actually we will
-                      // only follow back `seq_len` links.  Will be nullptr if
-                      // seq_len == 0 and this belongs to the initial determinized
-                      // state.
+  // The path from the start state to here (actually we will
+  // only follow back `seq_len` links.  Will be nullptr if
+  // seq_len == 0 and this belongs to the initial determinized
+  // state.
 
-  DetStateElement &&Advance(float arc_weight, int32_t arc_index, int32_t arc_symbol) {
-    return DetStateElement(weight + arc_weight,
-                           std::make_shared<PathElement>(path, arc_index, arc_symbol));
+  DetStateElement &&Advance(float arc_weight, int32_t arc_index,
+                            int32_t arc_symbol) {
+    return DetStateElement(
+        weight + arc_weight,
+        std::make_shared<PathElement>(path, arc_index, arc_symbol));
   }
 
-  DetStateElement(double weight, std::shared_ptr<PathElement> &&path):
-      weight(weight), path(path) { }
-
+  DetStateElement(double weight, std::shared_ptr<PathElement> &&path)
+      : weight(weight), path(path) {}
 };
 
 class DetState;
 
-
 struct DetStateCompare {
   // Comparator for priority queue.  Less-than operator that compares
   // forward_backward_weight for best-first processing.
-  bool operator()(const shared_ptr<DetState> &a,
-                  const shared_ptr<DetState> &b);
+  bool operator()(const shared_ptr<DetState> &a, const shared_ptr<DetState> &b);
 };
-
-
 
 class Determinizer {
  public:
  private:
-
-  using DetStatePriorityQueue = priority_queue<shared_ptr<DetState>,
-                                               vector<shared_ptr<DetState> >,
-                                               DetStateCompare>;
-
-
+  using DetStatePriorityQueue =
+      priority_queue<shared_ptr<DetState>, vector<shared_ptr<DetState>>,
+                     DetStateCompare>;
 };
-
 
 /*
   Conceptually a determinized state in weighted FSA determinization would
@@ -171,7 +156,6 @@ class DetState {
   // those paths.  When Normalize() is called we may advance
   int32_t base_state;
 
-
   // seq_len is the length of symbol sequence that we follow from state
   // `base_state`.  The sequence of symbols can be found by tracing back one of
   // the DetStateElements in the doubly linked list (it doesn't matter which you
@@ -179,7 +163,6 @@ class DetState {
   int32_t seq_len;
 
   bool normalized{false};
-
 
   std::list<DetStateElement> elements;
 
@@ -190,14 +173,12 @@ class DetState {
   // the backward-weight of the state associated with that DetStateElement).
   double forward_backward_weight;
 
-
   /*
-    Process arcs leaving this determinized state, possibly creating new determinized
-    states in the process.
-              @param [in] wfsa_in  The input FSA that we are determinizing, along
-                                 with forward-backward weights.
-                                 The input FSA should normally be epsilon-free as
-                                 epsilons are treated as a normal symbol; and require
+    Process arcs leaving this determinized state, possibly creating new
+    determinized states in the process.
+              @param [in] wfsa_in  The input FSA that we are determinizing,
+    along with forward-backward weights. The input FSA should normally be
+    epsilon-free as epsilons are treated as a normal symbol; and require
                                  wfsa_in.weight_tpe == kMaxWeight, for
                                  now (might later create a version of this code
                                  that works
@@ -210,12 +191,9 @@ class DetState {
 
 
   */
-  void ProcessArcs(const WfsaWithFbWeights &wfsa_in,
-                   Fsa *wfsa_out,
-                   float prune_cutoff,
-                   DetStateMap *state_map,
+  void ProcessArcs(const WfsaWithFbWeights &wfsa_in, Fsa *wfsa_out,
+                   float prune_cutoff, DetStateMap *state_map,
                    DetStatePriorityQueue *queue);
-
 
   /*
     Normalizes this DetState and sets forward_backward_weight.
@@ -259,18 +237,17 @@ class DetState {
      plus the backward weight in the input FSA of the state that corresponds
      to it).
    */
-  void Normalize(const Fsa &input_fsa,
-                 const float *input_fsa_weights,
-                 float *removed_weight,
-                 std::vector<int32_t> *leftover_arcs) {
+  void Normalize(const Fsa &input_fsa, const float *input_fsa_weights,
+                 float *removed_weight, std::vector<int32_t> *leftover_arcs) {
 #ifndef NDEBUG
     CheckElementOrder();
 #endif
     RemoveDuplicatesOfStates(input_fsa);
-    RemoveCommonPrefix(input_fsa, input_fsa_weights, removed_weight, leftover_arcs);
+    RemoveCommonPrefix(input_fsa, input_fsa_weights, removed_weight,
+                       leftover_arcs);
   }
- private:
 
+ private:
   /*
     Called from Normalize(), this function removes duplicates in
     `elements`: that is, if two elements represent paths that terminate at
@@ -287,8 +264,7 @@ class DetState {
     weights in `elements`, and set `input_arcs` to the sequence of arcs that
     were removed from
    */
-  RemoveCommonPrefix(const Fsa &input_fsa,
-                     const float *input_fsa_weights,
+  RemoveCommonPrefix(const Fsa &input_fsa, const float *input_fsa_weights,
                      std::vector<int32_t> *input_arcs);
   /*
     This function just does some checking on the `elements` list that
@@ -298,7 +274,6 @@ class DetState {
     they are all the same.
    */
   void CheckElementOrder() const;
-
 };
 
 bool DetStateCompare::operator()(const shared_ptr<DetState> &a,
@@ -306,21 +281,17 @@ bool DetStateCompare::operator()(const shared_ptr<DetState> &a,
   return a->forward_backward_weight < b->forward_backward_weight;
 }
 
-
-
 void DetState::RemoveDuplicatesOfStates(const Fsa &input_fsa) {
-
   /*
     `state_to_elem` maps from int32_t state-id to the DetStateElement
     associated with it (there can be only one, we choose the one with
     the best weight).
    */
-  std::unordered_map<int32_t, typename std::list<DetStateElement>::iterator> state_to_elem;
-
-
+  std::unordered_map<int32_t, typename std::list<DetStateElement>::iterator>
+      state_to_elem;
 
   for (auto iter = elements.begin(); iter != elements.end(); ++iter) {
-    int32_t state =  input_fsa.arcs[elem.arc_index].nextstate;
+    int32_t state = input_fsa.arcs[elem.arc_index].nextstate;
     auto p = state_to_elem.insert({state, elem});
     bool inserted = p.second;
     if (!inserted) {
@@ -339,11 +310,9 @@ void DetState::RemoveCommonPrefix(const Fsa &input_fsa,
                                   const float *input_fsa_weights,
                                   float *removed_weight_out,
                                   std::vector<int32_t> *input_arcs) {
-
   CHECK_GE(seq_len, 0);
   int32_t len;
-  auto first_path = elements.front().path,
-      last_path = elements.back().path;
+  auto first_path = elements.front().path, last_path = elements.back().path;
 
   for (len = 1; len < seq_len; ++len) {
     first_path = first_path->prev;
@@ -359,8 +328,7 @@ void DetState::RemoveCommonPrefix(const Fsa &input_fsa,
     /* We reach a common state after traversing fewer than `seq_len` arcs,
        so we can remove a shared prefix. */
     double removed_weight = 0.0;
-    int32_t new_seq_len = len,
-        removed_seq_len = seq_len - len;
+    int32_t new_seq_len = len, removed_seq_len = seq_len - len;
     input_arcs->resize(removed_seq_len);
     // Advance base_state
     int32_t new_base_state = input_fsa.arcs[first_path->arc_index].src_state;
@@ -375,7 +343,7 @@ void DetState::RemoveCommonPrefix(const Fsa &input_fsa,
           fsa.arcs[first_path->arc_index].dest_state == this->base_state);
     this->base_state = new_base_state;
     if (removed_weight != 0) {
-      for (DetStateElement &det_state_elem: elements) {
+      for (DetStateElement &det_state_elem : elements) {
         det_state_elem.weight -= removed_weight;
       }
     }
@@ -393,8 +361,8 @@ void DetState::CheckElementOrder(const Fsa &input_fsa) const {
   // leaving each state in the FSA are sorted first on label and then on
   // dest_state.
   if (seq_len == 0) {
-    CHECK(elements.size() == 1);
-    CHECK(elements.front().weight == 0.0);
+    CHECK_EQ(elements.size(), 1);
+    CHECK_EQ(elements.front().weight, 0.0);
   }
 
   std::vector<int32> prev_seq;
@@ -413,14 +381,12 @@ void DetState::CheckElementOrder(const Fsa &input_fsa) const {
   }
 }
 
-
 /*
   This class maps from determinized states (DetState) to integer state-id
   in the determinized output.
  */
 class DetStateMap {
  public:
-
   /*
     Outputs the output state-id corresponding to a specific DetState structure.
     This does not store any pointers to the DetState or its contents, so
@@ -454,7 +420,8 @@ class DetStateMap {
  private:
   int32_t cur_output_state_{0};
   std::unordered_map<std::pair<uint64_t, uint64_t>, int32_t,
-                     DetStateVectorHasher> map_;
+                     DetStateVectorHasher>
+      map_;
 
   /* Turns DetState into a compact form of 128 bits.  Technically there
      could be collisions, which would be fatal for the algorithm, but this
@@ -493,7 +460,7 @@ class DetStateMap {
 };
 
 void DeterminizeMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
-                    std::vector<std::vector<int32_t> > *arc_map) {
+                    std::vector<std::vector<int32_t>> *arc_map) {
   // TODO(dpovey): use glog stuff.
   assert(IsValid(a) && IsEpsilonFree(a) && IsTopSortedAndAcyclic(a));
   if (a.arc_indexes.empty()) {
