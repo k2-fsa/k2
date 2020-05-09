@@ -31,5 +31,53 @@ struct PairHash {
   }
 };
 
+static const double kMinLogDiffDouble = Log(DBL_EPSILON);  // negative!
+static const float kMinLogDiffFloat = Log(FLT_EPSILON);  // negative!
+
+// returns log(exp(x) + exp(y)).
+inline double LogAdd(double x, double y) {
+  double diff;
+
+  if (x < y) {
+    diff = x - y;
+    x = y;
+  } else {
+    diff = y - x;
+  }
+  // diff is negative.  x is now the larger one.
+
+  if (diff >= kMinLogDiffDouble) {
+    double res;
+    res = x + Log1p(Exp(diff));
+    return res;
+  } else {
+    return x;  // return the larger one.
+  }
+}
+
+
+// returns log(exp(x) + exp(y)).
+inline float LogAdd(float x, float y) {
+  float diff;
+
+  if (x < y) {
+    diff = x - y;
+    x = y;
+  } else {
+    diff = y - x;
+  }
+  // diff is negative.  x is now the larger one.
+
+  if (diff >= kMinLogDiffFloat) {
+    float res;
+    res = x + Log1p(Exp(diff));
+    return res;
+  } else {
+    return x;  // return the larger one.
+  }
+}
+
+
+
 }  // namespace k2
 #endif  // K2_CSRC_UTIL_H_
