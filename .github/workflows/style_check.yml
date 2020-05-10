@@ -54,7 +54,7 @@ jobs:
           #          cmake ..
           #          make -j
           #          sudo make install
-          #
+          
       - name: Create Build Directory
         run: cmake -E make_directory ${{runner.workspace}}/build
 
@@ -72,7 +72,7 @@ jobs:
         #        shell: bash
         #        working-directory: ${{github.workspace}}
         #        run: ./scripts/run_cppcheck.sh ${{runner.workspace}}/build
-        #
+
       - name: Install clang-tidy
         run: |
           sudo apt-get install clang-tidy-9
