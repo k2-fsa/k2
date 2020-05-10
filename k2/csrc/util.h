@@ -34,7 +34,7 @@ struct PairHash {
 };
 
 static const double kMinLogDiffDouble = log(DBL_EPSILON);  // negative!
-static const float kMinLogDiffFloat = log(FLT_EPSILON);    // negative!
+static const float kMinLogDiffFloat = logf(FLT_EPSILON);   // negative!
 
 // returns log(exp(x) + exp(y)).
 inline double LogAdd(double x, double y) {
@@ -71,7 +71,7 @@ inline float LogAdd(float x, float y) {
 
   if (diff >= kMinLogDiffFloat) {
     float res;
-    res = x + log1p(exp(diff));
+    res = x + log1pf(expf(diff));
     return res;
   } else {
     return x;  // return the larger one.
