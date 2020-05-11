@@ -7,6 +7,7 @@
 #ifndef K2_CSRC_UTIL_H_
 #define K2_CSRC_UTIL_H_
 
+#include <cfloat>
 #include <cmath>
 #include <functional>
 #include <utility>
@@ -33,15 +34,8 @@ struct PairHash {
   }
 };
 
-#ifndef DBL_EPSILON
-#define DBL_EPSILON 2.2204460492503131e-16
-#endif
-#ifndef FLT_EPSILON
-#define FLT_EPSILON 1.19209290e-7f
-#endif
-
 static const double kMinLogDiffDouble = log(DBL_EPSILON);  // negative!
-static const float kMinLogDiffFloat = log(FLT_EPSILON);  // negative!
+static const float kMinLogDiffFloat = logf(FLT_EPSILON);   // negative!
 
 // returns log(exp(x) + exp(y)).
 inline double LogAdd(double x, double y) {
@@ -64,7 +58,6 @@ inline double LogAdd(double x, double y) {
   }
 }
 
-
 // returns log(exp(x) + exp(y)).
 inline float LogAdd(float x, float y) {
   float diff;
@@ -85,8 +78,6 @@ inline float LogAdd(float x, float y) {
     return x;  // return the larger one.
   }
 }
-
-
 
 }  // namespace k2
 #endif  // K2_CSRC_UTIL_H_

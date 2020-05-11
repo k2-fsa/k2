@@ -6,6 +6,7 @@
 
 #include "k2/csrc/fsa_renderer.h"
 
+#include <iomanip>
 #include <sstream>
 #include <string>
 
@@ -31,8 +32,8 @@ std::string GenerateEpilogue() { return "}"; }
 using k2::Arc;
 using k2::Fsa;
 
-
-std::string ProcessState(const Fsa &fsa, int32_t state) {
+std::string ProcessState(const Fsa &fsa, int32_t state,
+                         const float *arc_weights = nullptr) {
   std::ostringstream os;
   os << "  " << state << " [label = \"" << state
      << "\", shape = circle, style = bold, fontsize = 14]"
@@ -46,8 +47,10 @@ std::string ProcessState(const Fsa &fsa, int32_t state) {
     int32_t src = arc.src_state;
     int32_t dest = arc.dest_state;
     int32_t label = arc.label;
-    os << "          " << src << " -> " << dest << " [label = \"" << label
-       << "\", fontsize = 14];"
+    os << "          " << src << " -> " << dest << " [label = \"" << label;
+    if (arc_weights != nullptr)
+      os << "/" << std::fixed << std::setprecision(1) << arc_weights[begin];
+    os << "\", fontsize = 14];"
        << "\n";
   }
 
@@ -58,7 +61,8 @@ std::string ProcessState(const Fsa &fsa, int32_t state) {
 
 namespace k2 {
 
-FsaRenderer::FsaRenderer(const Fsa &fsa) : fsa_(fsa) {}
+FsaRenderer::FsaRenderer(const Fsa &fsa, const float *arc_weights /*=nullptr*/)
+    : fsa_(fsa), arc_weights_(arc_weights) {}
 
 std::string FsaRenderer::Render() const {
   int32_t num_states = fsa_.NumStates();
@@ -68,7 +72,7 @@ std::string FsaRenderer::Render() const {
   os << GeneratePrologue();
 
   for (int32_t i = 0; i != num_states - 1; ++i) {
-    os << ProcessState(fsa_, i);
+    os << ProcessState(fsa_, i, arc_weights_);
   }
 
   // now for the final state
