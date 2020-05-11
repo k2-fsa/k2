@@ -112,6 +112,12 @@ struct Fsa {
     return !arc_indexes.empty() ? (static_cast<int32_t>(arc_indexes.size()) - 1)
                                 : 0;
   }
+
+  int32_t FinalState() const {
+    // It's not valid to call this if the FSA is empty.
+    CHECK(!arc_indexes.empty());
+    return arc_indexes.size() - 2;
+  }
 };
 
 /*
@@ -165,7 +171,7 @@ class DeterministicGenericFsa {
 
   float GetWeightForArc(int32_t arc_index);
 
-  int32_t Getint32_tForArc(int32_t arc_index);
+  int32_t GetLabelForArc(int32_t arc_index);
 
   int32_t GetPrevStateForArc(int32_t arc_index);
 

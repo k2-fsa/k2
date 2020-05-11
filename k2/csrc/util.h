@@ -7,6 +7,8 @@
 #ifndef K2_CSRC_UTIL_H_
 #define K2_CSRC_UTIL_H_
 
+#include <cfloat>
+#include <cmath>
 #include <functional>
 #include <utility>
 
@@ -16,9 +18,9 @@ namespace k2 {
 
 // boost::hash_combine
 template <class T>
-inline void hash_combine(std::size_t *seed, const T &v) {
+inline void hash_combine(std::size_t *seed, const T &v) {  // NOLINT
   std::hash<T> hasher;
-  *seed ^= hasher(v) + 0x9e3779b9 + ((*seed) << 6) + ((*seed) >> 2);
+  *seed ^= hasher(v) + 0x9e3779b9 + ((*seed) << 6) + ((*seed) >> 2);  // NOLINT
 }
 
 struct PairHash {
@@ -30,6 +32,51 @@ struct PairHash {
     return result;
   }
 };
+
+static const double kMinLogDiffDouble = log(DBL_EPSILON);  // negative!
+static const float kMinLogDiffFloat = logf(FLT_EPSILON);   // negative!
+
+// returns log(exp(x) + exp(y)).
+inline double LogAdd(double x, double y) {
+  double diff;
+
+  if (x < y) {
+    diff = x - y;
+    x = y;
+  } else {
+    diff = y - x;
+  }
+  // diff is negative.  x is now the larger one.
+
+  if (diff >= kMinLogDiffDouble) {
+    double res;
+    res = x + log1p(exp(diff));
+    return res;
+  } else {
+    return x;  // return the larger one.
+  }
+}
+
+// returns log(exp(x) + exp(y)).
+inline float LogAdd(float x, float y) {
+  float diff;
+
+  if (x < y) {
+    diff = x - y;
+    x = y;
+  } else {
+    diff = y - x;
+  }
+  // diff is negative.  x is now the larger one.
+
+  if (diff >= kMinLogDiffFloat) {
+    float res;
+    res = x + log1pf(expf(diff));
+    return res;
+  } else {
+    return x;  // return the larger one.
+  }
+}
 
 }  // namespace k2
 #endif  // K2_CSRC_UTIL_H_
