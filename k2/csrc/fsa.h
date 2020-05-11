@@ -71,14 +71,14 @@ struct ArcHash {
   accepts no strings) by having no states at all, so `arcs` would be empty.
  */
 struct Fsa {
-  // `arc_indexes` is indexed by state-index, is of length num-states,
-  // contains the first arc-index leaving this state (index into `arcs`).
-  // The next element of this array gives the end of that range.
-  // Note: the final-state is numbered last, and implicitly has no
-  // arcs leaving it. For non-empty FSA, we put a duplicate of the final state
-  // at the end of `arc_indexes` to avoid boundary check for some FSA
-  // operations. Caution: users should never call `arc_indexes.size()` to get
-  // the number of states, they should call `NumStates()` to get the number.
+  // `arc_indexes` is indexed by state-index, is of length num-states + 1; it
+  // contains the first arc-index leaving this state (index into `arcs`).  The
+  // next element of this array gives the end of that range.  Note: the
+  // final-state is numbered last, and implicitly has no arcs leaving it. For
+  // non-empty FSA, we put a duplicate of the final state at the end of
+  // `arc_indexes` to avoid boundary check for some FSA operations. Caution:
+  // users should never call `arc_indexes.size()` to get the number of states,
+  // they should call `NumStates()` to get the number.
   std::vector<int32_t> arc_indexes;
 
   // Note: an index into the `arcs` array is called an arc-index.
@@ -111,6 +111,11 @@ struct Fsa {
   int32_t NumStates() const {
     return !arc_indexes.empty() ? (static_cast<int32_t>(arc_indexes.size()) - 1)
                                 : 0;
+  }
+  int32_t FinalState() const {
+    // It's not valid to call this if the FSA is empty.
+    CHECK(!arc_indexes.empty());
+    return arc_indexes.size() - 2;
   }
 };
 
