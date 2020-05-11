@@ -54,7 +54,8 @@ bool IsArcSorted(const Fsa &fsa);
 bool HasSelfLoops(const Fsa &fsa);
 
 /*
-  Returns true if `fsa` is acyclic
+  Returns true if `fsa` is acyclic. Cycles in parts of the FSA that are not
+  accessible (i.e. from the start state) are not considered.
   The optional argument order, assigns the order in which visiting states is
   finished in DFS traversal. State 0 has the largest order (num_states - 1) and
   the final state has the smallest order (0). 
@@ -92,6 +93,20 @@ bool IsEpsilonFree(const Fsa &fsa);
   Requires that `fsa` be valid.
  */
 bool IsConnected(const Fsa &fsa);
+
+/*
+  Returns true if `fsa` is both acyclic and connected.
+*/
+inline bool IsAcyclicAndConnected(const Fsa &fsa) {
+  return IsAcyclic(fsa) && IsConnected(fsa);
+}
+
+/*
+  Returns true if `fsa` is both topologically sorted and connected.
+*/
+inline bool IsTopSortedAndConnected(const Fsa &fsa) {
+  return IsTopSorted(fsa) && IsConnected(fsa);
+}
 
 /*
   Returns true if `fsa` is empty. (Note: if `fsa` is not empty,
