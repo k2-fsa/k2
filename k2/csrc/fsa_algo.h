@@ -298,10 +298,72 @@ void ArcSort(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
 bool TopSort(const Fsa& a, Fsa* b, std::vector<int32_t>* state_map = nullptr);
 
 /**
+   Pruned determinization with log-sum on weights (interpret them as log-probs),
+   equivalent to log semiring
+       @param [in] a  Input FSA `a` to be determinized.  Expected to be epsilon free, but this
+                      is not checked; in any case, epsilon will be treated as a normal symbol.
+                      Forward-backward weights must be provided for pruning purposes;
+                      a.weight_type must be kLogSumWeight.
+       @param [in] beam   Pruning beam; should be greater than 0.
+       @param [in] max_step  Maximum number of computation steps before we return
+                     (or if <= 0, there is no limit); provided so users can limit the time
+                     taken in pathological cases.
+       @param [out] b  Output FSA; will be deterministic.  For a symbol sequence S accepted by a,
+                      the total (log-sum) weight of S in a should equal the total (log-sum) weight
+                      of S in b (as discoverable by composition then finding the total
+                      weight of the result), except as affected by pruning of course.
+       @param [out] b_arc_weights  Weights per arc of b.
+       @param [out] arc_derivs   Indexed by arc in b, this is a list of pairs (arc_in_a, x)
+                      where 0 < x <= 1 is the derivative of that arc's weight w.r.t. the
+                      weight of `arc_in_a` in a.  Note: the x values may actually be zero
+                      if the pruning beam is very large, due to limited floating point range.
+       @return   Returns the effective pruning beam, a value >= 0 which is the difference
+                     between the total weight of the output FSA and the cost of the last
+                     arc expanded.
+*/
+float DeterminizePrunedLogSum(
+    const WfsaWithFbWeights &a,
+    float beam,
+    int64_t max_step,
+    Fsa *b,
+    std::vector<float> *b_arc_weights,
+    std::vector<std::vector<std::pair<int32_t, float> > > *arc_derivs);
 
+/**
+   Pruned determinization with max on weights, equivalent to the tropical semiring.
+
+       @param [in] a  Input FSA `a` to be determinized.  Expected to be epsilon free, but this
+                      is not checked; in any case, epsilon will be treated as a normal symbol.
+                      Forward-backward weights must be provided for pruning purposes;
+                      a.weight_type must be kMaxWeight.
+       @param [in] beam   Pruning beam; should be greater than 0.
+       @param [in] max_step  Maximum number of computation steps before we return
+                     (or if <= 0, there is no limit); provided so users can limit
+                     the time taken in pathological cases.
+       @param [out] b  Output FSA; will be deterministic  For a symbol sequence
+                       S accepted by a, the best weight of symbol-sequence S in
+                      a should equal the best weight of S in b (as discoverable
+                      by composition then finding the total weight of the
+                      result), except as affected by pruning of course.
+       @param [out] b_arc_weights  Weights per arc of b.  Note: these can be
+                      computed from arc_derivs and the weights of a, so this
+                      output is not strictly necessary; it's provided mostly due
+                      to sharing the internal code with the log-sum version.
+       @param [out] arc_derivs   Indexed by arc in `b`, this is the sequence of
+                      arcs in `a` that this arc in `b` corresponds to; the
+                      weight of the arc in b will equal the sum of those input
+                      arcs' weights.
+       @return   Returns the effective pruning beam, a value >= 0 which is the difference
+                     between the total weight of the output FSA and the cost of the last
+                     arc expanded.
  */
-void Determinize(const Fsa &a, Fsa *b,
-                 std::vector<std::vector<int32_t>> *state_map);
+float DeterminizePrunedMax(const WfsaWithFbWeights &a,
+                           float beam,
+                           int64_t max_step,
+                           Fsa *b,
+                           std::vector<float> *b_arc_weights,
+                           std::vector<int32_t> *arc_derivs);
+
 
 /* Create an acyclic FSA from a list of arcs.
 
