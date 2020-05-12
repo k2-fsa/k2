@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "k2/csrc/fsa.h"
-#include "k2/csrc/properties.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/properties.h"
 
 namespace k2 {
 

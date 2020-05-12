@@ -9,6 +9,7 @@
 #define K2_CSRC_PROPERTIES_H_
 
 #include <vector>
+
 #include "k2/csrc/fsa.h"
 
 namespace k2 {

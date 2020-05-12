@@ -9,9 +9,9 @@
 #include "k2/csrc/properties.h"
 
 #include <algorithm>
+#include <stack>
 #include <unordered_set>
 #include <vector>
-#include <stack>
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
