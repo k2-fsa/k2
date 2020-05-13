@@ -20,47 +20,166 @@ using std::priority_queue;
 using std::pair;
 
 
+/*
+  HOW THIS WORKS
 
-// setting this to true will reduce memory consumption, but could increase
-// compute time in cases where we finish before the beam.
-constexpr bool PROCESS_ARCS_IMMEDIATELY = false;
+  This is FSA determinization that also outputs derivative information that says how
+  the weights on the arcs in the output FSA vary with the weights on the arcs in the
+  input FSA.
+
+  INTRO TO DETERMINIZATION.
+
+  The problem in determinization of a weighted FSA is to find a deterministic
+  FSA (i.e. one that has no two arcs leaving any given state with the same symbol
+  on), which is equivalent to the input FSA (meaning: the weight it assigns
+  to any given symbol-sequence is the same as the input FSA).  In this explanation,
+  assume epsilons don't exist, if the input FSA had epsilons we'd get rid of
+  them prior to determinization.
 
 
+  SUBSET-BASED ALGORITHMS
+
+   In general, in determinization algorithms, states in the output FSA correspond
+   to weighted subsets of states in the input FSA.  The overall structure of these
+   algorithms will be:
+
+   - Let state 0 in the output FSA correspond to the weighted subset { 0, 0.0 }
+     in the input FSA, where the 0 is the start state-id in the input FSA
+     and the 0.0 is the weight (interpret this as a log-prob).
+     Put that in the queue.
+
+   - While (queue is not empty)
+     Pop output-state from the queue
+     Process successor states of this output-state.
+
+  Obviously most of the detail in the outline above resides in "Process
+  successor states of this output-state."  Let's discuss the unweighted
+  case first.
+
+   *Unweighted case
+
+   Each output-state corresponds to some subset of input-states, say, { s1, s2,
+   .. }.  The set of labels on arcs leaving the output-state will correspond to
+   the set of labels on all the arcs leaving s1, s2 and so on; and the
+   destination-states of those arcs will correspond to the sets of
+   destination-states of those arcs.  The algorithm requires us to store a map
+   from (subset of input-state-ids) to (output-state-id).
+
+   *Weighted case
+
+   In the weighted case, the difference is that instead of a set of
+   input-state-ids we have a weighted subset of them, and the map is from these
+   weighted subsets to state-ids in the output FSA.  The weights in the weighted
+   subsets have to be normalized somehow.  The natural normalization is in the
+   "max/tropical-semiring" case to have the most negative weight be 0.0, and in
+   the "log-sum/log-semiring" case to have the log-sum be 0.0.  Imagine
+   we have a function:
+      Normalize (unnormalized-weighted-subset) -> normalized-weighted-subset, leftover-weight
+   E.g., in the Max case:
+      Normalize( { (6, 1.0), (7, 5.0) } ) -> { (6, 0.0), (7, 4.0) }, 1.0
+   The "leftover-weights" become the weights on the arcs in the output FSA.
+
+
+   *The problem with differentability
+
+   Consider how to differentiate the weights of the output weighted FSA
+   w.r.t. those of the input.  The problem with differentiability if we use the
+   algorithm above is the case of special symmetries.  What if two weighted
+   subsets happen to coincide because there was an exact relationship between the
+   values of the weights in the input FSA, but there was no *structural* reason
+   in the input FSA why those weighted subsets have to be the same?  Then we
+   have a problem with how to differentiate, because any small change in the
+   input weights would lead to a structural change in the output FSA.
+
+
+  OUR ALGORITHM
+
+    *Different representation of subsets
+
+    Our algorithm is still very similar to the subset-based algorithms mentioned
+    above, and it still involves weighted subsets, but we use a different
+    representation of them.  Our representation (think of this as the key in
+    the map) is:  ( base_state, symbol_sequence ).  The relationship with
+    the weighted subset is: start from state `base_state` in the input FSA,
+    traverse all sequences of arcs that have sequence `symbol_sequence` on them,
+    and the weighted set of states you end up with is the weighted subset
+    in the algorithm above.
+
+    *Different normalization
+
+    Our form of "normalization" of this representation is differen too.  The
+    normalization is to make `symbol_sequence` as short as possible, and advance
+    `base_state` to compensate.  For instance, if `symbol_sequence` is `a b c
+    d`, but the weighted subset of states we can reach by this symbol sequence
+    is the same as what we'd get by moving `base_state` forward two steps and
+    letting `symbol_sequence` be just `c d`, then the latter representation is
+    the canonical one (assuming that was the largest prefix we could remove).
+    Algorithmically, finding the "most recent base_state" involves finding the
+    most recent common ancestor in a directed tree of paths through the input
+    FSA (in the max case) or a directed lattice of paths through the input FSA
+    (in the log-sum case).
+
+    The weights on arcs are related to the total weight of paths from `original
+    base_state` to `new base_state`, (counting only paths that have the removed
+    symbol sequence `a b`).  Just as with the subset algorithm, these
+    weights are what gets "spit out" by the normalization process; we simply
+    have a different normalization process.
+
+
+  PRUNED DETERMINIZATION
+
+    We support pruned determinization.  We won't describe all of the details
+    here, but it involves a priority queue of determinized states, so we always
+    process the "best" queue element first, and we may terminate before the
+    queue is empty.
+
+
+  IMPLEMENTATION DETAILS
+
+    A few details on the implementation:
+
+     - To save memory space, the process of hashing from `base_state, symbol_seq`
+       to output state-id maps them to a fixed-size 128-bit value.  This could
+       in principle generate collisions which would generate incorrect output,
+       but we consider that vanishingly improbable.
+
+ */
 
 struct MaxTracebackState {
-  using DerivOutputType = int32_t;
-
+  using DerivType = int32_t;
 
   int32_t state_id;  // state-id in the input FSA
 
-  int32_t arc_id;    // arc-id in input FSA of the arc that enters
-                     // state `state_id` (or -1 if this is the start state).
+  int32_t arc_id;    // arc-id in input FSA of the arc that enters state
+                     // `state_id` (or -1 if this is the start state).  It will
+                     // be the best arc if there were multiple possible arcs
+                     // from the base_state to this state with the same symbol
+                     // sequence.
 
-  // prev_state is the state we trace back to (the previous state),
-  // which is the src_state of the arc numbered arc_id.
-  // It will be nullptr if state_id == 0 (start state).
+  // prev_state is the state we trace back to (the previous state), which is the
+  // src_state of the arc numbered arc_id.  It will be nullptr if state_id == 0
+  // (start state).
   shared_ptr<MaxTracebackState> prev_state;
 
-  double forward_prob;    // The total forward log-probability from the start
+  double forward_prob;    // The best forward log-probability from the start
                           // state to this state (along whichever specific
-                          // sequence of symbols we took to get here; it's not
-                          // necessarily the best forward in the lattice).
+                          // sequence of symbols we took to get here)
 
-  // This constructor is for the start-state of the input FSA.
-  MaxTracebackState(): state_id(0), arc_id(-1), arc_symbol(-1),
+  // This constructor is for the start-state (state zero) of the input FSA.
+  MaxTracebackState(): state_id(0), arc_id(-1),
                        prev_state(nullptr), forward_prob(0.0) { }
 
   /**
      @param [in] state_id  State in input FSA that this corresponds to
      @param [in] src   Previous LogSumTracebackState that we'll point back
                       to, or NULL
-     @param [in] incoming_arc_index.  Its src_state will equal src->state_id,
+     @param [in] incoming_arc_index  Arc-index in input FSA.
+                      Its src_state will equal src->state_id,
                       its dest_state will equal state_id.
-     @param [in] src_symbol   Symbol on the input arc
      @param [in] arc_weight   Weight on the input arc
    */
   MaxTracebackState(int32_t state_id,
-                    const std::shared_ptr<MaxTracebackState> &src,
+                    const shared_ptr<MaxTracebackState> &src,
                     int32_t incoming_arc_index,
                     int32_t arc_weight):
       state_id(state_id),
@@ -68,14 +187,18 @@ struct MaxTracebackState {
       prev_state(src),
       forward_prob(element->forward_prob + arc_weight) { }
 
-  void Accept(const std::shared_ptr<MaxTracebackState> &src,
-              int32_t arc_index, int32_t _symbol, float arc_weight) {
+  /*
+    This takes the same args as the constructor.  It will update the traceback
+    info if this incoming arc had higher weight.
+  */
+  void Accept(const shared_ptr<MaxTracebackState> &src,
+              int32_t arc_index, float arc_weight) {
     double new_forward_prob = src->forward_prob + arc_weight;
     if (new_forward_prob > forward_prob) {
       forward_prob = new_forward_prob;
       arc_id = arc_index;
       prev_state = src;
-      // state_id doesn't change, nor does _symbol.
+      // state_id doesn't change.
     }
   }
 };
@@ -83,10 +206,13 @@ struct MaxTracebackState {
 
 class LogSumTracebackState;
 
-// This struct is used inside LogSumTracebackState; it represents an
-// arc that traces back to a previous LogSumTracebackState.
-// A LogSumTracebackState represents a weighted colletion of paths
-// terminating in a specific state.
+
+/*
+  This struct is used inside LogSumTracebackState; it represents an
+  arc that traces back to a previous LogSumTracebackState.
+  A LogSumTracebackState represents a weighted colletion of paths
+  terminating in a specific state.
+*/
 struct LogSumTracebackLink {
 
   shared_ptr<LogSumTracebackState> prev_state;
@@ -108,7 +234,7 @@ struct LogSumTracebackLink {
                         // with prev_state == nullptr (and state_id == 0).
 
 
-  LogSumTracebackLink(const std::shared_ptr<LogSumTracebackState> &src,
+  LogSumTracebackLink(const shared_ptr<LogSumTracebackState> &src,
                       int32_t arc_index, float arc_weight):
       src(src), arc_index(arc_index),
       forward_prob(arc_weight + src->forward_prob) { }
@@ -117,21 +243,23 @@ struct LogSumTracebackLink {
 };
 
 
-struct LogSumTracebackState {
-  using DerivOutputType = pair<int32_t, float>;
+/*
+  This stores traceback information for the log-sum case.  Rather than a tree
+  structure, the LogSumTracebackStates interconnect with a lattice structure.
 
-  // LogSumTracebackState can be thought of as as a weighted set of paths from
-  // the start state to a particular state.  (It will be limited to the subset
-  // of paths that have a specific symbol sequence).
+  It can be thought of as as a weighted set of paths from the start state to a
+  particular state.  It will be limited to the subset of paths that have a
+  specific symbol sequence.
+*/
+struct LogSumTracebackState {
+  using DerivType = pair<int32_t, float>;
 
   // `prev_elements` is, conceptually, a list of incoming arcs with associated
   // weights.
   vector<LogSumTracebackLink> prev_elements;
 
   int32_t state_id;       // The state-id in the input FSA that this
-                          // LogSumTracebackState corresponds to.  (Unique to
-                          // this determinized state; the same state-id may
-                          // appear in multiple determinized states, in general.
+                          // LogSumTracebackState corresponds to.
 
   double forward_prob;    // The total forward log-probability from the start
                           // state to this state (along whichever specific
@@ -147,18 +275,16 @@ struct LogSumTracebackState {
   // input FSA and the determinized FSA).
   LogSumTracebackState(): state_id(0), forward_prob(0.0) { }
 
-  /**
-     @param [in] state_id  State in input FSA that this corresponds to
-     @param [in] src   Previous LogSumTracebackState that we'll point back
-                      to, or nullptr if this belongs to the initial
-                      determinized-state.
+  /*
+     @param [in] state_id  State in input FSA
+     @param [in] src  Previous LogSumTracebackState that we'll point back to
      @param [in] incoming_arc_index.  Arc-index in input FSA.
                       Its src_state will equal src->state_id, its dest_state
                       will equal state_id.
      @param [in] arc_weight   Weight on the arc
    */
   LogSumTracebackState(int32_t state_id,
-                       const std::shared_ptr<LogSumTracebackState> &src,
+                       const shared_ptr<LogSumTracebackState> &src,
                        int32_t incoming_arc_index,
                        int32_t arc_weight):
       state_id(state_id),
@@ -167,10 +293,17 @@ struct LogSumTracebackState {
   }
 
   /*
-     Accept a new incoming link.  The args are the same as for
-     the constructor just above; see documentation there.
+     Accept a new incoming link.  The args are the same as for the constructor
+     just above; see documentation there.
+
+      @param [in] src  Previous LogSumTracebackState that we'll point back to
+      @param [in] incoming_arc_index.  Arc-index in input FSA.
+                      Its src_state will equal src->state_id, its dest_state
+                      will equal this->state_id.
+     @param [in] arc_weight   Weight on the incoming arc
+
    */
-  void Accept(const std::shared_ptr<LogSumTracebackState> &src,
+  void Accept(const shared_ptr<LogSumTracebackState> &src,
               int32_t arc_index, float arc_weight) {
     double link_forward_prob = src.forward_prob + arc_weight;
     prev_elements.emplace_back(src, arc_index, link_forward_prob);
@@ -178,12 +311,10 @@ struct LogSumTracebackState {
   }
 };
 
-
 /*
   Find the most recent common ancestor LogSumTracebackState of a set of
   LogSumTracebackStates, and return the number of links we had to follow to get
-  there (i.e. the length of symbol sequence we had to remove from
-  each path).
+  there (i.e. the length of symbol sequence).
 
     @param [in,out] cur_states   A set of TracebackStates that we'll
                   trace back from.  Must be nonempty.  Equality
@@ -191,6 +322,7 @@ struct LogSumTracebackState {
 
                   At exit it will contain a single member which will
                   be the most recent common ancestor.
+
     @return  Returns the number of links we had to follow (>=0).  If
              `cur_states.size() == 1` this will be zero.
  */
@@ -200,8 +332,8 @@ int32_t GetMostRecentCommonAncestor(
   std::unordered_set<LogSumTracebackState*> prev_states;
   for (; cur_states->size() != 1; ans++) {
     CHECK(!cur_states->empty());
-    for (LogSumTracebackState *s: cur_states) {
-      for (const LogSumTracebackLink &l: s->prev_elements) {
+    for (LogSumTracebackState *s: *cur_states) {
+      for (LogSumTracebackLink &l: s->prev_elements) {
         prev_states.insert(l.prev_state.get());
       }
     }
@@ -220,7 +352,7 @@ int32_t GetMostRecentCommonAncestor(
   std::unordered_set<MaxTracebackState*> prev_states;
   for (; cur_states->size() != 1; ans++) {
     CHECK(!cur_states->empty());
-    for (MaxTracebackState *s: cur_states) {
+    for (MaxTracebackState *s: *cur_states) {
       prev_states.insert(s->prev_state.get());
     }
     cur_states->clear();
@@ -239,8 +371,7 @@ int32_t GetMostRecentCommonAncestor(
                        expect it to contain the same set on exit).
                        A set of states; we'll iteratively trace back this
                        set one step at a time.    At entry it must have
-                       size() == 1; it will also have size() == 1 after
-                       `num_steps` steps.
+                       size() == 1; it will also have size() == 1 at exit.
        @param [in] num_steps   The number of steps to trace back
        @param [in] arc_weights_in  Weights on the arcs of the input FSA
        @param [out] weight_out  The output weight; will be the forward-backward
@@ -257,8 +388,8 @@ int32_t GetMostRecentCommonAncestor(
                        (input_arc_id, deriv) where, mathematically, 0 < deriv <= 1
                        (but we might still get exact zeros due to limitations
                        of floating point representation).
-                       Note: the sum of the float values in this vector should
-                       be equal to `num_steps`.
+                       Note: the sum of the float values in this vector at
+                       exit should be equal to `num_steps`.
 
  */
 void TraceBack(std::unordered_set<LogSumTracebackState*> *cur_states,
@@ -280,7 +411,8 @@ void TraceBack(std::unordered_set<LogSumTracebackState*> *cur_states,
       double backward_prob = state_ptr->backward_prob;
       for (auto link: state_tr->prev_elements) {
         float arc_log_posterior = link.forward_prob + backward_prob;
-        deriv_out->push_back(std::pair<int32_t, float>(link.arc_index, expf(log_posterior)));
+        deriv_out->push_back(std::pair<int32_t, float>(link.arc_index,
+                                                       expf(arc_log_posterior)));
         LogSumTracebackState *prev_state = link.prev_state.get();
         double new_backward_prob = backward_prob + arc_weights_in[link.arc_index];
         if (prev_states.insert(prev_state).second) {  // newly inserted
@@ -301,36 +433,34 @@ void TraceBack(std::unordered_set<LogSumTracebackState*> *cur_states,
   *weight_out = cur_forward_prob - prev_forward_prob;
   // The following is mostly for ease of interpretability of the output;
   // conceptually the order makes no difference.
+  // TODO(dpovey): maybe remove this, for efficiency?
   std::reverse(deriv_out->begin(), deriv_out->end());
 }
 
-
-// See documentation of TraceBack for LogSumTracebackState, above.
-// This version is simpler.
+// The TraceBack function for MaxTracebackState.  See documentation of TraceBack
+// for LogSumTracebackState, above.  This version is simpler.
 void TraceBack(std::unordered_set<MaxTracebackState*> *cur_states,
                int32_t num_steps,
                const float *,  // arc_weights_in, unused.
                float *weight_out,
                std::vector<int32_t> *deriv_out) {
-  // we recompute the arc weight sum from arc_weights_in, which should
-  // hopefully give
-  float arc_weight_sum = 0.0;
   CHECK_EQ(cur_states.size(), 1);
   MaxTracebackState *state = cur_states->front();
   double cur_forward_prob = state->forward_prob;
   deriv_out->resize(num_steps);
   for (int32_t i = num_steps - 1; i >= 0; i--) {
+    // `deriv_out` is just a list of arc indexes in the input FSA
+    // that this output arc depends on (it's their sum).
     (*deriv_out)[i] = state->arc_id;
   }
   double prev_forward_prob = state->forward_prob;
   *weight_out = cur_forward_prob - prev_forward_prob;
 }
 
-// Priority queue templated on:
+// Priority queue template arguments:
 //   item queued = unique_ptr<DetState> (using pointer equality as comparison)
 //   container type = vector<unique_ptr<DetState> >
 //   less-than operator = DetStateCompare (which compares the forward_backward_prob).
-
 template<class TracebackState>
 using DetStatePriorityQueue = priority_queue<unique_ptr<DetState<TracebackState> >,
                                              vector<unique_ptr<DetState<TracebackState> > >,
@@ -340,50 +470,47 @@ using DetStatePriorityQueue = priority_queue<unique_ptr<DetState<TracebackState>
 template <class TracebackState>
 class DetStateMap;
 
+
 /*
-  Conceptually, a determinized state in weighted FSA determinization would
-  normally be a weighted subset of states in the input FSA, with the weights
-  normalized somehow (e.g. subtracting the sum of the weights).
+  This represents a determinized state.  Initially it has normalized == false
+  and it represents an un-normalized determinized state (see intro at the top
+  of this file), or an un-normalized determinized state under construction
+  (we add to it using AcceptIncomingArc()).
 
-  Two determinized states are equal if the states and weights are the same.  To
-  ensure differentiability, our assumption is that in general no two arcs in the
-  input FSA have identical weights.  We argue that two determinized states can
-  always be represented as a base-state and a symbol sequence.  Imagine that we
-  follow arcs with that symbol sequence from the base-state, and then in case we
-  reach the same states in the different ways we always select the best path
-  from the base-state.  That process gives us a set of states and weights.  We
-  argue that this representation is unique.  (If not, it won't matter actually;
-  it will just give us an output that's less minimal than it could be).
+  After we call Normalize() on it, it is a normalized determinized-state (this
+  also outputs the weight you need for the incoming arc).
 
+  After that
 
-  We're not really following the Google guidelines by not having _ at the end of
-  class members, but this is more struct-like (members are public).
  */
+
 template <class TracebackState>  // TracebackState == MaxTracebackState or LogSumTracebackState
 class DetState {
-
-
  public:
-  using DerivOutputType = typename TracebackState::DerivOutputType;
-  // .. and DerivOutputType == int32_t or pair<int32_t, float>
-  // respectively.
+  using DerivType = typename TracebackState::DerivType;
+  // DerivType == int32_t for MaxTracbackState, or
+  // pair<int32_t, float> for LogSumTracebackState.
 
   // Constructor for the initial state of the determinized FSA
   DetState(): seq_len(0), output_state(-1), normalized(true) {
-    // the constructor that takes no args gives us what we need for the
-    // start-state.
+    // the constructor of TracebackState that takes no args gives us what we
+    // need for the start-state.
     elements[0] = std::make_shared<TracebackState>();
   }
 
-  // TODO: constructor for start-state.
 
-  DetState(int32_t seq_len, int32_t src_output_state,
-           int32_t pending_symbol):
+  /*
+     Constructor (this is the one that's normally used).
+       @param [in] seq_len  Length of symbol sequence from its
+                           base_state (this is before normalization).
+                           Will be the seq_len of the source det_state plus
+                           one.  This seq_len may end up getting reduced
+                           when Normalize() is called (reducing seq_len
+                           implicitly advances the base_state).
+   */
+  DetState(int32_t seq_len):
       seq_len(seq_len),
-      output_state(-1), // Not known yet
-      normalized(false),
-      src_output_state(src_output_state),
-      pending_symbol(pending_symbol) { } // .. and forward_backward_weight undefined
+      normalized(false) { }  // .. and forward_backward_prob undefined
 
   /**
      Process incoming arc to this DetState.  See documentation for
@@ -391,21 +518,24 @@ class DetState {
      LogSumTracebackState).
          @param [in] state_id  State-id, in input FSA, into which this arc enters.
                    [Note: a DetState is a weighted subset of state-ids.]
+         @param [in] src  The preceding state (from which the arc leaves).
+                    This will be a member of the `elements` of the "parent"
+                    DetState, i.e. the DetState in whose ProcessArcs() function
+                    this DetState was created.
          @param [in] incoming_arc_index  Arc in input FSA that enters state
                    `state_id`.
-                   @param [in] arc_symbol  The symbol on
+         @param [in] arc_weight  The weight on this arc
    */
   void AcceptIncomingArc(int32_t state_id,
-                         const std::shared_ptr<TracebackState> &src,
+                         const shared_ptr<TracebackState> &src,
                          int32_t incoming_arc_index,
                          int32_t arc_weight) {
-    auto iter = elements.find(state_id);
-    if (iter == elements.end()) {
-      elements[state_id] = std::make_shared<TracebackState>(
+    auto ret = elements.insert({state_id, nullptr});
+    if (!ret.second) {  // No such state existed in `elements`
+      ret.first->second = std::make_shared<TracebackState>(
           state_id, src, incoming_arc_index, arc_weight);
-    } else {
-      iter.second->Accept(
-          src, incoming_arc_index, arc_symbol, arc_weight);
+    } else {  // A state with this staste_id existed in `elements`.
+      ret.first->second->Accept(src, incoming_arc_index, arc_weight);
     }
   }
 
@@ -419,44 +549,23 @@ class DetState {
   // which you pick, the result will be the same).
   int32_t seq_len;
 
-  // `output_state` is the state in the output FSA that this determinized
-  // state corresponds to.  (Only known if `normalized` is true; otherwise, -1).
-  int32_t output_state;
-
   // `normalized` is true if this DetState is known to be normalized (meaning:
   // we have reduced seq_len as much as possible).  DetStates that are not
   // normalized will not yet have an `output_state`.
   bool normalized;
 
-  // The following two elements are only relevant if `normalized` is false.
-  // The purpose is so that we can delay outputting the arc leading to this
-  // DetState, until we know that this DetState will end up having arcs
-  // leaving it processed (see ProcessArcs()).  For pruned determinization,
-  // this avoids unnecessary work.
-  //
-  // src_output_state is the state, in the output FSA, of the preceding state
-  // from which we generated this state.  In the end any given state in the output FSA may
-  // have many preceding-states; this is just the one from which this
-  // particular DetState structure was generated.  It's remembered so that
-  // we can correctly output the arc in the output FSA from `src_output_state`.
-  int32_t src_output_state;
-  // pending_symbol is the symbol, in the output FSA, on the arc from
-  // src_output_state.
-  int32_t pending_symbol;
-
-
   // `elements` can be thought of as weighted subsets of states in the input
   // FSA, that also stores some traceback information that lets us compute
   // derivatives.
   // It's a map from (state-id in input FSA) -> its corresponding TracebackState.
-  std::unordered_map<int32_t, std::shared_ptr<TracebackState> > elements;
+  std::unordered_map<int32_t, shared_ptr<TracebackState> > elements;
 
   // This is the weight on the best path that includes this determinized state.
   // It's needed to form a priority queue on DetStates, so we can process them
   // best-first.  It is computed as: the forward-weight on `base_state`,
   // plus the best/most-positive of: (the weight in a DetStateElement plus
   // the backward-weight of the state associated with that DetStateElement).
-  double forward_backward_weight;
+  double forward_backward_prob;
 
 
   /*
@@ -493,7 +602,7 @@ class DetState {
                       float prune_cutoff,
                       vector<Arc> *arcs_out,
                       vector<float> *arc_weights_out,
-                      vector<DerivOutputType> *derivs_per_arc,
+                      vector<DerivType> *derivs_per_arc,
                       DetStateMap<TracebackType> *state_map,
                       DetStatePriorityQueue<TracebackType> *queue);
 
@@ -523,7 +632,7 @@ class DetState {
     them, i.e. no equalities like a + b = c.  This kind of requirement is
     necessarly for differentiablity.
 
-    This function also sets the forward_backward_weight field.
+    This function also sets the forward_backward_prob field.
 
        @param [in] wfsa_in  The weighted FSA we are determinizing
        @param [out] removed_weight  The part of the weight that was
@@ -532,14 +641,14 @@ class DetState {
    */
   void Normalize(const WfsaWithFbWeights &wfsa_in,
                  float *removed_weight,
-                 std::vector<DerivOutputType> *deriv_info);
+                 std::vector<DerivType> *deriv_info);
 };
 
 template <class TracebackState>
 bool DetStateCompare<TracebackState>::operator()(
     const shared_ptr<DetState<TracebackState> > &a,
     const shared_ptr<DetState<TracebackState> > &b) {
-  return a->forward_backward_weight < b->forward_backward_weight;
+  return a->forward_backward_prob < b->forward_backward_prob;
 }
 
 
@@ -584,6 +693,7 @@ class DetStateMap {
   int32_t size() const { return cur_output_state_; }
 
  private:
+  // simple hashing function that just takes the first element of the pair.
   struct PairHasher {
     size_t operator () (const std::pair<uint64_t, uint64_t> &p) const {
       return static_cast<size_t>(p.first);
@@ -645,10 +755,10 @@ bool NormalizeStateAndOutputArc(
     float prune_cutoff,
     vector<Arc> *arcs_out,
     vector<float> *arc_weights_out,
-    vector<vector<typename TracebackState::DerivOutputType> > *derivs_per_arc,
+    vector<vector<typename TracebackState::DerivType> > *derivs_per_arc,
     DetStateMap *state_map) {
   float arc_weight;
-  std::vector<DerivOutputType> deriv_info;
+  std::vector<DerivType> deriv_info;
   state->Normalize(wfsa_in, &arc_weight, &deriv_info);
   int32_t next_state_id;
   bool is_new_state = state_map->GetOutputState(state);
@@ -665,16 +775,18 @@ int32_t DetState<TracebackState>::ProcessArcs(
     double prune_cutoff,
     vector<Arc> *arcs_out,
     vector<float> *arc_weights_out,
-    vector<vector<typename TracebackState::DerivOutputType> > *derivs_per_arc,
+    vector<vector<typename TracebackState::DerivType> > *derivs_per_arc,
     DetStateMap *state_map,
     DetStatePriorityQueue *queue) {
   int32_t num_steps = 0;
 
-  std::unordered_map<int32_t, shared_ptr<DetState<TracebackStats> > > label_to_state;
+  std::unordered_map<int32_t, DetState<TracebackStats>* > label_to_state;
 
+  // The following loop populates `label_to_state`, creating successor
+  // DetStates (unnormalized).
   Fsa *fsa = wsfa_in.fsa;
   const float *arc_weights = wfsa_in.arc_weights;
-  for (const std::shared_ptr<TracebackState> &state_ptr: elements) {
+  for (const shared_ptr<TracebackState> &state_ptr: elements) {
     int32_t state_id = state_ptr->state_id,
         begin_arc = fsa->arc_indexes[state_id],
         end_arc = fsa->arc_indexes[state_id + 1];
@@ -683,54 +795,41 @@ int32_t DetState<TracebackState>::ProcessArcs(
       const Arc &arc = fsa->arcs[a];
       float weight = arc_weights[a];
       int32_t label = arc.label;
-
-
       auto ret = label_to_state.insert({label, nullptr});
       auto iter = ret.first;
       if (ret.second) {  // Inserted -> this label was not a key in this map.
                          // Allocate new DetState.
-        iter->second = std::make_shared<DetState<TracebackState> >(seq_len + 1,
-                                                                   this->output_state,
-                                                                   label);
+        iter->second = new DetState<TracebackState> >(seq_len + 1);
       }
-      TracebackState *state = iter->second.get();
-      state->Accept(state_ptr, a, arc.label, weight);
+      DetState<TracebackState> *det_state = iter->second.get();
+      det_state->Accept(state_ptr, a, arc.label, weight);
     }
   }
   CHECK(!label_to_state.empty() ||
         elements[0]->state_id == fsa->FinalState());  // I'm assuming the input
                                                       // FSA is connected.
 
-
+  // The following loop normalizes successor det-states, outputs the arcs
+  // that lead to them, and adds them to the queue if necessary.
   for (auto iter = label_to_state.begin();
        iter != label_to_state.end(); ++iter) {
-    std::shared_ptr<DetState> &det_state = iter->second;
+    DetState<TracebackState> *det_state = iter->second;
 
     float arc_weight;
-    std::vector<DerivOutputType> deriv_info;
+    std::vector<DerivType> deriv_info;
     det_state->Normalize(wfsa_in, &arc_weight, &deriv_info);
-    if (det_state->forward_backward_weight >= prune_cutoff) {
+    if (det_state->forward_backward_prob >= prune_cutoff) {
       bool is_new_state = state_map->GetOutputState(state);
       arcs_out->push_back({this->state_id, next_state_id, label});
       arc_weights_out->push_back(arc_weight);
       derivs_per_arc->push_back(std::move(deriv_info));
       if (is_new_state)
-        queue->push(det_state);
+        queue->push(std::unique_ptr<DetState<TracebackState> >(det_state));
+    } else {
+      delete det_state;
     }
   }
   return num_steps;
-}
-
-template <class TracebackState>
-void DetState<TracebackState>::ComputeFbWeight(
-    const float *backward_state_weights) {
-  forward_backward_weight = -std::numeric_limits<double>::infinity();
-  for (auto p: elements) {
-    TracebackState *state = p.second.get();
-    forward_backward_weight = max(forward_backward_weight,
-                                  state->forward_prob +
-                                  backward_state_weights[state->state_id]);
-  }
 }
 
 template <class TracebackState>
@@ -749,7 +848,7 @@ double LogSumOrMax<MaxTracebackState>(double a, double b) {
 template <class TracebackState>
 void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
                                          float *removed_weight,
-                                         std::vector<DerivOutputType> *deriv_info) {
+                                         std::vector<DerivType> *deriv_info) {
   std::unordered_set<TracebackState*> cur_states;
 
   double fb_prob = -std::numeric_limits<double>::infinity();
@@ -791,20 +890,23 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
 }
 
 
-
-void DeterminizePrunedLogSum(
+template <typename TracebackState>
+float DeterminizePrunedTpl(
     const WfsaWithFbWeights &wfsa_in,
     float beam,
     int64_t max_step,
     Fsa *fsa_out,
     std::vector<float> *arc_weights_out,
-    std::vector<std::vector<std::pair<int32_t, float> > > *arc_derivs_out) {
+    std::vector<std::vector<typename TracebackState::DerivType> > *arc_derivs_out) {
   CHECK_GT(beam, 0);
+  CHECK(IsDeterministic(*wfsa_in.fsa));
+  CHECK(!IsEmpty(*wfs_in.fsa));
 
-  DetStatePriorityQueue<LogSumTracebackState> queue;
-  DetStateMap<LogSumTracebackState> map;
+  DetStatePriorityQueue<TracebackState> queue;
+  DetStateMap<TracebackState> map;
+  using DS = DetState<TracebackState>;
 
-  std::shared_ptr<DetState> start_state = std::make_shared<DetState>();
+  shared_ptr<DS> start_state = std::make_shared<DS>();
 
   std::vector<Arc> arcs_out;
   arc_weights_out->clear();
@@ -822,15 +924,47 @@ void DeterminizePrunedLogSum(
   double total_prob = wfsa_in.backward_state_weights[0],
       prune_cutoff = total_prob - beam;
   while (num_steps < max_step && !queue.empty()) {
-    std::shared_ptr<DetState> state = queue.top();
+    shared_ptr<DS> state = queue.top();
     queue.pop();
     num_steps += state->ProcessArcs(wfsa_in, prune_cutoff, arcs_out,
                                     arc_weights_out, arc_derivs_out,
                                     &map, &queue);
   }
+  if (!queue.empty()) {  // We stopped early due to max_step
+    return total_prob - queue.top()->forward_backward_prob;
+  } else {
+    return beam;
+  }
 }
 
-// TODO: do the max version of Determinize(), which is much the same as the
-// LogSum version.
+
+void DeterminizePrunedLogSum(
+    const WfsaWithFbWeights &wfsa_in,
+    float beam,
+    int64_t max_step,
+    Fsa *fsa_out,
+    std::vector<float> *arc_weights_out,
+    std::vector<std::vector<std::pair<int32_t, float> > > *arc_derivs_out) {
+  CHECK_EQ(wfsa_in.weight_type, kLogSumWeight);
+  return DeterminizePrunedTpl<LogSumTracebackState(
+          wfsa_in, beam, max_step, fsa_out,
+          arc_weights_out, arc_derivs_out);
+}
+
+void DeterminizePrunedMax(
+    const WfsaWithFbWeights &wfsa_in,
+    float beam,
+    int64_t max_step,
+    Fsa *fsa_out,
+    std::vector<float> *arc_weights_out,
+    std::vector<std::vector<std::pair<int32_t, float> > > *arc_derivs_out) {
+  CHECK_EQ(wfsa_in.weight_type, kMaxWeight);
+  return DeterminizePrunedTpl<MaxTracebackState>(
+      wfsa_in, beam, max_step, fsa_out,
+      arc_weights_out, arc_derivs_out);
+}
+
+
+
 
 }  // namespace k2
