@@ -8,6 +8,7 @@
 #ifndef K2_CSRC_WEIGHTS_H_
 #define K2_CSRC_WEIGHTS_H_
 
+#include <functional>
 #include <limits>
 #include <memory>
 #include <vector>
@@ -18,7 +19,10 @@
 
 namespace k2 {
 
-constexpr float kNegativeInfinity = -std::numeric_limits<float>::infinity();
+constexpr float kFloatNegativeInfinity =
+    -std::numeric_limits<float>::infinity();
+constexpr double kDoubleNegativeInfinity =
+    -std::numeric_limits<double>::infinity();
 
 /*
   This header contains various utilities that operate on weights and costs.
@@ -99,6 +103,7 @@ struct WfsaWithFbWeights {
   }
 
  private:
+  using AddWeightsFun = std::function<double(double, double)>;
   // forward_state_weights are the log-sum or max of weights along all paths
   // from the start-state to each state.  We use double because for long FSAs
   // roundoff effects can cause nasty errors in pruning.
@@ -106,6 +111,8 @@ struct WfsaWithFbWeights {
   // backward_state_weights are the log-sum or max of weights along all paths
   // from each state to the final state.
   std::unique_ptr<double[]> backward_state_weights;
+  void ComputeForwardWeights();
+  void ComputeBackardWeights();
 };
 
 }  // namespace k2

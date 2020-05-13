@@ -13,6 +13,7 @@
 #include "glog/logging.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/properties.h"
+#include "k2/csrc/util.h"
 
 namespace {
 void CheckInput(const k2::Fsa &fsa, const float *arc_weights) {
@@ -30,7 +31,7 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
   CHECK_NOTNULL(state_weights);
 
   int32_t num_states = fsa.NumStates();
-  std::fill_n(state_weights, num_states, kNegativeInfinity);
+  std::fill_n(state_weights, num_states, kFloatNegativeInfinity);
 
   const auto &arcs = fsa.arcs;
   state_weights[0] = 0;
@@ -50,10 +51,10 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
   CHECK_NOTNULL(state_weights);
 
   int32_t num_states = fsa.NumStates();
-  std::fill_n(state_weights, num_states, kNegativeInfinity);
+  std::fill_n(state_weights, num_states, kFloatNegativeInfinity);
 
   const auto &arcs = fsa.arcs;
-  state_weights[num_states - 1] = 0;
+  state_weights[fsa.FinalState()] = 0;
   for (auto i = static_cast<int32_t>(arcs.size()) - 1; i >= 0; --i) {
     const auto &arc = arcs[i];
     DCHECK_GE(arc.dest_state, arc.src_state);
@@ -68,11 +69,76 @@ WfsaWithFbWeights::WfsaWithFbWeights(const Fsa &fsa, const float *arc_weights,
     : fsa(fsa), arc_weights(arc_weights), weight_type(t) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
-
-  auto num_states = fsa.NumStates();
-  forward_state_weights = std::unique_ptr<double[]>(new double[num_states]());
-  backward_state_weights = std::unique_ptr<double[]>(new double[num_states]());
-  // TODO(haowen): compute `forward/backward_state_weights`, also check
-  // `IsTopSorted(fsa)`
+  ComputeForwardWeights();
+  ComputeBackardWeights();
 }
+
+// Mohri, M. 2002. Semiring framework and algorithms for shortest-distance
+// problems, Journal of Automata, Languages and Combinatorics 7(3): 321-350,
+// 2002.
+void WfsaWithFbWeights::ComputeForwardWeights() {
+  auto num_states = fsa.NumStates();
+  forward_state_weights = std::unique_ptr<double[]>(new double[num_states]);
+  std::fill_n(forward_state_weights.get(), num_states, kDoubleNegativeInfinity);
+
+  const auto &arcs = fsa.arcs;
+  forward_state_weights[0] = 0;
+  if (weight_type == kMaxWeight) {
+    for (std::size_t i = 0; i != arcs.size(); ++i) {
+      const auto &arc = arcs[i];
+      DCHECK_GE(arc.dest_state, arc.src_state);
+      auto src_weight = forward_state_weights[arc.src_state];
+      auto &dest_weight = forward_state_weights[arc.dest_state];
+
+      double r = src_weight + arc_weights[i];
+      dest_weight = std::max(dest_weight, r);
+    }
+  } else if (weight_type == kLogSumWeight) {
+    for (std::size_t i = 0; i != arcs.size(); ++i) {
+      const auto &arc = arcs[i];
+      DCHECK_GE(arc.dest_state, arc.src_state);
+      auto src_weight = forward_state_weights[arc.src_state];
+      auto &dest_weight = forward_state_weights[arc.dest_state];
+
+      double r = src_weight + arc_weights[i];
+      dest_weight = LogAdd(dest_weight, r);
+    }
+  } else {
+    LOG(FATAL) << "Unreachable code is executed!";
+  }
+}
+
+void WfsaWithFbWeights::ComputeBackardWeights() {
+  auto num_states = fsa.NumStates();
+  backward_state_weights = std::unique_ptr<double[]>(new double[num_states]);
+  std::fill_n(backward_state_weights.get(), num_states,
+              kDoubleNegativeInfinity);
+
+  const auto &arcs = fsa.arcs;
+  backward_state_weights[fsa.FinalState()] = 0;
+  if (weight_type == kMaxWeight) {
+    for (auto i = static_cast<int32_t>(arcs.size()) - 1; i >= 0; --i) {
+      const auto &arc = arcs[i];
+      DCHECK_GE(arc.dest_state, arc.src_state);
+      auto &src_weight = backward_state_weights[arc.src_state];
+      auto dest_weight = backward_state_weights[arc.dest_state];
+
+      double r = dest_weight + arc_weights[i];
+      src_weight = std::max(src_weight, r);
+    }
+  } else if (weight_type == kLogSumWeight) {
+    for (auto i = static_cast<int32_t>(arcs.size()) - 1; i >= 0; --i) {
+      const auto &arc = arcs[i];
+      DCHECK_GE(arc.dest_state, arc.src_state);
+      auto &src_weight = backward_state_weights[arc.src_state];
+      auto dest_weight = backward_state_weights[arc.dest_state];
+
+      double r = dest_weight + arc_weights[i];
+      src_weight = LogAdd(src_weight, r);
+    }
+  } else {
+    LOG(FATAL) << "Unreachable code is executed!";
+  }
+}
+
 }  // namespace k2

@@ -7,14 +7,24 @@
 #ifndef K2_CSRC_UTIL_H_
 #define K2_CSRC_UTIL_H_
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <utility>
 
 #include "k2/csrc/fsa.h"
 
 namespace k2 {
+
+#define EXPECT_DOUBLE_ARRAY_APPROX_EQ(expected, actual, abs_error)      \
+  ASSERT_EQ(expected.size(), actual.size()) << "Different Array Size."; \
+  for (std::size_t i = 0; i < expected.size(); ++i) {                   \
+    EXPECT_TRUE(ApproxEqual(expected[i], actual[i], abs_error))         \
+        << "expected value at index " << i << " is " << expected[i]     \
+        << ", but actual value is " << actual[i];                       \
+  }
 
 // boost::hash_combine
 template <class T>
@@ -76,6 +86,15 @@ inline float LogAdd(float x, float y) {
   } else {
     return x;  // return the larger one.
   }
+}
+
+inline bool ApproxEqual(double a, double b, double delta = 0.001) {
+  // a==b handles infinities.
+  if (a == b) return true;
+  double diff = std::abs(a - b);
+  if (diff == std::numeric_limits<double>::infinity() || diff != diff)
+    return false;  // diff is +inf or nan.
+  return diff <= delta;
 }
 
 }  // namespace k2
