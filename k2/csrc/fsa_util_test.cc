@@ -11,6 +11,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "k2/csrc/properties.h"
 
 namespace k2 {
 
@@ -68,18 +69,35 @@ TEST(FsaUtil, StringToFsa) {
   ASSERT_EQ(arc_indexes.size(), 8u);
   EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7, 7));
 
-  std::vector<Arc> expected_arcs = {{0, 1, 2},
-                                    {0, 2, 10},
-                                    {1, 3, 3},
-                                    {1, 6, 6},
-                                    {2, 6, 1},
-                                    {2, 4, 2},
-                                    {5, 0, 1}, };
+  std::vector<Arc> expected_arcs = {
+      {0, 1, 2}, {0, 2, 10}, {1, 3, 3}, {1, 6, 6},
+      {2, 6, 1}, {2, 4, 2},  {5, 0, 1},
+  };
 
   auto n = static_cast<int32_t>(expected_arcs.size());
   for (auto i = 0; i != n; ++i) {
     EXPECT_EQ(arcs[i], expected_arcs[i]);
   }
+}
+
+TEST(FsaUtil, RandFsa) {
+  RandFsaOptions opts;
+  opts.num_syms = 20;
+  opts.num_states = 10;
+  opts.num_arcs = 20;
+  opts.allow_empty = false;
+  opts.acyclic = true;
+
+  Fsa fsa;
+  GenerateRandFsa(opts, &fsa);
+
+  EXPECT_TRUE(IsAcyclic(fsa));
+
+  // some states and arcs may be removed due to `Connect`.
+  EXPECT_LE(fsa.NumStates(), opts.num_states);
+  EXPECT_LE(fsa.arcs.size(), opts.num_arcs);
+
+  EXPECT_FALSE(IsEmpty(fsa));
 }
 
 }  // namespace k2

@@ -9,10 +9,13 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <random>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "glog/logging.h"
+#include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/properties.h"
 
 namespace {
@@ -101,6 +104,15 @@ void SplitStringToVector(const std::string &in, const char *delim,
     if (!sub.empty()) out->emplace_back(std::move(sub));
   }
 }
+
+struct PairHash {
+  size_t operator()(const std::pair<int32_t, int32_t> &pair) const {
+    std::size_t result = 0;
+    k2::hash_combine(&result, pair.first);
+    k2::hash_combine(&result, pair.second);
+    return result;
+  }
+};
 
 }  // namespace
 
@@ -199,6 +211,85 @@ std::string FsaToString(const Fsa &fsa) {
   }
   os << fsa.NumStates() - 1 << "\n";
   return os.str();
+}
+
+int32_t Rand(int32_t low /* = std::numeric_limits<int32_t>::min() */,
+             int32_t high /* = std::numeric_limits<int32_t>::max() */,
+             int32_t seed /* = 0 */) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  if (seed != 0) gen.seed(seed);
+  std::uniform_int_distribution<int32_t> dis(low, high);
+  return dis(gen);
+}
+
+RandFsaOptions::RandFsaOptions() {
+  num_syms = 2 + Rand(1) % 5;
+  num_states = 3 + Rand(1) % 10;
+  num_arcs = 5 + Rand(1) % 30;
+  allow_empty = true;
+  acyclic = false;
+}
+
+void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
+  CHECK_NOTNULL(fsa);
+  CHECK_GT(opts.num_syms, 1);
+  CHECK_GT(opts.num_states, 1);
+  CHECK_GT(opts.num_arcs, 1);
+
+  // index is state_id
+  std::vector<std::vector<Arc>> state_to_arcs(opts.num_states);
+  int32_t src_state;
+  int32_t dest_state;
+  int32_t label;
+  int32_t num_states = static_cast<int32_t>(opts.num_states);
+
+  int32_t num_fails = -1;
+  int32_t max_loops = 100 * opts.num_arcs;
+  do {
+    ++num_fails;
+    if (num_fails > 100)
+      LOG(FATAL) << "Cannot generate a rand fsa. Please increase num_states "
+                    "and num_arcs";
+
+    std::unordered_set<std::pair<int32_t, int32_t>, PairHash> seen;
+    int32_t tried = 0;
+    for (auto i = 0;
+         i != static_cast<int32_t>(opts.num_arcs) && tried < max_loops;
+         ++tried) {
+      src_state = Rand(0, num_states - 2);
+      if (!opts.acyclic)
+        dest_state = Rand(0, num_states - 1);
+      else
+        dest_state = Rand(src_state + 1, num_states - 1);
+
+      if (seen.count(std::make_pair(src_state, dest_state))) continue;
+
+      seen.insert(std::make_pair(src_state, dest_state));
+
+      if (dest_state == num_states - 1)
+        label = kFinalSymbol;
+      else
+        label = Rand(0, static_cast<int32_t>(opts.num_syms - 1));
+
+      state_to_arcs[src_state].push_back({src_state, dest_state, label});
+      ++i;
+    }
+
+    Fsa tmp;
+    tmp.arc_indexes.reserve(opts.num_states + 1);
+
+    for (const auto &arcs : state_to_arcs) {
+      tmp.arc_indexes.push_back(static_cast<int32_t>(tmp.arcs.size()));
+      tmp.arcs.insert(tmp.arcs.end(), arcs.begin(), arcs.end());
+    }
+
+    tmp.arc_indexes.push_back(tmp.arc_indexes.back());
+
+    Connect(tmp, fsa);
+  } while (!opts.allow_empty && IsEmpty(*fsa));
+
+  if (opts.acyclic) CHECK(IsAcyclic(*fsa));
 }
 
 }  // namespace k2
