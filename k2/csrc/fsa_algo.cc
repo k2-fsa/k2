@@ -74,13 +74,13 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
   std::vector<bool> coaccessible(num_states, false);
   std::vector<int8_t> state_status(num_states, kNotVisited);
 
-  // ssc is short for "strongly connected component"
+  // scc is short for "strongly connected component"
   // the following block of variables are for
   // "Tarjan's strongly connected components algorithm"
   //
   // Refer to the comment above the function for the meaning of them
-  std::vector<int32_t> ssc_stack;
-  ssc_stack.reserve(num_states);
+  std::vector<int32_t> scc_stack;
+  scc_stack.reserve(num_states);
   std::vector<bool> onstack(num_states, false);
   std::vector<int32_t> dfnumber(num_states,
                                 std::numeric_limits<int32_t>::max());
@@ -97,7 +97,7 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
   dfnumber[0] = df_count;
   lowlink[0] = df_count;
   ++df_count;
-  ssc_stack.push_back(0);
+  scc_stack.push_back(0);
   onstack[0] = true;
 
   // map order to state.
@@ -122,12 +122,12 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
         // this is the root of the strongly connected component
         bool scc_coaccessible = false;  // if any node in scc is co-accessible,
                                         // it will be set to true
-        auto k = ssc_stack.size() - 1;
+        auto k = scc_stack.size() - 1;
         auto num_nodes = 0;  // number of nodes in the scc
 
         auto tmp = 0;
         do {
-          tmp = ssc_stack[k--];
+          tmp = scc_stack[k--];
           if (coaccessible[tmp]) scc_coaccessible = true;
           ++num_nodes;
         } while (tmp != state);
@@ -136,11 +136,11 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
         // set is_acyclic to false
         if (num_nodes > 1 && scc_coaccessible) is_acyclic = false;
 
-        // now pop ssc_stack and set co-accessible of each node
+        // now pop scc_stack and set co-accessible of each node
         do {
-          tmp = ssc_stack.back();
+          tmp = scc_stack.back();
           if (scc_coaccessible) coaccessible[tmp] = true;
-          ssc_stack.pop_back();
+          scc_stack.pop_back();
           onstack[tmp] = false;
         } while (tmp != state);
       }
@@ -170,7 +170,7 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
         dfnumber[next_state] = df_count;
         lowlink[next_state] = df_count;
         ++df_count;
-        ssc_stack.push_back(next_state);
+        scc_stack.push_back(next_state);
         onstack[next_state] = true;
 
         if (accessible[current_state.state]) accessible[next_state] = true;
@@ -463,44 +463,7 @@ bool TopSort(const Fsa &a, Fsa *b,
   std::vector<int32_t> order;
   order.reserve(num_states);
 
-  std::stack<DfsState> stack;
-  stack.push({0, a.arc_indexes[0], a.arc_indexes[1]});
-  state_status[0] = kVisiting;
-  bool is_acyclic = true;
-  while (is_acyclic && !stack.empty()) {
-    auto &current_state = stack.top();
-    if (current_state.arc_begin == current_state.arc_end) {
-      // we have finished visiting this state
-      state_status[current_state.state] = kVisited;
-      order.push_back(current_state.state);
-      stack.pop();
-      continue;
-    }
-    const auto &arc = a.arcs[current_state.arc_begin];
-    auto next_state = arc.dest_state;
-    auto status = state_status[next_state];
-    switch (status) {
-      case kNotVisited: {
-        // a new discovered node
-        state_status[next_state] = kVisiting;
-        auto arc_begin = a.arc_indexes[next_state];
-        stack.push({next_state, arc_begin, a.arc_indexes[next_state + 1]});
-        ++current_state.arc_begin;
-        break;
-      }
-      case kVisiting:
-        // this is a back arc indicating a loop in the graph
-        is_acyclic = false;
-        break;
-      case kVisited:
-        // this is a forward cross arc, do nothing.
-        ++current_state.arc_begin;
-        break;
-      default:
-        LOG(FATAL) << "Unreachable code is executed!";
-        break;
-    }
-  }
+  bool is_acyclic = IsAcyclic(a, &order);
 
   if (!is_acyclic) return false;
 
