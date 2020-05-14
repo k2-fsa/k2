@@ -16,6 +16,7 @@
 #include <utility>
 
 #include "glog/logging.h"
+#include "k2/csrc/determinize.h"
 #include "k2/csrc/properties.h"
 #include "k2/csrc/util.h"
 
@@ -620,6 +621,24 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa) {
   }
 
   fsa->arc_indexes.back() = static_cast<int32_t>(fsa->arcs.size());
+}
+
+float DeterminizePrunedLogSum(
+    const WfsaWithFbWeights &a, float beam, int64_t max_step, Fsa *b,
+    std::vector<float> *b_arc_weights,
+    std::vector<std::vector<std::pair<int32_t, float>>> *arc_derivs) {
+  CHECK_EQ(a.weight_type, kLogSumWeight);
+  return DeterminizePrunedTpl<LogSumTracebackState>(a, beam, max_step, b,
+                                                    b_arc_weights, arc_derivs);
+}
+
+float DeterminizePrunedMax(const WfsaWithFbWeights &a, float beam,
+                           int64_t max_step, Fsa *b,
+                           std::vector<float> *b_arc_weights,
+                           std::vector<std::vector<int32_t>> *arc_derivs) {
+  CHECK_EQ(a.weight_type, kMaxWeight);
+  return DeterminizePrunedTpl<MaxTracebackState>(a, beam, max_step, b,
+                                                 b_arc_weights, arc_derivs);
 }
 
 }  // namespace k2
