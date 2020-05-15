@@ -6,6 +6,7 @@ add_library(fsa
   fsa_util.cc
   properties.cc
   weights.cc
+  determinize.cc
 )
 
 target_include_directories(fsa PUBLIC ${CMAKE_SOURCE_DIR})
