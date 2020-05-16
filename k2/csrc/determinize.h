@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "k2/csrc/fsa.h"
+#include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/util.h"
 #include "k2/csrc/weights.h"
 
@@ -371,20 +372,20 @@ class DetState;
 
 template <class TracebackState>
 struct DetStateCompare {
-  bool operator()(const std::unique_ptr<DetState<TracebackState>> &a,
-                  const std::unique_ptr<DetState<TracebackState>> &b) {
+  bool operator()(const std::shared_ptr<DetState<TracebackState>> &a,
+                  const std::shared_ptr<DetState<TracebackState>> &b) {
     return a->forward_backward_prob < b->forward_backward_prob;
   }
 };
 // Priority queue template arguments:
-//   item queued = unique_ptr<DetState> (using pointer equality as comparison)
-//   container type = vector<unique_ptr<DetState> >
+//   item queued = shared_ptr<DetState> (using pointer equality as comparison)
+//   container type = vector<shared_ptr<DetState> >
 //   less-than operator = DetStateCompare (which compares the
 //   forward_backward_prob).
 template <class TracebackState>
 using DetStatePriorityQueue =
-    std::priority_queue<std::unique_ptr<DetState<TracebackState>>,
-                        std::vector<std::unique_ptr<DetState<TracebackState>>>,
+    std::priority_queue<std::shared_ptr<DetState<TracebackState>>,
+                        std::vector<std::shared_ptr<DetState<TracebackState>>>,
                         DetStateCompare<TracebackState>>;
 
 template <class TracebackState>
@@ -448,7 +449,7 @@ class DetState {
                          const std::shared_ptr<TracebackState> &src,
                          int32_t incoming_arc_index, int32_t arc_weight) {
     auto ret = elements.insert({state_id, nullptr});
-    if (!ret.second) {  // No such state existed in `elements`
+    if (ret.second) {  // No such state existed in `elements`
       ret.first->second = std::make_shared<TracebackState>(
           state_id, src, incoming_arc_index, arc_weight);
     } else {  // A state with this staste_id existed in `elements`.
@@ -527,20 +528,6 @@ class DetState {
                       DetStateMap<TracebackState> *state_map,
                       DetStatePriorityQueue<TracebackState> *queue);
 
-  // Computes the forward-backward weight of this DetState.  This is
-  // related to the best cost of any path through the output FSA
-  // that included this determinized state.  I say "related to"
-  // because while it should be exact in the Max case, in the
-  // LogSum case the relationship is a bit more complicated;
-  // maybe just best to say that this is a weight that we use
-  // for pruning.
-  //   @param [in] backward_state_weight   Array, indexed by
-  //                    state in input WFSA, of the weight from this state
-  //                    to the end.  (Of the best path or the sum of paths,
-  //                    depending how it was computed; this will of
-  //                    course affect the pruning).
-  void ComputeFbWeight(const float *backward_state_weights);
-
   /*
     Normalizes this DetState by reducing seq_len to the extent possible
     and outputting the weight and derivative info corresponding to this
@@ -597,12 +584,13 @@ int32_t DetState<TracebackState>::ProcessArcs(
         iter->second = new DetState<TracebackState>(seq_len + 1);
       }
       DetState<TracebackState> *det_state = iter->second;
-      det_state->AcceptIncomingArc(state_id, state_ptr, a, weight);
+      det_state->AcceptIncomingArc(arc.dest_state, state_ptr, a, weight);
     }
   }
   CHECK(!label_to_state.empty() ||
-        elements[0]->state_id == fsa.FinalState());  // I'm assuming the input
-                                                     // FSA is connected.
+        elements.begin()->second->state_id ==
+            fsa.FinalState());  // I'm assuming the input
+                                // FSA is connected.
 
   // The following loop normalizes successor det-states, outputs the arcs
   // that lead to them, and adds them to the queue if necessary.
@@ -743,8 +731,7 @@ class DetStateMap {
                          std::pair<uint64_t, uint64_t> *vec) {
     assert(d.normalized);
 
-    uint64_t a = d.state_id + 17489 * d.seq_len,
-             b = d.state_id * 103979 + d.seq_len;
+    uint64_t a = 17489 * d.seq_len, b = d.seq_len;
 
     // We choose an arbitrary DetStateElement (the first one in the list) to
     // read the symbol sequence from; the symbol sequence will be the same no
@@ -758,6 +745,9 @@ class DetStateMap {
       b = symbol + 102983 * b;
       elem = elem->prev_state;
     }
+    // This is `base_state`: the state from which we
+    // start (and accept the specified symbol sequence).
+    a = elem->state_id + 14051 * a;
     vec->first = a;
     vec->second = b;
   }
@@ -766,8 +756,7 @@ class DetStateMap {
                          const Fsa &fsa, std::pair<uint64_t, uint64_t> *vec) {
     assert(d.normalized);
 
-    uint64_t a = d.state_id + 17489 * d.seq_len,
-             b = d.state_id * 103979 + d.seq_len;
+    uint64_t a = 17489 * d.seq_len, b = d.seq_len;
 
     // We choose an arbitrary DetStateElement (the first one in the list) to
     // read the symbol sequence from; the symbol sequence will be the same no
@@ -781,6 +770,9 @@ class DetStateMap {
       b = symbol + 102983 * b;
       elem = elem->prev_elements[0].prev_state;
     }
+    // This is `base_state`: the state from which we
+    // start (and accept the specified symbol sequence).
+    a = elem->state_id + 14051 * a;
     vec->first = a;
     vec->second = b;
   }
@@ -799,14 +791,13 @@ float DeterminizePrunedTpl(
     std::vector<std::vector<typename TracebackState::DerivType>>
         *arc_derivs_out) {
   CHECK_GT(beam, 0);
-  CHECK(IsDeterministic(wfsa_in.fsa));
   CHECK(!IsEmpty(wfsa_in.fsa));
 
   DetStatePriorityQueue<TracebackState> queue;
   DetStateMap<TracebackState> map;
   using DS = DetState<TracebackState>;
 
-  std::shared_ptr<DS> start_state = std::make_shared<DS>();
+  std::shared_ptr<DS> start_state(new DS());
 
   std::vector<Arc> arcs_out;
   arc_weights_out->clear();
@@ -822,13 +813,15 @@ float DeterminizePrunedTpl(
 
   double total_prob = wfsa_in.BackwardStateWeights()[0],
          prune_cutoff = total_prob - beam;
+  queue.push(std::move(start_state));
   while (num_steps < max_step && !queue.empty()) {
-    std::shared_ptr<DS> state(queue.top().get());
+    std::shared_ptr<DS> state(queue.top());
     queue.pop();
     num_steps +=
         state->ProcessArcs(wfsa_in, prune_cutoff, &arcs_out, arc_weights_out,
                            arc_derivs_out, &map, &queue);
   }
+  CreateFsa(arcs_out, fsa_out);
   if (!queue.empty()) {  // We stopped early due to max_step
     return total_prob - queue.top()->forward_backward_prob;
   } else {
