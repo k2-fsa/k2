@@ -502,6 +502,53 @@ TEST(FsaAlgo, TopSort) {
   }
 }
 
+class DeterminizeTest : public ::testing::Test {
+ protected:
+  DeterminizeTest() {
+    std::vector<Arc> arcs = {{0, 4, 1}, {0, 1, 1},  {1, 2, 2},  {1, 3, 3},
+                             {2, 7, 1}, {3, 7, 1},  {4, 6, 1},  {4, 6, 1},
+                             {4, 5, 1}, {4, 8, -1}, {5, 8, -1}, {6, 8, -1},
+                             {7, 8, -1}};
+    fsa_ = new Fsa(std::move(arcs), 8);
+    num_states_ = fsa_->NumStates();
+
+    auto num_arcs = fsa_->arcs.size();
+    arc_weights_ = new float[num_arcs];
+    std::vector<float> weights = {1, 1, 2, 3, 4, 5, 2, 3, 3, 2, 4, 3, 5};
+    std::copy_n(weights.begin(), num_arcs, arc_weights_);
+
+    max_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kMaxWeight);
+    log_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kLogSumWeight);
+  }
+
+  ~DeterminizeTest() {
+    delete fsa_;
+    delete[] arc_weights_;
+    delete max_wfsa_;
+    delete log_wfsa_;
+  }
+
+  WfsaWithFbWeights *max_wfsa_;
+  WfsaWithFbWeights *log_wfsa_;
+  Fsa *fsa_;
+  int32_t num_states_;
+  float *arc_weights_;
+};
+
+TEST_F(DeterminizeTest, DeterminizePrunedMax) {
+  Fsa b;
+  std::vector<float> b_arc_weights;
+  std::vector<std::vector<int32_t>> arc_derivs;
+  DeterminizePrunedMax(*max_wfsa_, 10, 100, &b, &b_arc_weights, &arc_derivs);
+}
+
+TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
+  Fsa b;
+  std::vector<float> b_arc_weights;
+  std::vector<std::vector<std::pair<int32_t, float>>> arc_derivs;
+  DeterminizePrunedLogSum(*log_wfsa_, 10, 100, &b, &b_arc_weights, &arc_derivs);
+}
+
 TEST(FsaAlgo, CreateFsa) {
   {
     // clang-format off

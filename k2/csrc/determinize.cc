@@ -115,6 +115,7 @@ void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
     // `deriv_out` is just a list of arc indexes in the input FSA
     // that this output arc depends on (it's their sum).
     (*deriv_out)[i] = state->arc_id;
+    state = state->prev_state.get();
   }
   double prev_forward_prob = state->forward_prob;
   *weight_out = cur_forward_prob - prev_forward_prob;
