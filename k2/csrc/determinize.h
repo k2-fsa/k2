@@ -731,10 +731,7 @@ class DetStateMap {
                          std::pair<uint64_t, uint64_t> *vec) {
     assert(d.normalized);
 
-    int32_t input_state_id = d.elements.begin()->first;
-
-    uint64_t a = input_state_id + 17489 * d.seq_len,
-             b = input_state_id * 103979 + d.seq_len;
+    uint64_t a = 17489 * d.seq_len, b = d.seq_len;
 
     // We choose an arbitrary DetStateElement (the first one in the list) to
     // read the symbol sequence from; the symbol sequence will be the same no
@@ -748,6 +745,9 @@ class DetStateMap {
       b = symbol + 102983 * b;
       elem = elem->prev_state;
     }
+    // This is `base_state`: the state from which we
+    // start (and accept the specified symbol sequence).
+    a = elem->state_id + 14051 * a;
     vec->first = a;
     vec->second = b;
   }
@@ -756,10 +756,7 @@ class DetStateMap {
                          const Fsa &fsa, std::pair<uint64_t, uint64_t> *vec) {
     assert(d.normalized);
 
-    int32_t input_state_id = d.elements.begin()->first;
-
-    uint64_t a = input_state_id + 17489 * d.seq_len,
-             b = input_state_id * 103979 + d.seq_len;
+    uint64_t a = 17489 * d.seq_len, b = d.seq_len;
 
     // We choose an arbitrary DetStateElement (the first one in the list) to
     // read the symbol sequence from; the symbol sequence will be the same no
@@ -773,6 +770,9 @@ class DetStateMap {
       b = symbol + 102983 * b;
       elem = elem->prev_elements[0].prev_state;
     }
+    // This is `base_state`: the state from which we
+    // start (and accept the specified symbol sequence).
+    a = elem->state_id + 14051 * a;
     vec->first = a;
     vec->second = b;
   }
