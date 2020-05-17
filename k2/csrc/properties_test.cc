@@ -279,8 +279,8 @@ TEST(Properties, IsConnected) {
     bool is_connected = IsConnected(fsa);
     EXPECT_TRUE(is_connected);
   }
-
 }
+
 TEST(FsaAlgo, IsAcyclic) {
   // empty fsa is acyclic
   {
