@@ -7,6 +7,7 @@
 #ifndef K2_CSRC_FSA_UTIL_H_
 #define K2_CSRC_FSA_UTIL_H_
 
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -88,6 +89,19 @@ void Swap(Fsa *a, Fsa *b);
 std::unique_ptr<Fsa> StringToFsa(const std::string &s);
 
 std::string FsaToString(const Fsa &fsa);
+
+struct RandFsaOptions {
+  size_t num_syms;
+  size_t num_states;
+  size_t num_arcs;
+  bool allow_empty;
+  bool acyclic;  // generate a cyclic fsa in a best effort manner if it's false
+  int32_t seed;  // for random generator. Set it to non-zero for reproducibility
+
+  RandFsaOptions();
+};
+
+void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa);
 
 }  // namespace k2
 

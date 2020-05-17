@@ -9,13 +9,38 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <random>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "glog/logging.h"
+#include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/properties.h"
+#include "k2/csrc/util.h"
 
 namespace {
+
+// Generate a uniformly distributed random variable of type int32_t.
+class RandInt {
+ public:
+  // Set `seed` to non-zero for reproducibility.
+  explicit RandInt(int32_t seed = 0) : gen_(rd_()) {
+    if (seed != 0) gen_.seed(seed);
+  }
+
+  // Get the next random number on the **closed** interval [low, high]
+  int32_t operator()(int32_t low = std::numeric_limits<int32_t>::min(),
+                     int32_t high = std::numeric_limits<int32_t>::max()) {
+    std::uniform_int_distribution<int32_t> dis(low, high);
+    return dis(gen_);
+  }
+
+ private:
+  std::random_device rd_;
+  std::mt19937 gen_;
+};
+
 /** Convert a string to an integer.
 
   @param [in]   s     The input string.
@@ -199,6 +224,80 @@ std::string FsaToString(const Fsa &fsa) {
   }
   os << fsa.NumStates() - 1 << "\n";
   return os.str();
+}
+
+RandFsaOptions::RandFsaOptions() {
+  RandInt rand;
+  num_syms = 2 + rand(1) % 5;
+  num_states = 3 + rand(1) % 10;
+  num_arcs = 5 + rand(1) % 30;
+  allow_empty = true;
+  acyclic = false;
+  seed = 0;
+}
+
+void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
+  CHECK_NOTNULL(fsa);
+  CHECK_GT(opts.num_syms, 1);
+  CHECK_GT(opts.num_states, 1);
+  CHECK_GT(opts.num_arcs, 1);
+
+  RandInt rand(opts.seed);
+
+  // index is state_id
+  std::vector<std::vector<Arc>> state_to_arcs(opts.num_states);
+  int32_t src_state;
+  int32_t dest_state;
+  int32_t label;
+  int32_t num_states = static_cast<int32_t>(opts.num_states);
+
+  int32_t num_fails = -1;
+  int32_t max_loops = 100 * opts.num_arcs;
+  do {
+    ++num_fails;
+    if (num_fails > 100)
+      LOG(FATAL) << "Cannot generate a rand fsa. Please increase num_states "
+                    "and num_arcs";
+
+    std::unordered_set<std::pair<int32_t, int32_t>, PairHash> seen;
+    int32_t tried = 0;
+    for (auto i = 0;
+         i != static_cast<int32_t>(opts.num_arcs) && tried < max_loops;
+         ++tried) {
+      src_state = rand(0, num_states - 2);
+      if (!opts.acyclic)
+        dest_state = rand(0, num_states - 1);
+      else
+        dest_state = rand(src_state + 1, num_states - 1);
+
+      if (seen.count(std::make_pair(src_state, dest_state))) continue;
+
+      seen.insert(std::make_pair(src_state, dest_state));
+
+      if (dest_state == num_states - 1)
+        label = kFinalSymbol;
+      else
+        label = rand(0, static_cast<int32_t>(opts.num_syms - 1));
+
+      state_to_arcs[src_state].emplace_back(src_state, dest_state, label);
+      ++i;
+    }
+
+    Fsa tmp;
+    tmp.arc_indexes.reserve(opts.num_states + 1);
+    tmp.arcs.reserve(opts.num_arcs);
+
+    for (const auto &arcs : state_to_arcs) {
+      tmp.arc_indexes.push_back(static_cast<int32_t>(tmp.arcs.size()));
+      tmp.arcs.insert(tmp.arcs.end(), arcs.begin(), arcs.end());
+    }
+
+    tmp.arc_indexes.push_back(tmp.arc_indexes.back());
+
+    Connect(tmp, fsa);
+  } while (!opts.allow_empty && IsEmpty(*fsa));
+
+  if (opts.acyclic) CHECK(IsAcyclic(*fsa));
 }
 
 }  // namespace k2
