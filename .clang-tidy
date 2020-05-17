@@ -47,6 +47,7 @@
 Checks: >
   -*,
   bugprone-*,
+  clang-analyzer-*,
   google-*,
   -google-readability-braces-around-statements,
   -google-runtime-references,

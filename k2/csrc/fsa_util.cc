@@ -17,8 +17,30 @@
 #include "glog/logging.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/properties.h"
+#include "k2/csrc/util.h"
 
 namespace {
+
+// Generate a uniformly distributed random variable of type int32_t.
+class RandInt {
+ public:
+  // Set `seed` to non-zero for reproducibility.
+  explicit RandInt(int32_t seed = 0) : gen_(rd_()) {
+    if (seed != 0) gen_.seed(seed);
+  }
+
+  // Get the next random number on the **closed** interval [low, high]
+  int32_t operator()(int32_t low = std::numeric_limits<int32_t>::min(),
+                     int32_t high = std::numeric_limits<int32_t>::max()) {
+    std::uniform_int_distribution<int32_t> dis(low, high);
+    return dis(gen_);
+  }
+
+ private:
+  std::random_device rd_;
+  std::mt19937 gen_;
+};
+
 /** Convert a string to an integer.
 
   @param [in]   s     The input string.
@@ -104,15 +126,6 @@ void SplitStringToVector(const std::string &in, const char *delim,
     if (!sub.empty()) out->emplace_back(std::move(sub));
   }
 }
-
-struct PairHash {
-  size_t operator()(const std::pair<int32_t, int32_t> &pair) const {
-    std::size_t result = 0;
-    k2::hash_combine(&result, pair.first);
-    k2::hash_combine(&result, pair.second);
-    return result;
-  }
-};
 
 }  // namespace
 
@@ -213,22 +226,14 @@ std::string FsaToString(const Fsa &fsa) {
   return os.str();
 }
 
-int32_t Rand(int32_t low /* = std::numeric_limits<int32_t>::min() */,
-             int32_t high /* = std::numeric_limits<int32_t>::max() */,
-             int32_t seed /* = 0 */) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  if (seed != 0) gen.seed(seed);
-  std::uniform_int_distribution<int32_t> dis(low, high);
-  return dis(gen);
-}
-
 RandFsaOptions::RandFsaOptions() {
-  num_syms = 2 + Rand(1) % 5;
-  num_states = 3 + Rand(1) % 10;
-  num_arcs = 5 + Rand(1) % 30;
+  RandInt rand;
+  num_syms = 2 + rand(1) % 5;
+  num_states = 3 + rand(1) % 10;
+  num_arcs = 5 + rand(1) % 30;
   allow_empty = true;
   acyclic = false;
+  seed = 0;
 }
 
 void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
@@ -236,6 +241,8 @@ void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
   CHECK_GT(opts.num_syms, 1);
   CHECK_GT(opts.num_states, 1);
   CHECK_GT(opts.num_arcs, 1);
+
+  RandInt rand(opts.seed);
 
   // index is state_id
   std::vector<std::vector<Arc>> state_to_arcs(opts.num_states);
@@ -257,11 +264,11 @@ void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
     for (auto i = 0;
          i != static_cast<int32_t>(opts.num_arcs) && tried < max_loops;
          ++tried) {
-      src_state = Rand(0, num_states - 2);
+      src_state = rand(0, num_states - 2);
       if (!opts.acyclic)
-        dest_state = Rand(0, num_states - 1);
+        dest_state = rand(0, num_states - 1);
       else
-        dest_state = Rand(src_state + 1, num_states - 1);
+        dest_state = rand(src_state + 1, num_states - 1);
 
       if (seen.count(std::make_pair(src_state, dest_state))) continue;
 
@@ -270,14 +277,15 @@ void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
       if (dest_state == num_states - 1)
         label = kFinalSymbol;
       else
-        label = Rand(0, static_cast<int32_t>(opts.num_syms - 1));
+        label = rand(0, static_cast<int32_t>(opts.num_syms - 1));
 
-      state_to_arcs[src_state].push_back({src_state, dest_state, label});
+      state_to_arcs[src_state].emplace_back(src_state, dest_state, label);
       ++i;
     }
 
     Fsa tmp;
     tmp.arc_indexes.reserve(opts.num_states + 1);
+    tmp.arcs.reserve(opts.num_arcs);
 
     for (const auto &arcs : state_to_arcs) {
       tmp.arc_indexes.push_back(static_cast<int32_t>(tmp.arcs.size()));

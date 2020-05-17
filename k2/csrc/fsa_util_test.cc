@@ -87,6 +87,7 @@ TEST(FsaUtil, RandFsa) {
   opts.num_arcs = 20;
   opts.allow_empty = false;
   opts.acyclic = true;
+  opts.seed = 20200517;
 
   Fsa fsa;
   GenerateRandFsa(opts, &fsa);

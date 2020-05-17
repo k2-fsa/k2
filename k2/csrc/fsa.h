@@ -34,6 +34,9 @@ struct Arc {
                   // vs. the output can be decided by the user; in general,
                   // the one that appears on the arc will be the one that
                   // participates in whatever operation you are doing
+  Arc() = default;
+  Arc(int32_t src_state, int32_t dest_state, int32_t label)
+      : src_state(src_state), dest_state(dest_state), label(label) {}
 
   /* Note: the costs are not stored here but outside the Fst object, in some
      kind of array indexed by arc-index.  */
