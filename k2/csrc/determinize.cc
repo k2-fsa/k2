@@ -69,7 +69,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
   // forward prob we can avoid having to subtract the total log-prob
   // when we compute posterior/occupation probabilities for arcs.
   double cur_forward_prob = (*(cur_states->begin()))->forward_prob;
-  (*(cur_states->begin()))->backward_prob = cur_forward_prob;
+  (*(cur_states->begin()))->backward_prob = -cur_forward_prob;
   deriv_out->clear();
   for (int32_t i = 0; i < num_steps; i++) {
     for (LogSumTracebackState *state_ptr : *cur_states) {
