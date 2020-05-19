@@ -374,8 +374,12 @@ float DeterminizePrunedMax(const WfsaWithFbWeights &a, float beam,
 
    @param [in] arcs  A list of arcs.
    @param [out] fsa  Output fsa.
+   @param [out] arc_map   If non-NULL, this function will
+                            output a map from the arc-index in `fsa` to
+                            the corresponding arc-index in input `arcs`.
 */
-void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa);
+void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
+               std::vector<int32_t> *arc_map = nullptr);
 
 }  // namespace k2
 

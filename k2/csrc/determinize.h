@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <queue>
@@ -282,7 +283,7 @@ struct LogSumTracebackState {
                        const std::shared_ptr<LogSumTracebackState> &src,
                        int32_t incoming_arc_index, int32_t arc_weight)
       : state_id(state_id), forward_prob(src->forward_prob + arc_weight) {
-    prev_elements.emplace_back(src, incoming_arc_index, forward_prob);
+    prev_elements.emplace_back(src, incoming_arc_index, arc_weight);
   }
 
   /*
@@ -298,9 +299,9 @@ struct LogSumTracebackState {
    */
   void Accept(const std::shared_ptr<LogSumTracebackState> &src,
               int32_t arc_index, float arc_weight) {
-    double link_forward_prob = src->forward_prob + arc_weight;
-    prev_elements.emplace_back(src, arc_index, link_forward_prob);
-    this->forward_prob = LogAdd(this->forward_prob, link_forward_prob);
+    prev_elements.emplace_back(src, arc_index, arc_weight);
+    this->forward_prob =
+        LogAdd(this->forward_prob, src->forward_prob + arc_weight);
   }
 };
 /*
@@ -658,11 +659,12 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
              base_state->forward_prob;
   // set thi->forward_backward_prob; it will affect pruning.
   this->forward_backward_prob = fb_prob;
+  int32_t num_steps = seq_len - new_seq_len;
   this->seq_len = new_seq_len;
 
   // the following will set removed_weight and deriv_info.
-  TraceBack(&cur_states, seq_len - new_seq_len, wfsa_in.arc_weights,
-            removed_weight, deriv_info);
+  TraceBack(&cur_states, num_steps, wfsa_in.arc_weights, removed_weight,
+            deriv_info);
 
   normalized = true;
 }
@@ -811,17 +813,27 @@ float DeterminizePrunedTpl(
   int32_t block_size = 32;  // process a number of queue elements at a time
                             // between certain checks..
 
+  std::vector<std::vector<typename TracebackState::DerivType>>
+      arc_derivs_out_tmp;
+  std::vector<float> arc_weights_out_tmp;
   double total_prob = wfsa_in.BackwardStateWeights()[0],
          prune_cutoff = total_prob - beam;
   queue.push(std::move(start_state));
   while (num_steps < max_step && !queue.empty()) {
     std::shared_ptr<DS> state(queue.top());
     queue.pop();
-    num_steps +=
-        state->ProcessArcs(wfsa_in, prune_cutoff, &arcs_out, arc_weights_out,
-                           arc_derivs_out, &map, &queue);
+    num_steps += state->ProcessArcs(wfsa_in, prune_cutoff, &arcs_out,
+                                    &arc_weights_out_tmp, &arc_derivs_out_tmp,
+                                    &map, &queue);
   }
-  CreateFsa(arcs_out, fsa_out);
+  std::vector<int32_t> arc_map;
+  CreateFsa(arcs_out, fsa_out, &arc_map);
+  arc_weights_out->resize(arc_map.size());
+  arc_derivs_out->resize(arc_map.size());
+  ReorderCopyN(arc_map.begin(), arc_map.size(), arc_weights_out_tmp.begin(),
+               arc_weights_out->begin());
+  ReorderCopyN(arc_map.begin(), arc_map.size(), arc_derivs_out_tmp.begin(),
+               arc_derivs_out->begin());
   if (!queue.empty()) {  // We stopped early due to max_step
     return total_prob - queue.top()->forward_backward_prob;
   } else {

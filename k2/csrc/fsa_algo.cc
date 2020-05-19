@@ -504,20 +504,23 @@ bool TopSort(const Fsa &a, Fsa *b,
   return true;
 }
 
-void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa) {
+void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
+               std::vector<int32_t> *arc_map /*=null_ptr*/) {
   CHECK_NOTNULL(fsa);
   fsa->arc_indexes.clear();
   fsa->arcs.clear();
 
   if (arcs.empty()) return;
 
-  std::vector<std::vector<Arc>> vec;
+  using ArcWithIndex = std::pair<Arc, int32_t>;
+  int arc_id = 0;
+  std::vector<std::vector<ArcWithIndex>> vec;
   for (const auto &arc : arcs) {
     auto src_state = arc.src_state;
     auto dest_state = arc.dest_state;
     auto new_size = std::max(src_state, dest_state);
     if (new_size >= vec.size()) vec.resize(new_size + 1);
-    vec[src_state].push_back(arc);
+    vec[src_state].push_back({arc, arc_id++});
   }
 
   std::stack<DfsState> stack;
@@ -540,7 +543,7 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa) {
         continue;
       }
 
-      const auto &arc = vec[state][current_state.arc_begin];
+      const auto &arc = vec[state][current_state.arc_begin].first;
       auto next_state = arc.dest_state;
       auto status = state_status[next_state];
       switch (status) {
@@ -569,6 +572,8 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa) {
 
   fsa->arc_indexes.resize(num_states + 1);
   fsa->arcs.reserve(arcs.size());
+  std::vector<int32_t> arc_map_out;
+  arc_map_out.reserve(arcs.size());
 
   std::vector<int32_t> old_to_new(num_states);
   for (auto i = 0; i != num_states; ++i) old_to_new[order[i]] = i;
@@ -576,14 +581,17 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa) {
   for (auto i = 0; i != num_states; ++i) {
     auto old_state = order[i];
     fsa->arc_indexes[i] = static_cast<int32_t>(fsa->arcs.size());
-    for (auto arc : vec[old_state]) {
+    for (auto arc_with_index : vec[old_state]) {
+      auto &arc = arc_with_index.first;
       arc.src_state = i;
       arc.dest_state = old_to_new[arc.dest_state];
       fsa->arcs.push_back(arc);
+      arc_map_out.push_back(arc_with_index.second);
     }
   }
 
   fsa->arc_indexes.back() = static_cast<int32_t>(fsa->arcs.size());
+  if (arc_map != nullptr) arc_map->swap(arc_map_out);
 }
 
 float DeterminizePrunedLogSum(
