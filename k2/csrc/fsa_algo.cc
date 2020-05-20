@@ -275,6 +275,111 @@ bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   return is_acyclic;
 }
 
+void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
+                         std::vector<std::vector<int32_t>> *arc_derivs) {
+  CHECK_EQ(a.weight_type, kMaxWeight);
+  CHECK_GT(beam, 0);
+  CHECK_NOTNULL(b);
+  CHECK_NOTNULL(arc_derivs);
+  b->arc_indexes.clear();
+  b->arcs.clear();
+  arc_derivs->clear();
+
+  const auto &fsa = a.fsa;
+  if (IsEmpty(fsa)) return;
+  int32_t num_states_a = fsa.NumStates();
+  int32_t final_state = fsa.FinalState();
+  const auto &arcs_a = fsa.arcs;
+  const float *arc_weights_a = a.arc_weights;
+
+  // identify all states that should be kept
+  std::vector<char> non_eps_in(num_states_a, 0);
+  non_eps_in[0] = 1;
+  using WeightsPair = std::pair<double, std::vector<int32_t>>;
+  // (label, dest_state) -> `sum` of weights along all paths from current state
+  // to `dest_state` with label == `label`(or plus numbers of epsilon),
+  // `vector<int32_t>` in `WeightsPair` records all arc-indexes in `a` that
+  // contributes the current arc in `b`.
+  using ArcMap =
+      std::unordered_map<std::pair<int32_t, int32_t>, WeightsPair, PairHash>;
+  std::vector<ArcMap> arcs_b(num_states_a);
+  for (int32_t i = static_cast<int32_t>(arcs_a.size()) - 1; i >= 0; --i) {
+    const auto &arc = arcs_a[i];
+    const auto src_state = arc.src_state;
+    const auto dest_state = arc.dest_state;
+    const auto label = arc.label;
+    DCHECK_GE(dest_state, src_state);
+
+    double arc_weight = arc_weights_a[i];
+    if (label != kEpsilon) {
+      non_eps_in[dest_state] = 1;
+      WeightsPair weights_pair =
+          std::make_pair(arc_weight, std::vector<int32_t>{i});
+      auto insert_result = arcs_b[src_state].emplace(
+          std::make_pair(label, dest_state), weights_pair);
+      if (!insert_result.second) {
+        auto &old_weights_pair = insert_result.first->second;
+        // compare `arc_weights`
+        if (weights_pair.first > old_weights_pair.first) {
+          std::swap(old_weights_pair, weights_pair);
+        }
+      }
+    } else {
+      // remove epsilon arcs
+      for (const auto &item : arcs_b[dest_state]) {
+        auto weights_pair = item.second;  // copy intended
+        // `times` the arc weights along path
+        weights_pair.first += arc_weight;
+        weights_pair.second.push_back(i);
+        auto insert_result =
+            arcs_b[src_state].emplace(item.first, weights_pair);
+        if (!insert_result.second) {
+          auto &old_weights_pair = insert_result.first->second;
+          // compare `arc_weights`
+          if (weights_pair.first > old_weights_pair.first) {
+            std::swap(old_weights_pair, weights_pair);
+          }
+        }
+      }
+    }
+  }
+
+  // remap state id
+  std::vector<int32_t> state_map_a2b(num_states_a, -1);
+  int32_t num_states_b = 0;
+  for (int32_t i = 0; i != num_states_a; ++i) {
+    if (non_eps_in[i] == 1) state_map_a2b[i] = num_states_b++;
+  }
+
+  // prune and output `b`
+  const double *forward_state_weights = a.ForwardStateWeights();
+  const double *backward_state_weights = a.BackwardStateWeights();
+  const double best_weight = forward_state_weights[final_state] - beam;
+  b->arc_indexes.reserve(num_states_b + 1);
+  int32_t arc_num_b = 0;
+  for (int32_t s = 0; s < num_states_a; ++s) {
+    if (non_eps_in[s] == 1) {
+      b->arc_indexes.push_back(arc_num_b);
+      for (const auto &arcs : arcs_b[s]) {
+        int32_t dest_state = arcs.first.second;
+        double weight = arcs.second.first;
+        if (forward_state_weights[s] + weight +
+                backward_state_weights[dest_state] >
+            best_weight) {
+          b->arcs.emplace_back(state_map_a2b[s], state_map_a2b[dest_state],
+                               arcs.first.first);
+          auto curr_arc_deriv = std::move(arcs.second.second);
+          std::reverse(curr_arc_deriv.begin(), curr_arc_deriv.end());
+          arc_derivs->emplace_back(curr_arc_deriv);
+          ++arc_num_b;
+        }
+      }
+    }
+  }
+  // duplicate of final state
+  b->arc_indexes.push_back(b->arc_indexes.back());
+}
+
 bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
                std::vector<int32_t> *arc_map_a /*= nullptr*/,
                std::vector<int32_t> *arc_map_b /*= nullptr*/) {

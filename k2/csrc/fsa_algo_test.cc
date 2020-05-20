@@ -283,6 +283,54 @@ TEST(FsaAlgo, Connect) {
   }
 }
 
+class RmEpsilonTest : public ::testing::Test {
+ protected:
+  RmEpsilonTest() {
+    std::vector<Arc> arcs = {
+        {0, 4, 1},  {0, 1, 1},  {1, 2, 0},  {1, 3, 0},  {1, 4, 0},
+        {2, 7, 0},  {3, 7, 0},  {4, 6, 1},  {4, 6, 0},  {4, 8, 1},
+        {4, 9, -1}, {5, 9, -1}, {6, 9, -1}, {7, 9, -1}, {8, 9, -1},
+    };
+    fsa_ = new Fsa(std::move(arcs), 9);
+    num_states_ = fsa_->NumStates();
+
+    auto num_arcs = fsa_->arcs.size();
+    arc_weights_ = new float[num_arcs];
+    std::vector<float> weights = {1, 1, 2, 3, 2, 4, 5, 2, 3, 3, 2, 4, 3, 5, 6};
+    std::copy_n(weights.begin(), num_arcs, arc_weights_);
+
+    max_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kMaxWeight);
+    log_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kLogSumWeight);
+  }
+
+  ~RmEpsilonTest() {
+    delete fsa_;
+    delete[] arc_weights_;
+    delete max_wfsa_;
+    delete log_wfsa_;
+  }
+
+  WfsaWithFbWeights *max_wfsa_;
+  WfsaWithFbWeights *log_wfsa_;
+  Fsa *fsa_;
+  int32_t num_states_;
+  float *arc_weights_;
+};
+
+TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
+  Fsa b;
+  std::vector<std::vector<int32_t>> arc_derivs_b;
+  RmEpsilonsPrunedMax(*max_wfsa_, 8, &b, &arc_derivs_b);
+
+  IsEpsilonFree(b);
+  ASSERT_EQ(b.arcs.size(), 10);
+  ASSERT_EQ(b.arc_indexes.size(), 7);
+  ASSERT_EQ(arc_derivs_b.size(), 10);
+
+  // TODO(haowen): check the equivalence after implementing RandEquivalent for
+  // WFSA
+}
+
 TEST(FsaAlgo, Intersect) {
   // empty fsa
   {
