@@ -25,6 +25,10 @@ enum {
                       // like in OpenFst.
 };
 
+
+// CAUTION: the sizeof() this is probably 128, not 96.  This could be a
+// waste of space.  We may later either use the extra field for something, or
+// find a way to reduce the size.
 struct Arc {
   int32_t src_state;
   int32_t dest_state;
@@ -118,6 +122,138 @@ struct Fsa {
     return arc_indexes.size() - 2;
   }
 };
+
+
+/*
+  Cfsa is a 'const' FSA, which we'll use as the input to operations.  It is
+  designed in such a way that the storage underlying it may either be an Fsa
+  (i.e. with std::vectors) or may be some kind of tensor (probably CfsaVec).
+  Note: the pointers it holds aren't const for now, because there may be
+  situations where it makes sense to change them (even though the number of
+  states and arcs can't be changed).
+ */
+struct Cfsa {
+  int32_t num_states;  // number of states including final state.  States are
+                       // numbered `0 ... num_states - 1`.  Start state is 0,
+                       // final state is state `num_states - 1`.  We store a
+                       // redundant representation here out of a belief that it
+                       // might reduce the number of instructions in code.
+  int32_t begin_arc;   // a copy of arc_indexes[0]; gives the first index in
+                       // `arcs` for the arcs in this FSA.  Will be >= 0.
+  int32_t end_arc;     // a copy of arc_indexes[num_states]; gives the
+                       // one-past-the-last index in `arcs` for the arcs in this
+                       // FSA.  Will be >= begin_arc.
+
+  const int32_t *arc_indexes;   // an array, indexed by state index, giving the
+                                // first arc index of each state.  The last one
+                                // is repeated, so for any valid state 0 <= s <
+                                // num_states we can use arc_indexes[s+1].  That
+                                // is: elements 0 through num_states (inclusive)
+                                // are valid.  CAUTION: arc_indexes[0] may be
+                                // greater than zero.
+
+
+  Arc *arcs;   // Note: arcs[BeginArcIndex()] through arcs[EndArcIndex() - 1]
+               // are valid.
+
+  // Constructor from Fsa
+  Cfsa(const Fsa &fsa);
+
+  void operator = (const Cfsa &cfsa) = default;
+  Cfsa(const Cfsa &cfsa) = default;
+
+  Cfsa(int32_t size, int32_t *data);
+
+  int32_t NumStates() const { return num_states; }
+  int32_t FinalState() const { return num_states - 1; }
+};
+
+
+/*
+  Return the number of bytes we'd need to represent this vector of Cfsas
+  linearly as a CfsaVec. */
+size_t GetCfsaVecSize(const std::vector<Cfsa> &fsas_in);
+
+// Return the number of bytes we'd need to represent this Cfsa
+// linearly as a CfsaVec with one element
+size_t GetCfsaVecSize(const Cfsa &fsa_in);
+
+/*
+  Create a CfsaVec from a vector of Cfsas (this involves representing
+  the vector of Fsas in one big linear memory region).
+
+     @param [in] fsas_in  The vector of Cfsas to be linearized;
+                      must be nonempty
+     @param [in] data    The allocated data of size `size` bytes
+     @param [in] size    The size of the memory block passed;
+                         must equal the return value of
+                         GetCfsaVecSize(fsas_in).
+ */
+void CreateCfsaVec(const std::vector<Cfsa> &fsas_in,
+                   void *data,
+                   size_t size);
+
+
+
+class CfsaVec {
+ public:
+
+  /*
+      Constructor from linear data, e.g. in a tensor holding a single
+      Fsa:
+         @param [in] size    size in int32_t elements of `data`, only
+                             needed for checking purposes.
+         @param [in] data    The underlying data.   Format of data is
+                             described below (all elements are of type
+                             int32_t unless stated otherwise).
+
+             - version       Format version number, currently always 1.
+             - num_fsas      The number of FSAs
+             - state_offsets_start  The offset from the start of `data` of
+                             where the `state_offsets` array is, in int32_t
+                             (4-byte) elements.
+             - arc_indexes_start   The offset from the start of `data` of
+                             where the `arc_indexes` array is, in int32_t
+                             (4-byte) elements.
+             - arcs_start    The offset from the start of `data` of where
+                             the first Arc is, in sizeof(Arc) multiples, i.e.
+                             Arc *arcs = ((Arc*)data) + arcs_start
+
+            [possibly some padding here]
+             - state_offsets[num_fsas + 1]   state_offsets[f] is the sum of
+                             the num-states of all the FSAs preceding f.  It is
+                             also the offset from the beginning of the
+                             `arc_indexes` array of where the part corresponding
+                             to FSA f starts.  The number of states in FSA f
+                             is given by state_offsets[f+1] - state_offsets[f].
+                             This is >= 0; it will be zero if the
+                             FSA f is empty, and >= 2 otherwise.
+            [possibly some padding here]
+
+             - arc_indexes[tot_states + 1]   This gives the indexes into the `arcs`
+                             array of where we can find the first of each state's arcs.
+
+             [pad as needed for memory-alignment purposes then...]
+
+             - arcs[tot_arcs]
+  */
+  CfsaVec(size_t size, void *data);
+
+  int32_t NumFsas() { return num_fsas_; }
+
+  Cfsa &&operator [] (int32_t f) const;
+ private:
+  // Note: we will already have checked `size` to make sure
+  int32_t num_fsas;
+
+  // The raw underlying data
+  int32_t *data;
+  // The size
+  size_t size;
+};
+
+
+
 
 /*
   DenseFsa represents an FSA stored as a matrix, representing something
