@@ -73,6 +73,21 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
 
 enum FbWeightType { kMaxWeight, kLogSumWeight };
 
+/*
+  Returns the sum of the weights of all successful paths in an FSA, i.e., the
+  shortest-distance from the initial state to the final states
+
+   @param [in]  fsa  The fsa we'll get the shortest distance on.
+                Must satisfy IsValid(fsa) (and IsTopSorted(fsa)?).
+   @param [in]  arc_weights  Arc weights, indexed by arc in `fsa`.
+                             Usually logprobs.
+ */
+template <FbWeightType Type>
+double ShortestDistance(const Fsa &fsa, const float *arc_weights) {
+  // TODO(haowen): add implementation
+  return 0.0;
+}
+
 struct WfsaWithFbWeights {
   const Fsa &fsa;
   const float *arc_weights;

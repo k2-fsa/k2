@@ -7,14 +7,45 @@
 #include "k2/csrc/fsa_equivalent.h"
 
 #include <algorithm>
+#include <queue>
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/properties.h"
+#include "k2/csrc/util.h"
+#include "k2/csrc/weights.h"
+
+namespace {
+// out_weights[i] = weights[arc_map1[arc_map2[i]]]
+void GetArcWeights(const float *weights, const std::vector<int32_t> &arc_map1,
+                   const std::vector<int32_t> &arc_map2,
+                   std::vector<float> *out_weights) {
+  CHECK_NOTNULL(out_weights);
+  auto &arc_weights = *out_weights;
+  for (auto i = 0; i != arc_weights.size(); ++i) {
+    arc_weights[i] = weights[arc_map1[arc_map2[i]]];
+  }
+}
+
+// c = (a - b) + (b-a)
+void SetDifference(const std::unordered_set<int32_t> &a,
+                   const std::unordered_set<int32_t> &b,
+                   std::unordered_set<int32_t> *c) {
+  CHECK_NOTNULL(c);
+  c->clear();
+  for (const auto &v : a) {
+    if (b.find(v) == b.end()) c->insert(v);
+  }
+  for (const auto &v : b) {
+    if (a.find(v) == a.end()) c->insert(v);
+  }
+}
+}  // namespace
 
 namespace k2 {
 
@@ -62,7 +93,62 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
   return true;
 }
 
-bool RandomPath(const Fsa &a, Fsa *b,
+template <FbWeightType Type>
+bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
+                      const float *b_weights, std::size_t npath /*= 100*/) {
+  Fsa connected_a, connected_b, valid_a, valid_b;
+  std::vector<int32_t> connected_a_arc_map, connected_b_arc_map,
+      valid_a_arc_map, valid_b_arc_map;
+  Connect(a, &connected_a, &connected_a_arc_map);
+  Connect(b, &connected_b, &connected_b_arc_map);
+  ArcSort(connected_a, &valid_a, &valid_a_arc_map);  // required by `intersect`
+  ArcSort(connected_b, &valid_b, &valid_b_arc_map);
+  if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
+  if (IsEmpty(valid_a) || IsEmpty(valid_b)) return false;
+
+  // Get arc weights
+  std::vector<float> valid_a_weights(valid_a.arcs.size());
+  std::vector<float> valid_b_weights(valid_b.arcs.size());
+  GetArcWeights(a_weights, connected_a_arc_map, valid_a_arc_map,
+                &valid_a_weights);
+  GetArcWeights(b_weights, connected_b_arc_map, valid_b_arc_map,
+                &valid_b_weights);
+
+  // Check that arc labels are compatible.
+  std::unordered_set<int32_t> labels_a, labels_b, labels_difference;
+  for (const auto &arc : valid_a.arcs) labels_a.insert(arc.label);
+  for (const auto &arc : valid_b.arcs) labels_b.insert(arc.label);
+  SetDifference(labels_a, labels_b, &labels_difference);
+  if (labels_difference.size() >= 2 ||
+      (labels_difference.size() == 1 &&
+       (*(labels_difference.begin()) != kEpsilon)))
+    return false;
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::bernoulli_distribution coin(0.5);
+  for (auto i = 0; i != npath; ++i) {
+    const auto &fsa = coin(gen) ? valid_a : valid_b;
+    Fsa path, valid_path;
+    RandomPathWithoutEpsilonArc(fsa, &path);  // path is already connected
+    ArcSort(path, &valid_path);
+
+    Fsa a_compose_path, b_compose_path;
+    std::vector<float> a_compose_weights, b_compose_weights;
+    Intersect(valid_a, valid_a_weights.data(), path, &a_compose_path,
+              &a_compose_weights);
+    Intersect(valid_b, valid_b_weights.data(), path, &b_compose_path,
+              &b_compose_weights);
+    double sum_a =
+        ShortestDistance<Type>(a_compose_path, a_compose_weights.data());
+    double sum_b =
+        ShortestDistance<Type>(b_compose_path, b_compose_weights.data());
+    if (!DoubleApproxEqual(sum_a, sum_b)) return false;
+  }
+  return true;
+}
+
+bool RandomPath(const Fsa &a, Fsa *b, bool no_epsilon_arc,
                 std::vector<int32_t> *state_map /*=nullptr*/) {
   if (IsEmpty(a) || b == nullptr) return false;
   // we cannot do `connect` on `a` here to get a connected fsa
@@ -92,14 +178,22 @@ bool RandomPath(const Fsa &a, Fsa *b,
       ++num_visited_state;
     }
     if (state == final_state) break;
-    int32_t begin = a.arc_indexes[state];
-    int32_t end = a.arc_indexes[state + 1];
-    // since `a` is valid, so every states contains at least one arc.
-    int32_t arc_index = begin + (distribution(generator) % (end - begin));
+    const Arc *curr_arc = nullptr;
+    int32_t curr_state = state;
+    do {
+      int32_t begin = a.arc_indexes[curr_state];
+      int32_t end = a.arc_indexes[curr_state + 1];
+      // since `a` is valid, so every states contains at least one arc.
+      int32_t arc_index = begin + (distribution(generator) % (end - begin));
+      curr_arc = &a.arcs[arc_index];
+      curr_state = curr_arc->dest_state;
+    } while (no_epsilon_arc && curr_arc->label == kEpsilon);
     int32_t state_id_in_b = state_map_a2b[state];
-    const auto &curr_arc = a.arcs[arc_index];
-    if (visited_arcs[state_id_in_b].insert(curr_arc).second) ++num_visited_arcs;
-    state = curr_arc.dest_state;
+    if (visited_arcs[state_id_in_b]
+            .insert({state, curr_arc->dest_state, curr_arc->label})
+            .second)
+      ++num_visited_arcs;
+    state = curr_arc->dest_state;
   }
 
   // create `b`
@@ -120,6 +214,130 @@ bool RandomPath(const Fsa &a, Fsa *b,
     state_map->swap(state_map_b2a);
   }
   b->arc_indexes.emplace_back(b->arc_indexes.back());
+  return true;
+}
+
+bool RandomPath(const Fsa &a, Fsa *b,
+                std::vector<int32_t> *state_map /*=nullptr*/) {
+  return RandomPath(a, b, false, state_map);
+}
+
+bool RandomPathWithoutEpsilonArc(
+    const Fsa &a, Fsa *b, std::vector<int32_t> *state_map /*= nullptr*/) {
+  return RandomPath(a, b, true, state_map);
+}
+
+bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
+               std::vector<float> *c_weights,
+               std::vector<int32_t> *arc_map_a /*= nullptr*/,
+               std::vector<int32_t> *arc_map_b /*= nullptr*/) {
+  CHECK_NOTNULL(c);
+  CHECK_NOTNULL(c_weights);
+  c->arc_indexes.clear();
+  c->arcs.clear();
+  c_weights->clear();
+  if (arc_map_a != nullptr) arc_map_a->clear();
+  if (arc_map_b != nullptr) arc_map_b->clear();
+
+  if (IsEmpty(a) || IsEmpty(b)) return true;
+  if (!IsArcSorted(a) || !IsArcSorted(b)) return false;
+  if (!IsEpsilonFree(b)) return false;
+
+  int32_t final_state_a = a.NumStates() - 1;
+  int32_t final_state_b = b.NumStates() - 1;
+  const auto arc_a_begin = a.arcs.begin();
+  const auto arc_b_begin = b.arcs.begin();
+  using ArcIterator = std::vector<Arc>::const_iterator;
+
+  const int32_t final_state_c = -1;  // just as a placeholder
+  // no corresponding arc mapping from `c` to `a` or `c` to `b`
+  const int32_t arc_map_none = -1;
+  auto &arc_indexes_c = c->arc_indexes;
+  auto &arcs_c = c->arcs;
+
+  using StatePair = std::pair<int32_t, int32_t>;
+  // map state pair to unique id
+  std::unordered_map<StatePair, int32_t, PairHash> state_pair_map;
+  std::queue<StatePair> qstates;
+  qstates.push({0, 0});
+  state_pair_map.insert({{0, 0}, 0});
+  state_pair_map.insert({{final_state_a, final_state_b}, final_state_c});
+  int32_t state_index_c = 0;
+  while (!qstates.empty()) {
+    arc_indexes_c.push_back(static_cast<int32_t>(arcs_c.size()));
+
+    auto curr_state_pair = qstates.front();
+    qstates.pop();
+    // as we have inserted `curr_state_pair` before.
+    int32_t curr_state_index = state_pair_map[curr_state_pair];
+
+    auto state_a = curr_state_pair.first;
+    ArcIterator a_arc_iter_begin = arc_a_begin + a.arc_indexes[state_a];
+    ArcIterator a_arc_iter_end = arc_a_begin + a.arc_indexes[state_a + 1];
+    auto state_b = curr_state_pair.second;
+    ArcIterator b_arc_iter_begin = arc_b_begin + b.arc_indexes[state_b];
+    ArcIterator b_arc_iter_end = arc_b_begin + b.arc_indexes[state_b + 1];
+
+    // As both `a` and `b` are arc-sorted, we first process epsilon arcs in `a`.
+    for (; a_arc_iter_begin != a_arc_iter_end; ++a_arc_iter_begin) {
+      if (kEpsilon != a_arc_iter_begin->label) break;
+
+      StatePair new_state{a_arc_iter_begin->dest_state, state_b};
+      auto result = state_pair_map.insert({new_state, state_index_c + 1});
+      if (result.second) {
+        // we have not visited `new_state` before.
+        qstates.push(new_state);
+        ++state_index_c;
+      }
+      int32_t new_state_index = result.first->second;
+      arcs_c.push_back({curr_state_index, new_state_index, kEpsilon});
+      c_weights->push_back(a_weights[a_arc_iter_begin - arc_a_begin]);
+      if (arc_map_a != nullptr)
+        arc_map_a->push_back(
+            static_cast<int32_t>(a_arc_iter_begin - arc_a_begin));
+      if (arc_map_b != nullptr) arc_map_b->push_back(arc_map_none);
+    }
+
+    // `b` is usually a path generated from `RandNonEpsilonPath`, it may hold
+    // less number of arcs in each state, so we iterate over `b` here to save
+    // time.
+    for (; b_arc_iter_begin != b_arc_iter_end; ++b_arc_iter_begin) {
+      const Arc &curr_b_arc = *b_arc_iter_begin;
+      auto a_arc_range =
+          std::equal_range(a_arc_iter_begin, a_arc_iter_end, curr_b_arc,
+                           [](const Arc &left, const Arc &right) {
+                             return left.label < right.label;
+                           });
+      for (auto it_a = a_arc_range.first; it_a != a_arc_range.second; ++it_a) {
+        const Arc &curr_a_arc = *it_a;
+        StatePair new_state{curr_a_arc.dest_state, curr_b_arc.dest_state};
+        auto result = state_pair_map.insert({new_state, state_index_c + 1});
+        if (result.second) {
+          qstates.push(new_state);
+          ++state_index_c;
+        }
+        int32_t new_state_index = result.first->second;
+        arcs_c.push_back({curr_state_index, new_state_index, curr_a_arc.label});
+        c_weights->push_back(a_weights[it_a - arc_a_begin]);
+        if (arc_map_a != nullptr)
+          arc_map_a->push_back(static_cast<int32_t>(it_a - arc_a_begin));
+        if (arc_map_b != nullptr)
+          arc_map_b->push_back(
+              static_cast<int32_t>(b_arc_iter_begin - arc_b_begin));
+      }
+    }
+  }
+
+  // push final state
+  arc_indexes_c.push_back(static_cast<int32_t>(arcs_c.size()));
+  ++state_index_c;
+  // then replace `final_state_c` with the real index of final state of `c`
+  for (auto &arc : arcs_c) {
+    if (arc.dest_state == final_state_c) arc.dest_state = state_index_c;
+  }
+  // push a duplicate of final state, see the constructor of `Fsa` in
+  // `k2/csrc/fsa.h`
+  arc_indexes_c.emplace_back(arc_indexes_c.back());
   return true;
 }
 
