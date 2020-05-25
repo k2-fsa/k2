@@ -90,7 +90,7 @@ bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
                     keep paths that are within `beam` of the best path.
                     Just make this very large if you don't want pruning.
     @param [out] b  The output FSA; will be epsilon-free, and the states
-                    will be in the same order that they were in in `a`.
+                    will be in the same order that they were in `a`.
     @param [out] arc_derivs  Indexed by arc in `b`, this is the sequence of
                       arcs in `a` that this arc in `b` corresponds to; the
                       weight of the arc in b will equal the sum of those input

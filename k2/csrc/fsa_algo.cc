@@ -8,11 +8,13 @@
 #include "k2/csrc/fsa_algo.h"
 
 #include <algorithm>
+#include <functional>
 #include <limits>
 #include <numeric>
 #include <queue>
 #include <stack>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include "glog/logging.h"
@@ -295,53 +297,11 @@ void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
   // identify all states that should be kept
   std::vector<char> non_eps_in(num_states_a, 0);
   non_eps_in[0] = 1;
-  using WeightsPair = std::pair<double, std::vector<int32_t>>;
-  // (label, dest_state) -> `sum` of weights along all paths from current state
-  // to `dest_state` with label == `label`(or plus numbers of epsilon),
-  // `vector<int32_t>` in `WeightsPair` records all arc-indexes in `a` that
-  // contributes the current arc in `b`.
-  using ArcMap =
-      std::unordered_map<std::pair<int32_t, int32_t>, WeightsPair, PairHash>;
-  std::vector<ArcMap> arcs_b(num_states_a);
-  for (int32_t i = static_cast<int32_t>(arcs_a.size()) - 1; i >= 0; --i) {
-    const auto &arc = arcs_a[i];
-    const auto src_state = arc.src_state;
-    const auto dest_state = arc.dest_state;
-    const auto label = arc.label;
-    DCHECK_GE(dest_state, src_state);
-
-    double arc_weight = arc_weights_a[i];
-    if (label != kEpsilon) {
-      non_eps_in[dest_state] = 1;
-      WeightsPair weights_pair =
-          std::make_pair(arc_weight, std::vector<int32_t>{i});
-      auto insert_result = arcs_b[src_state].emplace(
-          std::make_pair(label, dest_state), weights_pair);
-      if (!insert_result.second) {
-        auto &old_weights_pair = insert_result.first->second;
-        // compare `arc_weights`
-        if (weights_pair.first > old_weights_pair.first) {
-          std::swap(old_weights_pair, weights_pair);
-        }
-      }
-    } else {
-      // remove epsilon arcs
-      for (const auto &item : arcs_b[dest_state]) {
-        auto weights_pair = item.second;  // copy intended
-        // `times` the arc weights along path
-        weights_pair.first += arc_weight;
-        weights_pair.second.push_back(i);
-        auto insert_result =
-            arcs_b[src_state].emplace(item.first, weights_pair);
-        if (!insert_result.second) {
-          auto &old_weights_pair = insert_result.first->second;
-          // compare `arc_weights`
-          if (weights_pair.first > old_weights_pair.first) {
-            std::swap(old_weights_pair, weights_pair);
-          }
-        }
-      }
-    }
+  for (const auto &arc : arcs_a) {
+    // We suppose the input fsa `a` is top-sorted, but only check this in DEBUG
+    // time.
+    DCHECK_GE(arc.dest_state, arc.src_state);
+    if (arc.label != kEpsilon) non_eps_in[arc.dest_state] = 1;
   }
 
   // remap state id
@@ -350,28 +310,74 @@ void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
   for (int32_t i = 0; i != num_states_a; ++i) {
     if (non_eps_in[i] == 1) state_map_a2b[i] = num_states_b++;
   }
+  b->arc_indexes.reserve(num_states_b + 1);
+  int32_t arc_num_b = 0;
 
-  // prune and output `b`
   const double *forward_state_weights = a.ForwardStateWeights();
   const double *backward_state_weights = a.BackwardStateWeights();
   const double best_weight = forward_state_weights[final_state] - beam;
-  b->arc_indexes.reserve(num_states_b + 1);
-  int32_t arc_num_b = 0;
-  for (int32_t s = 0; s < num_states_a; ++s) {
-    if (non_eps_in[s] == 1) {
-      b->arc_indexes.push_back(arc_num_b);
-      for (const auto &arcs : arcs_b[s]) {
-        int32_t dest_state = arcs.first.second;
-        double weight = arcs.second.first;
-        if (forward_state_weights[s] + weight +
-                backward_state_weights[dest_state] >
-            best_weight) {
-          b->arcs.emplace_back(state_map_a2b[s], state_map_a2b[dest_state],
-                               arcs.first.first);
-          auto curr_arc_deriv = std::move(arcs.second.second);
-          std::reverse(curr_arc_deriv.begin(), curr_arc_deriv.end());
-          arc_derivs->emplace_back(curr_arc_deriv);
-          ++arc_num_b;
+  for (int32_t i = 0; i != num_states_a; ++i) {
+    if (non_eps_in[i] != 1) continue;
+    b->arc_indexes.push_back(arc_num_b);
+    int32_t curr_state_b = state_map_a2b[i];
+    // as the input FSA is top-sorted, we use a heap here so we can process
+    // states when they already have the best cost they are going to get
+    std::priority_queue<int32_t, std::vector<int32_t>, std::greater<int32_t>> q;
+    // stores states that have been queued
+    std::unordered_set<int32_t> qstates;
+    // state -> local_forward_state_weights of this state
+    std::unordered_map<int32_t, double> local_forward_weights;
+    // state -> (src_state, arc_index) entering this state which contributes to
+    // `local_forward_weights` of this state.
+    std::unordered_map<int32_t, std::pair<int32_t, int32_t>>
+        local_backward_arcs;
+    local_forward_weights.emplace(i, forward_state_weights[i]);
+    // `-1` means we have traced back to current state `i`
+    local_backward_arcs.emplace(i, std::make_pair(i, -1));
+    q.push(i);
+    qstates.insert(i);
+    while (!q.empty()) {
+      int32_t state = q.top();
+      q.pop();
+      int32_t arc_end = fsa.arc_indexes[state + 1];
+      for (int32_t arc_index = fsa.arc_indexes[state]; arc_index != arc_end;
+           ++arc_index) {
+        int32_t next_state = arcs_a[arc_index].dest_state;
+        int32_t label = arcs_a[arc_index].label;
+        double next_weight =
+            local_forward_weights[state] + arc_weights_a[arc_index];
+        if (next_weight + backward_state_weights[next_state] >= best_weight) {
+          if (label == kEpsilon) {
+            auto result =
+                local_forward_weights.emplace(next_state, next_weight);
+            if (result.second) {
+              local_backward_arcs[next_state] =
+                  std::make_pair(state, arc_index);
+            } else {
+              if (next_weight > result.first->second) {
+                result.first->second = next_weight;
+                local_backward_arcs[next_state] =
+                    std::make_pair(state, arc_index);
+              }
+            }
+            if (qstates.find(next_state) == qstates.end()) {
+              q.push(next_state);
+              qstates.insert(next_state);
+            }
+          } else {
+            b->arcs.emplace_back(curr_state_b, state_map_a2b[next_state],
+                                 label);
+            std::vector<int32_t> curr_arc_deriv;
+            std::pair<int32_t, int32_t> curr_backward_arc{state, arc_index};
+            auto *backward_arc = &curr_backward_arc;
+            while (backward_arc->second != -1) {
+              curr_arc_deriv.push_back(backward_arc->second);
+              backward_arc = &(local_backward_arcs[backward_arc->first]);
+            }
+            std::reverse(curr_arc_deriv.begin(), curr_arc_deriv.end());
+            arc_derivs->emplace_back(std::move(curr_arc_deriv));
+            ++arc_num_b;
+          }
         }
       }
     }

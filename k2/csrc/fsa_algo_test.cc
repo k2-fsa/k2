@@ -322,10 +322,10 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
   std::vector<std::vector<int32_t>> arc_derivs_b;
   RmEpsilonsPrunedMax(*max_wfsa_, 8, &b, &arc_derivs_b);
 
-  IsEpsilonFree(b);
-  ASSERT_EQ(b.arcs.size(), 10);
+  EXPECT_TRUE(IsEpsilonFree(b));
+  ASSERT_EQ(b.arcs.size(), 11);
   ASSERT_EQ(b.arc_indexes.size(), 7);
-  ASSERT_EQ(arc_derivs_b.size(), 10);
+  ASSERT_EQ(arc_derivs_b.size(), 11);
 
   // TODO(haowen): check the equivalence after implementing RandEquivalent for
   // WFSA
