@@ -38,6 +38,9 @@ struct Arc {
                   // vs. the output can be decided by the user; in general,
                   // the one that appears on the arc will be the one that
                   // participates in whatever operation you are doing
+  Arc() = default;
+  Arc(int32_t src_state, int32_t dest_state, int32_t label)
+      : src_state(src_state), dest_state(dest_state), label(label) {}
 
   /* Note: the costs are not stored here but outside the Fst object, in some
      kind of array indexed by arc-index.  */
@@ -119,7 +122,7 @@ struct Fsa {
   int32_t FinalState() const {
     // It's not valid to call this if the FSA is empty.
     CHECK(!arc_indexes.empty());
-    return arc_indexes.size() - 2;
+    return static_cast<int32_t>(arc_indexes.size()) - 2;
   }
 };
 
@@ -159,7 +162,7 @@ struct Cfsa {
   // Constructor from Fsa
   Cfsa(const Fsa &fsa);
 
-  void operator = (const Cfsa &cfsa) = default;
+  Cfsa &operator = (const Cfsa &cfsa) = default;
   Cfsa(const Cfsa &cfsa) = default;
 
   Cfsa(int32_t size, int32_t *data);
@@ -239,10 +242,11 @@ class CfsaVec {
   */
   CfsaVec(size_t size, void *data);
 
-  int32_t NumFsas() { return num_fsas_; }
+  int32_t NumFsas() { return num_fsas; }
 
   Cfsa &&operator [] (int32_t f) const;
  private:
+  // TODO: fix names by adding underscores?
   // Note: we will already have checked `size` to make sure
   int32_t num_fsas;
 

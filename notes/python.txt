@@ -4,7 +4,6 @@
 
 
 
-
     # Assumes that A is an acceptor but B may
     # have auxiliary symbols (i.e. may be a transducer).
     def TransducerCompose(a: FsaVec, a_weights: Tensor,
@@ -86,3 +85,137 @@
          # TODO: handle transfers to/from GPU in case grad_out was on GPU.
          # Maybe mark this only once differentiable (it's twice differentiable,
          # I think, but this code doesn't currently support that).
+
+
+
+
+ =====================
+ From here is some ideas on how we'd use this in a program.
+
+
+   # decoding_graph is an FsaVec, graph_weights is a float Tensor,
+   # graph_word_syms is a LongTensor (both with 1 axis
+
+   # decoding_graph will have the following extra attributes:
+   # decoding_graph.weights,
+   # decoding_graph.word_syms
+   # both of shape (num_arcs,), of dtypes float and long respectively.
+   decoding_graph = fsa.ReadDecodingGraph('a/b/c.fsa')
+
+
+   # nnet_output's shape is (num_seq, num_frames, num_symbols).. these symbols
+   # might be phones or letters or small word-pieces.
+   nnet_output = model(input_feats)
+
+   # Interpret each sequence numbered `n` in `nnet_output` as being a FSA with
+   # `num_frames + 1` states numbered 0, 1, ... num_frames, and for each 0 <= i
+   # < num_frames, arcs from state i to i+1 with each symbol `s` as the label
+   # and the output given by `nnet_output[n,i,s]`.  This is a lightweight
+   # operation (except for the fact that it transfers the matrix to CPU for
+   # now).
+   # NOTE: the above is a slight simplification because the cuts may not
+   # span the entirety of `nnet_output`, they may be sub-sequences of frames
+   # within there, and `cut_info` will describe that somehow.  So the ends
+   # of the cuts may be "ragged".
+   nnet_output_fsas = fsa.DenseFsaVec(nnet_output, cut_info)
+
+   # nnet_output_fsas.input_indexes is a LongTensor with dimension (num_arcs_in_nnet_output_fsas, 3)
+   # where the 3 is are indexes n,i,s into nnet_output.
+   nnet_output_fsas.input_indexes = nnet_output_fsas.GetIndexes()
+
+   # ... and implicitly nnet_output_fsas has a `weights` vector, which is a
+   # reshape/copy of parts of `nnet_output`.  (It's not just a reshape of the
+   # whole thing due to its ragged structure).
+
+
+   # Composing with the FSAs representing the supervision; this is CTC aligment.
+   # alignment_fsas will be an FsaVec.
+   alignment_fsas = fsa.compose_pruned(nnet_output_fsas, supervision_fsas, beam=10.0)
+
+   # objf_part1 is the CTC part of the objective; we'll later add it with the others.
+   objf_part1 = fsa.GetTotalLogWeight(alignment_fsas).sum()
+
+
+   # first_pass_fsas will be an FsaVec.
+   # This differs from `alignment_fsas` because it allows all possible word sequences,
+   # not just the supervision one(s).
+   # For a while, now, the code path will be the same as we'll take in test time.
+   #
+
+   first_pass_fsas = fsa.compose_pruned(nnet_output_fsas, decoding_graph, beam=10.0)
+
+
+   # `first_pass_fsas` will have the following attributes:
+   #
+   #   input0.{arc_indexes,weights,input_indexes}
+   #   input1.{arc_indexes,weights,word_syms}
+   #
+   #  and the following derived/computed params:
+   #    weights = input0.weights + input1.weights
+   #    word_syms = input1.word_syms
+
+   # We'll want to propagate `nnet_arc_indexes` forward, so we can
+   # keep track of alignments.
+   first_pass_fsas.nnet_arc_indexes = first_pass_fsas.input0.arc_indexes
+
+   # the following computes arc-level log-posteriors
+   log_posts = first_pass_fsas.ComputeLogPosteriors()
+
+   # Also get the symbol-level posteriors:
+
+   # The following will be the posteriors of a particular phone (or blank) at a particular
+   # time-index of a particular sequence.   see fsautil.py.
+   first_pass_fsas.phone_log_posts = fsautil.sum_by_index(
+       log_posts.exp(),
+       first_pass_fsas.input0.arc_indexes).log()
+
+   # the following mean "the posterior of the current word".
+   first_pass_fsas.word_log_posts = fsautil.sum_by_index(
+       log_posts.exp(),
+       torch.cat(first_pass_fsas.input0.arc_indexes,
+                 first_pass_fsas.word_syms))
+
+
+   #  aggregate all these weights ?
+   #    first_pass_fsas.all_weights = torch.cat(
+   #       first_pass_fsas.input0.weights.unsqueeze(0),  # acoustic weight
+   #       first_pass_fsa.input1.weights.unsqueeze(0),   # graph weight
+   #       first_pass_fsas.phone_log_posts.unsqueeze(0),
+   #       first_pass_fsas.word_log_posts.unsqueeze(0))
+
+
+
+   objf_part2 =
+
+
+   # OK, now we want to do a pass of RNNLM rescoring.  Compose with a
+   # virtual FSA (DeterministicOnDemandFsa) that has words as the
+   # labels.  We can make this a bit more efficient by determinizing the
+   # input first.
+
+
+   # we need the following to propagate members weights,all_weights.
+   # Invert the FST, swapping its symbols with word_syms.
+   fsas_inverted = fsa.Invert(first_pass_fsas,
+                              first_pass_fsas.word_syms,
+                              other_label_name='phone_syms',
+                              keep=[...])
+
+   fsas_rmeps = fsa.RmEpsWeighted(first_pass_fsas)
+   fsas_det = fsa.DeterminizeTropicalPruned(fsas_rmeps, beam=..)
+
+   # note: fsas_det still has `phone_syms` and `nnet_arc_indexes`, now as sequences.
+
+
+
+
+# compute posteriors..
+   first_pass_posts =
+
+
+
+
+
+
+
+   nnet_post = log_softmax(nnet_output)  # might use this later for something..

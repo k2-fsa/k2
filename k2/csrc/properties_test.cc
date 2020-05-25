@@ -2,6 +2,7 @@
 
 // Copyright (c)  2020  Haowen Qiu
 //                      Fangjun Kuang (csukuangfj@gmail.com)
+//                      Mahsa Yarmohammadi
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -12,6 +13,7 @@
 
 #include "gtest/gtest.h"
 #include "k2/csrc/fsa.h"
+#include "k2/csrc/fsa_util.h"
 
 namespace k2 {
 
@@ -98,6 +100,21 @@ TEST(Properties, IsTopSorted) {
   Fsa fsa(std::move(arcs), 2);
   bool sorted = IsTopSorted(fsa);
   EXPECT_TRUE(sorted);
+
+  {
+    RandFsaOptions opts;
+    opts.num_syms = 20;
+    opts.num_states = 30;
+    opts.num_arcs = 50;
+    opts.allow_empty = false;
+    opts.acyclic = true;
+    opts.seed = 20200517;
+
+    Fsa fsa;
+    GenerateRandFsa(opts, &fsa);
+    bool sorted = IsTopSorted(fsa);
+    EXPECT_TRUE(sorted);
+  }
 }
 
 TEST(Properties, IsNotArcSorted) {
@@ -138,6 +155,21 @@ TEST(Properties, HasNoSelfLoops) {
   Fsa fsa(std::move(arcs), 2);
   bool has_self_loops = HasSelfLoops(fsa);
   EXPECT_FALSE(has_self_loops);
+
+  {
+    RandFsaOptions opts;
+    opts.num_syms = 10;
+    opts.num_states = 55;
+    opts.num_arcs = 30;
+    opts.allow_empty = false;
+    opts.acyclic = true;
+    opts.seed = 20200517;
+
+    Fsa fsa;
+    GenerateRandFsa(opts, &fsa);
+    bool has_self_loops = HasSelfLoops(fsa);
+    EXPECT_FALSE(has_self_loops);
+  }
 }
 
 TEST(Properties, HasSelfLoops) {
@@ -175,7 +207,7 @@ TEST(Properties, IsEpsilonFree) {
   EXPECT_TRUE(is_epsilon_free);
 }
 
-TEST(Properties, IsNoConnected) {
+TEST(Properties, IsNotConnected) {
   // state is not accessible
   {
     std::vector<Arc> arcs = {{0, 2, 0}, };
@@ -214,6 +246,82 @@ TEST(Properties, IsConnected) {
     Fsa fsa(std::move(arcs), 4);
     bool is_connected = IsConnected(fsa);
     EXPECT_TRUE(is_connected);
+  }
+
+  {
+    // acyclic case
+    RandFsaOptions opts;
+    opts.num_syms = 10;
+    opts.num_states = 20;
+    opts.num_arcs = 35;
+    opts.allow_empty = false;
+    opts.acyclic = true;
+    opts.seed = 20200517;
+
+    Fsa fsa;
+    GenerateRandFsa(opts, &fsa);
+    bool is_connected = IsConnected(fsa);
+    EXPECT_TRUE(is_connected);
+  }
+
+  {
+    // cyclic case
+    RandFsaOptions opts;
+    opts.num_syms = 8;
+    opts.num_states = 20;
+    opts.num_arcs = 30;
+    opts.allow_empty = false;
+    opts.acyclic = false;
+    opts.seed = 20200517;
+
+    Fsa fsa;
+    GenerateRandFsa(opts, &fsa);
+    bool is_connected = IsConnected(fsa);
+    EXPECT_TRUE(is_connected);
+  }
+}
+
+TEST(FsaAlgo, IsAcyclic) {
+  // empty fsa is acyclic
+  {
+    Fsa fsa;
+    bool is_acyclic = IsAcyclic(fsa);
+    EXPECT_TRUE(is_acyclic);
+  }
+
+  // an acyclic fsa example
+  {
+    std::vector<Arc> arcs = {
+      {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6},
+    };
+    Fsa fsa(std::move(arcs), 3);
+    bool is_acyclic = IsAcyclic(fsa);
+    EXPECT_TRUE(is_acyclic);
+  }
+
+  // a cyclic fsa example
+  {
+    std::vector<Arc> arcs = {
+      {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
+    };
+    Fsa fsa(std::move(arcs), 4);
+    bool is_acyclic = IsAcyclic(fsa);
+    EXPECT_FALSE(is_acyclic);
+  }
+
+  {
+    RandFsaOptions opts;
+    opts.num_syms = 5;
+    opts.num_states = 30;
+    opts.num_arcs = 50;
+    opts.allow_empty = false;
+    opts.acyclic = true;
+    opts.seed = 20200517;
+
+    Fsa fsa;
+    GenerateRandFsa(opts, &fsa);
+    bool is_acyclic = IsAcyclic(fsa);
+    EXPECT_TRUE(is_acyclic);
   }
 }
 

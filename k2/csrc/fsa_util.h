@@ -7,8 +7,10 @@
 #ifndef K2_CSRC_FSA_UTIL_H_
 #define K2_CSRC_FSA_UTIL_H_
 
+#include <limits>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -88,6 +90,33 @@ void Swap(Fsa *a, Fsa *b);
 std::unique_ptr<Fsa> StringToFsa(const std::string &s);
 
 std::string FsaToString(const Fsa &fsa);
+
+struct RandFsaOptions {
+  size_t num_syms;
+  size_t num_states;
+  size_t num_arcs;
+  bool allow_empty;
+  bool acyclic;  // generate a cyclic fsa in a best effort manner if it's false
+  int32_t seed;  // for random generator. Set it to non-zero for reproducibility
+
+  RandFsaOptions();
+};
+
+void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa);
+
+// move-copy an array to output, reordering it according to given indexes,
+// where`index[i]` tells us what value (i.e. `src[index[i]`) we should copy to
+// `dest[i]`
+template <class InputIterator, class Size, class RandomAccessIterator,
+          class OutputIterator>
+void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
+                  OutputIterator dest) {
+  if (count > 0) {
+    for (Size i = 0; i != count; ++i) {
+      *dest++ = std::move(src[*index++]);
+    }
+  }
+}
 
 }  // namespace k2
 

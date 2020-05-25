@@ -7,8 +7,8 @@
 #ifndef K2_CSRC_FSA_ALGO_H_
 #define K2_CSRC_FSA_ALGO_H_
 
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/weights.h"
@@ -29,9 +29,11 @@ namespace k2 {
                               acyclic, the output fsa is topologically sorted.
 
       Returns true on success (i.e. the output will be topsorted).
-      The only failure condition is when the input had cycles that were not self loops.
+      The only failure condition is when the input had cycles that were not self
+  loops.
 
-      Caution: true return status does not imply that the returned FSA is nonempty.
+      Caution: true return status does not imply that the returned FSA is
+  nonempty.
 
  */
 bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
@@ -120,32 +122,37 @@ bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
 
 
       Processing input-state ki:
-         local_forward_state_weights[ki] = forward_state_weights[ki] // from WfsaWithFbWeights.
-                                                                     // Caution: we should probably use
-                                                                     // double here; these kinds of algorithms
-                                                                     // are extremely sensitive to roundoff for
-                                                                     // very long FSAs.
-         local_backpointers[ki] = -1  // will terminate a sequence..
+         local_forward_state_weights[ki] = forward_state_weights[ki] // from
+   WfsaWithFbWeights.
+                                                                     // Caution:
+   we should probably use
+                                                                     // double
+   here; these kinds of algorithms
+                                                                     // are
+   extremely sensitive to roundoff for
+                                                                     // very
+   long FSAs. local_backpointers[ki] = -1  // will terminate a sequence..
          queue.push_back(ki)
          while (!queue.empty()) {
-            ji = queue.front()  // we have to be a bit careful about order here, to make sure
-                                // we always process states when they already have the
+            ji = queue.front()  // we have to be a bit careful about order here,
+   to make sure
+                                // we always process states when they already
+   have the
                                 // best cost they are going to get.  If
-                                // FSA was top-sorted at the start, which we assume, we could perhaps
-                                // process them in numerical order, e.g. using a heap.
-            queue.pop_front()
-            for each arc leaving state ji:
-                next_weight = local_forward_state_weights[ji] + arc_weights[this_arc_index]
-                if next_weight + backward_state_weights[arc_dest_state] < best_path_weight - beam:
-                    if arc label is epsilon:
-                        if next_weight < local_forward_state_weight[next_state]:
+                                // FSA was top-sorted at the start, which we
+   assume, we could perhaps
+                                // process them in numerical order, e.g. using a
+   heap. queue.pop_front() for each arc leaving state ji: next_weight =
+   local_forward_state_weights[ji] + arc_weights[this_arc_index] if next_weight
+   + backward_state_weights[arc_dest_state] < best_path_weight - beam: if arc
+   label is epsilon: if next_weight < local_forward_state_weight[next_state]:
                            local_forward_state_weight[next_state] = next_weight
                            local_backpointers[next_state] = ji
                 else:
                     add an arc to the output FSA, and create the appropriate
                     arc_map entry by following backpointers (hopefully you can
-                    figure out the details).  Note: the output FSA's weights can be
-                    computed later on, by calling code, using the info in arc_map.
+                    figure out the details).  Note: the output FSA's weights can
+   be computed later on, by calling code, using the info in arc_map.
  */
 void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
                          std::vector<std::vector<int32_t>> *arc_map);
@@ -156,7 +163,6 @@ void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
  */
 void RmEpsilonsMax(const Fsa &a, float *a_weights, Fsa *b,
                    std::vector<std::vector<int32_t>> *arc_map);
-
 
 /**
    This version of RmEpsilonsPruned does log-sum on weights along alternative
@@ -179,10 +185,9 @@ void RmEpsilonsMax(const Fsa &a, float *a_weights, Fsa *b,
                      num_arcs in; it gives the derivatives of output-arcs
                      weights w.r.t. input-arc weights.
  */
-void RmEpsilonsPrunedLogSum(const WfsaWithFbWeights &a, float beam, Fsa *b,
-                            std::vector<std::vector<std::pair<int32_t, float>>>
-                            *arc_derivs);
-
+void RmEpsilonsPrunedLogSum(
+    const WfsaWithFbWeights &a, float beam, Fsa *b,
+    std::vector<std::vector<std::pair<int32_t, float>>> *arc_derivs);
 
 /*
   Version of RmEpsilonsLogSum that doesn't support pruning; see its
@@ -190,7 +195,6 @@ void RmEpsilonsPrunedLogSum(const WfsaWithFbWeights &a, float beam, Fsa *b,
  */
 void RmEpsilonsLogSum(const Fsa &a, float *a_weights, Fsa *b,
                       std::vector<std::vector<int32_t>> *arc_map);
-
 
 /*
   Compute the intersection of two FSAs; this is the equivalent of composition
@@ -295,7 +299,7 @@ void ArcSort(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
     @return true if the input fsa is acyclic and connected,
             or if the input is empty; return false otherwise.
  */
-bool TopSort(const Fsa& a, Fsa* b, std::vector<int32_t>* state_map = nullptr);
+bool TopSort(const Fsa &a, Fsa *b, std::vector<int32_t> *state_map = nullptr);
 
 /**
    Pruned determinization with log-sum on weights (interpret them as log-probs),
@@ -362,7 +366,7 @@ float DeterminizePrunedMax(const WfsaWithFbWeights &a,
                            int64_t max_step,
                            Fsa *b,
                            std::vector<float> *b_arc_weights,
-                           std::vector<int32_t> *arc_derivs);
+                           std::vector<std::vector<int32_t>> *arc_derivs);
 
 
 /* Create an acyclic FSA from a list of arcs.
@@ -375,8 +379,12 @@ float DeterminizePrunedMax(const WfsaWithFbWeights &a,
 
    @param [in] arcs  A list of arcs.
    @param [out] fsa  Output fsa.
+   @param [out] arc_map   If non-NULL, this function will
+                            output a map from the arc-index in `fsa` to
+                            the corresponding arc-index in input `arcs`.
 */
-void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa);
+void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
+               std::vector<int32_t> *arc_map = nullptr);
 
 }  // namespace k2
 
