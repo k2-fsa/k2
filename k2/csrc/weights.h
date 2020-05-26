@@ -50,7 +50,7 @@ constexpr double kDoubleNegativeInfinity =
                 path exists.
  */
 void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
-                              float *state_weights);
+                              double *state_weights);
 
 /*
   Does the 'backward' computation; this is as in the tropical semiring
@@ -69,10 +69,84 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
   such path exists.
  */
 void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
-                               float *state_weights);
+                               double *state_weights);
+
+/*
+  Does the 'forward' computation; this is as in the log semiring
+  but with the opposite sign, as in logprobs rather than negative logprobs.
+
+   @param [in]  fsa  The fsa we are doing the forward computation on.
+                Must satisfy IsValid(fsa) and IsTopSorted(fsa).
+   @param [in]  arc_weights  Arc weights, indexed by arc in `fsa`.
+                             Usually logprobs.
+   @param [out] state_weights  The per-state weights will be written to here.
+                They will be 0 for the start-state (if fsa is
+                nonempty), and for later states will be the
+                log sum of all paths' weights from the start-state
+                to that state, or `kNegativeInfinity` if no such
+                path exists.
+ */
+void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
+                                 double *state_weights);
+
+/*
+  Does the 'backward' computation; this is as in the log semiring
+  but with the opposite sign, as in logprobs rather than negative logprobs.
+
+   @param [in]  fsa  The fsa we are doing the backward computation on.
+                Must satisfy IsValid(fsa) and IsTopSorted(fsa).
+   @param [in]  arc_weights  Arc weights, indexed by arc in `fsa`.
+                             Usually logprobs.
+   @param [out] state_weights  The per-state weights will be written to here.
+                They will be 0 for the final-state (if fsa is
+                nonempty), and for earlier states will be the
+                log sum of all paths' weights from that state to the final
+  state, or `kNegativeInfinity` if no such path exists.
+ */
+void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
+                                  double *state_weights);
 
 enum FbWeightType { kMaxWeight, kLogSumWeight };
 
+// Version of `ComputeForwardWeights` as a template interface, see documentation
+// of `ComputeForwardMaxWeights` or `ComputeForwardLogSumWeights`
+template <FbWeightType Type>
+void ComputeForwardWeights(const Fsa &fsa, const float *arc_weights,
+                           double *state_weights);
+
+template <>
+inline void ComputeForwardWeights<kMaxWeight>(const Fsa &fsa,
+                                              const float *arc_weights,
+                                              double *state_weights) {
+  ComputeForwardMaxWeights(fsa, arc_weights, state_weights);
+}
+
+template <>
+inline void ComputeForwardWeights<kLogSumWeight>(const Fsa &fsa,
+                                                 const float *arc_weights,
+                                                 double *state_weights) {
+  ComputeForwardLogSumWeights(fsa, arc_weights, state_weights);
+}
+
+// Version of `ComputeBackwardWeights` as a template interface, see
+// documentation of `ComputeBackwardMaxWeights` or
+// `ComputeBackwardLogSumWeights`
+template <FbWeightType Type>
+void ComputeBackwardWeights(const Fsa &fsa, const float *arc_weights,
+                            double *state_weights);
+template <>
+inline void ComputeBackwardWeights<kMaxWeight>(const Fsa &fsa,
+                                               const float *arc_weights,
+                                               double *state_weights) {
+  ComputeBackwardMaxWeights(fsa, arc_weights, state_weights);
+}
+
+template <>
+inline void ComputeBackwardWeights<kLogSumWeight>(const Fsa &fsa,
+                                                  const float *arc_weights,
+                                                  double *state_weights) {
+  ComputeBackwardLogSumWeights(fsa, arc_weights, state_weights);
+}
 /*
   Returns the sum of the weights of all successful paths in an FSA, i.e., the
   shortest-distance from the initial state to the final states
@@ -84,8 +158,10 @@ enum FbWeightType { kMaxWeight, kLogSumWeight };
  */
 template <FbWeightType Type>
 double ShortestDistance(const Fsa &fsa, const float *arc_weights) {
-  // TODO(haowen): add implementation
-  return 0.0;
+  if (IsEmpty(fsa)) return kDoubleNegativeInfinity;
+  std::vector<double> state_weights(fsa.NumStates());
+  ComputeForwardWeights<Type>(fsa, arc_weights, state_weights.data());
+  return state_weights[fsa.FinalState()];
 }
 
 struct WfsaWithFbWeights {
@@ -118,7 +194,6 @@ struct WfsaWithFbWeights {
   }
 
  private:
-  using AddWeightsFun = std::function<double(double, double)>;
   // forward_state_weights are the log-sum or max of weights along all paths
   // from the start-state to each state.  We use double because for long FSAs
   // roundoff effects can cause nasty errors in pruning.

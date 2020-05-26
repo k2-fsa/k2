@@ -42,55 +42,110 @@ class WeightsTest : public ::testing::Test {
   Fsa *fsa_;
   int32_t num_states_;
   float *arc_weights_;
+  const std::vector<double> forward_max_weights_ = {
+      0, 1, 3, 4, 1, kFloatNegativeInfinity, 3, 9, 4, 14};
+  const std::vector<double> backward_max_weights_ = {14, 13, 9, 10, 9,
+                                                     4,  3,  5, 6,  0};
+  const std::vector<double> forward_logsum_weights_ = {
+      0, 1, 3, 4, 1, kDoubleNegativeInfinity, 3, 9.126928, 4, 14.143222};
+  const std::vector<double> backward_logsum_weights_ = {
+      14.143222, 13.126928, 9, 10, 9.018150, 4, 3, 5, 6, 0};
 };
 
 TEST_F(WeightsTest, ComputeForwardMaxWeights) {
   {
-    std::vector<float> state_weights(num_states_);
+    std::vector<double> state_weights(num_states_);
     ComputeForwardMaxWeights(*fsa_, arc_weights_, &state_weights[0]);
-    EXPECT_THAT(state_weights,
-                ::testing::ElementsAre(0, 1, 3, 4, 1, kFloatNegativeInfinity, 3,
-                                       9, 4, 14));
+    EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, forward_max_weights_, 1e-3);
+  }
+
+  // template version
+  {
+    std::vector<double> state_weights(num_states_);
+    ComputeForwardWeights<kMaxWeight>(*fsa_, arc_weights_, &state_weights[0]);
+    EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, forward_max_weights_, 1e-3);
   }
 }
 
 TEST_F(WeightsTest, ComputeBackwardMaxWeights) {
   {
-    std::vector<float> state_weights(num_states_);
+    std::vector<double> state_weights(num_states_);
     ComputeBackwardMaxWeights(*fsa_, arc_weights_, &state_weights[0]);
-    EXPECT_THAT(state_weights,
-                ::testing::ElementsAre(14, 13, 9, 10, 9, 4, 3, 5, 6, 0));
+    EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, backward_max_weights_, 1e-3);
+  }
+
+  // template version
+  {
+    std::vector<double> state_weights(num_states_);
+    ComputeBackwardWeights<kMaxWeight>(*fsa_, arc_weights_, &state_weights[0]);
+    EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, backward_max_weights_, 1e-3);
+  }
+}
+
+TEST_F(WeightsTest, ComputeForwardLogSumWeights) {
+  {
+    std::vector<double> state_weights(num_states_);
+    ComputeForwardLogSumWeights(*fsa_, arc_weights_, &state_weights[0]);
+    EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, forward_logsum_weights_, 1e-3);
+  }
+
+  // template version
+  {
+    std::vector<double> state_weights(num_states_);
+    ComputeForwardWeights<kLogSumWeight>(*fsa_, arc_weights_,
+                                         &state_weights[0]);
+    EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, forward_logsum_weights_, 1e-3);
+  }
+}
+
+TEST_F(WeightsTest, ComputeBackwardLogSumWeights) {
+  {
+    std::vector<double> state_weights(num_states_);
+    ComputeBackwardLogSumWeights(*fsa_, arc_weights_, &state_weights[0]);
+    EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, backward_logsum_weights_,
+                                  1e-3);
+  }
+
+  // template version
+  {
+    std::vector<double> state_weights(num_states_);
+    ComputeBackwardWeights<kLogSumWeight>(*fsa_, arc_weights_,
+                                          &state_weights[0]);
+    EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, backward_logsum_weights_,
+                                  1e-3);
+  }
+}
+
+TEST_F(WeightsTest, ShortestDistance) {
+  {
+    double distance = ShortestDistance<kMaxWeight>(*fsa_, arc_weights_);
+    EXPECT_NEAR(distance, 14, 1e-3);
+  }
+
+  {
+    double distance = ShortestDistance<kLogSumWeight>(*fsa_, arc_weights_);
+    EXPECT_NEAR(distance, 14.143222, 1e-3);
   }
 }
 
 TEST_F(WeightsTest, WfsaWithFbWeightsMax) {
-  {
-    WfsaWithFbWeights wfsa(*fsa_, arc_weights_, kMaxWeight);
-    std::vector<double> weights(num_states_);
-    std::copy_n(wfsa.ForwardStateWeights(), num_states_, weights.begin());
-    EXPECT_THAT(weights,
-                ::testing::ElementsAre(0, 1, 3, 4, 1, kFloatNegativeInfinity, 3,
-                                       9, 4, 14));
-    std::copy_n(wfsa.BackwardStateWeights(), num_states_, weights.begin());
-    EXPECT_THAT(weights,
-                ::testing::ElementsAre(14, 13, 9, 10, 9, 4, 3, 5, 6, 0));
-  }
+  WfsaWithFbWeights wfsa(*fsa_, arc_weights_, kMaxWeight);
+  std::vector<double> weights(num_states_);
+  std::copy_n(wfsa.ForwardStateWeights(), num_states_, weights.begin());
+  EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, forward_max_weights_, 1e-3);
+
+  std::copy_n(wfsa.BackwardStateWeights(), num_states_, weights.begin());
+  EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, backward_max_weights_, 1e-3);
 }
 
 TEST_F(WeightsTest, WfsaWithFbWeightsLogSum) {
-  {
-    WfsaWithFbWeights wfsa(*fsa_, arc_weights_, kLogSumWeight);
-    std::vector<double> weights(num_states_);
-    std::copy_n(wfsa.ForwardStateWeights(), num_states_, weights.begin());
-    std::vector<double> forward_weights = {
-        0, 1, 3, 4, 1, kDoubleNegativeInfinity, 3, 9.126928, 4, 14.143222};
-    EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, forward_weights, 1e-3);
+  WfsaWithFbWeights wfsa(*fsa_, arc_weights_, kLogSumWeight);
+  std::vector<double> weights(num_states_);
+  std::copy_n(wfsa.ForwardStateWeights(), num_states_, weights.begin());
+  EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, forward_logsum_weights_, 1e-3);
 
-    std::copy_n(wfsa.BackwardStateWeights(), num_states_, weights.begin());
-    std::vector<double> backward_weights = {
-        14.143222, 13.126928, 9, 10, 9.018150, 4, 3, 5, 6, 0};
-    EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, backward_weights, 1e-3);
-  }
+  std::copy_n(wfsa.BackwardStateWeights(), num_states_, weights.begin());
+  EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, backward_logsum_weights_, 1e-3);
 }
 
 }  // namespace k2

@@ -45,111 +45,12 @@ void SetDifference(const std::unordered_set<int32_t> &a,
     if (a.find(v) == a.end()) c->insert(v);
   }
 }
-}  // namespace
 
-namespace k2 {
-
-bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
-  // We will do `intersect` later which requires either `a` or `b` is
-  // epsilon-free, considering they should hold same set of arc labels, so both
-  // of them should be epsilon-free.
-  // TODO(haowen): call `RmEpsilon` here instead of checking.
-  if (!IsEpsilonFree(a) || !IsEpsilonFree(b)) return false;
-
-  Fsa connected_a, connected_b, valid_a, valid_b;
-  Connect(a, &connected_a);
-  Connect(b, &connected_b);
-  ArcSort(connected_a, &valid_a);  // required by `intersect`
-  ArcSort(connected_b, &valid_b);
-  if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
-  if (IsEmpty(valid_a) || IsEmpty(valid_b)) return false;
-
-  // Check that arc labels are compatible.
-  std::unordered_set<int32_t> labels_a, labels_b;
-  for (const auto &arc : valid_a.arcs) labels_a.insert(arc.label);
-  for (const auto &arc : valid_b.arcs) labels_b.insert(arc.label);
-  if (labels_a != labels_b) return false;
-
-  Fsa c, connected_c, valid_c;
-  if (!Intersect(valid_a, valid_b, &c)) return false;
-  Connect(c, &connected_c);
-  ArcSort(connected_c, &valid_c);
-  if (IsEmpty(valid_c)) return false;
-
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::bernoulli_distribution coin(0.5);
-  for (auto i = 0; i != npath; ++i) {
-    const auto &fsa = coin(gen) ? valid_a : valid_b;
-    Fsa path, valid_path;
-    RandomPath(fsa, &path);  // path is already connected
-    ArcSort(path, &valid_path);
-    Fsa cpath, valid_cpath;
-    Intersect(valid_path, valid_c, &cpath);
-    Connect(cpath, &valid_cpath);
-    if (IsEmpty(valid_cpath)) return false;
-  }
-
-  return true;
-}
-
-template <FbWeightType Type>
-bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
-                      const float *b_weights, std::size_t npath /*= 100*/) {
-  Fsa connected_a, connected_b, valid_a, valid_b;
-  std::vector<int32_t> connected_a_arc_map, connected_b_arc_map,
-      valid_a_arc_map, valid_b_arc_map;
-  Connect(a, &connected_a, &connected_a_arc_map);
-  Connect(b, &connected_b, &connected_b_arc_map);
-  ArcSort(connected_a, &valid_a, &valid_a_arc_map);  // required by `intersect`
-  ArcSort(connected_b, &valid_b, &valid_b_arc_map);
-  if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
-  if (IsEmpty(valid_a) || IsEmpty(valid_b)) return false;
-
-  // Get arc weights
-  std::vector<float> valid_a_weights(valid_a.arcs.size());
-  std::vector<float> valid_b_weights(valid_b.arcs.size());
-  GetArcWeights(a_weights, connected_a_arc_map, valid_a_arc_map,
-                &valid_a_weights);
-  GetArcWeights(b_weights, connected_b_arc_map, valid_b_arc_map,
-                &valid_b_weights);
-
-  // Check that arc labels are compatible.
-  std::unordered_set<int32_t> labels_a, labels_b, labels_difference;
-  for (const auto &arc : valid_a.arcs) labels_a.insert(arc.label);
-  for (const auto &arc : valid_b.arcs) labels_b.insert(arc.label);
-  SetDifference(labels_a, labels_b, &labels_difference);
-  if (labels_difference.size() >= 2 ||
-      (labels_difference.size() == 1 &&
-       (*(labels_difference.begin()) != kEpsilon)))
-    return false;
-
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::bernoulli_distribution coin(0.5);
-  for (auto i = 0; i != npath; ++i) {
-    const auto &fsa = coin(gen) ? valid_a : valid_b;
-    Fsa path, valid_path;
-    RandomPathWithoutEpsilonArc(fsa, &path);  // path is already connected
-    ArcSort(path, &valid_path);
-
-    Fsa a_compose_path, b_compose_path;
-    std::vector<float> a_compose_weights, b_compose_weights;
-    Intersect(valid_a, valid_a_weights.data(), path, &a_compose_path,
-              &a_compose_weights);
-    Intersect(valid_b, valid_b_weights.data(), path, &b_compose_path,
-              &b_compose_weights);
-    double sum_a =
-        ShortestDistance<Type>(a_compose_path, a_compose_weights.data());
-    double sum_b =
-        ShortestDistance<Type>(b_compose_path, b_compose_weights.data());
-    if (!DoubleApproxEqual(sum_a, sum_b)) return false;
-  }
-  return true;
-}
-
-bool RandomPath(const Fsa &a, Fsa *b, bool no_epsilon_arc,
-                std::vector<int32_t> *state_map /*=nullptr*/) {
+bool RandomPathHelper(const k2::Fsa &a, k2::Fsa *b, bool no_epsilon_arc,
+                      std::vector<int32_t> *state_map = nullptr) {
+  using k2::Arc;
+  using k2::ArcHash;
+  using k2::kEpsilon;
   if (IsEmpty(a) || b == nullptr) return false;
   // we cannot do `connect` on `a` here to get a connected fsa
   // as `state_map` will map to states in the connected fsa
@@ -217,14 +118,132 @@ bool RandomPath(const Fsa &a, Fsa *b, bool no_epsilon_arc,
   return true;
 }
 
+}  // namespace
+
+namespace k2 {
+
+bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
+  // We will do `intersect` later which requires either `a` or `b` is
+  // epsilon-free, considering they should hold same set of arc labels, so both
+  // of them should be epsilon-free.
+  // TODO(haowen): call `RmEpsilon` here instead of checking.
+  if (!IsEpsilonFree(a) || !IsEpsilonFree(b)) return false;
+
+  Fsa connected_a, connected_b, valid_a, valid_b;
+  Connect(a, &connected_a);
+  Connect(b, &connected_b);
+  ArcSort(connected_a, &valid_a);  // required by `intersect`
+  ArcSort(connected_b, &valid_b);
+  if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
+  if (IsEmpty(valid_a) || IsEmpty(valid_b)) return false;
+
+  // Check that arc labels are compatible.
+  std::unordered_set<int32_t> labels_a, labels_b;
+  for (const auto &arc : valid_a.arcs) labels_a.insert(arc.label);
+  for (const auto &arc : valid_b.arcs) labels_b.insert(arc.label);
+  if (labels_a != labels_b) return false;
+
+  Fsa c, connected_c, valid_c;
+  if (!Intersect(valid_a, valid_b, &c)) return false;
+  Connect(c, &connected_c);
+  ArcSort(connected_c, &valid_c);
+  if (IsEmpty(valid_c)) return false;
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::bernoulli_distribution coin(0.5);
+  for (auto i = 0; i != npath; ++i) {
+    const auto &fsa = coin(gen) ? valid_a : valid_b;
+    Fsa path, valid_path;
+    RandomPath(fsa, &path);  // path is already connected
+    ArcSort(path, &valid_path);
+    Fsa cpath, valid_cpath;
+    Intersect(valid_path, valid_c, &cpath);
+    Connect(cpath, &valid_cpath);
+    if (IsEmpty(valid_cpath)) return false;
+  }
+
+  return true;
+}
+
+template <FbWeightType Type>
+bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
+                      const float *b_weights, bool top_sorted /*=true*/,
+                      std::size_t npath /*= 100*/) {
+  Fsa connected_a, connected_b, valid_a, valid_b;
+  std::vector<int32_t> connected_a_arc_map, connected_b_arc_map,
+      valid_a_arc_map, valid_b_arc_map;
+  Connect(a, &connected_a, &connected_a_arc_map);
+  Connect(b, &connected_b, &connected_b_arc_map);
+  ArcSort(connected_a, &valid_a, &valid_a_arc_map);  // required by `intersect`
+  ArcSort(connected_b, &valid_b, &valid_b_arc_map);
+  if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
+  if (IsEmpty(valid_a) || IsEmpty(valid_b)) return false;
+
+  // Get arc weights
+  std::vector<float> valid_a_weights(valid_a.arcs.size());
+  std::vector<float> valid_b_weights(valid_b.arcs.size());
+  GetArcWeights(a_weights, connected_a_arc_map, valid_a_arc_map,
+                &valid_a_weights);
+  GetArcWeights(b_weights, connected_b_arc_map, valid_b_arc_map,
+                &valid_b_weights);
+
+  // Check that arc labels are compatible.
+  std::unordered_set<int32_t> labels_a, labels_b, labels_difference;
+  for (const auto &arc : valid_a.arcs) labels_a.insert(arc.label);
+  for (const auto &arc : valid_b.arcs) labels_b.insert(arc.label);
+  SetDifference(labels_a, labels_b, &labels_difference);
+  if (labels_difference.size() >= 2 ||
+      (labels_difference.size() == 1 &&
+       (*(labels_difference.begin())) != kEpsilon))
+    return false;
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::bernoulli_distribution coin(0.5);
+  for (auto i = 0; i != npath; ++i) {
+    const auto &fsa = coin(gen) ? valid_a : valid_b;
+    Fsa path, valid_path;
+    RandomPathWithoutEpsilonArc(fsa, &path);  // path is already connected
+    ArcSort(path, &valid_path);
+
+    Fsa a_compose_path, b_compose_path;
+    std::vector<float> a_compose_weights, b_compose_weights;
+    Intersect(valid_a, valid_a_weights.data(), path, &a_compose_path,
+              &a_compose_weights);
+    Intersect(valid_b, valid_b_weights.data(), path, &b_compose_path,
+              &b_compose_weights);
+    // TODO(haowen): we may need to implement a version of `ShortestDistance`
+    // for non-top-sorted FSAs, but we prefer to decide this later as there's no
+    // such scenarios (input FSAs are not top-sorted) currently. If we finally
+    // find out that we don't need that version, we will remove flag
+    // `top_sorted` and add requirements as comments in the header file.
+    CHECK(top_sorted);
+    double sum_a =
+        ShortestDistance<Type>(a_compose_path, a_compose_weights.data());
+    double sum_b =
+        ShortestDistance<Type>(b_compose_path, b_compose_weights.data());
+    if (!DoubleApproxEqual(sum_a, sum_b)) return false;
+  }
+  return true;
+}
+
+// explicit instantiation here
+template bool IsRandEquivalent<kMaxWeight>(const Fsa &a, const float *a_weights,
+                                           const Fsa &b, const float *b_weights,
+                                           bool top_sorted, std::size_t npath);
+template bool IsRandEquivalent<kLogSumWeight>(
+    const Fsa &a, const float *a_weights, const Fsa &b, const float *b_weights,
+    bool top_sorted, std::size_t npath);
+
 bool RandomPath(const Fsa &a, Fsa *b,
                 std::vector<int32_t> *state_map /*=nullptr*/) {
-  return RandomPath(a, b, false, state_map);
+  return RandomPathHelper(a, b, false, state_map);
 }
 
 bool RandomPathWithoutEpsilonArc(
     const Fsa &a, Fsa *b, std::vector<int32_t> *state_map /*= nullptr*/) {
-  return RandomPath(a, b, true, state_map);
+  return RandomPathHelper(a, b, true, state_map);
 }
 
 bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
@@ -249,9 +268,9 @@ bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
   const auto arc_b_begin = b.arcs.begin();
   using ArcIterator = std::vector<Arc>::const_iterator;
 
-  const int32_t final_state_c = -1;  // just as a placeholder
+  const int32_t kFinalStateC = -1;  // just as a placeholder
   // no corresponding arc mapping from `c` to `a` or `c` to `b`
-  const int32_t arc_map_none = -1;
+  const int32_t kArcMapNone = -1;
   auto &arc_indexes_c = c->arc_indexes;
   auto &arcs_c = c->arcs;
 
@@ -261,7 +280,7 @@ bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
   std::queue<StatePair> qstates;
   qstates.push({0, 0});
   state_pair_map.insert({{0, 0}, 0});
-  state_pair_map.insert({{final_state_a, final_state_b}, final_state_c});
+  state_pair_map.insert({{final_state_a, final_state_b}, kFinalStateC});
   int32_t state_index_c = 0;
   while (!qstates.empty()) {
     arc_indexes_c.push_back(static_cast<int32_t>(arcs_c.size()));
@@ -295,7 +314,7 @@ bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
       if (arc_map_a != nullptr)
         arc_map_a->push_back(
             static_cast<int32_t>(a_arc_iter_begin - arc_a_begin));
-      if (arc_map_b != nullptr) arc_map_b->push_back(arc_map_none);
+      if (arc_map_b != nullptr) arc_map_b->push_back(kArcMapNone);
     }
 
     // `b` is usually a path generated from `RandNonEpsilonPath`, it may hold
@@ -331,9 +350,9 @@ bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
   // push final state
   arc_indexes_c.push_back(static_cast<int32_t>(arcs_c.size()));
   ++state_index_c;
-  // then replace `final_state_c` with the real index of final state of `c`
+  // then replace `kFinalStateC` with the real index of final state of `c`
   for (auto &arc : arcs_c) {
-    if (arc.dest_state == final_state_c) arc.dest_state = state_index_c;
+    if (arc.dest_state == kFinalStateC) arc.dest_state = state_index_c;
   }
   // push a duplicate of final state, see the constructor of `Fsa` in
   // `k2/csrc/fsa.h`

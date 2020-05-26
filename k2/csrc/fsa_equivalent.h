@@ -27,19 +27,31 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
   Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
   generating `npath` paths from one of them and then checking if each path
   exists in the other one and the sum of weights along that path are the same.
+
+  @param [in]  a          One of the FSAs to be checked the equivalence
+  @param [in]  a_weights  Arc weights of `a`
+  @param [in]  b          The other FSA to be checked the equivalence
+  @param [in]  b_weights  Arc weights of `b`
+  @param [in]  top_sorted If both `a` and `b` are topological sorted or not.
+                          We may remove this flag if we finally find out that
+                          input FSAs in all scenarios are top-sorted.
+  @param [in]  npath      The number of paths will be generated to check the
+                          equivalence of `a` and `b`
  */
 template <FbWeightType Type>
 bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
-                      const float *b_weights, std::size_t npath = 100);
+                      const float *b_weights, bool top_sorted = true,
+                      std::size_t npath = 100);
 
 /*
   Gets a random path from an Fsa `a`, returns true if we get one path
   successfully.
 
-  @param [in] a    The input fsa from which we will generate a random path
-  @param [out] b   The output path
-  @param [out] state_map Maps from state indexes in the output fsa `b` to the
-  state indexes in the input fsa `a`.
+  @param [in]  a         The input fsa from which we will generate a random path
+  @param [out] b         The output path
+  @param [out] state_map If non-NULL, this function will output a map from the
+                         state-index in `b` to the corresponding state-index in
+  `a`.
 */
 bool RandomPath(const Fsa &a, Fsa *b,
                 std::vector<int32_t> *state_map = nullptr);
