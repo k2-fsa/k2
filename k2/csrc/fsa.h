@@ -165,8 +165,6 @@ struct Cfsa {
   Cfsa &operator = (const Cfsa &cfsa) = default;
   Cfsa(const Cfsa &cfsa) = default;
 
-  Cfsa(int32_t size, int32_t *data);
-
   int32_t NumStates() const { return num_states; }
   int32_t FinalState() const { return num_states - 1; }
 };
@@ -242,18 +240,19 @@ class CfsaVec {
   */
   CfsaVec(size_t size, void *data);
 
-  int32_t NumFsas() { return num_fsas; }
+  int32_t NumFsas() const { return num_fsas_; }
 
-  Cfsa &&operator [] (int32_t f) const;
+  Cfsa operator [] (int32_t f) const;
  private:
-  // TODO: fix names by adding underscores?
-  // Note: we will already have checked `size` to make sure
-  int32_t num_fsas;
+  Cfsa &operator = (const Cfsa &);  // Disable
+  Cfsa(const Cfsa&);  // Disable
+
+  int32_t num_fsas_;
 
   // The raw underlying data
-  int32_t *data;
-  // The size
-  size_t size;
+  int32_t *data_;
+  // The size of the underlying data
+  size_t size_;
 };
 
 

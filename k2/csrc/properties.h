@@ -20,7 +20,8 @@ enum Properties {
   kTopSortedAndAcyclic,  // topologically sorted and no self-loops (which
                          // implies acyclic)
   kAcyclic,              // acyclic
-  kArcSorted,            // arcs leaving each state are sorted on label
+  kArcSorted,            // arcs leaving each state are sorted on label and then
+                         // destination state
   kDeterministic,        // no state has two arcs leaving it with the same label
   kConnected,    // all states are both accessible (i.e. from start state) and
                  // coaccessible (i.e. can reach final-state)
@@ -59,7 +60,7 @@ bool HasSelfLoops(const Fsa &fsa);
   accessible (i.e. from the start state) are not considered.
   The optional argument order, assigns the order in which visiting states is
   finished in DFS traversal. State 0 has the largest order (num_states - 1) and
-  the final state has the smallest order (0). 
+  the final state has the smallest order (0).
  */
 bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order = nullptr);
 
