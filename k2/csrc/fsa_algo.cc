@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <functional>
 #include <limits>
+#include <map>
 #include <numeric>
 #include <queue>
 #include <stack>
@@ -320,13 +321,12 @@ void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
     if (non_eps_in[i] != 1) continue;
     b->arc_indexes.push_back(arc_num_b);
     int32_t curr_state_b = state_map_a2b[i];
-    // as the input FSA is top-sorted, we use a heap here so we can process
+    // as the input FSA is top-sorted, we use a map here so we can process
     // states when they already have the best cost they are going to get
-    std::priority_queue<int32_t, std::vector<int32_t>, std::greater<int32_t>> q;
     // stores states that have been queued
-    std::unordered_set<int32_t> qstates;
-    // state -> local_forward_state_weights of this state
-    std::unordered_map<int32_t, double> local_forward_weights;
+    std::map<int32_t, double>
+        local_forward_weights;  // state -> local_forward_state_weights of this
+                                // state
     // state -> (src_state, arc_index) entering this state which contributes to
     // `local_forward_weights` of this state.
     std::unordered_map<int32_t, std::pair<int32_t, int32_t>>
@@ -334,18 +334,19 @@ void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
     local_forward_weights.emplace(i, forward_state_weights[i]);
     // `-1` means we have traced back to current state `i`
     local_backward_arcs.emplace(i, std::make_pair(i, -1));
-    q.push(i);
-    qstates.insert(i);
-    while (!q.empty()) {
-      int32_t state = q.top();
-      q.pop();
+    while (!local_forward_weights.empty()) {
+      std::pair<int32_t, double> curr_local_forward_weights =
+          *(local_forward_weights.begin());
+      local_forward_weights.erase(local_forward_weights.begin());
+      int32_t state = curr_local_forward_weights.first;
+
       int32_t arc_end = fsa.arc_indexes[state + 1];
       for (int32_t arc_index = fsa.arc_indexes[state]; arc_index != arc_end;
            ++arc_index) {
         int32_t next_state = arcs_a[arc_index].dest_state;
         int32_t label = arcs_a[arc_index].label;
         double next_weight =
-            local_forward_weights[state] + arc_weights_a[arc_index];
+            curr_local_forward_weights.second + arc_weights_a[arc_index];
         if (next_weight + backward_state_weights[next_state] >= best_weight) {
           if (label == kEpsilon) {
             auto result =
@@ -359,10 +360,6 @@ void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
                 local_backward_arcs[next_state] =
                     std::make_pair(state, arc_index);
               }
-            }
-            if (qstates.find(next_state) == qstates.end()) {
-              q.push(next_state);
-              qstates.insert(next_state);
             }
           } else {
             b->arcs.emplace_back(curr_state_b, state_map_a2b[next_state],
