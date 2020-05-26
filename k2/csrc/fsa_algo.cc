@@ -8,11 +8,14 @@
 #include "k2/csrc/fsa_algo.h"
 
 #include <algorithm>
+#include <functional>
 #include <limits>
+#include <map>
 #include <numeric>
 #include <queue>
 #include <stack>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include "glog/logging.h"
@@ -273,6 +276,111 @@ bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
   }
   b->arc_indexes[num_states_b] = b->arc_indexes[num_states_b - 1];
   return is_acyclic;
+}
+
+void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
+                         std::vector<std::vector<int32_t>> *arc_derivs) {
+  CHECK_EQ(a.weight_type, kMaxWeight);
+  CHECK_GT(beam, 0);
+  CHECK_NOTNULL(b);
+  CHECK_NOTNULL(arc_derivs);
+  b->arc_indexes.clear();
+  b->arcs.clear();
+  arc_derivs->clear();
+
+  const auto &fsa = a.fsa;
+  if (IsEmpty(fsa)) return;
+  int32_t num_states_a = fsa.NumStates();
+  int32_t final_state = fsa.FinalState();
+  const auto &arcs_a = fsa.arcs;
+  const float *arc_weights_a = a.arc_weights;
+
+  // identify all states that should be kept
+  std::vector<char> non_eps_in(num_states_a, 0);
+  non_eps_in[0] = 1;
+  for (const auto &arc : arcs_a) {
+    // We suppose the input fsa `a` is top-sorted, but only check this in DEBUG
+    // time.
+    DCHECK_GE(arc.dest_state, arc.src_state);
+    if (arc.label != kEpsilon) non_eps_in[arc.dest_state] = 1;
+  }
+
+  // remap state id
+  std::vector<int32_t> state_map_a2b(num_states_a, -1);
+  int32_t num_states_b = 0;
+  for (int32_t i = 0; i != num_states_a; ++i) {
+    if (non_eps_in[i] == 1) state_map_a2b[i] = num_states_b++;
+  }
+  b->arc_indexes.reserve(num_states_b + 1);
+  int32_t arc_num_b = 0;
+
+  const double *forward_state_weights = a.ForwardStateWeights();
+  const double *backward_state_weights = a.BackwardStateWeights();
+  const double best_weight = forward_state_weights[final_state] - beam;
+  for (int32_t i = 0; i != num_states_a; ++i) {
+    if (non_eps_in[i] != 1) continue;
+    b->arc_indexes.push_back(arc_num_b);
+    int32_t curr_state_b = state_map_a2b[i];
+    // as the input FSA is top-sorted, we use a map here so we can process
+    // states when they already have the best cost they are going to get
+    // stores states that have been queued
+    std::map<int32_t, double>
+        local_forward_weights;  // state -> local_forward_state_weights of this
+                                // state
+    // state -> (src_state, arc_index) entering this state which contributes to
+    // `local_forward_weights` of this state.
+    std::unordered_map<int32_t, std::pair<int32_t, int32_t>>
+        local_backward_arcs;
+    local_forward_weights.emplace(i, forward_state_weights[i]);
+    // `-1` means we have traced back to current state `i`
+    local_backward_arcs.emplace(i, std::make_pair(i, -1));
+    while (!local_forward_weights.empty()) {
+      std::pair<int32_t, double> curr_local_forward_weights =
+          *(local_forward_weights.begin());
+      local_forward_weights.erase(local_forward_weights.begin());
+      int32_t state = curr_local_forward_weights.first;
+
+      int32_t arc_end = fsa.arc_indexes[state + 1];
+      for (int32_t arc_index = fsa.arc_indexes[state]; arc_index != arc_end;
+           ++arc_index) {
+        int32_t next_state = arcs_a[arc_index].dest_state;
+        int32_t label = arcs_a[arc_index].label;
+        double next_weight =
+            curr_local_forward_weights.second + arc_weights_a[arc_index];
+        if (next_weight + backward_state_weights[next_state] >= best_weight) {
+          if (label == kEpsilon) {
+            auto result =
+                local_forward_weights.emplace(next_state, next_weight);
+            if (result.second) {
+              local_backward_arcs[next_state] =
+                  std::make_pair(state, arc_index);
+            } else {
+              if (next_weight > result.first->second) {
+                result.first->second = next_weight;
+                local_backward_arcs[next_state] =
+                    std::make_pair(state, arc_index);
+              }
+            }
+          } else {
+            b->arcs.emplace_back(curr_state_b, state_map_a2b[next_state],
+                                 label);
+            std::vector<int32_t> curr_arc_deriv;
+            std::pair<int32_t, int32_t> curr_backward_arc{state, arc_index};
+            auto *backward_arc = &curr_backward_arc;
+            while (backward_arc->second != -1) {
+              curr_arc_deriv.push_back(backward_arc->second);
+              backward_arc = &(local_backward_arcs[backward_arc->first]);
+            }
+            std::reverse(curr_arc_deriv.begin(), curr_arc_deriv.end());
+            arc_derivs->emplace_back(std::move(curr_arc_deriv));
+            ++arc_num_b;
+          }
+        }
+      }
+    }
+  }
+  // duplicate of final state
+  b->arc_indexes.push_back(b->arc_indexes.back());
 }
 
 bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
