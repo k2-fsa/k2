@@ -25,13 +25,13 @@ void CheckInput(const k2::Fsa &fsa, const float *arc_weights) {
 namespace k2 {
 
 void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
-                              float *state_weights) {
+                              double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
   CHECK_NOTNULL(state_weights);
 
   int32_t num_states = fsa.NumStates();
-  std::fill_n(state_weights, num_states, kFloatNegativeInfinity);
+  std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
   const auto &arcs = fsa.arcs;
   state_weights[0] = 0;
@@ -45,13 +45,13 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
 }
 
 void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
-                               float *state_weights) {
+                               double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
   CHECK_NOTNULL(state_weights);
 
   int32_t num_states = fsa.NumStates();
-  std::fill_n(state_weights, num_states, kFloatNegativeInfinity);
+  std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
   const auto &arcs = fsa.arcs;
   state_weights[fsa.FinalState()] = 0;
@@ -61,6 +61,46 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
     auto &src_weight = state_weights[arc.src_state];
     auto dest_weight = state_weights[arc.dest_state];
     src_weight = std::max(src_weight, dest_weight + arc_weights[i]);
+  }
+}
+
+void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
+                                 double *state_weights) {
+  if (IsEmpty(fsa)) return;
+  CheckInput(fsa, arc_weights);
+  CHECK_NOTNULL(state_weights);
+
+  int32_t num_states = fsa.NumStates();
+  std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
+
+  const auto &arcs = fsa.arcs;
+  state_weights[0] = 0;
+  for (std::size_t i = 0; i != arcs.size(); ++i) {
+    const auto &arc = arcs[i];
+    DCHECK_GE(arc.dest_state, arc.src_state);
+    auto src_weight = state_weights[arc.src_state];
+    auto &dest_weight = state_weights[arc.dest_state];
+    dest_weight = LogAdd(dest_weight, src_weight + arc_weights[i]);
+  }
+}
+
+void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
+                                  double *state_weights) {
+  if (IsEmpty(fsa)) return;
+  CheckInput(fsa, arc_weights);
+  CHECK_NOTNULL(state_weights);
+
+  int32_t num_states = fsa.NumStates();
+  std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
+
+  const auto &arcs = fsa.arcs;
+  state_weights[fsa.FinalState()] = 0;
+  for (auto i = static_cast<int32_t>(arcs.size()) - 1; i >= 0; --i) {
+    const auto &arc = arcs[i];
+    DCHECK_GE(arc.dest_state, arc.src_state);
+    auto &src_weight = state_weights[arc.src_state];
+    auto dest_weight = state_weights[arc.dest_state];
+    src_weight = LogAdd(src_weight, dest_weight + arc_weights[i]);
   }
 }
 

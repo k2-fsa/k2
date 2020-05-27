@@ -14,7 +14,6 @@
 #include <limits>
 #include <utility>
 
-
 #include "k2/csrc/fsa.h"
 
 namespace k2 {
@@ -96,6 +95,10 @@ inline bool ApproxEqual(double a, double b, double delta = 0.001) {
   if (diff == std::numeric_limits<double>::infinity() || diff != diff)
     return false;  // diff is +inf or nan.
   return diff <= delta;
+}
+
+inline bool DoubleApproxEqual(double a, double b, double delta = 1e-6) {
+  return a <= b + delta && b <= a + delta;
 }
 
 }  // namespace k2
