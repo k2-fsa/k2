@@ -82,7 +82,7 @@ bool RandomPathWithoutEpsilonArc(const Fsa &a, Fsa *b,
                    `c` what the source arc in `b` was, `-1` represents
                    there is no corresponding source arc in `b`.
  */
-bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
+void Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
                std::vector<float> *c_weights,
                std::vector<int32_t> *arc_map_a = nullptr,
                std::vector<int32_t> *arc_map_b = nullptr);

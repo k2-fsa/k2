@@ -22,9 +22,10 @@
 
 namespace {
 // out_weights[i] = weights[arc_map1[arc_map2[i]]]
-void GetArcWeights(const float *weights, const std::vector<int32_t> &arc_map1,
-                   const std::vector<int32_t> &arc_map2,
-                   std::vector<float> *out_weights) {
+static void GetArcWeights(const float *weights,
+                          const std::vector<int32_t> &arc_map1,
+                          const std::vector<int32_t> &arc_map2,
+                          std::vector<float> *out_weights) {
   CHECK_NOTNULL(out_weights);
   auto &arc_weights = *out_weights;
   for (auto i = 0; i != arc_weights.size(); ++i) {
@@ -33,9 +34,9 @@ void GetArcWeights(const float *weights, const std::vector<int32_t> &arc_map1,
 }
 
 // c = (a - b) + (b-a)
-void SetDifference(const std::unordered_set<int32_t> &a,
-                   const std::unordered_set<int32_t> &b,
-                   std::unordered_set<int32_t> *c) {
+static void SetDifference(const std::unordered_set<int32_t> &a,
+                          const std::unordered_set<int32_t> &b,
+                          std::unordered_set<int32_t> *c) {
   CHECK_NOTNULL(c);
   c->clear();
   for (const auto &v : a) {
@@ -46,8 +47,8 @@ void SetDifference(const std::unordered_set<int32_t> &a,
   }
 }
 
-bool RandomPathHelper(const k2::Fsa &a, k2::Fsa *b, bool no_epsilon_arc,
-                      std::vector<int32_t> *state_map = nullptr) {
+static bool RandomPathHelper(const k2::Fsa &a, k2::Fsa *b, bool no_epsilon_arc,
+                             std::vector<int32_t> *state_map = nullptr) {
   using k2::Arc;
   using k2::ArcHash;
   using k2::kEpsilon;
@@ -246,7 +247,7 @@ bool RandomPathWithoutEpsilonArc(
   return RandomPathHelper(a, b, true, state_map);
 }
 
-bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
+void Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
                std::vector<float> *c_weights,
                std::vector<int32_t> *arc_map_a /*= nullptr*/,
                std::vector<int32_t> *arc_map_b /*= nullptr*/) {
@@ -258,9 +259,10 @@ bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
   if (arc_map_a != nullptr) arc_map_a->clear();
   if (arc_map_b != nullptr) arc_map_b->clear();
 
-  if (IsEmpty(a) || IsEmpty(b)) return true;
-  if (!IsArcSorted(a) || !IsArcSorted(b)) return false;
-  if (!IsEpsilonFree(b)) return false;
+  if (IsEmpty(a) || IsEmpty(b)) return;
+  CHECK(IsArcSorted(a));
+  CHECK(IsArcSorted(b));
+  CHECK(IsEpsilonFree(b));
 
   int32_t final_state_a = a.NumStates() - 1;
   int32_t final_state_b = b.NumStates() - 1;
@@ -357,7 +359,6 @@ bool Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
   // push a duplicate of final state, see the constructor of `Fsa` in
   // `k2/csrc/fsa.h`
   arc_indexes_c.emplace_back(arc_indexes_c.back());
-  return true;
 }
 
 }  // namespace k2
