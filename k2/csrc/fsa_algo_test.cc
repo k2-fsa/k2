@@ -13,6 +13,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "k2/csrc/fsa_equivalent.h"
 #include "k2/csrc/fsa_renderer.h"
 #include "k2/csrc/fsa_util.h"
 #include "k2/csrc/properties.h"
@@ -593,22 +594,23 @@ TEST_F(DeterminizeTest, DeterminizePrunedMax) {
   Fsa b;
   std::vector<float> b_arc_weights;
   std::vector<std::vector<int32_t>> arc_derivs;
-  DeterminizePrunedMax(*max_wfsa_, 10, 100, &b, &b_arc_weights, &arc_derivs);
+  DeterminizePrunedMax(*max_wfsa_, 10.0, 100, &b, &b_arc_weights, &arc_derivs);
 
   EXPECT_TRUE(IsDeterministic(b));
-
-  // TODO(haowen) as the type of `label_to_state` is `unordered_map` (instead of
-  // `map`), the output `state_id` and `arc_id` may differ under different STL
-  // implementations, we need to check the equivalence automatically
+  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(
+      max_wfsa_->fsa, max_wfsa_->arc_weights, b, b_arc_weights.data(), 10.0));
 }
 
 TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
   Fsa b;
   std::vector<float> b_arc_weights;
   std::vector<std::vector<std::pair<int32_t, float>>> arc_derivs;
-  DeterminizePrunedLogSum(*log_wfsa_, 10, 100, &b, &b_arc_weights, &arc_derivs);
+  DeterminizePrunedLogSum(*log_wfsa_, 10.0, 100, &b, &b_arc_weights,
+                          &arc_derivs);
 
   EXPECT_TRUE(IsDeterministic(b));
+  EXPECT_TRUE(IsRandEquivalent<kLogSumWeight>(
+      log_wfsa_->fsa, log_wfsa_->arc_weights, b, b_arc_weights.data(), 10.0));
 
   // TODO(haowen): how to check `arc_derivs_out` here, may return `num_steps` to
   // check the sum of `derivs_out` for each output arc?

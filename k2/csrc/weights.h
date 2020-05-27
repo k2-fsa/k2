@@ -19,8 +19,10 @@
 
 namespace k2 {
 
+constexpr float kFloatInfinity = std::numeric_limits<float>::infinity();
 constexpr float kFloatNegativeInfinity =
     -std::numeric_limits<float>::infinity();
+constexpr double kDoubleInfinity = std::numeric_limits<double>::infinity();
 constexpr double kDoubleNegativeInfinity =
     -std::numeric_limits<double>::infinity();
 

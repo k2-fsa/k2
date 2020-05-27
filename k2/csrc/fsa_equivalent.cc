@@ -169,8 +169,11 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
 
 template <FbWeightType Type>
 bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
-                      const float *b_weights, bool top_sorted /*=true*/,
-                      std::size_t npath /*= 100*/) {
+                      const float *b_weights, float beam /*=kFloatInfinity*/,
+                      bool top_sorted /*=true*/, std::size_t npath /*= 100*/) {
+  CHECK_GT(beam, 0);
+  CHECK_NOTNULL(a_weights);
+  CHECK_NOTNULL(b_weights);
   Fsa connected_a, connected_b, valid_a, valid_b;
   std::vector<int32_t> connected_a_arc_map, connected_b_arc_map,
       valid_a_arc_map, valid_b_arc_map;
@@ -199,10 +202,25 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
        (*(labels_difference.begin())) != kEpsilon))
     return false;
 
+  double loglike_cutoff_a, loglike_cutoff_b;
+  if (beam != kFloatInfinity) {
+    loglike_cutoff_a =
+        ShortestDistance<Type>(valid_a, valid_a_weights.data()) - beam;
+    loglike_cutoff_b =
+        ShortestDistance<Type>(valid_b, valid_b_weights.data()) - beam;
+    if (Type == kMaxWeight &&
+        !DoubleApproxEqual(loglike_cutoff_a, loglike_cutoff_b))
+      return false;
+  } else {
+    loglike_cutoff_a = kDoubleNegativeInfinity;
+    loglike_cutoff_b = kDoubleNegativeInfinity;
+  }
+
   std::random_device rd;
   std::mt19937 gen(rd());
   std::bernoulli_distribution coin(0.5);
-  for (auto i = 0; i != npath; ++i) {
+  std::size_t n = 0;
+  while (n < npath) {
     const auto &fsa = coin(gen) ? valid_a : valid_b;
     Fsa path, valid_path;
     RandomPathWithoutEpsilonArc(fsa, &path);  // path is already connected
@@ -220,11 +238,31 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
     // find out that we don't need that version, we will remove flag
     // `top_sorted` and add requirements as comments in the header file.
     CHECK(top_sorted);
-    double sum_a =
-        ShortestDistance<Type>(a_compose_path, a_compose_weights.data());
-    double sum_b =
-        ShortestDistance<Type>(b_compose_path, b_compose_weights.data());
-    if (!DoubleApproxEqual(sum_a, sum_b)) return false;
+    double max_loglike_path_a =
+        ShortestDistance<kMaxWeight>(a_compose_path, a_compose_weights.data());
+    double max_loglike_path_b =
+        ShortestDistance<kMaxWeight>(b_compose_path, b_compose_weights.data());
+    if (max_loglike_path_a < loglike_cutoff_a &&
+        max_loglike_path_b < loglike_cutoff_b) {
+      // both `a` and `b` have no path within `beam` for symbol sequence `path`
+      continue;
+    } else if (max_loglike_path_a >= loglike_cutoff_a &&
+               max_loglike_path_b >= loglike_cutoff_b) {
+      double loglike_path_a, loglike_path_b;
+      if (Type == kLogSumWeight) {
+        loglike_path_a =
+            ShortestDistance<Type>(a_compose_path, a_compose_weights.data());
+        loglike_path_b =
+            ShortestDistance<Type>(b_compose_path, b_compose_weights.data());
+      } else {
+        loglike_path_a = max_loglike_path_a;
+        loglike_path_b = max_loglike_path_b;
+      }
+      if (!DoubleApproxEqual(loglike_path_a, loglike_path_b)) return false;
+      ++n;
+    } else {
+      return false;
+    }
   }
   return true;
 }
@@ -232,10 +270,11 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
 // explicit instantiation here
 template bool IsRandEquivalent<kMaxWeight>(const Fsa &a, const float *a_weights,
                                            const Fsa &b, const float *b_weights,
-                                           bool top_sorted, std::size_t npath);
+                                           float beam, bool top_sorted,
+                                           std::size_t npath);
 template bool IsRandEquivalent<kLogSumWeight>(
     const Fsa &a, const float *a_weights, const Fsa &b, const float *b_weights,
-    bool top_sorted, std::size_t npath);
+    float beam, bool top_sorted, std::size_t npath);
 
 bool RandomPath(const Fsa &a, Fsa *b,
                 std::vector<int32_t> *state_map /*=nullptr*/) {

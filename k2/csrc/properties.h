@@ -32,8 +32,7 @@ enum Properties {
   `fsa` is valid if:
   1. it is empty, if not, it contains at least two states.
   2. only kFinalSymbol arcs enter the final state.
-  3. every state contains at least one arc except the final state.
-  4. `arcs_indexes` and `arcs` in this state are not consistent.
+  3. `arcs_indexes` and `arcs` in this state are not consistent.
   TODO(haowen): add more rules?
  */
 bool IsValid(const Fsa &fsa);
@@ -59,7 +58,7 @@ bool HasSelfLoops(const Fsa &fsa);
   accessible (i.e. from the start state) are not considered.
   The optional argument order, assigns the order in which visiting states is
   finished in DFS traversal. State 0 has the largest order (num_states - 1) and
-  the final state has the smallest order (0). 
+  the final state has the smallest order (0).
  */
 bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order = nullptr);
 
