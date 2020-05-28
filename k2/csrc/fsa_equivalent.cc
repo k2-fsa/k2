@@ -170,7 +170,8 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
 template <FbWeightType Type>
 bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
                       const float *b_weights, float beam /*=kFloatInfinity*/,
-                      bool top_sorted /*=true*/, std::size_t npath /*= 100*/) {
+                      float delta /*=1e-6*/, bool top_sorted /*=true*/,
+                      std::size_t npath /*= 100*/) {
   CHECK_GT(beam, 0);
   CHECK_NOTNULL(a_weights);
   CHECK_NOTNULL(b_weights);
@@ -238,30 +239,15 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
     // find out that we don't need that version, we will remove flag
     // `top_sorted` and add requirements as comments in the header file.
     CHECK(top_sorted);
-    double max_loglike_path_a =
-        ShortestDistance<kMaxWeight>(a_compose_path, a_compose_weights.data());
-    double max_loglike_path_b =
-        ShortestDistance<kMaxWeight>(b_compose_path, b_compose_weights.data());
-    if (max_loglike_path_a < loglike_cutoff_a &&
-        max_loglike_path_b < loglike_cutoff_b) {
-      // both `a` and `b` have no path within `beam` for symbol sequence `path`
+    double cost_a =
+        ShortestDistance<Type>(a_compose_path, a_compose_weights.data());
+    double cost_b =
+        ShortestDistance<Type>(b_compose_path, b_compose_weights.data());
+    if (cost_a < loglike_cutoff_a && cost_b < loglike_cutoff_b) {
       continue;
-    } else if (max_loglike_path_a >= loglike_cutoff_a &&
-               max_loglike_path_b >= loglike_cutoff_b) {
-      double loglike_path_a, loglike_path_b;
-      if (Type == kLogSumWeight) {
-        loglike_path_a =
-            ShortestDistance<Type>(a_compose_path, a_compose_weights.data());
-        loglike_path_b =
-            ShortestDistance<Type>(b_compose_path, b_compose_weights.data());
-      } else {
-        loglike_path_a = max_loglike_path_a;
-        loglike_path_b = max_loglike_path_b;
-      }
-      if (!DoubleApproxEqual(loglike_path_a, loglike_path_b)) return false;
-      ++n;
     } else {
-      return false;
+      if (!DoubleApproxEqual(cost_a, cost_b, delta)) return false;
+      ++n;
     }
   }
   return true;
@@ -270,11 +256,11 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
 // explicit instantiation here
 template bool IsRandEquivalent<kMaxWeight>(const Fsa &a, const float *a_weights,
                                            const Fsa &b, const float *b_weights,
-                                           float beam, bool top_sorted,
-                                           std::size_t npath);
+                                           float beam, float delta,
+                                           bool top_sorted, std::size_t npath);
 template bool IsRandEquivalent<kLogSumWeight>(
     const Fsa &a, const float *a_weights, const Fsa &b, const float *b_weights,
-    float beam, bool top_sorted, std::size_t npath);
+    float beam, float delta, bool top_sorted, std::size_t npath);
 
 bool RandomPath(const Fsa &a, Fsa *b,
                 std::vector<int32_t> *state_map /*=nullptr*/) {

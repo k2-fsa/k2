@@ -33,17 +33,21 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
   @param [in]  b          The other FSA to be checked the equivalence
   @param [in]  b_weights  Arc weights of `b`
   @param [in]  beam       beam > 0 that affects pruning; the algorithm
-                          will only check symbol sequences that have a path
-                          within `beam` of the best path(for tropical semiring,
-                          it's max weight over all paths from start state to
+                          will only check paths within `beam` of the
+                          best path(for tropical semiring, it's max
+                          weight over all paths from start state to
                           final state; for log semiring, it's log-sum probs
                           over all paths) in `a` or `b`. That is,
-                          any symbol sequence which has a path within
-                          `beam` of the best path (either in `a` or `b`),
-                          must have the same weights in `a` and `b`.
+                          any symbol sequence, whose total weights
+                          over all paths are within `beam` of the best
+                          path (either in `a` or `b`), must have
+                          the same weights in `a` and `b`.
                           There is no any requirement on symbol sequences
-                          that has no path within `beam`.
+                          whose total weights over paths are outside `beam`.
                           Just keep `kFloatInfinity` if you don't want pruning.
+  @param [in]  delta      Tolerance for path weights to check the equivalence.
+                          If abs(weights_a, weights_b) <= delta, we say the two
+                          paths are equivalent.
   @param [in]  top_sorted The user may set this to true if both `a` and `b` are
                           topologically sorted; this makes this function faster.
                           Otherwise it must be set to false.
@@ -53,7 +57,8 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
 template <FbWeightType Type>
 bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
                       const float *b_weights, float beam = kFloatInfinity,
-                      bool top_sorted = true, std::size_t npath = 100);
+                      float delta = 1e-6, bool top_sorted = true,
+                      std::size_t npath = 100);
 
 /*
   Gets a random path from an Fsa `a`, returns true if we get one path
