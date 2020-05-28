@@ -609,6 +609,8 @@ int32_t DetState<TracebackState>::ProcessArcs(
       derivs_per_arc->push_back(std::move(deriv_info));
       if (is_new_state)
         queue->push(std::unique_ptr<DetState<TracebackState>>(det_state));
+      else
+        delete det_state;
     } else {
       delete det_state;
     }
