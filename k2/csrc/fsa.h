@@ -244,8 +244,8 @@ class CfsaVec {
 
   Cfsa operator [] (int32_t f) const;
  private:
-  Cfsa &operator = (const Cfsa &);  // Disable
-  Cfsa(const Cfsa&);  // Disable
+  CfsaVec &operator = (const CfsaVec &);  // Disable
+  CfsaVec(const CfsaVec&);  // Disable
 
   int32_t num_fsas_;
 
