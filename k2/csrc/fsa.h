@@ -198,7 +198,6 @@ void CreateCfsaVec(const std::vector<Cfsa> &fsas_in,
 
 class CfsaVec {
  public:
-
   /*
       Constructor from linear data, e.g. in a tensor holding a single
       Fsa:
@@ -242,7 +241,8 @@ class CfsaVec {
 
   int32_t NumFsas() const { return num_fsas_; }
 
-  Cfsa operator [] (int32_t f) const;
+  Cfsa operator[] (int32_t f) const;
+
  private:
   CfsaVec &operator = (const CfsaVec &);  // Disable
   CfsaVec(const CfsaVec&);  // Disable
@@ -274,6 +274,11 @@ class CfsaVec {
   weights[t,n].
  */
 struct DenseFsa {
+
+  int32_t T;
+  int32_t num_symbols;
+  int32_t arc_offset;
+
   float *weights;  // Would typically be a log-prob or unnormalized log-prob
   int32_t T;       // The number of time steps == rows in the matrix `weights`;
                    // this FSA has T + 2 states, see explanation above.
@@ -283,7 +288,7 @@ struct DenseFsa {
 
   /* Constructor
      @param [in] data   Pointer to the raw data, which is a T by num_symbols
-     matrix with stride `stride`, containing logprobs
+                        matrix with stride `stride`, containing logprobs
 
       CAUTION: we may later enforce that stride == num_symbols, in order to
       be able to know the layout of a phantom matrix of arcs.  (?)
