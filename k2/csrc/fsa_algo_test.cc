@@ -321,7 +321,7 @@ class RmEpsilonTest : public ::testing::Test {
 TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
   Fsa b;
   std::vector<std::vector<int32_t>> arc_derivs_b;
-  RmEpsilonsPrunedMax(*max_wfsa_, 8, &b, &arc_derivs_b);
+  RmEpsilonsPrunedMax(*max_wfsa_, 8.0, &b, &arc_derivs_b);
 
   EXPECT_TRUE(IsEpsilonFree(b));
   ASSERT_EQ(b.arcs.size(), 11);
@@ -330,6 +330,22 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
 
   // TODO(haowen): check the equivalence after implementing RandEquivalent for
   // WFSA
+}
+
+TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
+  Fsa b;
+  std::vector<float> arc_weights_b;
+  std::vector<std::vector<std::pair<int32_t, float>>> arc_derivs_b;
+  RmEpsilonsPrunedLogSum(*log_wfsa_, 8.0, &b, &arc_weights_b, &arc_derivs_b);
+
+  EXPECT_TRUE(IsEpsilonFree(b));
+  ASSERT_EQ(b.arcs.size(), 11);
+  ASSERT_EQ(b.arc_indexes.size(), 7);
+  ASSERT_EQ(arc_weights_b.size(), 11);
+  ASSERT_EQ(arc_derivs_b.size(), 11);
+
+  // TODO(haowen): check the equivalence after implementing RandEquivalent for
+  // RmEpsilonPrunedLogSum
 }
 
 TEST(FsaAlgo, Intersect) {

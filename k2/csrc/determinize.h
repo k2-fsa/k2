@@ -267,9 +267,8 @@ struct LogSumTracebackState {
   double backward_prob;  // Used temporarily in algorithms as a backward prob.
                          // Undefined most of the time.
 
-  // This constructor is to be used only for the start-state (of both the
-  // input FSA and the determinized FSA).
-  LogSumTracebackState() : state_id(0), forward_prob(0.0) {}
+  explicit LogSumTracebackState(int32_t state_id = 0, double forward_prob = 0.0)
+      : state_id(state_id), forward_prob(forward_prob) {}
 
   /*
      @param [in] state_id  State in input FSA
