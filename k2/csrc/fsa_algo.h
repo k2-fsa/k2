@@ -118,6 +118,7 @@ void RmEpsilonsMax(const Fsa &a, float *a_weights, Fsa *b,
                     the difference will affect pruning slightly.
     @param [in] beam  Beam for pruning, must be > 0.
     @param [out]  b  The output FSA
+    @param [out]  b  Weights per arc of b.
     @param [out] arc_derivs  Indexed by arc-index in b, it is an list of
                      (input-arc, deriv), where 0 < deriv <= 1, where the
                      lists are ordered by input-arc (unlike
@@ -129,6 +130,7 @@ void RmEpsilonsMax(const Fsa &a, float *a_weights, Fsa *b,
  */
 void RmEpsilonsPrunedLogSum(
     const WfsaWithFbWeights &a, float beam, Fsa *b,
+    std::vector<float> *b_arc_weights,
     std::vector<std::vector<std::pair<int32_t, float>>> *arc_derivs);
 
 /*
@@ -136,6 +138,7 @@ void RmEpsilonsPrunedLogSum(
   documentation.
  */
 void RmEpsilonsLogSum(const Fsa &a, float *a_weights, Fsa *b,
+                      std::vector<float> *b_arc_weights,
                       std::vector<std::vector<int32_t>> *arc_map);
 
 /*
