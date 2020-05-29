@@ -149,6 +149,19 @@ TEST(FsaEquivalent, IsWfsaRandEquivalent) {
                                                   c_weights.data());
     EXPECT_FALSE(status);
   }
+
+  // check equivalence with beam
+  {
+    bool status = IsRandEquivalent<kMaxWeight>(a, a_weights.data(), b,
+                                               b_weights.data(), 4.0);
+    EXPECT_TRUE(status);
+  }
+  // check equivalence with beam
+  {
+    bool status = IsRandEquivalent<kMaxWeight>(a, a_weights.data(), c,
+                                               c_weights.data(), 6.0);
+    EXPECT_FALSE(status);
+  }
 }
 
 TEST(FsaEquivalent, RandomPathFail) {

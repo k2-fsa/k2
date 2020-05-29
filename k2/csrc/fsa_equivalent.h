@@ -32,15 +32,32 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
   @param [in]  a_weights  Arc weights of `a`
   @param [in]  b          The other FSA to be checked the equivalence
   @param [in]  b_weights  Arc weights of `b`
-  @param [in]  top_sorted If both `a` and `b` are topological sorted or not.
-                          We may remove this flag if we finally find out that
-                          input FSAs in all scenarios are top-sorted.
+  @param [in]  beam       beam > 0 that affects pruning; the algorithm
+                          will only check paths within `beam` of the
+                          best path(for tropical semiring, it's max
+                          weight over all paths from start state to
+                          final state; for log semiring, it's log-sum probs
+                          over all paths) in `a` or `b`. That is,
+                          any symbol sequence, whose total weights
+                          over all paths are within `beam` of the best
+                          path (either in `a` or `b`), must have
+                          the same weights in `a` and `b`.
+                          There is no any requirement on symbol sequences
+                          whose total weights over paths are outside `beam`.
+                          Just keep `kFloatInfinity` if you don't want pruning.
+  @param [in]  delta      Tolerance for path weights to check the equivalence.
+                          If abs(weights_a, weights_b) <= delta, we say the two
+                          paths are equivalent.
+  @param [in]  top_sorted The user may set this to true if both `a` and `b` are
+                          topologically sorted; this makes this function faster.
+                          Otherwise it must be set to false.
   @param [in]  npath      The number of paths will be generated to check the
                           equivalence of `a` and `b`
  */
 template <FbWeightType Type>
 bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
-                      const float *b_weights, bool top_sorted = true,
+                      const float *b_weights, float beam = kFloatInfinity,
+                      float delta = 1e-6, bool top_sorted = true,
                       std::size_t npath = 100);
 
 /*
@@ -61,18 +78,16 @@ bool RandomPath(const Fsa &a, Fsa *b,
 bool RandomPathWithoutEpsilonArc(const Fsa &a, Fsa *b,
                                  std::vector<int32_t> *state_map = nullptr);
 /*
-  Computes the intersection of two FSAs where one FSA has weights on arc. This
-  function will be called in the version of `IsRandEquivalent` for Wfsa.
+  Computes the intersection of two FSAs where one FSA has weights on arc.
 
   @param [in] a    One of the FSAs to be intersected.  Must satisfy
                    ArcSorted(a)
   @param [in] a_weights Arc weights of `a`
   @param [in] b    The other FSA to be intersected  Must satisfy
                    ArcSorted(b) and IsEpsilonFree(b). It is usually a path
-  generated from `RandomNonEpsilonPath`
+                   generated from `RandomNonEpsilonPath`
   @param [out] c   The composed FSA will be output to here.
-  @param [out] c_weights Arc weights of output FSA `c` which are corresponding
-  arc weights in `a`
+  @param [out] c_weights Arc weights of output FSA `c`.
   @param [out] arc_map_a   If non-NULL, at exit will be a vector of
                    size c->arcs.size(), saying for each arc in
                    `c` what the source arc in `a` was, `-1` represents
