@@ -52,7 +52,36 @@ inline int32_t InsertIntersectionState(
   return result.first->second;
 }
 
-static void TraceBackRmEpsilonLogSum(
+/**
+   A TraceBack() function used in RmEpsilonsPrunedLogSum.  It finds derivative
+   information for all arcs in a sub-graph. Generally, in
+   RmEpsilonsPrunedLogSum, we actually get a sub-graph when we find a
+   non-epsilon arc starting from a particular state `s` (from which we are
+   trying to remove epsilon arcs). All leaving arcs of all states in this
+   sub-graph are epsilon arcs except the last one. Then, from the last state, we
+   need to trace back to state `s` to find the derivative information for all
+   epsilon arcs in this graph.
+       @param [in] curr_states   (This is consumed destructively, i.e. don't
+                       expect it to contain the same set on exit).
+                       A set of states, stored as a std::map that mapping
+                       state_id in input FSA to the corresponding
+                       LogSumTracebackState we created for this state;
+                       we'll iteratively trace back this set one element
+                       (processing all entering arcs) at a time.  At entry
+                       it must have size() == 1 which contains the last
+                       state mentioned above; it will also have size() == 1
+                       at exit which contains the state `s` above.
+       @param [in] arc_weights_in  Weights on the arcs of the input FSA
+       @param [out] deriv_out  Some derivative information at the output
+                       will be written to here, which tells us how the weight
+                       of the non-epsilon arc we created from the above
+                       sub-graph varies as a function of the weights on the
+                       arcs of the input FSA; it's a list
+                       (input_arc_id, deriv) where, mathematically,
+                       0 < deriv <= 1 (but we might still get exact zeros
+                       due to limitations of floating point representation).
+ */
+static void TraceBackRmEpsilonsLogSum(
     std::map<int32_t, k2::LogSumTracebackState *> *curr_states,
     const float *arc_weights_in,
     std::vector<std::pair<int32_t, float>> *deriv_out) {
@@ -63,6 +92,10 @@ static void TraceBackRmEpsilonLogSum(
   // can process them when they already have correct backward_prob (all leaving
   // arcs have been processed).
   k2::LogSumTracebackState *state_ptr = curr_states->rbegin()->second;
+  // In the standard forward-backward algorithm for HMMs this backward_prob
+  // would, mathematically, be 0.0, but if we set it to the negative of the
+  // forward prob we can avoid having to subtract the total log-prob
+  // when we compute posterior/occupation probabilities for arcs.
   state_ptr->backward_prob = -state_ptr->forward_prob;
   while (!state_ptr->prev_elements.empty()) {
     double backward_prob = state_ptr->backward_prob;
@@ -79,6 +112,9 @@ static void TraceBackRmEpsilonLogSum(
             k2::LogAdd(new_backward_prob, prev_state->backward_prob);
       }
     }
+    // we have processed all entering arcs of state curr_states->rbegin(),
+    // we'll remove it now. As std::map.erase() does not support passing a
+    // reverse iterator, we here pass --end();
     curr_states->erase(--curr_states->end());
     CHECK(!curr_states->empty());
     state_ptr = curr_states->rbegin()->second;
@@ -508,8 +544,8 @@ void RmEpsilonsPrunedLogSum(
             std::vector<std::pair<int32_t, float>> curr_arc_deriv;
             std::map<int32_t, LogSumTracebackState *> curr_states;
             curr_states.emplace(state, curr_traceback_state.get());
-            TraceBackRmEpsilonLogSum(&curr_states, arc_weights_a,
-                                     &curr_arc_deriv);
+            TraceBackRmEpsilonsLogSum(&curr_states, arc_weights_a,
+                                      &curr_arc_deriv);
             std::reverse(curr_arc_deriv.begin(), curr_arc_deriv.end());
             // push derivs info of current arc
             curr_arc_deriv.emplace_back(arc_index, 1);

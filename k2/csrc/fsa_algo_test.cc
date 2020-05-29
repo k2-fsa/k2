@@ -328,8 +328,10 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
   ASSERT_EQ(b.arc_indexes.size(), 7);
   ASSERT_EQ(arc_derivs_b.size(), 11);
 
-  // TODO(haowen): check the equivalence after implementing RandEquivalent for
-  // WFSA
+  std::vector<float> arc_weights_b(b.arcs.size());
+  GetArcWeights(max_wfsa_->arc_weights, arc_derivs_b, arc_weights_b.data());
+  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(
+      max_wfsa_->fsa, max_wfsa_->arc_weights, b, arc_weights_b.data(), 8.0));
 }
 
 TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
@@ -344,8 +346,10 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
   ASSERT_EQ(arc_weights_b.size(), 11);
   ASSERT_EQ(arc_derivs_b.size(), 11);
 
-  // TODO(haowen): check the equivalence after implementing RandEquivalent for
-  // RmEpsilonPrunedLogSum
+  EXPECT_TRUE(IsRandEquivalentAfterRmEpsPrunedLogSum(
+      log_wfsa_->fsa, log_wfsa_->arc_weights, b, arc_weights_b.data(), 8.0));
+
+  // TODO(haowen): how to check arc_derivs
 }
 
 TEST(FsaAlgo, Intersect) {

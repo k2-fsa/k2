@@ -1,6 +1,7 @@
 // k2/csrc/fsa_util.h
 
 // Copyright (c)  2020  Daniel Povey
+//                      Haowen Qiu
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -39,6 +40,29 @@ namespace k2 {
 void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
                      std::vector<int32_t> *end_index);
 
+/*
+  Gets arc weights for an FSA (output FSA) according to `arc_map` which
+  maps each arc in the FSA to a sequence of arcs in the other FSA (input FSA).
+
+    @param [in] arc_weights_in  Arc weights of the input FSA. Indexed by
+                                arc in the input FSA.
+    @param [in] arc_map         Indexed by arc in the output FSA. `arc_map[i]`
+                                lists the sequence of arcs in the input FSA
+                                that arc `i` in the output FSA corresponds to.
+                                The weight of arc `i` will be equal to the
+                                sum of those input arcs' weights.
+    @param [out] arc_weights_out Arc weights of the output FSA. Indexed by arc
+                                 in the output FSA. It should have the same size
+                                 with arc_map at entry.
+*/
+void GetArcWeights(const float *arc_weights_in,
+                   const std::vector<std::vector<int32_t>> &arc_map,
+                   float *arc_weights_out);
+
+// Version of GetArcWeights where arc_map maps each arc in the output FSA to one
+// arc (instead of a sequence of arcs) in the input FSA; see its documentation.
+void GetArcWeights(const float *arc_weights_in,
+                   const std::vector<int32_t> &arc_map, float *arc_weights_out);
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by Compose())
   from int32 to int64; this will be needed for conversion to LongTensor.
