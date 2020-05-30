@@ -164,25 +164,6 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
                std::vector<int32_t> *arc_map_a = nullptr,
                std::vector<int32_t> *arc_map_b = nullptr);
 
-/*
-  Version of Intersect where `a` is dense?
- */
-void Intersect(const DenseFsa &a, const Fsa &b, Fsa *c,
-               std::vector<int32_t> *arc_map_a = nullptr,
-               std::vector<int32_t> *arc_map_b = nullptr);
-
-/*
-  Version of Intersect where `a` is dense, pruned with pruning beam `beam`.
-  Suppose states in the output correspond to pairs (s_a, s_b), and have
-  forward-weights w(s_a, s_b), i.e. best-path from the start state...
-  then if a state has a forward-weight w(s_a, s_b) that is less than
-  (the largest w(s_a, x) for any x) minus the beam, we don't expand it.
-
-  This is the same as time-synchronous Viterbi beam pruning.
-*/
-void IntersectPruned(const DenseFsa &a, const Fsa &b, float beam, Fsa *c,
-                     std::vector<int32_t> *arc_map_a = nullptr,
-                     std::vector<int32_t> *arc_map_b = nullptr);
 
 /**
    Intersection of two weighted FSA's: the same as Intersect(), but it prunes

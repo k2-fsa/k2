@@ -170,42 +170,20 @@ struct Cfsa {
 };
 
 
-/*
-  Return the number of bytes we'd need to represent this vector of Cfsas
-  linearly as a CfsaVec. */
-size_t GetCfsaVecSize(const std::vector<Cfsa> &fsas_in);
-
-// Return the number of bytes we'd need to represent this Cfsa
-// linearly as a CfsaVec with one element
-size_t GetCfsaVecSize(const Cfsa &fsa_in);
-
-/*
-  Create a CfsaVec from a vector of Cfsas (this involves representing
-  the vector of Fsas in one big linear memory region).
-
-     @param [in] fsas_in  The vector of Cfsas to be linearized;
-                      must be nonempty
-     @param [in] data    The allocated data of size `size` bytes
-     @param [in] size    The size of the memory block passed;
-                         must equal the return value of
-                         GetCfsaVecSize(fsas_in).
- */
-void CreateCfsaVec(const std::vector<Cfsa> &fsas_in,
-                   void *data,
-                   size_t size);
-
 
 
 class CfsaVec {
  public:
   /*
-      Constructor from linear data, e.g. in a tensor holding a single
-      Fsa:
+      Constructor from linear data, e.g. from data stored in a torch.Tensor.
+      This would previously have been created using CreateCfsaVec().
+
          @param [in] size    size in int32_t elements of `data`, only
                              needed for checking purposes.
          @param [in] data    The underlying data.   Format of data is
                              described below (all elements are of type
-                             int32_t unless stated otherwise).
+                             int32_t unless stated otherwise).  Would have
+                             been created by CreateCfsaVec().
 
              - version       Format version number, currently always 1.
              - num_fsas      The number of FSAs
@@ -259,42 +237,30 @@ class CfsaVec {
 
 
 /*
-  DenseFsa represents an FSA stored as a matrix, representing something
-  like CTC output from a neural net.  We view `weights` as a T by N
-  matrix, where N is the number of symbols (including blank/zero).
+  Return the number of bytes we'd need to represent this vector of Cfsas
+  linearly as a CfsaVec. */
+size_t GetCfsaVecSize(const std::vector<Cfsa> &fsas_in);
 
-  Physically, we would access weights[t,n] as weights[t * t_stride + n].
+// Return the number of bytes we'd need to represent this Cfsa
+// linearly as a CfsaVec with one element
+size_t GetCfsaVecSize(const Cfsa &fsa_in);
 
-  This FSA has T + 2 states, with state 0 the start state and state T + 2
-  the final state.  (Caution: if we formulated our FSAs more normally we
-  would have T + 1 states, but because we represent final-probs via an
-  arc with symbol kFinalSymbol on it to the last state, we need one
-  more state).   For 0 <= t < T, we have an arc with symbol n on it for
-  each 0 <= n < N, from state t to state t+1, with weight equal to
-  weights[t,n].
+/*
+  Create a CfsaVec from a vector of Cfsas (this involves representing
+  the vector of Fsas in one big linear memory region).
+
+     @param [in] fsas_in  The vector of Cfsas to be linearized;
+                      must be nonempty
+     @param [in] data    The allocated data of size `size` bytes
+     @param [in] size    The size of the memory block passed;
+                         must equal the return value of
+                         GetCfsaVecSize(fsas_in).
  */
-struct DenseFsa {
+void CreateCfsaVec(const std::vector<Cfsa> &fsas_in,
+                   void *data,
+                   size_t size);
 
-  int32_t T;
-  int32_t num_symbols;
-  int32_t arc_offset;
 
-  float *weights;  // Would typically be a log-prob or unnormalized log-prob
-  int32_t T;       // The number of time steps == rows in the matrix `weights`;
-                   // this FSA has T + 2 states, see explanation above.
-  int32_t num_symbols;  // The number of symbols == columns in the matrix
-                        // `weights`.
-  int32_t t_stride;     // The stride of the matrix `weights`
-
-  /* Constructor
-     @param [in] data   Pointer to the raw data, which is a T by num_symbols
-                        matrix with stride `stride`, containing logprobs
-
-      CAUTION: we may later enforce that stride == num_symbols, in order to
-      be able to know the layout of a phantom matrix of arcs.  (?)
-   */
-  DenseFsa(float *data, int32_t T, int32_t num_symbols, int32_t stride);
-};
 
 struct Fst {
   Fsa core;
@@ -326,7 +292,6 @@ class DeterministicGenericFsa {
 
 using FsaVec = std::vector<Fsa>;
 using FstVec = std::vector<Fst>;
-using DenseFsaVec = std::vector<DenseFsa>;
 
 }  // namespace k2
 

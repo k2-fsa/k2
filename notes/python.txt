@@ -208,6 +208,96 @@
 
 
 
+def DenseFsaVec:
+
+    """Represents a vector of FSAs, but with a special regular
+    structure.  Each FSA would normally correspond to one supervised
+    segment within an acoustic sequence.  This wraps the data
+    output from the neural net.  Each segment has T+2 states
+    numbered 0, 1, .. T, T+1 (the T+1'th is the final-state and
+    only has final-arcs entering it).  From state i to i+1
+    there is an arc for each symbol, whose loglike comes from
+    lookup in the neural-net output."""
+
+
+    def __init__(self, loglikes, seq_indexes, start_times, end_times):
+      """ Constructor.
+      Params:
+         loglikes (torch.Tensor):  The tensor of log-likelihoods
+            output by the neural network.  Will be interpreted
+            as having shape (num_seqs, num_frames, num_symbols).
+            Here `num_symbols` includes epsilon.
+          seq_indexes, start_times, end_times (torch.Tensor):
+            These must all have the same shape, of the form
+            (num_segments,).  Here, num_segments would normally
+            be >= num_seqs (each sequence may have more than
+            one supervised segment in it, and they may
+            overlap).
+              - seq_indexes says, for each segment, which sequence
+                it is a part of
+              - start_times says, for each segment, what the first
+                frame-index in `loglikes` is
+              - start_times says, for each segment, what the
+                one-past-the-last frame-index in `loglikes` is.
+        """
+        # note: this will reate a csrc.CfsaVec object internal to this
+        # object.
+        # It will also create self.arc_loglikes containing the
+        # loglikes, one per arc of the CfsaVec object.  This is
+        # a repeat of `loglikes` but possibly in a different
+        # order.
+        pass
+
+    @property
+    def loglikes(self):
+        return self.arc_loglikes
+
+
+    def seg_frames_for_arcs(self, arc_indexes):
+        """
+        Returns the frame-indexes relative to the start of each segment
+        for each of a provided list of arc indexes, as a torch.LongTensor.
+        """
+
+        # Note: self.seg_frame_indexes will be a torch.IntTensor containing
+        # the frame index for each arc.  Later we'll address not being
+        # able to index with IntTensor but only LongTensor.
+        return self.seg_frame_indexes[arc_indexes / self.num_symbols]
+
+    def seq_frames_for_arcs(self, arc_indexes):
+        """
+        Returns the frame-indexes relative to the start of each sequence
+        for each of a provided list of arc indexes, as a torch.LongTensor.
+
+        Note: if a returned frame-index equals num_frames, then that
+        frame was a `final-arc` (a special arc going to the final state),
+        which cannot be used to index the `loglikes` array provided to
+        the constructor because it's out-of-range.
+        """
+
+        # Note: self.seq_frame_indexes will be a torch.IntTensor containing
+        # the frame index for each arc.  Later we'll address not being
+        # able to index with IntTensor but only LongTensor.
+        return self.seq_frame_indexes[arc_indexes / self.num_symbols]
+
+    def segments_for_arcs(self, arc_indexes):
+        """
+        Return the segment-indexes for each of a provided list of arcs,
+        which tells you which segment it was a part of.
+        """
+        return self.segment_indexes[arc_indexes / self.num_symbols]
+
+    def seqs_for_arcs(self, arc_indexes):
+        """
+        Return the segment-indexes for each of a provided list of arcs,
+        which tells you which sequence it was a part of.
+        """
+        return self.input_seq_indexes[self.segments_for_arcs(arc_indexes)]
+
+
+
+
+
 
 # compute posteriors..
    first_pass_posts =

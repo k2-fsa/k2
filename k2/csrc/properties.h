@@ -33,8 +33,7 @@ enum Properties {
   `fsa` is valid if:
   1. it is empty, if not, it contains at least two states.
   2. only kFinalSymbol arcs enter the final state.
-  3. every state contains at least one arc except the final state.
-  4. `arcs_indexes` and `arcs` in this state are not consistent.
+  3. `arc_indexes` and `arcs` in this state are consistent
   TODO(haowen): add more rules?
  */
 bool IsValid(const Fsa &fsa);
