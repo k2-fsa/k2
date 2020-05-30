@@ -45,8 +45,6 @@ bool IsValid(const Fsa &fsa) {
     if (arc.src_state == state) {
       ++num_arcs;
     } else {
-      // every state contains at least one arc.
-      if (arc.src_state != state + 1) return false;
       // `arc_indexes` and `arcs` in this state are not consistent.
       if ((fsa.arc_indexes[state + 1] - fsa.arc_indexes[state]) != num_arcs)
         return false;
@@ -55,7 +53,6 @@ bool IsValid(const Fsa &fsa) {
     }
   }
   // check the last state
-  if (final_state != state + 1) return false;
   if ((fsa.arc_indexes[final_state] - fsa.arc_indexes[state]) != num_arcs)
     return false;
   return true;
@@ -106,8 +103,7 @@ bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
     if (current_state.arc_begin == current_state.arc_end) {
       // we have finished visiting this state
       state_status[current_state.state] = kVisited;
-      if (order != nullptr)
-        order->push_back(current_state.state);
+      if (order != nullptr) order->push_back(current_state.state);
       stack.pop();
       continue;
     }
@@ -119,7 +115,7 @@ bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
         // a new discovered node
         state_status[next_state] = kVisiting;
         stack.push({next_state, fsa.arc_indexes[next_state],
-                   fsa.arc_indexes[next_state + 1]});
+                    fsa.arc_indexes[next_state + 1]});
         ++current_state.arc_begin;
         break;
       }
