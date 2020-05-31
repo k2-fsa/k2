@@ -26,6 +26,13 @@ void *MemAlign(size_t nbytes, size_t alignment) {
   return p;
 }
 
-void MemFree(void *ptr) { free(ptr); }
+void MemFree(void *ptr) {
+#if defined(_MSC_VER)
+  // windows
+  _aligned_free(ptr);
+#else
+  free(ptr);
+#endif
+}
 
 }  // namespace k2
