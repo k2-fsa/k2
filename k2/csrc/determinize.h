@@ -364,7 +364,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
 // for LogSumTracebackState, above.  This version is simpler.
 void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
                int32_t num_steps,
-               const float *,  // arc_weights_in, unused.
+               const float *unused,  // arc_weights_in, unused.
                float *weight_out, std::vector<int32_t> *deriv_out);
 
 template <class TracebackState>
@@ -633,7 +633,7 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
   std::unordered_set<TracebackState *> cur_states;
 
   double fb_prob = -std::numeric_limits<double>::infinity();
-  for (auto p : elements) {
+  for (const auto &p : elements) {
     TracebackState *state = p.second.get();
     fb_prob = LogSumOrMax<TracebackState>(
         fb_prob,
@@ -701,10 +701,10 @@ class DetStateMap {
     if (inserted) {
       a->state_id = cur_output_state_++;
       return true;
-    } else {
-      a->state_id = p.first->second;
-      return false;
     }
+
+    a->state_id = p.first->second;
+    return false;
   }
 
   int32_t size() const { return cur_output_state_; }
@@ -837,9 +837,9 @@ float DeterminizePrunedTpl(
                arc_derivs_out->begin());
   if (!queue.empty()) {  // We stopped early due to max_step
     return total_prob - queue.top()->forward_backward_prob;
-  } else {
-    return beam;
   }
+
+  return beam;
 }
 }  // namespace k2
 

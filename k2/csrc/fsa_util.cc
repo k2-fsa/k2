@@ -293,7 +293,7 @@ void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
       else
         dest_state = rand(src_state + 1, num_states - 1);
 
-      if (seen.count(std::make_pair(src_state, dest_state))) continue;
+      if (seen.count(std::make_pair(src_state, dest_state)) != 0) continue;
 
       seen.insert(std::make_pair(src_state, dest_state));
 

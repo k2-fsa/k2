@@ -304,7 +304,7 @@ class RmEpsilonTest : public ::testing::Test {
     log_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kLogSumWeight);
   }
 
-  ~RmEpsilonTest() {
+  ~RmEpsilonTest() override {
     delete fsa_;
     delete[] arc_weights_;
     delete max_wfsa_;
@@ -595,7 +595,7 @@ class DeterminizeTest : public ::testing::Test {
                        {2, 4, 1}, {3, 4, 1},  {4, 6, -1}, {5, 6, -1}};
   }
 
-  ~DeterminizeTest() {
+  ~DeterminizeTest() override {
     delete fsa_;
     delete[] arc_weights_;
     delete max_wfsa_;

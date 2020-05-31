@@ -60,6 +60,9 @@ struct Arc {
 
 std::ostream &operator<<(std::ostream &os, const Arc &arc);
 
+template <class T>
+void hash_combine(std::size_t *seed, const T &v);
+
 struct ArcHash {
   std::size_t operator()(const Arc &arc) const noexcept {
     std::size_t result = 0;

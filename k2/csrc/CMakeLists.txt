@@ -8,6 +8,7 @@ add_library(fsa
   fsa_renderer.cc
   fsa_util.cc
   properties.cc
+  util.cc
   weights.cc
 )
 

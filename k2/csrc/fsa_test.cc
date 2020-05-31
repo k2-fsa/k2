@@ -6,12 +6,13 @@
 
 #include "k2/csrc/fsa.h"
 
-#include <stdlib.h>  // for posix_memalign
+#include <memory>
 #include <string>
 
 #include "gtest/gtest.h"
 
 #include "k2/csrc/fsa_util.h"
+#include "k2/csrc/util.h"
 
 namespace k2 {
 
@@ -138,13 +139,11 @@ TEST(CfsaVec, Empty) {
   Cfsa cfsa;
   std::vector<Cfsa> cfsas;
   size_t bytes = GetCfsaVecSize(cfsas);
-  void *data = nullptr;
-  int ret = posix_memalign(&data, 64, bytes);
-  ASSERT_EQ(ret, 0);
+  std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64), &MemFree);
 
-  CreateCfsaVec(cfsas, data, bytes);
+  CreateCfsaVec(cfsas, data.get(), bytes);
 
-  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data);
+  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
   EXPECT_EQ(cfsa_vec.NumFsas(), 0);
 }
 
@@ -152,13 +151,11 @@ TEST(CfsaVec, OneEmptyCfsa) {
   Cfsa cfsa;
   std::vector<Cfsa> cfsas = {cfsa};
   size_t bytes = GetCfsaVecSize(cfsas);
-  void *data = nullptr;
-  int ret = posix_memalign(&data, 64, bytes);
-  ASSERT_EQ(ret, 0);
+  std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64), &MemFree);
 
-  CreateCfsaVec(cfsas, data, bytes);
+  CreateCfsaVec(cfsas, data.get(), bytes);
 
-  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data);
+  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
   EXPECT_EQ(cfsa_vec.NumFsas(), 1);
 }
 
@@ -178,13 +175,11 @@ TEST(CfsaVec, OneNoneEmptyCfsa) {
   Cfsa cfsa(*fsa);
   std::vector<Cfsa> cfsas = {cfsa};
   size_t bytes = GetCfsaVecSize(cfsas);
-  void *data = nullptr;
-  int ret = posix_memalign(&data, 64, bytes);
-  ASSERT_EQ(ret, 0);
+  std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64), &MemFree);
 
-  CreateCfsaVec(cfsas, data, bytes);
+  CreateCfsaVec(cfsas, data.get(), bytes);
 
-  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data);
+  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
   EXPECT_EQ(cfsa_vec.NumFsas(), 1);
 
   Cfsa f = cfsa_vec[0];
@@ -225,13 +220,12 @@ TEST(CfsaVec, TwoNoneEmptyCfsa) {
     // both fsa are not empty
     std::vector<Cfsa> cfsas = {cfsa1, cfsa2};
     size_t bytes = GetCfsaVecSize(cfsas);
-    void *data = nullptr;
-    int ret = posix_memalign(&data, 64, bytes);
-    ASSERT_EQ(ret, 0);
+    std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64),
+                                                   &MemFree);
 
-    CreateCfsaVec(cfsas, data, bytes);
+    CreateCfsaVec(cfsas, data.get(), bytes);
 
-    CfsaVec cfsa_vec(bytes / sizeof(int32_t), data);
+    CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
     EXPECT_EQ(cfsa_vec.NumFsas(), 2);
 
     Cfsa f = cfsa_vec[0];
@@ -246,13 +240,12 @@ TEST(CfsaVec, TwoNoneEmptyCfsa) {
     Cfsa cfsa;
     std::vector<Cfsa> cfsas = {cfsa, cfsa2};
     size_t bytes = GetCfsaVecSize(cfsas);
-    void *data = nullptr;
-    int ret = posix_memalign(&data, 64, bytes);
-    ASSERT_EQ(ret, 0);
+    std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64),
+                                                   &MemFree);
 
-    CreateCfsaVec(cfsas, data, bytes);
+    CreateCfsaVec(cfsas, data.get(), bytes);
 
-    CfsaVec cfsa_vec(bytes / sizeof(int32_t), data);
+    CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
     EXPECT_EQ(cfsa_vec.NumFsas(), 2);
 
     Cfsa f = cfsa_vec[0];
@@ -267,13 +260,12 @@ TEST(CfsaVec, TwoNoneEmptyCfsa) {
     Cfsa cfsa;
     std::vector<Cfsa> cfsas = {cfsa1, cfsa};
     size_t bytes = GetCfsaVecSize(cfsas);
-    void *data = nullptr;
-    int ret = posix_memalign(&data, 64, bytes);
-    ASSERT_EQ(ret, 0);
+    std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64),
+                                                   &MemFree);
 
-    CreateCfsaVec(cfsas, data, bytes);
+    CreateCfsaVec(cfsas, data.get(), bytes);
 
-    CfsaVec cfsa_vec(bytes / sizeof(int32_t), data);
+    CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
     EXPECT_EQ(cfsa_vec.NumFsas(), 2);
 
     Cfsa f = cfsa_vec[0];
@@ -295,6 +287,7 @@ TEST(CfsaVec, RandomFsa) {
 
   int32_t n = 5;
   std::vector<Fsa> fsa_vec;
+  fsa_vec.reserve(n);
   for (int32_t i = 0; i != n; ++i) {
     Fsa fsa;
     GenerateRandFsa(opts, &fsa);
@@ -302,18 +295,17 @@ TEST(CfsaVec, RandomFsa) {
   }
 
   std::vector<Cfsa> cfsas;
+  cfsas.reserve(n);
   for (const auto &fsa : fsa_vec) {
     cfsas.emplace_back(fsa);
   }
 
   size_t bytes = GetCfsaVecSize(cfsas);
-  void *data = nullptr;
-  int32_t ret = posix_memalign(&data, 64, bytes);
-  ASSERT_EQ(ret, 0);
+  std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64), &MemFree);
 
-  CreateCfsaVec(cfsas, data, bytes);
+  CreateCfsaVec(cfsas, data.get(), bytes);
 
-  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data);
+  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
   EXPECT_EQ(cfsa_vec.NumFsas(), n);
 
   for (int32_t i = 0; i != n; ++i) {
