@@ -156,14 +156,28 @@ struct Cfsa {
   Arc *arcs;  // Note: arcs[BeginArcIndex()] through arcs[EndArcIndex() - 1]
               // are valid.
 
-  // Constructor from Fsa
+  Cfsa();
+  // Constructor from Fsa. The passed `fsa` should be kept alive
+  // as long as this cfsa is alive.
   explicit Cfsa(const Fsa &fsa);
 
   Cfsa &operator=(const Cfsa &cfsa) = default;
   Cfsa(const Cfsa &cfsa) = default;
 
   int32_t NumStates() const { return num_states; }
-  int32_t FinalState() const { return num_states - 1; }
+  int32_t FinalState() const {
+    DCHECK_GE(num_states, 2) << "It's an error to invoke this method for "
+                             << "an empty cfsa";
+    return num_states - 1;
+  }
+};
+
+struct CfsaVecHeader {
+  int32_t version;
+  int32_t num_fsas;
+  int32_t state_offsets_start;
+  int32_t arc_indexes_start;
+  int32_t arcs_start;
 };
 
 class CfsaVec {
@@ -197,13 +211,17 @@ class CfsaVec {
                              also the offset from the beginning of the
                              `arc_indexes` array of where the part corresponding
                              to FSA f starts.  The number of states in FSA f
-                             is given by state_offsets[f+1] - state_offsets[f].
+                             is given by
+                             `state_offsets[f+1] - state_offsets[f] - 1`.
+                             Caution: one is subtracted above because the last
+                             entry in the arc_indexes array is repeated.
                              This is >= 0; it will be zero if the
                              FSA f is empty, and >= 2 otherwise.
             [possibly some padding here]
 
-             - arc_indexes[tot_states + 1]   This gives the indexes into the
-     `arcs` array of where we can find the first of each state's arcs.
+             - arc_indexes[tot_states + num_fsas]   This gives the indexes
+                             into the `arcs` array of where we can find the
+                             first of each state's arcs.
 
              [pad as needed for memory-alignment purposes then...]
 
@@ -215,39 +233,44 @@ class CfsaVec {
 
   Cfsa operator[](int32_t f) const;
 
+  CfsaVec &operator = (const CfsaVec &) = delete;
+  CfsaVec(const CfsaVec &) = delete;
+
  private:
-  CfsaVec &operator=(const CfsaVec &);  // Disable
-  CfsaVec(const CfsaVec &);             // Disable
 
   int32_t num_fsas_;
 
-  // The raw underlying data
+  // The raw underlying data;
+  // CAUTION: we do NOT own the memory here.
   int32_t *data_;
-  // The size of the underlying data
+  // The size of the underlying data;
+  // Caution: it is the number of `int32_t` in data_, NOT the number of bytes.
   size_t size_;
 };
 
 /*
   Return the number of bytes we'd need to represent this vector of Cfsas
   linearly as a CfsaVec. */
-size_t GetCfsaVecSize(const std::vector<Cfsa> &fsas_in);
+size_t GetCfsaVecSize(const std::vector<Cfsa> &cfsas);
 
 // Return the number of bytes we'd need to represent this Cfsa
 // linearly as a CfsaVec with one element
-size_t GetCfsaVecSize(const Cfsa &fsa_in);
+size_t GetCfsaVecSize(const Cfsa &cfsa);
 
 /*
   Create a CfsaVec from a vector of Cfsas (this involves representing
   the vector of Fsas in one big linear memory region).
 
-     @param [in] fsas_in  The vector of Cfsas to be linearized;
+     @param [in] fsas    The vector of Cfsas to be linearized;
                       must be nonempty
      @param [in] data    The allocated data of size `size` bytes
      @param [in] size    The size of the memory block passed;
                          must equal the return value of
-                         GetCfsaVecSize(fsas_in).
+                         GetCfsaVecSize(fsas).
  */
-void CreateCfsaVec(const std::vector<Cfsa> &fsas_in, void *data, size_t size);
+void CreateCfsaVec(const std::vector<Cfsa> &fsas,
+                   void *data,
+                   size_t size);
 
 struct Fst {
   Fsa core;

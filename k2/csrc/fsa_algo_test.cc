@@ -35,8 +35,8 @@ TEST(FsaAlgo, ConnectCore) {
       0 1 1
       1 2 2
       1 3 3
-      2 4 4
-      3 4 4
+      2 4 -1
+      3 4 -1
       4
     )";
     auto a = StringToFsa(s);
@@ -58,8 +58,8 @@ TEST(FsaAlgo, ConnectCore) {
       1 2 2
       1 3 3
       2 2 2
-      2 4 4
-      3 4 4
+      2 4 -1
+      3 4 -1
       4
     )";
     auto a = StringToFsa(s);
@@ -75,7 +75,7 @@ TEST(FsaAlgo, ConnectCore) {
     std::string s = R"(
       1 0 1
       4 2 2
-      3 5 5
+      3 5 -1
       4 3 3
       0 4 4
       0 3 3
@@ -99,7 +99,7 @@ TEST(FsaAlgo, ConnectCore) {
     std::string s = R"(
       1 0 1
       4 2 2
-      3 5 5
+      3 5 -1
       4 3 3
       0 4 4
       0 3 3
@@ -122,7 +122,7 @@ TEST(FsaAlgo, ConnectCore) {
     std::string s = R"(
       1 0 1
       4 2 2
-      3 5 5
+      3 5 -1
       4 3 3
       0 4 4
       0 3 3
@@ -148,9 +148,9 @@ TEST(FsaAlgo, Connect) {
       0 1 1
       0 2 2
       1 3 3
-      1 6 6
+      1 6 -1
       2 4 2
-      2 6 3
+      2 6 -1
       5 0 1
       2 1 1
       6
@@ -176,7 +176,7 @@ TEST(FsaAlgo, Connect) {
     EXPECT_THAT(b.arc_indexes, ::testing::ElementsAre(0, 2, 4, 5, 5));
 
     std::vector<Arc> target_arcs = {
-        {0, 2, 1}, {0, 1, 2}, {1, 3, 3}, {1, 2, 1}, {2, 3, 6},
+        {0, 2, 1}, {0, 1, 2}, {1, 3, -1}, {1, 2, 1}, {2, 3, -1},
     };
     for (auto i = 0; i != target_arcs.size(); ++i)
       EXPECT_EQ(b.arcs[i], target_arcs[i]);
@@ -195,7 +195,7 @@ TEST(FsaAlgo, Connect) {
       2 4 2
       2 6 3
       5 0 1
-      5 7 2
+      5 7 -1
       7
     )";
 
@@ -221,10 +221,10 @@ TEST(FsaAlgo, Connect) {
       3 4 4
       2 1 1
       1 2 2
-      3 6 6
+      3 6 -1
       4 5 5
-      4 6 6
-      5 6 6
+      4 6 -1
+      5 6 -1
       6
     )";
     auto a = StringToFsa(s);
@@ -248,7 +248,7 @@ TEST(FsaAlgo, Connect) {
       5 3 3
       5 4 4
       4 4 4
-      2 6 6
+      2 6 -1
       6
     )";
     auto a = StringToFsa(s);
@@ -270,8 +270,8 @@ TEST(FsaAlgo, Connect) {
       2 2 2
       2 1 1
       1 1 1
-      1 3 3
-      2 3 3
+      1 3 -1
+      2 3 -1
       3
     )";
     auto a = StringToFsa(s);
@@ -493,8 +493,8 @@ TEST(FsaAlgo, TopSort) {
   {
     // case 2: non-connected fsa (not co-accessible)
     std::string s = R"(
-      0 2 3
-      1 2 1
+      0 2 -1
+      1 2 -1
       2
     )";
     auto fsa = StringToFsa(s);
@@ -512,7 +512,7 @@ TEST(FsaAlgo, TopSort) {
   {
     // case 3: non-connected fsa (not accessible)
     std::string s = R"(
-      0 2 3
+      0 2 -1
       1 0 1
       2
     )";
@@ -533,9 +533,9 @@ TEST(FsaAlgo, TopSort) {
     std::string s = R"(
       0 4 40
       0 2 20
-      1 6 2
+      1 6 -1
       2 3 30
-      3 6 60
+      3 6 -1
       3 1 10
       4 5 50
       5 2 8
@@ -563,7 +563,7 @@ TEST(FsaAlgo, TopSort) {
     EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 3, 4, 5, 7, 8, 8));
     std::vector<Arc> expected_arcs = {
         {0, 1, 40}, {0, 3, 20}, {1, 2, 50}, {2, 3, 8},
-        {3, 4, 30}, {4, 6, 60}, {4, 5, 10}, {5, 6, 2},
+        {3, 4, 30}, {4, 6, -1}, {4, 5, 10}, {5, 6, -1},
     };
 
     for (auto i = 0; i != 8; ++i) {

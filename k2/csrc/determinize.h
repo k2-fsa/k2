@@ -86,7 +86,7 @@ namespace k2 {
   arcs in the output FSA.
 
 
-   *The problem with differentability
+   *The problem with differentiability
 
    Consider how to differentiate the weights of the output weighted FSA
    w.r.t. those of the input.  The problem with differentiability if we use the
@@ -113,7 +113,7 @@ namespace k2 {
 
     *Different normalization
 
-    Our form of "normalization" of this representation is differen too.  The
+    Our form of "normalization" of this representation is different too.  The
     normalization is to make `symbol_sequence` as short as possible, and advance
     `base_state` to compensate.  For instance, if `symbol_sequence` is `a b c
     d`, but the weighted subset of states we can reach by this symbol sequence
@@ -177,7 +177,7 @@ struct MaxTracebackState {
 
   /**
      @param [in] state_id  State in input FSA that this corresponds to
-     @param [in] src   Previous LogSumTracebackState that we'll point back
+     @param [in] src   Previous MaxTracebackState that we'll point back
                       to, or NULL
      @param [in] incoming_arc_index  Arc-index in input FSA.
                       Its src_state will equal src->state_id,
@@ -213,7 +213,7 @@ class LogSumTracebackState;
 /*
   This struct is used inside LogSumTracebackState; it represents an
   arc that traces back to a previous LogSumTracebackState.
-  A LogSumTracebackState represents a weighted colletion of paths
+  A LogSumTracebackState represents a weighted collection of paths
   terminating in a specific state.
 */
 struct LogSumTracebackLink {

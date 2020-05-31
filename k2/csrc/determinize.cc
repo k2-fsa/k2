@@ -111,7 +111,7 @@ void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
   MaxTracebackState *state = *(cur_states->begin());
   double cur_forward_prob = state->forward_prob;
   deriv_out->resize(num_steps);
-  for (int32_t i = num_steps - 1; i >= 0; i--) {
+  for (int32_t i = num_steps - 1; i >= 0; --i) {
     // `deriv_out` is just a list of arc indexes in the input FSA
     // that this output arc depends on (it's their sum).
     (*deriv_out)[i] = state->arc_id;

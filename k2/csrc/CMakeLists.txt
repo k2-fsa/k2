@@ -1,13 +1,14 @@
 # please sort the source files alphabetically
 add_library(fsa
   aux_labels.cc
+  determinize.cc
+  fsa.cc
   fsa_algo.cc
   fsa_equivalent.cc
   fsa_renderer.cc
   fsa_util.cc
   properties.cc
   weights.cc
-  determinize.cc
 )
 
 target_include_directories(fsa PUBLIC ${CMAKE_SOURCE_DIR})
@@ -40,6 +41,7 @@ set(fsa_tests
   fsa_algo_test
   fsa_equivalent_test
   fsa_renderer_test
+  fsa_test
   fsa_util_test
   properties_test
   weights_test
