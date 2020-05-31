@@ -20,7 +20,8 @@ enum Properties {
   kTopSortedAndAcyclic,  // topologically sorted and no self-loops (which
                          // implies acyclic)
   kAcyclic,              // acyclic
-  kArcSorted,            // arcs leaving each state are sorted on label
+  kArcSorted,            // arcs leaving each state are sorted on label and then
+                         // destination state
   kDeterministic,        // no state has two arcs leaving it with the same label
   kConnected,    // all states are both accessible (i.e. from start state) and
                  // coaccessible (i.e. can reach final-state)
@@ -32,7 +33,7 @@ enum Properties {
   `fsa` is valid if:
   1. it is empty, if not, it contains at least two states.
   2. only kFinalSymbol arcs enter the final state.
-  3. `arcs_indexes` and `arcs` in this state are not consistent.
+  3. `arc_indexes` and `arcs` in this state are consistent
   TODO(haowen): add more rules?
  */
 bool IsValid(const Fsa &fsa);
