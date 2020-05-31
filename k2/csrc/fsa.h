@@ -49,12 +49,16 @@ struct Arc {
            std::tie(src_state, other.dest_state, other.label);
   }
 
+  bool operator!=(const Arc& other) const { return !(*this == other); }
+
   bool operator<(const Arc &other) const {
     // compares `label` first, then `dest_state`
     return std::tie(label, dest_state) <
            std::tie(other.label, other.dest_state);
   }
 };
+
+std::ostream &operator<<(std::ostream &os, const Arc &arc);
 
 struct ArcHash {
   std::size_t operator()(const Arc &arc) const noexcept {
@@ -161,16 +165,37 @@ struct Cfsa {
   // as long as this cfsa is alive.
   explicit Cfsa(const Fsa &fsa);
 
-  Cfsa &operator=(const Cfsa &cfsa) = default;
+  Cfsa &operator = (const Cfsa &cfsa) = default;
   Cfsa(const Cfsa &cfsa) = default;
 
   int32_t NumStates() const { return num_states; }
+  int32_t NumArcs()  const { return end_arc - begin_arc; }
   int32_t FinalState() const {
     DCHECK_GE(num_states, 2) << "It's an error to invoke this method for "
                              << "an empty cfsa";
     return num_states - 1;
   }
+
+  // for test only
+  bool operator==(const Cfsa &other) const {
+    if (other.num_states != num_states) return false;
+
+    if (other.NumArcs() != NumArcs()) return false;
+
+    for (int32_t i = 0; i != NumArcs(); ++i) {
+      const auto& this_arc = arcs[begin_arc + i];
+      const auto& other_arc = other.arcs[other.begin_arc + i];
+
+      if (this_arc != other_arc) return false;
+    }
+
+    return true;
+  }
 };
+
+std::ostream &operator<<(std::ostream &os, const Cfsa &cfsa);
+
+constexpr int32_t kCfsaVecVersion = 0x01;
 
 struct CfsaVecHeader {
   int32_t version;
@@ -221,7 +246,9 @@ class CfsaVec {
 
              - arc_indexes[tot_states + num_fsas]   This gives the indexes
                              into the `arcs` array of where we can find the
-                             first of each state's arcs.
+                             first of each state's arcs. `num_fsas` is needed
+                             since the final state of every fsa is repeated in
+                             `arc_indexes`.
 
              [pad as needed for memory-alignment purposes then...]
 
@@ -237,7 +264,6 @@ class CfsaVec {
   CfsaVec(const CfsaVec &) = delete;
 
  private:
-
   int32_t num_fsas_;
 
   // The raw underlying data;
@@ -261,14 +287,14 @@ size_t GetCfsaVecSize(const Cfsa &cfsa);
   Create a CfsaVec from a vector of Cfsas (this involves representing
   the vector of Fsas in one big linear memory region).
 
-     @param [in] fsas    The vector of Cfsas to be linearized;
+     @param [in] cfsas   The vector of Cfsas to be linearized;
                       must be nonempty
      @param [in] data    The allocated data of size `size` bytes
-     @param [in] size    The size of the memory block passed;
+     @param [in] size    The size of the memory block in bytes passed;
                          must equal the return value of
-                         GetCfsaVecSize(fsas).
+                         GetCfsaVecSize(cfsas).
  */
-void CreateCfsaVec(const std::vector<Cfsa> &fsas,
+void CreateCfsaVec(const std::vector<Cfsa> &cfsas,
                    void *data,
                    size_t size);
 
