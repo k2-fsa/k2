@@ -272,7 +272,7 @@ void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
   int32_t src_state;
   int32_t dest_state;
   int32_t label;
-  int32_t num_states = static_cast<int32_t>(opts.num_states);
+  auto num_states = static_cast<int32_t>(opts.num_states);
 
   int32_t num_fails = -1;
   int32_t max_loops = 100 * opts.num_arcs;

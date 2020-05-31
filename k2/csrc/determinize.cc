@@ -75,7 +75,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
     for (LogSumTracebackState *state_ptr : *cur_states) {
       double backward_prob = state_ptr->backward_prob;
       for (const auto &link : state_ptr->prev_elements) {
-        float arc_log_posterior =
+        auto arc_log_posterior =
             static_cast<float>(link.forward_prob + backward_prob);
         deriv_out->push_back(
             std::pair<int32_t, float>(link.arc_index, expf(arc_log_posterior)));

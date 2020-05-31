@@ -100,7 +100,7 @@ static void TraceBackRmEpsilonsLogSum(
   while (!state_ptr->prev_elements.empty()) {
     double backward_prob = state_ptr->backward_prob;
     for (const auto &link : state_ptr->prev_elements) {
-      float arc_log_posterior =
+      auto arc_log_posterior =
           static_cast<float>(link.forward_prob + backward_prob);
       deriv_out->emplace_back(link.arc_index, expf(arc_log_posterior));
       k2::LogSumTracebackState *prev_state = link.prev_state.get();
