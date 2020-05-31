@@ -1,6 +1,7 @@
 // k2/csrc/fsa_util.cc
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+//                      Haowen Qiu
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -151,6 +152,28 @@ void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
     arc_index->insert(arc_index->end(), indices.begin(), indices.end());
     auto end = static_cast<int32_t>(arc_index->size());
     end_index->push_back(end);
+  }
+}
+
+void GetArcWeights(const float *arc_weights_in,
+                   const std::vector<std::vector<int32_t>> &arc_map,
+                   float *arc_weights_out) {
+  CHECK_NOTNULL(arc_weights_in);
+  CHECK_NOTNULL(arc_weights_out);
+  for (const auto &arcs : arc_map) {
+    float sum_weights = 0.0f;
+    for (auto arc : arcs) sum_weights += arc_weights_in[arc];
+    *arc_weights_out++ = sum_weights;
+  }
+}
+
+void GetArcWeights(const float *arc_weights_in,
+                   const std::vector<int32_t> &arc_map,
+                   float *arc_weights_out) {
+  CHECK_NOTNULL(arc_weights_in);
+  CHECK_NOTNULL(arc_weights_out);
+  for (const auto &arc : arc_map) {
+    *arc_weights_out++ = arc_weights_in[arc];
   }
 }
 
