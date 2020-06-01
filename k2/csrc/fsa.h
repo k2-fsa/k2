@@ -25,7 +25,6 @@ enum {
                       // like in OpenFst.
 };
 
-
 // CAUTION: the sizeof() this is probably 128, not 96.  This could be a
 // waste of space.  We may later either use the extra field for something, or
 // find a way to reduce the size.
@@ -126,7 +125,6 @@ struct Fsa {
   }
 };
 
-
 /*
   Cfsa is a 'const' FSA, which we'll use as the input to operations.  It is
   designed in such a way that the storage underlying it may either be an Fsa
@@ -147,30 +145,26 @@ struct Cfsa {
                        // one-past-the-last index in `arcs` for the arcs in this
                        // FSA.  Will be >= begin_arc.
 
-  const int32_t *arc_indexes;   // an array, indexed by state index, giving the
-                                // first arc index of each state.  The last one
-                                // is repeated, so for any valid state 0 <= s <
-                                // num_states we can use arc_indexes[s+1].  That
-                                // is: elements 0 through num_states (inclusive)
-                                // are valid.  CAUTION: arc_indexes[0] may be
-                                // greater than zero.
+  const int32_t *arc_indexes;  // an array, indexed by state index, giving the
+                               // first arc index of each state.  The last one
+                               // is repeated, so for any valid state 0 <= s <
+                               // num_states we can use arc_indexes[s+1].  That
+                               // is: elements 0 through num_states (inclusive)
+                               // are valid.  CAUTION: arc_indexes[0] may be
+                               // greater than zero.
 
-
-  Arc *arcs;   // Note: arcs[BeginArcIndex()] through arcs[EndArcIndex() - 1]
-               // are valid.
+  Arc *arcs;  // Note: arcs[BeginArcIndex()] through arcs[EndArcIndex() - 1]
+              // are valid.
 
   // Constructor from Fsa
-  Cfsa(const Fsa &fsa);
+  explicit Cfsa(const Fsa &fsa);
 
-  Cfsa &operator = (const Cfsa &cfsa) = default;
+  Cfsa &operator=(const Cfsa &cfsa) = default;
   Cfsa(const Cfsa &cfsa) = default;
 
   int32_t NumStates() const { return num_states; }
   int32_t FinalState() const { return num_states - 1; }
 };
-
-
-
 
 class CfsaVec {
  public:
@@ -208,8 +202,8 @@ class CfsaVec {
                              FSA f is empty, and >= 2 otherwise.
             [possibly some padding here]
 
-             - arc_indexes[tot_states + 1]   This gives the indexes into the `arcs`
-                             array of where we can find the first of each state's arcs.
+             - arc_indexes[tot_states + 1]   This gives the indexes into the
+     `arcs` array of where we can find the first of each state's arcs.
 
              [pad as needed for memory-alignment purposes then...]
 
@@ -219,11 +213,11 @@ class CfsaVec {
 
   int32_t NumFsas() const { return num_fsas_; }
 
-  Cfsa operator[] (int32_t f) const;
+  Cfsa operator[](int32_t f) const;
 
  private:
-  CfsaVec &operator = (const CfsaVec &);  // Disable
-  CfsaVec(const CfsaVec&);  // Disable
+  CfsaVec &operator=(const CfsaVec &);  // Disable
+  CfsaVec(const CfsaVec &);             // Disable
 
   int32_t num_fsas_;
 
@@ -232,9 +226,6 @@ class CfsaVec {
   // The size of the underlying data
   size_t size_;
 };
-
-
-
 
 /*
   Return the number of bytes we'd need to represent this vector of Cfsas
@@ -256,11 +247,7 @@ size_t GetCfsaVecSize(const Cfsa &fsa_in);
                          must equal the return value of
                          GetCfsaVecSize(fsas_in).
  */
-void CreateCfsaVec(const std::vector<Cfsa> &fsas_in,
-                   void *data,
-                   size_t size);
-
-
+void CreateCfsaVec(const std::vector<Cfsa> &fsas_in, void *data, size_t size);
 
 struct Fst {
   Fsa core;
