@@ -7,12 +7,10 @@
 #ifndef K2_PYTHON_CSRC_K2_H_
 #define K2_PYTHON_CSRC_K2_H_
 
-#include <cstdint>
 #include <vector>
 
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-#include "pybind11/stl_bind.h"
 
 #include "k2/csrc/fsa.h"
 

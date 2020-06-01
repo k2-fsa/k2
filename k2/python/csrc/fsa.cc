@@ -6,6 +6,8 @@
 
 #include "k2/python/csrc/fsa.h"
 
+#include <vector>
+
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_util.h"
 
