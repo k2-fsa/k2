@@ -29,7 +29,6 @@ void MapAuxLabels1(const AuxLabels &labels_in,
     start_pos.push_back(num_labels);
     int32_t pos_start = labels_in.start_pos[arc_index];
     int32_t pos_end = labels_in.start_pos[arc_index + 1];
-    // TODO(haowen): should we check labels contains no Epsilon?
     labels.insert(labels.end(), labels_in_iter_begin + pos_start,
                   labels_in_iter_begin + pos_end);
     num_labels += pos_end - pos_start;
