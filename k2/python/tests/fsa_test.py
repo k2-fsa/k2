@@ -44,7 +44,7 @@ class TestFsa(unittest.TestCase):
             # the following is for demonstration purpose only.
             # we can iterate through the arcs vector.
             for i, arc in enumerate(arcs):
-                print(f'arc {i} -> ', arc)
+                print('arc {} -> '.format(i), arc)
 
     def test_fsa_vec(self):
         fsa_vec = k2.FsaVec()
