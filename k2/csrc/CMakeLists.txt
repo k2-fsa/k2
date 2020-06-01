@@ -1,5 +1,6 @@
 # please sort the source files alphabetically
 add_library(fsa
+  aux_labels.cc
   fsa_algo.cc
   fsa_equivalent.cc
   fsa_renderer.cc
@@ -35,6 +36,7 @@ endfunction()
 
 # please sort the source files alphabetically
 set(fsa_tests
+  aux_labels_test
   fsa_algo_test
   fsa_equivalent_test
   fsa_renderer_test
