@@ -50,8 +50,8 @@ struct DenseFsa {
     it may be more efficient to use what is known about the structure
     of this object.  But they may be useful for documentation and testing.
    */
-  int32_t num_states() { return T + 2; }
-  int32_t arc_indexes(int32_t state_index) {
+  int32_t NumStates() const { return T + 2; }
+  int32_t ArcIndexes(int32_t state_index) const {
     return arc_offset +
            (state_index <= T ? state_index * num_symbols : T * num_symbols + 1);
   }

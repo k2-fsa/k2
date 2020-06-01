@@ -20,19 +20,19 @@ void MapAuxLabels1(const AuxLabels &labels_in,
   auto &start_pos = labels_out->start_pos;
   auto &labels = labels_out->labels;
   start_pos.clear();
+  start_pos.reserve(arc_map.size() + 1);
   labels.clear();
 
   int32_t num_labels = 0;
+  auto labels_in_iter_begin = labels_in.labels.begin();
   for (const auto &arc_index : arc_map) {
     start_pos.push_back(num_labels);
     int32_t pos_start = labels_in.start_pos[arc_index];
     int32_t pos_end = labels_in.start_pos[arc_index + 1];
-    for (int32_t pos = pos_start; pos != pos_end; ++pos) {
-      int32_t label = labels_in.labels[pos];
-      DCHECK_NE(label, kEpsilon);
-      labels.push_back(label);
-      ++num_labels;
-    }
+    // TODO(haowen): should we check labels contains no Epsilon?
+    labels.insert(labels.end(), labels_in_iter_begin + pos_start,
+                  labels_in_iter_begin + pos_end);
+    num_labels += pos_end - pos_start;
   }
   start_pos.push_back(num_labels);
 }
@@ -44,20 +44,19 @@ void MapAuxLabels2(const AuxLabels &labels_in,
   auto &start_pos = labels_out->start_pos;
   auto &labels = labels_out->labels;
   start_pos.clear();
+  start_pos.reserve(arc_map.size() + 1);
   labels.clear();
 
   int32_t num_labels = 0;
+  auto labels_in_iter_begin = labels_in.labels.begin();
   for (const auto &arc_indexes : arc_map) {
     start_pos.push_back(num_labels);
     for (const auto &arc_index : arc_indexes) {
       int32_t pos_start = labels_in.start_pos[arc_index];
       int32_t pos_end = labels_in.start_pos[arc_index + 1];
-      for (int32_t pos = pos_start; pos != pos_end; ++pos) {
-        int32_t label = labels_in.labels[pos];
-        DCHECK_NE(label, kEpsilon);
-        labels.push_back(label);
-        ++num_labels;
-      }
+      labels.insert(labels.end(), labels_in_iter_begin + pos_start,
+                    labels_in_iter_begin + pos_end);
+      num_labels += pos_end - pos_start;
     }
   }
   start_pos.push_back(num_labels);

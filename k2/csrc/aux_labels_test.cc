@@ -38,7 +38,7 @@ TEST_F(AuxLablesTest, MapAuxLabels1) {
     MapAuxLabels1(aux_labels_in_, arc_map, &aux_labels_out);
 
     EXPECT_TRUE(aux_labels_out.labels.empty());
-    EXPECT_EQ(aux_labels_out.start_pos.size(), 1);
+    ASSERT_EQ(aux_labels_out.start_pos.size(), 1);
     EXPECT_EQ(aux_labels_out.start_pos[0], 0);
   }
 
@@ -47,10 +47,24 @@ TEST_F(AuxLablesTest, MapAuxLabels1) {
     AuxLabels aux_labels_out;
     MapAuxLabels1(aux_labels_in_, arc_map, &aux_labels_out);
 
-    EXPECT_EQ(aux_labels_out.start_pos.size(), 4);
+    ASSERT_EQ(aux_labels_out.start_pos.size(), 4);
     EXPECT_THAT(aux_labels_out.start_pos, ::testing::ElementsAre(0, 3, 4, 5));
-    EXPECT_EQ(aux_labels_out.labels.size(), 5);
+    ASSERT_EQ(aux_labels_out.labels.size(), 5);
     EXPECT_THAT(aux_labels_out.labels, ::testing::ElementsAre(4, 5, 6, 1, 7));
+  }
+
+  {
+    // all arcs in input fsa are remained
+    std::vector<int32_t> arc_map = {2, 0, 3, 1};
+    AuxLabels aux_labels_out;
+    MapAuxLabels1(aux_labels_in_, arc_map, &aux_labels_out);
+
+    ASSERT_EQ(aux_labels_out.start_pos.size(), 5);
+    EXPECT_THAT(aux_labels_out.start_pos,
+                ::testing::ElementsAre(0, 3, 4, 5, 7));
+    ASSERT_EQ(aux_labels_out.labels.size(), 7);
+    EXPECT_THAT(aux_labels_out.labels,
+                ::testing::ElementsAre(4, 5, 6, 1, 7, 2, 3));
   }
 }
 
@@ -65,7 +79,7 @@ TEST_F(AuxLablesTest, MapAuxLabels2) {
     MapAuxLabels2(aux_labels_in_, arc_map, &aux_labels_out);
 
     EXPECT_TRUE(aux_labels_out.labels.empty());
-    EXPECT_EQ(aux_labels_out.start_pos.size(), 1);
+    ASSERT_EQ(aux_labels_out.start_pos.size(), 1);
     EXPECT_EQ(aux_labels_out.start_pos[0], 0);
   }
 
@@ -74,10 +88,10 @@ TEST_F(AuxLablesTest, MapAuxLabels2) {
     AuxLabels aux_labels_out;
     MapAuxLabels2(aux_labels_in_, arc_map, &aux_labels_out);
 
-    EXPECT_EQ(aux_labels_out.start_pos.size(), 5);
+    ASSERT_EQ(aux_labels_out.start_pos.size(), 5);
     EXPECT_THAT(aux_labels_out.start_pos,
                 ::testing::ElementsAre(0, 4, 7, 8, 11));
-    EXPECT_EQ(aux_labels_out.labels.size(), 11);
+    ASSERT_EQ(aux_labels_out.labels.size(), 11);
     EXPECT_THAT(aux_labels_out.labels,
                 ::testing::ElementsAre(4, 5, 6, 7, 1, 2, 3, 1, 4, 5, 6));
   }
