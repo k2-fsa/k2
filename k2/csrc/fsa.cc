@@ -70,16 +70,16 @@ CfsaVec::CfsaVec(std::size_t size, void *data)
   num_fsas_ = header->num_fsas;
 }
 
-Cfsa CfsaVec::operator[](int32_t f) const {
-  DCHECK_GE(f, 0);
-  DCHECK_LT(f, num_fsas_);
+Cfsa CfsaVec::operator[](int32_t i) const {
+  DCHECK_GE(i, 0);
+  DCHECK_LT(i, num_fsas_);
 
   Cfsa cfsa;
 
   const auto header = reinterpret_cast<const CfsaVecHeader *>(data_);
   const auto state_offsets_array = data_ + header->state_offsets_start;
 
-  int32_t num_states = state_offsets_array[f + 1] - state_offsets_array[f];
+  int32_t num_states = state_offsets_array[i + 1] - state_offsets_array[i];
   if (num_states == 0) return cfsa;
 
   // we have to decrease num_states by one since the last entry of arc_indexes
@@ -91,8 +91,8 @@ Cfsa CfsaVec::operator[](int32_t f) const {
   const auto arcs_array = reinterpret_cast<Arc *>(data_) + header->arcs_start;
 
   cfsa.num_states = num_states;
-  cfsa.begin_arc = arc_indexes_array[state_offsets_array[f]];
-  cfsa.end_arc = arc_indexes_array[state_offsets_array[f + 1] - 1];
+  cfsa.begin_arc = arc_indexes_array[state_offsets_array[i]];
+  cfsa.end_arc = arc_indexes_array[state_offsets_array[i + 1] - 1];
   cfsa.arc_indexes = arc_indexes_array;
   cfsa.arcs = arcs_array;
 

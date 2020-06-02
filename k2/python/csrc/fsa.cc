@@ -10,11 +10,99 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_util.h"
+#include "k2/python/csrc/dlpack.h"
+
+using k2::Arc;
+using k2::Cfsa;
+using k2::CfsaVec;
+using k2::Fsa;
+
+// refer to
+// https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L375
+// https://github.com/microsoft/onnxruntime-tvm/blob/master/python/tvm/_ffi/_ctypes/ndarray.py#L28
+// https://github.com/cupy/cupy/blob/master/cupy/core/dlpack.pyx#L66
+// PyTorch, TVM and CuPy name the created dltensor to be `dltensor`
+static const char *kDLPackTensorName = "dltensor";
+
+// refer to
+// https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L402
+// https://github.com/apache/incubator-tvm/blob/master/python/tvm/_ffi/_ctypes/ndarray.py#L29
+// https://github.com/cupy/cupy/blob/master/cupy/core/dlpack.pyx#L62
+// PyTorch, TVM and CuPy name the used dltensor to be `used_dltensor`
+static const char *kDLPackUsedTensorName = "used_dltensor";
+
+static void DLPackDeleter(void *p) {
+  auto dl_managed_tensor = reinterpret_cast<DLManagedTensor *>(p);
+
+  if (dl_managed_tensor && dl_managed_tensor->deleter)
+    dl_managed_tensor->deleter(dl_managed_tensor);
+
+  // this will be invoked if you uncomment it, which
+  // means Python will indeed free the memory returned by the subsequent
+  // `CfsaVecFromDLPack()`.
+  // LOG(INFO) << "freed!";
+}
+
+// the returned pointer is freed by Python
+static CfsaVec *CfsaVecFromDLPack(const std::vector<Cfsa> &cfsas,
+                                  py::capsule *capsule) {
+  // the following error message is modified from
+  //     https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L384
+  CHECK_EQ(strcmp(kDLPackTensorName, capsule->name()), 0)
+      << "Expected capsule name: " << kDLPackTensorName << "\n"
+      << "But got: " << capsule->name() << "\n"
+      << "Note that DLTensor capsules can be consumed only once,\n"
+      << "so you might have already constructed a tensor from it once.";
+
+  PyCapsule_SetName(capsule->ptr(), kDLPackUsedTensorName);
+
+  DLManagedTensor *managed_tensor = *capsule;
+  // (fangjun): the above assignment will either throw or succeed with a
+  // non-null ptr; so no need to check for nullptr below
+
+  auto tensor = &managed_tensor->dl_tensor;
+  CHECK_EQ(tensor->ndim, 1) << "Expect 1-D tensor";
+  CHECK_EQ(tensor->dtype.code, kDLInt);
+  CHECK_EQ(tensor->dtype.bits, 32);
+  CHECK_EQ(tensor->dtype.lanes, 1);
+
+  auto ctx = &tensor->ctx;
+  // TODO(fangjun): enable GPU once k2 supports GPU.
+  CHECK_EQ(ctx->device_type, kDLCPU);
+
+  auto start_ptr = reinterpret_cast<char *>(tensor->data) + tensor->byte_offset;
+  CHECK_EQ((intptr_t)start_ptr % sizeof(int32_t), 0);
+
+  CreateCfsaVec(cfsas, start_ptr, tensor->shape[0] * sizeof(int32_t));
+
+  // no memory leak here; python will deallocate it
+  auto cfsa_vec = new CfsaVec(tensor->shape[0], start_ptr);
+  cfsa_vec->SetDeleter(&DLPackDeleter, managed_tensor);
+
+  return cfsa_vec;
+}
+
+static void PybindCfsaVec(py::module &m) {
+  m.def("get_cfsa_vec_size",
+        overload_cast_<const Cfsa &>()(&k2::GetCfsaVecSize), py::arg("cfsa"));
+
+  m.def("get_cfsa_vec_size",
+        overload_cast_<const std::vector<Cfsa> &>()(&k2::GetCfsaVecSize),
+        py::arg("cfsas"));
+
+  py::class_<CfsaVec>(m, "CfsaVec")
+      .def("num_fsas", &CfsaVec::NumFsas)
+      .def("__getitem__", [](const CfsaVec &self, int i) { return self[i]; },
+           py::keep_alive<0, 1>());
+
+  m.def("create_cfsa_vec",
+        [](const std::vector<Cfsa> &cfsas, py::capsule *capsule) {
+          return CfsaVecFromDLPack(cfsas, capsule);
+        },
+        py::return_value_policy::take_ownership);
+}
 
 void PybindFsa(py::module &m) {
-  using k2::Arc;
-  using k2::Fsa;
-
   py::class_<Arc>(m, "Arc")
       .def(py::init<>())
       .def(py::init<int32_t, int32_t, int32_t>(), py::arg("src_state"),
@@ -62,10 +150,9 @@ void PybindFsa(py::module &m) {
            },
            py::keep_alive<0, 1>());
 
-  using k2::Cfsa;
   py::class_<Cfsa>(m, "Cfsa")
       .def(py::init<>())
-      .def(py::init<const Fsa &>(), py::arg("fsa"))
+      .def(py::init<const Fsa &>(), py::arg("fsa"), py::keep_alive<1, 2>())
       .def("num_states", &Cfsa::NumStates)
       .def("num_arcs", &Cfsa::NumArcs)
       .def("arc",
@@ -77,9 +164,26 @@ void PybindFsa(py::module &m) {
              return py::make_iterator(self->arcs + begin, self->arcs + end);
            },
            py::keep_alive<0, 1>())
-      .def("__str__", [](const Cfsa &self) {
-        std::ostringstream os;
-        os << self;
-        return os.str();
-      });
+      .def("__str__",
+           [](const Cfsa &self) {
+             std::ostringstream os;
+             os << self;
+             return os.str();
+           })
+      .def("__eq__",  // for test only
+           [](const Cfsa &self, const Cfsa &other) { return self == other; });
+
+  py::class_<std::vector<Cfsa>>(m, "CfsaStdVec")
+      .def(py::init<>())
+      .def("clear", &std::vector<Cfsa>::clear)
+      .def("push_back", [](std::vector<Cfsa> *self,
+                           const Cfsa &cfsa) { self->push_back(cfsa); })
+      .def("__len__", [](const std::vector<Cfsa> &self) { return self.size(); })
+      .def("__iter__",
+           [](const std::vector<Cfsa> &self) {
+             return py::make_iterator(self.begin(), self.end());
+           },
+           py::keep_alive<0, 1>());
+
+  PybindCfsaVec(m);
 }

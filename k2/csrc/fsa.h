@@ -49,7 +49,7 @@ struct Arc {
            std::tie(src_state, other.dest_state, other.label);
   }
 
-  bool operator!=(const Arc& other) const { return !(*this == other); }
+  bool operator!=(const Arc &other) const { return !(*this == other); }
 
   bool operator<(const Arc &other) const {
     // compares `label` first, then `dest_state`
@@ -165,11 +165,11 @@ struct Cfsa {
   // as long as this cfsa is alive.
   explicit Cfsa(const Fsa &fsa);
 
-  Cfsa &operator = (const Cfsa &cfsa) = default;
+  Cfsa &operator=(const Cfsa &cfsa) = default;
   Cfsa(const Cfsa &cfsa) = default;
 
   int32_t NumStates() const { return num_states; }
-  int32_t NumArcs()  const { return end_arc - begin_arc; }
+  int32_t NumArcs() const { return end_arc - begin_arc; }
   int32_t FinalState() const {
     CHECK_GE(num_states, 2) << "It's an error to invoke this method for "
                             << "an empty cfsa";
@@ -183,8 +183,8 @@ struct Cfsa {
     if (other.NumArcs() != NumArcs()) return false;
 
     for (int32_t i = 0; i != NumArcs(); ++i) {
-      const auto& this_arc = arcs[begin_arc + i];
-      const auto& other_arc = other.arcs[other.begin_arc + i];
+      const auto &this_arc = arcs[begin_arc + i];
+      const auto &other_arc = other.arcs[other.begin_arc + i];
 
       if (this_arc != other_arc) return false;
     }
@@ -258,10 +258,19 @@ class CfsaVec {
 
   int32_t NumFsas() const { return num_fsas_; }
 
-  Cfsa operator[](int32_t f) const;
+  Cfsa operator[](int32_t i) const;
 
-  CfsaVec &operator = (const CfsaVec &) = delete;
+  CfsaVec &operator=(const CfsaVec &) = delete;
   CfsaVec(const CfsaVec &) = delete;
+
+  ~CfsaVec() {
+    if (opaque_deleter_) (*opaque_deleter_)(opaque_ptr_);
+  }
+
+  void SetDeleter(void (*deleter)(void *), void *p) {
+    opaque_deleter_ = deleter;
+    opaque_ptr_ = p;
+  }
 
  private:
   int32_t num_fsas_;
@@ -272,6 +281,13 @@ class CfsaVec {
   // The size of the underlying data;
   // Caution: it is the number of `int32_t` in data_, NOT the number of bytes.
   std::size_t size_;
+
+  // the following two fields are for DLPack, which enables us to
+  // share memory with `torch::Tensor`.
+  //
+  // C++ code will in generate not touch them.
+  void (*opaque_deleter_)(void *) = nullptr;
+  void *opaque_ptr_ = nullptr;
 };
 
 /*
@@ -294,8 +310,7 @@ std::size_t GetCfsaVecSize(const Cfsa &cfsa);
                          must equal the return value of
                          GetCfsaVecSize(cfsas).
  */
-void CreateCfsaVec(const std::vector<Cfsa> &cfsas,
-                   void *data,
+void CreateCfsaVec(const std::vector<Cfsa> &cfsas, void *data,
                    std::size_t size);
 
 struct Fst {
