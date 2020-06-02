@@ -100,7 +100,7 @@ inline bool DoubleApproxEqual(double a, double b, double delta = 1e-6) {
   return a <= b + delta && b <= a + delta;
 }
 
-void *MemAlign(size_t nbytes, size_t alignment);
+void *MemAlignedMalloc(size_t nbytes, size_t alignment);
 void MemFree(void *ptr);
 
 }  // namespace k2

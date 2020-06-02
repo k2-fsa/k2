@@ -60,9 +60,6 @@ struct Arc {
 
 std::ostream &operator<<(std::ostream &os, const Arc &arc);
 
-template <class T>
-void hash_combine(std::size_t *seed, const T &v);
-
 struct ArcHash {
   std::size_t operator()(const Arc &arc) const noexcept {
     std::size_t result = 0;
@@ -174,8 +171,8 @@ struct Cfsa {
   int32_t NumStates() const { return num_states; }
   int32_t NumArcs()  const { return end_arc - begin_arc; }
   int32_t FinalState() const {
-    DCHECK_GE(num_states, 2) << "It's an error to invoke this method for "
-                             << "an empty cfsa";
+    CHECK_GE(num_states, 2) << "It's an error to invoke this method for "
+                            << "an empty cfsa";
     return num_states - 1;
   }
 
@@ -257,7 +254,7 @@ class CfsaVec {
 
              - arcs[tot_arcs]
   */
-  CfsaVec(size_t size, void *data);
+  CfsaVec(std::size_t size, void *data);
 
   int32_t NumFsas() const { return num_fsas_; }
 
@@ -274,17 +271,17 @@ class CfsaVec {
   int32_t *data_;
   // The size of the underlying data;
   // Caution: it is the number of `int32_t` in data_, NOT the number of bytes.
-  size_t size_;
+  std::size_t size_;
 };
 
 /*
   Return the number of bytes we'd need to represent this vector of Cfsas
   linearly as a CfsaVec. */
-size_t GetCfsaVecSize(const std::vector<Cfsa> &cfsas);
+std::size_t GetCfsaVecSize(const std::vector<Cfsa> &cfsas);
 
 // Return the number of bytes we'd need to represent this Cfsa
 // linearly as a CfsaVec with one element
-size_t GetCfsaVecSize(const Cfsa &cfsa);
+std::size_t GetCfsaVecSize(const Cfsa &cfsa);
 
 /*
   Create a CfsaVec from a vector of Cfsas (this involves representing
@@ -299,7 +296,7 @@ size_t GetCfsaVecSize(const Cfsa &cfsa);
  */
 void CreateCfsaVec(const std::vector<Cfsa> &cfsas,
                    void *data,
-                   size_t size);
+                   std::size_t size);
 
 struct Fst {
   Fsa core;

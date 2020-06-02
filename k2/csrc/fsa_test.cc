@@ -50,7 +50,7 @@ TEST(Cfsa, ConstructorEmptyFsa) {
 
 TEST(GetCfsaVecSize, Empty) {
   Cfsa cfsa;
-  size_t bytes = GetCfsaVecSize(cfsa);
+  std::size_t bytes = GetCfsaVecSize(cfsa);
   // 20-byte header             (20)
   // 44-byte padding            (64)
   // 8-byte state_offsets_array (72)
@@ -76,7 +76,7 @@ TEST(GetCfsaVecSize, NonEmpty) {
   auto fsa = StringToFsa(s);
   Cfsa cfsa(*fsa);
 
-  size_t bytes = GetCfsaVecSize(cfsa);
+  std::size_t bytes = GetCfsaVecSize(cfsa);
   // 20-byte header             (20)
   // 44-byte padding            (64)
   // 8-byte state_offset_array  (72)
@@ -122,7 +122,7 @@ TEST(GetCfsaVecSize, NonEmptyMutlipeFsas) {
 
   std::vector<Cfsa> cfsa_vec = {cfsa1, cfsa2};
 
-  size_t bytes = GetCfsaVecSize(cfsa_vec);
+  std::size_t bytes = GetCfsaVecSize(cfsa_vec);
   // 28 states,9 arcs
   //
   // 20-byte header             (20)
@@ -138,8 +138,9 @@ TEST(GetCfsaVecSize, NonEmptyMutlipeFsas) {
 TEST(CfsaVec, Empty) {
   Cfsa cfsa;
   std::vector<Cfsa> cfsas;
-  size_t bytes = GetCfsaVecSize(cfsas);
-  std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64), &MemFree);
+  std::size_t bytes = GetCfsaVecSize(cfsas);
+  std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
+                                                 &MemFree);
 
   CreateCfsaVec(cfsas, data.get(), bytes);
 
@@ -150,8 +151,9 @@ TEST(CfsaVec, Empty) {
 TEST(CfsaVec, OneEmptyCfsa) {
   Cfsa cfsa;
   std::vector<Cfsa> cfsas = {cfsa};
-  size_t bytes = GetCfsaVecSize(cfsas);
-  std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64), &MemFree);
+  std::size_t bytes = GetCfsaVecSize(cfsas);
+  std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
+                                                 &MemFree);
 
   CreateCfsaVec(cfsas, data.get(), bytes);
 
@@ -159,7 +161,7 @@ TEST(CfsaVec, OneEmptyCfsa) {
   EXPECT_EQ(cfsa_vec.NumFsas(), 1);
 }
 
-TEST(CfsaVec, OneNoneEmptyCfsa) {
+TEST(CfsaVec, OneNonEmptyCfsa) {
   std::string s = R"(
       0 1 10
       0 2 2
@@ -174,8 +176,9 @@ TEST(CfsaVec, OneNoneEmptyCfsa) {
 
   Cfsa cfsa(*fsa);
   std::vector<Cfsa> cfsas = {cfsa};
-  size_t bytes = GetCfsaVecSize(cfsas);
-  std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64), &MemFree);
+  std::size_t bytes = GetCfsaVecSize(cfsas);
+  std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
+                                                 &MemFree);
 
   CreateCfsaVec(cfsas, data.get(), bytes);
 
@@ -219,8 +222,8 @@ TEST(CfsaVec, TwoNoneEmptyCfsa) {
   {
     // both fsa are not empty
     std::vector<Cfsa> cfsas = {cfsa1, cfsa2};
-    size_t bytes = GetCfsaVecSize(cfsas);
-    std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64),
+    std::size_t bytes = GetCfsaVecSize(cfsas);
+    std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
                                                    &MemFree);
 
     CreateCfsaVec(cfsas, data.get(), bytes);
@@ -239,8 +242,8 @@ TEST(CfsaVec, TwoNoneEmptyCfsa) {
     // the first fsa is empty
     Cfsa cfsa;
     std::vector<Cfsa> cfsas = {cfsa, cfsa2};
-    size_t bytes = GetCfsaVecSize(cfsas);
-    std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64),
+    std::size_t bytes = GetCfsaVecSize(cfsas);
+    std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
                                                    &MemFree);
 
     CreateCfsaVec(cfsas, data.get(), bytes);
@@ -259,8 +262,8 @@ TEST(CfsaVec, TwoNoneEmptyCfsa) {
     // the second fsa is empty
     Cfsa cfsa;
     std::vector<Cfsa> cfsas = {cfsa1, cfsa};
-    size_t bytes = GetCfsaVecSize(cfsas);
-    std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64),
+    std::size_t bytes = GetCfsaVecSize(cfsas);
+    std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
                                                    &MemFree);
 
     CreateCfsaVec(cfsas, data.get(), bytes);
@@ -300,8 +303,9 @@ TEST(CfsaVec, RandomFsa) {
     cfsas.emplace_back(fsa);
   }
 
-  size_t bytes = GetCfsaVecSize(cfsas);
-  std::unique_ptr<void, decltype(&MemFree)> data(MemAlign(bytes, 64), &MemFree);
+  std::size_t bytes = GetCfsaVecSize(cfsas);
+  std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
+                                                 &MemFree);
 
   CreateCfsaVec(cfsas, data.get(), bytes);
 

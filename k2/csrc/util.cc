@@ -12,7 +12,7 @@
 
 namespace k2 {
 
-void *MemAlign(size_t nbytes, size_t alignment) {
+void *MemAlignedMalloc(std::size_t nbytes, std::size_t alignment) {
   void *p = nullptr;
 #if defined(_MSC_VER)
   // windows

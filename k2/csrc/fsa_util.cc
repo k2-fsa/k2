@@ -109,7 +109,7 @@ void SplitStringToVector(const std::string &in, const char *delim,
   CHECK_NOTNULL(delim);
   CHECK_NOTNULL(out);
   out->clear();
-  size_t start = 0;
+  std::size_t start = 0;
   while (true) {
     auto pos = in.find_first_of(delim, start);
     if (pos == std::string::npos) break;

@@ -10,13 +10,13 @@
 namespace {
 
 // 64-byte alignment should be enough for AVX512 and other computations.
-constexpr size_t kAlignment = 64;
+constexpr std::size_t kAlignment = 64;
 static_assert((kAlignment & 15) == 0,
               "kAlignment should be at least multiple of 16");
 static_assert(kAlignment % alignof(k2::Arc) == 0, "");
 static_assert(kAlignment % alignof(k2::CfsaVecHeader) == 0, "");
 
-inline size_t AlignTo(size_t b, size_t alignment) {
+inline std::size_t AlignTo(std::size_t b, std::size_t alignment) {
   // alignment should be power of 2
   return (b + alignment - 1) & (~(alignment - 1));
 }
@@ -64,7 +64,7 @@ Cfsa::Cfsa(const Fsa &fsa) {
   }
 }
 
-CfsaVec::CfsaVec(size_t size, void *data)
+CfsaVec::CfsaVec(std::size_t size, void *data)
     : data_(reinterpret_cast<int32_t *>(data)), size_(size) {
   const auto header = reinterpret_cast<const CfsaVecHeader *>(data_);
   num_fsas_ = header->num_fsas;
@@ -99,24 +99,25 @@ Cfsa CfsaVec::operator[](int32_t f) const {
   return cfsa;
 }
 
-size_t GetCfsaVecSize(const Cfsa &cfsa) {
-  size_t res_bytes = 0;
+std::size_t GetCfsaVecSize(const Cfsa &cfsa) {
+  std::size_t res_bytes = 0;
 
-  size_t header_bytes = sizeof(CfsaVecHeader);
+  std::size_t header_bytes = sizeof(CfsaVecHeader);
   res_bytes += header_bytes;
 
   // padding to the alignment boundary for state_offsets_array
   res_bytes = AlignTo(res_bytes, kAlignment);
 
   // size in bytes for `int32_t state_offsets_array[num_fsas + 1];`
-  size_t state_offsets_array_bytes = sizeof(int32_t) * 2;
+  std::size_t state_offsets_array_bytes = sizeof(int32_t) * 2;
   res_bytes += state_offsets_array_bytes;
 
   // padding to the alignment boundary for arc_indexes_array
   res_bytes = AlignTo(res_bytes, kAlignment);
 
   // size in bytes for `int32_t arc_indexes_array[num_states + num_fsas];`
-  size_t arc_indexes_array_bytes = sizeof(int32_t) * (cfsa.NumStates() + 1);
+  std::size_t arc_indexes_array_bytes =
+      sizeof(int32_t) * (cfsa.NumStates() + 1);
   res_bytes += arc_indexes_array_bytes;
 
   // align res_bytes to be multiple of sizeof(Arc)
@@ -125,23 +126,23 @@ size_t GetCfsaVecSize(const Cfsa &cfsa) {
   DCHECK_EQ(res_bytes % alignof(Arc), 0);
 
   // size in bytes for `Arc arcs[num_arcs];`
-  size_t arcs_array_bytes = sizeof(Arc) * cfsa.NumArcs();
+  std::size_t arcs_array_bytes = sizeof(Arc) * cfsa.NumArcs();
   res_bytes += arcs_array_bytes;
 
   return res_bytes;
 }
 
-size_t GetCfsaVecSize(const std::vector<Cfsa> &cfsas) {
-  size_t res_bytes = 0;
+std::size_t GetCfsaVecSize(const std::vector<Cfsa> &cfsas) {
+  std::size_t res_bytes = 0;
 
-  size_t header_bytes = sizeof(CfsaVecHeader);
+  std::size_t header_bytes = sizeof(CfsaVecHeader);
   res_bytes += header_bytes;
 
   // padding to the alignment boundary for state_offsets_array
   res_bytes = AlignTo(res_bytes, kAlignment);
 
   // size in bytes for `int32_t state_offsets_array[num_fsas + 1];`
-  size_t state_offsets_array_bytes = sizeof(int32_t) * (cfsas.size() + 1);
+  std::size_t state_offsets_array_bytes = sizeof(int32_t) * (cfsas.size() + 1);
   res_bytes += state_offsets_array_bytes;
 
   // padding to the alignment boundary for arc_indexes_array
@@ -155,7 +156,7 @@ size_t GetCfsaVecSize(const std::vector<Cfsa> &cfsas) {
   }
 
   // size in bytes for `int32_t arc_indexes_array[num_states + num_fsas];`
-  size_t arc_indexes_array_bytes =
+  std::size_t arc_indexes_array_bytes =
       sizeof(int32_t) * (num_states + cfsas.size());
   res_bytes += arc_indexes_array_bytes;
 
@@ -165,21 +166,23 @@ size_t GetCfsaVecSize(const std::vector<Cfsa> &cfsas) {
   DCHECK_EQ(res_bytes % alignof(Arc), 0);
 
   // size in bytes for `Arc arcs[num_arcs];`
-  size_t arcs_array_bytes = sizeof(Arc) * num_arcs;
+  std::size_t arcs_array_bytes = sizeof(Arc) * num_arcs;
   res_bytes += arcs_array_bytes;
 
   return res_bytes;
 }
 
-void CreateCfsaVec(const std::vector<Cfsa> &cfsas, void *data, size_t size) {
+void CreateCfsaVec(const std::vector<Cfsa> &cfsas, void *data,
+                   std::size_t size) {
   DCHECK_EQ(size, GetCfsaVecSize(cfsas));
 
   auto header = reinterpret_cast<CfsaVecHeader *>(data);
   header->version = kCfsaVecVersion;
   header->num_fsas = static_cast<int32_t>(cfsas.size());
 
-  size_t offset = sizeof(CfsaVecHeader);
+  std::size_t offset = sizeof(CfsaVecHeader);
 
+  // the state_offsets_array is aligned to the boundary `kAlignment`.
   offset = AlignTo(offset, kAlignment);
   header->state_offsets_start = offset / sizeof(int32_t);
 
@@ -212,14 +215,21 @@ void CreateCfsaVec(const std::vector<Cfsa> &cfsas, void *data, size_t size) {
     num_states += cfsas[0].NumStates();
   }
 
+  // int32_t state_offsets_array[num_fsas + 1];
   offset += sizeof(int32_t) * (cfsas.size() + 1);
+
+  // arc_indexes_array is aligned to the boundary `kAlignment`
   offset = AlignTo(offset, kAlignment);
   header->arc_indexes_start = offset / sizeof(int32_t);
 
   auto arc_indexes_array =
       reinterpret_cast<int32_t *>(data) + header->arc_indexes_start;
+
+  // int32_t arc_indexes_array[num_states + num_fsas];
+  // we add `num_fsas` here because each fsa has its final states repeated.
   offset += sizeof(int32_t) * (num_states + cfsas.size());
 
+  // align offset to sizeof(Arc)
   offset = (offset + sizeof(Arc) - 1) / sizeof(Arc) * sizeof(Arc);
   DCHECK_EQ(offset % sizeof(Arc), 0);
 

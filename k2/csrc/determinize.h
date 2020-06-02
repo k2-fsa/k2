@@ -712,8 +712,8 @@ class DetStateMap {
  private:
   // simple hashing function that just takes the first element of the pair.
   struct PairHasher {
-    size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
-      return static_cast<size_t>(p.first);
+    std::size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
+      return static_cast<std::size_t>(p.first);
     }
   };
 
@@ -781,7 +781,7 @@ class DetStateMap {
   }
 
   struct DetStateHasher {
-    size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
+    std::size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
       return p.first;
     }
   };
