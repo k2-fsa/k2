@@ -40,12 +40,13 @@ static void DLPackDeleter(void *p) {
   // this will be invoked if you uncomment it, which
   // means Python will indeed free the memory returned by the subsequent
   // `CfsaVecFromDLPack()`.
+  //
   // LOG(INFO) << "freed!";
 }
 
 // the returned pointer is freed by Python
-static CfsaVec *CfsaVecFromDLPack(const std::vector<Cfsa> &cfsas,
-                                  py::capsule *capsule) {
+static CfsaVec *CfsaVecFromDLPack(py::capsule *capsule,
+                                  const std::vector<Cfsa> *cfsas = nullptr) {
   // the following error message is modified from
   //     https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L384
   CHECK_EQ(strcmp(kDLPackTensorName, capsule->name()), 0)
@@ -65,6 +66,7 @@ static CfsaVec *CfsaVecFromDLPack(const std::vector<Cfsa> &cfsas,
   CHECK_EQ(tensor->dtype.code, kDLInt);
   CHECK_EQ(tensor->dtype.bits, 32);
   CHECK_EQ(tensor->dtype.lanes, 1);
+  CHECK_EQ(tensor->strides[0], 1);  // memory should be contiguous
 
   auto ctx = &tensor->ctx;
   // TODO(fangjun): enable GPU once k2 supports GPU.
@@ -73,7 +75,8 @@ static CfsaVec *CfsaVecFromDLPack(const std::vector<Cfsa> &cfsas,
   auto start_ptr = reinterpret_cast<char *>(tensor->data) + tensor->byte_offset;
   CHECK_EQ((intptr_t)start_ptr % sizeof(int32_t), 0);
 
-  CreateCfsaVec(cfsas, start_ptr, tensor->shape[0] * sizeof(int32_t));
+  if (cfsas)
+    CreateCfsaVec(*cfsas, start_ptr, tensor->shape[0] * sizeof(int32_t));
 
   // no memory leak here; python will deallocate it
   auto cfsa_vec = new CfsaVec(tensor->shape[0], start_ptr);
@@ -96,9 +99,10 @@ static void PybindCfsaVec(py::module &m) {
            py::keep_alive<0, 1>());
 
   m.def("create_cfsa_vec",
-        [](const std::vector<Cfsa> &cfsas, py::capsule *capsule) {
-          return CfsaVecFromDLPack(cfsas, capsule);
+        [](py::capsule *capsule, const std::vector<Cfsa> *cfsas = nullptr) {
+          return CfsaVecFromDLPack(capsule, cfsas);
         },
+        py::arg("dlpack"), py::arg("cfsas") = nullptr,
         py::return_value_policy::take_ownership);
 }
 

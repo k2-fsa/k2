@@ -55,4 +55,4 @@ jobs:
       - name: Test
         shell: bash
         working-directory: ${{runner.workspace}}/build
-        run: CTEST_OUTPUT_ON_FAILURE=1 ctest --build-config $BUILD_TYPE
+        run: ctest --verbose --build-config $BUILD_TYPE

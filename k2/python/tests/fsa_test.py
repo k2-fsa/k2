@@ -169,12 +169,14 @@ class TestFsa(unittest.TestCase):
         if SKIP_DLPACK:
             print('skip dlpack test')
             return
+        else:
+            print('Do dlpack testing')
 
         num_int32 = num_bytes // 4
         tensor = torch.empty((num_int32,), dtype=torch.int32)
         dlpack = to_dlpack(tensor)
 
-        cfsa_vec = k2.create_cfsa_vec(cfsa_std_vec, dlpack)
+        cfsa_vec = k2.create_cfsa_vec(dlpack, cfsa_std_vec)
         self.assertEqual(cfsa_vec.num_fsas(), 2)
         self.assertEqual(cfsa_vec[0], cfsa1)
         self.assertEqual(cfsa_vec[1], cfsa2)
@@ -182,6 +184,13 @@ class TestFsa(unittest.TestCase):
         self.assertEqual(tensor[0], 1)  # version
         self.assertEqual(tensor[1], 2)  # num_fsas
         self.assertEqual(tensor[2], 64 // 4)  # state_offsets_start
+
+        # construct a CfsaVec from a `torch::Tensor` which has already been filled
+        dlpack = to_dlpack(tensor.clone())
+        cfsa_vec = k2.create_cfsa_vec(dlpack)
+        self.assertEqual(cfsa_vec.num_fsas(), 2)
+        self.assertEqual(cfsa_vec[0], cfsa1)
+        self.assertEqual(cfsa_vec[1], cfsa2)
 
 
 if __name__ == '__main__':
