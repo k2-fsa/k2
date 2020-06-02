@@ -61,4 +61,25 @@ void PybindFsa(py::module &m) {
              return py::make_iterator(self.begin(), self.end());
            },
            py::keep_alive<0, 1>());
+
+  using k2::Cfsa;
+  py::class_<Cfsa>(m, "Cfsa")
+      .def(py::init<>())
+      .def(py::init<const Fsa &>(), py::arg("fsa"))
+      .def("num_states", &Cfsa::NumStates)
+      .def("num_arcs", &Cfsa::NumArcs)
+      .def("arc",
+           [](Cfsa *self, int s) {
+             DCHECK_GE(s, 0);
+             DCHECK_LT(s, self->NumStates());
+             auto begin = self->arc_indexes[s];
+             auto end = self->arc_indexes[s + 1];
+             return py::make_iterator(self->arcs + begin, self->arcs + end);
+           },
+           py::keep_alive<0, 1>())
+      .def("__str__", [](const Cfsa &self) {
+        std::ostringstream os;
+        os << self;
+        return os.str();
+      });
 }

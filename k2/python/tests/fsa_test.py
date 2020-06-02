@@ -83,6 +83,25 @@ class TestFsa(unittest.TestCase):
         fsa_vec.clear()
         self.assertEqual(len(fsa_vec), 0)
 
+    def test_cfsa(self):
+        s = r'''
+        0 1 1
+        0 2 2
+        1 3 -1
+        2 3 -1
+        3
+        '''
+        fsa = k2.string_to_fsa(s)
+        cfsa = k2.Cfsa(fsa)
+        self.assertEqual(cfsa.num_states(), fsa.num_states())
+        self.assertEqual(cfsa.num_arcs(), len(fsa.arcs))
+
+        if False:
+            # the following is for demonstration purpose only
+            for i in range(cfsa.num_states()):
+                for arc in cfsa.arc(i):
+                    print(arc)
+
 
 if __name__ == '__main__':
     unittest.main()
