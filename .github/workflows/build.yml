@@ -15,18 +15,29 @@ on:
       - master
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: Debug
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+        os: [ubuntu-latest, macOS-latest] #, windows-latest]
+        python-version: [3.5, 3.6, 3.7, 3.8]
 
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install torch==1.5.0
 
       - name: Create Build Directory
         run: cmake -E make_directory ${{runner.workspace}}/build
@@ -44,4 +55,4 @@ jobs:
       - name: Test
         shell: bash
         working-directory: ${{runner.workspace}}/build
-        run: CTEST_OUTPUT_ON_FAILURE=1 ctest --build-config $BUILD_TYPE
+        run: ctest --verbose --build-config $BUILD_TYPE

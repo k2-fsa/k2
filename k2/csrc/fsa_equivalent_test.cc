@@ -84,8 +84,7 @@ TEST(FsaEquivalent, IsRandEquivalent) {
         {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {1, 3, 4}, {2, 3, 5},
     };
     Fsa a(std::move(arcs_a), 3);
-    Fsa b = a;
-    bool status = IsRandEquivalent(a, b);
+    bool status = IsRandEquivalent(a, a);
     EXPECT_TRUE(status);
   }
 

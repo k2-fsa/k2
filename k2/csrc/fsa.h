@@ -49,12 +49,16 @@ struct Arc {
            std::tie(src_state, other.dest_state, other.label);
   }
 
+  bool operator!=(const Arc &other) const { return !(*this == other); }
+
   bool operator<(const Arc &other) const {
     // compares `label` first, then `dest_state`
     return std::tie(label, dest_state) <
            std::tie(other.label, other.dest_state);
   }
 };
+
+std::ostream &operator<<(std::ostream &os, const Arc &arc);
 
 struct ArcHash {
   std::size_t operator()(const Arc &arc) const noexcept {
@@ -156,14 +160,49 @@ struct Cfsa {
   Arc *arcs;  // Note: arcs[BeginArcIndex()] through arcs[EndArcIndex() - 1]
               // are valid.
 
-  // Constructor from Fsa
+  Cfsa();
+  // Constructor from Fsa. The passed `fsa` should be kept alive
+  // as long as this cfsa is alive.
   explicit Cfsa(const Fsa &fsa);
 
   Cfsa &operator=(const Cfsa &cfsa) = default;
   Cfsa(const Cfsa &cfsa) = default;
 
   int32_t NumStates() const { return num_states; }
-  int32_t FinalState() const { return num_states - 1; }
+  int32_t NumArcs() const { return end_arc - begin_arc; }
+  int32_t FinalState() const {
+    CHECK_GE(num_states, 2) << "It's an error to invoke this method for "
+                            << "an empty cfsa";
+    return num_states - 1;
+  }
+
+  // for test only
+  bool operator==(const Cfsa &other) const {
+    if (other.num_states != num_states) return false;
+
+    if (other.NumArcs() != NumArcs()) return false;
+
+    for (int32_t i = 0; i != NumArcs(); ++i) {
+      const auto &this_arc = arcs[begin_arc + i];
+      const auto &other_arc = other.arcs[other.begin_arc + i];
+
+      if (this_arc != other_arc) return false;
+    }
+
+    return true;
+  }
+};
+
+std::ostream &operator<<(std::ostream &os, const Cfsa &cfsa);
+
+constexpr int32_t kCfsaVecVersion = 0x01;
+
+struct CfsaVecHeader {
+  int32_t version;
+  int32_t num_fsas;
+  int32_t state_offsets_start;
+  int32_t arc_indexes_start;
+  int32_t arcs_start;
 };
 
 class CfsaVec {
@@ -197,57 +236,82 @@ class CfsaVec {
                              also the offset from the beginning of the
                              `arc_indexes` array of where the part corresponding
                              to FSA f starts.  The number of states in FSA f
-                             is given by state_offsets[f+1] - state_offsets[f].
+                             is given by
+                             `state_offsets[f+1] - state_offsets[f] - 1`.
+                             Caution: one is subtracted above because the last
+                             entry in the arc_indexes array is repeated.
                              This is >= 0; it will be zero if the
                              FSA f is empty, and >= 2 otherwise.
             [possibly some padding here]
 
-             - arc_indexes[tot_states + 1]   This gives the indexes into the
-     `arcs` array of where we can find the first of each state's arcs.
+             - arc_indexes[tot_states + num_fsas]   This gives the indexes
+                             into the `arcs` array of where we can find the
+                             first of each state's arcs. `num_fsas` is needed
+                             since the final state of every fsa is repeated in
+                             `arc_indexes`.
 
              [pad as needed for memory-alignment purposes then...]
 
              - arcs[tot_arcs]
   */
-  CfsaVec(size_t size, void *data);
+  CfsaVec(std::size_t size, void *data);
 
   int32_t NumFsas() const { return num_fsas_; }
 
-  Cfsa operator[](int32_t f) const;
+  Cfsa operator[](int32_t i) const;
+
+  CfsaVec &operator=(const CfsaVec &) = delete;
+  CfsaVec(const CfsaVec &) = delete;
+
+  ~CfsaVec() {
+    if (opaque_deleter_) (*opaque_deleter_)(opaque_ptr_);
+  }
+
+  void SetDeleter(void (*deleter)(void *), void *p) {
+    opaque_deleter_ = deleter;
+    opaque_ptr_ = p;
+  }
 
  private:
-  CfsaVec &operator=(const CfsaVec &);  // Disable
-  CfsaVec(const CfsaVec &);             // Disable
-
   int32_t num_fsas_;
 
-  // The raw underlying data
+  // The raw underlying data;
+  // CAUTION: we do NOT own the memory here.
   int32_t *data_;
-  // The size of the underlying data
-  size_t size_;
+  // The size of the underlying data;
+  // Caution: it is the number of `int32_t` in data_, NOT the number of bytes.
+  std::size_t size_;
+
+  // the following two fields are for DLPack, which enables us to
+  // share memory with `torch::Tensor`.
+  //
+  // C++ code will in generate not touch them.
+  void (*opaque_deleter_)(void *) = nullptr;
+  void *opaque_ptr_ = nullptr;
 };
 
 /*
   Return the number of bytes we'd need to represent this vector of Cfsas
   linearly as a CfsaVec. */
-size_t GetCfsaVecSize(const std::vector<Cfsa> &fsas_in);
+std::size_t GetCfsaVecSize(const std::vector<Cfsa> &cfsas);
 
 // Return the number of bytes we'd need to represent this Cfsa
 // linearly as a CfsaVec with one element
-size_t GetCfsaVecSize(const Cfsa &fsa_in);
+std::size_t GetCfsaVecSize(const Cfsa &cfsa);
 
 /*
   Create a CfsaVec from a vector of Cfsas (this involves representing
   the vector of Fsas in one big linear memory region).
 
-     @param [in] fsas_in  The vector of Cfsas to be linearized;
+     @param [in] cfsas   The vector of Cfsas to be linearized;
                       must be nonempty
      @param [in] data    The allocated data of size `size` bytes
-     @param [in] size    The size of the memory block passed;
+     @param [in] size    The size of the memory block in bytes passed;
                          must equal the return value of
-                         GetCfsaVecSize(fsas_in).
+                         GetCfsaVecSize(cfsas).
  */
-void CreateCfsaVec(const std::vector<Cfsa> &fsas_in, void *data, size_t size);
+void CreateCfsaVec(const std::vector<Cfsa> &cfsas, void *data,
+                   std::size_t size);
 
 struct Fst {
   Fsa core;

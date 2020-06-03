@@ -243,12 +243,12 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
         ShortestDistance<Type>(a_compose_path, a_compose_weights.data());
     double cost_b =
         ShortestDistance<Type>(b_compose_path, b_compose_weights.data());
-    if (cost_a < loglike_cutoff_a && cost_b < loglike_cutoff_b) {
-      continue;
-    } else {
-      if (!DoubleApproxEqual(cost_a, cost_b, delta)) return false;
-      ++n;
-    }
+
+    if (cost_a < loglike_cutoff_a && cost_b < loglike_cutoff_b) continue;
+
+    if (!DoubleApproxEqual(cost_a, cost_b, delta)) return false;
+
+    ++n;
   }
   return true;
 }
@@ -378,9 +378,9 @@ void Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
   const auto arc_b_begin = b.arcs.begin();
   using ArcIterator = std::vector<Arc>::const_iterator;
 
-  const int32_t kFinalStateC = -1;  // just as a placeholder
+  constexpr int32_t kFinalStateC = -1;  // just as a placeholder
   // no corresponding arc mapping from `c` to `a` or `c` to `b`
-  const int32_t kArcMapNone = -1;
+  constexpr int32_t kArcMapNone = -1;
   auto &arc_indexes_c = c->arc_indexes;
   auto &arcs_c = c->arcs;
 
@@ -401,11 +401,11 @@ void Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
     int32_t curr_state_index = state_pair_map[curr_state_pair];
 
     auto state_a = curr_state_pair.first;
-    ArcIterator a_arc_iter_begin = arc_a_begin + a.arc_indexes[state_a];
-    ArcIterator a_arc_iter_end = arc_a_begin + a.arc_indexes[state_a + 1];
+    auto a_arc_iter_begin = arc_a_begin + a.arc_indexes[state_a];
+    auto a_arc_iter_end = arc_a_begin + a.arc_indexes[state_a + 1];
     auto state_b = curr_state_pair.second;
-    ArcIterator b_arc_iter_begin = arc_b_begin + b.arc_indexes[state_b];
-    ArcIterator b_arc_iter_end = arc_b_begin + b.arc_indexes[state_b + 1];
+    auto b_arc_iter_begin = arc_b_begin + b.arc_indexes[state_b];
+    auto b_arc_iter_end = arc_b_begin + b.arc_indexes[state_b + 1];
 
     // As both `a` and `b` are arc-sorted, we first process epsilon arcs in `a`.
     for (; a_arc_iter_begin != a_arc_iter_end; ++a_arc_iter_begin) {
@@ -419,7 +419,7 @@ void Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
         ++state_index_c;
       }
       int32_t new_state_index = result.first->second;
-      arcs_c.push_back({curr_state_index, new_state_index, kEpsilon});
+      arcs_c.emplace_back(curr_state_index, new_state_index, kEpsilon);
       c_weights->push_back(a_weights[a_arc_iter_begin - arc_a_begin]);
       if (arc_map_a != nullptr)
         arc_map_a->push_back(
@@ -446,7 +446,8 @@ void Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
           ++state_index_c;
         }
         int32_t new_state_index = result.first->second;
-        arcs_c.push_back({curr_state_index, new_state_index, curr_a_arc.label});
+        arcs_c.emplace_back(curr_state_index, new_state_index,
+                            curr_a_arc.label);
         c_weights->push_back(a_weights[it_a - arc_a_begin]);
         if (arc_map_a != nullptr)
           arc_map_a->push_back(static_cast<int32_t>(it_a - arc_a_begin));

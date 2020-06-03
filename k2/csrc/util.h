@@ -1,6 +1,7 @@
 // k2/csrc/util.h
 
 // Copyright (c)  2020  Haowen Qiu
+//                      Fangjun Kuang (csukuangfj@gmail.com)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -16,12 +17,12 @@
 
 namespace k2 {
 
-#define EXPECT_DOUBLE_ARRAY_APPROX_EQ(expected, actual, abs_error)      \
-  ASSERT_EQ(expected.size(), actual.size()) << "Different Array Size."; \
-  for (std::size_t i = 0; i < expected.size(); ++i) {                   \
-    EXPECT_TRUE(ApproxEqual(expected[i], actual[i], abs_error))         \
-        << "expected value at index " << i << " is " << expected[i]     \
-        << ", but actual value is " << actual[i];                       \
+#define EXPECT_DOUBLE_ARRAY_APPROX_EQ(expected, actual, abs_error)          \
+  ASSERT_EQ((expected).size(), (actual).size()) << "Different Array Size."; \
+  for (std::size_t i = 0; i != (expected).size(); ++i) {                    \
+    EXPECT_TRUE(ApproxEqual((expected)[i], (actual)[i], abs_error))         \
+        << "expected value at index " << i << " is " << (expected)[i]       \
+        << ", but actual value is " << (actual)[i];                         \
   }
 
 // boost::hash_combine
@@ -60,9 +61,9 @@ inline double LogAdd(double x, double y) {
     double res;
     res = x + log1p(exp(diff));
     return res;
-  } else {
-    return x;  // return the larger one.
   }
+
+  return x;  // return the larger one.
 }
 
 // returns log(exp(x) + exp(y)).
@@ -81,9 +82,9 @@ inline float LogAdd(float x, float y) {
     float res;
     res = x + log1pf(expf(diff));
     return res;
-  } else {
-    return x;  // return the larger one.
   }
+
+  return x;  // return the larger one.
 }
 
 inline bool ApproxEqual(double a, double b, double delta = 0.001) {
@@ -98,6 +99,9 @@ inline bool ApproxEqual(double a, double b, double delta = 0.001) {
 inline bool DoubleApproxEqual(double a, double b, double delta = 1e-6) {
   return a <= b + delta && b <= a + delta;
 }
+
+void *MemAlignedMalloc(size_t nbytes, size_t alignment);
+void MemFree(void *ptr);
 
 }  // namespace k2
 #endif  // K2_CSRC_UTIL_H_

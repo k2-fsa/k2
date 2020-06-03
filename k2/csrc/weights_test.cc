@@ -34,7 +34,7 @@ class WeightsTest : public ::testing::Test {
     std::copy_n(weights.begin(), num_arcs, arc_weights_);
   }
 
-  ~WeightsTest() {
+  ~WeightsTest() override {
     delete fsa_;
     delete[] arc_weights_;
   }
@@ -43,7 +43,7 @@ class WeightsTest : public ::testing::Test {
   int32_t num_states_;
   float *arc_weights_;
   const std::vector<double> forward_max_weights_ = {
-      0, 1, 3, 4, 1, kFloatNegativeInfinity, 3, 9, 4, 14};
+      0, 1, 3, 4, 1, kDoubleNegativeInfinity, 3, 9, 4, 14};
   const std::vector<double> backward_max_weights_ = {14, 13, 9, 10, 9,
                                                      4,  3,  5, 6,  0};
   const std::vector<double> forward_logsum_weights_ = {

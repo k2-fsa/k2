@@ -100,7 +100,8 @@ static void TraceBackRmEpsilonsLogSum(
   while (!state_ptr->prev_elements.empty()) {
     double backward_prob = state_ptr->backward_prob;
     for (const auto &link : state_ptr->prev_elements) {
-      float arc_log_posterior = link.forward_prob + backward_prob;
+      auto arc_log_posterior =
+          static_cast<float>(link.forward_prob + backward_prob);
       deriv_out->emplace_back(link.arc_index, expf(arc_log_posterior));
       k2::LogSumTracebackState *prev_state = link.prev_state.get();
       double new_backward_prob = backward_prob + arc_weights_in[link.arc_index];
@@ -145,7 +146,6 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
   if (IsEmpty(fsa)) return true;
 
   auto num_states = fsa.NumStates();
-  auto final_state = num_states - 1;
 
   std::vector<bool> accessible(num_states, false);
   std::vector<bool> coaccessible(num_states, false);
@@ -326,7 +326,6 @@ bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map /*=nullptr*/) {
 
   auto arc_begin = 0;
   auto arc_end = 0;
-  auto final_state_a = a.NumStates() - 1;
 
   for (auto i = 0; i != num_states_b; ++i) {
     auto state_a = state_b_to_a[i];
@@ -602,11 +601,11 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
     int32_t curr_state_index = state_pair_map[curr_state_pair];
 
     auto state_a = curr_state_pair.first;
-    ArcIterator a_arc_iter_begin = arc_a_begin + a.arc_indexes[state_a];
-    ArcIterator a_arc_iter_end = arc_a_begin + a.arc_indexes[state_a + 1];
+    auto a_arc_iter_begin = arc_a_begin + a.arc_indexes[state_a];
+    auto a_arc_iter_end = arc_a_begin + a.arc_indexes[state_a + 1];
     auto state_b = curr_state_pair.second;
-    ArcIterator b_arc_iter_begin = arc_b_begin + b.arc_indexes[state_b];
-    ArcIterator b_arc_iter_end = arc_b_begin + b.arc_indexes[state_b + 1];
+    auto b_arc_iter_begin = arc_b_begin + b.arc_indexes[state_b];
+    auto b_arc_iter_end = arc_b_begin + b.arc_indexes[state_b + 1];
 
     // As both `a` and `b` are arc-sorted, we first process epsilon arcs.
     // Noted that at most one for-loop below will really run as either `a` or
@@ -617,7 +616,7 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
       StatePair new_state{a_arc_iter_begin->dest_state, state_b};
       int32_t new_state_index = InsertIntersectionState(
           new_state, &state_index_c, &qstates, &state_pair_map);
-      arcs_c.push_back({curr_state_index, new_state_index, kEpsilon});
+      arcs_c.emplace_back(curr_state_index, new_state_index, kEpsilon);
       if (arc_map_a != nullptr)
         arc_map_a->push_back(
             static_cast<int32_t>(a_arc_iter_begin - arc_a_begin));
@@ -628,7 +627,7 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
       StatePair new_state{state_a, b_arc_iter_begin->dest_state};
       int32_t new_state_index = InsertIntersectionState(
           new_state, &state_index_c, &qstates, &state_pair_map);
-      arcs_c.push_back({curr_state_index, new_state_index, kEpsilon});
+      arcs_c.emplace_back(curr_state_index, new_state_index, kEpsilon);
       if (arc_map_a != nullptr) arc_map_a->push_back(arc_map_none);
       if (arc_map_b != nullptr)
         arc_map_b->push_back(
@@ -658,7 +657,8 @@ bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
         StatePair new_state{curr_a_arc.dest_state, curr_b_arc.dest_state};
         int32_t new_state_index = InsertIntersectionState(
             new_state, &state_index_c, &qstates, &state_pair_map);
-        arcs_c.push_back({curr_state_index, new_state_index, curr_a_arc.label});
+        arcs_c.emplace_back(curr_state_index, new_state_index,
+                            curr_a_arc.label);
 
         auto curr_arc_index_a = static_cast<int32_t>(
             a_arc_iter_begin - (swapped ? arc_b_begin : arc_a_begin));
