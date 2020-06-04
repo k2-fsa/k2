@@ -59,10 +59,27 @@ void GetArcWeights(const float *arc_weights_in,
                    const std::vector<std::vector<int32_t>> &arc_map,
                    float *arc_weights_out);
 
-// Version of GetArcWeights where arc_map maps each arc in the output FSA to one
-// arc (instead of a sequence of arcs) in the input FSA; see its documentation.
+// Version of GetArcWeights where arc_map maps each arc in the output FSA to
+// one arc (instead of a sequence of arcs) in the input FSA; see its
+// documentation.
 void GetArcWeights(const float *arc_weights_in,
                    const std::vector<int32_t> &arc_map, float *arc_weights_out);
+
+/* Reorder a list of arcs to get a valid FSA. This function will be used in a
+   situation that the input list of arcs is not sorted by src_state, we'll
+   reorder the arcs and generate the corresponding valid FSA. Note that we don't
+   remap any state index here, it is supposed that the start state is 0 and the
+   final state is the largest state number in the input arcs.
+
+   @param [in] arcs  A list of arcs.
+   @param [out] fsa  Output fsa.
+   @param [out] arc_map   If non-NULL, this function will
+                            output a map from the arc-index in `fsa` to
+                            the corresponding arc-index in input `arcs`.
+*/
+void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
+                 std::vector<int32_t> *arc_map = nullptr);
+
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by Compose())
   from int32 to int64; this will be needed for conversion to LongTensor.
