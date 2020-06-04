@@ -61,6 +61,49 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
                       std::size_t npath = 100);
 
 /*
+  This version of `IsRandEquivalent` will be used to check the equivalence
+  between the input FSA `a` and the output FSA `b` of `RmEpsilonPrunedLogSum`.
+  We need this version because `RmEpsilonPrunedLogSum` does pruning on the input
+  FSA instead of on the output FSA (compared with other algorithm such as
+  determinization), thus it will goes against the symmetric assumption of
+  IsRandEquivalent as `a` may always has greater weights than `b` for any symbol
+  sequence.
+
+  Specifically, we implement the algorithm as below:
+    1. any path in `b` that is within `beam` of the total weight of `b` should
+       be present in `a` with a weight that is not greater than its weight in
+       `b`;
+    2. any path (without epsilon arcs) in `a` that is within `beam` of the total
+       weight of `a` should be present in `b` with a weight that is not less
+       than its weight in `a`.
+
+  The function returns true if `a` is stochastically equivalent to `b` by
+  randomly generating `npath` paths from one of them and then checking if each
+  path exists in the other one and if the relationship of two weights satisfies
+  above rules.
+
+  @param [in]  a          The FSA before epsion-removal
+                          (input FSA of `RmEpsilonPrunedLogSum`)
+  @param [in]  a_weights  Arc weights of `a`
+  @param [in]  b          The FSA after epsion-removal
+                          (output FSA of `RmEpsilonPrunedLogSum`)
+  @param [in]  b_weights  Arc weights of `b`
+  @param [in]  beam       beam > 0 that affects pruning; the algorithm
+                          will only check paths within `beam` of the
+                          total weight of `a` or `b`. The value of `beam`
+                          should also be not greater than the `beam` value
+                          used in `RmEpsilonPrunedLogSum`.
+  @param [in]  top_sorted The user may set this to true if both `a` and `b` are
+                          topologically sorted; this makes this function faster.
+                          Otherwise it must be set to false.
+  @param [in]  npath      The number of paths will be generated to check the
+                          equivalence of `a` and `b`
+ */
+bool IsRandEquivalentAfterRmEpsPrunedLogSum(
+    const Fsa &a, const float *a_weights, const Fsa &b, const float *b_weights,
+    float beam, bool top_sorted = true, std::size_t npath = 100);
+
+/*
   Gets a random path from an Fsa `a`, returns true if we get one path
   successfully.
 

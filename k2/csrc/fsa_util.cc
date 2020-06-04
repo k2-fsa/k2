@@ -1,6 +1,7 @@
 // k2/csrc/fsa_util.cc
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+//                      Haowen Qiu
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -108,7 +109,7 @@ void SplitStringToVector(const std::string &in, const char *delim,
   CHECK_NOTNULL(delim);
   CHECK_NOTNULL(out);
   out->clear();
-  size_t start = 0;
+  std::size_t start = 0;
   while (true) {
     auto pos = in.find_first_of(delim, start);
     if (pos == std::string::npos) break;
@@ -151,6 +152,28 @@ void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
     arc_index->insert(arc_index->end(), indices.begin(), indices.end());
     auto end = static_cast<int32_t>(arc_index->size());
     end_index->push_back(end);
+  }
+}
+
+void GetArcWeights(const float *arc_weights_in,
+                   const std::vector<std::vector<int32_t>> &arc_map,
+                   float *arc_weights_out) {
+  CHECK_NOTNULL(arc_weights_in);
+  CHECK_NOTNULL(arc_weights_out);
+  for (const auto &arcs : arc_map) {
+    float sum_weights = 0.0f;
+    for (auto arc : arcs) sum_weights += arc_weights_in[arc];
+    *arc_weights_out++ = sum_weights;
+  }
+}
+
+void GetArcWeights(const float *arc_weights_in,
+                   const std::vector<int32_t> &arc_map,
+                   float *arc_weights_out) {
+  CHECK_NOTNULL(arc_weights_in);
+  CHECK_NOTNULL(arc_weights_out);
+  for (const auto &arc : arc_map) {
+    *arc_weights_out++ = arc_weights_in[arc];
   }
 }
 
@@ -249,7 +272,7 @@ void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
   int32_t src_state;
   int32_t dest_state;
   int32_t label;
-  int32_t num_states = static_cast<int32_t>(opts.num_states);
+  auto num_states = static_cast<int32_t>(opts.num_states);
 
   int32_t num_fails = -1;
   int32_t max_loops = 100 * opts.num_arcs;
@@ -270,7 +293,7 @@ void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
       else
         dest_state = rand(src_state + 1, num_states - 1);
 
-      if (seen.count(std::make_pair(src_state, dest_state))) continue;
+      if (seen.count(std::make_pair(src_state, dest_state)) != 0) continue;
 
       seen.insert(std::make_pair(src_state, dest_state));
 

@@ -29,7 +29,6 @@ namespace k2 {
 
 */
 
-
 /*
   This allows you to store auxiliary labels (e.g. olabels or ilabels)
   on each arc of an Fsa.
@@ -40,12 +39,12 @@ struct AuxLabels {
      `labels` of the label sequence on arc i.  start_pos.end()
      equals labels.size(). */
   std::vector<int32_t> start_pos;
-  /* For arc i, (labels[start_pos[i] ], labels[start_pos[i]+1], ... labels[start_pos[i+1]-1])
-     are the list of labels on that arc.  None of the elements of `labels` are
-     expected to be zero (epsilon). */
+  /* For arc i, (labels[start_pos[i] ], labels[start_pos[i]+1], ...
+     labels[start_pos[i+1]-1]) are the list of labels on that arc.
+     We treat epsilon the same as other symbols here, so there are no
+     requirements on elements of `labels`. */
   std::vector<int32_t> labels;
 };
-
 
 /*
   Maps auxiliary labels after an FSA operation where each arc in the output
@@ -57,8 +56,7 @@ struct AuxLabels {
      @param [in] labels_out  Labels on the arcs of the output FSA
  */
 void MapAuxLabels1(const AuxLabels &labels_in,
-                   const std::vector<int32_t> &arc_map,
-                   AuxLabels *labels_out);
+                   const std::vector<int32_t> &arc_map, AuxLabels *labels_out);
 
 /*
   Maps auxiliary labels after an FSA operation where each arc in the output
@@ -70,9 +68,8 @@ void MapAuxLabels1(const AuxLabels &labels_in,
      @param [in] labels_out  Labels on the arcs of the output FSA
  */
 void MapAuxLabels2(const AuxLabels &labels_in,
-                   const std::vector<std::vector<int32_t> > &arc_map,
+                   const std::vector<std::vector<int32_t>> &arc_map,
                    AuxLabels *labels_out);
-
 
 /*
   Invert an FST, swapping the symbols in the FSA with the auxiliary labels.
@@ -92,12 +89,8 @@ void MapAuxLabels2(const AuxLabels &labels_in,
                         `fsa_in`, although epsilons (kEpsilon, zeros) will be
                         removed.
  */
-void InvertFst(const Fsa &fsa_in,
-               const AuxLabels &labels_in,
-               Fsa *fsa_out,
+void InvertFst(const Fsa &fsa_in, const AuxLabels &labels_in, Fsa *fsa_out,
                AuxLabels *aux_labels_out);
-
-
 
 }  // namespace k2
 

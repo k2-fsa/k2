@@ -86,7 +86,7 @@ namespace k2 {
   arcs in the output FSA.
 
 
-   *The problem with differentability
+   *The problem with differentiability
 
    Consider how to differentiate the weights of the output weighted FSA
    w.r.t. those of the input.  The problem with differentiability if we use the
@@ -113,7 +113,7 @@ namespace k2 {
 
     *Different normalization
 
-    Our form of "normalization" of this representation is differen too.  The
+    Our form of "normalization" of this representation is different too.  The
     normalization is to make `symbol_sequence` as short as possible, and advance
     `base_state` to compensate.  For instance, if `symbol_sequence` is `a b c
     d`, but the weighted subset of states we can reach by this symbol sequence
@@ -177,7 +177,7 @@ struct MaxTracebackState {
 
   /**
      @param [in] state_id  State in input FSA that this corresponds to
-     @param [in] src   Previous LogSumTracebackState that we'll point back
+     @param [in] src   Previous MaxTracebackState that we'll point back
                       to, or NULL
      @param [in] incoming_arc_index  Arc-index in input FSA.
                       Its src_state will equal src->state_id,
@@ -213,7 +213,7 @@ class LogSumTracebackState;
 /*
   This struct is used inside LogSumTracebackState; it represents an
   arc that traces back to a previous LogSumTracebackState.
-  A LogSumTracebackState represents a weighted colletion of paths
+  A LogSumTracebackState represents a weighted collection of paths
   terminating in a specific state.
 */
 struct LogSumTracebackLink {
@@ -364,7 +364,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
 // for LogSumTracebackState, above.  This version is simpler.
 void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
                int32_t num_steps,
-               const float *,  // arc_weights_in, unused.
+               const float *unused,  // arc_weights_in, unused.
                float *weight_out, std::vector<int32_t> *deriv_out);
 
 template <class TracebackState>
@@ -633,7 +633,7 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
   std::unordered_set<TracebackState *> cur_states;
 
   double fb_prob = -std::numeric_limits<double>::infinity();
-  for (auto p : elements) {
+  for (const auto &p : elements) {
     TracebackState *state = p.second.get();
     fb_prob = LogSumOrMax<TracebackState>(
         fb_prob,
@@ -701,10 +701,10 @@ class DetStateMap {
     if (inserted) {
       a->state_id = cur_output_state_++;
       return true;
-    } else {
-      a->state_id = p.first->second;
-      return false;
     }
+
+    a->state_id = p.first->second;
+    return false;
   }
 
   int32_t size() const { return cur_output_state_; }
@@ -712,8 +712,8 @@ class DetStateMap {
  private:
   // simple hashing function that just takes the first element of the pair.
   struct PairHasher {
-    size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
-      return static_cast<size_t>(p.first);
+    std::size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
+      return static_cast<std::size_t>(p.first);
     }
   };
 
@@ -781,7 +781,7 @@ class DetStateMap {
   }
 
   struct DetStateHasher {
-    size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
+    std::size_t operator()(const std::pair<uint64_t, uint64_t> &p) const {
       return p.first;
     }
   };
@@ -837,9 +837,9 @@ float DeterminizePrunedTpl(
                arc_derivs_out->begin());
   if (!queue.empty()) {  // We stopped early due to max_step
     return total_prob - queue.top()->forward_backward_prob;
-  } else {
-    return beam;
   }
+
+  return beam;
 }
 }  // namespace k2
 
