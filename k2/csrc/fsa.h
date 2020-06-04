@@ -156,8 +156,7 @@ struct Cfsa {
                                 // greater than zero.
 
 
-  Arc *arcs;   // Note: arcs[BeginArcIndex()] through arcs[EndArcIndex() - 1]
-               // are valid.
+  Arc *arcs;   // Note: arcs[begin_arc] through arcs[end_arc] are valid.
 
   // Constructor from Fsa
   Cfsa(const Fsa &fsa);
