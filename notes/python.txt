@@ -207,7 +207,6 @@
    # note: fsas_det still has `phone_syms` and `nnet_arc_indexes`, now as sequences.
 
 
-<<<<<<< HEAD
 def PseudoTensor:
     """This is a class that behaves like a torch.Tensor but in fact only supports one kind of
        operation, namely indexing with another torch.Tensor"""
@@ -221,8 +220,6 @@ def PseudoTensor:
         self.divisor = divisor
     def __getitem__(self, indexes):
         return self.t[indexes / divisor]
-=======
->>>>>>> upstream/master
 
 def DenseFsaVec:
 
@@ -262,22 +259,8 @@ def DenseFsaVec:
         # loglikes, one per arc of the CfsaVec object.  This is
         # a repeat of `loglikes` but possibly in a different
         # order.
-<<<<<<< HEAD
 
 
-        # this is mostly a call to C++ code.
-
-        # after that, we can create
-
-
-
-        # self.vars
-        self.vars = dict("
-
-
-
-=======
->>>>>>> upstream/master
         pass
 
     @property
@@ -285,7 +268,6 @@ def DenseFsaVec:
         return self.arc_loglikes
 
 
-<<<<<<< HEAD
     @property
     def seg_frames(self):
         """Return something that 'acts' like a tensor, indexed by arc, of
@@ -310,61 +292,3 @@ def DenseFsaVec:
     def seg_ids(self):
         """ as for seg_frames"""
         pass
-=======
-    def seg_frames_for_arcs(self, arc_indexes):
-        """
-        Returns the frame-indexes relative to the start of each segment
-        for each of a provided list of arc indexes, as a torch.LongTensor.
-        """
-
-        # Note: self.seg_frame_indexes will be a torch.IntTensor containing
-        # the frame index for each arc.  Later we'll address not being
-        # able to index with IntTensor but only LongTensor.
-        return self.seg_frame_indexes[arc_indexes / self.num_symbols]
-
-    def seq_frames_for_arcs(self, arc_indexes):
-        """
-        Returns the frame-indexes relative to the start of each sequence
-        for each of a provided list of arc indexes, as a torch.LongTensor.
-
-        Note: if a returned frame-index equals num_frames, then that
-        frame was a `final-arc` (a special arc going to the final state),
-        which cannot be used to index the `loglikes` array provided to
-        the constructor because it's out-of-range.
-        """
-
-        # Note: self.seq_frame_indexes will be a torch.IntTensor containing
-        # the frame index for each arc.  Later we'll address not being
-        # able to index with IntTensor but only LongTensor.
-        return self.seq_frame_indexes[arc_indexes / self.num_symbols]
-
-    def segments_for_arcs(self, arc_indexes):
-        """
-        Return the segment-indexes for each of a provided list of arcs,
-        which tells you which segment it was a part of.
-        """
-        return self.segment_indexes[arc_indexes / self.num_symbols]
-
-    def seqs_for_arcs(self, arc_indexes):
-        """
-        Return the segment-indexes for each of a provided list of arcs,
-        which tells you which sequence it was a part of.
-        """
-        return self.input_seq_indexes[self.segments_for_arcs(arc_indexes)]
-
->>>>>>> upstream/master
-
-
-
-
-
-# compute posteriors..
-   first_pass_posts =
-
-
-
-
-
-
-
-   nnet_post = log_softmax(nnet_output)  # might use this later for something..
