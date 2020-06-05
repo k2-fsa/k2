@@ -46,6 +46,9 @@ struct AuxLabels {
   std::vector<int32_t> labels;
 };
 
+// Swap AuxLabels; it's cheap to to this as we are actually doing shallow swap.
+void Swap(AuxLabels *labels1, AuxLabels *labels2);
+
 /*
   Maps auxiliary labels after an FSA operation where each arc in the output
   FSA corresponds to exactly one arc in the input FSA.

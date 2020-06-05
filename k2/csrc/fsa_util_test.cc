@@ -101,4 +101,40 @@ TEST(FsaUtil, RandFsa) {
   EXPECT_FALSE(IsEmpty(fsa));
 }
 
+TEST(FsaUtil, ReorderArcs) {
+  {
+    // empty input arcs
+    std::vector<Arc> arcs;
+    // dirty data
+    std::vector<Arc> arc_tmp = {{0, 1, 2}};
+    Fsa fsa(std::move(arc_tmp), 2);
+    std::vector<int32_t> arc_map = {1};
+    ReorderArcs(arcs, &fsa, &arc_map);
+    EXPECT_TRUE(IsEmpty(fsa));
+    EXPECT_TRUE(arc_map.empty());
+  }
+
+  {
+    // empty input arcs
+    std::vector<Arc> arcs = {{0, 1, 1}, {0, 2, 2},  {2, 3, 3},  {2, 4, 4},
+                             {1, 2, 5}, {2, 5, -1}, {4, 5, -1}, {3, 5, -1}};
+    Fsa fsa;
+    std::vector<int32_t> arc_map;
+    ReorderArcs(arcs, &fsa, &arc_map);
+
+    std::vector<Arc> expected_arcs = {{0, 1, 1},  {0, 2, 2}, {1, 2, 5},
+                                      {2, 3, 3},  {2, 4, 4}, {2, 5, -1},
+                                      {3, 5, -1}, {4, 5, -1}};
+    ASSERT_EQ(fsa.arcs.size(), arcs.size());
+    ASSERT_EQ(fsa.arcs.size(), expected_arcs.size());
+    for (auto i = 0; i != expected_arcs.size(); ++i) {
+      EXPECT_EQ(fsa.arcs[i], expected_arcs[i]);
+    }
+    ASSERT_EQ(fsa.arc_indexes.size(), 7);
+    EXPECT_THAT(fsa.arc_indexes, ::testing::ElementsAre(0, 2, 3, 6, 7, 8, 8));
+    ASSERT_EQ(arc_map.size(), expected_arcs.size());
+    EXPECT_THAT(arc_map, ::testing::ElementsAre(0, 1, 4, 2, 3, 5, 7, 6));
+  }
+}
+
 }  // namespace k2
