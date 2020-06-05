@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "k2/csrc/array.h"
 #include "k2/csrc/util.h"
 
 namespace k2 {
@@ -129,6 +130,10 @@ struct Fsa {
   }
 };
 
+// TODO(haowen): replace Cfsa and CfsaVec with below definitions
+using Cfsa_ = Array2<int32_t, Arc>;
+using CfsaVec_ = Array3<int32_t, Arc>;
+
 /*
   Cfsa is a 'const' FSA, which we'll use as the input to operations.  It is
   designed in such a way that the storage underlying it may either be an Fsa
@@ -157,7 +162,7 @@ struct Cfsa {
                                // are valid.  CAUTION: arc_indexes[0] may be
                                // greater than zero.
 
-  Arc *arcs;  // Note: arcs[BeginArcIndex()] through arcs[EndArcIndex() - 1]
+  Arc *arcs;  // Note: arcs[begin_arc] through arcs[end_arc - 1]
               // are valid.
 
   Cfsa();
