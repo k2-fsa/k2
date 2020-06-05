@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "k2/csrc/array.h"
 #include "k2/csrc/util.h"
 
 namespace k2 {
@@ -128,6 +129,10 @@ struct Fsa {
     return static_cast<int32_t>(arc_indexes.size()) - 2;
   }
 };
+
+// TODO(haowen): replace Cfsa and CfsaVec with below definitions
+using Cfsa_ = Array2<int32_t, Arc>;
+using CfsaVec_ = Array3<int32_t, Arc>;
 
 /*
   Cfsa is a 'const' FSA, which we'll use as the input to operations.  It is

@@ -9,6 +9,7 @@
 
 #include <vector>
 
+#include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_util.h"
 #include "k2/csrc/properties.h"
@@ -45,6 +46,9 @@ struct AuxLabels {
      requirements on elements of `labels`. */
   std::vector<int32_t> labels;
 };
+
+// TODO(haowen): replace AuxLabels above with below definition
+using AuxLabels_ = Array2<int32_t, int32_t>;
 
 // Swap AuxLabels; it's cheap to to this as we are actually doing shallow swap.
 void Swap(AuxLabels *labels1, AuxLabels *labels2);
@@ -94,6 +98,39 @@ void MapAuxLabels2(const AuxLabels &labels_in,
  */
 void InvertFst(const Fsa &fsa_in, const AuxLabels &labels_in, Fsa *fsa_out,
                AuxLabels *aux_labels_out);
+
+class FstInverter {
+  /* Constructor.  Lightweight. */
+  FstInverter(const Fsa &fsa_in, const AuxLabels &labels_in);
+
+  /*
+    Do enough work that know now much memory will be needed, and output
+    that information
+        @param [out] fsa_size   The num-states and num-arcs of the FSA
+                                will be written to here
+        @param [out] aux_size   The number of lists in the AuxLabels
+                                output (==num-arcs) and the number of
+                                elements will be written to here.
+  */
+  void GetSizes(Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *aux_size);
+
+  /*
+    Finish the operation and output inverted FSA to `fsa_out` and
+    auxiliary labels to `labels_out`.
+       @param [out]  fsa_out  The inverted FSA will be written to
+                         here.  Must be initialized; search for
+                         'initialized definition' in class Array2
+                         in array.h for meaning.
+       @param [out]  labels_out  The auxiliary labels will be written to
+                         here.  Must be initialized; search for
+                         'initialized definition' in class Array2
+                         in array.h for meaning.
+   */
+  void GetOutput(Fsa *fsa_out, AuxLabels *labels_out);
+
+ private:
+  // ...
+};
 
 }  // namespace k2
 
