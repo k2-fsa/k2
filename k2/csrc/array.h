@@ -29,6 +29,7 @@ class StridedPtr {
 
 
 
+/* MIGHT NOT NEED THIS */
 template <typename I, typename Ptr>
 struct Array1 {
   // Irregular two dimensional array of something, like vector<vector<X> >
@@ -45,8 +46,23 @@ struct Array1 {
   PtrT data;
 
 
-}
+};
 
+
+/*
+  This struct stores the size of an Array2 object; it will generally be used as
+  an output argument by functions that work out this size.
+ */
+template <typename I> struct Array2Size {
+  using IndexT = I;
+  // `size1` is the top-level size of the array, equal to the object's .size
+  // element
+  I size1;
+  // `size2` is the nunber of elements in the array, equal to
+  // o->indexes[o->size] - o->indexes[0] (if the Array2 object o is
+  // initialized).
+  I size2;
+}
 
 
 template <typename I, typename Ptr>
@@ -123,19 +139,20 @@ using CfsaVec = Array3<int32_t, Arc>;
 
 
 class FstInverter {
+  /* Constructor.  Lightweight. */
   FstInverter(const Fsa &fsa_in, const AuxLabels &labels_in);
 
   /*
     Do enough work that know now much memory will be needed, and output
     that information
-        @param [out] fsa_size1  Number of states in output FSA
-        @param [out] fsa_size2  Number of arcs in output FSA
-        @param [out] aux_size1  Top-level size of aux-labels; will equal
-                                number of arcs in output FSA
-        @param [out] aux_size2  Number of elements in aux-labels
-   */
-  void GetSizes(int32_t *fsa_size1, int32_t *fsa_size2,
-                int32_t *aux_size1, int32_t *aux_size2);
+        @param [out] fsa_size   The num-states and num-arcs of the FSA
+                                will be written to here
+        @param [out] aux_size   The number of lists in the AuxLabels
+                                output (==num-arcs) and the number of
+                                elements will be written to here.
+  */
+  void GetSizes(Array2Size<int32_t> *fsa_size,
+                Array2Size<int32_t> *aux_size);
 
   /*
     Finish the operation and output inverted FSA to `fsa_out` and
