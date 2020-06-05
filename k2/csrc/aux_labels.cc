@@ -26,15 +26,15 @@ namespace {
 
   @param [in] fsa_in      Input FSA
   @param [in] labels_in   Aux-label sequences for the input FSA
-  @param [out] expanded_states  For state `i` in `fsa_in`, we need to create
-                                extra `expaned_states[i]` states in the output
+  @param [out] num_extra_states For state `i` in `fsa_in`, we need to create
+                                extra `num_extra_states[i]` states in the output
                                 inverted FSA.
 */
-static void CountExpandedStatesNum(const k2::Fsa &fsa_in,
-                                   const k2::AuxLabels &labels_in,
-                                   std::vector<int32_t> *expanded_states) {
-  CHECK_EQ(expanded_states->size(), fsa_in.NumStates());
-  auto &states = *expanded_states;
+static void CountExtraStates(const k2::Fsa &fsa_in,
+                             const k2::AuxLabels &labels_in,
+                             std::vector<int32_t> *num_extra_states) {
+  CHECK_EQ(num_extra_states->size(), fsa_in.NumStates());
+  auto &states = *num_extra_states;
   for (int32_t i = 0; i != fsa_in.arcs.size(); ++i) {
     const auto &arc = fsa_in.arcs[i];
     int32_t pos_start = labels_in.start_pos[i];
@@ -46,35 +46,40 @@ static void CountExpandedStatesNum(const k2::Fsa &fsa_in,
 /*
   Map the state in the input FSA to state in the output inverted FSA.
 
-  @param [in] expanded_states  Output of function `CountExpandedStatesNum`
+  @param [in] num_extra_states Output of function `CountExtraStates`
                                which gives how many extra states we need
                                to create for each state in the input FSA.
   @param [out] state_map       Map state `i` in the input FSA to state
                                `state_map[i]` in the output FSA.
-  @param [in] state_ids        state_id[i] == state_map[i-1], it will be
-                               used to number extra states created for
-                               state i.
+                               At exit, it will be
+                               state_map[0] = 0,
+                               state_map[i] = state_map[i-1]
+                                            + num_extra_states[i]
+                                            + 1, for any i >=1
+  @param [out] state_ids       At exit, it will be
+                               state_ids[0] = 0,
+                               state_ids[i] = state_map[i-1], for any i >= 1.
 */
-static void MapStates(const std::vector<int32_t> &expanded_states,
+static void MapStates(const std::vector<int32_t> &num_extra_states,
                       std::vector<int32_t> *state_map,
                       std::vector<int32_t> *state_ids) {
-  CHECK_EQ(state_map->size(), expanded_states.size());
-  CHECK_EQ(state_ids->size(), expanded_states.size());
+  CHECK_EQ(state_map->size(), num_extra_states.size());
+  CHECK_EQ(state_ids->size(), num_extra_states.size());
   auto &s_map = *state_map;
   auto &s_ids = *state_ids;
   // we suppose there's no arcs entering the start state (i.e. state id of the
   // start state in output FSA will be 0), otherwise we may need to create a new
   // state as the real start state.
-  CHECK_EQ(expanded_states[0], 0);
-  CHECK_EQ(s_map[0], 0);
-  CHECK_EQ(s_ids[0], 0);
-  auto num_states_in = expanded_states.size();
+  CHECK_EQ(num_extra_states[0], 0);
+  auto num_states_in = num_extra_states.size();
   // process from the second state
+  s_map[0] = 0;
+  s_ids[0] = 0;
   int32_t num_states_out = 0;
   for (auto i = 1; i != num_states_in; ++i) {
     s_ids[i] = num_states_out;
-    // `+1` as we did not count state `i` itself in `expanded_states`
-    num_states_out += expanded_states[i] + 1;
+    // `+1` as we did not count state `i` itself in `num_extra_states`
+    num_states_out += num_extra_states[i] + 1;
     s_map[i] = num_states_out;
   }
 }
@@ -153,13 +158,13 @@ void InvertFst(const Fsa &fsa_in, const AuxLabels &labels_in, Fsa *fsa_out,
   auto num_states_in = fsa_in.NumStates();
   // get the number of extra states we need to create for each state
   // in fsa_in when inverting
-  std::vector<int32_t> expanded_states(num_states_in, 0);
-  CountExpandedStatesNum(fsa_in, labels_in, &expanded_states);
+  std::vector<int32_t> num_extra_states(num_states_in, 0);
+  CountExtraStates(fsa_in, labels_in, &num_extra_states);
 
   // map state in fsa_in to state in fsa_out
   std::vector<int32_t> state_map(num_states_in, 0);
   std::vector<int32_t> state_ids(num_states_in, 0);
-  MapStates(expanded_states, &state_map, &state_ids);
+  MapStates(num_extra_states, &state_map, &state_ids);
 
   // a maximal approximation
   int32_t num_arcs_out = labels_in.labels.size() + fsa_in.arcs.size();

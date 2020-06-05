@@ -46,7 +46,7 @@ struct AuxLabels {
   std::vector<int32_t> labels;
 };
 
-// swap AuxLabels
+// Swap AuxLabels; it's cheap to to this as we are actually doing shallow swap.
 void Swap(AuxLabels *labels1, AuxLabels *labels2);
 
 /*
