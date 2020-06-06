@@ -11,15 +11,10 @@
 
 import unittest
 
+import torch
+from torch.utils.dlpack import to_dlpack
+
 import k2
-
-SKIP_DLPACK = False
-
-try:
-    import torch
-    from torch.utils.dlpack import to_dlpack
-except ImportError:
-    SKIP_DLPACK = True
 
 
 class TestFsa(unittest.TestCase):
@@ -160,13 +155,6 @@ class TestFsa(unittest.TestCase):
         num_bytes = k2.get_cfsa_vec_size(cfsa_std_vec)
         # the value is taken from the corresponding fsa_test.cc
         self.assertEqual(num_bytes, 360)
-
-        # now test from dlpack
-        if SKIP_DLPACK:
-            print('skip dlpack test')
-            return
-        else:
-            print('Do dlpack testing')
 
         num_int32 = num_bytes // 4
         tensor = torch.empty((num_int32,), dtype=torch.int32)

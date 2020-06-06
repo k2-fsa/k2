@@ -47,11 +47,11 @@ static DeviceType DLDeviceTypeToK2DeviceType(DLDeviceType device_type) {
 }
 
 std::ostream &operator<<(std::ostream &os, DataType data_type) {
-  os << static_cast<int8_t>(data_type);
+  os << static_cast<int32_t>(data_type);
   return os;
 }
 std::ostream &operator<<(std::ostream &os, DeviceType device_type) {
-  os << static_cast<int8_t>(device_type);
+  os << static_cast<int32_t>(device_type);
   return os;
 }
 
@@ -64,6 +64,7 @@ Tensor::Tensor(py::capsule capsule) {
       << "Note that DLTensor capsules can be consumed only once,\n"
       << "so you might have already constructed a tensor from it once.";
 
+  // Change the name of the capsule so that it will not be used again.
   PyCapsule_SetName(capsule.ptr(), kDLPackUsedTensorName);
 
   dl_managed_tensor_ = capsule;  // either throw or succeed with a non-null ptr
@@ -73,6 +74,8 @@ Tensor::Tensor(py::capsule capsule) {
 
   device_type_ =
       DLDeviceTypeToK2DeviceType(dl_managed_tensor_->dl_tensor.ctx.device_type);
+
+  Check();
 }
 
 Tensor::~Tensor() {
@@ -103,12 +106,20 @@ void *Tensor::Data() {
          dl_managed_tensor_->dl_tensor.byte_offset;
 }
 
+int32_t Tensor::BytesPerElement() const {
+  return dl_managed_tensor_->dl_tensor.dtype.bits / 8;
+}
+
 void Tensor::Check() const {
   CHECK(dtype_ == kInt32Type || dtype_ == kFloatType)
       << "We support only int32_t and float at present";
 
+  CHECK_EQ(BytesPerElement(), 4);
+
   CHECK_EQ(dl_managed_tensor_->dl_tensor.dtype.lanes, 1u)
       << "We support only one lane";
+
+  CHECK_EQ(device_type_, kCPU) << "We support only kCPU at present";
 }
 
 }  // namespace k2

@@ -10,7 +10,10 @@
 
 namespace k2 {
 
-K2_INSTANTIATE_ARRAY(Arc *, int32_t);
-K2_INSTANTIATE_ARRAY(int32_t *, int32_t);
+K2_INSTANTIATE_ARRAY1(Arc *, int32_t);
+K2_INSTANTIATE_ARRAY1(int32_t *, int32_t);
+K2_INSTANTIATE_ARRAY1(float *, int32_t);
+
+K2_INSTANTIATE_ARRAY2(Arc *, int32_t);
 
 }  // namespace k2

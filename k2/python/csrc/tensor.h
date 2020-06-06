@@ -7,8 +7,6 @@
 #ifndef K2_PYTHON_CSRC_TENSOR_H_
 #define K2_PYTHON_CSRC_TENSOR_H_
 
-#include <type_traits>
-
 #include "k2/python/csrc/dlpack.h"
 #include "k2/python/csrc/k2.h"
 
@@ -48,27 +46,38 @@ class Tensor {
   explicit Tensor(py::capsule capsule);
   ~Tensor();
 
+  // Return true if the tensor is empty; false otherwise.
   bool Empty() const;
 
+  // Return number of dimensions of the tensor.
   int32_t NumDim() const;
 
+  // Get the i-th dimension.
+  // `i` should be in [0, NumDim())
   int64_t Shape(int32_t i) const;
 
+  // Return the stride for the i-th dimension.
+  //
   // the returned result designates the number of elements, NOT number of bytes
   int64_t Stride(int32_t i) const;
 
+  // The returned pointer is NOT owned by the caller.
   int64_t *Shape();
+
+  // The returned pointer is NOT owned by the caller.
   int64_t *Stride();
 
-  template <typename T,
-            typename std::enable_if<std::is_same<T, int32_t>::value ||
-                                        std::is_same<T, float>::value,
-                                    T>::type * = nullptr>
+  // The returned pointer is NOT owned by the caller.
+  template <typename T>
   T *Data() {
     return reinterpret_cast<T *>(Data());
   }
 
+  // The returned pointer is NOT owned by the caller.
   void *Data();
+
+  // Return the number of bytes per element.
+  int32_t BytesPerElement() const;
 
   DataType dtype() const { return dtype_; }
   DeviceType device_type() const { return device_type_; }

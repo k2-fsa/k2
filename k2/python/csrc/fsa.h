@@ -9,6 +9,7 @@
 
 #include "k2/python/csrc/k2.h"
 
+void PybindArc(py::module &m);
 void PybindFsa(py::module &m);
 
 #endif  // K2_PYTHON_CSRC_FSA_H_
