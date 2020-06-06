@@ -9,10 +9,6 @@
 #  ctest --verbose -R fsa_test_py
 #
 
-import sys
-# TODO(fangjun): find a way to set PYTHONPATH to a list in CMakeLists
-sys.path.insert(0, '/Users/fangjun/software/py3/lib/python3.7/site-packages')
-
 import unittest
 
 import k2
@@ -185,7 +181,8 @@ class TestFsa(unittest.TestCase):
         self.assertEqual(tensor[1], 2)  # num_fsas
         self.assertEqual(tensor[2], 64 // 4)  # state_offsets_start
 
-        # construct a CfsaVec from a `torch::Tensor` which has already been filled
+        # construct a CfsaVec from a `torch::Tensor` which has already
+        # been filled
         dlpack = to_dlpack(tensor.clone())
         cfsa_vec = k2.create_cfsa_vec(dlpack)
         self.assertEqual(cfsa_vec.num_fsas(), 2)
