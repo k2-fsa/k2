@@ -33,7 +33,7 @@ class DLPackArray1 : public Array1<Ptr, I> {
   // this constructor is for Pybind11 only.
   // The `operator []` of `Array2` returns an instance of type
   // `Array1` which is not wrapped to Python.
-  DLPackArray1(const Parent &parent) : Parent(parent) {}
+  explicit DLPackArray1(const Parent &parent) : Parent(parent) {}
 
  private:
   std::shared_ptr<Tensor> tensor_;
