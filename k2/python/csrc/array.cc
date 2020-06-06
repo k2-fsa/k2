@@ -18,7 +18,7 @@ class DLPackArray1 : public Array1<Ptr, I> {
  public:
   using Parent = Array1<Ptr, I>;
   using ValueType = typename Parent::ValueType;
-  DLPackArray1(py::capsule capsule) : tensor_(new Tensor(capsule)) {
+  explicit DLPackArray1(py::capsule capsule) : tensor_(new Tensor(capsule)) {
     if (std::is_same<ValueType, int32_t>::value) {
       CHECK_EQ(tensor_->dtype(), kInt32Type);
     } else if (std::is_same<ValueType, float>::value) {
