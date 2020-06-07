@@ -20,14 +20,15 @@ class DLPackArray1 : public Array1<Ptr, I> {
   using ValueType = typename Parent::ValueType;
 
   explicit DLPackArray1(py::capsule capsule) : tensor_(new Tensor(capsule)) {
-    CHECK_EQ(tensor_->NumDim(), 1);
-    CHECK_EQ(tensor_->Stride(0), 1)
-        << "Only contiguous arrays are supported at present";
+    CHECK_EQ(tensor_->NumDim(), 1)
+        << "Only 1-D arrays are supported at present";
 
     auto num_elements =
         tensor_->Shape(0) * tensor_->BytesPerElement() / sizeof(ValueType);
 
-    this->Init(0, num_elements, tensor_->Data<ValueType>());
+    // WARNING(fangjun): it may not work for non-primitive types
+    // since `Stride(0)` is in number of pritimive elements.
+    this->Init(0, num_elements, tensor_->Stride(0), tensor_->Data<ValueType>());
   }
 
   // this constructor is for Pybind11 only.
