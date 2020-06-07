@@ -36,6 +36,18 @@ class TestArray(unittest.TestCase):
         # the array in k2 is still accessible
         self.assertEqual(arr1[1], 100)
 
+    def test_int_array1_with_stride_3(self):
+        a = torch.arange(15).reshape(5, 3).to(torch.int32)
+        b = a[:, 0]
+        self.assertEqual(b.size(), (5,))
+        self.assertEqual(b.stride(), (3,))
+
+        arr1 = k2.IntArray1(b)
+        self.assertEqual(len(arr1), b.numel())
+
+        for i, v in enumerate(arr1):
+            self.assertEqual(v, b[i])
+
     def test_float_array1(self):
         a = torch.arange(5).to(torch.float)
         arr1 = k2.FloatArray1(a)
