@@ -38,6 +38,7 @@ endfunction()
 
 # please sort the source files alphabetically
 set(fsa_tests
+  array_test
   aux_labels_test
   fsa_algo_test
   fsa_equivalent_test
