@@ -53,12 +53,11 @@ struct StridedPtr {
 template <typename I>
 struct Array2Size {
   using IndexT = I;
-  // `size1` is the top-level size of the array, equal to the object's .size
+  // `size1` is the top-level size of the array, equal to the object's .size1
   // element
   I size1;
-  // `size2` is the number of elements in the array, equal to
-  // o->indexes[o->size] - o->indexes[0] (if the Array2 object o is
-  // initialized).
+  // `size2` is the number of elements in the array, equal to the object's
+  // .size2 element
   I size2;
 };
 
@@ -70,25 +69,27 @@ struct Array2 {
   using PtrT = Ptr;
   using ValueType = typename std::iterator_traits<Ptr>::value_type;
 
-  IndexT size;
-  IndexT *indexes;  // indexes[0,1,...size] should be defined; note, this
-                    // means the array must be of at least size+1.  We
+  IndexT size1;
+  IndexT *indexes;  // indexes[0,1,...size1] should be defined; note, this
+                    // means the array must be of at least size1+1.  We
                     // require that indexes[i] <= indexes[i+1], but it is
                     // not required that indexes[0] == 0, it may be
                     // greater than 0.
-
+  IndexT size2;     // the number of elements in the array,  equal to
+                    // indexes[size1] - indexes[0] (if the object Array2
+                    // has been initialized).
   PtrT data;  // `data` might be an actual pointer, or might be some object
               // supporting operator [].  data[indexes[0]] through
-              // data[indexes[size] - 1] must be accessible through this
+              // data[indexes[size1] - 1] must be accessible through this
               // object.
 
-  /*
-        An Array2 object is non-empty if its `size` member is set and its
-        `indexes` and `data` pointer allocated,
-  */
-  bool Empty() const {
-    return size == 0 || indexes == nullptr || data == nullptr;
-  }
+  bool Empty() const { return size1 == 0; }
+
+  /* initialized definition:
+       An Array2 object is initialized if its `size1` member and `size2` member
+       are set and its `indexes` and `data` pointer allocated, and the values of
+       its `indexes` array are set for indexes[0] and indexes[size1].
+ */
 };
 
 template <typename Ptr, typename I>
@@ -118,8 +119,9 @@ struct Array3 {
     DCHECK_LT(i, size);
 
     Array2<Ptr, I> array;
-    array.size = indexes1[i + 1] - indexes1[i];
+    array.size1 = indexes1[i + 1] - indexes1[i];
     array.indexes = indexes2 + indexes1[i];
+    array.size2 = indexes2[indexes1[i + 1]] - indexes2[indexes1[i]];
     array.data = data;
     return array;
   }
@@ -167,27 +169,26 @@ struct Array2Storage {
   explicit Array2Storage(const Array2Size<I> &array2_size, int32_t stride)
       : indexes_storage_(new I[array2_size.size1 + 1]),
         data_storage_(new ValueType[array2_size.size2 * stride]) {
-    array2_size_ = array2_size;
-    array2_.size = array2_size_.size1;
-    array2_.indexes = indexes_storage_.get();
-    array2_.data = DataPtrCreator<Ptr, I>::Create(data_storage_, stride);
+    array_.size1 = array2_size.size1;
+    array_.size2 = array2_size.size2;
+    array_.indexes = indexes_storage_.get();
+    array_.data = DataPtrCreator<Ptr, I>::Create(data_storage_, stride);
   }
 
   void FillIndexes(const std::vector<I> &indexes) {
-    CHECK_EQ(indexes.size(), array2_size_.size1 + 1);
-    for (auto i = 0; i != indexes.size(); ++i) array2_.indexes[i] = indexes[i];
+    CHECK_EQ(indexes.size(), array_.size1 + 1);
+    for (auto i = 0; i != indexes.size(); ++i) array_.indexes[i] = indexes[i];
   }
 
   void FillData(const std::vector<ValueType> &data) {
-    CHECK_EQ(data.size(), array2_size_.size2);
-    for (auto i = 0; i != array2_size_.size2; ++i) array2_.data[i] = data[i];
+    CHECK_EQ(data.size(), array_.size2);
+    for (auto i = 0; i != array_.size2; ++i) array_.data[i] = data[i];
   }
 
-  Array2<Ptr, I> &GetArray2() { return array2_; }
+  Array2<Ptr, I> &GetArray2() { return array_; }
 
  private:
-  Array2<Ptr, I> array2_;
-  Array2Size<I> array2_size_;
+  Array2<Ptr, I> array_;
   std::unique_ptr<I> indexes_storage_;
   std::unique_ptr<ValueType> data_storage_;
 };

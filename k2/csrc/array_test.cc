@@ -30,27 +30,27 @@ void TestArray2(int32_t stride) {
   array2_storage.FillData(data);
   Array2<Ptr, IndexType> &array2 = array2_storage.GetArray2();
 
-  EXPECT_EQ(array2.size, array2_size.size1);
+  EXPECT_EQ(array2.size1, array2_size.size1);
+  EXPECT_EQ(array2.size2, array2_size.size2);
   EXPECT_FALSE(array2.Empty());
 
   // test indexes
-  auto indexes_size = array2_size.size1 + 1;
-  for (auto i = 0; i != indexes_size; ++i) {
+  for (auto i = 0; i != array2.size1 + 1; ++i) {
     EXPECT_EQ(array2.indexes[i], indexes[i]);
   }
 
   // test operator []
-  for (auto i = 0; i != array2_size.size2; ++i) {
+  for (auto i = 0; i != array2.size2; ++i) {
     EXPECT_EQ(array2.data[i], data[i]);
   }
 
   // mutate data
-  for (auto i = 0; i != array2_size.size2; ++i) {
+  for (auto i = 0; i != array2.size2; ++i) {
     array2.data[i] += 1;
   }
 
   // test with indexes
-  for (auto i = 0; i != array2.size; ++i) {
+  for (auto i = 0; i != array2.size1; ++i) {
     auto start = array2.indexes[i];
     auto end = array2.indexes[i + 1];
     for (auto j = start; j != end; ++j) {
