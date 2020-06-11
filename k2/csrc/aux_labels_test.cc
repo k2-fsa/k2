@@ -19,81 +19,109 @@ namespace k2 {
 class AuxLablesTest : public ::testing::Test {
  protected:
   AuxLablesTest() {
-    std::vector<int32_t> start_pos = {0, 1, 3, 6, 7};
-    std::vector<int32_t> labels = {1, 2, 3, 4, 5, 6, 7};
-    aux_labels_in_.start_pos = std::move(start_pos);
-    aux_labels_in_.labels = std::move(labels);
+    aux_labels_in_.size1 = static_cast<int32_t>(start_pos_.size()) - 1;
+    aux_labels_in_.size2 = static_cast<int32_t>(labels_.size());
+    aux_labels_in_.indexes = start_pos_.data();
+    aux_labels_in_.data = labels_.data();
   }
 
+  std::vector<int32_t> start_pos_ = {0, 1, 3, 6, 7};
+  std::vector<int32_t> labels_ = {1, 2, 3, 4, 5, 6, 7};
   AuxLabels aux_labels_in_;
 };
 
-TEST_F(AuxLablesTest, MapAuxLabels1) {
+TEST_F(AuxLablesTest, AuxLabels1Mapper) {
   {
     // empty arc_map
     std::vector<int32_t> arc_map;
-    AuxLabels aux_labels_out;
-    // some dirty data
-    aux_labels_out.start_pos = {1, 2, 3};
-    aux_labels_out.labels = {4, 5};
-    MapAuxLabels1(aux_labels_in_, arc_map, &aux_labels_out);
+    AuxLabels1Mapper aux_mapper(aux_labels_in_, arc_map);
+    Array2Size<int32_t> aux_size;
+    aux_mapper.GetSizes(&aux_size);
+    Array2Storage<int32_t *, int32_t> storage(aux_size, 1);
+    auto aux_labels_out = storage.GetArray2();
+    aux_mapper.GetOutput(&aux_labels_out);
 
-    EXPECT_TRUE(aux_labels_out.labels.empty());
-    ASSERT_EQ(aux_labels_out.start_pos.size(), 1);
-    EXPECT_EQ(aux_labels_out.start_pos[0], 0);
+    ASSERT_EQ(aux_labels_out.size1, 0);
+    EXPECT_EQ(aux_labels_out.indexes[0], 0);
+    EXPECT_EQ(aux_labels_out.size2, 0);
   }
 
   {
     std::vector<int32_t> arc_map = {2, 0, 3};
-    AuxLabels aux_labels_out;
-    MapAuxLabels1(aux_labels_in_, arc_map, &aux_labels_out);
+    AuxLabels1Mapper aux_mapper(aux_labels_in_, arc_map);
+    Array2Size<int32_t> aux_size;
+    aux_mapper.GetSizes(&aux_size);
+    Array2Storage<int32_t *, int32_t> storage(aux_size, 1);
+    auto aux_labels_out = storage.GetArray2();
+    aux_mapper.GetOutput(&aux_labels_out);
 
-    ASSERT_EQ(aux_labels_out.start_pos.size(), 4);
-    EXPECT_THAT(aux_labels_out.start_pos, ::testing::ElementsAre(0, 3, 4, 5));
-    ASSERT_EQ(aux_labels_out.labels.size(), 5);
-    EXPECT_THAT(aux_labels_out.labels, ::testing::ElementsAre(4, 5, 6, 1, 7));
+    ASSERT_EQ(aux_labels_out.size1, 3);
+    ASSERT_EQ(aux_labels_out.size2, 5);
+    std::vector<int32_t> out_indexes(
+        aux_labels_out.indexes,
+        aux_labels_out.indexes + aux_labels_out.size1 + 1);
+    std::vector<int32_t> out_data(aux_labels_out.data,
+                                  aux_labels_out.data + aux_labels_out.size2);
+    EXPECT_THAT(out_indexes, ::testing::ElementsAre(0, 3, 4, 5));
+    EXPECT_THAT(out_data, ::testing::ElementsAre(4, 5, 6, 1, 7));
   }
 
   {
     // all arcs in input fsa are remained
     std::vector<int32_t> arc_map = {2, 0, 3, 1};
-    AuxLabels aux_labels_out;
-    MapAuxLabels1(aux_labels_in_, arc_map, &aux_labels_out);
+    AuxLabels1Mapper aux_mapper(aux_labels_in_, arc_map);
+    Array2Size<int32_t> aux_size;
+    aux_mapper.GetSizes(&aux_size);
+    Array2Storage<int32_t *, int32_t> storage(aux_size, 1);
+    auto aux_labels_out = storage.GetArray2();
+    aux_mapper.GetOutput(&aux_labels_out);
 
-    ASSERT_EQ(aux_labels_out.start_pos.size(), 5);
-    EXPECT_THAT(aux_labels_out.start_pos,
-                ::testing::ElementsAre(0, 3, 4, 5, 7));
-    ASSERT_EQ(aux_labels_out.labels.size(), 7);
-    EXPECT_THAT(aux_labels_out.labels,
-                ::testing::ElementsAre(4, 5, 6, 1, 7, 2, 3));
+    ASSERT_EQ(aux_labels_out.size2, 7);
+    ASSERT_EQ(aux_labels_out.size1, 4);
+    std::vector<int32_t> out_indexes(
+        aux_labels_out.indexes,
+        aux_labels_out.indexes + aux_labels_out.size1 + 1);
+    std::vector<int32_t> out_data(aux_labels_out.data,
+                                  aux_labels_out.data + aux_labels_out.size2);
+    EXPECT_THAT(out_indexes, ::testing::ElementsAre(0, 3, 4, 5, 7));
+    EXPECT_THAT(out_data, ::testing::ElementsAre(4, 5, 6, 1, 7, 2, 3));
   }
 }
 
-TEST_F(AuxLablesTest, MapAuxLabels2) {
+TEST_F(AuxLablesTest, AuxLabels2Mapper) {
   {
     // empty arc_map
     std::vector<std::vector<int32_t>> arc_map;
-    AuxLabels aux_labels_out;
-    // some dirty data
-    aux_labels_out.start_pos = {1, 2, 3};
-    aux_labels_out.labels = {4, 5};
-    MapAuxLabels2(aux_labels_in_, arc_map, &aux_labels_out);
+    AuxLabels2Mapper aux_mapper(aux_labels_in_, arc_map);
+    Array2Size<int32_t> aux_size;
+    aux_mapper.GetSizes(&aux_size);
+    Array2Storage<int32_t *, int32_t> storage(aux_size, 1);
+    auto aux_labels_out = storage.GetArray2();
+    aux_mapper.GetOutput(&aux_labels_out);
 
-    EXPECT_TRUE(aux_labels_out.labels.empty());
-    ASSERT_EQ(aux_labels_out.start_pos.size(), 1);
-    EXPECT_EQ(aux_labels_out.start_pos[0], 0);
+    ASSERT_EQ(aux_labels_out.size1, 0);
+    EXPECT_EQ(aux_labels_out.indexes[0], 0);
+    EXPECT_EQ(aux_labels_out.size2, 0);
   }
 
   {
     std::vector<std::vector<int32_t>> arc_map = {{2, 3}, {0, 1}, {0}, {2}};
-    AuxLabels aux_labels_out;
-    MapAuxLabels2(aux_labels_in_, arc_map, &aux_labels_out);
+    AuxLabels2Mapper aux_mapper(aux_labels_in_, arc_map);
+    Array2Size<int32_t> aux_size;
+    aux_mapper.GetSizes(&aux_size);
+    Array2Storage<int32_t *, int32_t> storage(aux_size, 1);
+    auto aux_labels_out = storage.GetArray2();
+    aux_mapper.GetOutput(&aux_labels_out);
 
-    ASSERT_EQ(aux_labels_out.start_pos.size(), 5);
-    EXPECT_THAT(aux_labels_out.start_pos,
-                ::testing::ElementsAre(0, 4, 7, 8, 11));
-    ASSERT_EQ(aux_labels_out.labels.size(), 11);
-    EXPECT_THAT(aux_labels_out.labels,
+    ASSERT_EQ(aux_labels_out.size2, 11);
+    ASSERT_EQ(aux_labels_out.size1, 4);
+    std::vector<int32_t> out_indexes(
+        aux_labels_out.indexes,
+        aux_labels_out.indexes + aux_labels_out.size1 + 1);
+    std::vector<int32_t> out_data(aux_labels_out.data,
+                                  aux_labels_out.data + aux_labels_out.size2);
+    EXPECT_THAT(out_indexes, ::testing::ElementsAre(0, 4, 7, 8, 11));
+    EXPECT_THAT(out_data,
                 ::testing::ElementsAre(4, 5, 6, 7, 1, 2, 3, 1, 4, 5, 6));
   }
 }
@@ -102,24 +130,24 @@ TEST(AuxLabels, InvertFst) {
   {
     // empty input FSA
     Fsa fsa_in;
-    AuxLabels labels_in;
     std::vector<int32_t> start_pos = {0, 1, 3, 6, 7};
     std::vector<int32_t> labels = {1, 2, 3, 4, 5, 6, 7};
-    labels_in.start_pos = std::move(start_pos);
-    labels_in.labels = std::move(labels);
+    AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
+                        start_pos.data(), static_cast<int32_t>(labels.size()),
+                        labels.data());
 
-    std::vector<Arc> arcs = {{0, 1, 1}, {1, 2, -1}};
-    Fsa fsa_out(std::move(arcs), 2);
-    AuxLabels labels_out;
-    // some dirty data
-    labels_out.start_pos = {1, 2, 3};
-    labels_out.labels = {4, 5};
-    InvertFst(fsa_in, labels_in, &fsa_out, &labels_out);
+    FstInverter fst_inverter(fsa_in, labels_in);
+    Array2Size<int32_t> fsa_size, aux_size;
+    fst_inverter.GetSizes(&fsa_size, &aux_size);
+    Array2Storage<int32_t *, int32_t> aux_storage(aux_size, 1);
+    auto labels_out = aux_storage.GetArray2();
+    Fsa fsa_out;
+    fst_inverter.GetOutput(&fsa_out, &labels_out);
 
     EXPECT_TRUE(IsEmpty(fsa_out));
-    EXPECT_TRUE(labels_out.labels.empty());
-    ASSERT_EQ(labels_out.start_pos.size(), 1);
-    EXPECT_EQ(labels_out.start_pos[0], 0);
+    ASSERT_EQ(labels_out.size1, 0);
+    EXPECT_EQ(labels_out.indexes[0], 0);
+    EXPECT_EQ(labels_out.size2, 0);
   }
 
   {
@@ -129,16 +157,20 @@ TEST(AuxLabels, InvertFst) {
                              {2, 3, 0}, {2, 5, -1}, {4, 5, -1}};
     Fsa fsa_in(std::move(arcs), 5);
     EXPECT_TRUE(IsTopSorted(fsa_in));
-    AuxLabels labels_in;
     std::vector<int32_t> start_pos = {0, 2, 3, 3, 6, 6, 7, 7, 8, 9};
     EXPECT_EQ(start_pos.size(), fsa_in.arcs.size() + 1);
     std::vector<int32_t> labels = {1, 2, 3, 5, 6, 7, -1, -1, -1};
-    labels_in.start_pos = std::move(start_pos);
-    labels_in.labels = std::move(labels);
+    AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
+                        start_pos.data(), static_cast<int32_t>(labels.size()),
+                        labels.data());
 
+    FstInverter fst_inverter(fsa_in, labels_in);
+    Array2Size<int32_t> fsa_size, aux_size;
+    fst_inverter.GetSizes(&fsa_size, &aux_size);
+    Array2Storage<int32_t *, int32_t> aux_storage(aux_size, 1);
+    auto labels_out = aux_storage.GetArray2();
     Fsa fsa_out;
-    AuxLabels labels_out;
-    InvertFst(fsa_in, labels_in, &fsa_out, &labels_out);
+    fst_inverter.GetOutput(&fsa_out, &labels_out);
 
     EXPECT_TRUE(IsTopSorted(fsa_out));
     std::vector<Arc> arcs_out = {
@@ -152,11 +184,15 @@ TEST(AuxLabels, InvertFst) {
     ASSERT_EQ(fsa_out.arc_indexes.size(), 10);
     EXPECT_THAT(fsa_out.arc_indexes,
                 ::testing::ElementsAre(0, 3, 4, 7, 8, 9, 11, 11, 12, 12));
-    ASSERT_EQ(labels_out.labels.size(), 7);
-    EXPECT_THAT(labels_out.labels,
-                ::testing::ElementsAre(2, 1, 4, -1, 3, -1, -1));
-    ASSERT_EQ(labels_out.start_pos.size(), 13);
-    EXPECT_THAT(labels_out.start_pos,
+
+    ASSERT_EQ(labels_out.size1, 12);
+    ASSERT_EQ(labels_out.size2, 7);
+    std::vector<int32_t> out_indexes(labels_out.indexes,
+                                     labels_out.indexes + labels_out.size1 + 1);
+    std::vector<int32_t> out_data(labels_out.data,
+                                  labels_out.data + labels_out.size2);
+    EXPECT_THAT(out_data, ::testing::ElementsAre(2, 1, 4, -1, 3, -1, -1));
+    EXPECT_THAT(out_indexes,
                 ::testing::ElementsAre(0, 0, 0, 1, 2, 2, 3, 4, 4, 5, 5, 6, 7));
   }
 
@@ -167,16 +203,20 @@ TEST(AuxLabels, InvertFst) {
                              {2, 5, -1}, {3, 1, 6}, {4, 5, -1}};
     Fsa fsa_in(std::move(arcs), 5);
     EXPECT_FALSE(IsTopSorted(fsa_in));
-    AuxLabels labels_in;
     std::vector<int32_t> start_pos = {0, 2, 3, 3, 6, 6, 7, 8, 10, 11};
     EXPECT_EQ(start_pos.size(), fsa_in.arcs.size() + 1);
     std::vector<int32_t> labels = {1, 2, 3, 5, 6, 7, 8, -1, 9, 10, -1};
-    labels_in.start_pos = std::move(start_pos);
-    labels_in.labels = std::move(labels);
+    AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
+                        start_pos.data(), static_cast<int32_t>(labels.size()),
+                        labels.data());
 
+    FstInverter fst_inverter(fsa_in, labels_in);
+    Array2Size<int32_t> fsa_size, aux_size;
+    fst_inverter.GetSizes(&fsa_size, &aux_size);
+    Array2Storage<int32_t *, int32_t> aux_storage(aux_size, 1);
+    auto labels_out = aux_storage.GetArray2();
     Fsa fsa_out;
-    AuxLabels labels_out;
-    InvertFst(fsa_in, labels_in, &fsa_out, &labels_out);
+    fst_inverter.GetOutput(&fsa_out, &labels_out);
 
     EXPECT_FALSE(IsTopSorted(fsa_out));
     std::vector<Arc> arcs_out = {{0, 1, 1},  {0, 3, 3}, {0, 7, 0},  {1, 3, 2},
@@ -190,13 +230,16 @@ TEST(AuxLabels, InvertFst) {
     ASSERT_EQ(fsa_out.arc_indexes.size(), 11);
     EXPECT_THAT(fsa_out.arc_indexes,
                 ::testing::ElementsAre(0, 3, 4, 5, 7, 8, 9, 11, 12, 13, 13));
-    ASSERT_EQ(labels_out.labels.size(), 8);
-    EXPECT_THAT(labels_out.labels,
-                ::testing::ElementsAre(2, 1, 6, 4, 3, 5, -1, -1));
-    ASSERT_EQ(labels_out.start_pos.size(), 14);
-    EXPECT_THAT(
-        labels_out.start_pos,
-        ::testing::ElementsAre(0, 0, 0, 1, 2, 3, 3, 4, 4, 5, 6, 7, 7, 8));
+
+    ASSERT_EQ(labels_out.size1, 13);
+    ASSERT_EQ(labels_out.size2, 8);
+    std::vector<int32_t> out_indexes(labels_out.indexes,
+                                     labels_out.indexes + labels_out.size1 + 1);
+    std::vector<int32_t> out_data(labels_out.data,
+                                  labels_out.data + labels_out.size2);
+    EXPECT_THAT(out_data, ::testing::ElementsAre(2, 1, 6, 4, 3, 5, -1, -1));
+    EXPECT_THAT(out_indexes, ::testing::ElementsAre(0, 0, 0, 1, 2, 3, 3, 4, 4,
+                                                    5, 6, 7, 7, 8));
   }
 }
 
