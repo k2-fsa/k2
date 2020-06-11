@@ -29,8 +29,6 @@ template <typename T, typename I = int32_t>
 struct StridedPtr {
   T *data;   // it is NOT owned here
   I stride;  // in number of elements, NOT number of bytes
-  T &operator[](I i) { return data[i * stride]; }
-  const T &operator[](I i) const { return data[i * stride]; }
   StridedPtr(T *data = nullptr, I stride = 0)  // NOLINT
       : data(data), stride(stride) {}
   StridedPtr(const StridedPtr &other)
@@ -40,9 +38,40 @@ struct StridedPtr {
     this->Swap(other);
     return *this;
   }
+
+  T &operator[](I i) { return data[i * stride]; }
+  const T &operator[](I i) const { return data[i * stride]; }
+
+  T &operator*() { return *data; }
+  const T &operator*() const { return *data; }
+
+  // prefix increment
+  StridedPtr &operator++() {
+    data += stride;
+    return *this;
+  }
+  // postfix increment
+  StridedPtr operator++(int) {
+    StridedPtr tmp(*this);
+    ++(*this);
+    return tmp;
+  }
+
+  StridedPtr &operator+=(I n) {
+    data += n * stride;
+    return *this;
+  }
+  StridedPtr operator+(I n) const {
+    StridedPtr tmp(*this);
+    tmp += n;
+    return tmp;
+  }
+
   bool operator==(const StridedPtr &other) const {
     return data == other.data && stride == other.stride;
   }
+  bool operator!=(const StridedPtr &other) const { return !(*this == other); }
+
   void Swap(StridedPtr &other) {
     std::swap(data, other.data);
     std::swap(stride, other.stride);
@@ -91,6 +120,10 @@ struct Array2 {
               // object.
 
   bool Empty() const { return size1 == 0; }
+
+  PtrT begin() const { return data + indexes[0]; }
+
+  PtrT end() const { return data + indexes[size1]; }
 
   // just to replace `Swap` functions for Fsa and AuxLabels for now,
   // may delete it if we finally find that we don't need to call it.
