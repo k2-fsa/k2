@@ -35,14 +35,17 @@ struct StridedPtr {
       : data(data), stride(stride) {}
   StridedPtr(const StridedPtr &other)
       : data(other.data), stride(other.stride) {}
-  StridedPtr &operator=(const StridedPtr &other) {
-    StridedPtr tmp(other);
-    std::swap(data, tmp.data);
-    std::swap(stride, tmp.stride);
+  StridedPtr(StridedPtr &&other) { this->Swap(other); }
+  StridedPtr &operator=(StridedPtr other) {
+    this->Swap(other);
     return *this;
   }
   bool operator==(const StridedPtr &other) const {
     return data == other.data && stride == other.stride;
+  }
+  void Swap(StridedPtr &other) {
+    std::swap(data, other.data);
+    std::swap(stride, other.stride);
   }
 };
 
@@ -69,6 +72,10 @@ struct Array2 {
   using PtrT = Ptr;
   using ValueType = typename std::iterator_traits<Ptr>::value_type;
 
+  Array2() = default;
+  Array2(IndexT size1, IndexT *indexes, IndexT size2, PtrT data)
+      : size1(size1), indexes(indexes), size2(size2), data(data) {}
+
   IndexT size1;
   IndexT *indexes;  // indexes[0,1,...size1] should be defined; note, this
                     // means the array must be of at least size1+1.  We
@@ -84,6 +91,17 @@ struct Array2 {
               // object.
 
   bool Empty() const { return size1 == 0; }
+
+  // just to replace `Swap` functions for Fsa and AuxLabels for now,
+  // may delete it if we finally find that we don't need to call it.
+  void Swap(Array2 &other) {
+    std::swap(size1, other.size1);
+    std::swap(size2, other.size2);
+    std::swap(indexes, other.indexes);
+    // it's OK here for Ptr=StridedPtr as we have specialized
+    // std::swap for StridedPtr
+    std::swap(data, other.data);
+  }
 
   /* initialized definition:
        An Array2 object is initialized if its `size1` member and `size2` member
@@ -197,9 +215,20 @@ struct Array2Storage {
 
 namespace std {
 template <typename T, typename I>
+
 struct iterator_traits<k2::StridedPtr<T, I>> {
   typedef T value_type;
 };
+
+template <typename T, typename I>
+void swap(k2::StridedPtr<T, I> &lhs, k2::StridedPtr<T, I> &rhs) {
+  lhs.Swap(rhs);
+}
+
+template <typename Ptr, typename I>
+void swap(k2::Array2<Ptr, I> &lhs, k2::Array2<Ptr, I> &rhs) {
+  lhs.Swap(rhs);
+}
 
 }  // namespace std
 
