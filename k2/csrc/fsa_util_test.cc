@@ -115,7 +115,6 @@ TEST(FsaUtil, ReorderArcs) {
   }
 
   {
-    // empty input arcs
     std::vector<Arc> arcs = {{0, 1, 1}, {0, 2, 2},  {2, 3, 3},  {2, 4, 4},
                              {1, 2, 5}, {2, 5, -1}, {4, 5, -1}, {3, 5, -1}};
     Fsa fsa;
@@ -137,4 +136,27 @@ TEST(FsaUtil, ReorderArcs) {
   }
 }
 
+TEST(FsaUtil, FsaCreator) {
+  {
+    // create empty fsa
+    FsaCreator fsa_creator;
+    const auto &fsa = fsa_creator.GetFsa();
+    EXPECT_TRUE(IsEmpty(fsa));
+  }
+
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 1}, {0, 2, 2}, {2, 3, 3}, {2, 4, 4}, {3, 5, -1}};
+    FsaCreator fsa_creator(arcs, 6);
+    const auto &fsa = fsa_creator.GetFsa();
+
+    std::vector<int32_t> arc_indexes(fsa.indexes, fsa.indexes + fsa.size1 + 1);
+    ASSERT_EQ(fsa.size1, 7);
+    EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 2, 4, 5, 5, 5, 5));
+    ASSERT_EQ(fsa.size2, arcs.size());
+    for (auto i = 0; i != arcs.size(); ++i) {
+      EXPECT_EQ(fsa.data[i], arcs[i]);
+    }
+  }
+}
 }  // namespace k2

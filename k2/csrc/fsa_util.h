@@ -159,6 +159,57 @@ void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
   }
 }
 
+// Create Fsa for test purpose.
+class FsaCreator {
+ public:
+  // Create an empty Fsa
+  FsaCreator() { fsa_.Init(0, default_arc_indexes.data(), 0, nullptr); }
+
+  /*
+    Create an Fsa from a vector of arcs
+     @param [in, out] arcs   A vector of arcs as the arcs of the generated Fsa.
+                             The arcs in the vector should be sorted by
+                             src_state.
+     @param [in] final_state Will be as the final state id of the generated Fsa.
+   */
+  explicit FsaCreator(const std::vector<Arc> &arcs, int32_t final_state)
+      : FsaCreator() {
+    if (arcs.empty())
+      return;  // has created an empty Fsa in the default constructor
+    arcs_ = arcs;
+    int32_t curr_state = -1;
+    int32_t index = 0;
+    for (const auto &arc : arcs_) {
+      CHECK_LE(arc.src_state, final_state);
+      CHECK_LE(arc.dest_state, final_state);
+      CHECK_LE(curr_state, arc.src_state);
+      while (curr_state < arc.src_state) {
+        arc_indexes_.push_back(index);
+        ++curr_state;
+      }
+      ++index;
+    }
+    // noted that here we push two `final_state` at the end, the last element is
+    // just to avoid boundary check for some FSA operations.
+    for (; curr_state <= final_state; ++curr_state)
+      arc_indexes_.push_back(index);
+
+    fsa_.Init(static_cast<int32_t>(arc_indexes_.size()) - 1,
+              arc_indexes_.data(), static_cast<int32_t>(arcs_.size()),
+              arcs_.data());
+  }
+
+  // we usually would not change `fsa_` as we just use it as input to
+  // those FSA algorithms.
+  const Fsa &GetFsa() { return fsa_; }
+
+ private:
+  Fsa fsa_;
+  std::vector<int32_t> default_arc_indexes = {0};
+  std::vector<int32_t> arc_indexes_;
+  std::vector<Arc> arcs_;
+};
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_UTIL_H_

@@ -79,9 +79,18 @@ struct ArcHash {
 
   The start-state is always numbered zero and the final-state is always the
   last-numbered state.  However, we represent the empty FSA (the one that
-  accepts no strings) by having no states at all, so `arcs` would be empty.
+  accepts no strings) by having no states at all, so `arcs_indexes` would be
+  empty.
+
+  TODO(haowen): add below comments in the final version:
+    (In Array2 representation) We represent an empty FSA(the one that accepts no
+  strings) by having no states at all, so `size1` would be 0 (As an empty FSA is
+  an initialized Array2 object, so `indexes` would be allocated and has at least
+  one element, but we don't care about it here).
  */
-struct Fsa {
+// TODO(haowen): finally we will remove `arc_indexes` and `arcs`, but for now,
+// we would keep them to replace Fsa with Array2 incrementally.
+struct Fsa : public Array2<Arc *, int32_t> {
   // `arc_indexes` is indexed by state-index, is of length num-states + 1; it
   // contains the first arc-index leaving this state (index into `arcs`).  The
   // next element of this array gives the end of that range.  Note: the
@@ -95,7 +104,7 @@ struct Fsa {
   // Note: an index into the `arcs` array is called an arc-index.
   std::vector<Arc> arcs;
 
-  Fsa() = default;
+  Fsa() : Array2() {}
   // just for creating testing FSA examples for now.
   Fsa(std::vector<Arc> fsa_arcs, int32_t final_state)
       : arcs(std::move(fsa_arcs)) {
@@ -119,11 +128,35 @@ struct Fsa {
       arc_indexes.push_back(index);
   }
 
+  // TODO(haowen): finally we'll implement NumStates with:
+  // CHECK_GE(size1, 0);
+  // return size1;
   int32_t NumStates() const {
+    if (indexes != nullptr) {  // Fsa is initialized as Array2
+      // users should not use `arc_indexes` and `arcs` while using Array2
+      CHECK(arc_indexes.empty());
+      CHECK(arcs.empty());
+
+      CHECK_GE(size1, 0);
+      return size1;
+    }
     return !arc_indexes.empty() ? (static_cast<int32_t>(arc_indexes.size()) - 1)
                                 : 0;
   }
+
+  // TODO(haowen): finally we'll implement FinalStates with:
+  // CHECK_GE(size1, 2);
+  // return size1 - 1;
   int32_t FinalState() const {
+    if (indexes != nullptr) {  // Fsa is initialized as Array2
+      // users should not use `arc_indexes` and `arcs` while using Array2
+      CHECK(arc_indexes.empty());
+      CHECK(arcs.empty());
+
+      // It's not valid to call FinalState if the FSA is empty.
+      CHECK_GE(size1, 2);
+      return size1 - 1;
+    }
     // It's not valid to call this if the FSA is empty.
     CHECK(!arc_indexes.empty());
     return static_cast<int32_t>(arc_indexes.size()) - 2;
