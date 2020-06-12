@@ -44,6 +44,52 @@ void TestArray2(int32_t stride) {
     EXPECT_EQ(array2.data[i], data[i]);
   }
 
+  auto data_ptr = array2.begin();
+
+  // test operator*
+  EXPECT_EQ(*data_ptr, 0);
+  *data_ptr = -1;
+  EXPECT_EQ(*data_ptr, -1);
+  *data_ptr = 0;
+
+  // test prefix increment
+  ++data_ptr;
+  EXPECT_EQ(*data_ptr, 1);
+
+  // test postfix increment
+  data_ptr = array2.begin();  // reset
+  auto data_ptr1 = data_ptr++;
+  EXPECT_EQ(*data_ptr, 1);
+  EXPECT_EQ(*data_ptr1, 0);
+
+  // test operator +=
+  data_ptr = array2.begin();  // reset
+  data_ptr += 3;
+  EXPECT_EQ(*data_ptr, 3);
+
+  // test operator +
+  data_ptr = array2.begin();  // reset
+  data_ptr1 = data_ptr + 3;
+  EXPECT_EQ(*data_ptr, 0);
+  EXPECT_EQ(*data_ptr1, 3);
+
+  // test operator == operator !=
+  data_ptr = array2.begin();  // reset
+  data_ptr1 = data_ptr + 3;
+  EXPECT_FALSE(data_ptr == data_ptr1);
+  EXPECT_TRUE(data_ptr != data_ptr1);
+
+  // test begin() and end()
+  std::size_t n = 0;
+  for (auto it = array2.begin(); it != array2.end(); ++it) {
+    EXPECT_EQ(*it, data[n++]);
+  }
+  // test with it++
+  n = 0;
+  for (auto it = array2.begin(); it != array2.end(); it++) {
+    EXPECT_EQ(*it, data[n++]);
+  }
+
   // mutate data
   for (auto i = 0; i != array2.size2; ++i) {
     array2.data[i] += 1;

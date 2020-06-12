@@ -29,8 +29,6 @@ template <typename T, typename I = int32_t>
 struct StridedPtr {
   T *data;   // it is NOT owned here
   I stride;  // in number of elements, NOT number of bytes
-  T &operator[](I i) { return data[i * stride]; }
-  const T &operator[](I i) const { return data[i * stride]; }
   StridedPtr(T *data = nullptr, I stride = 0)  // NOLINT
       : data(data), stride(stride) {}
   StridedPtr(const StridedPtr &other)
@@ -40,9 +38,40 @@ struct StridedPtr {
     this->Swap(other);
     return *this;
   }
+
+  T &operator[](I i) { return data[i * stride]; }
+  const T &operator[](I i) const { return data[i * stride]; }
+
+  T &operator*() { return *data; }
+  const T &operator*() const { return *data; }
+
+  // prefix increment
+  StridedPtr &operator++() {
+    data += stride;
+    return *this;
+  }
+  // postfix increment
+  StridedPtr operator++(int) {
+    StridedPtr tmp(*this);
+    ++(*this);
+    return tmp;
+  }
+
+  StridedPtr &operator+=(I n) {
+    data += n * stride;
+    return *this;
+  }
+  StridedPtr operator+(I n) const {
+    StridedPtr tmp(*this);
+    tmp += n;
+    return tmp;
+  }
+
   bool operator==(const StridedPtr &other) const {
     return data == other.data && stride == other.stride;
   }
+  bool operator!=(const StridedPtr &other) const { return !(*this == other); }
+
   void Swap(StridedPtr &other) {
     std::swap(data, other.data);
     std::swap(stride, other.stride);
@@ -72,25 +101,47 @@ struct Array2 {
   using PtrT = Ptr;
   using ValueType = typename std::iterator_traits<Ptr>::value_type;
 
-  Array2() = default;
+  // We need default constructor now just because we would check
+  // `indexes == nullptr` in NumStates and FinalStates in class Fsa.
+  // We may change it to `Array2() == default` if we don not need
+  // it anymore (after we replace Fsa with Array2).
+  // Array2() = default;
+  Array2() : size1(0), indexes(nullptr) {}
   Array2(IndexT size1, IndexT *indexes, IndexT size2, PtrT data)
       : size1(size1), indexes(indexes), size2(size2), data(data) {}
+  void Init(IndexT size1, IndexT *indexes, IndexT size2, PtrT data) {
+    this->size1 = size1;
+    this->indexes = indexes;
+    this->size2 = size2;
+    this->data = data;
+  }
 
   IndexT size1;
-  IndexT *indexes;  // indexes[0,1,...size1] should be defined; note, this
-                    // means the array must be of at least size1+1.  We
-                    // require that indexes[i] <= indexes[i+1], but it is
-                    // not required that indexes[0] == 0, it may be
-                    // greater than 0.
-  IndexT size2;     // the number of elements in the array,  equal to
-                    // indexes[size1] - indexes[0] (if the object Array2
-                    // has been initialized).
-  PtrT data;  // `data` might be an actual pointer, or might be some object
-              // supporting operator [].  data[indexes[0]] through
-              // data[indexes[size1] - 1] must be accessible through this
-              // object.
+  IndexT *indexes;  // indexes[0,1,...size1] should be defined; note,
+                    // this means the array must be of at least
+                    // size1+1.  We require that indexes[i] <=
+                    // indexes[i+1], but it is not required that
+                    // indexes[0] == 0, it may be greater than 0.
 
+  IndexT size2;  // the number of elements in the array,  equal to
+                 // indexes[size1] - indexes[0] (if the object Array2
+                 // has been initialized).
+  PtrT data;     // `data` might be an actual pointer, or might be some object
+                 // supporting operator [].  data[indexes[0]] through
+                 // data[indexes[size1] - 1] must be accessible through this
+                 // object.
+
+  /*
+     If an Array2 object is initialized and `size1` == 0, it means the object is
+     empty. Here we don't care about `indexes`, but it should have at least one
+     element according to the definition of size of `indexes` (`size1` + 1).
+     Users should not access `data` if the object is empty.
+  */
   bool Empty() const { return size1 == 0; }
+
+  PtrT begin() const { return data + indexes[0]; }
+
+  PtrT end() const { return data + indexes[size1]; }
 
   // just to replace `Swap` functions for Fsa and AuxLabels for now,
   // may delete it if we finally find that we don't need to call it.
