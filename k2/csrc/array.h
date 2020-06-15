@@ -139,9 +139,13 @@ struct Array2 {
   */
   bool Empty() const { return size1 == 0; }
 
-  PtrT begin() const { return data + indexes[0]; }
+  PtrT begin() { return size2 != 0 ? data + indexes[0] : nullptr; }
+  const PtrT begin() const { return size2 != 0 ? data + indexes[0] : nullptr; }
 
-  PtrT end() const { return data + indexes[size1]; }
+  PtrT end() { return size2 != 0 ? data + indexes[size1] : nullptr; }
+  const PtrT end() const {
+    return size2 != 0 ? data + indexes[size1] : nullptr;
+  }
 
   // just to replace `Swap` functions for Fsa and AuxLabels for now,
   // may delete it if we finally find that we don't need to call it.

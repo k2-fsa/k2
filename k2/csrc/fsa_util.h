@@ -72,7 +72,9 @@ void GetArcWeights(const float *arc_weights_in,
    final state is the largest state number in the input arcs.
 
    @param [in] arcs  A list of arcs.
-   @param [out] fsa  Output fsa.
+   @param [out] fsa  Output fsa. Must be initialized; search for
+                     'initialized definition' in class Array2 in
+                     array.h for meaning.
    @param [out] arc_map   If non-NULL, this function will
                             output a map from the arc-index in `fsa` to
                             the corresponding arc-index in input `arcs`.
@@ -166,6 +168,19 @@ class FsaCreator {
   FsaCreator() { fsa_.Init(0, default_arc_indexes.data(), 0, nullptr); }
 
   /*
+    Initialize Fsa with Array2size, search for 'initialized definition' in class
+    Array2 in array.h for meaning.
+
+    `Array2Storage` is for this purpose as well, but we define this version of
+    constructor here to make test code simpler.
+  */
+  explicit FsaCreator(const Array2Size<int32_t> &size) {
+    arc_indexes_.resize(size.size1 + 1);
+    arcs_.resize(size.size2);
+    fsa_.Init(size.size1, arc_indexes_.data(), size.size2, arcs_.data());
+  }
+
+  /*
     Create an Fsa from a vector of arcs
      @param [in, out] arcs   A vector of arcs as the arcs of the generated Fsa.
                              The arcs in the vector should be sorted by
@@ -199,9 +214,8 @@ class FsaCreator {
               arcs_.data());
   }
 
-  // we usually would not change `fsa_` as we just use it as input to
-  // those FSA algorithms.
-  const Fsa &GetFsa() { return fsa_; }
+  const Fsa &GetFsa() const { return fsa_; }
+  Fsa &GetFsa() { return fsa_; }
 
  private:
   Fsa fsa_;

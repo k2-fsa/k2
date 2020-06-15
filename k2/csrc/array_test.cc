@@ -90,6 +90,24 @@ void TestArray2(int32_t stride) {
     EXPECT_EQ(*it, data[n++]);
   }
 
+  // test range-based for loop
+  n = 0;
+  for (const auto &element : array2) {
+    EXPECT_EQ(element, data[n++]);
+  }
+
+  // test range-based for loop: mutate data
+  for (auto &element : array2) {
+    ++element;
+  }
+  n = 0;
+  for (auto &element : array2) {
+    EXPECT_EQ(element, data[n++] + 1);
+  }
+  for (auto &element : array2) {
+    --element;
+  }
+
   // mutate data
   for (auto i = 0; i != array2.size2; ++i) {
     array2.data[i] += 1;

@@ -180,10 +180,10 @@ void GetArcWeights(const float *arc_weights_in,
 void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
                  std::vector<int32_t> *arc_map /*= nullptr*/) {
   CHECK_NOTNULL(fsa);
-  fsa->arc_indexes.clear();
-  fsa->arcs.clear();
   if (arc_map != nullptr) arc_map->clear();
 
+  // as fsa has been initialized (fsa.size1 = 0 && fsa.size2 == 0),
+  // we don't need to do anything here.
   if (arcs.empty()) return;
 
   using ArcWithIndex = std::pair<Arc, int32_t>;
@@ -198,19 +198,19 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
   }
 
   std::size_t num_states = vec.size();
-  fsa->arc_indexes.resize(num_states + 1);
-  fsa->arcs.reserve(arcs.size());
+  CHECK_EQ(num_states, fsa->size1);
   std::vector<int32_t> arc_map_out;
   arc_map_out.reserve(arcs.size());
 
+  int32_t num_arcs = 0;
   for (auto i = 0; i != num_states; ++i) {
-    fsa->arc_indexes[i] = static_cast<int32_t>(fsa->arcs.size());
+    fsa->indexes[i] = num_arcs;
     for (auto arc_with_index : vec[i]) {
-      fsa->arcs.emplace_back(arc_with_index.first);
+      fsa->data[num_arcs++] = arc_with_index.first;
       arc_map_out.push_back(arc_with_index.second);
     }
   }
-  fsa->arc_indexes.back() = static_cast<int32_t>(fsa->arcs.size());
+  fsa->indexes[num_states] = num_arcs;
   if (arc_map != nullptr) arc_map->swap(arc_map_out);
 }
 

@@ -129,7 +129,8 @@ TEST_F(AuxLablesTest, AuxLabels2Mapper) {
 TEST(AuxLabels, InvertFst) {
   {
     // empty input FSA
-    Fsa fsa_in;
+    FsaCreator fsa_in_creator({0, 0});
+    const auto &fsa_in = fsa_in_creator.GetFsa();
     std::vector<int32_t> start_pos = {0, 1, 3, 6, 7};
     std::vector<int32_t> labels = {1, 2, 3, 4, 5, 6, 7};
     AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
@@ -141,13 +142,12 @@ TEST(AuxLabels, InvertFst) {
     fst_inverter.GetSizes(&fsa_size, &aux_size);
     Array2Storage<int32_t *, int32_t> aux_storage(aux_size, 1);
     auto labels_out = aux_storage.GetArray2();
-    Fsa fsa_out;
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa_out = fsa_creator.GetFsa();
     fst_inverter.GetOutput(&fsa_out, &labels_out);
 
     EXPECT_TRUE(IsEmpty(fsa_out));
-    ASSERT_EQ(labels_out.size1, 0);
-    EXPECT_EQ(labels_out.indexes[0], 0);
-    EXPECT_EQ(labels_out.size2, 0);
+    EXPECT_TRUE(labels_out.Empty());
   }
 
   {
@@ -155,10 +155,11 @@ TEST(AuxLabels, InvertFst) {
     std::vector<Arc> arcs = {{0, 1, 1}, {0, 1, 0},  {0, 3, 2},
                              {1, 2, 3}, {1, 3, 4},  {1, 5, -1},
                              {2, 3, 0}, {2, 5, -1}, {4, 5, -1}};
-    Fsa fsa_in(std::move(arcs), 5);
+    FsaCreator fsa_in_creator(arcs, 5);
+    const auto &fsa_in = fsa_in_creator.GetFsa();
     EXPECT_TRUE(IsTopSorted(fsa_in));
     std::vector<int32_t> start_pos = {0, 2, 3, 3, 6, 6, 7, 7, 8, 9};
-    EXPECT_EQ(start_pos.size(), fsa_in.arcs.size() + 1);
+    EXPECT_EQ(start_pos.size(), fsa_in.size2 + 1);
     std::vector<int32_t> labels = {1, 2, 3, 5, 6, 7, -1, -1, -1};
     AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
                         start_pos.data(), static_cast<int32_t>(labels.size()),
@@ -169,7 +170,8 @@ TEST(AuxLabels, InvertFst) {
     fst_inverter.GetSizes(&fsa_size, &aux_size);
     Array2Storage<int32_t *, int32_t> aux_storage(aux_size, 1);
     auto labels_out = aux_storage.GetArray2();
-    Fsa fsa_out;
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa_out = fsa_creator.GetFsa();
     fst_inverter.GetOutput(&fsa_out, &labels_out);
 
     EXPECT_TRUE(IsTopSorted(fsa_out));
@@ -177,12 +179,14 @@ TEST(AuxLabels, InvertFst) {
         {0, 1, 1},  {0, 2, 3}, {0, 6, 0}, {1, 2, 2}, {2, 3, 5},  {2, 6, 0},
         {2, 8, -1}, {3, 4, 6}, {4, 5, 7}, {5, 6, 0}, {5, 8, -1}, {7, 8, -1},
     };
-    ASSERT_EQ(fsa_out.arcs.size(), arcs_out.size());
+    ASSERT_EQ(fsa_out.size2, arcs_out.size());
     for (auto i = 0; i != arcs_out.size(); ++i) {
-      EXPECT_EQ(fsa_out.arcs[i], arcs_out[i]);
+      EXPECT_EQ(fsa_out.data[i], arcs_out[i]);
     }
-    ASSERT_EQ(fsa_out.arc_indexes.size(), 10);
-    EXPECT_THAT(fsa_out.arc_indexes,
+    ASSERT_EQ(fsa_out.size1, 9);
+    std::vector<int32_t> arc_indexes(fsa_out.indexes,
+                                     fsa_out.indexes + fsa_out.size1 + 1);
+    EXPECT_THAT(arc_indexes,
                 ::testing::ElementsAre(0, 3, 4, 7, 8, 9, 11, 11, 12, 12));
 
     ASSERT_EQ(labels_out.size1, 12);
@@ -201,10 +205,11 @@ TEST(AuxLabels, InvertFst) {
     std::vector<Arc> arcs = {{0, 1, 1},  {0, 1, 0}, {0, 3, 2},
                              {1, 2, 3},  {1, 3, 4}, {2, 1, 5},
                              {2, 5, -1}, {3, 1, 6}, {4, 5, -1}};
-    Fsa fsa_in(std::move(arcs), 5);
+    FsaCreator fsa_in_creator(arcs, 5);
+    const auto &fsa_in = fsa_in_creator.GetFsa();
     EXPECT_FALSE(IsTopSorted(fsa_in));
     std::vector<int32_t> start_pos = {0, 2, 3, 3, 6, 6, 7, 8, 10, 11};
-    EXPECT_EQ(start_pos.size(), fsa_in.arcs.size() + 1);
+    EXPECT_EQ(start_pos.size(), fsa_in.size2 + 1);
     std::vector<int32_t> labels = {1, 2, 3, 5, 6, 7, 8, -1, 9, 10, -1};
     AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
                         start_pos.data(), static_cast<int32_t>(labels.size()),
@@ -215,7 +220,8 @@ TEST(AuxLabels, InvertFst) {
     fst_inverter.GetSizes(&fsa_size, &aux_size);
     Array2Storage<int32_t *, int32_t> aux_storage(aux_size, 1);
     auto labels_out = aux_storage.GetArray2();
-    Fsa fsa_out;
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa_out = fsa_creator.GetFsa();
     fst_inverter.GetOutput(&fsa_out, &labels_out);
 
     EXPECT_FALSE(IsTopSorted(fsa_out));
@@ -223,12 +229,14 @@ TEST(AuxLabels, InvertFst) {
                                  {2, 3, 10}, {3, 4, 5}, {3, 7, 0},  {4, 5, 6},
                                  {5, 6, 7},  {6, 3, 8}, {6, 9, -1}, {7, 2, 9},
                                  {8, 9, -1}};
-    ASSERT_EQ(fsa_out.arcs.size(), arcs_out.size());
+    ASSERT_EQ(fsa_out.size2, arcs_out.size());
     for (auto i = 0; i != arcs_out.size(); ++i) {
-      EXPECT_EQ(fsa_out.arcs[i], arcs_out[i]);
+      EXPECT_EQ(fsa_out.data[i], arcs_out[i]);
     }
-    ASSERT_EQ(fsa_out.arc_indexes.size(), 11);
-    EXPECT_THAT(fsa_out.arc_indexes,
+    ASSERT_EQ(fsa_out.size1, 10);
+    std::vector<int32_t> arc_indexes(fsa_out.indexes,
+                                     fsa_out.indexes + fsa_out.size1 + 1);
+    EXPECT_THAT(arc_indexes,
                 ::testing::ElementsAre(0, 3, 4, 5, 7, 8, 9, 11, 12, 13, 13));
 
     ASSERT_EQ(labels_out.size1, 13);

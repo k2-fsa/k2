@@ -95,22 +95,33 @@ TEST(Properties, IsNotTopSorted) {
       {0, 2, 0},
       {2, 1, 0},
   };
-  Fsa fsa(std::move(arcs), 2);
-  bool sorted = IsTopSorted(fsa);
-  EXPECT_FALSE(sorted);
+  FsaCreator fsa_creator(arcs, 2);
+  const auto &fsa = fsa_creator.GetFsa();
+  EXPECT_FALSE(IsTopSorted(fsa));
 }
 
 TEST(Properties, IsTopSorted) {
-  std::vector<Arc> arcs = {
-      {0, 1, 0},
-      {0, 2, 0},
-      {1, 2, 0},
-  };
-  Fsa fsa(std::move(arcs), 2);
-  bool sorted = IsTopSorted(fsa);
-  EXPECT_TRUE(sorted);
+  {
+    // empty fsa
+    FsaCreator fsa_creator;
+    const auto &fsa = fsa_creator.GetFsa();
+    EXPECT_TRUE(IsTopSorted(fsa));
+  }
 
   {
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {1, 2, 0},
+    };
+
+    FsaCreator fsa_creator(arcs, 2);
+    const auto &fsa = fsa_creator.GetFsa();
+    EXPECT_TRUE(IsTopSorted(fsa));
+  }
+
+  {
+    // TODO(haowen): change GenerateRandFsa to use Array2
     RandFsaOptions opts;
     opts.num_syms = 20;
     opts.num_states = 30;
