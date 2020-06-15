@@ -104,10 +104,14 @@ struct Fsa : public Array2<Arc *, int32_t> {
   // Note: an index into the `arcs` array is called an arc-index.
   std::vector<Arc> arcs;
 
-  Fsa() : Array2() {}
+  Fsa() : Array2() {
+    // TODO(haowen): remove this after replacing Fsa with Array2
+    indexes = nullptr;
+  }
   // just for creating testing FSA examples for now.
   Fsa(std::vector<Arc> fsa_arcs, int32_t final_state)
       : arcs(std::move(fsa_arcs)) {
+    indexes = nullptr;
     if (arcs.empty()) return;
 
     int32_t curr_state = -1;

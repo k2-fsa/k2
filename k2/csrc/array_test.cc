@@ -121,6 +121,15 @@ void TestArray2(int32_t stride) {
       EXPECT_EQ(array2.data[j], data[j] + 1);
     }
   }
+
+  {
+    // test `begin` and `end` for empty Array2 object
+    Array2<Ptr, IndexType> empty_array;
+    EXPECT_TRUE(empty_array.Empty());
+    for (const auto &element : empty_array) {
+      ValueType tmp = element;
+    }
+  }
 }
 
 TEST(Array2Test, RawPointer) { TestArray2<int32_t *, int32_t>(1); }

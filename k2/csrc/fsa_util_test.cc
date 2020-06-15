@@ -143,6 +143,14 @@ TEST(FsaUtil, FsaCreator) {
     FsaCreator fsa_creator;
     const auto &fsa = fsa_creator.GetFsa();
     EXPECT_TRUE(IsEmpty(fsa));
+
+    // test `begin` and `end` for empty fsa
+    for (const auto &arc : fsa) {
+      Arc tmp = arc;
+    }
+    for (auto &arc : fsa) {
+      arc.label = 1;
+    }
   }
 
   {
