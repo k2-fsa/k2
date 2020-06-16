@@ -101,12 +101,7 @@ struct Array2 {
   using PtrT = Ptr;
   using ValueType = typename std::iterator_traits<Ptr>::value_type;
 
-  // We need default constructor now just because we would check
-  // `indexes == nullptr` in NumStates and FinalStates in class Fsa.
-  // We may change it to `Array2() == default` if we don not need
-  // it anymore (after we replace Fsa with Array2).
-  // Array2() = default;
-  Array2() : size1(0), indexes(nullptr) {}
+  Array2() : size1(0), indexes(&size1), size2(0), data(nullptr) {}
   Array2(IndexT size1, IndexT *indexes, IndexT size2, PtrT data)
       : size1(size1), indexes(indexes), size2(size2), data(data) {}
   void Init(IndexT size1, IndexT *indexes, IndexT size2, PtrT data) {
@@ -122,6 +117,8 @@ struct Array2 {
                     // size1+1.  We require that indexes[i] <=
                     // indexes[i+1], but it is not required that
                     // indexes[0] == 0, it may be greater than 0.
+                    // `indexes` should point to a zero if `size1 == 0`,
+                    // i.e. `indexes[0] == 0`
 
   IndexT size2;  // the number of elements in the array,  equal to
                  // indexes[size1] - indexes[0] (if the object Array2
@@ -134,14 +131,18 @@ struct Array2 {
   /*
      If an Array2 object is initialized and `size1` == 0, it means the object is
      empty. Here we don't care about `indexes`, but it should have at least one
-     element according to the definition of size of `indexes` (`size1` + 1).
+     element and `indexes[0] == 0` according to the definition of `indexes`.
      Users should not access `data` if the object is empty.
   */
   bool Empty() const { return size1 == 0; }
 
-  PtrT begin() const { return data + indexes[0]; }
+  // as we require `indexes[0] == 0` if Array2 is empty,
+  // the implementation of `begin` and `end` would be fine for empty object.
+  PtrT begin() { return data + indexes[0]; }
+  const PtrT begin() const { return data + indexes[0]; }
 
-  PtrT end() const { return data + indexes[size1]; }
+  PtrT end() { return data + indexes[size1]; }
+  const PtrT end() const { return data + indexes[size1]; }
 
   // just to replace `Swap` functions for Fsa and AuxLabels for now,
   // may delete it if we finally find that we don't need to call it.
@@ -241,6 +242,8 @@ struct Array2Storage {
     array_.size1 = array2_size.size1;
     array_.size2 = array2_size.size2;
     array_.indexes = indexes_storage_.get();
+    // just for case of empty Array2 object, may be written by the caller
+    array_.indexes[0] = 0;
     array_.data = DataPtrCreator<Ptr, I>::Create(data_storage_, stride);
   }
 

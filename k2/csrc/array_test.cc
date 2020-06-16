@@ -90,6 +90,24 @@ void TestArray2(int32_t stride) {
     EXPECT_EQ(*it, data[n++]);
   }
 
+  // test range-based for loop
+  n = 0;
+  for (const auto &element : array2) {
+    EXPECT_EQ(element, data[n++]);
+  }
+
+  // test range-based for loop: mutate data
+  for (auto &element : array2) {
+    ++element;
+  }
+  n = 0;
+  for (auto &element : array2) {
+    EXPECT_EQ(element, data[n++] + 1);
+  }
+  for (auto &element : array2) {
+    --element;
+  }
+
   // mutate data
   for (auto i = 0; i != array2.size2; ++i) {
     array2.data[i] += 1;
@@ -101,6 +119,15 @@ void TestArray2(int32_t stride) {
     auto end = array2.indexes[i + 1];
     for (auto j = start; j != end; ++j) {
       EXPECT_EQ(array2.data[j], data[j] + 1);
+    }
+  }
+
+  {
+    // test `begin` and `end` for empty Array2 object
+    Array2<Ptr, IndexType> empty_array;
+    EXPECT_TRUE(empty_array.Empty());
+    for (const auto &element : empty_array) {
+      ValueType tmp = element;
     }
   }
 }

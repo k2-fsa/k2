@@ -58,9 +58,16 @@ bool IsValid(const Fsa &fsa) {
   return true;
 }
 
+// TODO(haowen): remove check `fsa.indexes != nullptr` and use array2
 bool IsTopSorted(const Fsa &fsa) {
-  for (const auto &arc : fsa.arcs) {
-    if (arc.dest_state < arc.src_state) return false;
+  if (fsa.indexes != nullptr) {
+    for (const auto &arc : fsa) {
+      if (arc.dest_state < arc.src_state) return false;
+    }
+  } else {
+    for (const auto &arc : fsa.arcs) {
+      if (arc.dest_state < arc.src_state) return false;
+    }
   }
   return true;
 }

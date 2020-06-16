@@ -72,7 +72,9 @@ void GetArcWeights(const float *arc_weights_in,
    final state is the largest state number in the input arcs.
 
    @param [in] arcs  A list of arcs.
-   @param [out] fsa  Output fsa.
+   @param [out] fsa  Output fsa. Must be initialized; search for
+                     'initialized definition' in class Array2 in
+                     array.h for meaning.
    @param [out] arc_map   If non-NULL, this function will
                             output a map from the arc-index in `fsa` to
                             the corresponding arc-index in input `arcs`.
@@ -163,7 +165,28 @@ void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
 class FsaCreator {
  public:
   // Create an empty Fsa
-  FsaCreator() { fsa_.Init(0, default_arc_indexes.data(), 0, nullptr); }
+  FsaCreator() {
+    // TODO(haowen): remove below line and use `FsaCreator() = default`
+    // we need this for now as we reset `indexes = nullptr` in the constructor
+    // of Fsa
+    fsa_.indexes = &fsa_.size1;
+  }
+
+  /*
+    Initialize Fsa with Array2size, search for 'initialized definition' in class
+    Array2 in array.h for meaning. Note that we don't fill data in `indexes` and
+    `data` here, the caller is responsible for this.
+
+    `Array2Storage` is for this purpose as well, but we define this version of
+    constructor here to make test code simpler.
+  */
+  explicit FsaCreator(const Array2Size<int32_t> &size) {
+    arc_indexes_.resize(size.size1 + 1);
+    // just for case of empty Array2 object, may be written by the caller
+    arc_indexes_[0] = 0;
+    arcs_.resize(size.size2);
+    fsa_.Init(size.size1, arc_indexes_.data(), size.size2, arcs_.data());
+  }
 
   /*
     Create an Fsa from a vector of arcs
@@ -199,13 +222,11 @@ class FsaCreator {
               arcs_.data());
   }
 
-  // we usually would not change `fsa_` as we just use it as input to
-  // those FSA algorithms.
-  const Fsa &GetFsa() { return fsa_; }
+  const Fsa &GetFsa() const { return fsa_; }
+  Fsa &GetFsa() { return fsa_; }
 
  private:
   Fsa fsa_;
-  std::vector<int32_t> default_arc_indexes = {0};
   std::vector<int32_t> arc_indexes_;
   std::vector<Arc> arcs_;
 };

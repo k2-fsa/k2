@@ -35,8 +35,8 @@ static void CountExtraStates(const k2::Fsa &fsa_in,
                              std::vector<int32_t> *num_extra_states) {
   CHECK_EQ(num_extra_states->size(), fsa_in.NumStates());
   auto &states = *num_extra_states;
-  for (int32_t i = 0; i != fsa_in.arcs.size(); ++i) {
-    const auto &arc = fsa_in.arcs[i];
+  for (int32_t i = 0; i != fsa_in.size2; ++i) {
+    const auto &arc = fsa_in.data[i];
     int32_t begin = labels_in.indexes[i];
     int32_t end = labels_in.indexes[i + 1];
     states[arc.dest_state] += std::max(0, end - begin - 1);
@@ -157,8 +157,8 @@ void FstInverter::GetSizes(Array2Size<int32_t> *fsa_size,
   int32_t num_extra_states = 0;
   int32_t num_arcs = 0;
   int32_t num_non_eps_labels = 0;
-  for (int32_t i = 0; i != fsa_in_.arcs.size(); ++i) {
-    const auto &arc = fsa_in_.arcs[i];
+  for (int32_t i = 0; i != fsa_in_.size2; ++i) {
+    const auto &arc = fsa_in_.data[i];
     int32_t begin = labels_in_.indexes[i];
     int32_t end = labels_in_.indexes[i + 1];
     num_extra_states += std::max(0, end - begin - 1);
@@ -175,10 +175,7 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
   CHECK_NOTNULL(fsa_out);
   CHECK_NOTNULL(labels_out);
 
-  if (IsEmpty(fsa_in_)) {
-    labels_out->indexes[0] = 0;
-    return;
-  }
+  if (IsEmpty(fsa_in_)) return;
 
   auto num_states_in = fsa_in_.NumStates();
   // get the number of extra states we need to create for each state
@@ -191,9 +188,8 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
   std::vector<int32_t> state_ids(num_states_in, 0);
   MapStates(num_extra_states, &state_map, &state_ids);
 
-  // TODO(haowen): replace with fsa_out->size2
   std::vector<Arc> arcs;
-  arcs.reserve(labels_out->size1);
+  arcs.reserve(fsa_out->size2);
   std::vector<int32_t> start_pos;
   start_pos.reserve(labels_out->size1 + 1);
   std::vector<int32_t> labels;
@@ -202,8 +198,8 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
 
   int32_t num_non_eps_ilabel_processed = 0;
   start_pos.push_back(0);
-  for (auto i = 0; i != fsa_in_.arcs.size(); ++i) {
-    const auto &arc = fsa_in_.arcs[i];
+  for (auto i = 0; i != fsa_in_.size2; ++i) {
+    const auto &arc = fsa_in_.data[i];
     int32_t pos_begin = labels_in_.indexes[i];
     int32_t pos_end = labels_in_.indexes[i + 1];
     int32_t src_state = arc.src_state;
@@ -243,8 +239,7 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
   }
 
   // any failure indicates there are some errors
-  // TODO(haowen): replace with fsa_out->size2
-  CHECK_EQ(arcs.size(), labels_out->size1);
+  CHECK_EQ(arcs.size(), fsa_out->size2);
   CHECK_EQ(start_pos.size(), labels_out->size1 + 1);
   CHECK_EQ(labels.size(), labels_out->size2);
 
