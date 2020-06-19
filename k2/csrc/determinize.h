@@ -569,12 +569,11 @@ int32_t DetState<TracebackState>::ProcessArcs(
   const float *arc_weights = wfsa_in.arc_weights;
   for (const auto &elem : elements) {
     const auto &state_ptr = elem.second;
-    int32_t state_id = state_ptr->state_id,
-            begin_arc = fsa.arc_indexes[state_id],
-            end_arc = fsa.arc_indexes[state_id + 1];
+    int32_t state_id = state_ptr->state_id, begin_arc = fsa.indexes[state_id],
+            end_arc = fsa.indexes[state_id + 1];
     num_steps += end_arc - begin_arc;
     for (int32_t a = begin_arc; a < end_arc; ++a) {
-      const Arc &arc = fsa.arcs[a];
+      const Arc &arc = fsa.data[a];
       float weight = arc_weights[a];
       int32_t label = arc.label;
       auto ret = label_to_state.insert({label, nullptr});
@@ -741,7 +740,7 @@ class DetStateMap {
     // matter which element we choose to trace back.
     auto elem = d.elements.begin()->second;
     int32_t seq_len = d.seq_len;
-    const auto &arcs = fsa.arcs;
+    const auto &arcs = fsa.data;
     for (int32_t i = 0; i < seq_len; ++i) {
       int32_t symbol = arcs[elem->arc_id].label;
       a = symbol + 102299 * a;
@@ -766,7 +765,7 @@ class DetStateMap {
     // matter which element we choose to trace back.
     auto elem = d.elements.begin()->second;
     int32_t seq_len = d.seq_len;
-    const auto &arcs = fsa.arcs;
+    const auto &arcs = fsa.data;
     for (int32_t i = 0; i < seq_len; ++i) {
       int32_t symbol = arcs[elem->prev_elements[0].arc_index].label;
       a = symbol + 102299 * a;

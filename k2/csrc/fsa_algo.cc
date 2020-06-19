@@ -364,13 +364,13 @@ void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
   if (IsEmpty(fsa)) return;
   int32_t num_states_a = fsa.NumStates();
   int32_t final_state = fsa.FinalState();
-  const auto &arcs_a = fsa.arcs;
+  const auto &arcs_a = fsa.data;
   const float *arc_weights_a = a.arc_weights;
 
   // identify all states that should be kept
   std::vector<char> non_eps_in(num_states_a, 0);
   non_eps_in[0] = 1;
-  for (const auto &arc : arcs_a) {
+  for (const auto &arc : fsa) {
     // We suppose the input fsa `a` is top-sorted, but only check this in DEBUG
     // time.
     DCHECK_GE(arc.dest_state, arc.src_state);
@@ -411,8 +411,8 @@ void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
       local_forward_weights.erase(local_forward_weights.begin());
       int32_t state = curr_local_forward_weights.first;
 
-      int32_t arc_end = fsa.arc_indexes[state + 1];
-      for (int32_t arc_index = fsa.arc_indexes[state]; arc_index != arc_end;
+      int32_t arc_end = fsa.indexes[state + 1];
+      for (int32_t arc_index = fsa.indexes[state]; arc_index != arc_end;
            ++arc_index) {
         int32_t next_state = arcs_a[arc_index].dest_state;
         int32_t label = arcs_a[arc_index].label;
@@ -471,13 +471,13 @@ void RmEpsilonsPrunedLogSum(
   if (IsEmpty(fsa)) return;
   int32_t num_states_a = fsa.NumStates();
   int32_t final_state = fsa.FinalState();
-  const auto &arcs_a = fsa.arcs;
+  const auto &arcs_a = fsa.data;
   const float *arc_weights_a = a.arc_weights;
 
   // identify all states that should be kept
   std::vector<char> non_eps_in(num_states_a, 0);
   non_eps_in[0] = 1;
-  for (const auto &arc : arcs_a) {
+  for (const auto &arc : fsa) {
     // We suppose the input fsa `a` is top-sorted, but only check this in DEBUG
     // time.
     DCHECK_GE(arc.dest_state, arc.src_state);
@@ -516,8 +516,8 @@ void RmEpsilonsPrunedLogSum(
 
       const auto &curr_traceback_state = traceback_states[state];
       double curr_forward_weights = curr_traceback_state->forward_prob;
-      int32_t arc_end = fsa.arc_indexes[state + 1];
-      for (int32_t arc_index = fsa.arc_indexes[state]; arc_index != arc_end;
+      int32_t arc_end = fsa.indexes[state + 1];
+      for (int32_t arc_index = fsa.indexes[state]; arc_index != arc_end;
            ++arc_index) {
         int32_t next_state = arcs_a[arc_index].dest_state;
         int32_t label = arcs_a[arc_index].label;

@@ -205,10 +205,17 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
 
   double loglike_cutoff_a, loglike_cutoff_b;
   if (beam != kFloatInfinity) {
+    // TODO(haowen): remove fsa_creator here after replacing FSA with Array2
     loglike_cutoff_a =
-        ShortestDistance<Type>(valid_a, valid_a_weights.data()) - beam;
+        ShortestDistance<Type>(
+            FsaCreator(valid_a.arcs, valid_a.FinalState()).GetFsa(),
+            valid_a_weights.data()) -
+        beam;
     loglike_cutoff_b =
-        ShortestDistance<Type>(valid_b, valid_b_weights.data()) - beam;
+        ShortestDistance<Type>(
+            FsaCreator(valid_b.arcs, valid_b.FinalState()).GetFsa(),
+            valid_b_weights.data()) -
+        beam;
     if (Type == kMaxWeight &&
         !DoubleApproxEqual(loglike_cutoff_a, loglike_cutoff_b))
       return false;
@@ -239,10 +246,12 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
     // find out that we don't need that version, we will remove flag
     // `top_sorted` and add requirements as comments in the header file.
     CHECK(top_sorted);
-    double cost_a =
-        ShortestDistance<Type>(a_compose_path, a_compose_weights.data());
-    double cost_b =
-        ShortestDistance<Type>(b_compose_path, b_compose_weights.data());
+    double cost_a = ShortestDistance<Type>(
+        FsaCreator(a_compose_path.arcs, a_compose_path.FinalState()).GetFsa(),
+        a_compose_weights.data());
+    double cost_b = ShortestDistance<Type>(
+        FsaCreator(b_compose_path.arcs, b_compose_path.FinalState()).GetFsa(),
+        b_compose_weights.data());
 
     if (cost_a < loglike_cutoff_a && cost_b < loglike_cutoff_b) continue;
 
@@ -299,9 +308,15 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
   if (labels_b.find(kEpsilon) != labels_b.end()) return false;
 
   double loglike_cutoff_a =
-      ShortestDistance<kLogSumWeight>(valid_a, valid_a_weights.data()) - beam;
+      ShortestDistance<kLogSumWeight>(
+          FsaCreator(valid_a.arcs, valid_a.FinalState()).GetFsa(),
+          valid_a_weights.data()) -
+      beam;
   double loglike_cutoff_b =
-      ShortestDistance<kLogSumWeight>(valid_b, valid_b_weights.data()) - beam;
+      ShortestDistance<kLogSumWeight>(
+          FsaCreator(valid_b.arcs, valid_b.FinalState()).GetFsa(),
+          valid_b_weights.data()) -
+      beam;
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -324,10 +339,12 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
     // for non-top-sorted FSAs, but we prefer to decide this later as there's no
     // such scenarios (input FSAs are not top-sorted) currently.
     CHECK(top_sorted);
-    double cost_a = ShortestDistance<kLogSumWeight>(a_compose_path,
-                                                    a_compose_weights.data());
-    double cost_b = ShortestDistance<kLogSumWeight>(b_compose_path,
-                                                    b_compose_weights.data());
+    double cost_a = ShortestDistance<kLogSumWeight>(
+        FsaCreator(a_compose_path.arcs, a_compose_path.FinalState()).GetFsa(),
+        a_compose_weights.data());
+    double cost_b = ShortestDistance<kLogSumWeight>(
+        FsaCreator(b_compose_path.arcs, b_compose_path.FinalState()).GetFsa(),
+        b_compose_weights.data());
     if (random_path_from_a) {
       if (cost_a < loglike_cutoff_a) continue;
       // there is no corresponding path in `b`

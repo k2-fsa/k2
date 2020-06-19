@@ -33,9 +33,9 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.arcs;
+  const auto &arcs = fsa.data;
   state_weights[0] = 0;
-  for (std::size_t i = 0; i != arcs.size(); ++i) {
+  for (int32_t i = 0; i != fsa.size2; ++i) {
     const auto &arc = arcs[i];
     DCHECK_GE(arc.dest_state, arc.src_state);
     auto src_weight = state_weights[arc.src_state];
@@ -53,9 +53,9 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.arcs;
+  const auto &arcs = fsa.data;
   state_weights[fsa.FinalState()] = 0;
-  for (auto i = static_cast<int32_t>(arcs.size()) - 1; i >= 0; --i) {
+  for (int32_t i = fsa.size2 - 1; i >= 0; --i) {
     const auto &arc = arcs[i];
     DCHECK_GE(arc.dest_state, arc.src_state);
     auto &src_weight = state_weights[arc.src_state];
@@ -73,9 +73,9 @@ void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.arcs;
+  const auto &arcs = fsa.data;
   state_weights[0] = 0;
-  for (std::size_t i = 0; i != arcs.size(); ++i) {
+  for (int32_t i = 0; i != fsa.size2; ++i) {
     const auto &arc = arcs[i];
     DCHECK_GE(arc.dest_state, arc.src_state);
     auto src_weight = state_weights[arc.src_state];
@@ -93,9 +93,9 @@ void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.arcs;
+  const auto &arcs = fsa.data;
   state_weights[fsa.FinalState()] = 0;
-  for (auto i = static_cast<int32_t>(arcs.size()) - 1; i >= 0; --i) {
+  for (int32_t i = fsa.size2 - 1; i >= 0; --i) {
     const auto &arc = arcs[i];
     DCHECK_GE(arc.dest_state, arc.src_state);
     auto &src_weight = state_weights[arc.src_state];
@@ -121,10 +121,10 @@ void WfsaWithFbWeights::ComputeForwardWeights() {
   forward_state_weights = std::unique_ptr<double[]>(new double[num_states]);
   std::fill_n(forward_state_weights.get(), num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.arcs;
+  const auto &arcs = fsa.data;
   forward_state_weights[0] = 0;
   if (weight_type == kMaxWeight) {
-    for (std::size_t i = 0; i != arcs.size(); ++i) {
+    for (auto i = 0; i != fsa.size2; ++i) {
       const auto &arc = arcs[i];
       DCHECK_GE(arc.dest_state, arc.src_state);
       auto src_weight = forward_state_weights[arc.src_state];
@@ -134,7 +134,7 @@ void WfsaWithFbWeights::ComputeForwardWeights() {
       dest_weight = std::max(dest_weight, r);
     }
   } else if (weight_type == kLogSumWeight) {
-    for (std::size_t i = 0; i != arcs.size(); ++i) {
+    for (std::size_t i = 0; i != fsa.size2; ++i) {
       const auto &arc = arcs[i];
       DCHECK_GE(arc.dest_state, arc.src_state);
       auto src_weight = forward_state_weights[arc.src_state];
@@ -154,10 +154,10 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
   std::fill_n(backward_state_weights.get(), num_states,
               kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.arcs;
+  const auto &arcs = fsa.data;
   backward_state_weights[fsa.FinalState()] = 0;
   if (weight_type == kMaxWeight) {
-    for (auto i = static_cast<int32_t>(arcs.size()) - 1; i >= 0; --i) {
+    for (auto i = fsa.size2 - 1; i >= 0; --i) {
       const auto &arc = arcs[i];
       DCHECK_GE(arc.dest_state, arc.src_state);
       auto &src_weight = backward_state_weights[arc.src_state];
@@ -167,7 +167,7 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
       src_weight = std::max(src_weight, r);
     }
   } else if (weight_type == kLogSumWeight) {
-    for (auto i = static_cast<int32_t>(arcs.size()) - 1; i >= 0; --i) {
+    for (auto i = fsa.size2 - 1; i >= 0; --i) {
       const auto &arc = arcs[i];
       DCHECK_GE(arc.dest_state, arc.src_state);
       auto &src_weight = backward_state_weights[arc.src_state];

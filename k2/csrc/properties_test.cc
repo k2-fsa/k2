@@ -24,8 +24,8 @@ TEST(Properties, IsNotValid) {
   // fsa should contain at least two states.
   {
     Fsa fsa;
-    std::vector<int32_t> arc_indexes = {0};
-    fsa.arc_indexes = std::move(arc_indexes);
+    fsa.size1 = 1;
+    fsa.indexes = &fsa.size1;
     bool is_valid = IsValid(fsa);
     EXPECT_FALSE(is_valid);
   }
@@ -37,7 +37,8 @@ TEST(Properties, IsNotValid) {
         {0, 2, 1},
         {1, 2, 0},
     };
-    Fsa fsa(std::move(arcs), 2);
+    FsaCreator fsa_creator(arcs, 2);
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_valid = IsValid(fsa);
     EXPECT_FALSE(is_valid);
   }
@@ -50,9 +51,7 @@ TEST(Properties, IsNotValid) {
         {0, 2, 1},
         {1, 2, 0},
     };
-    Fsa fsa;
-    fsa.arc_indexes = std::move(arc_indexes);
-    fsa.arcs = std::move(arcs);
+    Fsa fsa(3, arc_indexes.data(), 3, arcs.data());
     bool is_valid = IsValid(fsa);
     EXPECT_FALSE(is_valid);
   }
@@ -72,7 +71,8 @@ TEST(Properties, IsValid) {
         {0, 2, 0},
         {2, 3, kFinalSymbol},
     };
-    Fsa fsa(std::move(arcs), 3);
+    FsaCreator fsa_creator(arcs, 3);
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_valid = IsValid(fsa);
     EXPECT_TRUE(is_valid);
   }
@@ -83,7 +83,8 @@ TEST(Properties, IsValid) {
         {0, 2, kFinalSymbol},
         {1, 2, kFinalSymbol},
     };
-    Fsa fsa(std::move(arcs), 2);
+    FsaCreator fsa_creator(arcs, 2);
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_valid = IsValid(fsa);
     EXPECT_TRUE(is_valid);
   }

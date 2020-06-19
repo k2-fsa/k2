@@ -292,10 +292,12 @@ class RmEpsilonTest : public ::testing::Test {
         {2, 7, 0},  {3, 7, 0},  {4, 6, 1},  {4, 6, 0},  {4, 8, 1},
         {4, 9, -1}, {5, 9, -1}, {6, 9, -1}, {7, 9, -1}, {8, 9, -1},
     };
-    fsa_ = new Fsa(std::move(arcs), 9);
+    fsa_creator_ = new FsaCreator(arcs, 9);
+    fsa_ = &fsa_creator_->GetFsa();
+    fsa_in_ = new Fsa(std::move(arcs), 9);
     num_states_ = fsa_->NumStates();
 
-    auto num_arcs = fsa_->arcs.size();
+    auto num_arcs = fsa_->size2;
     arc_weights_ = new float[num_arcs];
     std::vector<float> weights = {1, 1, 2, 3, 2, 4, 5, 2, 3, 3, 2, 4, 3, 5, 6};
     std::copy_n(weights.begin(), num_arcs, arc_weights_);
@@ -305,15 +307,20 @@ class RmEpsilonTest : public ::testing::Test {
   }
 
   ~RmEpsilonTest() override {
-    delete fsa_;
     delete[] arc_weights_;
     delete max_wfsa_;
     delete log_wfsa_;
+    delete fsa_creator_;
+    delete fsa_in_;
   }
 
   WfsaWithFbWeights *max_wfsa_;
   WfsaWithFbWeights *log_wfsa_;
-  Fsa *fsa_;
+  FsaCreator *fsa_creator_;
+  const Fsa *fsa_;
+  // TODO(haowen): remove fsa_in after replacing FSA with Array2 in
+  // RandEquivalent
+  Fsa *fsa_in_;
   int32_t num_states_;
   float *arc_weights_;
 };
@@ -330,8 +337,8 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
 
   std::vector<float> arc_weights_b(b.arcs.size());
   GetArcWeights(max_wfsa_->arc_weights, arc_derivs_b, arc_weights_b.data());
-  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(
-      max_wfsa_->fsa, max_wfsa_->arc_weights, b, arc_weights_b.data(), 8.0));
+  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(*fsa_in_, max_wfsa_->arc_weights, b,
+                                           arc_weights_b.data(), 8.0));
 }
 
 TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
@@ -347,7 +354,7 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
   ASSERT_EQ(arc_derivs_b.size(), 11);
 
   EXPECT_TRUE(IsRandEquivalentAfterRmEpsPrunedLogSum(
-      log_wfsa_->fsa, log_wfsa_->arc_weights, b, arc_weights_b.data(), 8.0));
+      *fsa_in_, log_wfsa_->arc_weights, b, arc_weights_b.data(), 8.0));
 
   // TODO(haowen): how to check arc_derivs
 }
@@ -579,10 +586,12 @@ class DeterminizeTest : public ::testing::Test {
                              {2, 7, 1}, {3, 7, 1},  {4, 6, 1},  {4, 6, 1},
                              {4, 5, 1}, {4, 8, -1}, {5, 8, -1}, {6, 8, -1},
                              {7, 8, -1}};
-    fsa_ = new Fsa(std::move(arcs), 8);
+    fsa_creator_ = new FsaCreator(arcs, 8);
+    fsa_ = &fsa_creator_->GetFsa();
+    fsa_in_ = new Fsa(std::move(arcs), 8);
     num_states_ = fsa_->NumStates();
 
-    auto num_arcs = fsa_->arcs.size();
+    auto num_arcs = fsa_->size2;
     arc_weights_ = new float[num_arcs];
     std::vector<float> weights = {1, 1, 2, 3, 4, 5, 2, 3, 3, 2, 4, 3, 5};
     std::copy_n(weights.begin(), num_arcs, arc_weights_);
@@ -596,15 +605,18 @@ class DeterminizeTest : public ::testing::Test {
   }
 
   ~DeterminizeTest() override {
-    delete fsa_;
     delete[] arc_weights_;
     delete max_wfsa_;
     delete log_wfsa_;
+    delete fsa_creator_;
+    delete fsa_in_;
   }
 
   WfsaWithFbWeights *max_wfsa_;
   WfsaWithFbWeights *log_wfsa_;
-  Fsa *fsa_;
+  FsaCreator *fsa_creator_;
+  const Fsa *fsa_;
+  Fsa *fsa_in_;
   int32_t num_states_;
   float *arc_weights_;
   Fsa output_fsa;
@@ -617,8 +629,8 @@ TEST_F(DeterminizeTest, DeterminizePrunedMax) {
   DeterminizePrunedMax(*max_wfsa_, 10.0, 100, &b, &b_arc_weights, &arc_derivs);
 
   EXPECT_TRUE(IsDeterministic(b));
-  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(
-      max_wfsa_->fsa, max_wfsa_->arc_weights, b, b_arc_weights.data(), 10.0));
+  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(*fsa_in_, max_wfsa_->arc_weights, b,
+                                           b_arc_weights.data(), 10.0));
 }
 
 TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
@@ -629,8 +641,8 @@ TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
                           &arc_derivs);
 
   EXPECT_TRUE(IsDeterministic(b));
-  EXPECT_TRUE(IsRandEquivalent<kLogSumWeight>(
-      log_wfsa_->fsa, log_wfsa_->arc_weights, b, b_arc_weights.data(), 10.0));
+  EXPECT_TRUE(IsRandEquivalent<kLogSumWeight>(*fsa_in_, log_wfsa_->arc_weights,
+                                              b, b_arc_weights.data(), 10.0));
 
   // TODO(haowen): how to check `arc_derivs_out` here, may return `num_steps` to
   // check the sum of `derivs_out` for each output arc?
