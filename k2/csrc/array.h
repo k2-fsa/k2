@@ -31,13 +31,6 @@ struct StridedPtr {
   I stride;  // in number of elements, NOT number of bytes
   StridedPtr(T *data = nullptr, I stride = 0)  // NOLINT
       : data(data), stride(stride) {}
-  StridedPtr(const StridedPtr &other)
-      : data(other.data), stride(other.stride) {}
-  StridedPtr(StridedPtr &&other) { this->Swap(other); }
-  StridedPtr &operator=(StridedPtr other) {
-    this->Swap(other);
-    return *this;
-  }
 
   T &operator[](I i) { return data[i * stride]; }
   const T &operator[](I i) const { return data[i * stride]; }
@@ -112,6 +105,9 @@ struct Array2 {
   }
 
   IndexT size1;
+  IndexT size2;     // the number of elements in the array,  equal to
+                    // indexes[size1] - indexes[0] (if the object Array2
+                    // has been initialized).
   IndexT *indexes;  // indexes[0,1,...size1] should be defined; note,
                     // this means the array must be of at least
                     // size1+1.  We require that indexes[i] <=
@@ -119,14 +115,10 @@ struct Array2 {
                     // indexes[0] == 0, it may be greater than 0.
                     // `indexes` should point to a zero if `size1 == 0`,
                     // i.e. `indexes[0] == 0`
-
-  IndexT size2;  // the number of elements in the array,  equal to
-                 // indexes[size1] - indexes[0] (if the object Array2
-                 // has been initialized).
-  PtrT data;     // `data` might be an actual pointer, or might be some object
-                 // supporting operator [].  data[indexes[0]] through
-                 // data[indexes[size1] - 1] must be accessible through this
-                 // object.
+  PtrT data;  // `data` might be an actual pointer, or might be some object
+              // supporting operator [].  data[indexes[0]] through
+              // data[indexes[size1] - 1] must be accessible through this
+              // object.
 
   /*
      If an Array2 object is initialized and `size1` == 0, it means the object is
@@ -210,7 +202,7 @@ struct DataPtrCreator;
 // pointer, we will just return data_storage.get()
 template <typename ValueType, typename I>
 struct DataPtrCreator<ValueType *, I> {
-  static ValueType *Create(const std::unique_ptr<ValueType> &data_storage,
+  static ValueType *Create(const std::unique_ptr<ValueType[]> &data_storage,
                            int32_t stride) {
     CHECK_EQ(stride, 1);
     return data_storage.get();
@@ -223,7 +215,7 @@ struct DataPtrCreator<ValueType *, I> {
 template <typename ValueType, typename I>
 struct DataPtrCreator<StridedPtr<ValueType, I>, I> {
   static StridedPtr<ValueType, I> Create(
-      const std::unique_ptr<ValueType> &data_storage, int32_t stride) {
+      const std::unique_ptr<ValueType[]> &data_storage, int32_t stride) {
     CHECK_GT(stride, 1);
     StridedPtr<ValueType, I> strided_ptr(data_storage.get(), stride);
     return strided_ptr;
@@ -236,7 +228,7 @@ struct DataPtrCreator<StridedPtr<ValueType, I>, I> {
 template <typename Ptr, typename I>
 struct Array2Storage {
   using ValueType = typename Array2<Ptr, I>::ValueType;
-  explicit Array2Storage(const Array2Size<I> &array2_size, int32_t stride)
+  explicit Array2Storage(const Array2Size<I> &array2_size, I stride)
       : indexes_storage_(new I[array2_size.size1 + 1]),
         data_storage_(new ValueType[array2_size.size2 * stride]) {
     array_.size1 = array2_size.size1;
@@ -249,7 +241,7 @@ struct Array2Storage {
 
   void FillIndexes(const std::vector<I> &indexes) {
     CHECK_EQ(indexes.size(), array_.size1 + 1);
-    for (auto i = 0; i != indexes.size(); ++i) array_.indexes[i] = indexes[i];
+    std::copy(indexes.begin(), indexes.end(), array_.indexes);
   }
 
   void FillData(const std::vector<ValueType> &data) {
@@ -261,8 +253,8 @@ struct Array2Storage {
 
  private:
   Array2<Ptr, I> array_;
-  std::unique_ptr<I> indexes_storage_;
-  std::unique_ptr<ValueType> data_storage_;
+  std::unique_ptr<I[]> indexes_storage_;
+  std::unique_ptr<ValueType[]> data_storage_;
 };
 
 }  // namespace k2
