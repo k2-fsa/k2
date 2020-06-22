@@ -38,7 +38,7 @@ bool IsValid(const Fsa &fsa) {
   int32_t final_state = num_states - 1;
   // the number of arcs in one state
   int32_t num_arcs = 0;
-  for (const auto &arc : fsa.arcs) {
+  for (const auto &arc : fsa) {
     // only kFinalSymbol arcs enter the final state
     if (arc.dest_state == final_state && arc.label != kFinalSymbol)
       return false;
@@ -46,15 +46,14 @@ bool IsValid(const Fsa &fsa) {
       ++num_arcs;
     } else {
       // `arc_indexes` and `arcs` in this state are not consistent.
-      if ((fsa.arc_indexes[state + 1] - fsa.arc_indexes[state]) != num_arcs)
+      if ((fsa.indexes[state + 1] - fsa.indexes[state]) != num_arcs)
         return false;
       state = arc.src_state;
       num_arcs = 1;
     }
   }
   // check the last state
-  if ((fsa.arc_indexes[final_state] - fsa.arc_indexes[state]) != num_arcs)
-    return false;
+  if ((fsa.indexes[final_state] - fsa.indexes[state]) != num_arcs) return false;
   return true;
 }
 

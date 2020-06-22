@@ -104,6 +104,9 @@ struct Fsa : public Array2<Arc *, int32_t> {
   // Note: an index into the `arcs` array is called an arc-index.
   std::vector<Arc> arcs;
 
+  // inherits constructors in Array2
+  using Array2::Array2;
+
   Fsa() : Array2() {
     // TODO(haowen): remove this after replacing Fsa with Array2
     indexes = nullptr;
