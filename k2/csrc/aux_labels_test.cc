@@ -134,7 +134,7 @@ TEST(AuxLabels, InvertFst) {
     std::vector<int32_t> start_pos = {0, 1, 3, 6, 7};
     std::vector<int32_t> labels = {1, 2, 3, 4, 5, 6, 7};
     AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
-                        start_pos.data(), static_cast<int32_t>(labels.size()),
+                        static_cast<int32_t>(labels.size()), start_pos.data(),
                         labels.data());
 
     FstInverter fst_inverter(fsa_in, labels_in);
@@ -162,7 +162,7 @@ TEST(AuxLabels, InvertFst) {
     EXPECT_EQ(start_pos.size(), fsa_in.size2 + 1);
     std::vector<int32_t> labels = {1, 2, 3, 5, 6, 7, -1, -1, -1};
     AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
-                        start_pos.data(), static_cast<int32_t>(labels.size()),
+                        static_cast<int32_t>(labels.size()), start_pos.data(),
                         labels.data());
 
     FstInverter fst_inverter(fsa_in, labels_in);
@@ -212,7 +212,7 @@ TEST(AuxLabels, InvertFst) {
     EXPECT_EQ(start_pos.size(), fsa_in.size2 + 1);
     std::vector<int32_t> labels = {1, 2, 3, 5, 6, 7, 8, -1, 9, 10, -1};
     AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
-                        start_pos.data(), static_cast<int32_t>(labels.size()),
+                        static_cast<int32_t>(labels.size()), start_pos.data(),
                         labels.data());
 
     FstInverter fst_inverter(fsa_in, labels_in);

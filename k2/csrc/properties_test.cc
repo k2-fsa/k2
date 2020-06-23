@@ -51,7 +51,7 @@ TEST(Properties, IsNotValid) {
         {0, 2, 1},
         {1, 2, 0},
     };
-    Fsa fsa(3, arc_indexes.data(), 3, arcs.data());
+    Fsa fsa(3, 3, arc_indexes.data(), arcs.data());
     bool is_valid = IsValid(fsa);
     EXPECT_FALSE(is_valid);
   }
@@ -246,10 +246,11 @@ TEST(Properties, IsDeterministic) {
 TEST(Properties, IsNotEpsilonFree) {
   std::vector<Arc> arcs = {
       {0, 1, 2},
-      {0, 2, 0},
+      {0, 2, kEpsilon},
       {1, 2, 1},
   };
-  Fsa fsa(std::move(arcs), 2);
+  FsaCreator fsa_creator(arcs, 2);
+  const auto &fsa = fsa_creator.GetFsa();
   bool is_epsilon_free = IsEpsilonFree(fsa);
   EXPECT_FALSE(is_epsilon_free);
 }
@@ -260,7 +261,8 @@ TEST(Properties, IsEpsilonFree) {
       {0, 2, 1},
       {1, 2, 1},
   };
-  Fsa fsa(std::move(arcs), 2);
+  FsaCreator fsa_creator(arcs, 2);
+  const auto &fsa = fsa_creator.GetFsa();
   bool is_epsilon_free = IsEpsilonFree(fsa);
   EXPECT_TRUE(is_epsilon_free);
 }

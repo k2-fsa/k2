@@ -75,72 +75,6 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
  */
 bool Connect(const Fsa &a, Fsa *b, std::vector<int32_t> *arc_map = nullptr);
 
-/**
-   Output an Fsa that is equivalent to the input (in the tropical semiring,
-   which here means taking the max of the weights along paths) but which has no
-   epsilons.  The input needs to have associated weights, because they will be
-   used to choose the best among alternative epsilon paths between states.
-
-    @param [in]  a  The input, with weights and forward-backward weights
-                    as required by this computation.  For now we assume
-                    that `a` is topologically sorted, as required by
-                    the current constructor of WfsaWithFbWeights.
-                    a.weight_type must be kMaxWeight.
-    @param [in] beam  beam > 0 that affects pruning; this algorithm will
-                    keep paths that are within `beam` of the best path.
-                    Just make this very large if you don't want pruning.
-    @param [out] b  The output FSA; will be epsilon-free, and the states
-                    will be in the same order that they were in `a`.
-    @param [out] arc_derivs  Indexed by arc in `b`, this is the sequence of
-                      arcs in `a` that this arc in `b` corresponds to; the
-                      weight of the arc in b will equal the sum of those input
-                      arcs' weights
- */
-void RmEpsilonsPrunedMax(const WfsaWithFbWeights &a, float beam, Fsa *b,
-                         std::vector<std::vector<int32_t>> *arc_derivs);
-
-/*
-  Version of RmEpsilonsPrunedMax that doesn't support pruning; see its
-  documentation.
- */
-void RmEpsilonsMax(const Fsa &a, float *a_weights, Fsa *b,
-                   std::vector<std::vector<int32_t>> *arc_map);
-
-/**
-   This version of RmEpsilonsPruned does log-sum on weights along alternative
-   epsilon paths rather than taking the max.
-
-    @param [in]  a  The input, with weights and forward-backward weights
-                    as required by this computation.  For now we assume
-                    that `a` is topologically sorted, as required by
-                    the current constructor of WfsaWithFbWeights.
-                    a.weight_type may be kMaxWeight or kLogSumWeight;
-                    the difference will affect pruning slightly.
-    @param [in] beam  Beam for pruning, must be > 0.
-    @param [out]  b  The output FSA
-    @param [out]  b  Weights per arc of b.
-    @param [out] arc_derivs  Indexed by arc-index in b, it is an list of
-                     (input-arc, deriv), where 0 < deriv <= 1, where the
-                     lists are ordered by input-arc (unlike
-                     RmEpsilonsPrunedMax, they should not be interpreted
-                     as a sequence).  arc_derivs may be interpreted as
-                     a CSR-format matrix of dimension num_arcs_out by
-                     num_arcs in; it gives the derivatives of output-arcs
-                     weights w.r.t. input-arc weights.
- */
-void RmEpsilonsPrunedLogSum(
-    const WfsaWithFbWeights &a, float beam, Fsa *b,
-    std::vector<float> *b_arc_weights,
-    std::vector<std::vector<std::pair<int32_t, float>>> *arc_derivs);
-
-/*
-  Version of RmEpsilonsLogSum that doesn't support pruning; see its
-  documentation.
- */
-void RmEpsilonsLogSum(const Fsa &a, float *a_weights, Fsa *b,
-                      std::vector<float> *b_arc_weights,
-                      std::vector<std::vector<int32_t>> *arc_map);
-
 /*
   Compute the intersection of two FSAs; this is the equivalent of composition
   for automata rather than transducers, and can be used as the core of
@@ -166,7 +100,6 @@ void RmEpsilonsLogSum(const Fsa &a, float *a_weights, Fsa *b,
 bool Intersect(const Fsa &a, const Fsa &b, Fsa *c,
                std::vector<int32_t> *arc_map_a = nullptr,
                std::vector<int32_t> *arc_map_b = nullptr);
-
 
 /**
    Intersection of two weighted FSA's: the same as Intersect(), but it prunes
@@ -230,46 +163,44 @@ bool TopSort(const Fsa &a, Fsa *b, std::vector<int32_t> *state_map = nullptr);
 /**
    Pruned determinization with log-sum on weights (interpret them as log-probs),
    equivalent to log semiring
-       @param [in] a  Input FSA `a` to be determinized.  Expected to be epsilon free, but this
-                      is not checked; in any case, epsilon will be treated as a normal symbol.
-                      Forward-backward weights must be provided for pruning purposes;
-                      a.weight_type must be kLogSumWeight.
+       @param [in] a  Input FSA `a` to be determinized.  Expected to be epsilon
+   free, but this is not checked; in any case, epsilon will be treated as a
+   normal symbol. Forward-backward weights must be provided for pruning
+   purposes; a.weight_type must be kLogSumWeight.
        @param [in] beam   Pruning beam; should be greater than 0.
-       @param [in] max_step  Maximum number of computation steps before we return
-                     (or if <= 0, there is no limit); provided so users can limit the time
+       @param [in] max_step  Maximum number of computation steps before we
+   return (or if <= 0, there is no limit); provided so users can limit the time
                      taken in pathological cases.
-       @param [out] b  Output FSA; will be deterministic.  For a symbol sequence S accepted by a,
-                      the total (log-sum) weight of S in a should equal the total (log-sum) weight
-                      of S in b (as discoverable by composition then finding the total
-                      weight of the result), except as affected by pruning of course.
+       @param [out] b  Output FSA; will be deterministic.  For a symbol sequence
+   S accepted by a, the total (log-sum) weight of S in a should equal the total
+   (log-sum) weight of S in b (as discoverable by composition then finding the
+   total weight of the result), except as affected by pruning of course.
        @param [out] b_arc_weights  Weights per arc of b.
-       @param [out] arc_derivs   Indexed by arc in b, this is a list of pairs (arc_in_a, x)
-                      where 0 < x <= 1 is the derivative of that arc's weight w.r.t. the
-                      weight of `arc_in_a` in a.  Note: the x values may actually be zero
-                      if the pruning beam is very large, due to limited floating point range.
-       @return   Returns the effective pruning beam, a value >= 0 which is the difference
-                     between the total weight of the output FSA and the cost of the last
-                     arc expanded.
+       @param [out] arc_derivs   Indexed by arc in b, this is a list of pairs
+   (arc_in_a, x) where 0 < x <= 1 is the derivative of that arc's weight w.r.t.
+   the weight of `arc_in_a` in a.  Note: the x values may actually be zero if
+   the pruning beam is very large, due to limited floating point range.
+       @return   Returns the effective pruning beam, a value >= 0 which is the
+   difference between the total weight of the output FSA and the cost of the
+   last arc expanded.
 */
 float DeterminizePrunedLogSum(
-    const WfsaWithFbWeights &a,
-    float beam,
-    int64_t max_step,
-    Fsa *b,
+    const WfsaWithFbWeights &a, float beam, int64_t max_step, Fsa *b,
     std::vector<float> *b_arc_weights,
-    std::vector<std::vector<std::pair<int32_t, float> > > *arc_derivs);
+    std::vector<std::vector<std::pair<int32_t, float>>> *arc_derivs);
 
 /**
-   Pruned determinization with max on weights, equivalent to the tropical semiring.
+   Pruned determinization with max on weights, equivalent to the tropical
+   semiring.
 
-       @param [in] a  Input FSA `a` to be determinized.  Expected to be epsilon free, but this
-                      is not checked; in any case, epsilon will be treated as a normal symbol.
-                      Forward-backward weights must be provided for pruning purposes;
-                      a.weight_type must be kMaxWeight.
+       @param [in] a  Input FSA `a` to be determinized.  Expected to be epsilon
+   free, but this is not checked; in any case, epsilon will be treated as a
+   normal symbol. Forward-backward weights must be provided for pruning
+   purposes; a.weight_type must be kMaxWeight.
        @param [in] beam   Pruning beam; should be greater than 0.
-       @param [in] max_step  Maximum number of computation steps before we return
-                     (or if <= 0, there is no limit); provided so users can limit
-                     the time taken in pathological cases.
+       @param [in] max_step  Maximum number of computation steps before we
+   return (or if <= 0, there is no limit); provided so users can limit the time
+   taken in pathological cases.
        @param [out] b  Output FSA; will be deterministic  For a symbol sequence
                        S accepted by a, the best weight of symbol-sequence S in
                       a should equal the best weight of S in b (as discoverable
@@ -283,17 +214,14 @@ float DeterminizePrunedLogSum(
                       arcs in `a` that this arc in `b` corresponds to; the
                       weight of the arc in b will equal the sum of those input
                       arcs' weights.
-       @return   Returns the effective pruning beam, a value >= 0 which is the difference
-                     between the total weight of the output FSA and the cost of the last
-                     arc expanded.
+       @return   Returns the effective pruning beam, a value >= 0 which is the
+   difference between the total weight of the output FSA and the cost of the
+   last arc expanded.
  */
-float DeterminizePrunedMax(const WfsaWithFbWeights &a,
-                           float beam,
-                           int64_t max_step,
-                           Fsa *b,
+float DeterminizePrunedMax(const WfsaWithFbWeights &a, float beam,
+                           int64_t max_step, Fsa *b,
                            std::vector<float> *b_arc_weights,
                            std::vector<std::vector<int32_t>> *arc_derivs);
-
 
 /* Create an acyclic FSA from a list of arcs.
 

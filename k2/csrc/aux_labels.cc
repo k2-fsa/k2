@@ -245,7 +245,7 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
 
   std::vector<int32_t> arc_map;
   ReorderArcs(arcs, fsa_out, &arc_map);
-  AuxLabels labels_tmp(labels_out->size1, start_pos.data(), labels_out->size2,
+  AuxLabels labels_tmp(labels_out->size1, labels_out->size2, start_pos.data(),
                        labels.data());
   AuxLabels1Mapper aux_mapper(labels_tmp, arc_map);
   // don't need to call `GetSizes` here as `labels_out` has been initialized
