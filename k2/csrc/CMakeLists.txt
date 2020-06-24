@@ -8,6 +8,7 @@ add_library(fsa
   fsa_renderer.cc
   fsa_util.cc
   properties.cc
+  rmepsilon.cc
   util.cc
   weights.cc
 )
@@ -46,6 +47,7 @@ set(fsa_tests
   fsa_test
   fsa_util_test
   properties_test
+  rmepsilon_test
   weights_test
 )
 

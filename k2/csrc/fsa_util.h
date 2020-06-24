@@ -185,7 +185,7 @@ class FsaCreator {
     // just for case of empty Array2 object, may be written by the caller
     arc_indexes_[0] = 0;
     arcs_.resize(size.size2);
-    fsa_.Init(size.size1, arc_indexes_.data(), size.size2, arcs_.data());
+    fsa_.Init(size.size1, size.size2, arc_indexes_.data(), arcs_.data());
   }
 
   /*
@@ -218,7 +218,7 @@ class FsaCreator {
       arc_indexes_.push_back(index);
 
     fsa_.Init(static_cast<int32_t>(arc_indexes_.size()) - 1,
-              arc_indexes_.data(), static_cast<int32_t>(arcs_.size()),
+              static_cast<int32_t>(arcs_.size()), arc_indexes_.data(),
               arcs_.data());
   }
 

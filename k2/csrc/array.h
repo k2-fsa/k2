@@ -94,13 +94,13 @@ struct Array2 {
   using PtrT = Ptr;
   using ValueType = typename std::iterator_traits<Ptr>::value_type;
 
-  Array2() : size1(0), indexes(&size1), size2(0), data(nullptr) {}
-  Array2(IndexT size1, IndexT *indexes, IndexT size2, PtrT data)
-      : size1(size1), indexes(indexes), size2(size2), data(data) {}
-  void Init(IndexT size1, IndexT *indexes, IndexT size2, PtrT data) {
+  Array2() : size1(0), size2(0), indexes(&size1), data(nullptr) {}
+  Array2(IndexT size1, IndexT size2, IndexT *indexes, PtrT data)
+      : size1(size1), size2(size2), indexes(indexes), data(data) {}
+  void Init(IndexT size1, IndexT size2, IndexT *indexes, PtrT data) {
     this->size1 = size1;
-    this->indexes = indexes;
     this->size2 = size2;
+    this->indexes = indexes;
     this->data = data;
   }
 

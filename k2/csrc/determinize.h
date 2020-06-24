@@ -172,8 +172,11 @@ struct MaxTracebackState {
                         // sequence of symbols we took to get here)
 
   // This constructor is for the start-state (state zero) of the input FSA.
-  MaxTracebackState()
-      : state_id(0), arc_id(-1), prev_state(nullptr), forward_prob(0.0) {}
+  explicit MaxTracebackState(int32_t state_id = 0, double forward_prob = 0.0)
+      : state_id(state_id),
+        arc_id(-1),
+        prev_state(nullptr),
+        forward_prob(forward_prob) {}
 
   /**
      @param [in] state_id  State in input FSA that this corresponds to

@@ -158,9 +158,16 @@ bool IsDeterministic(const Fsa &fsa) {
   return true;
 }
 
+// TODO(haowen): remove `else` branch after replacing FSA with Array2
 bool IsEpsilonFree(const Fsa &fsa) {
-  for (const auto &arc : fsa.arcs) {
-    if (arc.label == kEpsilon) return false;
+  if (fsa.indexes != nullptr) {
+    for (const auto &arc : fsa) {
+      if (arc.label == kEpsilon) return false;
+    }
+  } else {
+    for (const auto &arc : fsa.arcs) {
+      if (arc.label == kEpsilon) return false;
+    }
   }
   return true;
 }
