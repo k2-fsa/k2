@@ -504,75 +504,6 @@ TEST(FsaAlgo, TopSort) {
   }
 }
 
-class DeterminizeTest : public ::testing::Test {
- protected:
-  DeterminizeTest() {
-    std::vector<Arc> arcs = {{0, 4, 1}, {0, 1, 1},  {1, 2, 2},  {1, 3, 3},
-                             {2, 7, 1}, {3, 7, 1},  {4, 6, 1},  {4, 6, 1},
-                             {4, 5, 1}, {4, 8, -1}, {5, 8, -1}, {6, 8, -1},
-                             {7, 8, -1}};
-    fsa_creator_ = new FsaCreator(arcs, 8);
-    fsa_ = &fsa_creator_->GetFsa();
-    fsa_in_ = new Fsa(std::move(arcs), 8);
-    num_states_ = fsa_->NumStates();
-
-    auto num_arcs = fsa_->size2;
-    arc_weights_ = new float[num_arcs];
-    std::vector<float> weights = {1, 1, 2, 3, 4, 5, 2, 3, 3, 2, 4, 3, 5};
-    std::copy_n(weights.begin(), num_arcs, arc_weights_);
-
-    max_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kMaxWeight);
-    log_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kLogSumWeight);
-
-    output_fsa.arc_indexes = {0, 1, 5, 6, 7, 8, 9, 9};
-    output_fsa.arcs = {{0, 1, 1}, {1, 6, -1}, {1, 5, 1},  {1, 3, 3}, {1, 2, 2},
-                       {2, 4, 1}, {3, 4, 1},  {4, 6, -1}, {5, 6, -1}};
-  }
-
-  ~DeterminizeTest() override {
-    delete[] arc_weights_;
-    delete max_wfsa_;
-    delete log_wfsa_;
-    delete fsa_creator_;
-    delete fsa_in_;
-  }
-
-  WfsaWithFbWeights *max_wfsa_;
-  WfsaWithFbWeights *log_wfsa_;
-  FsaCreator *fsa_creator_;
-  const Fsa *fsa_;
-  Fsa *fsa_in_;
-  int32_t num_states_;
-  float *arc_weights_;
-  Fsa output_fsa;
-};
-
-TEST_F(DeterminizeTest, DeterminizePrunedMax) {
-  Fsa b;
-  std::vector<float> b_arc_weights;
-  std::vector<std::vector<int32_t>> arc_derivs;
-  DeterminizePrunedMax(*max_wfsa_, 10.0, 100, &b, &b_arc_weights, &arc_derivs);
-
-  EXPECT_TRUE(IsDeterministic(b));
-  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(*fsa_in_, max_wfsa_->arc_weights, b,
-                                           b_arc_weights.data(), 10.0));
-}
-
-TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
-  Fsa b;
-  std::vector<float> b_arc_weights;
-  std::vector<std::vector<std::pair<int32_t, float>>> arc_derivs;
-  DeterminizePrunedLogSum(*log_wfsa_, 10.0, 100, &b, &b_arc_weights,
-                          &arc_derivs);
-
-  EXPECT_TRUE(IsDeterministic(b));
-  EXPECT_TRUE(IsRandEquivalent<kLogSumWeight>(*fsa_in_, log_wfsa_->arc_weights,
-                                              b, b_arc_weights.data(), 10.0));
-
-  // TODO(haowen): how to check `arc_derivs_out` here, may return `num_steps` to
-  // check the sum of `derivs_out` for each output arc?
-}
-
 TEST(FsaAlgo, CreateFsa) {
   {
     // clang-format off
@@ -591,16 +522,14 @@ TEST(FsaAlgo, CreateFsa) {
       {7, 5, 5},
     };
     // clang-format on
-    Fsa a;
+    Array2Size<int32_t> fsa_size;
+    fsa_size.size1 = 9;            // num_states
+    fsa_size.size2 = arcs.size();  // num_arcs
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa_out = fsa_creator.GetFsa();
     std::vector<int32_t> arc_map;
-    CreateFsa(arcs, &a, &arc_map);
+    CreateFsa(arcs, &fsa_out, &arc_map);
 
-    auto num_states = a.NumStates();
-
-    Fsa b;
-    Swap(&a, &b);
-    EXPECT_EQ(a.NumStates(), 0);
-    EXPECT_EQ(b.NumStates(), num_states);
     EXPECT_EQ(arc_map.size(), arcs.size());
     EXPECT_THAT(arc_map,
                 ::testing::ElementsAre(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11));

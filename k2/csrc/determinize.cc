@@ -19,6 +19,97 @@
 
 namespace k2 {
 
+template <typename TracebackState>
+void Determinizer<TracebackState>::GetSizes(
+    Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *arc_derivs_size) {
+  CHECK_NOTNULL(fsa_size);
+  CHECK_NOTNULL(arc_derivs_size);
+  fsa_size->size1 = fsa_size->size2 = 0;
+  arc_derivs_size->size1 = arc_derivs_size->size2 = 0;
+
+  arcs_.clear();
+  arc_weights_.clear();
+  arc_derivs_.clear();
+  if (IsEmpty(fsa_in_.fsa)) return;
+
+  DetStatePriorityQueue<TracebackState> queue;
+  DetStateMap<TracebackState> map;
+  using DS = DetState<TracebackState>;
+  std::shared_ptr<DS> start_state(new DS());
+
+  bool ans = map.GetOutputState(start_state.get(), fsa_in_.fsa);
+  CHECK(ans && start_state->state_id == 0);
+
+  if (max_step_ <= 0) max_step_ = std::numeric_limits<int64_t>::max();
+  int64_t num_steps = 0;
+  double total_prob = fsa_in_.BackwardStateWeights()[0],
+         prune_cutoff = total_prob - beam_;
+  queue.push(std::move(start_state));
+  while (num_steps < max_step_ && !queue.empty()) {
+    std::shared_ptr<DS> state(queue.top());
+    queue.pop();
+    num_steps += state->ProcessArcs(fsa_in_, prune_cutoff, &arcs_,
+                                    &arc_weights_, &arc_derivs_, &map, &queue);
+  }
+
+  // We may stopped early due to max_step
+  effective_beam_ =
+      queue.empty() ? beam_ : total_prob - queue.top()->forward_backward_prob;
+
+  CHECK_EQ(arcs_.size(), arc_derivs_.size());
+  int32_t num_states_out = -1, num_derivs_out = 0;
+  for (auto i = 0; i != arcs_.size(); ++i) {
+    num_states_out = std::max(
+        num_states_out, std::max(arcs_[i].src_state, arcs_[i].dest_state));
+    num_derivs_out += arc_derivs_[i].size();
+  }
+  // as we suppose state-ids are starting from zero.
+  ++num_states_out;
+  fsa_size->size1 = num_states_out;
+  fsa_size->size2 = arcs_.size();
+  arc_derivs_size->size1 = arcs_.size();
+  arc_derivs_size->size2 = num_derivs_out;
+}
+
+template <typename TracebackState>
+float Determinizer<TracebackState>::GetOutput(
+    Fsa *fsa_out, float *arc_weights_out,
+    Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
+  if (IsEmpty(fsa_in_.fsa)) return beam_;
+
+  CHECK_NOTNULL(fsa_out);
+  CHECK_NOTNULL(arc_weights_out);
+  CHECK_NOTNULL(arc_derivs);
+
+  std::vector<int32_t> arc_map;
+  // output fsa
+  CHECK_EQ(arcs_.size(), fsa_out->size2);
+  CreateFsa(arcs_, fsa_out, &arc_map);
+  CHECK_EQ(arcs_.size(), arc_map.size());
+
+  // output arc weights
+  ReorderCopyN(arc_map.begin(), arc_map.size(), arc_weights_.begin(),
+               arc_weights_out);
+
+  // output arc derivative information
+  CHECK_EQ(arc_derivs_.size(), arc_derivs->size1);
+  int32_t num_derivs = 0;
+  for (int32_t i = 0; i != arc_derivs->size1; ++i) {
+    arc_derivs->indexes[i] = num_derivs;
+    const auto &curr_arc_deriv = arc_derivs_[arc_map[i]];
+    std::copy(curr_arc_deriv.begin(), curr_arc_deriv.end(),
+              arc_derivs->data + num_derivs);
+    num_derivs += curr_arc_deriv.size();
+  }
+  arc_derivs->indexes[arc_derivs->size1] = num_derivs;
+
+  return effective_beam_;
+}
+
+// explicit instantiation here
+template class Determinizer<MaxTracebackState>;
+template class Determinizer<LogSumTracebackState>;
+
 LogSumTracebackLink::LogSumTracebackLink(
     const std::shared_ptr<LogSumTracebackState> &src, int32_t arc_index,
     float arc_weight)
@@ -121,15 +212,6 @@ void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
   }
   double prev_forward_prob = state->forward_prob;
   *weight_out = static_cast<float>(cur_forward_prob - prev_forward_prob);
-}
-
-template <>
-double LogSumOrMax<MaxTracebackState>(double a, double b) {
-  return std::max(a, b);
-}
-template <>
-double LogSumOrMax<LogSumTracebackState>(double a, double b) {
-  return LogAdd(a, b);
 }
 
 }  // namespace k2

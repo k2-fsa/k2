@@ -41,6 +41,7 @@ endfunction()
 set(fsa_tests
   array_test
   aux_labels_test
+  determinize_test
   fsa_algo_test
   fsa_equivalent_test
   fsa_renderer_test
