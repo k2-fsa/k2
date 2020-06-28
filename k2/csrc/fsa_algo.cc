@@ -511,9 +511,6 @@ bool TopSort(const Fsa &a, Fsa *b,
 void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
                std::vector<int32_t> *arc_map /*=null_ptr*/) {
   CHECK_NOTNULL(fsa);
-  fsa->arc_indexes.clear();
-  fsa->arcs.clear();
-
   if (arcs.empty()) return;
 
   using ArcWithIndex = std::pair<Arc, int32_t>;
@@ -571,49 +568,30 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
   }
 
   CHECK_EQ(num_states, static_cast<int32_t>(order.size()));
-
   std::reverse(order.begin(), order.end());
 
-  fsa->arc_indexes.resize(num_states + 1);
-  fsa->arcs.reserve(arcs.size());
+  CHECK_EQ(fsa->size1, num_states);
+  CHECK_EQ(fsa->size2, arcs.size());
   std::vector<int32_t> arc_map_out;
   arc_map_out.reserve(arcs.size());
 
   std::vector<int32_t> old_to_new(num_states);
   for (auto i = 0; i != num_states; ++i) old_to_new[order[i]] = i;
 
+  int32_t num_arcs = 0;
   for (auto i = 0; i != num_states; ++i) {
     auto old_state = order[i];
-    fsa->arc_indexes[i] = static_cast<int32_t>(fsa->arcs.size());
+    fsa->indexes[i] = num_arcs;
     for (auto arc_with_index : vec[old_state]) {
       auto &arc = arc_with_index.first;
       arc.src_state = i;
       arc.dest_state = old_to_new[arc.dest_state];
-      fsa->arcs.push_back(arc);
+      fsa->data[num_arcs++] = arc;
       arc_map_out.push_back(arc_with_index.second);
     }
   }
-
-  fsa->arc_indexes.back() = static_cast<int32_t>(fsa->arcs.size());
+  fsa->indexes[num_states] = num_arcs;
   if (arc_map != nullptr) arc_map->swap(arc_map_out);
-}
-
-float DeterminizePrunedLogSum(
-    const WfsaWithFbWeights &a, float beam, int64_t max_step, Fsa *b,
-    std::vector<float> *b_arc_weights,
-    std::vector<std::vector<std::pair<int32_t, float>>> *arc_derivs) {
-  CHECK_EQ(a.weight_type, kLogSumWeight);
-  return DeterminizePrunedTpl<LogSumTracebackState>(a, beam, max_step, b,
-                                                    b_arc_weights, arc_derivs);
-}
-
-float DeterminizePrunedMax(const WfsaWithFbWeights &a, float beam,
-                           int64_t max_step, Fsa *b,
-                           std::vector<float> *b_arc_weights,
-                           std::vector<std::vector<int32_t>> *arc_derivs) {
-  CHECK_EQ(a.weight_type, kMaxWeight);
-  return DeterminizePrunedTpl<MaxTracebackState>(a, beam, max_step, b,
-                                                 b_arc_weights, arc_derivs);
 }
 
 }  // namespace k2

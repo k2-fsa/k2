@@ -12,7 +12,8 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/determinize.h"
+#include "glog/logging.h"
+#include "k2/csrc/determinize_impl.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/weights.h"
 
@@ -21,7 +22,7 @@ namespace k2 {
 /*
    Output an Fsa that is equivalent to the input but which has no
    epsilons. `TracebackState` could be either `MaxTracebackState` or
-   `LogSumTracebackState`, search in `determinize.h` for their definitions.
+   `LogSumTracebackState`, search in `determinize_impl.h` for their definitions.
 
    The input FSA needs to have associated weights, because they will be used to
        choose the best path among alternative epsilon paths between states
