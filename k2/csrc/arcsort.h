@@ -52,6 +52,11 @@ class ArcSorter {
   const Fsa &fsa_in_;
 };
 
+// In-place version of ArcSorter; see its documentation;
+// Note that if `arc_map` is non-NULL, then at entry it must be allocated with
+// size num-arcs of `fsa`, e.g. `fsa->size2`
+void ArcSort(Fsa *fsa, int32_t *arc_map = nullptr);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_ARCSORT_H_

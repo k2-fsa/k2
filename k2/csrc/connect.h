@@ -75,8 +75,8 @@ class Connection {
   const Fsa &fsa_in_;
 
   bool is_acyclic_;  // if the input FSA is acyclic
-  // indicates that there's no any accessible & co-accessible state
-  // in the input FSA
+  // if true, there is no state in the input FSA that is both
+  // accessible and co-accessible.
   bool no_accessible_state_;
   std::vector<int32_t> arc_indexes_;  // arc_index of fsa_out
   std::vector<Arc> arcs_;             // arcs of fsa_out

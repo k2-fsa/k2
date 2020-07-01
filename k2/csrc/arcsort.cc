@@ -26,7 +26,6 @@ void ArcSorter::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
   CHECK_EQ(fsa_out->size1, fsa_in_.size1);
   CHECK_EQ(fsa_out->size2, fsa_in_.size2);
 
-  using ArcWithIndex = std::pair<Arc, int32_t>;
   std::vector<int32_t> indexes(fsa_in_.size2);
   // After arc sorting, indexes[i] = j means we mapped arc-index `i` of
   // `fsa_out` to arc-index `j` of `fsa_in`
@@ -51,6 +50,32 @@ void ArcSorter::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
     num_arcs += end - begin;
   }
   fsa_out->indexes[num_states] = num_arcs;
+
+  if (arc_map != nullptr) std::copy(indexes.begin(), indexes.end(), arc_map);
+}
+
+void ArcSort(Fsa *fsa, int32_t *arc_map /*= nullptr*/) {
+  CHECK_NOTNULL(fsa);
+
+  std::vector<int32_t> indexes(fsa->size2);
+  // After arc sorting, indexes[i] = j means we mapped arc-index `i` of
+  // original FSa to arc-index `j` of output arc-sorted FSA
+  std::iota(indexes.begin(), indexes.end(), 0);
+  int32_t num_states = fsa->NumStates();
+  int32_t arc_begin_index = fsa->indexes[0];  // it may be greater than 0
+  const auto &arcs_in = fsa->data;
+  for (int32_t state = 0; state != num_states; ++state) {
+    int32_t begin = fsa->indexes[state] - arc_begin_index;
+    int32_t end = fsa->indexes[state + 1] - arc_begin_index;
+    std::sort(indexes.begin() + begin, indexes.begin() + end,
+              [&arcs_in, arc_begin_index](int32_t i, int32_t j) {
+                return arcs_in[arc_begin_index + i] <
+                       arcs_in[arc_begin_index + j];
+              });
+    std::sort(arcs_in + begin + arc_begin_index,
+              arcs_in + end + arc_begin_index,
+              [](const Arc &left, const Arc &right) { return left < right; });
+  }
 
   if (arc_map != nullptr) std::copy(indexes.begin(), indexes.end(), arc_map);
 }

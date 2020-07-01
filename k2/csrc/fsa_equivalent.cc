@@ -151,13 +151,11 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
   // TODO(haowen): call `RmEpsilon` here instead of checking.
   if (!IsEpsilonFree(a) || !IsEpsilonFree(b)) return false;
 
-  FsaCreator connected_a_storage, connected_b_storage, valid_a_storage,
-      valid_b_storage;
-  ::Connect(a, &connected_a_storage);
-  ::Connect(b, &connected_b_storage);
-  ::ArcSort(connected_a_storage.GetFsa(),
-            &valid_a_storage);  // required by `intersect`
-  ::ArcSort(connected_b_storage.GetFsa(), &valid_b_storage);
+  FsaCreator valid_a_storage, valid_b_storage;
+  ::Connect(a, &valid_a_storage);
+  ::Connect(b, &valid_b_storage);
+  ArcSort(&valid_a_storage.GetFsa());  // required by `intersect`
+  ArcSort(&valid_b_storage.GetFsa());
   const auto &valid_a = valid_a_storage.GetFsa();
   const auto &valid_b = valid_b_storage.GetFsa();
   if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
@@ -169,10 +167,10 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
   for (const auto &arc : valid_b) labels_b.insert(arc.label);
   if (labels_a != labels_b) return false;
 
-  FsaCreator c_storage, connected_c_stroage, valid_c_storage;
+  FsaCreator c_storage, valid_c_storage;
   if (!::Intersect(valid_a, valid_b, &c_storage)) return false;
-  ::Connect(c_storage.GetFsa(), &connected_c_stroage);
-  ::ArcSort(connected_c_stroage.GetFsa(), &valid_c_storage);
+  ::Connect(c_storage.GetFsa(), &valid_c_storage);
+  ArcSort(&valid_c_storage.GetFsa());
   const auto &valid_c = valid_c_storage.GetFsa();
   if (IsEmpty(valid_c)) return false;
 
@@ -181,9 +179,10 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
   std::bernoulli_distribution coin(0.5);
   for (auto i = 0; i != npath; ++i) {
     const auto &fsa = coin(gen) ? valid_a : valid_b;
-    FsaCreator path_storage, valid_path_storage;
-    ::RandomPath(fsa, false, &path_storage);  // path is already connected
-    ::ArcSort(path_storage.GetFsa(), &valid_path_storage);
+    FsaCreator valid_path_storage;
+    if (!::RandomPath(fsa, false, &valid_path_storage)) continue;
+    // path is already connected
+    ArcSort(&valid_path_storage.GetFsa());
     FsaCreator cpath_storage, valid_cpath_storage;
     ::Intersect(valid_path_storage.GetFsa(), valid_c, &cpath_storage);
     ::Connect(cpath_storage.GetFsa(), &valid_cpath_storage);
@@ -253,13 +252,13 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
   std::size_t n = 0;
   while (n < npath) {
     const auto &fsa = coin(gen) ? valid_a : valid_b;
-    FsaCreator path_storage, valid_path_storage;
+    FsaCreator valid_path_storage;
     // fail to generate a epsilon-free path (note that
     // our current implementation of `Intersection` requires
     // one of the two input FSAs must be epsilon-free).
-    if (!::RandomPath(fsa, true, &path_storage)) continue;
+    if (!::RandomPath(fsa, true, &valid_path_storage)) continue;
     // path is already connected so we will not call `::Connect` here
-    ::ArcSort(path_storage.GetFsa(), &valid_path_storage);
+    ArcSort(&valid_path_storage.GetFsa());
     const auto &valid_path = valid_path_storage.GetFsa();
 
     FsaCreator a_compose_path_storage, b_compose_path_storage;
@@ -354,13 +353,13 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
   while (n < npath) {
     bool random_path_from_a = coin(gen);
     const auto &fsa = random_path_from_a ? valid_a : valid_b;
-    FsaCreator path_storage, valid_path_storage;
+    FsaCreator valid_path_storage;
     // fail to generate a epsilon-free path (note that
     // our current implementation of `Intersection` requires
     // one of the two input FSAs must be epsilon-free).
-    if (!::RandomPath(fsa, true, &path_storage)) continue;
+    if (!::RandomPath(fsa, true, &valid_path_storage)) continue;
     // path is already connected so we will not call `::Connect` here
-    ::ArcSort(path_storage.GetFsa(), &valid_path_storage);
+    ArcSort(&valid_path_storage.GetFsa());
     const auto &valid_path = valid_path_storage.GetFsa();
 
     FsaCreator a_compose_path_storage, b_compose_path_storage;
