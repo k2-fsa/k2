@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "glog/logging.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/weights.h"
 
@@ -104,46 +105,66 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
     float beam, bool top_sorted = true, std::size_t npath = 100);
 
 /*
-  Gets a random path from an Fsa `a`, returns true if we get one path
+  Gets a random path from the input FSA, returns true if we get one path
   successfully.
-
-  @param [in]  a         The input fsa from which we will generate a random path
-  @param [out] b         The output path
-  @param [out] state_map If non-NULL, this function will output a map from the
-                         state-index in `b` to the corresponding state-index in
-  `a`.
 */
-bool RandomPath(const Fsa &a, Fsa *b,
-                std::vector<int32_t> *state_map = nullptr);
+class RandPath {
+ public:
+  /* Lightweight constructor that just keeps const references to the input
+     parameters.
+     @param [in] fsa_in  The input fsa from which we will generate a random path
+     @param [in] no_eps_arc  If true, the generated path must be epsilon-free,
+                             i.e. there must be no arc with
+                             arc.label == kEpsilon.
+     @param [in] eps_arc_tries  Will be used when `no_eps_arc` is true. If all
+                                leaving arcs from a particular state have no
+                                labels (all arcs' labels are epsilons), we may
+                                fail to find a epsilon-free path (even if
+                                `fsa_in` is connected). `eps_arc_tries` controls
+                                how many times we'll try to generate a labeled
+                                arc from any state. Must be greater than 1.
+  */
+  RandPath(const Fsa &fsa_in, bool no_eps_arc, int32_t eps_arc_tries = 50)
+      : fsa_in_(fsa_in),
+        no_epsilon_arc_(no_eps_arc),
+        eps_arc_tries_(eps_arc_tries) {
+    CHECK_GT(eps_arc_tries_, 1);
+  }
 
-// Version of RandomPath that requires that there's no epsilon arc in the
-// returned path.
-bool RandomPathWithoutEpsilonArc(const Fsa &a, Fsa *b,
-                                 std::vector<int32_t> *state_map = nullptr);
-/*
-  Computes the intersection of two FSAs where one FSA has weights on arc.
+  /*
+    Do enough work that know now much memory will be needed, and output
+    that information
+        @param [out] fsa_size   The num-states and num-arcs of the output FSA
+                                will be written to here
+  */
+  void GetSizes(Array2Size<int32_t> *fsa_size);
 
-  @param [in] a    One of the FSAs to be intersected.  Must satisfy
-                   ArcSorted(a)
-  @param [in] a_weights Arc weights of `a`
-  @param [in] b    The other FSA to be intersected  Must satisfy
-                   ArcSorted(b) and IsEpsilonFree(b). It is usually a path
-                   generated from `RandomNonEpsilonPath`
-  @param [out] c   The composed FSA will be output to here.
-  @param [out] c_weights Arc weights of output FSA `c`.
-  @param [out] arc_map_a   If non-NULL, at exit will be a vector of
-                   size c->arcs.size(), saying for each arc in
-                   `c` what the source arc in `a` was, `-1` represents
-                   there is no corresponding source arc in `a`.
-  @param [out] arc_map_b   If non-NULL, at exit will be a vector of
-                   size c->arcs.size(), saying for each arc in
-                   `c` what the source arc in `b` was, `-1` represents
-                   there is no corresponding source arc in `b`.
- */
-void Intersect(const Fsa &a, const float *a_weights, const Fsa &b, Fsa *c,
-               std::vector<float> *c_weights,
-               std::vector<int32_t> *arc_map_a = nullptr,
-               std::vector<int32_t> *arc_map_b = nullptr);
+  /*
+    Finish the operation and output the path to `path` and
+    state mapping information to `state_map` (if provided).
+    @param [out]  path    Output path.
+                          Must be initialized; search for 'initialized
+                          definition' in class Array2 in array.h for meaning.
+    @param [out]  state_map   If non-NULL, Maps from state indexes in the output
+                              path to state indexes in the input fsa.
+                              If non-NULL, Must be allocated with size
+                             `fsa_out->size1` at entry.
+
+    @return true if it succeeds; will be false if it fails,
+            `fsa_out` will be empty when it fails.
+   */
+  bool GetOutput(Fsa *fsa_out, int32_t *state_map = nullptr);
+
+ private:
+  const Fsa &fsa_in_;
+  const bool no_epsilon_arc_;
+  const int32_t eps_arc_tries_;
+
+  bool status_;
+  std::vector<int32_t> arc_indexes_;  // arc_index of fsa_out
+  std::vector<Arc> arcs_;             // arcs of fsa_out
+  std::vector<int32_t> state_map_;
+};
 
 }  // namespace k2
 

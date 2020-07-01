@@ -31,7 +31,6 @@ class RmEpsilonTest : public ::testing::Test {
     };
     fsa_creator_ = new FsaCreator(arcs, 9);
     fsa_ = &fsa_creator_->GetFsa();
-    fsa_in_ = new Fsa(std::move(arcs), 9);
     num_states_ = fsa_->NumStates();
 
     auto num_arcs = fsa_->size2;
@@ -48,16 +47,12 @@ class RmEpsilonTest : public ::testing::Test {
     delete max_wfsa_;
     delete log_wfsa_;
     delete fsa_creator_;
-    delete fsa_in_;
   }
 
   WfsaWithFbWeights *max_wfsa_;
   WfsaWithFbWeights *log_wfsa_;
   FsaCreator *fsa_creator_;
   const Fsa *fsa_;
-  // TODO(haowen): remove fsa_in after replacing FSA with Array2 in
-  // RandEquivalent
-  Fsa *fsa_in_;
   int32_t num_states_;
   float *arc_weights_;
 };
@@ -84,18 +79,9 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
   ASSERT_EQ(arc_derivs.size1, 11);
   ASSERT_EQ(arc_derivs.size2, 18);
 
-  // TODO(haowen): remove fsa_out_copy after replacing Fsa with Array2
-  // in RandEquivalent
-  Fsa fsa_out_copy;
-  std::vector<int32_t> fsa_out_indexes(fsa_out.indexes,
-                                       fsa_out.indexes + fsa_out.size1 + 1);
-  std::vector<Arc> fsa_out_data(fsa_out.data, fsa_out.data + fsa_out.size2);
-  fsa_out_copy.arc_indexes = fsa_out_indexes;
-  fsa_out_copy.arcs = fsa_out_data;
-
-  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(*fsa_in_, max_wfsa_->arc_weights,
-                                           fsa_out_copy, arc_weights_out.data(),
-                                           beam));
+  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(max_wfsa_->fsa,
+                                           max_wfsa_->arc_weights, fsa_out,
+                                           arc_weights_out.data(), beam));
 }
 
 TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
@@ -120,14 +106,8 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
   ASSERT_EQ(arc_derivs.size1, 11);
   ASSERT_EQ(arc_derivs.size2, 20);
 
-  Fsa fsa_out_copy;
-  std::vector<int32_t> fsa_out_indexes(fsa_out.indexes,
-                                       fsa_out.indexes + fsa_out.size1 + 1);
-  std::vector<Arc> fsa_out_data(fsa_out.data, fsa_out.data + fsa_out.size2);
-  fsa_out_copy.arc_indexes = fsa_out_indexes;
-  fsa_out_copy.arcs = fsa_out_data;
   EXPECT_TRUE(IsRandEquivalentAfterRmEpsPrunedLogSum(
-      *fsa_in_, log_wfsa_->arc_weights, fsa_out_copy, arc_weights_out.data(),
+      log_wfsa_->fsa, log_wfsa_->arc_weights, fsa_out, arc_weights_out.data(),
       beam));
 
   // TODO(haowen): how to check arc_derivs

@@ -89,14 +89,19 @@ TEST(FsaUtil, RandFsa) {
   opts.acyclic = true;
   opts.seed = 20200517;
 
-  Fsa fsa;
-  GenerateRandFsa(opts, &fsa);
+  RandFsaGenerator generator(opts);
+  Array2Size<int32_t> fsa_size;
+  generator.GetSizes(&fsa_size);
+
+  FsaCreator fsa_creator(fsa_size);
+  auto &fsa = fsa_creator.GetFsa();
+  generator.GetOutput(&fsa);
 
   EXPECT_TRUE(IsAcyclic(fsa));
 
   // some states and arcs may be removed due to `Connect`.
   EXPECT_LE(fsa.NumStates(), opts.num_states);
-  EXPECT_LE(fsa.arcs.size(), opts.num_arcs);
+  EXPECT_LE(fsa.size2, opts.num_arcs);
 
   EXPECT_FALSE(IsEmpty(fsa));
 }
@@ -166,6 +171,38 @@ TEST(FsaUtil, FsaCreator) {
     for (auto i = 0; i != arcs.size(); ++i) {
       EXPECT_EQ(fsa.data[i], arcs[i]);
     }
+  }
+}
+
+TEST(FsaAlgo, CreateFsa) {
+  {
+    // clang-format off
+    std::vector<Arc> arcs = {
+      {0, 3, 3},
+      {0, 2, 2},
+      {2, 3, 3},
+      {2, 4, 4},
+      {3, 1, 1},
+      {1, 4, 4},
+      {1, 8, 8},
+      {4, 8, 8},
+      {8, 6, 6},
+      {8, 7, 7},
+      {6, 7, 7},
+      {7, 5, 5},
+    };
+    // clang-format on
+    Array2Size<int32_t> fsa_size;
+    fsa_size.size1 = 9;            // num_states
+    fsa_size.size2 = arcs.size();  // num_arcs
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa_out = fsa_creator.GetFsa();
+    std::vector<int32_t> arc_map;
+    CreateFsa(arcs, &fsa_out, &arc_map);
+
+    EXPECT_EQ(arc_map.size(), arcs.size());
+    EXPECT_THAT(arc_map,
+                ::testing::ElementsAre(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11));
   }
 }
 }  // namespace k2

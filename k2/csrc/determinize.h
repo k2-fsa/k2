@@ -22,7 +22,6 @@
 #include "glog/logging.h"
 #include "k2/csrc/determinize_impl.h"
 #include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/util.h"
 #include "k2/csrc/weights.h"
 

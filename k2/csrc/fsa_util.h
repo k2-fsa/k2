@@ -18,6 +18,19 @@
 
 namespace k2 {
 
+namespace dfs {
+
+constexpr int8_t kNotVisited = 0;  // a node that has not been visited
+constexpr int8_t kVisiting = 1;    // a node that is under visiting
+constexpr int8_t kVisited = 2;     // a node that has been visited
+// depth first search state
+struct DfsState {
+  int32_t state;      // state number of the visiting node
+  int32_t arc_begin;  // arc index of the visiting arc
+  int32_t arc_end;    // end of the arc index of the visiting node
+};
+}  // namespace dfs
+
 /*
   Computes lists of arcs entering each state (needed for algorithms that
   traverse the Fsa in reverse order).
@@ -112,55 +125,6 @@ void GetArcIndexes2(const std::vector<std::vector<int32_t>> &arc_map,
 
 void Swap(Fsa *a, Fsa *b);
 
-/** Build an FSA from a string.
-
-  The input string is a transition table with the following
-  format (same with OpenFST):
-
-  from_state  to_state  label
-  from_state  to_state  label
-  ... ...
-  final_state
-
-  K2 requires that the final state has the largest state number. The above
-  format requires the last line to be the final state, whose sole purpose is
-  to be compatible with OpenFST.
-
-  @param [in] s Input string representing the transition table.
-
-  @return an FSA.
- */
-std::unique_ptr<Fsa> StringToFsa(const std::string &s);
-
-std::string FsaToString(const Fsa &fsa);
-
-struct RandFsaOptions {
-  std::size_t num_syms;
-  std::size_t num_states;
-  std::size_t num_arcs;
-  bool allow_empty;
-  bool acyclic;  // generate a cyclic fsa in a best effort manner if it's false
-  int32_t seed;  // for random generator. Set it to non-zero for reproducibility
-
-  RandFsaOptions();
-};
-
-void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa);
-
-// move-copy an array to output, reordering it according to given indexes,
-// where`index[i]` tells us what value (i.e. `src[index[i]`) we should copy to
-// `dest[i]`
-template <class InputIterator, class Size, class RandomAccessIterator,
-          class OutputIterator>
-void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
-                  OutputIterator dest) {
-  if (count > 0) {
-    for (Size i = 0; i != count; ++i) {
-      *dest++ = std::move(src[*index++]);
-    }
-  }
-}
-
 // Create Fsa for test purpose.
 class FsaCreator {
  public:
@@ -180,7 +144,9 @@ class FsaCreator {
     `Array2Storage` is for this purpose as well, but we define this version of
     constructor here to make test code simpler.
   */
-  explicit FsaCreator(const Array2Size<int32_t> &size) {
+  explicit FsaCreator(const Array2Size<int32_t> &size) { Init(size); }
+
+  void Init(const Array2Size<int32_t> &size) {
     arc_indexes_.resize(size.size1 + 1);
     // just for case of empty Array2 object, may be written by the caller
     arc_indexes_[0] = 0;
@@ -230,6 +196,105 @@ class FsaCreator {
   std::vector<int32_t> arc_indexes_;
   std::vector<Arc> arcs_;
 };
+
+/* Create an acyclic FSA from a list of arcs.
+
+   Arcs do not need to be pre-sorted by src_state.
+   If there is a cycle, it aborts.
+
+   The start state MUST be 0. The final state will be automatically determined
+   by topological sort.
+
+   @param [in] arcs  A list of arcs.
+   @param [out] fsa  Output fsa. Must be initialized; search for 'initialized
+                     definition' in class Array2 in array.h for meaning.
+   @param [out] arc_map   If non-NULL, this function will
+                            output a map from the arc-index in `fsa` to
+                            the corresponding arc-index in input `arcs`.
+*/
+void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
+               std::vector<int32_t> *arc_map = nullptr);
+
+/** Build an FSA from a string.
+
+  The input string is a transition table with the following
+  format (same with OpenFST):
+
+  from_state  to_state  label
+  from_state  to_state  label
+  ... ...
+  final_state
+
+  K2 requires that the final state has the largest state number. The above
+  format requires the last line to be the final state, whose sole purpose is
+  to be compatible with OpenFST.
+
+  @param [in] s Input string representing the transition table.
+
+  @return an FSA.
+ */
+std::unique_ptr<Fsa> StringToFsa(const std::string &s);
+
+std::string FsaToString(const Fsa &fsa);
+
+struct RandFsaOptions {
+  std::size_t num_syms;
+  std::size_t num_states;
+  std::size_t num_arcs;
+  bool allow_empty;
+  bool acyclic;  // generate a cyclic fsa in a best effort manner if it's false
+  int32_t seed;  // for random generator. Set it to non-zero for reproducibility
+
+  RandFsaOptions();
+};
+
+/**
+    Generate a random FSA.
+ */
+class RandFsaGenerator {
+ public:
+  /* Lightweight constructor that just keeps const references to the input
+     parameters.
+     @param [in] opts   Options that control the properties of the generated
+                        FSA.
+  */
+  explicit RandFsaGenerator(const RandFsaOptions &opts) : opts_(opts) {}
+
+  /*
+    Do enough work that know now much memory will be needed, and output
+    that information
+        @param [out] fsa_size   The num-states and num-arcs of the generated FSA
+                                will be written to here
+  */
+  void GetSizes(Array2Size<int32_t> *fsa_size);
+
+  /*
+    Finish the operation and output the generated FSA to `fsa_out`
+    @param [out]  fsa_out Output fsa.
+                          Must be initialized; search for 'initialized
+                          definition' in class Array2 in array.h for meaning.
+   */
+  void GetOutput(Fsa *fsa_out);
+
+ private:
+  const RandFsaOptions opts_;
+
+  FsaCreator fsa_creator_;
+};
+
+// move-copy an array to output, reordering it according to given indexes,
+// where`index[i]` tells us what value (i.e. `src[index[i]`) we should copy to
+// `dest[i]`
+template <class InputIterator, class Size, class RandomAccessIterator,
+          class OutputIterator>
+void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
+                  OutputIterator dest) {
+  if (count > 0) {
+    for (Size i = 0; i != count; ++i) {
+      *dest++ = std::move(src[*index++]);
+    }
+  }
+}
 
 }  // namespace k2
 

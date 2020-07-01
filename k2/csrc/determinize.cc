@@ -15,7 +15,11 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/fsa_algo.h"
+#include "glog/logging.h"
+#include "k2/csrc/fsa.h"
+#include "k2/csrc/fsa_util.h"
+#include "k2/csrc/properties.h"
+#include "k2/csrc/util.h"
 
 namespace k2 {
 
