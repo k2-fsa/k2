@@ -52,14 +52,14 @@ class Intersection {
                            size c->size2, saying for each arc in
                            `c` what the source arc in `a` was, `-1` represents
                            there is no corresponding source arc in `a`.
-                           If non-NULL, Must be allocated with size
-                           `c->size2` at entry.
+                           If non-NULL, at entry it must be allocated with
+                           size num-arcs of `c`, e.g. `c->size2`.
     @param [out] arc_map_b If non-NULL, at exit will be a vector of
                            size c->size2, saying for each arc in
                            `c` what the source arc in `b` was, `-1` represents
                            there is no corresponding source arc in `b`.
-                           If non-NULL, Must be allocated with size
-                           `c->size2` at entry.
+                           If non-NULL, at entry it must be allocated with
+                           size num-arcs of `c`, e.g. `c->size2`.
 
     @return false if `a` or `b` is not arc-sorted, or if both `a` and `b` are
                   not epsilon-free; return true otherwise.

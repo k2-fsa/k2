@@ -58,8 +58,8 @@ class Connection {
     @param [out] arc_map   If non-NULL, will output a map from the arc-index
                            in `fsa_out` to the corresponding arc-index in
                            `fsa_in`.
-                           If non-NULL, Must be allocated with size
-                           `fsa_out->size2` at entry.
+                           If non-NULL, at entry it must be allocated with
+                           size num-arcs of `fsa_out`, e.g. `fsa_out->size2`.
 
     @return   The return status indicates whether topological sorting
         was successful; if true, the result is top-sorted.  The only situation

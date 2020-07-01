@@ -45,8 +45,9 @@ class TopSorter {
                           definition' in class Array2 in array.h for meaning.
     @param [out]  state_map   If non-NULL, Maps from state indexes in the output
                               fsa to state indexes in input fsa.
-                              If non-NULL, Must be allocated with size
-                              `fsa_out->size1` at entry.
+                              If non-NULL, at entry it must be allocated with
+                              size num-states of `fsa_out`,
+                              e.g. `fsa_out->size1`.
 
     @return true if the input fsa is acyclic and connected,
             or if the input is empty; return false otherwise.

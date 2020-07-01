@@ -147,8 +147,9 @@ class RandPath {
                           definition' in class Array2 in array.h for meaning.
     @param [out]  state_map   If non-NULL, Maps from state indexes in the output
                               path to state indexes in the input fsa.
-                              If non-NULL, Must be allocated with size
-                             `fsa_out->size1` at entry.
+                              If non-NULL, at entry it must be allocated with
+                              size num-states of `fsa_out`,
+                              e.g. `fsa_out->size1`.
 
     @return true if it succeeds; will be false if it fails,
             `fsa_out` will be empty when it fails.
