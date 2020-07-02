@@ -133,27 +133,32 @@ void SplitStringToVector(const std::string &in, const char *delim,
 
 namespace k2 {
 
-void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
-                     std::vector<int32_t> *end_index) {
+void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes) {
+  CHECK_NOTNULL(arc_indexes);
+  CHECK_EQ(arc_indexes->size1, fsa.size1);
+  CHECK_EQ(arc_indexes->size2, fsa.size2);
+
   auto num_states = fsa.NumStates();
   std::vector<std::vector<int32_t>> vec(num_states);
   int32_t k = 0;
-  for (const auto &arc : fsa.arcs) {
+  for (const auto &arc : fsa) {
     auto dest_state = arc.dest_state;
     vec[dest_state].push_back(k);
     ++k;
   }
-  arc_index->clear();
-  end_index->clear();
 
-  arc_index->reserve(fsa.arcs.size());
-  end_index->reserve(num_states);
-
+  auto indexes = arc_indexes->indexes;
+  auto data = arc_indexes->data;
+  int32_t curr_state = 0;
+  int32_t num_arcs = 0;
   for (const auto &indices : vec) {
-    arc_index->insert(arc_index->end(), indices.begin(), indices.end());
-    auto end = static_cast<int32_t>(arc_index->size());
-    end_index->push_back(end);
+    indexes[curr_state++] = num_arcs;
+    std::copy(indices.begin(), indices.end(), data + num_arcs);
+    num_arcs += indices.size();
   }
+  CHECK_EQ(curr_state, num_states);
+  CHECK_EQ(num_arcs, fsa.size2);
+  indexes[curr_state] = num_arcs;
 }
 
 void GetArcWeights(const float *arc_weights_in,
@@ -222,12 +227,13 @@ void Swap(Fsa *a, Fsa *b) {
   std::swap(a->arcs, b->arcs);
 }
 
-std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
-  static constexpr const char *kDelim = " \t";
+void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {
+  CHECK_NOTNULL(fsa_size);
+  fsa_size->size1 = fsa_size->size2 = 0;
 
-  std::istringstream is(s);
+  static constexpr const char *kDelim = " \t";
+  std::istringstream is(s_);
   std::string line;
-  std::vector<std::vector<Arc>> vec;  // index is state number
   bool finished = false;  // when the final state is read, set it to true.
   int32_t num_arcs = 0;
   while (std::getline(is, line)) {
@@ -246,13 +252,13 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
       arc.label = fields[2];
 
       auto new_size = std::max(arc.src_state, arc.dest_state);
-      if (new_size >= vec.size()) vec.resize(new_size + 1);
+      if (new_size >= arcs_.size()) arcs_.resize(new_size + 1);
 
-      vec[arc.src_state].push_back(arc);
+      arcs_[arc.src_state].push_back(arc);
       ++num_arcs;
     } else if (num_fields == 1u) {
       finished = true;
-      CHECK_EQ(fields[0] + 1, static_cast<int32_t>(vec.size()));
+      CHECK_EQ(fields[0] + 1, static_cast<int32_t>(arcs_.size()));
     } else {
       LOG(FATAL) << "invalid line: " << line;
     }
@@ -261,17 +267,21 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
   CHECK_EQ(finished, true) << "The last line should be the final state";
   CHECK_GT(num_arcs, 0) << "An empty fsa is detected!";
 
-  std::unique_ptr<Fsa> fsa(new Fsa);
-  fsa->arc_indexes.resize(vec.size());
-  fsa->arcs.reserve(num_arcs);
-  int32_t i = 0;
-  for (const auto &v : vec) {
-    fsa->arc_indexes[i] = (static_cast<int32_t>(fsa->arcs.size()));
-    fsa->arcs.insert(fsa->arcs.end(), v.begin(), v.end());
-    ++i;
+  fsa_size->size1 = static_cast<int32_t>(arcs_.size());
+  fsa_size->size2 = num_arcs;
+}
+
+void StringToFsa::GetOutput(Fsa *fsa_out) {
+  CHECK_NOTNULL(fsa_out);
+  CHECK_EQ(fsa_out->size1, arcs_.size());
+
+  int32_t num_arcs = 0;
+  for (auto i = 0; i != fsa_out->size1; ++i) {
+    fsa_out->indexes[i] = num_arcs;
+    std::copy(arcs_[i].begin(), arcs_[i].end(), fsa_out->data + num_arcs);
+    num_arcs += arcs_[i].size();
   }
-  fsa->arc_indexes.emplace_back(fsa->arc_indexes.back());
-  return fsa;
+  fsa_out->indexes[fsa_out->size1] = num_arcs;
 }
 
 std::string FsaToString(const Fsa &fsa) {
@@ -280,10 +290,10 @@ std::string FsaToString(const Fsa &fsa) {
   static constexpr const char *kSep = " ";
   std::ostringstream os;
 
-  for (const auto &arc : fsa.arcs) {
+  for (const auto &arc : fsa) {
     os << arc.src_state << kSep << arc.dest_state << kSep << arc.label << "\n";
   }
-  os << fsa.NumStates() - 1 << "\n";
+  os << fsa.FinalState() << "\n";
   return os.str();
 }
 

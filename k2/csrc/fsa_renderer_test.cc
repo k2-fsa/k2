@@ -1,6 +1,7 @@
 // k2/csrc/fsa_renderer_test.cc
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+//                      Xiaomi Corporation (author: Haowen Qiu)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -10,6 +11,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "k2/csrc/fsa_util.h"
 
 namespace k2 {
 
@@ -25,11 +27,14 @@ namespace k2 {
 // as expected.
 TEST(FsaRenderer, Render) {
   std::vector<Arc> arcs = {
-      {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6}, };
+      {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6},
+  };
 
-  Fsa fsa(std::move(arcs), 3);
+  FsaCreator fsa_creator(arcs, 3);
+  const auto &fsa = fsa_creator.GetFsa();
+  std::vector<float> arc_weights = {1, 2, 3, 4, 5};
 
-  FsaRenderer renderer(fsa);
+  FsaRenderer renderer(fsa, arc_weights.data());
   std::cerr << renderer.Render();
 }
 

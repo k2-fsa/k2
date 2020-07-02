@@ -16,37 +16,40 @@
 namespace k2 {
 
 TEST(FsaUtil, GetEnteringArcs) {
-  std::string s = R"(
-0 1 2
-0 2 1
-1 2 0
-1 3 5
-2 3 6
-3
-)";
+  std::vector<Arc> arcs = {
+      {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6}};
+  FsaCreator fsa_creator(arcs, 3);
+  const auto &fsa = fsa_creator.GetFsa();
+  Array2Storage<int32_t *, int32_t> arc_indexes_storage({fsa.size1, fsa.size2},
+                                                        1);
+  auto &arc_indexes = arc_indexes_storage.GetArray2();
+  GetEnteringArcs(fsa, &arc_indexes);
 
-  auto fsa = StringToFsa(s);
+  ASSERT_EQ(arc_indexes.size1, 4);  // there are 4 states
+  ASSERT_EQ(arc_indexes.size2, 5);  // there are 5 arcs
 
-  std::vector<int32_t> arc_index(10);  // an arbitrary number
-  std::vector<int32_t> end_index(20);
+  // state 0 has no entering arcs
+  EXPECT_EQ(arc_indexes.indexes[0], 0);
+  EXPECT_EQ(arc_indexes.indexes[1], 0);
 
-  GetEnteringArcs(*fsa, &arc_index, &end_index);
+  // state 1 has one entering arc
+  EXPECT_EQ(arc_indexes.indexes[2], 1);
+  // arc index 0 from state 0
+  EXPECT_EQ(arc_indexes.data[0], 0);
 
-  ASSERT_EQ(end_index.size(), 4u);  // there are 4 states
-  ASSERT_EQ(arc_index.size(), 5u);  // there are 5 arcs
+  // state 2 has two entering arcs
+  EXPECT_EQ(arc_indexes.indexes[3], 3);
+  // arc index 1 from state 0
+  EXPECT_EQ(arc_indexes.data[1], 1);
+  // arc index 2 from state 1
+  EXPECT_EQ(arc_indexes.data[2], 2);
 
-  EXPECT_EQ(end_index[0], 0);  // state 0 has no entering arcs
-
-  EXPECT_EQ(end_index[1], 1);  // state 1 has one entering arc
-  EXPECT_EQ(arc_index[0], 0);  // arc index 0 from state 0
-
-  EXPECT_EQ(end_index[2], 3);  // state 2 has two entering arcs
-  EXPECT_EQ(arc_index[1], 1);  // arc index 1 from state 0
-  EXPECT_EQ(arc_index[2], 2);  // arc index 2 from state 1
-
-  EXPECT_EQ(end_index[3], 5);  // state 3 has two entering arcs
-  EXPECT_EQ(arc_index[3], 3);  // arc index 3 from state 1
-  EXPECT_EQ(arc_index[4], 4);  // arc index 4 from state 2
+  // state 3 has two entering arcs
+  EXPECT_EQ(arc_indexes.indexes[4], 5);
+  // arc index 3 from state 1
+  EXPECT_EQ(arc_indexes.data[3], 3);
+  // arc index 4 from state 2
+  EXPECT_EQ(arc_indexes.data[4], 4);
 }
 
 TEST(FsaUtil, StringToFsa) {
@@ -60,13 +63,22 @@ TEST(FsaUtil, StringToFsa) {
 5 0 1
 6
 )";
-  auto fsa = StringToFsa(s);
-  ASSERT_NE(fsa.get(), nullptr);
+  StringToFsa fsa_creator(s);
+  Array2Size<int32_t> fsa_size;
+  fsa_creator.GetSizes(&fsa_size);
 
-  const auto &arc_indexes = fsa->arc_indexes;
-  const auto &arcs = fsa->arcs;
+  FsaCreator fsa_creator_out(fsa_size);
+  auto &fsa = fsa_creator_out.GetFsa();
+  fsa_creator.GetOutput(&fsa);
 
-  ASSERT_EQ(arc_indexes.size(), 8u);
+  ASSERT_FALSE(IsEmpty(fsa));
+
+  ASSERT_EQ(fsa.size1, 7);
+  ASSERT_EQ(fsa.size2, 7);
+
+  std::vector<int32_t> arc_indexes(fsa.indexes, fsa.indexes + fsa.size1 + 1);
+  std::vector<Arc> arcs(fsa.data, fsa.data + fsa.size2);
+
   EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7, 7));
 
   std::vector<Arc> expected_arcs = {

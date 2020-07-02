@@ -30,18 +30,18 @@ void ArcSorter::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
   // After arc sorting, indexes[i] = j means we mapped arc-index `i` of
   // `fsa_out` to arc-index `j` of `fsa_in`
   std::iota(indexes.begin(), indexes.end(), 0);
-  int32_t num_states = fsa_in_.NumStates();
+  const int32_t num_states = fsa_in_.NumStates();
   int32_t num_arcs = 0;
-  int32_t arc_begin_index = fsa_in_.indexes[0];  // it may be greater than 0
-  const auto &arcs_in = fsa_in_.data;
+  const int32_t arc_begin_index =
+      fsa_in_.indexes[0];  // it may be greater than 0
+  const auto &arcs_in = fsa_in_.data + arc_begin_index;
   for (int32_t state = 0; state != num_states; ++state) {
     fsa_out->indexes[state] = num_arcs;
     int32_t begin = fsa_in_.indexes[state] - arc_begin_index;
     int32_t end = fsa_in_.indexes[state + 1] - arc_begin_index;
     std::sort(indexes.begin() + begin, indexes.begin() + end,
               [&arcs_in, arc_begin_index](int32_t i, int32_t j) {
-                return arcs_in[arc_begin_index + i] <
-                       arcs_in[arc_begin_index + j];
+                return arcs_in[i] < arcs_in[j];
               });
     // copy sorted arcs to `fsa_out`
     std::transform(indexes.begin() + begin, indexes.begin() + end,
@@ -61,19 +61,17 @@ void ArcSort(Fsa *fsa, int32_t *arc_map /*= nullptr*/) {
   // After arc sorting, indexes[i] = j means we mapped arc-index `i` of
   // original FSa to arc-index `j` of output arc-sorted FSA
   std::iota(indexes.begin(), indexes.end(), 0);
-  int32_t num_states = fsa->NumStates();
-  int32_t arc_begin_index = fsa->indexes[0];  // it may be greater than 0
-  const auto &arcs_in = fsa->data;
+  const int32_t num_states = fsa->NumStates();
+  const int32_t arc_begin_index = fsa->indexes[0];  // it may be greater than 0
+  const auto &arcs_in = fsa->data + arc_begin_index;
   for (int32_t state = 0; state != num_states; ++state) {
     int32_t begin = fsa->indexes[state] - arc_begin_index;
     int32_t end = fsa->indexes[state + 1] - arc_begin_index;
     std::sort(indexes.begin() + begin, indexes.begin() + end,
               [&arcs_in, arc_begin_index](int32_t i, int32_t j) {
-                return arcs_in[arc_begin_index + i] <
-                       arcs_in[arc_begin_index + j];
+                return arcs_in[i] < arcs_in[j];
               });
-    std::sort(arcs_in + begin + arc_begin_index,
-              arcs_in + end + arc_begin_index,
+    std::sort(arcs_in + begin, arcs_in + end,
               [](const Arc &left, const Arc &right) { return left < right; });
   }
 

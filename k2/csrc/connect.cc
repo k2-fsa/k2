@@ -224,6 +224,7 @@ void Connection::GetSizes(Array2Size<int32_t> *fsa_size) {
 
   auto arc_begin = 0;
   auto arc_end = 0;
+  const int32_t arc_begin_index = fsa_in_.indexes[0];
   for (auto i = 0; i != num_states_out; ++i) {
     auto state_in = state_out_to_in[i];
     arc_begin = fsa_in_.indexes[state_in];
@@ -238,7 +239,7 @@ void Connection::GetSizes(Array2Size<int32_t> *fsa_size) {
       arc.src_state = i;
       arc.dest_state = state_out;
       arcs_.push_back(arc);
-      arc_map_.push_back(arc_begin);
+      arc_map_.push_back(arc_begin - arc_begin_index);
     }
   }
   arc_indexes_[num_states_out] = arc_indexes_[num_states_out - 1];

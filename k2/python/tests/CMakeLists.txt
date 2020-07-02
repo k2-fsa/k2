@@ -16,7 +16,8 @@ endfunction()
 
 # please sort the files in alphabetic order
 set(py_test_files
-  fsa_test.py
+    #TODO(haowen): uncomment this
+    #fsa_test.py 
 )
 
 foreach(source IN LISTS py_test_files)

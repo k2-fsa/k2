@@ -14,24 +14,18 @@
 #include "k2/csrc/util.h"
 
 namespace k2 {
-
 TEST(Cfsa, ConstructorNonEmptyFsa) {
-  std::string s = R"(
-      0 1 1
-      0 2 2
-      1 3 3
-      2 3 3
-      3 4 -1
-      4
-  )";
-  auto fsa = StringToFsa(s);
-  Cfsa cfsa(*fsa);
+  std::vector<Arc> arcs = {
+      {0, 1, 1}, {0, 2, 2}, {1, 3, 3}, {2, 3, 3}, {3, 4, -1},
+  };
+  Fsa fsa(std::move(arcs), 4);
+  Cfsa cfsa(fsa);
 
   EXPECT_EQ(cfsa.num_states, 5);
   EXPECT_EQ(cfsa.begin_arc, 0);
   EXPECT_EQ(cfsa.end_arc, 5);
-  EXPECT_EQ(cfsa.arc_indexes, fsa->arc_indexes.data());
-  EXPECT_EQ(cfsa.arcs, fsa->arcs.data());
+  EXPECT_EQ(cfsa.arc_indexes, fsa.arc_indexes.data());
+  EXPECT_EQ(cfsa.arcs, fsa.arcs.data());
 
   EXPECT_EQ(cfsa.NumStates(), 5);
   EXPECT_EQ(cfsa.FinalState(), 4);
@@ -64,16 +58,11 @@ TEST(GetCfsaVecSize, Empty) {
 }
 
 TEST(GetCfsaVecSize, NonEmpty) {
-  std::string s = R"(
-      0 1 1
-      0 2 2
-      1 3 3
-      2 3 3
-      3 16 -1
-      16
-  )";
-  auto fsa = StringToFsa(s);
-  Cfsa cfsa(*fsa);
+  std::vector<Arc> arcs = {
+      {0, 1, 1}, {0, 2, 2}, {1, 3, 3}, {2, 3, 3}, {3, 16, -1},
+  };
+  Fsa fsa(std::move(arcs), 16);
+  Cfsa cfsa(fsa);
 
   std::size_t bytes = GetCfsaVecSize(cfsa);
   // 20-byte header             (20)
@@ -98,26 +87,23 @@ TEST(GetCfsaVecSize, NonEmpty) {
 }
 
 TEST(GetCfsaVecSize, NonEmptyMutlipeFsas) {
-  std::string s1 = R"(
-      0 1 1
-      0 2 2
-      1 3 3
-      2 3 3
-      3 16 -1
-      16
-  )";
-  auto fsa1 = StringToFsa(s1);  // 5 arcs, 17 states
-  Cfsa cfsa1(*fsa1);
+  std::vector<Arc> arcs1 = {
+      {0, 1, 1}, {0, 2, 2}, {1, 3, 3}, {2, 3, 3}, {3, 16, -1},
+  };
+  // 5 arcs, 17 states
+  Fsa fsa1(std::move(arcs1), 16);
+  Cfsa cfsa1(fsa1);
 
-  std::string s2 = R"(
-      0 1 1
-      0 2 2
-      1 3 3
-      3 10 -1
-      10
-  )";
-  auto fsa2 = StringToFsa(s2);  // 4 arcs, 11 states
-  Cfsa cfsa2(*fsa2);
+  // 4 arcs, 11 states
+  std::vector<Arc> arcs2 = {
+      {0, 1, 1},
+      {0, 2, 2},
+      {1, 3, 3},
+      {3, 10, -1},
+  };
+  // 5 arcs, 17 states
+  Fsa fsa2(std::move(arcs2), 10);
+  Cfsa cfsa2(fsa2);
 
   std::vector<Cfsa> cfsa_vec = {cfsa1, cfsa2};
 
@@ -161,19 +147,12 @@ TEST(CfsaVec, OneEmptyCfsa) {
 }
 
 TEST(CfsaVec, OneNonEmptyCfsa) {
-  std::string s = R"(
-      0 1 10
-      0 2 2
-      1 3 3
-      2 3 3
-      3 4 -1
-      2 4 -1
-      4
-  )";
+  std::vector<Arc> arcs = {
+      {0, 1, 10}, {0, 2, 2}, {1, 3, 3}, {2, 3, 3}, {2, 4, -1}, {3, 4, -1},
+  };
+  Fsa fsa(std::move(arcs), 16);
+  Cfsa cfsa(fsa);
 
-  auto fsa = StringToFsa(s);
-
-  Cfsa cfsa(*fsa);
   std::vector<Cfsa> cfsas = {cfsa};
   std::size_t bytes = GetCfsaVecSize(cfsas);
   std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
@@ -189,34 +168,16 @@ TEST(CfsaVec, OneNonEmptyCfsa) {
 }
 
 TEST(CfsaVec, TwoNoneEmptyCfsa) {
-  std::string s1 = R"(
-      0 1 10
-      0 2 2
-      1 3 3
-      2 3 3
-      3 4 -1
-      2 4 -1
-      4
-  )";
+  std::vector<Arc> arcs1 = {
+      {0, 1, 10}, {0, 2, 2}, {1, 3, 3}, {2, 3, 3}, {2, 4, -1}, {3, 4, -1},
+  };
+  Fsa fsa1(std::move(arcs1), 4);
+  Cfsa cfsa1(fsa1);
 
-  auto fsa1 = StringToFsa(s1);
-
-  Cfsa cfsa1(*fsa1);
-
-  std::string s2 = R"(
-      0 1 10
-      0 2 2
-      1 3 3
-      2 3 3
-      3 10 -1
-      2 4 3
-      4 10 -1
-      10
-  )";
-
-  auto fsa2 = StringToFsa(s2);
-
-  Cfsa cfsa2(*fsa2);
+  std::vector<Arc> arcs2 = {{0, 1, 10}, {0, 2, 2},   {1, 3, 3},  {2, 3, 3},
+                            {2, 4, 3},  {3, 10, -1}, {4, 10, -1}};
+  Fsa fsa2(std::move(arcs2), 10);
+  Cfsa cfsa2(fsa2);
 
   {
     // both fsa are not empty
