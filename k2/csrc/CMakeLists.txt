@@ -1,14 +1,17 @@
 # please sort the source files alphabetically
 add_library(fsa
+  arcsort.cc
   aux_labels.cc
+  connect.cc
   determinize.cc
   fsa.cc
-  fsa_algo.cc
   fsa_equivalent.cc
   fsa_renderer.cc
   fsa_util.cc
+  intersect.cc
   properties.cc
   rmepsilon.cc
+  topsort.cc
   util.cc
   weights.cc
 )
@@ -39,16 +42,19 @@ endfunction()
 
 # please sort the source files alphabetically
 set(fsa_tests
+  arcsort_test
   array_test
   aux_labels_test
+  connect_test
   determinize_test
-  fsa_algo_test
   fsa_equivalent_test
   fsa_renderer_test
   fsa_test
   fsa_util_test
+  intersect_test
   properties_test
   rmepsilon_test
+  topsort_test
   weights_test
 )
 

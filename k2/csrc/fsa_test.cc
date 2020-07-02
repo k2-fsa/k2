@@ -10,7 +10,6 @@
 #include <string>
 
 #include "gtest/gtest.h"
-
 #include "k2/csrc/fsa_util.h"
 #include "k2/csrc/util.h"
 
@@ -278,7 +277,8 @@ TEST(CfsaVec, TwoNoneEmptyCfsa) {
     EXPECT_EQ(g, cfsa);
   }
 }
-
+// TODO(haowen): un-comment below lines after replacing Cfsa with Array3
+/*
 TEST(CfsaVec, RandomFsa) {
   RandFsaOptions opts;
   opts.num_syms = 20;
@@ -316,5 +316,6 @@ TEST(CfsaVec, RandomFsa) {
     EXPECT_EQ(cfsa_vec[i], cfsas[i]);
   }
 }
+*/
 
 }  // namespace k2

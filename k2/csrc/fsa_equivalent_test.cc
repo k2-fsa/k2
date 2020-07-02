@@ -22,10 +22,12 @@ TEST(FsaEquivalent, IsNotRandEquivalent) {
     std::vector<Arc> arcs_a = {
         {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {1, 3, 4}, {2, 3, 5},
     };
-    Fsa a(std::move(arcs_a), 3);
+    FsaCreator fsa_creator_a(arcs_a, 3);
+    const auto &a = fsa_creator_a.GetFsa();
 
     std::vector<Arc> arcs_b = {{0, 1, 1}, {0, 2, 2}, {1, 2, 3}};
-    Fsa b(std::move(arcs_b), 3);
+    FsaCreator fsa_creator_b(arcs_b, 3);
+    const auto &b = fsa_creator_b.GetFsa();
 
     bool status = IsRandEquivalent(a, b);
     EXPECT_FALSE(status);
@@ -36,12 +38,14 @@ TEST(FsaEquivalent, IsNotRandEquivalent) {
     std::vector<Arc> arcs_a = {
         {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {1, 3, 4}, {2, 3, 5},
     };
-    Fsa a(std::move(arcs_a), 3);
+    FsaCreator fsa_creator_a(arcs_a, 3);
+    const auto &a = fsa_creator_a.GetFsa();
 
     std::vector<Arc> arcs_b = {
         {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {1, 3, 4}, {2, 3, 6},
     };
-    Fsa b(std::move(arcs_b), 3);
+    FsaCreator fsa_creator_b(arcs_b, 3);
+    const auto &b = fsa_creator_b.GetFsa();
 
     bool status = IsRandEquivalent(a, b);
     EXPECT_FALSE(status);
@@ -51,12 +55,14 @@ TEST(FsaEquivalent, IsNotRandEquivalent) {
     std::vector<Arc> arcs_a = {
         {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {1, 3, 4}, {2, 3, 5},
     };
-    Fsa a(std::move(arcs_a), 3);
+    FsaCreator fsa_creator_a(arcs_a, 3);
+    const auto &a = fsa_creator_a.GetFsa();
 
     std::vector<Arc> arcs_b = {
         {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {1, 3, 4}, {2, 3, 5}, {3, 4, 5},
     };
-    Fsa b(std::move(arcs_b), 4);
+    FsaCreator fsa_creator_b(arcs_b, 4);
+    const auto &b = fsa_creator_b.GetFsa();
 
     bool status = IsRandEquivalent(a, b, 100);
     // Caution: this test may fail with a very low probability if the program
@@ -69,10 +75,12 @@ TEST(FsaEquivalent, IsRandEquivalent) {
   {
     // both fsas will be empty after connecting
     std::vector<Arc> arcs_a = {{0, 1, 1}, {0, 2, 2}, {1, 2, 3}};
-    Fsa a(std::move(arcs_a), 3);
+    FsaCreator fsa_creator_a(arcs_a, 3);
+    const auto &a = fsa_creator_a.GetFsa();
 
     std::vector<Arc> arcs_b = {{0, 1, 1}, {0, 2, 2}};
-    Fsa b(std::move(arcs_b), 3);
+    FsaCreator fsa_creator_b(arcs_b, 3);
+    const auto &b = fsa_creator_b.GetFsa();
 
     bool status = IsRandEquivalent(a, b);
     EXPECT_TRUE(status);
@@ -83,7 +91,8 @@ TEST(FsaEquivalent, IsRandEquivalent) {
     std::vector<Arc> arcs_a = {
         {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {1, 3, 4}, {2, 3, 5},
     };
-    Fsa a(std::move(arcs_a), 3);
+    FsaCreator fsa_creator_a(arcs_a, 3);
+    const auto &a = fsa_creator_a.GetFsa();
     bool status = IsRandEquivalent(a, a);
     EXPECT_TRUE(status);
   }
@@ -92,12 +101,14 @@ TEST(FsaEquivalent, IsRandEquivalent) {
     std::vector<Arc> arcs_a = {
         {0, 1, 1}, {0, 2, 2}, {0, 3, 8}, {1, 4, 4}, {2, 4, 5},
     };
-    Fsa a(std::move(arcs_a), 4);
+    FsaCreator fsa_creator_a(arcs_a, 4);
+    const auto &a = fsa_creator_a.GetFsa();
 
     std::vector<Arc> arcs_b = {
         {0, 2, 1}, {0, 1, 2}, {0, 3, 9}, {1, 4, 5}, {2, 4, 4},
     };
-    Fsa b(std::move(arcs_b), 4);
+    FsaCreator fsa_creator_b(arcs_b, 4);
+    const auto &b = fsa_creator_b.GetFsa();
 
     bool status = IsRandEquivalent(a, b);
     EXPECT_TRUE(status);
@@ -108,21 +119,24 @@ TEST(FsaEquivalent, IsWfsaRandEquivalent) {
   std::vector<Arc> arcs_a = {{0, 1, 1}, {0, 1, 2},  {0, 1, 3}, {0, 2, 4},
                              {0, 2, 5}, {1, 3, 5},  {1, 3, 6}, {2, 4, 5},
                              {2, 4, 6}, {3, 5, -1}, {4, 5, -1}};
-  Fsa a(std::move(arcs_a), 5);
+  FsaCreator fsa_creator_a(arcs_a, 5);
+  const auto &a = fsa_creator_a.GetFsa();
   std::vector<float> a_weights = {2, 2, 3, 3, 1, 3, 2, 5, 4, 1, 3};
 
   std::vector<Arc> arcs_b = {
       {0, 1, 1}, {0, 1, 2}, {0, 1, 3}, {0, 1, 4},
       {0, 1, 5}, {1, 2, 5}, {1, 2, 6}, {2, 3, -1},
   };
-  Fsa b(std::move(arcs_b), 3);
+  FsaCreator fsa_creator_b(arcs_b, 3);
+  const auto &b = fsa_creator_b.GetFsa();
   std::vector<float> b_weights = {5, 5, 6, 10, 8, 1, 0, 0};
 
   std::vector<Arc> arcs_c = {
       {0, 1, 1}, {0, 1, 2}, {0, 1, 3}, {0, 1, 4},
       {0, 1, 5}, {1, 2, 5}, {1, 2, 6}, {2, 3, -1},
   };
-  Fsa c(std::move(arcs_c), 3);
+  FsaCreator fsa_creator_c(arcs_c, 3);
+  const auto &c = fsa_creator_c.GetFsa();
   std::vector<float> c_weights = {5, 5, 6, 10, 9, 1, 0, 0};
 
   {
@@ -165,10 +179,22 @@ TEST(FsaEquivalent, IsWfsaRandEquivalent) {
 
 TEST(FsaEquivalent, RandomPathFail) {
   {
-    Fsa fsa;
-    Fsa path;
-    bool status = RandomPath(fsa, &path);
+    FsaCreator fsa_creator;
+    const auto &fsa = fsa_creator.GetFsa();
+
+    RandPath rand_path(fsa, false);
+    Array2Size<int32_t> fsa_size;
+    rand_path.GetSizes(&fsa_size);
+
+    EXPECT_EQ(fsa_size.size1, 0);
+    EXPECT_EQ(fsa_size.size2, 0);
+
+    FsaCreator fsa_creator_out(fsa_size);
+    auto &path = fsa_creator_out.GetFsa();
+    std::vector<int32_t> state_map(fsa_size.size1);
+    bool status = rand_path.GetOutput(&path, state_map.data());
     EXPECT_FALSE(status);
+    EXPECT_TRUE(state_map.empty());
   }
 
   {
@@ -178,10 +204,21 @@ TEST(FsaEquivalent, RandomPathFail) {
         {0, 2, 2},
         {1, 3, 4},
     };
-    Fsa fsa(std::move(arcs), 3);
-    Fsa path;
-    bool status = RandomPath(fsa, &path);
+    FsaCreator fsa_creator(arcs, 3);
+    const auto &fsa = fsa_creator.GetFsa();
+    RandPath rand_path(fsa, false);
+    Array2Size<int32_t> fsa_size;
+    rand_path.GetSizes(&fsa_size);
+
+    EXPECT_EQ(fsa_size.size1, 0);
+    EXPECT_EQ(fsa_size.size2, 0);
+
+    FsaCreator fsa_creator_out(fsa_size);
+    auto &path = fsa_creator_out.GetFsa();
+    std::vector<int32_t> state_map(fsa_size.size1);
+    bool status = rand_path.GetOutput(&path, state_map.data());
     EXPECT_FALSE(status);
+    EXPECT_TRUE(state_map.empty());
   }
 }
 
@@ -191,18 +228,37 @@ TEST(FsaEquivalent, RandomPathSuccess) {
         {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {2, 3, 4},
         {2, 4, 5}, {3, 4, 7}, {4, 5, 9},
     };
-    Fsa fsa(std::move(arcs), 5);
+    FsaCreator fsa_creator(arcs, 5);
+    const auto &fsa = fsa_creator.GetFsa();
     Fsa path;
 
     {
-      bool status = RandomPath(fsa, &path);
+      RandPath rand_path(fsa, false);
+      Array2Size<int32_t> fsa_size;
+      rand_path.GetSizes(&fsa_size);
+
+      EXPECT_GT(fsa_size.size1, 0);
+      EXPECT_GT(fsa_size.size2, 0);
+
+      FsaCreator fsa_creator_out(fsa_size);
+      auto &path = fsa_creator_out.GetFsa();
+      bool status = rand_path.GetOutput(&path);
       EXPECT_TRUE(status);
     }
 
     {
-      std::vector<int32_t> state_map;
+      RandPath rand_path(fsa, false);
       for (auto i = 0; i != 20; ++i) {
-        bool status = RandomPath(fsa, &path, &state_map);
+        Array2Size<int32_t> fsa_size;
+        rand_path.GetSizes(&fsa_size);
+
+        EXPECT_GT(fsa_size.size1, 0);
+        EXPECT_GT(fsa_size.size2, 0);
+
+        FsaCreator fsa_creator_out(fsa_size);
+        auto &path = fsa_creator_out.GetFsa();
+        std::vector<int32_t> state_map(fsa_size.size1);
+        bool status = rand_path.GetOutput(&path, state_map.data());
         EXPECT_TRUE(status);
         EXPECT_GT(state_map.size(), 0);
       }
@@ -211,21 +267,31 @@ TEST(FsaEquivalent, RandomPathSuccess) {
 
   // test with linear structure fsa to check the resulted path
   {
-    std::vector<Arc> arcs = {
+    std::vector<Arc> src_arcs = {
         {0, 1, 1},
         {1, 2, 3},
         {2, 3, 4},
     };
-    Fsa fsa(std::move(arcs), 3);
-    Fsa path;
+    FsaCreator fsa_creator(src_arcs, 3);
+    const auto &fsa = fsa_creator.GetFsa();
+    RandPath rand_path(fsa, false);
+    Array2Size<int32_t> fsa_size;
+    rand_path.GetSizes(&fsa_size);
 
-    std::vector<int32_t> state_map;
-    bool status = RandomPath(fsa, &path, &state_map);
+    FsaCreator fsa_creator_out(fsa_size);
+    auto &path = fsa_creator_out.GetFsa();
+    std::vector<int32_t> state_map(fsa_size.size1);
+    bool status = rand_path.GetOutput(&path, state_map.data());
+
     EXPECT_TRUE(status);
-    ASSERT_EQ(fsa.arcs.size(), path.arcs.size());
-    EXPECT_TRUE(fsa.arcs == path.arcs);
-    ASSERT_EQ(fsa.arc_indexes.size(), path.arc_indexes.size());
-    EXPECT_TRUE(fsa.arc_indexes == path.arc_indexes);
+    std::vector<int32_t> arc_indexes(path.indexes,
+                                     path.indexes + path.size1 + 1);
+    std::vector<Arc> arcs(path.data, path.data + path.size2);
+    ASSERT_EQ(fsa.size1, path.size1);
+    EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 1, 2, 3, 3));
+    ASSERT_EQ(fsa.size2, path.size2);
+    for (std::size_t i = 0; i != path.size2; ++i)
+      EXPECT_EQ(arcs[i], src_arcs[i]);
     EXPECT_THAT(state_map, ::testing::ElementsAre(0, 1, 2, 3));
   }
 }
@@ -236,13 +302,19 @@ TEST(FsaEquivalent, RandomPathWithoutEpsilonArc) {
         {0, 1, 1}, {0, 2, 0}, {1, 2, 3}, {2, 3, 0},
         {2, 4, 5}, {3, 4, 7}, {4, 5, 9},
     };
-    Fsa fsa(std::move(arcs), 5);
-    Fsa path;
+    FsaCreator fsa_creator(arcs, 5);
+    const auto &fsa = fsa_creator.GetFsa();
 
     {
-      std::vector<int32_t> state_map;
+      RandPath rand_path(fsa, true);
       for (auto i = 0; i != 20; ++i) {
-        bool status = RandomPathWithoutEpsilonArc(fsa, &path, &state_map);
+        Array2Size<int32_t> fsa_size;
+        rand_path.GetSizes(&fsa_size);
+
+        FsaCreator fsa_creator_out(fsa_size);
+        auto &path = fsa_creator_out.GetFsa();
+        std::vector<int32_t> state_map(fsa_size.size1);
+        bool status = rand_path.GetOutput(&path, state_map.data());
         EXPECT_TRUE(status);
         EXPECT_GT(state_map.size(), 0);
         for (const auto &arc : path.arcs) {
@@ -250,6 +322,29 @@ TEST(FsaEquivalent, RandomPathWithoutEpsilonArc) {
         }
       }
     }
+  }
+
+  // there's no epsilon-free path
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 1}, {0, 2, 0}, {1, 2, 3}, {2, 3, 0},
+        {3, 5, 7}, {3, 4, 8}, {4, 5, 9},
+    };
+    FsaCreator fsa_creator(arcs, 5);
+    const auto &fsa = fsa_creator.GetFsa();
+    RandPath rand_path(fsa, true);
+    Array2Size<int32_t> fsa_size;
+    rand_path.GetSizes(&fsa_size);
+
+    EXPECT_EQ(fsa_size.size1, 0);
+    EXPECT_EQ(fsa_size.size2, 0);
+
+    FsaCreator fsa_creator_out(fsa_size);
+    auto &path = fsa_creator_out.GetFsa();
+    std::vector<int32_t> state_map(fsa_size.size1);
+    bool status = rand_path.GetOutput(&path, state_map.data());
+    EXPECT_FALSE(status);
+    EXPECT_TRUE(state_map.empty());
   }
 }
 }  // namespace k2
