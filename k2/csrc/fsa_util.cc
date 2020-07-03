@@ -220,13 +220,6 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
   if (arc_map != nullptr) arc_map->swap(arc_map_out);
 }
 
-void Swap(Fsa *a, Fsa *b) {
-  CHECK_NOTNULL(a);
-  CHECK_NOTNULL(b);
-  std::swap(a->arc_indexes, b->arc_indexes);
-  std::swap(a->arcs, b->arcs);
-}
-
 void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {
   CHECK_NOTNULL(fsa_size);
   fsa_size->size1 = fsa_size->size2 = 0;

@@ -1,6 +1,7 @@
 // k2/csrc/fsa.h
 
-// Copyright (c)  2020  Daniel Povey
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+//                                                   Haowen Qiu)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -78,285 +79,45 @@ struct ArcHash {
   final_state.
 
   The start-state is always numbered zero and the final-state is always the
-  last-numbered state.  However, we represent the empty FSA (the one that
-  accepts no strings) by having no states at all, so `arcs_indexes` would be
-  empty.
-
-  TODO(haowen): add below comments in the final version:
-    (In Array2 representation) We represent an empty FSA(the one that accepts no
+  last-numbered state. We represent an empty FSA(the one that accepts no
   strings) by having no states at all, so `size1` would be 0 (As an empty FSA is
-  an initialized Array2 object, so `indexes` would be allocated and has at least
-  one element, but we don't care about it here).
+  an initialized Array2 object, and `indexes` would be allocated and has at
+  least one element, but we don't care about it here).
  */
-// TODO(haowen): finally we will remove `arc_indexes` and `arcs`, but for now,
-// we would keep them to replace Fsa with Array2 incrementally.
 struct Fsa : public Array2<Arc *, int32_t> {
-  // `arc_indexes` is indexed by state-index, is of length num-states + 1; it
-  // contains the first arc-index leaving this state (index into `arcs`).  The
-  // next element of this array gives the end of that range.  Note: the
-  // final-state is numbered last, and implicitly has no arcs leaving it. For
-  // non-empty FSA, we put a duplicate of the final state at the end of
-  // `arc_indexes` to avoid boundary check for some FSA operations. Caution:
-  // users should never call `arc_indexes.size()` to get the number of states,
-  // they should call `NumStates()` to get the number.
-  std::vector<int32_t> arc_indexes;
-
-  // Note: an index into the `arcs` array is called an arc-index.
-  std::vector<Arc> arcs;
+  // `size1` is equal to num-states of the FSA.
+  //
+  // `size2` is equal to num-arcs of the FSA.
+  //
+  // `data` stores the arcs of the Fsa and is indexed by arc-index (an index
+  // into the `data` array is called an arc-index). We may use `arcs` as an
+  // alias of `data` in the context of FSA.
+  //
+  // `indexes` is indexed by state-index, is of length num-states + 1; it
+  // contains the first arc-index leaving this state (index into `arcs`).
+  // The next element of this array gives the end of that range.  Note: the
+  // final-state is numbered last, and implicitly has no arcs leaving it.
+  // We may use `arc-indexes` as an alias of `indexes`.
 
   // inherits constructors in Array2
   using Array2::Array2;
 
-  Fsa() : Array2() {
-    // TODO(haowen): remove this after replacing Fsa with Array2
-    indexes = nullptr;
-  }
-  // just for creating testing FSA examples for now.
-  Fsa(std::vector<Arc> fsa_arcs, int32_t final_state)
-      : arcs(std::move(fsa_arcs)) {
-    indexes = nullptr;
-    if (arcs.empty()) return;
-
-    int32_t curr_state = -1;
-    int32_t index = 0;
-    for (const auto &arc : arcs) {
-      CHECK_LE(arc.src_state, final_state);
-      CHECK_LE(arc.dest_state, final_state);
-      CHECK_LE(curr_state, arc.src_state);
-      while (curr_state < arc.src_state) {
-        arc_indexes.push_back(index);
-        ++curr_state;
-      }
-      ++index;
-    }
-    // noted that here we push two `final_state` at the end, the last element is
-    // just to avoid boundary check for some FSA operations.
-    for (; curr_state <= final_state; ++curr_state)
-      arc_indexes.push_back(index);
-  }
-
-  // TODO(haowen): finally we'll implement NumStates with:
-  // CHECK_GE(size1, 0);
-  // return size1;
   int32_t NumStates() const {
-    if (indexes != nullptr) {  // Fsa is initialized as Array2
-      // users should not use `arc_indexes` and `arcs` while using Array2
-      CHECK(arc_indexes.empty());
-      CHECK(arcs.empty());
-
-      CHECK_GE(size1, 0);
-      return size1;
-    }
-    return !arc_indexes.empty() ? (static_cast<int32_t>(arc_indexes.size()) - 1)
-                                : 0;
+    CHECK_GE(size1, 0);
+    return size1;
   }
 
-  // TODO(haowen): finally we'll implement FinalStates with:
-  // CHECK_GE(size1, 2);
-  // return size1 - 1;
   int32_t FinalState() const {
-    if (indexes != nullptr) {  // Fsa is initialized as Array2
-      // users should not use `arc_indexes` and `arcs` while using Array2
-      CHECK(arc_indexes.empty());
-      CHECK(arcs.empty());
-
-      // It's not valid to call FinalState if the FSA is empty.
-      CHECK_GE(size1, 2);
-      return size1 - 1;
-    }
-    // It's not valid to call this if the FSA is empty.
-    CHECK(!arc_indexes.empty());
-    return static_cast<int32_t>(arc_indexes.size()) - 2;
+    // It's not valid to call FinalState if the FSA is empty.
+    CHECK_GE(size1, 2);
+    return size1 - 1;
   }
 };
 
-// TODO(haowen): replace Cfsa and CfsaVec with below definitions
-using Cfsa_ = Array2<int32_t, Arc>;
-using CfsaVec_ = Array3<int32_t, Arc>;
+std::ostream &operator<<(std::ostream &os, const Fsa &fsa);
 
-/*
-  Cfsa is a 'const' FSA, which we'll use as the input to operations.  It is
-  designed in such a way that the storage underlying it may either be an Fsa
-  (i.e. with std::vectors) or may be some kind of tensor (probably CfsaVec).
-  Note: the pointers it holds aren't const for now, because there may be
-  situations where it makes sense to change them (even though the number of
-  states and arcs can't be changed).
- */
-struct Cfsa {
-  int32_t num_states;  // number of states including final state.  States are
-                       // numbered `0 ... num_states - 1`.  Start state is 0,
-                       // final state is state `num_states - 1`.  We store a
-                       // redundant representation here out of a belief that it
-                       // might reduce the number of instructions in code.
-  int32_t begin_arc;   // a copy of arc_indexes[0]; gives the first index in
-                       // `arcs` for the arcs in this FSA.  Will be >= 0.
-  int32_t end_arc;     // a copy of arc_indexes[num_states]; gives the
-                       // one-past-the-last index in `arcs` for the arcs in this
-                       // FSA.  Will be >= begin_arc.
-
-  const int32_t *arc_indexes;  // an array, indexed by state index, giving the
-                               // first arc index of each state.  The last one
-                               // is repeated, so for any valid state 0 <= s <
-                               // num_states we can use arc_indexes[s+1].  That
-                               // is: elements 0 through num_states (inclusive)
-                               // are valid.  CAUTION: arc_indexes[0] may be
-                               // greater than zero.
-
-  Arc *arcs;  // Note: arcs[begin_arc] through arcs[end_arc - 1]
-              // are valid.
-
-  Cfsa();
-  // Constructor from Fsa. The passed `fsa` should be kept alive
-  // as long as this cfsa is alive.
-  explicit Cfsa(const Fsa &fsa);
-
-  Cfsa &operator=(const Cfsa &cfsa) = default;
-  Cfsa(const Cfsa &cfsa) = default;
-
-  int32_t NumStates() const { return num_states; }
-  int32_t NumArcs() const { return end_arc - begin_arc; }
-  int32_t FinalState() const {
-    CHECK_GE(num_states, 2) << "It's an error to invoke this method for "
-                            << "an empty cfsa";
-    return num_states - 1;
-  }
-
-  // for test only
-  bool operator==(const Cfsa &other) const {
-    if (other.num_states != num_states) return false;
-
-    if (other.NumArcs() != NumArcs()) return false;
-
-    for (int32_t i = 0; i != NumArcs(); ++i) {
-      const auto &this_arc = arcs[begin_arc + i];
-      const auto &other_arc = other.arcs[other.begin_arc + i];
-
-      if (this_arc != other_arc) return false;
-    }
-
-    return true;
-  }
-};
-
-std::ostream &operator<<(std::ostream &os, const Cfsa &cfsa);
-
-constexpr int32_t kCfsaVecVersion = 0x01;
-
-struct CfsaVecHeader {
-  int32_t version;
-  int32_t num_fsas;
-  int32_t state_offsets_start;
-  int32_t arc_indexes_start;
-  int32_t arcs_start;
-};
-
-class CfsaVec {
- public:
-  /*
-      Constructor from linear data, e.g. from data stored in a torch.Tensor.
-      This would previously have been created using CreateCfsaVec().
-
-         @param [in] size    size in int32_t elements of `data`, only
-                             needed for checking purposes.
-         @param [in] data    The underlying data.   Format of data is
-                             described below (all elements are of type
-                             int32_t unless stated otherwise).  Would have
-                             been created by CreateCfsaVec().
-
-             - version       Format version number, currently always 1.
-             - num_fsas      The number of FSAs
-             - state_offsets_start  The offset from the start of `data` of
-                             where the `state_offsets` array is, in int32_t
-                             (4-byte) elements.
-             - arc_indexes_start   The offset from the start of `data` of
-                             where the `arc_indexes` array is, in int32_t
-                             (4-byte) elements.
-             - arcs_start    The offset from the start of `data` of where
-                             the first Arc is, in sizeof(Arc) multiples, i.e.
-                             Arc *arcs = ((Arc*)data) + arcs_start
-
-            [possibly some padding here]
-             - state_offsets[num_fsas + 1]   state_offsets[f] is the sum of
-                             the num-states of all the FSAs preceding f.  It is
-                             also the offset from the beginning of the
-                             `arc_indexes` array of where the part corresponding
-                             to FSA f starts.  The number of states in FSA f
-                             is given by
-                             `state_offsets[f+1] - state_offsets[f] - 1`.
-                             Caution: one is subtracted above because the last
-                             entry in the arc_indexes array is repeated.
-                             This is >= 0; it will be zero if the
-                             FSA f is empty, and >= 2 otherwise.
-            [possibly some padding here]
-
-             - arc_indexes[tot_states + num_fsas]   This gives the indexes
-                             into the `arcs` array of where we can find the
-                             first of each state's arcs. `num_fsas` is needed
-                             since the final state of every fsa is repeated in
-                             `arc_indexes`.
-
-             [pad as needed for memory-alignment purposes then...]
-
-             - arcs[tot_arcs]
-  */
-  CfsaVec(std::size_t size, void *data);
-
-  int32_t NumFsas() const { return num_fsas_; }
-
-  Cfsa operator[](int32_t i) const;
-
-  CfsaVec &operator=(const CfsaVec &) = delete;
-  CfsaVec(const CfsaVec &) = delete;
-
-  ~CfsaVec() {
-    if (opaque_deleter_) (*opaque_deleter_)(opaque_ptr_);
-  }
-
-  void SetDeleter(void (*deleter)(void *), void *p) {
-    opaque_deleter_ = deleter;
-    opaque_ptr_ = p;
-  }
-
- private:
-  int32_t num_fsas_;
-
-  // The raw underlying data;
-  // CAUTION: we do NOT own the memory here.
-  int32_t *data_;
-  // The size of the underlying data;
-  // Caution: it is the number of `int32_t` in data_, NOT the number of bytes.
-  std::size_t size_;
-
-  // the following two fields are for DLPack, which enables us to
-  // share memory with `torch::Tensor`.
-  //
-  // C++ code will in generate not touch them.
-  void (*opaque_deleter_)(void *) = nullptr;
-  void *opaque_ptr_ = nullptr;
-};
-
-/*
-  Return the number of bytes we'd need to represent this vector of Cfsas
-  linearly as a CfsaVec. */
-std::size_t GetCfsaVecSize(const std::vector<Cfsa> &cfsas);
-
-// Return the number of bytes we'd need to represent this Cfsa
-// linearly as a CfsaVec with one element
-std::size_t GetCfsaVecSize(const Cfsa &cfsa);
-
-/*
-  Create a CfsaVec from a vector of Cfsas (this involves representing
-  the vector of Fsas in one big linear memory region).
-
-     @param [in] cfsas   The vector of Cfsas to be linearized;
-                      must be nonempty
-     @param [in] data    The allocated data of size `size` bytes
-     @param [in] size    The size of the memory block in bytes passed;
-                         must equal the return value of
-                         GetCfsaVecSize(cfsas).
- */
-void CreateCfsaVec(const std::vector<Cfsa> &cfsas, void *data,
-                   std::size_t size);
+using Cfsa = Fsa;
+using CfsaVec = Array3<Arc *, int32_t>;
 
 struct Fst {
   Fsa core;

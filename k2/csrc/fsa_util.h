@@ -123,18 +123,11 @@ void GetArcIndexes2(const std::vector<std::vector<int32_t>> &arc_map,
                     std::vector<int64_t> *indexes1,
                     std::vector<int64_t> *indexes2);
 
-void Swap(Fsa *a, Fsa *b);
-
 // Create Fsa for test purpose.
 class FsaCreator {
  public:
   // Create an empty Fsa
-  FsaCreator() {
-    // TODO(haowen): remove below line and use `FsaCreator() = default`
-    // we need this for now as we reset `indexes = nullptr` in the constructor
-    // of Fsa
-    fsa_.indexes = &fsa_.size1;
-  }
+  FsaCreator() = default;
 
   /*
     Initialize Fsa with Array2size, search for 'initialized definition' in class

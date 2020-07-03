@@ -113,11 +113,7 @@ inline bool IsTopSortedAndConnected(const Fsa &fsa) {
   Returns true if `fsa` is empty. (Note: if `fsa` is not empty,
   it would contain at least two states, the start state and the final state).
  */
-// TODO(haowen): finally we'll implement just with: `return fsa.size1 == 0`
-inline bool IsEmpty(const Fsa &fsa) {
-  if (fsa.indexes != nullptr) return fsa.size1 == 0;
-  return fsa.arc_indexes.empty() && fsa.arcs.empty();
-}
+inline bool IsEmpty(const Fsa &fsa) { return fsa.size1 == 0; }
 
 /*
   Returns true if `fsa` is valid AND satisfies the list of properties
