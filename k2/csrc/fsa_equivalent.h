@@ -141,20 +141,20 @@ class RandPath {
 
   /*
     Finish the operation and output the path to `path` and
-    state mapping information to `state_map` (if provided).
+    arc mapping information to `arc_map` (if provided).
     @param [out]  path    Output path.
                           Must be initialized; search for 'initialized
                           definition' in class Array2 in array.h for meaning.
-    @param [out]  state_map   If non-NULL, Maps from state indexes in the output
-                              path to state indexes in the input fsa.
-                              If non-NULL, at entry it must be allocated with
-                              size num-states of `fsa_out`,
-                              e.g. `fsa_out->size1`.
+    @param [out] arc_map   If non-NULL, will output a map from the arc-index
+                           in `fsa_out` to the corresponding arc-index in
+                           `fsa_in`.
+                           If non-NULL, at entry it must be allocated with
+                           size num-arcs of `fsa_out`, e.g. `fsa_out->size2`.
 
     @return true if it succeeds; will be false if it fails,
             `fsa_out` will be empty when it fails.
    */
-  bool GetOutput(Fsa *fsa_out, int32_t *state_map = nullptr);
+  bool GetOutput(Fsa *fsa_out, int32_t *arc_map = nullptr);
 
  private:
   const Fsa &fsa_in_;
@@ -164,7 +164,7 @@ class RandPath {
   bool status_;
   std::vector<int32_t> arc_indexes_;  // arc_index of fsa_out
   std::vector<Arc> arcs_;             // arcs of fsa_out
-  std::vector<int32_t> state_map_;
+  std::vector<int32_t> arc_map_;
 };
 
 }  // namespace k2

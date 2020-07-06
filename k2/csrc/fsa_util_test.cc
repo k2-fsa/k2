@@ -14,6 +14,72 @@
 #include "k2/csrc/properties.h"
 
 namespace k2 {
+class ArcMapTest : public ::testing::Test {
+ protected:
+  ArcMapTest() {
+    arc_weights_in_ = {1, 2, 3, 4, 5, 6, 7};
+
+    arc_map1_ = {0, 2, 5, 4};
+
+    Array2Size<int32_t> size = {2, 6};
+    array_storage_ = new Array2Storage<int32_t *, int32_t>(size, 1);
+    std::vector<int32_t> indexes = {0, 2, 6};
+    std::vector<int32_t> data = {0, 2, 4, 3, 6, 2};
+    array_storage_->FillIndexes(indexes);
+    array_storage_->FillData(data);
+    arc_map2_ = &array_storage_->GetArray2();
+  }
+
+  ~ArcMapTest() override { delete array_storage_; }
+
+  std::vector<float> arc_weights_in_;
+  std::vector<int32_t> arc_map1_;
+  Array2Storage<int32_t *, int32_t> *array_storage_;
+  Array2<int32_t *, int32_t> *arc_map2_;
+};
+
+TEST_F(ArcMapTest, GetArcWeights) {
+  // Test where arc_map maps each arc in the output FSA to
+  // one arc in the input FSA
+  {
+    int32_t num_arcs_out = arc_map1_.size();
+    std::vector<float> arc_weights_out(num_arcs_out);
+    GetArcWeights(arc_weights_in_.data(), arc_map1_.data(), num_arcs_out,
+                  arc_weights_out.data());
+    EXPECT_THAT(arc_weights_out, ::testing::ElementsAre(1, 3, 6, 5));
+  }
+
+  // Test where arc_map maps each arc in the output FSA to
+  // a sequence of arcs in the input FSA
+  {
+    int32_t num_arcs_out = arc_map2_->size1;
+    std::vector<float> arc_weights_out(num_arcs_out);
+    GetArcWeights(arc_weights_in_.data(), *arc_map2_, arc_weights_out.data());
+    EXPECT_THAT(arc_weights_out, ::testing::ElementsAre(4, 19));
+  }
+}
+
+TEST_F(ArcMapTest, GetArcIndexes) {
+  // Test where arc_map maps each arc in the output FSA to
+  // one arc in the input FSA
+  {
+    int32_t num_arcs_out = arc_map1_.size();
+    std::vector<int64_t> indexes_out(num_arcs_out);
+    ConvertIndexes1(arc_map1_.data(), num_arcs_out, indexes_out.data());
+    EXPECT_THAT(indexes_out, ::testing::ElementsAre(0, 2, 5, 4));
+  }
+
+  // Test where arc_map maps each arc in the output FSA to
+  // a sequence of arcs in the input FSA
+  {
+    int32_t num_indexes = arc_map2_->size2;
+    std::vector<int64_t> indexes1(num_indexes);
+    std::vector<int64_t> indexes2(num_indexes);
+    GetArcIndexes2(*arc_map2_, indexes1.data(), indexes2.data());
+    EXPECT_THAT(indexes1, ::testing::ElementsAre(0, 2, 4, 3, 6, 2));
+    EXPECT_THAT(indexes2, ::testing::ElementsAre(0, 0, 1, 1, 1, 1));
+  }
+}
 
 TEST(FsaUtil, GetEnteringArcs) {
   std::vector<Arc> arcs = {

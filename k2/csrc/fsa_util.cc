@@ -162,24 +162,26 @@ void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes) {
 }
 
 void GetArcWeights(const float *arc_weights_in,
-                   const std::vector<std::vector<int32_t>> &arc_map,
+                   const Array2<int32_t *, int32_t> &arc_map,
                    float *arc_weights_out) {
   CHECK_NOTNULL(arc_weights_in);
   CHECK_NOTNULL(arc_weights_out);
-  for (const auto &arcs : arc_map) {
+  for (int32_t i = 0; i != arc_map.size1; ++i) {
     float sum_weights = 0.0f;
-    for (auto arc : arcs) sum_weights += arc_weights_in[arc];
+    for (int32_t j = arc_map.indexes[i]; j != arc_map.indexes[i + 1]; ++j) {
+      int32_t arc_index_in = arc_map.data[j];
+      sum_weights += arc_weights_in[arc_index_in];
+    }
     *arc_weights_out++ = sum_weights;
   }
 }
 
-void GetArcWeights(const float *arc_weights_in,
-                   const std::vector<int32_t> &arc_map,
-                   float *arc_weights_out) {
+void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
+                   int32_t num_arcs, float *arc_weights_out) {
   CHECK_NOTNULL(arc_weights_in);
   CHECK_NOTNULL(arc_weights_out);
-  for (const auto &arc : arc_map) {
-    *arc_weights_out++ = arc_weights_in[arc];
+  for (int32_t i = 0; i != num_arcs; ++i) {
+    *arc_weights_out++ = arc_weights_in[arc_map[i]];
   }
 }
 
@@ -218,6 +220,28 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
   }
   fsa->indexes[num_states] = num_arcs;
   if (arc_map != nullptr) arc_map->swap(arc_map_out);
+}
+
+void ConvertIndexes1(const int32_t *arc_map, int32_t num_arcs,
+                     int64_t *indexes_out) {
+  CHECK_NOTNULL(arc_map);
+  CHECK_GE(num_arcs, 0);
+  CHECK_NOTNULL(indexes_out);
+  std::copy(arc_map, arc_map + num_arcs, indexes_out);
+}
+
+void GetArcIndexes2(const Array2<int32_t *, int32_t> &arc_map,
+                    int64_t *indexes1, int64_t *indexes2) {
+  CHECK_NOTNULL(indexes1);
+  CHECK_NOTNULL(indexes2);
+  std::copy(arc_map.data + arc_map.indexes[0],
+            arc_map.data + arc_map.indexes[arc_map.size1], indexes1);
+  int32_t num_arcs = 0;
+  for (int32_t i = 0; i != arc_map.size1; ++i) {
+    int32_t curr_arc_mappings = arc_map.indexes[i + 1] - arc_map.indexes[i];
+    std::fill_n(indexes2 + num_arcs, curr_arc_mappings, i);
+    num_arcs += curr_arc_mappings;
+  }
 }
 
 void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {

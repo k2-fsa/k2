@@ -59,24 +59,31 @@ void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes);
 
     @param [in] arc_weights_in  Arc weights of the input FSA. Indexed by
                                 arc in the input FSA.
-    @param [in] arc_map         Indexed by arc in the output FSA. `arc_map[i]`
-                                lists the sequence of arcs in the input FSA
-                                that arc `i` in the output FSA corresponds to.
-                                The weight of arc `i` will be equal to the
-                                sum of those input arcs' weights.
+    @param [in] arc_map  An `Array2` that can be interpreted as the arc
+                         mappings from arc-indexes in the output FSA to
+                         arc-indexes in the input FSA. Generally,
+                         `arc_map.data[arc_map.indexes[i]]` through
+                         `arc_map.data[arc_map.indexes[i+1] - 1]` is the
+                         sequence of arc-indexes in the input FSA that
+                         arc `i` in the output FSA corresponds to.
+                         The weight of arc `i` will be equal to the sum of
+                         those input arcs' weights.
     @param [out] arc_weights_out Arc weights of the output FSA. Indexed by arc
-                                 in the output FSA. It should have the same size
-                                 with arc_map at entry.
+                                 in the output FSA. At entry it must be
+                                 allocated with size `arc_map.size1`.
 */
 void GetArcWeights(const float *arc_weights_in,
-                   const std::vector<std::vector<int32_t>> &arc_map,
+                   const Array2<int32_t *, int32_t> &arc_map,
                    float *arc_weights_out);
 
 // Version of GetArcWeights where arc_map maps each arc in the output FSA to
 // one arc (instead of a sequence of arcs) in the input FSA; see its
 // documentation.
-void GetArcWeights(const float *arc_weights_in,
-                   const std::vector<int32_t> &arc_map, float *arc_weights_out);
+// Note that `num_arcs` is the number of arcs in the output FSA,
+// at entry `arc_map` should have size `num_arcs` and `arc_weights_out` must
+// be allocated with size `num_arcs`.
+void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
+                   int32_t num_arcs, float *arc_weights_out);
 
 /* Reorder a list of arcs to get a valid FSA. This function will be used in a
    situation that the input list of arcs is not sorted by src_state, we'll
@@ -98,30 +105,41 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by Compose())
   from int32 to int64; this will be needed for conversion to LongTensor.
+   @param [in] arc_map  Indexed by arc-index in the output FSA, the
+                        arc-index in the input FSA that it corresponds to.
+   @param [in] num_arcs The size of `arc_map`
+   @param [out] indexes_out At entry it must be allocated with size `num_arcs`;
+                            will contain arc-indexes in the input FSA.
  */
-void ConvertIndexes1(const std::vector<int32_t> &arc_map, int64_t *indexes_out);
+void ConvertIndexes1(const int32_t *arc_map, int32_t num_arcs,
+                     int64_t *indexes_out);
 
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by
-  RmEpsilonPruned())
-  from int32 to long int; this will be needed for conversion to LongTensor.
+  RmEpsilonPruned()) from int32 to long int; this will be needed for conversion
+  to LongTensor.
 
   This version is for when each arc of the output FSA may correspond to a
-  sequence of arcs in the input FSA.
+  sequence of arcs in the input FSA. For example,
+  Suppose arc_map ==  [ [ 1, 2 ], [ 6, 8, 9 ] ], we'd form
+  indexes1 = [ 1, 2, 6, 8, 9 ], and indexes2 = [ 0, 0, 1, 1, 1 ]
 
-       @param [in] arc_map   Indexed by arc-index in the output FSA, the
+       @param [in] arc_map  An `Array2` that can be interpreted as the arc
+                            mappings from arc-indexes in the output FSA to
+                            arc-indexes in the input FSA. Generally,
+                            `arc_map.data[arc_map.indexes[i]]` through
+                            `arc_map.data[arc_map.indexes[i+1] - 1]` is the
                             sequence of arc-indexes in the input FSA that
-                            it corresponds to
-       @param [out] indexes1  This vector, of length equal to the
-                           total number of int32's in arc_map, will contain
-                           arc-indexes in the input FSA
-       @param [out] indexes2  This vector, also of length equal to the
-                           total number of int32's in arc_map, will contain
-                           arc-indexes in the output FSA
+                            arc `i` in the output FSA corresponds to.
+       @param [out] indexes1  At entry it must be allocated with size
+                              `arc_map.size2`; will contain arc-indexes
+                              in the input FSA.
+       @param [out] indexes2  At entry it must be allocated with size
+                              `arc_map.size2`; will contain arc-indexes
+                              in the output FSA.
  */
-void GetArcIndexes2(const std::vector<std::vector<int32_t>> &arc_map,
-                    std::vector<int64_t> *indexes1,
-                    std::vector<int64_t> *indexes2);
+void GetArcIndexes2(const Array2<int32_t *, int32_t> &arc_map,
+                    int64_t *indexes1, int64_t *indexes2);
 
 // Create Fsa for test purpose.
 class FsaCreator {
