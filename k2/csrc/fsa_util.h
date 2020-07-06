@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 
 namespace k2 {
@@ -38,20 +39,19 @@ struct DfsState {
   Requires that `fsa` be valid and top-sorted, i.e.  CheckProperties(fsa,
   KTopSorted) == true.
 
-    @param [out] arc_index   A list of arc indexes.
-                             For states 0 < s < fsa.NumStates(),
-                             the elements arc_index[i] for
-                             end_index[s-1] <= i < end_index[s] contain the
-                             arc-indexes in fsa.arcs for arcs that enter
-                             state s.
-    @param [out] end_index   For each state, the `end` index in `arc_index`
-                             where we can find arcs entering this state, i.e.
-                             one past the index of the last element in
-                             `arc_index` that points to an arc entering
-                             this state.
+    @param [in]  fsa         The input FSA.
+    @param [out] arc_indexes For each state i in `fsa`,
+                             `arc_indexes.data[arc_indexes.indexes[i]] through
+                             `arc_indexes.data[arc_indexes.indexes[i+1] - 1]`
+                             will be the arc-indexes of those arcs entering
+                             state `i` in `fsa`.  Must be initialized;
+                             search for 'initialized definition' in class
+                             Array2 in array.h for meaning. Specifically,
+                             at entry there should be
+                             `arc_indexes.size1 == fsa.size1` and
+                             `arc_indexes.size2 == fsa.size2`.
 */
-void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
-                     std::vector<int32_t> *end_index);
+void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes);
 
 /*
   Gets arc weights for an FSA (output FSA) according to `arc_map` which
@@ -123,18 +123,11 @@ void GetArcIndexes2(const std::vector<std::vector<int32_t>> &arc_map,
                     std::vector<int64_t> *indexes1,
                     std::vector<int64_t> *indexes2);
 
-void Swap(Fsa *a, Fsa *b);
-
 // Create Fsa for test purpose.
 class FsaCreator {
  public:
   // Create an empty Fsa
-  FsaCreator() {
-    // TODO(haowen): remove below line and use `FsaCreator() = default`
-    // we need this for now as we reset `indexes = nullptr` in the constructor
-    // of Fsa
-    fsa_.indexes = &fsa_.size1;
-  }
+  FsaCreator() = default;
 
   /*
     Initialize Fsa with Array2size, search for 'initialized definition' in class
@@ -228,12 +221,37 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
   K2 requires that the final state has the largest state number. The above
   format requires the last line to be the final state, whose sole purpose is
   to be compatible with OpenFST.
-
-  @param [in] s Input string representing the transition table.
-
-  @return an FSA.
  */
-std::unique_ptr<Fsa> StringToFsa(const std::string &s);
+class StringToFsa {
+ public:
+  /* Lightweight constructor that just keeps const references to the input
+     parameters.
+     @param [in] s Input string representing the transition table.
+  */
+  explicit StringToFsa(const std::string &s) : s_(s) {}
+
+  /*
+    Do enough work that know now much memory will be needed, and output
+    that information
+        @param [out] fsa_size   The num-states and num-arcs of the output FSA
+                                will be written to here
+  */
+  void GetSizes(Array2Size<int32_t> *fsa_size);
+
+  /*
+    Finish the operation and output the FSA to `fsa_out`
+    @param [out] fsa_out   The output FSA;
+                           Must be initialized; search for 'initialized
+                           definition' in class Array2 in array.h for meaning.
+   */
+  void GetOutput(Fsa *fsa_out);
+
+ private:
+  const std::string &s_;
+
+  // `arcs_[i]` will be the arcs leaving state `i`
+  std::vector<std::vector<Arc>> arcs_;
+};
 
 std::string FsaToString(const Fsa &fsa);
 

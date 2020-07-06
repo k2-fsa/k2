@@ -1,6 +1,7 @@
 // k2/csrc/fsa_test.cc
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+//                      Xiaomi Corporation (author: Haowen Qiu)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -9,313 +10,91 @@
 #include <memory>
 #include <string>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "k2/csrc/array.h"
 #include "k2/csrc/fsa_util.h"
 #include "k2/csrc/util.h"
 
 namespace k2 {
 
-TEST(Cfsa, ConstructorNonEmptyFsa) {
-  std::string s = R"(
-      0 1 1
-      0 2 2
-      1 3 3
-      2 3 3
-      3 4 -1
-      4
-  )";
-  auto fsa = StringToFsa(s);
-  Cfsa cfsa(*fsa);
+TEST(CfsaVec, CreateCfsa) {
+  std::vector<Arc> arcs1 = {
+      {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {1, 3, 4}, {3, 4, -1},
+  };
+  FsaCreator fsa_creator1(arcs1, 4);
+  Cfsa cfsa1 = fsa_creator1.GetFsa();
+  EXPECT_EQ(cfsa1.NumStates(), 5);
+  EXPECT_EQ(cfsa1.size2, 5);  // num-arcs
 
-  EXPECT_EQ(cfsa.num_states, 5);
-  EXPECT_EQ(cfsa.begin_arc, 0);
-  EXPECT_EQ(cfsa.end_arc, 5);
-  EXPECT_EQ(cfsa.arc_indexes, fsa->arc_indexes.data());
-  EXPECT_EQ(cfsa.arcs, fsa->arcs.data());
-
-  EXPECT_EQ(cfsa.NumStates(), 5);
-  EXPECT_EQ(cfsa.FinalState(), 4);
-}
-
-TEST(Cfsa, ConstructorEmptyFsa) {
-  Fsa fsa;
-  Cfsa cfsa(fsa);
-  EXPECT_EQ(cfsa.num_states, 0);
-  EXPECT_EQ(cfsa.begin_arc, 0);
-  EXPECT_EQ(cfsa.end_arc, 0);
-  EXPECT_EQ(cfsa.arc_indexes, nullptr);
-  EXPECT_EQ(cfsa.arcs, nullptr);
-}
-
-TEST(GetCfsaVecSize, Empty) {
-  Cfsa cfsa;
-  std::size_t bytes = GetCfsaVecSize(cfsa);
-  // 20-byte header             (20)
-  // 44-byte padding            (64)
-  // 8-byte state_offsets_array (72)
-  // 56-byte padding            (128)
-  // 4-byte arc_indexes_array   (132)
-  EXPECT_EQ(bytes, 132u);
-
-  std::vector<Cfsa> cfsa_vec;
-  cfsa_vec.push_back(cfsa);
-  bytes = GetCfsaVecSize(cfsa_vec);
-  EXPECT_EQ(bytes, 132u);
-}
-
-TEST(GetCfsaVecSize, NonEmpty) {
-  std::string s = R"(
-      0 1 1
-      0 2 2
-      1 3 3
-      2 3 3
-      3 16 -1
-      16
-  )";
-  auto fsa = StringToFsa(s);
-  Cfsa cfsa(*fsa);
-
-  std::size_t bytes = GetCfsaVecSize(cfsa);
-  // 20-byte header             (20)
-  // 44-byte padding            (64)
-  // 8-byte state_offset_array  (72)
-  // 56-byte padding            (128)
-  // 72-byte arc_indexes_array  (200)
-  // 4-byte padding             (204) -> to be multiple of sizeof(Arc)
-  // 60-byte arcs_array         (264)
-  EXPECT_EQ(bytes, 264u);
-  // Note that there are 5 arcs, sizeof(Arc) == 12.
-  // There are 17 states and each state needs 4 bytes
-  // and the last state is repeated, so the arc_indexes
-  // array needs 18*4 = 72-byte
-
-  {
-    std::vector<Cfsa> cfsa_vec;
-    cfsa_vec.push_back(cfsa);
-    bytes = GetCfsaVecSize(cfsa);
-    EXPECT_EQ(bytes, 264u);
-  }
-}
-
-TEST(GetCfsaVecSize, NonEmptyMutlipeFsas) {
-  std::string s1 = R"(
-      0 1 1
-      0 2 2
-      1 3 3
-      2 3 3
-      3 16 -1
-      16
-  )";
-  auto fsa1 = StringToFsa(s1);  // 5 arcs, 17 states
-  Cfsa cfsa1(*fsa1);
-
-  std::string s2 = R"(
-      0 1 1
-      0 2 2
-      1 3 3
-      3 10 -1
-      10
-  )";
-  auto fsa2 = StringToFsa(s2);  // 4 arcs, 11 states
-  Cfsa cfsa2(*fsa2);
-
-  std::vector<Cfsa> cfsa_vec = {cfsa1, cfsa2};
-
-  std::size_t bytes = GetCfsaVecSize(cfsa_vec);
-  // 28 states,9 arcs
-  //
-  // 20-byte header             (20)
-  // 44-byte padding            (64)
-  // 12-byte state_offset_array (76)
-  // 52-byte padding            (128)
-  // 120-byte arc_indexes_array (248)
-  // 4-byte padding             (252) -> to be multiple of sizeof(Arc)
-  // 108-byte arcs_array        (360)
-  EXPECT_EQ(bytes, 360u);
-}
-
-TEST(CfsaVec, Empty) {
-  Cfsa cfsa;
-  std::vector<Cfsa> cfsas;
-  std::size_t bytes = GetCfsaVecSize(cfsas);
-  std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
-                                                 &MemFree);
-
-  CreateCfsaVec(cfsas, data.get(), bytes);
-
-  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
-  EXPECT_EQ(cfsa_vec.NumFsas(), 0);
-}
-
-TEST(CfsaVec, OneEmptyCfsa) {
-  Cfsa cfsa;
-  std::vector<Cfsa> cfsas = {cfsa};
-  std::size_t bytes = GetCfsaVecSize(cfsas);
-  std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
-                                                 &MemFree);
-
-  CreateCfsaVec(cfsas, data.get(), bytes);
-
-  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
-  EXPECT_EQ(cfsa_vec.NumFsas(), 1);
-}
-
-TEST(CfsaVec, OneNonEmptyCfsa) {
-  std::string s = R"(
-      0 1 10
-      0 2 2
-      1 3 3
-      2 3 3
-      3 4 -1
-      2 4 -1
-      4
-  )";
-
-  auto fsa = StringToFsa(s);
-
-  Cfsa cfsa(*fsa);
-  std::vector<Cfsa> cfsas = {cfsa};
-  std::size_t bytes = GetCfsaVecSize(cfsas);
-  std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
-                                                 &MemFree);
-
-  CreateCfsaVec(cfsas, data.get(), bytes);
-
-  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
-  EXPECT_EQ(cfsa_vec.NumFsas(), 1);
-
-  Cfsa f = cfsa_vec[0];
-  EXPECT_EQ(f, cfsa);
-}
-
-TEST(CfsaVec, TwoNoneEmptyCfsa) {
-  std::string s1 = R"(
-      0 1 10
-      0 2 2
-      1 3 3
-      2 3 3
-      3 4 -1
-      2 4 -1
-      4
-  )";
-
-  auto fsa1 = StringToFsa(s1);
-
-  Cfsa cfsa1(*fsa1);
-
-  std::string s2 = R"(
-      0 1 10
-      0 2 2
-      1 3 3
-      2 3 3
-      3 10 -1
-      2 4 3
-      4 10 -1
-      10
-  )";
-
-  auto fsa2 = StringToFsa(s2);
-
-  Cfsa cfsa2(*fsa2);
-
-  {
-    // both fsa are not empty
-    std::vector<Cfsa> cfsas = {cfsa1, cfsa2};
-    std::size_t bytes = GetCfsaVecSize(cfsas);
-    std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
-                                                   &MemFree);
-
-    CreateCfsaVec(cfsas, data.get(), bytes);
-
-    CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
-    EXPECT_EQ(cfsa_vec.NumFsas(), 2);
-
-    Cfsa f = cfsa_vec[0];
-    EXPECT_EQ(f, cfsa1);
-
-    Cfsa g = cfsa_vec[1];
-    EXPECT_EQ(g, cfsa2);
-  }
-
-  {
-    // the first fsa is empty
-    Cfsa cfsa;
-    std::vector<Cfsa> cfsas = {cfsa, cfsa2};
-    std::size_t bytes = GetCfsaVecSize(cfsas);
-    std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
-                                                   &MemFree);
-
-    CreateCfsaVec(cfsas, data.get(), bytes);
-
-    CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
-    EXPECT_EQ(cfsa_vec.NumFsas(), 2);
-
-    Cfsa f = cfsa_vec[0];
-    EXPECT_EQ(f, cfsa);
-
-    Cfsa g = cfsa_vec[1];
-    EXPECT_EQ(g, cfsa2);
-  }
-
-  {
-    // the second fsa is empty
-    Cfsa cfsa;
-    std::vector<Cfsa> cfsas = {cfsa1, cfsa};
-    std::size_t bytes = GetCfsaVecSize(cfsas);
-    std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
-                                                   &MemFree);
-
-    CreateCfsaVec(cfsas, data.get(), bytes);
-
-    CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
-    EXPECT_EQ(cfsa_vec.NumFsas(), 2);
-
-    Cfsa f = cfsa_vec[0];
-    EXPECT_EQ(f, cfsa1);
-
-    Cfsa g = cfsa_vec[1];
-    EXPECT_EQ(g, cfsa);
-  }
-}
-// TODO(haowen): un-comment below lines after replacing Cfsa with Array3
-/*
-TEST(CfsaVec, RandomFsa) {
-  RandFsaOptions opts;
-  opts.num_syms = 20;
-  opts.num_states = 30;
-  opts.num_arcs = 50;
-  opts.allow_empty = false;
-  opts.acyclic = false;
-  opts.seed = 20200531;
-
-  int32_t n = 5;
-  std::vector<Fsa> fsa_vec;
-  fsa_vec.reserve(n);
-  for (int32_t i = 0; i != n; ++i) {
-    Fsa fsa;
-    GenerateRandFsa(opts, &fsa);
-    fsa_vec.emplace_back(std::move(fsa));
-  }
+  std::vector<Arc> arcs2 = {
+      {0, 2, 1},
+      {0, 3, -1},
+      {1, 3, -1},
+      {2, 3, -1},
+  };
+  FsaCreator fsa_creator2(arcs2, 3);
+  Cfsa cfsa2 = fsa_creator2.GetFsa();
+  EXPECT_EQ(cfsa2.NumStates(), 4);
+  EXPECT_EQ(cfsa2.size2, 4);  // num-arcs
 
   std::vector<Cfsa> cfsas;
-  cfsas.reserve(n);
-  for (const auto &fsa : fsa_vec) {
-    cfsas.emplace_back(fsa);
+  cfsas.emplace_back(cfsa1);
+  cfsas.emplace_back(cfsa2);
+
+  CfsaVec cfsa_vec;
+  cfsa_vec.GetSizes(cfsas.data(), 2);
+  EXPECT_EQ(cfsa_vec.size1, 2);
+  EXPECT_EQ(cfsa_vec.size2, cfsa1.NumStates() + cfsa2.NumStates());
+  EXPECT_EQ(cfsa_vec.size3, cfsa1.size2 + cfsa2.size2);
+
+  // Test CfsaVec Creation
+  std::vector<int32_t> cfsa_vec_indexes1(cfsa_vec.size1 + 1);
+  std::vector<int32_t> cfsa_vec_indexes2(cfsa_vec.size2 + 1);
+  std::vector<Arc> cfsa_vec_data(cfsa_vec.size3);
+  cfsa_vec.indexes1 = cfsa_vec_indexes1.data();
+  cfsa_vec.indexes2 = cfsa_vec_indexes2.data();
+  cfsa_vec.data = cfsa_vec_data.data();
+
+  cfsa_vec.Create(cfsas.data(), 2);
+  EXPECT_THAT(cfsa_vec_indexes1, ::testing::ElementsAre(0, 5, 9));
+  EXPECT_THAT(cfsa_vec_indexes2,
+              ::testing::ElementsAre(0, 2, 4, 4, 5, 5, 7, 8, 9, 9));
+  for (auto i = cfsa1.indexes[0]; i != cfsa1.indexes[cfsa1.size1]; ++i) {
+    EXPECT_EQ(cfsa_vec.data[i], cfsa1.data[i]);
+  }
+  for (auto i = cfsa2.indexes[0]; i != cfsa2.indexes[cfsa2.size1]; ++i) {
+    EXPECT_EQ(cfsa_vec.data[cfsa1.size2 + i - cfsa2.indexes[0]], cfsa2.data[i]);
   }
 
-  std::size_t bytes = GetCfsaVecSize(cfsas);
-  std::unique_ptr<void, decltype(&MemFree)> data(MemAlignedMalloc(bytes, 64),
-                                                 &MemFree);
+  // Test operator[]
+  auto array1_copy = cfsa_vec[0];
+  Cfsa *cfsa1_copy_ptr = static_cast<Cfsa *>(&array1_copy);  // cast here
+  const auto &cfsa1_copy = *cfsa1_copy_ptr;
+  // should call `NumStates` successfully
+  EXPECT_EQ(cfsa1_copy.NumStates(), cfsa1.NumStates());
+  EXPECT_EQ(cfsa1_copy.size2, cfsa1.size2);
+  for (auto i = 0; i != cfsa1.size1 + 1; ++i) {
+    EXPECT_EQ(cfsa1_copy.indexes[i], cfsa1.indexes[i]);
+  }
+  for (auto i = cfsa1.indexes[0]; i != cfsa1.indexes[cfsa1.size1]; ++i) {
+    EXPECT_EQ(cfsa1_copy.data[i], cfsa1.data[i]);
+  }
 
-  CreateCfsaVec(cfsas, data.get(), bytes);
-
-  CfsaVec cfsa_vec(bytes / sizeof(int32_t), data.get());
-  EXPECT_EQ(cfsa_vec.NumFsas(), n);
-
-  for (int32_t i = 0; i != n; ++i) {
-    EXPECT_EQ(cfsa_vec[i], cfsas[i]);
+  auto array2_copy = cfsa_vec[1];
+  Cfsa *cfsa2_copy_ptr = static_cast<Cfsa *>(&array2_copy);  // cast here
+  const auto &cfsa2_copy = *cfsa2_copy_ptr;
+  // should call `NumStates` successfully
+  EXPECT_EQ(cfsa2_copy.NumStates(), cfsa2.NumStates());
+  EXPECT_EQ(cfsa2_copy.size2, cfsa2.size2);
+  for (auto i = 0; i != cfsa2.size1 + 1; ++i) {
+    // output indexes may starts from n > 0
+    EXPECT_EQ(cfsa2_copy.indexes[i], cfsa2.indexes[i] + cfsa1.size1);
+  }
+  for (auto i = cfsa2.indexes[0]; i != cfsa2.indexes[cfsa2.size1]; ++i) {
+    EXPECT_EQ(cfsa2_copy.data[i + cfsa1.size2 - cfsa2.indexes[0]],
+              cfsa2.data[i]);
   }
 }
-*/
 
 }  // namespace k2

@@ -317,7 +317,7 @@ TEST(FsaEquivalent, RandomPathWithoutEpsilonArc) {
         bool status = rand_path.GetOutput(&path, state_map.data());
         EXPECT_TRUE(status);
         EXPECT_GT(state_map.size(), 0);
-        for (const auto &arc : path.arcs) {
+        for (const auto &arc : path) {
           EXPECT_NE(arc.label, kEpsilon);
         }
       }

@@ -16,7 +16,8 @@ namespace k2 {
 // Get a GraphViz representation of an fsa.
 class FsaRenderer {
  public:
-  explicit FsaRenderer(const Fsa &fsa, const float *arc_weights = nullptr);
+  explicit FsaRenderer(const Fsa &fsa, const float *arc_weights = nullptr)
+      : fsa_(fsa), arc_weights_(arc_weights) {}
 
   // Return a GraphViz representation of the fsa
   std::string Render() const;

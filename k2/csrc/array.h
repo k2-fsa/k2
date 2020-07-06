@@ -130,11 +130,11 @@ struct Array2 {
 
   // as we require `indexes[0] == 0` if Array2 is empty,
   // the implementation of `begin` and `end` would be fine for empty object.
-  PtrT begin() { return data + indexes[0]; }
-  const PtrT begin() const { return data + indexes[0]; }
+  PtrT begin() { return data + indexes[0]; }              // NOLINT
+  const PtrT begin() const { return data + indexes[0]; }  // NOLINT
 
-  PtrT end() { return data + indexes[size1]; }
-  const PtrT end() const { return data + indexes[size1]; }
+  PtrT end() { return data + indexes[size1]; }              // NOLINT
+  const PtrT end() const { return data + indexes[size1]; }  // NOLINT
 
   // just to replace `Swap` functions for Fsa and AuxLabels for now,
   // may delete it if we finally find that we don't need to call it.
@@ -161,24 +161,33 @@ struct Array3 {
   using IndexT = I;
   using PtrT = Ptr;
 
-  IndexT size;
-  IndexT *indexes1;  // indexes1[0,1,...size] should be defined; note,
-                     // this means the array must be of at least size+1.
+  IndexT size1;  // equal to the number of Array2 object in this Array3 object;
+                 // `size1 + 1` will be the number of elements in indexes1.
+
+  IndexT size2;  // equal to indexes1[size1] - indexes1[0];
+                 // `size2 + 1` will be the number of elements in indexes2;
+
+  IndexT size3;  // the number of elements in `data`,  equal to
+                 // indexes2[indexes1[size1]] - indexes2[indexes1[0]].
+
+  IndexT *indexes1;  // indexes1[0,1,...size1] should be defined; note,
+                     // this means the array must be of at least size1+1.
                      // We require that indexes[i] <= indexes[i+1], but it
-                     // is not required that indexes[0] == 0, it may be
-                     // greater than 0.
+                     // is not required that indexes[0] == 0, it may be greater
+                     // than 0.
 
   IndexT *indexes2;  // indexes2[indexes1[0]]
-                     // .. indexes2[indexes1[size]-1] should be defined.
+                     // .. indexes2[indexes1[size1]] should be defined;
+                     // note, this means the array must be of at least size2+1.
 
   Ptr data;  // `data` might be an actual pointer, or might be some object
              // supporting operator [].  data[indexes2[indexes1[0]]] through
-             // data[indexes2[indexes1[size] - 1]] must be accessible through
-             // this object.
+             // data[indexes2[indexes1[size1]] - 1] must be accessible
+             // through this object.
 
   Array2<Ptr, I> operator[](I i) const {
     DCHECK_GE(i, 0);
-    DCHECK_LT(i, size);
+    DCHECK_LT(i, size1);
 
     Array2<Ptr, I> array;
     array.size1 = indexes1[i + 1] - indexes1[i];
@@ -186,6 +195,59 @@ struct Array3 {
     array.size2 = indexes2[indexes1[i + 1]] - indexes2[indexes1[i]];
     array.data = data;
     return array;
+  }
+
+  /*
+    Set `size1`, `size2` and `size3` so that we can know how much memory we need
+    to allocate for `indexes1`, `indexes2` and `data` to represent the vector
+    of Array2 as an Array3.
+      @param [in] arrays     A vector of Array2;
+      @param [in] array_size The number element of vector `arrays`
+  */
+  void GetSizes(const Array2<Ptr, I> *arrays, I array_size) {
+    size1 = array_size;
+    size2 = size3 = 0;
+    for (I i = 0; i != array_size; ++i) {
+      size2 += arrays[i].size1;
+      size3 += arrays[i].size2;
+    }
+  }
+
+  /*
+    Create Array3 from the vector of Array2. `size1`, `size2` and `size3` must
+    have been set by calling `GetSizes` above, and the memory of `indexes1`,
+    `indexes2`and `data` must have been allocated according to those size.
+      @param [in] arrays     A vector of Array2;
+      @param [in] array_size The number element of vector `arrays`
+   */
+  void Create(const Array2<Ptr, I> *arrays, I array_size) {
+    CHECK_EQ(size1, array_size);
+    I size2_tmp = 0, size3_tmp = 0;
+    for (I i = 0; i != array_size; ++i) {
+      const auto &curr_array = arrays[i];
+
+      indexes1[i] = size2_tmp;
+
+      // copy indexes
+      CHECK_LE(size2_tmp + curr_array.size1, size2);
+      I begin_index = curr_array.indexes[0];  // indexes[0] is always valid and
+                                              // may be greater than 0
+      for (I j = 0; j != curr_array.size1; ++j) {
+        indexes2[size2_tmp++] = size3_tmp + curr_array.indexes[j] - begin_index;
+      }
+
+      // copy data
+      CHECK_LE(size3_tmp + curr_array.size2, size3);
+      for (I n = 0; n != curr_array.size2; ++n) {
+        data[size3_tmp + n] = curr_array.data[n + begin_index];
+      }
+      size3_tmp += curr_array.size2;
+    }
+    CHECK_EQ(size2_tmp, size2);
+    CHECK_EQ(size3_tmp, size3);
+
+    indexes1[size1] = size2_tmp;
+    indexes2[indexes1[size1]] = size3_tmp;
   }
 };
 
@@ -261,7 +323,6 @@ struct Array2Storage {
 
 namespace std {
 template <typename T, typename I>
-
 struct iterator_traits<k2::StridedPtr<T, I>> {
   typedef T value_type;
 };

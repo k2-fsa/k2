@@ -32,12 +32,13 @@ def main():
     # the transition rules, k2 requires that you have to provide it so that
     # the format is compatible with OpenFST.
 
-    fsa = k2.string_to_fsa(transtion_rules)
+    # TODO(haowen): uncomment below lines
+    #fsa = k2.string_to_fsa(transtion_rules)
 
     # Now that we have the fsa, we can visualize it
-    renderer = k2.FsaRenderer(fsa)
-    dot = renderer.render()
-    print(dot)
+    #renderer = k2.FsaRenderer(fsa)
+    #dot = renderer.render()
+    #print(dot)
 
     # You can install graphviz to visualize the fsa.
     #
