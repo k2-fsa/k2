@@ -35,8 +35,9 @@ static void CountExtraStates(const k2::Fsa &fsa_in,
                              std::vector<int32_t> *num_extra_states) {
   CHECK_EQ(num_extra_states->size(), fsa_in.NumStates());
   auto &states = *num_extra_states;
+  const auto arcs = fsa_in.data + fsa_in.indexes[0];
   for (int32_t i = 0; i != fsa_in.size2; ++i) {
-    const auto &arc = fsa_in.data[i];
+    const auto &arc = arcs[i];
     int32_t begin = labels_in.indexes[i];
     int32_t end = labels_in.indexes[i + 1];
     states[arc.dest_state] += std::max(0, end - begin - 1);
@@ -197,9 +198,10 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
   int32_t final_state_in = fsa_in_.FinalState();
 
   int32_t num_non_eps_ilabel_processed = 0;
+  const auto arcs_in = fsa_in_.data + fsa_in_.indexes[0];
   start_pos.push_back(0);
   for (auto i = 0; i != fsa_in_.size2; ++i) {
-    const auto &arc = fsa_in_.data[i];
+    const auto &arc = arcs_in[i];
     int32_t pos_begin = labels_in_.indexes[i];
     int32_t pos_end = labels_in_.indexes[i + 1];
     int32_t src_state = arc.src_state;

@@ -33,7 +33,7 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.data;
+  const auto &arcs = fsa.data + fsa.indexes[0];
   state_weights[0] = 0;
   for (int32_t i = 0; i != fsa.size2; ++i) {
     const auto &arc = arcs[i];
@@ -53,7 +53,7 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.data;
+  const auto &arcs = fsa.data + fsa.indexes[0];
   state_weights[fsa.FinalState()] = 0;
   for (int32_t i = fsa.size2 - 1; i >= 0; --i) {
     const auto &arc = arcs[i];
@@ -73,7 +73,7 @@ void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.data;
+  const auto &arcs = fsa.data + fsa.indexes[0];
   state_weights[0] = 0;
   for (int32_t i = 0; i != fsa.size2; ++i) {
     const auto &arc = arcs[i];
@@ -93,7 +93,7 @@ void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.data;
+  const auto &arcs = fsa.data + fsa.indexes[0];
   state_weights[fsa.FinalState()] = 0;
   for (int32_t i = fsa.size2 - 1; i >= 0; --i) {
     const auto &arc = arcs[i];
@@ -121,7 +121,7 @@ void WfsaWithFbWeights::ComputeForwardWeights() {
   forward_state_weights = std::unique_ptr<double[]>(new double[num_states]);
   std::fill_n(forward_state_weights.get(), num_states, kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.data;
+  const auto &arcs = fsa.data + fsa.indexes[0];
   forward_state_weights[0] = 0;
   if (weight_type == kMaxWeight) {
     for (auto i = 0; i != fsa.size2; ++i) {
@@ -154,7 +154,7 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
   std::fill_n(backward_state_weights.get(), num_states,
               kDoubleNegativeInfinity);
 
-  const auto &arcs = fsa.data;
+  const auto &arcs = fsa.data + fsa.indexes[0];
   backward_state_weights[fsa.FinalState()] = 0;
   if (weight_type == kMaxWeight) {
     for (auto i = fsa.size2 - 1; i >= 0; --i) {

@@ -13,20 +13,11 @@
 #include <unordered_set>
 #include <vector>
 
+#include "k2/csrc/connect.h"
 #include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/fsa_util.h"
 
 namespace k2 {
-
-static constexpr int8_t kNotVisited = 0;  // a node that has not been visited
-static constexpr int8_t kVisiting = 1;    // a node that is under visiting
-static constexpr int8_t kVisited = 2;     // a node that has been visited
-// depth first search state
-struct DfsState {
-  int32_t state;      // state number of the visiting node
-  int32_t arc_begin;  // arc index of the visiting arc
-  int32_t arc_end;    // end of the arc index of the visiting node
-};
 
 bool IsValid(const Fsa &fsa) {
   if (IsEmpty(fsa)) return true;
@@ -57,28 +48,18 @@ bool IsValid(const Fsa &fsa) {
   return true;
 }
 
-// TODO(haowen): remove check `fsa.indexes != nullptr` and use array2
 bool IsTopSorted(const Fsa &fsa) {
-  if (fsa.indexes != nullptr) {
-    for (const auto &arc : fsa) {
-      if (arc.dest_state < arc.src_state) return false;
-    }
-  } else {
-    for (const auto &arc : fsa.arcs) {
-      if (arc.dest_state < arc.src_state) return false;
-    }
+  for (const auto &arc : fsa) {
+    if (arc.dest_state < arc.src_state) return false;
   }
   return true;
 }
 
 bool IsArcSorted(const Fsa &fsa) {
-  int32_t final_state = fsa.NumStates() - 1;
-  const auto begin = fsa.arcs.begin();
-  const auto &arc_indexes = fsa.arc_indexes;
-  // we will not check the final state as it has no arcs leaving it.
-  for (int32_t state = 0; state < final_state; ++state) {
-    // as non-empty `fsa` contains at least two states,
-    // we can always access `state + 1` validly.
+  int32_t num_states = fsa.NumStates();
+  const auto begin = fsa.data;
+  const auto &arc_indexes = fsa.indexes;
+  for (int32_t state = 0; state != num_states; ++state) {
     if (!std::is_sorted(begin + arc_indexes[state],
                         begin + arc_indexes[state + 1]))
       return false;
@@ -87,7 +68,7 @@ bool IsArcSorted(const Fsa &fsa) {
 }
 
 bool HasSelfLoops(const Fsa &fsa) {
-  for (const auto &arc : fsa.arcs) {
+  for (const auto &arc : fsa) {
     if (arc.dest_state == arc.src_state) return true;
   }
   return false;
@@ -95,13 +76,17 @@ bool HasSelfLoops(const Fsa &fsa) {
 
 // Detect cycles using DFS traversal
 bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
+  using dfs::DfsState;
+  using dfs::kNotVisited;
+  using dfs::kVisited;
+  using dfs::kVisiting;
   if (IsEmpty(fsa)) return true;
 
   auto num_states = fsa.NumStates();
   std::vector<int8_t> state_status(num_states, kNotVisited);
 
   std::stack<DfsState> stack;
-  stack.push({0, fsa.arc_indexes[0], fsa.arc_indexes[1]});
+  stack.push({0, fsa.indexes[0], fsa.indexes[1]});
   state_status[0] = kVisiting;
   bool is_acyclic = true;
   while (is_acyclic && !stack.empty()) {
@@ -113,15 +98,15 @@ bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
       stack.pop();
       continue;
     }
-    const auto &arc = fsa.arcs[current_state.arc_begin];
+    const auto &arc = fsa.data[current_state.arc_begin];
     auto next_state = arc.dest_state;
     auto status = state_status[next_state];
     switch (status) {
       case kNotVisited: {
         // a new discovered node
         state_status[next_state] = kVisiting;
-        stack.push({next_state, fsa.arc_indexes[next_state],
-                    fsa.arc_indexes[next_state + 1]});
+        stack.push(
+            {next_state, fsa.indexes[next_state], fsa.indexes[next_state + 1]});
         ++current_state.arc_begin;
         break;
       }
@@ -145,7 +130,7 @@ bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
 bool IsDeterministic(const Fsa &fsa) {
   std::unordered_set<int32_t> labels;
   int32_t state = 0;
-  for (const auto &arc : fsa.arcs) {
+  for (const auto &arc : fsa) {
     if (arc.src_state == state) {
       if (labels.find(arc.label) != labels.end()) return false;
       labels.insert(arc.label);
@@ -158,16 +143,9 @@ bool IsDeterministic(const Fsa &fsa) {
   return true;
 }
 
-// TODO(haowen): remove `else` branch after replacing FSA with Array2
 bool IsEpsilonFree(const Fsa &fsa) {
-  if (fsa.indexes != nullptr) {
-    for (const auto &arc : fsa) {
-      if (arc.label == kEpsilon) return false;
-    }
-  } else {
-    for (const auto &arc : fsa.arcs) {
-      if (arc.label == kEpsilon) return false;
-    }
+  for (const auto &arc : fsa) {
+    if (arc.label == kEpsilon) return false;
   }
   return true;
 }

@@ -14,9 +14,23 @@
 #include <utility>
 #include <vector>
 
+#include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 
 namespace k2 {
+
+namespace dfs {
+
+constexpr int8_t kNotVisited = 0;  // a node that has not been visited
+constexpr int8_t kVisiting = 1;    // a node that is under visiting
+constexpr int8_t kVisited = 2;     // a node that has been visited
+// depth first search state
+struct DfsState {
+  int32_t state;      // state number of the visiting node
+  int32_t arc_begin;  // arc index of the visiting arc
+  int32_t arc_end;    // end of the arc index of the visiting node
+};
+}  // namespace dfs
 
 /*
   Computes lists of arcs entering each state (needed for algorithms that
@@ -25,20 +39,19 @@ namespace k2 {
   Requires that `fsa` be valid and top-sorted, i.e.  CheckProperties(fsa,
   KTopSorted) == true.
 
-    @param [out] arc_index   A list of arc indexes.
-                             For states 0 < s < fsa.NumStates(),
-                             the elements arc_index[i] for
-                             end_index[s-1] <= i < end_index[s] contain the
-                             arc-indexes in fsa.arcs for arcs that enter
-                             state s.
-    @param [out] end_index   For each state, the `end` index in `arc_index`
-                             where we can find arcs entering this state, i.e.
-                             one past the index of the last element in
-                             `arc_index` that points to an arc entering
-                             this state.
+    @param [in]  fsa         The input FSA.
+    @param [out] arc_indexes For each state i in `fsa`,
+                             `arc_indexes.data[arc_indexes.indexes[i]] through
+                             `arc_indexes.data[arc_indexes.indexes[i+1] - 1]`
+                             will be the arc-indexes of those arcs entering
+                             state `i` in `fsa`.  Must be initialized;
+                             search for 'initialized definition' in class
+                             Array2 in array.h for meaning. Specifically,
+                             at entry there should be
+                             `arc_indexes.size1 == fsa.size1` and
+                             `arc_indexes.size2 == fsa.size2`.
 */
-void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
-                     std::vector<int32_t> *end_index);
+void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes);
 
 /*
   Gets arc weights for an FSA (output FSA) according to `arc_map` which
@@ -46,24 +59,31 @@ void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
 
     @param [in] arc_weights_in  Arc weights of the input FSA. Indexed by
                                 arc in the input FSA.
-    @param [in] arc_map         Indexed by arc in the output FSA. `arc_map[i]`
-                                lists the sequence of arcs in the input FSA
-                                that arc `i` in the output FSA corresponds to.
-                                The weight of arc `i` will be equal to the
-                                sum of those input arcs' weights.
+    @param [in] arc_map  An `Array2` that can be interpreted as the arc
+                         mappings from arc-indexes in the output FSA to
+                         arc-indexes in the input FSA. Generally,
+                         `arc_map.data[arc_map.indexes[i]]` through
+                         `arc_map.data[arc_map.indexes[i+1] - 1]` is the
+                         sequence of arc-indexes in the input FSA that
+                         arc `i` in the output FSA corresponds to.
+                         The weight of arc `i` will be equal to the sum of
+                         those input arcs' weights.
     @param [out] arc_weights_out Arc weights of the output FSA. Indexed by arc
-                                 in the output FSA. It should have the same size
-                                 with arc_map at entry.
+                                 in the output FSA. At entry it must be
+                                 allocated with size `arc_map.size1`.
 */
 void GetArcWeights(const float *arc_weights_in,
-                   const std::vector<std::vector<int32_t>> &arc_map,
+                   const Array2<int32_t *, int32_t> &arc_map,
                    float *arc_weights_out);
 
 // Version of GetArcWeights where arc_map maps each arc in the output FSA to
 // one arc (instead of a sequence of arcs) in the input FSA; see its
 // documentation.
-void GetArcWeights(const float *arc_weights_in,
-                   const std::vector<int32_t> &arc_map, float *arc_weights_out);
+// Note that `num_arcs` is the number of arcs in the output FSA,
+// at entry `arc_map` should have size `num_arcs` and `arc_weights_out` must
+// be allocated with size `num_arcs`.
+void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
+                   int32_t num_arcs, float *arc_weights_out);
 
 /* Reorder a list of arcs to get a valid FSA. This function will be used in a
    situation that the input list of arcs is not sorted by src_state, we'll
@@ -85,92 +105,47 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by Compose())
   from int32 to int64; this will be needed for conversion to LongTensor.
+   @param [in] arc_map  Indexed by arc-index in the output FSA, the
+                        arc-index in the input FSA that it corresponds to.
+   @param [in] num_arcs The size of `arc_map`
+   @param [out] indexes_out At entry it must be allocated with size `num_arcs`;
+                            will contain arc-indexes in the input FSA.
  */
-void ConvertIndexes1(const std::vector<int32_t> &arc_map, int64_t *indexes_out);
+void ConvertIndexes1(const int32_t *arc_map, int32_t num_arcs,
+                     int64_t *indexes_out);
 
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by
-  RmEpsilonPruned())
-  from int32 to long int; this will be needed for conversion to LongTensor.
+  RmEpsilonPruned()) from int32 to long int; this will be needed for conversion
+  to LongTensor.
 
   This version is for when each arc of the output FSA may correspond to a
-  sequence of arcs in the input FSA.
+  sequence of arcs in the input FSA. For example,
+  Suppose arc_map ==  [ [ 1, 2 ], [ 6, 8, 9 ] ], we'd form
+  indexes1 = [ 1, 2, 6, 8, 9 ], and indexes2 = [ 0, 0, 1, 1, 1 ]
 
-       @param [in] arc_map   Indexed by arc-index in the output FSA, the
+       @param [in] arc_map  An `Array2` that can be interpreted as the arc
+                            mappings from arc-indexes in the output FSA to
+                            arc-indexes in the input FSA. Generally,
+                            `arc_map.data[arc_map.indexes[i]]` through
+                            `arc_map.data[arc_map.indexes[i+1] - 1]` is the
                             sequence of arc-indexes in the input FSA that
-                            it corresponds to
-       @param [out] indexes1  This vector, of length equal to the
-                           total number of int32's in arc_map, will contain
-                           arc-indexes in the input FSA
-       @param [out] indexes2  This vector, also of length equal to the
-                           total number of int32's in arc_map, will contain
-                           arc-indexes in the output FSA
+                            arc `i` in the output FSA corresponds to.
+       @param [out] indexes1  At entry it must be allocated with size
+                              `arc_map.size2`; will contain arc-indexes
+                              in the input FSA.
+       @param [out] indexes2  At entry it must be allocated with size
+                              `arc_map.size2`; will contain arc-indexes
+                              in the output FSA.
  */
-void GetArcIndexes2(const std::vector<std::vector<int32_t>> &arc_map,
-                    std::vector<int64_t> *indexes1,
-                    std::vector<int64_t> *indexes2);
-
-void Swap(Fsa *a, Fsa *b);
-
-/** Build an FSA from a string.
-
-  The input string is a transition table with the following
-  format (same with OpenFST):
-
-  from_state  to_state  label
-  from_state  to_state  label
-  ... ...
-  final_state
-
-  K2 requires that the final state has the largest state number. The above
-  format requires the last line to be the final state, whose sole purpose is
-  to be compatible with OpenFST.
-
-  @param [in] s Input string representing the transition table.
-
-  @return an FSA.
- */
-std::unique_ptr<Fsa> StringToFsa(const std::string &s);
-
-std::string FsaToString(const Fsa &fsa);
-
-struct RandFsaOptions {
-  std::size_t num_syms;
-  std::size_t num_states;
-  std::size_t num_arcs;
-  bool allow_empty;
-  bool acyclic;  // generate a cyclic fsa in a best effort manner if it's false
-  int32_t seed;  // for random generator. Set it to non-zero for reproducibility
-
-  RandFsaOptions();
-};
-
-void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa);
-
-// move-copy an array to output, reordering it according to given indexes,
-// where`index[i]` tells us what value (i.e. `src[index[i]`) we should copy to
-// `dest[i]`
-template <class InputIterator, class Size, class RandomAccessIterator,
-          class OutputIterator>
-void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
-                  OutputIterator dest) {
-  if (count > 0) {
-    for (Size i = 0; i != count; ++i) {
-      *dest++ = std::move(src[*index++]);
-    }
-  }
-}
+void GetArcIndexes2(const Array2<int32_t *, int32_t> &arc_map,
+                    int64_t *indexes1, int64_t *indexes2);
 
 // Create Fsa for test purpose.
 class FsaCreator {
  public:
   // Create an empty Fsa
-  FsaCreator() {
-    // TODO(haowen): remove below line and use `FsaCreator() = default`
-    // we need this for now as we reset `indexes = nullptr` in the constructor
-    // of Fsa
-    fsa_.indexes = &fsa_.size1;
-  }
+  FsaCreator() = default;
 
   /*
     Initialize Fsa with Array2size, search for 'initialized definition' in class
@@ -180,7 +155,9 @@ class FsaCreator {
     `Array2Storage` is for this purpose as well, but we define this version of
     constructor here to make test code simpler.
   */
-  explicit FsaCreator(const Array2Size<int32_t> &size) {
+  explicit FsaCreator(const Array2Size<int32_t> &size) { Init(size); }
+
+  void Init(const Array2Size<int32_t> &size) {
     arc_indexes_.resize(size.size1 + 1);
     // just for case of empty Array2 object, may be written by the caller
     arc_indexes_[0] = 0;
@@ -230,6 +207,130 @@ class FsaCreator {
   std::vector<int32_t> arc_indexes_;
   std::vector<Arc> arcs_;
 };
+
+/* Create an acyclic FSA from a list of arcs.
+
+   Arcs do not need to be pre-sorted by src_state.
+   If there is a cycle, it aborts.
+
+   The start state MUST be 0. The final state will be automatically determined
+   by topological sort.
+
+   @param [in] arcs  A list of arcs.
+   @param [out] fsa  Output fsa. Must be initialized; search for 'initialized
+                     definition' in class Array2 in array.h for meaning.
+   @param [out] arc_map   If non-NULL, this function will
+                            output a map from the arc-index in `fsa` to
+                            the corresponding arc-index in input `arcs`.
+*/
+void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
+               std::vector<int32_t> *arc_map = nullptr);
+
+/** Build an FSA from a string.
+
+  The input string is a transition table with the following
+  format (same with OpenFST):
+
+  from_state  to_state  label
+  from_state  to_state  label
+  ... ...
+  final_state
+
+  K2 requires that the final state has the largest state number. The above
+  format requires the last line to be the final state, whose sole purpose is
+  to be compatible with OpenFST.
+ */
+class StringToFsa {
+ public:
+  /* Lightweight constructor that just keeps const references to the input
+     parameters.
+     @param [in] s Input string representing the transition table.
+  */
+  explicit StringToFsa(const std::string &s) : s_(s) {}
+
+  /*
+    Do enough work that know now much memory will be needed, and output
+    that information
+        @param [out] fsa_size   The num-states and num-arcs of the output FSA
+                                will be written to here
+  */
+  void GetSizes(Array2Size<int32_t> *fsa_size);
+
+  /*
+    Finish the operation and output the FSA to `fsa_out`
+    @param [out] fsa_out   The output FSA;
+                           Must be initialized; search for 'initialized
+                           definition' in class Array2 in array.h for meaning.
+   */
+  void GetOutput(Fsa *fsa_out);
+
+ private:
+  const std::string &s_;
+
+  // `arcs_[i]` will be the arcs leaving state `i`
+  std::vector<std::vector<Arc>> arcs_;
+};
+
+std::string FsaToString(const Fsa &fsa);
+
+struct RandFsaOptions {
+  std::size_t num_syms;
+  std::size_t num_states;
+  std::size_t num_arcs;
+  bool allow_empty;
+  bool acyclic;  // generate a cyclic fsa in a best effort manner if it's false
+  int32_t seed;  // for random generator. Set it to non-zero for reproducibility
+
+  RandFsaOptions();
+};
+
+/**
+    Generate a random FSA.
+ */
+class RandFsaGenerator {
+ public:
+  /* Lightweight constructor that just keeps const references to the input
+     parameters.
+     @param [in] opts   Options that control the properties of the generated
+                        FSA.
+  */
+  explicit RandFsaGenerator(const RandFsaOptions &opts) : opts_(opts) {}
+
+  /*
+    Do enough work that know now much memory will be needed, and output
+    that information
+        @param [out] fsa_size   The num-states and num-arcs of the generated FSA
+                                will be written to here
+  */
+  void GetSizes(Array2Size<int32_t> *fsa_size);
+
+  /*
+    Finish the operation and output the generated FSA to `fsa_out`
+    @param [out]  fsa_out Output fsa.
+                          Must be initialized; search for 'initialized
+                          definition' in class Array2 in array.h for meaning.
+   */
+  void GetOutput(Fsa *fsa_out);
+
+ private:
+  const RandFsaOptions opts_;
+
+  FsaCreator fsa_creator_;
+};
+
+// move-copy an array to output, reordering it according to given indexes,
+// where`index[i]` tells us what value (i.e. `src[index[i]`) we should copy to
+// `dest[i]`
+template <class InputIterator, class Size, class RandomAccessIterator,
+          class OutputIterator>
+void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
+                  OutputIterator dest) {
+  if (count > 0) {
+    for (Size i = 0; i != count; ++i) {
+      *dest++ = std::move(src[*index++]);
+    }
+  }
+}
 
 }  // namespace k2
 

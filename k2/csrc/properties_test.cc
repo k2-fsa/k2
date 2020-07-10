@@ -17,9 +17,6 @@
 
 namespace k2 {
 
-// TODO(haowen): create Fsa examples in a more elegant way (add methods
-// addState, addArc, etc.) and use Test Fixtures by constructing
-// reusable FSA examples.
 TEST(Properties, IsNotValid) {
   // fsa should contain at least two states.
   {
@@ -122,7 +119,6 @@ TEST(Properties, IsTopSorted) {
   }
 
   {
-    // TODO(haowen): change GenerateRandFsa to use Array2
     RandFsaOptions opts;
     opts.num_syms = 20;
     opts.num_states = 30;
@@ -131,8 +127,14 @@ TEST(Properties, IsTopSorted) {
     opts.acyclic = true;
     opts.seed = 20200517;
 
-    Fsa fsa;
-    GenerateRandFsa(opts, &fsa);
+    RandFsaGenerator generator(opts);
+    Array2Size<int32_t> fsa_size;
+    generator.GetSizes(&fsa_size);
+
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa = fsa_creator.GetFsa();
+    generator.GetOutput(&fsa);
+
     bool sorted = IsTopSorted(fsa);
     EXPECT_TRUE(sorted);
   }
@@ -146,7 +148,8 @@ TEST(Properties, IsNotArcSorted) {
         {1, 2, 2},
         {1, 3, 1},
     };
-    Fsa fsa(std::move(arcs), 3);
+    FsaCreator fsa_creator(arcs, 3);
+    const auto &fsa = fsa_creator.GetFsa();
     bool sorted = IsArcSorted(fsa);
     EXPECT_FALSE(sorted);
   }
@@ -157,7 +160,8 @@ TEST(Properties, IsNotArcSorted) {
         {0, 2, 0},
         {0, 1, 0},
     };
-    Fsa fsa(std::move(arcs), 2);
+    FsaCreator fsa_creator(arcs, 2);
+    const auto &fsa = fsa_creator.GetFsa();
     bool sorted = IsArcSorted(fsa);
     EXPECT_FALSE(sorted);
   }
@@ -166,7 +170,8 @@ TEST(Properties, IsNotArcSorted) {
 TEST(Properties, IsArcSorted) {
   // empty fsa is arc-sorted.
   {
-    Fsa fsa;
+    FsaCreator fsa_creator;
+    const auto &fsa = fsa_creator.GetFsa();
     bool sorted = IsArcSorted(fsa);
     EXPECT_TRUE(sorted);
   }
@@ -178,21 +183,25 @@ TEST(Properties, IsArcSorted) {
         {1, 2, 1},
         {1, 3, 2},
     };
-    Fsa fsa(std::move(arcs), 3);
+    FsaCreator fsa_creator(arcs, 3);
+    const auto &fsa = fsa_creator.GetFsa();
     bool sorted = IsArcSorted(fsa);
     EXPECT_TRUE(sorted);
   }
 }
 
 TEST(Properties, HasNoSelfLoops) {
-  std::vector<Arc> arcs = {
-      {0, 1, 0},
-      {0, 2, 0},
-      {1, 2, 0},
-  };
-  Fsa fsa(std::move(arcs), 2);
-  bool has_self_loops = HasSelfLoops(fsa);
-  EXPECT_FALSE(has_self_loops);
+  {
+    std::vector<Arc> arcs = {
+        {0, 1, 0},
+        {0, 2, 0},
+        {1, 2, 0},
+    };
+    FsaCreator fsa_creator(arcs, 2);
+    const auto &fsa = fsa_creator.GetFsa();
+    bool has_self_loops = HasSelfLoops(fsa);
+    EXPECT_FALSE(has_self_loops);
+  }
 
   {
     RandFsaOptions opts;
@@ -203,8 +212,14 @@ TEST(Properties, HasNoSelfLoops) {
     opts.acyclic = true;
     opts.seed = 20200517;
 
-    Fsa fsa;
-    GenerateRandFsa(opts, &fsa);
+    RandFsaGenerator generator(opts);
+    Array2Size<int32_t> fsa_size;
+    generator.GetSizes(&fsa_size);
+
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa = fsa_creator.GetFsa();
+    generator.GetOutput(&fsa);
+
     bool has_self_loops = HasSelfLoops(fsa);
     EXPECT_FALSE(has_self_loops);
   }
@@ -216,7 +231,8 @@ TEST(Properties, HasSelfLoops) {
       {1, 2, 0},
       {1, 1, 0},
   };
-  Fsa fsa(std::move(arcs), 2);
+  FsaCreator fsa_creator(arcs, 2);
+  const auto &fsa = fsa_creator.GetFsa();
   bool has_self_loops = HasSelfLoops(fsa);
   EXPECT_TRUE(has_self_loops);
 }
@@ -227,7 +243,8 @@ TEST(Properties, IsNotDeterministic) {
       {1, 2, 0},
       {1, 3, 0},
   };
-  Fsa fsa(std::move(arcs), 3);
+  FsaCreator fsa_creator(arcs, 3);
+  const auto &fsa = fsa_creator.GetFsa();
   bool is_deterministic = IsDeterministic(fsa);
   EXPECT_FALSE(is_deterministic);
 }
@@ -238,7 +255,8 @@ TEST(Properties, IsDeterministic) {
       {1, 2, 0},
       {1, 3, 2},
   };
-  Fsa fsa(std::move(arcs), 3);
+  FsaCreator fsa_creator(arcs, 3);
+  const auto &fsa = fsa_creator.GetFsa();
   bool is_deterministic = IsDeterministic(fsa);
   EXPECT_TRUE(is_deterministic);
 }
@@ -273,7 +291,8 @@ TEST(Properties, IsNotConnected) {
     std::vector<Arc> arcs = {
         {0, 2, 0},
     };
-    Fsa fsa(std::move(arcs), 2);
+    FsaCreator fsa_creator(arcs, 2);
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_connected = IsConnected(fsa);
     EXPECT_FALSE(is_connected);
   }
@@ -284,7 +303,8 @@ TEST(Properties, IsNotConnected) {
         {0, 1, 0},
         {0, 2, 0},
     };
-    Fsa fsa(std::move(arcs), 3);
+    FsaCreator fsa_creator(arcs, 3);
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_connected = IsConnected(fsa);
     EXPECT_FALSE(is_connected);
   }
@@ -293,7 +313,8 @@ TEST(Properties, IsNotConnected) {
 TEST(Properties, IsConnected) {
   // empty fsa is connected
   {
-    Fsa fsa;
+    FsaCreator fsa_creator;
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_connected = IsConnected(fsa);
     EXPECT_TRUE(is_connected);
   }
@@ -304,7 +325,8 @@ TEST(Properties, IsConnected) {
         {1, 2, 0},
         {2, 3, 0},
     };
-    Fsa fsa(std::move(arcs), 3);
+    FsaCreator fsa_creator(arcs, 3);
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_connected = IsConnected(fsa);
     EXPECT_TRUE(is_connected);
   }
@@ -314,7 +336,8 @@ TEST(Properties, IsConnected) {
     std::vector<Arc> arcs = {
         {0, 3, 0}, {1, 2, 0}, {2, 3, 0}, {2, 4, 0}, {3, 1, 0},
     };
-    Fsa fsa(std::move(arcs), 4);
+    FsaCreator fsa_creator(arcs, 4);
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_connected = IsConnected(fsa);
     EXPECT_TRUE(is_connected);
   }
@@ -329,8 +352,13 @@ TEST(Properties, IsConnected) {
     opts.acyclic = true;
     opts.seed = 20200517;
 
-    Fsa fsa;
-    GenerateRandFsa(opts, &fsa);
+    RandFsaGenerator generator(opts);
+    Array2Size<int32_t> fsa_size;
+    generator.GetSizes(&fsa_size);
+
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa = fsa_creator.GetFsa();
+    generator.GetOutput(&fsa);
     bool is_connected = IsConnected(fsa);
     EXPECT_TRUE(is_connected);
   }
@@ -345,8 +373,13 @@ TEST(Properties, IsConnected) {
     opts.acyclic = false;
     opts.seed = 20200517;
 
-    Fsa fsa;
-    GenerateRandFsa(opts, &fsa);
+    RandFsaGenerator generator(opts);
+    Array2Size<int32_t> fsa_size;
+    generator.GetSizes(&fsa_size);
+
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa = fsa_creator.GetFsa();
+    generator.GetOutput(&fsa);
     bool is_connected = IsConnected(fsa);
     EXPECT_TRUE(is_connected);
   }
@@ -355,7 +388,8 @@ TEST(Properties, IsConnected) {
 TEST(FsaAlgo, IsAcyclic) {
   // empty fsa is acyclic
   {
-    Fsa fsa;
+    FsaCreator fsa_creator;
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_acyclic = IsAcyclic(fsa);
     EXPECT_TRUE(is_acyclic);
   }
@@ -365,7 +399,8 @@ TEST(FsaAlgo, IsAcyclic) {
     std::vector<Arc> arcs = {
         {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6},
     };
-    Fsa fsa(std::move(arcs), 3);
+    FsaCreator fsa_creator(arcs, 3);
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_acyclic = IsAcyclic(fsa);
     EXPECT_TRUE(is_acyclic);
   }
@@ -375,7 +410,8 @@ TEST(FsaAlgo, IsAcyclic) {
     std::vector<Arc> arcs = {
         {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
     };
-    Fsa fsa(std::move(arcs), 4);
+    FsaCreator fsa_creator(arcs, 4);
+    const auto &fsa = fsa_creator.GetFsa();
     bool is_acyclic = IsAcyclic(fsa);
     EXPECT_FALSE(is_acyclic);
   }
@@ -389,8 +425,14 @@ TEST(FsaAlgo, IsAcyclic) {
     opts.acyclic = true;
     opts.seed = 20200517;
 
-    Fsa fsa;
-    GenerateRandFsa(opts, &fsa);
+    RandFsaGenerator generator(opts);
+    Array2Size<int32_t> fsa_size;
+    generator.GetSizes(&fsa_size);
+
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa = fsa_creator.GetFsa();
+    generator.GetOutput(&fsa);
+
     bool is_acyclic = IsAcyclic(fsa);
     EXPECT_TRUE(is_acyclic);
   }

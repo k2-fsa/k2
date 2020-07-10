@@ -1,6 +1,6 @@
 # sort the files alphabetically
 pybind11_add_module(k2
-  fsa.cc
+  #fsa.cc 
   fsa_renderer.cc
   fsa_util.cc
   k2.cc

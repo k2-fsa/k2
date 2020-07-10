@@ -186,7 +186,7 @@ void EpsilonsRemover<TracebackState>::GetSizes(
   if (IsEmpty(fsa)) return;
   int32_t num_states_in = fsa.NumStates();
   int32_t final_state_in = fsa.FinalState();
-  const auto &arcs_in = fsa.data;
+  const auto &arcs_in = fsa.data + fsa.indexes[0];
   const float *arc_weights_in = fsa_in_.arc_weights;
 
   // identify all states that should be kept
@@ -224,19 +224,21 @@ void EpsilonsRemover<TracebackState>::GetSizes(
       int32_t arc_end = fsa.indexes[state + 1];
       for (int32_t arc_index = fsa.indexes[state]; arc_index != arc_end;
            ++arc_index) {
-        int32_t next_state = arcs_in[arc_index].dest_state;
-        int32_t label = arcs_in[arc_index].label;
-        float curr_arc_weight = arc_weights_in[arc_index];
+        const int32_t curr_arc_index = arc_index - fsa.indexes[0];
+        int32_t next_state = arcs_in[curr_arc_index].dest_state;
+        int32_t label = arcs_in[curr_arc_index].label;
+        float curr_arc_weight = arc_weights_in[curr_arc_index];
         double next_weight = curr_forward_weights + curr_arc_weight;
         if (next_weight + backward_state_weights[next_state] >= best_weight) {
           if (label == kEpsilon) {
             auto result = traceback_states.emplace(next_state, nullptr);
             if (result.second) {
               result.first->second = std::make_shared<TracebackState>(
-                  next_state, curr_traceback_state, arc_index, curr_arc_weight);
+                  next_state, curr_traceback_state, curr_arc_index,
+                  curr_arc_weight);
               qstates.insert(next_state);
             } else {
-              result.first->second->Accept(curr_traceback_state, arc_index,
+              result.first->second->Accept(curr_traceback_state, curr_arc_index,
                                            curr_arc_weight);
             }
           } else {
@@ -247,7 +249,7 @@ void EpsilonsRemover<TracebackState>::GetSizes(
             std::vector<typename TracebackState::DerivType> curr_arc_deriv;
             std::map<int32_t, TracebackState *> curr_states;
             curr_states.emplace(state, curr_traceback_state.get());
-            TraceBackRmEpsilons(&curr_states, arc_weights_in, arc_index,
+            TraceBackRmEpsilons(&curr_states, arc_weights_in, curr_arc_index,
                                 &curr_arc_deriv);
             std::reverse(curr_arc_deriv.begin(), curr_arc_deriv.end());
             derivs_num_out += curr_arc_deriv.size();

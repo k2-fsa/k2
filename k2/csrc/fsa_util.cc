@@ -11,12 +11,13 @@
 #include <cctype>
 #include <cstdlib>
 #include <random>
+#include <stack>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "glog/logging.h"
-#include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/connect.h"
 #include "k2/csrc/properties.h"
 #include "k2/csrc/util.h"
 
@@ -132,48 +133,55 @@ void SplitStringToVector(const std::string &in, const char *delim,
 
 namespace k2 {
 
-void GetEnteringArcs(const Fsa &fsa, std::vector<int32_t> *arc_index,
-                     std::vector<int32_t> *end_index) {
+void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes) {
+  CHECK_NOTNULL(arc_indexes);
+  CHECK_EQ(arc_indexes->size1, fsa.size1);
+  CHECK_EQ(arc_indexes->size2, fsa.size2);
+
   auto num_states = fsa.NumStates();
   std::vector<std::vector<int32_t>> vec(num_states);
   int32_t k = 0;
-  for (const auto &arc : fsa.arcs) {
+  for (const auto &arc : fsa) {
     auto dest_state = arc.dest_state;
     vec[dest_state].push_back(k);
     ++k;
   }
-  arc_index->clear();
-  end_index->clear();
 
-  arc_index->reserve(fsa.arcs.size());
-  end_index->reserve(num_states);
-
+  auto indexes = arc_indexes->indexes;
+  auto data = arc_indexes->data;
+  int32_t curr_state = 0;
+  int32_t num_arcs = 0;
   for (const auto &indices : vec) {
-    arc_index->insert(arc_index->end(), indices.begin(), indices.end());
-    auto end = static_cast<int32_t>(arc_index->size());
-    end_index->push_back(end);
+    indexes[curr_state++] = num_arcs;
+    std::copy(indices.begin(), indices.end(), data + num_arcs);
+    num_arcs += indices.size();
   }
+  CHECK_EQ(curr_state, num_states);
+  CHECK_EQ(num_arcs, fsa.size2);
+  indexes[curr_state] = num_arcs;
 }
 
 void GetArcWeights(const float *arc_weights_in,
-                   const std::vector<std::vector<int32_t>> &arc_map,
+                   const Array2<int32_t *, int32_t> &arc_map,
                    float *arc_weights_out) {
   CHECK_NOTNULL(arc_weights_in);
   CHECK_NOTNULL(arc_weights_out);
-  for (const auto &arcs : arc_map) {
+  for (int32_t i = 0; i != arc_map.size1; ++i) {
     float sum_weights = 0.0f;
-    for (auto arc : arcs) sum_weights += arc_weights_in[arc];
+    for (int32_t j = arc_map.indexes[i]; j != arc_map.indexes[i + 1]; ++j) {
+      int32_t arc_index_in = arc_map.data[j];
+      sum_weights += arc_weights_in[arc_index_in];
+    }
     *arc_weights_out++ = sum_weights;
   }
 }
 
-void GetArcWeights(const float *arc_weights_in,
-                   const std::vector<int32_t> &arc_map,
-                   float *arc_weights_out) {
+void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
+                   int32_t num_arcs, float *arc_weights_out) {
   CHECK_NOTNULL(arc_weights_in);
   CHECK_NOTNULL(arc_weights_out);
-  for (const auto &arc : arc_map) {
-    *arc_weights_out++ = arc_weights_in[arc];
+  for (int32_t i = 0; i != num_arcs; ++i) {
+    *arc_weights_out++ = arc_weights_in[arc_map[i]];
   }
 }
 
@@ -214,19 +222,35 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
   if (arc_map != nullptr) arc_map->swap(arc_map_out);
 }
 
-void Swap(Fsa *a, Fsa *b) {
-  CHECK_NOTNULL(a);
-  CHECK_NOTNULL(b);
-  std::swap(a->arc_indexes, b->arc_indexes);
-  std::swap(a->arcs, b->arcs);
+void ConvertIndexes1(const int32_t *arc_map, int32_t num_arcs,
+                     int64_t *indexes_out) {
+  CHECK_NOTNULL(arc_map);
+  CHECK_GE(num_arcs, 0);
+  CHECK_NOTNULL(indexes_out);
+  std::copy(arc_map, arc_map + num_arcs, indexes_out);
 }
 
-std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
-  static constexpr const char *kDelim = " \t";
+void GetArcIndexes2(const Array2<int32_t *, int32_t> &arc_map,
+                    int64_t *indexes1, int64_t *indexes2) {
+  CHECK_NOTNULL(indexes1);
+  CHECK_NOTNULL(indexes2);
+  std::copy(arc_map.data + arc_map.indexes[0],
+            arc_map.data + arc_map.indexes[arc_map.size1], indexes1);
+  int32_t num_arcs = 0;
+  for (int32_t i = 0; i != arc_map.size1; ++i) {
+    int32_t curr_arc_mappings = arc_map.indexes[i + 1] - arc_map.indexes[i];
+    std::fill_n(indexes2 + num_arcs, curr_arc_mappings, i);
+    num_arcs += curr_arc_mappings;
+  }
+}
 
-  std::istringstream is(s);
+void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {
+  CHECK_NOTNULL(fsa_size);
+  fsa_size->size1 = fsa_size->size2 = 0;
+
+  static constexpr const char *kDelim = " \t";
+  std::istringstream is(s_);
   std::string line;
-  std::vector<std::vector<Arc>> vec;  // index is state number
   bool finished = false;  // when the final state is read, set it to true.
   int32_t num_arcs = 0;
   while (std::getline(is, line)) {
@@ -245,13 +269,13 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
       arc.label = fields[2];
 
       auto new_size = std::max(arc.src_state, arc.dest_state);
-      if (new_size >= vec.size()) vec.resize(new_size + 1);
+      if (new_size >= arcs_.size()) arcs_.resize(new_size + 1);
 
-      vec[arc.src_state].push_back(arc);
+      arcs_[arc.src_state].push_back(arc);
       ++num_arcs;
     } else if (num_fields == 1u) {
       finished = true;
-      CHECK_EQ(fields[0] + 1, static_cast<int32_t>(vec.size()));
+      CHECK_EQ(fields[0] + 1, static_cast<int32_t>(arcs_.size()));
     } else {
       LOG(FATAL) << "invalid line: " << line;
     }
@@ -260,17 +284,21 @@ std::unique_ptr<Fsa> StringToFsa(const std::string &s) {
   CHECK_EQ(finished, true) << "The last line should be the final state";
   CHECK_GT(num_arcs, 0) << "An empty fsa is detected!";
 
-  std::unique_ptr<Fsa> fsa(new Fsa);
-  fsa->arc_indexes.resize(vec.size());
-  fsa->arcs.reserve(num_arcs);
-  int32_t i = 0;
-  for (const auto &v : vec) {
-    fsa->arc_indexes[i] = (static_cast<int32_t>(fsa->arcs.size()));
-    fsa->arcs.insert(fsa->arcs.end(), v.begin(), v.end());
-    ++i;
+  fsa_size->size1 = static_cast<int32_t>(arcs_.size());
+  fsa_size->size2 = num_arcs;
+}
+
+void StringToFsa::GetOutput(Fsa *fsa_out) {
+  CHECK_NOTNULL(fsa_out);
+  CHECK_EQ(fsa_out->size1, arcs_.size());
+
+  int32_t num_arcs = 0;
+  for (auto i = 0; i != fsa_out->size1; ++i) {
+    fsa_out->indexes[i] = num_arcs;
+    std::copy(arcs_[i].begin(), arcs_[i].end(), fsa_out->data + num_arcs);
+    num_arcs += arcs_[i].size();
   }
-  fsa->arc_indexes.emplace_back(fsa->arc_indexes.back());
-  return fsa;
+  fsa_out->indexes[fsa_out->size1] = num_arcs;
 }
 
 std::string FsaToString(const Fsa &fsa) {
@@ -279,10 +307,10 @@ std::string FsaToString(const Fsa &fsa) {
   static constexpr const char *kSep = " ";
   std::ostringstream os;
 
-  for (const auto &arc : fsa.arcs) {
+  for (const auto &arc : fsa) {
     os << arc.src_state << kSep << arc.dest_state << kSep << arc.label << "\n";
   }
-  os << fsa.NumStates() - 1 << "\n";
+  os << fsa.FinalState() << "\n";
   return os.str();
 }
 
@@ -296,23 +324,25 @@ RandFsaOptions::RandFsaOptions() {
   seed = 0;
 }
 
-void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
-  CHECK_NOTNULL(fsa);
-  CHECK_GT(opts.num_syms, 1);
-  CHECK_GT(opts.num_states, 1);
-  CHECK_GT(opts.num_arcs, 1);
+void RandFsaGenerator::GetSizes(Array2Size<int32_t> *fsa_size) {
+  CHECK_NOTNULL(fsa_size);
+  fsa_size->size1 = fsa_size->size2 = 0;
 
-  RandInt rand(opts.seed);
+  CHECK_GT(opts_.num_syms, 1);
+  CHECK_GT(opts_.num_states, 1);
+  CHECK_GT(opts_.num_arcs, 1);
+
+  RandInt rand(opts_.seed);
 
   // index is state_id
-  std::vector<std::vector<Arc>> state_to_arcs(opts.num_states);
+  std::vector<std::vector<Arc>> state_to_arcs(opts_.num_states);
   int32_t src_state;
   int32_t dest_state;
   int32_t label;
-  auto num_states = static_cast<int32_t>(opts.num_states);
+  auto num_states = static_cast<int32_t>(opts_.num_states);
 
   int32_t num_fails = -1;
-  int32_t max_loops = 100 * opts.num_arcs;
+  int32_t max_loops = 100 * opts_.num_arcs;
   do {
     ++num_fails;
     if (num_fails > 100)
@@ -322,10 +352,10 @@ void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
     std::unordered_set<std::pair<int32_t, int32_t>, PairHash> seen;
     int32_t tried = 0;
     for (auto i = 0;
-         i != static_cast<int32_t>(opts.num_arcs) && tried < max_loops;
+         i != static_cast<int32_t>(opts_.num_arcs) && tried < max_loops;
          ++tried) {
       src_state = rand(0, num_states - 2);
-      if (!opts.acyclic)
+      if (!opts_.acyclic)
         dest_state = rand(0, num_states - 1);
       else
         dest_state = rand(src_state + 1, num_states - 1);
@@ -337,27 +367,132 @@ void GenerateRandFsa(const RandFsaOptions &opts, Fsa *fsa) {
       if (dest_state == num_states - 1)
         label = kFinalSymbol;
       else
-        label = rand(0, static_cast<int32_t>(opts.num_syms - 1));
+        label = rand(0, static_cast<int32_t>(opts_.num_syms - 1));
 
       state_to_arcs[src_state].emplace_back(src_state, dest_state, label);
       ++i;
     }
 
-    Fsa tmp;
-    tmp.arc_indexes.reserve(opts.num_states + 1);
-    tmp.arcs.reserve(opts.num_arcs);
-
+    std::vector<Arc> tmp_arcs;
     for (const auto &arcs : state_to_arcs) {
-      tmp.arc_indexes.push_back(static_cast<int32_t>(tmp.arcs.size()));
-      tmp.arcs.insert(tmp.arcs.end(), arcs.begin(), arcs.end());
+      tmp_arcs.insert(tmp_arcs.end(), arcs.begin(), arcs.end());
     }
+    FsaCreator tmp_creator(tmp_arcs, num_states - 1);
+    auto &tmp_fsa = tmp_creator.GetFsa();
 
-    tmp.arc_indexes.push_back(tmp.arc_indexes.back());
+    Connection connection(tmp_fsa);
+    Array2Size<int32_t> out_fsa_size;
+    connection.GetSizes(&out_fsa_size);
 
-    Connect(tmp, fsa);
-  } while (!opts.allow_empty && IsEmpty(*fsa));
+    fsa_creator_.Init(out_fsa_size);
+    connection.GetOutput(&fsa_creator_.GetFsa());
+  } while (!opts_.allow_empty && IsEmpty(fsa_creator_.GetFsa()));
 
-  if (opts.acyclic) CHECK(IsAcyclic(*fsa));
+  if (opts_.acyclic) CHECK(IsAcyclic(fsa_creator_.GetFsa()));
+
+  const auto &generated_fsa = fsa_creator_.GetFsa();
+  fsa_size->size1 = generated_fsa.size1;
+  fsa_size->size2 = generated_fsa.size2;
+}
+
+void RandFsaGenerator::GetOutput(Fsa *fsa_out) {
+  CHECK_NOTNULL(fsa_out);
+
+  const auto &fsa = fsa_creator_.GetFsa();
+  CHECK_EQ(fsa_out->size1, fsa.size1);
+  CHECK_EQ(fsa_out->size2, fsa.size2);
+  std::copy(fsa.indexes, fsa.indexes + fsa.size1 + 1, fsa_out->indexes);
+  std::copy(fsa.data, fsa.data + fsa.size2, fsa_out->data);
+}
+
+void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
+               std::vector<int32_t> *arc_map /*=null_ptr*/) {
+  using dfs::DfsState;
+  using dfs::kNotVisited;
+  using dfs::kVisited;
+  using dfs::kVisiting;
+  CHECK_NOTNULL(fsa);
+  if (arcs.empty()) return;
+
+  using ArcWithIndex = std::pair<Arc, int32_t>;
+  int arc_id = 0;
+  std::vector<std::vector<ArcWithIndex>> vec;
+  for (const auto &arc : arcs) {
+    auto src_state = arc.src_state;
+    auto dest_state = arc.dest_state;
+    auto new_size = std::max(src_state, dest_state);
+    if (new_size >= vec.size()) vec.resize(new_size + 1);
+    vec[src_state].push_back({arc, arc_id++});
+  }
+
+  std::stack<DfsState> stack;
+  std::vector<char> state_status(vec.size(), kNotVisited);
+  std::vector<int32_t> order;
+
+  auto num_states = static_cast<int32_t>(vec.size());
+  for (auto i = 0; i != num_states; ++i) {
+    if (state_status[i] == kVisited) continue;
+    stack.push({i, 0, static_cast<int32_t>(vec[i].size())});
+    state_status[i] = kVisiting;
+    while (!stack.empty()) {
+      auto &current_state = stack.top();
+      auto state = current_state.state;
+
+      if (current_state.arc_begin == current_state.arc_end) {
+        state_status[state] = kVisited;
+        order.push_back(state);
+        stack.pop();
+        continue;
+      }
+
+      const auto &arc = vec[state][current_state.arc_begin].first;
+      auto next_state = arc.dest_state;
+      auto status = state_status[next_state];
+      switch (status) {
+        case kNotVisited:
+          state_status[next_state] = kVisiting;
+          stack.push(
+              {next_state, 0, static_cast<int32_t>(vec[next_state].size())});
+          ++current_state.arc_begin;
+          break;
+        case kVisiting:
+          LOG(FATAL) << "there is a cycle: " << state << " -> " << next_state;
+          break;
+        case kVisited:
+          ++current_state.arc_begin;
+          break;
+        default:
+          LOG(FATAL) << "Unreachable code is executed!";
+          break;
+      }
+    }
+  }
+
+  CHECK_EQ(num_states, static_cast<int32_t>(order.size()));
+  std::reverse(order.begin(), order.end());
+
+  CHECK_EQ(fsa->size1, num_states);
+  CHECK_EQ(fsa->size2, arcs.size());
+  std::vector<int32_t> arc_map_out;
+  arc_map_out.reserve(arcs.size());
+
+  std::vector<int32_t> old_to_new(num_states);
+  for (auto i = 0; i != num_states; ++i) old_to_new[order[i]] = i;
+
+  int32_t num_arcs = 0;
+  for (auto i = 0; i != num_states; ++i) {
+    auto old_state = order[i];
+    fsa->indexes[i] = num_arcs;
+    for (auto arc_with_index : vec[old_state]) {
+      auto &arc = arc_with_index.first;
+      arc.src_state = i;
+      arc.dest_state = old_to_new[arc.dest_state];
+      fsa->data[num_arcs++] = arc;
+      arc_map_out.push_back(arc_with_index.second);
+    }
+  }
+  fsa->indexes[num_states] = num_arcs;
+  if (arc_map != nullptr) arc_map->swap(arc_map_out);
 }
 
 }  // namespace k2
