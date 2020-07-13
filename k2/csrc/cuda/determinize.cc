@@ -6,11 +6,13 @@
  */
 
 
-// actually we'd simultaneously determinize an array of FSAs, in practice.
-void Determinize(Vec<Array2<Arc> > &Fsa,
-                 Vec<float*> input_scores,
-                 Allocator &alloc,
-                 ... ) {
+
+
+//  we'd simultaneously determinize an array of FSAs, in practice.
+void DeterminizeFsaArray(Array3<Arc>  &FsaVec,
+                         Array<float> &input_scores,
+                         Allocator &alloc,
+                         ... ) {
 
   // OK this may be a bit ugly, but the idea here is that we set the allocator
   // as a thread_local global variable so that it's available whenever
@@ -22,182 +24,276 @@ void Determinize(Vec<Array2<Arc> > &Fsa,
   SetDeviceAllocator(alloc);
 
 
-  int num_fsas = Fsa.size();
+  // The following mapping stuff would actually be an if...
+  // we'll do this mapping only if needed and call
+  Array2<Arc> Fsa;
+  Array<int> arc_map;
+  Array<short> fsa_idx;
+  Array<int> start_states;
+  ConvertToSingleFsa(FsaVec, &Fsa, &arc_map, fsa_idx, &start_states);
+
+  Determinize(...)I;
+
+  // Handle reverse mapping
+
+}
+
+// actually we'd simultaneously determinize an array of FSAs, in practice.
+// `begin_states` is the vector of start-states (one for each of the array
+// of FSA's that we've merged into one).
+void Determinize(const Array3<Arc> &input,
+                 const Array2<float> &input_scores,
+                 Allocator &alloc,
+                 ... ) {
+
+  // Array3<Arc> here means: list (multiple FSAs) of list (multiple states) of list of
+  // arcs, i.e. list of arcs leaving each state.
+  size_t reservation = input.dim(0) * 4;
 
 
-  // outer Vec< > around everything means 'for each of the FSAs we are
-  // determinizing'.
-  // Array2<Arc> means: list of list of arcs, i.e. list of arcs leaving
-  // each state.
-  Vec<Array2<Arc> > output(num_fsas);
+  Array2<Arc> output(...);  // indexed [i][num_arcs] where i is just an
+                            // arbitrary index.. see output_fsa_idxs and
+                            // output_state_idxs for how it maps to the real
+                            // output.
 
 
-  Array2<int> one_state_subsets("[ [ 0 ] ]");
-  Vec<Array2<int> > state_subsets(num_fsas, one_state_subsets);
-                                               // each of these is the set of input-states that
-                                               // corresponds to a particular output state.
-                                               // The order is arbitrary.
-  state_subsets[kI].push_back(Array<int>("0"));
+  Array<int> output_fsa_idxs;   // FSA-index in 0..input.dim(0)-1 for each state in `output`;
+                                // indexed by 1st index into Output.
+  Array<int> output_state_idxs;  // state-index for each state in `output`,
+                                 // i.e. the state within that output FSA.  It makes
+                                 // the algorithm easier to code, and memory
+                                 // management easier, if we put it all in one
+                                 // flat array.  Indexed by 1st index into `output`.
 
-  Vec<Array<float> > state_subset_scores(num_fsas, one_state_subset_scores);  // score for each element of
+
+
+  // suppose shape3 etc. are just tuples.
+
+  // state_subsets is indexed first by 'i' == 1st index into `output`, and then
+  // is a list of state-indexes in the corresponding input FSA (see output_fsa_idxs to
+  // see which input FSA).
+  Array2<int> state_subsets(...);
+
+  // score for each element of `state_subsets.elems`..
+  Array<float> state_subset_scores(..., 0.0);    // score for each element of
                                    // `state_subsets`... actually the subsets
                                    // are weighted subsets.  Note the most
                                    // negative score in each subset won't
                                    // necessarily be 0; the normalization method
                                    // is different in this algorithm.
-  state_subset_scores[kI].push_back(0.0);
 
-  // for each element of 'state_subsets[i].elems', 'state_subset_arcs[i]'
+  // for each element of 'state_subsets/state_subset_scores', 'state_subset_arcs'
   // contains the index of the incoming arc that created it, or -1 if this is
   // the start state.
-  Vec<Array<int> > state_subset_arcs(num_fsas, one_state_subset_arcs);
-  state_subset_arcs[kI].push_back(-1);
+  Array<int> state_subset_arcs(..., -1);
+
 
   // for each element of 'state_subsets.elems', the flat index of the previous
-  // element in `state_subsets` which 'created' this, or -1 if this was an
+  // element in `state_subsets` which 'created' this, or (-1,-1) if this was an
   // initial arc.  The arc (in state_subset_arcs) entering that previous state
   // will be a preceding arc on a path vs the arc in state_subset_arcs entering
   // this state.
-  Array<int> one_state_subset_traceback("0.0");
-  Vec<Array<int> > state_subset_traceback(num_fsas, one_state_subset_traceback);
+  Array<int> state_subset_traceback(..., -1);
 
 
-  Vec<Array2<int> > state_repr;      // Canonical representation of each ostate,
-                                     // which is a vector: istate, followed by
-                                     // symbol sequence that we follow from
-                                     // istate.
+  // For each output-state (indexed by 'i' == 1st index into `output` or into
+  // `state_subsets`), the input-state which is the starting point for following
+  // arcs with a particular sequence of symbols on them to find the set of input-states that comprise
+  // that output-state.  Part of the canonical representation of that input-state.
+  // See also `output_fsa_idxs` and `symbol_seq`.
+  Array<int> begin_state(...);
+
+  // For each output-state (indexed by 'i' == 1st index into `output` or into
+  // `state_subsets`), the sequence of symbols we follow on arcs from `begin_state[i]`
+  // to reach the weighted set of input-states that corresponds to this output-state.
+  Array2<int> symbol_seq(...);
 
 
+  // Note: the hash key will be derived from: (output_fsa_idxs[i], begin_state[i],
+  // symbol_seq[i]).
   typedef struct { int64_t a; int64_t b; } HashKeyType;
   struct Hasher {
     size_t operator () (const HashKeyType key);
   };
 
-  Vec<Array<HashKeyType> > state_repr_hash;  // hash-value of corresponding elements of
-                                         // state_repr (note: length of each one
-                                         // these is the size1() of the
-                                         // corresponding state_repr element.)
 
-  Hash<HashKeyType, int, Hasher> repr_hash_to_id;  // Maps from (fsa_index, hash of state_repr) to
-                                                   // corresponding state-id.   Note: it would be the
-                                                   // state-id *in that FSA*. (the FSA with index 0 <= fsa_index < num_fsas);
-                                                   // we keep everything in one hash.  (TODO: set the num-buckets appropriately).
+  // Indexed by the 'i' == 1st index into `output`, contains the hash value
+  // derived from (output_fsa_idxs[i], begin_state[i],
+  // symbol_seq[i]).
+  Array<HashKeyType> state_repr_hash(..);
+
+  // Maps from hash of state-representation to an index 'i' into output, which
+  // will correspond to a particular state in a particular output FSA.
+  Hash<HashKeyType, int, Hasher> repr_hash_to_idx;
+
 
   // TODO: initialize variables defined above, with 1st state.
 
-  // Note: host vector...
-  Vec<int> prev_ostate(num_fsas, 0);
+
+  // prev_idx is the next index into `output` (i.e. into the leading dim of
+  // `output` that we need to process: i.e. that we need to process arcs
+  // leaving those states.  (This is also the leading dim of state_subsets).
+  int prev_idx = 0;
+
+  // For each output FSA, the index of the next un-allocated output-state.
+  Array<int> next_ostate(num_fsas, 1);
 
   while (1) {
-
-
-    // while queue not empty...  (queue is the batch of newly added ostates.)
-
-
-    // Init as sub-range of state_subsets (subsets from prev_ostate to
-    // next_ostate).
-    // Note: `range` is a range on the 1st index into the array, the top-level
-    // one.
-    Vec<Array2Sub<int> > this_state_subsets(
-        this_state[kI].range(prev_ostate[kI], this_state[kI].size()));
-
+    int cur_idx = output.size();
 
     // will swap with prev_ostate.
-    Vec<int> next_ostate(this_state[kI].size());
+    HostArray<int> next_ostate = state_subsets.dim(1).Host();
 
 
-    // note, input[i].size() for each i would be a dynamic expression taking the
-    // diff between the offsets, i.e. size1() is a scalar but size() is a vector.
-    Vec<Array<int> > num_arcs = input[kI].size();
+    // range on axis 1...  this is a shallow op.
+    // Let the index into this_state_subsets
+    Array2<int> this_state_subsets = state_subsets.Range(0, prev_idx, cur_idx);
 
+    struct Filter1 {
+      __device__ pair<int,int> operator () (typename Array3<int>::iterator iter) const {
+        return pair<int,int>(idxs_data[acc.idx0()], acc.elem());
+      }
+      __device__ Filter1(const Filter1 &other): data(other.idxs_data) { }
+      Filter1(int *idxs_data): idxs_data(idxs_data) { }
+      int *idxs_data;  // device pointer, from output_fsa_idxs.
+    };
 
-    // Do array lookup to get num-arcs for each ostate, and then form an array3
-    // containing the arc indexes for the transitions we need to process.
-    // Here, flat_indexes is just replacing elems[i] with i, i.e. the flat indexes
-    // into the elems...
+    // Get an array indexed [i-prev_idx][elem_of_ostate][arc_from_that_elem].
+    // containing the flat arc indexes for the transitions we need to process.
     //
-    // Indexing with this_state_subsets[kI] means indexing with an Array2;
-    // For each scalar k in the array2, input[kI].flat_indexes[k] evaluates
-    // to a vector, so the overall thing is an Array3.
-    Vec<Array3<int> > arc_idxs(
-        input[kI].flat_indexes[this_state_subsets[kI]]);
+    // Note: input.flat_indexes contains the flat indexes into the elements (i.e.
+    // the indexes into input.elems) but it is not itself flat; it has the same
+    // 3d structure as `input`, so when indexed with a pair<int,int> it gives
+    // us a 1-d array of int, hence the extra level of array here.
+    //
+    // Note: FilteredArray3 is a dynamic creation, it doesn't get physically
+    // populated.
+    //
+    // NOTE: input.flat_indexes or any flat_indexes can be implemented using a
+    // special accesor; it just needs access to the shape.  This requires we
+    // be able to index a 3-d array with pair<int,int>.
+    Array3<int> arc_idxs = input.flat_indexes()[
+        FilteredArray3<pair<int,int> >(this_state_subsets,
+                                       Filter1(output_fsa_idxs.elems.data()))];
 
 
+    // Note on how elements of arc_idxs relate to elements of `state_subsets`:
+    // at this point, the combined (1st,2nd) indexes of arc_idxs, i.e.
+    // the offset into that 2nd-level array, gives us the flat index into
+    // `state_subsets.elems`.  Note, this only works because of how
+    // Range() is implemented internally, pointing to the underlying
+    // array; if it were copied this wouldn't work.  This is not very ideal.
+    struct ToStateSubsetsFilter {
+      __device__ int operator () (typename Array3<int>::accessor acc) const {
+        return acc.offset1();
+      }
+    };
 
+    // actually the following is an unnecesssary temporary.
+    // This is supposed to get the flat indexes into `this_state_subsets` that
+    // each element of `arc_idxs` corresponds to.  The + ... is to account
+    // for this_state_subsets being a range of state_subsets.
+    Array<int> state_subsets_flat_indexes = FilteredArray2<int>(arc_idxs,
+                                                                ToStateSubsetsFilter()).elems() + ...;
+
+
+    struct ArcToDestStateFilter {
+      using ValueType = int;
+      Arc *elems; // device pointer.
+
+      __host__ __device__ ArcToDestStateFilter(const ArcToDestStatFilter &other):
+          elems(other.elems) { }
+
+      __host__ ArcToDestStateFilter(Arc *elems): elems(elems) { }
+
+      int operator () (typename Array3<int>::accessor acc) const {
+        // Note, the arc format we're using is not very efficiently accessed like
+        // this, would be better to store src_state, dest_state and so on in separate
+        // arrays.
+        return elems[acc.elem()].next_state;
+      }
+    };
     // Use array lookup to get the next-state for each of the src-states..
-    // Note: each elem has same 3-dim structure as the Array3's in arc_idx's.
-    Vec<Array3<int> > next_state(
-        input[kI].elems[arc_idxs[kI]],
-        arc_to_dest_state_filter);  // arc_to_dest_state_filter is a class object with operator ()
-                                    // taking Arc and returning int, and a ValueType that we
-                                    // can use in template matching.
+    // Note: each elem has same 3-dim structure as the Array3's in arc_idxs.
+    Array3<int> next_state = FilteredArray3<int>(input.elems[arc_idxs],
+                                                 arc_to_dest_state_filter);
+                                    // arc_to_dest_state_filter is a class
+                                    // object with operator () taking Arc and
+                                    // returning int.
 
-    // Discard the last level of array in `next_state`, we don't care about origin state.
-    // Not, we won't resize this, so we can use Array2Base which is not resizable,
-    // and which is like a view or iterator (into next_state).
-    Vec<Array2Base<int> > next_state2 = next_state.collapse_last_level();
 
-    // Obtain a map that reorders `next_state2`, within each sub-list, so that
+    // Discard the last level of array in `next_state`, we don't care about
+    // origin state.  Note, we won't resize this, so we can use Array2Base which
+    // is not resizable, and which is like a view or iterator (into next_state).
+    Array2<int> next_state2 = next_state.concatenate(-1);
+
+    // Obtain a map that reorders `next_state2` within each sub-list, so that
     // the next-states are contiguous.
     // This is a sorting-sublists operation, so it's as if we're sorting the members
     // of each sublist in `next_state2`, and get not the sorted elements but the
-    // mapping of indexes.  (These are the flat indexes, i.e. into the .elems.
+    // mapping of indexes.  (These are the flat indexes, i.e. into the .elems.)
     bool flat_indexes = true;
-    Vec<Array2<int> > ranks = next_state2[kI].rank_sublists(flat_indexes);
+    Array2<int> sort_idxs = GetSublistSortOrder(next_state2, flat_indexes);
 
-    // This will be a reordering of `arc_idxs` using `ranks`, so that things with the
+    // This will be a reordering of `arc_idxs` using `sort_idxs`, so that things with the
     // same next-state are adjacent.
-    Vec<Array2<int> > arc_idxs2 = next_state2[kI].reorder_sublists(ranks, flat_indexes);
+    Array2<int> arc_idxs2 = arc_idxs;
+    arc_idxs2 = arc_idxs2.elems[sort_idxs];
 
-    // This will be sub-lists of `arc_idxs2`, so that those with the same next-state form
-    // individual sub-lists.  (Does not have to have reproducible ordering!)
+
+    // the flat indexes into `state_subsets` that correspond to each element of
+    // arc_idxs2.elems.
+    Array<int> state_subsets_flat_indexes2 = state_subset_flat_indexes[sort_idxs];
+
+    // Partition sub-lists of `arc_idxs2`, so that those with the same next-state form
+    // individual sub-lists.
     // Same underlying data.
-    // the following syntax may not be the best way.  We could perhaps do this in 2 stages,
-    // first getting the structure using a physical array of next-states, then
-    // getting the partition and then switching out the elems.
-    Vec<Array3<int> > arc_idxs3 = arc_idxs2[kI].partition(inputs[kI].elems[arc_idxs2.elems[kJ]].next_state);
+    Array3<int> arc_idxs3 = arc_idxs2.partition(next_state2.elems[sort_idxs]);
+
 
     // Get the scores with the same structures as arc_idxs3...
-    Vec<Array3<int> > this_scores(arc_idxs3, input_scores[kI][arc_idxs3[kI]]);
+    Array3<int> this_scores(arc_idxs3.shape(), input_scores.elems[arc_idxs3.elems]);
 
-    // Get ranks, reordering `this_scores` within each sub-sub-list so that the
+    // Get sort_idxs, for reordering `this_scores` within each sub-sub-list so that the
     // one with the best score is first, and if there is a tie on scores,
     // disambiguate with arc-index.  (Would give the sort routine a comparator
     // object).
-    Vec<Array3<int> > ranks2 = this_scores[kI].rank_sublists(flat_indexes);
+    // TODO: actually we could consider just finding the best in each sublist
+    // rather than fully sorting.  Would do that using a different kind of indexing.
+    Array3<int> sort_idxs2 = GetSublistSortOrder(this_scores, flat_indexes);
 
 
-    // this is a reordering of arc_idxs3 with `ranks2`.
-    Vec<Array3<int> > arc_idxs4 = arc_idxs3.reorder_sublists(ranks2, flat_indexes);
+    // this is a reordering of arc_idxs3 with `sort_idxs2`.
+    Array3<int> arc_idxs4(arc_idxs3.shape(), arc_idxs3.elems[sort_idxs2]);
+    Array<int> state_subsets_flat_indexes3 = state_subset_flat_indexes2[sort_idxs2];
 
 
     // this selects the arc indexes with what in Python would be [:,:,0];
     // meaning, take 1st element of each sub-list.  This discards transitions
     // into states that were not the best transition.
-    Vec<Array2<int> > arc_idxs5 = arc_idxs4[kI][kJ][kK][0];
+    // -1 is the axis (i.e. the last axis).
+    Array<int> elems_to_select = arc_idxs4.shape().offsets(-1).range(0, -1);
+    Array2<int> arc_idxs5 = Array3<int>(arc_idxs4.shape().without_last_level(),
+                                        arc_idxs4.elems[elems_to_select]);
 
 
     // Get the flat indexes into `state_subsets` that correspond to the
-    // originating (input-)states for each element of arc_idxs5.  Computing it
-    // would probably start with some kind of `range` expression and involve
-    // ranks and ranks2.
-    // MM.  It might be easier to propagate those indexes alongside the
-    // arc_idxs, or even use them in place of arc_idxs, and derive arc_idxs from
-    // them where necessary.
-    Vec<Array<int> > state_subset_idxs = arc_idxs5[kI][kJ].size()
+    // originating (input-)states for each element of arc_idxs5.elems
+    Array<int> state_subset_idxs = state_subsets_flat_indexes2[elems_to_select];
 
 
     // max_len is maximum length of any sequence in the states we were
     // extending, plus 1 because we extended with one new arc.
     // We'll have an iteration over this length.
-    // Note: in future, to make this more efficient, we'll consider reordering
+    // Note: in future, to make this more efficient, we could consider reordering
     // the sub-lists of `arc_idxs5` so that the ones which have a larger
     // length in state_repr go first.  that way, the later kernels in the sequence
-    // can run fewer threads.
-        int max_len = Max(state_subset  (MaxSublistLen(state_repr.range(...)) - 1) + 1;
+    // can run fewer threads.  (?)  Or do some other operation that
+    // removes unused positions/indexes as we go.
+    int max_len = Max(symbol_seq.shape.size(1).range(..., -1) + 1);
 
 
-    Array2<int> *cur_state_subset_indexes = &state_subset_idxs;
+    Array2<int> cur_state_subset_idxs = state_subset_idxs;
 
 
     /*
@@ -211,27 +307,42 @@ void Determinize(Vec<Array2<Arc> > &Fsa,
       sub-lists of length zero or one, but actually contains
       either the element of the sub-list, or -1 if there is no
       such element.
+
+      We could actually allocate the memory just once upfront,
+      as we know the size.
      */
-    Array<int> *arc_indxs = new Array<int>[max_len]( ...);
+    std::vector<Array<int> > arc_indxs(max_len, ...);
+
+
+    // num_new_output_arcs is the num_new_output_states *with duplicates*.  In
+    // general the real number of new output-states will be less than this.  but
+    // this is the number of new output-arcs (i.e. arcs in the output FSA).
+    int num_new_output_arcs = state_subset_idxs.size0();
 
 
     /*
-      For each potential output state, this will give the number of
-      arcs that we removed from its canonical representation, i.e.
-      the prefix that we removed.  Init with 0; we'll increment
-      in the loop.
+      For each potential output state, this will give the number of arcs in the
+      input-FSA that we removed from its canonical representation, i.e.  the
+      prefix that we removed.  Init with 0; we'll increment in the loop.
     */
-    Array<int> num_arcs_removed(...);
+    Array<int> num_arcs_removed(num_new_output_arcs, 0);
+
 
     /*
-      For each potential output state, this will give the base state
-      from which we take that sequence of arcs.  Init with -1.
-      (I think.  Or might be necessary to init with the current
-      base_state, which we can get from indexing `state_repr` appropriately,
-      with [some_array][0].
+      For each potential output state, this will give the base state from which
+      we take that sequence of arcs.  Init with -1.  (I think.  Or might be
+      necessary to init with the current base_state, which we can get from
+      indexing `state_repr` appropriately, with [some_array][0].
     */
     Array<int> base_state(...);
 
+    /*
+      Before we do the hash lookup, we need to compute the canonical
+      representation, which is: base_state, then symbol-sequence.
+      The "canonicalization" process consists of finding the longest
+      prefix of the symbol-sequence that we can follow and still
+      have a unique base_state (i.e there is no branching by then).
+    */
     for (i = 0; i < max_len; i++) {
       /*
         TODO: one way to speed this up would be some kind of mask (e.g. one
@@ -241,8 +352,7 @@ void Determinize(Vec<Array2<Arc> > &Fsa,
 
       // init with 1's.  we'll use this to tell whether all the elements we're
       // tracing back are identical.
-      Array<int> is_same(state_subset_idxs.size1, 1);
-
+      Array<int> is_same(cur_state_subset_idxs.size0(), 1);
 
       // The syntax below won't be what we'll use, but the idea here is that
       // for each sub-list in `cur_state_subset_indexes` (where each sub-list represents
@@ -251,13 +361,21 @@ void Determinize(Vec<Array2<Arc> > &Fsa,
       // can be done using a simple if-statement in the kernel; it's based on
       // comparing the current element of the sub-list to the 1st element of
       // the sub-list.
+      // We could also do it with a simple filter, eval'd, that
+      // would run on cur_state_subset_idxs.
       TestIsSame(&cur_state_subset_indexes, &is_same);
 
       /*  The next code will set arc_indxs[i].  If is_same[j] is true, we'll set
-          arc_indxs[i] to an arc-index (conceptually an arc on the prefix of the
-          path, that we're removing, and otherwise, we'll set it to -1.
+          arc_indxs[i] to an arc-index.  This is an arc on the prefix of the
+          path, that we're removing.  Otherwise, we'll set it to -1.
           This is straightforward and fast.
+          Note: the reason we need to keep track of the 'removed' arc_indxs is
+          so that we can output the derivative information and know how to
+          normalize the scores of state subsets.  (Actually this normalization
+          only keeps things in a good numerical range, it doesn't affect the
+          algorithm).
       */
+
 
       /* The next code will increment `num_arcs_removed` if the corresponding element
          of arc_indxs was not -1.  */
@@ -334,21 +452,21 @@ void Determinize(Vec<Array2<Arc> > &Fsa,
       // compute exclusive prefix sum of `is_new` -> `prefix_sum`..
       ExclusivePrefixSum(is_new, &prefix_sum);
 
-      int num_new = ranks[repr_idx.size() - 1];
-      Array<int> ranks(num_new + 1);
-      // `ranks` will, after the next call, be a vector giving the positions in
+      int num_new = sort_idxs[repr_idx.size() - 1];
+      Array<int> sort_idxs(num_new + 1);
+      // `sort_idxs` will, after the next call, be a vector giving the positions in
       // `repr_hash` of the hash elements that were newly added to the hash (not
       // counting repeats of the same hash element in that vector; only an
       // arbitrarily chosen one).
-      GroupsToOffsets(prefix_sum, &ranks);
-      ranks.resize(num_new); // discard last elem.
+      GroupsToOffsets(prefix_sum, &sort_idxs);
+      sort_idxs.resize(num_new); // discard last elem.
 
 
       Array<int> new_state_nums = range(next_ostate,
                                         next_ostate + num_new);
       // The following call will replace the temporary values we put in the hash above
       // (greater than one million) with the "real" values.
-      HashSet(repr_hash[ranks], new_state_nums, &hash);
+      HashSet(repr_hash[sort_idxs], new_state_nums, &hash);
 
 
       {  // Now set `state_repr`
@@ -360,7 +478,7 @@ void Determinize(Vec<Array2<Arc> > &Fsa,
         // The .remove_prefix() thing means to remove the first n elements
         // of the `repr`.
         state_repr.Append(
-            this_repr[ranks].remove_prefix(num_arcs_removed[ranks]));
+            this_repr[sort_idxs].remove_prefix(num_arcs_removed[sort_idxs]));
 
       }
 
