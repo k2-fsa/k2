@@ -44,6 +44,8 @@ class Tensor {
  public:
   Tensor() = default;
   explicit Tensor(py::capsule capsule);
+  Tensor(const Tensor &) = delete;
+  Tensor &operator=(const Tensor &) = delete;
   ~Tensor();
 
   // Return true if the tensor is empty; false otherwise.
@@ -58,7 +60,8 @@ class Tensor {
 
   // Return the stride for the i-th dimension.
   //
-  // the returned result designates the number of elements, NOT number of bytes
+  // the returned result designates the number of elements, NOT number of bytes.
+  // `i` should be in [0, NumDim())
   int64_t Stride(int32_t i) const;
 
   // The returned pointer is NOT owned by the caller.

@@ -29,7 +29,7 @@ template <typename T, typename I = int32_t>
 struct StridedPtr {
   T *data;   // it is NOT owned here
   I stride;  // in number of elements, NOT number of bytes
-  StridedPtr(T *data = nullptr, I stride = 0)  // NOLINT
+  explicit StridedPtr(T *data = nullptr, I stride = 0)  // NOLINT
       : data(data), stride(stride) {}
 
   T &operator[](I i) { return data[i * stride]; }
@@ -290,7 +290,7 @@ struct DataPtrCreator<StridedPtr<ValueType, I>, I> {
 template <typename Ptr, typename I>
 struct Array2Storage {
   using ValueType = typename Array2<Ptr, I>::ValueType;
-  explicit Array2Storage(const Array2Size<I> &array2_size, I stride)
+  Array2Storage(const Array2Size<I> &array2_size, I stride)
       : indexes_storage_(new I[array2_size.size1 + 1]),
         data_storage_(new ValueType[array2_size.size2 * stride]) {
     array_.size1 = array2_size.size1;

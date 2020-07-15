@@ -6,6 +6,8 @@
 
 #include "k2/python/csrc/tensor.h"
 
+#include "glog/logging.h"
+
 namespace k2 {
 
 // refer to
@@ -90,10 +92,14 @@ bool Tensor::Empty() const { return dl_managed_tensor_ != nullptr; }
 int32_t Tensor::NumDim() const { return dl_managed_tensor_->dl_tensor.ndim; }
 
 int64_t Tensor::Shape(int32_t i) const {
+  DCHECK_GE(i, 0);
+  DCHECK_LT(i, NumDim());
   return dl_managed_tensor_->dl_tensor.shape[i];
 }
 
 int64_t Tensor::Stride(int32_t i) const {
+  DCHECK_GE(i, 0);
+  DCHECK_LT(i, NumDim());
   return dl_managed_tensor_->dl_tensor.strides[i];
 }
 
@@ -114,7 +120,7 @@ void Tensor::Check() const {
   CHECK(dtype_ == kInt32Type || dtype_ == kFloatType)
       << "We support only int32_t and float at present";
 
-  CHECK_EQ(BytesPerElement(), 4);
+  CHECK_EQ(BytesPerElement(), 4) << "Only int32_t and float are supported";
 
   CHECK_EQ(dl_managed_tensor_->dl_tensor.dtype.lanes, 1u)
       << "We support only one lane";

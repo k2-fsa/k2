@@ -6,16 +6,16 @@ import re
 from collections import defaultdict
 
 import torch
+from torch.utils.dlpack import to_dlpack
 
-from _k2 import Fsa_
-from .array import ArcArray2
+from _k2 import Fsa
 
 
-def str_to_fsa(s: str) -> Fsa_:
+def str_to_fsa(s: str) -> Fsa:
     '''Create an FSA from a string.
 
     The input string `s` consists of several lines; every line except the
-    last line has following format:
+    last line has the following format:
 
         <src_state> <dest_state> <label>
 
@@ -26,11 +26,11 @@ def str_to_fsa(s: str) -> Fsa_:
     Args:
         s (str): a string representation of the fsa
     Returns:
-        k2.Fsa_
+        k2.Fsa
     '''
     rule_pattern = re.compile(
         r'^[ \t]*(\d+)[ \t]+(\d+)[ \t]+([-]?\d+)[ \t]*$$')
-    final_state_pattern = re.compile(r'^[ \t\f\v]*(\d+)[ \t\f\v]*$')
+    final_state_pattern = re.compile(r'^[ \t]*(\d+)[ \t]*$')
     rules = s.strip().split('\n')
 
     final_state = None
@@ -61,9 +61,11 @@ def str_to_fsa(s: str) -> Fsa_:
     # the final state is repeated
     indexes.append(num)
 
-    data = torch.tensor(arcs, dtype=torch.int32).to(torch.int32)
+    data = torch.tensor(arcs, dtype=torch.int32)
     indexes = torch.tensor(indexes, dtype=torch.int32)
 
-    arcs = ArcArray2(indexes, data)
-    fsa = Fsa_(arcs, final_state)
+    data = to_dlpack(data)
+    indexes = to_dlpack(indexes)
+
+    fsa = Fsa(indexes, data)
     return fsa

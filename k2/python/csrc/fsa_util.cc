@@ -9,6 +9,5 @@
 #include "k2/csrc/fsa_util.h"
 
 void PybindFsaUtil(py::module &m) {
-  //  m.def("string_to_fsa", &k2::StringToFsa);
-  m.def("fsa_to_string", &k2::FsaToString);
+  m.def("fsa_to_str", &k2::FsaToString, py::arg("fsa"));
 }
