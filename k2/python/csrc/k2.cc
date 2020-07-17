@@ -7,12 +7,11 @@
 #include "k2/python/csrc/k2.h"
 
 #include "k2/python/csrc/fsa.h"
-#include "k2/python/csrc/fsa_renderer.h"
 #include "k2/python/csrc/fsa_util.h"
 
-PYBIND11_MODULE(k2, m) {
+PYBIND11_MODULE(_k2, m) {
   m.doc() = "pybind11 binding of k2";
-  // PybindFsa(m);
-  PybindFsaRenderer(m);
+  PybindArc(m);
+  PybindFsa(m);
   PybindFsaUtil(m);
 }
