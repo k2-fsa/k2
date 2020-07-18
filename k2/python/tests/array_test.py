@@ -16,7 +16,7 @@ import torch
 import k2
 
 
-class TestFsa(unittest.TestCase):
+class TestArray(unittest.TestCase):
 
     def test_int_array2(self):
         data = torch.arange(10).to(torch.int32)

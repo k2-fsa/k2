@@ -17,12 +17,12 @@ namespace k2 {
    DLPackArray2 initializes Array2 with `cap_indexes` and `cap_data` which are
    DLManagedTensors.
 
-   `cap_indexes` is usually a one dimension contiguous array, i.e.,
+   `cap_indexes` is usually a one dimensional contiguous array, i.e.,
    `cap_indexes.ndim == 1 && cap_indexes.strides[0] == 1`.
 
    `cap_data` may have different shapes depending on `ValueType`:
        1. if `ValueType` is a primitive type (e.g. `int32_t`), it will be
-          a one dimension contiguous array, i.e.,
+          a one dimensional contiguous array, i.e.,
           `cap_data.ndim == 1 && cap_data.strides[0] == 1`.
        2. if `ValueType` is a complex type (e.g. Arc), it will be a two
           dimension array, i.e., it meets the following requirements:
@@ -123,13 +123,13 @@ void PybindArray2Tpl(py::module &m, const char *name) {
       .def_readonly("size2", &PyClass::size2)
       .def("indexes", [](const PyClass &self, I i) { return self.indexes[i]; })
       .def("data", [](const PyClass &self, I i) { return self.data[i]; });
-  // TODO(haowen): expose `indexes` and `data` as a array
+  // TODO(haowen): expose `indexes` and `data` as an array
   // instead of a function call?
 }
 
 void PybindArray(py::module &m) {
-  // Note: all following wrappers whose name start with `_` are only used by
-  // pybind11 internally so that it knows `k2::DLPackArray2` is a subclass of
+  // Note: all the following wrappers whose name starts with `_` are only used
+  // by pybind11 internally so that it knows `k2::DLPackArray2` is a subclass of
   // `k2::Array2`.
   py::class_<k2::Array2<int32_t *>>(m, "_IntArray2");
   PybindArray2Tpl<int32_t *, true>(m, "DLPackIntArray2");
