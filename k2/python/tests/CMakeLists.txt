@@ -18,6 +18,7 @@ endfunction()
 
 # please sort the files in alphabetic order
 set(py_test_files
+    array_test.py
     fsa_test.py
 )
 
