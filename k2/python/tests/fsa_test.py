@@ -37,6 +37,10 @@ class TestFsa(unittest.TestCase):
         self.assertEqual(fsa.final_state(), 4)
         self.assertFalse(fsa.empty())
         self.assertIsInstance(fsa, k2.Fsa)
+        self.assertIsInstance(fsa.data(0), k2.Arc);
+        self.assertEqual(fsa.data(0).src_state, 0)
+        self.assertEqual(fsa.data(0).dest_state, 1)
+        self.assertEqual(fsa.data(0).label, 1)
 
 
 if __name__ == '__main__':

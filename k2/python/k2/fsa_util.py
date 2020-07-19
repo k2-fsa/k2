@@ -6,9 +6,8 @@ import re
 from collections import defaultdict
 
 import torch
-from torch.utils.dlpack import to_dlpack
 
-from _k2 import Fsa
+from .fsa import Fsa
 
 
 def str_to_fsa(s: str) -> Fsa:
@@ -63,9 +62,6 @@ def str_to_fsa(s: str) -> Fsa:
 
     data = torch.tensor(arcs, dtype=torch.int32)
     indexes = torch.tensor(indexes, dtype=torch.int32)
-
-    data = to_dlpack(data)
-    indexes = to_dlpack(indexes)
 
     fsa = Fsa(indexes, data)
     return fsa

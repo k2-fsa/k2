@@ -46,3 +46,6 @@ GSYMS
 GPATH
 tags
 TAGS
+
+# python build files
+**/__pycache__
