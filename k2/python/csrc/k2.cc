@@ -8,12 +8,15 @@
 
 #include "k2/python/csrc/array.h"
 #include "k2/python/csrc/fsa.h"
+#include "k2/python/csrc/fsa_algo.h"
 #include "k2/python/csrc/fsa_util.h"
 
 PYBIND11_MODULE(_k2, m) {
   m.doc() = "pybind11 binding of k2";
   PybindArc(m);
   PybindArray(m);
+  PybindArray2Size(m);
   PybindFsa(m);
   PybindFsaUtil(m);
+  PybindFsaAlgo(m);
 }
