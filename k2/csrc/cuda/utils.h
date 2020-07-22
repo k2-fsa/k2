@@ -1,4 +1,5 @@
 // Some quite low-level utilities.
+// CAUTION: this is not up to date, I will simplify this probably.
 
 
 /**

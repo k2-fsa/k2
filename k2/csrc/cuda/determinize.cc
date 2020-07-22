@@ -1,3 +1,5 @@
+// CAUTION: this is old code, using older versions of interfaces that no longer exist.
+// Please ignore for now.
 
 
 /*
@@ -32,29 +34,26 @@ void DeterminizeFsaArray(Array3<Arc>  &FsaVec,
   Array<int> start_states;
   ConvertToSingleFsa(FsaVec, &Fsa, &arc_map, fsa_idx, &start_states);
 
-  Determinize(...)I;
+  Determinize(...);
 
   // Handle reverse mapping
 
 }
 
-// actually we'd simultaneously determinize an array of FSAs, in practice.
+// We simultaneously determinize an array of FSAs, in practice (that's why
+// it's Ragged3 and not Ragged2 input).
 // `begin_states` is the vector of start-states (one for each of the array
 // of FSA's that we've merged into one).
-void Determinize(const Array3<Arc> &input,
-                 const Array2<float> &input_scores,
+void Determinize(const Ragged3<Arc> &input,
+                 const Array1<float> &input_scores,
                  Allocator &alloc,
                  ... ) {
 
-  // Array3<Arc> here means: list (multiple FSAs) of list (multiple states) of list of
-  // arcs, i.e. list of arcs leaving each state.
-  size_t reservation = input.dim(0) * 4;
 
-
-  Array2<Arc> output(...);  // indexed [i][num_arcs] where i is just an
-                            // arbitrary index.. see output_fsa_idxs and
-                            // output_state_idxs for how it maps to the real
-                            // output.
+  Ragged2<Arc> output(...);  // indexed [i][num_arcs] where i is just an
+                             // arbitrary index.. see output_fsa_idxs and
+                             // output_state_idxs for how it maps to the real
+                             // output.
 
 
   Array<int> output_fsa_idxs;   // FSA-index in 0..input.dim(0)-1 for each state in `output`;

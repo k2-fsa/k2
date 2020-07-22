@@ -4,10 +4,10 @@
 
 
 /*
-  Allocator that allocates memory on GPU.  Likely won't call CUDA's
-  malloc for each request, as that's very slow.  We'll probably ensure that we have one
-  DeviceAllocator per CPU thread to avoid the need for locks.
-  We'll likely
+  Allocator that allocates memory on GPU.  Likely won't call CUDA's malloc for
+  each request, as that's very slow.  We'll probably ensure that we have one
+  DeviceAllocator per CPU thread, as a thread_local variable, to avoid the need for locks
+  and for passing this object around all the time.
  */
 class DeviceAllocator {
   // Allocate memory on device; throws std::bad_alloc if could not.
