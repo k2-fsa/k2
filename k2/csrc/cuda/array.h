@@ -1,39 +1,27 @@
-#include "k2/csrc/cuda/memory.h"
+#include "k2/csrc/cuda/context.h"
 
 
 /*
-  Array1* is a 1-dimensional contiguous array (i.e. it doesn't support a stride).
+  Array1* is a 1-dimensional contiguous array (that doesn't support a stride).
 */
-
-
 template <typename T> class Array1 {
  public:
-  int size;  // dimension of only (1st) axis
-  int byte_offset;  // Offset from region->data, in bytes.  (Not storing the
-                    // data locally allows us to move the underlying data in
-                    // 'region' to handle resizing, without risk of dangling
-                    // pointers).
-  T *data();  // Gives pointer to 1st elem
-  std::shared_ptr<Region> region;  // Region that `data` is a part of.  Device
-                                   // type is stored here.  For an Array1 with
-                                   // zero size (e.g. created using empty
-                                   // constructor), will point to an empty
-                                   // Region.
+  int size() const { return size_; }  // dimension of only (1st) axis
+
+  T *data();  // Returns pointer to 1st elem
 
 
-  // generally T will be some kind of lambda.  We'll do src(i) to
-  // evaluate element i.  If 'd' is kGpu we'll assume lambda is callable
-  // on-device; otherwise we'll assume it's callable on CPU.
-  template <typename T>
-  Array1(DeviceType d, int size, T lambda) {
-    Init(d, size);
-    if (d == kGpu) {
-      Eval<T,kGpu>(data, size, lambda);
-    } else {
-      Eval<T,kCpu>(data, size, lambda);
-    } else {
-      assert("Can't initialize array with unknown device type");
-    }
+
+  // generally L will be some kind of lambda or function object; it should be
+  // possible to evaluate it on the CUDA device (if we're compiling with CUDA)
+  // and also on the CPU.  We'll do src(i) to evaluate element i.
+  // NOTE: we assume this thread is already set to use the device associated with the
+  // context in 'ctx', if it's a CUDA context.
+  template <typename L>
+  Array1(ContextPtr ctx, int size, L lambda) {
+    Init(ctx, size);
+
+    Eval(ctx->DeviceType(), data, size, lambda);
   }
 
   DeviceType Device() { return region->device; }
@@ -44,6 +32,15 @@ template <typename T> class Array1 {
   void Resize(int new_size);
 
  private:
+  int size_;
+  int byte_offset_;
+  std::shared_ptr<Region> region_; // Region that `data` is a part of.  Device
+                                   // type is stored here.  For an Array1 with
+                                   // zero size (e.g. created using empty
+                                   // constructor), will point to an empty
+                                   // Region.
+
+
   void Init(DeviceType d, int size) {
     // .. takes care of allocation etc.
   }

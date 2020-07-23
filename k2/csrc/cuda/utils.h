@@ -1,3 +1,5 @@
+#include <cub/cub.cuh>
+#include <
 // Some quite low-level utilities.
 // CAUTION: this is not up to date, I will simplify this probably.
 
@@ -153,11 +155,19 @@
 
 
 /**
-   Perform exclusive cumulative sum: s[i] = 0 + t[0] + t[1] + ... t[i-1] for
-   0 <= i <= ninputs.  Note: this only accesses the input
-   t[i] for 0 <= i < ninputs.
+   Perform exclusive cumulative sum: dest[i] = 0 + src[0] + src[1] + ... src[i-1] for
+   0 <= i < n.  Note: although the input for 0 <= i < n-1 is all that affects
+   the output, the last element src[n-1] may still be accessed in the CUDA kernel
+   so you should make sure it was allocated as part of the array being summed
+   even if the value was not set.
 
-      @param [in] t        Input array (device pointer); size given by t.size().
+      @param [in] D     Device.  If n > 0 must be kCpu or kGpu; if n == 0, kUnk is also
+                        allowed.
+
+      @param [in] n     Number of elements in the input and output arrays (although
+                        only items up to n-1 in the input array will affect the
+                        result).  Must be >= 0
+
       @param [out] s       Array to which to write the exclusive sum (device pointer); size
                            must be at least t.size() + 1.
       @param [out] cpu_total  Optionally (if non-NULL), the sum of the elements
@@ -180,9 +190,16 @@
        value at the most recent multiple of BLOCK_SIZE, so the array would look
        like [ 0 1 3 6 10 15 ].
  */
+template <typename SrcPtr, typename DestPtr>
+void ExclusivePrefixSum(DeviceType D, int n, SrcPtr src, DestPtr dest);
+// This template is defined in utils
+  if (n == 0) return;
+  assert(n > 0);
+}
+
 template <typename SrcPtr, typename DestVec, typename DestCategory>
 ExclusiveCumSumImpl(SrcPtr &src, DestVec &dest,
-                typename DestVec::ValueType *cpu_total);
+                    typename DestVec::ValueType *cpu_total);
 
 template <typename SrcPtr, typename DestVec>
 ExclusiveCumSum(SrcPtr &src, DestVec &dest,
