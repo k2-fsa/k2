@@ -11,16 +11,32 @@
 
 import unittest
 
+import torch
+
 import k2
 
 
 class TestFsa(unittest.TestCase):
 
     def test_arc(self):
+        # construct arc
         arc = k2.Arc(1, 2, 3)
         self.assertEqual(arc.src_state, 1)
         self.assertEqual(arc.dest_state, 2)
         self.assertEqual(arc.label, 3)
+
+        # test from_tensor
+        arc_tensor = torch.tensor([1, 2, 3], dtype=torch.int32)
+        arc = k2.Arc.from_tensor(arc_tensor)
+        self.assertEqual(arc.src_state, 1)
+        self.assertEqual(arc.dest_state, 2)
+        self.assertEqual(arc.label, 3)
+
+        # test to_tensor
+        arc.src_state = 2
+        arc_tensor = arc.to_tensor()
+        arc_tensor_target = torch.tensor([2, 2, 3], dtype=torch.int32)
+        self.assertTrue(torch.equal(arc_tensor, arc_tensor_target))
 
     def test_fsa(self):
         s = r'''
@@ -37,10 +53,13 @@ class TestFsa(unittest.TestCase):
         self.assertEqual(fsa.final_state(), 4)
         self.assertFalse(fsa.empty())
         self.assertIsInstance(fsa, k2.Fsa)
-        self.assertIsInstance(fsa.data(0), k2.Arc);
-        self.assertEqual(fsa.data(0).src_state, 0)
-        self.assertEqual(fsa.data(0).dest_state, 1)
-        self.assertEqual(fsa.data(0).label, 1)
+        # test get_data
+        self.assertEqual(fsa.get_data(0).src_state, 0)
+        self.assertEqual(fsa.get_data(0).dest_state, 1)
+        self.assertEqual(fsa.get_data(0).label, 1)
+        # fsa.data and the corresponding k2::Fsa object are sharing memory
+        fsa.data[0] = torch.IntTensor([5, 1, 6])
+        self.assertEqual(fsa.get_data(0).src_state, 5)
 
 
 if __name__ == '__main__':

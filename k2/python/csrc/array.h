@@ -10,5 +10,6 @@
 #include "k2/python/csrc/k2.h"
 
 void PybindArray(py::module &m);
+void PybindArray2Size(py::module &m);
 
 #endif  // K2_PYTHON_CSRC_ARRAY_H_

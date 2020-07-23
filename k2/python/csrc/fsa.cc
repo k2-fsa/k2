@@ -14,8 +14,8 @@
 
 namespace k2 {
 
-// it uses external memory passed from DLPack (e.g., by PyTorch)
-// to construct an Fsa.
+// DLPackFsa initializes Fsa with `cap_indexes` and `cap_data` which are
+// DLManagedTensors.
 class DLPackFsa : public Fsa {
  public:
   DLPackFsa(py::capsule cap_indexes, py::capsule cap_data)
@@ -50,7 +50,7 @@ class DLPackFsa : public Fsa {
 
 void PybindArc(py::module &m) {
   using PyClass = k2::Arc;
-  py::class_<PyClass>(m, "Arc")
+  py::class_<PyClass>(m, "_Arc")
       .def(py::init<>())
       .def(py::init<int32_t, int32_t, int32_t>(), py::arg("src_state"),
            py::arg("dest_state"), py::arg("label"))
@@ -70,21 +70,33 @@ void PybindFsa(py::module &m) {
   py::class_<k2::Fsa>(m, "_Fsa");
 
   using PyClass = k2::DLPackFsa;
-  py::class_<PyClass, k2::Fsa>(m, "DLPackFsa")
+  using Parent = k2::Fsa;
+  py::class_<PyClass, Parent>(m, "DLPackFsa")
       .def(py::init<py::capsule, py::capsule>(), py::arg("indexes"),
            py::arg("data"))
-      .def("empty", &PyClass::Empty)
       .def(
-          "__iter__",
-          [](const PyClass &self) {
-            return py::make_iterator(self.begin(), self.end());
-          },
-          py::keep_alive<0, 1>())
+          "get_base", [](PyClass &self) -> Parent * { return &self; },
+          py::return_value_policy::reference_internal)
+      .def("empty", &PyClass::Empty)
       .def_readonly("size1", &PyClass::size1)
       .def_readonly("size2", &PyClass::size2)
-      .def("indexes",
-           [](const PyClass &self, int32_t i) { return self.indexes[i]; })
-      .def("data", [](const PyClass &self, int32_t i) { return self.data[i]; })
+      .def(
+          "get_indexes",
+          [](const PyClass &self, int32_t i) {
+            if (i > self.size1)  // note indexes.size == size1+1
+              throw py::index_error();
+            return self.indexes[i];
+          },
+          "just for test purpose to check if k2::Fsa and the "
+          "underlying tensor are sharing memory.")
+      .def(
+          "get_data",
+          [](const PyClass &self, int32_t i) {
+            if (i >= self.size2) throw py::index_error();
+            return self.data[self.indexes[0] + i];
+          },
+          "just for test purpose to check if k2::Fsa and the "
+          "underlying tensor are sharing memory.")
       .def("num_states", &PyClass::NumStates)
       .def("final_state", &PyClass::FinalState);
 }
