@@ -3,3 +3,4 @@ from .array import *
 from .fsa import *
 from .fsa_algo import *
 from .fsa_util import str_to_fsa
+from .properties import *

@@ -68,7 +68,7 @@ class AuxLabels1Mapper {
       : labels_in_(labels_in), arc_map_(arc_map) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know now much memory will be needed, and output
     that information
         @param [out] aux_size   The number of lists in the output AuxLabels
                                 (equals num-arcs in the output FSA) and

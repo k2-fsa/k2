@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R fsa_arcsort_test_py
+#  ctest --verbose -R arcsort_test_py
 #
 
 import unittest
@@ -23,12 +23,12 @@ class TestArcSort(unittest.TestCase):
         fsa = k2.Fsa.create_fsa_with_size(array_size)
         arc_map = k2.IntArray1.create_array_with_size(fsa.size2)
         k2.arc_sort(fsa, arc_map)
-        self.assertTrue(fsa.empty())
+        self.assertTrue(k2.is_empty(fsa))
         self.assertTrue(arc_map.empty())
 
         # test without arc_map
         k2.arc_sort(fsa)
-        self.assertTrue(fsa.empty())
+        self.assertTrue(k2.is_empty(fsa))
 
     def test_arc_sort(self):
         s = r'''
@@ -62,14 +62,13 @@ class TestArcSorter(unittest.TestCase):
         array_size = k2.IntArray2Size()
         sorter.get_sizes(array_size)
         fsa_out = k2.Fsa.create_fsa_with_size(array_size)
-        arc_map = k2.IntArray1.create_array_with_size(fsa.size2)
+        arc_map = k2.IntArray1.create_array_with_size(array_size.size2)
         sorter.get_output(fsa_out, arc_map)
-        self.assertTrue(fsa.empty())
-        self.assertTrue(arc_map.empty())
+        self.assertTrue(k2.is_empty(fsa))
 
         # test without arc_map
         sorter.get_output(fsa_out)
-        self.assertTrue(fsa.empty())
+        self.assertTrue(k2.is_empty(fsa_out))
 
     def test_arc_sort(self):
         s = r'''
@@ -87,7 +86,7 @@ class TestArcSorter(unittest.TestCase):
         array_size = k2.IntArray2Size()
         sorter.get_sizes(array_size)
         fsa_out = k2.Fsa.create_fsa_with_size(array_size)
-        arc_map = k2.IntArray1.create_array_with_size(fsa.size2)
+        arc_map = k2.IntArray1.create_array_with_size(array_size.size2)
         sorter.get_output(fsa_out, arc_map)
         expected_arc_indexes = torch.IntTensor([0, 3, 5, 6, 6, 6])
         expected_arcs = torch.IntTensor([[0, 2, 0], [0, 4, 0], [0, 1, 2],
