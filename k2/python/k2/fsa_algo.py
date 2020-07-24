@@ -20,17 +20,18 @@ class ArcSorter(_ArcSorter):
     def __init__(self, fsa_in: Fsa):
         super().__init__(fsa_in.get_base())
 
-    def get_sizes(self, array_size: IntArray2):
-        super().get_sizes(array_size)
+    def get_sizes(self, array_size: IntArray2) -> None:
+        return super().get_sizes(array_size)
 
-    def get_output(self, fsa_out: Fsa, arc_map: IntArray1 = None):
-        super().get_output(fsa_out.get_base(),
-                           arc_map.get_base() if arc_map is not None else None)
+    def get_output(self, fsa_out: Fsa, arc_map: IntArray1 = None) -> None:
+        return super().get_output(
+            fsa_out.get_base(),
+            arc_map.get_base() if arc_map is not None else None)
 
 
-def arc_sort(fsa: Fsa, arc_map: IntArray1 = None):
-    _arc_sort(fsa.get_base(),
-              arc_map.get_base() if arc_map is not None else None)
+def arc_sort(fsa: Fsa, arc_map: IntArray1 = None) -> None:
+    return _arc_sort(fsa.get_base(),
+                     arc_map.get_base() if arc_map is not None else None)
 
 
 class TopSorter(_TopSorter):
@@ -38,8 +39,8 @@ class TopSorter(_TopSorter):
     def __init__(self, fsa_in: Fsa):
         super().__init__(fsa_in.get_base())
 
-    def get_sizes(self, array_size: IntArray2):
-        super().get_sizes(array_size)
+    def get_sizes(self, array_size: IntArray2) -> None:
+        return super().get_sizes(array_size)
 
     def get_output(self, fsa_out: Fsa, state_map: IntArray1 = None) -> bool:
         return super().get_output(
@@ -52,8 +53,8 @@ class Connection(_Connection):
     def __init__(self, fsa_in: Fsa):
         super().__init__(fsa_in.get_base())
 
-    def get_sizes(self, array_size: IntArray2):
-        super().get_sizes(array_size)
+    def get_sizes(self, array_size: IntArray2) -> None:
+        return super().get_sizes(array_size)
 
     def get_output(self, fsa_out: Fsa, arc_map: IntArray1 = None) -> bool:
         return super().get_output(
@@ -66,8 +67,8 @@ class Intersection(_Intersection):
     def __init__(self, fsa_a: Fsa, fsa_b: Fsa):
         super().__init__(fsa_a.get_base(), fsa_b.get_base())
 
-    def get_sizes(self, array_size: IntArray2):
-        super().get_sizes(array_size)
+    def get_sizes(self, array_size: IntArray2) -> None:
+        return super().get_sizes(array_size)
 
     def get_output(self,
                    fsa_out: Fsa,

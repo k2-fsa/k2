@@ -1,4 +1,4 @@
-// k2/python/csrc/property.h
+// k2/python/csrc/properties.h
 
 // Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
 

@@ -25,15 +25,15 @@ void PyBindArcSort(py::module &m) {
           "get_output",
           [](PyClass &self, k2::Fsa *fsa_out,
              k2::Array1<int32_t *> *arc_map = nullptr) {
-            self.GetOutput(fsa_out,
-                           arc_map == nullptr ? nullptr : arc_map->data);
+            return self.GetOutput(fsa_out,
+                                  arc_map == nullptr ? nullptr : arc_map->data);
           },
           py::arg("fsa_out"), py::arg("arc_map").none(true));
 
   m.def(
       "_arc_sort",
       [](k2::Fsa *fsa, k2::Array1<int32_t *> *arc_map = nullptr) {
-        k2::ArcSort(fsa, arc_map == nullptr ? nullptr : arc_map->data);
+        return k2::ArcSort(fsa, arc_map == nullptr ? nullptr : arc_map->data);
       },
       "in-place version of ArcSorter", py::arg("fsa"),
       py::arg("arc_map").none(true));

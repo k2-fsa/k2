@@ -1,4 +1,4 @@
-// k2/python/csrc/property.cc
+// k2/python/csrc/properties.cc
 
 // Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
 
@@ -17,7 +17,7 @@
 // We can make it accept `None` with `std::optional` in pybind11, but
 // that will require C++17, so we here choose to write a version without
 // `order`.
-bool IsAcyclic(const k2::Fsa &fsa) {
+static bool IsAcyclic(const k2::Fsa &fsa) {
   return k2::IsAcyclic(fsa /*, std::vector<int32_t>* order = nullptr*/);
 }
 
