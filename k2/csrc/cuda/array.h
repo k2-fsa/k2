@@ -31,6 +31,8 @@ template <typename T> class Array1 {
   // See Region::num_bytes vs. Region::bytes_used.
   void Resize(int new_size);
 
+  ContextPtr &Context() { return region_->context; }
+
  private:
   int size_;
   int byte_offset_;

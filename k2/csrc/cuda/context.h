@@ -63,6 +63,7 @@ class Context {
   virtual ~Context();
 };
 
+typedef std::shared_ptr<Context> ContextPtr;
 
 /*
   Note: Region will always be allocated with std::make_shared<Region>(...), and
@@ -77,13 +78,12 @@ class Context {
 */
 struct Region {
   // The 'context' is an object that
-  std::shared_ptr<Context> context;
+  ContextPtr context;
   void *data;        // Pointer to the start of the allocated memory region
   size_t num_bytes;  // number of bytes allocated.
   size_t bytes_used;  // largest number of bytes used/covered by any Array that
                       // points to this Region (this is relevant for things that
                       // behave like resizable vectors).
-
   // You need template arg to invoke this, e.g. region->GetData<int>();
   // You can also choose to template additionally on the device-type, like
   // region->GetData<int,kGpu>(), to activate a check that it's on the expected
@@ -125,7 +125,6 @@ std::shared_ptr<Region> NewRegion(const std::shared_ptr<Context> &context,
   ans->bytes_used = num_bytes;
 }
 
-typedef std::shared_ptr<Context> ContextPtr;
 
 /*
   Convenience wrapper for NewRegion() that takes the context from a provided region.
@@ -133,4 +132,12 @@ typedef std::shared_ptr<Context> ContextPtr;
 std::shared_ptr<Region> NewRegion(const Region &region,
                                   size_t num_bytes) {
   return NewRegion(region->context, num_bytes);
+}
+
+
+// Objects from k2 generally have a Context() method, so this template
+// will work to get the device-type for pretty arbitrary objects.
+template <typename T>
+inline DeviceType DeviceOf(T t) {
+  return t.Context().GetDeviceType();
 }
