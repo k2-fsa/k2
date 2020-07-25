@@ -65,6 +65,18 @@ class Context {
 
 typedef std::shared_ptr<Context> ContextPtr;
 
+template <typename T> ContextPtr GetContext(const T& t) {
+    // suppose T has member method `Context`
+    return t.Context();
+}
+
+template <typename First, typename... Rest> ContextPtr GetContext(const First& first, const Rest&... rest) {
+    ContextPtr ans1 = GetContext(first),  ans2 = GetContext(rest...);
+    assert(*ans1 == *ans2 && "Contexts mismatch");
+    // std::cout << sizeof...(Rest)<< std::endl;
+    return ans1;
+}
+
 /*
   Note: Region will always be allocated with std::make_shared<Region>(...), and
   holders of a Region will hold it via shared_ptr.
