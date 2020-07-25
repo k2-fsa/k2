@@ -5,6 +5,7 @@ pybind11_add_module(_k2
   fsa_algo.cc
   fsa_util.cc
   k2.cc
+  properties.cc
   tensor.cc
 )
 

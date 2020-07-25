@@ -1,4 +1,3 @@
-
 function(k2_add_py_test source)
   get_filename_component(name ${source} NAME_WE)
   set(name "${name}_py")
@@ -18,9 +17,13 @@ endfunction()
 
 # please sort the files in alphabetic order
 set(py_test_files
+    arcsort_test.py
     array_test.py
-    fsa_arcsort_test.py
+    connect_test.py
     fsa_test.py
+    intersect_test.py
+    properties_test.py
+    topsort_test.py
 )
 
 foreach(source IN LISTS py_test_files)

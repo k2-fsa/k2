@@ -68,7 +68,7 @@ class AuxLabels1Mapper {
       : labels_in_(labels_in), arc_map_(arc_map) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know how much memory will be needed, and output
     that information
         @param [out] aux_size   The number of lists in the output AuxLabels
                                 (equals num-arcs in the output FSA) and
@@ -110,7 +110,7 @@ class AuxLabels2Mapper {
       : labels_in_(labels_in), arc_map_(arc_map) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know how much memory will be needed, and output
     that information
         @param [out] aux_size   The number of lists in the output AuxLabels
                                 (equals num-arcs in the output FSA) and
@@ -152,7 +152,7 @@ class FstInverter {
       : fsa_in_(fsa_in), labels_in_(labels_in) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know how much memory will be needed, and output
     that information
         @param [out] fsa_size   The num-states and num-arcs of the FSA
                                 will be written to here

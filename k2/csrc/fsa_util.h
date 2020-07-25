@@ -249,7 +249,7 @@ class StringToFsa {
   explicit StringToFsa(const std::string &s) : s_(s) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know how much memory will be needed, and output
     that information
         @param [out] fsa_size   The num-states and num-arcs of the output FSA
                                 will be written to here
@@ -297,7 +297,7 @@ class RandFsaGenerator {
   explicit RandFsaGenerator(const RandFsaOptions &opts) : opts_(opts) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know how much memory will be needed, and output
     that information
         @param [out] fsa_size   The num-states and num-arcs of the generated FSA
                                 will be written to here

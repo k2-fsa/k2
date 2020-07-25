@@ -10,6 +10,7 @@
 #include "k2/python/csrc/fsa.h"
 #include "k2/python/csrc/fsa_algo.h"
 #include "k2/python/csrc/fsa_util.h"
+#include "k2/python/csrc/properties.h"
 
 PYBIND11_MODULE(_k2, m) {
   m.doc() = "pybind11 binding of k2";
@@ -19,4 +20,5 @@ PYBIND11_MODULE(_k2, m) {
   PybindFsa(m);
   PybindFsaUtil(m);
   PybindFsaAlgo(m);
+  PybindProperties(m);
 }
