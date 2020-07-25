@@ -5,33 +5,12 @@ struct Arc {
   int32_t src_state;
   int32_t dest_state;
   int32_t symbol;
-  float score;
+  float score;  // we have the space to put this here, so...
 };
 
 using Fsa = RaggedShape2<Arc>;
 
-/*
-  differs from the CPU-based FSA in that:
-    - we don't use a struct, but keep separate fields separate.  (More
-      efficient memory access).
-    - we don't have a separate field for the src_state of the arc; instead,
-      we can get this from the row_ids.
-
- */
-class Fsa {
- public:
-  RaggedShape2 shape;
-  Array1<int> dest_state;
-  Array1<int> symbol;
-};
-
-
-class FsaVec {
- public:
-  RaggedShape3 shape;
-  Array1<int> src_state;
-  Array1<int> symbol;
-};
+using FsaVec = RaggedShape3<Arc>;
 
 
 /*

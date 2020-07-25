@@ -97,6 +97,18 @@ struct Region {
 };
 
 
+// Return a basic Context object suitable for work on the CPU.
+std::shared_ptr<Context> CpuContext();
+
+
+// Return a basic Context object suitable for work with CUDA,
+// with specified GPU-id (or the first one we grab, if gpu_id == -1).
+// This will be a *native* context, one that used k2's own memory
+// manager.  If you want to use (say) PyTorch's memory manager,  you
+// should use a Context passed in from PyTorch
+std::shared_ptr<Context> CudaContext(int gpu_id=-1);
+
+
 /**
    Allocate a new Region.
 

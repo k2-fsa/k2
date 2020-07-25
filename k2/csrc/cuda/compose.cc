@@ -1,3 +1,6 @@
+#include <compose.h>
+
+// Caution: this is really a .cu file.  It contains mixed host and device code.
 
 
 
@@ -8,44 +11,6 @@ void Intersect(const DenseFsa &a, const FsaVec &b, Fsa *c,
 
 }
 
-
-/*
-  A record of one (composed) state active on one frame.
-  On each frame we'll store an Array2 of these, indexed [fsa_id][state].
- */
-struct StateRecord {
-  int32_t state_abs_id;  // The absolute state-id in the decoding graph, which
-                         // is the position in the vector of states
-                         // (i.e. including any offset if this is not the 1st
-                         // FSA).
-  float forward_loglike;  // The forward log-likelihood.  Note, this is
-                          // Viterbi-style (done with max, not sum); easier to
-                          // code that way.
-  float backward_loglike;  // The backward log-likelihood.
-};
-
-/*
-  A record one one arc/transition active on one frame.  On each frame we'll store
-  an Array3 of these, indexed [fsa_id][src_state][arc]; this will
-  have been compacted by removing arcs below the beam.
-
-  The Array3 structure will give us info about the fsa_id and about the state
-  from which it leaves (and implicitly we'll know the frame).
-*/
-struct ArcRecord {
-  int32_t arc_abs_id;  // The arc-index of the arc in the decoding graph from
-                       // which this arc is derived.  "absolute" because it's
-                       // within the entire vector of FSAs, not an individual
-                       // FSA.  This can be used to look up the src_state and
-                       // dest_state of this arc.
-                       // We may at some point be using arc_abs_id == -1 to
-                       // indicate 'no arc here' (e.g. if it was pruned away).
-
-  float loglike;       // The total loglike on the arc, which has 2 parts: the
-                       // loglike from the decoding graph and the loglike from
-                       // the nnet output.  TODO, later: eventually introduce a
-                       // per-frame offset to reduce roundoff error.
-};
 
 
 class MultiGraphDenseIntersect {
@@ -76,6 +41,7 @@ class MultiGraphDenseIntersect {
       max_active_(max_active), min_active_(min_active),
       dynamic_beams_(a_fsas.Size0(), beam),
       state_map_(a_fsas.TotSize1(), -1) {
+    c_ = GetContext(a_fsas, b_fsas);
     assert(beam > 0 && max_active > 0);
     Intersect();
   }
@@ -115,19 +81,19 @@ class MultiGraphDenseIntersect {
     // i.e. it's indexed by [fsa_id][state].
     Array1<float> max_per_fsa = MaxPerSubSublist(end_probs);
 
-    Array1<int> size_per_fsa(Sizes1());
+    Array1<int> active_states_per_fsa(c_, end_probs.Sizes1());
 
-    float *max_per_fsa_data = max_per_fsa.values.data,
-        *dynamic_beams_data = dynamic_beams_.values.data;
+    float *max_per_fsa_data = max_per_fsa.values.data(),
+        *dynamic_beams_data = dynamic_beams_.values.data();
     float beam = beam_,
         max_active = max_active_, min_active = min_active_;
-    int *size_per_fsa_data = size_per_fsa.values.data;
+    int *active_per_fsa_data = active_state_per_fsa.values.data();
 
     auto lambda = __device__ [max_per_fsa_data, dynamic_beams_data,
-                   size_per_fsa_data, beam, max_active, min_active ] (int i) -> float {
+                   active_per_fsa_data, beam, max_active, min_active ] (int i) -> float {
                     float best_loglike = max_per_fsa_data[i],
                         dynamic_beam = dynamic_beams_data[i];
-                    int num_active = size_per_fsa_data[i];
+                    int num_active = active_per_fsa_data[i];
                     float ans;
                     if (num_active <= max_active) {
                       if (num_active > min_active) {
@@ -147,13 +113,13 @@ class MultiGraphDenseIntersect {
                     }
                     return ans;
                   };
-    Array1<float> new_beam(num_fsas, lambda);
+    Array1<float> new_beam(c_, num_fsas, lambda);
     dynamic_beam_.swap(&new_beam);
 
     float *dynamic_beam_data = dynamic_beam_.data;
     auto lambda2 = __device__ [dynamic_beam_data,max_per_fsa_data] (int i)->float {
-                                return max_per_fsa_data[i] - dynamic_beam_data[i]; }
-    *cutoffs = Array1<float>(num_fsas, lambda2);
+                                return max_per_fsa_data[i] - dynamic_beam_data[i]; };
+    *cutoffs = Array1<float>(c_, num_fsas, lambda2);
   }
 
   /*
@@ -175,7 +141,7 @@ class MultiGraphDenseIntersect {
                      return fsa_arc_offsets[abs_state_index+1]-fsa_arc_offsets[abs_state_index];
                   };
     // 'sizes' gives the num-arcs for each state in `states`.
-    Array<int> sizes(states.values.size(), lambda1);
+    Array<int> sizes(c_, states.values.size(), lambda1);
 
     // initialize shape of array that will hold arcs leaving the active states.
     // [fsa_index][state][arc].
@@ -187,8 +153,8 @@ class MultiGraphDenseIntersect {
         *ai_row_splits2 = arcs_shape.RowSplits2(),
 
         *arc_row_splits2 = a_fsas_.RowSplits2();  // indexed by absolute-state-id
-                                                 // (which combines FSA-id and
-                                                 // state-id)
+                                                  // (which combines FSA-id and
+                                                  // state-id)
     Arc *arcs = a_fsas_.values.data;
     int *nnet_output_row_ids = b_fsas_.shape.RowIds1();
     float *score_data = b_fsas_.scores.data;
@@ -246,7 +212,7 @@ class MultiGraphDenseIntersect {
 
     int *ai_row_ids1 = arc_info.RowIds1().data(),
         *ai_row_ids2 = arc_info.RowIds2().data(),
-        *state_map-data = state_map_.data();
+        *state_map_data = state_map_.data();
     auto lambda3 == __host__ __device__ [ai_data,ai_row_ids1,ai_row_ids2,cutoffs_data](int i) -> void {
                                  int32_t fsa_id = ai_row_ids1[ai_row_ids2[i]];
                                  int32_t abs_dest_state = ai_data[i].abs_dest_state;
@@ -256,35 +222,40 @@ class MultiGraphDenseIntersect {
                                    // The following is a race condition as multiple threads may write to
                                    // the same location, but it doesn't matter, the point is to assign
                                    // one index i
-                                   state_map[abs_dest_state] = i;
+                                   state_map_datax[abs_dest_state] = i;
                                  }
                                };
     Eval(D, arc_info.elems.size(), lambda3);
 
 
-    Array1<char> keep_this_arc(arc_info.elems.size(), 0);
-    // For each unique state that
-    Array1<char> for_state_order(arc_info.elems.size(), 0);
+    // 1 if we keep this arc, else 0.
+    Array1<char> keep_this_arc(c_, arc_info.elems.size(), 0);
+
+    // 1 if we keep the destination-state of this arc, else 0; but only one of
+    // the arcs leading to any given state has this set.
+    Array1<char> keep_this_state(c_, arc_info.elems.size(), 0);
 
     // Note: we don't just keep arcs that were above the pruning threshold, we
     // keep all arcs whose destination-states survived pruning.  Later we'll
     // prune with the lattice beam, using both forward and backward scores.
+    char *keep_this_arc_data = keep_this_arc.data(),
+        *keep_this_state_data = keep_this_state.data();
     auto lambda4 = __host__ __device__ [ai_data](int i) -> void {
                                          int32_t abs_dest_state = ai_data[i].abs_dest_state;
-                                         int j = state_map[abs_dest_state];
+                                         int j = state_map_data[abs_dest_state];
                                          if (j != -1) {
-                                           keep_this_arc[j] = 1;
+                                           keep_this_arc_data[j] = 1;
                                            if (j == i)
-                                             for_state_order = 1;
+                                             keep_this_state_data[i] = 1;
                                          }
                                        };
     Eval(D, arc_info.elems.size(), lambda4);
 
     // The '+1' is so we can easily get the total num-arcs and num-states.
-    Array1<int> arc_reorder(arc_info.elems.size() + 1),
-        state_reorder(arc_info.elems.size() + 1);
+    Array1<int> arc_reorder(c_, arc_info.elems.size() + 1),
+        state_reorder(c_, arc_info.elems.size() + 1);
     ExclusiveSum(keep_this_arc, &arc_reorder);
-    ExclusiveSum(for_state_order, &state_reorder);
+    ExclusiveSum(keep_this_state, &state_reorder);
     // OK, 'arc_reorder' and 'state_reorder' contain indexes for where we put
     // each kept arc and each kept state.
     int num_arcs = arc_reorder[arc_reorder.size()-1],
@@ -395,8 +366,9 @@ class MultiGraphDenseIntersect {
     // [fsa_idx][state_n], where fsa_id is as in `a_fsas` arg to
     // IntersectDensePruned, and state_n is a zero-based index that basically
     // counts the unique states active on this frame, in arbitrary order.
+    //
+    // We will call the index into states.values a "frame_state_index".
     Ragged2<StateInfo> states;
-
 
     // Indexed [fsa_idx][state_n][arc_idx] where arc_idx=0,1,.. just enumerates
     // the arcs that were not pruned away.  Note: there may be indexes [fsa_idx]
@@ -405,6 +377,7 @@ class MultiGraphDenseIntersect {
     Ragged3<ArcInfo> arcs;
   };
 
+  ContextPtr c_;
   FsaVec &a_fsas_;
   DenseFsaVec &b_fsas_;
   float beam_;
