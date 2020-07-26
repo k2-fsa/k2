@@ -1,7 +1,14 @@
 MIT License
 
-Copyright (c) 2020 Daniel Povey
-Copyright (c) 2020- The Authors (see individual files for names)
+Copyright (c) 2020- The Authors (see commit history and individual files
+        for names)
+All Rights Reserved
+
+ NOTE (this is not from the MIT license): The copyright model is that authors
+ (or their employers, if noted in individual files) own their individual
+ contributions.  The authors' contributions can be discerned from the git
+ history.
+
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

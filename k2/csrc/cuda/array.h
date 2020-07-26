@@ -24,6 +24,12 @@ template <typename T> class Array1 {
     Eval(ctx->DeviceType(), data, size, lambda);
   }
 
+  /* Return sub-part of this array
+     @param [in] start  First element to cover, 0 <= start < size()
+     @param [in] size   Number of elements to include, 0 < size < size()-start
+  */
+  Array1 Range(int start, int size);
+
   DeviceType Device() { return region->device; }
 
   // Resizes, copying old contents if we could not re-use the same memory location.
@@ -33,6 +39,7 @@ template <typename T> class Array1 {
 
   ContextPtr &Context() { return region_->context; }
 
+  Array1(const Array1 &other) = default;
  private:
   int size_;
   int byte_offset_;

@@ -81,7 +81,7 @@
 
   Relation to other concepts:
    A vector of sizes can be seen as the difference of successive elements of
-  a vector of offsets, i.e. sizes[i] = offsets[i+1] - offsets[i].
+  a vector of row_splits, i.e. sizes[i] = row_splits[i+1] - row_splits[i].
 /
 
 /*
@@ -104,9 +104,9 @@
   and so on.
 
   Relation to other concepts:
-    See 'groups concept' where its relation to 'offsets' is described.
-    If offsets = [ 0 2 3 5 ], the corresponding 'groups' is:
-    groups = [ 0 0 1 2 2 ].
+    See 'row_ids concept' where its relation to 'row_splits' is described.
+    If row_splits = [ 0 2 3 5 ], the corresponding 'row_ids' is:
+    row_ids = [ 0 0 1 2 2 ].
 */
 
 /*
@@ -118,26 +118,26 @@
   be 1.
 
   Relation to other concepts:
-    The exclusive cumulative sum of a vector of tails is a vector of groups.
+    The exclusive cumulative sum of a vector of tails is a vector of row_ids.
   E.g. the above example, with exclusive cumulative sum, is:
     [ 0 0 1 1 1 1 2 ].
  */
 
 /*
-  groups concept
+  row_ids concept
 
-  A vector of groups is a vector of the form
+  A vector of row_ids is a vector of the form
     [ 0 0 0 1 1 2 2 2 ]
   or in the general case any nonnegative, non-decreasing list of integers.  Each
   group represents the index of the sub-list to which that position belongs; for
-  instance, if we had a list-of-lists like [ x x x ] [ y y ] [ z z z ], the
-  above vector of groups would describe its structure.
+  instance, if we had a list-of-lists like [ a b c ] [ d e ] [ f g h ], the
+  above vector of row_ids would describe its structure.
 
   Relation to other concepts:
-    A vector of groups can arise as the cumulative sum of a vector of tails.
-    A vector of groups and a vector of offsets represent the same information
-     in different ways, satisfying offsets[groups[i]] <= i < offsets[groups[i] + 1]
-     and offsets[offsets.size() - 1] == groups.size().
+    A vector of row_ids can arise as the cumulative sum of a vector of tails.
+    A vector of row_ids and a vector of row_splits represent the same information
+     in different ways, satisfying row_splits[row_ids[i]] <= i < row_splits[row_ids[i] + 1]
+     and row_splits[row_splits.size() - 1] == row_ids.size().
 
 */
 
@@ -147,10 +147,10 @@
   sub-indexes represent the positions within the sub-lists, of a linearized list-of-lists.
   An example vector of sub-indexes is: [ 0 1 0 1 2 0 1 ].
 
-  Relation to groups and offsets:
-    sub_indexes[i] = offsets[groups[i] - i
+  Relation to row_ids and row_splits:
+    sub_indexes[i] = row_splits[row_ids[i] - i
   We will generally not explicitly write 'sub-indexes' to arrays but will compute them
-  on the fly from the corresponding offsets and groups.
+  on the fly from the corresponding row_splits and row_ids.
 */
 
 
@@ -274,23 +274,23 @@ T MaxValue(size_t nelems, T *t)
        x[orig_i] = x[i];
 */
 template <typename DeviceVec, typename DeviceVecW>
-    T OffsetsToGroups(DeviceVec offsets, DeviceVecW groups);
+    T RowSplitsToRowIds(DeviceVec row_splits, DeviceVecW row_ids);
 
 
 /*
-  See above for 'groups concept' and 'offsets' concept.
-  This function turns a vector of groups into a vector of offsets,
+  See above for 'row_ids concept' and 'row_splits' concept.
+  This function turns a vector of row_ids into a vector of row_splits,
   e.g. given [ 0 0 1 1 1 2 ] it would produce [ 0 2 5 6 ].
 
-   @param [in] groups  Input DeviceVec representing groups
-   @param [out] offsets  Output DeviceVecW representing offsets;
-                     its size must equal groups[groups.size() - 1] + 2.
+   @param [in] row_ids  Input DeviceVec representing row_ids
+   @param [out] row_splits  Output DeviceVecW representing row_splits;
+                     its size must equal row_ids[row_ids.size() - 1] + 2.
 
-   At exit (from the kernel, of course), for each 0 <= i <= groups.size(), if i
-   == 0 or i == groups.size() or groups[i] != groups[i+1], offsets[groups[i]]
-   will be set to i.  Note: the offsets must be consecutive (no gaps,
+   At exit (from the kernel, of course), for each 0 <= i <= row_ids.size(), if i
+   == 0 or i == row_ids.size() or row_ids[i] != row_ids[i+1], row_splits[row_ids[i]]
+   will be set to i.  Note: the row_splits must be consecutive (no gaps,
    i.e. nothing like [ 0 0 2 2 3 ], or certain elements of the output
-   `offsets` will be undefined.
+   `row_splits` will be undefined.
  */
 template <typename DeviceVec, typename DeviceVecW>
-void GroupsToOffsets(DeviceVec groups, DeviceVecW offsets);
+void RowIdsToRowSplits(DeviceVec row_ids, DeviceVecW row_splits);

@@ -94,9 +94,29 @@ Ragged2<T> Ragged2FromRowIds(int num_rows,
      @param [in] elems     The elements of the ragged3 array (The only constraint on
                        the size of this array is that if shape2 has TotSize1()==0,
                        it must be empty).
-     @param [in] row_ids   A nondecreasing vector of integers 0 <= i < shape2.TotSize1()
+     @param [in] row_ids   A nondecreasing vector of integers 0 <= i < shape2.TotSize1(),
+                        with row_ids.size() == elems.size(), that maps each element of
+                        `elems` to positions in the elemsn of a Ragged2 array with shape
+                        `shape2`.
  */
 template <typename T>
 Ragged3<T> Ragged3FromRowIds(const Ragged2Shape &shape2,
                              const Array<T> &elems,
                              const Array<int> &row_ids);
+
+/*
+  Construct a 3-dim ragged array from a 2-dim ragged array and an array `row_ids`
+  says, for each element of the .elems of the ragged3 array, which sub-list of
+  the ragged2 array it corresponds to.
+
+     @param [in] size0    The leading dimension of this ragged array, must be >= 0
+     @param [in] row_ids   A nondecreasing vector of integers 0 <= i < size0,
+                        with row_ids.size() == elems.size(), that maps each element of
+                        `elems` to its leading index.
+     @param [in] elems     The elements of the ragged2 array (may be uninitialized,
+                        if you intend to initialize later).
+ */
+template <typename T>
+Ragged3<T> Ragged2FromRowIds(int size0,
+                             const Array<int> &row_ids,
+                             const Array<T> &elems);
