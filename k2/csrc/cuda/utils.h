@@ -1,76 +1,9 @@
 #include <cub/cub.cuh>
-#include <
+
 // Some quite low-level utilities.
 // CAUTION: this is not up to date, I will simplify this probably.
 
 
-/**
-   "DeviceVec type"
-   This is a concept not a specific type.   When we do:
-
-   template <class DeviceVec> ...
-
-   we expect DeviceVec to be some object that supports
-   the following interface:
-     class DeviceVec {
-        public:
-         using value_type = ...;
-         __host__ __device__ size_t size() const;
-         __device__ ValueType operator [] const;
-         __device__  DeviceVec(const DeviceVec &other);
-     };
-
-   The object will in the simplest case contain just a size and a
-   pointer to the data it contains.
-*/
-
-
-/**
-   "DeviceVecW type"
-   This is a concept not a specific type.  The W stands for
-   writable.  When we do:
-
-   template <class DeviceVecW> ...
-
-   we expect DeviceVecW to be some object that supports the following interface.
-   Note, the only difference from DeviceVec is that it returns a reference not a
-   value, so you can write to it if needed.  Note: you can treat DeviceVecW
-   as a specialization of DeviceVec.
-
-
-     class DeviceVecW {
-        public:
-         using value_type = ...;
-         __host__ __device__ size_t size() const;
-         __device__ ValueType & operator [];
-         const __device__ ValueType & operator [] const;
-         __device__  DeviceVecW(const DeviceVecW &other);
-     };
-
-   The object will in the simplest case contain just a size and a
-   pointer to the data it contains.
-*/
-
-
-/*
-   "DevicePtr type"
-
-   When we do
-   template <class DevicePtr> ...
-   we expect either a pointer or something that supports being indexed
-   with an integer, like a pointer.  It's like a weaker form of DeviceVec,
-   without the size() member.
-
-   DevicePtrW is like a weaker version of DeviceVecW, without the size()
-   member.
-
-   When we want to extract the value_type from DevicePtr and DevicePtrW,
-   we will do something like:
-      using value_type = ExtractPointerType<DevicePtr>::value_type;
-   where we'll define the template ExtractPointerType appropriately in order
-   to accomplish this.  The purpose of this is to allow DevicePtr and
-   DevicePtrW to be actual raw device pointers.
- */
 
 /*
   sizes concept
@@ -82,26 +15,21 @@
   Relation to other concepts:
    A vector of sizes can be seen as the difference of successive elements of
   a vector of row_splits, i.e. sizes[i] = row_splits[i+1] - row_splits[i].
-/
-
-/*
-  nsizes concept
-
-  A vector of sizes is a vector of nonzero sizes, i.e. a vector of positive
-  integers like [ 1 2 2 9 ].  It's like 'sizes' but excluding zero as a possibility.
 */
 
-/*
-  offset concept
 
-  An offset vector is a vector of the form, say, [ 0 5 9 9 10 13 ].
+/*
+  row_splits concept
+
+  An row_splits vector is a vector of the form, say, [ 0 5 9 9 10 13 ].
   i.e. it starts with 0 and is non-decreasing.  It will often be encountered
   as the exclusive-sum of a vector of 'sizes' (see 'sizes concept' above),
   with a size one greater than that of the corresponding 'sizes'.  It
   will represent the positions in a single linearized list, of where we
   put the elements of a list of sub-lists.  So in the example above,
   sub-list 0 occupies positions 0,1,2,3,4, sub-list 1 occupies positions 5,6,7,8,
-  and so on.
+  and so on.  Caution: the number of elements of the row_splits vector equals the number
+  of sub-lists PLUS ONE.
 
   Relation to other concepts:
     See 'row_ids concept' where its relation to 'row_splits' is described.
@@ -191,21 +119,7 @@
        like [ 0 1 3 6 10 15 ].
  */
 template <typename SrcPtr, typename DestPtr>
-void ExclusivePrefixSum(DeviceType D, int n, SrcPtr src, DestPtr dest);
-// This template is defined in utils
-  if (n == 0) return;
-  assert(n > 0);
-}
-
-template <typename SrcPtr, typename DestVec, typename DestCategory>
-ExclusiveCumSumImpl(SrcPtr &src, DestVec &dest,
-                    typename DestVec::ValueType *cpu_total);
-
-template <typename SrcPtr, typename DestVec>
-ExclusiveCumSum(SrcPtr &src, DestVec &dest,
-                typename DestVec::ValueType *cpu_total) {
-
-}
+void ExclusivePrefixSum(Context *c, int n, SrcPtr src, DestPtr dest);
 
 
 
@@ -273,8 +187,8 @@ T MaxValue(size_t nelems, T *t)
        }
        x[orig_i] = x[i];
 */
-template <typename DeviceVec, typename DeviceVecW>
-    T RowSplitsToRowIds(DeviceVec row_splits, DeviceVecW row_ids);
+template <typename T>
+T RowSplitsToRowIds(Context *c, T *row_splits, T *row_ids);
 
 
 /*
@@ -292,5 +206,5 @@ template <typename DeviceVec, typename DeviceVecW>
    i.e. nothing like [ 0 0 2 2 3 ], or certain elements of the output
    `row_splits` will be undefined.
  */
-template <typename DeviceVec, typename DeviceVecW>
-void RowIdsToRowSplits(DeviceVec row_ids, DeviceVecW row_splits);
+template <typename T>
+T RowIdsToRowSplits(Context *c, T *row_ids, T *row_splits);
