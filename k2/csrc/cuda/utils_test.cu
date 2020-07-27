@@ -1,4 +1,4 @@
-// k2/csrc/connect_test.cc
+// k2/csrc/cuda//utils_test.cu
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
 
