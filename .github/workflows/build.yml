@@ -10,9 +10,11 @@ on:
   push:
     branches:
       - master
+      - cuda_draft
   pull_request:
     branches:
       - master
+      - cuda_draft
 
 env:
   BUILD_TYPE: Debug

@@ -50,17 +50,17 @@ message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
 # which means that using standard CMake methods, it's impossible to actually sync the CXX and CUDA versions for pre-11
 # versions of C++; CUDA accepts 98 but translates that to 03, while CXX doesn't accept 03 (and doesn't translate that to 03).
 # In case this gives You, dear user, any trouble, please escalate the above CMake bug, so we can support reality properly.
-if (DEFINED CMAKE_CUDA_STANDARD)
-    message(WARNING "You've set CMAKE_CUDA_STANDARD; please note that this variable is ignored, and CMAKE_CXX_STANDARD"
-        " is used as the C++ standard version for both C++ and CUDA.")
+if(DEFINED CMAKE_CUDA_STANDARD)
+  message(WARNING "You've set CMAKE_CUDA_STANDARD; please note that this variable is ignored, and CMAKE_CXX_STANDARD"
+    " is used as the C++ standard version for both C++ and CUDA.")
 endif()
 unset(CMAKE_CUDA_STANDARD CACHE)
 set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
 set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72 75)
-foreach (COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
+foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
-endforeach ()
+endforeach()
 
 #[[ end settings for CUB ]]
 
