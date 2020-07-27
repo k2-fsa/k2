@@ -1,10 +1,29 @@
+// k2/csrc/cuda/context.h
 
-enum DeviceType {
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#ifndef K2_CSRC_CUDA_CONTEXT_H_
+#define K2_CSRC_CUDA_CONTEXT_H_
+
+#include <assert.h>
+#include <memory>
+
+namespace k2 {
+
+enum class DeviceType {
   kUnk,
   kCuda,
-  kCpu
+  kCpu,
 };
 
+constexpr DeviceType kUnk = DeviceType::kUnk;
+constexpr DeviceType kCuda = DeviceType::kCuda;
+constexpr DeviceType kCpu = DeviceType::kCpu;
+
+class Context;
+using ContextPtr = std::shared_ptr<Context>;
 
 /**
    class Context is the main surface of interaction with external tensor libraries like
@@ -18,6 +37,9 @@ enum DeviceType {
    pointers to it.
 */
 class Context {
+  public:
+
+  virtual ~Context() = default;
 
   /*
     Return either a copy of this object that can be used for (e.g.) creating new
@@ -33,20 +55,20 @@ class Context {
     Context, it will give us a "fresh" Context that will allocate and deallocate
     in the normal way.
    */
-  virtual std::shared_ptr<Context> Duplicate();
+  virtual ContextPtr Duplicate() = 0;
 
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
-  virtual DeviceType GetDeviceType();
+  virtual DeviceType GetDeviceType() const = 0;
 
   // Allocate memory on this device (raise an exception on failure, which we won't
   // attempt to catch because it will be specific to the external toolkit).
   // Note: will return NULL if bytes == 0.
-  virtual void* Allocate(size_t bytes);
+  virtual void* Allocate(size_t bytes) = 0;
 
   // Return true if this is the same device as 'other' (essentially: that it
   // lives in the same physical memory space).  Must always return true if this
   // == &other.
-  virtual bool IsSame(const Context &other) const;
+  virtual bool IsSame(const Context &other) const = 0;
 
   bool operator == (const Context &other) const {
     return this == &other || this->IsSame(other);
@@ -58,22 +80,18 @@ class Context {
   // allocated by an external toolkit because the Context object will remember
   // that it's held by a Region whose data belongs to an external toolkit.
   // See also Duplicate() for more information on this special case.
-  virtual void Deallocate(void *data);
-
-  virtual ~Context();
+  virtual void Deallocate(void *data) = 0;
 };
 
-typedef std::shared_ptr<Context> ContextPtr;
 
-template <typename T> ContextPtr GetContext(const T& t) {
+template <typename T> ContextPtr GetContext(const T &t) {
     // suppose T has member method `Context`
     return t.Context();
 }
 
-template <typename First, typename... Rest> ContextPtr GetContext(const First& first, const Rest&... rest) {
+template <typename First, typename... Rest> ContextPtr GetContext(const First &first, const Rest &... rest) {
     ContextPtr ans1 = GetContext(first),  ans2 = GetContext(rest...);
     assert(*ans1 == *ans2 && "Contexts mismatch");
-    // std::cout << sizeof...(Rest)<< std::endl;
     return ans1;
 }
 
@@ -100,17 +118,17 @@ struct Region {
   // You can also choose to template additionally on the device-type, like
   // region->GetData<int,kGpu>(), to activate a check that it's on the expected
   // device.
-  template <typename T=void, DeviceType d = kUnk> T *GetData() {
-    if (d != kUnk) { assert(d == context->GetDeviceType()); }
+  template <typename T = void, DeviceType d = kUnk> T *GetData() {
+    if (d != kUnk) assert(d == context->GetDeviceType());
     return reinterpret_cast<T*>(data);
   }
 
-  ~Region() { deallocator(data); }
+  ~Region() { context->Deallocate(data); }
 };
 
 
 // Return a basic Context object suitable for work on the CPU.
-std::shared_ptr<Context> CpuContext();
+ContextPtr GetCpuContext();
 
 
 // Return a basic Context object suitable for work with CUDA,
@@ -118,7 +136,7 @@ std::shared_ptr<Context> CpuContext();
 // This will be a *native* context, one that used k2's own memory
 // manager.  If you want to use (say) PyTorch's memory manager,  you
 // should use a Context passed in from PyTorch
-std::shared_ptr<Context> CudaContext(int gpu_id=-1);
+ContextPtr GetCudaContext(int gpu_id = -1);
 
 
 /**
@@ -127,14 +145,14 @@ std::shared_ptr<Context> CudaContext(int gpu_id=-1);
      @param [in] context   Context from which to allocate the region
                           (specifies the device and allocator)
      @param [in] num_bytes  Number of bytes to allocate.  Note: zero bytes
-                          is OK and will be handled in the same was as
+                          is OK and will be handled in the same way as
                           nonzero allocations.
    Returns a new region.   Raises exception (TBD, may be dependent on the context)
                          on error such as allocation failure.  The returned
                          region will have bytes_used == num_bytes; if the user
                          wants to change this they can do it afterward.
 */
-std::shared_ptr<Region> NewRegion(const std::shared_ptr<Context> &context,
+std::shared_ptr<Region> NewRegion(ContextPtr &context,
                                   size_t num_bytes) {
   // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can overwrite if needed.
   std::shared_ptr<Region> ans = std::make_shared<Region>();
@@ -147,21 +165,26 @@ std::shared_ptr<Region> NewRegion(const std::shared_ptr<Context> &context,
   ans->data = context->Allocate(num_bytes);
   ans->num_bytes = num_bytes;
   ans->bytes_used = num_bytes;
+  return ans;
 }
 
 
 /*
   Convenience wrapper for NewRegion() that takes the context from a provided region.
  */
-std::shared_ptr<Region> NewRegion(const Region &region,
+std::shared_ptr<Region> NewRegion(Region &region,
                                   size_t num_bytes) {
-  return NewRegion(region->context, num_bytes);
+  return NewRegion(region.context, num_bytes);
 }
 
 
 // Objects from k2 generally have a Context() method, so this template
 // will work to get the device-type for pretty arbitrary objects.
 template <typename T>
-inline DeviceType DeviceOf(T t) {
+inline DeviceType DeviceOf(const T &t) {
   return t.Context().GetDeviceType();
 }
+
+}  // namespace k2
+
+#endif  // K2_CSRC_CUDA_CONTEXT_H_

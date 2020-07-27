@@ -1,18 +1,26 @@
-#include "k2/csrc/cuda/array1.h"
+// k2/csrc/cuda/shape.h
 
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
 
+// See ../../LICENSE for clarification regarding multiple authors
 
+#ifndef K2_CSRC_CUDA_SHAPE_H_
+#define K2_CSRC_CUDA_SHAPE_H_
 
+#include "k2/csrc/cuda/array.h"
+
+namespace k2 {
 
 // Shape of a 2-dimensional ragged array ( e.g. [ [ 0 ] [ 3 4 1 ] [] [ 5 ] ])
+template <DeviceType D>
 class RaggedShape2 {
   // return dim on 0th axis.
-  int32_t Size0() { return row_splits0_.size - 1; }
+  int32_t Size0() const { return row_splits0_.size - 1; }
   Array1Tpl<int32_t> &RowSplits1() { return row_splits1_; }
   Array1Tpl<int32_t> &RowIds1();
-  // TODO: make TotSize1() more efficient for GPU vectors via cached_tot_size1_ or row_splits_.size().
+  // TODO(Dan): make TotSize1() more efficient for GPU vectors via cached_tot_size1_ or row_splits_.size().
   // size1() is the *total* size of dimension one, summed across all rows.
-  int TotSize1() { return row_splits1_[-1]; }
+  int TotSize1() const { return row_splits1_[-1]; }
   // max_size1() returns the maximum of any element of Sizes1().
   int MaxSize1();
 
@@ -25,13 +33,13 @@ class RaggedShape2 {
 
   Array1Tpl<int,T> Sizes1();  // Caution: this is slow as it creates a new array.
 
-  template <typename D2>
+  template <DeviceType D2>
   RaggedShape2<D2> &CastTo() {
     if (D2 != kUnk) {
       assert(region->device == kUnk ||  // would only happen if empty region
              region->device == D2);
     }
-    return reinterpret_cast<RaggedShape2<D2> > (*this);
+    return reinterpret_cast<RaggedShape2<D2>> (*this);
   }
 
   ContextPtr &Context() { return row_splits1_.Context(); }
@@ -39,7 +47,7 @@ class RaggedShape2 {
  protected:
   Array1<int> row_splits1_;
   Array1<int> row_ids1_;  // populated on demand.
-  int cached_tot_size1_;  // TODO?  can use to avoid gpu access when
+  int cached_tot_size1_;  // TODO(Dan)?  can use to avoid gpu access when
 };
 
 
@@ -82,7 +90,7 @@ class RaggedShape3: public RaggedShape2<D>: {
   ContextPtr &Context() { return row_splits1_.Context(); }
  protected:
   Array1<int> row_splits2_;
-  int cached_size2_;  // TODO?  can use to avoid gpu access ..
+  int cached_size2_;  // TODO(Dan)?  can use to avoid gpu access ..
   Array1<int> row_ids2_;
 };
 
@@ -143,3 +151,7 @@ RaggedShape3 RaggedShape3Subsampled(const RaggedShape3 &src,
  */
 RaggedShape3 RaggedShape3SubsampledFromNumbering(const RaggedShape3 &src,
                                                  const Array1<int> &reorder);
+
+}  // namespace k2
+
+#endif  // K2_CSRC_CUDA_SHAPE_H_

@@ -1,3 +1,14 @@
+// k2/csrc/cuda/types.h
+
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#ifndef K2_CSRC_CUDA_TYPES_H_
+#define K2_CSRC_CUDA_TYPES_H_
+
+namespace k2 {
+
 /*
   Mostly some notes.
 
@@ -36,7 +47,7 @@ class DPtr: public DPtrBase<BaseType> {
   using ValueType = BaseType;
   using PtrType = DPtr<BaseType>;  // see DVec and Plus for why this is useful,
                                    // it's for when we want to remove the size
-                                   // element from somethign.
+                                   // element from something.
   BaseType *data;
   __device__ int operator [] (int i) const {
     return data[i];
@@ -54,9 +65,11 @@ class DPtr: public DPtrBase<BaseType> {
 
 template <typename BaseType>
 class DVec: public DPtr<BaseType> {
+ public:
+  using ValueType = BaseType;
   using PtrType = DPtr<BaseType>;
 
-  __host__ __device__ size_t size() { return size_; }
+  __host__ __device__ size_t size() const { return size_; }
   size_t size_;  // extra member `size`.  Note, if the hierarchy isn't convenient
                  // or clear we may just define DVec separately from DPtr.
 
@@ -254,3 +267,7 @@ template <typename T> __host__ void Eval(const Array<T> &t) {
   //
 
 }
+
+}  // namespace k2
+
+#endif  // K2_CSRC_CUDA_TYPES_H_

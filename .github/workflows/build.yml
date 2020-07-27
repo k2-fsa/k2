@@ -55,4 +55,4 @@ jobs:
       - name: Test
         shell: bash
         working-directory: ${{runner.workspace}}/build
-        run: ctest --verbose --build-config $BUILD_TYPE
+        run: ctest --verbose --exclude-regex Cuda --build-config $BUILD_TYPE
