@@ -7,7 +7,7 @@
 // WARNING(fangjun): this is a naive implementation to test the build system
 #include "k2/csrc/cuda/context.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 static constexpr size_t kAlignment = 64;
 

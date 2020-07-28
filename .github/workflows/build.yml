@@ -10,17 +10,20 @@ on:
   push:
     branches:
       - master
-      - cuda_draft
+      - cuda
   pull_request:
     branches:
       - master
-      - cuda_draft
+      - cuda
 
 env:
   BUILD_TYPE: Debug
 
 jobs:
   build:
+    # disable CI now since GitHub action does not support CUDA
+    # and it always fails
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

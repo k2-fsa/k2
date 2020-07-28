@@ -9,4 +9,4 @@ FSA/FST algorithms, intended to (eventually) be interoperable with PyTorch and s
 
 Want to try it out without installing anything? We have setup a [Google Colab][1].
 
-[1]: https://colab.research.google.com/github/csukuangfj/k2/blob/fangjun-cuda/k2.ipynb
+[1]: https://colab.research.google.com/drive/1qbHUhNZUX7AYEpqnZyf29Lrz2IPHBGlX?usp=sharing

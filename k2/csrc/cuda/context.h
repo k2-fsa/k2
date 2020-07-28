@@ -7,7 +7,7 @@
 #ifndef K2_CSRC_CUDA_CONTEXT_H_
 #define K2_CSRC_CUDA_CONTEXT_H_
 
-#include <assert.h>
+#include <cassert>
 #include <memory>
 
 namespace k2 {
@@ -26,19 +26,20 @@ class Context;
 using ContextPtr = std::shared_ptr<Context>;
 
 /**
-   class Context is the main surface of interaction with external tensor libraries like
-   PyTorch; it allows us to use their notions of device and of memory allocation.
+   class Context is the main surface of interaction with external
+   tensor libraries like PyTorch; it allows us to use their notions
+   of device and of memory allocation.
    (in the case of PyTorch it would probably contain a Device and an Allocator).
 
-   We will sub-class this in several ways: with versions that wrap external toolkits
-   like PyTorch, and also a "native" version that's mostly for testing purposes.
+   We will sub-class this in several ways: with versions that wrap external
+   toolkits like PyTorch, and also a "native" version that's mostly for
+   testing purposes.
 
    This object should be allocated with std::shared_ptr, as that's how we store
    pointers to it.
 */
 class Context {
-  public:
-
+ public:
   virtual ~Context() = default;
 
   /*
@@ -60,17 +61,18 @@ class Context {
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
   virtual DeviceType GetDeviceType() const = 0;
 
-  // Allocate memory on this device (raise an exception on failure, which we won't
-  // attempt to catch because it will be specific to the external toolkit).
+  // Allocate memory on this device (raise an exception on failure, which we
+  // won't attempt to catch because it will be specific to the external
+  // toolkit).
   // Note: will return NULL if bytes == 0.
-  virtual void* Allocate(size_t bytes) = 0;
+  virtual void *Allocate(size_t bytes) = 0;
 
   // Return true if this is the same device as 'other' (essentially: that it
-  // lives in the same physical memory space).  Must always return true if this
-  // == &other.
+  // lives in the same physical memory space).
+  // Must always return true if this == &other.
   virtual bool IsSame(const Context &other) const = 0;
 
-  bool operator == (const Context &other) const {
+  bool operator==(const Context &other) const {
     return this == &other || this->IsSame(other);
   }
 
@@ -83,16 +85,17 @@ class Context {
   virtual void Deallocate(void *data) = 0;
 };
 
-
-template <typename T> ContextPtr GetContext(const T &t) {
-    // suppose T has member method `Context`
-    return t.Context();
+template <typename T>
+ContextPtr GetContext(const T &t) {
+  // suppose T has member method `Context`
+  return t.Context();
 }
 
-template <typename First, typename... Rest> ContextPtr GetContext(const First &first, const Rest &... rest) {
-    ContextPtr ans1 = GetContext(first),  ans2 = GetContext(rest...);
-    assert(*ans1 == *ans2 && "Contexts mismatch");
-    return ans1;
+template <typename First, typename... Rest>
+ContextPtr GetContext(const First &first, const Rest &... rest) {
+  ContextPtr ans1 = GetContext(first), ans2 = GetContext(rest...);
+  assert(*ans1 == *ans2 && "Contexts mismatch");
+  return ans1;
 }
 
 /*
@@ -101,16 +104,17 @@ template <typename First, typename... Rest> ContextPtr GetContext(const First &f
 
   To enable resizable (extendable) arrays to work when multiple objects may
   point to the same memory: there will be a convention that if an Array covers
-  all the bytes used in a memory region it gets to use the remaining bytes allocated
-  (i.e. it gets to increased bytes_used up until num_bytes).  That means
-  only one of the Arrays pointing to that memory region will 'take' that memory.
-  Once it gets too large and can't fit in the Region, it allocates a new Region.
+  all the bytes used in a memory region it gets to use the remaining bytes
+  allocated (i.e. it gets to increased bytes_used up until num_bytes).
+  That means only one of the Arrays pointing to that memory region will 'take'
+  that memory. Once it gets too large and can't fit in the Region, it allocates
+  a new Region.
 */
 struct Region {
   // The 'context' is an object that
   ContextPtr context;
-  void *data;        // Pointer to the start of the allocated memory region
-  size_t num_bytes;  // number of bytes allocated.
+  void *data;         // Pointer to the start of the allocated memory region
+  size_t num_bytes;   // number of bytes allocated.
   size_t bytes_used;  // largest number of bytes used/covered by any Array that
                       // points to this Region (this is relevant for things that
                       // behave like resizable vectors).
@@ -118,18 +122,17 @@ struct Region {
   // You can also choose to template additionally on the device-type, like
   // region->GetData<int,kGpu>(), to activate a check that it's on the expected
   // device.
-  template <typename T = void, DeviceType d = kUnk> T *GetData() {
+  template <typename T = void, DeviceType d = kUnk>
+  T *GetData() {
     if (d != kUnk) assert(d == context->GetDeviceType());
-    return reinterpret_cast<T*>(data);
+    return reinterpret_cast<T *>(data);
   }
 
   ~Region() { context->Deallocate(data); }
 };
 
-
 // Return a basic Context object suitable for work on the CPU.
 ContextPtr GetCpuContext();
-
 
 // Return a basic Context object suitable for work with CUDA,
 // with specified GPU-id (or the first one we grab, if gpu_id == -1).
@@ -137,7 +140,6 @@ ContextPtr GetCpuContext();
 // manager.  If you want to use (say) PyTorch's memory manager,  you
 // should use a Context passed in from PyTorch
 ContextPtr GetCudaContext(int gpu_id = -1);
-
 
 /**
    Allocate a new Region.
@@ -147,14 +149,15 @@ ContextPtr GetCudaContext(int gpu_id = -1);
      @param [in] num_bytes  Number of bytes to allocate.  Note: zero bytes
                           is OK and will be handled in the same way as
                           nonzero allocations.
-   Returns a new region.   Raises exception (TBD, may be dependent on the context)
-                         on error such as allocation failure.  The returned
-                         region will have bytes_used == num_bytes; if the user
-                         wants to change this they can do it afterward.
+   Returns a new region.   Raises exception (TBD, may be dependent on the
+                          context) on error such as allocation failure.
+                          The returned
+                          region will have bytes_used == num_bytes; if the user
+                          wants to change this they can do it afterward.
 */
-std::shared_ptr<Region> NewRegion(ContextPtr &context,
-                                  size_t num_bytes) {
-  // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can overwrite if needed.
+std::shared_ptr<Region> NewRegion(ContextPtr &context, size_t num_bytes) {
+  // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
+  // overwrite if needed.
   std::shared_ptr<Region> ans = std::make_shared<Region>();
   if (!(ans->context = context->Duplicate())) {
     // we'll almost always go inside this if-statement.  The only time when
@@ -168,15 +171,13 @@ std::shared_ptr<Region> NewRegion(ContextPtr &context,
   return ans;
 }
 
-
 /*
-  Convenience wrapper for NewRegion() that takes the context from a provided region.
+  Convenience wrapper for NewRegion() that takes the context from a provided
+  region.
  */
-std::shared_ptr<Region> NewRegion(Region &region,
-                                  size_t num_bytes) {
+std::shared_ptr<Region> NewRegion(Region &region, size_t num_bytes) {
   return NewRegion(region.context, num_bytes);
 }
-
 
 // Objects from k2 generally have a Context() method, so this template
 // will work to get the device-type for pretty arbitrary objects.
