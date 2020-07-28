@@ -184,25 +184,35 @@ struct WfsaWithFbWeights {
                         path with most positive weight sequence.
                         kLogSumWeight == Baum Welch, i.e. sum probs
                         over paths, treating weights as log-probs.
+       @prams [out] forward_state_weights   Will be used to store
+                        log-sum or max of weights along all paths
+                        from the start state to each state in `fsa`.
+                        We use `double` here because for long FSAs
+                        round-off effects can cause nasty errors in
+                        pruning. At entry it must be allocated with
+                        size `fsa.NumStates()`. Note that the caller
+                        should make sure the array is not freed
+                        as long as object WfsaWithFbWeights exists.
+       @prams [out] backward_state_weights   Will be used to store
+                        log-sum or max of weights along all paths
+                        from each state to the final state in `fsa`.
+                        At entry it must be allocated with size
+                        `fsa.NumStates()`. Note that the caller
+                        should make sure the array is not freed
+                        as long as object WfsaWithFbWeights exists.
+
    */
-  WfsaWithFbWeights(const Fsa &fsa, const float *arc_weights, FbWeightType t);
+  WfsaWithFbWeights(const Fsa &fsa, const float *arc_weights, FbWeightType t,
+                    double *forward_state_weights,
+                    double *backward_state_weights);
 
-  const double *ForwardStateWeights() const {
-    return forward_state_weights.get();
-  }
+  const double *ForwardStateWeights() const { return forward_state_weights; }
 
-  const double *BackwardStateWeights() const {
-    return backward_state_weights.get();
-  }
+  const double *BackwardStateWeights() const { return backward_state_weights; }
 
  private:
-  // forward_state_weights are the log-sum or max of weights along all paths
-  // from the start-state to each state.  We use double because for long FSAs
-  // roundoff effects can cause nasty errors in pruning.
-  std::unique_ptr<double[]> forward_state_weights;
-  // backward_state_weights are the log-sum or max of weights along all paths
-  // from each state to the final state.
-  std::unique_ptr<double[]> backward_state_weights;
+  double *forward_state_weights;
+  double *backward_state_weights;
   void ComputeForwardWeights();
   void ComputeBackardWeights();
 };

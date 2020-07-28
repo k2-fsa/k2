@@ -1,6 +1,7 @@
 // k2/python/csrc/tensor.cc
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+//                      Xiaomi Corporation (author: Haowen Qiu)
 
 // See ../../../LICENSE for clarification regarding multiple authors
 
@@ -24,16 +25,13 @@ static const char *kDLPackTensorName = "dltensor";
 // PyTorch, TVM and CuPy name the used dltensor to be `used_dltensor`
 static const char *kDLPackUsedTensorName = "used_dltensor";
 
-static DataType DLDataTypeToK2DataType(DLDataTypeCode data_type) {
-  switch (data_type) {
-    case kDLInt:
-      return kInt32Type;
-    case kDLFloat:
-      return kFloatType;
-    default:
-      LOG(FATAL) << "Unsupported DLDataTypeCode: " << data_type;
-      return kUnknownType;
-  }
+static DataType DLDataTypeToK2DataType(DLDataType data_type) {
+  if (data_type.code == kDLInt && data_type.bits == 32) return kInt32Type;
+  if (data_type.code == kDLFloat && data_type.bits == 32) return kFloatType;
+  if (data_type.code == kDLFloat && data_type.bits == 64) return kDoubleType;
+  LOG(FATAL) << "Unsupported DLDataType: Code = " << data_type.code
+             << ", Bits = " << data_type.bits;
+  return kUnknownType;
 }
 
 static DeviceType DLDeviceTypeToK2DeviceType(DLDeviceType device_type) {
@@ -71,8 +69,8 @@ Tensor::Tensor(py::capsule capsule) {
 
   dl_managed_tensor_ = capsule;  // either throw or succeed with a non-null ptr
 
-  dtype_ = DLDataTypeToK2DataType(
-      (DLDataTypeCode)dl_managed_tensor_->dl_tensor.dtype.code);
+  dtype_ =
+      DLDataTypeToK2DataType((DLDataType)dl_managed_tensor_->dl_tensor.dtype);
 
   device_type_ =
       DLDeviceTypeToK2DeviceType(dl_managed_tensor_->dl_tensor.ctx.device_type);
@@ -117,10 +115,11 @@ int32_t Tensor::BytesPerElement() const {
 }
 
 void Tensor::Check() const {
-  CHECK(dtype_ == kInt32Type || dtype_ == kFloatType)
-      << "We support only int32_t and float at present";
+  CHECK(dtype_ == kInt32Type || dtype_ == kFloatType || dtype_ == kDoubleType)
+      << "We support only int32_t, float and double at present";
 
-  CHECK_EQ(BytesPerElement(), 4) << "Only int32_t and float are supported";
+  CHECK(BytesPerElement() == 4 || BytesPerElement() == 8)
+      << "Only int32_t, float and double are supported";
 
   CHECK_EQ(dl_managed_tensor_->dl_tensor.dtype.lanes, 1u)
       << "We support only one lane";

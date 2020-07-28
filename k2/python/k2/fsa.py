@@ -21,7 +21,7 @@ class Arc(_Arc):
                             dtype=torch.int32)
 
     @staticmethod
-    def from_tensor(tensor: torch.Tensor):
+    def from_tensor(tensor: torch.Tensor) -> 'Arc':
         assert tensor.shape == torch.Size([3])
         assert tensor.dtype == torch.int32
         return Arc(*tensor.tolist())
@@ -47,7 +47,7 @@ class Fsa(DLPackFsa):
         super().__init__(to_dlpack(self.indexes), to_dlpack(self.data))
 
     @staticmethod
-    def create_fsa_with_size(array_size: IntArray2Size):
+    def create_fsa_with_size(array_size: IntArray2Size) -> 'Fsa':
         indexes = torch.zeros(array_size.size1 + 1, dtype=torch.int32)
         data = torch.zeros([array_size.size2, 3], dtype=torch.int32)
         return Fsa(indexes, data)

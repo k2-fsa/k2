@@ -59,12 +59,12 @@ class AuxLabels1Mapper {
   /* Lightweight constructor that just keeps const references to the input
      parameters.
      @param [in] labels_in  Labels on the arcs of the input FSA
-     @param [in] arc_map    Vector of size (output_fsa.arcs.size()),
-                            saying which arc of the input FSA it
+     @param [in] arc_map    At entry `arc_map.size` equals to num-arcs of
+                            the output Fsa, `arc_map.data[i]` gives which arc of
+                            the input FSA that arc i in the output FSA
                             corresponds to.
   */
-  AuxLabels1Mapper(const AuxLabels &labels_in,
-                   const std::vector<int32_t> &arc_map)
+  AuxLabels1Mapper(const AuxLabels &labels_in, const Array1<int32_t *> &arc_map)
       : labels_in_(labels_in), arc_map_(arc_map) {}
 
   /*
@@ -89,7 +89,7 @@ class AuxLabels1Mapper {
 
  private:
   const AuxLabels &labels_in_;
-  const std::vector<int32_t> &arc_map_;
+  const Array1<int32_t *> &arc_map_;
 };
 
 /*
@@ -101,12 +101,13 @@ class AuxLabels2Mapper {
   /* Lightweight constructor that just keeps const references to the input
      parameters.
      @param [in] labels_in  Labels on the arcs of the input FSA
-     @param [in] arc_map    Vector of size (output_fsa.arcs.size()),
-                            giving the sequence of arc-indexes in the input
-                            FSA that it corresponds to.
+     @param [in] arc_map    At entry `arc_map.size1` equals to num-arcs of
+                            the output FSA. `arc_map.data[arc_map.indexes[i]]`
+                            through `arc_map.data[arc_map.indexes[i+1] - 1]`
+                            gives the sequence of arc-indexes in the input
+                            FSA that arc i in the output FSA corresponds to.
   */
-  AuxLabels2Mapper(const AuxLabels &labels_in,
-                   const std::vector<std::vector<int32_t>> &arc_map)
+  AuxLabels2Mapper(const AuxLabels &labels_in, const Array2<int32_t *> &arc_map)
       : labels_in_(labels_in), arc_map_(arc_map) {}
 
   /*
@@ -131,7 +132,7 @@ class AuxLabels2Mapper {
 
  private:
   const AuxLabels &labels_in_;
-  const std::vector<std::vector<int32_t>> &arc_map_;
+  const Array2<int32_t *> &arc_map_;
 };
 
 /*
