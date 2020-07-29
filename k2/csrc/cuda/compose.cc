@@ -1,4 +1,12 @@
-#include <compose.h>
+// k2/csrc/cuda/compose.cc
+
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#include "k2/csrc/cuda/compose.h"
+
+namespace k2 {
 
 // Caution: this is really a .cu file.  It contains mixed host and device code.
 
@@ -500,10 +508,6 @@ void IntersectDensePruned(FsaVec &a_fsas,
   Array1<HashKeyType> state_repr_hash;  // hash-value of corresponding elements of a_fsas and b_fsas
 
   Hash<HashKeyType, int, Hasher> repr_hash_to_id;  // Maps from (fsa_index, hash of state_repr) to
-
-
-
-
-
-
 }
+
+}  // namespace k2

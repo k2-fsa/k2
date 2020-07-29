@@ -1,4 +1,15 @@
+// k2/csrc/cuda/ragged.h
+
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#ifndef K2_CSRC_CUDA_RAGGED_H_
+#define K2_CSRC_CUDA_RAGGED_H_
+
 #include "k2/csrc/cuda/shape.h"
+
+namespace k2 {
 
 
 // Interfaces:
@@ -120,3 +131,7 @@ template <typename T>
 Ragged3<T> Ragged2FromRowIds(int size0,
                              const Array<int> &row_ids,
                              const Array<T> &elems);
+
+}  // namespace k2
+
+#endif  // K2_CSRC_CUDA_RAGGED_H_
