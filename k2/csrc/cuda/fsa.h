@@ -1,4 +1,15 @@
+// k2/csrc/cuda/fsa.h
+
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#ifndef K2_CSRC_CUDA_FSA_H_
+#define K2_CSRC_CUDA_FSA_H_
+
 #include "ragged.h"
+
+namespace k2 {
 
 
 struct Arc {
@@ -61,3 +72,8 @@ class DenseFsaVec {
                           // to the transition to the final-state.
 
 };
+
+
+}  // namespace k2
+
+#endif  // K2_CSRC_CUDA_FSA_H_

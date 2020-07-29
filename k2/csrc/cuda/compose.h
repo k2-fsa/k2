@@ -1,3 +1,15 @@
+// k2/csrc/cuda/compose.h
+
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#ifndef K2_CSRC_CUDA_COMPOSE_H_
+#define K2_CSRC_CUDA_COMPOSE_H_
+
+#include "k2/csrc/cuda/array.h"
+
+namespace k2 {
 
 
 // Note: b is FsaVec<Arc>.
@@ -19,3 +31,7 @@ void IntersectDensePruned(Array3<Arc> &a_fsas,
                           FsaVec *ofsa,
                           Array<int> *arc_map_a,
                           Array<int> *arc_map_b);
+
+}  // namespace k2
+
+#endif  // K2_CSRC_CUDA_COMPOSE_H_

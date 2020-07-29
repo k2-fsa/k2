@@ -1,4 +1,19 @@
-#include <cub/cub.cuh>
+// k2/csrc/cuda/utils.h
+
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#ifndef K2_CSRC_CUDA_UTILS_H_
+#define K2_CSRC_CUDA_UTILS_H_
+
+#include "k2/csrc/cuda/context.h"
+
+#define IS_IN_K2_CSRC_CUDA_UTILS_H_
+#include "k2/csrc/cuda/utils_inl.h"
+#undef IS_IN_K2_CSRC_CUDA_UTILS_H_
+
+namespace k2 {
 
 // Some quite low-level utilities.
 // CAUTION: this is not up to date, I will simplify this probably.
@@ -8,7 +23,7 @@
 /*
   sizes concept
 
-  A vector of sizes is a vector of nonnegative integers, like [ 5 4 0 1 3 ].
+  A vector of sizes is a vector of non-negative integers, like [ 5 4 0 1 3 ].
   This just establishes a naming convention.  In most cases the 'sizes' will
   be the lengths of sub-lists in a list of lists.
 
@@ -119,7 +134,7 @@
        like [ 0 1 3 6 10 15 ].
  */
 template <typename SrcPtr, typename DestPtr>
-void ExclusivePrefixSum(Context *c, int n, SrcPtr src, DestPtr dest);
+void ExclusivePrefixSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest);
 
 
 
@@ -131,7 +146,7 @@ void ExclusivePrefixSum(Context *c, int n, SrcPtr src, DestPtr dest);
    additional cost.
  */
 template <typename T>
-T MaxValue(Context *c, size_t nelems, T *t)
+T MaxValue(Context *c, size_t nelems, T *t);
 
 /*
   This is a rather special purpose function that is used for k2 Array.
@@ -188,7 +203,7 @@ T MaxValue(Context *c, size_t nelems, T *t)
        x[orig_i] = x[i];
 */
 template <typename T>
-T RowSplitsToRowIds(Context *c, T *row_splits, T *row_ids);
+T RowSplitsToRowIds(ContextPtr &c, T *row_splits, T *row_ids);
 
 
 /*
@@ -237,3 +252,7 @@ __host__ int32_t atomicMax(int32_t* address, int32_t val) {
     *address = val;
   return old;
 }
+
+}  // namespace k2
+
+#endif  // K2_CSRC_CUDA_UTILS_H_

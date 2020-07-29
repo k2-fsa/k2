@@ -1,5 +1,15 @@
+// k2/csrc/cuda/array.h
+
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#ifndef K2_CSRC_CUDA_ARRAY_H_
+#define K2_CSRC_CUDA_ARRAY_H_
+
 #include "k2/csrc/cuda/context.h"
 
+namespace k2 {
 
 /*
   Array1* is a 1-dimensional contiguous array (that doesn't support a stride).
@@ -12,16 +22,16 @@ template <typename T> class Array1 {
 
 
 
-  // generally L will be some kind of lambda or function object; it should be
+  // generally Callable will be some kind of lambda or function object; it should be
   // possible to evaluate it on the CUDA device (if we're compiling with CUDA)
   // and also on the CPU.  We'll do src(i) to evaluate element i.
   // NOTE: we assume this thread is already set to use the device associated with the
   // context in 'ctx', if it's a CUDA context.
-  template <typename L>
-  Array1(ContextPtr ctx, int size, L lambda) {
+  template <typename Callable>
+  Array1(ContextPtr ctx, int size, Callable &&callable) {
     Init(ctx, size);
 
-    Eval(ctx->DeviceType(), data, size, lambda);
+    Eval(ctx->DeviceType(), data(), size, std::forward<Callable>(callable));
   }
 
   /* Return sub-part of this array
@@ -30,7 +40,7 @@ template <typename T> class Array1 {
   */
   Array1 Range(int start, int size);
 
-  DeviceType Device() { return region->device; }
+  DeviceType Device() const { return region->device; }
 
   // Resizes, copying old contents if we could not re-use the same memory location.
   // It will always at least double the allocated size if it has to reallocate.
@@ -53,5 +63,8 @@ template <typename T> class Array1 {
   void Init(DeviceType d, int size) {
     // .. takes care of allocation etc.
   }
-
 };
+
+}  // namespace k2
+
+#endif  // K2_CSRC_CUDA_ARRAY_H_
