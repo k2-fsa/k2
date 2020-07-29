@@ -130,8 +130,8 @@ void ExclusivePrefixSum(Context *c, int n, SrcPtr src, DestPtr dest);
    combine this with ExclusiveSum to (optionally) get the max value with little
    additional cost.
  */
-template <type T>
-T MaxValue(size_t nelems, T *t)
+template <typename T>
+T MaxValue(Context *c, size_t nelems, T *t)
 
 /*
   This is a rather special purpose function that is used for k2 Array.
@@ -208,3 +208,32 @@ T RowSplitsToRowIds(Context *c, T *row_splits, T *row_ids);
  */
 template <typename T>
 T RowIdsToRowSplits(Context *c, T *row_ids, T *row_splits);
+
+
+
+/*
+ 1:1 Conversion float <---> sortable int We convert floats to sortable ints in
+ order to use native atomics operation, which are way faster than looping over
+ atomicCAS
+*/
+__host__ __device__ __forceinline__ int32 FloatToOrderedInt(float f) {
+  // or could use __float_as_int instead of reinterpret_cast
+  int32_t i = reinterpret_cast<int32_t>(f);
+  return (i >= 0) ? i : i ^ 0x7FFFFFFF;
+}
+
+__host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
+  // or could use __int_as_float instead of reinterpret_cast
+  return reinterpret_cast<float>((i >= 0) ? i : i ^ 0x7FFFFFFF);
+}
+
+/*
+  Host version of Cuda's atomicMax function, marked __host__ (the default) for
+  clarity.  So we can use this in lambdas that run on both host and device.
+ */
+__host__ int32_t atomicMax(int32_t* address, int32_t val) {
+  int32_t old = *address;
+  if (old < val)
+    *address = val;
+  return old;
+}
