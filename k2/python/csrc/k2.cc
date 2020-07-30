@@ -10,6 +10,7 @@
 #include "k2/python/csrc/aux_labels.h"
 #include "k2/python/csrc/fsa.h"
 #include "k2/python/csrc/fsa_algo.h"
+#include "k2/python/csrc/fsa_equivalent.h"
 #include "k2/python/csrc/fsa_util.h"
 #include "k2/python/csrc/properties.h"
 #include "k2/python/csrc/weights.h"
@@ -22,6 +23,7 @@ PYBIND11_MODULE(_k2, m) {
   PybindFsa(m);
   PybindFsaUtil(m);
   PybindFsaAlgo(m);
+  PybindFsaEquivalent(m);
   PybindProperties(m);
   PybindAuxLabels(m);
   PybindWeights(m);

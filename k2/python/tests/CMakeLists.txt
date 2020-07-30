@@ -21,6 +21,7 @@ set(py_test_files
     array_test.py
     aux_labels_test.py
     connect_test.py
+    fsa_equivalent_test.py
     fsa_test.py
     intersect_test.py
     properties_test.py

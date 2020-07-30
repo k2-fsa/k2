@@ -4,6 +4,7 @@ from .array import *
 from .aux_labels import *
 from .fsa import *
 from .fsa_algo import *
+from .fsa_equivalent import *
 from .fsa_util import str_to_fsa
 from .properties import *
 from .weights import *
