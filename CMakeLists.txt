@@ -39,7 +39,7 @@ endif()
 # the following settings are modified from cub/CMakeLists.txt
 #[[ start settings for CUB ]]
 
-set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ version to be used.")
+set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ version to be used.")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
@@ -57,7 +57,7 @@ endif()
 unset(CMAKE_CUDA_STANDARD CACHE)
 set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
-set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72 75)
+set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
 foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
 endforeach()

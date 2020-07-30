@@ -225,21 +225,31 @@ template <typename T>
 T RowIdsToRowSplits(Context *c, T *row_ids, T *row_splits);
 
 
+ __host__ __device__ __forceinline__ int32_t FloatAsInt(float f) {
+   union { float f; int i; } u;
+   u.f = f;
+   return u.i;
+ }
+
+ __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
+   union { float f; int i; } u;
+   u.i = i;
+   return u.f;
+ }
+
 
 /*
  1:1 Conversion float <---> sortable int We convert floats to sortable ints in
  order to use native atomics operation, which are way faster than looping over
  atomicCAS
 */
-__host__ __device__ __forceinline__ int32 FloatToOrderedInt(float f) {
-  // or could use __float_as_int instead of reinterpret_cast
-  int32_t i = reinterpret_cast<int32_t>(f);
+__host__ __device__ __forceinline__ int32_t FloatToOrderedInt(float f) {
+  int32_t i = FloatAsInt(f);
   return (i >= 0) ? i : i ^ 0x7FFFFFFF;
 }
 
 __host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
-  // or could use __int_as_float instead of reinterpret_cast
-  return reinterpret_cast<float>((i >= 0) ? i : i ^ 0x7FFFFFFF);
+  return IntAsFloat((i >= 0) ? i : i ^ 0x7FFFFFFF);
 }
 
 /*
