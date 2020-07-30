@@ -24,7 +24,7 @@ function(download_cub)
   message(STATUS "cub is downloaded to ${cub_SOURCE_DIR}")
   add_library(cub INTERFACE)
   target_include_directories(cub INTERFACE ${cub_SOURCE_DIR})
-
+  target_compile_definitions(cub INTERFACE CUB_IGNORE_DEPRECATED_CPP_DIALECT)
 endfunction()
 
 download_cub()
