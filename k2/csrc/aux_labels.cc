@@ -88,7 +88,7 @@ static void MapStates(const std::vector<int32_t> &num_extra_states,
 
 namespace k2 {
 
-void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) {
+void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
   CHECK_NOTNULL(aux_size);
   aux_size->size1 = arc_map_.size;
   int32_t num_labels = 0;
@@ -119,7 +119,7 @@ void AuxLabels1Mapper::GetOutput(AuxLabels *labels_out) {
   start_pos[i] = num_labels;
 }
 
-void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) {
+void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
   CHECK_NOTNULL(aux_size);
   aux_size->size1 = arc_map_.size1;
   int32_t num_labels = 0;
@@ -152,7 +152,7 @@ void AuxLabels2Mapper::GetOutput(AuxLabels *labels_out) {
 }
 
 void FstInverter::GetSizes(Array2Size<int32_t> *fsa_size,
-                           Array2Size<int32_t> *aux_size) {
+                           Array2Size<int32_t> *aux_size) const {
   CHECK_NOTNULL(fsa_size);
   CHECK_NOTNULL(aux_size);
   int32_t num_extra_states = 0;

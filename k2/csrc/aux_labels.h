@@ -76,7 +76,7 @@ class AuxLabels1Mapper {
                                 on the arcs in the output FSA) will be written
                                 to here.
   */
-  void GetSizes(Array2Size<int32_t> *aux_size);
+  void GetSizes(Array2Size<int32_t> *aux_size) const;
 
   /*
     Finish the operation and output auxiliary labels to `labels_out`.
@@ -119,7 +119,7 @@ class AuxLabels2Mapper {
                                 on the arcs in the output FSA) will be written
                                 to here.
   */
-  void GetSizes(Array2Size<int32_t> *aux_size);
+  void GetSizes(Array2Size<int32_t> *aux_size) const;
 
   /*
     Finish the operation and output auxiliary labels to `labels_out`.
@@ -163,7 +163,8 @@ class FstInverter {
                                 labels on `fsa_in`, although epsilons
                                 will be removed) will be written to here.
   */
-  void GetSizes(Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *aux_size);
+  void GetSizes(Array2Size<int32_t> *fsa_size,
+                Array2Size<int32_t> *aux_size) const;
 
   /*
     Finish the operation and output inverted FSA to `fsa_out` and
