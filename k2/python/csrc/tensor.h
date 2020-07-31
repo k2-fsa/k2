@@ -15,6 +15,7 @@ namespace k2 {
 enum class DataType : int8_t {
   kInt32Type = 0,
   kFloatType = 1,
+  kDoubleType = 2,
   kUnknownType,
 };
 
@@ -26,6 +27,7 @@ enum class DeviceType : int8_t {
 
 constexpr DataType kInt32Type = DataType::kInt32Type;
 constexpr DataType kFloatType = DataType::kFloatType;
+constexpr DataType kDoubleType = DataType::kDoubleType;
 constexpr DataType kUnknownType = DataType::kUnknownType;
 
 constexpr DeviceType kCPU = DeviceType::kCPU;

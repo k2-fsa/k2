@@ -202,6 +202,12 @@ void PybindArray(py::module &m) {
   py::class_<k2::Array1<int32_t *>>(m, "_IntArray1");
   PybindArray1Tpl<int32_t *>(m, "DLPackIntArray1");
 
+  py::class_<k2::Array1<float *>>(m, "_FloatArray1");
+  PybindArray1Tpl<float *>(m, "DLPackFloatArray1");
+
+  py::class_<k2::Array1<double *>>(m, "_DoubleArray1");
+  PybindArray1Tpl<double *>(m, "DLPackDoubleArray1");
+
   // Note: all the following wrappers whose name starts with `_` are only used
   // by pybind11 internally so that it knows `k2::DLPackArray2` is a subclass of
   // `k2::Array2`.

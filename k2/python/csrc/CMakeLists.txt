@@ -1,12 +1,15 @@
 # please sort the files alphabetically
 pybind11_add_module(_k2
   array.cc
+  aux_labels.cc
   fsa.cc
   fsa_algo.cc
+  fsa_equivalent.cc
   fsa_util.cc
   k2.cc
   properties.cc
   tensor.cc
+  weights.cc
 )
 
 target_include_directories(_k2 PRIVATE ${CMAKE_SOURCE_DIR})

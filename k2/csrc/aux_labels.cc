@@ -88,11 +88,12 @@ static void MapStates(const std::vector<int32_t> &num_extra_states,
 
 namespace k2 {
 
-void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) {
+void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
   CHECK_NOTNULL(aux_size);
-  aux_size->size1 = arc_map_.size();
+  aux_size->size1 = arc_map_.size;
   int32_t num_labels = 0;
-  for (const auto &arc_index : arc_map_) {
+  for (auto i = arc_map_.begin; i != arc_map_.end; ++i) {
+    const auto arc_index = arc_map_.data[i];
     int32_t begin = labels_in_.indexes[arc_index];
     int32_t end = labels_in_.indexes[arc_index + 1];
     num_labels += end - begin;
@@ -106,9 +107,9 @@ void AuxLabels1Mapper::GetOutput(AuxLabels *labels_out) {
   auto &labels = labels_out->data;
   int32_t num_labels = 0;
   int32_t i = 0;
-  for (; i != arc_map_.size(); ++i) {
+  for (; i != arc_map_.size; ++i) {
     start_pos[i] = num_labels;
-    const auto arc_index = arc_map_[i];
+    const auto arc_index = arc_map_.data[i + arc_map_.begin];
     int32_t begin = labels_in_.indexes[arc_index];
     int32_t end = labels_in_.indexes[arc_index + 1];
     for (auto it = begin; it != end; ++it) {
@@ -118,16 +119,14 @@ void AuxLabels1Mapper::GetOutput(AuxLabels *labels_out) {
   start_pos[i] = num_labels;
 }
 
-void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) {
+void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
   CHECK_NOTNULL(aux_size);
-  aux_size->size1 = arc_map_.size();
+  aux_size->size1 = arc_map_.size1;
   int32_t num_labels = 0;
-  for (const auto &arc_indexes : arc_map_) {
-    for (const auto &arc_index : arc_indexes) {
-      int32_t begin = labels_in_.indexes[arc_index];
-      int32_t end = labels_in_.indexes[arc_index + 1];
-      num_labels += end - begin;
-    }
+  for (const auto &arc_index : arc_map_) {
+    int32_t begin = labels_in_.indexes[arc_index];
+    int32_t end = labels_in_.indexes[arc_index + 1];
+    num_labels += end - begin;
   }
   aux_size->size2 = num_labels;
 }
@@ -138,9 +137,10 @@ void AuxLabels2Mapper::GetOutput(AuxLabels *labels_out) {
   auto &labels = labels_out->data;
   int32_t num_labels = 0;
   int32_t i = 0;
-  for (; i != arc_map_.size(); ++i) {
+  for (; i != arc_map_.size1; ++i) {
     start_pos[i] = num_labels;
-    for (const auto &arc_index : arc_map_[i]) {
+    for (auto j = arc_map_.indexes[i]; j != arc_map_.indexes[i + 1]; ++j) {
+      const auto arc_index = arc_map_.data[j];
       int32_t begin = labels_in_.indexes[arc_index];
       int32_t end = labels_in_.indexes[arc_index + 1];
       for (auto it = begin; it != end; ++it) {
@@ -152,7 +152,7 @@ void AuxLabels2Mapper::GetOutput(AuxLabels *labels_out) {
 }
 
 void FstInverter::GetSizes(Array2Size<int32_t> *fsa_size,
-                           Array2Size<int32_t> *aux_size) {
+                           Array2Size<int32_t> *aux_size) const {
   CHECK_NOTNULL(fsa_size);
   CHECK_NOTNULL(aux_size);
   int32_t num_extra_states = 0;
@@ -249,7 +249,8 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
   ReorderArcs(arcs, fsa_out, &arc_map);
   AuxLabels labels_tmp(labels_out->size1, labels_out->size2, start_pos.data(),
                        labels.data());
-  AuxLabels1Mapper aux_mapper(labels_tmp, arc_map);
+  Array1<int32_t *> arc_map_array(0, arc_map.size(), arc_map.data());
+  AuxLabels1Mapper aux_mapper(labels_tmp, arc_map_array);
   // don't need to call `GetSizes` here as `labels_out` has been initialized
   aux_mapper.GetOutput(labels_out);
 }
