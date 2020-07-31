@@ -12,8 +12,13 @@
 #include "k2/csrc/arcsort.h"
 #include "k2/csrc/array.h"
 #include "k2/csrc/connect.h"
+#include "k2/csrc/determinize.h"
+#include "k2/csrc/determinize_impl.h"
+#include "k2/csrc/fsa.h"
 #include "k2/csrc/intersect.h"
+#include "k2/csrc/rmepsilon.h"
 #include "k2/csrc/topsort.h"
+#include "k2/csrc/weights.h"
 #include "k2/python/csrc/array.h"
 
 void PyBindArcSort(py::module &m) {
@@ -88,9 +93,56 @@ void PyBindIntersect(py::module &m) {
           py::arg("arc_map_b").none(true));
 }
 
+template <typename TracebackState>
+void PybindDeterminizerTpl(py::module &m, const char *name) {
+  using PyClass = k2::Determinizer<TracebackState>;
+  py::class_<PyClass>(m, name)
+      .def(py::init<const k2::WfsaWithFbWeights &, float, int64_t>(),
+           py::arg("fsa_in"), py::arg("beam"), py::arg("max_step"))
+      .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"),
+           py::arg("arc_derivs_size"))
+      .def(
+          "get_output",
+          [](PyClass &self, k2::Fsa *fsa_out,
+             k2::Array1<float *> *arc_weights_out,
+             k2::Array2<typename TracebackState::DerivType *> *arc_derivs)
+              -> float {
+            return self.GetOutput(fsa_out, arc_weights_out->data, arc_derivs);
+          },
+          py::arg("fsa_out"), py::arg("arc_weights_out"),
+          py::arg("arc_derivs"));
+}
+
+template <typename TracebackState>
+void PybindEpsilonsRemoverTpl(py::module &m, const char *name) {
+  using PyClass = k2::EpsilonsRemover<TracebackState>;
+  py::class_<PyClass>(m, name)
+      .def(py::init<const k2::WfsaWithFbWeights &, float>(), py::arg("fsa_in"),
+           py::arg("beam"))
+      .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"),
+           py::arg("arc_derivs_size"))
+      .def(
+          "get_output",
+          [](PyClass &self, k2::Fsa *fsa_out,
+             k2::Array1<float *> *arc_weights_out,
+             k2::Array2<typename TracebackState::DerivType *> *arc_derivs)
+              -> void {
+            return self.GetOutput(fsa_out, arc_weights_out->data, arc_derivs);
+          },
+          py::arg("fsa_out"), py::arg("arc_weights_out"),
+          py::arg("arc_derivs"));
+}
+
 void PybindFsaAlgo(py::module &m) {
   PyBindArcSort(m);
   PyBindTopSort(m);
   PyBindConnect(m);
   PyBindIntersect(m);
+
+  PybindDeterminizerTpl<k2::MaxTracebackState>(m, "_DeterminizerMax");
+  PybindDeterminizerTpl<k2::LogSumTracebackState>(m, "_DeterminizerLogSum");
+
+  PybindEpsilonsRemoverTpl<k2::MaxTracebackState>(m, "_EpsilonsRemoverMax");
+  PybindEpsilonsRemoverTpl<k2::LogSumTracebackState>(m,
+                                                     "_EpsilonsRemoverLogSum");
 }

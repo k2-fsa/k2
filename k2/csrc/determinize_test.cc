@@ -104,9 +104,12 @@ TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
   FsaCreator fsa_creator(fsa_size);
   auto &fsa_out = fsa_creator.GetFsa();
   std::vector<float> arc_weights_out(fsa_size.size2);
-  Array2Storage<typename LogSumTracebackState::DerivType *, int32_t>
-      derivs_storage(arc_derivs_size, 1);
-  auto &arc_derivs = derivs_storage.GetArray2();
+  std::vector<int32_t> indexes(arc_derivs_size.size1 + 1);
+  std::vector<int32_t> data1(arc_derivs_size.size2);
+  std::vector<float> data2(arc_derivs_size.size2);
+  Array2<typename LogSumTracebackState::DerivType *, int32_t> arc_derivs(
+      arc_derivs_size.size1, arc_derivs_size.size2, indexes.data(),
+      data1.data(), data2.data());
 
   determinizer.GetOutput(&fsa_out, arc_weights_out.data(), &arc_derivs);
 

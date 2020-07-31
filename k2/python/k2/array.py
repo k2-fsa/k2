@@ -70,17 +70,21 @@ class IntArray2(DLPackIntArray2):
 
 class LogSumArcDerivs(DLPackLogSumArcDerivs):
 
-    def __init__(self, indexes: torch.Tensor, data: torch.Tensor):
+    def __init__(self, indexes: torch.Tensor, data1: torch.Tensor,
+                 data2: torch.Tensor):
         assert indexes.dtype == torch.int32
-        assert data.dtype == torch.float32
-        assert data.shape[1] == 2
+        assert data1.dtype == torch.int32
+        assert data2.dtype == torch.float32
         self.indexes = indexes
-        self.data = data
-        super().__init__(to_dlpack(self.indexes), to_dlpack(self.data))
+        self.data1 = data1
+        self.data2 = data2
+        super().__init__(to_dlpack(self.indexes), to_dlpack(self.data1),
+                         to_dlpack(self.data2))
 
     @staticmethod
     def create_arc_derivs_with_size(
             array_size: IntArray2Size) -> 'LogSumArcDerivs':
         indexes = torch.zeros(array_size.size1 + 1, dtype=torch.int32)
-        data = torch.zeros([array_size.size2, 2], dtype=torch.float32)
-        return LogSumArcDerivs(indexes, data)
+        data1 = torch.zeros(array_size.size2, dtype=torch.int32)
+        data2 = torch.zeros(array_size.size2, dtype=torch.float32)
+        return LogSumArcDerivs(indexes, data1, data2)

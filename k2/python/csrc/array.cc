@@ -5,6 +5,7 @@
 #include "k2/python/csrc/array.h"
 
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 #include "k2/csrc/array.h"
@@ -128,6 +129,42 @@ class DLPackArray2<ValueType *, false, I> : public Array2<ValueType *, I> {
   std::unique_ptr<Tensor> indexes_tensor_;
   std::unique_ptr<Tensor> data_tensor_;
 };
+
+// specialized for std::pair<U,V>
+template <typename U, typename V, typename I>
+class DLPackArray2<std::pair<U, V> *, true, I>
+    : public Array2<std::pair<U, V> *, I> {
+ public:
+  DLPackArray2(py::capsule cap_indexes, py::capsule cap_data1,
+               py::capsule cap_data2)
+      : indexes_tensor_(new Tensor(cap_indexes)),
+        data1_tensor_(new Tensor(cap_data1)),
+        data2_tensor_(new Tensor(cap_data2)) {
+    CHECK_EQ(indexes_tensor_->NumDim(), 1);
+    CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
+    CHECK_EQ(indexes_tensor_->Stride(0), 1);
+
+    CHECK_EQ(data1_tensor_->NumDim(), 1);
+    CHECK_GE(data1_tensor_->Shape(0), 0);  // num-elements
+    CHECK_EQ(data1_tensor_->Stride(0), 1);
+
+    CHECK_EQ(data2_tensor_->NumDim(), 1);
+    CHECK_GE(data2_tensor_->Shape(0), 0);  // num-elements
+    CHECK_EQ(data2_tensor_->Stride(0), 1);
+
+    CHECK_GE(data1_tensor_->Shape(0), data2_tensor_->Shape(0));
+
+    int32_t size1 = indexes_tensor_->Shape(0) - 1;
+    int32_t size2 = data1_tensor_->Shape(0);
+    this->Init(size1, size2, indexes_tensor_->Data<I>(),
+               data1_tensor_->Data<U>(), data2_tensor_->Data<V>());
+  }
+
+ private:
+  std::unique_ptr<Tensor> indexes_tensor_;
+  std::unique_ptr<Tensor> data1_tensor_;
+  std::unique_ptr<Tensor> data2_tensor_;
+};
 // Note: we can specialized for `StridedPtr` later if we need it.
 
 }  // namespace k2
@@ -185,6 +222,22 @@ void PybindArray2Tpl(py::module &m, const char *name) {
           "underlying tensor are sharing memory.");
 }
 
+template <typename U, typename V, typename I = int32_t>
+void PybindArray2PairTpl(py::module &m, const char *name) {
+  using Ptr = std::pair<U, V> *;
+  using PyClass = k2::DLPackArray2<Ptr, true, I>;
+  using Parent = k2::Array2<Ptr, I>;
+  py::class_<PyClass, Parent>(m, name)
+      .def(py::init<py::capsule, py::capsule, py::capsule>(),
+           py::arg("indexes"), py::arg("data1"), py::arg("data2"))
+      .def("empty", &PyClass::Empty)
+      .def(
+          "get_base", [](PyClass &self) -> Parent * { return &self; },
+          py::return_value_policy::reference_internal)
+      .def_readonly("size1", &PyClass::size1)
+      .def_readonly("size2", &PyClass::size2);
+}
+
 template <typename I>
 void PybindArray2SizeTpl(py::module &m, const char *name) {
   using PyClass = k2::Array2Size<I>;
@@ -216,8 +269,11 @@ void PybindArray(py::module &m) {
 
   // note there is a type cast as the underlying Tensor is with type `float`
   using LogSumDerivType = typename k2::LogSumTracebackState::DerivType;
-  py::class_<k2::Array2<LogSumDerivType *>>(m, "_LogSumArcDerivs");
-  PybindArray2Tpl<LogSumDerivType *, false>(m, "DLPackLogSumArcDerivs");
+  bool logsum_type_check =
+      std::is_same<LogSumDerivType, std::pair<int, float>>::value;
+  CHECK(logsum_type_check);
+  py::class_<k2::Array2<LogSumDerivType *, int32_t>>(m, "_LogSumArcDerivs");
+  PybindArray2PairTpl<int, float, int32_t>(m, "DLPackLogSumArcDerivs");
 }
 
 void PybindArray2Size(py::module &m) {
