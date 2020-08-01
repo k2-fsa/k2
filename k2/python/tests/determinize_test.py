@@ -94,6 +94,12 @@ class TestDeterminize(unittest.TestCase):
             k2.is_rand_equivalent_logsum_weight(self.fsa, self.weights,
                                                 fsa_out, arc_weights_out,
                                                 beam))
+        # cast float to int
+        arc_ids = k2.StridedIntArray1.from_float_tensor(arc_derivs.data[:, 0])
+        # we may get different value of `arc_ids.get_data(1)`
+        # with different STL implementations as we use
+        # `std::unordered_map` in implementation of determinize
+        # self.assertEqual(arc_ids.get_data(1), 9)
 
 
 if __name__ == '__main__':

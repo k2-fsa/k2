@@ -80,24 +80,27 @@ class TestArray(unittest.TestCase):
 
         self.assertEqual(indexes.numel(), array.size1 + 1)
         self.assertEqual(data.shape[0], array.size2)
-        self.assertTrue(torch.equal(array.data[0], torch.FloatTensor([0, 1])))
+        self.assertTrue(torch.equal(array.data[1], torch.FloatTensor([2, 3])))
 
+        # convert arc-ids in arc-derivs to IntArray
+        arc_ids = k2.StridedIntArray1.from_float_tensor(array.data[:, 0])
         # the underlying memory is shared between k2 and torch;
         # so change one will change another
-        data[0] = torch.FloatTensor([100, 200])
+        data[1] = torch.FloatTensor([100, 200])
         self.assertTrue(
-            torch.equal(array.data[0], torch.FloatTensor([100, 200])))
-        self.assertEqual(array.get_data(0)[1], 200)
+            torch.equal(array.data[1], torch.FloatTensor([100, 200])))
+        self.assertEqual(array.get_data(1)[1], 200)
+        self.assertEqual(arc_ids.data[1], 100)
         # we need pack and then unpack here to interpret arc_id (int) as a float,
         # this is only for test purpose as users would usually never call
         # `array.get_data` to retrieve data. Instead, it is supposed to call
         # `array.data` to retrieve or update data in the array object.
-        arc_id = pack('i', array.get_data(0)[0])
+        arc_id = pack('i', array.get_data(1)[0])
         self.assertEqual(unpack('f', arc_id)[0], 100)
 
         del data
         # the array in k2 is still accessible
-        self.assertEqual(array.get_data(0)[1], 200)
+        self.assertEqual(array.get_data(1)[1], 200)
 
 
 if __name__ == '__main__':
