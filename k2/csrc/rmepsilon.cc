@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <map>
 #include <memory>
-#include <numeric>
 #include <queue>
 #include <set>
 #include <unordered_map>
@@ -290,9 +289,16 @@ void EpsilonsRemover<TracebackState>::GetOutput(
   std::copy(arc_weights_.begin(), arc_weights_.end(), arc_weights_out);
 
   // output arc derivative information
-  std::vector<int32_t> arc_map(arc_derivs_.size());
-  std::iota(arc_map.begin(), arc_map.end(), 0);
-  CopyArcDerivs<TracebackState>(arc_derivs_, arc_map, arc_derivs);
+  CHECK_EQ(arc_derivs_.size(), arc_derivs->size1);
+  int32_t num_derivs = 0;
+  for (int32_t i = 0; i != arc_derivs->size1; ++i) {
+    arc_derivs->indexes[i] = num_derivs;
+    const auto &curr_arc_deriv = arc_derivs_[i];
+    std::copy(curr_arc_deriv.begin(), curr_arc_deriv.end(),
+              arc_derivs->data + num_derivs);
+    num_derivs += curr_arc_deriv.size();
+  }
+  arc_derivs->indexes[arc_derivs->size1] = num_derivs;
 }
 
 // explicit instantiation here

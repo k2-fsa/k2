@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/util.h"
 #include "k2/csrc/weights.h"
@@ -792,66 +791,6 @@ class DetStateMap {
     }
   };
 };
-
-/*
-   Copy arc derivatives from vector<vector<TracebackState::DerivType>>
-   to Array2<TracebackState::DerivType*>.
-
-     @param [in] arc_derivs_in   The arc derivatives with type vector<vector>.
-     @param [in] arc_map         The arc mappings between arc_derivs_in and
-                                 arc_derivs_out. `arc_map[i]` is the arc-index
-                                 in arc_derivs_in that arc i in arc_derives_out
-                                 corresponds to.
-     @param [out] arc_derivs_out The arc derivatives with type Array2, must be
-                                 initialized at entry.
-*/
-template <typename TracebackState>
-void CopyArcDerivs(
-    const std::vector<std::vector<typename TracebackState::DerivType>>
-        &arc_derivs_in,
-    const std::vector<int32_t> &arc_map,
-    Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs_out);
-
-template <>
-inline void CopyArcDerivs<MaxTracebackState>(
-    const std::vector<std::vector<MaxTracebackState::DerivType>> &arc_derivs_in,
-    const std::vector<int32_t> &arc_map,
-    Array2<MaxTracebackState::DerivType *, int32_t> *arc_derivs_out) {
-  CHECK_EQ(arc_derivs_in.size(), arc_derivs_out->size1);
-  int32_t num_derivs = 0;
-  for (int32_t i = 0; i != arc_derivs_out->size1; ++i) {
-    arc_derivs_out->indexes[i] = num_derivs;
-    const auto &curr_arc_deriv = arc_derivs_in[arc_map[i]];
-    std::copy(curr_arc_deriv.begin(), curr_arc_deriv.end(),
-              arc_derivs_out->data + num_derivs);
-    num_derivs += curr_arc_deriv.size();
-  }
-  arc_derivs_out->indexes[arc_derivs_out->size1] = num_derivs;
-}
-
-template <>
-inline void CopyArcDerivs<LogSumTracebackState>(
-    const std::vector<std::vector<LogSumTracebackState::DerivType>>
-        &arc_derivs_in,
-    const std::vector<int32_t> &arc_map,
-    Array2<LogSumTracebackState::DerivType *, int32_t> *arc_derivs_out) {
-  CHECK_EQ(arc_derivs_in.size(), arc_derivs_out->size1);
-  int32_t num_derivs = 0;
-  for (int32_t i = 0; i != arc_derivs_out->size1; ++i) {
-    arc_derivs_out->indexes[i] = num_derivs;
-    const auto &curr_arc_deriv = arc_derivs_in[arc_map[i]];
-    std::transform(
-        curr_arc_deriv.begin(), curr_arc_deriv.end(),
-        arc_derivs_out->data1 + num_derivs,
-        [](const LogSumTracebackState::DerivType &v) { return v.first; });
-    std::transform(
-        curr_arc_deriv.begin(), curr_arc_deriv.end(),
-        arc_derivs_out->data2 + num_derivs,
-        [](const LogSumTracebackState::DerivType &v) { return v.second; });
-    num_derivs += curr_arc_deriv.size();
-  }
-  arc_derivs_out->indexes[arc_derivs_out->size1] = num_derivs;
-}
 
 }  // namespace k2
 

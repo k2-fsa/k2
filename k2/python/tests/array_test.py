@@ -70,18 +70,34 @@ class TestArray(unittest.TestCase):
         self.assertEqual(array.get_indexes(1), 3)
 
     def test_logsum_arc_derivs(self):
+        data = torch.arange(10).reshape(5, 2).to(torch.float)
         indexes = torch.tensor([0, 2, 3, 5]).to(torch.int32)
-        data1 = torch.tensor([0, 1, 2, 5, 3]).to(torch.int32)
-        data2 = torch.tensor([0, 1.2, 2, 5, 3.8]).to(torch.float)
-        self.assertEqual(data1.shape[0], indexes[-1].item())
+        self.assertEqual(data.shape[0], indexes[-1].item())
 
-        array = k2.LogSumArcDerivs(indexes, data1, data2)
+        array = k2.LogSumArcDerivs(indexes, data)
         self.assertFalse(array.empty())
         self.assertIsInstance(array, k2.LogSumArcDerivs)
 
         self.assertEqual(indexes.numel(), array.size1 + 1)
-        self.assertEqual(data1.shape[0], array.size2)
-        self.assertEqual(data2.shape[0], array.size2)
+        self.assertEqual(data.shape[0], array.size2)
+        self.assertTrue(torch.equal(array.data[0], torch.FloatTensor([0, 1])))
+
+        # the underlying memory is shared between k2 and torch;
+        # so change one will change another
+        data[0] = torch.FloatTensor([100, 200])
+        self.assertTrue(
+            torch.equal(array.data[0], torch.FloatTensor([100, 200])))
+        self.assertEqual(array.get_data(0)[1], 200)
+        # we need pack and then unpack here to interpret arc_id (int) as a float,
+        # this is only for test purpose as users would usually never call
+        # `array.get_data` to retrieve data. Instead, it is supposed to call
+        # `array.data` to retrieve or update data in the array object.
+        arc_id = pack('i', array.get_data(0)[0])
+        self.assertEqual(unpack('f', arc_id)[0], 100)
+
+        del data
+        # the array in k2 is still accessible
+        self.assertEqual(array.get_data(0)[1], 200)
 
 
 if __name__ == '__main__':

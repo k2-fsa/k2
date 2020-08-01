@@ -189,46 +189,6 @@ struct Array2 {
  */
 };
 
-// Specialized Array2 for std::pair*, we represents something like
-// vector<vector<std::pair<U,V>> as an Array2 object with two data members
-// `U* data1` and `V* data2`. Given any `indexes[i]`,
-// `data1[indexes[i]]` and `data2[indexes[i]]` can be viewed as a pair
-// in the original vector of vector<std::pair<U,V>>.
-template <typename U, typename V, typename I>
-struct Array2<std::pair<U, V> *, I> {
-  using IndexT = I;
-  using PtrT = std::pair<U, V> *;
-  using ValueType1 = U;
-  using ValueType2 = V;
-
-  Array2()
-      : size1(0), size2(0), indexes(&size1), data1(nullptr), data2(nullptr) {}
-  Array2(IndexT size1, IndexT size2, IndexT *indexes, U *data1, V *data2)
-      : size1(size1),
-        size2(size2),
-        indexes(indexes),
-        data1(data1),
-        data2(data2) {}
-
-  void Init(IndexT size1, IndexT size2, IndexT *indexes, U *data1, V *data2) {
-    this->size1 = size1;
-    this->size2 = size2;
-    this->indexes = indexes;
-    this->data1 = data1;
-    this->data2 = data2;
-  }
-
-  IndexT size1;
-  IndexT size2;
-  IndexT *indexes;
-  U *data1;  // data1[indexes[0]] through data1[indexes[size1] - 1] must be
-             // accessible through this object.
-  V *data2;  // data2[indexes[0]] through data2[indexes[size1] - 1] must be
-             // accessible through this object.
-
-  bool Empty() const { return size1 == 0; }
-};
-
 template <typename Ptr, typename I>
 struct Array3 {
   // Irregular three dimensional array of something, like
