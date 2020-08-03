@@ -8,6 +8,7 @@ from torch.utils.dlpack import to_dlpack
 from _k2 import IntArray2Size
 from _k2 import DLPackIntArray2
 from _k2 import DLPackIntArray1
+from _k2 import DLPackStridedIntArray1
 from _k2 import DLPackFloatArray1
 from _k2 import DLPackDoubleArray1
 from _k2 import DLPackLogSumArcDerivs
@@ -15,15 +16,35 @@ from _k2 import DLPackLogSumArcDerivs
 
 class IntArray1(DLPackIntArray1):
 
-    def __init__(self, data: torch.Tensor):
-        assert data.dtype == torch.int32
+    def __init__(self, data: torch.Tensor, check_dtype: bool = True):
+        if check_dtype:
+            assert data.dtype == torch.int32
         self.data = data
         super().__init__(to_dlpack(self.data))
+
+    @staticmethod
+    def from_float_tensor(data: torch.Tensor) -> 'IntArray1':
+        assert data.dtype == torch.float
+        return IntArray1(data, False)
 
     @staticmethod
     def create_array_with_size(size: int) -> 'IntArray1':
         data = torch.zeros(size, dtype=torch.int32)
         return IntArray1(data)
+
+
+class StridedIntArray1(DLPackStridedIntArray1):
+
+    def __init__(self, data: torch.Tensor, check_dtype: bool = True):
+        if check_dtype:
+            assert data.dtype == torch.int32
+        self.data = data
+        super().__init__(to_dlpack(self.data))
+
+    @staticmethod
+    def from_float_tensor(data: torch.Tensor) -> 'StridedIntArray1':
+        assert data.dtype == torch.float
+        return StridedIntArray1(data, False)
 
 
 class FloatArray1(DLPackFloatArray1):

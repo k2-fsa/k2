@@ -38,8 +38,27 @@ class DLPackArray1<ValueType *, I> : public Array1<ValueType *, I> {
  private:
   std::unique_ptr<Tensor> data_tensor_;
 };
-// Note: we can specialized for `StridedPtr` later if we need it,
-// `cap_data.strides[0]` will be greater than 1 in that case.
+
+template <typename ValueType, typename I>
+class DLPackArray1<StridedPtr<ValueType, I>, I>
+    : public Array1<StridedPtr<ValueType, I>, I> {
+ public:
+  using StridedPtrType = StridedPtr<ValueType, I>;
+  explicit DLPackArray1(py::capsule cap_data)
+      : data_tensor_(new Tensor(cap_data)) {
+    CHECK_EQ(data_tensor_->NumDim(), 1);
+    CHECK_GE(data_tensor_->Shape(0), 0);   // num-elements
+    CHECK_GE(data_tensor_->Stride(0), 1);  // stride > 1
+
+    int32_t size = data_tensor_->Shape(0);
+    StridedPtrType strided_ptr(data_tensor_->Data<ValueType>(),
+                               data_tensor_->Stride(0));
+    this->Init(0, size, strided_ptr);
+  }
+
+ private:
+  std::unique_ptr<Tensor> data_tensor_;
+};
 
 /*
    DLPackArray2 initializes Array2 with `cap_indexes` and `cap_data` which are
@@ -128,7 +147,34 @@ class DLPackArray2<ValueType *, false, I> : public Array2<ValueType *, I> {
   std::unique_ptr<Tensor> indexes_tensor_;
   std::unique_ptr<Tensor> data_tensor_;
 };
-// Note: we can specialized for `StridedPtr` later if we need it.
+
+template <typename ValueType, typename I>
+class DLPackArray2<StridedPtr<ValueType, I>, true, I>
+    : public Array2<StridedPtr<ValueType, I>, I> {
+ public:
+  using StridedPtrType = StridedPtr<ValueType, I>;
+  DLPackArray2(py::capsule cap_indexes, py::capsule cap_data)
+      : indexes_tensor_(new Tensor(cap_indexes)),
+        data_tensor_(new Tensor(cap_data)) {
+    CHECK_EQ(indexes_tensor_->NumDim(), 1);
+    CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
+    CHECK_EQ(indexes_tensor_->Stride(0), 1);
+
+    CHECK_EQ(data_tensor_->NumDim(), 1);
+    CHECK_GE(data_tensor_->Shape(0), 0);   // num-elements
+    CHECK_GE(data_tensor_->Stride(0), 1);  // stride > 1
+
+    int32_t size1 = indexes_tensor_->Shape(0) - 1;
+    int32_t size2 = data_tensor_->Shape(0);
+    StridedPtrType strided_ptr(data_tensor_->Data<ValueType>(),
+                               data_tensor_->Stride(0));
+    this->Init(size1, size2, indexes_tensor_->Data<I>(), strided_ptr);
+  }
+
+ private:
+  std::unique_ptr<Tensor> indexes_tensor_;
+  std::unique_ptr<Tensor> data_tensor_;
+};
 
 }  // namespace k2
 
@@ -201,6 +247,9 @@ void PybindArray(py::module &m) {
   // `k2::Array1`.
   py::class_<k2::Array1<int32_t *>>(m, "_IntArray1");
   PybindArray1Tpl<int32_t *>(m, "DLPackIntArray1");
+
+  py::class_<k2::Array1<k2::StridedPtr<int32_t>>>(m, "_StridedIntArray1");
+  PybindArray1Tpl<k2::StridedPtr<int32_t>>(m, "DLPackStridedIntArray1");
 
   py::class_<k2::Array1<float *>>(m, "_FloatArray1");
   PybindArray1Tpl<float *>(m, "DLPackFloatArray1");
