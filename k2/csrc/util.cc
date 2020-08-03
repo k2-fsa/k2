@@ -8,7 +8,7 @@
 
 #include <stdlib.h>
 
-#include "glog/logging.h"
+#include "k2/util/Logging.h"
 
 namespace k2 {
 

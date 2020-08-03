@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
+#include "k2/util/Logging.h"
 #include "k2/csrc/connect.h"
 #include "k2/csrc/properties.h"
 #include "k2/csrc/util.h"

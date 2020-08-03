@@ -33,11 +33,16 @@ if(WIN32 AND BUILD_SHARED_LIBS)
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
 
+# build options
+option(K2_USE_GLOG "Flag that chooses logger from [GLOG, NON-GLOG (loguru)]" OFF)
+
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(cpplint)
+if(K2_USE_GLOG)
 include(glog)
+endif()
 include(googletest)
 include(pybind11)
 
