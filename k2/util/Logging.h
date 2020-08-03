@@ -11,7 +11,7 @@
 #ifdef K2_USE_GLOG
 #include "k2/util/logging_is_google_glog.h"
 #else
-#include "logging_is_not_google_glog.h"
+#include "k2/util/logging_is_not_google_glog.h"
 #endif
 
 namespace k2 {
