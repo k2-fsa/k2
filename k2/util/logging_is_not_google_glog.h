@@ -40,6 +40,6 @@ INSTANTIATE_FOR_CONTAINER(set)
 }  // namespace std
 #endif
 
-#include "loguru/loguru.h"
+#include "k2/util/loguru/loguru.h"
 
 #endif  // K2_UTIL_LOGGING_IS_NOT_GOOGLE_GLOG_H_

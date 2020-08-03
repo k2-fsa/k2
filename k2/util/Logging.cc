@@ -5,7 +5,7 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#include "Logging.h"
+#include "k2/util/Logging.h"
 
 #ifdef K2_USE_GLOG
 // Google glog's api does not have an external function that allows one to check
