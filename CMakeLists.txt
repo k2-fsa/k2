@@ -14,6 +14,8 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(k2)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON) # require c++ standard >= 11
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 
