@@ -1,3 +1,5 @@
+add_subdirectory(util)
+
 # please sort the source files alphabetically
 set(FSA_SOURCES
     arcsort.cc
@@ -20,7 +22,7 @@ add_library(fsa ${FSA_SOURCES})
 target_include_directories(fsa PUBLIC ${CMAKE_SOURCE_DIR})
 
 if(K2_USE_GLOG)
-  target_compile_definitions(fsa PRIVATE K2_USE_GLOG)
+  target_compile_definitions(fsa PUBLIC K2_USE_GLOG)
   target_link_libraries(fsa PUBLIC glog)
 else()
   target_link_libraries(fsa PUBLIC non-glog)

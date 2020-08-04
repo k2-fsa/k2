@@ -1,11 +1,10 @@
-// $FILE_PATHNAME $HEADER_FILENAME $HEADER_PATHNAME
+// k2/csrc/util/logging.h
 
 // Copyright (c) 2020 Xiaomi Corporation ( authors: Meixu Song )
-//
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#include "k2/util/Logging.h"
+#include "k2/csrc/util/logging.h"
 
 #ifdef K2_USE_GLOG
 // Google glog's api does not have an external function that allows one to check

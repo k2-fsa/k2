@@ -1,11 +1,11 @@
-// k2/util/logging_is_google_glog.h
+// k2/csrc/util/logging_is_google_glog.h
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Meixu Song)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#ifndef K2_UTIL_LOGGING_IS_GOOGLE_GLOG_H_
-#define K2_UTIL_LOGGING_IS_GOOGLE_GLOG_H_
+#ifndef K2_UTIL_LOGGING_IS_NOT_GOOGLE_GLOG_H_
+#define K2_UTIL_LOGGING_IS_NOT_GOOGLE_GLOG_H_
 
 #include <map>
 #include <set>
@@ -22,9 +22,7 @@
 #include <cuda.h>
 #endif
 
-#if !defined(__CUDACC__) && !defined(K2_USE_MINIMAL_GLOG)
-#include <glog/stl_logging.h>
-#else
+#if defined(__CUDACC__)
 /*
  * To disable stl logging for nvcc:
  * Just ignore the log message within overloaded operator "<<" template function.
@@ -43,6 +41,6 @@ INSTANTIATE_FOR_CONTAINER(set)
 }  // namespace std
 #endif
 
-#include <glog/logging.h>
+#include "k2/csrc/util/loguru/loguru.h"
 
-#endif  // K2_UTIL_LOGGING_IS_GOOGLE_GLOG_H_
+#endif  // K2_UTIL_LOGGING_IS_NOT_GOOGLE_GLOG_H_

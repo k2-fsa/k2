@@ -2,8 +2,8 @@
 #--------------------------------- non-glog (loguru) -------------------------------
 if(NOT K2_USE_GLOG)
   add_library(non-glog
-              Logging.cc
-              loguru/loguru.cc)
+              ./logging.cc
+              ./loguru/loguru.cc)
 
   target_include_directories(non-glog PUBLIC ${CMAKE_SOURCE_DIR})
 

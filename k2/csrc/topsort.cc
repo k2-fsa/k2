@@ -11,10 +11,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "k2/util/Logging.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/properties.h"
 #include "k2/csrc/util.h"
+#include "k2/csrc/util/logging.h"
 
 namespace k2 {
 void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {

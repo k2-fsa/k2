@@ -1,7 +1,8 @@
-//
-// Created by songmeixu (songmeixu@outlook.com) on 2020/8/3.
-// Copyright (c) 2020 Xiaomi Inc. All rights reserved.
-//
+// k2/csrc/util/logging_is_google_glog.h
+
+// Copyright (c)  2020  Xiaomi Corporation (authors: Meixu Song)
+
+// See ../../LICENSE for clarification regarding multiple authors
 
 #ifndef K2_UTIL_LOGGING_H_
 #define K2_UTIL_LOGGING_H_
@@ -9,9 +10,9 @@
 // Choose one logging implementation.
 // All have the same common API of google/glog
 #ifdef K2_USE_GLOG
-#include "k2/util/logging_is_google_glog.h"
+#include "k2/csrc/util/logging_is_google_glog.h"
 #else
-#include "k2/util/logging_is_not_google_glog.h"
+#include "k2/csrc/util/logging_is_not_google_glog.h"
 #endif
 
 namespace k2 {

@@ -23,7 +23,7 @@
 #endif // _MSC_VER
 #endif
 
-#include "k2/util/loguru/loguru.h"
+#include "k2/csrc/util/loguru/loguru.h"
 
 #ifndef LOGURU_HAS_BEEN_IMPLEMENTED
 #define LOGURU_HAS_BEEN_IMPLEMENTED
