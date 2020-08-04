@@ -4,8 +4,8 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#ifndef K2_UTIL_LOGGING_IS_GOOGLE_GLOG_H_
-#define K2_UTIL_LOGGING_IS_GOOGLE_GLOG_H_
+#ifndef K2_CSRC_UTIL_LOGGING_IS_GOOGLE_GLOG_H_
+#define K2_CSRC_UTIL_LOGGING_IS_GOOGLE_GLOG_H_
 
 #include <map>
 #include <set>
@@ -45,4 +45,4 @@ INSTANTIATE_FOR_CONTAINER(set)
 
 #include <glog/logging.h>
 
-#endif  // K2_UTIL_LOGGING_IS_GOOGLE_GLOG_H_
+#endif  // K2_CSRC_UTIL_LOGGING_IS_GOOGLE_GLOG_H_

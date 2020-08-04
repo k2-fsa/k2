@@ -4,8 +4,8 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#ifndef K2_UTIL_LOGGING_H_
-#define K2_UTIL_LOGGING_H_
+#ifndef K2_CSRC_UTIL_LOGGING_H_
+#define K2_CSRC_UTIL_LOGGING_H_
 
 // Choose one logging implementation.
 // All have the same common API of google/glog
@@ -30,4 +30,4 @@ constexpr bool IsUsingGoogleLogging() {
 }
 
 }  // namespace k2
-#endif  // K2_UTIL_LOGGING_H_
+#endif  // K2_CSRC_UTIL_LOGGING_H_
