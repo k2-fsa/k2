@@ -41,6 +41,14 @@ INSTANTIATE_FOR_CONTAINER(set)
 }  // namespace std
 #endif
 
+/*
+ * From [loguru](https://github.com/emilk/loguru):
+ * As a drop-in replacement for most of GLOG
+ * And multiple features, such as:
+ *   - User can install callbacks for logging
+ *   - User can install callbacks for fatal error
+ *     (e.g. to pause an attached debugger or throw an exception).
+*/
 #include "k2/csrc/util/loguru/loguru.h"
 
 #endif  // K2_CSRC_UTIL_LOGGING_IS_NOT_GOOGLE_GLOG_H_

@@ -10,6 +10,7 @@
 // Google glog's api does not have an external function that allows one to check
 // if glog is initialized or not. It does have an internal function - so we are
 // declaring it here. This is a hack but has been used by a bunch of others too.
+// (e.g. Torch).
 namespace google {
 namespace glog_internal_namespace_ {
 bool IsGoogleLoggingInitialized();
@@ -42,8 +43,6 @@ void UpdateLoggingLevelsFromFlags() {
 #else  // !K2_USE_GLOG
 namespace k2 {
 bool InitK2Logging(int *argc, char **argv) {
-  // When doing InitCaffeLogging, we will assume that caffe's flag parser has
-  // already finished.
   if (*argc == 0)
     return true;
 
