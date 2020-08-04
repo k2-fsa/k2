@@ -65,6 +65,53 @@ template <typename T> class Array1 {
   }
 };
 
+
+
+#define MAX_DIM 4  // Will increase this as needed
+
+class Shape {
+ public:
+  int32_t ndim() { return ndim_; }
+
+  int32_t dim(int32_t i) {
+    CHECK_LT(dynamic_cast<uint32_t>(i), dynamic_cast<uint32_t>(ndim_));
+    return dims_[i];
+  }
+  int32_t stride(int32_t i) {
+    CHECK_LT(dynamic_cast<uint32_t>(i), dynamic_cast<uint32_t>(ndim_));
+    return strides_[i];
+  }
+
+  Shape(const std::vector<int32_t> &dims);
+  Shape(const std::vector<int32_t> &dims,
+        const std::vector<int32_t> strides);
+
+  bool IsContiguous();
+
+ private:
+  int32_t ndim_;  // Must be >= 0
+  int32_t dims_[MAX_DIM];
+  int32_t strides_[MAX_DIM];
+};
+
+
+
+class Tensor {
+ public:
+
+  template <typename T> T *data();  // Returns pointer to elem with index
+                                    // all-zeros... will check that the type
+                                    // matches the correct one.
+
+ private:
+
+
+};
+
+
+
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_CUDA_ARRAY_H_

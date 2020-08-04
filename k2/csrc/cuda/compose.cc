@@ -82,7 +82,16 @@ class MultiGraphDenseIntersect {
     }
 
     for (int32_t t = T; t >= 0; t--) {
+      PropagateBackward(frames[t], (t == T ? NULL : frames[t+1] ));
     }
+  }
+
+
+  void FormatOutput(FsaVec *ofsa,
+                    Array<int32_t> *arc_map_a,
+                    Array<int32_t> *arc_map_b) {
+
+
 
   }
 
@@ -114,18 +123,18 @@ class MultiGraphDenseIntersect {
     // i.e. it's indexed by [fsa_id][state].
     Array1<float> max_per_fsa = MaxPerSubSublist((Ragged2<float>&)end_probs);
 
-    Array1<int> active_states_per_fsa =  end_probs.Sizes1();
-    int *active_per_fsa_data = active_states_per_fsa.values.data();
+    Array1<int32_t> active_states_per_fsa =  end_probs.Sizes1();
+    int32_t *active_per_fsa_data = active_states_per_fsa.values.data();
     float *max_per_fsa_data = max_per_fsa.values.data(),
         *dynamic_beams_data = dynamic_beams_.values.data();
     float beam = beam_,
         max_active = max_active_,
         min_active = min_active_;
 
-    auto lambda = __host__ __device__ [=] (int i) -> float {
+    auto lambda = __host__ __device__ [=] (int32_t i) -> float {
               float best_loglike = max_per_fsa_data[i],
                   dynamic_beam = dynamic_beams_data[i];
-              int num_active = active_per_fsa_data[i];
+              int32_t num_active = active_per_fsa_data[i];
               float ans;
               if (num_active <= max_active) {
                 if (num_active > min_active) {
@@ -152,7 +161,7 @@ class MultiGraphDenseIntersect {
     dynamic_beam_.swap(&new_beam);
 
     float *dynamic_beam_data = dynamic_beam_.data;
-    auto lambda2 = __device__ [dynamic_beam_data,max_per_fsa_data] (int i)->float {
+    auto lambda2 = __device__ [dynamic_beam_data,max_per_fsa_data] (int32_t i)->float {
                                 return max_per_fsa_data[i] - dynamic_beam_data[i]; };
     *cutoffs = Array1<float>(c_, num_fsas, lambda2);
   }
@@ -172,12 +181,12 @@ class MultiGraphDenseIntersect {
     // in a_fsas_ (the decoding graphs), maps from abs-state-index to abs-arc-index.
     int *fsa_arc_offsets = a_fsas_.RowSplits2().data();
 
-    __host__ __device__ auto num_arcs_lambda = [state_values,fsa_arc_offsets] (int i) -> int {
+    __host__ __device__ auto num_arcs_lambda = [state_values,fsa_arc_offsets] (int32_t i) -> int {
                      int abs_state_index = state_values[i].abs_state_id;
                      return fsa_arc_offsets[abs_state_index+1]-fsa_arc_offsets[abs_state_index];
                   };
     // `num_arcs` gives the num-arcs for each state in `states`.
-    Array<int> num_arcs(c_, states.values.size(), num_arcs_lambda);
+    Array<int32_t> num_arcs(c_, states.values.size(), num_arcs_lambda);
 
     // initialize shape of array that will hold arcs leaving the active states.
     // [fsa_index][state][arc].
@@ -208,7 +217,7 @@ class MultiGraphDenseIntersect {
     __host__ __device__ auto ai_lambda =
         [state_values, ai_row_ids, ai_row_splits, ai_data, arcs, t,
          fsa_arc_offsets, arcs_row_ids, score_data, score_num_cols, symbol_shift,
-         nnet_output_ptrs] (int i) -> void {
+         nnet_output_ptrs] (int32_t i) -> void {
           int ai_row_id = ai_row_ids2[i],  // == index into state_values
               fsa_idx = ai_row_ids1[ai_row_id],
               ai_split_start = ai_row_splits2[arc_row_id],
@@ -252,7 +261,7 @@ class MultiGraphDenseIntersect {
 
     Ragged3<float> ai_loglikes(arc_info.shape,
                                Array1<float>(arc_info.elems.size(),
-                                             [ai_data](int i) -> float { return ai_data[i].end_loglike; }));
+                                             [ai_data](int32_t i) -> float { return ai_data[i].end_loglike; }));
 
 
     Array1<float> cutoffs; // per fsa.
@@ -266,14 +275,14 @@ class MultiGraphDenseIntersect {
     int *ai_row_ids1 = arc_info.RowIds1().data(),
         *ai_row_ids2 = arc_info.RowIds2().data(),
         *state_map_data = state_map_.data();
-    auto lambda3 == __host__ __device__ [ai_data,ai_row_ids1,ai_row_ids2,cutoffs_data](int i) -> void {
+    auto lambda3 == __host__ __device__ [ai_data,ai_row_ids1,ai_row_ids2,cutoffs_data](int32_t i) -> void {
                                  int32_t fsa_id = ai_row_ids1[ai_row_ids2[i]];
                                  int32_t abs_dest_state = ai_data[i].abs_dest_state;
                                  float end_loglike = ai_data[i].end_loglike,
                                      cutoff = cutoffs_data[fsa_id];
                                  if (end_loglikes > cutoff) {
                                    // The following is a race condition as multiple threads may write to
-                                   // the same location, but it doesn't matter, the point is to assign
+                                   // the same location, but it doesn't matter, the point32_t is to assign
                                    // one index i
                                    state_map_data[abs_dest_state] = i;
                                  }
@@ -298,7 +307,7 @@ class MultiGraphDenseIntersect {
     // prune with the lattice beam, using both forward and backward scores.
     char *keep_this_arc_data = keep_this_arc.data(),
         *keep_this_state_data = keep_this_state.data();
-    auto lambda_keep = __host__ __device__ [=](int i) -> void {
+    auto lambda_keep = __host__ __device__ [=](int32_t i) -> void {
                                          int32_t abs_dest_state = ai_data[i].abs_dest_state;
                                          int j = state_map_data[abs_dest_state];
                                          if (j != -1) {
@@ -310,7 +319,7 @@ class MultiGraphDenseIntersect {
     Eval(D, arc_info.elems.size(), lambda_keep);
 
     // The '+1' is so we can easily get the total num-arcs and num-states.
-    Array1<int> arc_reorder(c_, arc_info.elems.size() + 1),
+    Array1<int32_t> arc_reorder(c_, arc_info.elems.size() + 1),
         state_reorder(c_, arc_info.elems.size() + 1);
     ExclusiveSum(keep_this_arc, &arc_reorder);
     ExclusiveSum(keep_this_state, &state_reorder);
@@ -326,7 +335,7 @@ class MultiGraphDenseIntersect {
     // state_to_fsa_id maps from an index into the next frame's
     // FrameInfo::states.values() vector (i.e. a frame-state-index on the *next*
     // frame) to the FSA-id associated with it.  It should be non-decreasing.
-    Array1<int> state_to_fsa_id(c_, num_states);
+    Array1<int32_t> state_to_fsa_id(c_, num_states);
     { // This block sets 'state_to_fsa_id'.
       int *states_row_ids = states.RowIds1();  // maps from index into `states`,
       // == current frame's
@@ -357,7 +366,7 @@ class MultiGraphDenseIntersect {
     ans->states = Ragged2FromRowIds(num_fsas,
                                     state_to_fsa_id,
                                     Array1<ArcInfo>(D, num_arcs));
-    auto lambda_init_loglike = __host__ __device__ [] (int i) -> void {
+    auto lambda_init_loglike = __host__ __device__ [] (int32_t i) -> void {
                            ans->states[i].forward_loglike = FloatToOrderedInt(-std::numeric_limits<BaseFloat>::infinity());
                                                    };
     Eval(c_, num_states, lambda_init_loglike);
@@ -370,7 +379,7 @@ class MultiGraphDenseIntersect {
     // Modify the elements of `state_map` to refer to the indexes into
     // `ans->states` / `kept_states_data`, rather than the indexes into ai_data.
     // Note: this will decrease some of the values in `state_map`, in general.
-    auto lambda_modify_state_map = __host__ __device__ [=](int i) ->void {
+    auto lambda_modify_state_map = __host__ __device__ [=](int32_t i) ->void {
                int this_j = state_reorder_data[i],
                    next_j = state_reorder_data[i+1];
                if (next_j > this_j)
@@ -378,7 +387,7 @@ class MultiGraphDenseIntersect {
             };
     Eval(c_, arc_info.elems.size(), lambda_modify_state_map);
 
-    auto lambda_set_arcs_and_states = __host__ __device__ [=](int i) ->void {
+    auto lambda_set_arcs_and_states = __host__ __device__ [=](int32_t i) ->void {
             int this_j = arc_reorder_data[i],
                 next_j = arc_reorder_data[i+1];
             // Note: I have a idea to reduce main-memory bandwidth by
@@ -410,6 +419,117 @@ class MultiGraphDenseIntersect {
     return ans;
   }
 
+  /*
+    Does backward propagation of log-likes, which means setting the backward_loglike
+    field of the StateInfo variable.  These backward log-likes are normalized in such
+    a way that you can add them with the forward log-likes and get the log-like ratio
+    to the best path.  So for the final state we set the backward log-like to
+    the negative of the forward loglike.
+       @param [in]  cur_frame    The FrameInfo for the frame on which we want to
+                                 set the forward log-like
+       @param [in]  next_frame  NULL if this is is the last frame of the sequence;
+                                otherwise the next frame's FrameInfo; arcs on
+                                `cur_frame` have transitions to states on `next_frame`.
+                                The `backward_loglike` values in `next_frame` are
+                                assumed to already be set.
+   */
+  void PropagateBackward(FrameInfo *cur_frame,
+                         FrameInfo *next_frame) {
+
+    int32_t num_states = cur_frame->states.values.size(),
+        num_arcs = cur_frame->arcs.values.size();
+    Ragged2<StateInfo> &cur_states = cur_frame->states;
+    StateInfo *cur_states_data = cur_states.values.data();
+
+    int32_t tot_states = a_fsas_.TotSize1();
+    int32_t *a_fsas_row_ids1 = a_fsas_.RowIds1();
+
+    const int32_t minus_inf = FloatToOrderedInt(-std::numeric_limits<BaseFloat>::infinity());
+
+    Ragged2<int32_t> state_backward_prob((RaggedShape2)cur_frame->arcs.shape,
+                                         Array<int32_t>(cur_frame->arcs.TotSize1(),
+                                                        minus_inf));
+
+    /* this represents the backward-prob at the beginning of the arc.
+       Indexing is [frame_state_idx][arc_idx]
+     */
+    Ragged2<int32_t> arc_backward_prob(AppendAxis(cur_frame->arcs.shape, 0),
+                                       Array<int32_t>(c_, num_arcs));
+    int32_t *arc_backward_prob_data = arc_backward_prob.values.data();
+
+    ArcInfo *arcs_data = cur_frame->arcs.values.data();
+
+    float beam = beam_;
+
+    // We need the memory space to be 1 larger, see ExclusiveSum() documentation
+    Array1<char> keep_this_arc = Array1<char>(num_arcs+1).Range(0, num_arcs),
+        keep_this_state = Array1<char>(num_states+1).Range(0, num_states);
+
+    if (next_frame != NULL) {
+      StateInfo *cur_states_data = cur_frame->states.values.data();
+      int32_t *arc_row_ids = arcs_data.RowIds2();  // maps from arc-idx to frame-state-idx.
+      StateInfo *next_states_data = next_frame->states.values.data();
+      auto lambda_set_arc_backward_prob = __host__ __device__ [=] (int32_t i) -> void {
+          ArcInfo *arc = arcs_data + i;
+          int32_t dest_frame_state_idx = arc->u.dest_frame_state_idx;
+          float arc_loglike = arc->arc_loglike;
+          int32_t dest_state_backward_loglike =
+              next_states_data[dest_frame_state_idx].backward_loglike;
+          float backward_loglike = arc_loglike + OrderedIntToFloat(
+              dest_state_backward_loglike);
+          float src_state_forward_loglike =
+              OrderedIntToFloat(cur_states_data[arc_row_ids[i]].forward_loglike);
+          keep_this_arc[i] = (backward_loglike + src_state_forward_loglike >= -beam);
+          arc_backward_prob_data[i] = FloatToOrderedInt(backward_loglike);
+      };
+      Eval(c_, arc_backward_prob.size(), lambda_set_arc_backward_prob);
+    } else {
+      assert(arc_backward_prob.size() == 0);
+    }
+
+    /* note, the elements of state_backward_prob that don't have arcs leaving them will
+       be set to the supplied default.  */
+    Array1<int32_t> state_backward_prob = MaxPerSublist(arc_backward_prob,
+                                                        FloatToOrderedInt(-std::numeric_limits<float>::infinity()));
+
+
+    int32_t num_fsas = a_fsas_.Size0();
+    assert(cur_frame->states.Size0() == num_fsas);
+
+    auto lambda_set_backward = __host__ __device__ [=] (int32_t i) -> void {
+        StateInfo *info = cur_states_data + i;
+        int32_t abs_state_id = info->abs_state_id;
+        assert(static_cast<uint32_t>(abs_state_id) < static_cast<uint32_t>(tot_states));
+        float forward_loglike = OrderedIntToFloat(info->forward_loglike),
+            backward_loglike;
+        if (abs_state_id == tot_states - 1 ||
+            a_fsas_row_ids1[abs_state_id+1] > a_fsas_row_ids1[abs_state_id]) {
+          // This is a final-state (last state in one of the FSAs).
+          // .. actually I wonder whether the following is equivalent to just '-'.
+          backward_loglike = -IntToOrderedFloat(info->forward_loglike);
+        } else {
+          backward_loglike = FloatToOrderedInt(state_backward_prob[i]);
+        }
+        int keep = (backward_loglike + forward_loglike >= -beam);
+        keep_this_state[i] = keep;
+        if (!keep) {
+          // The reason we set the backward_loglike to -infinity here if it's
+          // outside the beam, is to prevent disconnected states from appearing
+          // after pruning due to numerical roundoff effects near the boundary
+          // at `-beam`.  It would otherwise be correct and harmless to omit
+          // this if-block.
+          backward_loglike = -std::numeric_limits<float>::infinity();
+        }
+        info->backward_loglike = FloatToOrderedInt(backwad_loglike);
+    };
+    Eval(c_, cur_frame->states.values.size(), lambda_set_backward);
+  }
+
+  cur_frame->states_renumber = Array1<int32_t>(num_states);
+  cur_frame->arcs_renumber = Array1<int32_t>(num_arcs);
+  ExclusiveSum(keep_this_state, &cur_frame->states_renumber);
+  ExclusiveSum(keep_this_arc, &cur_frame->arcs_renumber);
+
 
   /* Information associated with a state active on a particular frame..  */
   struct StateInfo {
@@ -427,13 +547,11 @@ class MultiGraphDenseIntersect {
     /* Note: this `backward_loglike` is the best score of any path from here to the
        end, minus the best path in the overall FSA, i.e. it's the backward score
        you get if, at the final-state, you set backward_loglike == forward_loglike.
+       So backward_loglike + forward_loglike <= 0, and you can treat it somewhat
+       like a posterior (except they don't sum to one as we're using max, not
+       log-add).
 
-
-
-       has been computed in such a way that if you
-       add
-
-    /* Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
+       Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
        FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
        represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
        use max not log-sum).  You can take the pruned lattice and rescore it if
@@ -449,11 +567,8 @@ class MultiGraphDenseIntersect {
                         // output, == b_fsas), plus loglike from the arc in a_fsas.
 
     union {
-      int32_t abs_state_id;   // The index into the next Frame Info's state.values
-                            // (could call this an abs_state_id).  Note: this is also
-                            // used temporarily to store the real abs_dest_state which is the index into
-                            // a_fsas_.elems, but in the permanently stored ArcInfo it stores
-                            // the index into FrameInfo::state.values.
+      int32_t abs_state_id; // The destination-state as an index into a_fsas_.elems (only temporarily;
+                            // when stored in the FrameInfo we use the dest_frame_state_idx field instead).
       int32_t dest_frame_state_idx;  // the frame_state_idx of the destination
                                      // state, i.e. the index into the next
                                      // frame's "states" vector.
@@ -488,6 +603,15 @@ class MultiGraphDenseIntersect {
     // that have no states, and indexes [fsa_idx][state_idx] that have no arcs,
     // due to pruning.
     Ragged3<ArcInfo> arcs;
+
+    // Renumbering of states that we obtain in the backward pass; maps from
+    // (numbering in states.elems) -> (numbering after removing pruned-away states).
+    // Dim is states.elems.size() + 1.  Is exclusive-sum of (is this state kept?).
+    Array1<int32_t> states_renumber;
+    // Renumbering of arcs that we obtain in the backward pass; maps from
+    // (numbering in arcs.elems) -> (numbering after removing pruned-away sarcs).
+    // Dim is states.elems.size() + 1.  Is exclusive-sum of (is this arc kept?).
+    Array1<int32_t> arcs_renumber;
   };
 
   ContextPtr c_;
@@ -543,15 +667,15 @@ void IntersectDensePruned(FsaVec &a_fsas,
   std::vector
 
 
-  Array1<int> a_index;
-  Array1<int> b_index;
+  Array1<int32_t> a_index;
+  Array1<int32_t> b_index;
 
-  Array1<int> fsa_id;
-  Array1<int> out_state_id;
+  Array1<int32_t> fsa_id;
+  Array1<int32_t> out_state_id;
 
   Array1<HashKeyType> state_repr_hash;  // hash-value of corresponding elements of a_fsas and b_fsas
 
-  Hash<HashKeyType, int, Hasher> repr_hash_to_id;  // Maps from (fsa_index, hash of state_repr) to
+  Hash<HashKeyType, int32_t, Hasher> repr_hash_to_id;  // Maps from (fsa_index, hash of state_repr) to
 }
 
 }  // namespace k2

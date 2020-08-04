@@ -7,7 +7,7 @@
 #ifndef K2_CSRC_CUDA_RAGGED_H_
 #define K2_CSRC_CUDA_RAGGED_H_
 
-#include "k2/csrc/cuda/shape.h"
+#include "k2/csrc/cuda/ragged_shape.h"
 
 namespace k2 {
 
