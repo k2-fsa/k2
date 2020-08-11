@@ -38,34 +38,55 @@ using ContextPtr = std::shared_ptr<Context>;
    This object should be allocated with std::shared_ptr, as that's how we store
    pointers to it.
 */
-class Context {
+class Context: public std::enable_shared_from_this<Context> {
  public:
   virtual ~Context() = default;
 
-  /*
-    Return either a copy of this object that can be used for (e.g.) creating new
-    arrays, or nullptr.  If nullptr is returned, then the user should use the
-    std::shared_ptr to this object instead.
 
-    The reason this is necessary is that originally when we get this Context
-    we'll get it from some kind of tensor from an external toolkit, and this
-    might be part of an Array that points to memory held by a Tensor that came
-    from that toolkit.  In that case the right way to free the memory inside
-    Deallocate() would be to destroy our locally held copy of that Tensor, and
-    the Context will know this.  When we call Duplicate() on this type of
-    Context, it will give us a "fresh" Context that will allocate and deallocate
-    in the normal way.
+  /*
+    Return a 'child context' of this.  Think of this as like a sub-process, useful
+    for running things in parallel like in multiple threads or CUDA stream.
+    Here we give a default implementation that just returns *this (not very useful).
+    In the case of CUDA, what this would likely do is:
+         create a new stream (child stream)
+         create a CUDA event in this stream (the parent stream)
+         make the child stream wait on the just-created event in the parent stream
+       And then in the destructor of the returned ContextPtr:
+         create a CUDA event in the stream we created
+         make the parent stream wait on that event.
+
+    In the case of CPU, this would likely:
+         wait for a free thread from a thread pool, and put a pointer to it
+         in this Context.
+     The destructor would:
+         tell that thread
+         wait for that thread to terminate.
+
+     So the idea is that destroying the child context is like waiting on a child
+     process.  We can also later add a function to explicitly wait on a context.
+
+     The idea is to have a device-independent way of "backgrounding" tasks.
    */
-  virtual ContextPtr Duplicate() = 0;
+  virtual ContextPtr GetChild() { return shared_from_this(); }
 
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
   virtual DeviceType GetDeviceType() const = 0;
 
-  // Allocate memory on this device (raise an exception on failure, which we
-  // won't attempt to catch because it will be specific to the external
-  // toolkit).
-  // Note: will return NULL if bytes == 0.
-  virtual void *Allocate(size_t bytes) = 0;
+  /*
+    Allocate memory on this device (raise an exception on failure, which we likely
+    won't attempt to catch).
+
+        @param [in] bytes   Number of bytes to allocate; may be zero, in which
+                            case NULL will be returned.   Let's assume the alignment
+                            of the returned memory is at least as strict as
+                            for malloc() with the same values.
+        @param [out] decoder_context   If more information than the returned pointer
+                            is required in order to deallocat this memory, then
+                            that information will be supplied as 'deleter_context'.
+                            In some cases this will be zero.
+        @return    Returns the allocated block, or NULL if bytes == 0.
+  */
+  virtual void *Allocate(size_t bytes, void **deleter_context) = 0;
 
   // Return true if this is the same device as 'other' (essentially: that it
   // lives in the same physical memory space).
@@ -76,13 +97,19 @@ class Context {
     return this == &other || this->IsSame(other);
   }
 
-  // Free memory that was allocated by Context::Allocate() on the same device.
-  // In general it is an error if `data` was not allocated this way; however,
-  // this will still do the right thing (generally: nothing) if the data was
-  // allocated by an external toolkit because the Context object will remember
-  // that it's held by a Region whose data belongs to an external toolkit.
-  // See also Duplicate() for more information on this special case.
-  virtual void Deallocate(void *data) = 0;
+  /*
+    Free memory that was allocated by Context::Allocate() from this Context object
+    (or, in general, memory obtained from an external toolkit that this Context object
+    knows how to delete).
+           @param [in] data       The memory to delete (may be NULL)
+           @param [in] deleter_context    Some Context objects may require additional
+                            context information to delete the memory, like
+                            the concept of 'context' in PyTorch's DataPtr.  Or may be
+                            NULL in some instances.  In general, whatever was output
+                            by Allocate() to deleter_context should be supplied to
+                            Deallocate().
+  */
+  virtual void Deallocate(void *data, void *deleter_context) = 0;
 };
 
 template <typename T>
@@ -110,14 +137,20 @@ ContextPtr GetContext(const First &first, const Rest &... rest) {
   that memory. Once it gets too large and can't fit in the Region, it allocates
   a new Region.
 */
-struct Region {
-  // The 'context' is an object that
+struct Region: public std::enable_shared_from_this<Region> {
+  // note: the inheritance from std::enable_shared_from_this<Region>
+  // means that this object has a function
+  //  std::shared_ptr<Region> shared_from_this();
   ContextPtr context;
   void *data;         // Pointer to the start of the allocated memory region
+  void *deleter_context;  // if non-NULL, this is provided to the context in the
+                          // destructor instead of 'data'.  It will be NULL for
+                          // some Contexts, non-NULL for others.
   size_t num_bytes;   // number of bytes allocated.
   size_t bytes_used;  // largest number of bytes used/covered by any Array that
                       // points to this Region (this is relevant for things that
                       // behave like resizable vectors).
+
   // You need template arg to invoke this, e.g. region->GetData<int>();
   // You can also choose to template additionally on the device-type, like
   // region->GetData<int,kGpu>(), to activate a check that it's on the expected
@@ -125,11 +158,15 @@ struct Region {
   template <typename T = void, DeviceType d = kUnk>
   T *GetData() {
     if (d != kUnk) assert(d == context->GetDeviceType());
-    return reinterpret_cast<T *>(data);
+    return reinterpret_cast<T*>(data);
   }
 
-  ~Region() { context->Deallocate(data); }
+  ~Region() {
+    context->Deallocate(deleter_context != nullptr ? deleter_context : data);
+  }
 };
+
+using RegionPtr = std::shared_ptr<Region>;
 
 // Return a basic Context object suitable for work on the CPU.
 ContextPtr GetCpuContext();
@@ -155,17 +192,12 @@ ContextPtr GetCudaContext(int gpu_id = -1);
                           region will have bytes_used == num_bytes; if the user
                           wants to change this they can do it afterward.
 */
-std::shared_ptr<Region> NewRegion(ContextPtr &context, size_t num_bytes) {
+RegionPtr NewRegion(Context &context, size_t num_bytes) {
   // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
   // overwrite if needed.
   std::shared_ptr<Region> ans = std::make_shared<Region>();
-  if (!(ans->context = context->Duplicate())) {
-    // we'll almost always go inside this if-statement.  The only time when
-    // Duplicate() returns a non-NULL pointer is when we have a Context that is
-    // attached to
-    ans->context = context;
-  }
-  ans->data = context->Allocate(num_bytes);
+  ans->context = context.shared_from_this();
+  ans->data = context->Allocate(num_bytes, &ans->deleter_context);
   ans->num_bytes = num_bytes;
   ans->bytes_used = num_bytes;
   return ans;

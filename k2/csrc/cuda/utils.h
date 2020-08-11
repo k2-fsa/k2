@@ -134,7 +134,7 @@ namespace k2 {
        like [ 0 1 3 6 10 15 ].
  */
 template <typename SrcPtr, typename DestPtr>
-void ExclusivePrefixSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest);
+void ExclusiveSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest);
 
 
 

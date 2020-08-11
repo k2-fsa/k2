@@ -84,12 +84,61 @@ class MultiGraphDenseIntersect {
     for (int32_t t = T; t >= 0; t--) {
       PropagateBackward(frames[t], (t == T ? NULL : frames[t+1] ));
     }
+
+
+
   }
 
 
   void FormatOutput(FsaVec *ofsa,
                     Array<int32_t> *arc_map_a,
                     Array<int32_t> *arc_map_b) {
+
+    // Create array of T+1 by num_fsas which will help us determine
+    // the formatting of the states and arcs' data.
+    // the last one (indexed T) won't be written to yet, but we
+    // write to it in the exclusive sum...
+    Array2<int32_t> states_sizes(c_, T+1, num_fsas);
+    Array2<int32_t> arcs_sizes(c_, T+1, num_fsas);
+
+    for (int32_t t = 0; t < T; t++) {
+      GetSizeInfo(frames[t], states_sizes[t], arcs_sizes[t]);
+    }
+    // 0 below means axis=0, sum over row axis...
+    ExclusiveSum(states_sizes, &states_sizes, 0);
+    ExclusiveSum(arcs_sizes, &arcs_sizes, 0);
+
+    Array1<int32_t> states_fsa_sizes(*states_sizes.AsTensor().Index(1, T));
+    Array1<int32_t> arcs_fsa_sizes(*arcs_sizes.AsTensor().Index(1, T));
+    Array1<int32_t> states_fsa_offsets(c_, num_fsas + 1);
+    Array1<int32_t> arcs_fsa_offsets(c_, num_fsas + 1);
+    ExclusiveSum(states_fsa_sizes, &states_fsa_offsets);
+    ExclusiveSum(arcs_fsa_sizes, &arcs_fsa_offsets);
+    int32_t tot_states = states_fsa_offsets[num_fsas],
+        tot_arcs = arcs_fsa_offsets[num_fsas];
+
+    Array1<Arc> arcs(c_, tot_arcs);
+
+    // Note: actually the loop below can be done in parallel.  We could maybe do:
+    // { auto nosync = c_.TurnOffSync(); ..
+    for (int t = 0; t < T; t++) {
+
+
+    }
+    // }
+
+
+    int32_t *this_states_offsets_data = this_states_sizes_data,
+        *this_arcs_sizes_data = this_arcs_sizes_data;
+    const int32_t *states_renumber_data =
+
+
+        *this_t_states_renumber
+        this_t_sizes
+        }
+  sizes.Row(T) = 0;  // figure out how.. set this to zero.
+
+
 
 
 
@@ -523,13 +572,55 @@ class MultiGraphDenseIntersect {
         info->backward_loglike = FloatToOrderedInt(backwad_loglike);
     };
     Eval(c_, cur_frame->states.values.size(), lambda_set_backward);
+
+
+    cur_frame->states_renumber = Array1<int32_t>(num_states);
+    cur_frame->arcs_renumber = Array1<int32_t>(num_arcs);
+    ExclusiveSum(keep_this_state, &cur_frame->states_renumber);
+    ExclusiveSum(keep_this_arc, &cur_frame->arcs_renumber);
   }
 
-  cur_frame->states_renumber = Array1<int32_t>(num_states);
-  cur_frame->arcs_renumber = Array1<int32_t>(num_arcs);
-  ExclusiveSum(keep_this_state, &cur_frame->states_renumber);
-  ExclusiveSum(keep_this_arc, &cur_frame->arcs_renumber);
+  /*
+     Get the info about the number of states and arcs on this frame for each FSA
+     in 0..num_fsas-1, after renumbering (i.e. taking into account the backward
+     pass pruning which created `states_renumber` and `arcs_renumber`).
+           @param [in] frame   FrameInfo that we need sizes for
+           @param [out] this_states_sizes   Vector of size num_fsas; we write
+                               to here the number of un-pruned states that are
+                               active for each FSA.
+           @param [out] this_arcs_sizes   Vector of size num_fsas; we write
+                               to here the number of un-pruned arcs that are
+                               active for each FSA.
+  */
+  void GetSizeInfo(FrameInfo *frame,
+                   Array1<int32_t> this_states_sizes,
+                   Array1<int32_t> this_arcs_sizes) {
+    int32_t num_fsas = a_fsas_.Size0();
+    CHECK_EQ(num_fsas, this_states_sizes.Size());
+    CHECK_EQ(num_fsas, this_arcs_sizes.Size());
 
+    // Note: frame->arcs.RowSplits1() == frame->states.RowSplits1().
+    const int32_t *arcs_row_splits1 = frame->arcs.RowSplits1().Data(),
+        *arcs_row_splits2 = frame->arcs.RowSplits2().Data(),
+        *states_renumber = frame->states_renumber.Data(),
+        *arcs_renumber = frame->arcs_renumber.Data();
+    int32_t *states_sizes = this_states_sizes.Data(),
+        *arcs_sizes = this_arcs_sizes.Data();
+
+    auto lambda_get_size = __host__ __device__ [=] (int i) {
+     int state_begin = arcs_row_splits1[i],
+         state_end = arc_row_splits1[i+1],
+         arc_begin = arcs_row_splits2[state_begin],
+         arc_end = arcs_row_splits2[state_end],
+         mapped_state_begin = states_renumber[state_begin],
+         mapped_state_end = states_renumber[state_end],
+         mapped_arc_begin = arcs_renumber[arc_begin],
+         mapped_arc_end = arcs_renumber[arc_end];
+     states_sizes[i] = mapped_state_end - mapped_state_begin;
+     arcs_sizes[i] = mapped_arc_end = mapped_arc_begin;
+                                               };
+    Eval(c_, num_fsas, lambda_get_size);
+  }
 
   /* Information associated with a state active on a particular frame..  */
   struct StateInfo {
@@ -664,7 +755,6 @@ void IntersectDensePruned(FsaVec &a_fsas,
   int32_t T = a_fsas.MaxSize1();
 
 
-  std::vector
 
 
   Array1<int32_t> a_index;

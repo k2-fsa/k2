@@ -1,8 +1,14 @@
 # Build folder
 **/build
 
+# emacs saves
+[#]*[#]
+.[#]*
+*~
+
 # Prerequisites
 *.d
+
 
 # Compiled Object files
 *.slo
