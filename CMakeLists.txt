@@ -23,9 +23,20 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "No CMAKE_BUILD_TYPE given, default to Release")
-  set(CMAKE_BUILD_TYPE Release CACHE STRING
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING
     "Set the build type. Available values are: Debug Release RelWithDebInfo MinSizeRel"
     FORCE)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL Debug)
+  message(STATUS "Build in Debug mode")
+  # Add -O0 to remove optimizations for debugging.
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
+elseif(CMAKE_BUILD_TYPE STREQUAL Release)
+  message(STATUS "Build in Release mode")
+else()
+  message(FATAL_ERROR "Unknown build type!! (only accept: Debug, Release)")
 endif()
 
 if(WIN32 AND BUILD_SHARED_LIBS)
