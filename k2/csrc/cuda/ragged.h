@@ -20,16 +20,18 @@ namespace k2 {
 // 2-dimensional ragged array.  T should be a POD type.
 // We always ensure 'shape' and 'values' have the same device type.
 template <class T> class Ragged2 {
+  // TODO: consider making this RaggedShape2Ptr.
   RaggedShape2 shape;
   Array1<T> values;
 
-  ContextPtr &Context() { return shape.Context(); }
+  Context* Context() { return shape.Context(); }
 };
 
 
 // 3-dimensional ragged array.  T should be a POD type.
 // We always ensure 'shape' and 'values' have the same device type.
 template <class T> class Ragged3 {
+  // TODO: consider making this RaggedShape3Ptr.
   RaggedShape3 shape;
   Array1<T> values;
 

@@ -51,7 +51,7 @@ class RaggedShape2 {
 };
 
 
-class RaggedShape3: public RaggedShape2: {
+class RaggedShape3: public RaggedShape2 {
   Array1<int32_t> &RowSplits2() { return row_splits2_; }
   Array1<int32_t> &RowIds2();
 
@@ -94,6 +94,17 @@ class RaggedShape3: public RaggedShape2: {
 };
 
 
+class RaggedShape4: public RaggedShape3 {
+  Array1<int32_t> &RowSplits3() { return row_splits3_; }
+  Array1<int32_t> &RowIds2();
+  // ...
+};
+
+
+typedef std::shared_ptr<RaggedShape2> RaggedShape2Ptr;
+typedef std::shared_ptr<RaggedShape3> RaggedShape3Ptr;
+
+
 /* Gets rid of an axis by appending those lists.  Contains
    the same underlying elements as 'src'.
      'axis' should be 0 or 1.
@@ -131,14 +142,39 @@ RaggedShape3 RaggedShape3FromSizes(const RaggedShape2 &shape2,
   Create a new RaggedShape3 that is a subsampling of 'src', i.e. some elements
   are kept
        @param [in] src   The original RaggedShape3 to subsample
-       @param [in] kept   1 if this arc is to be kept, 0 otherwise
-                         The size() of this must equal src.TotSize2(), but its
+       @param [in] kept0  .. TODO...
+
+
+       for each axis: either nullptr if all lists or elements are
+                         to be kept, or:  1 if this arc is to be kept, 0 otherwise.
+                         The Size() of this must equal src.TotSize2()+1, but the last element
+
+                         , but its
                          memory region must contain one extra element, to avoid
                          possible segmentation faults when we do the exclusive-sum.
                          This will be checked.
  */
 RaggedShape3 RaggedShape3Subsampled(const RaggedShape3 &src,
-                                    const Array1<int32_t> &kept);
+                                    Array1<int32_t> *kept0,
+                                    Array1<int32_t> *kept1,
+                                    Array1<int32_t> *kept2);
+
+/*
+  Merge a list of RaggedShape3 to create a RaggedShape4.  This is a rather
+  special case because it combines two issues: creating a list, and transposing,
+  so instead of Size0() of the result corresponding to src.size(), the
+  dimensions on axis 1 all correspond to src.size().  There is a requirement
+  that src[i]->Size() must all have the same value.
+
+  Viewing the source and result as n-dimensional arrays, we will have:
+      result[i,j,k,l] = (*src[j])[i,k,l]
+  (although of course no such operator actually exists at the C++ level).
+
+
+ */
+RaggedShape4 MergeToAxis1(const std::vector<const RaggedShape3*> &src);
+
+
 
 /*
   This is as Ragged3Subsampled (and refer to its documentation, but as if you

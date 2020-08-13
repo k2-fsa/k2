@@ -17,6 +17,7 @@ namespace k2 {
    abs-arc-index: index into an FsaVec's elems; combines FSA-index, state-index
                     within that FSA, and arc-index within that state.
    frame-state-index: index into FrameInfo::states.values()
+   frame-arc-index: index into FrameInfo::arcss.values()
 
  */
 
@@ -84,8 +85,8 @@ class MultiGraphDenseIntersect {
     for (int32_t t = T; t >= 0; t--) {
       PropagateBackward(frames[t], (t == T ? NULL : frames[t+1] ));
     }
-
-
+    // waiting for the exclusive-sum on states_renumber, arcs_renumber.
+    c_.WaitForChildren();
 
   }
 
@@ -102,46 +103,164 @@ class MultiGraphDenseIntersect {
     Array2<int32_t> arcs_sizes(c_, T+1, num_fsas);
 
     for (int32_t t = 0; t < T; t++) {
-      GetSizeInfo(frames[t], states_sizes[t], arcs_sizes[t]);
+      GetSizeInfo(c_.ChildContext(), frames[t], states_sizes[t], arcs_sizes[t]);
     }
-    // 0 below means axis=0, sum over row axis...
-    ExclusiveSum(states_sizes, &states_sizes, 0);
-    ExclusiveSum(arcs_sizes, &arcs_sizes, 0);
+    c_.WaitForChildren();
 
-    Array1<int32_t> states_fsa_sizes(*states_sizes.AsTensor().Index(1, T));
-    Array1<int32_t> arcs_fsa_sizes(*arcs_sizes.AsTensor().Index(1, T));
-    Array1<int32_t> states_fsa_offsets(c_, num_fsas + 1);
-    Array1<int32_t> arcs_fsa_offsets(c_, num_fsas + 1);
-    ExclusiveSum(states_fsa_sizes, &states_fsa_offsets);
-    ExclusiveSum(arcs_fsa_sizes, &arcs_fsa_offsets);
-    int32_t tot_states = states_fsa_offsets[num_fsas],
-        tot_arcs = arcs_fsa_offsets[num_fsas];
 
-    Array1<Arc> arcs(c_, tot_arcs);
+    Array1<int32_t*> num_renumbered_states_ptrs(CpuContext(), T+1),
+        num_renumbered_arcs_ptrs(CpuContext(), T+1);
+    for (int32 t = 0; t <= T; t++) {
+      num_renumbered_states_ptrs[t] = frame_info[t]->states_renumber.Data() +
+          states_renumber.Size()-1;
+      num_renumbered_arcs_ptrs[t] = frame_info[t]->arcs_renumber.Data() +
+          arcs_renumber.Size()-1;
+    }
+    Array1<int32_t> num_renumbered_arcs(c_, T+1),
+        num_renumbered_states(c_, T+1);
+    // TODO: lambda here that dereferences the pointers; it's easy, but need to do .To(c_) to get
+    // on the GPU and then .To(CpuContext()) to be back to CPU.
 
-    // Note: actually the loop below can be done in parallel.  We could maybe do:
-    // { auto nosync = c_.TurnOffSync(); ..
+    for (int32 t = 0; t <= T; t++) {
+      RenumberArcsAndStates(frame_info[t],
+                            (t<T ? nullptr : frame_info[t+1]));
+
+    }
+
+
+
+    // Transpose the states_sizes arrays.  Note: the conversion to Array2 will
+    // make it contiguous.
+    Array2<int32_t> states_sizes_t(states_sizes.AsTensor().Transpose(0,1)),
+        arcs_sizes_t(arcs_sizes.AsTensor().Transpose(0,1));
+
+    Array1<int32_t> states_sizes_linear = states_sizes_t.Flatten(),
+        arcs_sizes_linear = arcs_sizes_t.Flatten();
+    ExclusiveSum(states_sizes_linear, &states_sizes_linear);
+    ExclusiveSum(arcs_sizes_linear, &arcs_sizes_linear);
+    Array2<int32_t> state_splits_t(states_sizes_linear, num_fsas, T+2),
+        arc_splits_t(arcs_sizes_linear, num_fsas, T+2);
+
+    int32_t tot_states = state_splits_t[num_fsas,T+1],
+        tot_arcs = arc_splits_t[num_fsas,T+1];
+
+    Array1<Arc> output_arcs(c_, tot_arcs);
+    *arc_map_a = Array1<int32_t>(c_, tot_arcs);
+    *arc_map_b = Array1<int32_t>(c_, tot_arcs);
+
+
+    int32_t *state_splits_t_data = state_splits_t.data(),
+        *arcs_splits_t_data = arc_splits_t.data(),
+        *arc_map_a_data = arc_map_a->data(),
+        *arc_map_b_data = arc_map_b->data();
+
+    // the following loop is really done in parallel over 't',
+    // thanks to GetChild().
+
     for (int t = 0; t < T; t++) {
+      FrameInfo *cur_frame = frames[t];
+      Arc *arcs = cur_frame->arcs.values.data();
+      int32_t *arcs_row_ids1 = cur_frame->arcs.shape.RowIds1(),
+          *arcs_row_splits1 = cur_frame->arcs.shape.RowSplits1(),
+          *arcs_row_ids2 = cur_frame->arcs.shape.RowIds2(),
+          *arcs_row_splits2 = cur_frame->arcs.shape.RowSplits2(),
+          *next_arcs_row_ids1 = frames[t+1]->states.shape.RowIds1(),
+          *next_arcs_row_splits1 = frames[t+1]->states.shape.RowSplits1();
+      // RE 'next_arcs_row_ids1' above, I could have picked either
+      // 'arcs' or 'states' on frames[t+1], they have the same RowIds1().
+      int32_t num_arcs_unpruned = cur_frame->arcs.values.Size();
+      int32_t *state_renumber_data = cur_frame->states_renumber.data(),
+          *arcs_renumber_data = cur_frame->arcs_renumber.data(),
+          *next_state_renumber_data = frames[t+1]->states_renumber.data();
+
+      auto lambda_format_arc_data = __host__ __device__ [=] (int32_t frame_arc_idx) -> void {
+         // things with _r are renumbered to take account of pruning.  things
+         // with _ro (the "o" is for "offset") are after subtracting the first
+         // renumbered arc or state index for this fsa_index, so it's "within
+         // this FSA" (on this time).
+         int32_t frame_arc_idx_r = arcs_renumber_data[frame_arc_idx],
+             frame_arc_idx1_r = arcs_renumber_data[frame_arc_idx+1];
+         if (frame_arc_idx1_r == frame_arc_idx_r)
+           return;  // Nothing to do since this arcs was pruned.
+         int32_t src_state_index = arcs_row_ids2[i],
+             fsa_index = arcs_row_ids1[src_state_index],
+             ft = fsa_index * (T+2) + t,
+             first_state_this_fsa = arcs_row_splits1[fsa_index],
+             first_arc_this_fsa = arcs_row_splits2[first_state_this_fsa],
+             first_state_this_fsa_next = next_arcs_row_splits1[fsa_index],
+             first_arc_this_fsa_next = next_arcs_row_splits2[first_state_this_fsa_next];
+
+         int32_t first_state_this_fsa_r = states_renumber_data[first_state_this_fsa],
+             src_state_index_r = states_renumber_data[src_state_index],
+             first_arc_this_fsa_r = arcs_renumber_data[first_arc_this_fsa],
+             s_r = src_state_index_r - first_state_this_fsa_r;
+         // s_r is the state-index in the numbering where this (t,fsa_idx) starts at 0.
+         // a_r is the arc-index in the numbering where this (t,fsa_idx) starts at 0.
+         int32_t a_r = frame_arc_idx_r - first_arc_this_fsa_r;
+
+         int32_t output_arc_index = arcs_splits_t_data[ft] + a_r,
+             src_output_state_index = state_splits_t_data[ft] + s_r,
+             dest
 
 
+
+
+
+
+
+
+             first_arc_this_fsa = arcs_row_splits1[first_state_this_fsa];
+
+
+         int32_t src_state_index_r = states_renumber_data[src_state_index],
+             src_state_index_ro = src_state_index_r - first_state_this_fsa,
+             arc_index_r = arcs_renumber_data[i],
+         CHECK_EQ(states_renumber_data[src_state_index+1],
+                  renumbered_src_state_index + 1);  // this is debug, can remove later.
+
+
+         ArcInfo info = arcs[i];
+         info.arc_idx
+
+
+
+         // fsa_first_state == first index into states.values on this frame,
+         // for this this FSA (pre prenumbering).  fsa_first_arc == same for arcs.
+         // fsa_first_state_next_t = first index into states.value on next frame (t+1),
+         // for this FSA.
+         int32_t fsa_first_state = arcs_row_ids1[fsa_index],
+             fsa_first_arc = arcs_row_ids2[fsa_first_state],
+             fsa_first_state_next_t = next_arcs_row_ids1[fsa_index];
+
+         // src_state_index is the numbering of this src state-index within this
+         // (fsa_index, t).
+         int32_t src_state_index_ft = src_state_index - fsa_first_state,
+             dest
+         CHECK_GE(src_state_index_ft, 0);
+
+
+
+
+         // 'arc_offset' is the linear arc-index where arcs for this t and
+         // fsa_index begin; similarly 'state_offset' for the linear
+         // state-index.
+         // 'next_t_state_offset' is the state-offset for t + 1, which
+         //  we'll need for the destination state.
+         int32_t arc_offset = arc_splits_t_data[fsa_index*(T+1) + t],
+             state_offset = state_splits_t_data[fsa_index*(T+1) + t],
+             next_t_state_offset = state_splits_t_data[fsa_index*(T+1) + t + 1],
+         // 'fsa_state_offset' is the first state of this FSA; we have to
+         // subtract this from the linear state-index to get the state-index
+         // within this FSA (which appears in the arc).
+         int32_t fsa_state_offset = state_splits_t_data[fsa_index*(T+1) + t];
+         int32_t arc_oindex = arc_offset + this_arcs_renumber;
+         int32_t src_state_linear_index = state_offset + renumbered_src_state_index,
+             dest_state_linear_index = next_t_state_offset + .. ;
+
+         Eval(c_.GetChild(), num_arcs_unpruned, lambda_format_data);
+                                                    };
+    c_.WaitChildren();
     }
-    // }
-
-
-    int32_t *this_states_offsets_data = this_states_sizes_data,
-        *this_arcs_sizes_data = this_arcs_sizes_data;
-    const int32_t *states_renumber_data =
-
-
-        *this_t_states_renumber
-        this_t_sizes
-        }
-  sizes.Row(T) = 0;  // figure out how.. set this to zero.
-
-
-
-
-
   }
 
   /*
@@ -228,11 +347,11 @@ class MultiGraphDenseIntersect {
     Ragged2<StateInfo> &states = cur_frame->states;
     StateInfo *state_values = states.values.data;
     // in a_fsas_ (the decoding graphs), maps from abs-state-index to abs-arc-index.
-    int *fsa_arc_offsets = a_fsas_.RowSplits2().data();
+    int *fsa_arc_splits = a_fsas_.RowSplits2().data();
 
-    __host__ __device__ auto num_arcs_lambda = [state_values,fsa_arc_offsets] (int32_t i) -> int {
+    __host__ __device__ auto num_arcs_lambda = [state_values,fsa_arc_splits] (int32_t i) -> int {
                      int abs_state_index = state_values[i].abs_state_id;
-                     return fsa_arc_offsets[abs_state_index+1]-fsa_arc_offsets[abs_state_index];
+                     return fsa_arc_splits[abs_state_index+1]-fsa_arc_splits[abs_state_index];
                   };
     // `num_arcs` gives the num-arcs for each state in `states`.
     Array<int32_t> num_arcs(c_, states.values.size(), num_arcs_lambda);
@@ -265,7 +384,7 @@ class MultiGraphDenseIntersect {
 
     __host__ __device__ auto ai_lambda =
         [state_values, ai_row_ids, ai_row_splits, ai_data, arcs, t,
-         fsa_arc_offsets, arcs_row_ids, score_data, score_num_cols, symbol_shift,
+         fsa_arc_splits, arcs_row_ids, score_data, score_num_cols, symbol_shift,
          nnet_output_ptrs] (int32_t i) -> void {
           int ai_row_id = ai_row_ids2[i],  // == index into state_values
               fsa_idx = ai_row_ids1[ai_row_id],
@@ -467,7 +586,6 @@ class MultiGraphDenseIntersect {
     Eval(c_, arc_info.elems.size(), lambda_set_arcs_and_states);
     return ans;
   }
-
   /*
     Does backward propagation of log-likes, which means setting the backward_loglike
     field of the StateInfo variable.  These backward log-likes are normalized in such
@@ -573,12 +691,72 @@ class MultiGraphDenseIntersect {
     };
     Eval(c_, cur_frame->states.values.size(), lambda_set_backward);
 
-
-    cur_frame->states_renumber = Array1<int32_t>(num_states);
-    cur_frame->arcs_renumber = Array1<int32_t>(num_arcs);
-    ExclusiveSum(keep_this_state, &cur_frame->states_renumber);
-    ExclusiveSum(keep_this_arc, &cur_frame->arcs_renumber);
+    cur_frame->states_renumber = Array1<int32_t>(num_states + 1);
+    cur_frame->arcs_renumber = Array1<int32_t>(num_arcs + 1);
+    // We don't need the results of exclusive-sum immediately, so background it.
+    ContextPtr child = c_.Child();
+    ExclusiveSum(child, keep_this_state, &cur_frame->states_renumber);
+    ExclusiveSum(child, keep_this_arc, &cur_frame->arcs_renumber);
   }
+
+
+  /*
+    renumber cur_frame->arcs and cur_frame->states, based on cur_frame->states_renumber,
+    cur_frame->arcs_renumber and next_frame->states_renumber.  This gets rid of arcs that
+    were pruned on the backward pass.  Initially I was going to combine this with formatting
+    the output, but it became too complicated.
+        @param [in]  cur_frame   The current frame's FrameInfo, that we are renumbering
+        @param [in] next_frame   The next frame's FrameInfo, or nullptr if this is the last
+                                 frame; used to modify the dest_frame_state_idx element of
+                                 the ArcInfo.
+        @param [in] num_arcs_renumbered  Will equal cur_frame->arcs_renumber[-1], supplied
+                                 for performance reasons.
+        @param [in] num_states_renumbered  Will equal cur_frame->states_renumber[-1], supplied
+                                 for performance reasons.
+  */
+  void RenumberArcsAndStates(FrameInfo *cur_frame,
+                             FrameInfo *next_frame,
+                             int32_t num_arcs_renumbered,
+                             int32_t num_states_renumbered) {
+    Array<int32_t> mem(c_, num_states_renumbered + num_arcs_renumbered),
+        row_ids1 = mem.Range(0, num_states_renumbered),
+        row_ids2 = mem.Range(num_states_renumbered, num_arcs_renumbered);
+
+
+    int32_t *new_row_ids1_data = row_ids1.Data(),
+        *new_row_ids2_data = row_ids2.Data(),
+        *old_row_ids1_data = cur_frame->arcs.shape.RowIds1().Data(),
+        *old_row_ids2_data = cur_frame->arcs.shape.RowIds2().Data();
+
+    Array<ArcInfo> new_ai(c_, num_arcs_renumbered);
+    ArcInfo *new_ai_data = new_ai.Data();
+    int32_t *arcs_renumber_data = cur_frame->arcs_renumber.Data(),
+        *states_renumber_data = cur_frame->arcs_renumber.Data(),
+        *next_states_renumber_data = (next_frame != nullptr ?
+                                      next_frame->states_renumber.Data() : nullptr);
+    // RE nullptr above: we won't ever dereference that because the last frame
+    // will have zero arcs, so the kernel will never run.
+
+    auto lambda_renumber_arcs = __host__ __device__ [=] (int i) {
+        int32_t new_i = arcs_renumber_data[i],
+            new_i1 = arcs_renumber_data[i+1];
+        if (new_i1 == new_i)  // This arc was pruned away
+          return;
+
+                                                    };
+
+
+    // TODO: we may actually not need the StateInfo, but renumbering it for now in case it's
+    // useful for debugging.
+    Array<StateInfo> new_si(c_, num_states_renumbered);
+    ArcInfo *new_si_data = new_ai.Data();
+
+
+
+
+
+  }
+
 
   /*
      Get the info about the number of states and arcs on this frame for each FSA
@@ -592,7 +770,8 @@ class MultiGraphDenseIntersect {
                                to here the number of un-pruned arcs that are
                                active for each FSA.
   */
-  void GetSizeInfo(FrameInfo *frame,
+  void GetSizeInfo(ContextPtr ctx,
+                   FrameInfo *frame,
                    Array1<int32_t> this_states_sizes,
                    Array1<int32_t> this_arcs_sizes) {
     int32_t num_fsas = a_fsas_.Size0();
@@ -664,13 +843,11 @@ class MultiGraphDenseIntersect {
                                      // state, i.e. the index into the next
                                      // frame's "states" vector.
 
-      // Note, the reason we don't have to do:
-      // int32_t src_frame_state_idx;
-      // is that we can get it from the Ragged3 structure's RowIds2().
+      int32_t dest_frame_fsa_state_idx;  // the frame_state_ids of the destination state minus the first frame_state_idx
+                                         // for that FSA on that frame (so it's a numbering specific to (fsa_idx, t).
 
-                         // state_id for fsa_id > 0because it contains an offset
-                         // for the FSA).
     } u;
+
     float end_loglike;  // loglike at the end of the arc just before
                         // (conceptually) it joins the destination state.
 

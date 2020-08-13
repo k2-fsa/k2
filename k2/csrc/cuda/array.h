@@ -81,6 +81,8 @@ template <typename T> class Array2 {
       we name it 'ElemStride' to distinguish from stride in *bytes* */
   int32_t ElemStride0() { return step0_;   }
 
+  /*  returns a flat version of this; will copy the data if it was not contiguous. */
+  Array1<T> Flatten();
 
   Array1<T> operator [] (int32_t i);  // return a row (indexing on the 0th axis)
 
@@ -104,6 +106,9 @@ template <typename T> class Array2 {
 
   */
   Array2(Tensor<T> &t, bool copy_for_strides = true);
+
+  /* Initialize from Array1.  Require dim0 * dim1 == a.Size() and dim0,dim1 >= 0  */
+  Array2(Array1<T> &a, int32_t dim0, int32_t dim1);
 
  private:
   int32_t dim0_;           // dim on 0th (row) axis

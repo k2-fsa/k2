@@ -43,6 +43,8 @@ class Context: public std::enable_shared_from_this<Context> {
   virtual ~Context() = default;
 
 
+  virtual ContextPtr GetContxtPtr() { return shared_from_this(); }
+
   /*
     Return a 'child context' of this.  Think of this as like a sub-process, useful
     for running things in parallel like in multiple threads or CUDA stream.
@@ -66,8 +68,15 @@ class Context: public std::enable_shared_from_this<Context> {
      process.  We can also later add a function to explicitly wait on a context.
 
      The idea is to have a device-independent way of "backgrounding" tasks.
-   */
+  */
   virtual ContextPtr GetChild() { return shared_from_this(); }
+
+  /*
+    Wait for children of this context to terminate.  If async == true,
+    it won't actually wait but will ensure that future tasks executed on this
+    context will execute after those already submitted to child contexts.
+  */
+  virtual void WaitChildren(bool async = true);
 
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
   virtual DeviceType GetDeviceType() const = 0;
@@ -89,13 +98,10 @@ class Context: public std::enable_shared_from_this<Context> {
   virtual void *Allocate(size_t bytes, void **deleter_context) = 0;
 
   // Return true if this is the same device as 'other' (essentially: that it
-  // lives in the same physical memory space).
-  // Must always return true if this == &other.
-  virtual bool IsSame(const Context &other) const = 0;
+  // lives in the same physical memory space).  Must always return true if this
+  // == &other.
+  virtual bool IsCompatible(const Context &other) const = 0;
 
-  bool operator==(const Context &other) const {
-    return this == &other || this->IsSame(other);
-  }
 
   /*
     Free memory that was allocated by Context::Allocate() from this Context object
@@ -121,7 +127,7 @@ ContextPtr GetContext(const T &t) {
 template <typename First, typename... Rest>
 ContextPtr GetContext(const First &first, const Rest &... rest) {
   ContextPtr ans1 = GetContext(first), ans2 = GetContext(rest...);
-  assert(*ans1 == *ans2 && "Contexts mismatch");
+  assert(ans1->IsCompatible(*ans2) && "Contexts are not compatible");
   return ans1;
 }
 
@@ -171,11 +177,12 @@ using RegionPtr = std::shared_ptr<Region>;
 // Return a basic Context object suitable for work on the CPU.
 ContextPtr GetCpuContext();
 
-// Return a basic Context object suitable for work with CUDA,
-// with specified GPU-id (or the first one we grab, if gpu_id == -1).
-// This will be a *native* context, one that used k2's own memory
-// manager.  If you want to use (say) PyTorch's memory manager,  you
-// should use a Context passed in from PyTorch
+// Return a basic Context object suitable for work with CUDA, with specified
+// GPU-id (or the first one we grab, if gpu_id == -1).  This will be a *native*
+// context, one that uses k2's own memory manager, and which will mostly be used
+// for testing purposes without an external neural-network toolkit.  If you want
+// to use (say) PyTorch's memory manager, you should use a Context passed in
+// from PyTorch
 ContextPtr GetCudaContext(int gpu_id = -1);
 
 /**
