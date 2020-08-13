@@ -28,7 +28,7 @@ class TopSorter {
   explicit TopSorter(const Fsa &fsa_in) : fsa_in_(fsa_in) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know how much memory will be needed, and output
     that information
         @param [out] fsa_size   The num-states and num-arcs of the output FSA
                                 will be written to here

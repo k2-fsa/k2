@@ -29,7 +29,7 @@ template <typename T, typename I = int32_t>
 struct StridedPtr {
   T *data;   // it is NOT owned here
   I stride;  // in number of elements, NOT number of bytes
-  StridedPtr(T *data = nullptr, I stride = 0)  // NOLINT
+  explicit StridedPtr(T *data = nullptr, I stride = 0)  // NOLINT
       : data(data), stride(stride) {}
 
   T &operator[](I i) { return data[i * stride]; }
@@ -69,6 +69,41 @@ struct StridedPtr {
     std::swap(data, other.data);
     std::swap(stride, other.stride);
   }
+};
+
+template <typename Ptr, typename I = int32_t>
+struct Array1 {
+  // One dimensional array of something, like vector<X>
+  // where Ptr is, or behaves like, X*.
+  using IndexT = I;
+  using PtrT = Ptr;
+  using ValueType = typename std::iterator_traits<Ptr>::value_type;
+
+  Array1() : begin(0), end(0), size(0), data(nullptr) {}
+  Array1(IndexT begin, IndexT end, PtrT data)
+      : begin(begin), end(end), data(data) {
+    CHECK_GE(end, begin);
+    this->size = end - begin;
+  }
+  Array1(IndexT size, PtrT data) : begin(0), end(size), size(size), data(data) {
+    CHECK_GE(size, 0);
+  }
+  void Init(IndexT begin, IndexT end, PtrT data) {
+    CHECK_GE(end, begin);
+    this->begin = begin;
+    this->end = end;
+    this->size = end - begin;
+    this->data = data;
+  }
+  bool Empty() const { return begin == end; }
+
+  // 'begin' and 'end' are the first and one-past-the-last indexes into `data`
+  // that we are allowed to use.
+  IndexT begin;
+  IndexT end;
+  IndexT size;  // the number of elements in `data` that can be accessed, equals
+                // to `end - begin`
+  PtrT data;
 };
 
 /*
@@ -290,15 +325,13 @@ struct DataPtrCreator<StridedPtr<ValueType, I>, I> {
 template <typename Ptr, typename I>
 struct Array2Storage {
   using ValueType = typename Array2<Ptr, I>::ValueType;
-  explicit Array2Storage(const Array2Size<I> &array2_size, I stride)
+  Array2Storage(const Array2Size<I> &array2_size, I stride)
       : indexes_storage_(new I[array2_size.size1 + 1]),
         data_storage_(new ValueType[array2_size.size2 * stride]) {
-    array_.size1 = array2_size.size1;
-    array_.size2 = array2_size.size2;
-    array_.indexes = indexes_storage_.get();
+    array_.Init(array2_size.size1, array2_size.size2, indexes_storage_.get(),
+                DataPtrCreator<Ptr, I>::Create(data_storage_, stride));
     // just for case of empty Array2 object, may be written by the caller
     array_.indexes[0] = 0;
-    array_.data = DataPtrCreator<Ptr, I>::Create(data_storage_, stride);
   }
 
   void FillIndexes(const std::vector<I> &indexes) {

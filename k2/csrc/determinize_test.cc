@@ -36,8 +36,16 @@ class DeterminizeTest : public ::testing::Test {
     std::vector<float> weights = {1, 1, 2, 3, 4, 5, 2, 3, 3, 2, 4, 3, 5};
     std::copy_n(weights.begin(), num_arcs, arc_weights_);
 
-    max_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kMaxWeight);
-    log_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kLogSumWeight);
+    max_forward_weights_.resize(num_states_);
+    max_backward_weights_.resize(num_states_);
+    logsum_forward_weights_.resize(num_states_);
+    logsum_backward_weights_.resize(num_states_);
+    max_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kMaxWeight,
+                                      max_forward_weights_.data(),
+                                      max_backward_weights_.data());
+    log_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kLogSumWeight,
+                                      logsum_forward_weights_.data(),
+                                      logsum_backward_weights_.data());
   }
 
   ~DeterminizeTest() override {
@@ -54,6 +62,10 @@ class DeterminizeTest : public ::testing::Test {
   int32_t num_states_;
   float *arc_weights_;
   Fsa output_fsa;
+  std::vector<double> logsum_forward_weights_;
+  std::vector<double> logsum_backward_weights_;
+  std::vector<double> max_forward_weights_;
+  std::vector<double> max_backward_weights_;
 };
 
 TEST_F(DeterminizeTest, DeterminizePrunedMax) {

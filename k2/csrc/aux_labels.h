@@ -59,16 +59,16 @@ class AuxLabels1Mapper {
   /* Lightweight constructor that just keeps const references to the input
      parameters.
      @param [in] labels_in  Labels on the arcs of the input FSA
-     @param [in] arc_map    Vector of size (output_fsa.arcs.size()),
-                            saying which arc of the input FSA it
+     @param [in] arc_map    At entry `arc_map.size` equals to num-arcs of
+                            the output Fsa, `arc_map.data[i]` gives which arc of
+                            the input FSA that arc i in the output FSA
                             corresponds to.
   */
-  AuxLabels1Mapper(const AuxLabels &labels_in,
-                   const std::vector<int32_t> &arc_map)
+  AuxLabels1Mapper(const AuxLabels &labels_in, const Array1<int32_t *> &arc_map)
       : labels_in_(labels_in), arc_map_(arc_map) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know how much memory will be needed, and output
     that information
         @param [out] aux_size   The number of lists in the output AuxLabels
                                 (equals num-arcs in the output FSA) and
@@ -76,7 +76,7 @@ class AuxLabels1Mapper {
                                 on the arcs in the output FSA) will be written
                                 to here.
   */
-  void GetSizes(Array2Size<int32_t> *aux_size);
+  void GetSizes(Array2Size<int32_t> *aux_size) const;
 
   /*
     Finish the operation and output auxiliary labels to `labels_out`.
@@ -89,7 +89,7 @@ class AuxLabels1Mapper {
 
  private:
   const AuxLabels &labels_in_;
-  const std::vector<int32_t> &arc_map_;
+  const Array1<int32_t *> &arc_map_;
 };
 
 /*
@@ -101,16 +101,17 @@ class AuxLabels2Mapper {
   /* Lightweight constructor that just keeps const references to the input
      parameters.
      @param [in] labels_in  Labels on the arcs of the input FSA
-     @param [in] arc_map    Vector of size (output_fsa.arcs.size()),
-                            giving the sequence of arc-indexes in the input
-                            FSA that it corresponds to.
+     @param [in] arc_map    At entry `arc_map.size1` equals to num-arcs of
+                            the output FSA. `arc_map.data[arc_map.indexes[i]]`
+                            through `arc_map.data[arc_map.indexes[i+1] - 1]`
+                            gives the sequence of arc-indexes in the input
+                            FSA that arc i in the output FSA corresponds to.
   */
-  AuxLabels2Mapper(const AuxLabels &labels_in,
-                   const std::vector<std::vector<int32_t>> &arc_map)
+  AuxLabels2Mapper(const AuxLabels &labels_in, const Array2<int32_t *> &arc_map)
       : labels_in_(labels_in), arc_map_(arc_map) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know how much memory will be needed, and output
     that information
         @param [out] aux_size   The number of lists in the output AuxLabels
                                 (equals num-arcs in the output FSA) and
@@ -118,7 +119,7 @@ class AuxLabels2Mapper {
                                 on the arcs in the output FSA) will be written
                                 to here.
   */
-  void GetSizes(Array2Size<int32_t> *aux_size);
+  void GetSizes(Array2Size<int32_t> *aux_size) const;
 
   /*
     Finish the operation and output auxiliary labels to `labels_out`.
@@ -131,7 +132,7 @@ class AuxLabels2Mapper {
 
  private:
   const AuxLabels &labels_in_;
-  const std::vector<std::vector<int32_t>> &arc_map_;
+  const Array2<int32_t *> &arc_map_;
 };
 
 /*
@@ -152,7 +153,7 @@ class FstInverter {
       : fsa_in_(fsa_in), labels_in_(labels_in) {}
 
   /*
-    Do enough work that know now much memory will be needed, and output
+    Do enough work to know how much memory will be needed, and output
     that information
         @param [out] fsa_size   The num-states and num-arcs of the FSA
                                 will be written to here
@@ -162,7 +163,8 @@ class FstInverter {
                                 labels on `fsa_in`, although epsilons
                                 will be removed) will be written to here.
   */
-  void GetSizes(Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *aux_size);
+  void GetSizes(Array2Size<int32_t> *fsa_size,
+                Array2Size<int32_t> *aux_size) const;
 
   /*
     Finish the operation and output inverted FSA to `fsa_out` and

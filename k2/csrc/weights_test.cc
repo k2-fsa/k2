@@ -132,23 +132,24 @@ TEST_F(WeightsTest, ShortestDistance) {
 }
 
 TEST_F(WeightsTest, WfsaWithFbWeightsMax) {
-  WfsaWithFbWeights wfsa(*fsa_, arc_weights_, kMaxWeight);
-  std::vector<double> weights(num_states_);
-  std::copy_n(wfsa.ForwardStateWeights(), num_states_, weights.begin());
-  EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, forward_max_weights_, 1e-3);
-
-  std::copy_n(wfsa.BackwardStateWeights(), num_states_, weights.begin());
-  EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, backward_max_weights_, 1e-3);
+  const auto num_states = fsa_->NumStates();
+  std::vector<double> forward_weights(num_states);
+  std::vector<double> backward_weights(num_states);
+  WfsaWithFbWeights wfsa(*fsa_, arc_weights_, kMaxWeight,
+                         forward_weights.data(), backward_weights.data());
+  EXPECT_DOUBLE_ARRAY_APPROX_EQ(forward_weights, forward_max_weights_, 1e-3);
+  EXPECT_DOUBLE_ARRAY_APPROX_EQ(backward_weights, backward_max_weights_, 1e-3);
 }
 
 TEST_F(WeightsTest, WfsaWithFbWeightsLogSum) {
-  WfsaWithFbWeights wfsa(*fsa_, arc_weights_, kLogSumWeight);
-  std::vector<double> weights(num_states_);
-  std::copy_n(wfsa.ForwardStateWeights(), num_states_, weights.begin());
-  EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, forward_logsum_weights_, 1e-3);
-
-  std::copy_n(wfsa.BackwardStateWeights(), num_states_, weights.begin());
-  EXPECT_DOUBLE_ARRAY_APPROX_EQ(weights, backward_logsum_weights_, 1e-3);
+  const auto num_states = fsa_->NumStates();
+  std::vector<double> forward_weights(num_states);
+  std::vector<double> backward_weights(num_states);
+  WfsaWithFbWeights wfsa(*fsa_, arc_weights_, kLogSumWeight,
+                         forward_weights.data(), backward_weights.data());
+  EXPECT_DOUBLE_ARRAY_APPROX_EQ(forward_weights, forward_logsum_weights_, 1e-3);
+  EXPECT_DOUBLE_ARRAY_APPROX_EQ(backward_weights, backward_logsum_weights_,
+                                1e-3);
 }
 
 }  // namespace k2

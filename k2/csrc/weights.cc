@@ -105,8 +105,14 @@ void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
 }
 
 WfsaWithFbWeights::WfsaWithFbWeights(const Fsa &fsa, const float *arc_weights,
-                                     FbWeightType t)
-    : fsa(fsa), arc_weights(arc_weights), weight_type(t) {
+                                     FbWeightType t,
+                                     double *forward_state_weights,
+                                     double *backward_state_weights)
+    : fsa(fsa),
+      arc_weights(arc_weights),
+      weight_type(t),
+      forward_state_weights(forward_state_weights),
+      backward_state_weights(backward_state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
   ComputeForwardWeights();
@@ -118,8 +124,7 @@ WfsaWithFbWeights::WfsaWithFbWeights(const Fsa &fsa, const float *arc_weights,
 // 2002.
 void WfsaWithFbWeights::ComputeForwardWeights() {
   auto num_states = fsa.NumStates();
-  forward_state_weights = std::unique_ptr<double[]>(new double[num_states]);
-  std::fill_n(forward_state_weights.get(), num_states, kDoubleNegativeInfinity);
+  std::fill_n(forward_state_weights, num_states, kDoubleNegativeInfinity);
 
   const auto &arcs = fsa.data + fsa.indexes[0];
   forward_state_weights[0] = 0;
@@ -150,9 +155,7 @@ void WfsaWithFbWeights::ComputeForwardWeights() {
 
 void WfsaWithFbWeights::ComputeBackardWeights() {
   auto num_states = fsa.NumStates();
-  backward_state_weights = std::unique_ptr<double[]>(new double[num_states]);
-  std::fill_n(backward_state_weights.get(), num_states,
-              kDoubleNegativeInfinity);
+  std::fill_n(backward_state_weights, num_states, kDoubleNegativeInfinity);
 
   const auto &arcs = fsa.data + fsa.indexes[0];
   backward_state_weights[fsa.FinalState()] = 0;

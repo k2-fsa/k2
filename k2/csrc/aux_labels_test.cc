@@ -11,6 +11,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/properties.h"
 
@@ -33,7 +34,7 @@ class AuxLablesTest : public ::testing::Test {
 TEST_F(AuxLablesTest, AuxLabels1Mapper) {
   {
     // empty arc_map
-    std::vector<int32_t> arc_map;
+    Array1<int32_t *> arc_map;
     AuxLabels1Mapper aux_mapper(aux_labels_in_, arc_map);
     Array2Size<int32_t> aux_size;
     aux_mapper.GetSizes(&aux_size);
@@ -47,7 +48,8 @@ TEST_F(AuxLablesTest, AuxLabels1Mapper) {
   }
 
   {
-    std::vector<int32_t> arc_map = {2, 0, 3};
+    std::vector<int32_t> arc_map_data = {2, 0, 3};
+    Array1<int32_t *> arc_map(0, 3, arc_map_data.data());
     AuxLabels1Mapper aux_mapper(aux_labels_in_, arc_map);
     Array2Size<int32_t> aux_size;
     aux_mapper.GetSizes(&aux_size);
@@ -68,7 +70,8 @@ TEST_F(AuxLablesTest, AuxLabels1Mapper) {
 
   {
     // all arcs in input fsa are remained
-    std::vector<int32_t> arc_map = {2, 0, 3, 1};
+    std::vector<int32_t> arc_map_data = {2, 0, 3, 1};
+    Array1<int32_t *> arc_map(0, 4, arc_map_data.data());
     AuxLabels1Mapper aux_mapper(aux_labels_in_, arc_map);
     Array2Size<int32_t> aux_size;
     aux_mapper.GetSizes(&aux_size);
@@ -91,7 +94,7 @@ TEST_F(AuxLablesTest, AuxLabels1Mapper) {
 TEST_F(AuxLablesTest, AuxLabels2Mapper) {
   {
     // empty arc_map
-    std::vector<std::vector<int32_t>> arc_map;
+    Array2<int32_t *> arc_map;
     AuxLabels2Mapper aux_mapper(aux_labels_in_, arc_map);
     Array2Size<int32_t> aux_size;
     aux_mapper.GetSizes(&aux_size);
@@ -105,7 +108,10 @@ TEST_F(AuxLablesTest, AuxLabels2Mapper) {
   }
 
   {
-    std::vector<std::vector<int32_t>> arc_map = {{2, 3}, {0, 1}, {0}, {2}};
+    std::vector<int32_t> arc_map_indexes = {0, 2, 4, 5, 6};
+    std::vector<int32_t> arc_map_data = {2, 3, 0, 1, 0, 2};
+    Array2<int32_t *> arc_map(4, 6, arc_map_indexes.data(),
+                              arc_map_data.data());
     AuxLabels2Mapper aux_mapper(aux_labels_in_, arc_map);
     Array2Size<int32_t> aux_size;
     aux_mapper.GetSizes(&aux_size);

@@ -15,7 +15,7 @@
 #include "k2/csrc/fsa.h"
 
 namespace k2 {
-void ArcSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
+void ArcSorter::GetSizes(Array2Size<int32_t> *fsa_size) const {
   CHECK_NOTNULL(fsa_size);
   fsa_size->size1 = fsa_in_.size1;
   fsa_size->size2 = fsa_in_.size2;
@@ -39,10 +39,9 @@ void ArcSorter::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
     fsa_out->indexes[state] = num_arcs;
     int32_t begin = fsa_in_.indexes[state] - arc_begin_index;
     int32_t end = fsa_in_.indexes[state + 1] - arc_begin_index;
-    std::sort(indexes.begin() + begin, indexes.begin() + end,
-              [&arcs_in, arc_begin_index](int32_t i, int32_t j) {
-                return arcs_in[i] < arcs_in[j];
-              });
+    std::sort(
+        indexes.begin() + begin, indexes.begin() + end,
+        [&arcs_in](int32_t i, int32_t j) { return arcs_in[i] < arcs_in[j]; });
     // copy sorted arcs to `fsa_out`
     std::transform(indexes.begin() + begin, indexes.begin() + end,
                    fsa_out->data + num_arcs,
