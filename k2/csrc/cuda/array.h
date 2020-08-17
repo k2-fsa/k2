@@ -40,6 +40,20 @@ template <typename T> class Array1 {
   */
   Array1 Range(int32_t start, int32_t size);
 
+  /*
+   Return sub-part of this array, with a stride (note: increment may be negative
+   but not zero).
+     @param [in] start  First element of output, 0 <= start < Size()
+     @param [in] size   Number of elements to include, must satisfy
+                        size > 0 and   0 <= (start + (size-1)*increment) < Size()
+     @param [in] inc    Increment in original array each time index
+                        increases
+  */
+  Tensor Range(int32_t start, int32_t size, int32_t inc);
+
+
+  Tensor ToTensor();
+
   DeviceType Device() const { return region->device; }
 
   // Resizes, copying old contents if we could not re-use the same memory location.
@@ -48,6 +62,22 @@ template <typename T> class Array1 {
   void Resize(int32_t new_size);
 
   ContextPtr &Context() { return region_->context; }
+
+  // Sets the context on this object (Caution: this is not something you'll
+  // often need).  'ctx' must be compatible with the current Context(),
+  // i.e. `ctx->IsCompatible(*Context())`, and is expected to be a parent of
+  // the current context.  It's for use when you create an object with a
+  // child context for speed (i.e. to use a different cuda stream) and
+  // want to return it with the parent context to keep things simple.
+  // (In general we don't expect functions to output things with newly
+  // created contexts attached).
+  void SetContext(ContextPtr &ctx);
+
+  /* Indexing operator (note: for now, we make all indexes be int32_t).  This is
+     fast if this is a CPU array, but could take some time if it's a CUDA array,
+     so use this operator sparingly.  If you know this is a CPU array, it would
+     have much less overhead to index the Data() pointer. */
+  T operator [] (int32_t i);
 
   Array1(const Array1 &other) = default;
  private:

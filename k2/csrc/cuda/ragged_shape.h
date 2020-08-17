@@ -8,47 +8,49 @@
 #define K2_CSRC_CUDA_RAGGED_SHAPE_H_
 
 #include "k2/csrc/cuda/array.h"
+#include "k2/csrc/cuda/algorithms.h"
 
 namespace k2 {
 
 
 // Shape of a 2-dimensional ragged array ( e.g. [ [ 0 ] [ 3 4 1 ] [] [ 5 ] ])
+// Please see utils.h for an explanation of row_splits and row_ids.
 class RaggedShape2 {
   // return dim on 0th axis.
   int32_t Size0() const { return row_splits0_.size - 1; }
   Array1Tpl<int32_t> &RowSplits1() { return row_splits1_; }
   Array1Tpl<int32_t> &RowIds1();
-  // TODO(Dan): make TotSize1() more efficient for GPU vectors via cached_tot_size1_ or row_splits_.size().
-  // size1() is the *total* size of dimension one, summed across all rows.
-  int32_t TotSize1() const { return row_splits1_[-1]; }
+
+  // Return the *total* size of axis 1, summed across all rows.  Caution: if
+  // you're using a GPU this call blocking the first time you call it for a
+  // particular RaggedShape2(), so it may be best to do it in multiple threads
+  // if you do this on many objects.  You can also get it from the last element
+  // of RowSplits0() or the size of RowIds1() if that exists.
+  int32_t TotSize1();
   // max_size1() returns the maximum of any element of Sizes1().
   int32_t MaxSize1();
 
-  // Returns a lambda which behaves like a pointer to the data of Sizes1()
-  // (except use () not []).  The size of this virtual array is Size0().
-  auto Sizes1Data() {
-    int32_t *data = this->row_splits1_.data;
-    return __host__ __device__ [data] (int32_t i) { return data[i+1]-data[i]; };
-  }
-
-  Array1Tpl<int,T> Sizes1();  // Caution: this is slow as it creates a new array.
-
-  template <DeviceType D2>
-  RaggedShape2<D2> &CastTo() {
-    if (D2 != kUnk) {
-      assert(region->device == kUnk ||  // would only happen if empty region
-             region->device == D2);
-    }
-    return reinterpret_cast<RaggedShape2<D2>> (*this);
-  }
 
   ContextPtr &Context() { return row_splits1_.Context(); }
 
  protected:
   Array1<int32_t> row_splits1_;
-  Array1<int32_t> row_ids1_;  // populated on demand.
-  int32_t cached_tot_size1_;  // TODO(Dan)?  can use to avoid gpu access when
+  Array1<int32_t> row_ids1_;  // populated on demand.  Size() ==
+                              // cached_tot_size1_, assuming that value is not
+                              // -1 (i.e. that it's known).
+  int32_t cached_tot_size1_;
 };
+
+
+/* Returns the TotSize1() of an array of RaggedShape2, as an array,
+   with the same context as the first of the 'src' array.
+*/
+Array1<int32_t> GetTotSize1(const std::vector<RaggedShape2*> &src);
+
+/* Returns the TotSize1() of an array of RaggedShape2, as an array,
+   with the same context as the first of the 'src' array.
+*/
+Array1<int32_t> GetTotSize2(const std::vector<RaggedShape3*> &src);
 
 
 class RaggedShape3: public RaggedShape2 {
@@ -57,7 +59,7 @@ class RaggedShape3: public RaggedShape2 {
 
 
   Array1<int32_t> Sizes2();  // Returns the size of each sub-sub-list, as a list of
-                         // length TotSize1().
+                           // length TotSize1().
 
   Array1<int32_t> Sizes12();  // Returns the total number of elements in each
                           // sub-list (i.e. each list-of-lists), as a list of
@@ -96,7 +98,12 @@ class RaggedShape3: public RaggedShape2 {
 
 class RaggedShape4: public RaggedShape3 {
   Array1<int32_t> &RowSplits3() { return row_splits3_; }
-  Array1<int32_t> &RowIds2();
+  Array1<int32_t> &RowIds3();
+  int32_t TotSize2() { return row_splits2_[-1]; }
+  int32_t MaxSize2();
+
+  ContextPtr &Context() { return row_splits1_.Context(); }
+
   // ...
 };
 
@@ -138,6 +145,30 @@ RaggedShape2 RaggedShape2FromRowIds(int32_t num_rows,
 RaggedShape3 RaggedShape3FromSizes(const RaggedShape2 &shape2,
                                    const Array1<int32_t> &sizes);
 
+
+
+/*
+  Create a new RaggedShape4 that is a subsampling of 'src', i.e. some elements
+  are kept
+       @param [in] src   The original RaggedShape3 to subsample
+       @param [in] kept0  .. TODO...
+
+
+       for each axis: either nullptr if all lists or elements are
+                         to be kept, or:  1 if this arc is to be kept, 0 otherwise.
+                         The Size() of this must equal src.TotSize2()+1, but the last element
+
+                         , but its
+                         memory region must contain one extra element, to avoid
+                         possible segmentation faults when we do the exclusive-sum.
+                         This will be checked.
+ */
+RaggedShape3 RaggedShape3Subsampled(const RaggedShape3 &src,
+                                    const Renumbering *r0,
+                                    const Renumbering *r1,
+                                    const Renumbering *r2);
+
+
 /*
   Create a new RaggedShape3 that is a subsampling of 'src', i.e. some elements
   are kept
@@ -154,10 +185,11 @@ RaggedShape3 RaggedShape3FromSizes(const RaggedShape2 &shape2,
                          possible segmentation faults when we do the exclusive-sum.
                          This will be checked.
  */
-RaggedShape3 RaggedShape3Subsampled(const RaggedShape3 &src,
-                                    Array1<int32_t> *kept0,
-                                    Array1<int32_t> *kept1,
-                                    Array1<int32_t> *kept2);
+RaggedShape4 RaggedShape4Subsampled(const RaggedShape4 &src,
+                                    const Renumbering *r0,
+                                    const Renumbering *r1,
+                                    const Renumbering *r2,
+                                    const Renumbering *r3);
 
 /*
   Merge a list of RaggedShape3 to create a RaggedShape4.  This is a rather
@@ -166,13 +198,25 @@ RaggedShape3 RaggedShape3Subsampled(const RaggedShape3 &src,
   dimensions on axis 1 all correspond to src.size().  There is a requirement
   that src[i]->Size() must all have the same value.
 
-  Viewing the source and result as n-dimensional arrays, we will have:
+  Viewing the source and result as the shapes of n-dimensional arrays, we will have:
       result[i,j,k,l] = (*src[j])[i,k,l]
   (although of course no such operator actually exists at the C++ level).
 
-
  */
 RaggedShape4 MergeToAxis1(const std::vector<const RaggedShape3*> &src);
+
+/*
+  Merge a list of RaggedShape2 to create a RaggedShape3.  This is a rather
+  special case because it combines two issues: creating a list, and transposing,
+  so instead of Size0() of the result corresponding to src.size(), the
+  dimensions on axis 1 all correspond to src.size().  There is a requirement
+  that src[i]->Size() must all have the same value.
+
+  Viewing the source and result as the shapes of n-dimensional arrays, we will have:
+      result[i,j,k] = (*src[j])[i,k]
+  (although of course no such operator actually exists at the C++ level).
+*/
+RaggedShape3 MergeToAxis1(const std::vector<const RaggedShape2*> &src);
 
 
 
@@ -193,6 +237,30 @@ RaggedShape4 MergeToAxis1(const std::vector<const RaggedShape3*> &src);
  */
 RaggedShape3 RaggedShape3SubsampledFromNumbering(const RaggedShape3 &src,
                                                  const Array1<int32_t> &reorder);
+
+
+/* Constructs RaggedShape4 from row splits, and sets up row-ids. */
+RaggedShape4 RaggedShape4FromRowSplits(const Array<int32_t> &row_splits1,
+                                       const Array<int32_t> &row_splits2,
+                                       const Array<int32_t> &row_splits3);
+
+/* Constructs RaggedShape4 from sizes, and sets up row-splits and row-ids. */
+RaggedShape4 RaggedShape4FromSizes(const Array<int32_t> &sizes1,
+                                   const Array<int32_t> &sizes2,
+                                   const Array<int32_t> &sizes3);
+
+/*
+  Construct a Ragged4 from a Ragged3 and a row_splits3..
+     @param [in] src   Ragged3 which will be the same as the base-class of the
+                       returned Ragged4.
+     @param [in] row_splits3  Vector of non-decreasing integers starting from zero;
+                       size must equal TotSize2() of src.  Its last element is the
+                       number of elements in the Ragged4 with this shape.
+*/
+RaggedShape4 RaggedShape4FromShape3AndRowSplits(const RaggedShape3 &src,
+                                                const Array32<int32_t> &row_splits3);
+
+
 
 }  // namespace k2
 

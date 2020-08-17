@@ -34,7 +34,8 @@ namespace k2 {
 
 
 /*
-  row_splits concept
+  row_splits concept / row-splits concept
+  (Note, this has been named for compatibility with TensorFlow's RaggedTensor).
 
   An row_splits vector is a vector of the form, say, [ 0 5 9 9 10 13 ].
   i.e. it starts with 0 and is non-decreasing.  It will often be encountered
@@ -53,21 +54,9 @@ namespace k2 {
 */
 
 /*
-  tails concept
+  row_ids concept / row-ids concept
+  (Note, this has been named for compatibility with TensorFlow's RaggedTensor).
 
-  A vector of tails is a vector containing zeros and ones; each '1' represents
-  the last element of a sub-list.  For example [ 0 1 0 0 0 1 1 ] to represent
-  a list of sub-lists like [ x x ] [ y y y y ] [ z ].  The last element will always
-  be 1.
-
-  Relation to other concepts:
-    The exclusive cumulative sum of a vector of tails is a vector of row_ids.
-  E.g. the above example, with exclusive cumulative sum, is:
-    [ 0 0 1 1 1 1 2 ].
- */
-
-/*
-  row_ids concept
 
   A vector of row_ids is a vector of the form
     [ 0 0 0 1 1 2 2 2 ]
@@ -84,17 +73,101 @@ namespace k2 {
 
 */
 
+
 /*
-  sub-indexes concept
+  tails concept
 
-  sub-indexes represent the positions within the sub-lists, of a linearized list-of-lists.
-  An example vector of sub-indexes is: [ 0 1 0 1 2 0 1 ].
+  A vector of tails is a vector containing zeros and ones; each '1' represents
+  the last element of a sub-list.  For example [ 0 1 0 0 0 1 1 ] to represent
+  a list of sub-lists like [ x x ] [ y y y y ] [ z ].  The last element will always
+  be 1.
 
-  Relation to row_ids and row_splits:
-    sub_indexes[i] = row_splits[row_ids[i] - i
-  We will generally not explicitly write 'sub-indexes' to arrays but will compute them
-  on the fly from the corresponding row_splits and row_ids.
+  Relation to other concepts:
+    The exclusive cumulative sum of a vector of tails is a vector of row_ids.
+  E.g. the above example, with exclusive cumulative sum, is:
+    [ 0 0 1 1 1 1 2 ].
+ */
+
+/*
+
+  Index naming scheme
+
+  In a ragged tensor with n axes (say, 3) the actual elements will be written
+  in a linear array we'll have various levels of indexes that allow us to
+  look up an element given the hierarchical indexes and vice versa.  A 3-d
+  ragged tensor will have RowIds1(), RowSplits1(), RowIds2(), RowSplits2(),
+  and the actual elements.  We have a naming scheme that expresses what information
+  is packed into a single integer.
+
+  Some entry-level facts about the naming scheme are:
+
+     - The hierarchical indexes into the tensor (3 of them for a tensor with 3
+       axes), we call ind0, ind1 and ind2
+     - The linear index into the elements, we call ind012 because it includes
+       all 3 values.
+     - The RowSplits1() would map from an ind0 to an ind0x.  The x here
+       takes the place of a 1 and that replacement means "actually the index
+       here is definitely zero".  Any specific ind0x that we have will be
+       for a particular idx0.
+
+   For more details, it's best to use an example.
+
+
+     # below is pseudocode
+     RaggedTensor3 t = [ [ [ 1 2 ] [ 5 ] ] [ [ 7 8 9 ] ] ]
+
+     # which will give us:
+     t.row_splits1 == [ 0 2 3 ]    # indexed by ind0, elements are ind0x
+     t.row_ids1 == [ 0 0 1 ]       # indexed by ind01, elements are ind0
+     t.row_splits2 == [ 0 2 3 6 ]  # indexed by ind01, elements are ind01x
+     t.row_ids2 == [ 0 0 1 2 2 2 ] # indexed by ind012, elements are ind01
+     t.values == [ 1 2 5 7 8 9 ]   # indexed by ind012, elements are whatever
+                                   # values we're storing.
+
+     Sometimes we'll want to know the number of elements in sub-lists, and we
+     have a notation for the computations involved in that.  Suppose we want to
+     know the number of elements in T[0].  We'll compute:
+       int ind0 = 0,
+           ind0x = t.row_splits1[ind0],
+           ind0x_next = t.row_splits1[ind0 + 1],
+           ind0xx = t.row_splits2[ind0],
+           ind0xx_next = t.row_splits2[ind0x_next],
+           size_0xx = ind0xx_next - ind0xx
+     (The _next suffix is used when we're querying the most specific known index
+     plus one, in this case index 0 but for instance, ind01x_next would mean
+     that we were querying ind01x after incrementing the index on axis 1.)
+
+     We also might sometimes want to know an offset of an element within the
+     part of the array that starts with a particular prefix of that index.
+     E.g. suppose we want the offset of element t[ ind0, ind1, ind2 ]
+     relative to the start of the sub-array t[ind0].  We'd do this as
+     follows:
+        int ind0, ind1, ind2;  # provided
+        int ind0x = t.row_splits1[ind0],
+            ind01 = ind0x + ind1,
+            ind01x = t.row_splits2[ind1],
+            ind012 = ind01x + ind2,
+            ind0xx = t.row_splits2[ind0x],
+            indx12 = ind012 - ind0xx;
+     When an "x" appears before the first digit it has a slightly different
+     semantics than when it appears the frist digit.  It's there not because the
+     indexes were zero, but because: *we subtracted two indexes that were
+     the same, and if preceded by other indexes, those were also the same*.
+     So to get an expression like indx12 we always need the value of
+     ind0.  The distinction between leading and trailing x's will always
+     be clear because an expression like indxxx (with no actual digits)
+     would always equal zero so is useless.  Note: in an expression
+     like ind0xx_next - ind0xx we don't get indxxx because index zero
+     is *different*.  However, the result of ind01x_next - ind01x would
+     be written indx1x because index zero would be the same.
+
+     The advantage of this naming scheme is that the 'type' that operations give
+     is intuitively obvious and any mismatches will tend to be obvious in
+     an individual line of code once you have understood the naming scheme
+     and its rules.
 */
+
+
 
 
 /**

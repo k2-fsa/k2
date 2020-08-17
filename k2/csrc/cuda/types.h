@@ -263,11 +263,6 @@ Array Range(const Vec1 &begin, const Vec2 &end, const Array<A> &thing_to_get_ran
 }
 
 
-template <typename T> __host__ void Eval(const Array<T> &t) {
-  //
-
-}
-
 }  // namespace k2
 
 #endif  // K2_CSRC_CUDA_TYPES_H_

@@ -36,6 +36,21 @@ template <class T> class Ragged3 {
   Array1<T> values;
 
   ContextPtr &Context() { return shape.Context(); }
+ private:
+  // ...
+};
+
+
+// 4-dimensional ragged array.  T should be a POD type.
+// We always ensure 'shape' and 'values' have the same device type.
+template <class T> class Ragged4 {
+  // TODO: consider making this RaggedShape3Ptr.
+  RaggedShape4 shape;
+  Array1<T> values;
+
+  ContextPtr &Context() { return shape.Context(); }
+ private:
+  // ...
 };
 
 

@@ -51,7 +51,6 @@ class Tensor {
   // Create Tensor backed by existing memory.
   Tensor(const Shape &shape, Dtype dtype, RegionPtr region, size_t bytes_offset);
 
-
   template <typename T> T *data();  // Returns pointer to elem with index
                                     // all-zeros... will check that the type
                                     // matches the correct one.

@@ -74,16 +74,32 @@ class MultiGraphDenseIntersect {
     */
     int32_t T = a_fsas.MaxSize1();
 
-    std::vector<FrameInfo*> frames;
-    frames.reserve(T);
-    frames.push_back(InitialFrameInfo());
+    frames_.reserve(T);
+    frames_.push_back(InitialFrameInfo());
 
     for (int32_t t = 0; t < T; t++) {
       frames.push_back(PropagateForward(t, frames.back()));
     }
 
+
+    {
+      std::vector<RaggedShape3*> arcs_shapes(T+1);
+      for (int32_t t = 0; t <= T; t++)
+        arcs_shapes[t] = &(frames_[t].arcs.shape);
+
+      // 'output_arc_sizes' is a ragged tensor which is indexed:
+      //   output_arc_idx[fsa_index][t][state_idx][arc_idx]
+      // where the 'state_idx' and 'arc_idx'
+      // This is BEFORE PRUNING...
+      oshape_unpruned_ = MergeToAxis1(arcs_shapes);
+    }
+    renumber_output_states_.Init(oshape_unpruned_.TotSize2());
+    renumber_output_arcs_.Init(oshape_unpruned_.TotSize3());
+
     for (int32_t t = T; t >= 0; t--) {
-      PropagateBackward(frames[t], (t == T ? NULL : frames[t+1] ));
+      // this writes to elements of renumber_output_states_.Keep() and
+      // renumber_output_arcs_.Keep().
+      PropagateBackward(frames_[t], (t == T ? NULL : frames_[t+1] ));
     }
     // waiting for the exclusive-sum on states_renumber, arcs_renumber.
     c_.WaitForChildren();
@@ -94,6 +110,77 @@ class MultiGraphDenseIntersect {
   void FormatOutput(FsaVec *ofsa,
                     Array<int32_t> *arc_map_a,
                     Array<int32_t> *arc_map_b) {
+    Context c_cpu = c_->CpuContext();
+    int32_t T = a_fsas.MaxSize1();
+
+
+    Renumbering states_renumber(output_arcs_shape.TotSize2());
+    Renumbering arcs_renumber(output_arcs_shape.TotSize3());
+    // set states_renumber and arcs_renumber: initially set the 'keep'  members...
+    // actually can write directly to these in the
+
+    // set this...
+    RaggedShape4 output_arcs_shape_pruned;
+
+
+    // What the kernel does:
+    // We have the new (un-pruned) arc-id.
+    //   Look up new state-id, arc-offset, fsa-idx, t
+
+    //   Find the old arc-id -> old state-id, arc-offset
+    //     Look up arc (from the Arcs* pointers from the frames)
+    //
+    //     For its destination-state, which is stored as state_idx:
+    //        ... find the 1st arc-idx of that destination-state within
+    //            this output (unpruned).  Map that to pruned arc-idx.
+    //            Map that to state-idx, which we can put in the output
+    //            arc.
+    //
+    //        (i)  Use the row_offsets from the next to find
+    //
+    //     Use states_renumber object to find new state_idx (idx_012).
+    //
+
+
+
+    std::vector<RaggedShape3*> pruned_arcs_shapes(T+1);
+    for (int32_t t = 0; t <= T; t++)
+      arc_info_sizes[t] = &(frames_[t].arcs_shape_pruned);
+
+
+    // Set these..
+    Array1<int32_t*> arcs_new2old_map_ptrs(T+1);
+    Array1<int32_t*> arcs_pruned_shape_row_splits1(T+1),
+        arcs_pruned_shape_row_splits2(T+1),
+        arcs_
+
+
+
+        arcs_pruned_shape_row_splits3(T+1),
+
+
+        arcs_new2old_map_ptrs(T+1);
+
+    std::vector<char*> keep_this_state_ptrs(T+1);
+
+    std::vector<char> keep_this_arc(output_arc_sizes.TotSize3()),
+        keep_this_state(output_arc_sizes.TotSize2());
+    // Kernel that sets 'keep_this_arc', 'keep_this_state' based on
+    // keep_this_arc_ptrs and keep_this_state_ptrs goes here.
+
+
+    RaggedTensor4<Arc> output_arcs(output_arc_sizes);
+
+
+    Array1<int32_t*> arcs_renumber(c_cpu, T+1),
+        states_renumber(c_cpu, T+1);
+    Array1<Arc*> arcs_data(c_cpu, T+1);
+    // TODO: accumulate the frames_[t]->{arcs,states}_renumber.Data() pointers, and transfer
+    // to context c_.
+    // Note: these pointers m
+
+    Array1<int32_t>
+
 
     // Create array of T+1 by num_fsas which will help us determine
     // the formatting of the states and arcs' data.
@@ -103,17 +190,17 @@ class MultiGraphDenseIntersect {
     Array2<int32_t> arcs_sizes(c_, T+1, num_fsas);
 
     for (int32_t t = 0; t < T; t++) {
-      GetSizeInfo(c_.ChildContext(), frames[t], states_sizes[t], arcs_sizes[t]);
+      GetSizeInfo(c_.ChildContext(), frames_[t], states_sizes[t], arcs_sizes[t]);
     }
     c_.WaitForChildren();
 
 
-    Array1<int32_t*> num_renumbered_states_ptrs(CpuContext(), T+1),
-        num_renumbered_arcs_ptrs(CpuContext(), T+1);
+    Array1<int32_t*> num_renumbered_states_ptrs(CpuContext(), T + 1),
+        num_renumbered_arcs_ptrs(CpuContext(), T + 1);
     for (int32 t = 0; t <= T; t++) {
-      num_renumbered_states_ptrs[t] = frame_info[t]->states_renumber.Data() +
+      num_renumbered_states_ptrs[t] = frames_[t]->states_renumber.Data() +
           states_renumber.Size()-1;
-      num_renumbered_arcs_ptrs[t] = frame_info[t]->arcs_renumber.Data() +
+      num_renumbered_arcs_ptrs[t] = frames_[t]->arcs_renumber.Data() +
           arcs_renumber.Size()-1;
     }
     Array1<int32_t> num_renumbered_arcs(c_, T+1),
@@ -122,8 +209,8 @@ class MultiGraphDenseIntersect {
     // on the GPU and then .To(CpuContext()) to be back to CPU.
 
     for (int32 t = 0; t <= T; t++) {
-      RenumberArcsAndStates(frame_info[t],
-                            (t<T ? nullptr : frame_info[t+1]));
+      RenumberArcsAndStates(frames_[t],
+                            (t<T ? nullptr : frames_[t+1]));
 
     }
 
@@ -158,20 +245,20 @@ class MultiGraphDenseIntersect {
     // thanks to GetChild().
 
     for (int t = 0; t < T; t++) {
-      FrameInfo *cur_frame = frames[t];
+      FrameInfo *cur_frame = frames_[t];
       Arc *arcs = cur_frame->arcs.values.data();
       int32_t *arcs_row_ids1 = cur_frame->arcs.shape.RowIds1(),
           *arcs_row_splits1 = cur_frame->arcs.shape.RowSplits1(),
           *arcs_row_ids2 = cur_frame->arcs.shape.RowIds2(),
           *arcs_row_splits2 = cur_frame->arcs.shape.RowSplits2(),
-          *next_arcs_row_ids1 = frames[t+1]->states.shape.RowIds1(),
-          *next_arcs_row_splits1 = frames[t+1]->states.shape.RowSplits1();
+          *next_arcs_row_ids1 = frames_[t+1]->states.shape.RowIds1(),
+          *next_arcs_row_splits1 = frames_[t+1]->states.shape.RowSplits1();
       // RE 'next_arcs_row_ids1' above, I could have picked either
-      // 'arcs' or 'states' on frames[t+1], they have the same RowIds1().
+      // 'arcs' or 'states' on frames_[t+1], they have the same RowIds1().
       int32_t num_arcs_unpruned = cur_frame->arcs.values.Size();
       int32_t *state_renumber_data = cur_frame->states_renumber.data(),
           *arcs_renumber_data = cur_frame->arcs_renumber.data(),
-          *next_state_renumber_data = frames[t+1]->states_renumber.data();
+          *next_state_renumber_data = frames_[t+1]->states_renumber.data();
 
       auto lambda_format_arc_data = __host__ __device__ [=] (int32_t frame_arc_idx) -> void {
          // things with _r are renumbered to take account of pruning.  things
@@ -200,16 +287,7 @@ class MultiGraphDenseIntersect {
 
          int32_t output_arc_index = arcs_splits_t_data[ft] + a_r,
              src_output_state_index = state_splits_t_data[ft] + s_r,
-             dest
-
-
-
-
-
-
-
-
-             first_arc_this_fsa = arcs_row_splits1[first_state_this_fsa];
+             dest;
 
 
          int32_t src_state_index_r = states_renumber_data[src_state_index],
@@ -220,8 +298,6 @@ class MultiGraphDenseIntersect {
 
 
          ArcInfo info = arcs[i];
-         info.arc_idx
-
 
 
          // fsa_first_state == first index into states.values on this frame,
@@ -261,7 +337,7 @@ class MultiGraphDenseIntersect {
                                                     };
     c_.WaitChildren();
     }
-  }
+
 
   /*
     Compute pruning cutoffs for this frame: these are the cutoffs for the arc
@@ -839,12 +915,15 @@ class MultiGraphDenseIntersect {
     union {
       int32_t abs_state_id; // The destination-state as an index into a_fsas_.elems (only temporarily;
                             // when stored in the FrameInfo we use the dest_frame_state_idx field instead).
+                            // this is an idx_01 since it stores the FSA-idx, state-idx.
       int32_t dest_frame_state_idx;  // the frame_state_idx of the destination
                                      // state, i.e. the index into the next
-                                     // frame's "states" vector.
+                                     // frame's "states" vector.  Again an idx_01 since scores the FSA-idx, state-idx
 
-      int32_t dest_frame_fsa_state_idx;  // the frame_state_ids of the destination state minus the first frame_state_idx
-                                         // for that FSA on that frame (so it's a numbering specific to (fsa_idx, t).
+      int32_t dest_frame_fsa_state_idx;  // the number of this state *within
+                                         // this FSA*, among states that
+                                         // survived forward search (i.e. the
+                                         // idx_1 within frames[t]->arcs).
 
     } u;
 
@@ -872,6 +951,13 @@ class MultiGraphDenseIntersect {
     // due to pruning.
     Ragged3<ArcInfo> arcs;
 
+    // shape of arcs after pruning.  We don't copy the arcs but keep the
+    // mapping from new to old numbering.
+    RaggedShape3 arcs_shape_pruned;
+    // renumbering of arcs from new to old numbering, which enables us to
+    // kook up the old arcs.
+    Array1<int32_t> arcs_new2old_map;
+
     // Renumbering of states that we obtain in the backward pass; maps from
     // (numbering in states.elems) -> (numbering after removing pruned-away states).
     // Dim is states.elems.size() + 1.  Is exclusive-sum of (is this state kept?).
@@ -897,6 +983,21 @@ class MultiGraphDenseIntersect {
                                // from active states to the position in the
                                // `states` array.  Between frames, all values
                                // have -1 in them.
+
+  std::vector<FrameInfo*> frames_;
+
+  // This is a rearranged version of the info in 'frames', computed at the end of the forward
+  // pass before pruning.  It is indexed [fsa_id][t][state][arc].
+  RaggedShape4 oshape_unpruned_;
+
+  // these two Renumbering objects dictate how we renumber oshape_unpruned_,
+  // i.e. which states and arcs we delete.  The data in their Keep() members,
+  // which are vectors of chars, are written to in PropagateBackward().
+  Renumbering renumber_output_states_;
+  Renumbering renumber_output_arcs_;
+
+  // This is as oshape_unpruned_, but after the backward-pass pruning.
+  RaggedShape4 oshape_pruned_;
 
 };
 

@@ -25,11 +25,13 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 class Context;
 using ContextPtr = std::shared_ptr<Context>;
 
+
+
 /**
-   class Context is the main surface of interaction with external
-   tensor libraries like PyTorch; it allows us to use their notions
-   of device and of memory allocation.
-   (in the case of PyTorch it would probably contain a Device and an Allocator).
+   class Context is the main surface of interaction with external tensor
+   libraries like PyTorch; it allows us to use their notions of device and of
+   memory allocation.  (in the case of PyTorch it would probably contain a
+   Device and an Allocator).
 
    We will sub-class this in several ways: with versions that wrap external
    toolkits like PyTorch, and also a "native" version that's mostly for
@@ -42,44 +44,28 @@ class Context: public std::enable_shared_from_this<Context> {
  public:
   virtual ~Context() = default;
 
+  // note: shared_from_this(), which returns a std::shared_ptr<Context>, is
+  // public, inherited from std::enable_shared_from_this<Context>.
 
-  virtual ContextPtr GetContxtPtr() { return shared_from_this(); }
+  // Return CPU version of this context.  May or may not return the
+  // same value as ::k2::GetCpuContext()... this is so, for instance,
+  // if you have a GPU PyTorch context you can get a CPU PyTorch context.
+  virtual ContextPtr GetCpuContext();
 
-  /*
-    Return a 'child context' of this.  Think of this as like a sub-process, useful
-    for running things in parallel like in multiple threads or CUDA stream.
-    Here we give a default implementation that just returns *this (not very useful).
-    In the case of CUDA, what this would likely do is:
-         create a new stream (child stream)
-         create a CUDA event in this stream (the parent stream)
-         make the child stream wait on the just-created event in the parent stream
-       And then in the destructor of the returned ContextPtr:
-         create a CUDA event in the stream we created
-         make the parent stream wait on that event.
-
-    In the case of CPU, this would likely:
-         wait for a free thread from a thread pool, and put a pointer to it
-         in this Context.
-     The destructor would:
-         tell that thread
-         wait for that thread to terminate.
-
-     So the idea is that destroying the child context is like waiting on a child
-     process.  We can also later add a function to explicitly wait on a context.
-
-     The idea is to have a device-independent way of "backgrounding" tasks.
-  */
-  virtual ContextPtr GetChild() { return shared_from_this(); }
-
-  /*
-    Wait for children of this context to terminate.  If async == true,
-    it won't actually wait but will ensure that future tasks executed on this
-    context will execute after those already submitted to child contexts.
-  */
-  virtual void WaitChildren(bool async = true);
+  // Returns a (CPU) context that will allocate pinned memory.  (This is CPU
+  // memory that's pinned for faster GPU memory transfers).  May or may not
+  // return the same value as ::k2::GetCpuContext()... this is so, for instance,
+  // if you have a GPU PyTorch context you can get a CPU PyTorch context.
+  virtual ContextPtr GetPinnedContext();
 
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
   virtual DeviceType GetDeviceType() const = 0;
+
+  // Return the cuda stream associated with this context.  Once we support
+  // multiple GPUs, this is expected to also set the GPU to be the correct one.
+  virtual cudaStream_t GetCudaStream() const {
+    LOG(FATAL) << "Code error: not a CUDA context\n";
+  }
 
   /*
     Allocate memory on this device (raise an exception on failure, which we likely
@@ -97,12 +83,6 @@ class Context: public std::enable_shared_from_this<Context> {
   */
   virtual void *Allocate(size_t bytes, void **deleter_context) = 0;
 
-  // Return true if this is the same device as 'other' (essentially: that it
-  // lives in the same physical memory space).  Must always return true if this
-  // == &other.
-  virtual bool IsCompatible(const Context &other) const = 0;
-
-
   /*
     Free memory that was allocated by Context::Allocate() from this Context object
     (or, in general, memory obtained from an external toolkit that this Context object
@@ -116,7 +96,92 @@ class Context: public std::enable_shared_from_this<Context> {
                             Deallocate().
   */
   virtual void Deallocate(void *data, void *deleter_context) = 0;
+
+  /*
+    Return true if this is the same device as 'other' (essentially: that it
+    lives in the same physical memory space).  Must always return true if this
+    == &other.  */
+  virtual bool IsCompatible(const Context &other) const = 0;
+
+  /*
+    Return a 'child context' of this.  In the CPU case this is the same as
+    shared_from_this(), i.e. returns the same Context; it only does something
+    nontrivial for GPUs: specifically, it creates a new stream.
+
+    For a CUDA context, it would:
+         create a new CUDA stream (child stream)
+         create a CUDA event in this stream (the parent stream)
+         make the child stream wait on the just-created event in the parent stream
+         record this among a list of children, in the parent context.
+
+    Later master thread would call WaitChildren() when it needs to wait for
+    those tasks to terminate.  If we use BackgroundRunner, WaitChildren()
+    could just call Wait() on that object.
+
+    The idea is to have a device-independent way of "backgrounding" tasks.
+  */
+  virtual ContextPtr GetChild() { return shared_from_this(); }
+
+  /*
+    Wait for child contexts of this context to terminate (only does something
+    nontrivial for CUDA contexts.  If async == true, it won't actually wait but
+    will ensure that future tasks executed on this context will execute after
+    those already submitted to child contexts.  Setting async = false would be
+    equivalent to doing WaitChildren and then Sync().
+  */
+  virtual void WaitChildren(bool async = true) { }
+
+  /*
+    For CPU contexts, does nothing.  For CUDA contexts, synchronizes the CUDA
+    stream associated with the context.  This will ensure, for instance, that
+    any GPU-to-CPU transfers have completed.
+   */
+  virtual void Sync() { }
+
 };
+
+
+/*
+  Used to run a task "in the background" (with a thread pool), for parallelism.
+  This should generally be used together with the GetChild() of the context
+  object so that in case we're using a GPU the GPU stream doesn't cause the
+  tasks to be serialized.
+
+  General usage would be:
+     ContextPtr c;  // passed in
+     BackgroundRunner br;
+     for (int i = 0; i < N; i++) {
+        std::function<void()> lambda = [=] () {
+        ContextPtr c_child = c.Child();
+           // do something here, possibly with multiple steps...
+        }
+        br.Background(lambda);
+     }
+     br.Wait();
+
+  This is necessariy because if you do something that isn't just a simple
+  Eval() but requires, for instance, copying a number back to the CPU,
+  just parallelizing the GPU streams using c.Child() isn't enough because
+  it will synchronize in the loop.
+ */
+class BackgroundRunner {
+ public:
+  // TODO: may at some point add in a "cost estimate" that can help the code
+  // decide whether the overhead of creating a thread is worth it.
+  // Also, there will be a global semaphore that limits the number of threads
+  // that can exist at any one time.
+  void Background(std::function<void()> &f);
+
+  //  Waits for all (CPU) threads launched by Background() on this object since
+  // the last call to Wait(), to terminate.
+  void Wait();
+ private:
+  // TODO.  My current thinking on this is for Background() to create threads
+  // that Wait() can wait on, and to have the number of threads limited by a
+  // global semaphore.
+};
+
+
 
 template <typename T>
 ContextPtr GetContext(const T &t) {
@@ -147,7 +212,10 @@ struct Region: public std::enable_shared_from_this<Region> {
   // note: the inheritance from std::enable_shared_from_this<Region>
   // means that this object has a function
   //  std::shared_ptr<Region> shared_from_this();
-  ContextPtr context;
+
+
+  ContextPtr context;  // Context from which this memory region was allocated
+
   void *data;         // Pointer to the start of the allocated memory region
   void *deleter_context;  // if non-NULL, this is provided to the context in the
                           // destructor instead of 'data'.  It will be NULL for
@@ -174,8 +242,10 @@ struct Region: public std::enable_shared_from_this<Region> {
 
 using RegionPtr = std::shared_ptr<Region>;
 
-// Return a basic Context object suitable for work on the CPU.
+// Return a k2-native Context object suitable for work on the CPU.  Note: for use with
+// external toolkits you will probably want to use
 ContextPtr GetCpuContext();
+
 
 // Return a basic Context object suitable for work with CUDA, with specified
 // GPU-id (or the first one we grab, if gpu_id == -1).  This will be a *native*
@@ -184,6 +254,10 @@ ContextPtr GetCpuContext();
 // to use (say) PyTorch's memory manager, you should use a Context passed in
 // from PyTorch
 ContextPtr GetCudaContext(int gpu_id = -1);
+
+// Returns a (CPU) context that will allocate pinned memory.
+ContextPtr GetPinnedContext();
+
 
 /**
    Allocate a new Region.
@@ -224,6 +298,47 @@ template <typename T>
 inline DeviceType DeviceOf(const T &t) {
   return t.Context().GetDeviceType();
 }
+
+
+template <typename LambdaT>
+__global__ eval_lambda(int32_t n, LambdaT lambda) {
+  int i =  blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) {
+    lambda(i);
+  }
+}
+
+
+inline int32 NumBlocks(int32_t size, int32_t block_size) {
+  return (size + block_size - 1) / block_size;
+}
+
+template <typename ContextPtrType,   // Context*  or ContextPtr == std::shared_ptr<Context>
+          typename LambdaT>
+void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
+  if (n <= 0)
+    return;  // actually it would be an error if n < 0.
+  DeviceType t = c->GetDeviceType();
+  if (t == kCpu) {
+    // TODO: if n is very large, we'll eventually support running this with
+    // multiple threads.
+    for (int32_t i = 0; i < n; i++) {
+      lambda(i);
+    }
+  } else {
+    assert(c == kCuda);
+    int dim_block = 256;
+    int dim_grid = NumBlocks(n, dim_block);
+    if (dim_grid == 1)
+      dim_block = n;
+    eval_lambda<LambdaT><<<dim_block, dim_grid, 0, c->GetCudaStream()>>> (n, lambda);
+
+
+    cudaError_t err = cudaGetLastError();
+    assert(err == 0);
+  }
+}
+
 
 }  // namespace k2
 
