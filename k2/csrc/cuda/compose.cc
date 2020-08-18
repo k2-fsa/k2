@@ -689,43 +689,76 @@ class MultiGraphDenseIntersect {
 
     const int32_t minus_inf = FloatToOrderedInt(-std::numeric_limits<BaseFloat>::infinity());
 
-    Ragged2<int32_t> state_backward_prob((RaggedShape2)cur_frame->arcs.shape,
-                                         Array<int32_t>(cur_frame->arcs.TotSize1(),
-                                                        minus_inf));
+    /* arc_backward_probs represents the backward-prob at the beginning of the
+       arc.  Indexing is [frame_state_index][arc_index], where frame_state_index
+       and arc_index are respectively ind01 and ind2 w.r.t. frames_[t]->arcs. */
 
-    /* this represents the backward-prob at the beginning of the arc.
-       Indexing is [frame_state_idx][arc_idx]
-     */
     Ragged2<int32_t> arc_backward_prob(AppendAxis(cur_frame->arcs.shape, 0),
                                        Array<int32_t>(c_, num_arcs));
     int32_t *arc_backward_prob_data = arc_backward_prob.values.data();
 
     ArcInfo *arcs_data = cur_frame->arcs.values.data();
+    int32_t *arcs_rowids1 = cur_frame->arcs.RowIds2().data(),
+        *arcs_rowids2 = cur_frame->arcs.RowIds2().data(),
+        *arcs_row_splits1 = cur_frame->arcs.RowSplits1().data(),
+        *arcs_row_splits2 = cur_frame->arcs.RowSplits2().data(),
 
     float beam = beam_;
 
-    // We need the memory space to be 1 larger, see ExclusiveSum() documentation
-    Array1<char> keep_this_arc = Array1<char>(num_arcs+1).Range(0, num_arcs),
-        keep_this_state = Array1<char>(num_states+1).Range(0, num_states);
+    int32_t *oshape_rowids0 = oshape_unpruned_.RowIds0(),
+        *oshape_rowids1 = oshape_unpruned_.RowIds1(),
+        *oshape_rowids2 = oshape_unpruned_.RowIds2();
+
+    // these have the "output" formatting where we number things with
+    // oshape_unpruned_, which is indexed [fsa][t][state][arc].
+    char *keep_arcs_data = renumber_output_arcs_.Keep().Data(),
+        *keep_states_data = renumber_output_states_.Keep().Data();
 
     if (next_frame != NULL) {
+      // compute arc backward probs, and set elements of 'keep_arcs'a
       StateInfo *cur_states_data = cur_frame->states.values.data();
-      int32_t *arc_row_ids = arcs_data.RowIds2();  // maps from arc-idx to frame-state-idx.
+
+      // arc_row_ids maps from arc-idx to frame-state-idx, i.e. ind012 into
+      // `arcs` to ind01 into `arcs`.
+
+      // next_states_row_splits1 maps from fsa_ind0 to state_ind01
+      int32_t *next_states_row_splits1 = next_frame->states.RowSplits1().Data();
+
       StateInfo *next_states_data = next_frame->states.values.data();
-      auto lambda_set_arc_backward_prob = __host__ __device__ [=] (int32_t i) -> void {
-          ArcInfo *arc = arcs_data + i;
-          int32_t dest_frame_state_idx = arc->u.dest_frame_state_idx;
+      auto lambda_set_arc_backward_prob_and_keep = __host__ __device__ [=] (int32_t arcs_ind012) -> void {
+          ArcInfo *arc = arcs_data + arcs_ind012;
+          int32_t state_ind01 = arcs_rowids2[arc_ind012],
+              fsa_ind0 = arc_rowids1[state_ind01],
+              fsa_ind0x = arc_row_splits1[fsa_ind0],
+              fsa_ind0xx = arc_row_splits2[fsa_ind0x],
+              arcs_indx12 = arcs_ind012 - fsa_ind0xx;
+
+          int32_t dest_state_ind01 =  arc->u.dest_state_ind01,
+              next_state_ind0x = next_states_row_splits1[fsa_ind0],
+              dest_state_ind1 = dest_state_ind01 - next_state_ind0x;
+          arc->u.dest_state_ind1 = dest_state_ind1;
+
           float arc_loglike = arc->arc_loglike;
           int32_t dest_state_backward_loglike =
-              next_states_data[dest_frame_state_idx].backward_loglike;
+              next_states_data[dest_state_ind01].backward_loglike;
+          // 'backward_loglike' is the loglike at the beginning of the arc
           float backward_loglike = arc_loglike + OrderedIntToFloat(
               dest_state_backward_loglike);
           float src_state_forward_loglike =
-              OrderedIntToFloat(cur_states_data[arc_row_ids[i]].forward_loglike);
-          keep_this_arc[i] = (backward_loglike + src_state_forward_loglike >= -beam);
+              OrderedIntToFloat(cur_states_data[arc_row_ids[arcs_ind012]].forward_loglike);
+          char keep_this_arc = (backward_loglike + src_state_forward_loglike >= -beam);
+          int32_t oshape_arc_ind0x = oshape_rowids0[fsa_ind0],
+              oshape_arc_ind01 = oshape_arc_ind0x + t,
+              oshape_arc_ind01x = oshape_rowids1[oshape_arc_ind01],
+              oshape_arc_ind01xx = oshape_rowids2[oshape_arc_ind01x],
+              oshape_arc_ind0123 = oshape_arc_ind01xx + arc_indx12;
+          // note, for the previous line: indexes 1 and 2 of FrameInfo::arcs (==state,arc)
+          // become indexes 2 and 3 of oshape_unpruned_.
+
+          keep_arcs_data[oshape_arc_ind0123] = keep_this_arc;
           arc_backward_prob_data[i] = FloatToOrderedInt(backward_loglike);
       };
-      Eval(c_, arc_backward_prob.size(), lambda_set_arc_backward_prob);
+      Eval(c_, arc_backward_prob.values.Dim(), lambda_set_arc_backward_prob);
     } else {
       assert(arc_backward_prob.size() == 0);
     }
@@ -913,17 +946,15 @@ class MultiGraphDenseIntersect {
                         // output, == b_fsas), plus loglike from the arc in a_fsas.
 
     union {
-      int32_t abs_state_id; // The destination-state as an index into a_fsas_.elems (only temporarily;
-                            // when stored in the FrameInfo we use the dest_frame_state_idx field instead).
-                            // this is an idx_01 since it stores the FSA-idx, state-idx.
-      int32_t dest_frame_state_idx;  // the frame_state_idx of the destination
-                                     // state, i.e. the index into the next
-                                     // frame's "states" vector.  Again an idx_01 since scores the FSA-idx, state-idx
+      // these 3 different ways of storing the index of the destination state are
+      // used at differen states.
+      int32_t dest_fsas_ind01;  // The destination-state as an index into a_fsas_.
+      int32_t dest_state_ind01;  // The destination-state as an index into the next
+                                 // FrameInfo's `arcs` or `states`
+      int32_t dest_state_ind1;   // The destination-state as an index the next
+                                 // FrameInfo's `arcs` or `states`, this time
+                                 // omitting the FSA-index.
 
-      int32_t dest_frame_fsa_state_idx;  // the number of this state *within
-                                         // this FSA*, among states that
-                                         // survived forward search (i.e. the
-                                         // idx_1 within frames[t]->arcs).
 
     } u;
 
