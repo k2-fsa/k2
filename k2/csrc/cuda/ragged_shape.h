@@ -17,11 +17,11 @@ namespace k2 {
 // Please see utils.h for an explanation of row_splits and row_ids.
 class RaggedShape2 {
   // return dim on 0th axis.
-  int32_t Size0() const { return row_splits0_.size - 1; }
+  int32_t Dim0() const { return row_splits0_.size - 1; }
   Array1Tpl<int32_t> &RowSplits1() { return row_splits1_; }
   Array1Tpl<int32_t> &RowIds1();
 
-  // Return the *total* size of axis 1, summed across all rows.  Caution: if
+  // Return the *total* size (or dimension) of axis 1, summed across all rows.  Caution: if
   // you're using a GPU this call blocking the first time you call it for a
   // particular RaggedShape2(), so it may be best to do it in multiple threads
   // if you do this on many objects.  You can also get it from the last element
@@ -54,6 +54,14 @@ Array1<int32_t> GetTotSize2(const std::vector<RaggedShape3*> &src);
 
 
 class RaggedShape3: public RaggedShape2 {
+
+  RaggedShape3(Array<int32_t> &row_splits1,
+               Array<int32_t> &row_splits2,
+               int32_t cached_size2_ = -1,
+               Array<int32_t> *row_ids1 = nullptr,
+               Array<int32_t> *row_ids2 = nullptr);
+
+
   Array1<int32_t> &RowSplits2() { return row_splits2_; }
   Array1<int32_t> &RowIds2();
 
@@ -63,7 +71,7 @@ class RaggedShape3: public RaggedShape2 {
 
   Array1<int32_t> Sizes12();  // Returns the total number of elements in each
                           // sub-list (i.e. each list-of-lists), as a list of
-                          // length Size0().
+                          // length Dim0().
 
   // Mm, might not use this?
   auto Sizes2Data() {  // sizes of 2nd level of the array, indexable (i,j) ?
@@ -125,7 +133,7 @@ RaggedShape2 AppendAxis(const RaggedShape3 &src, int32_t axis);
   (which may each element to its corresponding row).  The row-ids must
   be a nonempty vector, nonnegative and no-decreasing.
 
-    @param [in]  num_rows   The number of rows (Size0()) of the object to be created.
+    @param [in]  num_rows   The number of rows (Dim0()) of the object to be created.
                  If a value <= 0 is supplied, it will use row_ids[-1]+1
                  if row_ids.size > 0, else 0.
     @param [in]  row_ids   The row-ids of the elements; must be nonnegative
@@ -194,7 +202,7 @@ RaggedShape4 RaggedShape4Subsampled(const RaggedShape4 &src,
 /*
   Merge a list of RaggedShape3 to create a RaggedShape4.  This is a rather
   special case because it combines two issues: creating a list, and transposing,
-  so instead of Size0() of the result corresponding to src.size(), the
+  so instead of Dim0() of the result corresponding to src.size(), the
   dimensions on axis 1 all correspond to src.size().  There is a requirement
   that src[i]->Size() must all have the same value.
 
@@ -208,7 +216,7 @@ RaggedShape4 MergeToAxis1(const std::vector<const RaggedShape3*> &src);
 /*
   Merge a list of RaggedShape2 to create a RaggedShape3.  This is a rather
   special case because it combines two issues: creating a list, and transposing,
-  so instead of Size0() of the result corresponding to src.size(), the
+  so instead of Dim0() of the result corresponding to src.size(), the
   dimensions on axis 1 all correspond to src.size().  There is a requirement
   that src[i]->Size() must all have the same value.
 
