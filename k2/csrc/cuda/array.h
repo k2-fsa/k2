@@ -20,13 +20,16 @@ class Array1 {
  public:
   int32_t Dim() const { return size_; }  // dimension of only axis (axis 0)
 
-  T *Data();  // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
+  // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
   // depending on the context.
-
-  // Returns pointer to 1st elem
   T *Data() {
     return reinterpret_cast<T *>(reinterpret_cast<char *>(region_->data) +
                                  byte_offset_);
+  }
+
+  T *Data() const {
+    return reinterpret_cast<const T *>(reinterpret_cast<char *>(region_->data) +
+                                       byte_offset_);
   }
 
   // generally Callable will be some kind of lambda or function object; it
@@ -40,6 +43,8 @@ class Array1 {
 
     Eval(ctx->GetDeviceType(), Data(), size, std::forward<Callable>(callable));
   }
+
+  Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
   /* Return sub-part of this array
      @param [in] start  First element to cover, 0 <= start < size()
@@ -87,23 +92,23 @@ class Array1 {
      time if it's a CUDA array, so use this operator sparingly.  If you know
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
-  T operator [] (int32_t i);
+  T operator[](int32_t i);
 
-  Array1 operator [](const Array1<int32_t> &indexes) {
-    assert(c_.IsCompatible(indexes.GetContext()));
+  Array1 operator[](const Array1<int32_t> &indexes) {
+    assert(Context()->IsCompatible(indexes.GetContext()));
     int32_t ret_dim = indexes.Dim();
-    Array1<T> ans(c_, ret_dim);
+    Array1<T> ans(Context(), ret_dim);
     const T *this_data = Data();
     T *ans_data = ans.Data();
     int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = __host__ __device__ [=] (int32_t i) -> void {
-       ans_data[i] = this_data[indexes_data[i]];
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
+      ans_data[i] = this_data[indexes_data[i]];
     };
-    Eval(c_, ret_dim, lambda_copy_elems);
+    Eval(Context(), ret_dim, lambda_copy_elems);
   }
 
-
   Array1(const Array1 &other) = default;
+
  private:
   int32_t size_;
   int32_t byte_offset_;
