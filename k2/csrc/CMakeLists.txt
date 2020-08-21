@@ -61,3 +61,5 @@ set(fsa_tests
 foreach(name IN LISTS fsa_tests)
   k2_add_fsa_test(${name})
 endforeach()
+
+add_subdirectory(cuda)
