@@ -56,6 +56,8 @@ class Context: public std::enable_shared_from_this<Context> {
   // memory that's pinned for faster GPU memory transfers).  May or may not
   // return the same value as ::k2::GetCpuContext()... this is so, for instance,
   // if you have a GPU PyTorch context you can get a CPU PyTorch context.
+  // NOTE: for now this won't do anything, we can do without pinned memory
+  // for the time being.
   virtual ContextPtr GetPinnedContext();
 
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
@@ -100,41 +102,17 @@ class Context: public std::enable_shared_from_this<Context> {
   /*
     Return true if this is the same device as 'other' (essentially: that it
     lives in the same physical memory space).  Must always return true if this
-    == &other.  */
+    == &other.  In most cases it will be sufficient to test whether the pointers
+    are the same.
+  */
   virtual bool IsCompatible(const Context &other) const = 0;
 
-  /*
-    Return a 'child context' of this.  In the CPU case this is the same as
-    shared_from_this(), i.e. returns the same Context; it only does something
-    nontrivial for GPUs: specifically, it creates a new stream.
-
-    For a CUDA context, it would:
-         create a new CUDA stream (child stream)
-         create a CUDA event in this stream (the parent stream)
-         make the child stream wait on the just-created event in the parent stream
-         record this among a list of children, in the parent context.
-
-    Later master thread would call WaitChildren() when it needs to wait for
-    those tasks to terminate.  If we use BackgroundRunner, WaitChildren()
-    could just call Wait() on that object.
-
-    The idea is to have a device-independent way of "backgrounding" tasks.
-  */
-  virtual ContextPtr GetChild() { return shared_from_this(); }
-
-  /*
-    Wait for child contexts of this context to terminate (only does something
-    nontrivial for CUDA contexts.  If async == true, it won't actually wait but
-    will ensure that future tasks executed on this context will execute after
-    those already submitted to child contexts.  Setting async = false would be
-    equivalent to doing WaitChildren and then Sync().
-  */
-  virtual void WaitChildren(bool async = true) { }
 
   /*
     For CPU contexts, does nothing.  For CUDA contexts, synchronizes the CUDA
     stream associated with the context.  This will ensure, for instance, that
-    any GPU-to-CPU transfers have completed.
+    any GPU-to-CPU transfers have completed.  (Note: we may end up using
+    something more fine-grained.)
    */
   virtual void Sync() { }
 
@@ -142,6 +120,8 @@ class Context: public std::enable_shared_from_this<Context> {
 
 
 /*
+  NOTE: let's leave this for later, this won't be needed initially.
+
   Used to run a task "in the background" (with a thread pool), for parallelism.
   This should generally be used together with the GetChild() of the context
   object so that in case we're using a GPU the GPU stream doesn't cause the
@@ -338,6 +318,70 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
     assert(err == 0);
   }
 }
+
+// OK, want to do:
+// ContextPtr c = ...;  ///
+// auto d = Dependency({out_region1, out_region2},
+//                      in_region1, in_region2, in_region3...);
+// Eval(d, n_elems, lambda...);
+//
+//
+// struct DepType {
+//   std::vector<out_region> out_regs;
+//   std::vector<in_region> in_regs;
+//   Context *c;  // out_regs[0]->context.
+// }
+//
+// Note: these dependencies are WITHIN CONTEXT for now...
+//
+// void* ContextPtr::ProcessDep(std::vector<Region> &out_deps,
+//                              std::vector<Region> &in_deps);
+//
+//  WITHIN-CONTEXT OPS
+//
+// For GPU, when executing:
+//
+//  (i) Decide on output stream, e.g. create new stream for this op.
+//  (ii) Find list of input dependencies' events that are not already
+//       terminated (mark them if so!) and set the output stream to
+//       wait on them.
+//  (iii) Run kernel
+//  (iv)  For each out_dep:
+//         Write the event (to wait on) in the Region.
+//
+// For *simple* CPU, when executing:
+//
+//   Just execute, ignoring deps.
+//
+// For multi-threaded CPU, when executing.
+//
+//  (i) get list of Tasks that we depend on that have not terminated yet,
+//      using try_wait() on their mutexes.
+//
+//    - If that list was empty:
+//          create a new Task that's not finished;
+//          queue a job that will run the lambda and then
+//          mark the Task as finished.
+//
+//    - Mark all output regions as depending on that new Task as well as
+//      any preceding Tasks running in those regions that have not yet terminated
+//      (assuming this Task didn't depend on those...)
+//
+//    -
+//
+//
+//
+//  (ii)
+//
+//  Let the job be a lambda that will:
+//    (ii) increment the wait_count on the destination memory regions
+//
+//
+//    (ii) if that list is empty:
+//        Run
+//
+// c_.Eval()...
+//
 
 
 }  // namespace k2

@@ -57,6 +57,8 @@ class DenseFsaVec {
   // [row_idx, symbol+1], where row_ids is an ind_01 w.r.t. `shape` (see naming
   // convention explained in utils.h).
   //
+  //  You can access scores[row_idx,symbol+1] as scores.Data()[row_ids*scores.Dim1() + symbol+1]
+  //
   // `scores` contains -infinity in certain locations: in scores[j,0] where
   // j is not the last row-index for a given FSA-index, and scores[j,k] where
   // j is the last row-index for a given FSA-index and k>0.  The remaining
