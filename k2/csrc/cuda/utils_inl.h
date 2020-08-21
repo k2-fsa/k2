@@ -41,10 +41,11 @@ void ExclusivePrefixSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest) {
     // the number of required bytes for d_temp_storage
     cub::DeviceScan::ExclusiveSum(d_temp_storage, temp_storage_bytes, src, dest,
                                   n, cudaStreamPerThread);
-    d_temp_storage = c->Allocate(temp_storage_bytes);
+    void *deleter_context;
+    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
     cub::DeviceScan::ExclusiveSum(d_temp_storage, temp_storage_bytes, src, dest,
                                   n);
-    c->Deallocate(d_temp_storage);
+    c->Deallocate(d_temp_storage, deleter_context);
   }
 }
 
