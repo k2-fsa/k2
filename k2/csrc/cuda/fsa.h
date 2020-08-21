@@ -27,49 +27,49 @@ using FsaVec = RaggedShape3<Arc>;
 /*
   Vector of FSAs that actually will come from neural net log-softmax outputs (or similar).
 
-  Conceptually this is a 3-dimensional tensor with the second dimension ragged,
-  i.e.  the shape would be [ num_fsas, None, num_cols ], e.g. if this were a
-  TF ragged tensor.  It's viewed as a list of linear dense FSAs where each one
-  has a different num-states/length.
+  Conceptually this is a 3-dimensional tensor of log-probs with the second
+  dimension ragged, i.e.  the shape would be [ num_fsas, None, num_symbols+1 ],
+  e.g. if this were a TF ragged tensor.  The indexing would be
+  [fsa_idx,t,symbol+1], where the "+1" after the symbol is so that we have
+  somewhere to put the output for symbol == -1 (remember, -1 is kFinalSymbol,
+  used on the last frame).
 
-  Example:
-
-   Suppose the row_sizes (the "None" dimension) are 6, 7, 2, the symbol_shift is
-   1 and the num_cols is 41.  Consider the first FSA, the one whose row_size
-   is 6.  This would be an FSA with 7 states where state 0 is the initial state
-   and state 6 is the final state.  For each 0 < i < 6, and for each 0 <= j <
-   num_cols, there is conceptually an arc from state i to i+1 with symbol (j -
-   symbol_shift) and cost equal to `scores[i,j]` if `scores` were a NumPy matrix;
-   actually we'd access this as `scores.data[i*num_cols + j]`.
+  Also, if a particular FSA has T frames of neural net output, we actually
+  have T+1 potential indexes, 0 through T, so there is space for the terminating
+  final-symbol on frame T.  (On the last frame, the final symbol has
+  logprob=0, the others have logprob=-inf).
  */
 class DenseFsaVec {
-  RaggedShape2 shape;  // shape.Sizes1() gives the number of states in each
-                       // dense FSA minus one, i.e. the number of states that
-                       // have arcs leaving them (excluding final state).  In an
-                       // ASR task, shape.Sizes1()[i] would also equal the
-                       // number of frames in that sequence plus one.  (We add
-                       // one 'fake' frame to handle arcs to the final state).
+  RaggedShape2 shape;  // Indexed first by FSA-index (this represents a number of
+                       // FSAs, and then for each FSA, the state-index (actually
+                       // the state-index from which the arcs leave).
 
 
   // TODO: construct from a regular matrix containing the nnet output, plus some
   // meta-info saying where the supervisions are.
 
 
-  int symbol_shift;  // Expected to be 1 (this relates to handling -1 /
-                     // final-probs efficiently); see comment above this class.
-                     // Symbols are shifted relative to column index in `scores`.
+  // The following variable was removed and can be obtained as scores.Dim1().
+  // int32_t num_cols;
 
-  int num_cols;    // num_cols will be (the number of symbols, including
-                     // zero), which is the nnet output dim, plus symbol_shift.
+  // `scores` is a contiguous matrix of dimension shape.TotSize1()
+  // by num_cols (where num_cols == num_symbols+1); the indexes into it are
+  // [row_idx, symbol+1], where row_ids is an ind_01 w.r.t. `shape` (see naming
+  // convention explained in utils.h).
+  //
+  //  You can access scores[row_idx,symbol+1] as scores.Data()[row_ids*scores.Dim1() + symbol+1]
+  //
+  // `scores` contains -infinity in certain locations: in scores[j,0] where
+  // j is not the last row-index for a given FSA-index, and scores[j,k] where
+  // j is the last row-index for a given FSA-index and k>0.  The remaining
+  // locations contain the neural net output, except scores[j,0] where j
+  // is the last row-index for a given FSA-index; this contains zero.
+  // (It's the final-transition).
+  Array2<float> scores;
 
-  Array1<float> scores;   // Conceptually a matrix of dimension shape.TotSize2()
-                          // by num_cols.  Contains -infinity in certain
-                          // locations, as well as the actual neural net output;
-                          // see comment above class.  The actual nnet output is
-                          // located in scores[:-1,1:], imagining it were a
-                          // NumPy matrix; other elements should all be
-                          // -infinity, except a 0 in scores[-1,0] which relates
-                          // to the transition to the final-state.
+  // NOTE: our notion of "arc-index" / arc_idx is an index into scores.Data().
+  int32_t NumArcs() { return scores.Size0() * scores.Size1(); }
+
 
 };
 

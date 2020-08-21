@@ -108,7 +108,7 @@ namespace k2 {
      - The RowSplits1() would map from an ind0 to an ind0x.  The x here
        takes the place of a 1 and that replacement means "actually the index
        here is definitely zero".  Any specific ind0x that we have will be
-       for a particular idx0.
+       for a particular ind0.
 
    For more details, it's best to use an example.
 
@@ -148,18 +148,13 @@ namespace k2 {
             ind01x = t.row_splits2[ind1],
             ind012 = ind01x + ind2,
             ind0xx = t.row_splits2[ind0x],
-            indx12 = ind012 - ind0xx;
-     When an "x" appears before the first digit it has a slightly different
-     semantics than when it appears the frist digit.  It's there not because the
-     indexes were zero, but because: *we subtracted two indexes that were
-     the same, and if preceded by other indexes, those were also the same*.
-     So to get an expression like indx12 we always need the value of
-     ind0.  The distinction between leading and trailing x's will always
-     be clear because an expression like indxxx (with no actual digits)
-     would always equal zero so is useless.  Note: in an expression
-     like ind0xx_next - ind0xx we don't get indxxx because index zero
-     is *different*.  However, the result of ind01x_next - ind01x would
-     be written indx1x because index zero would be the same.
+            ind12 = ind012 - ind0xx;
+     In the last line above, when we subtract ind012 - ind0xx we lose the
+     leading "0" because the zeroth index was the same in the two things being
+     subtracted.  Note: in an expression like ind0xx_next - ind0xx we don't get
+     indxxx because index zero is *different*.  However, the result of
+     ind01x_next - ind01x would be written ind1x because index zero would be
+     the same.
 
      The advantage of this naming scheme is that the 'type' that operations give
      is intuitively obvious and any mismatches will tend to be obvious in

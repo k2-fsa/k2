@@ -18,12 +18,18 @@ namespace k2 {
 template <typename T>
 class Array1 {
  public:
-  int32_t Size() const { return size_; }  // dimension of only (1st) axis
+  int32_t Dim() const { return size_; }  // dimension of only axis (axis 0)
 
-  // Returns pointer to 1st elem
+  // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
+  // depending on the context.
   T *Data() {
     return reinterpret_cast<T *>(reinterpret_cast<char *>(region_->data) +
                                  byte_offset_);
+  }
+
+  T *Data() const {
+    return reinterpret_cast<const T *>(reinterpret_cast<char *>(region_->data) +
+                                       byte_offset_);
   }
 
   // generally Callable will be some kind of lambda or function object; it
@@ -38,6 +44,8 @@ class Array1 {
     Eval(ctx->GetDeviceType(), Data(), size, std::forward<Callable>(callable));
   }
 
+  Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
+
   /* Return sub-part of this array
      @param [in] start  First element to cover, 0 <= start < size()
      @param [in] size   Number of elements to include, 0 < size < size()-start
@@ -46,7 +54,9 @@ class Array1 {
 
   /*
    Return sub-part of this array, with a stride (note: increment may be negative
-   but not zero).
+   but not zero).  Becomes a Tensor because Array1 does not support a stride
+   that isn't 1.
+
      @param [in] start  First element of output, 0 <= start < Size()
      @param [in] size   Number of elements to include, must satisfy
                         size > 0 and   0 <= (start + (size-1)*increment) <
@@ -77,11 +87,25 @@ class Array1 {
   // created contexts attached).
   void SetContext(ContextPtr &ctx);
 
-  /* Indexing operator (note: for now, we make all indexes be int32_t).  This is
-     fast if this is a CPU array, but could take some time if it's a CUDA array,
-     so use this operator sparingly.  If you know this is a CPU array, it would
-     have much less overhead to index the Data() pointer. */
+  /* Indexing operator (note: for now, we make all indexes be int32_t).  Returns
+     a T on the CPU.  This is fast if this is a CPU array, but could take some
+     time if it's a CUDA array, so use this operator sparingly.  If you know
+     this is a CPU array, it would have much less overhead to index the Data()
+     pointer. */
   T operator[](int32_t i);
+
+  Array1 operator[](const Array1<int32_t> &indexes) {
+    assert(Context()->IsCompatible(indexes.GetContext()));
+    int32_t ret_dim = indexes.Dim();
+    Array1<T> ans(Context(), ret_dim);
+    const T *this_data = Data();
+    T *ans_data = ans.Data();
+    int32_t *indexes_data = indexes.Data();
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
+      ans_data[i] = this_data[indexes_data[i]];
+    };
+    Eval(Context(), ret_dim, lambda_copy_elems);
+  }
 
   Array1(const Array1 &other) = default;
 
