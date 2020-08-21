@@ -14,16 +14,16 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 project(k2 CUDA CXX)
 
 # ----------------- Supported build types for K2 project -----------------
-set(allowableBuildTypes Debug Release RelWithDebInfo MinSizeRel)
-set(default_build_type "Debug")
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${allowableBuildTypes}")
+set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
+set(DEFAULT_BUILD_TYPE "Debug")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${ALLOWABLE_BUILD_TYPES}")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   # CMAKE_CONFIGURATION_TYPES: with config type values from other generators (IDE).
   message(STATUS "No CMAKE_BUILD_TYPE given, default to Debug")
-  set(CMAKE_BUILD_TYPE "${default_build_type}")
-elseif(NOT CMAKE_BUILD_TYPE IN_LIST allowableBuildTypes)
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}")
+elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWABLE_BUILD_TYPES)
   message(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}, \
-    choose one from ${allowableBuildTypes}")
+    choose one from ${ALLOWABLE_BUILD_TYPES}")
 endif()
 
 # Add -O0 to remove optimizations for debugging.
