@@ -13,21 +13,10 @@
 
 #include "k2/csrc/cuda/array.h"
 #include "k2/csrc/cuda/context.h"
+#include "k2/csrc/cuda/error.h"
 
 // Note, I'm not sure about the name of this file, they are not ops like in
 // TensorFlow, but procedures..
-
-// TODO(haowen): this function may be moved to some header files for log (e.g.
-// `log.h`)
-inline cudaError_t CheckCuda(cudaError_t status) {
-#if !defined(NDEBUG)
-  if (status != cudaSuccess) {
-    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(status));
-    assert(status == cudaSuccess);
-  }
-#endif
-  return status;
-}
 
 namespace {
 // TODO(haowen): manage/load block config with some classes? then we can get
@@ -37,6 +26,7 @@ constexpr int kTransTileDim = 32;
 constexpr int kTransBlockRows = 8;
 }  // namespace
 
+namespace k2 {
 // TODO(haowen): move the implementations to file `op_inl.h` or
 // `op.cu`(specialized on device and data type)?
 template <typename T>
@@ -86,8 +76,8 @@ __global__ void TransposeKernel(int32_t rows, int32_t cols, const T *input,
  */
 template <typename T>
 void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
-  assert(c.IsCompatible(src.Context());
-  assert(c.IsCompatible(dest->Context());
+  assert(c.IsCompatible(src.Context()));
+  assert(c.IsCompatible(dest->Context()));
   int32_t rows = src.Dim0();
   int32_t cols = src.Dim1();
   // TODO(haowen): limit the number of elements?
@@ -100,7 +90,7 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
   if (d == kCpu) {
     for (int i = 0; i < cols; ++i) {
       for (int j = 0; j < rows; ++j) {
-        output[i * rows + j] = input[j * cols + i];
+        dest_data[i * rows + j] = src_data[j * cols + i];
       }
     }
   } else {
@@ -108,9 +98,9 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
     dim3 block_size(kTransTileDim, kTransBlockRows, 1);
     dim3 grid_size(NumBlocks(cols, kTransTileDim),
                    NumBlocks(rows, kTransTileDim));
-    TransposeKernel<<<grid_size, block_size, 0, c.GetCudaStream()>>>(
+    TransposeKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
         rows, cols, src_data, dest_data);
-    CheckCuda(cudaDeviceSynchronize());
+    CheckCudaError(cudaDeviceSynchronize());
   }
 }
 
@@ -145,5 +135,6 @@ void ExclusiveSum(ContextPtr &c, Array1<S> &src, Array1<T> *dest);
  */
 template <typename T>
 void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int axis);
+}  // namespace k2
 
 #endif  // K2_CSRC_CUDA_OPS_H_

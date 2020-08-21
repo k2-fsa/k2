@@ -10,6 +10,8 @@
 #include <cassert>
 #include <memory>
 
+#include "glog/logging.h"
+
 namespace k2 {
 
 enum class DeviceType {
@@ -25,8 +27,6 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 class Context;
 using ContextPtr = std::shared_ptr<Context>;
 
-
-
 /**
    class Context is the main surface of interaction with external tensor
    libraries like PyTorch; it allows us to use their notions of device and of
@@ -40,7 +40,7 @@ using ContextPtr = std::shared_ptr<Context>;
    This object should be allocated with std::shared_ptr, as that's how we store
    pointers to it.
 */
-class Context: public std::enable_shared_from_this<Context> {
+class Context : public std::enable_shared_from_this<Context> {
  public:
   virtual ~Context() = default;
 
@@ -50,13 +50,13 @@ class Context: public std::enable_shared_from_this<Context> {
   // Return CPU version of this context.  May or may not return the
   // same value as ::k2::GetCpuContext()... this is so, for instance,
   // if you have a GPU PyTorch context you can get a CPU PyTorch context.
-  virtual ContextPtr GetCpuContext();
+  virtual ContextPtr GetCpuContext() = 0;
 
   // Returns a (CPU) context that will allocate pinned memory.  (This is CPU
   // memory that's pinned for faster GPU memory transfers).  May or may not
   // return the same value as ::k2::GetCpuContext()... this is so, for instance,
   // if you have a GPU PyTorch context you can get a CPU PyTorch context.
-  virtual ContextPtr GetPinnedContext();
+  virtual ContextPtr GetPinnedContext() = 0;
 
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
   virtual DeviceType GetDeviceType() const = 0;
@@ -65,35 +65,41 @@ class Context: public std::enable_shared_from_this<Context> {
   // multiple GPUs, this is expected to also set the GPU to be the correct one.
   virtual cudaStream_t GetCudaStream() const {
     LOG(FATAL) << "Code error: not a CUDA context\n";
+    // the program has been terminated by above `LOG(FATAL)`, below code is
+    // just to suppress build warning `no return value`
+    cudaStream_t stream = nullptr;
+    return stream;
   }
 
   /*
-    Allocate memory on this device (raise an exception on failure, which we likely
-    won't attempt to catch).
+    Allocate memory on this device (raise an exception on failure, which we
+    likely won't attempt to catch).
 
         @param [in] bytes   Number of bytes to allocate; may be zero, in which
-                            case NULL will be returned.   Let's assume the alignment
-                            of the returned memory is at least as strict as
-                            for malloc() with the same values.
-        @param [out] decoder_context   If more information than the returned pointer
-                            is required in order to deallocat this memory, then
-                            that information will be supplied as 'deleter_context'.
-                            In some cases this will be zero.
+                            case NULL will be returned.   Let's assume the
+                            alignment of the returned memory is at least as
+                            strict as for malloc() with the same values.
+        @param [out] decoder_context   If more information than the returned
+                            pointer is required in order to deallocat this
+                            memory, then that information will be supplied
+                            as 'deleter_context'. In some cases this will
+                            be zero.
         @return    Returns the allocated block, or NULL if bytes == 0.
   */
   virtual void *Allocate(size_t bytes, void **deleter_context) = 0;
 
   /*
-    Free memory that was allocated by Context::Allocate() from this Context object
-    (or, in general, memory obtained from an external toolkit that this Context object
-    knows how to delete).
+    Free memory that was allocated by Context::Allocate() from this Context
+    object (or, in general, memory obtained from an external toolkit that this
+    Context object knows how to delete).
            @param [in] data       The memory to delete (may be NULL)
-           @param [in] deleter_context    Some Context objects may require additional
-                            context information to delete the memory, like
-                            the concept of 'context' in PyTorch's DataPtr.  Or may be
-                            NULL in some instances.  In general, whatever was output
-                            by Allocate() to deleter_context should be supplied to
-                            Deallocate().
+           @param [in] deleter_context    Some Context objects may require
+                              additional context information to delete the
+                              memory, like the concept of 'context'
+                              in PyTorch's DataPtr.  Or may be NULL in some
+                              instances.  In general, whatever was output by
+                              Allocate() to deleter_context should be
+                              supplied to Deallocate().
   */
   virtual void Deallocate(void *data, void *deleter_context) = 0;
 
@@ -111,8 +117,8 @@ class Context: public std::enable_shared_from_this<Context> {
     For a CUDA context, it would:
          create a new CUDA stream (child stream)
          create a CUDA event in this stream (the parent stream)
-         make the child stream wait on the just-created event in the parent stream
-         record this among a list of children, in the parent context.
+         make the child stream wait on the just-created event in the parent
+         stream record this among a list of children, in the parent context.
 
     Later master thread would call WaitChildren() when it needs to wait for
     those tasks to terminate.  If we use BackgroundRunner, WaitChildren()
@@ -129,17 +135,15 @@ class Context: public std::enable_shared_from_this<Context> {
     those already submitted to child contexts.  Setting async = false would be
     equivalent to doing WaitChildren and then Sync().
   */
-  virtual void WaitChildren(bool async = true) { }
+  virtual void WaitChildren(bool async = true) {}
 
   /*
     For CPU contexts, does nothing.  For CUDA contexts, synchronizes the CUDA
     stream associated with the context.  This will ensure, for instance, that
     any GPU-to-CPU transfers have completed.
    */
-  virtual void Sync() { }
-
+  virtual void Sync() {}
 };
-
 
 /*
   Used to run a task "in the background" (with a thread pool), for parallelism.
@@ -175,13 +179,12 @@ class BackgroundRunner {
   //  Waits for all (CPU) threads launched by Background() on this object since
   // the last call to Wait(), to terminate.
   void Wait();
+
  private:
   // TODO.  My current thinking on this is for Background() to create threads
   // that Wait() can wait on, and to have the number of threads limited by a
   // global semaphore.
 };
-
-
 
 template <typename T>
 ContextPtr GetContext(const T &t) {
@@ -208,19 +211,18 @@ ContextPtr GetContext(const First &first, const Rest &... rest) {
   that memory. Once it gets too large and can't fit in the Region, it allocates
   a new Region.
 */
-struct Region: public std::enable_shared_from_this<Region> {
+struct Region : public std::enable_shared_from_this<Region> {
   // note: the inheritance from std::enable_shared_from_this<Region>
   // means that this object has a function
   //  std::shared_ptr<Region> shared_from_this();
 
-
   ContextPtr context;  // Context from which this memory region was allocated
 
-  void *data;         // Pointer to the start of the allocated memory region
+  void *data;             // Pointer to the start of the allocated memory region
   void *deleter_context;  // if non-NULL, this is provided to the context in the
                           // destructor instead of 'data'.  It will be NULL for
                           // some Contexts, non-NULL for others.
-  size_t num_bytes;   // number of bytes allocated.
+  size_t num_bytes;       // number of bytes allocated.
   size_t bytes_used;  // largest number of bytes used/covered by any Array that
                       // points to this Region (this is relevant for things that
                       // behave like resizable vectors).
@@ -232,20 +234,20 @@ struct Region: public std::enable_shared_from_this<Region> {
   template <typename T = void, DeviceType d = kUnk>
   T *GetData() {
     if (d != kUnk) assert(d == context->GetDeviceType());
-    return reinterpret_cast<T*>(data);
+    return reinterpret_cast<T *>(data);
   }
 
   ~Region() {
-    context->Deallocate(deleter_context != nullptr ? deleter_context : data);
+    context->Deallocate(data,
+                        deleter_context != nullptr ? deleter_context : nullptr);
   }
 };
 
 using RegionPtr = std::shared_ptr<Region>;
 
-// Return a k2-native Context object suitable for work on the CPU.  Note: for use with
-// external toolkits you will probably want to use
+// Return a k2-native Context object suitable for work on the CPU.  Note: for
+// use with external toolkits you will probably want to use
 ContextPtr GetCpuContext();
-
 
 // Return a basic Context object suitable for work with CUDA, with specified
 // GPU-id (or the first one we grab, if gpu_id == -1).  This will be a *native*
@@ -257,7 +259,6 @@ ContextPtr GetCudaContext(int gpu_id = -1);
 
 // Returns a (CPU) context that will allocate pinned memory.
 ContextPtr GetPinnedContext();
-
 
 /**
    Allocate a new Region.
@@ -273,11 +274,11 @@ ContextPtr GetPinnedContext();
                           region will have bytes_used == num_bytes; if the user
                           wants to change this they can do it afterward.
 */
-RegionPtr NewRegion(Context &context, size_t num_bytes) {
+RegionPtr NewRegion(ContextPtr &context, size_t num_bytes) {
   // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
   // overwrite if needed.
   std::shared_ptr<Region> ans = std::make_shared<Region>();
-  ans->context = context.shared_from_this();
+  ans->context = context->shared_from_this();
   ans->data = context->Allocate(num_bytes, &ans->deleter_context);
   ans->num_bytes = num_bytes;
   ans->bytes_used = num_bytes;
@@ -299,25 +300,23 @@ inline DeviceType DeviceOf(const T &t) {
   return t.Context().GetDeviceType();
 }
 
-
 template <typename LambdaT>
-__global__ eval_lambda(int32_t n, LambdaT lambda) {
-  int i =  blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void eval_lambda(int32_t n, LambdaT lambda) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
     lambda(i);
   }
 }
 
-
-inline int32 NumBlocks(int32_t size, int32_t block_size) {
+inline int32_t NumBlocks(int32_t size, int32_t block_size) {
   return (size + block_size - 1) / block_size;
 }
 
-template <typename ContextPtrType,   // Context*  or ContextPtr == std::shared_ptr<Context>
+template <typename ContextPtrType,  // Context*  or ContextPtr ==
+                                    // std::shared_ptr<Context>
           typename LambdaT>
 void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
-  if (n <= 0)
-    return;  // actually it would be an error if n < 0.
+  if (n <= 0) return;  // actually it would be an error if n < 0.
   DeviceType t = c->GetDeviceType();
   if (t == kCpu) {
     // TODO: if n is very large, we'll eventually support running this with
@@ -329,16 +328,14 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
     assert(c == kCuda);
     int dim_block = 256;
     int dim_grid = NumBlocks(n, dim_block);
-    if (dim_grid == 1)
-      dim_block = n;
-    eval_lambda<LambdaT><<<dim_block, dim_grid, 0, c->GetCudaStream()>>> (n, lambda);
-
+    if (dim_grid == 1) dim_block = n;
+    eval_lambda<LambdaT>
+        <<<dim_block, dim_grid, 0, c->GetCudaStream()>>>(n, lambda);
 
     cudaError_t err = cudaGetLastError();
     assert(err == 0);
   }
 }
-
 
 }  // namespace k2
 

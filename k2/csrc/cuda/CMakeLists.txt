@@ -1,7 +1,7 @@
-
 add_library(context context.cu)
 target_include_directories(context PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(context PUBLIC cub)
+target_link_libraries(context PUBLIC glog)
 
 function(k2_add_cuda_test name)
   add_executable(${name} "${name}.cu")
@@ -19,6 +19,7 @@ endfunction()
 
 # please sort the source files alphabetically
 set(cuda_tests
+  ops_test
   utils_test
 )
 
