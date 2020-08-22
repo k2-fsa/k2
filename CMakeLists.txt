@@ -13,6 +13,23 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(k2 CUDA CXX)
 
+# ----------------- Supported build types for K2 project -----------------
+set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
+set(DEFAULT_BUILD_TYPE "Debug")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${ALLOWABLE_BUILD_TYPES}")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  # CMAKE_CONFIGURATION_TYPES: with config type values from other generators (IDE).
+  message(STATUS "No CMAKE_BUILD_TYPE given, default to Debug")
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}")
+elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWABLE_BUILD_TYPES)
+  message(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}, \
+    choose one from ${ALLOWABLE_BUILD_TYPES}")
+endif()
+
+# Add -O0 to remove optimizations for debugging.
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
@@ -20,16 +37,6 @@ option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-
-if(NOT CMAKE_BUILD_TYPE)
-  message(STATUS "No CMAKE_BUILD_TYPE given, default to Release")
-  set(CMAKE_BUILD_TYPE Release CACHE STRING
-    "Set the build type. Available values are: Debug Release RelWithDebInfo MinSizeRel"
-    FORCE)
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-    Debug Release RelWithDebInfo MinSizeRel
-  )
-endif()
 
 if(WIN32 AND BUILD_SHARED_LIBS)
   message(STATUS "Set BUILD_SHARED_LIBS to OFF for Windows")
