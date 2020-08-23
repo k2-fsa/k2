@@ -13,13 +13,52 @@
 namespace k2 {
 
 
+class RaggedShape {
+  int32_t Dim0() {
+    CHECK_GT(0, axes_.size());
+    return axes_[0].row_splits.Dim() - 1;
+  }
+  // total size on this axis (require 0 < axis < NumAxes()).
+  int32_t TotSize(int32_t axis);
+
+  Array1<int32_t> &RowSplits(int32_t axis) {
+    CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
+    return axes_[axis - 1].row_splits;
+  }
+  Array1<int32_t> &RowIds(int32_t axis) {
+    CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
+    // TODO: make sure this row_ids exists, create it if needed.
+    return axes_[axis - 1].row_ids;
+  }
+
+  int32_t NumAxes() { return axes_.size() + 1; }
+
+  ContextPtr &Context() { return axes_[0].row_splits.Context(); }
+
+ private:
+  struct RaggedShapeDim {
+    Array1<int32_t> row_splits;
+    Array1<int32_t> row_ids;
+    int32_t cached_tot_size;
+  };
+
+  // indexed by axis-index minus one... axis 0 is special, its dim
+  // equas axes_[0].row_splits.Dim()-1.
+  std::vector<RaggedShapeDim> axes_;
+
+};
+
+
+
 // Shape of a 2-dimensional ragged array ( e.g. [ [ 0 ] [ 3 4 1 ] [] [ 5 ] ])
 // Please see utils.h for an explanation of row_splits and row_ids.
 class RaggedShape2 {
   // return dim on 0th axis.
   int32_t Dim0() const { return row_splits0_.size - 1; }
-  Array1Tpl<int32_t> &RowSplits1() { return row_splits1_; }
-  Array1Tpl<int32_t> &RowIds1();
+  Array1<int32_t> &RowSplits1() { return row_splits1_; }
+  Array1<int32_t> &RowIds1();
+
+  Array1<int32_t> Sizes1();
 
   // Return the *total* size (or dimension) of axis 1, summed across all rows.  Caution: if
   // you're using a GPU this call blocking the first time you call it for a
@@ -65,33 +104,10 @@ class RaggedShape3: public RaggedShape2 {
   Array1<int32_t> &RowSplits2() { return row_splits2_; }
   Array1<int32_t> &RowIds2();
 
+  Array1<int32_t> Sizes2();
 
-  Array1<int32_t> Sizes2();  // Returns the size of each sub-sub-list, as a list of
-                           // length TotSize1().
-
-  Array1<int32_t> Sizes12();  // Returns the total number of elements in each
-                          // sub-list (i.e. each list-of-lists), as a list of
-                          // length Dim0().
-
-  // Mm, might not use this?
-  auto Sizes2Data() {  // sizes of 2nd level of the array, indexable (i,j) ?
-    int32_t *data1 = row_splits1_.data, *data2 = row_splits2_.data;
-    return __host__ __device__ [data] (int32_t i, int32_t j) {
-                                 int32_t idx2 = data1[i];
-                                 assert(idx2 + j < data1[i+1]);
-                                 return data2[idx2 + 1] - data2[idx2];
-                               };
-  }
-
-  // Mm, might not use this??
-  auto FlatSizes2Data() {  // sizes of 2nd level of the array; an array of
-                           // TotSize1().
-    int32_t *data = row_splits2_.data;
-    return __host__ __device__ [data] (int32_t i) {
-                                 return data[i+1] - data[i];
-                               }
-  };
-
+  // Removes an axis by appending those lists; 'axis' must be 0 or 1
+  RaggedShape2 RemoveAxis(int32_t axis);
 
   int32_t TotSize2() { return row_splits2_[-1]; }
   int32_t MaxSize2();
@@ -110,7 +126,11 @@ class RaggedShape4: public RaggedShape3 {
   int32_t TotSize2() { return row_splits2_[-1]; }
   int32_t MaxSize2();
 
+  // Removes an axis by appending those lists; 'axis' must be 0, 1 or 2.
+  RaggedShape2 RemoveAxis(int32_t axis);
+
   ContextPtr &Context() { return row_splits1_.Context(); }
+
 
   // ...
 };

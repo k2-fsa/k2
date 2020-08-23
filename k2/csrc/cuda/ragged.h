@@ -12,6 +12,20 @@
 namespace k2 {
 
 
+template <typename T> struct Ragged {
+  RaggedShape shape; // TODO: consider making the shape a pointer??
+  Array1<T> values;
+
+  Ragged(RaggedShape &shape,
+          Array1<T> &values): shape(shape), values(values) {
+    // TODO: check values.Dim() matches shape.
+  }
+
+  Context* Context() { return values.Context(); }
+};
+
+
+
 // Interfaces:
 //  Indexable1 means operator () (int)
 //  Indexable2 means operator () (int, int)
@@ -19,10 +33,16 @@ namespace k2 {
 
 // 2-dimensional ragged array.  T should be a POD type.
 // We always ensure 'shape' and 'values' have the same device type.
-template <class T> class Ragged2 {
+template <typename T> struct Ragged2 {
   // TODO: consider making this RaggedShape2Ptr.
   RaggedShape2 shape;
   Array1<T> values;
+
+  Ragged2(RaggedShape2 &shape,
+          Array1<T> &values): shape(shape), values(values) { }
+
+
+  Ragged3(RaggedShape3 &shape, Array1<T> &values): shape(shape), values(values) { }
 
   Context* Context() { return shape.Context(); }
 };
@@ -30,12 +50,19 @@ template <class T> class Ragged2 {
 
 // 3-dimensional ragged array.  T should be a POD type.
 // We always ensure 'shape' and 'values' have the same device type.
-template <class T> class Ragged3 {
+template <typename T> struct Ragged3 {
   // TODO: consider making this RaggedShape3Ptr.
   RaggedShape3 shape;
   Array1<T> values;
 
+  Ragged3(RaggedShape3 &shape,
+          Array1<T> &values): shape(shape), values(values) { }
+
+  Ragged2 RemoveAxis(int32_t axis) { return Ragged2(shape.RemoveAxis(axis), values); }
+
   ContextPtr &Context() { return shape.Context(); }
+
+
  private:
   // ...
 };
@@ -43,10 +70,15 @@ template <class T> class Ragged3 {
 
 // 4-dimensional ragged array.  T should be a POD type.
 // We always ensure 'shape' and 'values' have the same device type.
-template <class T> class Ragged4 {
+template <typename T> struct Ragged4 {
   // TODO: consider making this RaggedShape3Ptr.
   RaggedShape4 shape;
   Array1<T> values;
+
+  Ragged4(RaggedShape4 &shape,
+          Array1<T> &values): shape(shape), values(values) { }
+
+  Ragged2 RemoveAxis(int32_t axis) { return Ragged2(shape.RemoveAxis(axis), values); }
 
   ContextPtr &Context() { return shape.Context(); }
  private:
@@ -145,9 +177,9 @@ Ragged3<T> Ragged3FromRowIds(const Ragged2Shape &shape2,
                         if you intend to initialize later).
  */
 template <typename T>
-Ragged3<T> Ragged2FromRowIds(int size0,
-                             const Array<int> &row_ids,
-                             const Array<T> &elems);
+Ragged Ragged2FromRowIds(int size0,
+                         const Array<int> &row_ids,
+                         const Array<T> &elems);
 
 }  // namespace k2
 

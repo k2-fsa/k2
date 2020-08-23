@@ -55,7 +55,7 @@ class Array1 {
      @param [in] start  First element of output, 0 <= start < Size()
      @param [in] size   Number of elements to include, must satisfy
                         size > 0 and   0 <= (start + (size-1)*increment) <
-   Size()
+                        Dim().
      @param [in] inc    Increment in original array each time index
                         increases
   */
