@@ -63,3 +63,4 @@ foreach(name IN LISTS fsa_tests)
 endforeach()
 
 add_subdirectory(cuda)
+add_subdirectory(tests)
