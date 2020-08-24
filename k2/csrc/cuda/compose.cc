@@ -14,8 +14,8 @@ namespace k2 {
 
 // Note: b is FsaVec<Arc>.
 void Intersect(const DenseFsa &a, const FsaVec &b, Fsa *c,
-               Array<int32_t> *arc_map_a = nullptr,
-               Array<int32_t> *arc_map_b = nullptr) {
+               Array1<int32_t> *arc_map_a = nullptr,
+               Array1<int32_t> *arc_map_b = nullptr) {
 
 }
 
@@ -80,12 +80,13 @@ class MultiGraphDenseIntersect {
       1).  So the #states is 2 greater than the actual number of frames in the
       neural-net output.
     */
-    int32_t T = b_fsas_.MaxSize1(),
-        num_fsas = b_fsas_.Size0();
+    int32_t T = b_fsas_.MaxSize(1),
+        num_fsas = b_fsas_.Dim0();
 
     frames_.reserve(T+1);
 
-    frames_.push_back(InitialFrameInfo());
+    frames_.push_back(InitialFrameInfo());  // TODO: implement
+                                            // InitialFrameInfo().
 
     for (int32_t t = 0; t < T; t++) {
       frames.push_back(PropagateForward(t, frames.back()));
@@ -98,14 +99,14 @@ class MultiGraphDenseIntersect {
       for (int32_t t = 0; t <= T; t++)
         arcs_shapes[t] = &(frames_[t].arcs.shape);
 
-      // 'output_arc_sizes' is a ragged tensor which is indexed:
-      //   output_arc_idx[fsa_index][t][state_idx][arc_idx]
-      // where the 'state_idx' and 'arc_idx'
-      // This is BEFORE PRUNING...
+      // oshape_unpruned_ is a 4-axis ragged tensor which is indexed:
+      //   oshape_unpruned_[fsa_index][t][state_idx][arc_idx]
+      // This is BEFORE BACKWARD PRUNING... oshape_pruned_ will
+      // be after backward pruning
       oshape_unpruned_ = MergeToAxis1(arcs_shapes);
     }
-    renumber_output_states_.Init(oshape_unpruned_.TotSize2());
-    renumber_output_arcs_.Init(oshape_unpruned_.TotSize3());
+    renumber_output_states_.Init(oshape_unpruned_.TotSize(2));
+    renumber_output_arcs_.Init(oshape_unpruned_.TotSize(3));
 
     for (int32_t t = T; t >= 0; t--) {
       // this writes to elements of renumber_output_states_.Keep() and
@@ -121,26 +122,26 @@ class MultiGraphDenseIntersect {
     // TODO
   }
 
-  void FormatOutput(FsaVec *ofsa,
+   void FormatOutput(FsaVec *ofsa,
                     Array<int32_t> *arc_map_a,
                     Array<int32_t> *arc_map_b) {
 
     Context c_cpu = c_->CpuContext();
     int32_t T = a_fsas.MaxSize1();
 
-    int32_t *oshapeu_row_ids3 = oshape_unpruned_.RowIds3(),
-        *oshapeu_row_ids2 = oshape_unpruned_.RowIds2(),
-        *oshapeu_row_ids1 = oshape_unpruned_.RowIds1(),
-        *oshapeu_row_splits3 = oshape_unpruned_.RowSplits3(),
-        *oshapeu_row_splits2 = oshape_unpruned_.RowSplits2(),
-        *oshapeu_row_splits1 = oshape_unpruned_.RowSplits1();
+    int32_t *oshapeu_row_ids3 = oshape_unpruned_.RowIds(3),
+        *oshapeu_row_ids2 = oshape_unpruned_.RowIds(2),
+        *oshapeu_row_ids1 = oshape_unpruned_.RowIds(1),
+        *oshapeu_row_splits3 = oshape_unpruned_.RowSplits(3),
+        *oshapeu_row_splits2 = oshape_unpruned_.RowSplits(2),
+        *oshapeu_row_splits1 = oshape_unpruned_.RowSplits(1);
 
-    int32_t *oshapep_row_ids3 = oshape_pruned_.RowIds3(),
-        *oshapep_row_ids2 = oshape_pruned_.RowIds2(),
-        *oshapep_row_ids1 = oshape_pruned_.RowIds1(),
-        *oshapep_row_splits3 = oshape_pruned_.RowSplits3(),
-        *oshapep_row_splits2 = oshape_pruned_.RowSplits2(),
-        *oshapep_row_splits1 = oshape_pruned_.RowSplits1();
+    int32_t *oshapep_row_ids3 = oshape_pruned_.RowIds(3),
+        *oshapep_row_ids2 = oshape_pruned_.RowIds(2),
+        *oshapep_row_ids1 = oshape_pruned_.RowIds(1),
+        *oshapep_row_splits3 = oshape_pruned_.RowSplits(3),
+        *oshapep_row_splits2 = oshape_pruned_.RowSplits(2),
+        *oshapep_row_splits1 = oshape_pruned_.RowSplits(1);
 
     // the 0123 and 012 express what type of indexes they are, see comment at
     // top of utils.h
@@ -154,8 +155,8 @@ class MultiGraphDenseIntersect {
     int32_t **arcs_row_splits1_ptrs_data = arcs_row_splits1_ptrs.Data();
     for (int32_t t = 0; t <= T; t++) {
       arcs_data_ptrs.Data()[t] = frames_[t]->arcs.values.Data();
-      arcs_row_splits1_ptrs.Data()[t] = frames_[t]->arcs.shape.RowSplits1();
-      arcs_row_splits2_ptrs.Data()[t] = frames_[t]->arcs.shape.RowSplits2();
+      arcs_row_splits1_ptrs.Data()[t] = frames_[t]->arcs.shape.RowSplits(1);
+      arcs_row_splits2_ptrs.Data()[t] = frames_[t]->arcs.shape.RowSplits(2);
     }
     // transfer to GPU if we're using a GPU
     arcs_data_ptrs = arcs_data_ptrs.To(c_);
@@ -175,7 +176,7 @@ class MultiGraphDenseIntersect {
     Arc *arcs_out_data = arcs.Data();
     const Arc *a_fsas_arcs = a_fsas_.values.Data();
     int32_t b_fsas_num_cols = b_fsas_.scores.Dim1();
-    const int32_t *b_fsas_row_ids1 = b_fsas.shape.RowIds1().Data();
+    const int32_t *b_fsas_row_ids1 = b_fsas.shape.RowIds(1).Data();
 
     auto lambda_format_arc_data = __host__ __device__ [=] (int32_t pruned_ind0123) -> void {
          int32_t unpruned_ind0123 = reverse_state_map0123[pruned_ind0123];
@@ -240,16 +241,16 @@ class MultiGraphDenseIntersect {
 
 
     // The output shape will get rid of axis one of oshape_pruned_ (which is the 't' index).
-    Array1<int32_t> arcs_row_splits1_out = oshape_pruned_.RowSplits2()[oshape_pruned_.RowSplits1()],
-        arcs_row_ids2_out = oshape_pruned_.RowIds1()[oshape_pruned_.RowIds2()];
+    Array1<int32_t> arcs_row_splits1_out = oshape_pruned_.RowSplits(2)[oshape_pruned_.RowSplits(1)],
+        arcs_row_ids2_out = oshape_pruned_.RowIds(1)[oshape_pruned_.RowIds(2)];
 
 
-    Eval(c_, oshape_pruned_.RowSplits1().Dim(), lambda_set_row_splits1_out);
+    Eval(c_, oshape_pruned_.RowSplits(1).Dim(), lambda_set_row_splits1_out);
     RaggedShape3 output_fsas_shape(arcs_row_splits1_out,
-                                   oshape_pruned_.RowSplits3(),
+                                   oshape_pruned_.RowSplits(3),
                                    oshape_pruned_.TotSize3(),
                                    arcs_row_ids2_out,
-                                   oshape_pruned_.RowIds3());
+                                   oshape_pruned_.RowIds(3));
 
     *ofsa = FsaVec(output_fsas_shape, arcs_out);
   }
@@ -350,7 +351,7 @@ class MultiGraphDenseIntersect {
     Ragged2<StateInfo> &states = cur_frame->states;
     const StateInfo *state_values = states.values.data;
     // in a_fsas_ (the decoding graphs), maps from state_ind01 to arc_ind01x.
-    const int32_t *fsa_arc_splits = a_fsas_.RowSplits2().data();
+    const int32_t *fsa_arc_splits = a_fsas_.RowSplits(2).data();
     int32_t a_fsas_stride = a_fsas_stride_;
 
     // frame_state_ind01 combines the FSA-index and state-index (into 'cur_frame->states')
@@ -370,17 +371,17 @@ class MultiGraphDenseIntersect {
     RaggedShape3 ai_shape = Ragged3FromSizes(states.shape, num_arcs);
 
     // 'ai' means ArcInfo
-    const int32_t *ai_row_ids1 = ai_shape.RowIds1(),   // from state_ind01 (into `states` or `ai_shape`) -> fsa_ind0
-        *ai_row_ids2 = ai_shape.RowIds2(),   // from arc_ind012 (into `ai_shape`) to state_ind01
-        *ai_row_splits2 = ai_shape.RowSplits2(),  // from state_ind01 to arc_ind01x
-        *a_fsas_row_splits2 = a_fsas_.RowSplits2();  // from state_ind01 (into
+    const int32_t *ai_row_ids1 = ai_shape.RowIds(1),   // from state_ind01 (into `states` or `ai_shape`) -> fsa_ind0
+        *ai_row_ids2 = ai_shape.RowIds(2),   // from arc_ind012 (into `ai_shape`) to state_ind01
+        *ai_row_splits2 = ai_shape.RowSplits(2),  // from state_ind01 to arc_ind01x
+        *a_fsas_row_splits2 = a_fsas_.RowSplits(2);  // from state_ind01 (into
                                                      // a_fsas_) to arc_ind01x
                                                      // (into a_fsas_)
 
     const Arc *arcs = a_fsas_.values.Data();
     // fsa_ind0 to ind0x (into b_fsas_), which gives the 1st row for this
     // sequence.
-    const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds1();
+    const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1);
     const float *score_data = b_fsas_.scores.Data();
     int score_num_cols = b_fsas_.scores.Dim1();
 
@@ -442,8 +443,8 @@ class MultiGraphDenseIntersect {
 
     // write certain indexes i (indexes into arc_info.elems) to state_map_.data().
     // Keeps track of the active states and will allow us to assign a numbering to them.
-    int *ai_row_ids1 = arc_info.RowIds1().data(),
-        *ai_row_ids2 = arc_info.RowIds2().data(),
+    int *ai_row_ids1 = arc_info.RowIds(1).data(),
+        *ai_row_ids2 = arc_info.RowIds(2).data(),
         *state_map_data = state_map_.data();
     auto lambda3 == __host__ __device__ [ai_data,ai_row_ids1,ai_row_ids2,cutoffs_data](int32_t i) -> void {
                                  int32_t fsa_id = ai_row_ids1[ai_row_ids2[i]];
@@ -507,11 +508,11 @@ class MultiGraphDenseIntersect {
     // frame) to the FSA-id associated with it.  It should be non-decreasing.
     Array1<int32_t> state_to_fsa_id(c_, num_states);
     { // This block sets 'state_to_fsa_id'.
-      int *states_row_ids = states.RowIds1();  // maps from index into `states`,
+      int *states_row_ids = states.RowIds(1);  // maps from index into `states`,
       // == current frame's
       // frame-state-index to FSA-id.
 
-      int *abs_state_to_fsa_index = a_fsas_.RowIds1().data();
+      int *abs_state_to_fsa_index = a_fsas_.RowIds(1).data();
       int *state_to_fsa_id_data = state_to_fsa_id.data();
       auto lambda_stateid = __host__ __device__ [=]->void {
                                                   int this_state_j = state_reorder_data[i],
@@ -611,8 +612,8 @@ class MultiGraphDenseIntersect {
     StateInfo *cur_states_data = cur_states.values.data();
 
     int32_t tot_states = a_fsas_.TotSize1();
-    int32_t *a_fsas_row_ids1 = a_fsas_.RowIds1(),
-        *a_fsas_row_splits1 = a_fsas_.RowSplits1();
+    int32_t *a_fsas_row_ids1 = a_fsas_.RowIds(1),
+        *a_fsas_row_splits1 = a_fsas_.RowSplits(1);
 
     const int32_t minus_inf = FloatToOrderedInt(-std::numeric_limits<BaseFloat>::infinity());
 
@@ -625,16 +626,16 @@ class MultiGraphDenseIntersect {
     int32_t *arc_backward_prob_data = arc_backward_prob.values.data();
 
     ArcInfo *arcs_data = cur_frame->arcs.values.data();
-    int32_t *arcs_rowids1 = cur_frame->arcs.RowIds2().data(),
-        *arcs_rowids2 = cur_frame->arcs.RowIds2().data(),
-        *arcs_row_splits1 = cur_frame->arcs.RowSplits1().data(),
-        *arcs_row_splits2 = cur_frame->arcs.RowSplits2().data(),
+    int32_t *arcs_rowids1 = cur_frame->arcs.RowIds(2).data(),
+        *arcs_rowids2 = cur_frame->arcs.RowIds(2).data(),
+        *arcs_row_splits1 = cur_frame->arcs.RowSplits(1).data(),
+        *arcs_row_splits2 = cur_frame->arcs.RowSplits(2).data(),
 
     float beam = beam_;
 
-    int32_t *oshape_row_splits1 = oshape_unpruned_.RowSplits1(),
-        *oshape_row_splits2 = oshape_unpruned_.RowSplits2(),
-        *oshape_row_splits3 = oshape_unpruned_.RowSplits3();
+    int32_t *oshape_row_splits1 = oshape_unpruned_.RowSplits(1),
+        *oshape_row_splits2 = oshape_unpruned_.RowSplits(2),
+        *oshape_row_splits3 = oshape_unpruned_.RowSplits(3);
 
     // these have the "output" formatting where we number things with
     // oshape_unpruned_, which is indexed [fsa][t][state][arc].
@@ -642,14 +643,14 @@ class MultiGraphDenseIntersect {
         *keep_states_data = renumber_output_states_.Keep().Data();
 
     if (next_frame != NULL) {
-      // compute arc backward probs, and set elements of 'keep_arcs'a
+      // compute arc backward probs, and set elements of 'keep_arcs'
       StateInfo *cur_states_data = cur_frame->states.values.data();
 
       // arc_row_ids maps from arc-idx to frame-state-idx, i.e. ind012 into
       // `arcs` to ind01 into `arcs`.
 
       // next_states_row_splits1 maps from fsa_ind0 to state_ind01
-      int32_t *next_states_row_splits1 = next_frame->states.RowSplits1().Data();
+      int32_t *next_states_row_splits1 = next_frame->states.RowSplits(1).Data();
 
       StateInfo *next_states_data = next_frame->states.values.data();
       auto lambda_set_arc_backward_prob_and_keep = __host__ __device__ [=] (int32_t arcs_ind012) -> void {
@@ -742,7 +743,6 @@ class MultiGraphDenseIntersect {
     };
     Eval(c_, cur_frame->states.values.size(), lambda_set_state_backward_prob);
   }
-
 
 
 
@@ -844,7 +844,7 @@ class MultiGraphDenseIntersect {
 
   // This is a rearranged version of the info in 'frames', computed at the end of the forward
   // pass before pruning.  It is indexed [fsa_id][t][state][arc].
-  RaggedShape4 oshape_unpruned_;
+  RaggedShape oshape_unpruned_;
 
   // these two Renumbering objects dictate how we renumber oshape_unpruned_,
   // i.e. which states and arcs we delete.  The data in their Keep() members,
@@ -853,7 +853,8 @@ class MultiGraphDenseIntersect {
   Renumbering renumber_output_arcs_;
 
   // This is as oshape_unpruned_, but after the backward-pass pruning.
-  RaggedShape4 oshape_pruned_;
+  // It is indexed [fsa_id][t][state][arc].
+  RaggedShape oshape_pruned_;
 
 };
 

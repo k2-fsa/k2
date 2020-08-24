@@ -1,3 +1,5 @@
+// TODO: move some stuff to ragged.h, delete this file.
+
 // k2/csrc/cuda/ragged_shape.h
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
@@ -11,43 +13,6 @@
 #include "k2/csrc/cuda/algorithms.h"
 
 namespace k2 {
-
-
-class RaggedShape {
-  int32_t Dim0() {
-    CHECK_GT(0, axes_.size());
-    return axes_[0].row_splits.Dim() - 1;
-  }
-  // total size on this axis (require 0 < axis < NumAxes()).
-  int32_t TotSize(int32_t axis);
-
-  Array1<int32_t> &RowSplits(int32_t axis) {
-    CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
-    return axes_[axis - 1].row_splits;
-  }
-  Array1<int32_t> &RowIds(int32_t axis) {
-    CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
-    // TODO: make sure this row_ids exists, create it if needed.
-    return axes_[axis - 1].row_ids;
-  }
-
-  int32_t NumAxes() { return axes_.size() + 1; }
-
-  ContextPtr &Context() { return axes_[0].row_splits.Context(); }
-
- private:
-  struct RaggedShapeDim {
-    Array1<int32_t> row_splits;
-    Array1<int32_t> row_ids;
-    int32_t cached_tot_size;
-  };
-
-  // indexed by axis-index minus one... axis 0 is special, its dim
-  // equas axes_[0].row_splits.Dim()-1.
-  std::vector<RaggedShapeDim> axes_;
-
-};
-
 
 
 // Shape of a 2-dimensional ragged array ( e.g. [ [ 0 ] [ 3 4 1 ] [] [ 5 ] ])

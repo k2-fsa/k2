@@ -134,21 +134,23 @@ class Array2 {
   ContextPtr &Context() const { return region_->context; }
 
   /*  stride on 0th axis, i.e. row stride, but this is stride in *elements*, so
-      we name it 'ElemStride' to distinguish from stride in *bytes* */
+      we name it 'ElemStride' to distinguish from stride in *bytes*.  This
+      will satisfy ElemStride0() >= Dim1(). */
   int32_t ElemStride0() { return elem_stride0_; }
 
-  /*  returns a flat version of this; will copy the data if it was not
-   * contiguous. */
+  /*  returns a flat version of this, appending the rows; will copy the data if
+      it was not contiguous. */
   Array1<T> Flatten();
 
   Array1<T> operator[](int32_t i);  // return a row (indexing on the 0th axis)
 
-  /* Create new array2 with given dimensions.  dim0 and dim1 must be >0. */
+  /* Create new array2 with given dimensions.  dim0 and dim1 must be >0.
+     Data will be uninitialized. */
   Array2(ContextPtr c, int32_t dim0, int32_t dim1);
 
   /* stride on 1st axis is 1 (in elements). */
-  Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t bytes_offset,
-         RegionPtr region)
+  Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0,
+         int32_t byte_offset,  RegionPtr region)
       : dim0_(dim0),
         dim1_(dim1),
         elem_stride0_(elem_stride0),
