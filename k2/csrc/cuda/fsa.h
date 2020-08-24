@@ -19,9 +19,11 @@ struct Arc {
   float score;  // we have the space to put this here, so...
 };
 
-using Fsa = RaggedShape2<Arc>;
+using Fsa = RaggedShape<Arc>;  // 2 axes: state,arc
 
-using FsaVec = RaggedShape3<Arc>;
+using FsaVec = RaggedShape<Arc>;  // 3 axes: fsa,state,arc.  Note, the src_state
+                                  // and dest_state in the arc are *within the
+                                  // FSA*, i.e. they are idx1 not idx01.
 
 
 /*
@@ -40,9 +42,10 @@ using FsaVec = RaggedShape3<Arc>;
   logprob=0, the others have logprob=-inf).
  */
 class DenseFsaVec {
-  RaggedShape2 shape;  // Indexed first by FSA-index (this represents a number of
-                       // FSAs, and then for each FSA, the state-index (actually
-                       // the state-index from which the arcs leave).
+  RaggedShape shape;  // has 2 axes; indexed first by FSA-index (this object
+                      // represents a list of FSAs!); and then for each FSA,
+                      // the state-index (actually the state-index from which
+                      // the arcs leave).
 
 
   // TODO: construct from a regular matrix containing the nnet output, plus some

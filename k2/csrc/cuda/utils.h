@@ -102,13 +102,13 @@ namespace k2 {
   Some entry-level facts about the naming scheme are:
 
      - The hierarchical indexes into the tensor (3 of them for a tensor with 3
-       axes), we call ind0, ind1 and ind2
-     - The linear index into the elements, we call ind012 because it includes
+       axes), we call idx0, idx1 and idx2
+     - The linear index into the elements, we call idx012 because it includes
        all 3 values.
-     - The RowSplits1() would map from an ind0 to an ind0x.  The x here
+     - The RowSplits1() would map from an idx0 to an idx0x.  The x here
        takes the place of a 1 and that replacement means "actually the index
-       here is definitely zero".  Any specific ind0x that we have will be
-       for a particular ind0.
+       here is definitely zero".  Any specific idx0x that we have will be
+       for a particular idx0.
 
    For more details, it's best to use an example.
 
@@ -117,43 +117,43 @@ namespace k2 {
      RaggedTensor3 t = [ [ [ 1 2 ] [ 5 ] ] [ [ 7 8 9 ] ] ]
 
      # which will give us:
-     t.row_splits1 == [ 0 2 3 ]    # indexed by ind0, elements are ind0x
-     t.row_ids1 == [ 0 0 1 ]       # indexed by ind01, elements are ind0
-     t.row_splits2 == [ 0 2 3 6 ]  # indexed by ind01, elements are ind01x
-     t.row_ids2 == [ 0 0 1 2 2 2 ] # indexed by ind012, elements are ind01
-     t.values == [ 1 2 5 7 8 9 ]   # indexed by ind012, elements are whatever
+     t.row_splits1 == [ 0 2 3 ]    # indexed by idx0, elements are idx0x
+     t.row_ids1 == [ 0 0 1 ]       # indexed by idx01, elements are idx0
+     t.row_splits2 == [ 0 2 3 6 ]  # indexed by idx01, elements are idx01x
+     t.row_ids2 == [ 0 0 1 2 2 2 ] # indexed by idx012, elements are idx01
+     t.values == [ 1 2 5 7 8 9 ]   # indexed by idx012, elements are whatever
                                    # values we're storing.
 
      Sometimes we'll want to know the number of elements in sub-lists, and we
      have a notation for the computations involved in that.  Suppose we want to
      know the number of elements in T[0].  We'll compute:
-       int ind0 = 0,
-           ind0x = t.row_splits1[ind0],
-           ind0x_next = t.row_splits1[ind0 + 1],
-           ind0xx = t.row_splits2[ind0],
-           ind0xx_next = t.row_splits2[ind0x_next],
-           size_0xx = ind0xx_next - ind0xx
+       int idx0 = 0,
+           idx0x = t.row_splits1[idx0],
+           idx0x_next = t.row_splits1[idx0 + 1],
+           idx0xx = t.row_splits2[idx0],
+           idx0xx_next = t.row_splits2[idx0x_next],
+           size_0xx = idx0xx_next - idx0xx
      (The _next suffix is used when we're querying the most specific known index
-     plus one, in this case index 0 but for instance, ind01x_next would mean
-     that we were querying ind01x after incrementing the index on axis 1.)
+     plus one, in this case index 0 but for instance, idx01x_next would mean
+     that we were querying idx01x after incrementing the index on axis 1.)
 
      We also might sometimes want to know an offset of an element within the
      part of the array that starts with a particular prefix of that index.
-     E.g. suppose we want the offset of element t[ ind0, ind1, ind2 ]
-     relative to the start of the sub-array t[ind0].  We'd do this as
+     E.g. suppose we want the offset of element t[ idx0, idx1, idx2 ]
+     relative to the start of the sub-array t[idx0].  We'd do this as
      follows:
-        int ind0, ind1, ind2;  # provided
-        int ind0x = t.row_splits1[ind0],
-            ind01 = ind0x + ind1,
-            ind01x = t.row_splits2[ind1],
-            ind012 = ind01x + ind2,
-            ind0xx = t.row_splits2[ind0x],
-            ind12 = ind012 - ind0xx;
-     In the last line above, when we subtract ind012 - ind0xx we lose the
+        int idx0, idx1, idx2;  # provided
+        int idx0x = t.row_splits1[idx0],
+            idx01 = idx0x + idx1,
+            idx01x = t.row_splits2[idx1],
+            idx012 = idx01x + idx2,
+            idx0xx = t.row_splits2[idx0x],
+            idx12 = idx012 - idx0xx;
+     In the last line above, when we subtract idx012 - idx0xx we lose the
      leading "0" because the zeroth index was the same in the two things being
-     subtracted.  Note: in an expression like ind0xx_next - ind0xx we don't get
-     indxxx because index zero is *different*.  However, the result of
-     ind01x_next - ind01x would be written ind1x because index zero would be
+     subtracted.  Note: in an expression like idx0xx_next - idx0xx we don't get
+     idxxxx because index zero is *different*.  However, the result of
+     idx01x_next - idx01x would be written idx1x because index zero would be
      the same.
 
      The advantage of this naming scheme is that the 'type' that operations give

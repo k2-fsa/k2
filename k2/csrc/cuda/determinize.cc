@@ -24,15 +24,6 @@ void DeterminizeFsaArray(Array3<Arc>  &FsaVec,
                          Allocator &alloc,
                          ... ) {
 
-  // OK this may be a bit ugly, but the idea here is that we set the allocator
-  // as a thread_local global variable so that it's available whenever
-  // we initialize device arrays.  We could pass it to all the constructors,
-  // but this would get tedious.
-  // TODO: add as opt args to constructors?
-  // Note: having explicit control of the allocator may be necessary under
-  // some circumstances.
-  SetDeviceAllocator(alloc);
-
 
   // The following mapping stuff would actually be an if...
   // we'll do this mapping only if needed and call
@@ -58,15 +49,15 @@ void Determinize(const Ragged3<Arc> &input,
                  ... ) {
 
 
-  Ragged2<Arc> output(...);  // indexed [i][num_arcs] where i is just an
-                             // arbitrary index.. see output_fsa_idxs and
-                             // output_state_idxs for how it maps to the real
-                             // output.
+  Ragged<Arc> output(...);  // indexed [i][num_arcs] where i is just an
+                            // arbitrary index.. see output_fsa_idxs and
+                            // output_state_idxs for how it maps to the real
+                            // output.
 
 
-  Array<int> output_fsa_idxs;   // FSA-index in 0..input.dim(0)-1 for each state in `output`;
-                                // indexed by 1st index into Output.
-  Array<int> output_state_idxs;  // state-index for each state in `output`,
+  Array<int32_t> output_fsa_idxs;   // FSA-index in 0..input.dim(0)-1 for each state in `output`;
+                                    // indexed by 1st index into Output.
+  Array<int32_t> output_state_idxs;  // state-index for each state in `output`,
                                  // i.e. the state within that output FSA.  It makes
                                  // the algorithm easier to code, and memory
                                  // management easier, if we put it all in one
@@ -76,13 +67,13 @@ void Determinize(const Ragged3<Arc> &input,
 
   // suppose shape3 etc. are just tuples.
 
-  // state_subsets is indexed first by 'i' == 1st index into `output`, and then
+  // state_subsets has 2 axes; is indexed first by 'i' == index into axis0 of `output`, and then
   // is a list of state-indexes in the corresponding input FSA (see output_fsa_idxs to
   // see which input FSA).
-  Array2<int> state_subsets(...);
+  Ragged<int32_t> state_subsets(...);
 
   // score for each element of `state_subsets.elems`..
-  Array<float> state_subset_scores(..., 0.0);    // score for each element of
+  Array1<float> state_subset_scores(..., 0.0);    // score for each element of
                                    // `state_subsets`... actually the subsets
                                    // are weighted subsets.  Note the most
                                    // negative score in each subset won't
@@ -92,11 +83,11 @@ void Determinize(const Ragged3<Arc> &input,
   // for each element of 'state_subsets/state_subset_scores', 'state_subset_arcs'
   // contains the index of the incoming arc that created it, or -1 if this is
   // the start state.
-  Array<int> state_subset_arcs(..., -1);
+  Array1<int> state_subset_arcs(..., -1);
 
 
-  // for each element of 'state_subsets.elems', the flat index of the previous
-  // element in `state_subsets` which 'created' this, or (-1,-1) if this was an
+  // for each element of 'state_subsets.elems', the index of the previous
+  // element in `state_subsets.elems` which 'created' this, or -1 if this was an
   // initial arc.  The arc (in state_subset_arcs) entering that previous state
   // will be a preceding arc on a path vs the arc in state_subset_arcs entering
   // this state.
