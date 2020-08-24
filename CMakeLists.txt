@@ -59,7 +59,7 @@ set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
 set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
 foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
 endforeach()
 
 #[[ end settings for CUB ]]

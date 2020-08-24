@@ -87,7 +87,6 @@ class MultiGraphDenseIntersect {
 
     frames_.push_back(InitialFrameInfo());  // TODO: implement
                                             // InitialFrameInfo().
-
     for (int32_t t = 0; t < T; t++) {
       frames.push_back(PropagateForward(t, frames.back()));
     }
@@ -248,7 +247,7 @@ class MultiGraphDenseIntersect {
     Eval(c_, oshape_pruned_.RowSplits(1).Dim(), lambda_set_row_splits1_out);
     RaggedShape3 output_fsas_shape(arcs_row_splits1_out,
                                    oshape_pruned_.RowSplits(3),
-                                   oshape_pruned_.TotSize3(),
+                                   oshape_pruned_.TotSize(3),
                                    arcs_row_ids2_out,
                                    oshape_pruned_.RowIds(3));
 

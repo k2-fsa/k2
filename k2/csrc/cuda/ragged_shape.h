@@ -20,10 +20,13 @@ namespace k2 {
 class RaggedShape2 {
   // return dim on 0th axis.
   int32_t Dim0() const { return row_splits0_.size - 1; }
+
   Array1<int32_t> &RowSplits1() { return row_splits1_; }
   Array1<int32_t> &RowIds1();
 
   Array1<int32_t> Sizes1();
+
+
 
   // Return the *total* size (or dimension) of axis 1, summed across all rows.  Caution: if
   // you're using a GPU this call blocking the first time you call it for a
@@ -64,7 +67,6 @@ class RaggedShape3: public RaggedShape2 {
                int32_t cached_size2_ = -1,
                Array<int32_t> *row_ids1 = nullptr,
                Array<int32_t> *row_ids2 = nullptr);
-
 
   Array1<int32_t> &RowSplits2() { return row_splits2_; }
   Array1<int32_t> &RowIds2();
