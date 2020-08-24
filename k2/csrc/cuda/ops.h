@@ -136,17 +136,17 @@ void ExclusiveSum(ContextPtr &c, Array1<S> &src, Array1<T> *dest);
 template <typename T>
 void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int axis);
 
-
-
 /*
-  Return an array with dimension in.Dim0(), containing the maximum of each sub-list
-  in 'in' (i.e. the max taken over axis 1), or T, whichever was larger.
+  Return an array with dimension in.Dim0(), containing the maximum of each
+  sub-list in 'in' (i.e. the max taken over axis 1), or T, whichever was larger.
 
   This is expected to be instantiated for, at least, float and int32_t.
  */
+// TODO(haowen): uncomment this
+/*
 template <typename T>
 Array1<T> MaxPerSublist(Ragged2<T> &in, T default);
-
+*/
 
 }  // namespace k2
 
