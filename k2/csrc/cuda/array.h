@@ -20,9 +20,6 @@ class Array1 {
  public:
   int32_t Dim() const { return size_; }  // dimension of only axis (axis 0)
 
-  T *Data();  // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
-  // depending on the context.
-
   // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
   // depending on the context.
   T *Data() {
@@ -95,24 +92,24 @@ class Array1 {
      time if it's a CUDA array, so use this operator sparingly.  If you know
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
-  T operator [] (int32_t i);
+  T operator[](int32_t i);
 
-  Array1 operator [](const Array1<int32_t> &indexes) {
-    Context c = Context();
-    assert(c.IsCompatible(indexes.GetContext()));
+  Array1 operator[](const Array1<int32_t> &indexes) {
+    ContextPtr c = Context();
+    assert(c->IsCompatible(indexes.GetContext()));
     int32_t ret_dim = indexes.Dim();
     Array1<T> ans(c, ret_dim);
     const T *this_data = Data();
     T *ans_data = ans.Data();
     int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = [=] __host__ __device__ (int32_t i) -> void {
-       ans_data[i] = this_data[indexes_data[i]];
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
+      ans_data[i] = this_data[indexes_data[i]];
     };
     Eval(c, ret_dim, lambda_copy_elems);
   }
 
-
   Array1(const Array1 &other) = default;
+
  private:
   int32_t size_;
   int32_t byte_offset_;
@@ -158,12 +155,12 @@ class Array2 {
   Array2(ContextPtr c, int32_t dim0, int32_t dim1);
 
   /* stride on 1st axis is 1 (in elements). */
-  Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0,
-         int32_t byte_offset,  RegionPtr region)
+  Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
+         RegionPtr region)
       : dim0_(dim0),
         dim1_(dim1),
         elem_stride0_(elem_stride0),
-        byte_offset_(bytes_offset),
+        byte_offset_(byte_offset),
         region_(region) {}
 
   TensorPtr AsTensor();
