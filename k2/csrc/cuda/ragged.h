@@ -110,7 +110,6 @@ RaggedShape SubsampleRaggedShape(const RaggedShape &src,
     @param [in]  row_ids   The row-ids for axis 1; must be nonnegative
                  and non-decreasing.
  */
-template <typename T>
 RaggedShape Ragged2ShapeFromRowIds(int num_rows,
                                    const Array<int32_t> &row_ids);
 
@@ -125,9 +124,23 @@ RaggedShape Ragged2ShapeFromRowIds(int num_rows,
      @param [in] row_ids   A nondecreasing vector of integers 0 <= i < shape.TotSize(Shape.NumAxes()-1),
                         with row_ids.size() == elems.size().
  */
-template <typename T>
 RaggedShape RaggedShapeFromRowIds(const RaggedShape &shape,
                                   const Array<int> &row_ids);
+
+/*
+  Construct a RaggedShape with 3 axes.  For N=1 and 2 respectively:
+  either row_splitsN or row_idsN or both must be non-NULL.
+  If cached_tot_sizeN is not -1, it must equal the total size on
+  that axis which will equal the last element of row_splitsN (if
+  provided) and must equal the row_idsN.Dim(), if provided.
+*/
+RaggedShape RaggedShape3(Array<int32_t> *row_splits1,
+                         Array<int32_t> *row_ids1,
+                         int32_t cached_tot_size1,
+                         Array<int32_t> *row_splits2,
+                         Array<int32_t> *row_ids2,
+                         int32_t cached_tot_size2);
+
 
 
 }  // namespace k2

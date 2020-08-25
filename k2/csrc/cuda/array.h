@@ -97,9 +97,9 @@ class Array1 {
      pointer. */
   T operator [] (int32_t i);
 
-  Array1 operator [](const Array1<int32_t> &indexes) {
-    Context c = Context();
-    assert(c.IsCompatible(indexes.GetContext()));
+  Array1 operator[](const Array1<int32_t> &indexes) {
+    ContextPtr c = Context();
+    assert(c->IsCompatible(indexes.GetContext()));
     int32_t ret_dim = indexes.Dim();
     Array1<T> ans(c, ret_dim);
     const T *this_data = Data();
@@ -158,12 +158,12 @@ class Array2 {
   Array2(ContextPtr c, int32_t dim0, int32_t dim1);
 
   /* stride on 1st axis is 1 (in elements). */
-  Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0,
-         int32_t byte_offset,  RegionPtr region)
+  Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
+         RegionPtr region)
       : dim0_(dim0),
         dim1_(dim1),
         elem_stride0_(elem_stride0),
-        byte_offset_(bytes_offset),
+        byte_offset_(byte_offset),
         region_(region) {}
 
   TensorPtr AsTensor();
