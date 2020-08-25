@@ -102,14 +102,14 @@ class Array1 {
     const T *this_data = Data();
     T *ans_data = ans.Data();
     int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
-      ans_data[i] = this_data[indexes_data[i]];
+    auto lambda_copy_elems = [=] __host__ __device__ (int32_t i) -> void {
+       ans_data[i] = this_data[indexes_data[i]];
     };
     Eval(c, ret_dim, lambda_copy_elems);
   }
 
-  Array1(const Array1 &other) = default;
 
+  Array1(const Array1 &other) = default;
  private:
   int32_t size_;
   int32_t byte_offset_;
