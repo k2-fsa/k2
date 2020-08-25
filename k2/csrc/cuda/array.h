@@ -20,9 +20,6 @@ class Array1 {
  public:
   int32_t Dim() const { return size_; }  // dimension of only axis (axis 0)
 
-  T *Data();  // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
-  // depending on the context.
-
   // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
   // depending on the context.
   T *Data() {
@@ -95,7 +92,7 @@ class Array1 {
      time if it's a CUDA array, so use this operator sparingly.  If you know
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
-  T operator [] (int32_t i);
+  T operator[](int32_t i);
 
   Array1 operator[](const Array1<int32_t> &indexes) {
     ContextPtr c = Context();
