@@ -137,6 +137,17 @@ template <typename T>
 void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int axis);
 
 /*
+  Append a list of Array1<T> to create a longer array.
+
+  For now we can just use a simple loop; later there are lots of opportunities
+  to optimize this, including multiple streams and using a single kernel making
+  use of RaggedShape.
+ */
+template <typename T>
+void Append(int32_t src_size, const Array1<T> *src);
+
+
+/*
   Return an array with dimension in.Dim0(), containing the maximum of each
   sub-list in 'in' (i.e. the max taken over axis 1), or T, whichever was larger.
 

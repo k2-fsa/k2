@@ -72,9 +72,59 @@ class DenseFsaVec {
 
   // NOTE: our notion of "arc-index" / arc_idx is an index into scores.Data().
   int32_t NumArcs() { return scores.Size0() * scores.Size1(); }
-
-
 };
+
+
+/*
+  Create an FSA from a Tensor.  The Tensor is expected to be an N by 4 tensor of
+  int32_t, where N is the number of arcs (the format is src_state, dest_state,
+  symbol, cost).  The cost is not really an int32_t, it is a float.  This code
+  will print an error message and output 'true' to 'error', and return an empty
+  FSA (with no states or arcs) if 't' was not interpretable as a valid FSA.
+  These requirements for a valid FSA are:
+
+    - src_state values on the arcs must be non-decreasing
+    - all arcs with -1 on the label must be to a single state (call this
+      final_state) which has no arcs leaving it
+    - final_state, if it exists, must be numerically greater than any state
+      which has arcs leaving it, and >= any state that has arcs entering it.
+
+  If there are no arcs with -1 on the label, here is how we determine the final
+  state:
+     - If there were no arcs we'll return the empty FSA (with no states).
+     - Otherwise, we'll let `final_state` be the highest-numbered state
+       that has any arcs leaving or entering it, plus one.  (This FSA
+       has no successful paths but still has states.)
+
+    @param [in] t   Source tensor.  Caution: the returned FSA will share
+                    memory with this tensor, so don't modify it afterward!
+    @param [out] error   Error flag.  On success this function will write 'true'
+                    here; on error, it will print an error message to
+                    the standard error and write 'false' here.
+    @return         The resulting FSA will be returned.
+
+*/
+Fsa FsaFromTensor(const Tensor &t, bool *error);
+
+/*
+  Returns a single Tensor that represents the FSA; this is just the vector of Arc
+  reinterpreted as  num_arcs by 4 Tensor of int32_t.  It can be converted back to
+  an equivalent FSA using `FsaFromTensor`.
+ */
+Tensor FsaToTensor(const Fsa &fsa);
+
+
+/*
+  Return one Fsa in an FsaVec.
+ */
+Fsa GetFsaVecElement(const FsaVec &vec, int32_t index);
+
+
+/*
+  Create an FsaVec from a list of Fsas.
+ */
+FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa *fsas);
+
 
 
 }  // namespace k2

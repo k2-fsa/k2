@@ -46,6 +46,13 @@ class Shape {
 
 class Tensor;
 using TensorPtr = std::shared_ptr<Tensor>;
+
+
+/*
+  Tensor is similar to PyTorch or TF Tensor.  Note, we don't use this that
+  often: more often, we use templated types that make stronger assumptions about
+  the dtype and layout, such as Array1, Array2 and Ragged.
+ */
 class Tensor {
  public:
   // Creates Tensor backed by uninitialized memory

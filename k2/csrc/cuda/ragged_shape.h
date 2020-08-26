@@ -186,19 +186,6 @@ RaggedShape4 RaggedShape4Subsampled(const RaggedShape4 &src,
                                     const Renumbering *r2,
                                     const Renumbering *r3);
 
-/*
-  Merge a list of RaggedShape3 to create a RaggedShape4.  This is a rather
-  special case because it combines two issues: creating a list, and transposing,
-  so instead of Dim0() of the result corresponding to src.size(), the
-  dimensions on axis 1 all correspond to src.size().  There is a requirement
-  that src[i]->Size() must all have the same value.
-
-  Viewing the source and result as the shapes of n-dimensional arrays, we will have:
-      result[i,j,k,l] = (*src[j])[i,k,l]
-  (although of course no such operator actually exists at the C++ level).
-
- */
-RaggedShape4 MergeToAxis1(const std::vector<const RaggedShape3*> &src);
 
 /*
   Merge a list of RaggedShape2 to create a RaggedShape3.  This is a rather

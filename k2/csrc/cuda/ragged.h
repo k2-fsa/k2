@@ -69,6 +69,36 @@ class RaggedShape {
 
 
 
+/*
+  Stack a list of RaggedShape to create a RaggedShape with one more axis.  Similar to
+  TF/PyTorch's Stack.  The result will have Dim0 == src_size.   All the source
+  RaggedShapes must have the same NumAxes().
+
+
+     @param [in] axis   The new axis whose dimension will equal src_size.  CAUTION:
+              only axis == 0 and axis == 1 are supported right now, and for the
+              axis==1 case we have a requirement that all the src->Dim0() return
+              the same value.
+
+     @param [in] src_size  The number of `RaggedShape`s in `src`
+     @param [in] src    The shapes to be stacked
+
+     @return  The appended result.
+
+        Viewing the source and result as the shapes of n-dimensional arrays, if axis==0
+        we will have:
+          result[i,j,k,l] = (*src[i])[j,k,l]
+        and if axis==1 we will have:
+          result[i,j,k,l] = (*src[j])[i,k,l]
+       (although of course no such operator actually exists at the C++ level, and
+       these are just the shapes of arrays..).
+     See also the version of Stack for class Ragged.
+ */
+RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape *src);
+
+
+
+
 template <typename T> struct Ragged {
   RaggedShape shape; // TODO: consider making the shape a pointer??
   Array1<T> values;
@@ -140,6 +170,33 @@ RaggedShape RaggedShape3(Array<int32_t> *row_splits1,
                          Array<int32_t> *row_splits2,
                          Array<int32_t> *row_ids2,
                          int32_t cached_tot_size2);
+
+
+/*
+  Stack a list of Ragged arrays to create a Ragged array with one more axis.
+  Similar to TF/PyTorch's Stack.  The result will have Dim0 == src_size.  All
+  the source Ragged arrays' shapes must have the same NumAxes().
+
+
+     @param [in] axis   The new axis whose dimension will equal src_size.  CAUTION:
+              only axis == 0 and axis == 1 are supported right now, and for the
+              axis==1 case we have a requirement that all the src->Dim0() return
+              the same value.
+
+     @param [in] src_size  The number of `RaggedShape`s in `src`
+     @param [in] src    The shapes to be stacked
+
+     @return  The appended result.
+
+       Assuming as an example that the input had 3 axes: if axis==0, the result
+       would have:
+          result[i,j,k,l] = (*src[i])[j,k,l]
+        and if axis==1 we would have:
+          result[i,j,k,l] = (*src[j])[i,k,l]
+ */
+template <typename T>
+Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
+
 
 
 

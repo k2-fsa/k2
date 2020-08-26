@@ -99,7 +99,7 @@ class MultiGraphDenseIntersect {
 
     {
       // each of these have 3 axes.
-      std::vector<RaggedShape*> arcs_shapes(T+1);
+      std::vector<const RaggedShape*> arcs_shapes(T+1);
       for (int32_t t = 0; t <= T; t++)
         arcs_shapes[t] = &(frames_[t].arcs.shape);
 
@@ -107,7 +107,8 @@ class MultiGraphDenseIntersect {
       //   oshape_unpruned_[fsa_index][t][state_idx][arc_idx]
       // This is BEFORE BACKWARD PRUNING... oshape_pruned_ will
       // be after backward pruning
-      oshape_unpruned_ = MergeToAxis1(arcs_shapes);
+      int32_t axis = 1;
+      oshape_unpruned_ = Stack(axis, T+1, &(arcs_shapes[0]));
     }
     renumber_output_states_.Init(oshape_unpruned_.TotSize(2));
     renumber_output_arcs_.Init(oshape_unpruned_.TotSize(3));

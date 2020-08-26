@@ -106,6 +106,7 @@ class Array1 {
        ans_data[i] = this_data[indexes_data[i]];
     };
     Eval(c, ret_dim, lambda_copy_elems);
+    return ans;
   }
 
 
