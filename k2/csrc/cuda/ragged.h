@@ -7,13 +7,9 @@
 #ifndef K2_CSRC_CUDA_RAGGED_H_
 #define K2_CSRC_CUDA_RAGGED_H_
 
-#include "k2/csrc/cuda/ragged_shape.h"
 #include "k2/csrc/cuda/algorithms.h"
 
 namespace k2 {
-
-
-
 
 class RaggedShape {
   int32_t Dim0() {
@@ -64,60 +60,50 @@ class RaggedShape {
   // indexed by axis-index minus one... axis 0 is special, its dim
   // equas axes_[0].row_splits.Dim()-1.
   std::vector<RaggedShapeDim> axes_;
-
 };
 
-
-
 /*
-  Stack a list of RaggedShape to create a RaggedShape with one more axis.  Similar to
-  TF/PyTorch's Stack.  The result will have Dim0 == src_size.   All the source
-  RaggedShapes must have the same NumAxes().
+  Stack a list of RaggedShape to create a RaggedShape with one more axis.
+  Similar to TF/PyTorch's Stack.  The result will have Dim0 == src_size.   All
+  the source RaggedShapes must have the same NumAxes().
 
 
-     @param [in] axis   The new axis whose dimension will equal src_size.  CAUTION:
-              only axis == 0 and axis == 1 are supported right now, and for the
-              axis==1 case we have a requirement that all the src->Dim0() return
-              the same value.
-
+     @param [in] axis   The new axis whose dimension will equal src_size.
+                        CAUTION: only axis == 0 and axis == 1 are supported
+                        right now, and for the axis==1 case we have a
+                        requirement that all the src->Dim0() return the
+                        same value.
      @param [in] src_size  The number of `RaggedShape`s in `src`
      @param [in] src    The shapes to be stacked
 
      @return  The appended result.
 
-        Viewing the source and result as the shapes of n-dimensional arrays, if axis==0
-        we will have:
-          result[i,j,k,l] = (*src[i])[j,k,l]
+        Viewing the source and result as the shapes of n-dimensional arrays,
+        if axis==0 we will have:
+            result[i,j,k,l] = (*src[i])[j,k,l]
         and if axis==1 we will have:
-          result[i,j,k,l] = (*src[j])[i,k,l]
-       (although of course no such operator actually exists at the C++ level, and
-       these are just the shapes of arrays..).
-     See also the version of Stack for class Ragged.
+            result[i,j,k,l] = (*src[j])[i,k,l]
+        (although of course no such operator actually exists at the C++ level,
+        and these are just the shapes of arrays..).
+        See also the version of Stack for class Ragged.
  */
 RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape *src);
 
-
-
-template <typename T> struct Ragged {
-  RaggedShape shape; // TODO: consider making the shape a pointer??
+template <typename T>
+struct Ragged {
+  RaggedShape shape;  // TODO: consider making the shape a pointer??
   Array1<T> values;
 
-  Ragged(RaggedShape &shape,
-          Array1<T> &values): shape(shape), values(values) {
+  Ragged(RaggedShape &shape, Array1<T> &values) : shape(shape), values(values) {
     // TODO: check values.Dim() matches shape.
   }
 
-  Ragged(RaggedShape &shape):
-      shape(shape),
-      values(shape.Context(), shape.TotSize(shape.NumAxes()-1)) {
-  }
+  Ragged(RaggedShape &shape)
+      : shape(shape),
+        values(shape.Context(), shape.TotSize(shape.NumAxes() - 1)) {}
 
-  Context* Context() { return values.Context(); }
+  Context *Context() { return values.Context(); }
 };
-
-
-
-
 
 /*
   Return ragged shape with only a subset of the bottom-level elements
@@ -128,16 +114,15 @@ template <typename T> struct Ragged {
 RaggedShape SubsampleRaggedShape(const RaggedShape &src,
                                  Renumbering &renumbering);
 
-
 /*
   Stack a list of Ragged arrays to create a Ragged array with one more axis.
   Similar to TF/PyTorch's Stack.  The result will have Dim0 == src_size.  All
   the source Ragged arrays' shapes must have the same NumAxes().
 
-     @param [in] axis   The new axis whose dimension will equal src_size.  CAUTION:
-              only axis == 0 and axis == 1 are supported right now, and for the
-              axis==1 case we have a requirement that all the src->Dim0() return
-              the same value.
+     @param [in] axis   The new axis whose dimension will equal src_size.
+              CAUTION: only axis == 0 and axis == 1 are supported right now,
+              and for the axis==1 case we have a requirement that all the
+              src->Dim0() return the same value.
 
      @param [in] src_size  The number of `RaggedShape`s in `src`
      @param [in] src    The shapes to be stacked
@@ -152,35 +137,32 @@ RaggedShape SubsampleRaggedShape(const RaggedShape &src,
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
 
-
-
 /*
   Create a RaggedShape from an array of row-ids.  (which maps each element to
   its corresponding row).  The row-ids must be a nonempty vector, nonnegative
   and no-decreasing.
 
-    @param [in]  num_rows   The number of rows (Size0()) of the object to be created.
-                 If a value <= 0 is supplied, it will use row_ids[-1]+1
-                 if row_ids.size > 0, else 0.
+    @param [in]  num_rows   The number of rows (Size0()) of the object to be
+                            created. If a value <= 0 is supplied, it will use
+                            row_ids[-1]+1 if row_ids.size > 0, else 0.
     @param [in]  row_ids   The row-ids for axis 1; must be nonnegative
-                 and non-decreasing.
+                           and non-decreasing.
  */
 RaggedShape Ragged2ShapeFromRowIds(int num_rows,
-                                   const Array<int32_t> &row_ids);
-
-
+                                   const Array1<int32_t> &row_ids);
 
 /*
-  Construct a ragged shape with one more axis than the supplied shape, given row-ids
-  for the last axis.
+  Construct a ragged shape with one more axis than the supplied shape, given
+  row-ids for the last axis.
 
      @param [in] shape   The shape that will dictate the top-level axes of
-                       the returned shape.
-     @param [in] row_ids   A nondecreasing vector of integers 0 <= i < shape.TotSize(Shape.NumAxes()-1),
-                        with row_ids.size() == elems.size().
+                         the returned shape.
+     @param [in] row_ids   A nondecreasing vector of integers
+                           0 <= i < shape.TotSize(Shape.NumAxes()-1),
+                           with row_ids.size() == elems.size().
  */
 RaggedShape RaggedShapeFromRowIds(const RaggedShape &shape,
-                                  const Array<int> &row_ids);
+                                  const Array1<int> &row_ids);
 
 /*
   Construct a RaggedShape with 3 axes.  For N=1 and 2 respectively:
@@ -189,14 +171,10 @@ RaggedShape RaggedShapeFromRowIds(const RaggedShape &shape,
   that axis which will equal the last element of row_splitsN (if
   provided) and must equal the row_idsN.Dim(), if provided.
 */
-RaggedShape RaggedShape3(Array<int32_t> *row_splits1,
-                         Array<int32_t> *row_ids1,
-                         int32_t cached_tot_size1,
-                         Array<int32_t> *row_splits2,
-                         Array<int32_t> *row_ids2,
-                         int32_t cached_tot_size2);
-
-
+RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
+                         Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
+                         Array1<int32_t> *row_splits2,
+                         Array1<int32_t> *row_ids2, int32_t cached_tot_size2);
 
 }  // namespace k2
 

@@ -14,6 +14,7 @@
 #include "k2/csrc/cuda/array.h"
 #include "k2/csrc/cuda/context.h"
 #include "k2/csrc/cuda/error.h"
+#include "k2/csrc/cuda/ragged.h"
 
 // Note, I'm not sure about the name of this file, they are not ops like in
 // TensorFlow, but procedures..
@@ -146,18 +147,14 @@ void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int axis);
 template <typename T>
 void Append(int32_t src_size, const Array1<T> *src);
 
-
 /*
   Return an array with dimension in.Dim0(), containing the maximum of each
   sub-list in 'in' (i.e. the max taken over axis 1), or T, whichever was larger.
 
   This is expected to be instantiated for, at least, float and int32_t.
  */
-// TODO(haowen): uncomment this
-/*
 template <typename T>
-Array1<T> MaxPerSublist(Ragged2<T> &in, T default);
-*/
+Array1<T> MaxPerSublist(Ragged<T> &in, T default_value);
 
 }  // namespace k2
 
