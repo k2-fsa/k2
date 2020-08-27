@@ -9,7 +9,15 @@
 namespace k2 {
 
 /**
- * K2_PTX_ARCH get the target PTX version through the active compiler (or zero for the host).
+ * @def K2_PTX_ARCH
+ *
+ * @brief
+ *  K2_PTX_ARCH get the target PTX version through the active compiler.
+ *
+ * @details
+ *  - for host, it's 0.
+ *  - for device, it's `__CUDA_ARCH__`, which indicates the
+ *                compute compatibility, should >= 200.
  */
 #ifndef K2_PTX_ARCH
   #ifndef __CUDA_ARCH__
@@ -19,6 +27,6 @@ namespace k2 {
   #endif
 #endif
 
-}  // end namespace k2
+}  // namespace k2
 
 #endif  // K2_CSRC_CUDA_ARCH_H_

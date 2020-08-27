@@ -3,7 +3,7 @@ BasedOnStyle: Google
 ---
 Language:               Cpp
 Cpp11BracedListStyle:   true
-Standard:               Cpp11
+Standard:               c++11
 DerivePointerAlignment: false
 PointerAlignment:       Right
 ---
