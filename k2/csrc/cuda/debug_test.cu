@@ -45,7 +45,7 @@ __global__ void square_roots(double* array) {
   array[idx] = sqrt((double) idx);
 }
 
-__global__ void helloCUDA(float f) {
+__global__ void HelloCUDA(float f) {
   if (threadIdx.x == 0)
     K2_DLOG("Hello thread %d, f=%f\n", threadIdx.x, f) ;
 }
@@ -96,7 +96,7 @@ TEST(DebugTest, K2DLog) {
   int *unallocated_array = static_cast<int *>(malloc(30 * sizeof(int)));
   // device call K2_DLOG
   {
-    helloCUDA<<<1, 5>>>(1.2345f);
+    HelloCUDA<<<1, 5>>>(1.2345f);
     FillContents<<<2, 3>>>(5, unallocated_array);
   }
 }
