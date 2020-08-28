@@ -176,7 +176,7 @@ __host__ __device__ __forceinline__ cudaError_t K2_CUDA_DEBUG(
  *
  * @remark
  *  macro `__VA_ARGS__` is used to pass the kernel<<<...>>> as one argument,
- *  otherwise the compiler rise a error "passed 2 arguments, but takes just 1".
+ *  otherwise the compiler rises a error "passed 2 arguments, but takes just 1".
  *
  * @code{.cpp}
  * K2_CUDA_KERNEL_SAFE_CALL(kernel_func<<<...>>>())

@@ -47,7 +47,7 @@ __global__ void square_roots(double* array) {
 
 __global__ void HelloCUDA(float f) {
   if (threadIdx.x == 0)
-    K2_DLOG("Hello thread %d, f=%f\n", threadIdx.x, f) ;
+    K2_DLOG("Hello thread %d, f=%f\n", threadIdx.x, f);
 }
 
 TEST(DebugTest, StaticAssert) {
