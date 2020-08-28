@@ -87,6 +87,8 @@ class Array1 {
 
   ContextPtr &Context() { return region_->context; }
 
+  const ContextPtr &Context() const { return region_->context; }
+
   // Sets the context on this object (Caution: this is not something you'll
   // often need).  'ctx' must be compatible with the current Context(),
   // i.e. `ctx->IsCompatible(*Context())`, and is expected to be a parent of
@@ -106,7 +108,7 @@ class Array1 {
 
   Array1 operator[](const Array1<int32_t> &indexes) {
     ContextPtr c = Context();
-    assert(c->IsCompatible(indexes.GetContext()));
+    assert(c->IsCompatible(*indexes.Context()));
     int32_t ret_dim = indexes.Dim();
     Array1<T> ans(c, ret_dim);
     const T *this_data = Data();
