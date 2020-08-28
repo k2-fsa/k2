@@ -76,8 +76,8 @@ __global__ void TransposeKernel(int32_t rows, int32_t cols, const T *input,
  */
 template <typename T>
 void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
-  assert(c.IsCompatible(src.Context()));
-  assert(c.IsCompatible(dest->Context()));
+  assert(c->IsCompatible(*src.Context()));
+  assert(c->IsCompatible(*dest->Context()));
   int32_t rows = src.Dim0();
   int32_t cols = src.Dim1();
   // TODO(haowen): limit the number of elements?
