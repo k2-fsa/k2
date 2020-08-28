@@ -1,4 +1,7 @@
-add_library(context context.cu)
+add_library(context 
+  context.cu
+  tensor.cu
+)
 target_include_directories(context PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(context PUBLIC cub)
 target_link_libraries(context PUBLIC glog)

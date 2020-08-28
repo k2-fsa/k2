@@ -1,16 +1,17 @@
 // k2/csrc/cuda/tensor.h
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+//                                                   Haowen Qiu)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
 #ifndef K2_CSRC_CUDA_TENSOR_H_
 #define K2_CSRC_CUDA_TENSOR_H_
 
+#include <vector>
+
 #include "k2/csrc/cuda/context.h"
 #include "k2/csrc/cuda/dtype.h"
-
-#define MAX_DIM 4  // Will increase this as needed
 
 namespace k2 {
 class Shape {
@@ -21,32 +22,39 @@ class Shape {
     CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(ndim_));
     return dims_[i];
   }
+
   int32_t Stride(int32_t i) {
     CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(ndim_));
     return strides_[i];
   }
-  int32_t Nelement();  // compute, return number of elements..
 
-  explicit Shape(const std::vector<int32_t> &dims, int32_t bytes_per_elem);
+  int32_t Nelement() { return num_element_; }
+  bool IsContiguous() { return is_contiguous_; }
+
+  explicit Shape(const std::vector<int32_t> &dims);
 
   explicit Shape(const std::vector<int32_t> &dims,
                  const std::vector<int32_t> strides);
 
-  Shape(const Shape &other);
-
-  bool IsContiguous(int32_t bytes_per_elem);
+  Shape(const Shape &other) = default;
 
  private:
+  static const int32_t kMaxDim = 4;  // Will increase this as needed
+
   int32_t ndim_;  // Must be >= 0
-  // elements of dims_ and strides_ >= ndim_ are currently not set;
-  // in future we may change this.
-  int32_t dims_[MAX_DIM];
-  int32_t strides_[MAX_DIM];  // Strides in bytes
+  int32_t num_element_;
+  bool is_contiguous_;
+
+  std::vector<int32_t> dims_;
+  std::vector<int32_t> strides_;  // Strides in elements
+
+  // compute the number of elements
+  int32_t ComputeNumElement();
+  bool CheckContiguous();
 };
 
 class Tensor;
 using TensorPtr = std::shared_ptr<Tensor>;
-
 
 /*
   Tensor is similar to PyTorch or TF Tensor.  Note, we don't use this that
