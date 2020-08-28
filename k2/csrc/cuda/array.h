@@ -121,6 +121,8 @@ class Array1 {
     return ans;
   }
 
+  // constructor from CPU array (transfers to GPU if necessary)
+  Array1(ContextPtr ctx, const std::vector<T> &src);
 
   Array1(const Array1 &other) = default;
  private:

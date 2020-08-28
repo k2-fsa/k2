@@ -123,7 +123,12 @@ Fsa GetFsaVecElement(const FsaVec &vec, int32_t index);
 /*
   Create an FsaVec from a list of Fsas.
  */
-FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa *fsas);
+FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa *fsas) {
+  // Implementation goes to this templat:
+  //  template <typename T>
+  //  Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
+  Stack(0, num_fsas, fsas0);
+}
 
 
 

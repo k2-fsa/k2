@@ -285,10 +285,25 @@ __global__ void eval_lambda(int32_t n, LambdaT lambda) {
   }
 }
 
+template <typename LambdaT>
+__global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
+  // actually threadIdx.y will always be 1 for now so we could drop that part of
+  // setting i..
+  int i = blockIdx.y * blockDim.y + threadIdx.y;
+  int j = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < m && j < n) {
+    lambda(i, j);
+  }
+}
+
+
 inline int32_t NumBlocks(int32_t size, int32_t block_size) {
   return (size + block_size - 1) / block_size;
 }
 
+
+/* Eval() will evaluate lambda(i) for 0 <= i < n, on the appropriate
+   device (CPU or GPU). */
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
@@ -313,6 +328,49 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
     assert(err == 0);
   }
 }
+
+
+/*
+  This is a form of Eval() where the lambda takes  two arguments.
+
+  Eval2() will evaluate lambda(i, j) for 0 <= i < m and 0 <= j < n,
+  on the appropriate  device (CPU or GPU).  The second index, n,
+  is supposed to be the faster-varying one, the index for which
+  threads in the same warp will tend to have different values.
+  (Of course this doesn't affect the semantics of the operation).
+
+*/
+template <typename ContextPtrType,  // Context*  or ContextPtr ==
+                                    // std::shared_ptr<Context>
+          typename LambdaT>
+void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
+  if (m <= 0 || n <= 0) return;  // actually it would be an error if m < 0 or n < 0.
+  DeviceType t = c->GetDeviceType();
+  if (t == kCpu) {
+    // TODO: if n is very large, we'll eventually support running this with
+    // multiple threads.
+    for (int32_t i = 0; i < m; i++) {
+      for (int32_t j = 0; j < n; j++) {
+        lambda(i, j);
+      }
+    }
+  } else {
+    assert(c == kCuda);
+    // this way of choosing block and grid sizes is of course not very smart, we
+    // can look at this later on, possibly referring to Kaldi's
+    // GetBlockSizesForSimpleMatrixOperation().
+    dim3 dim_block(256,1,1);
+    dim3 dim_grid(NumBlocks(n, dim_block), m, 1);
+    if (dim_grid.x == 1) dim_block.x = n;
+
+    eval_lambda2<LambdaT>
+        <<<dim_block, dim_grid, 0, c->GetCudaStream()>>>(m, n, lambda);
+
+    cudaError_t err = cudaGetLastError();
+    assert(err == 0);
+  }
+}
+
 
 // OK, want to do:
 // ContextPtr c = ...;  ///

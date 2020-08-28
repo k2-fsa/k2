@@ -74,7 +74,7 @@ __global__ void TransposeKernel(int32_t rows, int32_t cols, const T *input,
                         `dest->Size1() == src.Size0()` and
                         `dest->Size0() == src.Size1()`.
                         At exit, we'll have dest[i,j] == src[j,i].
- */
+*/
 template <typename T>
 void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
   assert(c->IsCompatible(*src.Context()));
@@ -143,9 +143,29 @@ void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int axis);
   For now we can just use a simple loop; later there are lots of opportunities
   to optimize this, including multiple streams and using a single kernel making
   use of RaggedShape.
+      @param [in] src_size  Number of arrays to append.  Must be > 0.
+      @param [in] src     Array of pointers to arrays, of size `src_size`.
+      @return       Returns the appended array
  */
 template <typename T>
-void Append(int32_t src_size, const Array1<T> *src);
+Array1<T> Append(int32_t src_size, const Array1<T> **src);
+
+
+/*
+   This is a little like Append(), but with offsets.  It's like appending the
+   arrays in 'src', except they all overlap by one element, and for i > 0
+   we add an offset o[i] to the arrays in src[i], with the offsets being
+   chosen so that in the overlapping elements there is no conflict between
+   the two values being written (this means that src[i] is the sum of
+   the final element of each of the arrays in src[j] for j < i).
+
+      @param [in] src_size  Number of arrays to append
+      @param [in] src     Array of pointers to arrays, of size `src_size`.
+      @return       Returns the appended array
+
+ */
+Array1<int32_t> Splice(int32_t src_size, const Array1<int32_t> **src);
+
 
 /*
   Return an array with dimension in.Dim0(), containing the maximum of each
@@ -157,5 +177,9 @@ template <typename T>
 Array1<T> MaxPerSublist(Ragged<T> &in, T default_value);
 
 }  // namespace k2
+
+#define IS_IN_K2_CSRC_CUDA_OPS_H_
+#include "k2/csrc/cuda/ops_inl.h"
+#undef IS_IN_K2_CSRC_CUDA_OPS_H_
 
 #endif  // K2_CSRC_CUDA_OPS_H_

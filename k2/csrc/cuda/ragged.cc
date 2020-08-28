@@ -8,29 +8,56 @@
 
 namespace k2 {
 
+RaggedShape RaggedShape2(Array1<int32_t> *row_splits,
+                         Array1<int32_t> *row_ids,
+                         int32_t cached_tot_size) {
+  if (!row_splits && !row_ids) {
+    LOG(FATAL) << "At least one of row_splits and row_ids must be defined";
+  }
+  if (cached_tot_size != -1) {
+    if (row_ids != nullptr)
+      CHECK(cached_tot_size == row_ids->Size()-1);
+    if (row_splits != nullptr)  // caution: next check may be slow...
+      CHECK(cached_tot_size == row_splits[row_splits->Size()-1]);
+  }
+  axes_.resize(1);
+  if (row_splits)
+    axes_[0].row_splits = *row_splits;
+  if (row_ids)
+    axes_[0].row_ids = *row_ids;
+  axes_[0].cached_tot_size = cached_tot_size;
+}
 
-int32_t RaggedShape2::TotSize1() {
-  if (cached_tot_size1_ >= 0) {
-    return cached_tot_size1_;
+RaggedShape ComposeRaggedShapes(RaggedShape &a,
+                                RaggedShape &b) {
+  if (a.NumElements() != b.Dim0()) {
+    LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: "
+               << a.NumElements() << " vs. " << b.Dim0();
   }
-  // We set cached_tot_size1_ to -1 if we're not sure what its value is.
-  Context *c = row_splits1_.Context().get();
-  int32_t size = row_splits1_.Size();
-  if (size == 0) {
-    cached_tot_size1_ = 0;
-  } else {
-    // Most of the complexity is in the operator [], which handles stream
-    // synchronization and GPU->CPU transfer, if this was on the GPU.
-    cached_tot_size1_ = row_splits1_[size-1];
-  }
+  std::vector<RaggedShapeDim> axes(a.axes_.size() + b.axes_.size());
+  size_t a_size = a.axes_.size(), b_size = b.axes_.size();
+  for (size_t i = 0; i < a_size; i++)
+    axes[i] = a.axes_[i];
+  for (size_t i = 0; i < b_size; i++)
+    axes[i + a_size] = b.axes_[i];
+  return RaggedShape(axes);
 }
 
 
-RaggedShape3 MergeToAxis1(const std::vector<const RaggedShape2*> &src) {
+RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
+                         Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
+                         Array1<int32_t> *row_splits2,
+                         Array1<int32_t> *row_ids2, int32_t cached_tot_size2) {
+  // This is a slightly lazy implementation, could save a couple copies of metadata by
+  // implementing it directly.
+  return ComposeRaggedShapes(RaggedShape2(row_splits1, row_ids1, cached_tot_size1),
+                             RaggedShape2(row_splits2, row_ids2, cached_tot_size2));
 }
+
 
 
 RaggedShape4 MergeToAxis1(const std::vector<const RaggedShape3*> &src) {
+  // TODO, check this.
   assert(src.size() != 0);
   Context c = src[0]->Context();
 
