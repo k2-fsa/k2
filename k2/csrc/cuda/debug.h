@@ -188,7 +188,7 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  *
  * @code{.cpp}
  * K2_CUDA_CHECK_ERROR(cudaGetLastError());
- * @gencode
+ * @endcode
  */
 #ifndef K2_CUDA_CHECK_ERROR
   #ifdef K2_MAKE_ERROR_CHECK
