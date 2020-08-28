@@ -20,7 +20,7 @@ namespace k2 {
 
 //  we'd simultaneously determinize an array of FSAs, in practice.
 void DeterminizeFsaArray(Array3<Arc>  &FsaVec,
-                         Array<float> &input_scores,
+                         Array1<float> &input_scores,
                          Allocator &alloc,
                          ... ) {
 
@@ -28,9 +28,9 @@ void DeterminizeFsaArray(Array3<Arc>  &FsaVec,
   // The following mapping stuff would actually be an if...
   // we'll do this mapping only if needed and call
   Array2<Arc> Fsa;
-  Array<int> arc_map;
-  Array<short> fsa_idx;
-  Array<int> start_states;
+  Array1<int> arc_map;
+  Array1<short> fsa_idx;
+  Array1<int> start_states;
   ConvertToSingleFsa(FsaVec, &Fsa, &arc_map, fsa_idx, &start_states);
 
   Determinize(...);
@@ -55,9 +55,9 @@ void Determinize(const Ragged3<Arc> &input,
                             // output.
 
 
-  Array<int32_t> output_fsa_idxs;   // FSA-index in 0..input.dim(0)-1 for each state in `output`;
+  Array1<int32_t> output_fsa_idxs;   // FSA-index in 0..input.dim(0)-1 for each state in `output`;
                                     // indexed by 1st index into Output.
-  Array<int32_t> output_state_idxs;  // state-index for each state in `output`,
+  Array1<int32_t> output_state_idxs;  // state-index for each state in `output`,
                                  // i.e. the state within that output FSA.  It makes
                                  // the algorithm easier to code, and memory
                                  // management easier, if we put it all in one
@@ -91,7 +91,7 @@ void Determinize(const Ragged3<Arc> &input,
   // initial arc.  The arc (in state_subset_arcs) entering that previous state
   // will be a preceding arc on a path vs the arc in state_subset_arcs entering
   // this state.
-  Array<int> state_subset_traceback(..., -1);
+  Array1<int> state_subset_traceback(..., -1);
 
 
   // For each output-state (indexed by 'i' == 1st index into `output` or into
@@ -99,7 +99,7 @@ void Determinize(const Ragged3<Arc> &input,
   // arcs with a particular sequence of symbols on them to find the set of input-states that comprise
   // that output-state.  Part of the canonical representation of that input-state.
   // See also `output_fsa_idxs` and `symbol_seq`.
-  Array<int> begin_state(...);
+  Array1<int> begin_state(...);
 
   // For each output-state (indexed by 'i' == 1st index into `output` or into
   // `state_subsets`), the sequence of symbols we follow on arcs from `begin_state[i]`
@@ -118,7 +118,7 @@ void Determinize(const Ragged3<Arc> &input,
   // Indexed by the 'i' == 1st index into `output`, contains the hash value
   // derived from (output_fsa_idxs[i], begin_state[i],
   // symbol_seq[i]).
-  Array<HashKeyType> state_repr_hash(..);
+  Array1<HashKeyType> state_repr_hash(..);
 
   // Maps from hash of state-representation to an index 'i' into output, which
   // will correspond to a particular state in a particular output FSA.
@@ -134,13 +134,13 @@ void Determinize(const Ragged3<Arc> &input,
   int prev_idx = 0;
 
   // For each output FSA, the index of the next un-allocated output-state.
-  Array<int> next_ostate(num_fsas, 1);
+  Array1<int> next_ostate(num_fsas, 1);
 
   while (1) {
     int cur_idx = output.size();
 
     // will swap with prev_ostate.
-    HostArray<int> next_ostate = state_subsets.dim(1).Host();
+    HostArray1<int> next_ostate = state_subsets.dim(1).Host();
 
 
     // range on axis 1...  this is a shallow op.
@@ -191,7 +191,7 @@ void Determinize(const Ragged3<Arc> &input,
     // This is supposed to get the flat indexes into `this_state_subsets` that
     // each element of `arc_idxs` corresponds to.  The + ... is to account
     // for this_state_subsets being a range of state_subsets.
-    Array<int> state_subsets_flat_indexes = FilteredArray2<int>(arc_idxs,
+    Array1<int> state_subsets_flat_indexes = FilteredArray2<int>(arc_idxs,
                                                                 ToStateSubsetsFilter()).elems() + ...;
 
 
@@ -241,7 +241,7 @@ void Determinize(const Ragged3<Arc> &input,
 
     // the flat indexes into `state_subsets` that correspond to each element of
     // arc_idxs2.elems.
-    Array<int> state_subsets_flat_indexes2 = state_subset_flat_indexes[sort_idxs];
+    Array1<int> state_subsets_flat_indexes2 = state_subset_flat_indexes[sort_idxs];
 
     // Partition sub-lists of `arc_idxs2`, so that those with the same next-state form
     // individual sub-lists.
@@ -263,21 +263,21 @@ void Determinize(const Ragged3<Arc> &input,
 
     // this is a reordering of arc_idxs3 with `sort_idxs2`.
     Array3<int> arc_idxs4(arc_idxs3.shape(), arc_idxs3.elems[sort_idxs2]);
-    Array<int> state_subsets_flat_indexes3 = state_subset_flat_indexes2[sort_idxs2];
+    Array1<int> state_subsets_flat_indexes3 = state_subset_flat_indexes2[sort_idxs2];
 
 
     // this selects the arc indexes with what in Python would be [:,:,0];
     // meaning, take 1st element of each sub-list.  This discards transitions
     // into states that were not the best transition.
     // -1 is the axis (i.e. the last axis).
-    Array<int> elems_to_select = arc_idxs4.shape().offsets(-1).range(0, -1);
+    Array1<int> elems_to_select = arc_idxs4.shape().offsets(-1).range(0, -1);
     Array2<int> arc_idxs5 = Array3<int>(arc_idxs4.shape().without_last_level(),
                                         arc_idxs4.elems[elems_to_select]);
 
 
     // Get the flat indexes into `state_subsets` that correspond to the
     // originating (input-)states for each element of arc_idxs5.elems
-    Array<int> state_subset_idxs = state_subsets_flat_indexes2[elems_to_select];
+    Array1<int> state_subset_idxs = state_subsets_flat_indexes2[elems_to_select];
 
 
     // max_len is maximum length of any sequence in the states we were
@@ -309,7 +309,7 @@ void Determinize(const Ragged3<Arc> &input,
       We could actually allocate the memory just once upfront,
       as we know the size.
      */
-    std::vector<Array<int> > arc_indxs(max_len, ...);
+    std::vector<Array1<int> > arc_indxs(max_len, ...);
 
 
     // num_new_output_arcs is the num_new_output_states *with duplicates*.  In
@@ -323,7 +323,7 @@ void Determinize(const Ragged3<Arc> &input,
       input-FSA that we removed from its canonical representation, i.e.  the
       prefix that we removed.  Init with 0; we'll increment in the loop.
     */
-    Array<int> num_arcs_removed(num_new_output_arcs, 0);
+    Array1<int> num_arcs_removed(num_new_output_arcs, 0);
 
 
     /*
@@ -332,7 +332,7 @@ void Determinize(const Ragged3<Arc> &input,
       necessary to init with the current base_state, which we can get from
       indexing `state_repr` appropriately, with [some_array][0].
     */
-    Array<int> base_state(...);
+    Array1<int> base_state(...);
 
     /*
       Before we do the hash lookup, we need to compute the canonical
@@ -350,7 +350,7 @@ void Determinize(const Ragged3<Arc> &input,
 
       // init with 1's.  we'll use this to tell whether all the elements we're
       // tracing back are identical.
-      Array<int> is_same(cur_state_subset_idxs.size0(), 1);
+      Array1<int> is_same(cur_state_subset_idxs.size0(), 1);
 
       // The syntax below won't be what we'll use, but the idea here is that
       // for each sub-list in `cur_state_subset_indexes` (where each sub-list represents
@@ -410,11 +410,11 @@ void Determinize(const Ragged3<Arc> &input,
     Array2<int> this_repr(...);
 
 
-    Array<int64_t> repr_hash(this_repr.size1);
+    Array1<int64_t> repr_hash(this_repr.size1);
     ComputeHash(this_repr, &repr_hash);
 
 
-    Array<int> repr_idx(repr_hash.size());
+    Array1<int> repr_idx(repr_hash.size());
     {
       // NOTE: some of the contents of this code block could probably be given
       // some kind of interface as it may be a common pattern.
@@ -437,7 +437,7 @@ void Determinize(const Ragged3<Arc> &input,
       */
       HashLookupOrAdd(repr_hash, &hash_map, &repr_idx, 1000000);
 
-      Array<char> is_new(repr_idx.size());
+      Array1<char> is_new(repr_idx.size());
 
       // sets is_new[i] to (repr_idx == i + 1000000 ? 1 : 0).
       // It would be nice if we had some cute templated way to
@@ -446,12 +446,12 @@ void Determinize(const Ragged3<Arc> &input,
       SetEqIPlus(repr_idx, &is_new, 1000000);
 
 
-      Array<int> prefix_sum(repr_idx.size());
+      Array1<int> prefix_sum(repr_idx.size());
       // compute exclusive prefix sum of `is_new` -> `prefix_sum`..
       ExclusivePrefixSum(is_new, &prefix_sum);
 
       int num_new = sort_idxs[repr_idx.size() - 1];
-      Array<int> sort_idxs(num_new + 1);
+      Array1<int> sort_idxs(num_new + 1);
       // `sort_idxs` will, after the next call, be a vector giving the positions in
       // `repr_hash` of the hash elements that were newly added to the hash (not
       // counting repeats of the same hash element in that vector; only an
@@ -460,7 +460,7 @@ void Determinize(const Ragged3<Arc> &input,
       sort_idxs.resize(num_new); // discard last elem.
 
 
-      Array<int> new_state_nums = range(next_ostate,
+      Array1<int> new_state_nums = range(next_ostate,
                                         next_ostate + num_new);
       // The following call will replace the temporary values we put in the hash above
       // (greater than one million) with the "real" values.

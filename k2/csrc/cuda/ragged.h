@@ -16,17 +16,45 @@ class RaggedShape {
     CHECK_GT(0, axes_.size());
     return axes_[0].row_splits.Dim() - 1;
   }
-  // total size on this axis (require 0 <= axis < NumAxes(), and for axis=0
-  // is the same as Dim0()).
-  int32_t TotSize(int32_t axis);
+  /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and for axis=0
+     the returned value is the same as Dim0().  */
+  inline int32_t TotSize(int32_t axis) {
+    CHECK_LE(static_cast<size_t>(axis), axes_.size() + 1);
+    if (axis == 0) return Dim0();
+    else {
+      RaggedShapeDim &rsd = axes_[axis-1];
+      if (rsd.cached_tot_size >= 0) {
+        return rsd.cached_tot_size;
+      } else {
+        // if we had row_ids set up, we should have set cached_tot_size.
+        CHECK_EQ(rsd.row_ids.Dim(), 0);
+        CHECK_GT(rsd.row_splits.Dim(), 0);
+        rsd.cached_tot_size = rsd.row_splits[rsd.row_splits.Dim()-1];
+        return rsd.cached_tot_size;
+      }
+    }
+  }
 
+  /*
+    Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.
+    The dimension is the (total) number of rows on this axis plus one,
+    and the elements are in the range [0,N] where N is the TotSize()
+    on axis `axis+1`
+   */
   Array1<int32_t> &RowSplits(int32_t axis) {
     CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
+    // TODO(dan):: make sure this row_splits exists, create it if needed.
     return axes_[axis - 1].row_splits;
   }
+
+  /*
+    Return the row-ids for axis `axis` with `0 < axis < NumAxes()`.
+    The dimension is the number of elements on this axis PLUS ONE.
+    (The last value is the number of row-splits on this axis).
+  */
   Array1<int32_t> &RowIds(int32_t axis) {
     CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
-    // TODO: make sure this row_ids exists, create it if needed.
+    // TODO(dan): make sure this row_ids exists, create it if needed.
     return axes_[axis - 1].row_ids;
   }
 
@@ -95,9 +123,10 @@ struct Ragged {
   Array1<T> values;
 
   Ragged(RaggedShape &shape, Array1<T> &values) : shape(shape), values(values) {
-    // TODO: check values.Dim() matches shape.
+    CHECK_EQ(shape.TotSize(shape.NumAxes()-1), values.Dim());
   }
 
+  // Note: 'values' will be uninitialized.
   Ragged(RaggedShape &shape)
       : shape(shape),
         values(shape.Context(), shape.TotSize(shape.NumAxes() - 1)) {}

@@ -217,61 +217,34 @@ template <typename T>
 T MaxValue(Context *c, size_t nelems, T *t);
 
 /*
-  This is a rather special purpose function that is used for k2 Array.
+  This is a rather special purpose function that is used in RaggedShape.
 
-  It sets x[i] to the index j to which position i 'belongs' according to
-  the array 't'.  't' is expected to be an array containing the exclusive
-  sum of a sequence of positive integers, so suppose there was a original
+  It sets row_ids[i] to the index j to which position i 'belongs' according to
+  the array `row_splits`.  (`row_ids` has an extra element at the end which is the
+  number of rows). `row_ids` is expected to be an array containing the exclusive
+  sum of a sequence of nonnegative integers, so suppose there was a original
   sequence
-       n = [ 2 1 4 ]
-  and  t = [ 0 2 3 7 ]
-  (and n_indexes = len(n) = 3, nelems = sum(n) = 7), then we would fill
-  x with:
-       x = [ 0 0 1 2 2 2 2 ]
+     sizes = [ 2 1 0 4 ]
+  and  row_splits = [ 0 2 3 3 7 ]
+  then we would fill row_ids with:
+       row_ids = [ 0 0 1 3 3 3 3 4 ]
 
-  IMPLEMENTATION NOTES:
-     One possibility: kernel runs for each element of x, and does some kind
-    of search in `t`: either a binary search, or a smart one that tries to estimate
-    the average number of elements per bin and hence converge a bit faster (in the
-    normal case).
-
-    Another possibility: two kernels.  Suppose the range we need to fill with a
-    particular number (say, x) is from 1010 to 10000 inclusive (binary) The
-    first kernel writes x to positions 1010, 1100, 10000; the significance of
-    that sequence is we keep adding the smallest number we can add to get
-    another zero at the end of the binary representation, until we exceed the
-    range we're supposed to fill.  The second kernel: for a given index into x
-    that is must fill (say, 1111), it asks "is the index currently here already
-    the right one?", which it can test using the function is_valid_index()
-    below; if it's not already corret, it searches in a sequence of positions:
-    1110, 1100, 1000, 0000, like our sequence above but going downwards, again
-    getting more zeros at the end of the binary representation, until it finds
-    the correct value in the array at the searched position; then it copies the
-    discovered value the original position requested (here, 1111).
-
-
-    First kernel pseudocode: for each index 'i' into 't', it does:
-      for (int n=0, j = t[i]; j < t[i+1]; n++) {
-         x[j] = i;
-         if (j & (1<<n))  j += (1 << n);
-      }
-    Second kernel pseudocode: for each element of x, it searches for the right index.  Suppose we're
-    given num_indexes == length(n) == length(t) - 1.  Define is_valid_index as follows:
-       // returns true if j is the value that we should be putting at position 'i' in x:
-       // that is, if t[j] <= i < t[j+1].
-       bool is_valid_index(i, j) {
-          return (j >= 0 && j < num_indexes && t[j] <= i && i < t[j+1]);
-       }
-       // We suppose we are given i (the position into x that we're responsible for
-       // setting:
-       orig_i = i;
-       for (int n=0; !is_valid_index(i, x[i]); n++) {
-         if (i & (1<<n))  i -= (1 << n);
-       }
-       x[orig_i] = x[i];
+       @param [in] c   ContextPtr, points to the context to which the
+                       data belongs (e.g. CPU or GPU).
+       @param [in] num_rows
+                       Number of rows in the ragged matrix; must be >= 0.
+       @param [in] row_splits
+                       Start of row_splits vector, must be non-decreasing and start
+                       from zero.  Length is num_rows + 1.   row_splits[0] must equal
+                       0 and row_splits[num_rows] must equal num_elems.
+       @param [in] num_elems  Number of elements, in all the rows together.  Note:
+                        the length of row_ids equals num_elems + 1
+                        (row_ids[num_elems] == num_rows, at exit).
+       @param [out] row_ids   Start of row_ids vector, we write the output to here.
+                        Length is num_elems + 1.
 */
-template <typename T>
-T RowSplitsToRowIds(ContextPtr &c, T *row_splits, T *row_ids);
+void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows, const T *row_splits,
+                       int32_t num_elems, T *row_ids);
 
 
 /*
@@ -279,31 +252,40 @@ T RowSplitsToRowIds(ContextPtr &c, T *row_splits, T *row_ids);
   This function turns a vector of row_ids into a vector of row_splits,
   e.g. given [ 0 0 1 1 1 2 ] it would produce [ 0 2 5 6 ].
 
-   @param [in] row_ids  Input DeviceVec representing row_ids
-   @param [out] row_splits  Output DeviceVecW representing row_splits;
-                     its size must equal row_ids[row_ids.size() - 1] + 2.
-
-   At exit (from the kernel, of course), for each 0 <= i <= row_ids.size(), if i
-   == 0 or i == row_ids.size() or row_ids[i] != row_ids[i+1], row_splits[row_ids[i]]
-   will be set to i.  Note: the row_splits must be consecutive (no gaps,
-   i.e. nothing like [ 0 0 2 2 3 ], or certain elements of the output
-   `row_splits` will be undefined.
+   @param [in] c    ContextPtr, points to the context to which the
+                    data belongs (e.g. CPU or GPU).
+   @param [in] num_elems   The number of elements in the irregular array
+   @param [in] row_ids   row_ids vector of length num_elems + 1 (
+                    row_ids[num_elems] must equal num_rows). Must be
+                    non-decreasing.
+   @param [in] no_empty_rows   If the caller happens to know that no rows
+                    of the irregular array are empty
+                    (i.e. that row_ids[i] +1 >= row_ids[i+1]) they may
+                    set this to true, which will improve speed.
+                    If you are not sure, set this to false.
+   @param [in] num_rows   Number of rows in the irregular array, must
+                    be greater than any element of row_ids
+   @param [out] row_splits  Row-splits vector that this function
+                    writes to, of length num_rows + 1.  row_splits[num_rows]
+                    will equal num_elems.
  */
-template <typename T>
-T RowIdsToRowSplits(Context *c, T *row_ids, T *row_splits);
+void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
+                       no_empty_rows, int32_t num_rows, int32_t *row_splits);
 
 
- __host__ __device__ __forceinline__ int32_t FloatAsInt(float f) {
-   union { float f; int i; } u;
-   u.f = f;
-   return u.i;
- }
 
- __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
-   union { float f; int i; } u;
-   u.i = i;
-   return u.f;
- }
+
+__host__ __device__ __forceinline__ int32_t FloatAsInt(float f) {
+  union { float f; int i; } u;
+  u.f = f;
+  return u.i;
+}
+
+__host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
+  union { float f; int i; } u;
+  u.i = i;
+  return u.f;
+}
 
 
 /*

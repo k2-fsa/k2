@@ -18,7 +18,7 @@ namespace k2 {
 template <typename T>
 class Array1 {
  public:
-  int32_t Dim() const { return size_; }  // dimension of only axis (axis 0)
+  int32_t Dim() const { return dim_; }  // dimension of only axis (axis 0)
 
   // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
   // depending on the context.
@@ -45,6 +45,16 @@ class Array1 {
   }
 
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
+
+
+  Array1(ContextPtr ctx, int32_t size, T elem) {
+    Init(ctx, size);
+    T *data = Data();
+    auto lambda = [=] __host__ __device__ (int32_t i) -> void {
+      data[i] = elem;
+    };
+    Eval(ctx, dim_, lambda);
+  }
 
   /* Return sub-part of this array
      @param [in] start  First element to cover, 0 <= start < size()
@@ -112,7 +122,7 @@ class Array1 {
 
   Array1(const Array1 &other) = default;
  private:
-  int32_t size_;
+  int32_t dim_;
   int32_t byte_offset_;
   RegionPtr region_;  // Region that `data` is a part of.  Device
                       // type is stored here.  For an Array1 with

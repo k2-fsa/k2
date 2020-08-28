@@ -23,7 +23,8 @@ Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src) {
     return Ragged<T>(Stack(axis, src_size, &(src_shapes[0])),
                      Append(src_size, src_values));
   } else {
-    //
+    assert(0);  // Have to figure out whether it makes sense to
+                // support this case here.
   }
 
 }

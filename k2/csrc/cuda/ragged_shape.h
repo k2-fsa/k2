@@ -62,11 +62,11 @@ Array1<int32_t> GetTotSize2(const std::vector<RaggedShape3*> &src);
 
 class RaggedShape3: public RaggedShape2 {
 
-  RaggedShape3(Array<int32_t> &row_splits1,
-               Array<int32_t> &row_splits2,
+  RaggedShape3(Array1<int32_t> &row_splits1,
+               Array1<int32_t> &row_splits2,
                int32_t cached_size2_ = -1,
-               Array<int32_t> *row_ids1 = nullptr,
-               Array<int32_t> *row_ids2 = nullptr);
+               Array1<int32_t> *row_ids1 = nullptr,
+               Array1<int32_t> *row_ids2 = nullptr);
 
   Array1<int32_t> &RowSplits2() { return row_splits2_; }
   Array1<int32_t> &RowIds2();
@@ -127,7 +127,7 @@ RaggedShape2 AppendAxis(const RaggedShape3 &src, int32_t axis);
                  and non-decreasing.
  */
 RaggedShape2 RaggedShape2FromRowIds(int32_t num_rows,
-                                    const Array<int32_t> &row_ids);
+                                    const Array1<int32_t> &row_ids);
 
 
 /* Create ragged3 shape from ragged2 shape and sizes
@@ -222,14 +222,14 @@ RaggedShape3 RaggedShape3SubsampledFromNumbering(const RaggedShape3 &src,
 
 
 /* Constructs RaggedShape4 from row splits, and sets up row-ids. */
-RaggedShape4 RaggedShape4FromRowSplits(const Array<int32_t> &row_splits1,
-                                       const Array<int32_t> &row_splits2,
-                                       const Array<int32_t> &row_splits3);
+RaggedShape4 RaggedShape4FromRowSplits(const Array1<int32_t> &row_splits1,
+                                       const Array1<int32_t> &row_splits2,
+                                       const Array1<int32_t> &row_splits3);
 
 /* Constructs RaggedShape4 from sizes, and sets up row-splits and row-ids. */
-RaggedShape4 RaggedShape4FromSizes(const Array<int32_t> &sizes1,
-                                   const Array<int32_t> &sizes2,
-                                   const Array<int32_t> &sizes3);
+RaggedShape4 RaggedShape4FromSizes(const Array1<int32_t> &sizes1,
+                                   const Array1<int32_t> &sizes2,
+                                   const Array1<int32_t> &sizes3);
 
 /*
   Construct a Ragged4 from a Ragged3 and a row_splits3..
