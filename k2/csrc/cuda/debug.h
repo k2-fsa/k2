@@ -254,7 +254,7 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  *
  * @remark
  *  macro `__VA_ARGS__` is used to pass the kernel<<<...>>> as one argument,
- *  otherwise the compiler rises a error "passed 2 arguments, but takes just 1".
+ *  otherwise the compiler raises a error "passed 2 arguments, but takes just 1".
  *
  * @code{.cpp}
  * K2_CUDA_KERNEL_SAFE_CALL(kernel_func<<<...>>>());
@@ -346,9 +346,9 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  *
  * @note
  * `assert` is supported by both of host and device.
- *  - host: assert(false), rises a "SIGABRT" exit
- *  - device: assert(false), device put msg into stderr and halt this thread,
- *            but the msg won't get printed util synchronization.
+ *  - host: assert(false), raises a "SIGABRT" exit
+ *  - device: assert(false), device put msg into stderr and halt this one
+ *            thread, but the msg won't get printed util synchronization.
  *
  * @remark
  *  Assertions are for debugging purposes. They can affect performance
