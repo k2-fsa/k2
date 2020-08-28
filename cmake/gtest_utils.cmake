@@ -28,8 +28,7 @@ function(k2_add_gtest)
     set(EXCLUDE_FROM_ALL "EXCLUDE_FROM_ALL")
   endif()
 
-  get_filename_component(tgt ${name} LAST_EXT)
-  string(REGEX REPLACE "^[^.]*\\." "" tgt ${name})
+  string(REGEX REPLACE "^.*\\." "" tgt ${name})
   add_executable(${tgt} ${sources} ${EXCLUDE_FROM_ALL})
 
   if(ARGS_NO_GMOCK)
@@ -66,7 +65,7 @@ function(k2_add_gtests test_set_name)
   endif()
 
   foreach(source ${ARGS_SOURCES})
-    get_filename_component(name ${source} NAME_WE)
+    string(REGEX REPLACE "\\..*$" "" name ${source})
     k2_add_gtest("${test_set_name}.${name}"
         NO_GMOCK
         SOURCES ${source}
