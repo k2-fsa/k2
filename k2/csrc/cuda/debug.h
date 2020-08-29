@@ -30,7 +30,7 @@
 namespace k2 {
 
 /**
- * @brief Define a macro `K2_MAKE_ERROR_CHECK` that turn on bellow macros
+ * @brief Define a macro `K2_MAKE_ERROR_CHECK` that turn on the macros bellow
  *        to make errors get checked, if NDEBUG is undefined.
  *
  * @details If in NDEBUG mode, all macros here would do nothing.
