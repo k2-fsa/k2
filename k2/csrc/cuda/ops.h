@@ -119,7 +119,26 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
                        Must be on same device as src.
  */
 template <typename S, typename T>
-void ExclusiveSum(ContextPtr &c, Array1<S> &src, Array1<T> *dest);
+void ExclusiveSum(Array1<S> &src, Array1<T> *dest);
+
+
+/*
+  Sets 'dest' to exclusive prefix sum of the result of dereferinging the
+  elements of 'src'.
+    @param [in] src    Source data, to be dereferenced and then summed.
+    @param [out] dest  Destination data.  Must satisfy dest.Size() == src.Size()
+                       or dest.Size() == src.Size() + 1, but in the latter case
+                       we require that the memory region inside src be allocated
+                       with at least one extra element, because the
+                       exclusive-sum code may read from it even though it
+                       doesn't affect the result.
+
+                       At exit, will satisfy dest[i] == sum_{j=0}^{i-1} src[j].
+                       Must be on same device as src.
+ */
+template <typename T>
+void ExclusiveSumDeref(Array1<T*> &src, Array1<T> *dest);
+
 
 /*
   Sets 'dest' to exclusive prefix sum of 'src', along a specified axis.
@@ -152,7 +171,16 @@ Array1<T> Append(int32_t src_size, const Array1<T> **src);
 
 
 /*
-   This is a little like Append(), but with offsets.  It's like appending the
+   This is a little like Append(), but with special treatment of the last
+   elements (it's intended for use with row_splits and row_ids vectors, which
+   have a single "extra" last element).
+
+   It appends the arrays with an offset.  Define:
+        offset[i] = (sum of last element of src[j] for j < i).
+   This function appends the arrays, while leaving out the last element
+   of all but the last of the arrays in `src`, and also adding the
+   offsets mentioned above for each array.
+
    arrays in 'src', except they all overlap by one element, and for i > 0
    we add an offset o[i] to the arrays in src[i], with the offsets being
    chosen so that in the overlapping elements there is no conflict between
@@ -168,13 +196,19 @@ Array1<int32_t> Splice(int32_t src_size, const Array1<int32_t> **src);
 
 
 /*
-  Return an array with dimension in.Dim0(), containing the maximum of each
-  sub-list in 'in' (i.e. the max taken over axis 1), or T, whichever was larger.
+  Output to an array `max_values` the maximum of each sub-list in `in`
+  i.e. the max taken over axis 1), or `default_value`, whichever was larger.
 
-  This is expected to be instantiated for, at least, float and int32_t.
+     @param [in] src            Input ragged array; must have src.NumAxes() == 2.
+                                Is allowed to be empty.
+     @param [in] default_value  Value to use for maximum operation as a default
+                                so max is taken over this and the elements
+                                of sub-lists in `src`.
+     @param [out] max_values    Array to which the maximum values will be written.
+                                Must satisfy max_values->Dim() == src.
  */
 template <typename T>
-Array1<T> MaxPerSublist(Ragged<T> &in, T default_value);
+void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values);
 
 }  // namespace k2
 

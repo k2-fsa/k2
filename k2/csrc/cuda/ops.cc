@@ -1,47 +1,47 @@
-// k2/csrc/cuda/ops_inl.h
+// k2/csrc/cuda/ops.cc
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
-//                      Fangjun Kuang (csukuangfj@gmail.com)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-/* Don't include this file directly; it is included by ops.h.
-   It contains implementation code. */
-
-#ifndef IS_IN_K2_CSRC_CUDA_OPS_H_
-#error "this file is supposed to be included only by ops.h"
-#endif
-
-// No header guard for this file since it will only be included
-// in ops.h
-
-#include <cassert>
-#include <type_traits>
-
-#include "cub/cub.cuh"
+#include "k2/csrc/cuda/ops.h"
 
 namespace k2 {
 
-// CAUTION: if you fix bugs in this code, please also fix the same bugs in
-// Splice() in ops.cc, since it was modified from this code.
-template <typename T>
-Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
+
+// See documentation in header of what this is supposed to do.
+// This is similar to the template Append() defined in ops_inl.h,
+// but with changes largely about adding `data_offsets`, and
+// subtracting one from the dims of all but the last array.
+Array1<int32_t> Splice(int32_t num_arrays, const Array1<int32_t> **src) {
   CHECK_GT(num_arrays, 0);
   ContextPtr c = src[0]->Context();
 
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
   int32_t sum = 0, max_dim = 0;
   row_splits_vec[0] = sum;
+
+  std::vector<int32_t*> last_elem_ptrs_vec;
+  last_elem_ptrs_vec.resize(num_arrays - 1);
+
   for (int32_t i = 0; i < num_arrays; i++) {
-    int32_t dim = src[i]->Dim();
-    if (dim > max_dim) max_dim = dim;
+    int32_t dim = src[i]->Dim() - (i + 1 < num_arrays ? 1 : 0);
+    if (dim > max_dim)
+      max_dim = dim;
     sum += dim;
     row_splits_vec[i+1] = sum;
+    if (i + 1 < num_arrays)
+      last_elem_ptrs_vec[i] = src[i]->Data() + dim;
   }
   int32_t ans_size = sum;
 
-  Array1<T> ans(c, ans_size);
-  T *ans_data = ans.Data();
+  Array1<int32_t> ans(c, ans_size);
+  int32 *ans_data = ans.Data();
+
+  Array<int32_t*> last_elems_ptrs(c, last_elem_ptrs);
+  Array<int32_t> data_offsets(c, num_arrays);
+  ExclusiveSumDeref(last_elems_ptrs, &data_offsets);
+  int32_t *data_offsets_data = data_offsets.Data();
 
   if (c->GetDeviceType() == kCpu) {
     // a simple loop is faster, although the other branchs should still work on
@@ -50,7 +50,10 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       int32_t offset = row_splits_data[i],
           this_dim = src[i]->Dim();
       const int32_t *this_src_data = src[i]->Data();
-      memcpy((void*)ans_data, (const void*)this_src_data, sizeof(T)*this_dim);
+      int32_t data_offset = data_offsets_data[i];
+      for (int32_t j = 0; j < this_dim; j++) {
+        ans_data[j] = this_src_data[j] + data_offset;
+      }
       ans_data += this_dim;
     }
   } else {
@@ -62,6 +65,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       src_ptrs_vec[i] = src[i]->Data();
     Array1<T> src_ptrs(c, src_ptrs_vec);
     src_ptrs_data = src_ptrs.Data();
+
     itn32_t avg_input_size = ans_size / num_arrays;
     if (max_dim < 2 * avg_input_size + 512) {
       // here, 2 is a heuristic factor. We're saying, "if the max length of any
@@ -74,9 +78,9 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       auto lambda_set_data = [=] __host__ __device__ (int32_t i, int32_t j) -> void {
           int32_t row_start = row_splits[i],
               row_end = row_splits[i+1];
-          const T *src_ptr = src_ptrs_data[i];
+          const int32_t *src_ptr = src_ptrs_data[i];
           if (j < row_end - row_start) {
-            ans_data[row_start + j] = src_ptr[j];
+            ans_data[row_start + j] = src_ptr[j] + data_offsets_data[i];
           }
       };
       Eval2(c, num_arrays, max_dim, lambda_set_data);
@@ -113,9 +117,9 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
           int32_t row_start = row_splits[orig_i],
               row_end = row_splits[orig_i+1],
               orig_j = (block_index * block_size) + j;
-          const T *src_ptr = src_ptrs_data[orig_i];
+          const int32_t *src_ptr = src_ptrs_data[orig_i];
           if (orig_j < row_end - row_start) {
-            ans_data[row_start + orig_j] = src_ptr[orig_j];
+            ans_data[row_start + orig_j] = src_ptr[orig_j] + data_offsets_data[orig_i];
           }
       };
       Eval2(c, index_map_gpu.Dim(), block_size, lambda_set_data_blocks);
@@ -123,83 +127,6 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   }
 }
 
-template <typename T>
-void ExclusiveSumDeref(Array1<T*> &src, Array1<T> *dest) {
-  CHECK(src.Context()->IsCompatible(*dest->Context()));
-  struct {
-    T **data;
-    __host__ __device__ T operator [] (int32_t i) { return *(data[i]); }
-    PtrPtr(T** data): data(data) { }
-    __device__ PtrPtr(const PtrPtr &src) = default;
-  } PtrPtr;
-
-  int32_t src_dim = src.Dim(), dest_dim = dest->Dim();
-  assert(dest_dim == src_dim || dest_dim == src_dim + 1);
-
-  PtrPtr src_data = src.Data();
-  T *dest_data = dest.Data();
-
-  // use the ExclusiveSum() template for pointer-like objects that is declared
-  // in utils.h
-  ExclusiveSum(src.Context(), dest_dim, src_data, dest_data);
-}
-
-
-template <typename T>
-void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
-  CHECK_EQ(src.NumAxes(), 2);
-  CHECK_EQ(src.Dim0(), max_values->Dim());
-  CHECK(IsCompatible(src, *max_values));
-
-
-  ContextPtr c = src.Context();
-
-
-  const int32_t *row_splits = src.RowSplits(1);
-  int32_t num_rows = src.Dim0();
-  const T *values_data = src.values.Data();
-  T *output_data = max_values->Data();
-
-  if (c->DeviceType() == kCpu) {
-    int32_t j = row_splits[0];
-    for (int32_t i = 0; i < num_rows; i++) {
-      T max_val = default_value;
-      int32_t row_end = row_splits[i+1];
-      for (; j < row_end; j++) {
-        T elem = values_data[j];
-        max_val = (elem > max_val ? elem : max_val);
-      }
-      output_data[i] = max_val;
-    }
-  } else {
-    CHECK(c->DeviceType() == kGpu);
-
-    // This code is based on the example here:
-    // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
-
-    struct MaxOp {
-      __host__ __device__ T operator () (T a, T b) {
-        return (a > b ? a : b);
-      }
-      __host__ __device__ MaxOp(const MaxOp &src) = default;
-    } max_op;
-
-    void *temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
-
-    // The first time it just sets `temp_storage_bytes`.
-    K2_CUDA_API_SAFE_CALL(
-        cub::DeviceSegmentedReduce::Reduce(
-            d_temp_storage, temp_storage_bytes, values_data, output_data,
-            num_rows, row_splits, row_splits + 1, max_op, default_value));
-    K2_CUDA_API_SAFE_CALL(
-        cudaMalloc(&temp_storage, temp_storage_bytes));
-    K2_CUDA_API_SAFE_CALL(
-        cub::DeviceSegmentedReduce::Reduce(
-            d_temp_storage, temp_storage_bytes, values_data, output_data,
-            num_rows, row_splits, row_splits + 1, max_op, default_value));
-  }
-}
 
 
 
