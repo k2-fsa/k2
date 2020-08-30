@@ -36,7 +36,7 @@ __global__ void FillContents(int n, int *output) {
 #define N (BLOCKS * THREADS)
 
 /* the kernel fills an array up with square roots */
-__global__ void square_roots(double* array) {
+__global__ void square_roots(double *array) {
   /* find my array index
      this now uses three values:
      blockIdx.x which is the block ID we are on
@@ -56,7 +56,7 @@ __global__ void HelloCUDA(float f) {
 }
 
 // A vector add kernel definition
-__global__ void VecAdd(float* A, float* B, float* C) {
+__global__ void VecAdd(float *A, float *B, float *C) {
   int i = threadIdx.x;
   C[i] = A[i] + B[i];
   K2_PARANOID_ASSERT(C[i] == A[i] + B[i],
@@ -88,11 +88,11 @@ TEST(DebugTest, K2CudaSafeCall) {
 
   /* store the square roots of 0 to (N-1) on the CPU
    * stored on the heap since it's too big for the stack for large values of N */
-  double* roots = (double*) malloc(N * sizeof(double));
+  double *roots = (double *) malloc(N * sizeof(double));
 
   /* allocate a GPU array to hold the square roots */
   double *gpu_roots = nullptr;
-  K2_CUDA_API_SAFE_CALL(cudaMalloc((void**) &gpu_roots, N * sizeof(double)));
+  K2_CUDA_API_SAFE_CALL(cudaMalloc((void **) &gpu_roots, N * sizeof(double)));
 
   /* invoke the GPU to calculate the square roots
      now, we don't run all N blocks, because that may be more than 65,535 */
