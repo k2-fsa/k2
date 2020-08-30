@@ -1,13 +1,29 @@
-set(CUDA_SOURCE
-    context.cu
-)
+add_library(context context.cu)
+target_include_directories(context PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(context PUBLIC cub)
+target_link_libraries(context PUBLIC glog)
 
-add_library(k2_cuda ${CUDA_SOURCE})
-target_include_directories(k2_cuda PUBLIC ${CMAKE_SOURCE_DIR})
-target_link_libraries(k2_cuda PUBLIC cub)
-target_link_libraries(k2_cuda PUBLIC glog)
+function(k2_add_cuda_test name)
+  add_executable(${name} "${name}.cu")
+  target_link_libraries(${name}
+      PRIVATE
+      context
+      gtest
+      gtest_main
+      )
+  add_test(NAME "Test.Cuda.${name}"
+      COMMAND
+      $<TARGET_FILE:${name}>
+      )
+endfunction()
 
-k2_add_gtests(Test.Cuda
-    SOURCES debug_test.cu utils_test.cu #ops_test.cu
-    DEPENDS k2_cuda cub glog
-)
+# please sort the source files alphabetically
+set(cuda_tests
+#    ops_test
+    utils_test
+    debug_test
+    )
+
+foreach(name IN LISTS cuda_tests)
+  k2_add_cuda_test(${name})
+endforeach()
