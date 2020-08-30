@@ -69,6 +69,7 @@ TEST(DebugTest, StaticAssert) {
 }
 
 TEST(DebugTest, K2Assert) {
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   K2_ASSERT(2 > 1);
   ASSERT_DEATH(K2_ASSERT(2 < 1), "");
 }
@@ -78,6 +79,7 @@ TEST(DebugTest, K2CheckEq) {
 }
 
 TEST(DebugTest, K2CudaCheckError) {
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   ASSERT_DEATH(K2_CUDA_CHECK_ERROR(cudaErrorMemoryAllocation),
                "cudaErrorMemoryAllocation");
 }
@@ -133,7 +135,10 @@ TEST(DebugTest, K2DLog) {
 }
 
 TEST(DebugTest, K2ParanoidAssert) {
+  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+
   {
+
     ASSERT_DEATH(
         K2_PARANOID_ASSERT(2 < 1, "2 unexpectedly smaller than 1\n"),
         "Assertion");
