@@ -1,5 +1,3 @@
-include_directories(${CMAKE_SOURCE_DIR})
-
 set(CUDA_SOURCE
     context.cu
 )

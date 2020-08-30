@@ -141,9 +141,9 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
     cudaError_t error,
     const char *filename,
     int line) {
-#ifdef K2_MAKE_ERROR_CHECK
   (void)filename;
   (void)line;
+#ifdef K2_MAKE_ERROR_CHECK
   if (cudaSuccess != error) {
   #if (K2_PTX_ARCH == 0)
     fprintf(stderr, "CUDA error ID=%d, NAME=%s, [%s, %d]: %s\n",
