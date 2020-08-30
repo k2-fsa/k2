@@ -25,8 +25,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "k2/csrc/cuda/arch.h"
-
 namespace k2 {
 
 /**
@@ -127,13 +125,13 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
   (void)filename;
   (void)line;
   if (cudaSuccess != error) {
-  #if (K2_PTX_ARCH == 0)
+  #ifndef __CUDA_ARCH__
     fprintf(stderr, "CUDA error ID=%d, NAME=%s, [%s, %d]: %s\n",
             error, cudaGetErrorName(error),
             filename, line,
             cudaGetErrorString(error));
     fflush(stderr);
-  #elif (K2_PTX_ARCH >= 200)
+  #elif __CUDA_ARCH__ >= 200
     printf("CUDA error ID=%d, NAME=%s, "
            "[block (%d,%d,%d) thread (%d,%d,%d), %s, %d]: %s\n",
            error, cudaGetErrorName(error),
@@ -258,9 +256,9 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * @endcode
  */
 #if !(defined(__clang__) && defined(__CUDA__))
-  #if (K2_PTX_ARCH == 0)
+  #ifndef __CUDA_ARCH__
     #define K2_DLOG(format, ...) printf(format,__VA_ARGS__)
-  #elif (K2_PTX_ARCH >= 200)
+  #elif __CUDA_ARCH__ >= 200
     #define K2_DLOG(format, ...)                                            \
       printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
              blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z, \
