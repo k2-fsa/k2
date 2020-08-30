@@ -75,7 +75,7 @@ namespace k2 {
  *               const char *filename,
  *               int line)
  *
- * @brief This is a error checking function, with context information.
+ * @brief This is an error checking function, with context information.
  *        It's not designed to called by users, but inner macros.
  *        It's made used by other macros.
  *
@@ -92,8 +92,6 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
     cudaError_t error,
     const char *filename,
     int line) {
-  (void)filename;
-  (void)line;
   if (cudaSuccess != error) {
   #ifndef __CUDA_ARCH__
     fprintf(stderr, "CUDA error ID=%d, NAME=%s, [%s, %d]: %s\n",
@@ -183,7 +181,7 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * @endcode
  */
 #ifndef __CUDA_ARCH__
-  #define K2_DLOG(format, ...) printf(format,__VA_ARGS__)
+  #define K2_DLOG(format, ...) printf(format, __VA_ARGS__)
 #elif __CUDA_ARCH__ >= 200
   #define K2_DLOG(format, ...)                                            \
     printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
@@ -220,7 +218,7 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
       }                                                                  \
     } while (0)
 #else
-  #define K2_PARANOID_ASSERT(exp, format, ...) ((void)0)
+  #define K2_PARANOID_ASSERT(exp, format, ...) ((void) 0)
 #endif
 
 }  // namespace k2
