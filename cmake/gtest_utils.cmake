@@ -2,11 +2,11 @@ enable_testing()
 
 function(k2_add_gtest)
   cmake_parse_arguments(
-      ARGS                                 # prefix of output variables
-      "NO_MAIN;NO_GMOCK;EXCLUDE_FROM_ALL"  # list of names of the boolean arguments (only defined ones will be true)
-      ""                                   # list of names of mono-valued arguments
-      "SOURCES;DEPENDS"                    # list of names of multi-valued arguments (output variables are lists)
-      ${ARGN}                              # arguments of the function to parse, here we take the all original ones
+      ARGS                  # prefix of output variables
+      "EXCLUDE_FROM_ALL"    # list of names of the boolean arguments (only defined ones will be true)
+      ""                    # list of names of mono-valued arguments
+      "SOURCES;DEPENDS"     # list of names of multi-valued arguments (output variables are lists)
+      ${ARGN}               # arguments of the function to parse, here we take the all original ones
   ) # remaining unparsed arguments can be found in ARGS_UNPARSED_ARGUMENTS
 
   set(dependencies ${ARGS_DEPENDS})
@@ -31,22 +31,12 @@ function(k2_add_gtest)
   string(REGEX REPLACE "^.*\\." "" tgt ${name})
   add_executable(${tgt} ${sources} ${EXCLUDE_FROM_ALL})
 
-  if(ARGS_NO_GMOCK)
-    target_link_libraries(${tgt} PUBLIC ${dependencies} gtest)
-  else()
-    target_link_libraries(${tgt} PUBLIC ${dependencies} gtest gmock)
-  endif()
-
-  set(${CMAKE_PROJECT_NAME}_all_tests "${${CMAKE_PROJECT_NAME}_all_tests};${tgt}" CACHE STRING "" FORCE)
-
-  if(ARGS_NO_MAIN)
-  elseif(ARGS_NO_GMOCK)
-    target_link_libraries(${tgt} PRIVATE gtest_main)
-  else()
-    target_link_libraries(${tgt} PRIVATE gmock_main)
-  endif()
+  target_link_libraries(${tgt} PUBLIC ${dependencies} gtest)
+  target_link_libraries(${tgt} PRIVATE gtest_main)
 
   add_test(NAME ${name} COMMAND $<TARGET_FILE:${tgt}>)
+
+  set(${CMAKE_PROJECT_NAME}_all_tests "${${CMAKE_PROJECT_NAME}_all_tests};${tgt}" CACHE STRING "" FORCE)
 endfunction()
 
 # directly give the suite name source files,
@@ -67,7 +57,6 @@ function(k2_add_gtests test_set_name)
   foreach(source ${ARGS_SOURCES})
     string(REGEX REPLACE "\\..*$" "" name ${source})
     k2_add_gtest("${test_set_name}.${name}"
-        NO_GMOCK
         SOURCES ${source}
         DEPENDS ${ARGS_DEPENDS}
     )

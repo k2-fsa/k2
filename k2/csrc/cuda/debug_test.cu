@@ -118,7 +118,6 @@ TEST(DebugTest, K2CudaSafeCall) {
 }
 
 TEST(DebugTest, K2DLog) {
-  int *h_A = static_cast<int *>(malloc(6 * sizeof(int)));
   int *d_A;
   cudaMalloc(&d_A, 6 * sizeof(int));
 
@@ -131,7 +130,6 @@ TEST(DebugTest, K2DLog) {
   }
 
   cudaFree(d_A);
-  free(h_A);
 }
 
 TEST(DebugTest, K2ParanoidAssert) {
