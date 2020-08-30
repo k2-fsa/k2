@@ -105,7 +105,7 @@ TEST(DebugTest, K2CudaSafeCall) {
 
   // host call K2_DLOG
   {
-    /* print out 100 evenly spaced square roots just to see that it worked */
+    /* print out one square root example just to see that it worked */
     unsigned int i = 100000;
     testing::internal::CaptureStdout();
     K2_DLOG("sqrt(%d) = %lf\n", i, roots[i]);
