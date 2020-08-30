@@ -19,12 +19,10 @@ namespace k2 {
  *  - for device, it's `__CUDA_ARCH__`, which indicates the
  *                compute compatibility, should >= 200.
  */
-#ifndef K2_PTX_ARCH
-  #ifndef __CUDA_ARCH__
-    #define K2_PTX_ARCH 0
-  #else
-    #define K2_PTX_ARCH __CUDA_ARCH__
-  #endif
+#ifndef __CUDA_ARCH__
+  #define K2_PTX_ARCH 0
+#else
+  #define K2_PTX_ARCH __CUDA_ARCH__
 #endif
 
 }  // namespace k2

@@ -30,16 +30,6 @@
 namespace k2 {
 
 /**
- * @brief Define a macro `K2_MAKE_ERROR_CHECK` that turn on the macros bellow
- *        to make errors get checked, if NDEBUG is undefined.
- *
- * @details If in NDEBUG mode, all macros here would do nothing.
- */
-#if (!defined(NDEBUG) && !defined(K2_MAKE_ERROR_CHECK))
-#define K2_MAKE_ERROR_CHECK
-#endif
-
-/**
  * @brief A static assertion
  *
  * @param[in] exp the compile-time boolean expression that must be true
@@ -51,9 +41,7 @@ namespace k2 {
  * K2_STATIC_ASSERT(DEFINED_SHAPE % DEFINED_X == 0);
  * @endcode
  */
-#ifndef K2_STATIC_ASSERT
 #define K2_STATIC_ASSERT(exp, msg) static_assert(exp, msg)
-#endif
 
 /**
  * @brief Check if the expression is true.
@@ -82,9 +70,7 @@ namespace k2 {
  *  K2_ASSERT(1 == 1);
  *  @endcode
  */
-#ifndef K2_ASSERT
 #define K2_ASSERT(exp) assert(exp)
-#endif
 
 /**
  * @brief Check if two arguments are equal.
@@ -99,15 +85,12 @@ namespace k2 {
  *  and it is therefore recommended to disable them in production code.
  *  `assert` can be disabled at compile time by defining the `NDEBUG`
  *  preprocessor macro before including assert.h.
- *  Thus, `K2_MAKE_ERROR_CHECK` is ignored here.
  *
  *  @code{.cpp}
  *  K2_CHECK_EQ(1, 1);
  *  @endcode
  */
-#ifndef K2_CHECK_EQ
 #define K2_CHECK_EQ(a, b) assert( a == b )
-#endif
 
 /**
  * @fn
@@ -121,7 +104,7 @@ namespace k2 {
  *        It's not designed to called by users, but inner macros.
  *
  * @details
- *  If K2_MAKE_ERROR_CHECK is defined and error is not cudaSuccess,
+ *  If error is not cudaSuccess,
  *  the corresponding error message is printed to:
  *    - host: stderr
  *    - device: stdout in device
@@ -143,7 +126,6 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
     int line) {
   (void)filename;
   (void)line;
-#ifdef K2_MAKE_ERROR_CHECK
   if (cudaSuccess != error) {
   #if (K2_PTX_ARCH == 0)
     fprintf(stderr, "CUDA error ID=%d, NAME=%s, [%s, %d]: %s\n",
@@ -161,7 +143,6 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
            cudaGetErrorString(error));
   #endif
   }
-#endif
   return error;
 }
 
@@ -171,7 +152,7 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * @brief Macro for checking cuda error.
  *
  * @details
- *  If `K2_MAKE_ERROR_CHECK` is defined and e is not cudaSuccess,
+ *  If error is not cudaSuccess,
  *  print the error message and exit with the error enum value.
  *  Otherwise, it does nothing.
  *
@@ -183,23 +164,14 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  *  is not allowed. Thus, the exit(e) is put here, rather than inside of
  *  `_K2CudaDebug`.
  *
- * @todo
- *  Should the error code return by this macro?
- *
  * @code{.cpp}
  * K2_CUDA_CHECK_ERROR(cudaGetLastError());
  * @endcode
  */
-#ifndef K2_CUDA_CHECK_ERROR
-  #ifdef K2_MAKE_ERROR_CHECK
-    #define K2_CUDA_CHECK_ERROR(e)                                    \
-      if (::k2::_K2CudaDebug((cudaError_t)(e), __FILE__, __LINE__)) { \
-        exit(e);                                                      \
-      }
-  #else
-    #define K2_CUDA_CHECK_ERROR(e) ((void)0)
-  #endif
-#endif
+#define K2_CUDA_CHECK_ERROR(e)                                    \
+  if (::k2::_K2CudaDebug((cudaError_t)(e), __FILE__, __LINE__)) { \
+    exit(e);                                                      \
+  }
 
 /**
  * @def K2_CUDA_API_SAFE_CALL(CUDA_RUNTIME_API)
@@ -224,17 +196,11 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * K2_CUDA_API_SAFE_CALL(CUDA_RUNTIME_API());
  * @endcode
  */
-#ifndef K2_CUDA_API_SAFE_CALL
-  #ifdef K2_MAKE_ERROR_CHECK
-    #define K2_CUDA_API_SAFE_CALL(c) \
-      do {                           \
-        cudaError_t e = (c);         \
-        K2_CUDA_CHECK_ERROR(e);      \
-      } while (0)
-  #else
-    #define K2_CUDA_API_SAFE_CALL(c) (c)
-  #endif
-#endif
+#define K2_CUDA_API_SAFE_CALL(c) \
+  do {                           \
+    cudaError_t e = (c);         \
+    K2_CUDA_CHECK_ERROR(e);      \
+  } while (0)
 
 /**
  * @def K2_CUDA_KERNEL_SAFE_CALL([kernel|cuda_runtime_api])
@@ -260,17 +226,15 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * K2_CUDA_KERNEL_SAFE_CALL(kernel_func<<<...>>>());
  * @endcode
  */
-#ifndef K2_CUDA_KERNEL_SAFE_CALL
-  #ifdef K2_MAKE_ERROR_CHECK
-    #define K2_CUDA_KERNEL_SAFE_CALL(...)               \
-      do {                                              \
-        (__VA_ARGS__);                                  \
-        K2_CUDA_API_SAFE_CALL(cudaDeviceSynchronize()); \
-        K2_CUDA_CHECK_ERROR(cudaGetLastError());        \
-      } while (0)
-  #else
-    #define K2_CUDA_KERNEL_SAFE_CALL(...) (__VA_ARGS__)
-  #endif
+#ifndef NDEBUG
+  #define K2_CUDA_KERNEL_SAFE_CALL(...)               \
+    do {                                              \
+      (__VA_ARGS__);                                  \
+      K2_CUDA_API_SAFE_CALL(cudaDeviceSynchronize()); \
+      K2_CUDA_CHECK_ERROR(cudaGetLastError());        \
+    } while (0)
+#else
+  #define K2_CUDA_KERNEL_SAFE_CALL(...) (__VA_ARGS__)
 #endif
 
 /**
@@ -281,7 +245,7 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * @details
  *  `printf` is supported by both host and device. This Log is for debugging,
  *  the error msg is printed to the stderr. The log msg always get printed,
- *  regardless of macro `K2_MAKE_ERROR_CHECK`. Thus it should only be
+ *  regardless of macro `NDEBUG`. Thus it should only be
  *  make used of in debugging.
  *
  * @note
@@ -293,43 +257,41 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * K2_DLOG("Value is %d, string is %s ..", i, str);
  * @endcode
  */
-#if !defined(K2_DLOG)
-  #if !(defined(__clang__) && defined(__CUDA__))
-    #if (K2_PTX_ARCH == 0)
-      #define K2_DLOG(format, ...) printf(format,__VA_ARGS__)
-    #elif (K2_PTX_ARCH >= 200)
-      #define K2_DLOG(format, ...)                                            \
-        printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
-               blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z, \
-               __VA_ARGS__)
-    #endif
-  #else
-    /**
-     * A hack to implement the variadic printf for clang,
-     * and sielence the warning
-     */
-    #pragma clang diagnostic push
-    #pragma clang diagnostic ignored "-Wc++11-extensions"
-    #pragma clang diagnostic ignored "-Wunnamed-type-template-args"
-      template <class... Args>
-      inline __host__ __device__
-      void va_printf(char const* format, Args const&... args) {
-    #ifdef __CUDA_ARCH__
-        printf(format, blockIdx.x, blockIdx.y, blockIdx.z,
-               threadIdx.x, threadIdx.y, threadIdx.z, args...);
-    #else
-        printf(format, args...);
-    #endif
-      }
-    #ifndef __CUDA_ARCH__
-      #define K2_DLOG(format, ...) \
-        va_printf(format,__VA_ARGS__)
-    #else
-      #define K2_DLOG(format, ...) \
-        va_printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, __VA_ARGS__)
-    #endif
-    #pragma clang diagnostic pop
+#if !(defined(__clang__) && defined(__CUDA__))
+  #if (K2_PTX_ARCH == 0)
+    #define K2_DLOG(format, ...) printf(format,__VA_ARGS__)
+  #elif (K2_PTX_ARCH >= 200)
+    #define K2_DLOG(format, ...)                                            \
+      printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
+             blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z, \
+             __VA_ARGS__)
   #endif
+#else
+  /**
+   * A hack to implement the variadic printf for clang,
+   * and sielence the warning
+   */
+  #pragma clang diagnostic push
+  #pragma clang diagnostic ignored "-Wc++11-extensions"
+  #pragma clang diagnostic ignored "-Wunnamed-type-template-args"
+    template <class... Args>
+    inline __host__ __device__
+    void va_printf(char const* format, Args const&... args) {
+  #ifdef __CUDA_ARCH__
+      printf(format, blockIdx.x, blockIdx.y, blockIdx.z,
+             threadIdx.x, threadIdx.y, threadIdx.z, args...);
+  #else
+      printf(format, args...);
+  #endif
+    }
+  #ifndef __CUDA_ARCH__
+    #define K2_DLOG(format, ...) \
+      va_printf(format,__VA_ARGS__)
+  #else
+    #define K2_DLOG(format, ...) \
+      va_printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, __VA_ARGS__)
+  #endif
+  #pragma clang diagnostic pop
 #endif
 
 /**
@@ -354,7 +316,6 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  *  and it is therefore recommended to disable them in production code.
  *  `assert` can be disabled at compile time by defining the `NDEBUG`
  *  preprocessor macro before including assert.h.
- *  Thus, `K2_MAKE_ERROR_CHECK` is ignored here.
  *
  * @code{.cpp}
  * K2_PARANOID_ASSERT(a >= b, "a must be greater than b, "
