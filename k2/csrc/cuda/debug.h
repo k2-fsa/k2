@@ -8,7 +8,7 @@
 #define K2_CSRC_CUDA_DEBUG_H_
 
 /**
- * To make host compiler preprocessor happy.
+ * Include multiple cuda headers to make host compiler preprocessor happy.
  *
  * @todo
  *  Find a way to avoid this and make .h/.cc with cuda code
@@ -48,25 +48,9 @@ namespace k2 {
  *
  * @param[in] exp the boolean expression that should be true
  *
- * @note
- *  `assert(exp)` in device, if exp == 0, the kernel excution is halted.
- *  If the program is run within a debugger, this triggers a breakpoint and the
- *  debugger can be used to inspect the current state of the device.
- *  Otherwise, each thread for which expression is equal to zero prints a
- *  message to stderr after synchronization with the host via
- *  `cudaDeviceSynchronize(),cudaStreamSynchronize(),cudaEventSynchronize()`.
- *  The format of this message is as follows:
- *
- *  @code
- *  <filename>:<line number>:<function>:
- *  block: [blockId.x,blockId.x,blockIdx.z],
- *  thread: [threadIdx.x,threadIdx.y,threadIdx.z]
- *  Assertion `<expression>` failed.
- *  @endcode
- *
- *  @code{.cpp}
- *  K2_ASSERT(1 == 1);
- *  @endcode
+ * @code{.cpp}
+ * K2_ASSERT(1 == 1);
+ * @endcode
  */
 #define K2_ASSERT(exp) assert(exp)
 
@@ -78,15 +62,9 @@ namespace k2 {
  * @param[in] a left argument to compare
  * @param[in] b right argument to compare
  *
- * @note
- *  Assertions are for debugging purposes. They can affect performance
- *  and it is therefore recommended to disable them in production code.
- *  `assert` can be disabled at compile time by defining the `NDEBUG`
- *  preprocessor macro before including assert.h.
- *
- *  @code{.cpp}
- *  K2_CHECK_EQ(1, 1);
- *  @endcode
+ * @code{.cpp}
+ * K2_CHECK_EQ(1, 1);
+ * @endcode
  */
 #define K2_CHECK_EQ(a, b) assert( a == b )
 
@@ -97,17 +75,9 @@ namespace k2 {
  *               const char *filename,
  *               int line)
  *
- *
  * @brief This is a error checking function, with context information.
  *        It's not designed to called by users, but inner macros.
- *
- * @details
- *  If error is not cudaSuccess,
- *  the corresponding error message is printed to:
- *    - host: stderr
- *    - device: stdout in device
- *  along with the supplied source context.
- *  It's used to make other macros convenient.
+ *        It's made used by other macros.
  *
  * @param[in] error         an enum type indicating CUDA errors.
  * @param[in] filename      the source filename that the error comes from.
@@ -150,17 +120,10 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * @brief Macro for checking cuda error.
  *
  * @details
- *  If error is not cudaSuccess,
- *  print the error message and exit with the error enum value.
- *  Otherwise, it does nothing.
+ *  If error is not cudaSuccess, print the error message and exit with the
+ *  error enum value. Otherwise, it does nothing.
  *
  * @param[in] e an enum type indicating CUDA errors.
- *
- * @remark
- *  Device cannot terminate/exit the host process. And calling a
- *  `__host__ function("exit")` from a `__host__ __device__ function`
- *  is not allowed. Thus, the exit(e) is put here, rather than inside of
- *  `_K2CudaDebug`.
  *
  * @code{.cpp}
  * K2_CUDA_CHECK_ERROR(cudaGetLastError());
@@ -172,67 +135,37 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
   }
 
 /**
- * @def K2_CUDA_API_SAFE_CALL(CUDA_RUNTIME_API)
+ * @def K2_CUDA_SAFE_CALL([cuda_runtime_api|kernel])
  *
- * @brief Macro for checking cuda standard runtime api return status.
- *
- * @details
- *  If api return status is not cudaSuccess, print and exit.
- *  Thus it's actually could be an alias of K2_CUDA_CHECK_ERROR.
- *
- * @note
- *  All runtime api return an error code. But for an asynchronous api,
- *  the error code only reports errors that occur on the host
- *  prior to executing the task, typically related to parameter validation.
- *  The device kernel error would unfortunately be left for next runtime api
- *  call. To check the whole process of cuda runtime async api,
- *  as cuda kernel launches are asynchronous also,
- *  the same macro for kernel could be used. See
- *  `K2_CUDA_KERNEL_SAFE_CALL`.
- *
- * @code{.cpp}
- * K2_CUDA_API_SAFE_CALL(CUDA_RUNTIME_API());
- * @endcode
- */
-#define K2_CUDA_API_SAFE_CALL(c) \
-  do {                           \
-    cudaError_t e = (c);         \
-    K2_CUDA_CHECK_ERROR(e);      \
-  } while (0)
-
-/**
- * @def K2_CUDA_KERNEL_SAFE_CALL([kernel|cuda_runtime_api])
- *
- * @brief Macro for checking cuda standard runtime api return status.
+ * @brief Macro for checking "cuda standard runtime api"
+ *        or "kernels" return status.
  *
  * @details
- *  If api return status is not cudaSuccess, print and exit.
- *  Thus it's actually an alias of K2_CUDA_CHECK_ERROR.
+ *  - If api return status is not cudaSuccess, print and exit.
+ *  - The `cudaDeviceSynchronize` only happens when `NDEBUG` is not defined.
  *
  * @note
  *  Kernel launches do not return any error code, thus checking should after it.
  *  To wait kernel to finish, cudaDeviceSynchronize is called between.
- *  And to avoid pre-launch error disturbing, check error before kernel launch
- *  is also needed.
- *  (But not necessary if programmer promise each error is take cared properly.)
- *
- * @remark
- *  macro `__VA_ARGS__` is used to pass the kernel<<<...>>> as one argument,
- *  otherwise the compiler raises a error "passed 2 arguments, but takes just 1".
  *
  * @code{.cpp}
- * K2_CUDA_KERNEL_SAFE_CALL(kernel_func<<<...>>>());
+ * K2_CUDA_SAFE_CALL(cudaRuntimeApi());
+ * K2_CUDA_SAFE_CALL(kernel_func<<<...>>>());
  * @endcode
  */
 #ifndef NDEBUG
-  #define K2_CUDA_KERNEL_SAFE_CALL(...)               \
-    do {                                              \
-      (__VA_ARGS__);                                  \
-      K2_CUDA_API_SAFE_CALL(cudaDeviceSynchronize()); \
-      K2_CUDA_CHECK_ERROR(cudaGetLastError());        \
+  #define K2_CUDA_SAFE_CALL(...)               \
+    do {                                       \
+      (__VA_ARGS__);                           \
+      cudaDeviceSynchronize();                 \
+      K2_CUDA_CHECK_ERROR(cudaGetLastError()); \
     } while (0)
 #else
-  #define K2_CUDA_KERNEL_SAFE_CALL(...) (__VA_ARGS__)
+  #define K2_CUDA_SAFE_CALL(...)               \
+    do {                                       \
+      (__VA_ARGS__);                           \
+      K2_CUDA_CHECK_ERROR(cudaGetLastError()); \
+    } while (0)
 #endif
 
 /**
@@ -243,13 +176,7 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * @details
  *  `printf` is supported by both host and device. This Log is for debugging,
  *  the error msg is printed to the stderr. The log msg always get printed,
- *  regardless of macro `NDEBUG`. Thus it should only be
- *  make used of in debugging.
- *
- * @note
- *  This code is refered from:
- *  https://github.com/NVlabs/cub/blob/ \
- *  c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/util_debug.cuh#L109
+ *  regardless of macro `NDEBUG`. Thus it should only be used for debugging.
  *
  * @code{.cpp}
  * K2_DLOG("Value is %d, string is %s ..", i, str);
@@ -268,24 +195,12 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * @brief An more expensive asserts only checked if `K2_PARANOID` defined.
  *
  * @details
- * If triggered, the info shown includes: file, line, [blockIdx, threadIdx],
- * formated message, and the standard asserts info.
+ * If triggered, these info get shown: "file, line, [blockIdx, threadIdx],
+ * formated message, and the standard asserts info".
  *
- * @param[in]           exp     the compile-time boolean expression that must be true
+ * @param[in]           exp     the expression expected to be true
  * @param[in]           format  an error message if exp is false
  * @param[in] \optional ...     the optional arguments for printf format.
- *
- * @note
- * `assert` is supported by both of host and device.
- *  - host: assert(false), raises a "SIGABRT" exit
- *  - device: assert(false), device put msg into stderr and halt this one
- *            thread, but the msg won't get printed util synchronization.
- *
- * @remark
- *  Assertions are for debugging purposes. They can affect performance
- *  and it is therefore recommended to disable them in production code.
- *  `assert` can be disabled at compile time by defining the `NDEBUG`
- *  preprocessor macro before including assert.h.
  *
  * @code{.cpp}
  * K2_PARANOID_ASSERT(a >= b, "a must be greater than b, "

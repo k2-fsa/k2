@@ -92,18 +92,18 @@ TEST(DebugTest, K2CudaSafeCall) {
 
   /* allocate a GPU array to hold the square roots */
   double *gpu_roots = nullptr;
-  K2_CUDA_API_SAFE_CALL(cudaMalloc((void **) &gpu_roots, N * sizeof(double)));
+  K2_CUDA_SAFE_CALL(cudaMalloc((void **) &gpu_roots, N * sizeof(double)));
 
   /* invoke the GPU to calculate the square roots
      now, we don't run all N blocks, because that may be more than 65,535 */
-  K2_CUDA_KERNEL_SAFE_CALL(square_roots<<<BLOCKS, THREADS>>>(gpu_roots));
+  K2_CUDA_SAFE_CALL(square_roots<<<BLOCKS, THREADS>>>(gpu_roots));
 
   /* copy the data back */
-  K2_CUDA_API_SAFE_CALL(cudaMemcpy(roots, gpu_roots, N * sizeof(double),
+  K2_CUDA_SAFE_CALL(cudaMemcpy(roots, gpu_roots, N * sizeof(double),
                         cudaMemcpyDeviceToHost));
 
   /* free the memory */
-  K2_CUDA_API_SAFE_CALL(cudaFree(gpu_roots));
+  K2_CUDA_SAFE_CALL(cudaFree(gpu_roots));
 
   // host call K2_DLOG
   {
