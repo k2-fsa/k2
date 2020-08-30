@@ -255,41 +255,13 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * K2_DLOG("Value is %d, string is %s ..", i, str);
  * @endcode
  */
-#if !(defined(__clang__) && defined(__CUDA__))
-  #ifndef __CUDA_ARCH__
-    #define K2_DLOG(format, ...) printf(format,__VA_ARGS__)
-  #elif __CUDA_ARCH__ >= 200
-    #define K2_DLOG(format, ...)                                            \
-      printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
-             blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z, \
-             __VA_ARGS__)
-  #endif
-#else
-  /**
-   * A hack to implement the variadic printf for clang,
-   * and sielence the warning
-   */
-  #pragma clang diagnostic push
-  #pragma clang diagnostic ignored "-Wc++11-extensions"
-  #pragma clang diagnostic ignored "-Wunnamed-type-template-args"
-    template <class... Args>
-    inline __host__ __device__
-    void va_printf(char const* format, Args const&... args) {
-  #ifdef __CUDA_ARCH__
-      printf(format, blockIdx.x, blockIdx.y, blockIdx.z,
-             threadIdx.x, threadIdx.y, threadIdx.z, args...);
-  #else
-      printf(format, args...);
-  #endif
-    }
-  #ifndef __CUDA_ARCH__
-    #define K2_DLOG(format, ...) \
-      va_printf(format,__VA_ARGS__)
-  #else
-    #define K2_DLOG(format, ...) \
-      va_printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, __VA_ARGS__)
-  #endif
-  #pragma clang diagnostic pop
+#ifndef __CUDA_ARCH__
+  #define K2_DLOG(format, ...) printf(format,__VA_ARGS__)
+#elif __CUDA_ARCH__ >= 200
+  #define K2_DLOG(format, ...)                                            \
+    printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
+           blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z, \
+           __VA_ARGS__)
 #endif
 
 /**
