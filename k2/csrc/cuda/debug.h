@@ -264,7 +264,6 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
   #ifdef K2_MAKE_ERROR_CHECK
     #define K2_CUDA_KERNEL_SAFE_CALL(...)               \
       do {                                              \
-        K2_CUDA_CHECK_ERROR(cudaGetLastError());        \
         (__VA_ARGS__);                                  \
         K2_CUDA_API_SAFE_CALL(cudaDeviceSynchronize()); \
         K2_CUDA_CHECK_ERROR(cudaGetLastError());        \
