@@ -4,6 +4,7 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
+#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -13,12 +14,12 @@
 
 namespace k2 {
 
-Shape::Shape(const std::vector<int32_t> &dims)
-    : dims_(dims), ndim_(dims.size()) {
+Shape::Shape(const std::vector<int32_t> &dims) : ndim_(dims.size()) {
   CHECK_LT(ndim_, kMaxDim);
 
+  std::copy(dims.begin(), dims.end(), dims_);
+
   // compute strides_
-  strides_.resize(ndim_);
   if (ndim_ > 0) {
     strides_[ndim_ - 1] = 1;
   }
@@ -32,9 +33,11 @@ Shape::Shape(const std::vector<int32_t> &dims)
 
 Shape::Shape(const std::vector<int32_t> &dims,
              const std::vector<int32_t> strides)
-    : dims_(dims), strides_(strides), ndim_(dims.size()) {
+    : ndim_(dims.size()) {
   CHECK_LT(ndim_, kMaxDim);
-  CHECK_EQ(strides_.size(), ndim_);
+  CHECK_EQ(strides.size(), ndim_);
+  std::copy(dims.begin(), dims.end(), dims_);
+  std::copy(strides.begin(), strides.end(), strides_);
   num_element_ = ComputeNumElement();
   is_contiguous_ = CheckContiguous();
 }
@@ -78,8 +81,9 @@ Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
 TensorPtr Tensor::Index(int32_t axis, int32_t index) const {
   CHECK_LT(axis, shape_.Ndim());
   CHECK_LT(index, shape_.Dim(axis));
-  auto dims = shape_.Dims();
-  auto strides = shape_.Strides();
+  std::vector<int32_t> dims(shape_.Dims(), shape_.Dims() + shape_.Ndim());
+  std::vector<int32_t> strides(shape_.Strides(),
+                               shape_.Strides() + shape_.Ndim());
   dims.erase(dims.begin() + axis);
   strides.erase(strides.begin() + axis);
   Shape shape(dims, strides);

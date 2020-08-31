@@ -18,9 +18,9 @@ class Shape {
  public:
   int32_t Ndim() const { return ndim_; }
 
-  std::vector<int32_t> Dims() const { return dims_; }
+  const int32_t *Dims() const { return dims_; }
 
-  std::vector<int32_t> Strides() const { return strides_; }
+  const int32_t *Strides() const { return strides_; }
 
   int32_t Dim(int32_t i) const {
     CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(ndim_));
@@ -51,8 +51,10 @@ class Shape {
   int32_t num_element_;
   bool is_contiguous_;
 
-  std::vector<int32_t> dims_;
-  std::vector<int32_t> strides_;  // Strides in elements
+  // elements of dims_ and strides_ >= ndim_ are currently not set;
+  // in future we may change this.
+  int32_t dims_[kMaxDim];
+  int32_t strides_[kMaxDim];  // Strides in elements
 
   // compute the number of elements
   int32_t ComputeNumElement();
