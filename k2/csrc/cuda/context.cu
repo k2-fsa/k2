@@ -9,6 +9,7 @@
 #include <cstdlib>
 
 #include "k2/csrc/cuda/context.h"
+#include "k2/csrc/cuda/debug.h"
 #include "k2/csrc/cuda/error.h"
 
 static constexpr size_t kAlignment = 64;
