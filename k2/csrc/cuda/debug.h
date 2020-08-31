@@ -22,8 +22,8 @@
 #include <device_launch_parameters.h>
 #include <driver_types.h>
 
-#include <stdio.h>
-#include <assert.h>
+#include <cstdio>
+#include <cassert>
 
 namespace k2 {
 
@@ -71,27 +71,28 @@ namespace k2 {
 /**
  * @fn
  *  __host__ __device__ __forceinline__ cudaError_t
- *  _K2CudaDebug(cudaError_t error,
+ *  K2CudaDebug_(cudaError_t error,
  *               const char *filename,
  *               int line)
  *
  * @brief This is an error checking function, with context information.
  *        It's not designed to called by users, but inner macros.
- *        It's made used by other macros.
  *
  * @param[in] error         an enum type indicating CUDA errors.
  * @param[in] filename      the source filename that the error comes from.
  * @param[in] line          the code line that the error happened.
- * @return                  Pass the input CUDA error.
+ * @param[in] abort         this bool control if the error results into `abort`
+ * @return                  the input CUDA error.
  *
  * @code{.cpp}
- * _K2CudaDebug(cudaGetLastError(), __FILE__, __LINE__);
+ * K2CudaDebug_(cudaGetLastError(), __FILE__, __LINE__);
  * @endcode
  */
-__host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
+__host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
     cudaError_t error,
     const char *filename,
-    int line) {
+    int line,
+    bool abort = true) {
   if (cudaSuccess != error) {
   #ifndef __CUDA_ARCH__
     fprintf(stderr, "CUDA error ID=%d, NAME=%s, [%s, %d]: %s\n",
@@ -99,6 +100,9 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
             filename, line,
             cudaGetErrorString(error));
     fflush(stderr);
+    if (abort) {
+      exit(error);
+    }
   #elif __CUDA_ARCH__ >= 200
     printf("CUDA error ID=%d, NAME=%s, "
            "[block (%d,%d,%d) thread (%d,%d,%d), %s, %d]: %s\n",
@@ -107,30 +111,40 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
            threadIdx.x, threadIdx.y, threadIdx.z,
            filename, line,
            cudaGetErrorString(error));
+    if (abort) {
+      __threadfence();         // ensure memory write before trap
+      /**
+       * kill kernel (all threads) with error.
+       * It may cause context destructed.
+       * `assert(cudaSuccess != error)`
+       * is another candidate.
+       */
+      asm("trap;");
+    }
   #endif
   }
   return error;
 }
 
 /**
- * @def K2_CUDA_CHECK_ERROR(cudaError)
+ * @def K2_CUDA_PRINT_ERROR(cudaError)
  *
  * @brief Macro for checking cuda error.
  *
  * @details
- *  If error is not cudaSuccess, print the error message and exit with the
- *  error enum value. Otherwise, it does nothing.
+ *  If error is not cudaSuccess, print the error message, and pass the
+ *  optional `bAbort` as `abort` of `K2CudaDebug_`.
+ *  Otherwise, it does nothing except return the error.
  *
- * @param[in] e an enum type indicating CUDA errors.
+ * @param[in] e one in the enum type that indicates the CUDA error.
+ * @return      the CUDA error returned by `K2CudaDebug_`.
  *
  * @code{.cpp}
- * K2_CUDA_CHECK_ERROR(cudaGetLastError());
+ * K2_CUDA_PRINT_ERROR(error = cudaGetLastError());
  * @endcode
  */
-#define K2_CUDA_CHECK_ERROR(e)                                    \
-  if (::k2::_K2CudaDebug((cudaError_t)(e), __FILE__, __LINE__)) { \
-    exit(e);                                                      \
-  }
+#define K2_CUDA_PRINT_ERROR(e, bAbort...)                            \
+  ::k2::K2CudaDebug_((cudaError_t)(e), __FILE__, __LINE__, ##bAbort)
 
 /**
  * @def K2_CUDA_SAFE_CALL([cuda_runtime_api|kernel])
@@ -139,8 +153,10 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  *        or "kernels" return status.
  *
  * @details
- *  - If api return status is not cudaSuccess, print and exit.
  *  - The `cudaDeviceSynchronize` only happens when `NDEBUG` is not defined.
+ *  - Use K2_CUDA_PRINT_ERROR(.., bAbort = true) to deal with the error.
+ *
+ * @param[in]
  *
  * @note
  *  Kernel launches do not return any error code, thus checking should after it.
@@ -152,17 +168,17 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * @endcode
  */
 #ifndef NDEBUG
-  #define K2_CUDA_SAFE_CALL(...)               \
-    do {                                       \
-      (__VA_ARGS__);                           \
-      cudaDeviceSynchronize();                 \
-      K2_CUDA_CHECK_ERROR(cudaGetLastError()); \
+  #define K2_CUDA_SAFE_CALL(...)                     \
+    do {                                             \
+      (__VA_ARGS__);                                 \
+      cudaDeviceSynchronize();                       \
+      K2_CUDA_PRINT_ERROR(cudaGetLastError(), true); \
     } while (0)
 #else
-  #define K2_CUDA_SAFE_CALL(...)               \
-    do {                                       \
-      (__VA_ARGS__);                           \
-      K2_CUDA_CHECK_ERROR(cudaGetLastError()); \
+  #define K2_CUDA_SAFE_CALL(...)                     \
+    do {                                             \
+      (__VA_ARGS__);                                 \
+      K2_CUDA_PRINT_ERROR(cudaGetLastError(), true); \
     } while (0)
 #endif
 
@@ -208,14 +224,14 @@ __host__ __device__ __forceinline__ cudaError_t _K2CudaDebug(
  * @endcode
  */
 #ifdef K2_PARANOID
-  #define K2_PARANOID_ASSERT(exp, format, ...)                           \
-    do {                                                                 \
-      if (exp)                                                           \
-        (void)0;                                                         \
-      else {                                                             \
-        K2_DLOG(" [%s, %d] " format, __FILE__, __LINE__, ##__VA_ARGS__); \
-        assert(exp);                                                     \
-      }                                                                  \
+  #define K2_PARANOID_ASSERT(exp, format, ...)                                \
+    do {                                                                      \
+      if (exp)                                                                \
+        (void)0;                                                              \
+      else {                                                                  \
+        K2_DLOG("Error [%s, %d] " format, __FILE__, __LINE__, ##__VA_ARGS__); \
+        assert(exp);                                                          \
+      }                                                                       \
     } while (0)
 #else
   #define K2_PARANOID_ASSERT(exp, format, ...) ((void) 0)

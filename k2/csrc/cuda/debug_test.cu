@@ -4,8 +4,8 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #ifndef K2_PARANOID
 #define K2_PARANOID
@@ -56,7 +56,7 @@ __global__ void HelloCUDA(float f) {
 }
 
 // A vector add kernel definition
-__global__ void VecAdd(float *A, float *B, float *C) {
+__global__ void VecAdd(const float *A, const float *B, float *C) {
   int i = threadIdx.x;
   C[i] = A[i] + B[i];
   K2_PARANOID_ASSERT(C[i] == A[i] + B[i],
@@ -80,7 +80,7 @@ TEST(DebugTest, K2CheckEq) {
 
 TEST(DebugTest, K2CudaCheckError) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  ASSERT_DEATH(K2_CUDA_CHECK_ERROR(cudaErrorMemoryAllocation),
+  ASSERT_DEATH(K2_CUDA_PRINT_ERROR(cudaErrorMemoryAllocation, true),
                "cudaErrorMemoryAllocation");
 }
 
@@ -128,7 +128,8 @@ TEST(DebugTest, K2DLog) {
     HelloCUDA<<<1, 5>>>(1.2345f);
     FillContents<<<3, 2>>>(1, d_A);
     cudaDeviceSynchronize();
-    K2_CUDA_CHECK_ERROR(cudaGetLastError());
+    auto error = K2_CUDA_PRINT_ERROR(cudaGetLastError());
+    EXPECT_EQ(error, cudaSuccess);
   }
 
   cudaFree(d_A);
@@ -138,18 +139,11 @@ TEST(DebugTest, K2ParanoidAssert) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
 
   {
-
-    ASSERT_DEATH(
-        K2_PARANOID_ASSERT(2 < 1, "2 unexpectedly smaller than 1\n"),
-        "Assertion");
-  }
-
-  {
     int a = 2;
     int b = 1;
     ASSERT_DEATH(
         K2_PARANOID_ASSERT(a < b, "%d unexpectedly smaller than %d\n", a, b),
-        "Assertion");
+        "Assertion `a < b' failed");
   }
 
   {
