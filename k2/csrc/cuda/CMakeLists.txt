@@ -24,6 +24,7 @@ endfunction()
 # please sort the source files alphabetically
 set(cuda_tests
   ops_test
+  tensor_test
   utils_test
 )
 

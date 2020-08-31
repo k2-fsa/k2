@@ -56,6 +56,7 @@ int32_t Shape::ComputeNumElement() {
 bool Shape::CheckContiguous() {
   int32_t z = 1;
   for (int32_t i = ndim_ - 1; i >= 0; --i) {
+    CHECK_GE(strides_[i], z);
     if (dims_[i] != 1) {
       if (strides_[i] != z) return false;
       z *= dims_[i];
@@ -76,7 +77,11 @@ Tensor::Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims)
 
 Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
                size_t bytes_offset)
-    : dtype_(type), shape_(shape), data_(region), bytes_offset_(bytes_offset) {}
+    : dtype_(type), shape_(shape), data_(region), bytes_offset_(bytes_offset) {
+  int32_t nelement = shape_.Nelement();
+  int32_t element_size = TraitsOf(dtype_).NumBytes();
+  CHECK_GE(data_->num_bytes - bytes_offset_, nelement * element_size);
+}
 
 TensorPtr Tensor::Index(int32_t axis, int32_t index) const {
   CHECK_LT(axis, shape_.Ndim());
@@ -88,7 +93,7 @@ TensorPtr Tensor::Index(int32_t axis, int32_t index) const {
   strides.erase(strides.begin() + axis);
   Shape shape(dims, strides);
   int32_t bytes_offset =
-      index * shape_.Stride(axis) * TraitsOf(dtype_).NumBytes();
+      bytes_offset_ + index * shape_.Stride(axis) * TraitsOf(dtype_).NumBytes();
   return std::make_shared<Tensor>(dtype_, shape, data_, bytes_offset);
 }
 

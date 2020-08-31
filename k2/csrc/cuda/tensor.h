@@ -35,7 +35,7 @@ class Shape {
   int32_t Nelement() const { return num_element_; }
   bool IsContiguous() const { return is_contiguous_; }
 
-  Shape() : ndim_(0), num_element_(0), is_contiguous_(false) {}
+  Shape() : ndim_(0), num_element_(0), is_contiguous_(true) {}
 
   explicit Shape(const std::vector<int32_t> &dims);
 
@@ -83,7 +83,7 @@ class Tensor {
   // Returns pointer to elem with index all-zeros... will check that the type
   // matches the correct one.
   template <typename T>
-  T *data() {
+  T *Data() {
     assert(dtype_ == DtypeOf<T>::dtype);
     return reinterpret_cast<T *>(reinterpret_cast<char *>(data_->data) +
                                  bytes_offset_);
