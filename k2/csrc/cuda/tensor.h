@@ -16,20 +16,26 @@
 namespace k2 {
 class Shape {
  public:
-  int32_t Ndim() { return ndim_; }
+  int32_t Ndim() const { return ndim_; }
 
-  int32_t Dim(int32_t i) {
+  std::vector<int32_t> Dims() const { return dims_; }
+
+  std::vector<int32_t> Strides() const { return strides_; }
+
+  int32_t Dim(int32_t i) const {
     CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(ndim_));
     return dims_[i];
   }
 
-  int32_t Stride(int32_t i) {
+  int32_t Stride(int32_t i) const {
     CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(ndim_));
     return strides_[i];
   }
 
-  int32_t Nelement() { return num_element_; }
-  bool IsContiguous() { return is_contiguous_; }
+  int32_t Nelement() const { return num_element_; }
+  bool IsContiguous() const { return is_contiguous_; }
+
+  Shape() : ndim_(0), num_element_(0), is_contiguous_(false) {}
 
   explicit Shape(const std::vector<int32_t> &dims);
 
@@ -70,26 +76,32 @@ class Tensor {
   Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims);
 
   // Create Tensor backed by existing memory.
-  Tensor(const Shape &shape, Dtype dtype, RegionPtr region,
-         size_t bytes_offset);
+  Tensor(Dtype type, const Shape &shape, RegionPtr region, size_t bytes_offset);
 
+  // Returns pointer to elem with index all-zeros... will check that the type
+  // matches the correct one.
   template <typename T>
-  T *data();  // Returns pointer to elem with index
-              // all-zeros... will check that the type
-              // matches the correct one.
+  T *data() {
+    assert(dtype_ == DtypeOf<T>::dtype);
+    return reinterpret_cast<T *>(reinterpret_cast<char *>(data_->data) +
+                                 bytes_offset_);
+  }
 
   // Return the result of indexing one of the axes, which will result in a
   // Tensor with one fewer axis.
-  TensorPtr Index(int32_t axis, int32_t index);
+  TensorPtr Index(int32_t axis, int32_t index) const;
 
-  Dtype GetDtype() { return dtype_; }
-  const Shape &GetShape() { return shape_; }
+  Dtype GetDtype() const { return dtype_; }
+  const Shape &GetShape() const { return shape_; }
   std::shared_ptr<Region> &GetRegion() { return data_; }
 
  private:
   Shape shape_;
   Dtype dtype_;
+  int32_t bytes_offset_;
   std::shared_ptr<Region> data_;
+
+  void Init(ContextPtr c);
 };
 
 }  // namespace k2
