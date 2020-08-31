@@ -57,6 +57,7 @@ bool Shape::CheckContiguous() {
   return true;
 }
 
+/*
 Tensor::Tensor(ContextPtr c, Dtype type, const Shape &shape) {}
 
 Tensor::Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims) {}
@@ -64,6 +65,7 @@ Tensor::Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims) {}
 Tensor::Tensor(const Shape &shape, Dtype dtype, RegionPtr region,
                size_t bytes_offset) {}
 
+*/
 // TensorPtr Tensor::Index(int32_t axis, int32_t index) {}
 
 }  // namespace k2
