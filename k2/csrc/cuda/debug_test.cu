@@ -80,7 +80,7 @@ TEST(DebugTest, K2CheckEq) {
 
 TEST(DebugTest, K2CudaCheckError) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  ASSERT_DEATH(K2_CUDA_PRINT_ERROR(cudaErrorMemoryAllocation, true),
+  ASSERT_DEATH(K2_CUDA_CHECK_ERROR(cudaErrorMemoryAllocation, true),
                "cudaErrorMemoryAllocation");
 }
 
@@ -128,7 +128,7 @@ TEST(DebugTest, K2DLog) {
     HelloCUDA<<<1, 5>>>(1.2345f);
     FillContents<<<3, 2>>>(1, d_A);
     cudaDeviceSynchronize();
-    auto error = K2_CUDA_PRINT_ERROR(cudaGetLastError());
+    auto error = K2_CUDA_CHECK_ERROR(cudaGetLastError());
     EXPECT_EQ(error, cudaSuccess);
   }
 

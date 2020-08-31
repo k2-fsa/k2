@@ -127,7 +127,7 @@ __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
 }
 
 /**
- * @def K2_CUDA_PRINT_ERROR(cudaError)
+ * @def K2_CUDA_CHECK_ERROR(cudaError)
  *
  * @brief Macro for checking cuda error.
  *
@@ -140,10 +140,10 @@ __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
  * @return      the CUDA error returned by `K2CudaDebug_`.
  *
  * @code{.cpp}
- * K2_CUDA_PRINT_ERROR(error = cudaGetLastError());
+ * K2_CUDA_CHECK_ERROR(error = cudaGetLastError());
  * @endcode
  */
-#define K2_CUDA_PRINT_ERROR(e, bAbort...)                            \
+#define K2_CUDA_CHECK_ERROR(e, bAbort...)                            \
   ::k2::K2CudaDebug_((cudaError_t)(e), __FILE__, __LINE__, ##bAbort)
 
 /**
@@ -154,7 +154,7 @@ __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
  *
  * @details
  *  - The `cudaDeviceSynchronize` only happens when `NDEBUG` is not defined.
- *  - Use K2_CUDA_PRINT_ERROR(.., bAbort = true) to deal with the error.
+ *  - Use K2_CUDA_CHECK_ERROR(.., bAbort = true) to deal with the error.
  *
  * @param[in]
  *
@@ -172,13 +172,13 @@ __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
     do {                                             \
       (__VA_ARGS__);                                 \
       cudaDeviceSynchronize();                       \
-      K2_CUDA_PRINT_ERROR(cudaGetLastError(), true); \
+      K2_CUDA_CHECK_ERROR(cudaGetLastError(), true); \
     } while (0)
 #else
   #define K2_CUDA_SAFE_CALL(...)                     \
     do {                                             \
       (__VA_ARGS__);                                 \
-      K2_CUDA_PRINT_ERROR(cudaGetLastError(), true); \
+      K2_CUDA_CHECK_ERROR(cudaGetLastError(), true); \
     } while (0)
 #endif
 
