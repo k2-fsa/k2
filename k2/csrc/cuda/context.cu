@@ -42,7 +42,7 @@ class CpuContext : public Context {
 class CudaContext : public Context {
  public:
   CudaContext(int gpu_id) : gpu_id_(gpu_id) {
-    if (gpu_id_ != 1) {
+    if (gpu_id_ != -1) {
       CheckCudaError(cudaSetDevice(gpu_id_));
     }
     // TODO(haowen): choose one from available GPUs if gpu_id == -1?

@@ -29,6 +29,7 @@ Shape::Shape(const std::vector<int32_t> &dims) : ndim_(dims.size()) {
 
   num_element_ = ComputeNumElement();
   is_contiguous_ = true;  // always be true here as we compute strides from dims
+  storage_size_ = ComputeStorageSize();
 }
 
 Shape::Shape(const std::vector<int32_t> &dims,
@@ -40,6 +41,7 @@ Shape::Shape(const std::vector<int32_t> &dims,
   std::copy(strides.begin(), strides.end(), strides_);
   num_element_ = ComputeNumElement();
   is_contiguous_ = CheckContiguous();
+  storage_size_ = ComputeStorageSize();
 }
 
 int32_t Shape::ComputeNumElement() {
@@ -51,6 +53,17 @@ int32_t Shape::ComputeNumElement() {
     elements *= dims_[i];
   }
   return elements;
+}
+
+int32_t Shape::ComputeStorageSize() {
+  if (ndim_ == 0) {
+    return 0;
+  }
+  int32_t size = 1;
+  for (int32_t i = 0; i < ndim_; ++i) {
+    size += (dims_[i] - 1) * strides_[i];
+  }
+  return size;
 }
 
 bool Shape::CheckContiguous() {
@@ -78,9 +91,9 @@ Tensor::Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims)
 Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
                size_t bytes_offset)
     : dtype_(type), shape_(shape), data_(region), bytes_offset_(bytes_offset) {
-  int32_t nelement = shape_.Nelement();
+  int32_t storage_size = shape_.StorageSize();
   int32_t element_size = TraitsOf(dtype_).NumBytes();
-  CHECK_GE(data_->num_bytes - bytes_offset_, nelement * element_size);
+  CHECK_GE(data_->num_bytes - bytes_offset_, storage_size * element_size);
 }
 
 TensorPtr Tensor::Index(int32_t axis, int32_t index) const {
@@ -98,9 +111,9 @@ TensorPtr Tensor::Index(int32_t axis, int32_t index) const {
 }
 
 void Tensor::Init(ContextPtr c) {
-  int32_t nelement = shape_.Nelement();
+  int32_t storage_size = shape_.StorageSize();
   int32_t element_size = TraitsOf(dtype_).NumBytes();
-  data_ = NewRegion(c, nelement * element_size);
+  data_ = NewRegion(c, storage_size * element_size);
   bytes_offset_ = 0;
 }
 
