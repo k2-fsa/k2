@@ -26,7 +26,7 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 
 class Context;
 using ContextPtr = std::shared_ptr<Context>;
-constexpr k2_cudaStreamInvalid =~((cudaStream_t)0)
+constexpr cudaStream_t kCudaStreamInvalid = (cudaStream_t)(~((size_t)0));
 
 /**
    class Context is the main surface of interaction with external tensor
@@ -69,11 +69,9 @@ class Context : public std::enable_shared_from_this<Context> {
   // Note: we may not actually need this for a while.  For now it is not used.
   virtual int GetDeviceId() const { return -1; }
 
-  // Return the cuda stream associated with this context, or k2_cudaStreamInvalid
-  // if this is not a CUDA context.
-  virtual cudaStream_t GetCudaStream() const {
-    return k2_cudaStreamInvalid;
-  }
+  // Return the cuda stream associated with this context, or
+  // k2_cudaStreamInvalid if this is not a CUDA context.
+  virtual cudaStream_t GetCudaStream() const { return kCudaStreamInvalid; }
 
   /*
     Allocate memory on this device (raise an exception on failure, which we
@@ -289,42 +287,25 @@ __global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
   }
 }
 
-
 inline int32_t NumBlocks(int32_t size, int32_t block_size) {
   return (size + block_size - 1) / block_size;
 }
 
-<<<<<<< HEAD
-
 /* Eval() will evaluate lambda(i) for 0 <= i < n, on the appropriate
    device (CPU or GPU). */
-template<typename LambdaT>
+template <typename LambdaT>
 void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
-=======
-template <typename ContextPtrType,  // Context* or ContextPtr ==
-                                    // std::shared_ptr<Context>
-          typename LambdaT>
-void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
->>>>>>> upstream/cuda_draft
   if (n <= 0) return;  // actually it would be an error if n < 0.
-  DeviceType t = c->GetDeviceType();
-  if (stream == k2_cudaStreamInvalid) {
+  if (stream == kCudaStreamInvalid) {
     // TODO: if n is very large, we'll eventually support running this with
     // multiple threads.
     for (int32_t i = 0; i < n; i++) {
       lambda(i);
     }
   } else {
-    assert(c == kCuda);
     int dim_block = 256;
     int dim_grid = NumBlocks(n, dim_block);
-    eval_lambda<LambdaT>
-<<<<<<< HEAD
-        <<<dim_block, dim_grid, 0, stream>>>(n, lambda);
-=======
-        <<<dim_grid, dim_block, 0, c->GetCudaStream()>>>(n, lambda);
->>>>>>> upstream/cuda_draft
-
+    eval_lambda<LambdaT><<<dim_block, dim_grid, 0, stream>>>(n, lambda);
     cudaError_t err = cudaGetLastError();
     assert(err == cudaSuccess);
   }
@@ -336,7 +317,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
 void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
   Eval(c->GetCudaStream(), n, lambda);
 }
-
 
 /*
   This is a form of Eval() where the lambda takes  two arguments.
@@ -350,9 +330,9 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
 */
 template <typename LambdaT>
 void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
-  if (m <= 0 || n <= 0) return;  // actually it would be an error if m < 0 or n < 0.
-  DeviceType t = c->GetDeviceType();
-  if (stream == k2_cudaStreamInvalid) {
+  if (m <= 0 || n <= 0)
+    return;  // actually it would be an error if m < 0 or n < 0.
+  if (stream == kCudaStreamInvalid) {
     // TODO: if n is very large, we'll eventually support running this with
     // multiple threads.
     for (int32_t i = 0; i < m; i++) {
@@ -364,25 +344,23 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
     // this way of choosing block and grid sizes is of course not very smart, we
     // can look at this later on, possibly referring to Kaldi's
     // GetBlockSizesForSimpleMatrixOperation().
-    dim3 dim_block(256,1,1);
+    dim3 dim_block(256, 1, 1);
     dim3 dim_grid(NumBlocks(n, dim_block.x), m, 1);
     if (dim_grid.x == 1) dim_block.x = n;
 
-    eval_lambda2<LambdaT>
-        <<<dim_block, dim_grid, 0, stream>>>(m, n, lambda);
+    eval_lambda2<LambdaT><<<dim_block, dim_grid, 0, stream>>>(m, n, lambda);
 
     cudaError_t err = cudaGetLastError();
     assert(err == 0);
   }
 }
 
-inline template <typename ContextPtrType,  // Context*  or ContextPtr ==
+template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
   Eval2(c->GetCudaStream(), m, n, lambda);
 }
-
 
 /*
   Class ParallelRunner allows you to invoke Eval(), but in parallel.
@@ -394,24 +372,23 @@ inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
   TODO: properly implement this.  Right now it doesn't background them
   at all, just forwarding them to the sequential versions of Eval().
  */
+template <typename ContextPtrType>
 class ParallelRunner {
  public:
-  ParallelRunner(ContextPtrType c): c_(c) { }
+  ParallelRunner(ContextPtrType c) : c_(c) {}
 
-  // create a new stream, that first syncs with stream of c_ via an event.  The destructor
-  // will cause the stream of c_ to wait on this stream in the destructor of `this`
-  // You can pass this into the Eval() and Eval2() functions, or invoke kernels
-  // directly with it.
+  // create a new stream, that first syncs with stream of c_ via an event.  The
+  // destructor will cause the stream of c_ to wait on this stream in the
+  // destructor of `this` You can pass this into the Eval() and Eval2()
+  // functions, or invoke kernels directly with it.
   cudaStream_t NewStream();
 
   void Finish();  // like calling destructor manually.
 
-  private:
+ private:
   ContextPtr c_;
   // TODO: list of events to wait on, maybe CUDA threads.
 };
-
-
 
 // OK, want to do:
 // ContextPtr c = ...;  ///

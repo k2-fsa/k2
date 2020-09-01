@@ -3,6 +3,7 @@
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
 
 #include <numeric>
+#include <vector>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
