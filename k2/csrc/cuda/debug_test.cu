@@ -4,8 +4,8 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #ifndef K2_PARANOID
 #define K2_PARANOID
