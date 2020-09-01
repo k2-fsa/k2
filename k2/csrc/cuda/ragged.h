@@ -11,22 +11,72 @@
 
 namespace k2 {
 
+// Caution, RaggedShapeDim is mostly for internal use and users should not
+// generally interact with it directly.
+// Note: row_splits is of size num_rows + 1 and row_ids is of size num_elements + 1.
+struct RaggedShapeDim {
+  // Search for "row_splits concept" in utils.h for explanation
+  Array1<int32_t> row_splits;
+  // Search for "row_ids concept" in utils.h for explanation
+  Array1<int32_t> row_ids;
+  // cached_tot_size can be viewed as the number of elements in a ragged matrix,
+  // or -1 if not known.
+  // If cached_tot_size >= 0 and row_ids is nonempty, cached_tot_size will
+  // equal row_ids.Dim() - 1.
+  // If cached_tot_size >= 0 and row_splits is nonempty, cached_tot_size will
+  // equal row_splits[row_splits.Dim() - 1].
+  int32_t cached_tot_size;
+};
+
+
 class RaggedShape {
   int32_t Dim0() {
     CHECK_GT(0, axes_.size());
     return axes_[0].row_splits.Dim() - 1;
   }
-  // total size on this axis (require 0 <= axis < NumAxes(), and for axis=0
-  // is the same as Dim0()).
-  int32_t TotSize(int32_t axis);
+  /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and for axis=0
+     the returned value is the same as Dim0().  */
+  inline int32_t TotSize(int32_t axis) {
+    CHECK_LE(static_cast<size_t>(axis), axes_.size() + 1);
+    if (axis == 0) return Dim0();
+    else {
+      RaggedShapeDim &rsd = axes_[axis-1];
+      if (rsd.cached_tot_size >= 0) {
+        return rsd.cached_tot_size;
+      } else {
+        // if we had row_ids set up, we should have set cached_tot_size.
+        CHECK_EQ(rsd.row_ids.Dim(), 0);
+        CHECK_GT(rsd.row_splits.Dim(), 0);
+        rsd.cached_tot_size = rsd.row_splits[rsd.row_splits.Dim()-1];
+        return rsd.cached_tot_size;
+      }
+    }
+  }
 
+  // Returns the number of elements that a ragged array with this shape would
+  // have.
+  inline int32_t NumElements() { return TotSize(NumAxes()-1); }
+
+  /*
+    Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.
+    The dimension is the (total) number of rows on this axis plus one,
+    and the elements are in the range [0,N] where N is the TotSize()
+    on axis `axis+1`
+   */
   Array1<int32_t> &RowSplits(int32_t axis) {
     CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
+    // TODO(dan):: make sure this row_splits exists, create it if needed.
     return axes_[axis - 1].row_splits;
   }
+
+  /*
+    Return the row-ids for axis `axis` with `0 < axis < NumAxes()`.
+    The dimension is the number of elements on this axis PLUS ONE.
+    (The last value is the number of row-splits on this axis).
+  */
   Array1<int32_t> &RowIds(int32_t axis) {
     CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
-    // TODO: make sure this row_ids exists, create it if needed.
+    // TODO(dan): make sure this row_ids exists, create it if needed.
     return axes_[axis - 1].row_ids;
   }
 
@@ -47,18 +97,29 @@ class RaggedShape {
 
   RaggedShape(const RaggedShape &other) = default;
 
- private:
-  struct RaggedShapeDim {
-    Array1<int32_t> row_splits;
-    Array1<int32_t> row_ids;
-    int32_t cached_tot_size;
-  };
+
+  /*
+    It is an error to call this if this.NumAxes() < 2.  This will return
+    a RaggedShape with one fewer axis, containing only the elements of
+    *this for which the value on axis `axis` is i.  CAUTION:
+    currently this only works for `axis == 0`.
+
+      @param [in]  axis   Axis to index on.  CAUTION: currently only 0
+                         is supported.
+      @param [in]  i     Index to select
+   */
+  RaggedShape Index(int32_t axis, int32_t value);
+
+
+  RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b);
+
+  RaggedShape(std::vector<RaggedShapeDim> &axes): axes_(axes) { }
 
   // TODO: could probably do away with the std::vector and have a max size and a
   // fixed length array (more efficient)
 
   // indexed by axis-index minus one... axis 0 is special, its dim
-  // equas axes_[0].row_splits.Dim()-1.
+  // equals axes_[0].row_splits.Dim()-1.
   std::vector<RaggedShapeDim> axes_;
 };
 
@@ -87,7 +148,7 @@ class RaggedShape {
         and these are just the shapes of arrays..).
         See also the version of Stack for class Ragged.
  */
-RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape *src);
+RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape **src);
 
 template <typename T>
 struct Ragged {
@@ -95,14 +156,28 @@ struct Ragged {
   Array1<T> values;
 
   Ragged(RaggedShape &shape, Array1<T> &values) : shape(shape), values(values) {
-    // TODO: check values.Dim() matches shape.
+    CHECK_EQ(shape.TotSize(shape.NumAxes()-1), values.Dim());
   }
 
+  // Note: 'values' will be uninitialized.
   Ragged(RaggedShape &shape)
       : shape(shape),
         values(shape.Context(), shape.TotSize(shape.NumAxes() - 1)) {}
 
   Context *Context() { return values.Context(); }
+
+  /*
+    It is an error to call this if this.NumAxes() < 2.  This will return
+    a Ragged<T> with one fewer axis, containing only the elements of
+    *this for which the value on the provided axis is i.  CAUTION:
+    currently this only works for `axis == 0`.
+
+      @param [in]  axis   Axis to index on.  CAUTION: currently only 0
+                         is supported.
+      @param [in]  i     Index to select
+   */
+  Ragged<T> Index(int32_t axis, int32_t value);
+
 };
 
 /*
@@ -111,7 +186,7 @@ struct Ragged {
   Note: all dimensions and tot-sizes preceding that will remain the
   same, which might give rise to empty lists.
  */
-RaggedShape SubsampleRaggedShape(const RaggedShape &src,
+RaggedShape SubsampleRaggedShape(RaggedShape &src,
                                  Renumbering &renumbering);
 
 /*
@@ -135,7 +210,7 @@ RaggedShape SubsampleRaggedShape(const RaggedShape &src,
           result[i,j,k,l] = (*src[j])[i,k,l]
  */
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
+Ragged<T> Stack(int32_t axis, int32_t src_size, Ragged<T> **src);
 
 /*
   Create a RaggedShape from an array of row-ids.  (which maps each element to
@@ -149,7 +224,7 @@ Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
                            and non-decreasing.
  */
 RaggedShape Ragged2ShapeFromRowIds(int num_rows,
-                                   const Array1<int32_t> &row_ids);
+                                   Array1<int32_t> &row_ids);
 
 /*
   Construct a ragged shape with one more axis than the supplied shape, given
@@ -161,8 +236,48 @@ RaggedShape Ragged2ShapeFromRowIds(int num_rows,
                            0 <= i < shape.TotSize(Shape.NumAxes()-1),
                            with row_ids.size() == elems.size().
  */
-RaggedShape RaggedShapeFromRowIds(const RaggedShape &shape,
-                                  const Array1<int> &row_ids);
+RaggedShape RaggedShapeFromRowIds(RaggedShape &shape,
+                                  Array1<int> &row_ids);
+
+/*
+  Construct a RaggedShape with 2 axes.
+     @param [in] row_splits   row_splits, or NULL (at least one of this and row_ids must
+                              be non-NULL).  Note: the dimension of row_splits
+                              must equal the number of rows plus one; row_splits[0]
+                              must be zero and the array must be non-decreasing;
+                              and the last element of row_splits is the total
+                              number of elements in the ragged matrix.
+     @param [in] row_ids      row_splits, or NULL (at least one of this and row_ids must
+                              be non-NULL).  Note: the dimension of row_splits
+                              must equal the number of elements plus one;
+                              the array must be non-decreasing;
+                              and the last element of row_splits equals the number of
+                              rows.  If both row_ids and row_splits are supplied, we require
+                              row_splits[row_ids[i]] <= i < row_splits[row_ids[i]+1].
+     @param [in] cached_tot_size   Total number of elements in the ragged
+                              matrix, or -1 if the user does not wish to supply it now.
+                              (If >= 0, must equal `(*row_splits)[row_splits.Size()-1]`
+                              if row_splits is non-NULL, or row_ids->Dim()-1 if row_ids
+                              is non-NULL.
+*/
+RaggedShape RaggedShape2(Array1<int32_t> *row_splits,
+                         Array1<int32_t> *row_ids,
+                         int32_t cached_tot_size);
+
+/*
+  This is a general method of creating higher-dimensional ragged shapes.
+     @param [in] a   RaggedShape describing the top level (first indexes)
+                     of the returned shape
+     @param [in] b   RaggedShape describing the bottom level (later
+                     indexes) of the returned shape.  We require
+                     a.NumElements() == b.Dim0().
+     @return     Returns the combined ragged shape.  Its number of axes
+                 will be equal to a.NumAxes() + b.NumAxes() - 1 (the last
+                 axis of a and the first axis of b are combined).
+ */
+RaggedShape ComposeRaggedShapes(RaggedShape &a,
+                                RaggedShape &b);
+
 
 /*
   Construct a RaggedShape with 3 axes.  For N=1 and 2 respectively:
@@ -175,6 +290,25 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
                          Array1<int32_t> *row_splits2,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2);
+
+/*
+  Allocates an *invalid* RaggedShape given the TotSize() values for each axis.
+  This allocates space for all the row_ids and row_splits, but does not write
+  any data to them.  View this as an internal function, because such a
+  RaggedShape would not be usable directly.
+
+     @input num_axes   Number of axes of ragged shape desired; must be at
+                       least 2.
+     @input tot_sizes  Total size on each axis
+     @return           The returned RaggedShape satisfies
+                       ans.TotSize(axis) == tot_sizes[axis], and has all
+                       its row_splits and row_ids allocated but not
+                       filled in, and its cached_tot_size elements
+                       set.
+ */
+RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes);
+
+
 
 }  // namespace k2
 

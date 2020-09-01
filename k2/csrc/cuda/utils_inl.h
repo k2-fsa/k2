@@ -40,13 +40,15 @@ void ExclusivePrefixSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest) {
     // since d_temp_storage is nullptr, the following function will compute
     // the number of required bytes for d_temp_storage
     cub::DeviceScan::ExclusiveSum(d_temp_storage, temp_storage_bytes, src, dest,
-                                  n, cudaStreamPerThread);
+                                  n, c->GetCudaStream());
     void *deleter_context;
     d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
     cub::DeviceScan::ExclusiveSum(d_temp_storage, temp_storage_bytes, src, dest,
-                                  n);
+                                  n, c->GetCudaStream());
     c->Deallocate(d_temp_storage, deleter_context);
   }
 }
+
+
 
 }  // namespace k2

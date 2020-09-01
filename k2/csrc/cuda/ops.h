@@ -74,7 +74,7 @@ __global__ void TransposeKernel(int32_t rows, int32_t cols, const T *input,
                         `dest->Size1() == src.Size0()` and
                         `dest->Size0() == src.Size1()`.
                         At exit, we'll have dest[i,j] == src[j,i].
- */
+*/
 template <typename T>
 void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
   assert(c->IsCompatible(*src.Context()));
@@ -119,7 +119,26 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
                        Must be on same device as src.
  */
 template <typename S, typename T>
-void ExclusiveSum(ContextPtr &c, Array1<S> &src, Array1<T> *dest);
+void ExclusiveSum(Array1<S> &src, Array1<T> *dest);
+
+
+/*
+  Sets 'dest' to exclusive prefix sum of the result of dereferinging the
+  elements of 'src'.
+    @param [in] src    Source data, to be dereferenced and then summed.
+    @param [out] dest  Destination data.  Must satisfy dest.Size() == src.Size()
+                       or dest.Size() == src.Size() + 1, but in the latter case
+                       we require that the memory region inside src be allocated
+                       with at least one extra element, because the
+                       exclusive-sum code may read from it even though it
+                       doesn't affect the result.
+
+                       At exit, will satisfy dest[i] == sum_{j=0}^{i-1} src[j].
+                       Must be on same device as src.
+ */
+template <typename T>
+void ExclusiveSumDeref(Array1<T*> &src, Array1<T> *dest);
+
 
 /*
   Sets 'dest' to exclusive prefix sum of 'src', along a specified axis.
@@ -143,19 +162,104 @@ void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int axis);
   For now we can just use a simple loop; later there are lots of opportunities
   to optimize this, including multiple streams and using a single kernel making
   use of RaggedShape.
+      @param [in] src_size  Number of arrays to append.  Must be > 0.
+      @param [in] src     Array of pointers to arrays, of size `src_size`.
+      @return       Returns the appended array
  */
 template <typename T>
-void Append(int32_t src_size, const Array1<T> *src);
+Array1<T> Append(int32_t src_size, const Array1<T> **src);
+
 
 /*
-  Return an array with dimension in.Dim0(), containing the maximum of each
-  sub-list in 'in' (i.e. the max taken over axis 1), or T, whichever was larger.
+   This is a little like Append(), but with special treatment of the last
+   elements (it's intended for use with row_splits and row_ids vectors, which
+   have a single "extra" last element).
 
-  This is expected to be instantiated for, at least, float and int32_t.
+   It appends the arrays with an offset.  Define:
+        offset[i] = (sum of last element of src[j] for j < i).
+   This function appends the arrays, while leaving out the last element
+   of all but the last of the arrays in `src`, and also adding the
+   offsets mentioned above for each array.
+
+   arrays in 'src', except they all overlap by one element, and for i > 0
+   we add an offset o[i] to the arrays in src[i], with the offsets being
+   chosen so that in the overlapping elements there is no conflict between
+   the two values being written (this means that src[i] is the sum of
+   the final element of each of the arrays in src[j] for j < i).
+
+      @param [in] src_size  Number of arrays to append
+      @param [in] src     Array of pointers to arrays, of size `src_size`.
+      @return       Returns the appended array
+
+ */
+Array1<int32_t> Splice(int32_t src_size, const Array1<int32_t> **src);
+
+
+/*
+  Output to an array `max_values` the maximum of each sub-list in `src`
+  i.e. the max taken over axis 1), or `default_value`, whichever was larger.
+
+     @param [in] src            Input ragged array; must have src.NumAxes() == 2.
+                                Is allowed to be empty.
+     @param [in] default_value  Value to use for maximum operation as a default
+                                so max is taken over this and the elements
+                                of sub-lists in `src`.
+     @param [out] max_values    Array to which the maximum values will be written.
+                                Must satisfy max_values->Dim() == src.
  */
 template <typename T>
-Array1<T> MaxPerSublist(Ragged<T> &in, T default_value);
+void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values);
+
+
+/*
+  Get the maximum value from the array `src`, or `default_value`, whichever is greater.
+         @param [in] src   Array to find the '&'-based reduction of
+         @param [in] default_value   Value to initialize the reduction with, and to
+                           use if src is empty.  Would typically be the most negative
+                           T possible.
+         @param [out] dest  Output array, which must have dim == 1.
+ */
+template <typename T>
+void Max(Array1<T> &src, T default_value, Array1<T> *dest);
+
+
+/*
+  Get the '&'-based (bitwise and) reduction of the array `src`, using `default_value`
+  (e.g. all ones) to initialize the reduction.
+
+         @param [in] src   Array to find the '&maximum of
+         @param [in] default_value   Value to initialize the reduction with, and to
+                           use if src is empty.  Would typically be the most negative
+                           T possible.
+         @param [out] dest  Output array, which must have dim == 1.
+ */
+template <typename T>
+void And(Array1<T> &src, T default_value, Array1<T> *dest);
+
+
+/*
+  Output to an array `and_values` the result of reducing each sub-list in
+  `src` with operator &, i.e. bit-wise and.
+
+     @param [in] src            Input ragged array; must have src.NumAxes() == 2.
+                                Is allowed to be empty.
+     @param [in] default_value  Value to initialize the reduction with; should
+                                probably be all-ones.
+     @param [out] and_values    Array to which the bitwise-and values will be written.
+                                Must satisfy max_values->Dim() == src.
+
+   TODO: implement this after debugging MaxPerSublist; it's mostly a matter of
+   changing the reduction-operator object.
+*/
+template <typename T>
+void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
+
+
 
 }  // namespace k2
+
+#define IS_IN_K2_CSRC_CUDA_OPS_H_
+#include "k2/csrc/cuda/ops_inl.h"
+#undef IS_IN_K2_CSRC_CUDA_OPS_H_
 
 #endif  // K2_CSRC_CUDA_OPS_H_

@@ -72,6 +72,9 @@ using TensorPtr = std::shared_ptr<Tensor>;
   Tensor is similar to PyTorch or TF Tensor.  Note, we don't use this that
   often: more often, we use templated types that make stronger assumptions about
   the dtype and layout, such as Array1, Array2 and Ragged.
+
+  Note, it's allowable for some but not all of the dimensions to be zero,
+  e.g. shapes like (0,4) are allowed.
  */
 class Tensor {
  public:

@@ -14,8 +14,8 @@ namespace k2 {
 
 // Note: b is FsaVec<Arc>.
 void Intersect(const DenseFsa &a, const FsaVec &b, Fsa *c,
-               Array<int32_t> *arc_map_a = nullptr,
-               Array<int32_t> *arc_map_b = nullptr);
+               Array1<int32_t> *arc_map_a = nullptr,
+               Array1<int32_t> *arc_map_b = nullptr);
 
 
 
@@ -29,8 +29,8 @@ void IntersectDensePruned(Array3<Arc> &a_fsas,
                           float beam,
                           int32_t max_states,
                           FsaVec *ofsa,
-                          Array<int> *arc_map_a,
-                          Array<int> *arc_map_b);
+                          Array1<int> *arc_map_a,
+                          Array1<int> *arc_map_b);
 
 }  // namespace k2
 

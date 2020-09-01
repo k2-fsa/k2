@@ -128,8 +128,8 @@ class MultiGraphDenseIntersect {
   }
 
    void FormatOutput(FsaVec *ofsa,
-                    Array<int32_t> *arc_map_a,
-                    Array<int32_t> *arc_map_b) {
+                    Array1<int32_t> *arc_map_a,
+                    Array1<int32_t> *arc_map_b) {
 
     Context c_cpu = c_->CpuContext();
     int32_t T = a_fsas.MaxSize1();
@@ -173,11 +173,11 @@ class MultiGraphDenseIntersect {
 
 
     int32_t tot_arcs_pruned = oshape_pruned_.TotSize3();
-    arc_map_a = Array<int32_t>(c_, tot_arcs_pruned);
-    arc_map_b = Array<int32_t>(c_, tot_arcs_pruned);
+    arc_map_a = Array1<int32_t>(c_, tot_arcs_pruned);
+    arc_map_b = Array1<int32_t>(c_, tot_arcs_pruned);
     int32_t *arc_map_a_data = arc_map_a.Data(),
         *arc_map_b_data = arc_map_b.Data();
-    Array<Arc> arcs_out(c_, tot_arcs_pruned);
+    Array1<Arc> arcs_out(c_, tot_arcs_pruned);
     Arc *arcs_out_data = arcs.Data();
     const Arc *a_fsas_arcs = a_fsas_.values.Data();
     int32_t b_fsas_num_cols = b_fsas_.scores.Dim1();
@@ -373,7 +373,7 @@ class MultiGraphDenseIntersect {
                    return num_arcs_x1x;
               };
     // `num_arcs` gives the num-arcs for each state in `states`.
-    Array<int32_t> num_arcs(c_, states.values.Dim(), num_arcs_lambda);
+    Array1<int32_t> num_arcs(c_, states.values.Dim(), num_arcs_lambda);
 
     // initialize shape of array that will hold arcs leaving the active states.
     // Its shape is [fsa_index][state][arc]; the top two levels are shared with
@@ -662,7 +662,7 @@ class MultiGraphDenseIntersect {
        arc.  Indexing is [frame_state_index][arc_index], where frame_state_index
        and arc_index are respectively idx01 and ind2 w.r.t. frames_[t]->arcs. */
     Ragged<int32_t> arc_backward_prob(cur_frame->arcs.RemoveAxis(0),
-                                       Array<int32_t>(c_, num_arcs));
+                                       Array1<int32_t>(c_, num_arcs));
     int32_t *arc_backward_prob_data = arc_backward_prob.values.Data();
 
 
