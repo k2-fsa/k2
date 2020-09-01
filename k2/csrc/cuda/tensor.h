@@ -33,6 +33,8 @@ class Shape {
   }
 
   int32_t Nelement() const { return num_element_; }
+  // storage size in elements
+  int32_t StorageSize() const { return storage_size_; };
   bool IsContiguous() const { return is_contiguous_; }
 
   Shape() : ndim_(0), num_element_(0), is_contiguous_(true) {}
@@ -49,6 +51,7 @@ class Shape {
 
   int32_t ndim_;  // Must be >= 0
   int32_t num_element_;
+  int32_t storage_size_;
   bool is_contiguous_;
 
   // elements of dims_ and strides_ >= ndim_ are currently not set;
@@ -58,6 +61,7 @@ class Shape {
 
   // compute the number of elements
   int32_t ComputeNumElement();
+  int32_t ComputeStorageSize();
   bool CheckContiguous();
 };
 
