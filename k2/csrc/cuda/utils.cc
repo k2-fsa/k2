@@ -8,6 +8,67 @@
 
 namespace k2 {
 
+// See FillValues() where this is invoked.  It fills a region with
+// constant or linearly changing values.
+__global__ void FillValuesKernel(int32_t *data, int32_t num_values,
+                                 int32_t start_value, int32_t inc) {
+  int32_t job_idx = (blockIdx.x * blockDim.x + threadIdx.x),
+      num_jobs = (gridDim.x * blockDim.x);
+  for (; job_idx < num_values; job_idx += num_jobs)
+    data[job_idx] = start_value + job_idx * inc;
+}
+
+// This launches a kernel.  It's the same as doing:
+// for (int32_t i = 0; i < num_values; i++) data[i] = start_value + i * inc;
+__device__ void FillValues(int32_t *data, int32_t num_values,
+                           int32_t start_value, int32_t inc) {
+  int dim_block = 256;
+  int loop_len = 2;
+  int dim_grid = NumBlocks(num_values / loop_len, dim_block);
+  if (dim_grid.x == 1) dim_block.x = num_values;
+  FillValuesKernel<<<dim_block, dim_grid>>>(data, num_values, start_value, inc);
+}
+
+
+//  When we invoke this we make a big enough grid that there doesn't have to
+//  be a loop over rows.
+__global__ void RowSplitsToRowIdsKernel(
+    int32_t num_rows, int32_t threads_per_row,
+    const int32_t *row_splits, int32_t num_elems,
+    int32_t *row_ids) {
+  int32_t thread = (blockIdx.x * blockDim.x + threadIdx.x),
+      num_threads = gridDim.x * blockDim.x,
+      row = thread / threads_per_row,
+      thread_this_row = thread % threads_per_row;
+
+  K2_ASSERT(num_threads / threads_per_row >= num_rows);
+
+  int32_t this_row_split, next_row_split;
+  if (row >= num_rows) {
+    if (row == num_rows && thread_this_row == 0) {
+      row_ids[num_elems] = num_rows;
+    }
+    return;
+  }
+
+  int32_t this_row_split = row_splits[row],
+      next_row_split = row_splits[row + 1],
+      num_tasks = next_row_split - this_row_split;
+
+  const int32_t max_loop = 16;
+  if (num_tasks / threads_per_row > max_loop) {
+    // We decide that looping too many times will be too slow, so we launch
+    // another kernel to fill in the value for this row.  (This is CUDA dynamic
+    // parallelism).
+    if (thread_this_row == 0) {
+      FillValues(row_ids + this_row_split, num_tasks,
+                 row, 0);
+    }
+    return;
+  }
+
+
+
 
 /*
 
@@ -69,7 +130,7 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows, const int32_t *row_split
     // terms of coalesced reads and writes and so on, but it has reasonable
     // asymptotic time complexity (assuming all kernels run in parallel),
     // specifically: O(log(largest(row_splits[i+1]-row_splits[i])))
-    assert(d == kCuda);
+
     auto lambda_init_minus_one = [=] __host__ __device__ (int32_t i) {
                                    row_ids[i] = -1;
                                  };
@@ -216,7 +277,278 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const T *row_ids,
 }
 
 
+/*
+  Called inside GetTaskRedirect(); see documentation of that in header.
+  Each task with 0 <= task < num_tasks gets allocated `threads_per_job`
+  threads, e.g. threads_per_job = 4 or 16.  It's a kind of n-ary
+  search (generalization of binary search) where each branch is handled
+  by a different thread so they can happen in parallel.
+
+  TODO(dan): there are a lot of opportunities to further optimize this
+  using GPU hardware tricks.
+
+  The thread-block size this is called with must be jobs_per_block *
+  threads_per_job.
+ */
+
+/*
+template <int jobs_per_block, int threads_per_job>
+__global__ void GetTaskRedirect(int32_t num_tasks, const int32_t *row_splits,
+                                TaskRedirect *redirect_out) {
+  __shared__ int32_t temp[tasks_per_block];
+  // we do __syncwarp() for synchronization below; we require threads_per_job <=
+  // 32 for this reason.
+  static_assert(threads_per_job >= 2 && threads_per_job <= 32);
+
+  // We have work to do for 0 <= job_idx < num_tasks, but be careful: job_idx
+  // may be >= num_tasks if num_tasks is small or not a power of two (we don't
+  // return because we need to do __syncwarp()).  So we have to avoid out of
+  // bounds memory access.
+  int32_t job_idx = (blockIdx.x * blockDim.x + threadIdx.x) / threads_per_job;
+  // `branch_idx` is which member we are of the group of the `threads_per_job` threads for this job.
+  int32_t branch_idx = threadIdx.x % threads_per_job;  // we assume blockDim.x % threads_per_job == 0
+  // `temp_idx` is which index in the temporary storage `temp` we are assigned
+  // (one per job).
+  int32_t temp_idx = threadIdx.x / threads_per_job;
+
+  // TODO: we may at some point decide that row_splits[0] has to be zero.
+  int32_t row_splits0 = row_splits[0],
+      row_splits_nt = row_splits[num_tasks],
+      num_items = row_splits_nt - row_splits0;
+  if (num_items <= 0) {
+    assert(num_items == 0);
+    // This is a special case where there is no work to do; we give a trivial
+    // assignment of tasks to jobs and return
+    static_assert(threads_per_job >= 2);
+    if (branch_idx < 2 && job_idx < num_tasks) {
+      TaskRedirect tr { job_idx, 2, branch_idx };
+      redirect_out[job_idx + branch_idx * num_tasks] = tr;
+    }
+    return;
+  } else if (branch_idx == 0 && job_idx < num_tasks) {
+    // This code writes to the jobs in the first half of the output array,
+    // that are allocated to the same-numbered task.
+    int32_t task_idx = job_idx,
+        this_row_split = row_splits[task_idx],
+        next_row_split = row_splits[task_idx + 1];
+    // `num_jobs` below is the number of jobs that will be active for
+    // this task.  (The "1 +".. is the job that we assign for each
+    // task, one job per task, in the "first half" of the jobs).
+    // the job_idx we're working out below is the job_idx for the
+    // "second half" of
+    int32_t num_jobs_this_task =
+        1 + (next_row_split/dart_separation - this_row_split/dart_separation);
+    TaskRedirect tr { task_idx, num_jobs_this_task, 0 };
+    redirect_out[task_idx] = tr;
+  }
 
 
+  // Now we have the less-trivial task of assigning the jobs in the 2nd half of the
+   //  output array to tasks (these are allocated roughly proportional to the amount
+   //  of work to do for that task).
+   //  We do the selection by throwing darts at a dart-board, evenly spaced, and seeing which task they correspond
+   //  to.  There are `num_tasks` darts).
+   //  Note: we know dart_location < row_splits_nt because job_idx < num_tasks and
+   //  because integer division rounds down.
+  int32_t dart_separation = num_items / num_tasks,
+      dart_location = row_splits0 + job_idx * dart_separation;
+
+// OK, from this point the goal is to find a task_idx such that
+//     row_splits[task_idx] <= dart_location < row_splits[task_idx + 1].
+//     This is guaranteed to exist, as long as job_id < num_tasks.
+//     As long as job_id < num_tasks, we maintain the property that
+//        row_splits[lower_bound] <= dart_location &&
+//        (upper_bound > num_tasks || row_splits[upper_bound] > dart_location).
+//     (where upper_bound == lower_bound + range), i.e. they are truly
+//     lower and upper bounds
+  int32_t lower_bound = 0,
+      range = num_tasks; // we are responsible for items lower_bound through
+                         // (upper_bound = lower_bound + range) - 1.
+  while (range > threads_per_job) {
+    int32_t upper_bound = lower_bound + range;
+    // We need to narrow the range of `task_idx` that might be the correct one.
+    //    We round *up* because we require that task_idx_step * threads_per_job >=
+    //   range, so that we cover the entire range.
+    int32_t task_idx_step = (range + threads_per_job - 1) / threads_per_job,  // >= 2
+        my_lower_task_idx = lower_bound + branch_idx * task_idx_step,
+        my_upper_task_idx = my_lower_task_idx + task_idx_step;
+    // The following avoids out-of-bounds memory accesses.
+    if (my_upper_task_idx > upper_bound)
+      my_upper_task_idx = upper_bound;
+
+    // TODO (dan): it may be possible to use one of those special within-warp
+    // commands involving bitmaps to make the second comparison (dart_location <
+    // row_splits[my_upper_task_idx]) unnecessary.
+    if (my_lower_task_idx < num_tasks && row_splits[my_lower_task_idx] <= dart_location &&
+        dart_location < row_splits[my_upper_task_idx]) {
+      // I am the "chosen branch" (exactly one will be chosen, as long as
+      // job_idx < num_tasks).
+      temp[temp_idx] = branch_idx;
+    }
+    __syncwarp();
+    int32_t chosen_branch_idx = temp[temp_idx];
+    lower_bound = lower_bound + chosen_branch_idx * task_idx_step;
+    upper_bound = lower_bound + task_idx_step;
+    range = task_idx_step;
+    // note, we don't limit upper_bound to be <= num_tasks because we need all
+    // threads in the block to go around the while loop the same number of
+    // times.  Therefore it's possible that upper_bound > num_tasks.
+    K2_DASSERT(job_idx >= num_tasks ||
+               (row_splits[lower_bound] <= dart_location &&
+                (upper_bound > num_tasks || row_splits[upper_bound] > dart_location)));  // TODO: remove once debugged.
+  }
+  int32_t task_idx = lower_bound + branch_idx;
+  // TODO (dan): it may be possible to use one of those special within-warp
+  // commands involving bitmaps to make the second comparison (dart_location <
+  // row_splits[my_upper_task_idx]) unnecessary.
+  //
+  // The check `task_idx < num_tasks` is to avoid out-of-bounds access of row_splits.
+  // The check `job_idx < num_tasks` is to avoid out-of-bounds access of `redirect_out`;
+  // for these out-of-range job_idx values, it's possible for task_idx to have
+  // any value since it may be uninitialized memory.
+  if (task_idx < num_tasks && job_idx < num_tasks) {
+    int32_t this_row_split = row_splits[task_idx],
+        next_row_split = row_splits[task_idx + 1];
+    if (this_row_split <= dart_location && dart_location < next_row_split) {
+      // OK, exactly one branch per job will reach this point.  `num_jobs` below
+      // is the number of jobs that will be active for this task.  (The "1
+      // +".. is the job that we assign for each task, one job per task, in the
+      // "first half" of the jobs).  The job_id_this_task we're working out
+      // below is the job_id within the second half of the TaskRedirects,
+      // the half that are allocated by throwing darts.
+      int32_t num_jobs_this_task =
+          1 + (next_row_split/dart_separation - this_row_split/dart_separation),
+          job_idx_this_task = 1 + (dart_location - this_row_split)/dart_separation;
+      K2_ASSERT(job_id_this_task < num_jobs_this_task);
+      TaskRedirect tr { task_idx, num_jobs_this_task, job_idx_this_task };
+      redirect_out[num_tasks + job_idx] = tr;
+    }
+  }
+}
+*/
+
+/*
+  This is a quite simple implementation of GetTaskRedirect... I had a more
+  complicated one above that had better O(N) performance for hard cases, but
+  this one will handle more normal/smaller cases better, plus is easier to
+  debug.  The basic idea is to throw lots of threads at it,
+  i.e. threads_per_task should be, say, twice larger than the average / expected
+  number of jobs per task, so that if a task has lots of jobs it doesn't have to
+  loop too many times.
+*/
+template <int32_t threads_per_task>
+__global__ void GetTaskRedirect(int32_t num_tasks,
+                                const int32_t *row_splits,
+                                TaskRedirect *redirect_out) {
+  int32_t task_idx = (blockIdx.x * blockDim.x + threadIdx.x) / threads_per_task;
+  if (task_idx > num_tasks)
+    return;
+  // `thread_idx` is which member we are of the group of the `threads_per_job` threads for this job.
+  int32_t thread_idx = threadIdx.x % threads_per_task;  // we assume blockDim.x % threads_per_job == 0
+  // `temp_idx` is which index in the temporary storage `temp` we are assigned
+  // (one per job).
+
+  int32_t row_splits0 = row_splits[0],
+      row_splits_nt = row_splits[num_tasks],
+      num_items = row_splits_nt - row_splits0;  // the 'num_items' is the total
+                                                // amount of work to do, that we
+                                                // want to distribute fairly
+                                                // evenly.
+
+  // The idea with `dart_separation` is this: Half of the jobs we allocate to
+  // the corresponding tasks.  The other half we allocate by throwing darts onto
+  // the interval [0, num_items - 1], evenly spaced starting from 0, and seeing
+  // which tasks they land in.  This is somewhat random but it ensures that if
+  // any task has a very large amount of work to do, it will get a roughly
+  // proportionate number of jobs.
+  int32_t dart_separation = num_items / num_tasks;
+
+  if (num_items <= 0) {
+    assert(num_items == 0);
+    // This is a special case where there is no work to do; we give a trivial
+    // assignment of tasks to jobs and return
+    static_assert(threads_per_job >= 2);
+    if (thread_idx < 2 && job_idx < num_tasks) {
+      TaskRedirect tr { job_idx, 2, thread_idx };
+      redirect_out[job_idx + thread_idx * num_tasks] = tr;
+    }
+    return;
+  }
+
+
+  // TODO(dan): IDK how well the hardware combines these memory requests; could
+  // consider loading to shared memory first.
+  int32_t this_row_split = row_splits[task_idx],
+        next_row_split = row_splits[task_idx + 1];
+  // `num_jobs` below is the number of jobs that will be active for
+  // this task.  (The "1 +".. is the job that we assign for each
+  // task, one job per task, in the "first half" of the jobs).
+  // the job_idx we're working out below is the job_idx for the
+  // "second half" of
+  int32_t num_jobs_this_task =
+      1 + (next_row_split/dart_separation - this_row_split/dart_separation);
+  K2_ASSERT(static_cast<int32_t>(static_cast<uint16_t>(num_jobs_this_task))
+            == num_jobs_this_task);
+  for (int32_t job_id_this_task = thread_idx;
+       job_id_this_task < num_jobs_this_task;
+       job_id_this_task += threads_per_task) {
+    int32_t job_idx = (job_id_this_task == 0 ? task_idx : // 1st half
+                       num_tasks + (this_row_split / dart_separation) + job_id_this_task); // 2nd half.
+    redirect_out[job_idx] = TaskRedirect{task_idx, num_jobs_this_task, job_id_this_task };
+    // `job` is the job-index within this task, i.e. the
+  }
+}
+
+
+void GetTaskRedirect(cudaStream_t stream, int32_t num_tasks,
+                     const int32_t *row_splits,
+                     TaskRedirect *redirect_out) {
+  if (stream == k2_cudaStreamInvalid) {
+    // there's not much point in using this on CPU as there are better ways
+    // to do things (sequentially), but this can be useful for debugging.
+
+    for (int32_t task = 0; task < num_tasks; task++) {
+      // The idea with `dart_separation` is this: Half of the jobs we allocate to
+      // the corresponding tasks.  The other half we allocate by throwing darts onto
+      // the interval [0, num_items - 1], evenly spaced starting from 0, and seeing
+      // which tasks they land in.  This is somewhat random but it ensures that if
+      // any task has a very large amount of work to do, it will get a roughly
+      // proportionate number of jobs.
+      int32_t row_splits0 = row_splits[0],
+          row_splits_nt = row_splits[num_tasks],
+          num_items = row_splits_nt - row_splits0,
+          dart_separation = num_items / num_tasks;
+      int32_t this_row_split = row_splits[task],
+          next_row_split = row_splits[task + 1];
+      int32_t num_jobs_this_task =
+          1 + (next_row_split/dart_separation - this_row_split/dart_separation);
+      K2_ASSERT(static_cast<int32_t>(static_cast<uint16_t>(num_jobs_this_task))
+                == num_jobs_this_task);
+      for (int32_t job_id_this_task = 0;
+           job_id_this_task < num_jobs_this_task;
+           job_id_this_task ++) {
+        int32_t job_idx = (job_id_this_task == 0 ? task_idx : // 1st half
+                           num_tasks + (this_row_split / dart_separation) + job_id_this_task); // 2nd half.
+        redirect_out[job_idx] = TaskRedirect{task_idx, num_jobs_this_task, job_id_this_task };
+        // `job` is the job-index within this task, i.e. the
+      }
+    }
+  } else {
+    // compare 8 to 2, which is the expected number of jobs per task.  having 8 substantially
+    // greater than 2 gives a fairly big safety factor.  However this is still far from ideal
+    // in scenarios where the number of tasks might be highly unbalanced.
+    const int32_t threads_per_task = 8,
+        tot_threads = threads_per_task * num_tasks;
+
+    int dim_block = 256;
+    int dim_grid = NumBlocks(tot_threads, dim_block);
+
+    K2_CUDA_SAFE_CALL(
+        GetTaskRedirect<threads_per_task><<<dim_block, dim_grid, 0, stream>>>(
+            num_tasks, row_splits, redirect_out));
+
+  }
+
+}
 
 }  // namespace k2

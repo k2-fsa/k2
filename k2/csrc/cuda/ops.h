@@ -196,7 +196,7 @@ Array1<int32_t> Splice(int32_t src_size, const Array1<int32_t> **src);
 
 
 /*
-  Output to an array `max_values` the maximum of each sub-list in `in`
+  Output to an array `max_values` the maximum of each sub-list in `src`
   i.e. the max taken over axis 1), or `default_value`, whichever was larger.
 
      @param [in] src            Input ragged array; must have src.NumAxes() == 2.
@@ -209,6 +209,52 @@ Array1<int32_t> Splice(int32_t src_size, const Array1<int32_t> **src);
  */
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values);
+
+
+/*
+  Get the maximum value from the array `src`, or `default_value`, whichever is greater.
+         @param [in] src   Array to find the '&'-based reduction of
+         @param [in] default_value   Value to initialize the reduction with, and to
+                           use if src is empty.  Would typically be the most negative
+                           T possible.
+         @param [out] dest  Output array, which must have dim == 1.
+ */
+template <typename T>
+void Max(Array1<T> &src, T default_value, Array1<T> *dest);
+
+
+/*
+  Get the '&'-based (bitwise and) reduction of the array `src`, using `default_value`
+  (e.g. all ones) to initialize the reduction.
+
+         @param [in] src   Array to find the '&maximum of
+         @param [in] default_value   Value to initialize the reduction with, and to
+                           use if src is empty.  Would typically be the most negative
+                           T possible.
+         @param [out] dest  Output array, which must have dim == 1.
+ */
+template <typename T>
+void And(Array1<T> &src, T default_value, Array1<T> *dest);
+
+
+/*
+  Output to an array `and_values` the result of reducing each sub-list in
+  `src` with operator &, i.e. bit-wise and.
+
+     @param [in] src            Input ragged array; must have src.NumAxes() == 2.
+                                Is allowed to be empty.
+     @param [in] default_value  Value to initialize the reduction with; should
+                                probably be all-ones.
+     @param [out] and_values    Array to which the bitwise-and values will be written.
+                                Must satisfy max_values->Dim() == src.
+
+   TODO: implement this after debugging MaxPerSublist; it's mostly a matter of
+   changing the reduction-operator object.
+*/
+template <typename T>
+void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
+
+
 
 }  // namespace k2
 

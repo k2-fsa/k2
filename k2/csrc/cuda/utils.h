@@ -9,10 +9,6 @@
 
 #include "k2/csrc/cuda/context.h"
 
-#define IS_IN_K2_CSRC_CUDA_UTILS_H_
-#include "k2/csrc/cuda/utils_inl.h"
-#undef IS_IN_K2_CSRC_CUDA_UTILS_H_
-
 namespace k2 {
 
 // Some quite low-level utilities.
@@ -243,8 +239,44 @@ T MaxValue(Context *c, size_t nelems, T *t);
        @param [out] row_ids   Start of row_ids vector, we write the output to here.
                         Length is num_elems + 1.
 */
-void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows, const T *row_splits,
-                       int32_t num_elems, T *row_ids);
+void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows, const int32_t *row_splits,
+                       int32_t num_elems, int32_t *row_ids);
+
+
+/*
+  This function works out the row_id of `this` index from row-splits, using binary
+  search.  Specifically, it returns i such that row_splits[i] <= index < row_splits[i+1].
+  row_splits should be a vector with at least num_rows+1 elements.
+
+       @param [in] num_rows      Number of rows (row-id will be less than this)
+       @param [in] row_splits    Row-splits vector, of size num_rows + 1 (search
+                                 for `row_splits concept` near the top of utils.h
+                                 for more info)
+       @param [in] index         Linear index (e.g. idx01) for which we're querying
+                                 which row it is from
+       @param [in] num_indexes   Total number of indexes (should equal row_splits[num_rows]);
+                                 right now it's not used, but in future it might be used for
+                                 a heuristic, for the initial guess of where to start
+                                 the binary search.
+       @return                   Returns i such that row_splits[i] <= index < row_splits[i+1]
+                                 and 0 <= i < num_rows; will die with assertion in debug
+                                 mode if such an i does not exist.
+
+   TODO(dan): make this compile, apparently std::lower_bound won't work on GPU
+   so we should manually do the binary search.
+ */
+__forceinline __host__ __device__ int32_t RowIdFromRowSplits(int32_t num_rows, const int32_t *row_splits,
+                                               int32_t index, int32_t num_indexes) {
+  // lower_bound gives the first i in row_splits that's greater than `index`.  That
+  // implies the previous one is <= index.
+  //
+  int32_t i = std::lower_bound(row_splits + 1,
+                               row_splits + num_rows + 1,
+                               index) - 1;
+  K2_DCHECK(static_cast<uint32_t>(i) < static_cast<uint32_t>(num_rows) &&
+
+
+}
 
 
 /*
@@ -271,6 +303,120 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows, const T *row_splits,
  */
 void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
                        no_empty_rows, int32_t num_rows, int32_t *row_splits);
+
+
+// Note: there will be one TaskRedirect per job, with 0 <= j < t*num_tasks if
+// j is the job-index.  (I know that job and task are synonyms; jobs are
+// the `split-up pieces of tasks`, like sub-tasks).
+struct TaskRedirect {
+  // task_id will satisfy 0 <= task_id < num_tasks (w.r.t. the `num_tasks` provided
+  // to GetTaskRedirect().  These are the original tasks that we were trying to
+  // allocate jobs to.  Each job is assigned a task_id.
+  int32_t task_id;
+  // The number of jobs allocated to this task; will be at least 1.  All the
+  // TaskRedirect objects with the same task_id will have the same
+  // `num_jobs`
+  uint16_t num_jobs_this_task;
+  // The job_id, will satisfy 0 <= job_id_this_task < num_jobs_this_task.  All
+  // those job_id values will be represented in the array of TaskRedirect, but
+  // they won't all be consecutive (the array has two halves; in one, the
+  // task_id goes 0,1,2,..., and in the second half the task_is is allocated
+  // more proportionally to the size of the task.
+  uint16_t job_id_this_task;
+};
+
+/*
+  This quite general-purpose function allows you to allocate thread-blocks in a
+  way that's roughly proportional to the magnitude of the task that those
+  thread-blocks need to execute.
+
+      @param [in] c  Pointer to the context in which to execute this;
+                    if it's a GPU context the pointers should be GPU pointers.
+      @param [in] num_tasks   The original number of tasks 0 <= task_id < num_tasks
+                    that we want to distribute
+      @param [in] row_splits   A non-decreasing vector (does not necessarily
+                   have to start at 0).  The "magnitude" of the task is the
+                   difference between successive values of the `row_splits`
+                   vector.
+      @param [out] redirect_out  An array of TaskRedirect objects with size
+                   num_jobs == 2*num_tasks.  See documentation of its members
+                   for more details.
+
+   The way we allocate the jobs (2*num_tasks of them) to input tasks is:
+   the first `num_tasks` jobs are assigned one-to-one to input tasks
+   (this ensures that each input task gets at least one job).  We
+   allocate the other half of the jobs by placing regularly spaced
+   integers j on the interval [0,row_splits[num_tasks]] and seeing which of the
+   input tasks the 'fall into', in the sense row_splits[i] <= j <
+   row_splits[i+1].  The result is of course somewhat random, but this strategy
+   ensures that the work per job (i.e. the difference in row-splits
+   divided by the num-jobs for that input-task ) can never be >= double
+   the average `work per job`.
+
+   Note: we imagine (hope?) that in general row_splits won't be that large,
+   maybe <= 1024, and we'll care more about latency than throughput.  The idea
+   is that this is used to determine allocate threads for a larger number of
+   jobs in a separate kernel.
+ */
+void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
+                     const int32_t *row_splits,
+                     TaskRedirect *redirect_out);
+
+
+/*
+  EvalWithRedirect() is like Eval() but for when the task have variable
+  amounts of work to do (most naturally involving loops).  You would call
+  this after calling GetTaskRedirect().
+
+          @param [in] stream   Stream to execute this in (or k2_cudaStreamInvalid for CPU).
+          @param [in] num_tasks  The num_tasks provided to GetTaskRedirect().
+          @param [in] redirect  The array written to by GetTaskRedirect().  Must be
+                               of length num_tasks * 2.
+          @param [in] min_threads_per_task This would typically be something like 8, 16 or 32.
+                               It is the smallest allowed num_threads that we allocate
+                               for each task; the number of threads per job is a multiple of
+                               this (and then the number of threads per task is that times
+                               how many jobs for this task, which is at least one).
+                               It's important for hardware reasons
+                               that this be a power of 2 and not too small, so we
+                               can keep one warp per job.  We call it 'per_task' because
+                               the jobs are kept fairly invisible to the user.
+          @param [in] tot_work   The total amount of work that must be done over
+                               all the tasks (this will commonly be equal to
+                               row_splits[num_tasks] w.r.t. the args to
+                               GetTaskRedirect()).  This is used to allocate the
+                               number of threads per job.  (The number of threads
+                               per task will be a multiple of the number of
+                               threads per job, at least 1 and on average 2).
+           @param [in] target_num_loops  This will typically be in the range 1 to 4,
+                               depending on your concern for latency (->smaller)
+                               or throughput (->larger).  Is is the average
+                               number of `work items` per thread this code aims
+                               for when deiding the threads_per_job.
+           @param [in] include_final_task  If true, the lambda will be called once
+                               with task_idx=num_tasks, num_threads=1, thread_idx=0;
+                               This happens to be useful quite a bit.
+           @param [in] lambda  The lambda expression to run; this is to be run
+                               as, lambda(task_idx, num_threads_this_task, thread_idx), which
+                               will be called with
+                               0 <= task_idx < num_tasks and 0 <= thread_idx < num_threads_this_task,
+                               where num_threads_this_task is a multiple of min_threads_per_task
+                               (a multiple that is specific to the task).
+                               LambdaU will be called exactly once (on the device).
+
+     Also see the other template of EvalWithRedirect() that takes an extra lambda
+     to do a 'one-off task' (invoked once in the resulting kernel).
+ */
+emplate<typename LambdaT, typename lambdaU>
+  void EvalWithRedirect(cudaStream_t stream, int32_t num_tasks,
+                        TaskRedirect *redirect, int32_t min_threads_per_job,
+                        int32_t tot_work, int32_t target_num_loops,
+                        bool include_final_task, LambdaT &lambda) {
+
+
+  lambda_one_off();
+  // TODO..
+}
 
 
 
@@ -312,6 +458,12 @@ __host__ int32_t atomicMax(int32_t* address, int32_t val) {
     *address = val;
   return old;
 }
+
+
+#define IS_IN_K2_CSRC_CUDA_UTILS_H_
+#include "k2/csrc/cuda/utils_inl.h"
+#undef IS_IN_K2_CSRC_CUDA_UTILS_H_
+
 
 }  // namespace k2
 

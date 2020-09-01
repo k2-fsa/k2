@@ -47,6 +47,9 @@ class Array1 {
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
 
+  // Creates an array that is not valid, e.g. you cannot call Context() on it.
+  Array1(): dim_(0), byte_offset_(0), region_(0) {  }
+
   Array1(ContextPtr ctx, int32_t size, T elem) {
     Init(ctx, size);
     T *data = Data();
@@ -106,6 +109,16 @@ class Array1 {
      pointer. */
   T operator[](int32_t i);
 
+
+  /* Setting all elements to a scalar */
+  void operator = (const T t) {
+    T *data = Data();
+    auto lambda_set_values = [=] __host__ __device__ (int32_t i) -> void {
+      data[i] = t;
+    };
+    Eval(Context(), dim_, lambda_set_values);
+  }
+
   Array1 operator[](const Array1<int32_t> &indexes) {
     ContextPtr c = Context();
     assert(c->IsCompatible(*indexes.Context()));
@@ -138,6 +151,32 @@ class Array1 {
     // .. takes care of allocation etc.
   }
 };
+
+// Could possibly introduce a debug mode to this that would do bounds checking.
+template <typename T>
+struct Array2Accessor {
+  T *data;
+  int32_t elem_stride0;
+  __host__ __device__ T &operator () (int32_t i, int32_t j) {
+    return data[i * elem_stride0 + j];
+  }
+  Array2Accessor(T *data, int32_t elem_stride0):
+      data(data), elem_stride0(elem_stride0) { }
+  __host__ __device__ Array2Accessor(const Array2Accessor &other) = default;
+};
+
+template <typename T>
+struct ConstArray2Accessor {
+  const T *data;
+  int32_t elem_stride0;
+  __host__ __device__ T operator () (int32_t i, int32_t j) {
+    return data[i * elem_stride0 + j];
+  }
+  Array2Accessor(const T *data, int32_t elem_stride0):
+      data(data), elem_stride0(elem_stride0) { }
+  __host__ __device__ Array2Accessor(const Array2Accessor &other) = default;
+};
+
 
 /*
   Array2 is a 2-dimensional array (== matrix), that is contiguous in the
@@ -190,6 +229,16 @@ class Array2 {
                                  byte_offset_);
   }
 
+  // Note: array1 doesn't need an accessor because its Data() pointer functions
+  // as one already.
+  Array2Accessor<T> Accessor() {
+    return Array2Accessor<T>(Data(), elem_stride0_);
+  }
+
+  ConstArray2Accessor<T> Accessor() const {
+    return Array2Accessor<T>(Data(), elem_stride0_);
+  }
+
   /* Construct from Tensor.  Required to have 2 axes; will copy if the tensor
      did not have stride on 2nd axis == sizeof(T)
      @param [in] t                Input tensor, must have 2 axes and dtype == T
@@ -216,6 +265,9 @@ class Array2 {
                          // constructor), will point to an empty
                          // Region.
 };
+
+
+
 
 }  // namespace k2
 
