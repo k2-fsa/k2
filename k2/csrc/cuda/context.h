@@ -63,6 +63,10 @@ class Context : public std::enable_shared_from_this<Context> {
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
   virtual DeviceType GetDeviceType() const = 0;
 
+  // Returns the device id that the context is bound to, note we always return
+  // -1 for CPU context. For GPU context, the sub-class will override this.
+  virtual int GetDeviceId() const { return -1; }
+
   // Return the cuda stream associated with this context.  Once we support
   // multiple GPUs, this is expected to also set the GPU to be the correct one.
   virtual cudaStream_t GetCudaStream() const {
@@ -81,8 +85,8 @@ class Context : public std::enable_shared_from_this<Context> {
                             case NULL will be returned.   Let's assume the
                             alignment of the returned memory is at least as
                             strict as for malloc() with the same values.
-        @param [out] decoder_context   If more information than the returned
-                            pointer is required in order to deallocat this
+        @param [out] deleter_context   If more information than the returned
+                            pointer is required in order to deallocate this
                             memory, then that information will be supplied
                             as 'deleter_context'. In some cases this will
                             be zero.
@@ -117,7 +121,7 @@ class Context : public std::enable_shared_from_this<Context> {
     any GPU-to-CPU transfers have completed.  (Note: we may end up using
     something more fine-grained.)
    */
-  virtual void Sync() {}
+  virtual void Sync() const {}
 };
 
 /*
@@ -140,7 +144,7 @@ class Context : public std::enable_shared_from_this<Context> {
      }
      br.Wait();
 
-  This is necessariy because if you do something that isn't just a simple
+  This is necessary because if you do something that isn't just a simple
   Eval() but requires, for instance, copying a number back to the CPU,
   just parallelizing the GPU streams using c.Child() isn't enough because
   it will synchronize in the loop.
@@ -251,22 +255,13 @@ ContextPtr GetPinnedContext();
                           region will have bytes_used == num_bytes; if the user
                           wants to change this they can do it afterward.
 */
-RegionPtr NewRegion(ContextPtr &context, size_t num_bytes) {
-  // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
-  // overwrite if needed.
-  std::shared_ptr<Region> ans = std::make_shared<Region>();
-  ans->context = context->shared_from_this();
-  ans->data = context->Allocate(num_bytes, &ans->deleter_context);
-  ans->num_bytes = num_bytes;
-  ans->bytes_used = num_bytes;
-  return ans;
-}
+RegionPtr NewRegion(ContextPtr &context, size_t num_bytes);
 
 /*
   Convenience wrapper for NewRegion() that takes the context from a provided
   region.
  */
-std::shared_ptr<Region> NewRegion(Region &region, size_t num_bytes) {
+inline std::shared_ptr<Region> NewRegion(Region &region, size_t num_bytes) {
   return NewRegion(region.context, num_bytes);
 }
 
@@ -289,7 +284,7 @@ inline int32_t NumBlocks(int32_t size, int32_t block_size) {
   return (size + block_size - 1) / block_size;
 }
 
-template <typename ContextPtrType,  // Context*  or ContextPtr ==
+template <typename ContextPtrType,  // Context* or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
@@ -305,12 +300,11 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
     assert(c == kCuda);
     int dim_block = 256;
     int dim_grid = NumBlocks(n, dim_block);
-    if (dim_grid == 1) dim_block = n;
     eval_lambda<LambdaT>
-        <<<dim_block, dim_grid, 0, c->GetCudaStream()>>>(n, lambda);
+        <<<dim_grid, dim_block, 0, c->GetCudaStream()>>>(n, lambda);
 
     cudaError_t err = cudaGetLastError();
-    assert(err == 0);
+    assert(err == cudaSuccess);
   }
 }
 
@@ -359,8 +353,8 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
 //          mark the Task as finished.
 //
 //    - Mark all output regions as depending on that new Task as well as
-//      any preceding Tasks running in those regions that have not yet terminated
-//      (assuming this Task didn't depend on those...)
+//      any preceding Tasks running in those regions that have not yet
+//      terminated (assuming this Task didn't depend on those...)
 //
 //    -
 //
@@ -377,7 +371,6 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
 //
 // c_.Eval()...
 //
-
 
 }  // namespace k2
 

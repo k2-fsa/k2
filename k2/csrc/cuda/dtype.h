@@ -7,6 +7,8 @@
 #ifndef K2_CSRC_CUDA_DTYPE_H_
 #define K2_CSRC_CUDA_DTYPE_H_
 
+#include <cstdint>
+
 namespace k2 {
 
 enum BaseType {      // BaseType is the *general type*
@@ -54,6 +56,7 @@ enum Dtype {
   kUint32Dtype,
   kUint64Dtype
 };
+
 inline DtypeTraits TraitsOf(Dtype dtype) {
   return g_dtype_traits_array[(int)dtype];
 }

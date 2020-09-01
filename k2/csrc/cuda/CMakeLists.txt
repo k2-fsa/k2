@@ -1,4 +1,8 @@
-add_library(context context.cu)
+add_library(context 
+  context.cu
+  tensor.cu
+  dtype.cc
+)
 target_include_directories(context PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(context PUBLIC cub)
 target_link_libraries(context PUBLIC glog)
@@ -20,6 +24,7 @@ endfunction()
 # please sort the source files alphabetically
 set(cuda_tests
   ops_test
+  tensor_test
   utils_test
 )
 
