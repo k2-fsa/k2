@@ -18,7 +18,7 @@ namespace k2 {
 template <typename T>
 class Array1 {
  public:
-  int32_t Dim() const { return size_; }  // dimension of only axis (axis 0)
+  int32_t Dim() const { return dim_; }  // dimension of only axis (axis 0)
 
   // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
   // depending on the context.
@@ -46,6 +46,19 @@ class Array1 {
 
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
+
+  // Creates an array that is not valid, e.g. you cannot call Context() on it.
+  Array1(): dim_(0), byte_offset_(0), region_(0) {  }
+
+  Array1(ContextPtr ctx, int32_t size, T elem) {
+    Init(ctx, size);
+    T *data = Data();
+    auto lambda = [=] __host__ __device__ (int32_t i) -> void {
+      data[i] = elem;
+    };
+    Eval(ctx, dim_, lambda);
+  }
+
   /* Return sub-part of this array
      @param [in] start  First element to cover, 0 <= start < size()
      @param [in] size   Number of elements to include, 0 < size < size()-start
@@ -60,7 +73,7 @@ class Array1 {
      @param [in] start  First element of output, 0 <= start < Size()
      @param [in] size   Number of elements to include, must satisfy
                         size > 0 and   0 <= (start + (size-1)*increment) <
-   Size()
+                        Dim().
      @param [in] inc    Increment in original array each time index
                         increases
   */
@@ -76,6 +89,8 @@ class Array1 {
   void Resize(int32_t new_size);
 
   ContextPtr &Context() { return region_->context; }
+
+  const ContextPtr &Context() const { return region_->context; }
 
   // Sets the context on this object (Caution: this is not something you'll
   // often need).  'ctx' must be compatible with the current Context(),
@@ -94,34 +109,74 @@ class Array1 {
      pointer. */
   T operator[](int32_t i);
 
+
+  /* Setting all elements to a scalar */
+  void operator = (const T t) {
+    T *data = Data();
+    auto lambda_set_values = [=] __host__ __device__ (int32_t i) -> void {
+      data[i] = t;
+    };
+    Eval(Context(), dim_, lambda_set_values);
+  }
+
   Array1 operator[](const Array1<int32_t> &indexes) {
-    assert(Context()->IsCompatible(indexes.GetContext()));
+    ContextPtr c = Context();
+    assert(c->IsCompatible(*indexes.Context()));
     int32_t ret_dim = indexes.Dim();
-    Array1<T> ans(Context(), ret_dim);
+    Array1<T> ans(c, ret_dim);
     const T *this_data = Data();
     T *ans_data = ans.Data();
     int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
-      ans_data[i] = this_data[indexes_data[i]];
+    auto lambda_copy_elems = [=] __host__ __device__ (int32_t i) -> void {
+       ans_data[i] = this_data[indexes_data[i]];
     };
-    Eval(Context(), ret_dim, lambda_copy_elems);
+    Eval(c, ret_dim, lambda_copy_elems);
+    return ans;
   }
 
-  Array1(const Array1 &other) = default;
+  // constructor from CPU array (transfers to GPU if necessary)
+  Array1(ContextPtr ctx, const std::vector<T> &src);
 
+  Array1(const Array1 &other) = default;
  private:
-  int32_t size_;
+  int32_t dim_;
   int32_t byte_offset_;
-  RegionPtr region_;  // Region that `data` is a part of.  Device
-                      // type is stored here.  For an Array1 with
-                      // zero size (e.g. created using empty
-                      // constructor), will point to an empty
-                      // Region.
+  RegionPtr region_;  // Region that `data` is a part of.  Device type is stored
+                      // here.  Will be NULL if Array1 was created with default
+                      // constructor (invalid array!) but may still be non-NULL
+                      // if dim_ == 0; this allows it to keep track of the
+                      // context.
 
   void Init(DeviceType d, int32_t size) {
     // .. takes care of allocation etc.
   }
 };
+
+// Could possibly introduce a debug mode to this that would do bounds checking.
+template <typename T>
+struct Array2Accessor {
+  T *data;
+  int32_t elem_stride0;
+  __host__ __device__ T &operator () (int32_t i, int32_t j) {
+    return data[i * elem_stride0 + j];
+  }
+  Array2Accessor(T *data, int32_t elem_stride0):
+      data(data), elem_stride0(elem_stride0) { }
+  __host__ __device__ Array2Accessor(const Array2Accessor &other) = default;
+};
+
+template <typename T>
+struct ConstArray2Accessor {
+  const T *data;
+  int32_t elem_stride0;
+  __host__ __device__ T operator () (int32_t i, int32_t j) {
+    return data[i * elem_stride0 + j];
+  }
+  Array2Accessor(const T *data, int32_t elem_stride0):
+      data(data), elem_stride0(elem_stride0) { }
+  __host__ __device__ Array2Accessor(const Array2Accessor &other) = default;
+};
+
 
 /*
   Array2 is a 2-dimensional array (== matrix), that is contiguous in the
@@ -139,25 +194,27 @@ class Array2 {
   ContextPtr &Context() const { return region_->context; }
 
   /*  stride on 0th axis, i.e. row stride, but this is stride in *elements*, so
-      we name it 'ElemStride' to distinguish from stride in *bytes* */
+      we name it 'ElemStride' to distinguish from stride in *bytes*.  This
+      will satisfy ElemStride0() >= Dim1(). */
   int32_t ElemStride0() { return elem_stride0_; }
 
-  /*  returns a flat version of this; will copy the data if it was not
-   * contiguous. */
+  /*  returns a flat version of this, appending the rows; will copy the data if
+      it was not contiguous. */
   Array1<T> Flatten();
 
   Array1<T> operator[](int32_t i);  // return a row (indexing on the 0th axis)
 
-  /* Create new array2 with given dimensions.  dim0 and dim1 must be >0. */
+  /* Create new array2 with given dimensions.  dim0 and dim1 must be >0.
+     Data will be uninitialized. */
   Array2(ContextPtr c, int32_t dim0, int32_t dim1);
 
   /* stride on 1st axis is 1 (in elements). */
-  Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t bytes_offset,
+  Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
          RegionPtr region)
       : dim0_(dim0),
         dim1_(dim1),
         elem_stride0_(elem_stride0),
-        byte_offset_(bytes_offset),
+        byte_offset_(byte_offset),
         region_(region) {}
 
   TensorPtr AsTensor();
@@ -170,6 +227,16 @@ class Array2 {
   T *Data() {
     return reinterpret_cast<T *>(reinterpret_cast<char *>(region_->data) +
                                  byte_offset_);
+  }
+
+  // Note: array1 doesn't need an accessor because its Data() pointer functions
+  // as one already.
+  Array2Accessor<T> Accessor() {
+    return Array2Accessor<T>(Data(), elem_stride0_);
+  }
+
+  ConstArray2Accessor<T> Accessor() const {
+    return Array2Accessor<T>(Data(), elem_stride0_);
   }
 
   /* Construct from Tensor.  Required to have 2 axes; will copy if the tensor
@@ -198,6 +265,9 @@ class Array2 {
                          // constructor), will point to an empty
                          // Region.
 };
+
+
+
 
 }  // namespace k2
 

@@ -1,3 +1,5 @@
+// TODO: move some stuff to ragged.h, delete this file.
+
 // k2/csrc/cuda/ragged_shape.h
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
@@ -18,8 +20,13 @@ namespace k2 {
 class RaggedShape2 {
   // return dim on 0th axis.
   int32_t Dim0() const { return row_splits0_.size - 1; }
-  Array1Tpl<int32_t> &RowSplits1() { return row_splits1_; }
-  Array1Tpl<int32_t> &RowIds1();
+
+  Array1<int32_t> &RowSplits1() { return row_splits1_; }
+  Array1<int32_t> &RowIds1();
+
+  Array1<int32_t> Sizes1();
+
+
 
   // Return the *total* size (or dimension) of axis 1, summed across all rows.  Caution: if
   // you're using a GPU this call blocking the first time you call it for a
@@ -55,43 +62,19 @@ Array1<int32_t> GetTotSize2(const std::vector<RaggedShape3*> &src);
 
 class RaggedShape3: public RaggedShape2 {
 
-  RaggedShape3(Array<int32_t> &row_splits1,
-               Array<int32_t> &row_splits2,
+  RaggedShape3(Array1<int32_t> &row_splits1,
+               Array1<int32_t> &row_splits2,
                int32_t cached_size2_ = -1,
-               Array<int32_t> *row_ids1 = nullptr,
-               Array<int32_t> *row_ids2 = nullptr);
-
+               Array1<int32_t> *row_ids1 = nullptr,
+               Array1<int32_t> *row_ids2 = nullptr);
 
   Array1<int32_t> &RowSplits2() { return row_splits2_; }
   Array1<int32_t> &RowIds2();
 
+  Array1<int32_t> Sizes2();
 
-  Array1<int32_t> Sizes2();  // Returns the size of each sub-sub-list, as a list of
-                           // length TotSize1().
-
-  Array1<int32_t> Sizes12();  // Returns the total number of elements in each
-                          // sub-list (i.e. each list-of-lists), as a list of
-                          // length Dim0().
-
-  // Mm, might not use this?
-  auto Sizes2Data() {  // sizes of 2nd level of the array, indexable (i,j) ?
-    int32_t *data1 = row_splits1_.data, *data2 = row_splits2_.data;
-    return __host__ __device__ [data] (int32_t i, int32_t j) {
-                                 int32_t idx2 = data1[i];
-                                 assert(idx2 + j < data1[i+1]);
-                                 return data2[idx2 + 1] - data2[idx2];
-                               };
-  }
-
-  // Mm, might not use this??
-  auto FlatSizes2Data() {  // sizes of 2nd level of the array; an array of
-                           // TotSize1().
-    int32_t *data = row_splits2_.data;
-    return __host__ __device__ [data] (int32_t i) {
-                                 return data[i+1] - data[i];
-                               }
-  };
-
+  // Removes an axis by appending those lists; 'axis' must be 0 or 1
+  RaggedShape2 RemoveAxis(int32_t axis);
 
   int32_t TotSize2() { return row_splits2_[-1]; }
   int32_t MaxSize2();
@@ -110,7 +93,11 @@ class RaggedShape4: public RaggedShape3 {
   int32_t TotSize2() { return row_splits2_[-1]; }
   int32_t MaxSize2();
 
+  // Removes an axis by appending those lists; 'axis' must be 0, 1 or 2.
+  RaggedShape2 RemoveAxis(int32_t axis);
+
   ContextPtr &Context() { return row_splits1_.Context(); }
+
 
   // ...
 };
@@ -140,7 +127,7 @@ RaggedShape2 AppendAxis(const RaggedShape3 &src, int32_t axis);
                  and non-decreasing.
  */
 RaggedShape2 RaggedShape2FromRowIds(int32_t num_rows,
-                                    const Array<int32_t> &row_ids);
+                                    const Array1<int32_t> &row_ids);
 
 
 /* Create ragged3 shape from ragged2 shape and sizes
@@ -199,19 +186,6 @@ RaggedShape4 RaggedShape4Subsampled(const RaggedShape4 &src,
                                     const Renumbering *r2,
                                     const Renumbering *r3);
 
-/*
-  Merge a list of RaggedShape3 to create a RaggedShape4.  This is a rather
-  special case because it combines two issues: creating a list, and transposing,
-  so instead of Dim0() of the result corresponding to src.size(), the
-  dimensions on axis 1 all correspond to src.size().  There is a requirement
-  that src[i]->Size() must all have the same value.
-
-  Viewing the source and result as the shapes of n-dimensional arrays, we will have:
-      result[i,j,k,l] = (*src[j])[i,k,l]
-  (although of course no such operator actually exists at the C++ level).
-
- */
-RaggedShape4 MergeToAxis1(const std::vector<const RaggedShape3*> &src);
 
 /*
   Merge a list of RaggedShape2 to create a RaggedShape3.  This is a rather
@@ -248,14 +222,14 @@ RaggedShape3 RaggedShape3SubsampledFromNumbering(const RaggedShape3 &src,
 
 
 /* Constructs RaggedShape4 from row splits, and sets up row-ids. */
-RaggedShape4 RaggedShape4FromRowSplits(const Array<int32_t> &row_splits1,
-                                       const Array<int32_t> &row_splits2,
-                                       const Array<int32_t> &row_splits3);
+RaggedShape4 RaggedShape4FromRowSplits(const Array1<int32_t> &row_splits1,
+                                       const Array1<int32_t> &row_splits2,
+                                       const Array1<int32_t> &row_splits3);
 
 /* Constructs RaggedShape4 from sizes, and sets up row-splits and row-ids. */
-RaggedShape4 RaggedShape4FromSizes(const Array<int32_t> &sizes1,
-                                   const Array<int32_t> &sizes2,
-                                   const Array<int32_t> &sizes3);
+RaggedShape4 RaggedShape4FromSizes(const Array1<int32_t> &sizes1,
+                                   const Array1<int32_t> &sizes2,
+                                   const Array1<int32_t> &sizes3);
 
 /*
   Construct a Ragged4 from a Ragged3 and a row_splits3..

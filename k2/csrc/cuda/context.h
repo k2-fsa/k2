@@ -26,6 +26,7 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 
 class Context;
 using ContextPtr = std::shared_ptr<Context>;
+constexpr k2_cudaStreamInvalid =~((cudaStream_t)0)
 
 /**
    class Context is the main surface of interaction with external tensor
@@ -63,14 +64,15 @@ class Context : public std::enable_shared_from_this<Context> {
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
   virtual DeviceType GetDeviceType() const = 0;
 
-  // Return the cuda stream associated with this context.  Once we support
-  // multiple GPUs, this is expected to also set the GPU to be the correct one.
+  // Returns the device id that the context is bound to, note we always return
+  // -1 for CPU context. For GPU context, the sub-class will override this.
+  // Note: we may not actually need this for a while.  For now it is not used.
+  virtual int GetDeviceId() const { return -1; }
+
+  // Return the cuda stream associated with this context, or k2_cudaStreamInvalid
+  // if this is not a CUDA context.
   virtual cudaStream_t GetCudaStream() const {
-    LOG(FATAL) << "Code error: not a CUDA context\n";
-    // the program has been terminated by above `LOG(FATAL)`, below code is
-    // just to suppress build warning `no return value`
-    cudaStream_t stream = nullptr;
-    return stream;
+    return k2_cudaStreamInvalid;
   }
 
   /*
@@ -81,8 +83,8 @@ class Context : public std::enable_shared_from_this<Context> {
                             case NULL will be returned.   Let's assume the
                             alignment of the returned memory is at least as
                             strict as for malloc() with the same values.
-        @param [out] decoder_context   If more information than the returned
-                            pointer is required in order to deallocat this
+        @param [out] deleter_context   If more information than the returned
+                            pointer is required in order to deallocate this
                             memory, then that information will be supplied
                             as 'deleter_context'. In some cases this will
                             be zero.
@@ -117,7 +119,7 @@ class Context : public std::enable_shared_from_this<Context> {
     any GPU-to-CPU transfers have completed.  (Note: we may end up using
     something more fine-grained.)
    */
-  virtual void Sync() {}
+  virtual void Sync() const {}
 };
 
 /*
@@ -140,7 +142,7 @@ class Context : public std::enable_shared_from_this<Context> {
      }
      br.Wait();
 
-  This is necessariy because if you do something that isn't just a simple
+  This is necessary because if you do something that isn't just a simple
   Eval() but requires, for instance, copying a number back to the CPU,
   just parallelizing the GPU streams using c.Child() isn't enough because
   it will synchronize in the loop.
@@ -251,22 +253,13 @@ ContextPtr GetPinnedContext();
                           region will have bytes_used == num_bytes; if the user
                           wants to change this they can do it afterward.
 */
-RegionPtr NewRegion(ContextPtr &context, size_t num_bytes) {
-  // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
-  // overwrite if needed.
-  std::shared_ptr<Region> ans = std::make_shared<Region>();
-  ans->context = context->shared_from_this();
-  ans->data = context->Allocate(num_bytes, &ans->deleter_context);
-  ans->num_bytes = num_bytes;
-  ans->bytes_used = num_bytes;
-  return ans;
-}
+RegionPtr NewRegion(ContextPtr &context, size_t num_bytes);
 
 /*
   Convenience wrapper for NewRegion() that takes the context from a provided
   region.
  */
-std::shared_ptr<Region> NewRegion(Region &region, size_t num_bytes) {
+inline std::shared_ptr<Region> NewRegion(Region &region, size_t num_bytes) {
   return NewRegion(region.context, num_bytes);
 }
 
@@ -285,17 +278,37 @@ __global__ void eval_lambda(int32_t n, LambdaT lambda) {
   }
 }
 
+template <typename LambdaT>
+__global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
+  // actually threadIdx.y will always be 1 for now so we could drop that part of
+  // setting i..
+  int i = blockIdx.y * blockDim.y + threadIdx.y;
+  int j = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < m && j < n) {
+    lambda(i, j);
+  }
+}
+
+
 inline int32_t NumBlocks(int32_t size, int32_t block_size) {
   return (size + block_size - 1) / block_size;
 }
 
-template <typename ContextPtrType,  // Context*  or ContextPtr ==
+<<<<<<< HEAD
+
+/* Eval() will evaluate lambda(i) for 0 <= i < n, on the appropriate
+   device (CPU or GPU). */
+template<typename LambdaT>
+void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
+=======
+template <typename ContextPtrType,  // Context* or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
+>>>>>>> upstream/cuda_draft
   if (n <= 0) return;  // actually it would be an error if n < 0.
   DeviceType t = c->GetDeviceType();
-  if (t == kCpu) {
+  if (stream == k2_cudaStreamInvalid) {
     // TODO: if n is very large, we'll eventually support running this with
     // multiple threads.
     for (int32_t i = 0; i < n; i++) {
@@ -305,14 +318,100 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
     assert(c == kCuda);
     int dim_block = 256;
     int dim_grid = NumBlocks(n, dim_block);
-    if (dim_grid == 1) dim_block = n;
     eval_lambda<LambdaT>
-        <<<dim_block, dim_grid, 0, c->GetCudaStream()>>>(n, lambda);
+<<<<<<< HEAD
+        <<<dim_block, dim_grid, 0, stream>>>(n, lambda);
+=======
+        <<<dim_grid, dim_block, 0, c->GetCudaStream()>>>(n, lambda);
+>>>>>>> upstream/cuda_draft
+
+    cudaError_t err = cudaGetLastError();
+    assert(err == cudaSuccess);
+  }
+}
+
+template <typename ContextPtrType,  // Context*  or ContextPtr ==
+                                    // std::shared_ptr<Context>
+          typename LambdaT>
+void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
+  Eval(c->GetCudaStream(), n, lambda);
+}
+
+
+/*
+  This is a form of Eval() where the lambda takes  two arguments.
+
+  Eval2() will evaluate lambda(i, j) for 0 <= i < m and 0 <= j < n,
+  on the appropriate  device (CPU or GPU).  The second index, n,
+  is supposed to be the faster-varying one, the index for which
+  threads in the same warp will tend to have different values.
+  (Of course this doesn't affect the semantics of the operation).
+
+*/
+template <typename LambdaT>
+void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
+  if (m <= 0 || n <= 0) return;  // actually it would be an error if m < 0 or n < 0.
+  DeviceType t = c->GetDeviceType();
+  if (stream == k2_cudaStreamInvalid) {
+    // TODO: if n is very large, we'll eventually support running this with
+    // multiple threads.
+    for (int32_t i = 0; i < m; i++) {
+      for (int32_t j = 0; j < n; j++) {
+        lambda(i, j);
+      }
+    }
+  } else {
+    // this way of choosing block and grid sizes is of course not very smart, we
+    // can look at this later on, possibly referring to Kaldi's
+    // GetBlockSizesForSimpleMatrixOperation().
+    dim3 dim_block(256,1,1);
+    dim3 dim_grid(NumBlocks(n, dim_block.x), m, 1);
+    if (dim_grid.x == 1) dim_block.x = n;
+
+    eval_lambda2<LambdaT>
+        <<<dim_block, dim_grid, 0, stream>>>(m, n, lambda);
 
     cudaError_t err = cudaGetLastError();
     assert(err == 0);
   }
 }
+
+inline template <typename ContextPtrType,  // Context*  or ContextPtr ==
+                                    // std::shared_ptr<Context>
+          typename LambdaT>
+inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
+  Eval2(c->GetCudaStream(), m, n, lambda);
+}
+
+
+/*
+  Class ParallelRunner allows you to invoke Eval(), but in parallel.
+  It works for CUDA and CPU, but for CPU it currently just executes things
+  sequentially.  It works by creating a separate stream each time you invoke
+  Eval(), and using CUDA events to ensure correct ordering of kernels
+  with respect to the CUDA stream in the supplied context.
+
+  TODO: properly implement this.  Right now it doesn't background them
+  at all, just forwarding them to the sequential versions of Eval().
+ */
+class ParallelRunner {
+ public:
+  ParallelRunner(ContextPtrType c): c_(c) { }
+
+  // create a new stream, that first syncs with stream of c_ via an event.  The destructor
+  // will cause the stream of c_ to wait on this stream in the destructor of `this`
+  // You can pass this into the Eval() and Eval2() functions, or invoke kernels
+  // directly with it.
+  cudaStream_t NewStream();
+
+  void Finish();  // like calling destructor manually.
+
+  private:
+  ContextPtr c_;
+  // TODO: list of events to wait on, maybe CUDA threads.
+};
+
+
 
 // OK, want to do:
 // ContextPtr c = ...;  ///
@@ -359,8 +458,8 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
 //          mark the Task as finished.
 //
 //    - Mark all output regions as depending on that new Task as well as
-//      any preceding Tasks running in those regions that have not yet terminated
-//      (assuming this Task didn't depend on those...)
+//      any preceding Tasks running in those regions that have not yet
+//      terminated (assuming this Task didn't depend on those...)
 //
 //    -
 //
@@ -377,7 +476,6 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
 //
 // c_.Eval()...
 //
-
 
 }  // namespace k2
 
