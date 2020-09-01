@@ -141,11 +141,11 @@ class Array1 {
  private:
   int32_t dim_;
   int32_t byte_offset_;
-  RegionPtr region_;  // Region that `data` is a part of.  Device
-                      // type is stored here.  For an Array1 with
-                      // zero size (e.g. created using empty
-                      // constructor), will point to an empty
-                      // Region.
+  RegionPtr region_;  // Region that `data` is a part of.  Device type is stored
+                      // here.  Will be NULL if Array1 was created with default
+                      // constructor (invalid array!) but may still be non-NULL
+                      // if dim_ == 0; this allows it to keep track of the
+                      // context.
 
   void Init(DeviceType d, int32_t size) {
     // .. takes care of allocation etc.

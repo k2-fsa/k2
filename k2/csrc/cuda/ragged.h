@@ -119,7 +119,7 @@ class RaggedShape {
   // fixed length array (more efficient)
 
   // indexed by axis-index minus one... axis 0 is special, its dim
-  // equas axes_[0].row_splits.Dim()-1.
+  // equals axes_[0].row_splits.Dim()-1.
   std::vector<RaggedShapeDim> axes_;
 };
 
