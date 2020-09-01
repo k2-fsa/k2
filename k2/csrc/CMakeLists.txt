@@ -1,3 +1,5 @@
+include_directories(${CMAKE_SOURCE_DIR})
+
 # please sort the source files alphabetically
 add_library(fsa
   arcsort.cc

@@ -26,6 +26,7 @@ set(cuda_tests
   ops_test
   tensor_test
   utils_test
+  debug_test
 )
 
 foreach(name IN LISTS cuda_tests)
