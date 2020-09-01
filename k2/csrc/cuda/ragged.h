@@ -13,7 +13,8 @@ namespace k2 {
 
 // Caution, RaggedShapeDim is mostly for internal use and users should not
 // generally interact with it directly.
-// Note: row_splits is of size num_rows + 1 and row_ids is of size num_elements + 1.
+// Note: row_splits is of size num_rows + 1 and row_ids is of size num_elements
+// + 1.
 struct RaggedShapeDim {
   // Search for "row_splits concept" in utils.h for explanation
   Array1<int32_t> row_splits;
@@ -28,26 +29,26 @@ struct RaggedShapeDim {
   int32_t cached_tot_size;
 };
 
-
 class RaggedShape {
   int32_t Dim0() {
     CHECK_GT(0, axes_.size());
     return axes_[0].row_splits.Dim() - 1;
   }
-  /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and for axis=0
-     the returned value is the same as Dim0().  */
+  /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and
+     for axis=0 the returned value is the same as Dim0().  */
   inline int32_t TotSize(int32_t axis) {
     CHECK_LE(static_cast<size_t>(axis), axes_.size() + 1);
-    if (axis == 0) return Dim0();
+    if (axis == 0)
+      return Dim0();
     else {
-      RaggedShapeDim &rsd = axes_[axis-1];
+      RaggedShapeDim &rsd = axes_[axis - 1];
       if (rsd.cached_tot_size >= 0) {
         return rsd.cached_tot_size;
       } else {
         // if we had row_ids set up, we should have set cached_tot_size.
         CHECK_EQ(rsd.row_ids.Dim(), 0);
         CHECK_GT(rsd.row_splits.Dim(), 0);
-        rsd.cached_tot_size = rsd.row_splits[rsd.row_splits.Dim()-1];
+        rsd.cached_tot_size = rsd.row_splits[rsd.row_splits.Dim() - 1];
         return rsd.cached_tot_size;
       }
     }
@@ -55,7 +56,7 @@ class RaggedShape {
 
   // Returns the number of elements that a ragged array with this shape would
   // have.
-  inline int32_t NumElements() { return TotSize(NumAxes()-1); }
+  inline int32_t NumElements() { return TotSize(NumAxes() - 1); }
 
   /*
     Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.
@@ -97,7 +98,6 @@ class RaggedShape {
 
   RaggedShape(const RaggedShape &other) = default;
 
-
   /*
     It is an error to call this if this.NumAxes() < 2.  This will return
     a RaggedShape with one fewer axis, containing only the elements of
@@ -110,10 +110,9 @@ class RaggedShape {
    */
   RaggedShape Index(int32_t axis, int32_t value);
 
-
   RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b);
 
-  RaggedShape(std::vector<RaggedShapeDim> &axes): axes_(axes) { }
+  RaggedShape(std::vector<RaggedShapeDim> &axes) : axes_(axes) {}
 
   // TODO: could probably do away with the std::vector and have a max size and a
   // fixed length array (more efficient)
@@ -156,7 +155,7 @@ struct Ragged {
   Array1<T> values;
 
   Ragged(RaggedShape &shape, Array1<T> &values) : shape(shape), values(values) {
-    CHECK_EQ(shape.TotSize(shape.NumAxes()-1), values.Dim());
+    CHECK_EQ(shape.TotSize(shape.NumAxes() - 1), values.Dim());
   }
 
   // Note: 'values' will be uninitialized.
@@ -164,7 +163,7 @@ struct Ragged {
       : shape(shape),
         values(shape.Context(), shape.TotSize(shape.NumAxes() - 1)) {}
 
-  Context *Context() { return values.Context(); }
+  ContextPtr Context() { return values.Context(); }
 
   /*
     It is an error to call this if this.NumAxes() < 2.  This will return
@@ -177,7 +176,6 @@ struct Ragged {
       @param [in]  i     Index to select
    */
   Ragged<T> Index(int32_t axis, int32_t value);
-
 };
 
 /*
@@ -186,8 +184,7 @@ struct Ragged {
   Note: all dimensions and tot-sizes preceding that will remain the
   same, which might give rise to empty lists.
  */
-RaggedShape SubsampleRaggedShape(RaggedShape &src,
-                                 Renumbering &renumbering);
+RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
 
 /*
   Stack a list of Ragged arrays to create a Ragged array with one more axis.
@@ -223,8 +220,7 @@ Ragged<T> Stack(int32_t axis, int32_t src_size, Ragged<T> **src);
     @param [in]  row_ids   The row-ids for axis 1; must be nonnegative
                            and non-decreasing.
  */
-RaggedShape Ragged2ShapeFromRowIds(int num_rows,
-                                   Array1<int32_t> &row_ids);
+RaggedShape Ragged2ShapeFromRowIds(int num_rows, Array1<int32_t> &row_ids);
 
 /*
   Construct a ragged shape with one more axis than the supplied shape, given
@@ -236,32 +232,27 @@ RaggedShape Ragged2ShapeFromRowIds(int num_rows,
                            0 <= i < shape.TotSize(Shape.NumAxes()-1),
                            with row_ids.size() == elems.size().
  */
-RaggedShape RaggedShapeFromRowIds(RaggedShape &shape,
-                                  Array1<int> &row_ids);
+RaggedShape RaggedShapeFromRowIds(RaggedShape &shape, Array1<int> &row_ids);
 
 /*
   Construct a RaggedShape with 2 axes.
-     @param [in] row_splits   row_splits, or NULL (at least one of this and row_ids must
-                              be non-NULL).  Note: the dimension of row_splits
-                              must equal the number of rows plus one; row_splits[0]
-                              must be zero and the array must be non-decreasing;
-                              and the last element of row_splits is the total
-                              number of elements in the ragged matrix.
-     @param [in] row_ids      row_splits, or NULL (at least one of this and row_ids must
-                              be non-NULL).  Note: the dimension of row_splits
-                              must equal the number of elements plus one;
-                              the array must be non-decreasing;
-                              and the last element of row_splits equals the number of
-                              rows.  If both row_ids and row_splits are supplied, we require
-                              row_splits[row_ids[i]] <= i < row_splits[row_ids[i]+1].
+     @param [in] row_splits   row_splits, or NULL (at least one of this and
+  row_ids must be non-NULL).  Note: the dimension of row_splits must equal the
+  number of rows plus one; row_splits[0] must be zero and the array must be
+  non-decreasing; and the last element of row_splits is the total number of
+  elements in the ragged matrix.
+     @param [in] row_ids      row_splits, or NULL (at least one of this and
+  row_ids must be non-NULL).  Note: the dimension of row_splits must equal the
+  number of elements plus one; the array must be non-decreasing; and the last
+  element of row_splits equals the number of rows.  If both row_ids and
+  row_splits are supplied, we require row_splits[row_ids[i]] <= i <
+  row_splits[row_ids[i]+1].
      @param [in] cached_tot_size   Total number of elements in the ragged
-                              matrix, or -1 if the user does not wish to supply it now.
-                              (If >= 0, must equal `(*row_splits)[row_splits.Size()-1]`
-                              if row_splits is non-NULL, or row_ids->Dim()-1 if row_ids
-                              is non-NULL.
+                              matrix, or -1 if the user does not wish to supply
+  it now. (If >= 0, must equal `(*row_splits)[row_splits.Size()-1]` if
+  row_splits is non-NULL, or row_ids->Dim()-1 if row_ids is non-NULL.
 */
-RaggedShape RaggedShape2(Array1<int32_t> *row_splits,
-                         Array1<int32_t> *row_ids,
+RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
                          int32_t cached_tot_size);
 
 /*
@@ -275,9 +266,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits,
                  will be equal to a.NumAxes() + b.NumAxes() - 1 (the last
                  axis of a and the first axis of b are combined).
  */
-RaggedShape ComposeRaggedShapes(RaggedShape &a,
-                                RaggedShape &b);
-
+RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b);
 
 /*
   Construct a RaggedShape with 3 axes.  For N=1 and 2 respectively:
@@ -307,8 +296,6 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                        set.
  */
 RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes);
-
-
 
 }  // namespace k2
 
