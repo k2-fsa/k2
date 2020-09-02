@@ -84,6 +84,7 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   // an idx_0 to idx_minus1, where idx_minus1 is always 0 and 0 <= idx0 <
   // Dim0().
 
+<<<<<<< HEAD
   // TODO(dan): implement this..
 
 }
@@ -140,6 +141,12 @@ RaggedShape Renumber(const RaggedShape &src, Array1<int32_t> &new2old) {
 }
 
 
+=======
+
+
+}
+
+>>>>>>> upstream/cuda_draft
 
 /*
   TODO: fix this documentation...

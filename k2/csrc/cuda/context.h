@@ -303,9 +303,9 @@ void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
       lambda(i);
     }
   } else {
-    int dim_block = 256;
-    int dim_grid = NumBlocks(n, dim_block);
-    eval_lambda<LambdaT><<<dim_block, dim_grid, 0, stream>>>(n, lambda);
+    int block_size = 256;
+    int grid_size = NumBlocks(n, block_size);
+    eval_lambda<LambdaT><<<grid_size, block_size, 0, stream>>>(n, lambda);
     cudaError_t err = cudaGetLastError();
     assert(err == cudaSuccess);
   }
@@ -363,14 +363,13 @@ inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
 }
 
 
-// This is for use by ParallelRunner and Context.  Users probably should not interact
-// with this directly.  The idea is that the Context object will call this to
-// possibly override its default thread.
-// The
+// This is for use by ParallelRunner and Context.  Users probably should not
+// interact with this directly.  The idea is that the Context object will call
+// this to possibly override its default thread. The
 class CudaStreamOverride {
  public:
   inline cudaStream_t OverrideStream(cudaStream_t stream) {
-    if (stream_override_ != 0 && stream != k2_cudaStreamInvalid)
+    if (stream_override_ != 0 && stream != kCudaStreamInvalid)
       return stream_override_;
     else
       return stream;
@@ -384,13 +383,14 @@ class CudaStreamOverride {
     stack_.pop_back();
   }
 
+
   CudaStreamOverride(): stream_override_(0x0) { }
 
   cudaStream_t stream_override_;
   std::vector<cudaStream_t> stack_;
 };
-thread_local CudaStreamOverride g_stream_override;
 
+static thread_local CudaStreamOverride g_stream_override;
 
 /*
   Class ParallelRunner allows you to invoke Eval(), but in parallel.

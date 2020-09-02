@@ -176,6 +176,7 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
                            we only support axis == 0.
       @return      Returns the appended RaggedShape.
 */
+<<<<<<< HEAD
 RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis);
 
 /*
@@ -194,6 +195,15 @@ Array<int32_t*> GetRowSpltsPtrs(RaggedShape &src);
      @param [in] new2old  Mapping from new to old numbering of array, of
                           length src.Dim0(), on the same device as `src`;
                           must contain the numbers
+=======
+RaggedShape Append(int32_t num_srcs, const RaggedShape **src, int32_t axis);
+
+/*
+  Renumber axis 0 of a ragged shape
+     @param [in] src      Shape to renumber
+     @param [in] new2old  Mapping from new to old numbering of array, of
+                          length src.Dim0(); must contain the numbers
+>>>>>>> upstream/cuda_draft
                           0 through src.Dim0() - 1 in some order.
      @return              Returns the renumbered shape.  Will satisfy:
                           ret[i,j,k] = src[new2old[i],j,k].  (Note, this is
@@ -356,5 +366,8 @@ RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes);
 #include "k2/csrc/cuda/ragged_inl.h"
 
 }  // namespace k2
+
+// TODO(dan), include guard maybe.
+#include "k2/csrc/cuda/ragged_inl.h"
 
 #endif  // K2_CSRC_CUDA_RAGGED_H_
