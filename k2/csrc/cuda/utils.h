@@ -369,9 +369,10 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
   this after calling GetTaskRedirect().
 
           @param [in] stream   Stream to execute this in (or k2_cudaStreamInvalid for CPU).
-          @param [in] num_tasks  The num_tasks provided to GetTaskRedirect().
-          @param [in] redirect  The array written to by GetTaskRedirect().  Must be
-                               of length num_tasks * 2.
+          @param [in] num_jobs  size of the array of tasks; this will be equal to
+                               num_tasks * 2 where `num_tasks` is hte number of
+                               tasks given to GetTaskRedirect().
+          @param [in] redirect  The array written to by GetTaskRedirect().
           @param [in] min_threads_per_task This would typically be something like 8, 16 or 32.
                                It is the smallest allowed num_threads that we allocate
                                for each task; the number of threads per job is a multiple of
@@ -394,7 +395,7 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
                                number of `work items` per thread this code aims
                                for when deiding the threads_per_job.
            @param [in] include_final_task  If true, the lambda will be called once
-                               with task_idx=num_tasks, num_threads=1, thread_idx=0;
+                               with task_idx=num_tasks=num_jobs/2, num_threads=1, thread_idx=0;
                                This happens to be useful quite a bit.
            @param [in] lambda  The lambda expression to run; this is to be run
                                as, lambda(task_idx, num_threads_this_task, thread_idx), which
@@ -408,7 +409,7 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
      to do a 'one-off task' (invoked once in the resulting kernel).
  */
 emplate<typename LambdaT, typename lambdaU>
-  void EvalWithRedirect(cudaStream_t stream, int32_t num_tasks,
+  void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
                         TaskRedirect *redirect, int32_t min_threads_per_job,
                         int32_t tot_work, int32_t target_num_loops,
                         bool include_final_task, LambdaT &lambda) {

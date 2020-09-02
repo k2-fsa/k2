@@ -384,6 +384,33 @@ inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
 }
 
 
+// This is for use by ParallelRunner and Context.  Users probably should not interact
+// with this directly.  The idea is that the Context object will call this to
+// possibly override its default thread.
+// The
+class CudaThreadOverride {
+  inline cudaStream_t OverrideThread(cudaStream_t thread) {
+    if (thread_override_ != 0 && thread != k2_cudaStreamInvalid)
+      return thread_override_;
+    else
+      return thread;
+  }
+  void Push(cudaStream_t thread) {
+    stack_.push_back(thread);
+    thread_override_ = thread;
+  }
+  void Pop() {
+    assert(!stack_.empty());
+    stack_.pop_back();
+  }
+
+  CudaThreadOverride(): thread_override_(0x0) { }
+
+  cudaThread_t thread_override_;
+  std::vector<cudaThread_t> stack_;
+};
+thread_local CudaThreadOverride thread_override;
+
 /*
   Class ParallelRunner allows you to invoke Eval(), but in parallel.
   It works for CUDA and CPU, but for CPU it currently just executes things
@@ -410,6 +437,7 @@ class ParallelRunner {
   ContextPtr c_;
   // TODO: list of events to wait on, maybe CUDA threads.
 };
+
 
 
 
