@@ -8,6 +8,7 @@
 #define K2_CSRC_CUDA_RAGGED_H_
 
 #include "k2/csrc/cuda/algorithms.h"
+#include "k2/csrc/cuda/array.h"
 
 namespace k2 {
 
@@ -127,14 +128,13 @@ class RaggedShape {
   Similar to TF/PyTorch's Stack.  The result will have Dim0 == src_size.   All
   the source RaggedShapes must have the same NumAxes().
 
-
+     @param [in] src_size  The number of `RaggedShape`s in `src`
+     @param [in] src    The shapes to be stacked
      @param [in] axis   The new axis whose dimension will equal src_size.
                         CAUTION: only axis == 0 and axis == 1 are supported
                         right now, and for the axis==1 case we have a
-                        requirement that all the src->Dim0() return the
+                        requirement that all the src[i]->Dim0() have the
                         same value.
-     @param [in] src_size  The number of `RaggedShape`s in `src`
-     @param [in] src    The shapes to be stacked
 
      @return  The appended result.
 
@@ -147,7 +147,52 @@ class RaggedShape {
         and these are just the shapes of arrays..).
         See also the version of Stack for class Ragged.
  */
-RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape **src);
+RaggedShape Stack(int32_t src_size, const RaggedShape **src, int32_t axis);
+
+/*
+  Insert a new axis at position `axis`, with 0 <= axis <= src.NumAxes(), for
+  which the only allowed index will be 0 (which is another way of saying: all
+  list sizes on that axis will be 1).
+
+     @param [in] src   Source shape.  Row-ids and Row-splits of answer will
+                      share memory with those in `src` (although it goes
+                      without saying).
+     @param [in] axis  Axis to insert.
+
+  Note: you probably shouldn't be using this very often; if you are using this,
+  you may be thinking in a PyTorch-y way but you should be relying on things
+  like Eval() with custom lambdas more.  Read algorithms like in compose.cc to
+  understand why.  Also: axis==0 is probably the only really useful case.
+ */
+RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
+
+/*
+   Append a list of RaggedShape to form a single RaggedShape
+
+      @param [in] num_srcs Number of source shapes to append
+      @param [in] src      Array of sources to append
+      @param [in] axis     Axis to append them on.   Previous axes must
+                           have the same shape!   CAUTION: currently
+                           we only support axis == 0.
+      @return      Returns the appended RaggedShape.
+*/
+RaggedShape Append(int32_t num_srcs, const RaggedShape **src, int32_t axis);
+
+
+/*
+  Renumber axis 0 of a ragged shape
+     @param [in] src      Shape to renumber
+     @param [in] new2old  Mapping from new to old numbering of array, of
+                          length src.Dim0(); must contain the numbers
+                          0 through src.Dim0() - 1 in some order.
+     @return              Returns the renumbered shape.  Will satisfy:
+                          ret[i,j,k] = src[new2old[i],j,k].  (Note, this is
+                          not actual C++ code, it represents a conceptual
+                          indexing operator).
+*/
+RaggedShape Renumber(const RaggedShape &src, Array1<int32_t> &new2old);
+
+
 
 template <typename T>
 struct Ragged {
@@ -188,15 +233,15 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
 
 /*
   Stack a list of Ragged arrays to create a Ragged array with one more axis.
-  Similar to TF/PyTorch's Stack.  The result will have Dim0 == src_size.  All
+  Similar to TF/PyTorch's Stack.  The result will have Dim0 == num_srcs.  All
   the source Ragged arrays' shapes must have the same NumAxes().
 
-     @param [in] axis   The new axis whose dimension will equal src_size.
+     @param [in] axis   The new axis whose dimension will equal num_srcs.
               CAUTION: only axis == 0 and axis == 1 are supported right now,
               and for the axis==1 case we have a requirement that all the
               src->Dim0() return the same value.
 
-     @param [in] src_size  The number of `RaggedShape`s in `src`
+     @param [in] num_srcs  The number of `RaggedShape`s in `src`
      @param [in] src    The shapes to be stacked
      @return  The appended result.
 
@@ -207,7 +252,7 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
           result[i,j,k,l] = (*src[j])[i,k,l]
  */
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t src_size, Ragged<T> **src);
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
 
 /*
   Create a RaggedShape from an array of row-ids.  (which maps each element to
@@ -296,6 +341,11 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                        set.
  */
 RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes);
+
+
+
+// TODO(dan), include guard maybe.
+#include "k2/csrc/cuda/ragged_inl.h"
 
 }  // namespace k2
 

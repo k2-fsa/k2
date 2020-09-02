@@ -362,6 +362,36 @@ inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
   Eval2(c->GetCudaStream(), m, n, lambda);
 }
 
+
+// This is for use by ParallelRunner and Context.  Users probably should not interact
+// with this directly.  The idea is that the Context object will call this to
+// possibly override its default thread.
+// The
+class CudaStreamOverride {
+ public:
+  inline cudaStream_t OverrideStream(cudaStream_t stream) {
+    if (stream_override_ != 0 && stream != k2_cudaStreamInvalid)
+      return stream_override_;
+    else
+      return stream;
+  }
+  void Push(cudaStream_t stream) {
+    stack_.push_back(stream);
+    stream_override_ = stream;
+  }
+  void Pop(cudaStream_t stream) {
+    assert(!stack_.empty() && stack_.back() == stream);
+    stack_.pop_back();
+  }
+
+  CudaStreamOverride(): stream_override_(0x0) { }
+
+  cudaStream_t stream_override_;
+  std::vector<cudaStream_t> stack_;
+};
+thread_local CudaStreamOverride g_stream_override;
+
+
 /*
   Class ParallelRunner allows you to invoke Eval(), but in parallel.
   It works for CUDA and CPU, but for CPU it currently just executes things
@@ -381,13 +411,19 @@ class ParallelRunner {
   // destructor will cause the stream of c_ to wait on this stream in the
   // destructor of `this` You can pass this into the Eval() and Eval2()
   // functions, or invoke kernels directly with it.
+  //
+  // NOTE: this will also push the stream onto the stack g_stream_override
+  // (after popping that of any previous stream that this class generated)
+  // so that you won't need to directly pass this into Eval(); the context
+  // will call CudaStreamOverride::OverrideStream() and replace it
+  // with this stream automatically.
   cudaStream_t NewStream();
 
   void Finish();  // like calling destructor manually.
 
  private:
   ContextPtr c_;
-  // TODO: list of events to wait on, maybe CUDA threads.
+  // TODO: list of events to wait on, maybe CUDA streamss.
 };
 
 // OK, want to do:

@@ -162,8 +162,10 @@ struct Array2Accessor {
   __host__ __device__ T &operator()(int32_t i, int32_t j) {
     return data[i * elem_stride0 + j];
   }
+
+  T *Row(int32_t i) { return data + elem_stride0 * i; }
   Array2Accessor(T *data, int32_t elem_stride0)
-      : data(data), elem_stride0(elem_stride0) {}
+      : data(data), elem_stride0(elem_stride0) { }
   Array2Accessor(const Array2Accessor &other) = default;
 };
 

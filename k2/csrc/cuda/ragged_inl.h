@@ -9,6 +9,10 @@
 
 namespace k2 {
 
+
+
+
+
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src) {
   CHECK_GT(src_size, 0);  // can later relax this, maybe
