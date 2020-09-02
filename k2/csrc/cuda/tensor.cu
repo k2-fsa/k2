@@ -89,7 +89,7 @@ Tensor::Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims)
 }
 
 Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
-               size_t bytes_offset)
+               int32_t bytes_offset)
     : dtype_(type), shape_(shape), data_(region), bytes_offset_(bytes_offset) {
   int32_t storage_size = shape_.StorageSize();
   int32_t element_size = TraitsOf(dtype_).NumBytes();

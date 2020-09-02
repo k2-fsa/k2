@@ -178,7 +178,6 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
 */
 RaggedShape Append(int32_t num_srcs, const RaggedShape **src, int32_t axis);
 
-
 /*
   Renumber axis 0 of a ragged shape
      @param [in] src      Shape to renumber
@@ -191,8 +190,6 @@ RaggedShape Append(int32_t num_srcs, const RaggedShape **src, int32_t axis);
                           indexing operator).
 */
 RaggedShape Renumber(const RaggedShape &src, Array1<int32_t> &new2old);
-
-
 
 template <typename T>
 struct Ragged {
@@ -342,11 +339,9 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
  */
 RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes);
 
-
+}  // namespace k2
 
 // TODO(dan), include guard maybe.
 #include "k2/csrc/cuda/ragged_inl.h"
-
-}  // namespace k2
 
 #endif  // K2_CSRC_CUDA_RAGGED_H_

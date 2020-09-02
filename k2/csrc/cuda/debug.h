@@ -22,8 +22,8 @@
 #include <device_launch_parameters.h>
 #include <driver_types.h>
 
-#include <cstdio>
 #include <cassert>
+#include <cstdio>
 
 namespace k2 {
 
@@ -66,7 +66,14 @@ namespace k2 {
  * K2_CHECK_EQ(1, 1);
  * @endcode
  */
-#define K2_CHECK_EQ(a, b) assert( a == b )
+#define K2_CHECK_EQ(a, b) assert((a) == (b))
+
+#define K2_CHECK_NE(a, b) assert((a) != (b))
+#define K2_CHECK_LE(a, b) assert((a) <= (b))
+#define K2_CHECK_LT(a, b) assert((a) < (b))
+#define K2_CHECK_GE(a, b) assert((a) >= (b))
+#define K2_CHECK_GT(a, b) assert((a) > (b))
+#define K2_CHECK(exp) assert((exp))
 
 /**
  * @fn
@@ -89,30 +96,24 @@ namespace k2 {
  * @endcode
  */
 __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
-    cudaError_t error,
-    const char *filename,
-    int line,
-    bool abort = true) {
+    cudaError_t error, const char *filename, int line, bool abort = true) {
   if (cudaSuccess != error) {
-  #ifndef __CUDA_ARCH__
-    fprintf(stderr, "CUDA error ID=%d, NAME=%s, [%s, %d]: %s\n",
-            error, cudaGetErrorName(error),
-            filename, line,
-            cudaGetErrorString(error));
+#ifndef __CUDA_ARCH__
+    fprintf(stderr, "CUDA error ID=%d, NAME=%s, [%s, %d]: %s\n", error,
+            cudaGetErrorName(error), filename, line, cudaGetErrorString(error));
     fflush(stderr);
     if (abort) {
       exit(error);
     }
-  #elif __CUDA_ARCH__ >= 200
-    printf("CUDA error ID=%d, NAME=%s, "
-           "[block (%d,%d,%d) thread (%d,%d,%d), %s, %d]: %s\n",
-           error, cudaGetErrorName(error),
-           blockIdx.x, blockIdx.y, blockIdx.z,
-           threadIdx.x, threadIdx.y, threadIdx.z,
-           filename, line,
-           cudaGetErrorString(error));
+#elif __CUDA_ARCH__ >= 200
+    printf(
+        "CUDA error ID=%d, NAME=%s, "
+        "[block (%d,%d,%d) thread (%d,%d,%d), %s, %d]: %s\n",
+        error, cudaGetErrorName(error), blockIdx.x, blockIdx.y, blockIdx.z,
+        threadIdx.x, threadIdx.y, threadIdx.z, filename, line,
+        cudaGetErrorString(error));
     if (abort) {
-      __threadfence();         // ensure memory write before trap
+      __threadfence();  // ensure memory write before trap
       /**
        * kill kernel (all threads) with error.
        * It may cause context destructed.
@@ -121,7 +122,7 @@ __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
        */
       asm("trap;");
     }
-  #endif
+#endif
   }
   return error;
 }
@@ -143,7 +144,7 @@ __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
  * K2_CUDA_CHECK_ERROR(error = cudaGetLastError());
  * @endcode
  */
-#define K2_CUDA_CHECK_ERROR(e, bAbort...)                            \
+#define K2_CUDA_CHECK_ERROR(e, bAbort...) \
   ::k2::K2CudaDebug_((cudaError_t)(e), __FILE__, __LINE__, ##bAbort)
 
 /**
@@ -168,18 +169,18 @@ __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
  * @endcode
  */
 #ifndef NDEBUG
-  #define K2_CUDA_SAFE_CALL(...)                     \
-    do {                                             \
-      (__VA_ARGS__);                                 \
-      cudaDeviceSynchronize();                       \
-      K2_CUDA_CHECK_ERROR(cudaGetLastError(), true); \
-    } while (0)
+#define K2_CUDA_SAFE_CALL(...)                     \
+  do {                                             \
+    (__VA_ARGS__);                                 \
+    cudaDeviceSynchronize();                       \
+    K2_CUDA_CHECK_ERROR(cudaGetLastError(), true); \
+  } while (0)
 #else
-  #define K2_CUDA_SAFE_CALL(...)                     \
-    do {                                             \
-      (__VA_ARGS__);                                 \
-      K2_CUDA_CHECK_ERROR(cudaGetLastError(), true); \
-    } while (0)
+#define K2_CUDA_SAFE_CALL(...)                     \
+  do {                                             \
+    (__VA_ARGS__);                                 \
+    K2_CUDA_CHECK_ERROR(cudaGetLastError(), true); \
+  } while (0)
 #endif
 
 /**
@@ -197,12 +198,12 @@ __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
  * @endcode
  */
 #ifndef __CUDA_ARCH__
-  #define K2_DLOG(format, ...) printf(format, __VA_ARGS__)
+#define K2_DLOG(format, ...) printf(format, __VA_ARGS__)
 #elif __CUDA_ARCH__ >= 200
-  #define K2_DLOG(format, ...)                                            \
-    printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
-           blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z, \
-           __VA_ARGS__)
+#define K2_DLOG(format, ...)                                            \
+  printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
+         blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z, \
+         __VA_ARGS__)
 #endif
 
 /**
@@ -224,17 +225,17 @@ __host__ __device__ __forceinline__ cudaError_t K2CudaDebug_(
  * @endcode
  */
 #ifdef K2_PARANOID
-  #define K2_PARANOID_ASSERT(exp, format, ...)                                \
-    do {                                                                      \
-      if (exp)                                                                \
-        (void)0;                                                              \
-      else {                                                                  \
-        K2_DLOG("Error [%s, %d] " format, __FILE__, __LINE__, ##__VA_ARGS__); \
-        assert(exp);                                                          \
-      }                                                                       \
-    } while (0)
+#define K2_PARANOID_ASSERT(exp, format, ...)                                \
+  do {                                                                      \
+    if (exp)                                                                \
+      (void)0;                                                              \
+    else {                                                                  \
+      K2_DLOG("Error [%s, %d] " format, __FILE__, __LINE__, ##__VA_ARGS__); \
+      assert(exp);                                                          \
+    }                                                                       \
+  } while (0)
 #else
-  #define K2_PARANOID_ASSERT(exp, format, ...) ((void) 0)
+#define K2_PARANOID_ASSERT(exp, format, ...) ((void)0)
 #endif
 
 }  // namespace k2

@@ -85,7 +85,8 @@ class Tensor {
   Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims);
 
   // Create Tensor backed by existing memory.
-  Tensor(Dtype type, const Shape &shape, RegionPtr region, size_t bytes_offset);
+  Tensor(Dtype type, const Shape &shape, RegionPtr region,
+         int32_t bytes_offset);
 
   // Returns pointer to elem with index all-zeros... will check that the type
   // matches the correct one.
