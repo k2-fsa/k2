@@ -108,8 +108,9 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
 /*
   Sets 'dest' to exclusive prefix sum of 'src'.
     @param [in] src    Source data, to be summed.
-    @param [out] dest  Destination data.  Must satisfy dest.Size() == src.Size()
-                       or dest.Size() == src.Size() + 1, but in the latter case
+    @param [out] dest  Destination data (possibly &src).  Must satisfy
+                       dest.Size() == src.Size() or dest.Size() == src.Size() + 1,
+                       but in the latter case
                        we require that the memory region inside src be allocated
                        with at least one extra element, because the
                        exclusive-sum code may read from it even though it

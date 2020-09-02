@@ -176,14 +176,24 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
                            we only support axis == 0.
       @return      Returns the appended RaggedShape.
 */
-RaggedShape Append(int32_t num_srcs, const RaggedShape **src, int32_t axis);
+RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis);
+
+/*
+    Gets an array of pointers to the row_splits of `src`, on the same
+    device as `src`.
+       @param [in] src  Source RaggedShape
+       @return        Returns an array of size src.NumAxes() - 1 containing
+                      pointers to the starts of the row_splits vetors
+*/
+Array<int32_t*> GetRowSpltsPtrs(RaggedShape &src);
 
 
 /*
-  Renumber axis 0 of a ragged shape
+  Renumber(/Reorder) axis 0 of a ragged shape
      @param [in] src      Shape to renumber
      @param [in] new2old  Mapping from new to old numbering of array, of
-                          length src.Dim0(); must contain the numbers
+                          length src.Dim0(), on the same device as `src`;
+                          must contain the numbers
                           0 through src.Dim0() - 1 in some order.
      @return              Returns the renumbered shape.  Will satisfy:
                           ret[i,j,k] = src[new2old[i],j,k].  (Note, this is
@@ -191,8 +201,6 @@ RaggedShape Append(int32_t num_srcs, const RaggedShape **src, int32_t axis);
                           indexing operator).
 */
 RaggedShape Renumber(const RaggedShape &src, Array1<int32_t> &new2old);
-
-
 
 template <typename T>
 struct Ragged {

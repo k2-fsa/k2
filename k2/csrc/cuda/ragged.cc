@@ -84,9 +84,61 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   // an idx_0 to idx_minus1, where idx_minus1 is always 0 and 0 <= idx0 <
   // Dim0().
 
-
+  // TODO(dan): implement this..
 
 }
+
+RaggedShape Renumber(const RaggedShape &src, Array1<int32_t> &new2old) {
+  ContextPtr c = src.Context();
+  K2_ASSERT(IsCompatible(src, new2old));
+  int32 num_axes = src.NumAxes(),
+      dim0 = src.Dim0();
+  K2_ASSERT(new2old.Dim() == dim0);
+  std::vector<int32_t> tot_sizes_out(num_axes);
+  for (int32_t axis = 0; axis < num_axes; axis++)
+    tot_sizes_out[axis] = src.TotSize(axis);
+  // the arrays in `ans` will be the same sizes as those in `src`.
+  RaggedShape ans = RaggedShapeFromTotSizes(c, tot_sizes_out);
+
+  Array2<int32_t> src_offsets(c, num_axes, dim0 + 1),
+      new_offsets(c, num_axes, dim0 + 1);
+  auto src_offsets_acc = src_offsets.Accessor(),
+      new_offsets_acc = new_offsets.Accessor();
+  Array<int32_t*> row_splits_ptrs = GetRowSplitsPtrs(src);
+  int32_t *row_splits_ptrs_data = row_splits_ptrs.Data();
+
+  // Set src_offsets
+  auto lambda_get_src_offsets = [=] __host__ __device__ (int32_t i) {
+     // 0 <= i <= dim0
+     int32_t cur_offset = i;
+     for (int32_t axis = 0; axis < num_axes; axis++) {
+       src_offset_acc(0, i) = cur_offset;
+       if (axis + 1 == num_axes)
+         return;
+       cur_offset = row_splits_ptrs_data[axis][cur_offset];
+     }
+  };
+  Eval(c, dim0 + 1, lambda_get_src_offsets);
+  const int32_t *new2old_data = new2old.Data();
+  auto lambda_get_new_sizes = [=] __host__ __device__ (int32_t axis, int32_t new_i) {
+     // 0 <= axis < num_axes;  0 <= new_i < dim0
+     int32_t old_i = new2old_data[new_i],
+        this_offset = src_offset_acc(axis, old_i),
+        next_offset = src_offset_acc(axis, old_i + 1),
+        size = next_offset - this_offset;
+     new_offsets_acc(axis, i) = size;
+  };
+  Eval(c, num_axes, dim0, lambda_get_new_offsets);
+  ExclusiveSum(new_offsets, &new_offsets);
+  // Now new_offsets contains the offsets, not the sizes.
+  for (int32_t axis = 0; axis < num_axes - 1; axis++) {
+    // row_splits uses `axis`.  can use size+1?  wait, yes..
+
+
+
+  }
+}
+
 
 
 /*
@@ -117,13 +169,29 @@ void GetRowInfo(RaggedShape &src,
                 Array1<int32_t*> *row_splits,
                 Array1<int32_t*> *row_ids);
 
+/*
+  Get some meta-info for an array of RaggedShape, and transfer them
+  to the
+  device that `src` is located on
 
-// Output has dim src[0]->NumAxes() by num_src.  The first elements (axis=0)
-// are "fake" row_splits and row_ids that contain [ 0 dim0 ] and [ 0 0 0 0 0 0 1 ].
-void GetRowInfoMulti(int32_t num_src,
-                     RaggedShape **src,
-                     Array2<int32_t*> *row_splits,
-                     Array2<int32_t*> *row_ids);
+     @param [in] num_src  Number of source arrays to process.
+     @param [in] src      Source arrays.  Let num_axes be src[0]->NumAxes().
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+     @param [out] offsets   Output array of `offsets` pointers,
+                          will be of dimension num_axes by num_src+1;
+                          these are the exclusive-sum of the TotSize(axis)
+                          of the respective sources.
+     @param [out] tot_sizes  The last column of `offsets`, as a std::vector
+*/
+void GetInfoMulti(int32_t num_src,
+                  RaggedShape **src,
+                  Array2<int32_t*> *row_splits,
+                  Array2<int32_t*> *row_ids,
+                  Array2<int32_t*> *offsets,
+                  std::vector<int32_t> *tot_sizes);
 
 
 
