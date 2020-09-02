@@ -361,35 +361,39 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
   amounts of work to do (most naturally involving loops).  You would call
   this after calling GetTaskRedirect().
 
-          @param [in] stream   Stream to execute this in (or kCudaStreamInvalid for CPU).
-          @param [in] num_jobs  size of the array of tasks; this will be equal to
-                               num_tasks * 2 where `num_tasks` is hte number of
-                               tasks given to GetTaskRedirect().
+          @param [in] stream   Stream to execute this in (or kCudaStreamInvalid
+                               for CPU).
+          @param [in] num_jobs  size of the array of tasks; this will be equal
+                               to num_tasks * 2 where `num_tasks` is the number
+                               of tasks given to GetTaskRedirect().
           @param [in] redirect  The array written to by GetTaskRedirect().
-          @param [in] min_threads_per_task This would typically be something like 8, 16 or 32.
-                               It is the smallest allowed num_threads that we allocate
-                               for each task; the number of threads per job is a multiple of
-                               this (and then the number of threads per task is that times
-                               how many jobs for this task, which is at least one).
-                               It's important for hardware reasons
-                               that this be a power of 2 and not too small, so we
-                               can keep one warp per job.  We call it 'per_task' because
-                               the jobs are kept fairly invisible to the user.
+          @param [in] min_threads_per_task This would typically be something
+                       like 8, 16 or 32. It is the smallest allowed num_threads
+                       that we allocate for each task; the number of threads
+                       per job is a multiple of this (and then the number of
+                       threads per task is that times how many jobs for this
+                       task, which is at least one). It's important for
+                       hardware reasons that this be a power of 2 and not
+                       too small, so we can keep one warp per job.  We call it
+                       'per_task' because the jobs are kept fairly invisible
+                       to the user.
           @param [in] tot_work   The total amount of work that must be done over
                                all the tasks (this will commonly be equal to
                                row_splits[num_tasks] w.r.t. the args to
                                GetTaskRedirect()).  This is used to allocate the
-                               number of threads per job.  (The number of threads
-                               per task will be a multiple of the number of
-                               threads per job, at least 1 and on average 2).
-           @param [in] target_num_loops  This will typically be in the range 1 to 4,
-                               depending on your concern for latency (->smaller)
-                               or throughput (->larger).  Is is the average
-                               number of `work items` per thread this code aims
-                               for when deiding the threads_per_job.
-           @param [in] include_final_task  If true, the lambda will be called once
-                               with task_idx=num_tasks=num_jobs/2, num_threads=1, thread_idx=0;
-                               This happens to be useful quite a bit.
+                               number of threads per job.  (The number of
+                               threads per task will be a multiple of the number
+                               of threads per job, at least 1 and on average 2).
+           @param [in] target_num_loops  This will typically be in the range 1
+                               to 4, depending on your concern for latency
+                               (->smaller) or throughput (->larger).  Is is
+                               the average number of `work items` per thread
+                               this code aims for when deiding the threads
+                               _per_job.
+           @param [in] include_final_task  If true, the lambda will be called
+                                once with task_idx=num_tasks=num_jobs/2,
+                                num_threads=1, thread_idx=0; This happens to
+                                be useful quite a bit.
            @param [in] lambda  The lambda expression to run; this is to be run
                                as, lambda(task_idx, num_threads_this_task,
                                thread_idx), which will be called with
@@ -404,11 +408,11 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
   lambda to do a 'one-off task' (invoked once in the resulting kernel).
  */
 
-emplate<typename LambdaT, typename lambdaU>
-  void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
-                        TaskRedirect *redirect, int32_t min_threads_per_job,
-                        int32_t tot_work, int32_t target_num_loops,
-                        bool include_final_task, LambdaT &lambda) {
+template <typename LambdaT, typename lambdaU>
+void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
+                      TaskRedirect *redirect, int32_t min_threads_per_job,
+                      int32_t tot_work, int32_t target_num_loops,
+                      bool include_final_task, LambdaT &lambda) {
   // TODO..
 }
 

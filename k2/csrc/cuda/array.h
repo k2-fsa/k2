@@ -1,23 +1,31 @@
 // k2/csrc/cuda/array.h
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+//                                                   Haowen Qiu)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
 #ifndef K2_CSRC_CUDA_ARRAY_H_
 #define K2_CSRC_CUDA_ARRAY_H_
 
+#include <algorithm>
+
 #include "k2/csrc/cuda/context.h"
+#include "k2/csrc/cuda/debug.h"
+#include "k2/csrc/cuda/dtype.h"
 #include "k2/csrc/cuda/tensor.h"
 
 namespace k2 {
 
 /*
   Array1 is a 1-dimensional contiguous array (that doesn't support a stride).
+  T must be POD data type, e.g. basic type, struct.
 */
 template <typename T>
 class Array1 {
  public:
+  using ValueType = T;
+  int32_t ElementSize() const { return sizeof(ValueType); }
   int32_t Dim() const { return dim_; }  // dimension of only axis (axis 0)
 
   // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
@@ -37,17 +45,24 @@ class Array1 {
   // with CUDA) and also on the CPU.  We'll do src(i) to evaluate element i.
   // NOTE: we assume this thread is already set to use the device associated
   // with the context in 'ctx', if it's a CUDA context.
+  // TODO(Haowen): no corresponding test code now, we may delete this later
   template <typename Callable>
   Array1(ContextPtr ctx, int32_t size, Callable &&callable) {
     Init(ctx, size);
 
-    Eval(ctx->GetDeviceType(), Data(), size, std::forward<Callable>(callable));
+    // TODO(haowen): there's no such definition
+    // `Eval(ContextPtr, T*, int, Callable&)` now
+    Eval(ctx, Data(), size, std::forward<Callable>(callable));
   }
 
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
-  Array1() : dim_(0), byte_offset_(0), region_(0) {}
+  // TODO(haowen): why do we need this version?
+  Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}
+
+  Array1(int32_t dim, RegionPtr region, int32_t byte_offset)
+      : dim_(dim), region_(region), byte_offset_(byte_offset) {}
 
   Array1(ContextPtr ctx, int32_t size, T elem) {
     Init(ctx, size);
@@ -62,28 +77,52 @@ class Array1 {
   }
 
   /* Return sub-part of this array
-     @param [in] start  First element to cover, 0 <= start < size()
-     @param [in] size   Number of elements to include, 0 < size < size()-start
+     @param [in] start  First element to cover, 0 <= start < Dim()
+     @param [in] size   Number of elements to include, 0 < size <= Dim()-start
   */
-  Array1 Range(int32_t start, int32_t size);
+  Array1 Range(int32_t start, int32_t size) {
+    K2_CHECK_GE(start, 0);
+    K2_CHECK_LT(start, Dim());
+    K2_CHECK_GT(size, 0);
+    K2_CHECK_LE(size, Dim() - start);
+    return Array1(size, region_, byte_offset_ + start * ElementSize());
+  }
 
   /*
    Return sub-part of this array, with a stride (note: increment may be negative
    but not zero).  Becomes a Tensor because Array1 does not support a stride
    that isn't 1.
 
-     @param [in] start  First element of output, 0 <= start < Size()
+     @param [in] start  First element of output, 0 <= start < Dim()
      @param [in] size   Number of elements to include, must satisfy
                         size > 0 and   0 <= (start + (size-1)*increment) <
                         Dim().
      @param [in] inc    Increment in original array each time index
                         increases
   */
-  Tensor Range(int32_t start, int32_t size, int32_t inc);
+  // TODO(haowen): does not support inc < 0 with below implementations, we may
+  // don't need negative version, will revisit it later
+  Tensor Range(int32_t start, int32_t size, int32_t inc) {
+    K2_CHECK_GE(start, 0);
+    K2_CHECK_LT(start, Dim());
+    K2_CHECK_GT(size, 0);
+    K2_CHECK_GT(inc, 0);
+    k2_CHECK_LT((size - 1) * inc, Dim() - start);
+    Dtype type = DtypeOf<ValueType>::dtype;
+    std::vector<int32_t> dims = {size};
+    std::vector<int32_t> strides = {inc};
+    Shape shape(dims, strides);
+    return Tensor(type, shape, region_, byte_offset_ + start * ElementSize());
+  }
 
-  Tensor ToTensor();
+  Tensor ToTensor() {
+    Dtype type = DtypeOf<ValueType>::dtype;
+    std::vector<int32_t> dims = {Dim()};
+    Shape shape(dims);  // strides == 1
+    return Tensor(type, shape, region_, byte_offset_);
+  }
 
-  DeviceType Device() const { return region_->context->GetDeviceType(); }
+  DeviceType Device() const { return Context()->GetDeviceType(); }
 
   // Resizes, copying old contents if we could not re-use the same memory
   // location. It will always at least double the allocated size if it has to
@@ -102,14 +141,18 @@ class Array1 {
   // want to return it with the parent context to keep things simple.
   // (In general we don't expect functions to output things with newly
   // created contexts attached).
-  void SetContext(ContextPtr &ctx);
+  void SetContext(const ContextPtr &ctx) {
+    ContextPtr &c = Context();
+    K2_CHECK(c->IsCompatible(*ctx));
+    c = ctx;
+  }
 
   /* Indexing operator (note: for now, we make all indexes be int32_t).  Returns
      a T on the CPU.  This is fast if this is a CPU array, but could take some
      time if it's a CUDA array, so use this operator sparingly.  If you know
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
-  T operator[](int32_t i);
+  T operator[](int32_t i) { return Data()[i]; }
 
   /* Setting all elements to a scalar */
   void operator=(const T t) {
@@ -120,23 +163,39 @@ class Array1 {
     Eval(Context(), dim_, lambda_set_values);
   }
 
+  /* Gathers elements in current array according to `indexes` and returns it,
+     i.e. returned_array[i] = this_array[indexes[i]] for 0 <= i < indexes.Dim().
+     Note 'indexes.Context()' must be compatible with the current Context(),
+     i.e. `Context()->IsCompatible(indexes.Context())`.
+   */
   Array1 operator[](const Array1<int32_t> &indexes) {
-    ContextPtr c = Context();
-    assert(c->IsCompatible(*indexes.Context()));
-    int32_t ret_dim = indexes.Dim();
-    Array1<T> ans(c, ret_dim);
+    const ContextPtr &c = Context();
+    K2_CHECK(c->IsCompatible(*(indexes.Context())));
+    int32_t ans_dim = indexes.Dim();
+    Array1<T> ans(c, ans_dim);
     const T *this_data = Data();
     T *ans_data = ans.Data();
     int32_t *indexes_data = indexes.Data();
     auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
       ans_data[i] = this_data[indexes_data[i]];
     };
-    Eval(c, ret_dim, lambda_copy_elems);
+    Eval(c, ans_dim, lambda_copy_elems);
     return ans;
   }
 
   // constructor from CPU array (transfers to GPU if necessary)
-  Array1(ContextPtr ctx, const std::vector<T> &src) {}
+  Array1(ContextPtr ctx, const std::vector<T> &src) {
+    Init(ctx, src.size());
+    T *data = Data();
+    DeviceType d = ctx->GetDeviceType();
+    if (d == kCpu) {
+      std::copy(src.begin(), src.end(), data);
+    } else {
+      K2_CHECK_EQ(d, kCuda);
+      cudaMemcpy(static_cast<void *>(data), static_cast<void *>(src.data()),
+                 src.size() * ElementSize(), cudaMemcpyHostToDevice);
+    }
+  }
 
   Array1(const Array1 &other) = default;
 
@@ -149,8 +208,10 @@ class Array1 {
                       // if dim_ == 0; this allows it to keep track of the
                       // context.
 
-  void Init(DeviceType d, int32_t size) {
-    // .. takes care of allocation etc.
+  void Init(ContextPtr context, int32_t size) {
+    region_ = NewRegion(context, size * ElementSize());
+    dim_ = size;
+    byte_offset_ = 0;
   }
 };
 
@@ -165,7 +226,7 @@ struct Array2Accessor {
 
   T *Row(int32_t i) { return data + elem_stride0 * i; }
   Array2Accessor(T *data, int32_t elem_stride0)
-      : data(data), elem_stride0(elem_stride0) { }
+      : data(data), elem_stride0(elem_stride0) {}
   Array2Accessor(const Array2Accessor &other) = default;
 };
 
