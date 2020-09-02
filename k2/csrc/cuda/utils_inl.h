@@ -48,7 +48,4 @@ void ExclusivePrefixSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest) {
     c->Deallocate(d_temp_storage, deleter_context);
   }
 }
-
-
-
 }  // namespace k2

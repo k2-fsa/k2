@@ -46,17 +46,19 @@ class Array1 {
 
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
-
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
-  Array1(): dim_(0), byte_offset_(0), region_(0) {  }
+  Array1() : dim_(0), byte_offset_(0), region_(0) {}
 
   Array1(ContextPtr ctx, int32_t size, T elem) {
     Init(ctx, size);
     T *data = Data();
-    auto lambda = [=] __host__ __device__ (int32_t i) -> void {
+    // TODO(haowen): need capture *this, not sure it's valid in constructor
+    /*
+    auto lambda = [=] __host__ __device__(int32_t i) -> void {
       data[i] = elem;
     };
     Eval(ctx, dim_, lambda);
+    */
   }
 
   /* Return sub-part of this array
@@ -109,11 +111,10 @@ class Array1 {
      pointer. */
   T operator[](int32_t i);
 
-
   /* Setting all elements to a scalar */
-  void operator = (const T t) {
+  void operator=(const T t) {
     T *data = Data();
-    auto lambda_set_values = [=] __host__ __device__ (int32_t i) -> void {
+    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
       data[i] = t;
     };
     Eval(Context(), dim_, lambda_set_values);
@@ -127,17 +128,18 @@ class Array1 {
     const T *this_data = Data();
     T *ans_data = ans.Data();
     int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = [=] __host__ __device__ (int32_t i) -> void {
-       ans_data[i] = this_data[indexes_data[i]];
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
+      ans_data[i] = this_data[indexes_data[i]];
     };
     Eval(c, ret_dim, lambda_copy_elems);
     return ans;
   }
 
   // constructor from CPU array (transfers to GPU if necessary)
-  Array1(ContextPtr ctx, const std::vector<T> &src);
+  Array1(ContextPtr ctx, const std::vector<T> &src) {}
 
   Array1(const Array1 &other) = default;
+
  private:
   int32_t dim_;
   int32_t byte_offset_;
@@ -157,27 +159,27 @@ template <typename T>
 struct Array2Accessor {
   T *data;
   int32_t elem_stride0;
-  __host__ __device__ T &operator () (int32_t i, int32_t j) {
+  __host__ __device__ T &operator()(int32_t i, int32_t j) {
     return data[i * elem_stride0 + j];
   }
+
   T *Row(int32_t i) { return data + elem_stride0 * i; }
-  Array2Accessor(T *data, int32_t elem_stride0):
-      data(data), elem_stride0(elem_stride0) { }
-  __host__ __device__ Array2Accessor(const Array2Accessor &other) = default;
+  Array2Accessor(T *data, int32_t elem_stride0)
+      : data(data), elem_stride0(elem_stride0) { }
+  Array2Accessor(const Array2Accessor &other) = default;
 };
 
 template <typename T>
 struct ConstArray2Accessor {
   const T *data;
   int32_t elem_stride0;
-  __host__ __device__ T operator () (int32_t i, int32_t j) {
+  __host__ __device__ T operator()(int32_t i, int32_t j) {
     return data[i * elem_stride0 + j];
   }
-  Array2Accessor(const T *data, int32_t elem_stride0):
-      data(data), elem_stride0(elem_stride0) { }
-  __host__ __device__ Array2Accessor(const Array2Accessor &other) = default;
+  ConstArray2Accessor(const T *data, int32_t elem_stride0)
+      : data(data), elem_stride0(elem_stride0) {}
+  ConstArray2Accessor(const ConstArray2Accessor &other) = default;
 };
-
 
 /*
   Array2 is a 2-dimensional array (== matrix), that is contiguous in the
@@ -266,9 +268,6 @@ class Array2 {
                          // constructor), will point to an empty
                          // Region.
 };
-
-
-
 
 }  // namespace k2
 

@@ -7,14 +7,14 @@
 #ifndef K2_CSRC_CUDA_UTILS_H_
 #define K2_CSRC_CUDA_UTILS_H_
 
+#include <algorithm>
+
 #include "k2/csrc/cuda/context.h"
 
 namespace k2 {
 
 // Some quite low-level utilities.
 // CAUTION: this is not up to date, I will simplify this probably.
-
-
 
 /*
   sizes concept
@@ -28,7 +28,6 @@ namespace k2 {
   a vector of row_splits, i.e. sizes[i] = row_splits[i+1] - row_splits[i].
 */
 
-
 /*
   row_splits concept / row-splits concept
   (Note, this has been named for compatibility with TensorFlow's RaggedTensor).
@@ -39,9 +38,9 @@ namespace k2 {
   with a size one greater than that of the corresponding 'sizes'.  It
   will represent the positions in a single linearized list, of where we
   put the elements of a list of sub-lists.  So in the example above,
-  sub-list 0 occupies positions 0,1,2,3,4, sub-list 1 occupies positions 5,6,7,8,
-  and so on.  Caution: the number of elements of the row_splits vector equals the number
-  of sub-lists PLUS ONE.
+  sub-list 0 occupies positions 0,1,2,3,4, sub-list 1 occupies positions
+  5,6,7,8, and so on.  Caution: the number of elements of the row_splits vector
+  equals the number of sub-lists PLUS ONE.
 
   Relation to other concepts:
     See 'row_ids concept' where its relation to 'row_splits' is described.
@@ -63,20 +62,20 @@ namespace k2 {
 
   Relation to other concepts:
     A vector of row_ids can arise as the cumulative sum of a vector of tails.
-    A vector of row_ids and a vector of row_splits represent the same information
-     in different ways, satisfying row_splits[row_ids[i]] <= i < row_splits[row_ids[i] + 1]
-     and row_splits[row_splits.size() - 1] == row_ids.size().
+    A vector of row_ids and a vector of row_splits represent the same
+  information in different ways, satisfying row_splits[row_ids[i]] <= i <
+  row_splits[row_ids[i] + 1] and row_splits[row_splits.size() - 1] ==
+  row_ids.size().
 
 */
-
 
 /*
   tails concept
 
   A vector of tails is a vector containing zeros and ones; each '1' represents
   the last element of a sub-list.  For example [ 0 1 0 0 0 1 1 ] to represent
-  a list of sub-lists like [ x x ] [ y y y y ] [ z ].  The last element will always
-  be 1.
+  a list of sub-lists like [ x x ] [ y y y y ] [ z ].  The last element will
+  always be 1.
 
   Relation to other concepts:
     The exclusive cumulative sum of a vector of tails is a vector of row_ids.
@@ -92,8 +91,8 @@ namespace k2 {
   in a linear array we'll have various levels of indexes that allow us to
   look up an element given the hierarchical indexes and vice versa.  A 3-d
   ragged tensor will have RowIds1(), RowSplits1(), RowIds2(), RowSplits2(),
-  and the actual elements.  We have a naming scheme that expresses what information
-  is packed into a single integer.
+  and the actual elements.  We have a naming scheme that expresses what
+  information is packed into a single integer.
 
   Some entry-level facts about the naming scheme are:
 
@@ -158,49 +157,45 @@ namespace k2 {
      and its rules.
 */
 
-
-
-
 /**
-   Perform exclusive cumulative sum: dest[i] = 0 + src[0] + src[1] + ... src[i-1] for
-   0 <= i < n.  Note: although the input for 0 <= i < n-1 is all that affects
-   the output, the last element src[n-1] may still be accessed in the CUDA kernel
-   so you should make sure it was allocated as part of the array being summed
-   even if the value was not set.
+   Perform exclusive cumulative sum: dest[i] = 0 + src[0] + src[1] + ...
+  src[i-1] for 0 <= i < n.  Note: although the input for 0 <= i < n-1 is all
+  that affects the output, the last element src[n-1] may still be accessed in
+  the CUDA kernel so you should make sure it was allocated as part of the array
+  being summed even if the value was not set.
 
-      @param [in] D     Device.  If n > 0 must be kCpu or kGpu; if n == 0, kUnk is also
-                        allowed.
+      @param [in] D     Device.  If n > 0 must be kCpu or kGpu; if n == 0, kUnk
+                                 is also allowed.
 
-      @param [in] n     Number of elements in the input and output arrays (although
-                        only items up to n-1 in the input array will affect the
-                        result).  Must be >= 0
+      @param [in] n     Number of elements in the input and output arrays
+                        (although only items up to n-1 in the input array will
+                        affect the result).  Must be >= 0
 
-      @param [out] s       Array to which to write the exclusive sum (device pointer); size
-                           must be at least t.size() + 1.
+      @param [out] s       Array to which to write the exclusive sum (device
+                           pointer); size must be at least t.size() + 1.
+
       @param [out] cpu_total  Optionally (if non-NULL), the sum of the elements
                            of t will be written to here, to a CPU address.
     This function may not wait for the kernel to terminate if cpu_total == NULL.
 
   IMPLEMENTATION NOTES:
-     - If size of t is small enough that it makes sense to do it in one cooperative
-       thread group (and maybe a small internal loop if needed), do that.
+     - If size of t is small enough that it makes sense to do it in one
+  cooperative thread group (and maybe a small internal loop if needed), do that.
      - Otherwise, do it with 3 consecutive kernels:
-       consider the input array to be made up of blocks of size BLOCK_SIZE, equal to
-       some power of 2.  First, invoke the same kernel we used above to write
-       the this-block-only partial sum for each block (note: only the 1st kernel
-       should write the initial 0, to avoid race conditions), so e.g. if the
+       consider the input array to be made up of blocks of size BLOCK_SIZE,
+  equal to some power of 2.  First, invoke the same kernel we used above to
+  write the this-block-only partial sum for each block (note: only the 1st
+  kernel should write the initial 0, to avoid race conditions), so e.g. if the
        input was [ 1 2 3 4 5 ] and BLOCK_SIZE = 2, the temporary array would be
        [ 0 1 3 3 7 5 ].  Then use a single thread block to inclusive-sum the
-       values at multiples of BLOCK_SIZE, so the array looks like [ 0 1 3 3 10 5 ]
-       (note: only the 7 changed, to 10 here).  Then use a single simple kernel
-       to, for each index i that is not a multiple of BLOCK_SIZE, add to it the
-       value at the most recent multiple of BLOCK_SIZE, so the array would look
-       like [ 0 1 3 6 10 15 ].
+       values at multiples of BLOCK_SIZE, so the array looks like [ 0 1 3 3 10 5
+  ] (note: only the 7 changed, to 10 here).  Then use a single simple kernel to,
+  for each index i that is not a multiple of BLOCK_SIZE, add to it the value at
+  the most recent multiple of BLOCK_SIZE, so the array would look like [ 0 1 3 6
+  10 15 ].
  */
 template <typename SrcPtr, typename DestPtr>
 void ExclusiveSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest);
-
-
 
 /* Return the maximum value of the device array 't'.  Note: the sum will be
    initialized with T(0).
@@ -216,68 +211,68 @@ T MaxValue(Context *c, size_t nelems, T *t);
   This is a rather special purpose function that is used in RaggedShape.
 
   It sets row_ids[i] to the index j to which position i 'belongs' according to
-  the array `row_splits`.  (`row_ids` has an extra element at the end which is the
-  number of rows). `row_ids` is expected to be an array containing the exclusive
-  sum of a sequence of nonnegative integers, so suppose there was a original
-  sequence
-     sizes = [ 2 1 0 4 ]
-  and  row_splits = [ 0 2 3 3 7 ]
-  then we would fill row_ids with:
-       row_ids = [ 0 0 1 3 3 3 3 4 ]
+  the array `row_splits`.  (`row_ids` has an extra element at the end which is
+  the number of rows). `row_ids` is expected to be an array containing the
+  exclusive sum of a sequence of nonnegative integers, so suppose there was a
+  original sequence sizes = [ 2 1 0 4 ] and  row_splits = [ 0 2 3 3 7 ] then we
+  would fill row_ids with: row_ids = [ 0 0 1 3 3 3 3 4 ]
 
        @param [in] c   ContextPtr, points to the context to which the
                        data belongs (e.g. CPU or GPU).
        @param [in] num_rows
                        Number of rows in the ragged matrix; must be >= 0.
        @param [in] row_splits
-                       Start of row_splits vector, must be non-decreasing and start
-                       from zero.  Length is num_rows + 1.   row_splits[0] must equal
-                       0 and row_splits[num_rows] must equal num_elems.
-       @param [in] num_elems  Number of elements, in all the rows together.  Note:
-                        the length of row_ids equals num_elems + 1
-                        (row_ids[num_elems] == num_rows, at exit).
-       @param [out] row_ids   Start of row_ids vector, we write the output to here.
-                        Length is num_elems + 1.
+                       Start of row_splits vector, must be non-decreasing and
+                       start from zero.  Length is num_rows + 1.
+                       row_splits[0] must equal 0 and row_splits[num_rows] must
+                       equal num_elems.
+       @param [in] num_elems  Number of elements, in all the rows together.
+                       Note: the length of row_ids equals num_elems + 1
+                       (row_ids[num_elems] == num_rows, at exit).
+       @param [out] row_ids   Start of row_ids vector, we write the output to
+                              here. Length is num_elems + 1.
 */
-void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows, const int32_t *row_splits,
-                       int32_t num_elems, int32_t *row_ids);
-
+void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
+                       const int32_t *row_splits, int32_t num_elems,
+                       int32_t *row_ids);
 
 /*
-  This function works out the row_id of `this` index from row-splits, using binary
-  search.  Specifically, it returns i such that row_splits[i] <= index < row_splits[i+1].
-  row_splits should be a vector with at least num_rows+1 elements.
+  This function works out the row_id of `this` index from row-splits, using
+  binary search.  Specifically, it returns i such that row_splits[i] <= index <
+  row_splits[i+1]. row_splits should be a vector with at least num_rows+1
+  elements.
 
        @param [in] num_rows      Number of rows (row-id will be less than this)
        @param [in] row_splits    Row-splits vector, of size num_rows + 1 (search
-                                 for `row_splits concept` near the top of utils.h
-                                 for more info)
-       @param [in] index         Linear index (e.g. idx01) for which we're querying
-                                 which row it is from
-       @param [in] num_indexes   Total number of indexes (should equal row_splits[num_rows]);
-                                 right now it's not used, but in future it might be used for
-                                 a heuristic, for the initial guess of where to start
-                                 the binary search.
-       @return                   Returns i such that row_splits[i] <= index < row_splits[i+1]
-                                 and 0 <= i < num_rows; will die with assertion in debug
-                                 mode if such an i does not exist.
+                                 for `row_splits concept` near the top of
+                                 utils.h for more info)
+       @param [in] index         Linear index (e.g. idx01) for which we're
+                                 querying which row it is from
+       @param [in] num_indexes   Total number of indexes (should equal
+                                 row_splits[num_rows]); right now it's not used,
+                                 but in future it might be used for a heuristic,
+                                 for the initial guess of where to start the
+                                 binary search.
+
+       @return                   Returns i such that row_splits[i] <= index <
+                                 row_splits[i+1] and 0 <= i < num_rows;
+                                 will die with assertion in debug mode if such
+                                 an i does not exist.
 
    TODO(dan): make this compile, apparently std::lower_bound won't work on GPU
    so we should manually do the binary search.
  */
-__forceinline __host__ __device__ int32_t RowIdFromRowSplits(int32_t num_rows, const int32_t *row_splits,
-                                               int32_t index, int32_t num_indexes) {
-  // lower_bound gives the first i in row_splits that's greater than `index`.  That
-  // implies the previous one is <= index.
+__forceinline__ __host__ __device__ int32_t
+RowIdFromRowSplits(int32_t num_rows, const int32_t *row_splits, int32_t index,
+                   int32_t num_indexes) {
+  // lower_bound gives the first i in row_splits that's greater than `index`.
+  // That implies the previous one is <= index.
   //
-  int32_t i = std::lower_bound(row_splits + 1,
-                               row_splits + num_rows + 1,
-                               index) - 1;
-  K2_DCHECK(static_cast<uint32_t>(i) < static_cast<uint32_t>(num_rows) &&
-
-
+  auto i =
+      std::lower_bound(row_splits + 1, row_splits + num_rows + 1, index) - 1;
+  // K2_DCHECK(static_cast<uint32_t>(i) < static_cast<uint32_t>(num_rows));
+  return *i;
 }
-
 
 /*
   See above for 'row_ids concept' and 'row_splits' concept.
@@ -302,16 +297,16 @@ __forceinline __host__ __device__ int32_t RowIdFromRowSplits(int32_t num_rows, c
                     will equal num_elems.
  */
 void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
-                       no_empty_rows, int32_t num_rows, int32_t *row_splits);
-
+                       bool no_empty_rows, int32_t num_rows,
+                       int32_t *row_splits);
 
 // Note: there will be one TaskRedirect per job, with 0 <= j < t*num_tasks if
 // j is the job-index.  (I know that job and task are synonyms; jobs are
 // the `split-up pieces of tasks`, like sub-tasks).
 struct TaskRedirect {
-  // task_id will satisfy 0 <= task_id < num_tasks (w.r.t. the `num_tasks` provided
-  // to GetTaskRedirect().  These are the original tasks that we were trying to
-  // allocate jobs to.  Each job is assigned a task_id.
+  // task_id will satisfy 0 <= task_id < num_tasks (w.r.t. the `num_tasks`
+  // provided to GetTaskRedirect().  These are the original tasks that we were
+  // trying to allocate jobs to.  Each job is assigned a task_id.
   int32_t task_id;
   // The number of jobs allocated to this task; will be at least 1.  All the
   // TaskRedirect objects with the same task_id will have the same
@@ -332,8 +327,8 @@ struct TaskRedirect {
 
       @param [in] c  Pointer to the context in which to execute this;
                     if it's a GPU context the pointers should be GPU pointers.
-      @param [in] num_tasks   The original number of tasks 0 <= task_id < num_tasks
-                    that we want to distribute
+      @param [in] num_tasks   The original number of tasks 0 <= task_id <
+                               num_tasks that we want to distribute
       @param [in] row_splits   A non-decreasing vector (does not necessarily
                    have to start at 0).  The "magnitude" of the task is the
                    difference between successive values of the `row_splits`
@@ -359,16 +354,14 @@ struct TaskRedirect {
    jobs in a separate kernel.
  */
 void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
-                     const int32_t *row_splits,
-                     TaskRedirect *redirect_out);
-
+                     const int32_t *row_splits, TaskRedirect *redirect_out);
 
 /*
   EvalWithRedirect() is like Eval() but for when the task have variable
   amounts of work to do (most naturally involving loops).  You would call
   this after calling GetTaskRedirect().
 
-          @param [in] stream   Stream to execute this in (or k2_cudaStreamInvalid for CPU).
+          @param [in] stream   Stream to execute this in (or kCudaStreamInvalid for CPU).
           @param [in] num_jobs  size of the array of tasks; this will be equal to
                                num_tasks * 2 where `num_tasks` is hte number of
                                tasks given to GetTaskRedirect().
@@ -398,42 +391,44 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
                                with task_idx=num_tasks=num_jobs/2, num_threads=1, thread_idx=0;
                                This happens to be useful quite a bit.
            @param [in] lambda  The lambda expression to run; this is to be run
-                               as, lambda(task_idx, num_threads_this_task, thread_idx), which
-                               will be called with
-                               0 <= task_idx < num_tasks and 0 <= thread_idx < num_threads_this_task,
-                               where num_threads_this_task is a multiple of min_threads_per_task
-                               (a multiple that is specific to the task).
-                               LambdaU will be called exactly once (on the device).
+                               as, lambda(task_idx, num_threads_this_task,
+                               thread_idx), which will be called with
+                               0 <= task_idx < num_tasks and 0 <= thread_idx
+                               < num_threads_this_task, where num_threads
+                               _this_task is a multiple of min_threads
+                               _per_task (a multiple that is specific to
+                               the task). LambdaU will be called exactly
+                               once (on the device).
 
-     Also see the other template of EvalWithRedirect() that takes an extra lambda
-     to do a 'one-off task' (invoked once in the resulting kernel).
+     Also see the other template of EvalWithRedirect() that takes an extra
+  lambda to do a 'one-off task' (invoked once in the resulting kernel).
  */
+
 emplate<typename LambdaT, typename lambdaU>
   void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
                         TaskRedirect *redirect, int32_t min_threads_per_job,
                         int32_t tot_work, int32_t target_num_loops,
                         bool include_final_task, LambdaT &lambda) {
-
-
-  lambda_one_off();
   // TODO..
 }
 
-
-
-
 __host__ __device__ __forceinline__ int32_t FloatAsInt(float f) {
-  union { float f; int i; } u;
+  union {
+    float f;
+    int i;
+  } u;
   u.f = f;
   return u.i;
 }
 
 __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
-  union { float f; int i; } u;
+  union {
+    float f;
+    int i;
+  } u;
   u.i = i;
   return u.f;
 }
-
 
 /*
  1:1 Conversion float <---> sortable int We convert floats to sortable ints in
@@ -453,19 +448,16 @@ __host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
   Host version of Cuda's atomicMax function, marked __host__ (the default) for
   clarity.  So we can use this in lambdas that run on both host and device.
  */
-__host__ int32_t atomicMax(int32_t* address, int32_t val) {
+__host__ int32_t atomicMax(int32_t *address, int32_t val) {
   int32_t old = *address;
-  if (old < val)
-    *address = val;
+  if (old < val) *address = val;
   return old;
 }
 
+}  // namespace k2
 
 #define IS_IN_K2_CSRC_CUDA_UTILS_H_
 #include "k2/csrc/cuda/utils_inl.h"
 #undef IS_IN_K2_CSRC_CUDA_UTILS_H_
-
-
-}  // namespace k2
 
 #endif  // K2_CSRC_CUDA_UTILS_H_
