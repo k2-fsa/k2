@@ -84,8 +84,23 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   // an idx_0 to idx_minus1, where idx_minus1 is always 0 and 0 <= idx0 <
   // Dim0().
 
-<<<<<<< HEAD
-  // TODO(dan): implement this..
+  ContextPtr c = src.GetContext();
+  K2_CHECK(axis >= 0 && axis <= src.NumAxes());
+
+  const std::vector<RaggedShapeDim> &axes = src.Axes();
+
+  int32_t num_axes_in = src.NumAxes();
+
+  // Note: in RaggedShape, the vector of RaggedShapeDim is of length num_axes - 1,
+  // so the output will have one more axis than the input.
+  std::vector<RaggedShapeDim> axes_out(num_axes_in);
+
+  if (axis == 0) {
+
+  } else {
+
+  }
+
 
 }
 
@@ -101,104 +116,149 @@ RaggedShape Renumber(const RaggedShape &src, Array1<int32_t> &new2old) {
   // the arrays in `ans` will be the same sizes as those in `src`.
   RaggedShape ans = RaggedShapeFromTotSizes(c, tot_sizes_out);
 
-  Array2<int32_t> src_offsets(c, num_axes, dim0 + 1),
+  src.Populate();
+  Array2<int32_t> old_offsets(c, num_axes, dim0 + 1),
       new_offsets(c, num_axes, dim0 + 1);
-  auto src_offsets_acc = src_offsets.Accessor(),
+  auto old_offsets_acc = old_offsets.Accessor(),
       new_offsets_acc = new_offsets.Accessor();
   Array<int32_t*> row_splits_ptrs = GetRowSplitsPtrs(src);
   int32_t *row_splits_ptrs_data = row_splits_ptrs.Data();
 
-  // Set src_offsets
-  auto lambda_get_src_offsets = [=] __host__ __device__ (int32_t i) {
+  // Set old_offsets
+  auto lambda_get_old_offsets = [=] __host__ __device__ (int32_t i) {
      // 0 <= i <= dim0
      int32_t cur_offset = i;
      for (int32_t axis = 0; axis < num_axes; axis++) {
-       src_offset_acc(0, i) = cur_offset;
+       old_offsets_acc(0, i) = cur_offset;
        if (axis + 1 == num_axes)
          return;
        cur_offset = row_splits_ptrs_data[axis][cur_offset];
      }
   };
-  Eval(c, dim0 + 1, lambda_get_src_offsets);
+  Eval(c, dim0 + 1, lambda_get_old_offsets);
   const int32_t *new2old_data = new2old.Data();
   auto lambda_get_new_sizes = [=] __host__ __device__ (int32_t axis, int32_t new_i) {
      // 0 <= axis < num_axes;  0 <= new_i < dim0
      int32_t old_i = new2old_data[new_i],
-        this_offset = src_offset_acc(axis, old_i),
-        next_offset = src_offset_acc(axis, old_i + 1),
-        size = next_offset - this_offset;
+        this_old_offset = old_offsets_acc(axis, old_i),
+        next_old_offset = old_offsets_acc(axis, old_i + 1),
+        size = next_old_offset - this_old_offset;
      new_offsets_acc(axis, i) = size;
   };
   Eval(c, num_axes, dim0, lambda_get_new_offsets);
   ExclusiveSum(new_offsets, &new_offsets);
   // Now new_offsets contains the offsets, not the sizes.
+
+  ParallelRunner pr(c);
+  std::vector<cudaStream_t> streams(num_axes);
+  int32_t num_jobs = dim0 * 2;  // note: this formula is not a heuristic; it's
+                                // how TaskRedirect works..
+  Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
+  auto task_redirects_acc = task_redirects.Accessor();
+  for (int32_t axis = 0; axis < num_axes; axis++) {
+    cudaStream_t stream = streams[axis] = pr.NewStream();
+    With(streams[axis] = pr.NewStream()) _;
+    const int32_t *new_offsets_ptr = new_offsets_acc.Row(axis);
+    TaskRedirect *task_redirect_ptr = task_redirects_acc.Row(axis);
+    GetTaskRedirect(c, dim0, new_offsets_ptr, task_redirect_ptr);
+  }
+
+
   for (int32_t axis = 0; axis < num_axes - 1; axis++) {
-    // row_splits uses `axis`.  can use size+1?  wait, yes..
 
+    {
+      int32_t *this_new_row_splits = ans.RowSplits(axis).Data();
+      const int32_t *this_old_row_splits = src.RowSplits(axis).Data();
 
+      auto lambda_set_row_splits = [=] __host__ __device__ (
+          int32_t new_idx, int32_t num_threads, int32_t thread_idx) -> void {
+         //  0 <= new_idx < dim0; and 0 <= thread_idx < num_threads,
+         //  num_threads may have any value > 0 as far as this code is concerned.
+         //
+         // Reminder of how row_splits work dimensionally: they are a map
+         // from, e.g. an idx0 to an idx01.   An offsets_acc(0,n) is
+         // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
+         // The locations in the row_splits array are as given by
+         // the `axis`'th row of `offsets`; the values in the array
+         // are related to those in the `axis+1`'th row.
+         int32_t old_idx = new2old_data[new_idx],
+             this_old_offset = old_offsets_acc(axis, old_idx),
+             next_old_offset = old_offsets_acc(axis, old_idx + 1),
+             this_new_offset = new_offsets_acc(axis, old_idx),
+             num_rows = next_old_offset - this_old_offset,
+             value_offset = new_offsets_acc(axis + 1, new_idx) -
+                           old_offsets_acc(axis + 1, old_idx);
+
+         // Using <= instead of < below causes threads for different src_idx to
+         // write a single overlapping value, but also ensures that the
+         // terminating value is written.  This only works because row_splits
+         // vectors always start with 0, which is not necessarily the case
+         // for row-ids.
+         for (; thread_idx <= num_rows; thread_idx += num_threads) {
+           this_new_row_splits[this_new_offset + thread_idx] =
+               value_offset + this_old_row_splits[thread_idx];
+         }
+      };
+      int32_t min_threads_per_job = 2,
+          tot_work = tot_sizes_out[axis],
+          target_num_loops = (tot_work > 1000000 ? 4 : 2);
+      bool include_final_task = false;
+      EvalWithRedirect(streams[axis], num_jobs,
+                       task_redirects_acc.Row(axis), min_threads_per_job,
+                       tot_work, target_num_loops, include_final_task,
+                       lambda_set_row_splits);
+    }
+
+    {
+      int32_t *this_new_row_ids = ans.RowIds(axis).Data();
+      const int32_t *this_old_row_ids = src.RowIds(axis).Data();
+
+      auto lambda_set_row_ids = [=] __host__ __device__ (
+          int32_t new_idx, int32_t num_threads, int32_t thread_idx) -> void {
+         //  0 <= new_idx < dim0; and 0 <= thread_idx < num_threads,
+         //  num_threads may have any value > 0 as far as this code is concerned.
+         //
+         // Reminder of how row_ids work dimensionally: they are a map
+         // from, e.g. an idx01 to an idx0.   An offsets_acc(0,n) is
+         // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
+         // The locations in the row_ids array are as given by
+         // the `axis+1`'th row of `offsets`; the values in the array
+         // are related to those in the `axis`'th row.
+         int32_t old_idx = new2old_data[new_idx],
+             this_old_offset = old_offsets_acc(axis + 1, old_idx),
+             next_old_offset = old_offsets_acc(axis + 1, old_idx + 1),
+             this_new_offset = new_offsets_acc(axis + 1, old_idx),
+             num_rows = next_old_offset - this_old_offset,
+             value_offset = new_offsets_acc(axis, new_idx) -
+                           old_offsets_acc(axis, old_idx);
+
+         // Using <= instead of < below causes threads for different src_idx to
+         // write a single overlapping value, but also ensures that the
+         // terminating value is written.  This only works because row_splits
+         // vectors always start with 0, which is not necessarily the case
+         // for row-ids.
+         for (; thread_idx < num_rows; thread_idx += num_threads) {
+           this_new_row_ids[this_new_offset + thread_idx] =
+               value_offset + this_old_row_ids[thread_idx];
+         }
+         // TODO: maybe remove this if I decide last value is not needed.
+         if (new_idx == dim0 - 1 && thread_idx == num_rows) {
+           int32_t next_value_offset = new_offsets_acc(axis, new_idx + 1) -
+                           old_offsets_acc(axis, old_idx + 1);
+           this_new_row_ids[this_new_offset + thread_idx] =
+               next_value_offset;
+         }
+      };
+      int32_t min_threads_per_job = 2,
+          tot_work = tot_sizes_out[axis],
+          target_num_loops = (tot_work > 1000000 ? 4 : 2);
+      EvalWithRedirect(streams[axis], num_jobs,
+                       task_redirects_acc.Row(axis), min_threads_per_job,
+                       tot_work, target_num_loops, lambda_set_row_splits);
+    }
 
   }
 }
-
-
-=======
-
-
-}
-
->>>>>>> upstream/cuda_draft
-
-/*
-  TODO: fix this documentation...
-
-  Extract meta-info from the shape (this will include populating any row_ids and
-  row_splits that were not already populated).  This is used inside algorithms
-  when we need to transfer meta-info to GPU.
-
-     @param [in] shape   Ragged shape that we're extracting meta-info from
-     @param [in,out] storage   The user should pass an uninitialized vector
-                         of this type into `GetRowInfo()` (multiple calls
-                         are OK for the same vector) and it will create
-                         temporary storage as it needs.  Keep this in scope
-                         as long as `ptrs` is in scope.  It is needed
-                         for axis 0 of the output.
-     @param [out] ptrs   Host (i.e. CPU memory) array of RowInfo that we're
-                         writing to (but the pointers inside them are to the
-                         memory of the device used in shape.Context());
-                         must be the start of an array of length
-                         shape.NumAxes().
-                         Note: element 0 of the output `ptrs` contains a
-                         row_splits with [ 0, shape.Dim0() ]
-                         and the row_ids are [ 0 0 0 (repeats shape.Dim0() times) 1 ]
-*/
-// outputs have dims src.NumAxes() - 1.
-void GetRowInfo(RaggedShape &src,
-                Array1<int32_t*> *row_splits,
-                Array1<int32_t*> *row_ids);
-
-/*
-  Get some meta-info for an array of RaggedShape, and transfer them
-  to the
-  device that `src` is located on
-
-     @param [in] num_src  Number of source arrays to process.
-     @param [in] src      Source arrays.  Let num_axes be src[0]->NumAxes().
-     @param [in] row_splits  Output array of row_splits pointers,
-                          will be of dimension num_axes-1 by num_src
-     @param [in] row_splits  Output array of row_splits pointers,
-                          will be of dimension num_axes-1 by num_src
-     @param [out] offsets   Output array of `offsets` pointers,
-                          will be of dimension num_axes by num_src+1;
-                          these are the exclusive-sum of the TotSize(axis)
-                          of the respective sources.
-     @param [out] tot_sizes  The last column of `offsets`, as a std::vector
-*/
-void GetInfoMulti(int32_t num_src,
-                  RaggedShape **src,
-                  Array2<int32_t*> *row_splits,
-                  Array2<int32_t*> *row_ids,
-                  Array2<int32_t*> *offsets,
-                  std::vector<int32_t> *tot_sizes);
 
 
 
@@ -240,90 +300,93 @@ inline Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
 }
 
 
-struct RowInfoWithOffsets {
-  int32_t *row_splits;
-  int32_t *row_ids;
-  int32_t num_rows;
-  int32_t num_elems;
-  int32_t row_splits_offset;
-  int32_t row_ids_offset;
-};
+
+/*
+  TODO: fix this documentation...
+
+  Extract meta-info from the shape (this will include populating any row_ids and
+  row_splits that were not already populated).  This is used inside algorithms
+  when we need to transfer meta-info to GPU.
+
+     @param [in] shape   Ragged shape that we're extracting meta-info from
+     @param [in,out] storage   The user should pass an uninitialized vector
+                         of this type into `GetRowInfo()` (multiple calls
+                         are OK for the same vector) and it will create
+                         temporary storage as it needs.  Keep this in scope
+                         as long as `ptrs` is in scope.  It is needed
+                         for axis 0 of the output.
+     @param [out] ptrs   Host (i.e. CPU memory) array of RowInfo that we're
+                         writing to (but the pointers inside them are to the
+                         memory of the device used in shape.Context());
+                         must be the start of an array of length
+                         shape.NumAxes().
+                         Note: element 0 of the output `ptrs` contains a
+                         row_splits with [ 0, shape.Dim0() ]
+                         and the row_ids are [ 0 0 0 (repeats shape.Dim0() times) 1 ]
+*/
+// outputs have dims src.NumAxes() - 1.
+void GetRowInfo(RaggedShape &src,
+                Array1<int32_t*> *row_splits,
+                Array1<int32_t*> *row_ids) {
+  // TODO
+}
 
 
+RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis) {
+  K2_ASSERT(axis == 0 &&  "Append() with axis > 0 not yet supported");
+  K2_CHECK_GT(num_srcs, 0);
 
-
-RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
-  CHECK_GT(num_srcs, 0);
-  ContextPtr c = src[0]->GetContext();
-  int32_t num_axes_in = src[0]->NumAxes(),
-      max_src_dim0 = num_srcs;  // will be the maximum of (num_srcs, and the
-                                // largest num-axes on any input; it's the size
-                                // of an array of zeros that we'll need for a
-                                // couple purposes.
+  int32_t num_axes = src->NumAxes();
   for (int32_t i = 1; i < num_srcs; i++) {
     // Check they have the same num-axes.
-    CHECK_EQ(num_axes_in, src[i]->NumAxes());
-    CHECK(IsCompatible(*src[0], *src[i]));
-    if (src[i]->Dim0() > max_src_dim0)
-      max_src_dim0 = src[i]->Dim0();
+    K2_CHECK_EQ(num_axes, src[i]->NumAxes());
+    K2_CHECK(IsCompatible(*src[0], *src[i]));
   }
 
 
-  Array2<int32_t*> src_row_splits, src_row_ids;
-  GetRowInfoMulti(num_srcs, src, &src_row_splits, &src_row_ids);
-
-
-  // offsets has shape ((src[0]->NumAxes()+1), (num_srcs + 1)).  Its first row
-  // (axis=0) is 0,1,2,3,..., and for axis > 0, that row is the exclusive-sum of
-  // the TotSize(axis-1) for the respective sources, defining TotSize(-1) as 1.
-  // Its last column gives the total size on each axis, of the output.
-  //
-  // Note: dimensionally, a value in the N'th row of `offsets` is an `idx...N`
-  // w.r.t. the output ragged array, meaning if N is 0, an idx0; if N is 1 an idx01, and so
-  // on.
+  // `offsets` will be on CPU for now.
   Array2<int32_t> offsets = GetOffsets(num_srcs, src);
   auto offsets_acc = offsets.Accessor();
 
-  std::vector<int32_t> tot_sizes_out(num_axes_in + 1);
-  for (int32_t axis = 0; axis <= num_axes_in; axis++)
+  std::vector<int32_t> tot_sizes_out(num_axes);
+  for (int32_t axis = 0; axis < num_axes; axis++)
     tot_sizes_out[axis] = offsets_acc(axis, num_srcs);
 
   RaggedShape ans = RaggedShapeFromTotSizes(c, tot_sizes_out);
   Array1<int32_t*> dest_row_splits, dest_row_ids;
   GetRowInfo(ans, &dest_row_splits, &dest_row_ids);
 
-  if (c.DeviceType() != kCpu) {
+  Array2<int32_t*> src_row_splits, src_row_ids;
+  GetRowInfoMulti(num_srcs, src, &src_row_splits, &src_row_ids);
+
+  if (c.DeviceType() != kCpu)
     offsets = offsets.To(c);
-  }
 
   int32_t **dest_row_splits_data = dest_row_splits.Data(),
       **dest_row_ids_data = dest_row_ids.Data();
   auto src_row_splits_acc = src_row_splits.Accessor(),
       src_row_ids_acc = src_row_ids.Accessor();
-  auto offsets_acc = offsets.Accessor();
+  offsets_acc = offsets.Accessor();  // on GPU now (if we're using one)
 
-  // ParallelRunner will eventually allow us to run things in child streams.
   ParallelRunner pr(c);
-  // `axis` here corresponds to the axis on the input side, or the axis on the
-  // output side minus one (i.e. the index into the axes_ member of Ragged).
-
   std::vector<cudaStream_t> streams(num_axes_in + 1);
   int32_t num_jobs = num_srcs * 2;
   // task_redirects is a device array (if using GPU).
-  Array2<TaskRedirect> task_redirects(c, num_axes_in + 1, num_jobs);
+  // We have `num_axes - 1` different sets of row_splits/row_ids to
+  // populate but they have different sizes; the total number of distinct
+  // sizes is `num_axes`.
+  Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
   auto task_redirects_acc = task_redirects.Accessor();
-
   // populate task_redirects (these allocate blocks of threads roughly
   // proportionally to the amount of data to process from this source.
-  for (int32_t axis = 0; axis <= num_axes_in; axis++) {
+  for (int32_t axis = 0; axis < num_axes; axis++) {
     streams[axis] = pr.NewStream();
-
     const int32_t *offsets = &(offsets_acc(axis, 0));
     GetTaskRedirect(stream[axis], num_srcs, offsets,
-                    &(task_redirects_acc(axis, 0)));
+                    task_redirects_acc.Row(axis));
   }
 
-  for (int32_t axis = 0; axis < num_axes_in; axis++) {
+  for (int32_t axis = 0; axis < num_axes - 1; axis++) {
     RowInfo *dest_info = dest_row_ptrs_data + axis,
         *src_info = src_row_ptrs_data + axis;
 
@@ -363,11 +426,9 @@ RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
         int32_t min_threads_per_job = 2,
             tot_work = tot_sizes_out[axis],
             target_num_loops = (tot_work > 1000000 ? 4 : 2);
-        bool include_final_task = false;
         EvalWithRedirect(stream[axis], num_jobs,
                          task_redirects_acc.Row(axis), min_threads_per_job,
-                         tot_work, target_num_loops, include_final_task,
-                         lambda_set_row_splits);
+                         tot_work, target_num_loops, lambda_set_row_splits);
       }
 
       {
@@ -404,6 +465,119 @@ RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
                          tot_work, target_num_loops, include_final_task,
                          lambda_set_row_ids);
       }
+
+
+
+
+
+}
+
+
+/*
+  Get some meta-info for an array of RaggedShape, and transfer them
+  to the
+  device that `src` is located on
+
+     @param [in] num_src  Number of source arrays to process.
+     @param [in] src      Source arrays.  Let num_axes be src[0]->NumAxes().
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+     @param [out] offsets   Output array of `offsets` pointers,
+                          will be of dimension num_axes by num_src+1;
+                          these are the exclusive-sum of the TotSize(axis)
+                          of the respective sources.
+     @param [out] tot_sizes  The last column of `offsets`, as a std::vector
+*/
+void GetInfoMulti(int32_t num_src,
+                  RaggedShape **src,
+                  Array2<int32_t*> *row_splits,
+                  Array2<int32_t*> *row_ids,
+                  Array2<int32_t*> *offsets,
+                  std::vector<int32_t> *tot_sizes);
+
+
+
+struct RowInfoWithOffsets {
+  int32_t *row_splits;
+  int32_t *row_ids;
+  int32_t num_rows;
+  int32_t num_elems;
+  int32_t row_splits_offset;
+  int32_t row_ids_offset;
+};
+
+
+
+
+RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
+  CHECK_GT(num_srcs, 0);
+  ContextPtr c = src[0]->GetContext();
+  int32_t num_axes_in = src[0]->NumAxes(),
+      max_src_dim0 = num_srcs;  // will be the maximum of (num_srcs, and the
+                                // largest num-axes on any input; it's the size
+                                // of an array of zeros that we'll need for a
+                                // couple purposes.
+  for (int32_t i = 1; i < num_srcs; i++) {
+    // Check they have the same num-axes.
+    CHECK_EQ(num_axes_in, src[i]->NumAxes());
+    CHECK(IsCompatible(*src[0], *src[i]));
+    if (src[i]->Dim0() > max_src_dim0)
+      max_src_dim0 = src[i]->Dim0();
+  }
+
+  Array2<int32_t*> src_row_splits, src_row_ids;
+  GetRowInfoMulti(num_srcs, src, &src_row_splits, &src_row_ids);
+
+
+  // offsets has shape ((src[0]->NumAxes()+1), (num_srcs + 1)).  Its first row
+  // (axis=0) is 0,1,2,3,..., and for axis > 0, that row is the exclusive-sum of
+  // the TotSize(axis-1) for the respective sources, defining TotSize(-1) as 1.
+  // Its last column gives the total size on each axis, of the output.
+  //
+  // Note: dimensionally, a value in the N'th row of `offsets` is an `idx...N`
+  // w.r.t. the output ragged array, meaning if N is 0, an idx0; if N is 1 an idx01, and so
+  // on.
+  Array2<int32_t> offsets = GetOffsets(num_srcs, src);
+  auto offsets_acc = offsets.Accessor();
+
+  std::vector<int32_t> tot_sizes_out(num_axes_in + 1);
+  for (int32_t axis = 0; axis <= num_axes_in; axis++)
+    tot_sizes_out[axis] = offsets_acc(axis, num_srcs);
+
+  RaggedShape ans = RaggedShapeFromTotSizes(c, tot_sizes_out);
+  Array1<int32_t*> dest_row_splits, dest_row_ids;
+  GetRowInfo(ans, &dest_row_splits, &dest_row_ids);
+
+  if (c.DeviceType() != kCpu)
+    offsets = offsets.To(c);
+
+  int32_t **dest_row_splits_data = dest_row_splits.Data(),
+      **dest_row_ids_data = dest_row_ids.Data();
+  auto src_row_splits_acc = src_row_splits.Accessor(),
+      src_row_ids_acc = src_row_ids.Accessor();
+  auto offsets_acc = offsets.Accessor();
+
+  // ParallelRunner will eventually allow us to run things in child streams.
+  ParallelRunner pr(c);
+  // `axis` here corresponds to the axis on the input side, or the axis on the
+  // output side minus one (i.e. the index into the axes_ member of Ragged).
+
+  std::vector<cudaStream_t> streams(num_axes_in + 1);
+  int32_t num_jobs = num_srcs * 2;
+  // task_redirects is a device array (if using GPU).
+  Array2<TaskRedirect> task_redirects(c, num_axes_in + 1, num_jobs);
+  auto task_redirects_acc = task_redirects.Accessor();
+
+  // populate task_redirects (these allocate blocks of threads roughly
+  // proportionally to the amount of data to process from this source.
+  for (int32_t axis = 0; axis <= num_axes_in; axis++) {
+    streams[axis] = pr.NewStream();
+    const int32_t *offsets = &(offsets_acc(axis, 0));
+    GetTaskRedirect(stream[axis], num_srcs, offsets,
+                    &(task_redirects_acc(axis, 0)));
+  }
 
 
 

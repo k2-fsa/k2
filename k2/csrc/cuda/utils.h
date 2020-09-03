@@ -52,11 +52,10 @@ namespace k2 {
   row_ids concept / row-ids concept
   (Note, this has been named for compatibility with TensorFlow's RaggedTensor).
 
-
   A vector of row_ids is a vector of the form
     [ 0 0 0 1 1 2 2 2 ]
-  or in the general case any nonnegative, non-decreasing list of integers.  Each
-  group represents the index of the sub-list to which that position belongs; for
+  or in general any nonnegative, non-decreasing list of integers.  Each
+  value reprsents the index of the sub-list to which that position belongs; for
   instance, if we had a list-of-lists like [ a b c ] [ d e ] [ f g h ], the
   above vector of row_ids would describe its structure.
 
@@ -211,11 +210,11 @@ T MaxValue(Context *c, size_t nelems, T *t);
   This is a rather special purpose function that is used in RaggedShape.
 
   It sets row_ids[i] to the index j to which position i 'belongs' according to
-  the array `row_splits`.  (`row_ids` has an extra element at the end which is
-  the number of rows). `row_ids` is expected to be an array containing the
-  exclusive sum of a sequence of nonnegative integers, so suppose there was a
-  original sequence sizes = [ 2 1 0 4 ] and  row_splits = [ 0 2 3 3 7 ] then we
-  would fill row_ids with: row_ids = [ 0 0 1 3 3 3 3 4 ]
+  the array `row_splits`.  `row_splits` is expected to be an array containing
+  the exclusive sum of a sequence of nonnegative integers corresponding to sizes
+  of sub-lists, so suppose there was a original sequence sizes = [ 2 1 0 4 ] and
+  row_splits = [ 0 2 3 3 7 ] then we would fill row_ids with: row_ids = [ 0 0 1
+  3 3 3 3 ]
 
        @param [in] c   ContextPtr, points to the context to which the
                        data belongs (e.g. CPU or GPU).
@@ -227,10 +226,9 @@ T MaxValue(Context *c, size_t nelems, T *t);
                        row_splits[0] must equal 0 and row_splits[num_rows] must
                        equal num_elems.
        @param [in] num_elems  Number of elements, in all the rows together.
-                       Note: the length of row_ids equals num_elems + 1
-                       (row_ids[num_elems] == num_rows, at exit).
+                       Note: the length of row_ids equals num_elems.
        @param [out] row_ids   Start of row_ids vector, we write the output to
-                              here. Length is num_elems + 1.
+                              here. Length is num_elems.
 */
 void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
                        const int32_t *row_splits, int32_t num_elems,
@@ -390,10 +388,6 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
                                the average number of `work items` per thread
                                this code aims for when deiding the threads
                                _per_job.
-           @param [in] include_final_task  If true, the lambda will be called
-                                once with task_idx=num_tasks=num_jobs/2,
-                                num_threads=1, thread_idx=0; This happens to
-                                be useful quite a bit.
            @param [in] lambda  The lambda expression to run; this is to be run
                                as, lambda(task_idx, num_threads_this_task,
                                thread_idx), which will be called with
@@ -412,7 +406,7 @@ template <typename LambdaT, typename lambdaU>
 void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
                       TaskRedirect *redirect, int32_t min_threads_per_job,
                       int32_t tot_work, int32_t target_num_loops,
-                      bool include_final_task, LambdaT &lambda) {
+                      LambdaT &lambda) {
   // TODO..
 }
 

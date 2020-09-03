@@ -383,14 +383,25 @@ class CudaStreamOverride {
     stack_.pop_back();
   }
 
-
   CudaStreamOverride(): stream_override_(0x0) { }
 
   cudaStream_t stream_override_;
   std::vector<cudaStream_t> stack_;
 };
 
+
 static thread_local CudaStreamOverride g_stream_override;
+
+class With {
+ public:
+  With(cudaStream_t stream): stream_(stream) {
+    g_stream_override.Push(stream);
+  }
+  ~With() { g_stream_override.Pop(stream); }
+ private:
+  cudaStream_t stream_;
+}
+
 
 /*
   Class ParallelRunner allows you to invoke Eval(), but in parallel.
@@ -401,7 +412,7 @@ static thread_local CudaStreamOverride g_stream_override;
 
   TODO: properly implement this.  Right now it doesn't background them
   at all, just forwarding them to the sequential versions of Eval().
- */
+*/
 template <typename ContextPtrType>
 class ParallelRunner {
  public:
@@ -410,7 +421,11 @@ class ParallelRunner {
   // create a new stream, that first syncs with stream of c_ via an event.  The
   // destructor will cause the stream of c_ to wait on this stream in the
   // destructor of `this` You can pass this into the Eval() and Eval2()
-  // functions, or invoke kernels directly with it.
+  // functions, or invoke kernels directly with it; but if you want it
+  // to be used in called functions you should do something like
+  //  With(pr.NewStream) w;
+  // with that object alive in the scope where you want the stream to be
+  // used.
   //
   // NOTE: this will also push the stream onto the stack g_stream_override
   // (after popping that of any previous stream that this class generated)

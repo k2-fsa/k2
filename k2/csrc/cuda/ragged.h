@@ -14,8 +14,7 @@ namespace k2 {
 
 // Caution, RaggedShapeDim is mostly for internal use and users should not
 // generally interact with it directly.
-// Note: row_splits is of size num_rows + 1 and row_ids is of size num_elements
-// + 1.
+// Note: row_splits is of size num_rows + 1 and row_ids is of size num_elements.
 struct RaggedShapeDim {
   // Search for "row_splits concept" in utils.h for explanation
   Array1<int32_t> row_splits;
@@ -24,7 +23,7 @@ struct RaggedShapeDim {
   // cached_tot_size can be viewed as the number of elements in a ragged matrix,
   // or -1 if not known.
   // If cached_tot_size >= 0 and row_ids is nonempty, cached_tot_size will
-  // equal row_ids.Dim() - 1.
+  // equal row_ids.Dim().
   // If cached_tot_size >= 0 and row_splits is nonempty, cached_tot_size will
   // equal row_splits[row_splits.Dim() - 1].
   int32_t cached_tot_size;
@@ -73,8 +72,7 @@ class RaggedShape {
 
   /*
     Return the row-ids for axis `axis` with `0 < axis < NumAxes()`.
-    The dimension is the number of elements on this axis PLUS ONE.
-    (The last value is the number of row-splits on this axis).
+    The dimension is the number of elements on this axis == TotSize(axis).
   */
   Array1<int32_t> &RowIds(int32_t axis) {
     CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
@@ -115,6 +113,15 @@ class RaggedShape {
 
   RaggedShape(std::vector<RaggedShapeDim> &axes) : axes_(axes) {}
 
+
+  // This makes sure that all of the row_splits, row_ids and cached_tot_size
+  // are populated
+  void Populate();
+
+  // Axes() is intended for internal-ish use; users shouldn't really ahve to
+  // interact with it.
+  const std::vector<RaggedShapeDim> &Axes() const { return axes_; }
+ private:
   // TODO: could probably do away with the std::vector and have a max size and a
   // fixed length array (more efficient)
 
@@ -176,7 +183,6 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
                            we only support axis == 0.
       @return      Returns the appended RaggedShape.
 */
-<<<<<<< HEAD
 RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis);
 
 /*
@@ -195,15 +201,6 @@ Array<int32_t*> GetRowSpltsPtrs(RaggedShape &src);
      @param [in] new2old  Mapping from new to old numbering of array, of
                           length src.Dim0(), on the same device as `src`;
                           must contain the numbers
-=======
-RaggedShape Append(int32_t num_srcs, const RaggedShape **src, int32_t axis);
-
-/*
-  Renumber axis 0 of a ragged shape
-     @param [in] src      Shape to renumber
-     @param [in] new2old  Mapping from new to old numbering of array, of
-                          length src.Dim0(); must contain the numbers
->>>>>>> upstream/cuda_draft
                           0 through src.Dim0() - 1 in some order.
      @return              Returns the renumbered shape.  Will satisfy:
                           ret[i,j,k] = src[new2old[i],j,k].  (Note, this is
