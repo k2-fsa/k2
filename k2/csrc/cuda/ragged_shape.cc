@@ -4,7 +4,7 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#include "k2/csrc/cuda/ragged_shape.h"
+#include "k2/csrc/cuda/ragged.h"
 
 namespace k2 {
 

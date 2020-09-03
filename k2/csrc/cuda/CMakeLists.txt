@@ -1,4 +1,8 @@
-add_library(context context.cu)
+add_library(context 
+  context.cu
+  tensor.cu
+  dtype.cc
+)
 target_include_directories(context PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(context PUBLIC cub)
 target_link_libraries(context PUBLIC glog)
@@ -6,23 +10,24 @@ target_link_libraries(context PUBLIC glog)
 function(k2_add_cuda_test name)
   add_executable(${name} "${name}.cu")
   target_link_libraries(${name}
-      PRIVATE
+    PRIVATE
       context
       gtest
       gtest_main
-      )
+  )
   add_test(NAME "Test.Cuda.${name}"
-      COMMAND
+    COMMAND
       $<TARGET_FILE:${name}>
-      )
+  )
 endfunction()
 
 # please sort the source files alphabetically
 set(cuda_tests
-#    ops_test
-    utils_test
-    debug_test
-    )
+  ops_test
+  tensor_test
+  utils_test
+  debug_test
+)
 
 foreach(name IN LISTS cuda_tests)
   k2_add_cuda_test(${name})

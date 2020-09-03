@@ -44,6 +44,9 @@ if(WIN32 AND BUILD_SHARED_LIBS)
 endif()
 
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
+  set(CUDAToolkit_LIBRARY_DIR "" CACHE STRING "The cudatoolkit library directory.")
+  set(CUDAToolkit_INCLUDE_DIRS "" CACHE STRING "The cudatoolkit include directory.")
+
   find_package(CUDAToolkit REQUIRED)
   if(CUDAToolkit_FOUND)
     message(STATUS "found CUDAToolkit " ${CUDAToolkit_LIBRARY_DIR})
