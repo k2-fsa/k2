@@ -113,7 +113,6 @@ class RaggedShape {
 
   RaggedShape(std::vector<RaggedShapeDim> &axes) : axes_(axes) {}
 
-
   // This makes sure that all of the row_splits, row_ids and cached_tot_size
   // are populated
   void Populate();
@@ -121,6 +120,7 @@ class RaggedShape {
   // Axes() is intended for internal-ish use; users shouldn't really ahve to
   // interact with it.
   const std::vector<RaggedShapeDim> &Axes() const { return axes_; }
+
  private:
   // TODO: could probably do away with the std::vector and have a max size and a
   // fixed length array (more efficient)
@@ -192,8 +192,7 @@ RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis);
        @return        Returns an array of size src.NumAxes() - 1 containing
                       pointers to the starts of the row_splits vetors
 */
-Array<int32_t*> GetRowSpltsPtrs(RaggedShape &src);
-
+Array1<int32_t *> GetRowSpltsPtrs(RaggedShape &src);
 
 /*
   Renumber(/Reorder) axis 0 of a ragged shape
@@ -356,8 +355,6 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                        set.
  */
 RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes);
-
-
 
 // TODO(dan), include guard maybe.
 #include "k2/csrc/cuda/ragged_inl.h"

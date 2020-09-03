@@ -8,21 +8,25 @@ target_link_libraries(context PUBLIC cub)
 target_link_libraries(context PUBLIC glog)
 
 function(k2_add_cuda_test name)
-  add_executable(${name} "${name}.cu")
-  target_link_libraries(${name}
+  # TODO(haowen): add prefix `cu` for now to avoid name conflicts
+  # with files in k2/csrc/, will remove this finally.
+  set(target_name "cu_${name}")
+  add_executable(${target_name} "${name}.cu")
+  target_link_libraries(${target_name}
     PRIVATE
       context
       gtest
       gtest_main
   )
-  add_test(NAME "Test.Cuda.${name}"
+  add_test(NAME "Test.Cuda.${target_name}"
     COMMAND
-      $<TARGET_FILE:${name}>
+      $<TARGET_FILE:${target_name}>
   )
 endfunction()
 
 # please sort the source files alphabetically
 set(cuda_tests
+  array_test
   ops_test
   tensor_test
   utils_test
