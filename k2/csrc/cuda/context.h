@@ -9,8 +9,10 @@
 
 #include <cassert>
 #include <memory>
+#include <map>
 
 #include "glog/logging.h"
+#include "k2/csrc/cuda/debug.h"
 
 namespace k2 {
 
@@ -119,6 +121,46 @@ class Context : public std::enable_shared_from_this<Context> {
    */
   virtual void Sync() const {}
 };
+
+enum MemoryCopyKind {
+  MemcpyHostToHost,
+  MemcpyHostToDevice,
+  MemcpyDeviceToHost,
+  MemcpyDeviceToDevice,
+  MemcpyUnknown
+};
+
+// Note currently we just support single GPU device, but finally we may need to
+// handle different GPU devices on multiple machines, that's also the reason
+// that we pass `Context` instead of `DeviceType` as the input parameter here.
+inline MemoryCopyKind GetMemoryCopyKind(const Context &src,
+                                        const Context &dst) {
+  if (src.GetDeviceType() == kCpu && dst.GetDeviceType() == kCpu) {
+    return MemcpyHostToHost;
+  } else if (src.GetDeviceType() == kCpu && dst.GetDeviceType() == kCuda) {
+    return MemcpyHostToDevice;
+  } else if (src.GetDeviceType() == kCuda && dst.GetDeviceType() == kCpu) {
+    return MemcpyDeviceToHost;
+  } else if (src.GetDeviceType() == kCuda && dst.GetDeviceType() == kCuda) {
+    return MemcpyDeviceToDevice;
+  } else {
+    LOG(FATAL) << "Unsupported Context";
+    return MemcpyUnknown;
+  }
+}
+
+inline void MemoryCopy(void *dst, const void *src, std::size_t count,
+                       MemoryCopyKind kind) {
+
+  std::map<MemoryCopyKind, cudaMemcpyKind> copy_kind_mappings = {
+      {MemcpyHostToHost, cudaMemcpyHostToHost},
+      {MemcpyHostToDevice, cudaMemcpyHostToDevice},
+      {MemcpyDeviceToHost, cudaMemcpyDeviceToHost},
+      {MemcpyDeviceToDevice, cudaMemcpyDeviceToDevice}};
+  auto it = copy_kind_mappings.find(kind);
+  K2_CHECK_NE(it, copy_kind_mappings.end());
+  cudaMemcpy(dst, src, count, it->second);
+}
 
 /*
   NOTE: let's leave this for later, this won't be needed initially.
@@ -305,7 +347,7 @@ void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   } else {
     int block_size = 256;
     int grid_size = NumBlocks(n, block_size);
-    eval_lambda<LambdaT><<<grid_size, block_size, 0, stream>>>(n, lambda);
+    eval_lambda<LambdaT> << <grid_size, block_size, 0, stream>>> (n, lambda);
     cudaError_t err = cudaGetLastError();
     assert(err == cudaSuccess);
   }
@@ -348,7 +390,7 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
     dim3 dim_grid(NumBlocks(n, dim_block.x), m, 1);
     if (dim_grid.x == 1) dim_block.x = n;
 
-    eval_lambda2<LambdaT><<<dim_block, dim_grid, 0, stream>>>(m, n, lambda);
+    eval_lambda2<LambdaT> << <dim_block, dim_grid, 0, stream>>> (m, n, lambda);
 
     cudaError_t err = cudaGetLastError();
     assert(err == 0);
@@ -361,7 +403,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
 inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
   Eval2(c->GetCudaStream(), m, n, lambda);
 }
-
 
 // This is for use by ParallelRunner and Context.  Users probably should not
 // interact with this directly.  The idea is that the Context object will call
@@ -383,25 +424,24 @@ class CudaStreamOverride {
     stack_.pop_back();
   }
 
-  CudaStreamOverride(): stream_override_(0x0) { }
+  CudaStreamOverride() : stream_override_(0x0) {}
 
   cudaStream_t stream_override_;
   std::vector<cudaStream_t> stack_;
 };
 
-
 static thread_local CudaStreamOverride g_stream_override;
 
 class With {
  public:
-  With(cudaStream_t stream): stream_(stream) {
-    g_stream_override.Push(stream);
+  With(cudaStream_t stream) : stream_(stream) {
+    g_stream_override.Push(stream_);
   }
-  ~With() { g_stream_override.Pop(stream); }
+  ~With() { g_stream_override.Pop(stream_); }
+
  private:
   cudaStream_t stream_;
-}
-
+};
 
 /*
   Class ParallelRunner allows you to invoke Eval(), but in parallel.

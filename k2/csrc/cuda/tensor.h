@@ -34,7 +34,9 @@ class Shape {
 
   int32_t Nelement() const { return num_element_; }
   // storage size in elements
-  int32_t StorageSize() const { return storage_size_; };
+  int32_t StorageSize() const {
+    return storage_size_;
+  };
   bool IsContiguous() const { return is_contiguous_; }
 
   Shape() : ndim_(0), num_element_(0), is_contiguous_(true) {}
@@ -76,6 +78,7 @@ using TensorPtr = std::shared_ptr<Tensor>;
   Note, it's allowable for some but not all of the dimensions to be zero,
   e.g. shapes like (0,4) are allowed.
  */
+// TODO(haowen): we now only support positive strides
 class Tensor {
  public:
   // Creates Tensor backed by uninitialized memory
