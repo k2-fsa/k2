@@ -46,6 +46,7 @@ class Array1 {
   // NOTE: we assume this thread is already set to use the device associated
   // with the context in 'ctx', if it's a CUDA context.
   // TODO(Haowen): no corresponding test code now, we may delete this later
+  /*
   template <typename Callable>
   Array1(ContextPtr ctx, int32_t size, Callable &&callable) {
     Init(ctx, size);
@@ -54,6 +55,7 @@ class Array1 {
     // `Eval(ContextPtr, T*, int, Callable&)` now
     Eval(ctx, Data(), size, std::forward<Callable>(callable));
   }
+  */
 
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
@@ -63,20 +65,12 @@ class Array1 {
 
   Array1(ContextPtr ctx, int32_t size, T elem) {
     Init(ctx, size);
-    T *data = Data();
-    // TODO(haowen): need capture *this, not sure it's valid in constructor
-    /*
-    auto lambda = [=] __host__ __device__(int32_t i) -> void {
-      data[i] = elem;
-    };
-    Eval(ctx, dim_, lambda);
-    */
+    *this = elem;
   }
 
   /* Return sub-part of this array. Note that the returned Array1 is not const,
      the caller should be careful when changing array's data, it will
      also change data in the parent array as they shares the memory.
-     in
      @param [in] start  First element to cover, 0 <= start < Dim()
      @param [in] size   Number of elements to include, 0 < size <= Dim()-start
   */
@@ -211,14 +205,9 @@ class Array1 {
   Array1(ContextPtr ctx, const std::vector<T> &src) {
     Init(ctx, src.size());
     T *data = Data();
-    DeviceType d = ctx->GetDeviceType();
-    if (d == kCpu) {
-      std::copy(src.begin(), src.end(), data);
-    } else {
-      K2_CHECK_EQ(d, kCuda);
-      cudaMemcpy(static_cast<void *>(data), static_cast<void *>(src.data()),
-                 src.size() * ElementSize(), cudaMemcpyHostToDevice);
-    }
+    auto kind = GetMemoryCopyKind(*GetCpuContext(), *Context());
+    MemoryCopy(static_cast<void *>(data), static_cast<const void *>(src.data()),
+               src.size() * ElementSize(), kind);
   }
 
   Array1(const Array1 &other) = default;
