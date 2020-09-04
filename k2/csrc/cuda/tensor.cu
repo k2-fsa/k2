@@ -8,7 +8,7 @@
 #include <memory>
 #include <vector>
 
-#include "glog/logging.h"
+#include "k2/csrc/util/logging.h"
 #include "k2/csrc/cuda/dtype.h"
 #include "k2/csrc/cuda/tensor.h"
 

@@ -191,20 +191,24 @@ K2CudaDebug_(cudaError_t error, const char *filename, int line,
  *
  * @details
  *  `printf` is supported by both host and device. This Log is for debugging,
- *  the error msg is printed to the stderr. The log msg always get printed,
- *  regardless of macro `NDEBUG`. Thus it should only be used for debugging.
+ *  the error msg is printed to the stderr. The log msg get printed when
+ *  `NDEBUG` is not defined. It's expected to be used for debugging.
  *
  * @code{.cpp}
  * K2_DLOG("Value is %d, string is %s ..", i, str);
  * @endcode
  */
-#ifndef __CUDA_ARCH__
-#define K2_DLOG(format, ...) printf(format, __VA_ARGS__)
-#elif __CUDA_ARCH__ >= 200
-#define K2_DLOG(format, ...)                                            \
-  printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
-         blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z, \
-         __VA_ARGS__)
+#ifndef NDEBUG
+  #ifndef __CUDA_ARCH__
+    #define K2_DLOG(format, ...) printf(format, __VA_ARGS__)
+  #elif __CUDA_ARCH__ >= 200
+    #define K2_DLOG(format, ...)                                            \
+      printf("[block (%d,%d,%d), thread (%d,%d,%d)]: " format, blockIdx.x,  \
+             blockIdx.y, blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z, \
+             __VA_ARGS__)
+  #endif
+#else
+  #define K2_DLOG(format, ...) ((void)0)
 #endif
 
 /**

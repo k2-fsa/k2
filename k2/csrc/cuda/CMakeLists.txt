@@ -5,7 +5,12 @@ add_library(context
 )
 target_include_directories(context PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(context PUBLIC cub)
-target_link_libraries(context PUBLIC glog)
+if(K2_USE_GLOG)
+  target_compile_definitions(context PUBLIC K2_USE_GLOG)
+  target_link_libraries(context PUBLIC glog)
+else()
+  target_link_libraries(context PUBLIC non-glog)
+endif()
 
 function(k2_add_cuda_test name)
   # TODO(haowen): add prefix `cu` for now to avoid name conflicts

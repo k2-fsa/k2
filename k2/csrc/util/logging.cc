@@ -32,16 +32,18 @@ bool InitK2Logging(int* argc, char** argv) {
     ::google::InstallFailureSignalHandler();
 #endif
   }
-  UpdateLoggingLevelsFromFlags();
+  UpdateLoggingLevelsFromFlags(); // read globle google gflags if exists.
   return true;
 }
 
 void UpdateLoggingLevelsFromFlags() {
-  // TODO(meixu): set some default FLAGS/gflags here
+  // set some default FLAGS/gflags for K2 here,
+  // if that differ with glog default.
 }
 }  // namespace k2
 #else  // !K2_USE_GLOG
 namespace k2 {
+
 bool InitK2Logging(int *argc, char **argv) {
   if (*argc == 0)
     return true;
@@ -51,5 +53,6 @@ bool InitK2Logging(int *argc, char **argv) {
 }
 
 void UpdateLoggingLevelsFromFlags() {}
+
 }  // namespace k2
 #endif  // !K2_USE_GLOG
