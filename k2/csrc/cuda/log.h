@@ -17,6 +17,12 @@ namespace k2 {
 
 namespace internal {
 
+#if defined(NDEBUG)
+constexpr bool kDisableDebug = true;
+#else
+constexpr bool kDisableDebug = false;
+#endif
+
 enum class LogLevel {
   kDebug = 0,
   kInfo = 1,
@@ -35,15 +41,45 @@ constexpr LogLevel FATAL = LogLevel::kFatal;
 
 class Logger {
  public:
-  explicit __host__ __device__ Logger(LogLevel level) : level_(level) {}
+  __host__ __device__ Logger(const char *filename, const char *func_name,
+                             uint32_t line_num, LogLevel level)
+      : filename_(filename),
+        func_name_(func_name),
+        line_num_(line_num),
+        level_(level) {
+    switch (level) {
+      case DEBUG:
+        printf("[D] ");
+        break;
+      case INFO:
+        printf("[I] ");
+        break;
+      case WARNING:
+        printf("[W] ");
+        break;
+      case ERROR:
+        printf("[E] ");
+        break;
+      case FATAL:
+        printf("[F] ");
+        break;
+    }
+    printf("%s:%s:%u ", filename, func_name, line_num);
+#if defined(__CUDA_ARCH__)
+    printf("block:[%u,%u,%u], thread: [%u,%u,%u] ", blockIdx.x, blockIdx.y,
+           blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z);
+#endif
+  }
 
   __host__ __device__ ~Logger() {
     printf("\n");
     if (level_ == FATAL) {
 #if defined(__CUDA_ARCH__)
-      // abort() is not available for device code.
-      __threadfence();
-      asm("trap;");
+      // this is usually caused by one of the CHECK macros and the detailed
+      // error messages should have already been printed by the macro, so we
+      // use an arbitrary string here.
+      __assert_fail("Some bad things happened", filename_, line_num_,
+                    func_name_);
 #else
       abort();
 #endif
@@ -71,6 +107,9 @@ class Logger {
   }
 
  private:
+  const char *filename_;
+  const char *func_name_;
+  uint32_t line_num_;
   LogLevel level_;
 };
 
@@ -83,29 +122,23 @@ class Voidifier {
 
 }  // namespace k2
 
-#define K2_KERNEL_DEBUG_STR                                                \
-  "block: [" << blockIdx.x << "," << blockIdx.y << "," << blockIdx.z       \
-             << "], thread: [" << threadIdx.x << "," << threadIdx.y << "," \
-             << threadIdx.z << "]"
-
-#define K2_FILE_DEBUG_STR __FILE__ << ":" << __func__ << ":" << __LINE__ << " "
-
 #define K2_CHECK(x)                                                           \
   (x) ? (void)0                                                               \
-      : k2::internal::Voidifier() & k2::internal::Logger(k2::internal::FATAL) \
-                                        << K2_FILE_DEBUG_STR                  \
+      : k2::internal::Voidifier() & k2::internal::Logger(__FILE__, __func__,  \
+                                                         __LINE__,            \
+                                                         k2::internal::FATAL) \
                                         << "Check failed: " << #x << " "
 
 // WARNING: x and y are may be evaluated multiple times, but this happens only
-// when the check fails. Since the program aborts if it fails, I don't think
+// when the check fails. Since the program aborts if it fails, we don't think
 // the extra evaluation of x and y matters.
-#define _K2_CHECK_OP(x, y, op)                                               \
-  ((x)op(y)) ? (void)0                                                       \
-             : k2::internal::Voidifier() &                                   \
-                   k2::internal::Logger(k2::internal::FATAL)                 \
-                       << K2_FILE_DEBUG_STR << "Check failed: " << #x << " " \
-                       << #op << " " << #y << " (" << (x) << " vs. " << (y)  \
-                       << ") "
+#define _K2_CHECK_OP(x, y, op)                                              \
+  ((x)op(y)) ? (void)0                                                      \
+             : k2::internal::Voidifier() &                                  \
+                   k2::internal::Logger(__FILE__, __func__, __LINE__,       \
+                                        k2::internal::FATAL)                \
+                       << "Check failed: " << #x << " " << #op << " " << #y \
+                       << " (" << (x) << " vs. " << (y) << ") "
 
 #define K2_CHECK_EQ(x, y) _K2_CHECK_OP(x, y, ==)
 #define K2_CHECK_NE(x, y) _K2_CHECK_OP(x, y, !=)
@@ -114,10 +147,40 @@ class Voidifier {
 #define K2_CHECK_GT(x, y) _K2_CHECK_OP(x, y, >)
 #define K2_CHECK_GE(x, y) _K2_CHECK_OP(x, y, >=)
 
-#define K2_LOG(x)                       \
-  k2::internal::Logger(k2::internal::x) \
-      << "[" << #x << "] " << K2_FILE_DEBUG_STR
+#define K2_LOG(x) \
+  k2::internal::Logger(__FILE__, __func__, __LINE__, k2::internal::x)
 
-// TODO(fangjun): add K2_DCHECK, K2_DCHECK_EQ, ...
+#define K2_CHECK_CUDA_ERROR(x) \
+  K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
+
+// ============================================================
+//       For debug check
+// ------------------------------------------------------------
+
+#define K2_DCHECK(x) k2::internal::kDisableDebug ? (void)0 : K2_CHECK(x)
+
+#define K2_DCHECK_EQ(x, y) \
+  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_EQ(x, y)
+
+#define K2_DCHECK_NE(x, y) \
+  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_NE(x, y)
+
+#define K2_DCHECK_LT(x, y) \
+  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_LT(x, y)
+
+#define K2_DCHECK_LE(x, y) \
+  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_LE(x, y)
+
+#define K2_DCHECK_GT(x, y) \
+  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_GT(x, y)
+
+#define K2_DCHECK_GE(x, y) \
+  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_GE(x, y)
+
+#define K2_DLOG(x) \
+  k2::internal::kDisableDebug ? (void)0 : k2::internal::Voidifier() & K2_LOG(x)
+
+#define K2_DCHECK_CUDA_ERROR(x) \
+  K2_DCHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 
 #endif  // K2_CSRC_CUDA_LOG_H_

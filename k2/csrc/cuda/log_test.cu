@@ -15,10 +15,14 @@ TEST(Log, Cpu) {
   K2_LOG(WARNING) << "Warning message";
   K2_LOG(ERROR) << "Error message";
 
-  int a = 10;
-  int b = 20;
-  int c = 30;
-  int d = a;
+  K2_DLOG(INFO) << "This is printed only in debug mode";
+
+  int32_t a = 10;
+  int32_t b = 20;
+  int32_t c = 30;
+  int32_t d = a;
+
+  K2_DCHECK_EQ(a, d) << "This is checked only in debug mode";
 
   K2_CHECK(a == d) << "failed";
 
@@ -32,17 +36,18 @@ TEST(Log, Cpu) {
   K2_CHECK_GT(c, b) << "failed";
 }
 
-__global__ void DummyKernel(int *b, int a) {
-  K2_LOG(INFO) << "In kernel";
-  K2_CHECK_LT(*b, a) << K2_KERNEL_DEBUG_STR;
+__global__ void DummyKernel(int32_t *b, int32_t a) {
+  K2_DLOG(INFO) << "In kernel";
+  K2_DCHECK_LT(*b, a); // enabled only in debug mode
   *b += 1;
-  K2_CHECK_EQ(*b, a) << K2_KERNEL_DEBUG_STR;
+  K2_CHECK_EQ(*b, a);
+  K2_DLOG(DEBUG) << "Done";
 }
 
 TEST(Log, Cuda) {
   K2_LOG(INFO) << "Test log for cuda";
-  int a = 10;
-  int *b;
+  int32_t a = 10;
+  int32_t *b;
   auto ret = cudaMalloc(&b, sizeof(a));
   K2_CHECK_EQ(ret, cudaSuccess) << "Failed to allocate memory";
 
@@ -51,9 +56,9 @@ TEST(Log, Cuda) {
 
   DummyKernel<<<1, 1>>>(b, a + 1);
 
-  int c = 0;
+  int32_t c = 0;
   ret = cudaMemcpy(&c, b, sizeof(a), cudaMemcpyDeviceToHost);
-  K2_CHECK_EQ(ret, cudaSuccess) << "Failed to copy memory from gpu";
+  K2_CHECK_CUDA_ERROR(ret) << "Failed to copy memory from gpu";
   K2_CHECK_EQ(a + 1, c) << "Error in the kernel!";
 
   ret = cudaFree(b);
