@@ -16,16 +16,18 @@ namespace k2 {
 // generally interact with it directly.
 // Note: row_splits is of size num_rows + 1 and row_ids is of size num_elements.
 struct RaggedShapeDim {
-  // Search for "row_splits concept" in utils.h for explanation
+  // Search for "row_splits concept" in utils.h for explanation.  row_splits
+  // is required; it must always be nonempty for a RaggedShapeDim to be valid.
   Array1<int32_t> row_splits;
   // Search for "row_ids concept" in utils.h for explanation
   Array1<int32_t> row_ids;
   // cached_tot_size can be viewed as the number of elements in a ragged matrix,
-  // or -1 if not known.
+  // or -1 if not known.  (Note: it can legitimately be 0, if there are no
+  // elements).
+
   // If cached_tot_size >= 0 and row_ids is nonempty, cached_tot_size will
   // equal row_ids.Dim().
-  // If cached_tot_size >= 0 and row_splits is nonempty, cached_tot_size will
-  // equal row_splits[row_splits.Dim() - 1].
+  // If cached_tot_size >= 0, it will be equal to row_splits[row_splits.Dim() - 1].
   int32_t cached_tot_size;
 };
 
@@ -80,11 +82,6 @@ class RaggedShape {
     return axes_[axis - 1].row_ids;
   }
 
-  /* Remove an axis by appending elements... require 0 <= axis < NumAxes() - 1
-     and require NumAxes() > 2.  Effectively the axis is combined with the
-     following axis, and the TotSize(axis) of `axis` in the returned shape will
-     be the same as TotSize(axis + 1) in the current shape.  */
-  RaggedShape RemoveAxis(int32_t axis);
 
   int32_t NumAxes() { return axes_.size() + 1; }
 
@@ -111,16 +108,30 @@ class RaggedShape {
 
   RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b);
 
-  RaggedShape(std::vector<RaggedShapeDim> &axes) : axes_(axes) {}
+  RaggedShape(std::vector<RaggedShapeDim> &axes, bool check = true) : axes_(axes) {
+    if (check)
+      Check();
+  }
 
+
+  // A RaggedShape constructed this way will not be a valid RaggedShape.
+  // The constructor is provided so you can immediately assign toit.
+  RaggedShape() { }
 
   // This makes sure that all of the row_splits, row_ids and cached_tot_size
   // are populated
   void Populate();
 
-  // Axes() is intended for internal-ish use; users shouldn't really ahve to
+
+  RaggedShape(const RaggedShape &other) = default;
+  RaggedShape &operator=(const RaggedShape &other) = default;
+
+  // Axes() is intended for internal-ish use; users shouldn't really have to
   // interact with it.
   const std::vector<RaggedShapeDim> &Axes() const { return axes_; }
+
+  // Check the RaggedShape for consistency; die on failure.
+  void Check();
  private:
   // TODO: could probably do away with the std::vector and have a max size and a
   // fixed length array (more efficient)
@@ -170,8 +181,42 @@ RaggedShape Stack(int32_t src_size, const RaggedShape **src, int32_t axis);
   you may be thinking in a PyTorch-y way but you should be relying on things
   like Eval() with custom lambdas more.  Read algorithms like in compose.cc to
   understand why.  Also: axis==0 is probably the only really useful case.
+  See more useful notes in comments in the implementatin.
  */
-RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
+RaggedShape Unsqueeze(RaggedShape &src, int32_t axis);
+
+/* Remove an axis; if it it not the last axis, this is done by appending lists
+   (effectively the axis is combined with the following axis).  If it is the
+   last axis it is just removed and the number of elements will be affected.
+
+          @param [in] src Ragged shape to remove axis of (`src` is conceptually
+                      unchanged by this operation but non-const because row-splits
+                      or row-ids may need to be generated).  We require
+                      src.NumAxes() > 2, since the minimum number of
+                      axes for a RaggedShape is 2.
+          @param [in] axis  Axis to remove; must satisfy 0 <= axis < src.NumAxes()
+          @return      Returns the modified shape with one fewer axis; will
+                       satisfy ans.TotSize(axis) == src.TotSize(axis + 1).
+                       if axis < src.NumAxes() - 1.
+*/
+RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
+
+
+/*
+  Transpose a RaggedShape: namely, axes 0 and 1.  Requires that the sizes
+  of lists on axis 1 all be the same, i.e. that src.RowSplits(1) have
+  equally spaced elements.
+
+     @param [in] src   Shape to be transposed.  We require src.NumAxes() > 2.
+                       (this is because the implementation would be slightly
+                       different, and because if you had a ragged array
+                       with 2 axes and a regular shape, you should really
+                       be using an Array2 or Tensor).
+     @return           Returns the transposed shape, with axes 0 and 1
+                       swapped.  Will satisfy
+                       ans.Dim0() == src.TotSize(1) / src.Dim0()
+ */
+RaggedShape Transpose(RaggedShape &src);
 
 /*
    Append a list of RaggedShape to form a single RaggedShape
@@ -207,7 +252,7 @@ Array<int32_t*> GetRowSpltsPtrs(RaggedShape &src);
                           not actual C++ code, it represents a conceptual
                           indexing operator).
 */
-RaggedShape Renumber(const RaggedShape &src, Array1<int32_t> &new2old);
+RaggedShape Renumber(const RaggedShape &src, const Array1<int32_t> &new2old);
 
 template <typename T>
 struct Ragged {

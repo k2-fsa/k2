@@ -9,6 +9,7 @@
 #define K2_CSRC_CUDA_ARRAY_H_
 
 #include <algorithm>
+#include <iostream>
 
 #include "k2/csrc/cuda/context.h"
 #include "k2/csrc/cuda/debug.h"
@@ -329,6 +330,15 @@ class Array2 {
                          // constructor), will point to an empty
                          // Region.
 };
+
+// Print the contents of the array, as [ 1 2 3 ].  Intended mostly for
+// use in debugging.
+std::ostream &operator <<(std::ostream &stream, const Array1 &array);
+
+// Print the contents of the array, as "[[ 1 2 3 ]
+// [ 4 5 6 ]]".  Intended mostly for use in debugging.
+std::ostream &operator <<(std::ostream &stream, const Array2 &array);
+
 
 }  // namespace k2
 

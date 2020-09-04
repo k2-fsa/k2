@@ -228,6 +228,8 @@ void Max(Array1<T> &src, T default_value, Array1<T> *dest);
                                      to use if src is empty.  Would typically be
                                      the most negative T possible.
          @param [out] dest  Output array, which must have dim == 1.
+                            Note: it is allowable for the output array
+                            to be an element of `src`.
  */
 template <typename T>
 void And(Array1<T> &src, T default_value, Array1<T> *dest);
