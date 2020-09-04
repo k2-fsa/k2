@@ -28,7 +28,7 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 
 class Context;
 using ContextPtr = std::shared_ptr<Context>;
-constexpr cudaStream_t kCudaStreamInvalid = (cudaStream_t)(~((size_t)0));
+const cudaStream_t kCudaStreamInvalid = (cudaStream_t)(~((size_t)0));
 
 /**
    class Context is the main surface of interaction with external tensor

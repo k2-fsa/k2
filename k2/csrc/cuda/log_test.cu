@@ -38,7 +38,7 @@ TEST(Log, Cpu) {
 
 __global__ void DummyKernel(int32_t *b, int32_t a) {
   K2_DLOG(INFO) << "In kernel";
-  K2_DCHECK_LT(*b, a); // enabled only in debug mode
+  K2_DCHECK_LT(*b, a);  // enabled only in debug mode
   *b += 1;
   K2_CHECK_EQ(*b, a);
   K2_DLOG(DEBUG) << "Done";
@@ -62,7 +62,7 @@ TEST(Log, Cuda) {
   K2_CHECK_EQ(a + 1, c) << "Error in the kernel!";
 
   ret = cudaFree(b);
-  K2_CHECK_EQ(ret, cudaSuccess) << "Failed to free gpu memory";
+  K2_DCHECK_CUDA_ERROR(ret) << "Failed to free gpu memory";
 }
 
 }  // namespace k2
