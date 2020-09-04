@@ -47,6 +47,7 @@ class Array1 {
   // NOTE: we assume this thread is already set to use the device associated
   // with the context in 'ctx', if it's a CUDA context.
   // TODO(Haowen): no corresponding test code now, we may delete this later
+  /*
   template <typename Callable>
   Array1(ContextPtr ctx, int32_t size, Callable &&callable) {
     Init(ctx, size);
@@ -55,6 +56,7 @@ class Array1 {
     // `Eval(ContextPtr, T*, int, Callable&)` now
     Eval(ctx, Data(), size, std::forward<Callable>(callable));
   }
+  */
 
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
@@ -62,22 +64,14 @@ class Array1 {
   // TODO(haowen): why do we need this version?
   Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}
 
-  Array1(int32_t dim, RegionPtr region, int32_t byte_offset)
-      : dim_(dim), region_(region), byte_offset_(byte_offset) {}
-
   Array1(ContextPtr ctx, int32_t size, T elem) {
     Init(ctx, size);
-    T *data = Data();
-    // TODO(haowen): need capture *this, not sure it's valid in constructor
-    /*
-    auto lambda = [=] __host__ __device__(int32_t i) -> void {
-      data[i] = elem;
-    };
-    Eval(ctx, dim_, lambda);
-    */
+    *this = elem;
   }
 
-  /* Return sub-part of this array
+  /* Return sub-part of this array. Note that the returned Array1 is not const,
+     the caller should be careful when changing array's data, it will
+     also change data in the parent array as they shares the memory.
      @param [in] start  First element to cover, 0 <= start < Dim()
      @param [in] size   Number of elements to include, 0 < size <= Dim()-start
   */
@@ -116,6 +110,9 @@ class Array1 {
     return Tensor(type, shape, region_, byte_offset_ + start * ElementSize());
   }
 
+  // Note that the returned Tensor is not const, the caller should be careful
+  // when changing the tensor's data, it will also change data in the parent
+  // array as they shares the memory.
   Tensor ToTensor() {
     Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {Dim()};
@@ -128,7 +125,28 @@ class Array1 {
   // Resizes, copying old contents if we could not re-use the same memory
   // location. It will always at least double the allocated size if it has to
   // reallocate. See Region::num_bytes vs. Region::bytes_used.
-  void Resize(int32_t new_size);
+  // TODO(haowen): now we only support the case that the current array `curr`
+  // (i.e. the array that will be resized) covers the highest used index in
+  // the region, that is, for any array `a` uses this region,
+  // curr.byte_offset_ + curr.Dim() * curr.ElementSize() == region_->bytes_used
+  // >= a.byte_offset + a.Dim() * a.ElementSize()
+  void Resize(int32_t new_size) {
+    K2_CHECK_EQ(byte_offset_ + Dim() * ElementSize(), region_->bytes_used);
+    if (new_size <= Dim()) {
+      return;
+    }
+    if (byte_offset_ + new_size * ElementSize() > region_->num_bytes) {
+      // always double the allocated size
+      auto tmp = NewRegion(Context(), 2 * region_->num_bytes);
+      // copy data
+      auto kind = GetMemoryCopyKind(*Context(), *Context());
+      MemoryCopy(tmp->data, region_->data, region_->bytes_used, kind);
+      // update meta info
+      dim_ = new_size;
+      tmp->bytes_used = byte_offset_ + new_size * ElementSize();
+      std::swap(tmp, region_);
+    }
+  }
 
   ContextPtr &Context() { return region_->context; }
 
@@ -158,7 +176,7 @@ class Array1 {
   /* Setting all elements to a scalar */
   void operator=(const T t) {
     T *data = Data();
-    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_set_values = [=] __host__ __device__(int32_t i)->void {
       data[i] = t;
     };
     Eval(Context(), dim_, lambda_set_values);
@@ -177,7 +195,7 @@ class Array1 {
     const T *this_data = Data();
     T *ans_data = ans.Data();
     int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i)->void {
       ans_data[i] = this_data[indexes_data[i]];
     };
     Eval(c, ans_dim, lambda_copy_elems);
@@ -188,14 +206,9 @@ class Array1 {
   Array1(ContextPtr ctx, const std::vector<T> &src) {
     Init(ctx, src.size());
     T *data = Data();
-    DeviceType d = ctx->GetDeviceType();
-    if (d == kCpu) {
-      std::copy(src.begin(), src.end(), data);
-    } else {
-      K2_CHECK_EQ(d, kCuda);
-      cudaMemcpy(static_cast<void *>(data), static_cast<void *>(src.data()),
-                 src.size() * ElementSize(), cudaMemcpyHostToDevice);
-    }
+    auto kind = GetMemoryCopyKind(*GetCpuContext(), *Context());
+    MemoryCopy(static_cast<void *>(data), static_cast<const void *>(src.data()),
+               src.size() * ElementSize(), kind);
   }
 
   Array1(const Array1 &other) = default;
@@ -208,6 +221,8 @@ class Array1 {
                       // constructor (invalid array!) but may still be non-NULL
                       // if dim_ == 0; this allows it to keep track of the
                       // context.
+  Array1(int32_t dim, RegionPtr region, int32_t byte_offset)
+      : dim_(dim), region_(region), byte_offset_(byte_offset) {}
 
   void Init(ContextPtr context, int32_t size) {
     region_ = NewRegion(context, size * ElementSize());
@@ -227,7 +242,7 @@ struct Array2Accessor {
 
   T *Row(int32_t i) { return data + elem_stride0 * i; }
   Array2Accessor(T *data, int32_t elem_stride0)
-      : data(data), elem_stride0(elem_stride0) { }
+      : data(data), elem_stride0(elem_stride0) {}
   Array2Accessor(const Array2Accessor &other) = default;
 };
 

@@ -13,7 +13,7 @@
 
 #include "k2/csrc/cuda/array.h"
 #include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/error.h"
+#include "k2/csrc/cuda/debug.h"
 #include "k2/csrc/cuda/ragged.h"
 
 // Note, I'm not sure about the name of this file, they are not ops like in
@@ -99,9 +99,9 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
     dim3 block_size(kTransTileDim, kTransBlockRows, 1);
     dim3 grid_size(NumBlocks(cols, kTransTileDim),
                    NumBlocks(rows, kTransTileDim));
-    TransposeKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
-        rows, cols, src_data, dest_data);
-    CheckCudaError(cudaDeviceSynchronize());
+    TransposeKernel << <grid_size, block_size, 0, c->GetCudaStream()>>>
+        (rows, cols, src_data, dest_data);
+    K2_CHECK_CUDA_ERROR(cudaDeviceSynchronize());
   }
 }
 
@@ -109,7 +109,8 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
   Sets 'dest' to exclusive prefix sum of 'src'.
     @param [in] src    Source data, to be summed.
     @param [out] dest  Destination data (possibly &src).  Must satisfy
-                       dest.Size() == src.Size() or dest.Size() == src.Size() + 1,
+                       dest.Size() == src.Size() or dest.Size() == src.Size() +
+  1,
                        but in the latter case
                        we require that the memory region inside src be allocated
                        with at least one extra element, because the

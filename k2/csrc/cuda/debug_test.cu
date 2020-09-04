@@ -33,7 +33,7 @@ __global__ void FillContents(int n, int *output) {
 
 /* N is now the number of blocks times the number of threads
    in this case it is 10 million */
-#define N (BLOCKS * THREADS)
+#define N (BLOCKS *THREADS)
 
 /* the kernel fills an array up with square roots */
 __global__ void square_roots(double *array) {
@@ -47,12 +47,11 @@ __global__ void square_roots(double *array) {
   /* compute the square root of this number and store it in the array
      CUDA provides a sqrt function as part of its math library, so this
      call uses that - not the one from math.h which is a CPU function */
-  array[idx] = sqrt((double) idx);
+  array[idx] = sqrt((double)idx);
 }
 
 __global__ void HelloCUDA(float f) {
-  if (threadIdx.x == 0)
-    K2_DLOG("Hello thread %d, f=%f\n", threadIdx.x, f);
+  if (threadIdx.x == 0) K2_DLOG("Hello thread %d, f=%f\n", threadIdx.x, f);
 }
 
 // A vector add kernel definition
@@ -60,8 +59,8 @@ __global__ void VecAdd(const float *A, const float *B, float *C) {
   int i = threadIdx.x;
   C[i] = A[i] + B[i];
   K2_PARANOID_ASSERT(C[i] == A[i] + B[i],
-                     "Error: C[%d] is %f != A[%d] (%f) + B[%d] (%f)\n",
-                     i, C[i], i, B[i], i, B[i]);
+                     "Error: C[%d] is %f != A[%d] (%f) + B[%d] (%f)\n", i, C[i],
+                     i, B[i], i, B[i]);
 }
 
 TEST(DebugTest, StaticAssert) {
@@ -74,33 +73,32 @@ TEST(DebugTest, K2Assert) {
   ASSERT_DEATH(K2_ASSERT(2 < 1), "");
 }
 
-TEST(DebugTest, K2CheckEq) {
-  K2_CHECK_EQ(2 + 3, 5);
-}
+TEST(DebugTest, K2CheckEq) { K2_CHECK_EQ(2 + 3, 5); }
 
 TEST(DebugTest, K2CudaCheckError) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  ASSERT_DEATH(K2_CUDA_CHECK_ERROR(cudaErrorMemoryAllocation, true),
+  ASSERT_DEATH(K2_CHECK_CUDA_ERROR(cudaErrorMemoryAllocation, true),
                "cudaErrorMemoryAllocation");
 }
 
 TEST(DebugTest, K2CudaSafeCall) {
 
   /* store the square roots of 0 to (N-1) on the CPU
-   * stored on the heap since it's too big for the stack for large values of N */
-  double *roots = (double *) malloc(N * sizeof(double));
+   * stored on the heap since it's too big for the stack for large values of N
+   */
+  double *roots = (double *)malloc(N * sizeof(double));
 
   /* allocate a GPU array to hold the square roots */
   double *gpu_roots = nullptr;
-  K2_CUDA_SAFE_CALL(cudaMalloc((void **) &gpu_roots, N * sizeof(double)));
+  K2_CUDA_SAFE_CALL(cudaMalloc((void **)&gpu_roots, N * sizeof(double)));
 
   /* invoke the GPU to calculate the square roots
      now, we don't run all N blocks, because that may be more than 65,535 */
-  K2_CUDA_SAFE_CALL(square_roots<<<BLOCKS, THREADS>>>(gpu_roots));
+  K2_CUDA_SAFE_CALL(square_roots << <BLOCKS, THREADS>>> (gpu_roots));
 
   /* copy the data back */
-  K2_CUDA_SAFE_CALL(cudaMemcpy(roots, gpu_roots, N * sizeof(double),
-                        cudaMemcpyDeviceToHost));
+  K2_CUDA_SAFE_CALL(
+      cudaMemcpy(roots, gpu_roots, N * sizeof(double), cudaMemcpyDeviceToHost));
 
   /* free the memory */
   K2_CUDA_SAFE_CALL(cudaFree(gpu_roots));
@@ -125,10 +123,10 @@ TEST(DebugTest, K2DLog) {
 
   // device call K2_DLOG
   {
-    HelloCUDA<<<1, 5>>>(1.2345f);
-    FillContents<<<3, 2>>>(1, d_A);
+    HelloCUDA << <1, 5>>> (1.2345f);
+    FillContents << <3, 2>>> (1, d_A);
     cudaDeviceSynchronize();
-    auto error = K2_CUDA_CHECK_ERROR(cudaGetLastError());
+    auto error = K2_CHECK_CUDA_ERROR(cudaGetLastError());
     EXPECT_EQ(error, cudaSuccess);
   }
 
@@ -166,15 +164,15 @@ TEST(DebugTest, K2ParanoidAssert) {
     cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
 
     // call K2_PARANOID_ASSERT in kernel
-    VecAdd<<<1, 3>>>(d_A, d_B, d_C);
+    VecAdd << <1, 3>>> (d_A, d_B, d_C);
 
     // Copy result from device memory to host memory
     // h_C contains the result in host memory
     cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
 
     // call K2_PARANOID_ASSERT in host
-    K2_PARANOID_ASSERT(h_C[2] == 0.5 && h_C[3] == 0,
-                       "h_C[%d] is %f, not 0.6\n", 3, h_C[3]);
+    K2_PARANOID_ASSERT(h_C[2] == 0.5 && h_C[3] == 0, "h_C[%d] is %f, not 0.6\n",
+                       3, h_C[3]);
     EXPECT_EQ(h_C[2], 0.5);
     EXPECT_EQ(h_C[3], 0.0);
 

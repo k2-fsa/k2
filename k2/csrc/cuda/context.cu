@@ -9,7 +9,7 @@
 #include <cstdlib>
 
 #include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/error.h"
+#include "k2/csrc/cuda/debug.h"
 
 static constexpr size_t kAlignment = 64;
 
@@ -43,11 +43,11 @@ class CudaContext : public Context {
  public:
   CudaContext(int gpu_id) : gpu_id_(gpu_id) {
     if (gpu_id_ != -1) {
-      CheckCudaError(cudaSetDevice(gpu_id_));
+      K2_CHECK_CUDA_ERROR(cudaSetDevice(gpu_id_));
     }
     // TODO(haowen): choose one from available GPUs if gpu_id == -1?
     // and handle GPU ids from multiple machines.
-    CheckCudaError(cudaStreamCreate(&stream_));
+    K2_CHECK_CUDA_ERROR(cudaStreamCreate(&stream_));
   }
   ContextPtr GetCpuContext() override { return nullptr; }
   ContextPtr GetPinnedContext() override { return nullptr; }
@@ -57,7 +57,7 @@ class CudaContext : public Context {
   void *Allocate(size_t bytes, void **deleter_context) override {
     void *p = nullptr;
     if (bytes) {
-      CheckCudaError(cudaMalloc(&p, bytes));
+      K2_CHECK_CUDA_ERROR(cudaMalloc(&p, bytes));
     }
     *deleter_context = nullptr;
     return p;
@@ -73,9 +73,11 @@ class CudaContext : public Context {
 
   cudaStream_t GetCudaStream() const override { return stream_; }
 
-  void Sync() const override { CheckCudaError(cudaStreamSynchronize(stream_)); }
+  void Sync() const override {
+    K2_CHECK_CUDA_ERROR(cudaStreamSynchronize(stream_));
+  }
 
-  ~CudaContext() { CheckCudaError(cudaStreamDestroy(stream_)); }
+  ~CudaContext() { K2_CHECK_CUDA_ERROR(cudaStreamDestroy(stream_)); }
 
  private:
   int gpu_id_;
