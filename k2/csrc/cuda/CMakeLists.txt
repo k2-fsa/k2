@@ -6,8 +6,7 @@ add_library(context
 target_include_directories(context PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(context PUBLIC cub)
 if(K2_USE_GLOG)
-  target_compile_definitions(context PUBLIC K2_USE_GLOG)
-  target_link_libraries(context PUBLIC glog)
+  target_link_libraries(context PUBLIC glog::glog)
 else()
   target_link_libraries(context PUBLIC non-glog)
 endif()
@@ -36,6 +35,7 @@ set(cuda_tests
   tensor_test
   utils_test
   debug_test
+  logging_test
 )
 
 foreach(name IN LISTS cuda_tests)

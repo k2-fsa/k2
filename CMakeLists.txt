@@ -89,25 +89,11 @@ else()
   endforeach()
 endif()
 
-option(K2_USE_GLOG "Flag that chooses logger from [GLOG, NON-GLOG (loguru)]" OFF)
-# check if glog is presented
-find_package(glog)
-if(GLOG_FOUND)
-  # build options
-  set(K2_USE_GLOG ON)
-  message(STATUS "Glog is found")
-else()
-  message(STATUS "Glog is not found, use a glog-like one: loguru")
-endif()
-
-
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(cpplint)
-if(K2_USE_GLOG)
-  include(glog)
-endif()
+include(glog_set) # Deal with glog issues
 include(googletest)
 include(pybind11)
 include(cub)

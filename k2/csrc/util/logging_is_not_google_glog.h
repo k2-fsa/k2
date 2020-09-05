@@ -20,9 +20,7 @@
 
 #ifdef __CUDACC__
 #include <cuda.h>
-#endif
 
-#if defined(__CUDACC__)
 /*
  * To disable stl logging for nvcc:
  * Just ignore the log message within overloaded operator "<<" template function.

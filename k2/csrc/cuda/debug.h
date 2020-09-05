@@ -9,13 +9,7 @@
 
 /**
  * Include multiple cuda headers to make host compiler preprocessor happy.
- *
- * @todo
- *  Find a way to avoid this and make .h/.cc with cuda code
- *  could be parsed by host compiler (specially, GNU-gcc).
- *  (May assgin to nvcc to take control through change cmake
- *  compiler and options. Then, it need cmake-3.18 `FindCUDAToolkit`
- *  or other config helpers to make things easy.)
+ * NVCC doesn't require explicitly include cuda headers.
  */
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>

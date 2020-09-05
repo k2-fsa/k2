@@ -111,6 +111,8 @@
 #ifndef K2_CSRC_UTIL_LOGGING_H_
 #define K2_CSRC_UTIL_LOGGING_H_
 
+#include "k2/csrc/util/glog_macros.h"
+
 // Choose one logging implementation.
 // All have the same common API of google/glog
 #ifdef K2_USE_GLOG
