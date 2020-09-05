@@ -9,9 +9,8 @@
 #ifndef K2_CSRC_CUDA_LOG_H_
 #define K2_CSRC_CUDA_LOG_H_
 
-#include <stdio.h>
-
 #include <cstdint>
+#include <cstdio>
 
 namespace k2 {
 
