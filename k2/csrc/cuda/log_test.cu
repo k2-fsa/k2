@@ -47,12 +47,12 @@ __global__ void DummyKernel(int32_t *b, int32_t a) {
 TEST(Log, Cuda) {
   K2_LOG(INFO) << "Test log for cuda";
   int32_t a = 10;
-  int32_t *b;
+  int32_t *b = nullptr;
   auto ret = cudaMalloc(&b, sizeof(a));
   K2_CHECK_EQ(ret, cudaSuccess) << "Failed to allocate memory";
 
   ret = cudaMemcpy(b, &a, sizeof(a), cudaMemcpyHostToDevice);
-  K2_CHECK_EQ(ret, cudaSuccess) << "Failed to copy memory to gpu";
+  K2_CHECK_CUDA_ERROR(ret) << "Failed to copy memory to gpu";
 
   DummyKernel<<<1, 1>>>(b, a + 1);
 
@@ -62,7 +62,7 @@ TEST(Log, Cuda) {
   K2_CHECK_EQ(a + 1, c) << "Error in the kernel!";
 
   ret = cudaFree(b);
-  K2_DCHECK_CUDA_ERROR(ret) << "Failed to free gpu memory";
+  K2_CHECK_CUDA_ERROR(ret) << "Failed to free gpu memory";
 }
 
 TEST(LogDeathTest, NegativeCases) {
