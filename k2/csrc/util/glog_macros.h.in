@@ -1,0 +1,12 @@
+// k2/csrc/util/glog_macro.h
+
+// Copyright (c) 2020 Xiaomi Corporation ( authors: Meixu Song )
+//
+
+// See ../../LICENSE for clarification regarding multiple authors
+#ifndef K2_CSRC_UTIL_GLOG_MACROS_H_
+#define K2_CSRC_UTIL_GLOG_MACROS_H_
+
+#cmakedefine K2_USE_GLOG
+
+#endif  // K2_CSRC_UTIL_GLOG_MACROS_H_

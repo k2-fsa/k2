@@ -31,6 +31,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON) # require c++ standard >= 11
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 
@@ -91,7 +93,7 @@ enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(cpplint)
-include(glog)
+include(glog_set) # Deal with glog issues
 include(googletest)
 include(pybind11)
 include(cub)
