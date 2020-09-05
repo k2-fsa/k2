@@ -65,4 +65,50 @@ TEST(Log, Cuda) {
   K2_DCHECK_CUDA_ERROR(ret) << "Failed to free gpu memory";
 }
 
+TEST(LogDeathTest, NegativeCases) {
+  ASSERT_DEATH(K2_LOG(FATAL) << "This will crash the program", "");
+
+  int32_t a = 10;
+  int32_t b = 20;
+  int32_t c = a;
+  ASSERT_DEATH(K2_CHECK_EQ(a, b), "");
+  ASSERT_DEATH(K2_CHECK_NE(a, c), "");
+
+  ASSERT_DEATH(K2_CHECK_LE(b, a), "");
+  ASSERT_DEATH(K2_CHECK_LT(b, a), "");
+
+  ASSERT_DEATH(K2_CHECK_GE(a, b), "");
+  ASSERT_DEATH(K2_CHECK_GT(a, b), "");
+
+  auto ret = cudaErrorMemoryAllocation;
+  ASSERT_DEATH(K2_CHECK_CUDA_ERROR(ret), "");
+
+  ret = cudaErrorAssert;
+  ASSERT_DEATH(K2_CHECK_CUDA_ERROR(ret), "");
+
+  // NOTE: normally we do not need to
+  // check if NDEBUG is defined in order
+  // to use K2_DCHECK_*. ASSERT_DEATH
+  // expects that the statement will make
+  // the program crash and this is only
+  // possible for the debug build,
+  // so we have to add a guard here.
+#if !defined(NDEBUG)
+  K2_LOG(INFO) << "Check for debug build";
+  ASSERT_DEATH(K2_DLOG(FATAL) << "This will crash the program", "");
+
+  ASSERT_DEATH(K2_DCHECK_EQ(a, b), "");
+  ASSERT_DEATH(K2_DCHECK_NE(a, c), "");
+
+  ASSERT_DEATH(K2_DCHECK_LE(b, a), "");
+  ASSERT_DEATH(K2_DCHECK_LT(b, a), "");
+
+  ASSERT_DEATH(K2_DCHECK_GE(a, b), "");
+  ASSERT_DEATH(K2_DCHECK_GT(a, b), "");
+
+  ret = cudaErrorInitializationError;
+  ASSERT_DEATH(K2_DCHECK_CUDA_ERROR(ret), "");
+#endif
+}
+
 }  // namespace k2
