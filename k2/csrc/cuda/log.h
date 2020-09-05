@@ -128,9 +128,22 @@ class Voidifier {
                                                          k2::internal::FATAL) \
                                         << "Check failed: " << #x << " "
 
-// WARNING: x and y are may be evaluated multiple times, but this happens only
+// WARNING: x and y may be evaluated multiple times, but this happens only
 // when the check fails. Since the program aborts if it fails, we don't think
 // the extra evaluation of x and y matters.
+//
+// CAUTION: we recommend the following use case:
+//
+//      auto x = Foo();
+//      auto y = Bar();
+//      K2_CHECK_EQ(x, y) << "Some message";
+//
+//  And please avoid
+//
+//      K2_CHECK_EQ(Foo(), Bar());
+//
+//  if `Foo()` or `Bar()` causes some side effects, e.g., changing some
+//  local static variables or global variables.
 #define _K2_CHECK_OP(x, y, op)                                              \
   ((x)op(y)) ? (void)0                                                      \
              : k2::internal::Voidifier() &                                  \
