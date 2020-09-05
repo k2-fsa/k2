@@ -35,10 +35,16 @@ class Array1 {
                                  byte_offset_);
   }
 
-  T *Data() const {
+  const T *Data() const {
     return reinterpret_cast<const T *>(reinterpret_cast<char *>(region_->data) +
                                        byte_offset_);
   }
+
+  int32_t ByteOffset() const { return byte_offset_; }
+
+  // Called when creating Array2 using Array1, users should not call this for
+  // now.
+  RegionPtr &GetRegion() { return region_; }
 
   // generally Callable will be some kind of lambda or function object; it
   // should be possible to evaluate it on the CUDA device (if we're compiling
@@ -62,6 +68,9 @@ class Array1 {
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
   // TODO(haowen): why do we need this version?
   Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}
+
+  Array1(int32_t dim, RegionPtr region, int32_t byte_offset)
+      : dim_(dim), region_(region), byte_offset_(byte_offset) {}
 
   Array1(ContextPtr ctx, int32_t size, T elem) {
     Init(ctx, size);
@@ -101,7 +110,7 @@ class Array1 {
     K2_CHECK_LT(start, Dim());
     K2_CHECK_GT(size, 0);
     K2_CHECK_GT(inc, 0);
-    k2_CHECK_LT((size - 1) * inc, Dim() - start);
+    K2_CHECK_LT((size - 1) * inc, Dim() - start);
     Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {size};
     std::vector<int32_t> strides = {inc};
@@ -170,7 +179,10 @@ class Array1 {
      time if it's a CUDA array, so use this operator sparingly.  If you know
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
-  T operator[](int32_t i) { return Data()[i]; }
+  T operator[](int32_t i) {
+    K2_CHECK_LT(i, Dim());
+    return Data()[i];
+  }
 
   /* Setting all elements to a scalar */
   void operator=(const T t) {
@@ -193,7 +205,7 @@ class Array1 {
     Array1<T> ans(c, ans_dim);
     const T *this_data = Data();
     T *ans_data = ans.Data();
-    int32_t *indexes_data = indexes.Data();
+    const int32_t *indexes_data = indexes.Data();
     auto lambda_copy_elems = [=] __host__ __device__(int32_t i)->void {
       ans_data[i] = this_data[indexes_data[i]];
     };
@@ -220,8 +232,6 @@ class Array1 {
                       // constructor (invalid array!) but may still be non-NULL
                       // if dim_ == 0; this allows it to keep track of the
                       // context.
-  Array1(int32_t dim, RegionPtr region, int32_t byte_offset)
-      : dim_(dim), region_(region), byte_offset_(byte_offset) {}
 
   void Init(ContextPtr context, int32_t size) {
     region_ = NewRegion(context, size * ElementSize());
@@ -249,7 +259,7 @@ template <typename T>
 struct ConstArray2Accessor {
   const T *data;
   int32_t elem_stride0;
-  __host__ __device__ T operator()(int32_t i, int32_t j) {
+  __host__ __device__ T operator()(int32_t i, int32_t j) const {
     return data[i * elem_stride0 + j];
   }
   ConstArray2Accessor(const T *data, int32_t elem_stride0)
@@ -264,6 +274,9 @@ struct ConstArray2Accessor {
 template <typename T>
 class Array2 {
  public:
+  using ValueType = T;
+  int32_t ElementSize() const { return sizeof(ValueType); }
+
   /* Could view this as num_rows */
   int32_t Dim0() const { return dim0_; }
 
@@ -279,13 +292,35 @@ class Array2 {
 
   /*  returns a flat version of this, appending the rows; will copy the data if
       it was not contiguous. */
-  Array1<T> Flatten();
+  Array1<T> Flatten() {
+    if (dim1_ == elem_stride0_) {
+      return Array1<T>(dim0_ * dim1_, region_, byte_offset_);
+    } else {
+      auto region = NewRegion(region_->context, dim0_ * dim1_ * ElementSize());
+      Array1<T> array(dim0_ * dim1_, region, 0);
+      const T *this_data = Data();
+      T *data = array.Data();
+      auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int j)->void {
+        data[i * dim1_ + j] = this_data[i * elem_stride0_ + j];
+      };
+      Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
+      return array;
+    }
+  }
 
-  Array1<T> operator[](int32_t i);  // return a row (indexing on the 0th axis)
+  // return a row (indexing on the 0th axis)
+  Array1<T> operator[](int32_t i) {
+    K2_CHECK_LT(i, dim0_);
+    int32_t byte_offset = byte_offset_ + i * elem_stride0_ * ElementSize();
+    return Array1<T>(dim1_, region_, byte_offset);
+  }
 
   /* Create new array2 with given dimensions.  dim0 and dim1 must be >0.
      Data will be uninitialized. */
-  Array2(ContextPtr c, int32_t dim0, int32_t dim1);
+  Array2(ContextPtr c, int32_t dim0, int32_t dim1)
+      : dim0_(dim0), dim1_(dim1), elem_stride0_(dim1), byte_offset_(0) {
+    region_ = NewRegion(c, dim0_ * dim1_ * ElementSize());
+  }
 
   /* stride on 1st axis is 1 (in elements). */
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
@@ -296,7 +331,16 @@ class Array2 {
         byte_offset_(byte_offset),
         region_(region) {}
 
-  TensorPtr AsTensor();
+  // Note that the returned Tensor is not const, the caller should be careful
+  // when changing the tensor's data, it will also change data in the parent
+  // array as they shares the memory.
+  Tensor ToTensor() {
+    Dtype type = DtypeOf<ValueType>::dtype;
+    std::vector<int32_t> dims = {dim0_, dim1_};
+    std::vector<int32_t> strides = {elem_stride0_, 1};
+    Shape shape(dims);
+    return Tensor(type, shape, region_, byte_offset_);
+  }
 
   const T *Data() const {
     return reinterpret_cast<const T *>(reinterpret_cast<char *>(region_->data) +
@@ -315,21 +359,64 @@ class Array2 {
   }
 
   ConstArray2Accessor<T> Accessor() const {
-    return Array2Accessor<T>(Data(), elem_stride0_);
+    return ConstArray2Accessor<T>(Data(), elem_stride0_);
   }
 
   /* Construct from Tensor.  Required to have 2 axes; will copy if the tensor
-     did not have stride on 2nd axis == sizeof(T)
+     did not have unit stride on 2nd axis
      @param [in] t                Input tensor, must have 2 axes and dtype == T
-
-     @param [in] copy_for_strides
+     @param [in] copy_for_strides Controls the behavior if the tensor did not
+                                  have unit stride on 2nd axis. If true, will
+                                  copy data in the tensor. If false, will die
+                                  with error.
 
   */
-  Array2(Tensor &t, bool copy_for_strides = true);
+  Array2(Tensor &t, bool copy_for_strides = true) {
+    auto type = t.GetDtype();
+    K2_CHECK_EQ(type, DtypeOf<T>::dtype);
+    auto shape = t.GetShape();
+    K2_CHECK_EQ(shape.Ndim(), 2);
+    dim0_ = shape.Dim(0);
+    dim1_ = shape.Dim(1);
+    elem_stride0_ = shape.Stride(0);
+    auto region = t.GetRegion();
+    if (shape.Stride(1) == 1) {
+      byte_offset_ = t.ByteOffset();
+      region_ = region;
+    } else {
+      // TODO(haowen): only handle positive stride now
+      if (!copy_for_strides) {
+        LOG(FATAL) << "non-unit stride on 2nd axis of tensor";
+      }
+      region_ = NewRegion(region->context, dim0_ * dim1_ * ElementSize());
+      byte_offset_ = 0;
+      CopyDataFromTensor(t);
+    }
+  }
 
-  /* Initialize from Array1.  Require dim0 * dim1 == a.Size() and dim0,dim1 >= 0
+  /* Initialize from Array1.  Require dim0 * dim1 == a.Dim() and dim0,dim1 >= 0
    */
-  Array2(Array1<T> &a, int32_t dim0, int32_t dim1);
+  Array2(Array1<T> &a, int32_t dim0, int32_t dim1)
+      : dim0_(dim0), dim1_(dim1), elem_stride0_(dim1) {
+    K2_CHECK_EQ(dim0_ * dim1_, a.Dim());
+    byte_offset_ = a.ByteOffset();
+    region_ = a.GetRegion();
+  }
+
+  // Warning: user should never call this function, we declare
+  // it as public just because the enclosing parent function for an
+  // extended __host__ __device__ lambda
+  // must have public access.
+  void CopyDataFromTensor(const Tensor &t) {
+    T *this_data = Data();
+    const T *t_data = t.Data<T>();
+    int32_t elem_stride1 = t.GetShape().Stride(1);
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int j)->void {
+      this_data[i * elem_stride0_ + j] =
+          t_data[i * elem_stride0_ + j * elem_stride1];
+    };
+    Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
+  }
 
  private:
   int32_t dim0_;          // dim on 0th (row) axis

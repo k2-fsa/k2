@@ -386,11 +386,10 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
     // this way of choosing block and grid sizes is of course not very smart, we
     // can look at this later on, possibly referring to Kaldi's
     // GetBlockSizesForSimpleMatrixOperation().
-    dim3 dim_block(256, 1, 1);
-    dim3 dim_grid(NumBlocks(n, dim_block.x), m, 1);
-    if (dim_grid.x == 1) dim_block.x = n;
-
-    eval_lambda2<LambdaT> << <dim_block, dim_grid, 0, stream>>> (m, n, lambda);
+    dim3 block_size(16, 16, 1);
+    dim3 grid_size(NumBlocks(n, 16), NumBlocks(m, 16));
+    eval_lambda2<LambdaT> << <grid_size, block_size, 0, stream>>>
+        (m, n, lambda);
 
     cudaError_t err = cudaGetLastError();
     assert(err == 0);
