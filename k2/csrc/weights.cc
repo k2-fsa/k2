@@ -10,10 +10,10 @@
 #include <queue>
 #include <vector>
 
+#include "glog/logging.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/properties.h"
 #include "k2/csrc/util.h"
-#include "k2/csrc/util/logging.h"
 
 namespace {
 void CheckInput(const k2::Fsa &fsa, const float *arc_weights) {
