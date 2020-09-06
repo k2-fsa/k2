@@ -369,7 +369,6 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
   is supposed to be the faster-varying one, the index for which
   threads in the same warp will tend to have different values.
   (Of course this doesn't affect the semantics of the operation).
-
 */
 template <typename LambdaT>
 void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
@@ -389,9 +388,7 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
     // GetBlockSizesForSimpleMatrixOperation().
     dim3 block_size(16, 16, 1);
     dim3 grid_size(NumBlocks(n, 16), NumBlocks(m, 16));
-    eval_lambda2<LambdaT> << <grid_size, block_size, 0, stream>>>
-        (m, n, lambda);
-
+    eval_lambda2 << <grid_size, block_size, 0, stream>>> (m, n, lambda);
     cudaError_t err = cudaGetLastError();
     assert(err == 0);
   }

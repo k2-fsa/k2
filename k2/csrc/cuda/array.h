@@ -300,8 +300,11 @@ class Array2 {
       Array1<T> array(dim0_ * dim1_, region, 0);
       const T *this_data = Data();
       T *data = array.Data();
-      auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int j)->void {
-        data[i * dim1_ + j] = this_data[i * elem_stride0_ + j];
+      int32_t dim1 = dim1_;
+      int32_t elem_stride0 = elem_stride0_;
+      auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
+                                       ->void {
+        data[i * dim1 + j] = this_data[i * elem_stride0 + j];
       };
       Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
       return array;
@@ -388,7 +391,8 @@ class Array2 {
       if (!copy_for_strides) {
         LOG(FATAL) << "non-unit stride on 2nd axis of tensor";
       }
-      region_ = NewRegion(region->context, dim0_ * dim1_ * ElementSize());
+      region_ =
+          NewRegion(region->context, dim0_ * elem_stride0_ * ElementSize());
       byte_offset_ = 0;
       CopyDataFromTensor(t);
     }
@@ -403,17 +407,19 @@ class Array2 {
     region_ = a.GetRegion();
   }
 
-  // Warning: user should never call this function, we declare
+  // Caution: user should never call this function, we declare
   // it as public just because the enclosing parent function for an
   // extended __host__ __device__ lambda
   // must have public access.
   void CopyDataFromTensor(const Tensor &t) {
     T *this_data = Data();
     const T *t_data = t.Data<T>();
+    int32_t elem_stride0 = elem_stride0_;
     int32_t elem_stride1 = t.GetShape().Stride(1);
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int j)->void {
-      this_data[i * elem_stride0_ + j] =
-          t_data[i * elem_stride0_ + j * elem_stride1];
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
+                                     ->void {
+      this_data[i * elem_stride0 + j] =
+          t_data[i * elem_stride0 + j * elem_stride1];
     };
     Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
   }
