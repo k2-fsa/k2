@@ -12,7 +12,7 @@
 #include <map>
 
 #include "glog/logging.h"
-#include "k2/csrc/cuda/debug.h"
+#include "k2/csrc/cuda/log.h"
 
 namespace k2 {
 

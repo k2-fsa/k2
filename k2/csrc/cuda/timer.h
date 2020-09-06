@@ -7,7 +7,7 @@
 #ifndef K2_CSRC_CUDA_TIMER_H_
 #define K2_CSRC_CUDA_TIMER_H_
 
-#include "k2/csrc/cuda/debug.h"
+#include "k2/csrc/cuda/log.h"
 
 namespace k2 {
 class Timer {

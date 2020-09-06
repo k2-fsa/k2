@@ -16,18 +16,25 @@ namespace k2 {
 // generally interact with it directly.
 // Note: row_splits is of size num_rows + 1 and row_ids is of size num_elements.
 struct RaggedShapeDim {
-  // Search for "row_splits concept" in utils.h for explanation
+  // Search for "row_splits concept" in utils.h for explanation.  row_splits
+  // is required; it must always be nonempty for a RaggedShapeDim to be valid.
   Array1<int32_t> row_splits;
   // Search for "row_ids concept" in utils.h for explanation
   Array1<int32_t> row_ids;
   // cached_tot_size can be viewed as the number of elements in a ragged matrix,
-  // or -1 if not known.
+  // or -1 if not known.  (Note: it can legitimately be 0, if there are no
+  // elements).
+
   // If cached_tot_size >= 0 and row_ids is nonempty, cached_tot_size will
   // equal row_ids.Dim().
-  // If cached_tot_size >= 0 and row_splits is nonempty, cached_tot_size will
-  // equal row_splits[row_splits.Dim() - 1].
+  // If cached_tot_size >= 0, it will be equal to row_splits[row_splits.Dim() - 1].
   int32_t cached_tot_size;
 };
+
+
+class RaggedShapeIndexIterator;
+
+
 
 class RaggedShape {
   int32_t Dim0() {
@@ -80,11 +87,6 @@ class RaggedShape {
     return axes_[axis - 1].row_ids;
   }
 
-  /* Remove an axis by appending elements... require 0 <= axis < NumAxes() - 1
-     and require NumAxes() > 2.  Effectively the axis is combined with the
-     following axis, and the TotSize(axis) of `axis` in the returned shape will
-     be the same as TotSize(axis + 1) in the current shape.  */
-  RaggedShape RemoveAxis(int32_t axis);
 
   int32_t NumAxes() { return axes_.size() + 1; }
 
@@ -111,16 +113,41 @@ class RaggedShape {
 
   RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b);
 
-  RaggedShape(std::vector<RaggedShapeDim> &axes) : axes_(axes) {}
+
+  /*
+    Given a vector `indexes` of length NumAxes() which is a valid index
+    for this RaggedShape, returns the integer offset for the element
+    at that index (0 <= ans < NumElements()).  Note: will not work if
+    this is on the GPU.
+   */
+  int32_t operator[](const std::vector<int32_t> &indexes);
+
+
+  RaggedShapeIndexIterator Iterator();
+
+  RaggedShape(std::vector<RaggedShapeDim> &axes, bool check = true) : axes_(axes) {
+    if (check)
+      Check();
+  }
+
+
+  // A RaggedShape constructed this way will not be a valid RaggedShape.
+  // The constructor is provided so you can immediately assign toit.
+  RaggedShape() { }
 
   // This makes sure that all of the row_splits, row_ids and cached_tot_size
   // are populated
   void Populate();
 
-  // Axes() is intended for internal-ish use; users shouldn't really ahve to
+  RaggedShape(const RaggedShape &other) = default;
+  RaggedShape &operator=(const RaggedShape &other) = default;
+
+  // Axes() is intended for internal-ish use; users shouldn't really have to
   // interact with it.
   const std::vector<RaggedShapeDim> &Axes() const { return axes_; }
 
+  // Check the RaggedShape for consistency; die on failure.
+  void Check();
  private:
   // TODO: could probably do away with the std::vector and have a max size and a
   // fixed length array (more efficient)
@@ -129,6 +156,66 @@ class RaggedShape {
   // equals axes_[0].row_splits.Dim()-1.
   std::vector<RaggedShapeDim> axes_;
 };
+
+
+// prints a RaggedShape as e.g. [ [ 0 1 ] [ 2 ] [] ].  Note, the 'values'
+// are just the positions in the array, this is for readability.
+std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape);
+
+
+
+/*
+  This is intended only for use in debugging.  It only works if the shape is on
+  CPU.  You use it as:
+    for (RaggedShapeIndexIterator iter = ragged.Iterator();
+          !iter.Done(); iter.Next()) {
+       std::vector<int32> &vec = iter.Value();
+       int32 linear_index = ragged[vec];
+    }
+*/
+class RaggedShapeIndexIterator {
+  const std::vector<int32> &Value();
+  bool Next() { linear_idx_++; if (!Done()) UpdateVec(); }
+  bool Done() { return (linear_idx_ != shape_.NumElements()); }
+  RaggedShapeIndexIterator(const RaggedShape &shape):
+      shape_(shape),
+      linear_idx_(0),
+      idx_(shape.NumAxes()) {
+    K2_CHECK(shape_.Context().GetDeviceType() == kCpu);
+    for (int32_t i = 0; i + 1 < shape.NumAxes(); i++) {
+      row_splits_.push_back(shape.RowSplits(i+1));
+      row_ids_.push_back(shape.RowIds(i+1));
+    }
+    if (!Done())
+      UpdateVec();
+  }
+ private:
+  void UpdateVec() {
+    K2_CHECK(!Done());
+    int32_t idx = linear_idx_,
+        num_axes = row_splits_.size() + 1;
+    for (int32_t axis = num_axes - 1; axis > 0; axis--) {
+      int32_t prev_idx = row_splits_[axis-1][idx],
+          row_start = row_ids_[axis-1][prev_idx],
+          row_end = row_ids_[axis-1][prev_idx + 1];
+      K2_CHECK(idx >= row_start && idx < row_end);
+      // e.g.: `idx` is an idx012, `prev_idx` is an idx01,
+      //    `row_start` and `row_end` are idx01x, and
+      //    this_idx is an idx2;
+      int32_t this_idx = idx - row_start;
+      idx_[axis] = this_idx;
+      idx = prev_idx;
+    }
+    idx_[0] = idx;
+  };
+  std::vector<const int32_t*> row_splits_;
+  std::vector<const int32_t*> row_ids_;
+  RaggedShape &shape_;
+  int32_t linear_idx_;
+  std::vector<int32_t> idx_;
+};
+
+
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
@@ -170,8 +257,42 @@ RaggedShape Stack(int32_t src_size, const RaggedShape **src, int32_t axis);
   you may be thinking in a PyTorch-y way but you should be relying on things
   like Eval() with custom lambdas more.  Read algorithms like in compose.cc to
   understand why.  Also: axis==0 is probably the only really useful case.
+  See more useful notes in comments in the implementatin.
  */
-RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
+RaggedShape Unsqueeze(RaggedShape &src, int32_t axis);
+
+/* Remove an axis; if it it not the last axis, this is done by appending lists
+   (effectively the axis is combined with the following axis).  If it is the
+   last axis it is just removed and the number of elements will be affected.
+
+          @param [in] src Ragged shape to remove axis of (`src` is conceptually
+                      unchanged by this operation but non-const because row-splits
+                      or row-ids may need to be generated).  We require
+                      src.NumAxes() > 2, since the minimum number of
+                      axes for a RaggedShape is 2.
+          @param [in] axis  Axis to remove; must satisfy 0 <= axis < src.NumAxes()
+          @return      Returns the modified shape with one fewer axis; will
+                       satisfy ans.TotSize(axis) == src.TotSize(axis + 1).
+                       if axis < src.NumAxes() - 1.
+*/
+RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
+
+
+/*
+  Transpose a RaggedShape: namely, axes 0 and 1.  Requires that the sizes
+  of lists on axis 1 all be the same, i.e. that src.RowSplits(1) have
+  equally spaced elements.
+
+     @param [in] src   Shape to be transposed.  We require src.NumAxes() > 2.
+                       (this is because the implementation would be slightly
+                       different, and because if you had a ragged array
+                       with 2 axes and a regular shape, you should really
+                       be using an Array2 or Tensor).
+     @return           Returns the transposed shape, with axes 0 and 1
+                       swapped.  Will satisfy
+                       ans.Dim0() == src.TotSize(1) / src.Dim0()
+ */
+RaggedShape Transpose(RaggedShape &src);
 
 /*
    Append a list of RaggedShape to form a single RaggedShape
@@ -206,7 +327,20 @@ Array1<int32_t *> GetRowSpltsPtrs(RaggedShape &src);
                           not actual C++ code, it represents a conceptual
                           indexing operator).
 */
-RaggedShape Renumber(const RaggedShape &src, Array1<int32_t> &new2old);
+RaggedShape Renumber(const RaggedShape &src, const Array1<int32_t> &new2old);
+
+
+/*
+  Return a random RaggedShape, with a CPU context.  Intended for testing.
+
+     @param [in] min_num_axes   Minimum number of axes (must be at least 2)
+     @param [in] max_num_axes   Maximum number of axes, must be >= min_num_axes
+     @param [in] min_num_elements  Minimum number of elements; must be at least 0.
+     @param [in] max_num_elements  Maximum number of elements; must be >= min_num_elements.
+ */
+RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
+                              int32_t min_num_elements, int32_t max_num_elements);
+
 
 template <typename T>
 struct Ragged {
@@ -221,6 +355,12 @@ struct Ragged {
   Ragged(RaggedShape &shape)
       : shape(shape),
         values(shape.Context(), shape.TotSize(shape.NumAxes() - 1)) {}
+
+
+  // This will only work on the CPU, and is intended for use in testing code.
+  T operator[](const std::vector<int32_t> &indexes) {
+    return values[shape[indexes]];
+  }
 
   ContextPtr Context() { return values.Context(); }
 

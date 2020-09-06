@@ -13,7 +13,7 @@
 
 #include "k2/csrc/cuda/array.h"
 #include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/debug.h"
+#include "k2/csrc/cuda/log.h"
 #include "k2/csrc/cuda/ragged.h"
 
 // Note, I'm not sure about the name of this file, they are not ops like in
@@ -229,6 +229,8 @@ void Max(Array1<T> &src, T default_value, Array1<T> *dest);
                                      to use if src is empty.  Would typically be
                                      the most negative T possible.
          @param [out] dest  Output array, which must have dim == 1.
+                            Note: it is allowable for the output array
+                            to be an element of `src`.
  */
 template <typename T>
 void And(Array1<T> &src, T default_value, Array1<T> *dest);
