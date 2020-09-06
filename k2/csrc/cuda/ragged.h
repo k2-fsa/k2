@@ -31,6 +31,11 @@ struct RaggedShapeDim {
   int32_t cached_tot_size;
 };
 
+
+class RaggedShapeIndexIterator;
+
+
+
 class RaggedShape {
   int32_t Dim0() {
     CHECK_GT(0, axes_.size());
@@ -108,6 +113,18 @@ class RaggedShape {
 
   RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b);
 
+
+  /*
+    Given a vector `indexes` of length NumAxes() which is a valid index
+    for this RaggedShape, returns the integer offset for the element
+    at that index (0 <= ans < NumElements()).  Note: will not work if
+    this is on the GPU.
+   */
+  int32_t operator[](const std::vector<int32_t> &indexes);
+
+
+  RaggedShapeIndexIterator Iterator();
+
   RaggedShape(std::vector<RaggedShapeDim> &axes, bool check = true) : axes_(axes) {
     if (check)
       Check();
@@ -129,7 +146,6 @@ class RaggedShape {
   // interact with it.
   const std::vector<RaggedShapeDim> &Axes() const { return axes_; }
 
-
   // Check the RaggedShape for consistency; die on failure.
   void Check();
  private:
@@ -140,6 +156,61 @@ class RaggedShape {
   // equals axes_[0].row_splits.Dim()-1.
   std::vector<RaggedShapeDim> axes_;
 };
+
+
+
+/*
+  This is intended only for use in debugging.  It only works if the shape is on
+  CPU.  You use it as:
+    for (RaggedShapeIndexIterator iter = ragged.Iterator();
+          !iter.Done(); iter.Next()) {
+       std::vector<int32> &vec = iter.Value();
+       int32 linear_index = ragged[vec];
+    }
+*/
+class RaggedShapeIndexIterator {
+  const std::vector<int32> &Value();
+  bool Next() { linear_idx_++; if (!Done()) UpdateVec(); }
+  bool Done() { return (linear_idx_ != shape_.NumElements()); }
+  RaggedShapeIndexIterator(const RaggedShape &shape):
+      shape_(shape),
+      linear_idx_(0),
+      idx_(shape.NumAxes()) {
+    K2_CHECK(shape_.Context().GetDeviceType() == kCpu);
+    for (int32_t i = 0; i + 1 < shape.NumAxes(); i++) {
+      row_splits_.push_back(shape.RowSplits(i+1));
+      row_ids_.push_back(shape.RowIds(i+1));
+    }
+    if (!Done())
+      UpdateVec();
+  }
+ private:
+  void UpdateVec() {
+    K2_CHECK(!Done());
+    int32_t idx = linear_idx_,
+        num_axes = row_splits_.size() + 1;
+    for (int32_t axis = num_axes - 1; axis > 0; axis--) {
+      int32_t prev_idx = row_splits_[axis-1][idx],
+          row_start = row_ids_[axis-1][prev_idx],
+          row_end = row_ids_[axis-1][prev_idx + 1];
+      K2_CHECK(idx >= row_start && idx < row_end);
+      // e.g.: `idx` is an idx012, `prev_idx` is an idx01,
+      //    `row_start` and `row_end` are idx01x, and
+      //    this_idx is an idx2;
+      int32_t this_idx = idx - row_start;
+      idx_[axis] = this_idx;
+      idx = prev_idx;
+    }
+    idx_[0] = idx;
+  };
+  std::vector<const int32_t*> row_splits_;
+  std::vector<const int32_t*> row_ids_;
+  RaggedShape &shape_;
+  int32_t linear_idx_;
+  std::vector<int32_t> idx_;
+};
+
+
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
@@ -253,6 +324,19 @@ Array1<int32_t *> GetRowSpltsPtrs(RaggedShape &src);
 */
 RaggedShape Renumber(const RaggedShape &src, const Array1<int32_t> &new2old);
 
+
+/*
+  Return a random RaggedShape, with a CPU context.  Intended for testing.
+
+     @param [in] min_num_axes   Minimum number of axes (must be at least 2)
+     @param [in] max_num_axes   Maximum number of axes, must be >= min_num_axes
+     @param [in] min_num_elements  Minimum number of elements; must be at least 0.
+     @param [in] max_num_elements  Maximum number of elements; must be >= min_num_elements.
+ */
+RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
+                              int32_t min_num_elements, int32_t max_num_elements);
+
+
 template <typename T>
 struct Ragged {
   RaggedShape shape;  // TODO: consider making the shape a pointer??
@@ -266,6 +350,12 @@ struct Ragged {
   Ragged(RaggedShape &shape)
       : shape(shape),
         values(shape.Context(), shape.TotSize(shape.NumAxes() - 1)) {}
+
+
+  // This will only work on the CPU, and is intended for use in testing code.
+  T operator[](const std::vector<int32_t> &indexes) {
+    return values[shape[indexes]];
+  }
 
   ContextPtr Context() { return values.Context(); }
 

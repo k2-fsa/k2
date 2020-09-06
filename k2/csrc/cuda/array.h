@@ -348,13 +348,25 @@ class Array2 {
 
 // Print the contents of the array, as [ 1 2 3 ].  Intended mostly for
 // use in debugging.
-std::ostream &operator <<(std::ostream &stream, const Array1 &array);
+std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
+  stream << "[ ";
+  Array1<T> to_print = array.To(CpuContext());
+  T *to_print_data = to_print.Data();
+  int32_t dim = to_print.Dim();
+  for (int32_t i = 0; i < dim; i++) stream << to_print_data[i] << ' ';
+  return stream << ']';
+}
 
 // Print the contents of the array, as "[[ 1 2 3 ]
 // [ 4 5 6 ]]".  Intended mostly for use in debugging.
-std::ostream &operator <<(std::ostream &stream, const Array2 &array);
-
-
+std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
+  stream << '[';
+  Array2<T> array_cpu = array.To(CpuContext());
+  int32_t num_rows = array_cpu.Dim0();
+  for (int32_t i = 0; i < num_rows; i++)
+    stream << array_cpu[i];
+  if (i + 1 < num_rows) stream << std::endl;
+  stream << ']';
 }  // namespace k2
 
 #endif  // K2_CSRC_CUDA_ARRAY_H_

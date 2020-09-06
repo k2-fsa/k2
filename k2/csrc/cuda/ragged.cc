@@ -8,6 +8,82 @@
 
 namespace k2 {
 
+/*
+  Returns index of highest bit set, in range -1..31.
+  HighestBitSet(0) = -1,
+  HighestBitSet(1) = 0,
+  HighestBitSet(2,3) = 1
+  ...
+ */
+
+int32_t HighestBitSet(int32_t i) {
+  CHECK_GE(i, 0);
+  for (int64_t j = 0; j < 32; j++) {
+    if (i < (1<<j)) {
+      return i - 1;
+    }
+  }
+  return 32;
+}
+
+// returns random int from [min..max]
+int32_t RandInt(int32_t min, int32_t max) {
+  CHECK_GE(max, min);
+  return (min + (rand() % (max + 1 - min)));
+}
+
+// Returns random ints from a distribution that gives more weight to lower
+// values.  I'm not implying this is a geometric distribution.  Anyway
+// we aren't relying on any exact properties.
+int32_t RandIntGeometric(int32_t min, int32_t max) {
+  max >>= (RandInt(0, HighestBitSet(max / min)));
+  if (max < min)
+    max = min;
+  return RandInt(min, max);
+}
+
+
+RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
+                              int32_t min_num_elements, int32_t max_num_elements) {
+  ContextPtr c = CpuContext();
+  K2_CHECK(min_num_axes >= 2 && max_num_axes >= min_num_axes &&
+           min_num_elements >= 0 && max_num_elements >= min_num_elements);
+  int32_t num_axes = RandInt(min_num_axes, max_num_axes);
+
+  int32_t done_repeats = 0;
+
+  RaggedShapeDim axes(num_axes - 1);
+  int32_t num_elements = RandIntGeometric(min_num_elements, max_num_elements);
+  for (int32_t axis = num_axes - 2; axis >= 0; axis--) {
+    // this axis will have row_ids of length num_elements and row_splits of length
+    // to be determined.
+
+    int32_t cur_row_split = 0;
+    std::vector<int32_t> row_splits_vec;
+    row_splits_vec.push_back(cur_row_split);
+    // The reason for "|| RandInt(0, 2) == 0)" is so that even if there
+    // are no elements we can still potentially generate empty row-splits.
+    while (cur_row_split < num_elements || RandInt(0, 2) == 0) {
+      int32_t split_size = RandIntGeometric(0, num_elements - cur_row_split);
+      cur_row_split += split_size;
+      // sometimes we have a bunch of empty rows in a row (this will test out
+      // more of the code).
+      int32_t num_repeats = 1;
+      if (split_size == 0 && RandInt(0, 30) == 0 &&
+          done_repeats == 0) {
+        num_repeats = RandIntGeometric(1, 128);
+        done_repeats = 0;
+      }
+      row_splits_vec.push_back(cur_row_split);
+    }
+    axes[axis].row_splits = Array1<int32_t>(c, row_splits_vec);
+    axes[axis].cached_tot_size = num_elements;
+    num_elements = row_splits
+  }
+  return RaggedShape(axes);
+
+}
+
 RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes, int32_t *tot_sizes) {
   std::vector<RaggedShapeDim> axes(num_axes - 1);
   // In future we might choose to allocate everything in one big array, to avoid
@@ -172,6 +248,24 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
   return ComposeRaggedShapes(RaggedShape2(row_splits1, row_ids1, cached_tot_size1),
                              RaggedShape2(row_splits2, row_ids2, cached_tot_size2));
 }
+
+RaggedShapeIndexIterator RaggedShape::Iterator() {
+  return RaggedShapeIndexIterator(*this0;
+}
+
+int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
+  K2_CHECK(indexes.size() == NumAxes());
+  K2_CHECK(Context().GetDeviceType() == kCpu);
+  int32_t cur_idx = indexes[0];
+  for (int32_t i = 1; i < NumAxes(); i++) {
+    Array<int32_t> &row_splits = axes_[i-1].row_splits;
+    K2_CHECK(cur_idx >= 0 && cur_idx + 1 < row_splits.Dim());
+    cur_idx = row_splits[cur_idx];
+    cur_idx += indexes[i];
+  }
+  return cur_idx;
+}
+
 
 // See declaration in ragged.h for documentation of its purpose and interface.
 RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
