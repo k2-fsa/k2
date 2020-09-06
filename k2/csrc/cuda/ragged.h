@@ -377,6 +377,10 @@ struct Ragged {
   Ragged<T> Index(int32_t axis, int32_t value);
 };
 
+
+template <typename T>
+std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r);
+
 /*
   Return ragged shape with only a subset of the bottom-level elements
   kept.  Require renumbering.NumOldElems() == src.TotSize(src.NumAxes()-1).
