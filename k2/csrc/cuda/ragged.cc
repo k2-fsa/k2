@@ -15,8 +15,7 @@ namespace k2 {
   HighestBitSet(2,3) = 1
   ...
  */
-
-int32_t HighestBitSet(int32_t i) {
+static int32_t HighestBitSet(int32_t i) {
   CHECK_GE(i, 0);
   for (int64_t j = 0; j < 32; j++) {
     if (i < (1<<j)) {
@@ -27,7 +26,7 @@ int32_t HighestBitSet(int32_t i) {
 }
 
 // returns random int from [min..max]
-int32_t RandInt(int32_t min, int32_t max) {
+static int32_t RandInt(int32_t min, int32_t max) {
   CHECK_GE(max, min);
   return (min + (rand() % (max + 1 - min)));
 }
@@ -35,7 +34,7 @@ int32_t RandInt(int32_t min, int32_t max) {
 // Returns random ints from a distribution that gives more weight to lower
 // values.  I'm not implying this is a geometric distribution.  Anyway
 // we aren't relying on any exact properties.
-int32_t RandIntGeometric(int32_t min, int32_t max) {
+static int32_t RandIntGeometric(int32_t min, int32_t max) {
   max >>= (RandInt(0, HighestBitSet(max / min)));
   if (max < min)
     max = min;
@@ -87,7 +86,9 @@ RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos < shape.TotSize(axis).
 
-void PrintRaggedShapePart(RaggedShape &shape, std::ostream &stream,
+
+void PrintRaggedShapePart(std::ostream &stream,
+                          RaggedShape &shape,
                           int32_t axis,
                           int32_t begin_pos, int32_t end_pos) {
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() &&
@@ -96,8 +97,17 @@ void PrintRaggedShapePart(RaggedShape &shape, std::ostream &stream,
   for (int32_t d = begin_pos; d < end_pos; d++) {
     if (axis == shape.NumAxes() - 1) {
       stream << d << " ";
+    } else {
+      stream << "[ ";
+      const int32_t row_splits = shape.RowSplits(axis + 1).Data();
+      K2_DCHECK(d < shape.RowSplits(axis + 1).Dim());
+      int32_t row_start = row_splits[d],
+          row_end = row_splits[d+1];
+      PrintRaggedShapePart(stream, shape, axis + 1,
+                           row_start, row_end);
+      stream << "] ";
     }
-
+  }
 }
 
 // prints a RaggedShape as e.g. [ [ 0 1 ] [ 2 ] [] ].  Note, the 'values'
@@ -105,11 +115,12 @@ void PrintRaggedShapePart(RaggedShape &shape, std::ostream &stream,
 std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
   if (shape.Context().GetDeviceType() != kCpuDevice) {
     return stream << shape.To(CpuContext());
+  } else {
+    stream << "[ ";
+    PrintRaggedShapePart(stream, shape, 0, 0, shape.Dim0());
+    stream << "]";
+    return stream;
   }
-
-  std::vector<
-
-  return stream;
 }
 
 
