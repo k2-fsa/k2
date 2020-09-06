@@ -11,8 +11,8 @@
 #include <memory>
 #include <map>
 
+#include "glog/logging.h"
 #include "k2/csrc/cuda/debug.h"
-#include "k2/csrc/util/logging.h"
 
 namespace k2 {
 
