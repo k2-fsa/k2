@@ -11,8 +11,8 @@
 #include <memory>
 #include <map>
 
+#include "glog/logging.h"
 #include "k2/csrc/cuda/debug.h"
-#include "k2/csrc/util/logging.h"
 
 namespace k2 {
 
@@ -28,7 +28,8 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 
 class Context;
 using ContextPtr = std::shared_ptr<Context>;
-constexpr cudaStream_t kCudaStreamInvalid = (cudaStream_t)(~((size_t)0));
+
+#define kCudaStreamInvalid  ((cudaStream_t)(~((size_t)0)))
 
 /**
    class Context is the main surface of interaction with external tensor

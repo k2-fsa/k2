@@ -7,7 +7,7 @@
 
 #include "k2/python/csrc/tensor.h"
 
-#include "k2/csrc/util/logging.h"
+#include "glog/logging.h"
 
 namespace k2 {
 

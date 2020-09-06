@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/util/logging.h"
+#include "glog/logging.h"
 
 namespace k2 {
 

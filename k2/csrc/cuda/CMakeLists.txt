@@ -5,11 +5,7 @@ add_library(context
 )
 target_include_directories(context PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(context PUBLIC cub)
-if(K2_USE_GLOG)
-  target_link_libraries(context PUBLIC glog::glog)
-else()
-  target_link_libraries(context PUBLIC non-glog)
-endif()
+target_link_libraries(context PUBLIC glog)
 
 function(k2_add_cuda_test name)
   # TODO(haowen): add prefix `cu` for now to avoid name conflicts
@@ -31,11 +27,11 @@ endfunction()
 # please sort the source files alphabetically
 set(cuda_tests
   array_test
+  debug_test
+  log_test
   ops_test
   tensor_test
   utils_test
-  debug_test
-  logging_test
 )
 
 foreach(name IN LISTS cuda_tests)
