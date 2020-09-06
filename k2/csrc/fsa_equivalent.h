@@ -8,8 +8,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "glog/logging.h"
 #include "k2/csrc/fsa.h"
+#include "k2/csrc/util/logging.h"
 #include "k2/csrc/weights.h"
 
 #ifndef K2_CSRC_FSA_EQUIVALENT_H_

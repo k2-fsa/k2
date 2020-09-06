@@ -65,6 +65,21 @@ template <typename T>
 struct DtypeOf;
 
 template <>
+struct DtypeOf<float> {
+  static const Dtype dtype = kFloatDtype;
+};
+
+template <>
+struct DtypeOf<double> {
+  static const Dtype dtype = kDoubleDtype;
+};
+
+template <>
+struct DtypeOf<int8_t> {
+  static const Dtype dtype = kInt8Dtype;
+};
+
+template <>
 struct DtypeOf<int32_t> {
   static const Dtype dtype = kInt32Dtype;
 };
@@ -73,7 +88,16 @@ template <>
 struct DtypeOf<int64_t> {
   static const Dtype dtype = kInt64Dtype;
 };
-// and so on.
+
+template <>
+struct DtypeOf<uint32_t> {
+  static const Dtype dtype = kUint32Dtype;
+};
+
+template <>
+struct DtypeOf<uint64_t> {
+  static const Dtype dtype = kUint64Dtype;
+};
 
 }  // namespace k2
 #endif  // K2_CSRC_CUDA_DTYPE_H_

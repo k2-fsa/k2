@@ -106,6 +106,7 @@ class Tensor {
 
   Dtype GetDtype() const { return dtype_; }
   const Shape &GetShape() const { return shape_; }
+  int32_t ByteOffset() const { return bytes_offset_; }
   std::shared_ptr<Region> &GetRegion() { return data_; }
 
  private:

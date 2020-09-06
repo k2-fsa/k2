@@ -12,9 +12,9 @@
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
 #include "k2/csrc/determinize_impl.h"
 #include "k2/csrc/fsa.h"
+#include "k2/csrc/util/logging.h"
 #include "k2/csrc/weights.h"
 
 namespace k2 {
