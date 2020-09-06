@@ -81,8 +81,37 @@ RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
     num_elements = row_splits
   }
   return RaggedShape(axes);
+}
+
+
+// Recursive function that prints (part of) a ragged shape.
+// 0 <=  begin_pos <= end_pos < shape.TotSize(axis).
+
+void PrintRaggedShapePart(RaggedShape &shape, std::ostream &stream,
+                          int32_t axis,
+                          int32_t begin_pos, int32_t end_pos) {
+  K2_CHECK(axis >= 0 && axis < shape.NumAxes() &&
+           begin_pos >= 0 && begin_pos <= end_pos &&
+           end_pos <= shape.TotSize(axis));
+  for (int32_t d = begin_pos; d < end_pos; d++) {
+    if (axis == shape.NumAxes() - 1) {
+      stream << d << " ";
+    }
 
 }
+
+// prints a RaggedShape as e.g. [ [ 0 1 ] [ 2 ] [] ].  Note, the 'values'
+// are just the positions in the array, this is for readability.
+std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
+  if (shape.Context().GetDeviceType() != kCpuDevice) {
+    return stream << shape.To(CpuContext());
+  }
+
+  std::vector<
+
+  return stream;
+}
+
 
 RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes, int32_t *tot_sizes) {
   std::vector<RaggedShapeDim> axes(num_axes - 1);

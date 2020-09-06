@@ -12,7 +12,7 @@
 #include <iostream>
 
 #include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/debug.h"
+#include "k2/csrc/cuda/log.h"
 #include "k2/csrc/cuda/dtype.h"
 #include "k2/csrc/cuda/tensor.h"
 

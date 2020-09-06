@@ -158,6 +158,11 @@ class RaggedShape {
 };
 
 
+// prints a RaggedShape as e.g. [ [ 0 1 ] [ 2 ] [] ].  Note, the 'values'
+// are just the positions in the array, this is for readability.
+std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape);
+
+
 
 /*
   This is intended only for use in debugging.  It only works if the shape is on

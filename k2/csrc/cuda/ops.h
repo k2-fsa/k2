@@ -13,7 +13,7 @@
 
 #include "k2/csrc/cuda/array.h"
 #include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/debug.h"
+#include "k2/csrc/cuda/log.h"
 #include "k2/csrc/cuda/ragged.h"
 
 // Note, I'm not sure about the name of this file, they are not ops like in
