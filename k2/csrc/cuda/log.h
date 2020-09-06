@@ -105,6 +105,11 @@ class Logger {
     return *this;
   }
 
+  template <typename T>
+  const Logger &operator<<(const T &) const {
+    return *this;
+  }
+
  private:
   const char *filename_;
   const char *func_name_;
@@ -121,12 +126,12 @@ class Voidifier {
 
 }  // namespace k2
 
-#define K2_CHECK(x)                                                           \
-  (x) ? (void)0                                                               \
-      : k2::internal::Voidifier() & k2::internal::Logger(__FILE__, __func__,  \
-                                                         __LINE__,            \
-                                                         k2::internal::FATAL) \
-                                        << "Check failed: " << #x << " "
+#define K2_CHECK(x)                                              \
+  (x) ? (void)0                                                  \
+      : ::k2::internal::Voidifier() &                            \
+            ::k2::internal::Logger(__FILE__, __func__, __LINE__, \
+                                   ::k2::internal::FATAL)        \
+                << "Check failed: " << #x << " "
 
 // WARNING: x and y may be evaluated multiple times, but this happens only
 // when the check fails. Since the program aborts if it fails, we don't think
@@ -146,9 +151,9 @@ class Voidifier {
 //  local static variables or global variables.
 #define _K2_CHECK_OP(x, y, op)                                              \
   ((x)op(y)) ? (void)0                                                      \
-             : k2::internal::Voidifier() &                                  \
-                   k2::internal::Logger(__FILE__, __func__, __LINE__,       \
-                                        k2::internal::FATAL)                \
+             : ::k2::internal::Voidifier() &                                \
+                   ::k2::internal::Logger(__FILE__, __func__, __LINE__,     \
+                                          ::k2::internal::FATAL)            \
                        << "Check failed: " << #x << " " << #op << " " << #y \
                        << " (" << (x) << " vs. " << (y) << ") "
 
@@ -160,7 +165,7 @@ class Voidifier {
 #define K2_CHECK_GE(x, y) _K2_CHECK_OP(x, y, >=)
 
 #define K2_LOG(x) \
-  k2::internal::Logger(__FILE__, __func__, __LINE__, k2::internal::x)
+  ::k2::internal::Logger(__FILE__, __func__, __LINE__, ::k2::internal::x)
 
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
@@ -169,30 +174,31 @@ class Voidifier {
 //       For debug check
 // ------------------------------------------------------------
 
-#define K2_DCHECK(x) k2::internal::kDisableDebug ? (void)0 : K2_CHECK(x)
+#define K2_DCHECK(x) ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK(x)
 
 #define K2_DCHECK_EQ(x, y) \
-  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_EQ(x, y)
+  ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK_EQ(x, y)
 
 #define K2_DCHECK_NE(x, y) \
-  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_NE(x, y)
+  ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK_NE(x, y)
 
 #define K2_DCHECK_LT(x, y) \
-  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_LT(x, y)
+  ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK_LT(x, y)
 
 #define K2_DCHECK_LE(x, y) \
-  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_LE(x, y)
+  ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK_LE(x, y)
 
 #define K2_DCHECK_GT(x, y) \
-  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_GT(x, y)
+  ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK_GT(x, y)
 
 #define K2_DCHECK_GE(x, y) \
-  k2::internal::kDisableDebug ? (void)0 : K2_CHECK_GE(x, y)
+  ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK_GE(x, y)
 
-#define K2_DLOG(x) \
-  k2::internal::kDisableDebug ? (void)0 : k2::internal::Voidifier() & K2_LOG(x)
+#define K2_DLOG(x)                        \
+  ::k2::internal::kDisableDebug ? (void)0 \
+                                : ::k2::internal::Voidifier() & K2_LOG(x)
 
 #define K2_DCHECK_CUDA_ERROR(x) \
-  K2_DCHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
+  ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK_CUDA_ERROR(x)
 
 #endif  // K2_CSRC_CUDA_LOG_H_

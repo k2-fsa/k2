@@ -2,7 +2,7 @@
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
 
-// See ../../LICENSE for clarification regarding multiple authors
+// See ../../../LICENSE for clarification regarding multiple authors
 
 #ifndef K2_CSRC_CUDA_UTILS_H_
 #define K2_CSRC_CUDA_UTILS_H_

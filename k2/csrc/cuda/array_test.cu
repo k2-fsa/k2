@@ -2,7 +2,7 @@
 
 // Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
 
-// See ../../LICENSE for clarification regarding multiple authors
+// See ../../../LICENSE for clarification regarding multiple authors
 
 #include <algorithm>
 #include <numeric>
@@ -10,10 +10,11 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "k2/csrc/cuda/context.h"
 #include "k2/csrc/cuda/array.h"
-#include "k2/csrc/cuda/tensor.h"
+#include "k2/csrc/cuda/context.h"
 #include "k2/csrc/cuda/dtype.h"
+#include "k2/csrc/cuda/log.h"
+#include "k2/csrc/cuda/tensor.h"
 
 namespace k2 {
 template <typename T, DeviceType d>
