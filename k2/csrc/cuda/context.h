@@ -318,15 +318,14 @@ __global__ void eval_lambda(int32_t n, LambdaT lambda) {
   }
 }
 
-template <typename LambdaT, typename... Params>
-__global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda,
-                             Params... params) {
+template <typename LambdaT>
+__global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
   // actually threadIdx.y will always be 1 for now so we could drop that part of
   // setting i..
   int i = blockIdx.y * blockDim.y + threadIdx.y;
   int j = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < m && j < n) {
-    lambda(i, j, params...);
+    lambda(i, j);
   }
 }
 
@@ -369,15 +368,9 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
   is supposed to be the faster-varying one, the index for which
   threads in the same warp will tend to have different values.
   (Of course this doesn't affect the semantics of the operation).
-
-  Note if `lambda` requires additional parameters besides `i` and `j`,
-  user can pass those parameters with `Params... params`,
-  Eval2 will forward them to `lambda`.
-
 */
-template <typename LambdaT, typename... Params>
-void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda,
-           Params... params) {
+template <typename LambdaT>
+void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
   if (m <= 0 || n <= 0)
     return;  // actually it would be an error if m < 0 or n < 0.
   if (stream == kCudaStreamInvalid) {
@@ -385,7 +378,7 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda,
     // multiple threads.
     for (int32_t i = 0; i < m; i++) {
       for (int32_t j = 0; j < n; j++) {
-        lambda(i, j, params...);
+        lambda(i, j);
       }
     }
   } else {
@@ -394,8 +387,7 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda,
     // GetBlockSizesForSimpleMatrixOperation().
     dim3 block_size(16, 16, 1);
     dim3 grid_size(NumBlocks(n, 16), NumBlocks(m, 16));
-    eval_lambda2 << <grid_size, block_size, 0, stream>>>
-        (m, n, lambda, params...);
+    eval_lambda2 << <grid_size, block_size, 0, stream>>> (m, n, lambda);
     cudaError_t err = cudaGetLastError();
     assert(err == 0);
   }
@@ -403,10 +395,9 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda,
 
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
-          typename LambdaT, typename... Params>
-inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda,
-                  Params... params) {
-  Eval2(c->GetCudaStream(), m, n, lambda, params...);
+          typename LambdaT>
+inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
+  Eval2(c->GetCudaStream(), m, n, lambda);
 }
 
 // This is for use by ParallelRunner and Context.  Users probably should not

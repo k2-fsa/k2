@@ -300,13 +300,13 @@ class Array2 {
       Array1<T> array(dim0_ * dim1_, region, 0);
       const T *this_data = Data();
       T *data = array.Data();
-      auto lambda_copy_elems = [=] __host__ __device__(
-                                       int32_t i, int32_t j, int32_t dim1,
-                                       int32_t elem_stride0)->void {
+      int32_t dim1 = dim1_;
+      int32_t elem_stride0 = elem_stride0_;
+      auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
+                                       ->void {
         data[i * dim1 + j] = this_data[i * elem_stride0 + j];
       };
-      Eval2(region_->context, dim0_, dim1_, lambda_copy_elems, dim1_,
-            elem_stride0_);
+      Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
       return array;
     }
   }
@@ -414,15 +414,14 @@ class Array2 {
   void CopyDataFromTensor(const Tensor &t) {
     T *this_data = Data();
     const T *t_data = t.Data<T>();
+    int32_t elem_stride0 = elem_stride0_;
     int32_t elem_stride1 = t.GetShape().Stride(1);
-    auto lambda_copy_elems = [=] __host__ __device__(
-                                     int32_t i, int32_t j, int32_t elem_stride0,
-                                     int32_t elem_stride1)->void {
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
+                                     ->void {
       this_data[i * elem_stride0 + j] =
           t_data[i * elem_stride0 + j * elem_stride1];
     };
-    Eval2(region_->context, dim0_, dim1_, lambda_copy_elems, elem_stride0_,
-          elem_stride1);
+    Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
   }
 
  private:
