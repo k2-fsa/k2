@@ -13,8 +13,7 @@ namespace k2 {
   HighestBitSet(0) = -1,
   HighestBitSet(1) = 0,
   HighestBitSet(2,3) = 1
-  ..
-  TODO? (Dan)
+  ...
  */
 static int32_t HighestBitSet(int32_t i) {
   CHECK_GE(i, 0);
@@ -86,6 +85,7 @@ RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
 
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos < shape.TotSize(axis).
+
 
 void PrintRaggedShapePart(std::ostream &stream,
                           RaggedShape &shape,
