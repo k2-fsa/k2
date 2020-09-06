@@ -2,6 +2,8 @@
 
 // Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
 
+// See ../../../LICENSE for clarification regarding multiple authors
+
 #include <numeric>
 #include <vector>
 

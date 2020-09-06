@@ -27,10 +27,11 @@ endfunction()
 # please sort the source files alphabetically
 set(cuda_tests
   array_test
+  debug_test
+  log_test
   ops_test
   tensor_test
   utils_test
-  debug_test
 )
 
 foreach(name IN LISTS cuda_tests)
