@@ -100,6 +100,13 @@ class Tensor {
                                  bytes_offset_);
   }
 
+  template <typename T>
+  const T *Data() const {
+    assert(dtype_ == DtypeOf<T>::dtype);
+    return reinterpret_cast<const T *>(reinterpret_cast<char *>(data_->data) +
+                                       bytes_offset_);
+  }
+
   // Return the result of indexing one of the axes, which will result in a
   // Tensor with one fewer axis.
   TensorPtr Index(int32_t axis, int32_t index) const;
