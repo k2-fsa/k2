@@ -21,8 +21,8 @@
 // in ops.h
 
 #include <cassert>
-#include <type_traits>
 #include <cub/cub.cuh>
+#include <type_traits>
 
 namespace k2 {
 
@@ -199,6 +199,27 @@ void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
         row_splits, row_splits + 1, max_op, default_value));
     */
   }
+}
+
+
+template <typename T>
+Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value, T max_value) {
+  Array1<T> temp(CpuContext(), dim);
+  T *data = temp.Data();
+  K2_CHECK(max_value >= min_value);
+  if (max_value == min_value) {
+    for (int32_t i = 0; i < dim; i++)
+      data[i] = 0;
+  } else if (std::is_floating_point<T>::value ||
+             std::abs(min_value) > RAND_MAX ||
+             std::abs(max_value) > RAND_MAX) {
+    for (int32_t i = 0; i < dim; i++)
+      data[i] = min_value + (rand() * (max_value - min_value) / RAND_MAX);
+  } else {
+    for (int32_t i = 0; i < dim; i++)
+      data[i] = min_value + (rand() % (max_value + 1 - min_value));
+  }
+  return temp.To(c);
 }
 
 }  // namespace k2

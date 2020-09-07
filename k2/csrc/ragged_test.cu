@@ -22,7 +22,7 @@
 
 namespace k2 {
 template <typename T, DeviceType d>
-void TestArray1() {
+void TestTranspose() {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
   ContextPtr context = nullptr;
   if (d == kCpu) {
