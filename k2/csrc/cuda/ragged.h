@@ -2,13 +2,14 @@
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
 
-// See ../../LICENSE for clarification regarding multiple authors
+// See ../../../LICENSE for clarification regarding multiple authors
 
 #ifndef K2_CSRC_CUDA_RAGGED_H_
 #define K2_CSRC_CUDA_RAGGED_H_
 
 #include "k2/csrc/cuda/algorithms.h"
 #include "k2/csrc/cuda/array.h"
+#include "k2/csrc/cuda/log.h"
 
 namespace k2 {
 
@@ -27,24 +28,23 @@ struct RaggedShapeDim {
 
   // If cached_tot_size >= 0 and row_ids is nonempty, cached_tot_size will
   // equal row_ids.Dim().
-  // If cached_tot_size >= 0, it will be equal to row_splits[row_splits.Dim() - 1].
+  // If cached_tot_size >= 0, it will be equal to row_splits[row_splits.Dim() -
+  // 1].
   int32_t cached_tot_size;
 };
 
-
 class RaggedShapeIndexIterator;
 
-
-
 class RaggedShape {
-  int32_t Dim0() {
-    CHECK_GT(0, axes_.size());
+ public:
+  int32_t Dim0() const {
+    K2_CHECK_GT(axes_.size(), 0);
     return axes_[0].row_splits.Dim() - 1;
   }
   /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and
      for axis=0 the returned value is the same as Dim0().  */
   inline int32_t TotSize(int32_t axis) {
-    CHECK_LE(static_cast<size_t>(axis), axes_.size() + 1);
+    K2_CHECK_LE(static_cast<std::size_t>(axis), axes_.size() + 1);
     if (axis == 0)
       return Dim0();
     else {
@@ -53,8 +53,8 @@ class RaggedShape {
         return rsd.cached_tot_size;
       } else {
         // if we had row_ids set up, we should have set cached_tot_size.
-        CHECK_EQ(rsd.row_ids.Dim(), 0);
-        CHECK_GT(rsd.row_splits.Dim(), 0);
+        K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
+        K2_CHECK_GT(rsd.row_splits.Dim(), 0);
         rsd.cached_tot_size = rsd.row_splits[rsd.row_splits.Dim() - 1];
         return rsd.cached_tot_size;
       }
@@ -72,7 +72,7 @@ class RaggedShape {
     on axis `axis+1`
    */
   Array1<int32_t> &RowSplits(int32_t axis) {
-    CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
+    K2_CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
     // TODO(dan):: make sure this row_splits exists, create it if needed.
     return axes_[axis - 1].row_splits;
   }
@@ -82,13 +82,12 @@ class RaggedShape {
     The dimension is the number of elements on this axis == TotSize(axis).
   */
   Array1<int32_t> &RowIds(int32_t axis) {
-    CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
+    K2_CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
     // TODO(dan): make sure this row_ids exists, create it if needed.
     return axes_[axis - 1].row_ids;
   }
 
-
-  int32_t NumAxes() { return axes_.size() + 1; }
+  int32_t NumAxes() const { return axes_.size() + 1; }
 
   // TODO.  Gives max size of any list on the provided axis, with 0 < axis <
   // NumAxes().  Equals max difference between successive row_splits on that
@@ -96,8 +95,6 @@ class RaggedShape {
   int32_t MaxSize(int32_t axis);
 
   ContextPtr &Context() { return axes_[0].row_splits.Context(); }
-
-  RaggedShape(const RaggedShape &other) = default;
 
   /*
     It is an error to call this if this.NumAxes() < 2.  This will return
@@ -113,7 +110,6 @@ class RaggedShape {
 
   RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b);
 
-
   /*
     Given a vector `indexes` of length NumAxes() which is a valid index
     for this RaggedShape, returns the integer offset for the element
@@ -122,18 +118,16 @@ class RaggedShape {
    */
   int32_t operator[](const std::vector<int32_t> &indexes);
 
-
   RaggedShapeIndexIterator Iterator();
 
-  RaggedShape(std::vector<RaggedShapeDim> &axes, bool check = true) : axes_(axes) {
-    if (check)
-      Check();
+  RaggedShape(std::vector<RaggedShapeDim> &axes, bool check = true)
+      : axes_(axes) {
+    if (check) Check();
   }
-
 
   // A RaggedShape constructed this way will not be a valid RaggedShape.
   // The constructor is provided so you can immediately assign toit.
-  RaggedShape() { }
+  RaggedShape() = default;
 
   // This makes sure that all of the row_splits, row_ids and cached_tot_size
   // are populated
@@ -149,9 +143,12 @@ class RaggedShape {
   // Check the RaggedShape for consistency; die on failure.
   void Check();
 
+<<<<<<< HEAD
   // Convert to possibly different context.
   RaggedShape<T> To(ContextPtr ctx);
 
+=======
+>>>>>>> upstream/master
  private:
   // TODO: could probably do away with the std::vector and have a max size and a
   // fixed length array (more efficient)
@@ -161,12 +158,9 @@ class RaggedShape {
   std::vector<RaggedShapeDim> axes_;
 };
 
-
 // prints a RaggedShape as e.g. [ [ 0 1 ] [ 2 ] [] ].  Note, the 'values'
 // are just the positions in the array, this is for readability.
 std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape);
-
-
 
 /*
   This is intended only for use in debugging.  It only works if the shape is on
@@ -178,30 +172,32 @@ std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape);
     }
 */
 class RaggedShapeIndexIterator {
-  const std::vector<int32> &Value();
-  bool Next() { linear_idx_++; if (!Done()) UpdateVec(); }
-  bool Done() { return (linear_idx_ != shape_.NumElements()); }
-  RaggedShapeIndexIterator(const RaggedShape &shape):
-      shape_(shape),
-      linear_idx_(0),
-      idx_(shape.NumAxes()) {
-    K2_CHECK(shape_.Context().GetDeviceType() == kCpu);
-    for (int32_t i = 0; i + 1 < shape.NumAxes(); i++) {
-      row_splits_.push_back(shape.RowSplits(i+1));
-      row_ids_.push_back(shape.RowIds(i+1));
-    }
-    if (!Done())
-      UpdateVec();
+ public:
+  const std::vector<int32_t> &Value();
+  void Next() {
+    linear_idx_++;
+    if (!Done()) UpdateVec();
   }
+  bool Done() { return (linear_idx_ != shape_.NumElements()); }
+
+  explicit RaggedShapeIndexIterator(RaggedShape &shape)
+      : shape_(shape), linear_idx_(0), idx_(shape.NumAxes()) {
+    K2_CHECK(shape_.Context()->GetDeviceType() == kCpu);
+    for (int32_t i = 0; i + 1 < shape.NumAxes(); ++i) {
+      row_splits_.push_back(shape.RowSplits(i + 1).Data());
+      row_ids_.push_back(shape.RowIds(i + 1).Data());
+    }
+    if (!Done()) UpdateVec();
+  }
+
  private:
   void UpdateVec() {
     K2_CHECK(!Done());
-    int32_t idx = linear_idx_,
-        num_axes = row_splits_.size() + 1;
+    int32_t idx = linear_idx_, num_axes = row_splits_.size() + 1;
     for (int32_t axis = num_axes - 1; axis > 0; axis--) {
-      int32_t prev_idx = row_splits_[axis-1][idx],
-          row_start = row_ids_[axis-1][prev_idx],
-          row_end = row_ids_[axis-1][prev_idx + 1];
+      int32_t prev_idx = row_splits_[axis - 1][idx],
+              row_start = row_ids_[axis - 1][prev_idx],
+              row_end = row_ids_[axis - 1][prev_idx + 1];
       K2_CHECK(idx >= row_start && idx < row_end);
       // e.g.: `idx` is an idx012, `prev_idx` is an idx01,
       //    `row_start` and `row_end` are idx01x, and
@@ -212,14 +208,12 @@ class RaggedShapeIndexIterator {
     }
     idx_[0] = idx;
   };
-  std::vector<const int32_t*> row_splits_;
-  std::vector<const int32_t*> row_ids_;
+  std::vector<const int32_t *> row_splits_;
+  std::vector<const int32_t *> row_ids_;
   RaggedShape &shape_;
   int32_t linear_idx_;
   std::vector<int32_t> idx_;
 };
-
-
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
@@ -270,17 +264,16 @@ RaggedShape Unsqueeze(RaggedShape &src, int32_t axis);
    last axis it is just removed and the number of elements will be affected.
 
           @param [in] src Ragged shape to remove axis of (`src` is conceptually
-                      unchanged by this operation but non-const because row-splits
-                      or row-ids may need to be generated).  We require
-                      src.NumAxes() > 2, since the minimum number of
-                      axes for a RaggedShape is 2.
-          @param [in] axis  Axis to remove; must satisfy 0 <= axis < src.NumAxes()
+                      unchanged by this operation but non-const because
+   row-splits or row-ids may need to be generated).  We require src.NumAxes() >
+   2, since the minimum number of axes for a RaggedShape is 2.
+          @param [in] axis  Axis to remove; must satisfy 0 <= axis <
+   src.NumAxes()
           @return      Returns the modified shape with one fewer axis; will
                        satisfy ans.TotSize(axis) == src.TotSize(axis + 1).
                        if axis < src.NumAxes() - 1.
 */
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
-
 
 /*
   Transpose a RaggedShape: namely, axes 0 and 1.  Requires that the sizes
@@ -333,18 +326,18 @@ Array1<int32_t *> GetRowSpltsPtrs(RaggedShape &src);
 */
 RaggedShape Renumber(const RaggedShape &src, const Array1<int32_t> &new2old);
 
-
 /*
   Return a random RaggedShape, with a CPU context.  Intended for testing.
 
      @param [in] min_num_axes   Minimum number of axes (must be at least 2)
      @param [in] max_num_axes   Maximum number of axes, must be >= min_num_axes
-     @param [in] min_num_elements  Minimum number of elements; must be at least 0.
-     @param [in] max_num_elements  Maximum number of elements; must be >= min_num_elements.
+     @param [in] min_num_elements  Minimum number of elements; must be at least
+  0.
+     @param [in] max_num_elements  Maximum number of elements; must be >=
+  min_num_elements.
  */
 RaggedShape RandomRaggedShape(int32_t min_num_axes = 2, int32_t max_num_axes = 4,
                               int32_t min_num_elements = 0, int32_t max_num_elements = 2000);
-
 
 template <typename T>
 struct Ragged {
@@ -359,7 +352,6 @@ struct Ragged {
   Ragged(RaggedShape &shape)
       : shape(shape),
         values(shape.Context(), shape.TotSize(shape.NumAxes() - 1)) {}
-
 
   // This will only work on the CPU, and is intended for use in testing code.
   T operator[](const std::vector<int32_t> &indexes) {

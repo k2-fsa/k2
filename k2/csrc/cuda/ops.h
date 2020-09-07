@@ -99,9 +99,10 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
     dim3 block_size(kTransTileDim, kTransBlockRows, 1);
     dim3 grid_size(NumBlocks(cols, kTransTileDim),
                    NumBlocks(rows, kTransTileDim));
-    TransposeKernel << <grid_size, block_size, 0, c->GetCudaStream()>>>
-        (rows, cols, src_data, dest_data);
-    K2_CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+    TransposeKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
+        rows, cols, src_data, dest_data);
+    auto ret = cudaDeviceSynchronize();
+    K2_CHECK_CUDA_ERROR(ret);
   }
 }
 

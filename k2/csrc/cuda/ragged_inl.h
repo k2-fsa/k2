@@ -2,17 +2,15 @@
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
 
-// See ../../LICENSE for clarification regarding multiple authors
+// See ../../../LICENSE for clarification regarding multiple authors
 
 // This is to be included only from ragged.h.
 
 namespace k2 {
 
-
-
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src) {
-  CHECK_GT(src_size, 0);  // can later relax this, maybe
+  K2_CHECK_GT(src_size, 0);  // can later relax this, maybe
   std::vector<const RaggedShape *> src_shapes(src_size);
   std::vector<const Array1<T> *> src_values(src_size);
   for (int32_t i = 0; i < src_size; i++) {
@@ -30,6 +28,7 @@ Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src) {
 }
 
 
+
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos < shape.TotSize(axis).
 template <typename T>
@@ -44,12 +43,11 @@ void PrintRaggedPart(std::ostream &stream, Ragged<T> &ragged,
       stream << ragged.values[d] << " ";
     } else {
       stream << "[ ";
-      const int32_t row_splits = shape.RowSplits(axis + 1).Data();
+      const int32_t *row_splits = shape.RowSplits(axis + 1).Data();
       K2_DCHECK(d < shape.RowSplits(axis + 1).Dim());
       int32_t row_start = row_splits[d],
           row_end = row_splits[d+1];
-      PrintRaggedPart(stream, shape, axis + 1,
-                      row_start, row_end);
+      PrintRaggedPart(stream, shape, axis + 1,  row_start, row_end);
       stream << "] ";
     }
   }
@@ -58,8 +56,8 @@ void PrintRaggedPart(std::ostream &stream, Ragged<T> &ragged,
 // prints a Ragged array as e.g. [ [ 7 9 ] [ 10 ] [] ]
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &ragged) {
-  if (ragged.Context().GetDeviceType() != kCpuDevice) {
-    return stream << ragged.To(CpuContext());
+  if (ragged.Context().GetDeviceType() != kCpu) {
+    return stream << ragged.To(GetCpuContext());
   } else {
     stream << "[ ";
     PrintRaggedPart(ragged, stream, 0, 0, ragged.shape.Dim0());
@@ -67,10 +65,6 @@ std::ostream &operator<<(std::ostream &stream, const Ragged<T> &ragged) {
     return stream;
   }
 }
-
-template <typename T>
-std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r) {
-
 
 template <typename T>
 Ragged<T> RandomRagged<T>(T min_value, T max_value,
@@ -83,6 +77,5 @@ Ragged<T> RandomRagged<T>(T min_value, T max_value,
 }
 
 
-}
 
 }  // namespace k2
