@@ -15,24 +15,23 @@
 namespace k2 {
 
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src) {
-  K2_CHECK_GT(src_size, 0);  // can later relax this, maybe
-  std::vector<const RaggedShape *> src_shapes(src_size);
-  std::vector<const Array1<T> *> src_values(src_size);
-  for (int32_t i = 0; i < src_size; i++) {
+Ragged<T> Stack(int32_t num_srcs, const Ragged<T> *src, int32_t axis) {
+  K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe
+  std::vector<const RaggedShape *> src_shapes(num_srcs);
+  std::vector<const Array1<T> *> src_values(num_srcs);
+  for (int32_t i = 0; i < num_srcs; i++) {
     src_shapes[i] = &(src[i]->shape);
     src_values[i] = &(src[i]->values);
   }
-  // TODO.
+
+  RaggedShape ans_shape = Stack(num_srcs, src_shapes, axis);
+  Array1<T> ans_values;
   if (axis == 0) {
-    //  return Ragged<T>(Stack(axis, src_size, &(src_shapes[0])),
-    //                  Append(src_size, src_values));
+    values = Append(num_srcs, rsc_values);
   } else {
-    assert(0);  // Have to figure out whether it makes sense to
-                // support this case here.
+    K2_LOG(FATAL) << "Axis != 0 not currently supported in Stack().";
   }
 }
-
 
 
 // Recursive function that prints (part of) a ragged shape.

@@ -1,15 +1,10 @@
-/**
- * @brief
- * tensor_ops
- *
- * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
- *
- * @copyright
- * See LICENSE for clarification regarding multiple authors
- */
+// k2/csrc/cuda/tensor_ops.cc
 
-#include "tensor_ops.h"
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+
+// See ../../LICENSE for clarification regarding multiple authors
+
+#include "k2/csrc/cuda/tensor_ops.h"
 
 namespace k2 {
 

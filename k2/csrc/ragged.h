@@ -150,7 +150,6 @@ class RaggedShape {
 
   // Convert to possibly different context.
   RaggedShape<T> To(ContextPtr ctx);
-
  private:
   // TODO: could probably do away with the std::vector and have a max size and a
   // fixed length array (more efficient)
@@ -241,7 +240,7 @@ class RaggedShapeIndexIterator {
         and these are just the shapes of arrays..).
         See also the version of Stack for class Ragged.
  */
-RaggedShape Stack(int32_t src_size, const RaggedShape **src, int32_t axis);
+RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape **src);
 
 /*
   Insert a new axis at position `axis`, with 0 <= axis <= src.NumAxes(), for

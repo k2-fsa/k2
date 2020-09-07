@@ -1,14 +1,9 @@
-/**
- * @brief
- * tensor_ops
- *
- * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
- *
- * @copyright
- * See LICENSE for clarification regarding multiple authors
- */
+// k2/csrc/cuda/tensor_ops.h
+
+// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+//                                                   Haowen Qiu)
+
+// See ../../LICENSE for clarification regarding multiple authors
 
 #ifndef K2_CSRC_TENSOR_OPS_H_
 #define K2_CSRC_TENSOR_OPS_H_

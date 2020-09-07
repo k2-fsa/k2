@@ -19,16 +19,16 @@
 
 namespace k2 {
 
-Shape::Shape(const std::vector<int32_t> &dims) : ndim_(dims.size()) {
-  CHECK_LT(ndim_, kMaxDim);
+Shape::Shape(const std::vector<int32_t> &dims) : num_axes_(dims.size()) {
+  CHECK_LT(num_axes_, kMaxDim);
 
   std::copy(dims.begin(), dims.end(), dims_);
 
   // compute strides_
-  if (ndim_ > 0) {
-    strides_[ndim_ - 1] = 1;
+  if (num_axes_ > 0) {
+    strides_[num_axes_ - 1] = 1;
   }
-  for (int32_t i = ndim_ - 2; i >= 0; --i) {
+  for (int32_t i = num_axes_ - 2; i >= 0; --i) {
     strides_[i] = strides_[i + 1] * dims_[i + 1];
   }
 
@@ -39,9 +39,9 @@ Shape::Shape(const std::vector<int32_t> &dims) : ndim_(dims.size()) {
 
 Shape::Shape(const std::vector<int32_t> &dims,
              const std::vector<int32_t> strides)
-    : ndim_(dims.size()) {
-  CHECK_LT(ndim_, kMaxDim);
-  CHECK_EQ(strides.size(), ndim_);
+    : num_axes_(dims.size()) {
+  CHECK_LT(num_axes_, kMaxDim);
+  CHECK_EQ(strides.size(), num_axes_);
   std::copy(dims.begin(), dims.end(), dims_);
   std::copy(strides.begin(), strides.end(), strides_);
   num_element_ = ComputeNumElement();
@@ -50,22 +50,22 @@ Shape::Shape(const std::vector<int32_t> &dims,
 }
 
 int32_t Shape::ComputeNumElement() {
-  if (ndim_ == 0) {
+  if (num_axes_ == 0) {
     return 0;
   }
   int32_t elements = 1;
-  for (int32_t i = 0; i < ndim_; ++i) {
+  for (int32_t i = 0; i < num_axes_; ++i) {
     elements *= dims_[i];
   }
   return elements;
 }
 
 int32_t Shape::ComputeStorageSize() {
-  if (ndim_ == 0) {
+  if (num_axes_ == 0) {
     return 0;
   }
   int32_t size = 1;
-  for (int32_t i = 0; i < ndim_; ++i) {
+  for (int32_t i = 0; i < num_axes_; ++i) {
     size += (dims_[i] - 1) * strides_[i];
   }
   return size;
@@ -73,7 +73,7 @@ int32_t Shape::ComputeStorageSize() {
 
 bool Shape::CheckContiguous() {
   int32_t z = 1;
-  for (int32_t i = ndim_ - 1; i >= 0; --i) {
+  for (int32_t i = num_axes_ - 1; i >= 0; --i) {
     CHECK_GE(strides_[i], z);
     if (dims_[i] != 1) {
       if (strides_[i] != z) return false;
@@ -102,11 +102,11 @@ Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
 }
 
 TensorPtr Tensor::Index(int32_t axis, int32_t index) const {
-  CHECK_LT(axis, shape_.Ndim());
+  CHECK_LT(axis, shape_.NumAxes());
   CHECK_LT(index, shape_.Dim(axis));
-  std::vector<int32_t> dims(shape_.Dims(), shape_.Dims() + shape_.Ndim());
+  std::vector<int32_t> dims(shape_.Dims(), shape_.Dims() + shape_.NumAxes());
   std::vector<int32_t> strides(shape_.Strides(),
-                               shape_.Strides() + shape_.Ndim());
+                               shape_.Strides() + shape_.NumAxes());
   dims.erase(dims.begin() + axis);
   strides.erase(strides.begin() + axis);
   Shape shape(dims, strides);
