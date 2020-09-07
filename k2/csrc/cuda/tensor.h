@@ -125,7 +125,7 @@ class Tensor {
 
   // Return the result of indexing one of the axes, which will result in a
   // Tensor with one fewer axis.
-  TensorPtr Index(int32_t axis, int32_t index) const;
+  Tensor Index(int32_t axis, int32_t index) const;
 
   Dtype GetDtype() const { return impl_->dtype; }
   const Shape &GetShape() const { return impl_->shape; }

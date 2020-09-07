@@ -51,6 +51,7 @@ enum Dtype {
   kFloatDtype,
   kDoubleDtype,
   kInt8Dtype,
+  kInt16Dtype,
   kInt32Dtype,
   kInt64Dtype,
   kUint32Dtype,
@@ -80,6 +81,11 @@ struct DtypeOf<int8_t> {
 };
 
 template <>
+struct DtypeOf<int16_t> {
+  static const Dtype dtype = kInt16Dtype;
+};
+
+template <>
 struct DtypeOf<int32_t> {
   static const Dtype dtype = kInt32Dtype;
 };
@@ -98,6 +104,29 @@ template <>
 struct DtypeOf<uint64_t> {
   static const Dtype dtype = kUint64Dtype;
 };
+
+#define FOR_DTYPES(
+
+
+/*
+ */
+#define FOR_ALL_DTYPES(Dtype, TypeName, Expr)   \
+  switch (Dtype) {
+  case kFloatDtype: { using TypeName = float; (Expr); break; }
+  case kDoubleDtype: { using TypeName = double; (Expr); break; }
+  case kInt8Dtype: { using TypeName = int8_t; (Expr); break; }
+  case kInt16Dtype: { using TypeName = int16_t; (Expr); break; }
+  case kInt32Dtype: { using TypeName = int32_t; (Expr); break; }
+  case kInt64Dtype: { using TypeName = int64_t; (Expr); break; }
+  case kUint32Dtype: { using TypeName = uint32_t; (Expr); break; }
+  case kUint64Dtype: { using TypeName = uint64_t; (Expr); break; }
+
+}
+
+
+}
+
+
 
 }  // namespace k2
 #endif  // K2_CSRC_CUDA_DTYPE_H_
