@@ -6,7 +6,7 @@
 
 #include "k2/python/csrc/aux_labels.h"
 
-#include "k2/csrc/aux_labels.h"
+#include "k2/csrc/host/aux_labels.h"
 
 void PyBindAuxLabels1Mapper(py::module &m) {
   using PyClass = k2::AuxLabels1Mapper;

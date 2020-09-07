@@ -8,9 +8,9 @@
 
 #include <vector>
 
-#include "k2/csrc/array.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/properties.h"
+#include "k2/csrc/host/array.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/properties.h"
 #include "k2/python/csrc/array.h"
 
 // We would never pass `order` parameter to k2::IsAcyclic in Python code.
