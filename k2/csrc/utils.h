@@ -1,15 +1,20 @@
-// k2/csrc/cuda/utils.h
+/**
+ * @brief
+ * utils
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
-
-// See ../../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_UTILS_H_
-#define K2_CSRC_CUDA_UTILS_H_
+#ifndef K2_CSRC_UTILS_H_
+#define K2_CSRC_UTILS_H_
 
 #include <algorithm>
 
-#include "k2/csrc/cuda/context.h"
+#include "k2/csrc/context.h"
 
 namespace k2 {
 
@@ -454,8 +459,8 @@ __host__ int32_t atomicMax(int32_t *address, int32_t val) {
 
 }  // namespace k2
 
-#define IS_IN_K2_CSRC_CUDA_UTILS_H_
-#include "k2/csrc/cuda/utils_inl.h"
-#undef IS_IN_K2_CSRC_CUDA_UTILS_H_
+#define IS_IN_K2_CSRC_UTILS_H_
+#include "k2/csrc/utils_inl.h"
+#undef IS_IN_K2_CSRC_UTILS_H_
 
-#endif  // K2_CSRC_CUDA_UTILS_H_
+#endif  // K2_CSRC_UTILS_H_

@@ -1,15 +1,20 @@
-// k2/csrc/cuda//utils_test.cu
-
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-
-// See ../../../LICENSE for clarification regarding multiple authors
+/**
+ * @brief
+ * utils_test
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 #include <numeric>
 #include <vector>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-#include "k2/csrc/cuda/utils.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include "k2/csrc/utils.h"
 
 namespace k2 {
 

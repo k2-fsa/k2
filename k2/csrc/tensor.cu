@@ -1,16 +1,21 @@
-// k2/csrc/cuda/tensor.cu
-
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
+/**
+ * @brief
+ * tensor
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 #include <algorithm>
 #include <memory>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/cuda/dtype.h"
-#include "k2/csrc/cuda/tensor.h"
+#include "k2/csrc/dtype.h"
+#include <glog/logging.h>
+#include "k2/csrc/tensor.h"
 
 namespace k2 {
 

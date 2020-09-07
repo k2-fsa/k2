@@ -1,67 +1,51 @@
+# Make project root dir as the INCLUDE_DIRECTORIES of all tagets in csrc/.
+# The header should be included as `#include "k2/csrc/.."`, to avoid conflicts.
 include_directories(${CMAKE_SOURCE_DIR})
 
-# please sort the source files alphabetically
-add_library(fsa
-  arcsort.cc
-  aux_labels.cc
-  connect.cc
-  determinize.cc
-  fsa.cc
-  fsa_equivalent.cc
-  fsa_renderer.cc
-  fsa_util.cc
-  intersect.cc
-  properties.cc
-  rmepsilon.cc
-  topsort.cc
-  util.cc
-  weights.cc
+add_subdirectory(host)
+
+#---------------------------- Build K2 CUDA sources ----------------------------
+
+# the target
+add_library(context
+    context.cu
+    tensor.cu
+    dtype.cc
 )
 
-target_include_directories(fsa PUBLIC ${CMAKE_SOURCE_DIR})
-if(CMAKE_VERSION VERSION_LESS 3.8)
-  set(CMAKE_CXX_STANDARD 11)
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  set(CMAKE_CXX_EXTENSIONS OFF)
-else()
-  target_compile_features(fsa PUBLIC cxx_std_11)
-endif()
-target_link_libraries(fsa PUBLIC glog)
+# lib deps
+target_link_libraries(context PUBLIC cub)
+target_link_libraries(context PUBLIC glog)
 
-function(k2_add_fsa_test name)
-  add_executable(${name} "${name}.cc")
-  target_link_libraries(${name}
-    PRIVATE
-      fsa
+#---------------------------- Test K2 CUDA sources ----------------------------
+
+# please sort the source files alphabetically
+set(cuda_tests
+    array_test
+    log_test
+    ops_test
+    tensor_test
+    utils_test
+    )
+
+# utility function to add gtest
+function(k2_add_cuda_test name)
+  # TODO(haowen): add prefix `cu` for now to avoid name conflicts
+  # with files in k2/csrc/, will remove this finally.
+  set(target_name "cu_${name}")
+  add_executable(${target_name} "${name}.cu")
+  target_link_libraries(${target_name}
+      PRIVATE
+      context
       gtest
       gtest_main
-  )
-  add_test(NAME "Test.${name}"
-    COMMAND
-      $<TARGET_FILE:${name}>
-  )
+      )
+  add_test(NAME "Test.Cuda.${target_name}"
+      COMMAND
+      $<TARGET_FILE:${target_name}>
+      )
 endfunction()
 
-# please sort the source files alphabetically
-set(fsa_tests
-  arcsort_test
-  array_test
-  aux_labels_test
-  connect_test
-  determinize_test
-  fsa_equivalent_test
-  fsa_renderer_test
-  fsa_test
-  fsa_util_test
-  intersect_test
-  properties_test
-  rmepsilon_test
-  topsort_test
-  weights_test
-)
-
-foreach(name IN LISTS fsa_tests)
-  k2_add_fsa_test(${name})
+foreach(name IN LISTS cuda_tests)
+  k2_add_cuda_test(${name})
 endforeach()
-
-add_subdirectory(cuda)

@@ -1,10 +1,17 @@
-// k2/csrc/cuda/shape_inl.h
+/**
+ * @brief
+ * shape_inl
+ *
+ * @note
+ * to be included only from shape.h
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-// to be included only from shape.h
 namespace k2 {
 
 template <typename T>

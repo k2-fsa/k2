@@ -1,17 +1,22 @@
-// k2/csrc/cuda/tensor.h
+/**
+ * @brief
+ * tensor
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_TENSOR_H_
-#define K2_CSRC_CUDA_TENSOR_H_
+#ifndef K2_CSRC_TENSOR_H_
+#define K2_CSRC_TENSOR_H_
 
 #include <vector>
 
-#include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/dtype.h"
+#include "k2/csrc/context.h"
+#include "k2/csrc/dtype.h"
 
 namespace k2 {
 class Shape {
@@ -126,4 +131,4 @@ class Tensor {
 };
 
 }  // namespace k2
-#endif  // K2_CSRC_CUDA_TENSOR_H_
+#endif  // K2_CSRC_TENSOR_H_

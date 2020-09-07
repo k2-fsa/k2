@@ -1,13 +1,18 @@
-// k2/csrc/cuda/timer.h
+/**
+ * @brief
+ * timer
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
+#ifndef K2_CSRC_TIMER_H_
+#define K2_CSRC_TIMER_H_
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_TIMER_H_
-#define K2_CSRC_CUDA_TIMER_H_
-
-#include "k2/csrc/cuda/log.h"
+#include "k2/csrc/log.h"
 
 namespace k2 {
 class Timer {
@@ -42,4 +47,4 @@ class Timer {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_CUDA_TIMER_H_
+#endif  // K2_CSRC_TIMER_H_
