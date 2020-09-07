@@ -21,19 +21,19 @@
 namespace k2 {
 class Shape {
  public:
-  int32_t Ndim() const { return ndim_; }
+  int32_t NumAxes() const { return num_axes_; }
 
   const int32_t *Dims() const { return dims_; }
 
   const int32_t *Strides() const { return strides_; }
 
   int32_t Dim(int32_t i) const {
-    CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(ndim_));
+    CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(num_axes_));
     return dims_[i];
   }
 
   int32_t Stride(int32_t i) const {
-    CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(ndim_));
+    CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(num_axes_));
     return strides_[i];
   }
 
@@ -47,7 +47,7 @@ class Shape {
   // Returns true if the two shapes have the same dims (but not necessarily strides).
   bool SameDims(Shape &other);
 
-  Shape() : ndim_(0), num_element_(0), is_contiguous_(true) {}
+  Shape() : num_axes_(0), num_element_(0), is_contiguous_(true) {}
 
   explicit Shape(const std::vector<int32_t> &dims);
 
@@ -59,12 +59,12 @@ class Shape {
  private:
   static const int32_t kMaxDim = 4;  // Will increase this as needed
 
-  int32_t ndim_;  // Must be >= 0
+  int32_t num_axes_;  // Must be >= 0
   int32_t num_element_;
   int32_t storage_size_;
   bool is_contiguous_;
 
-  // elements of dims_ and strides_ >= ndim_ are currently not set;
+  // elements of dims_ and strides_ >= num_axes_ are currently not set;
   // in future we may change this.
   int32_t dims_[kMaxDim];
   int32_t strides_[kMaxDim];  // Strides in elements
@@ -139,7 +139,7 @@ class Tensor {
 
   // Forward some funtions from the shape.  Will forward more later.
   inline bool SameDim(const Tensor &other) const { return other->impl_.shape.SameDim(shape); }
-  inline bool Ndim() const { return impl_->shape.Ndim(); }
+  inline bool NumAxes() const { return impl_->shape.NumAxes(); }
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
 
 
@@ -169,7 +169,7 @@ class Tensor {
 
   // Forward some funtions from the shape.  Will forward more later.
   inline bool SameDim(const Tensor &other) const { return other->impl_.shape.SameDim(shape); }
-  inline bool Ndim() const { return impl_->shape.Ndim(); }
+  inline bool NumAxes() const { return impl_->shape.NumAxes(); }
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
 
 

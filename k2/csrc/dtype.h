@@ -13,6 +13,7 @@
 #define K2_CSRC_DTYPE_H_
 
 #include <cstdint>
+#include "k2/csrc/log.h"
 
 namespace k2 {
 
@@ -28,12 +29,13 @@ class DtypeTraits {
   int NumBytes() { return num_bytes_; }
   BaseType GetBaseType() { return static_cast<BaseType>(base_type_); }
 
-  DtypeTraits(BaseType base_type, int num_bytes, int num_scalars = 1,
-              int misc = 0)
+  DtypeTraits(BaseType base_type, int num_bytes, const char *name,
+              int num_scalars = 1,  int misc = 0)
       : base_type_(static_cast<char>(base_type)),
         num_scalars_(num_scalars),
         misc_(misc),
-        num_bytes_(num_bytes) {}
+        num_bytes_(num_bytes),
+        name_(name) {}
 
  private:
   // We may add more
@@ -46,6 +48,7 @@ class DtypeTraits {
                     // scalar element is given by bytes_per_elem / num_scalars;
                     // we do it this way so that the stride in bytes is easily
                     // extractable.
+  const char *name_;  // name, e.g. "float", "int8", "int32"
 };
 
 // We initialize this in dtype.cc
@@ -114,22 +117,24 @@ struct DtypeOf<uint64_t> {
 
 
 /*
+  Evaluates Expr for TypeName being all dtypes.  E.g.
+     FOR_ALL_DTYPES(t.GetDtype(), T, SomeFuncCall<T>(a,b,c..));
  */
-#define FOR_ALL_DTYPES(Dtype, TypeName, Expr)   \
-  switch (Dtype) {
-  case kFloatDtype: { using TypeName = float; (Expr); break; }
-  case kDoubleDtype: { using TypeName = double; (Expr); break; }
-  case kInt8Dtype: { using TypeName = int8_t; (Expr); break; }
-  case kInt16Dtype: { using TypeName = int16_t; (Expr); break; }
-  case kInt32Dtype: { using TypeName = int32_t; (Expr); break; }
-  case kInt64Dtype: { using TypeName = int64_t; (Expr); break; }
-  case kUint32Dtype: { using TypeName = uint32_t; (Expr); break; }
-  case kUint64Dtype: { using TypeName = uint64_t; (Expr); break; }
+#define FOR_ALL_DTYPES(DtypeValue, TypeName, Expr)   \
+  do { switch (DtypeValue) {                                    \
+  case kFloatDtype: { using TypeName = float; Expr; break; }    \
+  case kDoubleDtype: { using TypeName = double; Expr; break; }  \
+  case kInt8Dtype: { using TypeName = int8_t; Expr; break; }    \
+  case kInt16Dtype: { using TypeName = int16_t; Expr; break; }  \
+  case kInt32Dtype: { using TypeName = int32_t; Expr; break; }  \
+  case kInt64Dtype: { using TypeName = int64_t; Expr; break; }  \
+  case kUint32Dtype: { using TypeName = uint32_t; Expr; break; }\
+  case kUint64Dtype: { using TypeName = uint64_t; Expr; break; }  \
+  default: K2_FATAL << "Dtype " << TratsOf(Dtype)                \
+                    << " not covered in switch statement.  p not supported for this type?"; \
+  } while(0)
 
-}
 
-
-}
 
 
 
