@@ -3,7 +3,7 @@
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
 //                                                   Haowen Qiu)
 
-// See ../../LICENSE for clarification regarding multiple authors
+// See ../../../LICENSE for clarification regarding multiple authors
 
 #ifndef K2_CSRC_CUDA_ARRAY_H_
 #define K2_CSRC_CUDA_ARRAY_H_
@@ -12,8 +12,8 @@
 #include <iostream>
 
 #include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/log.h"
 #include "k2/csrc/cuda/dtype.h"
+#include "k2/csrc/cuda/log.h"
 #include "k2/csrc/cuda/tensor.h"
 
 namespace k2 {
@@ -25,6 +25,7 @@ namespace k2 {
 template <typename T>
 class Array1 {
  public:
+  static_assert(std::is_pod<T>::value, "T must be POD");
   using ValueType = T;
   int32_t ElementSize() const { return sizeof(ValueType); }
   int32_t Dim() const { return dim_; }  // dimension of only axis (axis 0)
@@ -71,7 +72,7 @@ class Array1 {
   Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}
 
   Array1(int32_t dim, RegionPtr region, int32_t byte_offset)
-      : dim_(dim), region_(region), byte_offset_(byte_offset) {}
+      : dim_(dim), byte_offset_(byte_offset), region_(region) {}
 
   Array1(ContextPtr ctx, int32_t size, T elem) {
     Init(ctx, size);
@@ -105,7 +106,7 @@ class Array1 {
                         increases
   */
   // TODO(haowen): does not support inc < 0 with below implementations, we may
-  // don't need negative version, will revisit it later
+  // not need a negative version, will revisit it later
   Tensor Range(int32_t start, int32_t size, int32_t inc) {
     K2_CHECK_GE(start, 0);
     K2_CHECK_LT(start, Dim());
@@ -121,7 +122,7 @@ class Array1 {
 
   // Note that the returned Tensor is not const, the caller should be careful
   // when changing the tensor's data, it will also change data in the parent
-  // array as they shares the memory.
+  // array as they share the memory.
   Tensor ToTensor() {
     Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {Dim()};
@@ -141,9 +142,9 @@ class Array1 {
   // >= a.byte_offset + a.Dim() * a.ElementSize()
   void Resize(int32_t new_size) {
     K2_CHECK_EQ(byte_offset_ + Dim() * ElementSize(), region_->bytes_used);
-    if (new_size <= Dim()) {
-      return;
-    }
+
+    if (new_size <= Dim()) return;
+
     if (byte_offset_ + new_size * ElementSize() > region_->num_bytes) {
       // always double the allocated size
       auto tmp = NewRegion(Context(), 2 * region_->num_bytes);
@@ -188,7 +189,7 @@ class Array1 {
   /* Setting all elements to a scalar */
   void operator=(const T t) {
     T *data = Data();
-    auto lambda_set_values = [=] __host__ __device__(int32_t i)->void {
+    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
       data[i] = t;
     };
     Eval(Context(), dim_, lambda_set_values);
@@ -201,13 +202,13 @@ class Array1 {
    */
   Array1 operator[](const Array1<int32_t> &indexes) {
     const ContextPtr &c = Context();
-    K2_CHECK(c->IsCompatible(*(indexes.Context())));
+    K2_CHECK(c->IsCompatible(*indexes.Context()));
     int32_t ans_dim = indexes.Dim();
     Array1<T> ans(c, ans_dim);
     const T *this_data = Data();
     T *ans_data = ans.Data();
     const int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i)->void {
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
       ans_data[i] = this_data[indexes_data[i]];
     };
     Eval(c, ans_dim, lambda_copy_elems);
@@ -224,6 +225,7 @@ class Array1 {
   }
 
   Array1(const Array1 &other) = default;
+  Array1 &operator=(const Array1 &other) = default;
 
  private:
   int32_t dim_;
@@ -254,6 +256,7 @@ struct Array2Accessor {
   Array2Accessor(T *data, int32_t elem_stride0)
       : data(data), elem_stride0(elem_stride0) {}
   Array2Accessor(const Array2Accessor &other) = default;
+  Array2Accessor &operator=(const Array2Accessor &other) = default;
 };
 
 template <typename T>
@@ -266,6 +269,7 @@ struct ConstArray2Accessor {
   ConstArray2Accessor(const T *data, int32_t elem_stride0)
       : data(data), elem_stride0(elem_stride0) {}
   ConstArray2Accessor(const ConstArray2Accessor &other) = default;
+  ConstArray2Accessor &operator=(const ConstArray2Accessor &other) = default;
 };
 
 /*
@@ -303,8 +307,8 @@ class Array2 {
       T *data = array.Data();
       int32_t dim1 = dim1_;
       int32_t elem_stride0 = elem_stride0_;
-      auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
-                                       ->void {
+      auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
+                                                       int32_t j) -> void {
         data[i * dim1 + j] = this_data[i * elem_stride0 + j];
       };
       Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
@@ -314,6 +318,7 @@ class Array2 {
 
   // return a row (indexing on the 0th axis)
   Array1<T> operator[](int32_t i) {
+    K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, dim0_);
     int32_t byte_offset = byte_offset_ + i * elem_stride0_ * ElementSize();
     return Array1<T>(dim1_, region_, byte_offset);
@@ -322,7 +327,9 @@ class Array2 {
   /* Create new array2 with given dimensions.  dim0 and dim1 must be >0.
      Data will be uninitialized. */
   Array2(ContextPtr c, int32_t dim0, int32_t dim1)
-      : dim0_(dim0), dim1_(dim1), elem_stride0_(dim1), byte_offset_(0) {
+      : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
+    K2_DCHECK_GT(dim0, 0);
+    K2_DCHECK_GT(dim1, 0);
     region_ = NewRegion(c, dim0_ * dim1_ * ElementSize());
   }
 
@@ -330,8 +337,8 @@ class Array2 {
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
          RegionPtr region)
       : dim0_(dim0),
-        dim1_(dim1),
         elem_stride0_(elem_stride0),
+        dim1_(dim1),
         byte_offset_(byte_offset),
         region_(region) {}
 
@@ -402,7 +409,9 @@ class Array2 {
   /* Initialize from Array1.  Require dim0 * dim1 == a.Dim() and dim0,dim1 >= 0
    */
   Array2(Array1<T> &a, int32_t dim0, int32_t dim1)
-      : dim0_(dim0), dim1_(dim1), elem_stride0_(dim1) {
+      : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1) {
+    K2_CHECK_GT(dim0, 0);
+    K2_CHECK_GT(dim1, 0);
     K2_CHECK_EQ(dim0_ * dim1_, a.Dim());
     byte_offset_ = a.ByteOffset();
     region_ = a.GetRegion();
@@ -417,8 +426,8 @@ class Array2 {
     const T *t_data = t.Data<T>();
     int32_t elem_stride0 = elem_stride0_;
     int32_t elem_stride1 = t.GetShape().Stride(1);
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
-                                     ->void {
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
+                                                     int32_t j) -> void {
       this_data[i * elem_stride0 + j] =
           t_data[i * elem_stride0 + j * elem_stride1];
     };
@@ -441,25 +450,30 @@ class Array2 {
 
 // Print the contents of the array, as [ 1 2 3 ].  Intended mostly for
 // use in debugging.
+template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
   stream << "[ ";
-  Array1<T> to_print = array.To(CpuContext());
+  Array1<T> to_print = array.To(GetCpuContext());  // TODO: Implement `To`
   T *to_print_data = to_print.Data();
   int32_t dim = to_print.Dim();
-  for (int32_t i = 0; i < dim; i++) stream << to_print_data[i] << ' ';
+  for (int32_t i = 0; i < dim; ++i) stream << to_print_data[i] << ' ';
   return stream << ']';
 }
 
 // Print the contents of the array, as "[[ 1 2 3 ]
 // [ 4 5 6 ]]".  Intended mostly for use in debugging.
+template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
   stream << '[';
-  Array2<T> array_cpu = array.To(CpuContext());
+  Array2<T> array_cpu = array.To(GetCpuContext());
   int32_t num_rows = array_cpu.Dim0();
-  for (int32_t i = 0; i < num_rows; i++)
+  for (int32_t i = 0; i < num_rows; ++i) {
     stream << array_cpu[i];
-  if (i + 1 < num_rows) stream << std::endl;
+    if (i + 1 < num_rows) stream << '\n';
+  }
   stream << ']';
+}
+
 }  // namespace k2
 
 #endif  // K2_CSRC_CUDA_ARRAY_H_

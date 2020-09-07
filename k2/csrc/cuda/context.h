@@ -70,10 +70,10 @@ class Context : public std::enable_shared_from_this<Context> {
   // Returns the device id that the context is bound to, note we always return
   // -1 for CPU context. For GPU context, the sub-class will override this.
   // Note: we may not actually need this for a while.  For now it is not used.
-  virtual int GetDeviceId() const { return -1; }
+  virtual int32_t GetDeviceId() const { return -1; }
 
   // Return the cuda stream associated with this context, or
-  // k2_cudaStreamInvalid if this is not a CUDA context.
+  // kCudaStreamInvalid if this is not a CUDA context.
   virtual cudaStream_t GetCudaStream() const { return kCudaStreamInvalid; }
 
   /*
@@ -145,7 +145,7 @@ inline MemoryCopyKind GetMemoryCopyKind(const Context &src,
   } else if (src.GetDeviceType() == kCuda && dst.GetDeviceType() == kCuda) {
     return MemcpyDeviceToDevice;
   } else {
-    LOG(FATAL) << "Unsupported Context";
+    K2_LOG(FATAL) << "Unsupported Context";
     return MemcpyUnknown;
   }
 }
@@ -174,7 +174,7 @@ inline void MemoryCopy(void *dst, const void *src, std::size_t count,
   General usage would be:
      ContextPtr c;  // passed in
      BackgroundRunner br;
-     for (int i = 0; i < N; i++) {
+     for (int i = 0; i < N; ++i) {
         std::function<void()> lambda = [=] () {
         ContextPtr c_child = c.Child();
            // do something here, possibly with multiple steps...
@@ -215,7 +215,7 @@ ContextPtr GetContext(const T &t) {
 template <typename First, typename... Rest>
 ContextPtr GetContext(const First &first, const Rest &... rest) {
   ContextPtr ans1 = GetContext(first), ans2 = GetContext(rest...);
-  assert(ans1->IsCompatible(*ans2) && "Contexts are not compatible");
+  K2_DCHECK(ans1->IsCompatible(*ans2)) << "Contexts are not compatible";
   return ans1;
 }
 
@@ -253,13 +253,12 @@ struct Region : public std::enable_shared_from_this<Region> {
   // device.
   template <typename T = void, DeviceType d = kUnk>
   T *GetData() {
-    if (d != kUnk) assert(d == context->GetDeviceType());
+    if (d != kUnk) K2_DCHECK_EQ(d, context->GetDeviceType());
     return reinterpret_cast<T *>(data);
   }
 
   ~Region() {
-    context->Deallocate(data,
-                        deleter_context != nullptr ? deleter_context : nullptr);
+    context->Deallocate(data, deleter_context);
   }
 };
 
@@ -275,7 +274,7 @@ ContextPtr GetCpuContext();
 // for testing purposes without an external neural-network toolkit.  If you want
 // to use (say) PyTorch's memory manager, you should use a Context passed in
 // from PyTorch
-ContextPtr GetCudaContext(int gpu_id = -1);
+ContextPtr GetCudaContext(int32_t gpu_id = -1);
 
 // Returns a (CPU) context that will allocate pinned memory.
 ContextPtr GetPinnedContext();
@@ -294,13 +293,13 @@ ContextPtr GetPinnedContext();
                           region will have bytes_used == num_bytes; if the user
                           wants to change this they can do it afterward.
 */
-RegionPtr NewRegion(ContextPtr &context, size_t num_bytes);
+RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes);
 
 /*
   Convenience wrapper for NewRegion() that takes the context from a provided
   region.
  */
-inline std::shared_ptr<Region> NewRegion(Region &region, size_t num_bytes) {
+inline std::shared_ptr<Region> NewRegion(Region &region, std::size_t num_bytes) {
   return NewRegion(region.context, num_bytes);
 }
 
@@ -308,12 +307,12 @@ inline std::shared_ptr<Region> NewRegion(Region &region, size_t num_bytes) {
 // will work to get the device-type for pretty arbitrary objects.
 template <typename T>
 inline DeviceType DeviceOf(const T &t) {
-  return t.Context().GetDeviceType();
+  return t.Context()->GetDeviceType();
 }
 
 template <typename LambdaT>
 __global__ void eval_lambda(int32_t n, LambdaT lambda) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) {
     lambda(i);
   }
@@ -342,15 +341,15 @@ void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   if (stream == kCudaStreamInvalid) {
     // TODO: if n is very large, we'll eventually support running this with
     // multiple threads.
-    for (int32_t i = 0; i < n; i++) {
+    for (int32_t i = 0; i < n; ++i) {
       lambda(i);
     }
   } else {
-    int block_size = 256;
-    int grid_size = NumBlocks(n, block_size);
-    eval_lambda<LambdaT> << <grid_size, block_size, 0, stream>>> (n, lambda);
-    cudaError_t err = cudaGetLastError();
-    assert(err == cudaSuccess);
+    int32_t block_size = 256;
+    int32_t grid_size = NumBlocks(n, block_size);
+    eval_lambda<LambdaT> <<<grid_size, block_size, 0, stream>>> (n, lambda);
+    auto err = cudaGetLastError();
+    K2_DCHECK_CUDA_ERROR(err);
   }
 }
 
@@ -377,8 +376,8 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
   if (stream == kCudaStreamInvalid) {
     // TODO: if n is very large, we'll eventually support running this with
     // multiple threads.
-    for (int32_t i = 0; i < m; i++) {
-      for (int32_t j = 0; j < n; j++) {
+    for (int32_t i = 0; i < m; ++i) {
+      for (int32_t j = 0; j < n; ++j) {
         lambda(i, j);
       }
     }
@@ -389,8 +388,8 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
     dim3 block_size(16, 16, 1);
     dim3 grid_size(NumBlocks(n, 16), NumBlocks(m, 16));
     eval_lambda2 << <grid_size, block_size, 0, stream>>> (m, n, lambda);
-    cudaError_t err = cudaGetLastError();
-    assert(err == 0);
+    auto err = cudaGetLastError();
+    K2_DCHECK_CUDA_ERROR(err);
   }
 }
 
@@ -417,7 +416,8 @@ class CudaStreamOverride {
     stream_override_ = stream;
   }
   void Pop(cudaStream_t stream) {
-    assert(!stack_.empty() && stack_.back() == stream);
+    K2_DCHECK(!stack_.empty());
+    K2_DCHECK_EQ(stack_.back(), stream);
     stack_.pop_back();
   }
 

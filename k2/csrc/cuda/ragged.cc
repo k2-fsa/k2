@@ -290,7 +290,7 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
 }
 
 RaggedShapeIndexIterator RaggedShape::Iterator() {
-  return RaggedShapeIndexIterator(*this0;
+  return RaggedShapeIndexIterator(*this);
 }
 
 int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
