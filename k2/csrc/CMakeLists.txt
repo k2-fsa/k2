@@ -2,7 +2,7 @@
 # The header should be included as `#include "k2/csrc/.."`, to avoid conflicts.
 include_directories(${CMAKE_SOURCE_DIR})
 
-add_subdirectory(host)
+add_subdirectory(old)
 
 #---------------------------- Build K2 CUDA sources ----------------------------
 
