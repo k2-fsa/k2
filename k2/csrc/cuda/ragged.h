@@ -143,6 +143,12 @@ class RaggedShape {
   // Check the RaggedShape for consistency; die on failure.
   void Check();
 
+<<<<<<< HEAD
+  // Convert to possibly different context.
+  RaggedShape<T> To(ContextPtr ctx);
+
+=======
+>>>>>>> upstream/master
  private:
   // TODO: could probably do away with the std::vector and have a max size and a
   // fixed length array (more efficient)
@@ -330,9 +336,8 @@ RaggedShape Renumber(const RaggedShape &src, const Array1<int32_t> &new2old);
      @param [in] max_num_elements  Maximum number of elements; must be >=
   min_num_elements.
  */
-RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
-                              int32_t min_num_elements,
-                              int32_t max_num_elements);
+RaggedShape RandomRaggedShape(int32_t min_num_axes = 2, int32_t max_num_axes = 4,
+                              int32_t min_num_elements = 0, int32_t max_num_elements = 2000);
 
 template <typename T>
 struct Ragged {
@@ -366,6 +371,10 @@ struct Ragged {
       @param [in]  i     Index to select
    */
   Ragged<T> Index(int32_t axis, int32_t value);
+
+  Ragged<T> To(ContextPtr ctx) {
+    return Ragged<T>(shape.To(ctx), values.To(ctx));
+  }
 };
 
 
@@ -491,8 +500,26 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
  */
 RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes);
 
-// TODO(dan), include guard maybe.
-#include "k2/csrc/cuda/ragged_inl.h"
+
+/*
+  Creates a random ragged array (with a CPU context!).  Note: you may want to explicitly
+  use the template arg, e.g. invoke as RandomRagged<int32_t>(...) .
+
+     @param [in] min_value  Minimum element value allowed
+     @param [in] max_value  Maximum element value allowed
+     @param [in] min_num_axes   Minimum number of axes (must be at least 2)
+     @param [in] max_num_axes   Maximum number of axes, must be >= min_num_axes
+     @param [in] min_num_elements  Minimum number of elements; must be at least 0.
+     @param [in] max_num_elements  Maximum number of elements; must be >= min_num_elements.
+
+     @return  Returns a random ragged array, with a CPU context.
+ */
+template <typename T>
+Ragged<T> RandomRagged<T>(T min_value = static_cast<T>(0), T max_value = static_cast<T>(100),
+                          int32_t min_num_axes = 2, int32_t max_num_axes = 4,
+                          int32_t min_num_elements = 0, int32_t max_num_elements = 2000);
+
+
 
 }  // namespace k2
 

@@ -253,6 +253,25 @@ void And(Array1<T> &src, T default_value, Array1<T> *dest);
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
 
+
+/*
+  Returns a random Array1, uniformly distributed betwen `min_value` and
+  `max_value`.  CAUTION: this will be randomly generated on the CPU, for now,
+  and transferred to the CPU, so it will be slow if c is not a CPU context.
+
+    @param[in] c  Context for this array; note, this function will be slow
+                  if this is not a CPU context
+    @param [in] dim    Dimension
+    @param[in] min_value  Minimum value allowed in the array
+    @param[in] max_value  Maximum value allowed in the array;
+                           require max_value >= min_value.
+    @return    Returns the randomly generated array
+
+ */
+template <typename T>
+Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value, T max_value);
+
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_CUDA_OPS_H_
