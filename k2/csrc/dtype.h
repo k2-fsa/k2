@@ -113,9 +113,6 @@ struct DtypeOf<uint64_t> {
   static const Dtype dtype = kUint64Dtype;
 };
 
-#define FOR_DTYPES(
-
-
 /*
   Evaluates Expr for TypeName being all dtypes.  E.g.
      FOR_ALL_DTYPES(t.GetDtype(), T, SomeFuncCall<T>(a,b,c..));
