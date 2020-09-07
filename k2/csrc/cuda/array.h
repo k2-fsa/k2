@@ -131,6 +131,21 @@ class Array1 {
 
   DeviceType Device() const { return Context()->GetDeviceType(); }
 
+
+  /*
+    Convert to possibly-different context, may require CPU/GPU transfer.
+    The returned value may share the same underlying `data` memory as *this.
+    This should work even for tensors with dim == 0.
+
+     If dim_ == 0 and region_ is NULL, this will return a direct copy of *this (i.e.
+     with region_ also NULL)
+
+     If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
+     empty region with the supplied context (if different from current region's
+     context).
+  */
+  Array1<T> To(ContextPtr ctx);
+
   // Resizes, copying old contents if we could not re-use the same memory
   // location. It will always at least double the allocated size if it has to
   // reallocate. See Region::num_bytes vs. Region::bytes_used.
@@ -334,6 +349,24 @@ class Array2 {
         elem_stride0_(elem_stride0),
         byte_offset_(byte_offset),
         region_(region) {}
+
+  /*
+    Convert to possibly-different context, may require CPU/GPU transfer.
+    The returned value may share the same underlying `data` memory as *this.
+    This should work even for tensors with dim == 0.
+
+     If dim_ == 0 and region_ is NULL, this will return a direct copy of *this (i.e.
+     with region_ also NULL)
+
+     If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
+     empty region with the supplied context (if different from current region's
+     context).
+
+     Note: the answer will always be contiguous, i.e. there is a possibility that
+     it will have a different memory layout than the input.
+  */
+  Array2<T> To(ContextPtr ctx);
+
 
   // Note that the returned Tensor is not const, the caller should be careful
   // when changing the tensor's data, it will also change data in the parent

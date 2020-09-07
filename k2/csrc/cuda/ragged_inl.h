@@ -70,6 +70,19 @@ std::ostream &operator<<(std::ostream &stream, const Ragged<T> &ragged) {
 
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r) {
+
+
+template <typename T>
+Ragged<T> RandomRagged<T>(T min_value, T max_value,
+                          int32_t min_num_axes , int32_t max_num_axes,
+                          int32_t min_num_elements, int32_t max_num_elements) {
+  RaggedShape shape = RandomRaggedShape(min_num_axes, max_num_axes,
+                                        min_num_elements, max_num_elements);
+  Array1<T> values = RandUniformArray1<T>(CpuContext(), shape.NumElements());
+  return Ragged<T>(shape, values);
+}
+
+
 }
 
 }  // namespace k2
