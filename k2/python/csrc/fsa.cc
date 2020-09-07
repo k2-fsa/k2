@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/fsa.h"
 #include "k2/python/csrc/tensor.h"
 
 namespace k2 {

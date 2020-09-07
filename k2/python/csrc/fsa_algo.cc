@@ -9,16 +9,16 @@
 #include <memory>
 #include <utility>
 
-#include "k2/csrc/arcsort.h"
-#include "k2/csrc/array.h"
-#include "k2/csrc/connect.h"
-#include "k2/csrc/determinize.h"
-#include "k2/csrc/determinize_impl.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/intersect.h"
-#include "k2/csrc/rmepsilon.h"
-#include "k2/csrc/topsort.h"
-#include "k2/csrc/weights.h"
+#include "k2/csrc/host/arcsort.h"
+#include "k2/csrc/host/array.h"
+#include "k2/csrc/host/connect.h"
+#include "k2/csrc/host/determinize.h"
+#include "k2/csrc/host/determinize_impl.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/intersect.h"
+#include "k2/csrc/host/rmepsilon.h"
+#include "k2/csrc/host/topsort.h"
+#include "k2/csrc/host/weights.h"
 #include "k2/python/csrc/array.h"
 
 void PyBindArcSort(py::module &m) {
