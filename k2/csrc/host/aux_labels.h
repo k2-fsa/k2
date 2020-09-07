@@ -1,18 +1,23 @@
-// k2/csrc/aux_labels.h
+/**
+ * @brief
+ * aux_labels
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Daniel Povey)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_AUX_LABELS_H_
-#define K2_CSRC_AUX_LABELS_H_
+#ifndef K2_CSRC_HOST_AUX_LABELS_H_
+#define K2_CSRC_HOST_AUX_LABELS_H_
 
 #include <vector>
 
-#include "k2/csrc/array.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_util.h"
-#include "k2/csrc/properties.h"
+#include "k2/csrc/host/array.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/host/properties.h"
 
 namespace k2 {
 
@@ -195,4 +200,4 @@ class FstInverter {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_AUX_LABELS_H_
+#endif  // K2_CSRC_HOST_AUX_LABELS_H_

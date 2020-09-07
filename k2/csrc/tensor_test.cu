@@ -10,12 +10,12 @@
  */
 
 #include <algorithm>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <numeric>
 #include <vector>
 
 #include "k2/csrc/context.h"
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include "k2/csrc/tensor.h"
 
 namespace k2 {

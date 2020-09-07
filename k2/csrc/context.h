@@ -1,18 +1,23 @@
-// k2/csrc/cuda/context.h
+/**
+ * @brief
+ * context
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_CONTEXT_H_
-#define K2_CSRC_CUDA_CONTEXT_H_
+#ifndef K2_CSRC_CONTEXT_H_
+#define K2_CSRC_CONTEXT_H_
 
 #include <cassert>
-#include <memory>
+#include <glog/logging.h>
 #include <map>
+#include <memory>
 
-#include "glog/logging.h"
-#include "k2/csrc/cuda/log.h"
+#include "k2/csrc/log.h"
 
 namespace k2 {
 
@@ -544,4 +549,4 @@ class ParallelRunner {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_CUDA_CONTEXT_H_
+#endif  // K2_CSRC_CONTEXT_H_

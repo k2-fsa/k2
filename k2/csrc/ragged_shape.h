@@ -1,16 +1,22 @@
-// TODO: move some stuff to ragged.h, delete this file.
+/**
+ * @brief
+ * ragged_shape
+ *
+ * @todo
+ * move some stuff to ragged.h, delete this file.
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// k2/csrc/cuda/ragged_shape.h
+#ifndef K2_CSRC_RAGGED_SHAPE_H_
+#define K2_CSRC_RAGGED_SHAPE_H_
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_RAGGED_SHAPE_H_
-#define K2_CSRC_CUDA_RAGGED_SHAPE_H_
-
-#include "k2/csrc/cuda/array.h"
-#include "k2/csrc/cuda/algorithms.h"
+#include "k2/csrc/algorithms.h"
+#include "k2/csrc/array.h"
 
 namespace k2 {
 
@@ -246,4 +252,4 @@ RaggedShape4 RaggedShape4FromShape3AndRowSplits(const RaggedShape3 &src,
 
 }  // namespace k2
 
-#endif  // K2_CSRC_CUDA_RAGGED_SHAPE_H_
+#endif  // K2_CSRC_RAGGED_SHAPE_H_

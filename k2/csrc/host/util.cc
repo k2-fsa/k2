@@ -1,14 +1,18 @@
-// k2/csrc/util.cc
+/**
+ * @brief
+ * util
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/util.h"
+#include "k2/csrc/host/util.h"
 
 #include <stdlib.h>
-
-#include "glog/logging.h"
+#include <glog/logging.h>
 
 namespace k2 {
 

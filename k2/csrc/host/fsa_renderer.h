@@ -1,15 +1,20 @@
-// k2/csrc/fsa_renderer.h
-
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-
-// See ../../LICENSE for clarification regarding multiple authors
+/**
+ * @brief
+ * fsa_renderer
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 #include <string>
 
-#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/fsa.h"
 
-#ifndef K2_CSRC_FSA_RENDERER_H_
-#define K2_CSRC_FSA_RENDERER_H_
+#ifndef K2_CSRC_HOST_FSA_RENDERER_H_
+#define K2_CSRC_HOST_FSA_RENDERER_H_
 
 namespace k2 {
 
@@ -29,4 +34,4 @@ class FsaRenderer {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_FSA_RENDERER_H_
+#endif  // K2_CSRC_HOST_FSA_RENDERER_H_

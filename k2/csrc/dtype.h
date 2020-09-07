@@ -1,11 +1,16 @@
-// k2/csrc/cuda/dtype.h
+/**
+ * @brief
+ * dtype
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey )
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_DTYPE_H_
-#define K2_CSRC_CUDA_DTYPE_H_
+#ifndef K2_CSRC_DTYPE_H_
+#define K2_CSRC_DTYPE_H_
 
 #include <cstdint>
 
@@ -100,4 +105,4 @@ struct DtypeOf<uint64_t> {
 };
 
 }  // namespace k2
-#endif  // K2_CSRC_CUDA_DTYPE_H_
+#endif  // K2_CSRC_DTYPE_H_

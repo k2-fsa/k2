@@ -1,10 +1,15 @@
-// k2/csrc/cuda/context.cc
+/**
+ * @brief
+ * context
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/cuda/context.h"
+#include "k2/csrc/context.h"
 
 namespace k2 {
 

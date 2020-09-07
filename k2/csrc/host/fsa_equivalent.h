@@ -1,19 +1,24 @@
-// k2/csrc/fsa_equivalent.h
-
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
+/**
+ * @brief
+ * fsa_equivalent
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 #include <cstdint>
+#include <glog/logging.h>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/weights.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/weights.h"
 
-#ifndef K2_CSRC_FSA_EQUIVALENT_H_
-#define K2_CSRC_FSA_EQUIVALENT_H_
+#ifndef K2_CSRC_HOST_FSA_EQUIVALENT_H_
+#define K2_CSRC_HOST_FSA_EQUIVALENT_H_
 
 namespace k2 {
 
@@ -169,4 +174,4 @@ class RandPath {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_FSA_EQUIVALENT_H_
+#endif  // K2_CSRC_HOST_FSA_EQUIVALENT_H_

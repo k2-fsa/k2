@@ -1,14 +1,19 @@
-// k2/csrc/cuda/ops_inl.h
+/**
+ * @brief
+ * ops_inl
+ *
+ * @note
+ * Don't include this file directly; it is included by ops.h.
+ * It contains implementation code.
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *                      Fangjun Kuang (csukuangfj@gmail.com)
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
-//                      Fangjun Kuang (csukuangfj@gmail.com)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-/* Don't include this file directly; it is included by ops.h.
-   It contains implementation code. */
-
-#ifndef IS_IN_K2_CSRC_CUDA_OPS_H_
+#ifndef IS_IN_K2_CSRC_OPS_H_
 #error "this file is supposed to be included only by ops.h"
 #endif
 
@@ -17,8 +22,7 @@
 
 #include <cassert>
 #include <type_traits>
-
-#include "cub/cub.cuh"
+#include <cub/cub.cuh>
 
 namespace k2 {
 

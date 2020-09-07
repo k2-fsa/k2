@@ -1,12 +1,17 @@
-// k2/csrc/util.h
+/**
+ * @brief
+ * util
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *                      Fangjun Kuang (csukuangfj@gmail.com)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Haowen Qiu
-//                      Fangjun Kuang (csukuangfj@gmail.com)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_UTIL_H_
-#define K2_CSRC_UTIL_H_
+#ifndef K2_CSRC_HOST_UTIL_H_
+#define K2_CSRC_HOST_UTIL_H_
 
 #include <algorithm>
 #include <cfloat>
@@ -104,4 +109,4 @@ void *MemAlignedMalloc(size_t nbytes, size_t alignment);
 void MemFree(void *ptr);
 
 }  // namespace k2
-#endif  // K2_CSRC_UTIL_H_
+#endif  // K2_CSRC_HOST_UTIL_H_

@@ -1,10 +1,16 @@
-// k2/csrc/cuda/ragged_inl.h
-
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
-
-// See ../../../LICENSE for clarification regarding multiple authors
-
-// This is to be included only from ragged.h.
+/**
+ * @brief
+ * ragged_inl
+ *
+ * @note
+ * This is to be included only from ragged.h.
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 namespace k2 {
 

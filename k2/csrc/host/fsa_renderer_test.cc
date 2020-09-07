@@ -1,17 +1,22 @@
-// k2/csrc/fsa_renderer_test.cc
+/**
+ * @brief
+ * fsa_renderer_test
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-//                      Xiaomi Corporation (author: Haowen Qiu)
+#include "k2/csrc/host/fsa_renderer.h"
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/fsa_renderer.h"
-
+#include <gtest/gtest.h>
 #include <utility>
 #include <vector>
 
-#include "gtest/gtest.h"
-#include "k2/csrc/fsa_util.h"
+#include "k2/csrc/host/fsa_util.h"
 
 namespace k2 {
 

@@ -1,20 +1,25 @@
-// k2/csrc/cuda/array_test.cu
-
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../../LICENSE for clarification regarding multiple authors
+/**
+ * @brief
+ * array_test
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 #include <algorithm>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <numeric>
 #include <vector>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-#include "k2/csrc/cuda/array.h"
-#include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/dtype.h"
-#include "k2/csrc/cuda/log.h"
-#include "k2/csrc/cuda/tensor.h"
+#include "k2/csrc/array.h"
+#include "k2/csrc/context.h"
+#include "k2/csrc/dtype.h"
+#include "k2/csrc/log.h"
+#include "k2/csrc/tensor.h"
 
 namespace k2 {
 template <typename T, DeviceType d>

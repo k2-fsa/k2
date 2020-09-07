@@ -1,15 +1,20 @@
-// k2/csrc/cuda/ragged.h
+/**
+ * @brief
+ * ragged
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+#ifndef K2_CSRC_RAGGED_H_
+#define K2_CSRC_RAGGED_H_
 
-// See ../../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_RAGGED_H_
-#define K2_CSRC_CUDA_RAGGED_H_
-
-#include "k2/csrc/cuda/algorithms.h"
-#include "k2/csrc/cuda/array.h"
-#include "k2/csrc/cuda/log.h"
+#include "k2/csrc/algorithms.h"
+#include "k2/csrc/array.h"
+#include "k2/csrc/log.h"
 
 namespace k2 {
 
@@ -492,11 +497,11 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
 RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes);
 
 // TODO(dan), include guard maybe.
-#include "k2/csrc/cuda/ragged_inl.h"
+#include "k2/csrc/ragged_inl.h"
 
 }  // namespace k2
 
 // TODO(dan), include guard maybe.
-#include "k2/csrc/cuda/ragged_inl.h"
+#include "k2/csrc/ragged_inl.h"
 
-#endif  // K2_CSRC_CUDA_RAGGED_H_
+#endif  // K2_CSRC_RAGGED_H_

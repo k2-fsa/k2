@@ -1,21 +1,26 @@
-// k2/csrc/weights.h
+/**
+ * @brief
+ * weights
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_WEIGHTS_H_
-#define K2_CSRC_WEIGHTS_H_
+#ifndef K2_CSRC_HOST_WEIGHTS_H_
+#define K2_CSRC_HOST_WEIGHTS_H_
 
 #include <functional>
 #include <limits>
 #include <memory>
 #include <vector>
 
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_util.h"
-#include "k2/csrc/properties.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/host/properties.h"
 
 namespace k2 {
 
@@ -219,4 +224,4 @@ struct WfsaWithFbWeights {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_WEIGHTS_H_
+#endif  // K2_CSRC_HOST_WEIGHTS_H_

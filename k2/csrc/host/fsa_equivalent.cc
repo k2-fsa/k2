@@ -1,10 +1,15 @@
-// k2/csrc/fsa_equivalent.cc
+/**
+ * @brief
+ * fsa_equivalent
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/fsa_equivalent.h"
+#include "k2/csrc/host/fsa_equivalent.h"
 
 #include <algorithm>
 #include <queue>
@@ -14,14 +19,14 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/arcsort.h"
-#include "k2/csrc/connect.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_util.h"
-#include "k2/csrc/intersect.h"
-#include "k2/csrc/properties.h"
-#include "k2/csrc/util.h"
-#include "k2/csrc/weights.h"
+#include "k2/csrc/host/arcsort.h"
+#include "k2/csrc/host/connect.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/host/intersect.h"
+#include "k2/csrc/host/properties.h"
+#include "k2/csrc/host/util.h"
+#include "k2/csrc/host/weights.h"
 
 namespace {
 /*

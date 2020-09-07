@@ -1,19 +1,24 @@
-// k2/csrc/properties_test.cc
+/**
+ * @brief
+ * properties_test
+ *
+ * @copyright
+ * Copyright (c)  2020  Haowen Qiu
+ *                      Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Mahsa Yarmohammadi
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Haowen Qiu
-//                      Fangjun Kuang (csukuangfj@gmail.com)
-//                      Mahsa Yarmohammadi
+#include "k2/csrc/host/properties.h"
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/properties.h"
-
+#include <gtest/gtest.h>
 #include <utility>
 #include <vector>
 
-#include "gtest/gtest.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_util.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_util.h"
 
 namespace k2 {
 

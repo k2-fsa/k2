@@ -1,10 +1,15 @@
-// k2/csrc/cuda/dtype.cc
+/**
+ * @brief
+ * dtype
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey )
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/cuda/dtype.h"
+#include "k2/csrc/dtype.h"
 
 namespace k2 {
 

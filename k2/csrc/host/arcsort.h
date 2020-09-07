@@ -1,17 +1,22 @@
-// k2/csrc/arcsort.h
+/**
+ * @brief
+ * arcsort
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
+#ifndef K2_CSRC_HOST_ARCSORT_H_
+#define K2_CSRC_HOST_ARCSORT_H_
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_ARCSORT_H_
-#define K2_CSRC_ARCSORT_H_
-
+#include <glog/logging.h>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/fsa.h"
 
 namespace k2 {
 /**
@@ -59,4 +64,4 @@ void ArcSort(Fsa *fsa, int32_t *arc_map = nullptr);
 
 }  // namespace k2
 
-#endif  // K2_CSRC_ARCSORT_H_
+#endif  // K2_CSRC_HOST_ARCSORT_H_

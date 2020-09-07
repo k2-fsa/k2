@@ -1,21 +1,26 @@
-// k2/csrc/properties.cc
+/**
+ * @brief
+ * properties
+ *
+ * @copyright
+ * Copyright (c)  2020  Haowen Qiu
+ *                      Daniel Povey
+ *                      Mahsa Yarmohammadi
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020 Haowen Qiu
-//                     Daniel Povey
-//                     Mahsa Yarmohammadi
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/properties.h"
+#include "k2/csrc/host/properties.h"
 
 #include <algorithm>
 #include <stack>
 #include <unordered_set>
 #include <vector>
 
-#include "k2/csrc/connect.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_util.h"
+#include "k2/csrc/host/connect.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_util.h"
 
 namespace k2 {
 

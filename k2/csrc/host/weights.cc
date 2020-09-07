@@ -1,19 +1,24 @@
-// k2/csrc/weights.cc
+/**
+ * @brief
+ * weights
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/weights.h"
+#include "k2/csrc/host/weights.h"
 
 #include <algorithm>
+#include <glog/logging.h>
 #include <queue>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/properties.h"
-#include "k2/csrc/util.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/properties.h"
+#include "k2/csrc/host/util.h"
 
 namespace {
 void CheckInput(const k2::Fsa &fsa, const float *arc_weights) {

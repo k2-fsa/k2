@@ -1,13 +1,18 @@
-// k2/csrc/cuda/algorithms.h
+/**
+ * @brief
+ * algorithms
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+#ifndef K2_CSRC_ALGORITHMS_H_
+#define K2_CSRC_ALGORITHMS_H_
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_ALGORITHMS_H_
-#define K2_CSRC_CUDA_ALGORITHMS_H_
-
-#include "k2/csrc/cuda/array.h"
+#include "k2/csrc/array.h"
 
 //  this really contains various utilities that are useful for k2 algorithms.
 namespace k2 {
@@ -62,4 +67,4 @@ class Renumbering {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_CUDA_ALGORITHMS_H_
+#endif  // K2_CSRC_ALGORITHMS_H_

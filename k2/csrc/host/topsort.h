@@ -1,18 +1,23 @@
-// k2/csrc/topsort.h
+/**
+ * @brief
+ * topsort
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
+#ifndef K2_CSRC_HOST_TOPSORT_H_
+#define K2_CSRC_HOST_TOPSORT_H_
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_TOPSORT_H_
-#define K2_CSRC_TOPSORT_H_
-
+#include <glog/logging.h>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/fsa.h"
 
 namespace k2 {
 
@@ -67,4 +72,4 @@ class TopSorter {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_TOPSORT_H_
+#endif  // K2_CSRC_HOST_TOPSORT_H_

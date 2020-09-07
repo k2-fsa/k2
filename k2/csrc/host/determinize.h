@@ -1,15 +1,21 @@
-// k2/csrc/determinize.h
+/**
+ * @brief
+ * determinize
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_DETERMINIZE_H_
-#define K2_CSRC_DETERMINIZE_H_
+#ifndef K2_CSRC_HOST_DETERMINIZE_H_
+#define K2_CSRC_HOST_DETERMINIZE_H_
 
 #include <algorithm>
 #include <cassert>
+#include <glog/logging.h>
 #include <iterator>
 #include <limits>
 #include <memory>
@@ -19,11 +25,10 @@
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/determinize_impl.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/util.h"
-#include "k2/csrc/weights.h"
+#include "k2/csrc/host/determinize_impl.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/util.h"
+#include "k2/csrc/host/weights.h"
 
 namespace k2 {
 
@@ -145,4 +150,4 @@ using DeterminizerLogSum = Determinizer<LogSumTracebackState>;
 
 }  // namespace k2
 
-#endif  // K2_CSRC_DETERMINIZE_H_
+#endif  // K2_CSRC_HOST_DETERMINIZE_H_

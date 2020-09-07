@@ -1,11 +1,16 @@
-// k2/csrc/fsa.cc
+/**
+ * @brief
+ * fsa
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *                      Fangjun Kuang (csukuangfj@gmail.com)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Daniel Povey
-//                      Fangjun Kuang (csukuangfj@gmail.com)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/fsa.h"
 
 namespace {
 

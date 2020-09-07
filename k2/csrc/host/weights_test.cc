@@ -1,21 +1,26 @@
-// k2/csrc/weights_test.cc
+/**
+ * @brief
+ * weights_test
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/weights.h"
+#include "k2/csrc/host/weights.h"
 
 #include <algorithm>
 #include <utility>
 #include <vector>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_renderer.h"
-#include "k2/csrc/fsa_util.h"
-#include "k2/csrc/util.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_renderer.h"
+#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/host/util.h"
 
 namespace k2 {
 

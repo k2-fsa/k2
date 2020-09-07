@@ -1,21 +1,26 @@
-// k2/csrc/intersect_test.cc
+/**
+ * @brief
+ * intersect_test
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/intersect.h"
+#include "k2/csrc/host/intersect.h"
 
 #include <algorithm>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <memory>
 #include <utility>
 #include <vector>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_util.h"
-#include "k2/csrc/properties.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/host/properties.h"
 
 namespace k2 {
 

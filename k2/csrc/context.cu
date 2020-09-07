@@ -1,14 +1,19 @@
-// k2/csrc/cuda/context.cu
-
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-//                      Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../../LICENSE for clarification regarding multiple authors
+/**
+ * @brief
+ * context
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Xiaomi Corporation (author: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 #include <cstdlib>
 
-#include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/log.h"
+#include "k2/csrc/context.h"
+#include "k2/csrc/log.h"
 
 static constexpr std::size_t kAlignment = 64;
 

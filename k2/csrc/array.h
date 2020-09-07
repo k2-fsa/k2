@@ -1,20 +1,25 @@
-// k2/csrc/cuda/array.h
+/**
+ * @brief
+ * array
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
-
-// See ../../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_ARRAY_H_
-#define K2_CSRC_CUDA_ARRAY_H_
+#ifndef K2_CSRC_ARRAY_H_
+#define K2_CSRC_ARRAY_H_
 
 #include <algorithm>
 #include <iostream>
 
-#include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/dtype.h"
-#include "k2/csrc/cuda/log.h"
-#include "k2/csrc/cuda/tensor.h"
+#include "k2/csrc/context.h"
+#include "k2/csrc/dtype.h"
+#include "k2/csrc/log.h"
+#include "k2/csrc/tensor.h"
 
 namespace k2 {
 
@@ -476,4 +481,4 @@ std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_CUDA_ARRAY_H_
+#endif  // K2_CSRC_ARRAY_H_

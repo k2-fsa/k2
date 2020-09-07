@@ -1,11 +1,16 @@
-// k2/csrc/fsa_renderer.cc
+/**
+ * @brief
+ * fsa_renderer
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-//                      Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/fsa_renderer.h"
+#include "k2/csrc/host/fsa_renderer.h"
 
 #include <iomanip>
 #include <sstream>

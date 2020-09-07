@@ -1,21 +1,26 @@
-// k2/csrc/intersect.cc
+/**
+ * @brief
+ * intersect
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/intersect.h"
+#include "k2/csrc/host/intersect.h"
 
 #include <algorithm>
+#include <glog/logging.h>
 #include <queue>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/properties.h"
-#include "k2/csrc/util.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/properties.h"
+#include "k2/csrc/host/util.h"
 
 namespace {
 

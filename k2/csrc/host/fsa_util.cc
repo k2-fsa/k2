@@ -1,25 +1,30 @@
-// k2/csrc/fsa_util.cc
+/**
+ * @brief
+ * fsa_util
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-//                      Haowen Qiu
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/fsa_util.h"
+#include "k2/csrc/host/fsa_util.h"
 
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <glog/logging.h>
 #include <random>
 #include <stack>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/connect.h"
-#include "k2/csrc/properties.h"
-#include "k2/csrc/util.h"
+#include "k2/csrc/host/connect.h"
+#include "k2/csrc/host/properties.h"
+#include "k2/csrc/host/util.h"
 
 namespace {
 

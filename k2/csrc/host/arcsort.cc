@@ -1,18 +1,23 @@
-// k2/csrc/arcsort.cc
+/**
+ * @brief
+ * arcsort
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/arcsort.h"
+#include "k2/csrc/host/arcsort.h"
 
 #include <algorithm>
+#include <glog/logging.h>
 #include <numeric>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/fsa.h"
 
 namespace k2 {
 void ArcSorter::GetSizes(Array2Size<int32_t> *fsa_size) const {

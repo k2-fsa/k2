@@ -1,20 +1,25 @@
-// k2/csrc/dense_fsa.h
+/**
+ * @brief
+ * dense_fsa
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Daniel Povey
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_DENSE_FSA_H_
-#define K2_CSRC_DENSE_FSA_H_
+#ifndef K2_CSRC_HOST_DENSE_FSA_H_
+#define K2_CSRC_HOST_DENSE_FSA_H_
 
 #include <cstdint>
+#include <glog/logging.h>
 #include <tuple>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/util.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/util.h"
 
 namespace k2 {
 
@@ -297,4 +302,4 @@ void DenseToFsa(const DenseFsa &a, Fsa *b);
 
 }  // namespace k2
 
-#endif  // K2_CSRC_DENSE_FSA_H_
+#endif  // K2_CSRC_HOST_DENSE_FSA_H_

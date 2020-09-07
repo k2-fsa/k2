@@ -1,12 +1,17 @@
-// k2/csrc/determinize_impl.h
+/**
+ * @brief
+ * determinize_impl
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_DETERMINIZE_IMPL_H_
-#define K2_CSRC_DETERMINIZE_IMPL_H_
+#ifndef K2_CSRC_HOST_DETERMINIZE_IMPL_H_
+#define K2_CSRC_HOST_DETERMINIZE_IMPL_H_
 
 #include <algorithm>
 #include <cassert>
@@ -19,9 +24,9 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/util.h"
-#include "k2/csrc/weights.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/util.h"
+#include "k2/csrc/host/weights.h"
 
 namespace k2 {
 /*
@@ -794,4 +799,4 @@ class DetStateMap {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_DETERMINIZE_IMPL_H_
+#endif  // K2_CSRC_HOST_DETERMINIZE_IMPL_H_

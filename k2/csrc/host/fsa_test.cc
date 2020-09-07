@@ -1,20 +1,25 @@
-// k2/csrc/fsa_test.cc
+/**
+ * @brief
+ * fsa
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Xiaomi Corporation (author: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-//                      Xiaomi Corporation (author: Haowen Qiu)
+#include "k2/csrc/host/fsa.h"
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/fsa.h"
-
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <memory>
 #include <string>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-#include "k2/csrc/array.h"
-#include "k2/csrc/fsa_util.h"
-#include "k2/csrc/util.h"
+#include "k2/csrc/host/array.h"
+#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/host/util.h"
 
 namespace k2 {
 

@@ -1,22 +1,23 @@
-// k2/csrc/cuda/determinize.cc
-
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-// CAUTION: this is old code, using older versions of interfaces that no longer exist.
-// Please ignore for now.
-
-
-/*
-  Right now this just contains some notes on FSA determinization, written in order
-  to clarify my thinking on the right fundamental primitives.
+/**
+ * @brief
+ * determinize
+ *
+ * @note
+ * CAUTION: this is old code, using older versions of interfaces
+ * that no longer exist. Please ignore for now.
+ *
+ * @todo
+ * Right now this just contains some notes on FSA determinization, written in order
+ * to clarify my thinking on the right fundamental primitives.
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
  */
 
 namespace k2 {
-
-
-
 
 //  we'd simultaneously determinize an array of FSAs, in practice.
 void DeterminizeFsaArray(Array3<Arc>  &FsaVec,

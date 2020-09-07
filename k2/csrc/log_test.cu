@@ -1,11 +1,17 @@
-// k2/csrc/cuda/log.h
+/**
+ * @brief
+ * log
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+#include <gtest/gtest.h>
 
-// See ../../../LICENSE for clarification regarding multiple authors
-
-#include "gtest/gtest.h"
-#include "k2/csrc/cuda/log.h"
+#include "k2/csrc/log.h"
 
 namespace k2 {
 

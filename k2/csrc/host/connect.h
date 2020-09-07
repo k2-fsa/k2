@@ -1,17 +1,22 @@
-// k2/csrc/connect.h
+/**
+ * @brief
+ * connect
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-//                      Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CONNECT_H_
-#define K2_CSRC_CONNECT_H_
+#ifndef K2_CSRC_HOST_CONNECT_H_
+#define K2_CSRC_HOST_CONNECT_H_
 
 #include <vector>
 
-#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/fsa.h"
 
 namespace k2 {
 /*
@@ -108,4 +113,4 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
 
 }  // namespace k2
 
-#endif  // K2_CSRC_CONNECT_H_
+#endif  // K2_CSRC_HOST_CONNECT_H_

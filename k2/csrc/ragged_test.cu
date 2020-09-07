@@ -1,19 +1,24 @@
-// k2/csrc/cuda/ragged_test.cu
-
-// Copyright (c)  2020  Xiaomi Corporation (author: Daniel Povey)
-
-// See ../../LICENSE for clarification regarding multiple authors
+/**
+ * @brief
+ * ragged_test
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 #include <algorithm>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <numeric>
 #include <vector>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-#include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/array.h"
-#include "k2/csrc/cuda/tensor.h"
-#include "k2/csrc/cuda/ragged.h"
+#include "k2/csrc/context.h"
+#include "k2/csrc/array.h"
+#include "k2/csrc/tensor.h"
+#include "k2/csrc/ragged.h"
 
 namespace k2 {
 template <typename T, DeviceType d>

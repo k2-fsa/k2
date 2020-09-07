@@ -5,19 +5,18 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#ifndef K2_CSRC_ARRAY_H_
-#define K2_CSRC_ARRAY_H_
+#ifndef K2_CSRC_HOST_ARRAY_H_
+#define K2_CSRC_HOST_ARRAY_H_
 
 #include <algorithm>
 #include <functional>
+#include <glog/logging.h>
 #include <iterator>
 #include <limits>
 #include <memory>
 #include <type_traits>
 #include <utility>
 #include <vector>
-
-#include "glog/logging.h"
 
 namespace k2 {
 
@@ -372,4 +371,4 @@ void swap(k2::Array2<Ptr, I> &lhs, k2::Array2<Ptr, I> &rhs) {
 
 }  // namespace std
 
-#endif  // K2_CSRC_ARRAY_H_
+#endif  // K2_CSRC_HOST_ARRAY_H_

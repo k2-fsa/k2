@@ -10,11 +10,11 @@
  */
 
 #include <algorithm>
+#include <glog/logging.h>
 #include <memory>
 #include <vector>
 
 #include "k2/csrc/dtype.h"
-#include <glog/logging.h>
 #include "k2/csrc/tensor.h"
 
 namespace k2 {

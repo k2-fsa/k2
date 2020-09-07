@@ -1,12 +1,17 @@
-// k2/csrc/fsa_util.h
+/**
+ * @brief
+ * fsa_util
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Daniel Povey
-//                      Haowen Qiu
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_FSA_UTIL_H_
-#define K2_CSRC_FSA_UTIL_H_
+#ifndef K2_CSRC_HOST_FSA_UTIL_H_
+#define K2_CSRC_HOST_FSA_UTIL_H_
 
 #include <limits>
 #include <memory>
@@ -14,8 +19,8 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/array.h"
-#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/array.h"
+#include "k2/csrc/host/fsa.h"
 
 namespace k2 {
 
@@ -334,4 +339,4 @@ void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
 
 }  // namespace k2
 
-#endif  // K2_CSRC_FSA_UTIL_H_
+#endif  // K2_CSRC_HOST_FSA_UTIL_H_

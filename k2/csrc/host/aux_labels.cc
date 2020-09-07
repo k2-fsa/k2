@@ -1,20 +1,25 @@
-// k2/csrc/aux_labels.cc
+/**
+ * @brief
+ * aux_labels
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/aux_labels.h"
+#include "k2/csrc/host/aux_labels.h"
 
 #include <algorithm>
+#include <glog/logging.h>
 #include <numeric>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_util.h"
-#include "k2/csrc/properties.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/host/properties.h"
 
 namespace {
 

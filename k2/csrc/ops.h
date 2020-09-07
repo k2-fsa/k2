@@ -1,20 +1,25 @@
-// k2/csrc/cuda/ops.h
+/**
+ * @brief
+ * ops
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_OPS_H_
-#define K2_CSRC_CUDA_OPS_H_
+#ifndef K2_CSRC_OPS_H_
+#define K2_CSRC_OPS_H_
 
 #include <cassert>
 #include <type_traits>
 
-#include "k2/csrc/cuda/array.h"
-#include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/log.h"
-#include "k2/csrc/cuda/ragged.h"
+#include "k2/csrc/array.h"
+#include "k2/csrc/context.h"
+#include "k2/csrc/log.h"
+#include "k2/csrc/ragged.h"
 
 // Note, I'm not sure about the name of this file, they are not ops like in
 // TensorFlow, but procedures..
@@ -255,8 +260,8 @@ void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
 
 }  // namespace k2
 
-#define IS_IN_K2_CSRC_CUDA_OPS_H_
-#include "k2/csrc/cuda/ops_inl.h"
-#undef IS_IN_K2_CSRC_CUDA_OPS_H_
+#define IS_IN_K2_CSRC_OPS_H_
+#include "k2/csrc/ops_inl.h"
+#undef IS_IN_K2_CSRC_OPS_H_
 
-#endif  // K2_CSRC_CUDA_OPS_H_
+#endif  // K2_CSRC_OPS_H_

@@ -1,23 +1,28 @@
-// k2/csrc/connect.cc
+/**
+ * @brief
+ * connect
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-//                      Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/connect.h"
+#include "k2/csrc/host/connect.h"
 
 #include <algorithm>
+#include <glog/logging.h>
 #include <limits>
 #include <stack>
 #include <unordered_map>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/fsa_util.h"
-#include "k2/csrc/properties.h"
-#include "k2/csrc/util.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/host/properties.h"
+#include "k2/csrc/host/util.h"
 
 namespace k2 {
 

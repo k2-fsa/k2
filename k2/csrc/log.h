@@ -1,13 +1,17 @@
-// k2/csrc/cuda/log.h
+/**
+ * @brief
+ * log
+ * Glog-like logging functions for k2.
+ *
+ * @copyright
+ * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-
-// See ../../../LICENSE for clarification regarding multiple authors
-
-// Glog-like logging functions for k2.
-
-#ifndef K2_CSRC_CUDA_LOG_H_
-#define K2_CSRC_CUDA_LOG_H_
+#ifndef K2_CSRC_LOG_H_
+#define K2_CSRC_LOG_H_
 
 #include <cstdint>
 #include <cstdio>
@@ -201,4 +205,4 @@ class Voidifier {
 #define K2_DCHECK_CUDA_ERROR(x) \
   ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK_CUDA_ERROR(x)
 
-#endif  // K2_CSRC_CUDA_LOG_H_
+#endif  // K2_CSRC_LOG_H_

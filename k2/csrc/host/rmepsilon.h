@@ -1,21 +1,26 @@
-// k2/csrc/rmepsilon.h
+/**
+ * @brief
+ * rmepsilon
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
+#ifndef K2_CSRC_HOST_RMEPSILON_H_
+#define K2_CSRC_HOST_RMEPSILON_H_
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_RMEPSILON_H_
-#define K2_CSRC_RMEPSILON_H_
-
+#include <glog/logging.h>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-#include "k2/csrc/determinize_impl.h"
-#include "k2/csrc/fsa.h"
-#include "k2/csrc/weights.h"
+#include "k2/csrc/host/determinize_impl.h"
+#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/weights.h"
 
 namespace k2 {
 
@@ -133,4 +138,4 @@ void RmEpsilonsLogSum(const Fsa &a, float *a_weights, Fsa *b,
 
 }  // namespace k2
 
-#endif  // K2_CSRC_RMEPSILON_H_
+#endif  // K2_CSRC_HOST_RMEPSILON_H_

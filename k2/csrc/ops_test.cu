@@ -1,21 +1,26 @@
-// k2/csrc/cuda/ops_test.cu
-
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
+/**
+ * @brief
+ * ops_test
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 #include <cstdio>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <numeric>
 #include <random>
 #include <utility>
 #include <vector>
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-#include "k2/csrc/cuda/array.h"
-#include "k2/csrc/cuda/context.h"
-#include "k2/csrc/cuda/ops.h"
-#include "k2/csrc/cuda/timer.h"
+#include "k2/csrc/array.h"
+#include "k2/csrc/context.h"
+#include "k2/csrc/ops.h"
+#include "k2/csrc/timer.h"
 
 namespace k2 {
 

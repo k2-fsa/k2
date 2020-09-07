@@ -1,20 +1,24 @@
-// k2/csrc/array_test.cc
+/**
+ * @brief
+ * array_test
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
+#include "k2/csrc/host/array.h"
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#include "k2/csrc/array.h"
-
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <iterator>
 #include <memory>
 #include <numeric>
 #include <type_traits>
 #include <utility>
 #include <vector>
-
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
 namespace k2 {
 

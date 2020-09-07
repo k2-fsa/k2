@@ -1,13 +1,18 @@
-// k2/csrc/cuda/fsa.h
+/**
+ * @brief
+ * fsa
+ *
+ * @copyright
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
 
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+#ifndef K2_CSRC_FSA_H_
+#define K2_CSRC_FSA_H_
 
-// See ../../LICENSE for clarification regarding multiple authors
-
-#ifndef K2_CSRC_CUDA_FSA_H_
-#define K2_CSRC_CUDA_FSA_H_
-
-#include "ragged.h"
+#include "k2/csrc/ragged.h"
 
 namespace k2 {
 
@@ -208,4 +213,4 @@ FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa *fsas) {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_CUDA_FSA_H_
+#endif  // K2_CSRC_FSA_H_
