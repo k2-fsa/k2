@@ -126,9 +126,9 @@ class DenseFsaVec {
 
     @param [in] t   Source tensor.  Caution: the returned FSA will share
                     memory with this tensor, so don't modify it afterward!
-    @param [out] error   Error flag.  On success this function will write 'true'
+    @param [out] error   Error flag.  On success this function will write 'false'
                     here; on error, it will print an error message to
-                    the standard error and write 'false' here.
+                    the standard error and write 'true' here.
     @return         The resulting FSA will be returned.
 
 */
@@ -172,9 +172,9 @@ Tensor FsaVecToTensor(const Fsa &fsa);
 
     @param [in] t   Source tensor.  Caution: the returned FSA will share
                     memory with this tensor, so don't modify it afterward!
-    @param [out] error   Error flag.  On success this function will write 'true'
+    @param [out] error   Error flag.  On success this function will write 'false'
                     here; on error, it will print an error message to
-                    the standard error and write 'false' here.
+                    the standard error and write 'true' here.
     @return         The resulting FsaVec (vector of FSAs) will be returned;
                     this is a Ragged<Arc> with 3 axes.
 
@@ -200,14 +200,20 @@ Fsa GetFsaVecElement(const FsaVec &vec, int32_t i) {
 
 
 /*
-  Create an FsaVec from a list of Fsas.
+  Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really
+  the same type, just with different expectations on the number of axes!
  */
-FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa *fsas) {
+FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa **fsas) {
   // Implementation goes to this templat:
   //  template <typename T>
   //  Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
-  Stack(0, num_fsas, fsas0);
+  K2_CHECK(fsas[0]->NumAxes() == 2);
+  return Stack(0, num_fsas, fsas);
 }
+
+
+int32_t GetFsaBasicProperties(const Fsa &fsa);
+int32_t GetFsaVecBasicProperties(const FsaVec &fsa_vec);
 
 
 

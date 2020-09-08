@@ -28,6 +28,7 @@ class DtypeTraits {
  public:
   int NumBytes() { return num_bytes_; }
   BaseType GetBaseType() { return static_cast<BaseType>(base_type_); }
+  const char *Name() { return name_; }
 
   DtypeTraits(BaseType base_type, int num_bytes, const char *name,
               int num_scalars = 1,  int misc = 0)
