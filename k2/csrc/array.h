@@ -137,13 +137,13 @@ class Array1 {
 
   DeviceType Device() const { return Context()->GetDeviceType(); }
 
-
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
     The returned value may share the same underlying `data` memory as *this.
     This should work even for tensors with dim == 0.
 
-     If dim_ == 0 and region_ is NULL, this will return a direct copy of *this (i.e.
+     If dim_ == 0 and region_ is NULL, this will return a direct copy of *this
+    (i.e.
      with region_ also NULL)
 
      If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
@@ -209,7 +209,7 @@ class Array1 {
   /* Setting all elements to a scalar */
   void operator=(const T t) {
     T *data = Data();
-    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_set_values = [=] __host__ __device__(int32_t i)->void {
       data[i] = t;
     };
     Eval(Context(), dim_, lambda_set_values);
@@ -228,7 +228,7 @@ class Array1 {
     const T *this_data = Data();
     T *ans_data = ans.Data();
     const int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i)->void {
       ans_data[i] = this_data[indexes_data[i]];
     };
     Eval(c, ans_dim, lambda_copy_elems);
@@ -327,8 +327,8 @@ class Array2 {
       T *data = array.Data();
       int32_t dim1 = dim1_;
       int32_t elem_stride0 = elem_stride0_;
-      auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
-                                                       int32_t j) -> void {
+      auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
+                                       ->void {
         data[i * dim1 + j] = this_data[i * elem_stride0 + j];
       };
       Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
@@ -367,18 +367,19 @@ class Array2 {
     The returned value may share the same underlying `data` memory as *this.
     This should work even for tensors with dim == 0.
 
-     If dim_ == 0 and region_ is NULL, this will return a direct copy of *this (i.e.
+     If dim_ == 0 and region_ is NULL, this will return a direct copy of *this
+    (i.e.
      with region_ also NULL)
 
      If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
      empty region with the supplied context (if different from current region's
      context).
 
-     Note: the answer will always be contiguous, i.e. there is a possibility that
+     Note: the answer will always be contiguous, i.e. there is a possibility
+    that
      it will have a different memory layout than the input.
   */
   Array2<T> To(ContextPtr ctx);
-
 
   // Note that the returned Tensor is not const, the caller should be careful
   // when changing the tensor's data, it will also change data in the parent
@@ -424,7 +425,7 @@ class Array2 {
     auto type = t.GetDtype();
     K2_CHECK_EQ(type, DtypeOf<T>::dtype);
     auto shape = t.GetShape();
-    K2_CHECK_EQ(shape.Ndim(), 2);
+    K2_CHECK_EQ(shape.NumAxes(), 2);
     dim0_ = shape.Dim(0);
     dim1_ = shape.Dim(1);
     elem_stride0_ = shape.Stride(0);
@@ -464,8 +465,8 @@ class Array2 {
     const T *t_data = t.Data<T>();
     int32_t elem_stride0 = elem_stride0_;
     int32_t elem_stride1 = t.GetShape().Stride(1);
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
-                                                     int32_t j) -> void {
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
+                                     ->void {
       this_data[i * elem_stride0 + j] =
           t_data[i * elem_stride0 + j * elem_stride1];
     };

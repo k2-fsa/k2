@@ -14,6 +14,7 @@
 #define K2_CSRC_TENSOR_H_
 
 #include <vector>
+#include <memory>
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/dtype.h"
@@ -44,8 +45,16 @@ class Shape {
   };
   bool IsContiguous() const { return is_contiguous_; }
 
-  // Returns true if the two shapes have the same dims (but not necessarily strides).
-  bool SameDims(Shape &other);
+  // Returns true if the two shapes have the same dims (but not necessarily
+  // strides).
+  bool SameDims(const Shape &other) const {
+    if (num_axes_ != other.NumAxes()) return false;
+    const int32_t *other_dims = other.Dims();
+    for (int32_t i = 0; i != num_axes_; ++i) {
+      if (dims_[i] != other_dims[i]) return false;
+    }
+    return true;
+  }
 
   Shape() : num_axes_(0), num_element_(0), is_contiguous_(true) {}
 
@@ -75,11 +84,9 @@ class Shape {
   bool CheckContiguous();
 };
 
-class Tensor;
-
-
-struct TensorImpl: public std::make_shared_from_this<TensorImpl> {
-  // This struct is not visible to the user and should be accessed via the public
+struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
+  // This struct is not visible to the user and should be accessed via the
+  // public
   // interface of Tensor.
   Shape shape;
   Dtype dtype;
@@ -90,6 +97,8 @@ struct TensorImpl: public std::make_shared_from_this<TensorImpl> {
   // need for an empty constructor).
   std::shared_ptr<Region> data;
 };
+
+using TensorImplPtr = std::shared_ptr<TensorImpl>;
 
 /*
   Tensor is similar to PyTorch or TF Tensor.  Note, we don't use this that
@@ -112,31 +121,33 @@ class Tensor {
   Tensor(Dtype type, const Shape &shape, RegionPtr region,
          int32_t bytes_offset);
 
-  Tensor(Tensor &other): impl_(other.impl_) { }
+  Tensor(const Tensor &other) : impl_(other.impl_) {}
 
   // Returns pointer to elem with index all-zeros... will check that the type
   // matches the correct one.
   template <typename T>
   T *Data() {
     K2_CHECK(impl_->dtype == DtypeOf<T>::dtype);
-    return reinterpret_cast<T *>(reinterpret_cast<char *>(imppl_->data->data) +
+    return reinterpret_cast<T *>(reinterpret_cast<char *>(impl_->data->data) +
                                  impl_->bytes_offset);
   }
 
   template <typename T>
   const T *Data() const {
-    assert(dtype_ == DtypeOf<T>::dtype);
-    return reinterpret_cast<const T *>(reinterpret_cast<char *>(impl_->data->data) +
-                                       impl_->bytes_offset);
+    assert(impl_->dtype == DtypeOf<T>::dtype);
+    return reinterpret_cast<const T *>(
+        reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset);
   }
 
   // Return the result of indexing one of the axes, which will result in a
   // Tensor with one fewer axis.
   Tensor Index(int32_t axis, int32_t index) const;
 
-
   // Assignment is shallow.
-  Tensor &operator =(const Tensor &other) { impl_ = other.impl_; }
+  Tensor &operator=(const Tensor &other) {
+    impl_ = other.impl_;
+    return *this;
+  }
 
   Dtype GetDtype() const { return impl_->dtype; }
   const Shape &GetShape() const { return impl_->shape; }
@@ -144,15 +155,14 @@ class Tensor {
   std::shared_ptr<Region> &GetRegion() { return impl_->data; }
 
   // Forward some funtions from the shape.  Will forward more later.
-  inline bool SameDim(const Tensor &other) const { return other->impl_.shape.SameDim(shape); }
+  inline bool SameDim(const Tensor &other) const {
+    return impl_->shape.SameDims(other.GetShape());
+  }
   inline bool NumAxes() const { return impl_->shape.NumAxes(); }
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
   inline int32_t Stride(int32_t i) { return impl_->shape.Stride(i); }
   inline int32_t Nelement(int32_t i) { return impl_->shape.Nelement(); }
-  inline bool IsContiguous(const Tensor &other) {
-    return impl_->shape.IsContiguous(other.impl_->shape);
-  }
-
+  inline bool IsContiguous() { return impl_->shape.IsContiguous(); }
 
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
@@ -172,13 +182,11 @@ class Tensor {
   */
   Tensor To(ContextPtr ctx);
 
-
   ContextPtr GetContext() { return impl_->data->context; }
 
  private:
-  TensorImpl impl_;  // Must always be non-NULL.
-
   void Init(ContextPtr c);
+  TensorImplPtr impl_;  // Must always be non-NULL.
 };
 
 }  // namespace k2
