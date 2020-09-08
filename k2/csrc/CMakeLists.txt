@@ -8,9 +8,11 @@ add_subdirectory(host)
 
 # the target
 add_library(context
+    context.cc
     context.cu
-    tensor.cu
     dtype.cu
+    tensor.cu
+    tensor_ops.cu
 )
 
 # lib deps

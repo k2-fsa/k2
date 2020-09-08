@@ -13,7 +13,6 @@
 #ifndef K2_CSRC_TENSOR_H_
 #define K2_CSRC_TENSOR_H_
 
-#include <vector>
 #include <memory>
 
 #include "k2/csrc/context.h"
@@ -128,8 +127,8 @@ class Tensor {
   template <typename T>
   T *Data() {
     K2_CHECK(impl_->dtype == DtypeOf<T>::dtype);
-    return reinterpret_cast<T *>(reinterpret_cast<char *>(impl_->data->data) +
-                                 impl_->bytes_offset);
+    return reinterpret_cast<T *>(
+        reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset);
   }
 
   template <typename T>
@@ -158,7 +157,7 @@ class Tensor {
   inline bool SameDim(const Tensor &other) const {
     return impl_->shape.SameDims(other.GetShape());
   }
-  inline bool NumAxes() const { return impl_->shape.NumAxes(); }
+  inline int32_t NumAxes() const { return impl_->shape.NumAxes(); }
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
   inline int32_t Stride(int32_t i) { return impl_->shape.Stride(i); }
   inline int32_t Nelement(int32_t i) { return impl_->shape.Nelement(); }
@@ -179,6 +178,8 @@ class Tensor {
     Note: the answer will always be contiguous, i.e. there is a possibility that
     it will have a different memory layout than the input.  [Internally it will
     call `Contiguous()`.
+
+    @todo: implement it.
   */
   Tensor To(ContextPtr ctx);
 

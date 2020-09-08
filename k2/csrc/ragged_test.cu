@@ -9,18 +9,18 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include <algorithm>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include <algorithm>
 #include <numeric>
 #include <vector>
 
-#include "k2/csrc/context.h"
 #include "k2/csrc/array.h"
-#include "k2/csrc/tensor.h"
-#include "k2/csrc/ragged.h"
+#include "k2/csrc/context.h"
 #include "k2/csrc/math.h"
-
+#include "k2/csrc/ragged.h"
+#include "k2/csrc/tensor.h"
 
 // returns a random ragged shape where the dims on axis 1 are all the same
 // (so: can be transposed).

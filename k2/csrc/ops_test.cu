@@ -10,13 +10,13 @@
  */
 
 #include <cstdio>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <numeric>
 #include <random>
 #include <utility>
 #include <vector>
 
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/ops.h"

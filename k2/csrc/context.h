@@ -13,10 +13,11 @@
 #define K2_CSRC_CONTEXT_H_
 
 #include <cassert>
-#include <glog/logging.h>
 #include <map>
 #include <memory>
 
+#include <glog/logging.h>
+#include "k2/csrc/cuda_headers.h"
 #include "k2/csrc/log.h"
 
 namespace k2 {
@@ -482,6 +483,16 @@ class ParallelRunner {
   ContextPtr c_;
   // TODO: list of events to wait on, maybe CUDA streamss.
 };
+
+/**
+ * @brief
+ *
+ * @tparam ContextPtrType
+ *
+ * @todo: implement this
+ */
+template <typename ContextPtrType>
+void ParallelRunner<ContextPtrType>::Finish() {}
 
 // OK, want to do:
 // ContextPtr c = ...;  ///

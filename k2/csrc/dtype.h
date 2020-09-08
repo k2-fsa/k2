@@ -117,18 +117,19 @@ struct DtypeOf<uint64_t> {
   Evaluates Expr for TypeName being all dtypes.  E.g.
      FOR_ALL_DTYPES(t.GetDtype(), T, SomeFuncCall<T>(a,b,c..));
  */
-#define FOR_ALL_DTYPES(DtypeValue, TypeName, Expr)   \
-  do { switch (DtypeValue) {                                    \
-  case kFloatDtype: { using TypeName = float; Expr; break; }    \
-  case kDoubleDtype: { using TypeName = double; Expr; break; }  \
-  case kInt8Dtype: { using TypeName = int8_t; Expr; break; }    \
-  case kInt16Dtype: { using TypeName = int16_t; Expr; break; }  \
-  case kInt32Dtype: { using TypeName = int32_t; Expr; break; }  \
-  case kInt64Dtype: { using TypeName = int64_t; Expr; break; }  \
-  case kUint32Dtype: { using TypeName = uint32_t; Expr; break; }\
-  case kUint64Dtype: { using TypeName = uint64_t; Expr; break; }  \
-  default: K2_FATAL << "Dtype " << TratsOf(Dtype)                \
-                    << " not covered in switch statement.  p not supported for this type?"; \
+#define FOR_ALL_DTYPES(DtypeValue, TypeName, Expr)               \
+  do { switch (DtypeValue) {                                     \
+  case kFloatDtype: { using TypeName = float; Expr; break; }     \
+  case kDoubleDtype: { using TypeName = double; Expr; break; }   \
+  case kInt8Dtype: { using TypeName = int8_t; Expr; break; }     \
+  case kInt16Dtype: { using TypeName = int16_t; Expr; break; }   \
+  case kInt32Dtype: { using TypeName = int32_t; Expr; break; }   \
+  case kInt64Dtype: { using TypeName = int64_t; Expr; break; }   \
+  case kUint32Dtype: { using TypeName = uint32_t; Expr; break; } \
+  case kUint64Dtype: { using TypeName = uint64_t; Expr; break; } \
+  default: LOG(FATAL) << "Dtype " << TraitsOf(DtypeValue)        \
+                      << " not covered in switch statement. "    \
+                      << "p not supported for this type?";       \
   } while(0)
 
 

@@ -13,6 +13,8 @@
 
 namespace k2 {
 
+void BackgroundRunner::Background(std::function<void()> &f) {}
 
+void BackgroundRunner::Wait() {}
 
 }  // namespace k2

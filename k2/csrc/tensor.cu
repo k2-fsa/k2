@@ -12,14 +12,13 @@
 #include <algorithm>
 #include <glog/logging.h>
 #include <memory>
-#include <vector>
 
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/tensor.h"
 
 namespace k2 {
 
-Shape::Shape(const std::vector<int32_t> &dims) : num_axes_(dims.size()) {
+Shape::Shape(const std::vector<int32_t> &dims) : num_axes_(static_cast<int32_t>(dims.size())) {
   CHECK_LT(num_axes_, kMaxDim);
 
   std::copy(dims.begin(), dims.end(), dims_);
@@ -39,7 +38,7 @@ Shape::Shape(const std::vector<int32_t> &dims) : num_axes_(dims.size()) {
 
 Shape::Shape(const std::vector<int32_t> &dims,
              const std::vector<int32_t> strides)
-    : num_axes_(dims.size()) {
+    : num_axes_(static_cast<int32_t>(dims.size())) {
   CHECK_LT(num_axes_, kMaxDim);
   CHECK_EQ(strides.size(), num_axes_);
   std::copy(dims.begin(), dims.end(), dims_);
@@ -130,8 +129,11 @@ Tensor Tensor::Index(int32_t axis, int32_t index) const {
 void Tensor::Init(ContextPtr c) {
   int32_t storage_size = impl_->shape.StorageSize();
   int32_t element_size = TraitsOf(impl_->dtype).NumBytes();
-  impl_->data = NewRegion(c, storage_size * element_size);
+  impl_->data = NewRegion(c, static_cast<size_t>(storage_size * element_size));
   impl_->bytes_offset = 0;
+}
+Tensor Tensor::To(ContextPtr ctx) {
+  return Tensor(std::shared_ptr(), kInt64Dtype, k2::Shape());
 }
 
 }  // namespace k2
