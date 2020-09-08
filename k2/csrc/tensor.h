@@ -134,6 +134,7 @@ class Tensor {
   // Tensor with one fewer axis.
   Tensor Index(int32_t axis, int32_t index) const;
 
+
   // Assignment is shallow.
   Tensor &operator =(const Tensor &other) { impl_ = other.impl_; }
 
@@ -171,35 +172,6 @@ class Tensor {
   */
   Tensor To(ContextPtr ctx);
 
-
-  Dtype GetDtype() const { return impl_->dtype; }
-  const Shape &GetShape() const { return impl_->shape; }
-  int32_t ByteOffset() const { return impl_->bytes_offset; }
-  std::shared_ptr<Region> &GetRegion() { return impl_->data; }
-
-  // Forward some funtions from the shape.  Will forward more later.
-  inline bool SameDim(const Tensor &other) const { return other->impl_.shape.SameDim(shape); }
-  inline bool NumAxes() const { return impl_->shape.NumAxes(); }
-  inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
-
-
-  /*
-    Convert to possibly-different context, may require CPU/GPU transfer.
-    The returned value may share the same underlying `data` memory as *this.
-    This should work even for tensors with empty data.
-
-    If dim_ == 0 and region_ is NULL, this will return a direct copy of *this
-    (i.e.  with region_ also NULL)
-
-    If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
-    empty region with the supplied context (if different from current region's
-    context).
-
-    Note: the answer will always be contiguous, i.e. there is a possibility that
-    it will have a different memory layout than the input.  [Internally it will
-    call `Contiguous()`.
-  */
-  Tensor To(ContextPtr ctx);
 
   ContextPtr GetContext() { return impl_->data->context; }
 

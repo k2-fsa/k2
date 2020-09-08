@@ -4,7 +4,6 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-
 #include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
@@ -91,55 +90,6 @@ void CopyTensorElements(Tensor src, Tensor dest) {
           dest.Data<T>(), dest_stride0));
     }
   }
-}
-
-
-Tensor ToContiguous(Tensor src) {
-  // things like this would be more efficient if we supported something like
-  // PyTorch's ArrayRef.  not so critical to address that now though.
-  std::vector<int32_t> dims(src.NumAxes());
-  for (int32_t i = 0; i < src.NumAxes(); i++)
-    dims[i] = src.Dim(i);
-  Tensor ans(src.GetContext(), src.GetDtype(), dims);
-  CopyTensorElements(src, ans);
-  return ans;
-}
-
-template <typename T, typename U> void CastTensorElements1dContiguous(
-    ContextPtr c, int32_t dim,  const T *src_data, const U *dest_data) {
-  DeviceType d = c.GetDeviceType();
-  if (d == kCpu) {
-    // this is just an optimization, the other branch would work for CPU too.
-    for (int32_t i = 0; i < dim; i++) {
-      dest_data[i] = static_cast<U>(src_data[i]);
-    }
-  } else {
-    auto lambda_cast_elems = __host__ __device__ [=] (int32_t i) -> void {
-      dest_data[i] = static_cast<U>(src_data[i]);
-    };
-    Eval(c, dim, lambda_cast_elems);
-  }
-}
-
-
-Tensor Cast(Tensor src, Dtype new_dtype) {
-  if (!src.IsContiguous())
-    src = ToContiguous(src);
-
-  ContextPtr c = src.GetContext();
-  Tensor ans(c, new_dtype,
-             src.GetShape());
-  K2_DCHECK(ans.IsContiguous());
-
-  Dtype old_dtype = src.GetDtype();
-  int32_t dim = ans.Nelement();
-
-  FOR_ALL_DTYPES(
-      old_dtype, T,
-      FOR_ALL_DTYPES(new_dtype, U,
-                     CastTensorElements1dContiguous<T,U>(
-                         c, dim, src.Data<T>(), ans.Data<U>())));
-  return ans;
 }
 
 
