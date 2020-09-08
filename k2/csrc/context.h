@@ -165,7 +165,8 @@ inline void MemoryCopy(void *dst, const void *src, std::size_t count,
       {MemcpyDeviceToDevice, cudaMemcpyDeviceToDevice}};
   auto it = copy_kind_mappings.find(kind);
   K2_CHECK_NE(it, copy_kind_mappings.end());
-  cudaMemcpy(dst, src, count, it->second);
+  auto ret = cudaMemcpy(dst, src, count, it->second);
+  K2_CHECK_CUDA_ERROR(ret);
 }
 
 /*

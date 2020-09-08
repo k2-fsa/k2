@@ -5,6 +5,7 @@
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
  *                                                   Haowen Qiu)
+ *                      Fangjun Kuang (csukuangfj@gmail.com)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -150,7 +151,21 @@ class Array1 {
      empty region with the supplied context (if different from current region's
      context).
   */
-  Array1<T> To(ContextPtr ctx);
+  Array1 To(ContextPtr ctx) const {
+    if (dim_ == 0 && !region_) return *this;
+
+    if (ctx->IsCompatible(*Context())) return *this;
+
+    Array1 ans(ctx, Dim());
+    if (dim_ == 0) return ans;
+
+    auto kind = GetMemoryCopyKind(*Context(), *ctx);
+    auto *dst = ans.Data();
+    const auto *src = Data();
+    MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
+               Dim() * ElementSize(), kind);
+    return ans;
+  }
 
   // Resizes, copying old contents if we could not re-use the same memory
   // location. It will always at least double the allocated size if it has to
@@ -209,7 +224,7 @@ class Array1 {
   /* Setting all elements to a scalar */
   void operator=(const T t) {
     T *data = Data();
-    auto lambda_set_values = [=] __host__ __device__(int32_t i)->void {
+    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
       data[i] = t;
     };
     Eval(Context(), dim_, lambda_set_values);
@@ -228,7 +243,7 @@ class Array1 {
     const T *this_data = Data();
     T *ans_data = ans.Data();
     const int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i)->void {
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
       ans_data[i] = this_data[indexes_data[i]];
     };
     Eval(c, ans_dim, lambda_copy_elems);
@@ -327,8 +342,8 @@ class Array2 {
       T *data = array.Data();
       int32_t dim1 = dim1_;
       int32_t elem_stride0 = elem_stride0_;
-      auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
-                                       ->void {
+      auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
+                                                       int32_t j) -> void {
         data[i * dim1 + j] = this_data[i * elem_stride0 + j];
       };
       Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
@@ -465,8 +480,8 @@ class Array2 {
     const T *t_data = t.Data<T>();
     int32_t elem_stride0 = elem_stride0_;
     int32_t elem_stride1 = t.GetShape().Stride(1);
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i, int32_t j)
-                                     ->void {
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
+                                                     int32_t j) -> void {
       this_data[i * elem_stride0 + j] =
           t_data[i * elem_stride0 + j * elem_stride1];
     };
@@ -492,7 +507,7 @@ class Array2 {
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
   stream << "[ ";
-  Array1<T> to_print = array.To(GetCpuContext());  // TODO: Implement `To`
+  Array1<T> to_print = array.To(GetCpuContext());
   T *to_print_data = to_print.Data();
   int32_t dim = to_print.Dim();
   for (int32_t i = 0; i < dim; ++i) stream << to_print_data[i] << ' ';
