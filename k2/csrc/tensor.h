@@ -121,7 +121,7 @@ class Tensor {
   Tensor(Dtype type, const Shape &shape, RegionPtr region,
          int32_t bytes_offset);
 
-  Tensor(Tensor &other) : impl_(other.impl_) {}
+  Tensor(const Tensor &other) : impl_(other.impl_) {}
 
   // Returns pointer to elem with index all-zeros... will check that the type
   // matches the correct one.
@@ -144,7 +144,10 @@ class Tensor {
   Tensor Index(int32_t axis, int32_t index) const;
 
   // Assignment is shallow.
-  Tensor &operator=(const Tensor &other) { impl_ = other.impl_; }
+  Tensor &operator=(const Tensor &other) {
+    impl_ = other.impl_;
+    return *this;
+  }
 
   Dtype GetDtype() const { return impl_->dtype; }
   const Shape &GetShape() const { return impl_->shape; }
@@ -159,9 +162,7 @@ class Tensor {
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
   inline int32_t Stride(int32_t i) { return impl_->shape.Stride(i); }
   inline int32_t Nelement(int32_t i) { return impl_->shape.Nelement(); }
-  inline bool IsContiguous(const Tensor &other) {
-    return impl_->shape.IsContiguous(other.impl_->shape);
-  }
+  inline bool IsContiguous() { return impl_->shape.IsContiguous(); }
 
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
@@ -184,9 +185,8 @@ class Tensor {
   ContextPtr GetContext() { return impl_->data->context; }
 
  private:
-  TensorImplPtr impl_;  // Must always be non-NULL.
-
   void Init(ContextPtr c);
+  TensorImplPtr impl_;  // Must always be non-NULL.
 };
 
 }  // namespace k2
