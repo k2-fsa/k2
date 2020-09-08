@@ -121,6 +121,8 @@ class Tensor {
   Tensor(Dtype type, const Shape &shape, RegionPtr region,
          int32_t bytes_offset);
 
+  Tensor(Tensor &other) : impl_(other.impl_) {}
+
   // Returns pointer to elem with index all-zeros... will check that the type
   // matches the correct one.
   template <typename T>
@@ -141,6 +143,9 @@ class Tensor {
   // Tensor with one fewer axis.
   Tensor Index(int32_t axis, int32_t index) const;
 
+  // Assignment is shallow.
+  Tensor &operator=(const Tensor &other) { impl_ = other.impl_; }
+
   Dtype GetDtype() const { return impl_->dtype; }
   const Shape &GetShape() const { return impl_->shape; }
   int32_t ByteOffset() const { return impl_->bytes_offset; }
@@ -152,6 +157,11 @@ class Tensor {
   }
   inline bool NumAxes() const { return impl_->shape.NumAxes(); }
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
+  inline int32_t Stride(int32_t i) { return impl_->shape.Stride(i); }
+  inline int32_t Nelement(int32_t i) { return impl_->shape.Nelement(); }
+  inline bool IsContiguous(const Tensor &other) {
+    return impl_->shape.IsContiguous(other.impl_->shape);
+  }
 
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
