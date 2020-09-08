@@ -25,6 +25,7 @@ set(cuda_tests
     array_test
     log_test
     ops_test
+    ragged_test
     tensor_test
     utils_test
     )

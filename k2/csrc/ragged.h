@@ -113,8 +113,6 @@ class RaggedShape {
    */
   RaggedShape Index(int32_t axis, int32_t value);
 
-  RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b);
-
   /*
     Given a vector `indexes` of length NumAxes() which is a valid index
     for this RaggedShape, returns the integer offset for the element

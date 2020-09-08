@@ -277,6 +277,14 @@ template <typename T>
 Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value, T max_value);
 
 
+/*
+  Return a newly allocated Array1 whose values form a linear sequence,
+   so ans[i] = first_value + i * inc.
+*/
+template <typename T>
+Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc = 1);
+
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_OPS_H_
