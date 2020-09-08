@@ -10,8 +10,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_DETERMINIZE_IMPL_H_
-#define K2_CSRC_HOST_DETERMINIZE_IMPL_H_
+#ifndef K2_CSRC_OLD_DETERMINIZE_IMPL_H_
+#define K2_CSRC_OLD_DETERMINIZE_IMPL_H_
 
 #include <algorithm>
 #include <cassert>
@@ -24,9 +24,9 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/util.h"
-#include "k2/csrc/host/weights.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/util.h"
+#include "k2/csrc/old/weights.h"
 
 namespace k2 {
 /*
@@ -799,4 +799,4 @@ class DetStateMap {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_DETERMINIZE_IMPL_H_
+#endif  // K2_CSRC_OLD_DETERMINIZE_IMPL_H_

@@ -7,8 +7,8 @@
 #include <memory>
 #include <utility>
 
-#include "k2/csrc/host/array.h"
-#include "k2/csrc/host/determinize_impl.h"
+#include "k2/csrc/old/array.h"
+#include "k2/csrc/old/determinize_impl.h"
 #include "k2/python/csrc/tensor.h"
 
 namespace k2 {

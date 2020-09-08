@@ -11,12 +11,12 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_CONNECT_H_
-#define K2_CSRC_HOST_CONNECT_H_
+#ifndef K2_CSRC_OLD_CONNECT_H_
+#define K2_CSRC_OLD_CONNECT_H_
 
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/old/fsa.h"
 
 namespace k2 {
 /*
@@ -113,4 +113,4 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_CONNECT_H_
+#endif  // K2_CSRC_OLD_CONNECT_H_

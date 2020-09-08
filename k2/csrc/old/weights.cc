@@ -9,16 +9,16 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/weights.h"
+#include "k2/csrc/old/weights.h"
 
 #include <algorithm>
 #include <glog/logging.h>
 #include <queue>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/properties.h"
-#include "k2/csrc/host/util.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/properties.h"
+#include "k2/csrc/old/util.h"
 
 namespace {
 void CheckInput(const k2::Fsa &fsa, const float *arc_weights) {

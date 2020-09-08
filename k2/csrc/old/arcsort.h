@@ -10,13 +10,13 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_ARCSORT_H_
-#define K2_CSRC_HOST_ARCSORT_H_
+#ifndef K2_CSRC_OLD_ARCSORT_H_
+#define K2_CSRC_OLD_ARCSORT_H_
 
 #include <glog/logging.h>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/old/fsa.h"
 
 namespace k2 {
 /**
@@ -64,4 +64,4 @@ void ArcSort(Fsa *fsa, int32_t *arc_map = nullptr);
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_ARCSORT_H_
+#endif  // K2_CSRC_OLD_ARCSORT_H_

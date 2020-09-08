@@ -81,10 +81,11 @@ void CopyTensorElements(Tensor src, Tensor dest) {
       int32_t src_stride1 = src_shape.Stride(1),
         dest_stride1 = dest_shape.Stride(1),
         dim1 = src_shape.Dim(1);
-      FOR_ALL_DTYPES(dtype, T, CopyTensorElements2d<T>(
+      CopyTensorElements2d<T>(
           c, dim0, dim1,
           src.Data<T>(), src_stride0, src_stride1,
-          dest.Data<T>(), dest_stride0, dest_stride1));
+          dest.Data<T>(), dest_stride0, dest_stride1);
+      FOR_ALL_DTYPES(dtype, T, 1+1);
     } else {
       FOR_ALL_DTYPES(dtype, T, CopyTensorElements1d<T>(
           c, dim0, src.Data<T>(), src_stride0,
@@ -105,7 +106,8 @@ Tensor ToContiguous(Tensor src) {
   return ans;
 }
 
-template <typename T, typename U> void CastTensorElements1dContiguous(
+template <typename T, typename U>
+void CastTensorElements1dContiguous(
     ContextPtr c, int32_t dim,  const T *src_data, const U *dest_data) {
   DeviceType d = c.GetDeviceType();
   if (d == kCpu) {
@@ -134,11 +136,14 @@ Tensor Cast(Tensor src, Dtype new_dtype) {
   Dtype old_dtype = src.GetDtype();
   int32_t dim = ans.Nelement();
 
-  FOR_ALL_DTYPES(
-      old_dtype, T,
-      FOR_ALL_DTYPES(new_dtype, U,
-                     CastTensorElements1dContiguous<T,U>(
-                         c, dim, src.Data<T>(), ans.Data<U>())));
+  FOR_ALL_DTYPES(new_dtype, U,
+                 CastTensorElements1dContiguous<T,U>(
+                     c, dim, src.Data<T>(), ans.Data<U>()));
+  FOR_ALL_DTYPES(old_dtype, T,
+                 CastTensorElements1dContiguous<T,U>(
+                     c, dim, src.Data<T>(), ans.Data<U>()));
+
+  ;
   return ans;
 }
 

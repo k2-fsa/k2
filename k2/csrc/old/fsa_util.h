@@ -10,8 +10,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_FSA_UTIL_H_
-#define K2_CSRC_HOST_FSA_UTIL_H_
+#ifndef K2_CSRC_OLD_FSA_UTIL_H_
+#define K2_CSRC_OLD_FSA_UTIL_H_
 
 #include <limits>
 #include <memory>
@@ -19,8 +19,8 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/array.h"
-#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/old/array.h"
+#include "k2/csrc/old/fsa.h"
 
 namespace k2 {
 
@@ -339,4 +339,4 @@ void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_FSA_UTIL_H_
+#endif  // K2_CSRC_OLD_FSA_UTIL_H_

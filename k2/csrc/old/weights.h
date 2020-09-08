@@ -10,17 +10,17 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_WEIGHTS_H_
-#define K2_CSRC_HOST_WEIGHTS_H_
+#ifndef K2_CSRC_OLD_WEIGHTS_H_
+#define K2_CSRC_OLD_WEIGHTS_H_
 
 #include <functional>
 #include <limits>
 #include <memory>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/fsa_util.h"
-#include "k2/csrc/host/properties.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/fsa_util.h"
+#include "k2/csrc/old/properties.h"
 
 namespace k2 {
 
@@ -224,4 +224,4 @@ struct WfsaWithFbWeights {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_WEIGHTS_H_
+#endif  // K2_CSRC_OLD_WEIGHTS_H_

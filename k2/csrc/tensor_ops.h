@@ -8,6 +8,7 @@
 #ifndef K2_CSRC_TENSOR_OPS_H_
 #define K2_CSRC_TENSOR_OPS_H_
 
+#include "k2/csrc/dtype.h"
 #include "k2/csrc/tensor.h"
 
 

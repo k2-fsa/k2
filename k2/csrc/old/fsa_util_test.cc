@@ -9,14 +9,14 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/old/fsa_util.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/properties.h"
+#include "k2/csrc/old/properties.h"
 
 namespace k2 {
 class ArcMapTest : public ::testing::Test {

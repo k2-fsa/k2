@@ -5,8 +5,8 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#ifndef K2_CSRC_HOST_FSA_H_
-#define K2_CSRC_HOST_FSA_H_
+#ifndef K2_CSRC_OLD_FSA_H_
+#define K2_CSRC_OLD_FSA_H_
 
 #include <cstdint>
 #include <glog/logging.h>
@@ -14,8 +14,8 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/array.h"
-#include "k2/csrc/host/util.h"
+#include "k2/csrc/old/array.h"
+#include "k2/csrc/old/util.h"
 
 namespace k2 {
 
@@ -152,4 +152,4 @@ using FstVec = std::vector<Fst>;
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_FSA_H_
+#endif  // K2_CSRC_OLD_FSA_H_

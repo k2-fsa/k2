@@ -9,15 +9,15 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_AUX_LABELS_H_
-#define K2_CSRC_HOST_AUX_LABELS_H_
+#ifndef K2_CSRC_OLD_AUX_LABELS_H_
+#define K2_CSRC_OLD_AUX_LABELS_H_
 
 #include <vector>
 
-#include "k2/csrc/host/array.h"
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/fsa_util.h"
-#include "k2/csrc/host/properties.h"
+#include "k2/csrc/old/array.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/fsa_util.h"
+#include "k2/csrc/old/properties.h"
 
 namespace k2 {
 
@@ -200,4 +200,4 @@ class FstInverter {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_AUX_LABELS_H_
+#endif  // K2_CSRC_OLD_AUX_LABELS_H_

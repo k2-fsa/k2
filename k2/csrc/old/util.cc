@@ -9,7 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/util.h"
+#include "k2/csrc/old/util.h"
 
 #include <stdlib.h>
 #include <glog/logging.h>

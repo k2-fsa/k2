@@ -9,7 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/array.h"
+#include "k2/csrc/old/array.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

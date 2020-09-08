@@ -9,7 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/arcsort.h"
+#include "k2/csrc/old/arcsort.h"
 
 #include <algorithm>
 #include <glog/logging.h>
@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/old/fsa.h"
 
 namespace k2 {
 void ArcSorter::GetSizes(Array2Size<int32_t> *fsa_size) const {

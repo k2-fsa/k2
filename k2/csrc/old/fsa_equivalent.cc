@@ -9,7 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/fsa_equivalent.h"
+#include "k2/csrc/old/fsa_equivalent.h"
 
 #include <algorithm>
 #include <queue>
@@ -19,14 +19,14 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/arcsort.h"
-#include "k2/csrc/host/connect.h"
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/fsa_util.h"
-#include "k2/csrc/host/intersect.h"
-#include "k2/csrc/host/properties.h"
-#include "k2/csrc/host/util.h"
-#include "k2/csrc/host/weights.h"
+#include "k2/csrc/old/arcsort.h"
+#include "k2/csrc/old/connect.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/fsa_util.h"
+#include "k2/csrc/old/intersect.h"
+#include "k2/csrc/old/properties.h"
+#include "k2/csrc/old/util.h"
+#include "k2/csrc/old/weights.h"
 
 namespace {
 /*

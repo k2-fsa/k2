@@ -10,13 +10,13 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/fsa_renderer.h"
+#include "k2/csrc/old/fsa_renderer.h"
 
 #include <gtest/gtest.h>
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/fsa_util.h"
+#include "k2/csrc/old/fsa_util.h"
 
 namespace k2 {
 

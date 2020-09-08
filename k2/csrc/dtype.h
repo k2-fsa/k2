@@ -127,7 +127,7 @@ struct DtypeOf<uint64_t> {
   case kInt64Dtype: { using TypeName = int64_t; Expr; break; }  \
   case kUint32Dtype: { using TypeName = uint32_t; Expr; break; }\
   case kUint64Dtype: { using TypeName = uint64_t; Expr; break; }  \
-  default: K2_FATAL << "Dtype " << TratsOf(Dtype)                \
+  default: K2_FATAL << "Dtype " << TraitsOf(DtypeValue)                \
                     << " not covered in switch statement.  p not supported for this type?"; \
   } while(0)
 

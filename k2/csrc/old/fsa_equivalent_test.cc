@@ -9,7 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/fsa_equivalent.h"
+#include "k2/csrc/old/fsa_equivalent.h"
 
 #include <algorithm>
 #include <gmock/gmock.h>
@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/old/fsa.h"
 
 namespace k2 {
 

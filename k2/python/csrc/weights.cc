@@ -8,7 +8,7 @@
 
 #include <memory>
 
-#include "k2/csrc/host/weights.h"
+#include "k2/csrc/old/weights.h"
 
 void PybindFbWeightType(py::module &m) {
   using PyEnum = k2::FbWeightType;

@@ -10,13 +10,13 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_INTERSECT_H_
-#define K2_CSRC_HOST_INTERSECT_H_
+#ifndef K2_CSRC_OLD_INTERSECT_H_
+#define K2_CSRC_OLD_INTERSECT_H_
 
 #include <glog/logging.h>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/old/fsa.h"
 
 namespace k2 {
 /**
@@ -115,4 +115,4 @@ void IntersectPruned2(const Fsa &a, const float *a_cost, const Fsa &b,
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_INTERSECT_H_
+#endif  // K2_CSRC_OLD_INTERSECT_H_

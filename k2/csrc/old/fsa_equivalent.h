@@ -14,11 +14,11 @@
 #include <glog/logging.h>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/weights.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/weights.h"
 
-#ifndef K2_CSRC_HOST_FSA_EQUIVALENT_H_
-#define K2_CSRC_HOST_FSA_EQUIVALENT_H_
+#ifndef K2_CSRC_OLD_FSA_EQUIVALENT_H_
+#define K2_CSRC_OLD_FSA_EQUIVALENT_H_
 
 namespace k2 {
 
@@ -174,4 +174,4 @@ class RandPath {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_FSA_EQUIVALENT_H_
+#endif  // K2_CSRC_OLD_FSA_EQUIVALENT_H_

@@ -10,17 +10,17 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_RMEPSILON_H_
-#define K2_CSRC_HOST_RMEPSILON_H_
+#ifndef K2_CSRC_OLD_RMEPSILON_H_
+#define K2_CSRC_OLD_RMEPSILON_H_
 
 #include <glog/logging.h>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/determinize_impl.h"
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/weights.h"
+#include "k2/csrc/old/determinize_impl.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/weights.h"
 
 namespace k2 {
 
@@ -138,4 +138,4 @@ void RmEpsilonsLogSum(const Fsa &a, float *a_weights, Fsa *b,
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_RMEPSILON_H_
+#endif  // K2_CSRC_OLD_RMEPSILON_H_

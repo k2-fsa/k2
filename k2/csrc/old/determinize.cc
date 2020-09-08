@@ -10,7 +10,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/determinize.h"
+#include "k2/csrc/old/determinize.h"
 
 #include <algorithm>
 #include <cassert>
@@ -21,10 +21,10 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/fsa_util.h"
-#include "k2/csrc/host/properties.h"
-#include "k2/csrc/host/util.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/fsa_util.h"
+#include "k2/csrc/old/properties.h"
+#include "k2/csrc/old/util.h"
 
 namespace k2 {
 

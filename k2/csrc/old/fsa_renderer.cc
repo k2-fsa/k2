@@ -10,7 +10,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/fsa_renderer.h"
+#include "k2/csrc/old/fsa_renderer.h"
 
 #include <iomanip>
 #include <sstream>

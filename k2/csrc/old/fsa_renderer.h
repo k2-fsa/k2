@@ -11,10 +11,10 @@
 
 #include <string>
 
-#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/old/fsa.h"
 
-#ifndef K2_CSRC_HOST_FSA_RENDERER_H_
-#define K2_CSRC_HOST_FSA_RENDERER_H_
+#ifndef K2_CSRC_OLD_FSA_RENDERER_H_
+#define K2_CSRC_OLD_FSA_RENDERER_H_
 
 namespace k2 {
 
@@ -34,4 +34,4 @@ class FsaRenderer {
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_FSA_RENDERER_H_
+#endif  // K2_CSRC_OLD_FSA_RENDERER_H_

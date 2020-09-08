@@ -9,8 +9,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_DENSE_FSA_H_
-#define K2_CSRC_HOST_DENSE_FSA_H_
+#ifndef K2_CSRC_OLD_DENSE_FSA_H_
+#define K2_CSRC_OLD_DENSE_FSA_H_
 
 #include <cstdint>
 #include <glog/logging.h>
@@ -18,8 +18,8 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/util.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/util.h"
 
 namespace k2 {
 
@@ -302,4 +302,4 @@ void DenseToFsa(const DenseFsa &a, Fsa *b);
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_DENSE_FSA_H_
+#endif  // K2_CSRC_OLD_DENSE_FSA_H_

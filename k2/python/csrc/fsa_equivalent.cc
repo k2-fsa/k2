@@ -6,9 +6,9 @@
 
 #include "k2/python/csrc/fsa_equivalent.h"
 
-#include "k2/csrc/host/array.h"
-#include "k2/csrc/host/fsa_equivalent.h"
-#include "k2/csrc/host/weights.h"
+#include "k2/csrc/old/array.h"
+#include "k2/csrc/old/fsa_equivalent.h"
+#include "k2/csrc/old/weights.h"
 
 template <k2::FbWeightType Type>
 void PyBindIsRandEquivalentTpl(py::module &m, const char *name) {

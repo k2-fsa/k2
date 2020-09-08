@@ -10,8 +10,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_UTIL_H_
-#define K2_CSRC_HOST_UTIL_H_
+#ifndef K2_CSRC_OLD_UTIL_H_
+#define K2_CSRC_OLD_UTIL_H_
 
 #include <algorithm>
 #include <cfloat>
@@ -109,4 +109,4 @@ void *MemAlignedMalloc(size_t nbytes, size_t alignment);
 void MemFree(void *ptr);
 
 }  // namespace k2
-#endif  // K2_CSRC_HOST_UTIL_H_
+#endif  // K2_CSRC_OLD_UTIL_H_

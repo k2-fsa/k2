@@ -10,16 +10,16 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/old/fsa.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <memory>
 #include <string>
 
-#include "k2/csrc/host/array.h"
-#include "k2/csrc/host/fsa_util.h"
-#include "k2/csrc/host/util.h"
+#include "k2/csrc/old/array.h"
+#include "k2/csrc/old/fsa_util.h"
+#include "k2/csrc/old/util.h"
 
 namespace k2 {
 

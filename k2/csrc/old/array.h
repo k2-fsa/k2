@@ -5,8 +5,8 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#ifndef K2_CSRC_HOST_ARRAY_H_
-#define K2_CSRC_HOST_ARRAY_H_
+#ifndef K2_CSRC_OLD_ARRAY_H_
+#define K2_CSRC_OLD_ARRAY_H_
 
 #include <algorithm>
 #include <functional>
@@ -371,4 +371,4 @@ void swap(k2::Array2<Ptr, I> &lhs, k2::Array2<Ptr, I> &rhs) {
 
 }  // namespace std
 
-#endif  // K2_CSRC_HOST_ARRAY_H_
+#endif  // K2_CSRC_OLD_ARRAY_H_

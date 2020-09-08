@@ -10,12 +10,12 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_HOST_PROPERTIES_H_
-#define K2_CSRC_HOST_PROPERTIES_H_
+#ifndef K2_CSRC_OLD_PROPERTIES_H_
+#define K2_CSRC_OLD_PROPERTIES_H_
 
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
+#include "k2/csrc/old/fsa.h"
 
 namespace k2 {
 
@@ -135,4 +135,4 @@ bool CheckProperties(const Fsa &fsa, const Properties &properties,
 
 }  // namespace k2
 
-#endif  // K2_CSRC_HOST_PROPERTIES_H_
+#endif  // K2_CSRC_OLD_PROPERTIES_H_

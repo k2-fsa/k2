@@ -9,7 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/aux_labels.h"
+#include "k2/csrc/old/aux_labels.h"
 
 #include <algorithm>
 #include <glog/logging.h>
@@ -17,9 +17,9 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/host/fsa.h"
-#include "k2/csrc/host/fsa_util.h"
-#include "k2/csrc/host/properties.h"
+#include "k2/csrc/old/fsa.h"
+#include "k2/csrc/old/fsa_util.h"
+#include "k2/csrc/old/properties.h"
 
 namespace {
 
