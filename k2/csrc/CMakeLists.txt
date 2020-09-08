@@ -10,6 +10,7 @@ add_subdirectory(host)
 add_library(context
     context.cu
     tensor.cu
+    tensor_ops.cu
     dtype.cc
 )
 
