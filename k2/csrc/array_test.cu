@@ -141,7 +141,7 @@ void TestArray1() {
     Dtype type = DtypeOf<T>::dtype;
     EXPECT_EQ(sub_tensor.GetDtype(), type);
     Shape shape = sub_tensor.GetShape();
-    EXPECT_EQ(shape.Ndim(), 1);
+    EXPECT_EQ(shape.NumAxes(), 1);
     EXPECT_EQ(shape.Nelement(), size);
     EXPECT_EQ(shape.StorageSize(), (size - 1) * inc + 1);
     EXPECT_EQ(shape.Dim(0), size);
@@ -171,7 +171,7 @@ void TestArray1() {
     Dtype type = DtypeOf<T>::dtype;
     EXPECT_EQ(tensor.GetDtype(), type);
     Shape shape = tensor.GetShape();
-    EXPECT_EQ(shape.Ndim(), 1);
+    EXPECT_EQ(shape.NumAxes(), 1);
     EXPECT_EQ(shape.Nelement(), size);
     EXPECT_EQ(shape.StorageSize(), size);
     EXPECT_EQ(shape.Dim(0), size);
@@ -323,7 +323,7 @@ void TestArray2() {
       Dtype array_dtype = DtypeOf<T>::dtype;
       EXPECT_EQ(tensor.GetDtype(), array_dtype);
       Shape shape = tensor.GetShape();
-      EXPECT_EQ(shape.Ndim(), 2);
+      EXPECT_EQ(shape.NumAxes(), 2);
       EXPECT_EQ(shape.Nelement(), array.Dim0() * array.Dim1());
       EXPECT_EQ(shape.Dim(0), array.Dim0());
       EXPECT_EQ(shape.Dim(1), array.Dim1());

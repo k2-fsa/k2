@@ -14,6 +14,7 @@
 #define K2_CSRC_TENSOR_H_
 
 #include <vector>
+#include <memory>
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/dtype.h"
@@ -44,8 +45,16 @@ class Shape {
   };
   bool IsContiguous() const { return is_contiguous_; }
 
-  // Returns true if the two shapes have the same dims (but not necessarily strides).
-  bool SameDims(Shape &other);
+  // Returns true if the two shapes have the same dims (but not necessarily
+  // strides).
+  bool SameDims(const Shape &other) const {
+    if (num_axes_ != other.NumAxes()) return false;
+    const int32_t *other_dims = other.Dims();
+    for (int32_t i = 0; i != num_axes_; ++i) {
+      if (dims_[i] != other_dims[i]) return false;
+    }
+    return true;
+  }
 
   Shape() : num_axes_(0), num_element_(0), is_contiguous_(true) {}
 
@@ -75,11 +84,9 @@ class Shape {
   bool CheckContiguous();
 };
 
-class Tensor;
-
-
-struct TensorImpl: public std::make_shared_from_this<TensorImpl> {
-  // This struct is not visible to the user and should be accessed via the public
+struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
+  // This struct is not visible to the user and should be accessed via the
+  // public
   // interface of Tensor.
   Shape shape;
   Dtype dtype;
@@ -90,6 +97,8 @@ struct TensorImpl: public std::make_shared_from_this<TensorImpl> {
   // need for an empty constructor).
   std::shared_ptr<Region> data;
 };
+
+using TensorImplPtr = std::shared_ptr<TensorImpl>;
 
 /*
   Tensor is similar to PyTorch or TF Tensor.  Note, we don't use this that
@@ -117,15 +126,15 @@ class Tensor {
   template <typename T>
   T *Data() {
     K2_CHECK(impl_->dtype == DtypeOf<T>::dtype);
-    return reinterpret_cast<T *>(reinterpret_cast<char *>(imppl_->data->data) +
+    return reinterpret_cast<T *>(reinterpret_cast<char *>(impl_->data->data) +
                                  impl_->bytes_offset);
   }
 
   template <typename T>
   const T *Data() const {
-    assert(dtype_ == DtypeOf<T>::dtype);
-    return reinterpret_cast<const T *>(reinterpret_cast<char *>(impl_->data->data) +
-                                       impl_->bytes_offset);
+    assert(impl_->dtype == DtypeOf<T>::dtype);
+    return reinterpret_cast<const T *>(
+        reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset);
   }
 
   // Return the result of indexing one of the axes, which will result in a
@@ -138,40 +147,11 @@ class Tensor {
   std::shared_ptr<Region> &GetRegion() { return impl_->data; }
 
   // Forward some funtions from the shape.  Will forward more later.
-  inline bool SameDim(const Tensor &other) const { return other->impl_.shape.SameDim(shape); }
+  inline bool SameDim(const Tensor &other) const {
+    return impl_->shape.SameDims(other.GetShape());
+  }
   inline bool NumAxes() const { return impl_->shape.NumAxes(); }
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
-
-
-  /*
-    Convert to possibly-different context, may require CPU/GPU transfer.
-    The returned value may share the same underlying `data` memory as *this.
-    This should work even for tensors with empty data.
-
-    If dim_ == 0 and region_ is NULL, this will return a direct copy of *this
-    (i.e.  with region_ also NULL)
-
-    If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
-    empty region with the supplied context (if different from current region's
-    context).
-
-    Note: the answer will always be contiguous, i.e. there is a possibility that
-    it will have a different memory layout than the input.  [Internally it will
-    call `Contiguous()`.
-  */
-  Tensor To(ContextPtr ctx);
-
-
-  Dtype GetDtype() const { return impl_->dtype; }
-  const Shape &GetShape() const { return impl_->shape; }
-  int32_t ByteOffset() const { return impl_->bytes_offset; }
-  std::shared_ptr<Region> &GetRegion() { return impl_->data; }
-
-  // Forward some funtions from the shape.  Will forward more later.
-  inline bool SameDim(const Tensor &other) const { return other->impl_.shape.SameDim(shape); }
-  inline bool NumAxes() const { return impl_->shape.NumAxes(); }
-  inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
-
 
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
@@ -194,7 +174,7 @@ class Tensor {
   ContextPtr GetContext() { return impl_->data->context; }
 
  private:
-  TensorImpl impl_;  // Must always be non-NULL.
+  TensorImplPtr impl_;  // Must always be non-NULL.
 
   void Init(ContextPtr c);
 };

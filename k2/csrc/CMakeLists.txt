@@ -2,7 +2,7 @@
 # The header should be included as `#include "k2/csrc/.."`, to avoid conflicts.
 include_directories(${CMAKE_SOURCE_DIR})
 
-add_subdirectory(old)
+add_subdirectory(host)
 
 #---------------------------- Build K2 CUDA sources ----------------------------
 
@@ -10,7 +10,7 @@ add_subdirectory(old)
 add_library(context
     context.cu
     tensor.cu
-    dtype.cc
+    dtype.cu
 )
 
 # lib deps

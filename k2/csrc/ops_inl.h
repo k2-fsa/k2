@@ -74,8 +74,8 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       // elements being processed is small. What we're saying is that the
       // arrays' sizes are fairly balanced, so we launch with a simple
       // rectangular kernel.
-      auto lambda_set_data = [=] __host__ __device__(int32_t i,
-                                                     int32_t j) -> void {
+      auto lambda_set_data = [=] __host__ __device__(int32_t i, int32_t j)
+                                     ->void {
         // TODO(haowen): change to use operator[]
         int32_t row_start = row_splits.Data()[i],
                 row_end = row_splits.Data()[i + 1];
@@ -201,18 +201,16 @@ void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
   }
 }
 
-
 template <typename T>
-Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value, T max_value) {
-  Array1<T> temp(CpuContext(), dim);
+Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
+                            T max_value) {
+  Array1<T> temp(GetCpuContext(), dim);
   T *data = temp.Data();
   K2_CHECK(max_value >= min_value);
   if (max_value == min_value) {
-    for (int32_t i = 0; i < dim; i++)
-      data[i] = 0;
+    for (int32_t i = 0; i < dim; i++) data[i] = 0;
   } else if (std::is_floating_point<T>::value ||
-             std::abs(min_value) > RAND_MAX ||
-             std::abs(max_value) > RAND_MAX) {
+             std::abs(min_value) > RAND_MAX || std::abs(max_value) > RAND_MAX) {
     for (int32_t i = 0; i < dim; i++)
       data[i] = min_value + (rand() * (max_value - min_value) / RAND_MAX);
   } else {
