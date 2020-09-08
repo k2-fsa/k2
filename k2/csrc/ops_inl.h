@@ -220,23 +220,20 @@ Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
   return temp.To(c);
 }
 
-
 template <typename T>
 Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc) {
   K2_CHECK(dim >= 0);
-  DeviceType d = c.GetDeviceType();
+  DeviceType d = c->GetDeviceType();
   Array1<T> ans = Array1<T>(c, dim);
   T *ans_data = ans.Data();
   if (d == kCpu) {
-    for (int32_t i = 0; i < dim; i++)
-      ans_data[i] = min_value + i * inc;
+    for (int32_t i = 0; i < dim; i++) ans_data[i] = first_value + i * inc;
   } else {
-    auto lambda_set_values = [=] __host__ __device__ (int32_t i) -> void {
-      ans_data[i] = min_value + i * inc;
-    }
+    auto lambda_set_values = [=] __host__ __device__(int32_t i)->void {
+      ans_data[i] = first_value + i * inc;
+    };
     Eval(c, dim, lambda_set_values);
   }
 }
-
 
 }  // namespace k2
