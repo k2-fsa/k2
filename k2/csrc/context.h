@@ -20,6 +20,8 @@
 #include "k2/csrc/cuda_headers.h"
 #include "k2/csrc/log.h"
 
+static constexpr std::size_t kAlignment = 64;
+
 namespace k2 {
 
 enum class DeviceType {
@@ -35,7 +37,7 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 class Context;
 using ContextPtr = std::shared_ptr<Context>;
 
-#define kCudaStreamInvalid  ((cudaStream_t)(~((size_t)0)))
+#define kCudaStreamInvalid ((cudaStream_t)(~((size_t)0)))
 
 /**
    class Context is the main surface of interaction with external tensor
@@ -129,6 +131,86 @@ class Context : public std::enable_shared_from_this<Context> {
   virtual void Sync() const {}
 };
 
+// TODO(haowen): most of implementations below should be updated later.
+class CpuContext : public Context {
+ public:
+  ContextPtr GetCpuContext() override { return nullptr; }
+  ContextPtr GetPinnedContext() override { return nullptr; }
+  DeviceType GetDeviceType() const override { return kCpu; }
+
+  void *Allocate(std::size_t bytes, void **deleter_context) override {
+    void *p = nullptr;
+    if (bytes) {
+      int32_t ret = posix_memalign(&p, kAlignment, bytes);
+      K2_DCHECK_EQ(ret, 0);
+    }
+    if (deleter_context) *deleter_context = nullptr;
+    return p;
+  }
+
+  bool IsCompatible(const Context &other) const override {
+    return other.GetDeviceType() == kCpu;
+  }
+
+  void Deallocate(void *data, void * /*deleter_context*/) override {
+    free(data);
+  }
+};
+
+#ifdef __CUDACC__
+class CudaContext : public Context {
+ public:
+  CudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
+    if (gpu_id_ != -1) {
+      auto ret = cudaSetDevice(gpu_id_);
+      K2_CHECK_CUDA_ERROR(ret);
+    }
+    // TODO(haowen): choose one from available GPUs if gpu_id == -1?
+    // and handle GPU ids from multiple machines.
+    auto ret = cudaStreamCreate(&stream_);
+    K2_CHECK_CUDA_ERROR(ret);
+  }
+  ContextPtr GetCpuContext() override { return nullptr; }
+  ContextPtr GetPinnedContext() override { return nullptr; }
+  DeviceType GetDeviceType() const override { return kCuda; }
+  int GetDeviceId() const override { return gpu_id_; }
+
+  void *Allocate(std::size_t bytes, void **deleter_context) override {
+    void *p = nullptr;
+    if (bytes) {
+      auto ret = cudaMalloc(&p, bytes);
+      K2_CHECK_CUDA_ERROR(ret);
+    }
+    if (deleter_context) *deleter_context = nullptr;
+    return p;
+  }
+
+  bool IsCompatible(const Context &other) const override {
+    return other.GetDeviceType() == kCuda && other.GetDeviceId() == gpu_id_;
+  }
+
+  void Deallocate(void *data, void * /*deleter_context*/) override {
+    cudaFree(data);
+  }
+
+  cudaStream_t GetCudaStream() const override { return stream_; }
+
+  void Sync() const override {
+    auto ret = cudaStreamSynchronize(stream_);
+    K2_CHECK_CUDA_ERROR(ret);
+  }
+
+  ~CudaContext() {
+    auto ret = cudaStreamDestroy(stream_);
+    K2_CHECK_CUDA_ERROR(ret);
+  }
+
+ private:
+  int gpu_id_;
+  cudaStream_t stream_;
+};
+#endif
+
 enum MemoryCopyKind {
   MemcpyHostToHost,
   MemcpyHostToDevice,
@@ -136,38 +218,6 @@ enum MemoryCopyKind {
   MemcpyDeviceToDevice,
   MemcpyUnknown
 };
-
-// Note currently we just support single GPU device, but finally we may need to
-// handle different GPU devices on multiple machines, that's also the reason
-// that we pass `Context` instead of `DeviceType` as the input parameter here.
-inline MemoryCopyKind GetMemoryCopyKind(const Context &src,
-                                        const Context &dst) {
-  if (src.GetDeviceType() == kCpu && dst.GetDeviceType() == kCpu) {
-    return MemcpyHostToHost;
-  } else if (src.GetDeviceType() == kCpu && dst.GetDeviceType() == kCuda) {
-    return MemcpyHostToDevice;
-  } else if (src.GetDeviceType() == kCuda && dst.GetDeviceType() == kCpu) {
-    return MemcpyDeviceToHost;
-  } else if (src.GetDeviceType() == kCuda && dst.GetDeviceType() == kCuda) {
-    return MemcpyDeviceToDevice;
-  } else {
-    K2_LOG(FATAL) << "Unsupported Context";
-    return MemcpyUnknown;
-  }
-}
-
-inline void MemoryCopy(void *dst, const void *src, std::size_t count,
-                       MemoryCopyKind kind) {
-
-  std::map<MemoryCopyKind, cudaMemcpyKind> copy_kind_mappings = {
-      {MemcpyHostToHost, cudaMemcpyHostToHost},
-      {MemcpyHostToDevice, cudaMemcpyHostToDevice},
-      {MemcpyDeviceToHost, cudaMemcpyDeviceToHost},
-      {MemcpyDeviceToDevice, cudaMemcpyDeviceToDevice}};
-  auto it = copy_kind_mappings.find(kind);
-  K2_CHECK_NE(it, copy_kind_mappings.end());
-  cudaMemcpy(dst, src, count, it->second);
-}
 
 /*
   NOTE: let's leave this for later, this won't be needed initially.
@@ -211,19 +261,6 @@ class BackgroundRunner {
   // that Wait() can wait on, and to have the number of threads limited by a
   // global semaphore.
 };
-
-template <typename T>
-ContextPtr GetContext(const T &t) {
-  // suppose T has member method `Context`
-  return t.Context();
-}
-
-template <typename First, typename... Rest>
-ContextPtr GetContext(const First &first, const Rest &... rest) {
-  ContextPtr ans1 = GetContext(first), ans2 = GetContext(rest...);
-  K2_DCHECK(ans1->IsCompatible(*ans2)) << "Contexts are not compatible";
-  return ans1;
-}
 
 /*
   Note: Region will always be allocated with std::make_shared<Region>(...), and
@@ -300,111 +337,6 @@ ContextPtr GetPinnedContext();
                           wants to change this they can do it afterward.
 */
 RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes);
-
-/*
-  Convenience wrapper for NewRegion() that takes the context from a provided
-  region.
- */
-inline std::shared_ptr<Region> NewRegion(Region &region, std::size_t num_bytes) {
-  return NewRegion(region.context, num_bytes);
-}
-
-// Objects from k2 generally have a Context() method, so this template
-// will work to get the device-type for pretty arbitrary objects.
-template <typename T>
-inline DeviceType DeviceOf(const T &t) {
-  return t.Context()->GetDeviceType();
-}
-
-template <typename LambdaT>
-__global__ void eval_lambda(int32_t n, LambdaT lambda) {
-  int32_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) {
-    lambda(i);
-  }
-}
-
-template <typename LambdaT>
-__global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
-  // actually threadIdx.y will always be 1 for now so we could drop that part of
-  // setting i..
-  int i = blockIdx.y * blockDim.y + threadIdx.y;
-  int j = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < m && j < n) {
-    lambda(i, j);
-  }
-}
-
-inline int32_t NumBlocks(int32_t size, int32_t block_size) {
-  return (size + block_size - 1) / block_size;
-}
-
-/* Eval() will evaluate lambda(i) for 0 <= i < n, on the appropriate
-   device (CPU or GPU). */
-template <typename LambdaT>
-void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
-  if (n <= 0) return;  // actually it would be an error if n < 0.
-  if (stream == kCudaStreamInvalid) {
-    // TODO: if n is very large, we'll eventually support running this with
-    // multiple threads.
-    for (int32_t i = 0; i < n; ++i) {
-      lambda(i);
-    }
-  } else {
-    int32_t block_size = 256;
-    int32_t grid_size = NumBlocks(n, block_size);
-    eval_lambda<LambdaT> <<<grid_size, block_size, 0, stream>>> (n, lambda);
-    auto err = cudaGetLastError();
-    K2_DCHECK_CUDA_ERROR(err);
-  }
-}
-
-template <typename ContextPtrType,  // Context*  or ContextPtr ==
-                                    // std::shared_ptr<Context>
-          typename LambdaT>
-void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
-  Eval(c->GetCudaStream(), n, lambda);
-}
-
-/*
-  This is a form of Eval() where the lambda takes  two arguments.
-
-  Eval2() will evaluate lambda(i, j) for 0 <= i < m and 0 <= j < n,
-  on the appropriate  device (CPU or GPU).  The second index, n,
-  is supposed to be the faster-varying one, the index for which
-  threads in the same warp will tend to have different values.
-  (Of course this doesn't affect the semantics of the operation).
-*/
-template <typename LambdaT>
-void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
-  if (m <= 0 || n <= 0)
-    return;  // actually it would be an error if m < 0 or n < 0.
-  if (stream == kCudaStreamInvalid) {
-    // TODO: if n is very large, we'll eventually support running this with
-    // multiple threads.
-    for (int32_t i = 0; i < m; ++i) {
-      for (int32_t j = 0; j < n; ++j) {
-        lambda(i, j);
-      }
-    }
-  } else {
-    // this way of choosing block and grid sizes is of course not very smart, we
-    // can look at this later on, possibly referring to Kaldi's
-    // GetBlockSizesForSimpleMatrixOperation().
-    dim3 block_size(16, 16, 1);
-    dim3 grid_size(NumBlocks(n, 16), NumBlocks(m, 16));
-    eval_lambda2 << <grid_size, block_size, 0, stream>>> (m, n, lambda);
-    auto err = cudaGetLastError();
-    K2_DCHECK_CUDA_ERROR(err);
-  }
-}
-
-template <typename ContextPtrType,  // Context*  or ContextPtr ==
-                                    // std::shared_ptr<Context>
-          typename LambdaT>
-inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
-  Eval2(c->GetCudaStream(), m, n, lambda);
-}
 
 // This is for use by ParallelRunner and Context.  Users probably should not
 // interact with this directly.  The idea is that the Context object will call
@@ -484,16 +416,6 @@ class ParallelRunner {
   // TODO: list of events to wait on, maybe CUDA streamss.
 };
 
-/**
- * @brief
- *
- * @tparam ContextPtrType
- *
- * @todo: implement this
- */
-template <typename ContextPtrType>
-void ParallelRunner<ContextPtrType>::Finish() {}
-
 // OK, want to do:
 // ContextPtr c = ...;  ///
 // auto d = Dependency({out_region1, out_region2},
@@ -559,5 +481,9 @@ void ParallelRunner<ContextPtrType>::Finish() {}
 //
 
 }  // namespace k2
+
+#define IS_IN_K2_CSRC_CONTEXT_H_
+#include "k2/csrc/context_inl.h"
+#undef IS_IN_K2_CSRC_CONTEXT_H_
 
 #endif  // K2_CSRC_CONTEXT_H_

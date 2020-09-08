@@ -40,11 +40,11 @@ class DtypeTraits {
  private:
   // We may add more
   char base_type_;    // BaseType converted to char
-  char num_scalars_;  // currently always 1; may be greater for vector types in
+  int num_scalars_;  // currently always 1; may be greater for vector types in
                       // future.  Must divide num_bytes exactly.
-  char misc_;  // field that is normally 0, but we may use for extensions in
+  int misc_;  // field that is normally 0, but we may use for extensions in
                // future.
-  char num_bytes_;  // sizeof() this type in bytes, gives stride.  The size per
+  int num_bytes_;  // sizeof() this type in bytes, gives stride.  The size per
                     // scalar element is given by bytes_per_elem / num_scalars;
                     // we do it this way so that the stride in bytes is easily
                     // extractable.
@@ -117,7 +117,7 @@ struct DtypeOf<uint64_t> {
   Evaluates Expr for TypeName being all dtypes.  E.g.
      FOR_ALL_DTYPES(t.GetDtype(), T, SomeFuncCall<T>(a,b,c..));
  */
-#define FOR_ALL_DTYPES(DtypeValue, TypeName, Expr)               \
+#define FOR_ALL_DTYPES(DtypeValue, TypeName, Expr...)            \
   do { switch (DtypeValue) {                                     \
   case kFloatDtype: { using TypeName = float; Expr; break; }     \
   case kDoubleDtype: { using TypeName = double; Expr; break; }   \
@@ -127,10 +127,10 @@ struct DtypeOf<uint64_t> {
   case kInt64Dtype: { using TypeName = int64_t; Expr; break; }   \
   case kUint32Dtype: { using TypeName = uint32_t; Expr; break; } \
   case kUint64Dtype: { using TypeName = uint64_t; Expr; break; } \
-  default: LOG(FATAL) << "Dtype " << TraitsOf(DtypeValue)        \
-                      << " not covered in switch statement. "    \
-                      << "p not supported for this type?";       \
-  } while(0)
+  default: K2_LOG(FATAL) << "Dtype " << TraitsOf(DtypeValue)     \
+                         << " not covered in switch statement. " \
+                         << "p not supported for this type?";    \
+  } } while(0)
 
 
 

@@ -13,8 +13,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef IS_IN_K2_CSRC_OPS_H_
-#error "this file is supposed to be included only by ops.h"
+#ifndef IS_IN_K2_CSRC_ARRAY_OPS_H_
+#error "this file is supposed to be included only by array_ops.h"
 #endif
 
 // No header guard for this file since it will only be included

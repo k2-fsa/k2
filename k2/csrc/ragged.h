@@ -48,8 +48,8 @@ class RaggedShape {
   }
   /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and
      for axis=0 the returned value is the same as Dim0().  */
-  inline int32_t TotSize(int32_t axis) {
-    K2_CHECK_LE(static_cast<std::size_t>(axis), axes_.size() + 1);
+  inline int32_t TotSize(size_t axis) {
+    K2_CHECK_LE(static_cast<size_t>(axis), axes_.size() + 1);
     if (axis == 0)
       return Dim0();
     else {
@@ -68,7 +68,7 @@ class RaggedShape {
 
   // Returns the number of elements that a ragged array with this shape would
   // have.
-  inline int32_t NumElements() { return TotSize(NumAxes() - 1); }
+  inline size_t NumElements() { return TotSize(NumAxes() - 1); }
 
   /*
     Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.
@@ -92,14 +92,14 @@ class RaggedShape {
     return axes_[axis - 1].row_ids;
   }
 
-  int32_t NumAxes() const { return axes_.size() + 1; }
+  size_t NumAxes() const { return axes_.size() + 1; }
 
   // TODO.  Gives max size of any list on the provided axis, with 0 < axis <
   // NumAxes().  Equals max difference between successive row_splits on that
   // axis.
   int32_t MaxSize(int32_t axis);
 
-  ContextPtr &Context() { return axes_[0].row_splits.Context(); }
+  const ContextPtr &Context() const { return axes_[0].row_splits.Context(); }
 
   /*
     It is an error to call this if this.NumAxes() < 2.  This will return
@@ -110,6 +110,8 @@ class RaggedShape {
       @param [in]  axis   Axis to index on.  CAUTION: currently only 0
                          is supported.
       @param [in]  i     Index to select
+
+    @todo implement this
    */
   RaggedShape Index(int32_t axis, int32_t value);
 
@@ -193,7 +195,8 @@ class RaggedShapeIndexIterator {
  private:
   void UpdateVec() {
     K2_CHECK(!Done());
-    int32_t idx = linear_idx_, num_axes = row_splits_.size() + 1;
+    int32_t idx = linear_idx_,
+            num_axes = static_cast<int32_t>(row_splits_.size() + 1);
     for (int32_t axis = num_axes - 1; axis > 0; axis--) {
       int32_t prev_idx = row_splits_[axis - 1][idx],
               row_start = row_ids_[axis - 1][prev_idx],
@@ -526,7 +529,8 @@ Ragged<T> RandomRagged(T min_value = static_cast<T>(0),
 
 }  // namespace k2
 
-// TODO(dan), include guard maybe.
+#define IS_IN_K2_CSRC_RAGGED_H_
 #include "k2/csrc/ragged_inl.h"
+#undef IS_IN_K2_CSRC_RAGGED_H_
 
 #endif  // K2_CSRC_RAGGED_H_

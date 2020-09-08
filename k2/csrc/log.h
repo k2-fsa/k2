@@ -16,6 +16,8 @@
 #include <cstdint>
 #include <cstdio>
 
+#include "k2/csrc/cuda_headers.h"
+
 namespace k2 {
 
 namespace internal {
@@ -44,8 +46,8 @@ constexpr LogLevel FATAL = LogLevel::kFatal;
 
 class Logger {
  public:
-  __host__ __device__ Logger(const char *filename, const char *func_name,
-                             uint32_t line_num, LogLevel level)
+  K2_CUDA_HOSTDEV Logger(const char *filename, const char *func_name,
+                         uint32_t line_num, LogLevel level)
       : filename_(filename),
         func_name_(func_name),
         line_num_(line_num),
@@ -69,12 +71,13 @@ class Logger {
     }
     printf("%s:%s:%u ", filename, func_name, line_num);
 #if defined(__CUDA_ARCH__)
-    printf("block:[%u,%u,%u], thread: [%u,%u,%u] ", blockIdx.x, blockIdx.y,
-           blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z);
+    printf("block:[%u,%u,%u], thread: [%u,%u,%u] ",
+           blockIdx.x, blockIdx.y, blockIdx.z,
+           threadIdx.x, threadIdx.y, threadIdx.z);
 #endif
   }
 
-  __host__ __device__ ~Logger() {
+  K2_CUDA_HOSTDEV ~Logger() {
     printf("\n");
     if (level_ == FATAL) {
 #if defined(__CUDA_ARCH__)
@@ -89,22 +92,22 @@ class Logger {
     }
   }
 
-  __host__ __device__ const Logger &operator<<(const char *s) const {
+  K2_CUDA_HOSTDEV const Logger &operator<<(const char *s) const {
     printf("%s", s);
     return *this;
   }
 
-  __host__ __device__ const Logger &operator<<(int32_t i) const {
+  K2_CUDA_HOSTDEV const Logger &operator<<(int32_t i) const {
     printf("%d", i);
     return *this;
   }
 
-  __host__ __device__ const Logger &operator<<(uint32_t i) const {
+  K2_CUDA_HOSTDEV const Logger &operator<<(uint32_t i) const {
     printf("%u", i);
     return *this;
   }
 
-  __host__ __device__ const Logger &operator<<(double d) const {
+  K2_CUDA_HOSTDEV const Logger &operator<<(double d) const {
     printf("%f", d);
     return *this;
   }
@@ -123,7 +126,7 @@ class Logger {
 
 class Voidifier {
  public:
-  __host__ __device__ void operator&(const Logger &) const {}
+  K2_CUDA_HOSTDEV void operator&(const Logger &) const {}
 };
 
 }  // namespace internal

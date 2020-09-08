@@ -12,6 +12,10 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#ifndef IS_IN_K2_CSRC_RAGGED_H_
+#error "this file is supposed to be included only by ops.h"
+#endif
+
 namespace k2 {
 
 template <typename T>
@@ -20,8 +24,8 @@ Ragged<T> Stack(int32_t num_srcs, const Ragged<T> *src, int32_t axis) {
   std::vector<const RaggedShape *> src_shapes(num_srcs);
   std::vector<const Array1<T> *> src_values(num_srcs);
   for (int32_t i = 0; i < num_srcs; i++) {
-    src_shapes[i] = &(src[i]->shape);
-    src_values[i] = &(src[i]->values);
+    src_shapes[i] = &(src[i].shape);
+    src_values[i] = &(src[i].values);
   }
 
   // TODO(haowen): implement this later

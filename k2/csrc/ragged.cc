@@ -14,17 +14,18 @@
 
 namespace k2 {
 
-
-RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
-                              int32_t min_num_elements, int32_t max_num_elements) {
-  ContextPtr c = CpuContext();
+RaggedShape RandomRaggedShape(int32_t min_num_axes,
+                              int32_t max_num_axes,
+                              int32_t min_num_elements,
+                              int32_t max_num_elements) {
+  ContextPtr c = GetCpuContext();
   K2_CHECK(min_num_axes >= 2 && max_num_axes >= min_num_axes &&
            min_num_elements >= 0 && max_num_elements >= min_num_elements);
   int32_t num_axes = RandInt(min_num_axes, max_num_axes);
 
   int32_t done_repeats = 0;
 
-  RaggedShapeDim axes(num_axes - 1);
+  std::vector<RaggedShapeDim> axes(static_cast<unsigned long>(num_axes - 1));
   int32_t num_elements = RandIntGeometric(min_num_elements, max_num_elements);
   for (int32_t axis = num_axes - 2; axis >= 0; axis--) {
     // this axis will have row_ids of length num_elements and row_splits of length
@@ -49,8 +50,8 @@ RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
       row_splits_vec.push_back(cur_row_split);
     }
     axes[axis].row_splits = Array1<int32_t>(c, row_splits_vec);
-    axes[axis].cached_tot_size = num_elements;
-    num_elements = row_splits
+    axes[axis].cached_tot_size = static_cast<size_t>(num_elements);
+//    num_elements = axes[axis].row_splits;
   }
   return RaggedShape(axes);
 }
@@ -72,7 +73,7 @@ void PrintRaggedShapePart(std::ostream &stream,
       stream << d << " ";
     } else {
       stream << "[ ";
-      const int32_t row_splits = shape.RowSplits(axis + 1).Data();
+      const int32_t *row_splits = shape.RowSplits(axis + 1).Data();
       K2_DCHECK(d < shape.RowSplits(axis + 1).Dim());
       int32_t row_start = row_splits[d],
           row_end = row_splits[d+1];
@@ -86,8 +87,8 @@ void PrintRaggedShapePart(std::ostream &stream,
 // prints a RaggedShape as e.g. [ [ 0 1 ] [ 2 ] [] ].  Note, the 'values'
 // are just the positions in the array, this is for readability.
 std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
-  if (shape.Context().GetDeviceType() != kCpuDevice) {
-    return stream << shape.To(CpuContext());
+  if (shape.Context()->GetDeviceType() != kCpu) {
+    return stream << shape.To(GetCpuContext());
   } else {
     stream << "[ ";
     PrintRaggedShapePart(stream, shape, 0, 0, shape.Dim0());
@@ -95,7 +96,6 @@ std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
     return stream;
   }
 }
-
 
 RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes, int32_t *tot_sizes) {
   std::vector<RaggedShapeDim> axes(num_axes - 1);
@@ -107,6 +107,39 @@ RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes, int32_t *tot_sizes) {
     axes[axis-1].cached_tot_size = tot_sizes[axis];
   }
   return RaggedShape(axes);
+}
+
+const std::vector<int32_t> &RaggedShapeIndexIterator::Value() {
+  return idx_;
+}
+
+int32_t k2::RaggedShape::MaxSize(int32_t axis) {
+  return 0;
+}
+
+k2::RaggedShape k2::RaggedShape::Index(int32_t axis, int32_t value) {
+  return k2::RaggedShape();
+}
+
+int32_t k2::RaggedShape::operator[](const std::vector<int32_t> &indexes) {
+  return nullptr;
+}
+
+k2::RaggedShapeIndexIterator k2::RaggedShape::Iterator() {
+  return k2::RaggedShapeIndexIterator(*this);
+}
+void k2::RaggedShape::Populate() {}
+
+void k2::RaggedShape::Check() {}
+
+RaggedShape RaggedShape::To(ContextPtr ctx) {
+  return k2::RaggedShape();
+}
+
+void RaggedShape::Check() {}
+
+RaggedShape RaggedShape::Index(int32_t axis, int32_t value) {
+  return RaggedShape();
 }
 
 void RaggedShape::Check() {

@@ -6,11 +6,17 @@ add_subdirectory(host)
 
 #---------------------------- Build K2 CUDA sources ----------------------------
 
+# to make code static analysis work
+# @todo delete this include line before release
+include_directories(${CUDAToolkit_INCLUDE_DIRS})
+
 # the target
 add_library(context
+    array_ops.cc
     context.cc
     context.cu
     dtype.cu
+#    ragged.cc
     tensor.cu
     tensor_ops.cu
 )
@@ -23,9 +29,9 @@ target_link_libraries(context PUBLIC glog)
 
 # please sort the source files alphabetically
 set(cuda_tests
+    array_ops_test
     array_test
     log_test
-    ops_test
     # TODO(haowen): uncomment this after build ragged
     # ragged_test
     tensor_test

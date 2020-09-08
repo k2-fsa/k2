@@ -14,8 +14,17 @@
 #ifndef K2_CSRC_CUDA_HEADERS_H_
 #define K2_CSRC_CUDA_HEADERS_H_
 
+#ifdef __CUDACC__
+#define K2_CUDA_HOSTDEV __host__ __device__
+#else
+#include <cuda.h>
+#include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <device_launch_parameters.h>
 #include <driver_types.h>
+
+//struct CUstream_st *cudaStream_t;
+#define K2_CUDA_HOSTDEV
+#endif
 
 #endif  // K2_CSRC_CUDA_HEADERS_H_

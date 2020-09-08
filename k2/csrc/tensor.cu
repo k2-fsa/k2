@@ -10,9 +10,9 @@
  */
 
 #include <algorithm>
-#include <glog/logging.h>
 #include <memory>
 
+#include <glog/logging.h>
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/tensor.h"
 
@@ -132,8 +132,10 @@ void Tensor::Init(ContextPtr c) {
   impl_->data = NewRegion(c, static_cast<size_t>(storage_size * element_size));
   impl_->bytes_offset = 0;
 }
+
 Tensor Tensor::To(ContextPtr ctx) {
-  return Tensor(std::shared_ptr(), kInt64Dtype, k2::Shape());
+  ContextPtr foo;
+  return Tensor(foo, kInt64Dtype, k2::Shape());
 }
 
 }  // namespace k2

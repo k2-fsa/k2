@@ -9,10 +9,9 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/ops.h"
+#include "k2/csrc/array_ops.h"
 
 namespace k2 {
-
 
 // See documentation in header of what this is supposed to do.
 // This is similar to the template Append() defined in ops_inl.h,

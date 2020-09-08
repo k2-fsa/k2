@@ -4,16 +4,17 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
+#include "k2/csrc/log.h"
 #include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 
 template <typename T>
-void CopyTensorElements2d(ContextPtr c, int32_t dim0, int32_t dim1,
-                          const T *src_data, int32_t src_stride0,
-                          int32_t src_stride1, const T *dest_data,
-                          int32_t dest_stride0, int32_t dest_stride1) {
-  DeviceType d = c.GetDeviceType();
+void CopyTensorElements2d(
+    ContextPtr c, int32_t dim0, int32_t dim1,
+    const T *src_data, const int32_t src_stride0, const int32_t src_stride1,
+    T *dest_data, int32_t dest_stride0, int32_t dest_stride1) {
+  DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     // this is just an optimization, the other branch would work for CPU too.
     for (int32_t i = 0; i < dim0; i++) {
@@ -23,26 +24,26 @@ void CopyTensorElements2d(ContextPtr c, int32_t dim0, int32_t dim1,
       }
     }
   } else {
-    auto lambda_set_elems = __host__ __device__[=](int32_t i, int32_t j)->void {
+    auto lambda_set_elems = [=] __host__ __device__ (int32_t i, int32_t j)->void {
       dest_data[i * dest_stride0 + j * dest_stride1] =
           src_data[i * src_stride0 + j * src_stride1];
     };
-    Eval(c, dim0, dim1, lambda_set_elems);
+    Eval2(c, dim0, dim1, lambda_set_elems);
   }
 }
 
 template <typename T>
-void CopyTensorElements1d(ContextPtr c, int32_t dim, const T *src_data,
-                          int32_t src_stride, const T *dest_data,
-                          int32_t dest_stride) {
-  DeviceType d = c.GetDeviceType();
+void CopyTensorElements1d(ContextPtr c, int32_t dim,
+                          const T *src_data, const int32_t src_stride,
+                          T *dest_data, int32_t dest_stride) {
+  DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     // this is just an optimization, the other branch would work for CPU too.
     for (int32_t i = 0; i < dim; i++) {
       dest_data[i * dest_stride] = src_data[i * src_stride];
     }
   } else {
-    auto lambda_set_elems = __host__ __device__[=](int32_t i)->void {
+    auto lambda_set_elems = [=] __host__ __device__ (int32_t i)->void {
       dest_data[i * dest_stride] = src_data[i * src_stride];
     };
     Eval(c, dim, lambda_set_elems);
@@ -104,15 +105,15 @@ Tensor ToContiguous(Tensor src) {
 
 template <typename T, typename U>
 void CastTensorElements1dContiguous(ContextPtr c, int32_t dim,
-                                    const T *src_data, const U *dest_data) {
-  DeviceType d = c.GetDeviceType();
+                                    const T *src_data, U *dest_data) {
+  DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     // this is just an optimization, the other branch would work for CPU too.
     for (int32_t i = 0; i < dim; i++) {
       dest_data[i] = static_cast<U>(src_data[i]);
     }
   } else {
-    auto lambda_cast_elems = __host__ __device__[=](int32_t i)->void {
+    auto lambda_cast_elems = [=] __host__ __device__ (int32_t i)->void {
       dest_data[i] = static_cast<U>(src_data[i]);
     };
     Eval(c, dim, lambda_cast_elems);
@@ -129,11 +130,11 @@ Tensor Cast(Tensor src, Dtype new_dtype) {
   Dtype old_dtype = src.GetDtype();
   int32_t dim = ans.Nelement(1);
 
-  CastTensorElements1dContiguous<T, U>(
-      c, dim, src.Data<T>(), ans.Data<U>());
   FOR_ALL_DTYPES(old_dtype, T,
-                 FOR_ALL_DTYPES(new_dtype, U,
-                                ));
+      FOR_ALL_DTYPES(new_dtype, U,
+          CastTensorElements1dContiguous<T, U>(
+              c, dim, src.Data<T>(), ans.Data<U>())));
+
   return ans;
 }
 
