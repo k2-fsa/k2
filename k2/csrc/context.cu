@@ -47,7 +47,7 @@ class CpuContext : public Context {
 
 class CudaContext : public Context {
  public:
-  CudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
+  explicit CudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
     if (gpu_id_ != -1) {
       auto ret = cudaSetDevice(gpu_id_);
       K2_CHECK_CUDA_ERROR(ret);
@@ -77,7 +77,8 @@ class CudaContext : public Context {
   }
 
   void Deallocate(void *data, void * /*deleter_context*/) override {
-    cudaFree(data);
+    auto ret = cudaFree(data);
+    K2_CHECK_CUDA_ERROR(ret);
   }
 
   cudaStream_t GetCudaStream() const override { return stream_; }
@@ -93,7 +94,7 @@ class CudaContext : public Context {
   }
 
  private:
-  int gpu_id_;
+  int32_t gpu_id_;
   cudaStream_t stream_;
 };
 
@@ -106,7 +107,7 @@ ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
 RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes) {
   // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
   // overwrite if needed.
-  std::shared_ptr<Region> ans = std::make_shared<Region>();
+  auto ans = std::make_shared<Region>();
   ans->context = context->shared_from_this();
   // TODO(haowen): deleter_context is always null with above constructor,
   // we need add another constructor of Region to allow the caller
