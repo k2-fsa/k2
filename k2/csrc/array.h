@@ -74,7 +74,6 @@ class Array1 {
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
-  // TODO(haowen): why do we need this version?
   Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}
 
   Array1(int32_t dim, RegionPtr region, int32_t byte_offset)
@@ -216,7 +215,7 @@ class Array1 {
      time if it's a CUDA array, so use this operator sparingly.  If you know
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
-  T operator[](int32_t i) {
+  T operator[](int32_t i) const {
     K2_CHECK_LT(i, Dim());
     return Data()[i];
   }
@@ -235,7 +234,7 @@ class Array1 {
      Note 'indexes.Context()' must be compatible with the current Context(),
      i.e. `Context()->IsCompatible(indexes.Context())`.
    */
-  Array1 operator[](const Array1<int32_t> &indexes) {
+  Array1 operator[](const Array1<int32_t> &indexes) const {
     const ContextPtr &c = Context();
     K2_CHECK(c->IsCompatible(*indexes.Context()));
     int32_t ans_dim = indexes.Dim();
@@ -359,6 +358,13 @@ class Array2 {
     return Array1<T>(dim1_, region_, byte_offset);
   }
 
+  // Creates an array that is not valid, e.g. you cannot call Context() on it.
+  Array2()
+      : dim0_(0),
+        elem_stride0_(0),
+        dim1_(0),
+        byte_offset_(0),
+        region_(nullptr) {}
   /* Create new array2 with given dimensions.  dim0 and dim1 must be >0.
      Data will be uninitialized. */
   Array2(ContextPtr c, int32_t dim0, int32_t dim1)
@@ -394,7 +400,11 @@ class Array2 {
     that
      it will have a different memory layout than the input.
   */
-  Array2<T> To(ContextPtr ctx);
+  Array2<T> To(ContextPtr ctx) {
+    // TODO
+    Array2<T> array;
+    return array;
+  }
 
   // Note that the returned Tensor is not const, the caller should be careful
   // when changing the tensor's data, it will also change data in the parent
