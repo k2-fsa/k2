@@ -174,6 +174,7 @@ void RaggedShape::Check() {
     }
 
     if (rsd.row_ids.Dim() != 0) { // check row_ids.
+      // check devices are compatible.
       K2_CHECK(IsCompatible(rsd.row_ids, rsd.row_splits));
       // 1st elem is `ok` (1 or 0); 2nd elem is location of bad index
       // into row_splits

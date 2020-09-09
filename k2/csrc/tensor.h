@@ -24,10 +24,6 @@ class Shape {
  public:
   int32_t NumAxes() const { return num_axes_; }
 
-  const int32_t *Dims() const { return dims_; }
-
-  const int32_t *Strides() const { return strides_; }
-
   int32_t Dim(int32_t i) const {
     CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(num_axes_));
     return dims_[i];
@@ -40,6 +36,15 @@ class Shape {
 
   int32_t Nelement() const { return num_element_; }
   // storage size in elements
+
+  std::vector<int32_t> Dims() const {
+    return std::vector<int32_t>(dims_, dims_ + num_axes_);
+  }
+
+  std::vector<int32_t> Strides() const {
+    return std::vector<int32_t>(strides_, strides_ + num_axes_);
+  }
+
   int32_t StorageSize() const {
     return storage_size_;
   };
@@ -160,7 +165,9 @@ class Tensor {
   }
   inline bool NumAxes() const { return impl_->shape.NumAxes(); }
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
+  inline std::vector<int32_t> Dims() { return impl_->shape.Dims(); }
   inline int32_t Stride(int32_t i) { return impl_->shape.Stride(i); }
+  inline std::vector<int32_t> Strides() { return impl_->shape.Strides(); }
   inline int32_t Nelement(int32_t i) { return impl_->shape.Nelement(); }
   inline bool IsContiguous() { return impl_->shape.IsContiguous(); }
 

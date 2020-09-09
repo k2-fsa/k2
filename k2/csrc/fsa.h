@@ -30,10 +30,14 @@ using FsaProperties = uint32_t;
 /*
   The FSA properties need to be computed via a reduction over arcs, and we use '&'
   to reduce.  These properties are all things that can be computed locally, using
-  an arc and adjacent arcs.
+  an arc and adjacent arcs (and the structural info).
  */
 enum FsaBasicProperties {
-  kFsaPropertiesValid = 0x01,      // Valid from a formatting perspective
+  kFsaPropertiesValid = 0x01,      // Valid from a formatting perspective *as an
+                                   // FsaVec*.  Also require
+                                   // kFsaPropertiesSingleFsa == true if
+                                   // this is supposed to be a single FSA, not
+                                   // an FsaVec.
   kFsaPropertiesNonempty = 0x02,   // Nonempty as in, has at least one arc.
   kFsaPropertiesTopSorted = 0x04,  // FSA is top-sorted, dest_state >= src_state
   kFsaPropertiesTopSortedAndAcyclic = 0x08,  // Top-sorted and acyclic, dest_state > src_state
@@ -42,7 +46,16 @@ enum FsaBasicProperties {
                                                    // are *strictly* sorted by
                                                    // symbol, i.e. no duplicates
                                                    // with the same symbol.
-  kFsaPropertiesEpsilonFree = 0x40  // Symbol zero (epsilon) is not present..
+  kFsaPropertiesEpsilonFree = 0x40,  // Symbol zero (epsilon) is not present..
+  kFsaPropertiesMultipleFsas = 0x80,  // True if the vector of arcs appears to
+                                     // have multiple FSAs in it.
+  kFsaPropertiesSingleFsa  = 0x0100,  // True if the vector of arcs appears to
+                                      // have only a single FSA in it.
+  kFsaPropertiesMaybeConnected = 0x0200   // True if there are no obvious signs
+                                      // of disconnected states, such as
+                                      // non-final states with no arcs leaving
+                                      // them
+
 };
 
 
@@ -132,7 +145,7 @@ class DenseFsaVec {
     @return         The resulting FSA will be returned.
 
 */
-Fsa FsaFromTensor(const Tensor &t, bool *error);
+Fsa FsaFromTensor(Tensor t, bool *error);
 
 /*
   Returns a single Tensor that represents the FSA; this is just the vector of Arc
@@ -160,17 +173,11 @@ Tensor FsaVecToTensor(const Fsa &fsa);
 
   Please see FsaFromTensor() for documentation on what makes the individual
   FSAs valid; however, please note that the FSA with no states (empty FSA)
-  cannot appear here, except if the entire tensor is empty in which case
-  the result will be a
+  cannot appear here, as there is no way to indicate it in a flat
+  series of arcs.
 
-  If there are no arcs with -1 on the label, here is how we determine the final
-  state:
-     - If there were no arcs at all in the FSA we'll return the empty FSA (with no states).
-     - Otherwise, we'll let `final_state` be the highest-numbered state
-       that has any arcs leaving or entering it, plus one.  (This FSA
-       has no successful paths but still has states.)
-
-    @param [in] t   Source tensor.  Caution: the returned FSA will share
+    @param [in] t   Source tensor.  Must have dtype == kInt32Dtype and be of
+                    shape (N > 0) by 4.  Caution: the returned FSA will share
                     memory with this tensor, so don't modify it afterward!
     @param [out] error   Error flag.  On success this function will write 'false'
                     here; on error, it will print an error message to
@@ -180,7 +187,6 @@ Tensor FsaVecToTensor(const Fsa &fsa);
 
 */
 FsaVec FsaVecFromTensor(const Tensor &t, bool *error);
-
 
 
 /*

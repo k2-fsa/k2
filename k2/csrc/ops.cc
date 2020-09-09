@@ -132,7 +132,79 @@ Array1<int32_t> Splice(int32_t num_arrays, const Array1<int32_t> **src) {
   }
 }
 
+bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
+  int32_t *data = row_ids.Data();
+  int32_t dim = row_ids.Dim();
+  if (dim == 0) return true;  // will treat this as valid.a
 
+  if (ctx.GetDeviceType() == kCpu) {
+    if (data[0] < 0) return false;
+    for (int32_t i = 0; i + 1 < dim; i++)
+      if (data[i] > data[i+1])
+        return false;
+  }
+
+  Array1<int32_t> temp_array;
+  if (temp == nullptr || temp->Dim() == 0) {
+    temp2 = Array1<int32_t>(row_ids.Context(), 1);
+    temp = &temp_array;
+  }
+
+  ContextPtr &ctx = row_ids.GetContext();
+  (*temp)[0] = 0;
+  int32_t *temp_data = temp->Data();
+  auto lambda_check_row_ids = [=] __host__ __device__ (int32_t i) -> void {
+     int32_t this_val = data[i],
+        next_val = data[i+1];
+     if (this_val > next_val || this_val < 0)
+       *temp_data = 1;  // means it's bad.
+  };
+  // Note: we know that dim >= 1 as we would have returned above if dim == 0.
+  // This will do nothing if (dim-1) == 0.
+  Eval(ctx, dim - 1, lambda_check_row_ids);
+  return !((*temp)[0]);
+}
+
+
+bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
+  int32_t *data = row_ids.Data();
+  int32_t dim = row_ids.Dim();
+  if (dim == 0) return true;  // will treat this as valid.a
+
+  if (ctx.GetDeviceType() == kCpu) {
+    if (data[0] != 0) return false;
+    for (int32_t i = 0; i + 1 < dim; i++)
+      if (data[i] > data[i+1])
+        return false;
+  }
+
+  Array1<int32_t> temp_array;
+  if (temp == nullptr || temp->Dim() == 0) {
+    temp2 = Array1<int32_t>(row_ids.Context(), 1);
+    temp = &temp_array;
+  }
+
+  ContextPtr &ctx = row_ids.GetContext();
+  (*temp)[0] = 0;
+  int32_t *temp_data = temp->Data();
+  auto lambda_check_row_ids = [=] __host__ __device__ (int32_t i) -> void {
+     int32_t this_val = data[i],
+        next_val = data[i+1];
+     if (this_val > next_val || (i == 0 && this_val != 0))
+       *temp_data = 1;  // means it's bad.
+  };
+  // Note: we know that dim >= 1 as we would have returned above if dim == 0.
+  // This will do nothing if (dim-1) == 0.
+  Eval(ctx, dim - 1, lambda_check_row_ids);
+  return !((*temp)[0]);
+}
+
+
+bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
+                             Array1<int32_t> &row_ids,
+                             Array1<int32_t> *temp) {
+  // TODO.
+}
 
 
 }  // namespace k2
