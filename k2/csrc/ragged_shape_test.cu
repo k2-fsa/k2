@@ -10,15 +10,15 @@
  */
 
 #include <algorithm>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <numeric>
 #include <vector>
 
-#include "k2/csrc/ragged.h"
-#include "k2/csrc/context.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include "k2/csrc/context.cuh"
 #include "k2/csrc/dtype.h"
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
+#include "k2/csrc/ragged.h"
 #include "k2/csrc/tensor.h"
 
 namespace k2 {

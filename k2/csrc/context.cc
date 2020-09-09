@@ -33,4 +33,13 @@ RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes) {
   return ans;
 }
 
+/**
+ * @brief
+ *
+ * @tparam ContextPtrType
+ *
+ * @todo: implement this
+ */
+void ParallelRunner::Finish() {}
+
 }  // namespace k2

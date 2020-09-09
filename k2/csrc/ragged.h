@@ -15,7 +15,7 @@
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
 #include "k2/csrc/log.cuh"
-#include "k2/csrc/utils.h"
+#include "k2/csrc/utils.cuh"
 
 namespace k2 {
 
@@ -51,7 +51,7 @@ class RaggedShape {
   }
   /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and
      for axis=0 the returned value is the same as Dim0().  */
-  inline int32_t TotSize(int32e_t axis) {
+  inline int32_t TotSize(int32_t axis) {
     K2_CHECK_GE(axis, 0);
     K2_CHECK_LT(axis, NumAxes());
     if (axis == 0)
@@ -72,7 +72,7 @@ class RaggedShape {
 
   // Returns the number of elements that a ragged array with this shape would
   // have.
-  inlineint32_tt NumElements() { return TotSize(NumAxes() - 1); }
+  inline int32_t NumElements() { return TotSize(NumAxes() - 1); }
 
   /*
     Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.
@@ -91,11 +91,7 @@ class RaggedShape {
     Return the row-ids for axis `axis` with `0 < axis < NumAxes()`.
     The dimension is the number of elements on this axis == TotSize(axis).
   */
-  Array1<int32_t> &RowIds(int32_t axis) {
-    K2_CHECK_LT(static_cast<uint32_t>(axis - 1), axes_.size());
-    // TODO(dan): make sure this row_ids exists, create it if needed.
-    return axes_[axis - 1].row_ids;
-  }
+  Array1<int32_t> &RowIds(int32_t axis);
 
   int32_t NumAxes() const { return static_cast<int32_t>(axes_.size()) + 1; }
 
@@ -143,9 +139,7 @@ class RaggedShape {
 
   // This makes sure that all of the row_splits, row_ids and cached_tot_size
   // are populated
-  void Populate() {
-    // TODO
-  }
+  void Populate();
 
   RaggedShape(const RaggedShape &other) = default;
   RaggedShape &operator=(const RaggedShape &other) = default;
@@ -158,11 +152,7 @@ class RaggedShape {
   void Check();
 
   // Convert to possibly different context.
-  RaggedShape To(ContextPtr ctx) const {
-    // TODO(haowen): implement it
-    std::vector<RaggedShapeDim> axes;
-    return RaggedShape(axes);
-  }
+  RaggedShape To(ContextPtr ctx);
 
  private:
   // TODO: could probably do away with the std::vector and have a max size and
@@ -439,6 +429,75 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
  */
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
+
+/*
+  TODO: fix this documentation...
+
+  Extract meta-info from the shape (this will include populating any row_ids and
+  row_splits that were not already populated).  This is used inside algorithms
+  when we need to transfer meta-info to GPU.
+
+     @param [in]   src   Ragged shape that we're extracting meta-info from
+     @param [out] row_splits  This will be set to an array of size src.NumAxes()-1,
+                         containing pointers to the row_splits' Data() vectors.
+                         The array will be on the same device as `src`.
+     @param [out] row_splits  This will be set to an array of size src.NumAxes()-1,
+                         containing pointers to the row_splits' Data() vectors.
+                         The array will be on the same device as `src`.
+
+
+     Host (i.e. CPU memory) array of RowInfo that we're
+                         writing to (but the pointers inside them are to the
+                         memory of the device used in shape.Context());
+                         must be the start of an array of length
+                         shape.NumAxes().
+                         Note: element 0 of the output `ptrs` contains a
+                         row_splits with [ 0, shape.Dim0() ]
+                         and the row_ids are [ 0 0 0 (repeats shape.Dim0() times) 1 ]
+*/
+// outputs have dims src.NumAxes() - 1.
+void GetRowInfo(RaggedShape &src,
+                Array1<int32_t*> *row_splits,
+                Array1<int32_t*> *row_ids);
+
+/*
+  Get some meta-info for an array of RaggedShape, and transfer them
+  to the
+  device that `src` is located on
+
+     @param [in] num_src  Number of source arrays to process.
+     @param [in] src      Source arrays.  Let num_axes be src[0]->NumAxes().
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+     @param [out] offsets   Output array of `offsets` pointers,
+                          will be of dimension num_axes by num_src+1;
+                          these are the exclusive-sum of the TotSize(axis)
+                          of the respective sources.
+     @param [out] tot_sizes  The last column of `offsets`, as a std::vector
+*/
+void GetInfoMulti(int32_t num_src, RaggedShape **src,
+                  Array2<int32_t *> *row_splits, Array2<int32_t *> *row_ids,
+                  Array2<int32_t *> *offsets, std::vector<int32_t> *tot_sizes);
+
+/**
+ * @fn
+ * void GetRowInfoMulti(int32_t num_src, RaggedShape **src,
+ *                      Array2<int32_t *> *row_splits,
+ *                      Array2<int32_t *> *row_ids)
+ * @brief
+ *
+ * @param num_src
+ * @param src
+ * @param row_splits
+ * @param row_ids
+ *
+ * @todo doc this
+ */
+void GetRowInfoMulti(int32_t num_src, RaggedShape **src,
+                     Array2<int32_t *> *row_splits,
+                     Array2<int32_t *> *row_ids);
 
 /*
   Create a RaggedShape from an array of row-ids.  (which maps each element to

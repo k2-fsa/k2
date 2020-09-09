@@ -192,6 +192,11 @@ __global__ void GetTaskRedirect(int32_t num_tasks,
   }
 }
 
+void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
+                     const int32_t *row_splits, TaskRedirect *redirect_out) {
+  // TODO
+}
+
 void GetTaskRedirect(cudaStream_t stream, int32_t num_tasks,
                      const int32_t *row_splits,
                      TaskRedirect *redirect_out) {

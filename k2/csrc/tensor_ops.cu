@@ -60,7 +60,7 @@ void CopyTensorElements(Tensor src, Tensor dest) {
   if (num_axes > 2) {
     // For now, only directly support copies of at most 2 dims.
     int32_t leading_dim = src.Dim(0);
-    ParallelRunner<ContextPtr> pr(c);
+    ParallelRunner pr(c);
     for (int32_t i = 0; i < leading_dim; i++) {
       With(pr.NewStream());
       Tensor src_part = src.Index(0, i),

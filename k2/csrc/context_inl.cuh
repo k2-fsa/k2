@@ -56,6 +56,11 @@ inline void MemoryCopy(void *dst, const void *src, std::size_t count,
   cudaMemcpy(dst, src, count, it->second);
 }
 
+template <typename T1, typename T2>
+bool IsCompatible(const T1 &t1, const T2 &t2) {
+  // suppose both T1 and T2 have member method `Context`
+  return t1.Context()->IsCompatible(*t2.Context());
+}
 
 template <typename T>
 ContextPtr GetContext(T &t) {
@@ -171,16 +176,6 @@ template <typename ContextPtrType, typename LambdaT>
 void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
   Eval2(c->GetCudaStream(), m, n, lambda);
 }
-
-/**
- * @brief
- *
- * @tparam ContextPtrType
- *
- * @todo: implement this
- */
-template <typename ContextPtrType>
-void ParallelRunner<ContextPtrType>::Finish() {}
 
 }  // namespace k2
 

@@ -17,6 +17,7 @@ add_library(context STATIC
     context.cu
     dtype.cu
     math.cu
+    ragged.cc
     ragged.cu
     tensor.cu
     tensor_ops.cu
@@ -36,7 +37,7 @@ set(cuda_tests
     array_test
     log_test
     # TODO(haowen): uncomment this after build ragged
-    # ragged_test
+#     ragged_test
     ragged_shape_test
     tensor_test
     utils_test

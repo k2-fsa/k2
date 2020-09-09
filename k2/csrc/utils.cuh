@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cassert>
 #include <type_traits>
+#include <ostream>
 
 #include "k2/csrc/context.cuh"
 
@@ -416,14 +417,12 @@ __host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
   return IntAsFloat((i >= 0) ? i : i ^ 0x7FFFFFFF);
 }
 
-
-
-
 // have to figure out if there's a better place to put this
 template <typename T>
 std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
   os << "[ ";
-  for (auto iter = vec.begin(); iter != vec.end(); ++iter) os << *iter << ' ';
+  for (auto iter = vec.begin(); iter != vec.end(); ++iter)
+    os << *iter << ' ';
   os << ']';
 }
 

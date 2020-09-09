@@ -18,6 +18,43 @@
 
 namespace k2 {
 
+/*
+  Returns a CPU array of shape (src[0]->NumAxes()+1) by (num_srcs + 1), where
+  each row is the exclusive-sum of the TotSize() of the respective sources,
+  on the previous axis (or 1 for axis 0).  Specifically: it's the same
+  as setting ans(i,j) to (i == 0 ? 1 : src[j]->TotSize(i-1)), and then
+  doing an exclusive-sum on each row of i.
+
+     @param [in] num_srcs  The number of `RaggedShape`s in `src`
+     @param [in] src    The shapes whose sizes we want.  Must all have the
+                      same NumAxes().
+     @return   Returns a freshly allocated CPU Array2<int32_t> of dimension
+               src[0]->NumAxes() by (num_srcs + 1), where each
+               row is the exclusive-sum of the TotSize() of the respective
+               sources, on that axis.  Its last column contains the totals.
+
+ */
+inline Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
+  //  src_offsets[i,j]  == src_offsets.Data()[i*num_axes_in + j] contains:
+  //          sum(0 <= k < i) src[k]->TotSize(j).
+  int32_t num_axes_in = src[0]->NumAxes();
+  Array2<int32_t> src_offsets(GetCpuContext(), num_srcs + 1, num_axes_in);
+  int32_t *src_offsets_data = src_offsets.Data();
+  int32_t src_offsets_stride0 = num_srcs + 1;
+  K2_DCHECK_EQ(src_offsets.ElemStride0(), src_offsets_stride0);
+
+  for (int32_t axis = 0; axis < num_axes_in; axis++) {
+    int32_t sum = 0;
+    for (int32_t i = 0; i <= num_srcs; i++) {
+      src_offsets_data[i * src_offsets_stride0 + axis] = sum;
+      if (i < num_srcs) {
+        sum += (axis == 0 ? 1 : src[i]->TotSize(axis - 1));
+      }
+    }
+  }
+  return src_offsets;
+}
+
 template <typename T>
 Ragged<T> Stack(int32_t num_srcs, const Ragged<T> *src, int32_t axis) {
   K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe

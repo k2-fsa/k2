@@ -175,7 +175,13 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest);
  */
 
 template <typename T>
-void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int32_t axis);
+void ExclusiveSum(ContextPtr &c,
+     Array2<T> &src, Array2<T> *dest, int32_t axis) {
+}
+
+template <typename T>
+void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
+}
 
 /*
   Append a list of Array1<T> to create a longer array.
