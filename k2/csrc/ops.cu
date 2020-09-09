@@ -146,7 +146,7 @@ bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
 
   Array1<int32_t> temp_array;
   if (temp == nullptr || temp->Dim() == 0) {
-    temp2 = Array1<int32_t>(row_ids.Context(), 1);
+    temp_array = Array1<int32_t>(row_ids.Context(), 1);
     temp = &temp_array;
   }
 
@@ -167,8 +167,8 @@ bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
 
 
 bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
-  int32_t *data = row_ids.Data();
-  int32_t dim = row_ids.Dim();
+  int32_t *data = row_splits.Data();
+  int32_t dim = row_splits.Dim();
   if (dim == 0) return true;  // will treat this as valid.a
 
   if (ctx.GetDeviceType() == kCpu) {
@@ -180,14 +180,14 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
 
   Array1<int32_t> temp_array;
   if (temp == nullptr || temp->Dim() == 0) {
-    temp2 = Array1<int32_t>(row_ids.Context(), 1);
+    temp_array = Array1<int32_t>(row_splits.Context(), 1);
     temp = &temp_array;
   }
 
-  ContextPtr &ctx = row_ids.GetContext();
+  ContextPtr &ctx = row_splits.GetContext();
   (*temp)[0] = 0;
   int32_t *temp_data = temp->Data();
-  auto lambda_check_row_ids = [=] __host__ __device__ (int32_t i) -> void {
+  auto lambda_check_row_splits = [=] __host__ __device__ (int32_t i) -> void {
      int32_t this_val = data[i],
         next_val = data[i+1];
      if (this_val > next_val || (i == 0 && this_val != 0))
@@ -195,7 +195,7 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
   };
   // Note: we know that dim >= 1 as we would have returned above if dim == 0.
   // This will do nothing if (dim-1) == 0.
-  Eval(ctx, dim - 1, lambda_check_row_ids);
+  Eval(ctx, dim - 1, lambda_check_row_splits);
   return !((*temp)[0]);
 }
 
@@ -203,7 +203,37 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
 bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
                              Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp) {
-  // TODO.
+  int32_t num_rows = row_splits.Dim() - 1,
+      num_elems = row_ids.Dim();
+  if (num_rows < 0 || (num_rows == 0 && num_elems > 0))
+    return;
+  if (num_rows == 0 && num_elems == 0) {
+    return row_splits[0] == 0;
+  }
+  int32_t row_ids_data = row_ids.Data(),
+      row_splits_data = row_splits.Data();
+
+  Array1<int32_t> temp_array;
+  if (temp == nullptr || temp->Dim() == 0) {
+    temp_array = Array1<int32_t>(row_ids.Context(), 1);
+    temp = &temp_array;
+  }
+  // The following isn't totally ideal, it would be better to have a single kernel
+  // and avoid latency.  Later we can fix this.
+  if (!ValidateRowSplits(row_splits, temp))
+    return false;
+
+  auto lambda_check_row_ids = [=] __host__ __device__ (int32_t i) -> void {
+    int32_t this_row = row_ids_data[i];
+    if (this_row < 0 || this_row >= num_rows ||
+        this_row < row_splits_data[this_row] ||
+        this_row >= row_splits_data[this_row + 1])
+      *temp_data = 1;
+  };
+  Eval(ctx, num_elems, lambda_check_row_ids);
+  return !((*temp)[0]);
+
+
 }
 
 

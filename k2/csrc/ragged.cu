@@ -188,6 +188,9 @@ void RaggedShape::Check() {
       K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
     }
 
+#ifdef K2_
+    #
+
     int32_t num_elems;
     {  // Check row_splits.
 
@@ -212,7 +215,7 @@ void RaggedShape::Check() {
       };
       Eval(c, num_rows + 1, lambda_check_row_splits);
       meta = meta.To(GetCpuContext());
-      num_elems = *num_elems_data;
+      num_elems = meta[1];
       int32_t ok = meta[0];
       if (!ok) {
         K2_LOG(FATAL) << "Problem validating row-splits: for axes_[" << axis
