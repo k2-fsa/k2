@@ -56,13 +56,10 @@ class Shape {
   // strides).
   bool SameDims(const Shape &other) const {
     if (num_axes_ != other.NumAxes()) return false;
-
-    const int32_t *other_dims = other.Dims();
-
+    const int32_t *other_dims = other.dims_;
     for (int32_t i = 0; i != num_axes_; ++i) {
       if (dims_[i] != other_dims[i]) return false;
     }
-
     return true;
   }
 
