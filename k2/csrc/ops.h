@@ -127,7 +127,9 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
                        Must be on same device as src.
  */
 template <typename S, typename T>
-void ExclusiveSum(Array1<S> &src, Array1<T> *dest);
+void ExclusiveSum(Array1<S> &src, Array1<T> *dest) {
+  // TODO(haowen): implement
+}
 
 /*
   Sets 'dest' to exclusive prefix sum of the result of dereferinging the
@@ -161,6 +163,11 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest);
  */
 template <typename T>
 void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int axis);
+
+template <typename T>
+void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
+  // TODO(haowen): implement it
+}
 
 /*
   Append a list of Array1<T> to create a longer array.
@@ -258,7 +265,6 @@ void And(Array1<T> &src, T default_value, Array1<T> *dest);
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
 
-
 /*
   Returns a random Array1, uniformly distributed betwen `min_value` and
   `max_value`.  CAUTION: this will be randomly generated on the CPU, for now,
@@ -274,8 +280,8 @@ void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
 
  */
 template <typename T>
-Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value, T max_value);
-
+Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
+                            T max_value);
 
 /*
   Return a newly allocated Array1 whose values form a linear sequence,
@@ -283,7 +289,6 @@ Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value, T max_value
 */
 template <typename T>
 Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc = 1);
-
 
 }  // namespace k2
 

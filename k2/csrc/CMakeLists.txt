@@ -9,8 +9,11 @@ add_subdirectory(host)
 # the target
 add_library(context
     context.cu
-    tensor.cu
     dtype.cu
+    math.cu
+    ragged.cu
+    tensor.cu
+    utils.cu
 )
 
 # lib deps
@@ -26,6 +29,7 @@ set(cuda_tests
     ops_test
     # TODO(haowen): uncomment this after build ragged
     # ragged_test
+    ragged_shape_test
     tensor_test
     utils_test
     )

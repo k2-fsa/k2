@@ -123,7 +123,7 @@ class Logger {
 
 class Voidifier {
  public:
-  __host__ __device__ void operator&(const Logger &) const {}
+  __host__ __device__ void operator&(const Logger &)const {}
 };
 
 }  // namespace internal
@@ -173,6 +173,13 @@ class Voidifier {
 
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
+
+#define K2_CUDA_SAFE_CALL(...)               \
+  do {                                       \
+    (__VA_ARGS__);                           \
+    cudaDeviceSynchronize();                 \
+    K2_CHECK_CUDA_ERROR(cudaGetLastError()); \
+  } while (0)
 
 // ============================================================
 //       For debug check
