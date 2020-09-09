@@ -7,7 +7,7 @@ add_subdirectory(host)
 #---------------------------- Build K2 CUDA sources ----------------------------
 
 # the target
-add_library(context
+add_library(context STATIC
     context.cu
     dtype.cu
     math.cu
@@ -15,6 +15,7 @@ add_library(context
     tensor.cu
     utils.cu
 )
+set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # lib deps
 target_link_libraries(context PUBLIC cub)
@@ -40,6 +41,7 @@ function(k2_add_cuda_test name)
   # with files in k2/csrc/, will remove this finally.
   set(target_name "cu_${name}")
   add_executable(${target_name} "${name}.cu")
+  set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   target_link_libraries(${target_name}
       PRIVATE
       context

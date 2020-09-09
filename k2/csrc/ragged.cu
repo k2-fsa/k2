@@ -427,8 +427,6 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
   auto old_offsets_acc = old_offsets.Accessor(),
        new_offsets_acc = new_offsets.Accessor();
 
-  auto *old_offsets_acc_ptr = &old_offsets_acc,
-       *new_offsets_acc_ptr = &new_offsets_acc;
   Array1<int32_t *> row_splits_ptrs = GetRowSplitsPtr(src);
   int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
 
@@ -437,7 +435,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
     // 0 <= i <= dim0
     int32_t cur_offset = i;
     for (int32_t axis = 0; axis < num_axes; axis++) {
-      old_offsets_acc_ptr->operator()(0, i) = cur_offset;
+      old_offsets_acc(0, i) = cur_offset;
       if (axis + 1 == num_axes) return;
       cur_offset = row_splits_ptrs_data[axis][cur_offset];
     }
@@ -448,10 +446,10 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
                                                         int32_t new_i) {
     // 0 <= axis < num_axes;  0 <= new_i < dim0
     int32_t old_i = new2old_data[new_i],
-            this_old_offset = old_offsets_acc_ptr->operator()(axis, old_i),
-            next_old_offset = old_offsets_acc_ptr->operator()(axis, old_i + 1),
+            this_old_offset = old_offsets_acc(axis, old_i),
+            next_old_offset = old_offsets_acc(axis, old_i + 1),
             size = next_old_offset - this_old_offset;
-    new_offsets_acc_ptr->operator()(axis, new_i) = size;
+    new_offsets_acc(axis, new_i) = size;
   };
   Eval2(c, num_axes, dim0, lambda_get_new_offsets);
   ExclusiveSum(new_offsets, &new_offsets);
@@ -489,16 +487,12 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
         // the `axis`'th row of `offsets`; the values in the array
         // are related to those in the `axis+1`'th row.
         int32_t old_idx = new2old_data[new_idx],
-                this_old_offset =
-                    old_offsets_acc_ptr->operator()(axis, old_idx),
-                next_old_offset =
-                    old_offsets_acc_ptr->operator()(axis, old_idx + 1),
-                this_new_offset =
-                    new_offsets_acc_ptr->operator()(axis, old_idx),
+                this_old_offset = old_offsets_acc(axis, old_idx),
+                next_old_offset = old_offsets_acc(axis, old_idx + 1),
+                this_new_offset = new_offsets_acc(axis, old_idx),
                 num_rows = next_old_offset - this_old_offset,
-                value_offset =
-                    new_offsets_acc_ptr->operator()(axis + 1, new_idx) -
-                    old_offsets_acc_ptr->operator()(axis + 1, old_idx);
+                value_offset = new_offsets_acc(axis + 1, new_idx) -
+                               old_offsets_acc(axis + 1, old_idx);
 
         // Using <= instead of < below causes threads for different src_idx to
         // write a single overlapping value, but also ensures that the
@@ -535,15 +529,12 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
         // the `axis+1`'th row of `offsets`; the values in the array
         // are related to those in the `axis`'th row.
         int32_t old_idx = new2old_data[new_idx],
-                this_old_offset =
-                    old_offsets_acc_ptr->operator()(axis + 1, old_idx),
-                next_old_offset =
-                    old_offsets_acc_ptr->operator()(axis + 1, old_idx + 1),
-                this_new_offset =
-                    new_offsets_acc_ptr->operator()(axis + 1, old_idx),
+                this_old_offset = old_offsets_acc(axis + 1, old_idx),
+                next_old_offset = old_offsets_acc(axis + 1, old_idx + 1),
+                this_new_offset = new_offsets_acc(axis + 1, old_idx),
                 num_rows = next_old_offset - this_old_offset,
-                value_offset = new_offsets_acc_ptr->operator()(axis, new_idx) -
-                               old_offsets_acc_ptr->operator()(axis, old_idx);
+                value_offset = new_offsets_acc(axis, new_idx) -
+                               old_offsets_acc(axis, old_idx);
 
         // Using <= instead of < below causes threads for different src_idx to
         // write a single overlapping value, but also ensures that the
@@ -556,9 +547,8 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
         }
         // TODO: maybe remove this if I decide last value is not needed.
         if (new_idx == dim0 - 1 && thread_idx == num_rows) {
-          int32_t next_value_offset =
-              new_offsets_acc_ptr->operator()(axis, new_idx + 1) -
-              old_offsets_acc_ptr->operator()(axis, old_idx + 1);
+          int32_t next_value_offset = new_offsets_acc(axis, new_idx + 1) -
+                                      old_offsets_acc(axis, old_idx + 1);
           this_new_row_ids[this_new_offset + thread_idx] = next_value_offset;
         }
       };
