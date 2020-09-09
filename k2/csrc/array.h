@@ -216,6 +216,7 @@ class Array1 {
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
   T operator[](int32_t i) const {
+    // TODO(haowen): add GPU version, i.e. copy data to CPU and return
     K2_CHECK_LT(i, Dim());
     return Data()[i];
   }
@@ -282,14 +283,15 @@ template <typename T>
 struct Array2Accessor {
   T *data;
   int32_t elem_stride0;
-  __host__ __device__ T &operator()(int32_t i, int32_t j) {
+  __host__ __device__ T &operator()(int32_t i, int32_t j) const {
     return data[i * elem_stride0 + j];
   }
 
   T *Row(int32_t i) { return data + elem_stride0 * i; }
   Array2Accessor(T *data, int32_t elem_stride0)
       : data(data), elem_stride0(elem_stride0) {}
-  Array2Accessor(const Array2Accessor &other) = default;
+  __host__ __device__ Array2Accessor(const Array2Accessor &other)
+      : data(other.data), elem_stride0(other.elem_stride0) {}
   Array2Accessor &operator=(const Array2Accessor &other) = default;
 };
 

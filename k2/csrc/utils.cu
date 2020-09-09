@@ -24,7 +24,7 @@ __global__ void FillValuesKernel(int32_t *data, int32_t num_values,
 
 // This launches a kernel.  It's the same as doing:
 // for (int32_t i = 0; i < num_values; i++) data[i] = value;
-void FillValues(int32_t *data, int32_t num_values, int32_t value) {
+__device__ void FillValues(int32_t *data, int32_t num_values, int32_t value) {
   int32_t block_size = 256;
   int32_t loop_len = 2;
   int32_t grid_size = NumBlocks(num_values / loop_len, block_size);
