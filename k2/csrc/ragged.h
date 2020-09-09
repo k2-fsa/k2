@@ -364,6 +364,11 @@ struct Ragged {
     CHECK_EQ(shape.TotSize(shape.NumAxes() - 1), values.Dim());
   }
 
+  // Default constructor will not leave this a valid Ragged object, you
+  // shouldn't do anything with it.  Both members will be initialized with
+  // default constructors.
+  Ragged() { }
+
   // Note: 'values' will be uninitialized.
   Ragged(RaggedShape &shape)
       : shape(shape),

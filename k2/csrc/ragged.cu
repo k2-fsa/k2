@@ -187,7 +187,6 @@ void RaggedShape::Check() {
       K2_CHECK_EQ(rsd.cached_tot_size, 1);
       K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
     }
-
     int32_t num_elems;
     {  // Check row_splits.
 

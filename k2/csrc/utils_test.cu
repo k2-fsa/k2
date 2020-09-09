@@ -18,7 +18,7 @@
 
 namespace k2 {
 
-TEST(UtilsTest, CpuExclusivePrefixSum) {
+TEST(UtilsTest, CpuExclusiveSum) {
   void *deleter_context;
   ContextPtr c = GetCpuContext();
   int32_t n = 5;
@@ -30,7 +30,7 @@ TEST(UtilsTest, CpuExclusivePrefixSum) {
 
   auto *dst = reinterpret_cast<int32_t *>(
       c->Allocate(n * sizeof(int32_t), &deleter_context));
-  ExclusivePrefixSum(c, n, src, dst);
+  ExclusiveSum(c, n, src, dst);
 
   EXPECT_THAT(std::vector<int32_t>(dst, dst + n),
               ::testing::ElementsAre(0, 0, 1, 3, 6));
@@ -39,7 +39,7 @@ TEST(UtilsTest, CpuExclusivePrefixSum) {
   c->Deallocate(src, deleter_context);
 }
 
-TEST(UtilsTest, CudaExclusivePrefixSum) {
+TEST(UtilsTest, CudaExclusiveSum) {
   void *deleter_context;
   ContextPtr c = GetCudaContext();
   int32_t n = 5;
@@ -52,7 +52,7 @@ TEST(UtilsTest, CudaExclusivePrefixSum) {
 
   auto *dst = reinterpret_cast<int32_t *>(
       c->Allocate(n * sizeof(int32_t), &deleter_context));
-  ExclusivePrefixSum(c, n, src, dst);
+  ExclusiveSum(c, n, src, dst);
 
   cudaMemcpy(h.data(), dst, sizeof(int32_t) * n, cudaMemcpyDeviceToHost);
 

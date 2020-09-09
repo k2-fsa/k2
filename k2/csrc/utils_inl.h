@@ -28,7 +28,7 @@
 namespace k2 {
 
 template <typename SrcPtr, typename DestPtr>
-void ExclusivePrefixSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest) {
+void ExclusiveSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest) {
   DeviceType d = c->GetDeviceType();
   using SumType = typename std::decay<decltype(dest[0])>::type;
   if (d == kCpu) {

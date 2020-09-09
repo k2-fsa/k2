@@ -449,7 +449,7 @@ void Determinize(const Ragged3<Arc> &input,
 
       Array1<int> prefix_sum(repr_idx.size());
       // compute exclusive prefix sum of `is_new` -> `prefix_sum`..
-      ExclusivePrefixSum(is_new, &prefix_sum);
+      ExclusiveSum(is_new, &prefix_sum);
 
       int num_new = sort_idxs[repr_idx.size() - 1];
       Array1<int> sort_idxs(num_new + 1);

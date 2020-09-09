@@ -25,10 +25,6 @@ class Shape {
  public:
   int32_t NumAxes() const { return num_axes_; }
 
-  const int32_t *Dims() const { return dims_; }
-
-  const int32_t *Strides() const { return strides_; }
-
   int32_t Dim(int32_t i) const {
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, num_axes_);
@@ -43,20 +39,27 @@ class Shape {
 
   int32_t Nelement() const { return num_element_; }
   // storage size in elements
+
+  std::vector<int32_t> Dims() const {
+    return std::vector<int32_t>(dims_, dims_ + num_axes_);
+  }
+
+  std::vector<int32_t> Strides() const {
+    return std::vector<int32_t>(strides_, strides_ + num_axes_);
+  }
+
   int32_t StorageSize() const { return storage_size_; }
+
   bool IsContiguous() const { return is_contiguous_; }
 
   // Returns true if the two shapes have the same dims (but not necessarily
   // strides).
   bool SameDims(const Shape &other) const {
     if (num_axes_ != other.NumAxes()) return false;
-
-    const int32_t *other_dims = other.Dims();
-
+    const int32_t *other_dims = other.dims_;
     for (int32_t i = 0; i != num_axes_; ++i) {
       if (dims_[i] != other_dims[i]) return false;
     }
-
     return true;
   }
 
@@ -158,6 +161,14 @@ class Tensor {
     return impl_->shape.SameDims(other.GetShape());
   }
   inline bool NumAxes() const { return impl_->shape.NumAxes(); }
+
+  inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
+  inline std::vector<int32_t> Dims() { return impl_->shape.Dims(); }
+  inline int32_t Stride(int32_t i) { return impl_->shape.Stride(i); }
+  inline std::vector<int32_t> Strides() { return impl_->shape.Strides(); }
+  inline int32_t Nelement(int32_t i) { return impl_->shape.Nelement(); }
+  inline bool IsContiguous() { return impl_->shape.IsContiguous(); }
+
   inline int32_t Dim(int32_t i) const { return impl_->shape.Dim(i); }
   inline int32_t Stride(int32_t i) const { return impl_->shape.Stride(i); }
   inline int32_t Nelement(int32_t i) const { return impl_->shape.Nelement(); }
