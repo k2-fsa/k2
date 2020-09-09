@@ -12,8 +12,9 @@
 #ifndef K2_CSRC_CONTEXT_H_
 #define K2_CSRC_CONTEXT_H_
 
-#include <cassert>
 #include <glog/logging.h>
+
+#include <cassert>
 #include <map>
 #include <memory>
 
@@ -34,7 +35,7 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 class Context;
 using ContextPtr = std::shared_ptr<Context>;
 
-#define kCudaStreamInvalid  ((cudaStream_t)(~((size_t)0)))
+#define kCudaStreamInvalid ((cudaStream_t)(~((size_t)0)))
 
 /**
    class Context is the main surface of interaction with external tensor
@@ -157,7 +158,6 @@ inline MemoryCopyKind GetMemoryCopyKind(const Context &src,
 
 inline void MemoryCopy(void *dst, const void *src, std::size_t count,
                        MemoryCopyKind kind) {
-
   std::map<MemoryCopyKind, cudaMemcpyKind> copy_kind_mappings = {
       {MemcpyHostToHost, cudaMemcpyHostToHost},
       {MemcpyHostToDevice, cudaMemcpyHostToDevice},
@@ -165,7 +165,8 @@ inline void MemoryCopy(void *dst, const void *src, std::size_t count,
       {MemcpyDeviceToDevice, cudaMemcpyDeviceToDevice}};
   auto it = copy_kind_mappings.find(kind);
   K2_CHECK_NE(it, copy_kind_mappings.end());
-  cudaMemcpy(dst, src, count, it->second);
+  auto ret = cudaMemcpy(dst, src, count, it->second);
+  K2_CHECK_CUDA_ERROR(ret);
 }
 
 /*
@@ -210,6 +211,12 @@ class BackgroundRunner {
   // that Wait() can wait on, and to have the number of threads limited by a
   // global semaphore.
 };
+
+template <typename T1, typename T2>
+bool IsCompatible(const T1 &t1, const T2 &t2) {
+  // suppose both T1 and T2 have member method `Context`
+  return t1.Context()->IsCompatible(*t2.Context());
+}
 
 template <typename T>
 ContextPtr GetContext(const T &t) {
@@ -262,9 +269,7 @@ struct Region : public std::enable_shared_from_this<Region> {
     return reinterpret_cast<T *>(data);
   }
 
-  ~Region() {
-    context->Deallocate(data, deleter_context);
-  }
+  ~Region() { context->Deallocate(data, deleter_context); }
 };
 
 using RegionPtr = std::shared_ptr<Region>;
@@ -304,7 +309,8 @@ RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes);
   Convenience wrapper for NewRegion() that takes the context from a provided
   region.
  */
-inline std::shared_ptr<Region> NewRegion(Region &region, std::size_t num_bytes) {
+inline std::shared_ptr<Region> NewRegion(Region &region,
+                                         std::size_t num_bytes) {
   return NewRegion(region.context, num_bytes);
 }
 
@@ -352,7 +358,7 @@ void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   } else {
     int32_t block_size = 256;
     int32_t grid_size = NumBlocks(n, block_size);
-    eval_lambda<LambdaT> <<<grid_size, block_size, 0, stream>>> (n, lambda);
+    eval_lambda<LambdaT><<<grid_size, block_size, 0, stream>>>(n, lambda);
     auto err = cudaGetLastError();
     K2_DCHECK_CUDA_ERROR(err);
   }
@@ -392,7 +398,7 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
     // GetBlockSizesForSimpleMatrixOperation().
     dim3 block_size(16, 16, 1);
     dim3 grid_size(NumBlocks(n, 16), NumBlocks(m, 16));
-    eval_lambda2 << <grid_size, block_size, 0, stream>>> (m, n, lambda);
+    eval_lambda2<<<grid_size, block_size, 0, stream>>>(m, n, lambda);
     auto err = cudaGetLastError();
     K2_DCHECK_CUDA_ERROR(err);
   }
@@ -455,10 +461,9 @@ class With {
   TODO: properly implement this.  Right now it doesn't background them
   at all, just forwarding them to the sequential versions of Eval().
 */
-template <typename ContextPtrType>
 class ParallelRunner {
  public:
-  ParallelRunner(ContextPtrType c) : c_(c) {}
+  ParallelRunner(ContextPtr c) : c_(c) {}
 
   // create a new stream, that first syncs with stream of c_ via an event.  The
   // destructor will cause the stream of c_ to wait on this stream in the
@@ -474,7 +479,10 @@ class ParallelRunner {
   // so that you won't need to directly pass this into Eval(); the context
   // will call CudaStreamOverride::OverrideStream() and replace it
   // with this stream automatically.
-  cudaStream_t NewStream();
+  cudaStream_t NewStream() {
+    // TODO
+    return kCudaStreamInvalid;
+  }
 
   void Finish();  // like calling destructor manually.
 

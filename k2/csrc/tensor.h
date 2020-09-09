@@ -13,11 +13,12 @@
 #ifndef K2_CSRC_TENSOR_H_
 #define K2_CSRC_TENSOR_H_
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/dtype.h"
+#include "k2/csrc/log.h"
 
 namespace k2 {
 class Shape {
@@ -25,12 +26,14 @@ class Shape {
   int32_t NumAxes() const { return num_axes_; }
 
   int32_t Dim(int32_t i) const {
-    CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(num_axes_));
+    K2_CHECK_GE(i, 0);
+    K2_CHECK_LT(i, num_axes_);
     return dims_[i];
   }
 
   int32_t Stride(int32_t i) const {
-    CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(num_axes_));
+    K2_CHECK_GE(i, 0);
+    K2_CHECK_LT(i, num_axes_);
     return strides_[i];
   }
 
@@ -45,19 +48,21 @@ class Shape {
     return std::vector<int32_t>(strides_, strides_ + num_axes_);
   }
 
-  int32_t StorageSize() const {
-    return storage_size_;
-  };
+  int32_t StorageSize() const { return storage_size_; }
+
   bool IsContiguous() const { return is_contiguous_; }
 
   // Returns true if the two shapes have the same dims (but not necessarily
   // strides).
   bool SameDims(const Shape &other) const {
     if (num_axes_ != other.NumAxes()) return false;
+
     const int32_t *other_dims = other.Dims();
+
     for (int32_t i = 0; i != num_axes_; ++i) {
       if (dims_[i] != other_dims[i]) return false;
     }
+
     return true;
   }
 
@@ -84,9 +89,9 @@ class Shape {
   int32_t strides_[kMaxDim];  // Strides in elements
 
   // compute the number of elements
-  int32_t ComputeNumElement();
-  int32_t ComputeStorageSize();
-  bool CheckContiguous();
+  int32_t ComputeNumElement() const;
+  int32_t ComputeStorageSize() const;
+  bool CheckContiguous() const;
 };
 
 struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
@@ -126,20 +131,21 @@ class Tensor {
   Tensor(Dtype type, const Shape &shape, RegionPtr region,
          int32_t bytes_offset);
 
-  Tensor(const Tensor &other) : impl_(other.impl_) {}
+  Tensor(const Tensor &other) = default;
+  Tensor &operator=(const Tensor &other) = default;
 
   // Returns pointer to elem with index all-zeros... will check that the type
   // matches the correct one.
   template <typename T>
   T *Data() {
-    K2_CHECK(impl_->dtype == DtypeOf<T>::dtype);
+    K2_CHECK_EQ(impl_->dtype, DtypeOf<T>::dtype);
     return reinterpret_cast<T *>(reinterpret_cast<char *>(impl_->data->data) +
                                  impl_->bytes_offset);
   }
 
   template <typename T>
   const T *Data() const {
-    assert(impl_->dtype == DtypeOf<T>::dtype);
+    K2_CHECK_EQ(impl_->dtype, DtypeOf<T>::dtype);
     return reinterpret_cast<const T *>(
         reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset);
   }
@@ -148,28 +154,28 @@ class Tensor {
   // Tensor with one fewer axis.
   Tensor Index(int32_t axis, int32_t index) const;
 
-  // Assignment is shallow.
-  Tensor &operator=(const Tensor &other) {
-    impl_ = other.impl_;
-    return *this;
-  }
-
   Dtype GetDtype() const { return impl_->dtype; }
   const Shape &GetShape() const { return impl_->shape; }
   int32_t ByteOffset() const { return impl_->bytes_offset; }
   std::shared_ptr<Region> &GetRegion() { return impl_->data; }
 
-  // Forward some funtions from the shape.  Will forward more later.
+  // Forward some functions from the shape.  Will forward more later.
   inline bool SameDim(const Tensor &other) const {
     return impl_->shape.SameDims(other.GetShape());
   }
   inline bool NumAxes() const { return impl_->shape.NumAxes(); }
+
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
   inline std::vector<int32_t> Dims() { return impl_->shape.Dims(); }
   inline int32_t Stride(int32_t i) { return impl_->shape.Stride(i); }
   inline std::vector<int32_t> Strides() { return impl_->shape.Strides(); }
   inline int32_t Nelement(int32_t i) { return impl_->shape.Nelement(); }
   inline bool IsContiguous() { return impl_->shape.IsContiguous(); }
+
+  inline int32_t Dim(int32_t i) const { return impl_->shape.Dim(i); }
+  inline int32_t Stride(int32_t i) const { return impl_->shape.Stride(i); }
+  inline int32_t Nelement(int32_t i) const { return impl_->shape.Nelement(); }
+  inline bool IsContiguous() const { return impl_->shape.IsContiguous(); }
 
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
@@ -189,7 +195,7 @@ class Tensor {
   */
   Tensor To(ContextPtr ctx);
 
-  ContextPtr GetContext() { return impl_->data->context; }
+  ContextPtr Context() { return impl_->data->context; }
 
  private:
   void Init(ContextPtr c);

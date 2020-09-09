@@ -400,7 +400,7 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
   lambda to do a 'one-off task' (invoked once in the resulting kernel).
  */
 
-template <typename LambdaT, typename lambdaU>
+template <typename LambdaT>
 void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
                       TaskRedirect *redirect, int32_t min_threads_per_job,
                       int32_t tot_work, int32_t target_num_loops,
@@ -444,7 +444,7 @@ __host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
   Host version of Cuda's atomicMax function, marked __host__ (the default) for
   clarity.  So we can use this in lambdas that run on both host and device.
  */
-__host__ int32_t atomicMax(int32_t *address, int32_t val) {
+__host__ __forceinline__ int32_t atomicMax(int32_t *address, int32_t val) {
   int32_t old = *address;
   if (old < val) *address = val;
   return old;
