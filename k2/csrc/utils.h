@@ -264,10 +264,12 @@ RowIdFromRowSplits(int32_t num_rows, const int32_t *row_splits, int32_t index,
   // lower_bound gives the first i in row_splits that's greater than `index`.
   // That implies the previous one is <= index.
   //
-  auto i =
-      std::lower_bound(row_splits + 1, row_splits + num_rows + 1, index) - 1;
+  //auto i =
+  //std::lower_bound(row_splits + 1, row_splits + num_rows + 1, index) - 1;
   // K2_DCHECK(static_cast<uint32_t>(i) < static_cast<uint32_t>(num_rows));
-  return *i;
+  // TODO!  Implement std::lower_bound ourselves.
+  //return *i;
+  return 0;  // TODO!  Does not work.
 }
 
 /*

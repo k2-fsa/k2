@@ -112,10 +112,8 @@ Tensor Tensor::Index(int32_t axis, int32_t index) const {
   const auto &this_shape = impl_->shape;
   K2_CHECK_LT(axis, this_shape.NumAxes());
   K2_CHECK_LT(index, this_shape.Dim(axis));
-  std::vector<int32_t> dims(this_shape.Dims(),
-                            this_shape.Dims() + this_shape.NumAxes());
-  std::vector<int32_t> strides(this_shape.Strides(),
-                               this_shape.Strides() + this_shape.NumAxes());
+  std::vector<int32_t> dims = this_shape.Dims();
+  std::vector<int32_t> strides = this_shape.Strides();
   dims.erase(dims.begin() + axis);
   strides.erase(strides.begin() + axis);
   Shape shape(dims, strides);
