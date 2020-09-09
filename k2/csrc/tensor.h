@@ -169,11 +169,6 @@ class Tensor {
   inline int32_t Nelement(int32_t i) { return impl_->shape.Nelement(); }
   inline bool IsContiguous() { return impl_->shape.IsContiguous(); }
 
-  inline int32_t Dim(int32_t i) const { return impl_->shape.Dim(i); }
-  inline int32_t Stride(int32_t i) const { return impl_->shape.Stride(i); }
-  inline int32_t Nelement(int32_t i) const { return impl_->shape.Nelement(); }
-  inline bool IsContiguous() const { return impl_->shape.IsContiguous(); }
-
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
     The returned value may share the same underlying `data` memory as *this.
