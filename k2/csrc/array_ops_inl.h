@@ -26,6 +26,24 @@
 namespace k2 {
 
 template <typename T>
+void ExclusiveSum(ContextPtr &c,
+                  Array2<T> &src, Array2<T> *dest, int32_t axis) {
+  // TODO
+}
+
+template <typename T>
+void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
+  // TODO
+}
+
+template <typename T>
+void ExclusiveSum(Array1<T> &src) {
+  Array1<T> ans(src.Context(), src.Dim());
+  ExclusiveSum(src, &ans);
+  return ans;
+}
+
+template <typename T>
 Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
                             T max_value) {
   Array1<T> temp(GetCpuContext(), dim);

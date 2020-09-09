@@ -136,11 +136,7 @@ void ExclusiveSum(Array1<S> &src, Array1<T> *dest);
      ans[i] = sum_{k=0}^{i-1} src[i].
  */
 template <typename T>
-void ExclusiveSum(Array1<T> &src) {
-  Array1<T> ans(src.Context(), src.Dim());
-  ExclusiveSum(src, &ans);
-  return ans;
-}
+void ExclusiveSum(Array1<T> &src);
 
 
 /*
@@ -173,15 +169,12 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest);
                        summation is over row axis (slower because we have to
                        transpose), axis = 1 means summation is over column axis.
  */
-
 template <typename T>
 void ExclusiveSum(ContextPtr &c,
-     Array2<T> &src, Array2<T> *dest, int32_t axis) {
-}
+     Array2<T> &src, Array2<T> *dest, int32_t axis);
 
 template <typename T>
-void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
-}
+void ExclusiveSum(Array2<T> &src, Array2<T> *dest);
 
 /*
   Append a list of Array1<T> to create a longer array.
