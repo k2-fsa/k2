@@ -340,7 +340,8 @@ __global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
   }
 }
 
-inline int32_t NumBlocks(int32_t size, int32_t block_size) {
+__host__ __device__ __forceinline__ int32_t NumBlocks(int32_t size,
+                                                      int32_t block_size) {
   return (size + block_size - 1) / block_size;
 }
 
