@@ -372,7 +372,7 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
   lambda to do a 'one-off task' (invoked once in the resulting kernel).
  */
 
-template <typename LambdaT, typename lambdaU>
+template <typename LambdaT>
 void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
                       TaskRedirect *redirect, int32_t min_threads_per_job,
                       int32_t tot_work, int32_t target_num_loops,
@@ -422,6 +422,7 @@ __host__ __device__ __forceinline__ int32_t FloatToOrderedInt(float f) {
 __host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
   return IntAsFloat((i >= 0) ? i : i ^ 0x7FFFFFFF);
 }
+
 
 }  // namespace k2
 

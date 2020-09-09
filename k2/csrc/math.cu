@@ -22,7 +22,7 @@ namespace k2 {
 int32_t HighestBitSet(int32_t i) {
  K2_CHECK_GE(i, 0);
   for (int64_t j = 0; j < 32; j++) {
-    if (i < (1<<j)) {
+    if (i < (1 << j)) {
       return i - 1;
     }
   }
@@ -40,10 +40,8 @@ int32_t RandInt(int32_t min, int32_t max) {
 // we aren't relying on any exact properties.
 int32_t RandIntGeometric(int32_t min, int32_t max) {
   max >>= (RandInt(0, HighestBitSet(max / min)));
-  if (max < min)
-    max = min;
+  if (max < min) max = min;
   return RandInt(min, max);
 }
-
 
 }  // namespace k2

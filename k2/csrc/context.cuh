@@ -388,10 +388,9 @@ class With {
   TODO: properly implement this.  Right now it doesn't background them
   at all, just forwarding them to the sequential versions of Eval().
 */
-template <typename ContextPtrType>
 class ParallelRunner {
  public:
-  ParallelRunner(ContextPtrType c) : c_(c) {}
+  ParallelRunner(ContextPtr c) : c_(c) {}
 
   // create a new stream, that first syncs with stream of c_ via an event.  The
   // destructor will cause the stream of c_ to wait on this stream in the

@@ -11,16 +11,19 @@ add_subdirectory(host)
 include_directories(${CUDAToolkit_INCLUDE_DIRS})
 
 # the target
-add_library(context
+add_library(context STATIC
     array_ops.cu
     context.cc
     context.cu
     dtype.cu
+    math.cu
+    ragged.cu
     tensor.cu
     tensor_ops.cu
     utils.cu
 #    ragged.cc
 )
+set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # lib deps
 target_link_libraries(context PUBLIC cub)
@@ -34,6 +37,7 @@ set(cuda_tests
     log_test
     # TODO(haowen): uncomment this after build ragged
     # ragged_test
+    ragged_shape_test
     tensor_test
     utils_test
     )

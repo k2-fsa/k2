@@ -36,6 +36,83 @@ constexpr int32_t kTransBlockRows = 8;
 }  // namespace
 
 namespace k2 {
+// TODO(haowen): move the implementations to file `op_inl.h` or
+// `op.cu`(specialized on device and data type)?
+template <typename T>
+__global__ void TransposeKernel(int32_t rows, int32_t cols, const T *input,
+                                T *output) {
+  // TODO(haowen): here we need to handle different type of T to avoid bank
+  // conflicts, the size of cache now is fine for type size with 32bit (e.g.
+  // int32 or float).
+  __shared__ T cache[kTransTileDim][kTransTileDim + 1];
+
+  // input index, in a coalesced manner.
+  int32_t x = threadIdx.x + blockIdx.x * kTransTileDim;
+  int32_t y = threadIdx.y + blockIdx.y * kTransTileDim;
+
+  for (int32_t i = 0; i < kTransTileDim; i += kTransBlockRows) {
+    if (x < cols && (y + i) < rows) {
+      cache[threadIdx.y + i][threadIdx.x] = input[(y + i) * cols + x];
+    }
+  }
+
+  __syncthreads();
+
+  // output index, in a coalesced manner
+  x = threadIdx.x + blockIdx.y * kTransTileDim;
+  y = threadIdx.y + blockIdx.x * kTransTileDim;
+  for (int32_t i = 0; i < kTransTileDim; i += kTransBlockRows) {
+    if (x < rows && (y + i) < cols) {
+      output[(y + i) * rows + x] = cache[threadIdx.x][threadIdx.y + i];
+    }
+  }
+}
+
+/*
+  Transpose a matrix.  Require src.Size0() == dest.Size1() and src.Size1() ==
+  dest.Size0().  This is not the only way to transpose a matrix, you can also
+  do: dest = Array2<T>(src.ToTensor().Transpose(0,1)), which will likely call
+  this function
+
+     @param [in] c   Context to use, must satisfy
+                     `c.IsCompatible(src.Context())` and
+                     `c.IsCompatible(dest->Context())`.
+     @param [in] src  Source array to transpose
+     @param [out] dest  Destination array; must satisfy
+                        `dest->Size1() == src.Size0()` and
+                        `dest->Size0() == src.Size1()`.
+                        At exit, we'll have dest[i,j] == src[j,i].
+*/
+template <typename T>
+void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
+  assert(c->IsCompatible(*src.Context()));
+  assert(c->IsCompatible(*dest->Context()));
+  int32_t rows = src.Dim0();
+  int32_t cols = src.Dim1();
+  // TODO(haowen): limit the number of elements?
+  assert(rows == dest->Dim1());
+  assert(cols == dest->Dim0());
+  const T *src_data = src.Data();
+  T *dest_data = dest->Data();
+  DeviceType d = c->GetDeviceType();
+  using SumType = typename std::decay<decltype(dest[0])>::type;
+  if (d == kCpu) {
+    for (int i = 0; i < cols; ++i) {
+      for (int j = 0; j < rows; ++j) {
+        dest_data[i * rows + j] = src_data[j * cols + i];
+      }
+    }
+  } else {
+    assert(d == kCuda);
+    dim3 block_size(kTransTileDim, kTransBlockRows, 1);
+    dim3 grid_size(NumBlocks(cols, kTransTileDim),
+                   NumBlocks(rows, kTransTileDim));
+    TransposeKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
+        rows, cols, src_data, dest_data);
+    auto ret = cudaDeviceSynchronize();
+    K2_CHECK_CUDA_ERROR(ret);
+  }
+}
 
 /*
   Sets 'dest' to exclusive prefix sum of 'src'.
@@ -85,9 +162,10 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest);
                        summation is over row axis (slower because we have to
                        transpose), axis = 1 means summation is over column axis.
  */
+
 template <typename T>
 void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int32_t axis);
-
+}
 /*
   Append a list of Array1<T> to create a longer array.
 

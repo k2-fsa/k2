@@ -18,7 +18,7 @@
 namespace k2 {
 
 static int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
-  K2_CHECK(n > 0);
+  K2_CHECK_GT(n, 0);
   n--;
   n |= n >> 1;
   n |= n >> 2;
@@ -54,7 +54,7 @@ __global__ void RowSplitsToRowIdsKernel(
       row = thread / threads_per_row,
       thread_this_row = thread % threads_per_row;
 
-  K2_CHECK(num_threads / threads_per_row >= num_rows);
+  K2_CHECK_GE(num_threads / threads_per_row, num_rows);
 
   int32_t this_row_split = row_splits[row],
       next_row_split = row_splits[row + 1],
@@ -180,8 +180,8 @@ __global__ void GetTaskRedirect(int32_t num_tasks,
   // "second half" of
   int32_t num_jobs_this_task =
       1 + (next_row_split/dart_separation - this_row_split/dart_separation);
-  K2_CHECK(static_cast<int32_t>(static_cast<uint16_t>(num_jobs_this_task))
-               == num_jobs_this_task);
+  K2_CHECK_EQ(static_cast<int32_t>(static_cast<uint16_t>(num_jobs_this_task)),
+              num_jobs_this_task);
   for (int32_t job_id_this_task = thread_idx;
        job_id_this_task < num_jobs_this_task;
        job_id_this_task += threads_per_task) {
@@ -214,8 +214,8 @@ void GetTaskRedirect(cudaStream_t stream, int32_t num_tasks,
           next_row_split = row_splits[task + 1];
       int32_t num_jobs_this_task =
           1 + (next_row_split/dart_separation - this_row_split/dart_separation);
-      K2_CHECK(static_cast<int32_t>(static_cast<uint16_t>(num_jobs_this_task))
-                   == num_jobs_this_task);
+      K2_CHECK_EQ(static_cast<int32_t>(static_cast<uint16_t>(num_jobs_this_task)),
+               num_jobs_this_task);
       // todo: task was unsigned, set = 0 is temp, please fix it
       int32_t task_idx = 0;
       for (int32_t job_id_this_task = 0;
@@ -276,7 +276,7 @@ __global__ void RowIdsToRowSplitsKernel(
       elem = thread / threads_per_elem,
       thread_this_elem = thread % threads_per_elem;
 
-  K2_CHECK(num_threads / threads_per_elem >= num_elems);
+  K2_CHECK_GE(num_threads / threads_per_elem, num_elems);
 
   int32_t this_row, prev_row;
   if (static_cast<uint32_t>(elem-1) >= num_rows-1) {
@@ -334,7 +334,7 @@ void RowIdsToRowSplits(
           row_splits[num_rows] = num_elems;
           prev_row = -1;
         }
-        K2_CHECK(this_row <= prev_row + 1); // no_empty_rows was asserted by
+        K2_CHECK_LE(this_row, prev_row + 1); // no_empty_rows was asserted by
         // the user
         if (this_row > prev_row) {
           row_splits[this_row] = i;
