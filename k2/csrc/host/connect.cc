@@ -42,7 +42,7 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
   using dfs::kNotVisited;
   using dfs::kVisited;
   using dfs::kVisiting;
- K2_CHECK_NOTNULL(state_map);
+ K2_CHECK_NE(state_map, nullptr);
 
   state_map->clear();
   if (IsEmpty(fsa)) return true;
@@ -202,7 +202,7 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
 }
 
 void Connection::GetSizes(Array2Size<int32_t> *fsa_size) {
- K2_CHECK_NOTNULL(fsa_size);
+  K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   no_accessible_state_ = false;
   arc_indexes_.clear();
@@ -258,10 +258,10 @@ bool Connection::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
   if (no_accessible_state_) return true;
 
   // output FSA
- K2_CHECK_NOTNULL(fsa_out);
- K2_CHECK_EQ(arc_indexes_.size(), fsa_out->size1 + 1);
+  K2_CHECK_NE(fsa_out, nullptr);
+  K2_CHECK_EQ(arc_indexes_.size(), fsa_out->size1 + 1);
   std::copy(arc_indexes_.begin(), arc_indexes_.end(), fsa_out->indexes);
- K2_CHECK_EQ(arcs_.size(), fsa_out->size2);
+  K2_CHECK_EQ(arcs_.size(), fsa_out->size2);
   std::copy(arcs_.begin(), arcs_.end(), fsa_out->data);
 
   // output arc map

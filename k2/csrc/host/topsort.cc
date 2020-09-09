@@ -22,7 +22,7 @@
 
 namespace k2 {
 void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
- K2_CHECK_NOTNULL(fsa_size);
+  K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   is_connected_ = true;
   is_acyclic_ = true;
@@ -43,7 +43,7 @@ void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
 }
 
 bool TopSorter::GetOutput(Fsa *fsa_out, int32_t *state_map /* = nullptr*/) {
- K2_CHECK_NOTNULL(fsa_out);
+  K2_CHECK_NE(fsa_out, nullptr);
   if (IsEmpty(fsa_in_)) return true;
   if (!is_connected_) return false;
   if (!is_acyclic_) return false;

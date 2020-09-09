@@ -88,7 +88,7 @@ std::vector<int32_t> StringVectorToIntVector(
 
 // trim leading and trailing spaces of a string
 void TrimString(std::string *s) {
- K2_CHECK_NOTNULL(s);
+  K2_CHECK_NE(s, nullptr);
   auto not_space = [](int32_t c) { return std::isspace(c) == 0; };
 
   s->erase(s->begin(), std::find_if(s->begin(), s->end(), not_space));
@@ -112,8 +112,8 @@ void TrimString(std::string *s) {
 */
 void SplitStringToVector(const std::string &in, const char *delim,
                          std::vector<std::string> *out) {
- K2_CHECK_NOTNULL(delim);
- K2_CHECK_NOTNULL(out);
+  K2_CHECK_NE(delim, nullptr);
+  K2_CHECK_NE(out, nullptr);
   out->clear();
   std::size_t start = 0;
   while (true) {
@@ -139,7 +139,7 @@ void SplitStringToVector(const std::string &in, const char *delim,
 namespace k2 {
 
 void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes) {
- K2_CHECK_NOTNULL(arc_indexes);
+  K2_CHECK_NE(arc_indexes, nullptr);
  K2_CHECK_EQ(arc_indexes->size1, fsa.size1);
  K2_CHECK_EQ(arc_indexes->size2, fsa.size2);
 
@@ -169,8 +169,8 @@ void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes) {
 void GetArcWeights(const float *arc_weights_in,
                    const Array2<int32_t *, int32_t> &arc_map,
                    float *arc_weights_out) {
- K2_CHECK_NOTNULL(arc_weights_in);
- K2_CHECK_NOTNULL(arc_weights_out);
+  K2_CHECK_NE(arc_weights_in, nullptr);
+  K2_CHECK_NE(arc_weights_out, nullptr);
   for (int32_t i = 0; i != arc_map.size1; ++i) {
     float sum_weights = 0.0f;
     for (int32_t j = arc_map.indexes[i]; j != arc_map.indexes[i + 1]; ++j) {
@@ -183,8 +183,8 @@ void GetArcWeights(const float *arc_weights_in,
 
 void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
                    int32_t num_arcs, float *arc_weights_out) {
- K2_CHECK_NOTNULL(arc_weights_in);
- K2_CHECK_NOTNULL(arc_weights_out);
+  K2_CHECK_NE(arc_weights_in, nullptr);
+  K2_CHECK_NE(arc_weights_out, nullptr);
   for (int32_t i = 0; i != num_arcs; ++i) {
     *arc_weights_out++ = arc_weights_in[arc_map[i]];
   }
@@ -192,7 +192,7 @@ void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
 
 void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
                  std::vector<int32_t> *arc_map /*= nullptr*/) {
- K2_CHECK_NOTNULL(fsa);
+  K2_CHECK_NE(fsa, nullptr);
   if (arc_map != nullptr) arc_map->clear();
 
   // as fsa has been initialized (fsa.size1 = 0 && fsa.size2 == 0),
@@ -229,16 +229,16 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
 
 void ConvertIndexes1(const int32_t *arc_map, int32_t num_arcs,
                      int64_t *indexes_out) {
- K2_CHECK_NOTNULL(arc_map);
+  K2_CHECK_NE(arc_map, nullptr);
  K2_CHECK_GE(num_arcs, 0);
- K2_CHECK_NOTNULL(indexes_out);
+  K2_CHECK_NE(indexes_out, nullptr);
   std::copy(arc_map, arc_map + num_arcs, indexes_out);
 }
 
 void GetArcIndexes2(const Array2<int32_t *, int32_t> &arc_map,
                     int64_t *indexes1, int64_t *indexes2) {
- K2_CHECK_NOTNULL(indexes1);
- K2_CHECK_NOTNULL(indexes2);
+  K2_CHECK_NE(indexes1, nullptr);
+  K2_CHECK_NE(indexes2, nullptr);
   std::copy(arc_map.data + arc_map.indexes[0],
             arc_map.data + arc_map.indexes[arc_map.size1], indexes1);
   int32_t num_arcs = 0;
@@ -250,7 +250,7 @@ void GetArcIndexes2(const Array2<int32_t *, int32_t> &arc_map,
 }
 
 void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {
- K2_CHECK_NOTNULL(fsa_size);
+  K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
 
   static constexpr const char *kDelim = " \t";
@@ -294,7 +294,7 @@ void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {
 }
 
 void StringToFsa::GetOutput(Fsa *fsa_out) {
- K2_CHECK_NOTNULL(fsa_out);
+  K2_CHECK_NE(fsa_out, nullptr);
  K2_CHECK_EQ(fsa_out->size1, arcs_.size());
 
   int32_t num_arcs = 0;
@@ -330,7 +330,7 @@ RandFsaOptions::RandFsaOptions() {
 }
 
 void RandFsaGenerator::GetSizes(Array2Size<int32_t> *fsa_size) {
- K2_CHECK_NOTNULL(fsa_size);
+  K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
 
  K2_CHECK_GT(opts_.num_syms, 1);
@@ -401,7 +401,7 @@ void RandFsaGenerator::GetSizes(Array2Size<int32_t> *fsa_size) {
 }
 
 void RandFsaGenerator::GetOutput(Fsa *fsa_out) {
- K2_CHECK_NOTNULL(fsa_out);
+  K2_CHECK_NE(fsa_out, nullptr);
 
   const auto &fsa = fsa_creator_.GetFsa();
  K2_CHECK_EQ(fsa_out->size1, fsa.size1);
@@ -416,7 +416,7 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
   using dfs::kNotVisited;
   using dfs::kVisited;
   using dfs::kVisiting;
- K2_CHECK_NOTNULL(fsa);
+  K2_CHECK_NE(fsa, nullptr);
   if (arcs.empty()) return;
 
   using ArcWithIndex = std::pair<Arc, int32_t>;

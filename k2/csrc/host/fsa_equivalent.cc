@@ -38,7 +38,7 @@ namespace {
  */
 static bool Connect(const k2::Fsa &fsa_in, k2::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
- K2_CHECK_NOTNULL(fsa_out);
+  K2_CHECK_NE(fsa_out, nullptr);
   k2::Connection connection(fsa_in);
   k2::Array2Size<int32_t> fsa_size;
   connection.GetSizes(&fsa_size);
@@ -60,7 +60,7 @@ static bool Connect(const k2::Fsa &fsa_in, k2::FsaCreator *fsa_out,
  */
 static void ArcSort(const k2::Fsa &fsa_in, k2::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
- K2_CHECK_NOTNULL(fsa_out);
+  K2_CHECK_NE(fsa_out, nullptr);
   k2::ArcSorter sorter(fsa_in);
   k2::Array2Size<int32_t> fsa_size;
   sorter.GetSizes(&fsa_size);
@@ -81,7 +81,7 @@ static void ArcSort(const k2::Fsa &fsa_in, k2::FsaCreator *fsa_out,
 static bool Intersect(const k2::Fsa &a, const k2::Fsa &b, k2::FsaCreator *c,
                       std::vector<int32_t> *arc_map_a = nullptr,
                       std::vector<int32_t> *arc_map_b = nullptr) {
- K2_CHECK_NOTNULL(c);
+  K2_CHECK_NE(c, nullptr);
   k2::Intersection intersection(a, b);
   k2::Array2Size<int32_t> fsa_size;
   intersection.GetSizes(&fsa_size);
@@ -106,7 +106,7 @@ static bool Intersect(const k2::Fsa &a, const k2::Fsa &b, k2::FsaCreator *c,
 static bool RandomPath(const k2::Fsa &fsa_in, bool no_eps_arc,
                        k2::FsaCreator *path,
                        std::vector<int32_t> *arc_map = nullptr) {
- K2_CHECK_NOTNULL(path);
+  K2_CHECK_NE(path, nullptr);
   k2::RandPath rand_path(fsa_in, no_eps_arc);
   k2::Array2Size<int32_t> fsa_size;
   rand_path.GetSizes(&fsa_size);
@@ -124,7 +124,7 @@ static void GetArcWeights(const float *weights,
                           const std::vector<int32_t> &arc_map1,
                           const std::vector<int32_t> &arc_map2,
                           std::vector<float> *out_weights) {
- K2_CHECK_NOTNULL(out_weights);
+  K2_CHECK_NE(out_weights, nullptr);
   auto &arc_weights = *out_weights;
   for (auto i = 0; i != arc_weights.size(); ++i) {
     arc_weights[i] = weights[arc_map1[arc_map2[i]]];
@@ -135,7 +135,7 @@ static void GetArcWeights(const float *weights,
 static void SetDifference(const std::unordered_set<int32_t> &a,
                           const std::unordered_set<int32_t> &b,
                           std::unordered_set<int32_t> *c) {
- K2_CHECK_NOTNULL(c);
+  K2_CHECK_NE(c, nullptr);
   c->clear();
   for (const auto &v : a) {
     if (b.find(v) == b.end()) c->insert(v);
@@ -203,8 +203,8 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
                       float delta /*=1e-6*/, bool top_sorted /*=true*/,
                       std::size_t npath /*= 100*/) {
  K2_CHECK_GT(beam, 0);
- K2_CHECK_NOTNULL(a_weights);
- K2_CHECK_NOTNULL(b_weights);
+ K2_CHECK_NE(a_weights, nullptr);
+  K2_CHECK_NE(b_weights, nullptr);
   FsaCreator connected_a_storage, connected_b_storage, valid_a_storage,
       valid_b_storage;
   std::vector<int32_t> connected_a_arc_map, connected_b_arc_map,
@@ -309,9 +309,9 @@ template bool IsRandEquivalent<kLogSumWeight>(
 bool IsRandEquivalentAfterRmEpsPrunedLogSum(
     const Fsa &a, const float *a_weights, const Fsa &b, const float *b_weights,
     float beam, bool top_sorted /*= true*/, std::size_t npath /*= 100*/) {
- K2_CHECK_GT(beam, 0);
- K2_CHECK_NOTNULL(a_weights);
- K2_CHECK_NOTNULL(b_weights);
+  K2_CHECK_GT(beam, 0);
+  K2_CHECK_NE(a_weights, nullptr);
+  K2_CHECK_NE(b_weights, nullptr);
   FsaCreator connected_a_storage, connected_b_storage, valid_a_storage,
       valid_b_storage;
   std::vector<int32_t> connected_a_arc_map, connected_b_arc_map,
@@ -404,7 +404,7 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
 }
 
 void RandPath::GetSizes(Array2Size<int32_t> *fsa_size) {
- K2_CHECK_NOTNULL(fsa_size);
+  K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
 
   arc_indexes_.clear();
@@ -484,11 +484,11 @@ void RandPath::GetSizes(Array2Size<int32_t> *fsa_size) {
 }
 
 bool RandPath::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
- K2_CHECK_NOTNULL(fsa_out);
+  K2_CHECK_NE(fsa_out, nullptr);
   if (!status_) return false;
 
   // output fsa
- K2_CHECK_NOTNULL(fsa_out);
+  K2_CHECK_NE(fsa_out, nullptr);
  K2_CHECK_EQ(arc_indexes_.size(), fsa_out->size1 + 1);
   std::copy(arc_indexes_.begin(), arc_indexes_.end(), fsa_out->indexes);
  K2_CHECK_EQ(arcs_.size(), fsa_out->size2);

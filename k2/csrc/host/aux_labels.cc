@@ -94,7 +94,7 @@ static void MapStates(const std::vector<int32_t> &num_extra_states,
 namespace k2 {
 
 void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
- K2_CHECK_NOTNULL(aux_size);
+  K2_CHECK_NE(aux_size, nullptr);
   aux_size->size1 = arc_map_.size;
   int32_t num_labels = 0;
   for (auto i = arc_map_.begin; i != arc_map_.end; ++i) {
@@ -107,7 +107,7 @@ void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
 }
 
 void AuxLabels1Mapper::GetOutput(AuxLabels *labels_out) {
- K2_CHECK_NOTNULL(labels_out);
+  K2_CHECK_NE(labels_out, nullptr);
   auto &start_pos = labels_out->indexes;
   auto &labels = labels_out->data;
   int32_t num_labels = 0;
@@ -125,7 +125,7 @@ void AuxLabels1Mapper::GetOutput(AuxLabels *labels_out) {
 }
 
 void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
- K2_CHECK_NOTNULL(aux_size);
+  K2_CHECK_NE(aux_size, nullptr);
   aux_size->size1 = arc_map_.size1;
   int32_t num_labels = 0;
   for (const auto &arc_index : arc_map_) {
@@ -137,7 +137,7 @@ void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
 }
 
 void AuxLabels2Mapper::GetOutput(AuxLabels *labels_out) {
- K2_CHECK_NOTNULL(labels_out);
+  K2_CHECK_NE(labels_out, nullptr);
   auto &start_pos = labels_out->indexes;
   auto &labels = labels_out->data;
   int32_t num_labels = 0;
@@ -158,8 +158,8 @@ void AuxLabels2Mapper::GetOutput(AuxLabels *labels_out) {
 
 void FstInverter::GetSizes(Array2Size<int32_t> *fsa_size,
                            Array2Size<int32_t> *aux_size) const {
- K2_CHECK_NOTNULL(fsa_size);
- K2_CHECK_NOTNULL(aux_size);
+  K2_CHECK_NE(fsa_size, nullptr);
+  K2_CHECK_NE(aux_size, nullptr);
   int32_t num_extra_states = 0;
   int32_t num_arcs = 0;
   int32_t num_non_eps_labels = 0;
@@ -178,8 +178,8 @@ void FstInverter::GetSizes(Array2Size<int32_t> *fsa_size,
 }
 
 void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
- K2_CHECK_NOTNULL(fsa_out);
- K2_CHECK_NOTNULL(labels_out);
+  K2_CHECK_NE(fsa_out, nullptr);
+  K2_CHECK_NE(labels_out, nullptr);
 
   if (IsEmpty(fsa_in_)) return;
 

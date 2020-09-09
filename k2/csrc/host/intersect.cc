@@ -42,7 +42,7 @@ static inline int32_t InsertIntersectionState(
 namespace k2 {
 
 void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
- K2_CHECK_NOTNULL(fsa_size);
+  K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   status_ = true;
   arc_indexes_.clear();
@@ -169,7 +169,7 @@ bool Intersection::GetOutput(Fsa *c, int32_t *arc_map_a /*= nullptr*/,
   if (!status_) return false;
 
   // output fsa
- K2_CHECK_NOTNULL(c);
+  K2_CHECK_NE(c, nullptr);
  K2_CHECK_EQ(arc_indexes_.size(), c->size1 + 1);
   std::copy(arc_indexes_.begin(), arc_indexes_.end(), c->indexes);
  K2_CHECK_EQ(arcs_.size(), c->size2);

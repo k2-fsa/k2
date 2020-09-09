@@ -25,7 +25,7 @@ void *MemAlignedMalloc(std::size_t nbytes, std::size_t alignment) {
  K2_CHECK_EQ(ret, 0);
 #endif
 
- K2_CHECK_NOTNULL(p);
+  K2_CHECK_NE(p, nullptr);
   return p;
 }
 

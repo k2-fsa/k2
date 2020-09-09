@@ -31,8 +31,8 @@ namespace k2 {
 template <typename TracebackState>
 void Determinizer<TracebackState>::GetSizes(
     Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *arc_derivs_size) {
- K2_CHECK_NOTNULL(fsa_size);
- K2_CHECK_NOTNULL(arc_derivs_size);
+  K2_CHECK_NE(fsa_size, nullptr);
+  K2_CHECK_NE(arc_derivs_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   arc_derivs_size->size1 = arc_derivs_size->size2 = 0;
 
@@ -86,9 +86,9 @@ float Determinizer<TracebackState>::GetOutput(
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
   if (IsEmpty(fsa_in_.fsa)) return beam_;
 
- K2_CHECK_NOTNULL(fsa_out);
- K2_CHECK_NOTNULL(arc_weights_out);
- K2_CHECK_NOTNULL(arc_derivs);
+  K2_CHECK_NE(fsa_out, nullptr);
+  K2_CHECK_NE(arc_weights_out, nullptr);
+  K2_CHECK_NE(arc_derivs, nullptr);
 
   std::vector<int32_t> arc_map;
   // output fsa

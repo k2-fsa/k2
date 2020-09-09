@@ -22,7 +22,7 @@
 namespace {
 void CheckInput(const k2::Fsa &fsa, const float *arc_weights) {
   K2_CHECK(IsValid(fsa));
- K2_CHECK_NOTNULL(arc_weights);
+ K2_CHECK_NE(arc_weights, nullptr);
 }
 }  // namespace
 
@@ -32,7 +32,7 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
                               double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
- K2_CHECK_NOTNULL(state_weights);
+ K2_CHECK_NE(state_weights, nullptr);
 
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
@@ -52,7 +52,7 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
                                double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
- K2_CHECK_NOTNULL(state_weights);
+ K2_CHECK_NE(state_weights, nullptr);
 
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
@@ -72,7 +72,7 @@ void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
                                  double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
- K2_CHECK_NOTNULL(state_weights);
+ K2_CHECK_NE(state_weights, nullptr);
 
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
@@ -92,7 +92,7 @@ void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
                                   double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
- K2_CHECK_NOTNULL(state_weights);
+ K2_CHECK_NE(state_weights, nullptr);
 
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);

@@ -130,43 +130,6 @@ class Voidifier {
   K2_CUDA_HOSTDEV void operator&(const Logger &) const {}
 };
 
-/**
- * @brief
- * Check if it's compiled in C++11 mode.
- * It's codes from glog.
- *
- * @details
- * GXX_EXPERIMENTAL_CXX0X is defined by gcc and clang up to at least
- * gcc-4.7 and clang-3.1 (2011-12-13).  __cplusplus was defined to 1
- * in gcc before 4.7 (Crosstool 16) and clang before 3.1, but is
- * defined according to the language version in effect thereafter.
- * Microsoft Visual Studio 14 (2015) sets __cplusplus==199711 despite
- * reasonably good C++11 support, so we set LANG_CXX for it and
- * newer versions (_MSC_VER >= 1900).
- */
-#if (defined(__GXX_EXPERIMENTAL_CXX0X__) || __cplusplus >= 201103L || \
-     (defined(_MSC_VER) && _MSC_VER >= 1900))
-template <typename T>
-T CheckNotNull(T&& t) {
-  if (t == nullptr) {
-    ::k2::internal::Logger(__FILE__, __func__, __LINE__, ::k2::internal::FATAL)
-        << "'" << t << "' Must be non NULL";
-
-  }
-  return std::forward<T>(t);
-}
-#else
-// A small helper forK2_CHECK_NOTNULL().
-template <typename T>
-T* CheckNotNull(T* t) {
-  if (t == NULL) {
-    ::k2::internal::Logger(__FILE__, __func__, __LINE__, ::k2::internal::FATAL)
-        << "'" << t << "' Must be non NULL";
-  }
-  return t;
-}
-#endif
-
 }  // namespace internal
 
 }  // namespace k2
@@ -226,8 +189,6 @@ T* CheckNotNull(T* t) {
 #define K2_CHECK_LE(x, y) _K2_CHECK_OP(x, y, <=)
 #define K2_CHECK_GT(x, y) _K2_CHECK_OP(x, y, >)
 #define K2_CHECK_GE(x, y) _K2_CHECK_OP(x, y, >=)
-
-#define K2_CHECK_NOTNULL(val) ::k2::internal::CheckNotNull((val))
 
 #define K2_LOG(x) \
   ::k2::internal::Logger(__FILE__, __func__, __LINE__, ::k2::internal::x)

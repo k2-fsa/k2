@@ -44,8 +44,8 @@ namespace {
  */
 static int32_t MapStates(const k2::Fsa &fsa_in, std::vector<char> *non_eps_in,
                          std::vector<int32_t> *state_map) {
- K2_CHECK_NOTNULL(non_eps_in);
- K2_CHECK_NOTNULL(state_map);
+  K2_CHECK_NE(non_eps_in, nullptr);
+  K2_CHECK_NE(state_map, nullptr);
 
   int32_t num_states_in = fsa_in.NumStates();
  K2_CHECK_EQ(num_states_in, non_eps_in->size());
@@ -176,8 +176,8 @@ namespace k2 {
 template <typename TracebackState>
 void EpsilonsRemover<TracebackState>::GetSizes(
     Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *arc_derivs_size) {
- K2_CHECK_NOTNULL(fsa_size);
- K2_CHECK_NOTNULL(arc_derivs_size);
+  K2_CHECK_NE(fsa_size, nullptr);
+  K2_CHECK_NE(arc_derivs_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   arc_derivs_size->size1 = arc_derivs_size->size2 = 0;
 
@@ -279,9 +279,9 @@ void EpsilonsRemover<TracebackState>::GetOutput(
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
   if (IsEmpty(fsa_in_.fsa)) return;
 
- K2_CHECK_NOTNULL(fsa_out);
- K2_CHECK_NOTNULL(arc_weights_out);
- K2_CHECK_NOTNULL(arc_derivs);
+  K2_CHECK_NE(fsa_out, nullptr);
+  K2_CHECK_NE(arc_weights_out, nullptr);
+  K2_CHECK_NE(arc_derivs, nullptr);
 
   // output FSA
  K2_CHECK_EQ(arc_indexes_.size(), fsa_out->size1 + 1);
