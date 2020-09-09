@@ -170,19 +170,12 @@ namespace k2 {
   the CUDA kernel so you should make sure it was allocated as part of the array
   being summed even if the value was not set.
 
-      @param [in] D     Device.  If n > 0 must be kCpu or kGpu; if n == 0, kUnk
-                                 is also allowed.
-
+      @param [in] c     Context object, specifies CPU or GPU
       @param [in] n     Number of elements in the input and output arrays
                         (although only items up to n-1 in the input array will
                         affect the result).  Must be >= 0
-
-      @param [out] s       Array to which to write the exclusive sum (device
-                           pointer); size must be at least t.size() + 1.
-
-      @param [out] cpu_total  Optionally (if non-NULL), the sum of the elements
-                           of t will be written to here, to a CPU address.
-    This function may not wait for the kernel to terminate if cpu_total == NULL.
+      @param [out] s    Array to which to write the exclusive sum (device
+                        pointer); size must be at least t.size() + 1.
 
   IMPLEMENTATION NOTES:
      - If size of t is small enough that it makes sense to do it in one
@@ -423,6 +416,16 @@ __host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
   return IntAsFloat((i >= 0) ? i : i ^ 0x7FFFFFFF);
 }
 
+
+
+
+// have to figure out if there's a better place to put this
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
+  os << "[ ";
+  for (auto iter = vec.begin(); iter != vec.end(); ++iter) os << *iter << ' ';
+  os << ']';
+}
 
 }  // namespace k2
 

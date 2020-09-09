@@ -58,11 +58,9 @@ TEST(TensorTest, Shape) {
     EXPECT_EQ(shape.Nelement(), 30);
     EXPECT_EQ(shape.StorageSize(), 30);
     EXPECT_TRUE(shape.IsContiguous());
-    std::vector<int32_t> expected_dims(shape.Dims(),
-                                       shape.Dims() + shape.NumAxes());
+    std::vector<int32_t> expected_dims(shape.Dims());
     EXPECT_EQ(expected_dims, dims);
-    std::vector<int32_t> expected_strides(shape.Strides(),
-                                          shape.Strides() + shape.NumAxes());
+    std::vector<int32_t> expected_strides(shape.Strides());
     EXPECT_THAT(expected_strides, ::testing::ElementsAre(10, 5, 1));
   }
 
@@ -75,11 +73,9 @@ TEST(TensorTest, Shape) {
     EXPECT_EQ(shape.Nelement(), 30);
     EXPECT_EQ(shape.StorageSize(), 30);
     EXPECT_TRUE(shape.IsContiguous());
-    std::vector<int32_t> expected_dims(shape.Dims(),
-                                       shape.Dims() + shape.NumAxes());
+    std::vector<int32_t> expected_dims(shape.Dims());
     EXPECT_EQ(expected_dims, dims);
-    std::vector<int32_t> expected_strides(shape.Strides(),
-                                          shape.Strides() + shape.NumAxes());
+    std::vector<int32_t> expected_strides(shape.Strides());
     EXPECT_EQ(expected_strides, strides);
   }
 
@@ -92,11 +88,9 @@ TEST(TensorTest, Shape) {
     EXPECT_EQ(shape.Nelement(), 30);
     EXPECT_EQ(shape.StorageSize(), 33);
     EXPECT_FALSE(shape.IsContiguous());
-    std::vector<int32_t> expected_dims(shape.Dims(),
-                                       shape.Dims() + shape.NumAxes());
+    std::vector<int32_t> expected_dims(shape.Dims());
     EXPECT_EQ(expected_dims, dims);
-    std::vector<int32_t> expected_strides(shape.Strides(),
-                                          shape.Strides() + shape.NumAxes());
+    std::vector<int32_t> expected_strides(shape.Strides());
     EXPECT_EQ(expected_strides, strides);
   }
 }
@@ -117,12 +111,10 @@ TEST(TensorTest, Tensor) {
       Tensor sub_tensor = tensor.Index(0, 1);
       Shape sub_tensor_shape = sub_tensor.GetShape();
       std::vector<int32_t> expected_dims(
-          sub_tensor_shape.Dims(),
-          sub_tensor_shape.Dims() + sub_tensor_shape.NumAxes());
+          sub_tensor_shape.Dims());
       EXPECT_THAT(expected_dims, ::testing::ElementsAre(2, 4));
       std::vector<int32_t> expected_strides(
-          sub_tensor_shape.Strides(),
-          sub_tensor_shape.Strides() + sub_tensor_shape.NumAxes());
+          sub_tensor_shape.Strides());
       EXPECT_THAT(expected_strides, ::testing::ElementsAre(4, 1));
       const int32_t *sub_tensor_data = sub_tensor.Data<int32_t>();
       std::vector<int32_t> expected_sub_data = {8, 9, 10, 11, 12, 13, 14, 15};
@@ -140,12 +132,10 @@ TEST(TensorTest, Tensor) {
       Tensor sub_tensor = tensor.Index(2, 3);
       Shape sub_tensor_shape = sub_tensor.GetShape();
       std::vector<int32_t> expected_dims(
-          sub_tensor_shape.Dims(),
-          sub_tensor_shape.Dims() + sub_tensor_shape.NumAxes());
+          sub_tensor_shape.Dims());
       EXPECT_THAT(expected_dims, ::testing::ElementsAre(3, 2));
       std::vector<int32_t> expected_strides(
-          sub_tensor_shape.Strides(),
-          sub_tensor_shape.Strides() + sub_tensor_shape.NumAxes());
+          sub_tensor_shape.Strides());
       EXPECT_THAT(expected_strides, ::testing::ElementsAre(8, 4));
       const int32_t *sub_tensor_data = sub_tensor.Data<int32_t>();
       std::vector<int32_t> expected_sub_data = {3, 7, 11, 15, 19, 23};
@@ -162,12 +152,10 @@ TEST(TensorTest, Tensor) {
       Tensor sub_tensor = tensor.Index(1, 1);
       Shape sub_tensor_shape = sub_tensor.GetShape();
       std::vector<int32_t> expected_dims(
-          sub_tensor_shape.Dims(),
-          sub_tensor_shape.Dims() + sub_tensor_shape.NumAxes());
+          sub_tensor_shape.Dims());
       EXPECT_THAT(expected_dims, ::testing::ElementsAre(3, 4));
       std::vector<int32_t> expected_strides(
-          sub_tensor_shape.Strides(),
-          sub_tensor_shape.Strides() + sub_tensor_shape.NumAxes());
+          sub_tensor_shape.Strides());
       EXPECT_THAT(expected_strides, ::testing::ElementsAre(8, 1));
       const int32_t *sub_tensor_data = sub_tensor.Data<int32_t>();
       std::vector<int32_t> expected_sub_data = {4,  5,  6,  7,  12, 13,
@@ -241,12 +229,10 @@ TEST(TensorTest, Tensor) {
       Tensor sub_tensor = tensor.Index(0, 1);
       Shape sub_tensor_shape = sub_tensor.GetShape();
       std::vector<int32_t> expected_dims(
-          sub_tensor_shape.Dims(),
-          sub_tensor_shape.Dims() + sub_tensor_shape.NumAxes());
+          sub_tensor_shape.Dims());
       EXPECT_THAT(expected_dims, ::testing::ElementsAre(2, 4));
       std::vector<int32_t> expected_strides(
-          sub_tensor_shape.Strides(),
-          sub_tensor_shape.Strides() + sub_tensor_shape.NumAxes());
+          sub_tensor_shape.Strides());
       EXPECT_THAT(expected_strides, ::testing::ElementsAre(10, 2));
       const int32_t *sub_tensor_data = sub_tensor.Data<int32_t>();
       std::vector<int32_t> expected_sub_data = {28, 30, 32, 34, 38, 40, 42, 44};
@@ -263,12 +249,9 @@ TEST(TensorTest, Tensor) {
       Tensor sub_tensor = tensor.Index(1, 0);
       Shape sub_tensor_shape = sub_tensor.GetShape();
       std::vector<int32_t> expected_dims(
-          sub_tensor_shape.Dims(),
-          sub_tensor_shape.Dims() + sub_tensor_shape.NumAxes());
+          sub_tensor_shape.Dims());
       EXPECT_THAT(expected_dims, ::testing::ElementsAre(2, 4));
-      std::vector<int32_t> expected_strides(
-          sub_tensor_shape.Strides(),
-          sub_tensor_shape.Strides() + sub_tensor_shape.NumAxes());
+      std::vector<int32_t> expected_strides(sub_tensor_shape.Strides());
       EXPECT_THAT(expected_strides, ::testing::ElementsAre(24, 2));
       const int32_t *sub_tensor_data = sub_tensor.Data<int32_t>();
       std::vector<int32_t> expected_sub_data = {4, 6, 8, 10, 28, 30, 32, 34};
@@ -284,13 +267,9 @@ TEST(TensorTest, Tensor) {
     {
       Tensor sub_tensor = tensor.Index(2, 2);
       Shape sub_tensor_shape = sub_tensor.GetShape();
-      std::vector<int32_t> expected_dims(
-          sub_tensor_shape.Dims(),
-          sub_tensor_shape.Dims() + sub_tensor_shape.NumAxes());
+      std::vector<int32_t> expected_dims(sub_tensor_shape.Dims());
       EXPECT_THAT(expected_dims, ::testing::ElementsAre(2, 2));
-      std::vector<int32_t> expected_strides(
-          sub_tensor_shape.Strides(),
-          sub_tensor_shape.Strides() + sub_tensor_shape.NumAxes());
+      std::vector<int32_t> expected_strides(sub_tensor_shape.Strides());
       EXPECT_THAT(expected_strides, ::testing::ElementsAre(24, 10));
       const int32_t *sub_tensor_data = sub_tensor.Data<int32_t>();
       std::vector<int32_t> expected_sub_data = {8, 18, 32, 42};
