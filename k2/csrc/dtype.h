@@ -21,19 +21,19 @@ namespace k2 {
 enum BaseType {      // BaseType is the *general type*
   kUnknownBase = 0,  // e.g. can use this for structs
   kFloatBase = 1,
-  kIntBase = 2,   // signed int
-  kUintBase = 3,  // unsigned int
+  kIntBase = 2,   // signed int32_t
+  kUintBase = 3,  // unsigned int32_t
 };
 
 class DtypeTraits {
  public:
-  int NumBytes() const { return num_bytes_; }
+  int32_t NumBytes() const { return num_bytes_; }
   BaseType GetBaseType() const { return static_cast<BaseType>(base_type_); }
   const char *Name() const { return name_; }
 
   DtypeTraits(BaseType base_type, int32_t num_bytes, const char *name,
               int32_t num_scalars = 1, int32_t misc = 0)
-      : base_type_(static_cast<char>(base_type)),
+      : base_type_(base_type),
         num_scalars_(num_scalars),
         misc_(misc),
         num_bytes_(num_bytes),
@@ -52,7 +52,7 @@ class DtypeTraits {
                     // scalar element is given by bytes_per_elem / num_scalars;
                     // we do it this way so that the stride in bytes is easily
                     // extractable.
-  const char *name_;  // name, e.g. "float", "int8", "int32"
+  const char *name_;  // name, e.g. "float", "int8", "int32_t"
 };
 
 // We initialize this in dtype.cu

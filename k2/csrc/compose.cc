@@ -61,16 +61,16 @@ class MultiGraphDenseIntersect {
       max_active_(max_active), min_active_(min_active),
       dynamic_beams_(a_fsas.GetContext(), b_fsas.Dim0(), beam) {
     c_ = GetContext(a_fsas, b_fsas);
-    CHECK_GT(beam, 0);
-    CHECK_GT(min_active, 0);
-    CHECK_GT(max_active, min_active);
+   K2_CHECK_GT(beam, 0);
+   K2_CHECK_GT(min_active, 0);
+   K2_CHECK_GT(max_active, min_active);
     assert(a_fsas.Dim0() == b_fsas.Dim0() || a_fsas.Dim0() == 1);
-    CHECK_GT(b_fsas.Size0(), 1);
+   K2_CHECK_GT(b_fsas.Size0(), 1);
     if (a_fsas.Dim0() == 1) {
       a_fsas_stride_ = 0;
       state_map_ = Array2<int32_t>(a_fsas.TotSize1(), b_fsas.Dim0(), -1);
     } else {
-      CHECK_EQ(a_fsas.Dim0(), b_fsas.Dim0());
+     K2_CHECK_EQ(a_fsas.Dim0(), b_fsas.Dim0());
       a_fsas_stride_ = 1;
       state_map_ = Array2<int32_t>(a_fsas.TotSize1(), 1, -1);
     }
@@ -288,7 +288,7 @@ class MultiGraphDenseIntersect {
                     and max_active.
   */
   Array1<float> GetPruningCutoffs(const Ragged3<float> &arc_end_scores) {
-    int32 num_fsas = arc_end_scores.Dim0();
+    int32_t num_fsas = arc_end_scores.Dim0();
 
     // get the maximum score from each sub-list (i.e. each FSA, on this frame).
     // Note: can probably do this with a cub Reduce operation using an operator
@@ -399,7 +399,7 @@ class MultiGraphDenseIntersect {
     // sequence.
     const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1);
     const float *score_data = b_fsas_.scores.Data();
-    int score_num_cols = b_fsas_.scores.Dim1();
+    int32_t score_num_cols = b_fsas_.scores.Dim1();
 
     Ragged3<ArcInfo> ai(ai_shape);
     ArcInfo *ai_data = ai.values.Data();  // uninitialized
@@ -440,7 +440,7 @@ class MultiGraphDenseIntersect {
     Does the forward-propagation (basically: the decoding step) and
     returns a newly allocated FrameInfo* object for the next frame.
    */
-  FrameInfo* PropagateForward(int t, FrameInfo *cur_frame) {
+  FrameInfo* PropagateForward(int32_t t, FrameInfo *cur_frame) {
     Ragged<StateInfo> &states = cur_frame->states;
     // ai has 3 axes: fsa_id, state, arc.
     Ragged<ArcInfo> ai = GetUnprunedArcs(t, cur_frame);
@@ -512,7 +512,7 @@ class MultiGraphDenseIntersect {
       auto lambda_set_keep = __host__ __device__ [=](int32_t arc_idx012) -> void {
                       int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]],
                            dest_state = ai_data[arc_idx012].dest_a_fsas_state_idx01;
-                      int j = state_map_data[dest_state + fsa_id * state_map_stride];
+                      int32_t j = state_map_data[dest_state + fsa_id * state_map_stride];
                       if (j != -1) {  // the dest-state was kept..
                         keep_this_arc_data[arc_idx012] = 1;
                         // caution: keep_this_state_data is indexed by *arc*
@@ -573,7 +573,7 @@ class MultiGraphDenseIntersect {
         if (next_j > this_j) {
           // this_j is the idx01 into ans->states
           int32_t state_map_idx = dest_state_idx + fsa_id * state_map_stride;
-          CHECK_EQ(state_map_data[state_map_idx], dest_state_idx);
+         K2_CHECK_EQ(state_map_data[state_map_idx], dest_state_idx);
           state_map_data[state_map_idx] = this_j;
           // Note: this_j is an idx01 into ans->states.
         }
@@ -624,7 +624,7 @@ class MultiGraphDenseIntersect {
           int32_t a_fsas_state_idx01 = kept_states_data[state_idx01].a_fsas_state_idx01,
               fsa_idx0 = next_states_row_ids1[state_idx01];
           int32_t state_map_idx = a_fsas_state_idx01 + fsa_id * state_map_stride;
-          CHECK_EQ(state_map_data[state_map_idx], state_idx01);
+         K2_CHECK_EQ(state_map_data[state_map_idx], state_idx01);
           state_map_data[state_map_idx] = -1;
         }
     };

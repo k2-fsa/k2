@@ -29,9 +29,9 @@ void DeterminizeFsaArray(Array3<Arc>  &FsaVec,
   // The following mapping stuff would actually be an if...
   // we'll do this mapping only if needed and call
   Array2<Arc> Fsa;
-  Array1<int> arc_map;
+  Array1<int32_t> arc_map;
   Array1<short> fsa_idx;
-  Array1<int> start_states;
+  Array1<int32_t> start_states;
   ConvertToSingleFsa(FsaVec, &Fsa, &arc_map, fsa_idx, &start_states);
 
   Determinize(...);
@@ -84,7 +84,7 @@ void Determinize(const Ragged3<Arc> &input,
   // for each element of 'state_subsets/state_subset_scores', 'state_subset_arcs'
   // contains the index of the incoming arc that created it, or -1 if this is
   // the start state.
-  Array1<int> state_subset_arcs(..., -1);
+  Array1<int32_t> state_subset_arcs(..., -1);
 
 
   // for each element of 'state_subsets.elems', the index of the previous
@@ -92,7 +92,7 @@ void Determinize(const Ragged3<Arc> &input,
   // initial arc.  The arc (in state_subset_arcs) entering that previous state
   // will be a preceding arc on a path vs the arc in state_subset_arcs entering
   // this state.
-  Array1<int> state_subset_traceback(..., -1);
+  Array1<int32_t> state_subset_traceback(..., -1);
 
 
   // For each output-state (indexed by 'i' == 1st index into `output` or into
@@ -100,12 +100,12 @@ void Determinize(const Ragged3<Arc> &input,
   // arcs with a particular sequence of symbols on them to find the set of input-states that comprise
   // that output-state.  Part of the canonical representation of that input-state.
   // See also `output_fsa_idxs` and `symbol_seq`.
-  Array1<int> begin_state(...);
+  Array1<int32_t> begin_state(...);
 
   // For each output-state (indexed by 'i' == 1st index into `output` or into
   // `state_subsets`), the sequence of symbols we follow on arcs from `begin_state[i]`
   // to reach the weighted set of input-states that corresponds to this output-state.
-  Array2<int> symbol_seq(...);
+  Array2<int32_t> symbol_seq(...);
 
 
   // Note: the hash key will be derived from: (output_fsa_idxs[i], begin_state[i],
@@ -123,7 +123,7 @@ void Determinize(const Ragged3<Arc> &input,
 
   // Maps from hash of state-representation to an index 'i' into output, which
   // will correspond to a particular state in a particular output FSA.
-  Hash<HashKeyType, int, Hasher> repr_hash_to_idx;
+  Hash<HashKeyType, int32_t, Hasher> repr_hash_to_idx;
 
 
   // TODO: initialize variables defined above, with 1st state.
@@ -132,29 +132,29 @@ void Determinize(const Ragged3<Arc> &input,
   // prev_idx is the next index into `output` (i.e. into the leading dim of
   // `output` that we need to process: i.e. that we need to process arcs
   // leaving those states.  (This is also the leading dim of state_subsets).
-  int prev_idx = 0;
+  int32_t prev_idx = 0;
 
   // For each output FSA, the index of the next un-allocated output-state.
-  Array1<int> next_ostate(num_fsas, 1);
+  Array1<int32_t> next_ostate(num_fsas, 1);
 
   while (1) {
-    int cur_idx = output.size();
+    int32_t cur_idx = output.size();
 
     // will swap with prev_ostate.
-    HostArray1<int> next_ostate = state_subsets.dim(1).Host();
+    HostArray1<int32_t> next_ostate = state_subsets.dim(1).Host();
 
 
     // range on axis 1...  this is a shallow op.
     // Let the index into this_state_subsets
-    Array2<int> this_state_subsets = state_subsets.Range(0, prev_idx, cur_idx);
+    Array2<int32_t> this_state_subsets = state_subsets.Range(0, prev_idx, cur_idx);
 
     struct Filter1 {
-      __device__ pair<int,int> operator () (typename Array3<int>::iterator iter) const {
-        return pair<int,int>(idxs_data[acc.idx0()], acc.elem());
+      __device__ pair<int32_t,int32_t> operator () (typename Array3<int32_t>::iterator iter) const {
+        return pair<int32_t,int32_t>(idxs_data[acc.idx0()], acc.elem());
       }
       __device__ Filter1(const Filter1 &other): data(other.idxs_data) { }
-      Filter1(int *idxs_data): idxs_data(idxs_data) { }
-      int *idxs_data;  // device pointer, from output_fsa_idxs.
+      Filter1(int32_t *idxs_data): idxs_data(idxs_data) { }
+      int32_t *idxs_data;  // device pointer, from output_fsa_idxs.
     };
 
     // Get an array indexed [i-prev_idx][elem_of_ostate][arc_from_that_elem].
@@ -162,17 +162,17 @@ void Determinize(const Ragged3<Arc> &input,
     //
     // Note: input.flat_indexes contains the flat indexes into the elements (i.e.
     // the indexes into input.elems) but it is not itself flat; it has the same
-    // 3d structure as `input`, so when indexed with a pair<int,int> it gives
-    // us a 1-d array of int, hence the extra level of array here.
+    // 3d structure as `input`, so when indexed with a pair<int32_t,int32_t> it gives
+    // us a 1-d array of int32_t, hence the extra level of array here.
     //
     // Note: FilteredArray3 is a dynamic creation, it doesn't get physically
     // populated.
     //
     // NOTE: input.flat_indexes or any flat_indexes can be implemented using a
     // special accesor; it just needs access to the shape.  This requires we
-    // be able to index a 3-d array with pair<int,int>.
-    Array3<int> arc_idxs = input.flat_indexes()[
-        FilteredArray3<pair<int,int> >(this_state_subsets,
+    // be able to index a 3-d array with pair<int32_t,int32_t>.
+    Array3<int32_t> arc_idxs = input.flat_indexes()[
+        FilteredArray3<pair<int32_t,int32_t> >(this_state_subsets,
                                        Filter1(output_fsa_idxs.elems.data()))];
 
 
@@ -183,7 +183,7 @@ void Determinize(const Ragged3<Arc> &input,
     // Range() is implemented internally, pointing to the underlying
     // array; if it were copied this wouldn't work.  This is not very ideal.
     struct ToStateSubsetsFilter {
-      __device__ int operator () (typename Array3<int>::accessor acc) const {
+      __device__ int32_t operator () (typename Array3<int32_t>::accessor acc) const {
         return acc.offset1();
       }
     };
@@ -192,12 +192,12 @@ void Determinize(const Ragged3<Arc> &input,
     // This is supposed to get the flat indexes into `this_state_subsets` that
     // each element of `arc_idxs` corresponds to.  The + ... is to account
     // for this_state_subsets being a range of state_subsets.
-    Array1<int> state_subsets_flat_indexes = FilteredArray2<int>(arc_idxs,
+    Array1<int32_t> state_subsets_flat_indexes = FilteredArray2<int32_t>(arc_idxs,
                                                                 ToStateSubsetsFilter()).elems() + ...;
 
 
     struct ArcToDestStateFilter {
-      using ValueType = int;
+      using ValueType = int32_t;
       Arc *elems; // device pointer.
 
       __host__ __device__ ArcToDestStateFilter(const ArcToDestStatFilter &other):
@@ -205,7 +205,7 @@ void Determinize(const Ragged3<Arc> &input,
 
       __host__ ArcToDestStateFilter(Arc *elems): elems(elems) { }
 
-      int operator () (typename Array3<int>::accessor acc) const {
+      int32_t operator () (typename Array3<int32_t>::accessor acc) const {
         // Note, the arc format we're using is not very efficiently accessed like
         // this, would be better to store src_state, dest_state and so on in separate
         // arrays.
@@ -214,17 +214,17 @@ void Determinize(const Ragged3<Arc> &input,
     };
     // Use array lookup to get the next-state for each of the src-states..
     // Note: each elem has same 3-dim structure as the Array3's in arc_idxs.
-    Array3<int> next_state = FilteredArray3<int>(input.elems[arc_idxs],
+    Array3<int32_t> next_state = FilteredArray3<int32_t>(input.elems[arc_idxs],
                                                  arc_to_dest_state_filter);
                                     // arc_to_dest_state_filter is a class
                                     // object with operator () taking Arc and
-                                    // returning int.
+                                    // returning int32_t.
 
 
     // Discard the last level of array in `next_state`, we don't care about
     // origin state.  Note, we won't resize this, so we can use Array2Base which
     // is not resizable, and which is like a view or iterator (into next_state).
-    Array2<int> next_state2 = next_state.concatenate(-1);
+    Array2<int32_t> next_state2 = next_state.concatenate(-1);
 
     // Obtain a map that reorders `next_state2` within each sub-list, so that
     // the next-states are contiguous.
@@ -232,26 +232,26 @@ void Determinize(const Ragged3<Arc> &input,
     // of each sublist in `next_state2`, and get not the sorted elements but the
     // mapping of indexes.  (These are the flat indexes, i.e. into the .elems.)
     bool flat_indexes = true;
-    Array2<int> sort_idxs = GetSublistSortOrder(next_state2, flat_indexes);
+    Array2<int32_t> sort_idxs = GetSublistSortOrder(next_state2, flat_indexes);
 
     // This will be a reordering of `arc_idxs` using `sort_idxs`, so that things with the
     // same next-state are adjacent.
-    Array2<int> arc_idxs2 = arc_idxs;
+    Array2<int32_t> arc_idxs2 = arc_idxs;
     arc_idxs2 = arc_idxs2.elems[sort_idxs];
 
 
     // the flat indexes into `state_subsets` that correspond to each element of
     // arc_idxs2.elems.
-    Array1<int> state_subsets_flat_indexes2 = state_subset_flat_indexes[sort_idxs];
+    Array1<int32_t> state_subsets_flat_indexes2 = state_subset_flat_indexes[sort_idxs];
 
     // Partition sub-lists of `arc_idxs2`, so that those with the same next-state form
     // individual sub-lists.
     // Same underlying data.
-    Array3<int> arc_idxs3 = arc_idxs2.partition(next_state2.elems[sort_idxs]);
+    Array3<int32_t> arc_idxs3 = arc_idxs2.partition(next_state2.elems[sort_idxs]);
 
 
     // Get the scores with the same structures as arc_idxs3...
-    Array3<int> this_scores(arc_idxs3.shape(), input_scores.elems[arc_idxs3.elems]);
+    Array3<int32_t> this_scores(arc_idxs3.shape(), input_scores.elems[arc_idxs3.elems]);
 
     // Get sort_idxs, for reordering `this_scores` within each sub-sub-list so that the
     // one with the best score is first, and if there is a tie on scores,
@@ -259,26 +259,26 @@ void Determinize(const Ragged3<Arc> &input,
     // object).
     // TODO: actually we could consider just finding the best in each sublist
     // rather than fully sorting.  Would do that using a different kind of indexing.
-    Array3<int> sort_idxs2 = GetSublistSortOrder(this_scores, flat_indexes);
+    Array3<int32_t> sort_idxs2 = GetSublistSortOrder(this_scores, flat_indexes);
 
 
     // this is a reordering of arc_idxs3 with `sort_idxs2`.
-    Array3<int> arc_idxs4(arc_idxs3.shape(), arc_idxs3.elems[sort_idxs2]);
-    Array1<int> state_subsets_flat_indexes3 = state_subset_flat_indexes2[sort_idxs2];
+    Array3<int32_t> arc_idxs4(arc_idxs3.shape(), arc_idxs3.elems[sort_idxs2]);
+    Array1<int32_t> state_subsets_flat_indexes3 = state_subset_flat_indexes2[sort_idxs2];
 
 
     // this selects the arc indexes with what in Python would be [:,:,0];
     // meaning, take 1st element of each sub-list.  This discards transitions
     // into states that were not the best transition.
     // -1 is the axis (i.e. the last axis).
-    Array1<int> elems_to_select = arc_idxs4.shape().offsets(-1).range(0, -1);
-    Array2<int> arc_idxs5 = Array3<int>(arc_idxs4.shape().without_last_level(),
+    Array1<int32_t> elems_to_select = arc_idxs4.shape().offsets(-1).range(0, -1);
+    Array2<int32_t> arc_idxs5 = Array3<int32_t>(arc_idxs4.shape().without_last_level(),
                                         arc_idxs4.elems[elems_to_select]);
 
 
     // Get the flat indexes into `state_subsets` that correspond to the
     // originating (input-)states for each element of arc_idxs5.elems
-    Array1<int> state_subset_idxs = state_subsets_flat_indexes2[elems_to_select];
+    Array1<int32_t> state_subset_idxs = state_subsets_flat_indexes2[elems_to_select];
 
 
     // max_len is maximum length of any sequence in the states we were

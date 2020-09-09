@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <memory>
 
-#include <glog/logging.h>
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/tensor.h"

@@ -13,12 +13,15 @@ include_directories(${CUDAToolkit_INCLUDE_DIRS})
 # the target
 add_library(context
     array_ops.cc
+    array_ops.cu
     context.cc
     context.cu
     dtype.cu
-#    ragged.cc
     tensor.cu
     tensor_ops.cu
+    utils.cc
+    utils.cu
+#    ragged.cc
 )
 
 # lib deps

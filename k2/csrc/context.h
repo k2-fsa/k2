@@ -15,6 +15,7 @@
 #include <cassert>
 #include <map>
 #include <memory>
+#include <vector>
 
 #include "k2/csrc/cuda_headers.h"
 #include "k2/csrc/log.h"
@@ -172,7 +173,7 @@ class CudaContext : public Context {
   ContextPtr GetCpuContext() override { return nullptr; }
   ContextPtr GetPinnedContext() override { return nullptr; }
   DeviceType GetDeviceType() const override { return kCuda; }
-  int GetDeviceId() const override { return gpu_id_; }
+  int32_t GetDeviceId() const override { return gpu_id_; }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
     void *p = nullptr;
@@ -205,7 +206,7 @@ class CudaContext : public Context {
   }
 
  private:
-  int gpu_id_;
+  int32_t gpu_id_;
   cudaStream_t stream_;
 };
 #endif
@@ -229,7 +230,7 @@ enum MemoryCopyKind {
   General usage would be:
      ContextPtr c;  // passed in
      BackgroundRunner br;
-     for (int i = 0; i < N; ++i) {
+     for (int32_t i = 0; i < N; ++i) {
         std::function<void()> lambda = [=] () {
         ContextPtr c_child = c.Child();
            // do something here, possibly with multiple steps...
@@ -289,9 +290,9 @@ struct Region : public std::enable_shared_from_this<Region> {
                       // points to this Region (this is relevant for things that
                       // behave like resizable vectors).
 
-  // You need template arg to invoke this, e.g. region->GetData<int>();
+  // You need template arg to invoke this, e.g. region->GetData<int32_t>();
   // You can also choose to template additionally on the device-type, like
-  // region->GetData<int,kGpu>(), to activate a check that it's on the expected
+  // region->GetData<int32_t,kGpu>(), to activate a check that it's on the expected
   // device.
   template <typename T = void, DeviceType d = kUnk>
   T *GetData() {

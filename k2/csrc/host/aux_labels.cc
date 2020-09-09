@@ -12,7 +12,7 @@
 #include "k2/csrc/host/aux_labels.h"
 
 #include <algorithm>
-#include <glog/logging.h>
+
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -38,7 +38,7 @@ namespace {
 static void CountExtraStates(const k2::Fsa &fsa_in,
                              const k2::AuxLabels &labels_in,
                              std::vector<int32_t> *num_extra_states) {
-  CHECK_EQ(num_extra_states->size(), fsa_in.NumStates());
+ K2_CHECK_EQ(num_extra_states->size(), fsa_in.NumStates());
   auto &states = *num_extra_states;
   const auto arcs = fsa_in.data + fsa_in.indexes[0];
   for (int32_t i = 0; i != fsa_in.size2; ++i) {
@@ -69,14 +69,14 @@ static void CountExtraStates(const k2::Fsa &fsa_in,
 static void MapStates(const std::vector<int32_t> &num_extra_states,
                       std::vector<int32_t> *state_map,
                       std::vector<int32_t> *state_ids) {
-  CHECK_EQ(state_map->size(), num_extra_states.size());
-  CHECK_EQ(state_ids->size(), num_extra_states.size());
+ K2_CHECK_EQ(state_map->size(), num_extra_states.size());
+ K2_CHECK_EQ(state_ids->size(), num_extra_states.size());
   auto &s_map = *state_map;
   auto &s_ids = *state_ids;
   // we suppose there's no arcs entering the start state (i.e. state id of the
   // start state in output FSA will be 0), otherwise we may need to create a new
   // state as the real start state.
-  CHECK_EQ(num_extra_states[0], 0);
+ K2_CHECK_EQ(num_extra_states[0], 0);
   auto num_states_in = num_extra_states.size();
   // process from the second state
   s_map[0] = 0;
@@ -94,7 +94,7 @@ static void MapStates(const std::vector<int32_t> &num_extra_states,
 namespace k2 {
 
 void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
-  CHECK_NOTNULL(aux_size);
+ K2_CHECK_NOTNULL(aux_size);
   aux_size->size1 = arc_map_.size;
   int32_t num_labels = 0;
   for (auto i = arc_map_.begin; i != arc_map_.end; ++i) {
@@ -107,7 +107,7 @@ void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
 }
 
 void AuxLabels1Mapper::GetOutput(AuxLabels *labels_out) {
-  CHECK_NOTNULL(labels_out);
+ K2_CHECK_NOTNULL(labels_out);
   auto &start_pos = labels_out->indexes;
   auto &labels = labels_out->data;
   int32_t num_labels = 0;
@@ -125,7 +125,7 @@ void AuxLabels1Mapper::GetOutput(AuxLabels *labels_out) {
 }
 
 void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
-  CHECK_NOTNULL(aux_size);
+ K2_CHECK_NOTNULL(aux_size);
   aux_size->size1 = arc_map_.size1;
   int32_t num_labels = 0;
   for (const auto &arc_index : arc_map_) {
@@ -137,7 +137,7 @@ void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
 }
 
 void AuxLabels2Mapper::GetOutput(AuxLabels *labels_out) {
-  CHECK_NOTNULL(labels_out);
+ K2_CHECK_NOTNULL(labels_out);
   auto &start_pos = labels_out->indexes;
   auto &labels = labels_out->data;
   int32_t num_labels = 0;
@@ -158,8 +158,8 @@ void AuxLabels2Mapper::GetOutput(AuxLabels *labels_out) {
 
 void FstInverter::GetSizes(Array2Size<int32_t> *fsa_size,
                            Array2Size<int32_t> *aux_size) const {
-  CHECK_NOTNULL(fsa_size);
-  CHECK_NOTNULL(aux_size);
+ K2_CHECK_NOTNULL(fsa_size);
+ K2_CHECK_NOTNULL(aux_size);
   int32_t num_extra_states = 0;
   int32_t num_arcs = 0;
   int32_t num_non_eps_labels = 0;
@@ -178,8 +178,8 @@ void FstInverter::GetSizes(Array2Size<int32_t> *fsa_size,
 }
 
 void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
-  CHECK_NOTNULL(fsa_out);
-  CHECK_NOTNULL(labels_out);
+ K2_CHECK_NOTNULL(fsa_out);
+ K2_CHECK_NOTNULL(labels_out);
 
   if (IsEmpty(fsa_in_)) return;
 
@@ -214,8 +214,8 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
     if (dest_state == final_state_in) {
       // every arc entering the final state must have exactly
       // one olabel == kFinalSymbol
-      CHECK_EQ(pos_begin + 1, pos_end);
-      CHECK_EQ(labels_in_.data[pos_begin], kFinalSymbol);
+     K2_CHECK_EQ(pos_begin + 1, pos_end);
+     K2_CHECK_EQ(labels_in_.data[pos_begin], kFinalSymbol);
     }
     if (pos_end - pos_begin <= 1) {
       int32_t curr_label =
@@ -246,9 +246,9 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
   }
 
   // any failure indicates there are some errors
-  CHECK_EQ(arcs.size(), fsa_out->size2);
-  CHECK_EQ(start_pos.size(), labels_out->size1 + 1);
-  CHECK_EQ(labels.size(), labels_out->size2);
+ K2_CHECK_EQ(arcs.size(), fsa_out->size2);
+ K2_CHECK_EQ(start_pos.size(), labels_out->size1 + 1);
+ K2_CHECK_EQ(labels.size(), labels_out->size2);
 
   std::vector<int32_t> arc_map;
   ReorderArcs(arcs, fsa_out, &arc_map);

@@ -65,7 +65,7 @@ RaggedShape4 MergeToAxis1(const std::vector<const RaggedShape3*> &src) {
   // row-splits for axis 2 (i.e. indexed by an idx012).
   int32_t *sizes3_out_data = row_splits3_out_01.Data();
 
-  __host__ __device__ lambda_set_sizes3 = [=] (int output_idx01) -> void {
+  __host__ __device__ lambda_set_sizes3 = [=] (int32_t output_idx01) -> void {
      int32_t output_idx0 = row_ids1_data[output_idx01],
          output_idx0x = row_splits0_data[output_idx0],
          output_idx1 = output_idx01 - output_idx0x;

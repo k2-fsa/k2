@@ -27,9 +27,9 @@ class DLPackArray1<ValueType *, I> : public Array1<ValueType *, I> {
  public:
   explicit DLPackArray1(py::capsule cap_data)
       : data_tensor_(new Tensor(cap_data)) {
-    CHECK_EQ(data_tensor_->NumDim(), 1);
-    CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
-    CHECK_EQ(data_tensor_->Stride(0), 1);
+   K2_CHECK_EQ(data_tensor_->NumDim(), 1);
+   K2_CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
+   K2_CHECK_EQ(data_tensor_->Stride(0), 1);
 
     int32_t size = data_tensor_->Shape(0);
     this->Init(0, size, data_tensor_->Data<ValueType>());
@@ -46,9 +46,9 @@ class DLPackArray1<StridedPtr<ValueType, I>, I>
   using StridedPtrType = StridedPtr<ValueType, I>;
   explicit DLPackArray1(py::capsule cap_data)
       : data_tensor_(new Tensor(cap_data)) {
-    CHECK_EQ(data_tensor_->NumDim(), 1);
-    CHECK_GE(data_tensor_->Shape(0), 0);   // num-elements
-    CHECK_GE(data_tensor_->Stride(0), 1);  // stride > 1
+   K2_CHECK_EQ(data_tensor_->NumDim(), 1);
+   K2_CHECK_GE(data_tensor_->Shape(0), 0);   // num-elements
+   K2_CHECK_GE(data_tensor_->Stride(0), 1);  // stride > 1
 
     int32_t size = data_tensor_->Shape(0);
     StridedPtrType strided_ptr(data_tensor_->Data<ValueType>(),
@@ -100,13 +100,13 @@ class DLPackArray2<ValueType *, true, I> : public Array2<ValueType *, I> {
   DLPackArray2(py::capsule cap_indexes, py::capsule cap_data)
       : indexes_tensor_(new Tensor(cap_indexes)),
         data_tensor_(new Tensor(cap_data)) {
-    CHECK_EQ(indexes_tensor_->NumDim(), 1);
-    CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
-    CHECK_EQ(indexes_tensor_->Stride(0), 1);
+   K2_CHECK_EQ(indexes_tensor_->NumDim(), 1);
+   K2_CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
+   K2_CHECK_EQ(indexes_tensor_->Stride(0), 1);
 
-    CHECK_EQ(data_tensor_->NumDim(), 1);
-    CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
-    CHECK_EQ(data_tensor_->Stride(0), 1);
+   K2_CHECK_EQ(data_tensor_->NumDim(), 1);
+   K2_CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
+   K2_CHECK_EQ(data_tensor_->Stride(0), 1);
 
     int32_t size1 = indexes_tensor_->Shape(0) - 1;
     int32_t size2 = data_tensor_->Shape(0);
@@ -125,17 +125,17 @@ class DLPackArray2<ValueType *, false, I> : public Array2<ValueType *, I> {
   DLPackArray2(py::capsule cap_indexes, py::capsule cap_data)
       : indexes_tensor_(new Tensor(cap_indexes)),
         data_tensor_(new Tensor(cap_data)) {
-    CHECK_EQ(indexes_tensor_->NumDim(), 1);
-    CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
-    CHECK_EQ(indexes_tensor_->Stride(0), 1);
+   K2_CHECK_EQ(indexes_tensor_->NumDim(), 1);
+   K2_CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
+   K2_CHECK_EQ(indexes_tensor_->Stride(0), 1);
 
-    CHECK_EQ(data_tensor_->NumDim(), 2);
-    CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
-    CHECK_EQ(data_tensor_->Shape(1) * data_tensor_->BytesPerElement(),
+   K2_CHECK_EQ(data_tensor_->NumDim(), 2);
+   K2_CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
+   K2_CHECK_EQ(data_tensor_->Shape(1) * data_tensor_->BytesPerElement(),
              sizeof(ValueType));
-    CHECK_EQ(data_tensor_->Stride(0) * data_tensor_->BytesPerElement(),
+   K2_CHECK_EQ(data_tensor_->Stride(0) * data_tensor_->BytesPerElement(),
              sizeof(ValueType));
-    CHECK_EQ(data_tensor_->Stride(1), 1);
+   K2_CHECK_EQ(data_tensor_->Stride(1), 1);
 
     int32_t size1 = indexes_tensor_->Shape(0) - 1;
     int32_t size2 = data_tensor_->Shape(0);
@@ -156,13 +156,13 @@ class DLPackArray2<StridedPtr<ValueType, I>, true, I>
   DLPackArray2(py::capsule cap_indexes, py::capsule cap_data)
       : indexes_tensor_(new Tensor(cap_indexes)),
         data_tensor_(new Tensor(cap_data)) {
-    CHECK_EQ(indexes_tensor_->NumDim(), 1);
-    CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
-    CHECK_EQ(indexes_tensor_->Stride(0), 1);
+   K2_CHECK_EQ(indexes_tensor_->NumDim(), 1);
+   K2_CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
+   K2_CHECK_EQ(indexes_tensor_->Stride(0), 1);
 
-    CHECK_EQ(data_tensor_->NumDim(), 1);
-    CHECK_GE(data_tensor_->Shape(0), 0);   // num-elements
-    CHECK_GE(data_tensor_->Stride(0), 1);  // stride > 1
+   K2_CHECK_EQ(data_tensor_->NumDim(), 1);
+   K2_CHECK_GE(data_tensor_->Shape(0), 0);   // num-elements
+   K2_CHECK_GE(data_tensor_->Stride(0), 1);  // stride > 1
 
     int32_t size1 = indexes_tensor_->Shape(0) - 1;
     int32_t size2 = data_tensor_->Shape(0);

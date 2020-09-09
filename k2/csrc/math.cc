@@ -20,7 +20,7 @@ namespace k2 {
   ...
  */
 int32_t HighestBitSet(int32_t i) {
-  CHECK_GE(i, 0);
+ K2_CHECK_GE(i, 0);
   for (int64_t j = 0; j < 32; j++) {
     if (i < (1<<j)) {
       return i - 1;
@@ -29,9 +29,9 @@ int32_t HighestBitSet(int32_t i) {
   return 32;
 }
 
-// returns random int from [min..max]
+// returns random int32_t from [min..max]
 int32_t RandInt(int32_t min, int32_t max) {
-  CHECK_GE(max, min);
+ K2_CHECK_GE(max, min);
   return (min + (rand() % (max + 1 - min)));
 }
 

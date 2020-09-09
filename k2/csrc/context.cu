@@ -33,8 +33,8 @@ template <typename LambdaT>
 __global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
   // actually threadIdx.y will always be 1 for now so we could drop that part of
   // setting i..
-  int i = blockIdx.y * blockDim.y + threadIdx.y;
-  int j = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_t i = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_t j = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < m && j < n) {
     lambda(i, j);
   }

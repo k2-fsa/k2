@@ -1,6 +1,8 @@
 /**
  * @brief
- * context
+ * context_inl
+ * this file is supposed to be included only by context.h
+ * It' the implementation of template functions and inlined functions.
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey

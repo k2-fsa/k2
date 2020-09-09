@@ -109,7 +109,7 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
 
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by Compose())
-  from int32 to int64; this will be needed for conversion to LongTensor.
+  from int32_t to int64; this will be needed for conversion to LongTensor.
    @param [in] arc_map  Indexed by arc-index in the output FSA, the
                         arc-index in the input FSA that it corresponds to.
    @param [in] num_arcs The size of `arc_map`
@@ -121,7 +121,7 @@ void ConvertIndexes1(const int32_t *arc_map, int32_t num_arcs,
 
 /*
   Convert indexes (typically arc-mapping indexes, e.g. as output by
-  RmEpsilonPruned()) from int32 to long int; this will be needed for conversion
+  RmEpsilonPruned()) from int32_t to long int32_t; this will be needed for conversion
   to LongTensor.
 
   This version is for when each arc of the output FSA may correspond to a
@@ -185,9 +185,9 @@ class FsaCreator {
     int32_t curr_state = -1;
     int32_t index = 0;
     for (const auto &arc : arcs_) {
-      CHECK_LE(arc.src_state, final_state);
-      CHECK_LE(arc.dest_state, final_state);
-      CHECK_LE(curr_state, arc.src_state);
+     K2_CHECK_LE(arc.src_state, final_state);
+     K2_CHECK_LE(arc.dest_state, final_state);
+     K2_CHECK_LE(curr_state, arc.src_state);
       while (curr_state < arc.src_state) {
         arc_indexes_.push_back(index);
         ++curr_state;

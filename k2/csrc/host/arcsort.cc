@@ -12,7 +12,7 @@
 #include "k2/csrc/host/arcsort.h"
 
 #include <algorithm>
-#include <glog/logging.h>
+
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -21,15 +21,15 @@
 
 namespace k2 {
 void ArcSorter::GetSizes(Array2Size<int32_t> *fsa_size) const {
-  CHECK_NOTNULL(fsa_size);
+ K2_CHECK_NOTNULL(fsa_size);
   fsa_size->size1 = fsa_in_.size1;
   fsa_size->size2 = fsa_in_.size2;
 }
 
 void ArcSorter::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
-  CHECK_NOTNULL(fsa_out);
-  CHECK_EQ(fsa_out->size1, fsa_in_.size1);
-  CHECK_EQ(fsa_out->size2, fsa_in_.size2);
+ K2_CHECK_NOTNULL(fsa_out);
+ K2_CHECK_EQ(fsa_out->size1, fsa_in_.size1);
+ K2_CHECK_EQ(fsa_out->size2, fsa_in_.size2);
 
   std::vector<int32_t> indexes(fsa_in_.size2);
   // After arc sorting, indexes[i] = j means we mapped arc-index `i` of
@@ -59,7 +59,7 @@ void ArcSorter::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
 }
 
 void ArcSort(Fsa *fsa, int32_t *arc_map /*= nullptr*/) {
-  CHECK_NOTNULL(fsa);
+ K2_CHECK_NOTNULL(fsa);
 
   std::vector<int32_t> indexes(fsa->size2);
   // After arc sorting, indexes[i] = j means we mapped arc-index `i` of

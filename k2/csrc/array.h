@@ -66,7 +66,7 @@ class Array1 {
     Init(ctx, size);
 
     // TODO(haowen): there's no such definition
-    // `Eval(ContextPtr, T*, int, Callable&)` now
+    // `Eval(ContextPtr, T*, int32_t, Callable&)` now
     Eval(ctx, Data(), size, std::forward<Callable>(callable));
   }
   */
@@ -451,7 +451,7 @@ class Array2 {
     } else {
       // TODO(haowen): only handle positive stride now
       if (!copy_for_strides) {
-        LOG(FATAL) << "non-unit stride on 2nd axis of tensor";
+        K2_LOG(FATAL) << "non-unit stride on 2nd axis of tensor";
       }
       region_ =
           NewRegion(region->context, dim0_ * elem_stride0_ * ElementSize());

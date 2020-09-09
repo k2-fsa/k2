@@ -28,7 +28,7 @@ namespace k2 {
 int32_t HighestBitSet(int32_t i);
 
 
-// returns random int from [min..max]
+// returns random int32_t from [min..max]
 int32_t RandInt(int32_t min, int32_t max);
 
 // Returns random ints from a distribution that gives more weight to lower

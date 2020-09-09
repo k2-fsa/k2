@@ -7,8 +7,6 @@
 
 #include "k2/python/csrc/tensor.h"
 
-#include "glog/logging.h"
-
 namespace k2 {
 
 // refer to
@@ -29,7 +27,7 @@ static DataType DLDataTypeToK2DataType(DLDataType data_type) {
   if (data_type.code == kDLInt && data_type.bits == 32) return kInt32Type;
   if (data_type.code == kDLFloat && data_type.bits == 32) return kFloatType;
   if (data_type.code == kDLFloat && data_type.bits == 64) return kDoubleType;
-  LOG(FATAL) << "Unsupported DLDataType: Code = " << data_type.code
+  K2_LOG(FATAL) << "Unsupported DLDataType: Code = " << data_type.code
              << ", Bits = " << data_type.bits;
   return kUnknownType;
 }
@@ -41,7 +39,7 @@ static DeviceType DLDeviceTypeToK2DeviceType(DLDeviceType device_type) {
     case kDLGPU:
       return kGPU;
     default:
-      LOG(FATAL) << "Unsupported DLDeviceType: " << device_type;
+      K2_LOG(FATAL) << "Unsupported DLDeviceType: " << device_type;
       return kUnknownDevice;
   }
 }
@@ -58,7 +56,7 @@ std::ostream &operator<<(std::ostream &os, DeviceType device_type) {
 Tensor::Tensor(py::capsule capsule) {
   // the following error message is modified from
   //     https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L384
-  CHECK_EQ(strcmp(kDLPackTensorName, capsule.name()), 0)
+ K2_CHECK_EQ(strcmp(kDLPackTensorName, capsule.name()), 0)
       << "Expected capsule name: " << kDLPackTensorName << "\n"
       << "But got: " << capsule.name() << "\n"
       << "Note that DLTensor capsules can be consumed only once,\n"
@@ -115,16 +113,16 @@ int32_t Tensor::BytesPerElement() const {
 }
 
 void Tensor::Check() const {
-  CHECK(dtype_ == kInt32Type || dtype_ == kFloatType || dtype_ == kDoubleType)
+  K2_CHECK(dtype_ == kInt32Type || dtype_ == kFloatType || dtype_ == kDoubleType)
       << "We support only int32_t, float and double at present";
 
-  CHECK(BytesPerElement() == 4 || BytesPerElement() == 8)
+  K2_CHECK(BytesPerElement() == 4 || BytesPerElement() == 8)
       << "Only int32_t, float and double are supported";
 
-  CHECK_EQ(dl_managed_tensor_->dl_tensor.dtype.lanes, 1u)
+ K2_CHECK_EQ(dl_managed_tensor_->dl_tensor.dtype.lanes, 1u)
       << "We support only one lane";
 
-  CHECK_EQ(device_type_, kCPU) << "We support only kCPU at present";
+ K2_CHECK_EQ(device_type_, kCPU) << "We support only kCPU at present";
 }
 
 }  // namespace k2

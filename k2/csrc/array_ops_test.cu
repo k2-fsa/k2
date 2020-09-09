@@ -105,7 +105,7 @@ TEST(OpsTest, TransposeGpuTest) {
     // different data type to get the best performance
     GpuTransposeTest<char>(1000, 2000, 100, true);
     GpuTransposeTest<short>(1000, 2000, 100, true);
-    GpuTransposeTest<int>(1000, 2000, 100, true);
+    GpuTransposeTest<int32_t>(1000, 2000, 100, true);
     GpuTransposeTest<float>(1000, 2000, 100, true);
     GpuTransposeTest<double>(1000, 2000, 100, true);
   }

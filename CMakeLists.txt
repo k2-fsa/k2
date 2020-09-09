@@ -57,6 +57,7 @@ if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
   find_package(CUDAToolkit REQUIRED)
   if(CUDAToolkit_FOUND)
     message(STATUS "found CUDAToolkit " ${CUDAToolkit_LIBRARY_DIR})
+    message(STATUS "CUDAToolkit_NVCC_EXECUTABLE " ${CUDAToolkit_NVCC_EXECUTABLE})
     message(STATUS "CUDAToolkit_INCLUDE_DIRS " ${CUDAToolkit_INCLUDE_DIRS})
     message(STATUS "CUDAToolkit_LIBRARY_DIR " ${CUDAToolkit_LIBRARY_DIR})
 

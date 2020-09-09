@@ -169,8 +169,8 @@ std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape);
   CPU.  You use it as:
     for (RaggedShapeIndexIterator iter = ragged.Iterator();
           !iter.Done(); iter.Next()) {
-       std::vector<int32> &vec = iter.Value();
-       int32 linear_index = ragged[vec];
+       std::vector<int32_t> &vec = iter.Value();
+       int32_t linear_index = ragged[vec];
     }
 */
 class RaggedShapeIndexIterator {
@@ -350,7 +350,7 @@ struct Ragged {
   Array1<T> values;
 
   Ragged(RaggedShape &shape, Array1<T> &values) : shape(shape), values(values) {
-    CHECK_EQ(shape.TotSize(shape.NumAxes() - 1), values.Dim());
+   K2_CHECK_EQ(shape.TotSize(shape.NumAxes() - 1), values.Dim());
   }
 
   // Note: 'values' will be uninitialized.
@@ -427,7 +427,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
     @param [in]  row_ids   The row-ids for axis 1; must be nonnegative
                            and non-decreasing.
  */
-RaggedShape Ragged2ShapeFromRowIds(int num_rows, Array1<int32_t> &row_ids);
+RaggedShape Ragged2ShapeFromRowIds(int32_t num_rows, Array1<int32_t> &row_ids);
 
 /*
   Construct a ragged shape with one more axis than the supplied shape, given
@@ -439,7 +439,7 @@ RaggedShape Ragged2ShapeFromRowIds(int num_rows, Array1<int32_t> &row_ids);
                            0 <= i < shape.TotSize(Shape.NumAxes()-1),
                            with row_ids.size() == elems.size().
  */
-RaggedShape RaggedShapeFromRowIds(RaggedShape &shape, Array1<int> &row_ids);
+RaggedShape RaggedShapeFromRowIds(RaggedShape &shape, Array1<int32_t> &row_ids);
 
 /*
   Construct a RaggedShape with 2 axes.

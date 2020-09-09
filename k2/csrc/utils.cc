@@ -27,9 +27,9 @@ __global__ void FillValuesKernel(int32_t *data, int32_t num_values,
 // for (int32_t i = 0; i < num_values; i++) data[i] = value;
 __device__ void FillValues(int32_t *data, int32_t num_values,
                            int32_t value) {
-  int dim_block = 256;
-  int loop_len = 2;
-  int dim_grid = NumBlocks(num_values / loop_len, dim_block);
+  int32_t dim_block = 256;
+  int32_t loop_len = 2;
+  int32_t dim_grid = NumBlocks(num_values / loop_len, dim_block);
   if (dim_grid.x == 1) dim_block.x = num_values;
   FillValuesKernel<<<dim_block, dim_grid>>>(data, num_values, value);
 }
@@ -69,7 +69,7 @@ __global__ void RowSplitsToRowIdsKernel(
   }
 }
 
-static int32 RoundUpToNearestPowerOfTwo(int32 n) {
+static int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
   KALDI_ASSERT(n > 0);
   n--;
   n |= n >> 1;
@@ -101,7 +101,7 @@ static int32 RoundUpToNearestPowerOfTwo(int32 n) {
 
 
     First kernel pseudocode: for each index 'i' into 't', it does:
-      for (int n=0, j = t[i]; j < t[i+1]; n++) {
+      for (int32_t n=0, j = t[i]; j < t[i+1]; n++) {
          x[j] = i;
          if (j & (1<<n))  j += (1 << n);
       }
@@ -115,7 +115,7 @@ static int32 RoundUpToNearestPowerOfTwo(int32 n) {
        // We suppose we are given i (the position into x that we're responsible for
        // setting:
        orig_i = i;
-       for (int n=0; !is_valid_index(i, x[i]); n++) {
+       for (int32_t n=0; !is_valid_index(i, x[i]); n++) {
          if (i & (1<<n))  i -= (1 << n);
        }
        x[orig_i] = x[i];
@@ -125,7 +125,7 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows, const int32_t *row_split
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     cur_row_start = row_splits[0];
-    CHECK_EQ(cur_row_start, 0);
+   K2_CHECK_EQ(cur_row_start, 0);
     for (int32_t row = 0; row < num_rows; row++) {
       int32_t next_row_start = row_splits[row+1];
       for (; cur_row_start < next_row_start; ++cur_row_start)
@@ -139,8 +139,8 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows, const int32_t *row_split
       int32_t avg_elems_per_row = num_elems / num_rows + 1,
           threads_per_row = RoundUpToNearestPowerOfTwo(avg_elems_per_row),
           tot_threads = num_rows * threads_per_row;
-      int dim_block = 256;
-      int dim_grid = NumBlocks(tot_threads, dim_block);
+      int32_t dim_block = 256;
+      int32_t dim_grid = NumBlocks(tot_threads, dim_block);
 
       K2_CUDA_SAFE_CALL(
           RowSplitsToRowIdsKernel<<<dim_block, dim_grid, 0, c->GetCudaStream()>>>(
@@ -276,7 +276,7 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const T *row_ids,
     int32_t cur_row = -1;
     for (int32_t i = 0; i < num_elems; i++) {
       int32_t row = row_ids[i];
-      CHECK_GE(row, cur_row);
+     K2_CHECK_GE(row, cur_row);
       while (cur_row < row) {
         cur_row++;
         row_splits[cur_row] = i;
@@ -310,8 +310,8 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const T *row_ids,
       int32_t avg_rows_per_elem = num_rows / num_elems + 2,
           threads_per_elem= RoundUpToNearestPowerOfTwo(avg_rows_per_elem),
           tot_threads = num_elems * threads_per_elem;
-      int dim_block = 256;
-      int dim_grid = NumBlocks(tot_threads, dim_block);
+      int32_t dim_block = 256;
+      int32_t dim_grid = NumBlocks(tot_threads, dim_block);
       K2_CUDA_SAFE_CALL(
           RowIdsToRowSplitsKernel<<<dim_block, dim_grid, 0, c->GetCudaStream()>>>(
               num_rows, threads_per_row, row_splits, num_elems_row_ids));
@@ -336,7 +336,7 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const T *row_ids,
  */
 
 /*
-template <int jobs_per_block, int threads_per_job>
+template <int32_t jobs_per_block, int32_t threads_per_job>
 __global__ void GetTaskRedirect(int32_t num_tasks, const int32_t *row_splits,
                                 TaskRedirect *redirect_out) {
   __shared__ int32_t temp[tasks_per_block];
@@ -584,8 +584,8 @@ void GetTaskRedirect(cudaStream_t stream, int32_t num_tasks,
     const int32_t threads_per_task = 8,
         tot_threads = threads_per_task * num_tasks;
 
-    int dim_block = 256;
-    int dim_grid = NumBlocks(tot_threads, dim_block);
+    int32_t dim_block = 256;
+    int32_t dim_grid = NumBlocks(tot_threads, dim_block);
 
     K2_CUDA_SAFE_CALL(
         GetTaskRedirect<threads_per_task><<<dim_block, dim_grid, 0, stream>>>(

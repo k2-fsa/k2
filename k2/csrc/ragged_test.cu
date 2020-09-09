@@ -70,7 +70,7 @@ void TestTranspose() {
   }
 
   for (auto iter = transposed.Iterator(); !iter.Done(); iter.Next()) {
-    std::vector<int32> index = iter.Value();
+    std::vector<int32_t> index = iter.Value();
     int32_t i = transposed[index];  // Just make sure this doesn't crash, dont
                                     // need the value.
     std::swap(index[0], index[1]);
@@ -78,7 +78,7 @@ void TestTranspose() {
                               // sure it's an allowable index.
   }
   for (auto iter = to_transpose.Iterator(); !iter.Done(); iter.Next()) {
-    std::vector<int32> index = iter.Value();
+    std::vector<int32_t> index = iter.Value();
     std::swap(index[0], index[1]);
     int32_t i = transposed[index];  // dont need the value, just need to make
                                       // sure it's an allowable index.
