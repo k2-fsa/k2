@@ -44,7 +44,7 @@ if(WIN32 AND BUILD_SHARED_LIBS)
 endif()
 
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
-  set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ version to be used.")  
+  set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ version to be used.")
   set(CUDAToolkit_LIBRARY_DIR "" CACHE STRING "The cudatoolkit library directory.")
   set(CUDAToolkit_INCLUDE_DIRS "" CACHE STRING "The cudatoolkit include directory.")
 
@@ -64,7 +64,7 @@ if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
   endif()
 else()
   # the following settings are modified from cub/CMakeLists.txt
-  set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ version to be used.")  
+  set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ version to be used.")
   set(CMAKE_CXX_EXTENSIONS OFF)
 
   message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
@@ -84,11 +84,7 @@ else()
 
   # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
   message(WARNING "arch 62/72 are not supported for now")
-  # (Dan): I had problem with 61 because CMake seems to be adding some -std=c++03 options for compiling
-  # that arch, which clashes with other things :-(
-  # set(K2_COMPUTE_ARCHS 35 50 52 60 61 70)
-
-  set(K2_COMPUTE_ARCHS 35 50 52 60 70)
+  set(K2_COMPUTE_ARCHS 35 50 52 60 61 70)
   foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
   endforeach()
