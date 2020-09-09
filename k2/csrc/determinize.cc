@@ -17,10 +17,12 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include "k2/csrc/array_ops.h"
+
 namespace k2 {
 
 //  we'd simultaneously determinize an array of FSAs, in practice.
-void DeterminizeFsaArray(Array3<Arc>  &FsaVec,
+void DeterminizeFsaArray(Array3<Arc *, int32_t>  &FsaVec,
                          Array1<float> &input_scores,
                          Allocator &alloc,
                          ... ) {

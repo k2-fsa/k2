@@ -15,9 +15,9 @@
 
 #include <memory>
 
-#include "k2/csrc/context.h"
+#include "k2/csrc/context.cuh"
 #include "k2/csrc/dtype.h"
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
 
 namespace k2 {
 class Shape {

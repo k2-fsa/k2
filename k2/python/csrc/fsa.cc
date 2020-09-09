@@ -8,6 +8,7 @@
 #include "k2/python/csrc/fsa.h"
 
 #include <memory>
+#include <sstream>
 
 #include "k2/csrc/host/fsa.h"
 #include "k2/python/csrc/tensor.h"

@@ -88,14 +88,14 @@ bool Tensor::Empty() const { return dl_managed_tensor_ != nullptr; }
 int32_t Tensor::NumDim() const { return dl_managed_tensor_->dl_tensor.ndim; }
 
 int64_t Tensor::Shape(int32_t i) const {
-  DCHECK_GE(i, 0);
-  DCHECK_LT(i, NumDim());
+ K2_DCHECK_GE(i, 0);
+ K2_DCHECK_LT(i, NumDim());
   return dl_managed_tensor_->dl_tensor.shape[i];
 }
 
 int64_t Tensor::Stride(int32_t i) const {
-  DCHECK_GE(i, 0);
-  DCHECK_LT(i, NumDim());
+ K2_DCHECK_GE(i, 0);
+ K2_DCHECK_LT(i, NumDim());
   return dl_managed_tensor_->dl_tensor.strides[i];
 }
 

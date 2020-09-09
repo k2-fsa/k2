@@ -13,7 +13,7 @@
 #include <memory>
 
 #include "k2/csrc/dtype.h"
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
 #include "k2/csrc/tensor.h"
 
 namespace k2 {

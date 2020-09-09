@@ -12,7 +12,7 @@
  */
 
 #include "k2/csrc/array_ops.h"
-#include "k2/csrc/utils.h"
+#include "k2/csrc/utils.cuh"
 
 namespace k2 {
 
@@ -251,9 +251,10 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
   PtrPtr src_data = PtrPtr(src.Data());
   T *dest_data = dest->Data();
 
-  // use the ExclusiveSum() template for pointer-like objects that is declared
+  // use the ExclusivePrefixSum() template for pointer-like objects that is declared
   // in utils.h
-  ExclusivePrefixSum(src.Context(), dest_dim, src_data, dest_data);
+  // @todo: need implementations in utils.cu for <PtrPtr, T *> ?
+//  ExclusivePrefixSum<PtrPtr, T *>(src.Context(), dest_dim, src_data, dest_data);
 }
 
 
@@ -357,21 +358,6 @@ __global__ void TransposeKernel(int32_t rows, int32_t cols, const T *input,
   }
 }
 
-/*
-  Transpose a matrix.  Require src.Size0() == dest.Size1() and src.Size1() ==
-  dest.Size0().  This is not the only way to transpose a matrix, you can also
-  do: dest = Array2<T>(src.ToTensor().Transpose(0,1)), which will likely call
-  this function
-
-     @param [in] c   Context to use, must satisfy
-                     `c.IsCompatible(src.Context())` and
-                     `c.IsCompatible(dest->Context())`.
-     @param [in] src  Source array to transpose
-     @param [out] dest  Destination array; must satisfy
-                        `dest->Size1() == src.Size0()` and
-                        `dest->Size0() == src.Size1()`.
-                        At exit, we'll have dest[i,j] == src[j,i].
-*/
 template <typename T>
 void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
   assert(c->IsCompatible(*src.Context()));

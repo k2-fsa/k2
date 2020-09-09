@@ -16,7 +16,7 @@
 #include <cassert>
 #include <type_traits>
 
-#include "k2/csrc/context.h"
+#include "k2/csrc/context.cuh"
 
 namespace k2 {
 
@@ -241,43 +241,6 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
                        const int32_t *row_splits, int32_t num_elems,
                        int32_t *row_ids);
 
-/*
-  This function works out the row_id of `this` index from row-splits, using
-  binary search.  Specifically, it returns i such that row_splits[i] <= index <
-  row_splits[i+1]. row_splits should be a vector with at least num_rows+1
-  elements.
-
-       @param [in] num_rows      Number of rows (row-id will be less than this)
-       @param [in] row_splits    Row-splits vector, of size num_rows + 1 (search
-                                 for `row_splits concept` near the top of
-                                 utils.h for more info)
-       @param [in] index         Linear index (e.g. idx01) for which we're
-                                 querying which row it is from
-       @param [in] num_indexes   Total number of indexes (should equal
-                                 row_splits[num_rows]); right now it's not used,
-                                 but in future it might be used for a heuristic,
-                                 for the initial guess of where to start the
-                                 binary search.
-
-       @return                   Returns i such that row_splits[i] <= index <
-                                 row_splits[i+1] and 0 <= i < num_rows;
-                                 will die with assertion in debug mode if such
-                                 an i does not exist.
-
-   TODO(dan): make this compile, apparently std::lower_bound won't work on GPU
-   so we should manually do the binary search.
- */
-__forceinline__ __host__ __device__ int32_t
-RowIdFromRowSplits(int32_t num_rows, const int32_t *row_splits, int32_t index,
-                   int32_t num_indexes) {
-  // lower_bound gives the first i in row_splits that's greater than `index`.
-  // That implies the previous one is <= index.
-  //
-  auto i =
-      std::lower_bound(row_splits + 1, row_splits + num_rows + 1, index) - 1;
-  // K2_DCHECK(static_cast<uint32_t>(i) < static_cast<uint32_t>(num_rows));
-  return *i;
-}
 
 /*
   See above for 'row_ids concept' and 'row_splits' concept.
@@ -436,6 +399,17 @@ __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
 }
 
 /*
+  Host version of Cuda's atomicMax function, marked __host__ (the default) for
+  clarity.  So we can use this in lambdas that run on both host and device.
+ */
+__host__ __device__ __forceinline__
+int32_t atomicMax(int32_t *address, int32_t val) {
+  int32_t old = *address;
+  if (old < val) *address = val;
+  return old;
+}
+
+/*
  1:1 Conversion float <---> sortable int32_t We convert floats to sortable ints in
  order to use native atomics operation, which are way faster than looping over
  atomicCAS
@@ -449,20 +423,10 @@ __host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
   return IntAsFloat((i >= 0) ? i : i ^ 0x7FFFFFFF);
 }
 
-/*
-  Host version of Cuda's atomicMax function, marked __host__ (the default) for
-  clarity.  So we can use this in lambdas that run on both host and device.
- */
-__host__ int32_t atomicMax(int32_t *address, int32_t val) {
-  int32_t old = *address;
-  if (old < val) *address = val;
-  return old;
-}
-
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_UTILS_H_
-#include "k2/csrc/utils_inl.h"
+#include "k2/csrc/utils_inl.cuh"
 #undef IS_IN_K2_CSRC_UTILS_H_
 
 #endif  // K2_CSRC_UTILS_H_

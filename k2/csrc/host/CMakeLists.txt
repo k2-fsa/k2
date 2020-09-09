@@ -2,6 +2,8 @@
 
 #---------------------------- Build K2 host sources ----------------------------
 
+include_directories(${CUDAToolkit_INCLUDE_DIRS})
+
 # the target
 # please sort the source files alphabetically
 add_library(fsa
@@ -30,9 +32,6 @@ if(CMAKE_VERSION VERSION_LESS 3.8)
 else()
   target_compile_features(fsa PUBLIC cxx_std_11)
 endif()
-
-# link lib deps
-target_link_libraries(fsa PUBLIC glog)
 
 #---------------------------- Test K2 host sources ----------------------------
 

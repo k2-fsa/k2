@@ -14,7 +14,7 @@
 
 #include <algorithm>
 
-#include "k2/csrc/context.h"
+#include "k2/csrc/context.cuh"
 
 namespace k2 {
 

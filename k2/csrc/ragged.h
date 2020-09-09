@@ -14,7 +14,7 @@
 
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
 
 namespace k2 {
 

@@ -13,10 +13,11 @@
 #ifndef K2_CSRC_LOG_H_
 #define K2_CSRC_LOG_H_
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 
-#include "k2/csrc/cuda_headers.h"
+#include "k2/csrc/cuda_headers.cuh"
 
 namespace k2 {
 
@@ -170,6 +171,24 @@ T* CheckNotNull(T* t) {
 
 }  // namespace k2
 
+/**
+ * @brief A static assertion
+ *
+ * @param[in] COND the compile-time boolean expression that must be true
+ * @param[in] MSG  an error message if exp is false
+ *
+ * @note `static_assert` is supported by both of host and device.
+ *
+ * @code{.cpp}
+ * K2_STATIC_ASSERT(DEFINED_SHAPE % DEFINED_X == 0);
+ * @endcode
+ */
+#define STATIC_ASSERT(COND, MSG) \
+  typedef char static_assertion_##MSG[(!!(COND))*2-1]
+#define K2_STATIC_ASSERT3(X, L) STATIC_ASSERT(X, static_assertion_at_line_##L)
+#define K2_STATIC_ASSERT2(X, L) K2_STATIC_ASSERT3(X, L)
+#define K2_STATIC_ASSERT(X)    K2_STATIC_ASSERT2(X, __LINE__)
+
 #define K2_CHECK(x)                                              \
   (x) ? (void)0                                                  \
       : ::k2::internal::Voidifier() &                            \
@@ -213,7 +232,7 @@ T* CheckNotNull(T* t) {
 #define K2_LOG(x) \
   ::k2::internal::Logger(__FILE__, __func__, __LINE__, ::k2::internal::x)
 
-#define K2_CHECK_CUDA_ERROR(x) \
+#define K2_CHECK_CUDA_ERROR(x...)  \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 
 // ============================================================

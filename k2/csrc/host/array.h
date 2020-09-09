@@ -18,6 +18,8 @@
 #include <utility>
 #include <vector>
 
+#include "k2/csrc/log.cuh"
+
 namespace k2 {
 
 /*
@@ -220,8 +222,8 @@ struct Array3 {
              // through this object.
 
   Array2<Ptr, I> operator[](I i) const {
-    DCHECK_GE(i, 0);
-    DCHECK_LT(i, size1);
+   K2_DCHECK_GE(i, 0);
+   K2_DCHECK_LT(i, size1);
 
     Array2<Ptr, I> array;
     array.size1 = indexes1[i + 1] - indexes1[i];

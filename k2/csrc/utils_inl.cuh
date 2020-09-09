@@ -14,6 +14,9 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#ifndef K2_CSRC_UTILS_INL_H_
+#define K2_CSRC_UTILS_INL_H_
+
 #ifndef IS_IN_K2_CSRC_UTILS_H_
 #error "this file is supposed to be included only by utils.h"
 #endif
@@ -24,3 +27,5 @@
 namespace k2 {
 
 }  // namespace k2
+
+#endif  // K2_CSRC_UTILS_INL_H_

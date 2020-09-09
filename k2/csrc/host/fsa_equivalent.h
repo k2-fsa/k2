@@ -15,7 +15,7 @@
 
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/weights.h"
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
 
 #ifndef K2_CSRC_HOST_FSA_EQUIVALENT_H_
 #define K2_CSRC_HOST_FSA_EQUIVALENT_H_

@@ -171,7 +171,7 @@ RaggedShape4 MergeToAxis1(const std::vector<const RaggedShape3*> &src) {
     // the j below is the top-level index0 into the shape; we want the total
     // number of index1's and index2's/elements associated with this index0,
     // which will be written to respectively sizes2_data and sizes3_data.
-    auto lambda_get_sizes = __host__ __device__ [=] (int32_t j) -> void {
+    auto lambda_get_sizes = [=] __host__ __device__ (int32_t j) -> void {
         int32_t begin1 = row_splits1_data[j], end1 = row_splits1_data[j+1];
         int32_t begin2 = row_splits2_data[begin1], end2 = row_splits1_data[end1];
         int32_t num_indexes1 = end1 - begin1,

@@ -19,7 +19,7 @@
 
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/util.h"
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
 
 namespace k2 {
 

@@ -4,7 +4,7 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
 #include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
@@ -98,7 +98,7 @@ Tensor ToContiguous(Tensor src) {
   // PyTorch's ArrayRef.  not so critical to address that now though.
   std::vector<int32_t> dims(src.NumAxes());
   for (int32_t i = 0; i < src.NumAxes(); i++) dims[i] = src.Dim(i);
-  Tensor ans(src.GetContext(), src.GetDtype(), dims);
+  Tensor ans(src.Context(), src.GetDtype(), dims);
   CopyTensorElements(src, ans);
   return ans;
 }
@@ -123,7 +123,7 @@ void CastTensorElements1dContiguous(ContextPtr c, int32_t dim,
 Tensor Cast(Tensor src, Dtype new_dtype) {
   if (!src.IsContiguous()) src = ToContiguous(src);
 
-  ContextPtr c = src.GetContext();
+  ContextPtr c = src.Context();
   Tensor ans(c, new_dtype, src.GetShape());
   K2_DCHECK(ans.IsContiguous());
 

@@ -12,31 +12,37 @@
 #ifndef K2_CSRC_TIMER_H_
 #define K2_CSRC_TIMER_H_
 
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
 
 namespace k2 {
 class Timer {
  public:
   Timer() {
-    K2_CHECK_CUDA_ERROR(cudaEventCreate(&time_start_));
-    K2_CHECK_CUDA_ERROR(cudaEventCreate(&time_end_));
+    cudaEventCreate(&time_start_);
+    cudaEventCreate(&time_end_);
+    K2_CHECK_CUDA_ERROR(cudaGetLastError());
     Reset();
   }
 
   ~Timer() {
-    K2_CHECK_CUDA_ERROR(cudaEventDestroy(time_start_));
-    K2_CHECK_CUDA_ERROR(cudaEventDestroy(time_end_));
+    cudaEventDestroy(time_start_);
+    cudaEventDestroy(time_end_);
+    K2_CHECK_CUDA_ERROR(cudaGetLastError());
   }
 
-  void Reset() { K2_CHECK_CUDA_ERROR(cudaEventRecord(time_start_, 0)); }
+  void Reset() {
+    cudaEventRecord(time_start_, 0);
+    K2_CHECK_CUDA_ERROR(cudaGetLastError());
+  }
 
   double Elapsed() {
-    K2_CHECK_CUDA_ERROR(cudaEventRecord(time_end_, 0));
-    K2_CHECK_CUDA_ERROR(cudaEventSynchronize(time_end_));
+    cudaEventRecord(time_end_, 0);
+    cudaEventSynchronize(time_end_);
+    K2_CHECK_CUDA_ERROR(cudaGetLastError());
 
     float ms_elapsed;
-    K2_CHECK_CUDA_ERROR(
-        cudaEventElapsedTime(&ms_elapsed, time_start_, time_end_));
+    cudaEventElapsedTime(&ms_elapsed, time_start_, time_end_);
+    K2_CHECK_CUDA_ERROR(cudaGetLastError());
     return ms_elapsed / 1e3;
   }
 

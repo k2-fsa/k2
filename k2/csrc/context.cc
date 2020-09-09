@@ -9,7 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/context.h"
+#include "k2/csrc/context.cuh"
 
 namespace k2 {
 

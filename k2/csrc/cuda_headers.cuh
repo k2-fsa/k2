@@ -14,9 +14,10 @@
 #ifndef K2_CSRC_CUDA_HEADERS_H_
 #define K2_CSRC_CUDA_HEADERS_H_
 
-#ifdef __CUDACC__
+#ifdef __CUDA_ARCH__
 #define K2_CUDA_HOSTDEV __host__ __device__
 #else
+// then commented to compile
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>

@@ -154,7 +154,7 @@ void RaggedShape::Check() {
       K2_CHECK(row_ids.Dim() == 0 ||
                rsd.cached_tot_size == row_ids.Dim());
     } else {
-      K2_ASSERT(rsd.cached_tot_size == -1 && row_ids.Dim() == 0);
+      K2_CHECK(rsd.cached_tot_size == -1 && row_ids.Dim() == 0);
     }
 
     int32_t num_elems;
@@ -168,7 +168,7 @@ void RaggedShape::Check() {
           *row_splits_data = rsd.row_splits.Data();
       int32_t num_rows = rsd.row_splits.Dim() - 1;
 
-      auto lambda_check_row_splits = __host__ __device__ [=] (int32_t i) -> void {
+      auto lambda_check_row_splits = [=] __host__ __device__ (int32_t i) -> void {
          int32_t this_idx = row_splits_data[i];
          if (i == 0 && this_idx != 0) *ok_data = 0;
          if (i < num_rows) {
@@ -219,7 +219,7 @@ void RaggedShape::Check() {
       int32_t num_elems = rsd.row_ids.Dim(),
           num_rows = rsd.row_splits.Dim() - 1;
 
-      auto lambda_check_row_ids = __host__ __device__ [=] (int32_t i) -> void {
+      auto lambda_check_row_ids = [=] __host__ __device__ (int32_t i) -> void {
          int32_t this_row = rsd.row_ids_data[i];
          if (this_row < 0 ||
              this_row >= num_rows ||
@@ -381,10 +381,10 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
 
 RaggedShape Renumber(const RaggedShape &src, const Array1<int32_t> &new2old) {
   ContextPtr c = src.Context();
-  K2_ASSERT(IsCompatible(src, new2old));
+  K2_CHECK(IsCompatible(src, new2old));
   int32_t num_axes = src.NumAxes(),
       dim0 = src.Dim0();
-  K2_ASSERT(new2old.Dim() == dim0);
+  K2_CHECK(new2old.Dim() == dim0);
   std::vector<int32_t> tot_sizes_out(num_axes);
   for (int32_t axis = 0; axis < num_axes; axis++)
     tot_sizes_out[axis] = src.TotSize(axis);
@@ -563,7 +563,7 @@ inline Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
   Array2<int32_t> src_offsets(CpuContext(), num_srcs + 1, num_axes_in);
   int32_t *src_offsets_data = src_offsets.Data();
   int32_t src_offsets_stride0 = num_srcs + 1;
-  DCHECK_EQ(src_offsets.Stride0(), src_offsets_stride0);
+ K2_DCHECK_EQ(src_offsets.Stride0(), src_offsets_stride0);
 
   for (int32_t axis = 0; axis  < num_axes_in; axis++) {
     int32_t sum = 0;
@@ -613,7 +613,7 @@ void GetRowInfo(RaggedShape &src,
 
 
 RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis) {
-  K2_ASSERT(axis == 0 &&  "Append() with axis > 0 not yet supported");
+  K2_CHECK(axis == 0 &&  "Append() with axis > 0 not yet supported");
   K2_CHECK_GT(num_srcs, 0);
 
   int32_t num_axes = src->NumAxes();

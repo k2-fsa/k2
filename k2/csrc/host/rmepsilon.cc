@@ -58,7 +58,7 @@ static int32_t MapStates(const k2::Fsa &fsa_in, std::vector<char> *non_eps_in,
   for (const auto &arc : fsa_in) {
     // We suppose the input fsa is top-sorted, but only check this in DEBUG
     // time.
-    DCHECK_GE(arc.dest_state, arc.src_state);
+    K2_DCHECK_GE(arc.dest_state, arc.src_state);
     if (arc.label != k2::kEpsilon) non_eps_in_values[arc.dest_state] = 1;
   }
 

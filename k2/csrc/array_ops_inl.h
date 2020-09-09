@@ -13,6 +13,9 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#ifndef K2_CSRC_ARRAY_OPS_INL_H_
+#define K2_CSRC_ARRAY_OPS_INL_H_
+
 #ifndef IS_IN_K2_CSRC_ARRAY_OPS_H_
 #error "this file is supposed to be included only by array_ops.h"
 #endif
@@ -42,3 +45,5 @@ Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
 }
 
 }  // namespace k2
+
+#endif

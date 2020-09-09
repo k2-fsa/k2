@@ -20,7 +20,7 @@
 #include <limits>
 #include <utility>
 
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
 
 namespace k2 {
 

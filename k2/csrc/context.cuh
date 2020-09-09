@@ -17,8 +17,8 @@
 #include <memory>
 #include <vector>
 
-#include "k2/csrc/cuda_headers.h"
-#include "k2/csrc/log.h"
+#include "k2/csrc/cuda_headers.cuh"
+#include "k2/csrc/log.cuh"
 
 static constexpr std::size_t kAlignment = 64;
 
@@ -162,8 +162,8 @@ class CudaContext : public Context {
  public:
   CudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
     if (gpu_id_ != -1) {
-      auto ret = cudaSetDevice(gpu_id_);
-      K2_CHECK_CUDA_ERROR(ret);
+      cudaSetDevice(gpu_id_);
+      K2_CHECK_CUDA_ERROR(cudaGetLastError());
     }
     // TODO(haowen): choose one from available GPUs if gpu_id == -1?
     // and handle GPU ids from multiple machines.
@@ -407,7 +407,11 @@ class ParallelRunner {
   // so that you won't need to directly pass this into Eval(); the context
   // will call CudaStreamOverride::OverrideStream() and replace it
   // with this stream automatically.
-  cudaStream_t NewStream();
+  // todo: implement this
+  cudaStream_t NewStream() {
+    cudaStream_t stream;
+    return stream;
+  }
 
   void Finish();  // like calling destructor manually.
 
@@ -415,6 +419,17 @@ class ParallelRunner {
   ContextPtr c_;
   // TODO: list of events to wait on, maybe CUDA streamss.
 };
+
+__host__ __device__ __forceinline__
+int32_t NumBlocks(int32_t size, int32_t block_size) {
+  return (size + block_size - 1) / block_size;
+}
+
+template <typename LambdaT>
+__global__ void eval_lambda(int32_t n, LambdaT lambda);
+
+template <typename LambdaT>
+__global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda);
 
 // OK, want to do:
 // ContextPtr c = ...;  ///
@@ -483,7 +498,7 @@ class ParallelRunner {
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_CONTEXT_H_
-#include "k2/csrc/context_inl.h"
+#include "k2/csrc/context_inl.cuh"
 #undef IS_IN_K2_CSRC_CONTEXT_H_
 
 #endif  // K2_CSRC_CONTEXT_H_

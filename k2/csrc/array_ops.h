@@ -19,9 +19,9 @@
 #include <type_traits>
 
 #include "k2/csrc/array.h"
-#include "k2/csrc/context.h"
-#include "k2/csrc/cuda_headers.h"
-#include "k2/csrc/log.h"
+#include "k2/csrc/context.cuh"
+#include "k2/csrc/cuda_headers.cuh"
+#include "k2/csrc/log.cuh"
 #include "k2/csrc/ragged.h"
 
 // Note, I'm not sure about the name of this file, they are not ops like in
@@ -100,6 +100,24 @@ void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int32_t axis);
  */
 template <typename T>
 Array1<T> Append(int32_t src_size, const Array1<T> **src);
+
+/*
+  Transpose a matrix.  Require src.Size0() == dest.Size1() and src.Size1() ==
+  dest.Size0().  This is not the only way to transpose a matrix, you can also
+  do: dest = Array2<T>(src.ToTensor().Transpose(0,1)), which will likely call
+  this function
+
+     @param [in] c   Context to use, must satisfy
+                     `c.IsCompatible(src.Context())` and
+                     `c.IsCompatible(dest->Context())`.
+     @param [in] src  Source array to transpose
+     @param [out] dest  Destination array; must satisfy
+                        `dest->Size1() == src.Size0()` and
+                        `dest->Size0() == src.Size1()`.
+                        At exit, we'll have dest[i,j] == src[j,i].
+*/
+template <typename T>
+void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest);
 
 /*
    This is a little like Append(), but with special treatment of the last
@@ -184,7 +202,6 @@ void And(Array1<T> &src, T default_value, Array1<T> *dest);
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
 
-
 /*
   Returns a random Array1, uniformly distributed betwen `min_value` and
   `max_value`.  CAUTION: this will be randomly generated on the CPU, for now,
@@ -201,7 +218,6 @@ void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
  */
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value, T max_value);
-
 
 /*
   Return a newly allocated Array1 whose values form a linear sequence,

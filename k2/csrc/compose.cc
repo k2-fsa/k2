@@ -189,7 +189,7 @@ class MultiGraphDenseIntersect {
     const int32_t *b_fsas_row_ids1 = b_fsas.shape.RowIds(1).Data();
 
 
-    auto lambda_format_arc_data = __host__ __device__ [=] (int32_t pruned_idx0123) -> void {
+    auto lambda_format_arc_data = [=] __host__ __device__ (int32_t pruned_idx0123) -> void {
          int32_t unpruned_idx0123 = reverse_state_map0123[pruned_idx0123];
          int32_t unpruned_idx012 = oshapeu_row_ids3[unpruned_idx0123],
              unpruned_idx01 = oshapeu_row_ids2[unpruned_idx012],
@@ -314,7 +314,7 @@ class MultiGraphDenseIntersect {
     Array1<float> cutoffs(c_, num_fsas);
     float *cutoffs_data = cutoffs.Data();
 
-    auto lambda_set_beam_and_cutoffs = __host__ __device__ [=] (int32_t i) -> float {
+    auto lambda_set_beam_and_cutoffs = [=] __host__ __device__ (int32_t i) -> float {
               float best_loglike = max_per_fsa_data[i],
                   dynamic_beam = dynamic_beams_data[i];
               int32_t num_active = per_fsa_row_splits1_data[i+1] -
@@ -449,7 +449,7 @@ class MultiGraphDenseIntersect {
     Ragged<float> ai_loglikes(
         arc_info.shape,
         Array1<float>(c_, arc_info.values.Dim(),
-                      __host__ __device__ [=](int32_t i) -> float { return ai_data[i].end_loglike; }));
+                      [=] __host__ __device__(int32_t i) -> float { return ai_data[i].end_loglike; }));
 
 
     // `cutoffs` is of dimension num_fsas.
@@ -497,7 +497,7 @@ class MultiGraphDenseIntersect {
     char *keep_this_arc_data = renumber_arcs.Keep().Data(),
         *keep_this_state_data = renumber_states.Keep().Data();
     if (state_map_stride == 0) {
-      auto lambda_set_keep = __host__ __device__ [=](int32_t i) -> void {
+      auto lambda_set_keep = [=] __host__ __device__(int32_t i) -> void {
                int32_t dest_state = ai_data[i].dest_a_fsas_state_idx01;
                int32_t j = state_map_data[dest_state];
                if (j != -1) {  // the dest-state was kept..
@@ -509,7 +509,7 @@ class MultiGraphDenseIntersect {
       };
       Eval(c_, ai.values.Dim(), lambda_set_keep);
     } else {
-      auto lambda_set_keep = __host__ __device__ [=](int32_t arc_idx012) -> void {
+      auto lambda_set_keep = [=] __host__ __device__(int32_t arc_idx012) -> void {
                       int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]],
                            dest_state = ai_data[arc_idx012].dest_a_fsas_state_idx01;
                       int32_t j = state_map_data[dest_state + fsa_id * state_map_stride];
@@ -584,7 +584,7 @@ class MultiGraphDenseIntersect {
     ArcInfo *kept_ai_data = cur_frame->arcs.values.Data();
     StateInfo *kept_states_data = ans->states.values.Data();
 
-    auto lambda_set_arcs_and_states = __host__ __device__ [=](int32_t arc_idx012) -> void {
+    auto lambda_set_arcs_and_states = [=] __host__ __device__ (int32_t arc_idx012) -> void {
             // arc_idx012 is the inde into the unpruned arcs, 'ai'
             int32_t this_pruned_idx012 = arc_reorder_data[arc_idx012],
                 next_pruned_idx012 = arc_reorder_data[arc_idx012+1],
@@ -701,7 +701,7 @@ class MultiGraphDenseIntersect {
       int32_t *next_states_row_splits1 = next_frame->states.RowSplits(1).Data();
 
       StateInfo *next_states_data = next_frame->states.values.Data();
-      auto lambda_set_arc_backward_prob_and_keep = __host__ __device__ [=] (int32_t arcs_idx012) -> void {
+      auto lambda_set_arc_backward_prob_and_keep = [=] __host__ __device__ (int32_t arcs_idx012) -> void {
           ArcInfo *arc = arcs_data + arcs_idx012;
           int32_t state_idx01 = arcs_rowids2[arc_idx012],
               fsa_idx0 = arc_rowids1[state_idx01],
@@ -750,7 +750,7 @@ class MultiGraphDenseIntersect {
     int32_t num_fsas = a_fsas_.Dim0();
     assert(cur_frame->states.Dim0() == num_fsas);
 
-    auto lambda_set_state_backward_prob = __host__ __device__ [=] (int32_t state_idx01) -> void {
+    auto lambda_set_state_backward_prob = [=] __host__ __device__ (int32_t state_idx01) -> void {
         StateInfo *info = cur_states_data + state_idx01;
         int32_t fsas_state_idx01 = info->fsas_state_idx01,
             fsa_idx0 = a_fsas_row_ids1[fsas_state_idx01],

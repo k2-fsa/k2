@@ -9,7 +9,7 @@
 
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-#include "k2/csrc/log.h"
+#include "k2/csrc/log.cuh"
 
 namespace py = pybind11;
 
