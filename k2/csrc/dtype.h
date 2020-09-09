@@ -13,6 +13,7 @@
 #define K2_CSRC_DTYPE_H_
 
 #include <cstdint>
+
 #include "k2/csrc/log.h"
 
 namespace k2 {
@@ -26,33 +27,36 @@ enum BaseType {      // BaseType is the *general type*
 
 class DtypeTraits {
  public:
-  int NumBytes() { return num_bytes_; }
-  BaseType GetBaseType() { return static_cast<BaseType>(base_type_); }
+  int NumBytes() const { return num_bytes_; }
+  BaseType GetBaseType() const { return static_cast<BaseType>(base_type_); }
+  const char *Name() const { return name_; }
 
-  DtypeTraits(BaseType base_type, int num_bytes, const char *name,
-              int num_scalars = 1,  int misc = 0)
+  DtypeTraits(BaseType base_type, int32_t num_bytes, const char *name,
+              int32_t num_scalars = 1, int32_t misc = 0)
       : base_type_(static_cast<char>(base_type)),
         num_scalars_(num_scalars),
         misc_(misc),
         num_bytes_(num_bytes),
-        name_(name) {}
+        name_(name) {
+    K2_CHECK_EQ(num_bytes_ % num_scalars_, 0);
+  }
 
  private:
   // We may add more
-  char base_type_;    // BaseType converted to char
-  int num_scalars_;  // currently always 1; may be greater for vector types in
+  BaseType base_type_;    // BaseType converted to char
+  int32_t num_scalars_;  // currently always 1; may be greater for vector types in
                       // future.  Must divide num_bytes exactly.
-  int misc_;  // field that is normally 0, but we may use for extensions in
+  int32_t misc_;  // field that is normally 0, but we may use for extensions in
                // future.
-  int num_bytes_;  // sizeof() this type in bytes, gives stride.  The size per
+  int32_t num_bytes_;  // sizeof() this type in bytes, gives stride.  The size per
                     // scalar element is given by bytes_per_elem / num_scalars;
                     // we do it this way so that the stride in bytes is easily
                     // extractable.
   const char *name_;  // name, e.g. "float", "int8", "int32"
 };
 
-// We initialize this in dtype.cc
-extern DtypeTraits g_dtype_traits_array[];
+// We initialize this in dtype.cu
+extern const DtypeTraits g_dtype_traits_array[];
 
 // It's just an enum, we can use TraitsOf(dtype).NumBytes() and so on..
 enum Dtype {
@@ -63,11 +67,11 @@ enum Dtype {
   kInt32Dtype,
   kInt64Dtype,
   kUint32Dtype,
-  kUint64Dtype
+  kUint64Dtype,
 };
 
 inline DtypeTraits TraitsOf(Dtype dtype) {
-  return g_dtype_traits_array[(int)dtype];
+  return g_dtype_traits_array[static_cast<int32_t>(dtype)];
 }
 
 template <typename T>
@@ -137,4 +141,5 @@ struct DtypeOf<uint64_t> {
 
 
 }  // namespace k2
+
 #endif  // K2_CSRC_DTYPE_H_

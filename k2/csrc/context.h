@@ -16,7 +16,6 @@
 #include <map>
 #include <memory>
 
-#include <glog/logging.h>
 #include "k2/csrc/cuda_headers.h"
 #include "k2/csrc/log.h"
 

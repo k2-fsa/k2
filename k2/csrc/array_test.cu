@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *                      Fangjun Kuang (csukuangfj@gmail.com)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -14,6 +15,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <sstream>
 #include <vector>
 
 #include "k2/csrc/array.h"
@@ -23,6 +25,21 @@
 #include "k2/csrc/tensor.h"
 
 namespace k2 {
+
+template <typename T>
+void CheckArrayEqual(const Array1<T> &a, const Array1<T> &b) {
+  ASSERT_TRUE(a.Context()->IsCompatible(*b.Context()));
+  ASSERT_EQ(a.Dim(), b.Dim());
+
+  const T *da = a.Data();
+  const T *db = b.Data();
+  auto n = a.Dim();
+  auto compare = [=] __host__ __device__(int32_t i) -> void {
+    K2_CHECK_EQ(da[i], db[i]);
+  };
+  Eval(a.Context(), n, compare);
+}
+
 template <typename T, DeviceType d>
 void TestArray1() {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
@@ -190,6 +207,29 @@ void TestArray1() {
     for (int32_t i = 0, j = 0; i < dim0; ++i, ++j) {
       EXPECT_EQ(cpu_data[i * stride0], data[j]);
     }
+  }
+
+  {
+    // test To(context)
+    std::vector<T> data = {0, 1, 2, 3};
+    Array1<T> cpu_array(cpu, data);
+    Array1<T> cuda_array(GetCudaContext(), data);
+
+    Array1<T> src(context, data);
+    auto cpu_dst = src.To(cpu);
+    auto cuda_dst = src.To(GetCudaContext());
+
+    CheckArrayEqual(cpu_array, cpu_dst);
+    CheckArrayEqual(cuda_array, cuda_dst);
+  }
+
+  {
+    // test operator <<
+    std::vector<T> data = {0, 1, 2, 3};
+    Array1<T> src(context, data);
+    std::ostringstream os;
+    os << src;
+    K2_LOG(INFO) << os.str().c_str();
   }
 
   {
