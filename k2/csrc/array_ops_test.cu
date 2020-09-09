@@ -25,8 +25,6 @@
 
 namespace k2 {
 
-#define int int32_t
-
 template <typename T>
 void MatrixTanspose(int32_t num_rows, int32_t num_cols, const T *src, T *dest) {
   for (int32_t i = 0; i < num_rows; ++i) {
