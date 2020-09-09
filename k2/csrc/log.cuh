@@ -146,11 +146,12 @@ class Voidifier {
  * K2_STATIC_ASSERT(DEFINED_SHAPE % DEFINED_X == 0);
  * @endcode
  */
-#define STATIC_ASSERT(COND, MSG) \
+#define K2_STATIC_ASSERT4(COND, MSG) \
   typedef char static_assertion_##MSG[(!!(COND))*2-1]
-#define K2_STATIC_ASSERT3(X, L) STATIC_ASSERT(X, static_assertion_at_line_##L)
+#define K2_STATIC_ASSERT3(X, L) \
+  K2_STATIC_ASSERT4(X, static_assertion_at_line_##L)
 #define K2_STATIC_ASSERT2(X, L) K2_STATIC_ASSERT3(X, L)
-#define K2_STATIC_ASSERT(X)    K2_STATIC_ASSERT2(X, __LINE__)
+#define K2_STATIC_ASSERT(X) K2_STATIC_ASSERT2(X, __LINE__)
 
 #define K2_CHECK(x)                                              \
   (x) ? (void)0                                                  \
