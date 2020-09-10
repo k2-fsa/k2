@@ -135,12 +135,11 @@ void ExclusiveSum(Array1<S> &src, Array1<T> *dest) {
      ans[i] = sum_{k=0}^{i-1} src[i].
  */
 template <typename T>
-void ExclusiveSum(Array1<T> &src) {
+Array1<T> ExclusiveSum(Array1<T> &src) {
   Array1<T> ans(src.Context(), src.Dim());
   ExclusiveSum(src, &ans);
   return ans;
 }
-
 
 /*
   Sets 'dest' to exclusive prefix sum of the result of dereferinging the
@@ -301,7 +300,6 @@ Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
 template <typename T>
 Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc = 1);
 
-
 /*
   This is a convenience wrapper for the function of the same name in utils.h.
    @param [in] row_splits  Input row_splits vector, of dimension num_rows + 1
@@ -327,9 +325,10 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids, Array1<int32_t> &row_spli
    and non-decreasing.
 
      @param [in] row_ids  row_ids to validate
-     @param [in] temp     The user may supply a nonempty array on the same device (or host)
-                          as `row_ids` that can be used temporarily (just the first
-                          element is needed).  This saves an allocation.
+     @param [in] temp     The user may supply a nonempty array on the same
+                          device (or host) as `row_ids` that can be used
+                          temporarily (just the first element is needed).
+                          This saves an allocation.
      @return   Returns true if `row_ids` is a plausible row_ids vector.
 */
 bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp = nullptr);
@@ -340,13 +339,14 @@ bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp = nullptr);
    non-decreasing, its dimension is at least 1 and row_splits[0] == 0.
 
      @param [in] row_splits  row_splits to validate
-     @param [in] temp     The user may supply a nonempty array on the same device (or host)
-                          as `row_splits` that can be used temporarily (just the first
-                          element is needed).  This saves an allocation.
+     @param [in] temp     The user may supply a nonempty array on the same
+                          device (or host) as `row_splits` that can be used
+                          temporarily (just the first element is needed).
+                          This saves an allocation.
      @return   Returns true if `row_splits` is a plausible row_splits vector.
 */
-bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp = nullptr);
-
+bool ValidateRowSplits(Array1<int32_t> &row_splits,
+                       Array1<int32_t> *temp = nullptr);
 
 /*
   Jointly validate row_splits and row_ids vectors, making sure they are
@@ -354,15 +354,16 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp = null
 
      @param [in] row_splits  row_splits to validate
      @param [in] row_ids     row_ids to validate
-     @param [in] temp     The user may supply a nonempty array on the same device (or host)
-                          as `row_splits` that can be used temporarily (just the first
-                          element is needed).  This saves an allocation.
-     @return   Returns true if the vectors are plausible and agree with each other.
+     @param [in] temp     The user may supply a nonempty array on the same
+                          device (or host) as `row_splits` that can be used
+                          temporarily (just the first element is needed).
+                          This saves an allocation.
+     @return   Returns true if the vectors are plausible and agree with each
+  other.
 */
 bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
                              Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp = nullptr);
-
 
 }  // namespace k2
 
