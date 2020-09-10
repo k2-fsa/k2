@@ -4,8 +4,8 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu
- *                                                   Meixu Song)
+ *                                                   Haowen Qiu)
+ *                      Fangjun Kuang (csukuangfj@gmail.com)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
