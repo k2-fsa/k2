@@ -13,7 +13,7 @@
  */
 
 #ifndef IS_IN_K2_CSRC_RAGGED_H_
-#error "this file is supposed to be included only by ops.h"
+#error "this file is supposed to be included only by ragged.h"
 #endif
 
 namespace k2 {
