@@ -74,7 +74,6 @@ class Array1 {
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
-  // TODO(haowen): why do we need this version?
   Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}
 
   Array1(int32_t dim, RegionPtr region, int32_t byte_offset)
