@@ -158,7 +158,6 @@ class CpuContext : public Context {
   }
 };
 
-#ifdef __CUDACC__
 class CudaContext : public Context {
  public:
   CudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
@@ -210,7 +209,6 @@ class CudaContext : public Context {
   int32_t gpu_id_;
   cudaStream_t stream_;
 };
-#endif
 
 enum MemoryCopyKind {
   MemcpyHostToHost,

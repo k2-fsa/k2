@@ -20,9 +20,6 @@
 #error "this file is supposed to be included only by context.h"
 #endif
 
-// No header guard for this file since it will only be included
-// in ops.h
-
 namespace k2 {
 
 // Note currently we just support single GPU device, but finally we may need to
