@@ -8,7 +8,6 @@ add_subdirectory(host)
 
 # to make code static analysis work
 # @todo delete this include line before release
-include_directories(${CUDAToolkit_INCLUDE_DIRS})
 
 # the target
 add_library(context STATIC

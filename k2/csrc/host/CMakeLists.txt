@@ -2,8 +2,6 @@
 
 #---------------------------- Build K2 host sources ----------------------------
 
-include_directories(${CUDAToolkit_INCLUDE_DIRS})
-
 # the target
 # please sort the source files alphabetically
 add_library(fsa

@@ -1,7 +1,5 @@
 # please sort the files alphabetically
 
-include_directories(${CUDAToolkit_INCLUDE_DIRS})
-
 pybind11_add_module(_k2
   array.cc
   aux_labels.cc
