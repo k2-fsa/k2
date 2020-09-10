@@ -135,12 +135,10 @@ class Voidifier {
 }  // namespace k2
 
 /**
- * @brief A static assertion
+ * @brief A macro to get checked at compile time, as static assertion
  *
  * @param[in] COND the compile-time boolean expression that must be true
  * @param[in] MSG  an error message if exp is false
- *
- * @note `static_assert` is supported by both of host and device.
  *
  * @code{.cpp}
  * K2_STATIC_ASSERT(DEFINED_SHAPE % DEFINED_X == 0);
