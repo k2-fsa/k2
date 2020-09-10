@@ -95,6 +95,11 @@ int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
               (row_splits1_data[idx0 - 1] < idx0x &&
                prev_arc.src_state > arc.src_state)))
           neg_properties |= kFsaPropertiesSerializable;
+        // the following checks whether there was an empty FSA at the end of the array.
+        if (idx012 == 0 && !(row_ids1_data[row_ids_data[num_arcs - 1]] == num_fsas - 1))
+          neg_properties |= kFsaPropertiesSerializable;
+        if (!(
+
 
       }
 
