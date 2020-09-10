@@ -9,19 +9,7 @@
 
 namespace k2 {
 
-/*
-  Return those properties that we know to be false *because this arc is
-  the first arc in its FSA*.  This only includes those properties that
-  can be worked out from this without further context information, we'll
-  `or` in others later.
- */
-__forceinline__ __host__ __device__ FirstArcOfFsaNegProperties(Arc &arc,
-                                                               Arc &prev_arc) {
-  // no arcs from 0th state -> disconnected, as start-state is state 0.
-  return (arc.src_state > 0 ? kPropertiesMaybeConnected : 0) |
-  // see comment for kPropertiesSerializable for explanation.
-    (arc.src_state <= prev_arc.src_state ? kPropertiesSerializable : 0) |
-}
+
 
 int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
   if (fsa_vec.NumAxes() != 3) {
