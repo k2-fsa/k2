@@ -9,6 +9,112 @@
 
 namespace k2 {
 
+/*
+  Return those properties that we know to be false *because this arc is
+  the first arc in its FSA*.  This only includes those properties that
+  can be worked out from this without further context information, we'll
+  `or` in others later.
+ */
+__forceinline__ __host__ __device__ FirstArcOfFsaNegProperties(Arc &arc,
+                                                               Arc &prev_arc) {
+  // no arcs from 0th state -> disconnected, as start-state is state 0.
+  return (arc.src_state > 0 ? kPropertiesMaybeConnected : 0) |
+  // see comment for kPropertiesSerializable for explanation.
+    (arc.src_state <= prev_arc.src_state ? kPropertiesSerializable : 0) |
+}
+
+int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
+  if (fsa_vec.NumAxes() != 3) {
+    K2_LOG(FATAL) << "FsaVec has wrong number of axes: " << fsa_vec.NumAxes()
+                  << ", expected 3.";
+  }
+  Context c = fsa_vec.Context();
+  const int32_t *row_ids1_data = fsa_vec.RowIds1().Data(),
+      *row_splits1_data = fsa_vec.RowSplits1().Data(),
+      *row_ids2_data = fsa_vec.RowIds2().Data(),
+      *row_splits2_data = fsa_vec.RowSplits().Data();
+  Arc *arcs_data = fsa_vec.values.Data();
+
+  int32_t num_arcs = fsa_vec.values.Dim();
+
+  // `neg_` means negated.  It's more convenient to do it this way.
+  Array1<int32_t> neg_properties(c, num_arcs);
+  int32_t num_states = fsa_vec.RowIds1().Dim(),
+      num_fsas = fsa_vec.shape.TotSize(0);
+  // actually `reachable` will be true if a state is reachable from any state
+  // (or is state 0), no matter whether that state is reachable.  If all states
+  // are reachable then kFsaPropertiesMaybeConnected is set.
+  Array1<char> reachable(c, num_states, 0);
+  int32_t *neg_properties_data = properties.Data();
+  char *reachable_data = reachable.Data();
+
+  auto lambda_get_properties = [=] __host__ __device__ (int32_t idx012) -> void {
+      Arc arc = arcs_data[idx012];
+      Arc prev_arc;
+      if (idx012 > 0) prev_arc = arcs_data[idx012 - 1];
+      int32_t idx01 = row_ids2_data[idx012],
+          idx01x = row_splits2_data[idx012],
+          idx2 = idx012 - idx01x,
+          idx0 = row_ids1_data[idx01],
+          idx0x = row_splits1_data[idx0],
+          idx1 = idx01 - idx0x,
+          idx0xx = row_splits2_data[idx0x];
+      // `num_states` is num states in this FSA.
+      int32_t num_states = row_splits1_data[idx0 + 1] - idx0x;
+
+      int32_t neg_properties = 0;
+      if (arc.src_state != idx1)
+        neg_properties |= kFsaPropertiesValid;
+      if (arc.dest_state < arc.src_state)
+        neg_properties |= kFsaPropertiesTopSorted;
+      if (arc.dest_state <= arc.src_state)
+        neg_properties |= kFsaPropertiesTopSortedAndAcyclic;
+      if (arc.symbol == 0)
+        neg_properties |= kFsaPropertiesEpsilonFree;
+      if (arc.symbol < 0) {
+        if (arc.symbol != -1) { // neg. symbols != -1 are not allowed.
+          neg_properties |= kFsaPropertiesValid;
+        } else {
+          if (arc.dest_state != num_states - 1)
+            neg_properties |= kFsaPropertiesValid;
+        }
+      }
+      if (arc.symbol != -1 && arc.dest_state == arc.num_states - 1)
+          neg_properties |= kFsaPropertiesValid;
+      if (arc.dest_state < 0 || arc.dest_state >= num_states)
+        neg_properties |= kFsaPropertiesValid;
+      else
+        reachable_data[idx0x + arc.dest_state] = (char)1;
+
+      if (idx0xx == idx012) {
+        // first arc in this FSA (whether or not it's from state 0..)
+        reachable_data[idx0x] = (char) 1;   // state 0 is always reachable.
+        // there was an FSA with no states or a problem with the state-indexes
+        // which makes this impossible to deserialize from a list of arcs.
+        if (!(idx0 == 0 ||
+              (row_splits1_data[idx0 - 1] < idx0x &&
+               prev_arc.src_state > arc.src_state)))
+          neg_properties |= kFsaPropertiesSerializable;
+
+      }
+
+      if (idx2 == 0) {  // First arc leaving this state
+        if (idx1 != 0) {
+          // there was a state with no arcs leaving it / a gap in state-indexes...
+          if (prev_arc.src_state != arc.src_state - 1)
+            neg_properties |= kFsaPropertiesMaybeConnected;
+        } else {
+
+      } else {
+      }
+   };
+
+
+
+
+
+}
+
 Fsa FsaFromTensor(const Tensor &t, bool *error) {
   *error = false;
   if (t.Dtype() != kInt32Dtype) {
@@ -28,7 +134,7 @@ Fsa FsaFromTensor(const Tensor &t, bool *error) {
 
 
 
-Fsa FsaVecFromTensor(Tensor t, bool *error) {
+FsaVec FsaVecFromTensor(Tensor t, bool *error) {
   if (!t.IsContiguous())
     t = ToContiguous(t);
 
@@ -64,7 +170,8 @@ Fsa FsaVecFromTensor(Tensor t, bool *error) {
     const Arc *arcs;
   };
   Array1<int32_t> fsa_ids(c, num_arcs + 1);
-  // `fsa_idss` will be the exclusive sum of `tails`
+  // `fsa_ids` will be the exclusive sum of `tails`.  We will remove the last element
+  // after we get its value.  Note: `fsa_ids` could be viewed as `row_ids1`.
   IsTail tails(arcs);
   ExclusiveSum(c, num_arcs + 1, tails, fsa_ids.Data());
 
@@ -117,31 +224,45 @@ Fsa FsaVecFromTensor(Tensor t, bool *error) {
         "working out the num-states in the FSAs, num_states_per_fsa="
                     << num_states_per_fsa;
   }
-  num_states_per_fsa = num_states_per_fsa.Range(0, num_fsas);
-
+  num_states_per_fsa = num_states_per_fsa.Range(0, num_fsas + 1);
+  // fsa_state_offsets is of size num_fsas + 1.
+  // Note: fsa_state_offsets could be called row_splits1.
   Array1<int32_t> fsa_state_offsets = ExclusiveSum(num_states_per_fsa);
+  int32_t tot_num_states = fsa_state_offsets[num_fsas];
+
+
   const int32_t *fsa_state_offsets_data = fsa_state_offsets.Data();
 
+  // by `row_ids2` we mean row_ids for axis=2.  This is the second
+  // of two row_ids vectors.  It maps from idx012 to idx01.
   Array1<int32_t> row_ids2(num_arcs);
   int32_t *row_ids2_data = row_ids2.Data();
-  auto set_row_ids2 = [=] __host__ __device (int32_t i) -> void {
+  auto lambda_set_row_ids2 = [=] __host__ __device (int32_t i) -> void {
     int32_t src_state = arcs[i].src_state,
       fsa_id = fsa_ids_data[i];
     row_ids2_data[i] = fsa_state_offsets_data[fsa_id] + src_state;
   }
+  Eval(c, num_arcs, lambda_set_row_ids2);
 
-
-
-        (num_states_2 < != -1 && fsa_id_2 != fsa_id_1)
-
-    if (fsa_id_1 == -1 && fsa_id_2 == -1) {
-      num_states_per_fsa_data[2 * num_fsas] = 0;  // Error
-    } else if (fsa_id_1 != -1 && fsa_id_2 != -1 &&
-               fsa_id_2 ==
+  Array1<int32_t> row_splits2(c, tot_num_states + 1);
+  RowIdsToRowSplits(c, num_arcs, row_ids2_data, false,
+                    tot_num_states, row_splits2.Data());
+#ifndef NDEBUG
+  if (!ValidateRowSplitsAndIds(row_splits, row_ids2,
+                               &num_states_per_fsa)) {     // last arg is temp space
+    K2_LOG(FATAL) << "Failure validating row-splits/row-ids, likely code error";
   }
+#endif
+  RaggedShape fsas_shape = RaggedShape3(fsa_state_offsets, fsa_ids,
+                                        fsa_ids.Dim(),
+                                        row_splits2, row_ids2,
+                                        row_ids2.Dim());
+  Array1<Arc> arcs_array(num_arcs, t.GetRegion(), 0);
+  FsaVec ans = Ragged(fsas_shape, arcs_array);
+  int32_t properties = GetFsaVecBasicProperties(ans);
+  // TODO: check properties
 
-  int32_t *num_states_per_fsa_b = num_states_per_fsa.Data();
-
+  return ans;
 }
 
 

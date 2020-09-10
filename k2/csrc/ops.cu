@@ -232,9 +232,28 @@ bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
   };
   Eval(ctx, num_elems, lambda_check_row_ids);
   return !((*temp)[0]);
-
-
 }
 
+void RowSplitsToRowIds(Array1<int32_t> &row_splits, Array1<int32_t> &row_ids) {
+  Context c = GetContext(row_splits, row_ids);
+  int32_t num_elems = row_ids.Dim(),
+      num_rows = row_splits.Dim() - 1;
+  K2_CHECK(num_rows >= 0);
+  // if there are more than zero elems, there must be at least one row.
+  K2_CHECK(num_elems == 0 || num_rows > 0);
+  RowSplitsToRowIds(c, num_rows, row_splits.Data(),
+                    num_elems, row_ids.Data());
+}
+
+void RowIdsToRowSplits(Array1<int32_t> &row_ids, Array1<int32_t> &row_splits) {
+  Context c = GetContext(row_splits, row_ids);
+  int32_t num_elems = row_ids.Dim(),
+      num_rows = row_splits.Dim() - 1;
+  K2_CHECK(num_rows >= 0);
+  // if there are more than zero elems, there must be at least one row.
+  K2_CHECK(num_elems == 0 || num_rows > 0);
+  RowIdsToRowSplits(c, num_elems, row_ids.Data(), false,
+                    num_rows, row_splits.Data());
+}
 
 }  // namespace k2

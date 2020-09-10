@@ -303,6 +303,26 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc = 1);
 
 
 /*
+  This is a convenience wrapper for the function of the same name in utils.h.
+   @param [in] row_splits  Input row_splits vector, of dimension num_rows + 1
+   @param [out] row_ids    row_ids vector to whose data (but not metadata!)
+                           we will write, of dimension num_elems (which must
+                           equal row_splits[num_rows].
+ */
+void RowSplitsToRowIds(Array1<int32_t> &row_splits, Array1<int32_t> &row_ids);
+
+/*
+  This is a convenience wrapper for the function of the same name in utils.h.
+   @param [in] row_ids     Input row_ids vector, of dimension num_elems
+   @param [out] row_splits  row_splits vector to whose data (but not metadata!)
+                           we will write, of dimension num_rows + 1; we require
+                           (but do not necessarily check!) that `row_ids` is
+                           non-negative, non-decreasing, and all elements are
+                           less than num_rows.
+ */
+void RowIdsToRowSplits(const Array1<int32_t> &row_ids, Array1<int32_t> &row_splits);
+
+/*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
    and non-decreasing.
 
@@ -313,6 +333,7 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc = 1);
      @return   Returns true if `row_ids` is a plausible row_ids vector.
 */
 bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp = nullptr);
+
 
 /*
    Validate a row_splits vector; this just makes sure its elements are
