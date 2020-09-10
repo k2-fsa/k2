@@ -6,6 +6,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu
  *                                                   Meixu Song)
  *
  * @copyright
