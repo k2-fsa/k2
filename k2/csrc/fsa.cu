@@ -41,12 +41,22 @@ int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
   Array1<int32_t> neg_properties(c, num_arcs);
   int32_t num_states = fsa_vec.RowIds1().Dim(),
       num_fsas = fsa_vec.shape.TotSize(0);
-  // actually `reachable` will be true if a state is reachable from any state
-  // (or is state 0), no matter whether that state is reachable.  If all states
-  // are reachable then kFsaPropertiesMaybeConnected is set.
-  Array1<char> reachable(c, num_states, 0);
+
+  // `reachable[idx01]` will be true if the state with index idx01 has an arc
+  // entering it or is state 0 of its FSA, not counting self-loops; it's a
+  // looser condition than being 'accessible' in FSA terminlogy, simply meaning
+  // it's reachable from some state (which might not itself be reachable).
+  //
+  // reachable[num_states + idx01] will be true if the state with index idx01 is
+  // the final-state of its FSA (i.e. last-numbered) or has at least one arc
+  // leaving it, not counting self-loops.  Again, it's a looser condition than
+  // being 'co-accessible' in FSA terminology.
+  Array1<char> reachable(c, num_states * 2 + 1, 0);
+  Array1<char> flag = reachable.Range(num_states * 1, 1);
+  Array1<char> co_reachable = reachable.Range(num_states, num_states);
+  reachable = reachable.Range(0, num_states);
   int32_t *neg_properties_data = properties.Data();
-  char *reachable_data = reachable.Data();
+  char *reachable_data = reachable.Data();  // access co_reachable via this.
 
   auto lambda_get_properties = [=] __host__ __device__ (int32_t idx012) -> void {
       Arc arc = arcs_data[idx012];
@@ -57,68 +67,87 @@ int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
           idx2 = idx012 - idx01x,
           idx0 = row_ids1_data[idx01],
           idx0x = row_splits1_data[idx0],
+          idx0x_next = row_splits1_data[idx0 + 1]
           idx1 = idx01 - idx0x,
           idx0xx = row_splits2_data[idx0x];
-      // `num_states` is num states in this FSA.
-      int32_t num_states = row_splits1_data[idx0 + 1] - idx0x;
+      int32_t this_fsa_num_states = idx0x_next - idx0x;
 
       int32_t neg_properties = 0;
       if (arc.src_state != idx1)
         neg_properties |= kFsaPropertiesValid;
-      if (arc.dest_state < arc.src_state)
-        neg_properties |= kFsaPropertiesTopSorted;
-      if (arc.dest_state <= arc.src_state)
+      if (arc.dest_state <= arc.src_state) {
         neg_properties |= kFsaPropertiesTopSortedAndAcyclic;
+        if (arc.dest_state < arc.src_state)
+          neg_properties |= kFsaPropertiesTopSorted;
+      }
       if (arc.symbol == 0)
         neg_properties |= kFsaPropertiesEpsilonFree;
       if (arc.symbol < 0) {
         if (arc.symbol != -1) { // neg. symbols != -1 are not allowed.
           neg_properties |= kFsaPropertiesValid;
         } else {
-          if (arc.dest_state != num_states - 1)
+          if (arc.dest_state != this_fsa_num_states - 1)
             neg_properties |= kFsaPropertiesValid;
         }
       }
       if (arc.symbol != -1 && arc.dest_state == arc.num_states - 1)
           neg_properties |= kFsaPropertiesValid;
-      if (arc.dest_state < 0 || arc.dest_state >= num_states)
+      if (arc.dest_state < 0 || arc.dest_state >= this_fsa_num_states)
         neg_properties |= kFsaPropertiesValid;
-      else
+      else if (arc.dest_state != arc.src_state)
         reachable_data[idx0x + arc.dest_state] = (char)1;
 
       if (idx0xx == idx012) {
         // first arc in this FSA (whether or not it's from state 0..)
-        reachable_data[idx0x] = (char) 1;   // state 0 is always reachable.
-        // there was an FSA with no states or a problem with the state-indexes
-        // which makes this impossible to deserialize from a list of arcs.
-        if (!(idx0 == 0 ||
-              (row_splits1_data[idx0 - 1] < idx0x &&
-               prev_arc.src_state > arc.src_state)))
+        reachable_data[idx0x] = (char) 1;   // state 0 is reachable.
+        // final state is always co-reachable.
+        reachable_data[num_states + idx0x_next - 1] = (char)1;
+        // there was a problem with the state-indexes which makes this
+        // impossible to deserialize from a list of arcs.
+        if (idx012 > 0 && prev_arc.src_state <= arc.src_state)
           neg_properties |= kFsaPropertiesSerializable;
-        // the following checks whether there was an empty FSA at the end of the array.
-        if (idx012 == 0 && !(row_ids1_data[row_ids_data[num_arcs - 1]] == num_fsas - 1))
-          neg_properties |= kFsaPropertiesSerializable;
-        if (!(
-
-
       }
 
-      if (idx2 == 0) {  // First arc leaving this state
-        if (idx1 != 0) {
-          // there was a state with no arcs leaving it / a gap in state-indexes...
-          if (prev_arc.src_state != arc.src_state - 1)
-            neg_properties |= kFsaPropertiesMaybeConnected;
-        } else {
-
-      } else {
+      if (idx2 == 0) {
+        // First arc leaving this state record that this state has arcs leaving
+        // it.
+        if (arc.dest_state != arc.src_state)
+          reachable_data[num_states + idx01] = 1;
       }
-   };
+      neg_properties_data[idx012] = ~neg_properties;
+  };
+  Eval(c, num_arcs, lambda_get_properties);
+  // Note: eventually, for more diagnostics, we could use AndPerSublist to get the
+  // properties one by one.
+
+  Array1<T> and_properties = properties.Range(0,1); // ok to overlap
+  Array1<T> and_reachable = reachable.Range(0, 1);
+  Array1<T> and_co_reachable = reachable.Range(0, 1);
+  ParallelRunner pr(c);
+  { With(pr.NewStream());  And(properties, kFsaAllProperties, &and_properties); }
+  { With(pr.NewStream());  And(reachable, 1, &and_reachable); }
+  { With(pr.NewStream());  And(co_reachable, 1, &and_co_reachable); }
+  {
+    char *flag_data = flag.Data();
+    auto lambda_find_empty_fsas = [=] __host__ __device__ (int32_t i) -> void {
+      if (row_ids1_data[i+1] == row_ids1_data[i])
+        *flag_data = 1; // There is an empty FSA.
+    };
+    Eval(pr.NewStream(), num_fsas, lambda_find_empty_fsas);
+  }
 
 
+  int32_t properties = and_properties[0] |
+      (and_reachable[0] ? kPropertiesMaybeAccessible : 0) |
+      (and_co_reachable[0] ? kPropertiesMaybeCoAccessible : 0);
+  if (flag[0])  // not serializable because has empty FSA.
+    properties &= ~kPropertiesSerializable;
 
-
-
+  // probably tons of bugs in this :-(
+  return properties;
 }
+
+
 
 Fsa FsaFromTensor(const Tensor &t, bool *error) {
   *error = false;
@@ -129,12 +158,19 @@ Fsa FsaFromTensor(const Tensor &t, bool *error) {
     *error = true;
     return Fsa();  // Invalid, empty FSA
   }
-  if (t.NumAxes() != 2 || t.Dim(1) != 4) {
-    // ...
+  Ragged<Arc> ans = FsaVecFromTensor(t, error);
+  if (! *error) {
+    if (ans.NumAxes() != 3 || ans.Dim0() != 1) {
+      K2_LOG(WARNING) << "Input does not seem to be a valid, single FSA";
+      return Fsa();  // empty ragged tensor
+    } else {
+      // remove leading axis.  this is more efficient than doing
+      // return ans.Index(0, 0);
+      // and should give the same answer
+      return RemoveAxis(ans, 0);
+    }
   }
-
 }
-
 
 
 
@@ -265,8 +301,16 @@ FsaVec FsaVecFromTensor(Tensor t, bool *error) {
   Array1<Arc> arcs_array(num_arcs, t.GetRegion(), 0);
   FsaVec ans = Ragged(fsas_shape, arcs_array);
   int32_t properties = GetFsaVecBasicProperties(ans);
-  // TODO: check properties
-
+  // TODO: check properties, at least
+  int32_t required_props = (kFsaPropertiesValid|kPropertiesNonempty|
+                            kFsaPropertiesSerializable);
+  if ((properties & required_props), required_props) {
+    K2_LOG(WARNING) << "Did not have expected properties "
+                    << (properties & required_props) << " vs. "
+                    << required_props;
+    // TODO: better way of displaying properties.
+    *error = true;
+  }
   return ans;
 }
 

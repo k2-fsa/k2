@@ -47,12 +47,13 @@ enum FsaBasicProperties {
                                                    // symbol, i.e. no duplicates
                                                    // with the same symbol.
   kFsaPropertiesEpsilonFree = 0x40,  // Symbol zero (epsilon) is not present..
-  kFsaPropertiesMaybeAccessible = 0x80, // True if there are no obvious signs
-                                        // of states being inaccessible (i.e. states
-                                        // with no arcs entering them)
-
-                                        // non-final states with no arcs leaving
-                                        // or entering them
+  kFsaPropertiesMaybeAccessible = 0x80,  // True if there are no obvious signs of
+                                        // states not being accessible or
+                                        // co-accessible, i.e. states with no
+                                        // arcs entering them
+  kFsaPropertiesMaybeCoaccessible = 0x80,  // True if there are no obvious signs of
+                                        // states not being co-accessible, i.e.
+                                        // i.e. states with no arcs leaving them
   kFsaPropertiesSerializable = 0x0100,  // True if there are no FSAs with zero
                                         // states, and if for all fsa-indexes i,
                                         // last-state(i) > first-state(i+1)
@@ -62,6 +63,7 @@ enum FsaBasicProperties {
                                         // used in figuring out the boundaries
                                         // between FSAs when we serialize to a
                                         // list of arcs.
+  kFsaAllProperties = 0x01FF
 };
 
 

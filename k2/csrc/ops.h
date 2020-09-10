@@ -258,6 +258,10 @@ void Max(Array1<T> &src, T default_value, Array1<T> *dest);
 template <typename T>
 void And(Array1<T> &src, T default_value, Array1<T> *dest);
 
+// as And, but bitwise Or.
+template <typename T>
+void Or(Array1<T> &src, T default_value, Array1<T> *dest);
+
 /*
   Output to an array `and_values` the result of reducing each sub-list in
   `src` with operator &, i.e. bit-wise and.
@@ -274,6 +278,9 @@ void And(Array1<T> &src, T default_value, Array1<T> *dest);
 */
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
+// bitwise or
+template <typename T>
+void OrPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
 
 /*
   Returns a random Array1, uniformly distributed betwen `min_value` and
