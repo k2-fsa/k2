@@ -47,15 +47,23 @@ enum FsaBasicProperties {
                                                    // symbol, i.e. no duplicates
                                                    // with the same symbol.
   kFsaPropertiesEpsilonFree = 0x40,  // Symbol zero (epsilon) is not present..
-  kFsaPropertiesMultipleFsas = 0x80,  // True if the vector of arcs appears to
-                                     // have multiple FSAs in it.
-  kFsaPropertiesSingleFsa  = 0x0100,  // True if the vector of arcs appears to
-                                      // have only a single FSA in it.
-  kFsaPropertiesMaybeConnected = 0x0200   // True if there are no obvious signs
-                                      // of disconnected states, such as
-                                      // non-final states with no arcs leaving
-                                      // them
-
+  kFsaPropertiesMaybeAccessible = 0x80,  // True if there are no obvious signs of
+                                        // states not being accessible or
+                                        // co-accessible, i.e. states with no
+                                        // arcs entering them
+  kFsaPropertiesMaybeCoaccessible = 0x80,  // True if there are no obvious signs of
+                                        // states not being co-accessible, i.e.
+                                        // i.e. states with no arcs leaving them
+  kFsaPropertiesSerializable = 0x0100,  // True if there are no FSAs with zero
+                                        // states, and if for all fsa-indexes i,
+                                        // last-state(i) > first-state(i+1)
+                                        // where {last,first}-state is the
+                                        // {last,first} state that has an arc
+                                        // leaving it.  These properties are
+                                        // used in figuring out the boundaries
+                                        // between FSAs when we serialize to a
+                                        // list of arcs.
+  kFsaAllProperties = 0x01FF
 };
 
 
