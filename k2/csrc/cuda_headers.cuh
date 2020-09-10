@@ -4,8 +4,7 @@
  * With this file be included, code static analysis works.
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Meixu Song)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
