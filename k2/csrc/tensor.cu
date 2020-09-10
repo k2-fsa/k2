@@ -130,6 +130,7 @@ void Tensor::Init(ContextPtr c) {
 }
 
 Tensor Tensor::To(ContextPtr ctx) {
+  // @todo  replace this dummy implementation
   ContextPtr foo;
   return Tensor(foo, kInt64Dtype, k2::Shape());
 }
