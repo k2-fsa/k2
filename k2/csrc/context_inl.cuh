@@ -102,12 +102,10 @@ void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
       lambda(i);
     }
   } else {
-#ifdef __CUDA_ARCH__
     int32_t block_size = 256;
     int32_t grid_size = NumBlocks(n, block_size);
     eval_lambda<LambdaT><<<grid_size, block_size, 0, stream>>>(n, lambda);
     K2_DCHECK_CUDA_ERROR(cudaGetLastError());
-#endif
   }
 }
 
@@ -133,7 +131,6 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
       }
     }
   } else {
-#ifdef __CUDA_ARCH__
     // this way of choosing block and grid sizes is of course not very smart, we
     // can look at this later on, possibly referring to Kaldi's
     // GetBlockSizesForSimpleMatrixOperation().
@@ -142,7 +139,6 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
     eval_lambda2<LambdaT><<<grid_size, block_size, 0, stream>>> (m, n, lambda);
     auto err = cudaGetLastError();
     K2_DCHECK_CUDA_ERROR(err);
-#endif
   }
 }
 
