@@ -192,7 +192,7 @@ class Voidifier {
 #define K2_LOG(x) \
   ::k2::internal::Logger(__FILE__, __func__, __LINE__, ::k2::internal::x)
 
-#define K2_CHECK_CUDA_ERROR(x...)  \
+#define K2_CHECK_CUDA_ERROR(x)  \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 
 #define K2_CUDA_SAFE_CALL(...)               \
