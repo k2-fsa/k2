@@ -123,14 +123,14 @@ Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
   auto &row_ids = rsd.row_ids;
   // there must be row_splits.Dim() >=1 according to the definition of
   // RaggedShapeDim.
+  K2_CHECK_GE(row_splits.Dim(), 1);
   if (row_splits.Dim() != 1 && row_ids.Dim() == 0) {
     // create row_ids as it does not exist
-    row_ids =
-        Array1<int32_t>(row_splits.Context(), row_splits[row_splits.Dim() - 1]);
+    row_ids = Array1<int32_t>(Context(), row_splits[row_splits.Dim() - 1]);
     const int32_t *row_splits_data = row_splits.Data();
     int32_t *row_ids_data = row_ids.Data();
-    RowSplitsToRowIds(row_splits.Context(), row_splits.Dim() - 1,
-                      row_splits_data, row_ids.Dim(), row_ids_data);
+    RowSplitsToRowIds(Context(), row_splits.Dim() - 1, row_splits_data,
+                      row_ids.Dim(), row_ids_data);
     // set cached_tot_size
     rsd.cached_tot_size = row_ids.Dim();
   }
@@ -151,7 +151,7 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
     int32_t value = row_splits_data[i + 1] - row_splits_data[i];
     if (value > max_value[0]) max_value[0] = value;
   };
-  Eval(row_splits.Context(), num_rows, lambda_get_max);
+  Eval(Context(), num_rows, lambda_get_max);
   // this will convert to memory on CPU
   return max_array[0];
 }
@@ -162,14 +162,78 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i) {
   K2_CHECK_GE(i, 0);
   int32_t num_axes = NumAxes();
   K2_CHECK_GE(num_axes, 2);
+  const auto &src_axes = Axes();
+  K2_CHECK_LT(i + 1, src_axes[0].row_splits.Dim());
+
+  int32_t idx = src_axes[0].row_splits[i];
+  int32_t idx_next = src_axes[0].row_splits[i + 1];
   std::vector<RaggedShapeDim> axes(num_axes - 1);
-  for (int32_t axis = 0; axis < num_axes; ++i) {
-    // test
-    //
+  ContextPtr c = Context();
+  for (int32_t i = 2; i < num_axes; ++i) {
+    const Array1<int32_t> &src_row_splits = src_axes[i - 1].row_splits;
+    int32_t offset = idx;
+    idx = src_row_splits[idx];
+    idx_next = src_row_splits[idx_next];
+    // allocate new memory here as we need to change the values,
+    // i.e. subtracts the offset.
+    axes[i - 2].row_splits = Array1<int32_t>(c, idx_next - idx);
+    int32_t *data = axes[i - 2].row_splits.Data();
+    const int32_t *src_data = src_row_splits.Data();
+    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
+      data[i] = src_data[i + offset] - idx;
+    };
+    Eval(c, idx_next - idx, lambda_set_values);
   }
+  // leaves row_ids unset
   RaggedShape shape(axes, true);
   return shape;
-  // leave row_ids unset
+}
+
+void RaggedShape::Populate() {
+  int32_t num_axes = NumAxes();
+  for (int32_t i = 1; i < num_axes; ++i) {
+    // row_splits is always non-empty
+    RaggedShapeDim &rsd = axes_[i - 1];
+    const auto &row_splits = rsd.row_splits;
+    auto &row_ids = rsd.row_ids;
+    K2_CHECK_GE(row_splits.Dim(), 1);
+    if (row_splits.Dim() != 1 && row_ids.Dim() == 0) {
+      // create row_ids as it does not exist
+      row_ids = Array1<int32_t>(Context(), row_splits[row_splits.Dim() - 1]);
+      const int32_t *row_splits_data = row_splits.Data();
+      int32_t *row_ids_data = row_ids.Data();
+      RowSplitsToRowIds(Context(), row_splits.Dim() - 1, row_splits_data,
+                        row_ids.Dim(), row_ids_data);
+      rsd.cached_tot_size = row_ids.Dim();
+    }
+  }
+}
+
+RaggedShape RaggedShape::To(ContextPtr ctx) const {
+  std::vector<RaggedShapeDim> axes(axes_.size());
+  int32_t num_axes = NumAxes();
+  for (int32_t i = 1; i < num_axes; ++i) {
+    axes[i - 1].row_splits = axes_[i - 1].row_splits.To(ctx);
+    // leave row_ids unset
+  }
+  return RaggedShape(axes);
+}
+
+RaggedShapeIndexIterator RaggedShape::Iterator() {
+  return RaggedShapeIndexIterator(*this);
+}
+
+int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
+  K2_CHECK(indexes.size() == NumAxes());
+  K2_CHECK(Context()->GetDeviceType() == kCpu);
+  int32_t cur_idx = indexes[0];
+  for (int32_t i = 1; i < NumAxes(); i++) {
+    Array1<int32_t> &row_splits = axes_[i - 1].row_splits;
+    K2_CHECK(cur_idx >= 0 && cur_idx + 1 < row_splits.Dim());
+    cur_idx = row_splits[cur_idx];
+    cur_idx += indexes[i];
+  }
+  return cur_idx;
 }
 
 void RaggedShape::Check() {
@@ -315,23 +379,6 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
   auto shape1 = RaggedShape2(row_splits1, row_ids1, cached_tot_size1);
   auto shape2 = RaggedShape2(row_splits2, row_ids2, cached_tot_size2);
   return ComposeRaggedShapes(shape1, shape2);
-}
-
-RaggedShapeIndexIterator RaggedShape::Iterator() {
-  return RaggedShapeIndexIterator(*this);
-}
-
-int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
-  K2_CHECK(indexes.size() == NumAxes());
-  K2_CHECK(Context()->GetDeviceType() == kCpu);
-  int32_t cur_idx = indexes[0];
-  for (int32_t i = 1; i < NumAxes(); i++) {
-    Array1<int32_t> &row_splits = axes_[i - 1].row_splits;
-    K2_CHECK(cur_idx >= 0 && cur_idx + 1 < row_splits.Dim());
-    cur_idx = row_splits[cur_idx];
-    cur_idx += indexes[i];
-  }
-  return cur_idx;
 }
 
 Array1<int32_t *> GetRowSplitsPtr(RaggedShape &src) {

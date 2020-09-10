@@ -51,7 +51,7 @@ class RaggedShape {
   }
   /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and
      for axis=0 the returned value is the same as Dim0().  */
-  inline int32_t TotSize(int32_t axis) {
+  int32_t TotSize(int32_t axis) {
     K2_CHECK_GE(axis, 0);
     K2_CHECK_LT(axis, NumAxes());
     if (axis == 0)
@@ -72,7 +72,7 @@ class RaggedShape {
 
   // Returns the number of elements that a ragged array with this shape would
   // have.
-  inline int32_t NumElements() { return TotSize(NumAxes() - 1); }
+  int32_t NumElements() { return TotSize(NumAxes() - 1); }
 
   /*
     Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.
@@ -83,7 +83,7 @@ class RaggedShape {
   Array1<int32_t> &RowSplits(int32_t axis) {
     K2_CHECK_GE(axis, 0);
     K2_CHECK_LT(axis, NumAxes());
-    // TODO(dan):: make sure this row_splits exists, create it if needed.
+    // Note row_splits is always nonempty for valid RaggedShapeDim.
     return axes_[axis - 1].row_splits;
   }
 
@@ -136,9 +136,7 @@ class RaggedShape {
 
   // This makes sure that all of the row_splits, row_ids and cached_tot_size
   // are populated
-  void Populate() {
-    // TODO
-  }
+  void Populate();
 
   RaggedShape(const RaggedShape &other) = default;
   RaggedShape &operator=(const RaggedShape &other) = default;
@@ -151,11 +149,7 @@ class RaggedShape {
   void Check();
 
   // Convert to possibly different context.
-  RaggedShape To(ContextPtr ctx) const {
-    // TODO(haowen): implement it
-    std::vector<RaggedShapeDim> axes;
-    return RaggedShape(axes);
-  }
+  RaggedShape To(ContextPtr ctx) const;
 
  private:
   // TODO: could probably do away with the std::vector and have a max size and
@@ -367,7 +361,7 @@ struct Ragged {
   // Default constructor will not leave this a valid Ragged object, you
   // shouldn't do anything with it.  Both members will be initialized with
   // default constructors.
-  Ragged() { }
+  Ragged() {}
 
   // Note: 'values' will be uninitialized.
   Ragged(RaggedShape &shape)
