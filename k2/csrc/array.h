@@ -190,9 +190,7 @@ class Array1 {
     }
   }
 
-  ContextPtr &Context() { return region_->context; }
-
-  const ContextPtr &Context() const { return region_->context; }
+  ContextPtr &Context() const { return region_->context; }
 
   // Sets the context on this object (Caution: this is not something you'll
   // often need).  'ctx' must be compatible with the current Context(),
@@ -332,9 +330,7 @@ class Array2 {
   /* Could view this as num_cols */
   int32_t Dim1() const { return dim1_; }
 
-  ContextPtr &Context() { return region_->context; }
-
-  const ContextPtr &Context() const { return region_->context; }
+  ContextPtr &Context() const { return region_->context; }
 
   /*  stride on 0th axis, i.e. row stride, but this is stride in *elements*, so
       we name it 'ElemStride' to distinguish from stride in *bytes*.  This
@@ -400,14 +396,25 @@ class Array2 {
     K2_CHECK_GE(byte_offset_, 0);
   }
 
+  Array2 ToContiguous() const {
+    if (elem_stride0_ == dim1_) return *this;
+    Array2 ans(Context(), dim0_, dim1_);
+    auto *dst = ans.Data();
+    const auto *src = Data();
+    auto dim1 = dim1_;
+    auto elem_stride0 = elem_stride0_;
+    auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
+                                                     int32_t j) -> void {
+      dst[i * dim1 + j] = src[i * elem_stride0 + j];
+    };
+    Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
+    return ans;
+  }
+
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
     The returned value may share the same underlying `data` memory as *this.
     This should work even for tensors with dim == 0.
-
-     If dim_ == 0 and region_ is NULL, this will return a direct copy of *this
-    (i.e.
-     with region_ also NULL)
 
      If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
      empty region with the supplied context (if different from current region's
@@ -419,15 +426,16 @@ class Array2 {
   */
   Array2<T> To(ContextPtr ctx) const {
     if (dim0_ * dim1_ == 0) {
-      if (!region_) return *this;
-
       if (ctx->IsCompatible(*Context())) return *this;
-
       Array2 ans(ctx, dim0_, dim1_);
       return ans;
     }
 
-    if (ctx->IsCompatible(*Context()) && elem_stride0_ == dim1_) return *this;
+    // clang-format off
+    if (ctx->IsCompatible(*Context()) &&
+          elem_stride0_ == dim1_)
+      return *this;
+    // clang-format on
 
     // the current array is either non-contiguous or not compatible with the ctx
 
@@ -442,20 +450,7 @@ class Array2 {
                  dim0_ * dim1_ * ElementSize(), kind);
       return ans;
     } else {
-      // do rowwise copy
-      auto *dst = ans.Data();
-      const auto *src = Data();
-
-      auto kind = GetMemoryCopyKind(*Context(), *ctx);
-
-      for (int32_t i = 0; i != dim0_; ++i) {
-        MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
-                   dim1_ * ElementSize(), kind);
-        src += elem_stride0_;
-        dst += dim1_;
-      }
-
-      return ans;
+      return ToContiguous().To(ctx);
     }
   }
 
