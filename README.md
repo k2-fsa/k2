@@ -48,7 +48,7 @@ general and extensible framework to allow further development of ASR technology.
  done via the cub library, parts of which we wrap with our own convenient
  interface.
 
- The Finite State Automaton object is then implemented Ragged tensor templated
+ The Finite State Automaton object is then implemented as a Ragged tensor templated
  on a specific data type (a struct representing an arc in the automaton).
 
 
@@ -73,7 +73,7 @@ general and extensible framework to allow further development of ASR technology.
 
  ## Current state of the code
 
- A lot of the code is still unfinished (note, this was written on Sep 11, 2020).
+ A lot of the code is still unfinished (Sep 11, 2020).
  We finished the CPU versions of many algorithms and this code is in `k2/csrc/host/`;
  however, after that we figured out how to implement things on the GPU and decided
  to change the interfaces so the CPU and GPU code had a more unified interface.
@@ -84,13 +84,14 @@ general and extensible framework to allow further development of ASR technology.
  with our GPU algorithms.  Instead we will use the interfaces drafted in `k2/csrc/`
  e.g. the Context object (which encapsulates things like memory managers from external
  toolkits) and the Tensor object which can be used to wrap tensors from external toolkits;
- and wrap those in Python (using pybind11).
+ and wrap those in Python (using pybind11).  The code in host/ will eventually
+ be either deprecated, rewritten or wrapped with newer-style interfaces.
 
   ## Plans for initial release
 
  We hope to get the first version working in early October.  The current
  short-term aim is to finish the GPU implementation of pruned composition of a
- normal with dense FSA, which is the same as decoder search in speech
+ normal FSA with a dense FSA, which is the same as decoder search in speech
  recognition and can be used to implement CTC training and lattice-free MMI (LF-MMI) training.  The
  proof-of-concept that we will release initially is something that's like CTC
  but allowing more general supervisions (general FSAs rather than linear
