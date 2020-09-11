@@ -86,7 +86,7 @@ class Array1 {
 
   /* Return sub-part of this array. Note that the returned Array1 is not const,
      the caller should be careful when changing array's data, it will
-     also change data in the parent array as they shares the memory.
+     also change data in the parent array as they share the memory.
      @param [in] start  First element to cover, 0 <= start < Dim()
      @param [in] size   Number of elements to include, 0 < size <= Dim()-start
   */
@@ -157,8 +157,8 @@ class Array1 {
     if (dim_ == 0) return ans;
 
     auto kind = GetMemoryCopyKind(*Context(), *ctx);
-    auto *dst = ans.Data();
-    const auto *src = Data();
+    T *dst = ans.Data();
+    const T *src = Data();
     MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
                Dim() * ElementSize(), kind);
     return ans;
@@ -190,9 +190,7 @@ class Array1 {
     }
   }
 
-  ContextPtr &Context() { return region_->context; }
-
-  const ContextPtr &Context() const { return region_->context; }
+  ContextPtr &Context() const { return region_->context; }
 
   // Sets the context on this object (Caution: this is not something you'll
   // often need).  'ctx' must be compatible with the current Context(),
@@ -318,7 +316,7 @@ struct ConstArray2Accessor {
 
 /*
   Array2 is a 2-dimensional array (== matrix), that is contiguous in the
-  2nd dimension, i.e. a row-major marix.
+  2nd dimension, i.e. a row-major matrix.
 */
 template <typename T>
 class Array2 {
@@ -337,7 +335,7 @@ class Array2 {
   /*  stride on 0th axis, i.e. row stride, but this is stride in *elements*, so
       we name it 'ElemStride' to distinguish from stride in *bytes*.  This
       will satisfy ElemStride0() >= Dim1(). */
-  int32_t ElemStride0() { return elem_stride0_; }
+  int32_t ElemStride0() const { return elem_stride0_; }
 
   /*  returns a flat version of this, appending the rows; will copy the data if
       it was not contiguous. */
@@ -375,12 +373,12 @@ class Array2 {
         dim1_(0),
         byte_offset_(0),
         region_(nullptr) {}
-  /* Create new array2 with given dimensions.  dim0 and dim1 must be >0.
+  /* Create new array2 with given dimensions.  dim0 and dim1 must be >=0.
      Data will be uninitialized. */
   Array2(ContextPtr c, int32_t dim0, int32_t dim1)
       : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
-    K2_DCHECK_GT(dim0, 0);
-    K2_DCHECK_GT(dim1, 0);
+    K2_CHECK_GE(dim0, 0);
+    K2_CHECK_GE(dim1, 0);
     region_ = NewRegion(c, dim0_ * dim1_ * ElementSize());
   }
 
@@ -391,29 +389,34 @@ class Array2 {
         elem_stride0_(elem_stride0),
         dim1_(dim1),
         byte_offset_(byte_offset),
-        region_(region) {}
+        region_(region) {
+    K2_CHECK_GE(dim0_, 0);
+    K2_CHECK_GE(dim1_, 0);
+    K2_CHECK_GE(elem_stride0_, dim1_);
+    K2_CHECK_GE(byte_offset_, 0);
+  }
 
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
     The returned value may share the same underlying `data` memory as *this.
     This should work even for tensors with dim == 0.
-
-     If dim_ == 0 and region_ is NULL, this will return a direct copy of *this
-    (i.e.
-     with region_ also NULL)
-
-     If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
-     empty region with the supplied context (if different from current region's
-     context).
-
-     Note: the answer will always be contiguous, i.e. there is a possibility
-    that
-     it will have a different memory layout than the input.
   */
-  Array2<T> To(ContextPtr ctx) {
-    // TODO
-    Array2<T> array;
-    return array;
+  Array2<T> To(ContextPtr ctx) const {
+    if (ctx->IsCompatible(*Context())) return *this;
+
+    Array2<T> ans(ctx, dim0_, dim1_);
+
+    if (elem_stride0_ == dim1_) {
+      // the current array is contiguous, use memcpy
+      auto kind = GetMemoryCopyKind(*Context(), *ctx);
+      T *dst = ans.Data();
+      const T *src = Data();
+      MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
+                 dim0_ * dim1_ * ElementSize(), kind);
+      return ans;
+    } else {
+      return ToContiguous(*this).To(ctx);
+    }
   }
 
   // Note that the returned Tensor is not const, the caller should be careful
@@ -471,7 +474,7 @@ class Array2 {
     } else {
       // TODO(haowen): only handle positive stride now
       if (!copy_for_strides) {
-        LOG(FATAL) << "non-unit stride on 2nd axis of tensor";
+        K2_LOG(FATAL) << "non-unit stride on 2nd axis of tensor";
       }
       region_ =
           NewRegion(region->context, dim0_ * elem_stride0_ * ElementSize());
@@ -480,7 +483,7 @@ class Array2 {
     }
   }
 
-  /* Initialize from Array1.  Require dim0 * dim1 == a.Dim() and dim0,dim1 >= 0
+  /* Initialize from Array1.  Require dim0 * dim1 == a.Dim() and dim0,dim1 > 0
    */
   Array2(Array1<T> &a, int32_t dim0, int32_t dim1)
       : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1) {
@@ -545,7 +548,7 @@ std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
     stream << array_cpu[i];
     if (i + 1 < num_rows) stream << '\n';
   }
-  stream << ']';
+  return stream << ']';
 }
 
 }  // namespace k2

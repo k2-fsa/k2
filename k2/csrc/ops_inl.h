@@ -74,8 +74,8 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       // elements being processed is small. What we're saying is that the
       // arrays' sizes are fairly balanced, so we launch with a simple
       // rectangular kernel.
-      auto lambda_set_data = [=] __host__ __device__(int32_t i, int32_t j)
-                                     ->void {
+      auto lambda_set_data = [=] __host__ __device__(int32_t i,
+                                                     int32_t j) -> void {
         // TODO(haowen): change to use operator[]
         int32_t row_start = row_splits.Data()[i],
                 row_end = row_splits.Data()[i + 1];
@@ -221,7 +221,7 @@ Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
 }
 
 template <typename T>
-Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc) {
+Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
   K2_CHECK(dim >= 0);
   DeviceType d = c->GetDeviceType();
   Array1<T> ans = Array1<T>(c, dim);
@@ -229,11 +229,28 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc) {
   if (d == kCpu) {
     for (int32_t i = 0; i < dim; i++) ans_data[i] = first_value + i * inc;
   } else {
-    auto lambda_set_values = [=] __host__ __device__(int32_t i)->void {
+    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
       ans_data[i] = first_value + i * inc;
     };
     Eval(c, dim, lambda_set_values);
   }
+}
+
+template <typename T>
+Array2<T> ToContiguous(const Array2<T> &src) {
+  int32_t dim0 = src.Dim0();
+  int32_t dim1 = src.Dim1();
+  int32_t elem_stride0 = src.ElemStride0();
+  if (dim1 == elem_stride0) return src;
+  Array2<T> ans(src.Context(), src.Dim0(), src.Dim1());
+  T *out = ans.Data();
+  const T *in = src.Data();
+  auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
+                                                   int32_t j) -> void {
+    out[i * dim1 + j] = in[i * elem_stride0 + j];
+  };
+  Eval2(src.Context(), dim0, dim1, lambda_copy_elems);
+  return ans;
 }
 
 }  // namespace k2

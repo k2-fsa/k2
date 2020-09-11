@@ -10,18 +10,17 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <numeric>
-#include <sstream>
 #include <vector>
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/ops.h"
 #include "k2/csrc/tensor.h"
 
 namespace k2 {
@@ -75,7 +74,7 @@ void TestArray1() {
   }
 
   {
-    // test operator=(T t)
+    // test operator=(T t) and "operator[](int32_t i) const"
     Array1<T> array(context, 5);
     ASSERT_EQ(array.Dim(), 5);
     // operator=(T t)
@@ -89,6 +88,7 @@ void TestArray1() {
                array.Dim() * array.ElementSize(), kind);
     for (int32_t i = 0; i < array.Dim(); ++i) {
       EXPECT_EQ(cpu_data[i], 2);
+      EXPECT_EQ(array[i], 2);
     }
   }
 
@@ -227,13 +227,11 @@ void TestArray1() {
     // test operator <<
     std::vector<T> data = {0, 1, 2, 3};
     Array1<T> src(context, data);
-    std::ostringstream os;
-    os << src;
-    K2_LOG(INFO) << os.str().c_str();
+    K2_LOG(INFO) << src;
   }
 
   {
-    // test operator[](const Array1<int32_t> indexes)
+    // test operator[](const Array1<int32_t> &indexes) const
     std::vector<T> data(20);
     std::iota(data.begin(), data.end(), 1);
     Array1<T> array(context, data);
@@ -295,6 +293,80 @@ void TestArray2() {
   } else {
     K2_CHECK_EQ(d, kCuda);
     context = GetCudaContext();
+  }
+
+  {
+    // test To(context)
+    // case 1: contiguous
+    //
+    // 0 1 2
+    // 3 4 5
+    //
+    constexpr auto kDim0 = 2;
+    constexpr auto kDim1 = 3;
+    std::vector<T> data = {0, 1, 2, 3, 4, 5};
+    ASSERT_EQ(static_cast<int32_t>(data.size()), kDim0 * kDim1);
+
+    Array1<T> arr1(context, data);
+    Array2<T> array(arr1, kDim0, kDim1);
+
+    auto cpu_array = array.To(cpu);
+    auto cuda_array = array.To(GetCudaContext());
+
+    ASSERT_EQ(cpu_array.ElemStride0(), cpu_array.Dim1());
+    ASSERT_EQ(cuda_array.ElemStride0(), cuda_array.Dim1());
+
+    auto k = 0;
+    for (auto r = 0; r != kDim0; ++r)
+      for (auto c = 0; c != kDim1; ++c) {
+        // WARNING: it's inefficient to access elements of Array2
+        // with operator [][]
+        EXPECT_EQ(cpu_array[r][c], k);
+        EXPECT_EQ(cuda_array[r][c], k);
+        ++k;
+      }
+
+    // test operator <<
+    K2_LOG(INFO) << array;
+  }
+
+  {
+    // test To(context)
+    // case 2: non-contiguous
+    //
+    // 0 1 2 x x
+    // 3 4 5 x x
+    //
+    constexpr auto kDim0 = 2;
+    constexpr auto kDim1 = 3;
+    constexpr auto kElemStride0 = 5;
+    std::vector<T> data = {0, 1, 2, -1, -1, 3, 4, 5, -1, -1};
+    EXPECT_EQ(static_cast<int32_t>(data.size()), kDim0 * kElemStride0);
+
+    auto region = NewRegion(context, data.size() * sizeof(T));
+
+    auto dst = region->template GetData<T>();
+    auto kind = GetMemoryCopyKind(*cpu, *context);
+    MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(data.data()),
+               data.size() * sizeof(T), kind);
+
+    Array2<T> array(kDim0, kDim1, kElemStride0, 0, region);
+
+    auto cpu_array = array.To(cpu);
+    auto cuda_array = array.To(GetCudaContext());
+
+    auto k = 0;
+    for (auto r = 0; r != kDim0; ++r)
+      for (auto c = 0; c != kDim1; ++c) {
+        // WARNING: it's inefficient to access elements of Array2
+        // with operator [][]
+        EXPECT_EQ(cpu_array[r][c], k);
+        EXPECT_EQ(cuda_array[r][c], k);
+        ++k;
+      }
+
+    // test operator <<
+    K2_LOG(INFO) << array;
   }
 
   {
