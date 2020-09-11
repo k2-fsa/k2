@@ -17,7 +17,7 @@ One of the key algorithms that we want to make efficient in the short term is
 pruned composition of a generic FSA with a "dense" FSA (i.e. one that
 corresponds to log-probs of symbols at the output of a neural network).  This
 can be used as a fast implementation of decoding for ASR, and for CTC and
-LF-MMI.  This won't give a direct advantage in terms of Word Error Rate when
+LF-MMI training.  This won't give a direct advantage in terms of Word Error Rate when
 compared with existing technology; but the point is to do this in a much more
 general and extensible framework to allow further development of ASR technology.
 
@@ -48,6 +48,8 @@ general and extensible framework to allow further development of ASR technology.
  done via the cub library, parts of which we wrap with our own convenient
  interface.
 
+ The Finite State Automaton object is then implemented Ragged tensor templated
+ on a specific data type (a struct representing an arc in the automaton).
 
 
  ## Autograd
