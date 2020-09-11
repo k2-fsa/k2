@@ -33,7 +33,6 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install --upgrade flake8
-          pip install cpplint==1.4.5
 
       - name: Run flake8
         shell: bash
@@ -44,6 +43,7 @@ jobs:
           # exit-zero treats all errors as warnings.
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=79 --statistics
 
+          # TODO(fangjun): build a docker for style check
           #      - name: Install cppcheck
           #        run: |
           #          cd /tmp
@@ -55,30 +55,12 @@ jobs:
           #          make -j
           #          sudo make install
 
-      - name: Create Build Directory
-        run: cmake -E make_directory ${{runner.workspace}}/build
-
-      - name: Configure CMake
-        shell: bash
-        working-directory: ${{runner.workspace}}/build
-        run: cmake -DCMAKE_CXX_CPPLINT=cpplint $GITHUB_WORKSPACE
-
       - name: Check style with cpplint
         shell: bash
         working-directory: ${{github.workspace}}
-        run: ./scripts/check_style_cpplint.sh ${{runner.workspace}}/build 1
+        run: ./scripts/check_style_cpplint.sh
 
         #      - name: Run cppcheck
         #        shell: bash
         #        working-directory: ${{github.workspace}}
         #        run: ./scripts/run_cppcheck.sh ${{runner.workspace}}/build
-
-      - name: Install clang-tidy
-        run: |
-          sudo apt-get install clang-tidy-9
-
-      - name: Run clang-tidy
-        shell: bash
-        working-directory: ${{github.workspace}}
-        run: |
-          clang-tidy-9 --quiet -p ${{runner.workspace}}/build k2/csrc/*.cc k2/python/csrc/*.cc

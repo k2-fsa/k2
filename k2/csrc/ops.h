@@ -25,13 +25,11 @@
 // Note, I'm not sure about the name of this file, they are not ops like in
 // TensorFlow, but procedures..
 
-namespace {
 // TODO(haowen): manage/load block config with some classes? then we can get
 // different configuration depending on num_elements and data type.
 // block size for matrix transpose.
-constexpr int kTransTileDim = 32;
-constexpr int kTransBlockRows = 8;
-}  // namespace
+static constexpr int kTransTileDim = 32;
+static constexpr int kTransBlockRows = 8;
 
 namespace k2 {
 // TODO(haowen): move the implementations to file `op_inl.h` or
