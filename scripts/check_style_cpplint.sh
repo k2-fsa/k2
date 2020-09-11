@@ -5,33 +5,33 @@
 # See ../LICENSE for clarification regarding multiple authors
 
 # Usage:
+#
+# (1) To check files of the last commit
 #  ./scripts/check_style_cpplint.sh
-#     check modified files using the default build directory "build"
 #
-#  ./scripts/check_style_cpplint.sh ./build
-#     check modified files using the specified build directory "./build"
+# (2) To check changed files not committed yet
+#  ./scripts/check_style_cpplint.sh 1
 #
-#  ./scripts/check_style_cpplint.sh ./build 1
-#     check modified files of last commit using the specified build directory "./build"
-#
-# You can also go to the build directory and do the following:
-#   cd build
-#   cmake ..
-#   make check_style
+# (3) To check all files in the project
+#  ./scripts/check_style_cpplint.sh 2
 
 
+cpplint_version="1.5.4"
 cur_dir=$(cd $(dirname $BASH_SOURCE) && pwd)
 k2_dir=$(cd $cur_dir/.. && pwd)
 
-if [ $# -ge 1 ]; then
-  build_dir=$(cd $1 && pwd)
-  shift
-else
-  # we assume that the build dir is "./build"; cpplint
-  # is downloaded automatically when the project is configured.
-  build_dir=$k2_dir/build
+build_dir=$k2_dir/build
+mkdir -p $build_dir
+
+if [ ! -d "$build_dir/cpplint-${cpplint_version}" ]; then
+  pushd $build_dir
+  wget https://github.com/cpplint/cpplint/archive/${cpplint_version}.tar.gz
+  tar xf ${cpplint_version}.tar.gz
+  rm ${cpplint_version}.tar.gz
+  popd
 fi
-cpplint_src=$build_dir/_deps/cpplint-src/cpplint.py
+
+cpplint_src=$build_dir/cpplint-${cpplint_version}/cpplint.py
 
 source $k2_dir/scripts/utils.sh
 
@@ -39,7 +39,7 @@ source $k2_dir/scripts/utils.sh
 # return false otherwise
 function is_source_code_file() {
   case "$1" in
-    *.cc|*.h)
+    *.cc|*.h|*.cu)
       echo true;;
     *)
       echo false;;
@@ -68,13 +68,20 @@ function check_current_dir() {
 }
 
 function do_check() {
-  if [ $# -eq 1 ]; then
-    echo "checking last commit"
-    files=$(check_last_commit)
-  else
-    echo "checking current dir"
-    files=$(check_current_dir)
-  fi
+  case "$1" in
+    1)
+      echo "Check changed files"
+      files=$(check_current_dir)
+      ;;
+    2)
+      echo "Check all files"
+      files=$(find $k2_dir/k2 -name "*.h" -o -name "*.cc" -o -name "*.cu")
+      ;;
+    *)
+      echo "Check last commit"
+      files=$(check_last_commit)
+      ;;
+  esac
 
   for f in $files; do
     need_check=$(is_source_code_file $f)
@@ -85,15 +92,6 @@ function do_check() {
 }
 
 function main() {
-  if [ ! -f $cpplint_src ]; then
-    abort "\n$cpplint_src does not exist.\n\
-Please run
-    mkdir build
-    cd build
-    cmake ..
-before running this script."
-  fi
-
   do_check $1
 
   ok "Great! Style check passed!"

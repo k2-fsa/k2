@@ -12,6 +12,8 @@
 #ifndef K2_CSRC_RAGGED_H_
 #define K2_CSRC_RAGGED_H_
 
+#include <vector>
+
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
 #include "k2/csrc/log.h"
@@ -125,7 +127,7 @@ class RaggedShape {
 
   RaggedShapeIndexIterator Iterator();
 
-  RaggedShape(std::vector<RaggedShapeDim> &axes, bool check = true)
+  explicit RaggedShape(std::vector<RaggedShapeDim> &axes, bool check = true)
       : axes_(axes) {
     if (check) Check();
   }
@@ -540,7 +542,7 @@ Ragged<T> RandomRagged(T min_value = static_cast<T>(0),
 
 }  // namespace k2
 
-// TODO(dan), include guard maybe.
+// TODO(dan): include guard maybe.
 #include "k2/csrc/ragged_inl.h"
 
 #endif  // K2_CSRC_RAGGED_H_

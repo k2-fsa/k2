@@ -19,6 +19,7 @@
 #include <memory>
 #include <ostream>
 #include <type_traits>
+#include <vector>
 
 #include "k2/csrc/log.h"
 
@@ -215,7 +216,7 @@ class BackgroundRunner {
   void Wait();
 
  private:
-  // TODO.  My current thinking on this is for Background() to create threads
+  // TODO:  My current thinking on this is for Background() to create threads
   // that Wait() can wait on, and to have the number of threads limited by a
   // global semaphore.
 };
@@ -451,7 +452,7 @@ static thread_local CudaStreamOverride g_stream_override;
 
 class With {
  public:
-  With(cudaStream_t stream) : stream_(stream) {
+  explicit With(cudaStream_t stream) : stream_(stream) {
     g_stream_override.Push(stream_);
   }
   ~With() { g_stream_override.Pop(stream_); }
@@ -472,7 +473,7 @@ class With {
 */
 class ParallelRunner {
  public:
-  ParallelRunner(ContextPtr c) : c_(c) {}
+  explicit ParallelRunner(ContextPtr c) : c_(c) {}
 
   // create a new stream, that first syncs with stream of c_ via an event.  The
   // destructor will cause the stream of c_ to wait on this stream in the

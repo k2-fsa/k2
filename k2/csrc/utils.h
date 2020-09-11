@@ -13,6 +13,7 @@
 #define K2_CSRC_UTILS_H_
 
 #include <algorithm>
+#include <vector>
 
 #include "k2/csrc/context.h"
 
@@ -270,9 +271,9 @@ RowIdFromRowSplits(int32_t num_rows, const int32_t *row_splits, int32_t index,
   // auto i =
   // std::lower_bound(row_splits + 1, row_splits + num_rows + 1, index) - 1;
   // K2_DCHECK(static_cast<uint32_t>(i) < static_cast<uint32_t>(num_rows));
-  // TODO!  Implement std::lower_bound ourselves.
+  // TODO:  Implement std::lower_bound ourselves.
   // return *i;
-  return 0;  // TODO!  Does not work.
+  return 0;  // TODO:  Does not work.
 }
 
 /*
@@ -413,7 +414,7 @@ void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
                       TaskRedirect *redirect, int32_t min_threads_per_job,
                       int32_t tot_work, int32_t target_num_loops,
                       LambdaT &lambda) {
-  // TODO..
+  // TODO:
 }
 
 __host__ __device__ __forceinline__ int32_t FloatAsInt(float f) {

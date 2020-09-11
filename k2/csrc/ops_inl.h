@@ -13,16 +13,17 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#ifndef K2_CSRC_OPS_INL_H_
+#define K2_CSRC_OPS_INL_H_
+
 #ifndef IS_IN_K2_CSRC_OPS_H_
 #error "this file is supposed to be included only by ops.h"
 #endif
 
-// No header guard for this file since it will only be included
-// in ops.h
-
 #include <cassert>
-#include <cub/cub.cuh>
+#include <cub/cub.cuh>  // NOLINT
 #include <type_traits>
+#include <vector>
 
 namespace k2 {
 
@@ -53,8 +54,8 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
     for (int32_t i = 0; i < num_arrays; i++) {
       int32_t offset = row_splits_vec[i], this_dim = src[i]->Dim();
       const int32_t *this_src_data = src[i]->Data();
-      memcpy((void *)ans_data, (const void *)this_src_data,
-             sizeof(T) * this_dim);
+      memcpy(static_cast<void *>(ans_data),
+             static_cast<const void *>(this_src_data), sizeof(T) * this_dim);
       ans_data += this_dim;
     }
   } else {
@@ -134,7 +135,7 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
   struct PtrPtr {
     T **data;
     __host__ __device__ T operator[](int32_t i) { return *(data[i]); }
-    PtrPtr(T **data) : data(data) {}
+    explicit PtrPtr(T **data) : data(data) {}
     PtrPtr(const PtrPtr &src) = default;
   };
 
@@ -212,10 +213,11 @@ Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
   } else if (std::is_floating_point<T>::value ||
              std::abs(min_value) > RAND_MAX || std::abs(max_value) > RAND_MAX) {
     for (int32_t i = 0; i < dim; i++)
-      data[i] = min_value + (rand() * (max_value - min_value) / RAND_MAX);
+      data[i] =
+          min_value + (rand() * (max_value - min_value) / RAND_MAX);  // NOLINT
   } else {
     for (int32_t i = 0; i < dim; i++)
-      data[i] = min_value + (rand() % (max_value + 1 - min_value));
+      data[i] = min_value + (rand() % (max_value + 1 - min_value));  // NOLINT
   }
   return temp.To(c);
 }
@@ -254,3 +256,5 @@ Array2<T> ToContiguous(const Array2<T> &src) {
 }
 
 }  // namespace k2
+
+#endif  // K2_CSRC_OPS_INL_H_

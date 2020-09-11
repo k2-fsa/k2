@@ -16,6 +16,8 @@
 
 #include <algorithm>
 #include <iostream>
+#include <utility>
+#include <vector>
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/dtype.h"
@@ -400,6 +402,9 @@ class Array2 {
     Convert to possibly-different context, may require CPU/GPU transfer.
     The returned value may share the same underlying `data` memory as *this.
     This should work even for tensors with dim == 0.
+
+    Note that the returned array is contiguous in case the required context
+    is not compatible with the current context.
   */
   Array2<T> To(ContextPtr ctx) const {
     if (ctx->IsCompatible(*Context())) return *this;
@@ -459,7 +464,7 @@ class Array2 {
                                   with error.
 
   */
-  Array2(Tensor &t, bool copy_for_strides = true) {
+  explicit Array2(Tensor &t, bool copy_for_strides = true) {
     auto type = t.GetDtype();
     K2_CHECK_EQ(type, DtypeOf<T>::dtype);
     auto shape = t.GetShape();

@@ -93,7 +93,6 @@ endif()
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(cpplint)
 include(glog)
 include(googletest)
 include(pybind11)
