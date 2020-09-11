@@ -17,6 +17,8 @@
 #include <cassert>
 #include <map>
 #include <memory>
+#include <ostream>
+#include <type_traits>
 
 #include "k2/csrc/log.h"
 
@@ -31,6 +33,12 @@ enum class DeviceType {
 constexpr DeviceType kUnk = DeviceType::kUnk;
 constexpr DeviceType kCuda = DeviceType::kCuda;
 constexpr DeviceType kCpu = DeviceType::kCpu;
+
+// Intended for use in debugging
+inline std::ostream &operator<<(std::ostream &stream, const DeviceType type) {
+  stream << static_cast<std::underlying_type<DeviceType>::type>(type);
+  return stream;
+}
 
 class Context;
 using ContextPtr = std::shared_ptr<Context>;
@@ -164,7 +172,7 @@ inline void MemoryCopy(void *dst, const void *src, std::size_t count,
       {MemcpyDeviceToHost, cudaMemcpyDeviceToHost},
       {MemcpyDeviceToDevice, cudaMemcpyDeviceToDevice}};
   auto it = copy_kind_mappings.find(kind);
-  K2_CHECK_NE(it, copy_kind_mappings.end());
+  K2_CHECK(it != copy_kind_mappings.end());
   auto ret = cudaMemcpy(dst, src, count, it->second);
   K2_CHECK_CUDA_ERROR(ret);
 }

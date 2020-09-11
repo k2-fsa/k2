@@ -81,7 +81,7 @@ class RaggedShape {
     on axis `axis+1`
    */
   Array1<int32_t> &RowSplits(int32_t axis) {
-    K2_CHECK_GE(axis, 0);
+    K2_CHECK_GT(axis, 0);
     K2_CHECK_LT(axis, NumAxes());
     // Note row_splits is always nonempty for valid RaggedShapeDim.
     return axes_[axis - 1].row_splits;
