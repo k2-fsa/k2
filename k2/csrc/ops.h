@@ -5,6 +5,7 @@
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
  *                                                   Haowen Qiu)
+ *                      Fangjun Kuang (csukuangfj@gmail.com)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -325,7 +326,8 @@ void RowSplitsToRowIds(Array1<int32_t> &row_splits, Array1<int32_t> &row_ids);
                            non-negative, non-decreasing, and all elements are
                            less than num_rows.
  */
-void RowIdsToRowSplits(const Array1<int32_t> &row_ids, Array1<int32_t> &row_splits);
+void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
+                       Array1<int32_t> &row_splits);
 
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
@@ -339,7 +341,6 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids, Array1<int32_t> &row_spli
      @return   Returns true if `row_ids` is a plausible row_ids vector.
 */
 bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp = nullptr);
-
 
 /*
    Validate a row_splits vector; this just makes sure its elements are
@@ -371,6 +372,9 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits,
 bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
                              Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp = nullptr);
+
+template <typename T>
+Array2<T> ToContiguous(const Array2<T> &src);
 
 }  // namespace k2
 

@@ -14,13 +14,13 @@
 
 #include <algorithm>
 #include <numeric>
-#include <sstream>
 #include <vector>
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/ops.h"
 #include "k2/csrc/tensor.h"
 
 namespace k2 {
@@ -227,9 +227,7 @@ void TestArray1() {
     // test operator <<
     std::vector<T> data = {0, 1, 2, 3};
     Array1<T> src(context, data);
-    std::ostringstream os;
-    os << src;
-    K2_LOG(INFO) << os.str().c_str();
+    K2_LOG(INFO) << src;
   }
 
   {
@@ -329,9 +327,7 @@ void TestArray2() {
       }
 
     // test operator <<
-    std::ostringstream os;
-    os << array;
-    K2_LOG(INFO) << os.str().c_str();
+    K2_LOG(INFO) << array;
   }
 
   {
@@ -359,9 +355,6 @@ void TestArray2() {
     auto cpu_array = array.To(cpu);
     auto cuda_array = array.To(GetCudaContext());
 
-    ASSERT_EQ(cpu_array.ElemStride0(), cpu_array.Dim1());
-    ASSERT_EQ(cuda_array.ElemStride0(), cuda_array.Dim1());
-
     auto k = 0;
     for (auto r = 0; r != kDim0; ++r)
       for (auto c = 0; c != kDim1; ++c) {
@@ -373,9 +366,7 @@ void TestArray2() {
       }
 
     // test operator <<
-    std::ostringstream os;
-    os << array;
-    K2_LOG(INFO) << os.str().c_str();
+    K2_LOG(INFO) << array;
   }
 
   {

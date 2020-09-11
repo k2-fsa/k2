@@ -157,8 +157,8 @@ class Array1 {
     if (dim_ == 0) return ans;
 
     auto kind = GetMemoryCopyKind(*Context(), *ctx);
-    auto *dst = ans.Data();
-    const auto *src = Data();
+    T *dst = ans.Data();
+    const T *src = Data();
     MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
                Dim() * ElementSize(), kind);
     return ans;
@@ -396,61 +396,26 @@ class Array2 {
     K2_CHECK_GE(byte_offset_, 0);
   }
 
-  Array2 ToContiguous() const {
-    if (elem_stride0_ == dim1_) return *this;
-    Array2 ans(Context(), dim0_, dim1_);
-    auto *dst = ans.Data();
-    const auto *src = Data();
-    auto dim1 = dim1_;
-    auto elem_stride0 = elem_stride0_;
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
-                                                     int32_t j) -> void {
-      dst[i * dim1 + j] = src[i * elem_stride0 + j];
-    };
-    Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
-    return ans;
-  }
-
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
     The returned value may share the same underlying `data` memory as *this.
     This should work even for tensors with dim == 0.
-
-     If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
-     empty region with the supplied context (if different from current region's
-     context).
-
-     Note: the answer will always be contiguous, i.e. there is a possibility
-    that
-     it will have a different memory layout than the input.
   */
   Array2<T> To(ContextPtr ctx) const {
-    if (dim0_ * dim1_ == 0) {
-      if (ctx->IsCompatible(*Context())) return *this;
-      Array2 ans(ctx, dim0_, dim1_);
-      return ans;
-    }
-
-    // clang-format off
-    if (ctx->IsCompatible(*Context()) &&
-          elem_stride0_ == dim1_)
-      return *this;
-    // clang-format on
-
-    // the current array is either non-contiguous or not compatible with the ctx
+    if (ctx->IsCompatible(*Context())) return *this;
 
     Array2<T> ans(ctx, dim0_, dim1_);
 
     if (elem_stride0_ == dim1_) {
       // the current array is contiguous, use memcpy
       auto kind = GetMemoryCopyKind(*Context(), *ctx);
-      auto *dst = ans.Data();
-      const auto *src = Data();
+      T *dst = ans.Data();
+      const T *src = Data();
       MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
                  dim0_ * dim1_ * ElementSize(), kind);
       return ans;
     } else {
-      return ToContiguous().To(ctx);
+      return ToContiguous(*this).To(ctx);
     }
   }
 
