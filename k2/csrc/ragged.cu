@@ -116,7 +116,7 @@ RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes) {
 }
 
 Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
-  K2_CHECK_GE(axis, 0);
+  K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
   RaggedShapeDim &rsd = axes_[axis - 1];
   auto &row_splits = rsd.row_splits;
@@ -143,10 +143,10 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
   const auto &row_splits = axes_[axis - 1].row_splits;
   const int32_t num_rows = row_splits.Dim() - 1;
   if (num_rows == 0) return 0;
-  // TODO(haowen): write a new function to allocate just one element?
-  Array1<int32_t> max_array(row_splits.Context(), 1, 0);
+  Array1<int32_t> max_array(Context(), 1, 0);
   int32_t *max_value = max_array.Data();
   const int32_t *row_splits_data = row_splits.Data();
+  // TODO(haowen): use atomicMax or two reduce ops? not sure which is faster
   auto lambda_get_max = [=] __host__ __device__(int32_t i) -> void {
     int32_t value = row_splits_data[i + 1] - row_splits_data[i];
     if (value > max_value[0]) max_value[0] = value;
@@ -167,24 +167,26 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i) {
 
   int32_t idx = src_axes[0].row_splits[i];
   int32_t idx_next = src_axes[0].row_splits[i + 1];
-  std::vector<RaggedShapeDim> axes(num_axes - 1);
+  std::vector<RaggedShapeDim> axes(src_axes.size() - 1);
   ContextPtr c = Context();
   for (int32_t i = 2; i < num_axes; ++i) {
     const Array1<int32_t> &src_row_splits = src_axes[i - 1].row_splits;
+    int num_rows = idx_next - idx;
     int32_t offset = idx;
     idx = src_row_splits[idx];
     idx_next = src_row_splits[idx_next];
     // allocate new memory here as we need to change the values,
     // i.e. subtracts the offset.
-    axes[i - 2].row_splits = Array1<int32_t>(c, idx_next - idx);
+    axes[i - 2].row_splits = Array1<int32_t>(c, num_rows + 1);
     int32_t *data = axes[i - 2].row_splits.Data();
     const int32_t *src_data = src_row_splits.Data();
     auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
       data[i] = src_data[i + offset] - idx;
     };
-    Eval(c, idx_next - idx, lambda_set_values);
+    Eval(c, num_rows + 1, lambda_set_values);
+    // leave row_ids and cached_tot_size unset
+    axes[i - 2].cached_tot_size = -1;
   }
-  // leaves row_ids unset
   RaggedShape shape(axes, true);
   return shape;
 }
@@ -210,11 +212,13 @@ void RaggedShape::Populate() {
 }
 
 RaggedShape RaggedShape::To(ContextPtr ctx) const {
+  if (ctx->IsCompatible(*Context())) return *this;
   std::vector<RaggedShapeDim> axes(axes_.size());
   int32_t num_axes = NumAxes();
   for (int32_t i = 1; i < num_axes; ++i) {
     axes[i - 1].row_splits = axes_[i - 1].row_splits.To(ctx);
-    // leave row_ids unset
+    // leave row_ids and cached_tot_size unset
+    axes[i - 1].cached_tot_size = -1;
   }
   return RaggedShape(axes);
 }
@@ -248,9 +252,10 @@ void RaggedShape::Check() {
       K2_CHECK(rsd.row_ids.Dim() == 0 ||
                rsd.cached_tot_size == rsd.row_ids.Dim());
     } else {
-      K2_CHECK_EQ(rsd.cached_tot_size, 1);
+      K2_CHECK_EQ(rsd.cached_tot_size, -1);
       K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
     }
+
     int32_t num_elems;
     {  // Check row_splits.
 
@@ -267,7 +272,7 @@ void RaggedShape::Check() {
         if (i == 0 && this_idx != 0) *ok_data = 0;
         if (i < num_rows) {
           int32_t next_idx = row_splits_data[i + 1];
-          if (next_idx <= this_idx) *ok_data = 0;
+          if (next_idx < this_idx) *ok_data = 0;
         } else {
           K2_CHECK(i == num_rows);
           *num_elems_data = this_idx;
@@ -279,7 +284,7 @@ void RaggedShape::Check() {
       int32_t ok = meta[0];
       if (!ok) {
         K2_LOG(FATAL) << "Problem validating row-splits: for axes_[" << axis
-                      << "], row_splits = " << rsd.row_splits.Dim();
+                      << "], row_splits = " << rsd.row_splits;
       }
       if (rsd.cached_tot_size > 0 && rsd.cached_tot_size != num_elems) {
         K2_LOG(FATAL) << "Problem validating row-splits: for axes_[" << axis
@@ -288,7 +293,7 @@ void RaggedShape::Check() {
       }
     }
     if (axis + 1 < axes_.size()) {
-      int32_t next_num_rows = axes_[axis + 1].row_splits.Dim();
+      int32_t next_num_rows = axes_[axis + 1].row_splits.Dim() - 1;
       if (num_elems != next_num_rows) {
         K2_LOG(FATAL) << "Ragged shape has num_elems for axes_[" << axis
                       << "] == " << num_elems << " and num-rows for axes_["
@@ -300,14 +305,15 @@ void RaggedShape::Check() {
       K2_CHECK(IsCompatible(rsd.row_ids, rsd.row_splits));
       // 1st elem is `ok` (1 or 0); 2nd elem is location of bad index
       // into row_splits
-      Array1<int32_t> meta(c, 1, 2);
+      Array1<int32_t> meta(c, 2, 1);
       int32_t *ok_data = meta.Data(), *bad_index_data = ok_data + 1;
 
       const int32_t *row_splits_data = rsd.row_splits.Data(),
                     *row_ids_data = rsd.row_ids.Data();
-      int32_t num_elems = rsd.row_ids.Dim(),
+      int32_t num_elems_from_row_ids = rsd.row_ids.Dim(),
               num_rows = rsd.row_splits.Dim() - 1;
 
+      K2_CHECK_EQ(num_elems, num_elems_from_row_ids);
       auto lambda_check_row_ids = [=] __host__ __device__(int32_t i) -> void {
         int32_t this_row = row_ids_data[i];
         if (this_row < 0 || this_row >= num_rows ||
@@ -326,7 +332,7 @@ void RaggedShape::Check() {
         K2_LOG(FATAL) << "Problem validating row-ids: for axes_[" << axis
                       << "], row_splits = " << rsd.row_splits
                       << ", row_ids = " << rsd.row_ids << ", see index "
-                      << *bad_index_data << " of row_ids, whose dim is "
+                      << meta[1] << " of row_ids, whose dim is "
                       << rsd.row_ids.Dim();
       }
     }

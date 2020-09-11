@@ -151,8 +151,6 @@ class Array1 {
      context).
   */
   Array1 To(ContextPtr ctx) const {
-    if (dim_ == 0 && !region_) return *this;
-
     if (ctx->IsCompatible(*Context())) return *this;
 
     Array1 ans(ctx, Dim());
@@ -216,9 +214,19 @@ class Array1 {
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
   T operator[](int32_t i) const {
-    // TODO(haowen): add GPU version, i.e. copy data to CPU and return
+    K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, Dim());
-    return Data()[i];
+    const T *data = Data() + i;
+    DeviceType type = Context()->GetDeviceType();
+    if (type == kCpu) {
+      return *data;
+    } else {
+      K2_CHECK_EQ(type, kCuda);
+      T ans;
+      MemoryCopy(static_cast<void *>(&ans), static_cast<const void *>(data),
+                 ElementSize(), MemcpyDeviceToHost);
+      return ans;
+    }
   }
 
   /* Setting all elements to a scalar */

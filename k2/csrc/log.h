@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <sstream>
 
 namespace k2 {
 
@@ -110,8 +111,11 @@ class Logger {
   }
 
   template <typename T>
-  const Logger &operator<<(const T &) const {
-    return *this;
+  const Logger &operator<<(const T &t) const {
+    // require T overloads operator<<
+    std::ostringstream os;
+    os << t;
+    return *this << os.str().c_str();
   }
 
  private:
