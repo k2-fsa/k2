@@ -37,7 +37,7 @@ namespace k2 {
   row_splits concept / row-splits concept
   (Note, this has been named for compatibility with TensorFlow's RaggedTensor).
 
-  An row_splits vector is a vector of the form, say, [ 0 5 9 9 10 13 ].
+  A row_splits vector is a vector of the form, say, [ 0 5 9 9 10 13 ].
   i.e. it starts with 0 and is non-decreasing.  It will often be encountered
   as the exclusive-sum of a vector of 'sizes' (see 'sizes concept' above),
   with a size one greater than that of the corresponding 'sizes'.  It
@@ -60,7 +60,7 @@ namespace k2 {
   A vector of row_ids is a vector of the form
     [ 0 0 0 1 1 2 2 2 ]
   or in general any nonnegative, non-decreasing list of integers.  Each
-  value reprsents the index of the sub-list to which that position belongs; for
+  value represents the index of the sub-list to which that position belongs; for
   instance, if we had a list-of-lists like [ a b c ] [ d e ] [ f g h ], the
   above vector of row_ids would describe its structure.
 
@@ -419,7 +419,7 @@ void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
 __host__ __device__ __forceinline__ int32_t FloatAsInt(float f) {
   union {
     float f;
-    int i;
+    int32_t i;
   } u;
   u.f = f;
   return u.i;
@@ -428,7 +428,7 @@ __host__ __device__ __forceinline__ int32_t FloatAsInt(float f) {
 __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
   union {
     float f;
-    int i;
+    int32_t i;
   } u;
   u.i = i;
   return u.f;

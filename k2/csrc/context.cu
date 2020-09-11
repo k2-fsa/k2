@@ -15,9 +15,9 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 
-static constexpr std::size_t kAlignment = 64;
-
 namespace k2 {
+
+static constexpr std::size_t kAlignment = 64;
 
 // TODO(haowen): most of implementations below should be updated later.
 class CpuContext : public Context {
@@ -30,7 +30,7 @@ class CpuContext : public Context {
     void *p = nullptr;
     if (bytes) {
       int32_t ret = posix_memalign(&p, kAlignment, bytes);
-      K2_DCHECK_EQ(ret, 0);
+      K2_CHECK_EQ(ret, 0);
     }
     if (deleter_context) *deleter_context = nullptr;
     return p;

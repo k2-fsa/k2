@@ -235,7 +235,7 @@ ContextPtr GetContext(const T &t) {
 template <typename First, typename... Rest>
 ContextPtr GetContext(const First &first, const Rest &... rest) {
   ContextPtr ans1 = GetContext(first), ans2 = GetContext(rest...);
-  K2_DCHECK(ans1->IsCompatible(*ans2)) << "Contexts are not compatible";
+  K2_CHECK(ans1->IsCompatible(*ans2)) << "Contexts are not compatible";
   return ans1;
 }
 
@@ -273,7 +273,7 @@ struct Region : public std::enable_shared_from_this<Region> {
   // device.
   template <typename T = void, DeviceType d = kUnk>
   T *GetData() {
-    if (d != kUnk) K2_DCHECK_EQ(d, context->GetDeviceType());
+    if (d != kUnk) K2_CHECK_EQ(d, context->GetDeviceType());
     return reinterpret_cast<T *>(data);
   }
 

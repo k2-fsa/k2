@@ -261,7 +261,7 @@ RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape **src);
   this, you may be thinking in a PyTorch-y way but you should be relying on
   things like Eval() with custom lambdas more.  Read algorithms like in
   compose.cc to understand why.  Also: axis==0 is probably the only really
-  useful case. See more useful notes in comments in the implementatin.
+  useful case. See more useful notes in comments in the implementation.
  */
 RaggedShape Unsqueeze(RaggedShape &src, int32_t axis);
 
@@ -361,10 +361,10 @@ struct Ragged {
   // Default constructor will not leave this a valid Ragged object, you
   // shouldn't do anything with it.  Both members will be initialized with
   // default constructors.
-  Ragged() {}
+  Ragged() = default;
 
   // Note: 'values' will be uninitialized.
-  Ragged(RaggedShape &shape)
+  explicit Ragged(RaggedShape &shape)
       : shape(shape),
         values(shape.Context(), shape.TotSize(shape.NumAxes() - 1)) {}
 
