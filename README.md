@@ -4,20 +4,22 @@
 
 # k2
 
-The vision of k2 is to be able to seamlessly integrate Finite State Automaton (FSA)
-and Finite State Transducer (FST) algorithms into autograd-based machine learning toolkits like
-PyTorch and TensorFlow.  The idea is to make it easy to interpolate and combine various
-training objectives such as cross-entropy, CTC and MMI and to jointly optimize
-a speech recognition system with multiple decoding passes including lattice rescoring
-and confidence estimation.  We hope the toolkit will have many other applications as
-well.
+The vision of k2 is to be able to seamlessly integrate Finite State Automaton
+(FSA) and Finite State Transducer (FST) algorithms into autograd-based machine
+learning toolkits like PyTorch and TensorFlow.  For speech recognition
+applications, this should make it easy to interpolate and combine various
+training objectives such as cross-entropy, CTC and MMI and to jointly optimize a
+speech recognition system with multiple decoding passes including lattice
+rescoring and confidence estimation.  We hope k2 will have many other
+applications as well.
 
-The key algorithm that we want to make efficient in the short term is pruned composition
-of a generic FSA with a "dense" FSA (i.e. one that corresponds to log-probs of symbols
-at the output of a neural network).  This can be used as a fast implementation of CTC
-and LF-MMI.  That in itself is not an inherent advantage over existing
-technology, except possibly in speed, but the point is to do this in a much more
-general and extensible framework.
+One of the key algorithms that we want to make efficient in the short term is
+pruned composition of a generic FSA with a "dense" FSA (i.e. one that
+corresponds to log-probs of symbols at the output of a neural network).  This
+can be used as a fast implementation of decoding for ASR, and for CTC and
+LF-MMI.  This won't give a direct advantage in terms of Word Error Rate when
+compared with existing technology; but the point is to do this in a much more
+general and extensible framework to allow further development of ASR technology.
 
  ## Implementation
 
@@ -26,21 +28,25 @@ general and extensible framework.
  Most of the code is in C++ and CUDA.  We implement a templated class `Ragged`,
  which is quite like TensorFlow's `RaggedTensor` (actually we came up with the
  design independently, and were later told that TensorFlow was using the same
- design).  But despite the close similarity of the data structure, the actual
+ ideas).  Despite a close similarity at the level of data structures, the
  design is quite different from TensorFlow and PyTorch.  Most of the time we
- don't use composition of simple operations, but rely on `lambdas` defined
- directly in the C++ implementations of algorithms.  These lambdas operate
+ don't use composition of simple operations, but rely on C++11 lambdas defined
+ directly in the C++ implementations of algorithms.  The code in these lambdas operate
  directly on data pointers and, if the backend is CUDA, they can run in parallel
  for each element of a tensor.  (The C++ and CUDA code is mixed together and the
  CUDA kernels get instantiated via templates).
 
  It is difficult to adequately describe what we are doing with these `Ragged`
  objects without going in detail through the code.  The algorithms look very
- different from the way you would code them on CPU because of the imperative of
- avoiding sequential processing.  We are using coding patterns that make the key
- parts of the computations "embarrassingly parallelizable", with the only
+ different from the way you would code them on CPU because of the need to avoid
+ sequential processing.  We are using coding patterns that make the most
+ expensive parts of the computations "embarrassingly parallelizable"; the only
  somewhat nontrivial CUDA operations are generally reduction-type operations
- such as exclusive-prefix-sum, for which we use NVidia's `cub` library.
+ such as exclusive-prefix-sum, for which we use NVidia's `cub` library.  Our
+ design is not too specific to the NVidia hardware and the bulk of the code we
+ write is fairly normal-looking C++; the nontrivial CUDA programming is mostly
+ done via the cub library, parts of which we wrap with our own convenient
+ interface.
 
 
 
