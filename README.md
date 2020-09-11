@@ -79,7 +79,7 @@ general and extensible framework to allow further development of ASR technology.
  to change the interfaces so the CPU and GPU code had a more unified interface.
  Currently in `k2/csrc/` we have more GPU-oriented implementations (although
  these algorithms will also work on CPU).  We had almost finished the Python
- wrapping for the older code, in the `host/` subdirectory, but we decided not to
+ wrapping for the older code, in the `k2/python/` subdirectory, but we decided not to
  release code with that wrapping because it would have had to be reworked to be compatible
  with our GPU algorithms.  Instead we will use the interfaces drafted in `k2/csrc/`
  e.g. the Context object (which encapsulates things like memory managers from external
