@@ -1,6 +1,6 @@
 /**
  * @brief
- * ops
+ * array_ops
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
@@ -377,7 +377,7 @@ Array2<T> ToContiguous(const Array2<T> &src);
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_OPS_H_
-#include "k2/csrc/ops_inl.h"
+#include "k2/csrc/array_ops_inl.h"
 #undef IS_IN_K2_CSRC_OPS_H_
 
 #endif  // K2_CSRC_OPS_H_

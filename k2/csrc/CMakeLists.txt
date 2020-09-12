@@ -25,14 +25,14 @@ target_link_libraries(context PUBLIC glog)
 
 # please sort the source files alphabetically
 set(cuda_tests
+    array_ops_test
     array_test
     log_test
-    ops_test
-    # TODO(haowen): uncomment this after build ragged
-    # ragged_test
     ragged_shape_test
     tensor_test
     utils_test
+    # TODO(haowen): uncomment this after build ragged
+    # ragged_test
     )
 
 # utility function to add gtest

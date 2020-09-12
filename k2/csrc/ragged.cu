@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "k2/csrc/math.h"
-#include "k2/csrc/ops.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/ragged.h"
 
 namespace k2 {
