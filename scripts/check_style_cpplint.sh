@@ -23,15 +23,22 @@ k2_dir=$(cd $cur_dir/.. && pwd)
 build_dir=$k2_dir/build
 mkdir -p $build_dir
 
+cpplint_src=$build_dir/cpplint-${cpplint_version}/cpplint.py
+
 if [ ! -d "$build_dir/cpplint-${cpplint_version}" ]; then
   pushd $build_dir
   wget https://github.com/cpplint/cpplint/archive/${cpplint_version}.tar.gz
   tar xf ${cpplint_version}.tar.gz
   rm ${cpplint_version}.tar.gz
+
+  # cpplint will report the following error for: __host__ __device__ (
+  #
+  #     Extra space before ( in function call  [whitespace/parens] [4]
+  #
+  # the following patch disables the above error
+  sed -i "3490i\        not Search(r'__host__ __device__\\\s+\\\(', fncall) and" $cpplint_src
   popd
 fi
-
-cpplint_src=$build_dir/cpplint-${cpplint_version}/cpplint.py
 
 source $k2_dir/scripts/utils.sh
 
