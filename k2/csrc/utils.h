@@ -230,7 +230,7 @@ T MaxValue(Context *c, size_t nelems, T *t);
                               here. Length is num_elems.
 
    Note: there is another function of the same name using the Array1 interface,
-   declared in ops.h, that may be more convenient.
+   declared in array_ops.h, that may be more convenient.
 */
 void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
                        const int32_t *row_splits, int32_t num_elems,
@@ -299,7 +299,7 @@ RowIdFromRowSplits(int32_t num_rows, const int32_t *row_splits, int32_t index,
                     will equal num_elems.
 
    Note: there is another function of the same name using the Array1 interface,
-   declared in ops.h, that may be more convenient.
+   declared in array_ops.h, that may be more convenient.
  */
 void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
                        bool no_empty_rows, int32_t num_rows,

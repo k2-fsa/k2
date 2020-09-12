@@ -19,7 +19,7 @@
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
-#include "k2/csrc/ops.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/timer.h"
 
 namespace k2 {

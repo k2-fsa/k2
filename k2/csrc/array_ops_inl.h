@@ -3,7 +3,7 @@
  * ops_inl
  *
  * @note
- * Don't include this file directly; it is included by ops.h.
+ * Don't include this file directly; it is included by array_ops.h.
  * It contains implementation code.
  *
  * @copyright
@@ -17,7 +17,7 @@
 #define K2_CSRC_OPS_INL_H_
 
 #ifndef IS_IN_K2_CSRC_OPS_H_
-#error "this file is supposed to be included only by ops.h"
+#error "this file is supposed to be included only by array_ops.h"
 #endif
 
 #include <cassert>
@@ -28,7 +28,7 @@
 namespace k2 {
 
 // CAUTION: if you fix bugs in this code, please also fix the same bugs in
-// Splice() in ops.cc, since it was modified from this code.
+// Splice() in array_ops.cu, since it was modified from this code.
 template <typename T>
 Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   CHECK_GT(num_arrays, 0);
