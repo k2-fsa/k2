@@ -11,8 +11,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_OPS_H_
-#define K2_CSRC_OPS_H_
+#ifndef K2_CSRC_ARRAY_OPS_H_
+#define K2_CSRC_ARRAY_OPS_H_
 
 #include <cassert>
 #include <type_traits>
@@ -376,8 +376,8 @@ Array2<T> ToContiguous(const Array2<T> &src);
 
 }  // namespace k2
 
-#define IS_IN_K2_CSRC_OPS_H_
+#define IS_IN_K2_CSRC_ARRAY_OPS_H_
 #include "k2/csrc/array_ops_inl.h"
-#undef IS_IN_K2_CSRC_OPS_H_
+#undef IS_IN_K2_CSRC_ARRAY_OPS_H_
 
-#endif  // K2_CSRC_OPS_H_
+#endif  // K2_CSRC_ARRAY_OPS_H_

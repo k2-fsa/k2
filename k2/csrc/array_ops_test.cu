@@ -9,17 +9,18 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include <cstdio>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include <cstdio>
 #include <numeric>
 #include <random>
 #include <utility>
 #include <vector>
 
 #include "k2/csrc/array.h"
-#include "k2/csrc/context.h"
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/context.h"
 #include "k2/csrc/timer.h"
 
 namespace k2 {
@@ -103,7 +104,7 @@ TEST(OpsTest, TransposeGpuTest) {
     // TODO(haowen): we may need to allocate different size of shared memory for
     // different data type to get the best performance
     GpuTransposeTest<char>(1000, 2000, 100, true);
-    GpuTransposeTest<short>(1000, 2000, 100, true);
+    GpuTransposeTest<int16_t>(1000, 2000, 100, true);
     GpuTransposeTest<int>(1000, 2000, 100, true);
     GpuTransposeTest<float>(1000, 2000, 100, true);
     GpuTransposeTest<double>(1000, 2000, 100, true);

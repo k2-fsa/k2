@@ -104,9 +104,9 @@ void TestShape() {
     CheckRowSplitsOrIds(shape, row_ids_vec, false);
 
     // test MaxSize()
-    // EXPECT_EQ(shape.MaxSize(1), 3);
-    // EXPECT_EQ(shape.MaxSize(2), 3);
-    // EXPECT_EQ(shape.MaxSize(3), 3);
+    EXPECT_EQ(shape.MaxSize(1), 3);
+    EXPECT_EQ(shape.MaxSize(2), 3);
+    EXPECT_EQ(shape.MaxSize(3), 3);
 
     // test Index(axis, i)
     {

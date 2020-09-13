@@ -10,11 +10,39 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <cub/cub.cuh>
 #include <vector>
 
-#include "k2/csrc/math.h"
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
+namespace {
+
+// will be used in RaggedShape::MaxSize(int32_t axis) to call
+// cub::DeviceReduce::Max
+struct RowSplitsDiff {
+  const int32_t *row_splits_data;
+  explicit RowSplitsDiff(const int32_t *row_splits)
+      : row_splits_data(row_splits) {}
+  // operator[] and operator+ are required by cub::DeviceReduce::Max
+  __device__ int32_t operator[](int32_t i) const {
+    return row_splits_data[i + 1] - row_splits_data[i];
+  }
+  __device__ RowSplitsDiff operator+(int32_t n) const {
+    RowSplitsDiff tmp(*this);
+    tmp.row_splits_data += n;
+    return tmp;
+  }
+};
+}  // namespace
+
+namespace std {
+// vaule_type is required by cub::DeviceReduce::Max
+template <>
+struct iterator_traits<::RowSplitsDiff> {
+  typedef int32_t value_type;
+};
+}  // namespace std
 
 namespace k2 {
 
@@ -143,17 +171,36 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
   const auto &row_splits = axes_[axis - 1].row_splits;
   const int32_t num_rows = row_splits.Dim() - 1;
   if (num_rows == 0) return 0;
-  Array1<int32_t> max_array(Context(), 1, 0);
-  int32_t *max_value = max_array.Data();
   const int32_t *row_splits_data = row_splits.Data();
-  // TODO(haowen): use atomicMax or two reduce ops? not sure which is faster
-  auto lambda_get_max = [=] __host__ __device__(int32_t i) -> void {
-    int32_t value = row_splits_data[i + 1] - row_splits_data[i];
-    if (value > max_value[0]) max_value[0] = value;
-  };
-  Eval(Context(), num_rows, lambda_get_max);
-  // this will convert to memory on CPU
-  return max_array[0];
+  ContextPtr c = Context();
+  if (c->GetDeviceType() == kCpu) {
+    int32_t max_value = 0;
+    for (int32_t i = 0; i < num_rows; ++i) {
+      int32_t value = row_splits_data[i + 1] - row_splits_data[i];
+      if (value > max_value) max_value = value;
+    }
+    return max_value;
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    ::RowSplitsDiff row_splits_diff(row_splits_data);
+    Array1<int32_t> max_array(Context(), 1, 0);
+    int32_t *max_value = max_array.Data();
+
+    void *d_temp_storage = nullptr;
+    size_t temp_storage_bytes = 0;
+    // the first time is to determine temporary device storage requirements
+    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Max(
+        d_temp_storage, temp_storage_bytes, row_splits_diff, max_value,
+        num_rows, c->GetCudaStream()));
+    void *deleter_context;
+    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
+    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Max(
+        d_temp_storage, temp_storage_bytes, row_splits_diff, max_value,
+        num_rows, c->GetCudaStream()));
+    c->Deallocate(d_temp_storage, deleter_context);
+    // this will convert to memory on CPU
+    return max_array[0];
+  }
 }
 
 RaggedShape RaggedShape::Index(int32_t axis, int32_t i) {
@@ -257,8 +304,8 @@ void RaggedShape::Check() {
     }
 
     int32_t num_elems;
-    {  // Check row_splits.
-
+    // Check row_splits.
+    {
       // meta[0] is a bool, ok == 1, not-ok == 0.
       // meta[1] will contain the number of row_splits.
       Array1<int32_t> meta(c, 2, 1);
@@ -922,7 +969,6 @@ RaggedShape Transpose(RaggedShape &src) {
 RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
   CHECK_GT(num_srcs, 0);
   CHECK(axis >= 0 && axis <= 1);
-  ;
 
   ContextPtr c = src[0]->Context();
 
