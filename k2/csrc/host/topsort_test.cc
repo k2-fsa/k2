@@ -24,7 +24,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 TEST(TopSortTest, TopSort) {
   {
     // case 1: empty input fsa
@@ -133,4 +133,4 @@ TEST(TopSortTest, TopSort) {
   }
 }
 
-}  // namespace k2
+}  // namespace k2host

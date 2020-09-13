@@ -22,7 +22,7 @@
 #include "k2/csrc/host/array.h"
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 
 namespace dfs {
 
@@ -337,6 +337,6 @@ void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
   }
 }
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_FSA_UTIL_H_

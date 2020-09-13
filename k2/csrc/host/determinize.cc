@@ -26,7 +26,7 @@
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
 
-namespace k2 {
+namespace k2host {
 
 template <typename TracebackState>
 void Determinizer<TracebackState>::GetSizes(
@@ -223,4 +223,4 @@ void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
   *weight_out = static_cast<float>(cur_forward_prob - prev_forward_prob);
 }
 
-}  // namespace k2
+}  // namespace k2host

@@ -18,7 +18,7 @@
 
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 class ArcMapTest : public ::testing::Test {
  protected:
   ArcMapTest() {
@@ -288,4 +288,4 @@ TEST(FsaAlgo, CreateFsa) {
                 ::testing::ElementsAre(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11));
   }
 }
-}  // namespace k2
+}  // namespace k2host

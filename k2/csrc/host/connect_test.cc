@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 TEST(ConnectTest, ConnectCore) {
   {
     // case 1: an empty input fsa
@@ -244,4 +244,4 @@ TEST(ConnectTest, Connect) {
   }
 }
 
-}  // namespace k2
+}  // namespace k2host

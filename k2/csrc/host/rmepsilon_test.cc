@@ -24,7 +24,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 class RmEpsilonTest : public ::testing::Test {
  protected:
   RmEpsilonTest() {
@@ -130,4 +130,4 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
   // TODO(haowen): how to check arc_derivs
 }
 
-}  // namespace k2
+}  // namespace k2host

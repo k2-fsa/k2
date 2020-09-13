@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <glog/logging.h>
 
-namespace k2 {
+namespace k2host {
 
 void *MemAlignedMalloc(std::size_t nbytes, std::size_t alignment) {
   void *p = nullptr;
@@ -39,4 +39,4 @@ void MemFree(void *ptr) {
 #endif
 }
 
-}  // namespace k2
+}  // namespace k2host

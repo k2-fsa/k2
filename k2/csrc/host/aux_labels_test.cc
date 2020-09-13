@@ -20,7 +20,7 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 
 class AuxLablesTest : public ::testing::Test {
  protected:
@@ -262,4 +262,4 @@ TEST(AuxLabels, InvertFst) {
   }
 }
 
-}  // namespace k2
+}  // namespace k2host

@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-namespace k2 {
+namespace k2host {
 
 template <typename Ptr, typename IndexType>
 void TestArray2(int32_t stride) {
@@ -230,4 +230,4 @@ TEST(ArrayTest, StridedPtr) {
   TestArray3<StridedPtr<int32_t, int32_t>, int32_t>(2);
 }
 
-}  // namespace k2
+}  // namespace k2host

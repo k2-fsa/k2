@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/fsa_util.h"
 
-namespace k2 {
+namespace k2host {
 
 bool IsValid(const Fsa &fsa) {
   if (IsEmpty(fsa)) return true;
@@ -160,4 +160,4 @@ bool IsConnected(const Fsa &fsa) {
   ConnectCore(fsa, &state_map);
   return static_cast<int32_t>(state_map.size()) == fsa.NumStates();
 }
-}  // namespace k2
+}  // namespace k2host

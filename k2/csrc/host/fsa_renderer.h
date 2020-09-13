@@ -16,7 +16,7 @@
 #ifndef K2_CSRC_HOST_FSA_RENDERER_H_
 #define K2_CSRC_HOST_FSA_RENDERER_H_
 
-namespace k2 {
+namespace k2host {
 
 // Get a GraphViz representation of an fsa.
 class FsaRenderer {
@@ -32,6 +32,6 @@ class FsaRenderer {
   const float *arc_weights_;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_FSA_RENDERER_H_

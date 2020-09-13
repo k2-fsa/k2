@@ -18,7 +18,7 @@ namespace {
 constexpr std::size_t kAlignment = 64;
 static_assert((kAlignment & 15) == 0,
               "kAlignment should be at least multiple of 16");
-static_assert(kAlignment % alignof(k2::Arc) == 0, "");
+static_assert(kAlignment % alignof(k2host::Arc) == 0, "");
 
 inline std::size_t AlignTo(std::size_t b, std::size_t alignment) {
   // alignment should be power of 2
@@ -27,7 +27,7 @@ inline std::size_t AlignTo(std::size_t b, std::size_t alignment) {
 
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 std::ostream &operator<<(std::ostream &os, const Arc &arc) {
   os << arc.src_state << " " << arc.dest_state << " " << arc.label;
@@ -43,4 +43,4 @@ std::ostream &operator<<(std::ostream &os, const Fsa &fsa) {
   return os;
 }
 
-}  // namespace k2
+}  // namespace k2host

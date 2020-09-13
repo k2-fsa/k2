@@ -19,7 +19,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 
 /*
   This header contains utilities for dealing with auxiliary labels on FSAs.
@@ -198,6 +198,6 @@ class FstInverter {
   const AuxLabels &labels_in_;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_AUX_LABELS_H_

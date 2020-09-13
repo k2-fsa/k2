@@ -35,8 +35,8 @@ namespace {
                                 extra `num_extra_states[i]` states in the output
                                 inverted FSA.
 */
-static void CountExtraStates(const k2::Fsa &fsa_in,
-                             const k2::AuxLabels &labels_in,
+static void CountExtraStates(const k2host::Fsa &fsa_in,
+                             const k2host::AuxLabels &labels_in,
                              std::vector<int32_t> *num_extra_states) {
   CHECK_EQ(num_extra_states->size(), fsa_in.NumStates());
   auto &states = *num_extra_states;
@@ -91,7 +91,7 @@ static void MapStates(const std::vector<int32_t> &num_extra_states,
 }
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
   CHECK_NOTNULL(aux_size);
@@ -259,4 +259,4 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
   // don't need to call `GetSizes` here as `labels_out` has been initialized
   aux_mapper.GetOutput(labels_out);
 }
-}  // namespace k2
+}  // namespace k2host

@@ -19,7 +19,7 @@
 
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 
 /**
     Sort the input fsa topologically.
@@ -70,6 +70,6 @@ class TopSorter {
   std::vector<int32_t> order_;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_TOPSORT_H_

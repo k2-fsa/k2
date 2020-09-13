@@ -24,7 +24,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 class DeterminizeTest : public ::testing::Test {
  protected:
   DeterminizeTest() {
@@ -129,4 +129,4 @@ TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
   // check the sum of `derivs_out` for each output arc?
 }
 
-}  // namespace k2
+}  // namespace k2host

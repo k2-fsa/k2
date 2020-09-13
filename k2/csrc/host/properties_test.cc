@@ -20,7 +20,7 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/fsa_util.h"
 
-namespace k2 {
+namespace k2host {
 
 TEST(Properties, IsNotValid) {
   // fsa should contain at least two states.
@@ -443,4 +443,4 @@ TEST(FsaAlgo, IsAcyclic) {
   }
 }
 
-}  // namespace k2
+}  // namespace k2host

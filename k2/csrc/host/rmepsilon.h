@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/weights.h"
 
-namespace k2 {
+namespace k2host {
 
 /*
    Output an Fsa that is equivalent to the input but which has no
@@ -136,6 +136,6 @@ void RmEpsilonsLogSum(const Fsa &a, float *a_weights, Fsa *b,
                       std::vector<float> *b_arc_weights,
                       std::vector<std::vector<int32_t>> *arc_map);
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_RMEPSILON_H_

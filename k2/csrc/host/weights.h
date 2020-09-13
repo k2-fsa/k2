@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 
 constexpr float kFloatInfinity = std::numeric_limits<float>::infinity();
 constexpr float kFloatNegativeInfinity =
@@ -222,6 +222,6 @@ struct WfsaWithFbWeights {
   void ComputeBackardWeights();
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_WEIGHTS_H_

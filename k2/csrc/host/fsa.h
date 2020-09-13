@@ -17,7 +17,7 @@
 #include "k2/csrc/host/array.h"
 #include "k2/csrc/host/util.h"
 
-namespace k2 {
+namespace k2host {
 
 enum {
   kFinalSymbol = -1,  // final-costs are represented as arcs with
@@ -150,6 +150,6 @@ class DeterministicGenericFsa {
 using FsaVec = std::vector<Fsa>;
 using FstVec = std::vector<Fst>;
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_FSA_H_

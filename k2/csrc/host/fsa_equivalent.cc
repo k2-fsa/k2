@@ -36,11 +36,11 @@ namespace {
   function call, the memory of the output FSA is managed by `fsa_out` and
   will be released automatically if `fsa_out`is out of scope.
  */
-static bool Connect(const k2::Fsa &fsa_in, k2::FsaCreator *fsa_out,
+static bool Connect(const k2host::Fsa &fsa_in, k2::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
   CHECK_NOTNULL(fsa_out);
-  k2::Connection connection(fsa_in);
-  k2::Array2Size<int32_t> fsa_size;
+  k2host::Connection connection(fsa_in);
+  k2host::Array2Size<int32_t> fsa_size;
   connection.GetSizes(&fsa_size);
 
   fsa_out->Init(fsa_size);
@@ -58,11 +58,11 @@ static bool Connect(const k2::Fsa &fsa_in, k2::FsaCreator *fsa_out,
   function call, the memory of the output FSA is managed by `fsa_out` and
   will be released automatically if `fsa_out`is out of scope.
  */
-static void ArcSort(const k2::Fsa &fsa_in, k2::FsaCreator *fsa_out,
+static void ArcSort(const k2host::Fsa &fsa_in, k2::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
   CHECK_NOTNULL(fsa_out);
-  k2::ArcSorter sorter(fsa_in);
-  k2::Array2Size<int32_t> fsa_size;
+  k2host::ArcSorter sorter(fsa_in);
+  k2host::Array2Size<int32_t> fsa_size;
   sorter.GetSizes(&fsa_size);
 
   fsa_out->Init(fsa_size);
@@ -78,12 +78,12 @@ static void ArcSort(const k2::Fsa &fsa_in, k2::FsaCreator *fsa_out,
   function call, the memory of the output FSA is managed by `c` and will
   be released automatically if `c`is out of scope.
  */
-static bool Intersect(const k2::Fsa &a, const k2::Fsa &b, k2::FsaCreator *c,
+static bool Intersect(const k2host::Fsa &a, const k2::Fsa &b, k2::FsaCreator *c,
                       std::vector<int32_t> *arc_map_a = nullptr,
                       std::vector<int32_t> *arc_map_b = nullptr) {
   CHECK_NOTNULL(c);
-  k2::Intersection intersection(a, b);
-  k2::Array2Size<int32_t> fsa_size;
+  k2host::Intersection intersection(a, b);
+  k2host::Array2Size<int32_t> fsa_size;
   intersection.GetSizes(&fsa_size);
 
   c->Init(fsa_size);
@@ -103,12 +103,12 @@ static bool Intersect(const k2::Fsa &a, const k2::Fsa &b, k2::FsaCreator *c,
   the function call, the memory of the output path is managed by `path`
   and will be released automatically if `path`is out of scope.
  */
-static bool RandomPath(const k2::Fsa &fsa_in, bool no_eps_arc,
-                       k2::FsaCreator *path,
+static bool RandomPath(const k2host::Fsa &fsa_in, bool no_eps_arc,
+                       k2host::FsaCreator *path,
                        std::vector<int32_t> *arc_map = nullptr) {
   CHECK_NOTNULL(path);
-  k2::RandPath rand_path(fsa_in, no_eps_arc);
-  k2::Array2Size<int32_t> fsa_size;
+  k2host::RandPath rand_path(fsa_in, no_eps_arc);
+  k2host::Array2Size<int32_t> fsa_size;
   rand_path.GetSizes(&fsa_size);
 
   path->Init(fsa_size);
@@ -147,7 +147,7 @@ static void SetDifference(const std::unordered_set<int32_t> &a,
 
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
   // We will do `intersect` later which requires either `a` or `b` is
@@ -500,4 +500,4 @@ bool RandPath::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
   return true;
 }
 
-}  // namespace k2
+}  // namespace k2host

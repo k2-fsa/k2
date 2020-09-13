@@ -136,7 +136,7 @@ void SplitStringToVector(const std::string &in, const char *delim,
 
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes) {
   CHECK_NOTNULL(arc_indexes);
@@ -500,4 +500,4 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
   if (arc_map != nullptr) arc_map->swap(arc_map_out);
 }
 
-}  // namespace k2
+}  // namespace k2host

@@ -35,8 +35,8 @@ digraph FSA {
 
 std::string GenerateEpilogue() { return "}"; }
 
-using k2::Arc;
-using k2::Fsa;
+using k2host::Arc;
+using k2host::Fsa;
 
 std::string ProcessState(const Fsa &fsa, int32_t state,
                          const float *arc_weights = nullptr) {
@@ -67,7 +67,7 @@ std::string ProcessState(const Fsa &fsa, int32_t state,
 
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 std::string FsaRenderer::Render() const {
   int32_t num_states = fsa_.NumStates();
@@ -91,4 +91,4 @@ std::string FsaRenderer::Render() const {
   return os.str();
 }
 
-}  // namespace k2
+}  // namespace k2host

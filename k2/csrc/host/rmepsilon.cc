@@ -43,7 +43,7 @@ namespace {
 
    Returns the number of kept states which is num_states of the output FSA.
  */
-static int32_t MapStates(const k2::Fsa &fsa_in, std::vector<char> *non_eps_in,
+static int32_t MapStates(const k2host::Fsa &fsa_in, std::vector<char> *non_eps_in,
                          std::vector<int32_t> *state_map) {
   CHECK_NOTNULL(non_eps_in);
   CHECK_NOTNULL(state_map);
@@ -60,7 +60,7 @@ static int32_t MapStates(const k2::Fsa &fsa_in, std::vector<char> *non_eps_in,
     // We suppose the input fsa is top-sorted, but only check this in DEBUG
     // time.
     DCHECK_GE(arc.dest_state, arc.src_state);
-    if (arc.label != k2::kEpsilon) non_eps_in_values[arc.dest_state] = 1;
+    if (arc.label != k2host::kEpsilon) non_eps_in_values[arc.dest_state] = 1;
   }
 
   // map state id
@@ -104,7 +104,7 @@ static int32_t MapStates(const k2::Fsa &fsa_in, std::vector<char> *non_eps_in,
                        due to limitations of floating point representation).
  */
 static void TraceBackRmEpsilons(
-    std::map<int32_t, k2::LogSumTracebackState *> *curr_states,
+    std::map<int32_t, k2host::LogSumTracebackState *> *curr_states,
     const float *arc_weights_in, int32_t last_arc_index,
     std::vector<std::pair<int32_t, float>> *deriv_out) {
   CHECK_EQ(curr_states->size(), 1);
@@ -115,7 +115,7 @@ static void TraceBackRmEpsilons(
   // as the input fsa is top-sorted, we traverse states in a reverse order so we
   // can process them when they already have correct backward_prob (all leaving
   // arcs have been processed).
-  k2::LogSumTracebackState *state_ptr = curr_states->rbegin()->second;
+  k2host::LogSumTracebackState *state_ptr = curr_states->rbegin()->second;
   // In the standard forward-backward algorithm for HMMs this backward_prob
   // would, mathematically, be 0.0, but if we set it to the negative of the
   // forward prob we can avoid having to subtract the total log-prob
@@ -127,14 +127,14 @@ static void TraceBackRmEpsilons(
       auto arc_log_posterior =
           static_cast<float>(link.forward_prob + backward_prob);
       deriv_out->emplace_back(link.arc_index, expf(arc_log_posterior));
-      k2::LogSumTracebackState *prev_state = link.prev_state.get();
+      k2host::LogSumTracebackState *prev_state = link.prev_state.get();
       double new_backward_prob = backward_prob + arc_weights_in[link.arc_index];
       auto result = curr_states->emplace(prev_state->state_id, prev_state);
       if (result.second) {
         prev_state->backward_prob = new_backward_prob;
       } else {
         prev_state->backward_prob =
-            k2::LogAdd(new_backward_prob, prev_state->backward_prob);
+            k2host::LogAdd(new_backward_prob, prev_state->backward_prob);
       }
     }
     // we have processed all entering arcs of state curr_states->rbegin(),
@@ -156,7 +156,7 @@ static void TraceBackRmEpsilons(
    path to get the derivative information.
  */
 static void TraceBackRmEpsilons(
-    std::map<int32_t, k2::MaxTracebackState *> *curr_states,
+    std::map<int32_t, k2host::MaxTracebackState *> *curr_states,
     const float *unused,  // arc_weights_in, unused
     int32_t last_arc_index, std::vector<int32_t> *deriv_out) {
   CHECK_EQ(curr_states->size(), 1);
@@ -164,7 +164,7 @@ static void TraceBackRmEpsilons(
   // push derivative info of the last arc
   deriv_out->push_back(last_arc_index);
 
-  k2::MaxTracebackState *state_ptr = curr_states->begin()->second;
+  k2host::MaxTracebackState *state_ptr = curr_states->begin()->second;
   while (state_ptr->prev_state != nullptr) {
     deriv_out->push_back(state_ptr->arc_id);
     state_ptr = state_ptr->prev_state.get();
@@ -172,7 +172,7 @@ static void TraceBackRmEpsilons(
 }
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 template <typename TracebackState>
 void EpsilonsRemover<TracebackState>::GetSizes(
@@ -310,4 +310,4 @@ void EpsilonsRemover<TracebackState>::GetOutput(
 template class EpsilonsRemover<MaxTracebackState>;
 template class EpsilonsRemover<LogSumTracebackState>;
 
-}  // namespace k2
+}  // namespace k2host

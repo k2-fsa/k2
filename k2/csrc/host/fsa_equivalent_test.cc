@@ -19,7 +19,7 @@
 
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 
 TEST(FsaEquivalent, IsNotRandEquivalent) {
   {
@@ -352,4 +352,4 @@ TEST(FsaEquivalent, RandomPathWithoutEpsilonArc) {
     EXPECT_TRUE(arc_map.empty());
   }
 }
-}  // namespace k2
+}  // namespace k2host

@@ -30,7 +30,7 @@
 #include "k2/csrc/host/util.h"
 #include "k2/csrc/host/weights.h"
 
-namespace k2 {
+namespace k2host {
 
 /*
    Pruned determinization with log-sum (equivalent to log semiring) or max
@@ -148,6 +148,6 @@ class Determinizer {
 using DeterminizerMax = Determinizer<MaxTracebackState>;
 using DeterminizerLogSum = Determinizer<LogSumTracebackState>;
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_DETERMINIZE_H_

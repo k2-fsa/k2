@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 TEST(ArcSortTest, ArcSorter) {
   // empty fsa
   {
@@ -127,4 +127,4 @@ TEST(ArcSortTest, ArcSort) {
     EXPECT_THAT(arc_map, ::testing::ElementsAre(2, 1, 0, 4, 3, 5));
   }
 }
-}  // namespace k2
+}  // namespace k2host

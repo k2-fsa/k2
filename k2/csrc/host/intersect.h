@@ -18,7 +18,7 @@
 
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 /**
    Compute the intersection of two FSAs; this is the equivalent of composition
    for automata rather than transducers, and can be used as the core of
@@ -113,6 +113,6 @@ void IntersectPruned2(const Fsa &a, const float *a_cost, const Fsa &b,
                       std::vector<int32_t> *state_map_a,
                       std::vector<int32_t> *state_map_b);
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_INTERSECT_H_

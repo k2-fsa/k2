@@ -20,7 +20,7 @@
 #ifndef K2_CSRC_HOST_FSA_EQUIVALENT_H_
 #define K2_CSRC_HOST_FSA_EQUIVALENT_H_
 
-namespace k2 {
+namespace k2host {
 
 /*
   Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
@@ -172,6 +172,6 @@ class RandPath {
   std::vector<int32_t> arc_map_;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_FSA_EQUIVALENT_H_

@@ -21,13 +21,13 @@
 #include "k2/csrc/host/util.h"
 
 namespace {
-void CheckInput(const k2::Fsa &fsa, const float *arc_weights) {
+void CheckInput(const k2host::Fsa &fsa, const float *arc_weights) {
   CHECK(IsValid(fsa));
   CHECK_NOTNULL(arc_weights);
 }
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
                               double *state_weights) {
@@ -189,4 +189,4 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
   }
 }
 
-}  // namespace k2
+}  // namespace k2host

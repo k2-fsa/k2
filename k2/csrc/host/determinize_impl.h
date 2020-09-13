@@ -28,7 +28,7 @@
 #include "k2/csrc/host/util.h"
 #include "k2/csrc/host/weights.h"
 
-namespace k2 {
+namespace k2host {
 /*
   HOW THIS WORKS
 
@@ -797,6 +797,6 @@ class DetStateMap {
   };
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_DETERMINIZE_IMPL_H_

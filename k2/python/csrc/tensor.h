@@ -10,7 +10,7 @@
 #include "k2/python/csrc/dlpack.h"
 #include "k2/python/csrc/k2.h"
 
-namespace k2 {
+namespace k2host {
 
 enum class DataType : int8_t {
   kInt32Type = 0,
@@ -96,6 +96,6 @@ class Tensor {
   DeviceType device_type_ = kUnknownDevice;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_PYTHON_CSRC_TENSOR_H_

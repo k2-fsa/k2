@@ -29,7 +29,7 @@ using StatePair = std::pair<int32_t, int32_t>;
 static inline int32_t InsertIntersectionState(
     const StatePair &new_state, int32_t *state_index_c,
     std::queue<StatePair> *qstates,
-    std::unordered_map<StatePair, int32_t, k2::PairHash> *state_pair_map) {
+    std::unordered_map<StatePair, int32_t, k2host::PairHash> *state_pair_map) {
   auto result = state_pair_map->insert({new_state, *state_index_c + 1});
   if (result.second) {
     // we have not visited `new_state` before.
@@ -40,7 +40,7 @@ static inline int32_t InsertIntersectionState(
 }
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
   CHECK_NOTNULL(fsa_size);
@@ -184,4 +184,4 @@ bool Intersection::GetOutput(Fsa *c, int32_t *arc_map_a /*= nullptr*/,
   return true;
 }
 
-}  // namespace k2
+}  // namespace k2host

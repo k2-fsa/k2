@@ -21,7 +21,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/util.h"
 
-namespace k2 {
+namespace k2host {
 
 TEST(CfsaVec, CreateCfsa) {
   std::vector<Arc> arcs1 = {
@@ -102,4 +102,4 @@ TEST(CfsaVec, CreateCfsa) {
   }
 }
 
-}  // namespace k2
+}  // namespace k2host

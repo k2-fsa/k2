@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/util.h"
 
-namespace k2 {
+namespace k2host {
 
 class WeightsTest : public ::testing::Test {
  protected:
@@ -157,4 +157,4 @@ TEST_F(WeightsTest, WfsaWithFbWeightsLogSum) {
                                 1e-3);
 }
 
-}  // namespace k2
+}  // namespace k2host

@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 
 TEST(IntersectTest, Intersect) {
   // empty fsa
@@ -121,4 +121,4 @@ TEST(IntersectTest, Intersect) {
                 ::testing::ElementsAre(0, -1, 1, 2, 1, 1, 2, -1, -1, 3));
   }
 }
-}  // namespace k2
+}  // namespace k2host

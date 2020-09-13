@@ -17,7 +17,7 @@
 
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 
 // TODO(Dan): we might not need this.
 enum Properties {
@@ -133,6 +133,6 @@ inline bool IsEmpty(const Fsa &fsa) { return fsa.size1 == 0; }
 bool CheckProperties(const Fsa &fsa, const Properties &properties,
                      bool die_on_error = false);
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_PROPERTIES_H_

@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-namespace k2 {
+namespace k2host {
 
 /*
    We will use e.g. StridedPtr<T, I> when the stride is not 1, and
@@ -351,21 +351,21 @@ struct Array2Storage {
   std::unique_ptr<ValueType[]> data_storage_;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 namespace std {
 template <typename T, typename I>
-struct iterator_traits<k2::StridedPtr<T, I>> {
+struct iterator_traits<k2host::StridedPtr<T, I>> {
   typedef T value_type;
 };
 
 template <typename T, typename I>
-void swap(k2::StridedPtr<T, I> &lhs, k2::StridedPtr<T, I> &rhs) {
+void swap(k2host::StridedPtr<T, I> &lhs, k2::StridedPtr<T, I> &rhs) {
   lhs.Swap(rhs);
 }
 
 template <typename Ptr, typename I>
-void swap(k2::Array2<Ptr, I> &lhs, k2::Array2<Ptr, I> &rhs) {
+void swap(k2host::Array2<Ptr, I> &lhs, k2::Array2<Ptr, I> &rhs) {
   lhs.Swap(rhs);
 }
 

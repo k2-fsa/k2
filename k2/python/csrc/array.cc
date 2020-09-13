@@ -11,7 +11,7 @@
 #include "k2/csrc/host/determinize_impl.h"
 #include "k2/python/csrc/tensor.h"
 
-namespace k2 {
+namespace k2host {
 
 /*
    DLPackArray1 initializes Array1 with `cap_data` which is a DLManagedTensor.
@@ -176,12 +176,12 @@ class DLPackArray2<StridedPtr<ValueType, I>, true, I>
   std::unique_ptr<Tensor> data_tensor_;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 template <typename Ptr, typename I = int32_t>
 void PybindArray1Tpl(py::module &m, const char *name) {
-  using PyClass = k2::DLPackArray1<Ptr, I>;
-  using Parent = k2::Array1<Ptr, I>;
+  using PyClass = k2host::DLPackArray1<Ptr, I>;
+  using Parent = k2host::Array1<Ptr, I>;
   py::class_<PyClass, Parent>(m, name)
       .def(py::init<py::capsule>(), py::arg("data"))
       .def("empty", &PyClass::Empty)
@@ -195,14 +195,14 @@ void PybindArray1Tpl(py::module &m, const char *name) {
             if (i >= self.size) throw py::index_error();
             return self.data[self.begin + i];
           },
-          "just for test purpose to check if k2::Array1 and the "
+          "just for test purpose to check if k2host::Array1 and the "
           "underlying tensor are sharing memory.");
 }
 
 template <typename Ptr, bool IsPrimitive, typename I = int32_t>
 void PybindArray2Tpl(py::module &m, const char *name) {
-  using PyClass = k2::DLPackArray2<Ptr, IsPrimitive, I>;
-  using Parent = k2::Array2<Ptr, I>;
+  using PyClass = k2host::DLPackArray2<Ptr, IsPrimitive, I>;
+  using Parent = k2host::Array2<Ptr, I>;
   py::class_<PyClass, Parent>(m, name)
       .def(py::init<py::capsule, py::capsule>(), py::arg("indexes"),
            py::arg("data"))
@@ -219,7 +219,7 @@ void PybindArray2Tpl(py::module &m, const char *name) {
               throw py::index_error();
             return self.indexes[i];
           },
-          "just for test purpose to check if k2::Array2 and the "
+          "just for test purpose to check if k2host::Array2 and the "
           "underlying tensor are sharing memory.")
       .def(
           "get_data",
@@ -227,13 +227,13 @@ void PybindArray2Tpl(py::module &m, const char *name) {
             if (i >= self.size2) throw py::index_error();
             return self.data[self.indexes[0] + i];
           },
-          "just for test purpose to check if k2::Array2 and the "
+          "just for test purpose to check if k2host::Array2 and the "
           "underlying tensor are sharing memory.");
 }
 
 template <typename I>
 void PybindArray2SizeTpl(py::module &m, const char *name) {
-  using PyClass = k2::Array2Size<I>;
+  using PyClass = k2host::Array2Size<I>;
   py::class_<PyClass>(m, name)
       .def(py::init<>())
       .def(py::init<int32_t, int32_t>(), py::arg("size1"), py::arg("size2"))
@@ -243,29 +243,29 @@ void PybindArray2SizeTpl(py::module &m, const char *name) {
 
 void PybindArray(py::module &m) {
   // Note: all the following wrappers whose name starts with `_` are only used
-  // by pybind11 internally so that it knows `k2::DLPackArray1` is a subclass of
-  // `k2::Array1`.
-  py::class_<k2::Array1<int32_t *>>(m, "_IntArray1");
+  // by pybind11 internally so that it knows `k2host::DLPackArray1` is a subclass of
+  // `k2host::Array1`.
+  py::class_<k2host::Array1<int32_t *>>(m, "_IntArray1");
   PybindArray1Tpl<int32_t *>(m, "DLPackIntArray1");
 
-  py::class_<k2::Array1<k2::StridedPtr<int32_t>>>(m, "_StridedIntArray1");
-  PybindArray1Tpl<k2::StridedPtr<int32_t>>(m, "DLPackStridedIntArray1");
+  py::class_<k2host::Array1<k2::StridedPtr<int32_t>>>(m, "_StridedIntArray1");
+  PybindArray1Tpl<k2host::StridedPtr<int32_t>>(m, "DLPackStridedIntArray1");
 
-  py::class_<k2::Array1<float *>>(m, "_FloatArray1");
+  py::class_<k2host::Array1<float *>>(m, "_FloatArray1");
   PybindArray1Tpl<float *>(m, "DLPackFloatArray1");
 
-  py::class_<k2::Array1<double *>>(m, "_DoubleArray1");
+  py::class_<k2host::Array1<double *>>(m, "_DoubleArray1");
   PybindArray1Tpl<double *>(m, "DLPackDoubleArray1");
 
   // Note: all the following wrappers whose name starts with `_` are only used
-  // by pybind11 internally so that it knows `k2::DLPackArray2` is a subclass of
-  // `k2::Array2`.
-  py::class_<k2::Array2<int32_t *>>(m, "_IntArray2");
+  // by pybind11 internally so that it knows `k2host::DLPackArray2` is a subclass of
+  // `k2host::Array2`.
+  py::class_<k2host::Array2<int32_t *>>(m, "_IntArray2");
   PybindArray2Tpl<int32_t *, true>(m, "DLPackIntArray2");
 
   // note there is a type cast as the underlying Tensor is with type `float`
-  using LogSumDerivType = typename k2::LogSumTracebackState::DerivType;
-  py::class_<k2::Array2<LogSumDerivType *>>(m, "_LogSumArcDerivs");
+  using LogSumDerivType = typename k2host::LogSumTracebackState::DerivType;
+  py::class_<k2host::Array2<LogSumDerivType *>>(m, "_LogSumArcDerivs");
   PybindArray2Tpl<LogSumDerivType *, false>(m, "DLPackLogSumArcDerivs");
 }
 

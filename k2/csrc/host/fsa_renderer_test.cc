@@ -18,7 +18,7 @@
 
 #include "k2/csrc/host/fsa_util.h"
 
-namespace k2 {
+namespace k2host {
 
 // NOTE(fangjun): this test always passes.
 // Its purpose is to get a Graphviz representation
@@ -43,4 +43,4 @@ TEST(FsaRenderer, Render) {
   std::cerr << renderer.Render();
 }
 
-}  // namespace k2
+}  // namespace k2host
