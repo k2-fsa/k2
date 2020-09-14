@@ -59,6 +59,8 @@ struct DfsState {
 void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes);
 
 /*
+  TODO(dan): remove this, should no longer be needed.
+
   Gets arc weights for an FSA (output FSA) according to `arc_map` which
   maps each arc in the FSA to a sequence of arcs in the other FSA (input FSA).
 
@@ -81,6 +83,8 @@ void GetArcWeights(const float *arc_weights_in,
                    const Array2<int32_t *, int32_t> &arc_map,
                    float *arc_weights_out);
 
+// TODO(dan): remove this, should no longer be needed.
+//
 // Version of GetArcWeights where arc_map maps each arc in the output FSA to
 // one arc (instead of a sequence of arcs) in the input FSA; see its
 // documentation.

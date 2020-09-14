@@ -31,6 +31,7 @@ enum Properties {
   kConnected,    // all states are both accessible (i.e. from start state) and
                  // coaccessible (i.e. can reach final-state)
   kEpsilonFree,  // there are no arcs with epsilon (kEpsilon == 0) as the label
+  kUnweighted,   // the scores are always zero.
   kNonempty      // the FST does not have zero states
 };
 
@@ -99,6 +100,12 @@ bool IsEpsilonFree(const Fsa &fsa);
   Requires that `fsa` be valid.
  */
 bool IsConnected(const Fsa &fsa);
+
+
+/*
+  Returns true if all states in `fsa` have zero scores
+ */
+bool IsUnweighted(const Fsa &fsa);
 
 /*
   Returns true if `fsa` is both acyclic and connected.

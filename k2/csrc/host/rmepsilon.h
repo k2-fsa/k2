@@ -125,15 +125,14 @@ using EpsilonsRemoverLogSum = EpsilonsRemover<LogSumTracebackState>;
   Version of RmEpsilonsPrunedMax that doesn't support pruning; see its
   documentation.
  */
-void RmEpsilonsMax(const Fsa &a, float *a_weights, Fsa *b,
+void RmEpsilonsMax(const Fsa &a, Fsa *b,
                    std::vector<std::vector<int32_t>> *arc_map);
 
 /*
   Version of RmEpsilonsLogSum that doesn't support pruning; see its
   documentation.
  */
-void RmEpsilonsLogSum(const Fsa &a, float *a_weights, Fsa *b,
-                      std::vector<float> *b_arc_weights,
+void RmEpsilonsLogSum(const Fsa &a, Fsa *b,
                       std::vector<std::vector<int32_t>> *arc_map);
 
 }  // namespace k2host

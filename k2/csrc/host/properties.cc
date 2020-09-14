@@ -155,6 +155,13 @@ bool IsEpsilonFree(const Fsa &fsa) {
   return true;
 }
 
+bool IsUnweighted(const Fsa &fsa) {
+  for (const auto &arc : fsa) {
+    if (arc.score != 0.0) return false;
+  }
+  return true;
+}
+
 bool IsConnected(const Fsa &fsa) {
   std::vector<int32_t> state_map;
   ConnectCore(fsa, &state_map);

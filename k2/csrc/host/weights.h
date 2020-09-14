@@ -47,8 +47,6 @@ constexpr double kDoubleNegativeInfinity =
 
    @param [in]  fsa  The fsa we are doing the forward computation on.
                 Must satisfy IsValid(fsa) and IsTopSorted(fsa).
-   @param [in]  arc_weights  Arc weights, indexed by arc in `fsa`.
-                             Usually logprobs.
    @param [out] state_weights  The per-state weights will be written to here.
                 They will be 0 for the start-state (if fsa is
                 nonempty), and for later states will be the
@@ -56,7 +54,7 @@ constexpr double kDoubleNegativeInfinity =
                 to that state along any path, or `kNegativeInfinity` if no such
                 path exists.
  */
-void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeForwardMaxWeights(const Fsa &fsa,
                               double *state_weights);
 
 /*
@@ -66,8 +64,6 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
 
    @param [in]  fsa  The fsa we are doing the backward computation on.
                 Must satisfy IsValid(fsa) and IsTopSorted(fsa).
-   @param [in]  arc_weights  Arc weights, indexed by arc in `fsa`.
-                             Usually logprobs.
    @param [out] state_weights  The per-state weights will be written to here.
                 They will be 0 for the final-state (if fsa is
                 nonempty), and for earlier states will be the
@@ -75,7 +71,7 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
                 to the final state along any path, or `kNegativeInfinity` if no
   such path exists.
  */
-void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeBackwardMaxWeights(const Fsa &fsa,
                                double *state_weights);
 
 /*
@@ -84,8 +80,6 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
 
    @param [in]  fsa  The fsa we are doing the forward computation on.
                 Must satisfy IsValid(fsa) and IsTopSorted(fsa).
-   @param [in]  arc_weights  Arc weights, indexed by arc in `fsa`.
-                             Usually logprobs.
    @param [out] state_weights  The per-state weights will be written to here.
                 They will be 0 for the start-state (if fsa is
                 nonempty), and for later states will be the
@@ -93,7 +87,7 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
                 to that state, or `kNegativeInfinity` if no such
                 path exists.
  */
-void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeForwardLogSumWeights(const Fsa &fsa,
                                  double *state_weights);
 
 /*
@@ -102,15 +96,13 @@ void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
 
    @param [in]  fsa  The fsa we are doing the backward computation on.
                 Must satisfy IsValid(fsa) and IsTopSorted(fsa).
-   @param [in]  arc_weights  Arc weights, indexed by arc in `fsa`.
-                             Usually logprobs.
    @param [out] state_weights  The per-state weights will be written to here.
                 They will be 0 for the final-state (if fsa is
                 nonempty), and for earlier states will be the
                 log sum of all paths' weights from that state to the final
   state, or `kNegativeInfinity` if no such path exists.
  */
-void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeBackwardLogSumWeights(const Fsa &fsa,
                                   double *state_weights);
 
 enum FbWeightType { kMaxWeight, kLogSumWeight };
@@ -118,41 +110,37 @@ enum FbWeightType { kMaxWeight, kLogSumWeight };
 // Version of `ComputeForwardWeights` as a template interface, see documentation
 // of `ComputeForwardMaxWeights` or `ComputeForwardLogSumWeights`
 template <FbWeightType Type>
-void ComputeForwardWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeForwardWeights(const Fsa &fsa,
                            double *state_weights);
 
 template <>
 inline void ComputeForwardWeights<kMaxWeight>(const Fsa &fsa,
-                                              const float *arc_weights,
                                               double *state_weights) {
-  ComputeForwardMaxWeights(fsa, arc_weights, state_weights);
+  ComputeForwardMaxWeights(fsa, state_weights);
 }
 
 template <>
 inline void ComputeForwardWeights<kLogSumWeight>(const Fsa &fsa,
-                                                 const float *arc_weights,
                                                  double *state_weights) {
-  ComputeForwardLogSumWeights(fsa, arc_weights, state_weights);
+  ComputeForwardLogSumWeights(fsa, state_weights);
 }
 
 // Version of `ComputeBackwardWeights` as a template interface, see
 // documentation of `ComputeBackwardMaxWeights` or
 // `ComputeBackwardLogSumWeights`
 template <FbWeightType Type>
-void ComputeBackwardWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeBackwardWeights(const Fsa &fsa,
                             double *state_weights);
 template <>
 inline void ComputeBackwardWeights<kMaxWeight>(const Fsa &fsa,
-                                               const float *arc_weights,
                                                double *state_weights) {
-  ComputeBackwardMaxWeights(fsa, arc_weights, state_weights);
+  ComputeBackwardMaxWeights(fsa, state_weights);
 }
 
 template <>
 inline void ComputeBackwardWeights<kLogSumWeight>(const Fsa &fsa,
-                                                  const float *arc_weights,
                                                   double *state_weights) {
-  ComputeBackwardLogSumWeights(fsa, arc_weights, state_weights);
+  ComputeBackwardLogSumWeights(fsa, state_weights);
 }
 /*
   Returns the sum of the weights of all successful paths in an FSA, i.e., the
@@ -160,20 +148,17 @@ inline void ComputeBackwardWeights<kLogSumWeight>(const Fsa &fsa,
 
    @param [in]  fsa  The fsa we'll get the shortest distance on.
                 Must satisfy IsValid(fsa) (and IsTopSorted(fsa)?).
-   @param [in]  arc_weights  Arc weights, indexed by arc in `fsa`.
-                             Usually logprobs.
  */
 template <FbWeightType Type>
-double ShortestDistance(const Fsa &fsa, const float *arc_weights) {
+double ShortestDistance(const Fsa &fsa) {
   if (IsEmpty(fsa)) return kDoubleNegativeInfinity;
   std::vector<double> state_weights(fsa.NumStates());
-  ComputeForwardWeights<Type>(fsa, arc_weights, state_weights.data());
+  ComputeForwardWeights<Type>(fsa, state_weights.data());
   return state_weights[fsa.FinalState()];
 }
 
 struct WfsaWithFbWeights {
   const Fsa &fsa;
-  const float *arc_weights;
 
   // Records whether we use max or log-sum.
   FbWeightType weight_type;
@@ -182,8 +167,6 @@ struct WfsaWithFbWeights {
     Constructor.
        @param [in] fsa  Reference to an FSA; must satisfy
             IsValid(fsa) and IsTopSorted(fsa).
-       @param [in]  arc_weights  Arc weights, indexed by arc in `fsa`.
-                                 Usually logprobs.
        @param [in]  t   Type of operation used to get forward
                         weights.  kMaxWeight == Viterbi, i.e. get
                         path with most positive weight sequence.
@@ -207,7 +190,7 @@ struct WfsaWithFbWeights {
                         as long as object WfsaWithFbWeights exists.
 
    */
-  WfsaWithFbWeights(const Fsa &fsa, const float *arc_weights, FbWeightType t,
+  WfsaWithFbWeights(const Fsa &fsa, FbWeightType t,
                     double *forward_state_weights,
                     double *backward_state_weights);
 
