@@ -44,7 +44,7 @@ if(WIN32 AND BUILD_SHARED_LIBS)
 endif()
 
 # set the cxx standard version, and its extensions
-set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ version to be used.")
+set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ version to be used.")
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
