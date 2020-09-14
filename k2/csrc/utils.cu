@@ -18,16 +18,15 @@ namespace k2 {
 __global__ void FillValuesKernel(int32_t *data, int32_t num_values,
                                  int32_t value) {
   int32_t job_idx = (blockIdx.x * blockDim.x + threadIdx.x),
-          num_jobs = (gridDim.x * blockDim.x);
-  for (; job_idx < num_values; job_idx += num_jobs) data[job_idx] = value;
+          stride = (gridDim.x * blockDim.x);
+  for (; job_idx < num_values; job_idx += stride) data[job_idx] = value;
 }
 
 // This launches a kernel.  It's the same as doing:
 // for (int32_t i = 0; i < num_values; i++) data[i] = value;
 __device__ void FillValues(int32_t *data, int32_t num_values, int32_t value) {
   int32_t block_size = 256;
-  int32_t loop_len = 2;
-  int32_t grid_size = NumBlocks(num_values / loop_len, block_size);
+  int32_t grid_size = NumBlocks(num_values, block_size);
   FillValuesKernel<<<grid_size, block_size>>>(data, num_values, value);
 }
 
@@ -38,7 +37,7 @@ __global__ void RowSplitsToRowIdsKernel(int32_t num_rows,
                                         int32_t threads_per_row,
                                         const int32_t *row_splits,
                                         int32_t num_elems, int32_t *row_ids) {
-  int32_t thread = (blockIdx.x * blockDim.x + threadIdx.x),
+  int32_t thread = blockIdx.x * blockDim.x + threadIdx.x,
           num_threads = gridDim.x * blockDim.x, row = thread / threads_per_row,
           thread_this_row = thread % threads_per_row;
 
@@ -56,7 +55,6 @@ __global__ void RowSplitsToRowIdsKernel(int32_t num_rows,
     if (thread_this_row == 0) {
       FillValues(row_ids + this_row_split, row_length, row);
     }
-    return;
   } else {
     // TODO(dan): figure out how to unroll this?
     for (; thread_this_row < row_length; thread_this_row += threads_per_row)
@@ -121,6 +119,7 @@ static int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
 void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
                        const int32_t *row_splits, int32_t num_elems,
                        int32_t *row_ids) {
+  if (num_rows <= 0) return;
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     int32_t cur_row_start = row_splits[0];
@@ -135,13 +134,12 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
       // TODO: compare this for speed with the other branch.  This is branch is
       // much simpler, and will be considerably faster for "normal" cases ->
       // probably preferred.
-      int32_t avg_elems_per_row = num_elems / num_rows + 1,
+      int32_t avg_elems_per_row = (num_elems + num_rows - 1) / num_rows,
               threads_per_row = RoundUpToNearestPowerOfTwo(avg_elems_per_row),
               tot_threads = num_rows * threads_per_row;
-      int dim_block = 256;
-      int dim_grid = NumBlocks(tot_threads, dim_block);
-
-      K2_CUDA_SAFE_CALL(RowSplitsToRowIdsKernel<<<dim_block, dim_grid, 0,
+      int block_size = 256;
+      int grid_size = NumBlocks(tot_threads, block_size);
+      K2_CUDA_SAFE_CALL(RowSplitsToRowIdsKernel<<<grid_size, block_size, 0,
                                                   c->GetCudaStream()>>>(
           num_rows, threads_per_row, row_splits, num_elems, row_ids));
     } else {
