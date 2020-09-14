@@ -18,7 +18,7 @@ template <typename T>
 T Array1::operator [] (int32_t i) {
   Context *c = Context().get();
   DeviceType t = c->GetDeviceType();
-  CHECK_LE(static_cast<uint32_t>(i), static_cast<uint32_t>(size_));
+  K2_CHECK_LE(static_cast<uint32_t>(i), static_cast<uint32_t>(size_));
   if (t == kCpu) {
     return data_[i];
   } else {

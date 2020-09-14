@@ -3,7 +3,8 @@
  * context
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -11,8 +12,6 @@
 
 #ifndef K2_CSRC_CONTEXT_H_
 #define K2_CSRC_CONTEXT_H_
-
-#include <glog/logging.h>
 
 #include <cassert>
 #include <map>

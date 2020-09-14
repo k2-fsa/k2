@@ -587,7 +587,7 @@ int32_t DetState<TracebackState>::ProcessArcs(
       det_state->AcceptIncomingArc(arc.dest_state, state_ptr, curr_arc, arc.weight);
     }
   }
-  CHECK(!label_to_state.empty() ||
+  K2_CHECK(!label_to_state.empty() ||
         elements.begin()->second->state_id ==
             fsa.FinalState());  // I'm assuming the input
                                 // FSA is connected.
@@ -645,8 +645,8 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
 
   int32_t new_seq_len = GetMostRecentCommonAncestor(&cur_states);
   // now cur_states.size() == 1.
-  CHECK_EQ(cur_states.size(), 1);
-  CHECK_LE(new_seq_len, seq_len);
+  K2_CHECK_EQ(cur_states.size(), 1);
+  K2_CHECK_LE(new_seq_len, seq_len);
 
   const TracebackState *base_state = *(cur_states.begin());
   // The following statement is a correction term that we add to

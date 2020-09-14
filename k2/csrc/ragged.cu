@@ -292,7 +292,7 @@ void RaggedShape::Check() {
   int32_t num_axes = axes_.size();
   for (int32_t axis = 0; axis < axes_.size(); axis++) {
     RaggedShapeDim &rsd = axes_[axis];
-    CHECK_GE(rsd.row_splits.Dim(), 0);
+    K2_CHECK_GE(rsd.row_splits.Dim(), 0);
     if (rsd.cached_tot_size >= 0) {
       K2_CHECK(rsd.row_splits.Dim() == 0 ||
                rsd.cached_tot_size == rsd.row_splits[rsd.row_splits.Dim() - 1]);
@@ -392,10 +392,10 @@ void RaggedShape::Check() {
 RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
                          int32_t cached_tot_size) {
   if (!row_splits && !row_ids) {
-    LOG(FATAL) << "At least one of row_splits and row_ids must be defined";
+    K2_LOG(FATAL) << "At least one of row_splits and row_ids must be defined";
   }
   if (cached_tot_size != -1) {
-    if (row_ids != nullptr) CHECK(cached_tot_size == row_ids->Dim() - 1);
+    if (row_ids != nullptr) K2_CHECK(cached_tot_size == row_ids->Dim() - 1);
     if (row_splits != nullptr) {  // caution: next check may be slow...
       const auto &row_splits_ref = *row_splits;
       K2_CHECK_EQ(cached_tot_size, row_splits_ref[row_splits->Dim() - 1]);
@@ -410,7 +410,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
 
 RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b) {
   if (a.NumElements() != b.Dim0()) {
-    LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()
+    K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()
                << " vs. " << b.Dim0();
   }
   const auto &a_axes = a.Axes();
@@ -684,7 +684,7 @@ inline Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
   Array2<int32_t> src_offsets(GetCpuContext(), num_srcs + 1, num_axes_in);
   int32_t *src_offsets_data = src_offsets.Data();
   int32_t src_offsets_stride0 = num_srcs + 1;
-  DCHECK_EQ(src_offsets.ElemStride0(), src_offsets_stride0);
+  K2_DCHECK_EQ(src_offsets.ElemStride0(), src_offsets_stride0);
 
   for (int32_t axis = 0; axis < num_axes_in; axis++) {
     int32_t sum = 0;
@@ -894,8 +894,8 @@ struct RowInfoWithOffsets {
 };
 
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
-  CHECK_GT(src.NumAxes(), 2);
-  CHECK(axis >= 0 && axis < src.NumAxes());
+  K2_CHECK_GT(src.NumAxes(), 2);
+  K2_CHECK(axis >= 0 && axis < src.NumAxes());
 
   // note, `axes` is of dim src.NumAxes() - 1.
   // Also note: axes_in[i] pertains to the relationship between
@@ -967,8 +967,9 @@ RaggedShape Transpose(RaggedShape &src) {
 }
 
 RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
-  CHECK_GT(num_srcs, 0);
-  CHECK(axis >= 0 && axis <= 1);
+  K2_CHECK_GT(num_srcs, 0);
+  K2_CHECK(axis >= 0 && axis <= 1);
+  ;
 
   ContextPtr c = src[0]->Context();
 

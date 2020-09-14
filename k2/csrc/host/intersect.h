@@ -13,7 +13,6 @@
 #ifndef K2_CSRC_HOST_INTERSECT_H_
 #define K2_CSRC_HOST_INTERSECT_H_
 
-#include <glog/logging.h>
 #include <vector>
 
 #include "k2/csrc/host/fsa.h"

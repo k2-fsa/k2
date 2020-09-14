@@ -54,16 +54,16 @@ class MultiGraphDenseIntersect {
       max_active_(max_active), min_active_(min_active),
       dynamic_beams_(a_fsas.GetContext(), b_fsas.Dim0(), beam) {
     c_ = GetContext(a_fsas, b_fsas);
-    CHECK_GT(beam, 0);
-    CHECK_GT(min_active, 0);
-    CHECK_GT(max_active, min_active);
+    K2_CHECK_GT(beam, 0);
+    K2_CHECK_GT(min_active, 0);
+    K2_CHECK_GT(max_active, min_active);
     assert(a_fsas.Dim0() == b_fsas.Dim0() || a_fsas.Dim0() == 1);
-    CHECK_GT(b_fsas.Size0(), 1);
+    K2_CHECK_GT(b_fsas.Size0(), 1);
     if (a_fsas.Dim0() == 1) {
       a_fsas_stride_ = 0;
       state_map_ = Array2<int32_t>(a_fsas.TotSize1(), b_fsas.Dim0(), -1);
     } else {
-      CHECK_EQ(a_fsas.Dim0(), b_fsas.Dim0());
+      K2_CHECK_EQ(a_fsas.Dim0(), b_fsas.Dim0());
       a_fsas_stride_ = 1;
       state_map_ = Array2<int32_t>(a_fsas.TotSize1(), 1, -1);
     }
@@ -566,7 +566,7 @@ class MultiGraphDenseIntersect {
         if (next_j > this_j) {
           // this_j is the idx01 into ans->states
           int32_t state_map_idx = dest_state_idx + fsa_id * state_map_stride;
-          CHECK_EQ(state_map_data[state_map_idx], dest_state_idx);
+          K2_CHECK_EQ(state_map_data[state_map_idx], dest_state_idx);
           state_map_data[state_map_idx] = this_j;
           // Note: this_j is an idx01 into ans->states.
         }
@@ -617,7 +617,7 @@ class MultiGraphDenseIntersect {
           int32_t a_fsas_state_idx01 = kept_states_data[state_idx01].a_fsas_state_idx01,
               fsa_idx0 = next_states_row_ids1[state_idx01];
           int32_t state_map_idx = a_fsas_state_idx01 + fsa_id * state_map_stride;
-          CHECK_EQ(state_map_data[state_map_idx], state_idx01);
+          K2_CHECK_EQ(state_map_data[state_map_idx], state_idx01);
           state_map_data[state_map_idx] = -1;
         }
     };

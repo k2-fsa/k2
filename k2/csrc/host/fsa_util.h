@@ -199,9 +199,9 @@ class FsaCreator {
     int32_t curr_state = -1;
     int32_t index = 0;
     for (const auto &arc : arcs_) {
-      CHECK_LE(arc.src_state, final_state);
-      CHECK_LE(arc.dest_state, final_state);
-      CHECK_LE(curr_state, arc.src_state);
+      K2_CHECK_LE(arc.src_state, final_state);
+      K2_CHECK_LE(arc.dest_state, final_state);
+      K2_CHECK_LE(curr_state, arc.src_state);
       while (curr_state < arc.src_state) {
         arc_indexes_.push_back(index);
         ++curr_state;

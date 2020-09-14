@@ -13,7 +13,6 @@
 #include "k2/csrc/host/topsort.h"
 
 #include <algorithm>
-#include <glog/logging.h>
 #include <unordered_map>
 #include <vector>
 
@@ -23,7 +22,7 @@
 
 namespace k2host {
 void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
-  CHECK_NOTNULL(fsa_size);
+  K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   is_connected_ = true;
   is_acyclic_ = true;
@@ -38,13 +37,13 @@ void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
   is_acyclic_ = IsAcyclic(fsa_in_, &order_);
   if (!is_acyclic_) return;
 
-  CHECK_EQ(order_.size(), fsa_in_.NumStates());
+  K2_CHECK_EQ(order_.size(), fsa_in_.NumStates());
   fsa_size->size1 = fsa_in_.size1;  // = fsa_in_.NumStates()
   fsa_size->size2 = fsa_in_.size2;
 }
 
 bool TopSorter::GetOutput(Fsa *fsa_out, int32_t *state_map /* = nullptr*/) {
-  CHECK_NOTNULL(fsa_out);
+  K2_CHECK_NE(fsa_out, nullptr);
   if (IsEmpty(fsa_in_)) return true;
   if (!is_connected_) return false;
   if (!is_acyclic_) return false;
@@ -55,9 +54,9 @@ bool TopSorter::GetOutput(Fsa *fsa_out, int32_t *state_map /* = nullptr*/) {
     state_in_to_out[order_[num_states - 1 - i]] = i;
   }
   // start state maps to start state
-  CHECK_EQ(state_in_to_out.front(), 0);
+  K2_CHECK_EQ(state_in_to_out.front(), 0);
   // final state maps to final state
-  CHECK_EQ(state_in_to_out.back(), fsa_in_.FinalState());
+  K2_CHECK_EQ(state_in_to_out.back(), fsa_in_.FinalState());
 
   int32_t arc_begin;
   int32_t arc_end;

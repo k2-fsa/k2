@@ -5,6 +5,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Xiaomi Corporation (authors: Meixu Song)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -13,9 +14,16 @@
 #ifndef K2_CSRC_LOG_H_
 #define K2_CSRC_LOG_H_
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <sstream>
+
+#ifdef __CUDA_ARCH__ 
+#define K2_CUDA_HOSTDEV __host__ __device__
+#else
+#define K2_CUDA_HOSTDEV
+#endif
 
 namespace k2 {
 
@@ -35,7 +43,7 @@ enum class LogLevel {
   kFatal = 4,
 };
 
-// They are used in LOG(xxx), so their names
+// They are used in K2_LOG(xxx), so their names
 // do not follow the google c++ code style
 constexpr LogLevel DEBUG = LogLevel::kDebug;
 constexpr LogLevel INFO = LogLevel::kInfo;
@@ -45,8 +53,8 @@ constexpr LogLevel FATAL = LogLevel::kFatal;
 
 class Logger {
  public:
-  __host__ __device__ Logger(const char *filename, const char *func_name,
-                             uint32_t line_num, LogLevel level)
+  K2_CUDA_HOSTDEV Logger(const char *filename, const char *func_name,
+                         uint32_t line_num, LogLevel level)
       : filename_(filename),
         func_name_(func_name),
         line_num_(line_num),
@@ -75,11 +83,11 @@ class Logger {
 #endif
   }
 
-  __host__ __device__ ~Logger() {
+  K2_CUDA_HOSTDEV ~Logger() {
     printf("\n");
     if (level_ == FATAL) {
 #if defined(__CUDA_ARCH__)
-      // this is usually caused by one of the CHECK macros and the detailed
+      // this is usually caused by one of the K2_CHECK macros and the detailed
       // error messages should have already been printed by the macro, so we
       // use an arbitrary string here.
       __assert_fail("Some bad things happened", filename_, line_num_,
@@ -90,22 +98,22 @@ class Logger {
     }
   }
 
-  __host__ __device__ const Logger &operator<<(const char *s) const {
+  K2_CUDA_HOSTDEV const Logger &operator<<(const char *s) const {
     printf("%s", s);
     return *this;
   }
 
-  __host__ __device__ const Logger &operator<<(int32_t i) const {
+  K2_CUDA_HOSTDEV const Logger &operator<<(int32_t i) const {
     printf("%d", i);
     return *this;
   }
 
-  __host__ __device__ const Logger &operator<<(uint32_t i) const {
+  K2_CUDA_HOSTDEV const Logger &operator<<(uint32_t i) const {
     printf("%u", i);
     return *this;
   }
 
-  __host__ __device__ const Logger &operator<<(double d) const {
+  K2_CUDA_HOSTDEV const Logger &operator<<(double d) const {
     printf("%f", d);
     return *this;
   }
@@ -118,6 +126,11 @@ class Logger {
     return *this << os.str().c_str();
   }
 
+  // specialization to fix compile error: `stringstream << nullptr` is ambiguous
+  const Logger &operator<<(const std::nullptr_t &null) const {
+    return *this << "(null)";
+  }
+
  private:
   const char *filename_;
   const char *func_name_;
@@ -127,12 +140,14 @@ class Logger {
 
 class Voidifier {
  public:
-  __host__ __device__ void operator&(const Logger &)const {}
+  K2_CUDA_HOSTDEV void operator&(const Logger &)const {}
 };
 
 }  // namespace internal
 
 }  // namespace k2
+
+#define K2_STATIC_ASSERT(x) static_assert(x, "")
 
 #define K2_CHECK(x)                                              \
   (x) ? (void)0                                                  \
@@ -178,11 +193,12 @@ class Voidifier {
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 
-#define K2_CUDA_SAFE_CALL(...)               \
-  do {                                       \
-    (__VA_ARGS__);                           \
-    cudaDeviceSynchronize();                 \
-    K2_CHECK_CUDA_ERROR(cudaGetLastError()); \
+#define K2_CUDA_SAFE_CALL(...)                                               \
+  do {                                                                       \
+    __VA_ARGS__;                                                             \
+    cudaError_t e = ::k2::internal::kDisableDebug ? cudaGetLastError()       \
+                                                  : cudaDeviceSynchronize(); \
+    K2_CHECK_CUDA_ERROR(e);                                                  \
   } while (0)
 
 // ============================================================
