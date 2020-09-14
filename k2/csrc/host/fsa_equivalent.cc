@@ -36,7 +36,7 @@ namespace {
   function call, the memory of the output FSA is managed by `fsa_out` and
   will be released automatically if `fsa_out`is out of scope.
  */
-static bool Connect(const k2host::Fsa &fsa_in, k2::FsaCreator *fsa_out,
+static bool Connect(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
   CHECK_NOTNULL(fsa_out);
   k2host::Connection connection(fsa_in);
@@ -58,7 +58,7 @@ static bool Connect(const k2host::Fsa &fsa_in, k2::FsaCreator *fsa_out,
   function call, the memory of the output FSA is managed by `fsa_out` and
   will be released automatically if `fsa_out`is out of scope.
  */
-static void ArcSort(const k2host::Fsa &fsa_in, k2::FsaCreator *fsa_out,
+static void ArcSort(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
   CHECK_NOTNULL(fsa_out);
   k2host::ArcSorter sorter(fsa_in);
@@ -78,7 +78,7 @@ static void ArcSort(const k2host::Fsa &fsa_in, k2::FsaCreator *fsa_out,
   function call, the memory of the output FSA is managed by `c` and will
   be released automatically if `c`is out of scope.
  */
-static bool Intersect(const k2host::Fsa &a, const k2::Fsa &b, k2::FsaCreator *c,
+static bool Intersect(const k2host::Fsa &a, const k2host::Fsa &b, k2host::FsaCreator *c,
                       std::vector<int32_t> *arc_map_a = nullptr,
                       std::vector<int32_t> *arc_map_b = nullptr) {
   CHECK_NOTNULL(c);
@@ -198,13 +198,11 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
 }
 
 template <FbWeightType Type>
-bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
-                      const float *b_weights, float beam /*=kFloatInfinity*/,
+bool IsRandEquivalent(const Fsa &a, const Fsa &b,
+                      float beam /*=kFloatInfinity*/,
                       float delta /*=1e-6*/, bool top_sorted /*=true*/,
                       std::size_t npath /*= 100*/) {
   CHECK_GT(beam, 0);
-  CHECK_NOTNULL(a_weights);
-  CHECK_NOTNULL(b_weights);
   FsaCreator connected_a_storage, connected_b_storage, valid_a_storage,
       valid_b_storage;
   std::vector<int32_t> connected_a_arc_map, connected_b_arc_map,
@@ -219,14 +217,6 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
   if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
   if (IsEmpty(valid_a) || IsEmpty(valid_b)) return false;
 
-  // Get arc weights
-  std::vector<float> valid_a_weights(valid_a.size2);
-  std::vector<float> valid_b_weights(valid_b.size2);
-  ::GetArcWeights(a_weights, connected_a_arc_map, valid_a_arc_map,
-                  &valid_a_weights);
-  ::GetArcWeights(b_weights, connected_b_arc_map, valid_b_arc_map,
-                  &valid_b_weights);
-
   // Check that arc labels are compatible.
   std::unordered_set<int32_t> labels_a, labels_b, labels_difference;
   for (const auto &arc : valid_a) labels_a.insert(arc.label);
@@ -240,9 +230,9 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
   double loglike_cutoff_a, loglike_cutoff_b;
   if (beam != kFloatInfinity) {
     loglike_cutoff_a =
-        ShortestDistance<Type>(valid_a, valid_a_weights.data()) - beam;
+        ShortestDistance<Type>(valid_a) - beam;
     loglike_cutoff_b =
-        ShortestDistance<Type>(valid_b, valid_b_weights.data()) - beam;
+        ShortestDistance<Type>(valid_b) - beam;
     if (Type == kMaxWeight &&
         !DoubleApproxEqual(loglike_cutoff_a, loglike_cutoff_b))
       return false;
@@ -271,22 +261,15 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
     // note that `valid_path` is epsilon-free
     ::Intersect(valid_a, valid_path, &a_compose_path_storage, &arc_map_a_path);
     ::Intersect(valid_b, valid_path, &b_compose_path_storage, &arc_map_b_path);
-    std::vector<float> a_compose_weights(arc_map_a_path.size());
-    std::vector<float> b_compose_weights(arc_map_b_path.size());
-    GetArcWeights(valid_a_weights.data(), arc_map_a_path.data(),
-                  arc_map_a_path.size(), a_compose_weights.data());
-    GetArcWeights(valid_b_weights.data(), arc_map_b_path.data(),
-                  arc_map_b_path.size(), b_compose_weights.data());
+
     // TODO(haowen): we may need to implement a version of `ShortestDistance`
     // for non-top-sorted FSAs, but we prefer to decide this later as there's no
     // such scenarios (input FSAs are not top-sorted) currently. If we finally
     // find out that we don't need that version, we will remove flag
     // `top_sorted` and add requirements as comments in the header file.
     CHECK(top_sorted);
-    double cost_a = ShortestDistance<Type>(a_compose_path_storage.GetFsa(),
-                                           a_compose_weights.data());
-    double cost_b = ShortestDistance<Type>(b_compose_path_storage.GetFsa(),
-                                           b_compose_weights.data());
+    double cost_a = ShortestDistance<Type>(a_compose_path_storage.GetFsa());
+    double cost_b = ShortestDistance<Type>(b_compose_path_storage.GetFsa());
 
     if (cost_a < loglike_cutoff_a && cost_b < loglike_cutoff_b) continue;
 
@@ -298,16 +281,16 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
 }
 
 // explicit instantiation here
-template bool IsRandEquivalent<kMaxWeight>(const Fsa &a, const float *a_weights,
-                                           const Fsa &b, const float *b_weights,
+template bool IsRandEquivalent<kMaxWeight>(const Fsa &a,
+                                           const Fsa &b,
                                            float beam, float delta,
                                            bool top_sorted, std::size_t npath);
 template bool IsRandEquivalent<kLogSumWeight>(
-    const Fsa &a, const float *a_weights, const Fsa &b, const float *b_weights,
+    const Fsa &a, const Fsa &b,
     float beam, float delta, bool top_sorted, std::size_t npath);
 
 bool IsRandEquivalentAfterRmEpsPrunedLogSum(
-    const Fsa &a, const float *a_weights, const Fsa &b, const float *b_weights,
+    const Fsa &a, const Fsa &b,
     float beam, bool top_sorted /*= true*/, std::size_t npath /*= 100*/) {
   CHECK_GT(beam, 0);
   CHECK_NOTNULL(a_weights);
@@ -320,19 +303,12 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
   ::Connect(b, &connected_b_storage, &connected_b_arc_map);
   ::ArcSort(connected_a_storage.GetFsa(), &valid_a_storage,
             &valid_a_arc_map);  // required by `intersect`
-  ::ArcSort(connected_b_storage.GetFsa(), &valid_b_storage, &valid_b_arc_map);
+  ::ArcSort(connected_b_storage.GetFsa(), &valid_b_storage,
+            &valid_b_arc_map);
   const auto &valid_a = valid_a_storage.GetFsa();
   const auto &valid_b = valid_b_storage.GetFsa();
   if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
   if (IsEmpty(valid_a) || IsEmpty(valid_b)) return false;
-
-  // Get arc weights
-  std::vector<float> valid_a_weights(valid_a.size2);
-  std::vector<float> valid_b_weights(valid_b.size2);
-  ::GetArcWeights(a_weights, connected_a_arc_map, valid_a_arc_map,
-                  &valid_a_weights);
-  ::GetArcWeights(b_weights, connected_b_arc_map, valid_b_arc_map,
-                  &valid_b_weights);
 
   // Check that arc labels are compatible.
   std::unordered_set<int32_t> labels_a, labels_b, labels_difference;
@@ -347,9 +323,9 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
   if (labels_b.find(kEpsilon) != labels_b.end()) return false;
 
   double loglike_cutoff_a =
-      ShortestDistance<kLogSumWeight>(valid_a, valid_a_weights.data()) - beam;
+      ShortestDistance<kLogSumWeight>(valid_a) - beam;
   double loglike_cutoff_b =
-      ShortestDistance<kLogSumWeight>(valid_b, valid_b_weights.data()) - beam;
+      ShortestDistance<kLogSumWeight>(valid_b) - beam;
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -372,20 +348,15 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
     // note that `valid_path` is epsilon-free
     ::Intersect(valid_a, valid_path, &a_compose_path_storage, &arc_map_a_path);
     ::Intersect(valid_b, valid_path, &b_compose_path_storage, &arc_map_b_path);
-    std::vector<float> a_compose_weights(arc_map_a_path.size());
-    std::vector<float> b_compose_weights(arc_map_b_path.size());
-    GetArcWeights(valid_a_weights.data(), arc_map_a_path.data(),
-                  arc_map_a_path.size(), a_compose_weights.data());
-    GetArcWeights(valid_b_weights.data(), arc_map_b_path.data(),
-                  arc_map_b_path.size(), b_compose_weights.data());
+
     // TODO(haowen): we may need to implement a version of `ShortestDistance`
     // for non-top-sorted FSAs, but we prefer to decide this later as there's no
     // such scenarios (input FSAs are not top-sorted) currently.
     CHECK(top_sorted);
     double cost_a = ShortestDistance<kLogSumWeight>(
-        a_compose_path_storage.GetFsa(), a_compose_weights.data());
+        a_compose_path_storage.GetFsa());
     double cost_b = ShortestDistance<kLogSumWeight>(
-        b_compose_path_storage.GetFsa(), b_compose_weights.data());
+        b_compose_path_storage.GetFsa());
     if (random_path_from_a) {
       if (cost_a < loglike_cutoff_a) continue;
       // there is no corresponding path in `b`
@@ -454,8 +425,8 @@ void RandPath::GetSizes(Array2Size<int32_t> *fsa_size) {
     }
     int32_t state_id_out = state_map_in_to_out[state];
     if (visited_arcs[state_id_out]
-            .insert({{state, curr_arc->dest_state, curr_arc->label},
-                     arc_index_in - fsa_in_.indexes[0]})
+        .insert({{state, curr_arc->dest_state, curr_arc->label, curr_arc->weight},
+                 arc_index_in - fsa_in_.indexes[0]})
             .second)
       ++num_visited_arcs;
     state = curr_arc->dest_state;

@@ -44,12 +44,10 @@ struct Arc {
                   // Note: in some contexts, the scores/weights are
                   // taken to be zero (?)
   Arc() = default;
-  Arc(int32_t src_state, int32_t dest_state, int32_t label, float weight = 0)
-      : src_state(src_state), dest_state(dest_state), label(label),
-        weight(weight) {}
 
-  /* Note: the costs are not stored here but outside the Fst object, in some
-     kind of array indexed by arc-index.  */
+  Arc(int32_t src_state, int32_t dest_state, int32_t label, float weight)
+      : src_state(src_state), dest_state(dest_state),
+        label(label),  weight(weight) {}
 
   bool operator==(const Arc &other) const {
     return std::tie(src_state, dest_state, label, weight) ==

@@ -37,7 +37,6 @@ void Determinizer<TracebackState>::GetSizes(
   arc_derivs_size->size1 = arc_derivs_size->size2 = 0;
 
   arcs_.clear();
-  arc_weights_.clear();
   arc_derivs_.clear();
   if (IsEmpty(fsa_in_.fsa)) return;
 
@@ -58,7 +57,7 @@ void Determinizer<TracebackState>::GetSizes(
     std::shared_ptr<DS> state(queue.top());
     queue.pop();
     num_steps += state->ProcessArcs(fsa_in_, prune_cutoff, &arcs_,
-                                    &arc_weights_, &arc_derivs_, &map, &queue);
+                                    &arc_derivs_, &map, &queue);
   }
 
   // We may stopped early due to max_step
@@ -82,12 +81,11 @@ void Determinizer<TracebackState>::GetSizes(
 
 template <typename TracebackState>
 float Determinizer<TracebackState>::GetOutput(
-    Fsa *fsa_out, float *arc_weights_out,
+    Fsa *fsa_out,
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
   if (IsEmpty(fsa_in_.fsa)) return beam_;
 
   CHECK_NOTNULL(fsa_out);
-  CHECK_NOTNULL(arc_weights_out);
   CHECK_NOTNULL(arc_derivs);
 
   std::vector<int32_t> arc_map;
@@ -95,10 +93,6 @@ float Determinizer<TracebackState>::GetOutput(
   CHECK_EQ(arcs_.size(), fsa_out->size2);
   CreateFsa(arcs_, fsa_out, &arc_map);
   CHECK_EQ(arcs_.size(), arc_map.size());
-
-  // output arc weights
-  ReorderCopyN(arc_map.begin(), arc_map.size(), arc_weights_.begin(),
-               arc_weights_out);
 
   // output arc derivative information
   CHECK_EQ(arc_derivs_.size(), arc_derivs->size1);

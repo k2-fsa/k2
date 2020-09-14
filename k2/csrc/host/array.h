@@ -360,12 +360,12 @@ struct iterator_traits<k2host::StridedPtr<T, I>> {
 };
 
 template <typename T, typename I>
-void swap(k2host::StridedPtr<T, I> &lhs, k2::StridedPtr<T, I> &rhs) {
+void swap(k2host::StridedPtr<T, I> &lhs, k2host::StridedPtr<T, I> &rhs) {
   lhs.Swap(rhs);
 }
 
 template <typename Ptr, typename I>
-void swap(k2host::Array2<Ptr, I> &lhs, k2::Array2<Ptr, I> &rhs) {
+void swap(k2host::Array2<Ptr, I> &lhs, k2host::Array2<Ptr, I> &rhs) {
   lhs.Swap(rhs);
 }
 

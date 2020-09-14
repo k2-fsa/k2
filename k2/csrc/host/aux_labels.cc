@@ -221,21 +221,21 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
       int32_t curr_label =
           (pos_end - pos_begin == 0) ? kEpsilon : labels_in_.data[pos_begin];
       arcs.emplace_back(state_map[src_state], state_map[dest_state],
-                        curr_label);
+                        curr_label, arc.weight);
     } else {
       // expand arcs with olabels
       arcs.emplace_back(state_map[src_state], state_ids[dest_state] + 1,
-                        labels_in_.data[pos_begin]);
+                        labels_in_.data[pos_begin], arc.weight);
       start_pos.push_back(num_non_eps_ilabel_processed);
       for (int32_t pos = pos_begin + 1; pos < pos_end - 1; ++pos) {
         ++state_ids[dest_state];
         arcs.emplace_back(state_ids[dest_state], state_ids[dest_state] + 1,
-                          labels_in_.data[pos]);
+                          labels_in_.data[pos], 0.0);
         start_pos.push_back(num_non_eps_ilabel_processed);
       }
       ++state_ids[dest_state];
       arcs.emplace_back(state_ids[dest_state], state_map[arc.dest_state],
-                        labels_in_.data[pos_end - 1]);
+                        labels_in_.data[pos_end - 1], 0.0);
     }
     // push non-epsilon ilabel in fsa_in as olabel of fsa_out
     if (arc.label != kEpsilon) {
