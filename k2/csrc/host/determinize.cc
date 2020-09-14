@@ -14,7 +14,7 @@
 
 #include <algorithm>
 #include <cassert>
-#include <glog/logging.h>
+
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -31,8 +31,8 @@ namespace k2 {
 template <typename TracebackState>
 void Determinizer<TracebackState>::GetSizes(
     Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *arc_derivs_size) {
-  CHECK_NOTNULL(fsa_size);
-  CHECK_NOTNULL(arc_derivs_size);
+  K2_CHECK_NE(fsa_size, nullptr);
+  K2_CHECK_NE(arc_derivs_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   arc_derivs_size->size1 = arc_derivs_size->size2 = 0;
 
@@ -47,7 +47,7 @@ void Determinizer<TracebackState>::GetSizes(
   std::shared_ptr<DS> start_state(new DS());
 
   bool ans = map.GetOutputState(start_state.get(), fsa_in_.fsa);
-  CHECK(ans && start_state->state_id == 0);
+  K2_CHECK(ans && start_state->state_id == 0);
 
   if (max_step_ <= 0) max_step_ = std::numeric_limits<int64_t>::max();
   int64_t num_steps = 0;
@@ -65,7 +65,7 @@ void Determinizer<TracebackState>::GetSizes(
   effective_beam_ =
       queue.empty() ? beam_ : total_prob - queue.top()->forward_backward_prob;
 
-  CHECK_EQ(arcs_.size(), arc_derivs_.size());
+  K2_CHECK_EQ(arcs_.size(), arc_derivs_.size());
   int32_t num_states_out = -1, num_derivs_out = 0;
   for (auto i = 0; i != arcs_.size(); ++i) {
     num_states_out = std::max(
@@ -86,22 +86,22 @@ float Determinizer<TracebackState>::GetOutput(
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
   if (IsEmpty(fsa_in_.fsa)) return beam_;
 
-  CHECK_NOTNULL(fsa_out);
-  CHECK_NOTNULL(arc_weights_out);
-  CHECK_NOTNULL(arc_derivs);
+  K2_CHECK_NE(fsa_out, nullptr);
+  K2_CHECK_NE(arc_weights_out, nullptr);
+  K2_CHECK_NE(arc_derivs, nullptr);
 
   std::vector<int32_t> arc_map;
   // output fsa
-  CHECK_EQ(arcs_.size(), fsa_out->size2);
+  K2_CHECK_EQ(arcs_.size(), fsa_out->size2);
   CreateFsa(arcs_, fsa_out, &arc_map);
-  CHECK_EQ(arcs_.size(), arc_map.size());
+  K2_CHECK_EQ(arcs_.size(), arc_map.size());
 
   // output arc weights
   ReorderCopyN(arc_map.begin(), arc_map.size(), arc_weights_.begin(),
                arc_weights_out);
 
   // output arc derivative information
-  CHECK_EQ(arc_derivs_.size(), arc_derivs->size1);
+  K2_CHECK_EQ(arc_derivs_.size(), arc_derivs->size1);
   int32_t num_derivs = 0;
   for (int32_t i = 0; i != arc_derivs->size1; ++i) {
     arc_derivs->indexes[i] = num_derivs;
@@ -131,7 +131,7 @@ int32_t GetMostRecentCommonAncestor(
   int32_t ans = 0;
   std::unordered_set<LogSumTracebackState *> prev_states;
   for (; cur_states->size() != 1; ans++) {
-    CHECK(!cur_states->empty());
+    K2_CHECK(!cur_states->empty());
     for (LogSumTracebackState *s : *cur_states) {
       for (LogSumTracebackLink &l : s->prev_elements) {
         prev_states.insert(l.prev_state.get());
@@ -148,7 +148,7 @@ int32_t GetMostRecentCommonAncestor(
   int32_t ans = 0;
   std::unordered_set<MaxTracebackState *> prev_states;
   for (; cur_states->size() != 1; ans++) {
-    CHECK(!cur_states->empty());
+    K2_CHECK(!cur_states->empty());
     for (MaxTracebackState *s : *cur_states) {
       prev_states.insert(s->prev_state.get());
     }
@@ -195,7 +195,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
   }
   // failure of the next assertion may indicate many kinds of bugs in the
   // algorithm.
-  CHECK_EQ(cur_states->size(), 1);
+  K2_CHECK_EQ(cur_states->size(), 1);
   double prev_forward_prob = (*(cur_states->begin()))->forward_prob;
   *weight_out = static_cast<float>(cur_forward_prob - prev_forward_prob);
   // The following is mostly for ease of interpretability of the output;
@@ -209,7 +209,7 @@ void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
                const float *unused,  // arc_weights_in, unused.
                float *weight_out, std::vector<int32_t> *deriv_out) {
   (void)unused;
-  CHECK_EQ(cur_states->size(), 1);
+  K2_CHECK_EQ(cur_states->size(), 1);
   MaxTracebackState *state = *(cur_states->begin());
   double cur_forward_prob = state->forward_prob;
   deriv_out->resize(num_steps);

@@ -12,7 +12,6 @@
 #include "k2/csrc/host/intersect.h"
 
 #include <algorithm>
-#include <glog/logging.h>
 #include <queue>
 #include <unordered_map>
 #include <utility>
@@ -43,7 +42,7 @@ static inline int32_t InsertIntersectionState(
 namespace k2 {
 
 void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
-  CHECK_NOTNULL(fsa_size);
+  K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   status_ = true;
   arc_indexes_.clear();
@@ -159,7 +158,7 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
   // push a duplicate of final state
   arc_indexes_.emplace_back(arc_indexes_.back());
 
-  CHECK_EQ(state_index_c + 2, arc_indexes_.size());
+  K2_CHECK_EQ(state_index_c + 2, arc_indexes_.size());
   fsa_size->size1 = state_index_c + 1;
   fsa_size->size2 = arcs_.size();
 }
@@ -170,10 +169,10 @@ bool Intersection::GetOutput(Fsa *c, int32_t *arc_map_a /*= nullptr*/,
   if (!status_) return false;
 
   // output fsa
-  CHECK_NOTNULL(c);
-  CHECK_EQ(arc_indexes_.size(), c->size1 + 1);
+  K2_CHECK_NE(c, nullptr);
+  K2_CHECK_EQ(arc_indexes_.size(), c->size1 + 1);
   std::copy(arc_indexes_.begin(), arc_indexes_.end(), c->indexes);
-  CHECK_EQ(arcs_.size(), c->size2);
+  K2_CHECK_EQ(arcs_.size(), c->size2);
   std::copy(arcs_.begin(), arcs_.end(), c->data);
 
   // output arc map

@@ -12,7 +12,6 @@
 #include "k2/csrc/host/util.h"
 
 #include <stdlib.h>
-#include <glog/logging.h>
 
 namespace k2 {
 
@@ -23,10 +22,10 @@ void *MemAlignedMalloc(std::size_t nbytes, std::size_t alignment) {
   p = _aligned_malloc(nbytes, alignment);
 #else
   int ret = posix_memalign(&p, alignment, nbytes);
-  CHECK_EQ(ret, 0);
+  K2_CHECK_EQ(ret, 0);
 #endif
 
-  CHECK_NOTNULL(p);
+  K2_CHECK_NE(p, nullptr);
   return p;
 }
 

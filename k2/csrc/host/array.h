@@ -10,13 +10,15 @@
 
 #include <algorithm>
 #include <functional>
-#include <glog/logging.h>
+
 #include <iterator>
 #include <limits>
 #include <memory>
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include "k2/csrc/log.h"
 
 namespace k2 {
 
@@ -81,14 +83,14 @@ struct Array1 {
   Array1() : begin(0), end(0), size(0), data(nullptr) {}
   Array1(IndexT begin, IndexT end, PtrT data)
       : begin(begin), end(end), data(data) {
-    CHECK_GE(end, begin);
+    K2_CHECK_GE(end, begin);
     this->size = end - begin;
   }
   Array1(IndexT size, PtrT data) : begin(0), end(size), size(size), data(data) {
-    CHECK_GE(size, 0);
+    K2_CHECK_GE(size, 0);
   }
   void Init(IndexT begin, IndexT end, PtrT data) {
-    CHECK_GE(end, begin);
+    K2_CHECK_GE(end, begin);
     this->begin = begin;
     this->end = end;
     this->size = end - begin;
@@ -220,8 +222,8 @@ struct Array3 {
              // through this object.
 
   Array2<Ptr, I> operator[](I i) const {
-    DCHECK_GE(i, 0);
-    DCHECK_LT(i, size1);
+    K2_DCHECK_GE(i, 0);
+    K2_DCHECK_LT(i, size1);
 
     Array2<Ptr, I> array;
     array.size1 = indexes1[i + 1] - indexes1[i];
@@ -255,7 +257,7 @@ struct Array3 {
       @param [in] array_size The number element of vector `arrays`
    */
   void Create(const Array2<Ptr, I> *arrays, I array_size) {
-    CHECK_EQ(size1, array_size);
+    K2_CHECK_EQ(size1, array_size);
     I size2_tmp = 0, size3_tmp = 0;
     for (I i = 0; i != array_size; ++i) {
       const auto &curr_array = arrays[i];
@@ -263,7 +265,7 @@ struct Array3 {
       indexes1[i] = size2_tmp;
 
       // copy indexes
-      CHECK_LE(size2_tmp + curr_array.size1, size2);
+      K2_CHECK_LE(size2_tmp + curr_array.size1, size2);
       I begin_index = curr_array.indexes[0];  // indexes[0] is always valid and
                                               // may be greater than 0
       for (I j = 0; j != curr_array.size1; ++j) {
@@ -271,14 +273,14 @@ struct Array3 {
       }
 
       // copy data
-      CHECK_LE(size3_tmp + curr_array.size2, size3);
+      K2_CHECK_LE(size3_tmp + curr_array.size2, size3);
       for (I n = 0; n != curr_array.size2; ++n) {
         data[size3_tmp + n] = curr_array.data[n + begin_index];
       }
       size3_tmp += curr_array.size2;
     }
-    CHECK_EQ(size2_tmp, size2);
-    CHECK_EQ(size3_tmp, size3);
+    K2_CHECK_EQ(size2_tmp, size2);
+    K2_CHECK_EQ(size3_tmp, size3);
 
     indexes1[size1] = size2_tmp;
     indexes2[indexes1[size1]] = size3_tmp;
@@ -300,7 +302,7 @@ template <typename ValueType, typename I>
 struct DataPtrCreator<ValueType *, I> {
   static ValueType *Create(const std::unique_ptr<ValueType[]> &data_storage,
                            int32_t stride) {
-    CHECK_EQ(stride, 1);
+    K2_CHECK_EQ(stride, 1);
     return data_storage.get();
   }
 };
@@ -312,7 +314,7 @@ template <typename ValueType, typename I>
 struct DataPtrCreator<StridedPtr<ValueType, I>, I> {
   static StridedPtr<ValueType, I> Create(
       const std::unique_ptr<ValueType[]> &data_storage, int32_t stride) {
-    CHECK_GT(stride, 1);
+    K2_CHECK_GT(stride, 1);
     StridedPtr<ValueType, I> strided_ptr(data_storage.get(), stride);
     return strided_ptr;
   }
@@ -334,12 +336,12 @@ struct Array2Storage {
   }
 
   void FillIndexes(const std::vector<I> &indexes) {
-    CHECK_EQ(indexes.size(), array_.size1 + 1);
+    K2_CHECK_EQ(indexes.size(), array_.size1 + 1);
     std::copy(indexes.begin(), indexes.end(), array_.indexes);
   }
 
   void FillData(const std::vector<ValueType> &data) {
-    CHECK_EQ(data.size(), array_.size2);
+    K2_CHECK_EQ(data.size(), array_.size2);
     for (auto i = 0; i != array_.size2; ++i) array_.data[i] = data[i];
   }
 

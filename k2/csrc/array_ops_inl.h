@@ -1,6 +1,6 @@
 /**
  * @brief
- * ops_inl
+ * array_ops_inl
  *
  * @note
  * Don't include this file directly; it is included by array_ops.h.
@@ -31,7 +31,7 @@ namespace k2 {
 // Splice() in array_ops.cu, since it was modified from this code.
 template <typename T>
 Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
-  CHECK_GT(num_arrays, 0);
+  K2_CHECK_GT(num_arrays, 0);
   ContextPtr c = src[0]->Context();
 
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
@@ -59,7 +59,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       ans_data += this_dim;
     }
   } else {
-    CHECK_EQ(c->GetDeviceType(), kCuda);
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
     Array1<int32_t> row_splits(c, row_splits_vec);
     const int32_t *row_splits_data = row_splits.Data();
     std::vector<T *> src_ptrs_vec(num_arrays);
@@ -131,7 +131,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
 
 template <typename T>
 void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
-  CHECK(src.Context()->IsCompatible(*dest->Context()));
+  K2_CHECK(src.Context()->IsCompatible(*dest->Context()));
   struct PtrPtr {
     T **data;
     __host__ __device__ T operator[](int32_t i) { return *(data[i]); }
@@ -152,9 +152,9 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
 
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
-  CHECK_EQ(src.NumAxes(), 2);
-  CHECK_EQ(src.Dim0(), max_values->Dim());
-  CHECK(IsCompatible(src, *max_values));
+  K2_CHECK_EQ(src.NumAxes(), 2);
+  K2_CHECK_EQ(src.Dim0(), max_values->Dim());
+  K2_CHECK(IsCompatible(src, *max_values));
 
   ContextPtr c = src.Context();
 
@@ -175,7 +175,7 @@ void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
       output_data[i] = max_val;
     }
   } else {
-    CHECK(c->GetDeviceType() == kCuda);
+    K2_CHECK(c->GetDeviceType() == kCuda);
 
     // This code is based on the example here:
     // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
