@@ -176,8 +176,92 @@ void TestShape() {
     }
   }
 
-  // TODO(haowen): created with only row_splits, need to test
-  // `RowIdsFromRowSplits` first test RowIds() and Populate()
+  {
+    // constructed with row_splits
+    // RaggedTensor4 t = [
+    //  [ [[ 1, 2], [4]],  [[3, 0]] ],
+    //  [ [[7, 8, 9]], [[6], [3, 5, 7]], [[2]] ],
+    //  [ [[3, 4], [], [8]] ]
+    // ]
+    const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+    const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+    const std::vector<int32_t> row_splits3 = {0,  2,  3,  5,  8, 9,
+                                              12, 13, 15, 15, 16};
+    const std::vector<int32_t> empty_row_ids;
+    std::vector<RaggedShapeDim> axes;
+    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
+                                     Array1<int32_t>(context, empty_row_ids),
+                                     -1});
+    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
+                                     Array1<int32_t>(context, empty_row_ids),
+                                     -1});
+    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
+                                     Array1<int32_t>(context, empty_row_ids),
+                                     -1});
+    RaggedShape shape(axes, true);
+
+    EXPECT_EQ(shape.NumAxes(), 4);
+    EXPECT_EQ(shape.Dim0(), 3);
+    EXPECT_EQ(shape.NumElements(), row_splits3.back());
+
+    // test RowIds()
+    const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
+    const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
+    const std::vector<int32_t> row_ids3 = {0, 0, 1, 2, 2, 3, 3, 3,
+                                           4, 5, 5, 5, 6, 7, 7, 9};
+    const std::vector<std::vector<int32_t>> row_ids_vec = {row_ids1, row_ids2,
+                                                           row_ids3};
+    CheckRowSplitsOrIds(shape, row_ids_vec, false);
+  }
+
+  {
+    // constructed with row_splits and test Populate()
+    // RaggedTensor4 t = [
+    //  [ [[ 1, 2], [4]],  [[3, 0]] ],
+    //  [ [[7, 8, 9]], [[6], [3, 5, 7]], [[2]] ],
+    //  [ [[3, 4], [], [8]] ]
+    // ]
+    const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+    const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+    const std::vector<int32_t> row_splits3 = {0,  2,  3,  5,  8, 9,
+                                              12, 13, 15, 15, 16};
+    const std::vector<int32_t> empty_row_ids;
+    std::vector<RaggedShapeDim> axes;
+    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
+                                     Array1<int32_t>(context, empty_row_ids),
+                                     -1});
+    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
+                                     Array1<int32_t>(context, empty_row_ids),
+                                     -1});
+    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
+                                     Array1<int32_t>(context, empty_row_ids),
+                                     -1});
+    RaggedShape shape(axes, true);
+
+    // test Populate(), it will create row_ids and cached_tot_size from
+    // row_splits
+    shape.Populate();
+
+    const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
+    const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
+    const std::vector<int32_t> row_ids3 = {0, 0, 1, 2, 2, 3, 3, 3,
+                                           4, 5, 5, 5, 6, 7, 7, 9};
+    const std::vector<std::vector<int32_t>> row_ids_vec = {row_ids1, row_ids2,
+                                                           row_ids3};
+
+    const auto &curr_axes = shape.Axes();
+    for (int32_t i = 1; i < shape.NumAxes(); ++i) {
+      const Array1<int32_t> &curr_row_ids = curr_axes[i - 1].row_ids;
+      // copy data from CPU/GPU to CPU
+      auto kind = GetMemoryCopyKind(*curr_row_ids.Context(), *cpu);
+      std::vector<int32_t> cpu_data(curr_row_ids.Dim());
+      k2::MemoryCopy(static_cast<void *>(cpu_data.data()),
+                     static_cast<const void *>(curr_row_ids.Data()),
+                     curr_row_ids.Dim() * curr_row_ids.ElementSize(), kind);
+      EXPECT_EQ(cpu_data, row_ids_vec[i - 1]);
+      EXPECT_EQ(curr_axes[i - 1].cached_tot_size, row_ids_vec[i - 1].size());
+    }
+  }
 }
 TEST(RaggedShapeTest, RaggedShape) {
   TestShape<kCuda>();
