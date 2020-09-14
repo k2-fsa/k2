@@ -126,6 +126,11 @@ class Logger {
     return *this << os.str().c_str();
   }
 
+  // specialization to fix compile error: `stringstream << nullptr` is ambiguous
+  const Logger &operator<<(const std::nullptr_t &null) const {
+    return *this << "(null)";
+  }
+
  private:
   const char *filename_;
   const char *func_name_;
