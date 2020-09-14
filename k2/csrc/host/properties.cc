@@ -124,7 +124,7 @@ bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
         ++current_state.arc_begin;
         break;
       default:
-        K2_LOG(FATAL) << "Unreachable code is executed!";
+        LOG(FATAL) << "Unreachable code is executed!";
         break;
     }
   }

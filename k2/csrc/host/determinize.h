@@ -15,7 +15,7 @@
 
 #include <algorithm>
 #include <cassert>
-
+#include <glog/logging.h>
 #include <iterator>
 #include <limits>
 #include <memory>
@@ -60,13 +60,13 @@ class Determinizer {
   */
   Determinizer(const WfsaWithFbWeights &fsa_in, float beam, int64_t max_step)
       : fsa_in_(fsa_in), beam_(beam), max_step_(max_step) {
-    K2_CHECK_GT(beam, 0);
+    CHECK_GT(beam, 0);
     if (std::is_same<TracebackState, MaxTracebackState>::value)
-      K2_CHECK_EQ(fsa_in_.weight_type, kMaxWeight);
+      CHECK_EQ(fsa_in_.weight_type, kMaxWeight);
     else if (std::is_same<TracebackState, LogSumTracebackState>::value)
-      K2_CHECK_EQ(fsa_in_.weight_type, kLogSumWeight);
+      CHECK_EQ(fsa_in_.weight_type, kLogSumWeight);
     else
-      K2_LOG(FATAL) << "Unreachable code is executed!";
+      LOG(FATAL) << "Unreachable code is executed!";
   }
 
   /*

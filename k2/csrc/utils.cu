@@ -124,7 +124,7 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     int32_t cur_row_start = row_splits[0];
-    K2_CHECK_EQ(cur_row_start, 0);
+    CHECK_EQ(cur_row_start, 0);
     for (int32_t row = 0; row < num_rows; row++) {
       int32_t next_row_start = row_splits[row + 1];
       for (; cur_row_start < next_row_start; ++cur_row_start)
@@ -280,7 +280,7 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
     int32_t cur_row = -1;
     for (int32_t i = 0; i < num_elems; i++) {
       int32_t row = row_ids[i];
-      K2_CHECK_GE(row, cur_row);
+      CHECK_GE(row, cur_row);
       while (cur_row < row) {
         cur_row++;
         row_splits[cur_row] = i;
@@ -473,10 +473,10 @@ row_splits.
       // the half that are allocated by throwing darts.
       int32_t num_jobs_this_task =
           1 + (next_row_split/dart_separation - this_row_split/dart_separation),
-          job_idx_this_task = 1 + (dart_location - this_row_split)/dart_separation;
-      K2_CHECK(job_id_this_task < num_jobs_this_task);
-      TaskRedirect tr { task_idx, num_jobs_this_task, job_idx_this_task };
-      redirect_out[num_tasks + job_idx] = tr;
+          job_idx_this_task = 1 + (dart_location -
+this_row_split)/dart_separation; K2_ASSERT(job_id_this_task <
+num_jobs_this_task); TaskRedirect tr { task_idx, num_jobs_this_task,
+job_idx_this_task }; redirect_out[num_tasks + job_idx] = tr;
     }
   }
 }
@@ -500,7 +500,7 @@ __global__ void GetTaskRedirect(int32_t num_tasks, const int32_t *row_splits,
   // threads for this job.
   int32_t thread_idx =
       threadIdx.x %
-          threads_per_task;  // we assume blockDim.x % threads_per_job == 0
+      threads_per_task;  // we assume blockDim.x % threads_per_job == 0
   // `temp_idx` is which index in the temporary storage `temp` we are assigned
   // (one per job).
 
@@ -519,7 +519,7 @@ __global__ void GetTaskRedirect(int32_t num_tasks, const int32_t *row_splits,
   int32_t dart_separation = num_items / num_tasks;
 
   if (num_items <= 0) {
-    K2_DCHECK_EQ(num_items, 0);
+    assert(num_items == 0);
     // This is a special case where there is no work to do; we give a trivial
     // assignment of tasks to jobs and return
     static_assert(threads_per_task >= 2, "threads per task must >= 2");

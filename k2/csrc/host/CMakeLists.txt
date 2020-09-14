@@ -31,6 +31,9 @@ else()
   target_compile_features(fsa PUBLIC cxx_std_11)
 endif()
 
+# link lib deps
+target_link_libraries(fsa PUBLIC glog)
+
 #---------------------------- Test K2 host sources ----------------------------
 
 # please sort the source files alphabetically

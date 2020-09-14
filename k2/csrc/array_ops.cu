@@ -19,8 +19,8 @@ namespace k2 {
 // This is similar to the template Append() defined in ops_inl.h,
 // but with changes largely about adding `data_offsets`, and
 // subtracting one from the dims of all but the last array.
-Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
-  K2_CHECK_GT(num_arrays, 0);
+Array1<int32_t> Splice(int32_t num_arrays, const Array1<int32_t> **src) {
+  CHECK_GT(num_arrays, 0);
   ContextPtr c = src[0]->Context();
 
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
@@ -60,7 +60,7 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
       ans_data += this_dim;
     }
   } else {
-    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    CHECK_EQ(c->GetDeviceType(), kGpu);
     Array1<int32_t> row_splits(c, row_splits_vec);
     const int32_t *row_splits_data = row_splits.Data();
     std::vector<T *> src_ptrs_vec(num_arrays);

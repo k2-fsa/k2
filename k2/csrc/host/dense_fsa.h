@@ -13,13 +13,13 @@
 #define K2_CSRC_HOST_DENSE_FSA_H_
 
 #include <cstdint>
+#include <glog/logging.h>
 #include <tuple>
 #include <utility>
 #include <vector>
 
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/util.h"
-#include "k2/csrc/log.h"
 
 namespace k2 {
 
@@ -267,7 +267,7 @@ struct DenseFsaVec {
   const float *data;
 
   DenseFsa operator[](int32_t seg_id) {
-    K2_CHECK_LT(seg_id, meta->num_segs);
+    CHECK_LT(seg_id, meta->num_segs);
     int32_t start_frame_index = meta->seg_frame_index[seg_id],
             end_frame_index = meta->seg_frame_index[seg_id + 1];
     // below, the -1 is to exclude the zero-padding frame.

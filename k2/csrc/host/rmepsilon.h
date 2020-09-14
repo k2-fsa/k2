@@ -13,6 +13,7 @@
 #ifndef K2_CSRC_HOST_RMEPSILON_H_
 #define K2_CSRC_HOST_RMEPSILON_H_
 
+#include <glog/logging.h>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -55,9 +56,9 @@ class EpsilonsRemover {
   */
   EpsilonsRemover(const WfsaWithFbWeights &fsa_in, float beam)
       : fsa_in_(fsa_in), beam_(beam) {
-    K2_CHECK_GT(beam, 0);
+    CHECK_GT(beam, 0);
     if (std::is_same<TracebackState, MaxTracebackState>::value)
-      K2_CHECK_EQ(fsa_in_.weight_type, kMaxWeight);
+      CHECK_EQ(fsa_in_.weight_type, kMaxWeight);
   }
 
   /*

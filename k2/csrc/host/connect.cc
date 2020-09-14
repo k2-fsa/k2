@@ -13,7 +13,7 @@
 #include "k2/csrc/host/connect.h"
 
 #include <algorithm>
-
+#include <glog/logging.h>
 #include <limits>
 #include <stack>
 #include <unordered_map>
@@ -42,7 +42,7 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
   using dfs::kNotVisited;
   using dfs::kVisited;
   using dfs::kVisiting;
-  K2_CHECK_NE(state_map, nullptr);
+  CHECK_NOTNULL(state_map);
 
   state_map->clear();
   if (IsEmpty(fsa)) return true;
@@ -178,7 +178,7 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
         ++current_state.arc_begin;  // go to the next arc
         break;
       default:
-        K2_LOG(FATAL) << "Unreachable code is executed!";
+        LOG(FATAL) << "Unreachable code is executed!";
         break;
     }
   }
@@ -202,7 +202,7 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
 }
 
 void Connection::GetSizes(Array2Size<int32_t> *fsa_size) {
-  K2_CHECK_NE(fsa_size, nullptr);
+  CHECK_NOTNULL(fsa_size);
   fsa_size->size1 = fsa_size->size2 = 0;
   no_accessible_state_ = false;
   arc_indexes_.clear();
@@ -249,7 +249,7 @@ void Connection::GetSizes(Array2Size<int32_t> *fsa_size) {
   }
   arc_indexes_[num_states_out] = arc_indexes_[num_states_out - 1];
 
-  K2_CHECK_EQ(arcs_.size(), arc_map_.size());
+  CHECK_EQ(arcs_.size(), arc_map_.size());
   fsa_size->size1 = num_states_out;
   fsa_size->size2 = arcs_.size();
 }
@@ -258,10 +258,10 @@ bool Connection::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
   if (no_accessible_state_) return true;
 
   // output FSA
-  K2_CHECK_NE(fsa_out, nullptr);
-  K2_CHECK_EQ(arc_indexes_.size(), fsa_out->size1 + 1);
+  CHECK_NOTNULL(fsa_out);
+  CHECK_EQ(arc_indexes_.size(), fsa_out->size1 + 1);
   std::copy(arc_indexes_.begin(), arc_indexes_.end(), fsa_out->indexes);
-  K2_CHECK_EQ(arcs_.size(), fsa_out->size2);
+  CHECK_EQ(arcs_.size(), fsa_out->size2);
   std::copy(arcs_.begin(), arcs_.end(), fsa_out->data);
 
   // output arc map

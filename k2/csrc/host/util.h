@@ -20,8 +20,6 @@
 #include <limits>
 #include <utility>
 
-#include "k2/csrc/log.h"
-
 namespace k2 {
 
 #define EXPECT_DOUBLE_ARRAY_APPROX_EQ(expected, actual, abs_error)          \

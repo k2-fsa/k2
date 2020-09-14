@@ -13,6 +13,7 @@
 #ifndef K2_CSRC_HOST_TOPSORT_H_
 #define K2_CSRC_HOST_TOPSORT_H_
 
+#include <glog/logging.h>
 #include <utility>
 #include <vector>
 

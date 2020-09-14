@@ -11,11 +11,11 @@
  */
 
 #include <cstdint>
+#include <glog/logging.h>
 #include <vector>
 
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/weights.h"
-#include "k2/csrc/log.h"
 
 #ifndef K2_CSRC_HOST_FSA_EQUIVALENT_H_
 #define K2_CSRC_HOST_FSA_EQUIVALENT_H_
@@ -133,7 +133,7 @@ class RandPath {
       : fsa_in_(fsa_in),
         no_epsilon_arc_(no_eps_arc),
         eps_arc_tries_(eps_arc_tries) {
-    K2_CHECK_GT(eps_arc_tries_, 1);
+    CHECK_GT(eps_arc_tries_, 1);
   }
 
   /*

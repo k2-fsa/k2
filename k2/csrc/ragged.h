@@ -16,8 +16,8 @@
 
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
-#include "k2/csrc/utils.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/utils.h"
 
 namespace k2 {
 
@@ -357,7 +357,7 @@ struct Ragged {
   Array1<T> values;
 
   Ragged(RaggedShape &shape, Array1<T> &values) : shape(shape), values(values) {
-    K2_CHECK_EQ(shape.TotSize(shape.NumAxes() - 1), values.Dim());
+    CHECK_EQ(shape.TotSize(shape.NumAxes() - 1), values.Dim());
   }
 
   // Default constructor will not leave this a valid Ragged object, you

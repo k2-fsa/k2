@@ -9,7 +9,7 @@
 #define K2_CSRC_HOST_FSA_H_
 
 #include <cstdint>
-
+#include <glog/logging.h>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -103,13 +103,13 @@ struct Fsa : public Array2<Arc *, int32_t> {
   using Array2::Array2;
 
   int32_t NumStates() const {
-    K2_CHECK_GE(size1, 0);
+    CHECK_GE(size1, 0);
     return size1;
   }
 
   int32_t FinalState() const {
     // It's not valid to call FinalState if the FSA is empty.
-    K2_CHECK_GE(size1, 2);
+    CHECK_GE(size1, 2);
     return size1 - 1;
   }
 };

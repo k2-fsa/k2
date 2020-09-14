@@ -12,6 +12,7 @@
 #include "k2/csrc/host/weights.h"
 
 #include <algorithm>
+#include <glog/logging.h>
 #include <queue>
 #include <vector>
 
@@ -21,8 +22,8 @@
 
 namespace {
 void CheckInput(const k2::Fsa &fsa, const float *arc_weights) {
-  K2_CHECK(IsValid(fsa));
-  K2_CHECK_NE(arc_weights, nullptr);
+  CHECK(IsValid(fsa));
+  CHECK_NOTNULL(arc_weights);
 }
 }  // namespace
 
@@ -32,7 +33,7 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
                               double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
-  K2_CHECK_NE(state_weights, nullptr);
+  CHECK_NOTNULL(state_weights);
 
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
@@ -41,7 +42,7 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
   state_weights[0] = 0;
   for (int32_t i = 0; i != fsa.size2; ++i) {
     const auto &arc = arcs[i];
-    K2_DCHECK_GE(arc.dest_state, arc.src_state);
+    DCHECK_GE(arc.dest_state, arc.src_state);
     auto src_weight = state_weights[arc.src_state];
     auto &dest_weight = state_weights[arc.dest_state];
     dest_weight = std::max(dest_weight, src_weight + arc_weights[i]);
@@ -52,7 +53,7 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
                                double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
-  K2_CHECK_NE(state_weights, nullptr);
+  CHECK_NOTNULL(state_weights);
 
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
@@ -61,7 +62,7 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
   state_weights[fsa.FinalState()] = 0;
   for (int32_t i = fsa.size2 - 1; i >= 0; --i) {
     const auto &arc = arcs[i];
-    K2_DCHECK_GE(arc.dest_state, arc.src_state);
+    DCHECK_GE(arc.dest_state, arc.src_state);
     auto &src_weight = state_weights[arc.src_state];
     auto dest_weight = state_weights[arc.dest_state];
     src_weight = std::max(src_weight, dest_weight + arc_weights[i]);
@@ -72,7 +73,7 @@ void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
                                  double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
-  K2_CHECK_NE(state_weights, nullptr);
+  CHECK_NOTNULL(state_weights);
 
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
@@ -81,7 +82,7 @@ void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
   state_weights[0] = 0;
   for (int32_t i = 0; i != fsa.size2; ++i) {
     const auto &arc = arcs[i];
-    K2_DCHECK_GE(arc.dest_state, arc.src_state);
+    DCHECK_GE(arc.dest_state, arc.src_state);
     auto src_weight = state_weights[arc.src_state];
     auto &dest_weight = state_weights[arc.dest_state];
     dest_weight = LogAdd(dest_weight, src_weight + arc_weights[i]);
@@ -92,7 +93,7 @@ void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
                                   double *state_weights) {
   if (IsEmpty(fsa)) return;
   CheckInput(fsa, arc_weights);
-  K2_CHECK_NE(state_weights, nullptr);
+  CHECK_NOTNULL(state_weights);
 
   int32_t num_states = fsa.NumStates();
   std::fill_n(state_weights, num_states, kDoubleNegativeInfinity);
@@ -101,7 +102,7 @@ void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
   state_weights[fsa.FinalState()] = 0;
   for (int32_t i = fsa.size2 - 1; i >= 0; --i) {
     const auto &arc = arcs[i];
-    K2_DCHECK_GE(arc.dest_state, arc.src_state);
+    DCHECK_GE(arc.dest_state, arc.src_state);
     auto &src_weight = state_weights[arc.src_state];
     auto dest_weight = state_weights[arc.dest_state];
     src_weight = LogAdd(src_weight, dest_weight + arc_weights[i]);
@@ -135,7 +136,7 @@ void WfsaWithFbWeights::ComputeForwardWeights() {
   if (weight_type == kMaxWeight) {
     for (auto i = 0; i != fsa.size2; ++i) {
       const auto &arc = arcs[i];
-      K2_DCHECK_GE(arc.dest_state, arc.src_state);
+      DCHECK_GE(arc.dest_state, arc.src_state);
       auto src_weight = forward_state_weights[arc.src_state];
       auto &dest_weight = forward_state_weights[arc.dest_state];
 
@@ -145,7 +146,7 @@ void WfsaWithFbWeights::ComputeForwardWeights() {
   } else if (weight_type == kLogSumWeight) {
     for (std::size_t i = 0; i != fsa.size2; ++i) {
       const auto &arc = arcs[i];
-      K2_DCHECK_GE(arc.dest_state, arc.src_state);
+      DCHECK_GE(arc.dest_state, arc.src_state);
       auto src_weight = forward_state_weights[arc.src_state];
       auto &dest_weight = forward_state_weights[arc.dest_state];
 
@@ -153,7 +154,7 @@ void WfsaWithFbWeights::ComputeForwardWeights() {
       dest_weight = LogAdd(dest_weight, r);
     }
   } else {
-    K2_LOG(FATAL) << "Unreachable code is executed!";
+    LOG(FATAL) << "Unreachable code is executed!";
   }
 }
 
@@ -166,7 +167,7 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
   if (weight_type == kMaxWeight) {
     for (auto i = fsa.size2 - 1; i >= 0; --i) {
       const auto &arc = arcs[i];
-      K2_DCHECK_GE(arc.dest_state, arc.src_state);
+      DCHECK_GE(arc.dest_state, arc.src_state);
       auto &src_weight = backward_state_weights[arc.src_state];
       auto dest_weight = backward_state_weights[arc.dest_state];
 
@@ -176,7 +177,7 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
   } else if (weight_type == kLogSumWeight) {
     for (auto i = fsa.size2 - 1; i >= 0; --i) {
       const auto &arc = arcs[i];
-      K2_DCHECK_GE(arc.dest_state, arc.src_state);
+      DCHECK_GE(arc.dest_state, arc.src_state);
       auto &src_weight = backward_state_weights[arc.src_state];
       auto dest_weight = backward_state_weights[arc.dest_state];
 
@@ -184,7 +185,7 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
       src_weight = LogAdd(src_weight, r);
     }
   } else {
-    K2_LOG(FATAL) << "Unreachable code is executed!";
+    LOG(FATAL) << "Unreachable code is executed!";
   }
 }
 

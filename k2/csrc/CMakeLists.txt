@@ -19,6 +19,7 @@ set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # lib deps
 target_link_libraries(context PUBLIC cub)
+target_link_libraries(context PUBLIC glog)
 
 #---------------------------- Test K2 CUDA sources ----------------------------
 

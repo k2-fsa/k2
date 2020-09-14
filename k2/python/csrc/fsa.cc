@@ -8,7 +8,6 @@
 #include "k2/python/csrc/fsa.h"
 
 #include <memory>
-#include <sstream>
 
 #include "k2/csrc/host/fsa.h"
 #include "k2/python/csrc/tensor.h"
@@ -22,19 +21,19 @@ class DLPackFsa : public Fsa {
   DLPackFsa(py::capsule cap_indexes, py::capsule cap_data)
       : indexes_tensor_(new Tensor(cap_indexes)),
         data_tensor_(new Tensor(cap_data)) {
-    K2_CHECK_EQ(indexes_tensor_->dtype(), kInt32Type);
-    K2_CHECK_EQ(indexes_tensor_->NumDim(), 1);
-    K2_CHECK_GE(indexes_tensor_->Shape(0), 1);
-    K2_CHECK_EQ(indexes_tensor_->Stride(0), 1);
+    CHECK_EQ(indexes_tensor_->dtype(), kInt32Type);
+    CHECK_EQ(indexes_tensor_->NumDim(), 1);
+    CHECK_GE(indexes_tensor_->Shape(0), 1);
+    CHECK_EQ(indexes_tensor_->Stride(0), 1);
 
-    K2_CHECK_EQ(data_tensor_->dtype(), kInt32Type);
-    K2_CHECK_EQ(data_tensor_->NumDim(), 2);
-    K2_CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
-    K2_CHECK_EQ(data_tensor_->Shape(1) * data_tensor_->BytesPerElement(),
+    CHECK_EQ(data_tensor_->dtype(), kInt32Type);
+    CHECK_EQ(data_tensor_->NumDim(), 2);
+    CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
+    CHECK_EQ(data_tensor_->Shape(1) * data_tensor_->BytesPerElement(),
              sizeof(Arc));
-    K2_CHECK_EQ(data_tensor_->Stride(0) * data_tensor_->BytesPerElement(),
+    CHECK_EQ(data_tensor_->Stride(0) * data_tensor_->BytesPerElement(),
              sizeof(Arc));
-    K2_CHECK_EQ(data_tensor_->Stride(1), 1);
+    CHECK_EQ(data_tensor_->Stride(1), 1);
 
     int32_t size1 = indexes_tensor_->Shape(0) - 1;
     int32_t size2 = data_tensor_->Shape(0);
