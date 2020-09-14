@@ -12,7 +12,6 @@
 #include "k2/csrc/host/rmepsilon.h"
 
 #include <algorithm>
-#include <glog/logging.h>
 #include <map>
 #include <memory>
 #include <queue>
@@ -45,12 +44,12 @@ namespace {
  */
 static int32_t MapStates(const k2::Fsa &fsa_in, std::vector<char> *non_eps_in,
                          std::vector<int32_t> *state_map) {
-  CHECK_NOTNULL(non_eps_in);
-  CHECK_NOTNULL(state_map);
+  K2_CHECK_NE(non_eps_in, nullptr);
+  K2_CHECK_NE(state_map, nullptr);
 
   int32_t num_states_in = fsa_in.NumStates();
-  CHECK_EQ(num_states_in, non_eps_in->size());
-  CHECK_EQ(num_states_in, state_map->size());
+  K2_CHECK_EQ(num_states_in, non_eps_in->size());
+  K2_CHECK_EQ(num_states_in, state_map->size());
 
   // identify all states that should be kept
   auto &non_eps_in_values = *non_eps_in;
@@ -59,7 +58,7 @@ static int32_t MapStates(const k2::Fsa &fsa_in, std::vector<char> *non_eps_in,
   for (const auto &arc : fsa_in) {
     // We suppose the input fsa is top-sorted, but only check this in DEBUG
     // time.
-    DCHECK_GE(arc.dest_state, arc.src_state);
+    K2_DCHECK_GE(arc.dest_state, arc.src_state);
     if (arc.label != k2::kEpsilon) non_eps_in_values[arc.dest_state] = 1;
   }
 
@@ -107,7 +106,7 @@ static void TraceBackRmEpsilons(
     std::map<int32_t, k2::LogSumTracebackState *> *curr_states,
     const float *arc_weights_in, int32_t last_arc_index,
     std::vector<std::pair<int32_t, float>> *deriv_out) {
-  CHECK_EQ(curr_states->size(), 1);
+  K2_CHECK_EQ(curr_states->size(), 1);
   deriv_out->clear();
   // push derivative info of the last arc
   deriv_out->emplace_back(last_arc_index, 1);
@@ -141,11 +140,11 @@ static void TraceBackRmEpsilons(
     // we'll remove it now. As std::map.erase() does not support passing a
     // reverse iterator, we here pass --end();
     curr_states->erase(--curr_states->end());
-    CHECK(!curr_states->empty());
+    K2_CHECK(!curr_states->empty());
     state_ptr = curr_states->rbegin()->second;
   }
   // we have reached the state from which we are trying to remove epsilon arcs.
-  CHECK_EQ(curr_states->size(), 1);
+  K2_CHECK_EQ(curr_states->size(), 1);
 }
 
 /**
@@ -159,7 +158,7 @@ static void TraceBackRmEpsilons(
     std::map<int32_t, k2::MaxTracebackState *> *curr_states,
     const float *unused,  // arc_weights_in, unused
     int32_t last_arc_index, std::vector<int32_t> *deriv_out) {
-  CHECK_EQ(curr_states->size(), 1);
+  K2_CHECK_EQ(curr_states->size(), 1);
   deriv_out->clear();
   // push derivative info of the last arc
   deriv_out->push_back(last_arc_index);
@@ -177,8 +176,8 @@ namespace k2 {
 template <typename TracebackState>
 void EpsilonsRemover<TracebackState>::GetSizes(
     Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *arc_derivs_size) {
-  CHECK_NOTNULL(fsa_size);
-  CHECK_NOTNULL(arc_derivs_size);
+  K2_CHECK_NE(fsa_size, nullptr);
+  K2_CHECK_NE(arc_derivs_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   arc_derivs_size->size1 = arc_derivs_size->size2 = 0;
 
@@ -280,21 +279,21 @@ void EpsilonsRemover<TracebackState>::GetOutput(
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
   if (IsEmpty(fsa_in_.fsa)) return;
 
-  CHECK_NOTNULL(fsa_out);
-  CHECK_NOTNULL(arc_weights_out);
-  CHECK_NOTNULL(arc_derivs);
+  K2_CHECK_NE(fsa_out, nullptr);
+  K2_CHECK_NE(arc_weights_out, nullptr);
+  K2_CHECK_NE(arc_derivs, nullptr);
 
   // output FSA
-  CHECK_EQ(arc_indexes_.size(), fsa_out->size1 + 1);
+  K2_CHECK_EQ(arc_indexes_.size(), fsa_out->size1 + 1);
   std::copy(arc_indexes_.begin(), arc_indexes_.end(), fsa_out->indexes);
-  CHECK_EQ(arcs_.size(), fsa_out->size2);
+  K2_CHECK_EQ(arcs_.size(), fsa_out->size2);
   std::copy(arcs_.begin(), arcs_.end(), fsa_out->data);
 
   // output arc weights
   std::copy(arc_weights_.begin(), arc_weights_.end(), arc_weights_out);
 
   // output arc derivative information
-  CHECK_EQ(arc_derivs_.size(), arc_derivs->size1);
+  K2_CHECK_EQ(arc_derivs_.size(), arc_derivs->size1);
   int32_t num_derivs = 0;
   for (int32_t i = 0; i != arc_derivs->size1; ++i) {
     arc_derivs->indexes[i] = num_derivs;
