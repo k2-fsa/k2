@@ -68,7 +68,7 @@ class Array1 {
     Init(ctx, size);
 
     // TODO(haowen): there's no such definition
-    // `Eval(ContextPtr, T*, int, Callable&)` now
+    // `Eval(ContextPtr, T*, int32_t, Callable&)` now
     Eval(ctx, Data(), size, std::forward<Callable>(callable));
   }
   */

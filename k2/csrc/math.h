@@ -27,8 +27,7 @@ namespace k2 {
  */
 int32_t HighestBitSet(int32_t i);
 
-
-// returns random int from [min..max]
+// returns random int32_t from [min..max]
 int32_t RandInt(int32_t min, int32_t max);
 
 // Returns random ints from a distribution that gives more weight to lower
@@ -36,9 +35,6 @@ int32_t RandInt(int32_t min, int32_t max);
 // we aren't relying on any exact properties.
 int32_t RandIntGeometric(int32_t min, int32_t max);
 
-
-
-}
-
+}  // namespace k2
 
 #endif  // K2_CSRC_MATH_H_

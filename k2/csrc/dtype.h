@@ -27,7 +27,7 @@ enum BaseType {      // BaseType is the *general type*
 
 class DtypeTraits {
  public:
-  int NumBytes() const { return num_bytes_; }
+  int32_t NumBytes() const { return num_bytes_; }
   BaseType GetBaseType() const { return static_cast<BaseType>(base_type_); }
   const char *Name() const { return name_; }
 
@@ -166,13 +166,12 @@ struct DtypeOf<uint64_t> {
       }                                                                  \
       default:                                                           \
         K2_LOG(FATAL)                                                    \
-            << "Dtype " << TraitsOf(Dtype).Name()                        \
+            << "Dtype " << TraitsOf(DtypeValue).Name()                   \
             << " not covered in switch statement.  p not supported for " \
                "this type?";                                             \
         break;                                                           \
     }                                                                    \
-    while (0)
-
+  } while (0)
 }  // namespace k2
 
 #endif  // K2_CSRC_DTYPE_H_

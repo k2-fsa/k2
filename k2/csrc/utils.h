@@ -127,7 +127,7 @@ namespace k2 {
      Sometimes we'll want to know the number of elements in sub-lists, and we
      have a notation for the computations involved in that.  Suppose we want to
      know the number of elements in T[0].  We'll compute:
-       int idx0 = 0,
+       int32_t idx0 = 0,
            idx0x = t.row_splits1[idx0],
            idx0x_next = t.row_splits1[idx0 + 1],
            idx0xx = t.row_splits2[idx0],
@@ -142,8 +142,8 @@ namespace k2 {
      E.g. suppose we want the offset of element t[ idx0, idx1, idx2 ]
      relative to the start of the sub-array t[idx0].  We'd do this as
      follows:
-        int idx0, idx1, idx2;  # provided
-        int idx0x = t.row_splits1[idx0],
+        int32_t idx0, idx1, idx2;  # provided
+        int32_t idx0x = t.row_splits1[idx0],
             idx01 = idx0x + idx1,
             idx01x = t.row_splits2[idx1],
             idx012 = idx01x + idx2,
@@ -193,7 +193,7 @@ namespace k2 {
   10 15 ].
  */
 template <typename SrcPtr, typename DestPtr>
-void ExclusiveSum(ContextPtr &c, int n, SrcPtr src, DestPtr dest);
+void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest);
 
 /* Return the maximum value of the device array 't'.  Note: the sum will be
    initialized with T(0).
@@ -436,7 +436,7 @@ __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
 }
 
 /*
- 1:1 Conversion float <---> sortable int We convert floats to sortable ints in
+ 1:1 Conversion float <---> sortable int32_t We convert floats to sortable ints in
  order to use native atomics operation, which are way faster than looping over
  atomicCAS
 */
@@ -469,8 +469,6 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
 
 }  // namespace k2
 
-#define IS_IN_K2_CSRC_UTILS_H_
 #include "k2/csrc/utils_inl.h"
-#undef IS_IN_K2_CSRC_UTILS_H_
 
 #endif  // K2_CSRC_UTILS_H_

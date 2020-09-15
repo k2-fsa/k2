@@ -188,7 +188,7 @@ inline void MemoryCopy(void *dst, const void *src, std::size_t count,
   General usage would be:
      ContextPtr c;  // passed in
      BackgroundRunner br;
-     for (int i = 0; i < N; ++i) {
+     for (int32_t i = 0; i < N; ++i) {
         std::function<void()> lambda = [=] () {
         ContextPtr c_child = c.Child();
            // do something here, possibly with multiple steps...
@@ -267,10 +267,10 @@ struct Region : public std::enable_shared_from_this<Region> {
                       // points to this Region (this is relevant for things that
                       // behave like resizable vectors).
 
-  // You need template arg to invoke this, e.g. region->GetData<int>();
+  // You need template arg to invoke this, e.g. region->GetData<int32_t>();
   // You can also choose to template additionally on the device-type, like
-  // region->GetData<int,kGpu>(), to activate a check that it's on the expected
-  // device.
+  // region->GetData<int32_t,kGpu>(), to activate a check that it's on the
+  // expected device.
   template <typename T = void, DeviceType d = kUnk>
   T *GetData() {
     if (d != kUnk) K2_CHECK_EQ(d, context->GetDeviceType());
@@ -341,8 +341,8 @@ template <typename LambdaT>
 __global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
   // actually threadIdx.y will always be 1 for now so we could drop that part of
   // setting i..
-  int i = blockIdx.y * blockDim.y + threadIdx.y;
-  int j = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_t i = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_t j = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < m && j < n) {
     lambda(i, j);
   }

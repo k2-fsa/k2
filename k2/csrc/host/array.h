@@ -44,7 +44,7 @@ struct StridedPtr {
     return *this;
   }
   // postfix increment
-  StridedPtr operator++(int) {
+  StridedPtr operator++(int32_t) {
     StridedPtr tmp(*this);
     ++(*this);
     return tmp;

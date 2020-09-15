@@ -60,7 +60,7 @@ class CudaContext : public Context {
   ContextPtr GetCpuContext() override { return nullptr; }
   ContextPtr GetPinnedContext() override { return nullptr; }
   DeviceType GetDeviceType() const override { return kCuda; }
-  int GetDeviceId() const override { return gpu_id_; }
+  int32_t GetDeviceId() const override { return gpu_id_; }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
     void *p = nullptr;

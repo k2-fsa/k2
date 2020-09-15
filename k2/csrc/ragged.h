@@ -204,7 +204,8 @@ class RaggedShapeIndexIterator {
  private:
   void UpdateVec() {
     K2_CHECK(!Done());
-    int32_t idx = linear_idx_, num_axes = row_splits_.size() + 1;
+    int32_t idx = linear_idx_,
+            num_axes = static_cast<int32_t>(row_splits_.size() + 1);
     for (int32_t axis = num_axes - 1; axis > 0; axis--) {
       int32_t prev_idx = row_ids_[axis - 1][idx],
               row_start = row_splits_[axis - 1][prev_idx],

@@ -126,7 +126,7 @@ Tensor Tensor::Index(int32_t axis, int32_t index) const {
 void Tensor::Init(ContextPtr c) {
   int32_t storage_size = impl_->shape.StorageSize();
   int32_t element_size = TraitsOf(impl_->dtype).NumBytes();
-  impl_->data = NewRegion(c, storage_size * element_size);
+  impl_->data = NewRegion(c, static_cast<size_t>(storage_size * element_size));
   impl_->bytes_offset = 0;
 }
 

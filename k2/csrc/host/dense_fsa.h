@@ -149,7 +149,7 @@ struct DenseFsaVecMeta {
     return reinterpret_cast<int32_t *>(frame_info() + frame_info_dim());
   }
   int32_t frame_index_dim() {
-    int32 num_frames_padded = seg_frame_index[num_segs],
+    int32_t num_frames_padded = seg_frame_index[num_segs],
           num_frames = num_frames_padded - num_segs;
     return num_frames;
   }

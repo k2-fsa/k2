@@ -9,10 +9,12 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/compose.h"
 
 #include <limits>
 #include <vector>
+
+#include "k2/csrc/fsa_algo.h"
 
 namespace k2 {
 
@@ -287,7 +289,7 @@ class MultiGraphDenseIntersect {
                     between min_active and max_active.
   */
   Array1<float> GetPruningCutoffs(const Ragged3<float> &arc_end_scores) {
-    int32 num_fsas = arc_end_scores.Dim0();
+    int32_t num_fsas = arc_end_scores.Dim0();
 
     // get the maximum score from each sub-list (i.e. each FSA, on this frame).
     // Note: can probably do this with a cub Reduce operation using an operator
@@ -401,7 +403,7 @@ class MultiGraphDenseIntersect {
     // sequence.
     const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1);
     const float *score_data = b_fsas_.scores.Data();
-    int score_num_cols = b_fsas_.scores.Dim1();
+    int32_t score_num_cols = b_fsas_.scores.Dim1();
 
     Ragged3<ArcInfo> ai(ai_shape);
     ArcInfo *ai_data = ai.values.Data();  // uninitialized
@@ -444,7 +446,7 @@ class MultiGraphDenseIntersect {
     Does the forward-propagation (basically: the decoding step) and
     returns a newly allocated FrameInfo* object for the next frame.
    */
-  FrameInfo *PropagateForward(int t, FrameInfo *cur_frame) {
+  FrameInfo *PropagateForward(int32_t t, FrameInfo *cur_frame) {
     Ragged<StateInfo> &states = cur_frame->states;
     // ai has 3 axes: fsa_id, state, arc.
     Ragged<ArcInfo> ai = GetUnprunedArcs(t, cur_frame);

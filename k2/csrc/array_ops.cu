@@ -40,7 +40,7 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
   int32_t ans_size = sum;
 
   Array1<int32_t> ans(c, ans_size);
-  int32 *ans_data = ans.Data();
+  int32_t *ans_data = ans.Data();
 
   Array<int32_t *> last_elems_ptrs(c, last_elem_ptrs);
   Array<int32_t> data_offsets(c, num_arrays);
@@ -104,7 +104,7 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
       for (int32_t i = 0; i < num_arrays; i++) {
         int32_t this_array_size = src[i]->Dim();
         int32_t this_num_blocks = (this_array_size + block_dim - 1) / block_dim;
-        for (int32 j = 0; j < this_num_blocks; j++) {
+        for (int32_t j = 0; j < this_num_blocks; j++) {
           index_map.push_back((((uint64_t)j) << 32) + (uint64_t)i);
         }
       }

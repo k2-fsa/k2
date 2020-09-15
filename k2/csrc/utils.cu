@@ -94,7 +94,7 @@ static int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
 
 
     First kernel pseudocode: for each index 'i' into 't', it does:
-      for (int n=0, j = t[i]; j < t[i+1]; n++) {
+      for (int32_t n=0, j = t[i]; j < t[i+1]; n++) {
          x[j] = i;
          if (j & (1<<n))  j += (1 << n);
       }
@@ -111,7 +111,7 @@ static int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
   for
        // setting:
        orig_i = i;
-       for (int n=0; !is_valid_index(i, x[i]); n++) {
+       for (int32_t n=0; !is_valid_index(i, x[i]); n++) {
          if (i & (1<<n))  i -= (1 << n);
        }
        x[orig_i] = x[i];
@@ -137,9 +137,10 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
       int32_t avg_elems_per_row = (num_elems + num_rows - 1) / num_rows,
               threads_per_row = RoundUpToNearestPowerOfTwo(avg_elems_per_row),
               tot_threads = num_rows * threads_per_row;
-      int block_size = 256;
-      int grid_size = NumBlocks(tot_threads, block_size);
-      K2_CUDA_SAFE_CALL(RowSplitsToRowIdsKernel<<<grid_size, block_size, 0,
+      int32_t block_size = 256;
+      int32_t grid_size = NumBlocks(tot_threads, block_size);
+
+      K2_CUDA_SAFE_CALL(RowSplitsToRowIdsKernel<<<block_size, grid_size, 0,
                                                   c->GetCudaStream()>>>(
           num_rows, threads_per_row, row_splits, num_elems, row_ids));
     } else {
@@ -312,9 +313,9 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
       int32_t avg_rows_per_elem = num_rows / num_elems + 2,
               threads_per_elem = RoundUpToNearestPowerOfTwo(avg_rows_per_elem),
               tot_threads = num_elems * threads_per_elem;
-      int dim_block = 256;
-      int dim_grid = NumBlocks(tot_threads, dim_block);
-      K2_CUDA_SAFE_CALL(RowIdsToRowSplitsKernel<<<dim_block, dim_grid, 0,
+      int32_t block_size = 256;
+      int32_t grid_size = NumBlocks(tot_threads, block_size);
+      K2_CUDA_SAFE_CALL(RowIdsToRowSplitsKernel<<<block_size, grid_size, 0,
                                                   c->GetCudaStream()>>>(
           num_rows, threads_per_elem, row_ids, num_elems, row_splits));
     }
@@ -336,7 +337,7 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
  */
 
 /*
-template <int jobs_per_block, int threads_per_job>
+template <int32_t jobs_per_block, int32_t threads_per_job>
 __global__ void GetTaskRedirect(int32_t num_tasks, const int32_t *row_splits,
                                 TaskRedirect *redirect_out) {
   __shared__ int32_t temp[tasks_per_block];
@@ -597,11 +598,11 @@ void GetTaskRedirect(cudaStream_t stream, int32_t num_tasks,
     const int32_t threads_per_task = 8,
                   tot_threads = threads_per_task * num_tasks;
 
-    int dim_block = 256;
-    int dim_grid = NumBlocks(tot_threads, dim_block);
+    int32_t block_size = 256;
+    int32_t grid_size = NumBlocks(tot_threads, block_size);
 
     K2_CUDA_SAFE_CALL(GetTaskRedirect<threads_per_task>
-                      <<<dim_block, dim_grid, 0, stream>>>(
+                      <<<block_size, grid_size, 0, stream>>>(
                           num_tasks, row_splits, redirect_out));
   }
 }
