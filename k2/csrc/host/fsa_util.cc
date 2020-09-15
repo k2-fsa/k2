@@ -89,7 +89,7 @@ std::vector<int32_t> StringVectorToIntVector(
 // trim leading and trailing spaces of a string
 void TrimString(std::string *s) {
   K2_CHECK_NE(s, nullptr);
-  auto not_space = [](int c) { return std::isspace(c) == 0; };
+  auto not_space = [](int32_t c) { return std::isspace(c) == 0; };
 
   s->erase(s->begin(), std::find_if(s->begin(), s->end(), not_space));
   s->erase(std::find_if(s->rbegin(), s->rend(), not_space).base(), s->end());
@@ -200,7 +200,7 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
   if (arcs.empty()) return;
 
   using ArcWithIndex = std::pair<Arc, int32_t>;
-  int arc_id = 0;
+  int32_t arc_id = 0;
   std::vector<std::vector<ArcWithIndex>> vec;
   for (const auto &arc : arcs) {
     auto src_state = arc.src_state;
@@ -425,7 +425,7 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
   if (arcs.empty()) return;
 
   using ArcWithIndex = std::pair<Arc, int32_t>;
-  int arc_id = 0;
+  int32_t arc_id = 0;
   std::vector<std::vector<ArcWithIndex>> vec;
   for (const auto &arc : arcs) {
     auto src_state = arc.src_state;

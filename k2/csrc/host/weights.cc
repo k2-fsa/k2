@@ -19,11 +19,9 @@
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
 
-
 namespace k2host {
 
-void ComputeForwardMaxWeights(const Fsa &fsa,
-                              double *state_weights) {
+void ComputeForwardMaxWeights(const Fsa &fsa, double *state_weights) {
   if (IsEmpty(fsa)) return;
   K2_DCHECK(IsValid(fsa));  // TODO(dan): make this run only in paranoid mode.
   K2_CHECK_NE(state_weights, nullptr);
@@ -42,8 +40,7 @@ void ComputeForwardMaxWeights(const Fsa &fsa,
   }
 }
 
-void ComputeBackwardMaxWeights(const Fsa &fsa,
-                               double *state_weights) {
+void ComputeBackwardMaxWeights(const Fsa &fsa, double *state_weights) {
   if (IsEmpty(fsa)) return;
   K2_CHECK_NE(state_weights, nullptr);
 
@@ -61,8 +58,7 @@ void ComputeBackwardMaxWeights(const Fsa &fsa,
   }
 }
 
-void ComputeForwardLogSumWeights(const Fsa &fsa,
-                                 double *state_weights) {
+void ComputeForwardLogSumWeights(const Fsa &fsa, double *state_weights) {
   if (IsEmpty(fsa)) return;
   K2_DCHECK(IsValid(fsa));  // TODO(dan): make this run only in paranoid mode.
   K2_CHECK_NE(state_weights, nullptr);
@@ -81,8 +77,7 @@ void ComputeForwardLogSumWeights(const Fsa &fsa,
   }
 }
 
-void ComputeBackwardLogSumWeights(const Fsa &fsa,
-                                  double *state_weights) {
+void ComputeBackwardLogSumWeights(const Fsa &fsa, double *state_weights) {
   if (IsEmpty(fsa)) return;
   K2_DCHECK(IsValid(fsa));  // TODO(dan): make this run only in paranoid mode.
   K2_CHECK_NE(state_weights, nullptr);
@@ -101,8 +96,7 @@ void ComputeBackwardLogSumWeights(const Fsa &fsa,
   }
 }
 
-WfsaWithFbWeights::WfsaWithFbWeights(const Fsa &fsa,
-                                     FbWeightType t,
+WfsaWithFbWeights::WfsaWithFbWeights(const Fsa &fsa, FbWeightType t,
                                      double *forward_state_weights,
                                      double *backward_state_weights)
     : fsa(fsa),

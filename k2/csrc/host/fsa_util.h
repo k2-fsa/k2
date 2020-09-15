@@ -94,7 +94,6 @@ void GetArcWeights(const float *arc_weights_in,
 void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
                    int32_t num_arcs, float *arc_weights_out);
 
-
 /* Reorder a list of arcs to get a valid FSA. This function will be used in a
    situation that the input list of arcs is not sorted by src_state, we'll
    reorder the arcs and generate the corresponding valid FSA. Note that we don't

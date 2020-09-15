@@ -12,7 +12,6 @@
 #include "k2/csrc/host/aux_labels.h"
 
 #include <algorithm>
-
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -220,8 +219,8 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
     if (pos_end - pos_begin <= 1) {
       int32_t curr_label =
           (pos_end - pos_begin == 0) ? kEpsilon : labels_in_.data[pos_begin];
-      arcs.emplace_back(state_map[src_state], state_map[dest_state],
-                        curr_label, arc.weight);
+      arcs.emplace_back(state_map[src_state], state_map[dest_state], curr_label,
+                        arc.weight);
     } else {
       // expand arcs with olabels
       arcs.emplace_back(state_map[src_state], state_ids[dest_state] + 1,

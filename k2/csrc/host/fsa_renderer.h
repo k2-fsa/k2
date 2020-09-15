@@ -21,8 +21,7 @@ namespace k2host {
 // Get a GraphViz representation of an fsa.
 class FsaRenderer {
  public:
-  explicit FsaRenderer(const Fsa &fsa)
-      : fsa_(fsa) { }
+  explicit FsaRenderer(const Fsa &fsa) : fsa_(fsa) {}
 
   // Return a GraphViz representation of the fsa
   std::string Render() const;

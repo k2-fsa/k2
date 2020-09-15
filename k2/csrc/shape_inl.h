@@ -12,10 +12,13 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#ifndef K2_CSRC_SHAPE_INL_H_
+#define K2_CSRC_SHAPE_INL_H_
+
 namespace k2 {
 
 template <typename T>
-T Array1::operator [] (int32_t i) {
+T Array1::operator[](int32_t i) {
   Context *c = Context().get();
   DeviceType t = c->GetDeviceType();
   K2_CHECK_LE(static_cast<uint32_t>(i), static_cast<uint32_t>(size_));
@@ -36,10 +39,14 @@ T Array1::operator [] (int32_t i) {
     cudaEventRecord(event, stream);
     cudaStreamWaitEvent(CU_DEFAULT_STREAM, event, 0);
     T ans;
-    cudaMemcpy((void*)&ans, (void*)(data_ + i), sizeof(T),
+    cudaMemcpy(reinterpret_cast<void *>(&ans),
+               reinterpret_cast<void *>(data_ + 1),
+               sizeof(T),
                cudaMemcpyDeviceToHost);
     return T;
   }
 }
 
 }  // namespace k2
+
+#endif  // K2_CSRC_SHAPE_INL_H_

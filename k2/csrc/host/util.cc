@@ -23,7 +23,7 @@ void *MemAlignedMalloc(std::size_t nbytes, std::size_t alignment) {
   // windows
   p = _aligned_malloc(nbytes, alignment);
 #else
-  int ret = posix_memalign(&p, alignment, nbytes);
+  int32_t ret = posix_memalign(&p, alignment, nbytes);
   K2_CHECK_EQ(ret, 0);
 #endif
 

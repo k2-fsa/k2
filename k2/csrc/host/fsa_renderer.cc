@@ -55,8 +55,7 @@ std::string ProcessState(const Fsa &fsa, int32_t state) {
     int32_t label = arc.label;
     os << "          " << src << " -> " << dest << " [label = \"" << label;
     if (arc.weight != 0.0)
-      os << "/" << std::fixed << std::setprecision(1)
-         << arc.weight;
+      os << "/" << std::fixed << std::setprecision(1) << arc.weight;
     os << "\", fontsize = 14];"
        << "\n";
   }

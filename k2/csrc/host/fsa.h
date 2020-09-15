@@ -9,7 +9,6 @@
 #define K2_CSRC_HOST_FSA_H_
 
 #include <cstdint>
-
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -40,18 +39,20 @@ struct Arc {
                   // the one that appears on the arc will be the one that
                   // participates in whatever operation you are doing
 
-  float weight;    // log-prob of this arc, or the negative of a cost.
-                  // Note: in some contexts, the scores/weights are
-                  // taken to be zero (?)
+  float weight;  // log-prob of this arc, or the negative of a cost.
+                 // Note: in some contexts, the scores/weights are
+                 // taken to be zero (?)
   Arc() = default;
 
   Arc(int32_t src_state, int32_t dest_state, int32_t label, float weight)
-      : src_state(src_state), dest_state(dest_state),
-        label(label),  weight(weight) {}
+      : src_state(src_state),
+        dest_state(dest_state),
+        label(label),
+        weight(weight) {}
 
   bool operator==(const Arc &other) const {
     return std::tie(src_state, dest_state, label, weight) ==
-        std::tie(src_state, other.dest_state, other.label, weight);
+           std::tie(src_state, other.dest_state, other.label, weight);
   }
 
   bool operator!=(const Arc &other) const { return !(*this == other); }
@@ -59,7 +60,7 @@ struct Arc {
   bool operator<(const Arc &other) const {
     // compares `label` first, then `dest_state`, then, 'weight
     return std::tie(label, dest_state, weight) <
-      std::tie(other.label, other.dest_state, weight);
+           std::tie(other.label, other.dest_state, weight);
   }
 };
 

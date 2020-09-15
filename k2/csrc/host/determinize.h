@@ -15,7 +15,6 @@
 
 #include <algorithm>
 #include <cassert>
-
 #include <iterator>
 #include <limits>
 #include <memory>
@@ -132,7 +131,7 @@ class Determinizer {
   int64_t max_step_;
 
   float effective_beam_;
-  std::vector<Arc> arcs_;           // arcs of fsa_out
+  std::vector<Arc> arcs_;  // arcs of fsa_out
   std::vector<std::vector<typename TracebackState::DerivType>> arc_derivs_;
 };
 

@@ -218,7 +218,7 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i) {
   ContextPtr c = Context();
   for (int32_t i = 2; i < num_axes; ++i) {
     const Array1<int32_t> &src_row_splits = src_axes[i - 1].row_splits;
-    int num_rows = idx_next - idx;
+    int32_t num_rows = idx_next - idx;
     int32_t offset = idx;
     idx = src_row_splits[idx];
     idx_next = src_row_splits[idx_next];

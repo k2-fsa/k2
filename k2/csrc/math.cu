@@ -29,10 +29,10 @@ int32_t HighestBitSet(int32_t i) {
   return 32;
 }
 
-// returns random int from [min..max]
+// returns random int32_t from [min..max]
 int32_t RandInt(int32_t min, int32_t max) {
   K2_CHECK_GE(max, min);
-  return (min + (rand() % (max + 1 - min))); // NOLINT
+  return (min + (rand() % (max + 1 - min)));  // NOLINT
 }
 
 // Returns random ints from a distribution that gives more weight to lower

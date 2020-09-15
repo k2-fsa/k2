@@ -10,18 +10,15 @@
  */
 
 #include "k2/csrc/fsa_algo.h"
-#include "k2/csrc/host_shim.h"
 #include "k2/csrc/host/connect.h"
+#include "k2/csrc/host_shim.h"
 
 // this contains a subset of the algorithms in fsa_algo.h; currently it just
 // contains one that are wrappings of the corresponding algorithms in
 // host/.
 namespace k2 {
 
-
-bool ConnectFsa(Fsa &src,
-                Fsa *dest,
-                Array1<int32_t> *arc_map) {
+bool ConnectFsa(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map) {
   k2host::Fsa host_fsa = FsaToHostFsa(src);
   k2host::Connection c(host_fsa);
   k2host::Array2Size<int32_t> size;
@@ -37,7 +34,5 @@ bool ConnectFsa(Fsa &src,
   *dest = creator.GetFsa();
   return ans;
 }
-
-
 
 }  // namespace k2

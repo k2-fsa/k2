@@ -10,13 +10,13 @@
 
 #include <algorithm>
 #include <functional>
-
 #include <iterator>
 #include <limits>
 #include <memory>
 #include <type_traits>
 #include <utility>
 #include <vector>
+
 #include "k2/csrc/log.h"
 
 namespace k2host {
@@ -44,7 +44,7 @@ struct StridedPtr {
     return *this;
   }
   // postfix increment
-  StridedPtr operator++(int) {
+  StridedPtr operator++(int32_t) {
     StridedPtr tmp(*this);
     ++(*this);
     return tmp;

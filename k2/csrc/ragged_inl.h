@@ -12,6 +12,11 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#ifndef K2_CSRC_RAGGED_INL_H_
+#define K2_CSRC_RAGGED_INL_H_
+
+#include <vector>
+
 namespace k2 {
 
 template <typename T>
@@ -83,3 +88,5 @@ Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
 }
 
 }  // namespace k2
+
+#endif  // K2_CSRC_RAGGED_INL_H_

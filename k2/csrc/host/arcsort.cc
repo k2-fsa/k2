@@ -12,7 +12,6 @@
 #include "k2/csrc/host/arcsort.h"
 
 #include <algorithm>
-
 #include <numeric>
 #include <utility>
 #include <vector>

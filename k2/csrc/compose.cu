@@ -9,10 +9,10 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/fsa_algo.h"
-
 #include <limits>
 #include <vector>
+
+#include "k2/csrc/fsa_algo.h"
 
 namespace k2 {
 
@@ -73,6 +73,78 @@ class MultiGraphDenseIntersect {
       state_map_ = Array2<int32_t>(a_fsas.TotSize1(), 1, -1);
     }
   }
+
+  /* Information associated with a state active on a particular frame..  */
+  struct StateInfo {
+    /* abs_state_id is the state-index in a_fsas_.  Note: the ind0 in here
+       won't necessarily match the ind0 within FrameInfo::state if
+       a_fsas_stride_ == 0. */
+    int32_t a_fsas_state_idx01;
+
+    /* Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
+       FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
+       represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
+       use max not log-sum).  You can take the pruned lattice and rescore it if
+       you want log-sum.  */
+    int32_t forward_loglike;
+
+    /* Note: this `backward_loglike` is the best score of any path from here to
+       the end, minus the best path in the overall FSA, i.e. it's the backward
+       score you get if, at the final-state, you set backward_loglike ==
+       forward_loglike. So backward_loglike + forward_loglike <= 0, and you can
+       treat it somewhat like a posterior (except they don't sum to one as we're
+       using max, not log-add).
+
+       Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
+       FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
+       represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
+       use max not log-sum).  You can take the pruned lattice and rescore it if
+       you want log-sum.  */
+    int32_t backward_loglike;
+  };
+
+  struct ArcInfo {              // for an arc that wasn't pruned away...
+    int32_t a_fsas_arc_idx012;  // the arc-index in a_fsas_.
+    float arc_loglike;  // loglike on this arc: equals loglike from data (nnet
+    // output, == b_fsas), plus loglike from the arc in
+    // a_fsas.
+
+    union {
+      // these 3 different ways of storing the index of the destination state
+      // are used at different stages of the algorithm; we give them different
+      // names for clarity.
+      int32_t dest_a_fsas_state_idx01;  // The destination-state as an index
+      // into a_fsas_.
+      int32_t dest_info_state_idx01;  // The destination-state as an index into
+      // the next FrameInfo's `arcs` or `states`
+      int32_t dest_info_state_idx1;   // The destination-state as an index the
+      // next FrameInfo's `arcs` or `states`,
+      // this time omitting the FSA-index.
+    } u;
+    float end_loglike;  // loglike at the end of the arc just before
+    // (conceptually) it joins the destination state.
+  };
+
+  // The information we have for each frame of the pruned-intersection (really:
+  // decoding) algorithm.  We keep an array of these, one for each frame, up to
+  // the length of the longest sequence we're decoding plus one.
+  struct FrameInfo {
+    // States that are active at the beginning of this frame.  Indexed
+    // [fsa_idx][state_idx], where fsa_idx indexes b_fsas_ (and a_fsas_, if
+    // a_fsas_stride_ != 0); and state_idx just enumerates the active states
+    // on this frame.
+    Ragged2<StateInfo> states;
+
+    // Indexed [fsa_idx][state_idx][arc_idx].. the first 2 indexes are
+    // the same as those into 'states' (the first 2 levels of the structure
+    // are shared), and the last one enumerates the arcs leaving each of those
+    // states.
+    //
+    // Note: there may be indexes [fsa_idx] that have no states (because that
+    // FSA had fewer frames than the max), and indexes [fsa_idx][state_idx] that
+    // have no arcs due to pruning.
+    Ragged3<ArcInfo> arcs;
+  };
 
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput(). */
@@ -287,7 +359,7 @@ class MultiGraphDenseIntersect {
                     between min_active and max_active.
   */
   Array1<float> GetPruningCutoffs(const Ragged3<float> &arc_end_scores) {
-    int32 num_fsas = arc_end_scores.Dim0();
+    int32_t num_fsas = arc_end_scores.Dim0();
 
     // get the maximum score from each sub-list (i.e. each FSA, on this frame).
     // Note: can probably do this with a cub Reduce operation using an operator
@@ -401,7 +473,7 @@ class MultiGraphDenseIntersect {
     // sequence.
     const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1);
     const float *score_data = b_fsas_.scores.Data();
-    int score_num_cols = b_fsas_.scores.Dim1();
+    int32_t score_num_cols = b_fsas_.scores.Dim1();
 
     Ragged3<ArcInfo> ai(ai_shape);
     ArcInfo *ai_data = ai.values.Data();  // uninitialized
@@ -444,7 +516,7 @@ class MultiGraphDenseIntersect {
     Does the forward-propagation (basically: the decoding step) and
     returns a newly allocated FrameInfo* object for the next frame.
    */
-  FrameInfo *PropagateForward(int t, FrameInfo *cur_frame) {
+  FrameInfo *PropagateForward(int32_t t, FrameInfo *cur_frame) {
     Ragged<StateInfo> &states = cur_frame->states;
     // ai has 3 axes: fsa_id, state, arc.
     Ragged<ArcInfo> ai = GetUnprunedArcs(t, cur_frame);
@@ -639,11 +711,11 @@ class MultiGraphDenseIntersect {
       K2_CHECK_EQ(state_map_data[state_map_idx], state_idx01);
       state_map_data[state_map_idx] = -1;
     }
-  };
-  Eval(c_, ans->states.values.Dim(), lambda_reset_state_map);
 
-  return ans;
-}
+    Eval(c_, ans->states.values.Dim(), lambda_reset_state_map);
+
+    return ans;
+  }
 
   /*
     Does backward propagation of log-likes, which means setting the
@@ -655,240 +727,166 @@ class MultiGraphDenseIntersect {
 
        @param [in]  cur_frame    The FrameInfo for the frame on which we want to
                                  set the forward log-like
-       @param [in]  next_frame  NULL if this is is the last frame of the sequence;
-                                otherwise the next frame's FrameInfo; arcs on
-                                `cur_frame` have transitions to states on `next_frame`.
-                                The `backward_loglike` values in `next_frame` are
-                                assumed to already be set.
+       @param [in]  next_frame  NULL if this is is the last frame of the
+    sequence; otherwise the next frame's FrameInfo; arcs on `cur_frame` have
+    transitions to states on `next_frame`. The `backward_loglike` values in
+    `next_frame` are assumed to already be set.
    */
-  void PropagateBackward(FrameInfo *cur_frame,
-                         FrameInfo *next_frame) {
-  int32_t num_states = cur_frame->states.values.Dim(),
-          num_arcs = cur_frame->arcs.values.Dim();
-  Ragged<StateInfo> &cur_states = cur_frame->states;  // 2 axes: fsa,state
-  StateInfo *cur_states_data = cur_states.values.Data();
+  void PropagateBackward(FrameInfo *cur_frame, FrameInfo *next_frame) {
+    int32_t num_states = cur_frame->states.values.Dim(),
+            num_arcs = cur_frame->arcs.values.Dim();
+    Ragged<StateInfo> &cur_states = cur_frame->states;  // 2 axes: fsa,state
+    StateInfo *cur_states_data = cur_states.values.Data();
 
-  int32_t tot_states = a_fsas_.TotSize1();
-  int32_t *a_fsas_row_ids1 = a_fsas_.RowIds(1),
-          *a_fsas_row_splits1 = a_fsas_.RowSplits(1);
+    int32_t tot_states = a_fsas_.TotSize1();
+    int32_t *a_fsas_row_ids1 = a_fsas_.RowIds(1),
+            *a_fsas_row_splits1 = a_fsas_.RowSplits(1);
 
-  const int32_t minus_inf =
-      FloatToOrderedInt(-std::numeric_limits<BaseFloat>::infinity());
+    const int32_t minus_inf =
+        FloatToOrderedInt(-std::numeric_limits<BaseFloat>::infinity());
 
-  /* arc_backward_probs represents the backward-prob at the beginning of the
-     arc.  Indexing is [frame_state_index][arc_index], where frame_state_index
-     and arc_index are respectively idx01 and ind2 w.r.t. frames_[t]->arcs. */
-  Ragged<int32_t> arc_backward_prob(cur_frame->arcs.RemoveAxis(0),
-                                    Array1<int32_t>(c_, num_arcs));
-  int32_t *arc_backward_prob_data = arc_backward_prob.values.Data();
+    /* arc_backward_probs represents the backward-prob at the beginning of the
+       arc.  Indexing is [frame_state_index][arc_index], where frame_state_index
+       and arc_index are respectively idx01 and ind2 w.r.t. frames_[t]->arcs. */
+    Ragged<int32_t> arc_backward_prob(cur_frame->arcs.RemoveAxis(0),
+                                      Array1<int32_t>(c_, num_arcs));
+    int32_t *arc_backward_prob_data = arc_backward_prob.values.Data();
 
-  ArcInfo *arcs_data = cur_frame->arcs.values.Data();
-  int32_t *arcs_rowids1 = cur_frame->arcs.RowIds(2).Data(),
-          *arcs_rowids2 = cur_frame->arcs.RowIds(2).Data(),
-          *arcs_row_splits1 = cur_frame->arcs.RowSplits(1).Data(),
-          *arcs_row_splits2 = cur_frame->arcs.RowSplits(2).Data(),
+    ArcInfo *arcs_data = cur_frame->arcs.values.Data();
+    int32_t *arcs_rowids1 = cur_frame->arcs.RowIds(2).Data(),
+            *arcs_rowids2 = cur_frame->arcs.RowIds(2).Data(),
+            *arcs_row_splits1 = cur_frame->arcs.RowSplits(1).Data(),
+            *arcs_row_splits2 = cur_frame->arcs.RowSplits(2).Data(),
 
-          float beam = beam_;
+            float beam = beam_;
 
-  int32_t *oshape_row_splits1 = oshape_unpruned_.RowSplits(1),
-          *oshape_row_splits2 = oshape_unpruned_.RowSplits(2),
-          *oshape_row_splits3 = oshape_unpruned_.RowSplits(3);
+    int32_t *oshape_row_splits1 = oshape_unpruned_.RowSplits(1),
+            *oshape_row_splits2 = oshape_unpruned_.RowSplits(2),
+            *oshape_row_splits3 = oshape_unpruned_.RowSplits(3);
 
-  // these have the "output" formatting where we number things with
-  // oshape_unpruned_, which is indexed [fsa][t][state][arc].
-  char *keep_arcs_data = renumber_output_arcs_.Keep().Data(),
-       *keep_states_data = renumber_output_states_.Keep().Data();
+    // these have the "output" formatting where we number things with
+    // oshape_unpruned_, which is indexed [fsa][t][state][arc].
+    char *keep_arcs_data = renumber_output_arcs_.Keep().Data(),
+         *keep_states_data = renumber_output_states_.Keep().Data();
 
-  if (next_frame != NULL) {
-    // compute arc backward probs, and set elements of 'keep_arcs'
+    if (next_frame != NULL) {
+      // compute arc backward probs, and set elements of 'keep_arcs'
 
-    StateInfo *cur_states_data = cur_frame->states.values.Data();
+      StateInfo *cur_states_data = cur_frame->states.values.Data();
 
-    // arc_row_ids maps from arc-idx to frame-state-idx, i.e. idx012 into
-    // `arcs` to idx01 into `arcs`.
+      // arc_row_ids maps from arc-idx to frame-state-idx, i.e. idx012 into
+      // `arcs` to idx01 into `arcs`.
 
-    // next_states_row_splits1 maps from fsa_idx0 to state_idx01
-    int32_t *next_states_row_splits1 = next_frame->states.RowSplits(1).Data();
+      // next_states_row_splits1 maps from fsa_idx0 to state_idx01
+      int32_t *next_states_row_splits1 = next_frame->states.RowSplits(1).Data();
 
-    StateInfo *next_states_data = next_frame->states.values.Data();
-    auto lambda_set_arc_backward_prob_and_keep =
-        __host__ __device__[=](int32_t arcs_idx012)->void {
-      ArcInfo *arc = arcs_data + arcs_idx012;
-      int32_t state_idx01 = arcs_rowids2[arc_idx012],
-              fsa_idx0 = arc_rowids1[state_idx01],
-              fsa_idx0x = arc_row_splits1[fsa_idx0],
-              fsa_idx0xx = arc_row_splits2[fsa_idx0x],
-              arcs_idxx12 = arcs_idx012 - fsa_idx0xx;
+      StateInfo *next_states_data = next_frame->states.values.Data();
+      auto lambda_set_arc_backward_prob_and_keep =
+          __host__ __device__[=](int32_t arcs_idx012)->void {
+        ArcInfo *arc = arcs_data + arcs_idx012;
+        int32_t state_idx01 = arcs_rowids2[arc_idx012],
+                fsa_idx0 = arc_rowids1[state_idx01],
+                fsa_idx0x = arc_row_splits1[fsa_idx0],
+                fsa_idx0xx = arc_row_splits2[fsa_idx0x],
+                arcs_idxx12 = arcs_idx012 - fsa_idx0xx;
 
-      int32_t dest_state_idx01 = arc->u.dest_state_idx01,
-              next_state_idx0x = next_states_row_splits1[fsa_idx0],
-              dest_state_idx1 = dest_state_idx01 - next_state_idx0x;
-      arc->u.dest_state_idx1 = dest_state_idx1;
+        int32_t dest_state_idx01 = arc->u.dest_state_idx01,
+                next_state_idx0x = next_states_row_splits1[fsa_idx0],
+                dest_state_idx1 = dest_state_idx01 - next_state_idx0x;
+        arc->u.dest_state_idx1 = dest_state_idx1;
 
-      float arc_loglike = arc->arc_loglike;
-      int32_t dest_state_backward_loglike =
-          next_states_data[dest_state_idx01].backward_loglike;
-      // 'backward_loglike' is the loglike at the beginning of the arc
-      float backward_loglike =
-          arc_loglike + OrderedIntToFloat(dest_state_backward_loglike);
-      float src_state_forward_loglike = OrderedIntToFloat(
-          cur_states_data[arc_row_ids[arcs_idx012]].forward_loglike);
-      char keep_this_arc =
-          (backward_loglike + src_state_forward_loglike >= -beam);
-      int32_t oshape_arc_idx0x = oshape_row_splits1[fsa_idx0],
-              oshape_arc_idx01 = oshape_arc_idx0x + t,
-              oshape_arc_idx01x = oshape_row_splits2[oshape_arc_idx01],
-              oshape_arc_idx01xx = oshape_row_splits3[oshape_arc_idx01x],
-              oshape_arc_idx0123 = oshape_arc_idx01xx + arc_idxx12;
-      // note, for the previous line: indexes 1 and 2 of FrameInfo::arcs
-      // (==state,arc) become indexes 2 and 3 of oshape_unpruned_.
+        float arc_loglike = arc->arc_loglike;
+        int32_t dest_state_backward_loglike =
+            next_states_data[dest_state_idx01].backward_loglike;
+        // 'backward_loglike' is the loglike at the beginning of the arc
+        float backward_loglike =
+            arc_loglike + OrderedIntToFloat(dest_state_backward_loglike);
+        float src_state_forward_loglike = OrderedIntToFloat(
+            cur_states_data[arc_row_ids[arcs_idx012]].forward_loglike);
+        char keep_this_arc =
+            (backward_loglike + src_state_forward_loglike >= -beam);
+        int32_t oshape_arc_idx0x = oshape_row_splits1[fsa_idx0],
+                oshape_arc_idx01 = oshape_arc_idx0x + t,
+                oshape_arc_idx01x = oshape_row_splits2[oshape_arc_idx01],
+                oshape_arc_idx01xx = oshape_row_splits3[oshape_arc_idx01x],
+                oshape_arc_idx0123 = oshape_arc_idx01xx + arc_idxx12;
+        // note, for the previous line: indexes 1 and 2 of FrameInfo::arcs
+        // (==state,arc) become indexes 2 and 3 of oshape_unpruned_.
 
-      keep_arcs_data[oshape_arc_idx0123] = keep_this_arc;
-      arc_backward_prob_data[i] = FloatToOrderedInt(backward_loglike);
-    };
-    Eval(c_, arc_backward_prob.values.Dim(), lambda_set_arc_backward_prob);
-  } else {
-    assert(arc_backward_prob.Dim() == 0);
-  }
-  Eval(c_, cur_frame->arcs.values.Dim(), lambda_set_arc_backward_prob);
-
-  /* note, the elements of state_backward_prob that don't have arcs leaving them
-     will be set to the supplied default.  */
-  Array1<int32_t> state_backward_prob =
-      MaxPerSublist(arc_backward_prob,
-                    FloatToOrderedInt(-std::numeric_limits<float>::infinity()));
-
-  int32_t num_fsas = a_fsas_.Dim0();
-  assert(cur_frame->states.Dim0() == num_fsas);
-
-  auto lambda_set_state_backward_prob =
-      __host__ __device__[=](int32_t state_idx01)->void {
-    StateInfo *info = cur_states_data + state_idx01;
-    int32_t fsas_state_idx01 = info->fsas_state_idx01,
-            fsa_idx0 = a_fsas_row_ids1[fsas_state_idx01],
-            fsas_state_idx0x_next = a_fsas_row_splits1[fsa_idx0 + 1];
-    float forward_loglike = OrderedIntToFloat(info->forward_loglike),
-          backward_loglike;
-    int32_t is_final_state = (fsas_state_idx01 + 1 > fsas_state_idx0x_next);
-    if (is_final_state) {
-      backward_loglike = forward_loglike;
+        keep_arcs_data[oshape_arc_idx0123] = keep_this_arc;
+        arc_backward_prob_data[i] = FloatToOrderedInt(backward_loglike);
+      };
+      Eval(c_, arc_backward_prob.values.Dim(), lambda_set_arc_backward_prob);
     } else {
-      backward_loglike = FloatToOrderedInt(state_backward_prob[i]);
+      assert(arc_backward_prob.Dim() == 0);
     }
-    char keep_this_state = (backward_loglike + forward_loglike >= -beam);
+    Eval(c_, cur_frame->arcs.values.Dim(), lambda_set_arc_backward_prob);
 
-    // we can use the arcs row-splits because the structure of
-    // FrameInfo::states is the same as the top level structure of
-    // FrameInfo::arcs.
-    int32_t states_idx0x = next_arcs_row_splits1[fsa_idx0],
-            states_idxx1 = state_idx01 - state_idx0x;
+    /* note, the elements of state_backward_prob that don't have arcs leaving
+       them will be set to the supplied default.  */
+    Array1<int32_t> state_backward_prob = MaxPerSublist(
+        arc_backward_prob,
+        FloatToOrderedInt(-std::numeric_limits<float>::infinity()));
 
-    int32_t oshape_idx0x = oshape_row_splits1[fsa_idx0],
-            oshape_idx01 = oshape_idx0x + t,
-            oshape_idx01x = oshape_row_splits2[oshape_idx01],
-            oshape_idx012 = oshape_idx01x + states_idxx1;
-    // note: axis 1 of 'states' corresponds to axis 2 of 'oshape'; it's the
-    // state index.  Also,
+    int32_t num_fsas = a_fsas_.Dim0();
+    assert(cur_frame->states.Dim0() == num_fsas);
 
-    keep_states_data[oshape_idx012] = keep_this_state;
-    if (!keep_this_state) {
-      // The reason we set the backward_loglike to -infinity here if it's
-      // outside the beam, is to prevent disconnected states from appearing
-      // after pruning due to numerical roundoff effects near the boundary
-      // at `-beam`.  It would otherwise be correct and harmless to omit
-      // this if-block.
-      backward_loglike = -std::numeric_limits<float>::infinity();
-    }
-    info->backward_loglike = FloatToOrderedInt(backward_loglike);
-  };
+    auto lambda_set_state_backward_prob =
+        __host__ __device__[=](int32_t state_idx01)->void {
+      StateInfo *info = cur_states_data + state_idx01;
+      int32_t fsas_state_idx01 = info->fsas_state_idx01,
+              fsa_idx0 = a_fsas_row_ids1[fsas_state_idx01],
+              fsas_state_idx0x_next = a_fsas_row_splits1[fsa_idx0 + 1];
+      float forward_loglike = OrderedIntToFloat(info->forward_loglike),
+            backward_loglike;
+      int32_t is_final_state = (fsas_state_idx01 + 1 > fsas_state_idx0x_next);
+      if (is_final_state) {
+        backward_loglike = forward_loglike;
+      } else {
+        backward_loglike = FloatToOrderedInt(state_backward_prob[i]);
+      }
+      char keep_this_state = (backward_loglike + forward_loglike >= -beam);
 
-  Eval(c_, cur_frame->states.values.Dim(), lambda_set_state_backward_prob);
-}
+      // we can use the arcs row-splits because the structure of
+      // FrameInfo::states is the same as the top level structure of
+      // FrameInfo::arcs.
+      int32_t states_idx0x = next_arcs_row_splits1[fsa_idx0],
+              states_idxx1 = state_idx01 - state_idx0x;
 
-/* Information associated with a state active on a particular frame..  */
-struct StateInfo {
-  /* abs_state_id is the state-index in a_fsas_.  Note: the ind0 in here
-     won't necessarily match the ind0 within FrameInfo::state if
-     a_fsas_stride_ == 0. */
-  int32_t a_fsas_state_idx01;
+      int32_t oshape_idx0x = oshape_row_splits1[fsa_idx0],
+              oshape_idx01 = oshape_idx0x + t,
+              oshape_idx01x = oshape_row_splits2[oshape_idx01],
+              oshape_idx012 = oshape_idx01x + states_idxx1;
+      // note: axis 1 of 'states' corresponds to axis 2 of 'oshape'; it's the
+      // state index.  Also,
 
-  /* Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
-     FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
-     represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
-     use max not log-sum).  You can take the pruned lattice and rescore it if
-     you want log-sum.  */
-  int32_t forward_loglike;
+      keep_states_data[oshape_idx012] = keep_this_state;
+      if (!keep_this_state) {
+        // The reason we set the backward_loglike to -infinity here if it's
+        // outside the beam, is to prevent disconnected states from appearing
+        // after pruning due to numerical roundoff effects near the boundary
+        // at `-beam`.  It would otherwise be correct and harmless to omit
+        // this if-block.
+        backward_loglike = -std::numeric_limits<float>::infinity();
+      }
+      info->backward_loglike = FloatToOrderedInt(backward_loglike);
+    };
 
-  /* Note: this `backward_loglike` is the best score of any path from here to
-     the end, minus the best path in the overall FSA, i.e. it's the backward
-     score you get if, at the final-state, you set backward_loglike ==
-     forward_loglike. So backward_loglike + forward_loglike <= 0, and you can
-     treat it somewhat like a posterior (except they don't sum to one as we're
-     using max, not log-add).
+    Eval(c_, cur_frame->states.values.Dim(), lambda_set_state_backward_prob);
+  }
 
-     Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
-     FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
-     represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
-     use max not log-sum).  You can take the pruned lattice and rescore it if
-     you want log-sum.  */
-  int32_t backward_loglike;
-};
-
-struct ArcInfo {              // for an arc that wasn't pruned away...
-  int32_t a_fsas_arc_idx012;  // the arc-index in a_fsas_.
-  float
-      arc_loglike;  // loglike on this arc: equals loglike from data (nnet
-                    // output, == b_fsas), plus loglike from the arc in a_fsas.
-
-  union {
-    // these 3 different ways of storing the index of the destination state are
-    // used at different stages of the algorithm; we give them different names
-    // for clarity.
-    int32_t dest_a_fsas_state_idx01;  // The destination-state as an index into
-                                      // a_fsas_.
-    int32_t dest_info_state_idx01;    // The destination-state as an index into
-                                      // the next FrameInfo's `arcs` or `states`
-    int32_t dest_info_state_idx1;  // The destination-state as an index the next
-                                   // FrameInfo's `arcs` or `states`, this time
-                                   // omitting the FSA-index.
-  } u;
-  float end_loglike;  // loglike at the end of the arc just before
-                      // (conceptually) it joins the destination state.
-};
-
-// The information we have for each frame of the pruned-intersection (really:
-// decoding) algorithm.  We keep an array of these, one for each frame, up to
-// the length of the longest sequence we're decoding plus one.
-struct FrameInfo {
-  // States that are active at the beginning of this frame.  Indexed
-  // [fsa_idx][state_idx], where fsa_idx indexes b_fsas_ (and a_fsas_, if
-  // a_fsas_stride_ != 0); and state_idx just enumerates the active states
-  // on this frame.
-  Ragged2<StateInfo> states;
-
-  // Indexed [fsa_idx][state_idx][arc_idx].. the first 2 indexes are
-  // the same as those into 'states' (the first 2 levels of the structure
-  // are shared), and the last one enumerates the arcs leaving each of those
-  // states.
-  //
-  // Note: there may be indexes [fsa_idx] that have no states (because that
-  // FSA had fewer frames than the max), and indexes [fsa_idx][state_idx] that
-  // have no arcs due to pruning.
-  Ragged3<ArcInfo> arcs;
-};
-
-ContextPtr c_;
-FsaVec &a_fsas_;
-int32_t a_fsas_stride_;  // 1 if we use a different FSA per sequence, 0 if the
-                         // decoding graph is shared.
-DenseFsaVec &b_fsas_;
-float beam_;
-int32_t max_active_;
-int32_t max_active_;
-Array1<float> dynamic_beams_;  // dynamic beams (initially just beam_ but
-                               // change due to max_active/min_active
-                               // constraints).
-Array2<int32_t> state_map_;    // state_map_ is of size (total number of states
+  ContextPtr c_;
+  FsaVec &a_fsas_;
+  int32_t a_fsas_stride_;  // 1 if we use a different FSA per sequence, 0 if the
+                           // decoding graph is shared.
+  DenseFsaVec &b_fsas_;
+  float beam_;
+  int32_t max_active_;
+  int32_t min_active_;
+  Array1<float> dynamic_beams_;  // dynamic beams (initially just beam_ but
+                                 // change due to max_active/min_active
+                                 // constraints).
+  Array2<int32_t> state_map_;  // state_map_ is of size (total number of states
                                // in a_fsas_ * (a_fsas_.Dim0() == 1 ?
                                // b_fsas_.Dim0() : 1).
                                // (If all the streams share the same FSA in
@@ -899,23 +897,22 @@ Array2<int32_t> state_map_;    // state_map_ is of size (total number of states
                                // `states` array.  Between frames, all values
                                // have -1 in them.
 
-std::vector<FrameInfo *> frames_;
+  std::vector<FrameInfo *> frames_;
 
-// This is a rearranged version of the info in 'frames', computed at the end of
-// the forward pass before pruning.  It is indexed [fsa_id][t][state][arc].
-RaggedShape oshape_unpruned_;
+  // This is a rearranged version of the info in 'frames', computed at the end
+  // of the forward pass before pruning.  It is indexed [fsa_id][t][state][arc].
+  RaggedShape oshape_unpruned_;
 
-// these two Renumbering objects dictate how we renumber oshape_unpruned_,
-// i.e. which states and arcs we delete.  The data in their Keep() members,
-// which are vectors of chars, are written to in PropagateBackward().
-Renumbering renumber_output_states_;
-Renumbering renumber_output_arcs_;
+  // these two Renumbering objects dictate how we renumber oshape_unpruned_,
+  // i.e. which states and arcs we delete.  The data in their Keep() members,
+  // which are vectors of chars, are written to in PropagateBackward().
+  Renumbering renumber_output_states_;
+  Renumbering renumber_output_arcs_;
 
-// This is as oshape_unpruned_, but after the backward-pass pruning.
-// It is indexed [fsa_id][t][state][arc].
-RaggedShape oshape_pruned_;
-
-};  // namespace k2
+  // This is as oshape_unpruned_, but after the backward-pass pruning.
+  // It is indexed [fsa_id][t][state][arc].
+  RaggedShape oshape_pruned_;
+};
 
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
                           int32_t max_active_states, int32_t min_active_states,

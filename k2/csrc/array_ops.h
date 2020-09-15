@@ -28,8 +28,8 @@
 // TODO(haowen): manage/load block config with some classes? then we can get
 // different configuration depending on num_elements and data type.
 // block size for matrix transpose.
-static constexpr int kTransTileDim = 32;
-static constexpr int kTransBlockRows = 8;
+static constexpr int32_t kTransTileDim = 32;
+static constexpr int32_t kTransBlockRows = 8;
 
 namespace k2 {
 // TODO(haowen): move the implementations to file `op_inl.h` or
@@ -39,7 +39,7 @@ __global__ void TransposeKernel(int32_t rows, int32_t cols, const T *input,
                                 T *output) {
   // TODO(haowen): here we need to handle different type of T to avoid bank
   // conflicts, the size of cache now is fine for type size with 32bit (e.g.
-  // int32 or float).
+  // int32_t or float).
   __shared__ T cache[kTransTileDim][kTransTileDim + 1];
 
   // input index, in a coalesced manner.
@@ -93,8 +93,8 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
   DeviceType d = c->GetDeviceType();
   using SumType = typename std::decay<decltype(dest[0])>::type;
   if (d == kCpu) {
-    for (int i = 0; i < cols; ++i) {
-      for (int j = 0; j < rows; ++j) {
+    for (int32_t i = 0; i < cols; ++i) {
+      for (int32_t j = 0; j < rows; ++j) {
         dest_data[i * rows + j] = src_data[j * cols + i];
       }
     }
@@ -171,7 +171,7 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest);
                        transpose), axis = 1 means summation is over column axis.
  */
 template <typename T>
-void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int axis);
+void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int32_t axis);
 
 template <typename T>
 void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {

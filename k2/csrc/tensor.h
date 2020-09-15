@@ -160,8 +160,7 @@ class Tensor {
   inline bool SameDim(const Tensor &other) const {
     return impl_->shape.SameDims(other.GetShape());
   }
-  inline bool NumAxes() const { return impl_->shape.NumAxes(); }
-
+  inline int32_t NumAxes() const { return impl_->shape.NumAxes(); }
   inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
   inline std::vector<int32_t> Dims() { return impl_->shape.Dims(); }
   inline int32_t Stride(int32_t i) { return impl_->shape.Stride(i); }
