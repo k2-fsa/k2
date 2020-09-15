@@ -11,9 +11,10 @@
 
 #include "k2/csrc/host/rmepsilon.h"
 
-#include <algorithm>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -29,9 +30,10 @@ class RmEpsilonTest : public ::testing::Test {
  protected:
   RmEpsilonTest() {
     std::vector<Arc> arcs = {
-        {0, 4, 1, 1},        {0, 1, 1, 1},        {1, 2, kEpsilon, 2}, {1, 3, kEpsilon, 3},
-        {1, 4, kEpsilon, 2}, {2, 7, kEpsilon, 4}, {3, 7, kEpsilon, 5}, {4, 6, 1, 2},
-        {4, 6, kEpsilon, 3}, {4, 8, 1, 3},        {4, 9, -1, 2},       {5, 9, -1, 4},
+        {0, 4, 1, 1},        {0, 1, 1, 1},        {1, 2, kEpsilon, 2},
+        {1, 3, kEpsilon, 3}, {1, 4, kEpsilon, 2}, {2, 7, kEpsilon, 4},
+        {3, 7, kEpsilon, 5}, {4, 6, 1, 2},        {4, 6, kEpsilon, 3},
+        {4, 8, 1, 3},        {4, 9, -1, 2},       {5, 9, -1, 4},
         {6, 9, -1, 3},       {7, 9, -1, 5},       {8, 9, -1, 6},
     };
     fsa_creator_ = new FsaCreator(arcs, 9);
@@ -42,9 +44,9 @@ class RmEpsilonTest : public ::testing::Test {
     max_backward_weights_.resize(num_states_);
     logsum_forward_weights_.resize(num_states_);
     logsum_backward_weights_.resize(num_states_);
-    max_wfsa_ = new WfsaWithFbWeights(*fsa_, kMaxWeight,
-                                      max_forward_weights_.data(),
-                                      max_backward_weights_.data());
+    max_wfsa_ =
+        new WfsaWithFbWeights(*fsa_, kMaxWeight, max_forward_weights_.data(),
+                              max_backward_weights_.data());
     log_wfsa_ = new WfsaWithFbWeights(*fsa_, kLogSumWeight,
                                       logsum_forward_weights_.data(),
                                       logsum_backward_weights_.data());
@@ -113,8 +115,8 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
   ASSERT_EQ(arc_derivs.size1, 11);
   ASSERT_EQ(arc_derivs.size2, 20);
 
-  EXPECT_TRUE(IsRandEquivalentAfterRmEpsPrunedLogSum(
-      log_wfsa_->fsa, fsa_out, beam));
+  EXPECT_TRUE(
+      IsRandEquivalentAfterRmEpsPrunedLogSum(log_wfsa_->fsa, fsa_out, beam));
 
   // TODO(haowen): how to check arc_derivs
 }

@@ -236,6 +236,7 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
     };
     Eval(c, dim, lambda_set_values);
   }
+  return ans;
 }
 
 template <typename T>

@@ -16,8 +16,8 @@
 
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
-#include "k2/csrc/utils.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/utils.h"
 
 namespace k2 {
 
@@ -175,22 +175,25 @@ inline std::ostream &operator<<(std::ostream &stream,
   on CPU.  You use it as:
     for (RaggedShapeIndexIterator iter = ragged.Iterator();
           !iter.Done(); iter.Next()) {
-       std::vector<int32> &vec = iter.Value();
-       int32 linear_index = ragged[vec];
+       const std::vector<int32_t> &vec = iter.Value();
+       int32_t linear_index = ragged[vec];
     }
 */
 class RaggedShapeIndexIterator {
  public:
-  const std::vector<int32_t> &Value();
+  const std::vector<int32_t> &Value() const { return idx_; }
   void Next() {
     linear_idx_++;
     if (!Done()) UpdateVec();
   }
-  bool Done() { return (linear_idx_ != shape_.NumElements()); }
+  bool Done() { return linear_idx_ == num_elements_; }
 
   explicit RaggedShapeIndexIterator(RaggedShape &shape)
-      : shape_(shape), linear_idx_(0), idx_(shape.NumAxes()) {
-    K2_CHECK(shape_.Context()->GetDeviceType() == kCpu);
+      : shape_(shape),
+        linear_idx_(0),
+        idx_(shape.NumAxes()),
+        num_elements_(shape.NumElements()) {
+    K2_CHECK_EQ(shape_.Context()->GetDeviceType(), kCpu);
     for (int32_t i = 0; i + 1 < shape.NumAxes(); ++i) {
       row_splits_.push_back(shape.RowSplits(i + 1).Data());
       row_ids_.push_back(shape.RowIds(i + 1).Data());
@@ -203,9 +206,9 @@ class RaggedShapeIndexIterator {
     K2_CHECK(!Done());
     int32_t idx = linear_idx_, num_axes = row_splits_.size() + 1;
     for (int32_t axis = num_axes - 1; axis > 0; axis--) {
-      int32_t prev_idx = row_splits_[axis - 1][idx],
-              row_start = row_ids_[axis - 1][prev_idx],
-              row_end = row_ids_[axis - 1][prev_idx + 1];
+      int32_t prev_idx = row_ids_[axis - 1][idx],
+              row_start = row_splits_[axis - 1][prev_idx],
+              row_end = row_splits_[axis - 1][prev_idx + 1];
       K2_CHECK(idx >= row_start && idx < row_end);
       // e.g.: `idx` is an idx012, `prev_idx` is an idx01,
       //    `row_start` and `row_end` are idx01x, and
@@ -221,6 +224,7 @@ class RaggedShapeIndexIterator {
   RaggedShape &shape_;
   int32_t linear_idx_;
   std::vector<int32_t> idx_;
+  const int32_t num_elements_;
 };
 
 /*
@@ -357,7 +361,8 @@ struct Ragged {
   Array1<T> values;
 
   Ragged(RaggedShape &shape, Array1<T> &values) : shape(shape), values(values) {
-    K2_CHECK_EQ(shape.TotSize(shape.NumAxes() - 1), values.Dim());
+    K2_CHECK(IsCompatible(shape, values));
+    K2_CHECK_EQ(shape.NumElements(), values.Dim());
   }
 
   // Default constructor will not leave this a valid Ragged object, you
@@ -367,11 +372,11 @@ struct Ragged {
 
   // Note: 'values' will be uninitialized.
   explicit Ragged(RaggedShape &shape)
-      : shape(shape),
-        values(shape.Context(), shape.TotSize(shape.NumAxes() - 1)) {}
+      : shape(shape), values(shape.Context(), shape.NumElements()) {}
 
   // This will only work on the CPU, and is intended for use in testing code.
   T operator[](const std::vector<int32_t> &indexes) {
+    K2_CHECK_EQ(Context()->GetDeviceType(), kCpu);
     return values[shape[indexes]];
   }
 
@@ -379,7 +384,7 @@ struct Ragged {
   int32_t NumAxes() { return shape.NumAxes(); }
 
   /*
-    It is an error to call this if this.NumAxes() < 2.  This will return
+    It is an error to call this if this.shape.NumAxes() < 2.  This will return
     a Ragged<T> with one fewer axis, containing only the elements of
     *this for which the value on the provided axis is i.  CAUTION:
     currently this only works for `axis == 0`.
@@ -388,10 +393,45 @@ struct Ragged {
                          is supported.
       @param [in]  i     Index to select
    */
-  Ragged<T> Index(int32_t axis, int32_t value);
+  Ragged<T> Index(int32_t axis, int32_t i) {
+    // Note shape.Index(axis, i) will also check `axis` and `i` as below,
+    // but we still check those requirements here in case
+    // the implementation of shape.Index changes.
+    // We may remove those checks finally.
+    K2_CHECK_EQ(axis, 0);
+    K2_CHECK_GE(i, 0);
+    int32_t num_axes = shape.NumAxes();
+    K2_CHECK_GE(num_axes, 2);
+    const auto &axes = shape.Axes();
+    K2_CHECK_LT(i + 1, axes[0].row_splits.Dim());
+
+    // Get returned Ragged.shape
+    RaggedShape sub_shape = shape.Index(axis, i);
+
+    // Get returned Ragged.values' start and end position in this->values
+    int32_t row_start = axes[0].row_splits[i];
+    int32_t row_end = axes[0].row_splits[i + 1];
+    for (int32_t i = 2; i < num_axes; ++i) {
+      const Array1<int32_t> &row_splits = axes[i - 1].row_splits;
+      row_start = row_splits[row_start];
+      row_end = row_splits[row_end];
+    }
+    // Copy values
+    ContextPtr c = Context();
+    auto sub_values = Array1<T>(c, row_end - row_start);
+    T *data = sub_values.Data();
+    const T *src_data = values.Data();
+    auto lambda_copy_values = [=] __host__ __device__(int32_t i) -> void {
+      data[i] = src_data[i + row_start];
+    };
+    Eval(c, row_end - row_start, lambda_copy_values);
+    return Ragged<T>(sub_shape, sub_values);
+  }
 
   Ragged<T> To(ContextPtr ctx) {
-    return Ragged<T>(shape.To(ctx), values.To(ctx));
+    RaggedShape new_shape = shape.To(ctx);
+    Array1<T> new_values = values.To(ctx);
+    return Ragged<T>(new_shape, new_values);
   }
 };
 

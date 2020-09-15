@@ -42,7 +42,8 @@ namespace {
 
    Returns the number of kept states which is num_states of the output FSA.
  */
-static int32_t MapStates(const k2host::Fsa &fsa_in, std::vector<char> *non_eps_in,
+static int32_t MapStates(const k2host::Fsa &fsa_in,
+                         std::vector<char> *non_eps_in,
                          std::vector<int32_t> *state_map) {
   K2_CHECK_NE(non_eps_in, nullptr);
   K2_CHECK_NE(state_map, nullptr);
@@ -245,8 +246,8 @@ void EpsilonsRemover<TracebackState>::GetSizes(
                                            curr_arc_weight);
             }
           } else {
-            float arc_weight = curr_forward_weights + curr_arc_weight -
-                start_forward_weights;
+            float arc_weight =
+                curr_forward_weights + curr_arc_weight - start_forward_weights;
             arcs_.emplace_back(curr_state_out, state_map[next_state], label,
                                arc_weight);
 

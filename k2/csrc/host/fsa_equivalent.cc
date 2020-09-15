@@ -78,7 +78,8 @@ static void ArcSort(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
   function call, the memory of the output FSA is managed by `c` and will
   be released automatically if `c`is out of scope.
  */
-static bool Intersect(const k2host::Fsa &a, const k2host::Fsa &b, k2host::FsaCreator *c,
+static bool Intersect(const k2host::Fsa &a, const k2host::Fsa &b,
+                      k2host::FsaCreator *c,
                       std::vector<int32_t> *arc_map_a = nullptr,
                       std::vector<int32_t> *arc_map_b = nullptr) {
   K2_CHECK_NE(c, nullptr);
@@ -106,7 +107,6 @@ static bool Intersect(const k2host::Fsa &a, const k2host::Fsa &b, k2host::FsaCre
 static bool RandomPath(const k2host::Fsa &fsa_in, bool no_eps_arc,
                        k2host::FsaCreator *path,
                        std::vector<int32_t> *arc_map = nullptr) {
-
   K2_CHECK_NE(path, nullptr);
   k2host::RandPath rand_path(fsa_in, no_eps_arc);
   k2host::Array2Size<int32_t> fsa_size;
@@ -119,7 +119,6 @@ static bool RandomPath(const k2host::Fsa &fsa_in, bool no_eps_arc,
       &path_fsa, arc_map == nullptr ? nullptr : arc_map->data());
   return status;
 }
-
 
 // c = (a - b) + (b-a)
 static void SetDifference(const std::unordered_set<int32_t> &a,
@@ -189,9 +188,8 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
 
 template <FbWeightType Type>
 bool IsRandEquivalent(const Fsa &a, const Fsa &b,
-                      float beam /*=kFloatInfinity*/,
-                      float delta /*=1e-6*/, bool top_sorted /*=true*/,
-                      std::size_t npath /*= 100*/) {
+                      float beam /*=kFloatInfinity*/, float delta /*=1e-6*/,
+                      bool top_sorted /*=true*/, std::size_t npath /*= 100*/) {
   K2_CHECK_GT(beam, 0);
   FsaCreator connected_a_storage, connected_b_storage, valid_a_storage,
       valid_b_storage;
@@ -219,10 +217,8 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
 
   double loglike_cutoff_a, loglike_cutoff_b;
   if (beam != kFloatInfinity) {
-    loglike_cutoff_a =
-        ShortestDistance<Type>(valid_a) - beam;
-    loglike_cutoff_b =
-        ShortestDistance<Type>(valid_b) - beam;
+    loglike_cutoff_a = ShortestDistance<Type>(valid_a) - beam;
+    loglike_cutoff_b = ShortestDistance<Type>(valid_b) - beam;
     if (Type == kMaxWeight &&
         !DoubleApproxEqual(loglike_cutoff_a, loglike_cutoff_b))
       return false;
@@ -271,17 +267,18 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
 }
 
 // explicit instantiation here
-template bool IsRandEquivalent<kMaxWeight>(const Fsa &a,
-                                           const Fsa &b,
+template bool IsRandEquivalent<kMaxWeight>(const Fsa &a, const Fsa &b,
                                            float beam, float delta,
                                            bool top_sorted, std::size_t npath);
-template bool IsRandEquivalent<kLogSumWeight>(
-    const Fsa &a, const Fsa &b,
-    float beam, float delta, bool top_sorted, std::size_t npath);
+template bool IsRandEquivalent<kLogSumWeight>(const Fsa &a, const Fsa &b,
+                                              float beam, float delta,
+                                              bool top_sorted,
+                                              std::size_t npath);
 
-bool IsRandEquivalentAfterRmEpsPrunedLogSum(
-    const Fsa &a, const Fsa &b,
-    float beam, bool top_sorted /*= true*/, std::size_t npath /*= 100*/) {
+bool IsRandEquivalentAfterRmEpsPrunedLogSum(const Fsa &a, const Fsa &b,
+                                            float beam,
+                                            bool top_sorted /*= true*/,
+                                            std::size_t npath /*= 100*/) {
   K2_CHECK_GT(beam, 0);
   FsaCreator connected_a_storage, connected_b_storage, valid_a_storage,
       valid_b_storage;
@@ -291,8 +288,7 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
   ::Connect(b, &connected_b_storage, &connected_b_arc_map);
   ::ArcSort(connected_a_storage.GetFsa(), &valid_a_storage,
             &valid_a_arc_map);  // required by `intersect`
-  ::ArcSort(connected_b_storage.GetFsa(), &valid_b_storage,
-            &valid_b_arc_map);
+  ::ArcSort(connected_b_storage.GetFsa(), &valid_b_storage, &valid_b_arc_map);
   const auto &valid_a = valid_a_storage.GetFsa();
   const auto &valid_b = valid_b_storage.GetFsa();
   if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
@@ -310,10 +306,8 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
   // `b` is the FSA after epsilon-removal, so it should be epsilon-free
   if (labels_b.find(kEpsilon) != labels_b.end()) return false;
 
-  double loglike_cutoff_a =
-      ShortestDistance<kLogSumWeight>(valid_a) - beam;
-  double loglike_cutoff_b =
-      ShortestDistance<kLogSumWeight>(valid_b) - beam;
+  double loglike_cutoff_a = ShortestDistance<kLogSumWeight>(valid_a) - beam;
+  double loglike_cutoff_b = ShortestDistance<kLogSumWeight>(valid_b) - beam;
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -341,10 +335,10 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
     // for non-top-sorted FSAs, but we prefer to decide this later as there's no
     // such scenarios (input FSAs are not top-sorted) currently.
     K2_CHECK(top_sorted);
-    double cost_a = ShortestDistance<kLogSumWeight>(
-        a_compose_path_storage.GetFsa());
-    double cost_b = ShortestDistance<kLogSumWeight>(
-        b_compose_path_storage.GetFsa());
+    double cost_a =
+        ShortestDistance<kLogSumWeight>(a_compose_path_storage.GetFsa());
+    double cost_b =
+        ShortestDistance<kLogSumWeight>(b_compose_path_storage.GetFsa());
     if (random_path_from_a) {
       if (cost_a < loglike_cutoff_a) continue;
       // there is no corresponding path in `b`
@@ -413,8 +407,9 @@ void RandPath::GetSizes(Array2Size<int32_t> *fsa_size) {
     }
     int32_t state_id_out = state_map_in_to_out[state];
     if (visited_arcs[state_id_out]
-        .insert({{state, curr_arc->dest_state, curr_arc->label, curr_arc->weight},
-                 arc_index_in - fsa_in_.indexes[0]})
+            .insert({{state, curr_arc->dest_state, curr_arc->label,
+                      curr_arc->weight},
+                     arc_index_in - fsa_in_.indexes[0]})
             .second)
       ++num_visited_arcs;
     state = curr_arc->dest_state;

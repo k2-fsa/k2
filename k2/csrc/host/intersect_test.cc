@@ -11,9 +11,10 @@
 
 #include "k2/csrc/host/intersect.h"
 
-#include <algorithm>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>

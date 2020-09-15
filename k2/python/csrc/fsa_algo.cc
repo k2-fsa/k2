@@ -38,7 +38,8 @@ void PyBindArcSort(py::module &m) {
   m.def(
       "_arc_sort",
       [](k2host::Fsa *fsa, k2host::Array1<int32_t *> *arc_map = nullptr) {
-        return k2host::ArcSort(fsa, arc_map == nullptr ? nullptr : arc_map->data);
+        return k2host::ArcSort(fsa,
+                               arc_map == nullptr ? nullptr : arc_map->data);
       },
       "in-place version of ArcSorter", py::arg("fsa"),
       py::arg("arc_map").none(true));
@@ -77,8 +78,8 @@ void PyBindConnect(py::module &m) {
 void PyBindIntersect(py::module &m) {
   using PyClass = k2host::Intersection;
   py::class_<PyClass>(m, "_Intersection")
-      .def(py::init<const k2host::Fsa &, const k2host::Fsa &>(), py::arg("fsa_a"),
-           py::arg("fsa_b"))
+      .def(py::init<const k2host::Fsa &, const k2host::Fsa &>(),
+           py::arg("fsa_a"), py::arg("fsa_b"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"))
       .def(
           "get_output",
@@ -105,30 +106,24 @@ void PybindDeterminizerTpl(py::module &m, const char *name) {
           "get_output",
           [](PyClass &self, k2host::Fsa *fsa_out,
              k2host::Array2<typename TracebackState::DerivType *> *arc_derivs)
-              -> float {
-            return self.GetOutput(fsa_out, arc_derivs);
-          },
-          py::arg("fsa_out"),
-          py::arg("arc_derivs"));
+              -> float { return self.GetOutput(fsa_out, arc_derivs); },
+          py::arg("fsa_out"), py::arg("arc_derivs"));
 }
 
 template <typename TracebackState>
 void PybindEpsilonsRemoverTpl(py::module &m, const char *name) {
   using PyClass = k2host::EpsilonsRemover<TracebackState>;
   py::class_<PyClass>(m, name)
-      .def(py::init<const k2host::WfsaWithFbWeights &, float>(), py::arg("fsa_in"),
-           py::arg("beam"))
+      .def(py::init<const k2host::WfsaWithFbWeights &, float>(),
+           py::arg("fsa_in"), py::arg("beam"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"),
            py::arg("arc_derivs_size"))
       .def(
           "get_output",
           [](PyClass &self, k2host::Fsa *fsa_out,
              k2host::Array2<typename TracebackState::DerivType *> *arc_derivs)
-              -> void {
-            return self.GetOutput(fsa_out, arc_derivs);
-          },
-          py::arg("fsa_out"),
-          py::arg("arc_derivs"));
+              -> void { return self.GetOutput(fsa_out, arc_derivs); },
+          py::arg("fsa_out"), py::arg("arc_derivs"));
 }
 
 void PybindFsaAlgo(py::module &m) {
@@ -141,6 +136,6 @@ void PybindFsaAlgo(py::module &m) {
   PybindDeterminizerTpl<k2host::LogSumTracebackState>(m, "_DeterminizerLogSum");
 
   PybindEpsilonsRemoverTpl<k2host::MaxTracebackState>(m, "_EpsilonsRemoverMax");
-  PybindEpsilonsRemoverTpl<k2host::LogSumTracebackState>(m,
-                                                     "_EpsilonsRemoverLogSum");
+  PybindEpsilonsRemoverTpl<k2host::LogSumTracebackState>(
+      m, "_EpsilonsRemoverLogSum");
 }

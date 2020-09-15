@@ -411,7 +411,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
 RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b) {
   if (a.NumElements() != b.Dim0()) {
     K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()
-               << " vs. " << b.Dim0();
+                  << " vs. " << b.Dim0();
   }
   const auto &a_axes = a.Axes();
   const auto &b_axes = b.Axes();
@@ -969,7 +969,6 @@ RaggedShape Transpose(RaggedShape &src) {
 RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK(axis >= 0 && axis <= 1);
-  ;
 
   ContextPtr c = src[0]->Context();
 

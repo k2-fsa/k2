@@ -11,9 +11,10 @@
 
 #include "k2/csrc/host/fsa_equivalent.h"
 
-#include <algorithm>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -64,7 +65,8 @@ TEST(FsaEquivalent, IsNotRandEquivalent) {
     const auto &a = fsa_creator_a.GetFsa();
 
     std::vector<Arc> arcs_b = {
-        {0, 1, 1, 0}, {0, 2, 2, 0}, {1, 2, 3, 0}, {1, 3, 4, 0}, {2, 3, 5, 0}, {3, 4, 5, 0},
+        {0, 1, 1, 0}, {0, 2, 2, 0}, {1, 2, 3, 0},
+        {1, 3, 4, 0}, {2, 3, 5, 0}, {3, 4, 5, 0},
     };
     FsaCreator fsa_creator_b(arcs_b, 4);
     const auto &b = fsa_creator_b.GetFsa();
@@ -121,35 +123,34 @@ TEST(FsaEquivalent, IsRandEquivalent) {
 }
 
 TEST(FsaEquivalent, IsWfsaRandEquivalent) {
-  std::vector<Arc> arcs_a = {{0, 1, 1, 2}, {0, 1, 2, 2},  {0, 1, 3, 3}, {0, 2, 4, 3},
-                             {0, 2, 5, 1}, {1, 3, 5, 3},  {1, 3, 6, 2}, {2, 4, 5, 5},
-                             {2, 4, 6, 4}, {3, 5, -1, 1}, {4, 5, -1, 3}};
+  std::vector<Arc> arcs_a = {{0, 1, 1, 2},  {0, 1, 2, 2}, {0, 1, 3, 3},
+                             {0, 2, 4, 3},  {0, 2, 5, 1}, {1, 3, 5, 3},
+                             {1, 3, 6, 2},  {2, 4, 5, 5}, {2, 4, 6, 4},
+                             {3, 5, -1, 1}, {4, 5, -1, 3}};
   FsaCreator fsa_creator_a(arcs_a, 5);
   const auto &a = fsa_creator_a.GetFsa();
 
   std::vector<Arc> arcs_b = {
-    {0, 1, 1, 5}, {0, 1, 2, 5}, {0, 1, 3, 6}, {0, 1, 4, 10},
-    {0, 1, 5, 8}, {1, 2, 5, 1}, {1, 2, 6, 0}, {2, 3, -1, 0},
+      {0, 1, 1, 5}, {0, 1, 2, 5}, {0, 1, 3, 6}, {0, 1, 4, 10},
+      {0, 1, 5, 8}, {1, 2, 5, 1}, {1, 2, 6, 0}, {2, 3, -1, 0},
   };
   FsaCreator fsa_creator_b(arcs_b, 3);
   const auto &b = fsa_creator_b.GetFsa();
 
   std::vector<Arc> arcs_c = {
-    {0, 1, 1, 5}, {0, 1, 2, 5}, {0, 1, 3, 6}, {0, 1, 4, 10},
-    {0, 1, 5, 9}, {1, 2, 5, 1}, {1, 2, 6, 0}, {2, 3, -1, 0},
+      {0, 1, 1, 5}, {0, 1, 2, 5}, {0, 1, 3, 6}, {0, 1, 4, 10},
+      {0, 1, 5, 9}, {1, 2, 5, 1}, {1, 2, 6, 0}, {2, 3, -1, 0},
   };
   FsaCreator fsa_creator_c(arcs_c, 3);
   const auto &c = fsa_creator_c.GetFsa();
 
   {
-    bool status =
-        IsRandEquivalent<kMaxWeight>(a, b);
+    bool status = IsRandEquivalent<kMaxWeight>(a, b);
     EXPECT_TRUE(status);
   }
 
   {
-    bool status =
-        IsRandEquivalent<kMaxWeight>(a, c);
+    bool status = IsRandEquivalent<kMaxWeight>(a, c);
     EXPECT_FALSE(status);
   }
 
@@ -198,9 +199,9 @@ TEST(FsaEquivalent, RandomPathFail) {
   {
     // non-connected fsa
     std::vector<Arc> arcs = {
-      {0, 1, 1, 0},
-      {0, 2, 2, 0},
-      {1, 3, 4, 0},
+        {0, 1, 1, 0},
+        {0, 2, 2, 0},
+        {1, 3, 4, 0},
     };
     FsaCreator fsa_creator(arcs, 3);
     const auto &fsa = fsa_creator.GetFsa();

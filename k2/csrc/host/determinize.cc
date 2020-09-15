@@ -14,7 +14,6 @@
 
 #include <algorithm>
 #include <cassert>
-
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -56,8 +55,8 @@ void Determinizer<TracebackState>::GetSizes(
   while (num_steps < max_step_ && !queue.empty()) {
     std::shared_ptr<DS> state(queue.top());
     queue.pop();
-    num_steps += state->ProcessArcs(fsa_in_, prune_cutoff, &arcs_,
-                                    &arc_derivs_, &map, &queue);
+    num_steps += state->ProcessArcs(fsa_in_, prune_cutoff, &arcs_, &arc_derivs_,
+                                    &map, &queue);
   }
 
   // We may stopped early due to max_step
@@ -84,7 +83,6 @@ float Determinizer<TracebackState>::GetOutput(
     Fsa *fsa_out,
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
   if (IsEmpty(fsa_in_.fsa)) return beam_;
-
 
   K2_CHECK_NE(fsa_out, nullptr);
   K2_CHECK_NE(arc_derivs, nullptr);
@@ -154,8 +152,7 @@ int32_t GetMostRecentCommonAncestor(
 }
 
 void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
-               int32_t num_steps, const Arc *arcs_in,
-               float *weight_out,
+               int32_t num_steps, const Arc *arcs_in, float *weight_out,
                std::vector<std::pair<int32_t, float>> *deriv_out) {
   std::unordered_set<LogSumTracebackState *> prev_states;
   assert(cur_states->size() == 1);

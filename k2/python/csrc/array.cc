@@ -101,7 +101,8 @@ class DLPackArray2<ValueType *, true, I> : public Array2<ValueType *, I> {
       : indexes_tensor_(new Tensor(cap_indexes)),
         data_tensor_(new Tensor(cap_data)) {
     K2_CHECK_EQ(indexes_tensor_->NumDim(), 1);
-    K2_CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
+    K2_CHECK_GE(indexes_tensor_->Shape(0),
+                1);  // must have one element at least
     K2_CHECK_EQ(indexes_tensor_->Stride(0), 1);
 
     K2_CHECK_EQ(data_tensor_->NumDim(), 1);
@@ -126,15 +127,16 @@ class DLPackArray2<ValueType *, false, I> : public Array2<ValueType *, I> {
       : indexes_tensor_(new Tensor(cap_indexes)),
         data_tensor_(new Tensor(cap_data)) {
     K2_CHECK_EQ(indexes_tensor_->NumDim(), 1);
-    K2_CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
+    K2_CHECK_GE(indexes_tensor_->Shape(0),
+                1);  // must have one element at least
     K2_CHECK_EQ(indexes_tensor_->Stride(0), 1);
 
     K2_CHECK_EQ(data_tensor_->NumDim(), 2);
     K2_CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
     K2_CHECK_EQ(data_tensor_->Shape(1) * data_tensor_->BytesPerElement(),
-             sizeof(ValueType));
+                sizeof(ValueType));
     K2_CHECK_EQ(data_tensor_->Stride(0) * data_tensor_->BytesPerElement(),
-             sizeof(ValueType));
+                sizeof(ValueType));
     K2_CHECK_EQ(data_tensor_->Stride(1), 1);
 
     int32_t size1 = indexes_tensor_->Shape(0) - 1;
@@ -157,7 +159,8 @@ class DLPackArray2<StridedPtr<ValueType, I>, true, I>
       : indexes_tensor_(new Tensor(cap_indexes)),
         data_tensor_(new Tensor(cap_data)) {
     K2_CHECK_EQ(indexes_tensor_->NumDim(), 1);
-    K2_CHECK_GE(indexes_tensor_->Shape(0), 1);  // must have one element at least
+    K2_CHECK_GE(indexes_tensor_->Shape(0),
+                1);  // must have one element at least
     K2_CHECK_EQ(indexes_tensor_->Stride(0), 1);
 
     K2_CHECK_EQ(data_tensor_->NumDim(), 1);
@@ -243,12 +246,13 @@ void PybindArray2SizeTpl(py::module &m, const char *name) {
 
 void PybindArray(py::module &m) {
   // Note: all the following wrappers whose name starts with `_` are only used
-  // by pybind11 internally so that it knows `k2host::DLPackArray1` is a subclass of
-  // `k2host::Array1`.
+  // by pybind11 internally so that it knows `k2host::DLPackArray1` is a
+  // subclass of `k2host::Array1`.
   py::class_<k2host::Array1<int32_t *>>(m, "_IntArray1");
   PybindArray1Tpl<int32_t *>(m, "DLPackIntArray1");
 
-  py::class_<k2host::Array1<k2host::StridedPtr<int32_t>>>(m, "_StridedIntArray1");
+  py::class_<k2host::Array1<k2host::StridedPtr<int32_t>>>(m,
+                                                          "_StridedIntArray1");
   PybindArray1Tpl<k2host::StridedPtr<int32_t>>(m, "DLPackStridedIntArray1");
 
   py::class_<k2host::Array1<float *>>(m, "_FloatArray1");
@@ -258,8 +262,8 @@ void PybindArray(py::module &m) {
   PybindArray1Tpl<double *>(m, "DLPackDoubleArray1");
 
   // Note: all the following wrappers whose name starts with `_` are only used
-  // by pybind11 internally so that it knows `k2host::DLPackArray2` is a subclass of
-  // `k2host::Array2`.
+  // by pybind11 internally so that it knows `k2host::DLPackArray2` is a
+  // subclass of `k2host::Array2`.
   py::class_<k2host::Array2<int32_t *>>(m, "_IntArray2");
   PybindArray2Tpl<int32_t *, true>(m, "DLPackIntArray2");
 

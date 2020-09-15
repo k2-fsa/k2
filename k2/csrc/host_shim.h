@@ -17,15 +17,37 @@
 
 namespace k2 {
 
+
 /*
-  Convert k2 Fsa to k2host::Fsa (this is our older version of this codebase,
-  that only works on CPU).
+  Create an FsaVec (vector of FSAs) from a Tensor.  Please see FsaFromTensor for
+  how this works for a single FSA.  The reason we can do the same with multiple
+  FSAs is that we can use the discontinuities in `src_state` (i.e. where the
+  values decrease) to spot where one FSA starts and the next begins.  However
+  this only works if all the FSAs were nonempty, i.e. had at least one state.
+  This function will die with an assertion failure if any of the provided
+  FSAs were empty, so the user should check that beforehand.
+
+  Please see FsaFromTensor() for documentation on what makes the individual
+  FSAs valid; however, please note that the FSA with no states (empty FSA)
+  cannot appear here, as there is no way to indicate it in a flat
+  series of arcs.
+
+    @param [in] t   Source tensor.  Must have dtype == kInt32Dtype and be of
+                    shape (N > 0) by 4.  Caution: the returned FSA will share
+                    memory with this tensor, so don't modify it afterward!
+    @param [out] error   Error flag.  On success this function will write
+                        'false' here; on error, it will print an error
+                        message to the standard error and write 'true' here.
+    @return         The resulting FsaVec (vector of FSAs) will be returned;
+                    this is a Ragged<Arc> with 3 axes.
+
 
   This only works of `fsa` was on the CPU.  Note: the k2host::Fsa
   refers to memory inside `fsa`, so making a copy doesn't work.
   Be careful with the returned k2host::Fsa as it does not own its
   own memory!
 */
+
 k2host::Fsa FsaToHostFsa(Fsa &fsa) {
   K2_CHECK_EQ(fsa.NumAxes(), 2);
   K2_CHECK_EQ(fsa.Context().DeviceType(), kCpu);
@@ -107,8 +129,6 @@ class FsaCreator {
   Array1<int32_t> arc_indexes_; // == row_splits
   Array1<Arc> arcs_;
 };
-
-
 
 }  // namespace k2
 

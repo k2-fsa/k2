@@ -18,6 +18,28 @@
 namespace k2 {
 
 
+/*
+  This version of Connect() works for a single FSA.
+    @param [in] src  Source FSA
+    @param [out] dest   Destination; at exit will be equivalent to `src`
+                     but will have no states that are unreachable or which
+                     can't reach the final-state, i.e. its Properties() will contain
+                     kFsaPropertiesMaybeCoaccessible and
+                     kFsaPropertiesMaybeAccessible
+    @param [out,optional] arc_map   For each arc in `dest`, gives the index of the
+                     corresponding arc in `src` that it corresponds to.
+    @return  Returns true on success (which basically means the input did not
+            have cycles, so the algorithm could not succeed).  Success
+            does not imply that `dest` is nonempty.
+
+   CAUTION: for now this only works for CPU.
+ */
+bool ConnectFsa(Fsa &src,
+                Fsa *dest,
+                Array1<int32_t> *arc_map = nullptr);
+
+
+
 // Note: b is FsaVec<Arc>.
 void Intersect(const DenseFsa &a, const FsaVec &b, FsaVec *c,
                Array1<int32_t> *arc_map_a = nullptr,
