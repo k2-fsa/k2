@@ -9,7 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/compose.h"
+#include "k2/csrc/fsa_algo.h"
 
 #include <limits>
 #include <vector>

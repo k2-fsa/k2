@@ -52,10 +52,10 @@ enum FsaBasicProperties {
                                          // co-accessible, i.e. states with no
                                          // arcs entering them
   kFsaPropertiesMaybeCoaccessible =
-      0x80,                             // True if there are no obvious signs of
+      0x0100,                             // True if there are no obvious signs of
                                         // states not being co-accessible, i.e.
                                         // i.e. states with no arcs leaving them
-  kFsaPropertiesSerializable = 0x0100,  // True if there are no FSAs with zero
+  kFsaPropertiesSerializable = 0x0200,  // True if there are no FSAs with zero
                                         // states, and if for all fsa-indexes i,
                                         // last-state(i) > first-state(i+1)
                                         // where {last,first}-state is the
@@ -64,14 +64,15 @@ enum FsaBasicProperties {
                                         // used in figuring out the boundaries
                                         // between FSAs when we serialize to a
                                         // list of arcs.
-  kFsaAllProperties = 0x01FF
+  kFsaAllProperties = 0x03FF
 };
 
-using Fsa = RaggedShape<Arc>;  // 2 axes: state,arc
 
-using FsaVec = RaggedShape<Arc>;  // 3 axes: fsa,state,arc.  Note, the src_state
-                                  // and dest_state in the arc are *within the
-                                  // FSA*, i.e. they are idx1 not idx01.
+using Fsa = Ragged<Arc>;  // 2 axes: state,arc
+
+using FsaVec = Ragged<Arc>;  // 3 axes: fsa,state,arc.  Note, the src_state
+                             // and dest_state in the arc are *within the
+                             // FSA*, i.e. they are idx1 not idx01.
 
 /*
   Vector of FSAs that actually will come from neural net log-softmax outputs (or
@@ -118,7 +119,7 @@ class DenseFsaVec {
   Array2<float> scores;
 
   // NOTE: our notion of "arc-index" / arc_idx is an index into scores.Data().
-  int32_t NumArcs() { return scores.Size0() * scores.Size1(); }
+  int32_t NumArcs() { return scores.Dim0() * scores.Dim1(); }
 };
 
 /*
@@ -204,7 +205,7 @@ FsaVec FsaVecFromTensor(const Tensor &t, bool *error);
                        refer to a part of the `values` array of
                        the input `vec`.
  */
-Fsa GetFsaVecElement(const FsaVec &vec, int32_t i) { return vec.Index(0, i); }
+Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
 
 /*
   Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really

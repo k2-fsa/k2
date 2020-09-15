@@ -381,6 +381,7 @@ struct Ragged {
   }
 
   ContextPtr Context() { return values.Context(); }
+  int32_t NumAxes() { return shape.NumAxes(); }
 
   /*
     It is an error to call this if this.shape.NumAxes() < 2.  This will return
@@ -468,30 +469,6 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
 
-/*
-  Create a RaggedShape from an array of row-ids.  (which maps each element to
-  its corresponding row).  The row-ids must be a nonempty vector, nonnegative
-  and no-decreasing.
-
-    @param [in]  num_rows   The number of rows (Size0()) of the object to be
-                            created. If a value <= 0 is supplied, it will use
-                            row_ids[-1]+1 if row_ids.size > 0, else 0.
-    @param [in]  row_ids   The row-ids for axis 1; must be nonnegative
-                           and non-decreasing.
- */
-RaggedShape Ragged2ShapeFromRowIds(int num_rows, Array1<int32_t> &row_ids);
-
-/*
-  Construct a ragged shape with one more axis than the supplied shape, given
-  row-ids for the last axis.
-
-     @param [in] shape   The shape that will dictate the top-level axes of
-                         the returned shape.
-     @param [in] row_ids   A nondecreasing vector of integers
-                           0 <= i < shape.TotSize(Shape.NumAxes()-1),
-                           with row_ids.size() == elems.size().
- */
-RaggedShape RaggedShapeFromRowIds(RaggedShape &shape, Array1<int> &row_ids);
 
 /*
   Construct a RaggedShape with 2 axes.

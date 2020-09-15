@@ -44,7 +44,7 @@ if(WIN32 AND BUILD_SHARED_LIBS)
 endif()
 
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
-  set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ version to be used.")
+  set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ version to be used.")
   set(CUDAToolkit_LIBRARY_DIR "" CACHE STRING "The cudatoolkit library directory.")
   set(CUDAToolkit_INCLUDE_DIRS "" CACHE STRING "The cudatoolkit include directory.")
 
@@ -64,7 +64,7 @@ if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18.0")
   endif()
 else()
   # the following settings are modified from cub/CMakeLists.txt
-  set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ version to be used.")
+  set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ version to be used.")
   set(CMAKE_CXX_EXTENSIONS OFF)
 
   message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
