@@ -19,7 +19,7 @@
 #include <cstdio>
 #include <sstream>
 
-#ifdef __CUDA_ARCH__ 
+#ifdef __CUDA_ARCH__
 #define K2_CUDA_HOSTDEV __host__ __device__
 #else
 #define K2_CUDA_HOSTDEV
