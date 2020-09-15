@@ -205,7 +205,7 @@ FsaVec FsaVecFromTensor(const Tensor &t, bool *error);
                        refer to a part of the `values` array of
                        the input `vec`.
  */
-Fsa GetFsaVecElement(const FsaVec &vec, int32_t i) { return vec.Index(0, i); }
+Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
 
 /*
   Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really

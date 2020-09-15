@@ -40,13 +40,6 @@ bool ConnectFsa(Fsa &src,
 
 
 
-// Note: b is FsaVec<Arc>.
-void Intersect(const DenseFsa &a, const FsaVec &b, FsaVec *c,
-               Array1<int32_t> *arc_map_a = nullptr,
-               Array1<int32_t> *arc_map_b = nullptr);
-
-
-
 /*
   compose/intersect array of FSAs (multiple streams decoding or training in
   parallel, in a batch)... basically composition with frame-synchronous beam pruning,

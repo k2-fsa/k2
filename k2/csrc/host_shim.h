@@ -13,6 +13,7 @@
 #define K2_CSRC_HOST_SHIM_H_
 
 #include "k2/csrc/fsa.h"
+#include "k2/csrc/ragged.h"
 #include "k2/csrc/host/fsa.h"
 
 namespace k2 {
@@ -50,12 +51,12 @@ namespace k2 {
 
 k2host::Fsa FsaToHostFsa(Fsa &fsa) {
   K2_CHECK_EQ(fsa.NumAxes(), 2);
-  K2_CHECK_EQ(fsa.Context().DeviceType(), kCpu);
+  K2_CHECK_EQ(fsa.Context()->GetDeviceType(), kCpu);
   // reinterpret_cast works because the arcs have the same members
   // (except our 'score' is called 'weight' there).
-  return k2host::Array2(fsa.Dim0(), fsa.TotSize1(),
-                        fsa.RowSplits1().Data(),
-                        reinterpret_cast<k2host::Arc*>(fsa.values.Data()));
+  return k2host::Fsa(fsa.shape.Dim0(), fsa.shape.TotSize(1),
+                     fsa.shape.RowSplits(1).Data(),
+                     reinterpret_cast<k2host::Arc*>(fsa.values.Data()));
 }
 
 class FsaCreator {
@@ -69,13 +70,13 @@ class FsaCreator {
     `Array2Storage` is for this purpose as well, but we define this version of
     constructor here to make test code simpler.
   */
-  explicit FsaCreator(const host::Array2Size<int32_t> &size) { Init(size); }
+  explicit FsaCreator(const k2host::Array2Size<int32_t> &size) { Init(size); }
 
-  void Init(const host::Array2Size<int32_t> &size) {
-    arc_indexes_ = Array1<int32_t>(CpuContext(), size.size1 + 1);
+  void Init(const k2host::Array2Size<int32_t> &size) {
+    arc_indexes_ = Array1<int32_t>(GetCpuContext(), size.size1 + 1);
     // just for case of empty Array2 object, may be written by the caller
-    arc_indexes_.data[0] = 0;
-    arcs_ = Array1<Arc>(CpuContext(), size.size2);
+    arc_indexes_.Data()[0] = 0;
+    arcs_ = Array1<Arc>(GetCpuContext(), size.size2);
   }
 
   /*
@@ -92,7 +93,7 @@ class FsaCreator {
       : FsaCreator() {
     if (arcs.empty())
       return;  // has created an empty Fsa in the default constructor
-    arcs_ = Array1<Arc>(CpuContext(), arcs);
+    arcs_ = Array1<Arc>(GetCpuContext(), arcs);
     std::vector<int32_t> arc_indexes;  // == row_splits.
     int32_t curr_state = -1;
     int32_t index = 0;
@@ -111,15 +112,16 @@ class FsaCreator {
     for (; curr_state <= final_state; ++curr_state)
       arc_indexes.push_back(index);
 
-    arc_indexes_ = Array1<int32_t>(CpuContext(), arc_indexes);
+    arc_indexes_ = Array1<int32_t>(GetCpuContext(), arc_indexes);
   }
 
-  Fsa GetFsa() const {
-    return Fsa(Ragged2Shape(&arc_indexes_, nullptr, arcs_.Dim()),
-               arcs_);
+  Fsa GetFsa() {
+    RaggedShape shape = RaggedShape2(&arc_indexes_, nullptr, arcs_.Dim());
+    Fsa ans(shape, arcs_);
+    return ans;
   }
 
-  k2host::Fsa GetHostFsa() const {
+  k2host::Fsa GetHostFsa() {
     return k2host::Fsa(arc_indexes_.Dim() - 1, arcs_.Dim(), arc_indexes_.Data(),
                        reinterpret_cast<k2host::Arc*>(arcs_.Data()));
 
