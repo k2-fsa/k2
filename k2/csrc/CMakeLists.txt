@@ -14,6 +14,8 @@ add_library(context STATIC
     ragged.cu
     tensor.cu
     utils.cu
+    fsa_algo.cu
+    compose.cu
 )
 set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
