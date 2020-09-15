@@ -79,9 +79,9 @@ int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
 
     if (idx0xx == idx012) {
       // first arc in this FSA (whether or not it's from state 0..)
-      reachable_data[idx0x] = static_cast<char>1;  // state 0 is reachable.
+      reachable_data[idx0x] = static_cast<char> 1;  // state 0 is reachable.
       // final state is always co-reachable.
-      reachable_data[num_states + idx0x_next - 1] = static_cast<char>1;
+      reachable_data[num_states + idx0x_next - 1] = static_cast<char> 1;
       // there was a problem with the state-indexes which makes this
       // impossible to deserialize from a list of arcs.
       if (idx012 > 0 && prev_arc.src_state <= arc.src_state)

@@ -436,9 +436,9 @@ __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
 }
 
 /*
- 1:1 Conversion float <---> sortable int32_t We convert floats to sortable ints in
- order to use native atomics operation, which are way faster than looping over
- atomicCAS
+ 1:1 Conversion float <---> sortable int32_t We convert floats to sortable ints
+ in order to use native atomics operation, which are way faster than looping
+ over atomicCAS
 */
 __host__ __device__ __forceinline__ int32_t FloatToOrderedInt(float f) {
   int32_t i = FloatAsInt(f);

@@ -52,7 +52,7 @@ enum FsaBasicProperties {
                                          // co-accessible, i.e. states with no
                                          // arcs entering them
   kFsaPropertiesMaybeCoaccessible =
-      0x0100,                             // True if there are no obvious signs of
+      0x0100,                           // True if there are no obvious signs of
                                         // states not being co-accessible, i.e.
                                         // i.e. states with no arcs leaving them
   kFsaPropertiesSerializable = 0x0200,  // True if there are no FSAs with zero
@@ -66,7 +66,6 @@ enum FsaBasicProperties {
                                         // list of arcs.
   kFsaAllProperties = 0x03FF
 };
-
 
 using Fsa = Ragged<Arc>;  // 2 axes: state,arc
 

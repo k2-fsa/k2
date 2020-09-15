@@ -18,9 +18,8 @@
 #define K2_CSRC_UTILS_INL_H_
 
 #include <cassert>
-#include <type_traits>
-
 #include <cub/cub.cuh>  // NOLINT
+#include <type_traits>
 
 namespace k2 {
 

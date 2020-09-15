@@ -8,15 +8,15 @@ add_subdirectory(host)
 
 # the target
 add_library(context STATIC
+    compose.cu
     context.cu
     dtype.cu
+    fsa_algo.cu
     math.cu
     ragged.cu
     tensor.cu
     utils.cu
-    fsa_algo.cu
-    compose.cu
-)
+    )
 set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # lib deps
@@ -30,9 +30,9 @@ set(cuda_tests
     array_test
     log_test
     ragged_shape_test
+    ragged_test
     tensor_test
     utils_test
-    ragged_test
     )
 
 # utility function to add gtest
@@ -54,6 +54,6 @@ function(k2_add_cuda_test name)
       )
 endfunction()
 
-foreach(name IN LISTS cuda_tests)
+foreach (name IN LISTS cuda_tests)
   k2_add_cuda_test(${name})
-endforeach()
+endforeach ()

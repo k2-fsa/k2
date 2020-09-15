@@ -59,8 +59,7 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
                           equivalence of `a` and `b`
  */
 template <FbWeightType Type>
-bool IsRandEquivalent(const Fsa &a, const Fsa &b,
-                      float beam = kFloatInfinity,
+bool IsRandEquivalent(const Fsa &a, const Fsa &b, float beam = kFloatInfinity,
                       float delta = 1e-6, bool top_sorted = true,
                       std::size_t npath = 100);
 
@@ -101,9 +100,9 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
   @param [in]  npath      The number of paths will be generated to check the
                           equivalence of `a` and `b`
  */
-bool IsRandEquivalentAfterRmEpsPrunedLogSum(
-    const Fsa &a, const Fsa &b,
-    float beam, bool top_sorted = true, std::size_t npath = 100);
+bool IsRandEquivalentAfterRmEpsPrunedLogSum(const Fsa &a, const Fsa &b,
+                                            float beam, bool top_sorted = true,
+                                            std::size_t npath = 100);
 
 /*
   Gets a random path from the input FSA, returns true if we get one path

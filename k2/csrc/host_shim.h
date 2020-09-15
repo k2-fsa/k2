@@ -12,12 +12,13 @@
 #ifndef K2_CSRC_HOST_SHIM_H_
 #define K2_CSRC_HOST_SHIM_H_
 
+#include <vector>
+
 #include "k2/csrc/fsa.h"
-#include "k2/csrc/ragged.h"
 #include "k2/csrc/host/fsa.h"
+#include "k2/csrc/ragged.h"
 
 namespace k2 {
-
 
 /*
   Create an FsaVec (vector of FSAs) from a Tensor.  Please see FsaFromTensor for
@@ -56,16 +57,16 @@ k2host::Fsa FsaToHostFsa(Fsa &fsa) {
   // (except our 'score' is called 'weight' there).
   return k2host::Fsa(fsa.shape.Dim0(), fsa.shape.TotSize(1),
                      fsa.shape.RowSplits(1).Data(),
-                     reinterpret_cast<k2host::Arc*>(fsa.values.Data()));
+                     reinterpret_cast<k2host::Arc *>(fsa.values.Data()));
 }
 
 class FsaCreator {
  public:
   FsaCreator() = default;
   /*
-    Initialize Fsa with host::Array2size, search for 'initialized definition' in class
-    Array2 in array.h for meaning. Note that we don't fill data in `indexes` and
-    `data` here, the caller is responsible for this.
+    Initialize Fsa with host::Array2size, search for 'initialized definition' in
+    class Array2 in array.h for meaning. Note that we don't fill data in
+    `indexes` and `data` here, the caller is responsible for this.
 
     `Array2Storage` is for this purpose as well, but we define this version of
     constructor here to make test code simpler.
@@ -123,12 +124,11 @@ class FsaCreator {
 
   k2host::Fsa GetHostFsa() {
     return k2host::Fsa(arc_indexes_.Dim() - 1, arcs_.Dim(), arc_indexes_.Data(),
-                       reinterpret_cast<k2host::Arc*>(arcs_.Data()));
-
+                       reinterpret_cast<k2host::Arc *>(arcs_.Data()));
   }
 
  private:
-  Array1<int32_t> arc_indexes_; // == row_splits
+  Array1<int32_t> arc_indexes_;  // == row_splits
   Array1<Arc> arcs_;
 };
 

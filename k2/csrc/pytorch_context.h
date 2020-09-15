@@ -12,10 +12,13 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#ifndef K2_CSRC_PYTORCH_CONTEXT_H_
+#define K2_CSRC_PYTORCH_CONTEXT_H_
+
 #include "k2/csrc/context.h"
 
-class PytorchContext: public Context {
-
+class PytorchContext : public Context {
   // ...
-
 };
+
+#endif  // K2_CSRC_PYTORCH_CONTEXT_H_

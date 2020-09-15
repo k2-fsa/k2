@@ -472,10 +472,10 @@ row_splits.
       // the half that are allocated by throwing darts.
       int32_t num_jobs_this_task =
           1 + (next_row_split/dart_separation - this_row_split/dart_separation),
-          job_idx_this_task = 1 + (dart_location - this_row_split)/dart_separation;
-      K2_CHECK(job_id_this_task < num_jobs_this_task);
-      TaskRedirect tr { task_idx, num_jobs_this_task, job_idx_this_task };
-      redirect_out[num_tasks + job_idx] = tr;
+          job_idx_this_task = 1 + (dart_location -
+this_row_split)/dart_separation; K2_CHECK(job_id_this_task <
+num_jobs_this_task); TaskRedirect tr { task_idx, num_jobs_this_task,
+job_idx_this_task }; redirect_out[num_tasks + job_idx] = tr;
     }
   }
 }
@@ -499,7 +499,7 @@ __global__ void GetTaskRedirect(int32_t num_tasks, const int32_t *row_splits,
   // threads for this job.
   int32_t thread_idx =
       threadIdx.x %
-          threads_per_task;  // we assume blockDim.x % threads_per_job == 0
+      threads_per_task;  // we assume blockDim.x % threads_per_job == 0
   // `temp_idx` is which index in the temporary storage `temp` we are assigned
   // (one per job).
 

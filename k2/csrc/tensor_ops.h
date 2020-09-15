@@ -10,15 +10,13 @@
 
 #include "k2/csrc/tensor.h"
 
-
 /*
   This copies elements from `src` to `dest`.  They must be on the same device,
-  and have the same dims and dtype, but not necessarily the same layout.  (In fact,
-  if they have the same layout and are contiguous, there are faster ways
+  and have the same dims and dtype, but not necessarily the same layout.  (In
+  fact, if they have the same layout and are contiguous, there are faster ways
   to copy).
 */
 void CopyTensorElements(Tensor src, Tensor dest);
-
 
 /*
   Returns a contiguous version of `src`, i.e. with the same dims but that
@@ -36,8 +34,5 @@ Tensor ToContiguous(Tensor src);
   that uses the same underlying data as `src`.
  */
 Tensor Cast(Tensor src, Dtype new_dtype);
-
-
-
 
 #endif  // K2_CSRC_TENSOR_OPS_H_

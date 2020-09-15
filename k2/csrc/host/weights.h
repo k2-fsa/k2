@@ -54,8 +54,7 @@ constexpr double kDoubleNegativeInfinity =
                 to that state along any path, or `kNegativeInfinity` if no such
                 path exists.
  */
-void ComputeForwardMaxWeights(const Fsa &fsa,
-                              double *state_weights);
+void ComputeForwardMaxWeights(const Fsa &fsa, double *state_weights);
 
 /*
   Does the 'backward' computation; this is as in the tropical semiring
@@ -71,8 +70,7 @@ void ComputeForwardMaxWeights(const Fsa &fsa,
                 to the final state along any path, or `kNegativeInfinity` if no
   such path exists.
  */
-void ComputeBackwardMaxWeights(const Fsa &fsa,
-                               double *state_weights);
+void ComputeBackwardMaxWeights(const Fsa &fsa, double *state_weights);
 
 /*
   Does the 'forward' computation; this is as in the log semiring
@@ -87,8 +85,7 @@ void ComputeBackwardMaxWeights(const Fsa &fsa,
                 to that state, or `kNegativeInfinity` if no such
                 path exists.
  */
-void ComputeForwardLogSumWeights(const Fsa &fsa,
-                                 double *state_weights);
+void ComputeForwardLogSumWeights(const Fsa &fsa, double *state_weights);
 
 /*
   Does the 'backward' computation; this is as in the log semiring
@@ -102,16 +99,14 @@ void ComputeForwardLogSumWeights(const Fsa &fsa,
                 log sum of all paths' weights from that state to the final
   state, or `kNegativeInfinity` if no such path exists.
  */
-void ComputeBackwardLogSumWeights(const Fsa &fsa,
-                                  double *state_weights);
+void ComputeBackwardLogSumWeights(const Fsa &fsa, double *state_weights);
 
 enum FbWeightType { kMaxWeight, kLogSumWeight };
 
 // Version of `ComputeForwardWeights` as a template interface, see documentation
 // of `ComputeForwardMaxWeights` or `ComputeForwardLogSumWeights`
 template <FbWeightType Type>
-void ComputeForwardWeights(const Fsa &fsa,
-                           double *state_weights);
+void ComputeForwardWeights(const Fsa &fsa, double *state_weights);
 
 template <>
 inline void ComputeForwardWeights<kMaxWeight>(const Fsa &fsa,
@@ -129,8 +124,7 @@ inline void ComputeForwardWeights<kLogSumWeight>(const Fsa &fsa,
 // documentation of `ComputeBackwardMaxWeights` or
 // `ComputeBackwardLogSumWeights`
 template <FbWeightType Type>
-void ComputeBackwardWeights(const Fsa &fsa,
-                            double *state_weights);
+void ComputeBackwardWeights(const Fsa &fsa, double *state_weights);
 template <>
 inline void ComputeBackwardWeights<kMaxWeight>(const Fsa &fsa,
                                                double *state_weights) {

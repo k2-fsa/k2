@@ -17,10 +17,10 @@
 #include <vector>
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
-#include "k2/csrc/array_ops.h"
 #include "k2/csrc/tensor.h"
 
 namespace k2 {

@@ -13,7 +13,6 @@
 #include "k2/csrc/host/connect.h"
 
 #include <algorithm>
-
 #include <limits>
 #include <stack>
 #include <unordered_map>

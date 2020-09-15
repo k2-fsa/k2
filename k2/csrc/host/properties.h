@@ -101,7 +101,6 @@ bool IsEpsilonFree(const Fsa &fsa);
  */
 bool IsConnected(const Fsa &fsa);
 
-
 /*
   Returns true if all states in `fsa` have zero scores
  */

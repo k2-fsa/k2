@@ -19,14 +19,13 @@ namespace k2 {
 
 class Renumbering {
  public:
-  Renumbering(int32_t num_old_elems);
+  explicit Renumbering(int32_t num_old_elems);
 
   int32_t NumOldElems();
   int32_t NumNewElems();
 
   Array1<char> &Keep();  // dim is NumOldElems().  0 if not kept, 1 if kept
                          // (user will write to here).
-
 
   /* Return a mapping from new index to old index.  This is created on
      demand (must only be called after the Keep() array has been populated).
@@ -40,7 +39,6 @@ class Renumbering {
                  (pre-renumbering) indexes.
   */
   Array1<int32_t> New2Old(bool include_final_value = true);
-
 
   /* Return a mapping from old index to new index (this is the exclusive-sum of
      `Keep()`).  This is created on demand (must only be called after the Keep()
@@ -60,10 +58,7 @@ class Renumbering {
   Array1<char> keep_;
   Array1<int32_t> new2old_;
   Array1<int32_t> old2new_;
-
 };
-
-
 
 }  // namespace k2
 

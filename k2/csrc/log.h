@@ -140,7 +140,7 @@ class Logger {
 
 class Voidifier {
  public:
-  K2_CUDA_HOSTDEV void operator&(const Logger &)const {}
+  K2_CUDA_HOSTDEV void operator&(const Logger &) const {}
 };
 
 }  // namespace internal

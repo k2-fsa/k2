@@ -470,7 +470,6 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
 
-
 /*
   Construct a RaggedShape with 2 axes.
      @param [in] row_splits   row_splits, or NULL (at least one of this and

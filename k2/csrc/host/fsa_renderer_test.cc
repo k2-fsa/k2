@@ -13,6 +13,7 @@
 #include "k2/csrc/host/fsa_renderer.h"
 
 #include <gtest/gtest.h>
+
 #include <utility>
 #include <vector>
 
@@ -32,7 +33,7 @@ namespace k2host {
 // as expected.
 TEST(FsaRenderer, Render) {
   std::vector<Arc> arcs = {
-    {0, 1, 2, 1}, {0, 2, 1, 2}, {1, 2, 0, 3}, {1, 3, 5, 4}, {2, 3, 6, 5},
+      {0, 1, 2, 1}, {0, 2, 1, 2}, {1, 2, 0, 3}, {1, 3, 5, 4}, {2, 3, 6, 5},
   };
 
   FsaCreator fsa_creator(arcs, 3);
