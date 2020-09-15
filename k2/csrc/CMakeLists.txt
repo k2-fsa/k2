@@ -30,8 +30,7 @@ set(cuda_tests
     ragged_shape_test
     tensor_test
     utils_test
-    # TODO(haowen): uncomment this after build ragged
-    # ragged_test
+    ragged_test
     )
 
 # utility function to add gtest

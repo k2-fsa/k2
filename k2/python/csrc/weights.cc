@@ -20,14 +20,13 @@ void PybindFbWeightType(py::module &m) {
 void PybindWfsaWithFbWeights(py::module &m) {
   using PyClass = k2host::WfsaWithFbWeights;
   py::class_<PyClass>(m, "_WfsaWithFbWeights")
-      .def(py::init(
-          [](const k2host::Fsa &fsa,
-             k2host::FbWeightType type, k2host::Array1<double *> *forward_state_weights,
-             k2host::Array1<double *> *backward_state_weights) {
-            return std::unique_ptr<PyClass>(new PyClass(
-                fsa, type, forward_state_weights->data,
-                backward_state_weights->data));
-          }))
+      .def(py::init([](const k2host::Fsa &fsa, k2host::FbWeightType type,
+                       k2host::Array1<double *> *forward_state_weights,
+                       k2host::Array1<double *> *backward_state_weights) {
+        return std::unique_ptr<PyClass>(
+            new PyClass(fsa, type, forward_state_weights->data,
+                        backward_state_weights->data));
+      }))
       // We do not expose `self.fsa`,
       // `self.ForwardStateWeights` `self.BackwardStateWeights` here as they
       // are passed to the constructor of `WfsaWeightFbWeights` from Python

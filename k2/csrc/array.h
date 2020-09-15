@@ -270,14 +270,13 @@ class Array1 {
   Array1(const Array1 &other) = default;
   Array1 &operator=(const Array1 &other) = default;
 
-
   /*
     This function checks that T is the same as the data-type of `tensor` and
     that `tensor` has zero or one axis.  If `tensor` is not contiguous it
     will make a contiguous copy.  Then it will construct this Array referring
     to the same data as the (possibly-copied) tensor.
    */
-  Array1(const Tensor &tensor);
+  explicit Array1(const Tensor &tensor);
 
  private:
   int32_t dim_;

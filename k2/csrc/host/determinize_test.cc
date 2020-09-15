@@ -11,9 +11,10 @@
 
 #include "k2/csrc/host/determinize.h"
 
-#include <algorithm>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -28,22 +29,21 @@ namespace k2host {
 class DeterminizeTest : public ::testing::Test {
  protected:
   DeterminizeTest() {
-    std::vector<Arc> arcs = {{0, 4, 1, 1}, {0, 1, 1, 1},  {1, 2, 2, 2},  {1, 3, 3, 3},
-                             {2, 7, 1, 4}, {3, 7, 1, 5},  {4, 6, 1, 2},  {4, 6, 1, 3},
-                             {4, 5, 1, 3}, {4, 8, -1, 2}, {5, 8, -1, 4}, {6, 8, -1, 3},
-                             {7, 8, -1, 5}};
+    std::vector<Arc> arcs = {
+        {0, 4, 1, 1},  {0, 1, 1, 1},  {1, 2, 2, 2}, {1, 3, 3, 3}, {2, 7, 1, 4},
+        {3, 7, 1, 5},  {4, 6, 1, 2},  {4, 6, 1, 3}, {4, 5, 1, 3}, {4, 8, -1, 2},
+        {5, 8, -1, 4}, {6, 8, -1, 3}, {7, 8, -1, 5}};
     fsa_creator_ = new FsaCreator(arcs, 8);
     fsa_ = &fsa_creator_->GetFsa();
     num_states_ = fsa_->NumStates();
-
 
     max_forward_weights_.resize(num_states_);
     max_backward_weights_.resize(num_states_);
     logsum_forward_weights_.resize(num_states_);
     logsum_backward_weights_.resize(num_states_);
-    max_wfsa_ = new WfsaWithFbWeights(*fsa_, kMaxWeight,
-                                      max_forward_weights_.data(),
-                                      max_backward_weights_.data());
+    max_wfsa_ =
+        new WfsaWithFbWeights(*fsa_, kMaxWeight, max_forward_weights_.data(),
+                              max_backward_weights_.data());
     log_wfsa_ = new WfsaWithFbWeights(*fsa_, kLogSumWeight,
                                       logsum_forward_weights_.data(),
                                       logsum_backward_weights_.data());

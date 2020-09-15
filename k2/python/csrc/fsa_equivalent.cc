@@ -14,15 +14,14 @@ void PyBindIsRandEquivalentTpl(py::module &m, const char *name) {
   m.def(
       name,
       [](const k2host::Fsa &a, const k2host::Fsa &b,
-         float beam = k2host::kFloatInfinity,
-         float delta = 1e-6, bool top_sorted = true,
-         std::size_t npath = 100) -> bool {
-        return k2host::IsRandEquivalent<Type>(a, b, beam, delta,
-                                          top_sorted, npath);
+         float beam = k2host::kFloatInfinity, float delta = 1e-6,
+         bool top_sorted = true, std::size_t npath = 100) -> bool {
+        return k2host::IsRandEquivalent<Type>(a, b, beam, delta, top_sorted,
+                                              npath);
       },
-      py::arg("fsa_a"), py::arg("fsa_b"), py::arg("beam") = k2host::kFloatInfinity,
-      py::arg("delta") = 1e-6, py::arg("top_sorted") = true,
-      py::arg("npath") = 100);
+      py::arg("fsa_a"), py::arg("fsa_b"),
+      py::arg("beam") = k2host::kFloatInfinity, py::arg("delta") = 1e-6,
+      py::arg("top_sorted") = true, py::arg("npath") = 100);
 }
 
 void PyBindRandPath(py::module &m) {
@@ -47,23 +46,21 @@ void PybindFsaEquivalent(py::module &m) {
             k2host::IsRandEquivalent,
         py::arg("fsa_a"), py::arg("fsa_b"), py::arg("npath") = 100);
 
-  PyBindIsRandEquivalentTpl<k2host::kMaxWeight>(m,
-                                            "_is_rand_equivalent_max_weight");
+  PyBindIsRandEquivalentTpl<k2host::kMaxWeight>(
+      m, "_is_rand_equivalent_max_weight");
   PyBindIsRandEquivalentTpl<k2host::kLogSumWeight>(
       m, "_is_rand_equivalent_logsum_weight");
 
   // maybe we don't need this version in Python code.
   m.def(
       "_is_rand_equivalent_after_rmeps_pruned_logsum",
-      [](const k2host::Fsa &a, const k2host::Fsa &b,
-         float beam, bool top_sorted = true,
-         std::size_t npath = 100) -> bool {
+      [](const k2host::Fsa &a, const k2host::Fsa &b, float beam,
+         bool top_sorted = true, std::size_t npath = 100) -> bool {
         return k2host::IsRandEquivalentAfterRmEpsPrunedLogSum(
             a, b, beam, top_sorted, npath);
       },
-      py::arg("fsa_a"), py::arg("fsa_b"),
-      py::arg("beam"), py::arg("top_sorted") = true,
-      py::arg("npath") = 100);
+      py::arg("fsa_a"), py::arg("fsa_b"), py::arg("beam"),
+      py::arg("top_sorted") = true, py::arg("npath") = 100);
 
   PyBindRandPath(m);
 }

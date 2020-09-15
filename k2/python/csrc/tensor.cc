@@ -7,7 +7,6 @@
 
 #include "k2/python/csrc/tensor.h"
 
-
 namespace k2host {
 
 // refer to
@@ -29,7 +28,7 @@ static DataType DLDataTypeToK2DataType(DLDataType data_type) {
   if (data_type.code == kDLFloat && data_type.bits == 32) return kFloatType;
   if (data_type.code == kDLFloat && data_type.bits == 64) return kDoubleType;
   K2_LOG(FATAL) << "Unsupported DLDataType: Code = " << data_type.code
-             << ", Bits = " << data_type.bits;
+                << ", Bits = " << data_type.bits;
   return kUnknownType;
 }
 
@@ -114,7 +113,8 @@ int32_t Tensor::BytesPerElement() const {
 }
 
 void Tensor::Check() const {
-  K2_CHECK(dtype_ == kInt32Type || dtype_ == kFloatType || dtype_ == kDoubleType)
+  K2_CHECK(dtype_ == kInt32Type || dtype_ == kFloatType ||
+           dtype_ == kDoubleType)
       << "We support only int32_t, float and double at present";
 
   K2_CHECK(BytesPerElement() == 4 || BytesPerElement() == 8)

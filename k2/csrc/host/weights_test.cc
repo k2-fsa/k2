@@ -11,11 +11,12 @@
 
 #include "k2/csrc/host/weights.h"
 
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include <algorithm>
 #include <utility>
 #include <vector>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/fsa_renderer.h"
@@ -28,8 +29,9 @@ class WeightsTest : public ::testing::Test {
  protected:
   WeightsTest() {
     std::vector<Arc> arcs = {
-        {0, 4, 1, 1}, {0, 1, 1, 1}, {1, 2, 1, 2},  {1, 3, 1, 3},  {2, 7, 1, 4},  {3, 7, 1, 5},
-        {4, 6, 1, 2}, {4, 8, 1, 3}, {5, 9, -1, 4}, {6, 9, -1, 3}, {7, 9, -1, 5}, {8, 9, -1, 6},
+        {0, 4, 1, 1},  {0, 1, 1, 1},  {1, 2, 1, 2},  {1, 3, 1, 3},
+        {2, 7, 1, 4},  {3, 7, 1, 5},  {4, 6, 1, 2},  {4, 8, 1, 3},
+        {5, 9, -1, 4}, {6, 9, -1, 3}, {7, 9, -1, 5}, {8, 9, -1, 6},
     };
     fsa_creator_ = new FsaCreator(arcs, 9);
     fsa_ = &fsa_creator_->GetFsa();
@@ -38,9 +40,7 @@ class WeightsTest : public ::testing::Test {
     auto num_arcs = fsa_->size2;
   }
 
-  ~WeightsTest() override {
-    delete fsa_creator_;
-  }
+  ~WeightsTest() override { delete fsa_creator_; }
 
   FsaCreator *fsa_creator_;
   const Fsa *fsa_;
@@ -95,8 +95,7 @@ TEST_F(WeightsTest, ComputeForwardLogSumWeights) {
   // template version
   {
     std::vector<double> state_weights(num_states_);
-    ComputeForwardWeights<kLogSumWeight>(*fsa_,
-                                         &state_weights[0]);
+    ComputeForwardWeights<kLogSumWeight>(*fsa_, &state_weights[0]);
     EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, forward_logsum_weights_, 1e-3);
   }
 }
@@ -134,8 +133,8 @@ TEST_F(WeightsTest, WfsaWithFbWeightsMax) {
   const auto num_states = fsa_->NumStates();
   std::vector<double> forward_weights(num_states);
   std::vector<double> backward_weights(num_states);
-  WfsaWithFbWeights wfsa(*fsa_, kMaxWeight,
-                         forward_weights.data(), backward_weights.data());
+  WfsaWithFbWeights wfsa(*fsa_, kMaxWeight, forward_weights.data(),
+                         backward_weights.data());
   EXPECT_DOUBLE_ARRAY_APPROX_EQ(forward_weights, forward_max_weights_, 1e-3);
   EXPECT_DOUBLE_ARRAY_APPROX_EQ(backward_weights, backward_max_weights_, 1e-3);
 }
@@ -144,8 +143,8 @@ TEST_F(WeightsTest, WfsaWithFbWeightsLogSum) {
   const auto num_states = fsa_->NumStates();
   std::vector<double> forward_weights(num_states);
   std::vector<double> backward_weights(num_states);
-  WfsaWithFbWeights wfsa(*fsa_, kLogSumWeight,
-                         forward_weights.data(), backward_weights.data());
+  WfsaWithFbWeights wfsa(*fsa_, kLogSumWeight, forward_weights.data(),
+                         backward_weights.data());
   EXPECT_DOUBLE_ARRAY_APPROX_EQ(forward_weights, forward_logsum_weights_, 1e-3);
   EXPECT_DOUBLE_ARRAY_APPROX_EQ(backward_weights, backward_logsum_weights_,
                                 1e-3);

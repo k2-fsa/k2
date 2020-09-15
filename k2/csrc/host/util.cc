@@ -9,10 +9,11 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/log.h"
 #include "k2/csrc/host/util.h"
 
 #include <stdlib.h>
+
+#include "k2/csrc/log.h"
 
 namespace k2host {
 
