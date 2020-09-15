@@ -12,9 +12,10 @@
 
 #include "k2/csrc/host/connect.h"
 
-#include <algorithm>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -54,7 +55,8 @@ TEST(ConnectTest, ConnectCore) {
     // case 3: a connected, cyclic FSA
     // the cycle is a self-loop, the output is still topsorted.
     std::vector<Arc> arcs = {
-        {0, 1, 1, 0}, {1, 2, 2, 0}, {1, 3, 3, 0}, {2, 2, 2, 0}, {2, 4, -1, 0}, {3, 4, -1, 0},
+        {0, 1, 1, 0}, {1, 2, 2, 0},  {1, 3, 3, 0},
+        {2, 2, 2, 0}, {2, 4, -1, 0}, {3, 4, -1, 0},
     };
     FsaCreator fsa_creator(arcs, 4);
     const auto &fsa = fsa_creator.GetFsa();
@@ -68,7 +70,8 @@ TEST(ConnectTest, ConnectCore) {
   {
     // case 4: a non-connected, acyclic, non-topsorted FSA
     std::vector<Arc> arcs = {
-        {0, 4, 4, 0}, {0, 3, 3, 0}, {1, 0, 1, 0}, {3, 5, -1, 0}, {4, 2, 2, 0}, {4, 3, 3, 0},
+        {0, 4, 4, 0},  {0, 3, 3, 0}, {1, 0, 1, 0},
+        {3, 5, -1, 0}, {4, 2, 2, 0}, {4, 3, 3, 0},
     };
     FsaCreator fsa_creator(arcs, 5);
     const auto &fsa = fsa_creator.GetFsa();
@@ -188,8 +191,9 @@ TEST(ConnectTest, Connect) {
     // after trimming, the cycle is removed;
     // so the output fsa should be topsorted.
     std::vector<Arc> arcs = {
-        {0, 3, 3, 0}, {0, 5, 5, 0},  {1, 2, 2, 0}, {2, 1, 1, 0},  {3, 5, 5, 0},  {3, 2, 2, 0},
-        {3, 4, 4, 0}, {3, 6, -1, 0}, {4, 5, 5, 0}, {4, 6, -1, 0}, {5, 6, -1, 0},
+        {0, 3, 3, 0}, {0, 5, 5, 0},  {1, 2, 2, 0},  {2, 1, 1, 0},
+        {3, 5, 5, 0}, {3, 2, 2, 0},  {3, 4, 4, 0},  {3, 6, -1, 0},
+        {4, 5, 5, 0}, {4, 6, -1, 0}, {5, 6, -1, 0},
     };
     FsaCreator fsa_creator(arcs, 6);
     const auto &fsa = fsa_creator.GetFsa();
@@ -228,8 +232,9 @@ TEST(ConnectTest, Connect) {
     // a cyclic input fsa
     // after trimming, the cycle remains (it is not a self-loop);
     // so the output fsa is NOT topsorted.
-    std::vector<Arc> arcs = {{0, 1, 1, 0}, {0, 2, 2, 0}, {1, 1, 1, 0}, {1, 3, -1, 0},
-                             {2, 1, 1, 0}, {2, 2, 2, 0},  {2, 3, -1, 0}};
+    std::vector<Arc> arcs = {{0, 1, 1, 0},  {0, 2, 2, 0}, {1, 1, 1, 0},
+                             {1, 3, -1, 0}, {2, 1, 1, 0}, {2, 2, 2, 0},
+                             {2, 3, -1, 0}};
     FsaCreator fsa_creator(arcs, 3);
     const auto &fsa = fsa_creator.GetFsa();
     Array2Size<int32_t> fsa_size;

@@ -31,9 +31,9 @@ class DLPackFsa : public Fsa {
     K2_CHECK_EQ(data_tensor_->NumDim(), 2);
     K2_CHECK_GE(data_tensor_->Shape(0), 0);  // num-elements
     K2_CHECK_EQ(data_tensor_->Shape(1) * data_tensor_->BytesPerElement(),
-             sizeof(Arc));
+                sizeof(Arc));
     K2_CHECK_EQ(data_tensor_->Stride(0) * data_tensor_->BytesPerElement(),
-             sizeof(Arc));
+                sizeof(Arc));
     K2_CHECK_EQ(data_tensor_->Stride(1), 1);
 
     int32_t size1 = indexes_tensor_->Shape(0) - 1;

@@ -13,6 +13,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
 #include <utility>
 #include <vector>
 
@@ -88,7 +89,7 @@ TEST_F(ArcMapTest, GetArcIndexes) {
 
 TEST(FsaUtil, GetEnteringArcs) {
   std::vector<Arc> arcs = {
-    {0, 1, 2, 0}, {0, 2, 1, 0}, {1, 2, 0, 0}, {1, 3, 5, 0}, {2, 3, 6, 0}};
+      {0, 1, 2, 0}, {0, 2, 1, 0}, {1, 2, 0, 0}, {1, 3, 5, 0}, {2, 3, 6, 0}};
   FsaCreator fsa_creator(arcs, 3);
   const auto &fsa = fsa_creator.GetFsa();
   Array2Storage<int32_t *, int32_t> arc_indexes_storage({fsa.size1, fsa.size2},
@@ -202,16 +203,17 @@ TEST(FsaUtil, ReorderArcs) {
   }
 
   {
-    std::vector<Arc> arcs = {{0, 1, 1, 0}, {0, 2, 2, 0},  {2, 3, 3, 0},  {2, 4, 4, 0},
-                             {1, 2, 5, 0}, {2, 5, -1, 0}, {4, 5, -1, 0}, {3, 5, -1, 0}};
+    std::vector<Arc> arcs = {{0, 1, 1, 0},  {0, 2, 2, 0}, {2, 3, 3, 0},
+                             {2, 4, 4, 0},  {1, 2, 5, 0}, {2, 5, -1, 0},
+                             {4, 5, -1, 0}, {3, 5, -1, 0}};
     FsaCreator fsa_creator({6, 8});
     auto &fsa = fsa_creator.GetFsa();
     std::vector<int32_t> arc_map;
     ReorderArcs(arcs, &fsa, &arc_map);
 
-    std::vector<Arc> expected_arcs = {{0, 1, 1, 0},  {0, 2, 2, 0}, {1, 2, 5, 0},
-                                      {2, 3, 3, 0},  {2, 4, 4, 0}, {2, 5, -1, 0},
-                                      {3, 5, -1, 0}, {4, 5, -1, 0}};
+    std::vector<Arc> expected_arcs = {
+        {0, 1, 1, 0}, {0, 2, 2, 0},  {1, 2, 5, 0},  {2, 3, 3, 0},
+        {2, 4, 4, 0}, {2, 5, -1, 0}, {3, 5, -1, 0}, {4, 5, -1, 0}};
     ASSERT_EQ(fsa.size2, arcs.size());
     ASSERT_EQ(fsa.size2, expected_arcs.size());
     for (auto i = 0; i != expected_arcs.size(); ++i) {
@@ -243,7 +245,7 @@ TEST(FsaUtil, FsaCreator) {
 
   {
     std::vector<Arc> arcs = {
-      {0, 1, 1, 0}, {0, 2, 2, 0}, {2, 3, 3, 0}, {2, 4, 4, 0}, {3, 5, -1, 0}};
+        {0, 1, 1, 0}, {0, 2, 2, 0}, {2, 3, 3, 0}, {2, 4, 4, 0}, {3, 5, -1, 0}};
     FsaCreator fsa_creator(arcs, 6);
     const auto &fsa = fsa_creator.GetFsa();
 

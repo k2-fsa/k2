@@ -353,7 +353,7 @@ void RandFsaGenerator::GetSizes(Array2Size<int32_t> *fsa_size) {
     ++num_fails;
     if (num_fails > 100)
       K2_LOG(FATAL) << "Cannot generate a rand fsa. Please increase num_states "
-                    "and num_arcs";
+                       "and num_arcs";
 
     std::unordered_set<std::pair<int32_t, int32_t>, PairHash> seen;
     int32_t tried = 0;
@@ -375,10 +375,11 @@ void RandFsaGenerator::GetSizes(Array2Size<int32_t> *fsa_size) {
       else
         label = rand(0, static_cast<int32_t>(opts_.num_syms - 1));
 
-      float weight = (float) (opts_.nonzero_weights ? rand(0, 10) * 0.5 :
-                              0.0);
+      float weight =
+          static_cast<float>(opts_.nonzero_weights ? rand(0, 10) * 0.5 : 0.0);
 
-      state_to_arcs[src_state].emplace_back(src_state, dest_state, label, weight);
+      state_to_arcs[src_state].emplace_back(src_state, dest_state, label,
+                                            weight);
       ++i;
     }
 
@@ -465,7 +466,8 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
           ++current_state.arc_begin;
           break;
         case kVisiting:
-          K2_LOG(FATAL) << "there is a cycle: " << state << " -> " << next_state;
+          K2_LOG(FATAL) << "there is a cycle: " << state << " -> "
+                        << next_state;
           break;
         case kVisited:
           ++current_state.arc_begin;

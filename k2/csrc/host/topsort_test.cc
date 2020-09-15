@@ -12,9 +12,10 @@
 
 #include "k2/csrc/host/topsort.h"
 
-#include <algorithm>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -48,11 +49,7 @@ TEST(TopSortTest, TopSort) {
 
   {
     // case 2: non-connected fsa (not co-accessible)
-    std::vector<Arc> arcs = {
-      {0, 2, -1, 0},
-      {1, 2, -1, 0},
-      {1, 2, 0, 0}
-    };
+    std::vector<Arc> arcs = {{0, 2, -1, 0}, {1, 2, -1, 0}, {1, 2, 0, 0}};
     FsaCreator fsa_creator(arcs, 2);
     const auto &fsa = fsa_creator.GetFsa();
     TopSorter sorter(fsa);
@@ -72,9 +69,9 @@ TEST(TopSortTest, TopSort) {
   {
     // case 3: non-connected fsa (not accessible)
     std::vector<Arc> arcs = {
-      {0, 2, -1, 0},
-      {1, 0, 1, 0},
-      {1, 2, 0, 0},
+        {0, 2, -1, 0},
+        {1, 0, 1, 0},
+        {1, 2, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 2);
     const auto &fsa = fsa_creator.GetFsa();
@@ -95,7 +92,7 @@ TEST(TopSortTest, TopSort) {
   {
     // case 4: connected fsa
     std::vector<Arc> src_arcs = {
-       {0, 4, 40, 0}, {0, 2, 20, 0}, {1, 6, -1, 0}, {2, 3, 30, 0},
+        {0, 4, 40, 0}, {0, 2, 20, 0}, {1, 6, -1, 0}, {2, 3, 30, 0},
         {3, 6, -1, 0}, {3, 1, 10, 0}, {4, 5, 50, 0}, {5, 2, 8, 0},
     };
     FsaCreator fsa_creator(src_arcs, 6);

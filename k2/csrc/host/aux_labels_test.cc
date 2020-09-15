@@ -13,6 +13,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
 #include <utility>
 #include <vector>
 
@@ -187,8 +188,9 @@ TEST(AuxLabels, InvertFst) {
 
     EXPECT_TRUE(IsTopSorted(fsa_out));
     std::vector<Arc> arcs_out = {
-        {0, 1, 1, 0},  {0, 2, 3, 0}, {0, 6, 0, 0}, {1, 2, 2, 0}, {2, 3, 5, 0},  {2, 6, 0, 0},
-        {2, 8, -1, 0}, {3, 4, 6, 0}, {4, 5, 7, 0}, {5, 6, 0, 0}, {5, 8, -1, 0}, {7, 8, -1, 0},
+        {0, 1, 1, 0}, {0, 2, 3, 0}, {0, 6, 0, 0},  {1, 2, 2, 0},
+        {2, 3, 5, 0}, {2, 6, 0, 0}, {2, 8, -1, 0}, {3, 4, 6, 0},
+        {4, 5, 7, 0}, {5, 6, 0, 0}, {5, 8, -1, 0}, {7, 8, -1, 0},
     };
     ASSERT_EQ(fsa_out.size2, arcs_out.size());
     for (auto i = 0; i != arcs_out.size(); ++i) {
@@ -236,10 +238,10 @@ TEST(AuxLabels, InvertFst) {
     fst_inverter.GetOutput(&fsa_out, &labels_out);
 
     EXPECT_FALSE(IsTopSorted(fsa_out));
-    std::vector<Arc> arcs_out = {{0, 1, 1, 0},  {0, 3, 3, 0}, {0, 7, 0, 0},  {1, 3, 2, 0},
-                                 {2, 3, 10, 0}, {3, 4, 5, 0}, {3, 7, 0, 0},  {4, 5, 6, 0},
-                                 {5, 6, 7, 0},  {6, 3, 8, 0}, {6, 9, -1, 0}, {7, 2, 9, 0},
-                                 {8, 9, -1, 0}};
+    std::vector<Arc> arcs_out = {
+        {0, 1, 1, 0},  {0, 3, 3, 0}, {0, 7, 0, 0}, {1, 3, 2, 0}, {2, 3, 10, 0},
+        {3, 4, 5, 0},  {3, 7, 0, 0}, {4, 5, 6, 0}, {5, 6, 7, 0}, {6, 3, 8, 0},
+        {6, 9, -1, 0}, {7, 2, 9, 0}, {8, 9, -1, 0}};
     ASSERT_EQ(fsa_out.size2, arcs_out.size());
     for (auto i = 0; i != arcs_out.size(); ++i) {
       EXPECT_EQ(fsa_out.data[i], arcs_out[i]);

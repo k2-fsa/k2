@@ -11,7 +11,8 @@
 void PyBindAuxLabels1Mapper(py::module &m) {
   using PyClass = k2host::AuxLabels1Mapper;
   py::class_<PyClass>(m, "_AuxLabels1Mapper")
-      .def(py::init<const k2host::AuxLabels &, const k2host::Array1<int32_t *> &>(),
+      .def(py::init<const k2host::AuxLabels &,
+                    const k2host::Array1<int32_t *> &>(),
            py::arg("labels_in"), py::arg("arc_map"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("aux_size"))
       .def("get_output", &PyClass::GetOutput, py::arg("labels_out"));
@@ -20,7 +21,8 @@ void PyBindAuxLabels1Mapper(py::module &m) {
 void PyBindAuxLabels2Mapper(py::module &m) {
   using PyClass = k2host::AuxLabels2Mapper;
   py::class_<PyClass>(m, "_AuxLabels2Mapper")
-      .def(py::init<const k2host::AuxLabels &, const k2host::Array2<int32_t *> &>(),
+      .def(py::init<const k2host::AuxLabels &,
+                    const k2host::Array2<int32_t *> &>(),
            py::arg("labels_in"), py::arg("arc_map"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("aux_size"))
       .def("get_output", &PyClass::GetOutput, py::arg("labels_out"));

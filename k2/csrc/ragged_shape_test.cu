@@ -267,5 +267,41 @@ TEST(RaggedShapeTest, RaggedShape) {
   TestShape<kCuda>();
   TestShape<kCpu>();
 }
+TEST(RaggedShapeTest, RaggedShapeIterator) {
+  // not RaggedShapeIndexIterator is only works for CPU
+  ContextPtr context = GetCpuContext();
+  // constructed with row_splits
+  // RaggedTensor4 t = [
+  //  [ [[ 1, 2], [4]],  [[3, 0]] ],
+  //  [ [[7, 8, 9]], [[6], [3, 5, 7]], [[2]] ],
+  //  [ [[3, 4], [], [8]] ]
+  // ]
+  const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+  const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+  const std::vector<int32_t> row_splits3 = {0,  2,  3,  5,  8, 9,
+                                            12, 13, 15, 15, 16};
+  const std::vector<int32_t> empty_row_ids;
+  std::vector<RaggedShapeDim> axes;
+  axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
+                                   Array1<int32_t>(context, empty_row_ids),
+                                   -1});
+  axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
+                                   Array1<int32_t>(context, empty_row_ids),
+                                   -1});
+  axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
+                                   Array1<int32_t>(context, empty_row_ids),
+                                   -1});
+  RaggedShape shape(axes, true);
+
+  int32_t index = 0;
+  for (RaggedShapeIndexIterator iter = shape.Iterator(); !iter.Done();
+       iter.Next()) {
+    const std::vector<int32_t> &vec = iter.Value();
+    int32_t linear_index = shape[vec];
+    EXPECT_EQ(linear_index, index);
+    ++index;
+  }
+  EXPECT_EQ(index, row_splits3.back());
+}
 
 }  // namespace k2

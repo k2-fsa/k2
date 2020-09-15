@@ -364,17 +364,14 @@ int32_t GetMostRecentCommonAncestor(
 
  */
 void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
-               int32_t num_steps,
-               const Arc *arcs_in,
-               float *weight_out,
+               int32_t num_steps, const Arc *arcs_in, float *weight_out,
                std::vector<std::pair<int32_t, float>> *deriv_out);
 
 // The TraceBack function for MaxTracebackState.  See documentation of TraceBack
 // for LogSumTracebackState, above.  This version is simpler.
 void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
-               int32_t num_steps,
-               const Arc *arcs_in,
-               float *weight_out, std::vector<int32_t> *deriv_out);
+               int32_t num_steps, const Arc *arcs_in, float *weight_out,
+               std::vector<int32_t> *deriv_out);
 
 template <class TracebackState>
 class DetState;
@@ -589,13 +586,14 @@ int32_t DetState<TracebackState>::ProcessArcs(
         iter->second = new DetState<TracebackState>(seq_len + 1);
       }
       DetState<TracebackState> *det_state = iter->second;
-      det_state->AcceptIncomingArc(arc.dest_state, state_ptr, curr_arc, arc.weight);
+      det_state->AcceptIncomingArc(arc.dest_state, state_ptr, curr_arc,
+                                   arc.weight);
     }
   }
   K2_CHECK(!label_to_state.empty() ||
-        elements.begin()->second->state_id ==
-            fsa.FinalState());  // I'm assuming the input
-                                // FSA is connected.
+           elements.begin()->second->state_id ==
+               fsa.FinalState());  // I'm assuming the input
+                                   // FSA is connected.
 
   // The following loop normalizes successor det-states, outputs the arcs
   // that lead to them, and adds them to the queue if necessary.
@@ -608,7 +606,8 @@ int32_t DetState<TracebackState>::ProcessArcs(
     det_state->Normalize(wfsa_in, &arc_weight, &deriv_info);
     if (det_state->forward_backward_prob >= prune_cutoff) {
       bool is_new_state = state_map->GetOutputState(det_state, fsa);
-      arcs_out->push_back({this->state_id, det_state->state_id, iter->first, arc_weight});
+      arcs_out->push_back(
+          {this->state_id, det_state->state_id, iter->first, arc_weight});
       derivs_per_arc->push_back(std::move(deriv_info));
       if (is_new_state)
         queue->push(std::unique_ptr<DetState<TracebackState>>(det_state));
@@ -673,8 +672,7 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
   // the following will set removed_weight and deriv_info.
   // `arcs` is needed to look up the weight.
   const Arc *arcs = wfsa_in.fsa.data;
-  TraceBack(&cur_states, num_steps, arcs, removed_weight,
-            deriv_info);
+  TraceBack(&cur_states, num_steps, arcs, removed_weight, deriv_info);
 
   normalized = true;
 }

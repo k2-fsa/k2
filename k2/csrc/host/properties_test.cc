@@ -14,6 +14,7 @@
 #include "k2/csrc/host/properties.h"
 
 #include <gtest/gtest.h>
+
 #include <utility>
 #include <vector>
 
@@ -413,7 +414,8 @@ TEST(FsaAlgo, IsAcyclic) {
   // a cyclic fsa example
   {
     std::vector<Arc> arcs = {
-        {0, 1, 2, 0}, {0, 4, 0, 0}, {0, 2, 0, 0}, {1, 2, 1, 0}, {1, 3, 0, 0}, {2, 1, 0, 0},
+        {0, 1, 2, 0}, {0, 4, 0, 0}, {0, 2, 0, 0},
+        {1, 2, 1, 0}, {1, 3, 0, 0}, {2, 1, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 4);
     const auto &fsa = fsa_creator.GetFsa();
