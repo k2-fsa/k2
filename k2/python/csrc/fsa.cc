@@ -13,7 +13,7 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/python/csrc/tensor.h"
 
-namespace k2 {
+namespace k2host {
 
 // DLPackFsa initializes Fsa with `cap_indexes` and `cap_data` which are
 // DLManagedTensors.
@@ -47,14 +47,14 @@ class DLPackFsa : public Fsa {
   std::unique_ptr<Tensor> data_tensor_;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 void PybindArc(py::module &m) {
-  using PyClass = k2::Arc;
+  using PyClass = k2host::Arc;
   py::class_<PyClass>(m, "_Arc")
       .def(py::init<>())
-      .def(py::init<int32_t, int32_t, int32_t>(), py::arg("src_state"),
-           py::arg("dest_state"), py::arg("label"))
+      .def(py::init<int32_t, int32_t, int32_t, float>(), py::arg("src_state"),
+           py::arg("dest_state"), py::arg("label"), py::arg("weight"))
       .def_readwrite("src_state", &PyClass::src_state)
       .def_readwrite("dest_state", &PyClass::dest_state)
       .def_readwrite("label", &PyClass::label)
@@ -67,11 +67,11 @@ void PybindArc(py::module &m) {
 
 void PybindFsa(py::module &m) {
   // The following wrapper is only used by pybind11 internally
-  // so that it knows `k2::DLPackFsa` is a subclass of `k2::Fsa`.
-  py::class_<k2::Fsa>(m, "_Fsa");
+  // so that it knows `k2host::DLPackFsa` is a subclass of `k2host::Fsa`.
+  py::class_<k2host::Fsa>(m, "_Fsa");
 
-  using PyClass = k2::DLPackFsa;
-  using Parent = k2::Fsa;
+  using PyClass = k2host::DLPackFsa;
+  using Parent = k2host::Fsa;
   py::class_<PyClass, Parent>(m, "DLPackFsa")
       .def(py::init<py::capsule, py::capsule>(), py::arg("indexes"),
            py::arg("data"))
@@ -88,7 +88,7 @@ void PybindFsa(py::module &m) {
               throw py::index_error();
             return self.indexes[i];
           },
-          "just for test purpose to check if k2::Fsa and the "
+          "just for test purpose to check if k2host::Fsa and the "
           "underlying tensor are sharing memory.")
       .def(
           "get_data",
@@ -96,7 +96,7 @@ void PybindFsa(py::module &m) {
             if (i >= self.size2) throw py::index_error();
             return self.data[self.indexes[0] + i];
           },
-          "just for test purpose to check if k2::Fsa and the "
+          "just for test purpose to check if k2host::Fsa and the "
           "underlying tensor are sharing memory.")
       .def("num_states", &PyClass::NumStates)
       .def("final_state", &PyClass::FinalState);

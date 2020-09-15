@@ -17,13 +17,6 @@ namespace k2 {
 
 
 
-// Note: b is FsaVec<Arc>.
-void Intersect(const DenseFsa &a, const FsaVec &b, Fsa *c,
-               Array1<int32_t> *arc_map_a = nullptr,
-               Array1<int32_t> *arc_map_b = nullptr) {
-
-}
-
 
 
 /*
@@ -133,8 +126,8 @@ class MultiGraphDenseIntersect {
   }
 
    void FormatOutput(FsaVec *ofsa,
-                    Array1<int32_t> *arc_map_a,
-                    Array1<int32_t> *arc_map_b) {
+                     Array1<int32_t> *arc_map_a,
+                     Array1<int32_t> *arc_map_b) {
 
     Context c_cpu = c_->CpuContext();
     int32_t T = a_fsas.MaxSize1();
@@ -911,6 +904,20 @@ class MultiGraphDenseIntersect {
 
 };
 
+void IntersectDensePruned(FsaVec &a_fsas,
+                          DenseFsaVec &b_fsas,
+                          float beam,
+                          int32_t max_active_states,
+                          int32_t min_active_states,
+                          FsaVec *out,
+                          Array1<int32_t> *arc_map_a,
+                          Array1<int32_t> *arc_map_b) {
+  MultiGraphDenseIntersect intersector(
+      a_fsas, b_fsas, beam, max_active_states, min_active_states);
+
+  intersector.FormatOutput(out, arc_map_a, arc_map_b);
+
+}
 
 
 }  // namespace k2

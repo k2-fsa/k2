@@ -26,7 +26,7 @@
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
 
-namespace k2 {
+namespace k2host {
 
 template <typename TracebackState>
 void Determinizer<TracebackState>::GetSizes(
@@ -37,7 +37,6 @@ void Determinizer<TracebackState>::GetSizes(
   arc_derivs_size->size1 = arc_derivs_size->size2 = 0;
 
   arcs_.clear();
-  arc_weights_.clear();
   arc_derivs_.clear();
   if (IsEmpty(fsa_in_.fsa)) return;
 
@@ -58,7 +57,7 @@ void Determinizer<TracebackState>::GetSizes(
     std::shared_ptr<DS> state(queue.top());
     queue.pop();
     num_steps += state->ProcessArcs(fsa_in_, prune_cutoff, &arcs_,
-                                    &arc_weights_, &arc_derivs_, &map, &queue);
+                                    &arc_derivs_, &map, &queue);
   }
 
   // We may stopped early due to max_step
@@ -82,12 +81,12 @@ void Determinizer<TracebackState>::GetSizes(
 
 template <typename TracebackState>
 float Determinizer<TracebackState>::GetOutput(
-    Fsa *fsa_out, float *arc_weights_out,
+    Fsa *fsa_out,
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
   if (IsEmpty(fsa_in_.fsa)) return beam_;
 
+
   K2_CHECK_NE(fsa_out, nullptr);
-  K2_CHECK_NE(arc_weights_out, nullptr);
   K2_CHECK_NE(arc_derivs, nullptr);
 
   std::vector<int32_t> arc_map;
@@ -95,10 +94,6 @@ float Determinizer<TracebackState>::GetOutput(
   K2_CHECK_EQ(arcs_.size(), fsa_out->size2);
   CreateFsa(arcs_, fsa_out, &arc_map);
   K2_CHECK_EQ(arcs_.size(), arc_map.size());
-
-  // output arc weights
-  ReorderCopyN(arc_map.begin(), arc_map.size(), arc_weights_.begin(),
-               arc_weights_out);
 
   // output arc derivative information
   K2_CHECK_EQ(arc_derivs_.size(), arc_derivs->size1);
@@ -159,7 +154,7 @@ int32_t GetMostRecentCommonAncestor(
 }
 
 void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
-               int32_t num_steps, const float *arc_weights_in,
+               int32_t num_steps, const Arc *arcs_in,
                float *weight_out,
                std::vector<std::pair<int32_t, float>> *deriv_out) {
   std::unordered_set<LogSumTracebackState *> prev_states;
@@ -181,7 +176,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
             std::pair<int32_t, float>(link.arc_index, expf(arc_log_posterior)));
         LogSumTracebackState *prev_state = link.prev_state.get();
         double new_backward_prob =
-            backward_prob + arc_weights_in[link.arc_index];
+            backward_prob + arcs_in[link.arc_index].weight;
         if (prev_states.insert(prev_state).second) {  // newly inserted
           prev_state->backward_prob = new_backward_prob;
         } else {
@@ -206,7 +201,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
 
 void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
                int32_t num_steps,
-               const float *unused,  // arc_weights_in, unused.
+               const Arc *unused,  // arcs_in, unused.
                float *weight_out, std::vector<int32_t> *deriv_out) {
   (void)unused;
   K2_CHECK_EQ(cur_states->size(), 1);
@@ -223,4 +218,4 @@ void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
   *weight_out = static_cast<float>(cur_forward_prob - prev_forward_prob);
 }
 
-}  // namespace k2
+}  // namespace k2host

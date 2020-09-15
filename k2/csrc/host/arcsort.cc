@@ -19,7 +19,7 @@
 
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 void ArcSorter::GetSizes(Array2Size<int32_t> *fsa_size) const {
   K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_in_.size1;
@@ -82,4 +82,4 @@ void ArcSort(Fsa *fsa, int32_t *arc_map /*= nullptr*/) {
   if (arc_map != nullptr) std::copy(indexes.begin(), indexes.end(), arc_map);
 }
 
-}  // namespace k2
+}  // namespace k2host

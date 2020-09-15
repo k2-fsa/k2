@@ -22,14 +22,14 @@
 #include "k2/python/csrc/array.h"
 
 void PyBindArcSort(py::module &m) {
-  using PyClass = k2::ArcSorter;
+  using PyClass = k2host::ArcSorter;
   py::class_<PyClass>(m, "_ArcSorter")
-      .def(py::init<const k2::Fsa &>(), py::arg("fsa_in"))
+      .def(py::init<const k2host::Fsa &>(), py::arg("fsa_in"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"))
       .def(
           "get_output",
-          [](PyClass &self, k2::Fsa *fsa_out,
-             k2::Array1<int32_t *> *arc_map = nullptr) {
+          [](PyClass &self, k2host::Fsa *fsa_out,
+             k2host::Array1<int32_t *> *arc_map = nullptr) {
             return self.GetOutput(fsa_out,
                                   arc_map == nullptr ? nullptr : arc_map->data);
           },
@@ -37,22 +37,22 @@ void PyBindArcSort(py::module &m) {
 
   m.def(
       "_arc_sort",
-      [](k2::Fsa *fsa, k2::Array1<int32_t *> *arc_map = nullptr) {
-        return k2::ArcSort(fsa, arc_map == nullptr ? nullptr : arc_map->data);
+      [](k2host::Fsa *fsa, k2host::Array1<int32_t *> *arc_map = nullptr) {
+        return k2host::ArcSort(fsa, arc_map == nullptr ? nullptr : arc_map->data);
       },
       "in-place version of ArcSorter", py::arg("fsa"),
       py::arg("arc_map").none(true));
 }
 
 void PyBindTopSort(py::module &m) {
-  using PyClass = k2::TopSorter;
+  using PyClass = k2host::TopSorter;
   py::class_<PyClass>(m, "_TopSorter")
-      .def(py::init<const k2::Fsa &>(), py::arg("fsa_in"))
+      .def(py::init<const k2host::Fsa &>(), py::arg("fsa_in"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"))
       .def(
           "get_output",
-          [](PyClass &self, k2::Fsa *fsa_out,
-             k2::Array1<int32_t *> *state_map = nullptr) -> bool {
+          [](PyClass &self, k2host::Fsa *fsa_out,
+             k2host::Array1<int32_t *> *state_map = nullptr) -> bool {
             return self.GetOutput(
                 fsa_out, state_map == nullptr ? nullptr : state_map->data);
           },
@@ -60,14 +60,14 @@ void PyBindTopSort(py::module &m) {
 }
 
 void PyBindConnect(py::module &m) {
-  using PyClass = k2::Connection;
+  using PyClass = k2host::Connection;
   py::class_<PyClass>(m, "_Connection")
-      .def(py::init<const k2::Fsa &>(), py::arg("fsa_in"))
+      .def(py::init<const k2host::Fsa &>(), py::arg("fsa_in"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"))
       .def(
           "get_output",
-          [](PyClass &self, k2::Fsa *fsa_out,
-             k2::Array1<int32_t *> *arc_map = nullptr) -> bool {
+          [](PyClass &self, k2host::Fsa *fsa_out,
+             k2host::Array1<int32_t *> *arc_map = nullptr) -> bool {
             return self.GetOutput(fsa_out,
                                   arc_map == nullptr ? nullptr : arc_map->data);
           },
@@ -75,16 +75,16 @@ void PyBindConnect(py::module &m) {
 }
 
 void PyBindIntersect(py::module &m) {
-  using PyClass = k2::Intersection;
+  using PyClass = k2host::Intersection;
   py::class_<PyClass>(m, "_Intersection")
-      .def(py::init<const k2::Fsa &, const k2::Fsa &>(), py::arg("fsa_a"),
+      .def(py::init<const k2host::Fsa &, const k2host::Fsa &>(), py::arg("fsa_a"),
            py::arg("fsa_b"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"))
       .def(
           "get_output",
-          [](PyClass &self, k2::Fsa *fsa_out,
-             k2::Array1<int32_t *> *arc_map_a = nullptr,
-             k2::Array1<int32_t *> *arc_map_b = nullptr) -> bool {
+          [](PyClass &self, k2host::Fsa *fsa_out,
+             k2host::Array1<int32_t *> *arc_map_a = nullptr,
+             k2host::Array1<int32_t *> *arc_map_b = nullptr) -> bool {
             return self.GetOutput(
                 fsa_out, arc_map_a == nullptr ? nullptr : arc_map_a->data,
                 arc_map_b == nullptr ? nullptr : arc_map_b->data);
@@ -95,41 +95,39 @@ void PyBindIntersect(py::module &m) {
 
 template <typename TracebackState>
 void PybindDeterminizerTpl(py::module &m, const char *name) {
-  using PyClass = k2::Determinizer<TracebackState>;
+  using PyClass = k2host::Determinizer<TracebackState>;
   py::class_<PyClass>(m, name)
-      .def(py::init<const k2::WfsaWithFbWeights &, float, int64_t>(),
+      .def(py::init<const k2host::WfsaWithFbWeights &, float, int64_t>(),
            py::arg("fsa_in"), py::arg("beam"), py::arg("max_step"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"),
            py::arg("arc_derivs_size"))
       .def(
           "get_output",
-          [](PyClass &self, k2::Fsa *fsa_out,
-             k2::Array1<float *> *arc_weights_out,
-             k2::Array2<typename TracebackState::DerivType *> *arc_derivs)
+          [](PyClass &self, k2host::Fsa *fsa_out,
+             k2host::Array2<typename TracebackState::DerivType *> *arc_derivs)
               -> float {
-            return self.GetOutput(fsa_out, arc_weights_out->data, arc_derivs);
+            return self.GetOutput(fsa_out, arc_derivs);
           },
-          py::arg("fsa_out"), py::arg("arc_weights_out"),
+          py::arg("fsa_out"),
           py::arg("arc_derivs"));
 }
 
 template <typename TracebackState>
 void PybindEpsilonsRemoverTpl(py::module &m, const char *name) {
-  using PyClass = k2::EpsilonsRemover<TracebackState>;
+  using PyClass = k2host::EpsilonsRemover<TracebackState>;
   py::class_<PyClass>(m, name)
-      .def(py::init<const k2::WfsaWithFbWeights &, float>(), py::arg("fsa_in"),
+      .def(py::init<const k2host::WfsaWithFbWeights &, float>(), py::arg("fsa_in"),
            py::arg("beam"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"),
            py::arg("arc_derivs_size"))
       .def(
           "get_output",
-          [](PyClass &self, k2::Fsa *fsa_out,
-             k2::Array1<float *> *arc_weights_out,
-             k2::Array2<typename TracebackState::DerivType *> *arc_derivs)
+          [](PyClass &self, k2host::Fsa *fsa_out,
+             k2host::Array2<typename TracebackState::DerivType *> *arc_derivs)
               -> void {
-            return self.GetOutput(fsa_out, arc_weights_out->data, arc_derivs);
+            return self.GetOutput(fsa_out, arc_derivs);
           },
-          py::arg("fsa_out"), py::arg("arc_weights_out"),
+          py::arg("fsa_out"),
           py::arg("arc_derivs"));
 }
 
@@ -139,10 +137,10 @@ void PybindFsaAlgo(py::module &m) {
   PyBindConnect(m);
   PyBindIntersect(m);
 
-  PybindDeterminizerTpl<k2::MaxTracebackState>(m, "_DeterminizerMax");
-  PybindDeterminizerTpl<k2::LogSumTracebackState>(m, "_DeterminizerLogSum");
+  PybindDeterminizerTpl<k2host::MaxTracebackState>(m, "_DeterminizerMax");
+  PybindDeterminizerTpl<k2host::LogSumTracebackState>(m, "_DeterminizerLogSum");
 
-  PybindEpsilonsRemoverTpl<k2::MaxTracebackState>(m, "_EpsilonsRemoverMax");
-  PybindEpsilonsRemoverTpl<k2::LogSumTracebackState>(m,
+  PybindEpsilonsRemoverTpl<k2host::MaxTracebackState>(m, "_EpsilonsRemoverMax");
+  PybindEpsilonsRemoverTpl<k2host::LogSumTracebackState>(m,
                                                      "_EpsilonsRemoverLogSum");
 }

@@ -20,7 +20,7 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 
 class AuxLablesTest : public ::testing::Test {
  protected:
@@ -163,9 +163,9 @@ TEST(AuxLabels, InvertFst) {
 
   {
     // top-sorted input FSA
-    std::vector<Arc> arcs = {{0, 1, 1}, {0, 1, 0},  {0, 3, 2},
-                             {1, 2, 3}, {1, 3, 4},  {1, 5, -1},
-                             {2, 3, 0}, {2, 5, -1}, {4, 5, -1}};
+    std::vector<Arc> arcs = {{0, 1, 1, 0}, {0, 1, 0, 0},  {0, 3, 2, 0},
+                             {1, 2, 3, 0}, {1, 3, 4, 0},  {1, 5, -1, 0},
+                             {2, 3, 0, 0}, {2, 5, -1, 0}, {4, 5, -1, 0}};
     FsaCreator fsa_in_creator(arcs, 5);
     const auto &fsa_in = fsa_in_creator.GetFsa();
     EXPECT_TRUE(IsTopSorted(fsa_in));
@@ -187,8 +187,8 @@ TEST(AuxLabels, InvertFst) {
 
     EXPECT_TRUE(IsTopSorted(fsa_out));
     std::vector<Arc> arcs_out = {
-        {0, 1, 1},  {0, 2, 3}, {0, 6, 0}, {1, 2, 2}, {2, 3, 5},  {2, 6, 0},
-        {2, 8, -1}, {3, 4, 6}, {4, 5, 7}, {5, 6, 0}, {5, 8, -1}, {7, 8, -1},
+        {0, 1, 1, 0},  {0, 2, 3, 0}, {0, 6, 0, 0}, {1, 2, 2, 0}, {2, 3, 5, 0},  {2, 6, 0, 0},
+        {2, 8, -1, 0}, {3, 4, 6, 0}, {4, 5, 7, 0}, {5, 6, 0, 0}, {5, 8, -1, 0}, {7, 8, -1, 0},
     };
     ASSERT_EQ(fsa_out.size2, arcs_out.size());
     for (auto i = 0; i != arcs_out.size(); ++i) {
@@ -213,9 +213,9 @@ TEST(AuxLabels, InvertFst) {
 
   {
     // non-top-sorted input FSA
-    std::vector<Arc> arcs = {{0, 1, 1},  {0, 1, 0}, {0, 3, 2},
-                             {1, 2, 3},  {1, 3, 4}, {2, 1, 5},
-                             {2, 5, -1}, {3, 1, 6}, {4, 5, -1}};
+    std::vector<Arc> arcs = {{0, 1, 1, 0},  {0, 1, 0, 0}, {0, 3, 2, 0},
+                             {1, 2, 3, 0},  {1, 3, 4, 0}, {2, 1, 5, 0},
+                             {2, 5, -1, 0}, {3, 1, 6, 0}, {4, 5, -1, 0}};
     FsaCreator fsa_in_creator(arcs, 5);
     const auto &fsa_in = fsa_in_creator.GetFsa();
     EXPECT_FALSE(IsTopSorted(fsa_in));
@@ -236,10 +236,10 @@ TEST(AuxLabels, InvertFst) {
     fst_inverter.GetOutput(&fsa_out, &labels_out);
 
     EXPECT_FALSE(IsTopSorted(fsa_out));
-    std::vector<Arc> arcs_out = {{0, 1, 1},  {0, 3, 3}, {0, 7, 0},  {1, 3, 2},
-                                 {2, 3, 10}, {3, 4, 5}, {3, 7, 0},  {4, 5, 6},
-                                 {5, 6, 7},  {6, 3, 8}, {6, 9, -1}, {7, 2, 9},
-                                 {8, 9, -1}};
+    std::vector<Arc> arcs_out = {{0, 1, 1, 0},  {0, 3, 3, 0}, {0, 7, 0, 0},  {1, 3, 2, 0},
+                                 {2, 3, 10, 0}, {3, 4, 5, 0}, {3, 7, 0, 0},  {4, 5, 6, 0},
+                                 {5, 6, 7, 0},  {6, 3, 8, 0}, {6, 9, -1, 0}, {7, 2, 9, 0},
+                                 {8, 9, -1, 0}};
     ASSERT_EQ(fsa_out.size2, arcs_out.size());
     for (auto i = 0; i != arcs_out.size(); ++i) {
       EXPECT_EQ(fsa_out.data[i], arcs_out[i]);
@@ -262,4 +262,4 @@ TEST(AuxLabels, InvertFst) {
   }
 }
 
-}  // namespace k2
+}  // namespace k2host

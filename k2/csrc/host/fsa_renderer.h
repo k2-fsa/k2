@@ -16,22 +16,21 @@
 #ifndef K2_CSRC_HOST_FSA_RENDERER_H_
 #define K2_CSRC_HOST_FSA_RENDERER_H_
 
-namespace k2 {
+namespace k2host {
 
 // Get a GraphViz representation of an fsa.
 class FsaRenderer {
  public:
-  explicit FsaRenderer(const Fsa &fsa, const float *arc_weights = nullptr)
-      : fsa_(fsa), arc_weights_(arc_weights) {}
+  explicit FsaRenderer(const Fsa &fsa)
+      : fsa_(fsa) { }
 
   // Return a GraphViz representation of the fsa
   std::string Render() const;
 
  private:
   const Fsa &fsa_;
-  const float *arc_weights_;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_FSA_RENDERER_H_

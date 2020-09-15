@@ -30,7 +30,7 @@
 #include "k2/csrc/host/util.h"
 #include "k2/csrc/host/weights.h"
 
-namespace k2 {
+namespace k2host {
 
 /*
    Pruned determinization with log-sum (equivalent to log semiring) or max
@@ -97,14 +97,6 @@ class Determinizer {
                            if `fsa_in.weight_type` is `kMaxWeight`.
                            Must be initialized; search for 'initialized
                            definition' in class Array2 in array.h for meaning.
-    @param [out] arc_weights_out   Weights per arc of output FSA;
-                                   Must be allocated with size num-arcs of
-                                  `fsa_out` at entry. Note: for max version
-                                   (MaxTracebackState), these can be computed
-                                   from arc_derivs and the weights of fsa_in,
-                                   so this output is not strictly necessary;
-                                   it's provided mostly due to sharing the
-                                   internal code with the log-sum version.
     @param [out] arc_derivs Indexed by arc in `fsa_out`, must be initialized.
 
                        When TracebackState is MaxTracebackState,
@@ -131,7 +123,7 @@ class Determinizer {
               of the last arc expanded.
    */
   float GetOutput(
-      Fsa *fsa_out, float *arc_weights_out,
+      Fsa *fsa_out,
       Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs);
 
  private:
@@ -141,13 +133,12 @@ class Determinizer {
 
   float effective_beam_;
   std::vector<Arc> arcs_;           // arcs of fsa_out
-  std::vector<float> arc_weights_;  // arc_weights of fsa_out
   std::vector<std::vector<typename TracebackState::DerivType>> arc_derivs_;
 };
 
 using DeterminizerMax = Determinizer<MaxTracebackState>;
 using DeterminizerLogSum = Determinizer<LogSumTracebackState>;
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_DETERMINIZE_H_

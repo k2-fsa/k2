@@ -1,6 +1,6 @@
 /**
- * @brief
- * fsa
+ * @brief host_shim  Wrapper functions so we can use our older
+ *                 CPU-only code, in host/, with the newer interfaces
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
@@ -9,12 +9,22 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_FSA_H_
-#define K2_CSRC_FSA_H_
+#ifndef K2_CSRC_HOST_SHIM_H_
+#define K2_CSRC_HOST_SHIM_H_
 
-#include "k2/csrc/ragged.h"
+#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/fsa.h"
 
 namespace k2 {
+
+
+k2host::Fsa FsaToHostFsa(Fsa &fsa);
+
+// get weights of FSA separately
+Array1<float> WeightsOfFsa(Fsa &fsa);
+
+
+    Array1<float> FsaToWeights
 
 
 struct Arc {
@@ -65,6 +75,7 @@ enum FsaBasicProperties {
                                         // list of arcs.
   kFsaAllProperties = 0x01FF
 };
+
 
 
 using Fsa = RaggedShape<Arc>;  // 2 axes: state,arc
@@ -227,21 +238,6 @@ FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa **fsas) {
 
 int32_t GetFsaBasicProperties(const Fsa &fsa);
 int32_t GetFsaVecBasicProperties(const FsaVec &fsa_vec);
-
-Tensor WeightsOfArcsAsTensor(const Array1<Arc> &arcs);
-
-
-inline Array1<float> WeightsOfArcsAsArray(const Array1<Arc> &arcs) {
-  return Array1<float>(WeightsOfArcsAsTensor(arcs));
-}
-// If you need the weights of an Fsa or FsaVec f, you can just
-// use WeightsOfArcsAsArray(f.values).
-
-inline Array1<float> WeightsOfFsaAsArray(const Ragged<Arc> &fsa) {
-
-inline Array1<float> WeightsOfFsaAsArray(const Ragged<Arc> &fsa) {
-  return Array1<float>(WeightsOfArcsAsTensor(fsa.values));
-}
 
 
 

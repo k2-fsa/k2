@@ -20,9 +20,7 @@
 #include <limits>
 #include <utility>
 
-#include "k2/csrc/log.h"
-
-namespace k2 {
+namespace k2host {
 
 #define EXPECT_DOUBLE_ARRAY_APPROX_EQ(expected, actual, abs_error)          \
   ASSERT_EQ((expected).size(), (actual).size()) << "Different Array Size."; \
@@ -110,5 +108,5 @@ inline bool DoubleApproxEqual(double a, double b, double delta = 1e-6) {
 void *MemAlignedMalloc(size_t nbytes, size_t alignment);
 void MemFree(void *ptr);
 
-}  // namespace k2
+}  // namespace k2host
 #endif  // K2_CSRC_HOST_UTIL_H_

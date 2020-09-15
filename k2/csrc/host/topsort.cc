@@ -20,7 +20,7 @@
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
 
-namespace k2 {
+namespace k2host {
 void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
   K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
@@ -82,4 +82,4 @@ bool TopSorter::GetOutput(Fsa *fsa_out, int32_t *state_map /* = nullptr*/) {
   return true;
 }
 
-}  // namespace k2
+}  // namespace k2host

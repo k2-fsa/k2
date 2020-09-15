@@ -19,19 +19,13 @@
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
 
-namespace {
-void CheckInput(const k2::Fsa &fsa, const float *arc_weights) {
-  K2_CHECK(IsValid(fsa));
-  K2_CHECK_NE(arc_weights, nullptr);
-}
-}  // namespace
 
-namespace k2 {
+namespace k2host {
 
-void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeForwardMaxWeights(const Fsa &fsa,
                               double *state_weights) {
   if (IsEmpty(fsa)) return;
-  CheckInput(fsa, arc_weights);
+  K2_DCHECK(IsValid(fsa));  // TODO(dan): make this run only in paranoid mode.
   K2_CHECK_NE(state_weights, nullptr);
 
   int32_t num_states = fsa.NumStates();
@@ -44,14 +38,13 @@ void ComputeForwardMaxWeights(const Fsa &fsa, const float *arc_weights,
     K2_DCHECK_GE(arc.dest_state, arc.src_state);
     auto src_weight = state_weights[arc.src_state];
     auto &dest_weight = state_weights[arc.dest_state];
-    dest_weight = std::max(dest_weight, src_weight + arc_weights[i]);
+    dest_weight = std::max(dest_weight, src_weight + arc.weight);
   }
 }
 
-void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeBackwardMaxWeights(const Fsa &fsa,
                                double *state_weights) {
   if (IsEmpty(fsa)) return;
-  CheckInput(fsa, arc_weights);
   K2_CHECK_NE(state_weights, nullptr);
 
   int32_t num_states = fsa.NumStates();
@@ -64,14 +57,14 @@ void ComputeBackwardMaxWeights(const Fsa &fsa, const float *arc_weights,
     K2_DCHECK_GE(arc.dest_state, arc.src_state);
     auto &src_weight = state_weights[arc.src_state];
     auto dest_weight = state_weights[arc.dest_state];
-    src_weight = std::max(src_weight, dest_weight + arc_weights[i]);
+    src_weight = std::max(src_weight, dest_weight + arc.weight);
   }
 }
 
-void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeForwardLogSumWeights(const Fsa &fsa,
                                  double *state_weights) {
   if (IsEmpty(fsa)) return;
-  CheckInput(fsa, arc_weights);
+  K2_DCHECK(IsValid(fsa));  // TODO(dan): make this run only in paranoid mode.
   K2_CHECK_NE(state_weights, nullptr);
 
   int32_t num_states = fsa.NumStates();
@@ -84,14 +77,14 @@ void ComputeForwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
     K2_DCHECK_GE(arc.dest_state, arc.src_state);
     auto src_weight = state_weights[arc.src_state];
     auto &dest_weight = state_weights[arc.dest_state];
-    dest_weight = LogAdd(dest_weight, src_weight + arc_weights[i]);
+    dest_weight = LogAdd(dest_weight, src_weight + arc.weight);
   }
 }
 
-void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
+void ComputeBackwardLogSumWeights(const Fsa &fsa,
                                   double *state_weights) {
   if (IsEmpty(fsa)) return;
-  CheckInput(fsa, arc_weights);
+  K2_DCHECK(IsValid(fsa));  // TODO(dan): make this run only in paranoid mode.
   K2_CHECK_NE(state_weights, nullptr);
 
   int32_t num_states = fsa.NumStates();
@@ -104,21 +97,20 @@ void ComputeBackwardLogSumWeights(const Fsa &fsa, const float *arc_weights,
     K2_DCHECK_GE(arc.dest_state, arc.src_state);
     auto &src_weight = state_weights[arc.src_state];
     auto dest_weight = state_weights[arc.dest_state];
-    src_weight = LogAdd(src_weight, dest_weight + arc_weights[i]);
+    src_weight = LogAdd(src_weight, dest_weight + arc.weight);
   }
 }
 
-WfsaWithFbWeights::WfsaWithFbWeights(const Fsa &fsa, const float *arc_weights,
+WfsaWithFbWeights::WfsaWithFbWeights(const Fsa &fsa,
                                      FbWeightType t,
                                      double *forward_state_weights,
                                      double *backward_state_weights)
     : fsa(fsa),
-      arc_weights(arc_weights),
       weight_type(t),
       forward_state_weights(forward_state_weights),
       backward_state_weights(backward_state_weights) {
   if (IsEmpty(fsa)) return;
-  CheckInput(fsa, arc_weights);
+  K2_DCHECK(IsValid(fsa));
   ComputeForwardWeights();
   ComputeBackardWeights();
 }
@@ -139,7 +131,7 @@ void WfsaWithFbWeights::ComputeForwardWeights() {
       auto src_weight = forward_state_weights[arc.src_state];
       auto &dest_weight = forward_state_weights[arc.dest_state];
 
-      double r = src_weight + arc_weights[i];
+      double r = src_weight + arc.weight;
       dest_weight = std::max(dest_weight, r);
     }
   } else if (weight_type == kLogSumWeight) {
@@ -149,7 +141,7 @@ void WfsaWithFbWeights::ComputeForwardWeights() {
       auto src_weight = forward_state_weights[arc.src_state];
       auto &dest_weight = forward_state_weights[arc.dest_state];
 
-      double r = src_weight + arc_weights[i];
+      double r = src_weight + arc.weight;
       dest_weight = LogAdd(dest_weight, r);
     }
   } else {
@@ -170,7 +162,7 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
       auto &src_weight = backward_state_weights[arc.src_state];
       auto dest_weight = backward_state_weights[arc.dest_state];
 
-      double r = dest_weight + arc_weights[i];
+      double r = dest_weight + arc.weight;
       src_weight = std::max(src_weight, r);
     }
   } else if (weight_type == kLogSumWeight) {
@@ -180,7 +172,7 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
       auto &src_weight = backward_state_weights[arc.src_state];
       auto dest_weight = backward_state_weights[arc.dest_state];
 
-      double r = dest_weight + arc_weights[i];
+      double r = dest_weight + arc.weight;
       src_weight = LogAdd(src_weight, r);
     }
   } else {
@@ -188,4 +180,4 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
   }
 }
 
-}  // namespace k2
+}  // namespace k2host

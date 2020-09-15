@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 TEST(ArcSortTest, ArcSorter) {
   // empty fsa
   {
@@ -46,7 +46,7 @@ TEST(ArcSortTest, ArcSorter) {
 
   {
     std::vector<Arc> src_arcs = {
-        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
+        {0, 1, 2, 0}, {0, 4, 0, 0}, {0, 2, 0, 0}, {1, 2, 1, 0}, {1, 3, 0, 0}, {2, 1, 0, 0},
     };
     FsaCreator fsa_creator(src_arcs, 4);
     const auto &fsa = fsa_creator.GetFsa();
@@ -68,7 +68,7 @@ TEST(ArcSortTest, ArcSorter) {
     EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 3, 5, 6, 6, 6));
     ASSERT_EQ(arcs.size(), fsa.size2);
     std::vector<Arc> target_arcs = {
-        {0, 2, 0}, {0, 4, 0}, {0, 1, 2}, {1, 3, 0}, {1, 2, 1}, {2, 1, 0},
+        {0, 2, 0, 0}, {0, 4, 0, 0}, {0, 1, 2, 0}, {1, 3, 0, 0}, {1, 2, 1, 0}, {2, 1, 0, 0},
     };
     for (std::size_t i = 0; i != target_arcs.size(); ++i)
       EXPECT_EQ(arcs[i], target_arcs[i]);
@@ -99,7 +99,7 @@ TEST(ArcSortTest, ArcSort) {
 
   {
     std::vector<Arc> src_arcs = {
-        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
+        {0, 1, 2, 0}, {0, 4, 0, 0}, {0, 2, 0, 0}, {1, 2, 1, 0}, {1, 3, 0, 0}, {2, 1, 0, 0},
     };
     FsaCreator fsa_creator(src_arcs, 4);
     auto &fsa = fsa_creator.GetFsa();
@@ -112,7 +112,7 @@ TEST(ArcSortTest, ArcSort) {
     std::vector<Arc> arcs(fsa.data, fsa.data + fsa.size2);
     EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 3, 5, 6, 6, 6));
     std::vector<Arc> target_arcs = {
-        {0, 2, 0}, {0, 4, 0}, {0, 1, 2}, {1, 3, 0}, {1, 2, 1}, {2, 1, 0},
+        {0, 2, 0, 0}, {0, 4, 0, 0}, {0, 1, 2, 0}, {1, 3, 0, 0}, {1, 2, 1, 0}, {2, 1, 0, 0},
     };
     for (std::size_t i = 0; i != target_arcs.size(); ++i)
       EXPECT_EQ(arcs[i], target_arcs[i]);
@@ -127,4 +127,4 @@ TEST(ArcSortTest, ArcSort) {
     EXPECT_THAT(arc_map, ::testing::ElementsAre(2, 1, 0, 4, 3, 5));
   }
 }
-}  // namespace k2
+}  // namespace k2host

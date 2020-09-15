@@ -18,7 +18,7 @@
 
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 /*
   Removes states that are not accessible (from the start state) or are not
   co-accessible (i.e. that cannot reach the final state), and ensures that
@@ -111,6 +111,6 @@ class Connection {
  */
 bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map);
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_CONNECT_H_

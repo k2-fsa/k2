@@ -35,8 +35,8 @@ namespace {
                                 extra `num_extra_states[i]` states in the output
                                 inverted FSA.
 */
-static void CountExtraStates(const k2::Fsa &fsa_in,
-                             const k2::AuxLabels &labels_in,
+static void CountExtraStates(const k2host::Fsa &fsa_in,
+                             const k2host::AuxLabels &labels_in,
                              std::vector<int32_t> *num_extra_states) {
   K2_CHECK_EQ(num_extra_states->size(), fsa_in.NumStates());
   auto &states = *num_extra_states;
@@ -91,7 +91,7 @@ static void MapStates(const std::vector<int32_t> &num_extra_states,
 }
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
   K2_CHECK_NE(aux_size, nullptr);
@@ -221,21 +221,21 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
       int32_t curr_label =
           (pos_end - pos_begin == 0) ? kEpsilon : labels_in_.data[pos_begin];
       arcs.emplace_back(state_map[src_state], state_map[dest_state],
-                        curr_label);
+                        curr_label, arc.weight);
     } else {
       // expand arcs with olabels
       arcs.emplace_back(state_map[src_state], state_ids[dest_state] + 1,
-                        labels_in_.data[pos_begin]);
+                        labels_in_.data[pos_begin], arc.weight);
       start_pos.push_back(num_non_eps_ilabel_processed);
       for (int32_t pos = pos_begin + 1; pos < pos_end - 1; ++pos) {
         ++state_ids[dest_state];
         arcs.emplace_back(state_ids[dest_state], state_ids[dest_state] + 1,
-                          labels_in_.data[pos]);
+                          labels_in_.data[pos], 0.0);
         start_pos.push_back(num_non_eps_ilabel_processed);
       }
       ++state_ids[dest_state];
       arcs.emplace_back(state_ids[dest_state], state_map[arc.dest_state],
-                        labels_in_.data[pos_end - 1]);
+                        labels_in_.data[pos_end - 1], 0.0);
     }
     // push non-epsilon ilabel in fsa_in as olabel of fsa_out
     if (arc.label != kEpsilon) {
@@ -259,4 +259,4 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
   // don't need to call `GetSizes` here as `labels_out` has been initialized
   aux_mapper.GetOutput(labels_out);
 }
-}  // namespace k2
+}  // namespace k2host

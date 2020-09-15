@@ -9,11 +9,12 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include "k2/csrc/log.h"
 #include "k2/csrc/host/util.h"
 
 #include <stdlib.h>
 
-namespace k2 {
+namespace k2host {
 
 void *MemAlignedMalloc(std::size_t nbytes, std::size_t alignment) {
   void *p = nullptr;
@@ -38,4 +39,4 @@ void MemFree(void *ptr) {
 #endif
 }
 
-}  // namespace k2
+}  // namespace k2host

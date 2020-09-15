@@ -17,7 +17,7 @@
 
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 
 // TODO(Dan): we might not need this.
 enum Properties {
@@ -31,6 +31,7 @@ enum Properties {
   kConnected,    // all states are both accessible (i.e. from start state) and
                  // coaccessible (i.e. can reach final-state)
   kEpsilonFree,  // there are no arcs with epsilon (kEpsilon == 0) as the label
+  kUnweighted,   // the scores are always zero.
   kNonempty      // the FST does not have zero states
 };
 
@@ -100,6 +101,12 @@ bool IsEpsilonFree(const Fsa &fsa);
  */
 bool IsConnected(const Fsa &fsa);
 
+
+/*
+  Returns true if all states in `fsa` have zero scores
+ */
+bool IsUnweighted(const Fsa &fsa);
+
 /*
   Returns true if `fsa` is both acyclic and connected.
 */
@@ -133,6 +140,6 @@ inline bool IsEmpty(const Fsa &fsa) { return fsa.size1 == 0; }
 bool CheckProperties(const Fsa &fsa, const Properties &properties,
                      bool die_on_error = false);
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_PROPERTIES_H_

@@ -21,7 +21,7 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/weights.h"
 
-namespace k2 {
+namespace k2host {
 
 /*
    Output an Fsa that is equivalent to the input but which has no
@@ -104,7 +104,7 @@ class EpsilonsRemover {
                         weights w.r.t. input-arc weights.
    */
   void GetOutput(
-      Fsa *fsa_out, float *arc_weights_out,
+      Fsa *fsa_out,
       Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs);
 
  private:
@@ -124,17 +124,16 @@ using EpsilonsRemoverLogSum = EpsilonsRemover<LogSumTracebackState>;
   Version of RmEpsilonsPrunedMax that doesn't support pruning; see its
   documentation.
  */
-void RmEpsilonsMax(const Fsa &a, float *a_weights, Fsa *b,
+void RmEpsilonsMax(const Fsa &a, Fsa *b,
                    std::vector<std::vector<int32_t>> *arc_map);
 
 /*
   Version of RmEpsilonsLogSum that doesn't support pruning; see its
   documentation.
  */
-void RmEpsilonsLogSum(const Fsa &a, float *a_weights, Fsa *b,
-                      std::vector<float> *b_arc_weights,
+void RmEpsilonsLogSum(const Fsa &a, Fsa *b,
                       std::vector<std::vector<int32_t>> *arc_map);
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_RMEPSILON_H_

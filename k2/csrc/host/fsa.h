@@ -17,7 +17,7 @@
 #include "k2/csrc/host/array.h"
 #include "k2/csrc/host/util.h"
 
-namespace k2 {
+namespace k2host {
 
 enum {
   kFinalSymbol = -1,  // final-costs are represented as arcs with
@@ -39,29 +39,34 @@ struct Arc {
                   // vs. the output can be decided by the user; in general,
                   // the one that appears on the arc will be the one that
                   // participates in whatever operation you are doing
-  Arc() = default;
-  Arc(int32_t src_state, int32_t dest_state, int32_t label)
-      : src_state(src_state), dest_state(dest_state), label(label) {}
 
-  /* Note: the costs are not stored here but outside the Fst object, in some
-     kind of array indexed by arc-index.  */
+  float weight;    // log-prob of this arc, or the negative of a cost.
+                  // Note: in some contexts, the scores/weights are
+                  // taken to be zero (?)
+  Arc() = default;
+
+  Arc(int32_t src_state, int32_t dest_state, int32_t label, float weight)
+      : src_state(src_state), dest_state(dest_state),
+        label(label),  weight(weight) {}
 
   bool operator==(const Arc &other) const {
-    return std::tie(src_state, dest_state, label) ==
-           std::tie(src_state, other.dest_state, other.label);
+    return std::tie(src_state, dest_state, label, weight) ==
+        std::tie(src_state, other.dest_state, other.label, weight);
   }
 
   bool operator!=(const Arc &other) const { return !(*this == other); }
 
   bool operator<(const Arc &other) const {
-    // compares `label` first, then `dest_state`
-    return std::tie(label, dest_state) <
-           std::tie(other.label, other.dest_state);
+    // compares `label` first, then `dest_state`, then, 'weight
+    return std::tie(label, dest_state, weight) <
+      std::tie(other.label, other.dest_state, weight);
   }
 };
 
 std::ostream &operator<<(std::ostream &os, const Arc &arc);
 
+// Caution: this does not include the weight in the hash.  You have to decide
+// whether this makes sense in your use of this.
 struct ArcHash {
   std::size_t operator()(const Arc &arc) const noexcept {
     std::size_t result = 0;
@@ -150,6 +155,6 @@ class DeterministicGenericFsa {
 using FsaVec = std::vector<Fsa>;
 using FstVec = std::vector<Fst>;
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_FSA_H_

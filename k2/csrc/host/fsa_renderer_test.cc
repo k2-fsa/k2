@@ -18,7 +18,7 @@
 
 #include "k2/csrc/host/fsa_util.h"
 
-namespace k2 {
+namespace k2host {
 
 // NOTE(fangjun): this test always passes.
 // Its purpose is to get a Graphviz representation
@@ -32,15 +32,14 @@ namespace k2 {
 // as expected.
 TEST(FsaRenderer, Render) {
   std::vector<Arc> arcs = {
-      {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6},
+    {0, 1, 2, 1}, {0, 2, 1, 2}, {1, 2, 0, 3}, {1, 3, 5, 4}, {2, 3, 6, 5},
   };
 
   FsaCreator fsa_creator(arcs, 3);
   const auto &fsa = fsa_creator.GetFsa();
-  std::vector<float> arc_weights = {1, 2, 3, 4, 5};
 
-  FsaRenderer renderer(fsa, arc_weights.data());
+  FsaRenderer renderer(fsa);
   std::cerr << renderer.Render();
 }
 
-}  // namespace k2
+}  // namespace k2host

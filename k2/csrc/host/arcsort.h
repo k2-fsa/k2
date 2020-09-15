@@ -18,7 +18,7 @@
 
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 /**
     Sort arcs leaving each state in the input FSA on label first and
     then on `dest_state`
@@ -62,6 +62,6 @@ class ArcSorter {
 // size num-arcs of `fsa`, e.g. `fsa->size2`
 void ArcSort(Fsa *fsa, int32_t *arc_map = nullptr);
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_ARCSORT_H_

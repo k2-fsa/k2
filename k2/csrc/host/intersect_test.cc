@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 
 TEST(IntersectTest, Intersect) {
   // empty fsa
@@ -51,17 +51,17 @@ TEST(IntersectTest, Intersect) {
   }
 
   {
-    std::vector<Arc> arcs_a = {{0, 1, 1}, {1, 2, 0}, {1, 3, 1},
-                               {1, 4, 2}, {2, 2, 1}, {2, 3, 1},
-                               {2, 3, 2}, {3, 3, 0}, {3, 4, 1}};
+    std::vector<Arc> arcs_a = {{0, 1, 1, 0}, {1, 2, 0, 0}, {1, 3, 1, 0},
+                               {1, 4, 2, 0}, {2, 2, 1, 0}, {2, 3, 1, 0},
+                               {2, 3, 2, 0}, {3, 3, 0, 0}, {3, 4, 1, 0}};
     FsaCreator fsa_creator_a(arcs_a, 4);
     const auto &a = fsa_creator_a.GetFsa();
 
     std::vector<Arc> arcs_b = {
-        {0, 1, 1},
-        {1, 3, 1},
-        {1, 2, 2},
-        {2, 3, 1},
+        {0, 1, 1, 0},
+        {1, 3, 1, 0},
+        {1, 2, 2, 0},
+        {2, 3, 1, 0},
     };
     FsaCreator fsa_creator_b(arcs_b, 3);
     const auto &b = fsa_creator_b.GetFsa();
@@ -82,8 +82,8 @@ TEST(IntersectTest, Intersect) {
     std::vector<int32_t> arc_indexes(c.indexes, c.indexes + c.size1 + 1);
     std::vector<Arc> arcs(c.data, c.data + c.size2);
     std::vector<Arc> arcs_c = {
-        {0, 1, 1}, {1, 2, 0}, {1, 3, 1}, {1, 4, 2}, {2, 5, 1},
-        {2, 3, 1}, {2, 6, 2}, {3, 3, 0}, {6, 6, 0}, {6, 7, 1},
+        {0, 1, 1, 0}, {1, 2, 0, 0}, {1, 3, 1, 0}, {1, 4, 2, 0}, {2, 5, 1, 0},
+        {2, 3, 1, 0}, {2, 6, 2, 0}, {3, 3, 0, 0}, {6, 6, 0, 0}, {6, 7, 1, 0},
     };
     ASSERT_EQ(arc_indexes.size(), 9);
     EXPECT_THAT(arc_indexes,
@@ -121,4 +121,4 @@ TEST(IntersectTest, Intersect) {
                 ::testing::ElementsAre(0, -1, 1, 2, 1, 1, 2, -1, -1, 3));
   }
 }
-}  // namespace k2
+}  // namespace k2host

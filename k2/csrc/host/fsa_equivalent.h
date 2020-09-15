@@ -20,7 +20,7 @@
 #ifndef K2_CSRC_HOST_FSA_EQUIVALENT_H_
 #define K2_CSRC_HOST_FSA_EQUIVALENT_H_
 
-namespace k2 {
+namespace k2host {
 
 /*
   Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
@@ -35,9 +35,7 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
   exists in the other one and the sum of weights along that path are the same.
 
   @param [in]  a          One of the FSAs to be checked the equivalence
-  @param [in]  a_weights  Arc weights of `a`
   @param [in]  b          The other FSA to be checked the equivalence
-  @param [in]  b_weights  Arc weights of `b`
   @param [in]  beam       beam > 0 that affects pruning; the algorithm
                           will only check paths within `beam` of the
                           best path(for tropical semiring, it's max
@@ -61,8 +59,8 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
                           equivalence of `a` and `b`
  */
 template <FbWeightType Type>
-bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
-                      const float *b_weights, float beam = kFloatInfinity,
+bool IsRandEquivalent(const Fsa &a, const Fsa &b,
+                      float beam = kFloatInfinity,
                       float delta = 1e-6, bool top_sorted = true,
                       std::size_t npath = 100);
 
@@ -90,10 +88,8 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
 
   @param [in]  a          The FSA before epsion-removal
                           (input FSA of `RmEpsilonPrunedLogSum`)
-  @param [in]  a_weights  Arc weights of `a`
   @param [in]  b          The FSA after epsion-removal
                           (output FSA of `RmEpsilonPrunedLogSum`)
-  @param [in]  b_weights  Arc weights of `b`
   @param [in]  beam       beam > 0 that affects pruning; the algorithm
                           will only check paths within `beam` of the
                           total weight of `a` or `b`. The value of `beam`
@@ -106,7 +102,7 @@ bool IsRandEquivalent(const Fsa &a, const float *a_weights, const Fsa &b,
                           equivalence of `a` and `b`
  */
 bool IsRandEquivalentAfterRmEpsPrunedLogSum(
-    const Fsa &a, const float *a_weights, const Fsa &b, const float *b_weights,
+    const Fsa &a, const Fsa &b,
     float beam, bool top_sorted = true, std::size_t npath = 100);
 
 /*
@@ -172,6 +168,6 @@ class RandPath {
   std::vector<int32_t> arc_map_;
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_FSA_EQUIVALENT_H_

@@ -24,7 +24,7 @@
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
 
-namespace k2 {
+namespace k2host {
 
 // This function uses "Tarjan's strongly connected components algorithm"
 // (see
@@ -270,4 +270,4 @@ bool Connection::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
   return is_acyclic_;
 }
 
-}  // namespace k2
+}  // namespace k2host

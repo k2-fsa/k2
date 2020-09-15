@@ -24,7 +24,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 
-namespace k2 {
+namespace k2host {
 TEST(TopSortTest, TopSort) {
   {
     // case 1: empty input fsa
@@ -49,9 +49,9 @@ TEST(TopSortTest, TopSort) {
   {
     // case 2: non-connected fsa (not co-accessible)
     std::vector<Arc> arcs = {
-        {0, 2, -1},
-        {1, 2, -1},
-        {1, 2, 0},
+      {0, 2, -1, 0},
+      {1, 2, -1, 0},
+      {1, 2, 0, 0}
     };
     FsaCreator fsa_creator(arcs, 2);
     const auto &fsa = fsa_creator.GetFsa();
@@ -72,9 +72,9 @@ TEST(TopSortTest, TopSort) {
   {
     // case 3: non-connected fsa (not accessible)
     std::vector<Arc> arcs = {
-        {0, 2, -1},
-        {1, 0, 1},
-        {1, 2, 0},
+      {0, 2, -1, 0},
+      {1, 0, 1, 0},
+      {1, 2, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 2);
     const auto &fsa = fsa_creator.GetFsa();
@@ -95,8 +95,8 @@ TEST(TopSortTest, TopSort) {
   {
     // case 4: connected fsa
     std::vector<Arc> src_arcs = {
-        {0, 4, 40}, {0, 2, 20}, {1, 6, -1}, {2, 3, 30},
-        {3, 6, -1}, {3, 1, 10}, {4, 5, 50}, {5, 2, 8},
+       {0, 4, 40, 0}, {0, 2, 20, 0}, {1, 6, -1, 0}, {2, 3, 30, 0},
+        {3, 6, -1, 0}, {3, 1, 10, 0}, {4, 5, 50, 0}, {5, 2, 8, 0},
     };
     FsaCreator fsa_creator(src_arcs, 6);
     const auto &fsa = fsa_creator.GetFsa();
@@ -123,8 +123,8 @@ TEST(TopSortTest, TopSort) {
     ASSERT_EQ(arc_indexes.size(), 8u);
     EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 3, 4, 5, 7, 8, 8));
     std::vector<Arc> expected_arcs = {
-        {0, 1, 40}, {0, 3, 20}, {1, 2, 50}, {2, 3, 8},
-        {3, 4, 30}, {4, 6, -1}, {4, 5, 10}, {5, 6, -1},
+        {0, 1, 40, 0}, {0, 3, 20, 0}, {1, 2, 50, 0}, {2, 3, 8, 0},
+        {3, 4, 30, 0}, {4, 6, -1, 0}, {4, 5, 10, 0}, {5, 6, -1, 0},
     };
 
     for (auto i = 0; i != 8; ++i) {
@@ -133,4 +133,4 @@ TEST(TopSortTest, TopSort) {
   }
 }
 
-}  // namespace k2
+}  // namespace k2host

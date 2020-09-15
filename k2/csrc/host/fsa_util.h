@@ -22,7 +22,7 @@
 #include "k2/csrc/host/array.h"
 #include "k2/csrc/host/fsa.h"
 
-namespace k2 {
+namespace k2host {
 
 namespace dfs {
 
@@ -59,6 +59,8 @@ struct DfsState {
 void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes);
 
 /*
+  TODO(dan): remove this, should no longer be needed.
+
   Gets arc weights for an FSA (output FSA) according to `arc_map` which
   maps each arc in the FSA to a sequence of arcs in the other FSA (input FSA).
 
@@ -81,6 +83,8 @@ void GetArcWeights(const float *arc_weights_in,
                    const Array2<int32_t *, int32_t> &arc_map,
                    float *arc_weights_out);
 
+// TODO(dan): remove this, should no longer be needed.
+//
 // Version of GetArcWeights where arc_map maps each arc in the output FSA to
 // one arc (instead of a sequence of arcs) in the input FSA; see its
 // documentation.
@@ -89,6 +93,7 @@ void GetArcWeights(const float *arc_weights_in,
 // be allocated with size `num_arcs`.
 void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
                    int32_t num_arcs, float *arc_weights_out);
+
 
 /* Reorder a list of arcs to get a valid FSA. This function will be used in a
    situation that the input list of arcs is not sorted by src_state, we'll
@@ -285,6 +290,7 @@ struct RandFsaOptions {
   bool allow_empty;
   bool acyclic;  // generate a cyclic fsa in a best effort manner if it's false
   int32_t seed;  // for random generator. Set it to non-zero for reproducibility
+  bool nonzero_weights;  // allow weights to be nonzero (default: fals)
 
   RandFsaOptions();
 };
@@ -337,6 +343,6 @@ void ReorderCopyN(InputIterator index, Size count, RandomAccessIterator src,
   }
 }
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_FSA_UTIL_H_

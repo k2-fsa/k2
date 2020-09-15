@@ -22,7 +22,7 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/fsa_util.h"
 
-namespace k2 {
+namespace k2host {
 
 bool IsValid(const Fsa &fsa) {
   if (IsEmpty(fsa)) return true;
@@ -155,9 +155,16 @@ bool IsEpsilonFree(const Fsa &fsa) {
   return true;
 }
 
+bool IsUnweighted(const Fsa &fsa) {
+  for (const auto &arc : fsa) {
+    if (arc.weight != 0.0) return false;
+  }
+  return true;
+}
+
 bool IsConnected(const Fsa &fsa) {
   std::vector<int32_t> state_map;
   ConnectCore(fsa, &state_map);
   return static_cast<int32_t>(state_map.size()) == fsa.NumStates();
 }
-}  // namespace k2
+}  // namespace k2host

@@ -7,7 +7,8 @@
 
 #include "k2/python/csrc/tensor.h"
 
-namespace k2 {
+
+namespace k2host {
 
 // refer to
 // https://github.com/pytorch/pytorch/blob/master/torch/csrc/Module.cpp#L375
@@ -125,4 +126,4 @@ void Tensor::Check() const {
   K2_CHECK_EQ(device_type_, kCPU) << "We support only kCPU at present";
 }
 
-}  // namespace k2
+}  // namespace k2host

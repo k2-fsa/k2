@@ -28,7 +28,7 @@ using StatePair = std::pair<int32_t, int32_t>;
 static inline int32_t InsertIntersectionState(
     const StatePair &new_state, int32_t *state_index_c,
     std::queue<StatePair> *qstates,
-    std::unordered_map<StatePair, int32_t, k2::PairHash> *state_pair_map) {
+    std::unordered_map<StatePair, int32_t, k2host::PairHash> *state_pair_map) {
   auto result = state_pair_map->insert({new_state, *state_index_c + 1});
   if (result.second) {
     // we have not visited `new_state` before.
@@ -39,7 +39,7 @@ static inline int32_t InsertIntersectionState(
 }
 }  // namespace
 
-namespace k2 {
+namespace k2host {
 
 void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
   K2_CHECK_NE(fsa_size, nullptr);
@@ -96,7 +96,8 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
       StatePair new_state{a_arc_iter_begin->dest_state, state_b};
       int32_t new_state_index = InsertIntersectionState(
           new_state, &state_index_c, &qstates, &state_pair_map);
-      arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon);
+      arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon,
+                         a_arc_iter_begin->weight);
       arc_map_a_.push_back(
           static_cast<int32_t>(a_arc_iter_begin - arc_a_begin));
       arc_map_b_.push_back(arc_map_none);
@@ -106,7 +107,8 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
       StatePair new_state{state_a, b_arc_iter_begin->dest_state};
       int32_t new_state_index = InsertIntersectionState(
           new_state, &state_index_c, &qstates, &state_pair_map);
-      arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon);
+      arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon,
+                         b_arc_iter_begin->weight);
       arc_map_a_.push_back(arc_map_none);
       arc_map_b_.push_back(
           static_cast<int32_t>(b_arc_iter_begin - arc_b_begin));
@@ -135,7 +137,8 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
         StatePair new_state{curr_a_arc.dest_state, curr_b_arc.dest_state};
         int32_t new_state_index = InsertIntersectionState(
             new_state, &state_index_c, &qstates, &state_pair_map);
-        arcs_.emplace_back(curr_state_index, new_state_index, curr_a_arc.label);
+        arcs_.emplace_back(curr_state_index, new_state_index, curr_a_arc.label,
+                           curr_a_arc.weight + curr_b_arc.weight);
 
         auto curr_arc_index_a = static_cast<int32_t>(
             a_arc_iter_begin - (swapped ? arc_b_begin : arc_a_begin));
@@ -183,4 +186,4 @@ bool Intersection::GetOutput(Fsa *c, int32_t *arc_map_a /*= nullptr*/,
   return true;
 }
 
-}  // namespace k2
+}  // namespace k2host

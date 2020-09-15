@@ -28,7 +28,7 @@
 #include "k2/csrc/host/util.h"
 #include "k2/csrc/host/weights.h"
 
-namespace k2 {
+namespace k2host {
 /*
   HOW THIS WORKS
 
@@ -192,7 +192,7 @@ struct MaxTracebackState {
    */
   MaxTracebackState(int32_t state_id,
                     const std::shared_ptr<MaxTracebackState> &src,
-                    int32_t incoming_arc_index, int32_t arc_weight)
+                    int32_t incoming_arc_index, float arc_weight)
       : state_id(state_id),
         arc_id(incoming_arc_index),
         prev_state(src),
@@ -286,7 +286,7 @@ struct LogSumTracebackState {
    */
   LogSumTracebackState(int32_t state_id,
                        const std::shared_ptr<LogSumTracebackState> &src,
-                       int32_t incoming_arc_index, int32_t arc_weight)
+                       int32_t incoming_arc_index, float arc_weight)
       : state_id(state_id), forward_prob(src->forward_prob + arc_weight) {
     prev_elements.emplace_back(src, incoming_arc_index, arc_weight);
   }
@@ -342,8 +342,10 @@ int32_t GetMostRecentCommonAncestor(
                        A set of states; we'll iteratively trace back this
                        set one step at a time.    At entry it must have
                        size() == 1; it will also have size() == 1 at exit.
+       @param [in] arcs_in    Array of arcs of the FSA that we're doing
+                       traceback in; needed only for lookup of the
+                       weights.
        @param [in] num_steps   The number of steps to trace back
-       @param [in] arc_weights_in  Weights on the arcs of the input FSA
        @param [out] weight_out  The output weight; will be the forward-backward
                        weight of the sub-graph whose final-state is
                        (*cur_states).front() and whose start-state is
@@ -362,7 +364,8 @@ int32_t GetMostRecentCommonAncestor(
 
  */
 void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
-               int32_t num_steps, const float *arc_weights_in,
+               int32_t num_steps,
+               const Arc *arcs_in,
                float *weight_out,
                std::vector<std::pair<int32_t, float>> *deriv_out);
 
@@ -370,7 +373,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
 // for LogSumTracebackState, above.  This version is simpler.
 void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
                int32_t num_steps,
-               const float *unused,  // arc_weights_in, unused.
+               const Arc *arcs_in,
                float *weight_out, std::vector<int32_t> *deriv_out);
 
 template <class TracebackState>
@@ -514,8 +517,6 @@ class DetState {
                                  Will be -infinity if we're not doing pruning.
               @param [out] arcs_out   Output-FSA arcs-- those leaving this
                                  determinized state-- will be appended to here.
-              @param [out] arc_weights_out  Weights for the output arcs will
-                                 be appended to here.
               @param [out] derivs_per_arc  Derivative information for the output
                                  arcs will be appended to here: either sequences
                                  of int32_t (corresponding to input arcs), or
@@ -529,7 +530,6 @@ class DetState {
   */
   int32_t ProcessArcs(const WfsaWithFbWeights &wfsa_in, double prune_cutoff,
                       std::vector<Arc> *arcs_out,
-                      std::vector<float> *arc_weights_out,
                       std::vector<std::vector<DerivType>> *derivs_per_arc,
                       DetStateMap<TracebackState> *state_map,
                       DetStatePriorityQueue<TracebackState> *queue);
@@ -560,7 +560,7 @@ class DetState {
 template <class TracebackState>
 int32_t DetState<TracebackState>::ProcessArcs(
     const WfsaWithFbWeights &wfsa_in, double prune_cutoff,
-    std::vector<Arc> *arcs_out, std::vector<float> *arc_weights_out,
+    std::vector<Arc> *arcs_out,
     std::vector<std::vector<typename TracebackState::DerivType>>
         *derivs_per_arc,
     DetStateMap<TracebackState> *state_map,
@@ -573,7 +573,6 @@ int32_t DetState<TracebackState>::ProcessArcs(
   // DetStates (unnormalized).
   const Fsa &fsa = wfsa_in.fsa;
   const auto arcs = fsa.data + fsa.indexes[0];
-  const float *arc_weights = wfsa_in.arc_weights;
   for (const auto &elem : elements) {
     const auto &state_ptr = elem.second;
     int32_t state_id = state_ptr->state_id, begin_arc = fsa.indexes[state_id],
@@ -582,7 +581,6 @@ int32_t DetState<TracebackState>::ProcessArcs(
     for (int32_t a = begin_arc; a < end_arc; ++a) {
       const int32_t curr_arc = a - fsa.indexes[0];
       const Arc &arc = arcs[curr_arc];
-      float weight = arc_weights[curr_arc];
       int32_t label = arc.label;
       auto ret = label_to_state.insert({label, nullptr});
       auto iter = ret.first;
@@ -591,7 +589,7 @@ int32_t DetState<TracebackState>::ProcessArcs(
         iter->second = new DetState<TracebackState>(seq_len + 1);
       }
       DetState<TracebackState> *det_state = iter->second;
-      det_state->AcceptIncomingArc(arc.dest_state, state_ptr, curr_arc, weight);
+      det_state->AcceptIncomingArc(arc.dest_state, state_ptr, curr_arc, arc.weight);
     }
   }
   K2_CHECK(!label_to_state.empty() ||
@@ -610,8 +608,7 @@ int32_t DetState<TracebackState>::ProcessArcs(
     det_state->Normalize(wfsa_in, &arc_weight, &deriv_info);
     if (det_state->forward_backward_prob >= prune_cutoff) {
       bool is_new_state = state_map->GetOutputState(det_state, fsa);
-      arcs_out->push_back({this->state_id, det_state->state_id, iter->first});
-      arc_weights_out->push_back(arc_weight);
+      arcs_out->push_back({this->state_id, det_state->state_id, iter->first, arc_weight});
       derivs_per_arc->push_back(std::move(deriv_info));
       if (is_new_state)
         queue->push(std::unique_ptr<DetState<TracebackState>>(det_state));
@@ -674,7 +671,9 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
   this->seq_len = new_seq_len;
 
   // the following will set removed_weight and deriv_info.
-  TraceBack(&cur_states, num_steps, wfsa_in.arc_weights, removed_weight,
+  // `arcs` is needed to look up the weight.
+  const Arc *arcs = wfsa_in.fsa.data;
+  TraceBack(&cur_states, num_steps, arcs, removed_weight,
             deriv_info);
 
   normalized = true;
@@ -797,6 +796,6 @@ class DetStateMap {
   };
 };
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_DETERMINIZE_IMPL_H_

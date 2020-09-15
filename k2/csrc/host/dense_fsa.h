@@ -21,7 +21,7 @@
 #include "k2/csrc/host/util.h"
 #include "k2/csrc/log.h"
 
-namespace k2 {
+namespace k2host {
 
 /*
   DenseFsa represents an FSA stored as a matrix, representing something
@@ -300,6 +300,6 @@ void IntersectPruned(const DenseFsa &a, const Fsa &b, float beam, Fsa *c,
 /* Convert DenseFsa to regular Fsa (for testing purposes) */
 void DenseToFsa(const DenseFsa &a, Fsa *b);
 
-}  // namespace k2
+}  // namespace k2host
 
 #endif  // K2_CSRC_HOST_DENSE_FSA_H_
