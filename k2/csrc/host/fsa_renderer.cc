@@ -38,8 +38,7 @@ std::string GenerateEpilogue() { return "}"; }
 using k2host::Arc;
 using k2host::Fsa;
 
-std::string ProcessState(const Fsa &fsa, int32_t state,
-                         const float *arc_weights = nullptr) {
+std::string ProcessState(const Fsa &fsa, int32_t state) {
   std::ostringstream os;
   os << "  " << state << " [label = \"" << state
      << "\", shape = circle, style = bold, fontsize = 14]"
@@ -55,9 +54,9 @@ std::string ProcessState(const Fsa &fsa, int32_t state,
     int32_t dest = arc.dest_state;
     int32_t label = arc.label;
     os << "          " << src << " -> " << dest << " [label = \"" << label;
-    if (arc_weights != nullptr)
+    if (arc.weight != 0.0)
       os << "/" << std::fixed << std::setprecision(1)
-         << arc_weights[begin - arc_begin_index];
+         << arc.weight;
     os << "\", fontsize = 14];"
        << "\n";
   }
@@ -78,7 +77,7 @@ std::string FsaRenderer::Render() const {
 
   int32_t final_state = fsa_.FinalState();
   for (int32_t i = 0; i != final_state; ++i) {
-    os << ProcessState(fsa_, i, arc_weights_);
+    os << ProcessState(fsa_, i);
   }
 
   // now for the final state

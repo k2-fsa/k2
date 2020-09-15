@@ -154,7 +154,7 @@ int32_t GetMostRecentCommonAncestor(
 }
 
 void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
-               int32_t num_steps, const float *arc_weights_in,
+               int32_t num_steps, const Arc *arcs_in,
                float *weight_out,
                std::vector<std::pair<int32_t, float>> *deriv_out) {
   std::unordered_set<LogSumTracebackState *> prev_states;
@@ -176,7 +176,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
             std::pair<int32_t, float>(link.arc_index, expf(arc_log_posterior)));
         LogSumTracebackState *prev_state = link.prev_state.get();
         double new_backward_prob =
-            backward_prob + arc_weights_in[link.arc_index];
+            backward_prob + arcs_in[link.arc_index].weight;
         if (prev_states.insert(prev_state).second) {  // newly inserted
           prev_state->backward_prob = new_backward_prob;
         } else {
@@ -201,7 +201,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
 
 void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
                int32_t num_steps,
-               const float *unused,  // arc_weights_in, unused.
+               const Arc *unused,  // arcs_in, unused.
                float *weight_out, std::vector<int32_t> *deriv_out) {
   (void)unused;
   K2_CHECK_EQ(cur_states->size(), 1);

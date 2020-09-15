@@ -90,7 +90,7 @@ static int32_t MapStates(const k2host::Fsa &fsa_in, std::vector<char> *non_eps_i
                        it must have size() == 1 which contains the last
                        state mentioned above; it will also have size() == 1
                        at exit which contains the state `s` above.
-       @param [in] arc_weights_in  Weights on the arcs of the input FSA
+       @param [in] arcs_in  Array of arcs of the FSA, to look up weight
        @param [in] last_arc_index  The arc index of the last arc in the
                                    sub-graph above, it's a labeled arc,
                                    i.e. the arc's label is not epsilon.
@@ -105,7 +105,7 @@ static int32_t MapStates(const k2host::Fsa &fsa_in, std::vector<char> *non_eps_i
  */
 static void TraceBackRmEpsilons(
     std::map<int32_t, k2host::LogSumTracebackState *> *curr_states,
-    const float *arc_weights_in, int32_t last_arc_index,
+    const k2host::Arc *arcs_in, int32_t last_arc_index,
     std::vector<std::pair<int32_t, float>> *deriv_out) {
   K2_CHECK_EQ(curr_states->size(), 1);
   deriv_out->clear();
@@ -128,7 +128,7 @@ static void TraceBackRmEpsilons(
           static_cast<float>(link.forward_prob + backward_prob);
       deriv_out->emplace_back(link.arc_index, expf(arc_log_posterior));
       k2host::LogSumTracebackState *prev_state = link.prev_state.get();
-      double new_backward_prob = backward_prob + arc_weights_in[link.arc_index];
+      double new_backward_prob = backward_prob + arcs_in[link.arc_index].weight;
       auto result = curr_states->emplace(prev_state->state_id, prev_state);
       if (result.second) {
         prev_state->backward_prob = new_backward_prob;
@@ -157,7 +157,7 @@ static void TraceBackRmEpsilons(
  */
 static void TraceBackRmEpsilons(
     std::map<int32_t, k2host::MaxTracebackState *> *curr_states,
-    const float *unused,  // arc_weights_in, unused
+    const k2host::Arc *unused,  // arcs_in, unused
     int32_t last_arc_index, std::vector<int32_t> *deriv_out) {
   K2_CHECK_EQ(curr_states->size(), 1);
   deriv_out->clear();
@@ -184,7 +184,6 @@ void EpsilonsRemover<TracebackState>::GetSizes(
 
   arc_indexes_.clear();
   arcs_.clear();
-  arc_weights_.clear();
   arc_derivs_.clear();
 
   const auto &fsa = fsa_in_.fsa;
@@ -192,7 +191,6 @@ void EpsilonsRemover<TracebackState>::GetSizes(
   int32_t num_states_in = fsa.NumStates();
   int32_t final_state_in = fsa.FinalState();
   const auto &arcs_in = fsa.data + fsa.indexes[0];
-  const float *arc_weights_in = fsa_in_.arc_weights;
 
   // identify all states that should be kept
   std::vector<char> non_eps_in(num_states_in, 0);
@@ -232,7 +230,7 @@ void EpsilonsRemover<TracebackState>::GetSizes(
         const int32_t curr_arc_index = arc_index - fsa.indexes[0];
         int32_t next_state = arcs_in[curr_arc_index].dest_state;
         int32_t label = arcs_in[curr_arc_index].label;
-        float curr_arc_weight = arc_weights_in[curr_arc_index];
+        float curr_arc_weight = arcs_in[curr_arc_index].weight;
         double next_weight = curr_forward_weights + curr_arc_weight;
         if (next_weight + backward_state_weights[next_state] >= best_weight) {
           if (label == kEpsilon) {
@@ -247,14 +245,15 @@ void EpsilonsRemover<TracebackState>::GetSizes(
                                            curr_arc_weight);
             }
           } else {
-            arcs_.emplace_back(curr_state_out, state_map[next_state], label);
-            arc_weights_.push_back(curr_forward_weights + curr_arc_weight -
-                                   start_forward_weights);
+            float arc_weight = curr_forward_weights + curr_arc_weight -
+                start_forward_weights;
+            arcs_.emplace_back(curr_state_out, state_map[next_state], label,
+                               arc_weight);
 
             std::vector<typename TracebackState::DerivType> curr_arc_deriv;
             std::map<int32_t, TracebackState *> curr_states;
             curr_states.emplace(state, curr_traceback_state.get());
-            TraceBackRmEpsilons(&curr_states, arc_weights_in, curr_arc_index,
+            TraceBackRmEpsilons(&curr_states, arcs_in, curr_arc_index,
                                 &curr_arc_deriv);
             std::reverse(curr_arc_deriv.begin(), curr_arc_deriv.end());
             derivs_num_out += curr_arc_deriv.size();
@@ -276,12 +275,11 @@ void EpsilonsRemover<TracebackState>::GetSizes(
 
 template <typename TracebackState>
 void EpsilonsRemover<TracebackState>::GetOutput(
-    Fsa *fsa_out, float *arc_weights_out,
+    Fsa *fsa_out,
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
   if (IsEmpty(fsa_in_.fsa)) return;
 
   K2_CHECK_NE(fsa_out, nullptr);
-  K2_CHECK_NE(arc_weights_out, nullptr);
   K2_CHECK_NE(arc_derivs, nullptr);
 
   // output FSA
@@ -289,9 +287,6 @@ void EpsilonsRemover<TracebackState>::GetOutput(
   std::copy(arc_indexes_.begin(), arc_indexes_.end(), fsa_out->indexes);
   K2_CHECK_EQ(arcs_.size(), fsa_out->size2);
   std::copy(arcs_.begin(), arcs_.end(), fsa_out->data);
-
-  // output arc weights
-  std::copy(arc_weights_.begin(), arc_weights_.end(), arc_weights_out);
 
   // output arc derivative information
   K2_CHECK_EQ(arc_derivs_.size(), arc_derivs->size1);

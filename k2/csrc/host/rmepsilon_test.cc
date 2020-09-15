@@ -29,34 +29,28 @@ class RmEpsilonTest : public ::testing::Test {
  protected:
   RmEpsilonTest() {
     std::vector<Arc> arcs = {
-        {0, 4, 1},        {0, 1, 1},        {1, 2, kEpsilon}, {1, 3, kEpsilon},
-        {1, 4, kEpsilon}, {2, 7, kEpsilon}, {3, 7, kEpsilon}, {4, 6, 1},
-        {4, 6, kEpsilon}, {4, 8, 1},        {4, 9, -1},       {5, 9, -1},
-        {6, 9, -1},       {7, 9, -1},       {8, 9, -1},
+        {0, 4, 1, 1},        {0, 1, 1, 1},        {1, 2, kEpsilon, 2}, {1, 3, kEpsilon, 3},
+        {1, 4, kEpsilon, 2}, {2, 7, kEpsilon, 4}, {3, 7, kEpsilon, 5}, {4, 6, 1, 2},
+        {4, 6, kEpsilon, 3}, {4, 8, 1, 3},        {4, 9, -1, 2},       {5, 9, -1, 4},
+        {6, 9, -1, 3},       {7, 9, -1, 5},       {8, 9, -1, 6},
     };
     fsa_creator_ = new FsaCreator(arcs, 9);
     fsa_ = &fsa_creator_->GetFsa();
     num_states_ = fsa_->NumStates();
 
-    auto num_arcs = fsa_->size2;
-    arc_weights_ = new float[num_arcs];
-    std::vector<float> weights = {1, 1, 2, 3, 2, 4, 5, 2, 3, 3, 2, 4, 3, 5, 6};
-    std::copy_n(weights.begin(), num_arcs, arc_weights_);
-
     max_forward_weights_.resize(num_states_);
     max_backward_weights_.resize(num_states_);
     logsum_forward_weights_.resize(num_states_);
     logsum_backward_weights_.resize(num_states_);
-    max_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kMaxWeight,
+    max_wfsa_ = new WfsaWithFbWeights(*fsa_, kMaxWeight,
                                       max_forward_weights_.data(),
                                       max_backward_weights_.data());
-    log_wfsa_ = new WfsaWithFbWeights(*fsa_, arc_weights_, kLogSumWeight,
+    log_wfsa_ = new WfsaWithFbWeights(*fsa_, kLogSumWeight,
                                       logsum_forward_weights_.data(),
                                       logsum_backward_weights_.data());
   }
 
   ~RmEpsilonTest() override {
-    delete[] arc_weights_;
     delete max_wfsa_;
     delete log_wfsa_;
     delete fsa_creator_;
@@ -67,7 +61,6 @@ class RmEpsilonTest : public ::testing::Test {
   FsaCreator *fsa_creator_;
   const Fsa *fsa_;
   int32_t num_states_;
-  float *arc_weights_;
   std::vector<double> logsum_forward_weights_;
   std::vector<double> logsum_backward_weights_;
   std::vector<double> max_forward_weights_;
@@ -82,12 +75,11 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
 
   FsaCreator fsa_creator(fsa_size);
   auto &fsa_out = fsa_creator.GetFsa();
-  std::vector<float> arc_weights_out(fsa_size.size2);
   Array2Storage<typename MaxTracebackState::DerivType *, int32_t>
       derivs_storage(arc_derivs_size, 1);
   auto &arc_derivs = derivs_storage.GetArray2();
 
-  eps_remover.GetOutput(&fsa_out, arc_weights_out.data(), &arc_derivs);
+  eps_remover.GetOutput(&fsa_out, &arc_derivs);
 
   EXPECT_TRUE(IsEpsilonFree(fsa_out));
 
@@ -96,9 +88,7 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
   ASSERT_EQ(arc_derivs.size1, 11);
   ASSERT_EQ(arc_derivs.size2, 18);
 
-  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(max_wfsa_->fsa,
-                                           max_wfsa_->arc_weights, fsa_out,
-                                           arc_weights_out.data(), beam));
+  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(max_wfsa_->fsa, fsa_out, beam));
 }
 
 TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
@@ -109,12 +99,12 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
 
   FsaCreator fsa_creator(fsa_size);
   auto &fsa_out = fsa_creator.GetFsa();
-  std::vector<float> arc_weights_out(fsa_size.size2);
+
   Array2Storage<typename LogSumTracebackState::DerivType *, int32_t>
       derivs_storage(arc_derivs_size, 1);
   auto &arc_derivs = derivs_storage.GetArray2();
 
-  eps_remover.GetOutput(&fsa_out, arc_weights_out.data(), &arc_derivs);
+  eps_remover.GetOutput(&fsa_out, &arc_derivs);
 
   EXPECT_TRUE(IsEpsilonFree(fsa_out));
 
@@ -124,8 +114,7 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
   ASSERT_EQ(arc_derivs.size2, 20);
 
   EXPECT_TRUE(IsRandEquivalentAfterRmEpsPrunedLogSum(
-      log_wfsa_->fsa, log_wfsa_->arc_weights, fsa_out, arc_weights_out.data(),
-      beam));
+      log_wfsa_->fsa, fsa_out, beam));
 
   // TODO(haowen): how to check arc_derivs
 }

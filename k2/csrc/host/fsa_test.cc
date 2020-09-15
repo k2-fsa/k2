@@ -25,7 +25,7 @@ namespace k2host {
 
 TEST(CfsaVec, CreateCfsa) {
   std::vector<Arc> arcs1 = {
-      {0, 1, 1}, {0, 2, 2}, {1, 2, 3}, {1, 3, 4}, {3, 4, -1},
+      {0, 1, 1, 0}, {0, 2, 2, 0}, {1, 2, 3, 0}, {1, 3, 4, 0}, {3, 4, -1, 0},
   };
   FsaCreator fsa_creator1(arcs1, 4);
   Cfsa cfsa1 = fsa_creator1.GetFsa();
@@ -33,10 +33,10 @@ TEST(CfsaVec, CreateCfsa) {
   EXPECT_EQ(cfsa1.size2, 5);  // num-arcs
 
   std::vector<Arc> arcs2 = {
-      {0, 2, 1},
-      {0, 3, -1},
-      {1, 3, -1},
-      {2, 3, -1},
+      {0, 2, 1, 0},
+      {0, 3, -1, 0},
+      {1, 3, -1, 0},
+      {2, 3, -1, 0},
   };
   FsaCreator fsa_creator2(arcs2, 3);
   Cfsa cfsa2 = fsa_creator2.GetFsa();

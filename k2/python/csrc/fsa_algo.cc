@@ -37,7 +37,7 @@ void PyBindArcSort(py::module &m) {
 
   m.def(
       "_arc_sort",
-      [](k2host::Fsa *fsa, k2::Array1<int32_t *> *arc_map = nullptr) {
+      [](k2host::Fsa *fsa, k2host::Array1<int32_t *> *arc_map = nullptr) {
         return k2host::ArcSort(fsa, arc_map == nullptr ? nullptr : arc_map->data);
       },
       "in-place version of ArcSorter", py::arg("fsa"),
@@ -77,7 +77,7 @@ void PyBindConnect(py::module &m) {
 void PyBindIntersect(py::module &m) {
   using PyClass = k2host::Intersection;
   py::class_<PyClass>(m, "_Intersection")
-      .def(py::init<const k2host::Fsa &, const k2::Fsa &>(), py::arg("fsa_a"),
+      .def(py::init<const k2host::Fsa &, const k2host::Fsa &>(), py::arg("fsa_a"),
            py::arg("fsa_b"))
       .def("get_sizes", &PyClass::GetSizes, py::arg("fsa_size"))
       .def(
@@ -104,12 +104,11 @@ void PybindDeterminizerTpl(py::module &m, const char *name) {
       .def(
           "get_output",
           [](PyClass &self, k2host::Fsa *fsa_out,
-             k2host::Array1<float *> *arc_weights_out,
              k2host::Array2<typename TracebackState::DerivType *> *arc_derivs)
               -> float {
-            return self.GetOutput(fsa_out, arc_weights_out->data, arc_derivs);
+            return self.GetOutput(fsa_out, arc_derivs);
           },
-          py::arg("fsa_out"), py::arg("arc_weights_out"),
+          py::arg("fsa_out"),
           py::arg("arc_derivs"));
 }
 
@@ -124,12 +123,11 @@ void PybindEpsilonsRemoverTpl(py::module &m, const char *name) {
       .def(
           "get_output",
           [](PyClass &self, k2host::Fsa *fsa_out,
-             k2host::Array1<float *> *arc_weights_out,
              k2host::Array2<typename TracebackState::DerivType *> *arc_derivs)
               -> void {
-            return self.GetOutput(fsa_out, arc_weights_out->data, arc_derivs);
+            return self.GetOutput(fsa_out, arc_derivs);
           },
-          py::arg("fsa_out"), py::arg("arc_weights_out"),
+          py::arg("fsa_out"),
           py::arg("arc_derivs"));
 }
 

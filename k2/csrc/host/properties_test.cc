@@ -35,9 +35,9 @@ TEST(Properties, IsNotValid) {
   // only kFinalSymbol arcs enter the final state
   {
     std::vector<Arc> arcs = {
-        {0, 1, 0},
-        {0, 2, 1},
-        {1, 2, 0},
+        {0, 1, 0, 0},
+        {0, 2, 1, 0},
+        {1, 2, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 2);
     const auto &fsa = fsa_creator.GetFsa();
@@ -49,9 +49,9 @@ TEST(Properties, IsNotValid) {
   {
     std::vector<int32_t> arc_indexes = {0, 2, 2, 2};
     std::vector<Arc> arcs = {
-        {0, 1, 0},
-        {0, 2, 1},
-        {1, 2, 0},
+        {0, 1, 0, 0},
+        {0, 2, 1, 0},
+        {1, 2, 0, 0},
     };
     Fsa fsa(3, 3, arc_indexes.data(), arcs.data());
     bool is_valid = IsValid(fsa);
@@ -69,9 +69,9 @@ TEST(Properties, IsValid) {
 
   {
     std::vector<Arc> arcs = {
-        {0, 1, 0},
-        {0, 2, 0},
-        {2, 3, kFinalSymbol},
+        {0, 1, 0, 0},
+        {0, 2, 0, 0},
+        {2, 3, kFinalSymbol, 0},
     };
     FsaCreator fsa_creator(arcs, 3);
     const auto &fsa = fsa_creator.GetFsa();
@@ -81,9 +81,9 @@ TEST(Properties, IsValid) {
 
   {
     std::vector<Arc> arcs = {
-        {0, 1, 0},
-        {0, 2, kFinalSymbol},
-        {1, 2, kFinalSymbol},
+        {0, 1, 0, 0},
+        {0, 2, kFinalSymbol, 0},
+        {1, 2, kFinalSymbol, 0},
     };
     FsaCreator fsa_creator(arcs, 2);
     const auto &fsa = fsa_creator.GetFsa();
@@ -94,9 +94,9 @@ TEST(Properties, IsValid) {
 
 TEST(Properties, IsNotTopSorted) {
   std::vector<Arc> arcs = {
-      {0, 1, 0},
-      {0, 2, 0},
-      {2, 1, 0},
+      {0, 1, 0, 0},
+      {0, 2, 0, 0},
+      {2, 1, 0, 0},
   };
   FsaCreator fsa_creator(arcs, 2);
   const auto &fsa = fsa_creator.GetFsa();
@@ -113,9 +113,9 @@ TEST(Properties, IsTopSorted) {
 
   {
     std::vector<Arc> arcs = {
-        {0, 1, 0},
-        {0, 2, 0},
-        {1, 2, 0},
+        {0, 1, 0, 0},
+        {0, 2, 0, 0},
+        {1, 2, 0, 0},
     };
 
     FsaCreator fsa_creator(arcs, 2);
@@ -148,10 +148,10 @@ TEST(Properties, IsTopSorted) {
 TEST(Properties, IsNotArcSorted) {
   {
     std::vector<Arc> arcs = {
-        {0, 1, 1},
-        {0, 2, 2},
-        {1, 2, 2},
-        {1, 3, 1},
+        {0, 1, 1, 0},
+        {0, 2, 2, 0},
+        {1, 2, 2, 0},
+        {1, 3, 1, 0},
     };
     FsaCreator fsa_creator(arcs, 3);
     const auto &fsa = fsa_creator.GetFsa();
@@ -162,8 +162,8 @@ TEST(Properties, IsNotArcSorted) {
   // another case with same label on two arcs
   {
     std::vector<Arc> arcs = {
-        {0, 2, 0},
-        {0, 1, 0},
+        {0, 2, 0, 0},
+        {0, 1, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 2);
     const auto &fsa = fsa_creator.GetFsa();
@@ -183,10 +183,10 @@ TEST(Properties, IsArcSorted) {
 
   {
     std::vector<Arc> arcs = {
-        {0, 1, 0},
-        {0, 2, 0},
-        {1, 2, 1},
-        {1, 3, 2},
+        {0, 1, 0, 0},
+        {0, 2, 0, 0},
+        {1, 2, 1, 0},
+        {1, 3, 2, 0},
     };
     FsaCreator fsa_creator(arcs, 3);
     const auto &fsa = fsa_creator.GetFsa();
@@ -198,9 +198,9 @@ TEST(Properties, IsArcSorted) {
 TEST(Properties, HasNoSelfLoops) {
   {
     std::vector<Arc> arcs = {
-        {0, 1, 0},
-        {0, 2, 0},
-        {1, 2, 0},
+        {0, 1, 0, 0},
+        {0, 2, 0, 0},
+        {1, 2, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 2);
     const auto &fsa = fsa_creator.GetFsa();
@@ -232,9 +232,9 @@ TEST(Properties, HasNoSelfLoops) {
 
 TEST(Properties, HasSelfLoops) {
   std::vector<Arc> arcs = {
-      {0, 1, 0},
-      {1, 2, 0},
-      {1, 1, 0},
+      {0, 1, 0, 0},
+      {1, 2, 0, 0},
+      {1, 1, 0, 0},
   };
   FsaCreator fsa_creator(arcs, 2);
   const auto &fsa = fsa_creator.GetFsa();
@@ -244,9 +244,9 @@ TEST(Properties, HasSelfLoops) {
 
 TEST(Properties, IsNotDeterministic) {
   std::vector<Arc> arcs = {
-      {0, 1, 2},
-      {1, 2, 0},
-      {1, 3, 0},
+      {0, 1, 2, 0},
+      {1, 2, 0, 0},
+      {1, 3, 0, 0},
   };
   FsaCreator fsa_creator(arcs, 3);
   const auto &fsa = fsa_creator.GetFsa();
@@ -256,9 +256,9 @@ TEST(Properties, IsNotDeterministic) {
 
 TEST(Properties, IsDeterministic) {
   std::vector<Arc> arcs = {
-      {0, 1, 2},
-      {1, 2, 0},
-      {1, 3, 2},
+      {0, 1, 2, 0},
+      {1, 2, 0, 0},
+      {1, 3, 2, 0},
   };
   FsaCreator fsa_creator(arcs, 3);
   const auto &fsa = fsa_creator.GetFsa();
@@ -268,9 +268,9 @@ TEST(Properties, IsDeterministic) {
 
 TEST(Properties, IsNotEpsilonFree) {
   std::vector<Arc> arcs = {
-      {0, 1, 2},
-      {0, 2, kEpsilon},
-      {1, 2, 1},
+      {0, 1, 2, 0},
+      {0, 2, kEpsilon, 0},
+      {1, 2, 1, 0},
   };
   FsaCreator fsa_creator(arcs, 2);
   const auto &fsa = fsa_creator.GetFsa();
@@ -280,9 +280,9 @@ TEST(Properties, IsNotEpsilonFree) {
 
 TEST(Properties, IsEpsilonFree) {
   std::vector<Arc> arcs = {
-      {0, 1, 2},
-      {0, 2, 1},
-      {1, 2, 1},
+      {0, 1, 2, 0},
+      {0, 2, 1, 0},
+      {1, 2, 1, 0},
   };
   FsaCreator fsa_creator(arcs, 2);
   const auto &fsa = fsa_creator.GetFsa();
@@ -294,7 +294,7 @@ TEST(Properties, IsNotConnected) {
   // state is not accessible
   {
     std::vector<Arc> arcs = {
-        {0, 2, 0},
+        {0, 2, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 2);
     const auto &fsa = fsa_creator.GetFsa();
@@ -305,8 +305,8 @@ TEST(Properties, IsNotConnected) {
   // state is not co-accessible
   {
     std::vector<Arc> arcs = {
-        {0, 1, 0},
-        {0, 2, 0},
+        {0, 1, 0, 0},
+        {0, 2, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 3);
     const auto &fsa = fsa_creator.GetFsa();
@@ -325,10 +325,10 @@ TEST(Properties, IsConnected) {
   }
   {
     std::vector<Arc> arcs = {
-        {0, 1, 0},
-        {0, 3, 0},
-        {1, 2, 0},
-        {2, 3, 0},
+        {0, 1, 0, 0},
+        {0, 3, 0, 0},
+        {1, 2, 0, 0},
+        {2, 3, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 3);
     const auto &fsa = fsa_creator.GetFsa();
@@ -339,7 +339,7 @@ TEST(Properties, IsConnected) {
   // another case: fsa is cyclic and not top-sorted
   {
     std::vector<Arc> arcs = {
-        {0, 3, 0}, {1, 2, 0}, {2, 3, 0}, {2, 4, 0}, {3, 1, 0},
+        {0, 3, 0, 0}, {1, 2, 0, 0}, {2, 3, 0, 0}, {2, 4, 0, 0}, {3, 1, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 4);
     const auto &fsa = fsa_creator.GetFsa();
@@ -402,7 +402,7 @@ TEST(FsaAlgo, IsAcyclic) {
   // an acyclic fsa example
   {
     std::vector<Arc> arcs = {
-        {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6},
+        {0, 1, 2, 0}, {0, 2, 1, 0}, {1, 2, 0, 0}, {1, 3, 5, 0}, {2, 3, 6, 0},
     };
     FsaCreator fsa_creator(arcs, 3);
     const auto &fsa = fsa_creator.GetFsa();
@@ -413,7 +413,7 @@ TEST(FsaAlgo, IsAcyclic) {
   // a cyclic fsa example
   {
     std::vector<Arc> arcs = {
-        {0, 1, 2}, {0, 4, 0}, {0, 2, 0}, {1, 2, 1}, {1, 3, 0}, {2, 1, 0},
+        {0, 1, 2, 0}, {0, 4, 0, 0}, {0, 2, 0, 0}, {1, 2, 1, 0}, {1, 3, 0, 0}, {2, 1, 0, 0},
     };
     FsaCreator fsa_creator(arcs, 4);
     const auto &fsa = fsa_creator.GetFsa();

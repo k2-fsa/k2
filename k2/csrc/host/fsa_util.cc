@@ -327,6 +327,7 @@ RandFsaOptions::RandFsaOptions() {
   allow_empty = true;
   acyclic = false;
   seed = 0;
+  nonzero_weights = false;
 }
 
 void RandFsaGenerator::GetSizes(Array2Size<int32_t> *fsa_size) {
@@ -374,7 +375,10 @@ void RandFsaGenerator::GetSizes(Array2Size<int32_t> *fsa_size) {
       else
         label = rand(0, static_cast<int32_t>(opts_.num_syms - 1));
 
-      state_to_arcs[src_state].emplace_back(src_state, dest_state, label);
+      float weight = (float) (opts_.nonzero_weights ? rand(0, 10) * 0.5 :
+                              0.0);
+
+      state_to_arcs[src_state].emplace_back(src_state, dest_state, label, weight);
       ++i;
     }
 

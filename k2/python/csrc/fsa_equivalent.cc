@@ -8,22 +8,19 @@
 
 #include "k2/csrc/host/array.h"
 #include "k2/csrc/host/fsa_equivalent.h"
-#include "k2/csrc/host/weights.h"
 
 template <k2host::FbWeightType Type>
 void PyBindIsRandEquivalentTpl(py::module &m, const char *name) {
   m.def(
       name,
-      [](const k2host::Fsa &a, k2::Array1<float *> *a_weights, const k2::Fsa &b,
-         k2host::Array1<float *> *b_weights, float beam = k2::kFloatInfinity,
+      [](const k2host::Fsa &a, const k2host::Fsa &b,
+         float beam = k2host::kFloatInfinity,
          float delta = 1e-6, bool top_sorted = true,
          std::size_t npath = 100) -> bool {
-        return k2host::IsRandEquivalent<Type>(a, a_weights->data, b,
-                                          b_weights->data, beam, delta,
+        return k2host::IsRandEquivalent<Type>(a, b, beam, delta,
                                           top_sorted, npath);
       },
-      py::arg("fsa_a"), py::arg("a_weights"), py::arg("fsa_b"),
-      py::arg("b_weights"), py::arg("beam") = k2host::kFloatInfinity,
+      py::arg("fsa_a"), py::arg("fsa_b"), py::arg("beam") = k2host::kFloatInfinity,
       py::arg("delta") = 1e-6, py::arg("top_sorted") = true,
       py::arg("npath") = 100);
 }
@@ -46,7 +43,7 @@ void PyBindRandPath(py::module &m) {
 
 void PybindFsaEquivalent(py::module &m) {
   m.def("_is_rand_equivalent",
-        (bool (*)(const k2host::Fsa &, const k2::Fsa &, std::size_t)) &
+        (bool (*)(const k2host::Fsa &, const k2host::Fsa &, std::size_t)) &
             k2host::IsRandEquivalent,
         py::arg("fsa_a"), py::arg("fsa_b"), py::arg("npath") = 100);
 
@@ -58,14 +55,14 @@ void PybindFsaEquivalent(py::module &m) {
   // maybe we don't need this version in Python code.
   m.def(
       "_is_rand_equivalent_after_rmeps_pruned_logsum",
-      [](const k2host::Fsa &a, k2::Array1<float *> *a_weights, const k2::Fsa &b,
-         k2host::Array1<float *> *b_weights, float beam, bool top_sorted = true,
+      [](const k2host::Fsa &a, const k2host::Fsa &b,
+         float beam, bool top_sorted = true,
          std::size_t npath = 100) -> bool {
         return k2host::IsRandEquivalentAfterRmEpsPrunedLogSum(
-            a, a_weights->data, b, b_weights->data, beam, top_sorted, npath);
+            a, b, beam, top_sorted, npath);
       },
-      py::arg("fsa_a"), py::arg("a_weights"), py::arg("fsa_b"),
-      py::arg("b_weights"), py::arg("beam"), py::arg("top_sorted") = true,
+      py::arg("fsa_a"), py::arg("fsa_b"),
+      py::arg("beam"), py::arg("top_sorted") = true,
       py::arg("npath") = 100);
 
   PyBindRandPath(m);

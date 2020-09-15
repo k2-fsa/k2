@@ -21,14 +21,14 @@ void PybindWfsaWithFbWeights(py::module &m) {
   using PyClass = k2host::WfsaWithFbWeights;
   py::class_<PyClass>(m, "_WfsaWithFbWeights")
       .def(py::init(
-          [](const k2host::Fsa &fsa, const k2::Array1<float *> *arc_weights,
-             k2host::FbWeightType type, k2::Array1<double *> *forward_state_weights,
+          [](const k2host::Fsa &fsa,
+             k2host::FbWeightType type, k2host::Array1<double *> *forward_state_weights,
              k2host::Array1<double *> *backward_state_weights) {
             return std::unique_ptr<PyClass>(new PyClass(
-                fsa, arc_weights->data, type, forward_state_weights->data,
+                fsa, type, forward_state_weights->data,
                 backward_state_weights->data));
           }))
-      // We do not expose `self.fsa`, `self.arc_weights`,
+      // We do not expose `self.fsa`,
       // `self.ForwardStateWeights` `self.BackwardStateWeights` here as they
       // are passed to the constructor of `WfsaWeightFbWeights` from Python
       // code, users can access the Python variables directly as those variables

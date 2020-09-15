@@ -157,7 +157,7 @@ bool IsEpsilonFree(const Fsa &fsa) {
 
 bool IsUnweighted(const Fsa &fsa) {
   for (const auto &arc : fsa) {
-    if (arc.score != 0.0) return false;
+    if (arc.weight != 0.0) return false;
   }
   return true;
 }

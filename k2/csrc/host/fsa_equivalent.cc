@@ -120,17 +120,6 @@ static bool RandomPath(const k2host::Fsa &fsa_in, bool no_eps_arc,
   return status;
 }
 
-// out_weights[i] = weights[arc_map1[arc_map2[i]]]
-static void GetArcWeights(const float *weights,
-                          const std::vector<int32_t> &arc_map1,
-                          const std::vector<int32_t> &arc_map2,
-                          std::vector<float> *out_weights) {
-  K2_CHECK_NE(out_weights, nullptr);
-  auto &arc_weights = *out_weights;
-  for (auto i = 0; i != arc_weights.size(); ++i) {
-    arc_weights[i] = weights[arc_map1[arc_map2[i]]];
-  }
-}
 
 // c = (a - b) + (b-a)
 static void SetDifference(const std::unordered_set<int32_t> &a,
@@ -294,8 +283,6 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(
     const Fsa &a, const Fsa &b,
     float beam, bool top_sorted /*= true*/, std::size_t npath /*= 100*/) {
   K2_CHECK_GT(beam, 0);
-  K2_CHECK_NE(a_weights, nullptr);
-  K2_CHECK_NE(b_weights, nullptr);
   FsaCreator connected_a_storage, connected_b_storage, valid_a_storage,
       valid_b_storage;
   std::vector<int32_t> connected_a_arc_map, connected_b_arc_map,

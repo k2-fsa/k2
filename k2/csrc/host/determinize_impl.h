@@ -342,6 +342,9 @@ int32_t GetMostRecentCommonAncestor(
                        A set of states; we'll iteratively trace back this
                        set one step at a time.    At entry it must have
                        size() == 1; it will also have size() == 1 at exit.
+       @param [in] arcs_in    Array of arcs of the FSA that we're doing
+                       traceback in; needed only for lookup of the
+                       weights.
        @param [in] num_steps   The number of steps to trace back
        @param [out] weight_out  The output weight; will be the forward-backward
                        weight of the sub-graph whose final-state is
@@ -362,6 +365,7 @@ int32_t GetMostRecentCommonAncestor(
  */
 void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
                int32_t num_steps,
+               const Arc *arcs_in,
                float *weight_out,
                std::vector<std::pair<int32_t, float>> *deriv_out);
 
@@ -369,6 +373,7 @@ void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
 // for LogSumTracebackState, above.  This version is simpler.
 void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
                int32_t num_steps,
+               const Arc *arcs_in,
                float *weight_out, std::vector<int32_t> *deriv_out);
 
 template <class TracebackState>
@@ -666,7 +671,9 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
   this->seq_len = new_seq_len;
 
   // the following will set removed_weight and deriv_info.
-  TraceBack(&cur_states, num_steps, removed_weight,
+  // `arcs` is needed to look up the weight.
+  const Arc *arcs = wfsa_in.fsa.data;
+  TraceBack(&cur_states, num_steps, arcs, removed_weight,
             deriv_info);
 
   normalized = true;

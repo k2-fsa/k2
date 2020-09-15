@@ -53,8 +53,8 @@ void PybindArc(py::module &m) {
   using PyClass = k2host::Arc;
   py::class_<PyClass>(m, "_Arc")
       .def(py::init<>())
-      .def(py::init<int32_t, int32_t, int32_t>(), py::arg("src_state"),
-           py::arg("dest_state"), py::arg("label"))
+      .def(py::init<int32_t, int32_t, int32_t, float>(), py::arg("src_state"),
+           py::arg("dest_state"), py::arg("label"), py::arg("weight"))
       .def_readwrite("src_state", &PyClass::src_state)
       .def_readwrite("dest_state", &PyClass::dest_state)
       .def_readwrite("label", &PyClass::label)
@@ -67,7 +67,7 @@ void PybindArc(py::module &m) {
 
 void PybindFsa(py::module &m) {
   // The following wrapper is only used by pybind11 internally
-  // so that it knows `k2host::DLPackFsa` is a subclass of `k2::Fsa`.
+  // so that it knows `k2host::DLPackFsa` is a subclass of `k2host::Fsa`.
   py::class_<k2host::Fsa>(m, "_Fsa");
 
   using PyClass = k2host::DLPackFsa;

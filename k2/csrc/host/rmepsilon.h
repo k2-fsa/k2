@@ -104,7 +104,7 @@ class EpsilonsRemover {
                         weights w.r.t. input-arc weights.
    */
   void GetOutput(
-      Fsa *fsa_out, float *arc_weights_out,
+      Fsa *fsa_out,
       Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs);
 
  private:

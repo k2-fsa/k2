@@ -88,7 +88,7 @@ TEST_F(ArcMapTest, GetArcIndexes) {
 
 TEST(FsaUtil, GetEnteringArcs) {
   std::vector<Arc> arcs = {
-      {0, 1, 2}, {0, 2, 1}, {1, 2, 0}, {1, 3, 5}, {2, 3, 6}};
+    {0, 1, 2, 0}, {0, 2, 1, 0}, {1, 2, 0, 0}, {1, 3, 5, 0}, {2, 3, 6, 0}};
   FsaCreator fsa_creator(arcs, 3);
   const auto &fsa = fsa_creator.GetFsa();
   Array2Storage<int32_t *, int32_t> arc_indexes_storage({fsa.size1, fsa.size2},
@@ -153,8 +153,8 @@ TEST(FsaUtil, StringToFsa) {
   EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7, 7));
 
   std::vector<Arc> expected_arcs = {
-      {0, 1, 2}, {0, 2, 10}, {1, 3, 3}, {1, 6, 6},
-      {2, 6, 1}, {2, 4, 2},  {5, 0, 1},
+      {0, 1, 2, 0}, {0, 2, 10, 0}, {1, 3, 3, 0}, {1, 6, 6, 0},
+      {2, 6, 1, 0}, {2, 4, 2, 0},  {5, 0, 1, 0},
   };
 
   auto n = static_cast<int32_t>(expected_arcs.size());
@@ -202,16 +202,16 @@ TEST(FsaUtil, ReorderArcs) {
   }
 
   {
-    std::vector<Arc> arcs = {{0, 1, 1}, {0, 2, 2},  {2, 3, 3},  {2, 4, 4},
-                             {1, 2, 5}, {2, 5, -1}, {4, 5, -1}, {3, 5, -1}};
+    std::vector<Arc> arcs = {{0, 1, 1, 0}, {0, 2, 2, 0},  {2, 3, 3, 0},  {2, 4, 4, 0},
+                             {1, 2, 5, 0}, {2, 5, -1, 0}, {4, 5, -1, 0}, {3, 5, -1, 0}};
     FsaCreator fsa_creator({6, 8});
     auto &fsa = fsa_creator.GetFsa();
     std::vector<int32_t> arc_map;
     ReorderArcs(arcs, &fsa, &arc_map);
 
-    std::vector<Arc> expected_arcs = {{0, 1, 1},  {0, 2, 2}, {1, 2, 5},
-                                      {2, 3, 3},  {2, 4, 4}, {2, 5, -1},
-                                      {3, 5, -1}, {4, 5, -1}};
+    std::vector<Arc> expected_arcs = {{0, 1, 1, 0},  {0, 2, 2, 0}, {1, 2, 5, 0},
+                                      {2, 3, 3, 0},  {2, 4, 4, 0}, {2, 5, -1, 0},
+                                      {3, 5, -1, 0}, {4, 5, -1, 0}};
     ASSERT_EQ(fsa.size2, arcs.size());
     ASSERT_EQ(fsa.size2, expected_arcs.size());
     for (auto i = 0; i != expected_arcs.size(); ++i) {
@@ -243,7 +243,7 @@ TEST(FsaUtil, FsaCreator) {
 
   {
     std::vector<Arc> arcs = {
-        {0, 1, 1}, {0, 2, 2}, {2, 3, 3}, {2, 4, 4}, {3, 5, -1}};
+      {0, 1, 1, 0}, {0, 2, 2, 0}, {2, 3, 3, 0}, {2, 4, 4, 0}, {3, 5, -1, 0}};
     FsaCreator fsa_creator(arcs, 6);
     const auto &fsa = fsa_creator.GetFsa();
 
@@ -261,18 +261,18 @@ TEST(FsaAlgo, CreateFsa) {
   {
     // clang-format off
     std::vector<Arc> arcs = {
-      {0, 3, 3},
-      {0, 2, 2},
-      {2, 3, 3},
-      {2, 4, 4},
-      {3, 1, 1},
-      {1, 4, 4},
-      {1, 8, 8},
-      {4, 8, 8},
-      {8, 6, 6},
-      {8, 7, 7},
-      {6, 7, 7},
-      {7, 5, 5},
+      {0, 3, 3, 0},
+      {0, 2, 2, 0},
+      {2, 3, 3, 0},
+      {2, 4, 4, 0},
+      {3, 1, 1, 0},
+      {1, 4, 4, 0},
+      {1, 8, 8, 0},
+      {4, 8, 8, 0},
+      {8, 6, 6, 0},
+      {8, 7, 7, 0},
+      {6, 7, 7, 0},
+      {7, 5, 5, 0},
     };
     // clang-format on
     Array2Size<int32_t> fsa_size;

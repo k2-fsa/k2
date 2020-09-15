@@ -36,7 +36,7 @@ TEST(ConnectTest, ConnectCore) {
   {
     // case 2: a connected, acyclic FSA
     std::vector<Arc> arcs = {
-        {0, 1, 1}, {1, 2, 2}, {1, 3, 3}, {2, 4, -1}, {3, 4, -1},
+        {0, 1, 1, 0}, {1, 2, 2, 0}, {1, 3, 3, 0}, {2, 4, -1, 0}, {3, 4, -1, 0},
     };
     FsaCreator fsa_creator(arcs, 4);
     const auto &fsa = fsa_creator.GetFsa();
@@ -54,7 +54,7 @@ TEST(ConnectTest, ConnectCore) {
     // case 3: a connected, cyclic FSA
     // the cycle is a self-loop, the output is still topsorted.
     std::vector<Arc> arcs = {
-        {0, 1, 1}, {1, 2, 2}, {1, 3, 3}, {2, 2, 2}, {2, 4, -1}, {3, 4, -1},
+        {0, 1, 1, 0}, {1, 2, 2, 0}, {1, 3, 3, 0}, {2, 2, 2, 0}, {2, 4, -1, 0}, {3, 4, -1, 0},
     };
     FsaCreator fsa_creator(arcs, 4);
     const auto &fsa = fsa_creator.GetFsa();
@@ -68,7 +68,7 @@ TEST(ConnectTest, ConnectCore) {
   {
     // case 4: a non-connected, acyclic, non-topsorted FSA
     std::vector<Arc> arcs = {
-        {0, 4, 4}, {0, 3, 3}, {1, 0, 1}, {3, 5, -1}, {4, 2, 2}, {4, 3, 3},
+        {0, 4, 4, 0}, {0, 3, 3, 0}, {1, 0, 1, 0}, {3, 5, -1, 0}, {4, 2, 2, 0}, {4, 3, 3, 0},
     };
     FsaCreator fsa_creator(arcs, 5);
     const auto &fsa = fsa_creator.GetFsa();
@@ -86,8 +86,8 @@ TEST(ConnectTest, ConnectCore) {
     // case 5: a non-connected, cyclic, non-topsorted FSA
     // the output fsa will contain a cycle
     std::vector<Arc> arcs = {
-        {0, 4, 4},  {0, 3, 3}, {1, 0, 1}, {3, 0, 3},
-        {3, 5, -1}, {4, 2, 2}, {4, 3, 3},
+        {0, 4, 4, 0},  {0, 3, 3, 0}, {1, 0, 1, 0}, {3, 0, 3, 0},
+        {3, 5, -1, 0}, {4, 2, 2, 0}, {4, 3, 3, 0},
     };
     FsaCreator fsa_creator(arcs, 5);
     const auto &fsa = fsa_creator.GetFsa();
@@ -103,8 +103,8 @@ TEST(ConnectTest, ConnectCore) {
     // case 6 (another one): a non-connected, cyclic, non-topsorted FSA;
     // the cycle is removed since state 2 is not co-accessible
     std::vector<Arc> arcs = {
-        {0, 4, 4},  {0, 3, 3}, {1, 0, 1}, {2, 2, 2},
-        {3, 5, -1}, {4, 2, 2}, {4, 3, 3},
+        {0, 4, 4, 0},  {0, 3, 3, 0}, {1, 0, 1, 0}, {2, 2, 2, 0},
+        {3, 5, -1, 0}, {4, 2, 2, 0}, {4, 3, 3, 0},
     };
     FsaCreator fsa_creator(arcs, 5);
     const auto &fsa = fsa_creator.GetFsa();
@@ -123,8 +123,8 @@ TEST(ConnectTest, Connect) {
     // case 1: a non-connected, non-topsorted, acyclic input fsa;
     // the output fsa is topsorted.
     std::vector<Arc> src_arcs = {
-        {0, 1, 1}, {0, 2, 2},  {1, 3, 3}, {1, 6, -1},
-        {2, 4, 2}, {2, 6, -1}, {2, 1, 1}, {5, 0, 1},
+        {0, 1, 1, 0}, {0, 2, 2, 0},  {1, 3, 3, 0}, {1, 6, -1, 0},
+        {2, 4, 2, 0}, {2, 6, -1, 0}, {2, 1, 1, 0}, {5, 0, 1, 0},
     };
     FsaCreator fsa_creator(src_arcs, 6);
     const auto &fsa = fsa_creator.GetFsa();
@@ -153,7 +153,7 @@ TEST(ConnectTest, Connect) {
     EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 5, 5));
 
     std::vector<Arc> target_arcs = {
-        {0, 2, 1}, {0, 1, 2}, {1, 3, -1}, {1, 2, 1}, {2, 3, -1},
+        {0, 2, 1, 0}, {0, 1, 2, 0}, {1, 3, -1, 0}, {1, 2, 1, 0}, {2, 3, -1, 0},
     };
     for (auto i = 0; i != target_arcs.size(); ++i)
       EXPECT_EQ(arcs[i], target_arcs[i]);
@@ -165,8 +165,8 @@ TEST(ConnectTest, Connect) {
   {
     // A non-empty fsa that after trimming, it returns an empty fsa.
     std::vector<Arc> arcs = {
-        {0, 1, 1}, {0, 2, 2},  {1, 3, 3}, {1, 6, 6},  {2, 4, 2},
-        {2, 6, 3}, {2, 6, -1}, {5, 0, 1}, {5, 7, -1},
+        {0, 1, 1, 0}, {0, 2, 2, 0},  {1, 3, 3, 0}, {1, 6, 6, 0},  {2, 4, 2, 0},
+        {2, 6, 3, 0}, {2, 6, -1, 0}, {5, 0, 1, 0}, {5, 7, -1, 0},
     };
     FsaCreator fsa_creator(arcs, 7);
     const auto &fsa = fsa_creator.GetFsa();
@@ -188,8 +188,8 @@ TEST(ConnectTest, Connect) {
     // after trimming, the cycle is removed;
     // so the output fsa should be topsorted.
     std::vector<Arc> arcs = {
-        {0, 3, 3}, {0, 5, 5},  {1, 2, 2}, {2, 1, 1},  {3, 5, 5},  {3, 2, 2},
-        {3, 4, 4}, {3, 6, -1}, {4, 5, 5}, {4, 6, -1}, {5, 6, -1},
+        {0, 3, 3, 0}, {0, 5, 5, 0},  {1, 2, 2, 0}, {2, 1, 1, 0},  {3, 5, 5, 0},  {3, 2, 2, 0},
+        {3, 4, 4, 0}, {3, 6, -1, 0}, {4, 5, 5, 0}, {4, 6, -1, 0}, {5, 6, -1, 0},
     };
     FsaCreator fsa_creator(arcs, 6);
     const auto &fsa = fsa_creator.GetFsa();
@@ -208,8 +208,8 @@ TEST(ConnectTest, Connect) {
     // after trimming, the cycle remains (it is not a self-loop);
     // so the output fsa is NOT topsorted.
     std::vector<Arc> arcs = {
-        {0, 3, 3}, {0, 2, 2}, {1, 0, 1}, {2, 6, -1}, {3, 5, 5},
-        {3, 2, 2}, {3, 5, 5}, {4, 4, 4}, {5, 3, 3},  {5, 4, 4},
+        {0, 3, 3, 0}, {0, 2, 2, 0}, {1, 0, 1, 0}, {2, 6, -1, 0}, {3, 5, 5, 0},
+        {3, 2, 2, 0}, {3, 5, 5, 0}, {4, 4, 4, 0}, {5, 3, 3, 0},  {5, 4, 4, 0},
     };
     FsaCreator fsa_creator(arcs, 6);
     const auto &fsa = fsa_creator.GetFsa();
@@ -228,8 +228,8 @@ TEST(ConnectTest, Connect) {
     // a cyclic input fsa
     // after trimming, the cycle remains (it is not a self-loop);
     // so the output fsa is NOT topsorted.
-    std::vector<Arc> arcs = {{0, 1, 1}, {0, 2, 2}, {1, 1, 1}, {1, 3, -1},
-                             {2, 1, 1}, {2, 2, 2}, {2, 3, -1}};
+    std::vector<Arc> arcs = {{0, 1, 1, 0}, {0, 2, 2, 0}, {1, 1, 1, 0}, {1, 3, -1, 0},
+                             {2, 1, 1, 0}, {2, 2, 2, 0},  {2, 3, -1, 0}};
     FsaCreator fsa_creator(arcs, 3);
     const auto &fsa = fsa_creator.GetFsa();
     Array2Size<int32_t> fsa_size;

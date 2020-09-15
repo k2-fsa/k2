@@ -94,15 +94,6 @@ void GetArcWeights(const float *arc_weights_in,
 void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
                    int32_t num_arcs, float *arc_weights_out);
 
-// Checks that the arc weights in `arc_weights_in` are the same as
-// those in `fsa`, dies otherwise.
-inline void CheckArcWeights(const Fsa &fsa,
-                     const float *arc_weights_in,
-                     float delta = 0.01) {
-  for (int32_t i = 0; i < fsa.size2; i++)
-    DCHECK_LE(fabs(fsa.data[i].weight - arc_weights_in[i]), delta);
-}
-
 
 /* Reorder a list of arcs to get a valid FSA. This function will be used in a
    situation that the input list of arcs is not sorted by src_state, we'll
@@ -299,6 +290,7 @@ struct RandFsaOptions {
   bool allow_empty;
   bool acyclic;  // generate a cyclic fsa in a best effort manner if it's false
   int32_t seed;  // for random generator. Set it to non-zero for reproducibility
+  bool nonzero_weights;  // allow weights to be nonzero (default: fals)
 
   RandFsaOptions();
 };

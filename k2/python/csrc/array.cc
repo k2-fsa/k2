@@ -248,7 +248,7 @@ void PybindArray(py::module &m) {
   py::class_<k2host::Array1<int32_t *>>(m, "_IntArray1");
   PybindArray1Tpl<int32_t *>(m, "DLPackIntArray1");
 
-  py::class_<k2host::Array1<k2::StridedPtr<int32_t>>>(m, "_StridedIntArray1");
+  py::class_<k2host::Array1<k2host::StridedPtr<int32_t>>>(m, "_StridedIntArray1");
   PybindArray1Tpl<k2host::StridedPtr<int32_t>>(m, "DLPackStridedIntArray1");
 
   py::class_<k2host::Array1<float *>>(m, "_FloatArray1");
