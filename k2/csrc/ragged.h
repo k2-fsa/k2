@@ -376,6 +376,7 @@ struct Ragged {
   }
 
   ContextPtr Context() { return values.Context(); }
+  int32_t NumAxes() { return shape.NumAxes(); }
 
   /*
     It is an error to call this if this.NumAxes() < 2.  This will return

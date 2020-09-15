@@ -49,7 +49,7 @@ class FsaCreator {
   */
   explicit FsaCreator(const host::Array2Size<int32_t> &size) { Init(size); }
 
-  void Init(const Array2Size<int32_t> &size) {
+  void Init(const host::Array2Size<int32_t> &size) {
     arc_indexes_ = Array1<int32_t>(CpuContext(), size.size1 + 1);
     // just for case of empty Array2 object, may be written by the caller
     arc_indexes_.data[0] = 0;

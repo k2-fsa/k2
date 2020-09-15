@@ -67,11 +67,11 @@ enum FsaBasicProperties {
 };
 
 
-using Fsa = RaggedShape<Arc>;  // 2 axes: state,arc
+using Fsa = Ragged<Arc>;  // 2 axes: state,arc
 
-using FsaVec = RaggedShape<Arc>;  // 3 axes: fsa,state,arc.  Note, the src_state
-                                  // and dest_state in the arc are *within the
-                                  // FSA*, i.e. they are idx1 not idx01.
+using FsaVec = Ragged<Arc>;  // 3 axes: fsa,state,arc.  Note, the src_state
+                             // and dest_state in the arc are *within the
+                             // FSA*, i.e. they are idx1 not idx01.
 
 
 /*
@@ -119,7 +119,7 @@ class DenseFsaVec {
   Array2<float> scores;
 
   // NOTE: our notion of "arc-index" / arc_idx is an index into scores.Data().
-  int32_t NumArcs() { return scores.Size0() * scores.Size1(); }
+  int32_t NumArcs() { return scores.Dim0() * scores.Dim1(); }
 };
 
 
@@ -207,7 +207,7 @@ FsaVec FsaVecFromTensor(const Tensor &t, bool *error);
                        refer to a part of the `values` array of
                        the input `vec`.
  */
-Fsa GetFsaVecElement(const FsaVec &vec, int32_t i) {
+Fsa GetFsaVecElement(FsaVec &vec, int32_t i) {
   return vec.Index(0, i);
 }
 
