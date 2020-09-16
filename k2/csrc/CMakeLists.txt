@@ -9,11 +9,11 @@ add_subdirectory(host)
 # the target
 add_library(context STATIC
     array_ops.cu
-#    compose.cu
+    compose.cu
     context.cu
     dtype.cu
     fsa.cu
-#    fsa_algo.cu
+    fsa_algo.cu
     math.cu
     ragged.cu
     tensor.cu
@@ -47,6 +47,7 @@ function(k2_add_cuda_test name)
   target_link_libraries(${target_name}
       PRIVATE
       context
+      fsa  # for code in k2/csrc/host
       gtest
       gtest_main
       )

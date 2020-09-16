@@ -429,6 +429,12 @@ struct Ragged {
     return Ragged<T>(sub_shape, sub_values);
   }
 
+  // TODO(haowen): used in k2/csrc/compose.cu, need to be implemented
+  Ragged<T> RemoveAxis(int32_t axis) const {
+    K2_LOG(FATAL) << "Not implemented";
+    return Ragged<T>();
+  }
+
   Ragged<T> To(ContextPtr ctx) {
     RaggedShape new_shape = shape.To(ctx);
     Array1<T> new_values = values.To(ctx);

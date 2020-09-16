@@ -19,7 +19,16 @@ namespace k2 {
 
 class Renumbering {
  public:
-  explicit Renumbering(int32_t num_old_elems);
+  Renumbering() = default;
+  explicit Renumbering(int32_t num_old_elems) {
+    // TODO(haowen)
+    K2_LOG(FATAL) << "Not Implemeted";
+  }
+
+  void Init(int32_t num_old_elems) {
+    // TODO(haowen)
+    K2_LOG(FATAL) << "Not Implemeted";
+  }
 
   int32_t NumOldElems();
   int32_t NumNewElems();
@@ -38,7 +47,11 @@ class Renumbering {
        @return    Returns an array mapping the new indexes to the old
                  (pre-renumbering) indexes.
   */
-  Array1<int32_t> New2Old(bool include_final_value = true);
+  Array1<int32_t> New2Old(bool include_final_value = true) {
+    // TODO(haowen)
+    K2_LOG(FATAL) << "Not Implemeted";
+    return Array1<int32_t>();
+  }
 
   /* Return a mapping from old index to new index (this is the exclusive-sum of
      `Keep()`).  This is created on demand (must only be called after the Keep()
@@ -52,7 +65,11 @@ class Renumbering {
        @return    Returns an array mapping the new indexes to the old
                  (pre-renumbering) indexes.
   */
-  Array1<int32_t> Old2New(bool include_final_value = true);
+  Array1<int32_t> Old2New(bool include_final_value = true) {
+    // TODO(haowen)
+    K2_LOG(FATAL) << "Not Implemeted";
+    return Array1<int32_t>();
+  }
 
  private:
   Array1<char> keep_;
