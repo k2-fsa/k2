@@ -89,7 +89,7 @@ using FsaVec = Ragged<Arc>;  // 3 axes: fsa,state,arc.  Note, the src_state
   final-symbol on frame T.  (On the last frame, the final symbol has
   logprob=0, the others have logprob=-inf).
  */
-class DenseFsaVec {
+struct DenseFsaVec {
   RaggedShape shape;  // has 2 axes; indexed first by FSA-index (this object
                       // represents a list of FSAs!); and then for each FSA,
                       // the state-index (actually the state-index from which

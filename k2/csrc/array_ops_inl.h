@@ -27,6 +27,14 @@
 #include <vector>
 
 namespace k2 {
+// will be used in  MaxPerSublist
+template <typename T>
+struct MaxOp {
+  __device__ T operator()(T a, T b) { return (a > b ? a : b); }
+  __device__ MaxOp() {}
+  __device__ MaxOp(const MaxOp &src) {}
+};
+
 // Will be used in ExclusiveSumDeref to call ExclusiveSum (which calls
 // cub::DeviceScan::ExclusiveSum internally).
 template <typename T>
@@ -176,13 +184,13 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
   K2_CHECK_EQ(src.NumAxes(), 2);
-  K2_CHECK_EQ(src.Dim0(), max_values->Dim());
-  K2_CHECK(IsCompatible(src, *max_values));
+  K2_CHECK_EQ(src.shape.Dim0(), max_values->Dim());
+  K2_CHECK(IsCompatible(src.shape, *max_values));
 
   ContextPtr c = src.Context();
 
-  const int32_t *row_splits = src.RowSplits(1);
-  int32_t num_rows = src.Dim0();
+  const int32_t *row_splits = src.shape.RowSplits(1).Data();
+  int32_t num_rows = src.shape.Dim0();
   const T *values_data = src.values.Data();
   T *output_data = max_values->Data();
 
@@ -202,26 +210,19 @@ void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
 
     // This code is based on the example here:
     // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
-
-    struct MaxOp {
-      __host__ __device__ T operator()(T a, T b) { return (a > b ? a : b); }
-      MaxOp(const MaxOp &src) = default;
-    } max_op;
-
+    MaxOp<T> max_op;
     void *temp_storage = NULL;
     size_t temp_storage_bytes = 0;
 
     // The first time it just sets `temp_storage_bytes`.
     // TODO(haowen): uncomment below lines
-    /*
-    K2_CUDA_API_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
         row_splits, row_splits + 1, max_op, default_value));
-    K2_CUDA_API_SAFE_CALL(cudaMalloc(&temp_storage, temp_storage_bytes));
-    K2_CUDA_API_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
+    K2_CUDA_SAFE_CALL(cudaMalloc(&temp_storage, temp_storage_bytes));
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
         row_splits, row_splits + 1, max_op, default_value));
-    */
   }
 }
 

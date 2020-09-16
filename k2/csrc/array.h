@@ -61,15 +61,17 @@ class Array1 {
   // with CUDA) and also on the CPU.  We'll do src(i) to evaluate element i.
   // NOTE: we assume this thread is already set to use the device associated
   // with the context in 'ctx', if it's a CUDA context.
-  // TODO(Haowen): no corresponding test code now, we may delete this later
+  // TODO(haowen): require Callable to be a function, the compiler may confuse
+  // with Array1(ctx, size, elem)
   /*
   template <typename Callable>
   Array1(ContextPtr ctx, int32_t size, Callable &&callable) {
     Init(ctx, size);
+    K2_LOG(FATAL) << "Not Implemented";
 
     // TODO(haowen): there's no such definition
     // `Eval(ContextPtr, T*, int32_t, Callable&)` now
-    Eval(ctx, Data(), size, std::forward<Callable>(callable));
+    // Eval(ctx, Data(), size, std::forward<Callable>(callable));
   }
   */
 
@@ -392,6 +394,16 @@ class Array2 {
     region_ = NewRegion(c, dim0_ * dim1_ * ElementSize());
   }
 
+  // Create new array2 with given dimensions.  dim0 and dim1 must be >=0.
+  // Data will be initialized with `elem`
+  Array2(ContextPtr c, int32_t dim0, int32_t dim1, T elem)
+      : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
+    K2_CHECK_GE(dim0, 0);
+    K2_CHECK_GE(dim1, 0);
+    region_ = NewRegion(c, dim0_ * dim1_ * ElementSize());
+    *this = elem;
+  }
+
   /* stride on 1st axis is 1 (in elements). */
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
          RegionPtr region)
@@ -404,6 +416,17 @@ class Array2 {
     K2_CHECK_GE(dim1_, 0);
     K2_CHECK_GE(elem_stride0_, dim1_);
     K2_CHECK_GE(byte_offset_, 0);
+  }
+
+  // Setting all elements to a scalar
+  void operator=(const T t) {
+    T *data = Data();
+    int32_t elem_stride0 = elem_stride0_;
+    auto lambda_set_elems = [=] __host__ __device__(int32_t i,
+                                                    int32_t j) -> void {
+      data[i * elem_stride0 + j] = t;
+    };
+    Eval2(Context(), dim0_, dim1_, lambda_set_elems);
   }
 
   /*
