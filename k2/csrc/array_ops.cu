@@ -42,8 +42,8 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
   Array1<int32_t> ans(c, ans_size);
   int32_t *ans_data = ans.Data();
 
-  Array<int32_t *> last_elems_ptrs(c, last_elem_ptrs);
-  Array<int32_t> data_offsets(c, num_arrays);
+  Array1<int32_t *> last_elems_ptrs(c, last_elem_ptrs_vec);
+  Array1<int32_t> data_offsets(c, num_arrays);
   ExclusiveSumDeref(last_elems_ptrs, &data_offsets);
   int32_t *data_offsets_data = data_offsets.Data();
 
@@ -51,7 +51,7 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
     // a simple loop is faster, although the other branchs should still work on
     // CPU.
     for (int32_t i = 0; i < num_arrays; i++) {
-      int32_t offset = row_splits_data[i], this_dim = src[i]->Dim();
+      int32_t offset = row_splits_vec[i], this_dim = src[i]->Dim();
       const int32_t *this_src_data = src[i]->Data();
       int32_t data_offset = data_offsets_data[i];
       for (int32_t j = 0; j < this_dim; j++) {
@@ -63,12 +63,12 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
     K2_CHECK_EQ(c->GetDeviceType(), kCuda);
     Array1<int32_t> row_splits(c, row_splits_vec);
     const int32_t *row_splits_data = row_splits.Data();
-    std::vector<T *> src_ptrs_vec(num_arrays);
+    std::vector<int32_t *> src_ptrs_vec(num_arrays);
     for (int32_t i = 0; i < num_arrays; i++) src_ptrs_vec[i] = src[i]->Data();
-    Array1<T> src_ptrs(c, src_ptrs_vec);
-    src_ptrs_data = src_ptrs.Data();
+    Array1<int32_t *> src_ptrs(c, src_ptrs_vec);
+    int32_t **src_ptrs_data = src_ptrs.Data();
 
-    itn32_t avg_input_size = ans_size / num_arrays;
+    int32_t avg_input_size = ans_size / num_arrays;
     if (max_dim < 2 * avg_input_size + 512) {
       // here, 2 is a heuristic factor. We're saying, "if the max length of any
       // of the source arrays is not too much larger than the average length of
@@ -79,7 +79,8 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
       // rectangular kernel.
       auto lambda_set_data = [=] __host__ __device__(int32_t i,
                                                      int32_t j) -> void {
-        int32_t row_start = row_splits[i], row_end = row_splits[i + 1];
+        int32_t row_start = row_splits_data[i],
+                row_end = row_splits_data[i + 1];
         const int32_t *src_ptr = src_ptrs_data[i];
         if (j < row_end - row_start) {
           ans_data[row_start + j] = src_ptr[j] + data_offsets_data[i];
@@ -99,7 +100,7 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
       // tells us which block it is, as in 0, 1, 2, 3...
       // there won't be very many blocks, so it's not a problem to enumerate
       // them on CPU.
-      std::vector<int64_t> index_map;
+      std::vector<uint64_t> index_map;
       index_map.reserve((2 * ans_size) / block_dim);
       for (int32_t i = 0; i < num_arrays; i++) {
         int32_t this_array_size = src[i]->Dim();
@@ -108,34 +109,36 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
           index_map.push_back((((uint64_t)j) << 32) + (uint64_t)i);
         }
       }
-      Array1<uint64_t> index_map_gpu(index_map);
-      const uint64 *index_map_data = index_map_gpu.Data();
+      Array1<uint64_t> index_map_gpu(c, index_map);
+      const uint64_t *index_map_data = index_map_gpu.Data();
 
       auto lambda_set_data_blocks = [=] __host__ __device__(int32_t i,
                                                             int32_t j) {
         uint64_t index = index_map_data[i];
         uint32_t orig_i = (uint32_t)index,
                  block_index = (uint32_t)(index >> 32);
-        int32_t row_start = row_splits[orig_i],
-                row_end = row_splits[orig_i + 1],
-                orig_j = (block_index * block_size) + j;
+        int32_t row_start = row_splits_data[orig_i],
+                row_end = row_splits_data[orig_i + 1],
+                orig_j = (block_index * block_dim) + j;
         const int32_t *src_ptr = src_ptrs_data[orig_i];
         if (orig_j < row_end - row_start) {
           ans_data[row_start + orig_j] =
               src_ptr[orig_j] + data_offsets_data[orig_i];
         }
       };
-      Eval2(c, index_map_gpu.Dim(), block_size, lambda_set_data_blocks);
+      Eval2(c, index_map_gpu.Dim(), block_dim, lambda_set_data_blocks);
     }
   }
+  return ans;
 }
 
 bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
+  ContextPtr ctx = row_ids.Context();
   int32_t *data = row_ids.Data();
   int32_t dim = row_ids.Dim();
   if (dim == 0) return true;  // will treat this as valid.a
 
-  if (ctx.GetDeviceType() == kCpu) {
+  if (ctx->GetDeviceType() == kCpu) {
     if (data[0] < 0) return false;
     for (int32_t i = 0; i + 1 < dim; i++)
       if (data[i] > data[i + 1]) return false;
@@ -147,8 +150,7 @@ bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
     temp = &temp_array;
   }
 
-  ContextPtr &ctx = row_ids.GetContext();
-  (*temp)[0] = 0;
+  *temp = 0;
   int32_t *temp_data = temp->Data();
   auto lambda_check_row_ids = [=] __host__ __device__(int32_t i) -> void {
     int32_t this_val = data[i], next_val = data[i + 1];
@@ -161,11 +163,12 @@ bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
 }
 
 bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
+  ContextPtr ctx = row_splits.Context();
   int32_t *data = row_splits.Data();
   int32_t dim = row_splits.Dim();
   if (dim == 0) return true;  // will treat this as valid.a
 
-  if (ctx.GetDeviceType() == kCpu) {
+  if (ctx->GetDeviceType() == kCpu) {
     if (data[0] != 0) return false;
     for (int32_t i = 0; i + 1 < dim; i++)
       if (data[i] > data[i + 1]) return false;
@@ -177,8 +180,7 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
     temp = &temp_array;
   }
 
-  ContextPtr &ctx = row_splits.GetContext();
-  (*temp)[0] = 0;
+  *temp = 0;
   int32_t *temp_data = temp->Data();
   auto lambda_check_row_splits = [=] __host__ __device__(int32_t i) -> void {
     int32_t this_val = data[i], next_val = data[i + 1];
@@ -193,18 +195,21 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
 
 bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
                              Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
+  // Check if their context are compatible or not while getting
+  ContextPtr ctx = GetContext(row_splits, row_ids);
   int32_t num_rows = row_splits.Dim() - 1, num_elems = row_ids.Dim();
-  if (num_rows < 0 || (num_rows == 0 && num_elems > 0)) return;
+  if (num_rows < 0 || (num_rows == 0 && num_elems > 0)) return false;
   if (num_rows == 0 && num_elems == 0) {
     return row_splits[0] == 0;
   }
-  int32_t row_ids_data = row_ids.Data(), row_splits_data = row_splits.Data();
+  int32_t *row_ids_data = row_ids.Data(), *row_splits_data = row_splits.Data();
 
   Array1<int32_t> temp_array;
   if (temp == nullptr || temp->Dim() == 0) {
     temp_array = Array1<int32_t>(row_ids.Context(), 1);
     temp = &temp_array;
   }
+  int32_t *temp_data = temp_array.Data();
   // The following isn't totally ideal, it would be better to have a single
   // kernel and avoid latency.  Later we can fix this.
   if (!ValidateRowSplits(row_splits, temp)) return false;
@@ -221,7 +226,7 @@ bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
 }
 
 void RowSplitsToRowIds(Array1<int32_t> &row_splits, Array1<int32_t> &row_ids) {
-  Context c = GetContext(row_splits, row_ids);
+  ContextPtr c = GetContext(row_splits, row_ids);
   int32_t num_elems = row_ids.Dim(), num_rows = row_splits.Dim() - 1;
   K2_CHECK(num_rows >= 0);
   // if there are more than zero elems, there must be at least one row.
@@ -230,7 +235,7 @@ void RowSplitsToRowIds(Array1<int32_t> &row_splits, Array1<int32_t> &row_ids) {
 }
 
 void RowIdsToRowSplits(Array1<int32_t> &row_ids, Array1<int32_t> &row_splits) {
-  Context c = GetContext(row_splits, row_ids);
+  ContextPtr c = GetContext(row_splits, row_ids);
   int32_t num_elems = row_ids.Dim(), num_rows = row_splits.Dim() - 1;
   K2_CHECK(num_rows >= 0);
   // if there are more than zero elems, there must be at least one row.

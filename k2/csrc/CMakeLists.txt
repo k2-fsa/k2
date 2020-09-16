@@ -8,9 +8,11 @@ add_subdirectory(host)
 
 # the target
 add_library(context STATIC
+    array_ops.cu
 #    compose.cu
     context.cu
     dtype.cu
+    fsa.cu
 #    fsa_algo.cu
     math.cu
     ragged.cu

@@ -105,24 +105,24 @@ class MultiGraphDenseIntersect {
 
   struct ArcInfo {              // for an arc that wasn't pruned away...
     int32_t a_fsas_arc_idx012;  // the arc-index in a_fsas_.
-    float arc_loglike;  // loglike on this arc: equals loglike from data (nnet
-    // output, == b_fsas), plus loglike from the arc in
-    // a_fsas.
+    float arc_loglike;          // loglike on this arc: equals loglike from data
+                                // (nnet output, == b_fsas), plus loglike from
+                                // the arc in a_fsas.
 
     union {
       // these 3 different ways of storing the index of the destination state
       // are used at different stages of the algorithm; we give them different
       // names for clarity.
       int32_t dest_a_fsas_state_idx01;  // The destination-state as an index
-      // into a_fsas_.
+                                        // into a_fsas_.
       int32_t dest_info_state_idx01;  // The destination-state as an index into
-      // the next FrameInfo's `arcs` or `states`
+                                      // the next FrameInfo's `arcs` or `states`
       int32_t dest_info_state_idx1;   // The destination-state as an index the
-      // next FrameInfo's `arcs` or `states`,
-      // this time omitting the FSA-index.
+                                      // next FrameInfo's `arcs` or `states`,
+                                      // this time omitting the FSA-index.
     } u;
     float end_loglike;  // loglike at the end of the arc just before
-    // (conceptually) it joins the destination state.
+                        // (conceptually) it joins the destination state.
   };
 
   // The information we have for each frame of the pruned-intersection (really:
@@ -728,9 +728,10 @@ class MultiGraphDenseIntersect {
        @param [in]  cur_frame    The FrameInfo for the frame on which we want to
                                  set the forward log-like
        @param [in]  next_frame  NULL if this is is the last frame of the
-    sequence; otherwise the next frame's FrameInfo; arcs on `cur_frame` have
-    transitions to states on `next_frame`. The `backward_loglike` values in
-    `next_frame` are assumed to already be set.
+                                sequence; otherwise the next frame's FrameInfo;
+                                arcs on `cur_frame` have transitions to states
+                                on `next_frame`. The `backward_loglike` values
+                                in `next_frame` are assumed to already be set.
    */
   void PropagateBackward(FrameInfo *cur_frame, FrameInfo *next_frame) {
     int32_t num_states = cur_frame->states.values.Dim(),

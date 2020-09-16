@@ -151,7 +151,7 @@ class DenseFsaVec {
     @return         The resulting FSA will be returned.
 
 */
-Fsa FsaFromTensor(Tensor t, bool *error);
+Fsa FsaFromTensor(Tensor &t, bool *error);
 
 /*
   Returns a single Tensor that represents the FSA; this is just the vector of
@@ -191,7 +191,7 @@ Tensor FsaVecToTensor(const Fsa &fsa);
                     this is a Ragged<Arc> with 3 axes.
 
 */
-FsaVec FsaVecFromTensor(const Tensor &t, bool *error);
+FsaVec FsaVecFromTensor(Tensor &t, bool *error);
 
 /*
   Return one Fsa in an FsaVec.  Note, this has to make copies of the
@@ -204,13 +204,13 @@ FsaVec FsaVecFromTensor(const Tensor &t, bool *error);
                        refer to a part of the `values` array of
                        the input `vec`.
  */
-Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
+inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
 
 /*
   Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really
   the same type, just with different expectations on the number of axes!
  */
-FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa **fsas) {
+inline FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa **fsas) {
   // Implementation goes to this templat:
   //  template <typename T>
   //  Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);

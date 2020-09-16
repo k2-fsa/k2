@@ -7,7 +7,8 @@
  * It contains implementation code.
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
  *                      Fangjun Kuang (csukuangfj@gmail.com)
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -24,6 +25,34 @@
 #include <cub/cub.cuh>  // NOLINT
 #include <type_traits>
 #include <vector>
+
+namespace k2 {
+// Will be used in ExclusiveSumDeref to call ExclusiveSum (which calls
+// cub::DeviceScan::ExclusiveSum internally).
+template <typename T>
+struct PtrPtr {
+  T **data;
+
+  explicit PtrPtr(T **data) : data(data) {}
+  PtrPtr(const PtrPtr &src) = default;
+
+  // operator[] and operator+ are required by cub::DeviceScan::ExclusiveSum
+  __host__ __device__ T operator[](int32_t i) { return *(data[i]); }
+  __host__ __device__ PtrPtr operator+(int32_t n) const {
+    PtrPtr tmp(*this);
+    tmp.data += n;
+    return tmp;
+  }
+};
+}  // namespace k2
+
+namespace std {
+// vaule_type is required by cub::DeviceScan::ExclusiveSum
+template <typename T>
+struct iterator_traits<k2::PtrPtr<T>> {
+  typedef T value_type;
+};
+}  // namespace std
 
 namespace k2 {
 
@@ -132,17 +161,11 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
 template <typename T>
 void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
   K2_CHECK(src.Context()->IsCompatible(*dest->Context()));
-  struct PtrPtr {
-    T **data;
-    __host__ __device__ T operator[](int32_t i) { return *(data[i]); }
-    explicit PtrPtr(T **data) : data(data) {}
-    PtrPtr(const PtrPtr &src) = default;
-  };
 
   int32_t src_dim = src.Dim(), dest_dim = dest->Dim();
   assert(dest_dim == src_dim || dest_dim == src_dim + 1);
 
-  PtrPtr src_data = PtrPtr(src.Data());
+  PtrPtr<T> src_data = PtrPtr<T>(src.Data());
   T *dest_data = dest->Data();
 
   // use the ExclusiveSum() template for pointer-like objects that is declared
@@ -200,6 +223,12 @@ void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
         row_splits, row_splits + 1, max_op, default_value));
     */
   }
+}
+
+template <typename T>
+void And(Array1<T> &src, T default_value, Array1<T> *dest) {
+  // TODO(haowen): implement
+  K2_LOG(FATAL) << "Not implemented";
 }
 
 template <typename T>

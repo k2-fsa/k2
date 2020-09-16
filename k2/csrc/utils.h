@@ -465,6 +465,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
   os << "[ ";
   for (auto iter = vec.begin(); iter != vec.end(); ++iter) os << *iter << ' ';
   os << ']';
+  return os;
 }
 
 }  // namespace k2

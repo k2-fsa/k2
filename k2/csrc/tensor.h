@@ -193,5 +193,7 @@ class Tensor {
   TensorImplPtr impl_;  // Must always be non-NULL.
 };
 
+Tensor ToContiguous(const Tensor &tensor);
+
 }  // namespace k2
 #endif  // K2_CSRC_TENSOR_H_
