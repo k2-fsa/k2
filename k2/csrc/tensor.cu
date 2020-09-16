@@ -130,4 +130,9 @@ void Tensor::Init(ContextPtr c) {
   impl_->bytes_offset = 0;
 }
 
+Tensor ToContiguous(const Tensor &tensor) {
+  // TODO(haowen): implement
+  K2_LOG(FATAL) << "Not implemented";
+}
+
 }  // namespace k2

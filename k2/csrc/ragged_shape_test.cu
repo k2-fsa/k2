@@ -268,7 +268,7 @@ TEST(RaggedShapeTest, RaggedShape) {
   TestShape<kCpu>();
 }
 TEST(RaggedShapeTest, RaggedShapeIterator) {
-  // not RaggedShapeIndexIterator is only works for CPU
+  // note RaggedShapeIndexIterator works only for CPU
   ContextPtr context = GetCpuContext();
   // constructed with row_splits
   // RaggedTensor4 t = [
