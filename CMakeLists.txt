@@ -93,8 +93,10 @@ endif()
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-include(googletest)
 include(pybind11)
+include(torch)
 include(cub)
+include(googletest)
+
 
 add_subdirectory(k2)

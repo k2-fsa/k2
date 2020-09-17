@@ -14,6 +14,7 @@
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/pytorch_context.h"
 
 namespace k2 {
 
@@ -101,7 +102,7 @@ class CudaContext : public Context {
 ContextPtr GetCpuContext() { return std::make_shared<CpuContext>(); }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
-  return std::make_shared<CudaContext>(gpu_id);
+  return std::make_shared<PytorchContext>(gpu_id);
 }
 
 RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes) {
