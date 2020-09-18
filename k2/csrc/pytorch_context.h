@@ -4,7 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
- *                      Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -22,27 +22,31 @@ namespace k2 {
 
 class PytorchContext : public Context {
  public:
-  explicit PytorchContext(int32_t gpu_id) : gpu_id_(gpu_id) {
-    if (gpu_id < 0) gpu_id_ = 0;  // TODO(fangjun): select a gpu
-    auto ret = cudaSetDevice(gpu_id_);
-    K2_CHECK_CUDA_ERROR(ret);
-    // TODO(fangjun): invoke init only once
-    c10::cuda::CUDACachingAllocator::init(gpu_id_ + 1);
-
-    allocator_ = c10::cuda::CUDACachingAllocator::get();
-    K2_CHECK(allocator_->raw_deleter() != nullptr);
+  // if device_id < 0, then this is a cpu context;
+  // otherwise, it is a cuda context.
+  explicit PytorchContext(int32_t device_id) : device_id_(device_id) {
+    if (device_id_ < 0)
+      InitCpu();
+    else
+      InitCuda();
   }
 
-  ContextPtr GetCpuContext() override { return nullptr; }
+  ContextPtr GetCpuContext() override {
+    // TODO(fangjun): return `this` if it's cpu ?
+    return nullptr;
+  }
 
   ContextPtr GetPinnedContext() override { return nullptr; }
 
-  DeviceType GetDeviceType() const override { return kCuda; }
+  DeviceType GetDeviceType() const override {
+    return device_id_ >= 0 ? kCuda : kCpu;
+  }
 
-  int32_t GetDeviceId() const override { return gpu_id_; }
+  int32_t GetDeviceId() const override { return device_id_; }
 
   cudaStream_t GetCudaStream() const override {
-    return c10::cuda::getCurrentCUDAStream(gpu_id_);
+    return device_id_ >= 0 ? c10::cuda::getCurrentCUDAStream(device_id_)
+                           : kCudaStreamInvalid;
   }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
@@ -56,17 +60,36 @@ class PytorchContext : public Context {
   }
 
   bool IsCompatible(const Context &other) const override {
-    return other.GetDeviceType() == kCuda && other.GetDeviceId() == gpu_id_;
+    return other.GetDeviceType() == GetDeviceType() &&
+           other.GetDeviceId() == device_id_;
   }
 
   void Sync() const override {
-    auto ret = cudaStreamSynchronize(GetCudaStream());
+    if (device_id_ >= 0) {
+      auto ret = cudaStreamSynchronize(GetCudaStream());
+      K2_CHECK_CUDA_ERROR(ret);
+    }
+  }
+
+ private:
+  void InitCpu() {
+    allocator_ = torch::GetAllocator(torch::kCPU);
+    K2_CHECK(allocator_->raw_deleter() != nullptr);
+  }
+
+  void InitCuda() {
+    auto ret = cudaSetDevice(device_id_);
     K2_CHECK_CUDA_ERROR(ret);
+    // TODO(fangjun): invoke init only once
+    c10::cuda::CUDACachingAllocator::init(device_id_ + 1);
+
+    allocator_ = c10::cuda::CUDACachingAllocator::get();
+    K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
 
  private:
   torch::Allocator *allocator_;  // NOT owned here
-  int32_t gpu_id_;
+  int32_t device_id_;
 };
 
 }  // namespace k2

@@ -6,24 +6,35 @@ add_subdirectory(host)
 
 #---------------------------- Build K2 CUDA sources ----------------------------
 
+# please keep it sorted
+set(context_srcs
+  array_ops.cu
+  compose.cu
+  context.cu
+  dtype.cu
+  fsa.cu
+  fsa_algo.cu
+  math.cu
+  ragged.cu
+  tensor.cu
+  utils.cu
+)
+
+if(USE_PYTORCH)
+  list(APPEND context_srcs pytorch_context.cu)
+else()
+  list(APPEND context_srcs default_context.cu)
+endif()
+
 # the target
-add_library(context STATIC
-    array_ops.cu
-    compose.cu
-    context.cu
-    dtype.cu
-    fsa.cu
-    fsa_algo.cu
-    math.cu
-    ragged.cu
-    tensor.cu
-    utils.cu
-    )
+add_library(context STATIC ${context_srcs})
 set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # lib deps
 target_link_libraries(context PUBLIC cub)
-target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
+if(USE_PYTORCH)
+  target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
+endif()
 
 #---------------------------- Test K2 CUDA sources ----------------------------
 
