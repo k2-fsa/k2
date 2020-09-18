@@ -9,7 +9,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/log.h"
+#include <memory>
+
 #include "k2/csrc/pytorch_context.h"
 
 namespace k2 {
