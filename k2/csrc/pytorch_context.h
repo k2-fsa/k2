@@ -13,6 +13,8 @@
 #ifndef K2_CSRC_PYTORCH_CONTEXT_H_
 #define K2_CSRC_PYTORCH_CONTEXT_H_
 
+#include <memory>
+
 #include "c10/cuda/CUDACachingAllocator.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
@@ -20,33 +22,74 @@
 
 namespace k2 {
 
-class PytorchContext : public Context {
- public:
-  // if device_id < 0, then this is a cpu context;
-  // otherwise, it is a cuda context.
-  explicit PytorchContext(int32_t device_id) : device_id_(device_id) {
-    if (device_id_ < 0)
-      InitCpu();
-    else
-      InitCuda();
+class PytorchCpuContext : public Context {
+ private:
+  PytorchCpuContext() {
+    allocator_ = torch::GetAllocator(torch::kCPU);
+    K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
 
-  ContextPtr GetCpuContext() override {
-    // TODO(fangjun): return `this` if it's cpu ?
-    return nullptr;
+ public:
+  static ContextPtr Make() {
+    auto p = new PytorchCpuContext();
+    return ContextPtr{p};
   }
+
+  // since the constructor is private, the only way to create an instance
+  // of PytorchCpuContext is via `Make`, which returns a `shared_ptr`.
+  // Thus it is safe to call `shared_from_this`.
+  ContextPtr GetCpuContext() override { return shared_from_this(); }
 
   ContextPtr GetPinnedContext() override { return nullptr; }
 
-  DeviceType GetDeviceType() const override {
-    return device_id_ >= 0 ? kCuda : kCpu;
+  DeviceType GetDeviceType() const override { return kCpu; }
+
+  void *Allocate(std::size_t bytes, void **deleter_context) override {
+    void *p = allocator_->raw_allocate(bytes);
+    if (deleter_context) *deleter_context = nullptr;
+    return p;
   }
 
-  int32_t GetDeviceId() const override { return device_id_; }
+  void Deallocate(void *data, void * /*deleter_context*/) override {
+    allocator_->raw_deallocate(data);
+  }
+
+  bool IsCompatible(const Context &other) const override {
+    return other.GetDeviceType() == kCpu;
+  }
+
+ private:
+  torch::Allocator *allocator_;  // NOT owned here
+};
+
+class PytorchCudaContext : public Context {
+ public:
+  explicit PytorchCudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
+    K2_CHECK_GE(gpu_id, 0);
+    K2_CHECK_LT(gpu_id, c10::cuda::device_count());
+
+    c10::cuda::set_device(gpu_id);
+
+    // The internals of `lazyInitCUDA` are executed only once
+    // so it is fine to invoke lazyInitCUDA() multiple times.
+    // The call will be inlined since it is defined in the header
+    // aten/src/ATen/Context.h
+    at::globalContext().lazyInitCUDA();
+
+    allocator_ = c10::cuda::CUDACachingAllocator::get();
+    K2_CHECK(allocator_->raw_deleter() != nullptr);
+  }
+
+  ContextPtr GetCpuContext() override { return nullptr; }
+
+  ContextPtr GetPinnedContext() override { return nullptr; }
+
+  DeviceType GetDeviceType() const override { return kCuda; }
+
+  int32_t GetDeviceId() const override { return gpu_id_; }
 
   cudaStream_t GetCudaStream() const override {
-    return device_id_ >= 0 ? c10::cuda::getCurrentCUDAStream(device_id_)
-                           : kCudaStreamInvalid;
+    return c10::cuda::getCurrentCUDAStream(gpu_id_);
   }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
@@ -60,36 +103,17 @@ class PytorchContext : public Context {
   }
 
   bool IsCompatible(const Context &other) const override {
-    return other.GetDeviceType() == GetDeviceType() &&
-           other.GetDeviceId() == device_id_;
+    return other.GetDeviceType() == kCuda && other.GetDeviceId() == gpu_id_;
   }
 
   void Sync() const override {
-    if (device_id_ >= 0) {
-      auto ret = cudaStreamSynchronize(GetCudaStream());
-      K2_CHECK_CUDA_ERROR(ret);
-    }
-  }
-
- private:
-  void InitCpu() {
-    allocator_ = torch::GetAllocator(torch::kCPU);
-    K2_CHECK(allocator_->raw_deleter() != nullptr);
-  }
-
-  void InitCuda() {
-    auto ret = cudaSetDevice(device_id_);
+    auto ret = cudaStreamSynchronize(GetCudaStream());
     K2_CHECK_CUDA_ERROR(ret);
-    // TODO(fangjun): invoke init only once
-    c10::cuda::CUDACachingAllocator::init(device_id_ + 1);
-
-    allocator_ = c10::cuda::CUDACachingAllocator::get();
-    K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
 
  private:
   torch::Allocator *allocator_;  // NOT owned here
-  int32_t device_id_;
+  int32_t gpu_id_;
 };
 
 }  // namespace k2

@@ -11,15 +11,16 @@
 
 #include <memory>
 
+#include "c10/cuda/CUDAFunctions.h"
 #include "k2/csrc/pytorch_context.h"
 
 namespace k2 {
 
-ContextPtr GetCpuContext() { return std::make_shared<PytorchContext>(-1); }
+ContextPtr GetCpuContext() { return PytorchCpuContext::Make(); }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
-  if (gpu_id < 0) gpu_id = 0;  // TODO(fangjun): select a device
-  return std::make_shared<PytorchContext>(gpu_id);
+  if (gpu_id < 0) gpu_id = c10::cuda::current_device();
+  return std::make_shared<PytorchCudaContext>(gpu_id);
 }
 
 }  // namespace k2

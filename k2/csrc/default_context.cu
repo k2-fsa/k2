@@ -21,8 +21,15 @@ static constexpr std::size_t kAlignment = 64;
 
 // TODO(haowen): most of implementations below should be updated later.
 class CpuContext : public Context {
+ private:
+  CpuContext() = default;
+
  public:
-  ContextPtr GetCpuContext() override { return nullptr; }
+  static ContextPtr Make() {
+    auto p = new CpuContext();
+    return ContextPtr{p};
+  }
+  ContextPtr GetCpuContext() override { return shared_from_this(); }
   ContextPtr GetPinnedContext() override { return nullptr; }
   DeviceType GetDeviceType() const override { return kCpu; }
 
@@ -98,7 +105,7 @@ class CudaContext : public Context {
   cudaStream_t stream_;
 };
 
-ContextPtr GetCpuContext() { return std::make_shared<CpuContext>(); }
+ContextPtr GetCpuContext() { return CpuContext::Make(); }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
   return std::make_shared<CudaContext>(gpu_id);
