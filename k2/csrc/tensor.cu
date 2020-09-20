@@ -133,6 +133,7 @@ void Tensor::Init(ContextPtr c) {
 Tensor ToContiguous(const Tensor &tensor) {
   // TODO(haowen): implement
   K2_LOG(FATAL) << "Not implemented";
+  return tensor;
 }
 
 }  // namespace k2

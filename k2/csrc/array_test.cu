@@ -62,14 +62,8 @@ void TestArray1() {
     MemoryCopy(static_cast<void *>(array_data),
                static_cast<void *>(data.data()),
                array.Dim() * array.ElementSize(), kind);
-    // copy data from CPU/GPU to CPU
-    kind = GetMemoryCopyKind(*array.Context(), *cpu);
-    std::vector<T> cpu_data(array.Dim());
-    MemoryCopy(static_cast<void *>(cpu_data.data()),
-               static_cast<const void *>(array_data),
-               array.Dim() * array.ElementSize(), kind);
     for (int32_t i = 0; i < array.Dim(); ++i) {
-      EXPECT_EQ(cpu_data[i], i);
+      EXPECT_EQ(array[i], i);
     }
   }
 
@@ -79,32 +73,30 @@ void TestArray1() {
     ASSERT_EQ(array.Dim(), 5);
     // operator=(T t)
     array = 2;
-    // copy data from CPU/GPU to CPU
-    const T *array_data = array.Data();
-    auto kind = GetMemoryCopyKind(*array.Context(), *cpu);
-    std::vector<T> cpu_data(array.Dim());
-    MemoryCopy(static_cast<void *>(cpu_data.data()),
-               static_cast<const void *>(array_data),
-               array.Dim() * array.ElementSize(), kind);
     for (int32_t i = 0; i < array.Dim(); ++i) {
-      EXPECT_EQ(cpu_data[i], 2);
       EXPECT_EQ(array[i], 2);
     }
   }
 
   {
     // created with Array1(ContextPtr, int32_t size, T elem)
-    Array1<T> array(context, 5, 2);
+    Array1<T> array(context, 5, T(2));
     ASSERT_EQ(array.Dim(), 5);
     // copy data from CPU/GPU to CPU
-    const T *array_data = array.Data();
-    auto kind = GetMemoryCopyKind(*array.Context(), *cpu);
-    std::vector<T> cpu_data(array.Dim());
-    MemoryCopy(static_cast<void *>(cpu_data.data()),
-               static_cast<const void *>(array_data),
-               array.Dim() * array.ElementSize(), kind);
     for (int32_t i = 0; i < array.Dim(); ++i) {
-      EXPECT_EQ(cpu_data[i], 2);
+      EXPECT_EQ(array[i], 2);
+    }
+  }
+
+  {
+    // created with Array1(ContextPtr, int32_t size, Callable &&callable)
+    auto lambda_set_values = [] __host__ __device__(int32_t i) -> T {
+      return i * i;
+    };
+    Array1<T> array(context, 5, lambda_set_values);
+    ASSERT_EQ(array.Dim(), 5);
+    for (int32_t i = 0; i < array.Dim(); ++i) {
+      EXPECT_EQ(array[i], i * i);
     }
   }
 
@@ -114,15 +106,8 @@ void TestArray1() {
     std::iota(data.begin(), data.end(), 0);
     Array1<T> array(context, data);
     ASSERT_EQ(array.Dim(), 5);
-    // copy data from CPU/GPU to CPU
-    const T *array_data = array.Data();
-    auto kind = GetMemoryCopyKind(*array.Context(), *cpu);
-    std::vector<T> cpu_data(array.Dim());
-    MemoryCopy(static_cast<void *>(cpu_data.data()),
-               static_cast<const void *>(array_data),
-               array.Dim() * array.ElementSize(), kind);
     for (int32_t i = 0; i < array.Dim(); ++i) {
-      EXPECT_EQ(cpu_data[i], data[i]);
+      EXPECT_EQ(array[i], data[i]);
     }
   }
 
@@ -135,15 +120,8 @@ void TestArray1() {
     int32_t size = 6;
     Array1<T> sub_array = array.Range(start, size);
     ASSERT_EQ(sub_array.Dim(), size);
-    // copy data from CPU/GPU to CPU
-    const T *sub_array_data = sub_array.Data();
-    auto kind = GetMemoryCopyKind(*sub_array.Context(), *cpu);
-    std::vector<T> cpu_data(sub_array.Dim());
-    MemoryCopy(static_cast<void *>(cpu_data.data()),
-               static_cast<const void *>(sub_array_data),
-               sub_array.Dim() * sub_array.ElementSize(), kind);
     for (int32_t i = 0; i < sub_array.Dim(); ++i) {
-      EXPECT_EQ(cpu_data[i], data[i + start]);
+      EXPECT_EQ(sub_array[i], data[i + start]);
     }
   }
 
@@ -239,16 +217,9 @@ void TestArray1() {
     Array1<int32_t> indexes_array(context, indexes);
     std::vector<T> expected_data = {1, 2, 3, 6, 2, 7, 9, 10, 3, 5, 7, 4};
     Array1<T> ans_array = array[indexes_array];
-    // copy data from CPU/GPU to CPU
     ASSERT_EQ(ans_array.Dim(), expected_data.size());
-    const T *ans_array_data = ans_array.Data();
-    auto kind = GetMemoryCopyKind(*ans_array.Context(), *cpu);
-    std::vector<T> cpu_data(ans_array.Dim());
-    MemoryCopy(static_cast<void *>(cpu_data.data()),
-               static_cast<const void *>(ans_array_data),
-               ans_array.Dim() * ans_array.ElementSize(), kind);
     for (int32_t i = 0; i < ans_array.Dim(); ++i) {
-      EXPECT_EQ(cpu_data[i], expected_data[i]);
+      EXPECT_EQ(ans_array[i], expected_data[i]);
     }
   }
 
@@ -272,14 +243,9 @@ void TestArray1() {
     EXPECT_EQ(array.Dim(), new_size);
     // copy data from CPU/GPU to CPU
     const T *array_data = array.Data();
-    auto kind = GetMemoryCopyKind(*array.Context(), *cpu);
-    std::vector<T> cpu_data(array.Dim());
-    MemoryCopy(static_cast<void *>(cpu_data.data()),
-               static_cast<const void *>(array_data),
-               array.Dim() * array.ElementSize(), kind);
     // data.size() == 5, array.Dim() == 8, there are 3 uninitialized elements.
     for (int32_t i = 0; i < data.size(); ++i) {
-      EXPECT_EQ(cpu_data[i], data[i]);
+      EXPECT_EQ(array[i], data[i]);
     }
   }
 }

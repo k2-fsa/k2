@@ -61,19 +61,12 @@ class Array1 {
   // with CUDA) and also on the CPU.  We'll do src(i) to evaluate element i.
   // NOTE: we assume this thread is already set to use the device associated
   // with the context in 'ctx', if it's a CUDA context.
-  // TODO(haowen): require Callable to be a function, the compiler may confuse
-  // with Array1(ctx, size, elem)
-  /*
   template <typename Callable>
   Array1(ContextPtr ctx, int32_t size, Callable &&callable) {
     Init(ctx, size);
-    K2_LOG(FATAL) << "Not Implemented";
-
-    // TODO(haowen): there's no such definition
-    // `Eval(ContextPtr, T*, int32_t, Callable&)` now
-    // Eval(ctx, Data(), size, std::forward<Callable>(callable));
+    T *data = Data();
+    Eval(ctx, data, size, std::forward<Callable>(callable));
   }
-  */
 
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 

@@ -337,6 +337,14 @@ __global__ void eval_lambda(int32_t n, LambdaT lambda) {
   }
 }
 
+template <typename T, typename LambdaT>
+__global__ void eval_lambda(T *data, int32_t n, LambdaT lambda) {
+  int32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) {
+    data[i] = lambda(i);
+  }
+}
+
 template <typename LambdaT>
 __global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
   // actually threadIdx.y will always be 1 for now so we could drop that part of
@@ -378,6 +386,34 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
           typename LambdaT>
 void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
   Eval(c->GetCudaStream(), n, lambda);
+}
+
+/* Eval() will do `data[i] = lambda(i)` for 0 <= i < n, on the appropriate
+   device (CPU or GPU) */
+template <typename T, typename LambdaT>
+void Eval(cudaStream_t stream, T *data, int32_t n, LambdaT &lambda) {
+  if (n <= 0) return;  // actually it would be an error if n < 0.
+  if (stream == kCudaStreamInvalid) {
+    // TODO: if n is very large, we'll eventually support running this with
+    // multiple threads.
+    for (int32_t i = 0; i < n; ++i) {
+      data[i] = lambda(i);
+    }
+  } else {
+    int32_t block_size = 256;
+    int32_t grid_size = NumBlocks(n, block_size);
+    eval_lambda<T, LambdaT>
+        <<<grid_size, block_size, 0, stream>>>(data, n, lambda);
+    auto err = cudaGetLastError();
+    K2_DCHECK_CUDA_ERROR(err);
+  }
+}
+
+template <typename ContextPtrType,  // Context*  or ContextPtr ==
+                                    // std::shared_ptr<Context>
+          typename T, typename LambdaT>
+void Eval(ContextPtrType c, T *data, int32_t n, LambdaT &lambda) {
+  Eval(c->GetCudaStream(), data, n, lambda);
 }
 
 /*
