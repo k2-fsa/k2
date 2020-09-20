@@ -76,7 +76,7 @@ int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
   // the final-state of its FSA (i.e. last-numbered) or has at least one arc
   // leaving it, not counting self-loops. Again, it's a looser condition than
   // being 'co-accessible' in FSA terminology.
-  Array1<char> reachable(c, num_states * 2 + 1, 0);
+  Array1<char> reachable(c, num_states * 2 + 1, static_cast<char>(0));
   Array1<char> flag = reachable.Range(num_states * 1, 1);
   Array1<char> co_reachable = reachable.Range(num_states, num_states);
   reachable = reachable.Range(0, num_states);
