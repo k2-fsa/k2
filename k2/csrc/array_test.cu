@@ -155,6 +155,12 @@ void TestArray1() {
     for (int32_t i = 0, j = start; i < dim0; ++i, j += inc) {
       EXPECT_EQ(cpu_data[i * stride0], data[j]);
     }
+
+    Array1<T> arr(sub_tensor);
+    ASSERT_EQ(arr.Dim(), dim0);
+    for (int32_t i = 0, j = start; i < dim0; ++i, j += inc) {
+      EXPECT_EQ(arr[i], data[j]);
+    }
   }
 
   {

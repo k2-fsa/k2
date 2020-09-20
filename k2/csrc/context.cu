@@ -18,7 +18,7 @@ RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes) {
   // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
   // overwrite if needed.
   auto ans = std::make_shared<Region>();
-  ans->context = context->shared_from_this();
+  ans->context = context;
   // TODO(haowen): deleter_context is always null with above constructor,
   // we need add another constructor of Region to allow the caller
   // to provide deleter_context.

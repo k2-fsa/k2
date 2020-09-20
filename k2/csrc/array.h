@@ -267,11 +267,22 @@ class Array1 {
 
   /*
     This function checks that T is the same as the data-type of `tensor` and
-    that `tensor` has zero or one axis.  If `tensor` is not contiguous it
+    that `tensor` has zero or more axes.  If `tensor` is not contiguous it
     will make a contiguous copy.  Then it will construct this Array referring
     to the same data as the (possibly-copied) tensor.
    */
-  explicit Array1(const Tensor &tensor);
+  explicit Array1(const Tensor &tensor) {
+    Dtype type = DtypeOf<ValueType>::dtype;
+    K2_CHECK_EQ(type, tensor.GetDtype());
+    if (tensor.IsContiguous()) {
+      dim_ = tensor.Nelement();
+      byte_offset_ = tensor.ByteOffset();
+      region_ = tensor.GetRegion();
+      return;
+    }
+
+    *this = Array1(ToContiguous(tensor));
+  }
 
  private:
   int32_t dim_;
@@ -450,12 +461,12 @@ class Array2 {
 
   // Note that the returned Tensor is not const, the caller should be careful
   // when changing the tensor's data, it will also change data in the parent
-  // array as they shares the memory.
+  // array as they share the memory.
   Tensor ToTensor() {
     Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {dim0_, dim1_};
     std::vector<int32_t> strides = {elem_stride0_, 1};
-    Shape shape(dims);
+    Shape shape(dims, strides);
     return Tensor(type, shape, region_, byte_offset_);
   }
 
@@ -491,7 +502,7 @@ class Array2 {
   explicit Array2(Tensor &t, bool copy_for_strides = true) {
     auto type = t.GetDtype();
     K2_CHECK_EQ(type, DtypeOf<T>::dtype);
-    auto shape = t.GetShape();
+    const auto &shape = t.GetShape();
     K2_CHECK_EQ(shape.NumAxes(), 2);
     dim0_ = shape.Dim(0);
     dim1_ = shape.Dim(1);
@@ -560,7 +571,7 @@ template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
   stream << "[ ";
   Array1<T> to_print = array.To(GetCpuContext());
-  T *to_print_data = to_print.Data();
+  const T *to_print_data = to_print.Data();
   int32_t dim = to_print.Dim();
   for (int32_t i = 0; i < dim; ++i) stream << to_print_data[i] << ' ';
   return stream << ']';

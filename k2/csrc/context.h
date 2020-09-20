@@ -269,7 +269,7 @@ struct Region : public std::enable_shared_from_this<Region> {
 
   // You need template arg to invoke this, e.g. region->GetData<int32_t>();
   // You can also choose to template additionally on the device-type, like
-  // region->GetData<int32_t,kGpu>(), to activate a check that it's on the
+  // region->GetData<int32_t,kCuda>(), to activate a check that it's on the
   // expected device.
   template <typename T = void, DeviceType d = kUnk>
   T *GetData() {
@@ -317,8 +317,7 @@ RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes);
   Convenience wrapper for NewRegion() that takes the context from a provided
   region.
  */
-inline std::shared_ptr<Region> NewRegion(Region &region,
-                                         std::size_t num_bytes) {
+inline RegionPtr NewRegion(Region &region, std::size_t num_bytes) {
   return NewRegion(region.context, num_bytes);
 }
 
