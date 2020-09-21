@@ -41,7 +41,7 @@ __global__ void RowSplitsToRowIdsKernel(int32_t num_rows,
           num_threads = gridDim.x * blockDim.x, row = thread / threads_per_row,
           thread_this_row = thread % threads_per_row;
 
-  if (row > num_rows) return;
+  if (row >= num_rows) return;
   K2_CHECK_GE(num_threads / threads_per_row, num_rows);
 
   int32_t this_row_split = row_splits[row],
