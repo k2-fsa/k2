@@ -41,6 +41,7 @@ __global__ void RowSplitsToRowIdsKernel(int32_t num_rows,
           num_threads = gridDim.x * blockDim.x, row = thread / threads_per_row,
           thread_this_row = thread % threads_per_row;
 
+  if (row > num_rows) return;
   K2_CHECK_GE(num_threads / threads_per_row, num_rows);
 
   int32_t this_row_split = row_splits[row],
@@ -130,6 +131,7 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
         row_ids[cur_row_start] = row;
     }
   } else {
+    K2_CHECK_EQ(d, kCuda);
     if (1) {
       // TODO: compare this for speed with the other branch.  This is branch is
       // much simpler, and will be considerably faster for "normal" cases ->
@@ -140,7 +142,7 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
       int32_t block_size = 256;
       int32_t grid_size = NumBlocks(tot_threads, block_size);
 
-      K2_CUDA_SAFE_CALL(RowSplitsToRowIdsKernel<<<block_size, grid_size, 0,
+      K2_CUDA_SAFE_CALL(RowSplitsToRowIdsKernel<<<grid_size, block_size, 0,
                                                   c->GetCudaStream()>>>(
           num_rows, threads_per_row, row_splits, num_elems, row_ids));
     } else {
@@ -225,7 +227,7 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
                                   row_splits[0] == 0,
                                   row_splits[num_rows] == num_elems,
                                   and row_splits[row_ids[i]] <= i <
-  row_splits[row_ids[i]+1]
+                                  row_splits[row_ids[i]+1]
 */
 __global__ void RowIdsToRowSplitsKernel(int32_t num_elems,
                                         int32_t threads_per_elem,
@@ -237,17 +239,15 @@ __global__ void RowIdsToRowSplitsKernel(int32_t num_elems,
           thread_this_elem = thread % threads_per_elem;
 
   K2_CHECK_GE(num_threads / threads_per_elem, num_elems);
+  if (elem > num_elems) return;
 
   int32_t this_row, prev_row;
-  if (static_cast<uint32_t>(elem - 1) >= num_rows - 1) {
-    // elem == 0 || elem >= num_rows.
-    if (elem == 0) {
-      prev_row = -1;
-      this_row = row_ids[elem];
-    } else {
-      prev_row = row_ids[elem - 1];
-      this_row = num_rows;
-    }
+  if (elem == 0) {
+    prev_row = -1;
+    this_row = row_ids[elem];
+  } else if (elem == num_elems) {
+    prev_row = row_ids[elem - 1];
+    this_row = num_rows;
   } else {
     prev_row = row_ids[elem - 1];
     this_row = row_ids[elem];
@@ -287,10 +287,11 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
     }
     row_splits[num_rows] = num_elems;
   } else {
+    K2_CHECK_EQ(d, kCuda);
     if (no_empty_rows) {
       auto lambda_simple = [=] __host__ __device__(int32_t i) {
         int32_t this_row = row_ids[i], prev_row;
-        if (i >= 0) {
+        if (i > 0) {
           // (normal case)
           prev_row = row_ids[i - 1];
         } else {
@@ -315,9 +316,9 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
               tot_threads = num_elems * threads_per_elem;
       int32_t block_size = 256;
       int32_t grid_size = NumBlocks(tot_threads, block_size);
-      K2_CUDA_SAFE_CALL(RowIdsToRowSplitsKernel<<<block_size, grid_size, 0,
+      K2_CUDA_SAFE_CALL(RowIdsToRowSplitsKernel<<<grid_size, block_size, 0,
                                                   c->GetCudaStream()>>>(
-          num_rows, threads_per_elem, row_ids, num_elems, row_splits));
+          num_elems, threads_per_elem, row_ids, num_rows, row_splits));
     }
   }
 }

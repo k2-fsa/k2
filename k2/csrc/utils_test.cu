@@ -80,9 +80,9 @@ void TestRowSplitsToRowIds() {
     const std::vector<int32_t> row_splits_vec = {0};
     const std::vector<int32_t> row_ids_vec;
     Array1<int32_t> row_splits(context, row_splits_vec);
-    Array1<int32_t> row_ids(context, row_ids_vec);
     int32_t num_rows = row_splits.Dim() - 1;
     int32_t num_elements = row_splits[num_rows];
+    Array1<int32_t> row_ids(context, num_elements);
     int32_t *row_ids_data = row_ids.Data();
     EXPECT_EQ(row_ids.Dim(), num_elements);
     // just run to check if there is any error
@@ -96,19 +96,17 @@ void TestRowSplitsToRowIds() {
     const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
                                               4, 5, 5, 5, 6, 7, 7, 9};
     Array1<int32_t> row_splits(context, row_splits_vec);
-    Array1<int32_t> row_ids(context, row_ids_vec);
     int32_t num_rows = row_splits.Dim() - 1;
     int32_t num_elements = row_splits[num_rows];
+    Array1<int32_t> row_ids(context, num_elements);
     int32_t *row_ids_data = row_ids.Data();
     EXPECT_EQ(row_ids.Dim(), num_elements);
     RowSplitsToRowIds(context, num_rows, row_splits.Data(), num_elements,
                       row_ids_data);
     // copy data from CPU/GPU to CPU
-    auto kind = GetMemoryCopyKind(*row_ids.Context(), *cpu);
-    std::vector<int32_t> cpu_data(num_elements);
-    MemoryCopy(static_cast<void *>(cpu_data.data()),
-               static_cast<const void *>(row_ids_data),
-               num_elements * row_ids.ElementSize(), kind);
+    Array1<int32_t> cpu_array = row_ids.To(cpu);
+    std::vector<int32_t> cpu_data(cpu_array.Data(),
+                                  cpu_array.Data() + cpu_array.Dim());
     EXPECT_EQ(cpu_data, row_ids_vec);
   }
 }
@@ -116,5 +114,76 @@ void TestRowSplitsToRowIds() {
 TEST(UtilsTest, RowSplitsToRowIds) {
   TestRowSplitsToRowIds<kCpu>();
   TestRowSplitsToRowIds<kCuda>();
+}
+
+template <DeviceType d>
+void TestRowIdsToRowSplits() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // test empty case
+    const std::vector<int32_t> row_ids_vec;
+    const std::vector<int32_t> row_splits_vec;
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    int32_t num_rows = 0;
+    int32_t num_elements = row_ids.Dim();
+    Array1<int32_t> row_splits(context, num_rows + 1);
+    int32_t *row_splits_data = row_splits.Data();
+    RowIdsToRowSplits(context, num_elements, row_ids.Data(), true, num_rows,
+                      row_splits_data);
+    EXPECT_EQ(row_splits[0], 0);
+  }
+
+  {
+    // no empty rows
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 1, 1, 2};
+    const std::vector<int32_t> row_splits_vec = {0, 2, 5, 6};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    int32_t num_elements = row_ids.Dim();
+    int32_t num_rows = row_ids[num_elements - 1] + 1;
+    Array1<int32_t> row_splits(context, num_rows + 1);
+    EXPECT_EQ(row_splits.Dim(), num_rows + 1);
+    int32_t *row_splits_data = row_splits.Data();
+    RowIdsToRowSplits(context, num_elements, row_ids.Data(), true, num_rows,
+                      row_splits_data);
+    // copy data from CPU/GPU to CPU
+    Array1<int32_t> cpu_array = row_splits.To(cpu);
+    std::vector<int32_t> cpu_data(cpu_array.Data(),
+                                  cpu_array.Data() + cpu_array.Dim());
+    EXPECT_EQ(cpu_data, row_splits_vec);
+  }
+
+  {
+    // has empty rows
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 7, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    int32_t num_elements = row_ids.Dim();
+    int32_t num_rows = row_ids[num_elements - 1] + 1;
+    Array1<int32_t> row_splits(context, num_rows + 1);
+    EXPECT_EQ(row_splits.Dim(), num_rows + 1);
+    int32_t *row_splits_data = row_splits.Data();
+    RowIdsToRowSplits(context, num_elements, row_ids.Data(), false, num_rows,
+                      row_splits_data);
+    // copy data from CPU/GPU to CPU
+    Array1<int32_t> cpu_array = row_splits.To(cpu);
+    std::vector<int32_t> cpu_data(cpu_array.Data(),
+                                  cpu_array.Data() + cpu_array.Dim());
+    EXPECT_EQ(cpu_data, row_splits_vec);
+  }
+}
+
+TEST(UtilsTest, RowIdsToRowSplits) {
+  TestRowIdsToRowSplits<kCpu>();
+  TestRowIdsToRowSplits<kCuda>();
 }
 }  // namespace k2
