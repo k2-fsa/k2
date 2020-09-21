@@ -19,6 +19,7 @@
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/tensor.h"
+#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 TEST(TensorTest, Shape) {

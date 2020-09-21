@@ -26,13 +26,13 @@ class Shape {
  public:
   int32_t NumAxes() const { return num_axes_; }
 
-  __host__ __device__ int32_t Dim(int32_t i) const {
+  int32_t Dim(int32_t i) const {
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, num_axes_);
     return dims_[i];
   }
 
-  __host__ __device__ int32_t Stride(int32_t i) const {
+  int32_t Stride(int32_t i) const {
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, num_axes_);
     return strides_[i];
@@ -198,8 +198,6 @@ class Tensor {
   void Init(ContextPtr c);
   TensorImplPtr impl_;  // Must always be non-NULL.
 };
-
-Tensor ToContiguous(const Tensor &tensor);
 
 }  // namespace k2
 #endif  // K2_CSRC_TENSOR_H_

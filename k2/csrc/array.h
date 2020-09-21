@@ -23,6 +23,7 @@
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/tensor.h"
+#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 

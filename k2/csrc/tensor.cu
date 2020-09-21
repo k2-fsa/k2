@@ -17,6 +17,7 @@
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/tensor.h"
+#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 
@@ -129,44 +130,6 @@ void Tensor::Init(ContextPtr c) {
   int32_t element_size = TraitsOf(impl_->dtype).NumBytes();
   impl_->data = NewRegion(c, static_cast<size_t>(storage_size * element_size));
   impl_->bytes_offset = 0;
-}
-
-template <typename T>
-static void CopyTensor(const Tensor &src_tensor, Tensor &dst_tensor) {
-  int32_t num_dims = static_cast<int32_t>(src_tensor.NumAxes());
-  const Shape &shape = src_tensor.GetShape();
-
-  T *ans_data = static_cast<T *>(dst_tensor.Data());
-  const T *this_data = static_cast<const T *>(src_tensor.Data());
-
-  // turn a linear index of a multi-dimensional array
-  // first into a coordinate representation, and then to offset
-  // in number of elements via strides information.
-  auto to_offset = [=] __host__ __device__(int32_t i) -> int32_t {
-    int32_t offset = 0;
-    for (int32_t k = num_dims - 1; k > 0; --k) {
-      int32_t index = i % shape.Dim(k);
-      offset += index * shape.Stride(k);
-      i = (i - index) / shape.Dim(k);
-    }
-    offset += i * shape.Stride(0);
-    return offset;
-  };
-
-  auto copy_data = [=] __host__ __device__(int32_t i) -> void {
-    ans_data[i] = this_data[to_offset(i)];
-  };
-
-  Eval(src_tensor.Context(), src_tensor.Nelement(), copy_data);
-}
-
-Tensor ToContiguous(const Tensor &tensor) {
-  if (tensor.IsContiguous()) return tensor;
-  Dtype dtype = tensor.GetDtype();
-  Tensor ans(tensor.Context(), dtype, tensor.Dims());
-  FOR_ALL_DTYPES(dtype, T, CopyTensor<T>(tensor, ans));
-
-  return ans;
 }
 
 }  // namespace k2
