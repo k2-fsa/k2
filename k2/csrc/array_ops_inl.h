@@ -26,15 +26,9 @@
 #include <type_traits>
 #include <vector>
 
-namespace k2 {
-// will be used in  MaxPerSublist
-template <typename T>
-struct MaxOp {
-  __device__ T operator()(T a, T b) { return (a > b ? a : b); }
-  __device__ MaxOp() {}
-  __device__ MaxOp(const MaxOp &src) {}
-};
+#include "k2/csrc/utils.h"
 
+namespace k2 {
 // Will be used in ExclusiveSumDeref to call ExclusiveSum (which calls
 // cub::DeviceScan::ExclusiveSum internally).
 template <typename T>
