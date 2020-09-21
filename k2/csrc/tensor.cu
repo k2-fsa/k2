@@ -46,7 +46,7 @@ Shape::Shape(const std::vector<int32_t> &dims,
   std::copy(dims.begin(), dims.end(), dims_);
   std::copy(strides.begin(), strides.end(), strides_);
   num_element_ = ComputeNumElement();
-  is_contiguous_ = RefreshContiguous();
+  is_contiguous_ = ComputeIsContiguous();
   storage_size_ = ComputeStorageSize();
 }
 
@@ -70,7 +70,7 @@ int32_t Shape::ComputeStorageSize() const {
   return size;
 }
 
-bool Shape::RefreshContiguous() const {
+bool Shape::ComputeIsContiguous() const {
   int32_t z = 1;
   for (int32_t i = num_axes_ - 1; i >= 0; --i) {
     K2_CHECK_GE(strides_[i], z);
@@ -131,26 +131,13 @@ void Tensor::Init(ContextPtr c) {
   impl_->bytes_offset = 0;
 }
 
-Tensor ToContiguous(const Tensor &tensor) {
-  if (tensor.IsContiguous()) return tensor;
-  std::vector<int32_t> dims = tensor.Dims();
-  std::vector<int32_t> strides = tensor.Strides();
-  int32_t num_dims = static_cast<int32_t>(dims.size());
+template <typename T>
+static void CopyTensor(const Tensor &src_tensor, Tensor &dst_tensor) {
+  int32_t num_dims = static_cast<int32_t>(src_tensor.NumAxes());
+  const Shape &shape = src_tensor.GetShape();
 
-  std::size_t num_dims_bytes = num_dims * sizeof(int32_t);
-
-  RegionPtr dims_ptr = NewRegion(tensor.Context(), num_dims_bytes);
-  RegionPtr strides_ptr = NewRegion(tensor.Context(), num_dims_bytes);
-
-  auto cpu_context = tensor.Context()->GetCpuContext();
-  auto kind = GetMemoryCopyKind(*cpu_context, *tensor.Context());
-  MemoryCopy(dims_ptr->data, static_cast<void *>(dims.data()), num_dims_bytes,
-             kind);
-  MemoryCopy(strides_ptr->data, static_cast<void *>(strides.data()),
-             num_dims_bytes, kind);
-
-  const int32_t *dims_data = dims_ptr->GetData<int32_t>();
-  const int32_t *strides_data = strides_ptr->GetData<int32_t>();
+  T *ans_data = static_cast<T *>(dst_tensor.Data());
+  const T *this_data = static_cast<const T *>(src_tensor.Data());
 
   // turn a linear index of a multi-dimensional array
   // first into a coordinate representation, and then to offset
@@ -158,30 +145,27 @@ Tensor ToContiguous(const Tensor &tensor) {
   auto to_offset = [=] __host__ __device__(int32_t i) -> int32_t {
     int32_t offset = 0;
     for (int32_t k = num_dims - 1; k > 0; --k) {
-      int32_t index = i % dims_data[k];
-      offset += index * strides_data[k];
-      i = (i - index) / dims_data[k];
-      if (i == 0) break;
+      int32_t index = i % shape.Dim(k);
+      offset += index * shape.Stride(k);
+      i = (i - index) / shape.Dim(k);
     }
-    offset += i * strides_data[0];
+    offset += i * shape.Stride(0);
     return offset;
   };
 
-  Tensor ans(tensor.Context(), tensor.GetDtype(), dims);
-
-  char *ans_data = static_cast<char *>(ans.Data());
-  const char *this_data = static_cast<const char *>(tensor.Data());
-  int32_t element_size = tensor.ElementSize();
-
   auto copy_data = [=] __host__ __device__(int32_t i) -> void {
-    char *dst = ans_data + i * element_size;
-    const char *src = this_data + to_offset(i) * element_size;
-    for (int32_t k = 0; k != element_size; ++k) {
-      dst[k] = src[k];
-    }
+    ans_data[i] = this_data[to_offset(i)];
   };
 
-  Eval(tensor.Context(), tensor.Nelement(), copy_data);
+  Eval(src_tensor.Context(), src_tensor.Nelement(), copy_data);
+}
+
+Tensor ToContiguous(const Tensor &tensor) {
+  if (tensor.IsContiguous()) return tensor;
+  Dtype dtype = tensor.GetDtype();
+  Tensor ans(tensor.Context(), dtype, tensor.Dims());
+  FOR_ALL_DTYPES(dtype, T, CopyTensor<T>(tensor, ans));
+
   return ans;
 }
 

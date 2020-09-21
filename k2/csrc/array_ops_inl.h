@@ -86,7 +86,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   T *ans_data = ans.Data();
 
   if (c->GetDeviceType() == kCpu) {
-    // a simple loop is faster, although the other branchs should still work on
+    // a simple loop is faster, although the other branches should still work on
     // CPU.
     for (int32_t i = 0; i < num_arrays; i++) {
       int32_t offset = row_splits_vec[i], this_dim = src[i]->Dim();

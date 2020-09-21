@@ -94,9 +94,7 @@ void CopyTensorElements(Tensor src, Tensor dest) {
 Tensor ToContiguous(Tensor src) {
   // things like this would be more efficient if we supported something like
   // PyTorch's ArrayRef.  not so critical to address that now though.
-  std::vector<int32_t> dims(src.NumAxes());
-  for (int32_t i = 0; i < src.NumAxes(); i++) dims[i] = src.Dim(i);
-  Tensor ans(src.GetContext(), src.GetDtype(), dims);
+  Tensor ans(src.GetContext(), src.GetDtype(), src.Getshape().Dims());
   CopyTensorElements(src, ans);
   return ans;
 }

@@ -26,13 +26,13 @@ class Shape {
  public:
   int32_t NumAxes() const { return num_axes_; }
 
-  int32_t Dim(int32_t i) const {
+  __host__ __device__ int32_t Dim(int32_t i) const {
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, num_axes_);
     return dims_[i];
   }
 
-  int32_t Stride(int32_t i) const {
+  __host__ __device__ int32_t Stride(int32_t i) const {
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, num_axes_);
     return strides_[i];
@@ -89,7 +89,7 @@ class Shape {
   // compute the number of elements
   int32_t ComputeNumElement() const;
   int32_t ComputeStorageSize() const;
-  bool RefreshContiguous() const;
+  bool ComputeIsContiguous() const;
 };
 
 struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
@@ -148,11 +148,7 @@ class Tensor {
         reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset);
   }
 
-  void *Data() {
-    return reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset;
-  }
-
-  const void *Data() const {
+  void *Data() const {
     return reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset;
   }
 
