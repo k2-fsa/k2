@@ -241,7 +241,6 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
   binary search.  Specifically, it returns i such that row_splits[i] <= index <
   row_splits[i+1]. row_splits should be a vector with at least num_rows+1
   elements.
-
        @param [in] num_rows      Number of rows (row-id will be less than this)
        @param [in] row_splits    Row-splits vector, of size num_rows + 1 (search
                                  for `row_splits concept` near the top of
@@ -253,12 +252,10 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
                                  but in future it might be used for a heuristic,
                                  for the initial guess of where to start the
                                  binary search.
-
        @return                   Returns i such that row_splits[i] <= index <
                                  row_splits[i+1] and 0 <= i < num_rows;
                                  will die with assertion in debug mode if such
                                  an i does not exist.
-
    TODO(dan): make this compile, apparently std::lower_bound won't work on GPU
    so we should manually do the binary search.
  */
@@ -284,8 +281,8 @@ RowIdFromRowSplits(int32_t num_rows, const int32_t *row_splits, int32_t index,
    @param [in] c    ContextPtr, points to the context to which the
                     data belongs (e.g. CPU or GPU).
    @param [in] num_elems   The number of elements in the irregular array
-   @param [in] row_ids   row_ids vector of length num_elems + 1 (
-                    row_ids[num_elems] must equal num_rows). Must be
+   @param [in] row_ids   row_ids vector of length num_elems (
+                    row_ids[num_elems - 1] + 1 must equal num_rows). Must be
                     non-decreasing.
    @param [in] no_empty_rows   If the caller happens to know that no rows
                     of the irregular array are empty
