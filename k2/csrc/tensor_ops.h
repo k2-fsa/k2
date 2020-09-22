@@ -10,6 +10,8 @@
 
 #include "k2/csrc/tensor.h"
 
+namespace k2 {
+
 /*
   This copies elements from `src` to `dest`.  They must be on the same device,
   and have the same dims and dtype, but not necessarily the same layout.  (In
@@ -24,7 +26,7 @@ void CopyTensorElements(Tensor src, Tensor dest);
   `src` if `src` was already contiguous.    Internally calls
   `CopyTensorElements()`
 */
-Tensor ToContiguous(Tensor src);
+Tensor ToContiguous(const Tensor &src);
 
 /*
   Cast tensor elements to a new dtype.  Only works if `src` was contiguous; will
@@ -34,5 +36,7 @@ Tensor ToContiguous(Tensor src);
   that uses the same underlying data as `src`.
  */
 Tensor Cast(Tensor src, Dtype new_dtype);
+
+}  // namespace k2
 
 #endif  // K2_CSRC_TENSOR_OPS_H_

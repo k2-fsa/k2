@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *                      Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -16,6 +17,7 @@
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/tensor.h"
+#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 
@@ -45,7 +47,7 @@ Shape::Shape(const std::vector<int32_t> &dims,
   std::copy(dims.begin(), dims.end(), dims_);
   std::copy(strides.begin(), strides.end(), strides_);
   num_element_ = ComputeNumElement();
-  is_contiguous_ = CheckContiguous();
+  is_contiguous_ = ComputeIsContiguous();
   storage_size_ = ComputeStorageSize();
 }
 
@@ -69,7 +71,7 @@ int32_t Shape::ComputeStorageSize() const {
   return size;
 }
 
-bool Shape::CheckContiguous() const {
+bool Shape::ComputeIsContiguous() const {
   int32_t z = 1;
   for (int32_t i = num_axes_ - 1; i >= 0; --i) {
     K2_CHECK_GE(strides_[i], z);
@@ -128,12 +130,6 @@ void Tensor::Init(ContextPtr c) {
   int32_t element_size = TraitsOf(impl_->dtype).NumBytes();
   impl_->data = NewRegion(c, static_cast<size_t>(storage_size * element_size));
   impl_->bytes_offset = 0;
-}
-
-Tensor ToContiguous(const Tensor &tensor) {
-  // TODO(haowen): implement
-  K2_LOG(FATAL) << "Not implemented";
-  return tensor;
 }
 
 }  // namespace k2

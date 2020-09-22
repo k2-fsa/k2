@@ -203,7 +203,7 @@ void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest);
    additional cost.
  */
 template <typename T>
-T MaxValue(Context *c, size_t nelems, T *t);
+T MaxValue(ContextPtr &c, int32_t nelems, T *t);
 
 /*
   This is a rather special purpose function that is used in RaggedShape.
@@ -464,6 +464,14 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
   os << ']';
   return os;
 }
+
+template <typename T>
+struct MaxOp {
+  __host__ __device__ __forceinline__ T operator()(const T &a,
+                                                   const T &b) const {
+    return (a > b) ? a : b;
+  }
+};
 
 }  // namespace k2
 

@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Xiaomi Corporation (authors: Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -19,49 +20,77 @@
 #include "k2/csrc/utils.h"
 
 namespace k2 {
+template <typename T, DeviceType d>
+void TestExclusiveSum() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
 
-TEST(UtilsTest, CpuExclusiveSum) {
-  void *deleter_context;
-  ContextPtr c = GetCpuContext();
-  int32_t n = 5;
-  // [0, 1, 2, 3, 4]
-  // the exclusive prefix sum is [0, 0, 1, 3, 6]
-  auto *src = reinterpret_cast<int32_t *>(
-      c->Allocate(n * sizeof(int32_t), &deleter_context));
-  std::iota(src, src + n, 0);
-
-  auto *dst = reinterpret_cast<int32_t *>(
-      c->Allocate(n * sizeof(int32_t), &deleter_context));
-  ExclusiveSum(c, n, src, dst);
-
-  EXPECT_THAT(std::vector<int32_t>(dst, dst + n),
-              ::testing::ElementsAre(0, 0, 1, 3, 6));
-
-  c->Deallocate(dst, deleter_context);
-  c->Deallocate(src, deleter_context);
+  {
+    std::vector<T> data(5);
+    std::iota(data.begin(), data.end(), 0);
+    EXPECT_THAT(data, ::testing::ElementsAre(0, 1, 2, 3, 4));
+    Array1<T> src(context, data);
+    Array1<T> dst(context, src.Dim());
+    T *dst_data = dst.Data();
+    ExclusiveSum(context, src.Dim(), src.Data(), dst.Data());
+    // copy data from CPU/GPU to CPU
+    Array1<T> cpu_array = dst.To(cpu);
+    std::vector<T> cpu_data(cpu_array.Data(),
+                            cpu_array.Data() + cpu_array.Dim());
+    EXPECT_THAT(cpu_data, ::testing::ElementsAre(0, 0, 1, 3, 6));
+  }
 }
 
-TEST(UtilsTest, CudaExclusiveSum) {
-  void *deleter_context;
-  ContextPtr c = GetCudaContext();
-  int32_t n = 5;
-  auto *src = reinterpret_cast<int32_t *>(
-      c->Allocate(n * sizeof(int32_t), &deleter_context));
+TEST(UtilsTest, ExclusiveSum) {
+  TestExclusiveSum<int32_t, kCpu>();
+  TestExclusiveSum<int32_t, kCuda>();
+  TestExclusiveSum<double, kCpu>();
+  TestExclusiveSum<double, kCuda>();
 
-  std::vector<int32_t> h(n);
-  std::iota(h.begin(), h.end(), 0);
-  cudaMemcpy(src, h.data(), sizeof(int32_t) * n, cudaMemcpyHostToDevice);
+  // TODO(haowen): add tests where output type differs from input type?
+}
 
-  auto *dst = reinterpret_cast<int32_t *>(
-      c->Allocate(n * sizeof(int32_t), &deleter_context));
-  ExclusiveSum(c, n, src, dst);
+template <typename T, DeviceType d>
+void TestMaxValue() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
 
-  cudaMemcpy(h.data(), dst, sizeof(int32_t) * n, cudaMemcpyDeviceToHost);
+  {
+    // empty input array
+    std::vector<T> data;
+    Array1<T> src(context, data);
+    T max_value = MaxValue(context, src.Dim(), src.Data());
+    EXPECT_EQ(max_value, 0);
+  }
 
-  EXPECT_THAT(h, ::testing::ElementsAre(0, 0, 1, 3, 6));
+  {
+    // no empty input array
+    std::vector<T> data = {0, 1, 5, 7, 8, 1};
+    Array1<T> src(context, data);
+    T max_value = MaxValue(context, src.Dim(), src.Data());
+    EXPECT_EQ(max_value, 8);
+  }
 
-  c->Deallocate(dst, deleter_context);
-  c->Deallocate(src, deleter_context);
+  // TODO(haowen): tests with larger random size
+}
+
+TEST(UtilsTest, MaxValue) {
+  TestMaxValue<int32_t, kCpu>();
+  TestMaxValue<int32_t, kCuda>();
+  TestMaxValue<double, kCpu>();
+  TestMaxValue<double, kCuda>();
 }
 
 template <DeviceType d>

@@ -26,15 +26,9 @@
 #include <type_traits>
 #include <vector>
 
-namespace k2 {
-// will be used in  MaxPerSublist
-template <typename T>
-struct MaxOp {
-  __device__ T operator()(T a, T b) { return (a > b ? a : b); }
-  __device__ MaxOp() {}
-  __device__ MaxOp(const MaxOp &src) {}
-};
+#include "k2/csrc/utils.h"
 
+namespace k2 {
 // Will be used in ExclusiveSumDeref to call ExclusiveSum (which calls
 // cub::DeviceScan::ExclusiveSum internally).
 template <typename T>
@@ -86,7 +80,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   T *ans_data = ans.Data();
 
   if (c->GetDeviceType() == kCpu) {
-    // a simple loop is faster, although the other branchs should still work on
+    // a simple loop is faster, although the other branches should still work on
     // CPU.
     for (int32_t i = 0; i < num_arrays; i++) {
       int32_t offset = row_splits_vec[i], this_dim = src[i]->Dim();

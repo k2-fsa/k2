@@ -80,7 +80,7 @@ class PytorchCudaContext : public Context {
     K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
 
-  ContextPtr GetCpuContext() override { return nullptr; }
+  ContextPtr GetCpuContext() override { return k2::GetCpuContext(); }
 
   ContextPtr GetPinnedContext() override { return nullptr; }
 
