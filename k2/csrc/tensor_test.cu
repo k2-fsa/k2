@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *                      Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -18,6 +19,7 @@
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/tensor.h"
+#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 TEST(TensorTest, Shape) {
@@ -189,6 +191,15 @@ TEST(TensorTest, Tensor) {
           EXPECT_EQ(value, expected_data[j++]);
         }
       }
+    }
+
+    // test ToContiguous
+    Tensor t = ToContiguous(tensor);
+    ASSERT_TRUE(t.IsContiguous());
+    int32_t n = t.Nelement();
+    const int32_t *t_data = t.Data<int32_t>();
+    for (int32_t i = 0; i != t.Nelement(); ++i) {
+      EXPECT_EQ(t_data[i], expected_data[i]);
     }
   }
 

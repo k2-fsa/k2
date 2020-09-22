@@ -5,6 +5,7 @@
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
  *                                                   Haowen Qiu)
+ *                      Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -88,7 +89,7 @@ class Shape {
   // compute the number of elements
   int32_t ComputeNumElement() const;
   int32_t ComputeStorageSize() const;
-  bool CheckContiguous() const;
+  bool ComputeIsContiguous() const;
 };
 
 struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
@@ -102,7 +103,7 @@ struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
   // i.e.  we will require that data_ is always allocated.  (This is because
   // we plan to generally hold Tensors as pointers, so there isn't much
   // need for an empty constructor).
-  std::shared_ptr<Region> data;
+  RegionPtr data;
 };
 
 using TensorImplPtr = std::shared_ptr<TensorImpl>;
@@ -147,6 +148,10 @@ class Tensor {
         reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset);
   }
 
+  void *Data() const {
+    return reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset;
+  }
+
   // Return the result of indexing one of the axes, which will result in a
   // Tensor with one fewer axis.
   Tensor Index(int32_t axis, int32_t index) const;
@@ -154,19 +159,20 @@ class Tensor {
   Dtype GetDtype() const { return impl_->dtype; }
   const Shape &GetShape() const { return impl_->shape; }
   int32_t ByteOffset() const { return impl_->bytes_offset; }
-  std::shared_ptr<Region> &GetRegion() { return impl_->data; }
+  RegionPtr &GetRegion() const { return impl_->data; }
 
   // Forward some functions from the shape.  Will forward more later.
   inline bool SameDim(const Tensor &other) const {
     return impl_->shape.SameDims(other.GetShape());
   }
   inline int32_t NumAxes() const { return impl_->shape.NumAxes(); }
-  inline int32_t Dim(int32_t i) { return impl_->shape.Dim(i); }
-  inline std::vector<int32_t> Dims() { return impl_->shape.Dims(); }
-  inline int32_t Stride(int32_t i) { return impl_->shape.Stride(i); }
-  inline std::vector<int32_t> Strides() { return impl_->shape.Strides(); }
-  inline int32_t Nelement(int32_t i) { return impl_->shape.Nelement(); }
-  inline bool IsContiguous() { return impl_->shape.IsContiguous(); }
+  inline int32_t Dim(int32_t i) const { return impl_->shape.Dim(i); }
+  inline std::vector<int32_t> Dims() const { return impl_->shape.Dims(); }
+  inline int32_t Stride(int32_t i) const { return impl_->shape.Stride(i); }
+  inline std::vector<int32_t> Strides() const { return impl_->shape.Strides(); }
+  inline int32_t Nelement() const { return impl_->shape.Nelement(); }
+  inline bool IsContiguous() const { return impl_->shape.IsContiguous(); }
+  inline int32_t ElementSize() const { return TraitsOf(GetDtype()).NumBytes(); }
 
   /*
     Convert to possibly-different context, may require CPU/GPU transfer.
@@ -186,14 +192,12 @@ class Tensor {
   */
   Tensor To(ContextPtr ctx);
 
-  ContextPtr Context() { return impl_->data->context; }
+  ContextPtr &Context() const { return impl_->data->context; }
 
  private:
   void Init(ContextPtr c);
   TensorImplPtr impl_;  // Must always be non-NULL.
 };
-
-Tensor ToContiguous(const Tensor &tensor);
 
 }  // namespace k2
 #endif  // K2_CSRC_TENSOR_H_

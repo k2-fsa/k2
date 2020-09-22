@@ -17,6 +17,7 @@ set(context_srcs
   math.cu
   ragged.cu
   tensor.cu
+  tensor_ops.cu
   utils.cu
 )
 

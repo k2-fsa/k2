@@ -64,7 +64,7 @@ class CudaContext : public Context {
     auto ret = cudaStreamCreate(&stream_);
     K2_CHECK_CUDA_ERROR(ret);
   }
-  ContextPtr GetCpuContext() override { return nullptr; }
+  ContextPtr GetCpuContext() override { return k2::GetCpuContext(); }
   ContextPtr GetPinnedContext() override { return nullptr; }
   DeviceType GetDeviceType() const override { return kCuda; }
   int32_t GetDeviceId() const override { return gpu_id_; }
