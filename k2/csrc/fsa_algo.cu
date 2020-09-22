@@ -9,6 +9,9 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <vector>
+
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/host/connect.h"
 #include "k2/csrc/host_shim.h"
@@ -18,53 +21,22 @@
 // host/.
 namespace k2 {
 
-
-inline bool RecursionWrapper(void (Fsa&,Fsa*,Array1<int32_t*>) *f,
-                             Fsa &src, Fsa *dest, Array1<int32_t> *arc_map) {
+bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
+                      Fsa *dest, Array1<int32_t> *arc_map) {
   // src is actually an FsaVec.  Just recurse for now.
-  int32_t num_fsas = src.Dim0();
-  std::vector<Fsa> srcs(num_fsas),
-      dests(num_fsas);
-  std::vector<Array1<int32_t> > arc_maps(num_fsas);
+  int32_t num_fsas = src.shape.Dim0();
+  std::vector<Fsa> srcs(num_fsas), dests(num_fsas);
+  std::vector<Array1<int32_t>> arc_maps(num_fsas);
   for (int32_t i = 0; i < num_fsas; i++) {
     srcs[i] = src.Index(0, i);
     // Recurse.
-    if (! f(srcs[i], &(dests[i]),
-            (arc_map ? &(arc_maps[i]) : nullptr)))
+    if (!f(srcs[i], &(dests[i]), (arc_map ? &(arc_maps[i]) : nullptr)))
       return false;
   }
-  *dest = Stack(0, num_srcs, &(dests[0]));
-  if (arc_map)
-    *arc_map = Append(num_srcs, &(arc_maps[0]));
-
+  *dest = Stack(0, num_fsas, &(dests[0]));
+  if (arc_map) *arc_map = Append(num_fsas, &(arc_maps[0]));
   return true;
 }
-
-  int32_t num_axes = src.NumAxes();
-  if (num_axes < 2 || num_axes > 3) {
-    K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
-  } else if (num_axes == 3) {
-    RecursionWrapper
-    // src is actually an FsaVec.  Just recurse for now.
-    int32_t num_fsas = src.Dim0();
-    std::vector<Fsa> srcs(num_fsas),
-        dests(num_fsas);
-    std::vector<Array1<int32_t> > arc_maps(num_fsas);
-    for (int32_t i = 0; i < num_fsas; i++) {
-      srcs[i] = src.Index(0, i);
-      // Recurse.
-      if (! ConnectFsa(srcs[i], &(dests[i]),
-                       (arc_map ? &(arc_maps[i]) : nullptr)))
-          return false;
-    }
-    *dest = Stack(0, num_srcs, &(dests[0]));
-    if (arc_map)
-      *arc_map = Append(num_srcs, &(arc_maps[0]));
-
-    return true;
-  }
-}
-
 
 bool ConnectFsa(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map) {
   int32_t num_axes = src.NumAxes();

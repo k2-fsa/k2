@@ -161,15 +161,15 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
 }
 
 template <typename T>
-Array1<T> Append(int32_t src_size, const Array1<T> *src) {
+Array1<T> Append(int32_t src_size, Array1<T> *src) {
   K2_CHECK_GT(src_size, 0);
-  std::vector<Array1<T>*> srcs(src_size);
-  for (int32_t i = 0; i < src_size; i++)
-    srcs[i] = src + i;
-  return Append(&(srcs[0]));
+  std::vector<Array1<T> *> srcs(src_size);
+  for (int32_t i = 0; i < src_size; i++) srcs[i] = src + i;
+  // TODO(haowen): add below interfaces.
+  // return Append(&(srcs[0]));
+  K2_LOG(FATAL) << "Not Implemented";
+  return src[0];
 }
-
-
 
 template <typename T>
 void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {

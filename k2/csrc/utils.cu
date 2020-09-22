@@ -288,6 +288,14 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
     row_splits[num_rows] = num_elems;
   } else {
     K2_CHECK_EQ(d, kCuda);
+    // process corner case first
+    if (num_elems == 0) {
+      auto lambda_set_values = [=] __host__ __device__(int32_t i) {
+        row_splits[i] = 0;
+      };
+      Eval(c, num_rows + 1, lambda_set_values);
+      return;
+    }
     if (no_empty_rows) {
       auto lambda_simple = [=] __host__ __device__(int32_t i) {
         int32_t this_row = row_ids[i], prev_row;

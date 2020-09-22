@@ -189,12 +189,11 @@ void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
       @return       Returns the appended array
  */
 template <typename T>
-Array1<T> Append(int32_t src_size, const Array1<T> **src);
+Array1<T> Append(int32_t src_size, Array1<T> **src);
 
 // Wrapper for Append() that has one fewer levels of indirection.
 template <typename T>
-Array1<T> Append(int32_t src_size, const Array1<T> *src);
-
+Array1<T> Append(int32_t src_size, Array1<T> *src);
 
 /*
    This is a little like Append(), but with special treatment of the last
@@ -236,10 +235,10 @@ template <typename T>
 void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values);
 
 /*
-  Sort each sub-list in `src`, with operator `<`, and output the order to `order`.
-  CAUTION: don't rely on this being a stable sort for now.
-  Will eventually make the operator customizable, in which case this would
-  become a wrapper.
+  Sort each sub-list in `src`, with operator `<`, and output the order to
+  `order`. CAUTION: don't rely on this being a stable sort for now. Will
+  eventually make the operator customizable, in which case this would become a
+  wrapper.
 
       @param [in] src   Ragged array with 2 axes.
       @param [out] order   List of indexes that we'll use to give `src`
@@ -250,9 +249,6 @@ void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values);
  */
 template <typename T, typename Op>
 void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
-
-
-
 
 /*
   Get the maximum value from the array `src`, or `default_value`, whichever is
