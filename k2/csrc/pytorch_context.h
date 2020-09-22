@@ -16,11 +16,20 @@
 #include <memory>
 
 #include "c10/cuda/CUDACachingAllocator.h"
+#include "c10/cuda/CUDAFunctions.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 #include "torch/torch.h"
 
 namespace k2 {
+
+class ManagedTensor {
+ public:
+  explicit ManagedTensor(torch::Tensor &tensor) : handle_(tensor) {}
+
+ private:
+  torch::Tensor handle_;  // retain a copy of the tensor passed from Python
+};
 
 class PytorchCpuContext : public Context {
  private:
@@ -50,8 +59,14 @@ class PytorchCpuContext : public Context {
     return p;
   }
 
-  void Deallocate(void *data, void * /*deleter_context*/) override {
-    allocator_->raw_deallocate(data);
+  void Deallocate(void *data, void *deleter_context) override {
+    if (deleter_context) {
+      // a non-empty `deleter_context` indicates that
+      // the memory is passed from a `torch::Tensor`
+      delete reinterpret_cast<ManagedTensor *>(deleter_context);
+    } else {
+      allocator_->raw_deallocate(data);
+    }
   }
 
   bool IsCompatible(const Context &other) const override {
@@ -98,8 +113,14 @@ class PytorchCudaContext : public Context {
     return p;
   }
 
-  void Deallocate(void *data, void * /*deleter_context*/) override {
-    allocator_->raw_deallocate(data);
+  void Deallocate(void *data, void *deleter_context) override {
+    if (deleter_context) {
+      // a non-empty `deleter_context` indicates that
+      // the memory is passed from a `torch::Tensor`
+      delete reinterpret_cast<ManagedTensor *>(deleter_context);
+    } else {
+      allocator_->raw_deallocate(data);
+    }
   }
 
   bool IsCompatible(const Context &other) const override {
@@ -115,6 +136,12 @@ class PytorchCudaContext : public Context {
   torch::Allocator *allocator_;  // NOT owned here
   int32_t gpu_id_;
 };
+
+// Construct a region from a `torch::Tensor`.
+//
+// The resulting region shares the underlying memory with
+// the given tensor.
+RegionPtr NewRegion(torch::Tensor &tensor);
 
 }  // namespace k2
 

@@ -28,7 +28,7 @@ else()
 endif()
 
 # the target
-add_library(context STATIC ${context_srcs})
+add_library(context SHARED ${context_srcs})
 set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # lib deps

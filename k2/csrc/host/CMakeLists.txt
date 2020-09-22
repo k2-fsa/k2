@@ -4,7 +4,7 @@
 
 # the target
 # please sort the source files alphabetically
-add_library(fsa
+add_library(fsa SHARED
     arcsort.cc
     aux_labels.cc
     connect.cc

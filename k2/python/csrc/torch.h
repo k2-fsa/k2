@@ -1,0 +1,18 @@
+/**
+ * @brief python wrappers for PyTorch.
+ *
+ * @copyright
+ * Copyright (c)  2020  Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
+ *
+ * @copyright
+ * See LICENSE for clarification regarding multiple authors
+ */
+
+#ifndef K2_PYTHON_CSRC_TORCH_H_
+#define K2_PYTHON_CSRC_TORCH_H_
+
+#include "k2/python/csrc/k2.h"
+
+void PybindTorch(py::module &m);
+
+#endif  // K2_PYTHON_CSRC_TORCH_H_

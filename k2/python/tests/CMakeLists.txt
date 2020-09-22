@@ -17,18 +17,7 @@ endfunction()
 
 # please sort the files in alphabetic order
 set(py_test_files
-    arcsort_test.py
-    array_test.py
-    aux_labels_test.py
-    connect_test.py
-    determinize_test.py
-    fsa_equivalent_test.py
-    fsa_test.py
-    intersect_test.py
-    properties_test.py
-    rmepsilon_test.py
-    topsort_test.py
-    weights_test.py
+  array_test.py
 )
 
 foreach(source IN LISTS py_test_files)
