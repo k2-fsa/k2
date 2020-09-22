@@ -191,6 +191,11 @@ void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
 template <typename T>
 Array1<T> Append(int32_t src_size, const Array1<T> **src);
 
+// Wrapper for Append() that has one fewer levels of indirection.
+template <typename T>
+Array1<T> Append(int32_t src_size, const Array1<T> *src);
+
+
 /*
    This is a little like Append(), but with special treatment of the last
    elements (it's intended for use with row_splits and row_ids vectors, which
@@ -229,6 +234,25 @@ Array1<int32_t> Splice(int32_t src_size, const Array1<int32_t> **src);
  */
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values);
+
+/*
+  Sort each sub-list in `src`, with operator `<`, and output the order to `order`.
+  CAUTION: don't rely on this being a stable sort for now.
+  Will eventually make the operator customizable, in which case this would
+  become a wrapper.
+
+      @param [in] src   Ragged array with 2 axes.
+      @param [out] order   List of indexes that we'll use to give `src`
+                      a sorted order; will be resized if its size is
+                      not src.values.Dim().  If you do
+                        src.values = src.values[*order]
+                      then src.values will be sorted.
+ */
+template <typename T, typename Op>
+void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
+
+
+
 
 /*
   Get the maximum value from the array `src`, or `default_value`, whichever is

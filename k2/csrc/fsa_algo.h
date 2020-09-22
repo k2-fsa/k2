@@ -31,8 +31,26 @@ namespace k2 {
             does not imply that `dest` is nonempty.
 
    CAUTION: for now this only works for CPU.
+
+   This works for both Fsa and FsaVec!
+
  */
-bool ConnectFsa(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+
+
+/*
+  Sort arcs of an Fsa or FsaVec in-place (this version of the function does not
+  output derivatives).
+
+          @param[in,out] fsa  FSA of which to sort the arcs.  Does not have
+                         to be non-empty.
+*/
+void ArcSort(Fsa *fsa);
+
+void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+
+
+
 
 /*
   compose/intersect array of FSAs (multiple streams decoding or training in

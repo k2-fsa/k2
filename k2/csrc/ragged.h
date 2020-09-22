@@ -477,6 +477,14 @@ template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
 
 /*
+  This version of Stack() has one fewer levels of pointer indirection,
+  it is just a wrapper for the version above.
+ */
+template <typename T>
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src);
+
+
+/*
   Construct a RaggedShape with 2 axes.
      @param [in] row_splits   row_splits, or NULL (at least one of this and
   row_ids must be non-NULL).  Note: the dimension of row_splits must equal the
