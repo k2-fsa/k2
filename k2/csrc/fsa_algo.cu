@@ -18,7 +18,62 @@
 // host/.
 namespace k2 {
 
+
+inline bool RecursionWrapper(void (Fsa&,Fsa*,Array1<int32_t*>) *f,
+                             Fsa &src, Fsa *dest, Array1<int32_t> *arc_map) {
+  // src is actually an FsaVec.  Just recurse for now.
+  int32_t num_fsas = src.Dim0();
+  std::vector<Fsa> srcs(num_fsas),
+      dests(num_fsas);
+  std::vector<Array1<int32_t> > arc_maps(num_fsas);
+  for (int32_t i = 0; i < num_fsas; i++) {
+    srcs[i] = src.Index(0, i);
+    // Recurse.
+    if (! f(srcs[i], &(dests[i]),
+            (arc_map ? &(arc_maps[i]) : nullptr)))
+      return false;
+  }
+  *dest = Stack(0, num_srcs, &(dests[0]));
+  if (arc_map)
+    *arc_map = Append(num_srcs, &(arc_maps[0]));
+
+  return true;
+}
+
+  int32_t num_axes = src.NumAxes();
+  if (num_axes < 2 || num_axes > 3) {
+    K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
+  } else if (num_axes == 3) {
+    RecursionWrapper
+    // src is actually an FsaVec.  Just recurse for now.
+    int32_t num_fsas = src.Dim0();
+    std::vector<Fsa> srcs(num_fsas),
+        dests(num_fsas);
+    std::vector<Array1<int32_t> > arc_maps(num_fsas);
+    for (int32_t i = 0; i < num_fsas; i++) {
+      srcs[i] = src.Index(0, i);
+      // Recurse.
+      if (! ConnectFsa(srcs[i], &(dests[i]),
+                       (arc_map ? &(arc_maps[i]) : nullptr)))
+          return false;
+    }
+    *dest = Stack(0, num_srcs, &(dests[0]));
+    if (arc_map)
+      *arc_map = Append(num_srcs, &(arc_maps[0]));
+
+    return true;
+  }
+}
+
+
 bool ConnectFsa(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map) {
+  int32_t num_axes = src.NumAxes();
+  if (num_axes < 2 || num_axes > 3) {
+    K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
+  } else if (num_axes == 3) {
+    return RecursionWrapper(ConnectFsa, src, dest, arc_map);
+  }
+
   k2host::Fsa host_fsa = FsaToHostFsa(src);
   k2host::Connection c(host_fsa);
   k2host::Array2Size<int32_t> size;
