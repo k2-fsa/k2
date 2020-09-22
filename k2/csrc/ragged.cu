@@ -46,25 +46,23 @@ struct iterator_traits<::RowSplitsDiff> {
 
 namespace k2 {
 
-RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
-                              int32_t min_num_elements,
+RaggedShape RandomRaggedShape(bool set_row_ids, int32_t min_num_axes,
+                              int32_t max_num_axes, int32_t min_num_elements,
                               int32_t max_num_elements) {
   ContextPtr c = GetCpuContext();
   K2_CHECK(min_num_axes >= 2 && max_num_axes >= min_num_axes &&
            min_num_elements >= 0 && max_num_elements >= min_num_elements);
   int32_t num_axes = RandInt(min_num_axes, max_num_axes);
-
-  // int32_t done_repeats = 0;
-
-  std::vector<RaggedShapeDim> axes(num_axes - 1);
   int32_t num_elements = RandIntGeometric(min_num_elements, max_num_elements);
-  for (int32_t axis = num_axes - 2; axis >= 0; axis--) {
-    // this axis will have row_ids of length num_elements and row_splits of
-    // length
-    // to be determined.
 
+  bool done_repeats = false;
+  std::vector<RaggedShapeDim> axes(num_axes - 1);
+  for (int32_t axis = num_axes - 2; axis >= 0; axis--) {
+    // this axis will have row_ids of length num_elements and
+    // row_splits of length to be determined.
     int32_t cur_row_split = 0;
     std::vector<int32_t> row_splits_vec;
+    std::vector<int32_t> row_ids_vec;
     row_splits_vec.push_back(cur_row_split);
     // The reason for "|| RandInt(0, 2) == 0)" is so that even if there
     // are no elements we can still potentially generate empty row-splits.
@@ -72,22 +70,28 @@ RaggedShape RandomRaggedShape(int32_t min_num_axes, int32_t max_num_axes,
       int32_t split_size = RandIntGeometric(0, num_elements - cur_row_split);
       cur_row_split += split_size;
       // sometimes we have a bunch of empty rows in a row (this will test out
-      // more of the code).
-      // TODO(haowen): what do below code do?
-      /*
-      int32_t num_repeats = 1;
-      if (split_size == 0 && RandInt(0, 30) == 0 && done_repeats == 0) {
-        num_repeats = RandIntGeometric(1, 128);
-        done_repeats = 0;
+      // more of the code), so here we generate a bunch of empty rows, but we
+      // just do this only once (that's why we declare `done_repeats` here).
+      if (split_size == 0 && RandInt(0, 30) == 0 && !done_repeats) {
+        int32_t num_repeats = RandIntGeometric(1, 128);
+        row_splits_vec.insert(row_splits_vec.end(), num_repeats, cur_row_split);
+        // don't need to set `row_ids_vec` as there's no element.
+        done_repeats = true;
       }
-      */
       row_splits_vec.push_back(cur_row_split);
+      if (set_row_ids) {
+        int32_t cur_row = static_cast<int32_t>(row_splits_vec.size()) - 2;
+        row_ids_vec.insert(row_ids_vec.end(), split_size, cur_row);
+      }
     }
     axes[axis].row_splits = Array1<int32_t>(c, row_splits_vec);
+    if (set_row_ids) axes[axis].row_ids = Array1<int32_t>(c, row_ids_vec);
     axes[axis].cached_tot_size = num_elements;
-    num_elements = cur_row_split;
+    num_elements = axes[axis].row_splits.Dim() - 1;
   }
-  return RaggedShape(axes);
+  // RaggedShape(axes, true) will check the returned RaggedShape for
+  // consistency.
+  return RaggedShape(axes, true);
 }
 
 // Recursive function that prints (part of) a ragged shape.

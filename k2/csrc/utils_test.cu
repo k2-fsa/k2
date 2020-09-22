@@ -13,10 +13,14 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <numeric>
+#include <random>
 #include <vector>
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/math.h"
+#include "k2/csrc/ragged.h"
 #include "k2/csrc/utils.h"
 
 namespace k2 {
@@ -83,7 +87,24 @@ void TestMaxValue() {
     EXPECT_EQ(max_value, 8);
   }
 
-  // TODO(haowen): tests with larger random size
+  {
+    // tests with larger random size
+    int32_t max_elem = 10000;
+    int32_t num_elems = RandInt(2000, max_elem);
+    std::vector<int32_t> data(num_elems);
+    std::iota(data.begin(), data.end(), 0);
+    // shuffle data
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(data.begin(), data.end(), g);
+    // assign max_elem to a random position
+    int32_t pos = RandInt(0, num_elems - 1);
+    data[pos] = max_elem;
+
+    Array1<int32_t> src(context, data);
+    int32_t max_value = MaxValue(context, src.Dim(), src.Data());
+    EXPECT_EQ(max_value, max_elem);
+  }
 }
 
 TEST(UtilsTest, MaxValue) {

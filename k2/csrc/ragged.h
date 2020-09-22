@@ -343,6 +343,8 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old);
 /*
   Return a random RaggedShape, with a CPU context.  Intended for testing.
 
+     @param [in] set_row_ids    If false, row_ids in the returned RaggedShape
+                                will be empty; If true, row_ids would be filled.
      @param [in] min_num_axes   Minimum number of axes (must be at least 2)
      @param [in] max_num_axes   Maximum number of axes, must be
                                 >= min_num_axes
@@ -351,7 +353,8 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old);
      @param [in] max_num_elements  Maximum number of elements; must be
                                     >= min_num_elements.
  */
-RaggedShape RandomRaggedShape(int32_t min_num_axes = 2,
+RaggedShape RandomRaggedShape(bool set_row_ids = false,
+                              int32_t min_num_axes = 2,
                               int32_t max_num_axes = 4,
                               int32_t min_num_elements = 0,
                               int32_t max_num_elements = 2000);

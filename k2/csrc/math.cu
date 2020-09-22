@@ -39,7 +39,8 @@ int32_t RandInt(int32_t min, int32_t max) {
 // values.  I'm not implying this is a geometric distribution.  Anyway
 // we aren't relying on any exact properties.
 int32_t RandIntGeometric(int32_t min, int32_t max) {
-  max >>= (RandInt(0, HighestBitSet(max / min)));
+  int32_t shift = min == 0 ? 0 : RandInt(0, HighestBitSet(max / min));
+  max >>= shift;
   if (max < min) max = min;
   return RandInt(min, max);
 }

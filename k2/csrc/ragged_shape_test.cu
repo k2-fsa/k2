@@ -304,4 +304,29 @@ TEST(RaggedShapeTest, RaggedShapeIterator) {
   EXPECT_EQ(index, row_splits3.back());
 }
 
+TEST(RaggedShapeTest, RandomRaggedShape) {
+  {
+    RaggedShape shape = RandomRaggedShape(false, 2, 4, 0, 0);
+    EXPECT_GE(shape.NumAxes(), 2);
+    EXPECT_EQ(shape.NumElements(), 0);
+  }
+  {
+    RaggedShape shape = RandomRaggedShape();
+    EXPECT_GE(shape.NumAxes(), 2);
+    EXPECT_GE(shape.NumElements(), 0);
+  }
+  {
+    RaggedShape shape = RandomRaggedShape(false, 3, 5, 100);
+    EXPECT_GE(shape.NumAxes(), 3);
+    EXPECT_GE(shape.NumElements(), 100);
+  }
+  {
+    RaggedShape shape = RandomRaggedShape(true, 3, 5, 100);
+    EXPECT_GE(shape.NumAxes(), 3);
+    EXPECT_GE(shape.NumElements(), 100);
+    const auto &axes = shape.Axes();
+    EXPECT_GE(axes.back().row_ids.Dim(), 100);
+  }
+}
+
 }  // namespace k2
