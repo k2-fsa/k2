@@ -159,6 +159,39 @@ void TestRowSplitsToRowIds() {
                                   cpu_array.Data() + cpu_array.Dim());
     EXPECT_EQ(cpu_data, row_ids_vec);
   }
+
+  {
+    // test with random large size
+    const int32_t min_num_elements = 2000;
+    RaggedShape shape = RandomRaggedShape(true, 2, 2, min_num_elements, 10000);
+    ASSERT_EQ(shape.NumAxes(), 2);
+    const auto &axes = shape.Axes();
+    ASSERT_EQ(axes.size(), 1);
+    // note `src_row_splits` is on CPU as it is created with RandomRaggedShape
+    const Array1<int32_t> &src_row_splits = axes[0].row_splits;
+    Array1<int32_t> row_splits = src_row_splits.To(context);
+    // don't call `shape.RowIds(axis)` here, it will make the test meaningless
+    // as `shape.RowId(axis)` calls `RowSplitsToRowIds()` internally.
+    // note `row_ids` is on CPU as it is created with RandomRaggedShape
+    const Array1<int32_t> &expected_row_ids = axes[0].row_ids;
+    int32_t num_rows = row_splits.Dim() - 1;
+    int32_t num_elements = row_splits[num_rows];
+    ASSERT_GE(num_elements, min_num_elements);
+    ASSERT_EQ(expected_row_ids.Dim(), num_elements);
+    Array1<int32_t> row_ids(context, num_elements);
+    int32_t *row_ids_data = row_ids.Data();
+    EXPECT_EQ(row_ids.Dim(), num_elements);
+    RowSplitsToRowIds(context, num_rows, row_splits.Data(), num_elements,
+                      row_ids_data);
+    // copy data from CPU/GPU to CPU
+    Array1<int32_t> cpu_array = row_ids.To(cpu);
+    std::vector<int32_t> cpu_data(cpu_array.Data(),
+                                  cpu_array.Data() + cpu_array.Dim());
+    std::vector<int32_t> expected_row_ids_data(
+        expected_row_ids.Data(),
+        expected_row_ids.Data() + expected_row_ids.Dim());
+    EXPECT_EQ(cpu_data, expected_row_ids_data);
+  }
 }
 
 TEST(UtilsTest, RowSplitsToRowIds) {
@@ -229,6 +262,36 @@ void TestRowIdsToRowSplits() {
     std::vector<int32_t> cpu_data(cpu_array.Data(),
                                   cpu_array.Data() + cpu_array.Dim());
     EXPECT_EQ(cpu_data, row_splits_vec);
+  }
+
+  {
+    // test with random large size
+    const int32_t min_num_elements = 2000;
+    RaggedShape shape = RandomRaggedShape(true, 2, 2, min_num_elements, 10000);
+    ASSERT_EQ(shape.NumAxes(), 2);
+    const auto &axes = shape.Axes();
+    ASSERT_EQ(axes.size(), 1);
+    // note `src_row_ids` is on CPU as it is created with RandomRaggedShape
+    const Array1<int32_t> &src_row_ids = axes[0].row_ids;
+    Array1<int32_t> row_ids = src_row_ids.To(context);
+    // note `row_splits` is on CPU as it is created with RandomRaggedShape
+    const Array1<int32_t> &expected_row_splits = axes[0].row_splits;
+    int32_t num_elements = row_ids.Dim();
+    ASSERT_GE(num_elements, min_num_elements);
+    int32_t num_rows = expected_row_splits.Dim() - 1;
+    Array1<int32_t> row_splits(context, num_rows + 1);
+    EXPECT_EQ(row_splits.Dim(), num_rows + 1);
+    int32_t *row_splits_data = row_splits.Data();
+    RowIdsToRowSplits(context, num_elements, row_ids.Data(), false, num_rows,
+                      row_splits_data);
+    // copy data from CPU/GPU to CPU
+    Array1<int32_t> cpu_array = row_splits.To(cpu);
+    std::vector<int32_t> cpu_data(cpu_array.Data(),
+                                  cpu_array.Data() + cpu_array.Dim());
+    std::vector<int32_t> expected_row_splits_data(
+        expected_row_splits.Data(),
+        expected_row_splits.Data() + expected_row_splits.Dim());
+    EXPECT_EQ(cpu_data, expected_row_splits_data);
   }
 }
 
