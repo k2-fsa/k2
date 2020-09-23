@@ -97,10 +97,10 @@ enable_testing()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(pybind11)
 if(USE_PYTORCH)
+  add_definitions(-DK2_USE_PYTORCH)
   include(torch)
 endif()
 include(cub)
 include(googletest)
-
 
 add_subdirectory(k2)

@@ -39,7 +39,7 @@ class CpuContext : public Context {
       int32_t ret = posix_memalign(&p, kAlignment, bytes);
       K2_CHECK_EQ(ret, 0);
     }
-    if (deleter_context) *deleter_context = nullptr;
+    if (deleter_context != nullptr) *deleter_context = nullptr;
     return p;
   }
 
@@ -75,7 +75,7 @@ class CudaContext : public Context {
       auto ret = cudaMalloc(&p, bytes);
       K2_CHECK_CUDA_ERROR(ret);
     }
-    if (deleter_context) *deleter_context = nullptr;
+    if (deleter_context != nullptr) *deleter_context = nullptr;
     return p;
   }
 

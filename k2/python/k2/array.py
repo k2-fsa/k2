@@ -1,107 +1,59 @@
-# Copyright (c)  2020  Xiaomi Corporation (author: Haowen Qiu)
-
+# Copyright (c)  2020  Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
+#
 # See ../../../LICENSE for clarification regarding multiple authors
 
+from typing import Union
+
 import torch
-from torch.utils.dlpack import to_dlpack
 
-from _k2 import IntArray2Size
-from _k2 import DLPackIntArray2
-from _k2 import DLPackIntArray1
-from _k2 import DLPackStridedIntArray1
-from _k2 import DLPackFloatArray1
-from _k2 import DLPackDoubleArray1
-from _k2 import DLPackLogSumArcDerivs
+from _k2 import _FloatArray1
+from _k2 import _Int32Array1
 
 
-class IntArray1(DLPackIntArray1):
-
-    def __init__(self, data: torch.Tensor, check_dtype: bool = True):
-        if check_dtype:
-            assert data.dtype == torch.int32
-        self.data = data
-        super().__init__(to_dlpack(self.data))
-
-    @staticmethod
-    def from_float_tensor(data: torch.Tensor) -> 'IntArray1':
-        assert data.dtype == torch.float
-        return IntArray1(data, False)
-
-    @staticmethod
-    def create_array_with_size(size: int) -> 'IntArray1':
-        data = torch.zeros(size, dtype=torch.int32)
-        return IntArray1(data)
+def _to_float_array1(tensor: torch.Tensor) -> _FloatArray1:
+    return _FloatArray1.from_tensor(tensor)
 
 
-class StridedIntArray1(DLPackStridedIntArray1):
-
-    def __init__(self, data: torch.Tensor, check_dtype: bool = True):
-        if check_dtype:
-            assert data.dtype == torch.int32
-        self.data = data
-        super().__init__(to_dlpack(self.data))
-
-    @staticmethod
-    def from_float_tensor(data: torch.Tensor) -> 'StridedIntArray1':
-        assert data.dtype == torch.float
-        return StridedIntArray1(data, False)
+def _to_int32_array1(tensor: torch.Tensor) -> _Int32Array1:
+    return _Int32Array1.from_tensor(tensor)
 
 
-class FloatArray1(DLPackFloatArray1):
-
-    def __init__(self, data: torch.Tensor):
-        assert data.dtype == torch.float
-        self.data = data
-        super().__init__(to_dlpack(self.data))
-
-    @staticmethod
-    def create_array_with_size(size: int) -> 'FloatArray1':
-        data = torch.zeros(size, dtype=torch.float)
-        return FloatArray1(data)
-
-
-class DoubleArray1(DLPackDoubleArray1):
-
-    def __init__(self, data: torch.Tensor):
-        assert data.dtype == torch.double
-        self.data = data
-        super().__init__(to_dlpack(self.data))
-
-    @staticmethod
-    def create_array_with_size(size: int) -> 'DoubleArray1':
-        data = torch.zeros(size, dtype=torch.double)
-        return DoubleArray1(data)
+def _from_tensor(tensor: torch.Tensor) -> Union[_FloatArray1, _Int32Array1]:
+    '''Return an `Array` sharing memory with the passed `torch.Tensor`.
+    '''
+    data: Union[_FloatArray1, _Int32Array1]
+    if tensor.ndim == 1:
+        if tensor.dtype == torch.int32:
+            data = _to_int32_array1(tensor)
+        elif tensor.dtype == torch.float:
+            data = _to_float_array1(tensor)
+        else:
+            # TODO(fangjun): support other data types
+            raise ValueError(f'Unsupported dtype {tensor.dtype}')
+    else:
+        # TODO(fangjun): support Array2
+        raise ValueError(f'Unsupported dimension {tensor.ndim}')
+    return data
 
 
-class IntArray2(DLPackIntArray2):
+class Array(object):
+    '''This class wraps k2::Array1<T> and k2::Array2<T> from C++.
 
-    def __init__(self, indexes: torch.Tensor, data: torch.Tensor):
-        assert indexes.dtype == torch.int32
-        assert data.dtype == torch.int32
-        self.indexes = indexes
-        self.data = data
-        super().__init__(to_dlpack(self.indexes), to_dlpack(self.data))
+    It has only one method `tensor()` which returns a `torch.Tensor`.
+    '''
 
-    @staticmethod
-    def create_array_with_size(array_size: IntArray2Size) -> 'IntArray2':
-        indexes = torch.zeros(array_size.size1 + 1, dtype=torch.int32)
-        data = torch.zeros(array_size.size2, dtype=torch.int32)
-        return IntArray2(indexes, data)
+    def __init__(self, data: Union[torch.Tensor, _FloatArray1, _Int32Array1]):
+        '''Construct an `Array` from a `torch.Tensor` or from one of
+        `k2::Array1<T>` and `k2::Array2<T>`.
+        '''
+        if isinstance(data, torch.Tensor):
+            self.data = _from_tensor(data)
+        elif isinstance(data, (_FloatArray1, _Int32Array1)):
+            self.data = data
+        else:
+            raise ValueError(f'Unsupported type {type(data)}')
 
-
-class LogSumArcDerivs(DLPackLogSumArcDerivs):
-
-    def __init__(self, indexes: torch.Tensor, data: torch.Tensor):
-        assert indexes.dtype == torch.int32
-        assert data.dtype == torch.float32
-        assert data.shape[1] == 2
-        self.indexes = indexes
-        self.data = data
-        super().__init__(to_dlpack(self.indexes), to_dlpack(self.data))
-
-    @staticmethod
-    def create_arc_derivs_with_size(
-            array_size: IntArray2Size) -> 'LogSumArcDerivs':
-        indexes = torch.zeros(array_size.size1 + 1, dtype=torch.int32)
-        data = torch.zeros([array_size.size2, 2], dtype=torch.float32)
-        return LogSumArcDerivs(indexes, data)
+    def tensor(self) -> torch.Tensor:
+        '''Return a `torch.Tensor` sharing memory with the underlying `Array`.
+        '''
+        return self.data.tensor()
