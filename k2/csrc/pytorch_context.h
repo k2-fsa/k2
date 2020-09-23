@@ -55,12 +55,12 @@ class PytorchCpuContext : public Context {
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
     void *p = allocator_->raw_allocate(bytes);
-    if (deleter_context) *deleter_context = nullptr;
+    if (deleter_context != nullptr) *deleter_context = nullptr;
     return p;
   }
 
   void Deallocate(void *data, void *deleter_context) override {
-    if (deleter_context) {
+    if (deleter_context != nullptr) {
       // a non-empty `deleter_context` indicates that
       // the memory is passed from a `torch::Tensor`
       delete reinterpret_cast<ManagedTensor *>(deleter_context);
@@ -109,12 +109,12 @@ class PytorchCudaContext : public Context {
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
     void *p = allocator_->raw_allocate(bytes);
-    if (deleter_context) *deleter_context = nullptr;
+    if (deleter_context != nullptr) *deleter_context = nullptr;
     return p;
   }
 
   void Deallocate(void *data, void *deleter_context) override {
-    if (deleter_context) {
+    if (deleter_context != nullptr) {
       // a non-empty `deleter_context` indicates that
       // the memory is passed from a `torch::Tensor`
       delete reinterpret_cast<ManagedTensor *>(deleter_context);

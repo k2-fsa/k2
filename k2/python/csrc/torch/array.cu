@@ -60,14 +60,14 @@ static void PybindArrayImpl(py::module &m) {
   m.def(
       "get_cuda_float_array1",
       [](int32_t gpu_id = -1) {
-        return Array1<float>(GetCudaContext(), {0, 1, 2, 3});
+        return Array1<float>(GetCudaContext(gpu_id), {0, 1, 2, 3});
       },
       py::arg("gpu_id") = -1);
 
   m.def(
       "get_cuda_int_array1",
       [](int32_t gpu_id = -1) {
-        return Array1<int32_t>(GetCudaContext(), {0, 1, 2, 3});
+        return Array1<int32_t>(GetCudaContext(gpu_id), {0, 1, 2, 3});
       },
       py::arg("gpu_id") = -1);
 }
