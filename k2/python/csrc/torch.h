@@ -1,5 +1,5 @@
 /**
- * @brief python wrappers for PyTorch.
+ * @brief Everything related to PyTorch for k2 Python wrappers.
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
