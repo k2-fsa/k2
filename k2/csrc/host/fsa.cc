@@ -30,7 +30,8 @@ inline std::size_t AlignTo(std::size_t b, std::size_t alignment) {
 namespace k2host {
 
 std::ostream &operator<<(std::ostream &os, const Arc &arc) {
-  os << arc.src_state << " " << arc.dest_state << " " << arc.label;
+  os << arc.src_state << " " << arc.dest_state << " " << arc.label << " "
+     << arc.weight;
   return os;
 }
 

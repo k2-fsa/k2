@@ -14,17 +14,18 @@ import unittest
 import torch
 
 import k2host
+from k2host.fsa_util import float_to_int
 
 
 class TestFsa(unittest.TestCase):
 
     def test_arc(self):
         # construct arc
-        arc = k2host.Arc(1, 2, 3, 0)
+        arc = k2host.Arc(1, 2, 3, 1.5)
         self.assertEqual(arc.src_state, 1)
         self.assertEqual(arc.dest_state, 2)
         self.assertEqual(arc.label, 3)
-        self.assertEqual(arc.weight, 0)
+        self.assertEqual(arc.weight, 1.5)
 
         # test from_tensor
         arc_tensor = torch.tensor([1, 2, 3, 0], dtype=torch.int32)
@@ -42,11 +43,11 @@ class TestFsa(unittest.TestCase):
 
     def test_fsa(self):
         s = r'''
-        0 1 1 1
-        0 2 2 1
-        1 3 3 1
-        2 3 3 1
-        3 4 -1 1
+        0 1 1 1.25
+        0 2 2 1.5
+        1 3 3 1.75
+        2 3 3 2.25
+        3 4 -1 2.5
         4
         '''
 
@@ -59,6 +60,11 @@ class TestFsa(unittest.TestCase):
         self.assertEqual(fsa.get_data(0).src_state, 0)
         self.assertEqual(fsa.get_data(0).dest_state, 1)
         self.assertEqual(fsa.get_data(0).label, 1)
+        self.assertEqual(fsa.get_data(0).weight, 1.25)
+        self.assertEqual(fsa.get_data(1).weight, 1.5)
+        self.assertEqual(fsa.get_data(2).weight, 1.75)
+        self.assertEqual(fsa.get_data(3).weight, 2.25)
+        self.assertEqual(fsa.get_data(4).weight, 2.5)
         # fsa.data and the corresponding k2host::Fsa object are sharing memory
         fsa.data[0] = torch.IntTensor([5, 1, 6, 1])
         self.assertEqual(fsa.get_data(0).src_state, 5)

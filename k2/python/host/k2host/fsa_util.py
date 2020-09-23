@@ -3,11 +3,17 @@
 # See ../../../LICENSE for clarification regarding multiple authors
 
 import re
+import struct
 from collections import defaultdict
 
 import torch
 
 from .fsa import Fsa
+
+
+def float_to_int(f):
+    f = struct.pack('f', f)
+    return int.from_bytes(f, 'little')
 
 
 def str_to_fsa(s: str) -> Fsa:
@@ -28,7 +34,7 @@ def str_to_fsa(s: str) -> Fsa:
         k2.Fsa
     '''
     rule_pattern = re.compile(
-        r'^[ \t]*(\d+)[ \t]+(\d+)[ \t]+([-]?\d+)[ \t]+([-]?\d+)[ \t]*$$')
+        r'^[ \t]*(\d+)[ \t]+(\d+)[ \t]+([-]?\d+)[ \t]+([-]?\d*[.]?\d+)[ \t]*$')
     final_state_pattern = re.compile(r'^[ \t]*(\d+)[ \t]*$')
     rules = s.strip().split('\n')
 
@@ -40,7 +46,8 @@ def str_to_fsa(s: str) -> Fsa:
             src_state = int(m.group(1))
             dest_state = int(m.group(2))
             label = int(m.group(3))
-            weight = int(m.group(4))
+            weight = float(m.group(4))
+            weight = float_to_int(weight)
             state_to_rules[src_state].append(
                 [src_state, dest_state, label, weight])
         else:

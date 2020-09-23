@@ -14,6 +14,7 @@ import unittest
 import torch
 
 import k2host
+from k2host.fsa_util import float_to_int
 
 
 class TestArcSort(unittest.TestCase):
@@ -45,9 +46,12 @@ class TestArcSort(unittest.TestCase):
         arc_map = k2host.IntArray1.create_array_with_size(fsa.size2)
         k2host.arc_sort(fsa, arc_map)
         expected_arc_indexes = torch.IntTensor([0, 3, 5, 6, 6, 6])
-        expected_arcs = torch.IntTensor([[0, 2, 0, 3], [0, 4, 0, 2],
-                                         [0, 1, 2, 1], [1, 3, 0, 5],
-                                         [1, 2, 1, 4], [2, 1, 0, 6]])
+        expected_arcs = torch.IntTensor([[0, 2, 0, float_to_int(3)],
+                                         [0, 4, 0, float_to_int(2)],
+                                         [0, 1, 2, float_to_int(1)],
+                                         [1, 3, 0, float_to_int(5)],
+                                         [1, 2, 1, float_to_int(4)],
+                                         [2, 1, 0, float_to_int(6)]])
         expected_arc_map = torch.IntTensor([2, 1, 0, 4, 3, 5])
         self.assertTrue(torch.equal(fsa.indexes, expected_arc_indexes))
         self.assertTrue(torch.equal(fsa.data, expected_arcs))
@@ -90,9 +94,12 @@ class TestArcSorter(unittest.TestCase):
         arc_map = k2host.IntArray1.create_array_with_size(array_size.size2)
         sorter.get_output(fsa_out, arc_map)
         expected_arc_indexes = torch.IntTensor([0, 3, 5, 6, 6, 6])
-        expected_arcs = torch.IntTensor([[0, 2, 0, 3], [0, 4, 0, 2],
-                                         [0, 1, 2, 1], [1, 3, 0, 5],
-                                         [1, 2, 1, 4], [2, 1, 0, 6]])
+        expected_arcs = torch.IntTensor([[0, 2, 0, float_to_int(3)],
+                                         [0, 4, 0, float_to_int(2)],
+                                         [0, 1, 2, float_to_int(1)],
+                                         [1, 3, 0, float_to_int(5)],
+                                         [1, 2, 1, float_to_int(4)],
+                                         [2, 1, 0, float_to_int(6)]])
         expected_arc_map = torch.IntTensor([2, 1, 0, 4, 3, 5])
         self.assertTrue(torch.equal(fsa_out.indexes, expected_arc_indexes))
         self.assertTrue(torch.equal(fsa_out.data, expected_arcs))

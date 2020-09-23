@@ -18,6 +18,7 @@ class Arc(_Arc):
         super().__init__(src_state, dest_state, label, weight)
 
     def to_tensor(self):
+        # TODO(fangjun): weight will be truncted to an int.
         return torch.tensor(
             [self.src_state, self.dest_state, self.label, self.weight],
             dtype=torch.int32)
