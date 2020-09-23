@@ -20,31 +20,29 @@ class TestWfsa(unittest.TestCase):
 
     def setUp(self):
         s = r'''
-        0 4 1
-        0 1 1
-        1 2 1
-        1 3 1
-        2 7 1
-        3 7 1
-        4 6 1
-        4 8 1
-        5 9 -1
-        6 9 -1
-        7 9 -1
-        8 9 -1
+        0 4 1 1
+        0 1 1 1
+        1 2 1 2
+        1 3 1 3
+        2 7 1 4
+        3 7 1 5
+        4 6 1 2
+        4 8 1 3
+        5 9 -1 4
+        6 9 -1 3
+        7 9 -1 5
+        8 9 -1 6
         9
         '''
         self.fsa = k2host.str_to_fsa(s)
         self.num_states = self.fsa.num_states()
-        weights = torch.FloatTensor([1, 1, 2, 3, 4, 5, 2, 3, 4, 3, 5, 6])
-        self.weights = k2host.FloatArray1(weights)
 
     def test_max_weight(self):
         forward_max_weights = k2host.DoubleArray1.create_array_with_size(
             self.num_states)
         backward_max_weights = k2host.DoubleArray1.create_array_with_size(
             self.num_states)
-        wfsa = k2host.WfsaWithFbWeights(self.fsa, self.weights,
+        wfsa = k2host.WfsaWithFbWeights(self.fsa,
                                         k2host.FbWeightType.kMaxWeight,
                                         forward_max_weights,
                                         backward_max_weights)
@@ -67,7 +65,7 @@ class TestWfsa(unittest.TestCase):
             self.num_states)
         backward_logsum_weights = k2host.DoubleArray1.create_array_with_size(
             self.num_states)
-        wfsa = k2host.WfsaWithFbWeights(self.fsa, self.weights,
+        wfsa = k2host.WfsaWithFbWeights(self.fsa,
                                         k2host.FbWeightType.kLogSumWeight,
                                         forward_logsum_weights,
                                         backward_logsum_weights)
