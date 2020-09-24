@@ -1,46 +1,75 @@
+#include "k2/csrc/pytorch_context.h"
+#include "k2/csrc/ragged.h"
 #include "moderngpu/kernel_segsort.hxx"
 
-#include "k2/csrc/ragged.h"
-#include "k2/csrc/pytorch_context.h"
+namespace k2 {
+
+// NOTE that src is sorted in-place.
+template <typename T, typename Op = LessThan<T>>
+void SortSublists2(Ragged<T> &src, Array1<int32_t> *order) {
+  Array1<int32_t> &segment = src.shape.RowSplits(src.NumAxes() - 1);
+  K2_CHECK_EQ(src.values.Dim(), order->Dim());
+  // also check src and order are on the same device.
+
+  // TODO(fangjun): create a ModernGPUContext.
+  mgpu::standard_context_t context;
+
+  Array1<T> saved = src.values.To(GetCpuContext());
+
+  mgpu::segmented_sort_indices(src.values.Data(), order->Data(),
+                               src.values.Dim(), segment.Data() + 1,
+                               segment.Dim() - 2, Op(), context);
+
+  std::cout << segment;
+  std::cout << "\n" << *order << "\n";
+  std::cout << "\n" << saved << "\n";
+  std::cout << "\n" << src.values << "\n";
+  for (int i = 0; i < order->Dim(); ++i) {
+    std::cout << saved[(*order)[i]] << ", ";
+  }
+  std::cout << "\n";
+}
+
+}  // namespace k2
 
 int main() {
   using T = float;
   using namespace k2;
-    // constructed with row_splits and row_ids
-    // RaggedTensor4 t = [
-    //  [ [[ 1, 2], [4]],  [[3, 0]] ],
-    //  [ [[7, 8, 9]], [[6], [3, 5, 7]], [[2]] ],
-    //  [ [[3, 4], [], [8]] ]
-    // ]
-    const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
-    const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
-    const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
-    const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
-    const std::vector<int32_t> row_splits3 = {0,  2,  3,  5,  8, 9,
-                                              12, 13, 15, 15, 16};
-    const std::vector<int32_t> row_ids3 = {0, 0, 1, 2, 2, 3, 3, 3,
-                                           4, 5, 5, 5, 6, 7, 7, 9};
-    const std::vector<T> values_vec = {1, 2, 4, 3, 0, 7, 8, 9,
-                                       6, 3, 5, 7, 2, 3, 4, 8};
-    ContextPtr context = GetCudaContext();  // will use to copy data
-    std::vector<RaggedShapeDim> axes;
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
-                                     Array1<int32_t>(context, row_ids1),
-                                     static_cast<int32_t>(row_ids1.size())});
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
-                                     Array1<int32_t>(context, row_ids2),
-                                     static_cast<int32_t>(row_ids2.size())});
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
-                                     Array1<int32_t>(context, row_ids3),
-                                     static_cast<int32_t>(row_ids3.size())});
+  // constructed with row_splits and row_ids
+  // RaggedTensor4 t = [
+  //  [ [[ 2, 1], [4]],  [[3, 0]] ],
+  //  [ [[9, 7, 8]], [[6], [3, 5, 7]], [[2]] ],
+  //  [ [[3, 4], [], [8]] ]
+  // ]
+  const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+  const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
+  const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+  const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
+  const std::vector<int32_t> row_splits3 = {0,  2,  3,  5,  8, 9,
+                                            12, 13, 15, 15, 16};
+  const std::vector<int32_t> row_ids3 = {0, 0, 1, 2, 2, 3, 3, 3,
+                                         4, 5, 5, 5, 6, 7, 7, 9};
+  const std::vector<T> values_vec = {2, 1, 4, 3, 0, 9, 7, 8,
+                                     6, 3, 5, 7, 2, 3, 4, 8};
+  ContextPtr context = GetCudaContext();  // will use to copy data
+  std::vector<RaggedShapeDim> axes;
+  axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
+                                   Array1<int32_t>(context, row_ids1),
+                                   static_cast<int32_t>(row_ids1.size())});
+  axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
+                                   Array1<int32_t>(context, row_ids2),
+                                   static_cast<int32_t>(row_ids2.size())});
+  axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
+                                   Array1<int32_t>(context, row_ids3),
+                                   static_cast<int32_t>(row_ids3.size())});
 
-    RaggedShape shape(axes, true);
-    Array1<T> values(context, values_vec);
-    Ragged<T> ragged(shape, values);
-    // std::cout << ragged;
-
+  RaggedShape shape(axes, true);
+  Array1<T> values(context, values_vec);
+  Ragged<T> ragged(shape, values);
+  std::cout << ragged.values;
+  Array1<int32_t> order(ragged.Context(), ragged.values.Dim());
+  SortSublists2(ragged, &order);
 }
-
 
 #if 0
 using namespace mgpu;
