@@ -54,10 +54,10 @@ void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest) {
   }
 }
 template <typename T>
-T MaxValue(ContextPtr &c, int32_t nelems, T *t) {
+T MaxValue(ContextPtr &c, int32_t nelems, const T *t) {
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
-    // not the return value is initialized with T(0)
+    // note the return value is initialized with T(0)
     T result = T(0);
     for (int32_t i = 0; i < nelems; ++i) {
       if (result < t[i]) result = t[i];
