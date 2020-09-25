@@ -274,6 +274,14 @@ __global__ void RowIdsToRowSplitsKernel(int32_t num_elems,
 void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
                        bool no_empty_rows, int32_t num_rows,
                        int32_t *row_splits) {
+  // process corner case first
+  if (num_elems == 0) {
+    auto lambda_set_values = [=] __host__ __device__(int32_t i) {
+      row_splits[i] = 0;
+    };
+    Eval(c, num_rows + 1, lambda_set_values);
+    return;
+  }
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     int32_t cur_row = -1;
@@ -285,17 +293,13 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
         row_splits[cur_row] = i;
       }
     }
-    row_splits[num_rows] = num_elems;
+    // cur_row  must be >= 0 here as num_elems > 0
+    K2_CHECK_GE(cur_row, 0);
+    while (cur_row < num_rows) {
+      row_splits[++cur_row] = num_elems;
+    }
   } else {
     K2_CHECK_EQ(d, kCuda);
-    // process corner case first
-    if (num_elems == 0) {
-      auto lambda_set_values = [=] __host__ __device__(int32_t i) {
-        row_splits[i] = 0;
-      };
-      Eval(c, num_rows + 1, lambda_set_values);
-      return;
-    }
     if (no_empty_rows) {
       auto lambda_simple = [=] __host__ __device__(int32_t i) {
         int32_t this_row = row_ids[i], prev_row;

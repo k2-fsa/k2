@@ -21,14 +21,17 @@
 #error "this file is supposed to be included only by array_ops.h"
 #endif
 
+#include <algorithm>
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/utils.h"
 
 namespace k2 {
+namespace internal {
 // Will be used in ExclusiveSumDeref to call ExclusiveSum (which calls
 // cub::DeviceScan::ExclusiveSum internally).
 template <typename T>
@@ -36,7 +39,6 @@ struct PtrPtr {
   T **data;
 
   explicit PtrPtr(T **data) : data(data) {}
-  PtrPtr(const PtrPtr &src) = default;
 
   // operator[] and operator+ are required by cub::DeviceScan::ExclusiveSum
   __host__ __device__ T operator[](int32_t i) { return *(data[i]); }
@@ -46,17 +48,165 @@ struct PtrPtr {
     return tmp;
   }
 };
+
+// TODO(haowen): manage/load block config with some classes? then we can get
+// different configuration depending on num_elements and data type.
+// block size for matrix transpose.
+static constexpr int32_t kTransTileDim = 32;
+static constexpr int32_t kTransBlockRows = 8;
+
+template <typename T>
+__global__ void TransposeKernel(int32_t rows, int32_t cols,
+                                int32_t input_elem_stride0,
+                                int32_t output_elem_stride0, const T *input,
+                                T *output) {
+  // TODO(haowen): here we need to handle different type of T to avoid bank
+  // conflicts, the size of cache now is fine for type size with 32bit (e.g.
+  // int32_t or float).
+  __shared__ T cache[kTransTileDim][kTransTileDim + 1];
+
+  // input index, in a coalesced manner.
+  int32_t x = threadIdx.x + blockIdx.x * kTransTileDim;
+  int32_t y = threadIdx.y + blockIdx.y * kTransTileDim;
+
+  for (int32_t i = 0; i < kTransTileDim; i += kTransBlockRows) {
+    if (x < cols && (y + i) < rows) {
+      cache[threadIdx.y + i][threadIdx.x] =
+          input[(y + i) * input_elem_stride0 + x];
+    }
+  }
+
+  __syncthreads();
+
+  // output index, in a coalesced manner
+  x = threadIdx.x + blockIdx.y * kTransTileDim;
+  y = threadIdx.y + blockIdx.x * kTransTileDim;
+  for (int32_t i = 0; i < kTransTileDim; i += kTransBlockRows) {
+    if (x < rows && (y + i) < cols) {
+      output[(y + i) * output_elem_stride0 + x] =
+          cache[threadIdx.x][threadIdx.y + i];
+    }
+  }
+}
+
+// will be called in ExclusiveSum(Array2 &src, Array2 *dest, int32_t axis)
+// to compute exclusive sum for each row
+template <typename T>
+void ExclusiveSumPerRow(const Array2<T> &src, Array2<T> *dest) {
+  int32_t rows = dest->Dim0();
+  // note there may be dest->Dim1() == src.Dim1() + 1
+  int32_t cols = dest->Dim1();
+  ContextPtr ctx = src.Context();
+  ConstArray2Accessor<T> src_acc = src.Accessor();
+  Array2Accessor<T> dest_acc = dest->Accessor();
+  // TODO(haowen): parallelized it in case dest_minor_dim is large
+  for (int32_t i = 0; i != rows; ++i) {
+    ExclusiveSum(ctx, cols, src_acc.Row(i), dest_acc.Row(i));
+  }
+}
+
+}  // namespace internal
 }  // namespace k2
 
 namespace std {
 // vaule_type is required by cub::DeviceScan::ExclusiveSum
 template <typename T>
-struct iterator_traits<k2::PtrPtr<T>> {
+struct iterator_traits<k2::internal::PtrPtr<T>> {
   typedef T value_type;
 };
 }  // namespace std
 
 namespace k2 {
+template <typename T>
+void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
+  K2_CHECK(c->IsCompatible(*src.Context()));
+  K2_CHECK(c->IsCompatible(*dest->Context()));
+  int32_t rows = src.Dim0();
+  int32_t cols = src.Dim1();
+  // TODO(haowen): limit the number of elements?
+  K2_CHECK_EQ(rows, dest->Dim1());
+  K2_CHECK_EQ(cols, dest->Dim0());
+  int32_t src_elem_stride0 = src.ElemStride0();
+  int32_t dest_elem_stride0 = dest->ElemStride0();
+  const T *src_data = src.Data();
+  T *dest_data = dest->Data();
+  DeviceType d = c->GetDeviceType();
+  if (d == kCpu) {
+    for (int32_t i = 0; i < cols; ++i) {
+      for (int32_t j = 0; j < rows; ++j) {
+        dest_data[i * dest_elem_stride0 + j] =
+            src_data[j * src_elem_stride0 + i];
+      }
+    }
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    dim3 block_size(internal::kTransTileDim, internal::kTransBlockRows, 1);
+    dim3 grid_size(NumBlocks(cols, internal::kTransTileDim),
+                   NumBlocks(rows, internal::kTransTileDim));
+    internal::TransposeKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
+        rows, cols, src_elem_stride0, dest_elem_stride0, src_data, dest_data);
+    auto ret = cudaDeviceSynchronize();
+    K2_CHECK_CUDA_ERROR(ret);
+  }
+}
+
+template <typename T>
+void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
+  K2_CHECK(IsCompatible(src, *dest));
+  int32_t src_dim = src.Dim();
+  int32_t dest_dim = dest->Dim();
+  K2_CHECK(dest_dim == src_dim || dest_dim == src_dim + 1);
+  if (dest_dim == src_dim + 1) {
+    const RegionPtr &region = src.GetRegion();
+    int32_t byte_offset = src.ByteOffset();
+    K2_CHECK_GE(region->num_bytes - byte_offset, dest_dim * src.ElementSize());
+  }
+  internal::PtrPtr<T> src_data = internal::PtrPtr<T>(src.Data());
+  ExclusiveSum(src.Context(), dest_dim, src_data, dest->Data());
+}
+
+template <typename T>
+void ExclusiveSum(Array2<T> &src, Array2<T> *dest, int32_t axis) {
+  K2_CHECK(axis == 0 || axis == 1);
+  K2_CHECK(IsCompatible(src, *dest));
+  int32_t src_major_dim = src.Dim0();  // the axis will be summed
+  int32_t src_minor_dim = src.Dim1();
+  int32_t dest_major_dim = dest->Dim0();
+  int32_t dest_minor_dim = dest->Dim1();
+  if (axis == 1) {
+    std::swap(src_major_dim, src_minor_dim);
+    std::swap(dest_major_dim, dest_minor_dim);
+  }
+  K2_CHECK_EQ(dest_minor_dim, src_minor_dim);
+  K2_CHECK(dest_major_dim == src_major_dim ||
+           dest_major_dim == src_major_dim + 1);
+  if (dest_major_dim == src_major_dim + 1) {
+    const RegionPtr &region = src.GetRegion();
+    int32_t byte_offset = src.ByteOffset();
+    K2_CHECK_GE(region->num_bytes - byte_offset,
+                (src_major_dim * src_minor_dim + 1) * src.ElementSize());
+  }
+
+  if (axis == 1) {
+    internal::ExclusiveSumPerRow(src, dest);
+  } else {
+    ContextPtr ctx = src.Context();
+    int32_t elem_size = src.ElementSize();
+    // note here we always allocate an extra element for src_trans
+    RegionPtr src_trans_region =
+        NewRegion(ctx, (src_major_dim * src_minor_dim + 1) * elem_size);
+    Array2<T> src_trans(src_minor_dim, src_major_dim, src_major_dim, 0,
+                        src_trans_region);
+    Transpose(ctx, src, &src_trans);
+
+    RegionPtr dest_trans_region =
+        NewRegion(ctx, dest_major_dim * dest_minor_dim * elem_size);
+    Array2<T> dest_trans(dest_minor_dim, dest_major_dim, dest_major_dim, 0,
+                         dest_trans_region);
+    internal::ExclusiveSumPerRow(src_trans, &dest_trans);
+    Transpose(ctx, dest_trans, dest);
+  }
+}
 
 // CAUTION: if you fix bugs in this code, please also fix the same bugs in
 // Splice() in array_ops.cu, since it was modified from this code.
@@ -172,30 +322,14 @@ Array1<T> Append(int32_t src_size, Array1<T> *src) {
 }
 
 template <typename T>
-void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
-  K2_CHECK(src.Context()->IsCompatible(*dest->Context()));
-
-  int32_t src_dim = src.Dim(), dest_dim = dest->Dim();
-  assert(dest_dim == src_dim || dest_dim == src_dim + 1);
-
-  PtrPtr<T> src_data = PtrPtr<T>(src.Data());
-  T *dest_data = dest->Data();
-
-  // use the ExclusiveSum() template for pointer-like objects that is declared
-  // in utils.h
-  ExclusiveSum(src.Context(), dest_dim, src_data, dest_data);
-}
-
-template <typename T>
 void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
   K2_CHECK_EQ(src.NumAxes(), 2);
   K2_CHECK_EQ(src.shape.Dim0(), max_values->Dim());
   K2_CHECK(IsCompatible(src.shape, *max_values));
 
   ContextPtr c = src.Context();
-
-  const int32_t *row_splits = src.shape.RowSplits(1).Data();
   int32_t num_rows = src.shape.Dim0();
+  const int32_t *row_splits = src.shape.RowSplits(1).Data();
   const T *values_data = src.values.Data();
   T *output_data = max_values->Data();
 
@@ -216,18 +350,19 @@ void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
     // This code is based on the example here:
     // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
     MaxOp<T> max_op;
-    void *temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
+    void *d_temp_storage = NULL;
+    std::size_t temp_storage_bytes = 0;
 
-    // The first time it just sets `temp_storage_bytes`.
-    // TODO(haowen): uncomment below lines
+    // the first time is to determine temporary device storage requirements
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
-        temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
-        row_splits, row_splits + 1, max_op, default_value));
-    K2_CUDA_SAFE_CALL(cudaMalloc(&temp_storage, temp_storage_bytes));
+        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
+        row_splits, row_splits + 1, max_op, default_value, c->GetCudaStream()));
+    void *deleter_context;
+    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
-        temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
-        row_splits, row_splits + 1, max_op, default_value));
+        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
+        row_splits, row_splits + 1, max_op, default_value, c->GetCudaStream()));
+    c->Deallocate(d_temp_storage, deleter_context);
   }
 }
 

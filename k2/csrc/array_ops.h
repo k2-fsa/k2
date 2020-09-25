@@ -21,49 +21,12 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/ragged.h"
+#include "k2/csrc/utils.h"
 
 // Note, I'm not sure about the name of this file, they are not ops like in
 // TensorFlow, but procedures..
 
-// TODO(haowen): manage/load block config with some classes? then we can get
-// different configuration depending on num_elements and data type.
-// block size for matrix transpose.
-static constexpr int32_t kTransTileDim = 32;
-static constexpr int32_t kTransBlockRows = 8;
-
 namespace k2 {
-// TODO(haowen): move the implementations to file `op_inl.h` or
-// `op.cu`(specialized on device and data type)?
-template <typename T>
-__global__ void TransposeKernel(int32_t rows, int32_t cols, const T *input,
-                                T *output) {
-  // TODO(haowen): here we need to handle different type of T to avoid bank
-  // conflicts, the size of cache now is fine for type size with 32bit (e.g.
-  // int32_t or float).
-  __shared__ T cache[kTransTileDim][kTransTileDim + 1];
-
-  // input index, in a coalesced manner.
-  int32_t x = threadIdx.x + blockIdx.x * kTransTileDim;
-  int32_t y = threadIdx.y + blockIdx.y * kTransTileDim;
-
-  for (int32_t i = 0; i < kTransTileDim; i += kTransBlockRows) {
-    if (x < cols && (y + i) < rows) {
-      cache[threadIdx.y + i][threadIdx.x] = input[(y + i) * cols + x];
-    }
-  }
-
-  __syncthreads();
-
-  // output index, in a coalesced manner
-  x = threadIdx.x + blockIdx.y * kTransTileDim;
-  y = threadIdx.y + blockIdx.x * kTransTileDim;
-  for (int32_t i = 0; i < kTransTileDim; i += kTransBlockRows) {
-    if (x < rows && (y + i) < cols) {
-      output[(y + i) * rows + x] = cache[threadIdx.x][threadIdx.y + i];
-    }
-  }
-}
-
 /*
   Transpose a matrix.  Require src.Size0() == dest.Size1() and src.Size1() ==
   dest.Size0().  This is not the only way to transpose a matrix, you can also
@@ -75,63 +38,43 @@ __global__ void TransposeKernel(int32_t rows, int32_t cols, const T *input,
                      `c.IsCompatible(dest->Context())`.
      @param [in] src  Source array to transpose
      @param [out] dest  Destination array; must satisfy
-                        `dest->Size1() == src.Size0()` and
-                        `dest->Size0() == src.Size1()`.
+                        `dest->Dim1() == src.Dim0()` and
+                        `dest->Dim0() == src.Dim1()`.
                         At exit, we'll have dest[i,j] == src[j,i].
 */
 template <typename T>
-void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
-  assert(c->IsCompatible(*src.Context()));
-  assert(c->IsCompatible(*dest->Context()));
-  int32_t rows = src.Dim0();
-  int32_t cols = src.Dim1();
-  // TODO(haowen): limit the number of elements?
-  assert(rows == dest->Dim1());
-  assert(cols == dest->Dim0());
-  const T *src_data = src.Data();
-  T *dest_data = dest->Data();
-  DeviceType d = c->GetDeviceType();
-  using SumType = typename std::decay<decltype(dest[0])>::type;
-  if (d == kCpu) {
-    for (int32_t i = 0; i < cols; ++i) {
-      for (int32_t j = 0; j < rows; ++j) {
-        dest_data[i * rows + j] = src_data[j * cols + i];
-      }
-    }
-  } else {
-    assert(d == kCuda);
-    dim3 block_size(kTransTileDim, kTransBlockRows, 1);
-    dim3 grid_size(NumBlocks(cols, kTransTileDim),
-                   NumBlocks(rows, kTransTileDim));
-    TransposeKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
-        rows, cols, src_data, dest_data);
-    auto ret = cudaDeviceSynchronize();
-    K2_CHECK_CUDA_ERROR(ret);
-  }
-}
+void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest);
 
 /*
   Sets 'dest' to exclusive prefix sum of 'src'.
     @param [in] src    Source data, to be summed.
     @param [out] dest  Destination data (possibly &src).  Must satisfy
-                       dest.Size() == src.Size() or dest.Size() == src.Size() +
-  1,
-                       but in the latter case
-                       we require that the memory region inside src be allocated
-                       with at least one extra element, because the
-                       exclusive-sum code may read from it even though it
-                       doesn't affect the result.
+                       dest.Dim() == src.Dim() or
+                       dest.Dim() == src.Dim() + 1,
+                       but in the latter case we require that the memory
+                       region inside src be allocated with at least one extra
+                       element, because the exclusive-sum code may read from
+                       it even though it doesn't affect the result.
 
                        At exit, will satisfy dest[i] == sum_{j=0}^{i-1} src[j].
                        Must be on same device as src.
  */
 template <typename S, typename T>
 void ExclusiveSum(Array1<S> &src, Array1<T> *dest) {
-  // TODO(haowen): implement
+  K2_CHECK(IsCompatible(src, *dest));
+  int32_t src_dim = src.Dim();
+  int32_t dest_dim = dest->Dim();
+  K2_CHECK(dest_dim == src_dim || dest_dim == src_dim + 1);
+  if (dest_dim == src_dim + 1) {
+    const RegionPtr &region = src.GetRegion();
+    int32_t byte_offset = src.ByteOffset();
+    K2_CHECK_GE(region->num_bytes - byte_offset, dest_dim * src.ElementSize());
+  }
+  ExclusiveSum(src.Context(), dest_dim, src.Data(), dest->Data());
 }
 
 /*  wrapper for the ExclusiveSum above.  Will satisfy
-     ans[i] = sum_{k=0}^{i-1} src[i].
+     ans[i] = sum_{j=0}^{i-1} src[j].
  */
 template <typename T>
 Array1<T> ExclusiveSum(Array1<T> &src) {
@@ -141,15 +84,16 @@ Array1<T> ExclusiveSum(Array1<T> &src) {
 }
 
 /*
-  Sets 'dest' to exclusive prefix sum of the result of dereferinging the
+  Sets 'dest' to exclusive prefix sum of the result of dereferencing the
   elements of 'src'.
     @param [in] src    Source data, to be dereferenced and then summed.
-    @param [out] dest  Destination data.  Must satisfy dest.Size() == src.Size()
-                       or dest.Size() == src.Size() + 1, but in the latter case
+    @param [out] dest  Destination data.  Must satisfy dest.Dim() == src.Dim()
+                       or dest.Dim() == src.Dim() + 1, but in the latter case
                        we require that the memory region inside src be allocated
-                       with at least one extra element, because the
-                       exclusive-sum code may read from it even though it
-                       doesn't affect the result.
+                       with at least one extra element. The extra element
+                       (its value type is T*) should be assigned with a valid
+                       address, because the exclusive-sum code may dereference
+                       it even though it doesn't affect the result.
 
                        At exit, will satisfy dest[i] == sum_{j=0}^{i-1} src[j].
                        Must be on same device as src.
@@ -163,19 +107,23 @@ void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest);
     @param [out] dest  Destination data; allowed to be the same as src.
                        For axis==1, for example, at exit it will satisfy
                        dest[i][j] == sum_{k=0}^{j-1} src[i][k].
-                       Must have the same size on the other axis; on the axis
-                       being summed, must be either the same size as src,
-                       or one greater. as src.
+                       On the axis being summed, must be either the same size
+                       as src, or one greater than src (in such case, the
+                       memory region inside src must be allocated with at least
+                       one extra element as exclusive-sum may read from it even
+                       though it doesn't affect the result);
+                       Must have the same size with src on the other axis.
     @param [in] axis   Determines in what direction we sum, e.g. axis = 0 means
                        summation is over row axis (slower because we have to
                        transpose), axis = 1 means summation is over column axis.
  */
 template <typename T>
-void ExclusiveSum(ContextPtr &c, Array2<T> &src, Array2<T> *dest, int32_t axis);
+void ExclusiveSum(Array2<T> &src, Array2<T> *dest, int32_t axis);
 
+//  wrapper for the ExclusiveSum above with axis = 1
 template <typename T>
 void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
-  // TODO(haowen): implement it
+  ExclusiveSum(src, dest, 1);
 }
 
 /*
@@ -229,7 +177,8 @@ Array1<int32_t> Splice(int32_t src_size, const Array1<int32_t> **src);
                                 so max is taken over this and the elements
                                 of sub-lists in `src`.
      @param [out] max_values    Array to which the maximum values will be
-                                written. Must satisfy max_values->Dim() == src.
+                                written. Must satisfy
+                                max_values->Dim() == src.Dim0().
  */
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values);
