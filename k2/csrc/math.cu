@@ -32,17 +32,18 @@ int32_t HighestBitSet(int32_t i) {
 // returns random int32_t from [min..max]
 int32_t RandInt(int32_t min, int32_t max) {
   K2_CHECK_GE(max, min);
-  return (min + (rand() % (max + 1 - min)));  // NOLINT
+  // declare as static intentionally here to make it constructed only once and
+  // retain its state between calls
+  static RandIntGenerator geneartor;
+  return geneartor(min, max);
 }
 
 // Returns random ints from a distribution that gives more weight to lower
 // values.  I'm not implying this is a geometric distribution.  Anyway
 // we aren't relying on any exact properties.
 int32_t RandIntGeometric(int32_t min, int32_t max) {
-  int32_t shift = min == 0 ? 0 : RandInt(0, HighestBitSet(max / min));
-  max >>= shift;
-  if (max < min) max = min;
-  return RandInt(min, max);
+  static RandIntGeometricGenerator geneartor;
+  return geneartor(min, max);
 }
 
 }  // namespace k2
