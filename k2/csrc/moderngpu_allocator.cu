@@ -1,5 +1,5 @@
 /**
- * @brief A context for moderngpu with a better memory allocator.
+ * @brief A better memory allocator for moderngpu.
  *
  *
  * @copyright
@@ -12,14 +12,14 @@
 #include <utility>
 
 #include "k2/csrc/context.h"
-#include "k2/csrc/moderngpu_context.h"
+#include "k2/csrc/moderngpu_allocator.h"
 #include "moderngpu/context.hxx"
 
 namespace {
 
-class ModernGpuContext : public mgpu::standard_context_t {
+class ModernGpuAllocator : public mgpu::standard_context_t {
  public:
-  explicit ModernGpuContext(k2::ContextPtr context)
+  explicit ModernGpuAllocator(k2::ContextPtr context)
       : mgpu::standard_context_t(false, context->GetCudaStream()),
         context_(std::move(context)) {}
 
@@ -44,9 +44,9 @@ class ModernGpuContext : public mgpu::standard_context_t {
 
 namespace k2 {
 
-std::unique_ptr<mgpu::context_t> GetModernGpuContext(
+std::unique_ptr<mgpu::context_t> GetModernGpuAllocator(
     int32_t device_id /*= -1*/) {
-  return std::make_unique<ModernGpuContext>(GetCudaContext(device_id));
+  return std::make_unique<ModernGpuAllocator>(GetCudaContext(device_id));
 }
 
 }  // namespace k2

@@ -19,7 +19,7 @@
 #include <memory>
 #include <vector>
 
-#include "k2/csrc/moderngpu_context.h"
+#include "k2/csrc/moderngpu_allocator.h"
 #include "moderngpu/kernel_segsort.hxx"
 
 namespace k2 {
@@ -108,7 +108,7 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
       << "It supports only CUDA at present";
 
   std::unique_ptr<mgpu::context_t> context =
-      GetModernGpuContext(src->Context()->GetDeviceId());
+      GetModernGpuAllocator(src->Context()->GetDeviceId());
 
   Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
   mgpu::segmented_sort_indices(src->values.Data(),  // keys

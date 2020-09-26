@@ -15,7 +15,7 @@ set(context_srcs
   fsa.cu
   fsa_algo.cu
   math.cu
-  moderngpu_context.cu
+  moderngpu_allocator.cu
   ragged.cu
   tensor.cu
   tensor_ops.cu
