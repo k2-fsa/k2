@@ -20,8 +20,7 @@
 namespace k2 {
 // Return a context for moderngpu that has a better memory allocator
 // than mgpu::standard_context_t
-std::unique_ptr<mgpu::context_t> GetModernGpuContext(DeviceType type,
-                                                     int32_t device_id = -1);
+std::unique_ptr<mgpu::context_t> GetModernGpuContext(int32_t device_id = -1);
 
 }  // namespace k2
 

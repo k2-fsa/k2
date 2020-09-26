@@ -21,14 +21,16 @@ class ModernGpuContext : public mgpu::standard_context_t {
       : mgpu::standard_context_t(false, context->GetCudaStream()),
         context_(std::move(context)) {}
 
-  void *alloc(size_t size, mgpu::memory_space_t /*space*/) override {
+  void *alloc(size_t size, mgpu::memory_space_t space) override {
+    K2_DECHECK_EQ(space, mgpu::memory_space_device);
     void *deleter_ = nullptr;
     void *p = context_->Allocate(size, &deleter_);
     K2_DCHECK(deleter_ == nullptr);
     return p;
   }
 
-  void free(void *p, mgpu::memory_space_t /*space*/) override {
+  void free(void *p, mgpu::memory_space_t space) override {
+    K2_DECHECK_EQ(space, mgpu::memory_space_device);
     context_->Deallocate(p, nullptr);
   }
 
@@ -41,16 +43,8 @@ class ModernGpuContext : public mgpu::standard_context_t {
 namespace k2 {
 
 std::unique_ptr<mgpu::context_t> GetModernGpuContext(
-    DeviceType type, int32_t device_id /*= -1*/) {
-  ContextPtr context;
-  if (type == kCuda)
-    context = GetCudaContext(device_id);
-  else if (type == kCpu)
-    context = GetCpuContext();
-  else
-    K2_LOG(FATAL) << "Unknown device type: " << type;
-
-  return std::make_unique<ModernGpuContext>(context);
+    int32_t device_id /*= -1*/) {
+  return std::make_unique<ModernGpuContext>(GetCudaContext(device_id));
 }
 
 }  // namespace k2

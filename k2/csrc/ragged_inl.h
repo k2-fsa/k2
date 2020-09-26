@@ -106,8 +106,8 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
   K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda)
       << "It supports only CUDA at present";
 
-  std::unique_ptr<mgpu::context_t> context = GetModernGpuContext(
-      src->Context()->GetDeviceType(), src->Context()->GetDeviceId());
+  std::unique_ptr<mgpu::context_t> context =
+      GetModernGpuContext(src->Context()->GetDeviceId());
 
   Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
   mgpu::segmented_sort_indices(src->values.Data(),  // keys
