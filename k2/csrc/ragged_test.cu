@@ -4,7 +4,8 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-                                                     Haowen Qiu)
+ *                                                   Haowen Qiu)
+ *                      Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -249,11 +250,64 @@ void TestRagged() {
     }
   }
 }
+
+template <typename T, typename OP = LessThan<T>>
+static void CpuSortSublists(const Array1<int32_t> &row_splits, Array1<T> *src) {
+  K2_CHECK(src->Context()->GetDeviceType() == kCpu);
+  T *p = src->Data();
+  OP comp = OP();
+  for (int32_t i = 0; i < row_splits.Dim() - 1; ++i) {
+    int32_t cur = row_splits[i];
+    int32_t next = row_splits[i + 1];
+    std::sort(p + cur, p + next, comp);
+  }
+}
+
+template <typename T, typename OP = LessThan<T>>
+static void TestSortSublists() {
+  auto cpu_context = GetCpuContext();
+  auto cuda_context = GetCudaContext();
+
+  RaggedShape shape = RandomRaggedShape(false,  // set_row_ids = false,
+                                        2,      // min_num_axes = 2,
+                                        8,      // max_num_axes = 4,
+                                        10,     // min_num_elements = 0,
+                                        80);    // max_num_elements = 2000);
+
+  Array1<T> values =
+      RandUniformArray1<T>(shape.Context(), shape.NumElements(), 0, 10);
+  Ragged<T> ragged(shape, values);
+  ragged = ragged.To(cuda_context);
+  values = values.To(cpu_context);
+
+  // TODO(fangjun): add a `Clone` method to Array1<T>
+  Array1<T> saved = values.To(cuda_context).To(cpu_context);
+
+  Array1<int32_t> &segment = ragged.shape.RowSplits(ragged.NumAxes() - 1);
+  std::cout << "segment: " << segment << "\n";
+  std::cout << "unsorted: " << ragged.values << "\n";
+
+  Array1<int32_t> order(ragged.Context(), ragged.values.Dim());
+  SortSublists<T, OP>(&ragged, &order);
+  CpuSortSublists<T, OP>(segment, &values);
+
+  std::cout << "\n order " << order << "\n";
+  std::cout << "\n saved: " << saved << "\n";
+  std::cout << "\n cpu sorted: " << values << "\n";
+  std::cout << "\n ragged sorted: " << ragged.values << "\n";
+  for (int i = 0; i < order.Dim(); ++i) {
+    EXPECT_EQ(values[i], ragged.values[i]);
+    EXPECT_EQ(values[i], saved[order[i]]);
+  }
+}
+
 TEST(RaggedTest, Ragged) {
   TestRagged<int32_t, kCuda>();
   TestRagged<int32_t, kCpu>();
   TestRagged<double, kCuda>();
   TestRagged<double, kCpu>();
+
+  TestSortSublists<int32_t>();
 }
 
 // TODO(Haowen): add more tests for other algorithms
