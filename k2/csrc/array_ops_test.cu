@@ -649,5 +649,142 @@ TEST(OpsTest, MaxPerSubListTest) {
   TestMaxPerSubListTest<int32_t, kCpu>();
   TestMaxPerSubListTest<int32_t, kCuda>();
 }
+template <typename T, DeviceType d>
+void TestAppend() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // a case with small size
+    std::vector<T> data1 = {3, 1, 2};
+    std::vector<T> data2 = {5, 6, 7, 8};
+    std::vector<T> data3 = {};  // empty
+    std::vector<T> data4 = {9};
+    std::vector<T> expected_data = {3, 1, 2, 5, 6, 7, 8, 9};
+
+    Array1<T> array1(context, data1);
+    Array1<T> array2(context, data2);
+    Array1<T> array3(context, data3);
+    Array1<T> array4(context, data4);
+
+    {
+      // test Append(int32_t, Array1<T>**)
+      std::vector<const Array1<T> *> arrays = {&array1, &array2, &array3,
+                                               &array4};
+      const Array1<T> **src = arrays.data();
+      Array1<T> dst = Append(4, src);
+      EXPECT_EQ(dst.Dim(), 8);
+      // copy memory from GPU/CPU to CPU
+      std::vector<T> cpu_data(dst.Dim());
+      auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
+      MemoryCopy(static_cast<void *>(cpu_data.data()),
+                 static_cast<const void *>(dst.Data()),
+                 dst.Dim() * dst.ElementSize(), kind);
+      EXPECT_EQ(cpu_data, expected_data);
+    }
+
+    {
+      // test Append(int32_t, Array1<T>*)
+      std::vector<Array1<T>> arrays = {array1, array2, array3, array4};
+      const Array1<T> *src = arrays.data();
+      Array1<T> dst = Append(4, src);
+      EXPECT_EQ(dst.Dim(), 8);
+
+      // copy memory from GPU/CPU to CPU
+      std::vector<T> cpu_data(dst.Dim());
+      auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
+      MemoryCopy(static_cast<void *>(cpu_data.data()),
+                 static_cast<const void *>(dst.Data()),
+                 dst.Dim() * dst.ElementSize(), kind);
+      EXPECT_EQ(cpu_data, expected_data);
+    }
+  }
+
+  {
+    // test with random large size, the arrays' sizes are fairly balanced.
+    for (int32_t i = 0; i != 5; ++i) {
+      int32_t num_array = RandInt(10, 1000);
+      std::vector<Array1<T>> arrays_vec(num_array);
+      std::vector<const Array1<T> *> arrays(num_array);
+      int32_t total_size = 0;
+      for (int32_t j = 0; j != num_array; ++j) {
+        int32_t curr_array_size = RandInt(0, 10000);
+        std::vector<T> data(curr_array_size);
+        std::iota(data.begin(), data.end(), total_size);
+        total_size += curr_array_size;
+        arrays_vec[j] = Array1<T>(context, data);
+        arrays[j] = &arrays_vec[j];
+      }
+      const Array1<T> **src = arrays.data();
+      Array1<T> dst = Append(num_array, src);
+      EXPECT_EQ(dst.Dim(), total_size);
+      // copy memory from GPU/CPU to CPU
+      std::vector<T> cpu_data(dst.Dim());
+      auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
+      MemoryCopy(static_cast<void *>(cpu_data.data()),
+                 static_cast<const void *>(dst.Data()),
+                 dst.Dim() * dst.ElementSize(), kind);
+      std::vector<T> expected_data(dst.Dim());
+      std::iota(expected_data.begin(), expected_data.end(), 0);
+      EXPECT_EQ(cpu_data, expected_data);
+    }
+  }
+
+  {
+    // test with random large size: the arrays' sizes are not balanced.
+    for (int32_t i = 0; i != 5; ++i) {
+      int32_t num_array = RandInt(10, 1000);
+      std::vector<Array1<T>> arrays_vec(num_array);
+      std::vector<const Array1<T> *> arrays(num_array);
+      int32_t total_size = 0, max_size = 0;
+      // notice `j != num_array - 1`, we would push a very long array
+      // after the loop
+      for (int32_t j = 0; j != num_array - 1; ++j) {
+        int32_t curr_array_size = RandInt(0, 10000);
+        std::vector<T> data(curr_array_size);
+        std::iota(data.begin(), data.end(), total_size);
+        total_size += curr_array_size;
+        arrays_vec[j] = Array1<T>(context, data);
+        arrays[j] = &arrays_vec[j];
+        if (curr_array_size > max_size) max_size = curr_array_size;
+      }
+      // generate an array with very large size
+      {
+        int32_t average_size = total_size / num_array;
+        int32_t long_size = average_size * 10;
+        std::vector<T> data(long_size);
+        std::iota(data.begin(), data.end(), total_size);
+        total_size += long_size;
+        arrays_vec[num_array - 1] = Array1<T>(context, data);
+        arrays[num_array - 1] = &arrays_vec[num_array - 1];
+      }
+      const Array1<T> **src = arrays.data();
+      Array1<T> dst = Append(num_array, src);
+      EXPECT_EQ(dst.Dim(), total_size);
+      // copy memory from GPU/CPU to CPU
+      std::vector<T> cpu_data(dst.Dim());
+      auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
+      MemoryCopy(static_cast<void *>(cpu_data.data()),
+                 static_cast<const void *>(dst.Data()),
+                 dst.Dim() * dst.ElementSize(), kind);
+      std::vector<T> expected_data(dst.Dim());
+      std::iota(expected_data.begin(), expected_data.end(), 0);
+      EXPECT_EQ(cpu_data, expected_data);
+    }
+  }
+}
+
+TEST(OpsTest, AppendTest) {
+  TestAppend<int32_t, kCpu>();
+  TestAppend<int32_t, kCuda>();
+  TestAppend<float, kCpu>();
+  TestAppend<float, kCuda>();
+}
 
 }  // namespace k2
