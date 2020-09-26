@@ -102,8 +102,7 @@ class RaggedShape {
   // row_splits on that  axis.
   int32_t MaxSize(int32_t axis);
 
-  ContextPtr &Context() { return axes_[0].row_splits.Context(); }
-  const ContextPtr &Context() const { return axes_[0].row_splits.Context(); }
+  ContextPtr &Context() const { return axes_[0].row_splits.Context(); }
 
   /*
     It is an error to call this if this.NumAxes() < 2.  This will return
@@ -127,7 +126,8 @@ class RaggedShape {
 
   RaggedShapeIndexIterator Iterator();
 
-  explicit RaggedShape(std::vector<RaggedShapeDim> &axes, bool check = true)
+  explicit RaggedShape(const std::vector<RaggedShapeDim> &axes,
+                       bool check = true)
       : axes_(axes) {
     if (check) Check();
   }

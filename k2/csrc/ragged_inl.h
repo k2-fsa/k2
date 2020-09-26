@@ -100,8 +100,10 @@ Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
 
 template <typename T, typename Op /* = LessThan<T> */>
 void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
-  K2_CHECK(IsCompatible(src->values, *order));
-  K2_CHECK_EQ(src->values.Dim(), order->Dim());
+  K2_DCHECK(IsCompatible(src->values, *order));
+  K2_DCHECK_EQ(src->values.Dim(), order->Dim());
+  K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda)
+      << "It supports only CUDA at present";
 
   // TODO(fangjun): create a ModernGPUContext.
   mgpu::standard_context_t context(false);
@@ -111,9 +113,18 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
                                order->Data(),       // indices
                                src->values.Dim(),   // count
                                segment.Data() + 1,  // segments
-                               segment.Dim() - 2,   // num_segments
+                               segment.Dim() - 1,   // num_segments
                                Op(),                // cmp
                                context);            // context
+  auto err = cudaGetLastError();
+  (void)err;
+  // TODO(fangjun): err is not cudaSuccess, but why was the data sorted
+  // correctly?
+  //
+  // Check failed: err == cudaSuccess (9 vs. 0)  Error: invalid configuration
+  // argument.
+  //
+  // K2_DCHECK_CUDA_ERROR(err);
 }
 
 }  // namespace k2

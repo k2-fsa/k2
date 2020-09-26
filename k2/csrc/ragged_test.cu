@@ -268,36 +268,31 @@ static void TestSortSublists() {
   auto cpu_context = GetCpuContext();
   auto cuda_context = GetCudaContext();
 
-  RaggedShape shape = RandomRaggedShape(false,  // set_row_ids = false,
-                                        2,      // min_num_axes = 2,
-                                        8,      // max_num_axes = 4,
-                                        10,     // min_num_elements = 0,
-                                        80);    // max_num_elements = 2000);
+  RaggedShape shape = RandomRaggedShape(false,  // set_row_ids
+                                        2,      // min_num_axes
+                                        4,      // max_num_axes
+                                        1,      // min_num_elements
+                                        2000);  // max_num_elements
 
   Array1<T> values =
-      RandUniformArray1<T>(shape.Context(), shape.NumElements(), 0, 10);
+      RandUniformArray1<T>(shape.Context(), shape.NumElements(), -2000, 2000);
   Ragged<T> ragged(shape, values);
   ragged = ragged.To(cuda_context);
-  values = values.To(cpu_context);
+  values = values.To(cpu_context);  // to be sorted by cpu
 
   // TODO(fangjun): add a `Clone` method to Array1<T>
-  Array1<T> saved = values.To(cuda_context).To(cpu_context);
-
-  Array1<int32_t> &segment = ragged.shape.RowSplits(ragged.NumAxes() - 1);
-  std::cout << "segment: " << segment << "\n";
-  std::cout << "unsorted: " << ragged.values << "\n";
+  Array1<T> unsorted = values.To(cuda_context).To(cpu_context);
 
   Array1<int32_t> order(ragged.Context(), ragged.values.Dim());
   SortSublists<T, OP>(&ragged, &order);
+
+  Array1<int32_t> &segment = ragged.shape.RowSplits(ragged.NumAxes() - 1);
   CpuSortSublists<T, OP>(segment, &values);
 
-  std::cout << "\n order " << order << "\n";
-  std::cout << "\n saved: " << saved << "\n";
-  std::cout << "\n cpu sorted: " << values << "\n";
-  std::cout << "\n ragged sorted: " << ragged.values << "\n";
-  for (int i = 0; i < order.Dim(); ++i) {
+  int32_t n = order.Dim();
+  for (int i = 0; i != n; ++i) {
     EXPECT_EQ(values[i], ragged.values[i]);
-    EXPECT_EQ(values[i], saved[order[i]]);
+    EXPECT_EQ(ragged.values[i], unsorted[order[i]]);
   }
 }
 
@@ -308,6 +303,7 @@ TEST(RaggedTest, Ragged) {
   TestRagged<double, kCpu>();
 
   TestSortSublists<int32_t>();
+  TestSortSublists<double>();
 }
 
 // TODO(Haowen): add more tests for other algorithms
