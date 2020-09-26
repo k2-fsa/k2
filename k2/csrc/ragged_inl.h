@@ -16,6 +16,7 @@
 #ifndef K2_CSRC_RAGGED_INL_H_
 #define K2_CSRC_RAGGED_INL_H_
 
+#include <memory>
 #include <vector>
 
 #include "k2/csrc/moderngpu_context.h"

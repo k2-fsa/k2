@@ -9,6 +9,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <utility>
+
 #include "k2/csrc/context.h"
 #include "k2/csrc/moderngpu_context.h"
 #include "moderngpu/context.hxx"
