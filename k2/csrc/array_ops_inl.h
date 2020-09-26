@@ -379,15 +379,17 @@ Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
   T *data = temp.Data();
   K2_CHECK(max_value >= min_value);
   if (max_value == min_value) {
-    for (int32_t i = 0; i < dim; i++) data[i] = 0;
+    for (int32_t i = 0; i < dim; ++i) data[i] = 0;
   } else if (std::is_floating_point<T>::value ||
              std::abs(min_value) > RAND_MAX || std::abs(max_value) > RAND_MAX) {
     for (int32_t i = 0; i < dim; i++)
       data[i] =
           min_value + (rand() * (max_value - min_value) / RAND_MAX);  // NOLINT
   } else {
-    for (int32_t i = 0; i < dim; i++)
-      data[i] = min_value + (rand() % (max_value + 1 - min_value));  // NOLINT
+    for (int32_t i = 0; i < dim; ++i)
+      data[i] =
+          min_value +
+          (rand() % static_cast<int32_t>(max_value + 1 - min_value));  // NOLINT
   }
   return temp.To(c);
 }
