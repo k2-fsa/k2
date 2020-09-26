@@ -22,7 +22,7 @@ class ModernGpuContext : public mgpu::standard_context_t {
         context_(std::move(context)) {}
 
   void *alloc(size_t size, mgpu::memory_space_t space) override {
-    K2_DECHECK_EQ(space, mgpu::memory_space_device);
+    K2_DCHECK_EQ(space, mgpu::memory_space_device);
     void *deleter_ = nullptr;
     void *p = context_->Allocate(size, &deleter_);
     K2_DCHECK(deleter_ == nullptr);
@@ -30,7 +30,7 @@ class ModernGpuContext : public mgpu::standard_context_t {
   }
 
   void free(void *p, mgpu::memory_space_t space) override {
-    K2_DECHECK_EQ(space, mgpu::memory_space_device);
+    K2_DCHECK_EQ(space, mgpu::memory_space_device);
     context_->Deallocate(p, nullptr);
   }
 
