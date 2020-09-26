@@ -18,6 +18,7 @@
 
 #include <vector>
 
+#include "k2/csrc/moderngpu_context.h"
 #include "moderngpu/kernel_segsort.hxx"
 
 namespace k2 {
@@ -105,8 +106,8 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
   K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda)
       << "It supports only CUDA at present";
 
-  // TODO(fangjun): create a ModernGPUContext.
-  mgpu::standard_context_t context(false);
+  std::unique_ptr<mgpu::context_t> context = GetModernGpuContext(
+      src->Context()->GetDeviceType(), src->Context()->GetDeviceId());
 
   Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
   mgpu::segmented_sort_indices(src->values.Data(),  // keys
@@ -115,7 +116,7 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
                                segment.Data() + 1,  // segments
                                segment.Dim() - 1,   // num_segments
                                Op(),                // cmp
-                               context);            // context
+                               *context);           // context
   auto err = cudaGetLastError();
   (void)err;
   // TODO(fangjun): err is not cudaSuccess, but why was the data sorted

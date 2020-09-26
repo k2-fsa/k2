@@ -8,8 +8,9 @@ function(download_moderngpu)
 
   include(FetchContent)
 
-  set(moderngpu_URL  "https://github.com/moderngpu/moderngpu/archive/v2.12_june_8_2016.tar.gz")
-  set(moderngpu_HASH "SHA256=dff7010c6ffa1081c93ba450d3c39e5942e6ccecf09e9abd644c002eeac0735a")
+  # this is the latest commit of modern gpu as of 2020-09-26
+  set(moderngpu_URL  "https://github.com/moderngpu/moderngpu/archive/2b3985541c8e88a133769598c406c33ddde9d0a5.zip")
+  set(moderngpu_HASH "SHA256=191546af18cd5fb858ecb561316f3af67537ab16f610fc8f1a5febbffc27755a")
 
   FetchContent_Declare(moderngpu
     URL               ${moderngpu_URL}
