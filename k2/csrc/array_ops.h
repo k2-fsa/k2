@@ -137,11 +137,11 @@ void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
       @return       Returns the appended array
  */
 template <typename T>
-Array1<T> Append(int32_t src_size, Array1<T> **src);
+Array1<T> Append(int32_t src_size, const Array1<T> **src);
 
 // Wrapper for Append() that has one fewer levels of indirection.
 template <typename T>
-Array1<T> Append(int32_t src_size, Array1<T> *src);
+Array1<T> Append(int32_t src_size, const Array1<T> *src);
 
 /*
    This is a little like Append(), but with special treatment of the last
