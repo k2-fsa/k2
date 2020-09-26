@@ -576,7 +576,8 @@ Ragged<T> RandomRagged(T min_value = static_cast<T>(0),
 /*
   Sort a ragged array in-place.
 
-     @param [inout]   The input array to be sorted
+     @param [inout]   The input array to be sorted.
+                      CAUTION: it is sorted in-place.
      @param [out]     The indexes mapping from the sorted
                       array to the input array.
  */

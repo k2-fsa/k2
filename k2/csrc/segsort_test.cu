@@ -1,6 +1,4 @@
-#include "k2/csrc/pytorch_context.h"
 #include "k2/csrc/ragged.h"
-#include "moderngpu/kernel_segsort.hxx"
 
 namespace k2 {
 
@@ -20,14 +18,6 @@ void SortSublists2(Ragged<T> &src, Array1<int32_t> *order) {
                                src.values.Dim(), segment.Data() + 1,
                                segment.Dim() - 2, Op(), context);
 
-  std::cout << segment;
-  std::cout << "\n" << *order << "\n";
-  std::cout << "\n" << saved << "\n";
-  std::cout << "\n" << src.values << "\n";
-  for (int i = 0; i < order->Dim(); ++i) {
-    std::cout << saved[(*order)[i]] << ", ";
-  }
-  std::cout << "\n";
 }
 
 }  // namespace k2
@@ -67,8 +57,21 @@ int main() {
   Array1<T> values(context, values_vec);
   Ragged<T> ragged(shape, values);
   std::cout << ragged.values;
+
+  Array1<T> saved = ragged.values.To(GetCpuContext());
+
   Array1<int32_t> order(ragged.Context(), ragged.values.Dim());
-  SortSublists2(ragged, &order);
+  SortSublists(&ragged, &order);
+
+  Array1<int32_t> &segment = ragged.shape.RowSplits(ragged.NumAxes() - 1);
+  std::cout << "segment: " << segment << "\n";
+  std::cout << "\n order " << order << "\n";
+  std::cout << "\n saved: " << saved << "\n";
+  std::cout << "\n ragged sorted: " << ragged.values << "\n";
+  for (int i = 0; i < order.Dim(); ++i) {
+    std::cout << saved[order[i]] << ", ";
+  }
+  std::cout << "\n";
 }
 
 #if 0

@@ -7,6 +7,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *                      Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -16,6 +17,8 @@
 #define K2_CSRC_RAGGED_INL_H_
 
 #include <vector>
+
+#include "moderngpu/kernel_segsort.hxx"
 
 namespace k2 {
 
@@ -93,6 +96,24 @@ Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
   // shape.NumElements());
   Array1<T> values;
   return Ragged<T>(shape, values);
+}
+
+template <typename T, typename Op /* = LessThan<T> */>
+void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
+  K2_CHECK(IsCompatible(src->values, *order));
+  K2_CHECK_EQ(src->values.Dim(), order->Dim());
+
+  // TODO(fangjun): create a ModernGPUContext.
+  mgpu::standard_context_t context(false);
+
+  Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
+  mgpu::segmented_sort_indices(src->values.Data(),  // keys
+                               order->Data(),       // indices
+                               src->values.Dim(),   // count
+                               segment.Data() + 1,  // segments
+                               segment.Dim() - 2,   // num_segments
+                               Op(),                // cmp
+                               context);            // context
 }
 
 }  // namespace k2
