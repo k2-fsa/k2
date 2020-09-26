@@ -15,6 +15,7 @@ set(context_srcs
   fsa.cu
   fsa_algo.cu
   math.cu
+  moderngpu_allocator.cu
   ragged.cu
   tensor.cu
   tensor_ops.cu
@@ -33,6 +34,8 @@ set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # lib deps
 target_link_libraries(context PUBLIC cub)
+target_link_libraries(context PUBLIC fsa)
+target_link_libraries(context PUBLIC moderngpu)
 if(USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
 endif()
@@ -41,14 +44,14 @@ endif()
 
 # please sort the source files alphabetically
 set(cuda_tests
-    array_ops_test
-    array_test
-    log_test
-    ragged_shape_test
-    ragged_test
-    tensor_test
-    utils_test
-    )
+  array_ops_test
+  array_test
+  log_test
+  ragged_shape_test
+  ragged_test
+  tensor_test
+  utils_test
+)
 
 # utility function to add gtest
 function(k2_add_cuda_test name)
@@ -58,16 +61,16 @@ function(k2_add_cuda_test name)
   add_executable(${target_name} "${name}.cu")
   set_target_properties(${target_name} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
   target_link_libraries(${target_name}
-      PRIVATE
-      context
-      fsa  # for code in k2/csrc/host
-      gtest
-      gtest_main
-      )
+    PRIVATE
+    context
+    fsa  # for code in k2/csrc/host
+    gtest
+    gtest_main
+  )
   add_test(NAME "Test.Cuda.${target_name}"
-      COMMAND
-      $<TARGET_FILE:${target_name}>
-      )
+    COMMAND
+    $<TARGET_FILE:${target_name}>
+  )
 endfunction()
 
 foreach (name IN LISTS cuda_tests)

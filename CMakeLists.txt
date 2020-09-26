@@ -101,6 +101,7 @@ if(USE_PYTORCH)
   include(torch)
 endif()
 include(cub)
+include(moderngpu)
 include(googletest)
 
 add_subdirectory(k2)

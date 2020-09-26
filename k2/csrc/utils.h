@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *                      Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -203,7 +204,7 @@ void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest);
    additional cost.
  */
 template <typename T>
-T MaxValue(ContextPtr &c, int32_t nelems, T *t);
+T MaxValue(ContextPtr &c, int32_t nelems, const T *t);
 
 /*
   This is a rather special purpose function that is used in RaggedShape.
@@ -470,6 +471,14 @@ struct MaxOp {
   __host__ __device__ __forceinline__ T operator()(const T &a,
                                                    const T &b) const {
     return (a > b) ? a : b;
+  }
+};
+
+template <typename T>
+struct LessThan {
+  __host__ __device__ __forceinline__ bool operator()(const T &a,
+                                                      const T &b) const {
+    return a < b;
   }
 };
 
