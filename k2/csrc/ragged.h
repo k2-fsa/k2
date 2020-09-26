@@ -579,7 +579,9 @@ Ragged<T> RandomRagged(T min_value = static_cast<T>(0),
      @param [inout]   The input array to be sorted.
                       CAUTION: it is sorted in-place.
      @param [out]     The indexes mapping from the sorted
-                      array to the input array.
+                      array to the input array. The caller
+                      has to pre-allocate memory for it
+                      on the same device as `src`.
  */
 template <typename T, typename Op = LessThan<T>>
 void SortSublists(Ragged<T> *src, Array1<int32_t> *order);

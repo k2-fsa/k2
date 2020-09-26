@@ -76,6 +76,3 @@ endfunction()
 foreach (name IN LISTS cuda_tests)
   k2_add_cuda_test(${name})
 endforeach ()
-
-add_executable(segsort_test segsort_test.cu)
-target_link_libraries(segsort_test context)
