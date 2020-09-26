@@ -476,8 +476,8 @@ struct MaxOp {
 
 template <typename T>
 struct LessThan {
-  __host__ __device__ __forceinline__ T operator()(const T &a,
-                                                   const T &b) const {
+  __host__ __device__ __forceinline__ bool operator()(const T &a,
+                                                      const T &b) const {
     return a < b;
   }
 };
