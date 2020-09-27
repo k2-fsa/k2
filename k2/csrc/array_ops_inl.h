@@ -35,12 +35,12 @@ namespace internal {
 // cub::DeviceScan::ExclusiveSum internally).
 template <typename T>
 struct PtrPtr {
-  T **data;
+  const T **data;
 
-  explicit PtrPtr(T **data) : data(data) {}
+  explicit PtrPtr(const T **data) : data(data) {}
 
   // operator[] and operator+ are required by cub::DeviceScan::ExclusiveSum
-  __host__ __device__ T operator[](int32_t i) { return *(data[i]); }
+  __host__ __device__ T operator[](int32_t i) const { return *(data[i]); }
   __host__ __device__ PtrPtr operator+(int32_t n) const {
     PtrPtr tmp(*this);
     tmp.data += n;
@@ -150,7 +150,7 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
 }
 
 template <typename T>
-void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
+void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest) {
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_dim = src.Dim();
   int32_t dest_dim = dest->Dim();
@@ -320,55 +320,86 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src) {
   return Append(src_size, srcs_ptr);
 }
 
-template <typename T>
-void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
-  K2_CHECK_EQ(src.NumAxes(), 2);
-  K2_CHECK_EQ(src.shape.Dim0(), max_values->Dim());
-  K2_CHECK(IsCompatible(src.shape, *max_values));
+template <typename T, typename Op>
+void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
+  K2_CHECK_GE(src.NumAxes(), 2);
+  K2_CHECK(IsCompatible(src.shape, *dst));
+
+  int32_t last_axis = src.NumAxes() - 1;
+  const Array1<int32_t> row_splits_array = src.shape.RowSplits(last_axis);
+  int32_t num_rows = row_splits_array.Dim() - 1;
+  K2_CHECK_EQ(num_rows, dst->Dim());
 
   ContextPtr c = src.Context();
-  int32_t num_rows = src.shape.Dim0();
-  const int32_t *row_splits = src.shape.RowSplits(1).Data();
+  const int32_t *row_splits = row_splits_array.Data();
   const T *values_data = src.values.Data();
-  T *output_data = max_values->Data();
+  T *output_data = dst->Data();
+  Op op;
 
   if (c->GetDeviceType() == kCpu) {
     int32_t j = row_splits[0];
     for (int32_t i = 0; i < num_rows; i++) {
-      T max_val = default_value;
+      T val = default_value;
       int32_t row_end = row_splits[i + 1];
       for (; j < row_end; j++) {
         T elem = values_data[j];
-        max_val = (elem > max_val ? elem : max_val);
+        val = op(elem, val);
       }
-      output_data[i] = max_val;
+      output_data[i] = val;
     }
   } else {
     K2_CHECK(c->GetDeviceType() == kCuda);
 
     // This code is based on the example here:
     // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
-    MaxOp<T> max_op;
     void *d_temp_storage = NULL;
     std::size_t temp_storage_bytes = 0;
 
     // the first time is to determine temporary device storage requirements
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
-        row_splits, row_splits + 1, max_op, default_value, c->GetCudaStream()));
+        row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
     void *deleter_context;
     d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
-        row_splits, row_splits + 1, max_op, default_value, c->GetCudaStream()));
+        row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
     c->Deallocate(d_temp_storage, deleter_context);
   }
 }
 
-template <typename T>
-void And(Array1<T> &src, T default_value, Array1<T> *dest) {
-  // TODO(haowen): implement
-  K2_LOG(FATAL) << "Not implemented";
+template <typename T, typename Op>
+void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
+  K2_CHECK(IsCompatible(src, *dest));
+  K2_CHECK_EQ(dest->Dim(), 1);
+
+  ContextPtr c = src.Context();
+  T *src_data = src.Data();
+  T *dest_data = dest->Data();
+  int32_t size = src.Dim();
+  Op op;
+
+  if (c->GetDeviceType() == kCpu) {
+    T val = default_value;
+    for (int32_t i = 0; i != size; ++i) {
+      val = op(src_data[i], val);
+    }
+    dest_data[0] = val;
+  } else {
+    K2_CHECK(c->GetDeviceType() == kCuda);
+
+    void *d_temp_storage = nullptr;
+    size_t temp_storage_bytes = 0;
+    // the first time is to determine temporary device storage requirements
+    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
+        d_temp_storage, temp_storage_bytes, src_data, dest_data, size, op,
+        default_value, c->GetCudaStream()));
+    void *deleter_context;
+    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
+    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
+        d_temp_storage, temp_storage_bytes, src_data, dest_data, size, op,
+        default_value, c->GetCudaStream()));
+  }
 }
 
 template <typename T>

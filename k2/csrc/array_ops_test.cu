@@ -102,7 +102,7 @@ TEST(OpsTest, TransposeTest) {
 
   {
     // test with random shapes
-    for (int32_t i = 0; i != 20; ++i) {
+    for (int32_t i = 0; i != 5; ++i) {
       auto rows = RandInt(0, 3000);
       auto cols = RandInt(0, 3000);
       TestTranspose<int32_t, kCpu>(rows, cols);
@@ -228,10 +228,10 @@ void TestExclusiveSumArray1(int32_t num_elem) {
     std::iota(data.begin(), data.end(), static_cast<S>(start));
     Array1<S> src(context, data);
     S *src_data = src.Data();
-    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> S * {
+    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> const S * {
       return &src_data[i];
     };
-    Array1<S *> src_ptr(context, num_elem, lambda_set_values);
+    Array1<const S *> src_ptr(context, num_elem, lambda_set_values);
     Array1<S> dest(context, num_elem);
     ExclusiveSumDeref(src_ptr, &dest);
     CheckExclusiveSumArray1Result(data, dest);
@@ -256,7 +256,7 @@ void TestExclusiveSumArray1(int32_t num_elem) {
     };
     Eval(context, num_elem, lambda_set_values);
     // not src_ptr.Dim() == src_dim == num_elem - 1
-    Array1<S *> src_ptr(src_dim, region, 0);
+    Array1<const S *> src_ptr(src_dim, region, 0);
     Array1<S> dest(context, num_elem);
     ASSERT_EQ(dest.Dim(), src_ptr.Dim() + 1);
     ExclusiveSumDeref(src_ptr, &dest);
@@ -649,6 +649,150 @@ TEST(OpsTest, MaxPerSubListTest) {
   TestMaxPerSubListTest<int32_t, kCpu>();
   TestMaxPerSubListTest<int32_t, kCuda>();
 }
+
+template <typename T, DeviceType d>
+void TestAndOrPerSubListTest() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // And
+    const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
+    RaggedShapeDim shape_dim;
+    shape_dim.row_splits = Array1<int32_t>(context, row_splits);
+    shape_dim.cached_tot_size = row_splits.back();
+    std::vector<RaggedShapeDim> axes = {shape_dim};
+    RaggedShape shape(axes, true);
+    const std::vector<T> values_vec = {1, 3, 3, 6, 11, 0};
+    Array1<T> values(context, values_vec);
+    Ragged<T> ragged(shape, values);
+
+    int32_t num_rows = ragged.shape.Dim0();
+    Array1<T> dst(context, num_rows);
+    T default_value = -1;
+    AndPerSublist(ragged, default_value, &dst);
+    // copy memory from GPU/CPU to CPU
+    dst = dst.To(cpu);
+    std::vector<T> cpu_data(dst.Data(), dst.Data() + dst.Dim());
+    std::vector<T> expected_data = {1, -1, 2, 0};
+    EXPECT_EQ(cpu_data, expected_data);
+  }
+
+  {
+    // Or
+    const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
+    RaggedShapeDim shape_dim;
+    shape_dim.row_splits = Array1<int32_t>(context, row_splits);
+    shape_dim.cached_tot_size = row_splits.back();
+    std::vector<RaggedShapeDim> axes = {shape_dim};
+    RaggedShape shape(axes, true);
+    const std::vector<T> values_vec = {1, 3, 3, 4, 6, 0};
+    Array1<T> values(context, values_vec);
+    Ragged<T> ragged(shape, values);
+
+    int32_t num_rows = ragged.shape.Dim0();
+    Array1<T> dst(context, num_rows);
+    T default_value = 0;
+    OrPerSublist(ragged, default_value, &dst);
+    // copy memory from GPU/CPU to CPU
+    dst = dst.To(cpu);
+    std::vector<T> cpu_data(dst.Data(), dst.Data() + dst.Dim());
+    std::vector<T> expected_data = {3, 0, 7, 0};
+    EXPECT_EQ(cpu_data, expected_data);
+  }
+}
+
+TEST(OpsTest, AndOrPerSubListTest) {
+  TestAndOrPerSubListTest<int32_t, kCpu>();
+  TestAndOrPerSubListTest<int32_t, kCuda>();
+}
+
+template <typename T, DeviceType d>
+void TestArrayMaxAndOr() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // Max
+    const std::vector<T> values = {1, 3, 2, 8, 0, -1};
+    Array1<T> src(context, values);
+    Array1<T> dst(context, 1);
+    T default_value = 0;
+    Max(src, default_value, &dst);
+    EXPECT_EQ(dst[0], 8);
+  }
+
+  {
+    // Max, dst is one of element of src
+    const std::vector<T> values = {1, 3, 2, 8, 0, -1};
+    Array1<T> src(context, values);
+    Array1<T> dst = src.Range(2, 1);
+    T default_value = 0;
+    Max(src, default_value, &dst);
+    EXPECT_EQ(dst[0], 8);
+    // src has been changed as well
+    EXPECT_EQ(src[2], 8);
+    // other values are not changed
+    src = src.To(cpu);
+    std::vector<T> cpu_data(src.Data(), src.Data() + src.Dim());
+    const std::vector<T> expected_data = {1, 3, 8, 8, 0, -1};
+    EXPECT_EQ(cpu_data, expected_data);
+  }
+
+  {
+    // Max, with random large size
+    int32_t num_elems = RandInt(1000, 10000);
+    std::vector<T> data(num_elems);
+    std::iota(data.begin(), data.end(), num_elems);
+    // random set a value to  `max_value`
+    int32_t pos = RandInt(0, num_elems - 1);
+    T max_value = static_cast<T>(num_elems * 2);
+    data[pos] = max_value;
+    Array1<T> src(context, data);
+    Array1<T> dst(context, 1);
+    T default_value = 0;
+    Max(src, default_value, &dst);
+    EXPECT_EQ(dst[0], max_value);
+  }
+
+  {
+    // And
+    const std::vector<T> values = {3, 6, 11};
+    Array1<T> src(context, values);
+    Array1<T> dst(context, 1);
+    T default_value = -1;
+    And(src, default_value, &dst);
+    EXPECT_EQ(dst[0], 2);
+  }
+
+  {
+    // Or
+    const std::vector<T> values = {3, 6, 4};
+    Array1<T> src(context, values);
+    Array1<T> dst(context, 1);
+    T default_value = 0;
+    Or(src, default_value, &dst);
+    EXPECT_EQ(dst[0], 7);
+  }
+}
+
+TEST(OpsTest, ArrayMaxAndOrTest) {
+  TestArrayMaxAndOr<int32_t, kCpu>();
+  TestArrayMaxAndOr<int32_t, kCuda>();
+}
+
 template <typename T, DeviceType d>
 void TestAppend() {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
@@ -708,7 +852,7 @@ void TestAppend() {
 
   {
     // test with random large size, the arrays' sizes are fairly balanced.
-    for (int32_t i = 0; i != 5; ++i) {
+    for (int32_t i = 0; i != 2; ++i) {
       int32_t num_array = RandInt(10, 1000);
       std::vector<Array1<T>> arrays_vec(num_array);
       std::vector<const Array1<T> *> arrays(num_array);
@@ -738,7 +882,7 @@ void TestAppend() {
 
   {
     // test with random large size: the arrays' sizes are not balanced.
-    for (int32_t i = 0; i != 5; ++i) {
+    for (int32_t i = 0; i != 2; ++i) {
       int32_t num_array = RandInt(10, 1000);
       std::vector<Array1<T>> arrays_vec(num_array);
       std::vector<const Array1<T> *> arrays(num_array);
@@ -785,6 +929,144 @@ TEST(OpsTest, AppendTest) {
   TestAppend<int32_t, kCuda>();
   TestAppend<float, kCpu>();
   TestAppend<float, kCuda>();
+}
+
+template <DeviceType d>
+void TestSpliceRowSplits() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // a case with small size
+    std::vector<int32_t> data1 = {0, 2, 5};
+    std::vector<int32_t> data2 = {0, 2, 2, 3};
+    std::vector<int32_t> data3 = {0};
+    std::vector<int32_t> data4 = {0, 3};
+    std::vector<int32_t> expected_data = {0, 2, 5, 7, 7, 8, 11};
+
+    Array1<int32_t> array1(context, data1);
+    Array1<int32_t> array2(context, data2);
+    Array1<int32_t> array3(context, data3);
+    Array1<int32_t> array4(context, data4);
+
+    std::vector<const Array1<int32_t> *> arrays = {&array1, &array2, &array3,
+                                                   &array4};
+    const Array1<int32_t> **src = arrays.data();
+    Array1<int32_t> dst = SpliceRowSplits(4, src);
+    EXPECT_EQ(dst.Dim(), expected_data.size());
+    // copy memory from GPU/CPU to CPU
+    dst = dst.To(cpu);
+    std::vector<int32_t> cpu_data(dst.Data(), dst.Data() + dst.Dim());
+    EXPECT_EQ(cpu_data, expected_data);
+  }
+
+  {
+    // test with random large size, the arrays' sizes are fairly balanced.
+    for (int32_t i = 0; i != 2; ++i) {
+      int32_t num_array = RandInt(10, 1000);
+      std::vector<Array1<int32_t>> arrays_vec(num_array);
+      std::vector<const Array1<int32_t> *> arrays(num_array);
+      std::vector<int32_t> expected_data;
+      int32_t data_offset = 0;
+      for (int32_t j = 0; j != num_array; ++j) {
+        int32_t curr_array_size = RandInt(0, 10000);
+        RaggedShape shape =
+            RandomRaggedShape(false, 2, 2, curr_array_size, curr_array_size);
+        ASSERT_EQ(shape.NumAxes(), 2);
+        Array1<int32_t> cpu_row_splits = shape.RowSplits(1).To(cpu);
+        int32_t num_splits = cpu_row_splits.Dim();
+        ASSERT_GE(num_splits, 1);
+        const int32_t *splits_data = cpu_row_splits.Data();
+        for (int32_t n = 0; n < num_splits; ++n) {
+          expected_data.push_back(splits_data[n] + data_offset);
+        }
+        if (j + 1 < num_array) expected_data.pop_back();
+        data_offset += splits_data[num_splits - 1];
+        Array1<int32_t> row_splits = shape.RowSplits(1).To(context);
+        ASSERT_GE(row_splits.Dim(), 1);
+        arrays_vec[j] = row_splits;
+        arrays[j] = &arrays_vec[j];
+      }
+      const Array1<int32_t> **src = arrays.data();
+      Array1<int32_t> dst = SpliceRowSplits(num_array, src);
+      EXPECT_EQ(dst.Dim(), expected_data.size());
+      // copy memory from GPU/CPU to CPU
+      dst = dst.To(cpu);
+      std::vector<int32_t> cpu_data(dst.Data(), dst.Data() + dst.Dim());
+      EXPECT_EQ(cpu_data, expected_data);
+    }
+  }
+
+  {
+    // test with random large size: the arrays' sizes are not balanced.
+    for (int32_t i = 0; i != 2; ++i) {
+      int32_t num_array = RandInt(10, 1000);
+      std::vector<Array1<int32_t>> arrays_vec(num_array);
+      std::vector<const Array1<int32_t> *> arrays(num_array);
+      std::vector<int32_t> expected_data;
+      int32_t data_offset = 0;
+      int32_t max_size = 0;
+      for (int32_t j = 0; j != num_array - 1; ++j) {
+        int32_t curr_array_size = RandInt(0, 10000);
+        RaggedShape shape =
+            RandomRaggedShape(false, 2, 2, curr_array_size, curr_array_size);
+        ASSERT_EQ(shape.NumAxes(), 2);
+        Array1<int32_t> cpu_row_splits = shape.RowSplits(1).To(cpu);
+        int32_t num_splits = cpu_row_splits.Dim();
+        ASSERT_GE(num_splits, 1);
+        const int32_t *splits_data = cpu_row_splits.Data();
+        for (int32_t n = 0; n < num_splits; ++n) {
+          expected_data.push_back(splits_data[n] + data_offset);
+        }
+        expected_data.pop_back();
+        data_offset += splits_data[num_splits - 1];
+        Array1<int32_t> row_splits = shape.RowSplits(1).To(context);
+        ASSERT_GE(row_splits.Dim(), 1);
+        arrays_vec[j] = row_splits;
+        arrays[j] = &arrays_vec[j];
+        if (num_splits > max_size) max_size = num_splits;
+      }
+      // generate an array with very large size
+      {
+        int32_t total_size = static_cast<int32_t>(expected_data.size());
+        int32_t average_size = total_size / num_array;
+        int32_t long_size = average_size * 10;
+
+        RaggedShape shape =
+            RandomRaggedShape(false, 2, 2, long_size, long_size);
+        ASSERT_EQ(shape.NumAxes(), 2);
+        Array1<int32_t> cpu_row_splits = shape.RowSplits(1).To(cpu);
+        int32_t num_splits = cpu_row_splits.Dim();
+        ASSERT_GE(num_splits, 1);
+        const int32_t *splits_data = cpu_row_splits.Data();
+        for (int32_t n = 0; n < num_splits; ++n) {
+          expected_data.push_back(splits_data[n] + data_offset);
+        }
+        Array1<int32_t> row_splits = shape.RowSplits(1).To(context);
+        ASSERT_GE(row_splits.Dim(), 1);
+        arrays_vec[num_array - 1] = row_splits;
+        arrays[num_array - 1] = &arrays_vec[num_array - 1];
+      }
+      const Array1<int32_t> **src = arrays.data();
+      Array1<int32_t> dst = SpliceRowSplits(num_array, src);
+      EXPECT_EQ(dst.Dim(), expected_data.size());
+      // copy memory from GPU/CPU to CPU
+      dst = dst.To(cpu);
+      std::vector<int32_t> cpu_data(dst.Data(), dst.Data() + dst.Dim());
+      EXPECT_EQ(cpu_data, expected_data);
+    }
+  }
+}
+
+TEST(OpsTest, SpliceRowSplitsTest) {
+  TestSpliceRowSplits<kCpu>();
+  TestSpliceRowSplits<kCuda>();
 }
 
 }  // namespace k2

@@ -98,7 +98,7 @@ Array1<T> ExclusiveSum(Array1<T> &src) {
                        Must be on same device as src.
  */
 template <typename T>
-void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest);
+void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest);
 
 /*
   Sets 'dest' to exclusive prefix sum of 'src', along a specified axis.
@@ -144,7 +144,7 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src);
 
 /*
    This is a little like Append(), but with special treatment of the last
-   elements (it's intended for use with row_splits and row_ids vectors, which
+   elements (it's intended for use with row_splits vectors, which
    have a single "extra" last element).
 
    It appends the arrays with an offset.  Define:
@@ -153,34 +153,77 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src);
    of all but the last of the arrays in `src`, and also adding the
    offsets mentioned above for each array.
 
-   arrays in 'src', except they all overlap by one element, and for i > 0
-   we add an offset o[i] to the arrays in src[i], with the offsets being
-   chosen so that in the overlapping elements there is no conflict between
-   the two values being written (this means that src[i] is the sum of
-   the final element of each of the arrays in src[j] for j < i).
-
       @param [in] src_size  Number of arrays to append
       @param [in] src     Array of pointers to arrays, of size `src_size`.
+                          `src[i]` should be valid row_splits, i.e.
+                          src[i]->Dim() >= 1 and the elements in it start
+                          with 0 and are non-decreasing.
       @return       Returns the appended array
 
  */
-Array1<int32_t> Splice(int32_t src_size, const Array1<int32_t> **src);
+Array1<int32_t> SpliceRowSplits(int32_t src_size, const Array1<int32_t> **src);
 
 /*
-  Output to an array `max_values` the maximum of each sub-list in `src`
-  i.e. the max taken over axis 1), or `default_value`, whichever was larger.
+  Output to an array `dst` the result of reducing each sub-list along
+  the last axis of `src` with a binary operator `Op`, will be called to
+  implement `MaxPerSublist`, `AndPerSublist` and `OrPerSublist`
 
      @param [in] src            Input ragged array; must have src.NumAxes()
-                                 == 2. Is allowed to be empty.
+                                >= 2. src.values is allowed to be empty.
+     @param [in] default_value  Value to initialize the reduction with;
+     @param [out] dst           Array to which the reduction values will be
+                                written. Must satisfy
+                                dst->Dim() == rows along the last axis in src,
+                                i.e. src.RowSplits(src.NumAxes() - 1).Dim() - 1.
+*/
+
+template <typename T, typename Op>
+void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst);
+/*
+  Output to an array `max_values` the maximum of each sub-list along the last
+  axis of `src` i.e. the max taken over the last axis), or `default_value`,
+  whichever was larger.
+
+     @param [in] src            Input ragged array; must have src.NumAxes()
+                                >= 2. src.values is allowed to be empty.
      @param [in] default_value  Value to use for maximum operation as a default
                                 so max is taken over this and the elements
                                 of sub-lists in `src`.
      @param [out] max_values    Array to which the maximum values will be
                                 written. Must satisfy
-                                max_values->Dim() == src.Dim0().
+                                max_values->Dim() == rows along the last axis in
+                                src, i.e.
+                                src.RowSplits(src.NumAxes() - 1).Dim() - 1.
  */
 template <typename T>
-void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values);
+void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
+  ApplyOpPerSublist<T, MaxOp<T>>(src, default_value, max_values);
+}
+
+/*
+  Output to an array `and_values` the result of reducing each sub-list along
+  the last axis of `src` with operator &, i.e. bit-wise and.
+
+     @param [in] src            Input ragged array; must have src.NumAxes()
+                                >= 2. src.values is allowed to be empty.
+     @param [in] default_value  Value to initialize the reduction with; should
+                                probably be all-ones.
+     @param [out] and_values    Array to which the bitwise-and values will be
+                                written. Must satisfy
+                                and_values->Dim() == rows along the last axis in
+                                src, i.e.
+                                src.RowSplits(src.NumAxes() - 1).Dim() - 1.
+*/
+template <typename T>
+void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values) {
+  ApplyOpPerSublist<T, BitAndOp<T>>(src, default_value, and_values);
+}
+
+// bitwise or
+template <typename T>
+void OrPerSublist(Ragged<T> &src, T default_value, Array1<T> *or_values) {
+  ApplyOpPerSublist<T, BitOrOp<T>>(src, default_value, or_values);
+}
 
 /*
   Sort each sub-list in `src`, with operator `<`, and output the order to
@@ -199,55 +242,56 @@ template <typename T, typename Op>
 void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
 
 /*
+  Get the reduction value from the array `src` with a binary operator `Op`,
+  initialized with `default_value`. Will be used to implement
+  `Max`, `And` and `Or` below.
+      @param [in] src             Array to find the reduction of
+      @param [in] default_value   Value to initialize the reduction with, and
+                                  to use if src is empty.
+      @param [out] dest           Output array, which must have dim == 1.
+*/
+template <typename T, typename Op>
+void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest);
+
+/*
   Get the maximum value from the array `src`, or `default_value`, whichever is
   greater.
-         @param [in] src   Array to find the '&'-based reduction of
-         @param [in] default_value   Value to initialize the reduction with, and
-                                     to use if src is empty.  Would typically be
-                                     the most negative T possible.
-         @param [out] dest  Output array, which must have dim == 1.
+      @param [in] src             Array to find the max reduction of
+      @param [in] default_value   Value to initialize the reduction with, and
+                                  to use if src is empty.  Would typically be
+                                  the most negative T possible.
+      @param [out] dest           Output array, which must have dim == 1.
+                                  Note: it is allowable for the output array
+                                  to be an element of `src`.
  */
 template <typename T>
-void Max(Array1<T> &src, T default_value, Array1<T> *dest);
+void Max(Array1<T> &src, T default_value, Array1<T> *dest) {
+  ApplyOpOnArray1<T, MaxOp<T>>(src, default_value, dest);
+}
 
 /*
-  Get the '&'-based (bitwise and) reduction of the array `src`, using
-  `default_value` (e.g. all ones) to initialize the reduction.
+  Get the bitwise and reduction of the array `src`, using `default_value` (e.g.
+  all ones) to initialize the reduction.
 
-         @param [in] src   Array to find the '&maximum of
-         @param [in] default_value   Value to initialize the reduction with, and
-                                     to use if src is empty.  Would typically be
-                                     the most negative T possible.
-         @param [out] dest  Output array, which must have dim == 1.
-                            Note: it is allowable for the output array
-                            to be an element of `src`.
+      @param [in] src             Array to find the bitwise & reduction of
+      @param [in] default_value   Value to initialize the reduction with, and
+                                  to use if src is empty.  Would typically be
+                                  the most negative T possible.
+      @param [out] dest           Output array, which must have dim == 1.
+                                  Note: it is allowable for the output array
+                                  to be an element of `src`.
  */
 template <typename T>
-void And(Array1<T> &src, T default_value, Array1<T> *dest);
+void And(Array1<T> &src, T default_value, Array1<T> *dest) {
+  ApplyOpOnArray1<T, BitAndOp<T>>(src, default_value, dest);
+}
 
-// as And, but bitwise Or.
+// As And, but bitwise Or. Note it is allowable for the output array to be an
+// element of `src`.
 template <typename T>
-void Or(Array1<T> &src, T default_value, Array1<T> *dest);
-
-/*
-  Output to an array `and_values` the result of reducing each sub-list in
-  `src` with operator &, i.e. bit-wise and.
-
-     @param [in] src            Input ragged array; must have src.NumAxes()
-                                == 2. Is allowed to be empty.
-     @param [in] default_value  Value to initialize the reduction with; should
-                                probably be all-ones.
-     @param [out] and_values    Array to which the bitwise-and values will be
-                                written. Must satisfy max_values->Dim() == src.
-
-   TODO: implement this after debugging MaxPerSublist; it's mostly a matter of
-   changing the reduction-operator object.
-*/
-template <typename T>
-void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
-// bitwise or
-template <typename T>
-void OrPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values);
+void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
+  ApplyOpOnArray1<T, BitOrOp<T>>(src, default_value, dest);
+}
 
 /*
   Returns a random Array1, uniformly distributed betwen `min_value` and
