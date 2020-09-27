@@ -4,7 +4,7 @@
  * Glog-like logging functions for k2.
  *
  * @copyright
- * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Xiaomi Corporation (authors: Meixu Song)
  *
  * @copyright

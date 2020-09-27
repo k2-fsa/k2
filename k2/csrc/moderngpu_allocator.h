@@ -4,7 +4,7 @@
  * Currently it is used by `SortSublists`.
  *
  * @copyright
- * Copyright (c)  2020  AI Lab, Beijing, China (authors: Fangjun Kuang)
+ * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors

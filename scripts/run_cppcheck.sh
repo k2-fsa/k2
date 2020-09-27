@@ -1,9 +1,7 @@
 #!/bin/bash
-
-# Copyright 2020 Fangjun Kuang (csukuangfj@gmail.com)
-
-# See ../LICENSE for clarification regarding multiple authors
-
+#
+# Copyright (c)  2020  Mobvoi Inc. (authors: Fangjun Kuang)
+#
 # Usage:
 #  ./scripts/run_cppcheck.sh
 #     Use the default build dir `build`

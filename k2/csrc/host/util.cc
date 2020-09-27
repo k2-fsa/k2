@@ -3,7 +3,7 @@
  * util
  *
  * @copyright
- * Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+ * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
