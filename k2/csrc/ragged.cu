@@ -294,7 +294,7 @@ int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
 void RaggedShape::Check() {
   ContextPtr c = Context();
   int32_t num_axes = axes_.size();
-  for (int32_t axis = 0; axis < axes_.size(); axis++) {
+  for (int32_t axis = 0; axis < num_axes; ++axis) {
     RaggedShapeDim &rsd = axes_[axis];
     K2_CHECK_GE(rsd.row_splits.Dim(), 0);
     if (rsd.cached_tot_size >= 0) {
@@ -343,7 +343,7 @@ void RaggedShape::Check() {
                       << " but cached_tot_size == " << rsd.cached_tot_size;
       }
     }
-    if (axis + 1 < axes_.size()) {
+    if (axis + 1 < num_axes) {
       int32_t next_num_rows = axes_[axis + 1].row_splits.Dim() - 1;
       if (num_elems != next_num_rows) {
         K2_LOG(FATAL) << "Ragged shape has num_elems for axes_[" << axis

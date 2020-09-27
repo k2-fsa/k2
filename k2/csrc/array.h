@@ -325,6 +325,7 @@ struct ConstArray2Accessor {
   __host__ __device__ T operator()(int32_t i, int32_t j) const {
     return data[i * elem_stride0 + j];
   }
+  const T *Row(int32_t i) const { return data + elem_stride0 * i; }
   ConstArray2Accessor(const T *data, int32_t elem_stride0)
       : data(data), elem_stride0(elem_stride0) {}
   ConstArray2Accessor(const ConstArray2Accessor &other) = default;
@@ -346,6 +347,11 @@ class Array2 {
 
   /* Could view this as num_cols */
   int32_t Dim1() const { return dim1_; }
+
+  // Currently ByteOffset and GetRegion is for internal usage, user should never
+  // call it for now.
+  int32_t ByteOffset() const { return byte_offset_; }
+  RegionPtr &GetRegion() { return region_; }
 
   ContextPtr &Context() const { return region_->context; }
 
@@ -582,12 +588,12 @@ std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
 // [ 4 5 6 ]]".  Intended mostly for use in debugging.
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
-  stream << '[';
+  stream << std::endl << '[';
   Array2<T> array_cpu = array.To(GetCpuContext());
   int32_t num_rows = array_cpu.Dim0();
   for (int32_t i = 0; i < num_rows; ++i) {
     stream << array_cpu[i];
-    if (i + 1 < num_rows) stream << '\n';
+    if (i + 1 < num_rows) stream << std::endl;
   }
   return stream << ']';
 }

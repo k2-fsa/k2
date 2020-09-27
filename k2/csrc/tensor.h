@@ -64,7 +64,7 @@ class Shape {
     return true;
   }
 
-  Shape() : num_axes_(0), num_element_(0), is_contiguous_(true) {}
+  Shape() = default;
 
   explicit Shape(const std::vector<int32_t> &dims);
 
@@ -76,10 +76,10 @@ class Shape {
  private:
   static const int32_t kMaxDim = 4;  // Will increase this as needed
 
-  int32_t num_axes_;  // Must be >= 0
-  int32_t num_element_;
-  int32_t storage_size_;
-  bool is_contiguous_;
+  int32_t num_axes_ = 0;  // Must be >= 0
+  int32_t num_element_ = 0;
+  int32_t storage_size_ = 0;
+  bool is_contiguous_ = true;
 
   // elements of dims_ and strides_ >= num_axes_ are currently not set;
   // in future we may change this.

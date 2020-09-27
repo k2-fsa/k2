@@ -27,19 +27,21 @@
 namespace k2 {
 template <typename SrcPtr, typename DestPtr>
 void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest) {
+  K2_CHECK_GE(n, 0);
   DeviceType d = c->GetDeviceType();
   using SumType = typename std::decay<decltype(dest[0])>::type;
   if (d == kCpu) {
     SumType sum = 0;
     for (int32_t i = 0; i != n; ++i) {
+      auto prev = src[i];
       dest[i] = sum;
-      sum += src[i];
+      sum += prev;
     }
   } else {
     K2_CHECK_EQ(d, kCuda);
     // Determine temporary device storage requirements
     void *d_temp_storage = nullptr;
-    size_t temp_storage_bytes = 0;
+    std::size_t temp_storage_bytes = 0;
     // since d_temp_storage is nullptr, the following function will compute
     // the number of required bytes for d_temp_storage
     K2_CHECK_CUDA_ERROR(cub::DeviceScan::ExclusiveSum(
@@ -52,10 +54,10 @@ void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest) {
   }
 }
 template <typename T>
-T MaxValue(ContextPtr &c, int32_t nelems, T *t) {
+T MaxValue(ContextPtr &c, int32_t nelems, const T *t) {
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
-    // not the return value is initialized with T(0)
+    // note the return value is initialized with T(0)
     T result = T(0);
     for (int32_t i = 0; i < nelems; ++i) {
       if (result < t[i]) result = t[i];
@@ -68,7 +70,7 @@ T MaxValue(ContextPtr &c, int32_t nelems, T *t) {
     Array1<T> max_array(c, 1, T(0));
     T *max_value = max_array.Data();
     void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
+    std::size_t temp_storage_bytes = 0;
     // the first time is to determine temporary device storage requirements
     K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
         d_temp_storage, temp_storage_bytes, t, max_value, nelems, max_op, init,

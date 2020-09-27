@@ -24,7 +24,6 @@ function(download_cub)
   message(STATUS "cub is downloaded to ${cub_SOURCE_DIR}")
   add_library(cub INTERFACE)
   target_include_directories(cub INTERFACE ${cub_SOURCE_DIR})
-
 endfunction()
 
 download_cub()
