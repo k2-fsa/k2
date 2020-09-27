@@ -1,6 +1,6 @@
 // k2/python/host/csrc/fsa_util.cc
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
+// Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
 
 // See ../../../LICENSE for clarification regarding multiple authors
 
