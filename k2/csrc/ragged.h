@@ -72,6 +72,10 @@ class RaggedShape {
     }
   }
 
+  // Append `other` to `*this`.  `other` must have the same number of axes as
+  // `this`.  The reason this is
+  void _Append(const RaggedShape &other);
+
   // Returns the number of elements that a ragged array with this shape would
   // have.
   int32_t NumElements() { return TotSize(NumAxes() - 1); }
