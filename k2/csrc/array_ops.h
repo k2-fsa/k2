@@ -295,8 +295,10 @@ void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
 
 /*
   Returns a random Array1, uniformly distributed betwen `min_value` and
-  `max_value`.  CAUTION: this will be randomly generated on the CPU, for now,
-  and transferred to the CPU, so it will be slow if c is not a CPU context.
+  `max_value`.  CAUTION: for now, this will be randomly generated on CPU and
+  then transferred to other devices if c is not a CPU context, so it will be
+  slow if c is not a CPU context.
+  Note T should be floating-pointer type or integral type.
 
     @param[in] c  Context for this array; note, this function will be slow
                   if this is not a CPU context
@@ -305,7 +307,6 @@ void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
     @param[in] max_value  Maximum value allowed in the array;
                            require max_value >= min_value.
     @return    Returns the randomly generated array
-
  */
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
@@ -321,17 +322,18 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc = 1);
 /*
   This is a convenience wrapper for the function of the same name in utils.h.
    @param [in] row_splits  Input row_splits vector, of dimension num_rows + 1
-   @param [out] row_ids    row_ids vector to whose data (but not metadata!)
-                           we will write, of dimension num_elems (which must
-                           equal row_splits[num_rows].
+   @param [out] row_ids    row_ids vector to whose data we will write,
+                           of dimension num_elems (which must equal
+                           row_splits[num_rows].
  */
-void RowSplitsToRowIds(Array1<int32_t> &row_splits, Array1<int32_t> &row_ids);
+void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
+                       Array1<int32_t> &row_ids);
 
 /*
   This is a convenience wrapper for the function of the same name in utils.h.
    @param [in] row_ids     Input row_ids vector, of dimension num_elems
-   @param [out] row_splits  row_splits vector to whose data (but not metadata!)
-                           we will write, of dimension num_rows + 1; we require
+   @param [out] row_splits  row_splits vector to whose data we will write,
+                            of dimension num_rows + 1; we require
                            (but do not necessarily check!) that `row_ids` is
                            non-negative, non-decreasing, and all elements are
                            less than num_rows.
