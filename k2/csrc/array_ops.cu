@@ -19,7 +19,8 @@ namespace k2 {
 // This is similar to the template Append() defined in ops_inl.h,
 // but with changes largely about adding `data_offsets`, and
 // subtracting one from the dims of all but the last array.
-Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
+Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
+                                const Array1<int32_t> **src) {
   K2_CHECK_GT(num_arrays, 0);
   ContextPtr c = src[0]->Context();
 
@@ -27,23 +28,27 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
   int32_t sum = 0, max_dim = 0;
   row_splits_vec[0] = sum;
 
-  std::vector<int32_t *> last_elem_ptrs_vec;
-  last_elem_ptrs_vec.resize(num_arrays - 1);
+  std::vector<const int32_t *> last_elem_ptrs_vec(num_arrays);
 
   for (int32_t i = 0; i < num_arrays; i++) {
+    K2_CHECK_GE(src[i]->Dim(), 1);
     int32_t dim = src[i]->Dim() - (i + 1 < num_arrays ? 1 : 0);
     if (dim > max_dim) max_dim = dim;
     sum += dim;
     row_splits_vec[i + 1] = sum;
-    if (i + 1 < num_arrays) last_elem_ptrs_vec[i] = src[i]->Data() + dim;
+    last_elem_ptrs_vec[i] = src[i]->Data() + dim;
   }
   int32_t ans_size = sum;
 
   Array1<int32_t> ans(c, ans_size);
   int32_t *ans_data = ans.Data();
 
-  Array1<int32_t *> last_elems_ptrs(c, last_elem_ptrs_vec);
+  Array1<const int32_t *> last_elems_ptrs(c, last_elem_ptrs_vec);
   Array1<int32_t> data_offsets(c, num_arrays);
+  // note as data_offsets.Dim() == last_elem_ptrs.Dim(), so the last element of
+  // last_elem_ptrs.Dim() will not be summed to data_offsets, it's OK as we
+  // don't need that value since we would not drop the last element of the last
+  // array.
   ExclusiveSumDeref(last_elems_ptrs, &data_offsets);
   int32_t *data_offsets_data = data_offsets.Data();
 
@@ -51,22 +56,27 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
     // a simple loop is faster, although the other branchs should still work on
     // CPU.
     for (int32_t i = 0; i < num_arrays; i++) {
-      int32_t offset = row_splits_vec[i], this_dim = src[i]->Dim();
+      int32_t this_dim = src[i]->Dim();
       const int32_t *this_src_data = src[i]->Data();
       int32_t data_offset = data_offsets_data[i];
       for (int32_t j = 0; j < this_dim; j++) {
         ans_data[j] = this_src_data[j] + data_offset;
       }
-      ans_data += this_dim;
+      // notice `this_dim - 1` here, it means we will overwrite the copy of last
+      // element of src[i] when copying elements in src[i+1] in the next
+      // for-loop, it generates the same result with dropping the last element
+      // of src[i] as last-elment-of-src[i] == src[i+1]->Data()[0] (equals 0) +
+      // data_offsets_data[i+1].
+      ans_data += this_dim - 1;
     }
   } else {
     K2_CHECK_EQ(c->GetDeviceType(), kCuda);
     Array1<int32_t> row_splits(c, row_splits_vec);
     const int32_t *row_splits_data = row_splits.Data();
-    std::vector<int32_t *> src_ptrs_vec(num_arrays);
+    std::vector<const int32_t *> src_ptrs_vec(num_arrays);
     for (int32_t i = 0; i < num_arrays; i++) src_ptrs_vec[i] = src[i]->Data();
-    Array1<int32_t *> src_ptrs(c, src_ptrs_vec);
-    int32_t **src_ptrs_data = src_ptrs.Data();
+    Array1<const int32_t *> src_ptrs(c, src_ptrs_vec);
+    const int32_t **src_ptrs_data = src_ptrs.Data();
 
     int32_t avg_input_size = ans_size / num_arrays;
     if (max_dim < 2 * avg_input_size + 512) {
@@ -82,6 +92,8 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
         int32_t row_start = row_splits_data[i],
                 row_end = row_splits_data[i + 1];
         const int32_t *src_ptr = src_ptrs_data[i];
+        // not we have dropped the last element of src[i] in row_splits_data,
+        // so here it will not be copied.
         if (j < row_end - row_start) {
           ans_data[row_start + j] = src_ptr[j] + data_offsets_data[i];
         }
@@ -104,9 +116,10 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
       index_map.reserve((2 * ans_size) / block_dim);
       for (int32_t i = 0; i < num_arrays; i++) {
         int32_t this_array_size = src[i]->Dim();
-        int32_t this_num_blocks = (this_array_size + block_dim - 1) / block_dim;
+        int32_t this_num_blocks = NumBlocks(this_array_size, block_dim);
         for (int32_t j = 0; j < this_num_blocks; j++) {
-          index_map.push_back((((uint64_t)j) << 32) + (uint64_t)i);
+          index_map.push_back((static_cast<uint64_t>(j) << 32) +
+                              static_cast<uint64_t>(i));
         }
       }
       Array1<uint64_t> index_map_gpu(c, index_map);
@@ -115,8 +128,8 @@ Array1<int32_t> Splice(int32_t num_arrays, Array1<int32_t> **src) {
       auto lambda_set_data_blocks = [=] __host__ __device__(int32_t i,
                                                             int32_t j) {
         uint64_t index = index_map_data[i];
-        uint32_t orig_i = (uint32_t)index,
-                 block_index = (uint32_t)(index >> 32);
+        uint32_t orig_i = static_cast<uint32_t>(index),
+                 block_index = static_cast<uint32_t>(index >> 32);
         int32_t row_start = row_splits_data[orig_i],
                 row_end = row_splits_data[orig_i + 1],
                 orig_j = (block_index * block_dim) + j;
