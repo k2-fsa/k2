@@ -22,7 +22,7 @@ static constexpr const char *kDelim = " \t";
 
 // Convert a string to an integer. Abort the program on failure.
 static int32_t StringToInt(const std::string &s) {
-  K2_CHECK_EQ(s.empty(), false);
+  K2_CHECK(!s.empty());
 
   bool ok = false;
   char *p = nullptr;
@@ -41,7 +41,7 @@ static int32_t StringToInt(const std::string &s) {
 
 // Convert a string to a float. Abort the program on failure.
 static float StringToFloat(const std::string &s) {
-  K2_CHECK_EQ(s.empty(), false);
+  K2_CHECK(!s.empty());
   char *p = nullptr;
   float f = std::strtof(s.c_str(), &p);
   if (*p != '\0') K2_LOG(FATAL) << "Failed to convert " << s << " to a float";
@@ -318,7 +318,7 @@ std::string FsaToString(const Fsa &fsa, bool negate_scores /*= false*/,
   for (int32_t i = 0; i != n; ++i) {
     const auto &arc = arcs[i];
     os << arc.src_state << sep << arc.dest_state << sep << arc.symbol << sep;
-    if (p) os << p[i] << sep;
+    if (p != nullptr) os << p[i] << sep;
     os << (scale * arc.score) << line_sep;
   }
   os << (fsa.shape.Dim0() - 1) << line_sep;
