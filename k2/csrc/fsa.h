@@ -221,17 +221,23 @@ inline FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa **fsas) {
 int32_t GetFsaBasicProperties(const Fsa &fsa);
 int32_t GetFsaVecBasicProperties(const FsaVec &fsa_vec);
 
+// Return weights of `arcs` as a Tensor that shares the same memory
+// location
 Tensor WeightsOfArcsAsTensor(const Array1<Arc> &arcs);
 
-inline Array1<float> WeightsOfArcsAsArray(const Array1<Arc> &arcs) {
+// Return weights of `arcs` as an Array1<float>; this will not share the same
+// memory location because Array1 does not support a stride.  However
+// it would be possible to get it as an Array2.
+inline Array1<float> WeightsOfArcsAsArray1(const Array1<Arc> &arcs) {
   return Array1<float>(WeightsOfArcsAsTensor(arcs));
 }
-// If you need the weights of an Fsa or FsaVec f, you can just
-// use WeightsOfArcsAsArray(f.values).
 
-inline Array1<float> WeightsOfFsaAsArray(const Ragged<Arc> &fsa) {
+inline Array1<float> WeightsOfFsaAsArray1(const Ragged<Arc> &fsa) {
   return Array1<float>(WeightsOfArcsAsTensor(fsa.values));
 }
+
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_H_
