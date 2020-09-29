@@ -9,10 +9,11 @@
  */
 
 #include <sstream>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/context.h"
-#include "k2/csrc/fsa.h"
+#include "k2/csrc/fsa_utils.h"
 
 namespace k2 {
 
@@ -202,7 +203,7 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
     state_arcs[arc.src_state].emplace_back(arc);
   } while (std::getline(is, line));
 
-  K2_CHECK(bool(is)) << "Failed to read";
+  K2_CHECK(is) << "Failed to read";
   K2_CHECK_NE(final_state, -1) << "Found no final_state!";
 
   CheckStateArcs(state_arcs, final_state);
@@ -219,7 +220,7 @@ Fsa FsaFromString(const std::string &s, bool negate_scores /*= false*/,
   std::istringstream is(s);
   std::string line;
   std::getline(is, line);
-  K2_CHECK(bool(is));
+  K2_CHECK(is);
 
   std::vector<std::string> splits;
   SplitStringToVector(line, kDelim, &splits);
