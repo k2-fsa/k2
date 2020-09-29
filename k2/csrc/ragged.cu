@@ -399,7 +399,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
     K2_LOG(FATAL) << "At least one of row_splits and row_ids must be defined";
   }
   if (cached_tot_size != -1) {
-    if (row_ids != nullptr) K2_CHECK(cached_tot_size == row_ids->Dim() - 1);
+    if (row_ids != nullptr) K2_CHECK_EQ(cached_tot_size, row_ids->Dim());
     if (row_splits != nullptr) {  // caution: next check may be slow...
       const auto &row_splits_ref = *row_splits;
       K2_CHECK_EQ(cached_tot_size, row_splits_ref[row_splits->Dim() - 1]);
@@ -425,16 +425,14 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
       // if we had row_ids set up, we should have set cached_tot_size.
       K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
       K2_CHECK_GT(rsd.row_splits.Dim(), 0);
-      const_cast<RaggedShapeDim&>(rsd).cached_tot_size =
+      const_cast<RaggedShapeDim &>(rsd).cached_tot_size =
           rsd.row_splits[rsd.row_splits.Dim() - 1];
       return rsd.cached_tot_size;
     }
   }
 }
 
-
-RaggedShape ComposeRaggedShapes(const RaggedShape &a,
-                                const RaggedShape &b) {
+RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
   if (a.NumElements() != b.Dim0()) {
     K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()
                   << " vs. " << b.Dim0();
@@ -1025,7 +1023,5 @@ RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
   Array1<int32_t> row_ids(c, num_elems, 0);
   return RaggedShape2(&row_splits, &row_ids, num_elems);
 }
-
-
 
 }  // namespace k2

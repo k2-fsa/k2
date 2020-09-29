@@ -95,80 +95,16 @@ static void SplitStringToVector(const std::string &in, const char *delim,
   }
 }
 
-/* Check that arcs are valid.
-
-   It will abort the program if there is an invalid arc.
-   An arc is invalid if one of the following happens:
-
-    - its symbol is -1, but its dest state is not final state.
-    - its dest state is larger than final state
-
-  @param [in] state_arcs   Indexed by state numbers.
-  @param [in] final_state  The final state.
- */
-static void CheckStateArcs(const std::vector<std::vector<Arc>> &state_arcs,
-                           int32_t final_state) {
-  int32_t num_states = static_cast<int32_t>(state_arcs.size());
-  K2_CHECK_EQ(num_states, final_state + 1);
-  K2_CHECK(!state_arcs[final_state].empty());
-
-  for (int32_t i = 0; i != num_states; ++i) {
-    const auto &arcs = state_arcs[i];
-    for (const auto &arc : arcs) {
-      K2_CHECK_EQ(arc.src_state, i);
-      K2_CHECK_LE(arc.dest_state, final_state);
-      if (arc.symbol == -1) K2_CHECK_EQ(arc.dest_state, final_state);
-    }
-  }
-}
-
-/* Build an Fsa from a list of lists of arcs.
-
-  @param [in] state_arcs Indexed by states.
-  @param [in] num arcs   It is the number of arcs in total.
-                         Provided for optimization.
- */
-static Fsa AcceptorFromStateArcs(
-    const std::vector<std::vector<Arc>> &state_arcs, int32_t num_arcs) {
-  int32_t num_states = static_cast<int32_t>(state_arcs.size());
-  std::vector<int32_t> row_splits(num_states + 1);
-  std::vector<Arc> arcs;
-  arcs.reserve(num_arcs);
-
-  row_splits[0] = 0;
-  for (int32_t i = 1; i != num_states; ++i) {
-    row_splits[i] =
-        row_splits[i - 1] + static_cast<int32_t>(state_arcs[i - 1].size());
-    arcs.insert(arcs.end(), state_arcs[i - 1].begin(), state_arcs[i - 1].end());
-  }
-  // the final_state has no leaving arcs, so there is nothing
-  // to add to `arcs` and row_splits[num_states]
-  row_splits[num_states] = row_splits[num_states - 1];
-
-  auto cpu_context = GetCpuContext();
-  Array1<int32_t> _row_splits(cpu_context, row_splits);
-  std::vector<RaggedShapeDim> axes(1);
-  axes[0].row_splits = _row_splits;
-  axes[0].cached_tot_size = -1;
-
-  RaggedShape shape(axes);
-  Array1<Arc> values(cpu_context, arcs);
-
-  return Fsa(shape, values);
-}
-
 // Create an acceptor from a stream.
 static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
                               bool negate_scores) {
-  std::vector<std::vector<Arc>> state_arcs;  // indexed by states
+  std::vector<Arc> arcs;
   std::string line = std::move(first_line);
   std::vector<std::string> splits;
 
   float scale = 1;
   if (negate_scores) scale = -1;
 
-  int32_t final_state = -1;  // invalid state
-  int32_t num_arcs = 0;
   do {
     SplitStringToVector(line, kDelim,
                         &splits);  // splits is cleared in the function
@@ -176,36 +112,31 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
 
     auto num_fields = splits.size();
 
-    Arc arc{};  // it has a trivial destructor
     if (num_fields == 4u) {
       //   0            1          2      3
       // src_state  dest_state  symbol  score
-      ++num_arcs;
-      arc.src_state = StringToInt(splits[0]);
-      arc.dest_state = StringToInt(splits[1]);
-      arc.symbol = StringToInt(splits[2]);
-      arc.score = scale * StringToFloat(splits[3]);
+      int32_t src_state = StringToInt(splits[0]);
+      int32_t dest_state = StringToInt(splits[1]);
+      int32_t symbol = StringToInt(splits[2]);
+      float score = scale * StringToFloat(splits[3]);
+      arcs.emplace_back(src_state, dest_state, symbol, score);
     } else if (num_fields == 1u) {
-      final_state = StringToInt(splits[0]);
-      if (static_cast<int32_t>(state_arcs.size()) <= final_state)
-        state_arcs.resize(final_state + 1);
-      break;  // finish reading
+      (void)StringToInt(splits[0]);  // this is a final state
+      break;                         // finish reading
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nIt expects a line with 4 fields";
     }
-
-    if (static_cast<int32_t>(state_arcs.size()) <= arc.src_state)
-      state_arcs.resize(arc.src_state + 1);
-
-    state_arcs[arc.src_state].emplace_back(arc);
   } while (std::getline(is, line));
 
-  K2_CHECK(is) << "Failed to read";
-  K2_CHECK_NE(final_state, -1) << "Found no final_state!";
+  K2_CHECK(is) << "Failed to read fsa from string";
 
-  CheckStateArcs(state_arcs, final_state);
-  return AcceptorFromStateArcs(state_arcs, num_arcs);
+  bool error = true;
+  Array1<Arc> array(GetCpuContext(), arcs);
+  auto fsa = FsaFromArray1(array, &error);
+  K2_CHECK_EQ(error, false);
+
+  return fsa;
 }
 
 static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
@@ -213,62 +144,50 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
                                 Array1<int32_t> *aux_labels) {
   K2_CHECK(aux_labels != nullptr);
 
-  std::vector<std::vector<int32_t>> state_aux_labels;  // indexed by states
-  std::vector<std::vector<Arc>> state_arcs;            // indexed by states
+  std::vector<int32_t> state_aux_labels;
+  std::vector<Arc> arcs;
   std::string line = std::move(first_line);
   std::vector<std::string> splits;
 
   float scale = 1;
   if (negate_scores) scale = -1;
 
-  int32_t final_state = -1;  // invalid state
-  int32_t num_arcs = 0;
   do {
     SplitStringToVector(line, kDelim,
                         &splits);  // splits is cleared in the function
     if (splits.empty()) continue;  // this is an empty line
+
     auto num_fields = splits.size();
-    Arc arc{};
     if (num_fields == 5u) {
       //   0           1         2         3        4
       // src_state  dest_state  symbol  aux_label score
-      ++num_arcs;
-      arc.src_state = StringToInt(splits[0]);
-      arc.dest_state = StringToInt(splits[1]);
-      arc.symbol = StringToInt(splits[2]);
-      arc.score = scale * StringToFloat(splits[4]);
+      int32_t src_state = StringToInt(splits[0]);
+      int32_t dest_state = StringToInt(splits[1]);
+      int32_t symbol = StringToInt(splits[2]);
+      int32_t aux_label = StringToInt(splits[3]);
+      float score = scale * StringToFloat(splits[4]);
+      arcs.emplace_back(src_state, dest_state, symbol, score);
+      state_aux_labels.push_back(aux_label);
     } else if (num_fields == 1u) {
-      final_state = StringToInt(splits[0]);
-      if (static_cast<int32_t>(state_arcs.size()) <= final_state)
-        state_arcs.resize(final_state + 1);
-      state_aux_labels.resize(final_state + 1);
+      (void)StringToInt(splits[0]);
       break;  // finish reading
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nIt expects a line with 5 fields";
     }
-    if (static_cast<int32_t>(state_arcs.size()) <= arc.src_state) {
-      state_arcs.resize(arc.src_state + 1);
-      state_aux_labels.resize(arc.src_state + 1);
-    }
-
-    state_arcs[arc.src_state].emplace_back(arc);
-    state_aux_labels[arc.src_state].push_back(StringToInt(splits[3]));
   } while (std::getline(is, line));
 
-  K2_CHECK(is) << "Failed to read";
-  K2_CHECK_NE(final_state, -1) << "Found no final_state!";
+  K2_CHECK(is) << "Failed to read fsa from string";
 
-  std::vector<int32_t> labels;
-  labels.reserve(num_arcs);
-  for (const auto &v : state_aux_labels) {
-    labels.insert(labels.end(), v.begin(), v.end());
-  }
+  auto cpu_context = GetCpuContext();
+  *aux_labels = Array1<int32_t>(cpu_context, state_aux_labels);
+  Array1<Arc> array(cpu_context, arcs);
 
-  *aux_labels = Array1<int32_t>(GetCpuContext(), labels);
+  bool error = true;
+  auto fsa = FsaFromArray1(array, &error);
+  K2_CHECK_EQ(error, false);
 
-  CheckStateArcs(state_arcs, final_state);
-  return AcceptorFromStateArcs(state_arcs, num_arcs);
+  return fsa;
 }
 
 Fsa FsaFromString(const std::string &s, bool negate_scores /*= false*/,

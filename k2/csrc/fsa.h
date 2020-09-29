@@ -23,6 +23,12 @@ struct Arc {
   int32_t dest_state;
   int32_t symbol;
   float score;  // we have the space to put this here, so...
+  Arc() = default;
+  Arc(int32_t src_state, int32_t dest_state, int32_t symbol, float score)
+      : src_state(src_state),
+        dest_state(dest_state),
+        symbol(symbol),
+        score(score) {}
 };
 
 // for debug only
@@ -154,10 +160,7 @@ struct DenseFsaVec {
 */
 Fsa FsaFromTensor(Tensor &t, bool *error);
 
-
 Fsa FsaFromArray1(Array1<Arc> &arc, bool *error);
-
-
 
 /*
   Returns a single Tensor that represents the FSA; this is just the vector of

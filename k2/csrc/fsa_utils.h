@@ -92,36 +92,6 @@ Fsa FsaFromString(const std::string &s, bool negate_scores = false,
  */
 std::string FsaToString(const Fsa &fsa, bool negate_scores = false,
                         const Array1<int32_t> *aux_labels = nullptr);
-
-/*
-  Write an Fsa to file.
-
-  @param [in]   fsa       The fsa to be written.
-  @param [in]   filename
-  @param [in]   binary    True to save in binary format; false for text format.
-  @param [in]   aux_labels
-                    Not NULL when the fsa is a transducer. Leave it NULL
-                    when the fsa is an acceptor.
-*/
-void WriteFsa(const Fsa &fsa, const std::string &filename, bool binary = true,
-              const Array1<int32_t> *aux_labels = nullptr);
-
-/*
-  Read an Fsa from file. It reads whatever `WriteFsa` has saved.
-
-  @param [in]   filename
-  @param [in]   binary    true to read in binary format;
-                          false to read in text format.
-  @param [out]  aux_labels
-                          If the file contains a transducer,
-                          it will contain the aux_labels if not NULL.
-                          Note that it is allocated on CPU inside the
-                          function if needed.
-  @return It returns an FSA on CPU.
- */
-Fsa ReadFsa(const std::string &filename, bool binary = true,
-            Array1<int32_t> *aux_labels = nullptr);
-
 }  // namespace k2
 
 #endif  //  K2_CSRC_FSA_UTILS_H_

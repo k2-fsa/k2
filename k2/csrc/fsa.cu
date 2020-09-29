@@ -207,6 +207,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   const Arc *arcs_data = reinterpret_cast<const Arc *>(array.Data());
   ContextPtr c = array.Context();
   const int32_t num_arcs = array.Dim();
+  *error = false;
 
 
   // If the FSA has arcs entering the final state, that will
@@ -215,7 +216,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   // (highest numbered state that has arcs leaving it) + 1, so num_states
   // (highest numbered state that has arcs leaving it) + 2.
 
-  // element 0 is num-states, element is error flag that's set to
+  // element 0 is num-states, element 1 is error flag that's set to
   // 0 on error.
 
   Array1<int32_t> num_states_array(c, 2, -1);
