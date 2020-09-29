@@ -85,6 +85,13 @@ class RaggedShape {
     return axes_[axis - 1].row_splits;
   }
 
+  const Array1<int32_t> &RowSplits(int32_t axis) const {
+    K2_CHECK_GT(axis, 0);
+    K2_CHECK_LT(axis, NumAxes());
+    // Note row_splits is always nonempty for valid RaggedShapeDim.
+    return axes_[axis - 1].row_splits;
+  }
+
   /*
     Return the row-ids for axis `axis` with `0 < axis < NumAxes()`.
     The dimension is the number of elements on this axis == TotSize(axis).
@@ -381,7 +388,7 @@ struct Ragged {
     return values[shape[indexes]];
   }
 
-  ContextPtr Context() const { return values.Context(); }
+  ContextPtr &Context() const { return values.Context(); }
   int32_t NumAxes() const { return shape.NumAxes(); }
 
   /*

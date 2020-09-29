@@ -57,7 +57,7 @@ static void TrimString(std::string *s) {
   s->erase(std::find_if(s->rbegin(), s->rend(), not_space).base(), s->end());
 }
 
-/** Split a string to a vector of strings using a set of delimiters.
+/* Split a string to a vector of strings using a set of delimiters.
 
    Example usage:
 
@@ -292,6 +292,37 @@ Fsa FsaFromString(const std::string &s, bool negate_scores /*= false*/,
                 << "First line is: " << line;
 
   return Fsa();  // unreachable code
+}
+
+std::string FsaToString(const Fsa &fsa, bool negate_scores /*= false*/,
+                        const Array1<int32_t> *aux_labels /*= nullptr*/) {
+  K2_CHECK_EQ(fsa.NumAxes(), 2);
+  K2_CHECK_EQ(fsa.Context()->GetDeviceType(), kCpu);
+  const Array1<int32_t> &row_splits = fsa.shape.RowSplits(1);
+  const Array1<Arc> &arcs = fsa.values;
+
+  const int32_t *p = nullptr;
+  if (aux_labels != nullptr) {
+    K2_CHECK(IsCompatible(fsa, *aux_labels));
+    K2_CHECK_EQ(aux_labels->Dim(), arcs.Dim());
+    p = aux_labels->Data();
+  }
+  float scale = 1;
+  if (negate_scores) scale = -1;
+
+  std::ostringstream os;
+
+  int32_t n = arcs.Dim();
+  char sep = ' ';
+  char line_sep = '\n';
+  for (int32_t i = 0; i != n; ++i) {
+    const auto &arc = arcs[i];
+    os << arc.src_state << sep << arc.dest_state << sep << arc.symbol << sep;
+    if (p) os << p[i] << sep;
+    os << (scale * arc.score) << line_sep;
+  }
+  os << (fsa.shape.Dim0() - 1) << line_sep;
+  return os.str();
 }
 
 }  // namespace k2

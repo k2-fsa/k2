@@ -143,4 +143,37 @@ TEST(FsaFromString, Transducer) {
   }
 }
 
+// TODO(fangjun): write code to check the printed
+// strings matching expected ones.
+TEST(FsaToString, Acceptor) {
+  // src_state dst_state label cost
+  std::string s = R"(0 1 2   -1.2
+    0 2  10 -2.2
+    1 5  -1  -3.2
+    5
+  )";
+  auto fsa = FsaFromString(s);
+  auto str = FsaToString(fsa);
+  K2_LOG(INFO) << "\n" << str;
+
+  str = FsaToString(fsa, true);
+  K2_LOG(INFO) << "\n---negating---\n" << str;
+}
+
+TEST(FsaToString, Transducer) {
+  // src_state dst_state label aux_label cost
+  std::string s = R"(0 1 2 100 -1.2
+    0 2  10 200 -2.2
+    1 5  -1 300  -3.2
+    5
+  )";
+  Array1<int32_t> aux_labels;
+  auto fsa = FsaFromString(s, false, &aux_labels);
+  auto str = FsaToString(fsa, false, &aux_labels);
+  K2_LOG(INFO) << "\n" << str;
+
+  str = FsaToString(fsa, true, &aux_labels);
+  K2_LOG(INFO) << "\n---negating---\n" << str;
+}
+
 }  // namespace k2

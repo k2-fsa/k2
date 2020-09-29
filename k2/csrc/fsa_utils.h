@@ -59,6 +59,40 @@ namespace k2 {
 Fsa FsaFromString(const std::string &s, bool negate_scores = false,
                   Array1<int32_t> *aux_labels = nullptr);
 
+/* Convert an FSA to a string.
+
+   If the FSA is an acceptor, i.e., aux_labels == nullptr,  every arc
+   is converted to a line with the following form:
+
+      src_state dest_state label score
+
+   If the FSA is a transducer, i.e., aux_labels != nullptr, every arc
+   is converted to a lien with the following form:
+
+      src_state dest_state label aux_label score
+
+   The last line of the resulting string contains:
+
+      final_state
+
+   NOTE: Fields are separated by only ONE space.
+   There are no leading or trailing spaces.
+
+   NOTE: If `negate_scores` is true, scores are first negated and then printed.
+
+   CAUTION: We support only FSAs on the CPU.
+
+   @param [in]  fsa   The input FSA, which MUST be on CPU.
+   @param [in]  negate_scores
+                      If true, the scores will first be negated and
+                      then printed.
+   @param in]   aux_labels
+                      If not NULL, the FSA is a transducer and it contains the
+                      aux labels of each arc.
+ */
+std::string FsaToString(const Fsa &fsa, bool negate_scores = false,
+                        const Array1<int32_t> *aux_labels = nullptr);
+
 /*
   Write an Fsa to file.
 
