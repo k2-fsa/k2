@@ -60,7 +60,7 @@ enum FsaBasicProperties {
                                         // used in figuring out the boundaries
                                         // between FSAs when we serialize to a
                                         // list of arcs.
-  kFsaAllProperties = 0x07FF
+  kFsaAllProperties = 0x03FF
 };
 
 using Fsa = Ragged<Arc>;  // 2 axes: state,arc
