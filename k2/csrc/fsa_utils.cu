@@ -125,7 +125,7 @@ static void CheckStateArcs(const std::vector<std::vector<Arc>> &state_arcs,
 
 /* Build an Fsa from a list of lists of arcs.
 
-  @param [in] state_arcs Indexes by states.
+  @param [in] state_arcs Indexed by states.
   @param [in] num arcs   It is the number of arcs in total.
                          Provided for optimization.
  */
@@ -179,6 +179,8 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
 
     Arc arc{};  // it has a trivial destructor
     if (num_fields == 4u) {
+      //   0            1          2      3
+      // src_state  dest_state  symbol  score
       ++num_arcs;
       arc.src_state = StringToInt(splits[0]);
       arc.dest_state = StringToInt(splits[1]);
@@ -189,9 +191,6 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
       if (static_cast<int32_t>(state_arcs.size()) <= final_state)
         state_arcs.resize(final_state + 1);
       break;  // finish reading
-    } else if (num_fields == 0u) {
-      // this is an empty line, skip it
-      continue;
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nIt expects a line with 4 fields";
@@ -211,8 +210,66 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
 }
 
 static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
-                                bool negate_scores) {
-  return Fsa();
+                                bool negate_scores,
+                                Array1<int32_t> *aux_labels) {
+  K2_CHECK(aux_labels != nullptr);
+
+  std::vector<std::vector<int32_t>> state_aux_labels;  // indexed by states
+  std::vector<std::vector<Arc>> state_arcs;            // indexed by states
+  std::string line = std::move(first_line);
+  std::vector<std::string> splits;
+
+  float scale = 1;
+  if (negate_scores) scale = -1;
+
+  int32_t final_state = -1;  // invalid state
+  int32_t num_arcs = 0;
+  do {
+    SplitStringToVector(line, kDelim,
+                        &splits);  // splits is cleared in the function
+    if (splits.empty()) continue;  // this is an empty line
+    auto num_fields = splits.size();
+    Arc arc{};
+    if (num_fields == 5u) {
+      //   0           1         2         3        4
+      // src_state  dest_state  symbol  aux_label score
+      ++num_arcs;
+      arc.src_state = StringToInt(splits[0]);
+      arc.dest_state = StringToInt(splits[1]);
+      arc.symbol = StringToInt(splits[2]);
+      arc.score = scale * StringToFloat(splits[4]);
+    } else if (num_fields == 1u) {
+      final_state = StringToInt(splits[0]);
+      if (static_cast<int32_t>(state_arcs.size()) <= final_state)
+        state_arcs.resize(final_state + 1);
+      state_aux_labels.resize(final_state + 1);
+      break;  // finish reading
+    } else {
+      K2_LOG(FATAL) << "Invalid line: " << line
+                    << "\nIt expects a line with 5 fields";
+    }
+    if (static_cast<int32_t>(state_arcs.size()) <= arc.src_state) {
+      state_arcs.resize(arc.src_state + 1);
+      state_aux_labels.resize(arc.src_state + 1);
+    }
+
+    state_arcs[arc.src_state].emplace_back(arc);
+    state_aux_labels[arc.src_state].push_back(StringToInt(splits[3]));
+  } while (std::getline(is, line));
+
+  K2_CHECK(is) << "Failed to read";
+  K2_CHECK_NE(final_state, -1) << "Found no final_state!";
+
+  std::vector<int32_t> labels;
+  labels.reserve(num_arcs);
+  for (const auto &v : state_aux_labels) {
+    labels.insert(labels.end(), v.begin(), v.end());
+  }
+
+  *aux_labels = Array1<int32_t>(GetCpuContext(), labels);
+
+  CheckStateArcs(state_arcs, final_state);
+  return AcceptorFromStateArcs(state_arcs, num_arcs);
 }
 
 Fsa FsaFromString(const std::string &s, bool negate_scores /*= false*/,
@@ -228,12 +285,13 @@ Fsa FsaFromString(const std::string &s, bool negate_scores /*= false*/,
   if (num_fields == 4u)
     return AcceptorFromStream(std::move(line), is, negate_scores);
   else if (num_fields == 5u)
-    return TransducerFromStream(std::move(line), is, negate_scores);
+    return TransducerFromStream(std::move(line), is, negate_scores, aux_labels);
 
   K2_LOG(FATAL) << "Expected number of fields: 4 or 5."
                 << "Actual: " << num_fields << "\n"
                 << "First line is: " << line;
-  return Fsa{};
+
+  return Fsa();  // unreachable code
 }
 
 }  // namespace k2

@@ -36,6 +36,9 @@ namespace k2 {
 
       final_state
 
+  Note that fields are separated by spaces and tabs. There can exist
+  multiple tabs and spaces.
+
   CAUTION: The line for the final state contains NO cost.
   When an arc's dest state is the final state, we put the cost
   on the arc and set its label to -1.
