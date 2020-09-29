@@ -370,7 +370,7 @@ class MultiGraphDenseIntersect {
                     as long as the number of active states in each FSA is
                     between min_active and max_active.
   */
-  Array1<float> GetPruningCutoffs(const Ragged<float> &arc_end_scores) {
+  Array1<float> GetPruningCutoffs(Ragged<float> &arc_end_scores) {
     int32_t num_fsas = arc_end_scores.shape.Dim0();
 
     // get the maximum score from each sub-list (i.e. each FSA, on this frame).

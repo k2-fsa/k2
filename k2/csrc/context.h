@@ -13,6 +13,7 @@
 #ifndef K2_CSRC_CONTEXT_H_
 #define K2_CSRC_CONTEXT_H_
 
+#include <algorithm>
 #include <cassert>
 #include <map>
 #include <memory>
