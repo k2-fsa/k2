@@ -9,9 +9,11 @@
  */
 
 #include <type_traits>
+#include <vector>
 
 #include "c10/core/ScalarType.h"
 #include "k2/csrc/array.h"
+#include "k2/csrc/fsa.h"
 #include "k2/csrc/pytorch_context.h"
 #include "k2/python/csrc/torch/array.h"
 #include "k2/python/csrc/torch/torch_util.h"
@@ -46,28 +48,48 @@ static void PybindArrayImpl(py::module &m) {
   // users should not use classes with prefix `_` in Python.
   PybindArray1Tpl<float>(m, "_FloatArray1");
   PybindArray1Tpl<int>(m, "_Int32Array1");
+  PybindArray1Tpl<Arc>(m, "_ArcArray1");
 
   // the following functions are for testing purposes
   // and they can be removed later.
-  m.def("get_cpu_float_array1", []() {
+  m.def("get_cpu_float_array1", []() -> Array1<float> {
     return Array1<float>(GetCpuContext(), {1, 2, 3, 4});
   });
 
-  m.def("get_cpu_int_array1", []() {
+  m.def("get_cpu_int_array1", []() -> Array1<int32_t> {
     return Array1<int32_t>(GetCpuContext(), {1, 2, 3, 4});
   });
 
   m.def(
       "get_cuda_float_array1",
-      [](int32_t gpu_id = -1) {
+      [](int32_t gpu_id = -1) -> Array1<float> {
         return Array1<float>(GetCudaContext(gpu_id), {0, 1, 2, 3});
       },
       py::arg("gpu_id") = -1);
 
   m.def(
       "get_cuda_int_array1",
-      [](int32_t gpu_id = -1) {
+      [](int32_t gpu_id = -1) -> Array1<int32_t> {
         return Array1<int32_t>(GetCudaContext(gpu_id), {0, 1, 2, 3});
+      },
+      py::arg("gpu_id") = -1);
+
+  m.def("get_cpu_arc_array1", []() -> Array1<Arc> {
+    std::vector<Arc> arcs = {
+        {1, 2, 3, 1.5},
+        {10, 20, 30, 2.5},
+    };
+    return Array1<Arc>(GetCpuContext(), arcs);
+  });
+
+  m.def(
+      "get_cuda_arc_array1",
+      [](int32_t gpu_id = -1) -> Array1<Arc> {
+        std::vector<Arc> arcs = {
+            {1, 2, 3, 1.5},
+            {10, 20, 30, 2.5},
+        };
+        return Array1<Arc>(GetCudaContext(gpu_id), arcs);
       },
       py::arg("gpu_id") = -1);
 }

@@ -462,7 +462,7 @@ struct Ragged {
     return Ragged<T>(new_shape, values);
   }
 
-  Ragged<T> To(ContextPtr ctx) {
+  Ragged<T> To(ContextPtr ctx) const {
     RaggedShape new_shape = shape.To(ctx);
     Array1<T> new_values = values.To(ctx);
     return Ragged<T>(new_shape, new_values);

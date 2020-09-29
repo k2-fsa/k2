@@ -10,13 +10,22 @@
 #define K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
 #include "torch/extension.h"
 
 namespace k2 {
 
+/* Convert k2::DeviceType to torch::DeviceType.
+   Abort on failure.
+ */
 torch::DeviceType ToTorchDeviceType(DeviceType type);
+
+/* Convert torch::DeviceType to k2::DeviceType.
+   Abort on failure.
+ */
+DeviceType FromTorchDeviceType(const torch::DeviceType &type);
 
 // Some versions of PyTorch do not have `c10::CppTypeToScalarType`,
 // so we implement our own here.
@@ -30,7 +39,7 @@ struct ToScalarType;
 
 // TODO(fangjun): add other types if needed
 TO_SCALAR_TYPE(float, torch::kFloat);
-TO_SCALAR_TYPE(int, torch::kInt);
+TO_SCALAR_TYPE(int32_t, torch::kInt);
 
 #undef TO_SCALAR_TYPE
 
@@ -61,6 +70,27 @@ Array1<T> FromTensor(torch::Tensor &tensor) {
   Array1<T> ans(tensor.numel(), region, 0);
   return ans;
 }
+
+/* Return a 2-d tensor.
+
+   The number of rows of the returned tensor is array.Dim();
+   the number of columns of the returned tensor is 4.
+
+   CAUTION: the returned tensor has dtype == torch.int32, but
+   its last column contains scores of type `float`. That is,
+   the float binary pattern is reinterpreted as int.
+ */
+template <>
+torch::Tensor ToTensor(Array1<Arc> &array);
+
+/* Convert a tensor to an Array1<Arc>.
+
+  CAUTION: the given tensor's dtype is torch.int32, but its
+  last columns contains scores of type `float`. That is,
+  the int binary pattern is reinterpreted as float.
+ */
+template <>
+Array1<Arc> FromTensor<Arc>(torch::Tensor &tensor);
 
 }  // namespace k2
 

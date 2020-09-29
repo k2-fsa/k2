@@ -1,6 +1,8 @@
 # please keep the list sorted
 set(torch_srcs
+  arc.cu
   array.cu
+  fsa.cu
   torch_util.cu
 )
 

@@ -116,6 +116,49 @@ class TestArray(unittest.TestCase):
                 'actual_tensor[0] should still be accessible'
         del actual_tensor
 
+    def test_cpu_arc_array1_from_tensor(self):
+        gt_tensor = torch.tensor(
+            [[1, 2, 3, k2.float_as_int(1.5)],
+             [10, 20, 30, k2.float_as_int(-2.5)]],
+            dtype=torch.int32).contiguous()
+        arc_array = k2.Array(gt_tensor)
+
+        arc0 = arc_array.data.get(0)
+        assert arc0.src_state == 1
+        assert arc0.dest_state == 2
+        assert arc0.symbol == 3
+        assert arc0.score == 1.5
+
+        actual_tensor = arc_array.tensor()
+        assert torch.allclose(gt_tensor, actual_tensor)
+        gt_tensor[0] += 10  # also change actual_tensor
+
+        assert torch.allclose(gt_tensor, actual_tensor)
+        assert arc_array.data.get(0).src_state == 11
+        del gt_tensor, actual_tensor
+
+        # arc_array is still accessible
+        assert arc_array.data.get(0).src_state == 11
+
+    def test_cuda_arc_array1_to_tensor(self):
+        device_id = 0
+        _arc_array = _k2.get_cuda_arc_array1(device_id)
+        arc_array = k2.Array(_arc_array)
+        tensor = arc_array.tensor()
+        assert tensor.ndim == 2
+        assert tensor.shape == (2, 4)
+        assert tensor.device.type == 'cuda'
+        assert tensor.device.index == device_id
+        assert tensor[0][0] == 1
+        assert tensor[0][3] == k2.float_as_int(_arc_array.get(0).score)
+
+        tensor[0][0] = 10  # also change _arc_array
+        assert _arc_array.get(0).src_state == 10
+
+        del arc_array, _arc_array
+        tensor[0][0] += 10
+        assert tensor[0][0] == 20, 'tensor should still be accessible'
+
 
 if __name__ == '__main__':
     unittest.main()

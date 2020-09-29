@@ -17,7 +17,9 @@ endfunction()
 
 # please sort the files in alphabetic order
 set(py_test_files
+  arc_test.py
   array_test.py
+  fsa_test.py
 )
 
 foreach(source IN LISTS py_test_files)

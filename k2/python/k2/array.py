@@ -6,8 +6,13 @@ from typing import Union
 
 import torch
 
+from _k2 import _ArcArray1
 from _k2 import _FloatArray1
 from _k2 import _Int32Array1
+
+
+def _to_arc_array1(tensor: torch.Tensor) -> _ArcArray1:
+    return _ArcArray1.from_tensor(tensor)
 
 
 def _to_float_array1(tensor: torch.Tensor) -> _FloatArray1:
@@ -18,10 +23,13 @@ def _to_int32_array1(tensor: torch.Tensor) -> _Int32Array1:
     return _Int32Array1.from_tensor(tensor)
 
 
-def _from_tensor(tensor: torch.Tensor) -> Union[_FloatArray1, _Int32Array1]:
+Array1 = Union[_ArcArray1, _FloatArray1, _Int32Array1]
+
+
+def _from_tensor(tensor: torch.Tensor) -> Array1:
     '''Return an `Array` sharing memory with the passed `torch.Tensor`.
     '''
-    data: Union[_FloatArray1, _Int32Array1]
+    data: Array1
     if tensor.ndim == 1:
         if tensor.dtype == torch.int32:
             data = _to_int32_array1(tensor)
@@ -30,6 +38,11 @@ def _from_tensor(tensor: torch.Tensor) -> Union[_FloatArray1, _Int32Array1]:
         else:
             # TODO(fangjun): support other data types
             raise ValueError(f'Unsupported dtype {tensor.dtype}')
+    elif tensor.ndim == 2:
+        if tensor.dtype == torch.int32:
+            # FIXME(fangjun): how to distinguish it
+            # from normal Array2<int32_t> ?
+            data = _to_arc_array1(tensor)
     else:
         # TODO(fangjun): support Array2
         raise ValueError(f'Unsupported dimension {tensor.ndim}')
@@ -42,13 +55,16 @@ class Array(object):
     It has only one method `tensor()` which returns a `torch.Tensor`.
     '''
 
-    def __init__(self, data: Union[torch.Tensor, _FloatArray1, _Int32Array1]):
+    def __init__(
+            self,
+            data: Union[torch.Tensor, _ArcArray1, _FloatArray1, _Int32Array1]
+    ) -> None:
         '''Construct an `Array` from a `torch.Tensor` or from one of
         `k2::Array1<T>` and `k2::Array2<T>`.
         '''
         if isinstance(data, torch.Tensor):
             self.data = _from_tensor(data)
-        elif isinstance(data, (_FloatArray1, _Int32Array1)):
+        elif isinstance(data, (_ArcArray1, _FloatArray1, _Int32Array1)):
             self.data = data
         else:
             raise ValueError(f'Unsupported type {type(data)}')
