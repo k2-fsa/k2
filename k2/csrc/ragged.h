@@ -72,9 +72,14 @@ class RaggedShape {
     }
   }
 
-  // Append `other` to `*this`.  `other` must have the same number of axes as
-  // `this`.  The reason this is
-  void _Append(const RaggedShape &other);
+  /* Append `other` to `*this` (in-place version that modifies `*this`).
+     `other` must have the same number of axes as `this`.  This is efficient in
+     an amortized way, i.e. should take time/work that's O(n) in the size of
+     `other`, not `*this`, if you make many calls to Append().  This is due to
+     the policy used in Region::Extend(), where it at least doubles the size
+     each time, similar to std::vector.
+  */
+  void Append(const RaggedShape &other);
 
   // Returns the number of elements that a ragged array with this shape would
   // have.

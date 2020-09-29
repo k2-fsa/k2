@@ -162,14 +162,16 @@ class Array1 {
   }
 
   /*
-   Extend size of array, copying old contents if we could not re-use the same memory
-   location. It will always at least double the allocated size if it has to
-   reallocate. See Region::num_bytes vs. Region::bytes_used.
-   We only support the case that the current array *this
-   (i.e. the array that will be resized) covers the highest used index in
-   the region, that is, for any array `a` uses this region,
-   curr.byte_offset_ + curr.Dim() * curr.ElementSize() == region_->bytes_used
-   >= a.byte_offset + a.Dim() * a.ElementSize()
+    Modify size of array, copying old contents if we could not re-use the same
+    memory location. It will always at least double the allocated size if it has
+    to reallocate. See Region::num_bytes vs. Region::bytes_used.  We only
+    support the case that the current array *this (i.e. the array that will be
+    resized) covers the highest used index in the region; this is to avoid
+    overwriting memory shared by other arrays in the same region.
+
+    Note: this may change which memory other arrays point to, if they share
+    the same Region, but it will be transparent because arrays point to the
+    Region and not to the data directly.
   */
   void Resize(int32_t new_size) {
     if (new_size < dim_) {
