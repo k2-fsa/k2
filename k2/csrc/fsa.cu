@@ -302,7 +302,8 @@ Fsa FsaVecFromArray1(Array1<Arc> &array, bool *error) {
   const Arc *arcs_data = reinterpret_cast<const Arc *>(array.Data());
   ContextPtr c = array.Context();
   const int32_t num_arcs = array.Dim();
-  Array1<int32_t> row_ids12(c, num_arcs + 1);  // maps arc->fsa_id, like row_ids1[row_ids2]
+  Array1<int32_t> row_ids12(c, num_arcs + 1);  // maps arc->fsa_id, like
+                                               // row_ids1[row_ids2]
   IsLastArcOfFsa fsa_tails(num_arcs, arcs_data);
   ExclusiveSum(c, num_arcs + 1, fsa_tails, row_ids12.Data());
   int32_t num_fsas = row_ids12[num_arcs];
@@ -335,7 +336,8 @@ Fsa FsaVecFromArray1(Array1<Arc> &array, bool *error) {
   auto lambda_get_num_states_b = [=] __host__ __device__(int32_t i) -> void {
      int32_t num_states_1 = num_states_per_fsa_data[i],
          num_states_2 = arcs_data[row_splits12_data[i+1] - 1].src_state + 2;
-    if (num_states_2 <= 0 || (num_states_1 >= 0 && num_states_2 > num_states_1)) {
+    if (num_states_2 <= 0 ||
+        (num_states_1 >= 0 && num_states_2 > num_states_1)) {
       // Note: num_states_2 is a lower bound on the final-state, something is
       // wrong if num_states_1 != -1 and num_states_2  is greater than
       // num_states_1.
