@@ -146,7 +146,8 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
   return ans;
 }
 
-bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
+bool ValidateRowIds(const Array1<int32_t> &row_ids,
+                    Array1<int32_t> *temp /*=nullptr*/) {
   ContextPtr ctx = row_ids.Context();
   const int32_t *data = row_ids.Data();
   int32_t dim = row_ids.Dim();
@@ -158,6 +159,7 @@ bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
   if (temp == nullptr || temp->Dim() == 0) {
     temp_array = Array1<int32_t>(ctx, 1);
   } else {
+    K2_CHECK(IsCompatible(row_ids, *temp));
     temp_array = temp->Range(0, 1);
   }
   temp = &temp_array;
@@ -173,7 +175,8 @@ bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
   return (*temp)[0] == 0;
 }
 
-bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
+bool ValidateRowSplits(const Array1<int32_t> &row_splits,
+                       Array1<int32_t> *temp /*=nullptr*/) {
   ContextPtr ctx = row_splits.Context();
   const int32_t *data = row_splits.Data();
   int32_t dim = row_splits.Dim();
@@ -184,6 +187,7 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
   if (temp == nullptr || temp->Dim() == 0) {
     temp_array = Array1<int32_t>(ctx, 1);
   } else {
+    K2_CHECK(IsCompatible(row_splits, *temp));
     temp_array = temp->Range(0, 1);
   }
   temp = &temp_array;
@@ -199,13 +203,15 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
   return (*temp)[0] == 0;
 }
 
-bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
-                             Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
+bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
+                             const Array1<int32_t> &row_ids,
+                             Array1<int32_t> *temp /*=nullptr*/) {
   // Check if their context are compatible or not while getting
   ContextPtr ctx = GetContext(row_splits, row_ids);
   int32_t num_rows = row_splits.Dim() - 1, num_elems = row_ids.Dim();
   if (num_rows < 0 || (num_rows == 0 && num_elems > 0)) return false;
   if (row_splits[0] != 0 || row_ids[0] < 0) return false;
+  if (num_elems != row_splits[num_rows]) return false;
 
   const int32_t *row_ids_data = row_ids.Data(),
                 *row_splits_data = row_splits.Data();
@@ -214,6 +220,7 @@ bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
   if (temp == nullptr || temp->Dim() == 0) {
     temp_array = Array1<int32_t>(ctx, 1);
   } else {
+    K2_CHECK(ctx->IsCompatible(*temp->Context()));
     temp_array = temp->Range(0, 1);
   }
   temp = &temp_array;
@@ -247,6 +254,7 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
   K2_CHECK_GE(num_rows, 0);
   // if there are more than zero elems, there must be at least one row.
   K2_CHECK(num_elems == 0 || num_rows > 0);
+  K2_CHECK_EQ(num_elems, row_splits[num_rows]);
   RowSplitsToRowIds(c, num_rows, row_splits.Data(), num_elems, row_ids.Data());
 }
 
@@ -257,6 +265,7 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
   K2_CHECK_GE(num_rows, 0);
   // if there are more than zero elems, there must be at least one row.
   K2_CHECK(num_elems == 0 || num_rows > 0);
+  if (num_elems > 0) K2_CHECK_GT(num_rows, row_ids[num_elems - 1]);
   RowIdsToRowSplits(c, num_elems, row_ids.Data(), false, num_rows,
                     row_splits.Data());
 }

@@ -1154,6 +1154,17 @@ void TestValidateRowSplitsAndIds() {
   }
 
   {
+    // empty case for row splits and row ids
+    const std::vector<int32_t> row_splits_vec;
+    const std::vector<int32_t> row_ids_vec;
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_FALSE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
     // valid case for row splits and row ids
     const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
                                                  12, 13, 15, 15, 16};
@@ -1304,6 +1315,19 @@ void TestValidateRowSplitsAndIds() {
                                                  12, 13, 15, 15, 16};
     const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
                                               4, 5, 5, 5, 5, 7, 7, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_TRUE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // bad case for row ids, num_elems != row_splits[-1]
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 7};
     Array1<int32_t> row_ids(context, row_ids_vec);
     Array1<int32_t> row_splits(context, row_splits_vec);
     EXPECT_TRUE(ValidateRowSplits(row_splits));

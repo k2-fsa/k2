@@ -106,18 +106,18 @@ void ExclusiveSumPerRow(const Array2<T> &src, Array2<T> *dest) {
 }
 
 // called in RandUniformArray1
-template <typename T, typename std::enable_if<
-                          std::is_floating_point<T>::value>::type * = nullptr>
+template <typename T, typename std::enable_if<std::is_floating_point<T>::value,
+                                              T>::type * = nullptr>
 void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
                         T *data) {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<T> dis(min_value, max_value);
-  for (int32_t i = 0; i < dim; i++) data[i] = dis(gen);
+  for (int32_t i = 0; i < dim; ++i) data[i] = dis(gen);
 }
 
-template <typename T,
-          typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
+template <typename T, typename std::enable_if<std::is_integral<T>::value,
+                                              T>::type * = nullptr>
 void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
                         T *data) {
   std::random_device rd;
@@ -125,7 +125,7 @@ void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
   // TODO(haowen): uniform_int_distribution does not support bool and char,
   // we may need to add some check here?
   std::uniform_int_distribution<T> dis(min_value, max_value);
-  for (int32_t i = 0; i < dim; i++) data[i] = dis(gen);
+  for (int32_t i = 0; i < dim; ++i) data[i] = dis(gen);
 }
 
 }  // namespace internal
@@ -429,6 +429,8 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
                             T max_value) {
+  static_assert(std::is_floating_point<T>::value || std::is_integral<T>::value,
+                "Only support floating-point and integral type");
   Array1<T> temp(GetCpuContext(), dim);
   T *data = temp.Data();
   K2_CHECK_GE(max_value, min_value);

@@ -352,7 +352,8 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
                           This saves an allocation.
      @return   Returns true if `row_ids` is a plausible row_ids vector.
 */
-bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp = nullptr);
+bool ValidateRowIds(const Array1<int32_t> &row_ids,
+                    Array1<int32_t> *temp = nullptr);
 
 /*
    Validate a row_splits vector; this just makes sure its elements are
@@ -365,7 +366,7 @@ bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp = nullptr);
                           This saves an allocation.
      @return   Returns true if `row_splits` is a plausible row_splits vector.
 */
-bool ValidateRowSplits(Array1<int32_t> &row_splits,
+bool ValidateRowSplits(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *temp = nullptr);
 
 /*
@@ -381,8 +382,8 @@ bool ValidateRowSplits(Array1<int32_t> &row_splits,
      @return   Returns true if the vectors are plausible and agree with each
   other.
 */
-bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
-                             Array1<int32_t> &row_ids,
+bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
+                             const Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp = nullptr);
 
 template <typename T>
