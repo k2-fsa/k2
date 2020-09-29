@@ -43,7 +43,8 @@ torch::Tensor ToTensor(Array1<Arc> &array) {
   int32_t device_id = array.Context()->GetDeviceId();
   auto device = torch::Device(device_type, device_id);
   auto scalar_type = ToScalarType<int32_t>::value;
-  torch::IntArrayRef strides = {4, 1};
+  // an Arc has 4 members
+  torch::IntArrayRef strides = {4, 1};  // in number of elements
   auto options = torch::device(device).dtype(scalar_type);
 
   // NOTE: we keep a copy of `array` inside the lambda
@@ -63,7 +64,7 @@ Array1<Arc> FromTensor<Arc>(torch::Tensor &tensor) {
                                       << "Given: " << tensor.strides()[0];
 
   K2_CHECK_EQ(tensor.strides()[1], 1) << "Expected stride: 1. "
-                                      << "Given: " << tensor.strides()[0];
+                                      << "Given: " << tensor.strides()[1];
 
   K2_CHECK_EQ(tensor.numel() % 4, 0);
 

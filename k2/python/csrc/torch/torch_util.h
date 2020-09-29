@@ -19,11 +19,19 @@ namespace k2 {
 
 /* Convert k2::DeviceType to torch::DeviceType.
    Abort on failure.
+
+   @param [in] type  We support only kCpu and kCuda at present.
+
+   @return torch::kCUDA or torch.kCPU.
  */
 torch::DeviceType ToTorchDeviceType(DeviceType type);
 
 /* Convert torch::DeviceType to k2::DeviceType.
    Abort on failure.
+
+   @param [in] type  We support only torch::kCPU and torch::kCUDA currently.
+
+   @return  kCpu or kCuda.
  */
 DeviceType FromTorchDeviceType(const torch::DeviceType &type);
 
@@ -43,6 +51,16 @@ TO_SCALAR_TYPE(int32_t, torch::kInt);
 
 #undef TO_SCALAR_TYPE
 
+/* Convert an Array1<T> to torch::Tensor.
+
+   @tparam T          A primitive type, e.g., int32_t, which has
+                      the corresponding `ToScalarType<T>::value`.
+
+   @param [in]  array The input array.
+
+   @return a 1-D torch::Tensor which shares the underlying memory
+           with the input array.
+ */
 template <typename T>
 torch::Tensor ToTensor(Array1<T> &array) {
   auto device_type = ToTorchDeviceType(array.Context()->GetDeviceType());
@@ -57,6 +75,16 @@ torch::Tensor ToTensor(Array1<T> &array) {
       array.Data(), array.Dim(), [array](void *p) {}, options);
 }
 
+/* Convert a 1-D torch::Tensor to an Array1<T>.
+
+   @tparam T          A primitive type, e.g., int32_t, which has
+                      the corresponding `ToScalarType<T>::value`.
+
+   @param [in] tensor
+                     The input torch tensor.
+   @return an Array1<T> sharing the underlying memory with the
+           input tensor.
+ */
 template <typename T>
 Array1<T> FromTensor(torch::Tensor &tensor) {
   K2_CHECK_EQ(tensor.dim(), 1) << "Expected dim: 1. Given: " << tensor.dim();
@@ -71,14 +99,18 @@ Array1<T> FromTensor(torch::Tensor &tensor) {
   return ans;
 }
 
-/* Return a 2-d tensor.
-
-   The number of rows of the returned tensor is array.Dim();
-   the number of columns of the returned tensor is 4.
+/* Convert an Array1<Arc> to a torch::Tensor.
 
    CAUTION: the returned tensor has dtype == torch.int32, but
    its last column contains scores of type `float`. That is,
    the float binary pattern is reinterpreted as int.
+
+   @param [in]  array Then input array.
+
+   @return a 2-D torch::Tensor, whose
+           dtype == torch.int32,
+           num_rows == array.Dim(), and
+           num_cols == 4
  */
 template <>
 torch::Tensor ToTensor(Array1<Arc> &array);
@@ -86,8 +118,14 @@ torch::Tensor ToTensor(Array1<Arc> &array);
 /* Convert a tensor to an Array1<Arc>.
 
   CAUTION: the given tensor's dtype is torch.int32, but its
-  last columns contains scores of type `float`. That is,
+  last column contains scores of type `float`. That is,
   the int binary pattern is reinterpreted as float.
+
+  @param [in]  tensor  a 2-D type with dtype == torch.int32 and
+                       num_cols == 4
+
+  @return an Array1<Arc> sharing the underlying memory with
+          the input tensor.
  */
 template <>
 Array1<Arc> FromTensor<Arc>(torch::Tensor &tensor);
