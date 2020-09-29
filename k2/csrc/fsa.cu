@@ -52,6 +52,14 @@ struct iterator_traits<::IsLastArcOfFsa> {
 
 namespace k2 {
 
+// for debug only
+std::ostream &operator<<(std::ostream &os, const Arc &arc) {
+  static constexpr char kSep = ' ';
+  os << arc.src_state << kSep << arc.dest_state << kSep << arc.symbol << kSep
+     << arc.score;
+  return os;
+}
+
 int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
   if (fsa_vec.NumAxes() != 3)
     return 0;

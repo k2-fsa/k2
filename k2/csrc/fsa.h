@@ -12,6 +12,8 @@
 #ifndef K2_CSRC_FSA_H_
 #define K2_CSRC_FSA_H_
 
+#include <ostream>
+
 #include "k2/csrc/ragged.h"
 
 namespace k2 {
@@ -22,6 +24,9 @@ struct Arc {
   int32_t symbol;
   float score;  // we have the space to put this here, so...
 };
+
+// for debug only
+std::ostream &operator<<(std::ostream &os, const Arc &arc);
 
 using FsaProperties = uint32_t;
 

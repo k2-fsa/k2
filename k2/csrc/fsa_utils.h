@@ -40,16 +40,18 @@ namespace k2 {
   When an arc's dest state is the final state, we put the cost
   on the arc and set its label to -1.
 
+  CAUTION: We assume that `final_state` has the largest state number.
 
   @param [in]   s   The input string. See the above description for its format.
   @param [in]   negate_scores
                     If true, the string form has the weights as costs,
                     not scores, so we negate as we read.
   @param [out]  aux_labels
-                    Used only when it is a transducer. It contains the
-                    aux_label of each arc.
+                    Used only when it is a transducer. It is allocated
+                    inside the function and will contain aux_label of each arc.
+                    Note that it is allocated on CPU if needed.
 
-  @return It returns an Fsa.
+  @return It returns an Fsa on CPU.
  */
 Fsa FsaFromString(const std::string &s, bool negate_scores = false,
                   Array1<int32_t> *aux_labels = nullptr);
@@ -68,7 +70,7 @@ void WriteFsa(const Fsa &fsa, const std::string &filename, bool binary = true,
               const Array1<int32_t> *aux_labels = nullptr);
 
 /*
-  Read an Fsa from file.
+  Read an Fsa from file. It reads whatever `WriteFsa` has saved.
 
   @param [in]   filename
   @param [in]   binary    true to read in binary format;
@@ -76,6 +78,9 @@ void WriteFsa(const Fsa &fsa, const std::string &filename, bool binary = true,
   @param [out]  aux_labels
                           If the file contains a transducer,
                           it will contain the aux_labels if not NULL.
+                          Note that it is allocated on CPU inside the
+                          function if needed.
+  @return It returns an FSA on CPU.
  */
 Fsa ReadFsa(const std::string &filename, bool binary = true,
             Array1<int32_t> *aux_labels = nullptr);
