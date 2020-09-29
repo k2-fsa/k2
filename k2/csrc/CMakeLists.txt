@@ -14,6 +14,7 @@ set(context_srcs
   dtype.cu
   fsa.cu
   fsa_algo.cu
+  fsa_utils.cu
   math.cu
   moderngpu_allocator.cu
   ragged.cu
@@ -46,6 +47,7 @@ endif()
 set(cuda_tests
   array_ops_test
   array_test
+  fsa_utils_test
   log_test
   ragged_shape_test
   ragged_test

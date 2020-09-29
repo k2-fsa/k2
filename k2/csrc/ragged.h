@@ -85,6 +85,13 @@ class RaggedShape {
     return axes_[axis - 1].row_splits;
   }
 
+  const Array1<int32_t> &RowSplits(int32_t axis) const {
+    K2_CHECK_GT(axis, 0);
+    K2_CHECK_LT(axis, NumAxes());
+    // Note row_splits is always nonempty for valid RaggedShapeDim.
+    return axes_[axis - 1].row_splits;
+  }
+
   /*
     Return the row-ids for axis `axis` with `0 < axis < NumAxes()`.
     The dimension is the number of elements on this axis == TotSize(axis).
@@ -95,7 +102,7 @@ class RaggedShape {
 
   // Gives max size of any list on the provided axis,
   // with 0 < axis < NumAxes().  Equals max difference between successive
-  // row_splits on that  axis.
+  // row_splits on that axis.
   int32_t MaxSize(int32_t axis);
 
   ContextPtr &Context() const { return axes_[0].row_splits.Context(); }
@@ -268,7 +275,7 @@ RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape **src);
  */
 RaggedShape Unsqueeze(RaggedShape &src, int32_t axis);
 
-/* Remove an axis; if it it not the last axis, this is done by appending lists
+/* Remove an axis; if it is not the last axis, this is done by appending lists
    (effectively the axis is combined with the following axis).  If it is the
    last axis it is just removed and the number of elements will be affected.
 
@@ -381,7 +388,7 @@ struct Ragged {
     return values[shape[indexes]];
   }
 
-  ContextPtr Context() const { return values.Context(); }
+  ContextPtr &Context() const { return values.Context(); }
   int32_t NumAxes() const { return shape.NumAxes(); }
 
   /*

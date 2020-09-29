@@ -131,7 +131,7 @@ namespace k2 {
        int32_t idx0 = 0,
            idx0x = t.row_splits1[idx0],
            idx0x_next = t.row_splits1[idx0 + 1],
-           idx0xx = t.row_splits2[idx0],
+           idx0xx = t.row_splits2[idx0x],
            idx0xx_next = t.row_splits2[idx0x_next],
            size_0xx = idx0xx_next - idx0xx
      (The _next suffix is used when we're querying the most specific known index

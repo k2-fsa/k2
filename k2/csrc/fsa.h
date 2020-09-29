@@ -12,6 +12,8 @@
 #ifndef K2_CSRC_FSA_H_
 #define K2_CSRC_FSA_H_
 
+#include <ostream>
+
 #include "k2/csrc/ragged.h"
 
 namespace k2 {
@@ -21,7 +23,16 @@ struct Arc {
   int32_t dest_state;
   int32_t symbol;
   float score;  // we have the space to put this here, so...
+  Arc() = default;
+  Arc(int32_t src_state, int32_t dest_state, int32_t symbol, float score)
+      : src_state(src_state),
+        dest_state(dest_state),
+        symbol(symbol),
+        score(score) {}
 };
+
+// for debug only
+std::ostream &operator<<(std::ostream &os, const Arc &arc);
 
 using FsaProperties = uint32_t;
 
@@ -114,7 +125,7 @@ struct DenseFsaVec {
   Array2<float> scores;
 
   // NOTE: our notion of "arc-index" / arc_idx is an index into scores.Data().
-  int32_t NumArcs() { return scores.Dim0() * scores.Dim1(); }
+  int32_t NumArcs() const { return scores.Dim0() * scores.Dim1(); }
 };
 
 /*
@@ -149,10 +160,7 @@ struct DenseFsaVec {
 */
 Fsa FsaFromTensor(Tensor &t, bool *error);
 
-
 Fsa FsaFromArray1(Array1<Arc> &arc, bool *error);
-
-
 
 /*
   Returns a single Tensor that represents the FSA; this is just the vector of
@@ -214,10 +222,10 @@ inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
   the same type, just with different expectations on the number of axes!
  */
 inline FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa **fsas) {
-  // Implementation goes to this templat:
+  // Implementation goes to this template:
   //  template <typename T>
   //  Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
-  K2_CHECK(fsas[0]->NumAxes() == 2);
+  K2_CHECK_EQ(fsas[0]->NumAxes(), 2);
   return Stack(0, num_fsas, fsas);
 }
 
@@ -246,8 +254,6 @@ inline Array1<float> WeightsOfArcsAsArray1(const Array1<Arc> &arcs) {
 inline Array1<float> WeightsOfFsaAsArray1(const Ragged<Arc> &fsa) {
   return Array1<float>(WeightsOfArcsAsTensor(fsa.values));
 }
-
-
 
 }  // namespace k2
 

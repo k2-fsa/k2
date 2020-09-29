@@ -52,6 +52,14 @@ struct iterator_traits<::IsLastArcOfFsa> {
 
 namespace k2 {
 
+// for debug only
+std::ostream &operator<<(std::ostream &os, const Arc &arc) {
+  static constexpr char kSep = ' ';
+  os << arc.src_state << kSep << arc.dest_state << kSep << arc.symbol << kSep
+     << arc.score;
+  return os;
+}
+
 int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
   if (fsa_vec.NumAxes() != 3)
     return 0;
@@ -199,6 +207,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   const Arc *arcs_data = reinterpret_cast<const Arc *>(array.Data());
   ContextPtr c = array.Context();
   const int32_t num_arcs = array.Dim();
+  *error = false;
 
 
   // If the FSA has arcs entering the final state, that will
@@ -207,7 +216,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   // (highest numbered state that has arcs leaving it) + 1, so num_states
   // (highest numbered state that has arcs leaving it) + 2.
 
-  // element 0 is num-states, element is error flag that's set to
+  // element 0 is num-states, element 1 is error flag that's set to
   // 0 on error.
 
   Array1<int32_t> num_states_array(c, 2, -1);
