@@ -9,6 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <algorithm>
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
@@ -145,114 +146,126 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
   return ans;
 }
 
-bool ValidateRowIds(Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
+bool ValidateRowIds(const Array1<int32_t> &row_ids,
+                    Array1<int32_t> *temp /*=nullptr*/) {
   ContextPtr ctx = row_ids.Context();
-  int32_t *data = row_ids.Data();
+  const int32_t *data = row_ids.Data();
   int32_t dim = row_ids.Dim();
-  if (dim == 0) return true;  // will treat this as valid.a
-
-  if (ctx->GetDeviceType() == kCpu) {
-    if (data[0] < 0) return false;
-    for (int32_t i = 0; i + 1 < dim; i++)
-      if (data[i] > data[i + 1]) return false;
-  }
+  if (dim == 0) return true;  // will treat this as valid
+  // note `row_ids[0]` may copy memory from device to host
+  if (row_ids[0] < 0) return false;
 
   Array1<int32_t> temp_array;
   if (temp == nullptr || temp->Dim() == 0) {
-    temp_array = Array1<int32_t>(row_ids.Context(), 1);
-    temp = &temp_array;
+    temp_array = Array1<int32_t>(ctx, 1);
+  } else {
+    K2_CHECK(IsCompatible(row_ids, *temp));
+    temp_array = temp->Range(0, 1);
   }
-
+  temp = &temp_array;
   *temp = 0;
+
   int32_t *temp_data = temp->Data();
   auto lambda_check_row_ids = [=] __host__ __device__(int32_t i) -> void {
-    int32_t this_val = data[i], next_val = data[i + 1];
-    if (this_val > next_val || this_val < 0) *temp_data = 1;  // means it's bad.
+    if (data[i] > data[i + 1]) *temp_data = 1;  // means it's bad.
   };
   // Note: we know that dim >= 1 as we would have returned above if dim == 0.
-  // This will do nothing if (dim-1) == 0.
+  // This will do nothing if (dim-1) == 0 as we have checked the first element.
   Eval(ctx, dim - 1, lambda_check_row_ids);
-  return !((*temp)[0]);
+  return (*temp)[0] == 0;
 }
 
-bool ValidateRowSplits(Array1<int32_t> &row_splits, Array1<int32_t> *temp) {
+bool ValidateRowSplits(const Array1<int32_t> &row_splits,
+                       Array1<int32_t> *temp /*=nullptr*/) {
   ContextPtr ctx = row_splits.Context();
-  int32_t *data = row_splits.Data();
+  const int32_t *data = row_splits.Data();
   int32_t dim = row_splits.Dim();
-  if (dim == 0) return true;  // will treat this as valid.a
-
-  if (ctx->GetDeviceType() == kCpu) {
-    if (data[0] != 0) return false;
-    for (int32_t i = 0; i + 1 < dim; i++)
-      if (data[i] > data[i + 1]) return false;
-  }
+  // must have at least one element and row_splits[0] == 0
+  if (dim == 0 || row_splits[0] != 0) return false;
 
   Array1<int32_t> temp_array;
   if (temp == nullptr || temp->Dim() == 0) {
-    temp_array = Array1<int32_t>(row_splits.Context(), 1);
-    temp = &temp_array;
+    temp_array = Array1<int32_t>(ctx, 1);
+  } else {
+    K2_CHECK(IsCompatible(row_splits, *temp));
+    temp_array = temp->Range(0, 1);
   }
-
+  temp = &temp_array;
   *temp = 0;
+
   int32_t *temp_data = temp->Data();
   auto lambda_check_row_splits = [=] __host__ __device__(int32_t i) -> void {
-    int32_t this_val = data[i], next_val = data[i + 1];
-    if (this_val > next_val || (i == 0 && this_val != 0))
-      *temp_data = 1;  // means it's bad.
+    if (data[i] > data[i + 1]) *temp_data = 1;  // means it's bad.
   };
   // Note: we know that dim >= 1 as we would have returned above if dim == 0.
-  // This will do nothing if (dim-1) == 0.
+  // This will do nothing if (dim-1) == 0 as we have checked the first element.
   Eval(ctx, dim - 1, lambda_check_row_splits);
-  return !((*temp)[0]);
+  return (*temp)[0] == 0;
 }
 
-bool ValidateRowSplitsAndIds(Array1<int32_t> &row_splits,
-                             Array1<int32_t> &row_ids, Array1<int32_t> *temp) {
+bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
+                             const Array1<int32_t> &row_ids,
+                             Array1<int32_t> *temp /*=nullptr*/) {
   // Check if their context are compatible or not while getting
   ContextPtr ctx = GetContext(row_splits, row_ids);
   int32_t num_rows = row_splits.Dim() - 1, num_elems = row_ids.Dim();
   if (num_rows < 0 || (num_rows == 0 && num_elems > 0)) return false;
-  if (num_rows == 0 && num_elems == 0) {
-    return row_splits[0] == 0;
-  }
-  int32_t *row_ids_data = row_ids.Data(), *row_splits_data = row_splits.Data();
+  if (row_splits[0] != 0 || row_ids[0] < 0) return false;
+  if (num_elems != row_splits[num_rows]) return false;
+
+  const int32_t *row_ids_data = row_ids.Data(),
+                *row_splits_data = row_splits.Data();
 
   Array1<int32_t> temp_array;
   if (temp == nullptr || temp->Dim() == 0) {
-    temp_array = Array1<int32_t>(row_ids.Context(), 1);
-    temp = &temp_array;
+    temp_array = Array1<int32_t>(ctx, 1);
+  } else {
+    K2_CHECK(ctx->IsCompatible(*temp->Context()));
+    temp_array = temp->Range(0, 1);
   }
-  int32_t *temp_data = temp_array.Data();
-  // The following isn't totally ideal, it would be better to have a single
-  // kernel and avoid latency.  Later we can fix this.
-  if (!ValidateRowSplits(row_splits, temp)) return false;
+  temp = &temp_array;
+  *temp = 0;
 
+  int32_t *temp_data = temp_array.Data();
   auto lambda_check_row_ids = [=] __host__ __device__(int32_t i) -> void {
-    int32_t this_row = row_ids_data[i];
-    if (this_row < 0 || this_row >= num_rows ||
-        this_row < row_splits_data[this_row] ||
-        this_row >= row_splits_data[this_row + 1])
-      *temp_data = 1;
+    // check row_splits
+    bool invalid_splits =
+        (i < num_rows && row_splits_data[i] > row_splits_data[i + 1]);
+    // check row_ids
+    bool invalid_ids =
+        (i < (num_elems - 1) && row_ids_data[i] > row_ids_data[i + 1]);
+    if (invalid_splits || invalid_ids) *temp_data = 1;
+    // check if row_splits and row_ids agree with each other
+    if (i < num_elems) {
+      int32_t this_row = row_ids_data[i];
+      if (this_row < 0 || this_row >= num_rows ||
+          i < row_splits_data[this_row] || i >= row_splits_data[this_row + 1])
+        *temp_data = 1;
+    }
   };
-  Eval(ctx, num_elems, lambda_check_row_ids);
-  return !((*temp)[0]);
+  Eval(ctx, std::max(num_elems, num_rows), lambda_check_row_ids);
+  return (*temp)[0] == 0;
 }
 
-void RowSplitsToRowIds(Array1<int32_t> &row_splits, Array1<int32_t> &row_ids) {
+void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
+                       Array1<int32_t> &row_ids) {
   ContextPtr c = GetContext(row_splits, row_ids);
   int32_t num_elems = row_ids.Dim(), num_rows = row_splits.Dim() - 1;
-  K2_CHECK(num_rows >= 0);
+  K2_CHECK_GE(num_rows, 0);
   // if there are more than zero elems, there must be at least one row.
   K2_CHECK(num_elems == 0 || num_rows > 0);
+  K2_CHECK_EQ(num_elems, row_splits[num_rows]);
   RowSplitsToRowIds(c, num_rows, row_splits.Data(), num_elems, row_ids.Data());
 }
 
-void RowIdsToRowSplits(Array1<int32_t> &row_ids, Array1<int32_t> &row_splits) {
+void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
+                       Array1<int32_t> &row_splits) {
   ContextPtr c = GetContext(row_splits, row_ids);
   int32_t num_elems = row_ids.Dim(), num_rows = row_splits.Dim() - 1;
-  K2_CHECK(num_rows >= 0);
+  K2_CHECK_GE(num_rows, 0);
   // if there are more than zero elems, there must be at least one row.
   K2_CHECK(num_elems == 0 || num_rows > 0);
+  if (num_elems > 0) K2_CHECK_GT(num_rows, row_ids[num_elems - 1]);
   RowIdsToRowSplits(c, num_elems, row_ids.Data(), false, num_rows,
                     row_splits.Data());
 }

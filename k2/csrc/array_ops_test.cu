@@ -1069,4 +1069,276 @@ TEST(OpsTest, SpliceRowSplitsTest) {
   TestSpliceRowSplits<kCuda>();
 }
 
+template <typename T, DeviceType d>
+void TestRangeAndRandomArray1() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // test Range with small size
+    Array1<T> result = Range<T>(context, 6, 3, 2);
+    const std::vector<T> values = {3, 5, 7, 9, 11, 13};
+    result = result.To(cpu);
+    std::vector<T> cpu_data(result.Data(), result.Data() + result.Dim());
+    EXPECT_EQ(cpu_data, values);
+  }
+
+  {
+    // test Range with random large size
+    int32_t num_elems = RandInt(1000, 10000);
+    std::vector<T> data(num_elems);
+    std::iota(data.begin(), data.end(), 0);
+    Array1<T> result = Range<T>(context, num_elems, 0);
+    result = result.To(cpu);
+    std::vector<T> cpu_data(result.Data(), result.Data() + result.Dim());
+    EXPECT_EQ(cpu_data, data);
+  }
+
+  {
+    // test RandUniformArray1
+    Array1<T> result = RandUniformArray1<T>(context, 1000, 0, 10000);
+    result = result.To(cpu);
+  }
+}
+
+TEST(OpsTest, RangeTest) {
+  TestRangeAndRandomArray1<int32_t, kCpu>();
+  TestRangeAndRandomArray1<int32_t, kCuda>();
+  TestRangeAndRandomArray1<float, kCpu>();
+  TestRangeAndRandomArray1<float, kCuda>();
+  TestRangeAndRandomArray1<double, kCpu>();
+  TestRangeAndRandomArray1<double, kCuda>();
+}
+
+template <DeviceType d>
+void TestValidateRowSplitsAndIds() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // test RowSplitsToRowIds and RowIdsToRowSplits
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 7, 9};
+    {
+      Array1<int32_t> row_splits(context, row_splits_vec);
+      Array1<int32_t> row_ids(context, row_ids_vec.size());
+      RowSplitsToRowIds(row_splits, row_ids);
+      row_ids = row_ids.To(cpu);
+      std::vector<int32_t> cpu_data(row_ids.Data(),
+                                    row_ids.Data() + row_ids.Dim());
+      EXPECT_EQ(cpu_data, row_ids_vec);
+    }
+    {
+      Array1<int32_t> row_ids(context, row_ids_vec);
+      Array1<int32_t> row_splits(context, row_splits_vec.size());
+      RowIdsToRowSplits(row_ids, row_splits);
+      row_splits = row_splits.To(cpu);
+      std::vector<int32_t> cpu_data(row_splits.Data(),
+                                    row_splits.Data() + row_splits.Dim());
+      EXPECT_EQ(cpu_data, row_splits_vec);
+    }
+  }
+
+  {
+    // empty case for row splits and row ids
+    const std::vector<int32_t> row_splits_vec;
+    const std::vector<int32_t> row_ids_vec;
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_FALSE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // valid case for row splits and row ids
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 7, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_TRUE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_TRUE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // valid case for row splits and row ids with random size
+    for (int32_t i = 0; i != 5; ++i) {
+      RaggedShape shape = RandomRaggedShape(true, 2, 2, 2000, 10000);
+      ASSERT_EQ(shape.NumAxes(), 2);
+      // note shape is on CPU
+      Array1<int32_t> row_splits = shape.RowSplits(1).To(context);
+      Array1<int32_t> row_ids = shape.RowIds(1).To(context);
+
+      EXPECT_TRUE(ValidateRowSplits(row_splits));
+      EXPECT_TRUE(ValidateRowIds(row_ids));
+      EXPECT_TRUE(ValidateRowSplitsAndIds(row_splits, row_ids));
+    }
+  }
+
+  {
+    // provided tmp storage
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 7, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+
+    {
+      Array1<int32_t> tmp(context, 3, 2);
+      EXPECT_TRUE(ValidateRowSplits(row_splits, &tmp));
+      // check elments
+      tmp = tmp.To(cpu);
+      std::vector<int32_t> cpu_data(tmp.Data(), tmp.Data() + tmp.Dim());
+      EXPECT_THAT(cpu_data, ::testing::ElementsAre(0, 2, 2));
+    }
+
+    {
+      Array1<int32_t> tmp(context, 3, 2);
+      EXPECT_TRUE(ValidateRowIds(row_ids, &tmp));
+      // check elments
+      tmp = tmp.To(cpu);
+      std::vector<int32_t> cpu_data(tmp.Data(), tmp.Data() + tmp.Dim());
+      EXPECT_THAT(cpu_data, ::testing::ElementsAre(0, 2, 2));
+    }
+
+    {
+      Array1<int32_t> tmp(context, 3, 2);
+      EXPECT_TRUE(ValidateRowSplitsAndIds(row_splits, row_ids, &tmp));
+      // check elments
+      tmp = tmp.To(cpu);
+      std::vector<int32_t> cpu_data(tmp.Data(), tmp.Data() + tmp.Dim());
+      EXPECT_THAT(cpu_data, ::testing::ElementsAre(0, 2, 2));
+    }
+  }
+
+  {
+    // bad case for row splits, not starts with 0
+    const std::vector<int32_t> row_splits_vec = {1,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 7, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_FALSE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // bad case for row splits, contains negative value
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  -5, 8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 7, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_FALSE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // bad case for row splits, not non-decreasing
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  1,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 7, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_FALSE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // bad case row ids, contains negative value
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, -2, 3, 3, 3,
+                                              4, 5, 5, 5, 6,  7, 7, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_TRUE(ValidateRowSplits(row_splits));
+    EXPECT_FALSE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // bad case row ids, not non-decreasing
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 6, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_TRUE(ValidateRowSplits(row_splits));
+    EXPECT_FALSE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // bad case row ids and row splits don't agree with each other
+    // i < row_splits[row_ids[i]]
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 8, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_TRUE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // another bad case that row ids and row splits don't agree with each other
+    // i > = row_splits[row_ids[i]]
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 5, 7, 7, 9};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_TRUE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+
+  {
+    // bad case for row ids, num_elems != row_splits[-1]
+    const std::vector<int32_t> row_splits_vec = {0,  2,  3,  5,  8, 9,
+                                                 12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids_vec = {0, 0, 1, 2, 2, 3, 3, 3,
+                                              4, 5, 5, 5, 6, 7, 7};
+    Array1<int32_t> row_ids(context, row_ids_vec);
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    EXPECT_TRUE(ValidateRowSplits(row_splits));
+    EXPECT_TRUE(ValidateRowIds(row_ids));
+    EXPECT_FALSE(ValidateRowSplitsAndIds(row_splits, row_ids));
+  }
+}
+
+TEST(OpsTest, ValidateRowSplitsAndIdsTest) {
+  TestValidateRowSplitsAndIds<kCpu>();
+  TestValidateRowSplitsAndIds<kCuda>();
+}
+
 }  // namespace k2

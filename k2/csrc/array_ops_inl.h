@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
+#include <random>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -102,6 +103,29 @@ void ExclusiveSumPerRow(const Array2<T> &src, Array2<T> *dest) {
   for (int32_t i = 0; i != rows; ++i) {
     ExclusiveSum(ctx, cols, src_acc.Row(i), dest_acc.Row(i));
   }
+}
+
+// called in RandUniformArray1
+template <typename T, typename std::enable_if<std::is_floating_point<T>::value,
+                                              T>::type * = nullptr>
+void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
+                        T *data) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<T> dis(min_value, max_value);
+  for (int32_t i = 0; i < dim; ++i) data[i] = dis(gen);
+}
+
+template <typename T, typename std::enable_if<std::is_integral<T>::value,
+                                              T>::type * = nullptr>
+void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
+                        T *data) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  // TODO(haowen): uniform_int_distribution does not support bool and char,
+  // we may need to add some check here?
+  std::uniform_int_distribution<T> dis(min_value, max_value);
+  for (int32_t i = 0; i < dim; ++i) data[i] = dis(gen);
 }
 
 }  // namespace internal
@@ -405,21 +429,18 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
                             T max_value) {
+  static_assert(std::is_floating_point<T>::value || std::is_integral<T>::value,
+                "Only support floating-point and integral type");
   Array1<T> temp(GetCpuContext(), dim);
   T *data = temp.Data();
-  K2_CHECK(max_value >= min_value);
+  K2_CHECK_GE(max_value, min_value);
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
   if (max_value == min_value) {
-    for (int32_t i = 0; i < dim; ++i) data[i] = 0;
-  } else if (std::is_floating_point<T>::value ||
-             std::abs(min_value) > RAND_MAX || std::abs(max_value) > RAND_MAX) {
-    for (int32_t i = 0; i < dim; i++)
-      data[i] =
-          min_value + (rand() * (max_value - min_value) / RAND_MAX);  // NOLINT
+    for (int32_t i = 0; i < dim; ++i) data[i] = min_value;
   } else {
-    for (int32_t i = 0; i < dim; ++i)
-      data[i] =
-          min_value +
-          (rand() % static_cast<int32_t>(max_value + 1 - min_value));  // NOLINT
+    internal::RandArray1Internal<T>(c, dim, min_value, max_value, data);
   }
   return temp.To(c);
 }
@@ -430,14 +451,10 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
   DeviceType d = c->GetDeviceType();
   Array1<T> ans = Array1<T>(c, dim);
   T *ans_data = ans.Data();
-  if (d == kCpu) {
-    for (int32_t i = 0; i < dim; i++) ans_data[i] = first_value + i * inc;
-  } else {
-    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
-      ans_data[i] = first_value + i * inc;
-    };
-    Eval(c, dim, lambda_set_values);
-  }
+  auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
+    ans_data[i] = first_value + i * inc;
+  };
+  Eval(c, dim, lambda_set_values);
   return ans;
 }
 
