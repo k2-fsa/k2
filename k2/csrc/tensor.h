@@ -98,7 +98,7 @@ struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
   // interface of Tensor.
   Shape shape;
   Dtype dtype;
-  int32_t bytes_offset;
+  int32_t byte_offset;
   // note: unlike Array1 and Array2, there is no support for data_ == nullptr,
   // i.e.  we will require that data_ is always allocated.  (This is because
   // we plan to generally hold Tensors as pointers, so there isn't much
@@ -127,7 +127,7 @@ class Tensor {
 
   // Create Tensor backed by existing memory.
   Tensor(Dtype type, const Shape &shape, RegionPtr region,
-         int32_t bytes_offset);
+         int32_t byte_offset);
 
   Tensor(const Tensor &other) = default;
   Tensor &operator=(const Tensor &other) = default;
@@ -138,18 +138,18 @@ class Tensor {
   T *Data() {
     K2_CHECK_EQ(impl_->dtype, DtypeOf<T>::dtype);
     return reinterpret_cast<T *>(reinterpret_cast<char *>(impl_->data->data) +
-                                 impl_->bytes_offset);
+                                 impl_->byte_offset);
   }
 
   template <typename T>
   const T *Data() const {
     K2_CHECK_EQ(impl_->dtype, DtypeOf<T>::dtype);
     return reinterpret_cast<const T *>(
-        reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset);
+        reinterpret_cast<char *>(impl_->data->data) + impl_->byte_offset);
   }
 
   void *Data() const {
-    return reinterpret_cast<char *>(impl_->data->data) + impl_->bytes_offset;
+    return reinterpret_cast<char *>(impl_->data->data) + impl_->byte_offset;
   }
 
   // Return the result of indexing one of the axes, which will result in a
@@ -158,7 +158,7 @@ class Tensor {
 
   Dtype GetDtype() const { return impl_->dtype; }
   const Shape &GetShape() const { return impl_->shape; }
-  int32_t ByteOffset() const { return impl_->bytes_offset; }
+  int32_t ByteOffset() const { return impl_->byte_offset; }
   RegionPtr &GetRegion() const { return impl_->data; }
 
   // Forward some functions from the shape.  Will forward more later.

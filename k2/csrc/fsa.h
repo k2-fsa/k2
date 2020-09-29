@@ -153,6 +153,11 @@ struct DenseFsaVec {
 */
 Fsa FsaFromTensor(Tensor &t, bool *error);
 
+
+Fsa FsaFromArray1(Array1<Arc> &arc, bool *error);
+
+
+
 /*
   Returns a single Tensor that represents the FSA; this is just the vector of
   Arc reinterpreted as  num_arcs by 4 Tensor of int32_t.  It can be converted
@@ -192,6 +197,8 @@ Tensor FsaVecToTensor(const Fsa &fsa);
 
 */
 FsaVec FsaVecFromTensor(Tensor &t, bool *error);
+
+Fsa FsaVecFromArray1(Array1<Arc> &arc, bool *error);
 
 /*
   Return one Fsa in an FsaVec.  Note, this has to make copies of the
