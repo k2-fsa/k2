@@ -268,7 +268,7 @@ RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape **src);
  */
 RaggedShape Unsqueeze(RaggedShape &src, int32_t axis);
 
-/* Remove an axis; if it it not the last axis, this is done by appending lists
+/* Remove an axis; if it is not the last axis, this is done by appending lists
    (effectively the axis is combined with the following axis).  If it is the
    last axis it is just removed and the number of elements will be affected.
 
