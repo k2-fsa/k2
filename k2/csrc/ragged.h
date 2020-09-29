@@ -95,7 +95,7 @@ class RaggedShape {
 
   // Gives max size of any list on the provided axis,
   // with 0 < axis < NumAxes().  Equals max difference between successive
-  // row_splits on that  axis.
+  // row_splits on that axis.
   int32_t MaxSize(int32_t axis);
 
   ContextPtr &Context() const { return axes_[0].row_splits.Context(); }

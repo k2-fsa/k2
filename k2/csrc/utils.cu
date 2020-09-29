@@ -76,7 +76,7 @@ static int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
 
 /*
 
-  See declaration of RowSplitsToRowIds() in utils.h.  This is implementation
+  See declaration of RowSplitsToRowIds() in utils.h.  These are implementation
   notes.
 
     Suppose the range we need to fill with a
@@ -87,7 +87,7 @@ static int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
     range we're supposed to fill.  The second kernel: for a given index into x
     that is must fill (say, 1111), it asks "is the index currently here already
     the right one?", which it can test using the function is_valid_index()
-    below; if it's not already corret, it searches in a sequence of positions:
+    below; if it's not already correct, it searches in a sequence of positions:
     1110, 1100, 1000, 0000, like our sequence above but going downwards, again
     getting more zeros at the end of the binary representation, until it finds
     the correct value in the array at the searched position; then it copies the
@@ -125,7 +125,8 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
   if (d == kCpu) {
     int32_t cur_row_start = row_splits[0];
     K2_CHECK_EQ(cur_row_start, 0);
-    for (int32_t row = 0; row < num_rows; row++) {
+    K2_CHECK_EQ(row_splits[num_rows], num_elems);
+    for (int32_t row = 0; row < num_rows; ++row) {
       int32_t next_row_start = row_splits[row + 1];
       for (; cur_row_start < next_row_start; ++cur_row_start)
         row_ids[cur_row_start] = row;
