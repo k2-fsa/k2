@@ -33,8 +33,7 @@ static int32_t StringToInt(const std::string &s) {
   auto res = static_cast<int32_t>(n);
   if (n != res) ok = false;  // out of range
 
-  if (ok == false)
-    K2_LOG(FATAL) << "Failed to convert " << s << " to an integer";
+  K2_CHECK(ok) << "Failed to convert " << s << " to an integer";
 
   return res;
 }
@@ -51,7 +50,7 @@ static float StringToFloat(const std::string &s) {
 // Trim leading and trailing spaces of a string.
 static void TrimString(std::string *s) {
   K2_CHECK_NE(s, nullptr);
-  auto not_space = [](int32_t c) { return std::isspace(c) == 0; };
+  auto not_space = [](int32_t c) -> bool { return std::isspace(c) == 0; };
 
   s->erase(s->begin(), std::find_if(s->begin(), s->end(), not_space));
   s->erase(std::find_if(s->rbegin(), s->rend(), not_space).base(), s->end());
