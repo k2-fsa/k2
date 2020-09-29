@@ -13,6 +13,7 @@
 #define K2_CSRC_FSA_H_
 
 #include <ostream>
+#include <string>
 
 #include "k2/csrc/ragged.h"
 
@@ -73,6 +74,16 @@ enum FsaBasicProperties {
                                         // list of arcs.
   kFsaAllProperties = 0x03FF
 };
+
+/* Convert FSA properties to a string.
+
+   @param [in] properties
+   @return A string consisting of the names of FsaBasicProperties'
+           member separated by |. For example, if properties == 3,
+           it will return kFsaPropertiesValid|kFsaPropertiesNonempty.
+           If properties == 0, it returns an empty string.
+ */
+std::string FsaPropertiesAsString(int32_t properties);
 
 using Fsa = Ragged<Arc>;  // 2 axes: state,arc
 

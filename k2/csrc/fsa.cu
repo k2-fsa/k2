@@ -2,8 +2,11 @@
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
 //                                                   Haowen Qiu)
+//                      Mobvoi Inc.        (authors: Fangjun Kuang)
 
 // See ../../LICENSE for // clarification regarding multiple authors
+
+#include <string>
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa.h"
@@ -24,7 +27,7 @@ struct IsLastArcOfFsa {
   explicit IsLastArcOfFsa(int32_t num_arcs, const k2::Arc *arcs)
       : num_arcs(num_arcs), arcs(arcs) {}
   __host__ __device__ IsLastArcOfFsa(const IsLastArcOfFsa &other)
-      : num_arcs(num_arcs), arcs(other.arcs)  {}
+      : num_arcs(num_arcs), arcs(other.arcs) {}
 
   // operator[] and operator+ are required by cub::DeviceScan::ExclusiveSum
   __host__ __device__ bool operator[](int32_t i) const {
@@ -36,9 +39,6 @@ struct IsLastArcOfFsa {
     return tmp;
   }
 };
-
-
-
 
 }  // namespace
 
@@ -60,9 +60,34 @@ std::ostream &operator<<(std::ostream &os, const Arc &arc) {
   return os;
 }
 
+std::string FsaPropertiesAsString(int32_t properties) {
+  static constexpr char kSep = '|';
+  std::ostringstream os;
+
+#define K2_FSA_HAS_PROP(x) \
+  if (properties & x) os << kSep << #x
+
+  K2_FSA_HAS_PROP(kFsaPropertiesValid);                      // 0x01
+  K2_FSA_HAS_PROP(kFsaPropertiesNonempty);                   // 0x02
+  K2_FSA_HAS_PROP(kFsaPropertiesTopSorted);                  // 0x04
+  K2_FSA_HAS_PROP(kFsaPropertiesTopSortedAndAcyclic);        // 0x08
+  K2_FSA_HAS_PROP(kFsaPropertiesArcSorted);                  // 0x10
+  K2_FSA_HAS_PROP(kFsaPropertiesArcSortedAndDeterministic);  // 0x20
+  K2_FSA_HAS_PROP(kFsaPropertiesEpsilonFree);                // 0x40
+  K2_FSA_HAS_PROP(kFsaPropertiesMaybeAccessible);            // 0x80
+  K2_FSA_HAS_PROP(kFsaPropertiesMaybeCoaccessible);          // 0x100
+  K2_FSA_HAS_PROP(kFsaPropertiesSerializable);               // 0x200
+
+#undef K2_FSA_HAS_PROP
+
+  if (!os.str().empty())
+    return std::string(os.str().c_str() + 1);  // remove  leading '|'
+
+  return std::string();
+}
+
 int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
-  if (fsa_vec.NumAxes() != 3)
-    return 0;
+  if (fsa_vec.NumAxes() != 3) return 0;
   ContextPtr c = fsa_vec.Context();
   const int32_t *row_ids1_data = fsa_vec.shape.RowIds(1).Data(),
                 *row_splits1_data = fsa_vec.shape.RowSplits(1).Data(),
@@ -189,26 +214,23 @@ int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
 
 FsaVec FsaVecFromFsa(const Fsa &fsa) {
   ContextPtr c = fsa.values.Context();
-  K2_CHECK(fsa.NumAxes() == 2);
+  K2_CHECK_EQ(fsa.NumAxes(), 2);
   RaggedShape first_axis = TrivialShape(c, fsa.shape.Dim0());
   RaggedShape fsa_vec_shape = ComposeRaggedShapes(first_axis, fsa.shape);
   return Ragged<Arc>(fsa_vec_shape, fsa.values);
 }
 
 int32_t GetFsaBasicProperties(const Fsa &fsa) {
-  if (fsa.NumAxes() != 2)
-    return 0;
+  if (fsa.NumAxes() != 2) return 0;
   FsaVec vec = FsaVecFromFsa(fsa);
   return GetFsaVecBasicProperties(vec);
 }
 
-
 Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
-  const Arc *arcs_data = reinterpret_cast<const Arc *>(array.Data());
+  const Arc *arcs_data = array.Data();
   ContextPtr c = array.Context();
   const int32_t num_arcs = array.Dim();
   *error = false;
-
 
   // If the FSA has arcs entering the final state, that will
   // tell us what the final-state id is.
@@ -221,7 +243,6 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
 
   Array1<int32_t> num_states_array(c, 2, -1);
   int32_t *num_states_data = num_states_array.Data();
-
 
   Array1<int32_t> row_ids1(c, num_arcs);  // maps arc->state.
   int32_t *row_ids1_data = row_ids1.Data();
@@ -238,21 +259,18 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   };
   Eval(c, num_arcs, lambda_misc);
   num_states_array = num_states_array.To(GetCpuContext());
-  int32_t num_states = num_states_array[0],
-      error_flag = num_states_array[1];
+  int32_t num_states = num_states_array[0], error_flag = num_states_array[1];
   if (error_flag == 0) {
-    K2_LOG(WARNING)
-        << "Could not convert tensor to FSA, there was a problem "
-           "working out the num-states in the FSA, num_states="
-        << num_states;
+    K2_LOG(WARNING) << "Could not convert tensor to FSA, there was a problem "
+                       "working out the num-states in the FSA, num_states="
+                    << num_states;
     *error = true;
     return Fsa();
   }
 
   if (!ValidateRowIds(row_ids1)) {
-    K2_LOG(WARNING)
-        << "Could not convert tensor to FSA, src_states of arcs were out of "
-        "order";
+    K2_LOG(WARNING) << "Could not convert tensor to FSA, "
+                       "src_states of arcs were out of order";
     *error = true;
     return Fsa();
   }
@@ -260,14 +278,13 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   RowIdsToRowSplits(c, num_arcs, row_ids1_data, false, num_states,
                     row_splits1.Data());
 #ifndef NDEBUG
-  if (!ValidateRowSplitsAndIds(
-          row_splits1, row_ids1, NULL)) {
+  if (!ValidateRowSplitsAndIds(row_splits1, row_ids1, nullptr)) {
     K2_LOG(FATAL) << "Failure validating row-splits/row-ids, likely code error";
   }
 #endif
 
-  RaggedShape fsas_shape = RaggedShape2(&row_splits1, &row_ids1,
-                                        row_ids1.Dim());
+  RaggedShape fsas_shape =
+      RaggedShape2(&row_splits1, &row_ids1, row_ids1.Dim());
   FsaVec ans = Ragged<Arc>(fsas_shape, array);
   int32_t properties = GetFsaVecBasicProperties(ans);
   // TODO: check properties, at least
@@ -284,8 +301,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
 }
 
 Fsa FsaFromTensor(Tensor &t, bool *error) {
-  if (!t.IsContiguous())
-    t = ToContiguous(t);
+  if (!t.IsContiguous()) t = ToContiguous(t);
 
   *error = false;
   if (t.GetDtype() != kInt32Dtype) {
@@ -305,7 +321,6 @@ Fsa FsaFromTensor(Tensor &t, bool *error) {
   Array1<Arc> arc_array(t.Dim(0), t.GetRegion(), t.ByteOffset());
   return FsaFromArray1(arc_array, error);
 }
-
 
 Fsa FsaVecFromArray1(Array1<Arc> &array, bool *error) {
   const Arc *arcs_data = reinterpret_cast<const Arc *>(array.Data());
@@ -339,12 +354,13 @@ Fsa FsaVecFromArray1(Array1<Arc> &array, bool *error) {
   Eval(c, num_arcs, lambda_get_num_states_a);
 
   Array1<int32_t> row_splits12(c, num_fsas + 1);
-  int32_t * row_splits12_data = row_splits12.Data();
-  RowIdsToRowSplits(c, num_arcs, row_ids12.Data(), true,
-                    num_fsas, row_splits12.Data());
+  int32_t *row_splits12_data = row_splits12.Data();
+  RowIdsToRowSplits(c, num_arcs, row_ids12.Data(), true, num_fsas,
+                    row_splits12.Data());
   auto lambda_get_num_states_b = [=] __host__ __device__(int32_t i) -> void {
-     int32_t num_states_1 = num_states_per_fsa_data[i],
-         num_states_2 = arcs_data[row_splits12_data[i+1] - 1].src_state + 2;
+    int32_t num_states_1 = num_states_per_fsa_data[i],
+            num_states_2 =
+                arcs_data[row_splits12_data[i + 1] - 1].src_state + 2;
     if (num_states_2 <= 0 ||
         (num_states_1 >= 0 && num_states_2 > num_states_1)) {
       // Note: num_states_2 is a lower bound on the final-state, something is
@@ -384,9 +400,8 @@ Fsa FsaVecFromArray1(Array1<Arc> &array, bool *error) {
   Eval(c, num_arcs, lambda_set_row_ids2);
 
   if (!ValidateRowIds(row_ids2)) {
-    K2_LOG(WARNING)
-        << "Could not convert tensor to FSA, src_states of arcs were out of "
-        "order";
+    K2_LOG(WARNING) << "Could not convert tensor to FSA, "
+                       "src_states of arcs were out of order";
     *error = true;
     return Fsa();
   }
@@ -414,10 +429,9 @@ Fsa FsaVecFromArray1(Array1<Arc> &array, bool *error) {
   }
 #endif
 
-
   RaggedShape fsas_shape =
-      RaggedShape3(&row_splits1, &row_ids1, row_ids1.Dim(),
-                   &row_splits2, &row_ids2, row_ids2.Dim());
+      RaggedShape3(&row_splits1, &row_ids1, row_ids1.Dim(), &row_splits2,
+                   &row_ids2, row_ids2.Dim());
   FsaVec ans = Ragged<Arc>(fsas_shape, array);
   int32_t properties = GetFsaVecBasicProperties(ans);
   // TODO: check properties, at least
@@ -433,11 +447,8 @@ Fsa FsaVecFromArray1(Array1<Arc> &array, bool *error) {
   return ans;
 }
 
-
-
 FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
-  if (!t.IsContiguous())
-    t = ToContiguous(t);
+  if (!t.IsContiguous()) t = ToContiguous(t);
 
   *error = false;
   if (t.GetDtype() != kInt32Dtype) {
