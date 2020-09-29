@@ -31,6 +31,7 @@ struct RaggedShapeDim {
   Array1<int32_t> row_splits;
   // Search for "row_ids concept" in utils.h for explanation
   Array1<int32_t> row_ids;
+
   // cached_tot_size can be viewed as the number of elements in a ragged
   // matrix,
   // or -1 if not known.  (Note: it can legitimately be 0, if there are no
@@ -52,25 +53,11 @@ class RaggedShape {
     return axes_[0].row_splits.Dim() - 1;
   }
   /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and
-     for axis=0 the returned value is the same as Dim0().  */
-  int32_t TotSize(int32_t axis) {
-    K2_CHECK_GE(axis, 0);
-    K2_CHECK_LT(axis, NumAxes());
-    if (axis == 0)
-      return Dim0();
-    else {
-      RaggedShapeDim &rsd = axes_[axis - 1];
-      if (rsd.cached_tot_size >= 0) {
-        return rsd.cached_tot_size;
-      } else {
-        // if we had row_ids set up, we should have set cached_tot_size.
-        K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
-        K2_CHECK_GT(rsd.row_splits.Dim(), 0);
-        rsd.cached_tot_size = rsd.row_splits[rsd.row_splits.Dim() - 1];
-        return rsd.cached_tot_size;
-      }
-    }
-  }
+     for axis=0 the returned value is the same as Dim0().
+     Caution: we use const_cast inside this function as it may actually modify
+     the cached_tot_size members of RaggedShapeDim if not set.
+  */
+  int32_t TotSize(int32_t axis) const;
 
   /* Append `other` to `*this` (in-place version that modifies `*this`).
      `other` must have the same number of axes as `this`.  This is efficient in
@@ -83,7 +70,7 @@ class RaggedShape {
 
   // Returns the number of elements that a ragged array with this shape would
   // have.
-  int32_t NumElements() { return TotSize(NumAxes() - 1); }
+  int32_t NumElements() const { return TotSize(NumAxes() - 1); }
 
   /*
     Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.
@@ -373,7 +360,8 @@ struct Ragged {
   RaggedShape shape;  // TODO: consider making the shape a pointer??
   Array1<T> values;
 
-  Ragged(RaggedShape &shape, Array1<T> &values) : shape(shape), values(values) {
+  Ragged(const RaggedShape &shape, const Array1<T> &values)
+      : shape(shape), values(values) {
     K2_CHECK(IsCompatible(shape, values));
     K2_CHECK_EQ(shape.NumElements(), values.Dim());
   }
@@ -393,8 +381,8 @@ struct Ragged {
     return values[shape[indexes]];
   }
 
-  ContextPtr Context() { return values.Context(); }
-  int32_t NumAxes() { return shape.NumAxes(); }
+  ContextPtr Context() const { return values.Context(); }
+  int32_t NumAxes() const { return shape.NumAxes(); }
 
   /*
     It is an error to call this if this.shape.NumAxes() < 2.  This will return
@@ -527,7 +515,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
                  will be equal to a.NumAxes() + b.NumAxes() - 1 (the last
                  axis of a and the first axis of b are combined).
  */
-RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b);
+RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b);
 
 /*
   Construct a RaggedShape with 3 axes.  For N=1 and 2 respectively:
@@ -540,6 +528,13 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
                          Array1<int32_t> *row_splits2,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2);
+
+
+/*
+  Returns a RaggedShape with 2 axes, with Dim0() == 1 and
+  TotSize(1) = num_elems.
+ */
+RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems);
 
 /*
   Allocates an *invalid* RaggedShape given the TotSize() values for each axis.

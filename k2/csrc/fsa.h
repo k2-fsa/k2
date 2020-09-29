@@ -31,11 +31,7 @@ using FsaProperties = uint32_t;
   using an arc and adjacent arcs (and the structural info).
  */
 enum FsaBasicProperties {
-  kFsaPropertiesValid = 0x01,      // Valid from a formatting perspective *as an
-                                   // FsaVec*.  Also require
-                                   // kFsaPropertiesSingleFsa == true if
-                                   // this is supposed to be a single FSA, not
-                                   // an FsaVec.
+  kFsaPropertiesValid = 0x01,      // Valid from a formatting perspective
   kFsaPropertiesNonempty = 0x02,   // Nonempty as in, has at least one arc.
   kFsaPropertiesTopSorted = 0x04,  // FSA is top-sorted, dest_state >= src_state
   kFsaPropertiesTopSortedAndAcyclic =
@@ -64,7 +60,7 @@ enum FsaBasicProperties {
                                         // used in figuring out the boundaries
                                         // between FSAs when we serialize to a
                                         // list of arcs.
-  kFsaAllProperties = 0x03FF
+  kFsaAllProperties = 0x07FF
 };
 
 using Fsa = Ragged<Arc>;  // 2 axes: state,arc
@@ -225,7 +221,15 @@ inline FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa **fsas) {
   return Stack(0, num_fsas, fsas);
 }
 
+// Converts Fsa to FsaVec with one element (note: will share the same underlying
+// memory, just add an extra axis).
+// Is non-const becaues the FSA's row-ids
+FsaVec FsaVecFromFsa(const Fsa &fsa);
+
+// Get properties for Fsa.  Returns 0 if fsa.NumAxes() != 2.
 int32_t GetFsaBasicProperties(const Fsa &fsa);
+
+// Get properties for FsaVec.  Returns 0 if fsa_vec.NumAxes() != 3.
 int32_t GetFsaVecBasicProperties(const FsaVec &fsa_vec);
 
 // Return weights of `arcs` as a Tensor that shares the same memory

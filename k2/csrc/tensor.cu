@@ -98,15 +98,15 @@ Tensor::Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims)
 }
 
 Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
-               int32_t bytes_offset)
+               int32_t byte_offset)
     : impl_(std::make_shared<TensorImpl>()) {
   int32_t storage_size = shape.StorageSize();
   int32_t element_size = TraitsOf(type).NumBytes();
   impl_->dtype = type;
   impl_->shape = shape;
   impl_->data = region;
-  impl_->bytes_offset = bytes_offset;
-  K2_CHECK_GE(impl_->data->num_bytes - impl_->bytes_offset,
+  impl_->byte_offset = byte_offset;
+  K2_CHECK_GE(impl_->data->num_bytes - impl_->byte_offset,
               storage_size * element_size);
 }
 
@@ -119,17 +119,17 @@ Tensor Tensor::Index(int32_t axis, int32_t index) const {
   dims.erase(dims.begin() + axis);
   strides.erase(strides.begin() + axis);
   Shape shape(dims, strides);
-  int32_t bytes_offset =
-      impl_->bytes_offset +
+  int32_t byte_offset =
+      impl_->byte_offset +
       index * this_shape.Stride(axis) * TraitsOf(impl_->dtype).NumBytes();
-  return Tensor(impl_->dtype, shape, impl_->data, bytes_offset);
+  return Tensor(impl_->dtype, shape, impl_->data, byte_offset);
 }
 
 void Tensor::Init(ContextPtr c) {
   int32_t storage_size = impl_->shape.StorageSize();
   int32_t element_size = TraitsOf(impl_->dtype).NumBytes();
   impl_->data = NewRegion(c, static_cast<size_t>(storage_size * element_size));
-  impl_->bytes_offset = 0;
+  impl_->byte_offset = 0;
 }
 
 }  // namespace k2
