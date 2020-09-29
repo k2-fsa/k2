@@ -412,7 +412,29 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
   return RaggedShape(axes);
 }
 
-RaggedShape ComposeRaggedShapes(RaggedShape &a, RaggedShape &b) {
+int32_t RaggedShape::TotSize(int32_t axis) const {
+  K2_CHECK_GE(axis, 0);
+  K2_CHECK_LT(axis, NumAxes());
+  if (axis == 0)
+    return Dim0();
+  else {
+    const RaggedShapeDim &rsd = axes_[axis - 1];
+    if (rsd.cached_tot_size >= 0) {
+      return rsd.cached_tot_size;
+    } else {
+      // if we had row_ids set up, we should have set cached_tot_size.
+      K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
+      K2_CHECK_GT(rsd.row_splits.Dim(), 0);
+      const_cast<RaggedShapeDim&>(rsd).cached_tot_size =
+          rsd.row_splits[rsd.row_splits.Dim() - 1];
+      return rsd.cached_tot_size;
+    }
+  }
+}
+
+
+RaggedShape ComposeRaggedShapes(const RaggedShape &a,
+                                const RaggedShape &b) {
   if (a.NumElements() != b.Dim0()) {
     K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()
                   << " vs. " << b.Dim0();
@@ -994,5 +1016,16 @@ RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
   if (axis == 1) ans = Transpose(ans);
   return ans;
 }
+
+RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
+  // row_splits= [
+  Array1<int32_t> row_splits = Range<int32_t>(c, 2, 0, num_elems);
+  int32_t *row_splits_data = row_splits.Data();
+
+  Array1<int32_t> row_ids(c, num_elems, 0);
+  return RaggedShape2(&row_splits, &row_ids, num_elems);
+}
+
+
 
 }  // namespace k2

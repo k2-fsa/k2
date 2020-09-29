@@ -31,11 +31,7 @@ using FsaProperties = uint32_t;
   using an arc and adjacent arcs (and the structural info).
  */
 enum FsaBasicProperties {
-  kFsaPropertiesValid = 0x01,      // Valid from a formatting perspective *as an
-                                   // FsaVec*.  Also require
-                                   // kFsaPropertiesSingleFsa == true if
-                                   // this is supposed to be a single FSA, not
-                                   // an FsaVec.
+  kFsaPropertiesValid = 0x01,      // Valid from a formatting perspective
   kFsaPropertiesNonempty = 0x02,   // Nonempty as in, has at least one arc.
   kFsaPropertiesTopSorted = 0x04,  // FSA is top-sorted, dest_state >= src_state
   kFsaPropertiesTopSortedAndAcyclic =
@@ -153,6 +149,11 @@ struct DenseFsaVec {
 */
 Fsa FsaFromTensor(Tensor &t, bool *error);
 
+
+Fsa FsaFromArray1(Array1<Arc> &arc, bool *error);
+
+
+
 /*
   Returns a single Tensor that represents the FSA; this is just the vector of
   Arc reinterpreted as  num_arcs by 4 Tensor of int32_t.  It can be converted
@@ -193,6 +194,8 @@ Tensor FsaVecToTensor(const Fsa &fsa);
 */
 FsaVec FsaVecFromTensor(Tensor &t, bool *error);
 
+Fsa FsaVecFromArray1(Array1<Arc> &arc, bool *error);
+
 /*
   Return one Fsa in an FsaVec.  Note, this has to make copies of the
   row offsets and strides but can use a sub-array of the arcs array
@@ -218,20 +221,34 @@ inline FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas, Fsa **fsas) {
   return Stack(0, num_fsas, fsas);
 }
 
+// Converts Fsa to FsaVec with one element (note: will share the same underlying
+// memory, just add an extra axis).
+// Is non-const becaues the FSA's row-ids
+FsaVec FsaVecFromFsa(const Fsa &fsa);
+
+// Get properties for Fsa.  Returns 0 if fsa.NumAxes() != 2.
 int32_t GetFsaBasicProperties(const Fsa &fsa);
+
+// Get properties for FsaVec.  Returns 0 if fsa_vec.NumAxes() != 3.
 int32_t GetFsaVecBasicProperties(const FsaVec &fsa_vec);
 
+// Return weights of `arcs` as a Tensor that shares the same memory
+// location
 Tensor WeightsOfArcsAsTensor(const Array1<Arc> &arcs);
 
-inline Array1<float> WeightsOfArcsAsArray(const Array1<Arc> &arcs) {
+// Return weights of `arcs` as an Array1<float>; this will not share the same
+// memory location because Array1 does not support a stride.  However
+// it would be possible to get it as an Array2.
+inline Array1<float> WeightsOfArcsAsArray1(const Array1<Arc> &arcs) {
   return Array1<float>(WeightsOfArcsAsTensor(arcs));
 }
-// If you need the weights of an Fsa or FsaVec f, you can just
-// use WeightsOfArcsAsArray(f.values).
 
-inline Array1<float> WeightsOfFsaAsArray(const Ragged<Arc> &fsa) {
+inline Array1<float> WeightsOfFsaAsArray1(const Ragged<Arc> &fsa) {
   return Array1<float>(WeightsOfArcsAsTensor(fsa.values));
 }
+
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_H_
