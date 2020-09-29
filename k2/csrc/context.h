@@ -277,6 +277,35 @@ struct Region : public std::enable_shared_from_this<Region> {
     return reinterpret_cast<T *>(data);
   }
 
+  /* Extends the region (this is like realloc; and in fact, in future, we might
+     decide to use realloc-type things inside the implementation).
+        @param [in] new_bytes_used   New size of this region; if this is
+                         <= bytes_used nothing is done.  At exit, the
+                         bytes_used of this region will equal new_bytes_used.
+                         if num_bytes < new_bytes_used this region will be
+                         reallocated according to some heuristic (e.g. the
+                         larger of double the current size, or
+                         the next power of 2 greater than `new_bytes_used`). */
+  void Extend(size_t new_bytes_used) {
+    if (new_bytes_used <= bytes_used) return;
+    if (num_bytes < new_bytes_used) {  // reallocate and copy
+      size_t new_size = std::max<size_t>(num_bytes * 2, new_bytes_used);
+      size_t i = 4;
+      while (i < new_size / 8) i <<= 3;
+      while (i < new_size) i <<= 1;
+      new_size = i;  // Round up `new_size` to a power of 2.
+      void *new_deleter_context;
+      void *new_data = context->Allocate(new_size, &new_deleter_context);
+      auto kind = GetMemoryCopyKind(*context, *context);
+      MemoryCopy(new_data, data, bytes_used, kind);
+      context->Deallocate(data, deleter_context);
+      data = new_data;
+      deleter_context = new_deleter_context;
+      num_bytes = new_size;
+    }
+    bytes_used = new_bytes_used;
+  }
+
   ~Region() { context->Deallocate(data, deleter_context); }
 };
 

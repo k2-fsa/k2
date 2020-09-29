@@ -4,7 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
- *                      Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -15,10 +15,7 @@
 
 #include <memory>
 
-#include "c10/cuda/CUDACachingAllocator.h"
-#include "c10/cuda/CUDAFunctions.h"
 #include "k2/csrc/context.h"
-#include "k2/csrc/log.h"
 #include "torch/torch.h"
 
 namespace k2 {

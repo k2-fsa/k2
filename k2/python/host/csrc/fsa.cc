@@ -1,7 +1,7 @@
 // k2/python/host/csrc/fsa.cc
 
-// Copyright (c)  2020  Fangjun Kuang (csukuangfj@gmail.com)
-//                      Xiaomi Corporation (author: Haowen Qiu)
+// Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+//                      Xiaomi Corporation (authors: Haowen Qiu)
 
 // See ../../../LICENSE for clarification regarding multiple authors
 

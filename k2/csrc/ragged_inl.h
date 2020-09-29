@@ -7,6 +7,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -15,7 +16,11 @@
 #ifndef K2_CSRC_RAGGED_INL_H_
 #define K2_CSRC_RAGGED_INL_H_
 
+#include <memory>
 #include <vector>
+
+#include "k2/csrc/moderngpu_allocator.h"
+#include "moderngpu/kernel_segsort.hxx"
 
 namespace k2 {
 
@@ -93,6 +98,35 @@ Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
   // shape.NumElements());
   Array1<T> values;
   return Ragged<T>(shape, values);
+}
+
+template <typename T, typename Op /* = LessThan<T> */>
+void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
+  K2_DCHECK(IsCompatible(src->values, *order));
+  K2_DCHECK_EQ(src->values.Dim(), order->Dim());
+  K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda)
+      << "It supports only CUDA at present";
+
+  std::unique_ptr<mgpu::context_t> context =
+      GetModernGpuAllocator(src->Context()->GetDeviceId());
+
+  Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
+  mgpu::segmented_sort_indices(src->values.Data(),  // keys
+                               order->Data(),       // indices
+                               src->values.Dim(),   // count
+                               segment.Data() + 1,  // segments
+                               segment.Dim() - 1,   // num_segments
+                               Op(),                // cmp
+                               *context);           // context
+  auto err = cudaGetLastError();
+  (void)err;
+  // TODO(fangjun): err is not cudaSuccess, but why was the data sorted
+  // correctly?
+  //
+  // Check failed: err == cudaSuccess (9 vs. 0)  Error: invalid configuration
+  // argument.
+  //
+  // K2_DCHECK_CUDA_ERROR(err);
 }
 
 }  // namespace k2

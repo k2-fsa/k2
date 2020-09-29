@@ -4,7 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
- *                      Fangjun Kuang (csukuangfj@gmail.com)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -239,10 +239,14 @@ void TestArray1() {
     // new_size <= array.Dim()
     int32_t new_size = 3;
     array.Resize(new_size);
-    EXPECT_EQ(array.Dim(), data.size());
-    new_size = 5;
+    EXPECT_EQ(array.Dim(), new_size);
+
+    // re-initialize...
+    array = Array1<T>(context, data);
+    // new_size > array.Dim()
+    new_size = 7;
     array.Resize(new_size);
-    EXPECT_EQ(array.Dim(), data.size());
+    EXPECT_EQ(array.Dim(), new_size);
     // new_size > array.Dim()
     new_size = 8;
     array.Resize(new_size);

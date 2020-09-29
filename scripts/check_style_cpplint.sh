@@ -1,9 +1,7 @@
 #!/bin/bash
-
-# Copyright 2020 Fangjun Kuang (csukuangfj@gmail.com)
-
-# See ../LICENSE for clarification regarding multiple authors
-
+#
+# Copyright (c)  2020  Mobvoi Inc. (authors: Fangjun Kuang)
+#
 # Usage:
 #
 # (1) To check files of the last commit

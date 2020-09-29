@@ -3,7 +3,7 @@
  * pytorch_context
  *
  * @copyright
- * Copyright (c)  2020  Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
+ * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -11,7 +11,10 @@
 
 #include <memory>
 
+#include "c10/cuda/CUDACachingAllocator.h"
 #include "c10/cuda/CUDAFunctions.h"
+#include "k2/csrc/context.h"
+#include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
 
 namespace k2 {
@@ -23,9 +26,6 @@ class PytorchCpuContext : public Context {
     K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
 
-  // since the constructor is private, the only way to create an instance
-  // of PytorchCpuContext is via `Make`, which returns a `shared_ptr`.
-  // Thus it is safe to call `shared_from_this`.
   ContextPtr GetCpuContext() override { return shared_from_this(); }
 
   ContextPtr GetPinnedContext() override { return nullptr; }

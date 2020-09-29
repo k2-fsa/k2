@@ -72,6 +72,15 @@ class RaggedShape {
     }
   }
 
+  /* Append `other` to `*this` (in-place version that modifies `*this`).
+     `other` must have the same number of axes as `this`.  This is efficient in
+     an amortized way, i.e. should take time/work that's O(n) in the size of
+     `other`, not `*this`, if you make many calls to Append().  This is due to
+     the policy used in Region::Extend(), where it at least doubles the size
+     each time, similar to std::vector.
+  */
+  void Append(const RaggedShape &other);
+
   // Returns the number of elements that a ragged array with this shape would
   // have.
   int32_t NumElements() { return TotSize(NumAxes() - 1); }
@@ -102,8 +111,7 @@ class RaggedShape {
   // row_splits on that  axis.
   int32_t MaxSize(int32_t axis);
 
-  ContextPtr &Context() { return axes_[0].row_splits.Context(); }
-  const ContextPtr &Context() const { return axes_[0].row_splits.Context(); }
+  ContextPtr &Context() const { return axes_[0].row_splits.Context(); }
 
   /*
     It is an error to call this if this.NumAxes() < 2.  This will return
@@ -127,7 +135,8 @@ class RaggedShape {
 
   RaggedShapeIndexIterator Iterator();
 
-  explicit RaggedShape(std::vector<RaggedShapeDim> &axes, bool check = true)
+  explicit RaggedShape(const std::vector<RaggedShapeDim> &axes,
+                       bool check = true)
       : axes_(axes) {
     if (check) Check();
   }
@@ -486,7 +495,6 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src);
 
-
 /*
   Construct a RaggedShape with 2 axes.
      @param [in] row_splits   row_splits, or NULL (at least one of this and
@@ -573,6 +581,19 @@ Ragged<T> RandomRagged(T min_value = static_cast<T>(0),
                        int32_t min_num_axes = 2, int32_t max_num_axes = 4,
                        int32_t min_num_elements = 0,
                        int32_t max_num_elements = 2000);
+
+/*
+  Sort a ragged array in-place.
+
+     @param [inout]   The input array to be sorted.
+                      CAUTION: it is sorted in-place.
+     @param [out]     The indexes mapping from the sorted
+                      array to the input array. The caller
+                      has to pre-allocate memory for it
+                      on the same device as `src`.
+ */
+template <typename T, typename Op = LessThan<T>>
+void SortSublists(Ragged<T> *src, Array1<int32_t> *order);
 
 }  // namespace k2
 

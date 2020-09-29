@@ -7,9 +7,8 @@
  * It contains implementation code.
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
- *                      Fangjun Kuang (csukuangfj@gmail.com)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
@@ -24,6 +23,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
+#include <random>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -36,12 +36,12 @@ namespace internal {
 // cub::DeviceScan::ExclusiveSum internally).
 template <typename T>
 struct PtrPtr {
-  T **data;
+  const T **data;
 
-  explicit PtrPtr(T **data) : data(data) {}
+  explicit PtrPtr(const T **data) : data(data) {}
 
   // operator[] and operator+ are required by cub::DeviceScan::ExclusiveSum
-  __host__ __device__ T operator[](int32_t i) { return *(data[i]); }
+  __host__ __device__ T operator[](int32_t i) const { return *(data[i]); }
   __host__ __device__ PtrPtr operator+(int32_t n) const {
     PtrPtr tmp(*this);
     tmp.data += n;
@@ -105,6 +105,29 @@ void ExclusiveSumPerRow(const Array2<T> &src, Array2<T> *dest) {
   }
 }
 
+// called in RandUniformArray1
+template <typename T, typename std::enable_if<std::is_floating_point<T>::value,
+                                              T>::type * = nullptr>
+void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
+                        T *data) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<T> dis(min_value, max_value);
+  for (int32_t i = 0; i < dim; ++i) data[i] = dis(gen);
+}
+
+template <typename T, typename std::enable_if<std::is_integral<T>::value,
+                                              T>::type * = nullptr>
+void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
+                        T *data) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  // TODO(haowen): uniform_int_distribution does not support bool and char,
+  // we may need to add some check here?
+  std::uniform_int_distribution<T> dis(min_value, max_value);
+  for (int32_t i = 0; i < dim; ++i) data[i] = dis(gen);
+}
+
 }  // namespace internal
 }  // namespace k2
 
@@ -151,7 +174,7 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
 }
 
 template <typename T>
-void ExclusiveSumDeref(Array1<T *> &src, Array1<T> *dest) {
+void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest) {
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_dim = src.Dim();
   int32_t dest_dim = dest->Dim();
@@ -232,21 +255,22 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   if (c->GetDeviceType() == kCpu) {
     // a simple loop is faster, although the other branches should still work on
     // CPU.
+    int32_t elem_size = src[0]->ElementSize();
     for (int32_t i = 0; i < num_arrays; i++) {
-      int32_t offset = row_splits_vec[i], this_dim = src[i]->Dim();
-      const int32_t *this_src_data = src[i]->Data();
+      int32_t this_dim = src[i]->Dim();
+      const T *this_src_data = src[i]->Data();
       memcpy(static_cast<void *>(ans_data),
-             static_cast<const void *>(this_src_data), sizeof(T) * this_dim);
+             static_cast<const void *>(this_src_data), elem_size * this_dim);
       ans_data += this_dim;
     }
   } else {
     K2_CHECK_EQ(c->GetDeviceType(), kCuda);
     Array1<int32_t> row_splits(c, row_splits_vec);
     const int32_t *row_splits_data = row_splits.Data();
-    std::vector<T *> src_ptrs_vec(num_arrays);
+    std::vector<const T *> src_ptrs_vec(num_arrays);
     for (int32_t i = 0; i < num_arrays; i++) src_ptrs_vec[i] = src[i]->Data();
-    Array1<T> src_ptrs(c, src_ptrs_vec);
-    auto src_ptrs_data = src_ptrs.Data();
+    Array1<const T *> src_ptrs(c, src_ptrs_vec);
+    const T **src_ptrs_data = src_ptrs.Data();
     int32_t avg_input_size = ans_size / num_arrays;
     if (max_dim < 2 * avg_input_size + 512) {
       // here, 2 is a heuristic factor. We're saying, "if the max length of any
@@ -258,9 +282,8 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       // rectangular kernel.
       auto lambda_set_data = [=] __host__ __device__(int32_t i,
                                                      int32_t j) -> void {
-        // TODO(haowen): change to use operator[]
-        int32_t row_start = row_splits.Data()[i],
-                row_end = row_splits.Data()[i + 1];
+        int32_t row_start = row_splits_data[i],
+                row_end = row_splits_data[i + 1];
         const T *src_ptr = src_ptrs_data[i];
         if (j < row_end - row_start) {
           ans_data[row_start + j] = src_ptr[j];
@@ -284,9 +307,10 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       index_map.reserve((2 * ans_size) / block_dim);
       for (int32_t i = 0; i < num_arrays; i++) {
         int32_t this_array_size = src[i]->Dim();
-        int32_t this_num_blocks = (this_array_size + block_dim - 1) / block_dim;
+        int32_t this_num_blocks = NumBlocks(this_array_size, block_dim);
         for (int32_t j = 0; j < this_num_blocks; j++) {
-          index_map.push_back((((uint64_t)j) << 32) + (uint64_t)i);
+          index_map.push_back((static_cast<uint64_t>(j) << 32) +
+                              static_cast<uint64_t>(i));
         }
       }
       Array1<uint64_t> index_map_gpu(c, index_map);
@@ -295,10 +319,10 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       auto lambda_set_data_blocks = [=] __host__ __device__(int32_t i,
                                                             int32_t j) {
         uint64_t index = index_map_data[i];
-        uint32_t orig_i = (uint32_t)index,
-                 block_index = (uint32_t)(index >> 32);
-        int32_t row_start = row_splits.Data()[orig_i],
-                row_end = row_splits.Data()[orig_i + 1],
+        uint32_t orig_i = static_cast<uint32_t>(index),
+                 block_index = static_cast<uint32_t>(index >> 32);
+        int32_t row_start = row_splits_data[orig_i],
+                row_end = row_splits_data[orig_i + 1],
                 orig_j = (block_index * block_dim) + j;
         const T *src_ptr = src_ptrs_data[orig_i];
         if (orig_j < row_end - row_start) {
@@ -308,86 +332,115 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       Eval2(c, index_map_gpu.Dim(), block_dim, lambda_set_data_blocks);
     }
   }
+  return ans;
 }
 
 template <typename T>
-Array1<T> Append(int32_t src_size, Array1<T> *src) {
+Array1<T> Append(int32_t src_size, const Array1<T> *src) {
   K2_CHECK_GT(src_size, 0);
-  std::vector<Array1<T> *> srcs(src_size);
-  for (int32_t i = 0; i < src_size; i++) srcs[i] = src + i;
-  // TODO(haowen): add below interfaces.
-  // return Append(&(srcs[0]));
-  K2_LOG(FATAL) << "Not Implemented";
-  return src[0];
+  std::vector<const Array1<T> *> srcs(src_size);
+  for (int32_t i = 0; i != src_size; ++i) srcs[i] = src + i;
+  const Array1<T> **srcs_ptr = srcs.data();
+  return Append(src_size, srcs_ptr);
 }
 
-template <typename T>
-void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
-  K2_CHECK_EQ(src.NumAxes(), 2);
-  K2_CHECK_EQ(src.shape.Dim0(), max_values->Dim());
-  K2_CHECK(IsCompatible(src.shape, *max_values));
+template <typename T, typename Op>
+void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
+  K2_CHECK_GE(src.NumAxes(), 2);
+  K2_CHECK(IsCompatible(src.shape, *dst));
+
+  int32_t last_axis = src.NumAxes() - 1;
+  const Array1<int32_t> row_splits_array = src.shape.RowSplits(last_axis);
+  int32_t num_rows = row_splits_array.Dim() - 1;
+  K2_CHECK_EQ(num_rows, dst->Dim());
 
   ContextPtr c = src.Context();
-  int32_t num_rows = src.shape.Dim0();
-  const int32_t *row_splits = src.shape.RowSplits(1).Data();
+  const int32_t *row_splits = row_splits_array.Data();
   const T *values_data = src.values.Data();
-  T *output_data = max_values->Data();
+  T *output_data = dst->Data();
+  Op op;
 
   if (c->GetDeviceType() == kCpu) {
     int32_t j = row_splits[0];
     for (int32_t i = 0; i < num_rows; i++) {
-      T max_val = default_value;
+      T val = default_value;
       int32_t row_end = row_splits[i + 1];
       for (; j < row_end; j++) {
         T elem = values_data[j];
-        max_val = (elem > max_val ? elem : max_val);
+        val = op(elem, val);
       }
-      output_data[i] = max_val;
+      output_data[i] = val;
     }
   } else {
     K2_CHECK(c->GetDeviceType() == kCuda);
 
     // This code is based on the example here:
     // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
-    MaxOp<T> max_op;
     void *d_temp_storage = NULL;
     std::size_t temp_storage_bytes = 0;
 
     // the first time is to determine temporary device storage requirements
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
-        row_splits, row_splits + 1, max_op, default_value, c->GetCudaStream()));
+        row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
     void *deleter_context;
     d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
-        row_splits, row_splits + 1, max_op, default_value, c->GetCudaStream()));
+        row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
     c->Deallocate(d_temp_storage, deleter_context);
   }
 }
 
-template <typename T>
-void And(Array1<T> &src, T default_value, Array1<T> *dest) {
-  // TODO(haowen): implement
-  K2_LOG(FATAL) << "Not implemented";
+template <typename T, typename Op>
+void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
+  K2_CHECK(IsCompatible(src, *dest));
+  K2_CHECK_EQ(dest->Dim(), 1);
+
+  ContextPtr c = src.Context();
+  T *src_data = src.Data();
+  T *dest_data = dest->Data();
+  int32_t size = src.Dim();
+  Op op;
+
+  if (c->GetDeviceType() == kCpu) {
+    T val = default_value;
+    for (int32_t i = 0; i != size; ++i) {
+      val = op(src_data[i], val);
+    }
+    dest_data[0] = val;
+  } else {
+    K2_CHECK(c->GetDeviceType() == kCuda);
+
+    void *d_temp_storage = nullptr;
+    size_t temp_storage_bytes = 0;
+    // the first time is to determine temporary device storage requirements
+    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
+        d_temp_storage, temp_storage_bytes, src_data, dest_data, size, op,
+        default_value, c->GetCudaStream()));
+    void *deleter_context;
+    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
+    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
+        d_temp_storage, temp_storage_bytes, src_data, dest_data, size, op,
+        default_value, c->GetCudaStream()));
+  }
 }
 
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
                             T max_value) {
+  static_assert(std::is_floating_point<T>::value || std::is_integral<T>::value,
+                "Only support floating-point and integral type");
   Array1<T> temp(GetCpuContext(), dim);
   T *data = temp.Data();
-  K2_CHECK(max_value >= min_value);
+  K2_CHECK_GE(max_value, min_value);
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
   if (max_value == min_value) {
-    for (int32_t i = 0; i < dim; i++) data[i] = 0;
-  } else if (std::is_floating_point<T>::value ||
-             std::abs(min_value) > RAND_MAX || std::abs(max_value) > RAND_MAX) {
-    for (int32_t i = 0; i < dim; i++)
-      data[i] =
-          min_value + (rand() * (max_value - min_value) / RAND_MAX);  // NOLINT
+    for (int32_t i = 0; i < dim; ++i) data[i] = min_value;
   } else {
-    for (int32_t i = 0; i < dim; i++)
-      data[i] = min_value + (rand() % (max_value + 1 - min_value));  // NOLINT
+    internal::RandArray1Internal<T>(c, dim, min_value, max_value, data);
   }
   return temp.To(c);
 }
@@ -398,14 +451,10 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
   DeviceType d = c->GetDeviceType();
   Array1<T> ans = Array1<T>(c, dim);
   T *ans_data = ans.Data();
-  if (d == kCpu) {
-    for (int32_t i = 0; i < dim; i++) ans_data[i] = first_value + i * inc;
-  } else {
-    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
-      ans_data[i] = first_value + i * inc;
-    };
-    Eval(c, dim, lambda_set_values);
-  }
+  auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
+    ans_data[i] = first_value + i * inc;
+  };
+  Eval(c, dim, lambda_set_values);
   return ans;
 }
 

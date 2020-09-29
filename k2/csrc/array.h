@@ -3,9 +3,8 @@
  * array
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
- *                      Fangjun Kuang (csukuangfj@gmail.com)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -162,30 +161,31 @@ class Array1 {
     return ans;
   }
 
-  // Resizes, copying old contents if we could not re-use the same memory
-  // location. It will always at least double the allocated size if it has to
-  // reallocate. See Region::num_bytes vs. Region::bytes_used.
-  // TODO(haowen): now we only support the case that the current array `curr`
-  // (i.e. the array that will be resized) covers the highest used index in
-  // the region, that is, for any array `a` uses this region,
-  // curr.byte_offset_ + curr.Dim() * curr.ElementSize() == region_->bytes_used
-  // >= a.byte_offset + a.Dim() * a.ElementSize()
+  /*
+    Modify size of array, copying old contents if we could not re-use the same
+    memory location. It will always at least double the allocated size if it has
+    to reallocate. See Region::num_bytes vs. Region::bytes_used.  We only
+    support the case that the current array *this (i.e. the array that will be
+    resized) covers the highest used index in the region; this is to avoid
+    overwriting memory shared by other arrays in the same region.
+
+    Note: this may change which memory other arrays point to, if they share
+    the same Region, but it will be transparent because arrays point to the
+    Region and not to the data directly.
+  */
   void Resize(int32_t new_size) {
-    K2_CHECK_EQ(byte_offset_ + Dim() * ElementSize(), region_->bytes_used);
-
-    if (new_size <= Dim()) return;
-
-    if (byte_offset_ + new_size * ElementSize() > region_->num_bytes) {
-      // always double the allocated size
-      auto tmp = NewRegion(Context(), 2 * region_->num_bytes);
-      // copy data
-      auto kind = GetMemoryCopyKind(*Context(), *Context());
-      MemoryCopy(tmp->data, region_->data, region_->bytes_used, kind);
-      // update meta info
-      dim_ = new_size;
-      tmp->bytes_used = byte_offset_ + new_size * ElementSize();
-      std::swap(tmp, region_);
+    if (new_size < dim_) {
+      K2_CHECK(new_size >= 0);
+    } else {
+      size_t cur_bytes_used = byte_offset_ + sizeof(T) * (size_t)dim_,
+          new_bytes_used = byte_offset_ + sizeof(T) * (size_t)new_size;
+      // the following avoids a situation where we overwrite data shared with
+      // other Array objects.  You can just do *this = Array1<T>(...) and
+      // overwrite *this with a new region if that's what you want.
+      K2_CHECK_EQ(cur_bytes_used, region_->bytes_used);
+      region_->Extend(new_bytes_used);
     }
+    dim_ = new_size;
   }
 
   ContextPtr &Context() const { return region_->context; }

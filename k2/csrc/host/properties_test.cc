@@ -3,8 +3,8 @@
  * properties_test
  *
  * @copyright
- * Copyright (c)  2020  Haowen Qiu
- *                      Fangjun Kuang (csukuangfj@gmail.com)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Mahsa Yarmohammadi
  *
  * @copyright

@@ -2,7 +2,7 @@
  * @brief python wrappers for k2.
  *
  * @copyright
- * Copyright (c)  2020  Mobvoi AI Lab, Beijing, China (authors: Fangjun Kuang)
+ * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
