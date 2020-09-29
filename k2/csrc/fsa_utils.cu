@@ -110,7 +110,7 @@ static void CheckStateArcs(const std::vector<std::vector<Arc>> &state_arcs,
                            int32_t final_state) {
   int32_t num_states = static_cast<int32_t>(state_arcs.size());
   K2_CHECK_EQ(num_states, final_state + 1);
-  K2_CHECK_EQ(state_arcs[final_state].empty(), true);
+  K2_CHECK(!state_arcs[final_state].empty());
 
   for (int32_t i = 0; i != num_states; ++i) {
     const auto &arcs = state_arcs[i];
