@@ -14,10 +14,16 @@ import k2
 import torch
 
 
+def _remove_leading_spaces(s: str) -> str:
+    lines = [line.strip() for line in s.split('\n') if line.strip()]
+    return '\n'.join(lines)
+
+
 class TestFsa(unittest.TestCase):
 
     def test_acceptor_from_str(self):
-        s = '''0 1 2 -1.2
+        s = '''
+            0 1 2 -1.2
             0 2  10 -2.2
             1 3  3  -3.2
             1 6 -1  -4.2
@@ -28,32 +34,36 @@ class TestFsa(unittest.TestCase):
             6
         '''
 
-        fsa, aux_labels = k2.fsa_from_str(s)
+        fsa, aux_labels = k2.fsa_from_str(_remove_leading_spaces(s))
         assert aux_labels is None
 
-        expected_str = '''0 1 2 -1.2
-0 2 10 -2.2
-1 3 3 -3.2
-1 6 -1 -4.2
-2 6 -1 -5.2
-2 4 2 -6.2
-3 6 -1 -7.2
-5 0 1 -8.2
-6
-'''
-        assert expected_str == k2.fsa_to_str(fsa)
+        expected_str = '''
+            0 1 2 -1.2
+            0 2 10 -2.2
+            1 3 3 -3.2
+            1 6 -1 -4.2
+            2 6 -1 -5.2
+            2 4 2 -6.2
+            3 6 -1 -7.2
+            5 0 1 -8.2
+            6
+        '''
+        assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
+            k2.fsa_to_str(fsa))
 
-        expected_str = '''0 1 2 1.2
-0 2 10 2.2
-1 3 3 3.2
-1 6 -1 4.2
-2 6 -1 5.2
-2 4 2 6.2
-3 6 -1 7.2
-5 0 1 8.2
-6
-'''
-        assert expected_str == k2.fsa_to_str(fsa, negate_scores=True)
+        expected_str = '''
+            0 1 2 1.2
+            0 2 10 2.2
+            1 3 3 3.2
+            1 6 -1 4.2
+            2 6 -1 5.2
+            2 4 2 6.2
+            3 6 -1 7.2
+            5 0 1 8.2
+            6
+        '''
+        assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
+            k2.fsa_to_str(fsa, negate_scores=True))
 
         arcs = fsa.arcs()
         assert isinstance(arcs, torch.Tensor)
@@ -108,7 +118,8 @@ class TestFsa(unittest.TestCase):
         assert arcs[3][3] == k2.float_as_int(-4.2)
 
     def test_transducer_from_str(self):
-        s = '''0 1 2 22  -1.2
+        s = '''
+            0 1 2 22  -1.2
             0 2  10 100 -2.2
             1 3  3  33  -3.2
             1 6 -1  16  -4.2
@@ -118,7 +129,7 @@ class TestFsa(unittest.TestCase):
             5 0  1  50  -8.2
             6
         '''
-        fsa, aux_labels = k2.fsa_from_str(s)
+        fsa, aux_labels = k2.fsa_from_str(_remove_leading_spaces(s))
         assert isinstance(aux_labels, torch.Tensor)
         assert aux_labels.dtype == torch.int32
         assert aux_labels.device.type == 'cpu'
@@ -126,31 +137,33 @@ class TestFsa(unittest.TestCase):
             aux_labels,
             torch.tensor([22, 100, 33, 16, 26, 22, 36, 50]).to(torch.int32))
 
-        expected_str = '''0 1 2 22 -1.2
-0 2 10 100 -2.2
-1 3 3 33 -3.2
-1 6 -1 16 -4.2
-2 6 -1 26 -5.2
-2 4 2 22 -6.2
-3 6 -1 36 -7.2
-5 0 1 50 -8.2
-6
-'''
-        assert expected_str == k2.fsa_to_str(fsa, aux_labels=aux_labels)
+        expected_str = '''
+            0 1 2 22 -1.2
+            0 2 10 100 -2.2
+            1 3 3 33 -3.2
+            1 6 -1 16 -4.2
+            2 6 -1 26 -5.2
+            2 4 2 22 -6.2
+            3 6 -1 36 -7.2
+            5 0 1 50 -8.2
+            6
+        '''
+        assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
+            k2.fsa_to_str(fsa, aux_labels=aux_labels))
 
-        expected_str = '''0 1 2 22 1.2
-0 2 10 100 2.2
-1 3 3 33 3.2
-1 6 -1 16 4.2
-2 6 -1 26 5.2
-2 4 2 22 6.2
-3 6 -1 36 7.2
-5 0 1 50 8.2
-6
-'''
-        assert expected_str == k2.fsa_to_str(fsa,
-                                             negate_scores=True,
-                                             aux_labels=aux_labels)
+        expected_str = '''
+            0 1 2 22 1.2
+            0 2 10 100 2.2
+            1 3 3 33 3.2
+            1 6 -1 16 4.2
+            2 6 -1 26 5.2
+            2 4 2 22 6.2
+            3 6 -1 36 7.2
+            5 0 1 50 8.2
+            6
+        '''
+        assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
+            k2.fsa_to_str(fsa, negate_scores=True, aux_labels=aux_labels))
 
 
 if __name__ == '__main__':
