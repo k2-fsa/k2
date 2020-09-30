@@ -362,6 +362,8 @@ class MultiGraphDenseIntersect {
                     state.  Is a tensor indexed [fsa_id][state][arc]; we
                     will get rid of the [state] dim, combining it with the
                     [arc] dim, so it's just [fsa_id][arc]
+                    It is conceptually unchanged by this operation but non-const
+                    because row-ids of its shape may need to be generated.
        @return      Returns a vector of log-likelihood cutoffs, one per FSA (the
                     cutoff will be -infinity for FSAs that don't have any active
                     states).  The cutoffs will be of the form: the best score
