@@ -362,6 +362,8 @@ class MultiGraphDenseIntersect {
                     state.  Is a tensor indexed [fsa_id][state][arc]; we
                     will get rid of the [state] dim, combining it with the
                     [arc] dim, so it's just [fsa_id][arc]
+                    It is conceptually unchanged by this operation but non-const
+                    because row-ids of its shape may need to be generated.
        @return      Returns a vector of log-likelihood cutoffs, one per FSA (the
                     cutoff will be -infinity for FSAs that don't have any active
                     states).  The cutoffs will be of the form: the best score
@@ -370,7 +372,7 @@ class MultiGraphDenseIntersect {
                     as long as the number of active states in each FSA is
                     between min_active and max_active.
   */
-  Array1<float> GetPruningCutoffs(const Ragged<float> &arc_end_scores) {
+  Array1<float> GetPruningCutoffs(Ragged<float> &arc_end_scores) {
     int32_t num_fsas = arc_end_scores.shape.Dim0();
 
     // get the maximum score from each sub-list (i.e. each FSA, on this frame).

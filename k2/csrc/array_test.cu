@@ -79,6 +79,14 @@ void TestArray1() {
   }
 
   {
+    // test Back()"
+    std::vector<T> data(5);
+    std::iota(data.begin(), data.end(), 0);
+    Array1<T> array(context, data);
+    EXPECT_EQ(array.Back(), 4);
+  }
+
+  {
     // created with Array1(ContextPtr, int32_t size, T elem)
     Array1<T> array(context, 5, T(2));
     ASSERT_EQ(array.Dim(), 5);

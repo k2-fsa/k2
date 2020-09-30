@@ -175,10 +175,10 @@ class Array1 {
   */
   void Resize(int32_t new_size) {
     if (new_size < dim_) {
-      K2_CHECK(new_size >= 0);
+      K2_CHECK_GE(new_size, 0);
     } else {
-      size_t cur_bytes_used = byte_offset_ + sizeof(T) * (size_t)dim_,
-          new_bytes_used = byte_offset_ + sizeof(T) * (size_t)new_size;
+      std::size_t cur_bytes_used = byte_offset_ + sizeof(T) * dim_,
+                  new_bytes_used = byte_offset_ + sizeof(T) * new_size;
       // the following avoids a situation where we overwrite data shared with
       // other Array objects.  You can just do *this = Array1<T>(...) and
       // overwrite *this with a new region if that's what you want.
@@ -223,6 +223,13 @@ class Array1 {
                  ElementSize(), MemcpyDeviceToHost);
       return ans;
     }
+  }
+
+  // return the last element on CPU of *this if dim >= 1,
+  // will crash if *this is empty.
+  T Back() const {
+    K2_CHECK_GE(dim_, 1);
+    return operator[](dim_ - 1);
   }
 
   /* Setting all elements to a scalar */

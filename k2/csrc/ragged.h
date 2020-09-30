@@ -3,7 +3,8 @@
  * ragged
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -233,8 +234,8 @@ class RaggedShapeIndexIterator {
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
-  Similar to TF/PyTorch's Stack.  The result will have Dim0 == src_size.   All
-  the source RaggedShapes must have the same NumAxes().
+  Similar to TF/PyTorch's Stack. The result will have Dim0 == src_size.
+  All the source RaggedShapes must have the same NumAxes().
 
      @param [in] src_size  The number of `RaggedShape`s in `src`
      @param [in] src    The shapes to be stacked
@@ -245,7 +246,6 @@ class RaggedShapeIndexIterator {
                         same value.
 
      @return  The appended result.
-
         Viewing the source and result as the shapes of n-dimensional arrays,
         if axis==0 we will have:
             result[i,j,k,l] = (*src[i])[j,k,l]
@@ -273,15 +273,15 @@ RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape **src);
   compose.cc to understand why.  Also: axis==0 is probably the only really
   useful case. See more useful notes in comments in the implementation.
  */
-RaggedShape Unsqueeze(RaggedShape &src, int32_t axis);
+RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
 
 /* Remove an axis; if it is not the last axis, this is done by appending lists
    (effectively the axis is combined with the following axis).  If it is the
    last axis it is just removed and the number of elements will be affected.
 
           @param [in] src Ragged shape to remove axis of (`src` is conceptually
-                      unchanged by this operation but non-const because
-                      row-splits or row-ids may need to be generated).
+                      unchanged by this operation but non-const because row-ids
+                      may need to be generated).
                       We require src.NumAxes() > 2, since the minimum number of
                       axes for a RaggedShape is 2.
           @param [in] axis  Axis to remove; must satisfy
@@ -291,6 +291,24 @@ RaggedShape Unsqueeze(RaggedShape &src, int32_t axis);
                        if axis < src.NumAxes() - 1.
 */
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
+
+/*
+  Returns a CPU array of shape (src[0]->NumAxes() + 1) by (num_srcs + 1), where
+  each row is the exclusive-sum of the TotSize() of the respective sources,
+  on the previous axis (or 1 for axis 0).  Specifically: it's the same
+  as setting ans(i,j) to (i == 0 ? 1 : src[j]->TotSize(i-1)), and then
+  doing an exclusive-sum on each row of i.
+
+     @param [in] num_srcs  The number of `RaggedShape`s in `src`
+     @param [in] src       The shapes whose sizes we want. Must all have the
+                           same NumAxes().
+     @return   Returns a freshly allocated CPU Array2<int32_t> of dimension
+               (src[0]->NumAxes() + 1) by (num_srcs + 1), where each
+               row is the exclusive-sum of the TotSize() of the respective
+               sources, on that axis. Its last column contains the totals.
+
+ */
+Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src);
 
 /*
   Transpose a RaggedShape: namely, axes 0 and 1.  Requires that the sizes
@@ -311,21 +329,21 @@ RaggedShape Transpose(RaggedShape &src);
 /*
    Append a list of RaggedShape to form a single RaggedShape
 
+      @param [in] axis     Axis to append them on. Previous axes must
+                           have the same shape! CAUTION: currently
+                           we only support axis == 0.
       @param [in] num_srcs Number of source shapes to append
       @param [in] src      Array of sources to append
-      @param [in] axis     Axis to append them on.   Previous axes must
-                           have the same shape!   CAUTION: currently
-                           we only support axis == 0.
       @return      Returns the appended RaggedShape.
 */
-RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis);
+RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src);
 
 /*
     Gets an array of pointers to the row_splits of `src`, on the same
     device as `src`.
        @param [in] src  Source RaggedShape
        @return        Returns an array of size src.NumAxes() - 1 containing
-                      pointers to the starts of the row_splits vetors
+                      pointers to the starts of the row_splits vectors.
 */
 Array1<int32_t *> GetRowSplitsPtr(RaggedShape &src);
 
@@ -436,10 +454,12 @@ struct Ragged {
     return Ragged<T>(sub_shape, sub_values);
   }
 
-  // TODO(haowen): used in k2/csrc/compose.cu, need to be implemented
-  Ragged<T> RemoveAxis(int32_t axis) const {
-    K2_LOG(FATAL) << "Not implemented";
-    return Ragged<T>();
+  // Note *this is conceptually unchanged by this operation but non-const
+  // because this->shape's row-ids may need to be generated.
+  Ragged<T> RemoveAxis(int32_t axis) {
+    K2_CHECK(axis >= 0 && axis < NumAxes());
+    RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
+    return Ragged<T>(new_shape, values);
   }
 
   Ragged<T> To(ContextPtr ctx) {
@@ -466,47 +486,49 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
   the source Ragged arrays' shapes must have the same NumAxes().
 
      @param [in] axis   The new axis whose dimension will equal num_srcs.
-              CAUTION: only axis == 0 and axis == 1 are supported right now,
-              and for the axis==1 case we have a requirement that all the
-              src->Dim0() return the same value.
-
+                        CAUTION: only axis == 0 is supported right now.
      @param [in] num_srcs  The number of `RaggedShape`s in `src`
-     @param [in] src    The shapes to be stacked
-     @return  The appended result.
+     @param [in] src       The shapes to be stacked
 
+     @return  The appended result.
        Assuming as an example that the input had 3 axes:
        if axis==0, the result would have:
           result[i,j,k,l] = (*src[i])[j,k,l]
-        and if axis==1 we would have:
+       and if axis==1 we would have:
           result[i,j,k,l] = (*src[j])[i,k,l]
  */
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> **src);
 
 /*
   This version of Stack() has one fewer levels of pointer indirection,
   it is just a wrapper for the version above.
  */
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src);
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> *src);
 
 /*
   Construct a RaggedShape with 2 axes.
      @param [in] row_splits   row_splits, or NULL (at least one of this and
-  row_ids must be non-NULL).  Note: the dimension of row_splits must equal the
-  number of rows plus one; row_splits[0] must be zero and the array must be
-  non-decreasing; and the last element of row_splits is the total number of
-  elements in the ragged matrix.
-     @param [in] row_ids      row_splits, or NULL (at least one of this and
-  row_ids must be non-NULL).  Note: the dimension of row_splits must equal the
-  number of elements plus one; the array must be non-decreasing; and the last
-  element of row_splits equals the number of rows.  If both row_ids and
-  row_splits are supplied, we require row_splits[row_ids[i]] <= i <
-  row_splits[row_ids[i]+1].
+                     row_ids must be non-NULL).  Note: the dimension of row
+                     splits must equal the number of rows plus one;
+                     row_splits[0] must be zero and the array must be
+                     non-decreasing; and the last element of row_splits
+                     is the total number of elements in the ragged matrix.
+     @param [in] row_ids      row_ids, or NULL (at least one of this and
+                     row_splits must be non-NULL). The array must be
+                     non-negative and non-decreasing; If both row_ids
+                     and row_splits are supplied, we require
+                     row_splits[row_ids[i]] <= i < row_splits[row_ids[i]+1]
+                     and
+                     row_splits[row_splits.Dim() - 1] == row_ids.Dim().
+                     If row_splits is NULL, then we suppose the number of rows
+                     equals row_ids[row_ids.Dim() - 1] + 1;
      @param [in] cached_tot_size   Total number of elements in the ragged
-                              matrix, or -1 if the user does not wish to supply
-  it now. (If >= 0, must equal `(*row_splits)[row_splits.Size()-1]` if
-  row_splits is non-NULL, or row_ids->Dim()-1 if row_ids is non-NULL.
+                     matrix, or -1 if the user does not wish to supply
+                     it now. (If >= 0, must equal
+                     `(row_splits)[row_splits.Dim()-1]` if row_splits
+                     is non-NULL, or row_ids->Dim() if row_ids is non-NULL.
 */
 RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
                          int32_t cached_tot_size);
@@ -529,13 +551,18 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b);
   either row_splitsN or row_idsN or both must be non-NULL.
   If cached_tot_sizeN is not -1, it must equal the total size on
   that axis which will equal the last element of row_splitsN (if
-  provided) and must equal the row_idsN.Dim(), if provided.
+  provided) and must equal the row_idsN.Dim(), if provided. See
+  documentation above for RagggedShape2 for details.
+
+  We also require that (supposing both row_splitsN and row_idsN are non-NULL):
+  row_splits1[row_splits1.Dim() - 1] == row_ids1.Dim()
+     == (row_splits2.Dim() - 1)
+     >= (row_ids2[row_ids2.Dim() - 1] + 1)
 */
 RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
                          Array1<int32_t> *row_splits2,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2);
-
 
 /*
   Returns a RaggedShape with 2 axes, with Dim0() == 1 and
@@ -549,21 +576,27 @@ RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems);
   any data to them.  View this as an internal function, because such a
   RaggedShape would not be usable directly.
 
-     @input num_axes   Number of axes of ragged shape desired; must be at
-                       least 2.
-     @input tot_sizes  Total size on each axis
+     @param [in] c          The context with which we'll allocate memory for
+                            row_splits and row_ids.
+     @param [in] num_axes   Number of axes of ragged shape desired; must be at
+                            least 2.
+     @param [in] tot_sizes  Total size on each axis. `tot_sizes[0]` through
+                            `tot_sizes[num_axes]` must be valid which also
+                            implies the number of rows on axis i is
+                            tot_sizes[i-1].
+
      @return           The returned RaggedShape satisfies
                        ans.TotSize(axis) == tot_sizes[axis], and has all
                        its row_splits and row_ids allocated but not
                        filled in, and its cached_tot_size elements
                        set.
  */
-RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes);
+RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
+                                    int32_t *tot_sizes);
 
 /*
   Creates a random ragged array (with a CPU context!).  Note: you may want to
-  explicitly
-  use the template arg, e.g. invoke as RandomRagged<int32_t>(...) .
+  explicitly use the template arg, e.g. invoke as RandomRagged<int32_t>(...).
 
      @param [in] min_value  Minimum element value allowed
      @param [in] max_value  Maximum element value allowed
@@ -599,7 +632,8 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order);
 
 }  // namespace k2
 
-// TODO(dan): include guard maybe.
+#define IS_IN_K2_CSRC_RAGGED_H_
 #include "k2/csrc/ragged_inl.h"
+#undef IS_IN_K2_CSRC_RAGGED_H_
 
 #endif  // K2_CSRC_RAGGED_H_

@@ -34,6 +34,25 @@ struct RowSplitsDiff {
     return tmp;
   }
 };
+
+/*
+A helper function used in RaggedShape3;
+  if both first and second are non-NULL, it will check if the context of them
+     is compatible or not and return that context if compatible;
+  if one of them is NULL, returns the other one's context.
+ */
+static k2::ContextPtr GetContext(const k2::Array1<int32_t> *first,
+                                 const k2::Array1<int32_t> *second) {
+  K2_CHECK(first != nullptr || second != nullptr)
+      << "At least one of first and second must be non-NULL";
+  if (first == nullptr)
+    return second->Context();
+  else if (second == nullptr)
+    return first->Context();
+  else
+    return k2::GetContext(*first, *second);
+}
+
 }  // namespace
 
 namespace std {
@@ -101,7 +120,7 @@ void PrintRaggedShapePart(std::ostream &stream, RaggedShape &shape,
                           int32_t axis, int32_t begin_pos, int32_t end_pos) {
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
            begin_pos <= end_pos && end_pos <= shape.TotSize(axis));
-  for (int32_t d = begin_pos; d < end_pos; d++) {
+  for (int32_t d = begin_pos; d < end_pos; ++d) {
     if (axis == shape.NumAxes() - 1) {
       stream << d << " ";
     } else {
@@ -126,25 +145,6 @@ std::ostream &operator<<(std::ostream &stream, RaggedShape &shape) {
     stream << "]";
     return stream;
   }
-}
-
-RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
-                                    int32_t *tot_sizes) {
-  std::vector<RaggedShapeDim> axes(num_axes - 1);
-  // In future we might choose to allocate everything in one big array, to avoid
-  // multiple allocations, but for now just do it the simple way.
-  for (int32_t axis = 1; axis < num_axes; axis++) {
-    axes[axis - 1].row_splits = Array1<int32_t>(c, tot_sizes[axis - 1] + 1);
-    axes[axis - 1].row_ids = Array1<int32_t>(c, tot_sizes[axis] + 1);
-    axes[axis - 1].cached_tot_size = tot_sizes[axis];
-  }
-  return RaggedShape(axes);
-}
-
-RaggedShape RaggedShapeFromTotSizes(int32_t num_axes, int32_t *tot_sizes) {
-  // TODO
-  std::vector<RaggedShapeDim> axes;
-  return RaggedShape(axes);
 }
 
 Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
@@ -291,6 +291,25 @@ int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
   return cur_idx;
 }
 
+int32_t RaggedShape::TotSize(int32_t axis) const {
+  K2_CHECK_GE(axis, 0);
+  K2_CHECK_LT(axis, NumAxes());
+  if (axis == 0)
+    return Dim0();
+  else {
+    const RaggedShapeDim &rsd = axes_[axis - 1];
+    if (rsd.cached_tot_size >= 0) {
+      return rsd.cached_tot_size;
+    } else {
+      // if we had row_ids set up, we should have set cached_tot_size.
+      K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
+      K2_CHECK_GT(rsd.row_splits.Dim(), 0);
+      const_cast<RaggedShapeDim &>(rsd).cached_tot_size = rsd.row_splits.Back();
+      return rsd.cached_tot_size;
+    }
+  }
+}
+
 void RaggedShape::Check() {
   ContextPtr c = Context();
   int32_t num_axes = axes_.size();
@@ -299,7 +318,7 @@ void RaggedShape::Check() {
     K2_CHECK_GE(rsd.row_splits.Dim(), 0);
     if (rsd.cached_tot_size >= 0) {
       K2_CHECK(rsd.row_splits.Dim() == 0 ||
-               rsd.cached_tot_size == rsd.row_splits[rsd.row_splits.Dim() - 1]);
+               rsd.cached_tot_size == rsd.row_splits.Back());
       K2_CHECK(rsd.row_ids.Dim() == 0 ||
                rsd.cached_tot_size == rsd.row_ids.Dim());
     } else {
@@ -395,41 +414,33 @@ void RaggedShape::Check() {
 
 RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
                          int32_t cached_tot_size) {
-  if (!row_splits && !row_ids) {
-    K2_LOG(FATAL) << "At least one of row_splits and row_ids must be defined";
-  }
+  K2_CHECK(row_splits != nullptr || row_ids != nullptr)
+      << "At least one of row_splits and row_ids must be defined";
+  ContextPtr ctx = ::GetContext(row_splits, row_ids);
   if (cached_tot_size != -1) {
     if (row_ids != nullptr) K2_CHECK_EQ(cached_tot_size, row_ids->Dim());
-    if (row_splits != nullptr) {  // caution: next check may be slow...
-      const auto &row_splits_ref = *row_splits;
-      K2_CHECK_EQ(cached_tot_size, row_splits_ref[row_splits->Dim() - 1]);
+    if (row_splits != nullptr) {
+      // may be slow as it may copy memory from device to host
+      K2_CHECK_EQ(cached_tot_size, row_splits->Back());
     }
   }
   std::vector<RaggedShapeDim> axes(1);
-  if (row_splits) axes[0].row_splits = *row_splits;
-  if (row_ids) axes[0].row_ids = *row_ids;
-  axes[0].cached_tot_size = cached_tot_size;
-  return RaggedShape(axes);
-}
-
-int32_t RaggedShape::TotSize(int32_t axis) const {
-  K2_CHECK_GE(axis, 0);
-  K2_CHECK_LT(axis, NumAxes());
-  if (axis == 0)
-    return Dim0();
-  else {
-    const RaggedShapeDim &rsd = axes_[axis - 1];
-    if (rsd.cached_tot_size >= 0) {
-      return rsd.cached_tot_size;
-    } else {
-      // if we had row_ids set up, we should have set cached_tot_size.
-      K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
-      K2_CHECK_GT(rsd.row_splits.Dim(), 0);
-      const_cast<RaggedShapeDim &>(rsd).cached_tot_size =
-          rsd.row_splits[rsd.row_splits.Dim() - 1];
-      return rsd.cached_tot_size;
-    }
+  if (row_splits != nullptr) {
+    axes[0].row_splits = *row_splits;
+  } else {
+    // we need to work out row_splits as we always require row_splits is not
+    // empty for RaggedShape. Note here we suppose the last element in row_ids
+    // is num_rows - 1, i.e. there's no empty rows after row `row_ids[-1]`.
+    int32_t num_rows = row_ids->Dim() == 0 ? 0 : row_ids->Back() + 1;
+    Array1<int32_t> row_splits_array(ctx, num_rows + 1);
+    RowIdsToRowSplits(*row_ids, row_splits_array);
+    axes[0].row_splits = row_splits_array;
   }
+  if (row_ids != nullptr) axes[0].row_ids = *row_ids;
+  axes[0].cached_tot_size = cached_tot_size;
+  // note below line will check if row_splits and row_ids are valid and agree
+  // with each other.
+  return RaggedShape(axes);
 }
 
 RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
@@ -440,9 +451,9 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
   const auto &a_axes = a.Axes();
   const auto &b_axes = b.Axes();
   std::vector<RaggedShapeDim> axes(a_axes.size() + b_axes.size());
-  size_t a_size = a_axes.size(), b_size = b_axes.size();
-  for (size_t i = 0; i < a_size; i++) axes[i] = a_axes[i];
-  for (size_t i = 0; i < b_size; i++) axes[i + a_size] = b_axes[i];
+  std::size_t a_size = a_axes.size(), b_size = b_axes.size();
+  for (std::size_t i = 0; i < a_size; ++i) axes[i] = a_axes[i];
+  for (std::size_t i = 0; i < b_size; ++i) axes[i + a_size] = b_axes[i];
   return RaggedShape(axes);
 }
 
@@ -450,22 +461,96 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
                          Array1<int32_t> *row_splits2,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2) {
-  // This is a slightly lazy implementation, could save a couple copies of
-  // metadata by
-  // implementing it directly.
-  auto shape1 = RaggedShape2(row_splits1, row_ids1, cached_tot_size1);
-  auto shape2 = RaggedShape2(row_splits2, row_ids2, cached_tot_size2);
-  return ComposeRaggedShapes(shape1, shape2);
+  K2_CHECK(row_splits1 != nullptr || row_ids1 != nullptr)
+      << "At least one of row_splits1 and row_ids1 must be defined";
+  K2_CHECK(row_splits2 != nullptr || row_ids2 != nullptr)
+      << "At least one of row_splits2 and row_ids2 must be defined";
+
+  // check context
+  ContextPtr ctx1 = ::GetContext(row_splits1, row_ids1);
+  ContextPtr ctx2 = ::GetContext(row_splits2, row_ids2);
+  K2_CHECK(ctx1->IsCompatible(*ctx2));
+
+  // check row_splits and row_ids of axis-1
+  if (cached_tot_size1 != -1) {
+    if (row_ids1 != nullptr) K2_CHECK_EQ(cached_tot_size1, row_ids1->Dim());
+    if (row_splits1 != nullptr) {
+      // may be slow as it may copy memory from device to host
+      K2_CHECK_EQ(cached_tot_size1, row_splits1->Back());
+    }
+  }
+
+  // check row_splits and row_ids of axis-2
+  if (cached_tot_size2 != -1) {
+    if (row_ids2 != nullptr) K2_CHECK_EQ(cached_tot_size2, row_ids2->Dim());
+    if (row_splits2 != nullptr) {
+      // may be slow as it may copy memory from device to host
+      K2_CHECK_EQ(cached_tot_size2, row_splits2->Back());
+    }
+  }
+
+  std::vector<RaggedShapeDim> axes(2);
+  // set row_splits and row_ids for axis 1
+  if (row_splits1 != nullptr) {
+    axes[0].row_splits = *row_splits1;
+  } else {
+    // work out row_splits1, see code in RaggedShape2 above for the reason
+    int32_t num_rows = row_ids1->Dim() == 0 ? 0 : row_ids1->Back() + 1;
+    Array1<int32_t> row_splits_array(ctx1, num_rows + 1);
+    RowIdsToRowSplits(*row_ids1, row_splits_array);
+    axes[0].row_splits = row_splits_array;
+  }
+  if (row_ids1 != nullptr) axes[0].row_ids = *row_ids1;
+  axes[0].cached_tot_size = cached_tot_size1;
+
+  // set row_splits and row_ids for axis 2
+  if (row_splits2 != nullptr) {
+    axes[1].row_splits = *row_splits1;
+  } else {
+    // work out row_splits1, see code in RaggedShape2 above for the reason
+    int32_t num_rows = row_ids2->Dim() == 0 ? 0 : row_ids2->Back() + 1;
+    Array1<int32_t> row_splits_array(ctx1, num_rows + 1);
+    RowIdsToRowSplits(*row_ids2, row_splits_array);
+    axes[1].row_splits = row_splits_array;
+  }
+  if (row_ids2 != nullptr) axes[1].row_ids = *row_ids2;
+  axes[1].cached_tot_size = cached_tot_size2;
+
+  // we don't check here if
+  // row_splits1[row_splits1.Dim() - 1] == row_ids1.Dim()
+  //   == (row_splits2.Dim() - 1)
+  //   >= (row_ids2[row_ids2.Dim() - 1] + 1)
+  // but RaggedShape(axes) below will check this.
+  return RaggedShape(axes);
+}
+
+RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
+                                    int32_t *tot_sizes) {
+  K2_CHECK_GE(num_axes, 2);
+  std::vector<RaggedShapeDim> axes(num_axes - 1);
+  // In future we might choose to allocate everything in one big array, to avoid
+  // multiple allocations, but for now just do it the simple way.
+  for (int32_t axis = 1; axis < num_axes; ++axis) {
+    axes[axis - 1].row_splits = Array1<int32_t>(c, tot_sizes[axis - 1] + 1);
+    axes[axis - 1].row_ids = Array1<int32_t>(c, tot_sizes[axis]);
+    axes[axis - 1].cached_tot_size = tot_sizes[axis];
+  }
+  return RaggedShape(axes);
 }
 
 Array1<int32_t *> GetRowSplitsPtr(RaggedShape &src) {
-  Array1<int32_t *> array;
-  // TODO(haowen): implement
-  return array;
+  int32_t axes = src.NumAxes();
+  K2_CHECK_GE(num_axes, 2);
+  std::vector<int32_t *> row_splits_start(axes - 1);
+  for (int32_t i = 1; i != axes; ++i) {
+    Array1<int32_t> &cur_splits = src.RowSplits(i);
+    row_splits_start[i - 1] = cur_splits.Data();
+  }
+  return Array1<int32_t *>(src.Context(), row_splits_start);
 }
 
 // See declaration in ragged.h for documentation of its purpose and interface.
-RaggedShape Unsqueeze(RaggedShape &src, int32_t axis) {
+RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   // If axis == 0, initial row_splits and row_ids will look like the following,
   // if for example src.Dim0() was 5: [ 0 5 ],  [ 0 0 0 0 0 ].  The other axes
   // would be pushed forward.
@@ -485,12 +570,10 @@ RaggedShape Unsqueeze(RaggedShape &src, int32_t axis) {
   K2_CHECK(axis >= 0 && axis <= src.NumAxes());
 
   const std::vector<RaggedShapeDim> &axes_in = src.Axes();
-
   int32_t num_axes_in = src.NumAxes();
 
-  // Note: in RaggedShape, the vector of RaggedShapeDim is of length num_axes -
-  // 1,
-  // so the output will have one more axis than the input.
+  // Note: in RaggedShape, the vector of RaggedShapeDim is of length
+  // num_axes - 1, so the output will have one more axis than the input.
   std::vector<RaggedShapeDim> axes_out(num_axes_in);
 
   int32_t row_splits_dim, row_ids_dim;
@@ -508,7 +591,6 @@ RaggedShape Unsqueeze(RaggedShape &src, int32_t axis) {
         mem_data[i] = 0;
     };
     Eval(c, mem.Dim(), lambda_set_mem);
-    axes_out[0].row_splits = mem.Range(0, 2);
   } else {
     int32_t tot_size = src.TotSize(axis - 1);
     row_splits_dim = tot_size + 1;
@@ -522,11 +604,10 @@ RaggedShape Unsqueeze(RaggedShape &src, int32_t axis) {
   }
   axes_out[axis].row_splits = mem.Range(0, row_splits_dim);
   axes_out[axis].row_ids = mem.Range(row_splits_dim, row_ids_dim);
-  for (int32_t i = 0; i < axis; i++) axes_out[axis] = axes_in[axis];
+  for (int32_t i = 0; i < axis; ++i) axes_out[i] = axes_in[i];
   // Note: the returned array has `num_axes_in + 1` axes, so its
   // array of RaggedShapeDim is of length `num_axes_in`.
-  for (int32_t i = axis + 1; i < num_axes_in; i++)
-    axes_out[axis] = axes_in[axis - 1];
+  for (int32_t i = axis + 1; i < num_axes_in; ++i) axes_out[i] = axes_in[i - 1];
   return RaggedShape(axes_out);
 }
 
@@ -539,7 +620,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
   for (int32_t axis = 0; axis < num_axes; axis++)
     tot_sizes_out[axis] = src.TotSize(axis);
   // the arrays in `ans` will be the same sizes as those in `src`.
-  RaggedShape ans = RaggedShapeFromTotSizes(num_axes, tot_sizes_out.data());
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
 
   src.Populate();
   Array2<int32_t> old_offsets(c, num_axes, dim0 + 1),
@@ -685,35 +766,24 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
   return ans;
 }
 
-/*
-  Returns a CPU array of shape (src[0]->NumAxes()+1) by (num_srcs + 1), where
-  each row is the exclusive-sum of the TotSize() of the respective sources,
-  on the previous axis (or 1 for axis 0).  Specifically: it's the same
-  as setting ans(i,j) to (i == 0 ? 1 : src[j]->TotSize(i-1)), and then
-  doing an exclusive-sum on each row of i.
-
-     @param [in] num_srcs  The number of `RaggedShape`s in `src`
-     @param [in] src    The shapes whose sizes we want.  Must all have the
-                      same NumAxes().
-     @return   Returns a freshly allocated CPU Array2<int32_t> of dimension
-               src[0]->NumAxes() by (num_srcs + 1), where each
-               row is the exclusive-sum of the TotSize() of the respective
-               sources, on that axis.  Its last column contains the totals.
-
- */
-inline Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
-  //  src_offsets[i,j]  == src_offsets.Data()[i*num_axes_in + j] contains:
-  //          sum(0 <= k < i) src[k]->TotSize(j).
+Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
+  K2_CHECK_GT(num_srcs, 0);
   int32_t num_axes_in = src[0]->NumAxes();
-  Array2<int32_t> src_offsets(GetCpuContext(), num_srcs + 1, num_axes_in);
+  ContextPtr ctx = src[0]->Context();
+  Array2<int32_t> src_offsets(GetCpuContext(), num_axes_in + 1, num_srcs + 1);
   int32_t *src_offsets_data = src_offsets.Data();
-  int32_t src_offsets_stride0 = num_srcs + 1;
-  K2_DCHECK_EQ(src_offsets.ElemStride0(), src_offsets_stride0);
+  int32_t src_offsets_stride0 = src_offsets.ElemStride0();
 
-  for (int32_t axis = 0; axis < num_axes_in; axis++) {
+  // Check if they have same num-axes and compatible context
+  for (int32_t i = 1; i < num_srcs; ++i) {
+    K2_CHECK_EQ(src[i]->NumAxes(), num_axes_in);
+    K2_CHECK(ctx->IsCompatible(*src[i]->Context()));
+  }
+
+  for (int32_t axis = 0; axis <= num_axes_in; ++axis) {
     int32_t sum = 0;
-    for (int32_t i = 0; i <= num_srcs; i++) {
-      src_offsets_data[i * src_offsets_stride0 + axis] = sum;
+    for (int32_t i = 0; i <= num_srcs; ++i) {  // i is the column
+      src_offsets_data[axis * src_offsets_stride0 + i] = sum;
       if (i < num_srcs) {
         sum += (axis == 0 ? 1 : src[i]->TotSize(axis - 1));
       }
@@ -723,52 +793,90 @@ inline Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
 }
 
 /*
-  TODO: fix this documentation...
-
   Extract meta-info from the shape (this will include populating any row_ids and
   row_splits that were not already populated).  This is used inside algorithms
   when we need to transfer meta-info to GPU.
 
      @param [in]   src   Ragged shape that we're extracting meta-info from
      @param [out] row_splits  This will be set to an array of size
-  src.NumAxes()-1,
-                         containing pointers to the row_splits' Data() vectors.
-                         The array will be on the same device as `src`.
-     @param [out] row_splits  This will be set to an array of size
-  src.NumAxes()-1,
-                         containing pointers to the row_splits' Data() vectors.
-                         The array will be on the same device as `src`.
-
-
-     Host (i.e. CPU memory) array of RowInfo that we're
-                         writing to (but the pointers inside them are to the
-                         memory of the device used in shape.Context());
-                         must be the start of an array of length
-                         shape.NumAxes().
-                         Note: element 0 of the output `ptrs` contains a
-                         row_splits with [ 0, shape.Dim0() ]
-                         and the row_ids are [ 0 0 0 (repeats shape.Dim0()
-  times) 1 ]
+                              src.NumAxes()-1, containing pointers to the
+                              row_splits' Data() vectors. The array will be
+                              allocated on the same device as `src`.
+     @param [out] row_ids     This will be set to an array of size
+                              src.NumAxes()-1, containing pointers to the
+                              row_ids' Data() vectors. The array will be
+                              allocated on the same device as `src`.
 */
-// outputs have dims src.NumAxes() - 1.
 void GetRowInfo(RaggedShape &src, Array1<int32_t *> *row_splits,
                 Array1<int32_t *> *row_ids) {
-  // TODO
+  int32_t axes = src.NumAxes();
+  K2_CHECK_GE(axes, 2);
+  src.Populate();
+  std::vector<int32_t *> row_splits_ptrs(axes - 1);
+  std::vector<int32_t *> row_ids_ptrs(axes - 1);
+  for (int32_t i = 1; i != axes; ++i) {
+    row_splits_ptrs[i - 1] = src.RowSplits(i).Data();
+    row_ids_ptrs[i - 1] = src.RowIds(i).Data();
+  }
+  ContextPtr ctx = src.Context();
+  *row_splits = Array1<int32_t *>(ctx, row_splits_ptrs);
+  *row_ids = Array1<int32_t *>(ctx, row_ids_ptrs);
 }
-void GetRowInfoMulti(int32_t num_src, RaggedShape **src,
+
+/*
+  Get some meta-info for an array of RaggedShape, and transfer them
+  to the device that `src` is located on. Just same with `GetRowInfo`
+  above, but for multiple RaggedShapes.
+
+     @param [in] num_srcs  Number of source arrays to process.
+     @param [in] src      Source arrays.  All of them must have same num_axes
+                          and on the same device, but we just check this in
+                          debug mode.
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+*/
+void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
                      Array2<int32_t *> *row_splits,
                      Array2<int32_t *> *row_ids) {
-  // TODO
+  K2_CHECK_GT(num_srcs, 0);
+  int32_t num_axes_in = src[0]->NumAxes();
+  K2_CHECK_GE(num_axes_in, 2);
+  ContextPtr ctx = src[0]->Context();
+
+  // check if they have same num-axes and compatible context
+  for (int32_t i = 1; i < num_srcs; ++i) {
+    K2_CHECK_EQ(src[i]->NumAxes(), num_axes_in);
+    K2_CHECK(ctx->IsCompatible(*src[i]->Context()));
+  }
+
+  Array2<int32_t *> row_splits_ptrs(GetCpuContext(), num_axes_in - 1, num_srcs);
+  Array2<int32_t *> row_ids_ptrs(GetCpuContext(), num_axes_in - 1, num_srcs);
+  int32_t **splits_ptr_data = row_splits_ptrs.Data();
+  int32_t **ids_ptr_data = row_ids_ptrs.Data();
+
+  int32_t stride0 = row_splits_ptrs.ElemStride0();
+  K2_CHECK_EQ(stride0, row_ids_ptrs.ElemStride0());
+
+  for (int32_t axis = 0; axis != num_axes_in - 1; ++axis) {
+    for (int32_t i = 0; i != num_srcs; ++i) {
+      splits_ptr_data[axis * stride0 + i] = src[i]->RowSplits(axis + 1).Data();
+      ids_ptr_data[axis * stride0 + i] = src[i]->RowIds(axis + 1).Data();
+    }
+  }
+  *row_splits = row_splits_ptrs.To(ctx);
+  *row_ids = row_ids_ptrs.To(ctx);
 }
 
-RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis) {
+RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
   K2_CHECK_EQ(axis, 0) << "Append() with axis > 0 not yet supported";
   K2_CHECK_GT(num_srcs, 0);
-
   int32_t num_axes = src[0]->NumAxes();
   ContextPtr c = src[0]->Context();
-  for (int32_t i = 1; i < num_srcs; i++) {
-    // Check they have the same num-axes.
+
+  // Check if they have same num-axes and compatible context
+  for (int32_t i = 1; i < num_srcs; ++i) {
     K2_CHECK_EQ(num_axes, src[i]->NumAxes());
     K2_CHECK(IsCompatible(*src[0], *src[i]));
   }
@@ -778,10 +886,10 @@ RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis) {
   auto offsets_acc = offsets.Accessor();
 
   std::vector<int32_t> tot_sizes_out(num_axes);
-  for (int32_t axis = 0; axis < num_axes; axis++)
+  for (int32_t axis = 0; axis < num_axes; ++axis)
     tot_sizes_out[axis] = offsets_acc(axis, num_srcs);
 
-  RaggedShape ans = RaggedShapeFromTotSizes(num_axes, tot_sizes_out.data());
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
   Array1<int32_t *> dest_row_splits, dest_row_ids;
   GetRowInfo(ans, &dest_row_splits, &dest_row_ids);
 
@@ -887,36 +995,6 @@ RaggedShape Append(int32_t num_srcs, RaggedShape **src, int32_t axis) {
   return ans;
 }
 
-/*
-  Get some meta-info for an array of RaggedShape, and transfer them
-  to the
-  device that `src` is located on
-
-     @param [in] num_src  Number of source arrays to process.
-     @param [in] src      Source arrays.  Let num_axes be src[0]->NumAxes().
-     @param [in] row_splits  Output array of row_splits pointers,
-                          will be of dimension num_axes-1 by num_src
-     @param [in] row_splits  Output array of row_splits pointers,
-                          will be of dimension num_axes-1 by num_src
-     @param [out] offsets   Output array of `offsets` pointers,
-                          will be of dimension num_axes by num_src+1;
-                          these are the exclusive-sum of the TotSize(axis)
-                          of the respective sources.
-     @param [out] tot_sizes  The last column of `offsets`, as a std::vector
-*/
-void GetInfoMulti(int32_t num_src, RaggedShape **src,
-                  Array2<int32_t *> *row_splits, Array2<int32_t *> *row_ids,
-                  Array2<int32_t *> *offsets, std::vector<int32_t> *tot_sizes);
-
-struct RowInfoWithOffsets {
-  int32_t *row_splits;
-  int32_t *row_ids;
-  int32_t num_rows;
-  int32_t num_elems;
-  int32_t row_splits_offset;
-  int32_t row_ids_offset;
-};
-
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
   K2_CHECK_GT(src.NumAxes(), 2);
   K2_CHECK(axis >= 0 && axis < src.NumAxes());
@@ -928,8 +1006,9 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
   const std::vector<RaggedShapeDim> &axes_in = src.Axes();
 
   std::vector<RaggedShapeDim> axes_out(axes_in.size() - 1);
+  int32_t axes_out_size = static_cast<int32_t>(axes_out.size());
 
-  for (int32_t i = 0; i < axis - 1; i++) axes_out[i] = axes_in[i];
+  for (int32_t i = 0; i < axis - 1; ++i) axes_out[i] = axes_in[i];
 
   if (axis > 0 && axis + 1 < src.NumAxes()) {
     axes_out[axis - 1].row_ids =
@@ -937,20 +1016,19 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
     axes_out[axis - 1].row_splits =
         axes_in[axis].row_splits[axes_in[axis - 1].row_splits];
   }
-  for (int32_t i = axis; i < axes_out.size(); i++) axes_out[i] = axes_in[i + 1];
+  for (int32_t i = axis; i < axes_out_size; ++i) axes_out[i] = axes_in[i + 1];
   return RaggedShape(axes_out);
 }
 
 // transpose axes 0 and 1.
 RaggedShape Transpose(RaggedShape &src) {
-  K2_CHECK(src.NumAxes() > 2);
+  K2_CHECK_GT(src.NumAxes(), 2);
   int32_t src_dim0 = src.Dim0(), src_tot_size1 = src.TotSize(1);
-  int32_t src_dim1 = src_tot_size1 % src_dim0;
-  if (src_tot_size1 % src_dim0 != 0) {
-    K2_LOG(FATAL) << "Transpose(): all dims on axis 0 must be the same.";
-  }
+  K2_CHECK_EQ(src_tot_size1 % src_dim0, 0)
+      << "Transpose(): all dims on axis 0 must be the same.";
+  int32_t src_dim1 = src_tot_size1 / src_dim0;
   RaggedShape src_no_axis0 = RemoveAxis(src, 0);
-  assert(src_no_axis0.Dim0() == src_tot_size1);
+  K2_CHECK_EQ(src_no_axis0.Dim0(), src_tot_size1);
   ContextPtr c = src.Context();
   // `renumbering` is a `new2old` map, that maps from the first index in
   // src_no_axis0_renumbered
@@ -969,32 +1047,41 @@ RaggedShape Transpose(RaggedShape &src) {
           row_ids_dim = src_tot_size1;
   std::vector<RaggedShapeDim> ans_axis0(1);
   Array1<int32_t> mem(c, row_splits_dim + row_ids_dim);
-  ans_axis0[0].row_splits = mem.Range(0, row_splits_dim);
-  ans_axis0[0].row_ids = mem.Range(0, row_ids_dim);
-  ans_axis0[0].cached_tot_size = row_ids_dim;
-
   int32_t *mem_data = mem.Data();
   auto lambda_set_row_info = [=] __host__ __device__(int32_t i) {
     int32_t val;
     if (i >= row_splits_dim) {
+      // row_ids
       int32_t elem_idx = i - row_splits_dim;
       val = elem_idx / src_dim0;
     } else {
+      // row_splits
       int32_t row_idx = i;
       val = row_idx * src_dim0;
     }
     mem_data[i] = val;
   };
   Eval(c, row_splits_dim + row_ids_dim, lambda_set_row_info);
+  ans_axis0[0].row_splits = mem.Range(0, row_splits_dim);
+  ans_axis0[0].row_ids = mem.Range(row_splits_dim, row_ids_dim);
+  ans_axis0[0].cached_tot_size = row_ids_dim;
+
   RaggedShape temp(ans_axis0);
   return ComposeRaggedShapes(temp, src_no_axis0_renumbered);
 }
 
-RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
+RaggedShape Stack(int32_t axis, int32_t num_srcs, const RaggedShape **src) {
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK(axis >= 0 && axis <= 1);
 
   ContextPtr c = src[0]->Context();
+  int32_t num_axes = src[0]->NumAxes();
+
+  // Check if they have the same num-axes and compatible context
+  for (int32_t i = 1; i < num_srcs; ++i) {
+    K2_CHECK_EQ(num_axes, src[i]->NumAxes());
+    K2_CHECK(c->IsCompatible(*src[i]->Context()));
+  }
 
   std::vector<RaggedShape> unsqueezed(num_srcs);
   std::vector<RaggedShape *> unsqueezed_ptrs(num_srcs);
@@ -1007,10 +1094,11 @@ RaggedShape Stack(int32_t num_srcs, RaggedShape **src, int32_t axis) {
     }
     // destructor will wait for work in those launched streams to finish.
     // (well it won't actually wait, but it will force the current stream to
-    // wait.
+    // wait.)
   }
 
-  RaggedShape ans = Append(num_srcs, &(unsqueezed_ptrs[0]), 0);
+  RaggedShape ans = Append(0, num_srcs, unsqueezed_ptrs.data());
+  // Transpose will check if all src->Dim0() has the same value.
   if (axis == 1) ans = Transpose(ans);
   return ans;
 }
