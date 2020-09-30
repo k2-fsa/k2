@@ -540,7 +540,7 @@ RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
 
 Array1<int32_t *> GetRowSplitsPtr(RaggedShape &src) {
   int32_t axes = src.NumAxes();
-  K2_CHECK_GE(num_axes, 2);
+  K2_CHECK_GE(axes, 2);
   std::vector<int32_t *> row_splits_start(axes - 1);
   for (int32_t i = 1; i != axes; ++i) {
     Array1<int32_t> &cur_splits = src.RowSplits(i);
