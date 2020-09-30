@@ -12,6 +12,8 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/python/csrc/torch/arc.h"
+#include "k2/python/csrc/torch/torch_util.h"
+#include "torch/extension.h"
 
 namespace k2 {
 
@@ -39,6 +41,22 @@ static void PybindArcImpl(py::module &m) {
 
   m.def("int_as_float",
         [](int32_t i) -> float { return *reinterpret_cast<float *>(&i); });
+
+  m.def("float_as_int", [](torch::Tensor tensor) -> torch::Tensor {
+    K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<float>::value);
+    auto scalar_type = ToScalarType<int32_t>::value;
+    return torch::from_blob(
+        tensor.data_ptr(), tensor.sizes(), tensor.strides(),
+        [tensor](void *p) {}, tensor.options().dtype(scalar_type));
+  });
+
+  m.def("int_as_float", [](torch::Tensor tensor) -> torch::Tensor {
+    K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<int32_t>::value);
+    auto scalar_type = ToScalarType<float>::value;
+    return torch::from_blob(
+        tensor.data_ptr(), tensor.sizes(), tensor.strides(),
+        [tensor](void *p) {}, tensor.options().dtype(scalar_type));
+  });
 }
 
 }  // namespace k2

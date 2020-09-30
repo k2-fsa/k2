@@ -45,6 +45,8 @@ namespace k2 {
 
   CAUTION: We assume that `final_state` has the largest state number.
 
+  CAUTION: The first column has to be in non-decreasing order.
+
   @param [in]   s   The input string. See the above description for its format.
   @param [in]   negate_scores
                     If true, the string form has the weights as costs,
