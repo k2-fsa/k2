@@ -8,6 +8,9 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <string>
+#include <utility>
+
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_utils.h"
