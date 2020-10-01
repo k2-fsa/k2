@@ -8,6 +8,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <vector>
+
 #include "k2/csrc/ragged.h"
 #include "k2/python/csrc/torch/ragged.h"
 #include "k2/python/csrc/torch/torch_util.h"
