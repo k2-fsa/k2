@@ -36,22 +36,20 @@ static void PybindArcImpl(py::module &m) {
     return os.str();
   });
 
-  m.def("float_as_int",
+  m.def("_float_as_int",
         [](float f) -> int32_t { return *reinterpret_cast<int32_t *>(&f); });
 
-  m.def("int_as_float",
+  m.def("_int_as_float",
         [](int32_t i) -> float { return *reinterpret_cast<float *>(&i); });
 
-  m.def("float_as_int", [](torch::Tensor tensor) -> torch::Tensor {
-    K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<float>::value);
+  m.def("_as_int", [](torch::Tensor tensor) -> torch::Tensor {
     auto scalar_type = ToScalarType<int32_t>::value;
     return torch::from_blob(
         tensor.data_ptr(), tensor.sizes(), tensor.strides(),
         [tensor](void *p) {}, tensor.options().dtype(scalar_type));
   });
 
-  m.def("int_as_float", [](torch::Tensor tensor) -> torch::Tensor {
-    K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<int32_t>::value);
+  m.def("_as_float", [](torch::Tensor tensor) -> torch::Tensor {
     auto scalar_type = ToScalarType<float>::value;
     return torch::from_blob(
         tensor.data_ptr(), tensor.sizes(), tensor.strides(),

@@ -3,6 +3,7 @@ set(torch_srcs
   arc.cu
   array.cu
   fsa.cu
+  ragged.cu
   torch_util.cu
 )
 

@@ -241,7 +241,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
   int32_t sum = 0, max_dim = 0;
   row_splits_vec[0] = sum;
-  for (int32_t i = 0; i < num_arrays; i++) {
+  for (int32_t i = 0; i < num_arrays; ++i) {
     int32_t dim = src[i]->Dim();
     if (dim > max_dim) max_dim = dim;
     sum += dim;
@@ -256,7 +256,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
     // a simple loop is faster, although the other branches should still work on
     // CPU.
     int32_t elem_size = src[0]->ElementSize();
-    for (int32_t i = 0; i < num_arrays; i++) {
+    for (int32_t i = 0; i < num_arrays; ++i) {
       int32_t this_dim = src[i]->Dim();
       const T *this_src_data = src[i]->Data();
       memcpy(static_cast<void *>(ans_data),
@@ -268,7 +268,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
     Array1<int32_t> row_splits(c, row_splits_vec);
     const int32_t *row_splits_data = row_splits.Data();
     std::vector<const T *> src_ptrs_vec(num_arrays);
-    for (int32_t i = 0; i < num_arrays; i++) src_ptrs_vec[i] = src[i]->Data();
+    for (int32_t i = 0; i < num_arrays; ++i) src_ptrs_vec[i] = src[i]->Data();
     Array1<const T *> src_ptrs(c, src_ptrs_vec);
     const T **src_ptrs_data = src_ptrs.Data();
     int32_t avg_input_size = ans_size / num_arrays;
@@ -305,10 +305,10 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       // them on CPU.
       std::vector<uint64_t> index_map;
       index_map.reserve((2 * ans_size) / block_dim);
-      for (int32_t i = 0; i < num_arrays; i++) {
+      for (int32_t i = 0; i < num_arrays; ++i) {
         int32_t this_array_size = src[i]->Dim();
         int32_t this_num_blocks = NumBlocks(this_array_size, block_dim);
-        for (int32_t j = 0; j < this_num_blocks; j++) {
+        for (int32_t j = 0; j < this_num_blocks; ++j) {
           index_map.push_back((static_cast<uint64_t>(j) << 32) +
                               static_cast<uint64_t>(i));
         }
@@ -362,10 +362,10 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
 
   if (c->GetDeviceType() == kCpu) {
     int32_t j = row_splits[0];
-    for (int32_t i = 0; i < num_rows; i++) {
+    for (int32_t i = 0; i < num_rows; ++i) {
       T val = default_value;
       int32_t row_end = row_splits[i + 1];
-      for (; j < row_end; j++) {
+      for (; j < row_end; ++j) {
         T elem = values_data[j];
         val = op(elem, val);
       }

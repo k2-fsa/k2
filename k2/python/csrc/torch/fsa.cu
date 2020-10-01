@@ -20,40 +20,17 @@
 
 namespace k2 {
 
-static void PybindFsaImpl(py::module &m) {
-  using PyClass = Fsa;
-  py::class_<PyClass> pyclass(m, "Fsa");
-  pyclass.def(py::init<>());
-  pyclass.def(py::init([](torch::Tensor &arcs) {
-    Array1<Arc> array = FromTensor<Arc>(arcs);
+static void PybindFsaUtil(py::module &m) {
+  m.def("_fsa_from_tensor", [](torch::Tensor tensor) -> Fsa {
+    Array1<Arc> array = FromTensor<Arc>(tensor);
     bool error = true;
     Fsa fsa = FsaFromArray1(array, &error);
     K2_CHECK(!error);
-    return new Fsa(fsa);  // python takes the ownership
-  }));
-
-  pyclass.def(
-      "arcs",
-      [](PyClass &self) -> torch::Tensor { return ToTensor(self.values); },
-      py::keep_alive<0, 1>());
-
-  pyclass.def(
-      "cuda",
-      [](const PyClass &self, int32_t gpu_id = -1) -> PyClass {
-        auto context = GetCudaContext(gpu_id);
-        return self.To(context);
-      },
-      py::arg("gpu_id") = -1);
-
-  pyclass.def("cpu", [](const PyClass &self) -> PyClass {
-    auto context = GetCpuContext();
-    return self.To(context);
+    return fsa;
   });
-}
 
-static void PybindFsaUtil(py::module &m) {
   m.def(
-      "fsa_to_str",
+      "_fsa_to_str",
       [](Fsa &fsa, bool negate_scores = false,
          torch::optional<torch::Tensor> aux_labels = {}) -> std::string {
         Array1<int32_t> array;
@@ -65,7 +42,7 @@ static void PybindFsaUtil(py::module &m) {
       py::arg("aux_labels") = py::none());
 
   m.def(
-      "fsa_from_str",
+      "_fsa_from_str",
       [](const std::string &s, bool negate_scores = false)
           -> std::pair<Fsa, torch::optional<torch::Tensor>> {
         Array1<int32_t> aux_labels;
@@ -83,7 +60,4 @@ static void PybindFsaUtil(py::module &m) {
 
 }  // namespace k2
 
-void PybindFsa(py::module &m) {
-  k2::PybindFsaImpl(m);
-  k2::PybindFsaUtil(m);
-}
+void PybindFsa(py::module &m) { k2::PybindFsaUtil(m); }

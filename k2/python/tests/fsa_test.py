@@ -34,8 +34,7 @@ class TestFsa(unittest.TestCase):
             6
         '''
 
-        fsa, aux_labels = k2.fsa_from_str(_remove_leading_spaces(s))
-        assert aux_labels is None
+        fsa = k2.Fsa(_remove_leading_spaces(s))
 
         expected_str = '''
             0 1 2 -1.2
@@ -49,7 +48,7 @@ class TestFsa(unittest.TestCase):
             6
         '''
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            k2.fsa_to_str(fsa))
+            fsa.to_str())
 
         expected_str = '''
             0 1 2 1.2
@@ -63,59 +62,32 @@ class TestFsa(unittest.TestCase):
             6
         '''
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            k2.fsa_to_str(fsa, negate_scores=True))
+            fsa.to_str(negate_scores=True))
 
-        arcs = fsa.arcs()
+        arcs = fsa.arcs
         assert isinstance(arcs, torch.Tensor)
         assert arcs.dtype == torch.int32
         assert arcs.device.type == 'cpu'
-        assert arcs.shape == (8, 4), 'there should be 8 arcs'
-        assert arcs[0][0] == 0
-        assert arcs[0][1] == 1
-        assert arcs[0][2] == 2
-        assert arcs[0][3] == k2.float_as_int(-1.2)
+        assert arcs.shape == (8, 3), 'there should be 8 arcs'
+        assert torch.allclose(arcs[0],
+                              torch.tensor([0, 1, 2], dtype=torch.int32))
 
-        weights = k2.int_as_float(arcs[:, -1])
         assert torch.allclose(
-            weights,
+            fsa.weights,
             torch.tensor([-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2],
                          dtype=torch.float32))
 
-        arcs[0][3] = k2.float_as_int(-2020.0930)
-        assert weights[0] == -2020.0930, \
-                'Memory should be shared between weights and arcs!'
-
-        fsa = fsa.cuda(gpu_id=0)
+        fsa = fsa.to('cuda')
         arcs[0][0] += 10
         assert arcs[0][0] == 10, 'arcs should still be accessible'
 
-        arcs = fsa.arcs()
+        arcs = fsa.arcs
         assert arcs.dtype == torch.int32
         assert arcs.device.type == 'cuda'
         assert arcs.device.index == 0
-        assert arcs.shape == (8, 4), 'there should be 8 arcs'
-        assert arcs[1][0] == 0
-        assert arcs[1][1] == 2
-        assert arcs[1][2] == 10
-        assert arcs[1][3] == k2.float_as_int(-2.2)
-
-        fsa = fsa.cpu()
-        arcs = fsa.arcs()
-        assert arcs.device.type == 'cpu'
-        assert arcs[2][0] == 1
-        assert arcs[2][1] == 3
-        assert arcs[2][2] == 3
-        assert arcs[2][3] == k2.float_as_int(-3.2)
-
-        fsa2 = k2.Fsa(arcs)  # construct an FSA from a tensor
-        del fsa, arcs
-
-        arcs = fsa2.arcs()
-        assert arcs.device.type == 'cpu'
-        assert arcs[3][0] == 1
-        assert arcs[3][1] == 6
-        assert arcs[3][2] == -1
-        assert arcs[3][3] == k2.float_as_int(-4.2)
+        assert arcs.shape == (8, 3), 'there should be 8 arcs'
+        assert torch.allclose(arcs[1],
+                              torch.tensor([0, 2, 10], dtype=torch.int32))
 
     def test_transducer_from_str(self):
         s = '''
@@ -129,13 +101,12 @@ class TestFsa(unittest.TestCase):
             5 0  1  50  -8.2
             6
         '''
-        fsa, aux_labels = k2.fsa_from_str(_remove_leading_spaces(s))
-        assert isinstance(aux_labels, torch.Tensor)
-        assert aux_labels.dtype == torch.int32
-        assert aux_labels.device.type == 'cpu'
+        fsa = k2.Fsa(_remove_leading_spaces(s))
+        assert fsa.aux_labels.dtype == torch.int32
+        assert fsa.aux_labels.device.type == 'cpu'
         assert torch.allclose(
-            aux_labels,
-            torch.tensor([22, 100, 33, 16, 26, 22, 36, 50]).to(torch.int32))
+            fsa.aux_labels,
+            torch.tensor([22, 100, 33, 16, 26, 22, 36, 50], dtype=torch.int32))
 
         expected_str = '''
             0 1 2 22 -1.2
@@ -149,7 +120,7 @@ class TestFsa(unittest.TestCase):
             6
         '''
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            k2.fsa_to_str(fsa, aux_labels=aux_labels))
+            fsa.to_str())
 
         expected_str = '''
             0 1 2 22 1.2
@@ -163,7 +134,7 @@ class TestFsa(unittest.TestCase):
             6
         '''
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            k2.fsa_to_str(fsa, negate_scores=True, aux_labels=aux_labels))
+            fsa.to_str(negate_scores=True))
 
 
 if __name__ == '__main__':
