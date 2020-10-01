@@ -68,8 +68,8 @@ class Fsa(object):
             device = torch.device(device)
         assert device.type in ['cpu', 'cuda']
 
-        if device.type == 'cpu':
-            fsa = self._fsa.cuda(device.index)
+        if device.type == 'cuda':
+            fsa = self._fsa.cuda(device.index if device.index else -1)
         else:
             fsa = self._fsa.cpu()
 

@@ -86,8 +86,9 @@ class TestFsa(unittest.TestCase):
         assert arcs.device.type == 'cuda'
         assert arcs.device.index == 0
         assert arcs.shape == (8, 3), 'there should be 8 arcs'
-        assert torch.allclose(arcs[1],
-                              torch.tensor([0, 2, 10], dtype=torch.int32))
+        assert torch.allclose(
+            arcs[1],
+            torch.tensor([0, 2, 10], dtype=torch.int32, device=arcs.device))
 
     def test_transducer_from_str(self):
         s = '''
