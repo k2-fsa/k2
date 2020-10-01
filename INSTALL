@@ -7,3 +7,8 @@ The installation instructions are
 
 You can run tests with
     make test
+
+Note: The current installation only works with certain versions of cmake, e.g.,
+      it works with cmake v3.18.0, but it does not work with cmake v3.16.3. We
+      have not done a thorough test on this yet. Try to use v3.18.0 if you get
+      issues running the installation.
