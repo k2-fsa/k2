@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *                      Guoguo Chen
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -108,8 +109,8 @@ struct DenseFsaVecMeta {
   int32_t num_segs;     // The number of segments
   int32_t max_seg_len;  // The largest number of frames (not counting the zero
                         // padding frame) in any segment
-  int32_t
-      num_symbols;  // the number of symbols (== num-cols in features matrix)
+  int32_t num_symbols;  // the number of symbols (== num-cols in features
+                        // matrix)
 
   int32_t seg_frame_index[];  // size equals num_segs + 1; look at the next
                               // element for the last-plus-one frame.

@@ -5,6 +5,7 @@
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Xiaomi Corporation (authors: Haowen Qiu)
+ *                      Guoguo Chen
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -71,6 +72,25 @@ int32_t StringToInt(const std::string &s, bool *is_ok = nullptr) {
   return res;
 }
 
+/** Convert a string to a float number.
+
+  @param [in]   s     The input string.
+  @param [out]  is    If non-null, it is set to true when the conversion
+                      is successful; false otherwise
+  @return The converted float number.
+ */
+int32_t StringToFloat(const std::string &s, bool *is_ok = nullptr) {
+  K2_CHECK_EQ(s.empty(), false);
+
+  bool ok = false;
+  char *p = nullptr;
+  float res = std::strtof(s.c_str(), &p);
+  if (*p == '\0') ok = true;
+  if (is_ok != nullptr) *is_ok = ok;
+
+  return res;
+}
+
 /** Convert `std::vector<std::string>` to `std::vector<int32_t>`.
  */
 std::vector<int32_t> StringVectorToIntVector(
@@ -80,6 +100,21 @@ std::vector<int32_t> StringVectorToIntVector(
   for (const auto &s : in) {
     bool ok = false;
     auto n = StringToInt(s, &ok);
+    K2_CHECK(ok);
+    res.push_back(n);
+  }
+  return res;
+}
+
+/** Convert `std::vector<std::string>` to `std::vector<float>`.
+ */
+std::vector<float> StringVectorToFloatVector(
+    const std::vector<std::string> &in) {
+  std::vector<float> res;
+  res.reserve(in.size());
+  for (const auto &s : in) {
+    bool ok = false;
+    auto n = StringToFloat(s, &ok);
     K2_CHECK(ok);
     res.push_back(n);
   }
@@ -166,30 +201,6 @@ void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes) {
   indexes[curr_state] = num_arcs;
 }
 
-void GetArcWeights(const float *arc_weights_in,
-                   const Array2<int32_t *, int32_t> &arc_map,
-                   float *arc_weights_out) {
-  K2_CHECK_NE(arc_weights_in, nullptr);
-  K2_CHECK_NE(arc_weights_out, nullptr);
-  for (int32_t i = 0; i != arc_map.size1; ++i) {
-    float sum_weights = 0.0f;
-    for (int32_t j = arc_map.indexes[i]; j != arc_map.indexes[i + 1]; ++j) {
-      int32_t arc_index_in = arc_map.data[j];
-      sum_weights += arc_weights_in[arc_index_in];
-    }
-    *arc_weights_out++ = sum_weights;
-  }
-}
-
-void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
-                   int32_t num_arcs, float *arc_weights_out) {
-  K2_CHECK_NE(arc_weights_in, nullptr);
-  K2_CHECK_NE(arc_weights_out, nullptr);
-  for (int32_t i = 0; i != num_arcs; ++i) {
-    *arc_weights_out++ = arc_weights_in[arc_map[i]];
-  }
-}
-
 void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
                  std::vector<int32_t> *arc_map /*= nullptr*/) {
   K2_CHECK_NE(fsa, nullptr);
@@ -251,13 +262,16 @@ void GetArcIndexes2(const Array2<int32_t *, int32_t> &arc_map,
 
 void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {
   K2_CHECK_NE(fsa_size, nullptr);
-  fsa_size->size1 = fsa_size->size2 = 0;
+  fsa_size->size1 = static_cast<int32_t>(arcs_.size());
+  fsa_size->size2 = num_arcs_;
+}
 
+void StringToFsa::ReadArcsFromString() {
   static constexpr const char *kDelim = " \t";
   std::istringstream is(s_);
   std::string line;
   bool finished = false;  // when the final state is read, set it to true.
-  int32_t num_arcs = 0;
+  num_arcs_ = 0;
   while (std::getline(is, line)) {
     std::vector<std::string> splits;
     SplitStringToVector(line, kDelim, &splits);
@@ -265,32 +279,46 @@ void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {
 
     K2_CHECK_EQ(finished, false);
 
-    auto fields = StringVectorToIntVector(splits);
+    auto fields = StringVectorToFloatVector(splits);
     auto num_fields = fields.size();
-    if (num_fields == 3u) {
+    if (num_fields == 3u || num_fields == 4u) {
       Arc arc{};
-      arc.src_state = fields[0];
-      arc.dest_state = fields[1];
-      arc.label = fields[2];
+      arc.src_state = static_cast<int32_t>(fields[0]);
+      arc.dest_state = static_cast<int32_t>(fields[1]);
+      arc.label = static_cast<int32_t>(fields[2]);
+      if (num_fields == 4u) {
+        arc.weight = fields[3];
+      }
 
       auto new_size = std::max(arc.src_state, arc.dest_state);
       if (new_size >= arcs_.size()) arcs_.resize(new_size + 1);
 
       arcs_[arc.src_state].push_back(arc);
-      ++num_arcs;
-    } else if (num_fields == 1u) {
+      ++num_arcs_;
+    } else if (num_fields == 1u || num_fields == 2u) {
+      // TODO(guoguo): the original code only supports one final state. Is it
+      //               necessary to supports multiple final states?
       finished = true;
-      K2_CHECK_EQ(fields[0] + 1, static_cast<int32_t>(arcs_.size()));
+      K2_CHECK_EQ(static_cast<int32_t>(fields[0]) + 1,
+                  static_cast<int32_t>(arcs_.size()));
+      if (num_fields == 2u) {
+        arcs_.resize(arcs_.size() + 1);
+        // If the final state bears a weight, we convert that into an arc.
+        Arc arc{};
+        arc.src_state = static_cast<int32_t>(fields[0]);
+        arc.dest_state = static_cast<int32_t>(fields[0]) + 1;
+        arc.label = k2host::kFinalSymbol;
+        arc.weight = fields[1];
+        arcs_[arc.src_state].push_back(arc);
+        ++num_arcs_;
+      }
     } else {
       K2_LOG(FATAL) << "invalid line: " << line;
     }
   }
 
   K2_CHECK_EQ(finished, true) << "The last line should be the final state";
-  K2_CHECK_GT(num_arcs, 0) << "An empty fsa is detected!";
-
-  fsa_size->size1 = static_cast<int32_t>(arcs_.size());
-  fsa_size->size2 = num_arcs;
+  K2_CHECK_GT(num_arcs_, 0) << "An empty fsa is detected!";
 }
 
 void StringToFsa::GetOutput(Fsa *fsa_out) {
@@ -304,6 +332,7 @@ void StringToFsa::GetOutput(Fsa *fsa_out) {
     num_arcs += arcs_[i].size();
   }
   fsa_out->indexes[fsa_out->size1] = num_arcs;
+  K2_CHECK_EQ(num_arcs, num_arcs_) << "Number of arcs does not match.";
 }
 
 std::string FsaToString(const Fsa &fsa) {
@@ -313,7 +342,8 @@ std::string FsaToString(const Fsa &fsa) {
   std::ostringstream os;
 
   for (const auto &arc : fsa) {
-    os << arc.src_state << kSep << arc.dest_state << kSep << arc.label << "\n";
+    os << arc.src_state << kSep << arc.dest_state << kSep << arc.label
+       << kSep << arc.weight << "\n";
   }
   os << fsa.FinalState() << "\n";
   return os.str();

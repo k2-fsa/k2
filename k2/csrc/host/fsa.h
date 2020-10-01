@@ -2,6 +2,7 @@
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
 //                                                   Haowen Qiu)
+//                      Guoguo Chen
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -79,9 +80,9 @@ struct ArcHash {
 };
 
 /*
-  struct Fsa is an unweighted finite-state acceptor (FSA) and is at the core of
-  operations on weighted FSA's and finite state transducers (FSTs).  Note: being
-  a final-state is represented by an arc with label == kFinalSymbol to
+  struct Fsa is a weighted finite-state acceptor (FSA) and is at the core of
+  operations on weighted finite state transducers (WFSTs). Note: being a
+  final-state is represented by an arc with label == kFinalSymbol to
   final_state.
 
   The start-state is always numbered zero and the final-state is always the

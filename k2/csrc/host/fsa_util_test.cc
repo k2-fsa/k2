@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                      Guoguo Chen
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -43,27 +44,6 @@ class ArcMapTest : public ::testing::Test {
   Array2Storage<int32_t *, int32_t> *array_storage_;
   Array2<int32_t *, int32_t> *arc_map2_;
 };
-
-TEST_F(ArcMapTest, GetArcWeights) {
-  // Test where arc_map maps each arc in the output FSA to
-  // one arc in the input FSA
-  {
-    int32_t num_arcs_out = arc_map1_.size();
-    std::vector<float> arc_weights_out(num_arcs_out);
-    GetArcWeights(arc_weights_in_.data(), arc_map1_.data(), num_arcs_out,
-                  arc_weights_out.data());
-    EXPECT_THAT(arc_weights_out, ::testing::ElementsAre(1, 3, 6, 5));
-  }
-
-  // Test where arc_map maps each arc in the output FSA to
-  // a sequence of arcs in the input FSA
-  {
-    int32_t num_arcs_out = arc_map2_->size1;
-    std::vector<float> arc_weights_out(num_arcs_out);
-    GetArcWeights(arc_weights_in_.data(), *arc_map2_, arc_weights_out.data());
-    EXPECT_THAT(arc_weights_out, ::testing::ElementsAre(4, 19));
-  }
-}
 
 TEST_F(ArcMapTest, GetArcIndexes) {
   // Test where arc_map maps each arc in the output FSA to
@@ -126,14 +106,14 @@ TEST(FsaUtil, GetEnteringArcs) {
 
 TEST(FsaUtil, StringToFsa) {
   std::string s = R"(
-0 1 2
-0 2 10
-1 3 3
-1 6 6
-2 6 1
-2 4 2
-5 0 1
-6
+0 1 2 -0.1
+0 2 10 -0.2
+1 3 3 -0.3
+1 6 6 -0.4
+2 6 1 -0.5
+2 4 2 -0.6
+5 0 1 -0.7
+6 -0.8
 )";
   StringToFsa fsa_creator(s);
   Array2Size<int32_t> fsa_size;
@@ -145,17 +125,17 @@ TEST(FsaUtil, StringToFsa) {
 
   ASSERT_FALSE(IsEmpty(fsa));
 
-  ASSERT_EQ(fsa.size1, 7);
-  ASSERT_EQ(fsa.size2, 7);
+  ASSERT_EQ(fsa.size1, 8);
+  ASSERT_EQ(fsa.size2, 8);
 
   std::vector<int32_t> arc_indexes(fsa.indexes, fsa.indexes + fsa.size1 + 1);
   std::vector<Arc> arcs(fsa.data, fsa.data + fsa.size2);
 
-  EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7, 7));
+  EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7, 8, 8));
 
   std::vector<Arc> expected_arcs = {
-      {0, 1, 2, 0}, {0, 2, 10, 0}, {1, 3, 3, 0}, {1, 6, 6, 0},
-      {2, 6, 1, 0}, {2, 4, 2, 0},  {5, 0, 1, 0},
+      {0, 1, 2, -0.1}, {0, 2, 10, -0.2}, {1, 3, 3, -0.3}, {1, 6, 6, -0.4},
+      {2, 6, 1, -0.5}, {2, 4, 2, -0.6},  {5, 0, 1, -0.7}, {6, 7, -1, -0.8}
   };
 
   auto n = static_cast<int32_t>(expected_arcs.size());

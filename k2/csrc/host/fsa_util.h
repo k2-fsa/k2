@@ -5,6 +5,7 @@
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
  *                                                   Haowen Qiu)
+ *                      Guoguo Chen
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -57,42 +58,6 @@ struct DfsState {
                              `arc_indexes.size2 == fsa.size2`.
 */
 void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes);
-
-/*
-  TODO(dan): remove this, should no longer be needed.
-
-  Gets arc weights for an FSA (output FSA) according to `arc_map` which
-  maps each arc in the FSA to a sequence of arcs in the other FSA (input FSA).
-
-    @param [in] arc_weights_in  Arc weights of the input FSA. Indexed by
-                                arc in the input FSA.
-    @param [in] arc_map  An `Array2` that can be interpreted as the arc
-                         mappings from arc-indexes in the output FSA to
-                         arc-indexes in the input FSA. Generally,
-                         `arc_map.data[arc_map.indexes[i]]` through
-                         `arc_map.data[arc_map.indexes[i+1] - 1]` is the
-                         sequence of arc-indexes in the input FSA that
-                         arc `i` in the output FSA corresponds to.
-                         The weight of arc `i` will be equal to the sum of
-                         those input arcs' weights.
-    @param [out] arc_weights_out Arc weights of the output FSA. Indexed by arc
-                                 in the output FSA. At entry it must be
-                                 allocated with size `arc_map.size1`.
-*/
-void GetArcWeights(const float *arc_weights_in,
-                   const Array2<int32_t *, int32_t> &arc_map,
-                   float *arc_weights_out);
-
-// TODO(dan): remove this, should no longer be needed.
-//
-// Version of GetArcWeights where arc_map maps each arc in the output FSA to
-// one arc (instead of a sequence of arcs) in the input FSA; see its
-// documentation.
-// Note that `num_arcs` is the number of arcs in the output FSA,
-// at entry `arc_map` should have size `num_arcs` and `arc_weights_out` must
-// be allocated with size `num_arcs`.
-void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
-                   int32_t num_arcs, float *arc_weights_out);
 
 /* Reorder a list of arcs to get a valid FSA. This function will be used in a
    situation that the input list of arcs is not sorted by src_state, we'll
@@ -240,10 +205,14 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
   The input string is a transition table with the following
   format (same with OpenFST):
 
-  from_state  to_state  label
-  from_state  to_state  label
+  from_state  to_state  label  weight
+  from_state  to_state  label  weight
   ... ...
-  final_state
+  final_state weight
+
+  Technically, K2's final_state does not bear a weight -- OpenFST's final-state
+  is represented by an arc with label == kFinalSymbol to the final_state in K2.
+  The implementation of StringToFsa takes care of both cases.
 
   K2 requires that the final state has the largest state number. The above
   format requires the last line to be the final state, whose sole purpose is
@@ -251,17 +220,15 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
  */
 class StringToFsa {
  public:
-  /* Lightweight constructor that just keeps const references to the input
-     parameters.
+  /* Constructor that reads arcs from the input string.
      @param [in] s Input string representing the transition table.
   */
-  explicit StringToFsa(const std::string &s) : s_(s) {}
+  explicit StringToFsa(const std::string &s) : s_(s) { ReadArcsFromString(); }
 
   /*
-    Do enough work to know how much memory will be needed, and output
-    that information
-        @param [out] fsa_size   The num-states and num-arcs of the output FSA
-                                will be written to here
+    Get the FSA size information.
+    @param [out] fsa_size   The num-states and num-arcs of the output FSA
+                            will be written to here
   */
   void GetSizes(Array2Size<int32_t> *fsa_size);
 
@@ -274,7 +241,13 @@ class StringToFsa {
   void GetOutput(Fsa *fsa_out);
 
  private:
+  /*
+    Read arcs from the string, and figure out how much memory we need.
+   */
+  void ReadArcsFromString();
+
   const std::string &s_;
+  int32_t num_arcs_;
 
   // `arcs_[i]` will be the arcs leaving state `i`
   std::vector<std::vector<Arc>> arcs_;
