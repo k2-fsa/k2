@@ -17,7 +17,7 @@ from _k2 import _fsa_to_str
 class Fsa(object):
 
     def __init__(self, s: str, negate_scores: bool = False):
-        '''Create an FSA from a string.
+        '''Create an Fsa from a string.
 
         The given string `s` consists of lines with the following format:
 
@@ -34,23 +34,23 @@ class Fsa(object):
                 final_state
 
         Note:
-            Fields are separated by space(s), tab(s) or both. The `score`
-            field is a float, while other fields are integers.
+          Fields are separated by space(s), tab(s) or both. The `score`
+          field is a float, while other fields are integers.
 
         Caution:
-            The first column has to be non-decreasing.
+          The first column has to be non-decreasing.
 
         Caution:
-            The final state has the largest state number. There is only
-            one final states. All arcs that are connected to the final state
-            have label -1.
+          The final state has the largest state number. There is only
+          one final state. All arcs that are connected to the final state
+          have label -1.
 
         Args:
-            s:
-              The input string. Refer to the above comment for its format.
-            negate_scores:
-              Optional. If true, the string form has the weights as costs,
-              not scores, so we negate as we read.
+          s:
+            The input string. Refer to the above comment for its format.
+          negate_scores:
+            Optional. If true, the string form has the weights as costs,
+            not scores, so we negate as we read.
         '''
         fsa: _Fsa
         aux_labels: Optional[torch.Tensor]
@@ -75,9 +75,9 @@ class Fsa(object):
     def from_tensor(cls,
                     tensor: torch.Tensor,
                     aux_labels: Optional[torch.Tensor] = None) -> 'Fsa':
-        '''Build an FSA from a tensor with optional aux_labels.
+        '''Build an Fsa from a tensor with optional aux_labels.
 
-        It is useful when loading FSAs from files.
+        It is useful when loading an Fsa from file.
 
         Args:
           tensor:
@@ -106,10 +106,10 @@ class Fsa(object):
         return ans
 
     def to_str(self, negate_scores: bool = False) -> str:
-        '''Convert an FSA to a string.
+        '''Convert an Fsa to a string.
 
         Note:
-          The returned string can be used to construct an FSA.
+          The returned string can be used to construct an Fsa.
 
         Args:
           negate_scores:
@@ -150,7 +150,7 @@ class Fsa(object):
         '''Return the aux_labels associated with `arcs`, if any.
 
         Returns:
-          None or a 1-D tensor of dtype `torch.int32` if the fsa
+          None or a 1-D tensor of dtype `torch.int32` if the Fsa
           is a transducer. It has as many rows as `arcs`.
         '''
         return self._aux_labels
@@ -163,7 +163,7 @@ class Fsa(object):
 
         Args:
           device:
-            A torch device. Currently it supports only cuda and cpu devices.
+            A torch device. Currently it supports only CUDA and CPU devices.
 
         Returns:
           A new Fsa on the given device.
