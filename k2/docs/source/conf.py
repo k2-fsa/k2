@@ -14,11 +14,9 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../../python'))
 sys.path.insert(0, os.path.abspath('../../../build/lib'))
+
 import k2
 import sphinx_rtd_theme
-import torch
-
-
 
 # -- Project information -----------------------------------------------------
 
@@ -30,7 +28,6 @@ author = 'k2 development team'
 release = k2.__version__
 #  version = k2.__version__
 
-
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -38,6 +35,7 @@ release = k2.__version__
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.githubpages',
     'sphinx.ext.linkcode',
     'sphinx.ext.napoleon',
     'sphinx_autodoc_typehints',
@@ -55,7 +53,6 @@ master_doc = 'index'
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -63,7 +60,7 @@ exclude_patterns = []
 #
 html_theme = 'sphinx_rtd_theme'
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-
+html_show_sourcelink = True
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -102,6 +99,7 @@ autodoc_default_options = {
 # Resolve function for the linkcode extension.
 # Modified from https://github.com/rwth-i6/returnn/blob/master/docs/conf.py
 def linkcode_resolve(domain, info):
+
     def find_source():
         # try to find the file and line number, based on code from numpy:
         # https://github.com/numpy/numpy/blob/master/doc/source/conf.py#L286
@@ -121,5 +119,5 @@ def linkcode_resolve(domain, info):
         filename = '%s#L%d-L%d' % find_source()
     except Exception:
         filename = info['module'].replace('.', '/') + '.py'
-    filename = filename.replace('../','')
+    filename = filename.replace('../', '')
     return f'https://github.com/k2-fsa/k2/blob/master/k2/{filename}'
