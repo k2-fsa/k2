@@ -245,20 +245,9 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i) {
 void RaggedShape::Populate() {
   int32_t num_axes = NumAxes();
   for (int32_t i = 1; i < num_axes; ++i) {
-    // row_splits is always non-empty
-    RaggedShapeDim &rsd = axes_[i - 1];
-    const auto &row_splits = rsd.row_splits;
-    auto &row_ids = rsd.row_ids;
-    K2_CHECK_GE(row_splits.Dim(), 1);
-    if (row_splits.Dim() != 1 && row_ids.Dim() == 0) {
-      // create row_ids as it does not exist
-      row_ids = Array1<int32_t>(Context(), row_splits[row_splits.Dim() - 1]);
-      const int32_t *row_splits_data = row_splits.Data();
-      int32_t *row_ids_data = row_ids.Data();
-      RowSplitsToRowIds(Context(), row_splits.Dim() - 1, row_splits_data,
-                        row_ids.Dim(), row_ids_data);
-      rsd.cached_tot_size = row_ids.Dim();
-    }
+    // ignore return values of the following calls.
+    this->TotSize(i);
+    this->RowIds(i);
   }
 }
 
@@ -1003,6 +992,7 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
   // Also note: axes_in[i] pertains to the relationship between
   // axes i and i+1 in the source.
   src.Populate();
+
   const std::vector<RaggedShapeDim> &axes_in = src.Axes();
 
   std::vector<RaggedShapeDim> axes_out(axes_in.size() - 1);
@@ -1015,6 +1005,7 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
         axes_in[axis - 1].row_ids[axes_in[axis].row_ids];
     axes_out[axis - 1].row_splits =
         axes_in[axis].row_splits[axes_in[axis - 1].row_splits];
+    axes_out[axis - 1].cached_tot_size = axes_in[axis].cached_tot_size;
   }
   for (int32_t i = axis; i < axes_out_size; ++i) axes_out[i] = axes_in[i + 1];
   return RaggedShape(axes_out);
