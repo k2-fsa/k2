@@ -51,8 +51,10 @@ def _from_tensor(tensor: torch.Tensor, arcs: bool = False) -> ArrayT:
             raise ValueError(f'Unsupported dtype {tensor.dtype}')
     elif tensor.ndim == 2:
         if tensor.dtype == torch.int32:
-            if arcs: data = _to_arc_array1(tensor)
-            else: data = _to_int32_array2(tensor)
+            if arcs:
+                data = _to_arc_array1(tensor)
+            else:
+                data = _to_int32_array2(tensor)
         elif tensor.dtype == torch.float32:
             data = _to_float_array2(tensor)
         else:
