@@ -220,8 +220,8 @@ TEST(FsaFromString, OpenFstTransducer) {
     EXPECT_EQ(aux_labels[5], 22);
     EXPECT_EQ(aux_labels[6], 36);
     EXPECT_EQ(aux_labels[7], 50);
-    EXPECT_EQ(aux_labels[8], -1);
-    EXPECT_EQ(aux_labels[9], -1);
+    EXPECT_EQ(aux_labels[8], 0);
+    EXPECT_EQ(aux_labels[9], 0);
   }
 }
 

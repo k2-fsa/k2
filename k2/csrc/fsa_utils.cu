@@ -240,7 +240,11 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
                         super_final_state,
                         -1,             // kFinalSymbol
                         scale * original_final_weights[i]);
-      state_aux_labels.push_back(-1);   // kFinalSymbol
+      // TODO(guoguo) We are not sure yet what to put as the auxiliary label for
+      //              arcs entering the super final state. The only real choices
+      //              are kEpsilon or kFinalSymbol. We are using kEpsilon for
+      //              now.
+      state_aux_labels.push_back(0);    // kEpsilon
     }
   }
 
