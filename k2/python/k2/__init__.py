@@ -1,3 +1,10 @@
 from .array import Array
+from .fsa import Fsa
+from _k2 import Arc
 
-__all__ = ['Array']
+# please keep the list sorted
+__all__ = [
+    'Arc',
+    'Array',
+    'Fsa',
+]

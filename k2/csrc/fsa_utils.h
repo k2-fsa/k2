@@ -1,5 +1,7 @@
 /**
- * @brief Utilities for reading, writing and creating FSAs.
+ * @brief Utilities for creating FSAs.
+ *
+ * Note that serializations are done in Python.
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
@@ -44,6 +46,8 @@ namespace k2 {
   on the arc and set its label to -1.
 
   CAUTION: We assume that `final_state` has the largest state number.
+
+  CAUTION: The first column has to be in non-decreasing order.
 
   @param [in]   s   The input string. See the above description for its format.
   @param [in]   negate_scores

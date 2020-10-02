@@ -18,11 +18,11 @@
 
 namespace k2 {
 
-enum BaseType {      // BaseType is the *general type*
-  kUnknownBase = 0,  // e.g. can use this for structs
-  kFloatBase = 1,
-  kIntBase = 2,   // signed int
-  kUintBase = 3,  // unsigned int
+enum BaseType : int8_t {  // BaseType is the *general type*
+  kUnknownBase = 0,       // e.g. can use this for structs
+  kFloatBase = 1,         // real numbers, e.g., float or double
+  kIntBase = 2,           // signed int, e.g., int8_t, int32_t
+  kUintBase = 3,          // unsigned int, e.g, uint32_t, uint64_t
 };
 
 class DtypeTraits {

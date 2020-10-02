@@ -76,6 +76,6 @@ function(k2_add_cuda_test name)
   )
 endfunction()
 
-foreach (name IN LISTS cuda_tests)
+foreach(name IN LISTS cuda_tests)
   k2_add_cuda_test(${name})
-endforeach ()
+endforeach()
