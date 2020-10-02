@@ -113,7 +113,7 @@ TEST(FsaUtil, StringToFsa) {
 2 6 1 -0.5
 2 4 2 -0.6
 5 0 1 -0.7
-6 -0.8
+6
 )";
   StringToFsa fsa_creator(s);
   Array2Size<int32_t> fsa_size;
@@ -125,17 +125,17 @@ TEST(FsaUtil, StringToFsa) {
 
   ASSERT_FALSE(IsEmpty(fsa));
 
-  ASSERT_EQ(fsa.size1, 8);
-  ASSERT_EQ(fsa.size2, 8);
+  ASSERT_EQ(fsa.size1, 7);
+  ASSERT_EQ(fsa.size2, 7);
 
   std::vector<int32_t> arc_indexes(fsa.indexes, fsa.indexes + fsa.size1 + 1);
   std::vector<Arc> arcs(fsa.data, fsa.data + fsa.size2);
 
-  EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7, 8, 8));
+  EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 2, 4, 6, 6, 6, 7, 7));
 
   std::vector<Arc> expected_arcs = {
       {0, 1, 2, -0.1}, {0, 2, 10, -0.2}, {1, 3, 3, -0.3}, {1, 6, 6, -0.4},
-      {2, 6, 1, -0.5}, {2, 4, 2, -0.6},  {5, 0, 1, -0.7}, {6, 7, -1, -0.8}
+      {2, 6, 1, -0.5}, {2, 4, 2, -0.6},  {5, 0, 1, -0.7},
   };
 
   auto n = static_cast<int32_t>(expected_arcs.size());

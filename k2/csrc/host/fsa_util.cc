@@ -75,7 +75,7 @@ int32_t StringToInt(const std::string &s, bool *is_ok = nullptr) {
 /** Convert a string to a float number.
 
   @param [in]   s     The input string.
-  @param [out]  is    If non-null, it is set to true when the conversion
+  @param [out]  is_ok If non-null, it is set to true when the conversion
                       is successful; false otherwise
   @return The converted float number.
  */
@@ -265,37 +265,22 @@ void StringToFsa::ReadArcsFromString() {
     K2_CHECK_EQ(finished, false);
 
     auto num_fields = splits.size();
-    if (num_fields == 3u || num_fields == 4u) {
+    if (num_fields == 4u) {
       Arc arc{};
       arc.src_state = StringToInt(splits[0]);
       arc.dest_state = StringToInt(splits[1]);
       arc.label = StringToInt(splits[2]);
-      if (num_fields == 4u) {
-        arc.weight = StringToFloat(splits[3]);
-      }
+      arc.weight = StringToFloat(splits[3]);
 
       auto new_size = std::max(arc.src_state, arc.dest_state);
       if (new_size >= arcs_.size()) arcs_.resize(new_size + 1);
 
       arcs_[arc.src_state].push_back(arc);
       ++num_arcs_;
-    } else if (num_fields == 1u || num_fields == 2u) {
-      // TODO(guoguo): the original code only supports one final state. Is it
-      //               necessary to supports multiple final states?
+    } else if (num_fields == 1u) {
       finished = true;
       K2_CHECK_EQ(StringToInt(splits[0]) + 1,
                   static_cast<int32_t>(arcs_.size()));
-      if (num_fields == 2u) {
-        arcs_.resize(arcs_.size() + 1);
-        // If the final state bears a weight, we convert that into an arc.
-        Arc arc{};
-        arc.src_state = StringToInt(splits[0]);
-        arc.dest_state = StringToInt(splits[0]) + 1;
-        arc.label = k2host::kFinalSymbol;
-        arc.weight = StringToFloat(splits[1]);
-        arcs_[arc.src_state].push_back(arc);
-        ++num_arcs_;
-      }
     } else {
       K2_LOG(FATAL) << "invalid line: " << line;
     }

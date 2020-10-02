@@ -208,11 +208,10 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
   from_state  to_state  label  weight
   from_state  to_state  label  weight
   ... ...
-  final_state weight
+  final_state
 
-  Technically, K2's final_state does not bear a weight -- OpenFST's final-state
-  is represented by an arc with label == kFinalSymbol to the final_state in K2.
-  The implementation of StringToFsa takes care of both cases.
+  K2's final_state does not bear a weight -- OpenFST's final-state is
+  represented by an arc with label == kFinalSymbol to the final_state in K2.
 
   K2 requires that the final state has the largest state number. The above
   format requires the last line to be the final state, whose sole purpose is
