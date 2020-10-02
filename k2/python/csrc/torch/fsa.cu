@@ -20,6 +20,15 @@
 
 namespace k2 {
 
+static void PybindDenseFsa(py::module &m) {
+  using PyClass = DenseFsaVec;
+  py::class_<PyClass> pyclass(m, "_DenseFsaVec");
+
+  pyclass.def_readwrite("shape", &PyClass::shape);
+  pyclass.def_readwrite("scores", &PyClass::scores);
+  pyclass.def("num_arcs", &PyClass::NumArcs);
+}
+
 static void PybindFsaUtil(py::module &m) {
   m.def("_fsa_from_tensor", [](torch::Tensor tensor) -> Fsa {
     Array1<Arc> array = FromTensor<Arc>(tensor);
@@ -60,4 +69,7 @@ static void PybindFsaUtil(py::module &m) {
 
 }  // namespace k2
 
-void PybindFsa(py::module &m) { k2::PybindFsaUtil(m); }
+void PybindFsa(py::module &m) {
+  k2::PybindFsaUtil(m);
+  k2::PybindDenseFsa(m);
+}
