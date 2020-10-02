@@ -9,6 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <algorithm>
 #include <sstream>
 #include <utility>
 #include <vector>
