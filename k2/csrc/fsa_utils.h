@@ -3,6 +3,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                      Guoguo Chen
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -32,23 +33,29 @@ namespace k2 {
       src_state dest_state label aux_label cost
   which indicates the string is a transducer.
 
-  The line for the final state has the following format:
+  The line for the final state has the following format when `openfst` is false:
 
       final_state
+
+  This is because final state in K2 does not bear a cost. Instead, we put the
+  cost on the arc that connects to the final state, and set its label to -1.
+  When `openfst` is true, we expect the more generic OpenFst sytle final state
+  format :
+
+      final_state cost
+
+  And we allow more than one final states when `openfst` is true.
 
   Note that fields are separated by spaces and tabs. There can exist
   multiple tabs and spaces.
 
-  CAUTION: The line for the final state contains NO cost.
-  When an arc's dest state is the final state, we put the cost
-  on the arc and set its label to -1.
-
   CAUTION: We assume that `final_state` has the largest state number.
 
   @param [in]   s   The input string. See the above description for its format.
-  @param [in]   negate_scores
-                    If true, the string form has the weights as costs,
-                    not scores, so we negate as we read.
+  @param [in]   openfst
+                    If true, the string form has the weights as costs, not
+                    scores, so we negate them as we read. We will also allow
+                    multiple final states with weights associated with them.
   @param [out]  aux_labels
                     Used only when it is a transducer. It is allocated
                     inside the function and will contain aux_label of each arc.
@@ -56,7 +63,7 @@ namespace k2 {
 
   @return It returns an Fsa on CPU.
  */
-Fsa FsaFromString(const std::string &s, bool negate_scores = false,
+Fsa FsaFromString(const std::string &s, bool openfst = false,
                   Array1<int32_t> *aux_labels = nullptr);
 
 /* Convert an FSA to a string.
@@ -78,19 +85,19 @@ Fsa FsaFromString(const std::string &s, bool negate_scores = false,
    NOTE: Fields are separated by only ONE space.
    There are no leading or trailing spaces.
 
-   NOTE: If `negate_scores` is true, scores are first negated and then printed.
+   NOTE: If `openfst` is true, scores are first negated and then printed.
 
    CAUTION: We support only FSAs on the CPU.
 
    @param [in]  fsa   The input FSA, which MUST be on CPU.
-   @param [in]  negate_scores
+   @param [in]  openfst
                       If true, the scores will first be negated and
                       then printed.
    @param in]   aux_labels
                       If not NULL, the FSA is a transducer and it contains the
                       aux labels of each arc.
  */
-std::string FsaToString(const Fsa &fsa, bool negate_scores = false,
+std::string FsaToString(const Fsa &fsa, bool openfst = false,
                         const Array1<int32_t> *aux_labels = nullptr);
 }  // namespace k2
 
