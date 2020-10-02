@@ -210,9 +210,9 @@ void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
                                 probably be all-ones.
      @param [out] and_values    Array to which the bitwise-and values will be
                                 written. Must satisfy
-                                and_values->Dim() == rows along the last axis in
-                                src, i.e.
-                                src.RowSplits(src.NumAxes() - 1).Dim() - 1.
+                                and_values->Dim() == src.TotSize(src.NumAxes() - 2),
+                                i.e. the total size on the second-to-last axis
+                                of `src`.
 */
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values) {

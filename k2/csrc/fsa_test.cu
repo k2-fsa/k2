@@ -16,21 +16,21 @@ namespace k2 {
 
 TEST(FsaPropertiesAsString, Empty) {
   auto s = FsaPropertiesAsString(0);
-  EXPECT_TRUE(s.empty());
+  EXPECT_EQ(s, "\"\"");
 }
 
 TEST(FsaPropertiesAsString, NonEmpty) {
   auto s = FsaPropertiesAsString(kFsaPropertiesValid);
-  EXPECT_EQ(s, "kFsaPropertiesValid");
+  EXPECT_EQ(s, "\"Valid\"");
 
   s = FsaPropertiesAsString(kFsaPropertiesNonempty | kFsaPropertiesValid);
-  EXPECT_EQ(s, "kFsaPropertiesValid|kFsaPropertiesNonempty");
+  EXPECT_EQ(s, "\"Valid|Nonempty\"");
 
   s = FsaPropertiesAsString(kFsaPropertiesTopSorted | kFsaPropertiesValid |
                             kFsaPropertiesSerializable);
   EXPECT_EQ(
       s,
-      "kFsaPropertiesValid|kFsaPropertiesTopSorted|kFsaPropertiesSerializable");
+      "\"Valid|TopSorted|Serializable\"");
 }
 
 }  // namespace k2

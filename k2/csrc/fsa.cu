@@ -64,30 +64,31 @@ std::string FsaPropertiesAsString(int32_t properties) {
   static constexpr char kSep = '|';
   std::ostringstream os;
 
-#define K2_FSA_HAS_PROP(x) \
-  if (properties & x) os << kSep << #x
+  if (properties & kFsaPropertiesValid) os << kSep << "Valid";
+  if (properties & kFsaPropertiesNonempty) os << kSep << "Nonempty";
+  if (properties & kFsaPropertiesTopSorted) os << kSep << "TopSorted";
+  if (properties & kFsaPropertiesTopSortedAndAcyclic) os << kSep << "TopSortedAndAcyclic";
+  if (properties & kFsaPropertiesArcSorted) os << kSep << "ArcSorted";
+  if (properties & kFsaPropertiesArcSortedAndDeterministic) os << kSep << "ArcSortedAndDeterministic";
+  if (properties & kFsaPropertiesEpsilonFree) os << kSep << "EpsilonFree";
+  if (properties & kFsaPropertiesMaybeAccessible) os << kSep << "MaybeAccessible";
+  if (properties & kFsaPropertiesMaybeCoaccessible) os << kSep << "MaybeCoaccessible";
+  if (properties & kFsaPropertiesSerializable) os << kSep << "Serializable";
 
-  K2_FSA_HAS_PROP(kFsaPropertiesValid);                      // 0x01
-  K2_FSA_HAS_PROP(kFsaPropertiesNonempty);                   // 0x02
-  K2_FSA_HAS_PROP(kFsaPropertiesTopSorted);                  // 0x04
-  K2_FSA_HAS_PROP(kFsaPropertiesTopSortedAndAcyclic);        // 0x08
-  K2_FSA_HAS_PROP(kFsaPropertiesArcSorted);                  // 0x10
-  K2_FSA_HAS_PROP(kFsaPropertiesArcSortedAndDeterministic);  // 0x20
-  K2_FSA_HAS_PROP(kFsaPropertiesEpsilonFree);                // 0x40
-  K2_FSA_HAS_PROP(kFsaPropertiesMaybeAccessible);            // 0x80
-  K2_FSA_HAS_PROP(kFsaPropertiesMaybeCoaccessible);          // 0x100
-  K2_FSA_HAS_PROP(kFsaPropertiesSerializable);               // 0x200
 
-#undef K2_FSA_HAS_PROP
-
-  if (!os.str().empty())
-    return std::string(os.str().c_str() + 1);  // remove  leading '|'
-
-  return std::string();
+  size_t offset = (os.str().empty() ? 0 : 1);  // remove leading '|'
+  os << '"';
+  return std::string("\"") + std::string(os.str().c_str() + offset);
 }
 
-int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
-  if (fsa_vec.NumAxes() != 3) return 0;
+
+void GetFsaVecBasicProperties(FsaVec &fsa_vec,
+                              Array1<int32_t> *properties_out,
+                              int32_t *tot_properties_out) {
+  if (fsa_vec.NumAxes() != 3) {
+    K2_LOG(FATAL) << "Input has wrong num-axes " << fsa_vec.NumAxes()
+                  << " vs. 3.";
+  }
   ContextPtr c = fsa_vec.Context();
   const int32_t *row_ids1_data = fsa_vec.shape.RowIds(1).Data(),
                 *row_splits1_data = fsa_vec.shape.RowSplits(1).Data(),
@@ -97,8 +98,8 @@ int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
 
   int32_t num_arcs = fsa_vec.values.Dim();
 
-  // `neg_` means negated. It's more convenient to do it this way.
-  Array1<int32_t> neg_properties(c, num_arcs);
+  // properties per arc; these will be and-ed over all arcs.
+  Array1<int32_t> properties(c, num_arcs);
   int32_t num_states = fsa_vec.shape.RowIds(1).Dim(),
           num_fsas = fsa_vec.shape.Dim0();
 
@@ -111,11 +112,13 @@ int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
   // the final-state of its FSA (i.e. last-numbered) or has at least one arc
   // leaving it, not counting self-loops. Again, it's a looser condition than
   // being 'co-accessible' in FSA terminology.
-  Array1<char> reachable(c, num_states * 2 + 1, static_cast<char>(0));
-  Array1<char> flag = reachable.Range(num_states * 1, 1);
-  Array1<char> co_reachable = reachable.Range(num_states, num_states);
-  reachable = reachable.Range(0, num_states);
-  int32_t *neg_properties_data = neg_properties.Data();
+
+  Array1<char> reachable_mem(c, num_states * 2 + num_fsas * 2, static_cast<char>(0));
+
+  Array1<char> reachable = reachable_mem.Range(0, num_states);
+  Array1<char> co_reachable = reachable_mem.Range(num_states, num_states);
+
+  int32_t *properties_data = properties.Data();
   char *reachable_data = reachable.Data();  // access co_reachable via this.
 
   auto lambda_get_properties = [=] __host__ __device__(int32_t idx012) -> void {
@@ -164,53 +167,76 @@ int32_t GetFsaVecBasicProperties(FsaVec &fsa_vec) {
     }
 
     if (idx2 == 0) {
-      // First arc leaving this state record that this state has arcs leaving
+      // First arc leaving this state records that this state has arcs leaving
       // it.
       if (arc.dest_state != arc.src_state)
         reachable_data[num_states + idx01] = 1;
     }
-    neg_properties_data[idx012] = ~neg_property;
+    properties_data[idx012] = ~neg_property;
   };
   Eval(c, num_arcs, lambda_get_properties);
-  // Note: eventually, for more diagnostics, we could use AndPerSublist to get
-  // the properties one by  one.
 
-  Array1<int32_t> and_properties = neg_properties.Range(0, 1);  // ok to overlap
-  Array1<char> and_reachable = reachable.Range(0, 1);
-  Array1<char> and_co_reachable = reachable.Range(0, 1);
-  ParallelRunner pr(c);
+
+  // Figure out the properties per FSA.
+  RaggedShape fsa_to_arcs_shape = RemoveAxis(fsa_vec.shape, 1),
+      fsa_to_states_shape = RemoveAxis(fsa_vec.shape, 2);
+  Ragged<int32_t> properties_ragged(fsa_to_arcs_shape, properties);
+  Ragged<char> reachable_ragged(fsa_to_states_shape, reachable),
+      co_reachable_ragged(fsa_to_states_shape, co_reachable);
+
+
+  Array1<int32_t> properties_per_fsa_mem(c, num_fsas + 1),
+      properties_per_fsa = properties_per_fsa_mem.Range(0, num_fsas),
+      properties_total = properties_per_fsa_mem.Range(num_fsas, 1);
+
+
+  Array1<char> reachable_per_fsa = reachable_mem.Range(num_states * 2, num_fsas),
+      co_reachable_per_fsa = reachable_mem.Range(num_states * 2 + num_fsas, num_fsas);
   {
-    With(pr.NewStream());
-    And(neg_properties, static_cast<int32_t>(kFsaAllProperties),
-        &and_properties);
+    ParallelRunner pr(c);
+    {
+      With(pr.NewStream());
+      AndPerSublist(properties_ragged, static_cast<int32_t>(kFsaAllProperties),
+                    &properties_per_fsa);
+    }
+    {
+      With(pr.NewStream());
+      AndPerSublist(reachable_ragged, static_cast<char>(1), &reachable_per_fsa);
+    }
+    {
+      With(pr.NewStream());
+      AndPerSublist(co_reachable_ragged, static_cast<char>(1),
+                    &co_reachable_per_fsa);
+    }
   }
+
   {
-    With(pr.NewStream());
-    And(reachable, static_cast<char>(1), &and_reachable);
-  }
-  {
-    With(pr.NewStream());
-    And(co_reachable, static_cast<char>(1), &and_co_reachable);
-  }
-  {
-    char *flag_data = flag.Data();
-    auto lambda_find_empty_fsas = [=] __host__ __device__(int32_t i) -> void {
-      if (row_ids1_data[i + 1] == row_ids1_data[i])
-        *flag_data = 1;  // There is an empty FSA.
+    int32_t *properties_per_fsa_data = properties_per_fsa.Data();
+    char *reachable_per_fsa_data = reachable_per_fsa.Data(),
+        *co_reachable_per_fsa_data = co_reachable_per_fsa.Data();
+
+    auto lambda_finalize_properties = [=] __host__ __device__(int32_t i) -> void {
+      int32_t neg_properties = ~(properties_per_fsa_data[i]);
+      char reachable = reachable_per_fsa_data[i],
+          co_reachable = co_reachable_per_fsa_data[i];
+      int32_t fsa_has_no_arcs =
+          (row_splits2_data[row_splits1_data[i]] ==
+           row_splits2_data[row_splits1_data[i + 1]]);
+      neg_properties |=  (!reachable * kFsaPropertiesMaybeAccessible) |
+          (!co_reachable * kFsaPropertiesMaybeCoaccessible) |
+          (fsa_has_no_arcs * kFsaPropertiesSerializable);
+      properties_per_fsa_data[i] = ~neg_properties;
     };
-    Eval(pr.NewStream(), num_fsas, lambda_find_empty_fsas);
+    Eval(c, num_fsas, lambda_finalize_properties);
+
+    And(properties_per_fsa, static_cast<int32_t>(kFsaAllProperties),
+        &properties_total);
+    *tot_properties_out = properties_total[0];
+    *properties_out = properties_per_fsa;
   }
-
-  int32_t properties =
-      and_properties[0] |
-      (and_reachable[0] ? kFsaPropertiesMaybeAccessible : 0) |
-      (and_co_reachable[0] ? kFsaPropertiesMaybeCoaccessible : 0);
-  if (flag[0])  // not serializable because has empty FSA.
-    properties &= ~kFsaPropertiesSerializable;
-
-  // probably tons of bugs in this :-(
-  return properties;
 }
+
+
 
 FsaVec FsaVecFromFsa(const Fsa &fsa) {
   ContextPtr c = fsa.values.Context();
@@ -223,7 +249,10 @@ FsaVec FsaVecFromFsa(const Fsa &fsa) {
 int32_t GetFsaBasicProperties(const Fsa &fsa) {
   if (fsa.NumAxes() != 2) return 0;
   FsaVec vec = FsaVecFromFsa(fsa);
-  return GetFsaVecBasicProperties(vec);
+  Array1<int32_t> properties;
+  int32_t ans;
+  GetFsaVecBasicProperties(vec, &properties, &ans);
+  return ans;
 }
 
 Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
@@ -285,16 +314,17 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
 
   RaggedShape fsas_shape =
       RaggedShape2(&row_splits1, &row_ids1, row_ids1.Dim());
-  FsaVec ans = Ragged<Arc>(fsas_shape, array);
-  int32_t properties = GetFsaVecBasicProperties(ans);
+  Fsa ans = Ragged<Arc>(fsas_shape, array);
+  int32_t tot_properties = GetFsaBasicProperties(ans);
   // TODO: check properties, at least
   int32_t required_props = (kFsaPropertiesValid | kFsaPropertiesNonempty |
                             kFsaPropertiesSerializable);
-  if (properties & required_props) {
+  if (tot_properties & required_props != required_props) {
     K2_LOG(WARNING) << "Did not have expected properties "
-                    << (properties & required_props) << " vs. "
-                    << required_props;
-    // TODO: better way of displaying properties.
+                    << FsaPropertiesAsString(tot_properties & required_props) << " vs. "
+                    << FsaPropertiesAsString(required_props)
+                    << ", all properties were: "
+                    << FsaPropertiesAsString(tot_properties);
     *error = true;
   }
   return ans;
@@ -433,15 +463,18 @@ Fsa FsaVecFromArray1(Array1<Arc> &array, bool *error) {
       RaggedShape3(&row_splits1, &row_ids1, row_ids1.Dim(), &row_splits2,
                    &row_ids2, row_ids2.Dim());
   FsaVec ans = Ragged<Arc>(fsas_shape, array);
-  int32_t properties = GetFsaVecBasicProperties(ans);
+  Array1<int32_t> properties;
+  int32_t tot_properties;
+  GetFsaVecBasicProperties(ans, &properties, &tot_properties);
   // TODO: check properties, at least
   int32_t required_props = (kFsaPropertiesValid | kFsaPropertiesNonempty |
                             kFsaPropertiesSerializable);
-  if (properties & required_props) {
+  if (tot_properties & required_props) {
     K2_LOG(WARNING) << "Did not have expected properties "
-                    << (properties & required_props) << " vs. "
-                    << required_props;
-    // TODO: better way of displaying properties.
+                    << FsaPropertiesAsString(tot_properties & required_props) << " vs. "
+                    << FsaPropertiesAsString(required_props)
+                    << ", all properties were: "
+                    << FsaPropertiesAsString(tot_properties);
     *error = true;
   }
   return ans;
