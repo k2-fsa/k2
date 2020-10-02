@@ -12,6 +12,7 @@ from _k2 import _as_float
 from _k2 import _fsa_from_str
 from _k2 import _fsa_from_tensor
 from _k2 import _fsa_to_str
+from graphviz import Digraph
 
 
 class Fsa(object):
@@ -182,3 +183,63 @@ class Fsa(object):
         else:
             aux_labels = None
         return Fsa._create(fsa, aux_labels)
+
+    def to_dot(self) -> Digraph:
+        if self._aux_labels is not None:
+            name = 'WFST'
+        else:
+            name = 'WFSA'
+        graph_attr = {
+            'rankdir': 'LR',
+            'size': '8.5,11',
+            'label': '',
+            'center': '1',
+            'orientation': 'Portrait',
+            'ranksep': '0.4',
+            'nodesep': '0.25',
+        }
+
+        default_node_attr = {
+            'shape': 'circle',
+            'style': 'bold',
+            'fontsize': '14',
+        }
+
+        final_state_attr = {
+            'shape': 'doublecircle',
+            'style': 'bold',
+            'fontsize': '14',
+        }
+
+        final_state = -1
+        dot = Digraph(name=name, graph_attr=graph_attr)
+
+        seen = set()
+        i = -1
+        for arc, weight in zip(self.arcs, self.weights.tolist()):
+            i += 1
+            src_state, dst_state, label = arc.tolist()
+            src_state = str(src_state)
+            dst_state = str(dst_state)
+            if label == -1:
+                final_state = dst_state
+            if src_state not in seen:
+                dot.node(src_state, label=src_state, **default_node_attr)
+                seen.add(src_state)
+
+            if dst_state not in seen:
+                if dst_state == final_state:
+                    dot.node(dst_state, label=dst_state, **final_state_attr)
+
+                else:
+                    dot.node(dst_state, label=dst_state, **default_node_attr)
+                seen.add(dst_state)
+            if self._aux_labels is not None:
+                aux_label = f':{self._aux_labels[i]}'
+            else:
+                aux_label = ''
+
+            dot.edge(src_state,
+                     dst_state,
+                     label=f'{label}{aux_label}/{weight:.2f}')
+        return dot
