@@ -79,7 +79,7 @@ int32_t StringToInt(const std::string &s, bool *is_ok = nullptr) {
                       is successful; false otherwise
   @return The converted float number.
  */
-int32_t StringToFloat(const std::string &s, bool *is_ok = nullptr) {
+float StringToFloat(const std::string &s, bool *is_ok = nullptr) {
   K2_CHECK_EQ(s.empty(), false);
 
   bool ok = false;
@@ -100,21 +100,6 @@ std::vector<int32_t> StringVectorToIntVector(
   for (const auto &s : in) {
     bool ok = false;
     auto n = StringToInt(s, &ok);
-    K2_CHECK(ok);
-    res.push_back(n);
-  }
-  return res;
-}
-
-/** Convert `std::vector<std::string>` to `std::vector<float>`.
- */
-std::vector<float> StringVectorToFloatVector(
-    const std::vector<std::string> &in) {
-  std::vector<float> res;
-  res.reserve(in.size());
-  for (const auto &s : in) {
-    bool ok = false;
-    auto n = StringToFloat(s, &ok);
     K2_CHECK(ok);
     res.push_back(n);
   }
@@ -279,15 +264,14 @@ void StringToFsa::ReadArcsFromString() {
 
     K2_CHECK_EQ(finished, false);
 
-    auto fields = StringVectorToFloatVector(splits);
-    auto num_fields = fields.size();
+    auto num_fields = splits.size();
     if (num_fields == 3u || num_fields == 4u) {
       Arc arc{};
-      arc.src_state = static_cast<int32_t>(fields[0]);
-      arc.dest_state = static_cast<int32_t>(fields[1]);
-      arc.label = static_cast<int32_t>(fields[2]);
+      arc.src_state = StringToInt(splits[0]);
+      arc.dest_state = StringToInt(splits[1]);
+      arc.label = StringToInt(splits[2]);
       if (num_fields == 4u) {
-        arc.weight = fields[3];
+        arc.weight = StringToFloat(splits[3]);
       }
 
       auto new_size = std::max(arc.src_state, arc.dest_state);
@@ -299,16 +283,16 @@ void StringToFsa::ReadArcsFromString() {
       // TODO(guoguo): the original code only supports one final state. Is it
       //               necessary to supports multiple final states?
       finished = true;
-      K2_CHECK_EQ(static_cast<int32_t>(fields[0]) + 1,
+      K2_CHECK_EQ(StringToInt(splits[0]) + 1,
                   static_cast<int32_t>(arcs_.size()));
       if (num_fields == 2u) {
         arcs_.resize(arcs_.size() + 1);
         // If the final state bears a weight, we convert that into an arc.
         Arc arc{};
-        arc.src_state = static_cast<int32_t>(fields[0]);
-        arc.dest_state = static_cast<int32_t>(fields[0]) + 1;
+        arc.src_state = StringToInt(splits[0]);
+        arc.dest_state = StringToInt(splits[0]) + 1;
         arc.label = k2host::kFinalSymbol;
-        arc.weight = fields[1];
+        arc.weight = StringToFloat(splits[1]);
         arcs_[arc.src_state].push_back(arc);
         ++num_arcs_;
       }
