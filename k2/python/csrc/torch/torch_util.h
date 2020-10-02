@@ -72,7 +72,7 @@ torch::Tensor ToTensor(Array1<T> &array) {
   // NOTE: we keep a copy of `array` inside the lambda
   // so that `torch::Tensor` always accesses valid memory.
   return torch::from_blob(
-      array.Data(), array.Dim(), [array](void *p) {}, options);
+      array.Data(), array.Dim(), [array](void *) {}, options);
 }
 
 /* Convert a 1-D torch::Tensor to an Array1<T>.
@@ -129,6 +129,43 @@ torch::Tensor ToTensor(Array1<Arc> &array);
  */
 template <>
 Array1<Arc> FromTensor<Arc>(torch::Tensor &tensor);
+
+struct Array2Tag {};
+
+template <typename T>
+Array2<T> FromTensor(torch::Tensor &tensor, Array2Tag) {
+  K2_CHECK_EQ(tensor.dim(), 2) << "Expected dim: 2. Given: " << tensor.dim();
+  K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<T>::value)
+      << "Expected scalar type: " << ToScalarType<T>::value
+      << ". Given: " << tensor.scalar_type();
+
+  K2_CHECK_EQ(tensor.strides()[1], 1)
+      << "Expected stride: 1. Given: " << tensor.strides()[1];
+
+  auto region = NewRegion(tensor);
+  Array2<T> ans(tensor.sizes()[0],    // dim0
+                tensor.sizes()[1],    // dim1
+                tensor.strides()[0],  // elem_stride0
+                0,                    // byte_offset
+                region);              // region
+  return ans;
+}
+
+template <typename T>
+torch::Tensor ToTensor(Array2<T> &array) {
+  auto device_type = ToTorchDeviceType(array.Context()->GetDeviceType());
+  int32_t device_id = array.Context()->GetDeviceId();
+  auto device = torch::Device(device_type, device_id);
+  auto scalar_type = ToScalarType<T>::value;
+  auto options = torch::device(device).dtype(scalar_type);
+
+  // NOTE: we keep a copy of `array` inside the lambda
+  // so that `torch::Tensor` always accesses valid memory.
+  auto tensor = torch::from_blob(
+      array.Data(), {array.Dim0(), array.Dim1()}, {array.ElemStride0(), 1},
+      [array](void *) {}, options);
+  return tensor;
+}
 
 }  // namespace k2
 

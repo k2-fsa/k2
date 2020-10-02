@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R array_test_py
+#  ctest --verbose -R array_test_py -E host
 
 import unittest
 
@@ -118,10 +118,10 @@ class TestArray(unittest.TestCase):
 
     def test_cpu_arc_array1_from_tensor(self):
         gt_tensor = torch.tensor(
-            [[1, 2, 3, k2.float_as_int(1.5)],
-             [10, 20, 30, k2.float_as_int(-2.5)]],
+            [[1, 2, 3, _k2._float_as_int(1.5)],
+             [10, 20, 30, _k2._float_as_int(-2.5)]],
             dtype=torch.int32).contiguous()
-        arc_array = k2.Array(gt_tensor)
+        arc_array = k2.Array(gt_tensor, True)
 
         arc0 = arc_array.data.get(0)
         assert arc0.src_state == 1
@@ -150,7 +150,7 @@ class TestArray(unittest.TestCase):
         assert tensor.device.type == 'cuda'
         assert tensor.device.index == device_id
         assert tensor[0][0] == 1
-        assert tensor[0][3] == k2.float_as_int(_arc_array.get(0).score)
+        assert tensor[0][3] == _k2._float_as_int(_arc_array.get(0).score)
 
         tensor[0][0] = 10  # also change _arc_array
         assert _arc_array.get(0).src_state == 10
@@ -158,6 +158,50 @@ class TestArray(unittest.TestCase):
         del arc_array, _arc_array
         tensor[0][0] += 10
         assert tensor[0][0] == 20, 'tensor should still be accessible'
+
+    def test_cpu_int_array2_to_tensor(self):
+        _arr = _k2.get_cpu_int_array2()
+        arr = k2.Array(_arr)
+        tensor = arr.tensor()
+        del _arr, arr
+        assert torch.allclose(
+            tensor, torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=torch.int32))
+
+    def test_cpu_float_array2_from_tensor(self):
+        gt_tensor = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=torch.float32)
+        arr = k2.Array(gt_tensor)
+        actual_tensor = arr.tensor()
+
+        actual_tensor[0, 0] = 1000
+        assert torch.allclose(gt_tensor, actual_tensor)
+
+        del gt_tensor, arr
+        assert actual_tensor[0, 0] == 1000
+
+    def test_cuda_float_array2_to_tensor(self):
+        _arr = _k2.get_cuda_float_array2()
+        arr = k2.Array(_arr)
+        tensor = arr.tensor()
+        assert torch.allclose(
+            tensor,
+            torch.tensor([[1, 2, 3], [4, 5, 6]],
+                         dtype=torch.float,
+                         device='cuda'))
+        tensor[0, 0] = 100
+        assert _arr.get(0).get(0) == 100
+
+    def test_cuda_int32_array2_to_tensor(self):
+        gt_tensor = torch.tensor([[1, 2, 3], [4, 5, 6]],
+                                 dtype=torch.int32,
+                                 device='cuda')
+
+        arr = k2.Array(gt_tensor)
+        actual_tensor = arr.tensor()
+
+        assert torch.allclose(gt_tensor, actual_tensor)
+        gt_tensor[0, 0] = 100
+        del gt_tensor
+        assert actual_tensor[0, 0] == 100
 
 
 if __name__ == '__main__':

@@ -50,7 +50,7 @@ torch::Tensor ToTensor(Array1<Arc> &array) {
   // NOTE: we keep a copy of `array` inside the lambda
   // so that `torch::Tensor` always accesses valid memory.
   return torch::from_blob(
-      array.Data(), {array.Dim(), 4}, strides, [array](void *p) {}, options);
+      array.Data(), {array.Dim(), 4}, strides, [array](void *) {}, options);
 }
 
 template <>
