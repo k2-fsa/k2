@@ -1,5 +1,7 @@
 /**
- * @brief Utilities for reading, writing and creating FSAs.
+ * @brief Utilities for creating FSAs.
+ *
+ * Note that serializations are done in Python.
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
