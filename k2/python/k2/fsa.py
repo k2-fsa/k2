@@ -18,7 +18,7 @@ from graphviz import Digraph
 
 class Fsa(object):
 
-    def __init__(self, s: str, negate_scores: bool = False):
+    def __init__(self, s: str, openfst: bool = False):
         '''Create an Fsa from a string.
 
         The given string `s` consists of lines with the following format:
@@ -50,14 +50,14 @@ class Fsa(object):
         Args:
           s:
             The input string. Refer to the above comment for its format.
-          negate_scores:
+          openfst:
             Optional. If true, the string form has the weights as costs,
             not scores, so we negate as we read.
         '''
         fsa: _Fsa
         aux_labels: Optional[torch.Tensor]
 
-        fsa, aux_labels = _fsa_from_str(s, negate_scores)
+        fsa, aux_labels = _fsa_from_str(s, openfst)
 
         self._fsa = fsa
         self._aux_labels = aux_labels
@@ -130,20 +130,20 @@ class Fsa(object):
         '''
         self.osym = osym
 
-    def to_str(self, negate_scores: bool = False) -> str:
+    def to_str(self, openfst: bool = False) -> str:
         '''Convert an Fsa to a string.
 
         Note:
           The returned string can be used to construct an Fsa.
 
         Args:
-          negate_scores:
+          openfst:
             Optional. If true, we negate the score during the conversion,
 
         Returns:
           A string representation of the Fsa.
         '''
-        return _fsa_to_str(self._fsa, negate_scores, self._aux_labels)
+        return _fsa_to_str(self._fsa, openfst, self._aux_labels)
 
     @property
     def arcs(self) -> torch.Tensor:

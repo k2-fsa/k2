@@ -17,6 +17,23 @@ class SymbolTable(object):
     '''Map a symbol to an integer.
     '''
 
+    def __post_init__(self):
+        for idx, sym in self._id2sym.items():
+            assert self._sym2id[sym] == idx
+            assert idx >= 0
+
+        for sym, idx in self._sym2id.items():
+            assert idx >= 0
+            assert self._id2sym[idx] == sym
+
+        eps_sym = '<eps>'
+        if 0 not in self._id2sym:
+            self._id2sym[0] = eps_sym
+            self._sym2id[eps_sym] = 0
+        else:
+            assert self._id2sym[0] == eps_sym
+            assert self._sym2id[eps_sym] == 0
+
     @staticmethod
     def from_str(s: str) -> 'SymbolTable':
         '''Build a symbol table from a string.

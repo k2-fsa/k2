@@ -25,8 +25,8 @@ class TestFsa(unittest.TestCase):
         s = '''
             0 1 2 -1.2
             0 2  10 -2.2
-            1 3  3  -3.2
-            1 6 -1  -4.2
+            1 6 -1  -3.2
+            1 3  3  -4.2
             2 6 -1  -5.2
             2 4  2  -6.2
             3 6 -1  -7.2
@@ -39,8 +39,8 @@ class TestFsa(unittest.TestCase):
         expected_str = '''
             0 1 2 -1.2
             0 2 10 -2.2
-            1 3 3 -3.2
-            1 6 -1 -4.2
+            1 6 -1 -3.2
+            1 3 3 -4.2
             2 6 -1 -5.2
             2 4 2 -6.2
             3 6 -1 -7.2
@@ -53,8 +53,8 @@ class TestFsa(unittest.TestCase):
         expected_str = '''
             0 1 2 1.2
             0 2 10 2.2
-            1 3 3 3.2
-            1 6 -1 4.2
+            1 6 -1 3.2
+            1 3 3 4.2
             2 6 -1 5.2
             2 4 2 6.2
             3 6 -1 7.2
@@ -62,7 +62,7 @@ class TestFsa(unittest.TestCase):
             6
         '''
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            fsa.to_str(negate_scores=True))
+            fsa.to_str(openfst=True))
 
         arcs = fsa.arcs
         assert isinstance(arcs, torch.Tensor)
@@ -94,8 +94,8 @@ class TestFsa(unittest.TestCase):
         s = '''
             0 1 2 22  -1.2
             0 2  10 100 -2.2
-            1 3  3  33  -3.2
             1 6 -1  16  -4.2
+            1 3  3  33  -3.2
             2 6 -1  26  -5.2
             2 4  2  22  -6.2
             3 6 -1  36  -7.2
@@ -107,13 +107,13 @@ class TestFsa(unittest.TestCase):
         assert fsa.aux_labels.device.type == 'cpu'
         assert torch.allclose(
             fsa.aux_labels,
-            torch.tensor([22, 100, 33, 16, 26, 22, 36, 50], dtype=torch.int32))
+            torch.tensor([22, 100, 16, 33, 26, 22, 36, 50], dtype=torch.int32))
 
         expected_str = '''
             0 1 2 22 -1.2
             0 2 10 100 -2.2
-            1 3 3 33 -3.2
             1 6 -1 16 -4.2
+            1 3 3 33 -3.2
             2 6 -1 26 -5.2
             2 4 2 22 -6.2
             3 6 -1 36 -7.2
@@ -126,8 +126,8 @@ class TestFsa(unittest.TestCase):
         expected_str = '''
             0 1 2 22 1.2
             0 2 10 100 2.2
-            1 3 3 33 3.2
             1 6 -1 16 4.2
+            1 3 3 33 3.2
             2 6 -1 26 5.2
             2 4 2 22 6.2
             3 6 -1 36 7.2
@@ -135,7 +135,7 @@ class TestFsa(unittest.TestCase):
             6
         '''
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            fsa.to_str(negate_scores=True))
+            fsa.to_str(openfst=True))
 
     def test_symbol_table_and_dot(self):
         isym_str = '''
