@@ -156,7 +156,7 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
     K2_CHECK_EQ(openfst, true);
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
     int32_t super_final_state = max_state + 1;
-    for (auto i = 0; i != original_final_states.size(); ++i) {
+    for (std::size_t i = 0; i != original_final_states.size(); ++i) {
       arcs.emplace_back(original_final_states[i],
                         super_final_state,
                         -1,     // kFinalSymbol
@@ -238,7 +238,7 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
     K2_CHECK_EQ(openfst, true);
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
     int32_t super_final_state = max_state + 1;
-    for (auto i = 0; i != original_final_states.size(); ++i) {
+    for (std::size_t = 0; i != original_final_states.size(); ++i) {
       arcs.emplace_back(original_final_states[i],
                         super_final_state,
                         -1,             // kFinalSymbol
@@ -258,12 +258,12 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
   std::vector<std::pair<Arc, int32_t>> arcs_and_aux_labels;
   K2_CHECK_EQ(state_aux_labels.size(), arcs.size());
   arcs_and_aux_labels.resize(arcs.size());
-  for (auto i = 0; i < arcs.size(); ++i) {
+  for (std::size_t i = 0; i < arcs.size(); ++i) {
     arcs_and_aux_labels[i] = std::make_pair(arcs[i], state_aux_labels[i]);
   }
   // Default pair comparison should work for us.
   std::sort(arcs_and_aux_labels.begin(), arcs_and_aux_labels.end());
-  for (auto i = 0; i < arcs.size(); ++i) {
+  for (std::size_t i = 0; i < arcs.size(); ++i) {
     arcs[i] = arcs_and_aux_labels[i].first;
     state_aux_labels[i] = arcs_and_aux_labels[i].second;
   }
