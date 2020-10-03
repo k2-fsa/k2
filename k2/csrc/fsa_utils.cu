@@ -5,11 +5,13 @@
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                      Guoguo Chen
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <algorithm>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -99,14 +101,17 @@ static void SplitStringToVector(const std::string &in, const char *delim,
 
 // Create an acceptor from a stream.
 static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
-                              bool negate_scores) {
+                              bool openfst) {
   std::vector<Arc> arcs;
   std::string line = std::move(first_line);
   std::vector<std::string> splits;
 
   float scale = 1;
-  if (negate_scores) scale = -1;
+  if (openfst) scale = -1;
 
+  int32_t max_state = -1;
+  std::vector<int32_t> original_final_states;
+  std::vector<float> original_final_weights;
   do {
     SplitStringToVector(line, kDelim,
                         &splits);  // splits is cleared in the function
@@ -122,16 +127,47 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
       int32_t symbol = StringToInt(splits[2]);
       float score = scale * StringToFloat(splits[3]);
       arcs.emplace_back(src_state, dest_state, symbol, score);
+      max_state = std::max(max_state, std::max(src_state, dest_state));
+    } else if (num_fields == 2u) {
+      //   0            1
+      // final_state  score
+      // In this case, openfst is true. There could be multiple final states, so
+      // we first have to collect all the final states, and then work out the
+      // super final state.
+      K2_CHECK(openfst) << "Invalid line: " << line
+                        << "\nFinal state with weight detected in K2 format";
+      original_final_states.push_back(StringToInt(splits[0]));
+      original_final_weights.push_back(StringToFloat(splits[1]));
+      max_state = std::max(max_state, original_final_states.back());
     } else if (num_fields == 1u) {
+      //   0
+      // final_state
       (void)StringToInt(splits[0]);  // this is a final state
       break;                         // finish reading
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
-                    << "\nIt expects a line with 4 fields";
+                    << "\nIt expects a line with 1, 2 or 4 fields";
     }
   } while (std::getline(is, line));
 
-  K2_CHECK(is) << "Failed to read fsa from string";
+  // Post processing on final states. When openfst is true, we may have multiple
+  // final states with weights associated with them. We will have to add a super
+  // final state, and convert that into the K2 format (final state with no
+  // weight).
+  if (original_final_states.size() > 0) {
+    K2_CHECK_EQ(openfst, true);
+    K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
+    int32_t super_final_state = max_state + 1;
+    for (std::size_t i = 0; i != original_final_states.size(); ++i) {
+      arcs.emplace_back(original_final_states[i],
+                        super_final_state,
+                        -1,     // kFinalSymbol
+                        scale * original_final_weights[i]);
+    }
+  }
+
+  // Sort arcs so that source states are in non-decreasing order.
+  std::sort(arcs.begin(), arcs.end());
 
   bool error = true;
   Array1<Arc> array(GetCpuContext(), arcs);
@@ -142,7 +178,7 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
 }
 
 static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
-                                bool negate_scores,
+                                bool openfst,
                                 Array1<int32_t> *aux_labels) {
   K2_CHECK(aux_labels != nullptr);
 
@@ -152,8 +188,11 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
   std::vector<std::string> splits;
 
   float scale = 1;
-  if (negate_scores) scale = -1;
+  if (openfst) scale = -1;
 
+  int32_t max_state = -1;
+  std::vector<int32_t> original_final_states;
+  std::vector<float> original_final_weights;
   do {
     SplitStringToVector(line, kDelim,
                         &splits);  // splits is cleared in the function
@@ -170,16 +209,66 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
       float score = scale * StringToFloat(splits[4]);
       arcs.emplace_back(src_state, dest_state, symbol, score);
       state_aux_labels.push_back(aux_label);
+      max_state = std::max(max_state, std::max(src_state, dest_state));
+    } else if (num_fields == 2u) {
+      //   0            1
+      // final_state  score
+      // In this case, openfst is true. There could be multiple final states, so
+      // we first have to collect all the final states, and then work out the
+      // super final state.
+      K2_CHECK(openfst) << "Invalid line: " << line
+                        << "\nFinal state with weight detected in K2 format";
+      original_final_states.push_back(StringToInt(splits[0]));
+      original_final_weights.push_back(StringToFloat(splits[1]));
+      max_state = std::max(max_state, original_final_states.back());
     } else if (num_fields == 1u) {
+      //   0
+      // final_state
       (void)StringToInt(splits[0]);
       break;  // finish reading
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
-                    << "\nIt expects a line with 5 fields";
+                    << "\nIt expects a line with 1, 2 or 5 fields";
     }
   } while (std::getline(is, line));
 
-  K2_CHECK(is) << "Failed to read fsa from string";
+  // Post processing on final states. When openfst is true, we may have multiple
+  // final states with weights associated with them. We will have to add a super
+  // final state, and convert that into the K2 format (final state with no
+  // weight).
+  if (original_final_states.size() > 0) {
+    K2_CHECK_EQ(openfst, true);
+    K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
+    int32_t super_final_state = max_state + 1;
+    for (std::size_t = 0; i != original_final_states.size(); ++i) {
+      arcs.emplace_back(original_final_states[i],
+                        super_final_state,
+                        -1,             // kFinalSymbol
+                        scale * original_final_weights[i]);
+      // TODO(guoguo) We are not sure yet what to put as the auxiliary label for
+      //              arcs entering the super final state. The only real choices
+      //              are kEpsilon or kFinalSymbol. We are using kEpsilon for
+      //              now.
+      state_aux_labels.push_back(0);    // kEpsilon
+    }
+  }
+
+  // Sort arcs so that source states are in non-decreasing order. We have to do
+  // this simultaneously for both arcs and auxiliary labels. The following
+  // implementation makes a pair of (Arc, AuxLabel) for sorting.
+  // TODO(guoguo) Optimize this when necessary.
+  std::vector<std::pair<Arc, int32_t>> arcs_and_aux_labels;
+  K2_CHECK_EQ(state_aux_labels.size(), arcs.size());
+  arcs_and_aux_labels.resize(arcs.size());
+  for (std::size_t i = 0; i < arcs.size(); ++i) {
+    arcs_and_aux_labels[i] = std::make_pair(arcs[i], state_aux_labels[i]);
+  }
+  // Default pair comparison should work for us.
+  std::sort(arcs_and_aux_labels.begin(), arcs_and_aux_labels.end());
+  for (std::size_t i = 0; i < arcs.size(); ++i) {
+    arcs[i] = arcs_and_aux_labels[i].first;
+    state_aux_labels[i] = arcs_and_aux_labels[i].second;
+  }
 
   auto cpu_context = GetCpuContext();
   *aux_labels = Array1<int32_t>(cpu_context, state_aux_labels);
@@ -192,7 +281,7 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
   return fsa;
 }
 
-Fsa FsaFromString(const std::string &s, bool negate_scores /*= false*/,
+Fsa FsaFromString(const std::string &s, bool openfst /*= false*/,
                   Array1<int32_t> *aux_labels /*= nullptr*/) {
   std::istringstream is(s);
   std::string line;
@@ -203,9 +292,9 @@ Fsa FsaFromString(const std::string &s, bool negate_scores /*= false*/,
   SplitStringToVector(line, kDelim, &splits);
   auto num_fields = splits.size();
   if (num_fields == 4u)
-    return AcceptorFromStream(std::move(line), is, negate_scores);
+    return AcceptorFromStream(std::move(line), is, openfst);
   else if (num_fields == 5u)
-    return TransducerFromStream(std::move(line), is, negate_scores, aux_labels);
+    return TransducerFromStream(std::move(line), is, openfst, aux_labels);
 
   K2_LOG(FATAL) << "Expected number of fields: 4 or 5."
                 << "Actual: " << num_fields << "\n"
@@ -214,7 +303,7 @@ Fsa FsaFromString(const std::string &s, bool negate_scores /*= false*/,
   return Fsa();  // unreachable code
 }
 
-std::string FsaToString(const Fsa &fsa, bool negate_scores /*= false*/,
+std::string FsaToString(const Fsa &fsa, bool openfst /*= false*/,
                         const Array1<int32_t> *aux_labels /*= nullptr*/) {
   K2_CHECK_EQ(fsa.NumAxes(), 2);
   K2_CHECK_EQ(fsa.Context()->GetDeviceType(), kCpu);
@@ -228,7 +317,7 @@ std::string FsaToString(const Fsa &fsa, bool negate_scores /*= false*/,
     p = aux_labels->Data();
   }
   float scale = 1;
-  if (negate_scores) scale = -1;
+  if (openfst) scale = -1;
 
   std::ostringstream os;
 
