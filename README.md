@@ -1,5 +1,7 @@
 
 [![GitHub Actions Status](https://github.com/danpovey/k2/workflows/build/badge.svg)](https://github.com/danpovey/k2/actions)
+[![Documentation Status](https://readthedocs.org/projects/k2/badge/?version=latest)](https://k2.readthedocs.io/en/latest/?badge=latest)
+
 
 
 # k2
