@@ -17,6 +17,7 @@ K2 Documentation
 
    python_api/array.rst
    python_api/fsa.rst
+   python_api/symbol_table.rst
 
 
 

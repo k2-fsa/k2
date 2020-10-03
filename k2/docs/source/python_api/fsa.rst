@@ -5,3 +5,5 @@ k2.fsa
 
 .. autoclass:: Fsa
     :members:
+    :special-members:
+    :private-members:

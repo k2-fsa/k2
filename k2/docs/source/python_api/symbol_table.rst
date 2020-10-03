@@ -1,9 +1,9 @@
-k2.array
---------
+k2.symbol_table
+---------------
 
 .. currentmodule:: k2
 
-.. autoclass:: Array
+.. autoclass:: SymbolTable
     :members:
     :special-members:
     :private-members:
