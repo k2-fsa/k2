@@ -187,17 +187,15 @@ void TestShape() {
     const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
     const std::vector<int32_t> row_splits3 = {0,  2,  3,  5,  8, 9,
                                               12, 13, 15, 15, 16};
-    const std::vector<int32_t> empty_row_ids;
+    Array1<int32_t> row_ids;  // invalid row_ids as it has no context,
+                              // shape.RowIds(axis) will create it.
     std::vector<RaggedShapeDim> axes;
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
-                                     Array1<int32_t>(context, empty_row_ids),
-                                     -1});
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
-                                     Array1<int32_t>(context, empty_row_ids),
-                                     -1});
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
-                                     Array1<int32_t>(context, empty_row_ids),
-                                     -1});
+    axes.emplace_back(
+        RaggedShapeDim{Array1<int32_t>(context, row_splits1), row_ids, -1});
+    axes.emplace_back(
+        RaggedShapeDim{Array1<int32_t>(context, row_splits2), row_ids, -1});
+    axes.emplace_back(
+        RaggedShapeDim{Array1<int32_t>(context, row_splits3), row_ids, -1});
     RaggedShape shape(axes, true);
 
     EXPECT_EQ(shape.NumAxes(), 4);
@@ -225,17 +223,15 @@ void TestShape() {
     const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
     const std::vector<int32_t> row_splits3 = {0,  2,  3,  5,  8, 9,
                                               12, 13, 15, 15, 16};
-    const std::vector<int32_t> empty_row_ids;
+    Array1<int32_t> row_ids;  // invalid row_ids as it has no context,
+                              // shape.RowIds(axis) will create it.
     std::vector<RaggedShapeDim> axes;
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
-                                     Array1<int32_t>(context, empty_row_ids),
-                                     -1});
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
-                                     Array1<int32_t>(context, empty_row_ids),
-                                     -1});
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
-                                     Array1<int32_t>(context, empty_row_ids),
-                                     -1});
+    axes.emplace_back(
+        RaggedShapeDim{Array1<int32_t>(context, row_splits1), row_ids, -1});
+    axes.emplace_back(
+        RaggedShapeDim{Array1<int32_t>(context, row_splits2), row_ids, -1});
+    axes.emplace_back(
+        RaggedShapeDim{Array1<int32_t>(context, row_splits3), row_ids, -1});
     RaggedShape shape(axes, true);
 
     // test Populate(), it will create row_ids and cached_tot_size from
@@ -280,17 +276,15 @@ TEST(RaggedShapeTest, RaggedShapeIterator) {
   const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
   const std::vector<int32_t> row_splits3 = {0,  2,  3,  5,  8, 9,
                                             12, 13, 15, 15, 16};
-  const std::vector<int32_t> empty_row_ids;
+  Array1<int32_t> row_ids;  // invalid row_ids as it has no context,
+                            // shape.RowIds(axis) will create it.
   std::vector<RaggedShapeDim> axes;
-  axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
-                                   Array1<int32_t>(context, empty_row_ids),
-                                   -1});
-  axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
-                                   Array1<int32_t>(context, empty_row_ids),
-                                   -1});
-  axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
-                                   Array1<int32_t>(context, empty_row_ids),
-                                   -1});
+  axes.emplace_back(
+      RaggedShapeDim{Array1<int32_t>(context, row_splits1), row_ids, -1});
+  axes.emplace_back(
+      RaggedShapeDim{Array1<int32_t>(context, row_splits2), row_ids, -1});
+  axes.emplace_back(
+      RaggedShapeDim{Array1<int32_t>(context, row_splits3), row_ids, -1});
   RaggedShape shape(axes, true);
 
   int32_t index = 0;
