@@ -143,9 +143,10 @@ void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
       int32_t block_size = 256;
       int32_t grid_size = NumBlocks(tot_threads, block_size);
 
-      K2_CUDA_SAFE_CALL(RowSplitsToRowIdsKernel<<<grid_size, block_size, 0,
-                                                  c->GetCudaStream()>>>(
-          num_rows, threads_per_row, row_splits, num_elems, row_ids));
+      RowSplitsToRowIdsKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
+          num_rows, threads_per_row, row_splits, num_elems, row_ids);
+      auto err = cudaGetLastError();
+      K2_DCHECK_CUDA_ERROR(err);
     } else {
       // TODO: Will probably just delete this branch at some point.
 
@@ -329,9 +330,10 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
               tot_threads = num_elems * threads_per_elem;
       int32_t block_size = 256;
       int32_t grid_size = NumBlocks(tot_threads, block_size);
-      K2_CUDA_SAFE_CALL(RowIdsToRowSplitsKernel<<<grid_size, block_size, 0,
-                                                  c->GetCudaStream()>>>(
-          num_elems, threads_per_elem, row_ids, num_rows, row_splits));
+      RowIdsToRowSplitsKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
+          num_elems, threads_per_elem, row_ids, num_rows, row_splits);
+      auto err = cudaGetLastError();
+      K2_DCHECK_CUDA_ERROR(err);
     }
   }
 }
@@ -615,9 +617,10 @@ void GetTaskRedirect(cudaStream_t stream, int32_t num_tasks,
     int32_t block_size = 256;
     int32_t grid_size = NumBlocks(tot_threads, block_size);
 
-    K2_CUDA_SAFE_CALL(GetTaskRedirect<threads_per_task>
-                      <<<block_size, grid_size, 0, stream>>>(
-                          num_tasks, row_splits, redirect_out));
+    GetTaskRedirect<threads_per_task><<<block_size, grid_size, 0, stream>>>(
+        num_tasks, row_splits, redirect_out);
+    auto err = cudaGetLastError();
+    K2_DCHECK_CUDA_ERROR(err);
   }
 }
 

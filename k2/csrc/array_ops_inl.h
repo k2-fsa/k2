@@ -149,6 +149,7 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
   // TODO(haowen): limit the number of elements?
   K2_CHECK_EQ(rows, dest->Dim1());
   K2_CHECK_EQ(cols, dest->Dim0());
+  if (rows == 0 || cols == 0) return;
   int32_t src_elem_stride0 = src.ElemStride0();
   int32_t dest_elem_stride0 = dest->ElemStride0();
   const T *src_data = src.Data();
@@ -168,8 +169,8 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
                    NumBlocks(rows, internal::kTransTileDim));
     internal::TransposeKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
         rows, cols, src_elem_stride0, dest_elem_stride0, src_data, dest_data);
-    auto ret = cudaDeviceSynchronize();
-    K2_CHECK_CUDA_ERROR(ret);
+    auto err = cudaGetLastError();
+    K2_DCHECK_CUDA_ERROR(err);
   }
 }
 
