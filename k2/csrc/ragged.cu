@@ -156,7 +156,7 @@ Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
   // there must be row_splits.Dim() >=1 according to the definition of
   // RaggedShapeDim.
   K2_CHECK_GE(row_splits.Dim(), 1);
-  if (row_splits.Dim() != 1 && row_ids.Dim() == 0) {
+  if (!row_ids.IsValid()) {
     // create row_ids as it does not exist
     row_ids = Array1<int32_t>(Context(), row_splits[row_splits.Dim() - 1]);
     const int32_t *row_splits_data = row_splits.Data();
@@ -426,7 +426,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
     axes[0].row_splits = row_splits_array;
   }
   if (row_ids != nullptr) axes[0].row_ids = *row_ids;
-  axes[0].cached_tot_size = cached_tot_size;
+  axes[0].cached_tot_size = axes[0].row_splits.Back();
   // note below line will check if row_splits and row_ids are valid and agree
   // with each other.
   return RaggedShape(axes);
@@ -490,11 +490,11 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
     axes[0].row_splits = row_splits_array;
   }
   if (row_ids1 != nullptr) axes[0].row_ids = *row_ids1;
-  axes[0].cached_tot_size = cached_tot_size1;
+  axes[0].cached_tot_size = axes[0].row_splits.Back();
 
   // set row_splits and row_ids for axis 2
   if (row_splits2 != nullptr) {
-    axes[1].row_splits = *row_splits1;
+    axes[1].row_splits = *row_splits2;
   } else {
     // work out row_splits1, see code in RaggedShape2 above for the reason
     int32_t num_rows = row_ids2->Dim() == 0 ? 0 : row_ids2->Back() + 1;
@@ -503,7 +503,7 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
     axes[1].row_splits = row_splits_array;
   }
   if (row_ids2 != nullptr) axes[1].row_ids = *row_ids2;
-  axes[1].cached_tot_size = cached_tot_size2;
+  axes[1].cached_tot_size = axes[1].row_splits.Back();
 
   // we don't check here if
   // row_splits1[row_splits1.Dim() - 1] == row_ids1.Dim()
@@ -524,7 +524,8 @@ RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
     axes[axis - 1].row_ids = Array1<int32_t>(c, tot_sizes[axis]);
     axes[axis - 1].cached_tot_size = tot_sizes[axis];
   }
-  return RaggedShape(axes);
+  // Not check here as we did not set the values of row_splits and row_ids
+  return RaggedShape(axes, false);
 }
 
 Array1<int32_t *> GetRowSplitsPtr(RaggedShape &src) {
@@ -545,7 +546,7 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   // would be pushed forward.
   //
   // If 0 < axis <= src.NumAxes(), the inserted row_splits and row_ids would
-  // look like the following, if for instance the src.TotSize(axis-1) = 8:
+  // look like the following, if for instance the src.TotSize(axis) = 8:
   //   [ 0 1 2 3 4 5 6 7 8 ], [ 0 1 2 3 4 5 6 7 ].
   //
   // The reason why the code is different for axis == 0, is that in that case we
@@ -581,7 +582,7 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
     };
     Eval(c, mem.Dim(), lambda_set_mem);
   } else {
-    int32_t tot_size = src.TotSize(axis - 1);
+    int32_t tot_size = src.TotSize(axis);
     row_splits_dim = tot_size + 1;
     row_ids_dim = tot_size;
     mem = Array1<int32_t>(c, row_splits_dim + row_ids_dim);
@@ -593,6 +594,7 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   }
   axes_out[axis].row_splits = mem.Range(0, row_splits_dim);
   axes_out[axis].row_ids = mem.Range(row_splits_dim, row_ids_dim);
+  axes_out[axis].cached_tot_size = row_ids_dim;
   for (int32_t i = 0; i < axis; ++i) axes_out[i] = axes_in[i];
   // Note: the returned array has `num_axes_in + 1` axes, so its
   // array of RaggedShapeDim is of length `num_axes_in`.
@@ -988,7 +990,7 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
   K2_CHECK_GT(src.NumAxes(), 2);
   K2_CHECK(axis >= 0 && axis < src.NumAxes());
 
-  // note, `axes` is of dim src.NumAxes() - 1.
+  // note, `axes_in` is of dim src.NumAxes() - 1.
   // Also note: axes_in[i] pertains to the relationship between
   // axes i and i+1 in the source.
   src.Populate();
@@ -1005,7 +1007,11 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
         axes_in[axis - 1].row_ids[axes_in[axis].row_ids];
     axes_out[axis - 1].row_splits =
         axes_in[axis].row_splits[axes_in[axis - 1].row_splits];
+<<<<<<< 68a5d00f8af59f56f4ce24776a48d32b616edef1
     axes_out[axis - 1].cached_tot_size = axes_in[axis].cached_tot_size;
+=======
+    axes_out[axis - 1].cached_tot_size = axes_out[axis - 1].row_ids.Dim();
+>>>>>>> add tests to ragged ops
   }
   for (int32_t i = axis; i < axes_out_size; ++i) axes_out[i] = axes_in[i + 1];
   return RaggedShape(axes_out);

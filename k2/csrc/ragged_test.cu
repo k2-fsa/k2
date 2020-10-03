@@ -49,15 +49,250 @@ static void CheckRowSplits(k2::RaggedShape &shape,
     CheckArrayData<int32_t>(curr_row_splits, target[i - 1]);
   }
 }
+
+// check if `array` and `target` have the same values
+template <typename T>
+static void CheckArrayData(const k2::Array1<T> &array,
+                           const k2::Array1<T> &target) {
+  ASSERT_EQ(array.Dim(), target.Dim());
+  int32_t dim = array.Dim();
+  k2::ContextPtr cpu = k2::GetCpuContext();
+  k2::Array1<T> cpu_array = array.To(cpu);
+  k2::Array1<T> cpu_target = target.To(cpu);
+  std::vector<T> array_data(cpu_array.Data(), cpu_array.Data() + dim);
+  std::vector<T> target_data(cpu_target.Data(), cpu_target.Data() + dim);
+  EXPECT_EQ(array_data, target_data);
+}
 }  // namespace
 
 namespace k2 {
+class RaggedShapeOpsSuiteTest : public ::testing::Test {
+ protected:
+  RaggedShapeOpsSuiteTest() {
+    ContextPtr context = GetCpuContext();
+    const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+    const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
+    const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+    const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
+    const std::vector<int32_t> row_splits3 = {0,  2,  3,  5,  8, 9,
+                                              12, 13, 15, 15, 16};
+    const std::vector<int32_t> row_ids3 = {0, 0, 1, 2, 2, 3, 3, 3,
+                                           4, 5, 5, 5, 6, 7, 7, 9};
+    std::vector<RaggedShapeDim> axes;
+    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
+                                     Array1<int32_t>(context, row_ids1),
+                                     static_cast<int32_t>(row_ids1.size())});
+    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
+                                     Array1<int32_t>(context, row_ids2),
+                                     static_cast<int32_t>(row_ids2.size())});
+    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
+                                     Array1<int32_t>(context, row_ids3),
+                                     static_cast<int32_t>(row_ids3.size())});
+
+    simple_shape_ = RaggedShape(axes, true);
+
+    // random_shape_ is on CPU
+    random_shape_ = RandomRaggedShape(true,   // set_row_ids
+                                      3,      // min_num_axes
+                                      4,      // max_num_axes
+                                      0,      // min_num_elements
+                                      1000);  // max_num_elements
+  }
+
+  RaggedShape simple_shape_;
+  RaggedShape random_shape_;
+};
+
+void TestUnsqueeze(ContextPtr context, const RaggedShape &input_shape) {
+  RaggedShape src_shape = input_shape.To(context);
+  src_shape.Populate();  // set row_ids
+  {
+    // axis = 0.
+    RaggedShape shape = Unsqueeze(src_shape, 0);
+    int32_t dim0 = src_shape.Dim0();
+    const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
+    const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+
+    {
+      const Array1<int32_t> &row_splits0 = dest_axes[0].row_splits;
+      std::vector<int32_t> data = {0, dim0};
+      CheckArrayData(row_splits0, data);
+    }
+
+    {
+      const Array1<int32_t> &row_ids0 = dest_axes[0].row_ids;
+      std::vector<int32_t> data(dim0, 0);
+      CheckArrayData(row_ids0, data);
+    }
+
+    {
+      for (auto i = 0; i != src_axes.size(); ++i) {
+        CheckArrayData(src_axes[i].row_splits, dest_axes[i + 1].row_splits);
+        CheckArrayData(src_axes[i].row_ids, dest_axes[i + 1].row_ids);
+      }
+    }
+  }
+
+  {
+    // axis = 1
+    int32_t axis = 1;
+    RaggedShape shape = Unsqueeze(src_shape, axis);
+    int32_t tot_size = shape.TotSize(axis);
+    const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
+    const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+
+    {
+      for (auto i = 0; i < axis; ++i) {
+        CheckArrayData(src_axes[i].row_splits, dest_axes[i].row_splits);
+        CheckArrayData(src_axes[i].row_ids, dest_axes[i].row_ids);
+      }
+    }
+
+    {
+      const Array1<int32_t> &row_splits = dest_axes[axis].row_splits;
+      std::vector<int32_t> data(tot_size + 1);
+      std::iota(data.begin(), data.end(), 0);
+      CheckArrayData(row_splits, data);
+    }
+
+    {
+      const Array1<int32_t> &row_ids = dest_axes[axis].row_ids;
+      std::vector<int32_t> data(tot_size);
+      std::iota(data.begin(), data.end(), 0);
+      CheckArrayData(row_ids, data);
+    }
+
+    {
+      for (auto i = axis; i < src_axes.size(); ++i) {
+        CheckArrayData(src_axes[i].row_splits, dest_axes[i + 1].row_splits);
+        CheckArrayData(src_axes[i].row_ids, dest_axes[i + 1].row_ids);
+      }
+    }
+  }
+}
+
+TEST_F(RaggedShapeOpsSuiteTest, TestUnsqueezeCpu) {
+  TestUnsqueeze(GetCpuContext(), simple_shape_);
+  TestUnsqueeze(GetCpuContext(), random_shape_);
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestUnsqueezeGpu) {
+  TestUnsqueeze(GetCudaContext(), simple_shape_);
+  TestUnsqueeze(GetCudaContext(), random_shape_);
+}
+
+void TestRemoveAxis(ContextPtr context, const RaggedShape &input_shape) {
+  RaggedShape src_shape = input_shape.To(context);
+  ASSERT_EQ(src_shape.NumAxes(), 4);
+  {
+    // axis = 0.
+    int32_t axis = 0;
+    RaggedShape shape = RemoveAxis(src_shape, axis);
+    const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
+    const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+    ASSERT_EQ(src_axes.size(), 3);
+    ASSERT_EQ(dest_axes.size(), 2);
+
+    {
+      for (auto i = 0; i != dest_axes.size(); ++i) {
+        CheckArrayData(dest_axes[i].row_splits, src_axes[i + 1].row_splits);
+        CheckArrayData(dest_axes[i].row_ids, src_axes[i + 1].row_ids);
+      }
+    }
+  }
+
+  {
+    // axis = 1
+    int32_t axis = 1;
+    RaggedShape shape = RemoveAxis(src_shape, axis);
+    const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
+    const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+    ASSERT_EQ(src_axes.size(), 3);
+    ASSERT_EQ(dest_axes.size(), 2);
+
+    {
+      const Array1<int32_t> &row_splits0 = dest_axes[0].row_splits;
+      std::vector<int32_t> data = {0, 3, 7, 10};
+      CheckArrayData(row_splits0, data);
+    }
+
+    {
+      const Array1<int32_t> &row_ids0 = dest_axes[0].row_ids;
+      std::vector<int32_t> data = {0, 0, 0, 1, 1, 1, 1, 2, 2, 2};
+      CheckArrayData(row_ids0, data);
+    }
+
+    {
+      for (auto i = 1; i != dest_axes.size(); ++i) {
+        CheckArrayData(dest_axes[i].row_splits, src_axes[i + 1].row_splits);
+        CheckArrayData(dest_axes[i].row_ids, src_axes[i + 1].row_ids);
+      }
+    }
+  }
+
+  {
+    // axis = 3
+    int32_t axis = 3;  // the last axis
+    RaggedShape shape = RemoveAxis(src_shape, axis);
+    const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
+    const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+    ASSERT_EQ(src_axes.size(), 3);
+    ASSERT_EQ(dest_axes.size(), 2);
+
+    {
+      for (auto i = 0; i != dest_axes.size(); ++i) {
+        CheckArrayData(dest_axes[i].row_splits, src_axes[i].row_splits);
+        CheckArrayData(dest_axes[i].row_ids, src_axes[i].row_ids);
+      }
+    }
+  }
+}
+
+TEST_F(RaggedShapeOpsSuiteTest, TestRemoveAxisCpu) {
+  TestRemoveAxis(GetCpuContext(), simple_shape_);
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestRemoveAxisGpu) {
+  TestRemoveAxis(GetCudaContext(), simple_shape_);
+}
+
+void TestGetOffsets(ContextPtr context) {
+  for (int32_t i = 0; i != 2; ++i) {
+    int32_t num_shape = RandInt(10, 100);
+    int32_t num_axes = RandInt(2, 4);
+    std::vector<RaggedShape> shape_vec(num_shape);
+    std::vector<RaggedShape *> shapes(num_shape);
+    for (int32_t j = 0; j != num_shape; ++j) {
+      shape_vec[j] =
+          RandomRaggedShape(false, num_axes, num_axes, 0, 1000).To(context);
+      shapes[j] = &shape_vec[j];
+    }
+    RaggedShape **shapes_ptr = shapes.data();
+    Array2<int32_t> offsets = GetOffsets(num_shape, shapes_ptr);
+    ASSERT_EQ(offsets.Dim0(), num_axes + 1);
+    ASSERT_EQ(offsets.Dim1(), num_shape + 1);
+    auto acc = offsets.Accessor();
+    for (int32_t axis = 0; axis <= num_axes; ++axis) {
+      int32_t sum = 0;
+      for (int32_t j = 0; j <= num_shape; ++j) {
+        EXPECT_EQ(acc(axis, j), sum);
+        if (j < num_shape) {
+          sum += (axis == 0 ? 1 : shape_vec[j].TotSize(axis - 1));
+        }
+      }
+    }
+  }
+}
+
+TEST(RaggedShapeOpsTest, TestGetOffsets) {
+  TestGetOffsets(GetCpuContext());
+  TestGetOffsets(GetCudaContext());
+}
+
 // returns a random ragged shape where the dims on axis 1 are all the same
 // (so: can be transposed).
 RaggedShape RandomRaggedShapeToTranspose(ContextPtr c) {
   ContextPtr c_cpu = GetCpuContext();
 
-  RaggedShape random = RandomRaggedShape().To(c);
+  RaggedShape random = RandomRaggedShape(false, 2, 4, 0, 5000).To(c);
 
   int32_t input_dim0 = random.Dim0(), divisor = 1;
   for (int32_t i = 1; i * i <= input_dim0; i++) {
@@ -86,35 +321,267 @@ void TestTranspose() {
     context = GetCudaContext();
   }
 
-  RaggedShape to_transpose = RandomRaggedShapeToTranspose(context);
-  RaggedShape transposed = Transpose(to_transpose);
-
-  if (d != kCpu) {
-    ContextPtr c = GetCpuContext();
-    to_transpose = to_transpose.To(c);
-    transposed = transposed.To(c);
+  {
+    const std::vector<int32_t> row_splits1_vec = {0, 2, 4, 6};
+    const std::vector<int32_t> row_splits2_vec = {0, 3, 4, 7, 8, 10, 12};
+    Array1<int32_t> row_splits1(context, row_splits1_vec);
+    Array1<int32_t> row_splits2(context, row_splits2_vec);
+    RaggedShape src_shape =
+        RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+    ASSERT_EQ(src_shape.Dim0(), 3);
+    ASSERT_EQ(src_shape.TotSize(1), 6);
+    RaggedShape shape = Transpose(src_shape);
+    EXPECT_EQ(shape.Dim0(), 2);
+    ASSERT_EQ(shape.TotSize(1), 6);
+    const std::vector<int32_t> expected_row_splits = {0, 3, 6};
+    const std::vector<int32_t> expected_row_ids = {0, 0, 0, 1, 1, 1};
+    CheckArrayData(shape.RowSplits(1), expected_row_splits);
+    CheckArrayData(shape.RowIds(1), expected_row_ids);
+    CheckArrayData(shape.RowSplits(2), src_shape.RowSplits(2));
+    CheckArrayData(shape.RowIds(2), src_shape.RowIds(2));
   }
 
-  for (auto iter = transposed.Iterator(); !iter.Done(); iter.Next()) {
-    std::vector<int32_t> index = iter.Value();
-    int32_t i = transposed[index];  // Just make sure this doesn't crash, dont
-                                    // need the value.
-    std::swap(index[0], index[1]);
-    i = to_transpose[index];  // don't need the value, just need to make
-                              // sure it's an allowable index.
-  }
-  for (auto iter = to_transpose.Iterator(); !iter.Done(); iter.Next()) {
-    std::vector<int32_t> index = iter.Value();
-    std::swap(index[0], index[1]);
-    int32_t i = transposed[index];  // don't need the value, just need to make
-                                    // sure it's an allowable index.
+  {
+    // random case
+    RaggedShape to_transpose = RandomRaggedShapeToTranspose(context);
+    RaggedShape transposed = Transpose(to_transpose);
+
+    if (d != kCpu) {
+      to_transpose = to_transpose.To(cpu);
+      transposed = transposed.To(cpu);
+    }
+
+    for (auto iter = transposed.Iterator(); !iter.Done(); iter.Next()) {
+      std::vector<int32_t> index = iter.Value();
+      int32_t i = transposed[index];  // Just make sure this doesn't crash, dont
+                                      // need the value.
+      std::swap(index[0], index[1]);
+      i = to_transpose[index];  // don't need the value, just need to make
+                                // sure it's an allowable index.
+    }
+    for (auto iter = to_transpose.Iterator(); !iter.Done(); iter.Next()) {
+      std::vector<int32_t> index = iter.Value();
+      std::swap(index[0], index[1]);
+      int32_t i = transposed[index];  // don't need the value, just need to make
+                                      // sure it's an allowable index.
+    }
   }
 }
-TEST(RaggedTest, TestTranspose) {
-  // TODO(haowen): make it be a real test: add EXPECT_EQ, test related
-  // algorithms, etc.
+TEST(RaggedShapeOpsTest, TestTranspose) {
+  // TODO(haowen): uncomment after testing Renumber
   // TestTranspose<kCpu>();
   // TestTranspose<kCuda>();
+}
+
+template <DeviceType d>
+void TestRowSplitsPtr() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+  RaggedShape shape = RandomRaggedShape().To(context);
+  ASSERT_GE(shape.NumAxes(), 2);
+  Array1<int32_t *> ptrs = GetRowSplitsPtr(shape);
+  ASSERT_EQ(ptrs.Dim(), shape.NumAxes() - 1);
+  // as num_axes is not so big, access (may copy memory) it in a loop is fine.
+  for (int32_t i = 0; i != ptrs.Dim(); ++i) {
+    EXPECT_EQ(ptrs[i], shape.RowSplits(i + 1).Data());
+  }
+}
+TEST(RaggedShapeOpsTest, TestRowSplitsPtr) {
+  TestRowSplitsPtr<kCpu>();
+  TestRowSplitsPtr<kCuda>();
+}
+
+void TestRaggedShape2(ContextPtr context, const RaggedShape &shape) {
+  RaggedShape src_shape = shape.To(context);
+  src_shape.Populate();
+  ASSERT_GE(src_shape.NumAxes(), 2);
+  Array1<int32_t> row_splits = src_shape.RowSplits(1);
+  Array1<int32_t> row_ids = src_shape.RowIds(1);
+  int32_t cached_tot_size = src_shape.TotSize(1);
+
+  {
+    // both row_splits and row_ids are non-null
+    RaggedShape result = RaggedShape2(&row_splits, &row_ids, cached_tot_size);
+    CheckArrayData(result.RowSplits(1), row_splits);
+    CheckArrayData(result.RowIds(1), row_ids);
+    EXPECT_EQ(result.TotSize(1), cached_tot_size);
+  }
+  {
+    // both row_splits and row_ids are non-null, cached_tot_size = -1
+    RaggedShape result = RaggedShape2(&row_splits, &row_ids, -1);
+    CheckArrayData(result.RowSplits(1), row_splits);
+    CheckArrayData(result.RowIds(1), row_ids);
+    EXPECT_EQ(result.TotSize(1), cached_tot_size);
+  }
+  {
+    // row_ids is null
+    RaggedShape result = RaggedShape2(&row_splits, nullptr, cached_tot_size);
+    CheckArrayData(result.RowSplits(1), row_splits);
+    CheckArrayData(result.RowIds(1), row_ids);
+    EXPECT_EQ(result.TotSize(1), cached_tot_size);
+  }
+  {
+    // row_ids is null, cached_tot_size = -1
+    RaggedShape result = RaggedShape2(&row_splits, nullptr, -1);
+    CheckArrayData(result.RowSplits(1), row_splits);
+    CheckArrayData(result.RowIds(1), row_ids);
+    EXPECT_EQ(result.TotSize(1), cached_tot_size);
+  }
+
+  // note if row_splits == null, then we suppose there's no empty rows after the
+  // last row-id in row_ids
+  if (row_splits.Dim() == (row_ids.Dim() == 0 ? 1 : row_ids.Back() + 2)) {
+    {
+      // row_splits is null
+      RaggedShape result = RaggedShape2(nullptr, &row_ids, cached_tot_size);
+      CheckArrayData(result.RowSplits(1), row_splits);
+      CheckArrayData(result.RowIds(1), row_ids);
+      EXPECT_EQ(result.TotSize(1), cached_tot_size);
+    }
+    {
+      // row_splits is null, cached_tot_size = -1
+      RaggedShape result = RaggedShape2(nullptr, &row_ids, -1);
+      CheckArrayData(result.RowSplits(1), row_splits);
+      CheckArrayData(result.RowIds(1), row_ids);
+      EXPECT_EQ(result.TotSize(1), cached_tot_size);
+    }
+  }
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape2Cpu) {
+  TestRaggedShape2(GetCpuContext(), simple_shape_);
+  TestRaggedShape2(GetCpuContext(), random_shape_);
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape2Gpu) {
+  TestRaggedShape2(GetCudaContext(), simple_shape_);
+  TestRaggedShape2(GetCudaContext(), random_shape_);
+}
+
+void TestRaggedShape3(ContextPtr context, const RaggedShape &shape) {
+  RaggedShape src_shape = shape.To(context);
+  src_shape.Populate();
+  ASSERT_GE(src_shape.NumAxes(), 3);
+  Array1<int32_t> row_splits1 = src_shape.RowSplits(1);
+  Array1<int32_t> row_ids1 = src_shape.RowIds(1);
+  int32_t cached_tot_size1 = src_shape.TotSize(1);
+  Array1<int32_t> row_splits2 = src_shape.RowSplits(2);
+  Array1<int32_t> row_ids2 = src_shape.RowIds(2);
+  int32_t cached_tot_size2 = src_shape.TotSize(2);
+
+  {
+    // both row_splits and row_ids are non-null
+    RaggedShape result =
+        RaggedShape3(&row_splits1, &row_ids1, cached_tot_size1, &row_splits2,
+                     &row_ids2, cached_tot_size2);
+    CheckArrayData(result.RowSplits(1), row_splits1);
+    CheckArrayData(result.RowIds(1), row_ids1);
+    EXPECT_EQ(result.TotSize(1), cached_tot_size1);
+    CheckArrayData(result.RowSplits(2), row_splits2);
+    CheckArrayData(result.RowIds(2), row_ids2);
+    EXPECT_EQ(result.TotSize(2), cached_tot_size2);
+  }
+  {
+    // row_ids is non-null, cached_tot_size = -1
+    RaggedShape result =
+        RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+    CheckArrayData(result.RowSplits(1), row_splits1);
+    CheckArrayData(result.RowIds(1), row_ids1);
+    EXPECT_EQ(result.TotSize(1), cached_tot_size1);
+    CheckArrayData(result.RowSplits(2), row_splits2);
+    CheckArrayData(result.RowIds(2), row_ids2);
+    EXPECT_EQ(result.TotSize(2), cached_tot_size2);
+  }
+
+  // note if row_splits == null, then we suppose there's no empty rows after the
+  // last row-id in row_ids
+  bool valid1 =
+      (row_splits1.Dim() == (row_ids1.Dim() == 0 ? 1 : row_ids1.Back() + 2));
+  bool valid2 =
+      (row_splits2.Dim() == (row_ids2.Dim() == 0 ? 1 : row_ids2.Back() + 2));
+  if (valid1 && valid2) {
+    RaggedShape result =
+        RaggedShape3(nullptr, &row_ids1, -1, nullptr, &row_ids2, -1);
+    CheckArrayData(result.RowSplits(1), row_splits1);
+    CheckArrayData(result.RowIds(1), row_ids1);
+    EXPECT_EQ(result.TotSize(1), cached_tot_size1);
+    CheckArrayData(result.RowSplits(2), row_splits2);
+    CheckArrayData(result.RowIds(2), row_ids2);
+    EXPECT_EQ(result.TotSize(2), cached_tot_size2);
+  }
+  // TODO(haowen): add more cases for other branches
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape3Cpu) {
+  TestRaggedShape3(GetCpuContext(), simple_shape_);
+  TestRaggedShape3(GetCpuContext(), random_shape_);
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape3Gpu) {
+  TestRaggedShape3(GetCudaContext(), simple_shape_);
+  TestRaggedShape3(GetCudaContext(), random_shape_);
+}
+
+void TestComposeShape(ContextPtr context, const RaggedShape &shape) {
+  RaggedShape src_shape = shape.To(context);
+  ASSERT_GE(src_shape.NumAxes(), 3);
+  Array1<int32_t> row_splits1 = src_shape.RowSplits(1);
+  Array1<int32_t> row_ids1 = src_shape.RowIds(1);
+  Array1<int32_t> row_splits2 = src_shape.RowSplits(2);
+  Array1<int32_t> row_ids2 = src_shape.RowIds(2);
+
+  RaggedShape shape1 = RaggedShape2(&row_splits1, nullptr, -1);
+  RaggedShape shape2 = RaggedShape2(&row_splits2, nullptr, -1);
+
+  RaggedShape result = ComposeRaggedShapes(shape1, shape2);
+
+  ASSERT_EQ(result.NumAxes(), 3);
+
+  CheckArrayData(result.RowSplits(1), row_splits1);
+  CheckArrayData(result.RowIds(1), row_ids1);
+  CheckArrayData(result.RowSplits(2), row_splits2);
+  CheckArrayData(result.RowIds(2), row_ids2);
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestComposeShapeCpu) {
+  TestComposeShape(GetCpuContext(), simple_shape_);
+  TestComposeShape(GetCpuContext(), random_shape_);
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestComposeShapeGpu) {
+  TestComposeShape(GetCudaContext(), simple_shape_);
+  TestComposeShape(GetCudaContext(), random_shape_);
+}
+
+void TestShapeFromTotSize(ContextPtr context, const RaggedShape &shape) {
+  RaggedShape src_shape = shape.To(context);
+  ASSERT_GE(src_shape.NumAxes(), 2);
+
+  int32_t num_axes = src_shape.NumAxes();
+  std::vector<int32_t> tot_sizes(num_axes);
+  for (int32_t i = 0; i != num_axes; ++i) {
+    tot_sizes[i] = src_shape.TotSize(i);
+  }
+
+  RaggedShape result =
+      RaggedShapeFromTotSizes(context, num_axes, tot_sizes.data());
+
+  ASSERT_EQ(result.NumAxes(), num_axes);
+  for (int32_t i = 0; i < num_axes; ++i) {
+    EXPECT_EQ(result.TotSize(i), src_shape.TotSize(i));
+    if (i > 0) {
+      EXPECT_EQ(result.RowSplits(i).Dim(), src_shape.RowSplits(i).Dim());
+      EXPECT_EQ(result.RowIds(i).Dim(), src_shape.RowIds(i).Dim());
+    }
+  }
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestShapeFromTotSizeCpu) {
+  TestShapeFromTotSize(GetCpuContext(), simple_shape_);
+  TestShapeFromTotSize(GetCpuContext(), random_shape_);
+}
+TEST_F(RaggedShapeOpsSuiteTest, TestShapeFromTotSizeGpu) {
+  TestShapeFromTotSize(GetCudaContext(), simple_shape_);
+  TestShapeFromTotSize(GetCudaContext(), random_shape_);
 }
 
 template <typename T, DeviceType d>
@@ -304,7 +771,5 @@ TEST(RaggedTest, Ragged) {
   TestSortSublists<int32_t>();
   TestSortSublists<double>();
 }
-
-// TODO(Haowen): add more tests for other algorithms
 
 }  // namespace k2

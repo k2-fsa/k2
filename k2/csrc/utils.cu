@@ -120,7 +120,7 @@ static int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
 void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
                        const int32_t *row_splits, int32_t num_elems,
                        int32_t *row_ids) {
-  if (num_rows <= 0) return;
+  if (num_rows <= 0 || num_elems <= 0) return;
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     int32_t cur_row_start = row_splits[0];
