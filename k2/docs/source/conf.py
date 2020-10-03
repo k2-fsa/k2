@@ -12,10 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../python'))
-sys.path.insert(0, os.path.abspath('../../../build/lib'))
 
-import k2
 import sphinx_rtd_theme
 
 # -- Project information -----------------------------------------------------
@@ -25,8 +22,8 @@ copyright = '2020, k2 development team'
 author = 'k2 development team'
 
 # The full version, including alpha/beta/rc tags
-release = k2.__version__
-#  version = k2.__version__
+release = '0.0.1'
+version = '0.0.1'
 
 # -- General configuration ---------------------------------------------------
 
@@ -88,7 +85,7 @@ html_theme_options = {
 
 autodoc_default_options = {
     'content': 'both',
-    'members': True,
+    'members': None,
     'member-order': 'bysource',
     'special-members': '__init__',
     'undoc-members': True,

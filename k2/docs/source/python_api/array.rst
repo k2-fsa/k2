@@ -5,5 +5,4 @@ k2.array
 
 .. autoclass:: Array
     :members:
-    :private-members:
 
