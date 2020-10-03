@@ -137,6 +137,37 @@ class TestFsa(unittest.TestCase):
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
             fsa.to_str(negate_scores=True))
 
+    def test_symbol_table_and_dot(self):
+        isym_str = '''
+            <eps> 0
+            a 1
+            b 2
+            c 3
+        '''
+
+        osym_str = '''
+            <eps> 0
+            x 1
+            y 2
+            z 3
+        '''
+        isym = k2.SymbolTable.from_str(isym_str)
+        osym = k2.SymbolTable.from_str(osym_str)
+
+        rules = '''
+            0 1 1 1 0.5
+            0 1 2 2 1.5
+            1 2 3 3  2.5
+            2 3 -1 0 3.5
+            3
+        '''
+        fsa = k2.Fsa(_remove_leading_spaces(rules))
+        fsa.set_isymbol(isym)
+        fsa.set_osymbol(osym)
+        dot = fsa.to_dot()
+        dot.render('/tmp/fsa', format='pdf')
+        # the fsa is saved to /tmp/fsa.pdf
+
 
 if __name__ == '__main__':
     unittest.main()

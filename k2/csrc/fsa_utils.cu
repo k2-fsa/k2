@@ -159,9 +159,8 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
     int32_t super_final_state = max_state + 1;
     for (std::size_t i = 0; i != original_final_states.size(); ++i) {
-      arcs.emplace_back(original_final_states[i],
-                        super_final_state,
-                        -1,     // kFinalSymbol
+      arcs.emplace_back(original_final_states[i], super_final_state,
+                        -1,  // kFinalSymbol
                         scale * original_final_weights[i]);
     }
   }
@@ -178,8 +177,7 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
 }
 
 static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
-                                bool openfst,
-                                Array1<int32_t> *aux_labels) {
+                                bool openfst, Array1<int32_t> *aux_labels) {
   K2_CHECK(aux_labels != nullptr);
 
   std::vector<int32_t> state_aux_labels;
@@ -240,16 +238,15 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
     K2_CHECK_EQ(openfst, true);
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
     int32_t super_final_state = max_state + 1;
-    for (std::size_t = 0; i != original_final_states.size(); ++i) {
-      arcs.emplace_back(original_final_states[i],
-                        super_final_state,
-                        -1,             // kFinalSymbol
+    for (std::size_t i = 0; i != original_final_states.size(); ++i) {
+      arcs.emplace_back(original_final_states[i], super_final_state,
+                        -1,  // kFinalSymbol
                         scale * original_final_weights[i]);
       // TODO(guoguo) We are not sure yet what to put as the auxiliary label for
       //              arcs entering the super final state. The only real choices
       //              are kEpsilon or kFinalSymbol. We are using kEpsilon for
       //              now.
-      state_aux_labels.push_back(0);    // kEpsilon
+      state_aux_labels.push_back(0);  // kEpsilon
     }
   }
 
