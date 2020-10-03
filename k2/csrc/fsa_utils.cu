@@ -144,7 +144,7 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
       break;                         // finish reading
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
-                    << "\nIt expects a line with 4 fields";
+                    << "\nIt expects a line with 1, 2 or 4 fields";
     }
   } while (std::getline(is, line));
 
@@ -156,13 +156,16 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
     K2_CHECK_EQ(openfst, true);
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
     int32_t super_final_state = max_state + 1;
-    for (int32_t i = 0; i != original_final_states.size(); ++i) {
+    for (auto i = 0; i != original_final_states.size(); ++i) {
       arcs.emplace_back(original_final_states[i],
                         super_final_state,
                         -1,     // kFinalSymbol
                         scale * original_final_weights[i]);
     }
   }
+
+  // Sort arcs so that source states are in non-decreasing order.
+  std::sort(arcs.begin(), arcs.end());
 
   bool error = true;
   Array1<Arc> array(GetCpuContext(), arcs);
@@ -223,7 +226,7 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
       break;  // finish reading
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
-                    << "\nIt expects a line with 5 fields";
+                    << "\nIt expects a line with 1, 2 or 5 fields";
     }
   } while (std::getline(is, line));
 
@@ -235,7 +238,7 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
     K2_CHECK_EQ(openfst, true);
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
     int32_t super_final_state = max_state + 1;
-    for (int32_t i = 0; i != original_final_states.size(); ++i) {
+    for (auto i = 0; i != original_final_states.size(); ++i) {
       arcs.emplace_back(original_final_states[i],
                         super_final_state,
                         -1,             // kFinalSymbol
@@ -246,6 +249,23 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
       //              now.
       state_aux_labels.push_back(0);    // kEpsilon
     }
+  }
+
+  // Sort arcs so that source states are in non-decreasing order. We have to do
+  // this simultaneously for both arcs and auxiliary labels. The following
+  // implementation makes a pair of (Arc, AuxLabel) for sorting.
+  // TODO(guoguo) Optimize this when necessary.
+  std::vector<std::pair<Arc, int32_t>> arcs_and_aux_labels;
+  K2_CHECK_EQ(state_aux_labels.size(), arcs.size());
+  arcs_and_aux_labels.resize(arcs.size());
+  for (auto i = 0; i < arcs.size(); ++i) {
+    arcs_and_aux_labels[i] = std::make_pair(arcs[i], state_aux_labels[i]);
+  }
+  // Default pair comparison should work for us.
+  std::sort(arcs_and_aux_labels.begin(), arcs_and_aux_labels.end());
+  for (auto i = 0; i < arcs.size(); ++i) {
+    arcs[i] = arcs_and_aux_labels[i].first;
+    state_aux_labels[i] = arcs_and_aux_labels[i].second;
   }
 
   auto cpu_context = GetCpuContext();

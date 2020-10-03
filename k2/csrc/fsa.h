@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *                      Guoguo Chen
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -30,6 +31,14 @@ struct Arc {
         dest_state(dest_state),
         symbol(symbol),
         score(score) {}
+
+  bool operator<(const Arc &other) const {
+    // Compares `src_state` first, then `symbol`, then `dest_state`, then
+    // 'score'
+    return std::tie(src_state, symbol, dest_state, score) <
+           std::tie(other.src_state, other.symbol,
+                    other.dest_state, other.score);
+  }
 };
 
 // for debug only

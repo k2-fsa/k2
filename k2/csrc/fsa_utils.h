@@ -49,8 +49,6 @@ namespace k2 {
   Note that fields are separated by spaces and tabs. There can exist
   multiple tabs and spaces.
 
-  CAUTION: We assume that `final_state` has the largest state number.
-
   @param [in]   s   The input string. See the above description for its format.
   @param [in]   openfst
                     If true, the string form has the weights as costs, not
