@@ -410,7 +410,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
     if (row_ids != nullptr) K2_CHECK_EQ(cached_tot_size, row_ids->Dim());
     if (row_splits != nullptr) {
       // may be slow as it may copy memory from device to host
-      K2_CHECK_EQ(cached_tot_size, row_splits->Back());
+      K2_DCHECK_EQ(cached_tot_size, row_splits->Back());
     }
   }
   std::vector<RaggedShapeDim> axes(1);
@@ -426,7 +426,11 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
     axes[0].row_splits = row_splits_array;
   }
   if (row_ids != nullptr) axes[0].row_ids = *row_ids;
-  axes[0].cached_tot_size = axes[0].row_splits.Back();
+  if (cached_tot_size == -1) {
+    cached_tot_size =
+        row_ids != nullptr ? row_ids->Dim() : axes[0].row_splits.Back();
+  }
+  axes[0].cached_tot_size = cached_tot_size;
   // note below line will check if row_splits and row_ids are valid and agree
   // with each other.
   return RaggedShape(axes);
@@ -465,7 +469,7 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
     if (row_ids1 != nullptr) K2_CHECK_EQ(cached_tot_size1, row_ids1->Dim());
     if (row_splits1 != nullptr) {
       // may be slow as it may copy memory from device to host
-      K2_CHECK_EQ(cached_tot_size1, row_splits1->Back());
+      K2_DCHECK_EQ(cached_tot_size1, row_splits1->Back());
     }
   }
 
@@ -474,7 +478,7 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
     if (row_ids2 != nullptr) K2_CHECK_EQ(cached_tot_size2, row_ids2->Dim());
     if (row_splits2 != nullptr) {
       // may be slow as it may copy memory from device to host
-      K2_CHECK_EQ(cached_tot_size2, row_splits2->Back());
+      K2_DCHECK_EQ(cached_tot_size2, row_splits2->Back());
     }
   }
 
@@ -490,7 +494,11 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
     axes[0].row_splits = row_splits_array;
   }
   if (row_ids1 != nullptr) axes[0].row_ids = *row_ids1;
-  axes[0].cached_tot_size = axes[0].row_splits.Back();
+  if (cached_tot_size1 == -1) {
+    cached_tot_size1 =
+        row_ids1 != nullptr ? row_ids1->Dim() : axes[0].row_splits.Back();
+  }
+  axes[0].cached_tot_size = cached_tot_size1;
 
   // set row_splits and row_ids for axis 2
   if (row_splits2 != nullptr) {
@@ -503,7 +511,11 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
     axes[1].row_splits = row_splits_array;
   }
   if (row_ids2 != nullptr) axes[1].row_ids = *row_ids2;
-  axes[1].cached_tot_size = axes[1].row_splits.Back();
+  if (cached_tot_size2 == -1) {
+    cached_tot_size2 =
+        row_ids2 != nullptr ? row_ids2->Dim() : axes[1].row_splits.Back();
+  }
+  axes[1].cached_tot_size = cached_tot_size2;
 
   // we don't check here if
   // row_splits1[row_splits1.Dim() - 1] == row_ids1.Dim()
@@ -1007,11 +1019,7 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
         axes_in[axis - 1].row_ids[axes_in[axis].row_ids];
     axes_out[axis - 1].row_splits =
         axes_in[axis].row_splits[axes_in[axis - 1].row_splits];
-<<<<<<< 68a5d00f8af59f56f4ce24776a48d32b616edef1
-    axes_out[axis - 1].cached_tot_size = axes_in[axis].cached_tot_size;
-=======
     axes_out[axis - 1].cached_tot_size = axes_out[axis - 1].row_ids.Dim();
->>>>>>> add tests to ragged ops
   }
   for (int32_t i = axis; i < axes_out_size; ++i) axes_out[i] = axes_in[i + 1];
   return RaggedShape(axes_out);
