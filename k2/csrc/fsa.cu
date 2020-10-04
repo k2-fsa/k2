@@ -171,11 +171,13 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
       // it.
       if (arc.dest_state != arc.src_state)
         reachable_data[num_states + idx01] = 1;
-    }
+    } else if (arc.src_state == prev_arc.src_state) {
+      int32_t symbol_diff = arc.symbol - prev_arc.symbol;
+      if (symbol_diff <= 0)
+        neg_property |= kFsaPropertiesArcSortedAndDeterministic;
 
-    if (idx012 > 0 && prev_arc.src_state == arc.src_state &&
-        prev_arc.symbol > arc.symbol)
-      neg_property |= kFsaPropertiesArcSorted;
+      if (symbol_diff < 0) neg_property |= kFsaPropertiesArcSorted;
+    }
 
     properties_data[idx012] = ~neg_property;
   };

@@ -36,8 +36,8 @@ struct Arc {
     // Compares `src_state` first, then `symbol`, then `dest_state`, then
     // 'score'
     return std::tie(src_state, symbol, dest_state, score) <
-           std::tie(other.src_state, other.symbol,
-                    other.dest_state, other.score);
+           std::tie(other.src_state, other.symbol, other.dest_state,
+                    other.score);
   }
 };
 
@@ -243,8 +243,7 @@ inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
   Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really
   the same type, just with different expectations on the number of axes!
  */
-inline FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas,
-                           const Fsa **fsas) {
+inline FsaVec CreateFsaVec(int32_t num_fsas, const Fsa **fsas) {
   // Implementation goes to this template:
   //  template <typename T>
   //  Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
@@ -257,26 +256,26 @@ inline FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas,
 // Is non-const becaues the FSA's row-ids
 FsaVec FsaVecFromFsa(const Fsa &fsa);
 
-// Compute and return basic properties for Fsa.  Returns 0 if fsa.NumAxes() != 2.
+// Compute and return basic properties for Fsa.
+// Returns 0 if fsa.NumAxes() != 2.
 int32_t GetFsaBasicProperties(const Fsa &fsa);
-
 
 /*
   Compute basic properties for an FsaVec, with their `and` in `properties_tot`.
 
      @param [in] fsa_vec   FSAs to compute the properties of.  It is an
-                   error if fsa_vec.NumAxes() != 3 (will crash).
+                           error if fsa_vec.NumAxes() != 3 (will crash).
      @param [out] properties_out  The properties per FSA will be written to
                    here, on the same device as `fsa_vec`.  This array
                    will be assigned to (does not have to be correctly sized at
                    entry).
-     @param [out] tot_properties_out  The `and` of all properties in `properties_out`
-                   will be written to this host (i.e. CPU-memory) pointer.
+     @param [out] tot_properties_out  The `and` of all properties in
+                  `properties_out` will be written to this host
+                  (i.e. CPU-memory) pointer.
 */
 void GetFsaVecBasicProperties(const FsaVec &fsa_vec,
                               Array1<int32_t> *properties_out,
                               int32_t *tot_properties_out);
-
 
 // Return weights of `arcs` as a Tensor that shares the same memory
 // location
