@@ -149,6 +149,7 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
   // TODO(haowen): limit the number of elements?
   K2_CHECK_EQ(rows, dest->Dim1());
   K2_CHECK_EQ(cols, dest->Dim0());
+  if (rows == 0 || cols == 0) return;
   int32_t src_elem_stride0 = src.ElemStride0();
   int32_t dest_elem_stride0 = dest->ElemStride0();
   const T *src_data = src.Data();
@@ -166,10 +167,11 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
     dim3 block_size(internal::kTransTileDim, internal::kTransBlockRows, 1);
     dim3 grid_size(NumBlocks(cols, internal::kTransTileDim),
                    NumBlocks(rows, internal::kTransTileDim));
-    internal::TransposeKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
-        rows, cols, src_elem_stride0, dest_elem_stride0, src_data, dest_data);
-    auto ret = cudaDeviceSynchronize();
-    K2_CHECK_CUDA_ERROR(ret);
+    K2_CUDA_SAFE_CALL(
+        internal::
+            TransposeKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
+                rows, cols, src_elem_stride0, dest_elem_stride0, src_data,
+                dest_data));
   }
 }
 
@@ -415,12 +417,12 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
     void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
     // the first time is to determine temporary device storage requirements
-    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
+    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Reduce(
         d_temp_storage, temp_storage_bytes, src_data, dest_data, size, op,
         default_value, c->GetCudaStream()));
     void *deleter_context;
     d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
-    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
+    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Reduce(
         d_temp_storage, temp_storage_bytes, src_data, dest_data, size, op,
         default_value, c->GetCudaStream()));
   }
