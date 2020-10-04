@@ -43,11 +43,11 @@ void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest) {
     std::size_t temp_storage_bytes = 0;
     // since d_temp_storage is nullptr, the following function will compute
     // the number of required bytes for d_temp_storage
-    K2_CHECK_CUDA_ERROR(cub::DeviceScan::ExclusiveSum(
+    K2_CUDA_SAFE_CALL(cub::DeviceScan::ExclusiveSum(
         d_temp_storage, temp_storage_bytes, src, dest, n, c->GetCudaStream()));
     void *deleter_context;
     d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
-    K2_CHECK_CUDA_ERROR(cub::DeviceScan::ExclusiveSum(
+    K2_CUDA_SAFE_CALL(cub::DeviceScan::ExclusiveSum(
         d_temp_storage, temp_storage_bytes, src, dest, n, c->GetCudaStream()));
     c->Deallocate(d_temp_storage, deleter_context);
   }

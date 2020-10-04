@@ -193,14 +193,14 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
     void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
     // the first time is to determine temporary device storage requirements
-    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Max(
-        d_temp_storage, temp_storage_bytes, row_splits_diff, max_value,
-        num_rows, c->GetCudaStream()));
+    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes,
+                                             row_splits_diff, max_value,
+                                             num_rows, c->GetCudaStream()));
     void *deleter_context;
     d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
-    K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Max(
-        d_temp_storage, temp_storage_bytes, row_splits_diff, max_value,
-        num_rows, c->GetCudaStream()));
+    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes,
+                                             row_splits_diff, max_value,
+                                             num_rows, c->GetCudaStream()));
     c->Deallocate(d_temp_storage, deleter_context);
     // this will convert to memory on CPU
     return max_array[0];
