@@ -64,26 +64,25 @@ std::string FsaPropertiesAsString(int32_t properties) {
   static constexpr char kSep = '|';
   std::ostringstream os;
 
+  // clang-format off
   if (properties & kFsaPropertiesValid) os << kSep << "Valid";
   if (properties & kFsaPropertiesNonempty) os << kSep << "Nonempty";
   if (properties & kFsaPropertiesTopSorted) os << kSep << "TopSorted";
-  if (properties & kFsaPropertiesTopSortedAndAcyclic) os << kSep << "TopSortedAndAcyclic";
+  if (properties & kFsaPropertiesTopSortedAndAcyclic) os << kSep << "TopSortedAndAcyclic"; // NOLINT
   if (properties & kFsaPropertiesArcSorted) os << kSep << "ArcSorted";
-  if (properties & kFsaPropertiesArcSortedAndDeterministic) os << kSep << "ArcSortedAndDeterministic";
+  if (properties & kFsaPropertiesArcSortedAndDeterministic) os << kSep << "ArcSortedAndDeterministic";  // NOLINT
   if (properties & kFsaPropertiesEpsilonFree) os << kSep << "EpsilonFree";
-  if (properties & kFsaPropertiesMaybeAccessible) os << kSep << "MaybeAccessible";
-  if (properties & kFsaPropertiesMaybeCoaccessible) os << kSep << "MaybeCoaccessible";
+  if (properties & kFsaPropertiesMaybeAccessible) os << kSep << "MaybeAccessible";  // NOLINT
+  if (properties & kFsaPropertiesMaybeCoaccessible) os << kSep << "MaybeCoaccessible";  // NOLINT
   if (properties & kFsaPropertiesSerializable) os << kSep << "Serializable";
-
+  // clang-format on
 
   size_t offset = (os.str().empty() ? 0 : 1);  // remove leading '|'
   os << '"';
   return std::string("\"") + std::string(os.str().c_str() + offset);
 }
 
-
-void GetFsaVecBasicProperties(FsaVec &fsa_vec,
-                              Array1<int32_t> *properties_out,
+void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
                               int32_t *tot_properties_out) {
   if (fsa_vec.NumAxes() != 3) {
     K2_LOG(FATAL) << "Input has wrong num-axes " << fsa_vec.NumAxes()
@@ -105,7 +104,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec,
 
   // `reachable[idx01]` will be true if the state with index idx01 has an arc
   // entering it or is state 0 of its FSA, not counting self-loops; it's a
-  // looser condition than being 'accessible' in FSA terminlogy, simply meaning
+  // looser condition than being 'accessible' in FSA terminology, simply meaning
   // it's reachable from some state (which might not itself be reachable).
   //
   // reachable[num_states + idx01] will be true if the state with index idx01 is
@@ -113,7 +112,8 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec,
   // leaving it, not counting self-loops. Again, it's a looser condition than
   // being 'co-accessible' in FSA terminology.
 
-  Array1<char> reachable_mem(c, num_states * 2 + num_fsas * 2, static_cast<char>(0));
+  Array1<char> reachable_mem(c, num_states * 2 + num_fsas * 2,
+                             static_cast<char>(0));
 
   Array1<char> reachable = reachable_mem.Range(0, num_states);
   Array1<char> co_reachable = reachable_mem.Range(num_states, num_states);
@@ -176,26 +176,30 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec,
       if (symbol_diff <= 0) neg_properties |= kFsaPropertiesArcSortedAndDeterministic;
       if (symbol_diff < 0) neg_properties |= kFsaPropertiesArcSorted;
     }
+
+    if (idx012 > 0 && prev_arc.src_state == arc.src_state &&
+        prev_arc.symbol > arc.symbol)
+      neg_property |= kFsaPropertiesArcSorted;
+
     properties_data[idx012] = ~neg_property;
   };
   Eval(c, num_arcs, lambda_get_properties);
 
-
   // Figure out the properties per FSA.
   RaggedShape fsa_to_arcs_shape = RemoveAxis(fsa_vec.shape, 1),
-      fsa_to_states_shape = RemoveAxis(fsa_vec.shape, 2);
+              fsa_to_states_shape = RemoveAxis(fsa_vec.shape, 2);
   Ragged<int32_t> properties_ragged(fsa_to_arcs_shape, properties);
   Ragged<char> reachable_ragged(fsa_to_states_shape, reachable),
       co_reachable_ragged(fsa_to_states_shape, co_reachable);
-
 
   Array1<int32_t> properties_per_fsa_mem(c, num_fsas + 1),
       properties_per_fsa = properties_per_fsa_mem.Range(0, num_fsas),
       properties_total = properties_per_fsa_mem.Range(num_fsas, 1);
 
-
-  Array1<char> reachable_per_fsa = reachable_mem.Range(num_states * 2, num_fsas),
-      co_reachable_per_fsa = reachable_mem.Range(num_states * 2 + num_fsas, num_fsas);
+  Array1<char> reachable_per_fsa =
+                   reachable_mem.Range(num_states * 2, num_fsas),
+               co_reachable_per_fsa =
+                   reachable_mem.Range(num_states * 2 + num_fsas, num_fsas);
   {
     ParallelRunner pr(c);
     {
@@ -217,18 +221,18 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec,
   {
     int32_t *properties_per_fsa_data = properties_per_fsa.Data();
     char *reachable_per_fsa_data = reachable_per_fsa.Data(),
-        *co_reachable_per_fsa_data = co_reachable_per_fsa.Data();
+         *co_reachable_per_fsa_data = co_reachable_per_fsa.Data();
 
-    auto lambda_finalize_properties = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_finalize_properties =
+        [=] __host__ __device__(int32_t i) -> void {
       int32_t neg_properties = ~(properties_per_fsa_data[i]);
       char reachable = reachable_per_fsa_data[i],
-          co_reachable = co_reachable_per_fsa_data[i];
-      int32_t fsa_has_no_arcs =
-          (row_splits2_data[row_splits1_data[i]] ==
-           row_splits2_data[row_splits1_data[i + 1]]);
-      neg_properties |=  (!reachable * kFsaPropertiesMaybeAccessible) |
-          (!co_reachable * kFsaPropertiesMaybeCoaccessible) |
-          (fsa_has_no_arcs * kFsaPropertiesSerializable);
+           co_reachable = co_reachable_per_fsa_data[i];
+      int32_t fsa_has_no_arcs = (row_splits2_data[row_splits1_data[i]] ==
+                                 row_splits2_data[row_splits1_data[i + 1]]);
+      neg_properties |= (!reachable * kFsaPropertiesMaybeAccessible) |
+                        (!co_reachable * kFsaPropertiesMaybeCoaccessible) |
+                        (fsa_has_no_arcs * kFsaPropertiesSerializable);
       properties_per_fsa_data[i] = ~neg_properties;
     };
     Eval(c, num_fsas, lambda_finalize_properties);
@@ -239,8 +243,6 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec,
     *properties_out = properties_per_fsa;
   }
 }
-
-
 
 FsaVec FsaVecFromFsa(const Fsa &fsa) {
   ContextPtr c = fsa.values.Context();
@@ -325,8 +327,8 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
                             kFsaPropertiesSerializable);
   if (tot_properties & required_props != required_props) {
     K2_LOG(WARNING) << "Did not have expected properties "
-                    << FsaPropertiesAsString(tot_properties & required_props) << " vs. "
-                    << FsaPropertiesAsString(required_props)
+                    << FsaPropertiesAsString(tot_properties & required_props)
+                    << " vs. " << FsaPropertiesAsString(required_props)
                     << ", all properties were: "
                     << FsaPropertiesAsString(tot_properties);
     *error = true;
@@ -475,8 +477,8 @@ Fsa FsaVecFromArray1(Array1<Arc> &array, bool *error) {
                             kFsaPropertiesSerializable);
   if (tot_properties & required_props) {
     K2_LOG(WARNING) << "Did not have expected properties "
-                    << FsaPropertiesAsString(tot_properties & required_props) << " vs. "
-                    << FsaPropertiesAsString(required_props)
+                    << FsaPropertiesAsString(tot_properties & required_props)
+                    << " vs. " << FsaPropertiesAsString(required_props)
                     << ", all properties were: "
                     << FsaPropertiesAsString(tot_properties);
     *error = true;

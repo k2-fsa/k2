@@ -404,9 +404,8 @@ void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   } else {
     int32_t block_size = 256;
     int32_t grid_size = NumBlocks(n, block_size);
-    eval_lambda<LambdaT><<<grid_size, block_size, 0, stream>>>(n, lambda);
-    auto err = cudaGetLastError();
-    K2_DCHECK_CUDA_ERROR(err);
+    K2_CUDA_SAFE_CALL(eval_lambda<LambdaT>
+                      <<<grid_size, block_size, 0, stream>>>(n, lambda));
   }
 }
 
@@ -431,10 +430,8 @@ void Eval(cudaStream_t stream, T *data, int32_t n, LambdaT &lambda) {
   } else {
     int32_t block_size = 256;
     int32_t grid_size = NumBlocks(n, block_size);
-    eval_lambda<T, LambdaT>
-        <<<grid_size, block_size, 0, stream>>>(data, n, lambda);
-    auto err = cudaGetLastError();
-    K2_DCHECK_CUDA_ERROR(err);
+    K2_CUDA_SAFE_CALL(eval_lambda<T, LambdaT>
+                      <<<grid_size, block_size, 0, stream>>>(data, n, lambda));
   }
 }
 
@@ -472,9 +469,8 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
     // GetBlockSizesForSimpleMatrixOperation().
     dim3 block_size(16, 16, 1);
     dim3 grid_size(NumBlocks(n, 16), NumBlocks(m, 16));
-    eval_lambda2<<<grid_size, block_size, 0, stream>>>(m, n, lambda);
-    auto err = cudaGetLastError();
-    K2_DCHECK_CUDA_ERROR(err);
+    K2_CUDA_SAFE_CALL(
+        eval_lambda2<<<grid_size, block_size, 0, stream>>>(m, n, lambda));
   }
 }
 

@@ -4,8 +4,10 @@ statistics=true
 max-line-length=80
 exclude =
   .git,
+  setup.py,
   build,
-  k2/python/host
+  k2/python/host,
+  k2/docs
 
 ignore =
   # E127 continuation line over-indented for visual indent

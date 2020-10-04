@@ -73,6 +73,10 @@ class Array1 {
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
   Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}
 
+  // Return if the array is valid or not. An array is valid if we can call
+  // Context() on it.
+  bool IsValid() const { return region_ != nullptr; }
+
   Array1(int32_t dim, RegionPtr region, int32_t byte_offset)
       : dim_(dim), byte_offset_(byte_offset), region_(region) {}
 
@@ -84,13 +88,14 @@ class Array1 {
   /* Return sub-part of this array. Note that the returned Array1 is not const,
      the caller should be careful when changing array's data, it will
      also change data in the parent array as they share the memory.
-     @param [in] start  First element to cover, 0 <= start < Dim()
-     @param [in] size   Number of elements to include, 0 < size <= Dim()-start
+     @param [in] start  First element to cover, 0 <= start <= Dim();
+                        If start == Dim(), it just returns an empty array.
+     @param [in] size   Number of elements to include, 0 <= size <= Dim()-start
   */
   Array1 Range(int32_t start, int32_t size) {
     K2_CHECK_GE(start, 0);
-    K2_CHECK_LT(start, Dim());
-    K2_CHECK_GT(size, 0);
+    K2_CHECK_LE(start, Dim());
+    K2_CHECK_GE(size, 0);
     K2_CHECK_LE(size, Dim() - start);
     return Array1(size, region_, byte_offset_ + start * ElementSize());
   }
@@ -112,7 +117,7 @@ class Array1 {
   Tensor Range(int32_t start, int32_t size, int32_t inc) {
     K2_CHECK_GE(start, 0);
     K2_CHECK_LT(start, Dim());
-    K2_CHECK_GT(size, 0);
+    K2_CHECK_GE(size, 0);
     K2_CHECK_GT(inc, 0);
     K2_CHECK_LT((size - 1) * inc, Dim() - start);
     Dtype type = DtypeOf<ValueType>::dtype;

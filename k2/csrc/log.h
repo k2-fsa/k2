@@ -140,7 +140,7 @@ class Logger {
 
 class Voidifier {
  public:
-  K2_CUDA_HOSTDEV void operator&(const Logger &) const {}
+  K2_CUDA_HOSTDEV void operator&(const Logger &)const {}
 };
 
 }  // namespace internal
@@ -190,15 +190,22 @@ class Voidifier {
 #define K2_LOG(x) \
   ::k2::internal::Logger(__FILE__, __func__, __LINE__, ::k2::internal::x)
 
+// `x` would be error code returned from any cuda function call or kernel
+// launch.
+//
+// Caution: don't do this:
+//     K2_CHECK_CUDA_ERROR(cudaGetLastError())
+// as it will call `cudaGetLastError` twice and reset the error status.
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 
-#define K2_CUDA_SAFE_CALL(...)                                               \
-  do {                                                                       \
-    __VA_ARGS__;                                                             \
-    cudaError_t e = ::k2::internal::kDisableDebug ? cudaGetLastError()       \
-                                                  : cudaDeviceSynchronize(); \
-    K2_CHECK_CUDA_ERROR(e);                                                  \
+// The parameter should be cuda function call or kernel launch.
+#define K2_CUDA_SAFE_CALL(...)                                   \
+  do {                                                           \
+    __VA_ARGS__;                                                 \
+    if (!::k2::internal::kDisableDebug) cudaDeviceSynchronize(); \
+    cudaError_t e = cudaGetLastError();                          \
+    K2_CHECK_CUDA_ERROR(e);                                      \
   } while (0)
 
 // ============================================================
@@ -229,6 +236,13 @@ class Voidifier {
   ::k2::internal::kDisableDebug ? (void)0 \
                                 : ::k2::internal::Voidifier() & K2_LOG(x)
 
+// `x` would be error code returned from any cuda function call or kernel
+// launch.
+//
+// CAUTION: don't do this:
+//     auto error = cudaGetLastError();
+//     K2_DCHECK_CUDA_ERROR(error);
+// as you may reset the error status without checking it in release mode.
 #define K2_DCHECK_CUDA_ERROR(x) \
   ::k2::internal::kDisableDebug ? (void)0 : K2_CHECK_CUDA_ERROR(x)
 

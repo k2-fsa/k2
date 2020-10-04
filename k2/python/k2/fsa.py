@@ -7,6 +7,7 @@ from typing import Union
 
 import torch
 
+from .symbol_table import SymbolTable
 from _k2 import _Fsa
 from _k2 import _as_float
 from _k2 import _fsa_from_str
@@ -17,7 +18,7 @@ from graphviz import Digraph
 
 class Fsa(object):
 
-    def __init__(self, s: str, negate_scores: bool = False):
+    def __init__(self, s: str, openfst: bool = False):
         '''Create an Fsa from a string.
 
         The given string `s` consists of lines with the following format:
@@ -49,14 +50,14 @@ class Fsa(object):
         Args:
           s:
             The input string. Refer to the above comment for its format.
-          negate_scores:
+          openfst:
             Optional. If true, the string form has the weights as costs,
             not scores, so we negate as we read.
         '''
         fsa: _Fsa
         aux_labels: Optional[torch.Tensor]
 
-        fsa, aux_labels = _fsa_from_str(s, negate_scores)
+        fsa, aux_labels = _fsa_from_str(s, openfst)
 
         self._fsa = fsa
         self._aux_labels = aux_labels
@@ -106,20 +107,43 @@ class Fsa(object):
         ans._aux_labels = aux_labels
         return ans
 
-    def to_str(self, negate_scores: bool = False) -> str:
+    def set_isymbol(self, isym: SymbolTable) -> None:
+        '''Set the input symbol table.
+
+        Args:
+          isym:
+            The input symbol table.
+        Returns:
+          None.
+        '''
+        self.isym = isym
+
+    def set_osymbol(self, osym: SymbolTable) -> None:
+        '''Set the output symbol table.
+
+        Args:
+          osym:
+            The output symbol table.
+
+        Returns:
+          None.
+        '''
+        self.osym = osym
+
+    def to_str(self, openfst: bool = False) -> str:
         '''Convert an Fsa to a string.
 
         Note:
           The returned string can be used to construct an Fsa.
 
         Args:
-          negate_scores:
+          openfst:
             Optional. If true, we negate the score during the conversion,
 
         Returns:
           A string representation of the Fsa.
         '''
-        return _fsa_to_str(self._fsa, negate_scores, self._aux_labels)
+        return _fsa_to_str(self._fsa, openfst, self._aux_labels)
 
     @property
     def arcs(self) -> torch.Tensor:
@@ -221,6 +245,7 @@ class Fsa(object):
             src_state, dst_state, label = arc.tolist()
             src_state = str(src_state)
             dst_state = str(dst_state)
+            label = int(label)
             if label == -1:
                 final_state = dst_state
             if src_state not in seen:
@@ -235,9 +260,15 @@ class Fsa(object):
                     dot.node(dst_state, label=dst_state, **default_node_attr)
                 seen.add(dst_state)
             if self._aux_labels is not None:
-                aux_label = f':{self._aux_labels[i]}'
+                aux_label = int(self._aux_labels[i])
+                if hasattr(self, 'osym'):
+                    aux_label = self.osym.get(aux_label)
+                aux_label = f':{aux_label}'
             else:
                 aux_label = ''
+
+            if hasattr(self, 'isym') and label != -1:
+                label = self.isym.get(label)
 
             dot.edge(src_state,
                      dst_state,
