@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -60,6 +61,20 @@ bool ConnectFsa(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map) {
   bool ans = c.GetOutput(&host_dest_fsa, arc_map_data);
   *dest = creator.GetFsa();
   return ans;
+}
+
+namespace {
+struct ArcComparer {
+  __host__ __device__ __forceinline__ bool operator()(const Arc &lhs,
+                                                      const Arc &rhs) const {
+    return lhs.symbol < rhs.symbol;
+  }
+};
+}  // namespace
+
+void ArcSort(Fsa *fsa) {
+  if (fsa->NumAxes() < 2) return;  // it is empty
+  SortSublists<Arc, ArcComparer>(fsa);
 }
 
 }  // namespace k2

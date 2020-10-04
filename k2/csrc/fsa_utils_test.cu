@@ -47,31 +47,12 @@ TEST(FsaFromString, Acceptor) {
     // Arc sorting order: src_state, symbol, dest_state, score.
     EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 2, -1.2f}));
     EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 2, 10, -2.2f}));
-    EXPECT_EQ((fsa[{0, 2}]), (Arc{1, 6, -1, -4.2f}));
-    EXPECT_EQ((fsa[{0, 3}]), (Arc{1, 3, 3, -3.2f}));
+    EXPECT_EQ((fsa[{0, 2}]), (Arc{1, 3, 3, -3.2f}));
+    EXPECT_EQ((fsa[{0, 3}]), (Arc{1, 6, -1, -4.2f}));
     EXPECT_EQ((fsa[{0, 4}]), (Arc{2, 6, -1, -5.2f}));
     EXPECT_EQ((fsa[{0, 5}]), (Arc{2, 4, 2, -6.2f}));
     EXPECT_EQ((fsa[{0, 6}]), (Arc{3, 6, -1, -7.2f}));
     EXPECT_EQ((fsa[{0, 7}]), (Arc{5, 0, 1, -8.2f}));
-  }
-
-  {
-    // negate the scores
-    auto fsa = FsaFromString(s, true);
-    EXPECT_EQ(fsa.Context()->GetDeviceType(), kCpu);
-
-    EXPECT_EQ(fsa.NumAxes(), 2);
-    EXPECT_EQ(fsa.shape.Dim0(), 7);         // there are 7 states
-    EXPECT_EQ(fsa.shape.NumElements(), 8);  // there are 8 arcs
-    // Arc sorting order: src_state, symbol, dest_state, score.
-    EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 2, 1.2f}));
-    EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 2, 10, 2.2f}));
-    EXPECT_EQ((fsa[{0, 2}]), (Arc{1, 6, -1, 4.2f}));
-    EXPECT_EQ((fsa[{0, 3}]), (Arc{1, 3, 3, 3.2f}));
-    EXPECT_EQ((fsa[{0, 4}]), (Arc{2, 6, -1, 5.2f}));
-    EXPECT_EQ((fsa[{0, 5}]), (Arc{2, 4, 2, 6.2f}));
-    EXPECT_EQ((fsa[{0, 6}]), (Arc{3, 6, -1, 7.2f}));
-    EXPECT_EQ((fsa[{0, 7}]), (Arc{5, 0, 1, 8.2f}));
   }
 }
 
@@ -94,8 +75,8 @@ TEST(FsaFromString, OpenFstAcceptor) {
     EXPECT_EQ(fsa.Context()->GetDeviceType(), kCpu);
 
     EXPECT_EQ(fsa.NumAxes(), 2);
-    EXPECT_EQ(fsa.shape.Dim0(), 9);           // there are 9 states
-    EXPECT_EQ(fsa.shape.NumElements(), 10);   // there are 10 arcs
+    EXPECT_EQ(fsa.shape.Dim0(), 9);          // there are 9 states
+    EXPECT_EQ(fsa.shape.NumElements(), 10);  // there are 10 arcs
     // Arc sorting order: src_state, symbol, dest_state, score.
     EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 2, 1.2f}));
     EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 2, 10, 2.2f}));
@@ -124,35 +105,7 @@ TEST(FsaFromString, Transducer) {
   )";
 
   {
-    Array1<int32_t> aux_labels;
-    auto fsa = FsaFromString(s, false, &aux_labels);
-    EXPECT_EQ(fsa.Context()->GetDeviceType(), kCpu);
-    EXPECT_EQ(aux_labels.Context()->GetDeviceType(), kCpu);
-
-    EXPECT_EQ(fsa.NumAxes(), 2);
-    EXPECT_EQ(fsa.shape.Dim0(), 7);         // there are 7 states
-    EXPECT_EQ(fsa.shape.NumElements(), 8);  // there are 8 arcs
-    EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 2, -1.2f}));
-    EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 2, 10, -2.2f}));
-    EXPECT_EQ((fsa[{0, 2}]), (Arc{1, 6, -1, -4.2f}));
-    EXPECT_EQ((fsa[{0, 3}]), (Arc{1, 3, 3, -3.2f}));
-    EXPECT_EQ((fsa[{0, 4}]), (Arc{2, 6, -1, -5.2f}));
-    EXPECT_EQ((fsa[{0, 5}]), (Arc{2, 4, 2, -6.2f}));
-    EXPECT_EQ((fsa[{0, 6}]), (Arc{3, 6, -1, -7.2f}));
-    EXPECT_EQ((fsa[{0, 7}]), (Arc{5, 0, 1, -8.2f}));
-
-    EXPECT_EQ(aux_labels[0], 22);
-    EXPECT_EQ(aux_labels[1], 100);
-    EXPECT_EQ(aux_labels[2], 16);
-    EXPECT_EQ(aux_labels[3], 33);
-    EXPECT_EQ(aux_labels[4], 26);
-    EXPECT_EQ(aux_labels[5], 22);
-    EXPECT_EQ(aux_labels[6], 36);
-    EXPECT_EQ(aux_labels[7], 50);
-  }
-
-  {
-    // negate the scores
+    // openfst format, negate the scores
     Array1<int32_t> aux_labels;
     auto fsa = FsaFromString(s, true, &aux_labels);
     EXPECT_EQ(fsa.Context()->GetDeviceType(), kCpu);
@@ -202,8 +155,8 @@ TEST(FsaFromString, OpenFstTransducer) {
     EXPECT_EQ(aux_labels.Context()->GetDeviceType(), kCpu);
 
     EXPECT_EQ(fsa.NumAxes(), 2);
-    EXPECT_EQ(fsa.shape.Dim0(), 9);           // there are 9 states
-    EXPECT_EQ(fsa.shape.NumElements(), 10);   // there are 10 arcs
+    EXPECT_EQ(fsa.shape.Dim0(), 9);          // there are 9 states
+    EXPECT_EQ(fsa.shape.NumElements(), 10);  // there are 10 arcs
     EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 2, 1.2f}));
     EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 2, 10, 2.2f}));
     EXPECT_EQ((fsa[{0, 2}]), (Arc{1, 3, 3, 3.2f}));

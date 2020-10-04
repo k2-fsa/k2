@@ -164,9 +164,10 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
                         scale * original_final_weights[i]);
     }
   }
-
-  // Sort arcs so that source states are in non-decreasing order.
-  std::sort(arcs.begin(), arcs.end());
+  if (openfst) {
+    // Sort arcs so that source states are in non-decreasing order.
+    std::sort(arcs.begin(), arcs.end());
+  }
 
   bool error = true;
   Array1<Arc> array(GetCpuContext(), arcs);
@@ -250,21 +251,23 @@ static Fsa TransducerFromStream(std::string first_line, std::istringstream &is,
     }
   }
 
-  // Sort arcs so that source states are in non-decreasing order. We have to do
-  // this simultaneously for both arcs and auxiliary labels. The following
-  // implementation makes a pair of (Arc, AuxLabel) for sorting.
-  // TODO(guoguo) Optimize this when necessary.
-  std::vector<std::pair<Arc, int32_t>> arcs_and_aux_labels;
-  K2_CHECK_EQ(state_aux_labels.size(), arcs.size());
-  arcs_and_aux_labels.resize(arcs.size());
-  for (std::size_t i = 0; i < arcs.size(); ++i) {
-    arcs_and_aux_labels[i] = std::make_pair(arcs[i], state_aux_labels[i]);
-  }
-  // Default pair comparison should work for us.
-  std::sort(arcs_and_aux_labels.begin(), arcs_and_aux_labels.end());
-  for (std::size_t i = 0; i < arcs.size(); ++i) {
-    arcs[i] = arcs_and_aux_labels[i].first;
-    state_aux_labels[i] = arcs_and_aux_labels[i].second;
+  if (openfst) {
+    // Sort arcs so that source states are in non-decreasing order. We have to
+    // do this simultaneously for both arcs and auxiliary labels. The following
+    // implementation makes a pair of (Arc, AuxLabel) for sorting.
+    // TODO(guoguo) Optimize this when necessary.
+    std::vector<std::pair<Arc, int32_t>> arcs_and_aux_labels;
+    K2_CHECK_EQ(state_aux_labels.size(), arcs.size());
+    arcs_and_aux_labels.resize(arcs.size());
+    for (std::size_t i = 0; i < arcs.size(); ++i) {
+      arcs_and_aux_labels[i] = std::make_pair(arcs[i], state_aux_labels[i]);
+    }
+    // Default pair comparison should work for us.
+    std::sort(arcs_and_aux_labels.begin(), arcs_and_aux_labels.end());
+    for (std::size_t i = 0; i < arcs.size(); ++i) {
+      arcs[i] = arcs_and_aux_labels[i].first;
+      state_aux_labels[i] = arcs_and_aux_labels[i].second;
+    }
   }
 
   auto cpu_context = GetCpuContext();
