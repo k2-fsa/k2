@@ -467,6 +467,7 @@ struct Ragged {
     Array1<T> new_values = values.To(ctx);
     return Ragged<T>(new_shape, new_values);
   }
+
 };
 
 template <typename T>

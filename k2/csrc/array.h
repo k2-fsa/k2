@@ -306,6 +306,7 @@ class Array1 {
     dim_ = size;
     byte_offset_ = 0;
   }
+
 };
 
 // Could possibly introduce a debug mode to this that would do bounds checking.

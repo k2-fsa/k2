@@ -50,6 +50,25 @@ void ArcSort(Fsa *fsa);
 void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
 
+/*
+  Topologically sort an Fsa or FsaVec.
+
+      @param [in] src  Input Fsa or FsaVec
+      @param [out] dest  Output Fsa or FsaVec.  At exit, its states will be
+                        top-sorted if the FSA was acyclic.  If it had cycles,
+                        they will be sorted by distance from the start-state
+                        (distance in terms of how many arcs must be traversed,
+                        not the weights).
+      @param [out] arc_map  If not nullptr, a map from arc-indexes in `dest` to
+                        arc-indexes in `src` will be output to here
+      @return   Returns true if the states could be topologically sorted
+                (i.e. there were no cycles except possibly self-loops).
+                If false, the states will be sorted by distance (in arcs)
+                from the start-state but not topologically.  You can figure
+                out which ones by obtaining the properties.
+ */
+bool TopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+
 
 
 /*
