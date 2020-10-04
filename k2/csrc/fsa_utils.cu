@@ -164,7 +164,6 @@ static Fsa AcceptorFromStream(std::string first_line, std::istringstream &is,
                         scale * original_final_weights[i]);
     }
   }
-
   // Sort arcs so that source states are in non-decreasing order.
   std::sort(arcs.begin(), arcs.end());
 

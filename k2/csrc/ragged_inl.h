@@ -103,9 +103,12 @@ Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
 }
 
 template <typename T, typename Op /* = LessThan<T> */>
-void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
-  K2_DCHECK(IsCompatible(src->values, *order));
-  K2_DCHECK_EQ(src->values.Dim(), order->Dim());
+void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
+  if (order) {
+    K2_DCHECK(IsCompatible(src->values, *order));
+    K2_DCHECK_EQ(src->values.Dim(), order->Dim());
+  }
+  K2_DCHECK_GE(src->NumAxes(), 2);
   K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda)
       << "It supports only CUDA at present";
 
@@ -113,13 +116,22 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order) {
       GetModernGpuAllocator(src->Context()->GetDeviceId());
 
   Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
-  mgpu::segmented_sort_indices(src->values.Data(),  // keys
-                               order->Data(),       // indices
-                               src->values.Dim(),   // count
-                               segment.Data() + 1,  // segments
-                               segment.Dim() - 1,   // num_segments
-                               Op(),                // cmp
-                               *context);           // context
+  if (order)
+    mgpu::segmented_sort_indices(src->values.Data(),  // keys
+                                 order->Data(),       // indices
+                                 src->values.Dim(),   // count
+                                 segment.Data(),      // segments
+                                 segment.Dim() - 1,   // num_segments
+                                 Op(),                // cmp
+                                 *context);           // context
+  else
+    mgpu::segmented_sort(src->values.Data(),  // keys
+                         src->values.Dim(),   // count
+                         segment.Data(),      // segments
+                         segment.Dim() - 1,   // num_segments
+                         Op(),                // cmp
+                         *context);           // context
+
   auto err = cudaGetLastError();
   (void)err;
   // TODO(fangjun): err is not cudaSuccess, but why was the data sorted
