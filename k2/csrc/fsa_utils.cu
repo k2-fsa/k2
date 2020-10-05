@@ -449,7 +449,7 @@ static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
       //              arcs entering the super final state. The only real choices
       //              are kEpsilon or kFinalSymbol. We are using kEpsilon for
       //              now.
-      state_to_aux_labels[original_final_states[i]].push_back(0); // kEpsilon
+      state_to_aux_labels[original_final_states[i]].push_back(0);  // kEpsilon
       ++num_arcs;
     }
   }
