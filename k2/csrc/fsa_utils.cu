@@ -210,7 +210,7 @@ static Fsa K2TransducerFromStream(std::istringstream &is,
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nK2 transducer expects a line with 1 (final_state) or "
-                    << "4 (src_state dest_state label aux_label score) fields";
+                    << "5 (src_state dest_state label aux_label score) fields";
     }
   }
 
