@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                Guoguo Chen
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -102,7 +103,7 @@ class TestFsa(unittest.TestCase):
             5 0  1  50  -8.2
             6
         '''
-        fsa = k2.Fsa(_remove_leading_spaces(s))
+        fsa = k2.Fsa(_remove_leading_spaces(s), acceptor=False)
         assert fsa.aux_labels.dtype == torch.int32
         assert fsa.aux_labels.device.type == 'cpu'
         assert torch.allclose(
@@ -161,7 +162,7 @@ class TestFsa(unittest.TestCase):
             2 3 -1 0 3.5
             3
         '''
-        fsa = k2.Fsa(_remove_leading_spaces(rules))
+        fsa = k2.Fsa(_remove_leading_spaces(rules), acceptor=False)
         fsa.set_isymbol(isym)
         fsa.set_osymbol(osym)
         dot = fsa.to_dot()

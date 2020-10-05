@@ -1,4 +1,5 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                      Guoguo Chen
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -18,7 +19,7 @@ from graphviz import Digraph
 
 class Fsa(object):
 
-    def __init__(self, s: str, openfst: bool = False):
+    def __init__(self, s: str, acceptor: bool = True, openfst: bool = False):
         '''Create an Fsa from a string.
 
         The given string `s` consists of lines with the following format:
@@ -50,6 +51,9 @@ class Fsa(object):
         Args:
           s:
             The input string. Refer to the above comment for its format.
+          acceptor:
+            Optional. If true, interpret the input string as an acceptor,
+            otherwise, interpret it as a transducer.
           openfst:
             Optional. If true, the string form has the weights as costs,
             not scores, so we negate as we read.
@@ -57,7 +61,7 @@ class Fsa(object):
         fsa: _Fsa
         aux_labels: Optional[torch.Tensor]
 
-        fsa, aux_labels = _fsa_from_str(s, openfst)
+        fsa, aux_labels = _fsa_from_str(s, acceptor, openfst)
 
         self._fsa = fsa
         self._aux_labels = aux_labels
