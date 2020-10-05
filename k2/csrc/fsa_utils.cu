@@ -252,6 +252,7 @@ static Fsa OpenFSTAcceptorFromStream(std::istringstream &is) {
   std::vector<std::string> splits;
   std::string line;
 
+  bool has_final_state = false;
   int32_t max_state = -1;
   int32_t num_arcs = 0;
   std::vector<int32_t> original_final_states;
@@ -289,10 +290,11 @@ static Fsa OpenFSTAcceptorFromStream(std::istringstream &is) {
       // final_state  score
       float score = 0.0f;
       if (num_fields == 2u)
-        score = StringToFloat(splits[1]);
+        score = -1.0f * StringToFloat(splits[1]);
       original_final_states.push_back(StringToInt(splits[0]));
       original_final_weights.push_back(score);
       max_state = std::max(max_state, original_final_states.back());
+      has_final_state = true;
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nOpenFST acceptor expects a line with 1 (final_state),"
@@ -300,6 +302,9 @@ static Fsa OpenFSTAcceptorFromStream(std::istringstream &is) {
                     << "or 4 (src_state dest_state label score) fields.";
     }
   }
+
+  K2_CHECK(is.eof());
+  K2_CHECK_EQ(has_final_state, true) << "No final state detected.";
 
   // Post processing on final states. We may have multiple final states with
   // weights associated with them for OpenFST style FSTs. We will have to add a
@@ -313,13 +318,13 @@ static Fsa OpenFSTAcceptorFromStream(std::istringstream &is) {
       state_to_arcs[original_final_states[i]].emplace_back(
           original_final_states[i], super_final_state,
           -1,  // kFinalSymbol
-          -1.0f * original_final_weights[i]);
+          original_final_weights[i]);
       ++num_arcs;
     }
   }
 
   // Move arcs from "state_to_arcs" to "arcs".
-  std::size_t arc_index = 0;
+  int32_t arc_index = 0;
   arcs.resize(num_arcs);
   for (std::size_t s = 0; s < state_to_arcs.size(); ++s) {
     for (std::size_t a = 0; a < state_to_arcs[s].size(); ++a) {
@@ -328,8 +333,7 @@ static Fsa OpenFSTAcceptorFromStream(std::istringstream &is) {
       ++arc_index;
     }
   }
-  K2_CHECK_EQ(num_arcs, static_cast<int32_t>(arc_index));
-  state_to_arcs.resize(0);
+  K2_CHECK_EQ(num_arcs, arc_index);
 
   bool error = true;
   Array1<Arc> array(GetCpuContext(), arcs);
@@ -370,6 +374,7 @@ static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
   std::vector<std::string> splits;
   std::string line;
 
+  bool has_final_state = false;
   int32_t max_state = -1;
   int32_t num_arcs = 0;
   std::vector<int32_t> original_final_states;
@@ -418,10 +423,11 @@ static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
       // the final states, and then work out the super final state.
       float score = 0.0f;
       if (num_fields == 2u)
-        score = StringToFloat(splits[1]);
+        score = -1.0f * StringToFloat(splits[1]);
       original_final_states.push_back(StringToInt(splits[0]));
       original_final_weights.push_back(score);
       max_state = std::max(max_state, original_final_states.back());
+      has_final_state = true;
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nOpenFST transducer expects a line with "
@@ -430,6 +436,9 @@ static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
                     << "5 (src_state dest_state label aux_label score) fields.";
     }
   }
+
+  K2_CHECK(is.eof());
+  K2_CHECK_EQ(has_final_state, true) << "No final state detected.";
 
   // Post processing on final states. We may have multiple final states with
   // weights associated with them for OpenFST style FSTs. We will have to add a
@@ -444,7 +453,7 @@ static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
       state_to_arcs[original_final_states[i]].emplace_back(
           original_final_states[i], super_final_state,
           -1,  // kFinalSymbol
-          -1.0f * original_final_weights[i]);
+          original_final_weights[i]);
       // TODO(guoguo) We are not sure yet what to put as the auxiliary label for
       //              arcs entering the super final state. The only real choices
       //              are kEpsilon or kFinalSymbol. We are using kEpsilon for
@@ -456,7 +465,7 @@ static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
 
   // Move arcs from "state_to_arcs" to "arcs", and aux_labels from
   // "state_to_aux_labels" to "aux_labels_internal"
-  std::size_t arc_index = 0;
+  int32_t arc_index = 0;
   arcs.resize(num_arcs);
   aux_labels_internal.resize(num_arcs);
   K2_CHECK_EQ(state_to_arcs.size(), state_to_aux_labels.size());
@@ -469,9 +478,7 @@ static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
       ++arc_index;
     }
   }
-  K2_CHECK_EQ(num_arcs, static_cast<int32_t>(arc_index));
-  state_to_arcs.resize(0);
-  state_to_aux_labels.resize(0);
+  K2_CHECK_EQ(num_arcs, arc_index);
 
   auto cpu_context = GetCpuContext();
   *aux_labels = Array1<int32_t>(cpu_context, aux_labels_internal);
