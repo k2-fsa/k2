@@ -99,7 +99,7 @@ static void SplitStringToVector(const std::string &in, const char *delim,
   }
 }
 
-/* Create an acceptor from a stream, assuming the acceptor is in the K2 format:
+/* Create an acceptor from a stream, assuming the acceptor is in the k2 format:
 
    src_state1 dest_state1 label1 score1
    src_state2 dest_state2 label2 score2
@@ -143,8 +143,8 @@ static Fsa K2AcceptorFromStream(std::istringstream &is) {
       finished = true;               // set finish
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
-                    << "\nK2 acceptor expects a line with 1 (final_state) or "
-                    << "4 (src_state dest_state label score) fields";
+                    << "\nk2 acceptor expects a line with 1 (final_state) or "
+                       "4 (src_state dest_state label score) fields";
     }
   }
 
@@ -209,8 +209,8 @@ static Fsa K2TransducerFromStream(std::istringstream &is,
       finished = true;               // set finish
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
-                    << "\nK2 transducer expects a line with 1 (final_state) or "
-                    << "5 (src_state dest_state label aux_label score) fields";
+                    << "\nk2 transducer expects a line with 1 (final_state) or "
+                       "5 (src_state dest_state label aux_label score) fields";
     }
   }
 
@@ -246,7 +246,7 @@ static Fsa K2TransducerFromStream(std::istringstream &is,
 
    @return It returns an Fsa on CPU.
 */
-static Fsa OpenFSTAcceptorFromStream(std::istringstream &is) {
+static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
   std::vector<Arc> arcs;
   std::vector<std::vector<Arc>> state_to_arcs;            // indexed by states
   std::vector<std::string> splits;
@@ -298,8 +298,8 @@ static Fsa OpenFSTAcceptorFromStream(std::istringstream &is) {
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nOpenFST acceptor expects a line with 1 (final_state),"
-                    << " 2 (final_state score), 3 (src_state dest_state label) "
-                    << "or 4 (src_state dest_state label score) fields.";
+                       " 2 (final_state score), 3 (src_state dest_state label) "
+                       "or 4 (src_state dest_state label score) fields.";
     }
   }
 
@@ -308,7 +308,7 @@ static Fsa OpenFSTAcceptorFromStream(std::istringstream &is) {
 
   // Post processing on final states. We may have multiple final states with
   // weights associated with them for OpenFST style FSTs. We will have to add a
-  // super final state, and convert that into the K2 format (final state with no
+  // super final state, and convert that into the k2 format (final state with no
   // weight).
   if (original_final_states.size() > 0) {
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
@@ -363,7 +363,7 @@ static Fsa OpenFSTAcceptorFromStream(std::istringstream &is) {
 
    @return It returns an Fsa on CPU.
 */
-static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
+static Fsa OpenFstTransducerFromStream(std::istringstream &is,
                                        Array1<int32_t> *aux_labels) {
   K2_CHECK(aux_labels != nullptr);
 
@@ -431,9 +431,9 @@ static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nOpenFST transducer expects a line with "
-                    << "1 (final_state), 2 (final_state score), "
-                    << "4 (src_state dest_state label aux_label) or "
-                    << "5 (src_state dest_state label aux_label score) fields.";
+                       "1 (final_state), 2 (final_state score), "
+                       "4 (src_state dest_state label aux_label) or "
+                       "5 (src_state dest_state label aux_label score) fields.";
     }
   }
 
@@ -442,7 +442,7 @@ static Fsa OpenFSTTransducerFromStream(std::istringstream &is,
 
   // Post processing on final states. We may have multiple final states with
   // weights associated with them for OpenFST style FSTs. We will have to add a
-  // super final state, and convert that into the K2 format (final state with no
+  // super final state, and convert that into the k2 format (final state with no
   // weight).
   if (original_final_states.size() > 0) {
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
@@ -501,9 +501,9 @@ Fsa FsaFromString(const std::string &s, bool openfst /*= false*/,
   else if (openfst == false && aux_labels != nullptr)
     return K2TransducerFromStream(is, aux_labels);
   else if (openfst == true && aux_labels == nullptr)
-    return OpenFSTAcceptorFromStream(is);
+    return OpenFstAcceptorFromStream(is);
   else if (openfst == true && aux_labels != nullptr)
-    return OpenFSTTransducerFromStream(is, aux_labels);
+    return OpenFstTransducerFromStream(is, aux_labels);
 
   return Fsa();  // unreachable code
 }

@@ -55,7 +55,7 @@ class Fsa(object):
         fsa: _Fsa
         aux_labels: Optional[torch.Tensor]
 
-        # Figure out acceptor/transducer for K2 fsa.
+        # Figure out acceptor/transducer for k2 fsa.
         acceptor = True
         line = s.strip().split('\n', 1)[0]
         fields = line.strip().split()

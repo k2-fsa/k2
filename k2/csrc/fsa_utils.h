@@ -39,7 +39,7 @@ namespace k2 {
 
       final_state
 
-  This is because final state in K2 does not bear a cost. Instead, we put the
+  This is because final state in k2 does not bear a cost. Instead, we put the
   cost on the arc that connects to the final state, and set its label to -1.
   When `openfst` is true, we expect the more generic OpenFst sytle final state
   format :
