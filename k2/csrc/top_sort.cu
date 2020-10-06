@@ -37,7 +37,7 @@ class TopSorter {
 
     K2_CHECK_EQ(fsas_.NumAxes(), 3);
     int32_t num_fsas = fsas_.shape.TotSize(0),
-        num_states = fsas_.shape.TotSize(0);
+        num_states = fsas_.shape.TotSize(1);
     state_map_ = Array1<int32_t>(c_, num_states, -1);
     // need 1 extra element allocated to avoid invalid read in ExclusiveSum()
     state_offsets_ = Array1<int32_t>(c_, num_fsas + 1, 0).Range(0, num_fsas);

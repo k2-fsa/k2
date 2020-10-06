@@ -54,7 +54,7 @@ class Array1 {
 
   // Called when creating Array2 using Array1, users should not call this for
   // now.
-  RegionPtr &GetRegion() { return region_; }
+  const RegionPtr &GetRegion() const { return region_; }
 
   // generally Callable will be some kind of lambda or function object; it
   // should be possible to evaluate it on the CUDA device (if we're compiling
@@ -364,7 +364,7 @@ class Array2 {
   // Currently ByteOffset and GetRegion is for internal usage, user should never
   // call it for now.
   int32_t ByteOffset() const { return byte_offset_; }
-  RegionPtr &GetRegion() { return region_; }
+  const RegionPtr &GetRegion() const { return region_; }
 
   ContextPtr &Context() const { return region_->context; }
 

@@ -383,6 +383,7 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
 template <typename T>
 struct Ragged {
   RaggedShape shape;  // TODO: consider making the shape a pointer??
+
   Array1<T> values;
 
   Ragged(const RaggedShape &shape, const Array1<T> &values)
