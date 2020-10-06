@@ -366,6 +366,7 @@ __global__ void eval_lambda(int32_t n, LambdaT lambda) {
   }
 }
 
+ 
 template <typename T, typename LambdaT>
 __global__ void eval_lambda(T *data, int32_t n, LambdaT lambda) {
   int32_t i = blockIdx.x * blockDim.x + threadIdx.x;

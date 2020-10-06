@@ -229,7 +229,7 @@ int32_t GetFsaBasicProperties(const Fsa &fsa) {
 
 Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   const Arc *arcs_data = array.Data();
-  ContextPtr c = array.Context();
+  ContextPtr &c = array.Context();
   int32_t num_arcs = array.Dim();
   *error = false;
 
@@ -248,7 +248,8 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   Array1<int32_t> row_ids1(c, num_arcs);  // maps arc->state.
   int32_t *row_ids1_data = row_ids1.Data();
 
-  auto lambda_misc1 = [=] __host__ __device__(int32_t i) -> void {
+
+  auto lambda_misc = [=] __host__ __device__(int32_t i) -> void {
     row_ids1_data[i] = arcs_data[i].src_state;
     if (arcs_data[i].symbol == -1) {
       int32_t final_state = arcs_data[i].dest_state;
@@ -258,7 +259,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
       num_states_data[0] = final_state + 1;
     }
   };
-  Eval(c, num_arcs, lambda_misc1);
+  Eval(c, num_arcs, lambda_misc);
   num_states_array = num_states_array.To(GetCpuContext());
   int32_t num_states = num_states_array[0],
     error_flag = num_states_array[1];
@@ -417,7 +418,7 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
   Arc *arcs_data = arcs.Data();
   
   auto lambda_make_row_ids2 = [=] __host__ __device__ (int32_t arc_idx012) -> void {
-    int32_t fsa_idx0 = row_ids12[arc_idx012],
+    int32_t fsa_idx0 = row_ids12_data[arc_idx012],
       state_idx0x = row_splits1_data[fsa_idx0];
     int32_t state_idx1 = arcs_data[arc_idx012].src_state,
       state_idx01 = state_idx0x + state_idx1;

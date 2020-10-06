@@ -24,7 +24,8 @@ struct Arc {
   int32_t src_state;
   int32_t dest_state;
   int32_t symbol;
-  float score;  // we have the space to put this here, so...
+  float score;
+
   Arc() = default;
   Arc(int32_t src_state, int32_t dest_state, int32_t symbol, float score)
       : src_state(src_state),
