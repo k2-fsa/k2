@@ -19,7 +19,7 @@ from graphviz import Digraph
 
 class Fsa(object):
 
-    def __init__(self, s: str, acceptor: bool = True, openfst: bool = False):
+    def __init__(self, s: str):
         '''Create an Fsa from a string.
 
         The given string `s` consists of lines with the following format:
@@ -51,17 +51,19 @@ class Fsa(object):
         Args:
           s:
             The input string. Refer to the above comment for its format.
-          acceptor:
-            Optional. If true, interpret the input string as an acceptor,
-            otherwise, interpret it as a transducer.
-          openfst:
-            Optional. If true, the string form has the weights as costs,
-            not scores, so we negate as we read.
         '''
         fsa: _Fsa
         aux_labels: Optional[torch.Tensor]
 
-        fsa, aux_labels = _fsa_from_str(s, acceptor, openfst)
+        # Figure out acceptor/transducer for K2 fsa.
+        acceptor = True
+        line = s.strip().split('\n', 1)[0]
+        fields = line.strip().split()
+        assert len(fields) == 4 or len(fields) == 5
+        if len(fields) == 5:
+            acceptor = False
+
+        fsa, aux_labels = _fsa_from_str(s, acceptor, False)
 
         self._fsa = fsa
         self._aux_labels = aux_labels
@@ -108,6 +110,45 @@ class Fsa(object):
         ans = cls.__new__(cls)
         super(Fsa, ans).__init__()
         ans._fsa = _fsa_from_tensor(tensor)
+        ans._aux_labels = aux_labels
+        return ans
+
+    @classmethod
+    def from_openfst(cls, s: str, acceptor: bool = True) -> 'Fsa':
+        '''Create an Fsa from a string in OpenFST format.
+
+        The given string `s` consists of lines with the following format:
+
+        (1) When it represents an acceptor:
+
+                src_state dest_state label score
+
+        (2) When it represents a transducer:
+
+                src_state dest_state label aux_label score
+
+        The line for the final state consists of two fields:
+
+                final_state score
+
+        Note:
+          Fields are separated by space(s), tab(s) or both. The `score`
+          field is a float, while other fields are integers.
+
+          There might be multiple final states. Also, OpenFST may omit the score
+          if it is 0.0.
+
+        Args:
+          s:
+            The input string. Refer to the above comment for its format.
+          acceptor:
+            Optional. If true, interpret the input string as an acceptor,
+            otherwise, interpret it as a transducer.
+        '''
+        ans = cls.__new__(cls)
+        super(Fsa, ans).__init__()
+        fsa, aux_labels = _fsa_from_str(s, acceptor, True)
+        ans._fsa = fsa
         ans._aux_labels = aux_labels
         return ans
 
