@@ -83,7 +83,8 @@ class PytorchCudaContext : public Context {
   int32_t GetDeviceId() const override { return gpu_id_; }
 
   cudaStream_t GetCudaStream() const override {
-    return c10::cuda::getCurrentCUDAStream(gpu_id_);
+    return g_stream_override.OverrideStream(
+        c10::cuda::getCurrentCUDAStream(gpu_id_));
   }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {

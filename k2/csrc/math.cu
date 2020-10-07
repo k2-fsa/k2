@@ -29,6 +29,17 @@ int32_t HighestBitSet(int32_t i) {
   return 32;
 }
 
+int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
+  K2_CHECK_GE(n, 0);
+  n--;
+  n |= n >> 1;
+  n |= n >> 2;
+  n |= n >> 4;
+  n |= n >> 8;
+  n |= n >> 16;
+  return n + 1;
+}
+
 // returns random int32_t from [min..max]
 int32_t RandInt(int32_t min, int32_t max) {
   K2_CHECK_GE(max, min);

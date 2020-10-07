@@ -550,15 +550,33 @@ class ParallelRunner {
   // will call CudaStreamOverride::OverrideStream() and replace it
   // with this stream automatically.
   cudaStream_t NewStream() {
-    // TODO
-    return kCudaStreamInvalid;
+    DeviceType d = c_->GetDeviceType();
+    if (d == kCpu) {
+      return kCudaStreamInvalid;
+    } else {
+      K2_CHECK_EQ(d, kCuda);
+      cudaStream_t stream;
+      auto ret = cudaStreamCreate(&stream);
+      K2_CHECK_CUDA_ERROR(ret);
+      q_.push_back(stream);
+      return stream;
+    }
   }
 
-  void Finish();  // like calling destructor manually.
+  ~ParallelRunner() {
+    for (std::size_t i = 0; i != q_.size(); ++i) {
+      auto ret = cudaStreamSynchronize(q_[i]);
+      K2_CHECK_CUDA_ERROR(ret);
+    }
+    for (std::size_t i = 0; i != q_.size(); ++i) {
+      auto ret = cudaStreamDestroy(q_[i]);
+      K2_CHECK_CUDA_ERROR(ret);
+    }
+  }
 
  private:
   ContextPtr c_;
-  // TODO: list of events to wait on, maybe CUDA streamss.
+  std::vector<cudaStream_t> q_;
 };
 
 // OK, want to do:

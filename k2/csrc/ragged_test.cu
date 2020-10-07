@@ -772,4 +772,63 @@ TEST(RaggedTest, Ragged) {
   TestSortSublists<double>();
 }
 
+template <DeviceType d>
+void TestAppend() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // simple case
+    std::vector<RaggedShape> shapes(2);
+    std::vector<RaggedShape *> shapes_ptr(2);
+    {
+      const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+      const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
+      const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+      const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
+      Array1<int32_t> splits1(context, row_splits1);
+      Array1<int32_t> ids1(context, row_ids1);
+      Array1<int32_t> splits2(context, row_splits2);
+      Array1<int32_t> ids2(context, row_ids2);
+      shapes[0] = RaggedShape3(&splits1, &ids1, ids1.Dim(), &splits2, &ids2,
+                               ids2.Dim());
+      shapes_ptr[0] = &shapes[0];
+    }
+    {
+      const std::vector<int32_t> row_splits1 = {0, 1, 3};
+      const std::vector<int32_t> row_ids1 = {0, 1, 1};
+      const std::vector<int32_t> row_splits2 = {0, 3, 4, 7};
+      const std::vector<int32_t> row_ids2 = {0, 0, 0, 1, 2, 2, 2};
+      Array1<int32_t> splits1(context, row_splits1);
+      Array1<int32_t> ids1(context, row_ids1);
+      Array1<int32_t> splits2(context, row_splits2);
+      Array1<int32_t> ids2(context, row_ids2);
+      RaggedShape shape = RaggedShape3(&splits1, &ids1, ids1.Dim(), &splits2,
+                                       &ids2, ids2.Dim());
+      shapes[1] = RaggedShape3(&splits1, &ids1, ids1.Dim(), &splits2, &ids2,
+                               ids2.Dim());
+      shapes_ptr[1] = &shapes[1];
+    }
+
+    // TODO(haowe): remove this and add assertion
+    RaggedShape result = Append(0, 2, shapes_ptr.data());
+    for (int32_t i = 1; i < 3; ++i) {
+      K2_LOG(INFO) << result.RowSplits(i);
+      K2_LOG(INFO) << result.RowIds(i);
+    }
+  }
+
+  // TODO: add tests with random large size
+}
+TEST(RaggedShapeOpsTest, TestAppend) {
+  TestAppend<kCpu>();
+  TestAppend<kCuda>();
+}
+
 }  // namespace k2
