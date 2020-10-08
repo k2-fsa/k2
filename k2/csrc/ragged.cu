@@ -3,8 +3,7 @@
  * ragged
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -874,7 +873,7 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
 
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
   K2_CHECK_EQ(axis, 0) << "Append() with axis > 0 not yet supported";
-  K2_CHECK_GT(num_srcs, 0);
+  K2_CHECK_GT(num_srcs, 1);
   int32_t num_axes = src[0]->NumAxes();
   ContextPtr c = src[0]->Context();
 
@@ -904,6 +903,7 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
   ParallelRunner pr(c);
   std::vector<cudaStream_t> streams(num_axes);
   int32_t num_jobs = num_srcs * 2;
+
   // task_redirects is a device array (if using GPU).
   // We have `num_axes - 1` different sets of row_splits/row_ids to
   // populate but they have different sizes; the total number of distinct

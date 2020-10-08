@@ -555,28 +555,46 @@ class ParallelRunner {
       return kCudaStreamInvalid;
     } else {
       K2_CHECK_EQ(d, kCuda);
-      cudaStream_t stream;
-      auto ret = cudaStreamCreate(&stream);
+      // create event
+      cudaEvent_t event;
+      auto ret = cudaEventCreate(&event);
       K2_CHECK_CUDA_ERROR(ret);
-      q_.push_back(stream);
+      events_.push_back(event);
+
+      // create stream
+      cudaStream_t stream;
+      ret = cudaStreamCreate(&stream);
+      K2_CHECK_CUDA_ERROR(ret);
+      streams_.push_back(stream);
+
+      // record event on `stream`
+      ret = cudaEventRecord(event, stream);
+      K2_CHECK_CUDA_ERROR(ret);
+
       return stream;
     }
   }
 
   ~ParallelRunner() {
-    for (std::size_t i = 0; i != q_.size(); ++i) {
-      auto ret = cudaStreamSynchronize(q_[i]);
+    K2_CHECK_EQ(streams_.size(), events_.size());
+    // wait events_ on c->stream
+    for (std::size_t i = 0; i != events_.size(); ++i) {
+      auto ret = cudaStreamWaitEvent(c_->GetCudaStream(), events_[i], 0);
       K2_CHECK_CUDA_ERROR(ret);
     }
-    for (std::size_t i = 0; i != q_.size(); ++i) {
-      auto ret = cudaStreamDestroy(q_[i]);
+    // destroy streams and events
+    for (std::size_t i = 0; i != events_.size(); ++i) {
+      auto ret = cudaEventDestroy(events_[i]);
+      K2_CHECK_CUDA_ERROR(ret);
+      ret = cudaStreamDestroy(streams_[i]);
       K2_CHECK_CUDA_ERROR(ret);
     }
   }
 
  private:
   ContextPtr c_;
-  std::vector<cudaStream_t> q_;
+  std::vector<cudaStream_t> streams_;
+  std::vector<cudaEvent_t> events_;
 };
 
 // OK, want to do:

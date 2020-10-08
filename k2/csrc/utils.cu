@@ -3,11 +3,13 @@
  * utils
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
+
+#include <algorithm>
 
 #include "k2/csrc/math.h"
 #include "k2/csrc/utils.h"
@@ -518,8 +520,7 @@ __global__ void GetTaskRedirect(int32_t num_tasks, const int32_t *row_splits,
   // proportionate number of jobs.
   int32_t dart_separation = num_items / num_tasks;
 
-  if (num_items <= 0) {
-    K2_DCHECK_EQ(num_items, 0);
+  if (dart_separation <= 0) {
     // This is a special case where there is no work to do; we give a trivial
     // assignment of tasks to jobs and return
     static_assert(threads_per_task >= 2, "threads per task must >= 2");
@@ -540,7 +541,9 @@ __global__ void GetTaskRedirect(int32_t num_tasks, const int32_t *row_splits,
   // the job_idx we're working out below is the job_idx for the
   // "second half" of
   int32_t num_jobs_this_task =
-      1 + (next_row_split / dart_separation - this_row_split / dart_separation);
+      1 + (min(next_row_split / dart_separation, num_tasks) -
+           min(this_row_split / dart_separation,
+               num_tasks));  // function `min` is from cuda
   K2_CHECK_EQ(static_cast<int32_t>(static_cast<uint16_t>(num_jobs_this_task)),
               num_jobs_this_task);
   for (int32_t job_id_this_task = thread_idx;
@@ -571,29 +574,46 @@ void GetTaskRedirect(cudaStream_t stream, int32_t num_tasks,
     int32_t row_splits0 = row_splits[0], row_splits_nt = row_splits[num_tasks],
             num_items = row_splits_nt - row_splits0,
             dart_separation = num_items / num_tasks;
-    for (int32_t task = 0; task < num_tasks; ++task) {
-      int32_t this_row_split = row_splits[task],
-              next_row_split = row_splits[task + 1];
-      int32_t num_jobs_this_task = 1 + (next_row_split / dart_separation -
-                                        this_row_split / dart_separation);
-      K2_CHECK_EQ(
-          static_cast<int32_t>(static_cast<uint16_t>(num_jobs_this_task)),
-          num_jobs_this_task);
-      for (int32_t job_id_this_task = 0; job_id_this_task < num_jobs_this_task;
-           job_id_this_task++) {
-        int32_t job_idx = (job_id_this_task == 0 ? task :  // 1st half
-                               num_tasks + (this_row_split / dart_separation) +
-                                   job_id_this_task - 1);  // 2nd half.
-        redirect_out[job_idx] =
-            TaskRedirect{task, static_cast<uint16_t>(num_jobs_this_task),
-                         static_cast<uint16_t>(job_id_this_task)};
+    if (dart_separation != 0) {
+      for (int32_t task = 0; task < num_tasks; ++task) {
+        int32_t this_row_split = row_splits[task],
+                next_row_split = row_splits[task + 1];
+        int32_t num_jobs_this_task =
+            1 + (std::min(next_row_split / dart_separation, num_tasks) -
+                 std::min(this_row_split / dart_separation, num_tasks));
+        K2_CHECK_EQ(
+            static_cast<int32_t>(static_cast<uint16_t>(num_jobs_this_task)),
+            num_jobs_this_task);
+        for (int32_t job_id_this_task = 0;
+             job_id_this_task < num_jobs_this_task; ++job_id_this_task) {
+          int32_t job_idx =
+              (job_id_this_task == 0 ? task :  // 1st half
+                   num_tasks + (this_row_split / dart_separation) +
+                       job_id_this_task - 1);  // 2nd half.
+          redirect_out[job_idx] =
+              TaskRedirect{task, static_cast<uint16_t>(num_jobs_this_task),
+                           static_cast<uint16_t>(job_id_this_task)};
+        }
+      }
+    } else {
+      // This is a special case where there is no work to do; we give a trivial
+      // assignment of tasks to jobs and return
+      for (int32_t task = 0; task < num_tasks; ++task) {
+        int32_t num_jobs_this_task = 2;
+        for (int32_t job_id_this_task = 0;
+             job_id_this_task < num_jobs_this_task; ++job_id_this_task) {
+          int32_t job_idx = task + job_id_this_task * num_tasks;
+          redirect_out[job_idx] =
+              TaskRedirect{task, static_cast<uint16_t>(num_jobs_this_task),
+                           static_cast<uint16_t>(job_id_this_task)};
+        }
       }
     }
   } else {
-    // compare 8 to 2, which is the expected number of jobs per task.  having 8
-    // substantially greater than 2 gives a fairly big safety factor.  However
-    // this is still far from ideal in scenarios where the number of tasks might
-    // be highly unbalanced.
+    // compare 8 to 2, which is the expected number of jobs per task.  having
+    // 8 substantially greater than 2 gives a fairly big safety factor.
+    // However this is still far from ideal in scenarios where the number of
+    // tasks might be highly unbalanced.
     const int32_t threads_per_task = 8,
                   tot_threads = threads_per_task * num_tasks;
 

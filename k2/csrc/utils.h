@@ -3,7 +3,8 @@
  * utils
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
@@ -431,13 +432,14 @@ void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
                       TaskRedirect *redirect, int32_t min_threads_per_job,
                       int32_t tot_work, int32_t target_num_loops,
                       LambdaT &lambda) {
-  if (num_jobs <= 0 || tot_work <= 0) return;
+  if (num_jobs <= 0) return;
   int32_t num_work_per_job = tot_work / num_jobs + 1;
   int32_t num_threads_per_job =
       ((num_work_per_job + min_threads_per_job - 1) / min_threads_per_job) *
       min_threads_per_job;
   if (stream == kCudaStreamInvalid) {
-    // TODO(haowen): running this with multiple threads.
+    // TODO(haowen): we may only need EvalWithRedirct for device code, so we may
+    // just avoid calling this for those code.
     for (int32_t i = 0; i < num_jobs; ++i) {
       int32_t task_id = redirect[i].task_id;
       int32_t num_threads_this_task =
