@@ -273,8 +273,7 @@ int32_t GetFsaBasicProperties(const Fsa &fsa);
                   `properties_out` will be written to this host
                   (i.e. CPU-memory) pointer.
 */
-void GetFsaVecBasicProperties(const FsaVec &fsa_vec,
-                              Array1<int32_t> *properties_out,
+void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
                               int32_t *tot_properties_out);
 
 // Return weights of `arcs` as a Tensor that shares the same memory

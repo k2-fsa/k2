@@ -54,6 +54,7 @@ TEST(ArcSort, NonEmptyFsaVec) {
   std::string s1 = R"(0 1 10 -1.2
     0 2  6 -2.2
     0 3  9 -2.2
+    0 3  9 -2.2
     1 2  8  -3.2
     1 3  6  -4.2
     2 3  5 -5.2
@@ -79,13 +80,32 @@ TEST(ArcSort, NonEmptyFsaVec) {
   Fsa fsa2 = FsaFromString(s2);
   const Fsa *fsa_array[] = {&fsa1, &fsa2};
 
-  // FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);  // crash!
-#if 0
+  FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
   Array1<int32_t> properties;
   int32_t p;
-  K2_LOG(INFO) << FsaPropertiesAsString(properties[0]);
-  K2_LOG(INFO) << FsaPropertiesAsString(properties[1]);
-#endif
+  GetFsaVecBasicProperties(fsa_vec, &properties, &p);
+
+  EXPECT_NE(properties[0] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+  EXPECT_NE(properties[0] & kFsaPropertiesArcSortedAndDeterministic,
+            kFsaPropertiesArcSortedAndDeterministic);
+
+  EXPECT_NE(properties[1] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+  EXPECT_NE(properties[1] & kFsaPropertiesArcSortedAndDeterministic,
+            kFsaPropertiesArcSortedAndDeterministic);
+
+  EXPECT_NE(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+
+  fsa_vec = fsa_vec.To(GetCudaContext());
+  ArcSort(&fsa_vec);
+  GetFsaVecBasicProperties(fsa_vec, &properties, &p);
+
+  EXPECT_EQ(properties[0] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+
+  EXPECT_EQ(properties[1] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+  EXPECT_EQ(properties[1] & kFsaPropertiesArcSortedAndDeterministic,
+            kFsaPropertiesArcSortedAndDeterministic);
+
+  EXPECT_EQ(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
 }
 
 }  // namespace k2
