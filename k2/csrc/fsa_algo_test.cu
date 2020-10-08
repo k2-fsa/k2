@@ -34,19 +34,19 @@ TEST(ArcSort, NonEmptyFsa) {
     3 5 -1  -7.2
     5
   )";
-  Fsa fsa = FsaFromString(s);
-  int32_t prop = GetFsaBasicProperties(fsa);
-  EXPECT_NE(prop & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
-  EXPECT_NE(prop & kFsaPropertiesArcSortedAndDeterministic,
-            kFsaPropertiesArcSortedAndDeterministic);
-
-  fsa = fsa.To(GetCudaContext());
-  ArcSort(&fsa);
-
-  prop = GetFsaBasicProperties(fsa);
-  EXPECT_EQ(prop & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
-  EXPECT_EQ(prop & kFsaPropertiesArcSortedAndDeterministic,
-            kFsaPropertiesArcSortedAndDeterministic);
+  for (auto &context : {GetCudaContext(), GetCpuContext()}) {
+    Fsa fsa = FsaFromString(s);
+    fsa = fsa.To(context);
+    int32_t prop = GetFsaBasicProperties(fsa);
+    EXPECT_NE(prop & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_NE(prop & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
+    ArcSort(&fsa);
+    prop = GetFsaBasicProperties(fsa);
+    EXPECT_EQ(prop & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_EQ(prop & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
+  }
 }
 
 TEST(ArcSort, NonEmptyFsaVec) {
@@ -80,32 +80,34 @@ TEST(ArcSort, NonEmptyFsaVec) {
   Fsa fsa2 = FsaFromString(s2);
   const Fsa *fsa_array[] = {&fsa1, &fsa2};
 
-  FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
-  Array1<int32_t> properties;
-  int32_t p;
-  GetFsaVecBasicProperties(fsa_vec, &properties, &p);
+  for (auto &context : {GetCudaContext(), GetCpuContext()}) {
+    FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+    fsa_vec = fsa_vec.To(context);
+    Array1<int32_t> properties;
+    int32_t p;
+    GetFsaVecBasicProperties(fsa_vec, &properties, &p);
 
-  EXPECT_NE(properties[0] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
-  EXPECT_NE(properties[0] & kFsaPropertiesArcSortedAndDeterministic,
-            kFsaPropertiesArcSortedAndDeterministic);
+    EXPECT_NE(properties[0] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_NE(properties[0] & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
 
-  EXPECT_NE(properties[1] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
-  EXPECT_NE(properties[1] & kFsaPropertiesArcSortedAndDeterministic,
-            kFsaPropertiesArcSortedAndDeterministic);
+    EXPECT_NE(properties[1] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_NE(properties[1] & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
 
-  EXPECT_NE(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_NE(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
 
-  fsa_vec = fsa_vec.To(GetCudaContext());
-  ArcSort(&fsa_vec);
-  GetFsaVecBasicProperties(fsa_vec, &properties, &p);
+    ArcSort(&fsa_vec);
+    GetFsaVecBasicProperties(fsa_vec, &properties, &p);
 
-  EXPECT_EQ(properties[0] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_EQ(properties[0] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
 
-  EXPECT_EQ(properties[1] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
-  EXPECT_EQ(properties[1] & kFsaPropertiesArcSortedAndDeterministic,
-            kFsaPropertiesArcSortedAndDeterministic);
+    EXPECT_EQ(properties[1] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_EQ(properties[1] & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
 
-  EXPECT_EQ(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_EQ(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+  }
 }
 
 }  // namespace k2
