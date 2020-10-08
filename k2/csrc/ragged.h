@@ -98,6 +98,7 @@ class RaggedShape {
    The dimension is the number of elements on this axis == TotSize(axis).
   */
   Array1<int32_t> &RowIds(int32_t axis);
+  const Array1<int32_t> &RowIds(int32_t axis) const; 
 
   int32_t NumAxes() const { return static_cast<int32_t>(axes_.size()) + 1; }
 
@@ -654,7 +655,7 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order = nullptr);
 // that ans.shape.Check() would fail because the row_splits and row_ids
 // have not been set up.  The caller is expected to do that.
 template <typename T>
-inline Ragged RaggedFromTotSizes(ContextPtr &c, std::vector<int32_t> &tot_sizes) {
+inline Ragged<T> RaggedFromTotSizes(ContextPtr &c, std::vector<int32_t> &tot_sizes) {
   return Ragged<T>(RaggedShapeFromTotSizes(c, tot_sizes),
                    Array1<T>(c, tot_sizes.back()));
 }

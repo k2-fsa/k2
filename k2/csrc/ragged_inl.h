@@ -147,9 +147,9 @@ template <typename T>
 bool Ragged<T>::Validate(bool print_warnings) {
   if (values.Dim() != shape.NumElements()) {
     if (print_warnings) {
-      K2_LOG(WARN) << "Dimension mismatch: values.Dim() == "
-                   << values.Dim() << " vs. shape.NumElements() == "
-                   << shape.NumElements();
+      K2_LOG(WARNING) << "Dimension mismatch: values.Dim() == "
+                      << values.Dim() << " vs. shape.NumElements() == "
+                      << shape.NumElements();
     }
     return false;
   }

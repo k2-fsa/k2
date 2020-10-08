@@ -498,9 +498,6 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
   }
 }
 
-
-  
-
 }  // namespace k2
 
 #endif  // K2_CSRC_ARRAY_OPS_INL_H_
