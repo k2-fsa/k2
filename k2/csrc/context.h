@@ -533,7 +533,7 @@ class With {
 */
 class ParallelRunner {
  public:
-  explicit ParallelRunner(ContextPtr c) : c_(c) {}
+  explicit ParallelRunner(ContextPtr c);
 
   // create a new stream, that first syncs with stream of c_ via an event.  The
   // destructor will cause the stream of c_ to wait on this stream in the
@@ -549,52 +549,14 @@ class ParallelRunner {
   // so that you won't need to directly pass this into Eval(); the context
   // will call CudaStreamOverride::OverrideStream() and replace it
   // with this stream automatically.
-  cudaStream_t NewStream() {
-    DeviceType d = c_->GetDeviceType();
-    if (d == kCpu) {
-      return kCudaStreamInvalid;
-    } else {
-      K2_CHECK_EQ(d, kCuda);
-      // create event
-      cudaEvent_t event;
-      auto ret = cudaEventCreate(&event);
-      K2_CHECK_CUDA_ERROR(ret);
-      events_.push_back(event);
+  cudaStream_t NewStream();
 
-      // create stream
-      cudaStream_t stream;
-      ret = cudaStreamCreate(&stream);
-      K2_CHECK_CUDA_ERROR(ret);
-      streams_.push_back(stream);
-
-      // record event on `stream`
-      ret = cudaEventRecord(event, stream);
-      K2_CHECK_CUDA_ERROR(ret);
-
-      return stream;
-    }
-  }
-
-  ~ParallelRunner() {
-    K2_CHECK_EQ(streams_.size(), events_.size());
-    // wait events_ on c->stream
-    for (std::size_t i = 0; i != events_.size(); ++i) {
-      auto ret = cudaStreamWaitEvent(c_->GetCudaStream(), events_[i], 0);
-      K2_CHECK_CUDA_ERROR(ret);
-    }
-    // destroy streams and events
-    for (std::size_t i = 0; i != events_.size(); ++i) {
-      auto ret = cudaEventDestroy(events_[i]);
-      K2_CHECK_CUDA_ERROR(ret);
-      ret = cudaStreamDestroy(streams_[i]);
-      K2_CHECK_CUDA_ERROR(ret);
-    }
-  }
+  ~ParallelRunner();
 
  private:
   ContextPtr c_;
   std::vector<cudaStream_t> streams_;
-  std::vector<cudaEvent_t> events_;
+  cudaEvent_t event_;
 };
 
 // OK, want to do:
