@@ -87,8 +87,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
     Arc arc = arcs_data[idx012];
     Arc prev_arc;
     if (idx012 > 0) prev_arc = arcs_data[idx012 - 1];
-    int32_t idx01 = row_ids2_data[idx012],
-            idx01x = row_splits2_data[idx01],
+    int32_t idx01 = row_ids2_data[idx012], idx01x = row_splits2_data[idx01],
             idx2 = idx012 - idx01x, idx0 = row_ids1_data[idx01],
             idx0x = row_splits1_data[idx0],
             idx0x_next = row_splits1_data[idx0 + 1], idx1 = idx01 - idx0x,
@@ -138,13 +137,10 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
         reachable_data[num_states + idx01] = 1;
     } else {
       int32_t symbol_diff = arc.symbol - prev_arc.symbol;
-      if (symbol_diff <= 0) neg_property |= kFsaPropertiesArcSortedAndDeterministic;
+      if (symbol_diff <= 0)
+        neg_property |= kFsaPropertiesArcSortedAndDeterministic;
       if (symbol_diff < 0) neg_property |= kFsaPropertiesArcSorted;
     }
-
-    if (idx012 > 0 && prev_arc.src_state == arc.src_state &&
-        prev_arc.symbol > arc.symbol)
-      neg_property |= kFsaPropertiesArcSorted;
 
     properties_data[idx012] = ~neg_property;
   };

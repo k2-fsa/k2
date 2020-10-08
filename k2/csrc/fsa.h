@@ -37,8 +37,8 @@ struct Arc {
     // Compares `src_state` first, then `symbol`, then `dest_state`, then
     // 'score'
     return std::tie(src_state, symbol, dest_state, score) <
-           std::tie(other.src_state, other.symbol,
-                    other.dest_state, other.score);
+           std::tie(other.src_state, other.symbol, other.dest_state,
+                    other.score);
   }
 };
 
@@ -284,26 +284,25 @@ Fsa EmptyFsa();
 // Is non-const becaues the FSA's row-ids
 FsaVec FsaVecFromFsa(const Fsa &fsa);
 
-// Compute and return basic properties for Fsa.  Returns 0 if fsa.NumAxes() != 2.
+// Compute and return basic properties for Fsa.
+// Returns 0 if fsa.NumAxes() != 2.
 int32_t GetFsaBasicProperties(const Fsa &fsa);
-
 
 /*
   Compute basic properties for an FsaVec, with their `and` in `properties_tot`.
 
      @param [in] fsa_vec   FSAs to compute the properties of.  It is an
-                   error if fsa_vec.NumAxes() != 3 (will crash).
+                           error if fsa_vec.NumAxes() != 3 (will crash).
      @param [out] properties_out  The properties per FSA will be written to
                    here, on the same device as `fsa_vec`.  This array
                    will be assigned to (does not have to be correctly sized at
                    entry).
-     @param [out] tot_properties_out  The `and` of all properties in `properties_out`
-                   will be written to this host (i.e. CPU-memory) pointer.
+     @param [out] tot_properties_out  The `and` of all properties in
+                  `properties_out` will be written to this host
+                  (i.e. CPU-memory) pointer.
 */
-void GetFsaVecBasicProperties(const FsaVec &fsa_vec,
-                              Array1<int32_t> *properties_out,
+void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
                               int32_t *tot_properties_out);
-
 
 // Return weights of `arcs` as a Tensor that shares the same memory
 // location

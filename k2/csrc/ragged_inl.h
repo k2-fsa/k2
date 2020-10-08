@@ -21,7 +21,9 @@
 #error "this file is supposed to be included only by ragged.h"
 #endif
 
+#include <algorithm>
 #include <memory>
+#include <numeric>
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
@@ -102,6 +104,30 @@ Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
   return Ragged<T>(shape, values);
 }
 
+// TODO(fangjun): add test cases for `order`
+template <typename T, typename Op>
+static void SortSublistsCpu(Ragged<T> *src, Array1<int32_t> *order) {
+  T *p = src->values.Data();
+  Op comp = Op();
+
+  if (order != nullptr)
+    std::iota(order->Data(), order->Data() + order->Dim(), 0);
+
+  auto lambda_comp = [p, comp](int32_t i, int32_t j) {
+    return comp(p[i], p[j]);
+  };
+
+  Array1<int32_t> &row_splits = src->shape.RowSplits(src->NumAxes() - 1);
+  for (int32_t i = 0; i < row_splits.Dim() - 1; ++i) {
+    int32_t cur = row_splits[i];
+    int32_t next = row_splits[i + 1];
+    if (order != nullptr)
+      std::sort(order->Data() + cur, order->Data() + next, lambda_comp);
+
+    std::sort(p + cur, p + next, comp);
+  }
+}
+
 template <typename T, typename Op /* = LessThan<T> */>
 void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
   if (order) {
@@ -109,38 +135,33 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
     K2_DCHECK_EQ(src->values.Dim(), order->Dim());
   }
   K2_DCHECK_GE(src->NumAxes(), 2);
-  K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda)
-      << "It supports only CUDA at present";
+  if (src->Context()->GetDeviceType() == kCpu) {
+    SortSublistsCpu<T, Op>(src, order);
+    return;
+  }
+
+  K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda);
 
   std::unique_ptr<mgpu::context_t> context =
       GetModernGpuAllocator(src->Context()->GetDeviceId());
 
   Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
   if (order)
-    mgpu::segmented_sort_indices(src->values.Data(),  // keys
-                                 order->Data(),       // indices
-                                 src->values.Dim(),   // count
-                                 segment.Data(),      // segments
-                                 segment.Dim() - 1,   // num_segments
-                                 Op(),                // cmp
-                                 *context);           // context
+    K2_CUDA_SAFE_CALL(
+        mgpu::segmented_sort_indices(src->values.Data(),  // keys
+                                     order->Data(),       // indices
+                                     src->values.Dim(),   // count
+                                     segment.Data(),      // segments
+                                     segment.Dim() - 1,   // num_segments
+                                     Op(),                // cmp
+                                     *context));          // context
   else
-    mgpu::segmented_sort(src->values.Data(),  // keys
-                         src->values.Dim(),   // count
-                         segment.Data(),      // segments
-                         segment.Dim() - 1,   // num_segments
-                         Op(),                // cmp
-                         *context);           // context
-
-  auto err = cudaGetLastError();
-  (void)err;
-  // TODO(fangjun): err is not cudaSuccess, but why was the data sorted
-  // correctly?
-  //
-  // Check failed: err == cudaSuccess (9 vs. 0)  Error: invalid configuration
-  // argument.
-  //
-  // K2_DCHECK_CUDA_ERROR(err);
+    K2_CUDA_SAFE_CALL(mgpu::segmented_sort(src->values.Data(),  // keys
+                                           src->values.Dim(),   // count
+                                           segment.Data(),      // segments
+                                           segment.Dim() - 1,   // num_segments
+                                           Op(),                // cmp
+                                           *context));          // context
 }
 
 template <typename T>
