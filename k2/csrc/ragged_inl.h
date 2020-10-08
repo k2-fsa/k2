@@ -143,6 +143,20 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
   // K2_DCHECK_CUDA_ERROR(err);
 }
 
+template <typename T>
+bool Ragged<T>::Validate(bool print_warnings) {
+  if (values.Dim() != shape.NumElements()) {
+    if (print_warnings) {
+      K2_LOG(WARN) << "Dimension mismatch: values.Dim() == "
+                   << values.Dim() << " vs. shape.NumElements() == "
+                   << shape.NumElements();
+    }
+    return false;
+  }
+  return shape.Validate();
+}
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_RAGGED_INL_H_

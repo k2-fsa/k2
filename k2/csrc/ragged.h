@@ -95,7 +95,7 @@ class RaggedShape {
 
   /*
     Return the row-ids for axis `axis` with `0 < axis < NumAxes()`.
-    The dimension is the number of elements on this axis == TotSize(axis).
+   The dimension is the number of elements on this axis == TotSize(axis).
   */
   Array1<int32_t> &RowIds(int32_t axis);
 
@@ -152,7 +152,11 @@ class RaggedShape {
   const std::vector<RaggedShapeDim> &Axes() const { return axes_; }
 
   // Check the RaggedShape for consistency; die on failure.
-  void Check();
+  void Check() { K2_CHECK(Validate(true)); }
+
+  // Validate the RaggedShape; on failure will return false (may also
+  // print warnings).
+  bool Validate(bool print_warnings = true);
 
   // Convert to possibly different context.
   RaggedShape To(ContextPtr ctx) const;
@@ -409,6 +413,13 @@ struct Ragged {
 
   ContextPtr &Context() const { return values.Context(); }
   int32_t NumAxes() const { return shape.NumAxes(); }
+  const Array1<int32_t> &RowSplits(int32_t axis) const { return shape.RowSplits(axis); }
+  Array1<int32_t> &RowSplits(int32_t axis) { return shape.RowSplits(axis); }
+  const Array1<int32_t> &RowIds(int32_t axis) const { return shape.RowIds(axis); }
+  Array1<int32_t> &RowIds(int32_t axis) { return shape.RowIds(axis); }
+  int32_t TotSize(int32_t axis) const { return shape.TotSize(axis); }
+  int32_t Dim0() const { return shape.Dim0(); }
+  bool Validate(bool print_warnings = true);
 
   /*
     It is an error to call this if this.shape.NumAxes() < 2.  This will return
@@ -596,6 +607,11 @@ RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems);
 RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
                                     int32_t *tot_sizes);
 
+inline RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, std::vector<int32_t> &tot_sizes) {
+  return RaggedShapeFromTotSizes(c, tot_sizes.size(), &(tot_sizes[0]));
+}
+
+
 /*
   Creates a random ragged array (with a CPU context!).  Note: you may want to
   explicitly use the template arg, e.g. invoke as RandomRagged<int32_t>(...).
@@ -631,6 +647,18 @@ Ragged<T> RandomRagged(T min_value = static_cast<T>(0),
  */
 template <typename T, typename Op = LessThan<T>>
 void SortSublists(Ragged<T> *src, Array1<int32_t> *order = nullptr);
+
+// Caution: you need the template argument to invoke this,
+// e.g. RaggedFromTotSizes<int32_t>(c, { 10, 100 })
+// Also caution: the Ragged object this returns is *not valid* in the sense
+// that ans.shape.Check() would fail because the row_splits and row_ids
+// have not been set up.  The caller is expected to do that.
+template <typename T>
+inline Ragged RaggedFromTotSizes(ContextPtr &c, std::vector<int32_t> &tot_sizes) {
+  return Ragged<T>(RaggedShapeFromTotSizes(c, tot_sizes),
+                   Array1<T>(c, tot_sizes.back()));
+}
+
 
 }  // namespace k2
 

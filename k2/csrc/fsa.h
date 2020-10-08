@@ -224,15 +224,15 @@ Tensor FsaVecToTensor(const Fsa &fsa_vec);
 /*
   Create an FsaVec (vector of FSAs) from a Tensor which is an array of int32_t's.
   This tensor is interpreted as follows:
-     First 2 elements:           num_fsas 0    
+     First 2 elements:           num_fsas 0
      Next num_fsas + 1 elements:  row_splits1 of the FsaVec, which is
                                 the cumulative sum of num_states
      Next num_fsas + 1 elements:  row_splits12 of the FsaVec, i.e. its
-                                row_splits2[row_splits1], which is the 
+                                row_splits2[row_splits1], which is the
                                 cumulative sum of num_arcs for those FSAs
      Next num_arcs * 4 elements:  the arcs.  The scores in the arcs are really
                                 of type float, not int32_t.
-  
+
 
     @param [in] t   Source tensor.  Must have dtype == kInt32Dtype and have one
                     axis.  Caution: the returned FSA will share
@@ -268,8 +268,7 @@ inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
   Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really
   the same type, just with different expectations on the number of axes!
  */
-inline FsaVec CreateFsaVec(const FsaVec &vec, int32_t num_fsas,
-                           const Fsa **fsas) {
+inline FsaVec CreateFsaVec(int32_t num_fsas, const Fsa **fsas) {
   // Implementation goes to this template:
   //  template <typename T>
   //  Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);

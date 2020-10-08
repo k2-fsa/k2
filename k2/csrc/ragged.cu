@@ -299,7 +299,9 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
   }
 }
 
-void RaggedShape::Check() {
+// TODO(dan): change this so that on error it prints a warning if
+// print_warnings==true, and then returns false.
+bool RaggedShape::Validate(bool print_warnings) {
   ContextPtr c = Context();
   int32_t num_axes = axes_.size();
   for (int32_t axis = 0; axis < num_axes; ++axis) {
@@ -399,6 +401,7 @@ void RaggedShape::Check() {
       K2_CHECK(IsCompatible(rsd.row_splits, axes_[axis + 1].row_splits));
     }
   }
+  return true;
 }
 
 RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
