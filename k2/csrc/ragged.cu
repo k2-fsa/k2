@@ -3,8 +3,7 @@
  * ragged
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -874,7 +873,7 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
 
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
   K2_CHECK_EQ(axis, 0) << "Append() with axis > 0 not yet supported";
-  K2_CHECK_GT(num_srcs, 0);
+  K2_CHECK_GT(num_srcs, 1);
   int32_t num_axes = src[0]->NumAxes();
   ContextPtr c = src[0]->Context();
 
@@ -890,26 +889,21 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
 
   std::vector<int32_t> tot_sizes_out(num_axes);
   for (int32_t axis = 0; axis < num_axes; ++axis)
-    tot_sizes_out[axis] = offsets_acc(axis, num_srcs);
+    tot_sizes_out[axis] = offsets_acc(axis + 1, num_srcs);
 
   RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
-  Array1<int32_t *> dest_row_splits, dest_row_ids;
-  GetRowInfo(ans, &dest_row_splits, &dest_row_ids);
 
   Array2<int32_t *> src_row_splits, src_row_ids;
   GetRowInfoMulti(num_srcs, src, &src_row_splits, &src_row_ids);
-
-  if (c->GetDeviceType() != kCpu) offsets = offsets.To(c);
-
-  int32_t **dest_row_splits_data = dest_row_splits.Data(),
-          **dest_row_ids_data = dest_row_ids.Data();
   auto src_row_splits_acc = src_row_splits.Accessor(),
        src_row_ids_acc = src_row_ids.Accessor();
+  offsets = offsets.To(c);
   offsets_acc = offsets.Accessor();  // on GPU now (if we're using one)
 
   ParallelRunner pr(c);
-  std::vector<cudaStream_t> streams(num_axes + 1);
+  std::vector<cudaStream_t> streams(num_axes);
   int32_t num_jobs = num_srcs * 2;
+
   // task_redirects is a device array (if using GPU).
   // We have `num_axes - 1` different sets of row_splits/row_ids to
   // populate but they have different sizes; the total number of distinct
@@ -918,27 +912,27 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
   auto task_redirects_acc = task_redirects.Accessor();
   // populate task_redirects (these allocate blocks of threads roughly
   // proportionally to the amount of data to process from this source.
-  for (int32_t axis = 0; axis < num_axes; axis++) {
+  for (int32_t axis = 0; axis < num_axes; ++axis) {
     streams[axis] = pr.NewStream();
-    const int32_t *offsets = &(offsets_acc(axis, 0));
+    With w(streams[axis]);
+    const int32_t *offsets = offsets_acc.Row(axis + 1);
+    // c->GetCudaStream() == stream[axis] as it has been overridden by With
     GetTaskRedirect(c, num_srcs, offsets, task_redirects_acc.Row(axis));
   }
 
   for (int32_t axis = 0; axis < num_axes - 1; axis++) {
     // first set the row-splits.
-    TaskRedirect *tr = &(task_redirects_acc(axis, 0));
-
-    int32_t **this_src_row_splits = &(src_row_splits_acc(axis, 0)),
-            **this_src_row_ids = &(src_row_ids_acc(axis, 0));
+    int32_t **this_src_row_splits = src_row_splits_acc.Row(axis),
+            **this_src_row_ids = src_row_ids_acc.Row(axis);
     int32_t *this_dest_row_splits = ans.RowSplits(axis + 1).Data(),
             *this_dest_row_ids = ans.RowIds(axis + 1).Data();
-    const int32_t *offsets_this_axis = &(offsets_acc(axis, 0)),
-                  *offsets_next_axis = &(offsets_acc(axis + 1, 0));
+    const int32_t *offsets_this_axis = offsets_acc.Row(axis + 1),
+                  *offsets_next_axis = offsets_acc.Row(axis + 2);
     auto lambda_set_row_splits = [=] __host__ __device__(
                                      int32_t src_idx, int32_t num_threads,
                                      int32_t thread_idx) -> void {
       // Reminder of how row_splits work dimensionally: they are a map
-      // from, e.g. an idx0 to an idx01.   An offsets_acc(0,n) is
+      // from, e.g. an idx0 to an idx0x.   An offsets_acc(0,n) is
       // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
       int32_t this_offset = offsets_this_axis[src_idx],
               next_offset = offsets_this_axis[src_idx + 1],
@@ -974,22 +968,15 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
                 this_value_offset = offsets_this_axis[src_idx],
                 num_elems = next_offset - this_offset;
         int32_t *src_row_ids_ptr = this_src_row_ids[src_idx];
-        // We need to write the very last value at the end of all the
-        // arrays; the last job (for src_idx == num_srcs - 1) does this
-        // by adding 1 to num_srcs.  We can't let them all write an
-        // extra value, because unlike row_splits, row_ids vectors may not
-        // start with 0 in general; so having 2 threads write that
-        // value (the 1st of each; one past the last of each) would cause
-        // indeterminacy.
-        if (src_idx == num_srcs - 1) num_elems++;
-        for (; thread_idx <= num_elems; thread_idx += num_threads) {
+        for (; thread_idx < num_elems; thread_idx += num_threads) {
           this_dest_row_ids[this_offset + thread_idx] =
               this_value_offset + src_row_ids_ptr[thread_idx];
         }
       };
       int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis + 1],
               target_num_loops = (tot_work > 1000000 ? 4 : 2);
-      // bool include_final_task = false;
+      // TODO(haowen): maybe we should launch kernels for row_splits and row_ids
+      // in different streams
       EvalWithRedirect(streams[axis + 1], num_jobs,
                        task_redirects_acc.Row(axis + 1), min_threads_per_job,
                        tot_work, target_num_loops, lambda_set_row_ids);

@@ -82,7 +82,9 @@ class CudaContext : public Context {
     K2_CHECK_CUDA_ERROR(ret);
   }
 
-  cudaStream_t GetCudaStream() const override { return stream_; }
+  cudaStream_t GetCudaStream() const override {
+    return g_stream_override.OverrideStream(stream_);
+  }
 
   void Sync() const override {
     auto ret = cudaStreamSynchronize(stream_);

@@ -533,7 +533,7 @@ class With {
 */
 class ParallelRunner {
  public:
-  explicit ParallelRunner(ContextPtr c) : c_(c) {}
+  explicit ParallelRunner(ContextPtr c);
 
   // create a new stream, that first syncs with stream of c_ via an event.  The
   // destructor will cause the stream of c_ to wait on this stream in the
@@ -549,16 +549,14 @@ class ParallelRunner {
   // so that you won't need to directly pass this into Eval(); the context
   // will call CudaStreamOverride::OverrideStream() and replace it
   // with this stream automatically.
-  cudaStream_t NewStream() {
-    // TODO
-    return kCudaStreamInvalid;
-  }
+  cudaStream_t NewStream();
 
-  void Finish();  // like calling destructor manually.
+  ~ParallelRunner();
 
  private:
   ContextPtr c_;
-  // TODO: list of events to wait on, maybe CUDA streamss.
+  std::vector<cudaStream_t> streams_;
+  cudaEvent_t event_;
 };
 
 // OK, want to do:
