@@ -117,30 +117,21 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
 
   Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
   if (order)
-    mgpu::segmented_sort_indices(src->values.Data(),  // keys
-                                 order->Data(),       // indices
-                                 src->values.Dim(),   // count
-                                 segment.Data(),      // segments
-                                 segment.Dim() - 1,   // num_segments
-                                 Op(),                // cmp
-                                 *context);           // context
+    K2_CUDA_SAFE_CALL(
+        mgpu::segmented_sort_indices(src->values.Data(),  // keys
+                                     order->Data(),       // indices
+                                     src->values.Dim(),   // count
+                                     segment.Data(),      // segments
+                                     segment.Dim() - 1,   // num_segments
+                                     Op(),                // cmp
+                                     *context));          // context
   else
-    mgpu::segmented_sort(src->values.Data(),  // keys
-                         src->values.Dim(),   // count
-                         segment.Data(),      // segments
-                         segment.Dim() - 1,   // num_segments
-                         Op(),                // cmp
-                         *context);           // context
-
-  auto err = cudaGetLastError();
-  (void)err;
-  // TODO(fangjun): err is not cudaSuccess, but why was the data sorted
-  // correctly?
-  //
-  // Check failed: err == cudaSuccess (9 vs. 0)  Error: invalid configuration
-  // argument.
-  //
-  // K2_DCHECK_CUDA_ERROR(err);
+    K2_CUDA_SAFE_CALL(mgpu::segmented_sort(src->values.Data(),  // keys
+                                           src->values.Dim(),   // count
+                                           segment.Data(),      // segments
+                                           segment.Dim() - 1,   // num_segments
+                                           Op(),                // cmp
+                                           *context));          // context
 }
 
 }  // namespace k2
