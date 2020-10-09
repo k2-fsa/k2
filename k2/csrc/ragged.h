@@ -609,7 +609,8 @@ RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
                                     int32_t *tot_sizes);
 
 inline RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, std::vector<int32_t> &tot_sizes) {
-  return RaggedShapeFromTotSizes(c, tot_sizes.size(), &(tot_sizes[0]));
+  return RaggedShapeFromTotSizes(c, static_cast<int32_t>(tot_sizes.size()),
+                                 tot_sizes.data());
 }
 
 

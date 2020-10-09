@@ -479,14 +479,13 @@ Array2<T> ToContiguous(const Array2<T> &src) {
 
 template <typename T>
 bool Equal(const Array1<T> &a, const Array1<T> &b) {
-  if (a.Dim() != b.Dim()) {
-    K2_LOG(FATAL) << "Dimension mismatch: " << a.Dim() << " vs. "
-                  << b.Dim();
-  }
+  K2_CHECK_EQ(a.Dim(), b.Dim());
   ContextPtr c = GetContext(a, b);
   const T *a_data = a.Data(), *b_data = b.Data();
   if (c->GetDeviceType() == kCpu) {
-    return memcmp((void*)a_data, (void*)b_data, sizeof(T) * a.Dim()) == 0;
+    return memcmp(reinterpret_cast<const void*>(a_data),
+                  reinterpret_cast<const void*>(b_data),
+                  sizeof(T) * a.Dim()) == 0;
   } else {
     Array1<int32_t> is_same(c, 1, 1);
     int32_t *is_same_data = is_same.Data();

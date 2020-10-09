@@ -33,7 +33,7 @@ class TopSorter {
        @param [in] fsas    A vector of FSAs; must have 3 axes.
    */
   TopSorter(FsaVec &fsas)
-    : c_(fsas_.Context()), fsas_(fsas) {
+    : c_(fsas.Context()), fsas_(fsas) {
     K2_CHECK_EQ(fsas_.NumAxes(), 3);
     int32_t num_fsas = fsas_.shape.TotSize(0),
         num_states = fsas_.shape.TotSize(1);
