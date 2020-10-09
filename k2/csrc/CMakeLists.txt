@@ -10,6 +10,7 @@ add_subdirectory(host)
 set(context_srcs
   array_ops.cu
   compose.cu
+  top_sort.cu
   context.cu
   dtype.cu
   fsa.cu

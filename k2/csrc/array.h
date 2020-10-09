@@ -50,11 +50,14 @@ class Array1 {
                                        byte_offset_);
   }
 
+  // Return a copy of this array that does not share the same underlying data.
+  Array1<T> Clone();
+
   int32_t ByteOffset() const { return byte_offset_; }
 
   // Called when creating Array2 using Array1, users should not call this for
   // now.
-  RegionPtr &GetRegion() { return region_; }
+  const RegionPtr &GetRegion() const { return region_; }
 
   // generally Callable will be some kind of lambda or function object; it
   // should be possible to evaluate it on the CUDA device (if we're compiling
@@ -156,15 +159,12 @@ class Array1 {
     if (ctx->IsCompatible(*Context())) return *this;
 
     Array1 ans(ctx, Dim());
-    if (dim_ == 0) return ans;
-
-    auto kind = GetMemoryCopyKind(*Context(), *ctx);
-    T *dst = ans.Data();
-    const T *src = Data();
-    MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
-               Dim() * ElementSize(), kind);
+    ans.CopyFrom(*this);
     return ans;
   }
+
+  // Copy from another array of the same dimension and type.
+  void CopyFrom(const Array1<T> &src);
 
   /*
     Modify size of array, copying old contents if we could not re-use the same
@@ -224,8 +224,11 @@ class Array1 {
     } else {
       K2_CHECK_EQ(type, kCuda);
       T ans;
-      MemoryCopy(static_cast<void *>(&ans), static_cast<const void *>(data),
-                 ElementSize(), MemcpyDeviceToHost);
+      cudaError_t ret = cudaMemcpy(static_cast<void *>(&ans),
+                                   static_cast<const void *>(data),
+                                   ElementSize(),
+                                   cudaMemcpyDeviceToHost);
+      K2_CHECK_CUDA_ERROR(ret);
       return ans;
     }
   }
@@ -272,7 +275,7 @@ class Array1 {
     T *data = Data();
     auto kind = GetMemoryCopyKind(*GetCpuContext(), *Context());
     MemoryCopy(static_cast<void *>(data), static_cast<const void *>(src.data()),
-               src.size() * ElementSize(), kind);
+               src.size() * ElementSize(), kind, Context().get());
   }
 
   Array1(const Array1 &other) = default;
@@ -311,6 +314,7 @@ class Array1 {
     dim_ = size;
     byte_offset_ = 0;
   }
+
 };
 
 // Could possibly introduce a debug mode to this that would do bounds checking.
@@ -363,7 +367,7 @@ class Array2 {
   // Currently ByteOffset and GetRegion is for internal usage, user should never
   // call it for now.
   int32_t ByteOffset() const { return byte_offset_; }
-  RegionPtr &GetRegion() { return region_; }
+  const RegionPtr &GetRegion() const { return region_; }
 
   ContextPtr &Context() const { return region_->context; }
 
@@ -471,7 +475,7 @@ class Array2 {
       T *dst = ans.Data();
       const T *src = Data();
       MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
-                 dim0_ * dim1_ * ElementSize(), kind);
+                 dim0_ * dim1_ * ElementSize(), kind, ctx.get());
       return ans;
     } else {
       return ToContiguous(*this).To(ctx);
@@ -611,5 +615,9 @@ std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
 }
 
 }  // namespace k2
+
+#define IS_IN_K2_CSRC_ARRAY_H_
+#include "k2/csrc/array_inl.h"
+#undef IS_IN_K2_CSRC_ARRAY_H_
 
 #endif  // K2_CSRC_ARRAY_H_

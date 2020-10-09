@@ -38,7 +38,8 @@ static void CheckArrayData(const k2::Array1<T> &array,
   std::vector<T> cpu_data(array.Dim());
   k2::MemoryCopy(static_cast<void *>(cpu_data.data()),
                  static_cast<const void *>(array_data),
-                 array.Dim() * array.ElementSize(), kind);
+                 array.Dim() * array.ElementSize(), kind,
+                 nullptr);
   EXPECT_EQ(cpu_data, target);
 }
 

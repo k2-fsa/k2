@@ -156,14 +156,14 @@ Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
   // RaggedShapeDim.
   K2_CHECK_GE(row_splits.Dim(), 1);
   if (!row_ids.IsValid()) {
+    if (rsd.cached_tot_size < 0)
+      rsd.cached_tot_size = row_splits[row_splits.Dim() - 1];
     // create row_ids as it does not exist
-    row_ids = Array1<int32_t>(Context(), row_splits[row_splits.Dim() - 1]);
+    row_ids = Array1<int32_t>(Context(), rsd.cached_tot_size);
     const int32_t *row_splits_data = row_splits.Data();
     int32_t *row_ids_data = row_ids.Data();
     RowSplitsToRowIds(Context(), row_splits.Dim() - 1, row_splits_data,
                       row_ids.Dim(), row_ids_data);
-    // set cached_tot_size
-    rsd.cached_tot_size = row_ids.Dim();
   }
   return row_ids;
 }
@@ -298,7 +298,9 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
   }
 }
 
-void RaggedShape::Check() {
+// TODO(dan): change this so that on error it prints a warning if
+// print_warnings==true, and then returns false.
+bool RaggedShape::Validate(bool print_warnings) {
   ContextPtr c = Context();
   int32_t num_axes = axes_.size();
   for (int32_t axis = 0; axis < num_axes; ++axis) {
@@ -398,6 +400,7 @@ void RaggedShape::Check() {
       K2_CHECK(IsCompatible(rsd.row_splits, axes_[axis + 1].row_splits));
     }
   }
+  return true;
 }
 
 RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
