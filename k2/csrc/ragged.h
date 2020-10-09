@@ -98,7 +98,7 @@ class RaggedShape {
    The dimension is the number of elements on this axis == TotSize(axis).
   */
   Array1<int32_t> &RowIds(int32_t axis);
-  const Array1<int32_t> &RowIds(int32_t axis) const; 
+  const Array1<int32_t> &RowIds(int32_t axis) const;
 
   int32_t NumAxes() const { return static_cast<int32_t>(axes_.size()) + 1; }
 
@@ -266,9 +266,13 @@ struct Ragged {
 
   ContextPtr &Context() const { return values.Context(); }
   int32_t NumAxes() const { return shape.NumAxes(); }
-  const Array1<int32_t> &RowSplits(int32_t axis) const { return shape.RowSplits(axis); }
+  const Array1<int32_t> &RowSplits(int32_t axis) const {
+    return shape.RowSplits(axis);
+  }
   Array1<int32_t> &RowSplits(int32_t axis) { return shape.RowSplits(axis); }
-  const Array1<int32_t> &RowIds(int32_t axis) const { return shape.RowIds(axis); }
+  const Array1<int32_t> &RowIds(int32_t axis) const {
+    return shape.RowIds(axis);
+  }
   Array1<int32_t> &RowIds(int32_t axis) { return shape.RowIds(axis); }
   int32_t TotSize(int32_t axis) const { return shape.TotSize(axis); }
   int32_t Dim0() const { return shape.Dim0(); }
@@ -329,7 +333,6 @@ struct Ragged {
     Array1<T> new_values = values.To(ctx);
     return Ragged<T>(new_shape, new_values);
   }
-
 };
 
 /*
@@ -342,7 +345,8 @@ struct Ragged {
   src.values.Dim() which tells us the order in which these elements would
   appear if sorted by column.  (TODO: we can decide later whether to require
   sorting secondarily by row).  So `src.values[ans]` will be in sorted
-  order at exit, and `ans` will contain all numbers from 0 to `src.values.Dim() - 1`.
+  order at exit, and `ans` will contain all numbers from 0 to `src.values.Dim()
+  - 1`.
 
   If `src` has more than 2 axes, the earlier-numbered axes do not affect
   the result, except for an efficiency modification: we require that the
@@ -354,25 +358,23 @@ struct Ragged {
   TODO(dan): we may at some point make, as an optional output, row-splits and/or
   row-ids of the rearranged matrix.
 
-  This problem has some relationship to the cusparse library, specifically the csr2csc
-  functions https://docs.nvidia.com/cuda/cusparse/index.html#csr2cscEx2).
-  However I'm not sure what it does when there are repeated elements.  It might
-  be easiest to implement it via sorting for now.
+  This problem has some relationship to the cusparse library, specifically the
+  csr2csc functions
+  https://docs.nvidia.com/cuda/cusparse/index.html#csr2cscEx2). However I'm not
+  sure what it does when there are repeated elements.  It might be easiest to
+  implement it via sorting for now.
 
-  
+
      @param [in] src  Input tensor, see above.
-     @param [in] num_cols  Number of columns in matrix to be transposed; 
+     @param [in] num_cols  Number of columns in matrix to be transposed;
                   we require 0 <= src.values[i] < num_cols.
 
-                  
+
 */
 Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols);
 
-
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r);
-
-
 
 }  // namespace k2
 
