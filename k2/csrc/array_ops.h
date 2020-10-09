@@ -341,6 +341,13 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
 void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
                        Array1<int32_t> &row_splits);
 
+
+/*
+  Return true if all elements of the two arrays are equal
+*/
+template <typename T>
+bool Equal(const Array1<T> &a, const Array1<T> &b);
+
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
    and non-decreasing.

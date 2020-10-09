@@ -35,7 +35,8 @@ static void CheckRowSplitsOrIds(k2::RaggedShape &shape,
     std::vector<int32_t> cpu_data(curr_row_splits.Dim());
     k2::MemoryCopy(static_cast<void *>(cpu_data.data()),
                    static_cast<const void *>(curr_row_splits.Data()),
-                   curr_row_splits.Dim() * curr_row_splits.ElementSize(), kind);
+                   curr_row_splits.Dim() * curr_row_splits.ElementSize(),
+                   kind, nullptr);
     EXPECT_EQ(cpu_data, target[i - 1]);
   }
 }
@@ -253,7 +254,8 @@ void TestShape() {
       std::vector<int32_t> cpu_data(curr_row_ids.Dim());
       k2::MemoryCopy(static_cast<void *>(cpu_data.data()),
                      static_cast<const void *>(curr_row_ids.Data()),
-                     curr_row_ids.Dim() * curr_row_ids.ElementSize(), kind);
+                     curr_row_ids.Dim() * curr_row_ids.ElementSize(),
+                     kind, nullptr);
       EXPECT_EQ(cpu_data, row_ids_vec[i - 1]);
       EXPECT_EQ(curr_axes[i - 1].cached_tot_size, row_ids_vec[i - 1].size());
     }

@@ -3,7 +3,8 @@
  * utils
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
+ *                                                   Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
@@ -17,6 +18,7 @@
 #include <vector>
 
 #include "k2/csrc/context.h"
+#include "k2/csrc/math.h"
 
 namespace k2 {
 
@@ -359,6 +361,26 @@ struct TaskRedirect {
 void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
                      const int32_t *row_splits, TaskRedirect *redirect_out);
 
+template <typename LambdaT>
+__global__ void eval_lambda_redirect(int32_t num_jobs, TaskRedirect *redirect,
+                                     int32_t num_threads_per_job,
+                                     LambdaT lambda) {
+  int32_t thread_idx = blockIdx.x * blockDim.x + threadIdx.x,
+          num_threads = gridDim.x * blockDim.x,
+          job_id = thread_idx / num_threads_per_job,
+          thread_this_job = thread_idx % num_threads_per_job;
+
+  if (job_id >= num_jobs) return;
+  K2_CHECK_GE(num_threads / num_threads_per_job, num_jobs);
+
+  int32_t task_id = redirect[job_id].task_id;
+  int32_t num_threads_this_task =
+      num_threads_per_job * redirect[job_id].num_jobs_this_task;
+  int32_t thread_idx_of_task =
+      redirect[job_id].job_id_this_task * num_threads_per_job + thread_this_job;
+  lambda(task_id, num_threads_this_task, thread_idx_of_task);
+}
+
 /*
   EvalWithRedirect() is like Eval() but for when the task have variable
   amounts of work to do (most naturally involving loops).  You would call
@@ -370,16 +392,14 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
                                to num_tasks * 2 where `num_tasks` is the number
                                of tasks given to GetTaskRedirect().
           @param [in] redirect  The array written to by GetTaskRedirect().
-          @param [in] min_threads_per_task This would typically be something
+          @param [in] min_threads_per_job This would typically be something
                        like 8, 16 or 32. It is the smallest allowed num_threads
-                       that we allocate for each task; the number of threads
+                       that we allocate for each job; the number of threads
                        per job is a multiple of this (and then the number of
                        threads per task is that times how many jobs for this
                        task, which is at least one). It's important for
                        hardware reasons that this be a power of 2 and not
-                       too small, so we can keep one warp per job.  We call it
-                       'per_task' because the jobs are kept fairly invisible
-                       to the user.
+                       too small, so we can keep one warp per job.
           @param [in] tot_work   The total amount of work that must be done over
                                all the tasks (this will commonly be equal to
                                row_splits[num_tasks] w.r.t. the args to
@@ -391,7 +411,7 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
                                to 4, depending on your concern for latency
                                (->smaller) or throughput (->larger).  Is is
                                the average number of `work items` per thread
-                               this code aims for when deiding the threads
+                               this code aims for when deciding the threads
                                _per_job.
            @param [in] lambda  The lambda expression to run; this is to be run
                                as, lambda(task_idx, num_threads_this_task,
@@ -399,7 +419,7 @@ void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
                                0 <= task_idx < num_tasks and 0 <= thread_idx
                                < num_threads_this_task, where num_threads
                                _this_task is a multiple of min_threads
-                               _per_task (a multiple that is specific to
+                               _per_job (a multiple that is specific to
                                the task). LambdaU will be called exactly
                                once (on the device).
 
@@ -412,7 +432,34 @@ void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
                       TaskRedirect *redirect, int32_t min_threads_per_job,
                       int32_t tot_work, int32_t target_num_loops,
                       LambdaT &lambda) {
-  // TODO:
+  if (num_jobs <= 0) return;
+  int32_t num_work_per_job = tot_work / num_jobs + 1;
+  int32_t num_threads_per_job =
+      ((num_work_per_job + min_threads_per_job - 1) / min_threads_per_job) *
+      min_threads_per_job;
+  if (stream == kCudaStreamInvalid) {
+    // TODO(haowen): we may only need EvalWithRedirct for device code, so we may
+    // just avoid calling this for those code.
+    for (int32_t i = 0; i < num_jobs; ++i) {
+      int32_t task_id = redirect[i].task_id;
+      int32_t num_threads_this_task =
+          num_threads_per_job * redirect[i].num_jobs_this_task;
+      for (int32_t j = 0; j < num_threads_per_job; ++j) {
+        int32_t thread_idx =
+            redirect[i].job_id_this_task * num_threads_per_job + j;
+        lambda(task_id, num_threads_this_task, thread_idx);
+      }
+    }
+  } else {
+    num_threads_per_job =
+        RoundUpToNearestPowerOfTwo(num_threads_per_job / target_num_loops);
+    int32_t tot_threads = num_threads_per_job * num_jobs;
+    int32_t block_size = 256;
+    int32_t grid_size = NumBlocks(tot_threads, block_size);
+    K2_CUDA_SAFE_CALL(eval_lambda_redirect<LambdaT>
+                      <<<grid_size, block_size, 0, stream>>>(
+                          num_jobs, redirect, num_threads_per_job, lambda));
+  }
 }
 
 __host__ __device__ __forceinline__ int32_t FloatAsInt(float f) {

@@ -477,6 +477,26 @@ Array2<T> ToContiguous(const Array2<T> &src) {
   return ans;
 }
 
+template <typename T>
+bool Equal(const Array1<T> &a, const Array1<T> &b) {
+  K2_CHECK_EQ(a.Dim(), b.Dim());
+  ContextPtr c = GetContext(a, b);
+  const T *a_data = a.Data(), *b_data = b.Data();
+  if (c->GetDeviceType() == kCpu) {
+    return memcmp(reinterpret_cast<const void*>(a_data),
+                  reinterpret_cast<const void*>(b_data),
+                  sizeof(T) * a.Dim()) == 0;
+  } else {
+    Array1<int32_t> is_same(c, 1, 1);
+    int32_t *is_same_data = is_same.Data();
+    auto lambda_test = [=] __host__ __device__ (int32_t i) -> void {
+      if (a_data[i] != b_data[i]) *is_same_data = 0;
+    };
+    Eval(c, a.Dim(), lambda_test);
+    return is_same[0];
+  }
+}
+
 }  // namespace k2
 
 #endif  // K2_CSRC_ARRAY_OPS_INL_H_

@@ -31,6 +31,8 @@ namespace k2 {
  */
 int32_t HighestBitSet(int32_t i);
 
+int32_t RoundUpToNearestPowerOfTwo(int32_t n);
+
 // Generate a uniformly distributed random variable of type int32_t.
 class RandIntGenerator {
  public:
