@@ -43,6 +43,9 @@ static int32_t StringToInt(const std::string &s) {
 }
 
 // Convert a string to a float. Abort the program on failure.
+// TODO(guoguo): We may run into locale problems, with comma vs. period for
+//               decimals. We have to test if the C code will behave the same
+//               w.r.t. locale as Python does.
 static float StringToFloat(const std::string &s) {
   K2_CHECK(!s.empty());
   char *p = nullptr;
@@ -238,9 +241,10 @@ static Fsa K2TransducerFromStream(std::istringstream &is,
    We will negate the cost/score when we read them in. Also note, OpenFST may
    omit the cost/score if it is 0.0.
 
-   If there are multiple final states, we will create a super final state, and
-   create arcs from the old final states to the new super final state, with the
-   (negated) old final state cost/score as its cost/score, and -1 as its label.
+   We always create the super final state. If there are final state(s) in the
+   original FSA, then we add arc(s) from the original final state(s) to the
+   super final state, with the (negated) old final state cost/score as its
+   cost/score, and -1 as its label.
 
    @param [in]  is    The input stream that contains the acceptor.
 
@@ -252,7 +256,6 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
   std::vector<std::string> splits;
   std::string line;
 
-  bool has_final_state = false;
   int32_t max_state = -1;
   int32_t num_arcs = 0;
   std::vector<int32_t> original_final_states;
@@ -294,7 +297,6 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
       original_final_states.push_back(StringToInt(splits[0]));
       original_final_weights.push_back(score);
       max_state = std::max(max_state, original_final_states.back());
-      has_final_state = true;
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nOpenFST acceptor expects a line with 1 (final_state),"
@@ -304,12 +306,12 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
   }
 
   K2_CHECK(is.eof());
-  K2_CHECK_EQ(has_final_state, true) << "No final state detected.";
 
-  // Post processing on final states. We may have multiple final states with
-  // weights associated with them for OpenFST style FSTs. We will have to add a
-  // super final state, and convert that into the k2 format (final state with no
-  // weight).
+  // Post processing on final states. If there are final state(s) in the
+  // original FSA, we add the super final state as well as arc(s) from original
+  // final state(s) to the super final state. Otherwise, the super final state
+  // will be added by FsaFromArray1 (since there's no arc with label
+  // kFinalSymbol).
   if (original_final_states.size() > 0) {
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
     int32_t super_final_state = max_state + 1;
@@ -337,6 +339,8 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
 
   bool error = true;
   Array1<Arc> array(GetCpuContext(), arcs);
+  // FsaFromArray1 will add a super final state if the original FSA doesn't have
+  // a final state.
   auto fsa = FsaFromArray1(array, &error);
   K2_CHECK_EQ(error, false);
 
@@ -354,10 +358,10 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
    We will negate the cost/score when we read them in. Also note, OpenFST may
    omit the cost/score if it is 0.0.
 
-   If there are multiple final states, we will create a super final state, and
-   create arcs from the old final states to the new super final state, with the
-   (negated) old final state cost/score as its cost/score, -1 as its label and 0
-   as its aux_label.
+   We always create the super final state. If there are final state(s) in the
+   original FST, then we add arc(s) from the original final state(s) to the
+   super final state, with the (negated) old final state cost/score as its
+   cost/score, -1 as its label and 0 as its aux_label.
 
    @param [in]  is    The input stream that contains the transducer.
 
@@ -374,7 +378,6 @@ static Fsa OpenFstTransducerFromStream(std::istringstream &is,
   std::vector<std::string> splits;
   std::string line;
 
-  bool has_final_state = false;
   int32_t max_state = -1;
   int32_t num_arcs = 0;
   std::vector<int32_t> original_final_states;
@@ -427,7 +430,6 @@ static Fsa OpenFstTransducerFromStream(std::istringstream &is,
       original_final_states.push_back(StringToInt(splits[0]));
       original_final_weights.push_back(score);
       max_state = std::max(max_state, original_final_states.back());
-      has_final_state = true;
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
                     << "\nOpenFST transducer expects a line with "
@@ -438,12 +440,12 @@ static Fsa OpenFstTransducerFromStream(std::istringstream &is,
   }
 
   K2_CHECK(is.eof());
-  K2_CHECK_EQ(has_final_state, true) << "No final state detected.";
 
-  // Post processing on final states. We may have multiple final states with
-  // weights associated with them for OpenFST style FSTs. We will have to add a
-  // super final state, and convert that into the k2 format (final state with no
-  // weight).
+  // Post processing on final states. If there are final state(s) in the
+  // original FST, we add the super final state as well as arc(s) from original
+  // final state(s) to the super final state. Otherwise, the super final state
+  // will be added by FsaFromArray1 (since there's no arc with label
+  // kFinalSymbol).
   if (original_final_states.size() > 0) {
     K2_CHECK_EQ(original_final_states.size(), original_final_weights.size());
     int32_t super_final_state = max_state + 1;
@@ -485,6 +487,8 @@ static Fsa OpenFstTransducerFromStream(std::istringstream &is,
   Array1<Arc> array(cpu_context, arcs);
 
   bool error = true;
+  // FsaFromArray1 will add a super final state if the original FSA doesn't have
+  // a final state.
   auto fsa = FsaFromArray1(array, &error);
   K2_CHECK_EQ(error, false);
 
