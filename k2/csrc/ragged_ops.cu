@@ -1,6 +1,6 @@
 /**
  * @brief
- * ragged
+ * ragged_ops
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
@@ -15,8 +15,8 @@
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
+#include "k2/csrc/ragged_ops.h"
 namespace {
-
 
 /*
 A helper function used in RaggedShape3;
@@ -37,7 +37,6 @@ static k2::ContextPtr GetContext(const k2::Array1<int32_t> *first,
 }
 
 }  // namespace
-
 
 namespace k2 {
 
@@ -88,7 +87,6 @@ RaggedShape RandomRaggedShape(bool set_row_ids, int32_t min_num_axes,
   // consistency.
   return RaggedShape(axes, true);
 }
-
 
 RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
                          int32_t cached_tot_size) {
@@ -308,11 +306,24 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
   K2_CHECK(IsCompatible(src, new2old));
   int32_t num_axes = src.NumAxes(), dim0 = src.Dim0();
   K2_CHECK_EQ(new2old.Dim(), dim0);
+
   std::vector<int32_t> tot_sizes_out(num_axes);
   for (int32_t axis = 0; axis < num_axes; axis++)
     tot_sizes_out[axis] = src.TotSize(axis);
   // the arrays in `ans` will be the same sizes as those in `src`.
   RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
+  if (dim0 == 0) {
+    for (int32_t axis = 0; axis < num_axes; ++axis) {
+      K2_CHECK_EQ(ans.TotSize(axis), 0);
+    }
+    Array1<int32_t *> row_splits_ptrs = GetRowSplitsPtr(ans);
+    int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
+    auto lambda_set_default_value = [=] __host__ __device__(int32_t i) {
+      row_splits_ptrs_data[i][0] = 0;
+    };
+    Eval(c, num_axes - 1, lambda_set_default_value);
+    return ans;
+  }
 
   src.Populate();
   Array2<int32_t> old_offsets(c, num_axes, dim0 + 1),
@@ -328,7 +339,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
     // 0 <= i <= dim0
     int32_t cur_offset = i;
     for (int32_t axis = 0; axis < num_axes; axis++) {
-      old_offsets_acc(0, i) = cur_offset;
+      old_offsets_acc(axis, i) = cur_offset;
       if (axis + 1 == num_axes) return;
       cur_offset = row_splits_ptrs_data[axis][cur_offset];
     }
@@ -354,7 +365,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
                                 // how TaskRedirect works..
   Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
   auto task_redirects_acc = task_redirects.Accessor();
-  for (int32_t axis = 0; axis < num_axes; axis++) {
+  for (int32_t axis = 0; axis < num_axes; ++axis) {
     streams[axis] = pr.NewStream();
     With w(streams[axis]);
     const int32_t *new_offsets_ptr = new_offsets_acc.Row(axis);
@@ -364,8 +375,8 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
 
   for (int32_t axis = 0; axis < num_axes - 1; axis++) {
     {
-      int32_t *this_new_row_splits = ans.RowSplits(axis).Data();
-      const int32_t *this_old_row_splits = src.RowSplits(axis).Data();
+      int32_t *this_new_row_splits = ans.RowSplits(axis + 1).Data();
+      const int32_t *this_old_row_splits = src.RowSplits(axis + 1).Data();
 
       auto lambda_set_row_splits = [=] __host__ __device__(
                                        int32_t new_idx, int32_t num_threads,
@@ -374,7 +385,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
         //  num_threads may have any value > 0 as far as this code is concerned.
         //
         // Reminder of how row_splits work dimensionally: they are a map
-        // from, e.g. an idx0 to an idx01.   An offsets_acc(0,n) is
+        // from, e.g. an idx0 to an idx0x.   An offsets_acc(0,n) is
         // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
         // The locations in the row_splits array are as given by
         // the `axis`'th row of `offsets`; the values in the array
@@ -382,7 +393,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
         int32_t old_idx = new2old_data[new_idx],
                 this_old_offset = old_offsets_acc(axis, old_idx),
                 next_old_offset = old_offsets_acc(axis, old_idx + 1),
-                this_new_offset = new_offsets_acc(axis, old_idx),
+                this_new_offset = new_offsets_acc(axis, new_idx),
                 num_rows = next_old_offset - this_old_offset,
                 value_offset = new_offsets_acc(axis + 1, new_idx) -
                                old_offsets_acc(axis + 1, old_idx);
@@ -394,7 +405,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
         // for row-ids.
         for (; thread_idx <= num_rows; thread_idx += num_threads) {
           this_new_row_splits[this_new_offset + thread_idx] =
-              value_offset + this_old_row_splits[thread_idx];
+              value_offset + this_old_row_splits[this_old_offset + thread_idx];
         }
       };
       int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
@@ -406,8 +417,8 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
     }
 
     {
-      int32_t *this_new_row_ids = ans.RowIds(axis).Data();
-      const int32_t *this_old_row_ids = src.RowIds(axis).Data();
+      int32_t *this_new_row_ids = ans.RowIds(axis + 1).Data();
+      const int32_t *this_old_row_ids = src.RowIds(axis + 1).Data();
 
       auto lambda_set_row_ids = [=] __host__ __device__(
                                     int32_t new_idx, int32_t num_threads,
@@ -424,35 +435,23 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
         int32_t old_idx = new2old_data[new_idx],
                 this_old_offset = old_offsets_acc(axis + 1, old_idx),
                 next_old_offset = old_offsets_acc(axis + 1, old_idx + 1),
-                this_new_offset = new_offsets_acc(axis + 1, old_idx),
-                num_rows = next_old_offset - this_old_offset,
+                this_new_offset = new_offsets_acc(axis + 1, new_idx),
+                num_elems = next_old_offset - this_old_offset,
                 value_offset = new_offsets_acc(axis, new_idx) -
                                old_offsets_acc(axis, old_idx);
-
-        // Using <= instead of < below causes threads for different src_idx to
-        // write a single overlapping value, but also ensures that the
-        // terminating value is written.  This only works because row_splits
-        // vectors always start with 0, which is not necessarily the case
-        // for row-ids.
-        for (; thread_idx < num_rows; thread_idx += num_threads) {
+        for (; thread_idx < num_elems; thread_idx += num_threads) {
           this_new_row_ids[this_new_offset + thread_idx] =
-              value_offset + this_old_row_ids[thread_idx];
-        }
-        // TODO: maybe remove this if I decide last value is not needed.
-        if (new_idx == dim0 - 1 && thread_idx == num_rows) {
-          int32_t next_value_offset = new_offsets_acc(axis, new_idx + 1) -
-                                      old_offsets_acc(axis, old_idx + 1);
-          this_new_row_ids[this_new_offset + thread_idx] = next_value_offset;
+              value_offset + this_old_row_ids[this_old_offset + thread_idx];
         }
       };
       int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
               target_num_loops = (tot_work > 1000000 ? 4 : 2);
-      EvalWithRedirect(streams[axis], num_jobs, task_redirects_acc.Row(axis),
-                       min_threads_per_job, tot_work, target_num_loops,
-                       lambda_set_row_ids);
+      EvalWithRedirect(streams[axis + 1], num_jobs,
+                       task_redirects_acc.Row(axis + 1), min_threads_per_job,
+                       tot_work, target_num_loops, lambda_set_row_ids);
     }
   }
-#ifndef NDEBUG
+#if !defined(NDEBUG)
   ans.Check();
 #endif
   return ans;
