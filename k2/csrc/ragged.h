@@ -332,7 +332,6 @@ struct Ragged {
 
 };
 
-
 /*
   Transpose a ragged tensor as if it were the index information of a CSR-format
   sparse matrix (but with possibly repeated elements!).  This is easiest to
