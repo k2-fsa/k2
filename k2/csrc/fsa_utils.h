@@ -39,7 +39,7 @@ namespace k2 {
 
       final_state
 
-  This is because final state in K2 does not bear a cost. Instead, we put the
+  This is because final state in k2 does not bear a cost. Instead, we put the
   cost on the arc that connects to the final state, and set its label to -1.
   When `openfst` is true, we expect the more generic OpenFst sytle final state
   format :
@@ -59,8 +59,10 @@ namespace k2 {
                     scores, so we negate them as we read. We will also allow
                     multiple final states with weights associated with them.
   @param [out]  aux_labels
-                    Used only when it is a transducer. It is allocated
-                    inside the function and will contain aux_label of each arc.
+                    If NULL, we treat the input as an acceptor; otherwise we
+                    treat the input as an transducer, and store the
+                    corresponding output labels to it. It is allocated inside
+                    the function and will contain aux_label of each arc.
                     Note that it is allocated on CPU if needed.
 
   @return It returns an Fsa on CPU.
