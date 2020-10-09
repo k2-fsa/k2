@@ -393,6 +393,22 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
                              const Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp = nullptr);
 
+
+/*
+   Returns counts of numbers in the array
+         @param [in] src   Source array whose elements are to be counted
+         @param [in] n     Number of counts; we require `0 <= src[i] < n`.
+         @return          Returns an array of size n, with ans[i] being
+                          equal to the number of times i appeared in `src`.
+
+   Implementation note: we'll probably use cub's DeviceRadixSort::SortKeys()
+   followed by RowIdsToRowSplits(), then work out the counts from the
+   row-splits.
+
+   See also GetCounts() in ragged.h.
+*/
+Array1<int32_t> GetCounts(Array1<int32_t> &src, int32_t n);
+  
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src);
 

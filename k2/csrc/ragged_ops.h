@@ -349,6 +349,70 @@ inline Ragged<T> RaggedFromTotSizes(ContextPtr &c, std::vector<int32_t> &tot_siz
 }
 
 
+/*
+  Transpose a ragged tensor as if it were the index information of a CSR-format
+  sparse matrix (but with possibly repeated elements!).  This is easiest to
+  explain if we assume `src` has 2 axes.  We view `src` as a list of nonzero
+  elements of a matrix, indexed first by row, and containing column-indexes
+  (but possibly repeated column indexes, which violates the assumptions of
+  the cusparse library).  This function returns an array of dimension
+  src.values.Dim() which tells us the order in which these elements would
+  appear if sorted by column.  (TODO: we can decide later whether to require
+  sorting secondarily by row).  So `src.values[ans]` will be in sorted
+  order at exit, and `ans` will contain all numbers from 0 to `src.values.Dim() - 1`.
+
+  If `src` has more than 2 axes, the earlier-numbered axes do not affect
+  the result, except for an efficiency modification: we require that the
+  required reordering does not cross the boundaries fixed by the earlier
+  axes, so we can if necessary implement this by sorting sub-lists instead
+  of sorting a single long list.  That is: for i < j,  if idx0(i) < idx0(j)
+  then we require src.values(i) < src.values(j).
+
+  TODO(dan): we may at some point make, as an optional output, row-splits and/or
+  row-ids of the rearranged matrix.
+
+  This problem has some relationship to the cusparse library, specifically the csr2csc
+  functions https://docs.nvidia.com/cuda/cusparse/index.html#csr2cscEx2).
+  However I'm not sure what it does when there are repeated elements.  It might
+  be easiest to implement it via sorting for now.
+
+  
+     @param [in] src  Input tensor, see above.
+     @param [in] num_cols  Number of columns in matrix to be transposed; 
+                  we require 0 <= src.values[i] < num_cols.
+*/
+Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols);
+
+
+/*
+  This function is like GetCounts() that is declared in array_ops.h, 
+  but works on a partitioned problem (this should be faster).
+
+   @param [in] src  A ragged array with src.NumAxes() == 2
+   @param [in] ans_ragged_shape  The ragged shape of the answer; must also
+                    have NumAxes() == 2 and ans_ragged_shape.Dim0() ==
+                    src.Dim0().  Elements e of the i'th row of `src`
+                    must satisfy:
+                      row_splits[i] <= e < row_splits[i+1].
+                   where row_splits is ans_ragged_shape.RowSplits(1).
+   @return         Returns a ragged array with shape == ans_ragged_shape,
+                   and elements corresponding to the counts in `src`.
+                   Specifically, ans[i,j] is the number of times number j
+                   appeared in row i of `src`.
+
+  Implementation notes: we'll probably use cub's
+  DeviceSegmentedRadixSort::SortKeys(), then call RowIdsToRowSplits() on
+  the result (with num_rows == ans_ragged_shape.NumElements()), then
+  for each i, let ans.values[i] = row_splits[i+1]-row_splits[i] (where
+  row_splits is the output of RowIdsToRowSplits() we just called).
+  
+  This could actually be implemented using the GetCounts() of array_ops.h,
+  ignoring the structure; the structure should help the speed though.
+  This equivalence should be useful for testing.
+*/
+Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
+                                     RaggedShape &ans_ragged_shape);
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_RAGGED_OPS_H_
