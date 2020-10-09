@@ -20,6 +20,7 @@
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/ragged.h"
+#include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/tensor.h"
 
 namespace {

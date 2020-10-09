@@ -23,6 +23,7 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
+#include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/tensor.h"
 
 namespace {

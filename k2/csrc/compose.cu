@@ -13,7 +13,9 @@
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/fsa_algo.h"
+
 
 namespace k2 {
 

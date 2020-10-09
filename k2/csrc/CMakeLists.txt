@@ -19,6 +19,7 @@ set(context_srcs
   math.cu
   moderngpu_allocator.cu
   ragged.cu
+  ragged_ops.cu
   tensor.cu
   tensor_ops.cu
   utils.cu

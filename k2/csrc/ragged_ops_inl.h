@@ -1,6 +1,6 @@
 /**
  * @brief
- * ragged_inl
+ * ragged_ops_inl
  *
  * @note
  * This is to be included only from ragged.h.
@@ -14,11 +14,11 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_RAGGED_INL_H_
-#define K2_CSRC_RAGGED_INL_H_
+#ifndef K2_CSRC_RAGGED_OPS_INL_H_
+#define K2_CSRC_RAGGED_OPS_INL_H_
 
-#ifndef IS_IN_K2_CSRC_RAGGED_H_
-#error "this file is supposed to be included only by ragged.h"
+#ifndef IS_IN_K2_CSRC_RAGGED_OPS_H_
+#error "this file is supposed to be included only by ragged_ops.h"
 #endif
 
 #include <algorithm>
@@ -177,7 +177,15 @@ bool Ragged<T>::Validate(bool print_warnings) {
   return shape.Validate();
 }
 
+// Defined here and not in ragged.h because it needs RemoveAxis.
+template <typename T>
+Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
+  K2_CHECK(axis >= 0 && axis < NumAxes());
+  RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
+  return Ragged<T>(new_shape, values);
+}
+
 
 }  // namespace k2
 
-#endif  // K2_CSRC_RAGGED_INL_H_
+#endif  // K2_CSRC_RAGGED_OPS_INL_H_

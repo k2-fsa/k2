@@ -17,6 +17,7 @@
 #include <string>
 
 #include "k2/csrc/ragged.h"
+#include "k2/csrc/ragged_ops.h"
 
 namespace k2 {
 
