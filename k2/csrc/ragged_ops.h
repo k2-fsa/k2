@@ -18,11 +18,10 @@
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
 #include "k2/csrc/log.h"
-#include "k2/csrc/utils.h"
 #include "k2/csrc/ragged.h"
+#include "k2/csrc/utils.h"
 
 namespace k2 {
-
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
@@ -172,7 +171,6 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
                               int32_t min_num_elements = 0,
                               int32_t max_num_elements = 2000);
 
-
 /*
   Return ragged shape with only a subset of the bottom-level elements
   kept.  Require renumbering.NumOldElems() == src.TotSize(src.NumAxes()-1).
@@ -295,11 +293,11 @@ RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems);
 RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
                                     int32_t *tot_sizes);
 
-inline RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, std::vector<int32_t> &tot_sizes) {
+inline RaggedShape RaggedShapeFromTotSizes(ContextPtr &c,
+                                           std::vector<int32_t> &tot_sizes) {
   return RaggedShapeFromTotSizes(c, static_cast<int32_t>(tot_sizes.size()),
                                  tot_sizes.data());
 }
-
 
 /*
   Creates a random ragged array (with a CPU context!).  Note: you may want to
@@ -343,11 +341,11 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order = nullptr);
 // that ans.shape.Check() would fail because the row_splits and row_ids
 // have not been set up.  The caller is expected to do that.
 template <typename T>
-inline Ragged<T> RaggedFromTotSizes(ContextPtr &c, std::vector<int32_t> &tot_sizes) {
+inline Ragged<T> RaggedFromTotSizes(ContextPtr &c,
+                                    std::vector<int32_t> &tot_sizes) {
   return Ragged<T>(RaggedShapeFromTotSizes(c, tot_sizes),
                    Array1<T>(c, tot_sizes.back()));
 }
-
 
 /*
   Transpose a ragged tensor as if it were the index information of a CSR-format

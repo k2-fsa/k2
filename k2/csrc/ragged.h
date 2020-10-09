@@ -98,7 +98,7 @@ class RaggedShape {
    The dimension is the number of elements on this axis == TotSize(axis).
   */
   Array1<int32_t> &RowIds(int32_t axis);
-  const Array1<int32_t> &RowIds(int32_t axis) const; 
+  const Array1<int32_t> &RowIds(int32_t axis) const;
 
   int32_t NumAxes() const { return static_cast<int32_t>(axes_.size()) + 1; }
 
@@ -266,9 +266,13 @@ struct Ragged {
 
   ContextPtr &Context() const { return values.Context(); }
   int32_t NumAxes() const { return shape.NumAxes(); }
-  const Array1<int32_t> &RowSplits(int32_t axis) const { return shape.RowSplits(axis); }
+  const Array1<int32_t> &RowSplits(int32_t axis) const {
+    return shape.RowSplits(axis);
+  }
   Array1<int32_t> &RowSplits(int32_t axis) { return shape.RowSplits(axis); }
-  const Array1<int32_t> &RowIds(int32_t axis) const { return shape.RowIds(axis); }
+  const Array1<int32_t> &RowIds(int32_t axis) const {
+    return shape.RowIds(axis);
+  }
   Array1<int32_t> &RowIds(int32_t axis) { return shape.RowIds(axis); }
   int32_t TotSize(int32_t axis) const { return shape.TotSize(axis); }
   int32_t Dim0() const { return shape.Dim0(); }
@@ -329,14 +333,10 @@ struct Ragged {
     Array1<T> new_values = values.To(ctx);
     return Ragged<T>(new_shape, new_values);
   }
-
 };
-
 
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r);
-
-
 
 }  // namespace k2
 

@@ -39,8 +39,7 @@ static void CheckArrayData(const k2::Array1<T> &array,
   std::vector<T> cpu_data(array.Dim());
   k2::MemoryCopy(static_cast<void *>(cpu_data.data()),
                  static_cast<const void *>(array_data),
-                 array.Dim() * array.ElementSize(), kind,
-                 nullptr);
+                 array.Dim() * array.ElementSize(), kind, nullptr);
   EXPECT_EQ(cpu_data, target);
 }
 
@@ -889,6 +888,132 @@ void TestAppend() {
 TEST(RaggedShapeOpsTest, TestAppend) {
   TestAppend<kCpu>();
   TestAppend<kCuda>();
+}
+void CheckResultOfRenumber(const ContextPtr &context, RaggedShape &shape,
+                           Array1<int32_t> &new2old, RaggedShape &result) {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  int32_t num_axes = shape.NumAxes();
+  int32_t dim0 = shape.Dim0();
+  if (dim0 == 0) {
+    std::vector<int32_t> empty_row_splits = {0};
+    for (int32_t i = 0; i < num_axes - 1; ++i) {
+      CheckArrayData(result.RowSplits(i + 1), empty_row_splits);
+      EXPECT_EQ(result.RowIds(i + 1).Dim(), 0);
+    }
+    return;
+  }
+  Array2<int32_t> old_offsets(context, num_axes, dim0 + 1);
+  auto old_offsets_acc = old_offsets.Accessor();
+  Array1<int32_t *> row_splits_ptrs = GetRowSplitsPtr(shape);
+  int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
+  // Set old_offsets
+  auto lambda_get_old_offsets = [=] __host__ __device__(int32_t i) {
+    // 0 <= i <= dim0
+    int32_t cur_offset = i;
+    for (int32_t axis = 0; axis < num_axes; axis++) {
+      old_offsets_acc(axis, i) = cur_offset;
+      if (axis + 1 == num_axes) return;
+      cur_offset = row_splits_ptrs_data[axis][cur_offset];
+    }
+  };
+  Eval(context, dim0 + 1, lambda_get_old_offsets);
+  old_offsets = old_offsets.To(cpu);
+  auto cpu_offsets_acc = old_offsets.Accessor();
+  shape = shape.To(cpu);
+  new2old = new2old.To(cpu);
+  // get result splits with `SpliceRowSplits` and get result row-ids with
+  // `RowSplitsToRowIds``
+  std::vector<Array1<int32_t>> result_splits;
+  std::vector<Array1<int32_t>> result_ids;
+  for (auto axis = 0; axis < num_axes - 1; ++axis) {
+    Array1<int32_t> curr_row_splits = shape.RowSplits(axis + 1);
+    std::vector<Array1<int32_t>> splits_vec(dim0);
+    std::vector<const Array1<int32_t> *> splits_vec_ptr(dim0);
+    for (int32_t m = 0; m != dim0; ++m) {
+      int32_t old_idx = new2old[m];
+      int32_t start = cpu_offsets_acc(axis, old_idx);
+      int32_t end = cpu_offsets_acc(axis, old_idx + 1);
+      Array1<int32_t> sub_list = curr_row_splits.Range(start, end - start + 1);
+      Array1<int32_t> copy_sub_list(cpu, sub_list.Dim());
+      copy_sub_list.CopyFrom(sub_list);
+      int32_t *data = copy_sub_list.Data();
+      int32_t init = data[0];
+      for (int32_t n = 0; n != copy_sub_list.Dim(); ++n) {
+        data[n] -= init;
+      }
+      splits_vec[m] = copy_sub_list;
+      splits_vec_ptr[m] = &splits_vec[m];
+    }
+    Array1<int32_t> result_row_splits =
+        SpliceRowSplits(dim0, splits_vec_ptr.data());
+    result_splits.push_back(result_row_splits);
+    Array1<int32_t> result_row_ids(cpu, result_row_splits.Back());
+    RowSplitsToRowIds(result_row_splits, result_row_ids);
+    result_ids.push_back(result_row_ids);
+  }
+  for (int32_t i = 0; i < num_axes - 1; ++i) {
+    CheckArrayData(result.RowSplits(i + 1), result_splits[i]);
+    CheckArrayData(result.RowIds(i + 1), result_ids[i]);
+  }
+}
+
+template <DeviceType d>
+void TestRenumber() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // simple case
+    const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+    const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
+    const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+    const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
+    // std::vector<std::vector<int32_t>> expected_row_splits = {
+    //  {0, 3, 4, 6}, {0, 1, 3, 4, 7, 9, 10}};
+    // std::vector<std::vector<int32_t>> expected_row_ids = {
+    //   {0, 0, 0, 1, 2, 2}, {0, 1, 1, 2, 3, 3, 3, 4, 4, 5}};
+
+    Array1<int32_t> splits1(context, row_splits1);
+    Array1<int32_t> ids1(context, row_ids1);
+    Array1<int32_t> splits2(context, row_splits2);
+    Array1<int32_t> ids2(context, row_ids2);
+    RaggedShape shape =
+        RaggedShape3(&splits1, &ids1, ids1.Dim(), &splits2, &ids2, ids2.Dim());
+
+    std::vector<int32_t> new2old_vec = {1, 2, 0};
+    Array1<int32_t> new2old(context, new2old_vec);
+    RaggedShape result = Renumber(shape, new2old);
+
+    CheckResultOfRenumber(context, shape, new2old, result);
+  }
+
+  {
+    // test with random large size
+    for (int32_t i = 0; i < 2; ++i) {
+      int32_t num_axes = RandInt(2, 4);
+      RaggedShape shape =
+          RandomRaggedShape(true, num_axes, num_axes, 0, 1000).To(context);
+      int32_t dim0 = shape.Dim0();
+      std::vector<int32_t> new2old_vec(dim0);
+      std::iota(new2old_vec.begin(), new2old_vec.end(), 0);
+      std::random_device rd;
+      std::mt19937 g(rd());
+      std::shuffle(new2old_vec.begin(), new2old_vec.end(), g);
+      Array1<int32_t> new2old(context, new2old_vec);
+      RaggedShape result = Renumber(shape, new2old);
+      CheckResultOfRenumber(context, shape, new2old, result);
+    }
+  }
+}
+TEST(RaggedShapeOpsTest, TestRenumber) {
+  TestRenumber<kCpu>();
+  TestRenumber<kCuda>();
 }
 
 }  // namespace k2
