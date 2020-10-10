@@ -67,6 +67,7 @@ static void CheckArrayData(const k2::Array1<T> &array,
 }  // namespace
 
 namespace k2 {
+#if 0
 class RaggedShapeOpsSuiteTest : public ::testing::Test {
  protected:
   RaggedShapeOpsSuiteTest() {
@@ -1014,6 +1015,51 @@ void TestRenumber() {
 TEST(RaggedShapeOpsTest, TestRenumber) {
   TestRenumber<kCpu>();
   TestRenumber<kCuda>();
+}
+#endif
+TEST(GetTransposeReordering, NoDuplicates) {
+  // 0 0 0 9
+  // 5 8 0 0
+  // 0 0 3 0
+  // 0 6 0 0
+  std::vector<int32_t> col_indexes{3, 0, 1, 2, 1};
+  std::vector<int32_t> _row_splits{0, 1, 3, 4, 5};
+  ContextPtr context = GetCpuContext();
+  Array1<int32_t> row_splits(context, _row_splits);
+  RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
+  Array1<int32_t> values(context, col_indexes);
+
+  Ragged<int32_t> ragged(shape, values);
+  Array1<int32_t> order = GetTransposeReordering(ragged, 4);
+  //   index 0 1 2 3 4
+  // it maps 9 5 8 3 6 to
+  //         5 8 6 3 9
+  // so it returns
+  //         1 2 4 3 0
+  CheckArrayData(order, {1, 2, 4, 3, 0});
+}
+
+TEST(GetTransposeReordering, WithDuplicates) {
+  // 0 0 0 (9,9,9)
+  // 5 8 0     0
+  // 0 0 (3,3) 0
+  // 0 6 0     0
+  std::vector<int32_t> col_indexes{3, 3, 3, 0, 1, 2, 2, 1};
+  std::vector<int32_t> _row_splits{0, 3, 5, 7, 8};
+  ContextPtr context = GetCpuContext();
+  Array1<int32_t> row_splits(context, _row_splits);
+  RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
+  Array1<int32_t> values(context, col_indexes);
+
+  Ragged<int32_t> ragged(shape, values);
+  Array1<int32_t> order = GetTransposeReordering(ragged, 4);
+  K2_LOG(INFO) << order;
+  //   index 0 1 2 3 4 5 6 7
+  // it maps 9 9 9 5 8 3 3 6 to
+  //         5 8 6 3 3 9 9 9
+  // so it returns
+  //         3 4 7 5 6 0 1 2   Note that it is stable
+  CheckArrayData(order, {3, 4, 7, 5, 6, 0, 1, 2});
 }
 
 template <DeviceType d>
