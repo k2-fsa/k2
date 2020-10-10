@@ -793,4 +793,17 @@ RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
   return RaggedShape2(&row_splits, &row_ids, num_elems);
 }
 
+Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
+                                     RaggedShape &ans_ragged_shape) {
+  K2_CHECK_EQ(src.NumAxes(), 2);
+  K2_CHECK_EQ(ans_ragged_shape.NumAxes(), 2);
+  K2_CHECK(IsCompatible(src, ans_ragged_shape));
+  K2_CHECK_EQ(src.Dim0(), ans_ragged_shape.Dim0());
+  const Array1<int32_t> &values = src.values;
+  const Array1<int32_t> &row_splits = ans_ragged_shape.RowSplits(1);
+  int32_t n = ans_ragged_shape.NumElements();
+  Array1<int32_t> counts = GetCounts(values, n);
+  return Ragged<int32_t>(ans_ragged_shape, counts);
+}
+
 }  // namespace k2
