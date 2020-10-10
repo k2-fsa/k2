@@ -1016,4 +1016,48 @@ TEST(RaggedShapeOpsTest, TestRenumber) {
   TestRenumber<kCuda>();
 }
 
+template <DeviceType d>
+void TestGetCountsPartitioned() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  // Testing with simple case is good enough as we have tested GetCounts() with
+  // random large size and GetCountsPartitioned just calls GetCounts.
+  std::vector<int32_t> src_row_splits_vec = {0, 3, 4, 6, 10};
+  Array1<int32_t> src_row_splits(context, src_row_splits_vec);
+  RaggedShape src_shape = RaggedShape2(&src_row_splits, nullptr, -1);
+  std::vector<int32_t> src_values_vec = {0, 1, 0, 2, 5, 5, 7, 7, 9, 7};
+  Array1<int32_t> src_values(context, src_values_vec);
+  Ragged<int32_t> src(src_shape, src_values);
+
+  std::vector<int32_t> ans_row_splits_vec = {0, 2, 4, 7, 10};
+  Array1<int32_t> ans_row_splits(context, ans_row_splits_vec);
+  RaggedShape ans_shape = RaggedShape2(&ans_row_splits, nullptr, -1);
+
+  Ragged<int32_t> result = GetCountsPartitioned(src, ans_shape);
+
+  ASSERT_EQ(result.NumAxes(), 2);
+  // Check row_splits
+  Array1<int32_t> row_splits = result.shape.RowSplits(1).To(cpu);
+  std::vector<int32_t> result_row_splits(row_splits.Data(),
+                                         row_splits.Data() + row_splits.Dim());
+  EXPECT_EQ(result_row_splits, ans_row_splits_vec);
+  // check values
+  std::vector<int32_t> expected_data = {2, 1, 1, 0, 0, 2, 0, 3, 0, 1};
+  Array1<int32_t> values = result.values.To(cpu);
+  std::vector<int32_t> data(values.Data(), values.Data() + values.Dim());
+  EXPECT_EQ(data, expected_data);
+}
+
+TEST(RaggedShapeOpsTest, TestGetCountsPartitioned) {
+  TestGetCountsPartitioned<kCpu>();
+  TestGetCountsPartitioned<kCuda>();
+}
+
 }  // namespace k2

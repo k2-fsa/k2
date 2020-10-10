@@ -271,12 +271,16 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
 }
 
 Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
-  K2_CHECK_GE(n, 1);
+  K2_CHECK_GE(n, 0);
   ContextPtr c = src.Context();
   int32_t dim = src.Dim();
   const int32_t *src_data = src.Data();
   Array1<int32_t> ans(c, n, 0);  // init with 0
   int32_t *ans_data = ans.Data();
+  if (n == 0) {
+    K2_CHECK_EQ(dim, 0);
+    return ans;
+  }
 
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
