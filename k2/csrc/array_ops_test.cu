@@ -79,8 +79,7 @@ void TestTranspose(int32_t num_rows, int32_t num_cols, int32_t num_reps = 1,
   std::vector<T> host_dest(num_elements);
   kind = GetMemoryCopyKind(*dest.Context(), *cpu);
   MemoryCopy(static_cast<void *>(host_dest.data()),
-             static_cast<const void *>(dest.Data()), num_bytes, kind,
-             nullptr);
+             static_cast<const void *>(dest.Data()), num_bytes, kind, nullptr);
 
   ASSERT_EQ(host_dest, gold);
 
@@ -148,8 +147,7 @@ void CheckExclusiveSumArray1Result(const std::vector<S> &src_data,
   auto kind = GetMemoryCopyKind(*dest.Context(), *GetCpuContext());
   MemoryCopy(static_cast<void *>(dest_data.data()),
              static_cast<const void *>(dest.Data()),
-             dest.Dim() * dest.ElementSize(), kind,
-             nullptr);
+             dest.Dim() * dest.ElementSize(), kind, nullptr);
   std::vector<T> expected_data(dest.Dim());
   ComputeExclusiveSum(src_data, &expected_data);
   ASSERT_EQ(dest_data.size(), expected_data.size());
@@ -331,8 +329,7 @@ void CheckExclusiveSumArray2Result(const std::vector<T> &src_data,
   auto kind = GetMemoryCopyKind(*dest_array1.Context(), *GetCpuContext());
   MemoryCopy(static_cast<void *>(dest_data.data()),
              static_cast<const void *>(dest_array1.Data()),
-             dest_array1.Dim() * dest_array1.ElementSize(), kind,
-             nullptr);
+             dest_array1.Dim() * dest_array1.ElementSize(), kind, nullptr);
   std::vector<T> expected_data(dest_rows * dest_cols);
   ComputeExclusiveSumArray2(src_data, dest_rows, dest_cols, &expected_data,
                             axis);
@@ -600,8 +597,7 @@ void TestMaxPerSubListTest() {
     auto kind = GetMemoryCopyKind(*max_values.Context(), *cpu);
     MemoryCopy(static_cast<void *>(cpu_data.data()),
                static_cast<const void *>(max_values.Data()),
-               max_values.Dim() * max_values.ElementSize(), kind,
-               nullptr);
+               max_values.Dim() * max_values.ElementSize(), kind, nullptr);
     std::vector<T> expected_data = {3, default_value, 8, default_value};
     EXPECT_EQ(cpu_data, expected_data);
   }
@@ -836,8 +832,7 @@ void TestAppend() {
       auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
       MemoryCopy(static_cast<void *>(cpu_data.data()),
                  static_cast<const void *>(dst.Data()),
-                 dst.Dim() * dst.ElementSize(), kind,
-                 nullptr);
+                 dst.Dim() * dst.ElementSize(), kind, nullptr);
       EXPECT_EQ(cpu_data, expected_data);
     }
 
@@ -853,8 +848,7 @@ void TestAppend() {
       auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
       MemoryCopy(static_cast<void *>(cpu_data.data()),
                  static_cast<const void *>(dst.Data()),
-                 dst.Dim() * dst.ElementSize(), kind,
-                 nullptr);
+                 dst.Dim() * dst.ElementSize(), kind, nullptr);
       EXPECT_EQ(cpu_data, expected_data);
     }
   }
@@ -882,8 +876,7 @@ void TestAppend() {
       auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
       MemoryCopy(static_cast<void *>(cpu_data.data()),
                  static_cast<const void *>(dst.Data()),
-                 dst.Dim() * dst.ElementSize(), kind,
-                 nullptr);
+                 dst.Dim() * dst.ElementSize(), kind, nullptr);
       std::vector<T> expected_data(dst.Dim());
       std::iota(expected_data.begin(), expected_data.end(), 0);
       EXPECT_EQ(cpu_data, expected_data);
@@ -926,8 +919,7 @@ void TestAppend() {
       auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
       MemoryCopy(static_cast<void *>(cpu_data.data()),
                  static_cast<const void *>(dst.Data()),
-                 dst.Dim() * dst.ElementSize(), kind,
-                 nullptr);
+                 dst.Dim() * dst.ElementSize(), kind, nullptr);
       std::vector<T> expected_data(dst.Dim());
       std::iota(expected_data.begin(), expected_data.end(), 0);
       EXPECT_EQ(cpu_data, expected_data);
@@ -1350,6 +1342,54 @@ void TestValidateRowSplitsAndIds() {
 TEST(OpsTest, ValidateRowSplitsAndIdsTest) {
   TestValidateRowSplitsAndIds<kCpu>();
   TestValidateRowSplitsAndIds<kCuda>();
+}
+
+template <DeviceType d>
+void TestGetCounts() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // simple case
+    int32_t n = 8;
+    std::vector<int32_t> values = {0, 1, 2, 1, 5, 5, 7, 6, 3, 2};
+    std::vector<int32_t> expected_data = {1, 2, 2, 1, 0, 2, 1, 1};
+    Array1<int32_t> src(context, values);
+    Array1<int32_t> ans = GetCounts(src, n);
+    ans = ans.To(cpu);
+    std::vector<int32_t> data(ans.Data(), ans.Data() + ans.Dim());
+    EXPECT_EQ(data, expected_data);
+  }
+
+  {
+    // random large case
+    for (int32_t i = 0; i != 2; ++i) {
+      int32_t n = RandInt(1, 10000);
+      int32_t src_dim = RandInt(0, 10000);
+      Array1<int32_t> src = RandUniformArray1(context, src_dim, 0, n - 1);
+      Array1<int32_t> ans = GetCounts(src, n);
+      ans = ans.To(cpu);
+      std::vector<int32_t> data(ans.Data(), ans.Data() + ans.Dim());
+      src = src.To(cpu);
+      int32_t *src_data = src.Data();
+      std::vector<int32_t> expected_data(n, 0);
+      for (int32_t j = 0; j < src.Dim(); ++j) {
+        ++expected_data[src_data[j]];
+      }
+      EXPECT_EQ(data, expected_data);
+    }
+  }
+}
+
+TEST(OpsTest, GetCountsTest) {
+  TestGetCounts<kCpu>();
+  TestGetCounts<kCuda>();
 }
 
 }  // namespace k2
