@@ -210,9 +210,8 @@ void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
                                 probably be all-ones.
      @param [out] and_values    Array to which the bitwise-and values will be
                                 written. Must satisfy
-                                and_values->Dim() == src.TotSize(src.NumAxes() - 2),
-                                i.e. the total size on the second-to-last axis
-                                of `src`.
+                                and_values->Dim() == src.TotSize(src.NumAxes() -
+  2), i.e. the total size on the second-to-last axis of `src`.
 */
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values) {
@@ -341,7 +340,6 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
 void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
                        Array1<int32_t> &row_splits);
 
-
 /*
   Return true if all elements of the two arrays are equal
 */
@@ -393,7 +391,6 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
                              const Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp = nullptr);
 
-
 /*
    Returns counts of numbers in the array
          @param [in] src   Source array whose elements are to be counted
@@ -401,14 +398,10 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
          @return          Returns an array of size n, with ans[i] being
                           equal to the number of times i appeared in `src`.
 
-   Implementation note: we'll probably use cub's DeviceRadixSort::SortKeys()
-   followed by RowIdsToRowSplits(), then work out the counts from the
-   row-splits.
-
-   See also GetCounts() in ragged.h.
+   See also GetCountsPartitioned in ragged.h.
 */
-Array1<int32_t> GetCounts(Array1<int32_t> &src, int32_t n);
-  
+Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n);
+
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src);
 
