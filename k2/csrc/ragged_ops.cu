@@ -812,4 +812,56 @@ Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
   return Ragged<int32_t>(ans_ragged_shape, counts);
 }
 
+Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
+  ContextPtr &context = src.Context();
+  if (src.NumAxes() < 2) {
+    // src is empty
+    return Array1<int32_t>(context, 0);
+  }
+
+  const int32_t *row_splits1_data = src.RowSplits(src.NumAxes() - 1).Data();
+  const int32_t *row_ids1_data = src.RowIds(src.NumAxes() - 1).Data();
+  const int32_t *value_data = src.values.Data();
+
+  auto lambda_set_value = [] __host__ __device__(int32_t idx01) -> int32_t {
+    return idx01;
+  };
+  int32_t n = src.values.Dim();
+  Array1<int32_t> ans(context, n, lambda_set_value);
+
+  auto lambda_comp = [=] __host__ __device__(int32_t a_idx01,
+                                             int32_t b_idx01) -> bool {
+    int32_t a_idx0 = row_ids1_data[a_idx01];
+    int32_t b_idx0 = row_ids1_data[b_idx01];
+
+    int32_t a_col_index = value_data[a_idx01];
+    int32_t b_col_index = value_data[b_idx01];
+
+    if (a_col_index < b_col_index) return true;  // sort by column indexes
+    if (a_col_index > b_col_index) return false;
+
+    // now we have a_col_index == b_col_index
+    if (a_idx0 < b_idx0) return true;  // sort by row indexes
+    if (a_idx0 > b_idx0) return false;
+
+    // now we have a_idx0 == b_idx0 && a_col_index == b_col_index
+    // this entry is duplicated in the sparse matrix.
+    return false;  // we can return either true or false here.
+  };
+
+  DeviceType device_type = context->GetDeviceType();
+  if (device_type == kCpu) {
+    std::sort(ans.Data(), ans.Data() + n, lambda_comp);
+  } else {
+    K2_CHECK_EQ(device_type, kCuda);
+
+    std::unique_ptr<mgpu::context_t> mgpu_context =
+        GetModernGpuAllocator(context->GetDeviceId());
+
+    K2_CUDA_SAFE_CALL(
+        mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
+  }
+  return ans;
+}
+
 }  // namespace k2
