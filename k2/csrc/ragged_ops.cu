@@ -10,13 +10,16 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include <cub/cub.cuh>
 #include <vector>
 
+#include "cub/cub.cuh"
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/math.h"
+#include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
+#include "moderngpu/kernel_mergesort.hxx"
+
 namespace {
 
 /*
