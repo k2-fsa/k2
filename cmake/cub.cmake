@@ -8,8 +8,8 @@ function(download_cub)
 
   include(FetchContent)
 
-  set(cub_URL  "https://github.com/NVlabs/cub/archive/1.9.10.tar.gz")
-  set(cub_HASH "SHA256=2bd7077a3d9741f0689e6c1eb58c6278fc96eccc27d964168bc8be1bc3a9040f")
+  set(cub_URL  "https://github.com/NVlabs/cub/archive/1.10.0.tar.gz")
+  set(cub_HASH "SHA256=8531e09f909aa021125cffa70a250761dfc247f960d7a1a12f65e6651ffb6477")
 
   FetchContent_Declare(cub
     URL               ${cub_URL}
