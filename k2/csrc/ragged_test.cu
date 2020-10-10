@@ -67,6 +67,7 @@ static void CheckArrayData(const k2::Array1<T> &array,
 }  // namespace
 
 namespace k2 {
+#if 0
 class RaggedShapeOpsSuiteTest : public ::testing::Test {
  protected:
   RaggedShapeOpsSuiteTest() {
@@ -1015,7 +1016,7 @@ TEST(RaggedShapeOpsTest, TestRenumber) {
   TestRenumber<kCpu>();
   TestRenumber<kCuda>();
 }
-
+#endif
 TEST(GetTransposeReordering, NoDuplicates) {
   // 0 0 0 9
   // 5 8 0 0
@@ -1052,7 +1053,6 @@ TEST(GetTransposeReordering, WithDuplicates) {
 
   Ragged<int32_t> ragged(shape, values);
   Array1<int32_t> order = GetTransposeReordering(ragged, 4);
-  K2_LOG(INFO) << order;
   //   index 0 1 2 3 4 5 6 7
   // it maps 9 9 9 5 8 3 3 6 to
   //         5 8 6 3 3 9 9 9
