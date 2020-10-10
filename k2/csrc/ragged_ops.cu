@@ -822,12 +822,8 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   const int32_t *row_splits1_data = src.RowSplits(src.NumAxes() - 1).Data();
   const int32_t *row_ids1_data = src.RowIds(src.NumAxes() - 1).Data();
   const int32_t *value_data = src.values.Data();
-
-  auto lambda_set_value = [] __host__ __device__(int32_t idx01) -> int32_t {
-    return idx01;
-  };
   int32_t n = src.values.Dim();
-  Array1<int32_t> ans(context, n, lambda_set_value);
+  Array1<int32_t> ans = Range(context, n, 0);
 
   auto lambda_comp = [=] __host__ __device__(int32_t a_idx01,
                                              int32_t b_idx01) -> bool {
