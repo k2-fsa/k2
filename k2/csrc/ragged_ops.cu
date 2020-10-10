@@ -10,6 +10,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "cub/cub.cuh"
