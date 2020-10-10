@@ -67,7 +67,6 @@ static void CheckArrayData(const k2::Array1<T> &array,
 }  // namespace
 
 namespace k2 {
-#if 0
 class RaggedShapeOpsSuiteTest : public ::testing::Test {
  protected:
   RaggedShapeOpsSuiteTest() {
@@ -1016,7 +1015,7 @@ TEST(RaggedShapeOpsTest, TestRenumber) {
   TestRenumber<kCpu>();
   TestRenumber<kCuda>();
 }
-#endif
+
 TEST(GetTransposeReordering, NoDuplicates) {
   // 0 0 0 9
   // 5 8 0 0
