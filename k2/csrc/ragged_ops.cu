@@ -812,6 +812,26 @@ Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
   return Ragged<int32_t>(ans_ragged_shape, counts);
 }
 
+static Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
+                                                 int32_t num_cols) {
+  std::vector<std::vector<int32_t>> column_indexes(num_cols);  // [column][row]
+  const int32_t *values_data = src.values.Data();
+  int32_t n = src.values.Dim();
+
+  for (int32_t i = 0; i != n; ++i) {
+    int32_t bucket = values_data[i];
+    column_indexes[bucket].push_back(i);
+  }
+
+  Array1<int32_t> ans(src.Context(), n);
+  int32_t *ans_data = ans.Data();
+  for (int32_t i = 0; i != num_cols; ++i) {
+    std::copy(column_indexes[i].begin(), column_indexes[i].end(), ans_data);
+    ans_data += column_indexes[i].size();
+  }
+  return ans;
+}
+
 Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   ContextPtr &context = src.Context();
   if (src.NumAxes() < 2) {
@@ -819,14 +839,18 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
     return Array1<int32_t>(context, 0);
   }
 
+  DeviceType device_type = context->GetDeviceType();
+  if (device_type == kCpu) return GetTransposeReorderingCpu(src, num_cols);
+
+  K2_CHECK_EQ(device_type, kCuda);
+
   const int32_t *row_splits1_data = src.RowSplits(src.NumAxes() - 1).Data();
   const int32_t *row_ids1_data = src.RowIds(src.NumAxes() - 1).Data();
   const int32_t *value_data = src.values.Data();
   int32_t n = src.values.Dim();
   Array1<int32_t> ans = Range(context, n, 0);
 
-  auto lambda_comp = [=] __host__ __device__(int32_t a_idx01,
-                                             int32_t b_idx01) -> bool {
+  auto lambda_comp = [=] __device__(int32_t a_idx01, int32_t b_idx01) -> bool {
     int32_t a_idx0 = row_ids1_data[a_idx01];
     int32_t b_idx0 = row_ids1_data[b_idx01];
 
@@ -845,18 +869,11 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
     return false;  // we can return either true or false here.
   };
 
-  DeviceType device_type = context->GetDeviceType();
-  if (device_type == kCpu) {
-    std::sort(ans.Data(), ans.Data() + n, lambda_comp);
-  } else {
-    K2_CHECK_EQ(device_type, kCuda);
+  std::unique_ptr<mgpu::context_t> mgpu_context =
+      GetModernGpuAllocator(context->GetDeviceId());
 
-    std::unique_ptr<mgpu::context_t> mgpu_context =
-        GetModernGpuAllocator(context->GetDeviceId());
+  K2_CUDA_SAFE_CALL(mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
 
-    K2_CUDA_SAFE_CALL(
-        mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
-  }
   return ans;
 }
 
