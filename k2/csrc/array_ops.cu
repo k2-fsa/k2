@@ -291,15 +291,6 @@ Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
     K2_CHECK_EQ(d, kCuda);
     void *d_temp_storage = NULL;
     std::size_t temp_storage_bytes = 0;
-    // Note we will get below warning here:
-    //   /k2/build/_deps/cub-src/cub/device/device_histogram.cuh(451):
-    //   warning: calling a constexpr __host__ function("max") from a __host__
-    //   __device__ function("MultiHistogramEven") is not allowed. The
-    //   experimental flag '--expt-relaxed-constexpr' can be used to allow this.
-    // That's because cub calls `std::numeric_limits<int>::max` in
-    // `MultiHistogramEven`, see here
-    // https://github.com/NVlabs/cub/blob/c3cceac115c072fb63df1836ff46d8c60d9eb304/cub/device/device_histogram.cuh#L451.
-    // Hopes they can fix it in the future.
     K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
         d_temp_storage, temp_storage_bytes, src_data, ans_data, n + 1, 0, n,
         dim, c->GetCudaStream()));  // The first time is to determine temporary

@@ -114,6 +114,8 @@ Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src);
      @return           Returns the transposed shape, with axes 0 and 1
                        swapped.  Will satisfy
                        ans.Dim0() == src.TotSize(1) / src.Dim0()
+                       and ans[i,j,k] = src[j,i,k] (Note, this is not actual C++
+                       code, it represents a conceptual indexing operator).
  */
 RaggedShape Transpose(RaggedShape &src);
 
