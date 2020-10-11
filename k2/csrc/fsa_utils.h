@@ -91,8 +91,6 @@ Fsa FsaFromString(const std::string &s, bool openfst = false,
 
    NOTE: If `openfst` is true, scores are first negated and then printed.
 
-   CAUTION: We support only FSAs on the CPU.
-
    @param [in]  fsa   The input FSA, which MUST be on CPU.
    @param [in]  openfst
                       If true, the scores will first be negated and

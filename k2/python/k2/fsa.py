@@ -3,23 +3,29 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
+from collections import OrderedDict
+from typing import Any
 from typing import Optional
-from typing import Union
+from typing import Tuple
 
 import torch
 
-from .symbol_table import SymbolTable
-from _k2 import _Fsa
+from _k2 import RaggedArc
 from _k2 import _as_float
 from _k2 import _fsa_from_str
 from _k2 import _fsa_from_tensor
-from _k2 import _fsa_to_str
-from graphviz import Digraph
 
 
 class Fsa(object):
+    '''This class represents a single fsa or a vector of fsas.
 
-    def __init__(self, tensor: torch.Tensor,
+    When it denotes a single fsa, its attribute :attr:`shape` is a tuple
+    containing two elements ``(num_states, None)``; it is a tuple with three
+    elements ``(num_fsas, None, None)`` for a vector of fsas.
+    '''
+
+    def __init__(self,
+                 tensor: torch.Tensor,
                  aux_labels: Optional[torch.Tensor] = None) -> 'Fsa':
         '''Build an Fsa from a tensor with optional aux_labels.
 
@@ -45,22 +51,50 @@ class Fsa(object):
         Returns:
           An instance of Fsa.
         '''
-        self._fsa = _fsa_from_tensor(tensor)
-        self._aux_labels = aux_labels
+        self._init_internal()
+        self.arcs: RaggedArc = _fsa_from_tensor(tensor)
+        if aux_labels is not None:
+            self.aux_labels = aux_labels
 
-    @classmethod
-    def _create(cls, fsa: _Fsa,
-                aux_labels: Optional[torch.Tensor] = None) -> 'Fsa':
-        '''For internal use only.
+    def _init_internal(self) -> None:
+        self._attr_dict = OrderedDict()
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == 'score':
+            score = self.arcs.values()[:, -1]
+            score = _as_float(score)
+            score.copy_(value)
+        elif isinstance(value, torch.Tensor):
+            assert value.shape[0] == self.arcs.values().shape[0]
+            self._attr_dict[name] = value
+        else:
+            object.__setattr__(self, name, value)
+
+    def __getattr__(self, name: str) -> Any:
+        if name == 'score':
+            score = self.arcs.values()[:, -1]
+            return _as_float(score)
+        if name in self._attr_dict:
+            return self._attr_dict[name]
+
+        raise AttributeError(f'Unknown attribute {name}')
+
+    @property
+    def shape(self) -> Tuple[int, ...]:
         '''
-        ans = cls.__new__(cls)
-        super(Fsa, ans).__init__()
-        ans._fsa = fsa
-        ans._aux_labels = aux_labels
-        return ans
+        Returns:
+          ``(num_states, None)` if this is an Fsa;
+          ``(num_fsas, None, None)` if this is an FsaVec.
+        '''
+        if self.arcs.num_axes() == 2:
+            return (self.arcs.dim0(), None)
+        elif self.arcs.num_axes() == 3:
+            return (self.arcs.dim0(), None, None)
+        else:
+            raise ValueError(f'Unsupported num_axes: {self.arcs.num_axes()}')
 
     @classmethod
-    def from_str(cls, s: str):
+    def from_str(cls, s: str) -> 'Fsa':
         '''Create an Fsa from a string.
 
         The given string `s` consists of lines with the following format:
@@ -103,9 +137,11 @@ class Fsa(object):
 
         ans = cls.__new__(cls)
         super(Fsa, ans).__init__()
-        fsa, aux_labels = _fsa_from_str(s, acceptor, False)
-        ans._fsa = fsa
-        ans._aux_labels = aux_labels
+        ans._init_internal()
+        arcs, aux_labels = _fsa_from_str(s, acceptor, False)
+        ans.arcs = arcs
+        if aux_labels is not None:
+            ans.aux_labels = aux_labels
         return ans
 
     @classmethod
@@ -130,187 +166,21 @@ class Fsa(object):
           Fields are separated by space(s), tab(s) or both. The `score`
           field is a float, while other fields are integers.
 
-          There might be multiple final states. Also, OpenFST may omit the score
+          There might be multiple final states. Also, OpenFst may omit the score
           if it is 0.0.
 
         Args:
           s:
             The input string. Refer to the above comment for its format.
           acceptor:
-            Optional. If true, interpret the input string as an acceptor,
+            Optional. If true, interpret the input string as an acceptor;
             otherwise, interpret it as a transducer.
         '''
         ans = cls.__new__(cls)
         super(Fsa, ans).__init__()
-        fsa, aux_labels = _fsa_from_str(s, acceptor, True)
-        ans._fsa = fsa
-        ans._aux_labels = aux_labels
+        ans._init_internal()
+        arcs, aux_labels = _fsa_from_str(s, acceptor, True)
+        ans.arcs = arcs
+        if aux_labels is not None:
+            ans.aux_labels = aux_labels
         return ans
-
-    def set_isymbol(self, isym: SymbolTable) -> None:
-        '''Set the input symbol table.
-
-        Args:
-          isym:
-            The input symbol table.
-        Returns:
-          None.
-        '''
-        self.isym = isym
-
-    def set_osymbol(self, osym: SymbolTable) -> None:
-        '''Set the output symbol table.
-
-        Args:
-          osym:
-            The output symbol table.
-
-        Returns:
-          None.
-        '''
-        self.osym = osym
-
-    def to_str(self, openfst: bool = False) -> str:
-        '''Convert an Fsa to a string.
-
-        Note:
-          The returned string can be used to construct an Fsa.
-
-        Args:
-          openfst:
-            Optional. If true, we negate the score during the conversion,
-
-        Returns:
-          A string representation of the Fsa.
-        '''
-        return _fsa_to_str(self._fsa, openfst, self._aux_labels)
-
-    @property
-    def arcs(self) -> torch.Tensor:
-        '''Return the arcs of the Fsa.
-
-        Caution:
-          The scores are not contained in the returned tensor.
-          Please use the `weights` property if you need it.
-
-        Returns:
-          A tensor of dtype `torch.int32` with 3 columns. Each row
-          represents an arc. Column 0 is the src_state, column 1
-          the dest_state, and column 2 the label.
-        '''
-        return self._fsa.values.tensor()[:, :-1]
-
-    @property
-    def weights(self) -> torch.Tensor:
-        '''Returns the weights of arcs in the Fsa.
-
-        Returns:
-          A 1-D tensor of dtype `torch.float32`. It has
-          as many rows as `arcs`.
-        '''
-        return _as_float(self._fsa.values.tensor()[:, -1])
-
-    @property
-    def aux_labels(self) -> Union[torch.Tensor, None]:
-        '''Return the aux_labels associated with `arcs`, if any.
-
-        Returns:
-          None or a 1-D tensor of dtype `torch.int32` if the Fsa
-          is a transducer. It has as many rows as `arcs`.
-        '''
-        return self._aux_labels
-
-    def to(self, device: Union[str, torch.device]) -> 'Fsa':
-        '''Convert an Fsa to a new Fsa on a given device.
-
-        Caution:
-          It is NOT an in-place operation. It returns a NEW instance.
-
-        Args:
-          device:
-            A torch device. Currently it supports only CUDA and CPU devices.
-
-        Returns:
-          A new Fsa on the given device.
-        '''
-        if isinstance(device, str):
-            device = torch.device(device)
-        assert device.type in ['cpu', 'cuda']
-
-        if device.type == 'cuda':
-            fsa = self._fsa.cuda(device.index if device.index else -1)
-        else:
-            fsa = self._fsa.cpu()
-
-        if self._aux_labels is not None:
-            aux_labels = self._aux_labels.to(device)
-        else:
-            aux_labels = None
-        return Fsa._create(fsa, aux_labels)
-
-    def to_dot(self) -> Digraph:
-        if self._aux_labels is not None:
-            name = 'WFST'
-        else:
-            name = 'WFSA'
-        graph_attr = {
-            'rankdir': 'LR',
-            'size': '8.5,11',
-            'label': '',
-            'center': '1',
-            'orientation': 'Portrait',
-            'ranksep': '0.4',
-            'nodesep': '0.25',
-        }
-
-        default_node_attr = {
-            'shape': 'circle',
-            'style': 'bold',
-            'fontsize': '14',
-        }
-
-        final_state_attr = {
-            'shape': 'doublecircle',
-            'style': 'bold',
-            'fontsize': '14',
-        }
-
-        final_state = -1
-        dot = Digraph(name=name, graph_attr=graph_attr)
-
-        seen = set()
-        i = -1
-        for arc, weight in zip(self.arcs, self.weights.tolist()):
-            i += 1
-            src_state, dst_state, label = arc.tolist()
-            src_state = str(src_state)
-            dst_state = str(dst_state)
-            label = int(label)
-            if label == -1:
-                final_state = dst_state
-            if src_state not in seen:
-                dot.node(src_state, label=src_state, **default_node_attr)
-                seen.add(src_state)
-
-            if dst_state not in seen:
-                if dst_state == final_state:
-                    dot.node(dst_state, label=dst_state, **final_state_attr)
-
-                else:
-                    dot.node(dst_state, label=dst_state, **default_node_attr)
-                seen.add(dst_state)
-            if self._aux_labels is not None:
-                aux_label = int(self._aux_labels[i])
-                if hasattr(self, 'osym'):
-                    aux_label = self.osym.get(aux_label)
-                aux_label = f':{aux_label}'
-            else:
-                aux_label = ''
-
-            if hasattr(self, 'isym') and label != -1:
-                label = self.isym.get(label)
-
-            dot.edge(src_state,
-                     dst_state,
-                     label=f'{label}{aux_label}/{weight:.2f}')
-        return dot

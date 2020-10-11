@@ -22,12 +22,12 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cub/cub.cuh>  // NOLINT
 #include <random>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "cub/cub.cuh"
 #include "k2/csrc/utils.h"
 
 namespace k2 {
@@ -96,7 +96,7 @@ void ExclusiveSumPerRow(const Array2<T> &src, Array2<T> *dest) {
   int32_t rows = dest->Dim0();
   // note there may be dest->Dim1() == src.Dim1() + 1
   int32_t cols = dest->Dim1();
-  ContextPtr ctx = src.Context();
+  ContextPtr &ctx = src.Context();
   ConstArray2Accessor<T> src_acc = src.Accessor();
   Array2Accessor<T> dest_acc = dest->Accessor();
   // TODO(haowen): parallelized it in case dest_minor_dim is large
@@ -191,7 +191,7 @@ void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest) {
 }
 
 template <typename T>
-void ExclusiveSum(Array2<T> &src, Array2<T> *dest, int32_t axis) {
+void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis) {
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_major_dim = src.Dim0();  // the axis will be summed
@@ -215,7 +215,7 @@ void ExclusiveSum(Array2<T> &src, Array2<T> *dest, int32_t axis) {
   if (axis == 1) {
     internal::ExclusiveSumPerRow(src, dest);
   } else {
-    ContextPtr ctx = src.Context();
+    ContextPtr &ctx = src.Context();
     int32_t elem_size = src.ElementSize();
     // note here we always allocate an extra element for src_trans
     RegionPtr src_trans_region =
@@ -238,7 +238,7 @@ void ExclusiveSum(Array2<T> &src, Array2<T> *dest, int32_t axis) {
 template <typename T>
 Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   K2_CHECK_GT(num_arrays, 0);
-  ContextPtr c = src[0]->Context();
+  ContextPtr &c = src[0]->Context();
 
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
   int32_t sum = 0, max_dim = 0;
@@ -356,7 +356,7 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
   int32_t num_rows = row_splits_array.Dim() - 1;
   K2_CHECK_EQ(num_rows, dst->Dim());
 
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   const int32_t *row_splits = row_splits_array.Data();
   const T *values_data = src.values.Data();
   T *output_data = dst->Data();
@@ -399,7 +399,7 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
   K2_CHECK(IsCompatible(src, *dest));
   K2_CHECK_EQ(dest->Dim(), 1);
 
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   T *src_data = src.Data();
   T *dest_data = dest->Data();
   int32_t size = src.Dim();
@@ -449,7 +449,7 @@ Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
 
 template <typename T>
 Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
-  K2_CHECK(dim >= 0);
+  K2_CHECK_GE(dim, 0);
   DeviceType d = c->GetDeviceType();
   Array1<T> ans = Array1<T>(c, dim);
   T *ans_data = ans.Data();
@@ -483,13 +483,13 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
   ContextPtr c = GetContext(a, b);
   const T *a_data = a.Data(), *b_data = b.Data();
   if (c->GetDeviceType() == kCpu) {
-    return memcmp(reinterpret_cast<const void*>(a_data),
-                  reinterpret_cast<const void*>(b_data),
+    return memcmp(reinterpret_cast<const void *>(a_data),
+                  reinterpret_cast<const void *>(b_data),
                   sizeof(T) * a.Dim()) == 0;
   } else {
     Array1<int32_t> is_same(c, 1, 1);
     int32_t *is_same_data = is_same.Data();
-    auto lambda_test = [=] __host__ __device__ (int32_t i) -> void {
+    auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
       if (a_data[i] != b_data[i]) *is_same_data = 0;
     };
     Eval(c, a.Dim(), lambda_test);

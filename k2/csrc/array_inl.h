@@ -17,22 +17,23 @@
 #define K2_CSRC_ARRAY_INL_H_
 
 #ifndef IS_IN_K2_CSRC_ARRAY_H_
-#error "this file is supposed to be included only by array_ops.h"
+#error "this file is supposed to be included only by array.h"
 #endif
 
 #include <algorithm>
 #include <cassert>
-#include <cub/cub.cuh>  // NOLINT
 #include <random>
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include "cub/cub.cuh"
 #include "k2/csrc/utils.h"
 
 namespace k2 {
 
 template <typename T>
-Array1<T> Array1<T>::Clone() {
+Array1<T> Array1<T>::Clone() const {
   Array1<T> ans(Context(), Dim());
   ans.CopyFrom(*this);
   return ans;
@@ -41,17 +42,14 @@ Array1<T> Array1<T>::Clone() {
 template <typename T>
 void Array1<T>::CopyFrom(const Array1<T> &src) {
   K2_CHECK_EQ(dim_, src.dim_);
-  if (dim_ == 0)
-    return;
+  if (dim_ == 0) return;
   auto kind = GetMemoryCopyKind(*src.Context(), *Context());
   const T *src_data = src.Data();
   T *dst_data = this->Data();
   MemoryCopy(static_cast<void *>(dst_data), static_cast<const void *>(src_data),
              Dim() * ElementSize(), kind, Context().get());
 }
-  
-  
-  
+
 }  // namespace k2
 
 #endif  // K2_CSRC_ARRAY_INL_H_
