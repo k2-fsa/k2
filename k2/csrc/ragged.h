@@ -266,6 +266,7 @@ struct Ragged {
 
   ContextPtr &Context() const { return values.Context(); }
   int32_t NumAxes() const { return shape.NumAxes(); }
+  int32_t NumElements() const { return shape.NumElements(); }  
   const Array1<int32_t> &RowSplits(int32_t axis) const {
     return shape.RowSplits(axis);
   }

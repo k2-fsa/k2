@@ -19,11 +19,7 @@ namespace k2 {
 
 // Caution: this is really a .cu file.  It contains mixed host and device code.
 
-/*
-   Pruned intersection (a.k.a. composition) that corresponds to decoding for
-   speech recognition-type tasks.  Can use either different decoding graphs (one
-   per acoustic sequence) or a shared graph
-*/
+
 class TopSorter {
  public:
   /**
@@ -43,8 +39,61 @@ class TopSorter {
   }
 
 
-  // The information we have for each iteration of the algorithm.
+  
 
+class TopSorter {
+ public:
+  /**
+     Topological sorter object.  You should call TopSort() after
+     constructing it.  Please see TopSort() declaration in header for
+     high-level overview of the algorithm.
+
+       @param [in] fsas    A vector of FSAs; must have 3 axes.
+   */
+  TopSorter(FsaVec &fsas)
+    : c_(fsas.Context()), fsas_(fsas) {
+    K2_CHECK_EQ(fsas_.NumAxes(), 3);
+    int32_t num_fsas = fsas_.shape.TotSize(0),
+      num_states = fsas_.shape.TotSize(1);
+    state_map_ = Array1<int32_t>(c_, num_states, -1);
+    // need 1 extra element allocated to avoid invalid read in ExclusiveSum()
+    state_offsets_ = Array1<int32_t>(c_, num_fsas + 1, 0).Range(0, num_fsas);
+
+    // Get in-degrees of states.
+    int32_t num_arcs = fsas_.NumElements();
+    Array1<int32_t> dest_states_idx01(c_, num_arcs);
+    int32_t *dest_states_idx01_data = dest_states_idx01.Data();
+    Array1<int32_t> arc_to_start_state_idx01 =
+      fsas_.RowSplits(1)[fsas_.RowIds(1)[fsas_.RowIds(2)]];
+    
+    const int32_t *fsas_row_splits1 = fsas_.RowSplits(1).Data(),
+      *fsas_row_ids1 = fsas_.RowIds(1).Data(),
+      *fsas_row_ids2 = fsas_.RowIds(2).Data();
+    const Arc *arcs_data = fsas_.values.Data();
+    auto lambda_set_dest_states_idx01 = [=] __host__ __device__ (int32_t arc_idx012) -> void {
+      int32_t state_idx01 = fsas_row_ids2[arc_idx012],
+        fsa_idx0 = fsas_row_ids1[state_idx01],
+        start_state_idx0x = fsas_row_splits1[fsa_idx0],
+        dest_state_idx1 = arcs[arc_idx012].dest_state,
+        dest_state_idx01 = start_state_idx0x + dest_state_idx;
+      if (dest_state_idx01 == state_idx01) {
+        // If it was a self-loop, pretend it was to the final-state.  This will
+        // allow the algorithm to work in the presence of self-loops (it's actually
+        // equivalent to not having the arc at all)
+        int32_t final_state_idx01 = fsas_row_splits1[fsa_idx0 + 1] - 1;
+        dest_state_idx01 = final_state_idx01;
+      }
+      dest_states_idx01_data[arc_idx012] = dest_state_idx01;
+    };
+    Eval(c_, num_arcs, lambda_set_dest_states_idx01);
+
+    dest_states_ = Ragged<int32_t>(fsas_.shape, dest_states_idx01);
+
+    state_in_degree_ = GetCounts(dest_states_, num_arcs);
+  }
+
+
+  // The information we have for each iteration of the algorithm.
   struct IterInfo {
     // This is a ragged array with 2 axes, indexed: [fsa_id][s] where s
     // is just an index into this list.  It contains idx01's into
@@ -53,22 +102,9 @@ class TopSorter {
 
     // This is of dimension [fsa_id]; it contains the value of state_offsets_
     // at the start of this iteration.  It will later be convenient to
-    // use this to create the row_splits of the output.
+    // use this to create the row_splits of the output.  (It determines
+    // the numbering of the output-states).
     Array1<int32_t> offsets;
-
-    // This is a ragged array with 3 axes, where the first 2 axes are the same
-    // as those of `states`.  It is: [fsa_index][list_of_states][list_of_arcs].
-    // It contains the indexes of the destination states of those arcs.  These
-    // are idx1's into the FSA that we will create at the output (as a special
-    // case we use -1 when the destination state is the final-state).  We don't
-    // need to store the corresponding arc-indexes (in the input FSA) because
-    // these can be worked out from the information in `states`.  Note: these
-    // are the same kinds of quantities as those in state_map_.
-    //
-    // Inside ComputeDestStates() we also temporarily store here numbers of
-    // the form  - 2 - fsa_dest_state_idx01, for states that haven't been
-    // numbered yet.
-    Ragged<int32_t> dest_states;
   };
 
   int32_t NumFsas() { return fsas_.Dim0(); }
@@ -81,6 +117,93 @@ class TopSorter {
   std::unique_ptr<IterInfo> GetFirstIterInfo() {
     std::unique_ptr<IterInfo> ans = std::make_unique<IterInfo>();
     ans->offsets = state_offsets_.Clone();  // currently contains all 0.
+
+
+    // Initialize it with a list of all states that currently have zero
+    // in-degree.
+    int32_t num_states = state_in_degree_.Dim();
+    Renumbering state_renumbering(num_states);
+    // NOTE: this is not very optimal given that we're keeping only a small
+    // number of states, but at this point I dont want to optimize too heavily.
+    // The (dest_states_data[i] != i) part is to avoid self-loops.
+    char *keep_data = state_renumbering.Keep().Data();
+    const int32_t *state_in_degree_data = state_in_degree_.values.Data();
+    auto lambda_set_keep = [=] __host__ __device__ (int32_t i) -> void {
+      keep_data[i] = (state_in_degree_data[i] == 0);
+    };
+
+    Array1<int32_t> first_iter_values = renumbering.New2Old();
+    Array1<int32_t> first_iter_row_ids = fsas_.RowIds(1)[first_iter_values];
+    ans->states = Ragged<int32_t>(RaggedShape2(nullptr, &first_iter_row_ids,
+                                               first_iter_row_ids.Dim()),
+                                  first_iter_values);
+    return ans;
+  }
+
+  std::unique_ptr<IterInfo> GetNextIterInfo(IterInfo &cur) {
+    // Process arcs leaving all states in `cur.states`
+
+    // First figure out how many arcs leave each state.
+    Array1<int32_t> arcs_per_state(cur.states.NumElements() + 1);
+    int32_t *arcs_per_state_data = arcs_per_state.Data();
+    const int32_t *states_data = cur.states.values.Data(),
+      *fsas_row_splits2_data = fsas_.RowSplits(2).Data();
+    auto lambda_set_arcs_per_state = [=] __host__ __device__ (int32_t states_idx01) {
+      int32_t fsas_idx01 = states_data[state_idx01],
+        num_arcs = fsas_row_splits2_data[fsas_idx01 + 1] -
+          fsas_row_splits2_data[fsas_idx01];
+      arcs_per_state_data[states_idx01] = num_arcs;
+    };
+    Eval(c_, cur.states.NumElements(), lambda_set_arcs_per_state);
+    ExclusiveSum(arcs_per_state, &arcs_per_state);
+
+    RaggedShape arcs_shape = ComposeRaggedShape(cur.states.shape,
+                                                RaggedShape2(&arcs_per_state, nullptr, -1));
+
+    // Each arc that generates a new state (i.e. for which arc_renumbering.Keep[i] == true)
+    // will write the state-id to here (as an idx01 into fsas_).  Other elements will
+    // be undefined.
+    Array<int32_t> next_iter_states(c_, arcs_shape.NumElements());
+
+    // We'll be figuring out which of these arcs leads to a state that now has
+    // in-degree 0.  (If >1 arc goes to such a state, only one will 'win',
+    // arbitrarily).
+    Renumbering arc_renumbering(arcs_shape.NumElements());
+
+    const int32_t *arcs_row_ids2 = arcs_shape.RowIds(2).Data(),
+      *arcs_row_splits2 = arcs_shape.RowSplits(2).Data(),
+      *fsas_row_splits2 = fsas_.RowSplits(2).Data(),
+      *dest_states_data = dest_states_.values.Data();
+    char *keep_arc_data = arc_renumbering.Keep().Data();
+    int32_t *state_in_degree = state_in_degree_.Data(),
+      *next_iter_states_data = next_iter_states.Data();
+    auto lambda_set_arc_renumbering = __host__ __device__ (int32_t arcs_idx012) {
+      // note: the prefix `arcs_` means it is an idxXXX w.r.t. `arcs_shape`.
+      // the prefix `fsas_` means the variable is an idxXXX w.r.t. `fsas_`.
+      int32_t arcs_idx01 = arcs_row_ids2[arcs_idx012],
+        arcs_idx01x = arcs_row_splits2[arcs_idx01],
+        arcs_idx2 = arcs_idx012 - arcs_idx01x,
+        fsa_idx0 = arcs_row_ids1[arcs_idx01],
+        fsas_idx01 = states_data[arcs_idx012],  // a state index
+        fsas_idx01x = fsas_row_splits2[fsas_idx01],
+        fsas_idx012 = fsas_idx012 + arcs_idx2,
+        fsas_dest_state_idx01 = dest_states_data[fsas_idx012]
+
+      if ((keep_arc_data = AtomicDecAndCompareZero(state_in_degree + fsas_dest_state))) {
+        next_iter_states_data[arcs_idx012] = fsas_idx01;
+      }
+    };
+
+    Array1<int32_t> new2old_map = arc_renumbering.New2Old();
+    if (new2old_map.Dim() == 0) {
+      // There are no new states.  This means we terminated.  We'll check from calling code
+      // that we processed all arcs.
+      return nullptr;
+    }
+
+  }
+
+    
     int32_t num_fsas = NumFsas();
 
     const int32_t *fsa_row_splits1 = fsas_.RowSplits(1).Data();
@@ -487,7 +610,7 @@ class TopSorter {
 
   ContextPtr c_;
   FsaVec &fsas_;
-  std::vector<std::unique_ptr<IterInfo> > iters_;
+  std::vector<std::unique_ptr<Ragged<IterInfo> > iters_;
 
   // state_map_ is of size (total number of states
   // in fsas_.  It maps to:
@@ -502,6 +625,17 @@ class TopSorter {
   // as do states that are never reached.)
   // have -1 in them.
   Array1<int32_t> state_map_;
+
+
+  // Ragged array with the same structure as fsas_, containing only the
+  // destination-states of arcs represented as in idx01 (instead of an idx1 as
+  // it is in the arc).
+  Ragged<int32_t> dest_states_;
+  
+  // The remaining in-degree of each state (state_in_degree_.Dim() ==
+  // fsas_.NumElements()), i.e. number of incoming arcs (except those from states
+  // that were already processed).
+  Array1<int32_t> state_in_degree_;
 
   // state_offsets_ is of dimension (fsas_.Dim0()), i.e. the number of
   // of separate FSAs we are top-sorting.  It represents the "next free number"
