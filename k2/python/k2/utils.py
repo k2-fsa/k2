@@ -26,7 +26,7 @@ def to_str(fsa: Fsa, openfst: bool = False) -> str:
     return _fsa_to_str(fsa.arcs, openfst, aux_labels)
 
 
-def to_dot(fsa) -> 'Digraph':
+def to_dot(fsa):
     '''Visualize an Fsa via graphviz.
     '''
     from graphviz import Digraph
