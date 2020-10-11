@@ -1356,6 +1356,15 @@ void TestGetCounts() {
   }
 
   {
+    // empty case
+    int32_t n = 0;
+    std::vector<int32_t> values;
+    Array1<int32_t> src(context, values);
+    Array1<int32_t> ans = GetCounts(src, n);
+    EXPECT_EQ(ans.Dim(), 0);
+  }
+
+  {
     // simple case
     int32_t n = 8;
     std::vector<int32_t> values = {0, 1, 2, 1, 5, 5, 7, 6, 3, 2};

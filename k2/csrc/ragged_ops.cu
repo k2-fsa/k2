@@ -4,18 +4,24 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include <cub/cub.cuh>
+#include <algorithm>
+#include <memory>
 #include <vector>
 
+#include "cub/cub.cuh"
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/math.h"
+#include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
+#include "moderngpu/kernel_mergesort.hxx"
+
 namespace {
 
 /*
@@ -791,6 +797,84 @@ RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
 
   Array1<int32_t> row_ids(c, num_elems, 0);
   return RaggedShape2(&row_splits, &row_ids, num_elems);
+}
+
+Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
+                                     RaggedShape &ans_ragged_shape) {
+  K2_CHECK_EQ(src.NumAxes(), 2);
+  K2_CHECK_EQ(ans_ragged_shape.NumAxes(), 2);
+  K2_CHECK(IsCompatible(src, ans_ragged_shape));
+  K2_CHECK_EQ(src.Dim0(), ans_ragged_shape.Dim0());
+  const Array1<int32_t> &values = src.values;
+  const Array1<int32_t> &row_splits = ans_ragged_shape.RowSplits(1);
+  int32_t n = ans_ragged_shape.NumElements();
+  Array1<int32_t> counts = GetCounts(values, n);
+  return Ragged<int32_t>(ans_ragged_shape, counts);
+}
+
+static Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
+                                                 int32_t num_cols) {
+  std::vector<std::vector<int32_t>> column_indexes(num_cols);  // [column][row]
+  const int32_t *values_data = src.values.Data();
+  int32_t n = src.values.Dim();
+
+  for (int32_t i = 0; i != n; ++i) {
+    int32_t bucket = values_data[i];
+    column_indexes[bucket].push_back(i);
+  }
+
+  Array1<int32_t> ans(src.Context(), n);
+  int32_t *ans_data = ans.Data();
+  for (int32_t i = 0; i != num_cols; ++i) {
+    std::copy(column_indexes[i].begin(), column_indexes[i].end(), ans_data);
+    ans_data += column_indexes[i].size();
+  }
+  return ans;
+}
+
+Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
+  ContextPtr &context = src.Context();
+  if (src.NumAxes() < 2) {
+    // src is empty
+    return Array1<int32_t>(context, 0);
+  }
+
+  DeviceType device_type = context->GetDeviceType();
+  if (device_type == kCpu) return GetTransposeReorderingCpu(src, num_cols);
+
+  K2_CHECK_EQ(device_type, kCuda);
+
+  const int32_t *row_splits1_data = src.RowSplits(src.NumAxes() - 1).Data();
+  const int32_t *row_ids1_data = src.RowIds(src.NumAxes() - 1).Data();
+  const int32_t *value_data = src.values.Data();
+  int32_t n = src.values.Dim();
+  Array1<int32_t> ans = Range(context, n, 0);
+
+  auto lambda_comp = [=] __device__(int32_t a_idx01, int32_t b_idx01) -> bool {
+    int32_t a_idx0 = row_ids1_data[a_idx01];
+    int32_t b_idx0 = row_ids1_data[b_idx01];
+
+    int32_t a_col_index = value_data[a_idx01];
+    int32_t b_col_index = value_data[b_idx01];
+
+    if (a_col_index < b_col_index) return true;  // sort by column indexes
+    if (a_col_index > b_col_index) return false;
+
+    // now we have a_col_index == b_col_index
+    if (a_idx0 < b_idx0) return true;  // sort by row indexes
+    if (a_idx0 > b_idx0) return false;
+
+    // now we have a_idx0 == b_idx0 && a_col_index == b_col_index
+    // this entry is duplicated in the sparse matrix.
+    return false;  // we can return either true or false here.
+  };
+
+  std::unique_ptr<mgpu::context_t> mgpu_context =
+      GetModernGpuAllocator(context->GetDeviceId());
+
+  K2_CUDA_SAFE_CALL(mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
+
+  return ans;
 }
 
 }  // namespace k2
