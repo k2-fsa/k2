@@ -54,14 +54,14 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
   Topologically sort an Fsa or FsaVec.
 
       @param [in] src  Input Fsa or FsaVec
-      @param [out] dest  Output Fsa or FsaVec.  On success, its states will be
-                       top-sorted if the FSA was acyclic (except possibly for
-                       self-loops).  On failure its value is undefined.
-      @param [out] arc_map  If not nullptr, on success a map from arc-indexes in 
-                       `dest` to arc-indexes in `src` will be output to here.
-
-      @return  Returns true on success, false on failure (because the input
-                      had cycles that were not self loops).
+      @param [out] dest  Output Fsa or FsaVec.  At exit, its states will be
+                      top-sorted.  (However, if `src` contained cycles other
+                      than self-loops, it won't contain all of the states 
+                      in the input; this can be detected by the user directly
+                      by looking at the number of states.
+      @param [out] arc_map  If not nullptr, at exit a map from arc-indexes in 
+                      `dest` to their source arc-indexes in `src` will have
+                       been assigned to this location.
 
   Implementation nots: from wikipedia 
   https://en.wikipedia.org/wiki/Topological_sorting#Parallel_algorithms
@@ -74,7 +74,7 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
   vertices are also removed, there will be a new set of vertices of indegree 0,
   where the procedure is repeated until no vertices are left."
 */
-bool TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
+void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
 
 
 
