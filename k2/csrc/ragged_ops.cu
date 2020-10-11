@@ -723,7 +723,7 @@ RaggedShape Transpose(RaggedShape &src) {
   Array1<int32_t> renumbering(c, src_tot_size1);
   int32_t *renumbering_data = renumbering.Data();
   auto lambda_set_renumbering = [=] __host__ __device__(int32_t i) {
-    int32_t j = i % src_dim1, k = i / src_dim1, i_old = j * src_dim0 + k;
+    int32_t j = i % src_dim0, k = i / src_dim0, i_old = j * src_dim1 + k;
     renumbering_data[i] = i_old;
   };
   Eval(c, src_tot_size1, lambda_set_renumbering);
