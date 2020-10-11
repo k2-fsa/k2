@@ -1015,6 +1015,53 @@ TEST(RaggedShapeOpsTest, TestRenumber) {
   TestRenumber<kCpu>();
   TestRenumber<kCuda>();
 }
+TEST(GetTransposeReordering, NoDuplicates) {
+  // 0 0 0 9 2
+  // 5 8 0 0 1
+  // 0 0 3 0 0
+  // 0 6 0 0 0
+  std::vector<int32_t> col_indexes{3, 4, 0, 1, 4, 2, 1};
+  std::vector<int32_t> _row_splits{0, 2, 5, 6, 7};
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<int32_t> row_splits(context, _row_splits);
+    RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
+    Array1<int32_t> values(context, col_indexes);
+
+    Ragged<int32_t> ragged(shape, values);
+    Array1<int32_t> order = GetTransposeReordering(ragged, 5);
+    //   index 0 1 2 3 4 5 6
+    // it maps 9 2 5 8 1 3 6 to
+    //         5 8 6 3 9 2 1
+    // so it returns
+    //         2 3 6 5 0 1 4
+    CheckArrayData(order, {2, 3, 6, 5, 0, 1, 4});
+    EXPECT_TRUE(context->IsCompatible(*order.Context()));
+  }
+}
+
+TEST(GetTransposeReordering, WithDuplicates) {
+  // 0 0 0 (9,9,9)
+  // 5 8 0     0
+  // 0 0 (3,3) 0
+  // 0 6 0     0
+  std::vector<int32_t> col_indexes{3, 3, 3, 0, 1, 2, 2, 1};
+  std::vector<int32_t> _row_splits{0, 3, 5, 7, 8};
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<int32_t> row_splits(context, _row_splits);
+    RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
+    Array1<int32_t> values(context, col_indexes);
+
+    Ragged<int32_t> ragged(shape, values);
+    Array1<int32_t> order = GetTransposeReordering(ragged, 4);
+    //   index 0 1 2 3 4 5 6 7
+    // it maps 9 9 9 5 8 3 3 6 to
+    //         5 8 6 3 3 9 9 9
+    // so it returns
+    //         3 4 7 5 6 0 1 2   Note that it is stable
+    CheckArrayData(order, {3, 4, 7, 5, 6, 0, 1, 2});
+    EXPECT_TRUE(context->IsCompatible(*order.Context()));
+  }
+}
 
 template <DeviceType d>
 void TestGetCountsPartitioned() {
