@@ -391,6 +391,23 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
                              const Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp = nullptr);
 
+
+/*
+  Compute a monotonically increasing lower bound on the array `src`,
+  putting the result in `dest` (which may be the same array as `src`).
+
+      @param [in] src  Source array (may be empty)
+      @param [out] dest   Destination array; must be on the same device
+                       as `src` and have the same dimension; may be the
+                       same as `src`.
+
+  At exit, `d = *dest` will be the largest sequence that is monototonically
+  increasing (i.e. `d[i] <= d[i+1]`) and for which `d[i] <= src[i]`.  We
+  compute this using an inclusive scan using a min operator on the
+  reverse of the arrays `src` and `dest`.
+ */
+void MonotonicLowerBound(Array1<S> &src, Array1<T> *dest);
+
 /*
    Returns counts of numbers in the array
          @param [in] src   Source array whose elements are to be counted
