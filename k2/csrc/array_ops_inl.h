@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <limits>
 #include <random>
 #include <type_traits>
 #include <utility>
@@ -45,6 +46,41 @@ struct PtrPtr {
   __host__ __device__ PtrPtr operator+(int32_t n) const {
     PtrPtr tmp(*this);
     tmp.data += n;
+    return tmp;
+  }
+};
+
+// Will be used (as both InputIterator and OutputIterator) in
+// MonotonicLowerBound to call cub::DeviceScan::InclusiveScan.
+template <typename T>
+struct ConstReversedPtr {
+  const T *data;
+
+  // data points to the last element now
+  explicit ConstReversedPtr(const T *data, int32_t size)
+      : data(data + size - 1) {}
+
+  // operator[] and operator+ are required by cub::DeviceScan::InclusiveScan
+  __host__ __device__ T operator[](int32_t i) const { return data[-i]; }
+  __host__ __device__ ConstReversedPtr operator+(int32_t n) const {
+    ConstReversedPtr tmp(*this);
+    tmp.data -= n;
+    return tmp;
+  }
+};
+
+template <typename T>
+struct ReversedPtr {
+  T *data;
+
+  // data points to the last element now
+  explicit ReversedPtr(T *data, int32_t size) : data(data + size - 1) {}
+
+  // operator[] and operator+ are required by cub::DeviceScan::InclusiveScan
+  __host__ __device__ T &operator[](int32_t i) { return data[-i]; }
+  __host__ __device__ ReversedPtr operator+(int32_t n) const {
+    ReversedPtr tmp(*this);
+    tmp.data -= n;
     return tmp;
   }
 };
@@ -135,6 +171,15 @@ namespace std {
 // vaule_type is required by cub::DeviceScan::ExclusiveSum
 template <typename T>
 struct iterator_traits<k2::internal::PtrPtr<T>> {
+  typedef T value_type;
+};
+// vaule_type is required by cub::DeviceScan::InclusiveSum
+template <typename T>
+struct iterator_traits<k2::internal::ConstReversedPtr<T>> {
+  typedef T value_type;
+};
+template <typename T>
+struct iterator_traits<k2::internal::ReversedPtr<T>> {
   typedef T value_type;
 };
 }  // namespace std
@@ -494,6 +539,43 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
     };
     Eval(c, a.Dim(), lambda_test);
     return is_same[0];
+  }
+}
+
+template <typename S, typename T>
+void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
+  K2_CHECK(IsCompatible(src, *dest));
+  int32_t dim = src.Dim();
+  K2_CHECK_EQ(dest->Dim(), dim);
+
+  ContextPtr &c = src.Context();
+  const S *src_data = src.Data();
+  T *dest_data = dest->Data();
+
+  if (c->GetDeviceType() == kCpu) {
+    S min_value = std::numeric_limits<S>::max();
+    for (int32_t i = dim - 1; i >= 0; --i) {
+      min_value = std::min(src_data[i], min_value);
+      // we suppose it's safe to assign a value with type `S`
+      // to a value with type `T`
+      dest_data[i] = min_value;
+    }
+  } else {
+    K2_CHECK(c->GetDeviceType() == kCuda);
+    MinOp<S> min_op;
+    internal::ConstReversedPtr<S> src_ptr =
+        internal::ConstReversedPtr<S>(src_data, dim);
+    internal::ReversedPtr<T> dest_ptr =
+        internal::ReversedPtr<T>(dest_data, dim);
+    // The first time is to determine temporary device storage requirements.
+    std::size_t temp_storage_bytes = 0;
+    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+        nullptr, temp_storage_bytes, src_ptr, dest_ptr, min_op, dim,
+        c->GetCudaStream()));
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+        d_temp_storage.Data(), temp_storage_bytes, src_ptr, dest_ptr, min_op,
+        dim, c->GetCudaStream()));
   }
 }
 
