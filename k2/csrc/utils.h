@@ -214,9 +214,9 @@ T MaxValue(ContextPtr &c, int32_t nelems, const T *t);
   It sets row_ids[i] to the index j to which position i 'belongs' according to
   the array `row_splits`.  `row_splits` is expected to be an array containing
   the exclusive sum of a sequence of nonnegative integers corresponding to sizes
-  of sub-lists, so suppose there was an original sequence sizes = [ 2 1 0 4 ]
-  and row_splits = [ 0 2 3 3 7 ] then we would fill row_ids with: row_ids = [ 0
-  0 1 3 3 3 3 ]
+  of sub-lists, so suppose there was a original sequence sizes = [ 2 1 0 4 ] and
+  row_splits = [ 0 2 3 3 7 ] then we would fill row_ids with: row_ids = [ 0 0 1
+  3 3 3 3 ]
 
        @param [in] c   ContextPtr, points to the context to which the
                        data belongs (e.g. CPU or GPU).
@@ -499,7 +499,7 @@ __device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
   return (old == 1);
 }
 
-  
+
 /*
  1:1 Conversion float <---> sortable int32_t We convert floats to sortable ints
  in order to use native atomics operation, which are way faster than looping
