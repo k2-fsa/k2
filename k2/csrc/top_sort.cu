@@ -14,27 +14,15 @@
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/fsa_utils.h"
 
 namespace k2 {
 
 // Caution: this is really a .cu file.  It contains mixed host and device code.
 
 
-
-/*  Returns a renumbered version of the FsaVec `src`.
-      @param [in] src    An FsaVec, assumed to be valid, with NumAxes() == 3
-      @param [in] order  An ordering of states in `src`.  Does not necessarily
-                    have to contain all states in `src`.  The FSAs must
-                    not be reordered by this (i.e. if we get the old fsa-index
-                    of elements of `order`, they must still be non-decreasing).
-      @param [out] arc_map  If non-NULL, this will be set to a new Array1 that
-                   maps from arcs in the returned FsaVec to the original arc-index
-                   in `fsas`.
-      @return  Returns renumbered FSA.
-
-  NOTE (Dan): we could declare this in a header to make it easier to test.
-*/
-  static FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
+// See declaration in fsa_algo.h
+ FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
                                Array1<int32_t> *arc_map) {
   Context c = fsas.Context();
   K2_CHECK_LE(order.NumElements(), fsas.NumElements());
@@ -57,7 +45,7 @@ namespace k2 {
     num_arcs_data[new_state_idx01] = num_arcs;
   };
   Eval(c, new_num_states, lambda_set_old2new_and_num_arcs);
-  
+
 
   Array1<int32_t> new_row_splits1, new_row_ids1;
   if (order.Dim() == fsas.Dim()) {
@@ -117,7 +105,7 @@ namespace k2 {
 }
 
 
-  
+
 class TopSorter {
  public:
   /**
@@ -135,36 +123,13 @@ class TopSorter {
 
     // Get in-degrees of states.
     int32_t num_arcs = fsas_.NumElements();
-    Array1<int32_t> dest_states_idx01(c_, num_arcs);
-    int32_t *dest_states_idx01_data = dest_states_idx01.Data();
-    Array1<int32_t> arc_to_start_state_idx01 =
-      fsas_.RowSplits(1)[fsas_.RowIds(1)[fsas_.RowIds(2)]];
-    
-    const int32_t *fsas_row_splits1 = fsas_.RowSplits(1).Data(),
-      *fsas_row_ids1 = fsas_.RowIds(1).Data(),
-      *fsas_row_ids2 = fsas_.RowIds(2).Data();
-    const Arc *arcs_data = fsas_.values.Data();
-    auto lambda_set_dest_states_idx01 = [=] __host__ __device__ (int32_t arc_idx012) -> void {
-      int32_t state_idx01 = fsas_row_ids2[arc_idx012],
-        fsa_idx0 = fsas_row_ids1[state_idx01],
-        start_state_idx0x = fsas_row_splits1[fsa_idx0],
-        dest_state_idx1 = arcs[arc_idx012].dest_state,
-        dest_state_idx01 = start_state_idx0x + dest_state_idx;
-      if (dest_state_idx01 == state_idx01) {
-        // If it was a self-loop, pretend it was to the final-state.  This will
-        // allow the algorithm to work in the presence of self-loops (it's actually
-        // equivalent to not having the arc at all)
-        int32_t final_state_idx01 = fsas_row_splits1[fsa_idx0 + 1] - 1;
-        dest_state_idx01 = final_state_idx01;
-      }
-      dest_states_idx01_data[arc_idx012] = dest_state_idx01;
-    };
-    Eval(c_, num_arcs, lambda_set_dest_states_idx01);
+    Array1<int32_t> dest_states_idx01 = GetDestStates(fsas_, true);
 
     dest_states_ = Ragged<int32_t>(fsas_.shape, dest_states_idx01);
 
     state_in_degree_ = GetCounts(dest_states_, num_arcs);
     int32_t *state_in_degree_data = state_in_degree_.Data();
+    const int32_t *fsas_row_splits1 = fsas_.RowSplits(1);
 
     // Increment the in-degree of final-states
     auto lambda_inc_final_state_in_degree = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
@@ -180,7 +145,7 @@ class TopSorter {
 
   /*
     Return the ragged array containing the states active on the 1st iteration of
-    the algorithm.  These just correspond to the start-states of all 
+    the algorithm.  These just correspond to the start-states of all
     the FSAs, and also the final-states for all FSAs in which final-states
     had in-degree zero (no arcs entering them).
 
@@ -218,7 +183,7 @@ class TopSorter {
   }
 
   /*
-    Computes the next batch of states 
+    Computes the next batch of states
          @param [in] cur_states  Ragged array with 2 axes, containing state-indexes
                               (idx01) into fsas_.  These are states which already
                                have in-degree 0
@@ -296,7 +261,7 @@ class TopSorter {
         old_arcs_idx0 = arcs_row_splits1[old_arcs_idx01]; // FSA index
       new_states_row_ids_data[new_state_idx] = old_arcs_idx0;
     }
-    
+
     std::unique_ptr<Ragged<int32_t> > ans = std::make_unique<Ragged<int32_t> >(
        RaggedShape2(nullptr, &new_states_row_ids_data, -1),
        new_states);
@@ -341,7 +306,7 @@ class TopSorter {
     };
     return ans;
   }
-  
+
 
   // called after iters_ is set up, it formats the output.
   // must only be called once.
@@ -428,7 +393,7 @@ class TopSorter {
 
       // fsas_state_idx01 is an idx01 into fsas_, as stored in IterInfo::state..
       // note: `state_idx2` would be called `state_idx1` if we named it relative
-      // to IterInfo::state, and `arc_idx3` would be called `arc_idx2` if we 
+      // to IterInfo::state, and `arc_idx3` would be called `arc_idx2` if we
       // named it relative to fsas_.
       int32_t fsas_state_idx01 = states_ptrs_data[iter_idx1][
             states_fsa_idx0x + state_idx2],
@@ -520,5 +485,3 @@ void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map) {
 }
 
 }
-
-

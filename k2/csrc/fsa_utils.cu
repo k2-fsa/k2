@@ -515,7 +515,10 @@ Fsa FsaFromString(const std::string &s, bool openfst /*= false*/,
 std::string FsaToString(const Fsa &fsa, bool openfst /*= false*/,
                         const Array1<int32_t> *aux_labels /*= nullptr*/) {
   K2_CHECK_EQ(fsa.NumAxes(), 2);
-  K2_CHECK_EQ(fsa.Context()->GetDeviceType(), kCpu);
+  if (fsa.Context()->GetDeviceType() != kCpu) {
+    Fsa cpu_fsa = fsa.To(GetCpuContext());
+    return FsaToString(cpu_fsa, openfst, aux_labels);
+  }
   const Array1<int32_t> &row_splits = fsa.shape.RowSplits(1);
   const Array1<Arc> &arcs = fsa.values;
 
@@ -541,6 +544,37 @@ std::string FsaToString(const Fsa &fsa, bool openfst /*= false*/,
   }
   os << (fsa.shape.Dim0() - 1) << line_sep;
   return os.str();
+}
+
+
+Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose = true) {
+  K2_CHECK_EQ(fsas.NumArcs(), 3);
+  // TODO(dan).
+}
+
+Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
+  Context c = fsas.Context();
+  int32_t num_arcs = fsas.NumElements();
+  Array1<int32_t> ans(c, num_arcs);
+  int32_t *ans_data = ans.Data();
+  if (!as_idx01) {
+    const Arc *arcs = fsas.values.Data();
+    auto lambda_set_dest_states1 = [=] __host__ __device__ (int32_t arc_idx012) {
+      ans_data[arc_idx012] = arcs[arc_idx012].dest_state;
+    };
+    Eval(c, num_arcs, lambda_set_dest_state1);
+  } else {
+    const int32_t *row_ids2 = fsas.RowIds(2);
+    auto lambda_set_dest_states01 = [=] __host__ __device__ (int32_t arc_idx012) {
+      int32_t src_state = arcs[arc_idx012].src_state,
+         dest_state = arcs[arc_idx012].dest_state;
+      // (row_ids2[arc_idx012] - src_state) is the same as
+      // row_splits1[row_ids1[row_ids2[arc_idx012]]]; it's the idx01 of the 1st
+      // state in this FSA.
+      ans_data[arc_idx012] = dest_state + (row_ids2[arc_idx012] - src_state);
+    };
+    Eval(c, num_arcs, lambda_set_dest_state1);
+  }
 }
 
 }  // namespace k2

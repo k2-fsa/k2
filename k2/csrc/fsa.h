@@ -56,9 +56,10 @@ using FsaProperties = uint32_t;
 enum FsaBasicProperties {
   kFsaPropertiesValid = 0x01,      // Valid from a formatting perspective
   kFsaPropertiesNonempty = 0x02,   // Nonempty as in, has at least one arc.
-  kFsaPropertiesTopSorted = 0x04,  // FSA is top-sorted, dest_state >= src_state
+  kFsaPropertiesTopSorted = 0x04,  // FSA is top-sorted, but possibly with
+                                   // self-loops, dest_state >= src_state
   kFsaPropertiesTopSortedAndAcyclic =
-      0x08,  // Top-sorted and acyclic, dest_state > src_state
+      0x08,  // Top-sorted and acyclic (no self-loops), dest_state > src_state
   kFsaPropertiesArcSorted =
       0x10,  // Arcs leaving a given state are sorted by symbol
   kFsaPropertiesArcSortedAndDeterministic = 0x20,  // Arcs leaving a given state
