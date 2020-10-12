@@ -393,7 +393,6 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
                              const Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp = nullptr);
 
-
 /*
   Compute a monotonically increasing lower bound on the array `src`,
   putting the result in `dest` (which may be the same array as `src`).
@@ -408,7 +407,8 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
   compute this using an inclusive scan using a min operator on the
   reverse of the arrays `src` and `dest`.
  */
-void MonotonicLowerBound(Array1<S> &src, Array1<T> *dest);
+template <typename S, typename T>
+void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest);
 
 /*
    Returns counts of numbers in the array

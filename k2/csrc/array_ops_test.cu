@@ -12,8 +12,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <iostream>
+#include <limits>
 #include <numeric>
 #include <random>
 #include <utility>
@@ -1399,6 +1401,69 @@ void TestGetCounts() {
 TEST(OpsTest, GetCountsTest) {
   TestGetCounts<kCpu>();
   TestGetCounts<kCuda>();
+}
+
+template <DeviceType d, typename S, typename T>
+void TestMonotonicLowerBound() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // empty case
+    std::vector<S> values;
+    Array1<S> src(context, values);
+    Array1<T> dest(context, 0);
+    MonotonicLowerBound(src, &dest);
+    EXPECT_EQ(dest.Dim(), 0);
+  }
+
+  {
+    // simple case
+    std::vector<S> values = {2, 1, 3, 7, 5, 8, 20, 15};
+    std::vector<T> expected_data = {1, 1, 3, 5, 5, 8, 15, 15};
+    ASSERT_EQ(values.size(), expected_data.size());
+    Array1<S> src(context, values);
+    Array1<T> dest(context, static_cast<int32_t>(values.size()));
+    MonotonicLowerBound(src, &dest);
+    dest = dest.To(cpu);
+    std::vector<T> data(dest.Data(), dest.Data() + dest.Dim());
+    EXPECT_EQ(data, expected_data);
+  }
+
+  {
+    // random large case
+    for (int32_t i = 0; i != 2; ++i) {
+      int32_t n = RandInt(1, 10000);
+      int32_t src_dim = RandInt(0, 10000);
+      Array1<S> src = RandUniformArray1(context, src_dim, 0, n - 1);
+      Array1<T> dest(context, src_dim);
+      MonotonicLowerBound(src, &dest);
+      dest = dest.To(cpu);
+      std::vector<T> data(dest.Data(), dest.Data() + dest.Dim());
+      src = src.To(cpu);
+      int32_t *src_data = src.Data();
+      S min_value = std::numeric_limits<S>::max();
+      std::vector<T> expected_data(src_dim);
+      for (int32_t i = src_dim - 1; i >= 0; --i) {
+        min_value = std::min(src_data[i], min_value);
+        expected_data[i] = min_value;
+      }
+      EXPECT_EQ(data, expected_data);
+    }
+  }
+}
+
+TEST(OpsTest, MonotonicLowerBoundTest) {
+  TestMonotonicLowerBound<kCpu, int32_t, int32_t>();
+  TestMonotonicLowerBound<kCuda, int32_t, int32_t>();
+  TestMonotonicLowerBound<kCpu, int32_t, double>();
+  TestMonotonicLowerBound<kCuda, int32_t, double>();
 }
 
 }  // namespace k2

@@ -522,6 +522,14 @@ struct MaxOp {
 };
 
 template <typename T>
+struct MinOp {
+  __host__ __device__ __forceinline__ T operator()(const T &a,
+                                                   const T &b) const {
+    return (a > b) ? b : a;
+  }
+};
+
+template <typename T>
 struct BitAndOp {
   __host__ __device__ __forceinline__ T operator()(const T &a,
                                                    const T &b) const {
