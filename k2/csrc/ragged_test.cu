@@ -338,40 +338,41 @@ void TestTranspose() {
     const std::vector<int32_t> expected_row_ids = {0, 0, 0, 1, 1, 1};
     CheckArrayData(shape.RowSplits(1), expected_row_splits);
     CheckArrayData(shape.RowIds(1), expected_row_ids);
-    CheckArrayData(shape.RowSplits(2), src_shape.RowSplits(2));
-    CheckArrayData(shape.RowIds(2), src_shape.RowIds(2));
+    CheckArrayData(shape.RowSplits(2), {0, 3, 6, 8, 9, 10, 12});
+    CheckArrayData(shape.RowIds(2), {0, 0, 0, 1, 1, 1, 2, 2, 3, 4, 5, 5});
   }
 
   {
     // random case
-    RaggedShape to_transpose = RandomRaggedShapeToTranspose(context);
-    RaggedShape transposed = Transpose(to_transpose);
+    for (int32_t j = 0; j != 2; ++j) {
+      RaggedShape to_transpose = RandomRaggedShapeToTranspose(context);
+      RaggedShape transposed = Transpose(to_transpose);
 
-    if (d != kCpu) {
-      to_transpose = to_transpose.To(cpu);
-      transposed = transposed.To(cpu);
-    }
+      if (d != kCpu) {
+        to_transpose = to_transpose.To(cpu);
+        transposed = transposed.To(cpu);
+      }
 
-    for (auto iter = transposed.Iterator(); !iter.Done(); iter.Next()) {
-      std::vector<int32_t> index = iter.Value();
-      int32_t i = transposed[index];  // Just make sure this doesn't crash, dont
-                                      // need the value.
-      std::swap(index[0], index[1]);
-      i = to_transpose[index];  // don't need the value, just need to make
-                                // sure it's an allowable index.
-    }
-    for (auto iter = to_transpose.Iterator(); !iter.Done(); iter.Next()) {
-      std::vector<int32_t> index = iter.Value();
-      std::swap(index[0], index[1]);
-      int32_t i = transposed[index];  // don't need the value, just need to make
-                                      // sure it's an allowable index.
+      for (auto iter = transposed.Iterator(); !iter.Done(); iter.Next()) {
+        std::vector<int32_t> index = iter.Value();
+        int32_t i = transposed[index];  // Just make sure this doesn't crash,
+                                        // dont need the value.
+        std::swap(index[0], index[1]);
+        i = to_transpose[index];  // don't need the value, just need to make
+                                  // sure it's an allowable index.
+      }
+      for (auto iter = to_transpose.Iterator(); !iter.Done(); iter.Next()) {
+        std::vector<int32_t> index = iter.Value();
+        std::swap(index[0], index[1]);
+        int32_t i = transposed[index];  // don't need the value, just need to
+                                        // make sure it's an allowable index.
+      }
     }
   }
 }
 TEST(RaggedShapeOpsTest, TestTranspose) {
-  // TODO(haowen): uncomment after testing Renumber
-  // TestTranspose<kCpu>();
-  // TestTranspose<kCuda>();
+  TestTranspose<kCpu>();
+  TestTranspose<kCuda>();
 }
 
 template <DeviceType d>
@@ -1105,6 +1106,144 @@ void TestGetCountsPartitioned() {
 TEST(RaggedShapeOpsTest, TestGetCountsPartitioned) {
   TestGetCountsPartitioned<kCpu>();
   TestGetCountsPartitioned<kCuda>();
+}
+
+template <DeviceType d>
+void TestStack() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // simple case
+    std::vector<RaggedShape> shapes(2);
+    std::vector<const RaggedShape *> shapes_ptr(2);
+    std::vector<std::vector<Array1<int32_t>>> row_splits_vec(2);
+    {
+      const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+      const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+      Array1<int32_t> splits1(context, row_splits1);
+      Array1<int32_t> splits2(context, row_splits2);
+      row_splits_vec[0].push_back(splits1);
+      row_splits_vec[1].push_back(splits2);
+      shapes[0] = RaggedShape3(&splits1, nullptr, -1, &splits2, nullptr, -1);
+      shapes_ptr[0] = &shapes[0];
+    }
+    {
+      const std::vector<int32_t> row_splits1 = {0, 1, 3, 4};
+      const std::vector<int32_t> row_splits2 = {0, 3, 4, 5, 7};
+      Array1<int32_t> splits1(context, row_splits1);
+      Array1<int32_t> splits2(context, row_splits2);
+      row_splits_vec[0].push_back(splits1);
+      row_splits_vec[1].push_back(splits2);
+      shapes[1] = RaggedShape3(&splits1, nullptr, -1, &splits2, nullptr, -1);
+      shapes_ptr[1] = &shapes[1];
+    }
+    std::vector<std::vector<int32_t>> expected_row_splits = {
+        {0, 3, 6},
+        {0, 2, 5, 6, 7, 9, 10},
+        {0, 2, 3, 4, 6, 7, 10, 13, 14, 15, 17}};
+
+    {
+      // axis == 0
+      int32_t axis = 0;
+      RaggedShape result = Stack(axis, 2, shapes_ptr.data());
+      for (int32_t i = 0; i != 3; ++i) {
+        CheckArrayData(result.RowSplits(i + 1), expected_row_splits[i]);
+      }
+    }
+    {
+      // axis == 1
+      int32_t axis = 1;
+      RaggedShape result = Stack(axis, 2, shapes_ptr.data());
+      RaggedShape transpose = Transpose(result);
+      for (int32_t i = 0; i != 3; ++i) {
+        CheckArrayData(transpose.RowSplits(i + 1), expected_row_splits[i]);
+      }
+    }
+  }
+
+  {
+    // test with random large size
+    for (int32_t m = 0; m < 2; ++m) {
+      int32_t num_shape = RandInt(2, 100);
+      int32_t num_axes = RandInt(2, 4);
+      int32_t dim0 = RandInt(1, 100);
+      std::vector<RaggedShape> shape_vec(num_shape);
+      std::vector<const RaggedShape *> shapes(num_shape);
+      for (int32_t j = 0; j != num_shape; ++j) {
+        RaggedShape shape =
+            RandomRaggedShape(false, num_axes, num_axes, 0, 1000).To(context);
+        int32_t src_dim0 = shape.Dim0();
+        std::vector<int32_t> row_splits_vec(dim0 + 1);
+        row_splits_vec[0] = 0;
+        for (int32_t n = 1; n < dim0; ++n) {
+          row_splits_vec[n] = RandInt(0, src_dim0);
+        }
+        row_splits_vec[dim0] = src_dim0;
+        std::sort(row_splits_vec.begin(), row_splits_vec.end());
+        Array1<int32_t> row_splits(context, row_splits_vec);
+        RaggedShape first = RaggedShape2(&row_splits, nullptr, -1);
+        RaggedShape new_shape = ComposeRaggedShapes(first, shape);
+        shape_vec[j] = new_shape;
+        shapes[j] = &shape_vec[j];
+      }
+      std::vector<RaggedShape> cpu_shapes(num_shape);
+      for (auto i = 0; i != num_shape; ++i) {
+        cpu_shapes[i] = shape_vec[i].To(cpu);
+      }
+
+      {
+        // axis == 0
+        int32_t axis = 0;
+        RaggedShape result = Stack(axis, num_shape, shapes.data());
+        ASSERT_EQ(result.NumAxes(),
+                  num_axes + 2);  // note we append one axis in each shape in
+                                  // `shapes` before `Stack`
+        ASSERT_EQ(result.Dim0(), num_shape);
+        result = result.To(cpu);
+        for (auto iter = result.Iterator(); !iter.Done(); iter.Next()) {
+          std::vector<int32_t> index = iter.Value();
+          int32_t t = result[index];  // don't need the value, just make sure
+                                      // it's a valid index.
+          int32_t i = index[0];
+          index.erase(index.begin());
+          // result[i,j,k,l] = (shape[i])[j,k,l]
+          i = cpu_shapes[i][index];  // don't need the value, just need to make
+                                     // sure it's an allowable index.
+        }
+      }
+      {
+        // axis == 1
+        int32_t axis = 1;
+        RaggedShape result = Stack(axis, num_shape, shapes.data());
+        ASSERT_EQ(result.NumAxes(),
+                  num_axes + 2);  // note we append one axis in each shape in
+                                  // `shapes` before `Stack`
+        ASSERT_EQ(result.Dim0(), dim0);
+        result = result.To(cpu);
+        for (auto iter = result.Iterator(); !iter.Done(); iter.Next()) {
+          std::vector<int32_t> index = iter.Value();
+          int32_t t = result[index];  // don't need the value, just make sure
+                                      // it's a valid index.
+          int32_t i = index[1];
+          index.erase(index.begin() + 1);
+          // result[i,j,k,l] = (shape[j])[i,k,l]
+          i = cpu_shapes[i][index];  // don't need the value, just need to make
+                                     // sure it's an allowable index.
+        }
+      }
+    }
+  }
+}
+TEST(RaggedShapeOpsTest, TestStack) {
+  TestStack<kCpu>();
+  TestStack<kCuda>();
 }
 
 }  // namespace k2
