@@ -11,7 +11,6 @@
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa.h"
 
-
 namespace k2 {
 
 // for debug only
@@ -222,7 +221,6 @@ int32_t GetFsaBasicProperties(const Fsa &fsa) {
   return ans;
 }
 
-
 Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   const Arc *arcs_data = array.Data();
   ContextPtr &c = array.Context();
@@ -244,7 +242,6 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   Array1<int32_t> row_ids1(c, num_arcs);  // maps arc->state.
   int32_t *row_ids1_data = row_ids1.Data();
 
-
   auto lambda_misc = [=] __host__ __device__(int32_t i) -> void {
     row_ids1_data[i] = arcs_data[i].src_state;
     if (arcs_data[i].symbol == -1) {
@@ -257,8 +254,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   };
   Eval(c, num_arcs, lambda_misc);
   num_states_array = num_states_array.To(GetCpuContext());
-  int32_t num_states = num_states_array[0],
-    error_flag = num_states_array[1];
+  int32_t num_states = num_states_array[0], error_flag = num_states_array[1];
   if (error_flag == 0) {
     K2_LOG(WARNING) << "Could not convert tensor to FSA, there was a problem "
                        "working out the num-states in the FSA, num_states="
@@ -269,16 +265,15 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   if (num_states == -1) {
     // there was no final arc, so let the final state be the highest-numbered
     // state that is referenced, plus one.
-    
+
     Array1<int32_t> max_state(c, num_arcs);
     int32_t *max_state_data = max_state.Data();
     auto lambda_get_dest_state = [=] __host__ __device__(int32_t i) -> void {
-      int32_t dest = arcs_data[i].dest_state,
-        src = arcs_data[i].src_state;
+      int32_t dest = arcs_data[i].dest_state, src = arcs_data[i].src_state;
       max_state_data[i] = (dest > src ? dest : src);
     };
     Eval(c, num_arcs, lambda_get_dest_state);
-    Array1<int32_t> max_state0 = max_state.Range(0, 1);    
+    Array1<int32_t> max_state0 = max_state.Range(0, 1);
     Max(max_state, 0, &max_state0);
     num_states = max_state[0] + 2;
   }
@@ -316,15 +311,13 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   return ans;
 }
 
-
 Tensor FsaToTensor(const Fsa &fsa) {
   K2_CHECK_EQ(fsa.NumAxes(), 2);
-  Array2<int32_t> arcs_as_ints(fsa.values.Dim(), 4, 4,
-                               fsa.values.ByteOffset(),
+  Array2<int32_t> arcs_as_ints(fsa.values.Dim(), 4, 4, fsa.values.ByteOffset(),
                                fsa.values.GetRegion());
   return arcs_as_ints.ToTensor();
 }
-  
+
 Fsa FsaFromTensor(Tensor &t, bool *error) {
   if (!t.IsContiguous()) t = ToContiguous(t);
 
@@ -347,7 +340,6 @@ Fsa FsaFromTensor(Tensor &t, bool *error) {
   return FsaFromArray1(arc_array, error);
 }
 
-
 FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
   if (!t.IsContiguous()) t = ToContiguous(t);
 
@@ -358,9 +350,9 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
                     << TraitsOf(kInt32Dtype).Name();
     *error = true;
     return Fsa();  // Invalid, empty FSA
-  }  
+  }
   int32_t num_fsas;
-  if (t.NumAxes() != 1) { 
+  if (t.NumAxes() != 1) {
     K2_LOG(WARNING) << "Could not convert tensor to FSA, shape was "
                     << t.Dims();
     *error = true;
@@ -371,20 +363,22 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
   num_fsas = int_array[0];
 
   int32_t arcs_start = 2 + (num_fsas + 1) * 2;
-  if (num_fsas < 0 || num_ints < arcs_start || (num_ints - arcs_start) % 4 != 0) {
+  if (num_fsas < 0 || num_ints < arcs_start ||
+      (num_ints - arcs_start) % 4 != 0) {
     K2_LOG(WARNING) << "Could not convert tensor to FSA, num_ints = "
                     << num_ints << ", num_fsas = " << num_fsas;
     *error = true;
     return Fsa();
-  }    
+  }
 
   Array1<int32_t> row_splits1 = int_array.Range(2, num_fsas + 1),
-    row_splits12 = int_array.Range(2 + num_fsas + 1, num_fsas + 1),
-    arcs_ints = int_array.Range(arcs_start, num_ints - arcs_start);
+                  row_splits12 =
+                      int_array.Range(2 + num_fsas + 1, num_fsas + 1),
+                  arcs_ints =
+                      int_array.Range(arcs_start, num_ints - arcs_start);
   int32_t num_arcs = (num_ints - arcs_start) / 4;
 
-  Array1<Arc> arcs(num_arcs, arcs_ints.GetRegion(),
-                   arcs_ints.ByteOffset());
+  Array1<Arc> arcs(num_arcs, arcs_ints.GetRegion(), arcs_ints.ByteOffset());
 
   if (num_arcs != row_splits12[num_fsas]) {
     K2_LOG(WARNING) << "Could not convert tensor to FSA, num_arcs = "
@@ -397,43 +391,46 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
     return Fsa();
   }
   ContextPtr c = int_array.Context();
-  
+
   // TODO: would be nice to transfer this and row_splits12[num_fsas] at the same
   // time.
   int32_t num_states = row_splits1[num_fsas];
   Array1<int32_t> row_ids1(c, num_states),
-    row_ids12(c, num_arcs),  // we'll modify row_ids12 to be row_ids2.
-    row_splits2(c, num_states + 1);
+      row_ids12(c, num_arcs),  // we'll modify row_ids12 to be row_ids2.
+      row_splits2(c, num_states + 1);
   RowSplitsToRowIds(row_splits1, row_ids1);
   RowSplitsToRowIds(row_splits12, row_ids12);
 
   const int32_t *row_ids1_data = row_ids1.Data(),
-    *row_splits12_data = row_splits12.Data(),
-    *row_splits1_data = row_splits1.Data();
+                *row_splits12_data = row_splits12.Data(),
+                *row_splits1_data = row_splits1.Data();
   int32_t *row_ids12_data = row_ids12.Data();
   Arc *arcs_data = arcs.Data();
-  
-  auto lambda_make_row_ids2 = [=] __host__ __device__ (int32_t arc_idx012) -> void {
+
+  auto lambda_make_row_ids2 =
+      [=] __host__ __device__(int32_t arc_idx012) -> void {
     int32_t fsa_idx0 = row_ids12_data[arc_idx012],
-      state_idx0x = row_splits1_data[fsa_idx0];
+            state_idx0x = row_splits1_data[fsa_idx0];
     int32_t state_idx1 = arcs_data[arc_idx012].src_state,
-      state_idx01 = state_idx0x + state_idx1;
-    row_ids12_data[arc_idx012] = state_idx01;  // we're turning this into the row_ids2.
+            state_idx01 = state_idx0x + state_idx1;
+    row_ids12_data[arc_idx012] =
+        state_idx01;  // we're turning this into the row_ids2.
   };
   Eval(c, num_arcs, lambda_make_row_ids2);
 
-  Array1<int32_t> &row_ids2 = row_ids12;  // we overwrote the data in the lambda above.
+  Array1<int32_t> &row_ids2 =
+      row_ids12;  // we overwrote the data in the lambda above.
   RowIdsToRowSplits(row_ids2, row_splits2);
 
-  if (!ValidateRowSplitsAndIds(
-          row_splits2, row_ids2,
-          &row_splits12)) {  // last arg is temp space
-    K2_LOG(WARNING) << "Could not convert tensor to FSA, problem validating "
-      "row-splits and row-ids (likely data corruption or code bug)";
+  if (!ValidateRowSplitsAndIds(row_splits2, row_ids2,
+                               &row_splits12)) {  // last arg is temp space
+    K2_LOG(WARNING)
+        << "Could not convert tensor to FSA, problem validating "
+           "row-splits and row-ids (likely data corruption or code bug)";
   }
 
-  return FsaVec(RaggedShape3(&row_splits1, &row_ids1, num_states,
-                             &row_splits2, &row_ids2, num_arcs),
+  return FsaVec(RaggedShape3(&row_splits1, &row_ids1, num_states, &row_splits2,
+                             &row_ids2, num_arcs),
                 arcs);
 }
 
@@ -442,7 +439,7 @@ Tensor FsaVecToTensor(const Fsa &fsa_vec) {
     K2_LOG(FATAL) << "Expected num-axes == 3";
   }
   Array1<int32_t> row_splits1 = fsa_vec.shape.RowSplits(1),
-    row_splits12 = fsa_vec.shape.RowSplits(2)[row_splits1];
+                  row_splits12 = fsa_vec.shape.RowSplits(2)[row_splits1];
   int32_t num_fsas = fsa_vec.shape.Dim0();
   ContextPtr c = row_splits1.Context();
   // vector containing: [ num_fsas, 0 ]
@@ -455,18 +452,19 @@ Tensor FsaVecToTensor(const Fsa &fsa_vec) {
   if (byte_offset == (2 + (num_fsas + 1) * 2) * 4 &&
       row_splits1.ByteOffset() == 2 * 4) {
     Array1<int32_t> meta_info_orig(2, arcs.GetRegion(), 0),
-      row_splits12_orig(num_fsas + 1, arcs.GetRegion(), (2 + (num_fsas + 1)) * 4);
+        row_splits12_orig(num_fsas + 1, arcs.GetRegion(),
+                          (2 + (num_fsas + 1)) * 4);
     if (Equal(meta_info_orig, meta_info) &&
         Equal(row_splits12, row_splits12_orig)) {
       return Array1<int32_t>(2 + (num_fsas + 1) * 2 + arcs.Dim() * 4,
-                             arcs.GetRegion(), 0).ToTensor();
+                             arcs.GetRegion(), 0)
+          .ToTensor();
     }
   }
-  
-  Array1<int32_t> *arrays[4] = { &meta_info, &row_splits1, &row_splits12,
-                                 &arcs_linearized };
-  return Append(4, (const Array1<int32_t>**)arrays).ToTensor();
+
+  Array1<int32_t> *arrays[4] = {&meta_info, &row_splits1, &row_splits12,
+                                &arcs_linearized};
+  return Append(4, (const Array1<int32_t> **)arrays).ToTensor();
 }
-  
 
 }  // namespace k2

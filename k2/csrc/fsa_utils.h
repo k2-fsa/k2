@@ -92,6 +92,7 @@ Fsa FsaFromString(const std::string &s, bool openfst = false,
    NOTE: If `openfst` is true, scores are first negated and then printed.
 
    @param [in]  fsa   The input FSA
+
    @param [in]  openfst
                       If true, the scores will first be negated and
                       then printed.

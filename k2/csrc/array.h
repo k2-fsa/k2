@@ -51,7 +51,7 @@ class Array1 {
   }
 
   // Return a copy of this array that does not share the same underlying data.
-  Array1<T> Clone();
+  Array1<T> Clone() const;
 
   int32_t ByteOffset() const { return byte_offset_; }
 
@@ -133,7 +133,7 @@ class Array1 {
   // Note that the returned Tensor is not const, the caller should be careful
   // when changing the tensor's data, it will also change data in the parent
   // array as they share the memory.
-  Tensor ToTensor() {
+  Tensor ToTensor() const {
     Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {Dim()};
     Shape shape(dims);  // strides == 1
@@ -224,10 +224,9 @@ class Array1 {
     } else {
       K2_CHECK_EQ(type, kCuda);
       T ans;
-      cudaError_t ret = cudaMemcpy(static_cast<void *>(&ans),
-                                   static_cast<const void *>(data),
-                                   ElementSize(),
-                                   cudaMemcpyDeviceToHost);
+      cudaError_t ret =
+          cudaMemcpy(static_cast<void *>(&ans), static_cast<const void *>(data),
+                     ElementSize(), cudaMemcpyDeviceToHost);
       K2_CHECK_CUDA_ERROR(ret);
       return ans;
     }
@@ -314,7 +313,6 @@ class Array1 {
     dim_ = size;
     byte_offset_ = 0;
   }
-
 };
 
 // Could possibly introduce a debug mode to this that would do bounds checking.
@@ -604,14 +602,14 @@ std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
 // [ 4 5 6 ]]".  Intended mostly for use in debugging.
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
-  stream << std::endl << '[';
+  stream << "\n[";
   Array2<T> array_cpu = array.To(GetCpuContext());
   int32_t num_rows = array_cpu.Dim0();
   for (int32_t i = 0; i < num_rows; ++i) {
     stream << array_cpu[i];
-    if (i + 1 < num_rows) stream << std::endl;
+    if (i + 1 < num_rows) stream << '\n';
   }
-  return stream << ']';
+  return stream << "\n]";
 }
 
 }  // namespace k2

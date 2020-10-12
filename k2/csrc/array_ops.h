@@ -55,11 +55,12 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest);
                        element, because the exclusive-sum code may read from
                        it even though it doesn't affect the result.
 
-                       At exit, will satisfy dest[i] == sum_{j=0}^{i-1} src[j].
-                       Must be on same device as src.
+                       At exit, will satisfy dest[i] == sum_{j=0}^{i-1} src[j]
+                       for i > 0. dest[0] is always 0. Must be pre-allocated and
+                       on the same device as src.
  */
 template <typename S, typename T>
-void ExclusiveSum(Array1<S> &src, Array1<T> *dest) {
+void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_dim = src.Dim();
   int32_t dest_dim = dest->Dim();
@@ -73,10 +74,11 @@ void ExclusiveSum(Array1<S> &src, Array1<T> *dest) {
 }
 
 /*  wrapper for the ExclusiveSum above.  Will satisfy
-     ans[i] = sum_{j=0}^{i-1} src[j].
+     ans[i] = sum_{j=0}^{i-1} src[j] for i > 0.
+     ans[0] is always 0.
  */
 template <typename T>
-Array1<T> ExclusiveSum(Array1<T> &src) {
+Array1<T> ExclusiveSum(const Array1<T> &src) {
   Array1<T> ans(src.Context(), src.Dim());
   ExclusiveSum(src, &ans);
   return ans;
@@ -117,7 +119,7 @@ void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest);
                        transpose), axis = 1 means summation is over column axis.
  */
 template <typename T>
-void ExclusiveSum(Array2<T> &src, Array2<T> *dest, int32_t axis);
+void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis);
 
 //  wrapper for the ExclusiveSum above with axis = 1
 template <typename T>
