@@ -35,6 +35,8 @@ static void PybindFsaUtil(py::module &m) {
     Array1<Arc> array = FromTensor<Arc>(tensor);
     bool error = true;
     Fsa fsa = FsaFromArray1(array, &error);
+    // TODO(fangjun): implement FsaVecFromArray1
+    // if (error == true) fsa = FsaVecFromArray1(array, &error);
     K2_CHECK(!error);
     return fsa;
   });

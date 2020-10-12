@@ -205,8 +205,8 @@ Tensor FsaToTensor(const Fsa &fsa);
        - Next `num_fsas + 1` elements are the row_splits1 of the FsaVec,
          i.e. 0, num_states1, num_states1+num_states2, ...  [the exlusive-sum
          of the num-states of all the FSAs]
-       - Next `num_fsas + 1` elements are combined row_splits1 and row_splits2 of
-         the FsaVec, which are the exclusive sum of the total number of arcs
+       - Next `num_fsas + 1` elements are combined row_splits1 and row_splits2
+         of the FsaVec, which are the exclusive sum of the total number of arcs
          in the respective FSAs.
        - Next `num_arcs * 4` elements are the arcs in the FSAs (note: the
          float-valued will be reinterpreted as int32_t's but are still floats).
@@ -217,15 +217,14 @@ Tensor FsaToTensor(const Fsa &fsa);
 
   You can convert this back to an FSA using `FsaVecFromTensor`.
 
-  It is an error if `fsa_vec` does not have 3 axes.  Empty FsaVec's are allowed, though
-  (i.e. num_fsas == 0 is allowed).
+  It is an error if `fsa_vec` does not have 3 axes.  Empty FsaVec's are allowed,
+  though (i.e. num_fsas == 0 is allowed).
 */
 Tensor FsaVecToTensor(const Fsa &fsa_vec);
 
 /*
-  Create an FsaVec (vector of FSAs) from a Tensor which is an array of int32_t's.
-  This tensor is interpreted as follows:
-     First 2 elements:           num_fsas 0
+  Create an FsaVec (vector of FSAs) from a Tensor which is an array of
+  int32_t's. This tensor is interpreted as follows: First 2 elements: num_fsas 0
      Next num_fsas + 1 elements:  row_splits1 of the FsaVec, which is
                                 the cumulative sum of num_states
      Next num_fsas + 1 elements:  row_splits12 of the FsaVec, i.e. its
@@ -243,14 +242,15 @@ Tensor FsaVecToTensor(const Fsa &fsa_vec);
                       'false' here; on error, it will print an error
                        message to the standard error and write 'true' here.
     @return         The resulting FsaVec (vector of FSAs) will be returned;
-                    this is a Ragged<Arc> with 3 axes.  Caution, it will not have
-                    been fully validated; you might want to check the kFsaPropertiesValid
-                    property once you compute the properties.
+                    this is a Ragged<Arc> with 3 axes.  Caution, it will not
+                    have been fully validated; you might want to check the
+                    kFsaPropertiesValid property once you compute the
+                    properties.
 
 */
 FsaVec FsaVecFromTensor(Tensor &t, bool *error);
 
-Fsa FsaVecFromArray1(Array1<Arc> &arc, bool *error);
+FsaVec FsaVecFromArray1(Array1<Arc> &arc, bool *error);
 
 /*
   Return one Fsa in an FsaVec.  Note, this has to make copies of the
@@ -277,7 +277,8 @@ inline FsaVec CreateFsaVec(int32_t num_fsas, const Fsa **fsas) {
   return Stack(0, num_fsas, fsas);
 }
 
-// Returns FSA with no arcs and no states, which is just an empty Ragged<Arc> with 2 axes.
+// Returns FSA with no arcs and no states, which is just an empty Ragged<Arc>
+// with 2 axes.
 Fsa EmptyFsa();
 
 // Converts Fsa to FsaVec with one element (note: will share the same underlying

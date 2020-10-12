@@ -23,7 +23,7 @@ namespace k2 {
 Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
                                 const Array1<int32_t> **src) {
   K2_CHECK_GT(num_arrays, 0);
-  ContextPtr c = src[0]->Context();
+  ContextPtr &c = src[0]->Context();
 
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
   int32_t sum = 0, max_dim = 0;
@@ -148,7 +148,7 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
 
 bool ValidateRowIds(const Array1<int32_t> &row_ids,
                     Array1<int32_t> *temp /*=nullptr*/) {
-  ContextPtr ctx = row_ids.Context();
+  ContextPtr &ctx = row_ids.Context();
   const int32_t *data = row_ids.Data();
   int32_t dim = row_ids.Dim();
   if (dim == 0) return true;  // will treat this as valid
@@ -177,7 +177,7 @@ bool ValidateRowIds(const Array1<int32_t> &row_ids,
 
 bool ValidateRowSplits(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *temp /*=nullptr*/) {
-  ContextPtr ctx = row_splits.Context();
+  ContextPtr &ctx = row_splits.Context();
   const int32_t *data = row_splits.Data();
   int32_t dim = row_splits.Dim();
   // must have at least one element and row_splits[0] == 0
@@ -272,7 +272,7 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
 
 Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
   K2_CHECK_GE(n, 0);
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   int32_t dim = src.Dim();
   const int32_t *src_data = src.Data();
   Array1<int32_t> ans(c, n, 0);  // init with 0
@@ -289,18 +289,15 @@ Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
     }
   } else {
     K2_CHECK_EQ(d, kCuda);
-    void *d_temp_storage = NULL;
     std::size_t temp_storage_bytes = 0;
     K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
-        d_temp_storage, temp_storage_bytes, src_data, ans_data, n + 1, 0, n,
-        dim, c->GetCudaStream()));  // The first time is to determine temporary
-                                    // device storage requirements.
-    void *deleter_context;
-    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
+        nullptr, temp_storage_bytes, src_data, ans_data, n + 1, 0, n, dim,
+        c->GetCudaStream()));  // The first time is to determine temporary
+                               // device storage requirements.
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
     K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
-        d_temp_storage, temp_storage_bytes, src_data, ans_data, n + 1, 0, n,
-        dim, c->GetCudaStream()));
-    c->Deallocate(d_temp_storage, deleter_context);
+        d_temp_storage.Data(), temp_storage_bytes, src_data, ans_data, n + 1, 0,
+        n, dim, c->GetCudaStream()));
   }
   return ans;
 }

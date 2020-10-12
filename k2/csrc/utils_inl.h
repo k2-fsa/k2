@@ -25,31 +25,31 @@
 
 namespace k2 {
 template <typename SrcPtr, typename DestPtr>
-void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest) {
+void ExclusiveSum(ContextPtr &c, int32_t n, const SrcPtr src, DestPtr dest) {
   K2_CHECK_GE(n, 0);
   DeviceType d = c->GetDeviceType();
   using SumType = typename std::decay<decltype(dest[0])>::type;
   if (d == kCpu) {
     SumType sum = 0;
     for (int32_t i = 0; i != n; ++i) {
-      auto prev = src[i];
+      auto prev = src[i];  // save a copy since src and dest
+                           // may share the underlying memory
       dest[i] = sum;
       sum += prev;
     }
   } else {
     K2_CHECK_EQ(d, kCuda);
     // Determine temporary device storage requirements
-    void *d_temp_storage = nullptr;
     std::size_t temp_storage_bytes = 0;
-    // since d_temp_storage is nullptr, the following function will compute
-    // the number of required bytes for d_temp_storage
+    // the following function will compute the number of required bytes
+    // for ExclusiveSum
     K2_CUDA_SAFE_CALL(cub::DeviceScan::ExclusiveSum(
-        d_temp_storage, temp_storage_bytes, src, dest, n, c->GetCudaStream()));
-    void *deleter_context;
-    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
-    K2_CUDA_SAFE_CALL(cub::DeviceScan::ExclusiveSum(
-        d_temp_storage, temp_storage_bytes, src, dest, n, c->GetCudaStream()));
-    c->Deallocate(d_temp_storage, deleter_context);
+        nullptr, temp_storage_bytes, src, dest, n, c->GetCudaStream()));
+
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CUDA_SAFE_CALL(
+        cub::DeviceScan::ExclusiveSum(d_temp_storage.Data(), temp_storage_bytes,
+                                      src, dest, n, c->GetCudaStream()));
   }
 }
 template <typename T>
