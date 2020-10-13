@@ -203,13 +203,33 @@ Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src);
 RaggedShape Transpose(RaggedShape &src);
 
 /*
+  Transpose a Ragged array: namely, axes 0 and 1.  Requires that the sizes
+  of lists on axis 1 all be the same, i.e. that src.RowSplits(1) have
+  equally spaced elements.
+
+     @param [in] src   Ragged array to be transposed.  We require
+                       src.NumAxes() > 2. (this is because the
+                       implementation would be slightly different, and
+                       because if you had a ragged array with 2 axes and
+                       a regular shape, you should really be using an
+                       Array2 or Tensor).
+     @return           Returns the transposed ragged array, with axes 0 and 1
+                       swapped.  Will satisfy
+                       ans.Dim0() == src.TotSize(1) / src.Dim0()
+                       and ans[i,j,k] = src[j,i,k] (Note, this is not actual C++
+                       code, it represents a conceptual indexing operator).
+ */
+template <typename T>
+Ragged<T> Transpose(Ragged<T> &src);
+
+/*
    Append a list of RaggedShape to form a single RaggedShape
 
       @param [in] axis     Axis to append them on.  Currently
                            we only support axis == 0 or axis == 1.
                            Previous axes must
                            have the same shape, i.e. if axis == 1
-                           then `src[i]->Dim0()` must all have the 
+                           then `src[i]->Dim0()` must all have the
                            same value
       @param [in] num_srcs Number of source shapes to append; require
                            num_srcs > 0.
@@ -217,7 +237,6 @@ RaggedShape Transpose(RaggedShape &src);
       @return      Returns the appended RaggedShape.
 */
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src);
-
 
 /*
     Gets an array of pointers to the row_splits of `src`, on the same
@@ -304,14 +323,14 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
  */
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
 
-
 /*
   Stack a list of Ragged arrays to create a Ragged array with one more axis.
   Similar to TF/PyTorch's Stack.  The result will have Dim0 == num_srcs.  All
   the source Ragged arrays' shapes must have the same NumAxes().
 
      @param [in] axis   The new axis whose dimension will equal num_srcs.
-                        CAUTION: only axis == 0 is supported right now.
+                        CAUTION: only axis == 0 and axis == 1 are
+                        supported right now.
      @param [in] num_srcs  The number of `RaggedShape`s in `src`
      @param [in] src       The shapes to be stacked
 
@@ -339,7 +358,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src);
                            we only support axis == 0 or axis == 1.
                            Previous axes must
                            have the same shape, i.e. if axis == 1
-                           then `src[i]->Dim0()` must all have the 
+                           then `src[i]->Dim0()` must all have the
                            same value
       @param [in] num_srcs Number of source shapes to append; require
                            num_srcs > 0.
@@ -347,8 +366,11 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src);
       @return      Returns the appended RaggedShape.
 */
 template <typename T>
-Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src);  
-
+Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
+  // TODO(haowen)
+  K2_LOG(FATAL) << "Not Implemeted";
+  return *src[0];
+}
 
 /*
   Construct a RaggedShape with 2 axes.

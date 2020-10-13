@@ -538,14 +538,13 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
 }
 
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
-  if (num_srcs == 1)
-    return **src;
-  K2_CHECK_GT(num_srcs, 1);  
+  if (num_srcs == 1) return **src;
+  K2_CHECK_GT(num_srcs, 1);
   if (axis == 1) {
     RaggedShape temp = Stack(axis, num_srcs, src);
     return RemoveAxis(temp, axis);
   }
-  K2_CHECK_EQ(axis, 0) << "Append() with axis > 0 not yet supported";
+  K2_CHECK_EQ(axis, 0) << "Append() with axis > 1 not yet supported";
   int32_t num_axes = src[0]->NumAxes();
   ContextPtr c = src[0]->Context();
 

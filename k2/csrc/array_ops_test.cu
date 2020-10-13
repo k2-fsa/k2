@@ -972,7 +972,7 @@ void TestValidateRowSplitsAndIds() {
     {
       Array1<int32_t> row_splits(context, row_splits_vec);
       Array1<int32_t> row_ids(context, row_ids_vec.size());
-      RowSplitsToRowIds(row_splits, row_ids);
+      RowSplitsToRowIds(row_splits, &row_ids);
       row_ids = row_ids.To(cpu);
       std::vector<int32_t> cpu_data(row_ids.Data(),
                                     row_ids.Data() + row_ids.Dim());
@@ -981,7 +981,7 @@ void TestValidateRowSplitsAndIds() {
     {
       Array1<int32_t> row_ids(context, row_ids_vec);
       Array1<int32_t> row_splits(context, row_splits_vec.size());
-      RowIdsToRowSplits(row_ids, row_splits);
+      RowIdsToRowSplits(row_ids, &row_splits);
       row_splits = row_splits.To(cpu);
       std::vector<int32_t> cpu_data(row_splits.Data(),
                                     row_splits.Data() + row_splits.Dim());
