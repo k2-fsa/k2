@@ -38,6 +38,7 @@ namespace k2 {
 bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
 
+
 /*
   Sort arcs of an Fsa or FsaVec in-place (this version of the function does not
   output derivatives).
@@ -51,20 +52,29 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
 
 /*
-  Topologically sort an Fsa or FsaVec (where possible).  Note: if the FSA had
-  cycles the result will not be topologically sorted (it will have cycles) but
-  the states will be ordered by the number of arcs it takes to reach them from
-  the start state.
+  Topologically sort an Fsa or FsaVec.
 
       @param [in] src  Input Fsa or FsaVec
       @param [out] dest  Output Fsa or FsaVec.  At exit, its states will be
-                        top-sorted if the FSA was acyclic.  If it had cycles,
-                        they will be sorted by distance from the start-state
-                        (distance in terms of how many arcs must be traversed,
-                        not the weights).
-      @param [out] arc_map  If not nullptr, a map from arc-indexes in `dest` to
-                        arc-indexes in `src` will be output to here
- */
+                      top-sorted.  (However, if `src` contained cycles other
+                      than self-loops, it won't contain all of the states
+                      in the input; this can be detected by the user directly
+                      by looking at the number of states.
+      @param [out] arc_map  If not nullptr, at exit a map from arc-indexes in
+                      `dest` to their source arc-indexes in `src` will have
+                       been assigned to this location.
+
+  Implementation nots: from wikipedia
+  https://en.wikipedia.org/wiki/Topological_sorting#Parallel_algorithms
+
+ "An algorithm for parallel topological sorting on distributed memory machines
+  parallelizes the algorithm of Kahn for a DAG {\displaystyle
+  G=(V,E)}G=(V,E)[1]. On a high level, the algorithm of Kahn repeatedly removes
+  the vertices of indegree 0 and adds them to the topological sorting in the
+  order in which they were removed. Since the outgoing edges of the removed
+  vertices are also removed, there will be a new set of vertices of indegree 0,
+  where the procedure is repeated until no vertices are left."
+*/
 void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
 
 

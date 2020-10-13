@@ -115,7 +115,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
     // is num_rows - 1, i.e. there's no empty rows after row `row_ids[-1]`.
     int32_t num_rows = row_ids->Dim() == 0 ? 0 : row_ids->Back() + 1;
     Array1<int32_t> row_splits_array(ctx, num_rows + 1);
-    RowIdsToRowSplits(*row_ids, row_splits_array);
+    RowIdsToRowSplits(*row_ids, &row_splits_array);
     axes[0].row_splits = row_splits_array;
   }
   if (row_ids != nullptr) axes[0].row_ids = *row_ids;
@@ -183,7 +183,7 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
     // work out row_splits1, see code in RaggedShape2 above for the reason
     int32_t num_rows = row_ids1->Dim() == 0 ? 0 : row_ids1->Back() + 1;
     Array1<int32_t> row_splits_array(ctx1, num_rows + 1);
-    RowIdsToRowSplits(*row_ids1, row_splits_array);
+    RowIdsToRowSplits(*row_ids1, &row_splits_array);
     axes[0].row_splits = row_splits_array;
   }
   if (row_ids1 != nullptr) axes[0].row_ids = *row_ids1;
@@ -200,7 +200,7 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
     // work out row_splits1, see code in RaggedShape2 above for the reason
     int32_t num_rows = row_ids2->Dim() == 0 ? 0 : row_ids2->Back() + 1;
     Array1<int32_t> row_splits_array(ctx1, num_rows + 1);
-    RowIdsToRowSplits(*row_ids2, row_splits_array);
+    RowIdsToRowSplits(*row_ids2, &row_splits_array);
     axes[1].row_splits = row_splits_array;
   }
   if (row_ids2 != nullptr) axes[1].row_ids = *row_ids2;
@@ -538,8 +538,14 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
 }
 
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
+  if (num_srcs == 1)
+    return **src;
+  K2_CHECK_GT(num_srcs, 1);  
+  if (axis == 1) {
+    RaggedShape temp = Stack(axis, num_srcs, src);
+    return RemoveAxis(temp, axis);
+  }
   K2_CHECK_EQ(axis, 0) << "Append() with axis > 0 not yet supported";
-  K2_CHECK_GT(num_srcs, 1);
   int32_t num_axes = src[0]->NumAxes();
   ContextPtr c = src[0]->Context();
 
@@ -728,7 +734,7 @@ RaggedShape Transpose(RaggedShape &src) {
   return ComposeRaggedShapes(temp, src_no_axis0_renumbered);
 }
 
-RaggedShape Stack(int32_t axis, int32_t num_srcs, const RaggedShape **src) {
+RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src) {
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK(axis >= 0 && axis <= 1);
 

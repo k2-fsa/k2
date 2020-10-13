@@ -84,7 +84,7 @@ template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
   K2_CHECK_EQ(axis, 0);
   K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe
-  std::vector<const RaggedShape *> src_shapes(num_srcs);
+  std::vector<RaggedShape *> src_shapes(num_srcs);
   std::vector<const Array1<T> *> src_values(num_srcs);
   for (int32_t i = 0; i != num_srcs; ++i) {
     src_shapes[i] = &(src[i]->shape);

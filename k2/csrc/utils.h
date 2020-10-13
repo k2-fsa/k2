@@ -214,9 +214,9 @@ T MaxValue(ContextPtr &c, int32_t nelems, const T *t);
   It sets row_ids[i] to the index j to which position i 'belongs' according to
   the array `row_splits`.  `row_splits` is expected to be an array containing
   the exclusive sum of a sequence of nonnegative integers corresponding to sizes
-  of sub-lists, so suppose there was an original sequence sizes = [ 2 1 0 4 ]
-  and row_splits = [ 0 2 3 3 7 ] then we would fill row_ids with: row_ids = [ 0
-  0 1 3 3 3 3 ]
+  of sub-lists, so suppose there was a original sequence sizes = [ 2 1 0 4 ] and
+  row_splits = [ 0 2 3 3 7 ] then we would fill row_ids with: row_ids = [ 0 0 1
+  3 3 3 3 ]
 
        @param [in] c   ContextPtr, points to the context to which the
                        data belongs (e.g. CPU or GPU).
@@ -479,6 +479,30 @@ __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
   u.i = i;
   return u.f;
 }
+
+/* Atomically decrement *i and return true if it is zero after the decrement (it is an error
+   if it was less than zero).  This is the host version, without synchronization
+   (
+__host__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
+}
+
+/* Atomically decrement *i and return true if it is zero after the decrement (it
+   is an error if it becomes less than zero).
+*/
+__host__ __device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
+#ifdef CUDA_ARCH
+  int32_t old = atomicAdd(i, -1)
+  K2_CHECK_GT(old, 0);
+  return (old == 1);
+#else
+  // For host code, we assume single-threaded for now).
+  int32_t i_value = *i;
+  *i = i_value - 1;
+  K2_CHECK_GE(i_value - 1, 0);
+  return (i_value - 1 == 0);
+#endif  
+}
+
 
 /*
  1:1 Conversion float <---> sortable int32_t We convert floats to sortable ints

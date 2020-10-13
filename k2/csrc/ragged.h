@@ -131,6 +131,7 @@ class RaggedShape {
 
   RaggedShapeIndexIterator Iterator();
 
+  // TODO(dan): will at some point make it so check = false is the default.
   explicit RaggedShape(const std::vector<RaggedShapeDim> &axes,
                        bool check = true)
       : axes_(axes) {
@@ -266,6 +267,7 @@ struct Ragged {
 
   ContextPtr &Context() const { return values.Context(); }
   int32_t NumAxes() const { return shape.NumAxes(); }
+  int32_t NumElements() const { return shape.NumElements(); }  
   const Array1<int32_t> &RowSplits(int32_t axis) const {
     return shape.RowSplits(axis);
   }
