@@ -202,14 +202,14 @@ class MultiGraphDenseIntersect {
 
   FrameInfo *InitialFrameInfo() {
     // TODO
-    K2_LOG(FATAL) << "Not Implemeted";
+    K2_LOG(FATAL) << "Not Implemented";
     return nullptr;
   }
 
   void FormatOutput(FsaVec *ofsa, Array1<int32_t> *arc_map_a,
                     Array1<int32_t> *arc_map_b) {
     ContextPtr c_cpu = c_->GetCpuContext();
-    int32_t T = a_fsas_.shape.MaxSize(1);
+    int32_t T = b_fsas_.shape.MaxSize(1);
 
     int32_t *oshapeu_row_ids3 = oshape_unpruned_.RowIds(3).Data(),
             *oshapeu_row_ids2 = oshape_unpruned_.RowIds(2).Data(),
@@ -259,6 +259,7 @@ class MultiGraphDenseIntersect {
     const Arc *a_fsas_arcs = a_fsas_.values.Data();
     int32_t b_fsas_num_cols = b_fsas_.scores.Dim1();
     const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1).Data();
+    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
 
     auto lambda_format_arc_data =
         [=] __host__ __device__(int32_t pruned_idx0123) -> void {
@@ -269,9 +270,9 @@ class MultiGraphDenseIntersect {
               unpruned_idx01xx = oshapeu_row_splits3[unpruned_idx01x],
               unpruned_idxxx23 = unpruned_idx0123 - unpruned_idx01xx,
               unpruned_idx0 = oshapeu_row_ids1[unpruned_idx01],  // fsa-id
-          // unpruned_idx0x = oshapeu_row_splits1[unpruned_idx0],
+              unpruned_idx0x = oshapeu_row_splits1[unpruned_idx0],
           // unpruned_idx0xx = oshapeu_row_splits2[unpruned_idx0x],
-          unpruned_idx1 = unpruned_idx01 - unpruned_idx01,  // t
+          unpruned_idx1 = unpruned_idx01 - unpruned_idx0x,  // t
           unpruned_idx01_next_t = unpruned_idx01 + 1,
               unpruned_idx01x_next_t =
                   oshapeu_row_splits2[unpruned_idx01_next_t];
@@ -322,7 +323,7 @@ class MultiGraphDenseIntersect {
       arc.src_state = pruned_src_state_idxx12;
       arc.dest_state = pruned_dest_state_idxx12;
       arc.symbol = a_fsas_arcs[arc_info.a_fsas_arc_idx012].symbol;
-      int32_t fsa_id = unpruned_idx0, b_fsas_idx0x = b_fsas_row_ids1[fsa_id],
+      int32_t fsa_id = unpruned_idx0, b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
               b_fsas_idx01 = b_fsas_idx0x + t, b_fsas_idxxx2 = (arc.symbol + 1),
               b_fsas_arc_idx012 =
                   b_fsas_idx01 * b_fsas_num_cols + b_fsas_idxxx2;
@@ -491,6 +492,7 @@ class MultiGraphDenseIntersect {
     // fsa_idx0 to ind0x (into b_fsas_), which gives the 1st row for this
     // sequence.
     const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1).Data();
+    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
     const float *score_data = b_fsas_.scores.Data();
     int32_t scores_num_cols = b_fsas_.scores.Dim1();
 
@@ -507,7 +509,7 @@ class MultiGraphDenseIntersect {
               a_fsas_arc_idx012 = a_fsas_arc_idx01x + ai_arc_idxxx2;
       Arc arc = arcs[a_fsas_arc_idx012];
 
-      int32_t scores_idx0x = b_fsas_row_ids1[ai_fsa_idx0],
+      int32_t scores_idx0x = b_fsas_row_splits1[ai_fsa_idx0],
               scores_idx01 = scores_idx0x + t,  // t == ind1 into 'scores'
           scores_idx2 = arc.symbol + 1,  // the +1 is so that -1 can be handled
           scores_idx012 = (scores_idx01 * scores_num_cols) + scores_idx2;
