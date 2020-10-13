@@ -248,26 +248,26 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
 }
 
 void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
-                       Array1<int32_t> &row_ids) {
-  ContextPtr c = GetContext(row_splits, row_ids);
-  int32_t num_elems = row_ids.Dim(), num_rows = row_splits.Dim() - 1;
+                       Array1<int32_t> *row_ids) {
+  ContextPtr c = GetContext(row_splits, *row_ids);
+  int32_t num_elems = row_ids->Dim(), num_rows = row_splits.Dim() - 1;
   K2_CHECK_GE(num_rows, 0);
   // if there are more than zero elems, there must be at least one row.
   K2_CHECK(num_elems == 0 || num_rows > 0);
   K2_CHECK_EQ(num_elems, row_splits[num_rows]);
-  RowSplitsToRowIds(c, num_rows, row_splits.Data(), num_elems, row_ids.Data());
+  RowSplitsToRowIds(c, num_rows, row_splits.Data(), num_elems, row_ids->Data());
 }
 
 void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
-                       Array1<int32_t> &row_splits) {
-  ContextPtr c = GetContext(row_splits, row_ids);
-  int32_t num_elems = row_ids.Dim(), num_rows = row_splits.Dim() - 1;
+                       Array1<int32_t> *row_splits) {
+  ContextPtr c = GetContext(*row_splits, row_ids);
+  int32_t num_elems = row_ids.Dim(), num_rows = row_splits->Dim() - 1;
   K2_CHECK_GE(num_rows, 0);
   // if there are more than zero elems, there must be at least one row.
   K2_CHECK(num_elems == 0 || num_rows > 0);
   if (num_elems > 0) K2_CHECK_GT(num_rows, row_ids[num_elems - 1]);
   RowIdsToRowSplits(c, num_elems, row_ids.Data(), false, num_rows,
-                    row_splits.Data());
+                    row_splits->Data());
 }
 
 Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {

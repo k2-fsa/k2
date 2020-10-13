@@ -398,8 +398,8 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
   Array1<int32_t> row_ids1(c, num_states),
       row_ids12(c, num_arcs),  // we'll modify row_ids12 to be row_ids2.
       row_splits2(c, num_states + 1);
-  RowSplitsToRowIds(row_splits1, row_ids1);
-  RowSplitsToRowIds(row_splits12, row_ids12);
+  RowSplitsToRowIds(row_splits1, &row_ids1);
+  RowSplitsToRowIds(row_splits12, &row_ids12);
 
   const int32_t *row_ids1_data = row_ids1.Data(),
                 *row_splits12_data = row_splits12.Data(),
@@ -420,7 +420,7 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
 
   Array1<int32_t> &row_ids2 =
       row_ids12;  // we overwrote the data in the lambda above.
-  RowIdsToRowSplits(row_ids2, row_splits2);
+  RowIdsToRowSplits(row_ids2, &row_splits2);
 
   if (!ValidateRowSplitsAndIds(row_splits2, row_ids2,
                                &row_splits12)) {  // last arg is temp space

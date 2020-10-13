@@ -129,7 +129,7 @@ void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
         and these are just the shapes of arrays..).
         See also the version of Stack for class Ragged.
  */
-RaggedShape Stack(int32_t axis, int32_t src_size, const RaggedShape **src);
+RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src);
 
 /*
   Insert a new axis at position `axis`, with 0 <= axis <= src.NumAxes(), for
@@ -205,14 +205,19 @@ RaggedShape Transpose(RaggedShape &src);
 /*
    Append a list of RaggedShape to form a single RaggedShape
 
-      @param [in] axis     Axis to append them on. Previous axes must
-                           have the same shape! CAUTION: currently
-                           we only support axis == 0.
-      @param [in] num_srcs Number of source shapes to append
+      @param [in] axis     Axis to append them on.  Currently
+                           we only support axis == 0 or axis == 1.
+                           Previous axes must
+                           have the same shape, i.e. if axis == 1
+                           then `src[i]->Dim0()` must all have the 
+                           same value
+      @param [in] num_srcs Number of source shapes to append; require
+                           num_srcs > 0.
       @param [in] src      Array of sources to append
       @return      Returns the appended RaggedShape.
 */
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src);
+
 
 /*
     Gets an array of pointers to the row_splits of `src`, on the same
@@ -290,6 +295,24 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> **src);
  */
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> *src);
+
+/*
+   Append a list of Ragged<T> to form a single Ragged<T>
+
+      @param [in] axis     Axis to append them on.  Currently
+                           we only support axis == 0 or axis == 1.
+                           Previous axes must
+                           have the same shape, i.e. if axis == 1
+                           then `src[i]->Dim0()` must all have the 
+                           same value
+      @param [in] num_srcs Number of source shapes to append; require
+                           num_srcs > 0.
+      @param [in] src      Array of sources to append
+      @return      Returns the appended RaggedShape.
+*/
+template <typename T>
+Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src);  
+
 
 /*
   Construct a RaggedShape with 2 axes.

@@ -548,40 +548,37 @@ std::string FsaToString(const Fsa &fsa, bool openfst /*= false*/,
 }
 
 
-Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose = true) {
-  K2_CHECK_EQ(fsas.NumArcs(), 3);
-  // TODO(dan).
-}
-
 Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
-  Context c = fsas.Context();
+  ContextPtr c = fsas.Context();
   int32_t num_arcs = fsas.NumElements();
   Array1<int32_t> ans(c, num_arcs);
+  Arc *arcs_data = fsas.values.Data();
   int32_t *ans_data = ans.Data();
   if (!as_idx01) {
     const Arc *arcs = fsas.values.Data();
     auto lambda_set_dest_states1 = [=] __host__ __device__ (int32_t arc_idx012) {
       ans_data[arc_idx012] = arcs[arc_idx012].dest_state;
     };
-    Eval(c, num_arcs, lambda_set_dest_state1);
+    Eval(c, num_arcs, lambda_set_dest_states1);
   } else {
-    const int32_t *row_ids2 = fsas.RowIds(2);
+    const int32_t *row_ids2 = fsas.RowIds(2).Data();
     auto lambda_set_dest_states01 = [=] __host__ __device__ (int32_t arc_idx012) {
-      int32_t src_state = arcs[arc_idx012].src_state,
-         dest_state = arcs[arc_idx012].dest_state;
+      int32_t src_state = arcs_data[arc_idx012].src_state,
+         dest_state = arcs_data[arc_idx012].dest_state;
       // (row_ids2[arc_idx012] - src_state) is the same as
       // row_splits1[row_ids1[row_ids2[arc_idx012]]]; it's the idx01 of the 1st
       // state in this FSA.
       ans_data[arc_idx012] = dest_state + (row_ids2[arc_idx012] - src_state);
     };
-    Eval(c, num_arcs, lambda_set_dest_state1);
+    Eval(c, num_arcs, lambda_set_dest_states01);
   }
+  return ans;
 }
 
 
 Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
   K2_CHECK(fsas.NumAxes() == 3);
-  Context c = fsas.Context();
+  ContextPtr c = fsas.Context();
   Array1<int32_t> arc_dest_states = GetDestStates(fsas, true);
 
   MonotonicLowerBound(arc_dest_states, &arc_dest_states);
@@ -590,9 +587,9 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
       num_arcs = fsas.TotSize(2);
 
   // We can tune `log_power` as a tradeoff between work done and clock time on GPU.
-  int32_t log_power = (c.GetDeviceType() == kCpu ? 0 : 4);
+  int32_t log_power = (c->GetDeviceType() == kCpu ? 0 : 4);
 
-  int32_t max_num_states = fsas.MaxSize(1);
+  int32_t max_num_states = fsas.shape.MaxSize(1);
   // the following avoids doing too much extra work accumulating powers
   // of 'dest_states' for very small problem sizes.
   while (log_power > 0 && (1 << (1+log_power)) > max_num_states)
@@ -612,16 +609,16 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
   const int32_t int_max = std::numeric_limits<int32_t>::max();
   auto lambda_set_dest_states = [=] __host__ __device__ (int32_t state_idx01) -> void {
     int32_t arc_idx01x = fsas_row_splits2_data[state_idx01],
-        next_arc_idx01x = fsas_row_splits2_data[state_idx01x];
+        next_arc_idx01x = fsas_row_splits2_data[arc_idx01x];
     // If this state has arcs, let its `dest_state` be the largest `dest_state`
     // of any of its arcs (which is the last one); otherwise, take the
     // `dest_state` from the 1st arc of the next state, which is the largest
     // value we can take (if the definition is: the highest-numbered state s for
     // which neither this state nor any later-numbered state has an arc to a
     // state lower than s).
-    int32_t arc_idx01x = max(arc_idx01x,
-                             next_arc_idx01 - 1);
-    int32_t dest_state = (arc_idx01x < num_arcs ? arc_dest_states_data[arc_idx01x] :
+    int32_t arc_idx012 = max(arc_idx01x,
+                             next_arc_idx01x - 1);
+    int32_t dest_state = (arc_idx012 < num_arcs ? arc_dest_states_data[arc_idx012] :
                           int_max);
     dest_states_data[state_idx01] = dest_state;
     // if the following fails, it's either a code error or the input FSA had cycles.
@@ -630,9 +627,9 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
   Eval(c, num_states, lambda_set_dest_states);
 
  for (int32_t power = 1; power <= log_power; power++) {
-   int32_t stride = dest_states_sq.ElemStride0();
-   const int32_t *src_data = dest_states_sq.Data() + (power - 1) * stride,
-     *dest_data = dest_states_sq.Data() + power * stride;
+   int32_t stride = dest_states_powers.ElemStride0();
+   const int32_t *src_data = dest_states_powers.Data() + (power - 1) * stride;
+   int32_t *dest_data = dest_states_powers.Data() + power * stride;
    auto lambda_square_array = [=] __host__ __device__ (int32_t state_idx01) -> void {
      int32_t dest_state = src_data[state_idx01],
          dest_state_sq = (dest_state < num_states ? src_data[dest_state] : int_max);
@@ -645,7 +642,7 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
  // we'll use for each FSA... it corresponds to the number of times we have
  // to follow links forward in the dest_states array till we pass the
  // end of the array for this fSA.
- Array<int32_t> num_batches_per_fsa(num_fsas + 1);
+ Array1<int32_t> num_batches_per_fsa(c, num_fsas + 1);
 
  // `batch_starts` will contain the locations of the first state_idx01 for each
  // batch, but in an 'un-consolidated' format.  Specifically, for FSA with index
@@ -653,7 +650,7 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
  // `batch_starts`.  This is just a convenient layout because we know there
  // can't be more batches than there are states.  We'll later consolidate the
  // information into a single array.
- Array1<int32_t> batch_starts(num_states + 1);
+ Array1<int32_t> batch_starts(c, num_states + 1);
 
  int32_t *num_batches_per_fsa_data = num_batches_per_fsa.Data(),
      *batch_starts_data = batch_starts.Data();
@@ -665,7 +662,7 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
  // issue more memory requests than it can handle at a time (we drop
  // some threads).
  int32_t jobs_per_fsa = (1 << log_power),
-     jobs_multiple = (c.GetDeviceType() == kGpu ? 8 : 1);
+     jobs_multiple = (c->GetDeviceType() == kCuda ? 8 : 1);
  while (jobs_multiple > 1 &&
         jobs_per_fsa * jobs_multiple * num_fsas > 10000)
    jobs_multiple /= 2;  // Likely won't get here.  Just reduce multiple if
@@ -677,8 +674,8 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
 #if 1
  // This is a simple version of the kernel that demonstrates what we're trying to do
  // with the more complex code.
- auto lambda_set_batch_info_simple [=] __host__ __device__ (int32_t fsa_idx) {
-   int32 begin_state_idx01 = fsas_row_splits1_data[fsa_idx],
+ auto lambda_set_batch_info_simple = [=] __host__ __device__ (int32_t fsa_idx) {
+   int32_t begin_state_idx01 = fsas_row_splits1_data[fsa_idx],
      end_state_idx01 = fsas_row_splits1_data[fsa_idx + 1];
    int32_t i = 0, cur_state_idx01 = begin_state_idx01;
    while (cur_state_idx01 < end_state_idx01) {
@@ -689,7 +686,6 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
  };
  Eval(c, num_fsas, lambda_set_batch_info_simple);
 #else
-
   auto dest_states_powers_acc = dest_states_powers.Accessor();
   auto lambda_set_batch_info = [=] __host__ __device__ (int32_t fsa_idx,
                                                        int32_t j) {
@@ -741,17 +737,16 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
   };
   Eval(c, num_fsas, jobs_per_fsa * jobs_multiple,
        lambda_set_batch_info);
-  batch_starts[num_states] = n
-
+#endif
   ExclusiveSum(num_batches_per_fsa, &num_batches_per_fsa);
   Array1<int32_t> &ans_row_splits1 = num_batches_per_fsa;
   int32_t num_batches = num_batches_per_fsa[num_fsas];
-  Array1<int32_t> ans_row_ids1(num_batches);
+  Array1<int32_t> ans_row_ids1(c, num_batches);
   RowSplitsToRowIds(ans_row_splits1, &ans_row_ids1);
   Array1<int32_t> ans_row_splits2(c, num_batches + 1);
   const int32_t *ans_row_splits1_data = ans_row_splits1.Data(),
       *ans_row_ids1_data = ans_row_ids1.Data();
-  int32_t *ans_row_splits2_data = ans_row_splits.Data();
+  int32_t *ans_row_splits2_data = ans_row_splits2.Data();
   ans_row_splits2[num_batches] = num_states;  // The kernel below won't set this
                                               // last element
   auto lambda_set_ans_row_ids2 = [=] __host__ __device__ (int32_t idx01) -> void {

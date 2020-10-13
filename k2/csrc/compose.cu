@@ -175,7 +175,7 @@ class MultiGraphDenseIntersect {
 
     {
       // each of these have 3 axes.
-      std::vector<const RaggedShape *> arcs_shapes(T + 1);
+      std::vector<RaggedShape *> arcs_shapes(T + 1);
       for (int32_t t = 0; t <= T; t++)
         arcs_shapes[t] = &(frames_[t]->arcs.shape);
 

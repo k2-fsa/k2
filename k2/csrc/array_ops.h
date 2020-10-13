@@ -251,7 +251,7 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc = 1);
                            row_splits[num_rows].
  */
 void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
-                       Array1<int32_t> &row_ids);
+                       Array1<int32_t> *row_ids);
 
 /*
   This is a convenience wrapper for the function of the same name in utils.h.
@@ -263,7 +263,7 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
                            less than num_rows.
  */
 void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
-                       Array1<int32_t> &row_splits);
+                       Array1<int32_t> *row_splits);
 
 /*
   Return true if all elements of the two arrays are equal
