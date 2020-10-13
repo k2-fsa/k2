@@ -482,21 +482,25 @@ __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
 
 /* Atomically decrement *i and return true if it is zero after the decrement (it is an error
    if it was less than zero).  This is the host version, without synchronization
-   (we assume single-threaded for now) */
+   (
 __host__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
+}
+
+/* Atomically decrement *i and return true if it is zero after the decrement (it
+   is an error if it becomes less than zero).
+*/
+__host__ __device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
+#ifdef CUDA_ARCH
+  int32_t old = atomicAdd(i, -1)
+  K2_CHECK_GT(old, 0);
+  return (old == 1);
+#else
+  // For host code, we assume single-threaded for now).
   int32_t i_value = *i;
   *i = i_value - 1;
   K2_CHECK_GE(i_value - 1, 0);
   return (i_value - 1 == 0);
-}
-
-/* Atomically decrement *i and return true if it is zero after the decrement (it
-   is an error if it becomes less than zero).  This is the device version.
-*/
-__device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
-  int32_t old = atomicAdd(i, -1)
-  K2_CHECK_GT(old, 0);
-  return (old == 1);
+#endif  
 }
 
 
