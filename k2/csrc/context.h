@@ -37,7 +37,19 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 
 // Intended for use in debugging
 inline std::ostream &operator<<(std::ostream &stream, const DeviceType type) {
-  stream << static_cast<std::underlying_type<DeviceType>::type>(type);
+  switch (type) {
+    case kUnk:
+      stream << "kUnk";
+      break;
+    case kCuda:
+      stream << "kCuda";
+      break;
+    case kCpu:
+      stream << "kCpu";
+      break;
+    default:
+      K2_LOG(FATAL) << "Unreachable code!";
+  }
   return stream;
 }
 
@@ -138,12 +150,11 @@ class Context : public std::enable_shared_from_this<Context> {
   virtual void Sync() const {}
 };
 
-
 // Note currently we just support single GPU device, but finally we may need to
 // handle different GPU devices on multiple machines, that's also the reason
 // that we pass `Context` instead of `DeviceType` as the input parameter here.
-inline cudaMemcpyKind  GetMemoryCopyKind(const Context &src,
-                                         const Context &dst) {
+inline cudaMemcpyKind GetMemoryCopyKind(const Context &src,
+                                        const Context &dst) {
   if (src.GetDeviceType() == kCpu && dst.GetDeviceType() == kCpu) {
     return cudaMemcpyHostToHost;
   } else if (src.GetDeviceType() == kCpu && dst.GetDeviceType() == kCuda) {
@@ -166,8 +177,7 @@ inline void MemoryCopy(void *dst, const void *src, std::size_t count,
   if (kind != cudaMemcpyDeviceToDevice) {
     ret = cudaMemcpy(dst, src, count, kind);
   } else {
-    ret = cudaMemcpyAsync(dst, src, count, kind,
-                          context->GetCudaStream());
+    ret = cudaMemcpyAsync(dst, src, count, kind, context->GetCudaStream());
   }
   K2_CHECK_CUDA_ERROR(ret);
 }
@@ -360,7 +370,6 @@ __global__ void eval_lambda(int32_t n, LambdaT lambda) {
   }
 }
 
- 
 template <typename T, typename LambdaT>
 __global__ void eval_lambda(T *data, int32_t n, LambdaT lambda) {
   int32_t i = blockIdx.x * blockDim.x + threadIdx.x;

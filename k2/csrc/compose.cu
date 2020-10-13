@@ -492,6 +492,7 @@ class MultiGraphDenseIntersect {
     // fsa_idx0 to ind0x (into b_fsas_), which gives the 1st row for this
     // sequence.
     const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1).Data();
+    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
     const float *score_data = b_fsas_.scores.Data();
     int32_t scores_num_cols = b_fsas_.scores.Dim1();
 
@@ -508,7 +509,7 @@ class MultiGraphDenseIntersect {
               a_fsas_arc_idx012 = a_fsas_arc_idx01x + ai_arc_idxxx2;
       Arc arc = arcs[a_fsas_arc_idx012];
 
-      int32_t scores_idx0x = b_fsas_row_ids1[ai_fsa_idx0], // FIXME(fangjun): this is probably b_fsa_row_splits1  // NOLINT
+      int32_t scores_idx0x = b_fsas_row_splits1[ai_fsa_idx0],
               scores_idx01 = scores_idx0x + t,  // t == ind1 into 'scores'
           scores_idx2 = arc.symbol + 1,  // the +1 is so that -1 can be handled
           scores_idx012 = (scores_idx01 * scores_num_cols) + scores_idx2;

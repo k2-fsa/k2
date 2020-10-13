@@ -67,29 +67,30 @@ static void PybindDenseFsaVec(py::module &m) {
   // We do not need to access its members in Python
 
   // TODO(fangjun): add docstring for this funciton
-  pyclass.def(
-      py::init([](torch::Tensor scores, torch::Tensor sizes) -> DenseFsaVec * {
+  pyclass.def(py::init(
+      [](torch::Tensor scores, torch::Tensor row_splits) -> DenseFsaVec * {
         // remove the contiguous check once the following comment
         // https://github.com/k2-fsa/k2/commit/60b8e97b1838033b45b83cc88a58ec91912ce91e#r43174753
         // is resolved.
         K2_CHECK(scores.is_contiguous());
-        Array1<int32_t> _sizes =
-            FromTensor<int32_t>(sizes).Range(0, sizes.size(0) - 1);
-        Array1<int32_t> row_splits(_sizes.Context(), _sizes.Dim() + 1);
-        ExclusiveSum(_sizes, &row_splits);
+        Array1<int32_t> _row_splits = FromTensor<int32_t>(row_splits);
         DenseFsaVec *dense_fsa = new DenseFsaVec;  // will be freed by Python
-        dense_fsa->shape = RaggedShape2(&row_splits, nullptr, -1);
+        dense_fsa->shape = RaggedShape2(&_row_splits, nullptr, -1);
         dense_fsa->scores = FromTensor<float>(scores, Array2Tag{});
-        return dense_fsa;  // python takes the ownership
+
+        K2_CHECK(IsCompatible(dense_fsa->shape, dense_fsa->scores));
+
+        return dense_fsa;  // Python takes the ownership
       }));
 
   // the `to_str` method is for debugging only
   pyclass.def("to_str", [](PyClass &self) {
     std::ostringstream os;
-    os << "num_axes:\n" << self.shape.NumAxes() << "\n";
-    os << "row_splits1:\n" << self.shape.RowSplits(1) << "\n";
-    os << "row_ids1:\n" << self.shape.RowIds(1) << "\n";
-    os << "scores:\n" << self.scores << "\n";
+    os << "num_axes: " << self.shape.NumAxes() << '\n';
+    os << "device_type: " << self.shape.Context()->GetDeviceType() << '\n';
+    os << "row_splits1: " << self.shape.RowSplits(1) << '\n';
+    os << "row_ids1: " << self.shape.RowIds(1) << '\n';
+    os << "scores:" << self.scores << '\n';
     return os.str();
   });
 }
