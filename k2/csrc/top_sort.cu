@@ -371,7 +371,7 @@ void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map) {
   K2_CHECK_LE(src.NumAxes(), 3);
   if (src.NumAxes() == 2) {
     // Turn single Fsa into FsaVec.
-    const Fsa *srcs = &src;
+    Fsa *srcs = &src;
     FsaVec src_vec = CreateFsaVec(1, &srcs),
       dest_vec;
     // Recurse..
