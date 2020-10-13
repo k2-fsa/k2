@@ -106,6 +106,58 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> *src) {
   return Stack(axis, num_srcs, temp.data());
 }
 
+template <typename T>
+Ragged<T> Transpose(Ragged<T> &src) {
+  K2_CHECK_GT(src.NumAxes(), 2);
+  // Transpose(RaggedShape&) will check if all dims on axis 0 are same or not.
+  ContextPtr c = src.Context();
+  RaggedShape &src_shape = src.shape;
+  const Array1<T> src_values = src.values;
+
+  // transpose shape
+  RaggedShape ans_shape = Transpose(src_shape);
+  // set values
+  Array1<int32_t *> ans_row_splits_ptr, ans_row_ids_ptr;
+  GetRowInfo(ans_shape, &ans_row_splits_ptr, &ans_row_ids_ptr);
+  int32_t **ans_row_splits_data = ans_row_splits_ptr.Data();
+  int32_t **ans_row_ids_data = ans_row_ids_ptr.Data();
+  Array1<int32_t *> src_row_splits_ptr = GetRowSplitsPtr(src_shape);
+  int32_t **src_row_splits_data = src_row_splits_ptr.Data();
+  int32_t num_axes = src.NumAxes();
+  Array1<T> ans_values(c, src_values.Dim());
+  const T *src_data = src_values.Data();
+  T *ans_data = ans_values.Data();
+  auto lambda_set_values = [=] __host__ __device__(int32_t new_idx) {
+    int32_t *idx_data =
+        reinterpret_cast<int32_t *>(malloc(sizeof(int32_t) * num_axes));
+    K2_DCHECK(idx_data != nullptr);
+    int32_t idx = new_idx;
+    // as num_axes is usually not very big (e.g. num_axes <= 5),
+    // it's fine to do this in a loop.
+    for (int32_t axis = num_axes - 1; axis > 0; --axis) {
+      int32_t prev_idx = ans_row_ids_data[axis - 1][idx],
+              row_start = ans_row_splits_data[axis - 1][prev_idx];
+      int32_t this_idx = idx - row_start;
+      idx_data[axis] = this_idx;
+      idx = prev_idx;
+    }
+    // here we have idx=idx0
+    int32_t old_idx = idx_data[1];
+    idx_data[1] = idx;  // we swap idx_data[0] and idx_data[1] here
+                        // (idx_data[1] has been save to old_idx above
+                        // and idx_data[0] == idx is copied to idx_data[1]).
+    for (int32_t axis = 1; axis < num_axes; ++axis) {
+      old_idx = src_row_splits_data[axis - 1][old_idx];
+      old_idx += idx_data[axis];
+    }
+    // set value
+    ans_data[new_idx] = src_data[old_idx];
+    free(idx_data);
+  };
+  Eval(c, ans_values.Dim(), lambda_set_values);
+  return Ragged<T>(ans_shape, ans_values);
+}
+
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos <= shape.TotSize(axis).
 template <typename T>

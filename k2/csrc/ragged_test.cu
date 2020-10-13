@@ -600,6 +600,82 @@ TEST(RaggedShapeOpsTest, TestTranspose) {
   TestTranspose<kCuda>();
 }
 
+template <DeviceType d, typename T>
+void TestTransposeRagged() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    const std::vector<int32_t> row_splits1_vec = {0, 2, 4, 6};
+    const std::vector<int32_t> row_splits2_vec = {0, 3, 4, 7, 8, 10, 12};
+    Array1<int32_t> row_splits1(context, row_splits1_vec);
+    Array1<int32_t> row_splits2(context, row_splits2_vec);
+    RaggedShape src_shape =
+        RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+    ASSERT_EQ(src_shape.Dim0(), 3);
+    ASSERT_EQ(src_shape.TotSize(1), 6);
+    std::vector<T> values = {0, 1, 2, 3, 4, 5, 8, 7, 6, 9, 10, 15};
+    ASSERT_EQ(values.size(), src_shape.NumElements());
+    Array1<T> values_array(context, values);
+    Ragged<T> ragged(src_shape, values_array);
+    Ragged<T> ans = Transpose(ragged);
+    RaggedShape shape = ans.shape;
+    // Check shape
+    ASSERT_EQ(shape.Dim0(), 2);
+    ASSERT_EQ(shape.TotSize(1), 6);
+    const std::vector<int32_t> expected_row_splits = {0, 3, 6};
+    const std::vector<int32_t> expected_row_ids = {0, 0, 0, 1, 1, 1};
+    CheckArrayData(shape.RowSplits(1), expected_row_splits);
+    CheckArrayData(shape.RowIds(1), expected_row_ids);
+    CheckArrayData(shape.RowSplits(2), {0, 3, 6, 8, 9, 10, 12});
+    CheckArrayData(shape.RowIds(2), {0, 0, 0, 1, 1, 1, 2, 2, 3, 4, 5, 5});
+    // Check values
+    CheckArrayData(ans.values, {0, 1, 2, 4, 5, 8, 6, 9, 3, 7, 10, 15});
+  }
+
+  {
+    // random case
+    for (int32_t j = 0; j != 2; ++j) {
+      RaggedShape to_transpose = RandomRaggedShapeToTranspose(context);
+      int32_t num_elems = to_transpose.NumElements();
+      Array1<T> src_values = RandUniformArray1<T>(context, num_elems, 0, 10000);
+      Ragged<T> src(to_transpose, src_values);
+      Ragged<T> ans = Transpose(src);
+      if (d != kCpu) {
+        src = src.To(cpu);
+        ans = ans.To(cpu);
+        to_transpose = to_transpose.To(cpu);
+      }
+      RaggedShape transposed = ans.shape;
+
+      for (auto iter = transposed.Iterator(); !iter.Done(); iter.Next()) {
+        std::vector<int32_t> index = iter.Value();
+        T value = ans[index];
+        std::swap(index[0], index[1]);
+        EXPECT_EQ(value, src[index]);
+      }
+      for (auto iter = to_transpose.Iterator(); !iter.Done(); iter.Next()) {
+        std::vector<int32_t> index = iter.Value();
+        T value = src[index];
+        std::swap(index[0], index[1]);
+        EXPECT_EQ(value, ans[index]);
+      }
+    }
+  }
+}
+TEST(RaggedTest, TestTransposeRagged) {
+  TestTransposeRagged<kCpu, int32_t>();
+  TestTransposeRagged<kCuda, int32_t>();
+  TestTransposeRagged<kCpu, double>();
+  TestTransposeRagged<kCuda, double>();
+}
+
 template <DeviceType d>
 void TestRowSplitsPtr() {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
