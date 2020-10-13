@@ -36,7 +36,7 @@ def dense_fsa(log_probs: torch.Tensor,
     assert supervision_segments.dtype == torch.int32
     assert supervision_segments.device.type == 'cpu'
 
-    T, C = log_probs.shape[1:]
+    N, T, C = log_probs.shape
 
     # Also, if a particular FSA has T frames of neural net output, we actually
     # have T+1 potential indexes, 0 through T, so there is space for the
@@ -48,6 +48,7 @@ def dense_fsa(log_probs: torch.Tensor,
     cur = 0
     for segment in supervision_segments:
         segment_index, start_frame, duration = segment.tolist()
+        assert 0 <= segment_index < N
         assert 0 <= start_frame < T
         assert duration > 0
         assert start_frame + duration <= T
