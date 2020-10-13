@@ -33,8 +33,12 @@ class Renumbering {
   int32_t NumOldElems();
   int32_t NumNewElems();
 
-  Array1<char> &Keep();  // dim is NumOldElems().  0 if not kept, 1 if kept
-                         // (user will write to here).
+  // dim is NumOldElems().  0 if not kept, 1 if kept (user will write to here).
+  Array1<char> &Keep() {
+    // TODO(haowen)
+    K2_LOG(FATAL) << "Not Implemeted";
+    return keep_;
+  }
 
   /* Return a mapping from new index to old index.  This is created on
      demand (must only be called after the Keep() array has been populated).

@@ -267,7 +267,7 @@ struct Ragged {
 
   ContextPtr &Context() const { return values.Context(); }
   int32_t NumAxes() const { return shape.NumAxes(); }
-  int32_t NumElements() const { return shape.NumElements(); }  
+  int32_t NumElements() const { return shape.NumElements(); }
   const Array1<int32_t> &RowSplits(int32_t axis) const {
     return shape.RowSplits(axis);
   }
@@ -339,54 +339,6 @@ struct Ragged {
 
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r);
-
-/*
-  Stack a list of Ragged arrays to create a Ragged array with one more axis.
-  Similar to TF/PyTorch's Stack.  The result will have Dim0 == num_srcs.  All
-  the source Ragged arrays' shapes must have the same NumAxes().
-
-     @param [in] axis   The new axis whose dimension will equal num_srcs.
-                        CAUTION: only axis == 0 and axis== 1 are
-                        supported right now.
-     @param [in] num_srcs  The number of `RaggedShape`s in `src`
-     @param [in] src       The shapes to be stacked
-
-     @return  The appended result.
-       Assuming as an example that the input had 3 axes:
-       if axis==0, the result would have:
-          result[i,j,k,l] = (*src[i])[j,k,l]
-       and if axis==1 we would have:
-          result[i,j,k,l] = (*src[j])[i,k,l]
- */
-template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
-
-/*
-  This version of Stack() has one fewer levels of pointer indirection,
-  it is just a wrapper for the version above.
- */
-template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src);
-
-/*
-  Transpose a Ragged array: namely, axes 0 and 1.  Requires that the sizes
-  of lists on axis 1 all be the same, i.e. that src.RowSplits(1) have
-  equally spaced elements.
-
-     @param [in] src   Ragged array to be transposed.  We require
-                       src.NumAxes() > 2. (this is because the
-                       implementation would be slightly different, and
-                       because if you had a ragged array with 2 axes and
-                       a regular shape, you should really be using an
-                       Array2 or Tensor).
-     @return           Returns the transposed ragged array, with axes 0 and 1
-                       swapped.  Will satisfy
-                       ans.Dim0() == src.TotSize(1) / src.Dim0()
-                       and ans[i,j,k] = src[j,i,k] (Note, this is not actual C++
-                       code, it represents a conceptual indexing operator).
- */
-template <typename T>
-Ragged<T> Transpose(Ragged<T> &src);
 
 }  // namespace k2
 

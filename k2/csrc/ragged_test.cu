@@ -1136,7 +1136,7 @@ void TestAppend() {
       Array1<int32_t> curr_row_splits = SpliceRowSplits(2, splits_ptr.data());
       result_splits.push_back(curr_row_splits);
       Array1<int32_t> curr_row_ids(context, curr_row_splits.Back());
-      RowSplitsToRowIds(curr_row_splits, curr_row_ids);
+      RowSplitsToRowIds(curr_row_splits, &curr_row_ids);
       result_ids.push_back(curr_row_ids);
     }
     for (int32_t i = 0; i < 2; ++i) {
@@ -1175,7 +1175,7 @@ void TestAppend() {
             SpliceRowSplits(num_shape, splits_vec_ptr.data());
         result_splits.push_back(curr_row_splits);
         Array1<int32_t> curr_row_ids(context, curr_row_splits.Back());
-        RowSplitsToRowIds(curr_row_splits, curr_row_ids);
+        RowSplitsToRowIds(curr_row_splits, &curr_row_ids);
         result_ids.push_back(curr_row_ids);
       }
 
@@ -1250,7 +1250,7 @@ void CheckResultOfRenumber(const ContextPtr &context, RaggedShape &shape,
         SpliceRowSplits(dim0, splits_vec_ptr.data());
     result_splits.push_back(result_row_splits);
     Array1<int32_t> result_row_ids(cpu, result_row_splits.Back());
-    RowSplitsToRowIds(result_row_splits, result_row_ids);
+    RowSplitsToRowIds(result_row_splits, &result_row_ids);
     result_ids.push_back(result_row_ids);
   }
   for (int32_t i = 0; i < num_axes - 1; ++i) {
@@ -1423,7 +1423,7 @@ void TestStack() {
   {
     // simple case
     std::vector<RaggedShape> shapes(2);
-    std::vector<const RaggedShape *> shapes_ptr(2);
+    std::vector<RaggedShape *> shapes_ptr(2);
     std::vector<std::vector<Array1<int32_t>>> row_splits_vec(2);
     {
       const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
@@ -1476,7 +1476,7 @@ void TestStack() {
       int32_t num_axes = RandInt(2, 4);
       int32_t dim0 = RandInt(1, 100);
       std::vector<RaggedShape> shape_vec(num_shape);
-      std::vector<const RaggedShape *> shapes(num_shape);
+      std::vector<RaggedShape *> shapes(num_shape);
       for (int32_t j = 0; j != num_shape; ++j) {
         RaggedShape shape =
             RandomRaggedShape(false, num_axes, num_axes, 0, 1000).To(context);
