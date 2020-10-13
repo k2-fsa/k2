@@ -747,8 +747,8 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
   const int32_t *ans_row_splits1_data = ans_row_splits1.Data(),
       *ans_row_ids1_data = ans_row_ids1.Data();
   int32_t *ans_row_splits2_data = ans_row_splits2.Data();
-  ans_row_splits2[num_batches] = num_states;  // The kernel below won't set this
-                                              // last element
+  ans_row_splits2.Range(num_batches, 1) = num_states;  // The kernel below won't
+                                                       // set this last element
   auto lambda_set_ans_row_ids2 = [=] __host__ __device__ (int32_t idx01) -> void {
     int32_t idx0 = ans_row_ids1_data[idx01],  // Fsa index
         idx0x = ans_row_splits1_data[idx0],
@@ -764,11 +764,8 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
   };
   Eval(c, num_batches, lambda_set_ans_row_ids2);
 
-  Array1<int32_t> state_ids =
-
-
-  Ragged<int32_t> ans(RaggedShape3(&ans_row_ids1, nullptr, num_batches,
-                                   &ans_row_ids2, nullptr, num_states),
+  Ragged<int32_t> ans(RaggedShape3(&ans_row_splits1, &ans_row_ids1, num_batches,
+                                   &ans_row_splits2, nullptr, num_states),
                       Range(c, 0, num_states));
   if (transpose)
     return Transpose(ans);
