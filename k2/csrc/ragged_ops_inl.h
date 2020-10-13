@@ -81,7 +81,7 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
 }
 
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> **src) {
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
   K2_CHECK_EQ(axis, 0);
   K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe
   std::vector<const RaggedShape *> src_shapes(num_srcs);
@@ -98,10 +98,10 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> **src) {
 }
 
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> *src) {
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src) {
   K2_CHECK_EQ(axis, 0);
   K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe
-  std::vector<const Ragged<T> *> temp(num_srcs);
+  std::vector<Ragged<T> *> temp(num_srcs);
   for (int32_t i = 0; i != num_srcs; ++i) temp[i] = src + i;
   return Stack(axis, num_srcs, temp.data());
 }
