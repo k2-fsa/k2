@@ -39,9 +39,9 @@ def dense_fsa(log_probs: torch.Tensor,
     T, C = log_probs.shape[1:]
 
     # Also, if a particular FSA has T frames of neural net output, we actually
-    # have T+1 potential indexes, 0 through T, so there is space for the terminating
-    # final-symbol on frame T.  (On the last frame, the final symbol has
-    # logprob=0, the others have logprob=-inf).
+    # have T+1 potential indexes, 0 through T, so there is space for the
+    # terminating final-symbol on frame T.  (On the last frame, the final symbol
+    # has logprob=0, the others have logprob=-inf).
     placeholder = torch.tensor([0])  # this extra row is for the last frame
     indexes = []
     last_frame_indexes = []
@@ -62,7 +62,7 @@ def dense_fsa(log_probs: torch.Tensor,
     device = log_probs.device
     indexes = torch.cat(indexes).to(device)
 
-    scores = log_probs.new(cur, C + 1)
+    scores = log_probs.new_empty(cur, C + 1)
     scores[:, 1:] = log_probs.reshape(-1, C).index_select(0, indexes)
 
     # `scores` contains -infinity in certain locations: in scores[j,0] where
