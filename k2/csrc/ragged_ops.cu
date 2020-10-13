@@ -489,21 +489,6 @@ Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
   return src_offsets;
 }
 
-/*
-  Extract meta-info from the shape (this will include populating any row_ids and
-  row_splits that were not already populated).  This is used inside algorithms
-  when we need to transfer meta-info to GPU.
-
-     @param [in]   src   Ragged shape that we're extracting meta-info from
-     @param [out] row_splits  This will be set to an array of size
-                              src.NumAxes()-1, containing pointers to the
-                              row_splits' Data() vectors. The array will be
-                              allocated on the same device as `src`.
-     @param [out] row_ids     This will be set to an array of size
-                              src.NumAxes()-1, containing pointers to the
-                              row_ids' Data() vectors. The array will be
-                              allocated on the same device as `src`.
-*/
 void GetRowInfo(RaggedShape &src, Array1<int32_t *> *row_splits,
                 Array1<int32_t *> *row_ids) {
   int32_t axes = src.NumAxes();
@@ -520,20 +505,6 @@ void GetRowInfo(RaggedShape &src, Array1<int32_t *> *row_splits,
   *row_ids = Array1<int32_t *>(ctx, row_ids_ptrs);
 }
 
-/*
-  Get some meta-info for an array of RaggedShape, and transfer them
-  to the device that `src` is located on. Just same with `GetRowInfo`
-  above, but for multiple RaggedShapes.
-
-     @param [in] num_srcs  Number of source arrays to process.
-     @param [in] src      Source arrays.  All of them must have same num_axes
-                          and on the same device, but we just check this in
-                          debug mode.
-     @param [in] row_splits  Output array of row_splits pointers,
-                          will be of dimension num_axes-1 by num_src
-     @param [in] row_splits  Output array of row_splits pointers,
-                          will be of dimension num_axes-1 by num_src
-*/
 void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
                      Array2<int32_t *> *row_splits,
                      Array2<int32_t *> *row_ids) {

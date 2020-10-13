@@ -224,6 +224,41 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src);
 Array1<int32_t *> GetRowSplitsPtr(RaggedShape &src);
 
 /*
+  Extract meta-info from the shape (this will include populating any row_ids and
+  row_splits that were not already populated).  This is used inside algorithms
+  when we need to transfer meta-info to GPU.
+
+     @param [in]   src   Ragged shape that we're extracting meta-info from
+     @param [out] row_splits  This will be set to an array of size
+                              src.NumAxes()-1, containing pointers to the
+                              row_splits' Data() vectors. The array will be
+                              allocated on the same device as `src`.
+     @param [out] row_ids     This will be set to an array of size
+                              src.NumAxes()-1, containing pointers to the
+                              row_ids' Data() vectors. The array will be
+                              allocated on the same device as `src`.
+*/
+void GetRowInfo(RaggedShape &src, Array1<int32_t *> *row_splits,
+                Array1<int32_t *> *row_ids);
+
+/*
+  Get some meta-info for an array of RaggedShape, and transfer them
+  to the device that `src` is located on. Just same with `GetRowInfo`
+  above, but for multiple RaggedShapes.
+
+     @param [in] num_srcs  Number of source arrays to process.
+     @param [in] src      Source arrays.  All of them must have same num_axes
+                          and on the same device, but we just check this in
+                          debug mode.
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+     @param [in] row_splits  Output array of row_splits pointers,
+                          will be of dimension num_axes-1 by num_src
+*/
+void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
+                     Array2<int32_t *> *row_splits, Array2<int32_t *> *row_ids);
+
+/*
   Renumber(/Reorder) axis 0 of a ragged shape
      @param [in] src      Shape to renumber
      @param [in] new2old  Mapping from new to old numbering of array, of
@@ -263,33 +298,6 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
   same, which might give rise to empty lists.
  */
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
-
-/*
-  Stack a list of Ragged arrays to create a Ragged array with one more axis.
-  Similar to TF/PyTorch's Stack.  The result will have Dim0 == num_srcs.  All
-  the source Ragged arrays' shapes must have the same NumAxes().
-
-     @param [in] axis   The new axis whose dimension will equal num_srcs.
-                        CAUTION: only axis == 0 is supported right now.
-     @param [in] num_srcs  The number of `RaggedShape`s in `src`
-     @param [in] src       The shapes to be stacked
-
-     @return  The appended result.
-       Assuming as an example that the input had 3 axes:
-       if axis==0, the result would have:
-          result[i,j,k,l] = (*src[i])[j,k,l]
-       and if axis==1 we would have:
-          result[i,j,k,l] = (*src[j])[i,k,l]
- */
-template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> **src);
-
-/*
-  This version of Stack() has one fewer levels of pointer indirection,
-  it is just a wrapper for the version above.
- */
-template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> *src);
 
 /*
   Construct a RaggedShape with 2 axes.
