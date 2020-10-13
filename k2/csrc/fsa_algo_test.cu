@@ -78,7 +78,7 @@ TEST(ArcSort, NonEmptyFsaVec) {
 
   Fsa fsa1 = FsaFromString(s1);
   Fsa fsa2 = FsaFromString(s2);
-  const Fsa *fsa_array[] = {&fsa1, &fsa2};
+  Fsa *fsa_array[] = {&fsa1, &fsa2};
 
   for (auto &context : {GetCudaContext(), GetCpuContext()}) {
     FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);

@@ -344,7 +344,8 @@ std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r);
   the source Ragged arrays' shapes must have the same NumAxes().
 
      @param [in] axis   The new axis whose dimension will equal num_srcs.
-                        CAUTION: only axis == 0 is supported right now.
+                        CAUTION: only axis == 0 and axis== 1 are
+                        supported right now.
      @param [in] num_srcs  The number of `RaggedShape`s in `src`
      @param [in] src       The shapes to be stacked
 
@@ -356,14 +357,14 @@ std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r);
           result[i,j,k,l] = (*src[j])[i,k,l]
  */
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> **src);
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src);
 
 /*
   This version of Stack() has one fewer levels of pointer indirection,
   it is just a wrapper for the version above.
  */
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> *src);
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src);
 
 /*
   Transpose a Ragged array: namely, axes 0 and 1.  Requires that the sizes

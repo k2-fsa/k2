@@ -269,7 +269,7 @@ inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
   Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really
   the same type, just with different expectations on the number of axes!
  */
-inline FsaVec CreateFsaVec(int32_t num_fsas, const Fsa **fsas) {
+inline FsaVec CreateFsaVec(int32_t num_fsas, Fsa **fsas) {
   // Implementation goes to this template:
   //  template <typename T>
   //  Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
