@@ -12,8 +12,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <iostream>
+#include <limits>
 #include <numeric>
 #include <random>
 #include <utility>
@@ -545,175 +547,6 @@ TEST(OpsTest, ExclusiveSumArray2Test) {
   int32_t cols = RandInt(500, 1000);
   TestExclusiveSumArray2<int32_t, kCpu>(rows, cols);
   TestExclusiveSumArray2<int32_t, kCuda>(rows, cols);
-}
-
-template <typename T, DeviceType d>
-void TestMaxPerSubListTest() {
-  ContextPtr cpu = GetCpuContext();  // will use to copy data
-  ContextPtr context = nullptr;
-  if (d == kCpu) {
-    context = GetCpuContext();
-  } else {
-    K2_CHECK_EQ(d, kCuda);
-    context = GetCudaContext();
-  }
-
-  {
-    // empty case
-    const std::vector<int32_t> row_splits = {0};
-    RaggedShapeDim shape_dim;
-    shape_dim.row_splits = Array1<int32_t>(context, row_splits);
-    shape_dim.cached_tot_size = 0;
-    std::vector<RaggedShapeDim> axes = {shape_dim};
-    RaggedShape shape(axes, true);
-    Array1<T> values(context, 0);
-    Ragged<T> ragged(shape, values);
-
-    int32_t num_rows = ragged.shape.Dim0();
-    ASSERT_EQ(num_rows, 0);
-    Array1<T> max_values(context, num_rows);
-    // just run to check if there's any error
-    MaxPerSublist(ragged, 1, &max_values);
-    EXPECT_EQ(max_values.Dim(), 0);
-  }
-
-  {
-    const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
-    RaggedShapeDim shape_dim;
-    shape_dim.row_splits = Array1<int32_t>(context, row_splits);
-    shape_dim.cached_tot_size = row_splits.back();
-    std::vector<RaggedShapeDim> axes = {shape_dim};
-    RaggedShape shape(axes, true);
-    const std::vector<T> values_vec = {1, 3, 2, 8, 0, -1};
-    Array1<T> values(context, values_vec);
-    Ragged<T> ragged(shape, values);
-
-    int32_t num_rows = ragged.shape.Dim0();
-    Array1<T> max_values(context, num_rows);
-    T default_value = 2;
-    MaxPerSublist(ragged, default_value, &max_values);
-    // copy memory from GPU/CPU to CPU
-    std::vector<T> cpu_data(max_values.Dim());
-    auto kind = GetMemoryCopyKind(*max_values.Context(), *cpu);
-    MemoryCopy(static_cast<void *>(cpu_data.data()),
-               static_cast<const void *>(max_values.Data()),
-               max_values.Dim() * max_values.ElementSize(), kind, nullptr);
-    std::vector<T> expected_data = {3, default_value, 8, default_value};
-    EXPECT_EQ(cpu_data, expected_data);
-  }
-
-  {
-    // test with random large size
-    const int32_t min_num_elements = 2000;
-    // not random shape is on CPU
-    RaggedShape shape = RandomRaggedShape(false, 2, 2, min_num_elements, 5000);
-    ASSERT_EQ(shape.NumAxes(), 2);
-    RaggedShape gpu_shape;
-    if (d == kCuda) {
-      // copy shape to GPU
-      const Array1<T> &row_splits = shape.RowSplits(1);
-      RaggedShapeDim shape_dim;
-      shape_dim.row_splits = row_splits.To(GetCudaContext());
-      shape_dim.cached_tot_size = shape.NumElements();
-      std::vector<RaggedShapeDim> axes = {shape_dim};
-      gpu_shape = RaggedShape(axes, true);
-    }
-
-    int32_t num_elems = shape.NumElements();
-    std::vector<T> data(num_elems);
-    for (int32_t i = 0; i != 10; ++i) {
-      std::iota(data.begin(), data.end(), 0);
-      // randomly set data[pos] = num_elems which is
-      // greater than any element in data
-      int32_t pos = RandInt(0, num_elems - 1);
-      data[pos] = num_elems;
-      // find the corresponding row
-      int32_t num_rows = shape.Dim0();
-      const int32_t *row_splits_data = shape.RowSplits(1).Data();
-      int32_t row = 0;
-      for (int32_t i = 0; i < num_rows; ++i) {
-        if (pos >= row_splits_data[i] && pos < row_splits_data[i + 1]) {
-          row = i;
-          break;
-        }
-      }
-
-      Array1<T> values(context, data);
-      Ragged<T> ragged(d == kCuda ? gpu_shape : shape, values);
-      Array1<T> max_values(context, num_rows);
-      T default_value = 0;
-      MaxPerSublist(ragged, default_value, &max_values);
-      EXPECT_EQ(max_values[row], num_elems);
-    }
-  }
-}
-
-TEST(OpsTest, MaxPerSubListTest) {
-  TestMaxPerSubListTest<int32_t, kCpu>();
-  TestMaxPerSubListTest<int32_t, kCuda>();
-}
-
-template <typename T, DeviceType d>
-void TestAndOrPerSubListTest() {
-  ContextPtr cpu = GetCpuContext();  // will use to copy data
-  ContextPtr context = nullptr;
-  if (d == kCpu) {
-    context = GetCpuContext();
-  } else {
-    K2_CHECK_EQ(d, kCuda);
-    context = GetCudaContext();
-  }
-
-  {
-    // And
-    const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
-    RaggedShapeDim shape_dim;
-    shape_dim.row_splits = Array1<int32_t>(context, row_splits);
-    shape_dim.cached_tot_size = row_splits.back();
-    std::vector<RaggedShapeDim> axes = {shape_dim};
-    RaggedShape shape(axes, true);
-    const std::vector<T> values_vec = {1, 3, 3, 6, 11, 0};
-    Array1<T> values(context, values_vec);
-    Ragged<T> ragged(shape, values);
-
-    int32_t num_rows = ragged.shape.Dim0();
-    Array1<T> dst(context, num_rows);
-    T default_value = -1;
-    AndPerSublist(ragged, default_value, &dst);
-    // copy memory from GPU/CPU to CPU
-    dst = dst.To(cpu);
-    std::vector<T> cpu_data(dst.Data(), dst.Data() + dst.Dim());
-    std::vector<T> expected_data = {1, -1, 2, 0};
-    EXPECT_EQ(cpu_data, expected_data);
-  }
-
-  {
-    // Or
-    const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
-    RaggedShapeDim shape_dim;
-    shape_dim.row_splits = Array1<int32_t>(context, row_splits);
-    shape_dim.cached_tot_size = row_splits.back();
-    std::vector<RaggedShapeDim> axes = {shape_dim};
-    RaggedShape shape(axes, true);
-    const std::vector<T> values_vec = {1, 3, 3, 4, 6, 0};
-    Array1<T> values(context, values_vec);
-    Ragged<T> ragged(shape, values);
-
-    int32_t num_rows = ragged.shape.Dim0();
-    Array1<T> dst(context, num_rows);
-    T default_value = 0;
-    OrPerSublist(ragged, default_value, &dst);
-    // copy memory from GPU/CPU to CPU
-    dst = dst.To(cpu);
-    std::vector<T> cpu_data(dst.Data(), dst.Data() + dst.Dim());
-    std::vector<T> expected_data = {3, 0, 7, 0};
-    EXPECT_EQ(cpu_data, expected_data);
-  }
-}
-
-TEST(OpsTest, AndOrPerSubListTest) {
-  TestAndOrPerSubListTest<int32_t, kCpu>();
-  TestAndOrPerSubListTest<int32_t, kCuda>();
 }
 
 template <typename T, DeviceType d>
@@ -1399,6 +1232,69 @@ void TestGetCounts() {
 TEST(OpsTest, GetCountsTest) {
   TestGetCounts<kCpu>();
   TestGetCounts<kCuda>();
+}
+
+template <DeviceType d, typename S, typename T>
+void TestMonotonicLowerBound() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // empty case
+    std::vector<S> values;
+    Array1<S> src(context, values);
+    Array1<T> dest(context, 0);
+    MonotonicLowerBound(src, &dest);
+    EXPECT_EQ(dest.Dim(), 0);
+  }
+
+  {
+    // simple case
+    std::vector<S> values = {2, 1, 3, 7, 5, 8, 20, 15};
+    std::vector<T> expected_data = {1, 1, 3, 5, 5, 8, 15, 15};
+    ASSERT_EQ(values.size(), expected_data.size());
+    Array1<S> src(context, values);
+    Array1<T> dest(context, static_cast<int32_t>(values.size()));
+    MonotonicLowerBound(src, &dest);
+    dest = dest.To(cpu);
+    std::vector<T> data(dest.Data(), dest.Data() + dest.Dim());
+    EXPECT_EQ(data, expected_data);
+  }
+
+  {
+    // random large case
+    for (int32_t i = 0; i != 2; ++i) {
+      int32_t n = RandInt(1, 10000);
+      int32_t src_dim = RandInt(0, 10000);
+      Array1<S> src = RandUniformArray1(context, src_dim, 0, n - 1);
+      Array1<T> dest(context, src_dim);
+      MonotonicLowerBound(src, &dest);
+      dest = dest.To(cpu);
+      std::vector<T> data(dest.Data(), dest.Data() + dest.Dim());
+      src = src.To(cpu);
+      int32_t *src_data = src.Data();
+      S min_value = std::numeric_limits<S>::max();
+      std::vector<T> expected_data(src_dim);
+      for (int32_t i = src_dim - 1; i >= 0; --i) {
+        min_value = std::min(src_data[i], min_value);
+        expected_data[i] = min_value;
+      }
+      EXPECT_EQ(data, expected_data);
+    }
+  }
+}
+
+TEST(OpsTest, MonotonicLowerBoundTest) {
+  TestMonotonicLowerBound<kCpu, int32_t, int32_t>();
+  TestMonotonicLowerBound<kCuda, int32_t, int32_t>();
+  TestMonotonicLowerBound<kCpu, int32_t, double>();
+  TestMonotonicLowerBound<kCuda, int32_t, double>();
 }
 
 }  // namespace k2

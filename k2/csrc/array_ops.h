@@ -166,83 +166,6 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src);
 Array1<int32_t> SpliceRowSplits(int32_t src_size, const Array1<int32_t> **src);
 
 /*
-  Output to an array `dst` the result of reducing each sub-list along
-  the last axis of `src` with a binary operator `Op`, will be called to
-  implement `MaxPerSublist`, `AndPerSublist` and `OrPerSublist`
-
-     @param [in] src            Input ragged array; must have src.NumAxes()
-                                >= 2. src.values is allowed to be empty.
-     @param [in] default_value  Value to initialize the reduction with;
-     @param [out] dst           Array to which the reduction values will be
-                                written. Must satisfy
-                                dst->Dim() == rows along the last axis in src,
-                                i.e. src.RowSplits(src.NumAxes() - 1).Dim() - 1.
-*/
-
-template <typename T, typename Op>
-void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst);
-/*
-  Output to an array `max_values` the maximum of each sub-list along the last
-  axis of `src` i.e. the max taken over the last axis), or `default_value`,
-  whichever was larger.
-
-     @param [in] src            Input ragged array; must have src.NumAxes()
-                                >= 2. src.values is allowed to be empty.
-     @param [in] default_value  Value to use for maximum operation as a default
-                                so max is taken over this and the elements
-                                of sub-lists in `src`.
-     @param [out] max_values    Array to which the maximum values will be
-                                written. Must satisfy
-                                max_values->Dim() == rows along the last axis in
-                                src, i.e.
-                                src.RowSplits(src.NumAxes() - 1).Dim() - 1.
- */
-template <typename T>
-void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
-  ApplyOpPerSublist<T, MaxOp<T>>(src, default_value, max_values);
-}
-
-/*
-  Output to an array `and_values` the result of reducing each sub-list along
-  the last axis of `src` with operator &, i.e. bit-wise and.
-
-     @param [in] src            Input ragged array; must have src.NumAxes()
-                                >= 2. src.values is allowed to be empty.
-     @param [in] default_value  Value to initialize the reduction with; should
-                                probably be all-ones.
-     @param [out] and_values    Array to which the bitwise-and values will be
-                                written. Must satisfy
-                                and_values->Dim() == src.TotSize(src.NumAxes() -
-  2), i.e. the total size on the second-to-last axis of `src`.
-*/
-template <typename T>
-void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values) {
-  ApplyOpPerSublist<T, BitAndOp<T>>(src, default_value, and_values);
-}
-
-// bitwise or
-template <typename T>
-void OrPerSublist(Ragged<T> &src, T default_value, Array1<T> *or_values) {
-  ApplyOpPerSublist<T, BitOrOp<T>>(src, default_value, or_values);
-}
-
-/*
-  Sort each sub-list in `src`, with operator `<`, and output the order to
-  `order`. CAUTION: don't rely on this being a stable sort for now. Will
-  eventually make the operator customizable, in which case this would become a
-  wrapper.
-
-      @param [in] src   Ragged array with 2 axes.
-      @param [out] order   List of indexes that we'll use to give `src`
-                      a sorted order; will be resized if its size is
-                      not src.values.Dim().  If you do
-                        src.values = src.values[*order]
-                      then src.values will be sorted.
- */
-template <typename T, typename Op>
-void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
-
-/*
   Get the reduction value from the array `src` with a binary operator `Op`,
   initialized with `default_value`. Will be used to implement
   `Max`, `And` and `Or` below.
@@ -393,7 +316,6 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
                              const Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp = nullptr);
 
-
 /*
   Compute a monotonically increasing lower bound on the array `src`,
   putting the result in `dest` (which may be the same array as `src`).
@@ -408,7 +330,8 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
   compute this using an inclusive scan using a min operator on the
   reverse of the arrays `src` and `dest`.
  */
-void MonotonicLowerBound(Array1<S> &src, Array1<T> *dest);
+template <typename S, typename T>
+void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest);
 
 /*
    Returns counts of numbers in the array

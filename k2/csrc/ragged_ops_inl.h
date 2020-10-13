@@ -32,6 +32,54 @@
 
 namespace k2 {
 
+template <typename T, typename Op>
+void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
+  K2_CHECK_GE(src.NumAxes(), 2);
+  K2_CHECK(IsCompatible(src.shape, *dst));
+
+  int32_t last_axis = src.NumAxes() - 1;
+  const Array1<int32_t> row_splits_array = src.shape.RowSplits(last_axis);
+  int32_t num_rows = row_splits_array.Dim() - 1;
+  K2_CHECK_EQ(num_rows, dst->Dim());
+
+  ContextPtr &c = src.Context();
+  const int32_t *row_splits = row_splits_array.Data();
+  const T *values_data = src.values.Data();
+  T *output_data = dst->Data();
+  Op op;
+
+  if (c->GetDeviceType() == kCpu) {
+    int32_t j = row_splits[0];
+    for (int32_t i = 0; i < num_rows; ++i) {
+      T val = default_value;
+      int32_t row_end = row_splits[i + 1];
+      for (; j < row_end; ++j) {
+        T elem = values_data[j];
+        val = op(elem, val);
+      }
+      output_data[i] = val;
+    }
+  } else {
+    K2_CHECK(c->GetDeviceType() == kCuda);
+
+    // This code is based on the example here:
+    // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
+    void *d_temp_storage = NULL;
+    std::size_t temp_storage_bytes = 0;
+
+    // the first time is to determine temporary device storage requirements
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
+        row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
+    void *deleter_context;
+    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
+        row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
+    c->Deallocate(d_temp_storage, deleter_context);
+  }
+}
+
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, const Ragged<T> **src) {
   K2_CHECK_EQ(axis, 0);
@@ -168,9 +216,8 @@ template <typename T>
 bool Ragged<T>::Validate(bool print_warnings) {
   if (values.Dim() != shape.NumElements()) {
     if (print_warnings) {
-      K2_LOG(WARNING) << "Dimension mismatch: values.Dim() == "
-                      << values.Dim() << " vs. shape.NumElements() == "
-                      << shape.NumElements();
+      K2_LOG(WARNING) << "Dimension mismatch: values.Dim() == " << values.Dim()
+                      << " vs. shape.NumElements() == " << shape.NumElements();
     }
     return false;
   }
@@ -184,7 +231,6 @@ Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
   RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
   return Ragged<T>(new_shape, values);
 }
-
 
 }  // namespace k2
 
