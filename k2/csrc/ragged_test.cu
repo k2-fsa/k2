@@ -25,46 +25,7 @@
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/tensor.h"
-
-namespace {
-// TODO(haowen): may move below functions to some file like `test_utils.h`,
-// in case other Tests may use it?
-template <typename T>
-static void CheckArrayData(const k2::Array1<T> &array,
-                           const std::vector<T> &target) {
-  ASSERT_EQ(array.Dim(), target.size());
-  const T *array_data = array.Data();
-  // copy data from CPU/GPU to CPU
-  auto kind = k2::GetMemoryCopyKind(*array.Context(), *k2::GetCpuContext());
-  std::vector<T> cpu_data(array.Dim());
-  k2::MemoryCopy(static_cast<void *>(cpu_data.data()),
-                 static_cast<const void *>(array_data),
-                 array.Dim() * array.ElementSize(), kind, nullptr);
-  EXPECT_EQ(cpu_data, target);
-}
-
-static void CheckRowSplits(k2::RaggedShape &shape,
-                           const std::vector<std::vector<int32_t>> &target) {
-  for (int32_t i = 1; i < shape.NumAxes(); ++i) {
-    k2::Array1<int32_t> curr_row_splits = shape.RowSplits(i);
-    CheckArrayData<int32_t>(curr_row_splits, target[i - 1]);
-  }
-}
-
-// check if `array` and `target` have the same values
-template <typename T>
-static void CheckArrayData(const k2::Array1<T> &array,
-                           const k2::Array1<T> &target) {
-  ASSERT_EQ(array.Dim(), target.Dim());
-  int32_t dim = array.Dim();
-  k2::ContextPtr cpu = k2::GetCpuContext();
-  k2::Array1<T> cpu_array = array.To(cpu);
-  k2::Array1<T> cpu_target = target.To(cpu);
-  std::vector<T> array_data(cpu_array.Data(), cpu_array.Data() + dim);
-  std::vector<T> target_data(cpu_target.Data(), cpu_target.Data() + dim);
-  EXPECT_EQ(array_data, target_data);
-}
-}  // namespace
+#include "k2/csrc/test_utils.h"
 
 namespace k2 {
 class RaggedShapeOpsSuiteTest : public ::testing::Test {
