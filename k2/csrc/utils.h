@@ -15,6 +15,7 @@
 #define K2_CSRC_UTILS_H_
 
 #include <algorithm>
+#include <cfloat>
 #include <vector>
 
 #include "k2/csrc/context.h"
@@ -573,6 +574,59 @@ struct LessThan {
   __host__ __device__ __forceinline__ bool operator()(const T &a,
                                                       const T &b) const {
     return a < b;
+  }
+};
+
+static const double kMinLogDiffDouble = log(DBL_EPSILON);  // negative!
+static const float kMinLogDiffFloat = logf(FLT_EPSILON);   // negative!
+
+template <typename T>
+struct LogAdd;
+
+template <>
+struct LogAdd<double> {
+  __host__ __device__ __forceinline__ double operator()(double x,
+                                                        double y) const {
+    double diff;
+
+    if (x < y) {
+      diff = x - y;
+      x = y;
+    } else {
+      diff = y - x;
+    }
+    // diff is negative.  x is now the larger one.
+
+    if (diff >= kMinLogDiffDouble) {
+      double res;
+      res = x + log1p(exp(diff));
+      return res;
+    }
+
+    return x;  // return the larger one.
+  }
+};
+
+template <>
+struct LogAdd<float> {
+  __host__ __device__ __forceinline__ float operator()(float x, float y) const {
+    float diff;
+
+    if (x < y) {
+      diff = x - y;
+      x = y;
+    } else {
+      diff = y - x;
+    }
+    // diff is negative.  x is now the larger one.
+
+    if (diff >= kMinLogDiffFloat) {
+      float res;
+      res = x + log1pf(expf(diff));
+      return res;
+    }
+
+    return x;  // return the larger one.
   }
 };
 

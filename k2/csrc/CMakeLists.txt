@@ -8,6 +8,7 @@ add_subdirectory(host)
 
 # please keep it sorted
 set(context_srcs
+  algorithms.cu
   array_ops.cu
   compose.cu
   top_sort.cu
@@ -47,6 +48,7 @@ endif()
 
 # please sort the source files alphabetically
 set(cuda_tests
+  algorithms_test
   array_ops_test
   array_test
   fsa_algo_test
