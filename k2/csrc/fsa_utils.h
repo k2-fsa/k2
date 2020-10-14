@@ -124,21 +124,162 @@ FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
 
 
 /*
-  Returns a ragged array representing batches of states in top-sorted FSAs
+  Returns a ragged tensor representing batches of states in top-sorted FSAs
   `fsas` which can be processed sequentially with each batch of states only
   having arcs to later-numbered batches.
 
-      @param [in] fsas  Input FSAs.  Must have property
+      @param [in] fsas  Input FSAs, with NumAxes() == 3.  Must have property
                 kFsaPropertiesTopSortedAndAcyclic, although this is not
                 checked.  (Note: this really just means top-sorted, as a truly
                 top-sorted FSA cannot have cycles).
       @param [in] transpose    If true, the result will be indexed [batch][fsa_idx][state];
                 if false, it will be indexed [fsa_idx][batch][state].
 
-      @return  Returns batches
+      @return  Returns batches of states (contains idx01s into `fsas`).
+             Normally (transpose==true) these will be indexed [batch][fsa][state_list]
  */
-Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose = true);
+Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose = true);
 
+  
+/*
+  Returns a ragged tensor of arc-indexes of arcs leaving states in `fsas`, in batches
+  that can be processed sequentially in top-sorted FSAs.
+
+     @param [in] fsas   Input FSAs, with `fsas.NumAxes() == 3`.
+     @param [in] state_batches  Batches of states as returned from `GetStateBatches(fsas, true)`,
+                        indexed [batch][fsa][state_list].
+     @return   Returns a tensor with `ans.NumAxes() == 4`, containing arc_idx012's into 
+               `fsas`.  Axes 0,1,2 correspond to those of `state_batches`; the last
+               axis is a list of arcs, i.e. the indexing is [batch][fsa][state_list][arc_list]
+ */
+Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas, Ragged<int32_t> &state_batches);
+
+
+/*
+ Returns a ragged tensor of the arc-indexes of arcs entering states in `fsas`, in
+ batches that can be processed sequentially in top-sorted FSAs.
+
+     @param [in] fsas  Input FSAs, with `fsas.NumAxes() == 3`.
+     @param [in] incoming_arcs  A tensor containing the arc-indexes of the 
+                       arcs entering each state in `fsas`, indexed [fsa][state][arc_list].
+
+     @param [in] state_batches  Batches of states as returned from `GetStateBatches(fsas, true)`,
+                        indexed [batch][fsa][state_list].
+
+ */
+Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
+                                           Ragged<int32_t> &state_batches);  
+
+
+/*
+  Returns a ragged tensor of incoming arc-indexes for the states in `fsas`.
+      
+       @param [in] fsas          Input FsaVec (must have 3 axes)
+       @param [in] dest_states   Array of destination-states of each arc, in the idx01 format
+                              (i.e. idx01's of dest states), as returned by 
+                              `GetDestStates(fsas, true)`.
+       @return     Returns a tensor with 3 axes, indexed [fsa][state][list_of_arcs],
+                   containing the idx012's of arcs entering states in `fsas`  Its values will
+                   be a permutation of the numbers 0 through fsas.NumElements() - 1.
+ */
+Ragged<int32_t> GetIncomingArcs(FsaVec &fsas, const Array1<int32_t> &dest_states);
+  
+/*
+   Compute and return forward scores per state (like alphas in Baum-Welch),
+   or forward best-path scores if log_semiring == false.
+
+      @param [in] fsas  Input Fsa or FsaVec (must have 3 axes).  Must be
+                 top-sorted and without self loops, i.e. would have the 
+                 property kFsaPropertiesTopSortedAndAcyclic if you were 
+                 to compute properties.
+      @param [in] state_batches  Batches of states, as returned by
+                 GetStateBatches(fsas, true) (must have 3 axes: [iter][fsa][state_list]).
+      @param [in] entering_arc_batches  Arcs-indexes (idx012's in fsas) of arcs
+                 entering states in `state_batches`, indexed 
+                 [iter][fsa][state_list][arc_list], as returned by 
+                 EnteringArcIndexBatches().
+      @param [in] log_semiring   If true, combine path with LogAdd
+                  (i.e., mathematically, `log(exp(a)+exp(b))`); if false,
+                   combine as `max(a,b)`.
+      @return   Returns vector indexed by state-index (idx01 into fsas), i.e. 
+               `ans.Dim()==fsas.TotSize(1)`, containing forward scores.
+                (these will be zero for the start-states).
+*/
+template <typename FloatType>
+Array1<FloatType> GetForwardScores(FsaVec &fsas,
+                                   Ragged<int32_t> &state_batches,
+                                   Ragged<int32_t> &entering_arc_batches,
+                                   bool log_semiring);
+
+/*
+  Return array of total scores (one per FSA), e.g. could be interpreted as
+  the data probability or partition function.
+         @param [in] fsas   Input Fsa or FsaVec (must have 2 or 3 axes)
+         @param [in] forward_scores  Array of forward scores, as returned
+                          by GetForwardScores
+         @return  Returns array of total scores, of dimension fsas.Dim0(),
+                   which will contain the scores in the final-states of
+                   `forward_scores`, or -infinity for FSAs that had no
+                   states.
+*/
+template <typename FloatType>
+Array1<FloatType> GetTotScores(FsaVec &fsas, Array1<FloatType> &forward_scores);
+
+/*
+   Compute and return backward scores per state (like betas in Baum-Welch),
+   or backward best-path scores if log_semiring == false.  
+       @param [in] fsas  Input FsaVec (must have 3 axes)
+       @param [in] state_batches  Batches of states, as returned by
+                  GetBatches (must have 3 axes: [iter][fsa][state_list]).
+       @param [in] leaving_arc_batches  Arcs-indexes (idx012's in fsas) of arcs
+                 leaving states in `state_batches`, indexed 
+                 [iter][fsa][state_list][arc_list], as returned by
+                 LeavingArcIndexBatches().
+       @param [in] tot_scores  If provided, we'll treat the backward
+                  scores of final-states as the negative of these
+                  tot_scores (which must have 
+                  `tot_scores->Dim() == fsas.Dim0())`; otherwise
+                  as zero.
+       @param [in] log_semiring  If true, use LogAdd to combine
+                  scores; if false, use max.
+       @return  Returns a vector indexed by state-index (idx01 in fsas), with
+               `ans.Dim() == fsas.TotSize(1)`, containing backward
+               scores.
+ */
+template <typename FloatType>
+Array1<FloatType> GetBackwardScores(FsaVec &fsas,
+                                    Ragged<int32_t> &batches,
+                                    Ragged<int32_t> &leaving_arc_batches,
+                                    const Array1<FloatType> *tot_scores = nullptr,
+                                    bool log_semiring = true);
+
+/*
+  Compute and return arc-level forward-backward scores, which are:
+   `forward_score[src_state] + arc.score + backward_score[dest_state]`.
+   
+   If you provided the `tot_scores` argument to GetBackwardScores, and if
+   log_semiring == true, then you can think of these as the log probability that
+   you go through that arc, which would be log(1.0) = 0.0 for an FSA with only
+   one path.
+
+       @param [in] fsas   The FSAs that we want the arc-level probabilities
+                         from
+       @param [in] forward_scores  The state-level forward scores, which
+                        should have been computed by GetForwardScores() with
+                        the same `fsas` and `log_semiring`
+       @param [in] backward_scores  The state-level backward scores, which
+                        should have been computed using GetBackwardScores()
+                        with the same `fsas` and `log_semiring`.  
+       @return    returns scores for arcs, indexed by arc_idx012 in `fsas`,
+                  with ans.Dim() == fsas.NumElements().
+*/
+template <typename FloatType>
+Array1<FloatType> GetArcScores(FsaVec &fsas,
+                               const Array1<FloatType> &forward_scores,
+                               const Array1<FloatType> &backward_scores,
+                               bool log_semiring);
+
+                              
 
 /*
   Returns an array of the destination-states for all arcs in an FsaVec
