@@ -131,7 +131,7 @@ class TopSorter {
     // Initialize it with a list of all states that currently have zero
     // in-degree.
     int32_t num_states = state_in_degree_.Dim();
-    Renumbering state_renumbering(num_states);
+    Renumbering state_renumbering(c_, num_states);
     // NOTE: this is not very optimal given that we're keeping only a small
     // number of states, but at this point I dont want to optimize too heavily.
     // The (dest_states_data[i] != i) part is to avoid self-loops.
@@ -190,7 +190,7 @@ class TopSorter {
     // We'll be figuring out which of these arcs leads to a state that now has
     // in-degree 0.  (If >1 arc goes to such a state, only one will 'win',
     // arbitrarily).
-    Renumbering arc_renumbering(arcs_shape.NumElements());
+    Renumbering arc_renumbering(c_, arcs_shape.NumElements());
 
     const int32_t *arcs_row_ids1_data = arcs_shape.RowIds(1).Data(),
                   *arcs_row_ids2_data = arcs_shape.RowIds(2).Data(),

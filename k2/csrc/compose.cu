@@ -13,9 +13,8 @@
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
-#include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/fsa_algo.h"
-
+#include "k2/csrc/ragged_ops.h"
 
 namespace k2 {
 
@@ -186,8 +185,8 @@ class MultiGraphDenseIntersect {
       int32_t axis = 1;
       oshape_unpruned_ = Stack(axis, T + 1, &(arcs_shapes[0]));
     }
-    renumber_output_states_.Init(oshape_unpruned_.TotSize(2));
-    renumber_output_arcs_.Init(oshape_unpruned_.TotSize(3));
+    renumber_output_states_.Init(c_, oshape_unpruned_.TotSize(2));
+    renumber_output_arcs_.Init(c_, oshape_unpruned_.TotSize(3));
 
     for (int32_t t = T; t >= 0; t--) {
       // this writes to elements of renumber_output_states_.Keep() and
@@ -270,8 +269,8 @@ class MultiGraphDenseIntersect {
               unpruned_idx01xx = oshapeu_row_splits3[unpruned_idx01x],
               unpruned_idxxx23 = unpruned_idx0123 - unpruned_idx01xx,
               unpruned_idx0 = oshapeu_row_ids1[unpruned_idx01],  // fsa-id
-              unpruned_idx0x = oshapeu_row_splits1[unpruned_idx0],
-          // unpruned_idx0xx = oshapeu_row_splits2[unpruned_idx0x],
+          unpruned_idx0x = oshapeu_row_splits1[unpruned_idx0],
+              // unpruned_idx0xx = oshapeu_row_splits2[unpruned_idx0x],
           unpruned_idx1 = unpruned_idx01 - unpruned_idx0x,  // t
           unpruned_idx01_next_t = unpruned_idx01 + 1,
               unpruned_idx01x_next_t =
@@ -585,12 +584,12 @@ class MultiGraphDenseIntersect {
 
     // renumber_arcs will be a renumbering that dictates which of the arcs
     // in 'ai' we keep
-    Renumbering renumber_arcs(arc_info.values.Dim());
+    Renumbering renumber_arcs(c_, arc_info.values.Dim());
 
     // renumber_states will be a renumbering that dictates which of the arcs in
     // 'ai' correspond to unique states.  Only one arc for each dest-state is
     // kept (it doesn't matter which one).
-    Renumbering renumber_states(arc_info.values.Dim());
+    Renumbering renumber_states(c_, arc_info.values.Dim());
 
     // Note: we don't just keep arcs that were above the pruning threshold, we
     // keep all arcs whose destination-states survived pruning.  Later we'll
