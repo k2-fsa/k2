@@ -82,7 +82,7 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
 
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
-  K2_CHECK_EQ(axis, 0);
+  K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe
   std::vector<RaggedShape *> src_shapes(num_srcs);
   std::vector<const Array1<T> *> src_values(num_srcs);
@@ -92,23 +92,50 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
   }
   // below line will check if srcs are compatible with each other or not, i.e.
   // context compatibility and num-axes compatibility.
-  RaggedShape ans_shape = Stack(axis, num_srcs, src_shapes.data());
+  RaggedShape ans_shape = Stack(0, num_srcs, src_shapes.data());
   Array1<T> ans_values = Append(num_srcs, src_values.data());
-  return Ragged<T>(ans_shape, ans_values);
+  Ragged<T> ans(ans_shape, ans_values);
+  if (axis == 1) ans = Transpose(ans);
+  return ans;
 }
 
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src) {
-  K2_CHECK_EQ(axis, 0);
-  K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe
+  K2_CHECK(axis == 0 || axis == 1);
+  K2_CHECK_GT(num_srcs, 0);
   std::vector<Ragged<T> *> temp(num_srcs);
   for (int32_t i = 0; i != num_srcs; ++i) temp[i] = src + i;
   return Stack(axis, num_srcs, temp.data());
 }
 
 template <typename T>
+Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
+  if (num_srcs == 1) return **src;
+  K2_CHECK_GT(num_srcs, 1);
+  if (axis == 1) {
+    // Transpose in Stack will check if all src->Dim0() have the same value.
+    Ragged<T> temp = Stack(axis, num_srcs, src);
+    temp.shape = RemoveAxis(temp.shape, axis);
+    return temp;
+  }
+  K2_CHECK_EQ(axis, 0) << "Append() with axis > 1 not yet supported";
+  std::vector<RaggedShape *> src_shapes(num_srcs);
+  std::vector<const Array1<T> *> src_values(num_srcs);
+  for (int32_t i = 0; i != num_srcs; ++i) {
+    src_shapes[i] = &(src[i]->shape);
+    src_values[i] = &(src[i]->values);
+  }
+  RaggedShape ans_shape = Append(0, num_srcs, src_shapes.data());
+  Array1<T> ans_values = Append(num_srcs, src_values.data());
+  return Ragged<T>(ans_shape, ans_values);
+}
+
+template <typename T>
 Ragged<T> Transpose(Ragged<T> &src) {
-  K2_CHECK_GT(src.NumAxes(), 2);
+  int32_t num_axes = src.NumAxes();
+  K2_CHECK_GT(num_axes, 2);
+  const int32_t kMaxNumAxes = 6;
+  K2_CHECK_LE(num_axes, kMaxNumAxes);
   // Transpose(RaggedShape&) will check if all dims on axis 0 are same or not.
   ContextPtr c = src.Context();
   RaggedShape &src_shape = src.shape;
@@ -123,16 +150,14 @@ Ragged<T> Transpose(Ragged<T> &src) {
   int32_t **ans_row_ids_data = ans_row_ids_ptr.Data();
   Array1<int32_t *> src_row_splits_ptr = GetRowSplitsPtr(src_shape);
   int32_t **src_row_splits_data = src_row_splits_ptr.Data();
-  int32_t num_axes = src.NumAxes();
   Array1<T> ans_values(c, src_values.Dim());
   const T *src_data = src_values.Data();
   T *ans_data = ans_values.Data();
   auto lambda_set_values = [=] __host__ __device__(int32_t new_idx) {
-    int32_t *idx_data =
-        reinterpret_cast<int32_t *>(malloc(sizeof(int32_t) * num_axes));
+    int32_t idx_data[kMaxNumAxes];
     K2_DCHECK(idx_data != nullptr);
     int32_t idx = new_idx;
-    // as num_axes is usually not very big (e.g. num_axes <= 5),
+    // as num_axes is usually not very big (e.g. num_axes <= kMaxNumAxes),
     // it's fine to do this in a loop.
     for (int32_t axis = num_axes - 1; axis > 0; --axis) {
       int32_t prev_idx = ans_row_ids_data[axis - 1][idx],
@@ -152,7 +177,6 @@ Ragged<T> Transpose(Ragged<T> &src) {
     }
     // set value
     ans_data[new_idx] = src_data[old_idx];
-    free(idx_data);
   };
   Eval(c, ans_values.Dim(), lambda_set_values);
   return Ragged<T>(ans_shape, ans_values);
