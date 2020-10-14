@@ -577,7 +577,7 @@ Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
   return ans;
 }
 
-Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
+Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
   K2_CHECK(fsas.NumAxes() == 3);
   ContextPtr c = fsas.Context();
   Array1<int32_t> arc_dest_states = GetDestStates(fsas, true);
@@ -775,4 +775,32 @@ Ragged<int32_t> GetBatches(FsaVec &fsas, bool transpose) {
     return ans;
 }
 
+Ragged<int32_t> GetIncomingArcs(FsaVec &fsas, const Array1<int32_t> &dest_states) {
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  ContextPtr c = fsas.Context();
+  Ragged<int32_t> dest_states_tensor(fsas.shape, dest_states);
+  int32_t num_fsas = fsas.Dim0(),
+    num_states = fsas.TotSize(1),
+    num_arcs = fsas.TotSize(2);
+                                     
+  Array1<int32_t> incoming_arcs_order =
+    GetTransposeReordering(dest_states_tensor,
+                           num_states),
+
+    ans_row_ids2 = dest_states[incoming_arcs_order];
+  // Note: incoming_arcs_row_ids2 will be monotonically increasing
+
+  Array1<int32_t> ans_row_splits2(c, num_states + 1);
+  RowIdsToRowSplits(ans_row_ids2, &ans_row_splits2);
+
+  // Axis 1 corresponds to FSA states, so the row-ids and row-splits for axis
+  // 1 are the same as for `fsas`.
+  Array1<int32_t> ans_row_ids1 = fsas.RowIds(1),
+    ans_row_splits1 = fsas.RowSplits(1);
+  return Ragged<int32_t>(RaggedShape3(&ans_row_splits1, &ans_row_ids1, num_states,
+                                      &ans_row_splits2, &ans_row_ids2, num_arcs),
+                         incoming_arcs_order);
+}
+  
+  
 }  // namespace k2
