@@ -366,11 +366,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src);
       @return      Returns the appended RaggedShape.
 */
 template <typename T>
-Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
-  // TODO(haowen)
-  K2_LOG(FATAL) << "Not Implemeted";
-  return *src[0];
-}
+Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src);
 
 /*
   Construct a RaggedShape with 2 axes.

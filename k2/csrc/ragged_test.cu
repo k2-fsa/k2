@@ -1107,10 +1107,10 @@ void TestAppend() {
       shapes_ptr[0] = &shapes[0];
     }
     {
-      const std::vector<int32_t> row_splits1 = {0, 1, 3};
-      const std::vector<int32_t> row_ids1 = {0, 1, 1};
-      const std::vector<int32_t> row_splits2 = {0, 3, 4, 7};
-      const std::vector<int32_t> row_ids2 = {0, 0, 0, 1, 2, 2, 2};
+      const std::vector<int32_t> row_splits1 = {0, 1, 3, 4};
+      const std::vector<int32_t> row_ids1 = {0, 1, 1, 2};
+      const std::vector<int32_t> row_splits2 = {0, 3, 4, 5, 7};
+      const std::vector<int32_t> row_ids2 = {0, 0, 0, 1, 2, 3, 3};
       Array1<int32_t> splits1(context, row_splits1);
       Array1<int32_t> ids1(context, row_ids1);
       Array1<int32_t> splits2(context, row_splits2);
@@ -1124,24 +1124,41 @@ void TestAppend() {
       shapes_ptr[1] = &shapes[1];
     }
 
-    RaggedShape result = Append(0, 2, shapes_ptr.data());
-
-    // get result splits with `SpliceRowSplits` and get result row-ids with
-    // `RowSplitsToRowIds``
-    std::vector<Array1<int32_t>> result_splits;
-    std::vector<Array1<int32_t>> result_ids;
-    for (auto i = 0; i < 2; ++i) {
-      std::vector<const Array1<int32_t> *> splits_ptr = {&row_splits_vec[i][0],
-                                                         &row_splits_vec[i][1]};
-      Array1<int32_t> curr_row_splits = SpliceRowSplits(2, splits_ptr.data());
-      result_splits.push_back(curr_row_splits);
-      Array1<int32_t> curr_row_ids(context, curr_row_splits.Back());
-      RowSplitsToRowIds(curr_row_splits, &curr_row_ids);
-      result_ids.push_back(curr_row_ids);
+    {
+      // axis == 1
+      RaggedShape result = Append(1, 2, shapes_ptr.data());
+      std::vector<std::vector<int32_t>> expected_row_splits = {
+          {0, 3, 8, 10}, {0, 2, 3, 6, 7, 9, 10, 11, 12, 15, 17}};
+      std::vector<std::vector<int32_t>> expected_row_ids = {
+          {0, 0, 0, 1, 1, 1, 1, 1, 2, 2},
+          {0, 0, 1, 2, 2, 2, 3, 4, 4, 5, 6, 7, 8, 8, 8, 9, 9}};
+      for (int32_t i = 0; i < 2; ++i) {
+        CheckArrayData(result.RowSplits(i + 1), expected_row_splits[i]);
+        CheckArrayData(result.RowIds(i + 1), expected_row_ids[i]);
+      }
     }
-    for (int32_t i = 0; i < 2; ++i) {
-      CheckArrayData(result.RowSplits(i + 1), result_splits[i]);
-      CheckArrayData(result.RowIds(i + 1), result_ids[i]);
+
+    {
+      // axis == 0
+      RaggedShape result = Append(0, 2, shapes_ptr.data());
+
+      // get result splits with `SpliceRowSplits` and get result row-ids with
+      // `RowSplitsToRowIds``
+      std::vector<Array1<int32_t>> result_splits;
+      std::vector<Array1<int32_t>> result_ids;
+      for (auto i = 0; i < 2; ++i) {
+        std::vector<const Array1<int32_t> *> splits_ptr = {
+            &row_splits_vec[i][0], &row_splits_vec[i][1]};
+        Array1<int32_t> curr_row_splits = SpliceRowSplits(2, splits_ptr.data());
+        result_splits.push_back(curr_row_splits);
+        Array1<int32_t> curr_row_ids(context, curr_row_splits.Back());
+        RowSplitsToRowIds(curr_row_splits, &curr_row_ids);
+        result_ids.push_back(curr_row_ids);
+      }
+      for (int32_t i = 0; i < 2; ++i) {
+        CheckArrayData(result.RowSplits(i + 1), result_splits[i]);
+        CheckArrayData(result.RowIds(i + 1), result_ids[i]);
+      }
     }
   }
 
@@ -1157,6 +1174,8 @@ void TestAppend() {
             RandomRaggedShape(true, num_axes, num_axes, 0, 1000).To(context);
         shapes[j] = &shape_vec[j];
       }
+      // only test case axis == 0, test axis==1 with simple case is good enough
+      // as it just calls Stack
       RaggedShape result = Append(0, num_shape, shapes.data());
       ASSERT_EQ(result.NumAxes(), num_axes);
 
@@ -1191,6 +1210,99 @@ TEST(RaggedShapeOpsTest, TestAppend) {
   TestAppend<kCpu>();
   TestAppend<kCuda>();
 }
+
+template <DeviceType d, typename T>
+void TestAppendRagged() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  // TODO(haowen): remove duplicate code in TestAppend above.
+  // test with simple case could be good enough, as we have tested
+  // Append(RaggedShape&) already.
+  std::vector<Ragged<T>> ragged_vec(2);
+  std::vector<Ragged<T> *> ragged(2);
+  std::vector<std::vector<Array1<int32_t>>> row_splits_vec(2);
+  {
+    const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+    const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
+    const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+    const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
+    const std::vector<T> values_vec = {1, 2, 5, 7, 9, 10, 12, 14, 15, 18};
+    Array1<int32_t> splits1(context, row_splits1);
+    Array1<int32_t> ids1(context, row_ids1);
+    Array1<int32_t> splits2(context, row_splits2);
+    Array1<int32_t> ids2(context, row_ids2);
+    RaggedShape shape =
+        RaggedShape3(&splits1, &ids1, ids1.Dim(), &splits2, &ids2, ids2.Dim());
+    Array1<T> values(context, values_vec);
+    ragged_vec[0] = Ragged<T>(shape, values);
+    ragged[0] = &ragged_vec[0];
+  }
+
+  {
+    const std::vector<int32_t> row_splits1 = {0, 1, 3, 4};
+    const std::vector<int32_t> row_ids1 = {0, 1, 1, 2};
+    const std::vector<int32_t> row_splits2 = {0, 3, 4, 5, 7};
+    const std::vector<int32_t> row_ids2 = {0, 0, 0, 1, 2, 3, 3};
+    const std::vector<T> values_vec = {20, 21, 23, 28, 30, 32, 35};
+    Array1<int32_t> splits1(context, row_splits1);
+    Array1<int32_t> ids1(context, row_ids1);
+    Array1<int32_t> splits2(context, row_splits2);
+    Array1<int32_t> ids2(context, row_ids2);
+    RaggedShape shape =
+        RaggedShape3(&splits1, &ids1, ids1.Dim(), &splits2, &ids2, ids2.Dim());
+    Array1<T> values(context, values_vec);
+    ragged_vec[1] = Ragged<T>(shape, values);
+    ragged[1] = &ragged_vec[1];
+  }
+
+  {
+    // axis == 0
+    Ragged<T> result = Append(0, 2, ragged.data());
+    std::vector<std::vector<int32_t>> expected_row_splits = {
+        {0, 2, 5, 6, 7, 9, 10}, {0, 2, 3, 4, 6, 7, 10, 13, 14, 15, 17}};
+    std::vector<std::vector<int32_t>> expected_row_ids = {
+        {0, 0, 1, 1, 1, 2, 3, 4, 4, 5},
+        {0, 0, 1, 2, 3, 3, 4, 5, 5, 5, 6, 6, 6, 7, 8, 9, 9}};
+    for (int32_t i = 0; i < 2; ++i) {
+      CheckArrayData(result.RowSplits(i + 1), expected_row_splits[i]);
+      CheckArrayData(result.RowIds(i + 1), expected_row_ids[i]);
+    }
+    std::vector<T> expected_data = {1,  2,  5,  7,  9,  10, 12, 14, 15,
+                                    18, 20, 21, 23, 28, 30, 32, 35};
+    CheckArrayData(result.values, expected_data);
+  }
+
+  {
+    // axis == 1
+    Ragged<T> result = Append(1, 2, ragged.data());
+    std::vector<std::vector<int32_t>> expected_row_splits = {
+        {0, 3, 8, 10}, {0, 2, 3, 6, 7, 9, 10, 11, 12, 15, 17}};
+    std::vector<std::vector<int32_t>> expected_row_ids = {
+        {0, 0, 0, 1, 1, 1, 1, 1, 2, 2},
+        {0, 0, 1, 2, 2, 2, 3, 4, 4, 5, 6, 7, 8, 8, 8, 9, 9}};
+    for (int32_t i = 0; i < 2; ++i) {
+      CheckArrayData(result.RowSplits(i + 1), expected_row_splits[i]);
+      CheckArrayData(result.RowIds(i + 1), expected_row_ids[i]);
+    }
+    std::vector<T> expected_data = {1,  2,  5,  20, 21, 23, 7,  9, 10,
+                                    12, 28, 30, 14, 15, 18, 32, 35};
+    CheckArrayData(result.values, expected_data);
+  }
+}
+TEST(RaggedTest, TestAppendRagged) {
+  TestAppendRagged<kCpu, int32_t>();
+  TestAppendRagged<kCuda, int32_t>();
+  TestAppendRagged<kCpu, double>();
+  TestAppendRagged<kCuda, double>();
+}
+
 void CheckResultOfRenumber(const ContextPtr &context, RaggedShape &shape,
                            Array1<int32_t> &new2old, RaggedShape &result) {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
@@ -1547,4 +1659,92 @@ TEST(RaggedShapeOpsTest, TestStack) {
   TestStack<kCuda>();
 }
 
+template <DeviceType d, typename T>
+void TestStackRagged() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  // test with random large size
+  for (int32_t m = 0; m < 2; ++m) {
+    int32_t num_shape = RandInt(2, 100);
+    int32_t num_axes = RandInt(2, 4);
+    int32_t dim0 = RandInt(1, 100);
+    std::vector<Ragged<T>> ragged_vec(num_shape);
+    std::vector<Ragged<T> *> ragged(num_shape);
+    for (int32_t j = 0; j != num_shape; ++j) {
+      RaggedShape shape =
+          RandomRaggedShape(false, num_axes, num_axes, 0, 1000).To(context);
+      int32_t src_dim0 = shape.Dim0();
+      std::vector<int32_t> row_splits_vec(dim0 + 1);
+      row_splits_vec[0] = 0;
+      for (int32_t n = 1; n < dim0; ++n) {
+        row_splits_vec[n] = RandInt(0, src_dim0);
+      }
+      row_splits_vec[dim0] = src_dim0;
+      std::sort(row_splits_vec.begin(), row_splits_vec.end());
+      Array1<int32_t> row_splits(context, row_splits_vec);
+      RaggedShape first = RaggedShape2(&row_splits, nullptr, -1);
+      RaggedShape new_shape = ComposeRaggedShapes(first, shape);
+      int32_t num_elems = new_shape.NumElements();
+      Array1<T> src_values = RandUniformArray1<T>(context, num_elems, 0, 10000);
+      ragged_vec[j] = Ragged<T>(new_shape, src_values);
+      ragged[j] = &ragged_vec[j];
+    }
+    std::vector<Ragged<T>> cpu_ragged_vec(num_shape);
+    for (auto j = 0; j != num_shape; ++j) {
+      cpu_ragged_vec[j] = ragged_vec[j].To(cpu);
+    }
+
+    {
+      // axis == 0
+      int32_t axis = 0;
+      Ragged<T> result = Stack(axis, num_shape, ragged.data());
+      ASSERT_EQ(result.NumAxes(),
+                num_axes + 2);  // note we append one axis in each shape in
+                                // `shapes` before `Stack`
+      ASSERT_EQ(result.Dim0(), num_shape);
+      result = result.To(cpu);
+      RaggedShape &shape = result.shape;
+      for (auto iter = shape.Iterator(); !iter.Done(); iter.Next()) {
+        std::vector<int32_t> index = iter.Value();
+        T value = result[index];
+        int32_t i = index[0];
+        index.erase(index.begin());
+        // result[i,j,k,l] = (shape[i])[j,k,l]
+        EXPECT_EQ(value, cpu_ragged_vec[i][index]);
+      }
+    }
+    {
+      // axis == 1
+      int32_t axis = 1;
+      Ragged<T> result = Stack(axis, num_shape, ragged.data());
+      ASSERT_EQ(result.NumAxes(),
+                num_axes + 2);  // note we append one axis in each shape in
+                                // `shapes` before `Stack`
+      ASSERT_EQ(result.Dim0(), dim0);
+      result = result.To(cpu);
+      RaggedShape &shape = result.shape;
+      for (auto iter = shape.Iterator(); !iter.Done(); iter.Next()) {
+        std::vector<int32_t> index = iter.Value();
+        T value = result[index];
+        int32_t j = index[1];
+        index.erase(index.begin() + 1);
+        // result[i,j,k,l] = (shape[j])[i,k,l]
+        EXPECT_EQ(value, cpu_ragged_vec[j][index]);
+      }
+    }
+  }
+}
+TEST(RaggedTest, TestStackRagged) {
+  TestStackRagged<kCpu, int32_t>();
+  TestStackRagged<kCuda, int32_t>();
+  TestStackRagged<kCpu, double>();
+  TestStackRagged<kCuda, double>();
+}
 }  // namespace k2
