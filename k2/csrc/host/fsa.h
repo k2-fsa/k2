@@ -26,9 +26,6 @@ enum {
                       // like in OpenFst.
 };
 
-// CAUTION: the sizeof() this is probably 128, not 96.  This could be a
-// waste of space.  We may later either use the extra field for something, or
-// find a way to reduce the size.
 struct Arc {
   int32_t src_state;
   int32_t dest_state;

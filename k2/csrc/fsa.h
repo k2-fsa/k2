@@ -105,6 +105,9 @@ using FsaVec = Ragged<Arc>;  // 3 axes: fsa,state,arc.  Note, the src_state
                              // and dest_state in the arc are *within the
                              // FSA*, i.e. they are idx1 not idx01.
 
+using FsaOrVec = Ragged<Arc>;  // for when we don't know if it will have 2 or
+                               // 3 axes.  (i.e. Fsa or FsaVec)
+
 /*
   Vector of FSAs that actually will come from neural net log-softmax outputs (or
   similar).

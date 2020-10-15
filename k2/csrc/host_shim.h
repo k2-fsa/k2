@@ -20,35 +20,6 @@
 
 namespace k2 {
 
-/*
-  Create an FsaVec (vector of FSAs) from a Tensor.  Please see FsaFromTensor for
-  how this works for a single FSA.  The reason we can do the same with multiple
-  FSAs is that we can use the discontinuities in `src_state` (i.e. where the
-  values decrease) to spot where one FSA starts and the next begins.  However
-  this only works if all the FSAs were nonempty, i.e. had at least one state.
-  This function will die with an assertion failure if any of the provided
-  FSAs were empty, so the user should check that beforehand.
-
-  Please see FsaFromTensor() for documentation on what makes the individual
-  FSAs valid; however, please note that the FSA with no states (empty FSA)
-  cannot appear here, as there is no way to indicate it in a flat
-  series of arcs.
-
-    @param [in] t   Source tensor.  Must have dtype == kInt32Dtype and be of
-                    shape (N > 0) by 4.  Caution: the returned FSA will share
-                    memory with this tensor, so don't modify it afterward!
-    @param [out] error   Error flag.  On success this function will write
-                        'false' here; on error, it will print an error
-                        message to the standard error and write 'true' here.
-    @return         The resulting FsaVec (vector of FSAs) will be returned;
-                    this is a Ragged<Arc> with 3 axes.
-
-
-  This only works of `fsa` was on the CPU.  Note: the k2host::Fsa
-  refers to memory inside `fsa`, so making a copy doesn't work.
-  Be careful with the returned k2host::Fsa as it does not own its
-  own memory!
-*/
 
 k2host::Fsa FsaToHostFsa(Fsa &fsa) {
   K2_CHECK_EQ(fsa.NumAxes(), 2);
@@ -59,6 +30,30 @@ k2host::Fsa FsaToHostFsa(Fsa &fsa) {
                      fsa.shape.RowSplits(1).Data(),
                      reinterpret_cast<k2host::Arc *>(fsa.values.Data()));
 }
+
+k2host::Fsa FsaVecToHostFsa(FsaVec &fsa_vec, int32_t index) {
+  K2_CHECK_EQ(fsa_vec.NumAxes(), 3);
+  K2_CHECK_LT(static_cast<uint32_t>(index), static_cast<uint32_t>(fsa_vec.Dim0()));
+  K2_CHECK_EQ(fsa_vec.Context()->GetDeviceType(), kCpu);
+
+  // reinterpret_cast works because the arcs have the same members
+  // (except our 'score' is called 'weight' there).
+
+  int32_t *row_splits1_data = fsa.RowSplits(1).Data(),
+      *row_splits2_data = fsa.RowSplits(1).Data();
+  Arc *arcs_data = fsa.values.Data();
+  int32_t start_state_idx01 = row_splits1_data[index],
+      end_state_idx01 = row_splits1_data[index+1],
+      size1 = end_state01 - start_state01,
+      start_arc_idx012 = row_splits2_data[start_state_idx01],
+      end_arc_idx012 = row_splits2_data[end_state_idx01],
+      size2 = end_arc_idx012 - start_arc_idx012;
+
+  return k2host::Fsa(size1, size2,
+                     row_splits2_data + start_state_idx01,
+                     arcs_data + start_arc_idx012);
+}
+
 
 class FsaCreator {
  public:
