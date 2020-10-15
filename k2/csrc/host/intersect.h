@@ -72,8 +72,10 @@ class Intersection {
                  int32_t *arc_map_b = nullptr);
 
  private:
-  const Fsa &a_;
-  const Fsa &b_;
+  // these are not references due to how we wrap this in fsa_algo.cu, it's
+  // convenient to have them be copies.
+  Fsa a_;
+  Fsa b_;
 
   bool status_;
   std::vector<int32_t> arc_indexes_;  // arc_index of fsa_out

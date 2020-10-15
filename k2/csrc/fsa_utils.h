@@ -161,7 +161,6 @@ Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
      @param [in] incoming_arcs  A tensor containing the arc-indexes of the
                        arcs entering each state in `fsas`, indexed
                        [fsa][state][arc_list].
-
      @param [in] state_batches  Batches of states as returned from
                   `GetStateBatches(fsas, true)`, indexed
                   [batch][fsa][state_list].

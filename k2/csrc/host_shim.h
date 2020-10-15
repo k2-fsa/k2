@@ -20,45 +20,32 @@
 
 namespace k2 {
 
+
 /*
-  Create an FsaVec (vector of FSAs) from a Tensor.  Please see FsaFromTensor for
-  how this works for a single FSA.  The reason we can do the same with multiple
-  FSAs is that we can use the discontinuities in `src_state` (i.e. where the
-  values decrease) to spot where one FSA starts and the next begins.  However
-  this only works if all the FSAs were nonempty, i.e. had at least one state.
-  This function will die with an assertion failure if any of the provided
-  FSAs were empty, so the user should check that beforehand.
+   Convert an Fsa (CPU only!) to k2host::Fsa.
 
-  Please see FsaFromTensor() for documentation on what makes the individual
-  FSAs valid; however, please note that the FSA with no states (empty FSA)
-  cannot appear here, as there is no way to indicate it in a flat
-  series of arcs.
+      @param [in] fsa  FSA to convert
+      @return  Returns the k2host::Fsa referring to the contents of `fsa`
 
-    @param [in] t   Source tensor.  Must have dtype == kInt32Dtype and be of
-                    shape (N > 0) by 4.  Caution: the returned FSA will share
-                    memory with this tensor, so don't modify it afterward!
-    @param [out] error   Error flag.  On success this function will write
-                        'false' here; on error, it will print an error
-                        message to the standard error and write 'true' here.
-    @return         The resulting FsaVec (vector of FSAs) will be returned;
-                    this is a Ragged<Arc> with 3 axes.
-
-
-  This only works of `fsa` was on the CPU.  Note: the k2host::Fsa
-  refers to memory inside `fsa`, so making a copy doesn't work.
-  Be careful with the returned k2host::Fsa as it does not own its
-  own memory!
+   Don't let `fsa` go out of scope while you are still accessing
+   the return value.
 */
+k2host::Fsa FsaToHostFsa(Fsa &fsa);
 
-k2host::Fsa FsaToHostFsa(Fsa &fsa) {
-  K2_CHECK_EQ(fsa.NumAxes(), 2);
-  K2_CHECK_EQ(fsa.Context()->GetDeviceType(), kCpu);
-  // reinterpret_cast works because the arcs have the same members
-  // (except our 'score' is called 'weight' there).
-  return k2host::Fsa(fsa.shape.Dim0(), fsa.shape.TotSize(1),
-                     fsa.shape.RowSplits(1).Data(),
-                     reinterpret_cast<k2host::Arc *>(fsa.values.Data()));
-}
+
+ /*
+   Convert one element of an FsaVec (CPU only!) to a k2host::Fsa.
+
+    @param [in] fsa_vec  The FsaVec to convert the format of one
+                         element of.  Must be on CPU.
+    @param [in] index    The FSA index to access, with 0 <= index < fsa_vec.Dim0().
+    @return   Returns a k2host::Fsa referring to the memory in `fsa_vec`.
+
+   Warning: don't let `fsa_vec` go out of scope while you are still accessing
+   the return value.
+ */
+k2host::Fsa FsaVecToHostFsa(FsaVec &fsa_vec, int32_t index);
+
 
 class FsaCreator {
  public:
@@ -122,6 +109,9 @@ class FsaCreator {
     return ans;
   }
 
+  // This will be used to write the data to, i.e. the host code will
+  // use the pointers in k2host::Fsa to write data to, then the user
+  // will call GetFsa() to get it as an FSA.
   k2host::Fsa GetHostFsa() {
     return k2host::Fsa(arc_indexes_.Dim() - 1, arcs_.Dim(), arc_indexes_.Data(),
                        reinterpret_cast<k2host::Arc *>(arcs_.Data()));
@@ -131,6 +121,66 @@ class FsaCreator {
   Array1<int32_t> arc_indexes_;  // == row_splits
   Array1<Arc> arcs_;
 };
+
+
+
+
+class FsaVecCreator {
+ public:
+  /*
+    Initialize FsaVecCreator with vector of host::Array2size, search for
+    'initialized definition' in class Array2 in array.h for meaning. Note that
+    this only sets up some metadata; most of the data will be written by the
+    caller into objects returned by GetHostFsa().
+
+    `Array2Storage` is for this purpose as well, but we define this version of
+    constructor here to make test code simpler.
+
+    `sizes` must be nonempty.
+  */
+  explicit FsaVecCreator(const std::vector<k2host::Array2Size<int32_t>> &sizes) {
+    Init(sizes);
+  }
+
+  int32_t NumArcs() { return static_cast<int32_t>(arcs_.Dim()); }
+
+  void Init(const std::vector<k2host::Array2Size<int32_t>> &sizes);
+
+  FsaVec GetFsaVec();
+
+  int32_t GetArcOffsetFor(int32_t fsa_idx) { return row_splits12_.Data()[fsa_idx]; }
+
+  /* This will be used to write the data to, i.e. the host code will use the
+     pointers in k2host::Fsa to write data for the FSA numbered `fsa_idx`.  When
+     they have all been written to, the user will call GetFsaVec() to get them
+     all as one FsaVec.
+
+     CAUTION: these host FSAs must be written to in order, i.e. for 0, 1, 2 and
+     so on.  This is necessary because overlapping elements of row_splits2_ are
+     written to, and writing them in order assures that the later FSA always
+     'wins' the conflict.
+  */
+  k2host::Fsa GetHostFsa(int32_t fsa_idx);
+
+ private:
+  void FinalizeRowSplits2();
+
+  // The row-splits1 of the result, is the exclusive-sum of the size1 elements
+  // of `sizes` passed to the constructor
+  Array1<int32_t> row_splits1_;
+  // The row_splits2[row_splits1] of the result; it is the exclusive-sum of the
+  // size2 elements of `sizes` passed to the constructor.
+  Array1<int32_t> row_splits12_;
+
+  Array1<int32_t> row_splits2_;
+
+  Array1<Arc> arcs_;
+
+  // We set this to true
+  bool finalized_row_splits2_;
+  int32_t next_fsa_idx_;
+};
+
 
 }  // namespace k2
 

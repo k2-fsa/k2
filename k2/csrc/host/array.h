@@ -121,6 +121,8 @@ struct Array2Size {
   I size2;
 };
 
+// Caution: k2host::Array2 is not at all the same as k2::Array2; this is
+// ragged, k2::Array2 is regular.
 template <typename Ptr, typename I = int32_t>
 struct Array2 {
   // Irregular two dimensional array of something, like vector<vector<X> >

@@ -204,7 +204,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
   }
 }
 
-FsaVec FsaVecFromFsa(const Fsa &fsa) {
+FsaVec FsaToFsaVec(const Fsa &fsa) {
   ContextPtr c = fsa.values.Context();
   K2_CHECK_EQ(fsa.NumAxes(), 2);
   RaggedShape first_axis = TrivialShape(c, fsa.shape.Dim0());
@@ -214,7 +214,7 @@ FsaVec FsaVecFromFsa(const Fsa &fsa) {
 
 int32_t GetFsaBasicProperties(const Fsa &fsa) {
   if (fsa.NumAxes() != 2) return 0;
-  FsaVec vec = FsaVecFromFsa(fsa);
+  FsaVec vec = FsaToFsaVec(fsa);
   Array1<int32_t> properties;
   int32_t ans;
   GetFsaVecBasicProperties(vec, &properties, &ans);
