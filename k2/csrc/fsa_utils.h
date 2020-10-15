@@ -103,10 +103,6 @@ Fsa FsaFromString(const std::string &s, bool openfst = false,
 std::string FsaToString(const Fsa &fsa, bool openfst = false,
                         const Array1<int32_t> *aux_labels = nullptr);
 
-
-
-
-
 /*  Returns a renumbered version of the FsaVec `src`.
       @param [in] src    An FsaVec, assumed to be valid, with NumAxes() == 3
       @param [in] order  An ordering of states in `src` (contains idx01's in
@@ -115,13 +111,12 @@ std::string FsaToString(const Fsa &fsa, bool openfst = false,
                     we get the old fsa-index for each element of `order`, they
                     must be non-decreasing.
       @param [out] arc_map  If non-NULL, this will be set to a new Array1 that
-                   maps from arcs in the returned FsaVec to the original arc-index
-                   in `fsas`.
+                   maps from arcs in the returned FsaVec to the original
+                   arc-index in `fsas`.
       @return  Returns renumbered FSA.
 */
 FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
                       Array1<int32_t> *arc_map);
-
 
 /*
   Returns a ragged tensor representing batches of states in top-sorted FSAs
@@ -132,57 +127,63 @@ FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
                 kFsaPropertiesTopSortedAndAcyclic, although this is not
                 checked.  (Note: this really just means top-sorted, as a truly
                 top-sorted FSA cannot have cycles).
-      @param [in] transpose    If true, the result will be indexed [batch][fsa_idx][state];
-                if false, it will be indexed [fsa_idx][batch][state].
+      @param [in] transpose    If true, the result will be indexed
+                [batch][fsa_idx][state]; if false, it will be
+                indexed [fsa_idx][batch][state].
 
       @return  Returns batches of states (contains idx01s into `fsas`).
-             Normally (transpose==true) these will be indexed [batch][fsa][state_list]
+             Normally (transpose==true) these will be indexed
+             [batch][fsa][state_list]
  */
 Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose = true);
 
-
 /*
-  Returns a ragged tensor of arc-indexes of arcs leaving states in `fsas`, in batches
-  that can be processed sequentially in top-sorted FSAs.
+  Returns a ragged tensor of arc-indexes of arcs leaving states in `fsas`, in
+  batches that can be processed sequentially in top-sorted FSAs.
 
      @param [in] fsas   Input FSAs, with `fsas.NumAxes() == 3`.
-     @param [in] state_batches  Batches of states as returned from `GetStateBatches(fsas, true)`,
-                        indexed [batch][fsa][state_list].
-     @return   Returns a tensor with `ans.NumAxes() == 4`, containing arc_idx012's into
-               `fsas`.  Axes 0,1,2 correspond to those of `state_batches`; the last
-               axis is a list of arcs, i.e. the indexing is [batch][fsa][state_list][arc_list]
+     @param [in] state_batches  Batches of states as returned from
+               `GetStateBatches(fsas, true)`, indexed
+               [batch][fsa][state_list].
+     @return   Returns a tensor with `ans.NumAxes() == 4`, containing
+               arc_idx012's into `fsas`.  Axes 0,1,2 correspond to
+               those of `state_batches`; the last axis is a list of
+               arcs, i.e. the indexing is [batch][fsa][state_list][arc_list]
  */
-Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas, Ragged<int32_t> &state_batches);
-
+Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
+                                          Ragged<int32_t> &state_batches);
 
 /*
- Returns a ragged tensor of the arc-indexes of arcs entering states in `fsas`, in
- batches that can be processed sequentially in top-sorted FSAs.
+ Returns a ragged tensor of the arc-indexes of arcs entering states in `fsas`,
+ in batches that can be processed sequentially in top-sorted FSAs.
 
      @param [in] fsas  Input FSAs, with `fsas.NumAxes() == 3`.
      @param [in] incoming_arcs  A tensor containing the arc-indexes of the
-                       arcs entering each state in `fsas`, indexed [fsa][state][arc_list].
-
-     @param [in] state_batches  Batches of states as returned from `GetStateBatches(fsas, true)`,
-                        indexed [batch][fsa][state_list].
+                       arcs entering each state in `fsas`, indexed
+                       [fsa][state][arc_list].
+     @param [in] state_batches  Batches of states as returned from
+                  `GetStateBatches(fsas, true)`, indexed
+                  [batch][fsa][state_list].
 
  */
-Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
+Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
+                                           Ragged<int32_t> &incoming_arcs,
                                            Ragged<int32_t> &state_batches);
-
 
 /*
   Returns a ragged tensor of incoming arc-indexes for the states in `fsas`.
 
        @param [in] fsas          Input FsaVec (must have 3 axes)
-       @param [in] dest_states   Array of destination-states of each arc, in the idx01 format
-                              (i.e. idx01's of dest states), as returned by
-                              `GetDestStates(fsas, true)`.
-       @return     Returns a tensor with 3 axes, indexed [fsa][state][list_of_arcs],
-                   containing the idx012's of arcs entering states in `fsas`  Its values will
-                   be a permutation of the numbers 0 through fsas.NumElements() - 1.
+       @param [in] dest_states   Array of destination-states of each arc, in the
+                    idx01 format (i.e. idx01's of dest states), as returned by
+                   `GetDestStates(fsas, true)`.
+       @return     Returns a tensor with 3 axes, indexed
+                   [fsa][state][list_of_arcs], containing the idx012's of arcs
+                   entering states in `fsas`  Its values will be a permutation
+                   of the numbers 0 through fsas.NumElements() - 1.
  */
-Ragged<int32_t> GetIncomingArcs(FsaVec &fsas, const Array1<int32_t> &dest_states);
+Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
+                                const Array1<int32_t> &dest_states);
 
 /*
    Compute and return forward scores per state (like alphas in Baum-Welch),
@@ -193,7 +194,8 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas, const Array1<int32_t> &dest_states
                  property kFsaPropertiesTopSortedAndAcyclic if you were
                  to compute properties.
       @param [in] state_batches  Batches of states, as returned by
-                 GetStateBatches(fsas, true) (must have 3 axes: [iter][fsa][state_list]).
+                 GetStateBatches(fsas, true) (must have 3 axes:
+                 [iter][fsa][state_list]).
       @param [in] entering_arc_batches  Arcs-indexes (idx012's in fsas) of arcs
                  entering states in `state_batches`, indexed
                  [iter][fsa][state_list][arc_list], as returned by
@@ -206,8 +208,7 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas, const Array1<int32_t> &dest_states
                 (these will be zero for the start-states).
 */
 template <typename FloatType>
-Array1<FloatType> GetForwardScores(FsaVec &fsas,
-                                   Ragged<int32_t> &state_batches,
+Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
                                    Ragged<int32_t> &entering_arc_batches,
                                    bool log_semiring);
 
@@ -247,11 +248,10 @@ Array1<FloatType> GetTotScores(FsaVec &fsas, Array1<FloatType> &forward_scores);
                scores.
  */
 template <typename FloatType>
-Array1<FloatType> GetBackwardScores(FsaVec &fsas,
-                                    Ragged<int32_t> &batches,
-                                    Ragged<int32_t> &leaving_arc_batches,
-                                    const Array1<FloatType> *tot_scores = nullptr,
-                                    bool log_semiring = true);
+Array1<FloatType> GetBackwardScores(
+    FsaVec &fsas, Ragged<int32_t> &batches,
+    Ragged<int32_t> &leaving_arc_batches,
+    const Array1<FloatType> *tot_scores = nullptr, bool log_semiring = true);
 
 /*
   Compute and return arc-level forward-backward scores, which are:
@@ -279,25 +279,23 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
                                const Array1<FloatType> &backward_scores,
                                bool log_semiring);
 
-
-
 /*
   Returns an array of the destination-states for all arcs in an FsaVec
 
      @param [in] fsas       Source FsaVec; must have NumAxes() == 3.
-     @param [in] as_idx01   If true, return dest-states in the idx01 format instead of idx1.
-                            (See "Index naming scheme" in utils.h).
+     @param [in] as_idx01   If true, return dest-states in the idx01 format
+                            instead of idx1. (See "Index naming scheme"
+                            in utils.h).
      @return                Returns a vector with dimension equal to the
                             number of arcs in `fsas` (i.e. fsas.NumElements()),
-                            containing idx01's of dest-states if as_idx01 == true,
-                            else idx1's of dest-states.
-     Note: if you want this as a ragged tensor you can use the constructor:
-     Ragged<int32>(fsas.shape, GetDestStates(fsas, as_idx01))
+                            containing idx01's of dest-states if as_
+                            idx01 == true, else idx1's of dest-states.
+                            Note: if you want this as a ragged tensor you can
+                            use the constructor:
+                            Ragged<int32>(fsas.shape,
+                                          GetDestStates(fsas, as_idx01))
 */
 Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01);
-
-
-
 
 }  // namespace k2
 

@@ -1268,6 +1268,18 @@ void TestMonotonicLowerBound() {
   }
 
   {
+    // simple case with dest = &src
+    std::vector<S> values = {2, 1, 3, 7, 5, 8, 20, 15};
+    std::vector<T> expected_data = {1, 1, 3, 5, 5, 8, 15, 15};
+    ASSERT_EQ(values.size(), expected_data.size());
+    Array1<S> src(context, values);
+    MonotonicLowerBound(src, &src);
+    src = src.To(cpu);
+    std::vector<T> data(src.Data(), src.Data() + src.Dim());
+    EXPECT_EQ(data, expected_data);
+  }
+
+  {
     // random large case
     for (int32_t i = 0; i != 2; ++i) {
       int32_t n = RandInt(1, 10000);
