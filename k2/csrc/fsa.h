@@ -224,7 +224,7 @@ Tensor FsaToTensor(const Fsa &fsa);
   It is an error if `fsa_vec` does not have 3 axes.  Empty FsaVec's are allowed,
   though (i.e. num_fsas == 0 is allowed).
 */
-Tensor FsaVecToTensor(const Fsa &fsa_vec);
+Tensor FsaVecToTensor(const FsaVec &fsa_vec);
 
 /*
   Create an FsaVec (vector of FSAs) from a Tensor which is an array of
@@ -254,7 +254,7 @@ Tensor FsaVecToTensor(const Fsa &fsa_vec);
 */
 FsaVec FsaVecFromTensor(Tensor &t, bool *error);
 
-FsaVec FsaVecFromArray1(Array1<Arc> &arc, bool *error);
+FsaVec FsaVecFromArray1(Array1<Arc> &arc, bool *error); // TODO: implement it
 
 /*
   Return one Fsa in an FsaVec.  Note, this has to make copies of the

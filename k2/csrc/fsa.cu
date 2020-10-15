@@ -205,7 +205,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 }
 
 FsaVec FsaToFsaVec(const Fsa &fsa) {
-  ContextPtr c = fsa.values.Context();
+  ContextPtr &c = fsa.values.Context();
   K2_CHECK_EQ(fsa.NumAxes(), 2);
   RaggedShape first_axis = TrivialShape(c, fsa.shape.Dim0());
   RaggedShape fsa_vec_shape = ComposeRaggedShapes(first_axis, fsa.shape);
@@ -434,7 +434,7 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
                 arcs);
 }
 
-Tensor FsaVecToTensor(const Fsa &fsa_vec) {
+Tensor FsaVecToTensor(const FsaVec &fsa_vec) {
   if (fsa_vec.NumAxes() != 3) {
     K2_LOG(FATAL) << "Expected num-axes == 3";
   }

@@ -51,6 +51,9 @@ TO_SCALAR_TYPE(int32_t, torch::kInt);
 
 #undef TO_SCALAR_TYPE
 
+Dtype ScalarTypeToDtype(torch::ScalarType scalar_type);
+torch::ScalarType ScalarTypeFromDtype(Dtype dtype);
+
 /* Convert an Array1<T> to torch::Tensor.
 
    @tparam T          A primitive type, e.g., int32_t, which has
@@ -166,6 +169,11 @@ torch::Tensor ToTensor(Array2<T> &array) {
       [array](void *) {}, options);
   return tensor;
 }
+
+struct TensorTag {};
+
+Tensor FromTensor(torch::Tensor &tensor, TensorTag);
+torch::Tensor ToTensor(Tensor &tensor);
 
 }  // namespace k2
 

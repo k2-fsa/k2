@@ -4,6 +4,10 @@
 
 from .fsa import Fsa
 from _k2 import _fsa_to_str
+from _k2 import _fsa_to_tensor
+from _k2 import _fsa_to_fsa_vec
+
+import torch
 
 
 def to_str(fsa: Fsa, openfst: bool = False) -> str:
@@ -26,7 +30,19 @@ def to_str(fsa: Fsa, openfst: bool = False) -> str:
     return _fsa_to_str(fsa.arcs, openfst, aux_labels)
 
 
-def to_dot(fsa):
+def to_tensor(fsa: Fsa) -> torch.Tensor:
+    return _fsa_to_tensor(fsa.arcs)
+
+
+def to_fsa_vec(fsa: Fsa) -> Fsa:
+    # TODO(fangjun): copy the attributes of
+    # the input fsa to the FsaVec
+    ragged_arc = _fsa_to_fsa_vec(fsa.arcs)
+    tensor = _fsa_to_tensor(ragged_arc)
+    return Fsa(tensor)
+
+
+def to_dot(fsa: Fsa):
     '''Visualize an Fsa via graphviz.
     '''
     from graphviz import Digraph

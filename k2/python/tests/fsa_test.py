@@ -7,7 +7,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R fsa_test_py -E host
+#  ctest --verbose -R fsa_test_py -E "host|dense"
 
 import unittest
 
@@ -67,6 +67,41 @@ class TestFsa(unittest.TestCase):
 
         fsa.score *= -1
 
+        assert torch.allclose(
+            fsa.score,
+            torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
+                         dtype=torch.float32))
+
+        # Test the following functions from C++
+        #
+        # FsaToTensor, FsaFromTensor
+        # FsaVecToTensor, FsaVecFromTensor
+        # GetFsaVecElement
+
+        tensor = k2.to_tensor(fsa)
+        del fsa
+
+        fsa2 = k2.Fsa(tensor)
+        assert torch.allclose(
+            fsa2.score,
+            torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
+                         dtype=torch.float32))
+        fsa_vec = k2.to_fsa_vec(fsa2)
+        assert fsa_vec.shape == (1, None, None)
+
+        ragged_arc = _k2._get_fsa_vec_element(fsa_vec.arcs, 0)
+        fsa = k2.Fsa(ragged_arc.values())
+        assert torch.allclose(
+            fsa.score,
+            torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
+                         dtype=torch.float32))
+
+        tensor = k2.to_tensor(fsa_vec)
+        fsa_vec2 = k2.Fsa(tensor)
+        assert fsa_vec.shape == (1, None, None)
+
+        ragged_arc = _k2._get_fsa_vec_element(fsa_vec.arcs, 0)
+        fsa = k2.Fsa(ragged_arc.values())
         assert torch.allclose(
             fsa.score,
             torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
