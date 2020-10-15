@@ -496,6 +496,7 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
 
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
+  K2_STATIC_ASSERT((std::is_convertible<S, T>::value));
   K2_CHECK(IsCompatible(src, *dest));
   int32_t dim = src.Dim();
   K2_CHECK_EQ(dest->Dim(), dim);
@@ -513,7 +514,7 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
       dest_data[i] = min_value;
     }
   } else {
-    K2_CHECK(c->GetDeviceType() == kCuda);
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
     MinOp<S> min_op;
     internal::ConstReversedPtr<S> src_ptr =
         internal::ConstReversedPtr<S>(src_data, dim);

@@ -334,7 +334,7 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
                        as `src` and have the same dimension; may be the
                        same as `src`.
 
-  At exit, `d = *dest` will be the largest sequence that is monototonically
+  At exit, `d = *dest` will be the largest sequence that is monotonically
   increasing (i.e. `d[i] <= d[i+1]`) and for which `d[i] <= src[i]`.  We
   compute this using an inclusive scan using a min operator on the
   reverse of the arrays `src` and `dest`.
