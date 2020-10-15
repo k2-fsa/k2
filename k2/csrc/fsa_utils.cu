@@ -550,6 +550,7 @@ std::string FsaToString(const Fsa &fsa, bool openfst /*= false*/,
 }
 
 Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
+  K2_CHECK(fsas.NumAxes() == 3);
   ContextPtr c = fsas.Context();
   int32_t num_arcs = fsas.NumElements();
   Array1<int32_t> ans(c, num_arcs);
@@ -603,44 +604,34 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
   // it passes the end of this FSA, we get the beginnings of the batches
   // we want.  The natural algorithm to find the beginnings of the batches
   // is sequential.
-  Array2<int32_t> dest_states_powers(c, num_states, log_power + 1);
+  Array2<int32_t> dest_states_powers(c, log_power + 1, num_states);
   const int32_t *arc_dest_states_data = arc_dest_states.Data(),
                 *fsas_row_splits2_data = fsas.RowSplits(2).Data();
-  int32_t *dest_states_data = dest_states_powers.Data();
+  int32_t *dest_states_power_data =
+      dest_states_powers.Data();  // only process Row[0] below
   const int32_t int_max = std::numeric_limits<int32_t>::max();
   auto lambda_set_dest_states =
       [=] __host__ __device__(int32_t state_idx01) -> void {
     int32_t arc_idx01x = fsas_row_splits2_data[state_idx01],
-            next_arc_idx01x = fsas_row_splits2_data[arc_idx01x];
+            next_arc_idx01x = fsas_row_splits2_data[state_idx01 + 1];
     // If this state has arcs, let its `dest_state` be the largest `dest_state`
     // of any of its arcs (which is the last one); otherwise, take the
     // `dest_state` from the 1st arc of the next state, which is the largest
     // value we can take (if the definition is: the highest-numbered state s for
     // which neither this state nor any later-numbered state has an arc to a
     // state lower than s).
-    int32_t arc_idx012 = max(arc_idx01x, next_arc_idx01x - 1);
+    int32_t arc_idx012 =
+        max(arc_idx01x,
+            next_arc_idx01x - 1);  // if this state has arcs, next_arc_idx01x -
+                                   // 1 would be the last arc of this state
     int32_t dest_state =
         (arc_idx012 < num_arcs ? arc_dest_states_data[arc_idx012] : int_max);
-    dest_states_data[state_idx01] = dest_state;
+    dest_states_power_data[state_idx01] = dest_state;
     // if the following fails, it's either a code error or the input FSA had
     // cycles.
     K2_CHECK_GT(dest_state, state_idx01);
   };
   Eval(c, num_states, lambda_set_dest_states);
-
-  for (int32_t power = 1; power <= log_power; power++) {
-    int32_t stride = dest_states_powers.ElemStride0();
-    const int32_t *src_data = dest_states_powers.Data() + (power - 1) * stride;
-    int32_t *dest_data = dest_states_powers.Data() + power * stride;
-    auto lambda_square_array =
-        [=] __host__ __device__(int32_t state_idx01) -> void {
-      int32_t dest_state = src_data[state_idx01],
-              dest_state_sq =
-                  (dest_state < num_states ? src_data[dest_state] : int_max);
-      dest_data[state_idx01] = dest_state_sq;
-    };
-    Eval(c, num_states, lambda_square_array);
-  }
 
   // `num_batches_per_fsa` will be set to the number of batches of states that
   // we'll use for each FSA... it corresponds to the number of times we have
@@ -660,6 +651,37 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
           *batch_starts_data = batch_starts.Data();
   const int32_t *fsas_row_splits1_data = fsas.RowSplits(1).Data();
 
+  // TODO(Dan): after debugging this version, change it to 0 and debug the
+  // more complex version.
+#if 1
+  // This is a simple version of the kernel that demonstrates what we're trying
+  // to do with the more complex code.
+  auto lambda_set_batch_info_simple = [=] __host__ __device__(int32_t fsa_idx) {
+    int32_t begin_state_idx01 = fsas_row_splits1_data[fsa_idx],
+            end_state_idx01 = fsas_row_splits1_data[fsa_idx + 1];
+    int32_t i = 0, cur_state_idx01 = begin_state_idx01;
+    while (cur_state_idx01 < end_state_idx01) {
+      batch_starts_data[begin_state_idx01 + i] = cur_state_idx01;
+      cur_state_idx01 = dest_states_power_data[cur_state_idx01];
+      ++i;
+    }
+    num_batches_per_fsa_data[fsa_idx] = i;
+  };
+  Eval(c, num_fsas, lambda_set_batch_info_simple);
+#else
+  for (int32_t power = 1; power <= log_power; power++) {
+    int32_t stride = dest_states_powers.ElemStride0();
+    const int32_t *src_data = dest_states_powers.Data() + (power - 1) * stride;
+    int32_t *dest_data = dest_states_powers.Data() + power * stride;
+    auto lambda_square_array =
+        [=] __host__ __device__(int32_t state_idx01) -> void {
+      int32_t dest_state = src_data[state_idx01],
+              dest_state_sq =
+                  (dest_state < num_states ? src_data[dest_state] : int_max);
+      dest_data[state_idx01] = dest_state_sq;
+    };
+    Eval(c, num_states, lambda_square_array);
+  }
   // jobs_per_fsa tells us how many separate chains of states we'll follow for
   // each FSA.
   // jobs_multiple is a kind of trick to ensure any given warp doesn't
@@ -671,23 +693,6 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
     jobs_multiple /= 2;  // Likely won't get here.  Just reduce multiple if
                          // num-jobs is ridiculous.
 
-    // TODO(Dan): after debugging this version, change it to 0 and debug the
-    // more complex version.
-#if 1
-  // This is a simple version of the kernel that demonstrates what we're trying
-  // to do with the more complex code.
-  auto lambda_set_batch_info_simple = [=] __host__ __device__(int32_t fsa_idx) {
-    int32_t begin_state_idx01 = fsas_row_splits1_data[fsa_idx],
-            end_state_idx01 = fsas_row_splits1_data[fsa_idx + 1];
-    int32_t i = 0, cur_state_idx01 = begin_state_idx01;
-    while (cur_state_idx01 < end_state_idx01) {
-      batch_starts_data[begin_state_idx01 + (i++)] = cur_state_idx01;
-      cur_state_idx01 = dest_states_data[cur_state_idx01];
-    }
-    num_batches_per_fsa_data[fsa_idx] = i;
-  };
-  Eval(c, num_fsas, lambda_set_batch_info_simple);
-#else
   auto dest_states_powers_acc = dest_states_powers.Accessor();
   auto lambda_set_batch_info = [=] __host__ __device__(int32_t fsa_idx,
                                                        int32_t j) {
@@ -768,26 +773,25 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
 
   Ragged<int32_t> ans(RaggedShape3(&ans_row_splits1, &ans_row_ids1, num_batches,
                                    &ans_row_splits2, nullptr, num_states),
-                      Range(c, 0, num_states));
-  if (transpose)
-    return Transpose(ans);
-  else
-    return ans;
+                      Range(c, num_states, 0));
+  if (transpose) {
+    K2_LOG(FATAL) << "Don't call this version for now, will implement later";
+  }
+  return ans;
 }
 
-Ragged<int32_t> GetIncomingArcs(FsaVec &fsas, const Array1<int32_t> &dest_states) {
+Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
+                                const Array1<int32_t> &dest_states) {
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   ContextPtr c = fsas.Context();
   Ragged<int32_t> dest_states_tensor(fsas.shape, dest_states);
-  int32_t num_fsas = fsas.Dim0(),
-    num_states = fsas.TotSize(1),
-    num_arcs = fsas.TotSize(2);
-                                     
-  Array1<int32_t> incoming_arcs_order =
-    GetTransposeReordering(dest_states_tensor,
-                           num_states),
+  int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
+          num_arcs = fsas.TotSize(2);
 
-    ans_row_ids2 = dest_states[incoming_arcs_order];
+  Array1<int32_t> incoming_arcs_order =
+                      GetTransposeReordering(dest_states_tensor, num_states),
+
+                  ans_row_ids2 = dest_states[incoming_arcs_order];
   // Note: incoming_arcs_row_ids2 will be monotonically increasing
 
   Array1<int32_t> ans_row_splits2(c, num_states + 1);
@@ -796,11 +800,11 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas, const Array1<int32_t> &dest_states
   // Axis 1 corresponds to FSA states, so the row-ids and row-splits for axis
   // 1 are the same as for `fsas`.
   Array1<int32_t> ans_row_ids1 = fsas.RowIds(1),
-    ans_row_splits1 = fsas.RowSplits(1);
-  return Ragged<int32_t>(RaggedShape3(&ans_row_splits1, &ans_row_ids1, num_states,
-                                      &ans_row_splits2, &ans_row_ids2, num_arcs),
-                         incoming_arcs_order);
+                  ans_row_splits1 = fsas.RowSplits(1);
+  return Ragged<int32_t>(
+      RaggedShape3(&ans_row_splits1, &ans_row_ids1, num_states,
+                   &ans_row_splits2, &ans_row_ids2, num_arcs),
+      incoming_arcs_order);
 }
-  
-  
+
 }  // namespace k2

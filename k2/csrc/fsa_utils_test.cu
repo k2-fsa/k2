@@ -4,13 +4,18 @@
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Guoguo Chen
+ *                      Xiaomi Corporation (authors: Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <vector>
+
+#include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_utils.h"
 
 namespace k2 {
@@ -211,6 +216,134 @@ TEST(FsaToString, Transducer) {
 
   str = FsaToString(fsa, true, &aux_labels);
   K2_LOG(INFO) << "\n---negating---\n" << str;
+}
+
+template <DeviceType d>
+void TestGetDestStates() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  // test with simple case should be good enough
+  std::string s1 = R"(0 1 1 0
+    0 2  1 0
+    0 3  1 0
+    0 3  2 0
+    1 2  1 0
+    1 3  1 0
+    3 4  1 0
+    3 5  -1 0
+    4 5  -1 0
+    5
+  )";
+
+  std::string s2 = R"(0 1 1 0
+    0 2  1 0
+    1 2  1 0
+    1 3  1 0
+    2 3  1 0
+    2 4  -1 0
+    4
+  )";
+
+  Fsa fsa1 = FsaFromString(s1);
+  Fsa fsa2 = FsaFromString(s2);
+  Fsa *fsa_array[] = {&fsa1, &fsa2};
+  FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+  fsa_vec = fsa_vec.To(context);
+
+  {
+    // as_idx01 = false
+    Array1<int32_t> result = GetDestStates(fsa_vec, false);
+    ASSERT_EQ(result.Dim(), fsa_vec.NumElements());
+    result = result.To(cpu);
+    std::vector<int32_t> cpu_data(result.Data(), result.Data() + result.Dim());
+    EXPECT_THAT(cpu_data, ::testing::ElementsAre(1, 2, 3, 3, 2, 3, 4, 5, 5, 1,
+                                                 2, 2, 3, 3, 4));
+  }
+
+  {
+    // as_idx01 = true
+    Array1<int32_t> result = GetDestStates(fsa_vec, true);
+    ASSERT_EQ(result.Dim(), fsa_vec.NumElements());
+    result = result.To(cpu);
+    std::vector<int32_t> cpu_data(result.Data(), result.Data() + result.Dim());
+    EXPECT_THAT(cpu_data, ::testing::ElementsAre(1, 2, 3, 3, 2, 3, 4, 5, 5, 7,
+                                                 8, 8, 9, 9, 10));
+  }
+}
+
+TEST(FsaUtilsTest, TestGetDestStates) {
+  TestGetDestStates<kCpu>();
+  TestGetDestStates<kCuda>();
+}
+
+template <DeviceType d>
+void TestGetStateBatches() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // simple case
+    std::string s1 = R"(0 1 1 0
+    0 2  1 0
+    0 3  1 0
+    0 3  2 0
+    1 2  1 0
+    1 3  1 0
+    3 4  1 0
+    3 5  -1 0
+    4 5  -1 0
+    5
+  )";
+
+    std::string s2 = R"(0 1 1 0
+    0 2  1 0
+    1 2  1 0
+    1 3  1 0
+    2 3  1 0
+    2 4  -1 0
+    4
+  )";
+
+    std::string s3 = R"(0 2 1 0
+    1 2  1 0
+    1 3  1 0
+    1 4  1 0
+    2 3  1 0
+    2 4  1 0
+    3 4  1 0
+    4 5  -1 0
+    5
+  )";
+
+    Fsa fsa1 = FsaFromString(s1);
+    Fsa fsa2 = FsaFromString(s2);
+    Fsa fsa3 = FsaFromString(s3);
+    Fsa *fsa_array[] = {&fsa1, &fsa2, &fsa3};
+    FsaVec fsa_vec = CreateFsaVec(3, &fsa_array[0]);
+    fsa_vec = fsa_vec.To(context);
+
+    Ragged<int32_t> result = GetStateBatches(fsa_vec, false);
+  }
+
+  // TODO(haowen): add random cases
+}
+
+TEST(FsaUtilsTest, TestGetStateBatches) {
+  TestGetStateBatches<kCpu>();
+  TestGetStateBatches<kCuda>();
 }
 
 }  // namespace k2
