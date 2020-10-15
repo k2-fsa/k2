@@ -17,6 +17,7 @@ set(context_srcs
   fsa.cu
   fsa_algo.cu
   fsa_utils.cu
+  host_shim.cu
   math.cu
   moderngpu_allocator.cu
   ragged.cu

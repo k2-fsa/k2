@@ -286,9 +286,9 @@ inline FsaVec CreateFsaVec(int32_t num_fsas, Fsa **fsas) {
 Fsa EmptyFsa();
 
 // Converts Fsa to FsaVec with one element (note: will share the same underlying
-// memory, just add an extra axis).
+// memory, just add an extra axis, increasing NumAxes() from 2 to 3).
 // Is non-const becaues the FSA's row-ids
-FsaVec FsaVecFromFsa(const Fsa &fsa);
+FsaVec FsaToFsaVec(const Fsa &fsa);
 
 // Compute and return basic properties for Fsa.
 // Returns 0 if fsa.NumAxes() != 2.
