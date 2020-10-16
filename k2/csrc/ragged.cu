@@ -150,6 +150,13 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i, int32_t *value_offset) {
   const auto &src_axes = Axes();
   K2_CHECK_LT(i + 1, src_axes[0].row_splits.Dim());
 
+  if (i == 0 && Dim0() == 1) {
+    // Just remove first axis.  Common case so we make it efficient.
+    std::vector<RaggedShapeDim> ans_axes(src_axes.begin() + 1,
+                                         src_axes.end());
+    if (value_offset) *value_offset = 0;
+    return RaggedShape(ans_axes, false);
+  }
 
   int32_t idx_begin = (i != 0 ? src_axes[0].row_splits[i] : 0),
     idx_end = src_axes[0].row_splits[i + 1];
