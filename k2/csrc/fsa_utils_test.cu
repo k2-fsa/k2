@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <numeric>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -331,11 +332,50 @@ void TestGetStateBatches() {
     Fsa fsa1 = FsaFromString(s1);
     Fsa fsa2 = FsaFromString(s2);
     Fsa fsa3 = FsaFromString(s3);
+    std::vector<int32_t> states_num = {fsa1.Dim0(), fsa2.Dim0(), fsa3.Dim0()};
     Fsa *fsa_array[] = {&fsa1, &fsa2, &fsa3};
     FsaVec fsa_vec = CreateFsaVec(3, &fsa_array[0]);
     fsa_vec = fsa_vec.To(context);
+    int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1);
+    EXPECT_EQ(num_fsas, 3);
 
-    Ragged<int32_t> result = GetStateBatches(fsa_vec, false);
+    {
+      // no transpose: [fsa_idx][batch_idx][state]
+      Ragged<int32_t> result = GetStateBatches(fsa_vec, false);
+      result = result.To(cpu);
+      EXPECT_EQ(result.Dim0(), num_fsas);
+      ASSERT_EQ(result.NumElements(), num_states);
+      int32_t *row_splits1_data = result.RowSplits(1).Data();
+      for (int32_t n = 0; n < num_fsas; ++n) {
+        int32_t num_batches = row_splits1_data[n + 1] - row_splits1_data[n];
+        // num-batches in each fsa should not be greater num-states
+        EXPECT_LE(num_batches, states_num[n]);
+        if (states_num[n] > 0) {
+          EXPECT_GT(num_batches, 0);
+        }
+      }
+      // check values
+      std::vector<int32_t> states(num_states);
+      std::iota(states.begin(), states.end(), 0);
+      Array1<int32_t> values = result.values;
+      ASSERT_EQ(values.Dim(), num_states);
+      std::vector<int32_t> cpu_values(values.Data(),
+                                      values.Data() + values.Dim());
+      EXPECT_EQ(cpu_values, states);
+    }
+
+    {
+      // transpose: [batch_index][fsa_index][state]
+      Ragged<int32_t> result = GetStateBatches(fsa_vec, true);
+      result = result.To(cpu);
+      // result.Dim0() is num-batches
+      EXPECT_EQ(result.TotSize(1), num_fsas * result.Dim0());
+      ASSERT_EQ(result.NumElements(), num_states);
+      int32_t *row_splits1_data = result.RowSplits(1).Data();
+      for (int32_t n = 0; n <= result.Dim0(); ++n) {
+        EXPECT_EQ(row_splits1_data[n], n * num_fsas);
+      }
+    }
   }
 
   // TODO(haowen): add random cases

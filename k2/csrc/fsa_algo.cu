@@ -10,6 +10,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
@@ -64,10 +66,8 @@ bool ConnectFsa(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map) {
   return ans;
 }
 
-void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
-               FsaVec *out,
-               Array1<int32_t> *arc_map_a,
-               Array1<int32_t> *arc_map_b) {
+void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
+               Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b) {
   K2_CHECK(a_fsas.NumAxes() >= 2 && a_fsas.NumAxes() <= 3);
   K2_CHECK(b_fsas.NumAxes() >= 2 && b_fsas.NumAxes() <= 3);
   ContextPtr c = a_fsas.Context();
@@ -83,15 +83,18 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
     return;
   }
 
-  int32_t num_fsas_a = a_fsas.Dim0(),
-    num_fsas_b = b_fsas.Dim0();
+  int32_t num_fsas_a = a_fsas.Dim0(), num_fsas_b = b_fsas.Dim0();
   K2_CHECK_GT(num_fsas_a, 0);
   K2_CHECK_GT(num_fsas_b, 0);
   int32_t stride_a = 1, stride_b = 1;
   if (num_fsas_a != num_fsas_b) {
-    if (num_fsas_a == 1) { stride_a = 0; }
-    else if (num_fsas_b == 1) { stride_b = 0; }
-    else { K2_CHECK_EQ(num_fsas_a, num_fsas_b); }
+    if (num_fsas_a == 1) {
+      stride_a = 0;
+    } else if (num_fsas_b == 1) {
+      stride_b = 0;
+    } else {
+      K2_CHECK_EQ(num_fsas_a, num_fsas_b);
+    }
     // the check on the previous line will fail.
   }
   int32_t num_fsas = std::max(num_fsas_a, num_fsas_b);
@@ -100,9 +103,9 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
   std::vector<k2host::Array2Size<int32_t>> sizes(num_fsas);
   for (int32_t i = 0; i < num_fsas; i++) {
     k2host::Fsa host_fsa_a = FsaVecToHostFsa(a_fsas, i * stride_a),
-      host_fsa_b = FsaVecToHostFsa(b_fsas, i * stride_b);
-    intersections[i] = std::make_unique<k2host::Intersection>(host_fsa_a,
-                                                              host_fsa_b);
+                host_fsa_b = FsaVecToHostFsa(b_fsas, i * stride_b);
+    intersections[i] =
+        std::make_unique<k2host::Intersection>(host_fsa_a, host_fsa_b);
     intersections[i]->GetSizes(&(sizes[i]));
   }
   FsaVecCreator creator(sizes);
@@ -111,24 +114,25 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
   if (arc_map_a) *arc_map_a = Array1<int32_t>(c, num_arcs);
   if (arc_map_b) *arc_map_b = Array1<int32_t>(c, num_arcs);
 
-
   // the following few lines will allow us to add suitable offsets to the
   // `arc_map`.
-  Array1<int32_t> a_fsas_row_splits12 = a_fsas.RowSplits(2)[a_fsas.RowSplits(1)],
-    b_fsas_row_splits12 = b_fsas.RowSplits(2)[b_fsas.RowSplits(1)];
+  Array1<int32_t> a_fsas_row_splits12 =
+                      a_fsas.RowSplits(2)[a_fsas.RowSplits(1)],
+                  b_fsas_row_splits12 =
+                      b_fsas.RowSplits(2)[b_fsas.RowSplits(1)];
   const int32_t *a_fsas_row_splits12_data = a_fsas_row_splits12.Data(),
-    *b_fsas_row_splits12_data = b_fsas_row_splits12.Data();
+                *b_fsas_row_splits12_data = b_fsas_row_splits12.Data();
 
   for (int32_t i = 0; i < num_fsas; i++) {
     k2host::Fsa host_fsa_out = creator.GetHostFsa(i);
     int32_t arc_offset = creator.GetArcOffsetFor(i);
-    int32_t *this_arc_map_a = (arc_map_a ? arc_map_a->Data() + arc_offset :
-                               nullptr),
-      *this_arc_map_b = (arc_map_b ? arc_map_b->Data() + arc_offset :
-                         nullptr);
-    bool ans = intersections[i]->GetOutput(&host_fsa_out,
-                                           this_arc_map_a, this_arc_map_b);
-    int32_t this_num_arcs = creator.GetArcOffsetFor(i+1) - arc_offset;
+    int32_t *this_arc_map_a =
+                (arc_map_a ? arc_map_a->Data() + arc_offset : nullptr),
+            *this_arc_map_b =
+                (arc_map_b ? arc_map_b->Data() + arc_offset : nullptr);
+    bool ans = intersections[i]->GetOutput(&host_fsa_out, this_arc_map_a,
+                                           this_arc_map_b);
+    int32_t this_num_arcs = creator.GetArcOffsetFor(i + 1) - arc_offset;
     if (arc_map_a) {
       int32_t arc_offset_a = a_fsas_row_splits12_data[i * stride_a];
       for (int32_t i = 0; i < this_num_arcs; i++)
