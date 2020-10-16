@@ -651,7 +651,7 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
           *batch_starts_data = batch_starts.Data();
   const int32_t *fsas_row_splits1_data = fsas.RowSplits(1).Data();
 
-#if 1
+#if 0
   // This is a simple version of the kernel that demonstrates what we're trying
   // to do with the more complex code.
   auto lambda_set_batch_info_simple = [=] __host__ __device__(int32_t fsa_idx) {
@@ -710,15 +710,16 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
 
     int32_t begin_state_idx01 = fsas_row_splits1_data[fsa_idx],
             end_state_idx01 = fsas_row_splits1_data[fsa_idx + 1];
+    int32_t num_states_this_fsa = end_state_idx01 - begin_state_idx01;
     int32_t i = 0, cur_state_idx01 = begin_state_idx01;
 
-    if (task_idx >= end_state_idx01 - begin_state_idx01) return;
+    if (task_idx >= num_states_this_fsa) return;
 
     // The next loop advances `cur_state_idx01` by
     // a number of steps equal to `task_idx`.
     for (int32_t m = 0; m < log_power; ++m) {
       int32_t n = 1 << m;
-      if (task_idx % n != 0) {
+      if ((task_idx & n) != 0) {
         i += n;
         int32_t next = dest_states_powers_acc(m, cur_state_idx01);
         if (next >= end_state_idx01) return;
@@ -728,18 +729,20 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
     K2_CHECK_EQ(i, task_idx);
 
     while (1) {
+      if (i >= num_states_this_fsa) return;
       batch_starts_data[begin_state_idx01 + i] = cur_state_idx01;
-      int32_t next_state_idx01 =
-          dest_states_powers_acc(log_power, cur_state_idx01);
+      int32_t next_state_idx01 = dest_states_powers_acc(
+          log_power,
+          cur_state_idx01);  // advance jobs_per_fsa = (1 << log_power) steps
       if (next_state_idx01 >= end_state_idx01) {
         // if exactly one step would also be enough to take us past the
         // boundary...
-        if (dest_states_powers_acc(0, cur_state_idx01) >= next_state_idx01) {
+        if (dest_states_powers_acc(0, cur_state_idx01) >= end_state_idx01) {
           num_batches_per_fsa_data[fsa_idx] = i + 1;
         }
         return;
       } else {
-        i += cur_state_idx01;
+        i += jobs_per_fsa;
         cur_state_idx01 = next_state_idx01;
       }
     }
@@ -757,7 +760,7 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
   int32_t *ans_row_splits2_data = ans_row_splits2.Data();
   ans_row_splits2.Range(num_batches, 1) = num_states;  // The kernel below won't
                                                        // set this last element
-  auto lambda_set_ans_row_ids2 =
+  auto lambda_set_ans_row_splits2 =
       [=] __host__ __device__(int32_t idx01) -> void {
     int32_t idx0 = ans_row_ids1_data[idx01],  // Fsa index
         idx0x = ans_row_splits1_data[idx0], idx1 = idx01 - idx0x,
@@ -770,7 +773,7 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
         this_batch_start = batch_starts_data[fsas_idx01];
     ans_row_splits2_data[idx01] = this_batch_start;
   };
-  Eval(c, num_batches, lambda_set_ans_row_ids2);
+  Eval(c, num_batches, lambda_set_ans_row_splits2);
 
   RaggedShape ans_shape =
       RaggedShape3(&ans_row_splits1, &ans_row_ids1, num_batches,
