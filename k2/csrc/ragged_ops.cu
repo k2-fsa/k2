@@ -894,6 +894,60 @@ static Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
   return ans;
 }
 
+static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
+                                                           int32_t num_cols) {
+  K2_CHECK_EQ(src.NumAxes(), 3);
+  ContextPtr &context = src.Context();
+  K2_CHECK_EQ(context->GetDeviceType(), kCuda);
+
+  const int32_t *row_splits1_data = src.RowSplits(1).Data();
+  const int32_t *row_splits2_data = src.RowSplits(2).Data();
+  const int32_t *row_ids2_data = src.RowIds(2).Data();
+  const int32_t *value_data = src.values.Data();
+
+  Array1<int32_t> segments(context, src.Dim0());
+  int32_t *segments_data = segments.Data();
+  auto lambda_fill_segments = [=] __device__(int idx0) -> void {
+    int32_t idx0x = row_splits1_data[idx0];
+    int32_t idx0xx = row_splits2_data[idx0x];
+    segments_data[idx0] = idx0xx;
+  };
+  Eval(context, src.Dim0(), lambda_fill_segments);
+
+  auto lambda_comp = [=] __device__(int32_t a_idx012,
+                                    int32_t b_idx012) -> bool {
+    int32_t a_col_index = value_data[a_idx012];
+    int32_t b_col_index = value_data[b_idx012];
+
+    if (a_col_index < b_col_index) return true;  // sort by column indexes
+    if (a_col_index > b_col_index) return false;
+
+    // at this point, a_idx012 and b_idx012 belong to the same column;
+    // then we sort by its row indexes
+
+    int32_t a_idx01 = row_ids2_data[a_idx012];
+    int32_t b_idx01 = row_ids2_data[b_idx012];
+
+    if (a_idx01 < b_idx01) return true;
+    if (a_idx01 > b_idx01) return false;
+
+    // at this point, a_idx012 and b_idx012 are duplicate elements
+    return false;  // either true or false is fine
+  };
+
+  std::unique_ptr<mgpu::context_t> mgpu_context =
+      GetModernGpuAllocator(context->GetDeviceId());
+
+  int32_t n = src.values.Dim();
+  Array1<int32_t> ans = Range(context, n, 0);
+  K2_CUDA_SAFE_CALL(mgpu::segmented_sort(ans.Data(),          // keys
+                                         ans.Dim(),           // count
+                                         segments.Data(),     // segments
+                                         segments.Dim() - 1,  // num_segments
+                                         lambda_comp, *mgpu_context));
+  return ans;
+}
+
 Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   ContextPtr &context = src.Context();
   if (src.NumAxes() < 2) {
@@ -905,6 +959,9 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   if (device_type == kCpu) return GetTransposeReorderingCpu(src, num_cols);
 
   K2_CHECK_EQ(device_type, kCuda);
+
+  if (src.NumAxes() == 3)
+    return GetTransposeReorderingThreeAxesCuda(src, num_cols);
 
   const int32_t *row_splits1_data = src.RowSplits(src.NumAxes() - 1).Data();
   const int32_t *row_ids1_data = src.RowIds(src.NumAxes() - 1).Data();
