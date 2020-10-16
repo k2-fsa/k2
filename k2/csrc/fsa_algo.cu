@@ -147,6 +147,96 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
   *out = creator.GetFsaVec();
 }
 
+Fsa LinearFsa(Array1<int32_t> &symbols) {
+  ContextPtr c = symbols.Context();
+  int32_t n = symbols.Dim(),
+      num_states = n + 2,
+      num_arcs = n + 1;
+  Array1<int32_t> row_splits1 = Range(c, num_states + 1, 0),
+                     row_ids1 = Range(c, num_arcs, 0);
+  Array1<Arc> arcs(c, num_arcs);
+  Arc *arcs_data = arcs.Data();
+  const int32_t *symbols_data = symbols.Data();
+  auto lambda_set_arcs = [=] __host__ __device__ (int32_t arc_idx01) -> void {
+    int32_t src_state = arc_idx01,
+      dest_state = arc_idx01 + 1,
+    // -1 == kFinalSymbol
+    symbol = (arc_idx01 < n ? symbols_data[n] : -1);
+    K2_CHECK_NE(symbol, -1);
+    float score = 0.0;
+    arcs_data[arc_idx01] = Arc(src_state, dest_state, symbol, score);
+  };
+  Eval(c, num_arcs, lambda_set_arcs);
+  return Ragged<Arc>(RaggedShape2(&row_splits1, &row_ids1, num_arcs),
+                     arcs);
+}
+
+
+Fsa LinearFsas(Ragged<int32_t> &symbols) {
+  K2_CHECK(symbols.NumAxes() == 2);
+  ContextPtr c = symbols.Context();
+
+  // if there are n symbols, there are n+2 states and n+1 arcs.
+  RaggedShape states_shape = ChangeSublistSize(symbols.shape, 2);
+
+  int32_t num_states = states_shape.NumElements(),
+            num_arcs = symbols.NumElements() + symbols.Dim0();
+
+  // row_splits2 maps from state_idx01 to arc_idx012; row_ids2 does the reverse.
+  // We'll set them in the lambda below.
+  Array1<int32_t> row_splits2(c, num_states + 2),
+      row_ids2(c, num_arcs);
+
+
+  int32_t *row_ids2_data = row_ids2.Data(),
+       *row_splits2_data = row_splits2.Data();
+  const int32_t *row_ids1_data = states_shape.RowIds(1).Data(),
+             *row_splits1_data = states_shape.RowSplits(1).Data(),
+                 *symbols_data = symbols.values.Data();
+  Array1<Arc> arcs(c, num_arcs);
+  Arc *arcs_data = arcs.Data();
+  auto lambda = [=] __host__ __device__ (int32_t state_idx01) -> void {
+    int32_t fsa_idx0 = row_ids1_data[state_idx01],
+      state_idx0x = row_splits1_data[fsa_idx0],
+      next_state_idx0x = row_splits1_data[fsa_idx0 + 1],
+      idx1 = state_idx01 - state_idx0x;
+
+    // the following works because each FSA has one fewer arcs than states.
+    int32_t arc_idx0xx = state_idx0x - fsa_idx0,
+      next_arc_idx0xx = next_state_idx0x - (fsa_idx0 + 1),
+    // the following may look a bit wrong.. here, the idx1 is the same as
+    // the idx12 if the arc exists, because each state has one arc leaving
+    // it (except the last state).
+    arc_idx012 = arc_idx0xx + idx1;
+    // the following works because each FSA has one fewer symbols than arcs
+    // (however it doesn't work for the last arc of each FSA; we check below.)
+    int32_t symbol_idx01 = arc_idx012 - fsa_idx0;
+    if (arc_idx012 < next_arc_idx0xx) {
+      int32_t src_state = idx1,
+             dest_state = idx1 + 1,
+                 symbol = (arc_idx012 + 1 < next_arc_idx0xx ?
+                           symbols_data[symbol_idx01] : -1);  // kFinalSymbol
+      float score = 0.0;
+      arcs_data[arc_idx012] = Arc(src_state, dest_state, symbol, score);
+      row_ids2_data[arc_idx012] = state_idx01;
+    } else {
+      // The following ensures that the last element of row_splits1_data
+      // (i.e. row_splits1[num_states]) is set to num_arcs.  It also writes something
+      // unnecessary for the last state of each FSA but the last one, which will
+      // cause 2 threads to write the same item to the same location.
+      // Note that there is no arc with index `arc_idx01`, if you reach here.
+      row_splits2_data[state_idx01+1] = arc_idx012;
+    }
+    row_splits2_data[state_idx01] = arc_idx012;
+  };
+  Eval(c, num_states, lambda);
+
+  return Ragged<Arc>(RaggedShape3(&states_shape.RowSplits(1),
+                                  &states_shape.RowIds(1), num_states,
+                                  &row_splits2, &row_splits2, num_arcs),
+                     arcs);
+}
+
 namespace {
 struct ArcComparer {
   __host__ __device__ __forceinline__ bool operator()(const Arc &lhs,

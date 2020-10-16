@@ -139,6 +139,32 @@ void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
  */
 RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src);
 
+
+/*
+  Return a modified version of `src` in which all sub-lists on the last axis of
+  the tenor have size modified by `size_delta`.  `size_delta` may have either
+  sign.  If for a sub-list of size `cur_size`, `cur_size - size_delta < 0`, that
+  sub-list's size will be changed to 0 but the sub-list will be kept.
+
+
+     @param [in] src  Source tensor; must have NumAxes() >= 2, i.e. be valid.
+                      Only the last axis, i.e. the last RowSplits/RowIds(),
+                      will be affected by this.
+     @param [in] size_delta  Amount by which to change the size of sub-lists.
+                      May be either sign; if negative, we'll reduce the
+                      sub-list size by this amount, possibly leaving empty
+                      sub-lists (but it's an error if this would reduce any sub-list
+                      size below zero).
+     @return          Returns the modified RaggedShape.  The RowSplits()
+                      and RowIds() of its last axis will not be shared
+                      with `src`.
+
+  Example: ChangeSubListSize( [ [ x x ] [ x x x ] ], 1) returns
+    [ [ x x x ] [ x x x x ] ]
+  (using the x as placeholders for the values since these are unknown).
+ */
+RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta);
+
 /*
   Insert a new axis at position `axis`, with 0 <= axis <= src.NumAxes(), for
   which the only allowed index will be 0 (which is another way of saying: all
