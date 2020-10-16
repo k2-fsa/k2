@@ -544,7 +544,7 @@ class ParallelRunner {
   // destructor of `this` You can pass this into the Eval() and Eval2()
   // functions, or invoke kernels directly with it; but if you want it
   // to be used in called functions you should do something like
-  //  With(pr.NewStream) w;
+  //  With w(pr.NewStream());
   // with that object alive in the scope where you want the stream to be
   // used.
   //

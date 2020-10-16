@@ -135,7 +135,37 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
                FsaVec *out,
                Array1<int32_t> *arc_map_a,
                Array1<int32_t> *arc_map_b);
-  
+
+
+/*
+  Create a linear FSA from a sequence of symbols
+
+    @param [in] symbols  Input symbol sequence (must not contain
+                kFinalSymbol == -1).
+
+    @return     Returns an FSA that accepts only this symbol
+                sequence, with zero score.  Note: if
+                `symbols.size() == n`, the returned FSA
+                will have n+1 arcs (including the final-arc) and
+                n+2 states.
+*/
+Fsa LinearFsa(Array1<int32_t> &symbols);
+
+/*
+  Create an FsaVec contining linear FSAs, given a list of sequences of
+  symbols
+
+    @param [in] symbols  Input symbol sequences (must not contain
+                kFinalSymbol == -1).
+
+    @return     Returns an FsaVec with `ans.Dim0() == symbols.Dim0()`.  Note: if
+                the i'th row of `symbols` has n elements, the i'th returned FSA
+                will have n+1 arcs (including the final-arc) and n+2 states.
+ */
+Fsa LinearFsas(Ragged<int32_t> &symbols);
+
+
+
 
 }  // namespace k2
 
