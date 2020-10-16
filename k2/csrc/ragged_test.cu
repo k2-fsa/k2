@@ -1747,4 +1747,73 @@ TEST(RaggedTest, TestStackRagged) {
   TestStackRagged<kCpu, double>();
   TestStackRagged<kCuda, double>();
 }
+
+template <DeviceType d>
+void TestMakeTransposable() {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  ContextPtr context = nullptr;
+  if (d == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    context = GetCudaContext();
+  }
+
+  {
+    // simple case
+    const std::vector<int32_t> row_splits1 = {0, 2, 5, 6, 8};
+    // const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2, 3, 3};
+    const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10, 12, 13};
+    // const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5, 6,
+    //                                        6, 7};
+    Array1<int32_t> row_splits1_array(context, row_splits1);
+    Array1<int32_t> row_splits2_array(context, row_splits2);
+    RaggedShape shape = RaggedShape3(&row_splits1_array, nullptr, -1,
+                                     &row_splits2_array, nullptr, -1);
+
+    std::vector<std::vector<int32_t>> expected_row_splits = {
+        {0, 3, 6, 9, 12}, {0, 2, 3, 3, 4, 6, 7, 10, 10, 10, 12, 13, 13}};
+    std::vector<std::vector<int32_t>> expected_row_ids = {
+        {0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3},
+        {0, 0, 1, 3, 4, 4, 5, 6, 6, 6, 9, 9, 10}};
+
+    RaggedShape result = MakeTransposable(shape);
+    for (int32_t i = 1; i != 3; ++i) {
+      CheckArrayData(result.RowSplits(i), expected_row_splits[i - 1]);
+      CheckArrayData(result.RowIds(i), expected_row_ids[i - 1]);
+    }
+  }
+
+  {
+    // test with random large size
+    for (int32_t i = 0; i < 2; ++i) {
+      int32_t num_axes = RandInt(2, 4);
+      RaggedShape shape =
+          RandomRaggedShape(true, num_axes, num_axes, 0, 1000).To(context);
+      int32_t dim0 = shape.Dim0();
+      int32_t max_size = shape.MaxSize(1);
+      RaggedShape result = MakeTransposable(shape);
+      shape = shape.To(cpu);
+      result = result.To(cpu);
+      EXPECT_EQ(result.Dim0(), dim0);
+      EXPECT_EQ(result.TotSize(1), dim0 * max_size);
+      // check if every sub list in axis 1 has the same size
+      int32_t *row_splits1 = result.RowSplits(1).Data();
+      for (int32_t j = 0; j != dim0 + 1; ++j) {
+        EXPECT_EQ(row_splits1[j], j * max_size);
+      }
+      if (num_axes > 2) {
+        for (auto iter = shape.Iterator(); !iter.Done(); iter.Next()) {
+          std::vector<int32_t> index = iter.Value();
+          EXPECT_EQ(shape[index], result[index]);
+        }
+      }
+    }
+  }
+}
+TEST(RaggedShapeOpsTest, TestMakeTransposable) {
+  TestMakeTransposable<kCpu>();
+  TestMakeTransposable<kCuda>();
+}
+
 }  // namespace k2

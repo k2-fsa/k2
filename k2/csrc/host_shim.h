@@ -20,7 +20,6 @@
 
 namespace k2 {
 
-
 /*
    Convert an Fsa (CPU only!) to k2host::Fsa.
 
@@ -32,20 +31,19 @@ namespace k2 {
 */
 k2host::Fsa FsaToHostFsa(Fsa &fsa);
 
+/*
+  Convert one element of an FsaVec (CPU only!) to a k2host::Fsa.
 
- /*
-   Convert one element of an FsaVec (CPU only!) to a k2host::Fsa.
+   @param [in] fsa_vec  The FsaVec to convert the format of one
+                        element of.  Must be on CPU.
+   @param [in] index    The FSA index to access, with 0 <= index <
+                        fsa_vec.Dim0().
+   @return   Returns a k2host::Fsa referring to the memory in `fsa_vec`.
 
-    @param [in] fsa_vec  The FsaVec to convert the format of one
-                         element of.  Must be on CPU.
-    @param [in] index    The FSA index to access, with 0 <= index < fsa_vec.Dim0().
-    @return   Returns a k2host::Fsa referring to the memory in `fsa_vec`.
-
-   Warning: don't let `fsa_vec` go out of scope while you are still accessing
-   the return value.
- */
+  Warning: don't let `fsa_vec` go out of scope while you are still accessing
+  the return value.
+*/
 k2host::Fsa FsaVecToHostFsa(FsaVec &fsa_vec, int32_t index);
-
 
 class FsaCreator {
  public:
@@ -122,9 +120,6 @@ class FsaCreator {
   Array1<Arc> arcs_;
 };
 
-
-
-
 class FsaVecCreator {
  public:
   /*
@@ -138,7 +133,8 @@ class FsaVecCreator {
 
     `sizes` must be nonempty.
   */
-  explicit FsaVecCreator(const std::vector<k2host::Array2Size<int32_t>> &sizes) {
+  explicit FsaVecCreator(
+      const std::vector<k2host::Array2Size<int32_t>> &sizes) {
     Init(sizes);
   }
 
@@ -148,7 +144,9 @@ class FsaVecCreator {
 
   FsaVec GetFsaVec();
 
-  int32_t GetArcOffsetFor(int32_t fsa_idx) { return row_splits12_.Data()[fsa_idx]; }
+  int32_t GetArcOffsetFor(int32_t fsa_idx) {
+    return row_splits12_.Data()[fsa_idx];
+  }
 
   /* This will be used to write the data to, i.e. the host code will use the
      pointers in k2host::Fsa to write data for the FSA numbered `fsa_idx`.  When
@@ -180,7 +178,6 @@ class FsaVecCreator {
   bool finalized_row_splits2_;
   int32_t next_fsa_idx_;
 };
-
 
 }  // namespace k2
 
