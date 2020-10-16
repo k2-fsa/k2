@@ -118,8 +118,11 @@ class RaggedShape {
       @param [in]  axis   Axis to index on.  CAUTION: currently only 0
                          is supported.
       @param [in]  i     Index to select
+      @param [out] value_offset   If non-NULL, the offset into the
+                         values necessary to take the needed sub-part
+                         of the data will be written to here.
    */
-  RaggedShape Index(int32_t axis, int32_t i);
+  RaggedShape Index(int32_t axis, int32_t i, int32_t *value_offset = nullptr);
 
   /*
     Given a vector `indexes` of length NumAxes() which is a valid index
@@ -260,6 +263,7 @@ struct Ragged {
       : shape(shape), values(shape.Context(), shape.NumElements()) {}
 
   // This will only work on the CPU, and is intended for use in testing code.
+  // See also member-function Index().
   T operator[](const std::vector<int32_t> &indexes) {
     K2_CHECK_EQ(Context()->GetDeviceType(), kCpu);
     return values[shape[indexes]];
@@ -283,46 +287,20 @@ struct Ragged {
   /*
     It is an error to call this if this.shape.NumAxes() < 2.  This will return
     a Ragged<T> with one fewer axis, containing only the elements of
-    *this for which the value on the provided axis is i.  CAUTION:
-    currently this only works for `axis == 0`.
+    *this for which the value on the provided axis is i; it will share
+    the underlying data with `*this` where possible. CAUTION: currently this only works
+    for `axis == 0`.
 
       @param [in]  axis   Axis to index on.  CAUTION: currently only 0
                          is supported.
       @param [in]  i     Index to select
    */
   Ragged<T> Index(int32_t axis, int32_t i) {
-    // Note shape.Index(axis, i) will also check `axis` and `i` as below,
-    // but we still check those requirements here in case
-    // the implementation of shape.Index changes.
-    // We may remove those checks finally.
-    K2_CHECK_EQ(axis, 0);
-    K2_CHECK_GE(i, 0);
-    int32_t num_axes = shape.NumAxes();
-    K2_CHECK_GE(num_axes, 2);
-    const auto &axes = shape.Axes();
-    K2_CHECK_LT(i + 1, axes[0].row_splits.Dim());
-
     // Get returned Ragged.shape
-    RaggedShape sub_shape = shape.Index(axis, i);
-
-    // Get returned Ragged.values' start and end position in this->values
-    int32_t row_start = axes[0].row_splits[i];
-    int32_t row_end = axes[0].row_splits[i + 1];
-    for (int32_t i = 2; i < num_axes; ++i) {
-      const Array1<int32_t> &row_splits = axes[i - 1].row_splits;
-      row_start = row_splits[row_start];
-      row_end = row_splits[row_end];
-    }
-    // Copy values
-    ContextPtr c = Context();
-    auto sub_values = Array1<T>(c, row_end - row_start);
-    T *data = sub_values.Data();
-    const T *src_data = values.Data();
-    auto lambda_copy_values = [=] __host__ __device__(int32_t i) -> void {
-      data[i] = src_data[i + row_start];
-    };
-    Eval(c, row_end - row_start, lambda_copy_values);
-    return Ragged<T>(sub_shape, sub_values);
+    int32_t values_offset;
+    RaggedShape sub_shape = shape.Index(axis, i, &values_offset);
+    return Ragged<T>(sub_shape, values.Range(values_offset,
+                                             sub_shape.NumElements()));
   }
 
   // Note *this is conceptually unchanged by this operation but non-const

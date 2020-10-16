@@ -19,9 +19,11 @@ from _k2 import _fsa_from_tensor
 class Fsa(object):
     '''This class represents a single fsa or a vector of fsas.
 
-    When it denotes a single fsa, its attribute :attr:`shape` is a tuple
-    containing two elements ``(num_states, None)``; it is a tuple with three
-    elements ``(num_fsas, None, None)`` for a vector of fsas.
+    When it denotes a single FSA, its attribute :attr:`shape` is a tuple
+    containing two elements ``(num_states, None)``; when it represents
+    a vector of FSAs it is a tuple with three
+    elements ``(num_fsas, None, None)``.  (Caution: it's possible
+    for a vector of FSAs to have zero or one elements).
     '''
 
     def __init__(self,

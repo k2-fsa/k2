@@ -88,14 +88,14 @@ class Array1 {
     *this = elem;
   }
 
-  /* Return sub-part of this array. Note that the returned Array1 is not const,
-     the caller should be careful when changing array's data, it will
-     also change data in the parent array as they share the memory.
+  /* Return sub-part of this array (shares the underlying data with this
+     array).
+
      @param [in] start  First element to cover, 0 <= start <= Dim();
                         If start == Dim(), it just returns an empty array.
      @param [in] size   Number of elements to include, 0 <= size <= Dim()-start
   */
-  Array1 Range(int32_t start, int32_t size) {
+  Array1<T> Range(int32_t start, int32_t size) const {
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, Dim());
     K2_CHECK_GE(size, 0);
@@ -117,7 +117,7 @@ class Array1 {
   */
   // TODO(haowen): does not support inc < 0 with below implementations, we may
   // not need a negative version, will revisit it later
-  Tensor Range(int32_t start, int32_t size, int32_t inc) {
+  Tensor Range(int32_t start, int32_t size, int32_t inc) const {
     K2_CHECK_GE(start, 0);
     K2_CHECK_LT(start, Dim());
     K2_CHECK_GE(size, 0);
