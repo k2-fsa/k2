@@ -683,6 +683,92 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
   return RaggedShape(axes_out);
 }
 
+RaggedShape MakeTransposable(RaggedShape &src) {
+  K2_CHECK_GE(src.NumAxes(), 2);
+  int32_t src_dim0 = src.Dim0(), src_tot_size1 = src.TotSize(1);
+  if (src_dim0 <= 1) return src;
+
+  ContextPtr c = src.Context();
+  int32_t num_axes = src.NumAxes();
+  int32_t max_size = src.MaxSize(1);
+  if (max_size <= 0) return src;
+  int32_t ans_tot_size1 = max_size * src_dim0;
+
+  src.Populate();
+
+  const std::vector<RaggedShapeDim> &axes_in = src.Axes();
+  std::vector<RaggedShapeDim> axes_out(num_axes - 1);
+  const int32_t *src_row_splits1_data = src.RowSplits(1).Data();
+  const int32_t *src_row_ids1_data = src.RowIds(1).Data();
+
+  {
+    ParallelRunner pr(c);
+
+    RaggedShapeDim &axis1_shape = axes_out[0];
+    {
+      // set ans.RowSplits(1);
+      With w(pr.NewStream());
+      axis1_shape.row_splits = Range(c, src_dim0 + 1, 0, max_size);
+    }
+    {
+      // set ans.RowIds(1);
+      With w(pr.NewStream());
+      axis1_shape.row_ids = Array1<int32_t>(c, ans_tot_size1);
+      int32_t *row_ids1_data = axis1_shape.row_ids.Data();
+      axis1_shape.cached_tot_size = ans_tot_size1;
+      auto lambda_set_row_ids1 = [=] __host__ __device__(int32_t i) {
+        row_ids1_data[i] = i / max_size;
+      };
+      Eval(c, ans_tot_size1, lambda_set_row_ids1);
+    }
+    if (num_axes > 2) {
+      RaggedShapeDim &axis2_shape = axes_out[1];
+      const int32_t *src_row_splits2_data = src.RowSplits(2).Data();
+      {
+        // set ans.RowSplits(2);
+        With w(pr.NewStream());
+        axis2_shape.cached_tot_size = src.TotSize(2);
+        axis2_shape.row_splits = Array1<int32_t>(c, ans_tot_size1 + 1);
+        int32_t *ans_row_splits2_data = axis2_shape.row_splits.Data();
+        auto lambda_set_row_splits2 = [=] __host__ __device__(int32_t idx01) {
+          if (idx01 == ans_tot_size1) {
+            ans_row_splits2_data[idx01] = src_row_splits2_data[src_tot_size1];
+            return;
+          }
+          int32_t idx0 = idx01 / max_size, idx1 = idx01 % max_size;
+          int32_t idx0x = src_row_splits1_data[idx0],
+                  idx0x_next = src_row_splits1_data[idx0 + 1];
+          int32_t num_elems_this_row = idx0x_next - idx0x;
+          if (idx1 < num_elems_this_row)
+            ans_row_splits2_data[idx01] = src_row_splits2_data[idx0x + idx1];
+          else
+            ans_row_splits2_data[idx01] =
+                src_row_splits2_data[idx0x_next];  // append empty row
+        };
+        Eval(c, ans_tot_size1 + 1, lambda_set_row_splits2);
+      }
+      {
+        // set ans.RowIds(2);
+        With w(pr.NewStream());
+        int32_t tot_size2 = src.TotSize(2);
+        axis2_shape.row_ids = Array1<int32_t>(c, tot_size2);
+        int32_t *ans_row_ids2_data = axis2_shape.row_ids.Data();
+        const int32_t *src_row_ids2_data = src.RowIds(2).Data();
+        auto lambda_set_row_ids2 = [=] __host__ __device__(int32_t idx012) {
+          int32_t src_idx01 = src_row_ids2_data[idx012];
+          int32_t src_idx0 = src_row_ids1_data[src_idx01];
+          int32_t src_idx1 = src_idx01 - src_row_splits1_data[src_idx0];
+          ans_row_ids2_data[idx012] = (src_idx0 * max_size) + src_idx1;
+        };
+        Eval(c, tot_size2, lambda_set_row_ids2);
+      }
+    }
+  }
+  // copy left row_splits and row_ids;
+  for (int32_t i = 2; i < num_axes - 1; ++i) axes_out[i] = axes_in[i];
+  return RaggedShape(axes_out);
+}
+
 // transpose axes 0 and 1.
 RaggedShape Transpose(RaggedShape &src) {
   K2_CHECK_GT(src.NumAxes(), 2);

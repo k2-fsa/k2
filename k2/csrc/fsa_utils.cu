@@ -651,8 +651,6 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
           *batch_starts_data = batch_starts.Data();
   const int32_t *fsas_row_splits1_data = fsas.RowSplits(1).Data();
 
-  // TODO(Dan): after debugging this version, change it to 0 and debug the
-  // more complex version.
 #if 1
   // This is a simple version of the kernel that demonstrates what we're trying
   // to do with the more complex code.
@@ -669,8 +667,8 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
   };
   Eval(c, num_fsas, lambda_set_batch_info_simple);
 #else
+  int32_t stride = dest_states_powers.ElemStride0();
   for (int32_t power = 1; power <= log_power; power++) {
-    int32_t stride = dest_states_powers.ElemStride0();
     const int32_t *src_data = dest_states_powers.Data() + (power - 1) * stride;
     int32_t *dest_data = dest_states_powers.Data() + power * stride;
     auto lambda_square_array =
@@ -699,7 +697,7 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
     if (j % jobs_multiple != 0)
       return;                              // a trick to avoid too much random
                                            // memory access for any given warp
-    int32_t task_idx = j / jobs_multiple;  // Now 0 <= j < jobs_per_fsa.
+    int32_t task_idx = j / jobs_multiple;  // Now 0 <= task_idx < jobs_per_fsa.
 
     // The task indexed `task_idx` is responsible for batches numbered
     // task_idx, task_idx + jobs_per_fsa, task_index + 2 * job_per_fsa and so
@@ -710,17 +708,19 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
     //  i % jobs_per_fsas == task_idx (here referring to the i value finally
     // assigned to that location).
 
-    int32 begin_state_idx01 = fsas_row_splits1_data[fsa_idx],
-          end_state_idx01 = fsas_row_splits1_data[fsa_idx + 1];
+    int32_t begin_state_idx01 = fsas_row_splits1_data[fsa_idx],
+            end_state_idx01 = fsas_row_splits1_data[fsa_idx + 1];
     int32_t i = 0, cur_state_idx01 = begin_state_idx01;
+
+    if (task_idx >= end_state_idx01 - begin_state_idx01) return;
 
     // The next loop advances `cur_state_idx01` by
     // a number of steps equal to `task_idx`.
-    for (int32_t j = 0; j < log_power; j++) {
-      int32_t n = 1 << j;
+    for (int32_t m = 0; m < log_power; ++m) {
+      int32_t n = 1 << m;
       if (task_idx % n != 0) {
         i += n;
-        int32_t next = dest_state_powers_acc(j, cur_state_idx01);
+        int32_t next = dest_states_powers_acc(m, cur_state_idx01);
         if (next >= end_state_idx01) return;
         cur_state_idx01 = next;
       }
@@ -736,14 +736,15 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
         // boundary...
         if (dest_states_powers_acc(0, cur_state_idx01) >= next_state_idx01) {
           num_batches_per_fsa_data[fsa_idx] = i + 1;
-          return;
-        } else {
-          i += cur_state_idx01;
         }
+        return;
+      } else {
+        i += cur_state_idx01;
+        cur_state_idx01 = next_state_idx01;
       }
     }
   };
-  Eval(c, num_fsas, jobs_per_fsa * jobs_multiple, lambda_set_batch_info);
+  Eval2(c, num_fsas, jobs_per_fsa * jobs_multiple, lambda_set_batch_info);
 #endif
   ExclusiveSum(num_batches_per_fsa, &num_batches_per_fsa);
   Array1<int32_t> &ans_row_splits1 = num_batches_per_fsa;
@@ -771,13 +772,17 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
   };
   Eval(c, num_batches, lambda_set_ans_row_ids2);
 
-  Ragged<int32_t> ans(RaggedShape3(&ans_row_splits1, &ans_row_ids1, num_batches,
-                                   &ans_row_splits2, nullptr, num_states),
-                      Range(c, num_states, 0));
+  RaggedShape ans_shape =
+      RaggedShape3(&ans_row_splits1, &ans_row_ids1, num_batches,
+                   &ans_row_splits2, nullptr, num_states);
+  Array1<int32_t> ans_value = Range(c, num_states, 0);
   if (transpose) {
-    K2_LOG(FATAL) << "Don't call this version for now, will implement later";
+    ans_shape = MakeTransposable(ans_shape);
+    Ragged<int32_t> ans(ans_shape, ans_value);
+    return Transpose(ans);
+  } else {
+    return Ragged<int32_t>(ans_shape, ans_value);
   }
-  return ans;
 }
 
 Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,

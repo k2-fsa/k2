@@ -23,9 +23,10 @@ namespace k2 {
     @param [out] dest   Destination; at exit will be equivalent to `src`
                      but will have no states that are unreachable or which
                      can't reach the final-state, i.e. its Properties() will
-  contain kFsaPropertiesMaybeCoaccessible and kFsaPropertiesMaybeAccessible
+                     contain kFsaPropertiesMaybeCoaccessible and
+                     kFsaPropertiesMaybeAccessible
     @param [out,optional] arc_map   For each arc in `dest`, gives the index of
-  the corresponding arc in `src` that it corresponds to.
+                         the corresponding arc in `src` that it corresponds to.
     @return  Returns true on success (which basically means the input did not
             have cycles, so the algorithm could not succeed).  Success
             does not imply that `dest` is nonempty.
@@ -37,8 +38,6 @@ namespace k2 {
  */
 bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
-
-
 /*
   Sort arcs of an Fsa or FsaVec in-place (this version of the function does not
   output derivatives).
@@ -49,7 +48,6 @@ bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 void ArcSort(Fsa *fsa);
 
 void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
-
 
 /*
   Topologically sort an Fsa or FsaVec.
@@ -77,8 +75,6 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 */
 void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
 
-
-
 /*
   compose/intersect array of FSAs (multiple streams decoding or training in
   parallel, in a batch)... basically composition with frame-synchronous beam
@@ -98,13 +94,14 @@ void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
          @param[in] max_active  Maximum active states allowed per frame.
                          (i.e. at each time-step in the sequences).  Sequence-
                          specific beam will be reduced if more than this number
-  of states are active.
+                         of states are active.
          @param[in] min_active  Minimum active states allowed per frame; beam
                          will be decreased if the number of active states falls
                          below this
          @param[out] out Output vector of composed, pruned FSAs, with same
-  Dim0() as b_fsas.  Elements of it may be empty if the composition was empty,
-  either intrinsically or due to failure of pruned search.
+                         Dim0() as b_fsas.  Elements of it may be empty if the
+                         composition was empty, either intrinsically or due to
+                         failure of pruned search.
          @param[out] arc_map_a  Vector of
 
 */
@@ -131,11 +128,8 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
         @param [out] arc_map_b  If not nullptr, this function will write to
                            here a map from (arc in `out`) to (arc in b_fsas).
  */
-void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
-               FsaVec *out,
-               Array1<int32_t> *arc_map_a,
-               Array1<int32_t> *arc_map_b);
-  
+void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
+               Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 }  // namespace k2
 

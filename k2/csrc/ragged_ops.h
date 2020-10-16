@@ -193,6 +193,19 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
 Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src);
 
 /*
+  Make a shape `src` to be transposable by appending empty rows on axis 1.
+  Specifically, suppose the size of longest sub list on axis 1 is `t`
+  (i.e. src.MaxSize(1) == `t`), we will append empty rows in other sub
+  list to make sure that each sub list on axis 1 has size of `t`.
+
+     @param [in] src   Shape to be transposed.  We require src.NumAxes() >= 2.
+     @return           Returns the transposable shape, the sizes of sub lists on
+                       axis 1 all be the same, i.e. ans.RowSplits(1) have
+                       equally spaced elements.
+ */
+RaggedShape MakeTransposable(RaggedShape &src);
+
+/*
   Transpose a RaggedShape: namely, axes 0 and 1.  Requires that the sizes
   of lists on axis 1 all be the same, i.e. that src.RowSplits(1) have
   equally spaced elements.
