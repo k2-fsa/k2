@@ -266,6 +266,15 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
                        Array1<int32_t> *row_splits);
 
 /*
+  Returns a new Array1<T> whose elements are this array's elements plus t.
+ */
+template <typename T>
+Array1<T> Plus(const Array1<T> &src, T t);
+
+template <typename T>
+Array1<T> Minus(const Array1<T> &src, T t) { return Plus(src, -t); }
+
+/*
   Return true if all elements of the two arrays are equal
 */
 template <typename T>
