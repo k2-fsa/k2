@@ -128,11 +128,8 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
         @param [out] arc_map_b  If not nullptr, this function will write to
                            here a map from (arc in `out`) to (arc in b_fsas).
  */
-void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
-               FsaVec *out,
-               Array1<int32_t> *arc_map_a,
-               Array1<int32_t> *arc_map_b);
-
+void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
+               Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 /*
   Create a linear FSA from a sequence of symbols
@@ -161,9 +158,6 @@ Fsa LinearFsa(Array1<int32_t> &symbols);
  */
 Fsa LinearFsas(Ragged<int32_t> &symbols);
 
-
-void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
-               Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 
 }  // namespace k2
