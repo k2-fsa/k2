@@ -105,6 +105,6 @@ class SymbolTable(object):
         if isinstance(k, int):
             return self._id2sym[k]
         elif isinstance(k, str):
-            return self._sym2id(k)
+            return self._sym2id[k]
         else:
             raise ValueError(f'Unsupported type {type(k)}.')

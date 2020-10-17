@@ -128,7 +128,6 @@ def to_dot(fsa: Fsa):
         if hasattr(fsa, 'isym') and label != -1:
             label = fsa.isym.get(label)
 
-        dot.edge(src_state,
-                 dst_state,
-                 label=f'{label}{aux_label}/{weight:.2f}')
+        weight = f'{weight:.2f}'.rstrip('0').rstrip('.')
+        dot.edge(src_state, dst_state, label=f'{label}{aux_label}/{weight}')
     return dot

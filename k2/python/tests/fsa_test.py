@@ -308,9 +308,8 @@ class TestFsa(unittest.TestCase):
 
         ragged_arc = _k2._fsa_to_fsa_vec(fsa.arcs)
         del fsa
-        tensor = _k2._fsa_to_tensor(ragged_arc)
-        fsa_vec = k2.Fsa(tensor)
-        del tensor
+        fsa_vec = k2.Fsa.from_ragged_arc(ragged_arc)
+        del ragged_arc
 
         assert fsa_vec.shape == (1, None, None)
 
