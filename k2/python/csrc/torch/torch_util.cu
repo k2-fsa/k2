@@ -6,6 +6,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <vector>
+
 #include "k2/python/csrc/torch/torch_util.h"
 #include "torch/extension.h"
 

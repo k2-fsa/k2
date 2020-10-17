@@ -7,6 +7,7 @@
 // See ../../LICENSE for // clarification regarding multiple authors
 
 #include <string>
+#include <vector>
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa.h"

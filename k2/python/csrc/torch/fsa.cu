@@ -11,6 +11,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"

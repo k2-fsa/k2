@@ -8,6 +8,9 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <utility>
+#include <vector>
+
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
