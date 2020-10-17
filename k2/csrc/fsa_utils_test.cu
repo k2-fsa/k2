@@ -18,17 +18,9 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/test_utils.h"
 
 namespace k2 {
-
-// clang-format off
-bool operator==(const Arc &a, const Arc &b) {
-  return a.src_state == b.src_state && \
-         a.dest_state == b.dest_state && \
-         a.symbol == b.symbol && \
-         fabs(a.score - b.score) < 1e-6;
-}
-// clang-format on
 
 TEST(FsaFromString, K2Acceptor) {
   // src_state dst_state label cost

@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -13,12 +14,23 @@
 #define K2_CSRC_TEST_UTILS_H_
 
 #include <gtest/gtest.h>
+#include <math.h>
 
 #include <vector>
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/fsa.h"
 
 namespace k2 {
+
+// clang-format off
+bool operator==(const Arc &a, const Arc &b) {
+  return a.src_state == b.src_state && \
+         a.dest_state == b.dest_state && \
+         a.symbol == b.symbol && \
+         fabs(a.score - b.score) < 1e-6;
+}
+// clang-format on
 
 template <typename T>
 void CheckArrayData(const Array1<T> &array, const std::vector<T> &target) {
