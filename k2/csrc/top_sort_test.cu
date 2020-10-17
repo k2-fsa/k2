@@ -18,11 +18,11 @@ namespace k2 {
 
 TEST(TopSort, SingleFsa) {
   std::string s = R"(0 1 1 1
-  0 2 2 2
-  1 3 -1 13
-  2 1 1 21
-  2 3 -1 23
-  3
+    0 2 2 2
+    1 3 -1 13
+    2 1 1 21
+    2 3 -1 23
+    3
   )";
 
   auto fsa = FsaFromString(s);
@@ -50,18 +50,18 @@ TEST(TopSort, SingleFsa) {
 
 TEST(TopSort, VectorOfFsas) {
   std::string s1 = R"(0 1 1 1
-  0 2 2 2
-  1 3 -1 13
-  2 1 1 21
-  2 3 -1 23
-  3
+    0 2 2 2
+    1 3 -1 13
+    2 1 1 21
+    2 3 -1 23
+    3
   )";
 
   std::string s2 = R"(0 2 2 2
-  1 3 -1 13
-  2 1 1 21
-  2 3 -1 23
-  3
+    1 3 -1 13
+    2 1 1 21
+    2 3 -1 23
+    3
   )";
 
   auto fsa1 = FsaFromString(s1);
