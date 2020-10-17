@@ -71,7 +71,7 @@ void TestRenumbering() {
   }
 
   {
-    // normale case
+    // normal case
     int32_t num_old_elems = 7;
     Renumbering numbering(context, num_old_elems);
     EXPECT_EQ(numbering.NumOldElems(), num_old_elems);

@@ -207,7 +207,7 @@ Tensor FsaToTensor(const Fsa &fsa);
        - 1st element is num_fsas
        - 2nd element is currently zero (included for word-alignment purposes)
        - Next `num_fsas + 1` elements are the row_splits1 of the FsaVec,
-         i.e. 0, num_states1, num_states1+num_states2, ...  [the exlusive-sum
+         i.e. 0, num_states1, num_states1+num_states2, ...  [the exclusive-sum
          of the num-states of all the FSAs]
        - Next `num_fsas + 1` elements are combined row_splits1 and row_splits2
          of the FsaVec, which are the exclusive sum of the total number of arcs

@@ -900,19 +900,10 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   ContextPtr &context = src.Context();
   K2_CHECK_EQ(context->GetDeviceType(), kCuda);
 
-  const int32_t *row_splits1_data = src.RowSplits(1).Data();
-  const int32_t *row_splits2_data = src.RowSplits(2).Data();
+  const Array1<int32_t> &row_splits1 = src.RowSplits(1);
   const int32_t *row_ids2_data = src.RowIds(2).Data();
   const int32_t *value_data = src.values.Data();
-
-  Array1<int32_t> segments(context, src.Dim0());
-  int32_t *segments_data = segments.Data();
-  auto lambda_fill_segments = [=] __device__(int idx0) -> void {
-    int32_t idx0x = row_splits1_data[idx0];
-    int32_t idx0xx = row_splits2_data[idx0x];
-    segments_data[idx0] = idx0xx;
-  };
-  Eval(context, src.Dim0(), lambda_fill_segments);
+  Array1<int32_t> segments = src.RowSplits(2)[row_splits1];
 
   auto lambda_comp = [=] __device__(int32_t a_idx012,
                                     int32_t b_idx012) -> bool {
