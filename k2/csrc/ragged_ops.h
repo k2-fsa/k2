@@ -70,7 +70,7 @@ void MinPerSublist(Ragged<T> &src, T default_value, Array1<T> *min_values) {
 template <typename T>
 void LogSumPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst_values) {
   static_assert(std::is_same<float, T>::value ||
-                std::is_same<double, T>::value);
+                std::is_same<double, T>::value, "type mismatch");
   ApplyOpPerSublist<T, LogAdd<T>>(src, default_value, dst_values);
 }
 

@@ -420,6 +420,26 @@ void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
   Eval(c->GetCudaStream(), n, lambda);
 }
 
+
+
+template <typename LambdaT>
+void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
+  if (n <= 0) return;  // actually it would be an error if n < 0.
+  K2_CHECK(stream != kCudaStreamInvalid);
+  int32_t block_size = 256;
+  int32_t grid_size = NumBlocks(n, block_size);
+  K2_CUDA_SAFE_CALL(eval_lambda<LambdaT>
+                    <<<grid_size, block_size, 0, stream>>>(n, lambda));
+}
+
+template <typename ContextPtrType,  // Context*  or ContextPtr ==
+                                    // std::shared_ptr<Context>
+          typename LambdaT>
+void EvalDevice(ContextPtrType c, int32_t n, LambdaT &lambda) {
+  EvalDevice(c->GetCudaStream(), n, lambda);
+}
+
+  
 /* Eval() will do `data[i] = lambda(i)` for 0 <= i < n, on the appropriate
    device (CPU or GPU) */
 template <typename T, typename LambdaT>
