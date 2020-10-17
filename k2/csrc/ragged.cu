@@ -141,7 +141,8 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
   }
 }
 
-RaggedShape RaggedShape::Index(int32_t axis, int32_t i, int32_t *value_offset) {
+RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
+                               int32_t *value_offset /*= nullptr*/) {
   // only support `axis == 0` for now
   K2_CHECK_EQ(axis, 0);
   K2_CHECK_GE(i, 0);

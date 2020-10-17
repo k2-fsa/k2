@@ -1483,6 +1483,56 @@ TEST(GetTransposeReordering, WithDuplicatesThreeAxes) {
   }
 }
 
+TEST(ChangeSublistSize, TwoAxes) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 2, 5});
+    RaggedShape src = RaggedShape2(&row_splits1, nullptr, -1);
+
+    int32_t size_delta = 2;
+    RaggedShape dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(1), std::vector<int32_t>{0, 4, 9});
+
+    size_delta = -2;
+    dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(1), std::vector<int32_t>{0, 0, 1});
+
+    size_delta = 0;
+    dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(1), std::vector<int32_t>{0, 2, 5});
+  }
+}
+
+TEST(ChangeSublistSize, ThreeAxes) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    /*
+     [
+       [ [x, x, x], [x, x] ]
+       [ [x], [x, x], [x, x, x] ]
+     ]
+     */
+    Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 2, 5});
+    Array1<int32_t> row_splits2(context,
+                                std::vector<int32_t>{0, 3, 5, 6, 8, 11});
+    RaggedShape src =
+        RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+
+    int32_t size_delta = 2;
+    RaggedShape dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 5, 9, 12, 16, 21});
+
+    // it is an error to use -2 here
+    // because the state (state_idx01 == 2) has only 1 entry
+    size_delta = -1;
+
+    dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 2, 3, 3, 4, 6});
+
+    size_delta = 0;
+    dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 3, 5, 6, 8, 11});
+  }
+}
+
 template <DeviceType d>
 void TestGetCountsPartitioned() {
   ContextPtr cpu = GetCpuContext();  // will use to copy data

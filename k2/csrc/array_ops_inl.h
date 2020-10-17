@@ -534,13 +534,13 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
 
 template <typename T>
 Array1<T> Plus(const Array1<T> &src, T t) {
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   int32_t dim = src.Dim();
   Array1<T> ans(c, dim);
   const T *data = src.Data();
   T *ans_data = ans.Data();
   if (c->GetDeviceType() == kCpu) {
-    for (int32_t i = 0; i < dim; i++)
+    for (int32_t i = 0; i < dim; ++i)
       ans_data[i] = data[i] + t;
   } else {
     auto lambda_add = [=] __host__ __device__(int32_t i) -> void {

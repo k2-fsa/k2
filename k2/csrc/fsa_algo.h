@@ -113,7 +113,7 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
 /*
   This is 'normal' intersection (we would call this Compose() for FSTs, but
   you can do that using Intersect(), by calling this and then Invert()
-  (or just attaching the other aux_labels).  NOTE: epsilons are no treated
+  (or just attaching the other aux_labels).  NOTE: epsilons are not treated
   specially, so this will only give the conventionally-correct answer
   if either a_fsas or b_fsas is epsilon free.
 
@@ -143,20 +143,20 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
                 will have n+1 arcs (including the final-arc) and
                 n+2 states.
 */
-Fsa LinearFsa(Array1<int32_t> &symbols);
+Fsa LinearFsa(const Array1<int32_t> &symbols);
 
 /*
-  Create an FsaVec contining linear FSAs, given a list of sequences of
+  Create an FsaVec containing linear FSAs, given a list of sequences of
   symbols
 
     @param [in] symbols  Input symbol sequences (must not contain
-                kFinalSymbol == -1).
+                kFinalSymbol == -1). Its num_axes is 2.
 
     @return     Returns an FsaVec with `ans.Dim0() == symbols.Dim0()`.  Note: if
                 the i'th row of `symbols` has n elements, the i'th returned FSA
                 will have n+1 arcs (including the final-arc) and n+2 states.
  */
-Fsa LinearFsas(Ragged<int32_t> &symbols);
+FsaVec LinearFsas(Ragged<int32_t> &symbols);
 
 
 

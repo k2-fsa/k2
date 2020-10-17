@@ -988,25 +988,25 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
 }
 
 RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
-  K2_CHECK(src.NumAxes() >= 2);
+  K2_CHECK_GE(src.NumAxes(), 2);
   // the result will have the same num-axes as `src` (the NumAxes() of the
   // object is not the same as the number of RaggedShapeDim axes).
   std::vector<RaggedShapeDim> ans_axes(src.NumAxes() - 1);
   int32_t last_axis = src.NumAxes() - 1;
   // The following will only do something if src.NumAxes() > 2.
-  for (int32_t i = 0; i + 1 < last_axis; i++) ans_axes[i] = src.Axes()[i];
+  for (int32_t i = 0; i + 1 < last_axis; ++i) ans_axes[i] = src.Axes()[i];
 
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   int32_t num_rows = src.TotSize(last_axis - 1),
           src_num_elems = src.TotSize(last_axis),
           num_elems = src_num_elems + size_delta * num_rows;
-  ans_axes[0].row_splits = Array1<int32_t>(c, num_rows + 1);
-  ans_axes[0].row_ids = Array1<int32_t>(c, num_elems);
-  ans_axes[0].cached_tot_size = num_elems;
+  ans_axes.back().row_splits = Array1<int32_t>(c, num_rows + 1);
+  ans_axes.back().row_ids = Array1<int32_t>(c, num_elems);
+  ans_axes.back().cached_tot_size = num_elems;
   const int32_t *src_row_splits_data = src.RowSplits(last_axis).Data(),
                 *src_row_ids_data = src.RowIds(last_axis).Data();
-  int32_t *row_splits_data = ans_axes[0].row_splits.Data(),
-          *row_ids_data = ans_axes[0].row_ids.Data();
+  int32_t *row_splits_data = ans_axes.back().row_splits.Data(),
+          *row_ids_data = ans_axes.back().row_ids.Data();
 
   {
     ParallelRunner pr(c);
@@ -1033,7 +1033,7 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
         // size_delta might be negative.
         if (new_idx01 < new_idx0x_next) row_ids_data[new_idx01] = src_idx0;
       };
-      Eval(c, num_elems, lambda_set_row_ids1);
+      Eval(c, src_num_elems, lambda_set_row_ids1);
     }
     if (size_delta > 0) {
       // This sets the row-ids that are not set by lambda_set_row_ids1.

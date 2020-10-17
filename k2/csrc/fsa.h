@@ -254,7 +254,7 @@ Tensor FsaVecToTensor(const FsaVec &fsa_vec);
 */
 FsaVec FsaVecFromTensor(Tensor &t, bool *error);
 
-FsaVec FsaVecFromArray1(Array1<Arc> &arc, bool *error); // TODO: implement it
+FsaVec FsaVecFromArray1(Array1<Arc> &arc, bool *error);  // TODO: implement it
 
 /*
   Return one Fsa in an FsaVec.  Note, this has to make copies of the
