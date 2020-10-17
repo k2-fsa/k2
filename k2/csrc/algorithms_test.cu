@@ -64,7 +64,7 @@ void TestRenumbering() {
 
     std::vector<int32_t> cpu_old2new(old2new.Data(),
                                      old2new.Data() + old2new.Dim());
-    EXPECT_THAT(cpu_old2new, ::testing::ElementsAre(-1, -1, -1, -1, -1));
+    EXPECT_THAT(cpu_old2new, ::testing::ElementsAre(0, 0, 0, 0, 0));
     Array1<int32_t> new2old = numbering.New2Old();
     EXPECT_EQ(new2old.Dim(), 0);
     EXPECT_EQ(numbering.NumNewElems(), 0);
@@ -86,7 +86,7 @@ void TestRenumbering() {
     EXPECT_EQ(old2new.Dim(), num_old_elems);
     std::vector<int32_t> cpu_old2new(old2new.Data(),
                                      old2new.Data() + old2new.Dim());
-    EXPECT_THAT(cpu_old2new, ::testing::ElementsAre(0, -1, 1, 2, -1, -1, 3));
+    EXPECT_THAT(cpu_old2new, ::testing::ElementsAre(0, 1, 1, 2, 3, 3, 3));
     Array1<int32_t> new2old = numbering.New2Old();
     EXPECT_EQ(new2old.Dim(), 4);
     EXPECT_EQ(numbering.NumNewElems(), 4);
