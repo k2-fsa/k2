@@ -24,24 +24,29 @@ namespace k2 {
 static void PybindFsaUtil(py::module &m) {
   // TODO(fangjun): add docstring in Python describing
   // the format of the input tensor when it is a FsaVec.
-  //
-  // NOTE: it returns either an Fsa or FsaVec
-  m.def("_fsa_from_tensor", [](torch::Tensor tensor) -> Fsa {
-    auto k2_tensor = FromTensor(tensor, TensorTag{});
-    bool error = true;
-    // TODO(fangjun): disable the warnings from FsaFromTensor
-    Fsa fsa = FsaFromTensor(k2_tensor, &error);
-    if (error == true) {
-      // this is an FsaVec
-      fsa = FsaVecFromTensor(k2_tensor, &error);
-    }
-    K2_CHECK(!error);
-    return fsa;
-  });
+  m.def(
+      "_fsa_from_tensor",
+      [](torch::Tensor tensor) -> FsaOrVec {
+        auto k2_tensor = FromTensor(tensor, TensorTag{});
+        bool error = true;
+        Fsa fsa;
+        if (tensor.dim() == 2)
+          fsa = FsaFromTensor(k2_tensor, &error);
+        else if (tensor.dim() == 1)
+          fsa = FsaVecFromTensor(k2_tensor, &error);
+        else
+          K2_LOG(FATAL)
+              << "Expect dim: 2 (a single FSA) or 1 (a vector of FSAs). "
+              << "Given: " << tensor.dim();
+
+        K2_CHECK(!error);
+        return fsa;
+      },
+      py::arg("tensor"));
 
   m.def(
       "_fsa_to_tensor",
-      [](const Fsa &fsa) -> torch::Tensor {
+      [](const FsaOrVec &fsa) -> torch::Tensor {
         if (fsa.NumAxes() == 2) {
           Tensor tensor = FsaToTensor(fsa);
           return ToTensor(tensor);
@@ -83,6 +88,7 @@ static void PybindFsaUtil(py::module &m) {
       "returned FSA is a transducer; element 1 is None if the "
       "returned FSA is an acceptor");
 
+  // the following methods are for debugging only
   m.def("_fsa_to_fsa_vec", &FsaToFsaVec, py::arg("fsa"));
   m.def("_get_fsa_vec_element", &GetFsaVecElement, py::arg("vec"),
         py::arg("i"));

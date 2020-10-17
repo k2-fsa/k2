@@ -72,41 +72,6 @@ class TestFsa(unittest.TestCase):
             torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
                          dtype=torch.float32))
 
-        # Test the following functions from C++
-        #
-        # FsaToTensor, FsaFromTensor
-        # FsaVecToTensor, FsaVecFromTensor
-        # GetFsaVecElement
-
-        tensor = k2.to_tensor(fsa)
-        del fsa
-
-        fsa2 = k2.Fsa(tensor)
-        assert torch.allclose(
-            fsa2.score,
-            torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
-                         dtype=torch.float32))
-        fsa_vec = k2.to_fsa_vec(fsa2)
-        assert fsa_vec.shape == (1, None, None)
-
-        ragged_arc = _k2._get_fsa_vec_element(fsa_vec.arcs, 0)
-        fsa = k2.Fsa(ragged_arc.values())
-        assert torch.allclose(
-            fsa.score,
-            torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
-                         dtype=torch.float32))
-
-        tensor = k2.to_tensor(fsa_vec)
-        fsa_vec2 = k2.Fsa(tensor)
-        assert fsa_vec.shape == (1, None, None)
-
-        ragged_arc = _k2._get_fsa_vec_element(fsa_vec.arcs, 0)
-        fsa = k2.Fsa(ragged_arc.values())
-        assert torch.allclose(
-            fsa.score,
-            torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
-                         dtype=torch.float32))
-
     def test_acceptor_from_str(self):
         s = '''
             0 1 2 -1.2
@@ -315,6 +280,60 @@ class TestFsa(unittest.TestCase):
         '''
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
             k2.to_str(fsa, openfst=True))
+
+    def test_fsa_io(self):
+        s = '''
+            0 1 10 0.1
+            0 2 20 0.2
+            1 3 -1 0.3
+            2 3 -1 0.4
+            3
+        '''
+        fsa = k2.Fsa.from_str(_remove_leading_spaces(s))
+        tensor = k2.to_tensor(fsa)
+        assert tensor.ndim == 2
+        assert tensor.dtype == torch.int32
+        del fsa  # tensor is still accessible
+
+        fsa = k2.Fsa(tensor)
+        del tensor
+        assert torch.allclose(
+            fsa.score, torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32))
+        assert torch.allclose(
+            fsa.arcs.values()[:, :-1],  # skip the last field `score`
+            torch.tensor([[0, 1, 10], [0, 2, 20], [1, 3, -1], [2, 3, -1]],
+                         dtype=torch.int32))
+
+        # now test vector of FSAs
+
+        ragged_arc = _k2._fsa_to_fsa_vec(fsa.arcs)
+        del fsa
+        tensor = _k2._fsa_to_tensor(ragged_arc)
+        fsa_vec = k2.Fsa(tensor)
+        del tensor
+
+        assert fsa_vec.shape == (1, None, None)
+
+        assert torch.allclose(
+            fsa_vec.score,
+            torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32))
+        assert torch.allclose(
+            fsa_vec.arcs.values()[:, :-1],  # skip the last field `score`
+            torch.tensor([[0, 1, 10], [0, 2, 20], [1, 3, -1], [2, 3, -1]],
+                         dtype=torch.int32))
+
+        tensor = k2.to_tensor(fsa_vec)
+        assert tensor.ndim == 1
+        assert tensor.dtype == torch.int32
+        del fsa_vec
+        fsa_vec = k2.Fsa(tensor)
+        assert torch.allclose(
+            fsa_vec.score,
+            torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32))
+        assert torch.allclose(
+            fsa_vec.arcs.values()[:, :-1],  # skip the last field `score`
+            torch.tensor([[0, 1, 10], [0, 2, 20], [1, 3, -1], [2, 3, -1]],
+                         dtype=torch.int32))
 
     def test_symbol_table_and_dot(self):
         isym_str = '''

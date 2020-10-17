@@ -31,6 +31,23 @@ def to_str(fsa: Fsa, openfst: bool = False) -> str:
 
 
 def to_tensor(fsa: Fsa) -> torch.Tensor:
+    '''Convert an Fsa to a Tensor.
+
+    You can save the tensor to disk and read it later
+    to construct an Fsa.
+
+    Note:
+      The returned Tensor contains only the transition rules, e.g.,
+      arcs. You may want to save its aux_labels separately if any.
+
+    Args:
+      fsa:
+        The input Fsa.
+    Returns:
+      A ``torch.Tensor`` of dtype ``torch.int32``. It is a 2-D tensor
+      if the input is a single FSA. It is a 1-D tensor if the input
+      is a vector of FSAs.
+    '''
     return _fsa_to_tensor(fsa.arcs)
 
 

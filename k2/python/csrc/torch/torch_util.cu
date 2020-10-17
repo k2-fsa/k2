@@ -70,13 +70,15 @@ torch::Tensor ToTensor(Array1<Arc> &array) {
   auto device = torch::Device(device_type, device_id);
   auto scalar_type = ToScalarType<int32_t>::value;
   // an Arc has 4 members
-  torch::IntArrayRef strides = {4, 1};  // in number of elements
+  K2_STATIC_ASSERT(sizeof(Arc) == 4 * sizeof(int32_t));
+  std::vector<int64_t> sizes = {array.Dim(), 4};  // [num_rows, num_cols]
+  std::vector<int64_t> strides = {4, 1};          // in number of elements
   auto options = torch::device(device).dtype(scalar_type);
 
   // NOTE: we keep a copy of `array` inside the lambda
-  // so that `torch::Tensor` always accesses valid memory.
+  // so that the returned tensor outlives the input array.
   return torch::from_blob(
-      array.Data(), {array.Dim(), 4}, strides, [array](void *) {}, options);
+      array.Data(), sizes, strides, [array](void *) {}, options);
 }
 
 template <>
