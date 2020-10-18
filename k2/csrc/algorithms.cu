@@ -45,7 +45,7 @@ inline void ComputeNew2OldHelper(ContextPtr &c,
 }
 
 void Renumbering::ComputeNew2Old() {
-  if  (old2new_.Dim() == 0)
+  if  (!old2new_.IsValid())
     ComputeOld2New();
   new2old_ = Array1<int32_t>(keep_.Context(), num_new_elems_);
 

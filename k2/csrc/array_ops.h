@@ -67,7 +67,7 @@ void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
   K2_CHECK(dest_dim == src_dim || dest_dim == src_dim + 1);
   if (dest_dim == src_dim + 1) {
     const RegionPtr &region = src.GetRegion();
-    int32_t byte_offset = src.ByteOffset();
+    ssize_t byte_offset = static_cast<ssize_t>(src.ByteOffset());
     K2_CHECK_GE(region->num_bytes - byte_offset, dest_dim * src.ElementSize());
   }
   ExclusiveSum(src.Context(), dest_dim, src.Data(), dest->Data());
@@ -192,6 +192,10 @@ template <typename T>
 void Max(Array1<T> &src, T default_value, Array1<T> *dest) {
   ApplyOpOnArray1<T, MaxOp<T>>(src, default_value, dest);
 }
+
+template <typename T>
+T MaxValue(Array1<T> &src) {   return MaxValue(src.Context(), src.Dim(), src.Data());  }
+
 
 /*
   Get the bitwise and reduction of the array `src`, using `default_value` (e.g.

@@ -362,148 +362,6 @@ inline DeviceType DeviceOf(const T &t) {
   return t.Context()->GetDeviceType();
 }
 
-template <typename LambdaT>
-__global__ void eval_lambda(int32_t n, LambdaT lambda) {
-  int32_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) {
-    lambda(i);
-  }
-}
-
-template <typename T, typename LambdaT>
-__global__ void eval_lambda(T *data, int32_t n, LambdaT lambda) {
-  int32_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) {
-    data[i] = lambda(i);
-  }
-}
-
-template <typename LambdaT>
-__global__ void eval_lambda2(int32_t m, int32_t n, LambdaT lambda) {
-  // actually threadIdx.y will always be 1 for now so we could drop that part of
-  // setting i..
-  int32_t i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_t j = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < m && j < n) {
-    lambda(i, j);
-  }
-}
-
-__host__ __device__ __forceinline__ int32_t NumBlocks(int32_t size,
-                                                      int32_t block_size) {
-  return (size + block_size - 1) / block_size;
-}
-
-/* Eval() will evaluate lambda(i) for 0 <= i < n, on the appropriate
-   device (CPU or GPU). */
-template <typename LambdaT>
-void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
-  if (n <= 0) return;  // actually it would be an error if n < 0.
-  if (stream == kCudaStreamInvalid) {
-    // TODO: if n is very large, we'll eventually support running this with
-    // multiple threads.
-    for (int32_t i = 0; i < n; ++i) {
-      lambda(i);
-    }
-  } else {
-    int32_t block_size = 256;
-    int32_t grid_size = NumBlocks(n, block_size);
-    K2_CUDA_SAFE_CALL(eval_lambda<LambdaT>
-                      <<<grid_size, block_size, 0, stream>>>(n, lambda));
-  }
-}
-
-template <typename ContextPtrType,  // Context*  or ContextPtr ==
-                                    // std::shared_ptr<Context>
-          typename LambdaT>
-void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
-  Eval(c->GetCudaStream(), n, lambda);
-}
-
-
-
-template <typename LambdaT>
-void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
-  if (n <= 0) return;  // actually it would be an error if n < 0.
-  K2_CHECK(stream != kCudaStreamInvalid);
-  int32_t block_size = 256;
-  int32_t grid_size = NumBlocks(n, block_size);
-  K2_CUDA_SAFE_CALL(eval_lambda<LambdaT>
-                    <<<grid_size, block_size, 0, stream>>>(n, lambda));
-}
-
-template <typename ContextPtrType,  // Context*  or ContextPtr ==
-                                    // std::shared_ptr<Context>
-          typename LambdaT>
-void EvalDevice(ContextPtrType c, int32_t n, LambdaT &lambda) {
-  EvalDevice(c->GetCudaStream(), n, lambda);
-}
-
-  
-/* Eval() will do `data[i] = lambda(i)` for 0 <= i < n, on the appropriate
-   device (CPU or GPU) */
-template <typename T, typename LambdaT>
-void Eval(cudaStream_t stream, T *data, int32_t n, LambdaT &lambda) {
-  if (n <= 0) return;  // actually it would be an error if n < 0.
-  if (stream == kCudaStreamInvalid) {
-    // TODO: if n is very large, we'll eventually support running this with
-    // multiple threads.
-    for (int32_t i = 0; i < n; ++i) {
-      data[i] = lambda(i);
-    }
-  } else {
-    int32_t block_size = 256;
-    int32_t grid_size = NumBlocks(n, block_size);
-    K2_CUDA_SAFE_CALL(eval_lambda<T, LambdaT>
-                      <<<grid_size, block_size, 0, stream>>>(data, n, lambda));
-  }
-}
-
-template <typename ContextPtrType,  // Context*  or ContextPtr ==
-                                    // std::shared_ptr<Context>
-          typename T, typename LambdaT>
-void Eval(ContextPtrType c, T *data, int32_t n, LambdaT &lambda) {
-  Eval(c->GetCudaStream(), data, n, lambda);
-}
-
-/*
-  This is a form of Eval() where the lambda takes  two arguments.
-
-  Eval2() will evaluate lambda(i, j) for 0 <= i < m and 0 <= j < n,
-  on the appropriate  device (CPU or GPU).  The second index, n,
-  is supposed to be the faster-varying one, the index for which
-  threads in the same warp will tend to have different values.
-  (Of course this doesn't affect the semantics of the operation).
-*/
-template <typename LambdaT>
-void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
-  if (m <= 0 || n <= 0)
-    return;  // actually it would be an error if m < 0 or n < 0.
-  if (stream == kCudaStreamInvalid) {
-    // TODO: if n is very large, we'll eventually support running this with
-    // multiple threads.
-    for (int32_t i = 0; i < m; ++i) {
-      for (int32_t j = 0; j < n; ++j) {
-        lambda(i, j);
-      }
-    }
-  } else {
-    // this way of choosing block and grid sizes is of course not very smart, we
-    // can look at this later on, possibly referring to Kaldi's
-    // GetBlockSizesForSimpleMatrixOperation().
-    dim3 block_size(16, 16, 1);
-    dim3 grid_size(NumBlocks(n, 16), NumBlocks(m, 16));
-    K2_CUDA_SAFE_CALL(
-        eval_lambda2<<<grid_size, block_size, 0, stream>>>(m, n, lambda));
-  }
-}
-
-template <typename ContextPtrType,  // Context*  or ContextPtr ==
-                                    // std::shared_ptr<Context>
-          typename LambdaT>
-inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
-  Eval2(c->GetCudaStream(), m, n, lambda);
-}
 
 // This is for use by ParallelRunner and Context.  Users probably should not
 // interact with this directly.  The idea is that the Context object will call
@@ -546,14 +404,30 @@ class With {
 };
 
 /*
-  Class ParallelRunner allows you to invoke Eval(), but in parallel.
+  Class ParallelRunner allows you to invoke CUDA kernels in parallel.
   It works for CUDA and CPU, but for CPU it currently just executes things
-  sequentially.  It works by creating a separate stream each time you invoke
-  Eval(), and using CUDA events to ensure correct ordering of kernels
+  sequentially.  It works by creating a separate stream each time you
+  call NewStream(),, and using CUDA events to ensure correct ordering of kernels
   with respect to the CUDA stream in the supplied context.
 
-  TODO: properly implement this.  Right now it doesn't background them
-  at all, just forwarding them to the sequential versions of Eval().
+  Note: it's important to destroy this at the right time.  The usage pattern
+  should be:
+
+   (a) Do whatever you were doing before (i.e. previous tasks in the
+       stream of ContextPtr c).
+   (b) Create this object
+   (c) For each task to be done in parallel:
+        - Call NewStream() on this object, and then either pass the stream to
+          Eval() directly or do `With w(pr.Stream());` and call any function
+          while that's in scope (it automagically swaps the stream that
+          the Context returns for the newly created one).
+          [Note: if you give the tasks the same stream they'll execute
+          sequentially so there is no point in calling NewStream() just once].
+   (d) Destroy this object by letting it go out of scope
+   (e) Do whatever you need to do after the parallel jobs (i.e. following
+       tasks in the stream of ContextPtr c)
+
+  Note the order of (a) and (b), and (d) and (e).  If you get this wrong,
 */
 class ParallelRunner {
  public:
@@ -583,69 +457,7 @@ class ParallelRunner {
   cudaEvent_t event_;
 };
 
-// OK, want to do:
-// ContextPtr c = ...;  ///
-// auto d = Dependency({out_region1, out_region2},
-//                      in_region1, in_region2, in_region3...);
-// Eval(d, n_elems, lambda...);
-//
-//
-// struct DepType {
-//   std::vector<out_region> out_regs;
-//   std::vector<in_region> in_regs;
-//   Context *c;  // out_regs[0]->context.
-// }
-//
-// Note: these dependencies are WITHIN CONTEXT for now...
-//
-// void* ContextPtr::ProcessDep(std::vector<Region> &out_deps,
-//                              std::vector<Region> &in_deps);
-//
-//  WITHIN-CONTEXT OPS
-//
-// For GPU, when executing:
-//
-//  (i) Decide on output stream, e.g. create new stream for this op.
-//  (ii) Find list of input dependencies' events that are not already
-//       terminated (mark them if so!) and set the output stream to
-//       wait on them.
-//  (iii) Run kernel
-//  (iv)  For each out_dep:
-//         Write the event (to wait on) in the Region.
-//
-// For *simple* CPU, when executing:
-//
-//   Just execute, ignoring deps.
-//
-// For multi-threaded CPU, when executing.
-//
-//  (i) get list of Tasks that we depend on that have not terminated yet,
-//      using try_wait() on their mutexes.
-//
-//    - If that list was empty:
-//          create a new Task that's not finished;
-//          queue a job that will run the lambda and then
-//          mark the Task as finished.
-//
-//    - Mark all output regions as depending on that new Task as well as
-//      any preceding Tasks running in those regions that have not yet
-//      terminated (assuming this Task didn't depend on those...)
-//
-//    -
-//
-//
-//
-//  (ii)
-//
-//  Let the job be a lambda that will:
-//    (ii) increment the wait_count on the destination memory regions
-//
-//
-//    (ii) if that list is empty:
-//        Run
-//
-// c_.Eval()...
-//
+
 
 }  // namespace k2
 

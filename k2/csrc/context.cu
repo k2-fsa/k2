@@ -11,6 +11,7 @@
  */
 
 #include "k2/csrc/context.h"
+#include "k2/csrc/eval.h"
 
 namespace k2 {
 
@@ -75,5 +76,39 @@ ParallelRunner::~ParallelRunner() {
     K2_CHECK_CUDA_ERROR(ret);
   }
 }
+
+void GetBlockSizesForLambda2(int32_t m, int32_t n,
+                             dim3 *block_dim,
+                             dim3 *grid_dim,
+                             Lambda2KernelType *kernel_type) {
+  // Note: 'n' is the 'inner-loop' one, the one which is supposed to vary the
+  // fastest.
+  int32_t n_block_size = (n <= 256 ? n : 256);
+  int32_t m_block_size = 1;
+  while (m_block_size * n_block_size < 256)
+    m_block_size *= 4;  // limit for the product is 1024; we don't go beyond
+                        // 512.  (128 * 4 = 512).
+  *block_dim = dim3(n_block_size, m_block_size, 1);
+  int32_t n_grid_size = NumBlocks(n, n_block_size),
+      m_grid_size = NumBlocks(m, m_block_size);
+  if (n_grid_size < 65536 &&  m_grid_size < 65536) {
+    *grid_dim = dim3(n_grid_size, m_grid_size, 1);
+    *kernel_type = Lambda2KernelType::Simple;
+  } else if (n_grid_size < 65536) {
+    // only m is problematic.
+    *grid_dim = dim3(n_grid_size, 32768, NumBlocks(m_grid_size, 32768));
+    *kernel_type = Lambda2KernelType::UseZForM;
+  } else {
+    // we know n is problematic.
+    if (m_grid_size > 65536) {
+      K2_LOG(FATAL) << "Grid too large for Eval2(): m=" << m << ", n=" << n;
+    }
+    // only n is problematic.
+    *grid_dim = dim3(32768, m_grid_size, NumBlocks(n_grid_size, 32768));
+    *kernel_type = Lambda2KernelType::UseZForN;
+  }
+}
+
+
 
 }  // namespace k2

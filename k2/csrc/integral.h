@@ -26,10 +26,24 @@ namespace k2 {
 struct Vec3 {
   double x[3];
 };
+inline std::ostream& operator << (std::ostream &os, const Vec3 &v) {
+  return os << '(' << v.x[0] << "," << v.x[1] << "," << v.x[2] << ')';
+}
+
 
 struct Mat3 {
   double m[3][3];
 };
+
+inline std::ostream& operator << (std::ostream &os, const Mat3 &m) {
+  os << '(';
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; i < 3; i++) os << m.m[i][j];
+    os << "\n";
+  }
+  return os << ')';
+}
+
 
 // The problem configuration: a number of points and the locations of the
 // points.
@@ -46,6 +60,15 @@ struct Configuration {
   double masses[MAX_POINTS];   // The points' masses (>= 0; but 0 means effectively no point).
 };
 
+inline std::ostream &operator << (std::ostream &os, const Configuration &c) {
+  os << "{ max-density=" << c.max_allowed_density;
+  for (int i = 0; i < MAX_POINTS; i++) {
+    if (c.masses[i] == 0) continue;
+    os << ", mass=" << c.masses[i] << ", center=" << c.points[i];
+  }
+  return os << "}";
+}
+
 void InitConfigurationDefault(Configuration *c) {
   // zeroes points and masses, sets max_allowed_density to 1e+05;
   c->max_allowed_density = 1.0e+05;
@@ -61,7 +84,7 @@ __host__ __device__ void SetZero(Vec3 *vec) {
   for (int i = 0; i < 3; i++)
     vec->x[i] = 0.0;
 }
-  
+
 __host__ __device__ void SetZero(Mat3 *mat) {
 #pragma unroll
   for (int i = 0; i < 3; i++)
@@ -81,7 +104,7 @@ __host__ __device__ void AddVec2(double alpha, const Vec3 &vec,
 
 // mat += alpha * i
 __host__ __device__ void AddScaledUnit(double alpha, Mat3 *mat) {
-#pragma unroll  
+#pragma unroll
   for (int i = 0; i < 3; i++)
     mat->m[i][i] += alpha;
 }
@@ -122,7 +145,7 @@ __host__ __device__ __forceinline__ double TraceMatMat(const Mat3 &mat) {
   // we should be dealing with trace-free matrices.
   K2_CHECK_LE(trace * trace, 0.001 * ans) << "hi";
   return ans;
-  
+
 }
 
 __host__ __device__ double DensityGivenMat(const Mat3 &mat) {
@@ -169,6 +192,9 @@ struct Volume {
   double r;
 };
 
+inline std::ostream &operator << (std::ostream &os, const Volume &v) {
+  return os << "{ center=" << v.center << ", r=" << v.r << "}";
+}
 
 /*
   IntegralPart represents a piece of the integral (a cubic region).  The thing
@@ -178,7 +204,7 @@ struct IntegralPart {
   Volume volume;
   // The density we're integrating, evaluated at the center of the cube.
   double density;
-  
+
   // density_deriv_norm is an approxmation to the 2-norm of the derivative
   // of the function we're computing; it's used to figure out the computation/accuracy
   // tradeoff from subdividing or not subdividing.  It is estimated from the
@@ -194,6 +220,16 @@ struct IntegralPart {
   // we'll set this to true if we'll subdivide this piece of integral.
   bool will_subdivide;
 };
+
+inline std::ostream &operator << (std::ostream &os, const IntegralPart &i) {
+  os << "{ volume=" << i.volume << ", density=" << i.density
+     << ", density_deriv_norm=" << i.density_deriv_norm
+     << ", integral=" << i.integral
+     << ", integral-error=" << i.integral_error
+     << ", will-subdivide=" << i.will_subdivide << "}\n";
+  return os;
+}
+
 
 /*
   Return a sign that's used in subdividing a cube into 8 pieces.
@@ -222,7 +258,7 @@ __device__ __forceinline__ int GetSign(int n, int dim) {
      @param [in,out] dest   One of the 8 sub-cubes of `src`, which is expected
                       to have its `volume` and `density` members
                       already set.  It is expected to point to the n'th
-                      element of an array of 8 sub-cubes of `src`; in fact 
+                      element of an array of 8 sub-cubes of `src`; in fact
                       there will be one large array whose dimension is
                       a multiple of 8 but for the purposes of this function
                       we are only concerned with the 8 sub-cubes of `src`.
@@ -239,7 +275,7 @@ __device__ void SetDerivNorm(const IntegralPart &src,
   if (n < 3) {
     int32_t mask = 1 << n;
     double tot = 0.0;
-#pragma unroll    
+#pragma unroll
     for (int32_t i = 0; i < 8; i++) {
       int sign = ((i & mask != 0) * 2) - 1;  // == (i & mask) ? 1 : -1
       tot += dest[i - n].density * sign;
@@ -261,6 +297,9 @@ __device__ void SetDerivNorm(const IntegralPart &src,
   // We actually interpolate with the parent's deriv_norm, because we want to
   // avoid it approaching exactly zero too quickly.
   dest->density_deriv_norm = (0.8 * deriv_norm + 0.2 * src.density_deriv_norm);
+  // To avoid estimating close to zero derivative if the center is at a point, we
+  // add this extra term...
+  dest->density_deriv_norm += 0.2 * (abs(src.density - dest->density) / dest->volume.r);
 }
 
 
@@ -295,9 +334,13 @@ double ComputeIntegral(ContextPtr &c,
                        double *integral_error) {
   K2_CHECK(c->GetDeviceType() == kCuda);  // these kernels are GPU-only.
 
+  K2_LOG(INFO) << "Configuration is " << configuration;
+
   IntegralPart part;
   SetZero(&part.volume.center);
   part.volume.r = r;
+  part.density = 10.0;
+  part.density_deriv_norm = 10.0;
   part.will_subdivide = true;
 
   Array1<IntegralPart> parts(c, 1);  // `parts` will always contain cubes of a certain size.
@@ -306,8 +349,9 @@ double ComputeIntegral(ContextPtr &c,
   double tot_integral = 0.0,
     tot_integral_error = 0.0;
   for (int32_t iter =  0; parts.Dim() != 0; ++iter) {
+    //K2_LOG(INFO) << "Integral parts = " << parts.To(GetCpuContext());
     int32_t num_parts = parts.Dim();
-    
+
     // This renumbering will count only those parts to be subdivided.
     Renumbering renumbering(c, parts.Dim());
     char *keep_data = renumbering.Keep().Data();
@@ -321,7 +365,7 @@ double ComputeIntegral(ContextPtr &c,
       *integral_error_vec_data = integral_error_vec.Data();
     const IntegralPart *parts_data = parts.Data();
     auto lambda_set_keep_and_integral = [=] __host__ __device__ (int32_t i) -> void {
-      if (!(keep_data[i] = parts_data[i].will_subdivide)) {
+      if (!(keep_data[i] = (parts_data[i].will_subdivide == true))) {
         integral_vec_data[i] = parts_data[i].integral;
         integral_error_vec_data[i] = parts_data[i].integral_error;
       } else {
@@ -329,43 +373,62 @@ double ComputeIntegral(ContextPtr &c,
         integral_error_vec_data[i] = 0.0;
       }
     };
-    Eval(c, num_parts, lambda_set_keep_and_integral);    
-    K2_LOG(INFO) << "keep size = " << renumbering.Keep().Dim() << ", keep[0] =  "
-                 << (int)(renumbering.Keep()[0]);
+    Eval(c, num_parts, lambda_set_keep_and_integral);
     ExclusiveSum(integral_vec, &integral_vec);
     ExclusiveSum(integral_error_vec, &integral_error_vec);
+    K2_LOG(INFO) << "keep max value is " << (int)MaxValue(renumbering.Keep());
+    K2_LOG(INFO) << "Last elem of parts is " << parts.Back();
     tot_integral += integral_vec[num_parts];
-    tot_integral_error += integral_error_vec[num_parts];    
+    tot_integral_error += integral_error_vec[num_parts];
 
     int32_t num_kept = renumbering.NumNewElems();
-
+    K2_CHECK_LE(num_kept, num_parts);
     K2_LOG(INFO) << "after iter " << iter << ", tot_integral = "
                  << tot_integral << ", tot_integral_error = "
                  << tot_integral_error << ", num-parts = "
                  << num_parts << ", num-kept = "
                  << num_kept;
-    
+
     if (num_kept == 0) break;
 
     int32_t new_num_parts = 8 * num_kept;
+    K2_CHECK(new_num_parts > num_kept);
     int32_t *new2old_data = renumbering.New2Old().Data();
     Array1<IntegralPart> new_parts(c, new_num_parts);
     IntegralPart *new_parts_data = new_parts.Data();
+
+
+    auto lambda_check = [=] __host__ __device__ (int32_t i) -> void {
+      if (num_kept == num_parts) {
+        K2_CHECK_EQ(new2old_data[i], i);
+      } else {
+        K2_CHECK_LT(new2old_data[i], num_parts);
+        K2_CHECK_GE(new2old_data[i], 0);
+      }
+    };
+    Eval(c, num_kept, lambda_check);
 
     auto lambda_set_new_parts = [=] __device__ (int32_t i) -> void {
       int32_t n = i % 8,
         group_i = i / 8,
         old_i = new2old_data[group_i];
+      K2_CHECK_LE(static_cast<uint32_t>(group_i),
+                  static_cast<uint32_t>(num_kept));
+      K2_CHECK_LE(static_cast<uint32_t>(old_i),
+                  static_cast<uint32_t>(num_parts));
       const IntegralPart *old_part = parts_data + old_i;
       IntegralPart *this_part = new_parts_data + i;
       SubdivideIntegral(configuration,
                         *old_part, this_part, n);
+      new_parts_data[i].will_subdivide =
+         (new_parts_data[i].integral_error >= cutoff);
     };
     EvalDevice(c, new_num_parts, lambda_set_new_parts);
+    parts = new_parts;
   }
   *integral_error = tot_integral_error;
   return tot_integral;
 }
 
-} // namespace k2 
+} // namespace k2
 #endif  //  K2_CSRC_FSA_INTEGRAL_H_
