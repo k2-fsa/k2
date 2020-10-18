@@ -55,7 +55,6 @@ set(cuda_tests
   fsa_algo_test
   fsa_test
   fsa_utils_test
-  integral_test    
   log_test
   ragged_shape_test
   ragged_test
