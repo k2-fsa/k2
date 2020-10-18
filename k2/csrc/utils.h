@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "k2/csrc/context.h"
+#include "k2/csrc/eval.h"
 #include "k2/csrc/math.h"
 
 namespace k2 {

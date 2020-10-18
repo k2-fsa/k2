@@ -17,6 +17,8 @@
 
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
+#include "k2/csrc/context.h"
+#include "k2/csrc/eval.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/utils.h"
 

@@ -45,7 +45,6 @@ void ExclusiveSum(ContextPtr &c, int32_t n, const SrcPtr src, DestPtr dest) {
     // for ExclusiveSum
     K2_CUDA_SAFE_CALL(cub::DeviceScan::ExclusiveSum(
         nullptr, temp_storage_bytes, src, dest, n, c->GetCudaStream()));
-
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
     K2_CUDA_SAFE_CALL(
         cub::DeviceScan::ExclusiveSum(d_temp_storage.Data(), temp_storage_bytes,

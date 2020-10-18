@@ -18,6 +18,7 @@
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/dtype.h"
+#include "k2/csrc/eval.h"
 #include "k2/csrc/log.h"
 
 namespace k2 {
@@ -97,7 +98,7 @@ struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
   // interface of Tensor.
   Shape shape;
   Dtype dtype;
-  int32_t byte_offset;
+  size_t byte_offset;
   // note: unlike Array1 and Array2, there is no support for data_ == nullptr,
   // i.e.  we will require that data_ is always allocated.  (This is because
   // we plan to generally hold Tensors as pointers, so there isn't much
@@ -156,7 +157,7 @@ class Tensor {
 
   Dtype GetDtype() const { return impl_->dtype; }
   const Shape &GetShape() const { return impl_->shape; }
-  int32_t ByteOffset() const { return impl_->byte_offset; }
+  size_t ByteOffset() const { return impl_->byte_offset; }
   RegionPtr &GetRegion() const { return impl_->data; }
 
   // Forward some functions from the shape.  Will forward more later.
