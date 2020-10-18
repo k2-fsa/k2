@@ -496,6 +496,7 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
 
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
+  K2_STATIC_ASSERT((std::is_convertible<S, T>::value));
   K2_CHECK(IsCompatible(src, *dest));
   int32_t dim = src.Dim();
   K2_CHECK_EQ(dest->Dim(), dim);
@@ -513,7 +514,7 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
       dest_data[i] = min_value;
     }
   } else {
-    K2_CHECK(c->GetDeviceType() == kCuda);
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
     MinOp<S> min_op;
     internal::ConstReversedPtr<S> src_ptr =
         internal::ConstReversedPtr<S>(src_data, dim);
@@ -533,13 +534,13 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
 
 template <typename T>
 Array1<T> Plus(const Array1<T> &src, T t) {
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   int32_t dim = src.Dim();
   Array1<T> ans(c, dim);
   const T *data = src.Data();
   T *ans_data = ans.Data();
   if (c->GetDeviceType() == kCpu) {
-    for (int32_t i = 0; i < dim; i++)
+    for (int32_t i = 0; i < dim; ++i)
       ans_data[i] = data[i] + t;
   } else {
     auto lambda_add = [=] __host__ __device__(int32_t i) -> void {

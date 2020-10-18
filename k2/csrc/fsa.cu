@@ -7,6 +7,7 @@
 // See ../../LICENSE for // clarification regarding multiple authors
 
 #include <string>
+#include <vector>
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa.h"
@@ -205,7 +206,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 }
 
 FsaVec FsaToFsaVec(const Fsa &fsa) {
-  ContextPtr c = fsa.values.Context();
+  ContextPtr &c = fsa.values.Context();
   K2_CHECK_EQ(fsa.NumAxes(), 2);
   RaggedShape first_axis = TrivialShape(c, fsa.shape.Dim0());
   RaggedShape fsa_vec_shape = ComposeRaggedShapes(first_axis, fsa.shape);
@@ -332,6 +333,8 @@ Fsa FsaFromTensor(Tensor &t, bool *error) {
   if (t.NumAxes() != 2 || t.Dim(1) != 4) {
     K2_LOG(WARNING) << "Could not convert tensor to FSA, shape was "
                     << t.Dims();
+    *error = true;
+    return Fsa();  // Invalid, empty FSA
   }
   K2_CHECK_EQ(sizeof(Arc), sizeof(int32_t) * 4);
   int32_t *tensor_data = t.Data<int32_t>();
@@ -383,6 +386,8 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
   if (num_arcs != row_splits12[num_fsas]) {
     K2_LOG(WARNING) << "Could not convert tensor to FSA, num_arcs = "
                     << num_arcs << " vs. " << row_splits12[num_fsas];
+    *error = true;
+    return Fsa();
   }
   if (!ValidateRowSplits(row_splits1) || !ValidateRowSplits(row_splits12)) {
     K2_LOG(WARNING) << "Could not convert tensor to FSA, "
@@ -390,7 +395,7 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
     *error = true;
     return Fsa();
   }
-  ContextPtr c = int_array.Context();
+  ContextPtr &c = int_array.Context();
 
   // TODO: would be nice to transfer this and row_splits12[num_fsas] at the same
   // time.
@@ -427,6 +432,8 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
     K2_LOG(WARNING)
         << "Could not convert tensor to FSA, problem validating "
            "row-splits and row-ids (likely data corruption or code bug)";
+    *error = true;
+    return Fsa();
   }
 
   return FsaVec(RaggedShape3(&row_splits1, &row_ids1, num_states, &row_splits2,
@@ -434,14 +441,14 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
                 arcs);
 }
 
-Tensor FsaVecToTensor(const Fsa &fsa_vec) {
+Tensor FsaVecToTensor(const FsaVec &fsa_vec) {
   if (fsa_vec.NumAxes() != 3) {
-    K2_LOG(FATAL) << "Expected num-axes == 3";
+    K2_LOG(FATAL) << "Expected num-axes == 3. Given: " << fsa_vec.NumAxes();
   }
   Array1<int32_t> row_splits1 = fsa_vec.shape.RowSplits(1),
                   row_splits12 = fsa_vec.shape.RowSplits(2)[row_splits1];
   int32_t num_fsas = fsa_vec.shape.Dim0();
-  ContextPtr c = row_splits1.Context();
+  ContextPtr &c = row_splits1.Context();
   // vector containing: [ num_fsas, 0 ]
   Array1<int32_t> meta_info = Range(c, 2, num_fsas, -num_fsas);
   const Array1<Arc> &arcs = fsa_vec.values;

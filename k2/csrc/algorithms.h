@@ -31,11 +31,11 @@ class Renumbering {
   }
 
   int32_t NumOldElems() const { return keep_.Dim(); }
-    
+
   int32_t NumNewElems() {
     if (!old2new_.IsValid()) ComputeOld2New();
     return num_new_elems_;
-  }  
+  }
 
   // 0 if not kept, 1 if kept (user will write to here).  Its dimension is
   // `num_old_elems` provided in the constructor.  we allocate initially with an
@@ -63,7 +63,7 @@ class Renumbering {
        @return    Returns an array mapping the old indexes to the new indexes.
                   Its dimension is the number of old indexes (i.e. keep_.Dim()
                   or NumOldElems()). It is just the exclusive sum of Keep().
-                  It gives the mapping for indexes that are kept; ignore the 
+                  It gives the mapping for indexes that are kept; ignore the
                   non-kept elements of it.
                   Will be allocated with the same context as keep_.
   */
@@ -71,17 +71,17 @@ class Renumbering {
     if (!old2new_.IsValid()) ComputeOld2New();
     return old2new_;
   }
-  private:
-  
+
+ private:
   void ComputeOld2New();
   // ComputeNew2Old() also computes old2new_ if needed.
   void ComputeNew2Old();
-  
+
   Array1<char> keep_;
   Array1<int32_t> old2new_;
-  int32_t num_new_elems_;    // equals last element of old2new_; set when
-                             // old2new_ is created.
-  Array1<int32_t> new2old_; 
+  int32_t num_new_elems_;  // equals last element of old2new_; set when
+                           // old2new_ is created.
+  Array1<int32_t> new2old_;
 };
 
 }  // namespace k2

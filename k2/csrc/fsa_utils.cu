@@ -550,16 +550,15 @@ std::string FsaToString(const Fsa &fsa, bool openfst /*= false*/,
 }
 
 Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
-  K2_CHECK(fsas.NumAxes() == 3);
-  ContextPtr c = fsas.Context();
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  ContextPtr &c = fsas.Context();
   int32_t num_arcs = fsas.NumElements();
   Array1<int32_t> ans(c, num_arcs);
-  Arc *arcs_data = fsas.values.Data();
+  const Arc *arcs_data = fsas.values.Data();
   int32_t *ans_data = ans.Data();
   if (!as_idx01) {
-    const Arc *arcs = fsas.values.Data();
     auto lambda_set_dest_states1 = [=] __host__ __device__(int32_t arc_idx012) {
-      ans_data[arc_idx012] = arcs[arc_idx012].dest_state;
+      ans_data[arc_idx012] = arcs_data[arc_idx012].dest_state;
     };
     Eval(c, num_arcs, lambda_set_dest_states1);
   } else {
@@ -579,8 +578,8 @@ Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
 }
 
 Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
-  K2_CHECK(fsas.NumAxes() == 3);
-  ContextPtr c = fsas.Context();
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  ContextPtr &c = fsas.Context();
   Array1<int32_t> arc_dest_states = GetDestStates(fsas, true);
 
   MonotonicLowerBound(arc_dest_states, &arc_dest_states);
@@ -791,7 +790,7 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
 Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
                                 const Array1<int32_t> &dest_states) {
   K2_CHECK_EQ(fsas.NumAxes(), 3);
-  ContextPtr c = fsas.Context();
+  ContextPtr &c = fsas.Context();
   Ragged<int32_t> dest_states_tensor(fsas.shape, dest_states);
   int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
           num_arcs = fsas.TotSize(2);

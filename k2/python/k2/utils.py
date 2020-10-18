@@ -4,6 +4,10 @@
 
 from .fsa import Fsa
 from _k2 import _fsa_to_str
+from _k2 import _fsa_to_tensor
+from _k2 import _fsa_to_fsa_vec
+
+import torch
 
 
 def to_str(fsa: Fsa, openfst: bool = False) -> str:
@@ -26,7 +30,36 @@ def to_str(fsa: Fsa, openfst: bool = False) -> str:
     return _fsa_to_str(fsa.arcs, openfst, aux_labels)
 
 
-def to_dot(fsa):
+def to_tensor(fsa: Fsa) -> torch.Tensor:
+    '''Convert an Fsa to a Tensor.
+
+    You can save the tensor to disk and read it later
+    to construct an Fsa.
+
+    Note:
+      The returned Tensor contains only the transition rules, e.g.,
+      arcs. You may want to save its aux_labels separately if any.
+
+    Args:
+      fsa:
+        The input Fsa.
+    Returns:
+      A ``torch.Tensor`` of dtype ``torch.int32``. It is a 2-D tensor
+      if the input is a single FSA. It is a 1-D tensor if the input
+      is a vector of FSAs.
+    '''
+    return _fsa_to_tensor(fsa.arcs)
+
+
+def to_fsa_vec(fsa: Fsa) -> Fsa:
+    # TODO(fangjun): copy the attributes of
+    # the input fsa to the FsaVec
+    ragged_arc = _fsa_to_fsa_vec(fsa.arcs)
+    tensor = _fsa_to_tensor(ragged_arc)
+    return Fsa(tensor)
+
+
+def to_dot(fsa: Fsa):
     '''Visualize an Fsa via graphviz.
     '''
     from graphviz import Digraph
@@ -95,7 +128,6 @@ def to_dot(fsa):
         if hasattr(fsa, 'isym') and label != -1:
             label = fsa.isym.get(label)
 
-        dot.edge(src_state,
-                 dst_state,
-                 label=f'{label}{aux_label}/{weight:.2f}')
+        weight = f'{weight:.2f}'.rstrip('0').rstrip('.')
+        dot.edge(src_state, dst_state, label=f'{label}{aux_label}/{weight}')
     return dot

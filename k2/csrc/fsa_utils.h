@@ -115,7 +115,7 @@ std::string FsaToString(const Fsa &fsa, bool openfst = false,
                    arc-index in `fsas`.
       @return  Returns renumbered FSA.
 */
-FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
+FsaVec RenumberFsaVec(FsaVec &src, const Array1<int32_t> &order,
                       Array1<int32_t> *arc_map);
 
 /*
@@ -164,7 +164,6 @@ Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
      @param [in] state_batches  Batches of states as returned from
                   `GetStateBatches(fsas, true)`, indexed
                   [batch][fsa][state_list].
-
  */
 Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
                                            Ragged<int32_t> &incoming_arcs,

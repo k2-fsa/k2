@@ -147,29 +147,32 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
   *out = creator.GetFsaVec();
 }
 
-Fsa LinearFsa(Array1<int32_t> &symbols) {
-  ContextPtr c = symbols.Context();
+Fsa LinearFsa(const Array1<int32_t> &symbols) {
+  ContextPtr &c = symbols.Context();
   int32_t n = symbols.Dim(), num_states = n + 2, num_arcs = n + 1;
   Array1<int32_t> row_splits1 = Range(c, num_states + 1, 0),
                   row_ids1 = Range(c, num_arcs, 0);
+  int32_t *row_splits1_data = row_splits1.Data();
   Array1<Arc> arcs(c, num_arcs);
   Arc *arcs_data = arcs.Data();
   const int32_t *symbols_data = symbols.Data();
   auto lambda_set_arcs = [=] __host__ __device__(int32_t arc_idx01) -> void {
     int32_t src_state = arc_idx01, dest_state = arc_idx01 + 1,
             // -1 == kFinalSymbol
-        symbol = (arc_idx01 < n ? symbols_data[n] : -1);
-    K2_CHECK_NE(symbol, -1);
+        symbol = (arc_idx01 < n ? symbols_data[arc_idx01] : -1);
+    if (arc_idx01 < n) K2_CHECK_NE(symbol, -1);
     float score = 0.0;
     arcs_data[arc_idx01] = Arc(src_state, dest_state, symbol, score);
+    // the final state has no leaving arcs.
+    if (arc_idx01 == 0) row_splits1_data[num_states] = num_arcs;
   };
   Eval(c, num_arcs, lambda_set_arcs);
   return Ragged<Arc>(RaggedShape2(&row_splits1, &row_ids1, num_arcs), arcs);
 }
 
-Fsa LinearFsas(Ragged<int32_t> &symbols) {
-  K2_CHECK(symbols.NumAxes() == 2);
-  ContextPtr c = symbols.Context();
+FsaVec LinearFsas(Ragged<int32_t> &symbols) {
+  K2_CHECK_EQ(symbols.NumAxes(), 2);
+  ContextPtr &c = symbols.Context();
 
   // if there are n symbols, there are n+2 states and n+1 arcs.
   RaggedShape states_shape = ChangeSublistSize(symbols.shape, 2);
@@ -179,7 +182,7 @@ Fsa LinearFsas(Ragged<int32_t> &symbols) {
 
   // row_splits2 maps from state_idx01 to arc_idx012; row_ids2 does the reverse.
   // We'll set them in the lambda below.
-  Array1<int32_t> row_splits2(c, num_states + 2), row_ids2(c, num_arcs);
+  Array1<int32_t> row_splits2(c, num_states + 1), row_ids2(c, num_arcs);
 
   int32_t *row_ids2_data = row_ids2.Data(),
           *row_splits2_data = row_splits2.Data();
@@ -226,7 +229,7 @@ Fsa LinearFsas(Ragged<int32_t> &symbols) {
 
   return Ragged<Arc>(
       RaggedShape3(&states_shape.RowSplits(1), &states_shape.RowIds(1),
-                   num_states, &row_splits2, &row_splits2, num_arcs),
+                   num_states, &row_splits2, &row_ids2, num_arcs),
       arcs);
 }
 

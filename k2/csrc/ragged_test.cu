@@ -25,46 +25,7 @@
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/tensor.h"
-
-namespace {
-// TODO(haowen): may move below functions to some file like `test_utils.h`,
-// in case other Tests may use it?
-template <typename T>
-static void CheckArrayData(const k2::Array1<T> &array,
-                           const std::vector<T> &target) {
-  ASSERT_EQ(array.Dim(), target.size());
-  const T *array_data = array.Data();
-  // copy data from CPU/GPU to CPU
-  auto kind = k2::GetMemoryCopyKind(*array.Context(), *k2::GetCpuContext());
-  std::vector<T> cpu_data(array.Dim());
-  k2::MemoryCopy(static_cast<void *>(cpu_data.data()),
-                 static_cast<const void *>(array_data),
-                 array.Dim() * array.ElementSize(), kind, nullptr);
-  EXPECT_EQ(cpu_data, target);
-}
-
-static void CheckRowSplits(k2::RaggedShape &shape,
-                           const std::vector<std::vector<int32_t>> &target) {
-  for (int32_t i = 1; i < shape.NumAxes(); ++i) {
-    k2::Array1<int32_t> curr_row_splits = shape.RowSplits(i);
-    CheckArrayData<int32_t>(curr_row_splits, target[i - 1]);
-  }
-}
-
-// check if `array` and `target` have the same values
-template <typename T>
-static void CheckArrayData(const k2::Array1<T> &array,
-                           const k2::Array1<T> &target) {
-  ASSERT_EQ(array.Dim(), target.Dim());
-  int32_t dim = array.Dim();
-  k2::ContextPtr cpu = k2::GetCpuContext();
-  k2::Array1<T> cpu_array = array.To(cpu);
-  k2::Array1<T> cpu_target = target.To(cpu);
-  std::vector<T> array_data(cpu_array.Data(), cpu_array.Data() + dim);
-  std::vector<T> target_data(cpu_target.Data(), cpu_target.Data() + dim);
-  EXPECT_EQ(array_data, target_data);
-}
-}  // namespace
+#include "k2/csrc/test_utils.h"
 
 namespace k2 {
 class RaggedShapeOpsSuiteTest : public ::testing::Test {
@@ -1430,50 +1391,145 @@ TEST(RaggedShapeOpsTest, TestRenumber) {
   TestRenumber<kCuda>();
 }
 TEST(GetTransposeReordering, NoDuplicates) {
-  // 0 0 0 9 2
-  // 5 8 0 0 1
-  // 0 0 3 0 0
-  // 0 6 0 0 0
-  std::vector<int32_t> col_indexes{3, 4, 0, 1, 4, 2, 1};
-  std::vector<int32_t> _row_splits{0, 2, 5, 6, 7};
+  //       col0  col1  col2  col3  col4  col5
+  // row0                           a0    b1
+  // row1   c2    d3                      e4
+  // row2                     f5
+  // row3   g6          h7          i8
+  // row4                                 j9
+  // row5         k10               l11
+  std::vector<int32_t> col_indexes{4, 5, 0, 1, 5, 3, 0, 2, 4, 5, 1, 4};
+  std::vector<int32_t> _row_splits{0, 2, 5, 6, 9, 10, 12};
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> row_splits(context, _row_splits);
     RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
     Array1<int32_t> values(context, col_indexes);
 
     Ragged<int32_t> ragged(shape, values);
-    Array1<int32_t> order = GetTransposeReordering(ragged, 5);
-    //   index 0 1 2 3 4 5 6
-    // it maps 9 2 5 8 1 3 6 to
-    //         5 8 6 3 9 2 1
-    // so it returns
-    //         2 3 6 5 0 1 4
-    CheckArrayData(order, {2, 3, 6, 5, 0, 1, 4});
+    Array1<int32_t> order = GetTransposeReordering(ragged, 6);
+    CheckArrayData(order, {2, 6, 3, 10, 7, 5, 0, 8, 11, 1, 4, 9});
+    EXPECT_TRUE(context->IsCompatible(*order.Context()));
+  }
+}
+
+TEST(GetTransposeReordering, NoDuplicatesThreeAxes) {
+  //       col0  col1  col2  col3  col4  col5
+  // row0         a0          b1
+  // row1   c2          d3
+  // row2         e4
+  // row3   f5    g6          h7
+  // row4                                  i8
+  // row5                            j9    k10
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<int32_t> col_indexes(
+        context, std::vector<int32_t>{1, 3, 0, 2, 1, 0, 1, 3, 5, 4, 5});
+    Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 4, 6});
+    Array1<int32_t> row_splits2(context,
+                                std::vector<int32_t>{0, 2, 4, 5, 8, 9, 11});
+    RaggedShape shape =
+        RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+    Ragged<int32_t> ragged(shape, col_indexes);
+    Array1<int32_t> order = GetTransposeReordering(ragged, 6);
+    CheckArrayData(order, {2, 5, 0, 4, 6, 3, 1, 7, 9, 8, 10});
     EXPECT_TRUE(context->IsCompatible(*order.Context()));
   }
 }
 
 TEST(GetTransposeReordering, WithDuplicates) {
-  // 0 0 0 (9,9,9)
-  // 5 8 0     0
-  // 0 0 (3,3) 0
-  // 0 6 0     0
-  std::vector<int32_t> col_indexes{3, 3, 3, 0, 1, 2, 2, 1};
-  std::vector<int32_t> _row_splits{0, 3, 5, 7, 8};
+  //       col0   col1   col2    col3      col4      col5
+  // row0         a0,a1         b2,b3,b4
+  // row1  c5,c6          d7
+  // row2         e8
+  // row3   f9   g10,g11         h12
+  // row4                                i13,i14,i15
+  // row5                        j16                  k17
+  std::vector<int32_t> col_indexes{1, 1, 3, 3, 3, 0, 0, 2, 1,
+                                   0, 1, 1, 3, 4, 4, 4, 3, 5};
+  std::vector<int32_t> _row_splits{0, 5, 8, 9, 13, 16, 18};
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> row_splits(context, _row_splits);
     RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
     Array1<int32_t> values(context, col_indexes);
-
     Ragged<int32_t> ragged(shape, values);
-    Array1<int32_t> order = GetTransposeReordering(ragged, 4);
-    //   index 0 1 2 3 4 5 6 7
-    // it maps 9 9 9 5 8 3 3 6 to
-    //         5 8 6 3 3 9 9 9
-    // so it returns
-    //         3 4 7 5 6 0 1 2   Note that it is stable
-    CheckArrayData(order, {3, 4, 7, 5, 6, 0, 1, 2});
+    Array1<int32_t> order = GetTransposeReordering(ragged, 6);
+    CheckArrayData(
+        order, {5, 6, 9, 0, 1, 8, 10, 11, 7, 2, 3, 4, 12, 16, 13, 14, 15, 17});
     EXPECT_TRUE(context->IsCompatible(*order.Context()));
+  }
+}
+
+TEST(GetTransposeReordering, WithDuplicatesThreeAxes) {
+  //       col0   col1   col2    col3      col4      col5
+  // row0         a0,a1         b2,b3,b4
+  // row1  c5,c6          d7
+  // row2         e8
+  // row3   f9   g10,g11         h12
+  // row4                                i13,i14,i15
+  // row5                                 j16         k17
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<int32_t> col_indexes(
+        context, std::vector<int32_t>{1, 1, 3, 3, 3, 0, 0, 2, 1, 0, 1, 1, 3, 4,
+                                      4, 4, 4, 5});
+    Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 4, 6});
+    Array1<int32_t> row_splits2(context,
+                                std::vector<int32_t>{0, 5, 8, 9, 13, 16, 18});
+    RaggedShape shape =
+        RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+    Ragged<int32_t> ragged(shape, col_indexes);
+    Array1<int32_t> order = GetTransposeReordering(ragged, 6);
+    CheckArrayData(
+        order, {5, 6, 9, 0, 1, 8, 10, 11, 7, 2, 3, 4, 12, 13, 14, 15, 16, 17});
+    EXPECT_TRUE(context->IsCompatible(*order.Context()));
+  }
+}
+
+TEST(ChangeSublistSize, TwoAxes) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 2, 5});
+    RaggedShape src = RaggedShape2(&row_splits1, nullptr, -1);
+
+    int32_t size_delta = 2;
+    RaggedShape dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(1), std::vector<int32_t>{0, 4, 9});
+
+    size_delta = -2;
+    dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(1), std::vector<int32_t>{0, 0, 1});
+
+    size_delta = 0;
+    dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(1), std::vector<int32_t>{0, 2, 5});
+  }
+}
+
+TEST(ChangeSublistSize, ThreeAxes) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    /*
+     [
+       [ [x, x, x], [x, x] ]
+       [ [x], [x, x], [x, x, x] ]
+     ]
+     */
+    Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 2, 5});
+    Array1<int32_t> row_splits2(context,
+                                std::vector<int32_t>{0, 3, 5, 6, 8, 11});
+    RaggedShape src =
+        RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+
+    int32_t size_delta = 2;
+    RaggedShape dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 5, 9, 12, 16, 21});
+
+    // it is an error to use -2 here
+    // because the state (state_idx01 == 2) has only 1 entry
+    size_delta = -1;
+
+    dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 2, 3, 3, 4, 6});
+
+    size_delta = 0;
+    dst = ChangeSublistSize(src, size_delta);
+    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 3, 5, 6, 8, 11});
   }
 }
 
@@ -1488,8 +1544,8 @@ void TestGetCountsPartitioned() {
     context = GetCudaContext();
   }
 
-  // Testing with simple case is good enough as we have tested GetCounts() with
-  // random large size and GetCountsPartitioned just calls GetCounts.
+  // Testing with simple case is good enough as we have tested GetCounts()
+  // with random large size and GetCountsPartitioned just calls GetCounts.
   std::vector<int32_t> src_row_splits_vec = {0, 3, 4, 6, 10};
   Array1<int32_t> src_row_splits(context, src_row_splits_vec);
   RaggedShape src_shape = RaggedShape2(&src_row_splits, nullptr, -1);
@@ -1627,8 +1683,8 @@ void TestStack() {
           int32_t i = index[0];
           index.erase(index.begin());
           // result[i,j,k,l] = (shape[i])[j,k,l]
-          i = cpu_shapes[i][index];  // don't need the value, just need to make
-                                     // sure it's an allowable index.
+          i = cpu_shapes[i][index];  // don't need the value, just need to
+                                     // make sure it's an allowable index.
         }
       }
       {
@@ -1647,8 +1703,8 @@ void TestStack() {
           int32_t i = index[1];
           index.erase(index.begin() + 1);
           // result[i,j,k,l] = (shape[j])[i,k,l]
-          i = cpu_shapes[i][index];  // don't need the value, just need to make
-                                     // sure it's an allowable index.
+          i = cpu_shapes[i][index];  // don't need the value, just need to
+                                     // make sure it's an allowable index.
         }
       }
     }

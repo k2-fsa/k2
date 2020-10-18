@@ -11,6 +11,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
@@ -22,15 +23,43 @@
 namespace k2 {
 
 static void PybindFsaUtil(py::module &m) {
-  m.def("_fsa_from_tensor", [](torch::Tensor tensor) -> Fsa {
-    Array1<Arc> array = FromTensor<Arc>(tensor);
-    bool error = true;
-    Fsa fsa = FsaFromArray1(array, &error);
-    // TODO(fangjun): implement FsaVecFromArray1
-    // if (error == true) fsa = FsaVecFromArray1(array, &error);
-    K2_CHECK(!error);
-    return fsa;
-  });
+  // TODO(fangjun): add docstring in Python describing
+  // the format of the input tensor when it is a FsaVec.
+  m.def(
+      "_fsa_from_tensor",
+      [](torch::Tensor tensor) -> FsaOrVec {
+        auto k2_tensor = FromTensor(tensor, TensorTag{});
+        bool error = true;
+        Fsa fsa;
+        if (tensor.dim() == 2)
+          fsa = FsaFromTensor(k2_tensor, &error);
+        else if (tensor.dim() == 1)
+          fsa = FsaVecFromTensor(k2_tensor, &error);
+        else
+          K2_LOG(FATAL)
+              << "Expect dim: 2 (a single FSA) or 1 (a vector of FSAs). "
+              << "Given: " << tensor.dim();
+
+        K2_CHECK(!error);
+        return fsa;
+      },
+      py::arg("tensor"));
+
+  m.def(
+      "_fsa_to_tensor",
+      [](const FsaOrVec &fsa) -> torch::Tensor {
+        if (fsa.NumAxes() == 2) {
+          Tensor tensor = FsaToTensor(fsa);
+          return ToTensor(tensor);
+        } else if (fsa.NumAxes() == 3) {
+          Tensor tensor = FsaVecToTensor(fsa);
+          return ToTensor(tensor);
+        } else {
+          K2_LOG(FATAL) << "Unsupported num_axes: " << fsa.NumAxes();
+          return {};
+        }
+      },
+      py::arg("fsa"));
 
   m.def(
       "_fsa_to_str",
@@ -59,6 +88,14 @@ static void PybindFsaUtil(py::module &m) {
       "is a 1-D tensor of dtype torch.int32 containing the aux_labels if the "
       "returned FSA is a transducer; element 1 is None if the "
       "returned FSA is an acceptor");
+
+  // the following methods are for debugging only
+  m.def("_fsa_to_fsa_vec", &FsaToFsaVec, py::arg("fsa"));
+  m.def("_get_fsa_vec_element", &GetFsaVecElement, py::arg("vec"),
+        py::arg("i"));
+  m.def("_create_fsa_vec", [](std::vector<Fsa *> &fsas) -> FsaVec {
+    return CreateFsaVec(fsas.size(), fsas.data());
+  });
 }
 
 static void PybindDenseFsaVec(py::module &m) {

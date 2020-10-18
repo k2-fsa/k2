@@ -7,7 +7,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R fsa_test_py -E host
+#  ctest --verbose -R fsa_test_py -E "host|dense"
 
 import unittest
 
@@ -280,6 +280,59 @@ class TestFsa(unittest.TestCase):
         '''
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
             k2.to_str(fsa, openfst=True))
+
+    def test_fsa_io(self):
+        s = '''
+            0 1 10 0.1
+            0 2 20 0.2
+            1 3 -1 0.3
+            2 3 -1 0.4
+            3
+        '''
+        fsa = k2.Fsa.from_str(_remove_leading_spaces(s))
+        tensor = k2.to_tensor(fsa)
+        assert tensor.ndim == 2
+        assert tensor.dtype == torch.int32
+        del fsa  # tensor is still accessible
+
+        fsa = k2.Fsa(tensor)
+        del tensor
+        assert torch.allclose(
+            fsa.score, torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32))
+        assert torch.allclose(
+            fsa.arcs.values()[:, :-1],  # skip the last field `score`
+            torch.tensor([[0, 1, 10], [0, 2, 20], [1, 3, -1], [2, 3, -1]],
+                         dtype=torch.int32))
+
+        # now test vector of FSAs
+
+        ragged_arc = _k2._fsa_to_fsa_vec(fsa.arcs)
+        del fsa
+        fsa_vec = k2.Fsa.from_ragged_arc(ragged_arc)
+        del ragged_arc
+
+        assert fsa_vec.shape == (1, None, None)
+
+        assert torch.allclose(
+            fsa_vec.score,
+            torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32))
+        assert torch.allclose(
+            fsa_vec.arcs.values()[:, :-1],  # skip the last field `score`
+            torch.tensor([[0, 1, 10], [0, 2, 20], [1, 3, -1], [2, 3, -1]],
+                         dtype=torch.int32))
+
+        tensor = k2.to_tensor(fsa_vec)
+        assert tensor.ndim == 1
+        assert tensor.dtype == torch.int32
+        del fsa_vec
+        fsa_vec = k2.Fsa(tensor)
+        assert torch.allclose(
+            fsa_vec.score,
+            torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32))
+        assert torch.allclose(
+            fsa_vec.arcs.values()[:, :-1],  # skip the last field `score`
+            torch.tensor([[0, 1, 10], [0, 2, 20], [1, 3, -1], [2, 3, -1]],
+                         dtype=torch.int32))
 
     def test_symbol_table_and_dot(self):
         isym_str = '''

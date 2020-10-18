@@ -894,6 +894,51 @@ static Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
   return ans;
 }
 
+static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
+                                                           int32_t num_cols) {
+  K2_CHECK_EQ(src.NumAxes(), 3);
+  ContextPtr &context = src.Context();
+  K2_CHECK_EQ(context->GetDeviceType(), kCuda);
+
+  const Array1<int32_t> &row_splits1 = src.RowSplits(1);
+  const int32_t *row_ids2_data = src.RowIds(2).Data();
+  const int32_t *value_data = src.values.Data();
+  Array1<int32_t> segments = src.RowSplits(2)[row_splits1];
+
+  auto lambda_comp = [=] __device__(int32_t a_idx012,
+                                    int32_t b_idx012) -> bool {
+    int32_t a_col_index = value_data[a_idx012];
+    int32_t b_col_index = value_data[b_idx012];
+
+    if (a_col_index < b_col_index) return true;  // sort by column indexes
+    if (a_col_index > b_col_index) return false;
+
+    // at this point, a_idx012 and b_idx012 belong to the same column;
+    // then we sort by its row indexes
+
+    int32_t a_idx01 = row_ids2_data[a_idx012];
+    int32_t b_idx01 = row_ids2_data[b_idx012];
+
+    if (a_idx01 < b_idx01) return true;
+    if (a_idx01 > b_idx01) return false;
+
+    // at this point, a_idx012 and b_idx012 are duplicate elements
+    return false;  // either true or false is fine
+  };
+
+  std::unique_ptr<mgpu::context_t> mgpu_context =
+      GetModernGpuAllocator(context->GetDeviceId());
+
+  int32_t n = src.values.Dim();
+  Array1<int32_t> ans = Range(context, n, 0);
+  K2_CUDA_SAFE_CALL(mgpu::segmented_sort(ans.Data(),          // keys
+                                         ans.Dim(),           // count
+                                         segments.Data(),     // segments
+                                         segments.Dim() - 1,  // num_segments
+                                         lambda_comp, *mgpu_context));
+  return ans;
+}
+
 Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   ContextPtr &context = src.Context();
   if (src.NumAxes() < 2) {
@@ -905,6 +950,9 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   if (device_type == kCpu) return GetTransposeReorderingCpu(src, num_cols);
 
   K2_CHECK_EQ(device_type, kCuda);
+
+  if (src.NumAxes() == 3)
+    return GetTransposeReorderingThreeAxesCuda(src, num_cols);
 
   const int32_t *row_splits1_data = src.RowSplits(src.NumAxes() - 1).Data();
   const int32_t *row_ids1_data = src.RowIds(src.NumAxes() - 1).Data();
@@ -940,25 +988,25 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
 }
 
 RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
-  K2_CHECK(src.NumAxes() >= 2);
+  K2_CHECK_GE(src.NumAxes(), 2);
   // the result will have the same num-axes as `src` (the NumAxes() of the
   // object is not the same as the number of RaggedShapeDim axes).
   std::vector<RaggedShapeDim> ans_axes(src.NumAxes() - 1);
   int32_t last_axis = src.NumAxes() - 1;
   // The following will only do something if src.NumAxes() > 2.
-  for (int32_t i = 0; i + 1 < last_axis; i++) ans_axes[i] = src.Axes()[i];
+  for (int32_t i = 0; i + 1 < last_axis; ++i) ans_axes[i] = src.Axes()[i];
 
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   int32_t num_rows = src.TotSize(last_axis - 1),
           src_num_elems = src.TotSize(last_axis),
           num_elems = src_num_elems + size_delta * num_rows;
-  ans_axes[0].row_splits = Array1<int32_t>(c, num_rows + 1);
-  ans_axes[0].row_ids = Array1<int32_t>(c, num_elems);
-  ans_axes[0].cached_tot_size = num_elems;
+  ans_axes.back().row_splits = Array1<int32_t>(c, num_rows + 1);
+  ans_axes.back().row_ids = Array1<int32_t>(c, num_elems);
+  ans_axes.back().cached_tot_size = num_elems;
   const int32_t *src_row_splits_data = src.RowSplits(last_axis).Data(),
                 *src_row_ids_data = src.RowIds(last_axis).Data();
-  int32_t *row_splits_data = ans_axes[0].row_splits.Data(),
-          *row_ids_data = ans_axes[0].row_ids.Data();
+  int32_t *row_splits_data = ans_axes.back().row_splits.Data(),
+          *row_ids_data = ans_axes.back().row_ids.Data();
 
   {
     ParallelRunner pr(c);
@@ -985,7 +1033,7 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
         // size_delta might be negative.
         if (new_idx01 < new_idx0x_next) row_ids_data[new_idx01] = src_idx0;
       };
-      Eval(c, num_elems, lambda_set_row_ids1);
+      Eval(c, src_num_elems, lambda_set_row_ids1);
     }
     if (size_delta > 0) {
       // This sets the row-ids that are not set by lambda_set_row_ids1.

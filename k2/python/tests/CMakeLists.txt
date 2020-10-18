@@ -19,6 +19,8 @@ endfunction()
 set(py_test_files
   dense_fsa_test.py
   fsa_test.py
+  linear_fsa_test.py
+  top_sort_test.py
 )
 
 foreach(source IN LISTS py_test_files)

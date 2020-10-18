@@ -141,7 +141,8 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
   }
 }
 
-RaggedShape RaggedShape::Index(int32_t axis, int32_t i, int32_t *value_offset) {
+RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
+                               int32_t *value_offset /*= nullptr*/) {
   // only support `axis == 0` for now
   K2_CHECK_EQ(axis, 0);
   K2_CHECK_GE(i, 0);
@@ -168,10 +169,13 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i, int32_t *value_offset) {
     int32_t idx_begin_next = (idx_begin != 0 ? src_row_splits[idx_begin] : 0),
       idx_end_next = src_row_splits[idx_end];
 
-    axes[i - 2].row_splits = src_row_splits.Range(idx_begin, idx_end - idx_begin + 1);
+    axes[i - 2].row_splits =
+        src_row_splits.Range(idx_begin, idx_end - idx_begin + 1);
     if (idx_begin_next != 0)
       axes[i - 2].row_splits = Minus(axes[i - 2].row_splits, idx_begin_next);
-    axes[i - 2].row_ids = src_row_ids.Range(idx_begin_next, idx_end_next - idx_begin_next);
+
+    axes[i - 2].row_ids =
+        src_row_ids.Range(idx_begin_next, idx_end_next - idx_begin_next);
     if (idx_begin != 0)
       axes[i - 2].row_ids = Minus(axes[i - 2].row_ids, idx_begin);
     axes[i - 2].cached_tot_size = idx_end_next - idx_begin_next;
@@ -210,8 +214,8 @@ RaggedShapeIndexIterator RaggedShape::Iterator() {
 
 
 int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
-  K2_CHECK(indexes.size() == NumAxes());
-  K2_CHECK(Context()->GetDeviceType() == kCpu);
+  K2_CHECK_EQ(static_cast<int32_t>(indexes.size()), NumAxes());
+  K2_CHECK_EQ(Context()->GetDeviceType(), kCpu);
   int32_t cur_idx = indexes[0];
   for (int32_t i = 1; i < NumAxes(); i++) {
     Array1<int32_t> &row_splits = axes_[i - 1].row_splits;

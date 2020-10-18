@@ -13,15 +13,15 @@
 #if defined(K2_USE_PYTORCH)
 
 #include "k2/python/csrc/torch/arc.h"
-#include "k2/python/csrc/torch/array.h"
 #include "k2/python/csrc/torch/fsa.h"
+#include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/ragged.h"
 
 void PybindTorch(py::module &m) {
   PybindArc(m);
-  PybindArray(m);
   PybindRagged(m);
   PybindFsa(m);
+  PybindFsaAlgo(m);
 }
 
 #else

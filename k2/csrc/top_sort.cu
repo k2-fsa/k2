@@ -21,13 +21,14 @@ namespace k2 {
 
 // Caution: this is really a .cu file.  It contains mixed host and device code.
 
-// See declaration in fsa_algo.h
+// See declaration in fsa_util.h
 FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
                       Array1<int32_t> *arc_map) {
-  ContextPtr c = fsas.Context();
-  K2_CHECK_LE(order.Dim(), fsas.NumElements());
+  K2_CHECK(fsas.NumAxes() == 3);
+  ContextPtr &c = fsas.Context();
+  K2_CHECK_LE(order.Dim(), fsas.TotSize(1));
   Array1<int32_t> old2new_map(c, fsas.TotSize(1));
-  if (order.Dim() != fsas.NumElements()) {
+  if (order.Dim() != fsas.TotSize(1)) {
     old2new_map = -1;
   }
   int32_t new_num_states = order.Dim(), num_fsas = fsas.Dim0();
@@ -47,7 +48,7 @@ FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
   Eval(c, new_num_states, lambda_set_old2new_and_num_arcs);
 
   Array1<int32_t> new_row_splits1, new_row_ids1;
-  if (order.Dim() == fsas.NumElements()) {
+  if (order.Dim() == fsas.TotSize(1)) {
     new_row_splits1 = fsas.RowSplits(1);
     new_row_ids1 = fsas.RowIds(1);
   } else {
@@ -88,7 +89,7 @@ FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
     int32_t fsas_src_idx1 = arc.src_state, fsas_dest_idx1 = arc.dest_state,
             fsas_idx0x = fsas_row_splits1_data[ans_idx0],
             fsas_src_idx01 = fsas_idx0x + fsas_src_idx1,
-            fsas_dest_idx01 = fsas_idx01 + fsas_dest_idx1;
+            fsas_dest_idx01 = fsas_idx0x + fsas_dest_idx1;
     K2_CHECK_EQ(old2new_data[fsas_src_idx01], ans_idx01);
     int32_t ans_dest_idx01 = old2new_data[fsas_dest_idx01],
             ans_dest_idx1 = ans_dest_idx01 - ans_idx0x;
@@ -114,7 +115,7 @@ class TopSorter {
     K2_CHECK_EQ(fsas_.NumAxes(), 3);
   }
 
-  int32_t NumFsas() { return fsas_.Dim0(); }
+  int32_t NumFsas() const { return fsas_.Dim0(); }
 
   /*
     Return the ragged array containing the states active on the 1st iteration of
@@ -133,7 +134,7 @@ class TopSorter {
     int32_t num_states = state_in_degree_.Dim();
     Renumbering state_renumbering(c_, num_states);
     // NOTE: this is not very optimal given that we're keeping only a small
-    // number of states, but at this point I dont want to optimize too heavily.
+    // number of states, but at this point I don't want to optimize too heavily.
     // The (dest_states_data[i] != i) part is to avoid self-loops.
     char *keep_data = state_renumbering.Keep().Data();
     const int32_t *state_in_degree_data = state_in_degree_.Data(),
@@ -208,16 +209,17 @@ class TopSorter {
       int32_t arcs_idx01 = arcs_row_ids2_data[arcs_idx012],
               arcs_idx01x = arcs_row_splits2_data[arcs_idx01],
               arcs_idx2 = arcs_idx012 - arcs_idx01x,
-              fsas_idx01 = states_data[arcs_idx012],  // a state index
+              fsas_idx01 = states_data[arcs_idx01],  // a state index
           fsas_idx01x = fsas_row_splits2_data[fsas_idx01],
               fsas_idx012 = fsas_idx01x + arcs_idx2,
               fsas_dest_state_idx01 = dest_states_data[fsas_idx012];
 
       if ((keep_arc_data[arcs_idx012] = AtomicDecAndCompareZero(
                state_in_degree_data + fsas_dest_state_idx01))) {
-        next_iter_states_data[arcs_idx012] = fsas_idx01;
+        next_iter_states_data[arcs_idx012] = fsas_dest_state_idx01;
       }
     };
+    Eval(c_, arcs_shape.NumElements(), lambda_set_arc_renumbering);
 
     Array1<int32_t> new2old_map = arc_renumbering.New2Old();
     if (new2old_map.Dim() == 0) {
@@ -234,8 +236,8 @@ class TopSorter {
     auto lambda_set_row_ids =
         [=] __host__ __device__(int32_t new_state_idx) -> void {
       int32_t arcs_idx012 = new2old_map_data[new_state_idx],
-              arcs_idx01 = arcs_row_splits2_data[arcs_idx012],  // state index
-          arcs_idx0 = arcs_row_splits1_data[arcs_idx01];        // FSA index
+              arcs_idx01 = arcs_row_ids2_data[arcs_idx012],  // state index
+              arcs_idx0 = arcs_row_ids1_data[arcs_idx01];        // FSA index
       new_states_row_ids_data[new_state_idx] = arcs_idx0;
     };
     Eval(c_, new_states.Dim(), lambda_set_row_ids);
@@ -255,8 +257,8 @@ class TopSorter {
     reachable from the start state).
    */
   std::unique_ptr<Ragged<int32_t>> GetFinalBatch() {
-    int32_t num_fsas = NumFsas() + 1;
-    int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
+    int32_t num_fsas = NumFsas();
+    const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
     Array1<int32_t> has_final_state(c_, num_fsas + 1);
     int32_t *has_final_state_data = has_final_state.Data();
     auto lambda_set_has_final_state =
@@ -282,6 +284,7 @@ class TopSorter {
       K2_CHECK_GT(final_state, fsas_row_splits1_data[fsa_idx0]);
       ans_data[i] = final_state;
     };
+    Eval(c_, num_fsas, lambda_set_final_state);
     return ans;
   }
 
@@ -335,6 +338,7 @@ class TopSorter {
     for (size_t i = 0; i < iters.size(); ++i) iters_ptrs[i] = iters[i].get();
     Ragged<int32_t> all_states =
         Append(1, static_cast<int32_t>(iters.size()), iters_ptrs.data());
+
     K2_CHECK_EQ(all_states.NumElements(), fsas_.TotSize(1))
         << "likely code error";
 
@@ -349,7 +353,7 @@ class TopSorter {
   Ragged<int32_t> dest_states_;
 
   // The remaining in-degree of each state (state_in_degree_.Dim() ==
-  // fsas_.NumElements()), i.e. number of incoming arcs (except those from
+  // fsas_.TotSize(1)), i.e. number of incoming arcs (except those from
   // states that were already processed).
   Array1<int32_t> state_in_degree_;
 };
