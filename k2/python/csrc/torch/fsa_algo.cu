@@ -8,6 +8,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <tuple>
 #include <utility>
 #include <vector>
 

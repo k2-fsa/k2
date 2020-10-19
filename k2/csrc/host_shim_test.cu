@@ -10,6 +10,8 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host_shim.h"

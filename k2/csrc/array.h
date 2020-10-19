@@ -593,7 +593,7 @@ class Array2 {
                         // Region.
 };
 
-inline int ToPrintable(char c) { return static_cast<int>(c); }
+inline int32_t ToPrintable(char c) { return static_cast<int32_t>(c); }
 template <typename T>
 T ToPrintable(T t) {
   return t;
