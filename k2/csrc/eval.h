@@ -21,11 +21,10 @@
 #include <type_traits>
 #include <vector>
 
-#include "k2/csrc/log.h"
 #include "k2/csrc/context.h"
+#include "k2/csrc/log.h"
 
 namespace k2 {
-
 
 template <typename LambdaT>
 __global__ void eval_lambda(int32_t n, LambdaT lambda) {
@@ -43,7 +42,6 @@ __global__ void eval_lambda_large(int32_t n, LambdaT lambda) {
   }
 }
 
-
 template <typename T, typename LambdaT>
 __global__ void set_data_with_lambda(T *data, int32_t n, LambdaT lambda) {
   int32_t i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -51,7 +49,6 @@ __global__ void set_data_with_lambda(T *data, int32_t n, LambdaT lambda) {
     data[i] = lambda(i);
   }
 }
-
 
 template <typename LambdaT>
 __global__ void eval_lambda2_simple(int32_t m, int32_t n, LambdaT lambda) {
@@ -104,11 +101,10 @@ void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
                         <<<grid_size, block_size, 0, stream>>>(n, lambda));
     } else {
       int32_t x_grid_size = (grid_size < (1 << 20) ? (1 << 10) : 32768),
-        y_grid_size = NumBlocks(grid_size, x_grid_size);
+              y_grid_size = NumBlocks(grid_size, x_grid_size);
       dim3 grid_dim(x_grid_size, y_grid_size, 1), block_dim(block_size, 1, 1);
       K2_CUDA_SAFE_CALL(eval_lambda_large<LambdaT>
                         <<<grid_dim, block_dim, 0, stream>>>(n, lambda));
-
     }
   }
 }
@@ -117,20 +113,16 @@ void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   Utility function used inside Eval2().
  */
 
-enum class Lambda2KernelType {
-  Simple = 1,
-  UseZForM = 2,
-  UseZForN = 3
-};
-/* Creates the configuration (block_dim, grid_dim and kernel type) for use in Eval2,
-   i.e. for how we invoke eval_lambda2().
-      @param [in] m   "outer" dimension (the one we want to be more slowly varying)
-      @param [in] n   "inner" dimension (the one which should vary within a warp)
+enum class Lambda2KernelType { Simple = 1, UseZForM = 2, UseZForN = 3 };
+/* Creates the configuration (block_dim, grid_dim and kernel type) for use in
+   Eval2, i.e. for how we invoke eval_lambda2().
+      @param [in] m   "outer" dimension (the one we want to be more slowly
+                       varying)
+      @param [in] n   "inner" dimension (the one which should vary within a
+                       warp)
  */
-void GetBlockSizesForLambda2(int32_t m, int32_t n,
-                             dim3 *block_dim,
-                             dim3 *grid_dim,
-                             Lambda2KernelType *kernel_type);
+void GetBlockSizesForLambda2(int32_t m, int32_t n, dim3 *block_dim,
+                             dim3 *grid_dim, Lambda2KernelType *kernel_type);
 
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
@@ -138,8 +130,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
 void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
   Eval(c->GetCudaStream(), n, lambda);
 }
-
-
 
 template <typename LambdaT>
 void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
@@ -153,11 +143,10 @@ void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
                       <<<grid_size, block_size, 0, stream>>>(n, lambda));
   } else {
     int32_t x_grid_size = (grid_size < (1 << 20) ? (1 << 10) : 32768),
-      y_grid_size = NumBlocks(grid_size, x_grid_size);
+            y_grid_size = NumBlocks(grid_size, x_grid_size);
     dim3 grid_dim(x_grid_size, y_grid_size, 1), block_dim(block_size, 1, 1);
     K2_CUDA_SAFE_CALL(eval_lambda_large<LambdaT>
                       <<<grid_dim, block_dim, 0, stream>>>(n, lambda));
-
   }
 }
 
@@ -167,7 +156,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
 void EvalDevice(ContextPtrType c, int32_t n, LambdaT &lambda) {
   EvalDevice(c->GetCudaStream(), n, lambda);
 }
-
 
 /* SetData() will do `data[i] = lambda(i)` for 0 <= i < n, on the appropriate
    device (CPU or GPU) */
@@ -223,10 +211,11 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
     dim3 block_dim, grid_dim;
     Lambda2KernelType kernel_type;
     GetBlockSizesForLambda2(m, n, &block_dim, &grid_dim, &kernel_type);
-    switch(kernel_type) {
+    switch (kernel_type) {
       case Lambda2KernelType::Simple:
         K2_CUDA_SAFE_CALL(
-          eval_lambda2_simple<<<grid_dim, block_dim, 0, stream>>>(m, n, lambda));
+            eval_lambda2_simple<<<grid_dim, block_dim, 0, stream>>>(m, n,
+                                                                    lambda));
         break;
       case Lambda2KernelType::UseZForM:
         K2_CUDA_SAFE_CALL(

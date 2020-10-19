@@ -814,4 +814,106 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
       incoming_arcs_order);
 }
 
+Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
+                                          Ragged<int32_t> &state_batches) {
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  K2_CHECK_EQ(state_batches.NumAxes(), 3);
+  ContextPtr &c = fsas.Context();
+  int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
+          num_arcs = fsas.TotSize(2);
+  int32_t num_batches = state_batches.Dim0();
+  K2_CHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
+  K2_CHECK_EQ(state_batches.NumElements(), num_states);
+
+  // get ans_shape
+  Array1<int32_t> ans_row_splits3(c, num_states + 1);
+  int32_t *ans_row_splits3_data = ans_row_splits3.Data();
+  const int32_t *fsa_states_row_splits_data = fsas.RowSplits(2).Data();
+  const int32_t *batch_states_data = state_batches.values.Data();
+  auto lambda_set_ans_row_splits3 = [=] __host__ __device__(int32_t idx) {
+    int32_t state_idx = batch_states_data[idx];
+    ans_row_splits3_data[idx] = fsa_states_row_splits_data[state_idx + 1] -
+                                fsa_states_row_splits_data[state_idx];
+  };
+  Eval(c, num_states, lambda_set_ans_row_splits3);
+  ExclusiveSum(ans_row_splits3, &ans_row_splits3);
+  Array1<int32_t> ans_row_ids3(c, num_arcs);
+  RowSplitsToRowIds(ans_row_splits3, &ans_row_ids3);
+  RaggedShape ans_shape = ComposeRaggedShapes(
+      state_batches.shape,
+      RaggedShape2(&ans_row_splits3, &ans_row_ids3, num_arcs));
+
+  // get ans_values
+  Array1<int32_t> ans_values(c, num_arcs);
+  int32_t *ans_values_data = ans_values.Data();
+  const int32_t *ans_row_ids3_data = ans_row_ids3.Data();
+  auto lambda_set_ans_values = [=] __host__ __device__(int32_t idx0123) {
+    int32_t ans_idx012 = ans_row_ids3_data[idx0123];
+    int32_t state_idx =
+        batch_states_data[ans_idx012];  // state_idx is idx01 in fsas
+    int32_t fsa_idx01x = fsa_states_row_splits_data[state_idx];
+    // ans_idx3 is fsas_idx2, i.e. the arc idx in a state
+    int32_t ans_idx3 = idx0123 - ans_row_splits3_data[ans_idx012];
+    ans_values_data[idx0123] = fsa_idx01x + ans_idx3;
+  };
+  Eval(c, num_arcs, lambda_set_ans_values);
+
+  return Ragged<int32_t>(ans_shape, ans_values);
+}
+
+Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
+                                           Ragged<int32_t> &incoming_arcs,
+                                           Ragged<int32_t> &state_batches) {
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  K2_CHECK_EQ(incoming_arcs.NumAxes(), 3);
+  K2_CHECK_EQ(state_batches.NumAxes(), 3);
+  ContextPtr &c = fsas.Context();
+  int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
+          num_arcs = fsas.TotSize(2);
+  int32_t num_batches = state_batches.Dim0();
+  K2_CHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
+  K2_CHECK_EQ(state_batches.NumElements(), num_states);
+  K2_CHECK_EQ(incoming_arcs.Dim0(), num_fsas);
+  K2_CHECK_EQ(incoming_arcs.TotSize(1), num_states);
+  K2_CHECK_EQ(incoming_arcs.NumElements(), num_arcs);
+
+  // get ans_shape
+  Array1<int32_t> ans_row_splits3(c, num_states + 1);
+  int32_t *ans_row_splits3_data = ans_row_splits3.Data();
+  const int32_t *incoming_arcs_row_splits_data =
+      incoming_arcs.RowSplits(2).Data();
+  const int32_t *batch_states_data = state_batches.values.Data();
+  auto lambda_set_ans_row_splits3 = [=] __host__ __device__(int32_t idx) {
+    int32_t state_idx = batch_states_data[idx];
+    ans_row_splits3_data[idx] = incoming_arcs_row_splits_data[state_idx + 1] -
+                                incoming_arcs_row_splits_data[state_idx];
+  };
+  Eval(c, num_states, lambda_set_ans_row_splits3);
+  ExclusiveSum(ans_row_splits3, &ans_row_splits3);
+  Array1<int32_t> ans_row_ids3(c, num_arcs);
+  RowSplitsToRowIds(ans_row_splits3, &ans_row_ids3);
+  RaggedShape ans_shape = ComposeRaggedShapes(
+      state_batches.shape,
+      RaggedShape2(&ans_row_splits3, &ans_row_ids3, num_arcs));
+
+  // get ans_values
+  Array1<int32_t> ans_values(c, num_arcs);
+  int32_t *ans_values_data = ans_values.Data();
+  const int32_t *ans_row_ids3_data = ans_row_ids3.Data();
+  const int32_t *incoming_arcs_data = incoming_arcs.values.Data();
+  auto lambda_set_ans_values = [=] __host__ __device__(int32_t idx0123) {
+    int32_t ans_idx012 = ans_row_ids3_data[idx0123];
+    int32_t state_idx =
+        batch_states_data[ans_idx012];  // state_idx is idx01 in incoming_arcs
+    int32_t incoming_arcs_idx01x = incoming_arcs_row_splits_data[state_idx];
+    // ans_idx3 is incoming_arcs_idx2, i.e. the entering arc idx for a state
+    int32_t ans_idx3 = idx0123 - ans_row_splits3_data[ans_idx012];
+    int32_t incoming_arcs_idx012 = incoming_arcs_idx01x + ans_idx3;
+    ans_values_data[idx0123] = incoming_arcs_data[incoming_arcs_idx012];
+  };
+  Eval(c, num_arcs, lambda_set_ans_values);
+
+  return Ragged<int32_t>(ans_shape, ans_values);
+}
+
 }  // namespace k2

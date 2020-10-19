@@ -381,9 +381,9 @@ class Array2 {
     if (dim1_ == elem_stride0_) {
       return Array1<T>(dim0_ * dim1_, region_, byte_offset_);
     } else {
-      auto region = NewRegion(region_->context,
-                              static_cast<size_t>(dim0_) *
-                              static_cast<size_t>(dim1_) * ElementSize());
+      auto region = NewRegion(region_->context, static_cast<size_t>(dim0_) *
+                                                    static_cast<size_t>(dim1_) *
+                                                    ElementSize());
       Array1<T> array(dim0_ * dim1_, region, 0);
       const T *this_data = Data();
       T *data = array.Data();
@@ -420,7 +420,7 @@ class Array2 {
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     region_ = NewRegion(c, static_cast<size_t>(dim0_) *
-                        static_cast<size_t>(dim1_) * ElementSize());
+                               static_cast<size_t>(dim1_) * ElementSize());
   }
 
   // Create new array2 with given dimensions.  dim0 and dim1 must be >=0.
@@ -430,7 +430,7 @@ class Array2 {
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     region_ = NewRegion(c, static_cast<size_t>(dim0_) *
-                        static_cast<size_t>(dim1_) * ElementSize());
+                               static_cast<size_t>(dim1_) * ElementSize());
     *this = elem;
   }
 
@@ -543,10 +543,9 @@ class Array2 {
       }
       K2_CHECK_GT(elem_stride0_, 0);
       region_ =
-          NewRegion(region->context,
-                    static_cast<size_t>(dim0_) *
-                    static_cast<size_t>(ElementSize()) *
-                    static_cast<size_t>(elem_stride0_));
+          NewRegion(region->context, static_cast<size_t>(dim0_) *
+                                         static_cast<size_t>(ElementSize()) *
+                                         static_cast<size_t>(elem_stride0_));
       byte_offset_ = 0;
       CopyDataFromTensor(t);
     }
@@ -587,19 +586,20 @@ class Array2 {
   int32_t dim1_;          // dimension on column axis
 
   size_t byte_offset_;  // byte offset within region_
-  RegionPtr region_;     // Region that `data` is a part of.  Device
-                         // type is stored here.  For an Array2 with
-                         // zero size (e.g. created using empty
-                         // constructor), will point to an empty
-                         // Region.
+  RegionPtr region_;    // Region that `data` is a part of.  Device
+                        // type is stored here.  For an Array2 with
+                        // zero size (e.g. created using empty
+                        // constructor), will point to an empty
+                        // Region.
 };
 
+inline int ToPrintable(char c) { return static_cast<int>(c); }
+template <typename T>
+T ToPrintable(T t) {
+  return t;
+}
 
-
-inline int ToPrintable(char c) { return (int) c; }
-template <typename T> T ToPrintable(T t) { return t; }
-
-  // Print the contents of the array, as [ 1 2 3 ].  Intended mostly for
+// Print the contents of the array, as [ 1 2 3 ].  Intended mostly for
 // use in debugging.
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
@@ -607,7 +607,8 @@ std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
   Array1<T> to_print = array.To(GetCpuContext());
   const T *to_print_data = to_print.Data();
   int32_t dim = to_print.Dim();
-  for (int32_t i = 0; i < dim; ++i) stream << ToPrintable(to_print_data[i]) << ' ';
+  for (int32_t i = 0; i < dim; ++i)
+    stream << ToPrintable(to_print_data[i]) << ' ';
   return stream << ']';
 }
 
