@@ -1,5 +1,7 @@
 from .dense_fsa import dense_fsa
 from .fsa import Fsa
+from .fsa_algo import connect
+from .fsa_algo import intersect
 from .fsa_algo import linear_fsa
 from .fsa_algo import top_sort
 from .symbol_table import SymbolTable
@@ -13,7 +15,9 @@ __version__ = '0.1'
 __all__ = [
     'Fsa',
     'SymbolTable',
+    'connect',
     'dense_fsa',
+    'intersect',
     'linear_fsa',
     'to_dot',
     'to_str',

@@ -2,6 +2,8 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
+from typing import Optional
+
 from .fsa import Fsa
 from _k2 import _fsa_to_str
 from _k2 import _fsa_to_tensor
@@ -59,8 +61,15 @@ def to_fsa_vec(fsa: Fsa) -> Fsa:
     return Fsa(tensor)
 
 
-def to_dot(fsa: Fsa):
+def to_dot(fsa: Fsa, title: Optional[str] = None):
     '''Visualize an Fsa via graphviz.
+    Args:
+      fsa:
+        The input FSA to be visualized.
+      title:
+        Optional. The title of the resulting visualization.
+    Returns:
+      a Diagraph from grahpviz.
     '''
     from graphviz import Digraph
     assert len(fsa.shape) == 2, 'FsaVec is not supported'
@@ -74,12 +83,13 @@ def to_dot(fsa: Fsa):
     graph_attr = {
         'rankdir': 'LR',
         'size': '8.5,11',
-        'label': '',
         'center': '1',
         'orientation': 'Portrait',
         'ranksep': '0.4',
         'nodesep': '0.25',
     }
+    if title is not None:
+        graph_attr['label'] = title
 
     default_node_attr = {
         'shape': 'circle',

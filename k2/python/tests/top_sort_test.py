@@ -14,11 +14,6 @@ import k2
 import torch
 
 
-def _remove_leading_spaces(s: str) -> str:
-    lines = [line.strip() for line in s.split('\n') if line.strip()]
-    return '\n'.join(lines)
-
-
 class TestTopSort(unittest.TestCase):
 
     def test(self):
