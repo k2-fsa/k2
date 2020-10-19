@@ -31,7 +31,7 @@ bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
   int32_t num_fsas = src.shape.Dim0();
   std::vector<Fsa> srcs(num_fsas), dests(num_fsas);
   std::vector<Array1<int32_t>> arc_maps(num_fsas);
-  for (int32_t i = 0; i < num_fsas; i++) {
+  for (int32_t i = 0; i < num_fsas; ++i) {
     srcs[i] = src.Index(0, i);
     // Recurse.
     if (!f(srcs[i], &(dests[i]), (arc_map ? &(arc_maps[i]) : nullptr)))
@@ -42,12 +42,12 @@ bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
   return true;
 }
 
-bool ConnectFsa(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map) {
+bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
   } else if (num_axes == 3) {
-    return RecursionWrapper(ConnectFsa, src, dest, arc_map);
+    return RecursionWrapper(Connect, src, dest, arc_map);
   }
 
   k2host::Fsa host_fsa = FsaToHostFsa(src);
@@ -101,7 +101,7 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
 
   std::vector<std::unique_ptr<k2host::Intersection>> intersections(num_fsas);
   std::vector<k2host::Array2Size<int32_t>> sizes(num_fsas);
-  for (int32_t i = 0; i < num_fsas; i++) {
+  for (int32_t i = 0; i < num_fsas; ++i) {
     k2host::Fsa host_fsa_a = FsaVecToHostFsa(a_fsas, i * stride_a),
                 host_fsa_b = FsaVecToHostFsa(b_fsas, i * stride_b);
     intersections[i] =
@@ -123,7 +123,7 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
   const int32_t *a_fsas_row_splits12_data = a_fsas_row_splits12.Data(),
                 *b_fsas_row_splits12_data = b_fsas_row_splits12.Data();
 
-  for (int32_t i = 0; i < num_fsas; i++) {
+  for (int32_t i = 0; i < num_fsas; ++i) {
     k2host::Fsa host_fsa_out = creator.GetHostFsa(i);
     int32_t arc_offset = creator.GetArcOffsetFor(i);
     int32_t *this_arc_map_a =

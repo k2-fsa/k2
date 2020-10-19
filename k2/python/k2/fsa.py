@@ -126,7 +126,7 @@ class Fsa(object):
         '''Create an Fsa from a RaggedArc directly.
 
         Note:
-          Fsa algorithms will always produces some RaggedArc output. You can
+          Fsa algorithms will always produce some RaggedArc output. You can
           use this function to construct a Python FSA from RaggedArc.
 
         Args:

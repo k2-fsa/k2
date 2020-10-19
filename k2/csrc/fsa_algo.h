@@ -158,8 +158,6 @@ Fsa LinearFsa(const Array1<int32_t> &symbols);
  */
 FsaVec LinearFsas(Ragged<int32_t> &symbols);
 
-
-
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_

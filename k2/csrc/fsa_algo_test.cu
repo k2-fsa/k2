@@ -164,4 +164,56 @@ TEST(FsaAlgo, LinearFsaVec) {
   }
 }
 
+TEST(FsaAlgo, IntersectFsaVec) {
+  /* Given symbol table
+   * <eps> 0
+   *  a 1
+   *  b 2
+   *  c 3
+   */
+
+  // ab|ac
+  std::string s1 = R"(0 1 1 0.1
+    0 2 1 0.2
+    1 3 2 0.3
+    2 3 3 0.4
+    3 4 -1 0.5
+    4
+  )";
+  // ab
+  std::string s2 = R"( 0 1 1 10
+  1 2 2 20
+  2 3 -1 30
+  3
+  )";
+  Fsa fsa1 = FsaFromString(s1);
+  Fsa fsa2 = FsaFromString(s2);
+
+  Fsa fsa_vec;
+  Array1<int32_t> arc_map_a;
+  Array1<int32_t> arc_map_b;
+  Intersect(fsa1, fsa2, &fsa_vec, &arc_map_a, &arc_map_b);
+  /* fsa_vec is
+    0 1 1 10.1      // (0), a_arc_0 + b_arc_0
+    0 2 1 10.2      // (1)  a_arc_1 + b_arc_0
+    1 2 2 20.3      // (2), a_arc_2 + b_arc_1
+    2 3 -1 30.5     // (3), a_arc_4 + b_arc_2
+    3
+   */
+  CheckArrayData(arc_map_a, std::vector<int32_t>{0, 1, 2, 4});
+  CheckArrayData(arc_map_b, std::vector<int32_t>{0, 0, 1, 2});
+
+  Fsa intersected_fsa = GetFsaVecElement(fsa_vec, 0);
+  Fsa out;
+  Array1<int32_t> arc_map;
+  Connect(intersected_fsa, &out, &arc_map);
+  /* out fsa is
+    0 1 1 10.1      // 0 -> in_arc_0
+    1 2 2 20.3      // 1 -> in_arc_2
+    2 3 -1 30.5     // 2 -> in_arc_3
+    3
+   */
+  CheckArrayData(arc_map, std::vector<int32_t>{0, 2, 3});
+}
+
 }  // namespace k2

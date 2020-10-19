@@ -313,7 +313,8 @@ std::string FsaToString(const Fsa &fsa) {
   std::ostringstream os;
 
   for (const auto &arc : fsa) {
-    os << arc.src_state << kSep << arc.dest_state << kSep << arc.label << "\n";
+    os << arc.src_state << kSep << arc.dest_state << kSep << arc.label << kSep
+       << arc.weight << "\n";
   }
   os << fsa.FinalState() << "\n";
   return os.str();
