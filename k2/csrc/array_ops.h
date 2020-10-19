@@ -194,8 +194,9 @@ void Max(Array1<T> &src, T default_value, Array1<T> *dest) {
 }
 
 template <typename T>
-T MaxValue(Array1<T> &src) {   return MaxValue(src.Context(), src.Dim(), src.Data());  }
-
+T MaxValue(Array1<T> &src) {
+  return MaxValue(src.Context(), src.Dim(), src.Data());
+}
 
 /*
   Get the bitwise and reduction of the array `src`, using `default_value` (e.g.
@@ -276,7 +277,9 @@ template <typename T>
 Array1<T> Plus(const Array1<T> &src, T t);
 
 template <typename T>
-Array1<T> Minus(const Array1<T> &src, T t) { return Plus(src, -t); }
+Array1<T> Minus(const Array1<T> &src, T t) {
+  return Plus(src, -t);
+}
 
 /*
   Return true if all elements of the two arrays are equal

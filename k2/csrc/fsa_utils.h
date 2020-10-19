@@ -164,6 +164,11 @@ Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
      @param [in] state_batches  Batches of states as returned from
                   `GetStateBatches(fsas, true)`, indexed
                   [batch][fsa][state_list].
+     @return   Returns a tensor with `ans.NumAxes() == 4`, containing
+               arc_idx012's into `fsas`.  Axes 0,1,2 correspond to
+               those of `state_batches`; the last axis is a list of
+               arcs, i.e. the indexing is [batch][fsa][state_list][arc_list]
+
  */
 Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
                                            Ragged<int32_t> &incoming_arcs,

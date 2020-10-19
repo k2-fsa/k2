@@ -71,6 +71,7 @@ class Renumbering {
     if (!old2new_.IsValid()) ComputeOld2New();
     return old2new_;
   }
+
  private:
   void ComputeOld2New();
   // ComputeNew2Old() also computes old2new_ if needed.
