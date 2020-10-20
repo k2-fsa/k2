@@ -33,7 +33,7 @@ k2host::Fsa FsaVecToHostFsa(FsaVec &fsa_vec, int32_t index) {
   // (except our 'score' is called 'weight' there).
 
   int32_t *row_splits1_data = fsa_vec.RowSplits(1).Data(),
-          *row_splits2_data = fsa_vec.RowSplits(1).Data();
+          *row_splits2_data = fsa_vec.RowSplits(2).Data();
   Arc *arcs_data = fsa_vec.values.Data();
   int32_t start_state_idx01 = row_splits1_data[index],
           end_state_idx01 = row_splits1_data[index + 1],
@@ -42,14 +42,13 @@ k2host::Fsa FsaVecToHostFsa(FsaVec &fsa_vec, int32_t index) {
           end_arc_idx012 = row_splits2_data[end_state_idx01],
           size2 = end_arc_idx012 - start_arc_idx012;
 
-  return k2host::Fsa(
-      size1, size2, row_splits2_data + start_state_idx01,
-      reinterpret_cast<k2host::Arc *>(arcs_data + start_arc_idx012));
+  return k2host::Fsa(size1, size2, row_splits2_data + start_state_idx01,
+                     reinterpret_cast<k2host::Arc *>(arcs_data));
 }
 
 void FsaVecCreator::Init(
     const std::vector<k2host::Array2Size<int32_t>> &sizes) {
-  int32_t num_fsas = sizes.size();
+  int32_t num_fsas = static_cast<int32_t>(sizes.size());
   K2_CHECK_GT(num_fsas, 0);
   ContextPtr c = GetCpuContext();
 
@@ -65,7 +64,7 @@ void FsaVecCreator::Init(
   ExclusiveSum(row_splits12_, &row_splits12_);
 
   int32_t tot_states = row_splits1_[num_fsas],
-          tot_arcs = row_splits2_[num_fsas];
+          tot_arcs = row_splits12_[num_fsas];
   row_splits2_ = Array1<int32_t>(c, tot_states + 1);
   arcs_ = Array1<Arc>(c, tot_arcs);
 

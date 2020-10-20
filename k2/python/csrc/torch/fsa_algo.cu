@@ -8,6 +8,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -38,8 +39,7 @@ static void PybindTopSort(py::module &m) {
 }
 
 static void PybindLinearFsa(py::module &m) {
-  // TODO(fangjun): make std::vector an opaque type for Pybind11
-  // to avoid copying data from Python to C++.
+  // TODO(fangjun): Replace std::vector<int32_t> with torch::Tensor
   m.def(
       "linear_fsa",
       [](const std::vector<int32_t> &symbols, int32_t gpu_id = -1) -> Fsa {
@@ -88,9 +88,58 @@ static void PybindLinearFsa(py::module &m) {
       },
       py::arg("symbols"), py::arg("gpu_id") = -1,
       R"(
-  If gpu_id is -1, the returned FSA is on CPU.
-  If gpu_id >= 0, the returned FSA is on the specified GPU.
+  If gpu_id is -1, the returned FsaVec is on CPU.
+  If gpu_id >= 0, the returned FsaVec is on the specified GPU.
       )");
+}
+
+static void PybindIntersect(py::module &m) {
+  m.def(
+      "intersect",
+      [](FsaOrVec &a_fsas, FsaOrVec &b_fsas, bool need_arc_map = true)
+          -> std::tuple<FsaOrVec, torch::optional<torch::Tensor>,
+                        torch::optional<torch::Tensor>> {
+        Array1<int32_t> a_arc_map;
+        Array1<int32_t> b_arc_map;
+        FsaVec out;
+        Intersect(a_fsas, b_fsas, &out, need_arc_map ? &a_arc_map : nullptr,
+                  need_arc_map ? &b_arc_map : nullptr);
+        FsaOrVec ans;
+        if (out.Dim0() == 1)
+          ans = GetFsaVecElement(out, 0);
+        else
+          ans = out;
+        torch::optional<torch::Tensor> a_tensor;
+        torch::optional<torch::Tensor> b_tensor;
+        if (need_arc_map) {
+          a_tensor = ToTensor(a_arc_map);
+          b_tensor = ToTensor(b_arc_map);
+        }
+        return std::make_tuple(ans, a_tensor, b_tensor);
+      },
+      py::arg("a_fsas"), py::arg("b_fsas"), py::arg("need_arc_map") = true,
+      R"(
+      If need_arc_map is true, it returns a tuple (fsa_vec, a_arc_map, b_arc_map);
+      If need_arc_map is false, it returns a tuple (fsa_vec, None, None).
+
+      a_arc_map maps arc indexes of the returned fsa to the input a_fsas.
+      )");
+}
+
+static void PybindConnect(py::module &m) {
+  m.def(
+      "connect",
+      [](Fsa &src, bool need_arc_map =
+                       true) -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        Array1<int32_t> arc_map;
+        Fsa out;
+        Connect(src, &out, need_arc_map ? &arc_map : nullptr);
+
+        torch::optional<torch::Tensor> tensor;
+        if (need_arc_map) tensor = ToTensor(arc_map);
+        return std::make_pair(out, tensor);
+      },
+      py::arg("src"), py::arg("need_arc_map") = true);
 }
 
 }  // namespace k2
@@ -98,4 +147,6 @@ static void PybindLinearFsa(py::module &m) {
 void PybindFsaAlgo(py::module &m) {
   k2::PybindLinearFsa(m);
   k2::PybindTopSort(m);
+  k2::PybindIntersect(m);
+  k2::PybindConnect(m);
 }
