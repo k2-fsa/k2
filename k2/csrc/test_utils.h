@@ -66,6 +66,13 @@ void CheckRowSplits(RaggedShape &shape,
   }
 }
 
+template <typename T>
+void Increment(Array1<T> *array) {
+  int32_t *data = array->Data();
+  auto inc_lambda = [=] __host__ __device__(int32_t i) { data[i] += 1; };
+  Eval(array->Context(), array->Dim(), inc_lambda);
+}
+
 }  // namespace k2
 
 #endif  //  K2_CSRC_TEST_UTILS_H_

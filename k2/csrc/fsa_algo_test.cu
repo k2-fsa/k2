@@ -43,6 +43,21 @@ TEST(ArcSort, NonEmptyFsa) {
     EXPECT_NE(prop & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
     EXPECT_NE(prop & kFsaPropertiesArcSortedAndDeterministic,
               kFsaPropertiesArcSortedAndDeterministic);
+
+    Fsa sorted;
+    ArcSort(fsa, &sorted);
+    prop = GetFsaBasicProperties(sorted);
+    EXPECT_EQ(prop & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_EQ(prop & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
+
+    prop = GetFsaBasicProperties(fsa);
+    EXPECT_NE(prop & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_NE(prop & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
+
+    // now in-place sort
+
     ArcSort(&fsa);
     prop = GetFsaBasicProperties(fsa);
     EXPECT_EQ(prop & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
@@ -99,6 +114,30 @@ TEST(ArcSort, NonEmptyFsaVec) {
 
     EXPECT_NE(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
 
+    FsaVec sorted;
+    ArcSort(fsa_vec, &sorted);
+    GetFsaVecBasicProperties(sorted, &properties, &p);
+    EXPECT_EQ(properties[0] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+
+    EXPECT_EQ(properties[1] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_EQ(properties[1] & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
+
+    EXPECT_EQ(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+
+    GetFsaVecBasicProperties(fsa_vec, &properties, &p);
+
+    EXPECT_NE(properties[0] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_NE(properties[0] & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
+
+    EXPECT_NE(properties[1] & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+    EXPECT_NE(properties[1] & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
+
+    EXPECT_NE(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
+
+    // now in-place sort
     ArcSort(&fsa_vec);
     GetFsaVecBasicProperties(fsa_vec, &properties, &p);
 

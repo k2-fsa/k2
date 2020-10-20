@@ -17,6 +17,7 @@ endfunction()
 
 # please sort the files in alphabetic order
 set(py_test_files
+  arc_sort_test.py
   connect_test.py
   dense_fsa_test.py
   fsa_test.py

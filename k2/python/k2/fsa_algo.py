@@ -122,3 +122,26 @@ def connect(fsa: Fsa) -> Fsa:
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, deepcopy(value))
     return out_fsa
+
+
+def arc_sort(fsa: Fsa) -> Fsa:
+    '''Sort arcs of every state.
+
+    Note:
+      Arcs are sorted by labels first, and then by dest states.
+
+    Args:
+      fsa:
+        The input FSA.
+    Returns:
+      The sorted FSA.
+    '''
+    need_arc_map = True
+    ragged_arc, arc_map = _k2.arc_sort(fsa.arcs, need_arc_map=need_arc_map)
+    arc_map = arc_map.to(torch.int64)  # required by index_select
+    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    for name, value in fsa.named_tensor_attr():
+        setattr(out_fsa, name, value.index_select(0, arc_map))
+    for name, value in fsa.named_non_tensor_attr():
+        setattr(out_fsa, name, deepcopy(value))
+    return out_fsa
