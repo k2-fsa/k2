@@ -47,6 +47,9 @@ endif()
 
 #---------------------------- Test K2 CUDA sources ----------------------------
 
+add_library(test_utils SHARED test_utils.cu)
+target_link_libraries(test_utils PUBLIC context)
+
 # please sort the source files alphabetically
 set(cuda_tests
   algorithms_test
@@ -77,6 +80,7 @@ function(k2_add_cuda_test name)
     fsa  # for code in k2/csrc/host
     gtest
     gtest_main
+    test_utils
   )
   add_test(NAME "Test.Cuda.${target_name}"
     COMMAND

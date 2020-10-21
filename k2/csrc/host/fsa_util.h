@@ -289,7 +289,7 @@ struct RandFsaOptions {
   bool allow_empty;
   bool acyclic;  // generate a cyclic fsa in a best effort manner if it's false
   int32_t seed;  // for random generator. Set it to non-zero for reproducibility
-  bool nonzero_weights;  // allow weights to be nonzero (default: fals)
+  bool nonzero_weights;  // allow weights to be nonzero (default: false)
 
   RandFsaOptions();
 };
