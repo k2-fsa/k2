@@ -100,7 +100,9 @@ class RaggedShape {
    The dimension is the number of elements on this axis == TotSize(axis).
   */
   Array1<int32_t> &RowIds(int32_t axis);
-  const Array1<int32_t> &RowIds(int32_t axis) const;
+  const Array1<int32_t> &RowIds(int32_t axis) const {
+    return const_cast<RaggedShape *>(this)->RowIds(axis);
+  }
 
   int32_t NumAxes() const { return static_cast<int32_t>(axes_.size()) + 1; }
 
@@ -290,8 +292,8 @@ struct Ragged {
     It is an error to call this if this.shape.NumAxes() < 2.  This will return
     a Ragged<T> with one fewer axis, containing only the elements of
     *this for which the value on the provided axis is i; it will share
-    the underlying data with `*this` where possible. CAUTION: currently this only works
-    for `axis == 0`.
+    the underlying data with `*this` where possible. CAUTION: currently this
+    only works for `axis == 0`.
 
       @param [in]  axis   Axis to index on.  CAUTION: currently only 0
                          is supported.
@@ -301,8 +303,8 @@ struct Ragged {
     // Get returned Ragged.shape
     int32_t values_offset;
     RaggedShape sub_shape = shape.Index(axis, i, &values_offset);
-    return Ragged<T>(sub_shape, values.Range(values_offset,
-                                             sub_shape.NumElements()));
+    return Ragged<T>(sub_shape,
+                     values.Range(values_offset, sub_shape.NumElements()));
   }
 
   // Note *this is conceptually unchanged by this operation but non-const

@@ -247,4 +247,15 @@ void ArcSort(Fsa *fsa) {
   SortSublists<Arc, ArcComparer>(fsa);
 }
 
+void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
+  if (!src.values.IsValid()) return;
+
+  if (arc_map != nullptr)
+    *arc_map = Array1<int32_t>(src.Context(), src.NumElements());
+
+  Fsa tmp(src.shape, src.values.Clone());
+  SortSublists<Arc, ArcComparer>(&tmp, arc_map);
+  *dest = tmp;
+}
+
 }  // namespace k2

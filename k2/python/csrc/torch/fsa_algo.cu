@@ -142,6 +142,21 @@ static void PybindConnect(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
+static void PybindArcSort(py::module &m) {
+  m.def(
+      "arc_sort",
+      [](FsaOrVec &src, bool need_arc_map = true)
+          -> std::pair<FsaOrVec, torch::optional<torch::Tensor>> {
+        Array1<int32_t> arc_map;
+        FsaOrVec out;
+        ArcSort(src, &out, need_arc_map ? &arc_map : nullptr);
+        torch::optional<torch::Tensor> tensor;
+        if (need_arc_map) tensor = ToTensor(arc_map);
+        return std::make_pair(out, tensor);
+      },
+      py::arg("src"), py::arg("need_arc_map") = true);
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -149,4 +164,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindTopSort(m);
   k2::PybindIntersect(m);
   k2::PybindConnect(m);
+  k2::PybindArcSort(m);
 }

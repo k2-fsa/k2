@@ -1010,8 +1010,7 @@ static void TestSortSublists() {
   ragged = ragged.To(cuda_context);
   values = values.To(cpu_context);  // to be sorted by cpu
 
-  // TODO(fangjun): add a `Clone` method to Array1<T>
-  Array1<T> unsorted = values.To(cuda_context).To(cpu_context);
+  Array1<T> unsorted = values.Clone();
 
   Array1<int32_t> order(ragged.Context(), ragged.values.Dim());
   SortSublists<T, OP>(&ragged, &order);

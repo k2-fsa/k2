@@ -46,7 +46,6 @@ struct iterator_traits<::RowSplitsDiff> {
 
 namespace k2 {
 
-
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos < shape.TotSize(axis).
 
@@ -153,21 +152,20 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
 
   if (i == 0 && Dim0() == 1) {
     // Just remove first axis.  Common case so we make it efficient.
-    std::vector<RaggedShapeDim> ans_axes(src_axes.begin() + 1,
-                                         src_axes.end());
+    std::vector<RaggedShapeDim> ans_axes(src_axes.begin() + 1, src_axes.end());
     if (value_offset) *value_offset = 0;
     return RaggedShape(ans_axes, false);
   }
 
   int32_t idx_begin = (i != 0 ? src_axes[0].row_splits[i] : 0),
-    idx_end = src_axes[0].row_splits[i + 1];
+          idx_end = src_axes[0].row_splits[i + 1];
   std::vector<RaggedShapeDim> axes(src_axes.size() - 1);
   ContextPtr c = Context();
   for (int32_t i = 2; i < num_axes; ++i) {
     const Array1<int32_t> &src_row_splits = RowSplits(i),
-      &src_row_ids = RowIds(i);
+                          &src_row_ids = RowIds(i);
     int32_t idx_begin_next = (idx_begin != 0 ? src_row_splits[idx_begin] : 0),
-      idx_end_next = src_row_splits[idx_end];
+            idx_end_next = src_row_splits[idx_end];
 
     axes[i - 2].row_splits =
         src_row_splits.Range(idx_begin, idx_end - idx_begin + 1);
@@ -182,8 +180,7 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
     idx_begin = idx_begin_next;
     idx_end = idx_end_next;
   }
-  if (value_offset)
-    *value_offset = idx_begin;
+  if (value_offset) *value_offset = idx_begin;
   return RaggedShape(axes);
 }
 
@@ -211,7 +208,6 @@ RaggedShape RaggedShape::To(ContextPtr ctx) const {
 RaggedShapeIndexIterator RaggedShape::Iterator() {
   return RaggedShapeIndexIterator(*this);
 }
-
 
 int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
   K2_CHECK_EQ(static_cast<int32_t>(indexes.size()), NumAxes());
