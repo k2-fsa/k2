@@ -45,8 +45,6 @@ struct RaggedShapeDim {
   // If cached_tot_size >= 0, it will be equal to
   // row_splits[row_splits.Dim() - 1].
   int32_t cached_tot_size;
-
-  RaggedShapeDim Clone() const;
 };
 
 class RaggedShapeIndexIterator;
@@ -171,7 +169,6 @@ class RaggedShape {
 
   // Convert to possibly different context.
   RaggedShape To(ContextPtr ctx) const;
-  RaggedShape Clone() const;
 
  private:
   // TODO: could probably do away with the std::vector and have a max size and
@@ -258,13 +255,6 @@ struct Ragged {
       : shape(shape), values(values) {
     K2_CHECK(IsCompatible(shape, values));
     K2_CHECK_EQ(shape.NumElements(), values.Dim());
-  }
-
-  Ragged<T> Clone() const {
-    Ragged<T> ans;
-    ans.shape = shape.Clone();
-    ans.values = values.Clone();
-    return ans;
   }
 
   // Default constructor will not leave this a valid Ragged object, you

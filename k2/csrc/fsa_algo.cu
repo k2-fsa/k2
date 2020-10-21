@@ -248,10 +248,14 @@ void ArcSort(Fsa *fsa) {
 }
 
 void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
-  K2_CHECK_GE(src.NumAxes(), 2) << "Input FSA is empty!";
-  *dest = src.Clone();
-  if (arc_map) *arc_map = Array1<int32_t>(src.Context(), src.values.Dim());
-  SortSublists<Arc, ArcComparer>(dest, arc_map);
+  if (!src.values.IsValid()) return;
+
+  if (arc_map != nullptr)
+    *arc_map = Array1<int32_t>(src.Context(), src.NumElements());
+
+  Fsa tmp(src.shape, src.values.Clone());
+  SortSublists<Arc, ArcComparer>(&tmp, arc_map);
+  *dest = tmp;
 }
 
 }  // namespace k2

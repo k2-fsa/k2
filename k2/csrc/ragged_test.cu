@@ -1010,8 +1010,7 @@ static void TestSortSublists() {
   ragged = ragged.To(cuda_context);
   values = values.To(cpu_context);  // to be sorted by cpu
 
-  // TODO(fangjun): add a `Clone` method to Array1<T>
-  Array1<T> unsorted = values.To(cuda_context).To(cpu_context);
+  Array1<T> unsorted = values.Clone();
 
   Array1<int32_t> order(ragged.Context(), ragged.values.Dim());
   SortSublists<T, OP>(&ragged, &order);
@@ -1870,74 +1869,6 @@ void TestMakeTransposable() {
 TEST(RaggedShapeOpsTest, TestMakeTransposable) {
   TestMakeTransposable<kCpu>();
   TestMakeTransposable<kCuda>();
-}
-
-TEST(RaggedShapeDim, Clone) {
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    Array1<int32_t> row_splits(context, std::vector<int32_t>{0, 1, 2});
-    Array1<int32_t> row_ids(context, std::vector<int32_t>{0, 1});
-
-    RaggedShapeDim shape_dim;
-    shape_dim.row_splits = row_splits;
-    shape_dim.row_ids = row_ids;
-    shape_dim.cached_tot_size = 2;
-
-    RaggedShapeDim copied = shape_dim.Clone();
-    shape_dim.cached_tot_size += 1;
-    Increment(&shape_dim.row_splits);
-    Increment(&shape_dim.row_ids);
-
-    for (int32_t i = 0; i != shape_dim.row_splits.Dim(); ++i)
-      EXPECT_EQ(copied.row_splits[i] + 1, shape_dim.row_splits[i]);
-
-    for (int32_t i = 0; i != shape_dim.row_ids.Dim(); ++i)
-      EXPECT_EQ(copied.row_ids[i] + 1, shape_dim.row_ids[i]);
-
-    EXPECT_EQ(copied.cached_tot_size + 1, shape_dim.cached_tot_size);
-  }
-}
-
-TEST(RaggedShape, Clone) {
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    Array1<int32_t> row_splits(context, std::vector<int32_t>{0, 1, 2});
-    Array1<int32_t> row_ids(context, std::vector<int32_t>{0, 1});
-    RaggedShape shape = RaggedShape2(&row_splits, &row_ids, 2);
-    RaggedShape copied = shape.Clone();
-    EXPECT_TRUE(context->IsCompatible(*shape.Context()));
-    EXPECT_EQ(copied.NumAxes(), 2);
-    Increment(&shape.RowSplits(1));
-    Increment(&shape.RowIds(1));
-
-    for (int32_t i = 0; i != shape.RowSplits(1).Dim(); ++i)
-      EXPECT_EQ(copied.RowSplits(1)[i] + 1, shape.RowSplits(1)[i]);
-
-    for (int32_t i = 0; i != shape.RowIds(1).Dim(); ++i)
-      EXPECT_EQ(copied.RowIds(1)[i] + 1, shape.RowIds(1)[i]);
-  }
-}
-
-TEST(Ragged, Clone) {
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    Array1<int32_t> row_splits(context, std::vector<int32_t>{0, 1, 2});
-    Array1<int32_t> row_ids(context, std::vector<int32_t>{0, 1});
-    RaggedShape shape = RaggedShape2(&row_splits, &row_ids, 2);
-    Array1<int32_t> values(context, std::vector<int32_t>{10, 20});
-    Ragged<int32_t> ragged(shape, values);
-
-    Ragged<int32_t> copied = ragged.Clone();
-    Increment(&ragged.RowSplits(1));
-    Increment(&ragged.RowIds(1));
-    Increment(&ragged.values);
-
-    for (int32_t i = 0; i != ragged.RowSplits(1).Dim(); ++i)
-      EXPECT_EQ(copied.RowSplits(1)[i] + 1, ragged.RowSplits(1)[i]);
-
-    for (int32_t i = 0; i != ragged.RowIds(1).Dim(); ++i)
-      EXPECT_EQ(copied.RowIds(1)[i] + 1, ragged.RowIds(1)[i]);
-
-    for (int32_t i = 0; i != ragged.values.Dim(); ++i)
-      EXPECT_EQ(copied.values[i] + 1, ragged.values[i]);
-  }
 }
 
 }  // namespace k2

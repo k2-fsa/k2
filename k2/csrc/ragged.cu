@@ -46,14 +46,6 @@ struct iterator_traits<::RowSplitsDiff> {
 
 namespace k2 {
 
-RaggedShapeDim RaggedShapeDim::Clone() const {
-  RaggedShapeDim ans;
-  ans.row_splits = row_splits.Clone();
-  ans.row_ids = row_ids.Clone();
-  ans.cached_tot_size = cached_tot_size;
-  return ans;
-}
-
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos < shape.TotSize(axis).
 
@@ -211,16 +203,6 @@ RaggedShape RaggedShape::To(ContextPtr ctx) const {
     axes[i - 1].cached_tot_size = -1;
   }
   return RaggedShape(axes);
-}
-
-RaggedShape RaggedShape::Clone() const {
-  RaggedShape ans;
-  ans.axes_.reserve(axes_.size());
-  const_cast<RaggedShape *>(this)->Populate();
-  for (const auto &axis : axes_) {
-    ans.axes_.emplace_back(axis.Clone());
-  }
-  return ans;
 }
 
 RaggedShapeIndexIterator RaggedShape::Iterator() {
