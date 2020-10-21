@@ -611,20 +611,24 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
   const int32_t int_max = std::numeric_limits<int32_t>::max();
   auto lambda_set_dest_states =
       [=] __host__ __device__(int32_t state_idx01) -> void {
-    int32_t arc_idx01x = fsas_row_splits2_data[state_idx01],
-            next_arc_idx01x = fsas_row_splits2_data[state_idx01 + 1];
-    // If this state has arcs, let its `dest_state` be the largest `dest_state`
-    // of any of its arcs (which is the last one); otherwise, take the
-    // `dest_state` from the 1st arc of the next state, which is the largest
-    // value we can take (if the definition is: the highest-numbered state s for
-    // which neither this state nor any later-numbered state has an arc to a
-    // state lower than s).
-    int32_t arc_idx012 =
-        max(arc_idx01x,
-            next_arc_idx01x - 1);  // if this state has arcs, next_arc_idx01x -
-                                   // 1 would be the last arc of this state
+    int32_t arc_idx01x = fsas_row_splits2_data[state_idx01];
+    // If this state has arcs, let its `dest_state` be the smallest `dest_state`
+    // of any of its arcs (which is the first element of those arcs' dest states
+    // in `arc_dest_states_data`); otherwise, take the `dest_state` from the 1st
+    // arc of the next state, which is the largest value we can take (if the
+    // definition is: the highest-numbered state s for which neither this state
+    // nor any later-numbered state has an arc to a state lower than s).
+
+    // if this state has arcs,
+    //    arc_idx01x is the first arc index of this state, we get the
+    //    smallest dest state of this state's arcs using
+    //    arc_dest_states_data[arc_idx01x]
+    // else
+    //    arc_idx01x is the first arc index of the next state, then
+    //    arc_dest_states_data[arc_idx01x] is the largest value we can take,
+    //    which is also the smallest dest state in the next state.
     int32_t dest_state =
-        (arc_idx012 < num_arcs ? arc_dest_states_data[arc_idx012] : int_max);
+        (arc_idx01x < num_arcs ? arc_dest_states_data[arc_idx01x] : int_max);
     dest_states_power_data[state_idx01] = dest_state;
     // if the following fails, it's either a code error or the input FSA had
     // cycles.
@@ -790,6 +794,7 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
 Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
                                 const Array1<int32_t> &dest_states) {
   K2_CHECK_EQ(fsas.NumAxes(), 3);
+  K2_CHECK(IsCompatible(fsas, dest_states));
   ContextPtr &c = fsas.Context();
   Ragged<int32_t> dest_states_tensor(fsas.shape, dest_states);
   int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
@@ -816,14 +821,15 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
 
 Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
                                           Ragged<int32_t> &state_batches) {
+  K2_CHECK(IsCompatible(fsas, state_batches));
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(state_batches.NumAxes(), 3);
   ContextPtr &c = fsas.Context();
   int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
           num_arcs = fsas.TotSize(2);
   int32_t num_batches = state_batches.Dim0();
-  K2_CHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
-  K2_CHECK_EQ(state_batches.NumElements(), num_states);
+  K2_DCHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
+  K2_DCHECK_EQ(state_batches.NumElements(), num_states);
 
   // get ans_shape
   Array1<int32_t> ans_row_splits3(c, num_states + 1);
@@ -864,6 +870,8 @@ Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
 Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
                                            Ragged<int32_t> &incoming_arcs,
                                            Ragged<int32_t> &state_batches) {
+  K2_CHECK(IsCompatible(fsas, state_batches));
+  K2_CHECK(IsCompatible(fsas, incoming_arcs));
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(incoming_arcs.NumAxes(), 3);
   K2_CHECK_EQ(state_batches.NumAxes(), 3);
@@ -871,11 +879,12 @@ Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
   int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
           num_arcs = fsas.TotSize(2);
   int32_t num_batches = state_batches.Dim0();
-  K2_CHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
-  K2_CHECK_EQ(state_batches.NumElements(), num_states);
-  K2_CHECK_EQ(incoming_arcs.Dim0(), num_fsas);
-  K2_CHECK_EQ(incoming_arcs.TotSize(1), num_states);
-  K2_CHECK_EQ(incoming_arcs.NumElements(), num_arcs);
+  // just using DCHECK below to save time in production code
+  K2_DCHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
+  K2_DCHECK_EQ(state_batches.NumElements(), num_states);
+  K2_DCHECK_EQ(incoming_arcs.Dim0(), num_fsas);
+  K2_DCHECK_EQ(incoming_arcs.TotSize(1), num_states);
+  K2_DCHECK_EQ(incoming_arcs.NumElements(), num_arcs);
 
   // get ans_shape
   Array1<int32_t> ans_row_splits3(c, num_states + 1);

@@ -279,35 +279,35 @@ TEST(FsaUtilsTest, TestGetDestStates) {
 class StatesBatchSuiteTest : public ::testing::Test {
  protected:
   StatesBatchSuiteTest() {
-    std::string s1 = R"(0 1 1 0
-    0 2  1 0
-    0 3  1 0
-    0 3  2 0
-    1 2  1 0
-    1 3  1 0
-    3 4  1 0
-    3 5  -1 0
-    4 5  -1 0
+    std::string s1 = R"(0 1 1 1
+    0 2  1 2
+    0 3  1 2
+    0 3  2 3
+    1 2  1 4
+    1 3  1 5
+    3 4  1 6
+    3 5  -1 7
+    4 5  -1 8
     5
-  )";
+    )";
 
-    std::string s2 = R"(0 1 1 0
-    0 2  1 0
-    1 2  1 0
-    1 3  1 0
-    2 3  1 0
-    2 4  -1 0
+    std::string s2 = R"(0 1 1 1
+    0 2  1 2
+    1 2  1 3
+    1 3  1 4
+    2 3  1 5
+    2 4  -1 6
     4
   )";
 
-    std::string s3 = R"(0 2 1 0
-    1 2  1 0
-    1 3  1 0
-    1 4  1 0
-    2 3  1 0
-    2 4  1 0
-    3 4  1 0
-    4 5  -1 0
+    std::string s3 = R"(0 2 1 1
+    1 2  1 2
+    1 3  1 3
+    1 4  1 4
+    2 3  1 5
+    2 4  1 6
+    3 4  1 7
+    4 5  -1 8
     5
   )";
 
@@ -321,16 +321,60 @@ class StatesBatchSuiteTest : public ::testing::Test {
   FsaVec fsa_vec_;
 };
 
+// Note states_batches should be indexed with [fsa][batch][state]
+void CheckGetStatesBatchesResult(const FsaVec &fsas_vec_in,
+                                 const Ragged<int32_t> &states_batches_in) {
+  ContextPtr cpu = GetCpuContext();
+  FsaVec fsa_vec = fsas_vec_in.To(cpu);
+  Ragged<int32_t> states_batches = states_batches_in.To(cpu);
+
+  int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
+          num_batches = states_batches.TotSize(1);
+  const int32_t *fsa_row_splits1 = fsa_vec.RowSplits(1).Data();
+  const int32_t *row_splits1_data = states_batches.RowSplits(1).Data();
+  // num-batches in each fsa should not be greater than num-states
+  for (int32_t n = 0; n < num_fsas; ++n) {
+    int32_t num_batches = row_splits1_data[n + 1] - row_splits1_data[n];
+    int32_t num_states_this_fsa = fsa_row_splits1[n + 1] - fsa_row_splits1[n];
+    EXPECT_LE(num_batches, num_states_this_fsa);
+    if (num_states_this_fsa > 0) {
+      EXPECT_GT(num_batches, 0);
+    }
+  }
+
+  // values should be [0,1, ..., num_states - 1]
+  Array1<int32_t> states = Range(cpu, num_states, 0, 1);
+  CheckArrayData(states_batches.values, states);
+
+  Array1<int32_t> max_states_in_batches(cpu, num_batches);
+  MaxPerSublist(states_batches, -1, &max_states_in_batches);
+  Array1<int32_t> dest_states = GetDestStates(fsa_vec, true);
+  const int32_t *batch_ids_data = states_batches.RowIds(2).Data();
+  const int32_t *batch_state_data = states_batches.values.Data();
+  const int32_t *max_states_data = max_states_in_batches.Data();
+  const int32_t *dest_states_data = dest_states.Data();
+  const int32_t *fsa_row_splits2_data = fsa_vec.RowSplits(2).Data();
+  for (int32_t i = 0; i < num_states; ++i) {
+    int32_t batch_idx = batch_ids_data[i];
+    int32_t state_idx = batch_state_data[i];
+    EXPECT_EQ(state_idx,
+              i);  // as state_batches is indexed with [fsa][batch][state]
+    int32_t max_state_this_batch = max_states_data[batch_idx];
+    EXPECT_LE(state_idx, max_state_this_batch);
+    int32_t arc_begin = fsa_row_splits2_data[state_idx];
+    int32_t arc_end = fsa_row_splits2_data[state_idx + 1];
+    for (int32_t idx = arc_begin; idx != arc_end; ++idx) {
+      // states in each batch only have arcs to later numbered batches
+      int32_t dest_state_this_arc = dest_states_data[idx];
+      EXPECT_GT(dest_state_this_arc, max_state_this_batch);
+    }
+  }
+}
+
 TEST_F(StatesBatchSuiteTest, TestGetStateBatches) {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
   {
     // simple case
-    Array1<int32_t> states_num(cpu, fsa_vec_.Dim0());
-    int32_t *states_num_data = states_num.Data();
-    const int32_t *fsa_vec_row_splits = fsa_vec_.RowSplits(1).Data();
-    for (int32_t i = 0; i != fsa_vec_.Dim0(); ++i) {
-      states_num_data[i] = fsa_vec_row_splits[i + 1] - fsa_vec_row_splits[i];
-    }
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
       FsaVec fsa_vec = fsa_vec_.To(context);
       int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1);
@@ -339,26 +383,9 @@ TEST_F(StatesBatchSuiteTest, TestGetStateBatches) {
       {
         // no transpose: [fsa_idx][batch_idx][state]
         Ragged<int32_t> result = GetStateBatches(fsa_vec, false);
-        result = result.To(cpu);
         EXPECT_EQ(result.Dim0(), num_fsas);
         ASSERT_EQ(result.NumElements(), num_states);
-        int32_t *row_splits1_data = result.RowSplits(1).Data();
-        for (int32_t n = 0; n < num_fsas; ++n) {
-          int32_t num_batches = row_splits1_data[n + 1] - row_splits1_data[n];
-          // num-batches in each fsa should not be greater num-states
-          EXPECT_LE(num_batches, states_num[n]);
-          if (states_num[n] > 0) {
-            EXPECT_GT(num_batches, 0);
-          }
-        }
-        // check values
-        std::vector<int32_t> states(num_states);
-        std::iota(states.begin(), states.end(), 0);
-        Array1<int32_t> values = result.values;
-        ASSERT_EQ(values.Dim(), num_states);
-        std::vector<int32_t> cpu_values(values.Data(),
-                                        values.Data() + values.Dim());
-        EXPECT_EQ(cpu_values, states);
+        CheckGetStatesBatchesResult(fsa_vec, result);
       }
 
       {
@@ -372,6 +399,7 @@ TEST_F(StatesBatchSuiteTest, TestGetStateBatches) {
         for (int32_t n = 0; n <= result.Dim0(); ++n) {
           EXPECT_EQ(row_splits1_data[n], n * num_fsas);
         }
+        CheckGetStatesBatchesResult(fsa_vec, Transpose(result));
       }
     }
   }
@@ -477,6 +505,36 @@ TEST_F(StatesBatchSuiteTest, TestEnteringArcIndexBatches) {
       CheckArrayData(transposed.values, incoming_arcs.values);
       // check row_ids
       CheckArrayData(transposed.RowIds(3), incoming_arcs.RowIds(2));
+    }
+  }
+  // TODO(haowen): add random cases
+}
+
+TEST_F(StatesBatchSuiteTest, TestForwardScores) {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  {
+    // simple case
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      FsaVec fsa_vec = fsa_vec_.To(context);
+      int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
+              num_arcs = fsa_vec.NumElements();
+      EXPECT_EQ(num_fsas, 3);
+
+      Ragged<int32_t> state_batches = GetStateBatches(fsa_vec, true);
+      Array1<int32_t> dest_states = GetDestStates(fsa_vec, true);
+      Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsa_vec, dest_states);
+      Ragged<int32_t> entering_arc_batches =
+          GetEnteringArcIndexBatches(fsa_vec, incoming_arcs, state_batches);
+
+      {
+        // max
+        Array1<float> scores = GetForwardScores<float>(
+            fsa_vec, state_batches, entering_arc_batches, false);
+        EXPECT_EQ(scores.Dim(), num_states);
+        scores = scores.To(cpu);
+        K2_LOG(INFO) << scores;
+        //  [ 0 1 5 6 12 20 0 1 4 9 10 0 -inf 1 6 13 21 ]
+      }
     }
   }
   // TODO(haowen): add random cases
