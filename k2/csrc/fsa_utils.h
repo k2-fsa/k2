@@ -303,4 +303,8 @@ Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01);
 
 }  // namespace k2
 
+#define IS_IN_K2_CSRC_FSA_UTILS_H_
+#include "k2/csrc/fsa_utils_inl.h"
+#undef IS_IN_K2_CSRC_FSA_UTILS_H_
+
 #endif  //  K2_CSRC_FSA_UTILS_H_
