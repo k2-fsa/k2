@@ -48,6 +48,10 @@ struct RaggedShapeDim {
 };
 
 class RaggedShapeIndexIterator;
+class RaggedShape;
+std::ostream &operator<<(std::ostream &stream,
+                         const RaggedShape &shape);
+
 
 class RaggedShape {
  public:
@@ -161,7 +165,10 @@ class RaggedShape {
   const std::vector<RaggedShapeDim> &Axes() const { return axes_; }
 
   // Check the RaggedShape for consistency; die on failure.
-  void Check() { K2_CHECK(Validate(true)); }
+  void Check() {
+    if (!Validate(true))
+      K2_LOG(FATAL) << "Failed to validate RaggedShape: " << *this;
+  }
 
   // Validate the RaggedShape; on failure will return false (may also
   // print warnings).
@@ -179,13 +186,9 @@ class RaggedShape {
   std::vector<RaggedShapeDim> axes_;
 };
 
-// prints a RaggedShape as e.g. [ [ 0 1 ] [ 2 ] [] ].  Note, the 'values'
-// are just the positions in the array, this is for readability.
-inline std::ostream &operator<<(std::ostream &stream,
-                                const RaggedShape &shape) {
-  // TODO: implement it
-  return stream;
-}
+// prints a RaggedShape, for debug purposes.  May change later how this works.
+std::ostream &operator<<(std::ostream &stream,
+                         const RaggedShape &shape);
 
 /*
   This is intended only for use in debugging.  It only works if the shape is

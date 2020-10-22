@@ -242,8 +242,12 @@ class TopSorter {
     };
     Eval(c_, new_states.Dim(), lambda_set_row_ids);
 
+    int32_t num_fsas = fsas_.Dim0();
+    Array1<int32_t> new_states_row_splits(c_, num_fsas + 1);
+    RowIdsToRowSplits(new_states_row_ids, &new_states_row_splits);
+
     std::unique_ptr<Ragged<int32_t>> ans = std::make_unique<Ragged<int32_t>>(
-        RaggedShape2(nullptr, &new_states_row_ids, -1), new_states);
+        RaggedShape2(&new_states_row_splits, &new_states_row_ids, -1), new_states);
     // The following will ensure the answer has deterministic numbering
     SortSublists(ans.get(), nullptr);
     return ans;

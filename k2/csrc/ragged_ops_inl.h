@@ -94,13 +94,11 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
   // context compatibility and num-axes compatibility.
   RaggedShape ans_shape = Stack(0, num_srcs, src_shapes.data());
   Array1<T> ans_values = Append(num_srcs, src_values.data());
-  if (axis == 1) {
-    ans_shape = MakeTransposable(ans_shape);
-    Ragged<T> ans(ans_shape, ans_values);
+  Ragged<T> ans(ans_shape, ans_values);
+  if (axis == 1)
     return Transpose(ans);
-  }
-
-  return Ragged<T>(ans_shape, ans_values);
+  else
+    return ans;
 }
 
 template <typename T>
