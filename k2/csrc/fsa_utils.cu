@@ -4,7 +4,7 @@
  * Note that serializations are done in Python.
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Guoguo Chen
  *
@@ -929,20 +929,18 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
   ContextPtr &c = src.shape.Context();
   // caution: 'num_symbols' is the number of symbols excluding the final-symbol
   // -1.
-  int32_t num_fsas = src.shape.Dim0(),
-      num_symbols = src.scores.Dim1() - 1;
+  int32_t num_fsas = src.shape.Dim0(), num_symbols = src.scores.Dim1() - 1;
   // the "1" is the extra state per FSA we need in the FsaVec format,
   // for the final-state.
   RaggedShape fsa2state = ChangeSublistSize(src.shape, 1);
 
   int32_t num_states = src.shape.NumElements() + num_fsas,
-      num_arcs = src.shape.NumElements() * num_symbols -
-               (num_symbols - 1) * num_fsas;
-  Array1<int32_t> row_splits2(c, num_states),
-      row_ids2(c, num_arcs);
+          num_arcs = src.shape.NumElements() * num_symbols -
+                     (num_symbols - 1) * num_fsas;
+  Array1<int32_t> row_splits2(c, num_states), row_ids2(c, num_arcs);
   const int32_t *row_ids1_data = fsa2state.RowIds(1).Data(),
-      *src_row_ids1_data = src.shape.RowIds(1).Data(),
-      *src_row_splits1_data = src.shape.RowSplits(1).Data();
+                *src_row_ids1_data = src.shape.RowIds(1).Data(),
+                *src_row_splits1_data = src.shape.RowSplits(1).Data();
   Array1<Arc> arcs(c, num_arcs);
   Arc *arcs_data = arcs.Data();
 
@@ -950,25 +948,26 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
 
   // each FSA we return has one extra state (we add the final state).
   int32_t *row_splits2_data = row_splits2.Data(),
-      *row_ids2_data = row_ids2.Data();
+          *row_ids2_data = row_ids2.Data();
 
   // 0 <= s < num_symbols; note, `num_symbols` excludes the final-symbol (-1).
-  auto lambda_set_arcs_etc = [=] __host__ __device__ (int32_t src_state_idx01,
-                                                      int32_t s) -> void {
+  auto lambda_set_arcs_etc = [=] __host__ __device__(int32_t src_state_idx01,
+                                                     int32_t s) -> void {
     int32_t fsa_idx0 = src_row_ids1_data[src_state_idx01],
-      src_state_idx0x = src_row_splits1_data[fsa_idx0],
-      state_idx1 = src_state_idx01 - src_state_idx0x,
-      src_next_state_idx0x = src_row_splits1_data[fsa_idx0+1],
-      src_num_states1  = src_next_state_idx0x - src_state_idx0x,
-      ans_state_idx01 = src_state_idx01 + fsa_idx0;  // add final-state per FSA..
+            src_state_idx0x = src_row_splits1_data[fsa_idx0],
+            state_idx1 = src_state_idx01 - src_state_idx0x,
+            src_next_state_idx0x = src_row_splits1_data[fsa_idx0 + 1],
+            src_num_states1 = src_next_state_idx0x - src_state_idx0x,
+            ans_state_idx01 =
+                src_state_idx01 + fsa_idx0;  // add final-state per FSA..
 
     // arc_idx0x is the 1st arc-index of the FSA we are creating.. each source
     // state has `num_symbols` arcs leaving it except the last one of each FSA,
     // which has 1 arc leaving it (to the final-state).
-    int32_t arc_idx0xx = (src_state_idx0x * num_symbols) -
-      fsa_idx0 * (num_symbols - 1),
-      arc_idx01x = arc_idx0xx + (state_idx1 * num_symbols),
-      arc_idx012 = arc_idx01x + s;
+    int32_t arc_idx0xx =
+                (src_state_idx0x * num_symbols) - fsa_idx0 * (num_symbols - 1),
+            arc_idx01x = arc_idx0xx + (state_idx1 * num_symbols),
+            arc_idx012 = arc_idx01x + s;
     int32_t symbol_offset;
     if (state_idx1 + 1 < src_num_states1) {
       symbol_offset = -1;
@@ -979,23 +978,20 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
     // the "+ 1" is because index 0 in `scores` is for the final-symbol -1,
     // then 0, 1, etc.
     int32_t symbol_index_in_scores = s + symbol_offset + 1;
-    arcs_data[arc_idx012] = Arc(state_idx1, state_idx1 + 1, s + symbol_offset,
-                                FloatAsInt(scores_acc(src_state_idx01,
-                                                      symbol_index_in_scores)));
+    arcs_data[arc_idx012] =
+        Arc(state_idx1, state_idx1 + 1, s + symbol_offset,
+            FloatAsInt(scores_acc(src_state_idx01, symbol_index_in_scores)));
     row_ids2_data[arc_idx012] = ans_state_idx01;
-    if (s == 0) { // 1st arc for this state.
+    if (s == 0) {  // 1st arc for this state.
       row_splits2_data[ans_state_idx01] = arc_idx012;
       K2_CHECK(row_ids1_data[ans_state_idx01] == fsa_idx0);
-      if (src_state_idx01 == 0)
-        row_splits2_data[num_states] = num_arcs;
+      if (src_state_idx01 == 0) row_splits2_data[num_states] = num_arcs;
     }
   };
   Eval2(c, src.shape.NumElements(), num_symbols, lambda_set_arcs_etc);
 
   RaggedShape state2arc = RaggedShape2(&row_splits2, &row_ids2, num_arcs);
-  return Ragged<Arc>(ComposeRaggedShapes(fsa2state, state2arc),
-                     arcs);
+  return Ragged<Arc>(ComposeRaggedShapes(fsa2state, state2arc), arcs);
 }
-
 
 }  // namespace k2

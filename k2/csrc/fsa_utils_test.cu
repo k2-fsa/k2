@@ -511,7 +511,6 @@ TEST_F(StatesBatchSuiteTest, TestEnteringArcIndexBatches) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestForwardScores) {
-  ContextPtr cpu = GetCpuContext();  // will use to copy data
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -531,7 +530,6 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
         Array1<float> scores = GetForwardScores<float>(
             fsa_vec, state_batches, entering_arc_batches, false);
         EXPECT_EQ(scores.Dim(), num_states);
-        scores = scores.To(cpu);
         K2_LOG(INFO) << scores;
         //  [ 0 1 5 6 12 20 0 1 4 9 10 0 -inf 1 6 13 21 ]
       }
@@ -540,7 +538,6 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
         Array1<double> scores = GetForwardScores<double>(
             fsa_vec, state_batches, entering_arc_batches, true);
         EXPECT_EQ(scores.Dim(), num_states);
-        scores = scores.To(cpu);
         K2_LOG(INFO) << scores;
         // [ 0 1 5.04859 6.06588 12.0659 20.0668 0 1 4.12693 9.14293 10.1269 0
         // -inf 1 6 13.0025 21.0025 ]
@@ -551,7 +548,6 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestGetTotScores) {
-  ContextPtr cpu = GetCpuContext();  // will use to copy data
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -590,7 +586,6 @@ TEST_F(StatesBatchSuiteTest, TestGetTotScores) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
-  ContextPtr cpu = GetCpuContext();  // will use to copy data
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -600,6 +595,10 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
       EXPECT_EQ(num_fsas, 3);
 
       Ragged<int32_t> state_batches = GetStateBatches(fsa_vec, true);
+      Array1<int32_t> dest_states = GetDestStates(fsa_vec, true);
+      Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsa_vec, dest_states);
+      Ragged<int32_t> entering_arc_batches =
+          GetEnteringArcIndexBatches(fsa_vec, incoming_arcs, state_batches);
       Ragged<int32_t> leaving_arc_batches =
           GetLeavingArcIndexBatches(fsa_vec, state_batches);
 
@@ -613,9 +612,9 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
       }
       {
         // max with tot_scores provided
-        // TODO(haowen): replace with GetTotScore
-        std::vector<float> tot_score_vec = {20, 10, 21};
-        Array1<float> tot_scores(context, tot_score_vec);
+        Array1<float> forward_scores = GetForwardScores<float>(
+            fsa_vec, state_batches, entering_arc_batches, false);
+        Array1<float> tot_scores = GetTotScores(fsa_vec, forward_scores);
         Array1<float> scores = GetBackwardScores<float>(
             fsa_vec, state_batches, leaving_arc_batches, &tot_scores, false);
         EXPECT_EQ(scores.Dim(), num_states);
@@ -633,13 +632,12 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
       }
       {
         // logsum with tot_scores provided
-        // TODO(haowen): replace with GetTotScore
-        std::vector<float> tot_score_vec = {20.0688, 10.1269, 21.0025};
-        Array1<float> tot_scores(context, tot_score_vec);
+        Array1<float> forward_scores = GetForwardScores<float>(
+            fsa_vec, state_batches, entering_arc_batches, true);
+        Array1<float> tot_scores = GetTotScores(fsa_vec, forward_scores);
         Array1<float> scores = GetBackwardScores<float>(
             fsa_vec, state_batches, leaving_arc_batches, &tot_scores, true);
         EXPECT_EQ(scores.Dim(), num_states);
-        scores = scores.To(cpu);
         K2_LOG(INFO) << scores;
         // [ -0.00200483 -1.06789 -inf -6.06789 -12.0688 -20.0688 2.82824e-05
         // -1.1269 -4.1269 -inf -10.1269 -2.47955e-05 1.01813 -1.00002 -6.0025
@@ -649,6 +647,56 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
   }
   // TODO(haowen): add random cases and check the scores automatically (may with
   // host code?)
+}
+
+TEST_F(StatesBatchSuiteTest, TestArcScores) {
+  {
+    // simple case
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      FsaVec fsa_vec = fsa_vec_.To(context);
+      int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
+              num_arcs = fsa_vec.NumElements();
+      EXPECT_EQ(num_fsas, 3);
+
+      Ragged<int32_t> state_batches = GetStateBatches(fsa_vec, true);
+      Array1<int32_t> dest_states = GetDestStates(fsa_vec, true);
+      Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsa_vec, dest_states);
+      Ragged<int32_t> entering_arc_batches =
+          GetEnteringArcIndexBatches(fsa_vec, incoming_arcs, state_batches);
+      Ragged<int32_t> leaving_arc_batches =
+          GetLeavingArcIndexBatches(fsa_vec, state_batches);
+
+      {
+        // max
+        Array1<float> forward_scores = GetForwardScores<float>(
+            fsa_vec, state_batches, entering_arc_batches, false);
+        Array1<float> backward_scores = GetBackwardScores<float>(
+            fsa_vec, state_batches, leaving_arc_batches, nullptr, false);
+        Array1<float> arc_scores =
+            GetArcScores(fsa_vec, forward_scores, backward_scores);
+        EXPECT_EQ(arc_scores.Dim(), num_arcs);
+        K2_LOG(INFO) << arc_scores;
+        // [ 20 -inf 16 17 -inf 20 20 13 20 10 8 10 -inf -inf 10 21 -inf -inf
+        // -inf 21 15 21 21 ]
+      }
+      {
+        // logsum with tot_scores provided
+        Array1<float> forward_scores = GetForwardScores<float>(
+            fsa_vec, state_batches, entering_arc_batches, true);
+        Array1<float> tot_scores = GetTotScores(fsa_vec, forward_scores);
+        Array1<float> backward_scores = GetBackwardScores<float>(
+            fsa_vec, state_batches, leaving_arc_batches, &tot_scores, true);
+        Array1<float> arc_scores =
+            GetArcScores(fsa_vec, forward_scores, backward_scores);
+        EXPECT_EQ(arc_scores.Dim(), num_arcs);
+        K2_LOG(INFO) << arc_scores;
+        // [ -0.0658841 -inf -4.06588 -3.06588 -inf -0.0658841 -0.000911713
+        // -7.00091 -0.000911713 -0.126928 -2.12693 -0.126928 -inf -inf 0 0 -inf
+        // -inf -inf -0.00247574 -6.00248 -0.00247574 0 ]
+      }
+    }
+  }
+  // TODO(haowen): add random cases
 }
 
 }  // namespace k2
