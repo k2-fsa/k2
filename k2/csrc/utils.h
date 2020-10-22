@@ -493,7 +493,7 @@ __host__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
    is an error if it becomes less than zero).
 */
 __host__ __device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
-#ifdef CUDA_ARCH
+#ifdef __CUDA_ARCH__
   int32_t old = atomicAdd(i, -1);
   K2_CHECK_GT(old, 0);
   return old == 1;

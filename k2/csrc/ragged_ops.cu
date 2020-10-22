@@ -774,7 +774,9 @@ RaggedShape Transpose(RaggedShape &src) {
   K2_CHECK_GT(src.NumAxes(), 2);
   int32_t src_dim0 = src.Dim0(), src_tot_size1 = src.TotSize(1);
   K2_CHECK_EQ(src_tot_size1 % src_dim0, 0)
-      << "Transpose(): all dims on axis 0 must be the same.";
+      << "Transpose(): all dims on axis 0 must be the same.\n"
+      << "src_tot_size1: " << src_tot_size1 << "\n"
+      << "src_dim0: " << src_dim0 << "\n";
   int32_t src_dim1 = src_tot_size1 / src_dim0;
   RaggedShape src_no_axis0 = RemoveAxis(src, 0);
   K2_CHECK_EQ(src_no_axis0.Dim0(), src_tot_size1);

@@ -66,6 +66,9 @@ void CheckRowSplits(RaggedShape &shape,
   }
 }
 
+// Return a random acyclic FSA that is NOT topo sorted
+Fsa GetRandFsa();
+
 }  // namespace k2
 
 #endif  //  K2_CSRC_TEST_UTILS_H_
