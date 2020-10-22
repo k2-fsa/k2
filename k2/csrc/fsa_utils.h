@@ -219,16 +219,17 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
 /*
   Return array of total scores (one per FSA), e.g. could be interpreted as
   the data probability or partition function.
-         @param [in] fsas   Input Fsa or FsaVec (must have 2 or 3 axes)
+         @param [in] fsas   Input FsaVec (must have 3 axes)
          @param [in] forward_scores  Array of forward scores, as returned
-                          by GetForwardScores
+                          by GetForwardScores with the same FsaVec `fsas`.
          @return  Returns array of total scores, of dimension fsas.Dim0(),
                    which will contain the scores in the final-states of
                    `forward_scores`, or -infinity for FSAs that had no
                    states.
 */
 template <typename FloatType>
-Array1<FloatType> GetTotScores(FsaVec &fsas, Array1<FloatType> &forward_scores);
+Array1<FloatType> GetTotScores(FsaVec &fsas,
+                               const Array1<FloatType> &forward_scores);
 
 /*
    Compute and return backward scores per state (like betas in Baum-Welch),
@@ -253,7 +254,7 @@ Array1<FloatType> GetTotScores(FsaVec &fsas, Array1<FloatType> &forward_scores);
  */
 template <typename FloatType>
 Array1<FloatType> GetBackwardScores(
-    FsaVec &fsas, Ragged<int32_t> &batches,
+    FsaVec &fsas, Ragged<int32_t> &state_batches,
     Ragged<int32_t> &leaving_arc_batches,
     const Array1<FloatType> *tot_scores = nullptr, bool log_semiring = true);
 

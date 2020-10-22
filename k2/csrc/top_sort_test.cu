@@ -12,6 +12,7 @@
 
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/math.h"
 #include "k2/csrc/test_utils.h"
 
 namespace k2 {
@@ -131,7 +132,7 @@ TEST(TopSort, RandomSingleFsa) {
 }
 
 TEST(TopSort, RandomVectorOfFsas) {
-  int num_fsas = 1 + rand() % 100;
+  int num_fsas = 1 + RandInt(0, 100);
   ContextPtr cpu = GetCpuContext();
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     std::vector<Fsa> fsas(num_fsas);

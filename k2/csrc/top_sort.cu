@@ -237,7 +237,7 @@ class TopSorter {
         [=] __host__ __device__(int32_t new_state_idx) -> void {
       int32_t arcs_idx012 = new2old_map_data[new_state_idx],
               arcs_idx01 = arcs_row_ids2_data[arcs_idx012],  // state index
-              arcs_idx0 = arcs_row_ids1_data[arcs_idx01];        // FSA index
+          arcs_idx0 = arcs_row_ids1_data[arcs_idx01];        // FSA index
       new_states_row_ids_data[new_state_idx] = arcs_idx0;
     };
     Eval(c_, new_states.Dim(), lambda_set_row_ids);
@@ -247,7 +247,8 @@ class TopSorter {
     RowIdsToRowSplits(new_states_row_ids, &new_states_row_splits);
 
     std::unique_ptr<Ragged<int32_t>> ans = std::make_unique<Ragged<int32_t>>(
-        RaggedShape2(&new_states_row_splits, &new_states_row_ids, -1), new_states);
+        RaggedShape2(&new_states_row_splits, &new_states_row_ids, -1),
+        new_states);
     // The following will ensure the answer has deterministic numbering
     SortSublists(ans.get(), nullptr);
     return ans;

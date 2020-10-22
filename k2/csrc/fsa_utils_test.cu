@@ -535,9 +535,120 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
         K2_LOG(INFO) << scores;
         //  [ 0 1 5 6 12 20 0 1 4 9 10 0 -inf 1 6 13 21 ]
       }
+      {
+        // logsum
+        Array1<double> scores = GetForwardScores<double>(
+            fsa_vec, state_batches, entering_arc_batches, true);
+        EXPECT_EQ(scores.Dim(), num_states);
+        scores = scores.To(cpu);
+        K2_LOG(INFO) << scores;
+        // [ 0 1 5.04859 6.06588 12.0659 20.0668 0 1 4.12693 9.14293 10.1269 0
+        // -inf 1 6 13.0025 21.0025 ]
+      }
     }
   }
   // TODO(haowen): add random cases
+}
+
+TEST_F(StatesBatchSuiteTest, TestGetTotScores) {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  {
+    // simple case
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      FsaVec fsa_vec = fsa_vec_.To(context);
+      int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
+              num_arcs = fsa_vec.NumElements();
+      EXPECT_EQ(num_fsas, 3);
+
+      Ragged<int32_t> state_batches = GetStateBatches(fsa_vec, true);
+      Array1<int32_t> dest_states = GetDestStates(fsa_vec, true);
+      Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsa_vec, dest_states);
+      Ragged<int32_t> entering_arc_batches =
+          GetEnteringArcIndexBatches(fsa_vec, incoming_arcs, state_batches);
+
+      {
+        // max
+        Array1<float> scores = GetForwardScores<float>(
+            fsa_vec, state_batches, entering_arc_batches, false);
+        Array1<float> tot_scores = GetTotScores(fsa_vec, scores);
+        EXPECT_EQ(tot_scores.Dim(), num_fsas);
+        K2_LOG(INFO) << tot_scores;
+        //  [ 20 10 21 ]
+      }
+      {
+        // logsum
+        Array1<float> scores = GetForwardScores<float>(
+            fsa_vec, state_batches, entering_arc_batches, true);
+        Array1<float> tot_scores = GetTotScores(fsa_vec, scores);
+        EXPECT_EQ(tot_scores.Dim(), num_fsas);
+        K2_LOG(INFO) << tot_scores;
+        // [ 20.0668 10.1269 21.0025 ]
+      }
+    }
+  }
+  // TODO(haowen): add random cases
+}
+
+TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
+  ContextPtr cpu = GetCpuContext();  // will use to copy data
+  {
+    // simple case
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      FsaVec fsa_vec = fsa_vec_.To(context);
+      int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
+              num_arcs = fsa_vec.NumElements();
+      EXPECT_EQ(num_fsas, 3);
+
+      Ragged<int32_t> state_batches = GetStateBatches(fsa_vec, true);
+      Ragged<int32_t> leaving_arc_batches =
+          GetLeavingArcIndexBatches(fsa_vec, state_batches);
+
+      {
+        // max
+        Array1<float> scores = GetBackwardScores<float>(
+            fsa_vec, state_batches, leaving_arc_batches, nullptr, false);
+        EXPECT_EQ(scores.Dim(), num_states);
+        K2_LOG(INFO) << scores;
+        // [ 20 19 -inf 14 8 0 10 9 6 -inf 0 21 22 20 15 8 0 ]
+      }
+      {
+        // max with tot_scores provided
+        // TODO(haowen): replace with GetTotScore
+        std::vector<float> tot_score_vec = {20, 10, 21};
+        Array1<float> tot_scores(context, tot_score_vec);
+        Array1<float> scores = GetBackwardScores<float>(
+            fsa_vec, state_batches, leaving_arc_batches, &tot_scores, false);
+        EXPECT_EQ(scores.Dim(), num_states);
+        K2_LOG(INFO) << scores;
+        // [ 0 -1 -inf -6 -12 -20 0 -1 -4 -inf -10 0 1 -1 -6 -13 -21 ]
+      }
+      {
+        // logsum
+        Array1<float> scores = GetBackwardScores<float>(
+            fsa_vec, state_batches, leaving_arc_batches, nullptr, true);
+        EXPECT_EQ(scores.Dim(), num_states);
+        K2_LOG(INFO) << scores;
+        // [ 20.0668 19.0009 -inf 14.0009 8 0 10.1269 9 6 -inf
+        // 0 21.0025 22.0206 20.0025 15 8 0 ]
+      }
+      {
+        // logsum with tot_scores provided
+        // TODO(haowen): replace with GetTotScore
+        std::vector<float> tot_score_vec = {20.0688, 10.1269, 21.0025};
+        Array1<float> tot_scores(context, tot_score_vec);
+        Array1<float> scores = GetBackwardScores<float>(
+            fsa_vec, state_batches, leaving_arc_batches, &tot_scores, true);
+        EXPECT_EQ(scores.Dim(), num_states);
+        scores = scores.To(cpu);
+        K2_LOG(INFO) << scores;
+        // [ -0.00200483 -1.06789 -inf -6.06789 -12.0688 -20.0688 2.82824e-05
+        // -1.1269 -4.1269 -inf -10.1269 -2.47955e-05 1.01813 -1.00002 -6.0025
+        // -13.0025 -21.0025 ]
+      }
+    }
+  }
+  // TODO(haowen): add random cases and check the scores automatically (may with
+  // host code?)
 }
 
 }  // namespace k2

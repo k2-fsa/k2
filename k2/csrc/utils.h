@@ -579,8 +579,9 @@ struct LessThan {
   }
 };
 
-static const double kMinLogDiffDouble = log(DBL_EPSILON);  // negative!
-static const float kMinLogDiffFloat = logf(FLT_EPSILON);   // negative!
+#define K2_MIN_LOG_DIFF_FLOAT -15.9423847198486328125f  // logf(FLT_EPSILON)
+#define K2_MIN_LOG_DIFF_DOUBLE \
+  -36.0436533891171535515240975655615329742431640625  // log(DBL_EPSILON)
 
 template <typename T>
 struct LogAdd;
@@ -599,7 +600,7 @@ struct LogAdd<double> {
     }
     // diff is negative.  x is now the larger one.
 
-    if (diff >= kMinLogDiffDouble) {
+    if (diff >= K2_MIN_LOG_DIFF_DOUBLE) {
       double res;
       res = x + log1p(exp(diff));
       return res;
@@ -622,7 +623,7 @@ struct LogAdd<float> {
     }
     // diff is negative.  x is now the larger one.
 
-    if (diff >= kMinLogDiffFloat) {
+    if (diff >= K2_MIN_LOG_DIFF_DOUBLE) {
       float res;
       res = x + log1pf(expf(diff));
       return res;
