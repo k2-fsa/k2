@@ -6,6 +6,7 @@
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Guoguo Chen
+ *                      Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -302,7 +303,6 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
                                           GetDestStates(fsas, as_idx01))
 */
 Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01);
-
 
 /*
   Convert a DenseFsaVec to an FsaVec.  Intended for use in testing code.

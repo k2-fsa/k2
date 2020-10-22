@@ -4,7 +4,7 @@
  * Note that serializations are done in Python.
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Guoguo Chen
  *
