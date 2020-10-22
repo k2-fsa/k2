@@ -10,6 +10,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -52,12 +53,11 @@ void ToNotTopSorted(Fsa *fsa) {
 
 Fsa GetRandFsa() {
   k2host::RandFsaOptions opts;
-  opts.num_syms = 20;
-  opts.num_states = 100;
-  opts.num_arcs = opts.num_states * 4;
+  opts.num_syms = 5 + rand() % 100;
+  opts.num_states = 10 + rand() % 2000;
+  opts.num_arcs = opts.num_states * 4 + rand() % 100;
   opts.allow_empty = false;
   opts.acyclic = true;
-  K2_CHECK_GT(opts.num_states, 2);
 
   k2host::RandFsaGenerator generator(opts);
   k2host::Array2Size<int32_t> fsa_size;

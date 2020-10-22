@@ -48,7 +48,7 @@ endif()
 #---------------------------- Test K2 CUDA sources ----------------------------
 
 add_library(test_utils SHARED test_utils.cu)
-target_link_libraries(test_utils PUBLIC context)
+target_link_libraries(test_utils PUBLIC context gtest)
 
 # please sort the source files alphabetically
 set(cuda_tests

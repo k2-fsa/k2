@@ -131,7 +131,7 @@ TEST(TopSort, RandomSingleFsa) {
 }
 
 TEST(TopSort, RandomVectorOfFsas) {
-  int num_fsas = 4;
+  int num_fsas = 1 + rand() % 100;
   ContextPtr cpu = GetCpuContext();
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     std::vector<Fsa> fsas(num_fsas);
