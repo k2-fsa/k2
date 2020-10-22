@@ -302,6 +302,18 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
 */
 Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01);
 
+
+/*
+  Convert a DenseFsaVec to an FsaVec.  Intended for use in testing code.
+
+     @param [in] src  DenseFsaVec to convert
+     @return          Returns the DenseFsaVec converted to FsaVec format.
+
+  TODO(Dan): maybe at some point add an arc_map argument which will enable
+  testing of arc_map-related things.
+ */
+FsaVec ConvertDenseToFsaVec(DenseFsaVec &src);
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_FSA_UTILS_H_
