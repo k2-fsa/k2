@@ -250,13 +250,32 @@ bool RaggedShape::Validate(bool print_warnings) {
     RaggedShapeDim &rsd = axes_[axis];
     K2_CHECK_GE(rsd.row_splits.Dim(), 0);
     if (rsd.cached_tot_size >= 0) {
-      K2_CHECK(rsd.row_splits.Dim() == 0 ||
-               rsd.cached_tot_size == rsd.row_splits.Back());
-      K2_CHECK(rsd.row_ids.Dim() == 0 ||
-               rsd.cached_tot_size == rsd.row_ids.Dim());
+      if (!(rsd.row_splits.Dim() == 0 ||
+            rsd.cached_tot_size == rsd.row_splits.Back())) {
+        if (print_warnings)
+          K2_LOG(WARNING)
+              << "Ragged shape validation failed, row_splits.Back()="
+              << rsd.row_splits.Back() << " vs. cached-tot-size="
+              << rsd.cached_tot_size;
+        return false;
+      }
+      if (!((rsd.row_ids.Dim() == 0 ||
+             rsd.cached_tot_size == rsd.row_ids.Dim()))) {
+        if (print_warnings)
+          K2_LOG(WARNING)
+              << "Ragged shape validation failed, row_ids.Dim()="
+              << rsd.row_ids.Dim() << " vs. cached-tot-size="
+              << rsd.cached_tot_size;
+        return false;
+      }
     } else {
-      K2_CHECK_EQ(rsd.cached_tot_size, -1);
-      K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
+      if (rsd.cached_tot_size != -1 || rsd.row_ids.Dim() != 0) {
+        if (print_warnings)
+          K2_LOG(WARNING)
+              << "Ragged shape validation failed, cached_tot_size="
+              << rsd.cached_tot_size << ", row-ids.Dim()=" << rsd.row_ids.Dim();
+        return false;
+      }
     }
 
     int32_t num_elems;
@@ -345,5 +364,22 @@ bool RaggedShape::Validate(bool print_warnings) {
   }
   return true;
 }
+
+
+inline std::ostream &operator<<(std::ostream &stream,
+                                const RaggedShape &shape) {
+  stream << "RaggedShape { ";
+  stream << " num-axes = " << shape.NumAxes();
+  for (int32_t i = 1; i < shape.NumAxes(); i++) {
+    const RaggedShapeDim &axis = shape.Axes()[i-1];
+    if (axis.row_splits.IsValid())
+      stream << " RowSplits(" << i << ")=" << axis.row_splits;
+    if (axis.row_ids.IsValid())
+      stream << "RowIds(" << i << ")=" << axis.row_ids;
+    stream << "cached_tot_size[" << i << "]=" << axis.cached_tot_size;
+  }
+  return stream << " }";
+}
+
 
 }  // namespace k2
