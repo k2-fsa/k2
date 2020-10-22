@@ -511,7 +511,6 @@ TEST_F(StatesBatchSuiteTest, TestEnteringArcIndexBatches) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestForwardScores) {
-  ContextPtr cpu = GetCpuContext();  // will use to copy data
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -531,7 +530,6 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
         Array1<float> scores = GetForwardScores<float>(
             fsa_vec, state_batches, entering_arc_batches, false);
         EXPECT_EQ(scores.Dim(), num_states);
-        scores = scores.To(cpu);
         K2_LOG(INFO) << scores;
         //  [ 0 1 5 6 12 20 0 1 4 9 10 0 -inf 1 6 13 21 ]
       }
@@ -540,7 +538,6 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
         Array1<double> scores = GetForwardScores<double>(
             fsa_vec, state_batches, entering_arc_batches, true);
         EXPECT_EQ(scores.Dim(), num_states);
-        scores = scores.To(cpu);
         K2_LOG(INFO) << scores;
         // [ 0 1 5.04859 6.06588 12.0659 20.0668 0 1 4.12693 9.14293 10.1269 0
         // -inf 1 6 13.0025 21.0025 ]
@@ -551,7 +548,6 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestGetTotScores) {
-  ContextPtr cpu = GetCpuContext();  // will use to copy data
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -590,7 +586,6 @@ TEST_F(StatesBatchSuiteTest, TestGetTotScores) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
-  ContextPtr cpu = GetCpuContext();  // will use to copy data
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -643,7 +638,6 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
         Array1<float> scores = GetBackwardScores<float>(
             fsa_vec, state_batches, leaving_arc_batches, &tot_scores, true);
         EXPECT_EQ(scores.Dim(), num_states);
-        scores = scores.To(cpu);
         K2_LOG(INFO) << scores;
         // [ -0.00200483 -1.06789 -inf -6.06789 -12.0688 -20.0688 2.82824e-05
         // -1.1269 -4.1269 -inf -10.1269 -2.47955e-05 1.01813 -1.00002 -6.0025
@@ -656,7 +650,6 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestArcScores) {
-  ContextPtr cpu = GetCpuContext();  // will use to copy data
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {

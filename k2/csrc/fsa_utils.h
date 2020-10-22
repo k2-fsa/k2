@@ -272,11 +272,11 @@ Array1<FloatType> GetBackwardScores(
                          from
        @param [in] forward_scores  The state-level forward scores, which
                         should have been computed by GetForwardScores() with
-                        the same `fsas` and `log_semiring` that
+                        the same `fsas` and log_semiring that
                         GetBackwardScores used to compute `backward_scores`.
        @param [in] backward_scores  The state-level backward scores, which
                         should have been computed using GetBackwardScores()
-                        with the same `fsas` and `log_semiring` that
+                        with the same `fsas` and log_semiring that
                         GetForwardScores used to compute `forward_scores`.
        @return    returns scores for arcs, indexed by arc_idx012 in `fsas`,
                   with ans.Dim() == fsas.NumElements().

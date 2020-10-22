@@ -442,8 +442,7 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
   K2_CHECK_EQ(num_states, forward_scores.Dim());
   K2_CHECK_EQ(num_states, backward_scores.Dim());
 
-  FloatType negative_infinity = -std::numeric_limits<FloatType>::infinity();
-  Array1<FloatType> arc_scores(c, num_arcs, negative_infinity);
+  Array1<FloatType> arc_scores(c, num_arcs);
   FloatType *arc_scores_data = arc_scores.Data();
 
   const int32_t *fsa_row_splits1 = fsas.RowSplits(1).Data();
