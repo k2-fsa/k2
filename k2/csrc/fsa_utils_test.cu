@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <numeric>
 #include <vector>
 
@@ -697,6 +698,76 @@ TEST_F(StatesBatchSuiteTest, TestArcScores) {
     }
   }
   // TODO(haowen): add random cases
+}
+
+TEST(FsaUtils, ConvertDenseToFsaVec) {
+  /*
+    -inf  0    1
+      0 -inf -inf
+    -inf  2    3
+    -inf  4    5
+      0 -inf  -inf
+    -inf  6    7
+    -inf  8    9
+    -inf  10   11
+      0 -inf  -inf
+  */
+  constexpr float kNegInf = -std::numeric_limits<float>::infinity();
+  // clang-format off
+  std::vector<float> data = {
+    kNegInf, 0, 1,
+    0, kNegInf, kNegInf,
+    kNegInf, 2, 3,
+    kNegInf, 4, 5,
+    0, kNegInf, kNegInf,
+    kNegInf, 6, 7,
+    kNegInf, 8, 9,
+    kNegInf, 10, 11,
+    0, kNegInf, kNegInf,
+  };
+  // clang-format on
+
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<int32_t> row_splits(context, std::vector<int32_t>{0, 2, 5, 9});
+    RaggedShape shape = RaggedShape2(&row_splits, nullptr, 9);
+    Array1<float> tmp(context, data);
+    Array2<float> score(tmp, 9, 3);
+
+    DenseFsaVec dense_fsa_vec{shape, score};
+    FsaVec fsa_vec = ConvertDenseToFsaVec(dense_fsa_vec);
+    ASSERT_EQ(fsa_vec.Dim0(), 3);  // there are 3 FSAs
+
+    fsa_vec = fsa_vec.To(GetCpuContext());  // for testing
+
+    CheckArrayData(fsa_vec.RowSplits(1), std::vector<int32_t>{0, 3, 7, 12});
+    CheckArrayData(fsa_vec.RowSplits(2),
+                   std::vector<int32_t>{
+                       0, 2,        // fsa 0, state 0
+                       3, 3,        // fsa 0, state 1, final state
+                       5, 7,        // fsa 1, state 0, state 1
+                       8, 8,        // fsa 1, state 2, final state
+                       10, 12, 14,  // fsa 2, state 0, 1, 2
+                       15, 15       // fsa 2, state 3, final state
+                   });
+    //             [{fsa, state, arc}]
+    EXPECT_EQ((fsa_vec[{0, 0, 0}]), (Arc{0, 1, 0, 0}));
+    EXPECT_EQ((fsa_vec[{0, 0, 1}]), (Arc{0, 1, 1, 1}));
+    EXPECT_EQ((fsa_vec[{0, 1, 0}]), (Arc{1, 2, -1, 0}));
+
+    EXPECT_EQ((fsa_vec[{1, 0, 0}]), (Arc{0, 1, 0, 2}));
+    EXPECT_EQ((fsa_vec[{1, 0, 1}]), (Arc{0, 1, 1, 3}));
+    EXPECT_EQ((fsa_vec[{1, 1, 0}]), (Arc{1, 2, 0, 4}));
+    EXPECT_EQ((fsa_vec[{1, 1, 1}]), (Arc{1, 2, 1, 5}));
+    EXPECT_EQ((fsa_vec[{1, 2, 0}]), (Arc{2, 3, -1, 0}));
+
+    EXPECT_EQ((fsa_vec[{2, 0, 0}]), (Arc{0, 1, 0, 6}));
+    EXPECT_EQ((fsa_vec[{2, 0, 1}]), (Arc{0, 1, 1, 7}));
+    EXPECT_EQ((fsa_vec[{2, 1, 0}]), (Arc{1, 2, 0, 8}));
+    EXPECT_EQ((fsa_vec[{2, 1, 1}]), (Arc{1, 2, 1, 9}));
+    EXPECT_EQ((fsa_vec[{2, 2, 0}]), (Arc{2, 3, 0, 10}));
+    EXPECT_EQ((fsa_vec[{2, 2, 1}]), (Arc{2, 3, 1, 11}));
+    EXPECT_EQ((fsa_vec[{2, 3, 0}]), (Arc{3, 4, -1, 0}));
+  }
 }
 
 }  // namespace k2
