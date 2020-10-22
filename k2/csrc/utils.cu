@@ -318,7 +318,8 @@ void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
       // empty rows. Any value >= 1 is correct though.
       int32_t avg_rows_per_elem = num_rows / num_elems + 2,
               threads_per_elem = RoundUpToNearestPowerOfTwo(avg_rows_per_elem),
-              tot_threads = num_elems * threads_per_elem;
+              tot_threads =
+                  (num_elems + 1) * threads_per_elem;  // +1 for the last row
       int32_t block_size = 256;
       int32_t grid_size = NumBlocks(tot_threads, block_size);
       K2_CUDA_SAFE_CALL(RowIdsToRowSplitsKernel<<<grid_size, block_size, 0,
