@@ -271,18 +271,19 @@ Array1<FloatType> GetBackwardScores(
                          from
        @param [in] forward_scores  The state-level forward scores, which
                         should have been computed by GetForwardScores() with
-                        the same `fsas` and `log_semiring`
+                        the same `fsas` and `log_semiring` that
+                        GetBackwardScores used to compute `backward_scores`.
        @param [in] backward_scores  The state-level backward scores, which
                         should have been computed using GetBackwardScores()
-                        with the same `fsas` and `log_semiring`.
+                        with the same `fsas` and `log_semiring` that
+                        GetForwardScores used to compute `forward_scores`.
        @return    returns scores for arcs, indexed by arc_idx012 in `fsas`,
                   with ans.Dim() == fsas.NumElements().
 */
 template <typename FloatType>
 Array1<FloatType> GetArcScores(FsaVec &fsas,
                                const Array1<FloatType> &forward_scores,
-                               const Array1<FloatType> &backward_scores,
-                               bool log_semiring);
+                               const Array1<FloatType> &backward_scores);
 
 /*
   Returns an array of the destination-states for all arcs in an FsaVec

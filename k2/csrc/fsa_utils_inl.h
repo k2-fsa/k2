@@ -427,15 +427,48 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
   return tot_scores;
 }
 
-// TODO(haowen): implement below functions
 template <typename FloatType>
 Array1<FloatType> GetArcScores(FsaVec &fsas,
                                const Array1<FloatType> &forward_scores,
-                               const Array1<FloatType> &backward_scores,
-                               bool log_semiring) {
+                               const Array1<FloatType> &backward_scores) {
+  K2_STATIC_ASSERT((std::is_same<float, FloatType>::value ||
+                    std::is_same<double, FloatType>::value));
+  K2_CHECK(IsCompatible(fsas, forward_scores));
+  K2_CHECK(IsCompatible(fsas, backward_scores));
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
   ContextPtr &c = fsas.Context();
-  K2_LOG(INFO) << "Not Implemented!";
-  return Array1<FloatType>(c, 0);
+  int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
+          num_arcs = fsas.TotSize(2);
+  K2_CHECK_EQ(num_states, forward_scores.Dim());
+  K2_CHECK_EQ(num_states, backward_scores.Dim());
+
+  FloatType negative_infinity = -std::numeric_limits<FloatType>::infinity();
+  Array1<FloatType> arc_scores(c, num_arcs, negative_infinity);
+  FloatType *arc_scores_data = arc_scores.Data();
+
+  const int32_t *fsa_row_splits1 = fsas.RowSplits(1).Data();
+  const int32_t *fsa_row_ids1 = fsas.RowIds(1).Data();
+  const int32_t *fsa_row_ids2 = fsas.RowIds(2).Data();
+  const Arc *arcs = fsas.values.Data();
+  const FloatType *forward_scores_data = forward_scores.Data();
+  const FloatType *backward_scores_data = backward_scores.Data();
+  auto lambda_get_arc_scores = [=] __host__ __device__(int32_t arc_idx012) {
+    int32_t src_state_idx1 = arcs[arc_idx012].src_state;
+    int32_t dest_state_idx1 = arcs[arc_idx012].dest_state;
+    float arc_score = arcs[arc_idx012].score;
+
+    int32_t idx01 = fsa_row_ids2[arc_idx012];
+    int32_t idx0 = fsa_row_ids1[idx01];
+    int32_t idx0x = fsa_row_splits1[idx0];
+    int32_t src_state_idx01 = idx0x + src_state_idx1;
+    int32_t dest_state_idx01 = idx0x + dest_state_idx1;
+    arc_scores_data[arc_idx012] = arc_score +
+                                  forward_scores_data[src_state_idx01] +
+                                  backward_scores_data[dest_state_idx01];
+  };
+  Eval(c, num_arcs, lambda_get_arc_scores);
+
+  return arc_scores;
 }
 
 }  // namespace k2
