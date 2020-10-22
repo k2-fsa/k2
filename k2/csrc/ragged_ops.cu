@@ -773,14 +773,14 @@ RaggedShape MakeTransposable(RaggedShape &src) {
 RaggedShape Transpose(RaggedShape &src) {
   K2_CHECK_GT(src.NumAxes(), 2);
   ContextPtr c = src.Context();
-  int32_t src_dim0 = src.Dim0(),
-      src_tot_size1 = src.TotSize(1),
-      src_dim1 = src_tot_size1 / src_dim0;
+  int32_t src_dim0 = src.Dim0(), src_tot_size1 = src.TotSize(1),
+          src_dim1 = src_tot_size1 / src_dim0;
   K2_CHECK_EQ(src_tot_size1 % src_dim0, 0)
       << "Transpose(): all dims on axis 0 must be the same.\n"
       << "src_tot_size1: " << src_tot_size1 << "\n"
       << "src_dim0: " << src_dim0 << "\n";
-  K2_DCHECK(Equal(src.RowSplits(1), Range(c, src.RowSplits(1).Dim(), 0, src_dim1)))
+  K2_DCHECK(
+      Equal(src.RowSplits(1), Range(c, src.RowSplits(1).Dim(), 0, src_dim1)))
       << " Expected row-splits to be evenly spaced: " << src.RowSplits(1);
   RaggedShape src_no_axis0 = RemoveAxis(src, 0);
   K2_CHECK_EQ(src_no_axis0.Dim0(), src_tot_size1);

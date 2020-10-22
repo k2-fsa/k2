@@ -16,6 +16,7 @@
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host_shim.h"
+#include "k2/csrc/math.h"
 #include "k2/csrc/test_utils.h"
 
 namespace k2 {
@@ -53,9 +54,9 @@ void ToNotTopSorted(Fsa *fsa) {
 
 Fsa GetRandFsa() {
   k2host::RandFsaOptions opts;
-  opts.num_syms = 5 + rand() % 100;
-  opts.num_states = 10 + rand() % 2000;
-  opts.num_arcs = opts.num_states * 4 + rand() % 100;
+  opts.num_syms = 5 + RandInt(0, 100);
+  opts.num_states = 10 + RandInt(0, 2000);
+  opts.num_arcs = opts.num_states * 4 + RandInt(0, 100);
   opts.allow_empty = false;
   opts.acyclic = true;
 
