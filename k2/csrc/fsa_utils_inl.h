@@ -136,8 +136,7 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
       ParallelRunner pr(c);
       // get entering arc scores
       {
-        cudaStream_t stream = pr.NewStream();
-        With w(stream);
+        With w(pr.NewStream());
         auto lambda_set_entering_arc_score = [=] __host__ __device__(
                                                  int32_t idx3) {
           // all idx** in below code are the indexes to entering_arc_batches
@@ -154,11 +153,10 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
           arc_scores_data[idx0123] =
               state_scores_data[src_state_idx01] + curr_arc_score;
         };
-        Eval(stream, num_arcs_this_batch, lambda_set_entering_arc_score);
+        Eval(c, num_arcs_this_batch, lambda_set_entering_arc_score);
       }
       {
-        cudaStream_t stream = pr.NewStream();
-        With w(stream);
+        With w(pr.NewStream());
         // make entering arc row splits info in each batch starting from zero,
         // we will use it to call MaxPerSublist or LogSumPerSubList
         int32_t *sum_splits_data = sum_sub_range.Data();
@@ -168,7 +166,7 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
                   arc_batches_row_splits3[idx + this_state_idx0xx] -
                   arc_batches_row_splits3[this_state_idx0xx];
             };
-        Eval(stream, num_states_this_batch + 1, lambda_set_row_splits_for_sum);
+        Eval(c, num_states_this_batch + 1, lambda_set_row_splits_for_sum);
       }
     }
     int32_t this_arc_idx0xxx = cpu_entering_arc_start[i];
@@ -326,8 +324,7 @@ Array1<FloatType> GetBackwardScores(
       ParallelRunner pr(c);
       // get leaving arc scores
       {
-        cudaStream_t stream = pr.NewStream();
-        With w(stream);
+        With w(pr.NewStream());
         auto lambda_set_leaving_arc_score = [=] __host__ __device__(
                                                 int32_t idx3) {
           // all idx** in below code are the indexes to leaving_arc_batches
@@ -344,11 +341,10 @@ Array1<FloatType> GetBackwardScores(
           arc_scores_data[idx0123] =
               state_scores_data[dest_state_idx01] + curr_arc_score;
         };
-        Eval(stream, num_arcs_this_batch, lambda_set_leaving_arc_score);
+        Eval(c, num_arcs_this_batch, lambda_set_leaving_arc_score);
       }
       {
-        cudaStream_t stream = pr.NewStream();
-        With w(stream);
+        With w(pr.NewStream());
         // make leaving arc row splits info in each batch starting from zero,
         // we will use it to call MaxPerSublist or LogSumPerSubList
         int32_t *sum_splits_data = sum_sub_range.Data();
@@ -358,7 +354,7 @@ Array1<FloatType> GetBackwardScores(
                   arc_batches_row_splits3[idx + this_state_idx0xx] -
                   arc_batches_row_splits3[this_state_idx0xx];
             };
-        Eval(stream, num_states_this_batch + 1, lambda_set_row_splits_for_sum);
+        Eval(c, num_states_this_batch + 1, lambda_set_row_splits_for_sum);
       }
     }
     int32_t this_arc_idx0xxx = cpu_leaving_arc_start[i];

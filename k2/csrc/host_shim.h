@@ -3,7 +3,7 @@
  *                 CPU-only code, in host/, with the newer interfaces
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -16,6 +16,9 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/host/fsa.h"
+#include "k2/csrc/host/fsa_equivalent.h"
+#include "k2/csrc/host/properties.h"
+#include "k2/csrc/host/weights.h"
 #include "k2/csrc/ragged.h"
 
 namespace k2 {
@@ -178,6 +181,163 @@ class FsaVecCreator {
   bool finalized_row_splits2_;
   int32_t next_fsa_idx_;
 };
+
+/*
+  Wrap some property test function in `host/properties.h`, they are generally
+  for test purpose for now and work only for CPU. Users usually would not call
+  these functions. Instead, Call `GetFsaBasicProperties` or
+  `GetFsaVecBasicProperties` in fsa.h if you want to check Fsa/FsaVec's
+  properites in production code.
+*/
+
+/*
+  Check properties of FsaOrVec (which must be on CPU) with property test
+  function `f` which is one of property test functions for k2host::Fsa in
+  host/properties.h, e.g. IsValid(const k2::host Fsa&), IsTopSorted(const
+  k2host::Fsa&).
+
+  If `fsas` is FsaVec, the function will return an array on CPU which has
+    ans[i] = f(FsaVecToHostFsa(fsa_vec, i)) for 0 <= i < fsa_vec.Dim0();
+  else
+    returns a CPU array with size 1 and ans[0] = f(FsaToHostFsa(fsas))
+*/
+Array1<bool> CheckProperties(FsaOrVec &fsas, bool (*f)(const k2host::Fsa &));
+
+/*
+  ans[i]=true if `fsas[i]` is valid. An Fsa is valid if:
+  1. It is a valid Ragged array.
+  2. If it's not empty, it contains at least two states.
+     Noted empty fsa is valid.
+  3. Only arcs with symbol==-1 enter the final state.
+  4. There's no arcs leaving final_state.
+  5. All arcs leaving a state have a same src_state, which is the corresponding
+     idx0 in fsa, see index naming convention explained in utils.h.
+  TODO(haowen): Implement it as the version in host/properties.h doesn't
+                address all requirements above, but this is not so urgent
+                as we may not really need it for now.
+ */
+inline Array1<bool> IsValid(FsaOrVec &fsas);
+
+/*
+  ans[i]=true if `fsa[i]` is empty.
+ */
+inline Array1<bool> IsEmpty(FsaOrVec &fsas);
+
+/*
+  ans[i]=true if the states in `fsas[i]` are topologically sorted.
+*/
+inline Array1<bool> IsTopSorted(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsTopSorted);
+}
+
+/*
+  ans[i]=true if arcs leaving each state in `fsas[i]` are sorted on
+  label first and then on dest_state.
+*/
+inline Array1<bool> IsArcSorted(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsArcSorted);
+}
+
+/*
+  ans[i]=true if `fsa[i]` has any self-loops
+*/
+inline Array1<bool> HasSelfLoops(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::HasSelfLoops);
+}
+
+// As k2host::IsAcyclic has two input arguments, we create a wrapper function
+// here so we can pass it to CheckProperties
+inline bool IsAcyclicWapper(const k2host::Fsa &fsa) {
+  return k2host::IsAcyclic(fsa, nullptr);
+}
+/*
+  ans[i]=true if `fsas[i]` is acyclic.
+*/
+inline Array1<bool> IsAcyclic(FsaOrVec &fsas) {
+  return CheckProperties(fsas, IsAcyclicWapper);
+}
+
+/*
+  ans[i]=true if `fsas[i]` is deterministic; an Fsa is deterministic if
+  it has is no state that has multiple arcs leaving it with the same label on
+  them.
+*/
+inline Array1<bool> IsDeterministic(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsDeterministic);
+}
+
+/*
+  ans[i]=true if `fsas[i]` is free of epsilons, i.e. if there are no
+  arcs for which `label` is kEpsilon == 0.
+*/
+inline Array1<bool> IsEpsilonFree(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsEpsilonFree);
+}
+
+/*
+  ans[i]=true if all states in `fsas[i]` are both reachable from the
+  start state (accessible) and can reach the final state (coaccessible).  Note:
+  an FSA can be both connected and empty, because the empty FSA has no states
+  (neither start state nor final state exist).  So you may sometimes want to
+  check IsConnected() && IsNonempty().
+ */
+inline Array1<bool> IsConnected(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsConnected);
+}
+
+/*
+  Wraps function IsRandEquivalent in `host/fsa_equivalent.h` for test purpose.
+  Works for CPU only.
+*/
+
+/*
+  Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
+  generating `npath` paths from one of them and then checking if the
+  paths exist in the other one. `a` and `b` must have NumAxes() == 2 and on CPU.
+ */
+bool IsRandEquivalent(Fsa &a, Fsa &b, std::size_t npath = 100);
+
+/*
+  Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
+  generating `npath` paths from one of them and then checking if each path
+  exists in the other one and the sum of weights along that path are the same.
+
+  @param [in]  a          One of the FSAs to be checked the equivalence.
+                          Must have NumAxes() == 2 and on CPU.
+  @param [in]  b          The other FSA to be checked the equivalence.
+                          Must have NumAxes() == 2 and on CPU.
+  @param [in]  top_sorted The user may set this to true if both `a` and `b` are
+                          topologically sorted; this makes this function faster.
+                          Otherwise it must be set to false.
+  @param [in]  log_semiring If true, the algorithm will only check paths
+                          within `beam` of the of the log-sum probs over
+                          all pahts;
+                          If false, the algorithm will only check paths
+                          within `beam` of the best path (it's the max weight
+                          over all paths from start state to final state;
+  @param [in]  beam       beam > 0 that affects pruning; the algorithm
+                          will only check paths within `beam` of the
+                          best path(for tropical semiring, it's max
+                          weight over all paths from start state to
+                          final state; for log semiring, it's log-sum probs
+                          over all paths) in `a` or `b`. That is,
+                          any symbol sequence, whose total weights
+                          over all paths are within `beam` of the best
+                          path (either in `a` or `b`), must have
+                          the same weights in `a` and `b`.
+                          There is no any requirement on symbol sequences
+                          whose total weights over paths are outside `beam`.
+                          Just keep `k2host::kFloatInfinity` if you don't want
+                          pruning.
+  @param [in]  delta      Tolerance for path weights to check the equivalence.
+                          If abs(weights_a, weights_b) <= delta, we say the two
+                          paths are equivalent.
+  @param [in]  npath      The number of paths will be generated to check the
+                          equivalence of `a` and `b`
+ */
+bool IsRandEquivalent(Fsa &a, Fsa &b, bool top_sorted, bool log_semiring,
+                      float beam = k2host::kFloatInfinity, float delta = 1e-6,
+                      std::size_t npath = 100);
 
 }  // namespace k2
 
