@@ -110,7 +110,19 @@ FsaVec FsaVecCreator::GetFsaVec() {
       arcs_);
 }
 
-Array1<bool> CheckProperties(FsaOrVec &fsas, bool (*f)(const k2host::Fsa &)) {
+/*
+  Check properties of FsaOrVec (which must be on CPU) with property test
+  function `f` which is one of property test functions for k2host::Fsa in
+  host/properties.h, e.g. IsValid(const k2::host Fsa&), IsTopSorted(const
+  k2host::Fsa&).
+
+  If `fsas` is FsaVec, the function will return an array on CPU which has
+    ans[i] = f(FsaVecToHostFsa(fsa_vec, i)) for 0 <= i < fsa_vec.Dim0();
+  else
+    returns a CPU array with size 1 and ans[0] = f(FsaToHostFsa(fsas))
+*/
+static Array1<bool> CheckProperties(FsaOrVec &fsas,
+                                    bool (*f)(const k2host::Fsa &)) {
   ContextPtr &c = fsas.Context();
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);
   if (fsas.NumAxes() == 2) {
@@ -128,6 +140,39 @@ Array1<bool> CheckProperties(FsaOrVec &fsas, bool (*f)(const k2host::Fsa &)) {
     }
     return ans;
   }
+}
+
+Array1<bool> IsTopSorted(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsTopSorted);
+}
+
+Array1<bool> IsArcSorted(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsArcSorted);
+}
+
+Array1<bool> HasSelfLoops(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::HasSelfLoops);
+}
+
+// As k2host::IsAcyclic has two input arguments, we create a wrapper function
+// here so we can pass it to CheckProperties
+static bool IsAcyclicWapper(const k2host::Fsa &fsa) {
+  return k2host::IsAcyclic(fsa, nullptr);
+}
+Array1<bool> IsAcyclic(FsaOrVec &fsas) {
+  return CheckProperties(fsas, IsAcyclicWapper);
+}
+
+Array1<bool> IsDeterministic(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsDeterministic);
+}
+
+Array1<bool> IsEpsilonFree(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsEpsilonFree);
+}
+
+Array1<bool> IsConnected(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsConnected);
 }
 
 bool IsRandEquivalent(Fsa &a, Fsa &b, std::size_t npath /*= 100*/) {
