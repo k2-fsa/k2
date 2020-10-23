@@ -3,7 +3,7 @@
  * host_shim
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -18,8 +18,7 @@ k2host::Fsa FsaToHostFsa(Fsa &fsa) {
   K2_CHECK_EQ(fsa.Context()->GetDeviceType(), kCpu);
   // reinterpret_cast works because the arcs have the same members
   // (except our 'score' is called 'weight' there).
-  return k2host::Fsa(fsa.shape.Dim0(), fsa.shape.TotSize(1),
-                     fsa.shape.RowSplits(1).Data(),
+  return k2host::Fsa(fsa.Dim0(), fsa.TotSize(1), fsa.RowSplits(1).Data(),
                      reinterpret_cast<k2host::Arc *>(fsa.values.Data()));
 }
 
@@ -109,6 +108,99 @@ FsaVec FsaVecCreator::GetFsaVec() {
   return Ragged<Arc>(
       RaggedShape3(&row_splits1_, nullptr, -1, &row_splits2_, nullptr, -1),
       arcs_);
+}
+
+/*
+  Check properties of FsaOrVec (which must be on CPU) with property test
+  function `f` which is one of property test functions for k2host::Fsa in
+  host/properties.h, e.g. IsValid(const k2::host Fsa&), IsTopSorted(const
+  k2host::Fsa&).
+
+  If `fsas` is FsaVec, the function will return an array on CPU which has
+    ans[i] = f(FsaVecToHostFsa(fsa_vec, i)) for 0 <= i < fsa_vec.Dim0();
+  else
+    returns a CPU array with size 1 and ans[0] = f(FsaToHostFsa(fsas))
+*/
+static Array1<bool> CheckProperties(FsaOrVec &fsas,
+                                    bool (*f)(const k2host::Fsa &)) {
+  ContextPtr &c = fsas.Context();
+  K2_CHECK_EQ(c->GetDeviceType(), kCpu);
+  if (fsas.NumAxes() == 2) {
+    k2host::Fsa host_fsa = FsaToHostFsa(fsas);
+    bool status = f(host_fsa);
+    return Array1<bool>(c, 1, status);
+  } else {
+    K2_CHECK_EQ(fsas.NumAxes(), 3);
+    int32_t num_fsas = fsas.Dim0();
+    Array1<bool> ans(c, num_fsas);
+    bool *ans_data = ans.Data();
+    for (int32_t i = 0; i != num_fsas; ++i) {
+      k2host::Fsa host_fsa = FsaVecToHostFsa(fsas, i);
+      ans_data[i] = f(host_fsa);
+    }
+    return ans;
+  }
+}
+
+Array1<bool> IsTopSorted(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsTopSorted);
+}
+
+Array1<bool> IsArcSorted(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsArcSorted);
+}
+
+Array1<bool> HasSelfLoops(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::HasSelfLoops);
+}
+
+// As k2host::IsAcyclic has two input arguments, we create a wrapper function
+// here so we can pass it to CheckProperties
+static bool IsAcyclicWapper(const k2host::Fsa &fsa) {
+  return k2host::IsAcyclic(fsa, nullptr);
+}
+Array1<bool> IsAcyclic(FsaOrVec &fsas) {
+  return CheckProperties(fsas, IsAcyclicWapper);
+}
+
+Array1<bool> IsDeterministic(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsDeterministic);
+}
+
+Array1<bool> IsEpsilonFree(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsEpsilonFree);
+}
+
+Array1<bool> IsConnected(FsaOrVec &fsas) {
+  return CheckProperties(fsas, k2host::IsConnected);
+}
+
+bool IsRandEquivalent(Fsa &a, Fsa &b, std::size_t npath /*= 100*/) {
+  K2_CHECK_EQ(a.NumAxes(), 2);
+  K2_CHECK_EQ(b.NumAxes(), 2);
+  K2_CHECK_EQ(a.Context()->GetDeviceType(), kCpu);
+  K2_CHECK_EQ(b.Context()->GetDeviceType(), kCpu);
+  k2host::Fsa host_fsa_a = FsaToHostFsa(a);
+  k2host::Fsa host_fsa_b = FsaToHostFsa(b);
+  return k2host::IsRandEquivalent(host_fsa_a, host_fsa_b, npath);
+}
+
+bool IsRandEquivalent(Fsa &a, Fsa &b, bool top_sorted, bool log_semiring,
+                      float beam /*=k2host::kFloatInfinity*/,
+                      float delta /*=1e-6*/, std::size_t npath /*= 100*/) {
+  K2_CHECK_EQ(a.NumAxes(), 2);
+  K2_CHECK_EQ(b.NumAxes(), 2);
+  K2_CHECK_EQ(a.Context()->GetDeviceType(), kCpu);
+  K2_CHECK_EQ(b.Context()->GetDeviceType(), kCpu);
+  k2host::Fsa host_fsa_a = FsaToHostFsa(a);
+  k2host::Fsa host_fsa_b = FsaToHostFsa(b);
+  if (log_semiring) {
+    return k2host::IsRandEquivalent<k2host::kLogSumWeight>(
+        host_fsa_a, host_fsa_b, beam, delta, top_sorted, npath);
+  } else {
+    return k2host::IsRandEquivalent<k2host::kMaxWeight>(
+        host_fsa_a, host_fsa_b, beam, delta, top_sorted, npath);
+  }
 }
 
 }  // namespace k2
