@@ -937,7 +937,7 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
   int32_t num_states = src.shape.NumElements() + num_fsas,
           num_arcs = src.shape.NumElements() * num_symbols -
                      (num_symbols - 1) * num_fsas;
-  Array1<int32_t> row_splits2(c, num_states), row_ids2(c, num_arcs);
+  Array1<int32_t> row_splits2(c, num_states + 1), row_ids2(c, num_arcs);
   const int32_t *row_ids1_data = fsa2state.RowIds(1).Data(),
                 *src_row_ids1_data = src.shape.RowIds(1).Data(),
                 *src_row_splits1_data = src.shape.RowSplits(1).Data();
@@ -969,9 +969,12 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
             arc_idx01x = arc_idx0xx + (state_idx1 * num_symbols),
             arc_idx012 = arc_idx01x + s;
     int32_t symbol_offset;
-    if (state_idx1 + 1 < src_num_states1) {
+    if (state_idx1 + 1 == src_num_states1) {
       symbol_offset = -1;
       if (s > 0) return;  // we just need the arc with -1.
+
+      // the final state has no leaving arcs
+      row_splits2_data[ans_state_idx01 + 1] = arc_idx012 + num_symbols - 1;
     } else {
       symbol_offset = 0;
     }
@@ -980,7 +983,7 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
     int32_t symbol_index_in_scores = s + symbol_offset + 1;
     arcs_data[arc_idx012] =
         Arc(state_idx1, state_idx1 + 1, s + symbol_offset,
-            FloatAsInt(scores_acc(src_state_idx01, symbol_index_in_scores)));
+            scores_acc(src_state_idx01, symbol_index_in_scores));
     row_ids2_data[arc_idx012] = ans_state_idx01;
     if (s == 0) {  // 1st arc for this state.
       row_splits2_data[ans_state_idx01] = arc_idx012;
