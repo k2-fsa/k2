@@ -49,6 +49,37 @@ void Array1<T>::CopyFrom(const Array1<T> &src) {
   MemoryCopy(static_cast<void *>(dst_data), static_cast<const void *>(src_data),
              Dim() * ElementSize(), kind, Context().get());
 }
+template <typename T>
+template <typename S>
+Array1<S> Array1<T>::AsType() {
+  Array1<S> ans(Context(), Dim());
+  S *ans_data = ans.Data();
+  const T *this_data = Data();
+  auto lambda_set_values = [=] __host__ __device__(int32_t i) {
+    ans_data[i] = static_cast<S>(this_data[i]);
+  };
+  Eval(Context(), Dim(), lambda_set_values);
+  return ans;
+}
+
+// if S is same with T, just return *this. But in C++, we cannot explicitly
+// specialize a class member template unless its enclosing class templates are
+// also explicitly specialized. Thus here we specialized Array1 as well.
+template <>
+template <>
+inline Array1<double> Array1<double>::AsType<double>() {
+  return *this;
+}
+template <>
+template <>
+inline Array1<float> Array1<float>::AsType<float>() {
+  return *this;
+}
+template <>
+template <>
+inline Array1<int32_t> Array1<int32_t>::AsType<int32_t>() {
+  return *this;
+}
 
 }  // namespace k2
 
