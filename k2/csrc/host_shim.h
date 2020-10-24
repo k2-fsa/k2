@@ -318,6 +318,59 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, bool top_sorted, bool log_semiring,
                       float beam = k2host::kFloatInfinity, float delta = 1e-6,
                       std::size_t npath = 100);
 
+/*
+  Wrap forward and backward scores computation in `host/weights.h` (noted
+  `score` is called `weight` there), they are generally for test purpose for now
+  and work only for CPU. Users usually would not call these functions. Instead,
+  Call `GetForwadScores` or `GetBackwardScores` in fsa_utils.h if you want to
+  get FsaVec's forward or backward scores in production code.
+*/
+
+/*
+   Compute and return forward scores per state (like alphas in Baum-Welch),
+   or forward best-path scores if log_semiring == false.
+
+      @param [in] fsas  Input Fsa or FsaVec (must have 3 axes).  Must be
+                 top-sorted and without self loops, i.e. would have the
+                 property kFsaPropertiesTopSortedAndAcyclic if you were
+                 to compute properties. Must be on CPU.
+      @param [in] log_semiring   If true, combine path with LogAdd
+                  (i.e., mathematically, `log(exp(a)+exp(b))`); if false,
+                   combine as `max(a,b)`.
+      @return   Returns vector indexed by state-index (idx01 into fsas), i.e.
+               `ans.Dim()==fsas.TotSize(1)`, containing forward scores.
+                (these will be zero for the start-states).
+*/
+template <typename FloatType>
+Array1<FloatType> GetForwardScores(FsaVec &fsas, bool log_semiring);
+
+/*
+   Compute and return backward scores per state (like betas in Baum-Welch),
+   or backward best-path scores if log_semiring == false.
+      @param [in] fsas  Input Fsa or FsaVec (must have 3 axes).  Must be
+                 top-sorted and without self loops, i.e. would have the
+                 property kFsaPropertiesTopSortedAndAcyclic if you were
+                 to compute properties. Must be on CPU.
+       @param [in] tot_scores  Must be on CPU. If provided, we'll treat
+                  the backward scores of final-states as the negative
+                  of these tot_scores (which must have
+                  `tot_scores->Dim() == fsas.Dim0())`; otherwise
+                  as zero.
+       @param [in] log_semiring  If true, use LogAdd to combine
+                  scores; if false, use max.
+       @return  Returns a vector indexed by state-index (idx01 in fsas), with
+               `ans.Dim() == fsas.TotSize(1)`, containing backward
+               scores.
+ */
+template <typename FloatType>
+Array1<FloatType> GetBackwardScores(
+    FsaVec &fsas, const Array1<FloatType> *tot_scores = nullptr,
+    bool log_semiring = true);
+
 }  // namespace k2
+
+#define IS_IN_K2_CSRC_HOST_SHIM_H_
+#include "k2/csrc/host_shim_inl.h"
+#undef IS_IN_K2_CSRC_HOST_SHIM_H_
 
 #endif  // K2_CSRC_HOST_SHIM_H_
