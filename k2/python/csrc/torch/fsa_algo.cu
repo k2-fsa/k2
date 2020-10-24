@@ -14,6 +14,7 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/host_shim.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/torch_util.h"
 
@@ -165,6 +166,21 @@ static void PybindArcSort(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
+static void PybindShortestDistance(py::module &m) {
+  m.def(
+      "shortest_distance",
+      [](Fsa &src, bool need_arc_indexes = true)
+          -> std::pair<double, torch::optional<torch::Tensor>> {
+        Array1<int32_t> arc_indexes;
+        double best_score =
+            ShortestDistance(src, need_arc_indexes ? &arc_indexes : nullptr);
+        torch::optional<torch::Tensor> tensor;
+        if (need_arc_indexes) tensor = ToTensor(arc_indexes);
+        return std::make_pair(best_score, tensor);
+      },
+      py::arg("src"), py::arg("need_arc_indexes") = true);
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -173,4 +189,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindIntersect(m);
   k2::PybindConnect(m);
   k2::PybindArcSort(m);
+  k2::PybindShortestDistance(m);
 }

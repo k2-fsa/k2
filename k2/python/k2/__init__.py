@@ -4,6 +4,7 @@ from .fsa_algo import arc_sort
 from .fsa_algo import connect
 from .fsa_algo import intersect
 from .fsa_algo import linear_fsa
+from .fsa_algo import shortest_distance
 from .fsa_algo import top_sort
 from .symbol_table import SymbolTable
 from .utils import to_dot

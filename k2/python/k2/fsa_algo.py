@@ -145,3 +145,23 @@ def arc_sort(fsa: Fsa) -> Fsa:
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, deepcopy(value))
     return out_fsa
+
+
+def shortest_distance(fsa: Fsa) -> torch.Tensor:
+    '''Return the shortest distance from the start state to the final state
+    in the tropical semiring.
+
+    Note:
+      It uses the opposite sign. That is, It uses `max` instead of `min`.
+
+    Args:
+      fsa:
+        The intpu FSA.
+    Returns:
+      The sum of scores along the best path.
+    '''
+    need_arc_indexes = True
+    _, arc_indexes = _k2.shortest_distance(fsa.arcs, need_arc_indexes)
+    arc_indexes = arc_indexes.to(torch.int64)
+
+    return fsa.score[arc_indexes].sum()
