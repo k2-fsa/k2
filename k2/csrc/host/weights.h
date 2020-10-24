@@ -53,8 +53,12 @@ constexpr double kDoubleNegativeInfinity =
                 largest (most positive) weight from the start-state
                 to that state along any path, or `kNegativeInfinity` if no such
                 path exists.
+   @param [out] arc_indexes  The arc indexes of the best path from the start
+                state to the final state. It is empty if there is no such
+                path.
  */
-void ComputeForwardMaxWeights(const Fsa &fsa, double *state_weights);
+void ComputeForwardMaxWeights(const Fsa &fsa, double *state_weights,
+                              std::vector<int32_t> *arc_indexes = nullptr);
 
 /*
   Does the 'backward' computation; this is as in the tropical semiring
