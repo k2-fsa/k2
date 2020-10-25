@@ -194,7 +194,7 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
    Compute and return forward scores per state (like alphas in Baum-Welch),
    or forward best-path scores if log_semiring == false.
 
-      @param [in] fsas  Input Fsa or FsaVec (must have 3 axes).  Must be
+      @param [in] fsas  Input FsaVec (must have 3 axes).  Must be
                  top-sorted and without self loops, i.e. would have the
                  property kFsaPropertiesTopSortedAndAcyclic if you were
                  to compute properties.
@@ -235,7 +235,10 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
 /*
    Compute and return backward scores per state (like betas in Baum-Welch),
    or backward best-path scores if log_semiring == false.
-       @param [in] fsas  Input FsaVec (must have 3 axes)
+      @param [in] fsas  Input FsaVec (must have 3 axes).  Must be
+                 top-sorted and without self loops, i.e. would have the
+                 property kFsaPropertiesTopSortedAndAcyclic if you were
+                 to compute properties.
        @param [in] state_batches  Batches of states, as returned by
                   GetBatches (must have 3 axes: [iter][fsa][state_list]).
        @param [in] leaving_arc_batches  Arcs-indexes (idx012's in fsas) of arcs
@@ -316,9 +319,5 @@ Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01);
 FsaVec ConvertDenseToFsaVec(DenseFsaVec &src);
 
 }  // namespace k2
-
-#define IS_IN_K2_CSRC_FSA_UTILS_H_
-#include "k2/csrc/fsa_utils_inl.h"
-#undef IS_IN_K2_CSRC_FSA_UTILS_H_
 
 #endif  //  K2_CSRC_FSA_UTILS_H_

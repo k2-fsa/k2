@@ -167,6 +167,11 @@ class Array1 {
   // Copy from another array of the same dimension and type.
   void CopyFrom(const Array1<T> &src);
 
+  // Convert this array to another array with type S;
+  // if S is same with T, then it just returns *this
+  template <typename S>
+  Array1<S> AsType();
+
   /*
     Modify size of array, copying old contents if we could not re-use the same
     memory location. It will always at least double the allocated size if it has
