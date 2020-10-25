@@ -52,6 +52,7 @@ void Array1<T>::CopyFrom(const Array1<T> &src) {
 template <typename T>
 template <typename S>
 Array1<S> Array1<T>::AsType() {
+  if (std::is_same<T, S>::value) return *reinterpret_cast<Array1<S> *>(this);
   Array1<S> ans(Context(), Dim());
   S *ans_data = ans.Data();
   const T *this_data = Data();
@@ -61,26 +62,6 @@ Array1<S> Array1<T>::AsType() {
   Eval(Context(), Dim(), lambda_set_values);
   return ans;
 }
-
-// if S is same with T, just return *this. But in C++, we cannot explicitly
-// specialize a class member template unless its enclosing class templates are
-// also explicitly specialized. Thus here we specialized Array1 as well.
-template <>
-template <>
-inline Array1<double> Array1<double>::AsType<double>() {
-  return *this;
-}
-template <>
-template <>
-inline Array1<float> Array1<float>::AsType<float>() {
-  return *this;
-}
-template <>
-template <>
-inline Array1<int32_t> Array1<int32_t>::AsType<int32_t>() {
-  return *this;
-}
-
 }  // namespace k2
 
 #endif  // K2_CSRC_ARRAY_INL_H_
