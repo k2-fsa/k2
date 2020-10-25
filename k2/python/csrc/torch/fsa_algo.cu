@@ -169,16 +169,64 @@ static void PybindArcSort(py::module &m) {
 static void PybindShortestDistance(py::module &m) {
   m.def(
       "shortest_distance",
-      [](Fsa &src, bool need_arc_indexes = true)
+      [](Fsa &src, bool need_arc_map = true)
           -> std::pair<double, torch::optional<torch::Tensor>> {
-        Array1<int32_t> arc_indexes;
+        Array1<int32_t> arc_map;
         double best_score =
-            ShortestDistance(src, need_arc_indexes ? &arc_indexes : nullptr);
+            ShortestDistance(src, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> tensor;
-        if (need_arc_indexes) tensor = ToTensor(arc_indexes);
+        if (need_arc_map) tensor = ToTensor(arc_map);
         return std::make_pair(best_score, tensor);
       },
-      py::arg("src"), py::arg("need_arc_indexes") = true);
+      py::arg("src"), py::arg("need_arc_map") = true);
+}
+
+static void PybindShortestPath(py::module &m) {
+  m.def(
+      "shortest_path",
+      [](Fsa &src, bool need_arc_map =
+                       true) -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        Array1<int32_t> arc_map;
+        Fsa out;
+        ShortestPath(src, &out, need_arc_map ? &arc_map : nullptr);
+        torch::optional<torch::Tensor> tensor;
+        if (need_arc_map) tensor = ToTensor(arc_map);
+        return std::make_pair(out, tensor);
+      },
+      py::arg("src"), py::arg("need_arc_map") = true);
+}
+
+static void PybindCompose(py::module &m) {
+  m.def(
+      "compose",
+      // return a tuple (out_fsa, out_aux_labels, arc_map_a, arc_map_b)
+      [](Fsa &a, Fsa &b, torch::Tensor a_aux_labels, torch::Tensor b_aux_labels,
+         bool need_arc_map = true)
+          -> std::tuple<Fsa, torch::Tensor, torch::optional<torch::Tensor>,
+                        torch::optional<torch::Tensor>> {
+        Array1<int32_t> a_aux_labels_array = FromTensor<int32_t>(a_aux_labels);
+        Array1<int32_t> b_aux_labels_array = FromTensor<int32_t>(b_aux_labels);
+        Array1<int32_t> c_aux_labels_array;
+        Array1<int32_t> a_arc_map;
+        Array1<int32_t> b_arc_map;
+        Fsa c;
+
+        Compose(a, b, a_aux_labels_array, b_aux_labels_array, &c,
+                &c_aux_labels_array, need_arc_map ? &a_arc_map : nullptr,
+                need_arc_map ? &b_arc_map : nullptr);
+
+        torch::Tensor c_aux_labels = ToTensor(c_aux_labels_array);
+        torch::optional<torch::Tensor> a_tensor;
+        torch::optional<torch::Tensor> b_tensor;
+        if (need_arc_map) {
+          a_tensor = ToTensor(a_arc_map);
+          b_tensor = ToTensor(b_arc_map);
+        }
+
+        return std::make_tuple(c, c_aux_labels, a_tensor, b_tensor);
+      },
+      py::arg("a_fsa"), py::arg("b_fsa"), py::arg("a_aux_labels"),
+      py::arg("b_aux_labels"), py::arg("need_arc_map") = true);
 }
 
 }  // namespace k2
@@ -190,4 +238,6 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindConnect(m);
   k2::PybindArcSort(m);
   k2::PybindShortestDistance(m);
+  k2::PybindShortestPath(m);
+  k2::PybindCompose(m);
 }

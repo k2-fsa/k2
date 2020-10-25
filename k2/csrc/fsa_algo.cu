@@ -16,6 +16,7 @@
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/host/compose.h"
 #include "k2/csrc/host/connect.h"
 #include "k2/csrc/host/intersect.h"
 #include "k2/csrc/host/topsort.h"
@@ -177,6 +178,49 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
   return ok;
 }
 
+void Compose(Fsa &a_fsa, Fsa &b_fsa, Array1<int32_t> &a_aux_labels,
+             Array1<int32_t> &b_aux_labels, Fsa *out,
+             Array1<int32_t> *out_aux_labels, Array1<int32_t> *arc_map_a,
+             Array1<int32_t> *arc_map_b) {
+  K2_CHECK_EQ(a_fsa.NumAxes(), 2);
+  K2_CHECK_EQ(b_fsa.NumAxes(), 2);
+  K2_CHECK_EQ(a_fsa.Context()->GetDeviceType(), kCpu);
+  K2_CHECK_EQ(b_fsa.Context()->GetDeviceType(), kCpu);
+  K2_CHECK_EQ(a_aux_labels.Context()->GetDeviceType(), kCpu);
+  K2_CHECK_EQ(b_aux_labels.Context()->GetDeviceType(), kCpu);
+  K2_CHECK_EQ(a_fsa.NumElements(), a_aux_labels.Dim());
+  K2_CHECK_EQ(b_fsa.NumElements(), b_aux_labels.Dim());
+
+  k2host::Fsa host_a_fsa = FsaToHostFsa(a_fsa);
+  k2host::Fsa host_b_fsa = FsaToHostFsa(b_fsa);
+
+  k2host::Compose c(host_a_fsa, host_b_fsa, a_aux_labels.Data(),
+                    b_aux_labels.Data());
+  k2host::Array2Size<int32_t> size;
+  c.GetSizes(&size);
+
+  FsaCreator creator(size);
+  k2host::Fsa host_out_fsa = creator.GetHostFsa();
+  int32_t *arc_map_a_data = nullptr;
+  int32_t *arc_map_b_data = nullptr;
+  if (arc_map_a != nullptr) {
+    *arc_map_a = Array1<int32_t>(a_fsa.Context(), size.size2);
+    arc_map_a_data = arc_map_a->Data();
+  }
+  if (arc_map_b != nullptr) {
+    *arc_map_b = Array1<int32_t>(b_fsa.Context(), size.size2);
+    arc_map_b_data = arc_map_b->Data();
+  }
+
+  std::vector<int32_t> aux_labels;
+  bool ans =
+      c.GetOutput(&host_out_fsa, &aux_labels, arc_map_a_data, arc_map_b_data);
+  K2_CHECK(ans);
+  *out = creator.GetFsa();
+  if (out_aux_labels)
+    *out_aux_labels = Array1<int32_t>(out->Context(), aux_labels);
+}
+
 Fsa LinearFsa(const Array1<int32_t> &symbols) {
   ContextPtr &c = symbols.Context();
   int32_t n = symbols.Dim(), num_states = n + 2, num_arcs = n + 1;
@@ -286,6 +330,52 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
   Fsa tmp(src.shape, src.values.Clone());
   SortSublists<Arc, ArcComparer>(&tmp, arc_map);
   *dest = tmp;
+}
+
+double ShortestDistance(Fsa &fsa, Array1<int32_t> *arc_map /*= nullptr*/) {
+  ContextPtr &context = fsa.Context();
+  K2_CHECK_EQ(fsa.NumAxes(), 2);
+  K2_CHECK_EQ(context->GetDeviceType(), kCpu);
+  int32_t num_states = fsa.Dim0();
+  k2host::Fsa host_fsa = FsaToHostFsa(fsa);
+  Array1<double> state_weights(context, num_states);
+  std::vector<int32_t> tmp_arc_map;
+  ComputeForwardMaxWeights(host_fsa, state_weights.Data(), &tmp_arc_map);
+  if (arc_map != nullptr) *arc_map = Array1<int32_t>(context, tmp_arc_map);
+
+  return state_weights.Back();
+}
+
+void ShortestPath(Fsa &src, Fsa *out, Array1<int32_t> *arc_map /* = nullptr*/) {
+  ContextPtr &context = src.Context();
+  K2_CHECK_EQ(src.NumAxes(), 2);
+  K2_CHECK_EQ(context->GetDeviceType(), kCpu);
+  int32_t num_states = src.Dim0();
+  k2host::Fsa host_fsa = FsaToHostFsa(src);
+  Array1<double> state_weights(context, num_states);
+  std::vector<int32_t> tmp_arc_map;
+  ComputeForwardMaxWeights(host_fsa, state_weights.Data(), &tmp_arc_map);
+  if (tmp_arc_map.empty()) return;
+
+  int32_t num_arcs = static_cast<int32_t>(tmp_arc_map.size());
+
+  const Arc *src_arcs_data = src.values.Data();
+  Array1<Arc> arcs(context, num_arcs);
+  Arc* arcs_data = arcs.Data();
+  int32_t cur_state = 0;
+  for (auto i : tmp_arc_map) {
+    const Arc &src_arc = src_arcs_data[i];
+    arcs_data[cur_state] = Arc(cur_state, cur_state + 1, src_arc.symbol, src_arc.score);
+    cur_state += 1;
+  }
+  std::vector<int32_t> row_splits_vec(cur_state + 2);
+  std::iota(row_splits_vec.begin(), row_splits_vec.end(), 0);
+  row_splits_vec.back() -= 1;
+  Array1<int32_t> row_splits(context, row_splits_vec);
+  RaggedShape shape = RaggedShape2(&row_splits, nullptr, num_arcs);
+  *out = Fsa(shape, arcs);
+
+  if (arc_map != nullptr) *arc_map = Array1<int32_t>(context, tmp_arc_map);
 }
 
 }  // namespace k2

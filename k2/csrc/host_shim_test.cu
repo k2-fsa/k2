@@ -57,28 +57,5 @@ TEST(HostShim, FsaVecToHostFsa) {
   // TODO(fangjun): check the content of host_fsa
 }
 
-TEST(HostShim, ShortestDistance) {
-  std::string s = R"(0 4 1 1
-    0 1 1 1
-    1 2 1 2
-    1 3 1 3
-    2 7 1 4
-    3 7 1 5
-    4 6 1 2
-    4 8 1 3
-    5 9 -1 4
-    6 9 -1 3
-    7 9 -1 5
-    8 9 -1 6
-    9
-  )";
-
-  Fsa fsa = FsaFromString(s);
-  Array1<int32_t> arc_indexes;
-  double d = ShortestDistance(fsa, &arc_indexes);
-
-  EXPECT_NEAR(d, 14, 1e-8);
-  CheckArrayData(arc_indexes, std::vector<int32_t>{1, 3, 5, 10});
-}
 
 }  // namespace k2

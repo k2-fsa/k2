@@ -26,7 +26,7 @@ def to_str(fsa: Fsa, openfst: bool = False) -> str:
       A string representation of the Fsa.
     '''
     if hasattr(fsa, 'aux_labels'):
-        aux_labels = fsa.aux_labels
+        aux_labels = fsa.aux_labels.to(torch.int32)
     else:
         aux_labels = None
     return _fsa_to_str(fsa.arcs, openfst, aux_labels)
@@ -51,14 +51,6 @@ def to_tensor(fsa: Fsa) -> torch.Tensor:
       is a vector of FSAs.
     '''
     return _fsa_to_tensor(fsa.arcs)
-
-
-def to_fsa_vec(fsa: Fsa) -> Fsa:
-    # TODO(fangjun): copy the attributes of
-    # the input fsa to the FsaVec
-    ragged_arc = _fsa_to_fsa_vec(fsa.arcs)
-    tensor = _fsa_to_tensor(ragged_arc)
-    return Fsa(tensor)
 
 
 def to_dot(fsa: Fsa, title: Optional[str] = None):
@@ -129,14 +121,18 @@ def to_dot(fsa: Fsa, title: Optional[str] = None):
             seen.add(dst_state)
         if aux_labels is not None:
             aux_label = int(aux_labels[i])
-            if hasattr(fsa, 'osym'):
+            if hasattr(fsa, 'osym') and aux_label != -1:
                 aux_label = fsa.osym.get(aux_label)
+                if aux_label == '<eps>':
+                    aux_label = 'ε'
             aux_label = f':{aux_label}'
         else:
             aux_label = ''
 
         if hasattr(fsa, 'isym') and label != -1:
             label = fsa.isym.get(label)
+            if label == '<eps>':
+                label = 'ε'
 
         weight = f'{weight:.2f}'.rstrip('0').rstrip('.')
         dot.edge(src_state, dst_state, label=f'{label}{aux_label}/{weight}')

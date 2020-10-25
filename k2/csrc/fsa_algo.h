@@ -169,6 +169,11 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
                FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
+void Compose(Fsa &a_fsa, Fsa &b_fsa, Array1<int32_t> &a_aux_labels,
+             Array1<int32_t> &b_aux_labels, Fsa *out,
+             Array1<int32_t> *out_aux_labels, Array1<int32_t> *arc_map_a,
+             Array1<int32_t> *arc_map_b);
+
 /*
   Create a linear FSA from a sequence of symbols
 
@@ -195,6 +200,21 @@ Fsa LinearFsa(const Array1<int32_t> &symbols);
                 will have n+1 arcs (including the final-arc) and n+2 states.
  */
 FsaVec LinearFsas(Ragged<int32_t> &symbols);
+
+/* Compute the shortest distance in the tropical semiring, but
+   with the opposite sign. That is, it uses `max` instead of `min.
+
+   @param [in] fsa           The input FSA. It is on CPU and must be
+                             topologically sorted.
+   @param [out] arc_map      The arc indexes of the best path from the start
+                             state to the final state. It is empty if there
+                             is no such path.
+   @return The shortest distance from the start state to the final state.
+           Returns negative infinity if there is no such path.
+ */
+double ShortestDistance(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
+
+void ShortestPath(Fsa &src, Fsa *out, Array1<int32_t> *arc_map = nullptr);
 
 }  // namespace k2
 
