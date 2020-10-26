@@ -238,7 +238,7 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     if hasattr(a_fsa, 'aux_symbols'):
         out_fsa.aux_symbols = a_fsa.aux_symbols
     elif hasattr(a_fsa, 'symbols'):
-        out_fsa.symbols = a_fsa.symbols
+        out_fsa.aux_symbols = a_fsa.symbols
 
     if hasattr(b_fsa, 'aux_symbols'):
         out_fsa.symbols = b_fsa.aux_symbols
