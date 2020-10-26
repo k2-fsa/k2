@@ -19,6 +19,7 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/host_shim.h"
 #include "k2/csrc/test_utils.h"
 
 namespace k2 {
@@ -512,6 +513,7 @@ TEST_F(StatesBatchSuiteTest, TestEnteringArcIndexBatches) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestForwardScores) {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -533,6 +535,9 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
             fsa_vec, state_batches, entering_arc_batches, false, &entering_arcs);
         EXPECT_EQ(scores.Dim(), num_states);
         K2_LOG(INFO) << "Scores: " << scores << "\n,Entering arcs: " << entering_arcs;
+        FsaVec cpu_fsa_vec = fsa_vec.To(cpu);
+        Array1<float> cpu_scores = GetForwardScores<float>(cpu_fsa_vec, false);
+        CheckArrayData(scores, cpu_scores);
         //  [ 0 1 5 6 12 20 0 1 4 9 10 0 -inf 1 6 13 21 ]
       }
       {
@@ -540,7 +545,9 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
         Array1<double> scores = GetForwardScores<double>(
             fsa_vec, state_batches, entering_arc_batches, true);
         EXPECT_EQ(scores.Dim(), num_states);
-        K2_LOG(INFO) << scores;
+        FsaVec cpu_fsa_vec = fsa_vec.To(cpu);
+        Array1<double> cpu_scores = GetForwardScores<double>(cpu_fsa_vec, true);
+        CheckArrayData(scores, cpu_scores);
         // [ 0 1 5.04859 6.06588 12.0659 20.0668 0 1 4.12693 9.14293 10.1269 0
         // -inf 1 6 13.0025 21.0025 ]
       }
@@ -588,6 +595,7 @@ TEST_F(StatesBatchSuiteTest, TestGetTotScores) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -609,7 +617,10 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
         Array1<float> scores = GetBackwardScores<float>(
             fsa_vec, state_batches, leaving_arc_batches, nullptr, false);
         EXPECT_EQ(scores.Dim(), num_states);
-        K2_LOG(INFO) << scores;
+        FsaVec cpu_fsa_vec = fsa_vec.To(cpu);
+        Array1<float> cpu_scores =
+            GetBackwardScores<float>(cpu_fsa_vec, nullptr, false);
+        CheckArrayData(scores, cpu_scores);
         // [ 20 19 -inf 14 8 0 10 9 6 -inf 0 21 22 20 15 8 0 ]
       }
       {
@@ -621,6 +632,11 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
             fsa_vec, state_batches, leaving_arc_batches, &tot_scores, false);
         EXPECT_EQ(scores.Dim(), num_states);
         K2_LOG(INFO) << "scores: " << scores;
+        Array1<float> cpu_tot_scores = tot_scores.To(cpu);
+        FsaVec cpu_fsa_vec = fsa_vec.To(cpu);
+        Array1<float> cpu_scores =
+            GetBackwardScores<float>(cpu_fsa_vec, &cpu_tot_scores, false);
+        CheckArrayData(scores, cpu_scores);
         // [ 0 -1 -inf -6 -12 -20 0 -1 -4 -inf -10 0 1 -1 -6 -13 -21 ]
       }
       {

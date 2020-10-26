@@ -9,7 +9,11 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include "k2/csrc/array.h"
+#include "k2/csrc/fsa.h"
+#include "k2/csrc/host/weights.h"
 #include "k2/csrc/host_shim.h"
+#include "k2/csrc/ragged.h"
 
 namespace k2 {
 
@@ -202,5 +206,80 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, bool top_sorted, bool log_semiring,
         host_fsa_a, host_fsa_b, beam, delta, top_sorted, npath);
   }
 }
+
+template <typename FloatType>
+Array1<FloatType> GetForwardScores(FsaVec &fsas, bool log_semiring) {
+  ContextPtr &c = fsas.Context();
+  K2_CHECK_EQ(c->GetDeviceType(), kCpu);
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1);
+  const int32_t *fsa_row_splits1 = fsas.RowSplits(1).Data();
+
+  // GetForwardWeights in host/weights.h only accepts double array as the
+  // returned state_scores
+  Array1<double> state_scores(c, num_states);
+  double *state_scores_data = state_scores.Data();
+  for (int32_t i = 0; i != num_fsas; ++i) {
+    k2host::Fsa host_fsa = FsaVecToHostFsa(fsas, i);
+    double *this_fsa_state_scores_data = state_scores_data + fsa_row_splits1[i];
+    if (log_semiring) {
+      k2host::ComputeForwardLogSumWeights(host_fsa, this_fsa_state_scores_data);
+    } else {
+      k2host::ComputeForwardMaxWeights(host_fsa, this_fsa_state_scores_data);
+    }
+  }
+  return state_scores.AsType<FloatType>();
+}
+
+template <typename FloatType>
+Array1<FloatType> GetBackwardScores(
+    FsaVec &fsas, const Array1<FloatType> *tot_scores /*= nullptr*/,
+    bool log_semiring /*= true*/) {
+  ContextPtr &c = fsas.Context();
+  K2_CHECK_EQ(c->GetDeviceType(), kCpu);
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1);
+  const int32_t *fsa_row_splits1 = fsas.RowSplits(1).Data();
+  const int32_t *fsa_row_ids1 = fsas.RowIds(1).Data();
+
+  // GetBackwardWeights in host/weights.h only accepts double array as the
+  // returned state_scores
+  Array1<double> state_scores(c, num_states);
+  double *state_scores_data = state_scores.Data();
+  for (int32_t i = 0; i != num_fsas; ++i) {
+    k2host::Fsa host_fsa = FsaVecToHostFsa(fsas, i);
+    double *this_fsa_state_scores_data = state_scores_data + fsa_row_splits1[i];
+    if (log_semiring) {
+      k2host::ComputeBackwardLogSumWeights(host_fsa,
+                                           this_fsa_state_scores_data);
+    } else {
+      k2host::ComputeBackwardMaxWeights(host_fsa, this_fsa_state_scores_data);
+    }
+  }
+
+  // add negative of tot_scores[i] to each state score in fsa[i]
+  if (tot_scores != nullptr) {
+    K2_CHECK_EQ(tot_scores->Context()->GetDeviceType(), kCpu);
+    K2_CHECK_EQ(tot_scores->Dim(), num_fsas);
+    const FloatType *tot_scores_data = tot_scores->Data();
+    auto lambda_add_tot_scores = [=] __host__ __device__(int32_t state_idx01) {
+      int32_t fsa_idx0 = fsa_row_ids1[state_idx01];
+      state_scores_data[state_idx01] -= tot_scores_data[fsa_idx0];
+    };
+    Eval(c, num_states, lambda_add_tot_scores);
+  }
+
+  return state_scores.AsType<FloatType>();
+}
+
+// explicit instantiation here
+template Array1<float> GetForwardScores<float>(FsaVec &fsas, bool log_semiring);
+template Array1<double> GetForwardScores<double>(FsaVec &fsas,
+                                                 bool log_semiring);
+template Array1<float> GetBackwardScores<float>(FsaVec &fsas,
+                                                const Array1<float> *tot_scores,
+                                                bool log_semiring);
+template Array1<double> GetBackwardScores<double>(
+    FsaVec &fsas, const Array1<double> *tot_scores, bool log_semiring);
 
 }  // namespace k2

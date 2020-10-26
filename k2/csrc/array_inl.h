@@ -49,7 +49,19 @@ void Array1<T>::CopyFrom(const Array1<T> &src) {
   MemoryCopy(static_cast<void *>(dst_data), static_cast<const void *>(src_data),
              Dim() * ElementSize(), kind, Context().get());
 }
-
+template <typename T>
+template <typename S>
+Array1<S> Array1<T>::AsType() {
+  if (std::is_same<T, S>::value) return *reinterpret_cast<Array1<S> *>(this);
+  Array1<S> ans(Context(), Dim());
+  S *ans_data = ans.Data();
+  const T *this_data = Data();
+  auto lambda_set_values = [=] __host__ __device__(int32_t i) {
+    ans_data[i] = static_cast<S>(this_data[i]);
+  };
+  Eval(Context(), Dim(), lambda_set_values);
+  return ans;
+}
 }  // namespace k2
 
 #endif  // K2_CSRC_ARRAY_INL_H_
