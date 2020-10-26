@@ -348,8 +348,8 @@ class TestFsa(unittest.TestCase):
             y 2
             z 3
         '''
-        isym = k2.SymbolTable.from_str(isym_str)
-        osym = k2.SymbolTable.from_str(osym_str)
+        symbols = k2.SymbolTable.from_str(isym_str)
+        aux_symbols = k2.SymbolTable.from_str(osym_str)
 
         rules = '''
             0 1 1 1 0.5
@@ -359,8 +359,8 @@ class TestFsa(unittest.TestCase):
             3
         '''
         fsa = k2.Fsa.from_str(_remove_leading_spaces(rules))
-        fsa.isym = isym
-        fsa.osym = osym
+        fsa.symbols = symbols
+        fsa.aux_symbols = aux_symbols
         dot = k2.to_dot(fsa)
         dot.render('/tmp/fsa', format='pdf')
         # the fsa is saved to /tmp/fsa.pdf

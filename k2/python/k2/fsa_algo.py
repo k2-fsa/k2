@@ -66,6 +66,12 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
       b_fsa:
         The second input FSA. It can be either a single FSA or a vector of FSAs.
 
+    CAUTION:
+      Neither ``a_fsa`` or ``b_fsa`` can have ``aux_labels``; otherwise,
+      an assertion error is thrown (It is not clear how to set the
+      ``aux_labels`` of the output FSA). you probably want ``compose``
+      if there are ``aux_labels``.
+
     Returns:
       The result of intersecting a_fsa and b_fsa.
     '''
@@ -97,20 +103,11 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
                     + b_value.index_select(0, b_arc_map)
             setattr(out_fsa, name, value)
 
-    if hasattr(b_fsa, 'aux_labels'):
-        b_aux_labels = b_fsa.aux_labels
-        padding = b_aux_labels.new_zeros(1)
-        b_aux_labels = torch.cat((padding, b_aux_labels), dim=0)
-        out_fsa.aux_labels = b_aux_labels.index_select(0, b_arc_map)
-
     for name, a_value in a_fsa.named_non_tensor_attr():
-        if name == 'osym':
-            continue
         setattr(out_fsa, name, a_value)
 
     for name, b_value in b_fsa.named_non_tensor_attr():
-        if not hasattr(out_fsa, name):
-            setattr(out_fsa, name, b_value)
+        setattr(out_fsa, name, b_value)
 
     return out_fsa
 
@@ -167,20 +164,38 @@ def arc_sort(fsa: Fsa) -> Fsa:
 
 
 def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
-    need_arc_map = True
-    ragged_arc, c_aux_labels, a_arc_map, b_arc_map = _k2.compose(
-        a_fsa=a_fsa.arcs,
-        b_fsa=b_fsa.arcs,
-        a_aux_labels=a_fsa.aux_labels.to(torch.int32),
-        b_aux_labels=b_fsa.aux_labels.to(torch.int32),
-        need_arc_map=need_arc_map)
+    '''Compose two FSAs based on their labels.
 
-    # Some of entries in a_arc_map and b_arc_map may be zero.
-    # We add 1 here so that every entry is non-negative.
+    After compose, the output FSA's labels are selected from the
+    ``aux_labels`` of ``a_fsa``; the ``aux_labels``
+    of the output FSA are selected from the labels of ``b_fsa``.
+
+    Note:
+      You may want to invoke ``a_fsa.invert_()`` before calling
+      this function.
+
+    Args:
+      a_fsa:
+        The first input FSA. It can be either a single FSA or a vector of FSAs.
+      b_fsa:
+        The second input FSA. It can be either a single FSA or a vector of FSAs.
+    Returns:
+      The result of composing a_fsa and b_fsa.
+    '''
+    assert hasattr(a_fsa, 'aux_labels')
+    assert hasattr(b_fsa, 'aux_labels')
+
+    need_arc_map = True
+    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, b_fsa.arcs,
+                                                     need_arc_map)
+
+    # Some of entries in a_arc_map and b_arc_map may be -1.
+    # The arc_maps are incremented so that every entry is non-negative.
     a_arc_map = a_arc_map.to(torch.int64) + 1
     b_arc_map = b_arc_map.to(torch.int64) + 1
 
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
+
     for name, a_value in a_fsa.named_tensor_attr():
         if name == 'aux_labels':
             # aux_label is handled specially
@@ -199,20 +214,29 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
                     + b_value.index_select(0, b_arc_map)
             setattr(out_fsa, name, value)
 
-    if hasattr(b_fsa, 'aux_labels'):
-        b_aux_labels = b_fsa.aux_labels
-        padding = b_aux_labels.new_zeros(1)
-        b_aux_labels = torch.cat((padding, b_aux_labels), dim=0)
-        out_fsa.aux_labels = b_aux_labels.index_select(0, b_arc_map)
+    a_aux_labels = a_fsa.aux_labels
+    padding = a_aux_labels.new_zeros(1)
+
+    a_aux_labels = torch.cat((padding, a_aux_labels), dim=0)
+    out_fsa.labels = a_aux_labels.index_select(0, a_arc_map)
+
+    b_aux_labels = torch.cat((padding, b_fsa.aux_labels), dim=0)
+    out_fsa.aux_labels = b_aux_labels.index_select(0, b_arc_map)
 
     for name, a_value in a_fsa.named_non_tensor_attr():
-        if name == 'osym':
-            continue
-        setattr(out_fsa, name, a_value)
+        if name not in ('symbols', 'aux_symbols'):
+            setattr(out_fsa, name, a_value)
 
     for name, b_value in b_fsa.named_non_tensor_attr():
-        if not hasattr(out_fsa, name):
+        if not hasattr(out_fsa, name) and name not in ('symbols',
+                                                       'aux_symbols'):
             setattr(out_fsa, name, b_value)
+
+    if hasattr(a_fsa, 'aux_symbols'):
+        out_fsa.symbols = a_fsa.aux_symbols
+
+    if hasattr(b_fsa, 'aux_symbols'):
+        out_fsa.aux_symbols = b_fsa.aux_symbols
 
     return out_fsa
 

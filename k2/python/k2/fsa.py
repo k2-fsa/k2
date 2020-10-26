@@ -26,6 +26,48 @@ class Fsa(object):
     a vector of FSAs it is a tuple with three
     elements ``(num_fsas, None, None)``.  (Caution: it's possible
     for a vector of FSAs to have zero or one elements).
+
+    An instance of FSA has the following attributes:
+
+    - ``arcs``: You will NOT use it directly in Python. It is an instance
+                of ``_k2.RaggedArc`` with only one method ``values()`` which
+                returns a 2-D `torch.Tensor`` of dtype ``torch.int32`` with 4
+                columns. Its number of rows indicates the number of arcs in the
+                FSA. The first column represents the source states, second
+                column the destination states, third column the labels and the
+                fourth column is the score. Note that the score is actually
+                a float number but it is **reinterpreted** as an integer.
+
+    - ``score``: A 1-D ``torch.Tensor`` of dtype ``torch.float32``. It has
+                 as many entries as the number of arcs representing the score
+                 of every arc.
+
+    - ``labels``: A 1-D ``torch.Tensor`` of dtype ``torch.int32``. It has as
+                  many entries as the number of arcs representing the label of
+                  every arc.
+
+    It MAY have the following attributes:
+
+    - ``symbols``: An instance of ``k2.SymbolTable``. It maps an entry in
+                   ``labels`` to an integer and vice versa. It is used for
+                   visualization only.
+
+    - ``aux_labels`: A 1-D ``torch.Tensor`` of dtype ``torch.int32``. It has the
+                     same shape as ``labels``.
+
+    - ``aux_symbols``: An instance of ``k2.SymbolTable. It maps an entry in
+                       ``aux_labels`` to an integer and vice versa.
+
+    It MAY have other attributes that set by users.
+
+    CAUTION:
+      When an attribute is an instance of ``torch.Tensor``, its ``shape[0]``
+      has to be equal to the number arcs. Otherwise, an assertion error
+      will be thrown.
+
+    NOTE:
+      ``symbols`` and ``aux_symbols`` are symbol tables, while ``labels``
+      and ``aux_labels`` are instances of ``torch.Tensor``.
     '''
 
     def __init__(self,
@@ -59,33 +101,65 @@ class Fsa(object):
         self.arcs: RaggedArc = _fsa_from_tensor(tensor)
         self._tensor_attr['score'] = _as_float(self.arcs.values()[:, -1])
         if aux_labels is not None:
-            self.aux_labels = aux_labels
+            self.aux_labels = aux_labels.to(torch.int32)
 
     def _init_internal(self) -> None:
         self._tensor_attr = OrderedDict()
         self._non_tensor_attr = OrderedDict()
 
     def __setattr__(self, name: str, value: Any) -> None:
+        if value is None:
+            return
         if name in ('_tensor_attr', '_non_tensor_attr', 'arcs'):
             object.__setattr__(self, name, value)
         elif isinstance(value, torch.Tensor):
             assert value.shape[0] == self.arcs.values().shape[0]
-            # TODO(fangjun): do we really need a copy here?
+            if name == 'labels':
+                assert value.dtype == torch.int32
+                self.arcs.values()[:, 2] = value
+                return
+
             self._tensor_attr[name] = value.clone()
+
             if name == 'score':
                 assert value.dtype == torch.float32
+                # NOTE: we reinterpret the float patterns
+                # to integer patterns here.
                 self.arcs.values()[:, -1] = _as_int(value.detach())
         else:
             # TODO(fangjun): do we need to copy value?
             self._non_tensor_attr[name] = value
 
     def __getattr__(self, name: str) -> Any:
-        if name in self._tensor_attr:
+        if name == 'labels':
+            return self.arcs.values()[:, 2]
+        elif name in self._tensor_attr:
             return self._tensor_attr[name]
         elif name in self._non_tensor_attr:
             return self._non_tensor_attr[name]
 
         raise AttributeError(f'Unknown attribute {name}')
+
+    def invert_(self) -> 'Fsa':
+        '''Swap the ``labels`` and ``aux_labels``.
+
+        CAUTION:
+          The function name ends with an underscore which means this
+          is an **in-place** operation.
+        '''
+        if hasattr(self, 'aux_labels'):
+            aux_labels = self.aux_labels
+            self.aux_labels = self.labels
+            self.labels = aux_labels
+
+        symbols, aux_symbols = None, None
+        if hasattr(self, 'symbols'):
+            symbols = self.symbols
+        if hasattr(self, 'aux_symbols'):
+            aux_symbols = self.aux_symbols
+        self.symbols, self.aux_symbols = aux_symbols, symbols
+
+        return self
 
     def named_tensor_attr(self) -> Iterator[Tuple[str, torch.Tensor]]:
         '''Return an iterator over tensor attributes containing both
@@ -192,7 +266,7 @@ class Fsa(object):
         ans.arcs = arcs
         ans._tensor_attr['score'] = _as_float(ans.arcs.values()[:, -1])
         if aux_labels is not None:
-            ans.aux_labels = aux_labels
+            ans.aux_labels = aux_labels.to(torch.int32)
         return ans
 
     @classmethod
@@ -234,5 +308,5 @@ class Fsa(object):
         ans.arcs = arcs
         ans._tensor_attr['score'] = _as_float(ans.arcs.values()[:, -1])
         if aux_labels is not None:
-            ans.aux_labels = aux_labels
+            ans.aux_labels = aux_labels.to(torch.int32)
         return ans

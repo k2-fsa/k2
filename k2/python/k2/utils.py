@@ -121,16 +121,16 @@ def to_dot(fsa: Fsa, title: Optional[str] = None):
             seen.add(dst_state)
         if aux_labels is not None:
             aux_label = int(aux_labels[i])
-            if hasattr(fsa, 'osym') and aux_label != -1:
-                aux_label = fsa.osym.get(aux_label)
+            if hasattr(fsa, 'aux_symbols') and aux_label != -1:
+                aux_label = fsa.aux_symbols.get(aux_label)
                 if aux_label == '<eps>':
                     aux_label = 'ε'
             aux_label = f':{aux_label}'
         else:
             aux_label = ''
 
-        if hasattr(fsa, 'isym') and label != -1:
-            label = fsa.isym.get(label)
+        if hasattr(fsa, 'symbols') and label != -1:
+            label = fsa.symbols.get(label)
             if label == '<eps>':
                 label = 'ε'
 

@@ -7,7 +7,6 @@
 add_library(fsa SHARED
     arcsort.cc
     aux_labels.cc
-    compose.cc
     connect.cc
     determinize.cc
     fsa.cc
@@ -39,7 +38,6 @@ set(fsa_tests
     arcsort_test
     array_test
     aux_labels_test
-    compose_test
     connect_test
     determinize_test
     fsa_equivalent_test
