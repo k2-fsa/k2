@@ -28,6 +28,7 @@
 #include "k2/csrc/test_utils.h"
 
 namespace k2 {
+
 class RaggedShapeOpsSuiteTest : public ::testing::Test {
  protected:
   RaggedShapeOpsSuiteTest() {
@@ -64,6 +65,23 @@ class RaggedShapeOpsSuiteTest : public ::testing::Test {
   RaggedShape simple_shape_;
   RaggedShape random_shape_;
 };
+
+
+TEST(RaggedShapeTest, TestConstructFromString) {
+  RaggedShape rs(" [ [ x x ] [x] ]");
+  Array1<int32_t> row_splits1(GetCpuContext(), std::vector<int32_t>{0, 2, 3});
+  K2_CHECK(Equal(rs.RowSplits(1), row_splits1));
+
+  RaggedShape rs2(" [ [ [ x x ] ] [[x]] ]");
+  K2_LOG(INFO) << "rs2 = " << rs2;
+
+  ASSERT_DEATH(RaggedShape(" [ [ x x ] [x] "), "");
+  ASSERT_DEATH(RaggedShape(" [ [ x x ] [[x]]] "), "");
+  ASSERT_DEATH(RaggedShape(" [ [ x [] x ] "), "");
+  ASSERT_DEATH(RaggedShape(" [ x ] "), "");
+}
+
+
 
 template <typename T, DeviceType d>
 void TestMaxPerSubListTest() {

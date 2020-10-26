@@ -10,7 +10,7 @@ add_subdirectory(host)
 set(context_srcs
   algorithms.cu
   array_ops.cu
-  compose.cu
+  intersect.cu
   top_sort.cu
   context.cu
   dtype.cu
