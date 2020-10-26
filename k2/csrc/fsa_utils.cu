@@ -22,6 +22,7 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
 
 namespace k2 {
@@ -1461,4 +1462,65 @@ template Array1<float> GetTotScores(FsaVec &fsas,
 template Array1<double> GetTotScores(FsaVec &fsas,
                                      const Array1<double> &forward_scores);
 
+Fsa RandomFsa(bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
+              int32_t min_num_arcs /*=0*/, int32_t max_num_arcs /*=1000*/) {
+  ContextPtr c = GetCpuContext();
+  K2_CHECK_GE(min_num_arcs, 0);
+  K2_CHECK_GE(max_num_arcs, min_num_arcs);
+  K2_CHECK_GE(max_symbol, 0);
+  RaggedShape shape =
+      RandomRaggedShape(false, 2, 2, min_num_arcs, max_num_arcs);
+  int32_t dim0 = shape.Dim0();
+  // empty Fsa
+  if (dim0 == 0) return Fsa(shape, Array1<Arc>(c, std::vector<Arc>{}));
+  // as there should be no arcs leaving the final_state, we always push back an
+  // empty row here.
+  Array1<int32_t> ans_row_splits1(c, dim0 + 2);
+  Array1<int32_t> sub_range = ans_row_splits1.Range(0, dim0 + 1);
+  sub_range.CopyFrom(shape.RowSplits(1));
+  int32_t *ans_row_splits1_data = ans_row_splits1.Data();
+  ans_row_splits1_data[dim0 + 1] = ans_row_splits1_data[dim0];
+  // create returned shape
+  RaggedShapeDim ans_shape_dim;
+  ans_shape_dim.row_splits = ans_row_splits1;
+  ans_shape_dim.cached_tot_size = shape.TotSize(1);
+  RaggedShape ans_shape(std::vector<RaggedShapeDim>{ans_shape_dim}, true);
+  ans_shape.Populate();
+
+  // will be used to generate scores on arcs.
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  // TODO(haowen): let the users set the range of scores? it's fine to use it
+  // for now as we just use it to test.
+  std::uniform_real_distribution<float> dis_score(0, 10);
+
+  // create arcs
+  int32_t *row_ids1 = ans_shape.RowIds(1).Data();
+  int32_t num_states = ans_shape.Dim0(), num_arcs = ans_shape.TotSize(1);
+  int32_t start_state = 0, final_state = num_states - 1;
+  std::vector<Arc> arcs(num_arcs);
+  for (int32_t i = 0; i != num_arcs; ++i) {
+    int32_t curr_state = row_ids1[i];
+    int32_t dest_state = acyclic ? RandInt(curr_state + 1, final_state)
+                                 : RandInt(start_state, final_state);
+    int32_t symbol = dest_state == final_state ? -1 : RandInt(0, max_symbol);
+    float score = dis_score(gen);
+    arcs[i] = Arc(curr_state, dest_state, symbol, score);
+  }
+  return Fsa(ans_shape, Array1<Arc>(c, arcs));
+}
+
+FsaVec RandomFsaVec(int32_t min_num_fsas /*=0*/, int32_t max_num_fsas /*=1000*/,
+                    bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
+                    int32_t min_num_arcs /*=0*/,
+                    int32_t max_num_arcs /*=1000*/) {
+  K2_CHECK_GE(min_num_fsas, 0);
+  K2_CHECK_GE(max_num_fsas, min_num_fsas);
+  int32_t num_fsas = RandInt(min_num_fsas, max_num_fsas);
+  std::vector<Fsa> fsas(num_fsas);
+  for (int32_t i = 0; i != num_fsas; ++i) {
+    fsas[i] = RandomFsa(acyclic, max_symbol, min_num_arcs, max_num_arcs);
+  }
+  return Stack(0, num_fsas, fsas.data());
+}
 }  // namespace k2
