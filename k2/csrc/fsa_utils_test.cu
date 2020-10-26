@@ -530,9 +530,11 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
 
       {
         // max
+        Array1<int32_t> entering_arcs;
         Array1<float> scores = GetForwardScores<float>(
-            fsa_vec, state_batches, entering_arc_batches, false);
+            fsa_vec, state_batches, entering_arc_batches, false, &entering_arcs);
         EXPECT_EQ(scores.Dim(), num_states);
+        K2_LOG(INFO) << "Scores: " << scores << "\n,Entering arcs: " << entering_arcs;
         FsaVec cpu_fsa_vec = fsa_vec.To(cpu);
         Array1<float> cpu_scores = GetForwardScores<float>(cpu_fsa_vec, false);
         CheckArrayData(scores, cpu_scores);
@@ -629,6 +631,7 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
         Array1<float> scores = GetBackwardScores<float>(
             fsa_vec, state_batches, leaving_arc_batches, &tot_scores, false);
         EXPECT_EQ(scores.Dim(), num_states);
+        K2_LOG(INFO) << "scores: " << scores;
         Array1<float> cpu_tot_scores = tot_scores.To(cpu);
         FsaVec cpu_fsa_vec = fsa_vec.To(cpu);
         Array1<float> cpu_scores =
