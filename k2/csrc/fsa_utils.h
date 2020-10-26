@@ -208,6 +208,12 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
       @param [in] log_semiring   If true, combine path with LogAdd
                   (i.e., mathematically, `log(exp(a)+exp(b))`); if false,
                    combine as `max(a,b)`.
+      @param [out,optional] entering_arcs   If non-NULL and if
+                log_semiring == false, will be set to
+                a new Array1, indexed by state_idx01 into `fsas`,
+                saying which arc_idx012 is the best arc entering it,
+                or -1 if there is no such arc.  It is an error if this
+                is non-NULL and log_semiring == true.
       @return   Returns vector indexed by state-index (idx01 into fsas), i.e.
                `ans.Dim()==fsas.TotSize(1)`, containing forward scores.
                 (these will be zero for the start-states).
@@ -215,7 +221,8 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
 template <typename FloatType>
 Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
                                    Ragged<int32_t> &entering_arc_batches,
-                                   bool log_semiring);
+                                   bool log_semiring,
+                                   Array1<int32_t> *entering_arcs = nullptr);
 
 /*
   Return array of total scores (one per FSA), e.g. could be interpreted as

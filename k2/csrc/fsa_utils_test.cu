@@ -528,10 +528,11 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
 
       {
         // max
+        Array1<int32_t> entering_arcs;
         Array1<float> scores = GetForwardScores<float>(
-            fsa_vec, state_batches, entering_arc_batches, false);
+            fsa_vec, state_batches, entering_arc_batches, false, &entering_arcs);
         EXPECT_EQ(scores.Dim(), num_states);
-        K2_LOG(INFO) << scores;
+        K2_LOG(INFO) << "Scores: " << scores << "\n,Entering arcs: " << entering_arcs;
         //  [ 0 1 5 6 12 20 0 1 4 9 10 0 -inf 1 6 13 21 ]
       }
       {
@@ -619,7 +620,7 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
         Array1<float> scores = GetBackwardScores<float>(
             fsa_vec, state_batches, leaving_arc_batches, &tot_scores, false);
         EXPECT_EQ(scores.Dim(), num_states);
-        K2_LOG(INFO) << scores;
+        K2_LOG(INFO) << "scores: " << scores;
         // [ 0 -1 -inf -6 -12 -20 0 -1 -4 -inf -10 0 1 -1 -6 -13 -21 ]
       }
       {
