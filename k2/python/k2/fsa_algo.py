@@ -67,10 +67,8 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
         The second input FSA. It can be either a single FSA or a vector of FSAs.
 
     CAUTION:
-      Neither ``a_fsa`` or ``b_fsa`` can have ``aux_labels``; otherwise,
-      an assertion error is thrown (It is not clear how to set the
-      ``aux_labels`` of the output FSA). you probably want ``compose``
-      if there are ``aux_labels``.
+      ``aux_labels`` are discarded since it is not clear how to set the
+      aux_labels of the output FSA.
 
     Returns:
       The result of intersecting a_fsa and b_fsa.
@@ -87,7 +85,6 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
     for name, a_value in a_fsa.named_tensor_attr():
         if name == 'aux_labels':
-            # aux_label is handled specially
             continue
         if hasattr(b_fsa, name):
             b_value = getattr(b_fsa, name)
@@ -166,9 +163,9 @@ def arc_sort(fsa: Fsa) -> Fsa:
 def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     '''Compose two FSAs based on their labels.
 
-    After compose, the output FSA's labels are selected from the
-    ``aux_labels`` of ``a_fsa``; the ``aux_labels``
-    of the output FSA are selected from the labels of ``b_fsa``.
+    After compose, the output FSA's ``labels`` are selected from the
+    ``aux_labels`` of ``b_fsa``; the ``aux_labels``
+    of the output FSA are selected from the ``aux_labels`` of ``a_fsa``.
 
     Note:
       You may want to invoke ``a_fsa.invert_()`` before calling
@@ -182,8 +179,6 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     Returns:
       The result of composing a_fsa and b_fsa.
     '''
-    assert hasattr(a_fsa, 'aux_labels')
-    assert hasattr(b_fsa, 'aux_labels')
 
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, b_fsa.arcs,
@@ -214,14 +209,22 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
                     + b_value.index_select(0, b_arc_map)
             setattr(out_fsa, name, value)
 
-    a_aux_labels = a_fsa.aux_labels
+    if hasattr(a_fsa, 'aux_labels'):
+        a_aux_labels = a_fsa.aux_labels
+    else:
+        # this is an acceptor
+        a_aux_labels = a_fsa.labels
     padding = a_aux_labels.new_zeros(1)
 
     a_aux_labels = torch.cat((padding, a_aux_labels), dim=0)
-    out_fsa.labels = a_aux_labels.index_select(0, a_arc_map)
+    out_fsa.aux_labels = a_aux_labels.index_select(0, a_arc_map)
 
-    b_aux_labels = torch.cat((padding, b_fsa.aux_labels), dim=0)
-    out_fsa.aux_labels = b_aux_labels.index_select(0, b_arc_map)
+    if hasattr(b_fsa, 'aux_labels'):
+        b_aux_labels = b_fsa.aux_labels
+    else:
+        b_aux_labels = b_fsa.labels
+    b_aux_labels = torch.cat((padding, b_aux_labels), dim=0)
+    out_fsa.labels = b_aux_labels.index_select(0, b_arc_map)
 
     for name, a_value in a_fsa.named_non_tensor_attr():
         if name not in ('symbols', 'aux_symbols'):
@@ -233,10 +236,14 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
             setattr(out_fsa, name, b_value)
 
     if hasattr(a_fsa, 'aux_symbols'):
-        out_fsa.symbols = a_fsa.aux_symbols
+        out_fsa.aux_symbols = a_fsa.aux_symbols
+    elif hasattr(a_fsa, 'symbols'):
+        out_fsa.symbols = a_fsa.symbols
 
     if hasattr(b_fsa, 'aux_symbols'):
-        out_fsa.aux_symbols = b_fsa.aux_symbols
+        out_fsa.symbols = b_fsa.aux_symbols
+    elif hasattr(b_fsa, 'symbols'):
+        out_fsa.symbols = b_fsa.symbols
 
     return out_fsa
 
@@ -275,13 +282,13 @@ def shortest_path(fsa: Fsa) -> Fsa:
 
 def project_output(fsa: Fsa) -> Fsa:
     out_fsa = Fsa.from_ragged_arc(fsa.arcs)
-    indexes = out_fsa.arcs.values()[:, 2] != -1
-    out_fsa.arcs.values()[:, 2][indexes] = fsa.aux_labels.to(
-        torch.int32)[indexes]
+    out_fsa.labels = fsa.aux_labels
     for name, value in fsa.named_tensor_attr():
         setattr(out_fsa, name, value)
     for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, deepcopy(value))
-    if hasattr(out_fsa, 'osym'):
-        out_fsa.isym = out_fsa.osym
+        if name != 'symbols':
+            setattr(out_fsa, name, deepcopy(value))
+
+    if hasattr(out_fsa, 'aux_labels'):
+        out_fsa.symbols = out_fsa.aux_labels
     return out_fsa

@@ -7,7 +7,6 @@ from typing import Optional
 from .fsa import Fsa
 from _k2 import _fsa_to_str
 from _k2 import _fsa_to_tensor
-from _k2 import _fsa_to_fsa_vec
 
 import torch
 

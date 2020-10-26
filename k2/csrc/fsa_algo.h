@@ -169,11 +169,6 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
                FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
-void Compose(Fsa &a_fsa, Fsa &b_fsa, Array1<int32_t> &a_aux_labels,
-             Array1<int32_t> &b_aux_labels, Fsa *out,
-             Array1<int32_t> *out_aux_labels, Array1<int32_t> *arc_map_a,
-             Array1<int32_t> *arc_map_b);
-
 /*
   Create a linear FSA from a sequence of symbols
 
