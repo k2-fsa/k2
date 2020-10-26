@@ -381,5 +381,49 @@ inline std::ostream &operator<<(std::ostream &stream,
   return stream << " }";
 }
 
+RaggedShape::RaggedShape(const std::string &src) {
+  std::vector<std::vector<int32_t> > row_splits;
+  std::istringstream is(src);
+  int32_t cur_level = 0,
+      num_elems = 0;
+  is >> std::ws;  // eat whitespace
+  while (is.good()) {
+    char c = is.get();
+    if (c == '[') {
+      while (row_splits.size() < static_cast<size_t>(cur_level)) {
+        if (num_elems != 0)
+          K2_LOG(FATAL) << "Inconsistent depth in RaggedShape:"
+                        << src;
+        row_splits.push_back(std::vector<int32_t>(1, 0));
+      }
+      cur_level++;
+    } else if (c == ']') {
+      K2_CHECK_GT(cur_level, 0);
+      row_splits[cur_level-1].push_back(
+          (cur_level >= row_splits.size()) ?
+          num_elems : (row_splits[cur_level].size() - 1));
+      cur_level--;
+    } else if (c == 'x') {
+      if (cur_level != static_cast<int32_t>(row_splits.size() + 1))
+        K2_LOG(FATAL) << "Inconsistent depth in RaggedShape:" << src;
+      if (cur_level < 2)
+        K2_LOG(FATAL) << "RaggedShape must have at least 2 axes: " << src;
+      num_elems++;
+    } else {
+      K2_LOG(FATAL) << "Unexpected character '" << c << "' encountered: "
+                    << src;
+    }
+    is >> std::ws;
+  }
+  if (cur_level != 0)
+    K2_LOG(FATAL) << "Terminating ']' expected: " << src;
+  axes_.resize(row_splits.size());
+  for (size_t i = 0; i < row_splits.size(); i++) {
+    axes_[i].row_splits = Array1<int32_t>(GetCpuContext(), row_splits[i]);
+    axes_[i].cached_tot_size = -1;
+  }
+  Check();
+}
+
 
 }  // namespace k2

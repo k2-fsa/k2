@@ -140,6 +140,21 @@ class RaggedShape {
    */
   int32_t operator[](const std::vector<int32_t> &indexes);
 
+
+  // Constructor from string, expects "x" (i.e. the letter x) for the elements,
+  // e.g. "[ [ x x ] [ x x x ] ]".  The spaces are optional. Intended for
+  // testing purposes.  Will crash if the input was invalid (e.g. mismatched
+  // brackets or inconsistent depth).
+  explicit RaggedShape(const std::string &src);
+
+
+  // Constructor from string; the elements should be readable from ostream to
+  // something of type T.  E.g.  elements, e.g. src="[ [ 1 2 ] [ 0 4 5] ]", if T
+  // is an integer type.  Intended for testing purposes.
+  template <typename T>
+  explicit RaggedShape(const std::string &src, Array1<T> *contents);
+
+
   RaggedShapeIndexIterator Iterator();
 
   // TODO(dan): will at some point make it so check = false is the default.
