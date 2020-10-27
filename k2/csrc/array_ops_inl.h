@@ -426,7 +426,7 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
 }
 
 template <typename T>
-Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
+Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
                             T max_value) {
   static_assert(std::is_floating_point<T>::value || std::is_integral<T>::value,
                 "Only support floating-point and integral type");
@@ -493,6 +493,46 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
     return is_same[0];
   }
 }
+
+
+template <typename T>
+bool Equal(const Array2<T> &a, const Array2<T> &b) {
+  K2_CHECK_EQ(a.Dim0(), b.Dim0());
+  K2_CHECK_EQ(a.Dim1(), b.Dim1());
+  ContextPtr c = GetContext(a, b);
+  const T *a_data = a.Data(), *b_data = b.Data();
+
+  if (a.IsContiguous() && b.IsContiguous()) {
+    // use simpler code which might be faster.
+    int32_t dim = a.Dim0() * a.Dim1();
+    Array1<T> a1(dim, a.GetRegion(), a.ByteOffset()),
+        b1(dim, b.GetRegion(), b.ByteOffset());
+    return Equal(a1, b1);
+  }
+
+  auto a_acc = a.Accessor(),
+      b_acc = b.Accessor();
+
+  if (c->GetDeviceType() == kCpu) {
+    size_t row_bytes = a.Dim1() * sizeof(T);
+    for (int32_t row = 0; row < a.Dim0(); row++)
+      if (memcmp(reinterpret_cast<const void *>(a_acc.Row(row)),
+                 reinterpret_cast<const void *>(b_acc.Row(row)),
+                 row_bytes))
+        return false;
+    return true;
+  } else {
+    Array1<int32_t> is_same(c, 1, 1);
+    int32_t *is_same_data = is_same.Data();
+    auto lambda_test = [=] __host__ __device__(int32_t i, int32_t j) -> void {
+      if (a_acc(i,j) != b_acc(i,j))
+        *is_same_data = 0;
+    };
+    Eval2Device(c, a.Dim0(), a.Dim1(), lambda_test);
+    return is_same[0];
+  }
+}
+
 
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {

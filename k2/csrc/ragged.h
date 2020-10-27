@@ -49,8 +49,16 @@ struct RaggedShapeDim {
 
 class RaggedShapeIndexIterator;
 class RaggedShape;
+// Will write the elements as x, e.g. "[ [ x x ] [x] ]"
 std::ostream &operator<<(std::ostream &stream,
                          const RaggedShape &shape);
+
+
+// Reader from string, expects "x" (i.e. the letter x) for the elements, e.g. "[
+// [ x x ] [ x x x ] ]".  The spaces are optional.  Will crash if the input was
+// invalid (e.g. mismatched brackets or inconsistent depth).
+std::istream &operator>>(std::istream &stream,
+                         RaggedShape &shape);
 
 
 class RaggedShape {
@@ -140,6 +148,14 @@ class RaggedShape {
    */
   int32_t operator[](const std::vector<int32_t> &indexes);
 
+
+  // Constructor from string; the elements should be readable from ostream to
+  // something of type T.  E.g.  elements, e.g. src="[ [ 1 2 ] [ 0 4 5] ]", if T
+  // is an integer type.  Intended for testing purposes.
+  template <typename T>
+  explicit RaggedShape(const std::string &src, Array1<T> *contents);
+
+
   RaggedShapeIndexIterator Iterator();
 
   // TODO(dan): will at some point make it so check = false is the default.
@@ -147,6 +163,13 @@ class RaggedShape {
                        bool check = true)
       : axes_(axes) {
     if (check) Check();
+  }
+
+  explicit RaggedShape(const std::string &src) {
+    std::istringstream is(src);
+    is >> *this >> std::ws;
+    if (!is.eof() || is.fail())
+      K2_LOG(FATAL) <<  "Failed to construct RaggedShape from string: " << src;
   }
 
   // A RaggedShape constructed this way will not be a valid RaggedShape.
@@ -172,7 +195,7 @@ class RaggedShape {
 
   // Validate the RaggedShape; on failure will return false (may also
   // print warnings).
-  bool Validate(bool print_warnings = true);
+  bool Validate(bool print_warnings = true) const;
 
   // Convert to possibly different context.
   RaggedShape To(ContextPtr ctx) const;
@@ -259,6 +282,13 @@ struct Ragged {
     K2_CHECK(IsCompatible(shape, values));
     K2_CHECK_EQ(shape.NumElements(), values.Dim());
   }
+  // Defined in ragged_ops_inl.h
+  explicit Ragged(const std::string &src) {
+    std::istringstream is(src);
+    is >> *this >> std::ws;
+    if (!is.eof() || is.fail())
+      K2_LOG(FATAL) <<  "Failed to construct Ragged array from string: " << src;
+  }
 
   // Default constructor will not leave this a valid Ragged object, you
   // shouldn't do anything with it.  Both members will be initialized with
@@ -289,7 +319,7 @@ struct Ragged {
   Array1<int32_t> &RowIds(int32_t axis) { return shape.RowIds(axis); }
   int32_t TotSize(int32_t axis) const { return shape.TotSize(axis); }
   int32_t Dim0() const { return shape.Dim0(); }
-  bool Validate(bool print_warnings = true);
+  bool Validate(bool print_warnings = true) const;
 
   /*
     It is an error to call this if this.shape.NumAxes() < 2.  This will return
@@ -322,8 +352,14 @@ struct Ragged {
   }
 };
 
+// e.g. will produce something like "[ [ 3 4 ] [ 1 ] ]".
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r);
+
+// caution: when reading "[ ]" it will assume 2 axes.
+// This is defined in ragged_ops_inl.h.
+template <typename T>
+std::istream &operator>>(std::istream &stream, Ragged<T> &r);
 
 }  // namespace k2
 

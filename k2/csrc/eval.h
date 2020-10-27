@@ -150,6 +150,7 @@ void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   }
 }
 
+// like Eval() but works only for device.
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
@@ -205,9 +206,6 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
       }
     }
   } else {
-    // this way of choosing block and grid sizes is of course not very smart, we
-    // can look at this later on, possibly referring to Kaldi's
-    // GetBlockSizesForSimpleMatrixOperation().
     dim3 block_dim, grid_dim;
     Lambda2KernelType kernel_type;
     GetBlockSizesForLambda2(m, n, &block_dim, &grid_dim, &kernel_type);
@@ -231,12 +229,59 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
   }
 }
 
+/*
+  This is a device version of Eval2().
+
+  It will will evaluate lambda(i, j) for 0 <= i < m and 0 <= j < n,
+  on the GPU with stream `stream`
+ */
+template <typename LambdaT>
+void Eval2Device(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
+  if (m <= 0 || n <= 0)
+    return;  // actually it would be an error if m < 0 or n < 0.
+  K2_DCHECK(stream != kCudaStreamInvalid);
+  dim3 block_dim, grid_dim;
+  Lambda2KernelType kernel_type;
+  GetBlockSizesForLambda2(m, n, &block_dim, &grid_dim, &kernel_type);
+  switch (kernel_type) {
+    case Lambda2KernelType::Simple:
+      K2_CUDA_SAFE_CALL(
+          eval_lambda2_simple<<<grid_dim, block_dim, 0, stream>>>(m, n,
+                                                                  lambda));
+      break;
+    case Lambda2KernelType::UseZForM:
+      K2_CUDA_SAFE_CALL(
+          eval_lambda2_zm<<<grid_dim, block_dim, 0, stream>>>(m, n, lambda));
+      break;
+    case Lambda2KernelType::UseZForN:
+      K2_CUDA_SAFE_CALL(
+          eval_lambda2_zn<<<grid_dim, block_dim, 0, stream>>>(m, n, lambda));
+      break;
+    default:
+      K2_LOG(FATAL) << "Unknown kernel type";
+  }
+}
+
+
+
+
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
   Eval2(c->GetCudaStream(), m, n, lambda);
 }
+
+
+// device-only version of Eval2
+template <typename ContextPtrType,  // Context*  or ContextPtr ==
+                                    // std::shared_ptr<Context>
+          typename LambdaT>
+inline void Eval2Device(ContextPtrType c, int32_t m,
+                        int32_t n, LambdaT &lambda) {
+  Eval2Device(c->GetCudaStream(), m, n, lambda);
+}
+
 
 }  // namespace k2
 

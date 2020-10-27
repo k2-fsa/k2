@@ -621,6 +621,18 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols);
 Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
                                      RaggedShape &ans_ragged_shape);
 
+
+/* Return true if the objects represent the same ragged shape.
+   They must be on the same device. */
+bool Equal(RaggedShape &a, RaggedShape &b);
+
+/* Return true if the objects represent the same ragged array with the same
+   values.  They must be on the same device. */
+template <typename T>
+bool Equal(Ragged<T> &a, Ragged<T> &b) {
+  return Equal(a.shape, b.shape) && Equal(a.values, b.values);
+}
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_RAGGED_OPS_H_

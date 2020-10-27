@@ -238,7 +238,7 @@ void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
     @return    Returns the randomly generated array
  */
 template <typename T>
-Array1<T> RandUniformArray1(ContextPtr &c, int32_t dim, T min_value,
+Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
                             T max_value);
 
 /*
@@ -282,10 +282,12 @@ Array1<T> Minus(const Array1<T> &src, T t) {
 }
 
 /*
-  Return true if all elements of the two arrays are equal
+  Return true if all elements of the two arrays are equal.
+  Will crash if the sizes differ.
 */
 template <typename T>
 bool Equal(const Array1<T> &a, const Array1<T> &b);
+
 
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
@@ -362,6 +364,15 @@ Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n);
 
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src);
+
+
+/*
+  Return true if all elements of the two arrays are equal.
+  Will crash if the sizes differ.
+*/
+template <typename T>
+bool Equal(const Array2<T> &a, const Array2<T> &b);
+
 
 }  // namespace k2
 

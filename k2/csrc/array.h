@@ -74,6 +74,9 @@ class Array1 {
 
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
+  // read in same format as operator<< and operator>>, i.e. "[ 10 20 30 ]"
+  explicit Array1(const std::string &str);
+
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
   Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}
 
@@ -380,6 +383,11 @@ class Array2 {
       will satisfy ElemStride0() >= Dim1(). */
   int32_t ElemStride0() const { return elem_stride0_; }
 
+  /*  Returns true if this array is contiguous (no gaps between the elements).
+      Caution: it just checks elem_stride0_ == dim1_, which may not coincide
+      with the "no-gaps" semantics if dim0_ <= 1. */
+  bool IsContiguous() const { return elem_stride0_ == dim1_; }
+
   /*  returns a flat version of this, appending the rows; will copy the data if
       it was not contiguous. */
   Array1<T> Flatten() {
@@ -438,6 +446,8 @@ class Array2 {
                                static_cast<size_t>(dim1_) * ElementSize());
     *this = elem;
   }
+
+  explicit Array2(const std::string &str);
 
   /* stride on 1st axis is 1 (in elements). */
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
@@ -607,29 +617,22 @@ T ToPrintable(T t) {
 // Print the contents of the array, as [ 1 2 3 ].  Intended mostly for
 // use in debugging.
 template <typename T>
-std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
-  stream << "[ ";
-  Array1<T> to_print = array.To(GetCpuContext());
-  const T *to_print_data = to_print.Data();
-  int32_t dim = to_print.Dim();
-  for (int32_t i = 0; i < dim; ++i)
-    stream << ToPrintable(to_print_data[i]) << ' ';
-  return stream << ']';
-}
+std::ostream &operator<<(std::ostream &stream, const Array1<T> &array);
+
+// read an array (can read output as produced by "operator <<", assuming suitable
+// operators exist for type T.  Will produce output on CPU.
+template <typename T>
+std::istream &operator>>(std::istream &stream, Array1<T> &array);
 
 // Print the contents of the array, as "[[ 1 2 3 ]
 // [ 4 5 6 ]]".  Intended mostly for use in debugging.
 template <typename T>
-std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
-  stream << "\n[";
-  Array2<T> array_cpu = array.To(GetCpuContext());
-  int32_t num_rows = array_cpu.Dim0();
-  for (int32_t i = 0; i < num_rows; ++i) {
-    stream << ToPrintable(array_cpu[i]);
-    if (i + 1 < num_rows) stream << '\n';
-  }
-  return stream << "\n]";
-}
+std::ostream &operator<<(std::ostream &stream, const Array2<T> &array);
+// read an array (can read output as produced by "operator <<", assuming suitable
+// operators exist for type T.  Will produce output on CPU.
+template <typename T>
+std::istream &operator>>(std::istream &stream, Array2<T> &array);
+
 
 }  // namespace k2
 

@@ -28,6 +28,7 @@
 #include "k2/csrc/test_utils.h"
 
 namespace k2 {
+
 class RaggedShapeOpsSuiteTest : public ::testing::Test {
  protected:
   RaggedShapeOpsSuiteTest() {
@@ -64,6 +65,78 @@ class RaggedShapeOpsSuiteTest : public ::testing::Test {
   RaggedShape simple_shape_;
   RaggedShape random_shape_;
 };
+
+
+TEST(RaggedShapeTest, TestConstructFromString) {
+  RaggedShape rs(" [ [ x x ] [x] ]");
+  Array1<int32_t> row_splits1(GetCpuContext(), std::vector<int32_t>{0, 2, 3});
+  K2_LOG(INFO) << rs.RowSplits(1);
+  K2_CHECK(Equal(rs.RowSplits(1), row_splits1));
+
+  RaggedShape rs2(" [ [ [ x x ] ] [[x]] ]");
+  K2_LOG(INFO) << "rs2 = " << rs2;
+
+  ASSERT_DEATH(RaggedShape(" [ [ x x ] [x] "), "");
+  ASSERT_DEATH(RaggedShape(" [ [ x x ] [[x]]] "), "");
+  ASSERT_DEATH(RaggedShape(" [ [ x [] x ] "), "");
+  ASSERT_DEATH(RaggedShape(" [ x ] "), "");
+  ASSERT_DEATH(RaggedShape(" [ x ] [ x ] "), "");
+  ASSERT_DEATH(RaggedShape(" [ x | x ] "), "");
+
+  for (int i = 0; i < 5; i++) {
+    RaggedShape rs = RandomRaggedShape(true,
+                                       2,      // min_num_axes
+                                       4,      // max_num_axes
+                                       0,      // min_num_elements
+                                       1000);  // max_num_elements
+    std::ostringstream os;
+    os << rs;
+    RaggedShape rs2;
+    std::istringstream is(os.str());
+    K2_LOG(INFO) << "Shape is: " << os.str();
+    is >> rs2;
+    K2_CHECK(is.good());
+    // the reason for the || below is that in "[ ]", the number of
+    // axes is ambiguous; we assume 2.
+    K2_CHECK(Equal(rs, rs2) || rs.NumElements() == 0);
+  }
+
+}
+
+
+
+TEST(RaggedTest, TestRaggedFromString) {
+  Ragged<int32_t> rs(" [ [ 1 2 ] [3] ]");
+  Array1<int32_t> row_splits1(GetCpuContext(), std::vector<int32_t>{0, 2, 3});
+  K2_LOG(INFO) << rs.RowSplits(1);
+  K2_CHECK(Equal(rs.RowSplits(1), row_splits1));
+  K2_CHECK_EQ(rs.values.Back(), 3);
+  K2_CHECK_EQ(rs.values[0], 1);
+
+  Ragged<int32_t>  rs2(" [ [ [ 0 5 ] ] [[10]] ]");
+  K2_LOG(INFO) << "rs2 = " << rs2;
+
+  ASSERT_DEATH(RaggedShape(" [ [ 0 0 ] [0] "), "");
+  ASSERT_DEATH(RaggedShape(" [ [ 0 0 ] [[0]]] "), "");
+  ASSERT_DEATH(RaggedShape(" [ [ 0 [] 0 ] "), "");
+  ASSERT_DEATH(RaggedShape(" [ 0 ] "), "");
+  ASSERT_DEATH(RaggedShape(" [ 0 ] [ 0 ] "), "");
+  ASSERT_DEATH(RaggedShape(" [ 0 | 0 ] "), "");
+
+  for (int32_t i = 0; i < 5; i++) {
+    Ragged<int32_t> r = RandomRagged<int32_t>();
+    std::ostringstream os;
+    os << r;
+    Ragged<int32_t> r2(os.str());
+    // the reason for the || below is that in "[ ]", the number of
+    // axes is ambiguous; we assume 2.
+    K2_CHECK(Equal(r, r2) || r.values.Dim() == 0);
+  }
+}
+
+
+
+
 
 template <typename T, DeviceType d>
 void TestMaxPerSubListTest() {
