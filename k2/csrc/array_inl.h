@@ -62,6 +62,136 @@ Array1<S> Array1<T>::AsType() {
   Eval(Context(), Dim(), lambda_set_values);
   return ans;
 }
+
+template <typename T>
+std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
+  stream << "[ ";
+  Array1<T> to_print = array.To(GetCpuContext());
+  const T *to_print_data = to_print.Data();
+  int32_t dim = to_print.Dim();
+  for (int32_t i = 0; i < dim; ++i)
+    stream << ToPrintable(to_print_data[i]) << ' ';
+  return stream << ']';
+}
+
+template <typename T>
+std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
+  stream << "\n[";
+  Array2<T> array_cpu = array.To(GetCpuContext());
+  int32_t num_rows = array_cpu.Dim0();
+  for (int32_t i = 0; i < num_rows; ++i) {
+    stream << ToPrintable(array_cpu[i]);
+    if (i + 1 < num_rows) stream << '\n';
+  }
+  return stream << "\n]";
+}
+
+
+
+template <typename T>
+std::istream &operator>>(std::istream &is, Array2<T> &array) {
+  std::vector<T> vec;
+  int32_t row_length = 0, num_rows = 0;
+  is >> std::ws;  // eat whitespace
+  int c = is.peek();
+  if (c != '[') {
+    is.setstate(std::ios::failbit);
+    return is;
+  } else {
+    is.get();
+  }
+  while (1) {
+    char c;
+    is >> std::ws >> c;  // eat whitespace, read c
+    if (!is.good() || (c != ']' && c != '[')) {
+      is.setstate(std::ios::failbit);
+      return is;
+    }
+    if (c == '[') {  // read next row.
+      while (1) {
+        is >> std::ws;
+        if (is.peek() == ']') {
+          is.get();
+          num_rows++;
+          if (num_rows == 1) {
+            row_length = vec.size();
+          } else if (vec.size() != row_length * num_rows) {
+            is.setstate(std::ios::failbit);
+            return is;
+          }
+          break;
+        } else {
+          T t;
+          is >> t;
+          if (!is.good()) {
+            is.setstate(std::ios::failbit);
+            return is;
+          }
+          vec.push_back(t);
+        }
+      }
+    } else {  // c == ']'
+      Array1<T> a(GetCpuContext(), vec);
+      array = Array2<T>(a, num_rows, row_length);
+      return is;
+    }
+  }
+}
+
+
+
+template <typename T>
+std::istream &operator>>(std::istream &is, Array1<T> &array) {
+  std::vector<T> vec;
+  is >> std::ws;  // eat whitespace
+  int c = is.peek();
+  if (c != '[') {
+    is.setstate(std::ios::failbit);
+    return is;
+  } else {
+    is.get();
+  }
+  while (1) {
+    is >> std::ws;  // eat whitespace
+    if (is.peek() == ']') {
+      is.get();
+      array = Array1<T>(GetCpuContext(), vec);
+      return is;
+    }
+    T t;
+    is >> t;
+    if (!is.good()) {
+      is.setstate(std::ios::failbit);
+      return is;
+    }
+    vec.push_back(t);
+  }
+}
+
+
+
+template <typename T>
+Array1<T>::Array1(const std::string &str): Array1() {
+  std::istringstream is(str);
+  is >> *this;
+  if (!is.good()) {
+    K2_LOG(FATAL) << "Failed to initialize Array1 from string: "
+                  << str;
+  }
+}
+
+
+template <typename T>
+Array2<T>::Array2(const std::string &str): Array2() {
+  std::istringstream is(str);
+  is >> *this;
+  if (!is.good()) {
+    K2_LOG(FATAL) << "Failed to initialize Array1 from string: "
+                  << str;
+  }
+}
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_ARRAY_INL_H_
