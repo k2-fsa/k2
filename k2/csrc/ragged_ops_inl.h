@@ -310,58 +310,61 @@ Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
   RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
   return Ragged<T>(new_shape, values);
 }
-
 template <typename T>
-Ragged<T>::Ragged(const std::string &src) {
+std::istream &operator>>(std::istream &is, Ragged<T> &r) {
   // Note: the top element of 'row_splits' will end up being
-  // discarded; the others will become the axes of `shape`
+  // discarded; the others will become the axes of `r`
   std::vector<std::vector<int32_t> > row_splits;
   std::vector<T> elems;
-  std::istringstream is(src);
   int32_t cur_level = 0;
   is >> std::ws;  // eat whitespace
-  while (is.good()) {
+  while (1) {
+    // We exit the loop after reading the final '['.
     char c = is.peek();
     if (c == '[') {
       cur_level++;
       while (row_splits.size() < static_cast<size_t>(cur_level)) {
-        if (!elems.empty())
-          K2_LOG(FATAL) << "Inconsistent depth in RaggedShape:"
-                        << src << ", elems.size()=" << elems.size();
+        if (!elems.empty()) {
+          is.setstate(std::ios::failbit);
+          return is;
+        }
         row_splits.push_back(std::vector<int32_t>(1, 0));
       }
       is.get();  // consume character 'c'
     } else if (c == ']') {
       cur_level--;
-      K2_CHECK_GE(cur_level, 0);
+      if (cur_level < 0) { // ']' without '['.
+        is.setstate(std::ios::failbit);
+        return is;
+      }
       row_splits[cur_level].push_back(
           (cur_level + 1 >= row_splits.size()) ?
           static_cast<int32_t>(elems.size()) :
           (row_splits[cur_level+1].size() - 1));
       is.get();  // consume character 'c'
+      if (cur_level == 0)
+        break;
     } else {
       T t;
       is >> t;
-      if (!is.good())
-        K2_LOG(FATAL) << "Could not parse element numbered " << elems.size();
-      if (cur_level != static_cast<int32_t>(row_splits.size()))
-        K2_LOG(FATAL) << "Inconsistent depth in RaggedShape:" << src;
-      if (cur_level < 2)
-        K2_LOG(FATAL) << "RaggedShape must have at least 2 axes: " << src;
+      if (!is.good() ||
+          cur_level != static_cast<int32_t>(row_splits.size()) ||
+          cur_level < 2) {
+        is.setstate(std::ios::failbit);
+        return is;
+      }
       elems.push_back(t);
     }
     is >> std::ws;
   }
-  if (row_splits.empty())
-    K2_LOG(FATAL) << "Empty input, parsing RaggedShape: " << src;
-  if (cur_level != 0)
-    K2_LOG(FATAL) << "Terminating ']' expected: " << src;
-  if (row_splits[0].size() != 2)
-    K2_LOG(FATAL) << "Unexpected bracket placement in ragged tensor: "
-                  << src;
+
+  if (row_splits.empty() || row_splits[0].size() != 2) {
+    is.setstate(std::ios::failbit);
+    return is;
+  }
   row_splits.erase(row_splits.begin());
   if (row_splits.empty()) {
-    // Assume 2 axes even though the num-axes is ambiguous from the input.
+    // Assume 2 axes even though the num-axes is ambiguous from the input "[ ]"
     // row_splits is 0 0.
     row_splits.push_back(std::vector<int32_t>(1, 0));
     row_splits[0].push_back(0);
@@ -371,9 +374,10 @@ Ragged<T>::Ragged(const std::string &src) {
     axes[i].row_splits = Array1<int32_t>(GetCpuContext(), row_splits[i]);
     axes[i].cached_tot_size = -1;
   }
-  this->shape = RaggedShape(axes);
-  this->values = Array1<T>(GetCpuContext(), elems);
-  K2_CHECK(this->values.Dim() == this->shape.NumElements());
+  r.shape = RaggedShape(axes);
+  r.values = Array1<T>(GetCpuContext(), elems);
+  K2_CHECK(r.values.Dim() == r.shape.NumElements());
+  return is;
 }
 
 

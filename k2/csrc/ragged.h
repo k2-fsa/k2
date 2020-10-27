@@ -283,7 +283,12 @@ struct Ragged {
     K2_CHECK_EQ(shape.NumElements(), values.Dim());
   }
   // Defined in ragged_ops_inl.h
-  explicit Ragged(const std::string &src);
+  explicit Ragged(const std::string &src) {
+    std::istringstream is(src);
+    is >> *this >> std::ws;
+    if (!is.eof() || is.fail())
+      K2_LOG(FATAL) <<  "Failed to construct Ragged array from string: " << src;
+  }
 
   // Default constructor will not leave this a valid Ragged object, you
   // shouldn't do anything with it.  Both members will be initialized with
@@ -352,8 +357,9 @@ template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &r);
 
 // caution: when reading "[ ]" it will assume 2 axes.
+// This is defined in ragged_ops_inl.h.
 template <typename T>
-std::istream &operator>>(std::istream &stream, const Ragged<T> &r);
+std::istream &operator>>(std::istream &stream, Ragged<T> &r);
 
 }  // namespace k2
 
