@@ -345,7 +345,7 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
       if (cur_level == 0)
         break;
     } else {
-      T t;
+      InputFixer<T> t;
       is >> t;
       if (!is.good() ||
           cur_level != static_cast<int32_t>(row_splits.size()) ||

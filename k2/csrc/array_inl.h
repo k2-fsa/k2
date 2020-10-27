@@ -121,7 +121,7 @@ std::istream &operator>>(std::istream &is, Array2<T> &array) {
           }
           break;
         } else {
-          T t;
+          InputFixer<T> t;
           is >> t;
           if (!is.good()) {
             is.setstate(std::ios::failbit);
@@ -158,7 +158,7 @@ std::istream &operator>>(std::istream &is, Array1<T> &array) {
       array = Array1<T>(GetCpuContext(), vec);
       return is;
     }
-    T t;
+    InputFixer<T> t;
     is >> t;
     if (!is.good()) {
       is.setstate(std::ios::failbit);
@@ -186,7 +186,7 @@ Array2<T>::Array2(const std::string &str): Array2() {
   std::istringstream is(str);
   is >> *this;
   if (!is.good()) {
-    K2_LOG(FATAL) << "Failed to initialize Array1 from string: "
+    K2_LOG(FATAL) << "Failed to initialize Array2 from string: "
                   << str;
   }
 }
