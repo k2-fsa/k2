@@ -62,11 +62,11 @@ class MultiGraphDenseIntersect {
         dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), beam) {
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
     K2_CHECK_GT(beam, 0);
-    K2_CHECK_GT(min_active, 0);
+    K2_CHECK_GE(min_active, 0);
     K2_CHECK_GT(max_active, min_active);
     K2_CHECK(a_fsas.shape.Dim0() == b_fsas.shape.Dim0() ||
              a_fsas.shape.Dim0() == 1);
-    K2_CHECK_GT(b_fsas.shape.Dim0(), 1);
+    K2_CHECK_GE(b_fsas.shape.Dim0(), 1);
     if (a_fsas.shape.Dim0() == 1) {
       a_fsas_stride_ = 0;
       state_map_ =
@@ -960,9 +960,11 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
                           int32_t max_active_states, int32_t min_active_states,
                           FsaVec *out, Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b) {
-  MultiGraphDenseIntersect intersector(a_fsas, b_fsas, beam, max_active_states,
+  FsaVec a_vec = FsaToFsaVec(a_fsas);
+  MultiGraphDenseIntersect intersector(a_vec, b_fsas, beam,
+                                       max_active_states,
                                        min_active_states);
-
+  intersector.Intersect();
   intersector.FormatOutput(out, arc_map_a, arc_map_b);
 }
 }  // namespace k2

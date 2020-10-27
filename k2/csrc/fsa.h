@@ -285,9 +285,14 @@ inline FsaVec CreateFsaVec(int32_t num_fsas, Fsa **fsas) {
 // with 2 axes.
 Fsa EmptyFsa();
 
-// Converts Fsa to FsaVec with one element (note: will share the same underlying
-// memory, just add an extra axis, increasing NumAxes() from 2 to 3).
-// Is non-const becaues the FSA's row-ids
+/*
+   If the input was an Fsa (2 axes) then converts it to an FsaVec with
+   one element (note: will share the same underlying
+   memory, just add an extra axis, increasing NumAxes() from 2 to 3).
+   Otherwise just return `fsa` unchanged, so it will pass through an FsaVec
+   unchanged.
+   `fsa` non-const because the FSA's row-ids are populated on-demand.
+*/
 FsaVec FsaToFsaVec(const Fsa &fsa);
 
 // Compute and return basic properties for Fsa.
