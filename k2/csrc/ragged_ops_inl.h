@@ -187,7 +187,7 @@ Ragged<T> Transpose(Ragged<T> &src) {
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos <= shape.TotSize(axis).
 template <typename T>
-void PrintRaggedPart(std::ostream &stream, Ragged<T> &ragged, int32_t axis,
+void PrintRaggedPart(std::ostream &stream, const Ragged<T> &ragged, int32_t axis,
                      int32_t begin_pos, int32_t end_pos) {
   const auto &shape = ragged.shape;
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
@@ -209,11 +209,11 @@ void PrintRaggedPart(std::ostream &stream, Ragged<T> &ragged, int32_t axis,
 // prints a Ragged array as e.g. [ [ 7 9 ] [ 10 ] [] ]
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &ragged) {
-  if (ragged.Context().GetDeviceType() != kCpu) {
+  if (ragged.Context()->GetDeviceType() != kCpu) {
     return stream << ragged.To(GetCpuContext());
   } else {
     stream << "[ ";
-    PrintRaggedPart(ragged, stream, 0, 0, ragged.shape.Dim0());
+    PrintRaggedPart(stream, ragged, 0, 0, ragged.shape.Dim0());
     stream << "]";
     return stream;
   }
@@ -223,9 +223,10 @@ template <typename T>
 Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
                        int32_t max_num_axes, int32_t min_num_elements,
                        int32_t max_num_elements) {
-  RaggedShape shape = RandomRaggedShape(min_num_axes, max_num_axes,
+  RaggedShape shape = RandomRaggedShape(true, min_num_axes, max_num_axes,
                                         min_num_elements, max_num_elements);
-  Array1<T> values = RandUniformArray1(GetCpuContext(), shape.NumElements(),
+  ContextPtr c = GetCpuContext();
+  Array1<T> values = RandUniformArray1(c, shape.NumElements(),
                                        min_value, max_value);
   return Ragged<T>(shape, values);
 }
@@ -291,7 +292,7 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
 }
 
 template <typename T>
-bool Ragged<T>::Validate(bool print_warnings) {
+bool Ragged<T>::Validate(bool print_warnings) const {
   if (values.Dim() != shape.NumElements()) {
     if (print_warnings) {
       K2_LOG(WARNING) << "Dimension mismatch: values.Dim() == " << values.Dim()
@@ -309,6 +310,73 @@ Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
   RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
   return Ragged<T>(new_shape, values);
 }
+
+template <typename T>
+Ragged<T>::Ragged(const std::string &src) {
+  // Note: the top element of 'row_splits' will end up being
+  // discarded; the others will become the axes of `shape`
+  std::vector<std::vector<int32_t> > row_splits;
+  std::vector<T> elems;
+  std::istringstream is(src);
+  int32_t cur_level = 0;
+  is >> std::ws;  // eat whitespace
+  while (is.good()) {
+    char c = is.peek();
+    if (c == '[') {
+      cur_level++;
+      while (row_splits.size() < static_cast<size_t>(cur_level)) {
+        if (!elems.empty())
+          K2_LOG(FATAL) << "Inconsistent depth in RaggedShape:"
+                        << src << ", elems.size()=" << elems.size();
+        row_splits.push_back(std::vector<int32_t>(1, 0));
+      }
+      is.get();  // consume character 'c'
+    } else if (c == ']') {
+      cur_level--;
+      K2_CHECK_GE(cur_level, 0);
+      row_splits[cur_level].push_back(
+          (cur_level + 1 >= row_splits.size()) ?
+          static_cast<int32_t>(elems.size()) :
+          (row_splits[cur_level+1].size() - 1));
+      is.get();  // consume character 'c'
+    } else {
+      T t;
+      is >> t;
+      if (!is.good())
+        K2_LOG(FATAL) << "Could not parse element numbered " << elems.size();
+      if (cur_level != static_cast<int32_t>(row_splits.size()))
+        K2_LOG(FATAL) << "Inconsistent depth in RaggedShape:" << src;
+      if (cur_level < 2)
+        K2_LOG(FATAL) << "RaggedShape must have at least 2 axes: " << src;
+      elems.push_back(t);
+    }
+    is >> std::ws;
+  }
+  if (row_splits.empty())
+    K2_LOG(FATAL) << "Empty input, parsing RaggedShape: " << src;
+  if (cur_level != 0)
+    K2_LOG(FATAL) << "Terminating ']' expected: " << src;
+  if (row_splits[0].size() != 2)
+    K2_LOG(FATAL) << "Unexpected bracket placement in ragged tensor: "
+                  << src;
+  row_splits.erase(row_splits.begin());
+  if (row_splits.empty()) {
+    // Assume 2 axes even though the num-axes is ambiguous from the input.
+    // row_splits is 0 0.
+    row_splits.push_back(std::vector<int32_t>(1, 0));
+    row_splits[0].push_back(0);
+  }
+  std::vector<RaggedShapeDim> axes(row_splits.size());
+  for (size_t i = 0; i < row_splits.size(); i++) {
+    axes[i].row_splits = Array1<int32_t>(GetCpuContext(), row_splits[i]);
+    axes[i].cached_tot_size = -1;
+  }
+  this->shape = RaggedShape(axes);
+  this->values = Array1<T>(GetCpuContext(), elems);
+  K2_CHECK(this->values.Dim() == this->shape.NumElements());
+}
+
+
 
 }  // namespace k2
 
