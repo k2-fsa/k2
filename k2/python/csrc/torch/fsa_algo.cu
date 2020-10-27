@@ -166,36 +166,21 @@ static void PybindArcSort(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
-static void PybindShortestDistance(py::module &m) {
-  m.def(
-      "shortest_distance",
-      [](Fsa &src, bool need_arc_map = true)
-          -> std::pair<double, torch::optional<torch::Tensor>> {
-        Array1<int32_t> arc_map;
-        double best_score =
-            ShortestDistance(src, need_arc_map ? &arc_map : nullptr);
-        torch::optional<torch::Tensor> tensor;
-        if (need_arc_map) tensor = ToTensor(arc_map);
-        return std::make_pair(best_score, tensor);
-      },
-      py::arg("src"), py::arg("need_arc_map") = true);
-}
-
 static void PybindShortestPath(py::module &m) {
   m.def(
       "shortest_path",
-      [](Fsa &src, bool need_arc_map =
-                       true) -> std::pair<Fsa, torch::optional<torch::Tensor>> {
-        Array1<int32_t> arc_map;
+      [](Fsa &src, bool need_arc_indexes = true)
+          -> std::tuple<Fsa, torch::optional<torch::Tensor>, double> {
+        Array1<int32_t> best_path_arcs;
         Fsa out;
-        ShortestPath(src, &out, need_arc_map ? &arc_map : nullptr);
+        double score = ShortestPath(
+            src, &out, need_arc_indexes ? &best_path_arcs : nullptr);
         torch::optional<torch::Tensor> tensor;
-        if (need_arc_map) tensor = ToTensor(arc_map);
-        return std::make_pair(out, tensor);
+        if (need_arc_indexes) tensor = ToTensor(best_path_arcs);
+        return std::make_tuple(out, tensor, score);
       },
-      py::arg("src"), py::arg("need_arc_map") = true);
+      py::arg("src"), py::arg("need_arc_indexes") = true);
 }
-
 
 }  // namespace k2
 
@@ -205,6 +190,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindIntersect(m);
   k2::PybindConnect(m);
   k2::PybindArcSort(m);
-  k2::PybindShortestDistance(m);
   k2::PybindShortestPath(m);
 }

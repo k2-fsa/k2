@@ -23,7 +23,7 @@ set(py_test_files
   fsa_test.py
   intersect_test.py
   linear_fsa_test.py
-  shortest_distance_test.py
+  shortest_path_test.py
   top_sort_test.py
 )
 

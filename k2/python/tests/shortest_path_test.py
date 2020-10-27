@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R shortest_distance_test_py
+#  ctest --verbose -R shortest_path_test_py
 
 import unittest
 
@@ -14,7 +14,7 @@ import k2
 import torch
 
 
-class TestShortestDistance(unittest.TestCase):
+class TestShortestPath(unittest.TestCase):
 
     def test(self):
         s = '''
@@ -34,7 +34,8 @@ class TestShortestDistance(unittest.TestCase):
         '''
         fsa = k2.Fsa.from_str(s)
         fsa.score.requires_grad_(True)
-        distance = k2.shortest_distance(fsa)
+        best_path = k2.shortest_path(fsa)
+        distance = best_path.score.sum()
         assert distance == 14
         expected = torch.zeros(12)
         expected[torch.tensor([1, 3, 5, 10])] = 1

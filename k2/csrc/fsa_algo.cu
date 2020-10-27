@@ -11,6 +11,7 @@
  */
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -288,38 +289,27 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
   *dest = tmp;
 }
 
-double ShortestDistance(Fsa &fsa, Array1<int32_t> *arc_map /*= nullptr*/) {
-  ContextPtr &context = fsa.Context();
-  K2_CHECK_EQ(fsa.NumAxes(), 2);
-  K2_CHECK_EQ(context->GetDeviceType(), kCpu);
-  int32_t num_states = fsa.Dim0();
-  k2host::Fsa host_fsa = FsaToHostFsa(fsa);
-  Array1<double> state_weights(context, num_states);
-  std::vector<int32_t> tmp_arc_map;
-  ComputeForwardMaxWeights(host_fsa, state_weights.Data(), &tmp_arc_map);
-  if (arc_map != nullptr) *arc_map = Array1<int32_t>(context, tmp_arc_map);
+double ShortestPath(Fsa &src, Fsa *out,
+                    Array1<int32_t> *best_path_arcs /* = nullptr*/) {
+  if (!src.values.IsValid()) return -std::numeric_limits<double>::infinity();
 
-  return state_weights.Back();
-}
-
-void ShortestPath(Fsa &src, Fsa *out, Array1<int32_t> *arc_map /* = nullptr*/) {
   ContextPtr &context = src.Context();
   K2_CHECK_EQ(src.NumAxes(), 2);
   K2_CHECK_EQ(context->GetDeviceType(), kCpu);
   int32_t num_states = src.Dim0();
   k2host::Fsa host_fsa = FsaToHostFsa(src);
   Array1<double> state_weights(context, num_states);
-  std::vector<int32_t> tmp_arc_map;
-  ComputeForwardMaxWeights(host_fsa, state_weights.Data(), &tmp_arc_map);
-  if (tmp_arc_map.empty()) return;
+  std::vector<int32_t> tmp_arc_indexes;
+  ComputeForwardMaxWeights(host_fsa, state_weights.Data(), &tmp_arc_indexes);
+  if (tmp_arc_indexes.empty()) return -std::numeric_limits<double>::infinity();
 
-  int32_t num_arcs = static_cast<int32_t>(tmp_arc_map.size());
+  int32_t num_arcs = static_cast<int32_t>(tmp_arc_indexes.size());
 
   const Arc *src_arcs_data = src.values.Data();
   Array1<Arc> arcs(context, num_arcs);
   Arc *arcs_data = arcs.Data();
   int32_t cur_state = 0;
-  for (auto i : tmp_arc_map) {
+  for (auto i : tmp_arc_indexes) {
     const Arc &src_arc = src_arcs_data[i];
     arcs_data[cur_state] =
         Arc(cur_state, cur_state + 1, src_arc.symbol, src_arc.score);
@@ -332,7 +322,10 @@ void ShortestPath(Fsa &src, Fsa *out, Array1<int32_t> *arc_map /* = nullptr*/) {
   RaggedShape shape = RaggedShape2(&row_splits, nullptr, num_arcs);
   *out = Fsa(shape, arcs);
 
-  if (arc_map != nullptr) *arc_map = Array1<int32_t>(context, tmp_arc_map);
+  if (best_path_arcs != nullptr)
+    *best_path_arcs = Array1<int32_t>(context, tmp_arc_indexes);
+
+  return state_weights.Back();
 }
 
 }  // namespace k2

@@ -46,6 +46,10 @@ class Fsa(object):
                   many entries as the number of arcs representing the label of
                   every arc.
 
+    - ``arc_labels_sorted``: A boolean. True if arcs of every state are sorted
+                             by labels in increasing order. False means arcs
+                             are not sorted by ``labels``.
+
     It MAY have the following attributes:
 
     - ``symbols``: An instance of ``k2.SymbolTable``. It maps an entry in
@@ -57,6 +61,11 @@ class Fsa(object):
 
     - ``aux_symbols``: An instance of ``k2.SymbolTable. It maps an entry in
                        ``aux_labels`` to an integer and vice versa.
+
+    - ``arc_aux_labels_sorted``: A boolean. True if arcs of every state are
+                                 sorted by ``aux_labels`` in increasing order.
+                                 False means arcs are not sorted by
+                                 ``aux_labels``.
 
     It MAY have other attributes that set by users.
 
@@ -99,9 +108,11 @@ class Fsa(object):
         '''
         self._init_internal()
         self.arcs: RaggedArc = _fsa_from_tensor(tensor)
+        self.arc_labels_sorted = False
         self._tensor_attr['score'] = _as_float(self.arcs.values()[:, -1])
         if aux_labels is not None:
             self.aux_labels = aux_labels.to(torch.int32)
+            self.arc_aux_labels_sorted = False
 
     def _init_internal(self) -> None:
         self._tensor_attr = OrderedDict()
@@ -123,11 +134,10 @@ class Fsa(object):
 
             if name == 'score':
                 assert value.dtype == torch.float32
-                # NOTE: we reinterpret the float patterns
+                # NOTE: we **reinterpret** the float patterns
                 # to integer patterns here.
                 self.arcs.values()[:, -1] = _as_int(value.detach())
         else:
-            # TODO(fangjun): do we need to copy value?
             self._non_tensor_attr[name] = value
 
     def __getattr__(self, name: str) -> Any:
@@ -139,6 +149,16 @@ class Fsa(object):
             return self._non_tensor_attr[name]
 
         raise AttributeError(f'Unknown attribute {name}')
+
+    def __delattr__(self, name: str) -> None:
+        assert name not in ('arcs', 'score', 'labels')
+
+        if name in self._tensor_attr:
+            del self._tensor_attr[name]
+        elif name in self._non_tensor_attr:
+            del self._non_tensor_attr[name]
+        else:
+            super().__delattr__(name)
 
     def invert_(self) -> 'Fsa':
         '''Swap the ``labels`` and ``aux_labels``.
@@ -152,11 +172,13 @@ class Fsa(object):
             self.aux_labels = self.labels
             self.labels = aux_labels
 
-        symbols, aux_symbols = None, None
-        if hasattr(self, 'symbols'):
-            symbols = self.symbols
-        if hasattr(self, 'aux_symbols'):
-            aux_symbols = self.aux_symbols
+            arc_aux_labels_sorted = getattr(self, 'arc_aux_labels_sorted',
+                                            False)
+            self.arc_aux_labels_sorted = self.arc_labels_sorted
+            self.arc_labels_sorted = arc_aux_labels_sorted
+
+        symbols = getattr(self, 'symbols', None)
+        aux_symbols = getattr(self, 'aux_symbols', None)
         self.symbols, self.aux_symbols = aux_symbols, symbols
 
         return self
@@ -214,6 +236,7 @@ class Fsa(object):
         super(Fsa, ans).__init__()
         ans._init_internal()
         ans.arcs = ragged_arc
+        ans.arc_labels_sorted = False
         ans._tensor_attr['score'] = _as_float(ans.arcs.values()[:, -1])
         return ans
 
@@ -264,9 +287,11 @@ class Fsa(object):
         ans._init_internal()
         arcs, aux_labels = _fsa_from_str(s, acceptor, False)
         ans.arcs = arcs
+        ans.arc_labels_sorted = False
         ans._tensor_attr['score'] = _as_float(ans.arcs.values()[:, -1])
         if aux_labels is not None:
             ans.aux_labels = aux_labels.to(torch.int32)
+            ans.arc_aux_labels_sorted = False
         return ans
 
     @classmethod
@@ -306,7 +331,9 @@ class Fsa(object):
         ans._init_internal()
         arcs, aux_labels = _fsa_from_str(s, acceptor, True)
         ans.arcs = arcs
+        ans.arc_labels_sorted = False
         ans._tensor_attr['score'] = _as_float(ans.arcs.values()[:, -1])
         if aux_labels is not None:
             ans.aux_labels = aux_labels.to(torch.int32)
+            ans.arc_aux_labels_sorted = False
         return ans

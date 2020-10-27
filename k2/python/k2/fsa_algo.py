@@ -2,7 +2,6 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from copy import deepcopy
 from typing import Union
 from typing import List
 
@@ -26,7 +25,9 @@ def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
       A vector of FSAs if the input is a list of list of integers.
     '''
     ragged_arc = _k2.linear_fsa(symbols)
-    return Fsa.from_ragged_arc(ragged_arc)
+    fsa = Fsa.from_ragged_arc(ragged_arc)
+    fsa.arc_labels_sorted = True
+    return fsa
 
 
 def top_sort(fsa: Fsa) -> Fsa:
@@ -50,15 +51,12 @@ def top_sort(fsa: Fsa) -> Fsa:
     for name, value in fsa.named_tensor_attr():
         setattr(sorted_fsa, name, value.index_select(0, arc_map))
     for name, value in fsa.named_non_tensor_attr():
-        setattr(sorted_fsa, name, deepcopy(value))
+        setattr(sorted_fsa, name, value)
     return sorted_fsa
 
 
 def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     '''Compute the intersection of two FSAs.
-
-    Note:
-      Intersection is also known as compose in FST.
 
     Args:
       a_fsa:
@@ -73,6 +71,12 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     Returns:
       The result of intersecting a_fsa and b_fsa.
     '''
+    if not a_fsa.arc_labels_sorted:
+        a_fsa = arc_sort(a_fsa)
+
+    if not b_fsa.arc_labels_sorted:
+        b_fsa = arc_sort(b_fsa)
+
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, b_fsa.arcs,
                                                      need_arc_map)
@@ -85,6 +89,7 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
     for name, a_value in a_fsa.named_tensor_attr():
         if name == 'aux_labels':
+            # aux_labels are discarded!
             continue
         if hasattr(b_fsa, name):
             b_value = getattr(b_fsa, name)
@@ -105,6 +110,8 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
 
     for name, b_value in b_fsa.named_non_tensor_attr():
         setattr(out_fsa, name, b_value)
+
+    out_fsa.arc_labels_sorted = True
 
     return out_fsa
 
@@ -133,7 +140,7 @@ def connect(fsa: Fsa) -> Fsa:
     for name, value in fsa.named_tensor_attr():
         setattr(out_fsa, name, value.index_select(0, arc_map))
     for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, deepcopy(value))
+        setattr(out_fsa, name, value)
     return out_fsa
 
 
@@ -143,12 +150,21 @@ def arc_sort(fsa: Fsa) -> Fsa:
     Note:
       Arcs are sorted by labels first, and then by dest states.
 
+    Caution:
+      If the input ``fsa`` is already arc sorted, we return it directly.
+      Otherwise, a new sorted fsa is returned.
+
     Args:
       fsa:
         The input FSA.
     Returns:
-      The sorted FSA.
+      The sorted FSA. It is the same as the input ``fsa`` if the input
+      ``fsa`` is arc sorted. Otherwise, a new sorted fsa is returned
+      and the input ``fsa`` is NOT modified.
     '''
+    if fsa.arc_labels_sorted is True:
+        return fsa
+
     need_arc_map = True
     ragged_arc, arc_map = _k2.arc_sort(fsa.arcs, need_arc_map=need_arc_map)
     arc_map = arc_map.to(torch.int64)  # required by index_select
@@ -156,20 +172,23 @@ def arc_sort(fsa: Fsa) -> Fsa:
     for name, value in fsa.named_tensor_attr():
         setattr(out_fsa, name, value.index_select(0, arc_map))
     for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, deepcopy(value))
+        setattr(out_fsa, name, value)
+
+    out_fsa.arc_labels_sorted = True
+    if hasattr(out_fsa, 'arc_aux_labels_sorted'):
+        out_fsa.arc_aux_labels_sorted = False
+
     return out_fsa
 
 
 def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
-    '''Compose two FSAs based on their labels.
+    '''Compose two FSAs.
 
-    After compose, the output FSA's ``labels`` are selected from the
-    ``aux_labels`` of ``b_fsa``; the ``aux_labels``
-    of the output FSA are selected from the ``aux_labels`` of ``a_fsa``.
+    If ``a_fsa`` has ``aux_labels``, the compose is based on the ``aux_labels``
+    of ``a_fsa`` and ``labels`` of ``b_fsa``.
 
-    Note:
-      You may want to invoke ``a_fsa.invert_()`` before calling
-      this function.
+    If ``a_fsa`` has no ``aux_labels``, the compose is based on the ``labels``
+    of the two input fsas.
 
     Args:
       a_fsa:
@@ -179,6 +198,11 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     Returns:
       The result of composing a_fsa and b_fsa.
     '''
+    # invert a_fsa so that we can intersect with labels
+    saved_a_fsa = a_fsa.invert_()
+
+    a_fsa = arc_sort(a_fsa)  # nop if a_fsa is already arc-sorted
+    b_fsa = arc_sort(b_fsa)
 
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, b_fsa.arcs,
@@ -209,6 +233,9 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
                     + b_value.index_select(0, b_arc_map)
             setattr(out_fsa, name, value)
 
+    # out_fsa.aux_labels = a_fsa.aux_labels if `a_fsa` is a transducer;
+    # out_fsa.aux_labels = a.fsa.labels if `a_fsa` is an acceptor
+    # we will invert `out_fsa` later.
     if hasattr(a_fsa, 'aux_labels'):
         a_aux_labels = a_fsa.aux_labels
     else:
@@ -219,13 +246,21 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     a_aux_labels = torch.cat((padding, a_aux_labels), dim=0)
     out_fsa.aux_labels = a_aux_labels.index_select(0, a_arc_map)
 
+    # out_fsa.labels = b_fsa.aux_labels if `b_fsa` is a transducer
+    # out_fsa.labels = b_fsa.labels if `b_fsa` is an acceptor
+    # we will invert `out_fsa` later
     if hasattr(b_fsa, 'aux_labels'):
         b_aux_labels = b_fsa.aux_labels
     else:
+        # b_fsa is an acceptor
         b_aux_labels = b_fsa.labels
     b_aux_labels = torch.cat((padding, b_aux_labels), dim=0)
     out_fsa.labels = b_aux_labels.index_select(0, b_arc_map)
 
+    # out_fsa.symbols = b_fsa.aux_symbols if b_fsa is a transducer
+    # out_fsa.symbols = b_fsa.symbols if b_fsa is an acceptor
+    # out_fsa.aux_symbols = a_fsa.aux_symbols if a_fsa is a transducer
+    # out_fsa.aux_symbols = a_fsa.symbols if a_fsa is an acceptor
     for name, a_value in a_fsa.named_non_tensor_attr():
         if name not in ('symbols', 'aux_symbols'):
             setattr(out_fsa, name, a_value)
@@ -245,6 +280,12 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     elif hasattr(b_fsa, 'symbols'):
         out_fsa.symbols = b_fsa.symbols
 
+    saved_a_fsa.invert_()  # recover saved_a_fsa
+
+    out_fsa.arc_labels_sorted = False
+    out_fsa.arc_aux_labels_sorted = False
+    out_fsa.invert_()
+
     return out_fsa
 
 
@@ -257,7 +298,7 @@ def shortest_distance(fsa: Fsa) -> torch.Tensor:
 
     Args:
       fsa:
-        The intpu FSA.
+        The input FSA.
     Returns:
       The sum of scores along the best path.
     '''
@@ -269,26 +310,25 @@ def shortest_distance(fsa: Fsa) -> torch.Tensor:
 
 
 def shortest_path(fsa: Fsa) -> Fsa:
+    '''Return the shortest path as a linear FSA from the start state
+    to the final state in the tropical semiring.
+
+    Note:
+      It uses the opposite sign. That is, It uses `max` instead of `min`.
+
+    Args:
+      fsa:
+        The input FSA.
+    Returns:
+      The best path as a linear FSA.
+    '''
     need_arc_map = True
-    ragged_arc, arc_map = _k2.shortest_path(fsa.arcs, need_arc_map)
+    ragged_arc, arc_map, _ = _k2.shortest_path(fsa.arcs, need_arc_map)
     arc_map = arc_map.to(torch.int64)  # required by index_select
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
     for name, value in fsa.named_tensor_attr():
         setattr(out_fsa, name, value.index_select(0, arc_map))
     for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, deepcopy(value))
-    return out_fsa
-
-
-def project_output(fsa: Fsa) -> Fsa:
-    out_fsa = Fsa.from_ragged_arc(fsa.arcs)
-    out_fsa.labels = fsa.aux_labels
-    for name, value in fsa.named_tensor_attr():
         setattr(out_fsa, name, value)
-    for name, value in fsa.named_non_tensor_attr():
-        if name != 'symbols':
-            setattr(out_fsa, name, deepcopy(value))
-
-    if hasattr(out_fsa, 'aux_labels'):
-        out_fsa.symbols = out_fsa.aux_labels
+    out_fsa.arc_labels_sorted = True
     return out_fsa

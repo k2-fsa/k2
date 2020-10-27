@@ -5,8 +5,6 @@ from .fsa_algo import compose
 from .fsa_algo import connect
 from .fsa_algo import intersect
 from .fsa_algo import linear_fsa
-from .fsa_algo import project_output
-from .fsa_algo import shortest_distance
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .symbol_table import SymbolTable
@@ -26,8 +24,6 @@ __all__ = [
     'dense_fsa',
     'intersect',
     'linear_fsa',
-    'project_output',
-    'shortest_distance',
     'shortest_path',
     'to_dot',
     'to_str',

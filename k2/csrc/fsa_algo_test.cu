@@ -257,7 +257,7 @@ TEST(FsaAlgo, IntersectFsaVec) {
   CheckArrayData(arc_map, std::vector<int32_t>{0, 2, 3});
 }
 
-TEST(HostShim, ShortestDistance) {
+TEST(HostShim, ShortestPath) {
   std::string s = R"(0 4 1 1
     0 1 1 1
     1 2 1 2
@@ -274,8 +274,9 @@ TEST(HostShim, ShortestDistance) {
   )";
 
   Fsa fsa = FsaFromString(s);
+  Fsa best_path;
   Array1<int32_t> arc_indexes;
-  double d = ShortestDistance(fsa, &arc_indexes);
+  double d = ShortestPath(fsa, &best_path, &arc_indexes);
 
   EXPECT_NEAR(d, 14, 1e-8);
   CheckArrayData(arc_indexes, std::vector<int32_t>{1, 3, 5, 10});
