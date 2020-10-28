@@ -29,7 +29,7 @@ namespace k2 {
 bool operator==(const Arc &a, const Arc &b) {
   return a.src_state == b.src_state && \
          a.dest_state == b.dest_state && \
-         a.symbol == b.symbol && \
+         a.label == b.label && \
          fabs(a.score - b.score) < 1e-6;
 }
 // clang-format on

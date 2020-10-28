@@ -337,9 +337,9 @@ class MultiGraphDenseIntersect {
 
       arc.src_state = pruned_src_state_idxx12;
       arc.dest_state = pruned_dest_state_idxx12;
-      arc.symbol = a_fsas_arcs[arc_info.a_fsas_arc_idx012].symbol;
+      arc.label = a_fsas_arcs[arc_info.a_fsas_arc_idx012].label;
       int32_t fsa_id = unpruned_idx0, b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
-              b_fsas_idx01 = b_fsas_idx0x + t, b_fsas_idxxx2 = (arc.symbol + 1),
+              b_fsas_idx01 = b_fsas_idx0x + t, b_fsas_idxxx2 = (arc.label + 1),
               b_fsas_arc_idx012 =
                   b_fsas_idx01 * b_fsas_num_cols + b_fsas_idxxx2;
       arc.score = arc_info.arc_loglike;
@@ -526,7 +526,7 @@ class MultiGraphDenseIntersect {
 
       int32_t scores_idx0x = b_fsas_row_splits1[ai_fsa_idx0],
               scores_idx01 = scores_idx0x + t,  // t == ind1 into 'scores'
-          scores_idx2 = arc.symbol + 1,  // the +1 is so that -1 can be handled
+          scores_idx2 = arc.label + 1,  // the +1 is so that -1 can be handled
           scores_idx012 = (scores_idx01 * scores_num_cols) + scores_idx2;
       assert(static_cast<uint32_t>(scores_idx2) <
              static_cast<uint32_t>(scores_num_cols));

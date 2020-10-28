@@ -237,7 +237,7 @@ namespace {
 struct ArcComparer {
   __host__ __device__ __forceinline__ bool operator()(const Arc &lhs,
                                                       const Arc &rhs) const {
-    return lhs.symbol < rhs.symbol;
+    return lhs.label < rhs.label;
   }
 };
 }  // namespace
