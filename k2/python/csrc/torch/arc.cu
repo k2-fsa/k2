@@ -22,12 +22,12 @@ static void PybindArcImpl(py::module &m) {
   py::class_<PyClass> pyclass(m, "Arc");
   pyclass.def(py::init<>());
   pyclass.def(py::init<int32_t, int32_t, int32_t, float>(),
-              py::arg("src_state"), py::arg("dest_state"), py::arg("symbol"),
+              py::arg("src_state"), py::arg("dest_state"), py::arg("label"),
               py::arg("score"));
 
   pyclass.def_readwrite("src_state", &PyClass::src_state)
       .def_readwrite("dest_state", &PyClass::dest_state)
-      .def_readwrite("symbol", &PyClass::symbol)
+      .def_readwrite("label", &PyClass::label)
       .def_readwrite("score", &PyClass::score);
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {

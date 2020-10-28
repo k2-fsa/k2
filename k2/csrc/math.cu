@@ -57,4 +57,35 @@ int32_t RandIntGeometric(int32_t min, int32_t max) {
   return geneartor(min, max);
 }
 
+namespace internal {
+template <typename Real>
+Real FixedRead(std::istream &is) {
+  is >> std::ws;
+  char c = is.peek();
+  if (c == '-') {
+    is.get();
+    return -FixedRead<Real>(is);
+  } else if (c == 'i' || c == 'I') {
+    char c[10];
+    int pos = 0;
+    while (pos < 9 && isalpha(is.peek()))
+      c[pos++] = tolower(is.get());
+    c[pos] = '\0';
+    if (strcmp(c, "inf")  && strcmp(c, "infinity"))
+      is.setstate(std::ios::failbit);
+    return std::numeric_limits<Real>::infinity();
+  // can handle NaN's later, with:
+  //} else if (c == 'n' || c == 'N') {
+  // (NaN's are printed in a more complicated way though.
+  } else {
+    Real r;
+    is >> r;
+    return r;
+  }
+}
+// Instantiate the template above.
+template float FixedRead(std::istream &is);
+template double FixedRead(std::istream &is);
+}
+
 }  // namespace k2

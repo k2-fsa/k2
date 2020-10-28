@@ -545,7 +545,7 @@ std::string FsaToString(const Fsa &fsa, bool openfst /*= false*/,
   char line_sep = '\n';
   for (int32_t i = 0; i != n; ++i) {
     const auto &arc = arcs[i];
-    os << arc.src_state << sep << arc.dest_state << sep << arc.symbol << sep;
+    os << arc.src_state << sep << arc.dest_state << sep << arc.label << sep;
     if (p != nullptr) os << p[i] << sep;
     os << (scale * arc.score) << line_sep;
   }

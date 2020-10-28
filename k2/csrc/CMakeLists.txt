@@ -59,6 +59,7 @@ set(cuda_tests
   fsa_test
   fsa_utils_test
   host_shim_test
+  intersect_test
   log_test
   ragged_shape_test
   ragged_test

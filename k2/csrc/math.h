@@ -86,6 +86,46 @@ int32_t RandInt(int32_t min, int32_t max);
 // we aren't relying on any exact properties.
 int32_t RandIntGeometric(int32_t min, int32_t max);
 
+/*
+ You are supposed to use IoFixer by: instead of doing
+   float f;
+   istream >> f;
+ you do:
+   InputFixer<float> f;
+   istream >> f;
+ For most types this code will be equivalent to just using the unmodified
+ type, but for types float and double it "fixes" the broken behavior of
+ the C++ standard w.r.t. infinity allowing infinities to be parsed.
+*/
+template<class T> struct InputFixer {
+  T t;
+  // cast operator
+  operator T() const { return t; }
+};
+
+
+namespace internal {
+template <typename Real>
+Real FixedRead(std::istream &is);
+}
+
+template <typename T>
+inline std::istream &operator >>(std::istream &is, InputFixer<T> &f) {
+  return is >> f.t;
+}
+template <>
+inline std::istream &operator >>(std::istream &is, InputFixer<float> &f) {
+  f.t = internal::FixedRead<float>(is);
+  return is;
+}
+template <>
+inline std::istream &operator >>(std::istream &is, InputFixer<double> &f) {
+  f.t = internal::FixedRead<double>(is);
+  return is;
+}
+
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_MATH_H_

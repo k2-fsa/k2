@@ -24,21 +24,21 @@ namespace k2 {
 struct Arc {
   int32_t src_state;
   int32_t dest_state;
-  int32_t symbol;
+  int32_t label;
   float score;
 
   Arc() = default;
-  Arc(int32_t src_state, int32_t dest_state, int32_t symbol, float score)
+  Arc(int32_t src_state, int32_t dest_state, int32_t label, float score)
       : src_state(src_state),
         dest_state(dest_state),
-        symbol(symbol),
+        label(label),
         score(score) {}
 
   bool operator<(const Arc &other) const {
-    // Compares `src_state` first, then `symbol`, then `dest_state`, then
+    // Compares `src_state` first, then `label`, then `dest_state`, then
     // 'score'
-    return std::tie(src_state, symbol, dest_state, score) <
-           std::tie(other.src_state, other.symbol, other.dest_state,
+    return std::tie(src_state, label, dest_state, score) <
+           std::tie(other.src_state, other.label, other.dest_state,
                     other.score);
   }
 };
@@ -61,11 +61,11 @@ enum FsaBasicProperties {
   kFsaPropertiesTopSortedAndAcyclic =
       0x08,  // Top-sorted and acyclic (no self-loops), dest_state > src_state
   kFsaPropertiesArcSorted =
-      0x10,  // Arcs leaving a given state are sorted by symbol
+      0x10,  // Arcs leaving a given state are sorted by label
   kFsaPropertiesArcSortedAndDeterministic = 0x20,  // Arcs leaving a given state
                                                    // are *strictly* sorted by
-                                                   // symbol, i.e. no duplicates
-                                                   // with the same symbol.
+                                                   // label, i.e. no duplicates
+                                                   // with the same label.
   kFsaPropertiesEpsilonFree = 0x40,  // Symbol zero (epsilon) is not present..
   kFsaPropertiesMaybeAccessible = 0x80,  // True if there are no obvious signs
                                          // of states not being accessible or
@@ -165,7 +165,7 @@ struct DenseFsaVec {
   These requirements for a valid FSA are:
 
     - src_state values on the arcs must be non-decreasing
-    - all arcs with -1 on the label must be to a single state (call this
+    - all arcs with -1 as the label must be to a single state (call this
       final_state) which has no arcs leaving it
     - final_state, if it exists, must be numerically greater than any state
       which has arcs leaving it, and >= any state that has arcs entering it.
@@ -285,9 +285,14 @@ inline FsaVec CreateFsaVec(int32_t num_fsas, Fsa **fsas) {
 // with 2 axes.
 Fsa EmptyFsa();
 
-// Converts Fsa to FsaVec with one element (note: will share the same underlying
-// memory, just add an extra axis, increasing NumAxes() from 2 to 3).
-// Is non-const becaues the FSA's row-ids
+/*
+   If the input was an Fsa (2 axes) then converts it to an FsaVec with
+   one element (note: will share the same underlying
+   memory, just add an extra axis, increasing NumAxes() from 2 to 3).
+   Otherwise just return `fsa` unchanged, so it will pass through an FsaVec
+   unchanged.
+   `fsa` non-const because the FSA's row-ids are populated on-demand.
+*/
 FsaVec FsaToFsaVec(const Fsa &fsa);
 
 // Compute and return basic properties for Fsa.

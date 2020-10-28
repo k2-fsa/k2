@@ -17,7 +17,7 @@ namespace k2 {
 // for debug only
 std::ostream &operator<<(std::ostream &os, const Arc &arc) {
   static constexpr char kSep = ' ';
-  os << arc.src_state << kSep << arc.dest_state << kSep << arc.symbol << kSep
+  os << arc.src_state << kSep << arc.dest_state << kSep << arc.label << kSep
      << arc.score;
   return os;
 }
@@ -103,16 +103,16 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
       if (arc.dest_state < arc.src_state)
         neg_property |= kFsaPropertiesTopSorted;
     }
-    if (arc.symbol == 0) neg_property |= kFsaPropertiesEpsilonFree;
-    if (arc.symbol < 0) {
-      if (arc.symbol != -1) {  // neg. symbols != -1 are not allowed.
+    if (arc.label == 0) neg_property |= kFsaPropertiesEpsilonFree;
+    if (arc.label < 0) {
+      if (arc.label != -1) {  // neg. symbols != -1 are not allowed.
         neg_property |= kFsaPropertiesValid;
       } else {
         if (arc.dest_state != this_fsa_num_states - 1)
           neg_property |= kFsaPropertiesValid;
       }
     }
-    if (arc.symbol != -1 && arc.dest_state == this_fsa_num_states - 1)
+    if (arc.label != -1 && arc.dest_state == this_fsa_num_states - 1)
       neg_property |= kFsaPropertiesValid;
     if (arc.dest_state < 0 || arc.dest_state >= this_fsa_num_states)
       neg_property |= kFsaPropertiesValid;
@@ -136,7 +136,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
       if (arc.dest_state != arc.src_state)
         reachable_data[num_states + idx01] = 1;
     } else {
-      int32_t symbol_diff = arc.symbol - prev_arc.symbol;
+      int32_t symbol_diff = arc.label - prev_arc.label;
       if (symbol_diff <= 0)
         neg_property |= kFsaPropertiesArcSortedAndDeterministic;
       if (symbol_diff < 0) neg_property |= kFsaPropertiesArcSorted;
@@ -206,8 +206,9 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 }
 
 FsaVec FsaToFsaVec(const Fsa &fsa) {
+  if (fsa.NumAxes() != 2)
+    return fsa;
   ContextPtr &c = fsa.values.Context();
-  K2_CHECK_EQ(fsa.NumAxes(), 2);
   RaggedShape first_axis = TrivialShape(c, fsa.shape.Dim0());
   RaggedShape fsa_vec_shape = ComposeRaggedShapes(first_axis, fsa.shape);
   return Ragged<Arc>(fsa_vec_shape, fsa.values);
@@ -245,7 +246,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
 
   auto lambda_misc = [=] __host__ __device__(int32_t i) -> void {
     row_ids1_data[i] = arcs_data[i].src_state;
-    if (arcs_data[i].symbol == -1) {
+    if (arcs_data[i].label == -1) {
       int32_t final_state = arcs_data[i].dest_state;
       int32_t old_value = num_states_data[0];
       if (old_value >= 0 && old_value != final_state + 1)

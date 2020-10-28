@@ -82,10 +82,10 @@ void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
 
   This code is intended to run on GPU (but should also work on CPU).
 
-         @param[in] a_fsas   Input FSAs, `decoding graphs`.  There should
-                         either be one FSA (a_fsas.Dim0() == 1) or a vector of
-                         FSAs with the same size as b_fsas (a_fsas.Dim0() ==
-                         b_fsas.Dim0()).
+         @param[in] a_fsas   Input FSAs, `decoding graphs`.   There should
+                         either be one FSA (3 axes and a_fsas.Dim0() == 1; or
+                         2 axes) or a vector of FSAs with the same size as
+                         b_fsas (a_fsas.Dim0() == b_fsas.Dim0()).
          @param[in] b_fsas   Input FSAs that correspond to neural network
                          outputs (see documentation in fsa.h).
          @param[in] beam   Decoding beam, e.g. 10.  Smaller is faster,
