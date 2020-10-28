@@ -12,8 +12,8 @@ from typing import Tuple
 import torch
 
 from _k2 import RaggedArc
-from _k2 import _as_int
 from _k2 import _as_float
+from _k2 import _as_int
 from _k2 import _fsa_from_str
 from _k2 import _fsa_from_tensor
 
@@ -46,9 +46,6 @@ class Fsa(object):
                   many entries as the number of arcs representing the label of
                   every arc.
 
-    - ``arc_labels_sorted``: A boolean. True if arcs of every state are sorted
-                             by labels in increasing order. False means arcs
-                             are not sorted by ``labels``.
 
     It MAY have the following attributes:
 
@@ -57,15 +54,14 @@ class Fsa(object):
                    visualization only.
 
     - ``aux_labels`: A 1-D ``torch.Tensor`` of dtype ``torch.int32``. It has the
-                     same shape as ``labels``.
+                     same shape as ``labels``. NOTE: We will change it to a
+                     ragged tensor in the future.
 
     - ``aux_symbols``: An instance of ``k2.SymbolTable. It maps an entry in
                        ``aux_labels`` to an integer and vice versa.
 
-    - ``arc_aux_labels_sorted``: A boolean. True if arcs of every state are
-                                 sorted by ``aux_labels`` in increasing order.
-                                 False means arcs are not sorted by
-                                 ``aux_labels``.
+    - ``properties``: An integer that encodes the properties of the FSA. It is
+                      returned by :func:`get_properties`.
 
     It MAY have other attributes that set by users.
 
@@ -108,19 +104,15 @@ class Fsa(object):
         '''
         self._init_internal()
         self.arcs: RaggedArc = _fsa_from_tensor(tensor)
-        self.arc_labels_sorted = False
         self._tensor_attr['score'] = _as_float(self.arcs.values()[:, -1])
         if aux_labels is not None:
             self.aux_labels = aux_labels.to(torch.int32)
-            self.arc_aux_labels_sorted = False
 
     def _init_internal(self) -> None:
         self._tensor_attr = OrderedDict()
         self._non_tensor_attr = OrderedDict()
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if value is None:
-            return
         if name in ('_tensor_attr', '_non_tensor_attr', 'arcs'):
             object.__setattr__(self, name, value)
         elif isinstance(value, torch.Tensor):
@@ -163,23 +155,37 @@ class Fsa(object):
     def invert_(self) -> 'Fsa':
         '''Swap the ``labels`` and ``aux_labels``.
 
+        If there are symbol tables associated with ``labels`` and
+        ``aux_labels``, they are also swapped.
+
+        It is a no-op if the FSA contains no ``aux_labels``.
+
         CAUTION:
           The function name ends with an underscore which means this
           is an **in-place** operation.
+
+        Returns:
+          Return ``self``.
         '''
         if hasattr(self, 'aux_labels'):
             aux_labels = self.aux_labels
             self.aux_labels = self.labels
             self.labels = aux_labels
 
-            arc_aux_labels_sorted = getattr(self, 'arc_aux_labels_sorted',
-                                            False)
-            self.arc_aux_labels_sorted = self.arc_labels_sorted
-            self.arc_labels_sorted = arc_aux_labels_sorted
-
         symbols = getattr(self, 'symbols', None)
         aux_symbols = getattr(self, 'aux_symbols', None)
-        self.symbols, self.aux_symbols = aux_symbols, symbols
+
+        if symbols is not None:
+            del self.symbols
+
+        if aux_symbols is not None:
+            del self.aux_symbols
+
+        if symbols is not None:
+            self.aux_symbols = symbols
+
+        if aux_symbols is not None:
+            self.symbols = aux_symbols
 
         return self
 
@@ -207,8 +213,8 @@ class Fsa(object):
     def shape(self) -> Tuple[int, ...]:
         '''
         Returns:
-          ``(num_states, None)` if this is an Fsa;
-          ``(num_fsas, None, None)` if this is an FsaVec.
+          ``(num_states, None)`` if this is an Fsa;
+          ``(num_fsas, None, None)`` if this is an FsaVec.
         '''
         if self.arcs.num_axes() == 2:
             return (self.arcs.dim0(), None)
@@ -236,7 +242,6 @@ class Fsa(object):
         super(Fsa, ans).__init__()
         ans._init_internal()
         ans.arcs = ragged_arc
-        ans.arc_labels_sorted = False
         ans._tensor_attr['score'] = _as_float(ans.arcs.values()[:, -1])
         return ans
 
@@ -287,11 +292,9 @@ class Fsa(object):
         ans._init_internal()
         arcs, aux_labels = _fsa_from_str(s, acceptor, False)
         ans.arcs = arcs
-        ans.arc_labels_sorted = False
         ans._tensor_attr['score'] = _as_float(ans.arcs.values()[:, -1])
         if aux_labels is not None:
             ans.aux_labels = aux_labels.to(torch.int32)
-            ans.arc_aux_labels_sorted = False
         return ans
 
     @classmethod
@@ -331,9 +334,7 @@ class Fsa(object):
         ans._init_internal()
         arcs, aux_labels = _fsa_from_str(s, acceptor, True)
         ans.arcs = arcs
-        ans.arc_labels_sorted = False
         ans._tensor_attr['score'] = _as_float(ans.arcs.values()[:, -1])
         if aux_labels is not None:
             ans.aux_labels = aux_labels.to(torch.int32)
-            ans.arc_aux_labels_sorted = False
         return ans

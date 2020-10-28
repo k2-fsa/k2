@@ -22,6 +22,26 @@
 
 namespace k2 {
 
+static void PybindFsaBasicProperties(py::module &m) {
+  m.def("fsa_properties_as_str", &FsaPropertiesAsString);
+
+  m.def("get_fsa_basic_properties", &GetFsaBasicProperties);
+
+  m.def("is_arc_sorted", [](int32_t properties) -> bool {
+    return (properties & kFsaPropertiesArcSorted) == kFsaPropertiesArcSorted;
+  });
+
+  m.def("is_accessible", [](int32_t properties) -> bool {
+    return (properties & kFsaPropertiesMaybeAccessible) ==
+           kFsaPropertiesMaybeAccessible;
+  });
+
+  m.def("is_coaccessible", [](int32_t properties) -> bool {
+    return (properties & kFsaPropertiesMaybeCoaccessible) ==
+           kFsaPropertiesMaybeCoaccessible;
+  });
+}
+
 static void PybindFsaUtil(py::module &m) {
   // TODO(fangjun): add docstring in Python describing
   // the format of the input tensor when it is a FsaVec.
@@ -137,4 +157,5 @@ static void PybindDenseFsaVec(py::module &m) {
 void PybindFsa(py::module &m) {
   k2::PybindFsaUtil(m);
   k2::PybindDenseFsaVec(m);
+  k2::PybindFsaBasicProperties(m);
 }
