@@ -6,7 +6,6 @@ from typing import Union
 from typing import List
 
 from .fsa import Fsa
-from .fsa_properties import get_properties
 from .fsa_properties import is_arc_sorted
 from .fsa_properties import is_accessible
 from .fsa_properties import is_coaccessible
