@@ -166,11 +166,10 @@ class MultiGraphDenseIntersect {
 
     frames_.reserve(T + 1);
 
-    frames_.push_back(InitialFrameInfo());  // TODO: implement
-                                            // InitialFrameInfo().
-    for (int32_t t = 0; t < T; t++) {
-      frames_.push_back(PropagateForward(t, frames_.back()));
-    }
+    frames_.push_back(InitialFrameInfo());
+
+    for (int32_t t = 0; t < T; t++)
+      frames_.push_back(PropagateForward(t, frames_.back().get()));
 
     {
       // each of these have 3 axes.
@@ -191,7 +190,8 @@ class MultiGraphDenseIntersect {
     for (int32_t t = T; t >= 0; t--) {
       // this writes to elements of renumber_output_states_.Keep() and
       // renumber_output_arcs_.Keep().
-      PropagateBackward(t, frames_[t], (t == T ? NULL : frames_[t + 1]));
+      PropagateBackward(t, frames_[t].get(),
+                        (t == T ? NULL : frames_[t + 1].get()));
     }
     // TODO(haowen): replace with SubsampleRaggedShape?
     // oshape_pruned_ = RaggedShape4Subsampled(oshape_unpruned_, NULL, NULL,
@@ -199,8 +199,24 @@ class MultiGraphDenseIntersect {
     //                                        &renumber_output_arcs_);
   }
 
-  FrameInfo *InitialFrameInfo() {
-    // TODO
+  // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
+  std::unique_ptr<FrameInfo> InitialFrameInfo() {
+    int32_t num_fsas = b_fsas_.shape.Dim0();
+    std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
+    ans->states = Ragged<StateInfo>(RegularRaggedShape(c_, num_fsas, 1),
+                                    Array1<StateInfo>(c_, num_fsas));
+    StateInfo *info_data = ans->states.values.Data();
+    // a_fsas_row_splits1 maps from fsa_idx0 to state_idx01.
+    const int32_t *a_fsas_row_splits1 = a_fsas_.RowSplits(1).Data();
+    int32_t a_fsas_stride = a_fsas_stride_;
+    auto lambda_set_state_info = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
+      int32_t a_fsas_state_idx01 = a_fsas_row_splits1[fsa_idx0 * a_fsas_stride];
+      info_data[fsa_idx0].a_fsas_state_idx01 = a_fsas_state_idx01;
+      // start state, so forward log-like is 0.0
+      info_data[fsa_idx0].forward_loglike = FloatToOrderedInt(0.0);
+    };
+
+
     K2_LOG(FATAL) << "Not Implemented";
     return nullptr;
   }
@@ -535,8 +551,16 @@ class MultiGraphDenseIntersect {
   /*
     Does the forward-propagation (basically: the decoding step) and
     returns a newly allocated FrameInfo* object for the next frame.
+
+      @param [in] t   Time-step that we are processing arcs leaving from;
+                   will be called with t=0, t=1, ...
+      @param [in] cur_frame  FrameInfo object for the states corresponding to
+                   time t; will have its 'states' member set up but not its
+                   'arcs' member (this function will create that).
+     @return  Returns FrameInfo object corresponding to time t+1; will have its
+             'states' member set up but not its 'arcs' member.
    */
-  FrameInfo *PropagateForward(int32_t t, FrameInfo *cur_frame) {
+  std::unique_ptr<FrameInfo> PropagateForward(int32_t t, FrameInfo *cur_frame) {
     // Ragged<StateInfo> &states = cur_frame->states;
     // ai has 3 axes: fsa_id, state, arc.
     Ragged<ArcInfo> arc_info = GetUnprunedArcs(t, cur_frame);
@@ -658,7 +682,7 @@ class MultiGraphDenseIntersect {
     cur_frame->arcs =
         Ragged<ArcInfo>(curr_frame_arc_shape, curr_frame_arc_array1);
 
-    FrameInfo *ans = new FrameInfo();
+    std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
     // TODO(haowen): implement Ragged2FromRowIds?
     // ans->states = Ragged2FromRowIds(num_fsas, state_to_fsa_id,
     //                               Array1<ArcInfo>(c_, num_arcs));
@@ -869,7 +893,7 @@ class MultiGraphDenseIntersect {
                   &state_backward_prob);
     const int32_t *state_backward_prob_data = state_backward_prob.Data();
 
-    int32_t num_fsas = a_fsas_.shape.Dim0();
+    int32_t num_fsas = b_fsas_.shape.Dim0();
     assert(cur_frame->states.shape.Dim0() == num_fsas);
     float float_minus_inf = -std::numeric_limits<float>::infinity();
     auto lambda_set_state_backward_prob =
@@ -939,7 +963,7 @@ class MultiGraphDenseIntersect {
                                // `states` array.  Between frames, all values
                                // have -1 in them.
 
-  std::vector<FrameInfo *> frames_;
+  std::vector<std::unique_ptr<FrameInfo> > frames_;
 
   // This is a rearranged version of the info in 'frames', computed at the end
   // of the forward pass before pruning.  It is indexed [fsa_id][t][state][arc].

@@ -860,11 +860,23 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src) {
 RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
   // row_splits= [
   Array1<int32_t> row_splits = Range<int32_t>(c, 2, 0, num_elems);
-  int32_t *row_splits_data = row_splits.Data();
-
   Array1<int32_t> row_ids(c, num_elems, 0);
   return RaggedShape2(&row_splits, &row_ids, num_elems);
 }
+
+
+RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1) {
+  Array1<int32_t> row_splits = Range<int32_t>(c, dim0 + 1, 0, dim1);
+  int32_t *row_splits_data = row_splits.Data();
+  Array1<int32_t> row_ids(c, dim0 * dim1);
+  int32_t *row_ids_data = row_ids.Data();
+  auto lambda_set_row_ids = [=] __host__ __device__ (int32_t i, int32_t j) {
+    row_ids_data[i * dim1 + j] = i;
+  };
+  Eval2(c, dim0, dim1, lambda_set_row_ids);
+  return RaggedShape2(&row_splits, &row_ids, dim0 * dim1);
+}
+
 
 Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
                                      RaggedShape &ans_ragged_shape) {
@@ -1060,6 +1072,18 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
     // below).
   }
   return RaggedShape(ans_axes);
+}
+
+RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
+  K2_CHECK(renumbering.NumOldElems() == src.NumElements());
+
+  // Make sure final row-ids are populated.
+  src.RowIds(src.NumAxes()-1);
+  std::vector<RaggedShapeDim> axes = src.Axes();
+  axes.back().row_ids = axes.back().row_ids[renumbering.New2Old()];
+  axes.back().row_splits = renumbering.Old2New()[axes.back().row_splits];
+  axes.back().cached_tot_size = axes.back().row_ids.Dim();
+  return RaggedShape(axes);
 }
 
 }  // namespace k2

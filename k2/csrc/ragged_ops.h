@@ -363,10 +363,10 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
                               int32_t max_num_elements = 2000);
 
 /*
-  Return ragged shape with only a subset of the bottom-level elements
-  kept.  Require renumbering.NumOldElems() == src.TotSize(src.NumAxes()-1).
-  Note: all dimensions and tot-sizes preceding that will remain the
-  same, which might give rise to empty lists.
+  Return ragged shape with only a subset of the bottom-level elements kept.
+  Require renumbering.NumOldElems() == src.NumElements().  Note: all
+  dimensions and tot-sizes preceding the final axis will remain the same, which
+  might give rise to empty lists.
  */
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
 
@@ -477,6 +477,12 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
   TotSize(1) = num_elems.
  */
 RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems);
+
+/*
+  Returns a RaggedShape with Dim0() == dim0 and TotSize1() == dim0 * dim1.
+  Require dim0 >= 0 and dim1 >= 0.
+ */
+RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1);
 
 /*
   Allocates an *invalid* RaggedShape given the TotSize() values for each axis.
