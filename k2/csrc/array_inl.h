@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cassert>
 #include <random>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -50,20 +51,6 @@ void Array1<T>::CopyFrom(const Array1<T> &src) {
              Dim() * ElementSize(), kind, Context().get());
 }
 template <typename T>
-template <typename S>
-Array1<S> Array1<T>::AsType() {
-  if (std::is_same<T, S>::value) return *reinterpret_cast<Array1<S> *>(this);
-  Array1<S> ans(Context(), Dim());
-  S *ans_data = ans.Data();
-  const T *this_data = Data();
-  auto lambda_set_values = [=] __host__ __device__(int32_t i) {
-    ans_data[i] = static_cast<S>(this_data[i]);
-  };
-  Eval(Context(), Dim(), lambda_set_values);
-  return ans;
-}
-
-template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
   stream << "[ ";
   Array1<T> to_print = array.To(GetCpuContext());
@@ -85,8 +72,6 @@ std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
   }
   return stream << "\n]";
 }
-
-
 
 template <typename T>
 std::istream &operator>>(std::istream &is, Array2<T> &array) {
@@ -138,8 +123,6 @@ std::istream &operator>>(std::istream &is, Array2<T> &array) {
   }
 }
 
-
-
 template <typename T>
 std::istream &operator>>(std::istream &is, Array1<T> &array) {
   std::vector<T> vec;
@@ -168,29 +151,22 @@ std::istream &operator>>(std::istream &is, Array1<T> &array) {
   }
 }
 
-
-
 template <typename T>
-Array1<T>::Array1(const std::string &str): Array1() {
+Array1<T>::Array1(const std::string &str) : Array1() {
   std::istringstream is(str);
   is >> *this;
   if (!is.good()) {
-    K2_LOG(FATAL) << "Failed to initialize Array1 from string: "
-                  << str;
+    K2_LOG(FATAL) << "Failed to initialize Array1 from string: " << str;
   }
 }
-
 
 template <typename T>
-Array2<T>::Array2(const std::string &str): Array2() {
+Array2<T>::Array2(const std::string &str) : Array2() {
   std::istringstream is(str);
   is >> *this;
-  if (!is.good()) {
-    K2_LOG(FATAL) << "Failed to initialize Array2 from string: "
-                  << str;
-  }
+  if (!is.good())
+    K2_LOG(FATAL) << "Failed to initialize Array2 from string: " << str;
 }
-
 
 }  // namespace k2
 
