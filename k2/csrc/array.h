@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -173,7 +174,24 @@ class Array1 {
   // Convert this array to another array with type S;
   // if S is same with T, then it just returns *this
   template <typename S>
-  Array1<S> AsType();
+  Array1<typename std::enable_if<!std::is_same<S, T>::value, S>::type> AsType()
+      const {
+    // S != T
+    Array1<S> ans(Context(), Dim());
+    S *ans_data = ans.Data();
+    const T *this_data = Data();
+    auto lambda_set_values = [=] __host__ __device__(int32_t i) {
+      ans_data[i] = static_cast<S>(this_data[i]);
+    };
+    Eval(Context(), Dim(), lambda_set_values);
+    return ans;
+  }
+  template <typename S>
+  Array1<typename std::enable_if<std::is_same<S, T>::value, S>::type> AsType()
+      const {
+    // S == T
+    return *this;
+  }
 
   /*
     Modify size of array, copying old contents if we could not re-use the same
@@ -619,8 +637,8 @@ T ToPrintable(T t) {
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array1<T> &array);
 
-// read an array (can read output as produced by "operator <<", assuming suitable
-// operators exist for type T.  Will produce output on CPU.
+// read an array (can read output as produced by "operator <<", assuming
+// suitable operators exist for type T.  Will produce output on CPU.
 template <typename T>
 std::istream &operator>>(std::istream &stream, Array1<T> &array);
 
@@ -628,11 +646,10 @@ std::istream &operator>>(std::istream &stream, Array1<T> &array);
 // [ 4 5 6 ]]".  Intended mostly for use in debugging.
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array2<T> &array);
-// read an array (can read output as produced by "operator <<", assuming suitable
-// operators exist for type T.  Will produce output on CPU.
+// read an array (can read output as produced by "operator <<", assuming
+// suitable operators exist for type T.  Will produce output on CPU.
 template <typename T>
 std::istream &operator>>(std::istream &stream, Array2<T> &array);
-
 
 }  // namespace k2
 

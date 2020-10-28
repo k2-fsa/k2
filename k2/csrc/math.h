@@ -58,7 +58,8 @@ class RandIntGenerator {
 class RandIntGeometricGenerator {
  public:
   // Set `seed` to non-zero for reproducibility.
-  explicit RandIntGeometricGenerator(int32_t seed = 0) : gen_(rd_()) {
+  explicit RandIntGeometricGenerator(int32_t seed = 0)
+      : dis_(0.1), gen_(rd_()) {
     if (seed != 0) gen_.seed(seed);
   }
 

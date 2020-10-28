@@ -644,7 +644,7 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
   // we'll use for each FSA... it corresponds to the number of times we have
   // to follow links forward in the dest_states array till we pass the
   // end of the array for this fSA.
-  Array1<int32_t> num_batches_per_fsa(c, num_fsas + 1);
+  Array1<int32_t> num_batches_per_fsa(c, num_fsas + 1, 0);
 
   // `batch_starts` will contain the locations of the first state_idx01 for each
   // batch, but in an 'un-consolidated' format.  Specifically, for FSA with
@@ -1100,7 +1100,7 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
   for (int32_t i = 0; i < num_batches; ++i) {
     // get the range we would call Max/LogSum per sub list
     int32_t this_state_idx0xx = cpu_state_idx0xx[i],
-         next_state_idx0xx = cpu_state_idx0xx_data[i + 1];
+            next_state_idx0xx = cpu_state_idx0xx_data[i + 1];
     K2_CHECK_LT(this_state_idx0xx, num_states);
     K2_CHECK_LE(next_state_idx0xx, num_states);
     int32_t num_states_this_batch = next_state_idx0xx - this_state_idx0xx;
@@ -1164,18 +1164,22 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
       MaxPerSublist(sub_scores, negative_infinity, &sub_state_scores);
       if (entering_arcs_data != nullptr) {
         FloatType *sub_state_scores_data = sub_state_scores.Data(),
-            *sub_scores_data = sub_scores.values.Data();
+                  *sub_scores_data = sub_scores.values.Data();
         int32_t *sub_scores_row_ids_data = sub_scores.RowIds(1).Data();
         const int32_t *sub_state_ids_data = states_data + this_state_idx0xx,
-            *sub_entering_arc_ids_data = entering_arc_ids + this_arc_idx0xxx;
-        // arc_idx01 below is an index into sub_scores, it is also an arc_idx123 into
-        // entering_arc_batches.
-        auto lambda_set_entering_arcs = [=] __host__ __device__ (int32_t arc_idx01) {
-          // state_idx0 below is idx0 into `sub_scores`, also an index into `sub_scores`.
+                      *sub_entering_arc_ids_data =
+                          entering_arc_ids + this_arc_idx0xxx;
+        // arc_idx01 below is an index into sub_scores, it is also an arc_idx123
+        // into entering_arc_batches.
+        auto lambda_set_entering_arcs = [=] __host__ __device__(
+                                            int32_t arc_idx01) {
+          // state_idx0 below is idx0 into `sub_scores`, also an index into
+          // `sub_scores`.
           int32_t state_idx0 = sub_scores_row_ids_data[arc_idx01];
           if (sub_scores_data[arc_idx01] == sub_state_scores_data[state_idx0]) {
             int32_t fsas_state_idx01 = sub_state_ids_data[state_idx0],
-                fsas_entering_arc_idx012 = sub_entering_arc_ids_data[arc_idx01];
+                    fsas_entering_arc_idx012 =
+                        sub_entering_arc_ids_data[arc_idx01];
             // The following statement has a race condition if there is a
             // tie on scores, but this is OK and by design.  It makes the choice
             // of traceback non-deterministic in these cases.
@@ -1188,17 +1192,20 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
     const FloatType *sub_state_scores_data = sub_state_scores.Data();
     // Copy those scores to corresponding state in state_scores.
     // `state_idx12` is an idx12 w.r.t. state_batches and entering_arc_batches,
-    // but an idx1 w.r.t. sub_scores and an index into the array sub_state_scores.
-    auto lambda_copy_state_scores = [=] __host__ __device__(int32_t state_idx12) {
-      int32_t batches_idx012 = this_state_idx0xx + state_idx12;
-      int32_t fsas_state_idx01 = states_data[batches_idx012];
-      int32_t batches_idx01 = arc_batches_row_ids2[batches_idx012];
-      int32_t fsa_idx0 = batches_idx01 % num_fsas;
-      int32_t start_state_idx01 = fsa_row_splits1[fsa_idx0];
-      // don't override score 0 in the start state in each fsa.
-      if (fsas_state_idx01 != start_state_idx01)
-        state_scores_data[fsas_state_idx01] = sub_state_scores_data[state_idx12];
-    };
+    // but an idx1 w.r.t. sub_scores and an index into the array
+    // sub_state_scores.
+    auto lambda_copy_state_scores =
+        [=] __host__ __device__(int32_t state_idx12) {
+          int32_t batches_idx012 = this_state_idx0xx + state_idx12;
+          int32_t fsas_state_idx01 = states_data[batches_idx012];
+          int32_t batches_idx01 = arc_batches_row_ids2[batches_idx012];
+          int32_t fsa_idx0 = batches_idx01 % num_fsas;
+          int32_t start_state_idx01 = fsa_row_splits1[fsa_idx0];
+          // don't override score 0 in the start state in each fsa.
+          if (fsas_state_idx01 != start_state_idx01)
+            state_scores_data[fsas_state_idx01] =
+                sub_state_scores_data[state_idx12];
+        };
     Eval(c, num_states_this_batch, lambda_copy_state_scores);
   }
 
@@ -1237,13 +1244,22 @@ Array1<FloatType> GetBackwardScores(
     K2_CHECK_EQ(tot_scores->Dim(), num_fsas);
     const FloatType *tot_scores_data = tot_scores->Data();
     // set the score of final state in fsa i to be negative of tot_scores[i]
-    auto lambda_set_final_state_score = [=] __host__ __device__(
-                                            int32_t fsa_idx) {
-      int32_t start_state = fsa_row_splits1[fsa_idx],
-              start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
-      if (start_state_next_fsa - start_state > 0)
-        state_scores_data[start_state_next_fsa - 1] = -tot_scores_data[fsa_idx];
-    };
+    auto lambda_set_final_state_score =
+        [=] __host__ __device__(int32_t fsa_idx) {
+          int32_t start_state = fsa_row_splits1[fsa_idx],
+                  start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
+          if (start_state_next_fsa - start_state > 0) {
+            // We never set the score of a state to positive_infinity, otherwise
+            // we may get NaN when add it with negative_infinity. But this
+            // usually would not happen for a connected FSA.
+            if (tot_scores_data[fsa_idx] != negative_infinity) {
+              state_scores_data[start_state_next_fsa - 1] =
+                  -tot_scores_data[fsa_idx];
+            } else {
+              state_scores_data[start_state_next_fsa - 1] = negative_infinity;
+            }
+          }
+        };
     Eval(c, num_fsas, lambda_set_final_state_score);
   } else {
     // set the score of final state in each fsa to be 0
@@ -1341,7 +1357,7 @@ Array1<FloatType> GetBackwardScores(
           int32_t dest_state_idx1 = arcs[leaving_arc_id].dest_state;
           int32_t dest_state_idx01 = fsa_row_splits1[fsa_id] + dest_state_idx1;
           arc_scores_data[idx0123] =
-             state_scores_data[dest_state_idx01] + curr_arc_score;
+              state_scores_data[dest_state_idx01] + curr_arc_score;
         };
         Eval(c, num_arcs_this_batch, lambda_set_leaving_arc_score);
       }
@@ -1464,8 +1480,6 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
   return arc_scores;
 }
 
-
-
 // explicit instantiation for those score computation functions above
 template Array1<float> GetForwardScores(FsaVec &fsas,
                                         Ragged<int32_t> &state_batches,
@@ -1500,8 +1514,6 @@ template Array1<float> GetTotScores(FsaVec &fsas,
                                     const Array1<float> &forward_scores);
 template Array1<double> GetTotScores(FsaVec &fsas,
                                      const Array1<double> &forward_scores);
-
-
 
 Fsa RandomFsa(bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
               int32_t min_num_arcs /*=0*/, int32_t max_num_arcs /*=1000*/) {
@@ -1551,7 +1563,7 @@ Fsa RandomFsa(bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
   return Fsa(ans_shape, Array1<Arc>(c, arcs));
 }
 
-FsaVec RandomFsaVec(int32_t min_num_fsas /*=0*/, int32_t max_num_fsas /*=1000*/,
+FsaVec RandomFsaVec(int32_t min_num_fsas /*=1*/, int32_t max_num_fsas /*=1000*/,
                     bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
                     int32_t min_num_arcs /*=0*/,
                     int32_t max_num_arcs /*=1000*/) {
