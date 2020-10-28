@@ -312,7 +312,7 @@ double ShortestPath(Fsa &src, Fsa *out,
   for (auto i : tmp_arc_indexes) {
     const Arc &src_arc = src_arcs_data[i];
     arcs_data[cur_state] =
-        Arc(cur_state, cur_state + 1, src_arc.symbol, src_arc.score);
+        Arc(cur_state, cur_state + 1, src_arc.label, src_arc.score);
     cur_state += 1;
   }
   std::vector<int32_t> row_splits_vec(cur_state + 2);
