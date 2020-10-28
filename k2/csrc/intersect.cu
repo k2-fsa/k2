@@ -205,20 +205,18 @@ class MultiGraphDenseIntersect {
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
     ans->states = Ragged<StateInfo>(RegularRaggedShape(c_, num_fsas, 1),
                                     Array1<StateInfo>(c_, num_fsas));
-    StateInfo *info_data = ans->states.values.Data();
+    StateInfo *state_values_data = ans->states.values.Data();
     // a_fsas_row_splits1 maps from fsa_idx0 to state_idx01.
     const int32_t *a_fsas_row_splits1 = a_fsas_.RowSplits(1).Data();
     int32_t a_fsas_stride = a_fsas_stride_;
     auto lambda_set_state_info = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
       int32_t a_fsas_state_idx01 = a_fsas_row_splits1[fsa_idx0 * a_fsas_stride];
-      info_data[fsa_idx0].a_fsas_state_idx01 = a_fsas_state_idx01;
+      state_values_data[fsa_idx0].a_fsas_state_idx01 = a_fsas_state_idx01;
       // start state, so forward log-like is 0.0
-      info_data[fsa_idx0].forward_loglike = FloatToOrderedInt(0.0);
+      state_values_data[fsa_idx0].forward_loglike = FloatToOrderedInt(0.0);
     };
-
-
-    K2_LOG(FATAL) << "Not Implemented";
-    return nullptr;
+    Eval(c_, num_fsas, lambda_set_state_info);
+    return ans;
   }
 
   void FormatOutput(FsaVec *ofsa, Array1<int32_t> *arc_map_a,
@@ -472,7 +470,7 @@ class MultiGraphDenseIntersect {
 
     // frame_state_idx01 combines the FSA-index and state-index (into
     // 'cur_frame->states')
-    Array1<int32_t> num_arcs(c_, states.values.Dim());
+    Array1<int32_t> num_arcs(c_, states.values.Dim() + 1);
     int32_t *num_arcs_data = num_arcs.Data();
     auto num_arcs_lambda =
         [=] __host__ __device__(int32_t state_idx01) -> void {
@@ -484,15 +482,13 @@ class MultiGraphDenseIntersect {
     };
     // `num_arcs` gives the num-arcs for each state in `states`.
     Eval(c_, num_arcs.Dim(), num_arcs_lambda);
+    ExclusiveSum(num_arcs, &num_arcs);
 
     // initialize shape of array that will hold arcs leaving the active states.
     // Its shape is [fsa_index][state][arc]; the top two levels are shared with
     // `states`.  'ai' means ArcInfo.
-    // TODO(haowen): implement RaggedShapeFromSizes?
-    // RaggedShape ai_shape = RaggedShapeFromSizes(states.shape, num_arcs);
-    RaggedShape ai_shape;
-
-    // 'ai' means ArcInfo
+    RaggedShape ai_shape = ComposeRaggedShapes(states.shape,
+                                               RaggedShape2(&num_arcs, nullptr, -1));
 
     // from state_idx01 (into `states` or `ai_shape`) -> fsa_idx0
     const int32_t *ai_row_ids1 = ai_shape.RowIds(1).Data();
