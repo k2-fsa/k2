@@ -61,8 +61,7 @@ void TestArray1() {
     auto kind = GetMemoryCopyKind(*cpu, *array.Context());
     MemoryCopy(static_cast<void *>(array_data),
                static_cast<void *>(data.data()),
-               array.Dim() * array.ElementSize(), kind,
-               nullptr);
+               array.Dim() * array.ElementSize(), kind, nullptr);
     for (int32_t i = 0; i < array.Dim(); ++i) {
       EXPECT_EQ(array[i], i);
     }
@@ -333,8 +332,7 @@ void TestArray2() {
     auto dst = region->template GetData<T>();
     auto kind = GetMemoryCopyKind(*cpu, *context);
     MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(data.data()),
-               data.size() * sizeof(T), kind,
-               region->context.get());
+               data.size() * sizeof(T), kind, region->context.get());
 
     Array2<T> array(kDim0, kDim1, kElemStride0, 0, region);
 
@@ -376,8 +374,7 @@ void TestArray2() {
       auto kind = GetMemoryCopyKind(*array.Context(), *cpu);
       MemoryCopy(static_cast<void *>(cpu_data.data()),
                  static_cast<const void *>(array_data),
-                 num_element_copy * array.ElementSize(), kind,
-                 nullptr);
+                 num_element_copy * array.ElementSize(), kind, nullptr);
       for (int32_t i = 0, n = 0; i < array.Dim0(); ++i) {
         for (int32_t j = 0; j < array.Dim1(); ++j) {
           EXPECT_EQ(cpu_data[i * elem_stride0 + j], data[n++]);
@@ -395,8 +392,7 @@ void TestArray2() {
         std::vector<T> sub_array_cpu_data(sub_array.Dim());
         MemoryCopy(static_cast<void *>(sub_array_cpu_data.data()),
                    static_cast<const void *>(sub_array_data),
-                   sub_array.Dim() * sub_array.ElementSize(), kind,
-                   nullptr);
+                   sub_array.Dim() * sub_array.ElementSize(), kind, nullptr);
         for (int32_t j = 0; j < sub_array.Dim(); ++j) {
           EXPECT_EQ(sub_array_cpu_data[j], data[i * array.ElemStride0() + j]);
         }
@@ -412,8 +408,7 @@ void TestArray2() {
       std::vector<T> sub_array_cpu_data(sub_array.Dim());
       MemoryCopy(static_cast<void *>(sub_array_cpu_data.data()),
                  static_cast<const void *>(sub_array_data),
-                 sub_array.Dim() * sub_array.ElementSize(), kind,
-                 nullptr);
+                 sub_array.Dim() * sub_array.ElementSize(), kind, nullptr);
       for (int32_t i = 0; i < sub_array.Dim(); ++i) {
         EXPECT_EQ(sub_array_cpu_data[i], data[i]);
       }
@@ -479,8 +474,7 @@ void TestArray2() {
     auto kind = GetMemoryCopyKind(*cpu, *region->context);
     MemoryCopy(static_cast<void *>(data),
                static_cast<const void *>(src_data.data()),
-               num_element * element_size, kind,
-               nullptr);
+               num_element * element_size, kind, nullptr);
 
     {
       // created with region, contiguous on 0 aixs
@@ -691,10 +685,7 @@ void TestArray2() {
 TEST(ArrayTest, TestArray1Io) {
   for (int i = 0; i < 20; i++) {
     ContextPtr c = GetCpuContext();
-    Array1<int32_t> a = RandUniformArray1<int32_t>(
-        c,
-        RandInt(0, 10),
-        0, 100);
+    Array1<int32_t> a = RandUniformArray1<int32_t>(c, RandInt(0, 10), 0, 100);
     std::ostringstream os;
     os << a;
     Array1<int32_t> b(os.str());
@@ -705,12 +696,9 @@ TEST(ArrayTest, TestArray1Io) {
 TEST(ArrayTest, TestArray2Io) {
   for (int i = 0; i < 20; i++) {
     ContextPtr c = GetCpuContext();
-    int32_t dim0 = RandInt(0, 4),
-        dim1 = RandInt(0, 4);
-    if (dim0 == 0)
-      dim1 = 0;
-    Array1<int32_t> a = RandUniformArray1<int32_t>(
-        c, dim0 * dim1, 0, 100);
+    int32_t dim0 = RandInt(0, 4), dim1 = RandInt(0, 4);
+    if (dim0 == 0) dim1 = 0;
+    Array1<int32_t> a = RandUniformArray1<int32_t>(c, dim0 * dim1, 0, 100);
     Array2<int32_t> a2(a, dim0, dim1);
     std::ostringstream os;
     os << a2;
