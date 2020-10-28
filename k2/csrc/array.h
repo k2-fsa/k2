@@ -584,12 +584,12 @@ class Array2 {
     }
   }
 
-  /* Initialize from Array1.  Require dim0 * dim1 == a.Dim() and dim0,dim1 > 0
+  /* Initialize from Array1.  Require dim0 * dim1 == a.Dim() and dim0,dim1 >= 0
    */
   Array2(Array1<T> &a, int32_t dim0, int32_t dim1)
       : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1) {
-    K2_CHECK_GT(dim0, 0);
-    K2_CHECK_GT(dim1, 0);
+    K2_CHECK_GE(dim0, 0);
+    K2_CHECK_GE(dim1, 0);
     K2_CHECK_EQ(dim0_ * dim1_, a.Dim());
     byte_offset_ = a.ByteOffset();
     region_ = a.GetRegion();

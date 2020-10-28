@@ -696,7 +696,8 @@ TEST(ArrayTest, TestArray1Io) {
 TEST(ArrayTest, TestArray2Io) {
   for (int i = 0; i < 20; i++) {
     ContextPtr c = GetCpuContext();
-    int32_t dim0 = RandInt(1, 4), dim1 = RandInt(1, 4);
+    int32_t dim0 = RandInt(0, 4), dim1 = RandInt(0, 4);
+    if (dim0 == 0) dim1 = 0;
     Array1<int32_t> a = RandUniformArray1<int32_t>(c, dim0 * dim1, 0, 100);
     Array2<int32_t> a2(a, dim0, dim1);
     std::ostringstream os;
@@ -704,8 +705,10 @@ TEST(ArrayTest, TestArray2Io) {
     Array2<int32_t> b2(os.str());
     // also do basic check of Equal().
     K2_CHECK(Equal(a2, b2));
-    b2 = -1;
-    K2_CHECK(!Equal(a2, b2));
+    if (dim0 * dim1 != 0) {
+      b2 = -1;
+      K2_CHECK(!Equal(a2, b2));
+    }
   }
 }
 
