@@ -406,7 +406,7 @@ std::istream &operator>>(std::istream &is,
       return is;
     }
     int c = is.get();
-    if (c == (int)'[') {
+    if (c == static_cast<int32_t>('[')) {
       cur_level++;
       while (row_splits.size() < static_cast<size_t>(cur_level)) {
         if (num_elems != 0) {
@@ -415,10 +415,10 @@ std::istream &operator>>(std::istream &is,
         }
         row_splits.push_back(std::vector<int32_t>(1, 0));
       }
-    } else if (c == (int)']') {
+    } else if (c == static_cast<int32_t>(']')) {
       cur_level--;
-      if (cur_level <= 0) { // Done; return...
-        if (cur_level < 0) { // ']' without '['.
+      if (cur_level <= 0) {  // Done; return...
+        if (cur_level < 0) {  // ']' without '['.
           is.setstate(std::ios::failbit);
           return is;
         }
@@ -440,7 +440,7 @@ std::istream &operator>>(std::istream &is,
       row_splits[cur_level].push_back(
           (cur_level + 1 >= row_splits.size()) ?
           num_elems : (row_splits[cur_level+1].size() - 1));
-    } else if (c == (int)'x') {
+    } else if (c == static_cast<int32_t>('x')) {
       if (cur_level != static_cast<int32_t>(row_splits.size()) ||
           cur_level < 2) {
         is.setstate(std::ios::failbit);
@@ -452,7 +452,6 @@ std::istream &operator>>(std::istream &is,
       return is;
     }
   }
-
 }
 
 

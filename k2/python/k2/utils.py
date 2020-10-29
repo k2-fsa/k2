@@ -19,7 +19,7 @@ def to_str(fsa: Fsa, openfst: bool = False) -> str:
 
     Args:
       openfst:
-        Optional. If true, we negate the score during the conversion,
+        Optional. If true, we negate the scores during the conversion,
 
     Returns:
       A string representation of the Fsa.
@@ -99,7 +99,7 @@ def to_dot(fsa: Fsa, title: Optional[str] = None):
 
     seen = set()
     i = -1
-    for arc, weight in zip(fsa.arcs.values()[:, :-1], fsa.score.tolist()):
+    for arc, weight in zip(fsa.arcs.values()[:, :-1], fsa.scores.tolist()):
         i += 1
         src_state, dst_state, label = arc.tolist()
         src_state = str(src_state)

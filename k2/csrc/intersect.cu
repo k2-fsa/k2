@@ -525,8 +525,8 @@ class MultiGraphDenseIntersect {
     // initialize shape of array that will hold arcs leaving the active states.
     // Its shape is [fsa_index][state][arc]; the top two levels are shared with
     // `states`.  'ai' means ArcInfo.
-    RaggedShape ai_shape = ComposeRaggedShapes(states.shape,
-                                               RaggedShape2(&num_arcs, nullptr, -1));
+    RaggedShape ai_shape =
+        ComposeRaggedShapes(states.shape, RaggedShape2(&num_arcs, nullptr, -1));
 
     // from state_idx01 (into `states` or `ai_shape`) -> fsa_idx0
     const int32_t *ai_row_ids1 = ai_shape.RowIds(1).Data();

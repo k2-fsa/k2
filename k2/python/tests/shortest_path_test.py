@@ -33,14 +33,14 @@ class TestShortestPath(unittest.TestCase):
             9
         '''
         fsa = k2.Fsa.from_str(s)
-        fsa.score.requires_grad_(True)
+        fsa.scores.requires_grad_(True)
         best_path = k2.shortest_path(fsa)
-        distance = best_path.score.sum()
+        distance = best_path.scores.sum()
         assert distance == 14
         expected = torch.zeros(12)
         expected[torch.tensor([1, 3, 5, 10])] = 1
         distance.backward()
-        assert torch.allclose(fsa.score.grad, expected)
+        assert torch.allclose(fsa.scores.grad, expected)
 
 
 if __name__ == '__main__':

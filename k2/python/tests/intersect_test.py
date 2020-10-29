@@ -34,7 +34,7 @@ class TestIntersect(unittest.TestCase):
             5
         '''
         a_fsa = k2.Fsa.from_str(s)
-        a_fsa.score.requires_grad_(True)
+        a_fsa.scores.requires_grad_(True)
 
         # an FSA that recognizes ab
         s = '''
@@ -44,7 +44,7 @@ class TestIntersect(unittest.TestCase):
             3
         '''
         b_fsa = k2.Fsa.from_str(s)
-        b_fsa.score.requires_grad_(True)
+        b_fsa.scores.requires_grad_(True)
 
         fsa = k2.intersect(a_fsa, b_fsa)
         actual_str = k2.to_str(fsa)
@@ -52,14 +52,14 @@ class TestIntersect(unittest.TestCase):
             ['0 1 1 10.1', '1 2 2 20.3', '2 3 -1 30.5', '3'])
         assert actual_str.strip() == expected_str
 
-        loss = fsa.score.sum()
+        loss = fsa.scores.sum()
         loss.backward()
         # arc 0, 2, and 4 of a_fsa are kept in the final intersected FSA
         assert torch.allclose(
-            a_fsa.score.grad,
+            a_fsa.scores.grad,
             torch.tensor([1, 0, 1, 0, 1, 0], dtype=torch.float32))
 
-        assert torch.allclose(b_fsa.score.grad,
+        assert torch.allclose(b_fsa.scores.grad,
                               torch.tensor([1, 1, 1], dtype=torch.float32))
 
 

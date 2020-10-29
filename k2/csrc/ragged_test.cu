@@ -100,7 +100,6 @@ TEST(RaggedShapeTest, TestConstructFromString) {
     // axes is ambiguous; we assume 2.
     K2_CHECK(Equal(rs, rs2) || rs.NumElements() == 0);
   }
-
 }
 
 

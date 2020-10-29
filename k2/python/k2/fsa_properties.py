@@ -52,7 +52,7 @@ def is_arc_sorted(p: int) -> bool:
 
 def is_accessible(p: int) -> bool:
     '''Determine whether the given properties imply an FSA that
-    has all states be accessible.
+    has all states being accessible.
 
     Args:
       p:

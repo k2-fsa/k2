@@ -31,15 +31,15 @@ class TestTopSort(unittest.TestCase):
             1
         '''
         fsa = k2.Fsa.from_str(s)
-        fsa.score.requires_grad_(True)
+        fsa.scores.requires_grad_(True)
         sorted_fsa = k2.top_sort(fsa)
 
         # the shortest path in the sorted fsa is (arc 0) -> (arc 3)
-        loss = (sorted_fsa.score[0] + sorted_fsa.score[3]) / 2
+        loss = (sorted_fsa.scores[0] + sorted_fsa.scores[3]) / 2
         loss.backward()
         assert torch.allclose(
-            fsa.score.grad, torch.tensor([0.5, 0, 0.5, 0],
-                                         dtype=torch.float32))
+            fsa.scores.grad, torch.tensor([0.5, 0, 0.5, 0],
+                                          dtype=torch.float32))
 
 
 if __name__ == '__main__':

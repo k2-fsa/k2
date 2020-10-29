@@ -86,6 +86,6 @@ Real FixedRead(std::istream &is) {
 // Instantiate the template above.
 template float FixedRead(std::istream &is);
 template double FixedRead(std::istream &is);
-}
+}  // namespace internal
 
 }  // namespace k2

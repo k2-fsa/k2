@@ -13,6 +13,7 @@
 #ifndef K2_CSRC_RAGGED_H_
 #define K2_CSRC_RAGGED_H_
 
+#include <string>
 #include <vector>
 
 #include "k2/csrc/algorithms.h"

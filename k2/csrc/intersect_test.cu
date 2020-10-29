@@ -66,8 +66,7 @@ TEST(Intersect, Simple) {
   EXPECT_NE(p & gt, gt);
   */
 
-
-  //CheckArrayData(arc_map, {0, 1, 3, 4, 2});
+  // CheckArrayData(arc_map, {0, 1, 3, 4, 2});
 }
 
 
