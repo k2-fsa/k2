@@ -33,7 +33,7 @@ def properties_to_str(p: int) -> str:
     Returns:
       A string representation of the input properties.
     '''
-    return _k2.fsa_properties_as_str()
+    return _k2.fsa_properties_as_str(p)
 
 
 def is_arc_sorted(p: int) -> bool:
