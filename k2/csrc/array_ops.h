@@ -288,6 +288,13 @@ Array1<T> Minus(const Array1<T> &src, T t) {
 template <typename T>
 bool Equal(const Array1<T> &a, const Array1<T> &b);
 
+/*
+  Return true if array `a` is monotonically increasing, i.e.
+  a[i+1] >= a[i].
+ */
+template <typename T>
+bool IsMonotonic(const Array1<T> &a);
+
 
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
