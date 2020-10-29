@@ -18,6 +18,79 @@
 
 namespace k2 {
 
+namespace intersect_internal {
+
+/* Information associated with a state active on a particular frame..  */
+struct StateInfo {
+  /* abs_state_id is the state-index in a_fsas_.  Note: the ind0 in here
+     won't necessarily match the ind0 within FrameInfo::state if
+     a_fsas_stride_ == 0. */
+  int32_t a_fsas_state_idx01;
+
+  /* Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
+     FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
+     represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
+     use max not log-sum).  You can take the pruned lattice and rescore it if
+     you want log-sum.  */
+  int32_t forward_loglike;
+
+  /* Note: this `backward_loglike` is the best score of any path from here to
+     the end, minus the best path in the overall FSA, i.e. it's the backward
+     score you get if, at the final-state, you set backward_loglike ==
+     forward_loglike. So backward_loglike + forward_loglike <= 0, and you can
+     treat it somewhat like a posterior (except they don't sum to one as we're
+     using max, not log-add).
+
+     Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
+     FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
+     represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
+     use max not log-sum).  You can take the pruned lattice and rescore it if
+     you want log-sum.  */
+  int32_t backward_loglike;
+};
+
+struct ArcInfo {              // for an arc that wasn't pruned away...
+  int32_t a_fsas_arc_idx012;  // the arc-index in a_fsas_.
+  float arc_loglike;          // loglike on this arc: equals loglike from data
+  // (nnet output, == b_fsas), plus loglike from
+  // the arc in a_fsas.
+
+  union {
+    // these 3 different ways of storing the index of the destination state
+    // are used at different stages of the algorithm; we give them different
+    // names for clarity.
+    int32_t dest_a_fsas_state_idx01;  // The destination-state as an index
+    // into a_fsas_.
+    int32_t dest_info_state_idx01;  // The destination-state as an index into
+    // the next FrameInfo's `arcs` or `states`
+    int32_t dest_info_state_idx1;   // The destination-state as an index the
+    // next FrameInfo's `arcs` or `states`,
+    // this time omitting the FSA-index.
+  } u;
+  float end_loglike;  // loglike at the end of the arc just before
+  // (conceptually) it joins the destination state.
+};
+
+static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
+  os << "StateInfo{" << s.a_fsas_state_idx01
+     << "," << OrderedIntToFloat(s.forward_loglike)
+     << "," << OrderedIntToFloat(s.backward_loglike)
+     << "}";
+  return os;
+
+}
+static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
+  os << "ArcInfo{" << a.a_fsas_arc_idx012
+     << "," << a.arc_loglike
+     << "," << a.u.dest_a_fsas_state_idx01
+     << "," << a.end_loglike << "}";
+  return os;
+}
+
+}  // namespace intersect_internal
+
+using namespace intersect_internal;
+
 // Caution: this is really a .cu file.  It contains mixed host and device code.
 
 /*
@@ -77,57 +150,6 @@ class MultiGraphDenseIntersect {
       state_map_ = Array2<int32_t>(c_, 1, a_fsas.shape.TotSize(1), -1);
     }
   }
-
-  /* Information associated with a state active on a particular frame..  */
-  struct StateInfo {
-    /* abs_state_id is the state-index in a_fsas_.  Note: the ind0 in here
-       won't necessarily match the ind0 within FrameInfo::state if
-       a_fsas_stride_ == 0. */
-    int32_t a_fsas_state_idx01;
-
-    /* Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
-       FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
-       represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
-       use max not log-sum).  You can take the pruned lattice and rescore it if
-       you want log-sum.  */
-    int32_t forward_loglike;
-
-    /* Note: this `backward_loglike` is the best score of any path from here to
-       the end, minus the best path in the overall FSA, i.e. it's the backward
-       score you get if, at the final-state, you set backward_loglike ==
-       forward_loglike. So backward_loglike + forward_loglike <= 0, and you can
-       treat it somewhat like a posterior (except they don't sum to one as we're
-       using max, not log-add).
-
-       Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
-       FloatToOrderedInt/OrderedIntToFloat so we can use atomic max.  It
-       represents a Viterbi-style 'forward probability'.  (Viterbi, meaning: we
-       use max not log-sum).  You can take the pruned lattice and rescore it if
-       you want log-sum.  */
-    int32_t backward_loglike;
-  };
-
-  struct ArcInfo {              // for an arc that wasn't pruned away...
-    int32_t a_fsas_arc_idx012;  // the arc-index in a_fsas_.
-    float arc_loglike;          // loglike on this arc: equals loglike from data
-                                // (nnet output, == b_fsas), plus loglike from
-                                // the arc in a_fsas.
-
-    union {
-      // these 3 different ways of storing the index of the destination state
-      // are used at different stages of the algorithm; we give them different
-      // names for clarity.
-      int32_t dest_a_fsas_state_idx01;  // The destination-state as an index
-                                        // into a_fsas_.
-      int32_t dest_info_state_idx01;  // The destination-state as an index into
-                                      // the next FrameInfo's `arcs` or `states`
-      int32_t dest_info_state_idx1;   // The destination-state as an index the
-                                      // next FrameInfo's `arcs` or `states`,
-                                      // this time omitting the FSA-index.
-    } u;
-    float end_loglike;  // loglike at the end of the arc just before
-                        // (conceptually) it joins the destination state.
-  };
 
   // The information we have for each frame of the pruned-intersection (really:
   // decoding) algorithm.  We keep an array of these, one for each frame, up to
@@ -561,6 +583,10 @@ class MultiGraphDenseIntersect {
     // Ragged<StateInfo> &states = cur_frame->states;
     // ai has 3 axes: fsa_id, state, arc.
     Ragged<ArcInfo> arc_info = GetUnprunedArcs(t, cur_frame);
+
+    K2_LOG(INFO) << "State-info = " << cur_frame->states
+                 << ", arc-info = " << arc_info;
+
     const ArcInfo *ai_data = arc_info.values.Data();
     Array1<float> ai_data_array1(c_, arc_info.values.Dim());
     float *ai_data_array1_data = ai_data_array1.Data();
@@ -573,7 +599,7 @@ class MultiGraphDenseIntersect {
     // `cutoffs` is of dimension num_fsas.
     Array1<float> cutoffs = GetPruningCutoffs(ai_loglikes);
     int32_t num_fsas = cutoffs.Dim();
-
+    K2_LOG(INFO) << "Pruning cutoffs: " << cutoffs;
     float *cutoffs_data = cutoffs.Data();
 
     // write certain indexes ( into ai.values) to state_map_.Data().  Keeps
@@ -594,17 +620,19 @@ class MultiGraphDenseIntersect {
     auto lambda_set_state_map =
         [=] __host__ __device__(int32_t arc_idx012) -> void {
       int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
-      int32_t dest_state_idx012 = ai_data[arc_idx012].a_fsas_arc_idx012;
+      int32_t dest_state_idx01 = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
       float end_loglike = ai_data[arc_idx012].end_loglike,
             cutoff = cutoffs_data[fsa_id];
       if (end_loglike > cutoff) {
         // The following is a race condition as multiple threads may write to
         // the same location, but it doesn't matter, the point is to assign
         // one of the indexes.
-        state_map_acc(fsa_id, dest_state_idx012) = arc_idx012;
+        state_map_acc(fsa_id, dest_state_idx01) = arc_idx012;
       }
     };
     Eval(c_, arc_info.values.Dim(), lambda_set_state_map);
+
+    K2_LOG(INFO) << "State map: " << state_map_;
 
     // renumber_arcs will be a renumbering that dictates which of the arcs
     // in 'ai' we keep
@@ -640,7 +668,7 @@ class MultiGraphDenseIntersect {
       auto lambda_set_keep =
           [=] __host__ __device__(int32_t arc_idx012) -> void {
         int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]],
-        dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
+          dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
         int j = state_map_acc(fsa_id, dest_state);
         if (j != -1) {  // the dest-state was kept..
           keep_this_arc_data[arc_idx012] = 1;
@@ -687,9 +715,8 @@ class MultiGraphDenseIntersect {
         Ragged<ArcInfo>(curr_frame_arc_shape, curr_frame_arc_array1);
 
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
-    // TODO(haowen): implement Ragged2FromRowIds?
-    // ans->states = Ragged2FromRowIds(num_fsas, state_to_fsa_id,
-    //                               Array1<ArcInfo>(c_, num_arcs));
+    ans->states = Ragged<StateInfo>(RaggedShape2(nullptr, &state_to_fsa_id, -1),
+                                    Array1<StateInfo>(c_, num_states));
     StateInfo *ans_states_data = ans->states.values.Data();
     const int32_t minus_inf =
         FloatToOrderedInt(-std::numeric_limits<float>::infinity());

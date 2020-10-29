@@ -19,14 +19,15 @@ namespace k2 {
 
 TEST(Intersect, Simple) {
   std::string s = R"(0 1 1 0.0
-    1 2 -1 0.0
-    2
+    1 2 2 1.0
+    2 3 -1 0.0
+    3
   )";
   auto fsa = FsaFromString(s);
 
   DenseFsaVec dfsavec {
     RaggedShape("[ [ x x x ] ]"),
-    Array2<float>("[ [ -Inf 0.0 0.0 ] [ -Inf 0.0 0.0 ] [ 0.0 -Inf -Inf ]]")
+    Array2<float>("[ [ -Inf 0.0 0.0 0.0 ] [ -Inf 0.0 0.0 0.0 ] [ 0.0 -Inf -Inf -Inf]]")
   };
 
   float beam = 100000;
