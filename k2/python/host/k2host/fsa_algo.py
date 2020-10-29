@@ -50,10 +50,10 @@ class TopSorter(_TopSorter):
     def get_sizes(self, array_size: IntArray2Size) -> None:
         return super().get_sizes(array_size)
 
-    def get_output(self, fsa_out: Fsa, state_map: IntArray1 = None) -> bool:
+    def get_output(self, fsa_out: Fsa, arc_map: IntArray1 = None) -> bool:
         return super().get_output(
             fsa_out.get_base(),
-            state_map.get_base() if state_map is not None else None)
+            arc_map.get_base() if arc_map is not None else None)
 
 
 class Connection(_Connection):

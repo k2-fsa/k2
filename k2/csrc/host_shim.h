@@ -282,12 +282,9 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, std::size_t npath = 100);
   exists in the other one and the sum of weights along that path are the same.
 
   @param [in]  a          One of the FSAs to be checked the equivalence.
-                          Must have NumAxes() == 2 and on CPU.
+                          Must be top-sorted and have NumAxes() == 2 and on CPU.
   @param [in]  b          The other FSA to be checked the equivalence.
-                          Must have NumAxes() == 2 and on CPU.
-  @param [in]  top_sorted The user may set this to true if both `a` and `b` are
-                          topologically sorted; this makes this function faster.
-                          Otherwise it must be set to false.
+                          Must be top-sorted and have NumAxes() == 2 and on CPU.
   @param [in]  log_semiring If true, the algorithm will only check paths
                           within `beam` of the log-sum probs over
                           all pahts;
@@ -314,7 +311,7 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, std::size_t npath = 100);
   @param [in]  npath      The number of paths will be generated to check the
                           equivalence of `a` and `b`
  */
-bool IsRandEquivalent(Fsa &a, Fsa &b, bool top_sorted, bool log_semiring,
+bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
                       float beam = k2host::kFloatInfinity, float delta = 1e-6,
                       std::size_t npath = 100);
 

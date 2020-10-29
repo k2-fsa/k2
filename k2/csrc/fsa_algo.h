@@ -3,7 +3,7 @@
  * compose
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -18,7 +18,7 @@
 namespace k2 {
 
 /*
-  This version of Connect() works for a single FSA.
+  This version of Connect() works for both Fsa and FsaVec.
     @param [in] src  Source FSA
     @param [out] dest   Destination; at exit will be equivalent to `src`
                      but will have no states that are unreachable or which
@@ -32,9 +32,6 @@ namespace k2 {
             does not imply that `dest` is nonempty.
 
    CAUTION: for now this only works for CPU.
-
-   This works for both Fsa and FsaVec!
-
  */
 bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
@@ -74,6 +71,29 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
   where the procedure is repeated until no vertices are left."
 */
 void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
+
+/*
+  Same with `TopSort` above, but only works for CPU. It's just a wrapper of
+  `TopSorter` in host/topsort.h. We use it for test purpose, users should never
+  call this function in production code. Instead, you should call the version
+  above.
+      @param [in] src  Input Fsa or FsaVec
+      @param [out] dest  Output Fsa or FsaVec.  At exit, its states will be
+                      top-sorted.  (However, if `src` contained cycles other
+                      than self-loops, it won't contain all of the states
+                      in the input; this can be detected by the user directly
+                      by looking at the number of states.
+      @param [out] arc_map  If not nullptr, at exit a map from arc-indexes in
+                      `dest` to their source arc-indexes in `src` will have
+                       been assigned to this location.
+      @return Returns true on success (i.e. the output will be topsorted).
+            The only failure condition is when the input had cycles that were
+            not self loops. Noted we may remove those states in the
+            input Fsa which are not accessible or co-accessible.
+            Caution: true return status does not imply that the returned FSA
+            is nonempty.
+ */
+bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
 /*
   compose/intersect array of FSAs (multiple streams decoding or training in

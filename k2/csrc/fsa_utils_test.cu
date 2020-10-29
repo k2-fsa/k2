@@ -747,8 +747,7 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
   {
     // random case
     for (int32_t i = 0; i != 2; ++i) {
-      // for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-      for (auto &context : {GetCpuContext()}) {
+      for (auto &context : {GetCpuContext(), GetCudaContext()}) {
         FsaVec random_fsas = RandomFsaVec();
         FsaVec fsa_vec = random_fsas.To(context);
         int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
@@ -772,8 +771,6 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
               GetBackwardScores<float>(cpu_fsa_vec, nullptr, false);
           CheckArrayData(scores, cpu_scores);
         }
-        // TODO(haowen): will get -nan in below tests, may be related to use
-        // infinity
         {
           // max with tot_scores provided
           Array1<float> forward_scores = GetForwardScores<float>(

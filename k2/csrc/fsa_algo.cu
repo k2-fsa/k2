@@ -3,7 +3,7 @@
 
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
@@ -18,6 +18,7 @@
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/host/connect.h"
 #include "k2/csrc/host/intersect.h"
+#include "k2/csrc/host/topsort.h"
 #include "k2/csrc/host_shim.h"
 
 // this contains a subset of the algorithms in fsa_algo.h; currently it just
@@ -37,8 +38,8 @@ bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
     if (!f(srcs[i], &(dests[i]), (arc_map ? &(arc_maps[i]) : nullptr)))
       return false;
   }
-  *dest = Stack(0, num_fsas, &(dests[0]));
-  if (arc_map) *arc_map = Append(num_fsas, &(arc_maps[0]));
+  *dest = Stack(0, num_fsas, dests.data());
+  if (arc_map) *arc_map = Append(num_fsas, arc_maps.data());
   return true;
 }
 
@@ -62,6 +63,30 @@ bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
     arc_map_data = arc_map->Data();
   }
   bool ans = c.GetOutput(&host_dest_fsa, arc_map_data);
+  *dest = creator.GetFsa();
+  return ans;
+}
+
+bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
+  int32_t num_axes = src.NumAxes();
+  if (num_axes < 2 || num_axes > 3) {
+    K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
+  } else if (num_axes == 3) {
+    return RecursionWrapper(HostTopSort, src, dest, arc_map);
+  }
+
+  k2host::Fsa host_fsa = FsaToHostFsa(src);
+  k2host::TopSorter sorter(host_fsa);
+  k2host::Array2Size<int32_t> size;
+  sorter.GetSizes(&size);
+  FsaCreator creator(size);
+  k2host::Fsa host_dest_fsa = creator.GetHostFsa();
+  int32_t *arc_map_data = nullptr;
+  if (arc_map != nullptr) {
+    *arc_map = Array1<int32_t>(src.Context(), size.size2);
+    arc_map_data = arc_map->Data();
+  }
+  bool ans = sorter.GetOutput(&host_dest_fsa, arc_map_data);
   *dest = creator.GetFsa();
   return ans;
 }
