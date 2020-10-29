@@ -39,14 +39,13 @@ TEST(TopSortTest, TopSort) {
 
     FsaCreator fsa_creator_out(fsa_size);
     auto &top_sorted = fsa_creator_out.GetFsa();
-    std::vector<int32_t> state_map(fsa_size.size1);
-    bool status = sorter.GetOutput(&top_sorted, state_map.data());
+    std::vector<int32_t> arc_map(fsa_size.size2);
+    bool status = sorter.GetOutput(&top_sorted, arc_map.data());
 
     EXPECT_TRUE(status);
     EXPECT_TRUE(IsEmpty(top_sorted));
-    EXPECT_TRUE(state_map.empty());
+    EXPECT_TRUE(arc_map.empty());
   }
-
   {
     // case 2: non-connected fsa (not co-accessible)
     std::vector<Arc> arcs = {{0, 2, -1, 0}, {1, 2, -1, 0}, {1, 2, 0, 0}};
@@ -56,14 +55,17 @@ TEST(TopSortTest, TopSort) {
     Array2Size<int32_t> fsa_size;
     sorter.GetSizes(&fsa_size);
 
+    EXPECT_EQ(fsa_size.size1, 2);
+    EXPECT_EQ(fsa_size.size2, 1);
+
     FsaCreator fsa_creator_out(fsa_size);
     auto &top_sorted = fsa_creator_out.GetFsa();
-    std::vector<int32_t> state_map(fsa_size.size1);
-    bool status = sorter.GetOutput(&top_sorted, state_map.data());
+    std::vector<int32_t> arc_map(fsa_size.size2);
+    bool status = sorter.GetOutput(&top_sorted, arc_map.data());
 
-    EXPECT_FALSE(status);
-    EXPECT_TRUE(IsEmpty(top_sorted));
-    EXPECT_TRUE(state_map.empty());
+    ASSERT_FALSE(IsEmpty(top_sorted));
+    EXPECT_TRUE(IsTopSorted(top_sorted));
+    EXPECT_THAT(arc_map, ::testing::ElementsAre(0));
   }
 
   {
@@ -79,14 +81,17 @@ TEST(TopSortTest, TopSort) {
     Array2Size<int32_t> fsa_size;
     sorter.GetSizes(&fsa_size);
 
+    EXPECT_EQ(fsa_size.size1, 2);
+    EXPECT_EQ(fsa_size.size2, 1);
+
     FsaCreator fsa_creator_out(fsa_size);
     auto &top_sorted = fsa_creator_out.GetFsa();
-    std::vector<int32_t> state_map(fsa_size.size1);
-    bool status = sorter.GetOutput(&top_sorted, state_map.data());
+    std::vector<int32_t> arc_map(fsa_size.size2);
+    bool status = sorter.GetOutput(&top_sorted, arc_map.data());
 
-    EXPECT_FALSE(status);
-    EXPECT_TRUE(IsEmpty(top_sorted));
-    EXPECT_TRUE(state_map.empty());
+    ASSERT_FALSE(IsEmpty(top_sorted));
+    EXPECT_TRUE(IsTopSorted(top_sorted));
+    EXPECT_THAT(arc_map, ::testing::ElementsAre(0));
   }
 
   {
@@ -103,13 +108,13 @@ TEST(TopSortTest, TopSort) {
 
     FsaCreator fsa_creator_out(fsa_size);
     auto &top_sorted = fsa_creator_out.GetFsa();
-    std::vector<int32_t> state_map(fsa_size.size1);
-    bool status = sorter.GetOutput(&top_sorted, state_map.data());
+    std::vector<int32_t> arc_map(fsa_size.size2);
+    bool status = sorter.GetOutput(&top_sorted, arc_map.data());
 
     ASSERT_EQ(top_sorted.NumStates(), fsa.NumStates());
 
-    ASSERT_FALSE(state_map.empty());
-    EXPECT_THAT(state_map, ::testing::ElementsAre(0, 4, 5, 2, 3, 1, 6));
+    ASSERT_FALSE(arc_map.empty());
+    EXPECT_THAT(arc_map, ::testing::ElementsAre(0, 1, 6, 7, 3, 4, 5, 2));
 
     ASSERT_FALSE(IsEmpty(top_sorted));
     EXPECT_TRUE(IsTopSorted(top_sorted));

@@ -41,32 +41,33 @@ class TopSorter {
 
   /*
     Finish the operation and output the top-sorted FSA to `fsa_out` and
-    state mapping information to `state_map` (if provided).
-    @param [out]  fsa_out Output fsa. It is set to empty if the input fsa is not
-                          acyclic or is not connected; otherwise it contains the
-                          top-sorted fsa.
+    arc mapping information to `arc_map` (if provided).
+    @param [out]  fsa_out Output fsa. It is set to empty if the input fsa had
+                          cycles other than self-loops; otherwise it contains
+                          the top-sorted fsa.
                           Must be initialized; search for 'initialized
                           definition' in class Array2 in array.h for meaning.
-    @param [out]  state_map   If non-NULL, Maps from state indexes in the output
-                              fsa to state indexes in input fsa.
+    @param [out]  arc_map If non-NULL, Maps from arc indexes in the output
+                              fsa to arc indexes in input fsa.
                               If non-NULL, at entry it must be allocated with
-                              size num-states of `fsa_out`,
-                              e.g. `fsa_out->size1`.
-
-    @return true if the input fsa is acyclic and connected,
-            or if the input is empty; return false otherwise.
+                              size num-arcs of `fsa_out`,
+                              e.g. `fsa_out->size2`.
+    @return Returns true on success (i.e. the output will be topsorted).
+            The only failure condition is when the input had cycles that were
+            not self loops. Noted we may remove those states in the
+            input Fsa which are not accessible or co-accessible.
+            Caution: true return status does not imply that the returned FSA
+            is nonempty.
    */
-  bool GetOutput(Fsa *fsa_out, int32_t *state_map = nullptr);
+  bool GetOutput(Fsa *fsa_out, int32_t *arc_map = nullptr);
 
  private:
   const Fsa &fsa_in_;
 
-  bool is_connected_;  // if the input FSA is connected
-  bool is_acyclic_;    // if the input FSA is acyclic
-  // map order to state.
-  // state 0 has the largest order, i.e., num_states - 1
-  // final_state has the least order, i.e., 0
-  std::vector<int32_t> order_;
+  bool is_acyclic_;  // if the input FSA is acyclic (may have self-loops)
+  std::vector<int32_t> arc_indexes_;  // arc_index of fsa_out
+  std::vector<Arc> arcs_;             // arcs of fsa_out
+  std::vector<int32_t> arc_map_;
 };
 
 }  // namespace k2host

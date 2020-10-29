@@ -12,6 +12,7 @@
 
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/host_shim.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/test_utils.h"
 
@@ -190,6 +191,63 @@ TEST(TopSort, RandomVectorOfFsas) {
     int32_t num_arcs = sorted.TotSize(2);
     for (int32_t i = 0; i != num_arcs; ++i) {
       EXPECT_EQ(arcs[i].score, arc_map[i]);
+    }
+  }
+}
+
+// another random test which uses IsRandEquivalent to check the result
+TEST(TopSort, RandomVectorOfFsas1) {
+  ContextPtr cpu = GetCpuContext();
+  for (int32_t n = 0; n != 0; ++n) {
+    // for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : {GetCpuContext()}) {
+      K2_LOG(INFO) << n;
+      // We have to generate epsilon-free Fsas here as we will call Intersect
+      // below (in `IsRandEquivalent`) which requires at least one of the two
+      // input Fsas is epsilon-free.
+      FsaVec random_fsas = RandomFsaVec(1, 1000, false, true);
+      FsaVec fsa_vec = random_fsas.To(context);
+      FsaVec cpu_fsa_vec = fsa_vec.To(cpu);
+      int32_t num_fsas = fsa_vec.Dim0();
+
+      int32_t gt = kFsaPropertiesTopSorted;
+      Array1<int32_t> properties;
+      int32_t p;
+      GetFsaVecBasicProperties(fsa_vec, &properties, &p);
+
+      ASSERT_EQ(properties.Dim(), num_fsas);
+      properties = properties.To(cpu);
+      Array1<bool> is_top_sorted = IsTopSorted(cpu_fsa_vec);
+      ASSERT_EQ(is_top_sorted.Dim(), num_fsas);
+      for (int32_t i = 0; i != num_fsas; ++i) {
+        // Even if we set `acyclic=false`, `RandomFsaVec` may still generate
+        // acyclic Fsas, so `is_top_sorted_this_fsa` below could be either
+        // true or false.
+        bool is_top_sorted_this_fsa = (properties[i] & gt) == gt;
+        EXPECT_EQ(is_top_sorted_this_fsa, is_top_sorted[i]);
+      }
+
+      FsaVec sorted;
+      TopSort(fsa_vec, &sorted);
+
+      GetFsaVecBasicProperties(sorted, &properties, &p);
+      ASSERT_EQ(properties.Dim(), num_fsas);
+      properties = properties.To(cpu);
+      FsaVec cpu_sorted = sorted.To(cpu);
+      is_top_sorted = IsTopSorted(cpu_sorted);
+      ASSERT_EQ(is_top_sorted.Dim(), num_fsas);
+      for (int32_t i = 0; i != num_fsas; ++i) {
+        Fsa cpu_fsa_vec_i = cpu_fsa_vec.Index(0, i);
+        Fsa host_sorted_i;
+        HostTopSort(cpu_fsa_vec_i, &host_sorted_i);
+        Fsa sorted_i = cpu_sorted.Index(0, i);
+        K2_LOG(INFO) << cpu_fsa_vec_i;
+        K2_LOG(INFO) << sorted_i;
+        K2_LOG(INFO) << host_sorted_i;
+        EXPECT_EQ(properties[i] & gt, gt);
+        EXPECT_TRUE(is_top_sorted[i]);
+        EXPECT_TRUE(IsRandEquivalent(sorted_i, host_sorted_i, false));
+      }
     }
   }
 }

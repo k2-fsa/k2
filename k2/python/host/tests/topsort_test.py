@@ -26,11 +26,11 @@ class TestTopSorter(unittest.TestCase):
         array_size = k2host.IntArray2Size()
         sorter.get_sizes(array_size)
         fsa_out = k2host.Fsa.create_fsa_with_size(array_size)
-        state_map = k2host.IntArray1.create_array_with_size(array_size.size1)
-        status = sorter.get_output(fsa_out, state_map)
+        arc_map = k2host.IntArray1.create_array_with_size(array_size.size2)
+        status = sorter.get_output(fsa_out, arc_map)
         self.assertTrue(status)
         self.assertTrue(k2host.is_empty(fsa_out))
-        self.assertTrue(state_map.empty())
+        self.assertTrue(arc_map.empty())
 
         # test without arc_map
         sorter.get_output(fsa_out)
@@ -49,11 +49,12 @@ class TestTopSorter(unittest.TestCase):
         array_size = k2host.IntArray2Size()
         sorter.get_sizes(array_size)
         fsa_out = k2host.Fsa.create_fsa_with_size(array_size)
-        state_map = k2host.IntArray1.create_array_with_size(array_size.size1)
-        status = sorter.get_output(fsa_out, state_map)
-        self.assertFalse(status)
-        self.assertTrue(k2host.is_empty(fsa_out))
-        self.assertTrue(state_map.empty())
+        arc_map = k2host.IntArray1.create_array_with_size(array_size.size2)
+        status = sorter.get_output(fsa_out, arc_map)
+        self.assertTrue(status)
+        self.assertFalse(k2host.is_empty(fsa_out))
+        expected_arc_map = torch.IntTensor([0])
+        self.assertTrue(torch.equal(arc_map.data, expected_arc_map))
 
     def test_case_3(self):
         # non-connected fsa (not accessible)
@@ -68,11 +69,12 @@ class TestTopSorter(unittest.TestCase):
         array_size = k2host.IntArray2Size()
         sorter.get_sizes(array_size)
         fsa_out = k2host.Fsa.create_fsa_with_size(array_size)
-        state_map = k2host.IntArray1.create_array_with_size(array_size.size1)
-        status = sorter.get_output(fsa_out, state_map)
-        self.assertFalse(status)
-        self.assertTrue(k2host.is_empty(fsa_out))
-        self.assertTrue(state_map.empty())
+        arc_map = k2host.IntArray1.create_array_with_size(array_size.size2)
+        status = sorter.get_output(fsa_out, arc_map)
+        self.assertTrue(status)
+        self.assertFalse(k2host.is_empty(fsa_out))
+        expected_arc_map = torch.IntTensor([0])
+        self.assertTrue(torch.equal(arc_map.data, expected_arc_map))
 
     def test_case_4(self):
         # connected fsa
@@ -92,18 +94,18 @@ class TestTopSorter(unittest.TestCase):
         array_size = k2host.IntArray2Size()
         sorter.get_sizes(array_size)
         fsa_out = k2host.Fsa.create_fsa_with_size(array_size)
-        state_map = k2host.IntArray1.create_array_with_size(array_size.size1)
-        status = sorter.get_output(fsa_out, state_map)
+        arc_map = k2host.IntArray1.create_array_with_size(array_size.size2)
+        status = sorter.get_output(fsa_out, arc_map)
         self.assertTrue(status)
         expected_arc_indexes = torch.IntTensor([0, 2, 3, 4, 5, 7, 8, 8])
         expected_arcs = torch.IntTensor([[0, 1, 40, 0], [0, 3, 20, 0],
                                          [1, 2, 50, 0], [2, 3, 8, 0],
                                          [3, 4, 30, 0], [4, 6, -1, 0],
                                          [4, 5, 10, 0], [5, 6, -1, 0]])
-        expected_state_map = torch.IntTensor([0, 4, 5, 2, 3, 1, 6])
+        expected_arc_map = torch.IntTensor([0, 1, 6, 7, 3, 4, 5, 2])
         self.assertTrue(torch.equal(fsa_out.indexes, expected_arc_indexes))
         self.assertTrue(torch.equal(fsa_out.data, expected_arcs))
-        self.assertTrue(torch.equal(state_map.data, expected_state_map))
+        self.assertTrue(torch.equal(arc_map.data, expected_arc_map))
 
 
 if __name__ == '__main__':
