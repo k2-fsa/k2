@@ -216,6 +216,36 @@ FsaVec LinearFsas(Ragged<int32_t> &symbols);
 double ShortestPath(Fsa &src, Fsa *out,
                     Array1<int32_t> *best_path_arcs = nullptr);
 
+/* Compute the forward shortest path in the tropical semiring.
+
+   @param [in] fsas  Input FsaVec (must have 3 axes).  Must be
+                 top-sorted and without self loops, i.e. would have the
+                 property kFsaPropertiesTopSortedAndAcyclic if you were
+                 to compute properties.
+
+   @param [out,optional] entering_arcs   If non-NULL, it will be set to
+                a new Array1, indexed by state_idx01 into `fsas`,
+                saying which arc_idx012 is the best arc entering it,
+                or -1 if there is no such arc.
+
+   @return returns a tensor with 2 axes indexed by [fsa_idx0][arc_idx012]
+           containing the best arc indexes of each fsa.
+ */
+Ragged<int32_t> ShortestPath(FsaVec &fsas,
+                             Array1<int32_t> *entering_arcs = nullptr);
+
+/* Create a FsaVec from a tensor of best arc indexes returned by `ShortestPath`.
+
+   @param [in] fsas   Input FsaVec. It must be the same FsaVec for getting
+                      `best_arc_indexes`.
+   @param [in] best_arc_indexes
+                      It is returned by `ShortestPath`.
+
+
+   @return returns a linear FsaVec that contains the best path of `fsas`.
+ */
+FsaVec CreateFsaVec(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_
