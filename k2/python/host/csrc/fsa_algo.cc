@@ -53,11 +53,11 @@ void PyBindTopSort(py::module &m) {
       .def(
           "get_output",
           [](PyClass &self, k2host::Fsa *fsa_out,
-             k2host::Array1<int32_t *> *state_map = nullptr) -> bool {
-            return self.GetOutput(
-                fsa_out, state_map == nullptr ? nullptr : state_map->data);
+             k2host::Array1<int32_t *> *arc_map = nullptr) -> bool {
+            return self.GetOutput(fsa_out,
+                                  arc_map == nullptr ? nullptr : arc_map->data);
           },
-          py::arg("fsa_out"), py::arg("state_map").none(true));
+          py::arg("fsa_out"), py::arg("arc_map").none(true));
 }
 
 void PyBindConnect(py::module &m) {

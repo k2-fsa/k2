@@ -191,7 +191,7 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, std::size_t npath /*= 100*/) {
   return k2host::IsRandEquivalent(host_fsa_a, host_fsa_b, npath);
 }
 
-bool IsRandEquivalent(Fsa &a, Fsa &b, bool top_sorted, bool log_semiring,
+bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
                       float beam /*=k2host::kFloatInfinity*/,
                       float delta /*=1e-6*/, std::size_t npath /*= 100*/) {
   K2_CHECK_EQ(a.NumAxes(), 2);
@@ -202,10 +202,10 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, bool top_sorted, bool log_semiring,
   k2host::Fsa host_fsa_b = FsaToHostFsa(b);
   if (log_semiring) {
     return k2host::IsRandEquivalent<k2host::kLogSumWeight>(
-        host_fsa_a, host_fsa_b, beam, delta, top_sorted, npath);
+        host_fsa_a, host_fsa_b, beam, delta, true, npath);
   } else {
     return k2host::IsRandEquivalent<k2host::kMaxWeight>(
-        host_fsa_a, host_fsa_b, beam, delta, top_sorted, npath);
+        host_fsa_a, host_fsa_b, beam, delta, true, npath);
   }
 }
 

@@ -150,8 +150,12 @@ class TopSorter {
 
     Array1<int32_t> first_iter_values = state_renumbering.New2Old();
     Array1<int32_t> first_iter_row_ids = fsas_.RowIds(1)[first_iter_values];
+    int32_t num_fsas = fsas_.Dim0();
+    Array1<int32_t> first_iter_row_splits(c_, num_fsas + 1);
+    RowIdsToRowSplits(first_iter_row_ids, &first_iter_row_splits);
     return std::make_unique<Ragged<int32_t>>(
-        RaggedShape2(nullptr, &first_iter_row_ids, first_iter_row_ids.Dim()),
+        RaggedShape2(&first_iter_row_splits, &first_iter_row_ids,
+                     first_iter_row_ids.Dim()),
         first_iter_values);
   }
 
@@ -289,7 +293,7 @@ class TopSorter {
       K2_CHECK_GT(final_state, fsas_row_splits1_data[fsa_idx0]);
       ans_data[i] = final_state;
     };
-    Eval(c_, num_fsas, lambda_set_final_state);
+    Eval(c_, n, lambda_set_final_state);
     return ans;
   }
 
@@ -344,7 +348,7 @@ class TopSorter {
     Ragged<int32_t> all_states =
         Append(1, static_cast<int32_t>(iters.size()), iters_ptrs.data());
 
-    K2_CHECK_EQ(all_states.NumElements(), fsas_.TotSize(1))
+    K2_CHECK_LE(all_states.NumElements(), fsas_.TotSize(1))
         << "likely code error";
 
     return RenumberFsaVec(fsas_, all_states.values, arc_map);
