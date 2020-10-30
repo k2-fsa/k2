@@ -27,7 +27,7 @@ TEST(Intersect, Simple) {
 
   DenseFsaVec dfsavec {
     RaggedShape("[ [ x x x ] ]"),
-    Array2<float>("[ [ -Inf 0.0 0.0 0.0 ] [ -Inf 0.0 0.0 0.0 ] [ 0.0 -Inf -Inf -Inf]]")
+    Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf]]")
   };
 
   float beam = 100000;

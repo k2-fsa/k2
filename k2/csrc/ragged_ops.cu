@@ -1076,7 +1076,7 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
 }
 
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
-  K2_CHECK(renumbering.NumOldElems() == src.NumElements());
+  K2_CHECK_EQ(renumbering.NumOldElems(), src.NumElements());
 
   // Make sure final row-ids are populated.
   src.RowIds(src.NumAxes()-1);
@@ -1084,6 +1084,110 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
   axes.back().row_ids = axes.back().row_ids[renumbering.New2Old()];
   axes.back().row_splits = renumbering.Old2New()[axes.back().row_splits];
   axes.back().cached_tot_size = axes.back().row_ids.Dim();
+  return RaggedShape(axes);
+}
+
+
+RaggedShape SubsampleRaggedShape(RaggedShape &src,
+                                 Renumbering &r_before_last,
+                                 Renumbering &r_last) {
+  K2_CHECK_EQ(r_before_last.NumOldElems(),
+              src.TotSize(src.NumAxes() - 2));
+  K2_CHECK_EQ(r_last.NumOldElems(),
+              src.NumElements());
+
+  // Make sure final and before-final row-ids are populated.
+  src.RowIds(src.NumAxes()-2);
+  src.RowIds(src.NumAxes()-1);
+  std::vector<RaggedShapeDim> axes = src.Axes();
+
+  // Suppose this shape has 3 axes (0,1,2).  Its NumAxes()==3;
+  // axes.size()==2.
+  // r_before_last deals with the numbering on axis 1.
+  // r_last deals with the numbering on axis 2.
+
+
+  RaggedShapeDim &before_last = axes[axes.size()-2],
+      &last = axes[axes.size()-1];
+
+  int32_t new_tot_size1 = r_before_last.NumNewElems(),
+      new_tot_size2 = r_last.NumNewElems();
+
+  ContextPtr c = src.Context();
+  Array1<int32_t>
+      before_last_row_ids(c, new_tot_size1),
+      last_row_splits(c, new_tot_size1 + 1),
+      last_row_ids(c, new_tot_size2);
+
+  // The variable names below use this 3-axis assumption but the
+  // code will work for greater number of axes.
+  int32_t
+      *new_row_ids1_data = before_last_row_ids.Data(),
+      *new_row_splits2_data = last_row_splits.Data(),
+      *new_row_ids2_data = last_row_ids.Data();
+
+  const int32_t *old_row_ids1_data = before_last.row_ids.Data(),
+      *old_row_splits2_data = last.row_splits.Data(),
+      *old_row_ids2_data = last.row_ids.Data();
+
+  const int32_t *idx01_new2old_data = r_before_last.New2Old().Data(),
+      *idx01_old2new_data = r_before_last.Old2New().Data(),
+      *idx012_new2old_data = r_last.New2Old().Data(),
+      *idx012_old2new_data = r_last.Old2New().Data();
+
+  ParallelRunner pr(c);
+  {
+    With w(pr.NewStream());
+    // before_last.row_splits maps from idx0 -> idx01 (contains idx01's).  Map the
+    // idx01's; the idx0s stay the same.
+    before_last.row_splits = r_before_last.Old2New()[before_last.row_splits];
+  }
+  {
+    With w(pr.NewStream());
+    auto lambda_set_row_ids1_and_row_splits2 = [=] __host__ __device__ (int32_t new_idx01) -> void {
+      // row_ids1 maps from idx01 -> idx0.  Select subset of
+      // idx01's; the idx0 stays the same.
+      int32_t old_idx01 = idx01_new2old_data[new_idx01];
+      if (new_idx01 < new_tot_size1)
+        new_row_ids1_data[new_idx01] = old_row_ids1_data[old_idx01];
+      // row_splits2 maps from idx01 -> idx012.  Map both indexes.
+      // idx01's; the idx0 stays the same.
+      new_row_splits2_data[new_idx01] = idx012_old2new_data[old_row_splits2_data[old_idx01]];
+    };
+    Eval(c, new_tot_size1 + 1, lambda_set_row_ids1_and_row_splits2);
+  }
+
+  {
+    With w(pr.NewStream());
+    auto lambda_set_row_ids2 = [=] __host__ __device__ (int32_t new_idx012) -> void {
+      // row_ids2 maps from idx012 -> idx01.  Both must be mapped.
+
+      int32_t old_idx012 = idx012_new2old_data[new_idx012];
+      int32_t old_idx01 = old_row_ids2_data[old_idx012],
+        new_idx01 = idx01_old2new_data[old_idx01];
+      new_row_ids2_data[new_idx012] = new_idx01;
+    };
+    Eval(c, new_tot_size2, lambda_set_row_ids2);
+  }
+
+  before_last.row_ids = before_last_row_ids;
+  before_last.cached_tot_size = new_tot_size1;
+  last.row_splits = last_row_splits;
+  last.row_ids = last_row_ids;
+  last.cached_tot_size = new_tot_size2;
+  return RaggedShape(axes);
+}
+
+
+RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes) {
+  K2_CHECK_GE(num_axes, 2);
+  std::vector<RaggedShapeDim> axes(num_axes - 1);
+  axes[0].row_splits = Array1<int32_t>(c, 1, 0);
+  // row_ids will be the empty vector, with context `c`.
+  axes[0].row_ids = axes[0].row_splits.Range(0, 0);
+  axes[0].cached_tot_size = 0;
+  for (int32_t a = 1; a + 1 < num_axes; a++)
+    axes[a] = axes[0];
   return RaggedShape(axes);
 }
 

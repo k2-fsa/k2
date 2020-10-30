@@ -37,8 +37,8 @@ class Renumbering {
     return num_new_elems_;
   }
 
-  // 0 if not kept, 1 if kept (user will write to here).  Its dimension is
-  // `num_old_elems` provided in the constructor.  we allocate initially with an
+  // 0 if not kept, 1 if kept (user will write to here).  Its dimension is the
+  // `num_old_elems` provided in the constructor (the internal array has an
   // extra element because ExclusiveSum reads one past the end (since we get the
   // result with 1 extra element).
   Array1<char> &Keep() { return keep_; }
@@ -48,9 +48,11 @@ class Renumbering {
 
        @return    Returns an array mapping the new indexes to the old
                   (pre-renumbering) indexes. Its dimension is the number of
-                  new index (i.e. the number of 1 in keep_). Will be allocated
-                  with the same context that keep_ holds (should be same with
-                  the context passed in the constructor).
+                  new indexes (i.e. the number of 1 in keep_), but internally
+                  it has one extra element which contains the number of old
+                  elements, so it's OK to read one past the end.  (We may
+                  later make it possible to access the array with the one-larger
+                  dimension).
   */
   Array1<int32_t> &New2Old() {
     if (!new2old_.IsValid()) ComputeNew2Old();
@@ -77,7 +79,9 @@ class Renumbering {
   // ComputeNew2Old() also computes old2new_ if needed.
   void ComputeNew2Old();
 
-  Array1<char> keep_;
+  Array1<char> keep_;    // array of elements to keep; dimension is the
+                         // `num_old_elems` provided in the constructor but it
+                         // was allocated with one extra element.
   Array1<int32_t> old2new_;
   int32_t num_new_elems_;  // equals last element of old2new_; set when
                            // old2new_ is created.

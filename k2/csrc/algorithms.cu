@@ -31,24 +31,25 @@ namespace {
 // CUDA limitations about lambdas in classes with private members.
 inline void ComputeNew2OldHelper(ContextPtr &c, const int32_t *old2new_data,
                                  int32_t *new2old_data, int32_t old_dim) {
-  // caution: the following accesses data one past the end of (current)
+  // Note: the following accesses data one past the end of (current)
   // old2new_, but it does actually exist.
-  auto lambda_set_old2new = [=] __host__ __device__(int32_t old_idx) {
-    if (old2new_data[old_idx + 1] > old2new_data[old_idx])
+  auto lambda_set_new2old = [=] __host__ __device__(int32_t old_idx) {
+    if (old_idx == old_dim ||
+        old2new_data[old_idx + 1] > old2new_data[old_idx])
       new2old_data[old2new_data[old_idx]] = old_idx;
   };
-  Eval(c, old_dim, lambda_set_old2new);
+  Eval(c, old_dim + 1, lambda_set_new2old);
 }
 }  // namespace
 
 void Renumbering::ComputeNew2Old() {
   if (!old2new_.IsValid()) ComputeOld2New();
-  new2old_ = Array1<int32_t>(keep_.Context(), num_new_elems_);
-
+  new2old_ = Array1<int32_t>(keep_.Context(), num_new_elems_ + 1);
   const int32_t *old2new_data = old2new_.Data();
   int32_t *new2old_data = new2old_.Data();
   ComputeNew2OldHelper(keep_.Context(), old2new_data, new2old_data,
                        keep_.Dim());
+  new2old_ = new2old_.Range(0, num_new_elems_);
 }
 
 }  // namespace k2

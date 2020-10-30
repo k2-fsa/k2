@@ -367,8 +367,24 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
   Require renumbering.NumOldElems() == src.NumElements().  Note: all
   dimensions and tot-sizes preceding the final axis will remain the same, which
   might give rise to empty lists.
+
+  Notice the other version of this function below.
  */
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
+
+
+/*
+  Return ragged shape with only a subset of the elements on the last
+  and one-before-last axes kept.
+
+  Require renumbering_last.NumOldElems() == src.NumElements(), and
+  renumbering_before_last.NumOldElems() == src.TotSize(src.NumAxes() - 2).
+  Note: all dimensions and tot-sizes preceding the last two axes will remain the
+  same, which might give rise to empty lists.
+ */
+RaggedShape SubsampleRaggedShape(RaggedShape &src,
+                                 Renumbering &renumbering_before_last,
+                                 Renumbering &renumbering_last);
 
 /*
   Stack a list of Ragged arrays to create a Ragged array with one more axis.
@@ -507,6 +523,13 @@ RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1);
  */
 RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
                                     int32_t *tot_sizes);
+
+/*
+  Returns an empty ragged shape with the specified number of axes.
+  Require num_axes >= 2.
+*/
+RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes);
+
 
 inline RaggedShape RaggedShapeFromTotSizes(ContextPtr &c,
                                            std::vector<int32_t> &tot_sizes) {
