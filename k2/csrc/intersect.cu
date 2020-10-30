@@ -220,7 +220,8 @@ class MultiGraphDenseIntersect {
                                           renumber_output_states_,
                                           renumber_output_arcs_);
 
-    K2_LOG(INFO) << "Oshape_pruned = " << oshape_pruned_;
+    K2_LOG(INFO) << "Oshape_unpruned = " << oshape_unpruned_
+                 << ", Oshape_pruned = " << oshape_pruned_;
   }
 
   // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
@@ -264,8 +265,8 @@ class MultiGraphDenseIntersect {
 
     // the 0123 and 012 express what type of indexes they are, see comment at
     // top of utils.h
-    int32_t *reverse_arc_map0123 = renumber_output_states_.New2Old().Data(),
-            *reverse_state_map012 = renumber_output_states_.New2Old().Data();
+    int32_t *new2old__arc_map0123 = renumber_output_arcs_.New2Old().Data(),
+            *new2old__state_map012 = renumber_output_states_.New2Old().Data();
 
     Array1<ArcInfo *> ai_data_ptrs(c_cpu, T + 1);
     Array1<int32_t *> arcs_row_splits1_ptrs(c_cpu, T + 1);
@@ -300,7 +301,7 @@ class MultiGraphDenseIntersect {
 
     auto lambda_format_arc_data =
         [=] __host__ __device__(int32_t pruned_idx0123) -> void {
-      int32_t unpruned_idx0123 = reverse_state_map012[pruned_idx0123];
+      int32_t unpruned_idx0123 = new2old__arc_map0123[pruned_idx0123];
       int32_t unpruned_idx012 = oshapeu_row_ids3[unpruned_idx0123],
               unpruned_idx01 = oshapeu_row_ids2[unpruned_idx012],
               unpruned_idx01x = oshapeu_row_splits2[unpruned_idx01],
@@ -308,7 +309,7 @@ class MultiGraphDenseIntersect {
               unpruned_idxxx23 = unpruned_idx0123 - unpruned_idx01xx,
               unpruned_idx0 = oshapeu_row_ids1[unpruned_idx01],  // fsa-id
           unpruned_idx0x = oshapeu_row_splits1[unpruned_idx0],
-              // unpruned_idx0xx = oshapeu_row_splits2[unpruned_idx0x],
+          // unpruned_idx0xx = oshapeu_row_splits2[unpruned_idx0x],
           unpruned_idx1 = unpruned_idx01 - unpruned_idx0x,  // t
           unpruned_idx01_next_t = unpruned_idx01 + 1,
               unpruned_idx01x_next_t =
@@ -331,7 +332,7 @@ class MultiGraphDenseIntersect {
               unpruned_dest_state_idx012 =
                   unpruned_idx01x_next_t + unpruned_dest_state_idx2,
               pruned_dest_state_idx012 =
-                  reverse_state_map012[unpruned_dest_state_idx012],
+                  new2old__state_map012[unpruned_dest_state_idx012],
               pruned_dest_state_idx01 =
                   oshapep_row_ids2[pruned_dest_state_idx012],
               pruned_dest_state_idx0 =
@@ -345,7 +346,7 @@ class MultiGraphDenseIntersect {
 
       // note: the src-state and dest-state have the same ind0 which is the
       // FSA-id.
-      int32_t pruned_src_state_idx012 = reverse_state_map012[unpruned_idx012],
+      int32_t pruned_src_state_idx012 = new2old__state_map012[unpruned_idx012],
               pruned_src_state_idxx12 =
                   pruned_src_state_idx012 - pruned_dest_state_idx0xx;
 

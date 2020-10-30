@@ -18,9 +18,10 @@
 namespace k2 {
 
 TEST(Intersect, Simple) {
-  std::string s = R"(0 1 1 0.0
-    1 2 2 1.0
-    2 3 -1 0.0
+  std::string s = R"(0 1 1 1.0
+    1 2 2 2.0
+    1 1 0 50.0
+    2 3 -1 3.0
     3
   )";
   auto fsa = FsaFromString(s);
