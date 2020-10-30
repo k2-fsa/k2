@@ -67,14 +67,19 @@ FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
   int32_t ans_num_arcs = ans_shape.NumElements();
   Array1<Arc> ans_arcs(c, ans_num_arcs);
   int32_t *arc_map_data;
-  if (arc_map) {
+  if (arc_map != nullptr) {
     *arc_map = Array1<int32_t>(c, ans_num_arcs);
     arc_map_data = arc_map->Data();
   } else {
     arc_map_data = nullptr;
   }
+
   const Arc *fsas_arcs = fsas.values.Data();
   Arc *ans_arcs_data = ans_arcs.Data();
+  Renumbering arcs_renumbering(c, ans_num_arcs);
+  // we will remove those arcs whose dest_state is not in `order`,
+  // i.e. old2new_data[dest_state] == -1
+  char *keep_data = arcs_renumbering.Keep().Data();
   auto lambda_set_arcs = [=] __host__ __device__(int32_t ans_idx012) -> void {
     int32_t ans_idx01 = ans_row_ids2_data[ans_idx012],  // state index
         ans_idx01x = ans_row_splits2_data[ans_idx01],
@@ -91,15 +96,58 @@ FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
             fsas_src_idx01 = fsas_idx0x + fsas_src_idx1,
             fsas_dest_idx01 = fsas_idx0x + fsas_dest_idx1;
     K2_CHECK_EQ(old2new_data[fsas_src_idx01], ans_idx01);
-    int32_t ans_dest_idx01 = old2new_data[fsas_dest_idx01],
-            ans_dest_idx1 = ans_dest_idx01 - ans_idx0x;
-    arc.src_state = ans_idx1;
-    arc.dest_state = ans_dest_idx1;
-    ans_arcs_data[ans_idx012] = arc;
-    if (arc_map_data) arc_map_data[ans_idx012] = fsas_idx012;
+    int32_t ans_dest_idx01 = old2new_data[fsas_dest_idx01];
+    if (ans_dest_idx01 != -1) {
+      int32_t ans_dest_idx1 = ans_dest_idx01 - ans_idx0x;
+      arc.src_state = ans_idx1;
+      arc.dest_state = ans_dest_idx1;
+      ans_arcs_data[ans_idx012] = arc;
+      keep_data[ans_idx012] = 1;
+    } else {
+      keep_data[ans_idx012] = 0;
+    }
+    if (arc_map_data != nullptr) arc_map_data[ans_idx012] = fsas_idx012;
   };
-  Eval(c, ans_shape.NumElements(), lambda_set_arcs);
-  return FsaVec(ans_shape, ans_arcs);
+  Eval(c, ans_num_arcs, lambda_set_arcs);
+
+  if (order.Dim() != fsas.TotSize(1)) {
+    Array1<int32_t> valid_arc_new2old = arcs_renumbering.New2Old();
+    int32_t valid_num_arcs = valid_arc_new2old.Dim();
+    Array1<int32_t> valid_row_ids2(c, valid_num_arcs);
+    Array1<Arc> valid_arcs(c, valid_num_arcs);
+    int32_t *valid_row_ids2_data = valid_row_ids2.Data();
+    Arc *valid_arcs_data = valid_arcs.Data();
+    const int32_t *valid_arc_new2old_data = valid_arc_new2old.Data();
+
+    Array1<int32_t> valid_arc_map;
+    int32_t *valid_arc_map_data;
+    if (arc_map != nullptr) {
+      valid_arc_map = Array1<int32_t>(c, valid_num_arcs);
+      valid_arc_map_data = valid_arc_map.Data();
+    } else {
+      valid_arc_map_data = nullptr;
+    }
+
+    auto lambda_set_valid_arcs_and_row_ids2 =
+        [=] __host__ __device__(int32_t valid_arc_idx012) -> void {
+      int32_t ans_arc_idx012 = valid_arc_new2old_data[valid_arc_idx012];
+      valid_row_ids2_data[valid_arc_idx012] = ans_row_ids2_data[ans_arc_idx012];
+      valid_arcs_data[valid_arc_idx012] = ans_arcs_data[ans_arc_idx012];
+      if (arc_map_data != nullptr)
+        valid_arc_map_data[valid_arc_idx012] = arc_map_data[ans_arc_idx012];
+    };
+    Eval(c, valid_num_arcs, lambda_set_valid_arcs_and_row_ids2);
+
+    Array1<int32_t> valid_row_splits2(c, new_num_states + 1);
+    RowIdsToRowSplits(valid_row_ids2, &valid_row_splits2);
+
+    if (arc_map != nullptr) *arc_map = valid_arc_map;
+    return FsaVec(RaggedShape3(&new_row_splits1, &new_row_ids1, -1,
+                               &valid_row_splits2, &valid_row_ids2, -1),
+                  valid_arcs);
+  } else {
+    return FsaVec(ans_shape, ans_arcs);
+  }
 }
 
 class TopSorter {
@@ -135,7 +183,6 @@ class TopSorter {
     Renumbering state_renumbering(c_, num_states);
     // NOTE: this is not very optimal given that we're keeping only a small
     // number of states, but at this point I don't want to optimize too heavily.
-    // The (dest_states_data[i] != i) part is to avoid self-loops.
     char *keep_data = state_renumbering.Keep().Data();
     const int32_t *state_in_degree_data = state_in_degree_.Data(),
                   *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
@@ -217,7 +264,12 @@ class TopSorter {
           fsas_idx01x = fsas_row_splits2_data[fsas_idx01],
               fsas_idx012 = fsas_idx01x + arcs_idx2,
               fsas_dest_state_idx01 = dest_states_data[fsas_idx012];
-
+      // if this arc is a self-loop, just ignore this arc as we have processed
+      // the dest_state (==src_state)
+      if (fsas_dest_state_idx01 == fsas_idx01) {
+        keep_arc_data[arcs_idx012] = 0;
+        return;
+      }
       if ((keep_arc_data[arcs_idx012] = AtomicDecAndCompareZero(
                state_in_degree_data + fsas_dest_state_idx01))) {
         next_iter_states_data[arcs_idx012] = fsas_dest_state_idx01;
@@ -307,7 +359,21 @@ class TopSorter {
 
     dest_states_ = Ragged<int32_t>(fsas_.shape, dest_states_idx01);
 
-    state_in_degree_ = GetCounts(dest_states_.values, num_states);
+    // remove those arcs which are self-loops, as we will not count them in
+    // state_in_degree_
+    Renumbering arc_renumbering(c_, num_arcs);
+    char *keep_arc_data = arc_renumbering.Keep().Data();
+    const int32_t *dest_states_data = dest_states_.values.Data(),
+                  *fsas_row_ids2_data = fsas_.RowIds(2).Data();
+    auto lambda_set_keep_arc =
+        [=] __host__ __device__(int32_t arc_idx012) -> void {
+      int32_t dest_state_idx01 = dest_states_data[arc_idx012],
+              src_state_idx01 = fsas_row_ids2_data[arc_idx012];
+      keep_arc_data[arc_idx012] = dest_state_idx01 != src_state_idx01;
+    };
+    Eval(c_, num_arcs, lambda_set_keep_arc);
+    state_in_degree_ =
+        GetCounts(dest_states_.values[arc_renumbering.New2Old()], num_states);
 
     int32_t *state_in_degree_data = state_in_degree_.Data();
     const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
@@ -347,11 +413,44 @@ class TopSorter {
     for (size_t i = 0; i < iters.size(); ++i) iters_ptrs[i] = iters[i].get();
     Ragged<int32_t> all_states =
         Append(1, static_cast<int32_t>(iters.size()), iters_ptrs.data());
+    int32_t num_states = all_states.NumElements();
 
-    K2_CHECK_LE(all_states.NumElements(), fsas_.TotSize(1))
-        << "likely code error";
-
-    return RenumberFsaVec(fsas_, all_states.values, arc_map);
+    if (num_states != fsas_.TotSize(1)) {
+      K2_CHECK_LE(num_states, fsas_.TotSize(1)) << "likely code error";
+      // if there is only one state (must be final_state) in an Fsa after
+      // top-sorting, we'll delete that state; Otherwise, we may generate
+      // invalid Fsa, i.e. an Fsa have only one state.
+      Renumbering state_renumbering(c_, num_states);
+      char *keep_state_data = state_renumbering.Keep().Data();
+      const int32_t *all_states_row_splits1 = all_states.RowSplits(1).Data(),
+                    *all_states_row_ids1 = all_states.RowIds(1).Data(),
+                    *all_states_values = all_states.values.Data(),
+                    *fsas_row_splits1 = fsas_.RowSplits(1).Data();
+      auto lambda_set_keep_state_data =
+          [=] __host__ __device__(int32_t i) -> void {
+        int32_t state_idx01 = all_states_values[i],
+                fsa_idx0 = all_states_row_ids1[i],
+                num_states_kept_this_fsa =
+                    all_states_row_splits1[fsa_idx0 + 1] -
+                    all_states_row_splits1[fsa_idx0];
+        K2_CHECK_GT(num_states_kept_this_fsa, 0);
+        if (num_states_kept_this_fsa == 1) {
+          keep_state_data[i] = 0;
+          // according to our implementation of GetFinalBatch, it must be the
+          // final state of Fsa `fsa_idx0`
+          int32_t fsa_final_state_idx01 = fsas_row_splits1[fsa_idx0 + 1] - 1;
+          K2_CHECK_EQ(state_idx01, fsa_final_state_idx01);
+        } else {
+          keep_state_data[i] = 1;
+        }
+      };
+      Eval(c_, num_states, lambda_set_keep_state_data);
+      Array1<int32_t> kept_states_new2old = state_renumbering.New2Old();
+      Array1<int32_t> kept_states = all_states.values[kept_states_new2old];
+      return RenumberFsaVec(fsas_, kept_states, arc_map);
+    } else {
+      return RenumberFsaVec(fsas_, all_states.values, arc_map);
+    }
   }
 
   ContextPtr c_;

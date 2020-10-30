@@ -241,15 +241,34 @@ TEST(TopSort, RandomVectorOfFsas1) {
         Fsa host_sorted_i;
         HostTopSort(cpu_fsa_vec_i, &host_sorted_i);
         Fsa sorted_i = cpu_sorted.Index(0, i);
-        K2_LOG(INFO) << cpu_fsa_vec_i;
-        K2_LOG(INFO) << sorted_i;
-        K2_LOG(INFO) << host_sorted_i;
         EXPECT_EQ(properties[i] & gt, gt);
         EXPECT_TRUE(is_top_sorted[i]);
+        if (!IsRandEquivalent(sorted_i, host_sorted_i, false)) {
+          K2_LOG(INFO) << cpu_fsa_vec_i;
+          K2_LOG(INFO) << sorted_i;
+          K2_LOG(INFO) << host_sorted_i;
+        }
         EXPECT_TRUE(IsRandEquivalent(sorted_i, host_sorted_i, false));
       }
     }
   }
+}
+
+TEST(TopSort, SingleFsa1) {
+  // TODO(haowen): will delete this function after testing, please ignore this
+  // for now
+  std::string s = R"(1 0 2 4
+    1 2 -1 5
+    2
+  )";
+
+  auto fsa = FsaFromString(s);
+  K2_LOG(INFO) << fsa;
+
+  Fsa sorted;
+  Array1<int32_t> arc_map;
+  TopSort(fsa, &sorted, &arc_map);
+  K2_LOG(INFO) << sorted;
 }
 
 }  // namespace k2
