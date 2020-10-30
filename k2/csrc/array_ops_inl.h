@@ -534,6 +534,28 @@ bool Equal(const Array2<T> &a, const Array2<T> &b) {
 }
 
 
+template <typename T>
+bool IsMonotonic(const Array1<T> &a) {
+  ContextPtr &c = a.Context();
+  int32_t dim = a.Dim();
+  const T *data = a.Data();
+  if (c->GetDeviceType() == kCpu) {
+    for (int i = 0; i + 1 < dim; i++)
+      if (data[i + 1] < data[i])
+        return false;
+    return true;
+  } else {
+    Array1<int32_t> is_monotonic(c, 1, 1);
+    int32_t *is_monotonic_data = is_monotonic.Data();
+    auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
+      if (data[i + 1] < data[i])
+        *is_monotonic_data = 0;
+    };
+    Eval(c, dim - 1, lambda_test);
+    return is_monotonic[0];
+  }
+}
+
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
   K2_STATIC_ASSERT((std::is_convertible<S, T>::value));
