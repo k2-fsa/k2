@@ -270,11 +270,18 @@ Array1<bool> IsConnected(FsaOrVec &fsas);
 */
 
 /*
-  Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
-  generating `npath` paths from one of them and then checking if the
-  paths exist in the other one. `a` and `b` must have NumAxes() == 2 and on CPU.
+  (for Fsas):
+    Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
+    generating `npath` paths from one of them and then checking if the
+    paths exist in the other one with the same weight.
+
+   (for FsaVec):
+     Returns true if IsRandEquivalent is true for all of the corresponding
+     elements of a and b.
+
+   The algorithm is done on CPU; the FSAs will be copied to CPU if needed.
  */
-bool IsRandEquivalent(Fsa &a, Fsa &b, std::size_t npath = 100);
+bool IsRandEquivalent(FsaOrVec &a, FsaOrVec &b, std::size_t npath = 100);
 
 /*
   Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly

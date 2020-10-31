@@ -184,11 +184,23 @@ Array1<bool> IsConnected(FsaOrVec &fsas) {
   return CheckProperties(fsas, k2host::IsConnected);
 }
 
-bool IsRandEquivalent(Fsa &a, Fsa &b, std::size_t npath /*= 100*/) {
-  K2_CHECK_EQ(a.NumAxes(), 2);
-  K2_CHECK_EQ(b.NumAxes(), 2);
-  K2_CHECK_EQ(a.Context()->GetDeviceType(), kCpu);
-  K2_CHECK_EQ(b.Context()->GetDeviceType(), kCpu);
+bool IsRandEquivalent(FsaOrVec &a, FsaOrVec &b, std::size_t npath /*= 100*/) {
+  K2_CHECK_GE(a.NumAxes(), 2);
+  K2_CHECK_EQ(b.NumAxes(), a.NumAxes());
+  if (a.Context()->GetDeviceType() != kCpu ||
+      b.Context()->GetDeviceType() != kCpu) {
+    FsaOrVec a_cpu = a.To(GetCpuContext()),
+        b_cpu = b.To(GetCpuContext());
+    return IsRandEquivalent(a_cpu, b_cpu, npath);
+  }
+  if (a.NumAxes() > 2) {
+    for (int32_t i = 0; i < a.Dim0(); i++) {
+      Fsa a_part = a.Index(0, i), b_part = b.Index(0, i);
+      if (!IsRandEquivalent(a_part, b_part, npath))
+        return false;
+    }
+    return true;
+  }
   k2host::Fsa host_fsa_a = FsaToHostFsa(a);
   k2host::Fsa host_fsa_b = FsaToHostFsa(b);
   return k2host::IsRandEquivalent(host_fsa_a, host_fsa_b, npath);

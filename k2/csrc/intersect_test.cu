@@ -14,6 +14,7 @@
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/test_utils.h"
+#include "k2/csrc/host_shim.h"
 
 namespace k2 {
 
@@ -52,6 +53,7 @@ TEST(Intersect, Simple) {
   Intersect(fsa, fsas_b, treat_epsilons_specially,
             &out_fsas2,
             &arc_map_a2, &arc_map_b2);
+  K2_CHECK(IsRandEquivalent(out_fsas, out_fsas2));
 
   K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                << ", arc_map_a2 = " << arc_map_a2
