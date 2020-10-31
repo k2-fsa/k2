@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -204,7 +205,7 @@ FsaVec LinearFsas(Ragged<int32_t> &symbols);
 
    @param [out] out          The output FSA. It is a linear FSA containing
                              the best path.
-   @param [out] best_path_arcs
+   @param [out] best_path_arc_indexes
                              The arc indexes of the best path from the start
                              state to the final state. It is empty if there
                              is no such path.
@@ -214,7 +215,7 @@ FsaVec LinearFsas(Ragged<int32_t> &symbols);
            FSA is empty.
  */
 double ShortestPath(Fsa &src, Fsa *out,
-                    Array1<int32_t> *best_path_arcs = nullptr);
+                    Array1<int32_t> *best_path_arc_indexes = nullptr);
 
 /* Compute the forward shortest path in the tropical semiring.
 

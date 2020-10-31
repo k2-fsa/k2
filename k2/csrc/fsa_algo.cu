@@ -291,7 +291,7 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
 }
 
 double ShortestPath(Fsa &src, Fsa *out,
-                    Array1<int32_t> *best_path_arcs /* = nullptr*/) {
+                    Array1<int32_t> *best_path_arc_indexes /* = nullptr*/) {
   if (!src.values.IsValid()) return -std::numeric_limits<double>::infinity();
 
   ContextPtr &context = src.Context();
@@ -323,8 +323,8 @@ double ShortestPath(Fsa &src, Fsa *out,
   RaggedShape shape = RaggedShape2(&row_splits, nullptr, num_arcs);
   *out = Fsa(shape, arcs);
 
-  if (best_path_arcs != nullptr)
-    *best_path_arcs = Array1<int32_t>(context, tmp_arc_indexes);
+  if (best_path_arc_indexes != nullptr)
+    *best_path_arc_indexes = Array1<int32_t>(context, tmp_arc_indexes);
 
   return state_weights.Back();
 }
@@ -355,7 +355,6 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
   Array1<int32_t> num_best_arcs_per_fsa(context, num_fsas + 1);
   int32_t *num_best_arcs_per_fsa_data = num_best_arcs_per_fsa.Data();
   const int32_t *row_splits1_data = fsas.RowSplits(1).Data();
-  const int32_t *row_ids1_data = fsas.RowIds(1).Data();
 
   auto lambda_set_num_best_arcs = [=] __host__ __device__(int32_t fsas_idx0) {
     int32_t state_idx01 = row_splits1_data[fsas_idx0];
@@ -383,8 +382,8 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
 
   RaggedShape shape = RaggedShape2(&num_best_arcs_per_fsa, nullptr, -1);
   const int32_t *ans_row_splits_data = shape.RowSplits(1).Data();
-  Array1<int32_t> best_path_arcs(context, shape.NumElements());
-  int32_t *best_path_arcs_data = best_path_arcs.Data();
+  Array1<int32_t> best_path_arc_indexes(context, shape.NumElements());
+  int32_t *best_path_arc_indexes_data = best_path_arc_indexes.Data();
 
   auto lambda_set_best_arcs = [=] __host__ __device__(int32_t fsas_idx0) {
     int32_t state_idx01 = row_splits1_data[fsas_idx0];
@@ -392,7 +391,7 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
     if (state_idx01_next == state_idx01) return;
 
     int32_t ans_idx01_next = ans_row_splits_data[fsas_idx0 + 1];
-    int32_t *p = best_path_arcs_data + (ans_idx01_next - 1);
+    int32_t *p = best_path_arc_indexes_data + (ans_idx01_next - 1);
 
     int32_t final_state_idx01 = state_idx01_next - 1;
     int32_t cur_state = final_state_idx01;
@@ -407,7 +406,72 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
   };
   Eval(context, num_fsas, lambda_set_best_arcs);
 
-  Ragged<int32_t> ans(shape, best_path_arcs);
+  Ragged<int32_t> ans(shape, best_path_arc_indexes);
+  return ans;
+}
+
+FsaVec CreateFsaVec(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes) {
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  K2_CHECK_EQ(best_arc_indexes.NumAxes(), 2);
+  K2_CHECK(IsCompatible(fsas, best_arc_indexes));
+  K2_CHECK_EQ(fsas.Dim0(), best_arc_indexes.Dim0());
+
+  // if there are n arcs, there are n + 1 states
+  RaggedShape states_shape = ChangeSublistSize(best_arc_indexes.shape, 1);
+  const int32_t *states_shape_row_splits1_data =
+      states_shape.RowSplits(1).Data();
+
+  int32_t num_fsas = fsas.Dim0();
+  int32_t num_states = states_shape.NumElements();
+  int32_t num_arcs = best_arc_indexes.shape.NumElements();
+  ContextPtr &context = fsas.Context();
+  Array1<int32_t> row_splits2(context, num_states + 1);
+  Array1<int32_t> row_ids2(context, num_arcs);
+  int32_t *row_splits2_data = row_splits2.Data();
+  int32_t *row_ids2_data = row_ids2.Data();
+
+  Array1<Arc> arcs(context, num_arcs);
+  Arc *arcs_data = arcs.Data();
+
+  const int32_t *best_arc_indexes_row_splits1_data =
+      best_arc_indexes.RowSplits(1).Data();
+
+  const int32_t *best_arc_indexes_row_ids1_data =
+      best_arc_indexes.RowIds(1).Data();
+
+  const int32_t *best_arc_indexes_data = best_arc_indexes.values.Data();
+  const Arc *fsas_values_data = fsas.values.Data();
+
+  auto lambda_set_arcs = [=] __host__ __device__(int32_t best_arc_idx01) {
+    int32_t fsas_idx0 = best_arc_indexes_row_ids1_data[best_arc_idx01];
+    int32_t best_arc_idx0x = best_arc_indexes_row_splits1_data[fsas_idx0];
+    int32_t best_arc_idx0x_next =
+        best_arc_indexes_row_splits1_data[fsas_idx0 + 1];
+    int32_t num_best_arcs = best_arc_idx0x_next - best_arc_idx0x;
+    int32_t best_arc_idx1 = best_arc_idx01 - best_arc_idx0x;
+
+    int32_t state_offset = states_shape_row_splits1_data[fsas_idx0];
+
+    const Arc &arc = fsas_values_data[best_arc_indexes_data[best_arc_idx01]];
+    int32_t src_state = best_arc_idx1;
+    int32_t dest_state = src_state + 1;
+    int32_t label = arc.label;
+    float score = arc.score;
+    arcs_data[best_arc_idx01] = Arc(src_state, dest_state, label, score);
+
+    int32_t state_idx01 = state_offset + src_state;
+    row_ids2_data[best_arc_idx01] = state_idx01;
+    row_splits2_data[state_idx01 + 1] = best_arc_idx01 + 1;
+    if (best_arc_idx01 == 0) row_splits2_data[0] = 0;
+
+    if (best_arc_idx1 + 1 == num_best_arcs)
+      row_splits2_data[state_idx01 + 2] = best_arc_idx01 + 1;
+  };
+  Eval(context, num_arcs, lambda_set_arcs);
+  RaggedShape shape =
+      RaggedShape3(&states_shape.RowSplits(1), &states_shape.RowIds(1),
+                   num_states, &row_splits2, &row_ids2, num_arcs);
+  Ragged<Arc> ans(shape, arcs);
   return ans;
 }
 

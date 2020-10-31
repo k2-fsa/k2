@@ -316,14 +316,48 @@ TEST(FsaAlgo, ShortestPath) {
     5
   )";
 
-  Fsa fsa1 = FsaFromString(s1);
-  Fsa fsa2 = FsaFromString(s2);
-  Fsa *fsa_array[] = {&fsa1, &fsa2};
-  FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+  // best path:
+  //   states: 0 -> 2 -> 3
+  //   arcs:     1 -> 3
+  // we add 20 to the arcs to get its indexes in the fsa_vec
+  std::string s3 = R"(0 1 1 10
+  0 2 2 100
+  1 3 -1 3.5
+  2 3 -1 5.5
+  3
+  )";
 
-  Ragged<int32_t> best_path_arcs = ShortestPath(fsa_vec);
-  CheckArrayData(best_path_arcs.values,
-                 std::vector<int32_t>{1, 3, 5, 10, 13, 16, 17, 19});
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Fsa fsa1 = FsaFromString(s1);
+    Fsa fsa2 = FsaFromString(s2);
+    Fsa fsa3 = FsaFromString(s3);
+
+    Fsa *fsa_array[] = {&fsa1, &fsa2, &fsa3};
+    FsaVec fsa_vec = CreateFsaVec(3, &fsa_array[0]);
+    fsa_vec = fsa_vec.To(context);
+
+    Ragged<int32_t> best_path_arc_indexes = ShortestPath(fsa_vec);
+    CheckArrayData(best_path_arc_indexes.values,
+                   std::vector<int32_t>{1, 3, 5, 10, 13, 16, 17, 19, 21, 23});
+
+    FsaVec ans = CreateFsaVec(fsa_vec, best_path_arc_indexes);
+    ASSERT_EQ(ans.NumAxes(), 3);
+    ASSERT_EQ(ans.Dim0(), 3);
+
+    ans = ans.To(GetCpuContext());  // for testing
+    EXPECT_EQ((ans[{0, 0, 0}]), (Arc{0, 1, 1, 1.f}));
+    EXPECT_EQ((ans[{0, 1, 0}]), (Arc{1, 2, 1, 3.f}));
+    EXPECT_EQ((ans[{0, 2, 0}]), (Arc{2, 3, 1, 5.f}));
+    EXPECT_EQ((ans[{0, 3, 0}]), (Arc{3, 4, -1, 5.f}));
+
+    EXPECT_EQ((ans[{1, 0, 0}]), (Arc{0, 1, 2, 6.f}));
+    EXPECT_EQ((ans[{1, 1, 0}]), (Arc{1, 2, 5, 4.f}));
+    EXPECT_EQ((ans[{1, 2, 0}]), (Arc{2, 3, 6, 3.f}));
+    EXPECT_EQ((ans[{1, 3, 0}]), (Arc{3, 4, -1, 0.f}));
+
+    EXPECT_EQ((ans[{2, 0, 0}]), (Arc{0, 1, 2, 100.f}));
+    EXPECT_EQ((ans[{2, 1, 0}]), (Arc{1, 2, -1, 5.5f}));
+  }
 }
 
 }  // namespace k2
