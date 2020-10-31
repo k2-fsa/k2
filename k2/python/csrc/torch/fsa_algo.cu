@@ -96,13 +96,16 @@ static void PybindLinearFsa(py::module &m) {
 static void PybindIntersect(py::module &m) {
   m.def(
       "intersect",
-      [](FsaOrVec &a_fsas, FsaOrVec &b_fsas, bool need_arc_map = true)
+      [](FsaOrVec &a_fsas, FsaOrVec &b_fsas,
+         bool treat_epsilons_specially = true,
+         bool need_arc_map = true)
           -> std::tuple<FsaOrVec, torch::optional<torch::Tensor>,
                         torch::optional<torch::Tensor>> {
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         FsaVec out;
-        Intersect(a_fsas, b_fsas, &out, need_arc_map ? &a_arc_map : nullptr,
+        Intersect(a_fsas, b_fsas, treat_epsilons_specially,
+                  &out, need_arc_map ? &a_arc_map : nullptr,
                   need_arc_map ? &b_arc_map : nullptr);
         FsaOrVec ans;
         if (out.Dim0() == 1)
@@ -117,8 +120,13 @@ static void PybindIntersect(py::module &m) {
         }
         return std::make_tuple(ans, a_tensor, b_tensor);
       },
-      py::arg("a_fsas"), py::arg("b_fsas"), py::arg("need_arc_map") = true,
+      py::arg("a_fsas"), py::arg("b_fsas"),
+      py::arg("treat_epsilons_specially") = true,
+      py::arg("need_arc_map") = true,
       R"(
+      If treat_epsilons_specially it will treat epsilons as epsilons; otherwise
+      it will treat them as a real symbol.
+
       If need_arc_map is true, it returns a tuple (fsa_vec, a_arc_map, b_arc_map);
       If need_arc_map is false, it returns a tuple (fsa_vec, None, None).
 

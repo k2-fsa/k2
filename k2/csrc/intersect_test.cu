@@ -47,7 +47,10 @@ TEST(Intersect, Simple) {
   K2_LOG(INFO) << "fsas_b = " << fsas_b;
   FsaVec out_fsas2;
   Array1<int32_t> arc_map_a2, arc_map_b2;
-  Intersect(fsa, fsas_b, &out_fsas2,
+  // IntersectDensePruned() treats epsilons as normal symbols.
+  bool treat_epsilons_specially = false;
+  Intersect(fsa, fsas_b, treat_epsilons_specially,
+            &out_fsas2,
             &arc_map_a2, &arc_map_b2);
 
   K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
