@@ -937,9 +937,14 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
   // the "1" is the extra state per FSA we need in the FsaVec format,
   // for the final-state.
   RaggedShape fsa2state = ChangeSublistSize(src.shape, 1);
-
-  int32_t num_states = src.shape.NumElements() + num_fsas,
-          num_arcs = src.shape.NumElements() * num_symbols -
+  // again, the "+num_fsas" below is the extra state per FSA we need in the
+  // FsaVec format, for the final-state.
+  int32_t num_states = src.shape.NumElements() + num_fsas;
+  // The explanation num-arcs below is as follows:
+  // Firstly, all rows of src.scores (==all elements of src.shape) correspond
+  // to states with arcs leaving them.  Most of them have `num_symbols` arcs,
+  // but the final one for each FSA has 1 arc (with symbol -1)
+  int32_t num_arcs = src.shape.NumElements() * num_symbols -
                      (num_symbols - 1) * num_fsas;
   Array1<int32_t> row_splits2(c, num_states + 1), row_ids2(c, num_arcs);
   const int32_t *row_ids1_data = fsa2state.RowIds(1).Data(),
@@ -950,11 +955,11 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
 
   auto scores_acc = src.scores.Accessor();
 
-  // each FSA we return has one extra state (we add the final state).
   int32_t *row_splits2_data = row_splits2.Data(),
           *row_ids2_data = row_ids2.Data();
 
   // 0 <= s < num_symbols; note, `num_symbols` excludes the final-symbol (-1).
+  // note: `src` means: w.r.t. the numbering in the original DenseFsaVec.
   auto lambda_set_arcs_etc = [=] __host__ __device__(int32_t src_state_idx01,
                                                      int32_t s) -> void {
     int32_t fsa_idx0 = src_row_ids1_data[src_state_idx01],
@@ -963,9 +968,12 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
             src_next_state_idx0x = src_row_splits1_data[fsa_idx0 + 1],
             src_num_states1 = src_next_state_idx0x - src_state_idx0x,
             ans_state_idx01 =
-                src_state_idx01 + fsa_idx0;  // add final-state per FSA..
+                src_state_idx01 + fsa_idx0;  // we add one final-state per FSA..
+                                             // "+ fsa_idx0" gives the
+                                             // difference from old->new
+                                             // numbering.
 
-    // arc_idx0x is the 1st arc-index of the FSA we are creating.. each source
+    // arc_idx0xx is the 1st arc-index of the FSA we are creating.. each source
     // state has `num_symbols` arcs leaving it except the last one of each FSA,
     // which has 1 arc leaving it (to the final-state).
     int32_t arc_idx0xx =
@@ -977,8 +985,11 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
       symbol_offset = -1;
       if (s > 0) return;  // we just need the arc with -1.
 
-      // the final state has no leaving arcs
-      row_splits2_data[ans_state_idx01 + 1] = arc_idx012 + num_symbols - 1;
+      // if this is the state before the final state of this FSA. it has the
+      // responsibility to write the row_splits2 value for the final state.
+      // It's arc_idx012 + 1; the "+1" corresponds to the single arc with the
+      // final-symbol on it.
+      row_splits2_data[ans_state_idx01 + 1] = arc_idx012 + 1;
     } else {
       symbol_offset = 0;
     }
@@ -992,7 +1003,8 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
     if (s == 0) {  // 1st arc for this state.
       row_splits2_data[ans_state_idx01] = arc_idx012;
       K2_CHECK(row_ids1_data[ans_state_idx01] == fsa_idx0);
-      if (src_state_idx01 == 0) row_splits2_data[num_states] = num_arcs;
+      if (src_state_idx01 == 0)
+        row_splits2_data[num_states] = num_arcs;
     }
   };
   Eval2(c, src.shape.NumElements(), num_symbols, lambda_set_arcs_etc);
