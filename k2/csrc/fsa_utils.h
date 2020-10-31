@@ -111,18 +111,13 @@ std::string FsaToString(const Fsa &fsa, bool openfst = false,
                     order of FSAs in `src` must not be changed by this: i.e., if
                     we get the old fsa-index for each element of `order`, they
                     must be non-decreasing.
-                    Noted if the dest_state of an arc in the original Fsa does
-                    not exist in the output Fsa (i.e. the dest_state is not in
-                    `order`), then the arc will be removed in the returned
-                    FsaVec.
-                    For each Fsa to be renumbered, if the corresponding number
-                    of states in `order` for that Fsa is not zero, then it must
-                    be at least 2 (one of is the final state of that FSA);
-                    Otherwise, the algorithms will generate invalid FSA, i.e.
-                    the generated Fsa would have only one state. Noted the
-                    algorithm never check this, the caller should make sure
-                    that it must be at least of 2 (if not zero) and one of
-                    those `kept` states is the final state in the original Fsa.
+                    Caution: the function will abort with an error if the
+                    dest_state of an arc in the original Fsa is not kept in
+                    the output Fsa (i.e.  the dest_state is not in `order`).
+                    Noted if the number of states in `order` for an input Fsa
+                    is not zero, then it must be at least 2 (and those states
+                    must contain the start state and final state in the input
+                    FSA), but we never check this in the function.
       @param [out] arc_map  If non-NULL, this will be set to a new Array1 that
                    maps from arcs in the returned FsaVec to the original
                    arc-index in `fsas`.
