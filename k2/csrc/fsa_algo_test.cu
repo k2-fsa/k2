@@ -282,4 +282,48 @@ TEST(HostShim, ShortestPath) {
   CheckArrayData(arc_indexes, std::vector<int32_t>{1, 3, 5, 10});
 }
 
+TEST(FsaAlgo, ShortestPath) {
+  // best path:
+  //   states: 0 -> 1 -> 3 -> 7 -> 9
+  //   arcs:     1 -> 3 -> 5 -> 10
+  std::string s1 = R"(0 4 1 1
+    0 1 1 1
+    1 2 1 2
+    1 3 1 3
+    2 7 1 4
+    3 7 1 5
+    4 6 1 2
+    4 8 1 3
+    5 9 -1 4
+    6 9 -1 3
+    7 9 -1 5
+    8 9 -1 6
+    9
+  )";
+
+  // best path:
+  //  states: 0 -> 2 -> 3 -> 4 -> 5
+  //  arcs:     1 -> 4 -> 5 -> 7
+  //  we add 12 to the arcs to get its indexes in the fsa_vec
+  std::string s2 = R"(0 1 1 1
+    0 2 2 6
+    1 2 3 3
+    1 3 4 2
+    2 3 5 4
+    3 4 6 3
+    3 5 -1 2
+    4 5 -1 0
+    5
+  )";
+
+  Fsa fsa1 = FsaFromString(s1);
+  Fsa fsa2 = FsaFromString(s2);
+  Fsa *fsa_array[] = {&fsa1, &fsa2};
+  FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+
+  Ragged<int32_t> best_path_arcs = ShortestPath(fsa_vec);
+  CheckArrayData(best_path_arcs.values,
+                 std::vector<int32_t>{1, 3, 5, 10, 13, 16, 17, 19});
+}
+
 }  // namespace k2

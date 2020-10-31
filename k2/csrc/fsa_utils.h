@@ -204,7 +204,7 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
       @param [in] entering_arc_batches  Arcs-indexes (idx012's in fsas) of arcs
                  entering states in `state_batches`, indexed
                  [iter][fsa][state_list][arc_list], as returned by
-                 EnteringArcIndexBatches().
+                 GetEnteringArcIndexBatches().
       @param [in] log_semiring   If true, combine path with LogAdd
                   (i.e., mathematically, `log(exp(a)+exp(b))`); if false,
                    combine as `max(a,b)`.
