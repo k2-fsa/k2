@@ -78,6 +78,9 @@ void FsaVecCreator::Init(
 }
 
 void FsaVecCreator::FinalizeRowSplits2() {
+  if (finalized_row_splits2_)
+    return;
+  finalized_row_splits2_ = true;
   int32_t num_fsas = row_splits1_.Dim() - 1;
   K2_CHECK_EQ(next_fsa_idx_, num_fsas);
 

@@ -91,7 +91,7 @@ bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
   return ans;
 }
 
-void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
+bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b) {
   K2_CHECK(a_fsas.NumAxes() >= 2 && a_fsas.NumAxes() <= 3);
   K2_CHECK(b_fsas.NumAxes() >= 2 && b_fsas.NumAxes() <= 3);
@@ -99,13 +99,11 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);
   if (a_fsas.NumAxes() == 2) {
     FsaVec a_fsas_vec = FsaToFsaVec(a_fsas);
-    Intersect(a_fsas_vec, b_fsas, out, arc_map_a, arc_map_b);
-    return;
+    return Intersect(a_fsas_vec, b_fsas, out, arc_map_a, arc_map_b);
   }
   if (b_fsas.NumAxes() == 2) {
     FsaVec b_fsas_vec = FsaToFsaVec(b_fsas);
-    Intersect(a_fsas, b_fsas_vec, out, arc_map_a, arc_map_b);
-    return;
+    return Intersect(a_fsas, b_fsas_vec, out, arc_map_a, arc_map_b);
   }
 
   int32_t num_fsas_a = a_fsas.Dim0(), num_fsas_b = b_fsas.Dim0();
@@ -148,6 +146,7 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
   const int32_t *a_fsas_row_splits12_data = a_fsas_row_splits12.Data(),
                 *b_fsas_row_splits12_data = b_fsas_row_splits12.Data();
 
+  bool ok = true;
   for (int32_t i = 0; i < num_fsas; ++i) {
     k2host::Fsa host_fsa_out = creator.GetHostFsa(i);
     int32_t arc_offset = creator.GetArcOffsetFor(i);
@@ -157,6 +156,7 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
                 (arc_map_b ? arc_map_b->Data() + arc_offset : nullptr);
     bool ans = intersections[i]->GetOutput(&host_fsa_out, this_arc_map_a,
                                            this_arc_map_b);
+    ok = ok && ans;
     int32_t this_num_arcs = creator.GetArcOffsetFor(i + 1) - arc_offset;
     if (arc_map_a) {
       int32_t arc_offset_a = a_fsas_row_splits12_data[i * stride_a];
@@ -170,6 +170,7 @@ void Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
     }
   }
   *out = creator.GetFsaVec();
+  return ok;
 }
 
 Fsa LinearFsa(const Array1<int32_t> &symbols) {

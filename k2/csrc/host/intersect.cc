@@ -53,8 +53,12 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
   if (IsEmpty(a_) || IsEmpty(b_)) return;
   // either `a` or `b` must be epsilon-free, both of them should be arc-sorted
   status_ = IsArcSorted(a_) && IsArcSorted(b_) &&
-            (IsEpsilonFree(a_) || IsEpsilonFree(b_));
-  if (!status_) return;
+      (IsEpsilonFree(a_) || IsEpsilonFree(b_));
+  if (!status_) {
+    K2_LOG(WARNING) << "Either one of the inputs is not arc-sorted or "
+        "both are not epsilon-free.";
+    return;
+  }
 
   int32_t final_state_a = a_.FinalState();
   int32_t final_state_b = b_.FinalState();
@@ -168,8 +172,11 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
 
 bool Intersection::GetOutput(Fsa *c, int32_t *arc_map_a /*= nullptr*/,
                              int32_t *arc_map_b /*= nullptr*/) {
-  if (IsEmpty(a_) || IsEmpty(b_)) return true;
   if (!status_) return false;
+  if (c->size1 == 0 && c->size2 == 0) {
+    c->indexes[0] = 0;
+    return true;
+  }
 
   // output fsa
   K2_CHECK_NE(c, nullptr);

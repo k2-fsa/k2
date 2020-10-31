@@ -18,9 +18,10 @@
 namespace k2 {
 
 TEST(Intersect, Simple) {
-  std::string s = R"(0 1 1 0.0
-    1 2 2 1.0
-    2 3 -1 0.0
+  std::string s = R"(0 1 1 1.0
+    1 1 1 50.0
+    1 2 2 2.0
+    2 3 -1 3.0
     3
   )";
   auto fsa = FsaFromString(s);
@@ -37,6 +38,22 @@ TEST(Intersect, Simple) {
   Array1<int32_t> arc_map_a, arc_map_b;
   IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active,
                        &out_fsas, &arc_map_a, &arc_map_b);
+  K2_LOG(INFO) << "out_fsas = " << out_fsas
+               << ", arc_map_a = " << arc_map_a
+               << ", arc_map_b = " << arc_map_b;
+
+
+  FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
+  K2_LOG(INFO) << "fsas_b = " << fsas_b;
+  FsaVec out_fsas2;
+  Array1<int32_t> arc_map_a2, arc_map_b2;
+  Intersect(fsa, fsas_b, &out_fsas2,
+            &arc_map_a2, &arc_map_b2);
+
+  K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
+               << ", arc_map_a2 = " << arc_map_a2
+               << ", arc_map_b2 = " << arc_map_b2;
+
 
   /*
   int32_t gt = kFsaPropertiesTopSorted | kFsaPropertiesTopSortedAndAcyclic;
