@@ -91,7 +91,8 @@ bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
   return ans;
 }
 
-bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
+bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
+               bool treat_epsilons_specially, FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b) {
   K2_CHECK(a_fsas.NumAxes() >= 2 && a_fsas.NumAxes() <= 3);
   K2_CHECK(b_fsas.NumAxes() >= 2 && b_fsas.NumAxes() <= 3);
@@ -99,11 +100,13 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);
   if (a_fsas.NumAxes() == 2) {
     FsaVec a_fsas_vec = FsaToFsaVec(a_fsas);
-    return Intersect(a_fsas_vec, b_fsas, out, arc_map_a, arc_map_b);
+    return Intersect(a_fsas_vec, b_fsas, treat_epsilons_specially,
+                     out, arc_map_a, arc_map_b);
   }
   if (b_fsas.NumAxes() == 2) {
     FsaVec b_fsas_vec = FsaToFsaVec(b_fsas);
-    return Intersect(a_fsas, b_fsas_vec, out, arc_map_a, arc_map_b);
+    return Intersect(a_fsas, b_fsas_vec,  treat_epsilons_specially,
+                     out, arc_map_a, arc_map_b);
   }
 
   int32_t num_fsas_a = a_fsas.Dim0(), num_fsas_b = b_fsas.Dim0();
@@ -128,7 +131,8 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
     k2host::Fsa host_fsa_a = FsaVecToHostFsa(a_fsas, i * stride_a),
                 host_fsa_b = FsaVecToHostFsa(b_fsas, i * stride_b);
     intersections[i] =
-        std::make_unique<k2host::Intersection>(host_fsa_a, host_fsa_b);
+        std::make_unique<k2host::Intersection>(host_fsa_a, host_fsa_b,
+                                               treat_epsilons_specially);
     intersections[i]->GetSizes(&(sizes[i]));
   }
   FsaVecCreator creator(sizes);
@@ -263,7 +267,7 @@ namespace {
 struct ArcComparer {
   __host__ __device__ __forceinline__ bool operator()(const Arc &lhs,
                                                       const Arc &rhs) const {
-    return lhs.label < rhs.label;
+    return static_cast<uint32_t>(lhs.label) < static_cast<uint32_t>(rhs.label);
   }
 };
 }  // namespace

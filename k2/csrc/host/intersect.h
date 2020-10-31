@@ -30,12 +30,15 @@ class Intersection {
      @param [in] a    One of the FSAs to be intersected.  Must satisfy
                       CheckProperties(a, kArcSorted)
      @param [in] b    The other FSA to be intersected  Must satisfy
-                      CheckProperties(b, kArcSorted), and either a or b
-                      must be epsilon-free (c.f. IsEpsilonFree); this
-                      ensures that epsilons do not have to be treated
-                      differently from any other symbol.
+                      CheckProperties(b, kArcSorted).
+     @param [in] treat_epsilons_specially  If true, treat epsilons
+                      as epsilon; if false, threat them as any other
+                      symbol.
   */
-  Intersection(const Fsa &a, const Fsa &b) : a_(a), b_(b) {}
+  Intersection(const Fsa &a, const Fsa &b,
+               bool treat_epsilons_specially = true) :
+      a_(a), b_(b),
+      treat_epsilons_specially_(treat_epsilons_specially) {}
 
   /*
     Do enough work to know how much memory will be needed, and output
@@ -65,8 +68,8 @@ class Intersection {
                            If non-NULL, at entry it must be allocated with
                            size num-arcs of `c`, e.g. `c->size2`.
 
-    @return false if `a` or `b` is not arc-sorted, or if both `a` and `b` are
-                  not epsilon-free; return true otherwise.
+    @return false on error (which can happen if `a` or `b` is not arc-sorted);
+                      true otherwise.
    */
   bool GetOutput(Fsa *c, int32_t *arc_map_a = nullptr,
                  int32_t *arc_map_b = nullptr);
@@ -77,6 +80,7 @@ class Intersection {
   Fsa a_;
   Fsa b_;
 
+  bool treat_epsilons_specially_;
   bool status_;
   std::vector<int32_t> arc_indexes_;  // arc_index of fsa_out
   std::vector<Arc> arcs_;             // arcs of fsa_out
@@ -96,8 +100,7 @@ class Intersection {
                    CheckProperties(a, kArcSorted)
   @param [in] a_cost  Pointer to array containing a cost per arc of a
   @param [in] b    The other FSA to be intersected  Must satisfy
-                   CheckProperties(b, kArcSorted), and either a or b
-                   must be epsilon-free (c.f. IsEpsilonFree).
+                   CheckProperties(b, kArcSorted).
   @param [in] b_cost  Pointer to array containing a cost per arc of b
   @param [in] cutoff  Cutoff, such that we keep an arc in the output
                    if its cost_a + cost_b is less than this cutoff,

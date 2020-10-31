@@ -25,7 +25,7 @@ struct Arc {
   int32_t src_state;
   int32_t dest_state;
   int32_t label;
-  float score;
+   float score;
 
   Arc() = default;
   Arc(int32_t src_state, int32_t dest_state, int32_t label, float score)
@@ -37,9 +37,12 @@ struct Arc {
   bool operator<(const Arc &other) const {
     // Compares `src_state` first, then `label`, then `dest_state`, then
     // 'score'
-    return std::tie(src_state, label, dest_state, score) <
-           std::tie(other.src_state, other.label, other.dest_state,
-                    other.score);
+    // compare label as unsigned so -1 comes after other symbols, since some
+    // algorithms may require epsilons to be first.
+    return std::tie(src_state, reinterpret_cast<const uint32_t&>(label),
+                    dest_state, score) <
+      std::tie(other.src_state, reinterpret_cast<const uint32_t&>(other.label),
+               other.dest_state, other.score);
   }
 };
 

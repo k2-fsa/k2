@@ -52,11 +52,9 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
 
   if (IsEmpty(a_) || IsEmpty(b_)) return;
   // either `a` or `b` must be epsilon-free, both of them should be arc-sorted
-  status_ = IsArcSorted(a_) && IsArcSorted(b_) &&
-      (IsEpsilonFree(a_) || IsEpsilonFree(b_));
-  if (!status_) {
-    K2_LOG(WARNING) << "Either one of the inputs is not arc-sorted or "
-        "both are not epsilon-free.";
+  if (!IsArcSorted(a_) || !IsArcSorted(b_)) {
+    K2_LOG(WARNING) << "One of the inputs is not arc-sorted";
+    status_ = false;
     return;
   }
 
@@ -91,35 +89,36 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
     auto b_arc_iter_begin = arc_b_begin + b_.indexes[state_b];
     auto b_arc_iter_end = arc_b_begin + b_.indexes[state_b + 1];
 
-    // As both `a` and `b` are arc-sorted, we first process epsilon arcs.
-    // Noted that at most one for-loop below will really run as either `a` or
-    // `b` is epsilon-free.
-    for (; a_arc_iter_begin != a_arc_iter_end; ++a_arc_iter_begin) {
-      if (kEpsilon != a_arc_iter_begin->label) break;
+    if (treat_epsilons_specially_) {
+      // As both `a` and `b` are arc-sorted, we first process epsilon arcs.
+      // Noted that at most one for-loop below will really run as either `a` or
+      // `b` is epsilon-free.
+      for (; a_arc_iter_begin != a_arc_iter_end; ++a_arc_iter_begin) {
+        if (kEpsilon != a_arc_iter_begin->label) break;
 
-      StatePair new_state{a_arc_iter_begin->dest_state, state_b};
-      int32_t new_state_index = InsertIntersectionState(
-          new_state, &state_index_c, &qstates, &state_pair_map);
-      arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon,
-                         a_arc_iter_begin->weight);
-      arc_map_a_.push_back(
-          static_cast<int32_t>(a_arc_iter_begin - arc_a_begin));
-      arc_map_b_.push_back(arc_map_none);
+        StatePair new_state{a_arc_iter_begin->dest_state, state_b};
+        int32_t new_state_index = InsertIntersectionState(
+            new_state, &state_index_c, &qstates, &state_pair_map);
+        arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon,
+                           a_arc_iter_begin->weight);
+        arc_map_a_.push_back(
+            static_cast<int32_t>(a_arc_iter_begin - arc_a_begin));
+        arc_map_b_.push_back(arc_map_none);
+      }
+      for (; b_arc_iter_begin != b_arc_iter_end; ++b_arc_iter_begin) {
+        if (kEpsilon != b_arc_iter_begin->label) break;
+        StatePair new_state{state_a, b_arc_iter_begin->dest_state};
+        int32_t new_state_index = InsertIntersectionState(
+            new_state, &state_index_c, &qstates, &state_pair_map);
+        arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon,
+                           b_arc_iter_begin->weight);
+        arc_map_a_.push_back(arc_map_none);
+        arc_map_b_.push_back(
+            static_cast<int32_t>(b_arc_iter_begin - arc_b_begin));
+      }
     }
-    for (; b_arc_iter_begin != b_arc_iter_end; ++b_arc_iter_begin) {
-      if (kEpsilon != b_arc_iter_begin->label) break;
-      StatePair new_state{state_a, b_arc_iter_begin->dest_state};
-      int32_t new_state_index = InsertIntersectionState(
-          new_state, &state_index_c, &qstates, &state_pair_map);
-      arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon,
-                         b_arc_iter_begin->weight);
-      arc_map_a_.push_back(arc_map_none);
-      arc_map_b_.push_back(
-          static_cast<int32_t>(b_arc_iter_begin - arc_b_begin));
-    }
-
     // as both `a` and `b` are arc-sorted, we will iterate over the state with
-    // less number of arcs.
+    // the smaller number of arcs.
     bool swapped = false;
     if ((a_arc_iter_end - a_arc_iter_begin) >
         (b_arc_iter_end - b_arc_iter_begin)) {
@@ -132,7 +131,8 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
       auto b_arc_range =
           std::equal_range(b_arc_iter_begin, b_arc_iter_end, *a_arc_iter_begin,
                            [](const Arc &left, const Arc &right) {
-                             return left.label < right.label;
+                             return static_cast<uint32_t>(left.label) <
+                                    static_cast<uint32_t>(right.label);
                            });
       for (auto it_b = b_arc_range.first; it_b != b_arc_range.second; ++it_b) {
         Arc curr_a_arc = *a_arc_iter_begin;  // copy here as we may swap later
@@ -172,10 +172,9 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
 
 bool Intersection::GetOutput(Fsa *c, int32_t *arc_map_a /*= nullptr*/,
                              int32_t *arc_map_b /*= nullptr*/) {
-  if (!status_) return false;
   if (c->size1 == 0 && c->size2 == 0) {
     c->indexes[0] = 0;
-    return true;
+    return status_;
   }
 
   // output fsa

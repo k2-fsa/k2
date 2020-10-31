@@ -409,7 +409,7 @@ void RandPath::GetSizes(Array2Size<int32_t> *fsa_size) {
     if (visited_arcs[state_id_out]
             .insert({{state, curr_arc->dest_state, curr_arc->label,
                       curr_arc->weight},
-                     arc_index_in - fsa_in_.indexes[0]})
+                    arc_index_in - fsa_in_.indexes[0]})
             .second)
       ++num_visited_arcs;
     state = curr_arc->dest_state;

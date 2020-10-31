@@ -141,6 +141,14 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
                            for composition (i.e. 2 or 3 axes)
         @param [in] b_fsas  Fsa or FsaVec that is one of the arguments
                            for composition (i.e. 2 or 3 axes)
+        @param [in] treat_epsilons_specially   If true, epsilons will
+                          be treated as epsilon, meaning epsilon arcs
+                          can match with an implicit epsilon self-loop.
+
+                          If false, epsilons will be treated as real,
+                          normal symbols (to have them treated as epsilons
+                          in this case you may have to add epsilon self-loops
+                          to whichever of the inputs is naturally epsilon-free).
         @param [out] out    Output Fsa, will be an FsaVec (NumAxes() == 3)
                            regardless of the num_axes of the arguments.
         @param [out] arc_map_a  If not nullptr, this function will write to
@@ -152,7 +160,9 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
                   them to be epsilon free).
 
  */
-bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas, FsaVec *out,
+bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
+               bool treat_epsilons_specially,
+               FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 /*

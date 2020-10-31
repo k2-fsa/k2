@@ -115,6 +115,8 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
   ASSERT_EQ(arc_derivs.size1, 11);
   ASSERT_EQ(arc_derivs.size2, 20);
 
+  K2_LOG(INFO) << "log_wfsa_->fsa is: " << log_wfsa_->fsa
+               << ", fsa_out is: " << fsa_out;
   EXPECT_TRUE(
       IsRandEquivalentAfterRmEpsPrunedLogSum(log_wfsa_->fsa, fsa_out, beam));
 

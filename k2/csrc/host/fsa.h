@@ -29,12 +29,14 @@ enum {
 struct Arc {
   int32_t src_state;
   int32_t dest_state;
-  int32_t label;  // 'label' as in a finite state acceptor.
-                  // For FSTs, the other label will be present in the
-                  // aux_label array.  Which of the two represents the input
-                  // vs. the output can be decided by the user; in general,
-                  // the one that appears on the arc will be the one that
-                  // participates in whatever operation you are doing
+  int32_t label;  // 'label' as in a finite state acceptor.  For FSTs, the
+                   // other label will be present in the aux_label array.  Which
+                   // of the two represents the input vs. the output can be
+                   // decided by the user; in general, the one that appears on
+                   // the arc will be the one that participates in whatever
+                   // operation you are doing.  For comparison purposes in
+                   // sorting, we will treat this as uint32_t so that
+                   // arc-sorting puts epsilon (0) before final-symbol (-1)
 
   float weight;  // log-prob of this arc, or the negative of a cost.
                  // Note: in some contexts, the scores/weights are
@@ -55,9 +57,11 @@ struct Arc {
   bool operator!=(const Arc &other) const { return !(*this == other); }
 
   bool operator<(const Arc &other) const {
-    // compares `label` first, then `dest_state`, then, 'weight
-    return std::tie(label, dest_state, weight) <
-           std::tie(other.label, other.dest_state, weight);
+    // compares `label` first, then `dest_state`, then, 'weight'
+    return std::tie(reinterpret_cast<const uint32_t&>(label),
+                    dest_state, weight) <
+      std::tie(reinterpret_cast<const uint32_t&>(other.label),
+               other.dest_state, other.weight);
   }
 };
 
