@@ -263,7 +263,7 @@ namespace {
 struct ArcComparer {
   __host__ __device__ __forceinline__ bool operator()(const Arc &lhs,
                                                       const Arc &rhs) const {
-    return lhs.label < rhs.label;
+    return static_cast<uint32_t>(lhs.label) < static_cast<uint32_t>(rhs.label);
   }
 };
 }  // namespace

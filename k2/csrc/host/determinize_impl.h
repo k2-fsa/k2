@@ -564,7 +564,7 @@ int32_t DetState<TracebackState>::ProcessArcs(
     DetStatePriorityQueue<TracebackState> *queue) {
   int32_t num_steps = 0;
 
-  std::unordered_map<int32_t, DetState<TracebackState> *> label_to_state;
+  std::unordered_map<uint32_t, DetState<TracebackState> *> label_to_state;
 
   // The following loop populates `label_to_state`, creating successor
   // DetStates (unnormalized).
@@ -607,7 +607,9 @@ int32_t DetState<TracebackState>::ProcessArcs(
     if (det_state->forward_backward_prob >= prune_cutoff) {
       bool is_new_state = state_map->GetOutputState(det_state, fsa);
       arcs_out->push_back(
-          {this->state_id, det_state->state_id, iter->first, arc_weight});
+          {this->state_id, det_state->state_id,
+                static_cast<int32_t>(iter->first),
+                arc_weight});
       derivs_per_arc->push_back(std::move(deriv_info));
       if (is_new_state)
         queue->push(std::unique_ptr<DetState<TracebackState>>(det_state));

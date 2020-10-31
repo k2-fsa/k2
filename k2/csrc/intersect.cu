@@ -266,7 +266,7 @@ class MultiGraphDenseIntersect {
     // the 0123 and 012 express what type of indexes they are, see comment at
     // top of utils.h
     int32_t *new2old_arc_map0123 = renumber_output_arcs_.New2Old().Data(),
-            *new2old_state_map012 = renumber_output_states_.New2Old().Data();
+            *old2new_state_map012 = renumber_output_states_.Old2New().Data();
 
     Array1<ArcInfo *> ai_data_ptrs(c_cpu, T + 1);
     Array1<int32_t *> arcs_row_splits1_ptrs(c_cpu, T + 1);
@@ -332,7 +332,7 @@ class MultiGraphDenseIntersect {
               unpruned_dest_state_idx012 =
                   unpruned_idx01x_next_t + unpruned_dest_state_idx2,
               pruned_dest_state_idx012 =
-                  new2old_state_map012[unpruned_dest_state_idx012],
+                 old2new_state_map012[unpruned_dest_state_idx012],
               pruned_dest_state_idx01 =
                   oshapep_row_ids2[pruned_dest_state_idx012],
               pruned_dest_state_idx0 =
@@ -346,7 +346,7 @@ class MultiGraphDenseIntersect {
 
       // note: the src-state and dest-state have the same ind0 which is the
       // FSA-id.
-      int32_t pruned_src_state_idx012 = new2old_state_map012[unpruned_idx012],
+      int32_t pruned_src_state_idx012 = old2new_state_map012[unpruned_idx012],
               pruned_src_state_idxx12 =
                   pruned_src_state_idx012 - pruned_dest_state_idx0xx;
 
@@ -837,7 +837,7 @@ class MultiGraphDenseIntersect {
     float *arc_backward_prob_data = arc_backward_prob.values.Data();
 
     ArcInfo *ai_data = cur_frame->arcs.values.Data();
-    int32_t *arcs_rowids1 = cur_frame->arcs.shape.RowIds(2).Data(),
+    int32_t *arcs_rowids1 = cur_frame->arcs.shape.RowIds(1).Data(),
             *arcs_rowids2 = cur_frame->arcs.shape.RowIds(2).Data(),
             *arcs_row_splits1 = cur_frame->arcs.shape.RowSplits(1).Data(),
             *arcs_row_splits2 = cur_frame->arcs.shape.RowSplits(2).Data();

@@ -132,7 +132,8 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
       auto b_arc_range =
           std::equal_range(b_arc_iter_begin, b_arc_iter_end, *a_arc_iter_begin,
                            [](const Arc &left, const Arc &right) {
-                             return left.label < right.label;
+                             return static_cast<uint32_t>(left.label) <
+                                    static_cast<uint32_t>(right.label);
                            });
       for (auto it_b = b_arc_range.first; it_b != b_arc_range.second; ++it_b) {
         Arc curr_a_arc = *a_arc_iter_begin;  // copy here as we may swap later
