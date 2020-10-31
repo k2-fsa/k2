@@ -109,7 +109,7 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
         arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon,
                            a_arc_iter_begin->weight);
         arc_map_a_.push_back(
-            static_cast<int32_t>(a_arc_iter_begin - arc_a_begin));
+            static_cast<int32_t>(a_arc_iter_begin - arc_a_offset));
         arc_map_b_.push_back(arc_map_none);
       }
       for (; b_arc_iter_begin != b_arc_iter_end; ++b_arc_iter_begin) {
@@ -121,7 +121,7 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
                            b_arc_iter_begin->weight);
         arc_map_a_.push_back(arc_map_none);
         arc_map_b_.push_back(
-            static_cast<int32_t>(b_arc_iter_begin - arc_b_begin));
+            static_cast<int32_t>(b_arc_iter_begin - arc_b_offset));
       }
     }
     // as both `a` and `b` are arc-sorted, we will iterate over the state with
