@@ -136,7 +136,6 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
       if (arc.dest_state != arc.src_state)
         reachable_data[num_states + idx01] = 1;
     } else {
-      int32_t symbol_diff = arc.label - prev_arc.label;
       if (static_cast<uint32_t>(arc.label) <=
           static_cast<uint32_t>(prev_arc.label))
         neg_property |= kFsaPropertiesArcSortedAndDeterministic;
@@ -476,6 +475,18 @@ Tensor FsaVecToTensor(const FsaVec &fsa_vec) {
   Array1<int32_t> *arrays[4] = {&meta_info, &row_splits1, &row_splits12,
                                 &arcs_linearized};
   return Append(4, (const Array1<int32_t> **)arrays).ToTensor();
+}
+
+std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec) {
+  DenseFsaVec d_cpu = dfsavec.To(GetCpuContext());
+  int32_t num_fsas = d_cpu.shape.Dim0();
+  const int32_t *row_splits = d_cpu.shape.RowSplits(1).Data();
+  os << "DenseFsaVec{ ";
+  for (int32_t i = 0; i < num_fsas; i++) {
+    int32_t start = row_splits[i], end = row_splits[i+1];
+    os << dfsavec.scores.RowArange(start, end);
+  }
+  return os << " }";
 }
 
 }  // namespace k2

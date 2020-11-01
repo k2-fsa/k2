@@ -57,11 +57,11 @@ struct Arc {
   bool operator!=(const Arc &other) const { return !(*this == other); }
 
   bool operator<(const Arc &other) const {
-    // compares `label` first, then `dest_state`, then, 'weight'
+    // compares `label` first, then `dest_state`.
     return std::tie(reinterpret_cast<const uint32_t&>(label),
-                    dest_state, weight) <
+                    dest_state) <
       std::tie(reinterpret_cast<const uint32_t&>(other.label),
-               other.dest_state, other.weight);
+               other.dest_state);
   }
 };
 

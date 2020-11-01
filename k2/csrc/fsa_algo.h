@@ -42,9 +42,9 @@ bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
           @param[in,out] fsa  FSA of which to sort the arcs.  Does not have
                          to be non-empty.
 */
-void ArcSort(Fsa *fsa);
+void ArcSort(FsaOrVec *fsa);
 
-void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+void ArcSort(FsaOrVec &src, FsaOrVec *dest, Array1<int32_t> *arc_map = nullptr);
 
 /*
   Topologically sort an Fsa or FsaVec.
@@ -105,7 +105,11 @@ bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
          @param[in] a_fsas   Input FSAs, `decoding graphs`.   There should
                          either be one FSA (3 axes and a_fsas.Dim0() == 1; or
                          2 axes) or a vector of FSAs with the same size as
-                         b_fsas (a_fsas.Dim0() == b_fsas.Dim0()).
+                         b_fsas (a_fsas.Dim0() == b_fsas.Dim0()).  We don't
+                         currently support having a_fsas.Dim0() > 1 and
+                         b_fsas.Dim0() == 1, which is not a fundamental
+                         limitation of the algorithm but it would require
+                         code changes to support.
          @param[in] b_fsas   Input FSAs that correspond to neural network
                          outputs (see documentation in fsa.h).
          @param[in] beam   Decoding beam, e.g. 10.  Smaller is faster,

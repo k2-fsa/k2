@@ -90,8 +90,15 @@ void FsaVecCreator::FinalizeRowSplits2() {
 
   for (int32_t i = 0; i < num_fsas; i++) {
     int32_t num_states = row_splits1_data[i + 1] - row_splits1_data[i],
-            begin_state = row_splits1_data[i], begin_arc = row_splits12_data[i];
+            begin_state = row_splits1_data[i],
+            begin_arc = row_splits12_data[i];
     K2_CHECK(row_splits2_data[begin_state] == 0 || num_states == 0);
+    // For the last FSA we need to modify the final element of row_splits2.
+    // Note: for all but the last FSA, they would have written an element
+    // to row_splits2_data which would have been overwritten when the next
+    // FSA was processed.
+    if (i + 1 == num_fsas)
+      num_states++;
     for (int32_t j = 0; j < num_states; j++)
       row_splits2_data[begin_state + j] += begin_arc;
   }

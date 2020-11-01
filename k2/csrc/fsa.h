@@ -25,7 +25,7 @@ struct Arc {
   int32_t src_state;
   int32_t dest_state;
   int32_t label;
-   float score;
+  float score;
 
   Arc() = default;
   Arc(int32_t src_state, int32_t dest_state, int32_t label, float score)
@@ -40,9 +40,9 @@ struct Arc {
     // compare label as unsigned so -1 comes after other symbols, since some
     // algorithms may require epsilons to be first.
     return std::tie(src_state, reinterpret_cast<const uint32_t&>(label),
-                    dest_state, score) <
+                    dest_state) <
       std::tie(other.src_state, reinterpret_cast<const uint32_t&>(other.label),
-               other.dest_state, other.score);
+               other.dest_state);
   }
 };
 
@@ -157,7 +157,19 @@ struct DenseFsaVec {
 
   // NOTE: our notion of "arc-index" / arc_idx is an index into scores.Data().
   int32_t NumArcs() const { return scores.Dim0() * scores.Dim1(); }
+
+  DenseFsaVec() { }
+  DenseFsaVec(const RaggedShape &shape, const Array2<float> &scores) :
+      shape(shape), scores(scores) {
+    K2_CHECK_EQ(shape.NumElements(), scores.Dim0());
+  }
+  ContextPtr Context() const { return shape.Context(); }
+  DenseFsaVec To(ContextPtr c) const {
+    return DenseFsaVec(shape.To(c), scores.To(c));
+  }
 };
+
+std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec);
 
 /*
   Create an FSA from a Tensor.  The Tensor is expected to be an N by 4 tensor of

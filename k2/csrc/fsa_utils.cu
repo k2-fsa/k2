@@ -1594,4 +1594,87 @@ FsaVec RandomFsaVec(int32_t min_num_fsas /*=1*/, int32_t max_num_fsas /*=1000*/,
   }
   return Stack(0, num_fsas, fsas.data());
 }
+
+DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas , int32_t max_num_fsas,
+                              int32_t min_frames, int32_t max_frames,
+                              int32_t min_symbols, int32_t max_symbols,
+                              float scores_scale) {
+  ContextPtr c = GetCpuContext();
+  int32_t num_fsas = RandInt(min_num_fsas, max_num_fsas);
+
+  // num_symbols includes epsilon but not final-symbol -1.
+  int32_t num_symbols = RandInt(min_symbols, max_symbols);
+
+  // `num_frames` includes the extra 1 frame for the final-symbol.
+  std::vector<int32_t> num_frames(num_fsas + 1);
+  int32_t tot_frames = 0;
+  for (int32_t i = 0; i < num_fsas; i++) {
+    num_frames[i] = RandInt(min_frames, max_frames) + 1;
+    tot_frames += num_frames[i];
+  }
+
+  Array2<float> scores(c, tot_frames, num_symbols + 1);
+  auto scores_acc = scores.Accessor();
+
+  std::vector<int32_t> row_splits_vec(num_fsas + 1);
+  row_splits_vec[0] = 0;
+  int32_t cur_start_frame = 0;
+  RandIntGenerator gen;
+  for (int32_t i = 0; i < num_fsas; i++) {
+    int32_t this_num_frames = num_frames[i],
+        end_frame = cur_start_frame + this_num_frames;
+    for (int32_t f = cur_start_frame; f + 1 < end_frame; f++) {
+      scores_acc(f, 0) = -std::numeric_limits<float>::infinity();
+      for (int32_t j = 0; j < num_symbols; j++)
+        scores_acc(f, j + 1) = scores_scale * gen(-50, 50) * 0.01;
+    }
+    // on the last frame the placement of infinity vs. finite is reversed:
+    // -1 gets finite value, others get infinity.
+    int32_t f = end_frame - 1;
+    scores_acc(f, 0) = scores_scale * gen(-50, 50) * 0.01;
+    for (int32_t j = 0; j < num_symbols; j++)
+      scores_acc(f, j + 1) =  -std::numeric_limits<float>::infinity();
+    row_splits_vec[i+1] = cur_start_frame = end_frame;
+  }
+  Array1<int32_t> row_splits(c, row_splits_vec);
+  return DenseFsaVec(RaggedShape2(&row_splits, nullptr, tot_frames),
+                     scores);
+}
+
+Ragged<int32_t> GetStartStates(FsaVec &src){
+  ContextPtr c = src.Context();
+  K2_CHECK(src.NumAxes() == 3);
+  int32_t num_fsas = src.Dim0();
+  const int32_t *src_row_splits1_data = src.RowSplits(1).Data();
+
+  Array1<int32_t> ans_row_splits(c, num_fsas + 1);
+  // will first set the elements of ans_row_splits to the number of states kept
+  // from this FSA (either 0 or 1).
+  int32_t *num_states_data = ans_row_splits.Data();
+  auto lambda_set_num_states = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
+    // 1 if the FSA is not empty, 0 if empty.
+    num_states_data[fsa_idx0] = (src_row_splits1_data[fsa_idx0 + 1] >
+                                 src_row_splits1_data[fsa_idx0]);
+  };
+  Eval(c, num_fsas, lambda_set_num_states);
+  ExclusiveSum(ans_row_splits, &ans_row_splits);
+  int32_t ans_dim = ans_row_splits.Back();
+  Ragged<int32_t> ans(RaggedShape2(&ans_row_splits, nullptr, ans_dim),
+                      Array1<int32_t>(c, ans_dim));
+  const int32_t *ans_row_splits1_data = ans.shape.RowSplits(1).Data();
+  int32_t *ans_values_data = ans.values.Data();
+  auto lambda_set_ans_values = [=] __host__ __device__ (int32_t ans_idx01) -> void {
+    int32_t idx0 = ans_row_splits1_data[ans_idx01];
+    int32_t src_start_state_idx01 = src_row_splits1_data[idx0];
+    K2_CHECK_GT(src_row_splits1_data[idx0 + 1],
+                src_row_splits1_data[idx0]);
+    ans_values_data[ans_idx01] = src_start_state_idx01;
+  };
+  Eval(c, ans_dim, lambda_set_ans_values);
+  return ans;
+}
+
+
+
+
 }  // namespace k2

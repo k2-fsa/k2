@@ -779,7 +779,8 @@ RaggedShape Transpose(RaggedShape &src) {
   K2_CHECK_EQ(src_tot_size1 % src_dim0, 0)
       << "Transpose(): all dims on axis 0 must be the same.\n"
       << "src_tot_size1: " << src_tot_size1 << "\n"
-      << "src_dim0: " << src_dim0 << "\n";
+      << "src_dim0: " << src_dim0 << ", array is: "
+      << src;
   K2_DCHECK(
       Equal(src.RowSplits(1), Range(c, src.RowSplits(1).Dim(), 0, src_dim1)))
       << " Expected row-splits to be evenly spaced: " << src.RowSplits(1);
