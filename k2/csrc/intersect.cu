@@ -824,6 +824,9 @@ class MultiGraphDenseIntersect {
     int32_t *a_fsas_row_ids1 = a_fsas_.shape.RowIds(1).Data(),
         *a_fsas_row_splits1 = a_fsas_.shape.RowSplits(1).Data();
 
+    K2_LOG(INFO) << "a_fsas_row_ids1 = " << a_fsas_.shape.RowIds(1)
+                 << ", row_splits1 = " << a_fsas_.shape.RowSplits(1);
+
     const int32_t minus_inf =
         FloatToOrderedInt(-std::numeric_limits<float>::infinity());
 
@@ -913,6 +916,8 @@ class MultiGraphDenseIntersect {
                   -std::numeric_limits<float>::infinity(),
                   &state_backward_prob);
     const float *state_backward_prob_data = state_backward_prob.Data();
+    const int32_t *cur_states_row_ids1 =
+        cur_frame->states.shape.RowIds(1).Data();
 
     int32_t num_fsas = b_fsas_.shape.Dim0();
     assert(cur_frame->states.shape.Dim0() == num_fsas);
@@ -921,10 +926,15 @@ class MultiGraphDenseIntersect {
         [=] __host__ __device__(int32_t state_idx01) -> void {
       StateInfo *info = cur_states_data + state_idx01;
       int32_t fsas_state_idx01 = info->a_fsas_state_idx01,
-              fsa_idx0 = a_fsas_row_ids1[fsas_state_idx01],
-              fsas_state_idx0x_next = a_fsas_row_splits1[fsa_idx0 + 1];
+              a_fsas_idx0 = a_fsas_row_ids1[fsas_state_idx01],
+             states_idx0 = cur_states_row_ids1[state_idx01],
+              fsas_state_idx0x_next = a_fsas_row_splits1[a_fsas_idx0 + 1];
+      // Note: a_fsas_idx0 and states_idx0 will be the same if
+      // a_fsas_.Dim0() >= b_fsas_.Dim0().
       float forward_loglike = OrderedIntToFloat(info->forward_loglike),
             backward_loglike;
+      // `is_final_state` means this is the final-state in a_fsas.  this implies
+      // it's final in b_fsas too, since they both would have seen symbols -1.
       int32_t is_final_state = (fsas_state_idx01 + 1 >= fsas_state_idx0x_next);
       if (is_final_state) {
         backward_loglike = -forward_loglike;
@@ -936,10 +946,10 @@ class MultiGraphDenseIntersect {
       // we can use the arcs row-splits because the structure of
       // FrameInfo::states is the same as the top level structure of
       // FrameInfo::arcs.
-      int32_t states_idx0x = arcs_row_splits1[fsa_idx0],
+      int32_t states_idx0x = arcs_row_splits1[states_idx0],
               states_idxx1 = state_idx01 - states_idx0x;
 
-      int32_t oshape_idx0x = oshape_row_splits1[fsa_idx0],
+      int32_t oshape_idx0x = oshape_row_splits1[states_idx0],
               oshape_idx01 = oshape_idx0x + t,
               oshape_idx01x = oshape_row_splits2[oshape_idx01],
               oshape_idx012 = oshape_idx01x + states_idxx1;
