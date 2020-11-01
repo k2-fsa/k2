@@ -54,6 +54,10 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
   // either `a` or `b` must be epsilon-free, both of them should be arc-sorted
   if (!IsArcSorted(a_) || !IsArcSorted(b_)) {
     K2_LOG(WARNING) << "One of the inputs is not arc-sorted";
+    if (!IsArcSorted(a_))
+      K2_LOG(INFO) << "Not arc-sorted: " << a_;
+    if (!IsArcSorted(b_))
+      K2_LOG(INFO) << "Not arc-sorted: " << b_;
     status_ = false;
     return;
   }

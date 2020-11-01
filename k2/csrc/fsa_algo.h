@@ -42,9 +42,9 @@ bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
           @param[in,out] fsa  FSA of which to sort the arcs.  Does not have
                          to be non-empty.
 */
-void ArcSort(Fsa *fsa);
+void ArcSort(FsaOrVec *fsa);
 
-void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+void ArcSort(FsaOrVec &src, FsaOrVec *dest, Array1<int32_t> *arc_map = nullptr);
 
 /*
   Topologically sort an Fsa or FsaVec.

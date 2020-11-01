@@ -108,17 +108,30 @@ class Array1 {
     return Array1(size, region_, byte_offset_ + start * ElementSize());
   }
 
+  /* Return sub-part of this array (shares the underlying data with this
+     array).  Like PyTorch's arange.  'Range' is deprecated.
+
+     @param [in] start  First element to cover, 0 <= start <= Dim();
+                        If start == Dim(), it just returns an empty array.
+     @param [in] end    One-past-the-last element to cover
+  */
+  Array1<T> Arange(int32_t start, int32_t end) const {
+    K2_CHECK_GE(start, 0);
+    K2_CHECK_GE(end, start);
+    K2_CHECK_LE(start + end, Dim());
+    return Array1(end - start, region_, byte_offset_ + start * ElementSize());
+  }
+
   /*
-   Return sub-part of this array, with a stride (note: increment may be negative
-   but not zero).  Becomes a Tensor because Array1 does not support a stride
-   that isn't 1.
+   Return sub-part of this array, with a stride.
+   Becomes a Tensor because Array1 does not support a stride that isn't 1.
 
      @param [in] start  First element of output, 0 <= start < Dim()
      @param [in] size   Number of elements to include, must satisfy
                         size > 0 and   0 <= (start + (size-1)*increment) <
                         Dim().
      @param [in] inc    Increment in original array each time index
-                        increases
+                        increases.  Require inc > 0.
   */
   // TODO(haowen): does not support inc < 0 with below implementations, we may
   // not need a negative version, will revisit it later
@@ -427,6 +440,26 @@ class Array2 {
       Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
       return array;
     }
+  }
+
+  /*
+    Returns an Array2 containing a subset of rows of *this, aliasing the
+    same data.  (c.f. arange in PyTorch).
+
+     @param [in] start  First element of output, 0 <= start < Dim()
+     @param [in] end    First element that *should not* be included.
+     @param [in] inc    Increment in original array each time index
+                        increases.  Require inc > 0.
+  */
+  Array2<T> RowArange(int32_t start, int32_t end, int32_t inc = 1) const {
+    K2_CHECK_GT(inc, 0);
+    K2_CHECK_GE(start, 0);
+    K2_CHECK_GE(end, start);
+    K2_CHECK_LE(start + end, dim0_);
+    int32_t num_rows = (end - start) / inc;
+    return Array2<T>(num_rows, dim1_, elem_stride0_ * inc,
+                     byte_offset_ + elem_stride0_ * start * ElementSize(),
+                     region_);
   }
 
   // return a row (indexing on the 0th axis)

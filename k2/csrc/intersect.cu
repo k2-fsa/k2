@@ -14,6 +14,7 @@
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/ragged_ops.h"
 
 namespace k2 {
@@ -153,7 +154,7 @@ class MultiGraphDenseIntersect {
     // States that are active at the beginning of this frame.  Indexed
     // [fsa_idx][state_idx], where fsa_idx indexes b_fsas_ (and a_fsas_, if
     // a_fsas_stride_ != 0); and state_idx just enumerates the active states
-    // on this frame.
+    // on this frame (as state_idx01's in a_fsas_).
     Ragged<StateInfo> states;  // 2 axes: fsa, state
 
     // Indexed [fsa_idx][state_idx][arc_idx].. the first 2 indexes are
@@ -228,19 +229,38 @@ class MultiGraphDenseIntersect {
   std::unique_ptr<FrameInfo> InitialFrameInfo() {
     int32_t num_fsas = b_fsas_.shape.Dim0();
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
-    ans->states = Ragged<StateInfo>(RegularRaggedShape(c_, num_fsas, 1),
-                                    Array1<StateInfo>(c_, num_fsas));
-    StateInfo *state_values_data = ans->states.values.Data();
-    // a_fsas_row_splits1 maps from fsa_idx0 to state_idx01.
-    const int32_t *a_fsas_row_splits1 = a_fsas_.RowSplits(1).Data();
-    int32_t a_fsas_stride = a_fsas_stride_;
-    auto lambda_set_state_info = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
-      int32_t a_fsas_state_idx01 = a_fsas_row_splits1[fsa_idx0 * a_fsas_stride];
-      state_values_data[fsa_idx0].a_fsas_state_idx01 = a_fsas_state_idx01;
-      // start state, so forward log-like is 0.0
-      state_values_data[fsa_idx0].forward_loglike = FloatToOrderedInt(0.0);
-    };
-    Eval(c_, num_fsas, lambda_set_state_info);
+
+    if (a_fsas_.Dim0() == 1) {
+      int32_t start_states_per_seq = (a_fsas_.shape.TotSize(1) > 0),  // 0 or 1
+          num_start_states = num_fsas * start_states_per_seq;
+      ans->states = Ragged<StateInfo>(RegularRaggedShape(c_, num_fsas,
+                                                         start_states_per_seq),
+                                      Array1<StateInfo>(c_, num_start_states));
+      StateInfo *states_data = ans->states.values.Data();
+      auto lambda_set_states = [=] __host__ __device__ (int32_t i) -> void {
+        StateInfo info;
+        info.a_fsas_state_idx01 = 0;  // start state of a_fsas_
+        info.forward_loglike = FloatToOrderedInt(0.0);
+        states_data[i] = info;
+      };
+      Eval(c_, num_start_states, lambda_set_states);
+    } else {
+      Ragged<int32_t> start_states = GetStartStates(a_fsas_);
+      ans->states = Ragged<StateInfo>(
+          start_states.shape,
+          Array1<StateInfo>(c_, start_states.NumElements()));
+      K2_LOG(INFO) << "Start-states = " << start_states;
+      StateInfo *ans_states_values_data = ans->states.values.Data();
+      const int32_t *start_states_values_data = start_states.values.Data(),
+          *start_states_row_ids1_data = start_states.shape.RowIds(1).Data();
+      auto lambda_set_state_info = [=] __host__ __device__ (int32_t states_idx01) -> void {
+        StateInfo info;
+        info.a_fsas_state_idx01 = start_states_values_data[states_idx01];
+        info.forward_loglike = FloatToOrderedInt(0.0);
+        ans_states_values_data[states_idx01] = info;
+      };
+      Eval(c_, start_states.NumElements(), lambda_set_state_info);
+    }
     return ans;
   }
 
@@ -562,6 +582,10 @@ class MultiGraphDenseIntersect {
     return ai;
   }
 
+  // Later we may choose to support b_fsas_.Dim0() == 1 and a_fsas_.Dim0() > 1,
+  // and we'll have to change various bits of code for that to work.
+  inline int32_t NumFsas() { return b_fsas_.shape.Dim0(); }
+
   /*
     Does the forward-propagation (basically: the decoding step) and
     returns a newly allocated FrameInfo* object for the next frame.
@@ -575,6 +599,7 @@ class MultiGraphDenseIntersect {
              'states' member set up but not its 'arcs' member.
    */
   std::unique_ptr<FrameInfo> PropagateForward(int32_t t, FrameInfo *cur_frame) {
+    int32_t num_fsas = NumFsas();
     // Ragged<StateInfo> &states = cur_frame->states;
     // ai has 3 axes: fsa_id, state, arc.
     Ragged<ArcInfo> arc_info = GetUnprunedArcs(t, cur_frame);
@@ -593,7 +618,6 @@ class MultiGraphDenseIntersect {
 
     // `cutoffs` is of dimension num_fsas.
     Array1<float> cutoffs = GetPruningCutoffs(ai_loglikes);
-    int32_t num_fsas = cutoffs.Dim();
     K2_LOG(INFO) << "Pruning cutoffs: " << cutoffs;
     float *cutoffs_data = cutoffs.Data();
 
@@ -710,7 +734,10 @@ class MultiGraphDenseIntersect {
         Ragged<ArcInfo>(curr_frame_arc_shape, curr_frame_arc_array1);
 
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
-    ans->states = Ragged<StateInfo>(RaggedShape2(nullptr, &state_to_fsa_id, -1),
+    Array1<int32_t> states_row_splits1(c_, num_fsas + 1);
+    RowIdsToRowSplits(state_to_fsa_id, &states_row_splits1);
+    ans->states = Ragged<StateInfo>(RaggedShape2(&states_row_splits1,
+                                                 &state_to_fsa_id, num_states),
                                     Array1<StateInfo>(c_, num_states));
     StateInfo *ans_states_data = ans->states.values.Data();
     const int32_t minus_inf =
@@ -919,7 +946,7 @@ class MultiGraphDenseIntersect {
     const int32_t *cur_states_row_ids1 =
         cur_frame->states.shape.RowIds(1).Data();
 
-    int32_t num_fsas = b_fsas_.shape.Dim0();
+    int32_t num_fsas = NumFsas();
     assert(cur_frame->states.shape.Dim0() == num_fsas);
     float float_minus_inf = -std::numeric_limits<float>::infinity();
     auto lambda_set_state_backward_prob =
