@@ -77,10 +77,11 @@ torch::Tensor ToTensor(Array1<Arc> &array) {
   std::vector<int64_t> strides = {4, 1};          // in number of elements
   auto options = torch::device(device).dtype(scalar_type);
 
-  // NOTE: we keep a copy of `array` inside the lambda
+  // NOTE: we keep a copy of `Region` inside the lambda
   // so that the returned tensor outlives the input array.
   return torch::from_blob(
-      array.Data(), sizes, strides, [array](void *) {}, options);
+      array.Data(), sizes, strides,
+      [saved_region = array.GetRegion()](void *) {}, options);
 }
 
 template <>
@@ -124,12 +125,13 @@ torch::Tensor ToTensor(Tensor &tensor) {
   std::vector<int64_t> sizes(dims_int32.begin(), dims_int32.end());
   std::vector<int64_t> strides(strides_int32.begin(), strides_int32.end());
 
-  // NOTE: we keep a copy of `tensor` inside the lambda
+  // NOTE: we keep a copy of `Region` inside the lambda
   // so that `torch::Tensor` always accesses valid memory.
   // This prevent the memory managed by k2::Tensor from being freed
   // as long as torch::Tensor is alive.
   return torch::from_blob(
-      tensor.Data(), sizes, strides, [tensor](void *) {}, options);
+      tensor.Data(), sizes, strides,
+      [saved_region = tensor.GetRegion()](void *) {}, options);
 }
 
 }  // namespace k2
