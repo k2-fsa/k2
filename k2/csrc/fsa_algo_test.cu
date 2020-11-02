@@ -315,7 +315,7 @@ TEST(FsaAlgo, ShortestPath) {
     CheckArrayData(best_path_arc_indexes.values,
                    std::vector<int32_t>{1, 3, 5, 10, 13, 16, 17, 19, 21, 23});
 
-    FsaVec ans = CreateFsaVec(fsa_vec, best_path_arc_indexes);
+    FsaVec ans = FsaVecFromArcIndexes(fsa_vec, best_path_arc_indexes);
     ASSERT_EQ(ans.NumAxes(), 3);
     ASSERT_EQ(ans.Dim0(), 3);
 
