@@ -367,7 +367,6 @@ FsaVec RandomFsaVec(int32_t min_num_fsas = 1, int32_t max_num_fsas = 1000,
                     int32_t max_symbol = 50, int32_t min_num_arcs = 0,
                     int32_t max_num_arcs = 1000);
 
-
 /*
   Return a randomly generated DenseFsaVec.  It will have -infinities in the
   expected places (see documentation of DenseFsaVec).
@@ -378,17 +377,19 @@ FsaVec RandomFsaVec(int32_t min_num_fsas = 1, int32_t max_num_fsas = 1000,
                                      not counting the frame corresponding to the
                                      final-symbol -1.
            @param [in] max_frames    Maximum number of frames *per sequence*.
-           @param [in] min_nsymbols  Minimum number of symbols, including epsilon
-                                     but not the final-symbol -1, so so
-                                     the scores.Dim1() will be >= min_symbols + 1.
+           @param [in] min_nsymbols  Minimum number of symbols, including
+                                     epsilon but not the final-symbol -1,
+                                     so the scores.Dim1()
+                                     will be >= min_symbols + 1.
            @param [in] max_nsymbols  Maximum number of symbols; scores.Dim1()
                                      will be <= max_symbols + 1.
            @param [in] scores_stddev  Scaling factor used on the scores
            @returns   Returns a random FsaVec, on CPU.
  */
-DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas = 1, int32_t max_num_fsas = 10,
-                              int32_t min_frames = 0, int32_t max_frames = 20,
-                              int32_t min_nsymbols = 1, int32_t max_nsymbols = 50,
+DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas = 1,
+                              int32_t max_num_fsas = 10, int32_t min_frames = 0,
+                              int32_t max_frames = 20, int32_t min_nsymbols = 1,
+                              int32_t max_nsymbols = 50,
                               float scores_scale = 1.0);
 
 /*
@@ -399,10 +400,23 @@ DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas = 1, int32_t max_num_fsas = 1
     @param [in]  src   Source FsaVec; must have 3 axes
     @return            Returns ragged array containing indexes of
                        start-states in `src` (i.e. of type state_idx01).
-                       It will satify ans.NumAxes() == 2, ans.Dim0() == src.Dim0(),
+                       It will satisfy ans.NumAxes() == 2,
+                       ans.Dim0() == src.Dim0(),
                        ans.NumElements() <= ans.Dim0().
  */
 Ragged<int32_t> GetStartStates(FsaVec &src);
+
+/* Create a FsaVec from a tensor of best arc indexes returned by `ShortestPath`.
+
+   @param [in] fsas   Input FsaVec. It must be the same FsaVec for getting
+                      `best_arc_indexes`.
+   @param [in] best_arc_indexes
+                      It is returned by `ShortestPath`.
+
+
+   @return returns a linear FsaVec that contains the best path of `fsas`.
+ */
+FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes);
 
 }  // namespace k2
 

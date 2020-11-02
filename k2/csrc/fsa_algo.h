@@ -241,18 +241,6 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
                              Array1<float> *total_scores = nullptr,
                              Array1<int32_t> *entering_arcs = nullptr);
 
-/* Create a FsaVec from a tensor of best arc indexes returned by `ShortestPath`.
-
-   @param [in] fsas   Input FsaVec. It must be the same FsaVec for getting
-                      `best_arc_indexes`.
-   @param [in] best_arc_indexes
-                      It is returned by `ShortestPath`.
-
-
-   @return returns a linear FsaVec that contains the best path of `fsas`.
- */
-FsaVec CreateFsaVec(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes);
-
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_

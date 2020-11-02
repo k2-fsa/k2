@@ -14,6 +14,7 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/torch_util.h"
@@ -182,7 +183,7 @@ static void PybindShortestPath(py::module &m) {
         Array1<float> total_scores;
         Ragged<int32_t> best_path_arc_indexes =
             ShortestPath(fsas, &total_scores);
-        FsaVec out = CreateFsaVec(fsas, best_path_arc_indexes);
+        FsaVec out = FsaVecFromArcIndexes(fsas, best_path_arc_indexes);
 
         return std::make_tuple(out, ToTensor(total_scores),
                                best_path_arc_indexes);

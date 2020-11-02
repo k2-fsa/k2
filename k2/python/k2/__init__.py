@@ -12,6 +12,7 @@ from .fsa_properties import is_arc_sorted
 from .fsa_properties import is_coaccessible
 from .fsa_properties import properties_to_str
 from .symbol_table import SymbolTable
+from .utils import create_fsa_vec
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
@@ -22,6 +23,7 @@ __all__ = [
     'SymbolTable',
     'arc_sort',
     'connect',
+    'create_fsa_vec',
     'dense_fsa',
     'get_properties',
     'intersect',
