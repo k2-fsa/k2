@@ -289,6 +289,15 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
   *dest = tmp;
 }
 
+// TODO(fangjun): use the following method suggested by Dan
+//
+// ... incidentally, it's possible to further optimize this so the run
+// time is less than linear, by using methods similar to what I use
+// in GetStateBatches(); imagine computing a table that instead of
+// the best traceback, is the best 2-step traceback; and then the 4-step
+// traceback, and so on. There's no need for this right now, since the
+// forward-pass algorithm is already at least linear-time in the length
+// of this path. But we can consider it for the future.
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
                              Array1<float> *total_scores /*= nullptr*/,
                              Array1<int32_t> *entering_arcs /*= nullptr*/) {
