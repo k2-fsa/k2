@@ -944,8 +944,8 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
   // Firstly, all rows of src.scores (==all elements of src.shape) correspond
   // to states with arcs leaving them.  Most of them have `num_symbols` arcs,
   // but the final one for each FSA has 1 arc (with symbol -1)
-  int32_t num_arcs = src.shape.NumElements() * num_symbols -
-                     (num_symbols - 1) * num_fsas;
+  int32_t num_arcs =
+      src.shape.NumElements() * num_symbols - (num_symbols - 1) * num_fsas;
   Array1<int32_t> row_splits2(c, num_states + 1), row_ids2(c, num_arcs);
   const int32_t *row_ids1_data = fsa2state.RowIds(1).Data(),
                 *src_row_ids1_data = src.shape.RowIds(1).Data(),
@@ -1003,8 +1003,7 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
     if (s == 0) {  // 1st arc for this state.
       row_splits2_data[ans_state_idx01] = arc_idx012;
       K2_CHECK(row_ids1_data[ans_state_idx01] == fsa_idx0);
-      if (src_state_idx01 == 0)
-        row_splits2_data[num_states] = num_arcs;
+      if (src_state_idx01 == 0) row_splits2_data[num_states] = num_arcs;
     }
   };
   Eval2(c, src.shape.NumElements(), num_symbols, lambda_set_arcs_etc);
@@ -1441,7 +1440,7 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
   auto lambda_copy_tot_scores = [=] __host__ __device__(int32_t fsa_idx) {
     int32_t start_state = fsa_row_splits1[fsa_idx],
             start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
-    if (start_state_next_fsa - start_state > 0) {  // non-empty fsa
+    if (start_state_next_fsa > start_state) {  // non-empty fsa
       int32_t final_state_idx = start_state_next_fsa - 1;
       tot_scores_data[fsa_idx] = forward_scores_data[final_state_idx];
     }
@@ -1595,7 +1594,7 @@ FsaVec RandomFsaVec(int32_t min_num_fsas /*=1*/, int32_t max_num_fsas /*=1000*/,
   return Stack(0, num_fsas, fsas.data());
 }
 
-DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas , int32_t max_num_fsas,
+DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas, int32_t max_num_fsas,
                               int32_t min_frames, int32_t max_frames,
                               int32_t min_symbols, int32_t max_symbols,
                               float scores_scale) {
@@ -1622,7 +1621,7 @@ DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas , int32_t max_num_fsas,
   RandIntGenerator gen;
   for (int32_t i = 0; i < num_fsas; i++) {
     int32_t this_num_frames = num_frames[i],
-        end_frame = cur_start_frame + this_num_frames;
+            end_frame = cur_start_frame + this_num_frames;
     for (int32_t f = cur_start_frame; f + 1 < end_frame; f++) {
       scores_acc(f, 0) = -std::numeric_limits<float>::infinity();
       for (int32_t j = 0; j < num_symbols; j++)
@@ -1633,15 +1632,14 @@ DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas , int32_t max_num_fsas,
     int32_t f = end_frame - 1;
     scores_acc(f, 0) = scores_scale * gen(-50, 50) * 0.01;
     for (int32_t j = 0; j < num_symbols; j++)
-      scores_acc(f, j + 1) =  -std::numeric_limits<float>::infinity();
-    row_splits_vec[i+1] = cur_start_frame = end_frame;
+      scores_acc(f, j + 1) = -std::numeric_limits<float>::infinity();
+    row_splits_vec[i + 1] = cur_start_frame = end_frame;
   }
   Array1<int32_t> row_splits(c, row_splits_vec);
-  return DenseFsaVec(RaggedShape2(&row_splits, nullptr, tot_frames),
-                     scores);
+  return DenseFsaVec(RaggedShape2(&row_splits, nullptr, tot_frames), scores);
 }
 
-Ragged<int32_t> GetStartStates(FsaVec &src){
+Ragged<int32_t> GetStartStates(FsaVec &src) {
   ContextPtr c = src.Context();
   K2_CHECK(src.NumAxes() == 3);
   int32_t num_fsas = src.Dim0();
@@ -1651,10 +1649,11 @@ Ragged<int32_t> GetStartStates(FsaVec &src){
   // will first set the elements of ans_row_splits to the number of states kept
   // from this FSA (either 0 or 1).
   int32_t *num_states_data = ans_row_splits.Data();
-  auto lambda_set_num_states = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
+  auto lambda_set_num_states =
+      [=] __host__ __device__(int32_t fsa_idx0) -> void {
     // 1 if the FSA is not empty, 0 if empty.
-    num_states_data[fsa_idx0] = (src_row_splits1_data[fsa_idx0 + 1] >
-                                 src_row_splits1_data[fsa_idx0]);
+    num_states_data[fsa_idx0] =
+        (src_row_splits1_data[fsa_idx0 + 1] > src_row_splits1_data[fsa_idx0]);
   };
   Eval(c, num_fsas, lambda_set_num_states);
   ExclusiveSum(ans_row_splits, &ans_row_splits);
@@ -1663,18 +1662,80 @@ Ragged<int32_t> GetStartStates(FsaVec &src){
                       Array1<int32_t>(c, ans_dim));
   const int32_t *ans_row_splits1_data = ans.shape.RowSplits(1).Data();
   int32_t *ans_values_data = ans.values.Data();
-  auto lambda_set_ans_values = [=] __host__ __device__ (int32_t ans_idx01) -> void {
+  auto lambda_set_ans_values =
+      [=] __host__ __device__(int32_t ans_idx01) -> void {
     int32_t idx0 = ans_row_splits1_data[ans_idx01];
     int32_t src_start_state_idx01 = src_row_splits1_data[idx0];
-    K2_CHECK_GT(src_row_splits1_data[idx0 + 1],
-                src_row_splits1_data[idx0]);
+    K2_CHECK_GT(src_row_splits1_data[idx0 + 1], src_row_splits1_data[idx0]);
     ans_values_data[ans_idx01] = src_start_state_idx01;
   };
   Eval(c, ans_dim, lambda_set_ans_values);
   return ans;
 }
 
+FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes) {
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  K2_CHECK_EQ(best_arc_indexes.NumAxes(), 2);
+  K2_CHECK(IsCompatible(fsas, best_arc_indexes));
+  K2_CHECK_EQ(fsas.Dim0(), best_arc_indexes.Dim0());
 
+  // if there are n arcs, there are n + 1 states
+  RaggedShape states_shape = ChangeSublistSize(best_arc_indexes.shape, 1);
+  const int32_t *states_shape_row_splits1_data =
+      states_shape.RowSplits(1).Data();
 
+  int32_t num_fsas = fsas.Dim0();
+  int32_t num_states = states_shape.NumElements();
+  int32_t num_arcs = best_arc_indexes.shape.NumElements();
+  ContextPtr &context = fsas.Context();
+  Array1<int32_t> row_splits2(context, num_states + 1);
+  Array1<int32_t> row_ids2(context, num_arcs);
+  int32_t *row_splits2_data = row_splits2.Data();
+  int32_t *row_ids2_data = row_ids2.Data();
+
+  Array1<Arc> arcs(context, num_arcs);
+  Arc *arcs_data = arcs.Data();
+
+  const int32_t *best_arc_indexes_row_splits1_data =
+      best_arc_indexes.RowSplits(1).Data();
+
+  const int32_t *best_arc_indexes_row_ids1_data =
+      best_arc_indexes.RowIds(1).Data();
+
+  const int32_t *best_arc_indexes_data = best_arc_indexes.values.Data();
+  const Arc *fsas_values_data = fsas.values.Data();
+
+  auto lambda_set_arcs = [=] __host__ __device__(int32_t best_arc_idx01) {
+    int32_t fsas_idx0 = best_arc_indexes_row_ids1_data[best_arc_idx01];
+    int32_t best_arc_idx0x = best_arc_indexes_row_splits1_data[fsas_idx0];
+    int32_t best_arc_idx0x_next =
+        best_arc_indexes_row_splits1_data[fsas_idx0 + 1];
+    int32_t num_best_arcs = best_arc_idx0x_next - best_arc_idx0x;
+    int32_t best_arc_idx1 = best_arc_idx01 - best_arc_idx0x;
+
+    int32_t state_offset = states_shape_row_splits1_data[fsas_idx0];
+
+    const Arc &arc = fsas_values_data[best_arc_indexes_data[best_arc_idx01]];
+    int32_t src_state = best_arc_idx1;
+    int32_t dest_state = src_state + 1;
+    int32_t label = arc.label;
+    float score = arc.score;
+    arcs_data[best_arc_idx01] = Arc(src_state, dest_state, label, score);
+
+    int32_t state_idx01 = state_offset + src_state;
+    row_ids2_data[best_arc_idx01] = state_idx01;
+    row_splits2_data[state_idx01 + 1] = best_arc_idx01 + 1;
+    if (best_arc_idx01 == 0) row_splits2_data[0] = 0;
+
+    if (best_arc_idx1 + 1 == num_best_arcs)
+      row_splits2_data[state_idx01 + 2] = best_arc_idx01 + 1;
+  };
+  Eval(context, num_arcs, lambda_set_arcs);
+  RaggedShape shape =
+      RaggedShape3(&states_shape.RowSplits(1), &states_shape.RowIds(1),
+                   num_states, &row_splits2, &row_ids2, num_arcs);
+  Ragged<Arc> ans(shape, arcs);
+  return ans;
+}
 
 }  // namespace k2

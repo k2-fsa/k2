@@ -525,8 +525,7 @@ bool Equal(const Array2<T> &a, const Array2<T> &b) {
     Array1<int32_t> is_same(c, 1, 1);
     int32_t *is_same_data = is_same.Data();
     auto lambda_test = [=] __host__ __device__(int32_t i, int32_t j) -> void {
-      if (a_acc(i,j) != b_acc(i,j))
-        *is_same_data = 0;
+      if (a_acc(i, j) != b_acc(i, j)) *is_same_data = 0;
     };
     Eval2Device(c, a.Dim0(), a.Dim1(), lambda_test);
     return is_same[0];

@@ -72,10 +72,11 @@ torch::Tensor ToTensor(Array1<T> &array) {
   auto scalar_type = ToScalarType<T>::value;
   auto options = torch::device(device).dtype(scalar_type);
 
-  // NOTE: we keep a copy of `array` inside the lambda
+  // NOTE: we keep a copy of `Region` inside the lambda
   // so that `torch::Tensor` always accesses valid memory.
   return torch::from_blob(
-      array.Data(), array.Dim(), [array](void *) {}, options);
+      array.Data(), array.Dim(), [saved_region = array.GetRegion()](void *) {},
+      options);
 }
 
 /* Convert a 1-D torch::Tensor to an Array1<T>.
@@ -162,11 +163,11 @@ torch::Tensor ToTensor(Array2<T> &array) {
   auto scalar_type = ToScalarType<T>::value;
   auto options = torch::device(device).dtype(scalar_type);
 
-  // NOTE: we keep a copy of `array` inside the lambda
+  // NOTE: we keep a copy of `Region` inside the lambda
   // so that `torch::Tensor` always accesses valid memory.
   auto tensor = torch::from_blob(
       array.Data(), {array.Dim0(), array.Dim1()}, {array.ElemStride0(), 1},
-      [array](void *) {}, options);
+      [saved_region = array.GetRegion()](void *) {}, options);
   return tensor;
 }
 

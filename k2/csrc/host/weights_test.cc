@@ -57,9 +57,11 @@ class WeightsTest : public ::testing::Test {
 
 TEST_F(WeightsTest, ComputeForwardMaxWeights) {
   {
+    std::vector<int32_t> arc_indexes;
     std::vector<double> state_weights(num_states_);
-    ComputeForwardMaxWeights(*fsa_, &state_weights[0]);
+    ComputeForwardMaxWeights(*fsa_, &state_weights[0], &arc_indexes);
     EXPECT_DOUBLE_ARRAY_APPROX_EQ(state_weights, forward_max_weights_, 1e-3);
+    EXPECT_THAT(arc_indexes, ::testing::ElementsAre(1, 3, 5, 10));
   }
 
   // template version

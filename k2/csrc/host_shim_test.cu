@@ -15,6 +15,7 @@
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host_shim.h"
+#include "k2/csrc/test_utils.h"
 
 namespace k2 {
 TEST(HostShim, FsaToHostFsa) {
@@ -55,5 +56,6 @@ TEST(HostShim, FsaVecToHostFsa) {
   K2_LOG(INFO) << k2host::FsaToString(host_fsa);
   // TODO(fangjun): check the content of host_fsa
 }
+
 
 }  // namespace k2

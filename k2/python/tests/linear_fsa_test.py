@@ -22,9 +22,9 @@ class TestLinearFsa(unittest.TestCase):
         assert len(fsa.shape) == 2
         assert fsa.shape[0] == len(symbols) + 2, 'There should be 5 states'
         assert torch.allclose(
-            fsa.score, torch.zeros(len(symbols) + 1, dtype=torch.float32))
+            fsa.scores, torch.zeros(len(symbols) + 1, dtype=torch.float32))
         assert torch.allclose(
-            fsa.arcs.values()[:, :-1],  # skip the last field `score`
+            fsa.arcs.values()[:, :-1],  # skip the last field `scores`
             torch.tensor([[0, 1, 2], [1, 2, 5], [2, 3, 8], [3, 4, -1]],
                          dtype=torch.int32))
 
@@ -56,10 +56,10 @@ class TestLinearFsa(unittest.TestCase):
         ]
         print(fsa.arcs.values()[:, :-1])
         assert torch.allclose(
-            fsa.arcs.values()[:, :-1],  # skip the last field `score`
+            fsa.arcs.values()[:, :-1],  # skip the last field `scores`
             torch.tensor(expected_arcs, dtype=torch.int32))
         assert torch.allclose(
-            fsa.score,
+            fsa.scores,
             torch.zeros(num_symbols + len(symbols), dtype=torch.float32))
 
 

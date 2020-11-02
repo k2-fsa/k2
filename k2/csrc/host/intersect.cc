@@ -67,6 +67,9 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
   const auto arc_a_begin = a_.data;
   const auto arc_b_begin = b_.data;
 
+  const Arc *arc_a_offset = a_.data + a_.indexes[0];
+  const Arc *arc_b_offset = b_.data + b_.indexes[0];
+
   const int32_t final_state_c = -1;  // just as a placeholder
   // no corresponding arc mapping from `c` to `a` or `c` to `b`
   const int32_t arc_map_none = -1;
@@ -106,7 +109,7 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
         arcs_.emplace_back(curr_state_index, new_state_index, kEpsilon,
                            a_arc_iter_begin->weight);
         arc_map_a_.push_back(
-            static_cast<int32_t>(a_arc_iter_begin - arc_a_begin));
+            static_cast<int32_t>(a_arc_iter_begin - arc_a_offset));
         arc_map_b_.push_back(arc_map_none);
       }
       for (; b_arc_iter_begin != b_arc_iter_end; ++b_arc_iter_begin) {
@@ -118,7 +121,7 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
                            b_arc_iter_begin->weight);
         arc_map_a_.push_back(arc_map_none);
         arc_map_b_.push_back(
-            static_cast<int32_t>(b_arc_iter_begin - arc_b_begin));
+            static_cast<int32_t>(b_arc_iter_begin - arc_b_offset));
       }
     }
     // as both `a` and `b` are arc-sorted, we will iterate over the state with
@@ -149,9 +152,9 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
                            curr_a_arc.weight + curr_b_arc.weight);
 
         auto curr_arc_index_a = static_cast<int32_t>(
-            a_arc_iter_begin - (swapped ? arc_b_begin : arc_a_begin));
-        auto curr_arc_index_b =
-            static_cast<int32_t>(it_b - (swapped ? arc_a_begin : arc_b_begin));
+            a_arc_iter_begin - (swapped ? arc_b_offset : arc_a_offset));
+        auto curr_arc_index_b = static_cast<int32_t>(
+            it_b - (swapped ? arc_a_offset : arc_b_offset));
         if (swapped) std::swap(curr_arc_index_a, curr_arc_index_b);
         arc_map_a_.push_back(curr_arc_index_a);
         arc_map_b_.push_back(curr_arc_index_b);

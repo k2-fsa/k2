@@ -62,6 +62,6 @@ for lib in $build_dir/lib/*.so; do
   chrpath -r '$ORIGIN' $lib
 done
 
-tag=$(python -c "import sys; print(sys.version[:3].replace('.', ''))")
+tag=$(python3 -c "import sys; print(sys.version[:3].replace('.', ''))")
 
 python3 setup.py bdist_wheel --python-tag py$tag

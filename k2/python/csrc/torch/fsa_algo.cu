@@ -14,6 +14,8 @@
 
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/host_shim.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/torch_util.h"
 
@@ -98,14 +100,14 @@ static void PybindIntersect(py::module &m) {
       "intersect",
       [](FsaOrVec &a_fsas, FsaOrVec &b_fsas,
          bool treat_epsilons_specially = true,
-         bool need_arc_map = true)
-          -> std::tuple<FsaOrVec, torch::optional<torch::Tensor>,
-                        torch::optional<torch::Tensor>> {
+         bool need_arc_map =
+             true) -> std::tuple<FsaOrVec, torch::optional<torch::Tensor>,
+                                 torch::optional<torch::Tensor>> {
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         FsaVec out;
-        Intersect(a_fsas, b_fsas, treat_epsilons_specially,
-                  &out, need_arc_map ? &a_arc_map : nullptr,
+        Intersect(a_fsas, b_fsas, treat_epsilons_specially, &out,
+                  need_arc_map ? &a_arc_map : nullptr,
                   need_arc_map ? &b_arc_map : nullptr);
         FsaOrVec ans;
         if (out.Dim0() == 1)
@@ -165,6 +167,30 @@ static void PybindArcSort(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
+static void PybindShortestPath(py::module &m) {
+  // returns a tuple containing the following entries (listed in order):
+  //  - FsaVec
+  //      contains linear FSAs of the best path of every FSA
+  //  - total_score
+  //      a torch::Tensor of dtype torch.float32
+  //  - best_path_arc_indexes
+  //      a RaggedInt containing the arc indexes of the best paths
+  m.def(
+      "shortest_path",
+      [](FsaVec &fsas) -> std::tuple<Fsa, torch::Tensor, Ragged<int32_t>> {
+        if (fsas.NumAxes() == 2) fsas = FsaToFsaVec(fsas);
+
+        Array1<float> total_scores;
+        Ragged<int32_t> best_path_arc_indexes =
+            ShortestPath(fsas, &total_scores);
+        FsaVec out = FsaVecFromArcIndexes(fsas, best_path_arc_indexes);
+
+        return std::make_tuple(out, ToTensor(total_scores),
+                               best_path_arc_indexes);
+      },
+      py::arg("fsas"));
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -173,4 +199,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindIntersect(m);
   k2::PybindConnect(m);
   k2::PybindArcSort(m);
+  k2::PybindShortestPath(m);
 }

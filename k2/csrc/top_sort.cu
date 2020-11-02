@@ -24,7 +24,7 @@ namespace k2 {
 // See declaration in fsa_util.h
 FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
                       Array1<int32_t> *arc_map) {
-  K2_CHECK(fsas.NumAxes() == 3);
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
   ContextPtr &c = fsas.Context();
   K2_CHECK_LE(order.Dim(), fsas.TotSize(1));
   Array1<int32_t> old2new_map(c, fsas.TotSize(1));

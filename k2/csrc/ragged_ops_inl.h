@@ -187,8 +187,8 @@ Ragged<T> Transpose(Ragged<T> &src) {
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos <= shape.TotSize(axis).
 template <typename T>
-void PrintRaggedPart(std::ostream &stream, const Ragged<T> &ragged, int32_t axis,
-                     int32_t begin_pos, int32_t end_pos) {
+void PrintRaggedPart(std::ostream &stream, const Ragged<T> &ragged,
+                     int32_t axis, int32_t begin_pos, int32_t end_pos) {
   const auto &shape = ragged.shape;
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
            begin_pos <= end_pos && end_pos <= shape.TotSize(axis));
@@ -333,7 +333,7 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
       is.get();  // consume character 'c'
     } else if (c == ']') {
       cur_level--;
-      if (cur_level < 0) { // ']' without '['.
+      if (cur_level < 0) {  // ']' without '['.
         is.setstate(std::ios::failbit);
         return is;
       }

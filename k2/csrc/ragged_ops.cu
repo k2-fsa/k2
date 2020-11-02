@@ -1139,13 +1139,14 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src,
   ParallelRunner pr(c);
   {
     With w(pr.NewStream());
-    // before_last.row_splits maps from idx0 -> idx01 (contains idx01's).  Map the
-    // idx01's; the idx0s stay the same.
+    // before_last.row_splits maps from idx0 -> idx01 (contains idx01's).  Map
+    // the idx01's; the idx0s stay the same.
     before_last.row_splits = r_before_last.Old2New()[before_last.row_splits];
   }
   {
     With w(pr.NewStream());
-    auto lambda_set_row_ids1_and_row_splits2 = [=] __host__ __device__ (int32_t new_idx01) -> void {
+    auto lambda_set_row_ids1_and_row_splits2 =
+        [=] __host__ __device__(int32_t new_idx01) -> void {
       // row_ids1 maps from idx01 -> idx0.  Select subset of
       // idx01's; the idx0 stays the same.
       int32_t old_idx01 = idx01_new2old_data[new_idx01];
@@ -1153,14 +1154,16 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src,
         new_row_ids1_data[new_idx01] = old_row_ids1_data[old_idx01];
       // row_splits2 maps from idx01 -> idx012.  Map both indexes.
       // idx01's; the idx0 stays the same.
-      new_row_splits2_data[new_idx01] = idx012_old2new_data[old_row_splits2_data[old_idx01]];
+      new_row_splits2_data[new_idx01] =
+          idx012_old2new_data[old_row_splits2_data[old_idx01]];
     };
     Eval(c, new_tot_size1 + 1, lambda_set_row_ids1_and_row_splits2);
   }
 
   {
     With w(pr.NewStream());
-    auto lambda_set_row_ids2 = [=] __host__ __device__ (int32_t new_idx012) -> void {
+    auto lambda_set_row_ids2 =
+        [=] __host__ __device__(int32_t new_idx012) -> void {
       // row_ids2 maps from idx012 -> idx01.  Both must be mapped.
 
       int32_t old_idx012 = idx012_new2old_data[new_idx012];

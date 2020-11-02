@@ -23,15 +23,15 @@ class TestConnect(unittest.TestCase):
         4
     '''
     fsa = k2.Fsa.from_str(s)
-    fsa.score.requires_grad_(True)
+    fsa.scores.requires_grad_(True)
     expected_str = '\n'.join(['0 1 1 0.1', '1 2 -1 0.3', '2'])
     connected_fsa = k2.connect(fsa)
     actual_str = k2.to_str(connected_fsa)
     assert actual_str.strip() == expected_str
 
-    loss = connected_fsa.score.sum()
+    loss = connected_fsa.scores.sum()
     loss.backward()
-    assert torch.allclose(fsa.score.grad,
+    assert torch.allclose(fsa.scores.grad,
                           torch.tensor([1, 0, 1, 0], dtype=torch.float32))
 
 

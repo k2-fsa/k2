@@ -27,10 +27,12 @@ TEST(Intersect, Simple) {
   )";
   auto fsa = FsaFromString(s);
 
+  // clang-format off
   DenseFsaVec dfsavec {
     RaggedShape("[ [ x x x ] ]"),
-    Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf]]")
+    Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf]]")  // NOLINT
   };
+  // clang-format on
 
   float beam = 100000;
   int32_t max_active = 10000, min_active = 0;
@@ -66,8 +68,7 @@ TEST(Intersect, Simple) {
   EXPECT_NE(p & gt, gt);
   */
 
-
-  //CheckArrayData(arc_map, {0, 1, 3, 4, 2});
+  // CheckArrayData(arc_map, {0, 1, 3, 4, 2});
 }
 
 
@@ -80,11 +81,13 @@ TEST(Intersect, TwoDense) {
   )";
   auto fsa = FsaFromString(s);
 
+  // clang-format off
   DenseFsaVec dfsavec {
     RaggedShape("[ [ x x x ] [ x x x x ] ]"),
-    Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf] "
-                  "  [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.4 0.5 0.6 ] [ -Inf 0.0 0.0 0.0 ] [ 2.0 -Inf -Inf -Inf] ]")
+    Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf] "  // NOLINT
+                  "  [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.4 0.5 0.6 ] [ -Inf 0.0 0.0 0.0 ] [ 2.0 -Inf -Inf -Inf] ]")  // NOLINT
   };
+  // clang-format on
 
   float beam = 100000;
   int32_t max_active = 10000, min_active = 0;
@@ -129,11 +132,13 @@ TEST(Intersect, TwoFsas) {
   Fsa *fsa_array[] = {&fsa1, &fsa2};
   FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
 
+  // clang-format off
   DenseFsaVec dfsavec {
     RaggedShape("[ [ x x x ] [ x x x x ] ]"),
-    Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf] "
-                  "  [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.4 0.5 0.6 ] [ -Inf 0.0 0.0 0.0 ] [ 2.0 -Inf -Inf -Inf] ]")
+    Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf] "  // NOLINT
+                  "  [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.4 0.5 0.6 ] [ -Inf 0.0 0.0 0.0 ] [ 2.0 -Inf -Inf -Inf] ]")  // NOLINT
   };
+  // clang-format on
 
   float beam = 100000;
   int32_t max_active = 10000, min_active = 0;

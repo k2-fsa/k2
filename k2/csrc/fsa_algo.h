@@ -4,6 +4,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
+ *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -167,8 +168,7 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
 
  */
 bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
-               bool treat_epsilons_specially,
-               FsaVec *out,
+               bool treat_epsilons_specially, FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 /*
@@ -197,6 +197,31 @@ Fsa LinearFsa(const Array1<int32_t> &symbols);
                 will have n+1 arcs (including the final-arc) and n+2 states.
  */
 FsaVec LinearFsas(Ragged<int32_t> &symbols);
+
+/* Compute the forward shortest path in the tropical semiring.
+
+   @param [in] fsas  Input FsaVec (must have 3 axes).  Must be
+                 top-sorted and without self loops, i.e. would have the
+                 property kFsaPropertiesTopSortedAndAcyclic if you were
+                 to compute properties.
+
+   @param [out,optional] entering_arcs   If non-NULL, it will be set to
+                a new Array1, indexed by state_idx01 into `fsas`,
+                saying which arc_idx012 is the best arc entering it,
+                or -1 if there is no such arc.
+
+   @param [out,optional]
+                    If non-NULL, it will contain array of total scores,
+                    of dimension fsas.Dim0(), which will contain the scores
+                    in the final-states of `forward_scores`, or -infinity for
+                    FSAs that had no states.
+
+   @return returns a tensor with 2 axes indexed by [fsa_idx0][arc_idx012]
+           containing the best arc indexes of each fsa.
+ */
+Ragged<int32_t> ShortestPath(FsaVec &fsas,
+                             Array1<float> *total_scores = nullptr,
+                             Array1<int32_t> *entering_arcs = nullptr);
 
 }  // namespace k2
 

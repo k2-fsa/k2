@@ -11,11 +11,13 @@
  */
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
+#include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host/connect.h"
 #include "k2/csrc/host/intersect.h"
 #include "k2/csrc/host/topsort.h"
@@ -100,13 +102,13 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);
   if (a_fsas.NumAxes() == 2) {
     FsaVec a_fsas_vec = FsaToFsaVec(a_fsas);
-    return Intersect(a_fsas_vec, b_fsas, treat_epsilons_specially,
-                     out, arc_map_a, arc_map_b);
+    return Intersect(a_fsas_vec, b_fsas, treat_epsilons_specially, out,
+                     arc_map_a, arc_map_b);
   }
   if (b_fsas.NumAxes() == 2) {
     FsaVec b_fsas_vec = FsaToFsaVec(b_fsas);
-    return Intersect(a_fsas, b_fsas_vec,  treat_epsilons_specially,
-                     out, arc_map_a, arc_map_b);
+    return Intersect(a_fsas, b_fsas_vec, treat_epsilons_specially, out,
+                     arc_map_a, arc_map_b);
   }
 
   int32_t num_fsas_a = a_fsas.Dim0(), num_fsas_b = b_fsas.Dim0();
@@ -130,9 +132,8 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
   for (int32_t i = 0; i < num_fsas; ++i) {
     k2host::Fsa host_fsa_a = FsaVecToHostFsa(a_fsas, i * stride_a),
                 host_fsa_b = FsaVecToHostFsa(b_fsas, i * stride_b);
-    intersections[i] =
-        std::make_unique<k2host::Intersection>(host_fsa_a, host_fsa_b,
-                                               treat_epsilons_specially);
+    intersections[i] = std::make_unique<k2host::Intersection>(
+        host_fsa_a, host_fsa_b, treat_epsilons_specially);
     intersections[i]->GetSizes(&(sizes[i]));
   }
   FsaVecCreator creator(sizes);
@@ -286,6 +287,109 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
   Fsa tmp(src.shape, src.values.Clone());
   SortSublists<Arc, ArcComparer>(&tmp, arc_map);
   *dest = tmp;
+}
+
+// TODO(fangjun): use the following method suggested by Dan
+//
+// ... incidentally, it's possible to further optimize this so the run
+// time is less than linear, by using methods similar to what I use
+// in GetStateBatches(); imagine computing a table that instead of
+// the best traceback, is the best 2-step traceback; and then the 4-step
+// traceback, and so on. There's no need for this right now, since the
+// forward-pass algorithm is already at least linear-time in the length
+// of this path. But we can consider it for the future.
+Ragged<int32_t> ShortestPath(FsaVec &fsas,
+                             Array1<float> *total_scores /*= nullptr*/,
+                             Array1<int32_t> *entering_arcs /*= nullptr*/) {
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  Ragged<int32_t> state_batches = GetStateBatches(fsas, true);
+  Array1<int32_t> dest_states = GetDestStates(fsas, true);
+  Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsas, dest_states);
+  Ragged<int32_t> entering_arc_batches =
+      GetEnteringArcIndexBatches(fsas, incoming_arcs, state_batches);
+
+  bool log_semiring = false;
+  Array1<int32_t> tmp_entering_arcs;
+  Array1<float> forward_scores =
+      GetForwardScores<float>(fsas, state_batches, entering_arc_batches,
+                              log_semiring, &tmp_entering_arcs);
+  if (total_scores != nullptr)
+    *total_scores = GetTotScores<float>(fsas, forward_scores);
+
+  if (entering_arcs != nullptr) *entering_arcs = tmp_entering_arcs;
+
+  const int32_t *entering_arcs_data = tmp_entering_arcs.Data();
+  const Arc *arcs_data = fsas.values.Data();
+  int32_t num_fsas = fsas.Dim0();
+  int32_t num_states = fsas.TotSize(1);
+  ContextPtr &context = fsas.Context();
+
+  // allocate an extra element for ExclusiveSum
+  Array1<int32_t> num_best_arcs_per_fsa(context, num_fsas + 1);
+  int32_t *num_best_arcs_per_fsa_data = num_best_arcs_per_fsa.Data();
+  const int32_t *row_splits1_data = fsas.RowSplits(1).Data();
+
+  // -1 represents an invalid arc_index.
+  // This extra array avoids an extra iteration over `entering_arcs`.
+  Array1<int32_t> state_best_arc_index_array(context, num_states, -1);
+  int32_t *state_best_arc_index_array_data = state_best_arc_index_array.Data();
+
+  auto lambda_set_num_best_arcs = [=] __host__ __device__(int32_t fsas_idx0) {
+    int32_t state_idx01 = row_splits1_data[fsas_idx0];
+    int32_t state_idx01_next = row_splits1_data[fsas_idx0 + 1];
+
+    if (state_idx01_next == state_idx01) {
+      // this fsa is empty, so there is no best path available
+      num_best_arcs_per_fsa_data[fsas_idx0] = 0;
+      return;
+    }
+
+    int32_t final_state_idx01 = state_idx01_next - 1;
+    int32_t cur_state = final_state_idx01;
+    int32_t cur_index = entering_arcs_data[cur_state];
+    int32_t num_arcs = 0;
+    int32_t *p = state_best_arc_index_array_data + final_state_idx01;
+    while (cur_index != -1) {
+      *p = cur_index;
+      --p;
+
+      cur_state = arcs_data[cur_index].src_state + state_idx01;
+      cur_index = entering_arcs_data[cur_state];
+      ++num_arcs;
+    }
+    num_best_arcs_per_fsa_data[fsas_idx0] = num_arcs;
+  };
+  Eval(context, num_fsas, lambda_set_num_best_arcs);
+  ExclusiveSum(num_best_arcs_per_fsa, &num_best_arcs_per_fsa);
+
+  RaggedShape shape = RaggedShape2(&num_best_arcs_per_fsa, nullptr, -1);
+  const int32_t *shape_row_splits1_data = shape.RowSplits(1).Data();
+  const int32_t *shape_row_ids1_data = shape.RowIds(1).Data();
+
+  const int32_t *ans_row_splits_data = shape.RowSplits(1).Data();
+  Array1<int32_t> best_path_arc_indexes(context, shape.NumElements());
+  int32_t *best_path_arc_indexes_data = best_path_arc_indexes.Data();
+
+  auto lambda_set_best_arcs = [=] __host__ __device__(int32_t ans_idx01) {
+    int32_t fsa_idx0 = shape_row_ids1_data[ans_idx01];
+    int32_t ans_idx0x = shape_row_splits1_data[fsa_idx0];
+    int32_t ans_idx1 = ans_idx01 - ans_idx0x;
+
+    int32_t num_arcs_this_fsa = num_best_arcs_per_fsa_data[fsa_idx0 + 1] -
+                                num_best_arcs_per_fsa_data[fsa_idx0];
+    if (num_arcs_this_fsa == 0) return;
+
+    int32_t final_state_idx01_this_fsa = row_splits1_data[fsa_idx0 + 1] - 1;
+
+    const int32_t *p_start = state_best_arc_index_array_data +
+                             final_state_idx01_this_fsa - num_arcs_this_fsa + 1;
+
+    best_path_arc_indexes_data[ans_idx01] = p_start[ans_idx1];
+  };
+  Eval(context, shape.NumElements(), lambda_set_best_arcs);
+
+  Ragged<int32_t> ans(shape, best_path_arc_indexes);
+  return ans;
 }
 
 }  // namespace k2

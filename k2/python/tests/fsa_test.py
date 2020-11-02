@@ -61,14 +61,14 @@ class TestFsa(unittest.TestCase):
                               torch.tensor([0, 1, 2], dtype=torch.int32))
 
         assert torch.allclose(
-            fsa.score,
+            fsa.scores,
             torch.tensor([-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2],
                          dtype=torch.float32))
 
-        fsa.score *= -1
+        fsa.scores *= -1
 
         assert torch.allclose(
-            fsa.score,
+            fsa.scores,
             torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
                          dtype=torch.float32))
 
@@ -110,14 +110,14 @@ class TestFsa(unittest.TestCase):
                               torch.tensor([0, 1, 2], dtype=torch.int32))
 
         assert torch.allclose(
-            fsa.score,
+            fsa.scores,
             torch.tensor([-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2],
                          dtype=torch.float32))
 
-        fsa.score *= -1
+        fsa.scores *= -1
 
         assert torch.allclose(
-            fsa.score,
+            fsa.scores,
             torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
                          dtype=torch.float32))
 
@@ -162,14 +162,14 @@ class TestFsa(unittest.TestCase):
                               torch.tensor([0, 1, 2], dtype=torch.int32))
 
         assert torch.allclose(
-            fsa.score,
+            fsa.scores,
             torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2, 9.2, 0],
                          dtype=torch.float32))
 
-        fsa.score *= -1
+        fsa.scores *= -1
 
         assert torch.allclose(
-            fsa.score,
+            fsa.scores,
             torch.tensor(
                 [-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2, -9.2, 0],
                 dtype=torch.float32))
@@ -298,9 +298,10 @@ class TestFsa(unittest.TestCase):
         fsa = k2.Fsa(tensor)
         del tensor
         assert torch.allclose(
-            fsa.score, torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32))
+            fsa.scores, torch.tensor([0.1, 0.2, 0.3, 0.4],
+                                     dtype=torch.float32))
         assert torch.allclose(
-            fsa.arcs.values()[:, :-1],  # skip the last field `score`
+            fsa.arcs.values()[:, :-1],  # skip the last field `scores`
             torch.tensor([[0, 1, 10], [0, 2, 20], [1, 3, -1], [2, 3, -1]],
                          dtype=torch.int32))
 
@@ -314,10 +315,10 @@ class TestFsa(unittest.TestCase):
         assert fsa_vec.shape == (1, None, None)
 
         assert torch.allclose(
-            fsa_vec.score,
+            fsa_vec.scores,
             torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32))
         assert torch.allclose(
-            fsa_vec.arcs.values()[:, :-1],  # skip the last field `score`
+            fsa_vec.arcs.values()[:, :-1],  # skip the last field `scores`
             torch.tensor([[0, 1, 10], [0, 2, 20], [1, 3, -1], [2, 3, -1]],
                          dtype=torch.int32))
 
@@ -327,10 +328,10 @@ class TestFsa(unittest.TestCase):
         del fsa_vec
         fsa_vec = k2.Fsa(tensor)
         assert torch.allclose(
-            fsa_vec.score,
+            fsa_vec.scores,
             torch.tensor([0.1, 0.2, 0.3, 0.4], dtype=torch.float32))
         assert torch.allclose(
-            fsa_vec.arcs.values()[:, :-1],  # skip the last field `score`
+            fsa_vec.arcs.values()[:, :-1],  # skip the last field `scores`
             torch.tensor([[0, 1, 10], [0, 2, 20], [1, 3, -1], [2, 3, -1]],
                          dtype=torch.int32))
 
@@ -348,8 +349,8 @@ class TestFsa(unittest.TestCase):
             y 2
             z 3
         '''
-        isym = k2.SymbolTable.from_str(isym_str)
-        osym = k2.SymbolTable.from_str(osym_str)
+        symbols = k2.SymbolTable.from_str(isym_str)
+        aux_symbols = k2.SymbolTable.from_str(osym_str)
 
         rules = '''
             0 1 1 1 0.5
@@ -359,8 +360,8 @@ class TestFsa(unittest.TestCase):
             3
         '''
         fsa = k2.Fsa.from_str(_remove_leading_spaces(rules))
-        fsa.isym = isym
-        fsa.osym = osym
+        fsa.symbols = symbols
+        fsa.aux_symbols = aux_symbols
         dot = k2.to_dot(fsa)
         dot.render('/tmp/fsa', format='pdf')
         # the fsa is saved to /tmp/fsa.pdf
