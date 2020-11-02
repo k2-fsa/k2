@@ -26,8 +26,15 @@ namespace k2host {
   Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
   generating `npath` paths from one of them and then checking if the
   paths exist in the other one.
+  Noted we'll pass `treat_epsilons_specially` to Intersection in
+  `host/intersect.h` to do the intersection between the random path and the
+  input Fsas. Generally, if it's true, we will treat epsilons as epsilon when
+  doing intersection; Otherwise, epsilons will just be treated as any other
+  symbol. See `host/intersect.h` for details.
  */
-bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
+bool IsRandEquivalent(const Fsa &a, const Fsa &b,
+                      bool treat_epsilons_specially = true,
+                      std::size_t npath = 100);
 
 /*
   Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
@@ -49,19 +56,29 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath = 100);
                           There is no any requirement on symbol sequences
                           whose total weights over paths are outside `beam`.
                           Just keep `kFloatInfinity` if you don't want pruning.
+  @param [in]  treat_epsilons_specially We'll pass `treat_epsilons_specially`
+                          to Intersection in `host/intersect.h` to do the
+                          intersection between the random path and the
+                          input Fsas. Generally, if it's true, we will treat
+                          epsilons as epsilon when doing intersection;
+                          Otherwise, epsilons will just be treated as any other
+                          symbol. See `host/intersect.h` for details.
   @param [in]  delta      Tolerance for path weights to check the equivalence.
                           If abs(weights_a, weights_b) <= delta, we say the two
                           paths are equivalent.
   @param [in]  top_sorted The user may set this to true if both `a` and `b` are
                           topologically sorted; this makes this function faster.
                           Otherwise it must be set to false.
+                          Caution: we only support true for now and may remove
+                          this parameter later if we find we only need to
+                          support top-sorted cases.
   @param [in]  npath      The number of paths will be generated to check the
                           equivalence of `a` and `b`
  */
 template <FbWeightType Type>
 bool IsRandEquivalent(const Fsa &a, const Fsa &b, float beam = kFloatInfinity,
-                      float delta = 1e-6, bool top_sorted = true,
-                      std::size_t npath = 100);
+                      bool treat_epsilons_specially = true, float delta = 1e-6,
+                      bool top_sorted = true, std::size_t npath = 100);
 
 /*
   This version of `IsRandEquivalent` will be used to check the equivalence

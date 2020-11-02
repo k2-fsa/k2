@@ -273,15 +273,24 @@ Array1<bool> IsConnected(FsaOrVec &fsas);
   (for Fsas):
     Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
     generating `npath` paths from one of them and then checking if the
-    paths exist in the other one with the same weight.
+    paths exist in the other one. Noted we only check the paths existence, the
+    weights on the paths will not be checked.
 
    (for FsaVec):
-     Returns true if IsRandEquivalent is true for all of the corresponding
-     elements of a and b.
+     Returns true if IsRandEquivalentByCheckPathSymbols is true for all of
+     the corresponding elements of a and b.
 
    The algorithm is done on CPU; the FSAs will be copied to CPU if needed.
+
+   Noted we'll pass `treat_epsilons_specially` to Intersection in
+   `host/intersect.h` to do the intersection between the random path and the
+   input Fsas. Generally, if it's true, we will treat epsilons as epsilon when
+   doing intersection; Otherwise, epsilons will just be treated as any other
+   symbol. See `host/intersect.h` for details.
  */
-bool IsRandEquivalent(FsaOrVec &a, FsaOrVec &b, std::size_t npath = 100);
+bool IsRandEquivalentByCheckPathSymbols(FsaOrVec &a, FsaOrVec &b,
+                                        bool treat_epsilons_specially = true,
+                                        std::size_t npath = 100);
 
 /*
   Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
@@ -312,6 +321,13 @@ bool IsRandEquivalent(FsaOrVec &a, FsaOrVec &b, std::size_t npath = 100);
                           whose total weights over paths are outside `beam`.
                           Just keep `k2host::kFloatInfinity` if you don't want
                           pruning.
+  @param [in]  treat_epsilons_specially We'll pass `treat_epsilons_specially`
+                          to Intersection in `host/intersect.h` to do the
+                          intersection between the random path and the
+                          input Fsas. Generally, if it's true, we will treat
+                          epsilons as epsilon when doing intersection;
+                          Otherwise, epsilons will just be treated as any other
+                          symbol. See `host/intersect.h` for details.
   @param [in]  delta      Tolerance for path weights to check the equivalence.
                           If abs(weights_a, weights_b) <= delta, we say the two
                           paths are equivalent.
@@ -319,7 +335,8 @@ bool IsRandEquivalent(FsaOrVec &a, FsaOrVec &b, std::size_t npath = 100);
                           equivalence of `a` and `b`
  */
 bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
-                      float beam = k2host::kFloatInfinity, float delta = 1e-6,
+                      float beam = k2host::kFloatInfinity,
+                      bool treat_epsilons_specially = true, float delta = 1e-6,
                       std::size_t npath = 100);
 
 /*
