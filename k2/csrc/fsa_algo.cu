@@ -312,12 +312,18 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
   const int32_t *entering_arcs_data = tmp_entering_arcs.Data();
   const Arc *arcs_data = fsas.values.Data();
   int32_t num_fsas = fsas.Dim0();
+  int32_t num_states = fsas.TotSize(1);
   ContextPtr &context = fsas.Context();
 
   // allocate an extra element for ExclusiveSum
   Array1<int32_t> num_best_arcs_per_fsa(context, num_fsas + 1);
   int32_t *num_best_arcs_per_fsa_data = num_best_arcs_per_fsa.Data();
   const int32_t *row_splits1_data = fsas.RowSplits(1).Data();
+
+  // -1 represents an invalid arc_index.
+  // This extra array avoids an extra iteration over `entering_arcs`.
+  Array1<int32_t> state_best_arc_index_array(context, num_states, -1);
+  int32_t *state_best_arc_index_array_data = state_best_arc_index_array.Data();
 
   auto lambda_set_num_best_arcs = [=] __host__ __device__(int32_t fsas_idx0) {
     int32_t state_idx01 = row_splits1_data[fsas_idx0];
@@ -334,6 +340,8 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
     int32_t cur_index = entering_arcs_data[cur_state];
     int32_t num_arcs = 0;
     while (cur_index != -1) {
+      state_best_arc_index_array_data[cur_state] = cur_index;
+
       cur_state = arcs_data[cur_index].src_state + state_idx01;
       cur_index = entering_arcs_data[cur_state];
       ++num_arcs;
@@ -353,18 +361,14 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
     int32_t state_idx01_next = row_splits1_data[fsas_idx0 + 1];
     if (state_idx01_next == state_idx01) return;
 
-    int32_t ans_idx01_next = ans_row_splits_data[fsas_idx0 + 1];
-    int32_t *p = best_path_arc_indexes_data + (ans_idx01_next - 1);
-
-    int32_t final_state_idx01 = state_idx01_next - 1;
-    int32_t cur_state = final_state_idx01;
-    int32_t cur_index = entering_arcs_data[cur_state];
-
-    while (cur_index != -1) {
-      *p = cur_index;
-      --p;
-      cur_state = arcs_data[cur_index].src_state + state_idx01;
-      cur_index = entering_arcs_data[cur_state];
+    int32_t ans_idx01 = ans_row_splits_data[fsas_idx0];
+    int32_t *p = best_path_arc_indexes_data + ans_idx01;
+    for (int32_t s = state_idx01; s != state_idx01_next; ++s) {
+      int32_t index = state_best_arc_index_array_data[s];
+      if (index != -1) {
+        *p = index;
+        ++p;
+      }
     }
   };
   Eval(context, num_fsas, lambda_set_best_arcs);
