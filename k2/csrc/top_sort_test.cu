@@ -198,14 +198,17 @@ TEST(TopSort, RandomVectorOfFsas) {
 // another random test which uses IsRandEquivalent to check the result
 TEST(TopSort, RandomVectorOfFsas1) {
   ContextPtr cpu = GetCpuContext();
-  for (int32_t n = 0; n != 0; ++n) {
-    // for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    for (auto &context : {GetCpuContext()}) {
+  for (int32_t n = 0; n != 1; ++n) {
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
       K2_LOG(INFO) << n;
       // We have to generate epsilon-free Fsas here as we will call Intersect
       // below (in `IsRandEquivalent`) which requires at least one of the two
       // input Fsas is epsilon-free.
-      FsaVec random_fsas = RandomFsaVec(1, 1000, false, true);
+      // TODO(haowen): here we generate acyclic Fsas for testing as current
+      // implementation of GPU TopSort supposes the input Fsas are acyclic, but
+      // definitely I need to `reorder` states randomly and add some self-loops
+      // for robust test.
+      FsaVec random_fsas = RandomFsaVec(1, 1000, true, true);
       FsaVec fsa_vec = random_fsas.To(context);
       FsaVec cpu_fsa_vec = fsa_vec.To(cpu);
       int32_t num_fsas = fsa_vec.Dim0();
@@ -241,15 +244,16 @@ TEST(TopSort, RandomVectorOfFsas1) {
         Fsa host_sorted_i;
         HostTopSort(cpu_fsa_vec_i, &host_sorted_i);
         Fsa sorted_i = cpu_sorted.Index(0, i);
-        K2_LOG(INFO) << cpu_fsa_vec_i;
-        K2_LOG(INFO) << sorted_i;
-        K2_LOG(INFO) << host_sorted_i;
         EXPECT_EQ(properties[i] & gt, gt);
         EXPECT_TRUE(is_top_sorted[i]);
+        if (!IsRandEquivalent(sorted_i, host_sorted_i, false)) {
+          K2_LOG(INFO) << cpu_fsa_vec_i;
+          K2_LOG(INFO) << sorted_i;
+          K2_LOG(INFO) << host_sorted_i;
+        }
         EXPECT_TRUE(IsRandEquivalent(sorted_i, host_sorted_i, false));
       }
     }
   }
 }
-
 }  // namespace k2

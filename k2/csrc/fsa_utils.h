@@ -111,6 +111,13 @@ std::string FsaToString(const Fsa &fsa, bool openfst = false,
                     order of FSAs in `src` must not be changed by this: i.e., if
                     we get the old fsa-index for each element of `order`, they
                     must be non-decreasing.
+                    Caution: the function will abort with an error if the
+                    dest_state of an arc in the original Fsa is not kept in
+                    the output Fsa (i.e.  the dest_state is not in `order`).
+                    Noted if the number of states in `order` for an input Fsa
+                    is not zero, then it must be at least 2 (and those states
+                    must contain the start state and final state in the input
+                    FSA), but we never check this in the function.
       @param [out] arc_map  If non-NULL, this will be set to a new Array1 that
                    maps from arcs in the returned FsaVec to the original
                    arc-index in `fsas`.

@@ -51,10 +51,13 @@ void ArcSort(FsaOrVec &src, FsaOrVec *dest, Array1<int32_t> *arc_map = nullptr);
 
       @param [in] src  Input Fsa or FsaVec
       @param [out] dest  Output Fsa or FsaVec.  At exit, its states will be
-                      top-sorted.  (However, if `src` contained cycles other
-                      than self-loops, it won't contain all of the states
-                      in the input; this can be detected by the user directly
-                      by looking at the number of states.
+                      top-sorted.
+                      Caution: our current implementation requires that the
+                      input Fsa is acyclic (self-loop is OK) and there's no
+                      arc entering the start state. So if `src` contained
+                      cycles other than self-loops or there are arcs (except
+                      self-loops) entering start state, the program will
+                      abort with an error.
       @param [out] arc_map  If not nullptr, at exit a map from arc-indexes in
                       `dest` to their source arc-indexes in `src` will have
                        been assigned to this location.
@@ -80,9 +83,8 @@ void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
       @param [in] src  Input Fsa or FsaVec
       @param [out] dest  Output Fsa or FsaVec.  At exit, its states will be
                       top-sorted.  (However, if `src` contained cycles other
-                      than self-loops, it won't contain all of the states
-                      in the input; this can be detected by the user directly
-                      by looking at the number of states.
+                      than self-loops, the function will return false and the
+                      output Fsa will be empty).
       @param [out] arc_map  If not nullptr, at exit a map from arc-indexes in
                       `dest` to their source arc-indexes in `src` will have
                        been assigned to this location.
