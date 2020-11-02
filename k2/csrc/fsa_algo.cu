@@ -289,45 +289,6 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
   *dest = tmp;
 }
 
-double ShortestPath(Fsa &src, Fsa *out,
-                    Array1<int32_t> *best_path_arc_indexes /* = nullptr*/) {
-  if (!src.values.IsValid()) return -std::numeric_limits<double>::infinity();
-
-  ContextPtr &context = src.Context();
-  K2_CHECK_EQ(src.NumAxes(), 2);
-  K2_CHECK_EQ(context->GetDeviceType(), kCpu);
-  int32_t num_states = src.Dim0();
-  k2host::Fsa host_fsa = FsaToHostFsa(src);
-  Array1<double> state_weights(context, num_states);
-  std::vector<int32_t> tmp_arc_indexes;
-  ComputeForwardMaxWeights(host_fsa, state_weights.Data(), &tmp_arc_indexes);
-  if (tmp_arc_indexes.empty()) return -std::numeric_limits<double>::infinity();
-
-  int32_t num_arcs = static_cast<int32_t>(tmp_arc_indexes.size());
-
-  const Arc *src_arcs_data = src.values.Data();
-  Array1<Arc> arcs(context, num_arcs);
-  Arc *arcs_data = arcs.Data();
-  int32_t cur_state = 0;
-  for (auto i : tmp_arc_indexes) {
-    const Arc &src_arc = src_arcs_data[i];
-    arcs_data[cur_state] =
-        Arc(cur_state, cur_state + 1, src_arc.label, src_arc.score);
-    cur_state += 1;
-  }
-  std::vector<int32_t> row_splits_vec(cur_state + 2);
-  std::iota(row_splits_vec.begin(), row_splits_vec.end(), 0);
-  row_splits_vec.back() -= 1;
-  Array1<int32_t> row_splits(context, row_splits_vec);
-  RaggedShape shape = RaggedShape2(&row_splits, nullptr, num_arcs);
-  *out = Fsa(shape, arcs);
-
-  if (best_path_arc_indexes != nullptr)
-    *best_path_arc_indexes = Array1<int32_t>(context, tmp_arc_indexes);
-
-  return state_weights.Back();
-}
-
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
                              Array1<float> *total_scores /*= nullptr*/,
                              Array1<int32_t> *entering_arcs /*= nullptr*/) {

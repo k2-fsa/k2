@@ -196,26 +196,6 @@ Fsa LinearFsa(const Array1<int32_t> &symbols);
  */
 FsaVec LinearFsas(Ragged<int32_t> &symbols);
 
-/* Compute the shortest path in the tropical semiring, but
-   with the opposite sign. That is, it uses `max` instead of `min.
-
-   @param [in] fsa           The input FSA. It is on CPU and must be
-                             topologically sorted.
-
-   @param [out] out          The output FSA. It is a linear FSA containing
-                             the best path.
-   @param [out] best_path_arc_indexes
-                             The arc indexes of the best path from the start
-                             state to the final state. It is empty if there
-                             is no such path.
-
-   @return The shortest distance from the start state to the final state.
-           Returns negative infinity if there is no such path or the input
-           FSA is empty.
- */
-double ShortestPath(Fsa &src, Fsa *out,
-                    Array1<int32_t> *best_path_arc_indexes = nullptr);
-
 /* Compute the forward shortest path in the tropical semiring.
 
    @param [in] fsas  Input FsaVec (must have 3 axes).  Must be
