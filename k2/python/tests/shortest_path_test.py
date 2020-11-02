@@ -16,7 +16,7 @@ import torch
 
 class TestShortestPath(unittest.TestCase):
 
-    def test(self):
+    def test_single_fsa(self):
         s = '''
             0 4 1 1
             0 1 1 1
@@ -34,12 +34,15 @@ class TestShortestPath(unittest.TestCase):
         '''
         fsa = k2.Fsa.from_str(s)
         fsa.scores.requires_grad_(True)
-        best_path = k2.shortest_path(fsa)
-        distance = best_path.scores.sum()
-        assert distance == 14
+        best_path, _ = k2.shortest_path(fsa)
+
+        # we recompute the total_scores for backprop
+        total_scores = best_path.scores.sum()
+
+        assert total_scores == 14
         expected = torch.zeros(12)
         expected[torch.tensor([1, 3, 5, 10])] = 1
-        distance.backward()
+        total_scores.backward()
         assert torch.allclose(fsa.scores.grad, expected)
 
 

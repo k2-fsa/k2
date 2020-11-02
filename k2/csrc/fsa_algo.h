@@ -166,8 +166,7 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
 
  */
 bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
-               bool treat_epsilons_specially,
-               FsaVec *out,
+               bool treat_epsilons_specially, FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 /*
@@ -229,10 +228,17 @@ double ShortestPath(Fsa &src, Fsa *out,
                 saying which arc_idx012 is the best arc entering it,
                 or -1 if there is no such arc.
 
+   @param [out,optional]
+                    If non-NULL, it will contain array of total scores,
+                    of dimension fsas.Dim0(), which will contain the scores
+                    in the final-states of `forward_scores`, or -infinity for
+                    FSAs that had no states.
+
    @return returns a tensor with 2 axes indexed by [fsa_idx0][arc_idx012]
            containing the best arc indexes of each fsa.
  */
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
+                             Array1<float> *total_scores = nullptr,
                              Array1<int32_t> *entering_arcs = nullptr);
 
 /* Create a FsaVec from a tensor of best arc indexes returned by `ShortestPath`.

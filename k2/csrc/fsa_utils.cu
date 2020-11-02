@@ -944,8 +944,8 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
   // Firstly, all rows of src.scores (==all elements of src.shape) correspond
   // to states with arcs leaving them.  Most of them have `num_symbols` arcs,
   // but the final one for each FSA has 1 arc (with symbol -1)
-  int32_t num_arcs = src.shape.NumElements() * num_symbols -
-                     (num_symbols - 1) * num_fsas;
+  int32_t num_arcs =
+      src.shape.NumElements() * num_symbols - (num_symbols - 1) * num_fsas;
   Array1<int32_t> row_splits2(c, num_states + 1), row_ids2(c, num_arcs);
   const int32_t *row_ids1_data = fsa2state.RowIds(1).Data(),
                 *src_row_ids1_data = src.shape.RowIds(1).Data(),
@@ -1003,8 +1003,7 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
     if (s == 0) {  // 1st arc for this state.
       row_splits2_data[ans_state_idx01] = arc_idx012;
       K2_CHECK(row_ids1_data[ans_state_idx01] == fsa_idx0);
-      if (src_state_idx01 == 0)
-        row_splits2_data[num_states] = num_arcs;
+      if (src_state_idx01 == 0) row_splits2_data[num_states] = num_arcs;
     }
   };
   Eval2(c, src.shape.NumElements(), num_symbols, lambda_set_arcs_etc);
@@ -1441,7 +1440,7 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
   auto lambda_copy_tot_scores = [=] __host__ __device__(int32_t fsa_idx) {
     int32_t start_state = fsa_row_splits1[fsa_idx],
             start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
-    if (start_state_next_fsa - start_state > 0) {  // non-empty fsa
+    if (start_state_next_fsa > start_state) {  // non-empty fsa
       int32_t final_state_idx = start_state_next_fsa - 1;
       tot_scores_data[fsa_idx] = forward_scores_data[final_state_idx];
     }

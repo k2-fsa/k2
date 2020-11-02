@@ -102,13 +102,13 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);
   if (a_fsas.NumAxes() == 2) {
     FsaVec a_fsas_vec = FsaToFsaVec(a_fsas);
-    return Intersect(a_fsas_vec, b_fsas, treat_epsilons_specially,
-                     out, arc_map_a, arc_map_b);
+    return Intersect(a_fsas_vec, b_fsas, treat_epsilons_specially, out,
+                     arc_map_a, arc_map_b);
   }
   if (b_fsas.NumAxes() == 2) {
     FsaVec b_fsas_vec = FsaToFsaVec(b_fsas);
-    return Intersect(a_fsas, b_fsas_vec,  treat_epsilons_specially,
-                     out, arc_map_a, arc_map_b);
+    return Intersect(a_fsas, b_fsas_vec, treat_epsilons_specially, out,
+                     arc_map_a, arc_map_b);
   }
 
   int32_t num_fsas_a = a_fsas.Dim0(), num_fsas_b = b_fsas.Dim0();
@@ -132,9 +132,8 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
   for (int32_t i = 0; i < num_fsas; ++i) {
     k2host::Fsa host_fsa_a = FsaVecToHostFsa(a_fsas, i * stride_a),
                 host_fsa_b = FsaVecToHostFsa(b_fsas, i * stride_b);
-    intersections[i] =
-        std::make_unique<k2host::Intersection>(host_fsa_a, host_fsa_b,
-                                               treat_epsilons_specially);
+    intersections[i] = std::make_unique<k2host::Intersection>(
+        host_fsa_a, host_fsa_b, treat_epsilons_specially);
     intersections[i]->GetSizes(&(sizes[i]));
   }
   FsaVecCreator creator(sizes);
@@ -330,6 +329,7 @@ double ShortestPath(Fsa &src, Fsa *out,
 }
 
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
+                             Array1<float> *total_scores /*= nullptr*/,
                              Array1<int32_t> *entering_arcs /*= nullptr*/) {
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   Ragged<int32_t> state_batches = GetStateBatches(fsas, true);
@@ -340,9 +340,11 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
 
   bool log_semiring = false;
   Array1<int32_t> tmp_entering_arcs;
-  Array1<float> scores =
+  Array1<float> forward_scores =
       GetForwardScores<float>(fsas, state_batches, entering_arc_batches,
                               log_semiring, &tmp_entering_arcs);
+  if (total_scores != nullptr)
+    *total_scores = GetTotScores<float>(fsas, forward_scores);
 
   if (entering_arcs != nullptr) *entering_arcs = tmp_entering_arcs;
 

@@ -51,6 +51,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
 
 static void PybindRaggedImpl(py::module &m) {
   PybindRaggedTpl<Arc>(m, "RaggedArc");
+  PybindRaggedTpl<int32_t>(m, "RaggedInt");
 }
 
 }  // namespace k2
