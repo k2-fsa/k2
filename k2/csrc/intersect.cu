@@ -253,7 +253,8 @@ class MultiGraphDenseIntersect {
       StateInfo *ans_states_values_data = ans->states.values.Data();
       const int32_t *start_states_values_data = start_states.values.Data(),
           *start_states_row_ids1_data = start_states.shape.RowIds(1).Data();
-      auto lambda_set_state_info = [=] __host__ __device__ (int32_t states_idx01) -> void {
+      auto lambda_set_state_info =
+          [=] __host__ __device__(int32_t states_idx01) -> void {
         StateInfo info;
         info.a_fsas_state_idx01 = start_states_values_data[states_idx01];
         info.forward_loglike = FloatToOrderedInt(0.0);

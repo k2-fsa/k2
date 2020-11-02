@@ -151,12 +151,12 @@ def create_fsa_vec(fsas: List[Fsa]) -> Fsa:
 
     We use the following rules to set the attributes of the output FsaVec:
 
-    - For tensor attributes, we assume that all input FSAs have the same attribute
-    name and the values are concatenated.
+    - For tensor attributes, we assume that all input FSAs have the same
+    attribute name and the values are concatenated.
 
-    - For non-tensor attributes, if any two of the input FSAs have the same attribute
-    name, then we assume that their attribute values are equal and the output FSA will
-    inherit the attribute.
+    - For non-tensor attributes, if any two of the input FSAs have the same
+    attribute name, then we assume that their attribute values are equal and
+    the output FSA will inherit the attribute.
 
     Args:
       fsas:
