@@ -268,7 +268,14 @@ namespace {
 struct ArcComparer {
   __host__ __device__ __forceinline__ bool operator()(const Arc &lhs,
                                                       const Arc &rhs) const {
-    return static_cast<uint32_t>(lhs.label) < static_cast<uint32_t>(rhs.label);
+    // Compares `label` first, then `dest_state`;
+    // compare label as unsigned so -1 comes after other symbols, since some
+    // algorithms may require epsilons to be first.
+    if (lhs.label != rhs.label)
+      return static_cast<uint32_t>(lhs.label) <
+             static_cast<uint32_t>(rhs.label);
+    else
+      return lhs.dest_state < rhs.dest_state;
   }
 };
 }  // namespace
