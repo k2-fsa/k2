@@ -35,14 +35,12 @@ struct Arc {
         score(score) {}
 
   bool operator<(const Arc &other) const {
-    // Compares `src_state` first, then `label`, then `dest_state`, then
-    // 'score'
+    // Compares `label` first, then `dest_state`;
     // compare label as unsigned so -1 comes after other symbols, since some
     // algorithms may require epsilons to be first.
-    return std::tie(src_state, reinterpret_cast<const uint32_t&>(label),
-                    dest_state) <
-      std::tie(other.src_state, reinterpret_cast<const uint32_t&>(other.label),
-               other.dest_state);
+    return std::tie(reinterpret_cast<const uint32_t &>(label), dest_state) <
+           std::tie(reinterpret_cast<const uint32_t &>(other.label),
+                    other.dest_state);
   }
 };
 
@@ -158,9 +156,9 @@ struct DenseFsaVec {
   // NOTE: our notion of "arc-index" / arc_idx is an index into scores.Data().
   int32_t NumArcs() const { return scores.Dim0() * scores.Dim1(); }
 
-  DenseFsaVec() { }
-  DenseFsaVec(const RaggedShape &shape, const Array2<float> &scores) :
-      shape(shape), scores(scores) {
+  DenseFsaVec() {}
+  DenseFsaVec(const RaggedShape &shape, const Array2<float> &scores)
+      : shape(shape), scores(scores) {
     K2_CHECK_EQ(shape.NumElements(), scores.Dim0());
   }
   ContextPtr Context() const { return shape.Context(); }
