@@ -27,10 +27,12 @@ TEST(Intersect, Simple) {
   )";
   auto fsa = FsaFromString(s);
 
+  // clang-format off
   DenseFsaVec dfsavec {
     RaggedShape("[ [ x x x ] ]"),
-    Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf]]")
+    Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf]]")  // NOLINT
   };
+  // clang-format on
 
   float beam = 100000;
   int32_t max_active = 10000, min_active = 0;

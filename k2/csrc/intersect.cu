@@ -73,8 +73,8 @@ static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
      << "," << s.backward_loglike
      << "}";
   return os;
-
 }
+
 static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
   os << "ArcInfo{" << a.a_fsas_arc_idx012
      << "," << a.arc_loglike
@@ -85,7 +85,7 @@ static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
 
 }  // namespace intersect_internal
 
-using namespace intersect_internal;
+using namespace intersect_internal;  // NOLINT
 
 // Caution: this is really a .cu file.  It contains mixed host and device code.
 
@@ -382,7 +382,8 @@ class MultiGraphDenseIntersect {
       arc.dest_state = pruned_dest_state_idxx12;
       arc.label = a_fsas_arcs[arc_info.a_fsas_arc_idx012].label;
       K2_CHECK_LE(static_cast<uint32_t>(arc.label + 1),
-                  static_cast<uint32_t>(b_fsas_num_cols)) << "label out of range";
+                  static_cast<uint32_t>(b_fsas_num_cols))
+          << "label out of range";
       int32_t fsa_id = unpruned_idx0,
               b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
               b_fsas_idx01 = b_fsas_idx0x + t, b_fsas_idxxx2 = (arc.label + 1),
@@ -568,7 +569,8 @@ class MultiGraphDenseIntersect {
       ArcInfo ai;
       ai.a_fsas_arc_idx012 = a_fsas_arc_idx012;
       ai.arc_loglike = acoustic_score + arc.score;
-      ai.end_loglike = OrderedIntToFloat(sinfo.forward_loglike) + ai.arc_loglike;
+      ai.end_loglike =
+          OrderedIntToFloat(sinfo.forward_loglike) + ai.arc_loglike;
       // at least currently, the ArcInfo object's src_state and dest_state are
       // ind1's not idx01's, i.e. they don't contain the FSA-index, where as
       // the ai element is an idx01, so we need to do this to convert to an
@@ -663,16 +665,18 @@ class MultiGraphDenseIntersect {
     Renumbering renumber_states(c_, arc_info.values.Dim());
 
     // Note: we don't just keep arcs that were above the pruning threshold, we
-    // keep all arcs whose destination-states survived pruning.  This is like less
-    // aggressive pruning, we use it since there's no real extra cost.  Later we'll
-    // prune with the lattice beam, using both forward and backward scores.
+    // keep all arcs whose destination-states survived pruning.  This is like
+    // less aggressive pruning, we use it since there's no real extra cost.
+    // Later we'll prune with the lattice beam, using both forward and backward
+    // scores.
     renumber_arcs.Keep() = 0;
     renumber_states.Keep() = 0;
     char *keep_this_arc_data = renumber_arcs.Keep().Data(),
          *keep_this_state_data = renumber_states.Keep().Data();
     if (a_fsas_.shape.Dim0() > 1) {
       int32_t *state_map_data = state_map_.Data();
-      auto lambda_set_keep = [=] __host__ __device__(int32_t arc_idx012) -> void {
+      auto lambda_set_keep =
+          [=] __host__ __device__(int32_t arc_idx012) -> void {
         int32_t dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
         int32_t j = state_map_data[dest_state];
         if (j != -1) {  // the dest-state was kept..
@@ -789,7 +793,8 @@ class MultiGraphDenseIntersect {
         // state_idx01 is the index into ans->states, of the destination state.
         // Note: multiple arcs may enter this state, which is why we had to set
         // that in a separate kernel (lambda_modify_state_map).
-        int32_t state_idx01 = state_map_acc(fsa_id, info.u.dest_a_fsas_state_idx01);
+        int32_t state_idx01 =
+            state_map_acc(fsa_id, info.u.dest_a_fsas_state_idx01);
         // multiple threads may write the same value to the address written to
         // in the next line.
         kept_states_data[state_idx01].a_fsas_state_idx01 =
