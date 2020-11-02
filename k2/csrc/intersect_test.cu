@@ -12,9 +12,9 @@
 
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/host_shim.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/test_utils.h"
-#include "k2/csrc/host_shim.h"
 
 namespace k2 {
 
@@ -39,12 +39,10 @@ TEST(Intersect, Simple) {
 
   FsaVec out_fsas;
   Array1<int32_t> arc_map_a, arc_map_b;
-  IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active,
-                       &out_fsas, &arc_map_a, &arc_map_b);
-  K2_LOG(INFO) << "out_fsas = " << out_fsas
-               << ", arc_map_a = " << arc_map_a
+  IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active, &out_fsas,
+                       &arc_map_a, &arc_map_b);
+  K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
                << ", arc_map_b = " << arc_map_b;
-
 
   FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
   K2_LOG(INFO) << "fsas_b = " << fsas_b;
@@ -52,15 +50,13 @@ TEST(Intersect, Simple) {
   Array1<int32_t> arc_map_a2, arc_map_b2;
   // IntersectDensePruned() treats epsilons as normal symbols.
   bool treat_epsilons_specially = false;
-  Intersect(fsa, fsas_b, treat_epsilons_specially,
-            &out_fsas2,
-            &arc_map_a2, &arc_map_b2);
-  K2_CHECK(IsRandEquivalent(out_fsas, out_fsas2));
+  Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
+            &arc_map_b2);
+  K2_CHECK(IsRandEquivalentByCheckPathSymbols(out_fsas, out_fsas2,
+                                              treat_epsilons_specially));
 
-  K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
-               << ", arc_map_a2 = " << arc_map_a2
+  K2_LOG(INFO) << "out_fsas2 = " << out_fsas2 << ", arc_map_a2 = " << arc_map_a2
                << ", arc_map_b2 = " << arc_map_b2;
-
 
   /*
   int32_t gt = kFsaPropertiesTopSorted | kFsaPropertiesTopSortedAndAcyclic;
@@ -70,7 +66,6 @@ TEST(Intersect, Simple) {
 
   // CheckArrayData(arc_map, {0, 1, 3, 4, 2});
 }
-
 
 TEST(Intersect, TwoDense) {
   std::string s = R"(0 1 1 1.0
@@ -94,12 +89,10 @@ TEST(Intersect, TwoDense) {
 
   FsaVec out_fsas;
   Array1<int32_t> arc_map_a, arc_map_b;
-  IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active,
-                       &out_fsas, &arc_map_a, &arc_map_b);
-  K2_LOG(INFO) << "out_fsas = " << out_fsas
-               << ", arc_map_a = " << arc_map_a
+  IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active, &out_fsas,
+                       &arc_map_a, &arc_map_b);
+  K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
                << ", arc_map_b = " << arc_map_b;
-
 
   FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
   K2_LOG(INFO) << "fsas_b = " << fsas_b;
@@ -107,13 +100,12 @@ TEST(Intersect, TwoDense) {
   Array1<int32_t> arc_map_a2, arc_map_b2;
   // IntersectDensePruned() treats epsilons as normal symbols.
   bool treat_epsilons_specially = false;
-  Intersect(fsa, fsas_b, treat_epsilons_specially,
-            &out_fsas2,
-            &arc_map_a2, &arc_map_b2);
-  K2_CHECK(IsRandEquivalent(out_fsas, out_fsas2));
+  Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
+            &arc_map_b2);
+  K2_CHECK(IsRandEquivalentByCheckPathSymbols(out_fsas, out_fsas2,
+                                              treat_epsilons_specially));
 
-  K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
-               << ", arc_map_a2 = " << arc_map_a2
+  K2_LOG(INFO) << "out_fsas2 = " << out_fsas2 << ", arc_map_a2 = " << arc_map_a2
                << ", arc_map_b2 = " << arc_map_b2;
 }
 
@@ -122,7 +114,8 @@ TEST(Intersect, TwoFsas) {
     1 2 2 2.0
     2 3 -1 3.0
     3
-  )", s2 = R"(0 1 1 1.0
+  )",
+              s2 = R"(0 1 1 1.0
     1 1 1 50.0
     1 2 2 2.0
     2 3 -1 3.0
@@ -147,10 +140,8 @@ TEST(Intersect, TwoFsas) {
   Array1<int32_t> arc_map_a, arc_map_b;
   IntersectDensePruned(fsa_vec, dfsavec, beam, max_active, min_active,
                        &out_fsas, &arc_map_a, &arc_map_b);
-  K2_LOG(INFO) << "out_fsas = " << out_fsas
-               << ", arc_map_a = " << arc_map_a
+  K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
                << ", arc_map_b = " << arc_map_b;
-
 
   FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
   K2_LOG(INFO) << "fsas_b = " << fsas_b;
@@ -158,34 +149,29 @@ TEST(Intersect, TwoFsas) {
   Array1<int32_t> arc_map_a2, arc_map_b2;
   // IntersectDensePruned() treats epsilons as normal symbols.
   bool treat_epsilons_specially = false;
-  Intersect(fsa_vec, fsas_b, treat_epsilons_specially,
-            &out_fsas2,
-            &arc_map_a2, &arc_map_b2);
-  K2_CHECK(IsRandEquivalent(out_fsas, out_fsas2));
+  Intersect(fsa_vec, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
+            &arc_map_b2);
+  K2_CHECK(IsRandEquivalentByCheckPathSymbols(out_fsas, out_fsas2,
+                                              treat_epsilons_specially));
 
-  K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
-               << ", arc_map_a2 = " << arc_map_a2
+  K2_LOG(INFO) << "out_fsas2 = " << out_fsas2 << ", arc_map_a2 = " << arc_map_a2
                << ", arc_map_b2 = " << arc_map_b2;
 }
-
-
 
 TEST(Intersect, RandomSingle) {
   for (int32_t i = 0; i < 10; i++) {
     int32_t max_symbol = 10, min_num_arcs = 0, max_num_arcs = 10;
     bool acyclic = false, epsilon_free = false;
-    Fsa fsa = RandomFsa(acyclic, epsilon_free, max_symbol,
-                        min_num_arcs, max_num_arcs);
+    Fsa fsa = RandomFsa(acyclic, epsilon_free, max_symbol, min_num_arcs,
+                        max_num_arcs);
     ArcSort(&fsa);
 
-    int32_t min_num_fsas = 1, max_num_fsas = 1,
-        min_frames = 0, max_frames = 10,
-        min_nsymbols = max_symbol + 1, max_nsymbols = max_symbol + 4;
+    int32_t min_num_fsas = 1, max_num_fsas = 1, min_frames = 0, max_frames = 10,
+            min_nsymbols = max_symbol + 1, max_nsymbols = max_symbol + 4;
     float scores_scale = 1.0;
-    DenseFsaVec dfsavec = RandomDenseFsaVec(min_num_fsas, max_num_fsas,
-                                            min_frames, max_frames,
-                                            min_nsymbols, max_nsymbols,
-                                            scores_scale);
+    DenseFsaVec dfsavec =
+        RandomDenseFsaVec(min_num_fsas, max_num_fsas, min_frames, max_frames,
+                          min_nsymbols, max_nsymbols, scores_scale);
 
     K2_LOG(INFO) << "fsa = " << fsa;
 
@@ -196,10 +182,9 @@ TEST(Intersect, RandomSingle) {
     FsaVec out_fsas;
     float beam = 10000.0;
     int32_t max_active = 10000, min_active = 0;
-    IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active,
-                         &out_fsas, &arc_map_a, &arc_map_b);
-    K2_LOG(INFO) << "out_fsas = " << out_fsas
-                 << ", arc_map_b = " << arc_map_b;
+    IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active, &out_fsas,
+                         &arc_map_a, &arc_map_b);
+    K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
 
     FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
     K2_LOG(INFO) << "fsas_b = " << fsas_b;
@@ -211,12 +196,13 @@ TEST(Intersect, RandomSingle) {
     ArcSort(&fsa);  // CAUTION if you later test the arc_maps: we arc-sort here,
                     // so the input `fsa` is not the same as before.
     bool treat_epsilons_specially = false;
-    Intersect(fsa, fsas_b, treat_epsilons_specially,
-              &out_fsas2, &arc_map_a2, &arc_map_b2);
+    Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
+              &arc_map_b2);
     K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                  << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_b2 = " << arc_map_b2;
-    K2_CHECK(IsRandEquivalent(out_fsas, out_fsas2));
+    K2_CHECK(IsRandEquivalentByCheckPathSymbols(out_fsas, out_fsas2,
+                                                treat_epsilons_specially));
   }
 }
 

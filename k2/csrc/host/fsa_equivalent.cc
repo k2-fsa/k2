@@ -79,11 +79,11 @@ static void ArcSort(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
   be released automatically if `c`is out of scope.
  */
 static bool Intersect(const k2host::Fsa &a, const k2host::Fsa &b,
-                      k2host::FsaCreator *c,
+                      bool treat_epsilons_specially, k2host::FsaCreator *c,
                       std::vector<int32_t> *arc_map_a = nullptr,
                       std::vector<int32_t> *arc_map_b = nullptr) {
   K2_CHECK_NE(c, nullptr);
-  k2host::Intersection intersection(a, b);
+  k2host::Intersection intersection(a, b, treat_epsilons_specially);
   k2host::Array2Size<int32_t> fsa_size;
   intersection.GetSizes(&fsa_size);
 
@@ -138,13 +138,9 @@ static void SetDifference(const std::unordered_set<int32_t> &a,
 
 namespace k2host {
 
-bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
-  // We will do `intersect` later which requires either `a` or `b` is
-  // epsilon-free, considering they should hold same set of arc labels, so both
-  // of them should be epsilon-free.
-  // TODO(haowen): call `RmEpsilon` here instead of checking.
-  if (!IsEpsilonFree(a) || !IsEpsilonFree(b)) return false;
-
+bool IsRandEquivalent(const Fsa &a, const Fsa &b,
+                      bool treat_epsilons_specially /*=true*/,
+                      std::size_t npath /*=100*/) {
   FsaCreator valid_a_storage, valid_b_storage;
   ::Connect(a, &valid_a_storage);
   ::Connect(b, &valid_b_storage);
@@ -155,14 +151,21 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
   if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
   if (IsEmpty(valid_a) || IsEmpty(valid_b)) return false;
 
-  // Check that arc labels are compatible.
-  std::unordered_set<int32_t> labels_a, labels_b;
+  // Check that arc labels are compatible: the two input Fsas must have the same
+  // set of labels after connection, it's fine that one has epsilon arcs and the
+  // other doesn't have.
+  std::unordered_set<int32_t> labels_a, labels_b, labels_difference;
   for (const auto &arc : valid_a) labels_a.insert(arc.label);
   for (const auto &arc : valid_b) labels_b.insert(arc.label);
-  if (labels_a != labels_b) return false;
+  SetDifference(labels_a, labels_b, &labels_difference);
+  if (labels_difference.size() >= 2 ||
+      (labels_difference.size() == 1 &&
+       (*(labels_difference.begin())) != kEpsilon))
+    return false;
 
   FsaCreator c_storage, valid_c_storage;
-  if (!::Intersect(valid_a, valid_b, &c_storage)) return false;
+  if (!::Intersect(valid_a, valid_b, treat_epsilons_specially, &c_storage))
+    return false;
   ::Connect(c_storage.GetFsa(), &valid_c_storage);
   ArcSort(&valid_c_storage.GetFsa());
   const auto &valid_c = valid_c_storage.GetFsa();
@@ -178,7 +181,8 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
     // path is already connected
     ArcSort(&valid_path_storage.GetFsa());
     FsaCreator cpath_storage, valid_cpath_storage;
-    ::Intersect(valid_path_storage.GetFsa(), valid_c, &cpath_storage);
+    ::Intersect(valid_path_storage.GetFsa(), valid_c, treat_epsilons_specially,
+                &cpath_storage);
     ::Connect(cpath_storage.GetFsa(), &valid_cpath_storage);
     if (IsEmpty(valid_cpath_storage.GetFsa())) return false;
   }
@@ -188,9 +192,13 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b, std::size_t npath /*=100*/) {
 
 template <FbWeightType Type>
 bool IsRandEquivalent(const Fsa &a, const Fsa &b,
-                      float beam /*=kFloatInfinity*/, float delta /*=1e-6*/,
-                      bool top_sorted /*=true*/, std::size_t npath /*= 100*/) {
+                      float beam /*=kFloatInfinity*/,
+                      bool treat_epsilons_specially /*=true*/,
+                      float delta /*=1e-6*/, bool top_sorted /*=true*/,
+                      std::size_t npath /*= 100*/) {
   K2_CHECK_GT(beam, 0);
+  // TODO(haowen): for now we only support top-sorted input Fsas
+  K2_CHECK(top_sorted);
   FsaCreator connected_a_storage, connected_b_storage, valid_a_storage,
       valid_b_storage;
   std::vector<int32_t> connected_a_arc_map, connected_b_arc_map,
@@ -234,10 +242,7 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
   while (n < npath) {
     const auto &fsa = coin(gen) ? valid_a : valid_b;
     FsaCreator valid_path_storage;
-    // fail to generate a epsilon-free path (note that
-    // our current implementation of `Intersection` requires
-    // one of the two input FSAs must be epsilon-free).
-    if (!::RandomPath(fsa, true, &valid_path_storage)) continue;
+    if (!::RandomPath(fsa, false, &valid_path_storage)) continue;
     // path is already connected so we will not call `::Connect` here
     ArcSort(&valid_path_storage.GetFsa());
     const auto &valid_path = valid_path_storage.GetFsa();
@@ -245,8 +250,10 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
     FsaCreator a_compose_path_storage, b_compose_path_storage;
     std::vector<int32_t> arc_map_a_path, arc_map_b_path;
     // note that `valid_path` is epsilon-free
-    ::Intersect(valid_a, valid_path, &a_compose_path_storage, &arc_map_a_path);
-    ::Intersect(valid_b, valid_path, &b_compose_path_storage, &arc_map_b_path);
+    ::Intersect(valid_a, valid_path, treat_epsilons_specially,
+                &a_compose_path_storage, &arc_map_a_path);
+    ::Intersect(valid_b, valid_path, treat_epsilons_specially,
+                &b_compose_path_storage, &arc_map_b_path);
 
     // TODO(haowen): we may need to implement a version of `ShortestDistance`
     // for non-top-sorted FSAs, but we prefer to decide this later as there's no
@@ -268,17 +275,24 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
 
 // explicit instantiation here
 template bool IsRandEquivalent<kMaxWeight>(const Fsa &a, const Fsa &b,
-                                           float beam, float delta,
-                                           bool top_sorted, std::size_t npath);
+                                           float beam,
+                                           bool treat_epsilons_specially,
+                                           float delta, bool top_sorted,
+                                           std::size_t npath);
 template bool IsRandEquivalent<kLogSumWeight>(const Fsa &a, const Fsa &b,
-                                              float beam, float delta,
-                                              bool top_sorted,
+                                              float beam,
+                                              bool treat_epsilons_specially,
+                                              float delta, bool top_sorted,
                                               std::size_t npath);
 
 bool IsRandEquivalentAfterRmEpsPrunedLogSum(const Fsa &a, const Fsa &b,
                                             float beam,
                                             bool top_sorted /*= true*/,
                                             std::size_t npath /*= 100*/) {
+  // TODO(haowen): the implementation may be not correct, we need to check this
+  K2_LOG(FATAL)
+      << "Don't call this function for now, the implementation may be "
+         "incorrect";
   K2_CHECK_GT(beam, 0);
   FsaCreator connected_a_storage, connected_b_storage, valid_a_storage,
       valid_b_storage;
@@ -328,8 +342,10 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(const Fsa &a, const Fsa &b,
     FsaCreator a_compose_path_storage, b_compose_path_storage;
     std::vector<int32_t> arc_map_a_path, arc_map_b_path;
     // note that `valid_path` is epsilon-free
-    ::Intersect(valid_a, valid_path, &a_compose_path_storage, &arc_map_a_path);
-    ::Intersect(valid_b, valid_path, &b_compose_path_storage, &arc_map_b_path);
+    ::Intersect(valid_a, valid_path, true, &a_compose_path_storage,
+                &arc_map_a_path);
+    ::Intersect(valid_b, valid_path, true, &b_compose_path_storage,
+                &arc_map_b_path);
 
     // TODO(haowen): we may need to implement a version of `ShortestDistance`
     // for non-top-sorted FSAs, but we prefer to decide this later as there's no
@@ -409,7 +425,7 @@ void RandPath::GetSizes(Array2Size<int32_t> *fsa_size) {
     if (visited_arcs[state_id_out]
             .insert({{state, curr_arc->dest_state, curr_arc->label,
                       curr_arc->weight},
-                    arc_index_in - fsa_in_.indexes[0]})
+                     arc_index_in - fsa_in_.indexes[0]})
             .second)
       ++num_visited_arcs;
     state = curr_arc->dest_state;

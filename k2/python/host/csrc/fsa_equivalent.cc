@@ -14,13 +14,15 @@ void PyBindIsRandEquivalentTpl(py::module &m, const char *name) {
   m.def(
       name,
       [](const k2host::Fsa &a, const k2host::Fsa &b,
-         float beam = k2host::kFloatInfinity, float delta = 1e-6,
+         float beam = k2host::kFloatInfinity,
+         bool treat_epsilons_specially = true, float delta = 1e-6,
          bool top_sorted = true, std::size_t npath = 100) -> bool {
-        return k2host::IsRandEquivalent<Type>(a, b, beam, delta, top_sorted,
-                                              npath);
+        return k2host::IsRandEquivalent<Type>(
+            a, b, beam, treat_epsilons_specially, delta, top_sorted, npath);
       },
       py::arg("fsa_a"), py::arg("fsa_b"),
-      py::arg("beam") = k2host::kFloatInfinity, py::arg("delta") = 1e-6,
+      py::arg("beam") = k2host::kFloatInfinity,
+      py::arg("treat_epsilons_specially") = true, py::arg("delta") = 1e-6,
       py::arg("top_sorted") = true, py::arg("npath") = 100);
 }
 
@@ -42,9 +44,11 @@ void PyBindRandPath(py::module &m) {
 
 void PybindFsaEquivalent(py::module &m) {
   m.def("_is_rand_equivalent",
-        (bool (*)(const k2host::Fsa &, const k2host::Fsa &, std::size_t)) &
+        (bool (*)(const k2host::Fsa &, const k2host::Fsa &,
+                  bool treat_epsilons_specially, std::size_t)) &
             k2host::IsRandEquivalent,
-        py::arg("fsa_a"), py::arg("fsa_b"), py::arg("npath") = 100);
+        py::arg("fsa_a"), py::arg("fsa_b"),
+        py::arg("treat_epsilons_specially") = true, py::arg("npath") = 100);
 
   PyBindIsRandEquivalentTpl<k2host::kMaxWeight>(
       m, "_is_rand_equivalent_max_weight");

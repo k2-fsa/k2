@@ -30,28 +30,36 @@ class RandPath(_RandPath):
             arc_map.get_base() if arc_map is not None else None)
 
 
-def is_rand_equivalent(fsa_a: Fsa, fsa_b: Fsa, npath: int = 100) -> bool:
-    return _is_rand_equivalent(fsa_a.get_base(), fsa_b.get_base(), npath)
+def is_rand_equivalent(fsa_a: Fsa,
+                       fsa_b: Fsa,
+                       treat_epsilons_specially: bool = True,
+                       npath: int = 100) -> bool:
+    return _is_rand_equivalent(fsa_a.get_base(), fsa_b.get_base(),
+                               treat_epsilons_specially, npath)
 
 
 def is_rand_equivalent_max_weight(fsa_a: Fsa,
                                   fsa_b: Fsa,
                                   beam: float = float('inf'),
+                                  treat_epsilons_specially: bool = True,
                                   delta: float = 1e-6,
                                   top_sorted: bool = True,
                                   npath: int = 100) -> bool:
     return _is_rand_equivalent_max_weight(fsa_a.get_base(), fsa_b.get_base(),
-                                          beam, delta, top_sorted, npath)
+                                          beam, treat_epsilons_specially,
+                                          delta, top_sorted, npath)
 
 
 def is_rand_equivalent_logsum_weight(fsa_a: Fsa,
                                      fsa_b: Fsa,
                                      beam: float = float('inf'),
+                                     treat_epsilons_specially: bool = True,
                                      delta: float = 1e-6,
                                      top_sorted: bool = True,
                                      npath: int = 100) -> bool:
     return _is_rand_equivalent_logsum_weight(fsa_a.get_base(),
-                                             fsa_b.get_base(), beam, delta,
+                                             fsa_b.get_base(), beam,
+                                             treat_epsilons_specially, delta,
                                              top_sorted, npath)
 
 

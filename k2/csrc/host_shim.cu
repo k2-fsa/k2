@@ -78,8 +78,7 @@ void FsaVecCreator::Init(
 }
 
 void FsaVecCreator::FinalizeRowSplits2() {
-  if (finalized_row_splits2_)
-    return;
+  if (finalized_row_splits2_) return;
   finalized_row_splits2_ = true;
   int32_t num_fsas = row_splits1_.Dim() - 1;
   K2_CHECK_EQ(next_fsa_idx_, num_fsas);
@@ -90,15 +89,13 @@ void FsaVecCreator::FinalizeRowSplits2() {
 
   for (int32_t i = 0; i < num_fsas; i++) {
     int32_t num_states = row_splits1_data[i + 1] - row_splits1_data[i],
-            begin_state = row_splits1_data[i],
-            begin_arc = row_splits12_data[i];
+            begin_state = row_splits1_data[i], begin_arc = row_splits12_data[i];
     K2_CHECK(row_splits2_data[begin_state] == 0 || num_states == 0);
     // For the last FSA we need to modify the final element of row_splits2.
     // Note: for all but the last FSA, they would have written an element
     // to row_splits2_data which would have been overwritten when the next
     // FSA was processed.
-    if (i + 1 == num_fsas)
-      num_states++;
+    if (i + 1 == num_fsas) num_states++;
     for (int32_t j = 0; j < num_states; j++)
       row_splits2_data[begin_state + j] += begin_arc;
   }
@@ -191,30 +188,35 @@ Array1<bool> IsConnected(FsaOrVec &fsas) {
   return CheckProperties(fsas, k2host::IsConnected);
 }
 
-bool IsRandEquivalent(FsaOrVec &a, FsaOrVec &b, std::size_t npath /*= 100*/) {
+bool IsRandEquivalentByCheckPathSymbols(FsaOrVec &a, FsaOrVec &b,
+                                        bool treat_epsilons_specially /*=true*/,
+                                        std::size_t npath /*= 100*/) {
   K2_CHECK_GE(a.NumAxes(), 2);
   K2_CHECK_EQ(b.NumAxes(), a.NumAxes());
   if (a.Context()->GetDeviceType() != kCpu ||
       b.Context()->GetDeviceType() != kCpu) {
-    FsaOrVec a_cpu = a.To(GetCpuContext()),
-        b_cpu = b.To(GetCpuContext());
-    return IsRandEquivalent(a_cpu, b_cpu, npath);
+    FsaOrVec a_cpu = a.To(GetCpuContext()), b_cpu = b.To(GetCpuContext());
+    return IsRandEquivalentByCheckPathSymbols(a_cpu, b_cpu,
+                                              treat_epsilons_specially, npath);
   }
   if (a.NumAxes() > 2) {
     for (int32_t i = 0; i < a.Dim0(); i++) {
       Fsa a_part = a.Index(0, i), b_part = b.Index(0, i);
-      if (!IsRandEquivalent(a_part, b_part, npath))
+      if (!IsRandEquivalentByCheckPathSymbols(a_part, b_part,
+                                              treat_epsilons_specially, npath))
         return false;
     }
     return true;
   }
   k2host::Fsa host_fsa_a = FsaToHostFsa(a);
   k2host::Fsa host_fsa_b = FsaToHostFsa(b);
-  return k2host::IsRandEquivalent(host_fsa_a, host_fsa_b, npath);
+  return k2host::IsRandEquivalent(host_fsa_a, host_fsa_b,
+                                  treat_epsilons_specially, npath);
 }
 
 bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
                       float beam /*=k2host::kFloatInfinity*/,
+                      bool treat_epsilons_specially /*=true*/,
                       float delta /*=1e-6*/, std::size_t npath /*= 100*/) {
   K2_CHECK_EQ(a.NumAxes(), 2);
   K2_CHECK_EQ(b.NumAxes(), 2);
@@ -224,10 +226,12 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
   k2host::Fsa host_fsa_b = FsaToHostFsa(b);
   if (log_semiring) {
     return k2host::IsRandEquivalent<k2host::kLogSumWeight>(
-        host_fsa_a, host_fsa_b, beam, delta, true, npath);
+        host_fsa_a, host_fsa_b, beam, treat_epsilons_specially, delta, true,
+        npath);
   } else {
     return k2host::IsRandEquivalent<k2host::kMaxWeight>(
-        host_fsa_a, host_fsa_b, beam, delta, true, npath);
+        host_fsa_a, host_fsa_b, beam, treat_epsilons_specially, delta, true,
+        npath);
   }
 }
 

@@ -51,13 +51,10 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
   arc_map_b_.clear();
 
   if (IsEmpty(a_) || IsEmpty(b_)) return;
-  // either `a` or `b` must be epsilon-free, both of them should be arc-sorted
   if (!IsArcSorted(a_) || !IsArcSorted(b_)) {
     K2_LOG(WARNING) << "One of the inputs is not arc-sorted";
-    if (!IsArcSorted(a_))
-      K2_LOG(INFO) << "Not arc-sorted: " << a_;
-    if (!IsArcSorted(b_))
-      K2_LOG(INFO) << "Not arc-sorted: " << b_;
+    if (!IsArcSorted(a_)) K2_LOG(INFO) << "Not arc-sorted: " << a_;
+    if (!IsArcSorted(b_)) K2_LOG(INFO) << "Not arc-sorted: " << b_;
     status_ = false;
     return;
   }
@@ -98,8 +95,6 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
 
     if (treat_epsilons_specially_) {
       // As both `a` and `b` are arc-sorted, we first process epsilon arcs.
-      // Noted that at most one for-loop below will really run as either `a` or
-      // `b` is epsilon-free.
       for (; a_arc_iter_begin != a_arc_iter_end; ++a_arc_iter_begin) {
         if (kEpsilon != a_arc_iter_begin->label) break;
 
