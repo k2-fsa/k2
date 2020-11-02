@@ -339,8 +339,10 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
     int32_t cur_state = final_state_idx01;
     int32_t cur_index = entering_arcs_data[cur_state];
     int32_t num_arcs = 0;
+    int32_t *p = state_best_arc_index_array_data + final_state_idx01;
     while (cur_index != -1) {
-      state_best_arc_index_array_data[cur_state] = cur_index;
+      *p = cur_index;
+      --p;
 
       cur_state = arcs_data[cur_index].src_state + state_idx01;
       cur_index = entering_arcs_data[cur_state];
@@ -352,26 +354,30 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
   ExclusiveSum(num_best_arcs_per_fsa, &num_best_arcs_per_fsa);
 
   RaggedShape shape = RaggedShape2(&num_best_arcs_per_fsa, nullptr, -1);
+  const int32_t *shape_row_splits1_data = shape.RowSplits(1).Data();
+  const int32_t *shape_row_ids1_data = shape.RowIds(1).Data();
+
   const int32_t *ans_row_splits_data = shape.RowSplits(1).Data();
   Array1<int32_t> best_path_arc_indexes(context, shape.NumElements());
   int32_t *best_path_arc_indexes_data = best_path_arc_indexes.Data();
 
-  auto lambda_set_best_arcs = [=] __host__ __device__(int32_t fsas_idx0) {
-    int32_t state_idx01 = row_splits1_data[fsas_idx0];
-    int32_t state_idx01_next = row_splits1_data[fsas_idx0 + 1];
-    if (state_idx01_next == state_idx01) return;
+  auto lambda_set_best_arcs = [=] __host__ __device__(int32_t ans_idx01) {
+    int32_t fsa_idx0 = shape_row_ids1_data[ans_idx01];
+    int32_t ans_idx0x = shape_row_splits1_data[fsa_idx0];
+    int32_t ans_idx1 = ans_idx01 - ans_idx0x;
 
-    int32_t ans_idx01 = ans_row_splits_data[fsas_idx0];
-    int32_t *p = best_path_arc_indexes_data + ans_idx01;
-    for (int32_t s = state_idx01; s != state_idx01_next; ++s) {
-      int32_t index = state_best_arc_index_array_data[s];
-      if (index != -1) {
-        *p = index;
-        ++p;
-      }
-    }
+    int32_t num_arcs_this_fsa = num_best_arcs_per_fsa_data[fsa_idx0 + 1] -
+                                num_best_arcs_per_fsa_data[fsa_idx0];
+    if (num_arcs_this_fsa == 0) return;
+
+    int32_t final_state_idx01_this_fsa = row_splits1_data[fsa_idx0 + 1] - 1;
+
+    const int32_t *p_start = state_best_arc_index_array_data +
+                             final_state_idx01_this_fsa - num_arcs_this_fsa + 1;
+
+    best_path_arc_indexes_data[ans_idx01] = p_start[ans_idx1];
   };
-  Eval(context, num_fsas, lambda_set_best_arcs);
+  Eval(context, shape.NumElements(), lambda_set_best_arcs);
 
   Ragged<int32_t> ans(shape, best_path_arc_indexes);
   return ans;
