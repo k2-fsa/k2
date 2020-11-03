@@ -47,6 +47,7 @@ struct ToScalarType;
 
 // TODO(fangjun): add other types if needed
 TO_SCALAR_TYPE(float, torch::kFloat);
+TO_SCALAR_TYPE(double, torch::kDouble);
 TO_SCALAR_TYPE(int32_t, torch::kInt);
 
 #undef TO_SCALAR_TYPE

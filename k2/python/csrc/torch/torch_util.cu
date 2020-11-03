@@ -43,6 +43,8 @@ Dtype ScalarTypeToDtype(torch::ScalarType scalar_type) {
   switch (scalar_type) {
     case torch::kFloat:
       return kFloatDtype;
+    case torch::kDouble:
+      return kDoubleDtype;
     case torch::kInt:
       return kInt32Dtype;
     default:
@@ -56,6 +58,8 @@ torch::ScalarType ScalarTypeFromDtype(Dtype dtype) {
   switch (dtype) {
     case kFloatDtype:
       return torch::kFloat;
+    case kDoubleDtype:
+      return torch::kDouble;
     case kInt32Dtype:
       return torch::kInt;
     default:
