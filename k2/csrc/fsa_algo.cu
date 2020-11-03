@@ -306,26 +306,9 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
 // forward-pass algorithm is already at least linear-time in the length
 // of this path. But we can consider it for the future.
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
-                             Array1<float> *total_scores /*= nullptr*/,
-                             Array1<int32_t> *entering_arcs /*= nullptr*/) {
+                             const Array1<int32_t> &entering_arcs) {
   K2_CHECK_EQ(fsas.NumAxes(), 3);
-  Ragged<int32_t> state_batches = GetStateBatches(fsas, true);
-  Array1<int32_t> dest_states = GetDestStates(fsas, true);
-  Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsas, dest_states);
-  Ragged<int32_t> entering_arc_batches =
-      GetEnteringArcIndexBatches(fsas, incoming_arcs, state_batches);
-
-  bool log_semiring = false;
-  Array1<int32_t> tmp_entering_arcs;
-  Array1<float> forward_scores =
-      GetForwardScores<float>(fsas, state_batches, entering_arc_batches,
-                              log_semiring, &tmp_entering_arcs);
-  if (total_scores != nullptr)
-    *total_scores = GetTotScores<float>(fsas, forward_scores);
-
-  if (entering_arcs != nullptr) *entering_arcs = tmp_entering_arcs;
-
-  const int32_t *entering_arcs_data = tmp_entering_arcs.Data();
+  const int32_t *entering_arcs_data = entering_arcs.Data();
   const Arc *arcs_data = fsas.values.Data();
   int32_t num_fsas = fsas.Dim0();
   int32_t num_states = fsas.TotSize(1);

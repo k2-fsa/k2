@@ -236,7 +236,7 @@ def arc_sort(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def shortest_path(fsa: Fsa) -> Fsa:
+def shortest_path(fsa: Fsa, use_float_scores: bool) -> Fsa:
     '''Return the shortest paths as linear FSAs from the start state
     to the final state in the tropical semiring.
 
@@ -246,13 +246,15 @@ def shortest_path(fsa: Fsa) -> Fsa:
     Args:
       fsa:
         The input FSA. It can be either a single FSA or a FsaVec.
+      use_float_scores:
+        True to use float, i.e., single precision floating point, for scores.
+        False to use double.
 
     Returns:
-        A tuple containing two entries:
-          - FsaVec, It contains the best paths as linear FSAs
-          - total_scores, a 1-D torch.Tensor of dtype torch.float32
+          FsaVec, it contains the best paths as linear FSAs
     '''
-    ragged_arc, total_scores, ragged_int = _k2.shortest_path(fsa.arcs)
+    entering_arcs = fsa.update_entering_arcs(use_float_scores)
+    ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
 
     arc_map = ragged_int.values().to(torch.int64)  # required by index_select
@@ -265,4 +267,4 @@ def shortest_path(fsa: Fsa) -> Fsa:
     if hasattr(out_fsa, 'properties'):
         del out_fsa.properties
 
-    return out_fsa, total_scores
+    return out_fsa

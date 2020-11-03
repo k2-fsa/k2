@@ -102,7 +102,7 @@ static void PybindFsaUtil(py::module &m) {
         return FsaToString(fsa, openfst, aux_labels ? &array : nullptr);
       },
       py::arg("fsa"), py::arg("openfst") = false,
-      py::arg("aux_labels") = torch::nullopt);
+      py::arg("aux_labels") = py::none());
 
   m.def(
       "_fsa_from_str",
@@ -168,7 +168,7 @@ static void PybindGetForwardScores(py::module &m, const char *name) {
   //   - forward_scores, a torch::Tensor of dtype torch.float32 or torch.float64
   //   (depending on T) containing the scores
   //
-  //   - best_path_arc_indexes (optional)
+  //   - entering_arcs (optional)
   //     - if log_semiring is true, it is None
   //     - else it is a torch::Tensor of dtype torch.int32
   m.def(
@@ -176,16 +176,15 @@ static void PybindGetForwardScores(py::module &m, const char *name) {
       [](FsaVec &fsas, Ragged<int32_t> &state_batches,
          Ragged<int32_t> &entering_arc_batches, bool log_semiring)
           -> std::pair<torch::Tensor, torch::optional<torch::Tensor>> {
-        Array1<int32_t> best_path_arc_indexes;
+        Array1<int32_t> entering_arcs;
         Array1<T> scores = GetForwardScores<T>(
             fsas, state_batches, entering_arc_batches, log_semiring,
-            log_semiring ? nullptr : &best_path_arc_indexes);
+            log_semiring ? nullptr : &entering_arcs);
 
-        torch::optional<torch::Tensor> best_path_arc_indexes_tensor;
-        if (!log_semiring)
-          best_path_arc_indexes_tensor = ToTensor(best_path_arc_indexes);
+        torch::optional<torch::Tensor> entering_arcs_tensor;
+        if (!log_semiring) entering_arcs_tensor = ToTensor(entering_arcs);
 
-        return std::make_pair(ToTensor(scores), best_path_arc_indexes_tensor);
+        return std::make_pair(ToTensor(scores), entering_arcs_tensor);
       },
       py::arg("fsas"), py::arg("state_batches"),
       py::arg("entering_arc_batches"), py::arg("log_semiring"));
@@ -212,7 +211,7 @@ static void PybindGetBackwardScores(py::module &m, const char *name) {
         }
       },
       py::arg("fsas"), py::arg("state_batches"), py::arg("leaving_arc_batches"),
-      py::arg("tot_scores") = torch::nullopt, py::arg("log_semiring") = true);
+      py::arg("tot_scores") = py::none(), py::arg("log_semiring") = true);
 }
 
 template <typename T>

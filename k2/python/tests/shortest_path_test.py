@@ -17,7 +17,7 @@ import torch
 
 class TestShortestPath(unittest.TestCase):
 
-    def test(self):
+    def _test(self):
         s = '''
             0 1 1 0.1
             0 2 2 0.2
@@ -32,7 +32,7 @@ class TestShortestPath(unittest.TestCase):
         a = _k2.get_arc_scores(fsa_vec.arcs)
         print(a.exp())
 
-    def _test_single_fsa(self):
+    def test_single_fsa(self):
         s = '''
             0 4 1 1
             0 1 1 1
@@ -49,8 +49,9 @@ class TestShortestPath(unittest.TestCase):
             9
         '''
         fsa = k2.Fsa.from_str(s)
+        fsa = k2.create_fsa_vec([fsa])
         fsa.scores.requires_grad_(True)
-        best_path, _ = k2.shortest_path(fsa)
+        best_path = k2.shortest_path(fsa, use_float_scores=True)
 
         # we recompute the total_scores for backprop
         total_scores = best_path.scores.sum()
@@ -61,7 +62,7 @@ class TestShortestPath(unittest.TestCase):
         total_scores.backward()
         assert torch.allclose(fsa.scores.grad, expected)
 
-    def _test_fsa_vec(self):
+    def test_fsa_vec(self):
         # best path:
         #  states: 0 -> 1 -> 3 -> 7 -> 9
         #  arcs:     1 -> 3 -> 5 -> 10
@@ -118,7 +119,7 @@ class TestShortestPath(unittest.TestCase):
         fsa_vec = k2.create_fsa_vec([fsa1, fsa2, fsa3])
         assert fsa_vec.shape == (3, None, None)
 
-        best_path, _ = k2.shortest_path(fsa_vec)
+        best_path = k2.shortest_path(fsa_vec, use_float_scores=True)
 
         # we recompute the total_scores for backprop
         total_scores = best_path.scores.sum()

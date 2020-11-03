@@ -230,23 +230,18 @@ FsaVec LinearFsas(Ragged<int32_t> &symbols);
                  property kFsaPropertiesTopSortedAndAcyclic if you were
                  to compute properties.
 
-   @param [out,optional] entering_arcs   If non-NULL, it will be set to
-                a new Array1, indexed by state_idx01 into `fsas`,
-                saying which arc_idx012 is the best arc entering it,
-                or -1 if there is no such arc.
-
-   @param [out,optional]
-                    If non-NULL, it will contain array of total scores,
-                    of dimension fsas.Dim0(), which will contain the scores
-                    in the final-states of `forward_scores`, or -infinity for
-                    FSAs that had no states.
+   @param [in] entering_arcs  An array indexed by state-index (idx01 into
+                              fsas), i.e.
+                              `entering_arcs.Dim()==fsas.TotSize(1)`,
+                              containing forward scores. (these will be zero
+                              for the start-states). It is returned by
+                              GetForwardScores with log_semiring==false.
 
    @return returns a tensor with 2 axes indexed by [fsa_idx0][arc_idx012]
            containing the best arc indexes of each fsa.
  */
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
-                             Array1<float> *total_scores = nullptr,
-                             Array1<int32_t> *entering_arcs = nullptr);
+                             const Array1<int32_t> &entering_arcs);
 
 }  // namespace k2
 
