@@ -161,9 +161,8 @@ TEST(Intersect, TwoFsas) {
 TEST(Intersect, RandomSingle) {
   for (int32_t i = 0; i < 10; i++) {
     int32_t max_symbol = 10, min_num_arcs = 0, max_num_arcs = 10;
-    bool acyclic = false, epsilon_free = false;
-    Fsa fsa = RandomFsa(acyclic, epsilon_free, max_symbol, min_num_arcs,
-                        max_num_arcs);
+    bool acyclic = false;
+    Fsa fsa = RandomFsa(acyclic, max_symbol, min_num_arcs, max_num_arcs);
     ArcSort(&fsa);
 
     int32_t min_num_fsas = 1, max_num_fsas = 1, min_frames = 0, max_frames = 10,

@@ -336,19 +336,14 @@ FsaVec ConvertDenseToFsaVec(DenseFsaVec &src);
   Return a random Fsa, with a CPU context. Intended for testing.
 
      @param [in] acyclic     If true, generated Fsa will be acyclic.
-     @param [in] epsilon_free If true, generated Fsa will epsilone-free, i.e.
-                              there's no arc with label==0.
      @param [in] max_symbol  Maximum symbol on arcs. Generated arcs' symbols
                              will be in range [-1,max_symbol], note -1 is
                              kFinalSymbol; must be at least 0;
-                             If epsilon_free is true, max_symbol must be
-                             at least 1;
      @param [in] min_num_arcs Minimum number of arcs; must be at least 0.
      @param [in] max_num_arcs Maximum number of arcs; must be >= min_num_arcs.
  */
-Fsa RandomFsa(bool acyclic = true, bool epsilon_free = true,
-              int32_t max_symbol = 50, int32_t min_num_arcs = 0,
-              int32_t max_num_arcs = 1000);
+Fsa RandomFsa(bool acyclic = true, int32_t max_symbol = 50,
+              int32_t min_num_arcs = 0, int32_t max_num_arcs = 1000);
 /*
   Return a random FsaVec, with a CPU context. Intended for testing.
 
@@ -357,22 +352,17 @@ Fsa RandomFsa(bool acyclic = true, bool epsilon_free = true,
      @param [in] max_num_fsas Maximum number of fsas we'll generated in the
                               returned FsaVec; must be >= min_num_fsas.
      @param [in] acyclic     If true, generated Fsas will be acyclic.
-     @param [in] epsilon_free If true, generated Fsa will epsilone-free, i.e.
-                              there's no arc with label==0.
      @param [in] max_symbol  Maximum symbol on arcs. Generated arcs' symbols
                              will be in range [-1,max_symbol], note -1 is
                              kFinalSymbol; must be at least 0;
-                             If epsilon_free is true, max_symbol must be
-                             at least 1;
      @param [in] min_num_arcs Minimum number of arcs in each Fsa;
                               must be at least 0.
      @param [in] max_num_arcs Maximum number of arcs in each Fsa;
                               must be >= min_num_arcs.
  */
 FsaVec RandomFsaVec(int32_t min_num_fsas = 1, int32_t max_num_fsas = 1000,
-                    bool acyclic = true, bool epsilon_free = true,
-                    int32_t max_symbol = 50, int32_t min_num_arcs = 0,
-                    int32_t max_num_arcs = 1000);
+                    bool acyclic = true, int32_t max_symbol = 50,
+                    int32_t min_num_arcs = 0, int32_t max_num_arcs = 1000);
 
 /*
   Return a randomly generated DenseFsaVec.  It will have -infinities in the

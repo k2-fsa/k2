@@ -113,12 +113,14 @@ class Array1 {
 
      @param [in] start  First element to cover, 0 <= start <= Dim();
                         If start == Dim(), it just returns an empty array.
-     @param [in] end    One-past-the-last element to cover
+     @param [in] end    One-past-the-last element to cover,
+                        start <= end <= Dim().
   */
   Array1<T> Arange(int32_t start, int32_t end) const {
     K2_CHECK_GE(start, 0);
+    K2_CHECK_LE(start, dim_);
     K2_CHECK_GE(end, start);
-    K2_CHECK_LE(start + end, Dim());
+    K2_CHECK_LE(end, dim_);
     return Array1(end - start, region_, byte_offset_ + start * ElementSize());
   }
 
@@ -446,16 +448,17 @@ class Array2 {
     Returns an Array2 containing a subset of rows of *this, aliasing the
     same data.  (c.f. arange in PyTorch).
 
-     @param [in] start  First element of output, 0 <= start < Dim()
-     @param [in] end    First element that *should not* be included.
+     @param [in] start  First row of output, 0 <= start < Dim0()
+     @param [in] end    One-past-the-last row that *should not* be included.
      @param [in] inc    Increment in original array each time index
                         increases.  Require inc > 0.
   */
   Array2<T> RowArange(int32_t start, int32_t end, int32_t inc = 1) const {
     K2_CHECK_GT(inc, 0);
     K2_CHECK_GE(start, 0);
+    K2_CHECK_LT(start, dim0_);
     K2_CHECK_GE(end, start);
-    K2_CHECK_LE(start + end, dim0_);
+    K2_CHECK_LE(end, dim0_);
     int32_t num_rows = (end - start) / inc;
     return Array2<T>(num_rows, dim1_, elem_stride0_ * inc,
                      byte_offset_ + elem_stride0_ * start * ElementSize(),
