@@ -1654,11 +1654,11 @@ Ragged<int32_t> GetStartStates(FsaVec &src) {
   int32_t ans_dim = ans_row_splits.Back();
   Ragged<int32_t> ans(RaggedShape2(&ans_row_splits, nullptr, ans_dim),
                       Array1<int32_t>(c, ans_dim));
-  const int32_t *ans_row_splits1_data = ans.shape.RowSplits(1).Data();
+  const int32_t *ans_row_ids1_data = ans.shape.RowIds(1).Data();
   int32_t *ans_values_data = ans.values.Data();
   auto lambda_set_ans_values =
       [=] __host__ __device__(int32_t ans_idx01) -> void {
-    int32_t idx0 = ans_row_splits1_data[ans_idx01];
+    int32_t idx0 = ans_row_ids1_data[ans_idx01];
     int32_t src_start_state_idx01 = src_row_splits1_data[idx0];
     K2_CHECK_GT(src_row_splits1_data[idx0 + 1], src_row_splits1_data[idx0]);
     ans_values_data[ans_idx01] = src_start_state_idx01;

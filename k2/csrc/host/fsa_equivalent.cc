@@ -244,23 +244,20 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
        (*(labels_difference.begin())) != kEpsilon))
     return false;
 
-  double loglike_cutoff_a, loglike_cutoff_b;
-  if (beam != kFloatInfinity) {
-    loglike_cutoff_a = ShortestDistance<Type>(valid_a) - beam;
-    loglike_cutoff_b = ShortestDistance<Type>(valid_b) - beam;
-    if (Type == kMaxWeight &&
-        !DoubleApproxEqual(loglike_cutoff_a, loglike_cutoff_b))
-      return false;
-  } else {
-    loglike_cutoff_a = kDoubleNegativeInfinity;
-    loglike_cutoff_b = kDoubleNegativeInfinity;
-  }
+  double dist_a = ShortestDistance<Type>(valid_a),
+      dist_b = ShortestDistance<Type>(valid_b),
+      loglike_cutoff_a = dist_a - beam,
+      loglike_cutoff_b = dist_b - beam;
+  if (abs(dist_a - dist_b) > delta)
+    return false;
 
   std::random_device rd;
   std::mt19937 gen(rd());
   std::bernoulli_distribution coin(0.5);
-  std::size_t n = 0;
-  while (n < npath) {
+
+  for (std::size_t n = 0; n < npath; ++n) {
+    // Note: for now we `continue` when paths are not above the beam,
+    // which may mean that for some FSAs
     const auto &fsa = coin(gen) ? valid_a : valid_b;
     FsaCreator valid_path_storage;
     if (!::RandomPath(fsa, false, &valid_path_storage)) continue;
@@ -288,8 +285,6 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
     if (cost_a < loglike_cutoff_a && cost_b < loglike_cutoff_b) continue;
 
     if (!DoubleApproxEqual(cost_a, cost_b, delta)) return false;
-
-    ++n;
   }
   return true;
 }
