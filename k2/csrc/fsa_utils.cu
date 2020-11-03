@@ -1090,7 +1090,7 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
       entering_arc_start_index.To(GetCpuContext());
   const int32_t *cpu_entering_arc_start = cpu_entering_arc_start_index.Data();
   // copy the index of start state in each fsa to CPU
-  Array1<int32_t> arc_batches_row_splits1_array =
+  Array1<int32_t> &arc_batches_row_splits1_array =
       entering_arc_batches.RowSplits(1);
   Array1<int32_t> cpu_state_idx0xx =
       entering_arc_batches.RowSplits(2)[arc_batches_row_splits1_array].To(

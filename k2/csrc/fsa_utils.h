@@ -258,7 +258,7 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
        @param [in] leaving_arc_batches  Arcs-indexes (idx012's in fsas) of arcs
                  leaving states in `state_batches`, indexed
                  [iter][fsa][state_list][arc_list], as returned by
-                 LeavingArcIndexBatches().
+                 GetLeavingArcIndexBatches().
        @param [in] tot_scores  If provided, we'll treat the backward
                   scores of final-states as the negative of these
                   tot_scores (which must have

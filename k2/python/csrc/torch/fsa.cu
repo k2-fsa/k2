@@ -152,10 +152,34 @@ static void PybindDenseFsaVec(py::module &m) {
   });
 }
 
+// template <typename T>
+static void PybindGetArcScores(py::module &m) {
+  m.def("get_arc_scores", [](FsaVec &fsa_vec) -> torch::Tensor {
+    Ragged<int32_t> state_batches = GetStateBatches(fsa_vec, true);
+    Array1<int32_t> dest_states = GetDestStates(fsa_vec, true);
+    Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsa_vec, dest_states);
+    Ragged<int32_t> entering_arc_batches =
+        GetEnteringArcIndexBatches(fsa_vec, incoming_arcs, state_batches);
+    Ragged<int32_t> leaving_arc_batches =
+        GetLeavingArcIndexBatches(fsa_vec, state_batches);
+
+    bool log_semiring = true;
+    Array1<float> forward_scores = GetForwardScores<float>(
+        fsa_vec, state_batches, entering_arc_batches, log_semiring);
+    Array1<float> tot_scores = GetTotScores(fsa_vec, forward_scores);
+    Array1<float> backward_scores = GetBackwardScores<float>(
+        fsa_vec, state_batches, leaving_arc_batches, &tot_scores, log_semiring);
+    Array1<float> arc_scores =
+        GetArcScores(fsa_vec, forward_scores, backward_scores);
+    return ToTensor(arc_scores);
+  });
+}
+
 }  // namespace k2
 
 void PybindFsa(py::module &m) {
   k2::PybindFsaUtil(m);
   k2::PybindDenseFsaVec(m);
   k2::PybindFsaBasicProperties(m);
+  k2::PybindGetArcScores(m);
 }

@@ -11,12 +11,28 @@
 import unittest
 
 import k2
+import _k2
 import torch
 
 
 class TestShortestPath(unittest.TestCase):
 
-    def test_single_fsa(self):
+    def test(self):
+        s = '''
+            0 1 1 0.1
+            0 2 2 0.2
+            1 2 3 0.3
+            1 3 4 0.4
+            2 3 5 0.5
+            3 4 -1 0
+            4
+        '''
+        fsa = k2.Fsa.from_str(s)
+        fsa_vec = k2.create_fsa_vec([fsa])
+        a = _k2.get_arc_scores(fsa_vec.arcs)
+        print(a.exp())
+
+    def _test_single_fsa(self):
         s = '''
             0 4 1 1
             0 1 1 1
@@ -45,7 +61,7 @@ class TestShortestPath(unittest.TestCase):
         total_scores.backward()
         assert torch.allclose(fsa.scores.grad, expected)
 
-    def test_fsa_vec(self):
+    def _test_fsa_vec(self):
         # best path:
         #  states: 0 -> 1 -> 3 -> 7 -> 9
         #  arcs:     1 -> 3 -> 5 -> 10
