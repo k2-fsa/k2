@@ -109,8 +109,49 @@ class Fsa(object):
             self.aux_labels = aux_labels.to(torch.int32)
 
     def _init_internal(self) -> None:
+        # There are three kinds of attribute dictionaries:
+        #
+        # - `_tensor_attr`
+        #     It saves attribute values of type torch.Tensor. `shape[0]` of
+        #     attribute values have to be equal to the number of arcs
+        #     in the FSA.
+        #
+        # - `_non_tensor_attr`
+        #     It saves non-tensor attributes, e.g., :class:`SymbolTable`.
+        #
+        # - `_cache`
+        #     It contains tensors for autograd. Users should NOT manipulate it.
+        #     The dict is filled in automagically.
         self._tensor_attr = OrderedDict()
         self._non_tensor_attr = OrderedDict()
+
+        self._cache = OrderedDict()
+        # The `_cache` dict contains the following attributes:
+        #
+        #  - `state_batches`:
+        #           returned by :func:`_k2._get_state_batches`
+        #  - `dest_states`:
+        #           returned by :func:`_k2._get_dest_states`
+        #  - `incoming_arcs`:
+        #           returned by :func:`_k2._get_incoming_arcs`
+        #  - `entering_arc_batches`:
+        #           returned by :func:`_k2._get_entering_arc_index_batches`
+        #  - `leaving_arc_batches`:
+        #           returned by :func:`_k2._get_leaving_arc_index_batches`
+        #  - `forward_scores_tropical_semiring`:
+        #           returned by :func:`_k2._get_forward_scores_float` or
+        #           :func:`_get_forward_scores_double` with `log_semiring=False`
+        #  - `forward_scores_log_semiring`:
+        #           returned by :func:`_k2._get_forward_scores_float` or
+        #           :func:`_get_forward_scores_double` with `log_semiring=True`
+        #  - `backward_scores_tropical_semiring`:
+        #           returned by :func:`_k2._get_backward_scores_float` or
+        #           :func:`_k2._get_backward_scores_double` with
+        #           `log_semiring=False`
+        #  - `backward_scores_log_semiring`:
+        #           returned by :func:`_k2._get_backward_scores_float` or
+        #           :func:`_k2._get_backward_scores_double` with
+        #           `log_semiring=True`
 
     def __setattr__(self, name: str, value: Any) -> None:
         '''
