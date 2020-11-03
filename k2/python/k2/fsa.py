@@ -147,10 +147,12 @@ class Fsa(object):
         #           :func:`_get_forward_scores_double` with `log_semiring=True`
         #  - `tot_scores_tropical`:
         #           returned by :func:`_k2._get_tot_scores_float` or
-        #           :func:`_k2._get_tot_scores_double` with `forward_scores_tropical`.
+        #           :func:`_k2._get_tot_scores_double` with
+        #           `forward_scores_tropical`.
         #  - `tot_scores_log`:
         #           returned by :func:`_k2._get_tot_scores_float` or
-        #           :func:`_k2._get_tot_scores_double` with `forward_scores_log`.
+        #           :func:`_k2._get_tot_scores_double` with
+        #           `forward_scores_log`.
         #  - `backward_scores_tropical`:
         #           returned by :func:`_k2._get_backward_scores_float` or
         #           :func:`_k2._get_backward_scores_double` with
@@ -216,26 +218,26 @@ class Fsa(object):
         self._grad_cache[name] = value
 
     def update_state_batches(self) -> _k2.RaggedInt:
-        if hasattr(self, 'state_batches') == False:
+        if hasattr(self, 'state_batches') is False:
             state_batches = _k2._get_state_batches(self.arcs, transpose=True)
             self._update_cache('state_batches', state_batches)
         return self.state_batches
 
     def update_dest_states(self) -> torch.Tensor:
-        if hasattr(self, 'dest_states') == False:
+        if hasattr(self, 'dest_states') is False:
             dest_states = _k2._get_dest_states(self.arcs, as_idx01=True)
             self._update_cache('dest_states', dest_states)
         return self.dest_states
 
     def update_incoming_arcs(self) -> _k2.RaggedInt:
-        if hasattr(self, 'incoming_arcs') == False:
+        if hasattr(self, 'incoming_arcs') is False:
             dest_states = self.update_dest_states()
             incoming_arcs = _k2._get_incoming_arcs(self.arcs, dest_states)
             self._update_cache('incoming_arcs', incoming_arcs)
         return self.incoming_arcs
 
     def update_entering_arc_batches(self) -> _k2.RaggedInt:
-        if hasattr(self, 'entering_arc_batches') == False:
+        if hasattr(self, 'entering_arc_batches') is False:
             incoming_arcs = self.update_incoming_arcs()
             state_batches = self.update_state_batches()
             entering_arc_batches = _k2._get_entering_arc_index_batches(
@@ -246,7 +248,7 @@ class Fsa(object):
         return self.entering_arc_batches
 
     def update_leaving_arc_batches(self) -> _k2.RaggedInt:
-        if hasattr(self, 'leaving_arc_batches') == False:
+        if hasattr(self, 'leaving_arc_batches') is False:
             state_batches = self.update_state_batches()
             leaving_arc_batches = _k2._get_leaving_arc_index_batches(
                 self.arcs, state_batches)
@@ -254,9 +256,9 @@ class Fsa(object):
         return self.leaving_arc_batches
 
     def update_forward_scores_tropical(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'forward_scores_tropical') == False \
-                or (use_float_scores == True and self.forward_scores_tropical.dtype == torch.float64) \
-                or (use_float_scores == False and self.forward_scores_tropical.dtype == torch.float32):
+        if hasattr(self, 'forward_scores_tropical') is False \
+                or (use_float_scores is True and self.forward_scores_tropical.dtype == torch.float64) \
+                or (use_float_scores is False and self.forward_scores_tropical.dtype == torch.float32): # noqa
             if use_float_scores:
                 func = _k2._get_forward_scores_float
             else:
@@ -276,9 +278,9 @@ class Fsa(object):
         return self.forward_scores_tropical
 
     def update_forward_scores_log(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'forward_scores_log') == False \
-                or (use_float_scores == True and self.forward_scores_log.dtype == torch.float64) \
-                or (use_float_scores == False and self.forward_scores_log.dtype == torch.float32):
+        if hasattr(self, 'forward_scores_log') is False \
+                or (use_float_scores is True and self.forward_scores_log.dtype == torch.float64) \
+                or (use_float_scores is False and self.forward_scores_log.dtype == torch.float32): # noqa
             if use_float_scores:
                 func = _k2._get_forward_scores_float
             else:
@@ -292,14 +294,14 @@ class Fsa(object):
                 state_batches=state_batches,
                 entering_arc_batches=entering_arc_batches,
                 log_semiring=True)
-            self._update_cache('forward_scores_log', forward_scores_tropical)
+            self._update_cache('forward_scores_log', forward_scores_log)
         return self.forward_scores_log
 
     def update_tot_scores_tropical(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'tot_scores_tropical') == False \
-                or (use_float_scores == True and self.tot_scores_tropical.dtype == torch.float64) \
-                or (use_float_scores == False and self.tot_scores_tropical.dtype == torch.float32):
-            if use_float_scores == True:
+        if hasattr(self, 'tot_scores_tropical') is False \
+                or (use_float_scores is True and self.tot_scores_tropical.dtype == torch.float64) \
+                or (use_float_scores is False and self.tot_scores_tropical.dtype == torch.float32): # noqa
+            if use_float_scores is True:
                 func = _k2._get_tot_scores_float
             else:
                 func = _k2._get_tot_scores_double
@@ -310,10 +312,10 @@ class Fsa(object):
         return self.tot_scores_tropical
 
     def update_tot_scores_log(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'tot_scores_log') == False \
-                or (use_float_scores == True and self.tot_scores_log.dtype == torch.float64) \
-                or (use_float_scores == False and self.tot_scores_log.dtype == torch.float32):
-            if use_float_scores == True:
+        if hasattr(self, 'tot_scores_log') is False \
+                or (use_float_scores is True and self.tot_scores_log.dtype == torch.float64) \
+                or (use_float_scores is False and self.tot_scores_log.dtype == torch.float32): # noqa
+            if use_float_scores is True:
                 func = _k2._get_tot_scores_float
             else:
                 func = _k2._get_tot_scores_double
@@ -325,9 +327,9 @@ class Fsa(object):
 
     def update_backward_scores_tropical(self,
                                         use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'backward_scores_tropical') == False \
-                or (use_float_scores == True and self.backward_scores_tropical.dtype == torch.float64) \
-                or (use_float_scores == False and self.backward_scores_tropical.dtype == torch.float32):
+        if hasattr(self, 'backward_scores_tropical') is False \
+                or (use_float_scores is True and self.backward_scores_tropical.dtype == torch.float64) \
+                or (use_float_scores is False and self.backward_scores_tropical.dtype == torch.float32): # noqa
             if use_float_scores:
                 func = _k2._get_backward_scores_float
             else:
@@ -348,9 +350,9 @@ class Fsa(object):
         return self.backward_scores_tropical
 
     def update_backward_scores_log(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'backward_scores_log') == False \
-                or (use_float_scores == True and self.backward_scores_log.dtype == torch.float64) \
-                or (use_float_scores == False and self.backward_scores_log.dtype == torch.float32):
+        if hasattr(self, 'backward_scores_log') is False \
+                or (use_float_scores is True and self.backward_scores_log.dtype == torch.float64) \
+                or (use_float_scores is False and self.backward_scores_log.dtype == torch.float32): # noqa
             if use_float_scores:
                 func = _k2._get_backward_scores_float
             else:
@@ -368,7 +370,7 @@ class Fsa(object):
         return self.backward_scores_log
 
     def update_entering_arcs(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'entering_arcs') == False:
+        if hasattr(self, 'entering_arcs') is False:
             if hasattr(self, 'forward_scores_tropical'):
                 del self.forward_scores_tropical
             self.update_forward_scores_tropical(use_float_scores)
