@@ -25,6 +25,7 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/intersect.h"
 #include "k2/csrc/host/properties.h"
+#include "k2/csrc/host/topsort.h"
 #include "k2/csrc/host/util.h"
 #include "k2/csrc/host/weights.h"
 
@@ -62,6 +63,26 @@ static void ArcSort(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
   K2_CHECK_NE(fsa_out, nullptr);
   k2host::ArcSorter sorter(fsa_in);
+  k2host::Array2Size<int32_t> fsa_size;
+  sorter.GetSizes(&fsa_size);
+
+  fsa_out->Init(fsa_size);
+  auto &sorted_fsa = fsa_out->GetFsa();
+  if (arc_map != nullptr) arc_map->resize(fsa_size.size2);
+  sorter.GetOutput(&sorted_fsa, arc_map == nullptr ? nullptr : arc_map->data());
+}
+
+/*
+  Version of TopSorter that writes the output FSA to an FsaCreator `fsa_out`;
+  see its documentation.
+  Usually user will call `fsa_out.GetFsa()` to get the output FSA after the
+  function call, the memory of the output FSA is managed by `fsa_out` and
+  will be released automatically if `fsa_out`is out of scope.
+ */
+static void TopSort(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
+                    std::vector<int32_t> *arc_map = nullptr) {
+  K2_CHECK_NE(fsa_out, nullptr);
+  k2host::TopSorter sorter(fsa_in);
   k2host::Array2Size<int32_t> fsa_size;
   sorter.GetSizes(&fsa_size);
 
@@ -249,20 +270,20 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
 
     FsaCreator a_compose_path_storage, b_compose_path_storage;
     std::vector<int32_t> arc_map_a_path, arc_map_b_path;
-    // note that `valid_path` is epsilon-free
     ::Intersect(valid_a, valid_path, treat_epsilons_specially,
                 &a_compose_path_storage, &arc_map_a_path);
     ::Intersect(valid_b, valid_path, treat_epsilons_specially,
                 &b_compose_path_storage, &arc_map_b_path);
 
     // TODO(haowen): we may need to implement a version of `ShortestDistance`
-    // for non-top-sorted FSAs, but we prefer to decide this later as there's no
-    // such scenarios (input FSAs are not top-sorted) currently. If we finally
-    // find out that we don't need that version, we will remove flag
-    // `top_sorted` and add requirements as comments in the header file.
-    K2_CHECK(top_sorted);
-    double cost_a = ShortestDistance<Type>(a_compose_path_storage.GetFsa());
-    double cost_b = ShortestDistance<Type>(b_compose_path_storage.GetFsa());
+    // for non-top-sorted FSAs.
+    // As the random path and a (or b) could be both non-epsilon-free, even if
+    // a (or b) is top-sorted, we may still get non-top-sorted composed path.
+    FsaCreator a_top_sorted_path_storage, b_top_sorted_path_storage;
+    ::TopSort(a_compose_path_storage.GetFsa(), &a_top_sorted_path_storage);
+    ::TopSort(b_compose_path_storage.GetFsa(), &b_top_sorted_path_storage);
+    double cost_a = ShortestDistance<Type>(a_top_sorted_path_storage.GetFsa());
+    double cost_b = ShortestDistance<Type>(b_top_sorted_path_storage.GetFsa());
 
     if (cost_a < loglike_cutoff_a && cost_b < loglike_cutoff_b) continue;
 

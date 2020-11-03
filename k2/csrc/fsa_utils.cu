@@ -1526,14 +1526,12 @@ template Array1<float> GetTotScores(FsaVec &fsas,
 template Array1<double> GetTotScores(FsaVec &fsas,
                                      const Array1<double> &forward_scores);
 
-Fsa RandomFsa(bool acyclic /*=true*/, bool epsilon_free /*=true*/,
-              int32_t max_symbol /*=50*/, int32_t min_num_arcs /*=0*/,
-              int32_t max_num_arcs /*=1000*/) {
+Fsa RandomFsa(bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
+              int32_t min_num_arcs /*=0*/, int32_t max_num_arcs /*=1000*/) {
   ContextPtr c = GetCpuContext();
   K2_CHECK_GE(min_num_arcs, 0);
   K2_CHECK_GE(max_num_arcs, min_num_arcs);
   K2_CHECK_GE(max_symbol, 0);
-  if (epsilon_free) K2_CHECK_GE(max_symbol, 1);
   RaggedShape shape =
       RandomRaggedShape(false, 2, 2, min_num_arcs, max_num_arcs);
   int32_t dim0 = shape.Dim0();
@@ -1569,10 +1567,7 @@ Fsa RandomFsa(bool acyclic /*=true*/, bool epsilon_free /*=true*/,
     int32_t curr_state = row_ids1[i];
     int32_t dest_state = acyclic ? RandInt(curr_state + 1, final_state)
                                  : RandInt(start_state, final_state);
-    int32_t symbol =
-        dest_state == final_state
-            ? -1
-            : (epsilon_free ? RandInt(1, max_symbol) : RandInt(0, max_symbol));
+    int32_t symbol = dest_state == final_state ? -1 : RandInt(0, max_symbol);
     float score = dis_score(gen);
     arcs[i] = Arc(curr_state, dest_state, symbol, score);
   }
@@ -1580,16 +1575,15 @@ Fsa RandomFsa(bool acyclic /*=true*/, bool epsilon_free /*=true*/,
 }
 
 FsaVec RandomFsaVec(int32_t min_num_fsas /*=1*/, int32_t max_num_fsas /*=1000*/,
-                    bool acyclic /*=true*/, bool epsilon_free /*=true*/,
-                    int32_t max_symbol /*=50*/, int32_t min_num_arcs /*=0*/,
+                    bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
+                    int32_t min_num_arcs /*=0*/,
                     int32_t max_num_arcs /*=1000*/) {
   K2_CHECK_GE(min_num_fsas, 0);
   K2_CHECK_GE(max_num_fsas, min_num_fsas);
   int32_t num_fsas = RandInt(min_num_fsas, max_num_fsas);
   std::vector<Fsa> fsas(num_fsas);
   for (int32_t i = 0; i != num_fsas; ++i) {
-    fsas[i] = RandomFsa(acyclic, epsilon_free, max_symbol, min_num_arcs,
-                        max_num_arcs);
+    fsas[i] = RandomFsa(acyclic, max_symbol, min_num_arcs, max_num_arcs);
   }
   return Stack(0, num_fsas, fsas.data());
 }

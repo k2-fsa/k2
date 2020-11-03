@@ -10,6 +10,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <random>
+
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
@@ -200,18 +203,47 @@ TEST(TopSort, RandomVectorOfFsas1) {
   ContextPtr cpu = GetCpuContext();
   for (int32_t n = 0; n != 1; ++n) {
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-      K2_LOG(INFO) << n;
-      // We have to generate epsilon-free Fsas here as we will call Intersect
-      // below (in `IsRandEquivalent`) which requires at least one of the two
-      // input Fsas is epsilon-free.
-      // TODO(haowen): here we generate acyclic Fsas for testing as current
-      // implementation of GPU TopSort supposes the input Fsas are acyclic, but
-      // definitely I need to `reorder` states randomly and add some self-loops
-      // for robust test.
-      FsaVec random_fsas = RandomFsaVec(1, 1000, true, true);
+      // Here we generate acyclic Fsas for testing as current
+      // implementation of GPU TopSort supposes the input Fsas are acyclic.
+      FsaVec random_fsas = RandomFsaVec(1, 1000, true);
+      int32_t num_fsas = random_fsas.Dim0();
+      {
+        // reorder states (except start and final state) in each Fsa to make
+        // them non-top-sorted (but still acyclic)
+        int32_t num_states = random_fsas.TotSize(1);
+        Array1<int32_t> order = Range(cpu, num_states, 0);
+        const int32_t *fsas_row_splits1_data = random_fsas.RowSplits(1).Data();
+        std::random_device rd;
+        std::mt19937 g(rd());
+        for (int32_t i = 0; i != num_fsas; ++i) {
+          int32_t start_state_idx01 = fsas_row_splits1_data[i];
+          int32_t next_start_state_idx01 = fsas_row_splits1_data[i + 1];
+          if (next_start_state_idx01 > start_state_idx01) {  // non-empty Fsa
+            K2_CHECK_GE(next_start_state_idx01 - start_state_idx01, 2);
+            // get states except start_state and final_state
+            Array1<int32_t> states =
+                order.Arange(start_state_idx01 + 1, next_start_state_idx01 - 1);
+            if (states.Dim() == 0) continue;
+            int32_t *states_data = states.Data();
+            std::shuffle(states_data, states_data + states.Dim(), g);
+          }
+        }
+        random_fsas = RenumberFsaVec(random_fsas, order, nullptr);
+      }
+      {
+        // randomly change some arcs to self-loops
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::bernoulli_distribution d(0.1);
+        int32_t num_arcs = random_fsas.NumElements();
+        Arc *arcs = random_fsas.values.Data();
+        for (int32_t i = 0; i != num_arcs; ++i) {
+          if (d(g)) arcs[i].dest_state = arcs[i].src_state;
+        }
+      }
+
       FsaVec fsa_vec = random_fsas.To(context);
       FsaVec cpu_fsa_vec = fsa_vec.To(cpu);
-      int32_t num_fsas = fsa_vec.Dim0();
 
       int32_t gt = kFsaPropertiesTopSorted;
       Array1<int32_t> properties;
@@ -223,9 +255,8 @@ TEST(TopSort, RandomVectorOfFsas1) {
       Array1<bool> is_top_sorted = IsTopSorted(cpu_fsa_vec);
       ASSERT_EQ(is_top_sorted.Dim(), num_fsas);
       for (int32_t i = 0; i != num_fsas; ++i) {
-        // Even if we set `acyclic=false`, `RandomFsaVec` may still generate
-        // acyclic Fsas, so `is_top_sorted_this_fsa` below could be either
-        // true or false.
+        // We randomly reorder `random_fsas` which is top-sorted, so
+        // `is_top_sorted_this_fsa` below could be either true or false.
         bool is_top_sorted_this_fsa = (properties[i] & gt) == gt;
         EXPECT_EQ(is_top_sorted_this_fsa, is_top_sorted[i]);
       }
@@ -246,11 +277,6 @@ TEST(TopSort, RandomVectorOfFsas1) {
         Fsa sorted_i = cpu_sorted.Index(0, i);
         EXPECT_EQ(properties[i] & gt, gt);
         EXPECT_TRUE(is_top_sorted[i]);
-        if (!IsRandEquivalent(sorted_i, host_sorted_i, false)) {
-          K2_LOG(INFO) << cpu_fsa_vec_i;
-          K2_LOG(INFO) << sorted_i;
-          K2_LOG(INFO) << host_sorted_i;
-        }
         EXPECT_TRUE(IsRandEquivalent(sorted_i, host_sorted_i, false));
       }
     }
