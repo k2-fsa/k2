@@ -188,22 +188,22 @@ Array1<bool> IsConnected(FsaOrVec &fsas) {
   return CheckProperties(fsas, k2host::IsConnected);
 }
 
-bool IsRandEquivalentByCheckPathSymbols(FsaOrVec &a, FsaOrVec &b,
-                                        bool treat_epsilons_specially /*=true*/,
-                                        std::size_t npath /*= 100*/) {
+bool IsRandEquivalentUnweighted(FsaOrVec &a, FsaOrVec &b,
+                                bool treat_epsilons_specially /*=true*/,
+                                std::size_t npath /*= 100*/) {
   K2_CHECK_GE(a.NumAxes(), 2);
   K2_CHECK_EQ(b.NumAxes(), a.NumAxes());
   if (a.Context()->GetDeviceType() != kCpu ||
       b.Context()->GetDeviceType() != kCpu) {
     FsaOrVec a_cpu = a.To(GetCpuContext()), b_cpu = b.To(GetCpuContext());
-    return IsRandEquivalentByCheckPathSymbols(a_cpu, b_cpu,
-                                              treat_epsilons_specially, npath);
+    return IsRandEquivalentUnweighted(a_cpu, b_cpu,
+                                      treat_epsilons_specially, npath);
   }
   if (a.NumAxes() > 2) {
     for (int32_t i = 0; i < a.Dim0(); i++) {
       Fsa a_part = a.Index(0, i), b_part = b.Index(0, i);
-      if (!IsRandEquivalentByCheckPathSymbols(a_part, b_part,
-                                              treat_epsilons_specially, npath))
+      if (!IsRandEquivalentUnweighted(a_part, b_part,
+                                      treat_epsilons_specially, npath))
         return false;
     }
     return true;
@@ -218,10 +218,26 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
                       float beam /*=k2host::kFloatInfinity*/,
                       bool treat_epsilons_specially /*=true*/,
                       float delta /*=1e-6*/, std::size_t npath /*= 100*/) {
-  K2_CHECK_EQ(a.NumAxes(), 2);
-  K2_CHECK_EQ(b.NumAxes(), 2);
-  K2_CHECK_EQ(a.Context()->GetDeviceType(), kCpu);
-  K2_CHECK_EQ(b.Context()->GetDeviceType(), kCpu);
+  K2_CHECK_GE(a.NumAxes(), 2);
+  K2_CHECK_EQ(b.NumAxes(), a.NumAxes());
+  if (a.Context()->GetDeviceType() != kCpu ||
+      b.Context()->GetDeviceType() != kCpu) {
+    FsaOrVec a_cpu = a.To(GetCpuContext()),
+        b_cpu = b.To(GetCpuContext());
+    return IsRandEquivalent(a, b, log_semiring, beam, treat_epsilons_specially,
+                            delta, npath);
+
+  }
+  if (a.NumAxes() > 2) {
+    for (int32_t i = 0; i < a.Dim0(); i++) {
+      Fsa a_part = a.Index(0, i), b_part = b.Index(0, i);
+      if (!IsRandEquivalent(a_part, b_part, log_semiring,
+                            beam, treat_epsilons_specially,
+                            delta, npath))
+        return false;
+    }
+    return true;
+  }
   k2host::Fsa host_fsa_a = FsaToHostFsa(a);
   k2host::Fsa host_fsa_b = FsaToHostFsa(b);
   if (log_semiring) {

@@ -271,10 +271,11 @@ Array1<bool> IsConnected(FsaOrVec &fsas);
 
 /*
   (for Fsas):
-    Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
-    generating `npath` paths from one of them and then checking if the
-    paths exist in the other one. Noted we only check the paths existence, the
-    weights on the paths will not be checked.
+
+    Returns true if the Fsa `a` is equivalent to `b` (ignoring the weights!),
+    tested by randomly generating `npath` paths from one of them and then
+    checking if the paths exist in the other one. Noted we only check the paths
+    existence, the weights on the paths will not be checked.
 
    (for FsaVec):
      Returns true if IsRandEquivalentByCheckPathSymbols is true for all of
@@ -288,38 +289,35 @@ Array1<bool> IsConnected(FsaOrVec &fsas);
    doing intersection; Otherwise, epsilons will just be treated as any other
    symbol. See `host/intersect.h` for details.
  */
-bool IsRandEquivalentByCheckPathSymbols(FsaOrVec &a, FsaOrVec &b,
-                                        bool treat_epsilons_specially = true,
-                                        std::size_t npath = 100);
+bool IsRandEquivalentUnweighted(FsaOrVec &a, FsaOrVec &b,
+                                bool treat_epsilons_specially = true,
+                                std::size_t npath = 100);
 
 /*
-  Returns true if the Fsa `a` is stochastically equivalent to `b` by randomly
-  generating `npath` paths from one of them and then checking if each path
-  exists in the other one and the sum of weights along that path are the same.
+  Returns true if the Fsa `a` appears to be equivalent to `b` by randomly
+  generating `npath` paths from one of them and then checking if the symbol
+  sequence exists in the other one and if the total weight for that symbol
+  sequence is the same in both FSAs.
 
   @param [in]  a          One of the FSAs to be checked the equivalence.
                           Must be top-sorted and have NumAxes() == 2 and on CPU.
   @param [in]  b          The other FSA to be checked the equivalence.
                           Must be top-sorted and have NumAxes() == 2 and on CPU.
-  @param [in]  log_semiring If true, the algorithm will only check paths
-                          within `beam` of the log-sum probs over
-                          all pahts;
-                          If false, the algorithm will only check paths
-                          within `beam` of the best path (it's the max weight
-                          over all paths from start state to final state;
+  @param [in]  log_semiring The semiring to be used for all weight measurements;
+                          if false then we use 'max' on alternative paths; if
+                          true we use 'log-add'.
   @param [in]  beam       beam > 0 that affects pruning; the algorithm
                           will only check paths within `beam` of the
-                          best path(for tropical semiring, it's max
-                          weight over all paths from start state to
-                          final state; for log semiring, it's log-sum probs
-                          over all paths) in `a` or `b`. That is,
-                          any symbol sequence, whose total weights
-                          over all paths are within `beam` of the best
-                          path (either in `a` or `b`), must have
-                          the same weights in `a` and `b`.
-                          There is no requirement on symbol sequences
-                          whose total weights over paths are outside `beam`.
-                          Just keep `k2host::kFloatInfinity` if you don't want
+                          total score of the lattice (for tropical semiring,
+                          it's max weight over all paths from start state to
+                          final state; for log semiring, it's log-sum probs over
+                          all paths) in `a` or `b`. That is, any symbol
+                          sequence, whose total weights over all paths are
+                          within `beam` of the total score of the lattice
+                          (either in `a` or `b`), must have the same weights in
+                          `a` and `b` (within `delta`).  There is no requirement
+                          on symbol sequences whose total weights over paths are
+                          outside `beam`.  Leave this as infinity you don't want
                           pruning.
   @param [in]  treat_epsilons_specially We'll pass `treat_epsilons_specially`
                           to Intersection in `host/intersect.h` to do the
