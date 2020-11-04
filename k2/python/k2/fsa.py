@@ -376,6 +376,26 @@ class Fsa(object):
             self.update_forward_scores_tropical(use_float_scores)
         return self.entering_arcs
 
+    def requires_grad_(self, requires_grad: bool) -> 'Fsa':
+        '''Change if autograd should record operations on this FSA:
+
+        Sets the `scores`'s requires_grad attribute in-place.
+        Returns this FSA.
+
+        Caution:
+          This is an **in-place** operation as you can see that the function
+          name ends with `_`.
+
+        Args:
+          requires_grad:
+            If autograd should record operations on this FSA or not.
+
+        Returns:
+          This FSA itself.
+        '''
+        self.scores.requires_grad_(requires_grad)
+        return self
+
     def invert_(self) -> 'Fsa':
         '''Swap the ``labels`` and ``aux_labels``.
 

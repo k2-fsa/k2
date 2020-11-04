@@ -35,7 +35,7 @@ class TestGetTotScores(unittest.TestCase):
         '''
         fsa = k2.Fsa.from_str(s)
         fsa = k2.create_fsa_vec([fsa])
-        fsa.scores.requires_grad_(True)
+        fsa.requires_grad_(True)
         log_like = k2.get_tot_scores(fsa,
                                      log_semiring=False,
                                      use_float_scores=True)
@@ -111,9 +111,9 @@ class TestGetTotScores(unittest.TestCase):
         fsa2 = k2.Fsa.from_str(s2)
         fsa3 = k2.Fsa.from_str(s3)
 
-        fsa1.scores.requires_grad_(True)
-        fsa2.scores.requires_grad_(True)
-        fsa3.scores.requires_grad_(True)
+        fsa1.requires_grad_(True)
+        fsa2.requires_grad_(True)
+        fsa3.requires_grad_(True)
 
         fsa_vec = k2.create_fsa_vec([fsa1, fsa2, fsa3])
 
@@ -178,7 +178,7 @@ class TestGetTotScores(unittest.TestCase):
             4
         '''
         fsa = k2.Fsa.from_str(s)
-        fsa.scores.requires_grad_(True)
+        fsa.requires_grad_(True)
         fsa_vec = k2.create_fsa_vec([fsa])
         log_like = k2.get_tot_scores(fsa_vec,
                                      log_semiring=True,
@@ -240,8 +240,8 @@ class TestGetTotScores(unittest.TestCase):
         fsa1 = k2.Fsa.from_str(s1)
         fsa2 = k2.Fsa.from_str(s2)
 
-        fsa1.scores.requires_grad_(True)
-        fsa2.scores.requires_grad_(True)
+        fsa1.requires_grad_(True)
+        fsa2.requires_grad_(True)
 
         fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
         log_like = k2.get_tot_scores(fsa_vec,
