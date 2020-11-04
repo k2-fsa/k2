@@ -226,7 +226,6 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
         b_cpu = b.To(GetCpuContext());
     return IsRandEquivalent(a, b, log_semiring, beam, treat_epsilons_specially,
                             delta, npath);
-
   }
   if (a.NumAxes() > 2) {
     for (int32_t i = 0; i < a.Dim0(); i++) {

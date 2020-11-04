@@ -453,6 +453,7 @@ class ParallelRunner {
   void Finish();
 
   ~ParallelRunner() { Finish(); }
+
  private:
   ContextPtr c_;
   std::vector<cudaStream_t> streams_;
