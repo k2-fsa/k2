@@ -14,7 +14,7 @@ import k2
 import torch
 
 
-class TestGetForwardLogLike(unittest.TestCase):
+class TestGetTotScores(unittest.TestCase):
 
     def test_tropical_single_fsa(self):
         # best path arc indexes are: 1, 3, 5, 10
@@ -36,9 +36,9 @@ class TestGetForwardLogLike(unittest.TestCase):
         fsa = k2.Fsa.from_str(s)
         fsa = k2.create_fsa_vec([fsa])
         fsa.scores.requires_grad_(True)
-        log_like = k2.get_forward_log_like(fsa,
-                                           log_semiring=False,
-                                           use_float_scores=True)
+        log_like = k2.get_tot_scores(fsa,
+                                     log_semiring=False,
+                                     use_float_scores=True)
 
         assert log_like == 14
         assert log_like.dtype == torch.float32
@@ -50,9 +50,9 @@ class TestGetForwardLogLike(unittest.TestCase):
 
         # now for double
         fsa.scores.grad = None
-        log_like = k2.get_forward_log_like(fsa,
-                                           log_semiring=False,
-                                           use_float_scores=False)
+        log_like = k2.get_tot_scores(fsa,
+                                     log_semiring=False,
+                                     use_float_scores=False)
         assert log_like == 14
         assert log_like.dtype == torch.float64
         log_like.sum().backward()
@@ -117,9 +117,9 @@ class TestGetForwardLogLike(unittest.TestCase):
 
         fsa_vec = k2.create_fsa_vec([fsa1, fsa2, fsa3])
 
-        log_like = k2.get_forward_log_like(fsa_vec,
-                                           log_semiring=False,
-                                           use_float_scores=True)
+        log_like = k2.get_tot_scores(fsa_vec,
+                                     log_semiring=False,
+                                     use_float_scores=True)
         assert log_like.dtype == torch.float32
         expected_log_like = torch.tensor([14, 13, 105.5])
         assert torch.allclose(log_like, expected_log_like)
@@ -145,9 +145,9 @@ class TestGetForwardLogLike(unittest.TestCase):
         fsa1.scores.grad = None
         fsa2.scores.grad = None
         fsa3.scores.grad = None
-        log_like = k2.get_forward_log_like(fsa_vec,
-                                           log_semiring=False,
-                                           use_float_scores=False)
+        log_like = k2.get_tot_scores(fsa_vec,
+                                     log_semiring=False,
+                                     use_float_scores=False)
 
         assert log_like.dtype == torch.float64
         expected_log_like = expected_log_like.to(torch.float64)
@@ -180,9 +180,9 @@ class TestGetForwardLogLike(unittest.TestCase):
         fsa = k2.Fsa.from_str(s)
         fsa.scores.requires_grad_(True)
         fsa_vec = k2.create_fsa_vec([fsa])
-        log_like = k2.get_forward_log_like(fsa_vec,
-                                           log_semiring=True,
-                                           use_float_scores=True)
+        log_like = k2.get_tot_scores(fsa_vec,
+                                     log_semiring=True,
+                                     use_float_scores=True)
         assert log_like.dtype == torch.float32
         # The expected_log_like is computed using gtn.
         # See https://bit.ly/3oUiRx9
@@ -202,9 +202,9 @@ class TestGetForwardLogLike(unittest.TestCase):
         # now for double
         fsa.scores.grad = None
 
-        log_like = k2.get_forward_log_like(fsa_vec,
-                                           log_semiring=True,
-                                           use_float_scores=False)
+        log_like = k2.get_tot_scores(fsa_vec,
+                                     log_semiring=True,
+                                     use_float_scores=False)
         assert log_like.dtype == torch.float64
         expected_log_like = expected_log_like.to(torch.float64)
         assert torch.allclose(log_like, expected_log_like)
@@ -244,9 +244,9 @@ class TestGetForwardLogLike(unittest.TestCase):
         fsa2.scores.requires_grad_(True)
 
         fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
-        log_like = k2.get_forward_log_like(fsa_vec,
-                                           log_semiring=True,
-                                           use_float_scores=True)
+        log_like = k2.get_tot_scores(fsa_vec,
+                                     log_semiring=True,
+                                     use_float_scores=True)
         assert log_like.dtype == torch.float32
         # The expected_log_likes are computed using gtn.
         # See https://bit.ly/3oUiRx9
@@ -277,9 +277,9 @@ class TestGetForwardLogLike(unittest.TestCase):
         fsa1.scores.grad = None
         fsa2.scores.grad = None
 
-        log_like = k2.get_forward_log_like(fsa_vec,
-                                           log_semiring=True,
-                                           use_float_scores=False)
+        log_like = k2.get_tot_scores(fsa_vec,
+                                     log_semiring=True,
+                                     use_float_scores=False)
         assert log_like.dtype == torch.float64
         expected_log_like = expected_log_like.to(torch.float64)
         assert torch.allclose(log_like, expected_log_like)

@@ -1,4 +1,4 @@
-from .autograd import get_forward_log_like
+from .autograd import get_tot_scores
 from .dense_fsa import dense_fsa
 from .fsa import Fsa
 from .fsa_algo import arc_sort
@@ -26,8 +26,8 @@ __all__ = [
     'connect',
     'create_fsa_vec',
     'dense_fsa',
-    'get_forward_log_like',
     'get_properties',
+    'get_tot_scores',
     'intersect',
     'is_accessible',
     'is_arc_sorted',

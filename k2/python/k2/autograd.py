@@ -10,12 +10,12 @@ import _k2
 from .fsa import Fsa
 
 
-class _ForwardLogLikeFunction(torch.autograd.Function):
+class _GetTotScoresFunction(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, fsas: Fsa, log_semiring: bool, use_float_scores: bool,
                 unused_scores: torch.Tensor) -> torch.Tensor:
-        '''Compute the forward loglikes of an FsaVec.
+        '''Compute the total loglikes of an FsaVec.
 
         Args:
           fsas:
@@ -41,7 +41,7 @@ class _ForwardLogLikeFunction(torch.autograd.Function):
             tot_scores = fsas.update_tot_scores_log(use_float_scores)
 
         # NOTE: since `fsas`, `log_semiring` and `use_float_scores` are
-        # not tensors, they are saved as attributes as `ctx`
+        # not tensors, they are saved as attributes of `ctx`.
         ctx.fsas = fsas
         ctx.log_semiring = log_semiring
         ctx.use_float_scores = use_float_scores
@@ -81,9 +81,9 @@ class _ForwardLogLikeFunction(torch.autograd.Function):
             return None, None, None, arc_scores.exp()
 
 
-def get_forward_log_like(fsas: Fsa, log_semiring: bool,
-                         use_float_scores: bool) -> torch.Tensor:
-    '''Compute the forward loglikes of an FsaVec.
+def get_tot_scores(fsas: Fsa, log_semiring: bool,
+                   use_float_scores: bool) -> torch.Tensor:
+    '''Compute the total loglikes of an FsaVec.
     Args:
       fsas:
         The input FsaVec.
@@ -99,6 +99,6 @@ def get_forward_log_like(fsas: Fsa, log_semiring: bool,
       If `use_float_scores==True`, its dtype is `torch.float32`;
       it is `torch.float64` otherwise.
     '''
-    tot_scores = _ForwardLogLikeFunction.apply(fsas, log_semiring,
-                                               use_float_scores, fsas.scores)
+    tot_scores = _GetTotScoresFunction.apply(fsas, log_semiring,
+                                             use_float_scores, fsas.scores)
     return tot_scores
