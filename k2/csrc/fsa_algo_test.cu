@@ -340,7 +340,19 @@ TEST(FsaAlgo, ShortestPath) {
     FsaVec fsa_vec = CreateFsaVec(3, &fsa_array[0]);
     fsa_vec = fsa_vec.To(context);
 
-    Ragged<int32_t> best_path_arc_indexes = ShortestPath(fsa_vec);
+    Ragged<int32_t> state_batches = GetStateBatches(fsa_vec, true);
+    Array1<int32_t> dest_states = GetDestStates(fsa_vec, true);
+    Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsa_vec, dest_states);
+    Ragged<int32_t> entering_arc_batches =
+        GetEnteringArcIndexBatches(fsa_vec, incoming_arcs, state_batches);
+
+    bool log_semiring = false;
+    Array1<int32_t> entering_arcs;
+    GetForwardScores<float>(fsa_vec, state_batches, entering_arc_batches,
+                            log_semiring, &entering_arcs);
+
+    Ragged<int32_t> best_path_arc_indexes =
+        ShortestPath(fsa_vec, entering_arcs);
     CheckArrayData(best_path_arc_indexes.values,
                    std::vector<int32_t>{1, 3, 5, 10, 13, 16, 17, 19, 21, 23});
 

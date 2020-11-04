@@ -24,8 +24,7 @@ class TestArcSort(unittest.TestCase):
             2
         '''
         fsa = k2.Fsa.from_str(s)
-        print(k2.to_str(fsa))
-        fsa.scores.requires_grad_(True)
+        fsa.requires_grad_(True)
         sorted_fsa = k2.arc_sort(fsa)
 
         actual_str = k2.to_str(sorted_fsa)

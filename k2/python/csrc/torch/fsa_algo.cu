@@ -168,27 +168,25 @@ static void PybindArcSort(py::module &m) {
 }
 
 static void PybindShortestPath(py::module &m) {
-  // returns a tuple containing the following entries (listed in order):
+  // returns a std::pair containing the following entries (listed in order):
   //  - FsaVec
   //      contains linear FSAs of the best path of every FSA
-  //  - total_score
-  //      a torch::Tensor of dtype torch.float32
   //  - best_path_arc_indexes
   //      a RaggedInt containing the arc indexes of the best paths
   m.def(
       "shortest_path",
-      [](FsaVec &fsas) -> std::tuple<Fsa, torch::Tensor, Ragged<int32_t>> {
-        if (fsas.NumAxes() == 2) fsas = FsaToFsaVec(fsas);
+      [](FsaVec &fsas,
+         torch::Tensor entering_arcs) -> std::pair<Fsa, Ragged<int32_t>> {
+        Array1<int32_t> entering_arcs_array =
+            FromTensor<int32_t>(entering_arcs);
 
-        Array1<float> total_scores;
         Ragged<int32_t> best_path_arc_indexes =
-            ShortestPath(fsas, &total_scores);
-        FsaVec out = FsaVecFromArcIndexes(fsas, best_path_arc_indexes);
+            ShortestPath(fsas, entering_arcs_array);
 
-        return std::make_tuple(out, ToTensor(total_scores),
-                               best_path_arc_indexes);
+        FsaVec out = FsaVecFromArcIndexes(fsas, best_path_arc_indexes);
+        return std::make_pair(out, best_path_arc_indexes);
       },
-      py::arg("fsas"));
+      py::arg("fsas"), py::arg("entering_arcs"));
 }
 
 }  // namespace k2

@@ -33,8 +33,9 @@ class TestShortestPath(unittest.TestCase):
             9
         '''
         fsa = k2.Fsa.from_str(s)
-        fsa.scores.requires_grad_(True)
-        best_path, _ = k2.shortest_path(fsa)
+        fsa = k2.create_fsa_vec([fsa])
+        fsa.requires_grad_(True)
+        best_path = k2.shortest_path(fsa, use_float_scores=True)
 
         # we recompute the total_scores for backprop
         total_scores = best_path.scores.sum()
@@ -95,14 +96,14 @@ class TestShortestPath(unittest.TestCase):
         fsa2 = k2.Fsa.from_str(s2)
         fsa3 = k2.Fsa.from_str(s3)
 
-        fsa1.scores.requires_grad_(True)
-        fsa2.scores.requires_grad_(True)
-        fsa3.scores.requires_grad_(True)
+        fsa1.requires_grad_(True)
+        fsa2.requires_grad_(True)
+        fsa3.requires_grad_(True)
 
         fsa_vec = k2.create_fsa_vec([fsa1, fsa2, fsa3])
         assert fsa_vec.shape == (3, None, None)
 
-        best_path, _ = k2.shortest_path(fsa_vec)
+        best_path = k2.shortest_path(fsa_vec, use_float_scores=True)
 
         # we recompute the total_scores for backprop
         total_scores = best_path.scores.sum()

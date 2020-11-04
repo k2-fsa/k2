@@ -31,7 +31,7 @@ class TestTopSort(unittest.TestCase):
             1
         '''
         fsa = k2.Fsa.from_str(s)
-        fsa.scores.requires_grad_(True)
+        fsa.requires_grad_(True)
         sorted_fsa = k2.top_sort(fsa)
 
         # the shortest path in the sorted fsa is (arc 0) -> (arc 3)

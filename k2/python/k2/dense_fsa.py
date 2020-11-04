@@ -1,4 +1,5 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+# See ../../../LICENSE for clarification regarding multiple authors
 
 import _k2
 import numpy as np

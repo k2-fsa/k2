@@ -306,26 +306,9 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
 // forward-pass algorithm is already at least linear-time in the length
 // of this path. But we can consider it for the future.
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
-                             Array1<float> *total_scores /*= nullptr*/,
-                             Array1<int32_t> *entering_arcs /*= nullptr*/) {
+                             const Array1<int32_t> &entering_arcs) {
   K2_CHECK_EQ(fsas.NumAxes(), 3);
-  Ragged<int32_t> state_batches = GetStateBatches(fsas, true);
-  Array1<int32_t> dest_states = GetDestStates(fsas, true);
-  Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsas, dest_states);
-  Ragged<int32_t> entering_arc_batches =
-      GetEnteringArcIndexBatches(fsas, incoming_arcs, state_batches);
-
-  bool log_semiring = false;
-  Array1<int32_t> tmp_entering_arcs;
-  Array1<float> forward_scores =
-      GetForwardScores<float>(fsas, state_batches, entering_arc_batches,
-                              log_semiring, &tmp_entering_arcs);
-  if (total_scores != nullptr)
-    *total_scores = GetTotScores<float>(fsas, forward_scores);
-
-  if (entering_arcs != nullptr) *entering_arcs = tmp_entering_arcs;
-
-  const int32_t *entering_arcs_data = tmp_entering_arcs.Data();
+  const int32_t *entering_arcs_data = entering_arcs.Data();
   const Arc *arcs_data = fsas.values.Data();
   int32_t num_fsas = fsas.Dim0();
   int32_t num_states = fsas.TotSize(1);
@@ -431,7 +414,8 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     ParallelRunner pr(c);
     {
       With w(pr.NewStream());
-      auto lambda_copy_data = [=] __host__ __device__ (int32_t arc_idx01) -> void {
+      auto lambda_copy_data =
+          [=] __host__ __device__(int32_t arc_idx01) -> void {
         int32_t state_idx0 = old_row_ids1_data[arc_idx01],
         new_arc_idx01 = arc_idx01 + 1 + state_idx0;
         // the "+1" above is because we put the self-loop first.
@@ -444,11 +428,12 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     }
     {
       With w(pr.NewStream());
-      auto lambda_set_new_data = [=] __host__ __device__ (int32_t state_idx0) -> void {
+      auto lambda_set_new_data =
+          [=] __host__ __device__(int32_t state_idx0) -> void {
         int32_t old_arc_idx0x = old_row_splits1_data[state_idx0],
         new_arc_idx0x = old_arc_idx0x + state_idx0;
         new_row_splits1_data[state_idx0] = new_arc_idx0x;
-        if (state_idx0 + 1 < num_states) { // not final-state
+        if (state_idx0 + 1 < num_states) {        // not final-state
           int32_t new_arc_idx01 = new_arc_idx0x;  // the 1st arc is the loop
           new_row_ids1_data[new_arc_idx01] = state_idx0;
           new_arcs_data[new_arc_idx01] = Arc(state_idx0, state_idx0, 0, 0.0);
@@ -463,10 +448,10 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
       Eval(c, num_states, lambda_set_new_data);
     }
     pr.Finish();
-    *dest = Ragged<Arc>(RaggedShape2(&new_row_splits, &new_row_ids, new_num_arcs),
-                        new_arcs);
+    *dest = Ragged<Arc>(
+        RaggedShape2(&new_row_splits, &new_row_ids, new_num_arcs), new_arcs);
   } else {
-    K2_CHECK(src.NumAxes() == 3);
+    K2_CHECK_EQ(src.NumAxes(), 3);
     // Get a vector saying, for each FSA, whether it's nonempty.
     int32_t num_fsas = src.Dim0(),
         num_states = src.TotSize(1),
@@ -478,7 +463,8 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     }
     Array1<int32_t> fsa_nonempty(c, num_fsas + 1);
     int32_t *fsa_nonempty_data = fsa_nonempty.Data();
-    auto lambda_set_fsa_nonempty = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
+    auto lambda_set_fsa_nonempty =
+        [=] __host__ __device__(int32_t fsa_idx0) -> void {
       fsa_nonempty_data[fsa_idx0] = (old_row_splits1_data[fsa_idx0+1] >
                                      old_row_splits1_data[fsa_idx0]);
     };
@@ -487,8 +473,9 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     const int32_t *old_row_splits2_data = src.RowSplits(2).Data(),
         *old_row_ids2_data = src.RowIds(2).Data();
     int32_t num_nonempty_fsas = fsa_nonempty.Back(),
-        new_num_arcs = old_num_arcs + num_states - num_nonempty_fsas;
-    // we subtract `num_nonempty_fsas` because final-states don't get a self-loop.
+            new_num_arcs = old_num_arcs + num_states - num_nonempty_fsas;
+    // we subtract `num_nonempty_fsas` because final-states don't get a
+    // self-loop.
 
     Array1<int32_t> new_row_splits2(c, num_states + 1),
         new_row_ids2(c, new_num_arcs);
@@ -507,7 +494,8 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     ParallelRunner pr(c);
     {
       With w(pr.NewStream());
-      auto lambda_copy_data = [=] __host__ __device__ (int32_t arc_idx012) -> void {
+      auto lambda_copy_data =
+          [=] __host__ __device__(int32_t arc_idx012) -> void {
         int32_t state_idx01 = old_row_ids2_data[arc_idx012],
            fsa_idx0 = old_row_ids1_data[state_idx01],
            fsa_idx0_mod = fsa_idx0_mod_data[fsa_idx0],
@@ -523,7 +511,8 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     }
     {
       With w(pr.NewStream());
-      auto lambda_set_new_data = [=] __host__ __device__ (int32_t state_idx01) -> void {
+      auto lambda_set_new_data =
+          [=] __host__ __device__(int32_t state_idx01) -> void {
         int32_t
           fsa_idx0 = old_row_ids1_data[state_idx01],
           fsa_idx0_mod = fsa_idx0_mod_data[fsa_idx0],

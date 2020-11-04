@@ -1090,13 +1090,14 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
       entering_arc_start_index.To(GetCpuContext());
   const int32_t *cpu_entering_arc_start = cpu_entering_arc_start_index.Data();
   // copy the index of start state in each fsa to CPU
-  Array1<int32_t> arc_batches_row_splits1_array =
+  Array1<int32_t> &arc_batches_row_splits1_array =
       entering_arc_batches.RowSplits(1);
-  Array1<int32_t> cpu_state_idx0xx =
+  Array1<int32_t> arc_batches_row_splits12_cpu =
       entering_arc_batches.RowSplits(2)[arc_batches_row_splits1_array].To(
           GetCpuContext());
-  K2_CHECK_EQ(cpu_state_idx0xx.Dim(), num_batches + 1);
-  const int32_t *cpu_state_idx0xx_data = cpu_state_idx0xx.Data();
+  K2_CHECK_EQ(arc_batches_row_splits12_cpu.Dim(), num_batches + 1);
+  const int32_t *arc_batches_row_splits12_cpu_data =
+      arc_batches_row_splits12_cpu.Data();
   Array1<int32_t> arc_row_splits_mem(c, num_states + 1);
   Array1<FloatType> score_cache(c, num_states + 1);
 
@@ -1110,8 +1111,8 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
   // process batch sequentially.
   for (int32_t i = 0; i < num_batches; ++i) {
     // get the range we would call Max/LogSum per sub list
-    int32_t this_state_idx0xx = cpu_state_idx0xx[i],
-            next_state_idx0xx = cpu_state_idx0xx_data[i + 1];
+    int32_t this_state_idx0xx = arc_batches_row_splits12_cpu_data[i],
+            next_state_idx0xx = arc_batches_row_splits12_cpu_data[i + 1];
     K2_CHECK_LT(this_state_idx0xx, num_states);
     K2_CHECK_LE(next_state_idx0xx, num_states);
     int32_t num_states_this_batch = next_state_idx0xx - this_state_idx0xx;
@@ -1326,19 +1327,21 @@ Array1<FloatType> GetBackwardScores(
   // copy the index of start state in each fsa to CPU
   Array1<int32_t> arc_batches_row_splits1_array =
       leaving_arc_batches.RowSplits(1);
-  Array1<int32_t> cpu_state_idx0xx =
+  Array1<int32_t> arc_batches_row_splits12_cpu =
       leaving_arc_batches.RowSplits(2)[arc_batches_row_splits1_array].To(
           GetCpuContext());
-  K2_CHECK_EQ(cpu_state_idx0xx.Dim(), num_batches + 1);
-  const int32_t *cpu_state_idx0xx_data = cpu_state_idx0xx.Data();
+  K2_CHECK_EQ(arc_batches_row_splits12_cpu.Dim(), num_batches + 1);
+  const int32_t *arc_batches_row_splits12_cpu_data =
+      arc_batches_row_splits12_cpu.Data();
   Array1<int32_t> arc_row_splits_mem(c, num_states + 1);
   Array1<FloatType> score_cache(c, num_states + 1);
   // process batch sequentially.
   for (int32_t i = num_batches - 1; i >= 0; --i) {
     // get the range we would call Max/LogSum per sub list
-    int32_t this_state_idx0xx = cpu_state_idx0xx[i];
+    int32_t this_state_idx0xx = arc_batches_row_splits12_cpu_data[i];
     int32_t next_state_idx0xx =
-        cpu_state_idx0xx_data[i + 1];  // the 1st state idx in the next batch
+        arc_batches_row_splits12_cpu_data[i + 1];  // the 1st state idx in the
+                                                   // next batch
     K2_CHECK_LT(this_state_idx0xx, num_states);
     K2_CHECK_LE(next_state_idx0xx, num_states);
     int32_t num_states_this_batch = next_state_idx0xx - this_state_idx0xx;

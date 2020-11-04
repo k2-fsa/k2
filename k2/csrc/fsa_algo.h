@@ -98,7 +98,6 @@ void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
  */
 bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
-
 /*
   Add epsilon self-loops to an Fsa or FsaVec (this is required when composing
   using a composition method that does not treat epsilons specially, if the
@@ -230,23 +229,15 @@ FsaVec LinearFsas(Ragged<int32_t> &symbols);
                  property kFsaPropertiesTopSortedAndAcyclic if you were
                  to compute properties.
 
-   @param [out,optional] entering_arcs   If non-NULL, it will be set to
-                a new Array1, indexed by state_idx01 into `fsas`,
+   @param [in] entering_arcs   An array indexed by state_idx01 into `fsas`,
                 saying which arc_idx012 is the best arc entering it,
                 or -1 if there is no such arc.
-
-   @param [out,optional]
-                    If non-NULL, it will contain array of total scores,
-                    of dimension fsas.Dim0(), which will contain the scores
-                    in the final-states of `forward_scores`, or -infinity for
-                    FSAs that had no states.
 
    @return returns a tensor with 2 axes indexed by [fsa_idx0][arc_idx012]
            containing the best arc indexes of each fsa.
  */
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
-                             Array1<float> *total_scores = nullptr,
-                             Array1<int32_t> *entering_arcs = nullptr);
+                             const Array1<int32_t> &entering_arcs);
 
 }  // namespace k2
 

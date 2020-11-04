@@ -34,7 +34,7 @@ class TestIntersect(unittest.TestCase):
             5
         '''
         a_fsa = k2.Fsa.from_str(s)
-        a_fsa.scores.requires_grad_(True)
+        a_fsa.requires_grad_(True)
 
         # an FSA that recognizes ab
         s = '''
@@ -44,7 +44,7 @@ class TestIntersect(unittest.TestCase):
             3
         '''
         b_fsa = k2.Fsa.from_str(s)
-        b_fsa.scores.requires_grad_(True)
+        b_fsa.requires_grad_(True)
 
         fsa = k2.intersect(a_fsa, b_fsa)
         actual_str = k2.to_str(fsa)

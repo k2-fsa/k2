@@ -38,7 +38,7 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
   K2_CHECK(IsCompatible(src.shape, *dst));
 
   int32_t last_axis = src.NumAxes() - 1;
-  const Array1<int32_t> row_splits_array = src.shape.RowSplits(last_axis);
+  const Array1<int32_t> &row_splits_array = src.shape.RowSplits(last_axis);
   int32_t num_rows = row_splits_array.Dim() - 1;
   K2_CHECK_EQ(num_rows, dst->Dim());
 
@@ -226,8 +226,8 @@ Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
   RaggedShape shape = RandomRaggedShape(true, min_num_axes, max_num_axes,
                                         min_num_elements, max_num_elements);
   ContextPtr c = GetCpuContext();
-  Array1<T> values = RandUniformArray1(c, shape.NumElements(),
-                                       min_value, max_value);
+  Array1<T> values =
+      RandUniformArray1(c, shape.NumElements(), min_value, max_value);
   return Ragged<T>(shape, values);
 }
 
@@ -314,7 +314,7 @@ template <typename T>
 std::istream &operator>>(std::istream &is, Ragged<T> &r) {
   // Note: the top element of 'row_splits' will end up being
   // discarded; the others will become the axes of `r`
-  std::vector<std::vector<int32_t> > row_splits;
+  std::vector<std::vector<int32_t>> row_splits;
   std::vector<T> elems;
   int32_t cur_level = 0;
   is >> std::ws;  // eat whitespace
@@ -338,17 +338,15 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
         return is;
       }
       row_splits[cur_level].push_back(
-          (cur_level + 1 >= row_splits.size()) ?
-          static_cast<int32_t>(elems.size()) :
-          (row_splits[cur_level+1].size() - 1));
+          (cur_level + 1 >= row_splits.size())
+              ? static_cast<int32_t>(elems.size())
+              : (row_splits[cur_level + 1].size() - 1));
       is.get();  // consume character 'c'
-      if (cur_level == 0)
-        break;
+      if (cur_level == 0) break;
     } else {
       InputFixer<T> t;
       is >> t;
-      if (!is.good() ||
-          cur_level != static_cast<int32_t>(row_splits.size()) ||
+      if (!is.good() || cur_level != static_cast<int32_t>(row_splits.size()) ||
           cur_level < 2) {
         is.setstate(std::ios::failbit);
         return is;
@@ -378,8 +376,6 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
   K2_CHECK(r.values.Dim() == r.shape.NumElements());
   return is;
 }
-
-
 
 }  // namespace k2
 
