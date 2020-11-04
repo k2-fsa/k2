@@ -399,4 +399,166 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
   return ans;
 }
 
+
+void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
+                         Array1<int32_t> *arc_map) {
+  ContextPtr c = src.Context();
+  const int32_t *old_row_splits1_data = src.RowSplits(1).Data(),
+      *old_row_ids1_data = src.RowIds(1).Data();
+  const Arc *old_arcs_data = src.values.Data();
+  if (src.NumAxes() == 2) {
+    int32_t num_states = src.Dim0();
+    if (num_states < 2) {
+      K2_CHECK(num_states == 0);
+      *dest = src;
+      if (arc_map) *arc_map = Array1<int32_t>(c, 0);
+      return;
+    }
+
+    int32_t old_num_arcs = src.TotSize(1),
+        new_num_arcs = old_num_arcs + (num_states - 1);
+    Array1<int32_t> new_row_splits(c, num_states + 1),
+        new_row_ids(c, new_num_arcs);
+    Array1<Arc> new_arcs(c, new_num_arcs);
+    int32_t *new_row_splits1_data = new_row_splits.Data(),
+        *new_row_ids1_data = new_row_ids.Data();
+    Arc *new_arcs_data = new_arcs.Data();
+    int32_t *arc_map_data = nullptr;
+    if (arc_map) {
+      *arc_map = Array1<int32_t>(c, new_num_arcs);
+      arc_map_data = arc_map->Data();
+    }
+    ParallelRunner pr(c);
+    {
+      With w(pr.NewStream());
+      auto lambda_copy_data = [=] __host__ __device__ (int32_t arc_idx01) -> void {
+        int32_t state_idx0 = old_row_ids1_data[arc_idx01],
+        new_arc_idx01 = arc_idx01 + 1 + state_idx0;
+        // the "+1" above is because we put the self-loop first.
+        new_row_ids1_data[new_arc_idx01] = state_idx0;
+        new_arcs_data[new_arc_idx01] = old_arcs_data[arc_idx01];
+        if (arc_map_data)
+          arc_map_data[new_arc_idx01] = arc_idx01;
+      };
+      Eval(c, old_num_arcs, lambda_copy_data);
+    }
+    {
+      With w(pr.NewStream());
+      auto lambda_set_new_data = [=] __host__ __device__ (int32_t state_idx0) -> void {
+        int32_t old_arc_idx0x = old_row_splits1_data[state_idx0],
+        new_arc_idx0x = old_arc_idx0x + state_idx0;
+        new_row_splits1_data[state_idx0] = new_arc_idx0x;
+        if (state_idx0 + 1 < num_states) { // not final-state
+          int32_t new_arc_idx01 = new_arc_idx0x;  // the 1st arc is the loop
+          new_row_ids1_data[new_arc_idx01] = state_idx0;
+          new_arcs_data[new_arc_idx01] = Arc(state_idx0, state_idx0, 0, 0.0);
+          if (arc_map_data)
+            arc_map_data[new_arc_idx01] = -1;
+        } else {
+          // Note: if num_states was zero we would have returned above, so we
+          // dont have to worry about empty FSAs.
+          new_row_splits1_data[num_states] = new_arc_idx0x;
+        }
+      };
+      Eval(c, num_states, lambda_set_new_data);
+    }
+    pr.Finish();
+    *dest = Ragged<Arc>(RaggedShape2(&new_row_splits, &new_row_ids, new_num_arcs),
+                        new_arcs);
+  } else {
+    K2_CHECK(src.NumAxes() == 3);
+    // Get a vector saying, for each FSA, whether it's nonempty.
+    int32_t num_fsas = src.Dim0(),
+        num_states = src.TotSize(1),
+        old_num_arcs = src.TotSize(2);
+    if (num_states == 0) {
+      *dest = src;
+      if (arc_map) *arc_map = Array1<int32_t>(c, 0);
+      return;
+    }
+    Array1<int32_t> fsa_nonempty(c, num_fsas + 1);
+    int32_t *fsa_nonempty_data = fsa_nonempty.Data();
+    auto lambda_set_fsa_nonempty = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
+      fsa_nonempty_data[fsa_idx0] = (old_row_splits1_data[fsa_idx0+1] >
+                                     old_row_splits1_data[fsa_idx0]);
+    };
+    Eval(c, num_fsas, lambda_set_fsa_nonempty);
+    ExclusiveSum(fsa_nonempty, &fsa_nonempty);
+    const int32_t *old_row_splits2_data = src.RowSplits(2).Data(),
+        *old_row_ids2_data = src.RowIds(2).Data();
+    int32_t num_nonempty_fsas = fsa_nonempty.Back(),
+        new_num_arcs = old_num_arcs + num_states - num_nonempty_fsas;
+    // we subtract `num_nonempty_fsas` because final-states don't get a self-loop.
+
+    Array1<int32_t> new_row_splits2(c, num_states + 1),
+        new_row_ids2(c, new_num_arcs);
+    Array1<Arc> new_arcs(c, new_num_arcs);
+    // fsa_idx0_mod_data maps from fsa_idx0 to a modified fsa_idx0 that
+    // "doesn't count" FSAs with zero states.
+    const int32_t *fsa_idx0_mod_data = fsa_nonempty_data;
+    int32_t *new_row_splits2_data = new_row_splits2.Data(),
+        *new_row_ids2_data = new_row_ids2.Data();
+    Arc *new_arcs_data = new_arcs.Data();
+    int32_t *arc_map_data = nullptr;
+    if (arc_map) {
+      *arc_map = Array1<int32_t>(c, new_num_arcs);
+      arc_map_data = arc_map->Data();
+    }
+    ParallelRunner pr(c);
+    {
+      With w(pr.NewStream());
+      auto lambda_copy_data = [=] __host__ __device__ (int32_t arc_idx012) -> void {
+        int32_t state_idx01 = old_row_ids2_data[arc_idx012],
+           fsa_idx0 = old_row_ids1_data[state_idx01],
+           fsa_idx0_mod = fsa_idx0_mod_data[fsa_idx0],
+          new_arc_idx012 = arc_idx012 + 1 + state_idx01 - fsa_idx0_mod;
+        // The "+1" above is because we put the self-loop first.  The
+        // "-fsa_idx0_mod" is because final-states don't get a self-loop.
+        new_row_ids2_data[new_arc_idx012] = state_idx01;
+        new_arcs_data[new_arc_idx012] = old_arcs_data[arc_idx012];
+        if (arc_map_data)
+          arc_map_data[new_arc_idx012] = arc_idx012;
+      };
+      Eval(c, old_num_arcs, lambda_copy_data);
+    }
+    {
+      With w(pr.NewStream());
+      auto lambda_set_new_data = [=] __host__ __device__ (int32_t state_idx01) -> void {
+        int32_t
+          fsa_idx0 = old_row_ids1_data[state_idx01],
+          fsa_idx0_mod = fsa_idx0_mod_data[fsa_idx0],
+          state_idx0x = old_row_splits1_data[fsa_idx0],
+          next_state_idx0x = old_row_splits1_data[fsa_idx0 + 1],
+          old_arc_idx01x = old_row_splits2_data[state_idx01];
+        // Below the "+ state_idx01" is because each state gets a self-loop, and
+        // the "- fsa_idx0_mod" is becaue final-states don't get a self-loop.
+        int32_t new_arc_idx01x = old_arc_idx01x + state_idx01 - fsa_idx0_mod;
+        // The self-loop arc is the first arc:
+        int32_t new_arc_idx012 = new_arc_idx01x;
+        new_row_splits2_data[state_idx01] = new_arc_idx01x;
+        if (state_idx01 + 1 < next_state_idx0x) {  // not final-state
+          new_row_ids2_data[new_arc_idx012] = state_idx01;
+          int32_t state_idx1 = state_idx01 - state_idx0x;
+          new_arcs_data[new_arc_idx012] = Arc(state_idx1, state_idx1, 0, 0.0);
+          if (arc_map_data)
+            arc_map_data[new_arc_idx012] = -1;
+        } else if (state_idx01 + 1 == num_states) {
+          // Note: if num_states was zero  we would have returned above, so we
+          // dont have to worry about an empty FsaVec.
+          new_row_splits2_data[num_states] = new_arc_idx01x;
+        }
+      };
+      Eval(c, num_states, lambda_set_new_data);
+    }
+    pr.Finish();
+    *dest = Ragged<Arc>(RaggedShape3(&src.RowSplits(1), &src.RowIds(1),
+                                     num_states,
+                                     &new_row_splits2, &new_row_ids2,
+                                     new_num_arcs),
+                        new_arcs);
+  }
+}
+
+
+
 }  // namespace k2

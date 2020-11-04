@@ -365,9 +365,8 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
   row_splits.erase(row_splits.begin());
   if (row_splits.empty()) {
     // Assume 2 axes even though the num-axes is ambiguous from the input "[ ]"
-    // row_splits is 0 0.
+    // row_splits is [ 0 ].
     row_splits.push_back(std::vector<int32_t>(1, 0));
-    row_splits[0].push_back(0);
   }
   std::vector<RaggedShapeDim> axes(row_splits.size());
   for (size_t i = 0; i < row_splits.size(); i++) {

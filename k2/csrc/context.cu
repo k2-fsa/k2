@@ -55,7 +55,9 @@ cudaStream_t ParallelRunner::NewStream() {
   }
 }
 
-ParallelRunner::~ParallelRunner() {
+void ParallelRunner::Finish() {
+  if (c_.get() == nullptr)
+    return;
   if (c_->GetDeviceType() == kCuda) {
     for (std::size_t i = 0; i != streams_.size(); ++i) {
       // create and record event on `stream_[i]`, and wait on c_->GetCudaStream
@@ -75,6 +77,7 @@ ParallelRunner::~ParallelRunner() {
     auto ret = cudaEventDestroy(event_);
     K2_CHECK_CUDA_ERROR(ret);
   }
+  c_ = nullptr;
 }
 
 void GetBlockSizesForLambda2(int32_t m, int32_t n,

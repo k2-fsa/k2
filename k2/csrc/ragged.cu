@@ -394,7 +394,7 @@ bool Equal(RaggedShape &a, RaggedShape &b) {
 
 std::istream &operator>>(std::istream &is,
                          RaggedShape &shape) {
-  // Note: the top element of 'row_splits' will end up being
+  // Note: element 0 of 'row_splits' will end up being
   // discarded; the others will become the axes of `shape`.
   std::vector<std::vector<int32_t> > row_splits;
   int32_t cur_level = 0,
@@ -427,7 +427,6 @@ std::istream &operator>>(std::istream &is,
           // Assume 2 axes even though the num-axes is ambiguous from the input.
           // row_splits is 0 0.
           row_splits.push_back(std::vector<int32_t>(1, 0));
-          row_splits[0].push_back(0);
         }
         std::vector<RaggedShapeDim> axes(row_splits.size());
         for (size_t i = 0; i < row_splits.size(); i++) {
