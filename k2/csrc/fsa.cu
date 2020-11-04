@@ -14,13 +14,21 @@
 
 namespace k2 {
 
-// for debug only
 std::ostream &operator<<(std::ostream &os, const Arc &arc) {
   static constexpr char kSep = ' ';
   os << arc.src_state << kSep << arc.dest_state << kSep << arc.label << kSep
      << arc.score;
   return os;
 }
+
+std::istream &operator>>(std::istream &is, Arc &arc) {
+  InputFixer<float> score;  // helps deal with infinities correctly
+  is >> arc.src_state >> arc.dest_state >> arc.label >> score;
+  arc.score = score.t;
+  return is;
+}
+
+
 
 std::string FsaPropertiesAsString(int32_t properties) {
   static constexpr char kSep = '|';
@@ -143,7 +151,6 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
           static_cast<uint32_t>(prev_arc.label))
         neg_property |= kFsaPropertiesArcSorted;
     }
-
     properties_data[idx012] = ~neg_property;
   };
   Eval(c, num_arcs, lambda_get_properties);

@@ -98,6 +98,31 @@ void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
  */
 bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
+
+/*
+  Add epsilon self-loops to an Fsa or FsaVec (this is required when composing
+  using a composition method that does not treat epsilons specially, if the
+  other FSA has epsilons in it).
+
+     @param [in] src  Input Fsa or FsaVec.  Does not have to have any
+                    special properties (although if you want correct
+                    composition in the log semiring it should probably
+                    be epsilon free).
+     @param [out] dest  Output Fsa or FsaVec.  At exit it will be like 'src'
+                    but with epsilon self-loops with zero scores on all
+                    non-final states.  These self-loops will be the first arcs.
+                    This will ensure that the output satisfies the property
+                    kFsaPropertiesArcSorted, although for non-top-sorted inputs
+                    with epsilon arcs it may not be considered as arc-sorted by
+                    the `host` code because that takes into account the
+                    destination-states.
+     @param [out] arc_map  If not nullptr, will be set to a new Array1<int32_t>
+                    containing the input arc-index corresponding
+                    to each output arc (or -1 for newly added self-loops).
+ */
+void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
+                         Array1<int32_t> *arc_map = nullptr);
+
 /*
   compose/intersect array of FSAs (multiple streams decoding or training in
   parallel, in a batch)... basically composition with frame-synchronous beam

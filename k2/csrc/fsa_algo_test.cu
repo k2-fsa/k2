@@ -257,6 +257,35 @@ TEST(FsaAlgo, IntersectFsaVec) {
   CheckArrayData(arc_map, std::vector<int32_t>{0, 2, 3});
 }
 
+
+TEST(FsaAlgo, AddEpsilonSelfLoopsFsa) {
+  std::string s1 = R"(0 1 1 0.1
+    0 2 1 0.2
+    1 3 2 0.3
+    2 3 3 0.4
+    3 4 -1 0.5
+    4
+  )";
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i < 3; i++) {
+      Fsa fsa1 = FsaFromString(s1).To(context);
+      if (i > 0) {
+        Fsa fsa2 = Fsa("[ ]").To(context);
+        Fsa *fsa_array[] = { &fsa2, &fsa1 };
+        // note: i below will be 1 or 2
+        FsaVec fsa_vec = CreateFsaVec(i, &fsa_array[0]);
+        fsa1 = fsa_vec;
+      }
+      Array1<int32_t> arc_map;
+      Fsa fsa2;
+      AddEpsilonSelfLoops(fsa1, &fsa2, &arc_map);
+      K2_LOG(INFO) << "fsa1 = " << fsa1 << ", fsa1+self-loops = " << fsa2
+                   << ", arc-map = " << arc_map;
+    }
+  }
+}
+
+
 TEST(FsaAlgo, ShortestPath) {
   // best path:
   //   states: 0 -> 1 -> 3 -> 7 -> 9

@@ -449,8 +449,10 @@ class ParallelRunner {
   // with this stream automatically.
   cudaStream_t NewStream();
 
-  ~ParallelRunner();
+  // calling Finish() is equivalent to calling the destructor early.
+  void Finish();
 
+  ~ParallelRunner() { Finish(); }
  private:
   ContextPtr c_;
   std::vector<cudaStream_t> streams_;

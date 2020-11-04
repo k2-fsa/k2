@@ -76,6 +76,8 @@ TEST(RaggedShapeTest, TestConstructFromString) {
   RaggedShape rs2(" [ [ [ x x ] ] [[x]] ]");
   K2_LOG(INFO) << "rs2 = " << rs2;
 
+  K2_CHECK_EQ(RaggedShape("[ ]").Dim0(), 0);
+
   ASSERT_DEATH(RaggedShape(" [ [ x x ] [x] "), "");
   ASSERT_DEATH(RaggedShape(" [ [ x x ] [[x]]] "), "");
   ASSERT_DEATH(RaggedShape(" [ [ x [] x ] "), "");

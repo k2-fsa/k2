@@ -44,8 +44,8 @@ struct Arc {
   }
 };
 
-// for debug only
 std::ostream &operator<<(std::ostream &os, const Arc &arc);
+std::istream &operator>>(std::istream &os, Arc &arc);
 
 using FsaProperties = uint32_t;
 
