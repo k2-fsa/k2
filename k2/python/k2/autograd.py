@@ -118,9 +118,11 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             advisory, in that it will try not to have fewer than this number
             active.
           unused_scores_a:
-            It equals to `a_fsas.scores` and its sole purpose is for back propagation.
+            It equals to `a_fsas.scores` and its sole purpose is for back
+            propagation.
           unused_scores_b:
-            It equals to `b_fsas.scores` and its sole purpose is for back propagation.
+            It equals to `b_fsas.scores` and its sole purpose is for back
+            propagation.
         Returns:
            Return `out_fsa[0].scores`.
         '''

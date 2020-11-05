@@ -10,7 +10,6 @@
 
 import unittest
 
-import _k2
 import k2
 import torch
 

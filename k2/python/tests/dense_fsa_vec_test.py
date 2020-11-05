@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R dense_fsa_test_py
+#  ctest --verbose -R dense_fsa_vec_test_py
 
 import unittest
 
@@ -14,7 +14,7 @@ import k2
 import torch
 
 
-class TestDenseFsa(unittest.TestCase):
+class TestDenseFsaVec(unittest.TestCase):
 
     def test_dense_fsa_vec_cpu(self):
         log_prob = torch.arange(20).reshape(2, 5, 2).to(torch.float32)

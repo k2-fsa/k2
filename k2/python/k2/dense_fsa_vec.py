@@ -14,15 +14,16 @@ class DenseFsaVec(object):
 
         Args:
           log_probs:
-            A 3-D tensor of dtype ``torch.float32`` with shape ``(N, T, C)``, where
-            ``N`` is the number of sequences, ``T`` the maximum input length,
-            and ``C`` the number of output classes.
+            A 3-D tensor of dtype ``torch.float32`` with shape ``(N, T, C)``,
+            where ``N`` is the number of sequences, ``T`` the maximum input
+            length, and ``C`` the number of output classes.
           supervision_segments:
             A 2-D **CPU** tensor of dtype ``torch.int32`` with 3 columns.
-            Each row contains information for a supervision segment. Column 0 is the
-            ``sequence_index`` indicating which sequence this segment comes from;
-            column 1 specifies the ``start_frame`` of this segment within the
-            sequence; column 2 contains the ``duration`` of this segment.
+            Each row contains information for a supervision segment. Column 0
+            is the ``sequence_index`` indicating which sequence this segment
+            comes from; column 1 specifies the ``start_frame`` of this segment
+            within the sequence; column 2 contains the ``duration`` of this
+            segment.
 
             Note:
               - ``0 < start_frame + duration <= T``
@@ -37,10 +38,10 @@ class DenseFsaVec(object):
 
         N, T, C = log_probs.shape
 
-        # Also, if a particular FSA has T frames of neural net output, we actually
-        # have T+1 potential indexes, 0 through T, so there is space for the
-        # terminating final-symbol on frame T.  (On the last frame, the final symbol
-        # has logprob=0, the others have logprob=-inf).
+        # Also, if a particular FSA has T frames of neural net output,
+        # we actually have T+1 potential indexes, 0 through T, so there is
+        # space for the terminating final-symbol on frame T.  (On the last
+        # frame, the final symbol has logprob=0, the others have logprob=-inf).
         placeholder = torch.tensor([0])  # this extra row is for the last frame
         indexes = []
         last_frame_indexes = []
@@ -68,10 +69,11 @@ class DenseFsaVec(object):
         scores[:, 1:] = log_probs.reshape(-1, C).index_select(0, indexes)
 
         # `scores` contains -infinity in certain locations: in scores[j,0] where
-        # j is not the last row-index for a given FSA-index, and scores[j,k] where
-        # j is the last row-index for a given FSA-index and k>0.  The remaining
-        # locations contain the neural net output, except scores[j,0] where j
-        # is the last row-index for a given FSA-index; this contains zero.
+        # j is not the last row-index for a given FSA-index, and scores[j,k]
+        # where j is the last row-index for a given FSA-index and k>0.
+        # The remaining locations contain the neural net output, except
+        # scores[j,0] where j is the last row-index for a given FSA-index;
+        # this contains zero.
         scores[:, 0] = np.NINF
         scores[last_frame_indexes] = torch.tensor([0] + [np.NINF] * C,
                                                   device=device)
