@@ -249,8 +249,12 @@ static void PybindDenseFsaVec(py::module &m) {
       }),
       py::arg("scores"), py::arg("row_splits"));
 
+  pyclass.def(
+      "dim0", [](PyClass &self) -> int32_t { return self.shape.Dim0(); },
+      "Returns number of supervisions contained in it");
+
   // the `to_str` method is for debugging only
-  pyclass.def("to_str", [](PyClass &self) {
+  pyclass.def("to_str", [](PyClass &self) -> std::string {
     std::ostringstream os;
     os << "num_axes: " << self.shape.NumAxes() << '\n';
     os << "device_type: " << self.shape.Context()->GetDeviceType() << '\n';

@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R dense_fsa_test_py
+#  ctest --verbose -R dense_fsa_vec_test_py
 
 import unittest
 
@@ -14,9 +14,9 @@ import k2
 import torch
 
 
-class TestDenseFsa(unittest.TestCase):
+class TestDenseFsaVec(unittest.TestCase):
 
-    def test_dense_fsa_cpu(self):
+    def test_dense_fsa_vec_cpu(self):
         log_prob = torch.arange(20).reshape(2, 5, 2).to(torch.float32)
         supervision_segments = torch.tensor([
             # seq_index, start_time, duration
@@ -27,8 +27,9 @@ class TestDenseFsa(unittest.TestCase):
             [1, 3, 2],
         ]).to(torch.int32)
 
-        dense_fsa = k2.dense_fsa(log_prob, supervision_segments)
-        print(dense_fsa.to_str())
+        dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
+        assert dense_fsa_vec.dim0() == 5, 'It should contain 5 segments'
+        print(dense_fsa_vec)
         print(log_prob)
         # TODO(fangjun): Let the computer check the output
         '''
@@ -71,7 +72,7 @@ class TestDenseFsa(unittest.TestCase):
                  [18., 19.]]])
         '''
 
-    def test_dense_fsa_cuda(self):
+    def test_dense_fsa_vec_cuda(self):
         device = torch.device('cuda', index=0)
         log_prob = torch.arange(20).reshape(2, 5, 2).to(torch.float32)
         supervision_segments = torch.tensor([
@@ -84,8 +85,9 @@ class TestDenseFsa(unittest.TestCase):
 
         log_prob = log_prob.to(device)
 
-        dense_fsa = k2.dense_fsa(log_prob, supervision_segments)
-        print(dense_fsa.to_str())
+        dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
+        assert dense_fsa_vec.dim0() == 5, 'It should contain 5 segments'
+        print(dense_fsa_vec)
         print(log_prob)
 
 

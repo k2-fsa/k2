@@ -97,7 +97,7 @@ static void PybindLinearFsa(py::module &m) {
 
 static void PybindIntersect(py::module &m) {
   m.def(
-      "intersect",
+      "intersect",  // works only on CPU
       [](FsaOrVec &a_fsas, FsaOrVec &b_fsas,
          bool treat_epsilons_specially = true,
          bool need_arc_map =
@@ -134,6 +134,24 @@ static void PybindIntersect(py::module &m) {
 
       a_arc_map maps arc indexes of the returned fsa to the input a_fsas.
       )");
+}
+
+static void PybindIntersectDensePruned(py::module &m) {
+  m.def(
+      "intersect_dense_pruned",
+      [](FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
+         int32_t max_active_states, int32_t min_active_states)
+          -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
+        Array1<int32_t> arc_map_a;
+        Array1<int32_t> arc_map_b;
+        FsaVec out;
+
+        IntersectDensePruned(a_fsas, b_fsas, beam, max_active_states,
+                             min_active_states, &out, &arc_map_a, &arc_map_b);
+        return std::make_tuple(out, ToTensor(arc_map_a), ToTensor(arc_map_b));
+      },
+      py::arg("a_fsas"), py::arg("b_fsas"), py::arg("beam"),
+      py::arg("max_active_states"), py::arg("min_active_states"));
 }
 
 static void PybindConnect(py::module &m) {
@@ -195,6 +213,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindLinearFsa(m);
   k2::PybindTopSort(m);
   k2::PybindIntersect(m);
+  k2::PybindIntersectDensePruned(m);
   k2::PybindConnect(m);
   k2::PybindArcSort(m);
   k2::PybindShortestPath(m);

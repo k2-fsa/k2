@@ -1,5 +1,6 @@
 from .autograd import get_tot_scores
-from .dense_fsa import dense_fsa
+from .autograd import intersect_dense_pruned
+from .dense_fsa_vec import DenseFsaVec
 from .fsa import Fsa
 from .fsa_algo import arc_sort
 from .fsa_algo import connect
@@ -20,15 +21,16 @@ from .utils import to_tensor
 
 # please keep the list sorted
 __all__ = [
+    'DenseFsaVec',
     'Fsa',
     'SymbolTable',
     'arc_sort',
     'connect',
     'create_fsa_vec',
-    'dense_fsa',
     'get_properties',
     'get_tot_scores',
     'intersect',
+    'intersect_dense_pruned',
     'is_accessible',
     'is_arc_sorted',
     'is_coaccessible',

@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R autograd_test_py
+#  ctest --verbose -R get_tot_scores_test_py
 
 import unittest
 

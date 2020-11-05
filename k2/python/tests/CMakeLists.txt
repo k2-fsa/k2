@@ -18,10 +18,11 @@ endfunction()
 # please sort the files in alphabetic order
 set(py_test_files
   arc_sort_test.py
-  autograd_test.py
+  get_tot_scores_test.py
   connect_test.py
-  dense_fsa_test.py
+  dense_fsa_vec_test.py
   fsa_test.py
+  intersect_dense_pruned_test.py
   intersect_test.py
   linear_fsa_test.py
   shortest_path_test.py
