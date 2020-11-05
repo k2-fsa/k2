@@ -63,7 +63,7 @@ def top_sort(fsa: Fsa) -> Fsa:
 
 
 def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
-    '''Compute the intersection of two FSAs.
+    '''Compute the intersection of two FSAs on CPU.
 
     Note:
       We will arc_sort the input FSAs internally if they are not
@@ -71,9 +71,9 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
 
     Args:
       a_fsa:
-        The first input FSA.
+        The first input FSA on CPU. It can be either a single FSA or a FsaVec.
       b_fsa:
-        The second input FSA.
+        The second input FSA on CPU. it can be either a single FSA or a FsaVec.
 
     Caution:
       We support only inputs containing a single FSA at present.

@@ -78,7 +78,7 @@ class Fsa(object):
 
     def __init__(self,
                  tensor: torch.Tensor,
-                 aux_labels: Optional[torch.Tensor] = None) -> 'Fsa':
+                 aux_labels: Optional[torch.Tensor] = None) -> None:
         '''Build an Fsa from a tensor with optional aux_labels.
 
         It is useful when loading an Fsa from file.
