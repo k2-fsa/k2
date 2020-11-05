@@ -65,10 +65,6 @@ def top_sort(fsa: Fsa) -> Fsa:
 def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     '''Compute the intersection of two FSAs on CPU.
 
-    Note:
-      We will arc_sort the input FSAs internally if they are not
-      arc sorted.
-
     Args:
       a_fsa:
         The first input FSA on CPU. It can be either a single FSA or a FsaVec.
@@ -76,7 +72,7 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
         The second input FSA on CPU. it can be either a single FSA or a FsaVec.
 
     Caution:
-      We support only inputs containing a single FSA at present.
+      The two input FSAs MUST be arc sorted.
 
     Caution:
       The rules for assigning the attributes of the output Fsa are as follows:
@@ -93,14 +89,6 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     Returns:
       The result of intersecting a_fsa and b_fsa.
     '''
-    a_properties = getattr(a_fsa, 'properties', None)
-    if a_properties is None or not is_arc_sorted(a_properties):
-        a_fsa = arc_sort(a_fsa)
-
-    b_properties = getattr(b_fsa, 'properties', None)
-    if b_properties is None or not is_arc_sorted(b_properties):
-        b_fsa = arc_sort(b_fsa)
-
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, b_fsa.arcs,
                                                      need_arc_map)
