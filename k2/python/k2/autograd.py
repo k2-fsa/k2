@@ -233,10 +233,12 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec, beam: float,
         Maximum number of FSA states that are allowed to be active on any given
         frame for any given intersection/composition task. This is advisory,
         in that it will try not to exceed that but may not always succeed.
+        You can use a very large number if no constraint is needed.
       min_active_states:
         Minimum number of FSA states that are allowed to be active on any given
         frame for any given intersection/composition task. This is advisory,
         in that it will try not to have fewer than this number active.
+        Set it to zero if there is no constraint.
 
     Returns:
       The result of the intersection.
