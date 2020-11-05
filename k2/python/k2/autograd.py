@@ -111,12 +111,12 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             Maximum number of FSA states that are allowed to be active on any
             given frame for any given intersection/composition task. This is
             advisory, in that it will try not to exceed that but may not always
-            succeed.
+            succeed. You can use a very large number if no constraint is needed.
           min_active_states:
             Minimum number of FSA states that are allowed to be active on any
             given frame for any given intersection/composition task. This is
             advisory, in that it will try not to have fewer than this number
-            active.
+            active. Set it to zero if there is no constraint.
           unused_scores_a:
             It equals to `a_fsas.scores` and its sole purpose is for back
             propagation.
