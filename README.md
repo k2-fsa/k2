@@ -1,8 +1,9 @@
+<div align="center">
+<img src="./docs/logo.png" width=376>
 
-[![GitHub Actions Status](https://github.com/danpovey/k2/workflows/build/badge.svg)](https://github.com/danpovey/k2/actions)
 [![Documentation Status](https://readthedocs.org/projects/k2/badge/?version=latest)](https://k2.readthedocs.io/en/latest/?badge=latest)
 
-
+</div>
 
 # k2
 
@@ -23,7 +24,7 @@ LF-MMI training.  This won't give a direct advantage in terms of Word Error Rate
 compared with existing technology; but the point is to do this in a much more
 general and extensible framework to allow further development of ASR technology.
 
- ## Implementation
+## Implementation
 
  A few key points on our implementation strategy.
 
@@ -53,8 +54,7 @@ general and extensible framework to allow further development of ASR technology.
  The Finite State Automaton object is then implemented as a Ragged tensor templated
  on a specific data type (a struct representing an arc in the automaton).
 
-
- ## Autograd
+## Autograd
 
  If you look at the code as it exists now, you won't find any references to
  autograd.  The design is quite different to TensorFlow and PyTorch (which is
@@ -72,8 +72,7 @@ general and extensible framework to allow further development of ASR technology.
  between the arcs and does the appropriate (sparse) operations to propagate back the
  derivatives w.r.t. the weights.
 
-
- ## Current state of the code
+## Current state of the code
 
  A lot of the code is still unfinished (Sep 11, 2020).
  We finished the CPU versions of many algorithms and this code is in `k2/csrc/host/`;
@@ -89,7 +88,7 @@ general and extensible framework to allow further development of ASR technology.
  and wrap those in Python (using pybind11).  The code in host/ will eventually
  be either deprecated, rewritten or wrapped with newer-style interfaces.
 
-  ## Plans for initial release
+## Plans for initial release
 
  We hope to get the first version working in early October.  The current
  short-term aim is to finish the GPU implementation of pruned composition of a
@@ -101,7 +100,7 @@ general and extensible framework to allow further development of ASR technology.
  LF-MMI so that would be easy to implement soon after.  We plan to put
  example code in a separate repository.
 
- ## Plans after initial release
+## Plans after initial release
 
  We will then gradually implement more algorithms in a way that's compatible
  with the interfaces in `k2/csrc/`.  Some of them will be CPU-only to start
@@ -109,7 +108,6 @@ general and extensible framework to allow further development of ASR technology.
  collections of sequences, including methods to convert from a lattice to a
  collection of linear sequences and back again (for purposes of neural language
  model rescoring, neural confidence estimation and the like).
-
 
 ## Quick start
 
