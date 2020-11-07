@@ -2,6 +2,7 @@ from .autograd import get_tot_scores
 from .autograd import intersect_dense_pruned
 from .dense_fsa_vec import DenseFsaVec
 from .fsa import Fsa
+from .fsa_algo import add_epsilon_self_loops
 from .fsa_algo import arc_sort
 from .fsa_algo import connect
 from .fsa_algo import intersect
@@ -24,6 +25,7 @@ __all__ = [
     'DenseFsaVec',
     'Fsa',
     'SymbolTable',
+    'add_epsilon_self_loops',
     'arc_sort',
     'connect',
     'create_fsa_vec',

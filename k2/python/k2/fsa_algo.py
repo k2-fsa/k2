@@ -256,3 +256,41 @@ def shortest_path(fsa: Fsa, use_float_scores: bool) -> Fsa:
         del out_fsa.properties
 
     return out_fsa
+
+
+def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
+    '''Add epsilon self-loops to an Fsa or FsaVec.
+
+    This is required when composing using a composition method that does not
+    treat epsilons specially, if the other FSA has epsilons in it.
+
+    Args:
+      fsa:
+        The input FSA. It can be either a single FSA or a FsaVec.
+
+    Returns:
+      An instance of :class:`Fsa` that has an epsilon self-loop on every
+      non-final state.
+    '''
+
+    need_arc_map = True
+    ragged_arc, arc_map = _k2.add_epsilon_self_loops(fsa.arcs,
+                                                     need_arc_map=need_arc_map)
+    arc_map = arc_map.to(torch.int64) + 1
+
+    # TODO(fangjun): implement _k2.index to process indexes == -1
+
+    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    for name, value in fsa.named_tensor_attr():
+        padding = value.new_zeros((1, *value.shape[1:]))
+        value = torch.cat((padding, value), dim=0)
+        new_value = value.index_select(0, arc_map)
+        setattr(out_fsa, name, new_value)
+
+    for name, value in fsa.named_non_tensor_attr():
+        setattr(out_fsa, name, value)
+
+    if hasattr(out_fsa, 'properties'):
+        del out_fsa.properties
+
+    return out_fsa
