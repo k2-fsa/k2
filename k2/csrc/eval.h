@@ -282,6 +282,8 @@ inline void Eval2Device(ContextPtrType c, int32_t m,
   Eval2Device(c->GetCudaStream(), m, n, lambda);
 }
 
+// Also see EvalWithRedirect() in utils.h
+
 
 }  // namespace k2
 

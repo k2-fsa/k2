@@ -256,8 +256,8 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
   std::bernoulli_distribution coin(0.5);
 
   for (std::size_t n = 0; n < npath; ++n) {
-    // Note: for now we `continue` when paths are not above the beam,
-    // which may mean that for some FSAs
+    // Note: for now we `continue` when paths are not above the beam, which may
+    // mean that for some FSAs we don't test any paths at all.
     const auto &fsa = coin(gen) ? valid_a : valid_b;
     FsaCreator valid_path_storage;
     if (!::RandomPath(fsa, false, &valid_path_storage)) continue;

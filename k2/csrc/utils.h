@@ -424,9 +424,6 @@ __global__ void eval_lambda_redirect(int32_t num_jobs, TaskRedirect *redirect,
                                _per_job (a multiple that is specific to
                                the task). LambdaU will be called exactly
                                once (on the device).
-
-     Also see the other template of EvalWithRedirect() that takes an extra
-  lambda to do a 'one-off task' (invoked once in the resulting kernel).
  */
 
 template <typename LambdaT>

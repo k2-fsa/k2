@@ -139,10 +139,9 @@ class Array1 {
   // not need a negative version, will revisit it later
   Tensor Range(int32_t start, int32_t size, int32_t inc) const {
     K2_CHECK_GE(start, 0);
-    K2_CHECK_LT(start, Dim());
     K2_CHECK_GE(size, 0);
     K2_CHECK_GT(inc, 0);
-    K2_CHECK_LT((size - 1) * inc, Dim() - start);
+    K2_CHECK_LE((size - 1) * inc, Dim() - start);
     Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {size};
     std::vector<int32_t> strides = {inc};
@@ -320,6 +319,7 @@ class Array1 {
   }
 
   Array1(const Array1 &other) = default;
+  Array1(Array1 &&other) = default;
   Array1 &operator=(const Array1 &other) = default;
 
   /*
@@ -446,7 +446,8 @@ class Array2 {
 
   /*
     Returns an Array2 containing a subset of rows of *this, aliasing the
-    same data.  (c.f. arange in PyTorch).
+    same data.  (c.f. arange in PyTorch).  Calling it RowArange rather than
+    RowRange to clarify that the 2nd arg is 'end' not 'dim'.
 
      @param [in] start  First row of output, 0 <= start < Dim0()
      @param [in] end    One-past-the-last row that *should not* be included.
@@ -456,12 +457,28 @@ class Array2 {
   Array2<T> RowArange(int32_t start, int32_t end, int32_t inc = 1) const {
     K2_CHECK_GT(inc, 0);
     K2_CHECK_GE(start, 0);
-    K2_CHECK_LT(start, dim0_);
     K2_CHECK_GE(end, start);
     K2_CHECK_LE(end, dim0_);
     int32_t num_rows = (end - start) / inc;
     return Array2<T>(num_rows, dim1_, elem_stride0_ * inc,
                      byte_offset_ + elem_stride0_ * start * ElementSize(),
+                     region_);
+  }
+
+  /*
+    Returns an Array2 containing a subset of columns of *this, aliasing the
+    same data.  (c.f. arange in PyTorch).  Calling it ColArange rather than
+    ColRange to clarify that the 2nd arg is 'end' not 'dim'.
+
+     @param [in] start  First column of output, 0 <= start < Dim1()
+     @param [in] end    One-past-the-last column that *should not* be included.
+  */
+  Array2<T> ColArange(int32_t start, int32_t end) const {
+    K2_CHECK_GE(start, 0);
+    K2_CHECK_GE(end, start);
+    K2_CHECK_LE(end, dim1_);
+    return Array2<T>(dim0_, end - start, elem_stride1_,
+                     byte_offset_ + elem_stride1_ * start * ElementSize(),
                      region_);
   }
 
@@ -502,6 +519,10 @@ class Array2 {
   }
 
   explicit Array2(const std::string &str);
+  // copy constructor
+  explicit Array2(const Array2 &other) = default;
+  // move constructor
+  explicit Array2(Array2 &&other) = default;
 
   /* stride on 1st axis is 1 (in elements). */
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
@@ -562,6 +583,18 @@ class Array2 {
     std::vector<int32_t> strides = {elem_stride0_, 1};
     Shape shape(dims, strides);
     return Tensor(type, shape, region_, byte_offset_);
+  }
+
+  // Return one column of this Array2, as a Tensor.  (Will point to the
+  // same data).
+  Tensor Col(int32_t i) {
+    K2_CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(dim1_));
+    Dtype type = DtypeOf<ValueType>::dtype;
+    std::vector<int32_t> dims = {dim0_};
+    std::vector<int32_t> strides = {elem_stride0_};
+    Shape shape(dims, strides);
+    return Tensor(type, shape, region_,
+                  byte_offset_ + (ElementSize() * i));
   }
 
   const T *Data() const {
@@ -649,10 +682,11 @@ class Array2 {
   }
 
  private:
-  int32_t dim0_;          // dim on 0th (row) axis
+  int32_t dim0_;          // dimension on 0th (row) axis, i.e. the number of rows.
   int32_t elem_stride0_;  // stride *in elements* on 0th (row) axis, must be >=
                           // dim1_
-  int32_t dim1_;          // dimension on column axis
+  int32_t dim1_;          // dimension on column axis, i.e. the number of
+                          // columns.
 
   size_t byte_offset_;  // byte offset within region_
   RegionPtr region_;    // Region that `data` is a part of.  Device
