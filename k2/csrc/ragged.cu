@@ -202,7 +202,9 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
 
 void RaggedShape::Populate() {
   int32_t num_axes = NumAxes();
+  ParallelRunner pr(this->Context());
   for (int32_t i = 1; i < num_axes; ++i) {
+    With w(pr.NewStream());
     // ignore return values of the following calls.
     this->TotSize(i);
     this->RowIds(i);
