@@ -691,8 +691,8 @@ RaggedShape Index(RaggedShape &src, const Array1<int32_t> &indexes,
 
 /*
   Indexing operation on ragged tensor, returns src[indexes], where
-  the elements of `indexes` are interpreted as indexes into the
-  1st axis of `src`.
+  the elements of `indexes` are interpreted as indexes into axis 0
+  of `src`.
 
       @param [in] src      Source ragged tensor to index
       @param [in] indexes  Array of indexes, which will be interpreted
@@ -715,13 +715,11 @@ Ragged<T> Index(Ragged<T> &src, const Array1<int32_t> &indexes,
                 Array1<int32_t> *value_indexes_out = nullptr) {
   Array1<int32_t> value_indexes;
   RaggedShape ans_shape = Index(src.shape, indexes, &value_indexes);
-  return Ragged<T>(ans_shape,
-                   src.values[value_indexes]);
-  if (value_indexes_out)
+  Ragged<T> ans(ans_shape, src.values[value_indexes]);
+  if (value_indexes_out != nullptr)
     *value_indexes_out = std::move(value_indexes);
+  return ans;
 }
-
-
 
 }  // namespace k2
 

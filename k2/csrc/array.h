@@ -318,9 +318,14 @@ class Array1 {
                src.size() * ElementSize(), kind, Context().get());
   }
 
+  // default constructor
   Array1(const Array1 &other) = default;
+  // move constructor
   Array1(Array1 &&other) = default;
+  // assignment operator
   Array1 &operator=(const Array1 &other) = default;
+  // move assignment operator
+  Array1 &operator=(Array1 &&other) = default;
 
   /*
     This function checks that T is the same as the data-type of `tensor` and
@@ -477,10 +482,11 @@ class Array2 {
     K2_CHECK_GE(start, 0);
     K2_CHECK_GE(end, start);
     K2_CHECK_LE(end, dim1_);
-    return Array2<T>(dim0_, end - start, elem_stride0_,
-                     byte_offset_ +
-                     (start * static_cast<size_t>(elem_stride0_) * ElementSize()),
-                     region_);
+    return Array2<T>(
+        dim0_, end - start, elem_stride0_,
+        byte_offset_ +
+            (start * static_cast<size_t>(elem_stride0_) * ElementSize()),
+        region_);
   }
 
   // return a row (indexing on the 0th axis)
@@ -526,6 +532,8 @@ class Array2 {
   Array2(Array2 &&other) = default;
   // assignment operator
   Array2 &operator=(const Array2 &other) = default;
+  // move assignment operator
+  Array2 &operator=(Array2 &&other) = default;
 
   /* stride on 1st axis is 1 (in elements). */
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
@@ -560,8 +568,7 @@ class Array2 {
     is not compatible with the current context.
   */
   Array2<T> To(ContextPtr ctx) const {
-    if (ctx->IsCompatible(*Context()))
-      return *this;
+    if (ctx->IsCompatible(*Context())) return *this;
 
     Array2<T> ans(ctx, dim0_, dim1_);
 
@@ -597,8 +604,7 @@ class Array2 {
     std::vector<int32_t> dims = {dim0_};
     std::vector<int32_t> strides = {elem_stride0_};
     Shape shape(dims, strides);
-    return Tensor(type, shape, region_,
-                  byte_offset_ + (ElementSize() * i));
+    return Tensor(type, shape, region_, byte_offset_ + (ElementSize() * i));
   }
 
   // Note: const-ness is w.r.t. the metadata only.
@@ -682,7 +688,7 @@ class Array2 {
   }
 
  private:
-  int32_t dim0_;          // dimension on 0th (row) axis, i.e. the number of rows.
+  int32_t dim0_;  // dimension on 0th (row) axis, i.e. the number of rows.
   int32_t elem_stride0_;  // stride *in elements* on 0th (row) axis, must be >=
                           // dim1_
   int32_t dim1_;          // dimension on column axis, i.e. the number of

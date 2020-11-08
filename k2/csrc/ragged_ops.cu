@@ -365,7 +365,7 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
 
 RaggedShape Index(RaggedShape &src,
                   const Array1<int32_t> &new2old,
-                  Array1<int32_t> *elem_indexes) {
+                  Array1<int32_t> *elem_indexes /*=nullptr*/) {
   ContextPtr c = src.Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
   K2_CHECK(IsCompatible(src, new2old));
@@ -409,7 +409,7 @@ RaggedShape Index(RaggedShape &src,
     GetTaskRedirect(c, ans_dim0, new_offsets_ptr, task_redirect_ptr);
   }
 
-  for (int32_t axis = 0; axis < num_axes - 1; axis++) {
+  for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
     {
       int32_t *this_new_row_splits = ans.RowSplits(axis + 1).Data();
       const int32_t *this_old_row_splits = src.RowSplits(axis + 1).Data();
@@ -460,7 +460,7 @@ RaggedShape Index(RaggedShape &src,
       if (elem_indexes == nullptr || axis != num_axes - 2) {
         // If we don't need to write to `elem_indexes`...  [caution: the next code
         // block differs from this only by a statement that sets `elem_indexes`
-        // and they should be skept in sync.]
+        // and they should be kept in sync.]
 
         auto lambda_set_row_ids = [=] __host__ __device__(
             int32_t ans_idx0, int32_t num_threads,

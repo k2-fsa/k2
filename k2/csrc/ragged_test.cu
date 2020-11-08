@@ -1436,8 +1436,11 @@ void TestIndex(DeviceType d) {
 
       std::vector<int32_t> new2old_vec = {2, 1};
       Array1<int32_t> new2old(context, new2old_vec);
-      //RaggedShape result = Renumber(shape, new2old);
-      RaggedShape result  = Index(shape, new2old, nullptr);
+      Array1<int32_t> value_indexes_out;
+      RaggedShape result  = Index(shape, new2old, &value_indexes_out);
+      // fsa 2, state_idx01 {5}, arc_idx012 {7, 8, 9}
+      // fsa 1, state_idx01 {2, 3, 4}, arc_idx012 {{3},{4, 5}, {6}}
+      CheckArrayData(value_indexes_out, std::vector<int32_t>{7, 8, 9, 3, 4, 5, 6});
       CheckResultOfIndex(context, shape, new2old, result);
     }
 

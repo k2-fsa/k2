@@ -67,6 +67,28 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   pyclass.def("dim0", &PyClass::Dim0);
   pyclass.def("num_axes", &PyClass::NumAxes);
   pyclass.def("index", &PyClass::Index, py::arg("axis"), py::arg("i"));
+
+  // Return a pair:
+  // - Ragged<T>
+  // - value_indexes_out
+  //     a 1-D torch::Tensor of dtype torch.int32 if need_value_indexes_out ==
+  //     true, None if need_value_indexes_out == false
+  m.def(
+      "index",
+      [](PyClass &src, torch::Tensor indexes, bool need_value_indexes = true)
+          -> std::pair<PyClass, torch::optional<torch::Tensor>> {
+        Array1<int32_t> indexes_array = FromTensor<int32_t>(indexes);
+        Array1<int32_t> value_indexes;
+
+        Ragged<T> ans = Index(src, indexes_array,
+                              need_value_indexes ? &value_indexes : nullptr);
+        torch::optional<torch::Tensor> value_indexes_tensor;
+
+        if (need_value_indexes) value_indexes_tensor = ToTensor(value_indexes);
+
+        return std::make_pair(ans, value_indexes_tensor);
+      },
+      py::arg("src"), py::arg("indexes"), py::arg("need_value_indexes") = true);
 }
 
 static void PybindRaggedImpl(py::module &m) {
