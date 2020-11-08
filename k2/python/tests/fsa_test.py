@@ -365,6 +365,24 @@ class TestFsa(unittest.TestCase):
         dot.render('/tmp/fsa', format='pdf')
         # the fsa is saved to /tmp/fsa.pdf
 
+    def test_to(self):
+        s = '''
+            0 1 -1 1
+            1
+        '''
+        fsa = k2.Fsa.from_str(s)
+        assert fsa.is_cpu()
+
+        device = torch.device('cuda', 0)
+        fsa.to_(device)
+        assert fsa.is_cuda()
+        assert fsa.device == device
+
+        device = torch.device('cpu')
+        fsa.to_(device)
+        assert fsa.is_cpu()
+        assert fsa.device == device
+
 
 if __name__ == '__main__':
     unittest.main()

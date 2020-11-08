@@ -433,6 +433,57 @@ class Fsa(object):
 
         return self
 
+    def is_cpu(self) -> bool:
+        '''Return true if this FSA is on CPU.
+
+        Returns:
+          True if the FSA is on CPU; False otherwise.
+        '''
+        return self.arcs.is_cpu()
+
+    def is_cuda(self) -> bool:
+        '''Return true if this FSA is on GPU.
+
+        Returns:
+          True if the FSA is on GPU; False otherwise.
+        '''
+        return self.arcs.is_cuda()
+
+    @property
+    def device(self) -> torch.device:
+        return self.scores.device
+
+    def to_(self, device: torch.device) -> 'Fsa':
+        '''Move the FSA onto a given device.
+
+        Caution:
+          This is an in-place operation.
+
+        Args:
+          device:
+            An instance of `torch.device`. It supports only cpu and cuda.
+
+        Returns:
+          Return `self`.
+        '''
+        assert device.type in ('cpu', 'cuda')
+        if device.type == 'cpu' and self.is_cpu():
+            return self
+        elif device.type == 'cuda' and self.is_cuda():
+            return self
+
+        if device.type == 'cpu':
+            self.arcs = self.arcs.to_cpu()
+        else:
+            self.arcs = self.arcs.to_cuda(device.index)
+
+        for name, value in self.named_tensor_attr():
+            setattr(self, name, value.to(device))
+
+        self._grad_cache = OrderedDict()
+
+        return self
+
     def named_tensor_attr(self) -> Iterator[Tuple[str, torch.Tensor]]:
         '''Return an iterator over tensor attributes containing both
         the name of the attribute as well as the tensor value.

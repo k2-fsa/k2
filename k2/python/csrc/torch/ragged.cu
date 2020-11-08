@@ -22,6 +22,26 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   using PyClass = Ragged<T>;
   py::class_<PyClass> pyclass(m, name);
 
+  pyclass.def("to_cpu", [](const PyClass &self) -> PyClass {
+    return self.To(GetCpuContext());
+  });
+
+  pyclass.def("is_cpu", [](const PyClass &self) -> bool {
+    return self.Context()->GetDeviceType() == kCpu;
+  });
+
+  pyclass.def(
+      "to_cuda",
+      [](const PyClass &self, int32_t device_id) -> PyClass {
+        ContextPtr c = GetCudaContext(device_id);
+        return self.To(c);
+      },
+      py::arg("device_id"));
+
+  pyclass.def("is_cuda", [](const PyClass &self) -> bool {
+    return self.Context()->GetDeviceType() == kCuda;
+  });
+
   pyclass.def("values", [](PyClass &self) -> torch::Tensor {
     Array1<T> &values = self.values;
     return ToTensor(values);
