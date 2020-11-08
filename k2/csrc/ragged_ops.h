@@ -680,8 +680,8 @@ bool Equal(Ragged<T> &a, Ragged<T> &b) {
               `ans.NumAxes() == src.NumAxes()`
               and `ans.Dim0() == indexes.Dim()`.
 */
-void RaggedShape Index(RaggedShape &src,const Array1<int32_t> &indexes,
-                       Array1<int32_t> *elem_indexes = nullptr);
+RaggedShape Index(RaggedShape &src, const Array1<int32_t> &indexes,
+                  Array1<int32_t> *elem_indexes = nullptr);
 
 
 /*

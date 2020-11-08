@@ -477,8 +477,9 @@ class Array2 {
     K2_CHECK_GE(start, 0);
     K2_CHECK_GE(end, start);
     K2_CHECK_LE(end, dim1_);
-    return Array2<T>(dim0_, end - start, elem_stride1_,
-                     byte_offset_ + elem_stride1_ * start * ElementSize(),
+    return Array2<T>(dim0_, end - start, elem_stride0_,
+                     byte_offset_ +
+                     (start * static_cast<size_t>(elem_stride0_) * ElementSize()),
                      region_);
   }
 
@@ -520,9 +521,11 @@ class Array2 {
 
   explicit Array2(const std::string &str);
   // copy constructor
-  explicit Array2(const Array2 &other) = default;
+  Array2(const Array2 &other) = default;
   // move constructor
-  explicit Array2(Array2 &&other) = default;
+  Array2(Array2 &&other) = default;
+  // assignment operator
+  Array2 &operator=(const Array2 &other) = default;
 
   /* stride on 1st axis is 1 (in elements). */
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
@@ -557,7 +560,8 @@ class Array2 {
     is not compatible with the current context.
   */
   Array2<T> To(ContextPtr ctx) const {
-    if (ctx->IsCompatible(*Context())) return *this;
+    if (ctx->IsCompatible(*Context()))
+      return *this;
 
     Array2<T> ans(ctx, dim0_, dim1_);
 
@@ -597,12 +601,8 @@ class Array2 {
                   byte_offset_ + (ElementSize() * i));
   }
 
-  const T *Data() const {
-    return reinterpret_cast<const T *>(reinterpret_cast<char *>(region_->data) +
-                                       byte_offset_);
-  }
-
-  T *Data() {
+  // Note: const-ness is w.r.t. the metadata only.
+  T *Data() const {
     return reinterpret_cast<T *>(reinterpret_cast<char *>(region_->data) +
                                  byte_offset_);
   }

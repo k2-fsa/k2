@@ -493,12 +493,12 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   ContextPtr &c = src.Context();
   int32_t num_axes = src.NumAxes(),
       ans_dim0 = new2old.Dim();
-  const int32_t *src_row_splits_ptrs_data = src_row_splits_ptrs.Data(),
-      *new2old_data = new2old.Data();
-  *old_offsets = Array2<int32_t>(num_axes, ans_dim0);
-  *new_offsets = Array2<int32_t>(num_axes, ans_dim0 + 1);
-  auto old_offsets_acc = old_offsets.Accessor(),
-       new_offsets_acc = new_offsets.Accessor();
+  int32_t *const *src_row_splits_ptrs_data = src_row_splits_ptrs.Data();
+  const int32_t *new2old_data = new2old.Data();
+  *old_offsets = Array2<int32_t>(c, num_axes, ans_dim0);
+  *new_offsets = Array2<int32_t>(c, num_axes, ans_dim0 + 1);
+  auto old_offsets_acc = old_offsets->Accessor(),
+       new_offsets_acc = new_offsets->Accessor();
   // Set old_offsets; and for now, set new_offsets to the corresponding
   // sizes of the output slices.
   auto lambda_set_offsets = [=] __host__ __device__(int32_t i) {
@@ -511,8 +511,8 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
       // than the offset; we need to do exclusive-sum.
       new_offsets_acc(axis, i) = old_offset_next - old_offset;
       if (axis + 1 == num_axes) return;
-      old_offset = row_splits_ptrs_data[axis][old_offset];
-      old_offset_next = row_splits_ptrs_data[axis][old_offset_next];
+      old_offset = src_row_splits_ptrs_data[axis][old_offset];
+      old_offset_next = src_row_splits_ptrs_data[axis][old_offset_next];
     }
   };
   Eval(c, ans_dim0, lambda_set_offsets);
@@ -527,9 +527,9 @@ RaggedShape Index(RaggedShape &src,
   K2_CHECK(IsCompatible(src, new2old));
   int32_t num_axes = src.NumAxes(),
       src_dim0 = src.Dim0(),
-      ans_dim0 = new2old.Dim0();
+      ans_dim0 = new2old.Dim();
   if (ans_dim0 == 0) {
-    if (elem_indexes) elem_indexes = Arary1<int32_t>(c, 0);
+    if (elem_indexes) *elem_indexes = Array1<int32_t>(c, 0);
     return EmptyRaggedShape(c, num_axes);
   }
 
@@ -541,6 +541,10 @@ RaggedShape Index(RaggedShape &src,
 
   Array1<int32_t> tot_sizes_out = Array1<int32_t>(
       new_offsets.Col(ans_dim0)).To(GetCpuContext());
+
+  if (elem_indexes)
+    *elem_indexes = Array1<int32_t>(c, tot_sizes_out.Back());
+
   RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes,
                                             tot_sizes_out.Data());
 
@@ -581,7 +585,7 @@ RaggedShape Index(RaggedShape &src,
         int32_t this_new_offset = new_offsets_acc(axis, ans_idx0),
             next_new_offset = new_offsets_acc(axis, ans_idx0 + 1),
             num_rows = next_new_offset - this_new_offset,
-            this_old_offset = old_offsets_acc(axis, old_idx),
+            this_old_offset = old_offsets_acc(axis, ans_idx0),
             value_offset = new_offsets_acc(axis + 1, ans_idx0) -
                            old_offsets_acc(axis + 1, ans_idx0);
 
@@ -605,35 +609,64 @@ RaggedShape Index(RaggedShape &src,
     {
       int32_t *this_new_row_ids = ans.RowIds(axis + 1).Data();
       const int32_t *this_old_row_ids = src.RowIds(axis + 1).Data();
-
-      auto lambda_set_row_ids = [=] __host__ __device__(
-                                    int32_t ans_idx0, int32_t num_threads,
-                                    int32_t thread_idx) -> void {
-        //  0 <= ans_idx0 < ans_dim0; and 0 <= thread_idx < num_threads,
-        //  num_threads may have any value > 0 as far as this code is concerned.
-        //
-        // Reminder of how row_ids work dimensionally: they are a map
-        // from, e.g. an idx01 to an idx0.   An offsets_acc(0,n) is
-        // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
-        // The locations in the row_ids array are as given by
-        // the `axis+1`'th row of `offsets`; the values in the array
-        // are related to those in the `axis`'th row.
-        int32_t this_new_offset = new_offsets_acc(axis + 1, ans_idx0),
-            next_new_offset = new_offsets_acc(axis + 1, ans_idx0 + 1),
-            num_elems = next_new_offset - this_new_offset,
-            this_old_offset = old_offsets_acc(axis + 1, ans_idx0),
-            value_offset = new_offsets_acc(axis, ans_idx0) -
-                           old_offsets_acc(axis, ans_idx0);
-        for (; thread_idx < num_elems; thread_idx += num_threads) {
-          this_new_row_ids[this_new_offset + thread_idx] =
-              value_offset + this_old_row_ids[this_old_offset + thread_idx];
-        }
-      };
       int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
               target_num_loops = (is_cpu || tot_work > 1000000 ? 8 : 2);
-      EvalWithRedirect(streams[axis + 1], num_jobs,
-                       task_redirects_acc.Row(axis + 1), min_threads_per_job,
-                       tot_work, target_num_loops, lambda_set_row_ids);
+
+
+      if (elem_indexes == nullptr || axis != num_axes - 2) {
+        // If we don't need to write to `elem_indexes`...  [caution: the next code
+        // block differs from this only by a statement that sets `elem_indexes`
+        // and they should be skept in sync.]
+
+        auto lambda_set_row_ids = [=] __host__ __device__(
+            int32_t ans_idx0, int32_t num_threads,
+            int32_t thread_idx) -> void {
+          // Reminder of how row_ids work dimensionally: they are a map
+          // from, e.g. an idx01 to an idx0.   An offsets_acc(0,n) is
+          // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
+          // The locations in the row_ids array are as given by
+          // the `axis+1`'th row of `offsets`; the values in the array
+          // are related to those in the `axis`'th row.
+          int32_t this_new_offset = new_offsets_acc(axis + 1, ans_idx0),
+          next_new_offset = new_offsets_acc(axis + 1, ans_idx0 + 1),
+          num_elems = next_new_offset - this_new_offset,
+          this_old_offset = old_offsets_acc(axis + 1, ans_idx0),
+          value_offset = new_offsets_acc(axis, ans_idx0) -
+          old_offsets_acc(axis, ans_idx0);
+          for (; thread_idx < num_elems; thread_idx += num_threads) {
+            this_new_row_ids[this_new_offset + thread_idx] =
+                value_offset + this_old_row_ids[this_old_offset + thread_idx];
+          }
+        };
+        EvalWithRedirect(streams[axis + 1], num_jobs,
+                         task_redirects_acc.Row(axis + 1), min_threads_per_job,
+                         tot_work, target_num_loops, lambda_set_row_ids);
+      } else {
+        int32_t *elem_indexes_data = elem_indexes->Data();
+        // We need to write to `elem_indexes`.  Note: this code block only
+        // differs from the above by an extra statement regarding `elem_indexes`.
+        // Comments have been removed.
+        auto lambda_set_row_ids_and_elem_indexes = [=] __host__ __device__(
+            int32_t ans_idx0, int32_t num_threads,
+            int32_t thread_idx) -> void {
+          int32_t this_new_offset = new_offsets_acc(axis + 1, ans_idx0),
+          next_new_offset = new_offsets_acc(axis + 1, ans_idx0 + 1),
+          num_elems = next_new_offset - this_new_offset,
+          this_old_offset = old_offsets_acc(axis + 1, ans_idx0),
+          value_offset = new_offsets_acc(axis, ans_idx0) -
+          old_offsets_acc(axis, ans_idx0);
+          for (; thread_idx < num_elems; thread_idx += num_threads) {
+            this_new_row_ids[this_new_offset + thread_idx] =
+                value_offset + this_old_row_ids[this_old_offset + thread_idx];
+            elem_indexes_data[this_new_offset + thread_idx] =
+                this_old_offset + thread_idx;
+          }
+        };
+        EvalWithRedirect(streams[axis + 1], num_jobs,
+                         task_redirects_acc.Row(axis + 1), min_threads_per_job,
+                         tot_work, target_num_loops,
+                         lambda_set_row_ids_and_elem_indexes);
+      }
     }
   }
 #if !defined(NDEBUG)
