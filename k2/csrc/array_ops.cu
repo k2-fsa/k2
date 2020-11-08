@@ -25,10 +25,15 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
   K2_CHECK_GT(num_arrays, 0);
   ContextPtr &c = src[0]->Context();
 
+  // row_splits_vec is the exclusive-sum of the modified dimensions of
+  // the arrays in `src`.  `Modified` means: is subtracted from the dims
+  // of all but the last array.
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
   int32_t sum = 0, max_dim = 0;
   row_splits_vec[0] = sum;
 
+  // `last_elem_ptrs_vec` contains, for each of the arrays in `num_array`, a
+  // pointer to the last element in that array.
   std::vector<const int32_t *> last_elem_ptrs_vec(num_arrays);
 
   for (int32_t i = 0; i < num_arrays; i++) {
@@ -37,7 +42,7 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
     if (dim > max_dim) max_dim = dim;
     sum += dim;
     row_splits_vec[i + 1] = sum;
-    last_elem_ptrs_vec[i] = src[i]->Data() + dim;
+    last_elem_ptrs_vec[i] = src[i]->Data() + src[i]->Dim() - 1;
   }
   int32_t ans_size = sum;
 

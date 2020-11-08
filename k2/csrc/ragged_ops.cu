@@ -307,68 +307,98 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   return RaggedShape(axes_out);
 }
 
-RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
-  ContextPtr c = src.Context();
-  K2_CHECK(IsCompatible(src, new2old));
-  int32_t num_axes = src.NumAxes(), dim0 = src.Dim0();
-  K2_CHECK_EQ(new2old.Dim(), dim0);
 
-  std::vector<int32_t> tot_sizes_out(num_axes);
-  for (int32_t axis = 0; axis < num_axes; axis++)
-    tot_sizes_out[axis] = src.TotSize(axis);
-  // the arrays in `ans` will be the same sizes as those in `src`.
-  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
-  if (dim0 == 0) {
-    for (int32_t axis = 0; axis < num_axes; ++axis) {
-      K2_CHECK_EQ(ans.TotSize(axis), 0);
+/*
+  Internal function used in Index(), which gets certain arrays used internally.
+
+     @param [in] src      Source shape to be indexed
+     @param [in] src_row_splits_ptrs  Result of calling GetRowSplitsPtr(src)
+     @param [in] new2old  Array of indexes into axis 0 of src
+     @param [out] old_offsets   Will be set to new Array2 with dimension
+                         (src.NumAxes(), new2old.Dim()), whose (i,j)'th
+                         element contains the offset into axis i of `src`
+                         where the slice of `src` with index0 (i.e. index
+                         into 0'th-axis of `src`) equal to `new2old[j]`
+                         begins.
+     @param [out] new_offsets   Will be set to new Array2 with dimension
+                         (src.NumAxes(), new2old.Dim()+1), whose (i,j)'th
+                         element contains the offset into axis i of `ans`
+                         where the data in `ans` corresponding to
+                         index j (i.e. index j into axis 0 of `ans`) begins.
+                         Note: `ans` is the result of Index(), with
+                         ans.Dim0() == new2old.Dim().
+ */
+inline void GetOldAndNewOffsets(RaggedShape &src,
+                                const Array1<int32_t*> &src_row_splits_ptrs,
+                                const Array1<int32_t> &new2old,
+                                Array2<int32_t> *old_offsets,
+                                Array2<int32_t> *new_offsets) {
+  K2_CHECK(src.NumAxes() > 1);
+  ContextPtr &c = src.Context();
+  int32_t num_axes = src.NumAxes(),
+      ans_dim0 = new2old.Dim();
+  int32_t *const *src_row_splits_ptrs_data = src_row_splits_ptrs.Data();
+  const int32_t *new2old_data = new2old.Data();
+  *old_offsets = Array2<int32_t>(c, num_axes, ans_dim0);
+  *new_offsets = Array2<int32_t>(c, num_axes, ans_dim0 + 1);
+  auto old_offsets_acc = old_offsets->Accessor(),
+       new_offsets_acc = new_offsets->Accessor();
+  // Set old_offsets; and for now, set new_offsets to the corresponding
+  // sizes of the output slices.
+  auto lambda_set_offsets = [=] __host__ __device__(int32_t i) {
+    // 0 <= i < ans_dim0
+    int32_t old_offset = new2old_data[i],
+        old_offset_next = old_offset + 1;
+    for (int32_t axis = 0; ; axis++) {
+      old_offsets_acc(axis, i) = old_offset;
+      // Below, 'new_offsets_acc' currently contains the size rather
+      // than the offset; we need to do exclusive-sum.
+      new_offsets_acc(axis, i) = old_offset_next - old_offset;
+      if (axis + 1 == num_axes) return;
+      old_offset = src_row_splits_ptrs_data[axis][old_offset];
+      old_offset_next = src_row_splits_ptrs_data[axis][old_offset_next];
     }
-    Array1<int32_t *> row_splits_ptrs = GetRowSplitsPtr(ans);
-    int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
-    auto lambda_set_default_value = [=] __host__ __device__(int32_t i) {
-      row_splits_ptrs_data[i][0] = 0;
-    };
-    Eval(c, num_axes - 1, lambda_set_default_value);
-    return ans;
+  };
+  Eval(c, ans_dim0, lambda_set_offsets);
+  ExclusiveSum(*new_offsets, new_offsets);
+}
+
+RaggedShape Index(RaggedShape &src,
+                  const Array1<int32_t> &new2old,
+                  Array1<int32_t> *elem_indexes) {
+  ContextPtr c = src.Context();
+  bool is_cpu = (c->GetDeviceType() == kCpu);
+  K2_CHECK(IsCompatible(src, new2old));
+  int32_t num_axes = src.NumAxes(),
+      src_dim0 = src.Dim0(),
+      ans_dim0 = new2old.Dim();
+  if (ans_dim0 == 0) {
+    if (elem_indexes) *elem_indexes = Array1<int32_t>(c, 0);
+    return EmptyRaggedShape(c, num_axes);
   }
 
-  src.Populate();
-  Array2<int32_t> old_offsets(c, num_axes, dim0 + 1),
-      new_offsets(c, num_axes, dim0 + 1);
+  Array1<int32_t *> src_row_splits_ptrs = GetRowSplitsPtr(src);
+  Array2<int32_t> old_offsets,  // num_axes by ans_dim0
+      new_offsets;  // num_axes by (ans_dim0 + 1).
+  GetOldAndNewOffsets(src, src_row_splits_ptrs, new2old,
+                      &old_offsets, &new_offsets);
+
+  Array1<int32_t> tot_sizes_out = Array1<int32_t>(
+      new_offsets.Col(ans_dim0)).To(GetCpuContext());
+
+  if (elem_indexes)
+    *elem_indexes = Array1<int32_t>(c, tot_sizes_out.Back());
+
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes,
+                                            tot_sizes_out.Data());
+
   auto old_offsets_acc = old_offsets.Accessor(),
        new_offsets_acc = new_offsets.Accessor();
 
-  Array1<int32_t *> row_splits_ptrs = GetRowSplitsPtr(src);
-  int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
-
-  // Set old_offsets
-  auto lambda_get_old_offsets = [=] __host__ __device__(int32_t i) {
-    // 0 <= i <= dim0
-    int32_t cur_offset = i;
-    for (int32_t axis = 0; axis < num_axes; axis++) {
-      old_offsets_acc(axis, i) = cur_offset;
-      if (axis + 1 == num_axes) return;
-      cur_offset = row_splits_ptrs_data[axis][cur_offset];
-    }
-  };
-  Eval(c, dim0 + 1, lambda_get_old_offsets);
-  const int32_t *new2old_data = new2old.Data();
-  auto lambda_get_new_offsets = [=] __host__ __device__(int32_t axis,
-                                                        int32_t new_i) {
-    // 0 <= axis < num_axes;  0 <= new_i < dim0
-    int32_t old_i = new2old_data[new_i],
-            this_old_offset = old_offsets_acc(axis, old_i),
-            next_old_offset = old_offsets_acc(axis, old_i + 1),
-            size = next_old_offset - this_old_offset;
-    new_offsets_acc(axis, new_i) = size;
-  };
-  Eval2(c, num_axes, dim0, lambda_get_new_offsets);
-  ExclusiveSum(new_offsets, &new_offsets);
-  // Now new_offsets contains the offsets, not the sizes.
-
   ParallelRunner pr(c);
   std::vector<cudaStream_t> streams(num_axes);
-  int32_t num_jobs = dim0 * 2;  // note: this formula is not a heuristic; it's
-                                // how TaskRedirect works..
+  int32_t num_jobs = ans_dim0 * 2;  // note: this formula is not a heuristic;
+                                    // it's how TaskRedirect works..
   Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
   auto task_redirects_acc = task_redirects.Accessor();
   for (int32_t axis = 0; axis < num_axes; ++axis) {
@@ -376,7 +406,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
     With w(streams[axis]);
     const int32_t *new_offsets_ptr = new_offsets_acc.Row(axis);
     TaskRedirect *task_redirect_ptr = task_redirects_acc.Row(axis);
-    GetTaskRedirect(c, dim0, new_offsets_ptr, task_redirect_ptr);
+    GetTaskRedirect(c, ans_dim0, new_offsets_ptr, task_redirect_ptr);
   }
 
   for (int32_t axis = 0; axis < num_axes - 1; axis++) {
@@ -385,9 +415,9 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
       const int32_t *this_old_row_splits = src.RowSplits(axis + 1).Data();
 
       auto lambda_set_row_splits = [=] __host__ __device__(
-                                       int32_t new_idx, int32_t num_threads,
+                                       int32_t ans_idx0, int32_t num_threads,
                                        int32_t thread_idx) -> void {
-        //  0 <= new_idx < dim0; and 0 <= thread_idx < num_threads,
+        //  0 <= ans_idx0 < ans_dim0; and 0 <= thread_idx < num_threads,
         //  num_threads may have any value > 0 as far as this code is concerned.
         //
         // Reminder of how row_splits work dimensionally: they are a map
@@ -396,15 +426,14 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
         // The locations in the row_splits array are as given by
         // the `axis`'th row of `offsets`; the values in the array
         // are related to those in the `axis+1`'th row.
-        int32_t old_idx = new2old_data[new_idx],
-                this_old_offset = old_offsets_acc(axis, old_idx),
-                next_old_offset = old_offsets_acc(axis, old_idx + 1),
-                this_new_offset = new_offsets_acc(axis, new_idx),
-                num_rows = next_old_offset - this_old_offset,
-                value_offset = new_offsets_acc(axis + 1, new_idx) -
-                               old_offsets_acc(axis + 1, old_idx);
+        int32_t this_new_offset = new_offsets_acc(axis, ans_idx0),
+            next_new_offset = new_offsets_acc(axis, ans_idx0 + 1),
+            num_rows = next_new_offset - this_new_offset,
+            this_old_offset = old_offsets_acc(axis, ans_idx0),
+            value_offset = new_offsets_acc(axis + 1, ans_idx0) -
+                           old_offsets_acc(axis + 1, ans_idx0);
 
-        // Using <= instead of < below causes threads for different src_idx to
+        // Using <= instead of < below causes threads for different ans_idx0 to
         // write a single overlapping value, but also ensures that the
         // terminating value is written.  This only works because row_splits
         // vectors always start with 0, which is not necessarily the case
@@ -415,8 +444,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
         }
       };
       int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
-              target_num_loops = (tot_work > 1000000 ? 4 : 2);
-      // bool include_final_task = false;
+              target_num_loops = (is_cpu || tot_work > 1000000 ? 8 : 2);
       EvalWithRedirect(streams[axis], num_jobs, task_redirects_acc.Row(axis),
                        min_threads_per_job, tot_work, target_num_loops,
                        lambda_set_row_splits);
@@ -425,36 +453,64 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
     {
       int32_t *this_new_row_ids = ans.RowIds(axis + 1).Data();
       const int32_t *this_old_row_ids = src.RowIds(axis + 1).Data();
-
-      auto lambda_set_row_ids = [=] __host__ __device__(
-                                    int32_t new_idx, int32_t num_threads,
-                                    int32_t thread_idx) -> void {
-        //  0 <= new_idx < dim0; and 0 <= thread_idx < num_threads,
-        //  num_threads may have any value > 0 as far as this code is concerned.
-        //
-        // Reminder of how row_ids work dimensionally: they are a map
-        // from, e.g. an idx01 to an idx0.   An offsets_acc(0,n) is
-        // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
-        // The locations in the row_ids array are as given by
-        // the `axis+1`'th row of `offsets`; the values in the array
-        // are related to those in the `axis`'th row.
-        int32_t old_idx = new2old_data[new_idx],
-                this_old_offset = old_offsets_acc(axis + 1, old_idx),
-                next_old_offset = old_offsets_acc(axis + 1, old_idx + 1),
-                this_new_offset = new_offsets_acc(axis + 1, new_idx),
-                num_elems = next_old_offset - this_old_offset,
-                value_offset = new_offsets_acc(axis, new_idx) -
-                               old_offsets_acc(axis, old_idx);
-        for (; thread_idx < num_elems; thread_idx += num_threads) {
-          this_new_row_ids[this_new_offset + thread_idx] =
-              value_offset + this_old_row_ids[this_old_offset + thread_idx];
-        }
-      };
       int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
-              target_num_loops = (tot_work > 1000000 ? 4 : 2);
-      EvalWithRedirect(streams[axis + 1], num_jobs,
-                       task_redirects_acc.Row(axis + 1), min_threads_per_job,
-                       tot_work, target_num_loops, lambda_set_row_ids);
+              target_num_loops = (is_cpu || tot_work > 1000000 ? 8 : 2);
+
+
+      if (elem_indexes == nullptr || axis != num_axes - 2) {
+        // If we don't need to write to `elem_indexes`...  [caution: the next code
+        // block differs from this only by a statement that sets `elem_indexes`
+        // and they should be skept in sync.]
+
+        auto lambda_set_row_ids = [=] __host__ __device__(
+            int32_t ans_idx0, int32_t num_threads,
+            int32_t thread_idx) -> void {
+          // Reminder of how row_ids work dimensionally: they are a map
+          // from, e.g. an idx01 to an idx0.   An offsets_acc(0,n) is
+          // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
+          // The locations in the row_ids array are as given by
+          // the `axis+1`'th row of `offsets`; the values in the array
+          // are related to those in the `axis`'th row.
+          int32_t this_new_offset = new_offsets_acc(axis + 1, ans_idx0),
+          next_new_offset = new_offsets_acc(axis + 1, ans_idx0 + 1),
+          num_elems = next_new_offset - this_new_offset,
+          this_old_offset = old_offsets_acc(axis + 1, ans_idx0),
+          value_offset = new_offsets_acc(axis, ans_idx0) -
+          old_offsets_acc(axis, ans_idx0);
+          for (; thread_idx < num_elems; thread_idx += num_threads) {
+            this_new_row_ids[this_new_offset + thread_idx] =
+                value_offset + this_old_row_ids[this_old_offset + thread_idx];
+          }
+        };
+        EvalWithRedirect(streams[axis + 1], num_jobs,
+                         task_redirects_acc.Row(axis + 1), min_threads_per_job,
+                         tot_work, target_num_loops, lambda_set_row_ids);
+      } else {
+        int32_t *elem_indexes_data = elem_indexes->Data();
+        // We need to write to `elem_indexes`.  Note: this code block only
+        // differs from the above by an extra statement regarding `elem_indexes`.
+        // Comments have been removed.
+        auto lambda_set_row_ids_and_elem_indexes = [=] __host__ __device__(
+            int32_t ans_idx0, int32_t num_threads,
+            int32_t thread_idx) -> void {
+          int32_t this_new_offset = new_offsets_acc(axis + 1, ans_idx0),
+          next_new_offset = new_offsets_acc(axis + 1, ans_idx0 + 1),
+          num_elems = next_new_offset - this_new_offset,
+          this_old_offset = old_offsets_acc(axis + 1, ans_idx0),
+          value_offset = new_offsets_acc(axis, ans_idx0) -
+          old_offsets_acc(axis, ans_idx0);
+          for (; thread_idx < num_elems; thread_idx += num_threads) {
+            this_new_row_ids[this_new_offset + thread_idx] =
+                value_offset + this_old_row_ids[this_old_offset + thread_idx];
+            elem_indexes_data[this_new_offset + thread_idx] =
+                this_old_offset + thread_idx;
+          }
+        };
+        EvalWithRedirect(streams[axis + 1], num_jobs,
+                         task_redirects_acc.Row(axis + 1), min_threads_per_job,
+                         tot_work, target_num_loops,
+                         lambda_set_row_ids_and_elem_indexes);
+      }
     }
   }
 #if !defined(NDEBUG)
@@ -462,6 +518,7 @@ RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old) {
 #endif
   return ans;
 }
+
 
 Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
   K2_CHECK_GT(num_srcs, 0);
@@ -547,6 +604,7 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
   K2_CHECK_EQ(axis, 0) << "Append() with axis > 1 not yet supported";
   int32_t num_axes = src[0]->NumAxes();
   ContextPtr c = src[0]->Context();
+  bool is_cpu = (c->GetDeviceType() == kCpu);
 
   // Check if they have same num-axes and compatible context
   for (int32_t i = 1; i < num_srcs; ++i) {
@@ -622,7 +680,7 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
     };
 
     int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
-            target_num_loops = (tot_work > 1000000 ? 4 : 2);
+            target_num_loops = (is_cpu || tot_work > 1000000 ? 8 : 2);
     EvalWithRedirect(streams[axis], num_jobs, task_redirects_acc.Row(axis),
                      min_threads_per_job, tot_work, target_num_loops,
                      lambda_set_row_splits);
@@ -770,7 +828,8 @@ RaggedShape MakeTransposable(RaggedShape &src) {
 }
 
 // transpose axes 0 and 1.
-RaggedShape Transpose(RaggedShape &src) {
+RaggedShape Transpose(RaggedShape &src,
+                      Array1<int32_t> *value_indexes) {
   K2_CHECK_GT(src.NumAxes(), 2);
   ContextPtr c = src.Context();
   int32_t src_dim0 = src.Dim0(), src_tot_size1 = src.TotSize(1);
@@ -797,7 +856,8 @@ RaggedShape Transpose(RaggedShape &src) {
   };
   Eval(c, src_tot_size1, lambda_set_renumbering);
 
-  RaggedShape src_no_axis0_renumbered = Renumber(src_no_axis0, renumbering);
+  RaggedShape src_no_axis0_renumbered = Index(src_no_axis0, renumbering,
+                                              value_indexes);
 
   int32_t num_rows = src_dim1, row_splits_dim = num_rows + 1,
           row_ids_dim = src_tot_size1;

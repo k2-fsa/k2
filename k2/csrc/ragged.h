@@ -182,6 +182,8 @@ class RaggedShape {
   void Populate();
 
   RaggedShape(const RaggedShape &other) = default;
+  // Move constructor
+  RaggedShape(RaggedShape &&other): axes_(std::move(other.axes_)) { }
   RaggedShape &operator=(const RaggedShape &other) = default;
 
   // Axes() is intended for internal-ish use; users shouldn't really have to
@@ -297,8 +299,14 @@ struct Ragged {
   Ragged() = default;
 
   // Note: 'values' will be uninitialized.
-  explicit Ragged(RaggedShape &shape)
+  explicit Ragged(const RaggedShape &shape)
       : shape(shape), values(shape.Context(), shape.NumElements()) {}
+
+  Ragged &operator=(const Ragged<T> &src) = default;
+  Ragged(const Ragged<T> &src) = default;
+  // Move constructor
+  Ragged(Ragged<T> &&src) = default;
+
 
   // This will only work on the CPU, and is intended for use in testing code.
   // See also member-function Index().

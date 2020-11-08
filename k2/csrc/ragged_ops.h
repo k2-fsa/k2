@@ -241,13 +241,18 @@ RaggedShape MakeTransposable(RaggedShape &src);
                        different, and because if you had a ragged array
                        with 2 axes and a regular shape, you should really
                        be using an Array2 or Tensor).
+     @param [out] value_indexes  If not nullptr, will be set to a vector
+                       that can be used to reorder the values of a raggged
+                       tensor with this shape, as in
+                       `ans_values = src_values[*value_indexes].`
      @return           Returns the transposed shape, with axes 0 and 1
                        swapped.  Will satisfy
                        ans.Dim0() == src.TotSize(1) / src.Dim0()
                        and ans[i,j,k] = src[j,i,k] (Note, this is not actual C++
                        code, it represents a conceptual indexing operator).
  */
-RaggedShape Transpose(RaggedShape &src);
+RaggedShape Transpose(RaggedShape &src,
+                      Array1<int32_t> *value_indexes = nullptr);
 
 /*
   Transpose a Ragged array: namely, axes 0 and 1.  Requires that the sizes
@@ -260,6 +265,10 @@ RaggedShape Transpose(RaggedShape &src);
                        because if you had a ragged array with 2 axes and
                        a regular shape, you should really be using an
                        Array2 or Tensor).
+     @param [out]      value_indexes_out   If not nullptr, will be set
+                       to a new Array1<int32_t> containing the indexes that
+                       were used to renumber `src`, as in
+                       `ans.values = src.values[*value_indexes_out]`.
      @return           Returns the transposed ragged array, with axes 0 and 1
                        swapped.  Will satisfy
                        ans.Dim0() == src.TotSize(1) / src.Dim0()
@@ -267,7 +276,16 @@ RaggedShape Transpose(RaggedShape &src);
                        code, it represents a conceptual indexing operator).
  */
 template <typename T>
-Ragged<T> Transpose(Ragged<T> &src);
+Ragged<T> Transpose(Ragged<T> &src,
+                    Array1<int32_t> *value_indexes_out = nullptr) {
+  Array1<int32_t> value_indexes;
+  RaggedShape ans_shape = Transpose(src.shape, &value_indexes);
+  if (value_indexes_out)
+    *value_indexes_out = value_indexes;
+  return Ragged<T>(ans_shape, src.values[value_indexes]);
+
+}
+
 
 /*
    Append a list of RaggedShape to form a single RaggedShape
@@ -329,19 +347,6 @@ void GetRowInfo(RaggedShape &src, Array1<int32_t *> *row_splits,
 void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
                      Array2<int32_t *> *row_splits, Array2<int32_t *> *row_ids);
 
-/*
-  Renumber(/Reorder) axis 0 of a ragged shape
-     @param [in] src      Shape to renumber
-     @param [in] new2old  Mapping from new to old numbering of array, of
-                          length src.Dim0(), on the same device as `src`;
-                          must contain the numbers
-                          0 through src.Dim0() - 1 in some order.
-     @return              Returns the renumbered shape.  Will satisfy:
-                          ret[i,j,k] = src[new2old[i],j,k].  (Note, this is
-                          not actual C++ code, it represents a conceptual
-                          indexing operator).
-*/
-RaggedShape Renumber(RaggedShape &src, const Array1<int32_t> &new2old);
 
 /*
   Return a random RaggedShape, with a CPU context.  Intended for testing.
@@ -510,10 +515,8 @@ RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1);
                             row_splits and row_ids.
      @param [in] num_axes   Number of axes of ragged shape desired; must be at
                             least 2.
-     @param [in] tot_sizes  Total size on each axis. `tot_sizes[0]` through
-                            `tot_sizes[num_axes]` must be valid which also
-                            implies the number of rows on axis i is
-                            tot_sizes[i-1].
+     @param [in] tot_sizes  (CPU Pointer!)  Total size on each axis.
+                           `tot_sizes[0]` through `tot_sizes[num_axes-1]` must be set.
 
      @return           The returned RaggedShape satisfies
                        ans.TotSize(axis) == tot_sizes[axis], and has all
@@ -661,6 +664,64 @@ template <typename T>
 bool Equal(Ragged<T> &a, Ragged<T> &b) {
   return Equal(a.shape, b.shape) && Equal(a.values, b.values);
 }
+
+
+/*
+  Indexing operation on ragged tensor's shape (indexing axis 0 with
+  a provided array of indexes)
+
+      @param [in] src      Source ragged tensor to index
+      @param [in] indexes  Array of indexes, which will be interpreted
+                           as indexes into axis 0 of `src`,
+                           i.e. with 0 <= indexes[i] < src.Dim0().
+      @param [out]         If non-null, this will be set to a new
+                           Array1<int32_t> containing the indexes
+                           into the elements of an array with shape
+                           'src', that an array with shape 'ans'
+                           would have.  As in:
+                           `ans_values = src_values[*elem_indexes]`.
+
+      @return Returns a ragged shape with
+              `ans.NumAxes() == src.NumAxes()`
+              and `ans.Dim0() == indexes.Dim()`.
+*/
+RaggedShape Index(RaggedShape &src, const Array1<int32_t> &indexes,
+                  Array1<int32_t> *elem_indexes = nullptr);
+
+
+/*
+  Indexing operation on ragged tensor, returns src[indexes], where
+  the elements of `indexes` are interpreted as indexes into the
+  1st axis of `src`.
+
+      @param [in] src      Source ragged tensor to index
+      @param [in] indexes  Array of indexes, which will be interpreted
+                           as indexes into axis 0 of `src`,
+                           i.e. with 0 <= indexes[i] < src.Dim0().
+      @param [out]         If non-null, this will be set to a new
+                           Array1<int32_t> containing the indexes
+                           into src.values that ans.values has,
+                           as in
+                           `ans.values = src.values[value_indexes_out].`
+                           May be useful for backprop.
+
+      @return Returns a ragged tensor with
+              `ans.NumAxes() == src.NumAxes()`
+              and `ans.Dim0() == indexes.Dim()`.
+
+*/
+template <typename T>
+Ragged<T> Index(Ragged<T> &src, const Array1<int32_t> &indexes,
+                Array1<int32_t> *value_indexes_out = nullptr) {
+  Array1<int32_t> value_indexes;
+  RaggedShape ans_shape = Index(src.shape, indexes, &value_indexes);
+  return Ragged<T>(ans_shape,
+                   src.values[value_indexes]);
+  if (value_indexes_out)
+    *value_indexes_out = std::move(value_indexes);
+}
+
+
 
 }  // namespace k2
 

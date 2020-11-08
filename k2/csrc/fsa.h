@@ -156,13 +156,12 @@ struct DenseFsaVec {
   // NOTE: our notion of "arc-index" / arc_idx is an index into scores.Data().
   int32_t NumArcs() const { return scores.Dim0() * scores.Dim1(); }
 
-  DenseFsaVec() = default;
+  DenseFsaVec() {}
   DenseFsaVec(const RaggedShape &shape, const Array2<float> &scores)
       : shape(shape), scores(scores) {
-    K2_CHECK(IsCompatible(shape, scores));
     K2_CHECK_EQ(shape.NumElements(), scores.Dim0());
   }
-  ContextPtr &Context() const { return shape.Context(); }
+  ContextPtr Context() const { return shape.Context(); }
   DenseFsaVec To(ContextPtr c) const {
     return DenseFsaVec(shape.To(c), scores.To(c));
   }
