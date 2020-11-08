@@ -13,6 +13,7 @@
 #ifndef K2_CSRC_RAGGED_OPS_H_
 #define K2_CSRC_RAGGED_OPS_H_
 
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/algorithms.h"
@@ -283,7 +284,6 @@ Ragged<T> Transpose(Ragged<T> &src,
   if (value_indexes_out)
     *value_indexes_out = value_indexes;
   return Ragged<T>(ans_shape, src.values[value_indexes]);
-
 }
 
 

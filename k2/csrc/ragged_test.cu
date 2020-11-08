@@ -1431,8 +1431,8 @@ void TestIndex(DeviceType d) {
       Array1<int32_t> ids1(context, row_ids1);
       Array1<int32_t> splits2(context, row_splits2);
       Array1<int32_t> ids2(context, row_ids2);
-      RaggedShape shape =
-          RaggedShape3(&splits1, &ids1, ids1.Dim(), &splits2, &ids2, ids2.Dim());
+      RaggedShape shape = RaggedShape3(&splits1, &ids1, ids1.Dim(), &splits2,
+                                       &ids2, ids2.Dim());
 
       std::vector<int32_t> new2old_vec = {2, 1};
       Array1<int32_t> new2old(context, new2old_vec);
@@ -1440,7 +1440,8 @@ void TestIndex(DeviceType d) {
       RaggedShape result  = Index(shape, new2old, &value_indexes_out);
       // fsa 2, state_idx01 {5}, arc_idx012 {7, 8, 9}
       // fsa 1, state_idx01 {2, 3, 4}, arc_idx012 {{3},{4, 5}, {6}}
-      CheckArrayData(value_indexes_out, std::vector<int32_t>{7, 8, 9, 3, 4, 5, 6});
+      CheckArrayData(value_indexes_out,
+                     std::vector<int32_t>{7, 8, 9, 3, 4, 5, 6});
       CheckResultOfIndex(context, shape, new2old, result);
     }
 

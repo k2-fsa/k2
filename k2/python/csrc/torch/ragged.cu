@@ -8,6 +8,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/ragged.h"
