@@ -61,7 +61,7 @@ def get_package_version():
 
     latest_version = '0.0.1'
     dt = datetime.datetime.utcnow()
-    package_version = f'{latest_version}{cuda_version}.dev{dt.year}{dt.month:02d}{dt.day:02d}{dt.hour:02d}{dt.minute:02d}{dt.second:02d}'
+    package_version = f'{latest_version}{cuda_version}.dev{dt.year}{dt.month:02d}{dt.day:02d}'
     return package_version
 
 
@@ -80,8 +80,11 @@ setuptools.setup(
     long_description=get_long_description(),
     long_description_content_type='text/markdown',
     url='https://github.com/k2-fsa/k2',
-    package_dir={'': 'k2/python'},
-    packages=['k2'],
+    package_dir={
+        'k2': 'k2/python/k2',
+        'k2.ragged': 'k2/python/k2/ragged',
+    },
+    packages=['k2', 'k2.ragged'],
     install_requires=['torch', 'graphviz'],
     data_files=[('', ['LICENSE'])],
     cmdclass={'bdist_wheel': bdist_wheel},
