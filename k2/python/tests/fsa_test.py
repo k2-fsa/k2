@@ -383,6 +383,36 @@ class TestFsa(unittest.TestCase):
         assert fsa.is_cpu()
         assert fsa.device == device
 
+    def test_getitem(self):
+        s0 = '''
+            0 1 1 0.1
+            1 2 2 0.2
+            2 3 -1 0.3
+            3
+        '''
+        s1 = '''
+            0 1 -1 0.4
+            1
+        '''
+        fsa0 = k2.Fsa.from_str(s0).requires_grad_(True)
+        fsa1 = k2.Fsa.from_str(s1).requires_grad_(True)
+
+        fsa_vec = k2.create_fsa_vec([fsa0, fsa1])
+        assert fsa_vec.shape == (2, None, None)
+
+        new_fsa0 = fsa_vec[0]
+        assert new_fsa0.shape == (4, None)  # it has 4 states
+
+        scale = torch.arange(new_fsa0.scores.numel())
+        (new_fsa0.scores * scale).sum().backward()
+        assert torch.allclose(fsa0.scores.grad, torch.tensor([0., 1., 2.]))
+
+        new_fsa1 = fsa_vec[1]
+        assert new_fsa1.shape == (2, None)  # it has 2 states
+
+        (new_fsa1.scores * 5).sum().backward()
+        assert torch.allclose(fsa1.scores.grad, torch.tensor([5.]))
+
 
 if __name__ == '__main__':
     unittest.main()
