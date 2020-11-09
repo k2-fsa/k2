@@ -86,7 +86,7 @@ else()
 
   # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
   message(WARNING "arch 62/72 are not supported for now")
-  set(K2_COMPUTE_ARCHS 35 50 52 60 61 70)
+  set(K2_COMPUTE_ARCHS 35)
   foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
   endforeach()
