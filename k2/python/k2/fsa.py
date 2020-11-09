@@ -453,6 +453,36 @@ class Fsa(object):
     def device(self) -> torch.device:
         return self.scores.device
 
+    def __getitem__(self, i: int) -> 'Fsa':
+        '''Get the i-th FSA.
+
+        Caution:
+          `self` has to be an FsaVec.
+
+        Args:
+          i:
+            The i-th FSA to select. 0 <= i < self.arcs.dim0().
+
+        Returns:
+          The i-th FSA. Note it is a single FSA.
+        '''
+        assert len(self.shape) == 3
+        assert 0 <= i < self.shape[0]
+        ragged_arc, start = self.arcs.index(0, i)
+        end = start + ragged_arc.values().shape[0]
+
+        out_fsa = Fsa.from_ragged_arc(ragged_arc)
+        for name, value in self.named_tensor_attr():
+            setattr(out_fsa, name, value[start:end])
+
+        for name, value in self.named_non_tensor_attr():
+            setattr(out_fsa, name, value)
+
+        if hasattr(out_fsa, 'properties'):
+            del out_fsa.properties
+
+        return out_fsa
+
     def to_(self, device: torch.device) -> 'Fsa':
         '''Move the FSA onto a given device.
 

@@ -67,7 +67,15 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   pyclass.def("tot_size", &PyClass::TotSize, py::arg("axis"));
   pyclass.def("dim0", &PyClass::Dim0);
   pyclass.def("num_axes", &PyClass::NumAxes);
-  pyclass.def("index", &PyClass::Index, py::arg("axis"), py::arg("i"));
+  pyclass.def(
+      "index",
+      [](PyClass &self, int32_t axis,
+         int32_t i) -> std::pair<PyClass, int32_t> {
+        Ragged<T> ans = self.Index(axis, i);
+        int32_t offset = ans.values.Data() - self.values.Data();
+        return std::make_pair(ans, offset);
+      },
+      py::arg("axis"), py::arg("i"));
 
   // Return a pair:
   // - Ragged<T>
