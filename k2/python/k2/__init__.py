@@ -14,6 +14,7 @@ from .fsa_properties import is_accessible
 from .fsa_properties import is_arc_sorted
 from .fsa_properties import is_coaccessible
 from .fsa_properties import properties_to_str
+from .ops import index
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
 from .utils import to_dot
@@ -31,6 +32,7 @@ __all__ = [
     'create_fsa_vec',
     'get_properties',
     'get_tot_scores',
+    'index',
     'intersect',
     'intersect_dense_pruned',
     'is_accessible',
