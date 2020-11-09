@@ -22,9 +22,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        # os: [ubuntu-16.04, ubuntu-18.04]
         os: [ubuntu-16.04]
-        gcc: [5]
+        cuda: ["10.0", "10.1", "10.2"]
+        gcc: ["5"]
+        # torch: ["1.6.0", "1.7.0"]
+        torch: ["1.6.0"]
         python-version: [3.6, 3.7, 3.8]
+        exclude:
+          - cuda: "10.0" # No wheels for torch==1.6.0+cu100
+            torch: "1.6.0"
+          - cuda: "10.0" # No wheels for torch==1.7.0+cu100
+            torch: "1.7.0"
 
     steps:
       # refer to https://github.com/actions/checkout
@@ -52,7 +61,6 @@ jobs:
           echo "CXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
           echo "CUDAHOSTCXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
 
-
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
@@ -61,20 +69,25 @@ jobs:
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
 
-      - name: Install Python dependencies
+      - name: Install PyTorch
+        env:
+          cuda: ${{ matrix.cuda }}
+          torch: ${{ matrix.torch }}
+        shell: bash
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install torch==1.6.0+cu101 -f https://download.pytorch.org/whl/torch_stable.html
           python3 -m pip install gdown # for downloading cudnn from gdrive
           python3 -m pip install wheel twine
 
-      - name: Download cudnn 8.0
-        run: |
-          gdown --id 1-ULqFzK_HSMMYJz556LbddDVShXMoNwX --output cudnn-10.1-linux-x64-v8.0.2.39.tgz
-          sudo tar xf cudnn-10.1-linux-x64-v8.0.2.39.tgz -C /usr/local
+          source ./scripts/github_actions/install_torch.sh
+          python3 -c "import torch; print('torch version:', torch.__version__)"
 
-      - name: Create Build Directory
-        run: cmake -E make_directory ${{runner.workspace}}/build
+
+      - name: Download cudnn 8.0
+        env:
+          cuda: ${{ matrix.cuda }}
+        run: |
+          ./scripts/github_actions/install_cudnn.sh
 
       - name: Configure CMake
         shell: bash
@@ -83,13 +96,13 @@ jobs:
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
-          cat CMakeCache.txt
 
       - name: Build _k2
         shell: bash
         run: |
+          echo "number of cores: $(nproc)"
           cd build
-          make _k2
+          make -j _k2
 
       - name: Build pip packages
         shell: bash
@@ -97,3 +110,9 @@ jobs:
           sudo apt-get install chrpath
           ./scripts/build_pip.sh
           ls dist/
+
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: cuda-${{ matrix.cuda }}-torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-os-${{ matrix.os }}
+          path: dist/*.whl
