@@ -1,4 +1,5 @@
 from .autograd import get_tot_scores
+from .autograd import index_select
 from .autograd import intersect_dense_pruned
 from .dense_fsa_vec import DenseFsaVec
 from .dense_fsa_vec import convert_dense_to_fsa_vec
@@ -36,6 +37,7 @@ __all__ = [
     'get_properties',
     'get_tot_scores',
     'index',
+    'index_select',
     'intersect',
     'intersect_dense_pruned',
     'is_accessible',
