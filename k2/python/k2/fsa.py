@@ -413,7 +413,7 @@ class Fsa(object):
         '''
         if hasattr(self, 'aux_labels'):
             aux_labels = self.aux_labels
-            self.aux_labels = self.labels
+            self.aux_labels = self.labels.clone()
             self.labels = aux_labels
 
         symbols = getattr(self, 'symbols', None)
