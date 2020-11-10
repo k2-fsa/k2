@@ -36,6 +36,8 @@ endif()
 # the target
 add_library(context SHARED ${context_srcs})
 set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(context PROPERTIES OUTPUT_NAME "k2context")
+
 
 # lib deps
 target_link_libraries(context PUBLIC cub)

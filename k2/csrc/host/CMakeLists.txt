@@ -20,6 +20,7 @@ add_library(fsa SHARED
     util.cc
     weights.cc
     )
+set_target_properties(fsa PROPERTIES OUTPUT_NAME "k2fsa")
 
 # set cpp standard 11
 # ToDo: is it necessary?
