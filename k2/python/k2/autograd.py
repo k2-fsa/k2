@@ -150,9 +150,6 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         for name, a_value in a_fsas.named_non_tensor_attr():
             setattr(out_fsa[0], name, a_value)
 
-        if hasattr(out_fsa[0], 'properties'):
-            del out_fsa[0].properties
-
         ctx.arc_map_a = arc_map_a
         ctx.arc_map_b = arc_map_b
 

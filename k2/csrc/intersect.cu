@@ -130,6 +130,8 @@ class MultiGraphDenseIntersect {
     K2_LOG(INFO) << "a_fsas=" << a_fsas;
     K2_LOG(INFO) << "b_fsas.shape =" << b_fsas.shape;
     K2_LOG(INFO) << "b_fsas.scores=" << b_fsas.scores;
+    K2_LOG(INFO) << "b_fsas_scores_contiguous=" << b_fsas.scores.IsContiguous();
+    K2_CHECK(b_fsas.scores.IsContiguous());
     K2_CHECK_GT(beam, 0);
     K2_CHECK_GE(min_active, 0);
     K2_CHECK_GT(max_active, min_active);
@@ -543,6 +545,7 @@ class MultiGraphDenseIntersect {
     const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
     const float *score_data = b_fsas_.scores.Data();
     int32_t scores_num_cols = b_fsas_.scores.Dim1();
+    auto scores_acc = b_fsas_.scores.Accessor();
 
     Ragged<ArcInfo> ai(ai_shape);
     ArcInfo *ai_data = ai.values.Data();  // uninitialized
@@ -559,11 +562,10 @@ class MultiGraphDenseIntersect {
 
       int32_t scores_idx0x = b_fsas_row_splits1[ai_fsa_idx0],
               scores_idx01 = scores_idx0x + t,  // t == ind1 into 'scores'
-          scores_idx2 = arc.label + 1,  // the +1 is so that -1 can be handled
-          scores_idx012 = (scores_idx01 * scores_num_cols) + scores_idx2;
+          scores_idx2 = arc.label + 1;  // the +1 is so that -1 can be handled
       assert(static_cast<uint32_t>(scores_idx2) <
              static_cast<uint32_t>(scores_num_cols));
-      float acoustic_score = score_data[scores_idx012];
+      float acoustic_score = scores_acc(scores_idx01, scores_idx2);
       ArcInfo ai;
       ai.a_fsas_arc_idx012 = a_fsas_arc_idx012;
       ai.arc_loglike = acoustic_score + arc.score;
