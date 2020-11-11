@@ -220,7 +220,7 @@ class _IndexSelectFunction(torch.autograd.Function):
     def backward(ctx, out_grad) -> Tuple[torch.Tensor, None]:
         src, index = ctx.saved_tensors
 
-        ans = _k2.index_select_backward(src, index, out_grad.contiguous())
+        ans = _k2.index_select_backward(src, index, out_grad)
         return ans, None
 
 

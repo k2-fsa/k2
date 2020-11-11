@@ -14,6 +14,7 @@
 #define K2_CSRC_RAGGED_H_
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/algorithms.h"
