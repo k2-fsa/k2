@@ -4,6 +4,7 @@
 
 import torch
 
+from .autograd import index_select
 from .fsa import Fsa
 from .ragged import index as ragged_index
 
