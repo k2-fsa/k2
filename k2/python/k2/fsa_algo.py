@@ -55,10 +55,6 @@ def top_sort(fsa: Fsa) -> Fsa:
     for name, value in fsa.named_non_tensor_attr():
         setattr(sorted_fsa, name, value)
 
-    # Delete the properties. Users should set it explicitly
-    if hasattr(sorted_fsa, 'properties'):
-        del sorted_fsa.properties
-
     return sorted_fsa
 
 
@@ -140,9 +136,6 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
         if not hasattr(out_fsa, name):
             setattr(out_fsa, name, b_value)
 
-    if hasattr(out_fsa, 'properties'):
-        del out_fsa.properties
-
     return out_fsa
 
 
@@ -181,9 +174,6 @@ def connect(fsa: Fsa) -> Fsa:
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
 
-    if hasattr(out_fsa, 'properties'):
-        del out_fsa.properties
-
     return out_fsa
 
 
@@ -218,9 +208,6 @@ def arc_sort(fsa: Fsa) -> Fsa:
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
 
-    if hasattr(out_fsa, 'properties'):
-        del out_fsa.properties
-
     return out_fsa
 
 
@@ -251,9 +238,6 @@ def shortest_path(fsa: Fsa, use_float_scores: bool) -> Fsa:
 
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
-
-    if hasattr(out_fsa, 'properties'):
-        del out_fsa.properties
 
     return out_fsa
 
@@ -289,8 +273,5 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
 
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
-
-    if hasattr(out_fsa, 'properties'):
-        del out_fsa.properties
 
     return out_fsa

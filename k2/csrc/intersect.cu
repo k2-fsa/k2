@@ -38,9 +38,9 @@ struct StateInfo {
   /* Note: this `backward_loglike` is the best score of any path from here to
      the end, minus the best path in the overall FSA, i.e. it's the backward
      score you get if, at the final-state, you set backward_loglike ==
-     forward_loglike. So backward_loglike + OrderedIntToFloat(forward_loglike) <= 0, and you can
-     treat it somewhat like a posterior (except they don't sum to one as we're
-     using max, not log-add).
+     forward_loglike. So backward_loglike + OrderedIntToFloat(forward_loglike)
+     <= 0, and you can treat it somewhat like a posterior (except they don't sum
+     to one as we're using max, not log-add).
   */
   float backward_loglike;
 };
@@ -59,7 +59,7 @@ struct ArcInfo {              // for an arc that wasn't pruned away...
     // into a_fsas_.
     int32_t dest_info_state_idx01;  // The destination-state as an index into
     // the next FrameInfo's `arcs` or `states`
-    int32_t dest_info_state_idx1;   // The destination-state as an index the
+    int32_t dest_info_state_idx1;  // The destination-state as an index the
     // next FrameInfo's `arcs` or `states`,
     // this time omitting the FSA-index.
   } u;
@@ -68,18 +68,15 @@ struct ArcInfo {              // for an arc that wasn't pruned away...
 };
 
 static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
-  os << "StateInfo{" << s.a_fsas_state_idx01
-     << "," << OrderedIntToFloat(s.forward_loglike)
-     << "," << s.backward_loglike
+  os << "StateInfo{" << s.a_fsas_state_idx01 << ","
+     << OrderedIntToFloat(s.forward_loglike) << "," << s.backward_loglike
      << "}";
   return os;
 }
 
 static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
-  os << "ArcInfo{" << a.a_fsas_arc_idx012
-     << "," << a.arc_loglike
-     << "," << a.u.dest_a_fsas_state_idx01
-     << "," << a.end_loglike << "}";
+  os << "ArcInfo{" << a.a_fsas_arc_idx012 << "," << a.arc_loglike << ","
+     << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike << "}";
   return os;
 }
 
@@ -130,6 +127,11 @@ class MultiGraphDenseIntersect {
         min_active_(min_active),
         dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), beam) {
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
+    K2_LOG(INFO) << "a_fsas=" << a_fsas;
+    K2_LOG(INFO) << "b_fsas.shape =" << b_fsas.shape;
+    K2_LOG(INFO) << "b_fsas.scores=" << b_fsas.scores;
+    K2_LOG(INFO) << "b_fsas_scores_contiguous=" << b_fsas.scores.IsContiguous();
+    K2_CHECK(b_fsas.scores.IsContiguous());
     K2_CHECK_GT(beam, 0);
     K2_CHECK_GE(min_active, 0);
     K2_CHECK_GT(max_active, min_active);
@@ -186,12 +188,21 @@ class MultiGraphDenseIntersect {
 
     frames_.push_back(InitialFrameInfo());
 
-    for (int32_t t = 0; t <= T; t++)
+    for (int32_t t = 0; t <= T; t++) {
+      if (t == T) {
+        K2_LOG(INFO) << "states=" << frames_.back()->states
+                     << ", arcs=" << frames_.back()->arcs;
+      }
       frames_.push_back(PropagateForward(t, frames_.back().get()));
+    }
     // The FrameInfo for time T+1 will have no states.  We did that
     // last PropagateForward so that the 'arcs' member of frames_[T]
     // is set up (it has no arcs but we need the shape).
+    K2_LOG(INFO) << "states=" << frames_.back()->states
+                 << ", arcs=" << frames_.back()->arcs;
     frames_.pop_back();
+    K2_LOG(INFO) << "states=" << frames_.back()->states
+                 << ", arcs=" << frames_.back()->arcs;
 
     {
       // each of these have 3 axes.
@@ -215,14 +226,8 @@ class MultiGraphDenseIntersect {
       PropagateBackward(t, frames_[t].get(),
                         (t == T ? NULL : frames_[t + 1].get()));
     }
-    K2_LOG(INFO) << "keep-states = " << renumber_output_states_.Keep()
-                 << ", keep-arcs = " << renumber_output_arcs_.Keep();
-    oshape_pruned_ = SubsampleRaggedShape(oshape_unpruned_,
-                                          renumber_output_states_,
-                                          renumber_output_arcs_);
-
-    K2_LOG(INFO) << "Oshape_unpruned = " << oshape_unpruned_
-                 << ", Oshape_pruned = " << oshape_pruned_;
+    oshape_pruned_ = SubsampleRaggedShape(
+        oshape_unpruned_, renumber_output_states_, renumber_output_arcs_);
   }
 
   // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
@@ -233,11 +238,11 @@ class MultiGraphDenseIntersect {
     if (a_fsas_.Dim0() == 1) {
       int32_t start_states_per_seq = (a_fsas_.shape.TotSize(1) > 0),  // 0 or 1
           num_start_states = num_fsas * start_states_per_seq;
-      ans->states = Ragged<StateInfo>(RegularRaggedShape(c_, num_fsas,
-                                                         start_states_per_seq),
-                                      Array1<StateInfo>(c_, num_start_states));
+      ans->states = Ragged<StateInfo>(
+          RegularRaggedShape(c_, num_fsas, start_states_per_seq),
+          Array1<StateInfo>(c_, num_start_states));
       StateInfo *states_data = ans->states.values.Data();
-      auto lambda_set_states = [=] __host__ __device__ (int32_t i) -> void {
+      auto lambda_set_states = [=] __host__ __device__(int32_t i) -> void {
         StateInfo info;
         info.a_fsas_state_idx01 = 0;  // start state of a_fsas_
         info.forward_loglike = FloatToOrderedInt(0.0);
@@ -246,13 +251,13 @@ class MultiGraphDenseIntersect {
       Eval(c_, num_start_states, lambda_set_states);
     } else {
       Ragged<int32_t> start_states = GetStartStates(a_fsas_);
-      ans->states = Ragged<StateInfo>(
-          start_states.shape,
-          Array1<StateInfo>(c_, start_states.NumElements()));
-      K2_LOG(INFO) << "Start-states = " << start_states;
+      ans->states =
+          Ragged<StateInfo>(start_states.shape,
+                            Array1<StateInfo>(c_, start_states.NumElements()));
       StateInfo *ans_states_values_data = ans->states.values.Data();
       const int32_t *start_states_values_data = start_states.values.Data(),
-          *start_states_row_ids1_data = start_states.shape.RowIds(1).Data();
+                    *start_states_row_ids1_data =
+                        start_states.shape.RowIds(1).Data();
       auto lambda_set_state_info =
           [=] __host__ __device__(int32_t states_idx01) -> void {
         StateInfo info;
@@ -330,7 +335,7 @@ class MultiGraphDenseIntersect {
               unpruned_idxxx23 = unpruned_idx0123 - unpruned_idx01xx,
               unpruned_idx0 = oshapeu_row_ids1[unpruned_idx01],  // fsa-id
           unpruned_idx0x = oshapeu_row_splits1[unpruned_idx0],
-          // unpruned_idx0xx = oshapeu_row_splits2[unpruned_idx0x],
+              // unpruned_idx0xx = oshapeu_row_splits2[unpruned_idx0x],
           unpruned_idx1 = unpruned_idx01 - unpruned_idx0x,  // t
           unpruned_idx01_next_t = unpruned_idx01 + 1,
               unpruned_idx01x_next_t =
@@ -353,7 +358,7 @@ class MultiGraphDenseIntersect {
               unpruned_dest_state_idx012 =
                   unpruned_idx01x_next_t + unpruned_dest_state_idx2,
               pruned_dest_state_idx012 =
-                 old2new_state_map012[unpruned_dest_state_idx012],
+                  old2new_state_map012[unpruned_dest_state_idx012],
               pruned_dest_state_idx01 =
                   oshapep_row_ids2[pruned_dest_state_idx012],
               pruned_dest_state_idx0 =
@@ -385,8 +390,7 @@ class MultiGraphDenseIntersect {
       K2_CHECK_LE(static_cast<uint32_t>(arc.label + 1),
                   static_cast<uint32_t>(b_fsas_num_cols))
           << "label out of range";
-      int32_t fsa_id = unpruned_idx0,
-              b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
+      int32_t fsa_id = unpruned_idx0, b_fsas_idx0x = b_fsas_row_splits1[fsa_id],
               b_fsas_idx01 = b_fsas_idx0x + t, b_fsas_idxxx2 = (arc.label + 1),
               b_fsas_arc_idx012 =
                   b_fsas_idx01 * b_fsas_num_cols + b_fsas_idxxx2;
@@ -400,11 +404,6 @@ class MultiGraphDenseIntersect {
     // Remove axis 1, which corresponds to time.
     RaggedShape output_fsas_shape = RemoveAxis(oshape_pruned_, 1);
     *ofsa = FsaVec(output_fsas_shape, arcs_out);
-    K2_LOG(INFO) << "Output FSA is " << *ofsa;
-    if (arc_map_a != nullptr)
-      K2_LOG(INFO) << "arc_map_a is " << *arc_map_a;
-    if (arc_map_b != nullptr)
-      K2_LOG(INFO) << "arc_map_b is " << *arc_map_b;
   }
 
   /*
@@ -546,6 +545,7 @@ class MultiGraphDenseIntersect {
     const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
     const float *score_data = b_fsas_.scores.Data();
     int32_t scores_num_cols = b_fsas_.scores.Dim1();
+    auto scores_acc = b_fsas_.scores.Accessor();
 
     Ragged<ArcInfo> ai(ai_shape);
     ArcInfo *ai_data = ai.values.Data();  // uninitialized
@@ -562,11 +562,10 @@ class MultiGraphDenseIntersect {
 
       int32_t scores_idx0x = b_fsas_row_splits1[ai_fsa_idx0],
               scores_idx01 = scores_idx0x + t,  // t == ind1 into 'scores'
-          scores_idx2 = arc.label + 1,  // the +1 is so that -1 can be handled
-          scores_idx012 = (scores_idx01 * scores_num_cols) + scores_idx2;
+          scores_idx2 = arc.label + 1;  // the +1 is so that -1 can be handled
       assert(static_cast<uint32_t>(scores_idx2) <
              static_cast<uint32_t>(scores_num_cols));
-      float acoustic_score = score_data[scores_idx012];
+      float acoustic_score = scores_acc(scores_idx01, scores_idx2);
       ArcInfo ai;
       ai.a_fsas_arc_idx012 = a_fsas_arc_idx012;
       ai.arc_loglike = acoustic_score + arc.score;
@@ -607,9 +606,6 @@ class MultiGraphDenseIntersect {
     // ai has 3 axes: fsa_id, state, arc.
     Ragged<ArcInfo> arc_info = GetUnprunedArcs(t, cur_frame);
 
-    K2_LOG(INFO) << "State-info = " << cur_frame->states
-                 << ", arc-info = " << arc_info;
-
     const ArcInfo *ai_data = arc_info.values.Data();
     Array1<float> ai_data_array1(c_, arc_info.values.Dim());
     float *ai_data_array1_data = ai_data_array1.Data();
@@ -621,14 +617,13 @@ class MultiGraphDenseIntersect {
 
     // `cutoffs` is of dimension num_fsas.
     Array1<float> cutoffs = GetPruningCutoffs(ai_loglikes);
-    K2_LOG(INFO) << "Pruning cutoffs: " << cutoffs;
     float *cutoffs_data = cutoffs.Data();
 
     // write certain indexes ( into ai.values) to state_map_.Data().  Keeps
     // track of the active states and will allow us to assign a numbering to
     // them.
     int32_t *ai_row_ids1 = arc_info.shape.RowIds(1).Data(),
-        *ai_row_ids2 = arc_info.shape.RowIds(2).Data();
+            *ai_row_ids2 = arc_info.shape.RowIds(2).Data();
     auto state_map_acc = state_map_.Accessor();
     // We use a separate state_map vector per FSA we're processing if a_fsas_
     // only has one FSA (in this case it means we're sharing the FSA among
@@ -636,8 +631,7 @@ class MultiGraphDenseIntersect {
     // But if there is >1 FSA in a_fsas_, then a_fsas_ is indexed by the idx01
     // into a_fsas_ and we don't need a stride.
     // Modifying the accessor is perhaps a little bit of a hack.
-    if (a_fsas_.shape.Dim0() > 1)
-      state_map_acc.elem_stride0 = 0;
+    if (a_fsas_.shape.Dim0() > 1) state_map_acc.elem_stride0 = 0;
 
     auto lambda_set_state_map =
         [=] __host__ __device__(int32_t arc_idx012) -> void {
@@ -653,8 +647,6 @@ class MultiGraphDenseIntersect {
       }
     };
     Eval(c_, arc_info.values.Dim(), lambda_set_state_map);
-
-    K2_LOG(INFO) << "State map: " << state_map_;
 
     // renumber_arcs will be a renumbering that dictates which of the arcs
     // in 'ai' we keep
@@ -692,7 +684,7 @@ class MultiGraphDenseIntersect {
       auto lambda_set_keep =
           [=] __host__ __device__(int32_t arc_idx012) -> void {
         int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]],
-          dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
+                dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
         int j = state_map_acc(fsa_id, dest_state);
         if (j != -1) {  // the dest-state was kept..
           keep_this_arc_data[arc_idx012] = 1;
@@ -704,8 +696,6 @@ class MultiGraphDenseIntersect {
       Eval(c_, arc_info.values.Dim(), lambda_set_keep);
     }
 
-    K2_LOG(INFO) << "Keep-arc = " << renumber_arcs.Keep()
-                 << ", keep-state = " << renumber_states.Keep();
     int32_t num_arcs = renumber_arcs.NumNewElems(),
             num_states = renumber_states.NumNewElems();
     int32_t *arc_reorder_data = renumber_arcs.Old2New().Data(),
@@ -741,9 +731,9 @@ class MultiGraphDenseIntersect {
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
     Array1<int32_t> states_row_splits1(c_, num_fsas + 1);
     RowIdsToRowSplits(state_to_fsa_id, &states_row_splits1);
-    ans->states = Ragged<StateInfo>(RaggedShape2(&states_row_splits1,
-                                                 &state_to_fsa_id, num_states),
-                                    Array1<StateInfo>(c_, num_states));
+    ans->states = Ragged<StateInfo>(
+        RaggedShape2(&states_row_splits1, &state_to_fsa_id, num_states),
+        Array1<StateInfo>(c_, num_states));
     StateInfo *ans_states_data = ans->states.values.Data();
     const int32_t minus_inf =
         FloatToOrderedInt(-std::numeric_limits<float>::infinity());
@@ -818,8 +808,7 @@ class MultiGraphDenseIntersect {
       int32_t a_fsas_state_idx01 =
                   kept_states_data[state_idx01].a_fsas_state_idx01,
               fsa_idx0 = next_states_row_ids1[state_idx01];
-      K2_CHECK_EQ(state_map_acc(fsa_idx0, a_fsas_state_idx01),
-                  state_idx01);
+      K2_CHECK_EQ(state_map_acc(fsa_idx0, a_fsas_state_idx01), state_idx01);
       // We're resetting state_map to its original clean condition.
       state_map_acc(fsa_idx0, a_fsas_state_idx01) = -1;
     };
@@ -855,10 +844,7 @@ class MultiGraphDenseIntersect {
     StateInfo *cur_states_data = cur_states.values.Data();
 
     int32_t *a_fsas_row_ids1 = a_fsas_.shape.RowIds(1).Data(),
-        *a_fsas_row_splits1 = a_fsas_.shape.RowSplits(1).Data();
-
-    K2_LOG(INFO) << "a_fsas_row_ids1 = " << a_fsas_.shape.RowIds(1)
-                 << ", row_splits1 = " << a_fsas_.shape.RowSplits(1);
+            *a_fsas_row_splits1 = a_fsas_.shape.RowSplits(1).Data();
 
     const int32_t minus_inf =
         FloatToOrderedInt(-std::numeric_limits<float>::infinity());
@@ -919,8 +905,7 @@ class MultiGraphDenseIntersect {
         float dest_state_backward_loglike =
             next_states_data[dest_state_idx01].backward_loglike;
         // 'backward_loglike' is the loglike at the beginning of the arc
-        float backward_loglike =
-            arc_loglike + dest_state_backward_loglike;
+        float backward_loglike = arc_loglike + dest_state_backward_loglike;
         float src_state_forward_loglike = OrderedIntToFloat(
             cur_states_data[arcs_rowids2[arcs_idx012]].forward_loglike);
         char keep_this_arc =
@@ -945,8 +930,7 @@ class MultiGraphDenseIntersect {
     /* note, the elements of state_backward_prob that don't have arcs leaving
        them will be set to the supplied default.  */
     Array1<float> state_backward_prob(c_, num_states);
-    MaxPerSublist(arc_backward_prob,
-                  -std::numeric_limits<float>::infinity(),
+    MaxPerSublist(arc_backward_prob, -std::numeric_limits<float>::infinity(),
                   &state_backward_prob);
     const float *state_backward_prob_data = state_backward_prob.Data();
     const int32_t *cur_states_row_ids1 =
@@ -960,7 +944,7 @@ class MultiGraphDenseIntersect {
       StateInfo *info = cur_states_data + state_idx01;
       int32_t fsas_state_idx01 = info->a_fsas_state_idx01,
               a_fsas_idx0 = a_fsas_row_ids1[fsas_state_idx01],
-             states_idx0 = cur_states_row_ids1[state_idx01],
+              states_idx0 = cur_states_row_ids1[state_idx01],
               fsas_state_idx0x_next = a_fsas_row_splits1[a_fsas_idx0 + 1];
       // Note: a_fsas_idx0 and states_idx0 will be the same if
       // a_fsas_.Dim0() >= b_fsas_.Dim0().
@@ -1001,9 +985,6 @@ class MultiGraphDenseIntersect {
       info->backward_loglike = backward_loglike;
     };
     Eval(c_, cur_frame->states.values.Dim(), lambda_set_state_backward_prob);
-
-    K2_LOG(INFO) << "In backward: cur-states = " << cur_frame->states
-                 << ", cur-arcs = " << cur_frame->arcs;
   }
 
   ContextPtr c_;
@@ -1018,19 +999,19 @@ class MultiGraphDenseIntersect {
   Array1<float> dynamic_beams_;  // dynamic beams (initially just beam_ but
                                  // change due to max_active/min_active
                                  // constraints).
-  Array2<int32_t> state_map_;  // state_map_ is of shape
-                               // (n, a_fsas_.TotSize(1)) where n is
-                               // 1 if a_fsas_.Dim0() > 1, else b_fsas_.Dim0().
+  Array2<int32_t> state_map_;    // state_map_ is of shape
+                                 // (n, a_fsas_.TotSize(1)) where n is
+  // 1 if a_fsas_.Dim0() > 1, else b_fsas_.Dim0().
 
-                               // The 1st dim is needed because If all the
-                               // streams share the same FSA in a_fsas_, we need
-                               // separate maps for each).  This map is used on
-                               // each frame to compute and store the mapping
-                               // from active states to the position in the
-                               // `states` array.  Between frames, all values
-                               // have -1 in them.
+  // The 1st dim is needed because If all the
+  // streams share the same FSA in a_fsas_, we need
+  // separate maps for each).  This map is used on
+  // each frame to compute and store the mapping
+  // from active states to the position in the
+  // `states` array.  Between frames, all values
+  // have -1 in them.
 
-  std::vector<std::unique_ptr<FrameInfo> > frames_;
+  std::vector<std::unique_ptr<FrameInfo>> frames_;
 
   // This is a rearranged version of the info in 'frames', computed at the end
   // of the forward pass before pruning.  It is indexed [fsa_id][t][state][arc].
@@ -1052,8 +1033,7 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
                           FsaVec *out, Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b) {
   FsaVec a_vec = FsaToFsaVec(a_fsas);
-  MultiGraphDenseIntersect intersector(a_vec, b_fsas, beam,
-                                       max_active_states,
+  MultiGraphDenseIntersect intersector(a_vec, b_fsas, beam, max_active_states,
                                        min_active_states);
   intersector.Intersect();
   intersector.FormatOutput(out, arc_map_a, arc_map_b);

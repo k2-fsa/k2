@@ -176,7 +176,6 @@ class Array1 {
   */
   Array1 To(ContextPtr ctx) const {
     if (ctx->IsCompatible(*Context())) return *this;
-
     Array1 ans(ctx, Dim());
     ans.CopyFrom(*this);
     return ans;

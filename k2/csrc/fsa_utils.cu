@@ -365,7 +365,7 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
    We always create the super final state. If there are final state(s) in the
    original FST, then we add arc(s) from the original final state(s) to the
    super final state, with the (negated) old final state cost/score as its
-   cost/score, -1 as its label and 0 as its aux_label.
+   cost/score, -1 as its label and -1 as its aux_label.
 
    @param [in]  is    The input stream that contains the transducer.
 
@@ -458,11 +458,8 @@ static Fsa OpenFstTransducerFromStream(std::istringstream &is,
           original_final_states[i], super_final_state,
           -1,  // kFinalSymbol
           original_final_weights[i]);
-      // TODO(guoguo) We are not sure yet what to put as the auxiliary label for
-      //              arcs entering the super final state. The only real choices
-      //              are kEpsilon or kFinalSymbol. We are using kEpsilon for
-      //              now.
-      state_to_aux_labels[original_final_states[i]].push_back(0);  // kEpsilon
+      state_to_aux_labels[original_final_states[i]].push_back(
+          -1);  // kFinalSymbol
       ++num_arcs;
     }
   }

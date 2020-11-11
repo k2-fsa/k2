@@ -33,7 +33,4 @@ def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
     for name, value in src.named_non_tensor_attr():
         setattr(out_fsa, name, value)
 
-    if hasattr(out_fsa, 'properties'):
-        del out_fsa.properties
-
     return out_fsa

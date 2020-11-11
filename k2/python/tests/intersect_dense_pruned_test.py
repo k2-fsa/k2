@@ -153,6 +153,7 @@ class TestIntersectDensePruned(unittest.TestCase):
 
         expected_grad_fsa1 = torch.tensor([1.0, 1.0, 1.0])
         expected_grad_fsa2 = torch.tensor([1.0, 1.0, 1.0, 1.0])
+        print("fsa2 is ", fsa2.__str__())
         expected_grad_log_prob = torch.tensor([
             0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0, 1.0,
             0.0, 0.0, 0.0, 1.0

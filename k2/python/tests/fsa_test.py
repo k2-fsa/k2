@@ -261,7 +261,7 @@ class TestFsa(unittest.TestCase):
         assert fsa.aux_labels.device.type == 'cpu'
         assert torch.allclose(
             fsa.aux_labels,
-            torch.tensor([22, 100, 16, 33, 26, 22, 36, 50, 0, 0],
+            torch.tensor([22, 100, 16, 33, 26, 22, 36, 50, -1, -1],
                          dtype=torch.int32))
 
         expected_str = '''
@@ -273,8 +273,8 @@ class TestFsa(unittest.TestCase):
             2 4 2 22 -6.2
             3 6 3 36 -7.2
             5 0 1 50 -8.2
-            6 8 -1 0 -0
-            7 8 -1 0 -9.2
+            6 8 -1 -1 -0
+            7 8 -1 -1 -9.2
             8
         '''
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
