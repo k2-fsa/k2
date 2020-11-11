@@ -77,6 +77,12 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       },
       py::arg("axis"), py::arg("i"));
 
+  pyclass.def("__str__", [](const PyClass &self) -> std::string {
+    std::ostringstream os;
+    os << self;
+    return os.str();
+  });
+
   // Return a pair:
   // - Ragged<T>
   // - value_indexes_out
