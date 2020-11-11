@@ -413,6 +413,20 @@ class TestFsa(unittest.TestCase):
         (new_fsa1.scores * 5).sum().backward()
         assert torch.allclose(fsa1.scores.grad, torch.tensor([5.]))
 
+    def test_ragged_str(self):
+        s = '''
+            0 1 1 0.1
+            0 2 2 0.2
+            1 2 3 0.3
+            2 3 -1 0.4
+            3
+        '''
+        fsa = k2.Fsa.from_str(s)
+        print(fsa.arcs)
+        ''' It prints:
+        [ [ 0 1 1 0.1 0 2 2 0.2 ] [ 1 2 3 0.3 ] [ 2 3 -1 0.4 ] [ ] ]
+        '''
+
 
 if __name__ == '__main__':
     unittest.main()
