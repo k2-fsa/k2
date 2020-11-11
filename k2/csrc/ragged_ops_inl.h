@@ -157,6 +157,9 @@ void PrintRaggedPart(std::ostream &stream, const Ragged<T> &ragged,
 // prints a Ragged array as e.g. [ [ 7 9 ] [ 10 ] [] ]
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &ragged) {
+  if (ragged.values.GetRegion() == nullptr)
+    return stream << "<invalid Ragged<T> >";
+  
   if (ragged.Context()->GetDeviceType() != kCpu) {
     return stream << ragged.To(GetCpuContext());
   } else {

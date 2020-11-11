@@ -52,6 +52,8 @@ void Array1<T>::CopyFrom(const Array1<T> &src) {
 }
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
+  if (array.GetRegion() == nullptr)
+    return stream << "<invalid Array1>";
   stream << "[ ";
   Array1<T> to_print = array.To(GetCpuContext());
   const T *to_print_data = to_print.Data();
@@ -63,6 +65,8 @@ std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
 
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
+  if (array.GetRegion() == nullptr)
+    return stream << "<invalid Array2>";  
   stream << "\n[";
   Array2<T> array_cpu = array.To(GetCpuContext());
   int32_t num_rows = array_cpu.Dim0();

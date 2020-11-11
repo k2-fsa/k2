@@ -159,6 +159,7 @@ struct DenseFsaVec {
   DenseFsaVec() {}
   DenseFsaVec(const RaggedShape &shape, const Array2<float> &scores)
       : shape(shape), scores(scores) {
+    K2_CHECK(IsCompatible(shape, scores));
     K2_CHECK_EQ(shape.NumElements(), scores.Dim0());
   }
   ContextPtr Context() const { return shape.Context(); }
