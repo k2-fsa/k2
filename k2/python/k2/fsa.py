@@ -123,12 +123,15 @@ class Fsa(object):
         return ans
 
     def _init_properties(self) -> None:
-        properties = _k2.get_fsa_basic_properties(self.arcs)
+        if self.arcs.num_axes() == 2:
+            properties = _k2.get_fsa_basic_properties(self.arcs)
+        else:
+            properties = _k2.get_fsa_vec_basic_properties(self.arcs)
         self._properties = properties
         if properties & 1 != 1:
             raise ValueError("Fsa is not valid, properties are: {} = {}, arcs are: {}".format(
                 properties, _k2.fsa_properties_as_str(properties),
-                _fsa_to_str(self.arcs, False, None)))
+                str(self.arcs)))
     
     def _init_internal(self) -> None:
         # There are three kinds of attribute dictionaries:

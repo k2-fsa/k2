@@ -29,6 +29,16 @@ static void PybindFsaBasicProperties(py::module &m) {
   m.def("get_fsa_basic_properties", &GetFsaBasicProperties, py::arg("fsa"));
 
   m.def(
+      "get_fsa_vec_basic_properties",
+      [](FsaVec &fsa_vec) -> int32_t {
+        int32_t tot_properties;
+        Array1<int32_t> properties;
+        GetFsaVecBasicProperties(fsa_vec, &properties, &tot_properties);
+        return tot_properties;
+      },
+      py::arg("fsa_vec"));
+
+  m.def(
       "is_arc_sorted",
       [](int32_t properties) -> bool {
         return (properties & kFsaPropertiesArcSorted) ==
