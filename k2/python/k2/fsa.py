@@ -604,7 +604,8 @@ class Fsa(object):
 
     @classmethod
     def from_str(cls, s: str) -> 'Fsa':
-        '''Create an Fsa from a string.
+        '''Create an Fsa from a string in the k2 format.
+        (See also from_openfst).
 
         The given string `s` consists of lines with the following format:
 
