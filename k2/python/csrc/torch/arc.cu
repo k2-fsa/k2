@@ -44,6 +44,8 @@ static void PybindArcImpl(py::module &m) {
 
   m.def("_as_int", [](torch::Tensor tensor) -> torch::Tensor {
     auto scalar_type = ToScalarType<int32_t>::value;
+    if (tensor.numel() == 0)
+      return torch::empty(tensor.sizes(), tensor.options().dtype(scalar_type));
     return torch::from_blob(
         tensor.data_ptr(), tensor.sizes(), tensor.strides(),
         [tensor](void *p) {}, tensor.options().dtype(scalar_type));
@@ -51,6 +53,8 @@ static void PybindArcImpl(py::module &m) {
 
   m.def("_as_float", [](torch::Tensor tensor) -> torch::Tensor {
     auto scalar_type = ToScalarType<float>::value;
+    if (tensor.numel() == 0)
+      return torch::empty(tensor.sizes(), tensor.options().dtype(scalar_type));
     return torch::from_blob(
         tensor.data_ptr(), tensor.sizes(), tensor.strides(),
         [tensor](void *p) {}, tensor.options().dtype(scalar_type));

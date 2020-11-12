@@ -67,6 +67,7 @@ struct ArcInfo {              // for an arc that wasn't pruned away...
   // (conceptually) it joins the destination state.
 };
 
+/*
 static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
   os << "StateInfo{" << s.a_fsas_state_idx01 << ","
      << OrderedIntToFloat(s.forward_loglike) << "," << s.backward_loglike
@@ -79,6 +80,7 @@ static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
      << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike << "}";
   return os;
 }
+*/
 
 }  // namespace intersect_internal
 
@@ -127,10 +129,6 @@ class MultiGraphDenseIntersect {
         min_active_(min_active),
         dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), beam) {
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
-    K2_LOG(INFO) << "a_fsas=" << a_fsas;
-    K2_LOG(INFO) << "b_fsas.shape =" << b_fsas.shape;
-    K2_LOG(INFO) << "b_fsas.scores=" << b_fsas.scores;
-    K2_LOG(INFO) << "b_fsas_scores_contiguous=" << b_fsas.scores.IsContiguous();
     K2_CHECK(b_fsas.scores.IsContiguous());
     K2_CHECK_GT(beam, 0);
     K2_CHECK_GE(min_active, 0);
@@ -189,20 +187,12 @@ class MultiGraphDenseIntersect {
     frames_.push_back(InitialFrameInfo());
 
     for (int32_t t = 0; t <= T; t++) {
-      if (t == T) {
-        K2_LOG(INFO) << "states=" << frames_.back()->states
-                     << ", arcs=" << frames_.back()->arcs;
-      }
       frames_.push_back(PropagateForward(t, frames_.back().get()));
     }
     // The FrameInfo for time T+1 will have no states.  We did that
     // last PropagateForward so that the 'arcs' member of frames_[T]
     // is set up (it has no arcs but we need the shape).
-    K2_LOG(INFO) << "states=" << frames_.back()->states
-                 << ", arcs=" << frames_.back()->arcs;
     frames_.pop_back();
-    K2_LOG(INFO) << "states=" << frames_.back()->states
-                 << ", arcs=" << frames_.back()->arcs;
 
     {
       // each of these have 3 axes.

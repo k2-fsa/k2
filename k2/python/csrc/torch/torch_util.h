@@ -72,6 +72,13 @@ torch::Tensor ToTensor(Array1<T> &array) {
   auto device = torch::Device(device_type, device_id);
   auto scalar_type = ToScalarType<T>::value;
   auto options = torch::device(device).dtype(scalar_type);
+  // We will call torch::from_blob below. However, if we
+  // call it with an empty Array1, we'll get error:
+  // RuntimeError: CUDA error: invalid argument Exception raised from
+  // getDeviceFromPtr at /pytorch/aten/src/ATen/cuda/CUDADevice.h
+  // Definitely we need look into this, but let's just return an empty tensor
+  // when the input Array1 is empty for now.
+  if (array.Dim() == 0) return torch::empty(0, options);
 
   // NOTE: we keep a copy of `Region` inside the lambda
   // so that `torch::Tensor` always accesses valid memory.
