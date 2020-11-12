@@ -80,6 +80,7 @@ torch::Tensor ToTensor(Array1<Arc> &array) {
   std::vector<int64_t> sizes = {array.Dim(), 4};  // [num_rows, num_cols]
   std::vector<int64_t> strides = {4, 1};          // in number of elements
   auto options = torch::device(device).dtype(scalar_type);
+  if (array.Dim() == 0) return torch::empty({0, 4}, options);
 
   // NOTE: we keep a copy of `Region` inside the lambda
   // so that the returned tensor outlives the input array.
