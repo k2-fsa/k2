@@ -62,7 +62,8 @@ enum FsaBasicProperties {
   kFsaPropertiesTopSortedAndAcyclic =
       0x08,  // Top-sorted and acyclic (no self-loops), dest_state > src_state
   kFsaPropertiesArcSorted =
-      0x10,  // Arcs leaving a given state are sorted by label
+      0x10,  // Arcs leaving a given state are sorted by label first and then on
+             // `dest_state`, see operator< in struct Arc above.
   kFsaPropertiesArcSortedAndDeterministic = 0x20,  // Arcs leaving a given state
                                                    // are *strictly* sorted by
                                                    // label, i.e. no duplicates

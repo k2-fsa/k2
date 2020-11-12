@@ -19,6 +19,7 @@ from _k2 import _fsa_from_str
 from _k2 import _fsa_from_tensor
 from _k2 import _fsa_to_str
 
+
 class Fsa(object):
     '''This class represents a single fsa or a vector of fsas.
 
@@ -109,8 +110,7 @@ class Fsa(object):
         self._tensor_attr['scores'] = _as_float(self.arcs.values()[:, -1])
         if aux_labels is not None:
             self.aux_labels = aux_labels.to(torch.int32)
-        
-        
+
     def __str__(self) -> str:
         '''Return a string representation of this object (note: does not
            contain all the information in it for now)'''
@@ -119,7 +119,8 @@ class Fsa(object):
         else:
             aux_labels = None
         ans = "k2.Fsa: " + _fsa_to_str(self.arcs, False, aux_labels)
-        ans += "\nproperties_str = " + _k2.fsa_properties_as_str(self._properties)
+        ans += "\nproperties_str = " + _k2.fsa_properties_as_str(
+            self._properties)
         return ans
 
     def _init_properties(self) -> None:
@@ -129,10 +130,11 @@ class Fsa(object):
             properties = _k2.get_fsa_vec_basic_properties(self.arcs)
         self._properties = properties
         if properties & 1 != 1:
-            raise ValueError("Fsa is not valid, properties are: {} = {}, arcs are: {}".format(
-                properties, _k2.fsa_properties_as_str(properties),
-                str(self.arcs)))
-    
+            raise ValueError(
+                "Fsa is not valid, properties are: {} = {}, arcs are: {}".
+                format(properties, _k2.fsa_properties_as_str(properties),
+                       str(self.arcs)))
+
     def _init_internal(self) -> None:
         # There are three kinds of attribute dictionaries:
         #
@@ -232,8 +234,8 @@ class Fsa(object):
         raise AttributeError(f'Unknown attribute {name}')
 
     def __delattr__(self, name: str) -> None:
-        assert name not in ('arcs', 'scores', 'labels',
-                            'properties', '_properties')
+        assert name not in ('arcs', 'scores', 'labels', 'properties',
+                            '_properties')
 
         if name in self._tensor_attr:
             del self._tensor_attr[name]
@@ -461,6 +463,7 @@ class Fsa(object):
         if aux_symbols is not None:
             self.symbols = aux_symbols
 
+        self._init_properties()
         return self
 
     def is_cpu(self) -> bool:
@@ -508,6 +511,7 @@ class Fsa(object):
         for name, value in self.named_non_tensor_attr():
             setattr(out_fsa, name, value)
 
+        out_fsa._init_properties()
         return out_fsa
 
     def to_(self, device: torch.device) -> 'Fsa':
@@ -688,7 +692,7 @@ class Fsa(object):
         ans._init_internal()
         arcs, aux_labels = _fsa_from_str(s, acceptor, True)
         ans.arcs = arcs
-        ans._init_properties()        
+        ans._init_properties()
         ans._tensor_attr['scores'] = _as_float(ans.arcs.values()[:, -1])
         if aux_labels is not None:
             ans.aux_labels = aux_labels.to(torch.int32)
