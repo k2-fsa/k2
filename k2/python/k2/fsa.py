@@ -5,6 +5,7 @@
 
 from collections import OrderedDict
 from typing import Any
+from typing import Dict
 from typing import Iterator
 from typing import Optional
 from typing import Tuple
@@ -17,6 +18,7 @@ from _k2 import _as_float
 from _k2 import _as_int
 from _k2 import _fsa_from_str
 from _k2 import _fsa_from_tensor
+from _k2 import _fsa_to_tensor
 from _k2 import _fsa_to_str
 
 
@@ -513,6 +515,33 @@ class Fsa(object):
 
         out_fsa._init_properties()
         return out_fsa
+
+    def arcs_as_tensor(self) -> torch.Tensor:
+        '''Return the core part of the Fsa (the arcs) serialized to a Tensor.
+           This can be passed to the constructor, along with the aux_labels if
+           present, to reconstruct this object.
+           A more convenient way to serialize a Tensor is to use `as_dict`
+           and `from_dict`
+        '''
+        return _fsa_to_tensor(self.arcs)
+
+    def as_dict(self) -> Dict[str, Any]:
+        '''Convert this Fsa to a dict (probably for purposes of serialization
+          with, e.g., torch.save).
+        '''
+        ans = dict()
+        ans['arcs'] = _fsa_to_tensor(self.arcs)
+        if hasattr(self, 'aux_labels'):
+            ans['aux_labels'] = self.aux_labels
+        # TODO(dan): add other properties, e.g. from _tensor_attr and
+        # _non_tensor_attr.
+        return ans
+
+    @classmethod
+    def from_dict(cls, dict_in: Dict[str, Any]) -> 'Fsa':
+        # TODO(dan): deal with other properties, e.g. that will go to from
+        # _tensor_attr and _non_tensor_attr.
+        return Fsa(dict_in['arcs'], aux_labels=dict_in.get('aux_labels', None))
 
     def to_(self, device: torch.device) -> 'Fsa':
         '''Move the FSA onto a given device.
