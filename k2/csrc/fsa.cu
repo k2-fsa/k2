@@ -28,8 +28,6 @@ std::istream &operator>>(std::istream &is, Arc &arc) {
   return is;
 }
 
-
-
 std::string FsaPropertiesAsString(int32_t properties) {
   static constexpr char kSep = '|';
   std::ostringstream os;
@@ -149,6 +147,8 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
         neg_property |= kFsaPropertiesArcSortedAndDeterministic;
       if (static_cast<uint32_t>(arc.label) <
           static_cast<uint32_t>(prev_arc.label))
+        neg_property |= kFsaPropertiesArcSorted;
+      if (arc.label == prev_arc.label && arc.dest_state < prev_arc.dest_state)
         neg_property |= kFsaPropertiesArcSorted;
     }
     properties_data[idx012] = ~neg_property;
@@ -489,7 +489,7 @@ std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec) {
   const int32_t *row_splits = d_cpu.shape.RowSplits(1).Data();
   os << "DenseFsaVec{ ";
   for (int32_t i = 0; i < num_fsas; i++) {
-    int32_t start = row_splits[i], end = row_splits[i+1];
+    int32_t start = row_splits[i], end = row_splits[i + 1];
     os << dfsavec.scores.RowArange(start, end);
   }
   return os << " }";
