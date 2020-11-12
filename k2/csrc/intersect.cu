@@ -914,7 +914,9 @@ class MultiGraphDenseIntersect {
       Eval(c_, arc_backward_prob.values.Dim(),
            lambda_set_arc_backward_prob_and_keep);
     } else {
-      assert(arc_backward_prob.values.Dim() == 0);
+      assert(arc_backward_prob.values.Dim() == 0 &&
+             "Caution: final frame has arcs; check that there were -infinities "
+             "in the right place on the last frame of the 'scores' matrix.");
     }
 
     /* note, the elements of state_backward_prob that don't have arcs leaving
