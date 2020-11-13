@@ -42,7 +42,6 @@ std::string FsaPropertiesAsString(int32_t properties) {
   if (properties & kFsaPropertiesEpsilonFree) os << kSep << "EpsilonFree";
   if (properties & kFsaPropertiesMaybeAccessible) os << kSep << "MaybeAccessible";  // NOLINT
   if (properties & kFsaPropertiesMaybeCoaccessible) os << kSep << "MaybeCoaccessible";  // NOLINT
-  if (properties & kFsaPropertiesSerializable) os << kSep << "Serializable";
   // clang-format on
 
   size_t offset = (os.str().empty() ? 0 : 1);  // remove leading '|'
@@ -129,19 +128,16 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
       // first arc in this FSA (whether or not it's from state 0..)
       reachable_data[idx0x] = static_cast<char>(1);  // state 0 is reachable.
       // final state is always co-reachable.
+      // Note: below, we're effectively accessing co_reachable_data.
       reachable_data[num_states + idx0x_next - 1] = static_cast<char>(1);
-      // there was a problem with the state-indexes which makes this
-      // impossible to deserialize from a list of arcs.
-      if (idx012 > 0 && prev_arc.src_state <= arc.src_state)
-        neg_property |= kFsaPropertiesSerializable;
     }
 
-    if (idx2 == 0) {
-      // First arc leaving this state records that this state has arcs leaving
-      // it.
-      if (arc.dest_state != arc.src_state)
-        reachable_data[num_states + idx01] = 1;
-    } else {
+
+    if (arc.dest_state != arc.src_state)
+      // Note: below, we're effectively accessing co_reachable_data.
+      reachable_data[num_states + idx01] = 1;
+    if (idx2 != 0) {
+      // this is not the first arc leaving this state...
       if (static_cast<uint32_t>(arc.label) <=
           static_cast<uint32_t>(prev_arc.label))
         neg_property |= kFsaPropertiesArcSortedAndDeterministic;
@@ -202,7 +198,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
                                  row_splits2_data[row_splits1_data[i + 1]]);
       neg_properties |= (!reachable * kFsaPropertiesMaybeAccessible) |
                         (!co_reachable * kFsaPropertiesMaybeCoaccessible) |
-                        (fsa_has_no_arcs * kFsaPropertiesSerializable);
+                        (fsa_has_no_arcs * kFsaPropertiesNonempty);
       properties_per_fsa_data[i] = ~neg_properties;
     };
     Eval(c, num_fsas, lambda_finalize_properties);
@@ -308,8 +304,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   Fsa ans = Ragged<Arc>(fsas_shape, array);
   int32_t tot_properties = GetFsaBasicProperties(ans);
   // TODO: check properties, at least
-  int32_t required_props = (kFsaPropertiesValid | kFsaPropertiesNonempty |
-                            kFsaPropertiesSerializable);
+  int32_t required_props = (kFsaPropertiesValid | kFsaPropertiesNonempty);
   if (tot_properties & required_props != required_props) {
     K2_LOG(WARNING) << "Did not have expected properties "
                     << FsaPropertiesAsString(tot_properties & required_props)

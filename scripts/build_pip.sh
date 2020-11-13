@@ -16,12 +16,9 @@
 #    make -j _k2
 #
 # It will generate 3 files in the folder `lib`:
-#   libcontext.so
-#   libfsa.so
+#   libk2context.so
+#   libk2fsa.so
 #   _k2.cpython-3?m-x86_64-linux-gnu.so, where ? depends on your python version.
-#
-# Please delete other files inside `lib`; otherwise, they will be copied to
-# the final `whl`!
 #
 # (3)
 #    cd /path/to/k2
@@ -58,6 +55,12 @@ if [ ! -d $build_dir/lib ]; then
   exit 1
 fi
 
+mkdir -p .temp_lib
+
+for libname in $libnames; do
+  mv $build_dir/lib/lib*test*.so .temp_lib
+done
+
 for lib in $build_dir/lib/*.so; do
   # remove RPATH information
   strip $lib
@@ -65,3 +68,7 @@ for lib in $build_dir/lib/*.so; do
 done
 
 python3 setup.py bdist_wheel
+
+for libname in $libnames; do
+  mv .temp_lib/lib*test*.so $build_dir/lib/
+done

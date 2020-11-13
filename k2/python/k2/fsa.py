@@ -121,8 +121,8 @@ class Fsa(object):
         else:
             aux_labels = None
         ans = "k2.Fsa: " + _fsa_to_str(self.arcs, False, aux_labels)
-        ans += "\nproperties_str = " + _k2.fsa_properties_as_str(
-            self._properties)
+        ans += "properties_str = " + _k2.fsa_properties_as_str(
+            self._properties) + "."
         return ans
 
     def _init_properties(self) -> None:
