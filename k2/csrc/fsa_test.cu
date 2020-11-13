@@ -28,9 +28,8 @@ TEST(FsaPropertiesAsString, NonEmpty) {
   s = FsaPropertiesAsString(kFsaPropertiesNonempty | kFsaPropertiesValid);
   EXPECT_EQ(s, "\"Valid|Nonempty\"");
 
-  s = FsaPropertiesAsString(kFsaPropertiesTopSorted | kFsaPropertiesValid |
-                            kFsaPropertiesSerializable);
-  EXPECT_EQ(s, "\"Valid|TopSorted|Serializable\"");
+  s = FsaPropertiesAsString(kFsaPropertiesTopSorted | kFsaPropertiesValid);
+  EXPECT_EQ(s, "\"Valid|TopSorted\"");
 }
 
 TEST(FsaIO, FromAndToTensor) {

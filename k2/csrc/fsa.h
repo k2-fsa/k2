@@ -77,18 +77,7 @@ enum FsaBasicProperties {
       0x0100,                           // True if there are no obvious signs of
                                         // states not being co-accessible, i.e.
                                         // i.e. states with no arcs leaving them
-  kFsaPropertiesSerializable = 0x0200,  // True if there are no FSAs with zero
-                                        // states, and if for all fsa-indexes i,
-                                        // last-state(i) > first-state(i+1)
-                                        // where {last,first}-state is the
-                                        // {last,first} state that has an arc
-                                        // leaving it.  These properties are
-                                        // used in figuring out the boundaries
-                                        // between FSAs when we serialize to a
-                                        // list of arcs.  You should probably
-                                        // ignore this value in individual FSAs,
-                                        // it is intended for vectors of FSAs.
-  kFsaAllProperties = 0x03FF
+  kFsaAllProperties = 0x01FF
 };
 
 /* Convert FSA properties to a string.
