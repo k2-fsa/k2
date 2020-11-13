@@ -275,6 +275,15 @@ static void PybindDenseFsaVec(py::module &m) {
   });
 }
 
+static void PybindConvertDenseToFsaVec(py::module &m) {
+  m.def(
+      "convert_dense_to_fsa_vec",
+      [](DenseFsaVec &dense_fsa_vec) -> FsaVec {
+        return ConvertDenseToFsaVec(dense_fsa_vec);
+      },
+      py::arg("dense_fsa_vec"));
+}
+
 template <typename T>
 static void PybindGetArcScores(py::module &m, const char *name) {
   m.def(
@@ -295,6 +304,7 @@ static void PybindGetArcScores(py::module &m, const char *name) {
 void PybindFsa(py::module &m) {
   k2::PybindFsaUtil(m);
   k2::PybindDenseFsaVec(m);
+  k2::PybindConvertDenseToFsaVec(m);
   k2::PybindFsaBasicProperties(m);
   k2::PybindGetForwardScores<float>(m, "_get_forward_scores_float");
   k2::PybindGetForwardScores<double>(m, "_get_forward_scores_double");

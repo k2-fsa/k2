@@ -1,6 +1,7 @@
 from .autograd import get_tot_scores
 from .autograd import intersect_dense_pruned
 from .dense_fsa_vec import DenseFsaVec
+from .dense_fsa_vec import convert_dense_to_fsa_vec
 from .fsa import Fsa
 from .fsa_algo import add_epsilon_self_loops
 from .fsa_algo import arc_sort
@@ -24,6 +25,7 @@ from .utils import to_tensor
 # please keep the list sorted
 __all__ = [
     'DenseFsaVec',
+    'convert_dense_to_fsa_vec',
     'Fsa',
     'SymbolTable',
     'add_epsilon_self_loops',

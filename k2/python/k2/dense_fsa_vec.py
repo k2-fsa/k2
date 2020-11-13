@@ -1,6 +1,7 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
 # See ../../../LICENSE for clarification regarding multiple authors
 
+from .fsa import Fsa
 import _k2
 import numpy as np
 import torch
@@ -92,3 +93,20 @@ class DenseFsaVec(object):
 
     def __str__(self) -> str:
         return self.dense_fsa_vec.to_str()
+
+
+def convert_dense_to_fsa_vec(dense_fsa_vec: DenseFsaVec) -> Fsa:
+    '''Convert a DenseFsaVec to an FsaVec. 
+
+    Caution:
+    Intended for use in testing/debug mode only. This operation is NOT differentiable.
+
+    Args:
+      dense_fsa_vec:
+        DenseFsaVec to convert.
+
+    Returns:
+      The converted FsaVec .
+    '''
+    ragged_arc = _k2.convert_dense_to_fsa_vec(dense_fsa_vec.dense_fsa_vec)
+    return Fsa.from_ragged_arc(ragged_arc)
