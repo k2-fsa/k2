@@ -159,7 +159,7 @@ template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &ragged) {
   if (ragged.values.GetRegion() == nullptr)
     return stream << "<invalid Ragged<T> >";
-  
+
   if (ragged.Context()->GetDeviceType() != kCpu) {
     return stream << ragged.To(GetCpuContext());
   } else {
@@ -230,14 +230,14 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
                                      order->Data(),       // indices
                                      src->values.Dim(),   // count
                                      segment.Data(),      // segments
-                                     segment.Dim() - 1,   // num_segments
+                                     segment.Dim(),       // num_segments
                                      Op(),                // cmp
                                      *context));          // context
   else
     K2_CUDA_SAFE_CALL(mgpu::segmented_sort(src->values.Data(),  // keys
                                            src->values.Dim(),   // count
                                            segment.Data(),      // segments
-                                           segment.Dim() - 1,   // num_segments
+                                           segment.Dim(),       // num_segments
                                            Op(),                // cmp
                                            *context));          // context
 }

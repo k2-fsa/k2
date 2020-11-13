@@ -85,10 +85,11 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     Returns:
       The result of intersecting a_fsa and b_fsa.
     '''
+    treat_epsilons_specially = True
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, b_fsa.arcs,
+                                                     treat_epsilons_specially,
                                                      need_arc_map)
-
     # Some of entries in a_arc_map and b_arc_map may be -1.
     # The arc_maps are incremented so that every entry is non-negative.
     a_arc_map = a_arc_map.to(torch.int64) + 1

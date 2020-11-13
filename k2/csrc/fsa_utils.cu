@@ -829,7 +829,7 @@ Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
   int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
           num_arcs = fsas.TotSize(2);
   int32_t num_batches = state_batches.Dim0();
-  K2_DCHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
+  K2_DCHECK(state_batches.TotSize(1) == num_fsas * num_batches);
   K2_DCHECK_EQ(state_batches.NumElements(), num_states);
 
   // get ans_shape
@@ -881,7 +881,7 @@ Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
           num_arcs = fsas.TotSize(2);
   int32_t num_batches = state_batches.Dim0();
   // just using DCHECK below to save time in production code
-  K2_DCHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
+  K2_DCHECK(state_batches.TotSize(1) == num_fsas * num_batches);
   K2_DCHECK_EQ(state_batches.NumElements(), num_states);
   K2_DCHECK_EQ(incoming_arcs.Dim0(), num_fsas);
   K2_DCHECK_EQ(incoming_arcs.TotSize(1), num_states);
@@ -1026,7 +1026,7 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
           num_arcs = fsas.TotSize(2);
   int32_t num_batches = state_batches.Dim0();
   // just using DCHECK below to save time in production code
-  K2_DCHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
+  K2_DCHECK(state_batches.TotSize(1) == num_fsas * num_batches);
   K2_DCHECK_EQ(state_batches.NumElements(), num_states);
   K2_DCHECK_EQ(entering_arc_batches.Dim0(), num_batches);
   K2_DCHECK_EQ(entering_arc_batches.TotSize(1), state_batches.TotSize(1));
@@ -1236,8 +1236,8 @@ Array1<FloatType> GetBackwardScores(
   int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
           num_arcs = fsas.TotSize(2);
   int32_t num_batches = state_batches.Dim0();
+  K2_DCHECK(state_batches.TotSize(1) == num_fsas * num_batches);
   // just using DCHECK below to save time in production code
-  K2_DCHECK_EQ((state_batches.TotSize(1) / num_batches), num_fsas);
   K2_DCHECK_EQ(state_batches.NumElements(), num_states);
   K2_DCHECK_EQ(leaving_arc_batches.Dim0(), num_batches);
   K2_DCHECK_EQ(leaving_arc_batches.TotSize(1), state_batches.TotSize(1));

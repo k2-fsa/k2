@@ -66,7 +66,6 @@ class RaggedShapeOpsSuiteTest : public ::testing::Test {
   RaggedShape random_shape_;
 };
 
-
 TEST(RaggedShapeTest, TestConstructFromString) {
   RaggedShape rs(" [ [ x x ] [x] ]");
   Array1<int32_t> row_splits1(GetCpuContext(), std::vector<int32_t>{0, 2, 3});
@@ -104,8 +103,6 @@ TEST(RaggedShapeTest, TestConstructFromString) {
   }
 }
 
-
-
 TEST(RaggedTest, TestRaggedFromString) {
   Ragged<int32_t> rs(" [ [ 1 2 ] [3] ]");
   Array1<int32_t> row_splits1(GetCpuContext(), std::vector<int32_t>{0, 2, 3});
@@ -114,7 +111,7 @@ TEST(RaggedTest, TestRaggedFromString) {
   K2_CHECK_EQ(rs.values.Back(), 3);
   K2_CHECK_EQ(rs.values[0], 1);
 
-  Ragged<int32_t>  rs2(" [ [ [ 0 5 ] ] [[10]] ]");
+  Ragged<int32_t> rs2(" [ [ [ 0 5 ] ] [[10]] ]");
   K2_LOG(INFO) << "rs2 = " << rs2;
 
   ASSERT_DEATH(RaggedShape(" [ [ 0 0 ] [0] "), "");
@@ -134,10 +131,6 @@ TEST(RaggedTest, TestRaggedFromString) {
     K2_CHECK(Equal(r, r2) || r.values.Dim() == 0);
   }
 }
-
-
-
-
 
 template <typename T, DeviceType d>
 void TestMaxPerSubListTest() {
@@ -1338,12 +1331,11 @@ TEST(RaggedTest, TestAppendRagged) {
 }
 
 void CheckResultOfIndex(const ContextPtr &context, RaggedShape shape,
-                           Array1<int32_t> new2old, RaggedShape result) {
+                        Array1<int32_t> new2old, RaggedShape result) {
   K2_CHECK(context->IsCompatible(*shape.Context()));
   ContextPtr cpu = GetCpuContext();  // will use to copy data
   int32_t num_axes = shape.NumAxes();
-  int32_t src_dim0 = shape.Dim0(),
-      result_dim0 = result.Dim0();
+  int32_t src_dim0 = shape.Dim0(), result_dim0 = result.Dim0();
   if (result_dim0 == 0) {
     std::vector<int32_t> empty_row_splits = {0};
     for (int32_t i = 0; i < num_axes - 1; ++i) {
@@ -1407,7 +1399,6 @@ void CheckResultOfIndex(const ContextPtr &context, RaggedShape shape,
   }
 }
 
-
 void TestIndex(DeviceType d) {
   for (int i = 0; i < 5; i++) {
     ContextPtr cpu = GetCpuContext();  // will use to copy data
@@ -1426,7 +1417,6 @@ void TestIndex(DeviceType d) {
       const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
       const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
 
-
       Array1<int32_t> splits1(context, row_splits1);
       Array1<int32_t> ids1(context, row_ids1);
       Array1<int32_t> splits2(context, row_splits2);
@@ -1437,7 +1427,7 @@ void TestIndex(DeviceType d) {
       std::vector<int32_t> new2old_vec = {2, 1};
       Array1<int32_t> new2old(context, new2old_vec);
       Array1<int32_t> value_indexes_out;
-      RaggedShape result  = Index(shape, new2old, &value_indexes_out);
+      RaggedShape result = Index(shape, new2old, &value_indexes_out);
       // fsa 2, state_idx01 {5}, arc_idx012 {7, 8, 9}
       // fsa 1, state_idx01 {2, 3, 4}, arc_idx012 {{3},{4, 5}, {6}}
       CheckArrayData(value_indexes_out,
@@ -1451,10 +1441,8 @@ void TestIndex(DeviceType d) {
         int32_t num_axes = RandInt(2, 4);
         RaggedShape shape =
             RandomRaggedShape(true, num_axes, num_axes, 0, 1000).To(context);
-        int32_t dim0 = shape.Dim0(),
-            result_dim0 = RandInt(0, 10);
-        if (dim0 == 0)
-          result_dim0 = 0;
+        int32_t dim0 = shape.Dim0(), result_dim0 = RandInt(0, 10);
+        if (dim0 == 0) result_dim0 = 0;
         std::vector<int32_t> new2old_vec(result_dim0);
         for (int i = 0; i < result_dim0; i++)
           new2old_vec[i] = RandInt(0, dim0 - 1);
@@ -1468,12 +1456,10 @@ void TestIndex(DeviceType d) {
   }
 }
 
-
 TEST(RaggedShapeOpsTest, TestIndex) {
   TestIndex(kCpu);
   TestIndex(kCuda);
 }
-
 
 TEST(GetTransposeReordering, NoDuplicates) {
   //       col0  col1  col2  col3  col4  col5
@@ -1494,6 +1480,14 @@ TEST(GetTransposeReordering, NoDuplicates) {
     Array1<int32_t> order = GetTransposeReordering(ragged, 6);
     CheckArrayData(order, {2, 6, 3, 10, 7, 5, 0, 8, 11, 1, 4, 9});
     EXPECT_TRUE(context->IsCompatible(*order.Context()));
+  }
+}
+
+TEST(GetTransposeReordering, ThreeAxesEmptyCase) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<int32_t> ragged("[ [ [ ] ] ]");
+    ragged = ragged.To(context);
+    Array1<int32_t> order = GetTransposeReordering(ragged, 0);
   }
 }
 
