@@ -48,6 +48,14 @@ class TestGetTotScores(unittest.TestCase):
         expected[torch.tensor([1, 3, 5, 10])] = 1
         assert torch.allclose(fsa.scores.grad, expected)
 
+        fsa.scores.grad = None
+        log_like = k2.get_tot_scores(fsa,
+                                     log_semiring=False,
+                                     use_float_scores=True)
+
+        (-10 * log_like).sum().backward()
+        assert torch.allclose(fsa.scores.grad, -10 * expected)
+
         # now for double
         fsa.scores.grad = None
         log_like = k2.get_tot_scores(fsa,
@@ -57,6 +65,13 @@ class TestGetTotScores(unittest.TestCase):
         assert log_like.dtype == torch.float64
         log_like.sum().backward()
         assert torch.allclose(fsa.scores.grad, expected)
+
+        fsa.scores.grad = None
+        log_like = k2.get_tot_scores(fsa,
+                                     log_semiring=False,
+                                     use_float_scores=False)
+        (-100 * log_like).sum().backward()
+        assert torch.allclose(fsa.scores.grad, -100 * expected)
 
     def test_tropical_multiple_fsas(self):
         # best path:
@@ -141,6 +156,27 @@ class TestGetTotScores(unittest.TestCase):
                               torch.ones(2, dtype=torch.float32))
         assert fsa3.scores.grad.sum() == 2
 
+        # now for negative scores
+        fsa1.scores.grad = None
+        fsa2.scores.grad = None
+        fsa3.scores.grad = None
+        log_like = k2.get_tot_scores(fsa_vec,
+                                     log_semiring=False,
+                                     use_float_scores=True)
+        (-2 * log_like).sum().backward()
+
+        assert torch.allclose(fsa1.scores.grad[fsa1_best_arc_indexes],
+                              -2 * torch.ones(4, dtype=torch.float32))
+        assert fsa1.scores.grad.sum() == -2 * 4
+
+        assert torch.allclose(fsa2.scores.grad[fsa2_best_arc_indexes],
+                              -2 * torch.ones(4, dtype=torch.float32))
+        assert fsa2.scores.grad.sum() == -2 * 4
+
+        assert torch.allclose(fsa3.scores.grad[fsa3_best_arc_indexes],
+                              -2 * torch.ones(2, dtype=torch.float32))
+        assert fsa3.scores.grad.sum() == -2 * 2
+
         # now for double
         fsa1.scores.grad = None
         fsa2.scores.grad = None
@@ -166,6 +202,28 @@ class TestGetTotScores(unittest.TestCase):
         assert torch.allclose(fsa3.scores.grad[fsa3_best_arc_indexes],
                               torch.ones(2, dtype=torch.float32))
         assert fsa3.scores.grad.sum() == 2
+
+        # for negative scores
+        fsa1.scores.grad = None
+        fsa2.scores.grad = None
+        fsa3.scores.grad = None
+        log_like = k2.get_tot_scores(fsa_vec,
+                                     log_semiring=False,
+                                     use_float_scores=False)
+
+        (-100 * log_like).sum().backward()
+
+        assert torch.allclose(fsa1.scores.grad[fsa1_best_arc_indexes],
+                              -100 * torch.ones(4, dtype=torch.float32))
+        assert fsa1.scores.grad.sum() == -100 * 4
+
+        assert torch.allclose(fsa2.scores.grad[fsa2_best_arc_indexes],
+                              -100 * torch.ones(4, dtype=torch.float32))
+        assert fsa2.scores.grad.sum() == -100 * 4
+
+        assert torch.allclose(fsa3.scores.grad[fsa3_best_arc_indexes],
+                              -100 * torch.ones(2, dtype=torch.float32))
+        assert fsa3.scores.grad.sum() == -100 * 2
 
     def test_log_single_fsa(self):
         s = '''

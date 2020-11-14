@@ -299,6 +299,61 @@ static void PybindGetArcScores(py::module &m, const char *name) {
       py::arg("fsas"), py::arg("forward_scores"), py::arg("backward_scores"));
 }
 
+/* Compute the backward propagation of GetTotScores in tropical semiring.
+
+   @param [in] fsa_vec  The input FsaVec for computing GetTotScores.
+   @param [in] best_path_arc_indexes The arc indexes that contribute to
+                                     the total scores. It is the return value
+                                     of `ShortestPath`.
+   @param [in] tot_scores_grad  The gradient of total scores.
+   @return It returns the gradient of scores of all arcs.
+ */
+template <typename T>
+static torch::Tensor GetTotScoresTropicalBackward(
+    FsaVec &fsas, const Ragged<int32_t> &best_path_arc_indexes,
+    torch::Tensor tot_scores_grad) {
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  K2_CHECK_EQ(best_path_arc_indexes.NumAxes(), 2);
+
+  int32_t num_fsas = fsas.Dim0();
+  K2_CHECK_EQ(best_path_arc_indexes.Dim0(), num_fsas);
+  K2_CHECK_EQ(tot_scores_grad.sizes()[0], static_cast<int64_t>(num_fsas));
+  K2_CHECK_EQ(tot_scores_grad.dim(), 1);
+  K2_CHECK_EQ(tot_scores_grad.scalar_type(), ToScalarType<T>::value);
+
+  std::vector<int64_t> dims = {fsas.NumElements()};
+  auto options = torch::TensorOptions()
+                     .dtype(torch::kFloat32)
+                     .device(tot_scores_grad.device());
+  torch::Tensor ans_grad = torch::zeros(dims, options);  // it is contiguous
+  float *ans_grad_data = ans_grad.data_ptr<float>();
+
+  const T *tot_scores_grad_data = tot_scores_grad.data_ptr<T>();
+  int64_t tot_scores_grad_stride = tot_scores_grad.strides()[0];
+
+  const int32_t *fsas_row_ids1 = fsas.RowIds(1).Data();
+  const int32_t *fsas_row_ids2 = fsas.RowIds(2).Data();
+  const int32_t *best_path_arc_indexes_data =
+      best_path_arc_indexes.values.Data();
+
+  auto lambda = [=] __host__ __device__(int32_t best_path_arc_idx012) {
+    int32_t arc_idx012 = best_path_arc_indexes_data[best_path_arc_idx012];
+    int32_t state_idx01 = fsas_row_ids2[arc_idx012];
+    int32_t fsas_idx0 = fsas_row_ids1[state_idx01];
+    ans_grad_data[arc_idx012] =
+        tot_scores_grad_data[fsas_idx0 * tot_scores_grad_stride];
+  };
+  Eval(fsas.Context(), best_path_arc_indexes.NumElements(), lambda);
+  return ans_grad;
+}
+
+template <typename T>
+static void PybindGetTotScoresTropicalBackward(py::module &m,
+                                               const char *name) {
+  m.def(name, &GetTotScoresTropicalBackward<T>, py::arg("fsas"),
+        py::arg("best_path_arc_indexes"), py::arg("tot_scores_grad"));
+}
+
 }  // namespace k2
 
 void PybindFsa(py::module &m) {
@@ -314,4 +369,8 @@ void PybindFsa(py::module &m) {
   k2::PybindGetTotScores<double>(m, "_get_tot_scores_double");
   k2::PybindGetArcScores<float>(m, "_get_arc_scores_float");
   k2::PybindGetArcScores<double>(m, "_get_arc_scores_double");
+  k2::PybindGetTotScoresTropicalBackward<float>(
+      m, "_get_tot_scores_float_tropical_backward");
+  k2::PybindGetTotScoresTropicalBackward<double>(
+      m, "_get_tot_scores_double_tropical_backward");
 }

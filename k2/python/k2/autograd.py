@@ -52,7 +52,7 @@ class _GetTotScoresFunction(torch.autograd.Function):
         return tot_scores
 
     @staticmethod
-    def backward(ctx, unused: torch.Tensor
+    def backward(ctx, tot_scores_grad: torch.Tensor
                 ) -> Tuple[None, None, None, torch.Tensor]:  # noqa
         fsas = ctx.fsas
         log_semiring = ctx.log_semiring
@@ -62,9 +62,12 @@ class _GetTotScoresFunction(torch.autograd.Function):
         if log_semiring is False:
             entering_arcs = fsas.update_entering_arcs(use_float_scores)
             _, ragged_int = _k2.shortest_path(fsas.arcs, entering_arcs)
-            best_path_arc_indexes = ragged_int.values().to(torch.int64)
-            out_grad = torch.zeros_like(scores, requires_grad=False)
-            out_grad[best_path_arc_indexes] = 1
+            if use_float_scores:
+                out_grad = _k2._get_tot_scores_float_tropical_backward(
+                    fsas.arcs, ragged_int, tot_scores_grad)
+            else:
+                out_grad = _k2._get_tot_scores_double_tropical_backward(
+                    fsas.arcs, ragged_int, tot_scores_grad)
             # We return four values since the `forward` method accepts four
             # arguments (excluding ctx).
             #      fsas, log_semiring, use_float_scores, unused_scores
