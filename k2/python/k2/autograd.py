@@ -41,7 +41,8 @@ class _GetTotScoresFunction(torch.autograd.Function):
         # `fsas` a reference to this object, which also has a reference
         # to `fsas`.
         if log_semiring is False:
-            tot_scores = fsas.get_tot_scores_tropical(use_float_scores).detach()
+            tot_scores = fsas.get_tot_scores_tropical(
+                use_float_scores).detach()
         else:
             tot_scores = fsas.get_tot_scores_log(use_float_scores).detach()
 
@@ -168,10 +169,9 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
     def backward(
             ctx, out_fsa_grad
     ) -> Tuple[None, None, None, None, None, None, torch.Tensor, torch.Tensor]:
+        a_scores, b_scores = ctx.saved_tensors
         arc_map_a = ctx.arc_map_a
         arc_map_b = ctx.arc_map_b
-
-        a_scores, b_scores = ctx.saved_tensors
 
         grad_a = torch.zeros(a_scores.size(0),
                              dtype=torch.float32,
@@ -184,8 +184,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             device=b_scores.device,
             requires_grad=False).contiguous()  # will use its `view()` later
 
-        grad_a.index_add_(0, arc_map_a, out_fsa_grad)
-        grad_b.view(-1).index_add_(0, arc_map_b, out_fsa_grad)
+        _k2.index_add_(arc_map_a, out_fsa_grad, grad_a)
+        _k2.index_add_(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
         return None, None, None, None, None, None, grad_a, grad_b
 

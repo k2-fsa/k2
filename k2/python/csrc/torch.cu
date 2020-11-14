@@ -15,6 +15,7 @@
 #include "k2/python/csrc/torch/arc.h"
 #include "k2/python/csrc/torch/fsa.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
+#include "k2/python/csrc/torch/index_add.h"
 #include "k2/python/csrc/torch/index_select.h"
 #include "k2/python/csrc/torch/ragged.h"
 
@@ -23,6 +24,7 @@ void PybindTorch(py::module &m) {
   PybindRagged(m);
   PybindFsa(m);
   PybindFsaAlgo(m);
+  PybindIndexAdd(m);
   PybindIndexSelect(m);
 }
 

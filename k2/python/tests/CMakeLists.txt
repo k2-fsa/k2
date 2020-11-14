@@ -24,6 +24,7 @@ set(py_test_files
   dense_fsa_vec_test.py
   fsa_test.py
   index_test.py
+  index_add_test.py
   index_select_test.py
   intersect_dense_pruned_test.py
   intersect_test.py

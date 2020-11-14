@@ -56,7 +56,7 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
         }
       }
     } else {
-      auto lambda = [=] __device__(int32_t i) {
+      auto lambda = [=] __device__(int32_t i) -> void {
         int32_t src_i = index_data[i];
         if (src_i != -1) {
           K2_DCHECK_GE(src_i, 0);
@@ -90,7 +90,7 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
       }
     }
   } else {
-    auto lambda_noncontiguous = [=] __device__(int32_t i) {
+    auto lambda_noncontiguous = [=] __device__(int32_t i) -> void {
       int32_t src_i = index_data[i * index_stride];
       if (src_i != -1) {
         K2_DCHECK_GE(src_i, 0);

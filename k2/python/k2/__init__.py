@@ -23,6 +23,7 @@ from .utils import create_fsa_vec
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
+from _k2 import index_add_
 
 # please keep the list sorted
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     'get_properties',
     'get_tot_scores',
     'index',
+    'index_add_',
     'index_select',
     'intersect',
     'intersect_dense_pruned',
