@@ -69,10 +69,10 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install gdown # for downloading cudnn from gdrive
           python3 -m pip install wheel twine
+          python3 -m pip install bs4 requests tqdm
 
-          source ./scripts/github_actions/install_torch.sh
+          ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
       - name: Download cudnn 8.0
@@ -80,7 +80,6 @@ jobs:
           cuda: ${{ matrix.cuda }}
         run: |
           ./scripts/github_actions/install_cudnn.sh
-
 
       - name: Configure CMake
         shell: bash
