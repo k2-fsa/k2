@@ -69,18 +69,20 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install gdown # for downloading cudnn from gdrive
           python3 -m pip install wheel twine
+          python3 -m pip install mediafire
 
-          source ./scripts/github_actions/install_torch.sh
+          ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
       - name: Download cudnn 8.0
         env:
           cuda: ${{ matrix.cuda }}
+          username: ${{ secrets.USERNAME}}
+          password: ${{ secrets.PASSWORD}}
         run: |
-          ./scripts/github_actions/install_cudnn.sh
-
+          python3 ./scripts/github_actions/install_cudnn.py
+          ls -lh
 
       - name: Configure CMake
         shell: bash
