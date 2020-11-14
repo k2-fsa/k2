@@ -4,13 +4,19 @@
 
 case $cuda in
   10.0)
-    gdown -q --id "1H1MavvYdQosuhoTtjMpFOWUO1MiBMvC8" --output cudnn-10.0-linux-x64-v7.6.5.32.tgz
+    filename=cudnn-10.0-linux-x64-v7.6.5.32.tgz
+    url="1H1MavvYdQosuhoTtjMpFOWUO1MiBMvC8"
+    backup_url="https://bit.ly/3pDf2Nk"
     ;;
   10.1)
-    gdown -q --id "13_IVjoRJmamBVOgEGSp1Tlr5nClZUqwj" --output cudnn-10.1-linux-x64-v8.0.2.39.tgz
+    filename=cudnn-10.1-linux-x64-v8.0.2.39.tgz
+    url="13_IVjoRJmamBVOgEGSp1Tlr5nClZUqwj"
+    backup_url="https://bit.ly/2IyDePU"
     ;;
   10.2)
-    gdown -q --id "1beVinj771IPuqUsQovgTh5ZMqujBzb64" --output cudnn-10.2-linux-x64-v8.0.2.39.tgz
+    filename=cudnn-10.2-linux-x64-v8.0.2.39.tgz
+    url="1beVinj771IPuqUsQovgTh5ZMqujBzb64"
+    backup_url="https://bit.ly/2IDDX2p"
     ;;
   *)
     echo "Unsupported cuda version: $cuda"
@@ -18,4 +24,11 @@ case $cuda in
     ;;
 esac
 
-sudo tar xf ./cudnn-10.?-linux-x64-v*.tgz -C /usr/local
+gdown -q --id "$url" --output $filename
+if [ ! -e $filename ]; then
+  echo "Failed to download $filename"
+  echo "Try $backup_url"
+  curl -SL -o $filename "$backup_url"
+fi
+
+sudo tar xf ./$filename -C /usr/local

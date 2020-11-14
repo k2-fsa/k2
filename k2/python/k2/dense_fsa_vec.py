@@ -96,10 +96,11 @@ class DenseFsaVec(object):
 
 
 def convert_dense_to_fsa_vec(dense_fsa_vec: DenseFsaVec) -> Fsa:
-    '''Convert a DenseFsaVec to an FsaVec. 
+    '''Convert a DenseFsaVec to an FsaVec.
 
     Caution:
-    Intended for use in testing/debug mode only. This operation is NOT differentiable.
+      Intended for use in testing/debug mode only. This operation is NOT
+      differentiable.
 
     Args:
       dense_fsa_vec:

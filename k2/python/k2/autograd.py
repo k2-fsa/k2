@@ -52,7 +52,7 @@ class _GetTotScoresFunction(torch.autograd.Function):
         return tot_scores
 
     @staticmethod
-    def backward(ctx, unused: torch.Tensor
+    def backward(ctx, tot_scores_grad: torch.Tensor
                 ) -> Tuple[None, None, None, torch.Tensor]:  # noqa
         fsas = ctx.fsas
         log_semiring = ctx.log_semiring
@@ -62,9 +62,12 @@ class _GetTotScoresFunction(torch.autograd.Function):
         if log_semiring is False:
             entering_arcs = fsas.update_entering_arcs(use_float_scores)
             _, ragged_int = _k2.shortest_path(fsas.arcs, entering_arcs)
-            best_path_arc_indexes = ragged_int.values().to(torch.int64)
-            out_grad = torch.zeros_like(scores, requires_grad=False)
-            out_grad[best_path_arc_indexes] = 1
+            if use_float_scores:
+                out_grad = _k2._get_tot_scores_float_tropical_backward(
+                    fsas.arcs, ragged_int, tot_scores_grad)
+            else:
+                out_grad = _k2._get_tot_scores_double_tropical_backward(
+                    fsas.arcs, ragged_int, tot_scores_grad)
             # We return four values since the `forward` method accepts four
             # arguments (excluding ctx).
             #      fsas, log_semiring, use_float_scores, unused_scores
@@ -74,12 +77,16 @@ class _GetTotScoresFunction(torch.autograd.Function):
             backward_scores = fsas.update_backward_scores_log(use_float_scores)
             if use_float_scores:
                 func = _k2._get_arc_scores_float
+                bprop_func = _k2._get_tot_scores_float_log_backward
             else:
                 func = _k2._get_arc_scores_double
+                bprop_func = _k2._get_tot_scores_double_log_backward
+
             arc_scores = func(fsas=fsas.arcs,
                               forward_scores=forward_scores,
                               backward_scores=backward_scores)
-            return None, None, None, arc_scores.exp()
+            out_grad = bprop_func(fsas.arcs, arc_scores, tot_scores_grad)
+            return None, None, None, out_grad
 
 
 class _IntersectDensePrunedFunction(torch.autograd.Function):
