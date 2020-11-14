@@ -2,9 +2,9 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
+from dataclasses import dataclass
 from typing import Dict
 from typing import Union
-from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

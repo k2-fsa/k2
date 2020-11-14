@@ -2,6 +2,7 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
+import _k2
 import torch
 
 from .autograd import index_select
@@ -34,3 +35,30 @@ def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
         setattr(out_fsa, name, value)
 
     return out_fsa
+
+
+def index_add(index: torch.Tensor, value: torch.Tensor,
+              in_out: torch.Tensor) -> None:
+    '''It implements in_out[index[i]] += value[i].
+
+    Caution:
+      It has similar semantics with `torch.Tensor.index_add_` except
+      that (1) index.dtype == torch.int32; (2) -1 <= index[i] < in_out.shape[0].
+      index[i] == -1 is ignored.
+
+    Caution:
+      `in_out` is modified **in-place**.
+
+    Args:
+      index:
+        A 1-D tensor with dtype torch.int32.  -1 <= index[i] < in_out.shape[0]
+      value:
+        A 1-D tensor with dtype torch.float32. index.numel() == value.numel()
+      in_out:
+        A 1-D tensor with dtype torch.float32.
+
+    Returns:
+      Return None.
+    '''
+
+    _k2.index_add(index, value, in_out)

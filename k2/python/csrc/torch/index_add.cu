@@ -4,7 +4,7 @@
  * It has identical semantics as torch.Tensor.index_add_
  * except that it requires the dtype of the input index
  * to be torch.int32, whereas PyTorch expects the dtype to be
- * torch.int64.
+ * torch.int64. Furthermore, it ignores index[i] == -1.
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
@@ -55,6 +55,8 @@ void IndexAdd(torch::Tensor index, torch::Tensor value, torch::Tensor *in_out) {
     if (context->GetDeviceType() == kCpu) {
       for (int32_t i = 0; i != index_numel; ++i) {
         int32_t in_out_i = index_data[i];
+        if (in_out_i == -1) continue;
+
         K2_DCHECK_GE(in_out_i, 0);
         K2_DCHECK_LT(in_out_i, in_out_numel);
 
@@ -65,6 +67,8 @@ void IndexAdd(torch::Tensor index, torch::Tensor value, torch::Tensor *in_out) {
       // for cuda
       auto lambda_contiguous = [=] __device__(int32_t i) -> void {
         int32_t in_out_i = index_data[i];
+        if (in_out_i == -1) return;
+
         K2_DCHECK_GE(in_out_i, 0);
         K2_DCHECK_LT(in_out_i, in_out_numel);
 
@@ -83,6 +87,8 @@ void IndexAdd(torch::Tensor index, torch::Tensor value, torch::Tensor *in_out) {
   if (context->GetDeviceType() == kCpu) {
     for (int32_t i = 0; i != index_numel; ++i) {
       int32_t in_out_i = index_data[i * index_stride];
+      if (in_out_i == -1) continue;
+
       K2_DCHECK_GE(in_out_i, 0);
       K2_DCHECK_LT(in_out_i, in_out_numel);
 
@@ -93,6 +99,8 @@ void IndexAdd(torch::Tensor index, torch::Tensor value, torch::Tensor *in_out) {
     // for cuda
     auto lambda_noncontiguous = [=] __device__(int32_t i) -> void {
       int32_t in_out_i = index_data[i * index_stride];
+      if (in_out_i == -1) return;
+
       K2_DCHECK_GE(in_out_i, 0);
       K2_DCHECK_LT(in_out_i, in_out_numel);
 
@@ -106,6 +114,6 @@ void IndexAdd(torch::Tensor index, torch::Tensor value, torch::Tensor *in_out) {
 }  // namespace k2
 
 void PybindIndexAdd(py::module &m) {
-  m.def("index_add_", &k2::IndexAdd, py::arg("index"), py::arg("value"),
+  m.def("index_add", &k2::IndexAdd, py::arg("index"), py::arg("value"),
         py::arg("in_out"));
 }

@@ -5,13 +5,14 @@
 from typing import Union
 from typing import List
 
-from .autograd import index_select
-from .fsa import Fsa
-from .fsa_properties import is_arc_sorted
-from .fsa_properties import is_accessible
-from .fsa_properties import is_coaccessible
 import _k2
 import torch
+
+from .autograd import index_select
+from .fsa import Fsa
+from .fsa_properties import is_accessible
+from .fsa_properties import is_arc_sorted
+from .fsa_properties import is_coaccessible
 
 
 def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:

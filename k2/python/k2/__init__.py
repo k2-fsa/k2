@@ -18,12 +18,12 @@ from .fsa_properties import is_arc_sorted
 from .fsa_properties import is_coaccessible
 from .fsa_properties import properties_to_str
 from .ops import index
+from .ops import index_add
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
-from _k2 import index_add_
 
 # please keep the list sorted
 __all__ = [
@@ -38,7 +38,7 @@ __all__ = [
     'get_properties',
     'get_tot_scores',
     'index',
-    'index_add_',
+    'index_add',
     'index_select',
     'intersect',
     'intersect_dense_pruned',

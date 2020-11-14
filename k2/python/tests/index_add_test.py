@@ -24,17 +24,19 @@ class TestIndexAdd(unittest.TestCase):
             src = torch.rand(num_elements, dtype=torch.float32).to(device)
 
             num_indexes = num_elements * torch.randint(2, 10, (1,)).item()
-            index = torch.randint(0,
-                                  num_elements - 1, (num_indexes,),
+            index = torch.randint(-1,
+                                  num_elements, (num_indexes,),
                                   dtype=torch.int32).to(device)
 
             value = torch.rand(num_indexes, dtype=torch.float32).to(device)
 
             saved = src.clone()
-            k2.index_add_(index, value, src)
+            k2.index_add(index, value, src)
 
-            saved.index_add_(0, index.to(torch.int64), value)
-            assert torch.allclose(src, saved)
+            saved = torch.cat([torch.tensor([0]).to(saved), saved])
+
+            saved.index_add_(0, index.to(torch.int64) + 1, value)
+            assert torch.allclose(src, saved[1:])
 
     def test_non_contiguous(self):
         cpu_device = torch.device('cpu')
@@ -48,7 +50,7 @@ class TestIndexAdd(unittest.TestCase):
             num_elements = src.numel()
             num_indexes = num_elements * torch.randint(2, 10, (1,)).item()
             index = torch.randint(0,
-                                  num_elements - 1, (num_indexes,),
+                                  num_elements, (num_indexes,),
                                   dtype=torch.int32).to(device)
 
             value = torch.rand(num_indexes, dtype=torch.float32).to(device)
@@ -62,10 +64,12 @@ class TestIndexAdd(unittest.TestCase):
             assert value.is_contiguous() is False
 
             saved = src.clone()
-            k2.index_add_(index, value, src)
+            k2.index_add(index, value, src)
 
-            saved.index_add_(0, index.to(torch.int64), value)
-            assert torch.allclose(src, saved)
+            saved = torch.cat([torch.tensor([0]).to(saved), saved])
+
+            saved.index_add_(0, index.to(torch.int64) + 1, value)
+            assert torch.allclose(src, saved[1:])
 
 
 if __name__ == '__main__':

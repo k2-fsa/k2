@@ -2,8 +2,9 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from .fsa import Fsa
 import _k2
+
+from .fsa import Fsa
 
 
 def get_properties(fsa: Fsa) -> int:

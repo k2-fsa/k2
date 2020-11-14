@@ -3,9 +3,8 @@
 
 from typing import List, Tuple
 
-import torch
-
 import _k2
+import torch
 
 from .fsa import Fsa
 from .dense_fsa_vec import DenseFsaVec
@@ -184,8 +183,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             device=b_scores.device,
             requires_grad=False).contiguous()  # will use its `view()` later
 
-        _k2.index_add_(arc_map_a, out_fsa_grad, grad_a)
-        _k2.index_add_(arc_map_b, out_fsa_grad, grad_b.view(-1))
+        _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
+        _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
         return None, None, None, None, None, None, grad_a, grad_b
 
@@ -229,7 +228,11 @@ class _IndexSelectFunction(torch.autograd.Function):
     def backward(ctx, out_grad) -> Tuple[torch.Tensor, None]:
         src, index = ctx.saved_tensors
 
-        ans = _k2.index_select_backward(src, index, out_grad)
+        ans = torch.zeros(src.size(0),
+                          dtype=torch.float32,
+                          device=src.device,
+                          requires_grad=False)
+        _k2.index_add(index, out_grad, ans)
         return ans, None
 
 

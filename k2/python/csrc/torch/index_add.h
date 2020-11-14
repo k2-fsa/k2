@@ -4,7 +4,7 @@
  * It has identical semantics as torch.Tensor.index_add_
  * except that it requires the dtype of the input index
  * to be torch.int32, whereas PyTorch expects the dtype to be
- * torch.int64.
+ * torch.int64. Furthermore, it ignores index[i] == -1.
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
