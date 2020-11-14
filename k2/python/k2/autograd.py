@@ -36,10 +36,14 @@ class _GetTotScoresFunction(torch.autograd.Function):
           If `use_float_scores==True`, its dtype is `torch.float32`;
           it is `torch.float64` otherwise.
         '''
+        # the .detach() below avoids a reference cycle; if we didn't do that,
+        # the backward_fn of tot_scores would be set to this object, giving
+        # `fsas` a reference to this object, which also has a reference
+        # to `fsas`.
         if log_semiring is False:
-            tot_scores = fsas.update_tot_scores_tropical(use_float_scores)
+            tot_scores = fsas.get_tot_scores_tropical(use_float_scores).detach()
         else:
-            tot_scores = fsas.update_tot_scores_log(use_float_scores)
+            tot_scores = fsas.get_tot_scores_log(use_float_scores).detach()
 
         # NOTE: since `fsas`, `log_semiring` and `use_float_scores` are
         # not tensors, they are saved as attributes of `ctx`.
@@ -60,7 +64,7 @@ class _GetTotScoresFunction(torch.autograd.Function):
         scores, = ctx.saved_tensors
 
         if log_semiring is False:
-            entering_arcs = fsas.update_entering_arcs(use_float_scores)
+            entering_arcs = fsas.get_entering_arcs(use_float_scores)
             _, ragged_int = _k2.shortest_path(fsas.arcs, entering_arcs)
             if use_float_scores:
                 out_grad = _k2._get_tot_scores_float_tropical_backward(
@@ -73,8 +77,8 @@ class _GetTotScoresFunction(torch.autograd.Function):
             #      fsas, log_semiring, use_float_scores, unused_scores
             return None, None, None, out_grad
         else:
-            forward_scores = fsas.update_forward_scores_log(use_float_scores)
-            backward_scores = fsas.update_backward_scores_log(use_float_scores)
+            forward_scores = fsas.get_forward_scores_log(use_float_scores)
+            backward_scores = fsas.get_backward_scores_log(use_float_scores)
             if use_float_scores:
                 func = _k2._get_arc_scores_float
                 bprop_func = _k2._get_tot_scores_float_log_backward

@@ -232,6 +232,8 @@ class Fsa(object):
             return self._properties
         elif name == 'properties_str':
             return _k2.fsa_properties_as_str(self._properties)
+        elif name == 'requires_grad':
+            return self.scores.requires_grad
 
         raise AttributeError(f'Unknown attribute {name}')
 
@@ -251,29 +253,37 @@ class Fsa(object):
     def _update_cache(self, name: str, value: Any) -> None:
         self._grad_cache[name] = value
 
-    def update_state_batches(self) -> _k2.RaggedInt:
+    def get_state_batches(self) -> _k2.RaggedInt:
+        '''Get (and compute if necessary) cached property self.state_batches.
+           For use by internal k2 code.  Used in many algorithms.'''
         if hasattr(self, 'state_batches') is False:
             state_batches = _k2._get_state_batches(self.arcs, transpose=True)
             self._update_cache('state_batches', state_batches)
         return self.state_batches
 
-    def update_dest_states(self) -> torch.Tensor:
+    def get_dest_states(self) -> torch.Tensor:
+        '''Get (and compute if necessary) cached property self.dest_states.
+           For use by internal k2 code, relates to best-path.'''
         if hasattr(self, 'dest_states') is False:
             dest_states = _k2._get_dest_states(self.arcs, as_idx01=True)
             self._update_cache('dest_states', dest_states)
         return self.dest_states
 
-    def update_incoming_arcs(self) -> _k2.RaggedInt:
+    def get_incoming_arcs(self) -> _k2.RaggedInt:
+        '''Get (and compute if necessary) cached property self.incoming_arcs
+           For use by internal k2 code, relates to best-path'''
         if hasattr(self, 'incoming_arcs') is False:
-            dest_states = self.update_dest_states()
+            dest_states = self.get_dest_states()
             incoming_arcs = _k2._get_incoming_arcs(self.arcs, dest_states)
             self._update_cache('incoming_arcs', incoming_arcs)
         return self.incoming_arcs
 
-    def update_entering_arc_batches(self) -> _k2.RaggedInt:
+    def get_entering_arc_batches(self) -> _k2.RaggedInt:
+        '''Get (and compute if necessary) cached property self.entering_arc_batches
+           For use by internal k2 code, used in many algorithms.'''
         if hasattr(self, 'entering_arc_batches') is False:
-            incoming_arcs = self.update_incoming_arcs()
-            state_batches = self.update_state_batches()
+            incoming_arcs = self.get_incoming_arcs()
+            state_batches = self.get_state_batches()
             entering_arc_batches = _k2._get_entering_arc_index_batches(
                 self.arcs,
                 incoming_arcs=incoming_arcs,
@@ -281,37 +291,44 @@ class Fsa(object):
             self._update_cache('entering_arc_batches', entering_arc_batches)
         return self.entering_arc_batches
 
-    def update_leaving_arc_batches(self) -> _k2.RaggedInt:
+    def get_leaving_arc_batches(self) -> _k2.RaggedInt:
+        '''Get (and compute if necessary) cached property self.leaving_arc_batches
+           For use by internal k2 code, used in many algorithms.'''
         if hasattr(self, 'leaving_arc_batches') is False:
-            state_batches = self.update_state_batches()
+            state_batches = self.get_state_batches()
             leaving_arc_batches = _k2._get_leaving_arc_index_batches(
                 self.arcs, state_batches)
             self._update_cache('leaving_arc_batches', leaving_arc_batches)
         return self.leaving_arc_batches
 
-    def update_forward_scores_tropical(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'forward_scores_tropical') is False \
-                or (use_float_scores is True and self.forward_scores_tropical.dtype == torch.float64) \
-                or (use_float_scores is False and self.forward_scores_tropical.dtype == torch.float32): # noqa
+    def get_forward_scores_tropical(self, use_float_scores) -> torch.Tensor:
+        '''Get (and compute if necessary) cached property self.forward_scores_tropical.
+           For use by internal k2 code, used in getting best-path or (tropical)
+           total-scores.  These are raw forward-scores and not differentiable.'''
+        name = 'forward_scores_tropical' + ('float' if use_float_scores else 'double')
+        if hasattr(self, name) is False:
             if use_float_scores:
                 func = _k2._get_forward_scores_float
             else:
                 func = _k2._get_forward_scores_double
 
-            state_batches = self.update_state_batches()
-            entering_arc_batches = self.update_entering_arc_batches()
+            state_batches = self.get_state_batches()
+            entering_arc_batches = self.get_entering_arc_batches()
 
             forward_scores_tropical, entering_arcs = func(
                 self.arcs,
                 state_batches=state_batches,
                 entering_arc_batches=entering_arc_batches,
                 log_semiring=False)
-            self._update_cache('forward_scores_tropical',
+            self._update_cache(name,
                                forward_scores_tropical)
             self._update_cache('entering_arcs', entering_arcs)
-        return self.forward_scores_tropical
+        return getattr(self, name)
 
-    def update_forward_scores_log(self, use_float_scores) -> torch.Tensor:
+    def get_forward_scores_log(self, use_float_scores) -> torch.Tensor:
+        '''Get (and compute if necessary) cached property self.forward_scores_log.
+           For use by internal k2 code, used in getting total-score for log semiring
+        '''
         if hasattr(self, 'forward_scores_log') is False \
                 or (use_float_scores is True and self.forward_scores_log.dtype == torch.float64) \
                 or (use_float_scores is False and self.forward_scores_log.dtype == torch.float32): # noqa
@@ -320,8 +337,8 @@ class Fsa(object):
             else:
                 func = _k2._get_forward_scores_double
 
-            state_batches = self.update_state_batches()
-            entering_arc_batches = self.update_entering_arc_batches()
+            state_batches = self.get_state_batches()
+            entering_arc_batches = self.get_entering_arc_batches()
 
             forward_scores_log, _ = func(
                 self.arcs,
@@ -331,47 +348,59 @@ class Fsa(object):
             self._update_cache('forward_scores_log', forward_scores_log)
         return self.forward_scores_log
 
-    def update_tot_scores_tropical(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'tot_scores_tropical') is False \
-                or (use_float_scores is True and self.tot_scores_tropical.dtype == torch.float64) \
-                or (use_float_scores is False and self.tot_scores_tropical.dtype == torch.float32): # noqa
+    def get_tot_scores_tropical(self, use_float_scores) -> torch.Tensor:
+        '''Compute total-scores in tropical semiring (one per FSA), which is the same
+           as the best-path score.
+           CAUTION: these are just the raw total-scores and are
+           not differentiable.   Use k2.get_tot_scores(self) to
+           get differentiable total-scores.
+        '''
+        name = 'tot_scores_tropical_' + ('float' if use_float_scores else 'double')
+        if hasattr(self, name) is False:
             if use_float_scores is True:
                 func = _k2._get_tot_scores_float
             else:
                 func = _k2._get_tot_scores_double
-            forward_scores_tropical = self.update_forward_scores_tropical(
+            forward_scores_tropical = self.get_forward_scores_tropical(
                 use_float_scores)
             tot_scores_tropical = func(self.arcs, forward_scores_tropical)
-            self._update_cache('tot_scores_tropical', tot_scores_tropical)
-        return self.tot_scores_tropical
+            self._update_cache(name, tot_scores_tropical)
+        return getattr(self, name)
 
-    def update_tot_scores_log(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'tot_scores_log') is False \
-                or (use_float_scores is True and self.tot_scores_log.dtype == torch.float64) \
-                or (use_float_scores is False and self.tot_scores_log.dtype == torch.float32): # noqa
+    def get_tot_scores_log(self, use_float_scores) -> torch.Tensor:
+        '''Compute total-scores in log semiring (one per FSA).
+           as the best-path score.
+           CAUTION: these are just the raw total-scores and are not
+           differentiable.  Use k2.get_tot_scores(self) to get differentiable
+           total-scores.
+        '''
+        name = 'tot_scores_log_' + ('float' if use_float_scores else 'double')
+        if hasattr(self, name) is False:
             if use_float_scores is True:
                 func = _k2._get_tot_scores_float
             else:
                 func = _k2._get_tot_scores_double
-            forward_scores_log = self.update_forward_scores_log(
+            forward_scores_log = self.get_forward_scores_log(
                 use_float_scores)
             tot_scores_log = func(self.arcs, forward_scores_log)
-            self._update_cache('tot_scores_log', tot_scores_log)
-        return self.tot_scores_log
+            self._update_cache(name, tot_scores_log)
+        return getattr(self, name)
 
-    def update_backward_scores_tropical(self,
-                                        use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'backward_scores_tropical') is False \
-                or (use_float_scores is True and self.backward_scores_tropical.dtype == torch.float64) \
-                or (use_float_scores is False and self.backward_scores_tropical.dtype == torch.float32): # noqa
+    def get_backward_scores_tropical(self,
+                                     use_float_scores) -> torch.Tensor:
+        '''Compute backward-scores in tropical semiring, i.e. best-path-to-end
+           costs.  For internal k2 use.  Not differentiable.
+        '''
+        name = 'backward_scores_tropical_' + ('float' if use_float_scores else 'double')
+        if hasattr(self, name) is False:
             if use_float_scores:
                 func = _k2._get_backward_scores_float
             else:
                 func = _k2._get_backward_scores_double
 
-            state_batches = self.update_state_batches()
-            leaving_arc_batches = self.update_leaving_arc_batches()
-            tot_scores_tropical = self.update_tot_scores_tropical(
+            state_batches = self.get_state_batches()
+            leaving_arc_batches = self.get_leaving_arc_batches()
+            tot_scores_tropical = self.get_tot_scores_tropical(
                 use_float_scores)
             backward_scores_tropical = func(
                 self.arcs,
@@ -379,35 +408,40 @@ class Fsa(object):
                 leaving_arc_batches=leaving_arc_batches,
                 tot_scores=tot_scores_tropical,
                 log_semiring=False)
-            self._update_cache('backward_scores_tropical',
-                               backward_scores_tropical)
-        return self.backward_scores_tropical
+            self._update_cache(name, backward_scores_tropical)
+        return getattr(self, name)
 
-    def update_backward_scores_log(self, use_float_scores) -> torch.Tensor:
-        if hasattr(self, 'backward_scores_log') is False \
-                or (use_float_scores is True and self.backward_scores_log.dtype == torch.float64) \
-                or (use_float_scores is False and self.backward_scores_log.dtype == torch.float32): # noqa
+    def get_backward_scores_log(self, use_float_scores) -> torch.Tensor:
+        '''Compute backward-scores in tropical semiring, i.e. total-score-to-end.
+           for each state.  For internal k2 use.  Not differentiable.
+        '''
+        name = 'backward_scores_log_' + ('float' if use_float_scores else 'double')
+        if hasattr(self, name) is False:
             if use_float_scores:
                 func = _k2._get_backward_scores_float
             else:
                 func = _k2._get_backward_scores_double
 
-            state_batches = self.update_state_batches()
-            leaving_arc_batches = self.update_leaving_arc_batches()
-            tot_scores_log = self.update_tot_scores_log(use_float_scores)
+            state_batches = self.get_state_batches()
+            leaving_arc_batches = self.get_leaving_arc_batches()
+            tot_scores_log = self.get_tot_scores_log(use_float_scores)
             backward_scores_log = func(self.arcs,
                                        state_batches=state_batches,
                                        leaving_arc_batches=leaving_arc_batches,
                                        tot_scores=tot_scores_log,
                                        log_semiring=True)
-            self._update_cache('backward_scores_log', backward_scores_log)
-        return self.backward_scores_log
+            self._update_cache(name, backward_scores_log)
+        return getattr(self, name)
 
-    def update_entering_arcs(self, use_float_scores) -> torch.Tensor:
+    def get_entering_arcs(self, use_float_scores) -> torch.Tensor:
+        '''Compute, for each state, the index of the best arc entering it.
+           For internal k2 use.
+        '''
         if hasattr(self, 'entering_arcs') is False:
-            if hasattr(self, 'forward_scores_tropical'):
-                del self.forward_scores_tropical
-            self.update_forward_scores_tropical(use_float_scores)
+            self.get_forward_scores_tropical(use_float_scores)
+        # If the following fails, there may be some kind of code error.
+        # It should be computed when we call get_forward_scores_tropical,
+        # unless someone
         return self.entering_arcs
 
     def requires_grad_(self, requires_grad: bool) -> 'Fsa':
@@ -415,6 +449,9 @@ class Fsa(object):
 
         Sets the `scores`'s requires_grad attribute in-place.
         Returns this FSA.
+        You can test whether this object has the requires_grad property
+        true or false by accessing self.requires_grad (handled in
+        __getattr__).
 
         Caution:
           This is an **in-place** operation as you can see that the function
