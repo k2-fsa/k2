@@ -77,12 +77,16 @@ class _GetTotScoresFunction(torch.autograd.Function):
             backward_scores = fsas.update_backward_scores_log(use_float_scores)
             if use_float_scores:
                 func = _k2._get_arc_scores_float
+                bprop_func = _k2._get_tot_scores_float_log_backward
             else:
                 func = _k2._get_arc_scores_double
+                bprop_func = _k2._get_tot_scores_double_log_backward
+
             arc_scores = func(fsas=fsas.arcs,
                               forward_scores=forward_scores,
                               backward_scores=backward_scores)
-            return None, None, None, arc_scores.exp()
+            out_grad = bprop_func(fsas.arcs, arc_scores, tot_scores_grad)
+            return None, None, None, out_grad
 
 
 class _IntersectDensePrunedFunction(torch.autograd.Function):

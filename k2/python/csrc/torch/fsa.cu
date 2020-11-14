@@ -301,7 +301,8 @@ static void PybindGetArcScores(py::module &m, const char *name) {
 
 /* Compute the backward propagation of GetTotScores in tropical semiring.
 
-   @param [in] fsa_vec  The input FsaVec for computing GetTotScores.
+   @param [in] fsa_vec  The input FsaVec for computing `GetTotScores`
+                        and `ShortestPath`.
    @param [in] best_path_arc_indexes The arc indexes that contribute to
                                      the total scores. It is the return value
                                      of `ShortestPath`.
@@ -347,11 +348,75 @@ static torch::Tensor GetTotScoresTropicalBackward(
   return ans_grad;
 }
 
+/* Compute the backward propagation of GetTotScores in log semiring.
+ *
+   @param [in] fsa_vec     The input FsaVec for computing `GetTotScores`
+                           and `GetArcScores`.
+   @param [in] arc_scores  It is the return value of `GetArcScores`.
+   @param [in] tot_scores_grad  The gradient of total scores.
+   @return It returns the gradient of scores of all arcs.
+ */
+template <typename T>
+static torch::Tensor GetTotScoresLogBackward(FsaVec &fsas,
+                                             torch::Tensor arc_scores,
+                                             torch::Tensor tot_scores_grad) {
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  K2_CHECK_EQ(fsas.NumElements(), arc_scores.numel());
+  K2_CHECK(arc_scores.is_contiguous())
+      << "arc_scores is supposed to be computed by k2 "
+         "so it should be contiguous!";
+  K2_CHECK_EQ(arc_scores.dim(), 1);
+  K2_CHECK_EQ(arc_scores.scalar_type(), ToScalarType<T>::value);
+  K2_CHECK_EQ(tot_scores_grad.dim(), 1);
+  K2_CHECK_EQ(tot_scores_grad.sizes()[0], static_cast<int64_t>(fsas.Dim0()));
+  K2_CHECK_EQ(tot_scores_grad.scalar_type(), ToScalarType<T>::value);
+
+  std::vector<int64_t> dims = {fsas.NumElements()};
+  auto options = torch::TensorOptions()
+                     .dtype(torch::kFloat32)
+                     .device(tot_scores_grad.device());
+  torch::Tensor ans_grad = torch::empty(dims, options);  // it is contiguous
+  float *ans_grad_data = ans_grad.data_ptr<float>();
+  const T *tot_scores_grad_data = tot_scores_grad.data_ptr<T>();
+  int64_t tot_scores_grad_stride = tot_scores_grad.strides()[0];
+
+  const int32_t *fsas_row_ids1 = fsas.RowIds(1).Data();
+  const int32_t *fsas_row_ids2 = fsas.RowIds(2).Data();
+  const T *arc_scores_data = arc_scores.data_ptr<T>();
+
+  if (std::is_same<T, float>::value) {
+    auto lambda = [=] __host__ __device__(int32_t arc_idx012) {
+      int32_t state_idx01 = fsas_row_ids2[arc_idx012];
+      int32_t fsa_idx0 = fsas_row_ids1[state_idx01];
+      ans_grad_data[arc_idx012] =
+          expf(arc_scores_data[arc_idx012]) *
+          tot_scores_grad_data[fsa_idx0 * tot_scores_grad_stride];
+    };
+    Eval(fsas.Context(), fsas.NumElements(), lambda);
+  } else {
+    auto lambda = [=] __host__ __device__(int32_t arc_idx012) {
+      int32_t state_idx01 = fsas_row_ids2[arc_idx012];
+      int32_t fsa_idx0 = fsas_row_ids1[state_idx01];
+      ans_grad_data[arc_idx012] =
+          exp(arc_scores_data[arc_idx012]) *
+          tot_scores_grad_data[fsa_idx0 * tot_scores_grad_stride];
+    };
+    Eval(fsas.Context(), fsas.NumElements(), lambda);
+  }
+  return ans_grad;
+}
+
 template <typename T>
 static void PybindGetTotScoresTropicalBackward(py::module &m,
                                                const char *name) {
   m.def(name, &GetTotScoresTropicalBackward<T>, py::arg("fsas"),
         py::arg("best_path_arc_indexes"), py::arg("tot_scores_grad"));
+}
+
+template <typename T>
+static void PybindGetTotScoresLogBackward(py::module &m, const char *name) {
+  m.def(name, &GetTotScoresLogBackward<T>, py::arg("fsas"),
+        py::arg("arc_scores"), py::arg("tot_scores_grad"));
 }
 
 }  // namespace k2
@@ -373,4 +438,8 @@ void PybindFsa(py::module &m) {
       m, "_get_tot_scores_float_tropical_backward");
   k2::PybindGetTotScoresTropicalBackward<double>(
       m, "_get_tot_scores_double_tropical_backward");
+  k2::PybindGetTotScoresLogBackward<float>(
+      m, "_get_tot_scores_float_log_backward");
+  k2::PybindGetTotScoresLogBackward<double>(
+      m, "_get_tot_scores_double_log_backward");
 }
