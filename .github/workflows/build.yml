@@ -70,7 +70,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install wheel twine
-          python3 -m pip install mediafire
+          python3 -m pip install bs4 requests tqdm
 
           ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
@@ -78,11 +78,8 @@ jobs:
       - name: Download cudnn 8.0
         env:
           cuda: ${{ matrix.cuda }}
-          username: ${{ secrets.USERNAME}}
-          password: ${{ secrets.PASSWORD}}
         run: |
-          python3 ./scripts/github_actions/install_cudnn.py
-          ls -lh
+          ./scripts/github_actions/install_cudnn.sh
 
       - name: Configure CMake
         shell: bash
