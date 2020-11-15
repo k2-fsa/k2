@@ -540,4 +540,93 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
   }
 }
 
+// TODO(fangjun): compute arc_map
+Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+
+  ContextPtr &context = fsas.Context();
+  const int32_t *fsas_row_splits1_data = fsas.RowSplits(1).Data();
+  const int32_t *fsas_row_splits2_data = fsas.RowSplits(2).Data();
+  const int32_t *fsas_row_ids1_data = fsas.RowIds(1).Data();
+  const int32_t *fsas_row_ids2_data = fsas.RowIds(2).Data();
+  const Arc *arcs_data = fsas.values.Data();
+
+  int32_t num_fsas = fsas.Dim0();
+  int32_t num_states = fsas.TotSize(1);
+  int32_t num_arcs = fsas.TotSize(2);
+
+  // A new start state and a new final state are added (+2).
+  // The final state of each fsa is removed (-num_fsas)
+  int32_t num_out_states = num_states + 2 - num_fsas;
+  int32_t out_final_state = num_out_states - 1;
+
+  // For every fsa, a new arc is added from the new start state
+  // to its original start state (+num_fsas)
+  int32_t num_out_arcs = num_arcs + num_fsas;
+
+  Array1<int32_t> out_row_splits(context, num_out_states + 1);
+  Array1<int32_t> out_row_ids(context, num_out_arcs);
+  Array1<Arc> out_arcs(context, num_out_arcs);
+
+  int32_t *out_row_splits_data = out_row_splits.Data();
+  int32_t *out_row_ids_data = out_row_ids.Data();
+  Arc *out_arcs_data = out_arcs.Data();
+
+  auto lambda_set_out = [=] __host__ __device__(int32_t fsas_arc_idx012) {
+    int32_t fsas_state_idx01 = fsas_row_ids2_data[fsas_arc_idx012];
+    int32_t fsas_idx0 = fsas_row_ids1_data[fsas_state_idx01];
+    int32_t this_fsa_final_state_idx01 =
+        fsas_row_splits1_data[fsas_idx0 + 1] - 1;
+
+    K2_DCHECK_GE(this_fsa_final_state_idx01, fsas_state_idx01);
+
+    int32_t fsas_state_idx0x = fsas_row_splits1_data[fsas_idx0];
+    int32_t fsas_state_idx1 = fsas_state_idx01 - fsas_state_idx0x;
+    int32_t this_fsa_final_state_idx1 =
+        this_fsa_final_state_idx01 - fsas_state_idx0x;
+
+    int32_t fsas_arc_idx01x = fsas_row_splits2_data[fsas_state_idx01];
+    int32_t fsas_arc_idx2 = fsas_arc_idx012 - fsas_arc_idx01x;
+
+    // fsa0: +1 (a new start state)
+    // fsa1: +0 (the final state of fsa0 is removed)
+    // fsa2: -1 (the final state of fsa1 is removed)
+    // fsa3: -2 (the final state of fsa2 is removed)
+    int32_t state_offset = 1 - fsas_idx0;
+    int32_t out_state_idx0 = fsas_state_idx01 + state_offset;
+
+    int32_t out_arc_idx01 = fsas_arc_idx012 + num_fsas;
+    out_row_ids_data[out_arc_idx01] = out_state_idx0;
+    Arc arc = arcs_data[fsas_arc_idx012];
+
+    K2_DCHECK_EQ(arc.src_state, fsas_state_idx1);
+
+    if (arc.dest_state == this_fsa_final_state_idx1)
+      arc.dest_state = out_final_state;
+    else
+      arc.dest_state = arc.dest_state - arc.src_state + out_state_idx0;
+
+    arc.src_state = out_state_idx0;
+    out_arcs_data[out_arc_idx01] = arc;
+
+    if (fsas_state_idx1 == 0 && fsas_arc_idx2 == 0) {
+      // add a new arc from the new start state to this state
+      Arc arc(0, out_state_idx0, 0, 0);
+      out_arcs_data[fsas_idx0] = arc;
+      out_row_ids_data[fsas_idx0] = 0;
+    }
+  };
+  Eval(context, num_arcs, lambda_set_out);
+  K2_LOG(INFO) << out_arcs;
+  K2_LOG(INFO) << out_row_ids;
+
+  // TODO(fangjun): figure out out_row_splits in the lambda
+  //
+  // RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids,
+  // num_out_arcs);
+  RaggedShape shape = RaggedShape2(nullptr, &out_row_ids, num_out_arcs);
+  Fsa ans = Ragged<Arc>(shape, out_arcs);
+  return ans;
+}
+
 }  // namespace k2

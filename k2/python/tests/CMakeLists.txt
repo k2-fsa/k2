@@ -29,6 +29,7 @@ set(py_test_files
   linear_fsa_test.py
   shortest_path_test.py
   top_sort_test.py
+  union_test.py
 )
 
 foreach(source IN LISTS py_test_files)

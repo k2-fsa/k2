@@ -239,6 +239,19 @@ FsaVec LinearFsas(Ragged<int32_t> &symbols);
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
                              const Array1<int32_t> &entering_arcs);
 
+/* Compute the union of all fsas in a FsaVec.
+
+   @param [in]  fsas       Input FsaVec (must have 3 axes). Every fsa must
+                           be non-empty.
+   @param [out] arc_map    It maps the arc indexes of the output fsa
+                           to the input fsas. That is,
+                           arc_map[out_arc_index] = fsas_arc_index.
+                           Its entry may be -1 if there is no
+                           corresponding arc in fsas.
+   @return  returns an FSA that is the union of the input FSAs.
+ */
+Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map = nullptr);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_

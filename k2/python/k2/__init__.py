@@ -10,6 +10,7 @@ from .fsa_algo import intersect
 from .fsa_algo import linear_fsa
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
+from .fsa_algo import union
 from .fsa_properties import get_properties
 from .fsa_properties import is_accessible
 from .fsa_properties import is_arc_sorted
@@ -47,4 +48,5 @@ __all__ = [
     'to_str',
     'to_tensor',
     'top_sort',
+    'union',
 ]
