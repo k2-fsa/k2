@@ -5,12 +5,14 @@
 from typing import Union
 from typing import List
 
-from .fsa import Fsa
-from .fsa_properties import is_arc_sorted
-from .fsa_properties import is_accessible
-from .fsa_properties import is_coaccessible
 import _k2
 import torch
+
+from .autograd import index_select
+from .fsa import Fsa
+from .fsa_properties import is_accessible
+from .fsa_properties import is_arc_sorted
+from .fsa_properties import is_coaccessible
 
 
 def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
@@ -48,10 +50,9 @@ def top_sort(fsa: Fsa) -> Fsa:
     '''
     need_arc_map = True
     ragged_arc, arc_map = _k2.top_sort(fsa.arcs, need_arc_map=need_arc_map)
-    arc_map = arc_map.to(torch.int64)  # required by index_select
     sorted_fsa = Fsa.from_ragged_arc(ragged_arc)
     for name, value in fsa.named_tensor_attr():
-        setattr(sorted_fsa, name, value.index_select(0, arc_map))
+        setattr(sorted_fsa, name, index_select(value, arc_map))
     for name, value in fsa.named_non_tensor_attr():
         setattr(sorted_fsa, name, value)
 
@@ -90,10 +91,6 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, b_fsa.arcs,
                                                      treat_epsilons_specially,
                                                      need_arc_map)
-    # Some of entries in a_arc_map and b_arc_map may be -1.
-    # The arc_maps are incremented so that every entry is non-negative.
-    a_arc_map = a_arc_map.to(torch.int64) + 1
-    b_arc_map = b_arc_map.to(torch.int64) + 1
 
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
     for name, a_value in a_fsa.named_tensor_attr():
@@ -106,28 +103,18 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
             b_value = getattr(b_fsa, name)
             assert b_value.dtype == torch.float32
 
-            # a_arc_map and b_arc_map have been offset by 1
-            # so we need a padding here
-            padding = a_value.new_zeros((1, *a_value.shape[1:]))
-            a_value = torch.cat((padding, a_value), dim=0)
-            b_value = torch.cat((padding, b_value), dim=0)
-
-            value = a_value.index_select(0, a_arc_map) \
-                    + b_value.index_select(0, b_arc_map)
+            value = index_select(a_value, a_arc_map) \
+                    + index_select(b_value, b_arc_map)
             setattr(out_fsa, name, value)
         else:
             # only a_fsa has this attribute, copy it via arc_map
-            padding = a_value.new_zeros((1, *a_value.shape[1:]))
-            a_value = torch.cat((padding, a_value), dim=0)
-            value = a_value.index_select(0, a_arc_map)
+            value = index_select(a_value, a_arc_map)
             setattr(out_fsa, name, value)
 
     # now copy tensor attributes that are in b_fsa but are not in a_fsa
     for name, b_value in b_fsa.named_tensor_attr():
         if not hasattr(out_fsa, name):
-            padding = b_value.new_zeros((1, *b_value.shape[1:]))
-            b_value = torch.cat((padding, b_value), dim=0)
-            value = b_value.index_select(0, b_arc_map)
+            value = index_select(b_value, b_arc_map)
             setattr(out_fsa, name, value)
 
     for name, a_value in a_fsa.named_non_tensor_attr():
@@ -168,10 +155,9 @@ def connect(fsa: Fsa) -> Fsa:
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.connect(fsa.arcs, need_arc_map=need_arc_map)
-    arc_map = arc_map.to(torch.int64)  # required by index_select
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
     for name, value in fsa.named_tensor_attr():
-        setattr(out_fsa, name, value.index_select(0, arc_map))
+        setattr(out_fsa, name, index_select(value, arc_map))
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
 
@@ -202,10 +188,9 @@ def arc_sort(fsa: Fsa) -> Fsa:
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.arc_sort(fsa.arcs, need_arc_map=need_arc_map)
-    arc_map = arc_map.to(torch.int64)  # required by index_select
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
     for name, value in fsa.named_tensor_attr():
-        setattr(out_fsa, name, value.index_select(0, arc_map))
+        setattr(out_fsa, name, index_select(value, arc_map))
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
 
@@ -233,9 +218,9 @@ def shortest_path(fsa: Fsa, use_float_scores: bool) -> Fsa:
     ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
 
-    arc_map = ragged_int.values().to(torch.int64)  # required by index_select
+    arc_map = ragged_int.values()
     for name, value in fsa.named_tensor_attr():
-        setattr(out_fsa, name, value.index_select(0, arc_map))
+        setattr(out_fsa, name, index_select(value, arc_map))
 
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
@@ -261,15 +246,10 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
     need_arc_map = True
     ragged_arc, arc_map = _k2.add_epsilon_self_loops(fsa.arcs,
                                                      need_arc_map=need_arc_map)
-    arc_map = arc_map.to(torch.int64) + 1
-
-    # TODO(fangjun): implement _k2.index to process indexes == -1
 
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
     for name, value in fsa.named_tensor_attr():
-        padding = value.new_zeros((1, *value.shape[1:]))
-        value = torch.cat((padding, value), dim=0)
-        new_value = value.index_select(0, arc_map)
+        new_value = index_select(value, arc_map)
         setattr(out_fsa, name, new_value)
 
     for name, value in fsa.named_non_tensor_attr():

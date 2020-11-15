@@ -3,9 +3,8 @@
 
 from typing import List, Tuple
 
-import torch
-
 import _k2
+import torch
 
 from .fsa import Fsa
 from .dense_fsa_vec import DenseFsaVec
@@ -41,7 +40,8 @@ class _GetTotScoresFunction(torch.autograd.Function):
         # `fsas` a reference to this object, which also has a reference
         # to `fsas`.
         if log_semiring is False:
-            tot_scores = fsas.get_tot_scores_tropical(use_float_scores).detach()
+            tot_scores = fsas.get_tot_scores_tropical(
+                use_float_scores).detach()
         else:
             tot_scores = fsas.get_tot_scores_log(use_float_scores).detach()
 
@@ -146,16 +146,12 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             max_active_states=max_active_states,
             min_active_states=min_active_states)
 
-        # required by `index_select_` and `index_add_` (in backward)
-        arc_map_a = arc_map_a.to(torch.int64)
-        arc_map_b = arc_map_b.to(torch.int64)
-
         out_fsa[0] = Fsa.from_ragged_arc(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr():
             if name == 'scores':
                 continue
-            value = a_value.index_select(0, arc_map_a)
+            value = index_select(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():
@@ -172,10 +168,9 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
     def backward(
             ctx, out_fsa_grad
     ) -> Tuple[None, None, None, None, None, None, torch.Tensor, torch.Tensor]:
+        a_scores, b_scores = ctx.saved_tensors
         arc_map_a = ctx.arc_map_a
         arc_map_b = ctx.arc_map_b
-
-        a_scores, b_scores = ctx.saved_tensors
 
         grad_a = torch.zeros(a_scores.size(0),
                              dtype=torch.float32,
@@ -188,10 +183,57 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             device=b_scores.device,
             requires_grad=False).contiguous()  # will use its `view()` later
 
-        grad_a.index_add_(0, arc_map_a, out_fsa_grad)
-        grad_b.view(-1).index_add_(0, arc_map_b, out_fsa_grad)
+        _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
+        _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
         return None, None, None, None, None, None, grad_a, grad_b
+
+
+class _IndexSelectFunction(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
+        '''Returns a new tensor which indexes the input tensor along dimension 0
+        using the entries in `index`.
+
+        If the entry in `index` is -1, then the corresponding entry in the
+        returned tensor is 0.
+
+        Caution:
+          `index.dtype == torch.int32` and `index.ndim == 1`.
+
+        Args:
+          src:
+            The input tensor. Either 1-D or 2-D with dtype torch.int32 or
+            torch.float32.
+          index:
+            1-D tensor of dtype torch.int32 containing the indexes.
+            If an entry is -1, the corresponding entry in the returned value
+            is 0. The elements of `index` should be in the range
+            `[-1..src.shape[0]-1]`.
+
+        Returns:
+          A tensor with shape (index.numel(), *src.shape[1:]) and dtype the
+          same as `src`, e.g. if `src.ndim == 1`, ans.shape would be
+          (index.shape[0],); if `src.ndim == 2`, ans.shape would be
+          (index.shape[0], src.shape[1]).
+          Will satisfy `ans[i] == src[index[i]]` if `src.ndim == 1`,
+          or `ans[i,j] == src[index[i],j]` if `src.ndim == 2`, except for
+          entries where `index[i] == -1` which will be zero.
+        '''
+        ctx.save_for_backward(src, index)
+        return _k2.index_select(src, index)
+
+    @staticmethod
+    def backward(ctx, out_grad) -> Tuple[torch.Tensor, None]:
+        src, index = ctx.saved_tensors
+
+        ans = torch.zeros(src.size(0),
+                          dtype=torch.float32,
+                          device=src.device,
+                          requires_grad=False)
+        _k2.index_add(index, out_grad, ans)
+        return ans, None
 
 
 def get_tot_scores(fsas: Fsa, log_semiring: bool,
@@ -259,3 +301,36 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec, beam: float,
                                         max_active_states, min_active_states,
                                         a_fsas.scores, b_fsas.scores)
     return out_fsa[0]
+
+
+def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
+    '''Returns a new tensor which indexes the input tensor along dimension 0
+    using the entries in `index`.
+
+    If the entry in `index` is -1, then the corresponding entry in the
+    returned tensor is 0.
+
+    Caution:
+      `index.dtype == torch.int32` and `index.ndim == 1`.
+
+    Args:
+      src:
+        The input tensor. Either 1-D or 2-D with dtype torch.int32 or
+        torch.float32.
+      index:
+        1-D tensor of dtype torch.int32 containing the indexes.
+        If an entry is -1, the corresponding entry in the returned value
+        is 0. The elements of `index` should be in the range
+        `[-1..src.shape[0]-1]`.
+
+    Returns:
+      A tensor with shape (index.numel(), *src.shape[1:]) and dtype the
+      same as `src`, e.g. if `src.ndim == 1`, ans.shape would be
+      (index.shape[0],); if `src.ndim == 2`, ans.shape would be
+      (index.shape[0], src.shape[1]).
+      Will satisfy `ans[i] == src[index[i]]` if `src.ndim == 1`,
+      or `ans[i,j] == src[index[i],j]` if `src.ndim == 2`, except for
+      entries where `index[i] == -1` which will be zero.
+    '''
+    ans = _IndexSelectFunction.apply(src, index)
+    return ans

@@ -94,7 +94,7 @@ jobs:
         run: |
           echo "number of cores: $(nproc)"
           cd build
-          make -j _k2
+          make VERBOSE=1 _k2
 
       - name: Build pip packages
         shell: bash

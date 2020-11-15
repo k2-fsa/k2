@@ -10,16 +10,16 @@ from typing import Iterator
 from typing import Optional
 from typing import Tuple
 
+import _k2
 import torch
 
-import _k2
 from _k2 import RaggedArc
 from _k2 import _as_float
 from _k2 import _as_int
 from _k2 import _fsa_from_str
 from _k2 import _fsa_from_tensor
-from _k2 import _fsa_to_tensor
 from _k2 import _fsa_to_str
+from _k2 import _fsa_to_tensor
 
 
 class Fsa(object):
@@ -303,9 +303,11 @@ class Fsa(object):
         return self.leaving_arc_batches
 
     def get_forward_scores_tropical(self, use_float_scores) -> torch.Tensor:
-        '''Get (and compute if necessary) cached property self.forward_scores_tropical.
-           For use by internal k2 code, used in getting best-path or (tropical)
-           total-scores.  These are raw forward-scores and not differentiable.'''
+        '''Get (and compute if necessary) cached property
+        self.forward_scores_tropical.
+
+        For use by internal k2 code, used in getting best-path or (tropical)
+        total-scores.  These are raw forward-scores and not differentiable.'''
         name = 'forward_scores_tropical' + ('float'
                                             if use_float_scores else 'double')
         if hasattr(self, name) is False:
@@ -327,8 +329,11 @@ class Fsa(object):
         return getattr(self, name)
 
     def get_forward_scores_log(self, use_float_scores) -> torch.Tensor:
-        '''Get (and compute if necessary) cached property self.forward_scores_log.
-           For use by internal k2 code, used in getting total-score for log semiring
+        '''Get (and compute if necessary) cached property
+        self.forward_scores_log.
+
+        For use by internal k2 code, used in getting total-score for
+        log semiring
         '''
         if hasattr(self, 'forward_scores_log') is False \
                 or (use_float_scores is True and self.forward_scores_log.dtype == torch.float64) \

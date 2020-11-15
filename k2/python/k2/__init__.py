@@ -1,4 +1,5 @@
 from .autograd import get_tot_scores
+from .autograd import index_select
 from .autograd import intersect_dense_pruned
 from .dense_fsa_vec import DenseFsaVec
 from .dense_fsa_vec import convert_dense_to_fsa_vec
@@ -17,6 +18,7 @@ from .fsa_properties import is_arc_sorted
 from .fsa_properties import is_coaccessible
 from .fsa_properties import properties_to_str
 from .ops import index
+from .ops import index_add
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
 from .utils import to_dot
@@ -36,6 +38,8 @@ __all__ = [
     'get_properties',
     'get_tot_scores',
     'index',
+    'index_add',
+    'index_select',
     'intersect',
     'intersect_dense_pruned',
     'is_accessible',

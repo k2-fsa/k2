@@ -1,10 +1,11 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from .fsa import Fsa
 import _k2
 import numpy as np
 import torch
+
+from .fsa import Fsa
 
 
 class DenseFsaVec(object):
