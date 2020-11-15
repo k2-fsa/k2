@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
