@@ -21,7 +21,6 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
         os: [ubuntu-16.04, ubuntu-18.04]
         cuda: ["10.1", "10.2"]
@@ -95,7 +94,7 @@ jobs:
         run: |
           echo "number of cores: $(nproc)"
           cd build
-          make -j _k2
+          make VERBOSE=1 _k2
 
       - name: Build pip packages
         shell: bash
