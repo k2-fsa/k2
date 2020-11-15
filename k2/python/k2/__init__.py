@@ -1,6 +1,7 @@
 from .autograd import get_tot_scores
 from .autograd import index_select
 from .autograd import intersect_dense_pruned
+from .autograd import union
 from .dense_fsa_vec import DenseFsaVec
 from .dense_fsa_vec import convert_dense_to_fsa_vec
 from .fsa import Fsa
@@ -11,7 +12,6 @@ from .fsa_algo import intersect
 from .fsa_algo import linear_fsa
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
-from .fsa_algo import union
 from .fsa_properties import get_properties
 from .fsa_properties import is_accessible
 from .fsa_properties import is_arc_sorted

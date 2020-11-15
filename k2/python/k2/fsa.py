@@ -234,6 +234,8 @@ class Fsa(object):
             return _k2.fsa_properties_as_str(self._properties)
         elif name == 'requires_grad':
             return self.scores.requires_grad
+        elif name == 'grad':
+            return self.scores.grad
 
         raise AttributeError(f'Unknown attribute {name}')
 

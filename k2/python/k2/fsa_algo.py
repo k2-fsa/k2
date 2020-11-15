@@ -256,23 +256,3 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
         setattr(out_fsa, name, value)
 
     return out_fsa
-
-
-def union(fsas: Fsa) -> Fsa:
-    '''Compute the union of a FsaVec.
-
-    Args:
-      fsas:
-        A FsaVec. That is, len(fsas.shape) == 3.
-    Returns:
-      A single Fsa that is the union of the input fsas.
-    '''
-    # TODO(fangjun): change it to True once arc_map is implemented
-    need_arc_map = False
-
-    ragged_arc, _ = _k2.union(fsas.arcs, need_arc_map)
-
-    out_fsa = Fsa.from_ragged_arc(ragged_arc)
-
-    # TODO(fangjun): copy attr from the input fsas to out_fsa
-    return out_fsa
