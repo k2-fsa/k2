@@ -49,6 +49,9 @@ def index_add(index: torch.Tensor, value: torch.Tensor,
     Caution:
       `in_out` is modified **in-place**.
 
+    Caution:
+      This functions does NOT support autograd.
+
     Args:
       index:
         A 1-D tensor with dtype torch.int32.  -1 <= index[i] < in_out.shape[0]
