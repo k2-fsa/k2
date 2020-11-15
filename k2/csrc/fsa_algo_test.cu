@@ -257,7 +257,6 @@ TEST(FsaAlgo, IntersectFsaVec) {
   CheckArrayData(arc_map, std::vector<int32_t>{0, 2, 3});
 }
 
-
 TEST(FsaAlgo, AddEpsilonSelfLoopsFsa) {
   std::string s1 = R"(0 1 1 0.1
     0 2 1 0.2
@@ -271,7 +270,7 @@ TEST(FsaAlgo, AddEpsilonSelfLoopsFsa) {
       Fsa fsa1 = FsaFromString(s1).To(context);
       if (i > 0) {
         Fsa fsa2 = Fsa("[ ]").To(context);
-        Fsa *fsa_array[] = { &fsa2, &fsa1 };
+        Fsa *fsa_array[] = {&fsa2, &fsa1};
         // note: i below will be 1 or 2
         FsaVec fsa_vec = CreateFsaVec(i, &fsa_array[0]);
         fsa1 = fsa_vec;
@@ -284,7 +283,6 @@ TEST(FsaAlgo, AddEpsilonSelfLoopsFsa) {
     }
   }
 }
-
 
 TEST(FsaAlgo, ShortestPath) {
   // best path:
@@ -373,6 +371,28 @@ TEST(FsaAlgo, ShortestPath) {
 
     EXPECT_EQ((ans[{2, 0, 0}]), (Arc{0, 1, 2, 100.f}));
     EXPECT_EQ((ans[{2, 1, 0}]), (Arc{1, 2, -1, 5.5f}));
+  }
+}
+
+TEST(FsaAlgo, Union) {
+  std::string s1 = R"(0 1 1 0.1
+    0 2 2 0.2
+    1 3 -1 0.3
+    2 3 -1 0.4
+    3
+  )";
+  std::string s2 = R"(0 1 -1 0.5
+    1
+  )";
+
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Fsa fsa1 = FsaFromString(s1);
+    Fsa fsa2 = FsaFromString(s2);
+    Fsa *fsa_array[] = {&fsa1, &fsa2};
+    FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+    fsa_vec = fsa_vec.To(context);
+    Fsa fsa = Union(fsa_vec);
+    K2_LOG(INFO) << FsaToString(fsa);
   }
 }
 

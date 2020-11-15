@@ -228,6 +228,21 @@ static void PybindAddEpsilonSelfLoops(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
+static void PybindUnion(py::module &m) {
+  m.def(
+      "union",
+      [](FsaVec &fsas, bool need_arc_map = true)
+          -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        Array1<int32_t> arc_map;
+        Fsa out = Union(fsas, need_arc_map ? &arc_map : nullptr);
+
+        torch::optional<torch::Tensor> arc_map_tensor;
+        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        return std::make_pair(out, arc_map_tensor);
+      },
+      py::arg("fsas"), py::arg("need_arc_map") = true);
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -239,4 +254,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindArcSort(m);
   k2::PybindShortestPath(m);
   k2::PybindAddEpsilonSelfLoops(m);
+  k2::PybindUnion(m);
 }
