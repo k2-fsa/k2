@@ -391,9 +391,14 @@ TEST(FsaAlgo, Union) {
     Fsa *fsa_array[] = {&fsa1, &fsa2};
     FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
     fsa_vec = fsa_vec.To(context);
-    Fsa fsa = Union(fsa_vec);
-    K2_LOG(INFO) << FsaToString(fsa);
+    Array1<int32_t> arc_map;
+    Fsa fsa = Union(fsa_vec, &arc_map);
+    CheckArrayData(arc_map, std::vector<int32_t>{-1, -1, 0, 1, 2, 3, 4});
   }
+}
+
+TEST(FsaAlgo, UnionRandomFsas) {
+  // TODO(fangjun): use random fsas for testing
 }
 
 }  // namespace k2

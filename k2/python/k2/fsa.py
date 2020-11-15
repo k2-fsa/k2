@@ -131,12 +131,11 @@ class Fsa(object):
         else:
             properties = _k2.get_fsa_vec_basic_properties(self.arcs)
         self._properties = properties
-        # TODO(fangjun): uncomment them
-        #  if properties & 1 != 1:
-        #      raise ValueError(
-        #          "Fsa is not valid, properties are: {} = {}, arcs are: {}".
-        #          format(properties, _k2.fsa_properties_as_str(properties),
-        #                 str(self.arcs)))
+        if properties & 1 != 1:
+            raise ValueError(
+                "Fsa is not valid, properties are: {} = {}, arcs are: {}".
+                format(properties, _k2.fsa_properties_as_str(properties),
+                       str(self.arcs)))
 
     def _init_internal(self) -> None:
         # There are three kinds of attribute dictionaries:

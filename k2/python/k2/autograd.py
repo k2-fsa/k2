@@ -236,6 +236,31 @@ class _IndexSelectFunction(torch.autograd.Function):
         return ans, None
 
 
+class _UnionFunction(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, fsas: Fsa, out_fsa: List[Fsa],
+                unused_fsas_scores: torch.Tensor) -> torch.Tensor:
+        '''Compute the union of all fsas in a FsaVec.
+
+        Args:
+          fsas:
+            The input FsaVec.
+          out_fsa:
+            A list containing one entry. Since this function can only return
+            values of type `torch.Tensor`, we return the union result in the list.
+          unused_fsas_scores:
+            It is the same as `fsas.scores`, whose sole purpose is for autograd.
+            It is not used in this function.
+        '''
+        need_arc_map = True
+        ragged_arc, arc_map = _k2.union(fsas.arcs, need_arc_map)
+        for name, value in fsas.named_tensor_attr():
+            if name == 'scores':
+                continue
+            value = _k2.index_select()
+
+
 def get_tot_scores(fsas: Fsa, log_semiring: bool,
                    use_float_scores: bool) -> torch.Tensor:
     '''Compute the total loglikes of an FsaVec.
