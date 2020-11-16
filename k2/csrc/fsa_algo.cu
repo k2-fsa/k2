@@ -637,6 +637,7 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
   Eval(context, num_arcs, lambda_set_out);
 
   if (arc_map != nullptr) *arc_map = std::move(tmp_arc_map);
+  RowIdsToRowSplits(out_row_ids, &out_row_splits);  // FIXME(fangjun)
   RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids, num_out_arcs);
   Fsa ans = Ragged<Arc>(shape, out_arcs);
   return ans;

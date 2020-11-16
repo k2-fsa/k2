@@ -398,7 +398,22 @@ TEST(FsaAlgo, Union) {
 }
 
 TEST(FsaAlgo, UnionRandomFsas) {
-  // TODO(fangjun): use random fsas for testing
+  int32_t min_num_fsas = 2;
+  int32_t max_num_fsas = 5;
+  bool acyclic = false;
+  int32_t max_symbol = 100;
+  int32_t min_num_arcs = 10;
+  int32_t max_num_arcs = 100;
+  FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                             min_num_arcs, max_num_arcs);
+
+  K2_LOG(INFO) << fsas.Dim0();
+  K2_LOG(INFO) << fsas.TotSize(1);
+  K2_LOG(INFO) << fsas.TotSize(2);
+  Array1<int32_t> arc_map;
+  Fsa fsa = Union(fsas, &arc_map);
+  ASSERT_EQ(arc_map.Dim(), fsas.NumElements() + fsas.Dim0());
+  // Add more tests
 }
 
 }  // namespace k2
