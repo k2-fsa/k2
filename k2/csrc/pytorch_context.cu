@@ -26,8 +26,6 @@ class PytorchCpuContext : public Context {
     K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
 
-  ContextPtr GetCpuContext() override { return shared_from_this(); }
-
   ContextPtr GetPinnedContext() override { return nullptr; }
 
   DeviceType GetDeviceType() const override { return kCpu; }
@@ -73,8 +71,6 @@ class PytorchCudaContext : public Context {
     allocator_ = c10::cuda::CUDACachingAllocator::get();
     K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
-
-  ContextPtr GetCpuContext() override { return k2::GetCpuContext(); }
 
   ContextPtr GetPinnedContext() override { return nullptr; }
 
