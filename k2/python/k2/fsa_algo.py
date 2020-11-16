@@ -5,8 +5,9 @@
 from typing import Union
 from typing import List
 
-import _k2
 import torch
+import _k2
+
 
 from .autograd import index_select
 from .fsa import Fsa

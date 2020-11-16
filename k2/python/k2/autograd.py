@@ -3,8 +3,9 @@
 
 from typing import List, Tuple
 
-import _k2
 import torch
+import _k2
+
 
 from .fsa import Fsa
 from .dense_fsa_vec import DenseFsaVec
