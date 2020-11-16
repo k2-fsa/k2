@@ -174,7 +174,10 @@ inline cudaMemcpyKind GetMemoryCopyKind(const Context &src,
 inline void MemoryCopy(void *dst, const void *src, std::size_t count,
                        cudaMemcpyKind kind, Context *context) {
   cudaError_t ret;
-  if (kind != cudaMemcpyDeviceToDevice) {
+  if (kind == cudaMemcpyHostToHost) {
+    memcpy(dst, src, count);
+    return;
+  } else if (kind != cudaMemcpyDeviceToDevice) {
     ret = cudaMemcpy(dst, src, count, kind);
   } else {
     ret = cudaMemcpyAsync(dst, src, count, kind, context->GetCudaStream());
@@ -362,7 +365,6 @@ inline DeviceType DeviceOf(const T &t) {
   return t.Context()->GetDeviceType();
 }
 
-
 // This is for use by ParallelRunner and Context.  Users probably should not
 // interact with this directly.  The idea is that the Context object will call
 // this to possibly override its default thread. The
@@ -459,8 +461,6 @@ class ParallelRunner {
   std::vector<cudaStream_t> streams_;
   cudaEvent_t event_;
 };
-
-
 
 }  // namespace k2
 
