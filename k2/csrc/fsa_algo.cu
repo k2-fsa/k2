@@ -619,12 +619,24 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
       out_arcs_data[fsas_idx0] = arc;
       out_row_ids_data[fsas_idx0] = 0;
     }
+
+    // now set out_row_splits
+
+    // the 0th arc of this state (not the new start state)
+    if (fsas_arc_idx2 == 0) out_row_splits_data[out_state_idx0] = out_arc_idx01;
+
+    // for the start&final state
+    if (fsas_arc_idx012 == 0) {
+      out_row_splits_data[0] = 0;  // the new start state
+
+      // the new final state
+      out_row_splits_data[num_out_states - 1] = num_out_arcs;
+      out_row_splits_data[num_out_states] = num_out_arcs;
+    }
   };
   Eval(context, num_arcs, lambda_set_out);
 
   if (arc_map != nullptr) *arc_map = std::move(tmp_arc_map);
-  // TODO(fangjun): figure out out_row_splits in the lambda
-  RowIdsToRowSplits(out_row_ids, &out_row_splits);
   RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids, num_out_arcs);
   Fsa ans = Ragged<Arc>(shape, out_arcs);
   return ans;
