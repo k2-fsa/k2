@@ -152,7 +152,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         for name, a_value in a_fsas.named_tensor_attr():
             if name == 'scores':
                 continue
-            value = index_select(a_value, arc_map_a)
+            value = _k2.index_select(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():
@@ -167,7 +167,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
     @staticmethod
     def backward(
-            ctx, out_fsa_grad
+            ctx, out_fsa_grad: torch.Tensor
     ) -> Tuple[None, None, None, None, None, None, torch.Tensor, torch.Tensor]:
         a_scores, b_scores = ctx.saved_tensors
         arc_map_a = ctx.arc_map_a
@@ -235,6 +235,55 @@ class _IndexSelectFunction(torch.autograd.Function):
                           requires_grad=False)
         _k2.index_add(index, out_grad, ans)
         return ans, None
+
+
+class _UnionFunction(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, fsas: Fsa, out_fsa: List[Fsa],
+                unused_fsas_scores: torch.Tensor) -> torch.Tensor:
+        '''Compute the union of all fsas in a FsaVec.
+
+        Args:
+          fsas:
+            The input FsaVec. Caution: We require that each fsa in the FsaVec
+            is non-empty (i.e., with at least two states).
+          out_fsa:
+            A list containing one entry. Since this function can only return
+            values of type `torch.Tensor`, we return the union result in the
+            list.
+          unused_fsas_scores:
+            It is the same as `fsas.scores`, whose sole purpose is for autograd.
+            It is not used in this function.
+        '''
+        need_arc_map = True
+        ragged_arc, arc_map = _k2.union(fsas.arcs, need_arc_map)
+        out_fsa[0] = Fsa.from_ragged_arc(ragged_arc)
+
+        for name, value in fsas.named_tensor_attr():
+            if name == 'scores':
+                continue
+            value = _k2.index_select(value, arc_map)
+            setattr(out_fsa[0], name, value)
+
+        for name, value in fsas.named_non_tensor_attr():
+            setattr(out_fsa[0], name, value)
+        ctx.arc_map = arc_map
+        ctx.save_for_backward(unused_fsas_scores)
+
+        return out_fsa[0].scores  # the return value will be discarded
+
+    @staticmethod
+    def backward(ctx, out_fsa_grad: torch.Tensor
+                ) -> Tuple[None, None, torch.Tensor]:  # noqa
+        arc_map = ctx.arc_map
+        fsas_scores, = ctx.saved_tensors
+        ans = torch.zeros(fsas_scores.size(0),
+                          dtype=torch.float32,
+                          device=fsas_scores.device,
+                          requires_grad=False)
+        _k2.index_add(arc_map, out_fsa_grad, ans)
+        return None, None, ans
 
 
 def get_tot_scores(fsas: Fsa, log_semiring: bool,
@@ -335,3 +384,23 @@ def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
     '''
     ans = _IndexSelectFunction.apply(src, index)
     return ans
+
+
+def union(fsas: Fsa) -> Fsa:
+    '''Compute the union of a FsaVec.
+
+    Caution:
+      We require that every fsa in fsas is non-empty, i.e.,
+      contains at least two states
+
+    Args:
+      fsas:
+        A FsaVec. That is, len(fsas.shape) == 3.
+
+    Returns:
+      A single Fsa that is the union of the input fsas.
+    '''
+
+    out_fsa = [0]  # as a placeholder
+    _UnionFunction.apply(fsas, out_fsa, fsas.scores)
+    return out_fsa[0]

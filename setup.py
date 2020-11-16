@@ -59,7 +59,7 @@ def get_package_version():
     else:
         cuda_version = ''
 
-    latest_version = '0.0.1'
+    latest_version = '0.1.1'
     dt = datetime.datetime.utcnow()
     package_version = f'{latest_version}{cuda_version}.dev{dt.year}{dt.month:02d}{dt.day:02d}'
     return package_version

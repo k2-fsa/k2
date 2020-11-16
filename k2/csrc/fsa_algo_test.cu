@@ -391,9 +391,29 @@ TEST(FsaAlgo, Union) {
     Fsa *fsa_array[] = {&fsa1, &fsa2};
     FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
     fsa_vec = fsa_vec.To(context);
-    Fsa fsa = Union(fsa_vec);
-    K2_LOG(INFO) << FsaToString(fsa);
+    Array1<int32_t> arc_map;
+    Fsa fsa = Union(fsa_vec, &arc_map);
+    CheckArrayData(arc_map, std::vector<int32_t>{-1, -1, 0, 1, 2, 3, 4});
   }
+}
+
+TEST(FsaAlgo, UnionRandomFsas) {
+  int32_t min_num_fsas = 2;
+  int32_t max_num_fsas = 5;
+  bool acyclic = false;
+  int32_t max_symbol = 100;
+  int32_t min_num_arcs = 10;
+  int32_t max_num_arcs = 100;
+  FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                             min_num_arcs, max_num_arcs);
+
+  K2_LOG(INFO) << fsas.Dim0();
+  K2_LOG(INFO) << fsas.TotSize(1);
+  K2_LOG(INFO) << fsas.TotSize(2);
+  Array1<int32_t> arc_map;
+  Fsa fsa = Union(fsas, &arc_map);
+  ASSERT_EQ(arc_map.Dim(), fsas.NumElements() + fsas.Dim0());
+  // Add more tests
 }
 
 }  // namespace k2
