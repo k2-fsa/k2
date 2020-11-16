@@ -10,8 +10,8 @@ from typing import Iterator
 from typing import Optional
 from typing import Tuple
 
-import _k2
 import torch
+import _k2
 
 from _k2 import RaggedArc
 from _k2 import _as_float

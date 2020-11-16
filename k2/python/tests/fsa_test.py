@@ -11,9 +11,10 @@
 
 import unittest
 
+import torch
 import _k2  # for test only, users should not import it.
 import k2
-import torch
+
 
 
 def _remove_leading_spaces(s: str) -> str:

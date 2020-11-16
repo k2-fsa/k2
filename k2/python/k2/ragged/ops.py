@@ -3,8 +3,9 @@
 # See ../../../../LICENSE for clarification regarding multiple authors
 
 from typing import Tuple, Optional
-import _k2
 import torch
+import _k2
+
 
 
 def index(src: _k2.RaggedArc,
