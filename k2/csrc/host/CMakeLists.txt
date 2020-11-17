@@ -22,16 +22,6 @@ add_library(fsa SHARED
     )
 set_target_properties(fsa PROPERTIES OUTPUT_NAME "k2fsa")
 
-# set cpp standard 11
-# ToDo: is it necessary?
-if (CMAKE_VERSION VERSION_LESS 3.8)
-  set(CMAKE_CXX_STANDARD 11)
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  set(CMAKE_CXX_EXTENSIONS OFF)
-else ()
-  target_compile_features(fsa PUBLIC cxx_std_11)
-endif ()
-
 #---------------------------- Test K2 host sources ----------------------------
 
 # please sort the source files alphabetically

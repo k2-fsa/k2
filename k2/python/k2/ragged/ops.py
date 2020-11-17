@@ -7,7 +7,6 @@ import torch
 import _k2
 
 
-
 def index(src: _k2.RaggedArc,
           indexes: torch.Tensor,
           need_value_indexes: bool = True

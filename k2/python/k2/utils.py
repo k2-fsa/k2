@@ -5,12 +5,13 @@
 from typing import List
 from typing import Optional
 
+import torch
+
 from .fsa import Fsa
 from _k2 import _create_fsa_vec
 from _k2 import _fsa_to_str
 from _k2 import _fsa_to_tensor
-
-import torch
+from graphviz import Digraph
 
 
 def to_str(fsa: Fsa, openfst: bool = False) -> str:
@@ -54,7 +55,7 @@ def to_tensor(fsa: Fsa) -> torch.Tensor:
     return _fsa_to_tensor(fsa.arcs)
 
 
-def to_dot(fsa: Fsa, title: Optional[str] = None):
+def to_dot(fsa: Fsa, title: Optional[str] = None) -> Digraph:
     '''Visualize an Fsa via graphviz.
 
     Note:
@@ -70,7 +71,6 @@ def to_dot(fsa: Fsa, title: Optional[str] = None):
     Returns:
       a Diagraph from grahpviz.
     '''
-    from graphviz import Digraph
     assert len(fsa.shape) == 2, 'FsaVec is not supported'
     if hasattr(fsa, 'aux_labels'):
         aux_labels = fsa.aux_labels

@@ -564,13 +564,11 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
   // to its original start state (+num_fsas)
   int32_t num_out_arcs = num_arcs + num_fsas;
 
-  Array1<int32_t> out_row_splits(context, num_out_states + 1);
   Array1<int32_t> out_row_ids(context, num_out_arcs);
   Array1<Arc> out_arcs(context, num_out_arcs);
   Array1<int32_t> tmp_arc_map(context, num_out_arcs, -1);
   int32_t *tmp_arc_map_data = tmp_arc_map.Data();
 
-  int32_t *out_row_splits_data = out_row_splits.Data();
   int32_t *out_row_ids_data = out_row_ids.Data();
   Arc *out_arcs_data = out_arcs.Data();
 
@@ -588,8 +586,7 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
     int32_t this_fsa_final_state_idx1 =
         this_fsa_final_state_idx01 - fsas_state_idx0x;
 
-    int32_t fsas_arc_idx01x = fsas_row_splits2_data[fsas_state_idx01];
-    int32_t fsas_arc_idx2 = fsas_arc_idx012 - fsas_arc_idx01x;
+    int32_t fsas_arc_idx0xx = fsas_row_splits2_data[fsas_state_idx0x];
 
     // fsa0: +1 (a new start state)
     // fsa1: +0 (the final state of fsa0 is removed)
@@ -613,31 +610,22 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
     out_arcs_data[out_arc_idx01] = arc;
     tmp_arc_map_data[out_arc_idx01] = fsas_arc_idx012;
 
-    if (fsas_state_idx1 == 0 && fsas_arc_idx2 == 0) {
-      // add a new arc from the new start state to this state
-      Arc arc(0, out_state_idx0, 0, 0);
+    if (fsas_arc_idx0xx == fsas_arc_idx012) {
+      // add a new arc from the new start state to the start state
+      // of this fsa
+      //
+      // WARNING: we cannot use fsas_state_idx01 here
+      // since the start state may have no leaving arcs!
+      Arc arc(0, fsas_state_idx0x + state_offset, 0, 0);
       out_arcs_data[fsas_idx0] = arc;
       out_row_ids_data[fsas_idx0] = 0;
-    }
-
-    // now set out_row_splits
-
-    // the 0th arc of this state (not the new start state)
-    if (fsas_arc_idx2 == 0) out_row_splits_data[out_state_idx0] = out_arc_idx01;
-
-    // for the start&final state
-    if (fsas_arc_idx012 == 0) {
-      out_row_splits_data[0] = 0;  // the new start state
-
-      // the new final state
-      out_row_splits_data[num_out_states - 1] = num_out_arcs;
-      out_row_splits_data[num_out_states] = num_out_arcs;
     }
   };
   Eval(context, num_arcs, lambda_set_out);
 
   if (arc_map != nullptr) *arc_map = std::move(tmp_arc_map);
-  RowIdsToRowSplits(out_row_ids, &out_row_splits);  // FIXME(fangjun)
+  Array1<int32_t> out_row_splits(context, num_out_states + 1);
+  RowIdsToRowSplits(out_row_ids, &out_row_splits);
   RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids, num_out_arcs);
   Fsa ans = Ragged<Arc>(shape, out_arcs);
   return ans;
