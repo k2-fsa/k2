@@ -398,22 +398,66 @@ TEST(FsaAlgo, Union) {
 }
 
 TEST(FsaAlgo, UnionRandomFsas) {
-  int32_t min_num_fsas = 2;
-  int32_t max_num_fsas = 5;
+  int32_t min_num_fsas = 1;
+  int32_t max_num_fsas = 1000;
   bool acyclic = false;
   int32_t max_symbol = 100;
-  int32_t min_num_arcs = 10;
-  int32_t max_num_arcs = 100;
-  FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
-                             min_num_arcs, max_num_arcs);
+  int32_t min_num_arcs = max_num_fsas * 2;
+  int32_t max_num_arcs = 100000;
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                               min_num_arcs, max_num_arcs);
+    fsas = fsas.To(context);
 
-  K2_LOG(INFO) << fsas.Dim0();
-  K2_LOG(INFO) << fsas.TotSize(1);
-  K2_LOG(INFO) << fsas.TotSize(2);
-  Array1<int32_t> arc_map;
-  Fsa fsa = Union(fsas, &arc_map);
-  ASSERT_EQ(arc_map.Dim(), fsas.NumElements() + fsas.Dim0());
-  // Add more tests
+    Array1<int32_t> arc_map;
+    Fsa fsa = Union(fsas, &arc_map);
+    ASSERT_EQ(arc_map.Dim(), fsas.NumElements() + fsas.Dim0());
+
+    ContextPtr cpu = GetCpuContext();
+    arc_map = arc_map.To(cpu);
+    for (int32_t i = 0; i != fsas.Dim0(); ++i) EXPECT_EQ(arc_map[i], -1);
+
+    std::vector<int32_t> arc_old2new(fsas.NumElements());
+    for (int32_t i = fsas.Dim0(); i != arc_map.Dim(); ++i) {
+      EXPECT_EQ(arc_map[i], i - fsas.Dim0());
+      arc_old2new[i - fsas.Dim0()] = i;
+    }
+
+    fsas = fsas.To(cpu);
+    const int32_t *fsas_row_splits1_data = fsas.RowSplits(1).Data();
+    const int32_t *fsas_row_ids1_data = fsas.RowIds(1).Data();
+    const int32_t *fsas_row_ids2_data = fsas.RowIds(2).Data();
+
+    for (int32_t i = 0; i != fsas.NumElements(); ++i) {
+      Arc old_arc = fsas.values[i];
+      Arc new_arc = fsa.values[arc_old2new[i]];
+
+      EXPECT_NEAR(old_arc.score, new_arc.score, 1e-6);
+      EXPECT_EQ(old_arc.label, new_arc.label);
+
+      int32_t state_idx01 = fsas_row_ids2_data[i];
+      int32_t fsas_idx0 = fsas_row_ids1_data[state_idx01];
+      int32_t state_offset = 1 - fsas_idx0;
+      int32_t state_idx0x = fsas_row_splits1_data[fsas_idx0];
+      EXPECT_EQ(old_arc.src_state + state_offset + state_idx0x,
+                new_arc.src_state);
+      if (old_arc.label != -1)
+        EXPECT_EQ(old_arc.dest_state + state_offset + state_idx0x,
+                  new_arc.dest_state);
+      else
+        EXPECT_EQ(new_arc.dest_state, fsa.Dim0() - 1);
+    }
+
+    // now check the new start state
+    for (int32_t i = 0; i != fsas.Dim0(); ++i) {
+      int32_t state_offset = 1 - i;
+      Arc arc = fsa.values[i];
+      EXPECT_EQ(arc.src_state, 0);
+      EXPECT_EQ(arc.dest_state, fsas_row_splits1_data[i] + state_offset);
+      EXPECT_EQ(arc.label, 0);
+      EXPECT_EQ(arc.score, 0);
+    }
+  }
 }
 
 }  // namespace k2

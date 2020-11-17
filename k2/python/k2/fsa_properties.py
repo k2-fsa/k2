@@ -2,7 +2,7 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-import torch
+import torch  # noqa
 import _k2
 
 from .fsa import Fsa
