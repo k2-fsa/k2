@@ -16,7 +16,6 @@ import _k2  # for test only, users should not import it.
 import k2
 
 
-
 def _remove_leading_spaces(s: str) -> str:
     lines = [line.strip() for line in s.split('\n') if line.strip()]
     return '\n'.join(lines)
@@ -363,8 +362,16 @@ class TestFsa(unittest.TestCase):
         fsa.symbols = symbols
         fsa.aux_symbols = aux_symbols
         dot = k2.to_dot(fsa)
-        dot.render('/tmp/fsa', format='pdf')
-        # the fsa is saved to /tmp/fsa.pdf
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dot.render(filename='fsa',
+                       directory=tmp_dir,
+                       format='pdf',
+                       cleanup=True)
+            # the fsa is saved to tmp_dir/fsa.pdf
+            import os
+            os.system('ls -l {}/fsa.pdf'.format(tmp_dir))
 
     def test_to(self):
         s = '''
