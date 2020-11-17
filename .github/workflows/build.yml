@@ -24,7 +24,7 @@ jobs:
       matrix:
         os: [ubuntu-16.04, ubuntu-18.04]
         cuda: ["10.1", "10.2"]
-        gcc: ["5"]
+        gcc: ["5", "6"]
         torch: ["1.6.0", "1.7.0"]
         python-version: [3.6, 3.7, 3.8]
 
@@ -88,6 +88,7 @@ jobs:
           mkdir build
           cd build
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          cat k2/csrc/version.h
 
       - name: Build _k2
         shell: bash

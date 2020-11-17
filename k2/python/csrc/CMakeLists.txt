@@ -2,6 +2,7 @@
 set(k2_srcs
   k2.cu
   torch.cu
+  version.cu
 )
 
 if(USE_PYTORCH)
@@ -21,3 +22,4 @@ target_link_libraries(_k2 PRIVATE ${k2_deps})
 target_link_libraries(_k2 PRIVATE context)
 target_link_libraries(_k2 PRIVATE fsa)
 target_include_directories(_k2 PRIVATE ${CMAKE_SOURCE_DIR})
+target_include_directories(_k2 PRIVATE ${CMAKE_BINARY_DIR})
