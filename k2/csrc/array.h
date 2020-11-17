@@ -286,7 +286,7 @@ class Array1 {
       for (int i = 0; i < dim_; i++)
         data[i] = t;
     } else {
-      auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
+      auto lambda_set_values = [=] __device__(int32_t i) -> void {
         data[i] = t;
       };
       EvalDevice(Context(), dim_, lambda_set_values);
