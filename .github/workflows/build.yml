@@ -107,5 +107,5 @@ jobs:
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: cuda-${{ matrix.cuda }}-torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-os-${{ matrix.os }}
+          name: gcc-${{ matrix.gcc }}-cuda-${{ matrix.cuda }}-torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
           path: dist/*.whl
