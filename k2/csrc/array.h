@@ -282,10 +282,15 @@ class Array1 {
   /* Setting all elements to a scalar */
   void operator=(const T t) {
     T *data = Data();
-    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
-      data[i] = t;
-    };
-    Eval(Context(), dim_, lambda_set_values);
+    if (Context()->GetDeviceType() == kCpu) {
+      for (int i = 0; i < dim_; i++)
+        data[i] = t;
+    } else {
+      auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
+        data[i] = t;
+      };
+      EvalDevice(Context(), dim_, lambda_set_values);
+    }
   }
 
   /* Gathers elements in current array according to `indexes` and returns it,
