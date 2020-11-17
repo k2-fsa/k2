@@ -3,6 +3,7 @@
 # Please follow instructions in scripts/build_pip.sh to use this file.
 #
 import datetime
+import re
 import setuptools
 import sys
 
@@ -59,7 +60,12 @@ def get_package_version():
     else:
         cuda_version = ''
 
-    latest_version = '0.1.1'
+    with open('CMakeLists.txt') as f:
+        content = f.read()
+
+    latest_version = re.search(r'set\(K2_VERSION (.*)\)', content).group(1)
+    latest_version = latest_version.strip('"')
+
     dt = datetime.datetime.utcnow()
     package_version = f'{latest_version}{cuda_version}.dev{dt.year}{dt.month:02d}{dt.day:02d}'
     return package_version
