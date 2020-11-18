@@ -282,10 +282,15 @@ class Array1 {
   /* Setting all elements to a scalar */
   void operator=(const T t) {
     T *data = Data();
-    auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
-      data[i] = t;
-    };
-    Eval(Context(), dim_, lambda_set_values);
+    if (Context()->GetDeviceType() == kCpu) {
+      for (int i = 0; i < dim_; i++)
+        data[i] = t;
+    } else {
+      auto lambda_set_values = [=] __device__(int32_t i) -> void {
+        data[i] = t;
+      };
+      EvalDevice(Context(), dim_, lambda_set_values);
+    }
   }
 
   /* Gathers elements in current array according to `indexes` and returns it,
@@ -301,10 +306,15 @@ class Array1 {
     const T *this_data = Data();
     T *ans_data = ans.Data();
     const int32_t *indexes_data = indexes.Data();
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i) -> void {
-      ans_data[i] = this_data[indexes_data[i]];
-    };
-    Eval(c, ans_dim, lambda_copy_elems);
+    if (c->GetDeviceType() == kCpu) {
+      for (int32_t i = 0; i < ans_dim; i++)
+        ans_data[i] = this_data[indexes_data[i]];
+    } else {
+      auto lambda_copy_elems = [=] __device__(int32_t i) -> void {
+        ans_data[i] = this_data[indexes_data[i]];
+      };
+      EvalDevice(c, ans_dim, lambda_copy_elems);
+    }
     return ans;
   }
 

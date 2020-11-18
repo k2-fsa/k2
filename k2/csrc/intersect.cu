@@ -262,7 +262,7 @@ class MultiGraphDenseIntersect {
 
   void FormatOutput(FsaVec *ofsa, Array1<int32_t> *arc_map_a,
                     Array1<int32_t> *arc_map_b) {
-    ContextPtr c_cpu = c_->GetCpuContext();
+    ContextPtr c_cpu = GetCpuContext();
     int32_t T = b_fsas_.shape.MaxSize(1);
 
     int32_t *oshapeu_row_ids3 = oshape_unpruned_.RowIds(3).Data(),

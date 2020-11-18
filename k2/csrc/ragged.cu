@@ -264,7 +264,10 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
 bool RaggedShape::Validate(bool print_warnings) const {
   ContextPtr c = Context();
   int32_t num_axes = axes_.size();
+
+  ParallelRunner pr(c);
   for (int32_t axis = 0; axis < num_axes; ++axis) {
+    With w(pr.NewStream());
     const RaggedShapeDim &rsd = axes_[axis];
     K2_CHECK_GE(rsd.row_splits.Dim(), 0);
     if (rsd.cached_tot_size >= 0) {

@@ -28,9 +28,7 @@ elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWABLE_BUILD_TYPES)
     choose one from ${ALLOWABLE_BUILD_TYPES}")
 endif()
 
-# Add -O0 to remove optimizations for debugging.
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
+
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -89,6 +87,8 @@ if(DEFINED CMAKE_CUDA_STANDARD)
   message(WARNING "You've set CMAKE_CUDA_STANDARD; please note that this variable is ignored, and CMAKE_CXX_STANDARD"
     " is used as the C++ standard version for both C++ and CUDA.")
 endif()
+
+
 unset(CMAKE_CUDA_STANDARD CACHE)
 set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
@@ -100,6 +100,7 @@ foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
   set(CMAKE_CUDA_ARCHITECTURES "${COMPUTE_ARCH}-real;${COMPUTE_ARCH}-virtual;${CMAKE_CUDA_ARCHITECTURES}")
 endforeach()
 # ========= Settings for CUB end=========
+
 
 enable_testing()
 

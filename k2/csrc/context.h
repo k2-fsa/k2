@@ -78,11 +78,6 @@ class Context : public std::enable_shared_from_this<Context> {
   // note: shared_from_this(), which returns a std::shared_ptr<Context>, is
   // public, inherited from std::enable_shared_from_this<Context>.
 
-  // Return CPU version of this context.  May or may not return the
-  // same value as ::k2::GetCpuContext()... this is so, for instance,
-  // if you have a GPU PyTorch context you can get a CPU PyTorch context.
-  virtual ContextPtr GetCpuContext() = 0;
-
   // Returns a (CPU) context that will allocate pinned memory.  (This is CPU
   // memory that's pinned for faster GPU memory transfers).  May or may not
   // return the same value as ::k2::GetCpuContext()... this is so, for instance,
