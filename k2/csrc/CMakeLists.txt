@@ -9,6 +9,15 @@ add_subdirectory(host)
 configure_file(version.h.in ${CMAKE_CURRENT_BINARY_DIR}/version.h @ONLY)
 message(STATUS "Generated ${CMAKE_CURRENT_BINARY_DIR}/version.h")
 
+add_library(k2_log log.cu)
+if(K2_HAVE_EXECINFO_H)
+  target_compile_definitions(k2_log PRIVATE K2_HAVE_EXECINFO_H=1)
+endif()
+
+if(K2_HAVE_CXXABI_H)
+  target_compile_definitions(k2_log PRIVATE K2_HAVE_CXXABI_H=1)
+endif()
+
 # please keep it sorted
 set(context_srcs
   algorithms.cu
@@ -21,7 +30,6 @@ set(context_srcs
   fsa_algo.cu
   fsa_utils.cu
   host_shim.cu
-  log.cu
   math.cu
   moderngpu_allocator.cu
   ragged.cu
@@ -42,17 +50,10 @@ add_library(context SHARED ${context_srcs})
 set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(context PROPERTIES OUTPUT_NAME "k2context")
 
-if(K2_HAVE_EXECINFO_H)
-  target_compile_definitions(context PRIVATE K2_HAVE_EXECINFO_H=1)
-endif()
-
-if(K2_HAVE_CXXABI_H)
-  target_compile_definitions(context PRIVATE K2_HAVE_CXXABI_H=1)
-endif()
-
 # lib deps
 target_link_libraries(context PUBLIC cub)
 target_link_libraries(context PUBLIC fsa)
+target_link_libraries(context PUBLIC k2_log)
 target_link_libraries(context PUBLIC moderngpu)
 if(USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
