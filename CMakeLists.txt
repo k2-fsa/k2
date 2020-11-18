@@ -13,8 +13,6 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(k2 CUDA CXX)
 
-find_package (Python3 COMPONENTS Interpreter)
-
 # ----------------- Supported build types for K2 project -----------------
 set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
 set(DEFAULT_BUILD_TYPE "Debug")
@@ -27,11 +25,6 @@ elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWABLE_BUILD_TYPES)
   message(FATAL_ERROR "Invalid build type: ${CMAKE_BUILD_TYPE}, \
     choose one from ${ALLOWABLE_BUILD_TYPES}")
 endif()
-
-# Add -O0 to remove optimizations for debugging.
-
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O1")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O1")
 
 
 
@@ -66,8 +59,6 @@ if(DEFINED CMAKE_CUDA_STANDARD)
   message(WARNING "You've set CMAKE_CUDA_STANDARD; please note that this variable is ignored, and CMAKE_CXX_STANDARD"
     " is used as the C++ standard version for both C++ and CUDA.")
 endif()
-
-set(CMAKE_CUDA_FLAGS_RELEASE "-O1 -DNDEBUG --verbose")
 
 
 unset(CMAKE_CUDA_STANDARD CACHE)
