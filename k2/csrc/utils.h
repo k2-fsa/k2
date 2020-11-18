@@ -430,7 +430,7 @@ template <typename LambdaT>
 void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
                       TaskRedirect *redirect, int32_t min_threads_per_job,
                       int32_t tot_work, int32_t target_num_loops,
-                      LambdaT &lambda) {
+                      LambdaT lambda) {
   if (num_jobs <= 0) return;
   int32_t num_work_per_job = tot_work / num_jobs + 1;
   int32_t num_threads_per_job =

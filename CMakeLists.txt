@@ -13,6 +13,8 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(k2 CUDA CXX)
 
+find_package (Python3 COMPONENTS Interpreter)
+
 # ----------------- Supported build types for K2 project -----------------
 set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
 set(DEFAULT_BUILD_TYPE "Debug")
@@ -27,11 +29,10 @@ elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWABLE_BUILD_TYPES)
 endif()
 
 # Add -O0 to remove optimizations for debugging.
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g -O0")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -g -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O1")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O1")
+
 
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -66,7 +67,7 @@ if(DEFINED CMAKE_CUDA_STANDARD)
     " is used as the C++ standard version for both C++ and CUDA.")
 endif()
 
-set(CMAKE_CUDA_FLAGS_RELEASE "-DNDEBUG -O1 -g")
+set(CMAKE_CUDA_FLAGS_RELEASE "-O1 -DNDEBUG --verbose")
 
 
 unset(CMAKE_CUDA_STANDARD CACHE)

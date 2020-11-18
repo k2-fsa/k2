@@ -447,13 +447,17 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
 template <typename T>
 Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
   K2_CHECK_GE(dim, 0);
-  DeviceType d = c->GetDeviceType();
   Array1<T> ans = Array1<T>(c, dim);
   T *ans_data = ans.Data();
-  auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
-    ans_data[i] = first_value + i * inc;
-  };
-  Eval(c, dim, lambda_set_values);
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i < dim; i++)
+      ans_data[i] = first_value + i * inc;
+  } else {
+    auto lambda_set_values = [=] __device__(int32_t i) -> void {
+      ans_data[i] = first_value + i * inc;
+    };
+    EvalDevice(c, dim, lambda_set_values);
+  }
   return ans;
 }
 
