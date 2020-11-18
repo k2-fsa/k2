@@ -252,7 +252,7 @@ class Fsa(object):
 
     def __delattr__(self, name: str) -> None:
         assert name not in ('arcs', 'scores', 'labels', 'properties',
-                            '_properties')
+                            '_properties', '_grad_cache')
 
         if name in self._tensor_attr:
             del self._tensor_attr[name]
