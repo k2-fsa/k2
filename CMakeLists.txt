@@ -114,4 +114,6 @@ include(cub)
 include(moderngpu)
 include(googletest)
 
+set(CMAKE_CUDA_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CUDA_FLAGS}")
+
 add_subdirectory(k2)

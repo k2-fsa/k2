@@ -21,6 +21,7 @@ add_library(fsa SHARED
     weights.cc
     )
 set_target_properties(fsa PROPERTIES OUTPUT_NAME "k2fsa")
+target_link_libraries(fsa PUBLIC k2_log)
 
 #---------------------------- Test K2 host sources ----------------------------
 
