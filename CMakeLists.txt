@@ -68,6 +68,10 @@ execute_process(COMMAND
   ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
+include(CheckIncludeFileCXX)
+check_include_file_cxx(cxxabi.h K2_HAVE_CXXABI_H)
+check_include_file_cxx(execinfo.h K2_HAVE_EXECINFO_H)
+
 # ========= Settings for CUB begin =========
 # the following settings are modified from cub/CMakeLists.txt
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ version to be used.")

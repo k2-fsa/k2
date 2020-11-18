@@ -21,6 +21,7 @@ set(context_srcs
   fsa_algo.cu
   fsa_utils.cu
   host_shim.cu
+  log.cu
   math.cu
   moderngpu_allocator.cu
   ragged.cu
@@ -41,6 +42,13 @@ add_library(context SHARED ${context_srcs})
 set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(context PROPERTIES OUTPUT_NAME "k2context")
 
+if(K2_HAVE_EXECINFO_H)
+  target_compile_definitions(context PRIVATE K2_HAVE_EXECINFO_H=1)
+endif()
+
+if(K2_HAVE_CXXABI_H)
+  target_compile_definitions(context PRIVATE K2_HAVE_CXXABI_H=1)
+endif()
 
 # lib deps
 target_link_libraries(context PUBLIC cub)

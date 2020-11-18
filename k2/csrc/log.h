@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <sstream>
+#include <string>
 
 #ifdef __CUDA_ARCH__
 #define K2_CUDA_HOSTDEV __host__ __device__
@@ -50,6 +51,8 @@ constexpr LogLevel INFO = LogLevel::kInfo;
 constexpr LogLevel WARNING = LogLevel::kWarning;
 constexpr LogLevel ERROR = LogLevel::kError;
 constexpr LogLevel FATAL = LogLevel::kFatal;
+
+std::string GetStackTrace();
 
 class Logger {
  public:
@@ -93,6 +96,11 @@ class Logger {
       __assert_fail("Some bad things happened", filename_, line_num_,
                     func_name_);
 #else
+      std::string stack_trace = GetStackTrace();
+      if (!stack_trace.empty()) {
+        printf("\n\n%s\n", stack_trace.c_str());
+      }
+      fflush(nullptr);
       abort();
 #endif
     }
