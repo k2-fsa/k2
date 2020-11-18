@@ -209,7 +209,8 @@ class Fsa(object):
           We save a reference to ``value``. If you need to change ``value``
           afterwards, please consider passing a copy of it.
         '''
-        if name in ('_tensor_attr', '_non_tensor_attr', 'arcs', '_properties'):
+        if name in ('_tensor_attr', '_non_tensor_attr', 'arcs', '_properties',
+                    '_grad_cache'):
             object.__setattr__(self, name, value)
         elif isinstance(value, torch.Tensor):
             assert value.shape[0] == self.arcs.values().shape[0]
