@@ -24,6 +24,8 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 
+// Caution: see also utils.h where there is EvalWithRedirect that's very related
+// to this.
 namespace k2 {
 
 template <typename LambdaT>
@@ -84,7 +86,7 @@ __host__ __device__ __forceinline__ int32_t NumBlocks(int32_t size,
 /* Eval() will evaluate lambda(i) for 0 <= i < n, on the appropriate
    device (CPU or GPU). */
 template <typename LambdaT>
-void Eval(cudaStream_t stream, int32_t n, LambdaT lambda) {
+void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   if (n <= 0) return;  // actually it would be an error if n < 0.
   if (stream == kCudaStreamInvalid) {
     // TODO: if n is very large, we'll eventually support running this with
@@ -127,12 +129,12 @@ void GetBlockSizesForLambda2(int32_t m, int32_t n, dim3 *block_dim,
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
-void Eval(ContextPtrType c, int32_t n, LambdaT lambda) {
+void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
   Eval(c->GetCudaStream(), n, lambda);
 }
 
 template <typename LambdaT>
-void EvalDevice(cudaStream_t stream, int32_t n, LambdaT lambda) {
+void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   if (n <= 0) return;  // actually it would be an error if n < 0.
   K2_CHECK(stream != kCudaStreamInvalid);
   int32_t block_size = 256;
@@ -154,14 +156,14 @@ void EvalDevice(cudaStream_t stream, int32_t n, LambdaT lambda) {
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
-void EvalDevice(ContextPtrType c, int32_t n, LambdaT lambda) {
+void EvalDevice(ContextPtrType c, int32_t n, LambdaT &lambda) {
   EvalDevice(c->GetCudaStream(), n, lambda);
 }
 
 /* SetData() will do `data[i] = lambda(i)` for 0 <= i < n, on the appropriate
    device (CPU or GPU) */
 template <typename T, typename LambdaT>
-void SetData(cudaStream_t stream, T *data, int32_t n, LambdaT lambda) {
+void SetData(cudaStream_t stream, T *data, int32_t n, LambdaT &lambda) {
   if (n <= 0) return;  // actually it would be an error if n < 0.
   if (stream == kCudaStreamInvalid) {
     // TODO: if n is very large, we'll eventually support running this with
@@ -180,7 +182,7 @@ void SetData(cudaStream_t stream, T *data, int32_t n, LambdaT lambda) {
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename T, typename LambdaT>
-void SetData(ContextPtrType c, T *data, int32_t n, LambdaT lambda) {
+void SetData(ContextPtrType c, T *data, int32_t n, LambdaT &lambda) {
   SetData(c->GetCudaStream(), data, n, lambda);
 }
 
@@ -194,7 +196,7 @@ void SetData(ContextPtrType c, T *data, int32_t n, LambdaT lambda) {
   (Of course this doesn't affect the semantics of the operation).
 */
 template <typename LambdaT>
-void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT lambda) {
+void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
   if (m <= 0 || n <= 0)
     return;  // actually it would be an error if m < 0 or n < 0.
   if (stream == kCudaStreamInvalid) {
@@ -236,7 +238,7 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT lambda) {
   on the GPU with stream `stream`
  */
 template <typename LambdaT>
-void Eval2Device(cudaStream_t stream, int32_t m, int32_t n, LambdaT lambda) {
+void Eval2Device(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
   if (m <= 0 || n <= 0)
     return;  // actually it would be an error if m < 0 or n < 0.
   K2_DCHECK(stream != kCudaStreamInvalid);
@@ -268,7 +270,7 @@ void Eval2Device(cudaStream_t stream, int32_t m, int32_t n, LambdaT lambda) {
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
-inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT lambda) {
+inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
   Eval2(c->GetCudaStream(), m, n, lambda);
 }
 
@@ -278,7 +280,7 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 inline void Eval2Device(ContextPtrType c, int32_t m,
-                        int32_t n, LambdaT lambda) {
+                        int32_t n, LambdaT &lambda) {
   Eval2Device(c->GetCudaStream(), m, n, lambda);
 }
 
