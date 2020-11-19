@@ -29,4 +29,5 @@ void PybindVersion(py::module &m) {
   version.attr("cmake_cxx_flags") = k2::kCMakeCxxFlags;
   version.attr("torch_version") = k2::kTorchVersion;
   version.attr("torch_cuda_version") = k2::kTorchCudaVersion;
+  version.attr("enable_nvtx") = k2::kEnableNvtx;
 }

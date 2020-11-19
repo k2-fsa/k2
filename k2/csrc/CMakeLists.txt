@@ -18,9 +18,10 @@ if(K2_HAVE_CXXABI_H)
   target_compile_definitions(k2_log PRIVATE K2_HAVE_CXXABI_H=1)
 endif()
 
-add_library(k2_nvtx nvtx.cu)
+add_library(k2_nvtx INTERFACE)
+target_include_directories(k2_nvtx INTERFACE ${CMAKE_SOURCE_DIR})
 if(K2_ENABLE_NVTX)
-  target_compile_definitions(k2_nvtx PUBLIC K2_ENABLE_NVTX=1)
+  target_compile_definitions(k2_nvtx INTERFACE K2_ENABLE_NVTX=1)
 endif()
 
 # please keep it sorted

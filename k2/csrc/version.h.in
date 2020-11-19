@@ -68,8 +68,11 @@ static constexpr const char *kTorchVersion = "@TORCH_VERSION@";
 static constexpr const char *kTorchCudaVersion = "@TORCH_CUDA_VERSION@";
 
 // Indicate whether NVTX is enabled or not
+#ifndef K2_ENABLE_NVTX
 #cmakedefine K2_ENABLE_NVTX
-#if K2_ENABLE_NVTX
+#endif
+
+#ifdef K2_ENABLE_NVTX
 static constexpr bool kEnableNvtx = true;
 #else
 static constexpr bool kEnableNvtx = false;

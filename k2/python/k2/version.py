@@ -20,6 +20,7 @@ def main():
     cmake_cxx_flags = _k2.version.cmake_cxx_flags
     torch_version = _k2.version.torch_version
     torch_cuda_version = _k2.version.torch_cuda_version
+    enable_nvtx = _k2.version.enable_nvtx;
 
     print(f'''
 k2 version: {version}
@@ -36,6 +37,7 @@ CMAKE_CUDA_FLAGS: {cmake_cuda_flags}
 CMAKE_CXX_FLAGS: {cmake_cxx_flags}
 PyTorch version used to build k2: {torch_version}
 PyTorch is using Cuda: {torch_cuda_version}
+NVTX enabled: {enable_nvtx}
     ''')
 
 

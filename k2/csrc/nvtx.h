@@ -9,12 +9,25 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include "nvToolsExt.h"
+
 namespace k2 {
 
 class NvtxRange {
  public:
-  explicit NvtxRange(const char *name);
-  ~NvtxRange();
+  explicit NvtxRange(const char *name) {
+#ifdef K2_ENABLE_NVTX
+    nvtxRangePushA(name);
+#else
+    (void)name;
+#endif
+  }
+
+  ~NvtxRange() {
+#ifdef K2_ENABLE_NVTX
+    nvtxRangePop();
+#endif
+  }
 };
 
 #define _K2_CONCAT(a, b) a##b
@@ -27,7 +40,7 @@ class NvtxRange {
 #endif
 
 #ifdef K2_ENABLE_NVTX
-#define NVTX_RANGE(name) NvtxRange K2_UNIQUE_VARIABLE_NAME(nvtx)(name)
+#define NVTX_RANGE(name) NvtxRange K2_UNIQUE_VARIABLE_NAME(k2_nvtx_)(name)
 #else
 #define NVTX_RANGE(name)
 #endif
