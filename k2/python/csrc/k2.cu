@@ -9,10 +9,11 @@
  */
 
 #include "k2/python/csrc/k2.h"
-
 #include "k2/python/csrc/torch.h"
+#include "k2/python/csrc/version.h"
 
 PYBIND11_MODULE(_k2, m) {
   m.doc() = "pybind11 binding of k2";
+  PybindVersion(m);
   PybindTorch(m);
 }

@@ -13,6 +13,8 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(k2 CUDA CXX)
 
+set(K2_VERSION "0.1.1")
+
 # ----------------- Supported build types for K2 project -----------------
 set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
 set(DEFAULT_BUILD_TYPE "Debug")
@@ -41,6 +43,32 @@ if(WIN32 AND BUILD_SHARED_LIBS)
   message(STATUS "Set BUILD_SHARED_LIBS to OFF for Windows")
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
+
+execute_process(COMMAND
+  lsb_release -sd
+  OUTPUT_VARIABLE K2_OS
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+message(STATUS "K2_OS: ${K2_OS}")
+
+find_package(Git REQUIRED)
+execute_process(COMMAND
+  "${GIT_EXECUTABLE}" describe --always --abbrev=40
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+  OUTPUT_VARIABLE K2_GIT_SHA1
+  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+execute_process(COMMAND
+  "${GIT_EXECUTABLE}" log -1 --format=%ad --date=local
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+  OUTPUT_VARIABLE K2_GIT_DATE
+  ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+include(CheckIncludeFileCXX)
+check_include_file_cxx(cxxabi.h K2_HAVE_CXXABI_H)
+check_include_file_cxx(execinfo.h K2_HAVE_EXECINFO_H)
 
 # ========= Settings for CUB begin =========
 # the following settings are modified from cub/CMakeLists.txt
@@ -85,5 +113,7 @@ endif()
 include(cub)
 include(moderngpu)
 include(googletest)
+
+set(CMAKE_CUDA_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CUDA_FLAGS}")
 
 add_subdirectory(k2)

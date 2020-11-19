@@ -120,7 +120,17 @@ class Fsa(object):
             aux_labels = self.aux_labels.to(torch.int32)
         else:
             aux_labels = None
-        ans = "k2.Fsa: " + _fsa_to_str(self.arcs, False, aux_labels)
+        if self.arcs.num_axes() == 2:
+            ans = "k2.Fsa: " + _fsa_to_str(self.arcs, False, aux_labels)
+        else:
+            ans = "k2.FsaVec: \n"
+            for i in range(self.shape[0]):
+                # get the i-th Fsa
+                ragged_arc, start = self.arcs.index(0, i)
+                end = start + ragged_arc.values().shape[0]
+                ans += "FsaVec[" + str(i) + "]: " + _fsa_to_str(
+                    ragged_arc, False,
+                    None if aux_labels is None else aux_labels[start:end])
         ans += "properties_str = " + _k2.fsa_properties_as_str(
             self._properties) + "."
         return ans
@@ -199,7 +209,8 @@ class Fsa(object):
           We save a reference to ``value``. If you need to change ``value``
           afterwards, please consider passing a copy of it.
         '''
-        if name in ('_tensor_attr', '_non_tensor_attr', 'arcs', '_properties'):
+        if name in ('_tensor_attr', '_non_tensor_attr', 'arcs', '_properties',
+                    '_grad_cache'):
             object.__setattr__(self, name, value)
         elif isinstance(value, torch.Tensor):
             assert value.shape[0] == self.arcs.values().shape[0]
@@ -241,7 +252,7 @@ class Fsa(object):
 
     def __delattr__(self, name: str) -> None:
         assert name not in ('arcs', 'scores', 'labels', 'properties',
-                            '_properties')
+                            '_properties', '_grad_cache')
 
         if name in self._tensor_attr:
             del self._tensor_attr[name]
