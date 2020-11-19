@@ -10,11 +10,13 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <string>
 #include <vector>
 
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/host_shim.h"
 #include "k2/csrc/test_utils.h"
 
 namespace k2 {
@@ -35,7 +37,7 @@ TEST(ArcSort, NonEmptyFsa) {
     2 4  4  -6.2
     3 5 -1  -7.2
     5
-  )";
+    )";
   for (auto &context : {GetCudaContext(), GetCpuContext()}) {
     Fsa fsa = FsaFromString(s);
     fsa = fsa.To(context);
@@ -78,7 +80,7 @@ TEST(ArcSort, NonEmptyFsaVec) {
     2 4  4  -6.2
     3 5 -1  -7.2
     5
-  )";
+    )";
 
   std::string s2 = R"(0 1 9 -1.2
     0 2  10 -2.2
@@ -91,7 +93,7 @@ TEST(ArcSort, NonEmptyFsaVec) {
     3 2 3  -7.2
     3 5 -1  -7.2
     5
-  )";
+    )";
 
   Fsa fsa1 = FsaFromString(s1);
   Fsa fsa2 = FsaFromString(s2);
@@ -170,11 +172,11 @@ TEST(FsaAlgo, LinearFsa) {
 
 TEST(FsaAlgo, LinearFsaVec) {
   /*
-   [
-    [10, 20],
-    [100, 200, 300]
-   ]
-   */
+  [
+  [10, 20],
+  [100, 200, 300]
+  ]
+  */
   for (auto &context : {GetCudaContext(), GetCpuContext()}) {
     Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 2, 5});
     Array1<int32_t> values(context,
@@ -457,6 +459,124 @@ TEST(FsaAlgo, UnionRandomFsas) {
       EXPECT_EQ(arc.label, 0);
       EXPECT_EQ(arc.score, 0);
     }
+  }
+}
+
+TEST(FsaAlgo, RemoveEpsilons) {
+  {
+    // simple case
+    std::string s = R"(0 4 1 1
+    0 1 1 1
+    1 2 0 2
+    1 3 0 3
+    1 4 0 2
+    2 7 0 4
+    3 7 0 5
+    4 6 1 2
+    4 6 0 3
+    4 8 1 3
+    4 9 -1 2
+    5 9 -1 4
+    6 9 -1 3
+    7 9 -1 5
+    8 9 -1 6
+    9
+    )";
+    Fsa src = FsaFromString(s);
+    int32_t prop = GetFsaBasicProperties(src);
+    EXPECT_NE(prop & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+    Fsa dest;
+    RemoveEpsilon(src, &dest);
+    prop = GetFsaBasicProperties(dest);
+    EXPECT_EQ(prop & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+    bool log_semiring = false;
+    EXPECT_TRUE(IsRandEquivalent(src, dest, log_semiring));
+  }
+
+  {
+    // random case
+    int32_t min_num_fsas = 1;
+    int32_t max_num_fsas = 1000;
+    bool acyclic = true;
+    // set max_symbol=10 so that we have a high probability
+    // to create Fsas with epsilon arcs.
+    int32_t max_symbol = 10;
+    int32_t min_num_arcs = 0;
+    int32_t max_num_arcs = 10000;
+    FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                               min_num_arcs, max_num_arcs);
+    FsaVec dest;
+    RemoveEpsilon(fsas, &dest);
+    Array1<int32_t> properties;
+    int32_t p;
+    GetFsaVecBasicProperties(dest, &properties, &p);
+    EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+    bool log_semiring = false;
+    float beam = std::numeric_limits<float>::infinity();
+    EXPECT_TRUE(IsRandEquivalent(fsas, dest, log_semiring, beam, true, 0.01));
+  }
+}
+
+TEST(FsaAlgo, Determinize) {
+  {
+    // simple case
+    std::string s = R"(0 4 1 1
+    0 1 1 1
+    1 2 2 2
+    1 3 3 3
+    2 7 1 4
+    3 7 1 5
+    4 6 1 2
+    4 6 1 3
+    4 5 1 3
+    4 8 -1 2
+    5 8 -1 4
+    6 8 -1 3
+    7 8 -1 5
+    8
+    )";
+    Fsa src = FsaFromString(s);
+    int32_t prop = GetFsaBasicProperties(src);
+    EXPECT_NE(prop & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
+    Fsa dest;
+    Determinize(src, &dest);
+    bool log_semiring = false;
+    EXPECT_TRUE(IsRandEquivalent(src, dest, log_semiring));
+    Fsa sorted;
+    ArcSort(dest, &sorted);
+    prop = GetFsaBasicProperties(sorted);
+    EXPECT_EQ(prop & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
+  }
+
+  {
+    // random case
+    int32_t min_num_fsas = 1;
+    int32_t max_num_fsas = 1000;
+    bool acyclic = true;
+    // set max_symbol=10 so that we have a high probability
+    // to create non-deterministic Fsas.
+    int32_t max_symbol = 10;
+    int32_t min_num_arcs = 0;
+    int32_t max_num_arcs = 100000;
+    FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                               min_num_arcs, max_num_arcs);
+    FsaVec connected;
+    Connect(fsas, &connected);
+    FsaVec dest;
+    Determinize(connected, &dest);
+    bool log_semiring = false;
+    float beam = std::numeric_limits<float>::infinity();
+    EXPECT_TRUE(
+        IsRandEquivalent(connected, dest, log_semiring, beam, true, 0.01));
+    Fsa sorted;
+    ArcSort(dest, &sorted);
+    Array1<int32_t> properties;
+    int32_t p;
+    GetFsaVecBasicProperties(sorted, &properties, &p);
+    EXPECT_EQ(p & kFsaPropertiesArcSortedAndDeterministic,
+              kFsaPropertiesArcSortedAndDeterministic);
   }
 }
 
