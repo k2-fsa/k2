@@ -8,12 +8,13 @@ from typing import List
 import torch
 import _k2
 
-
 from .autograd import index_select
 from .fsa import Fsa
 from .fsa_properties import is_accessible
 from .fsa_properties import is_arc_sorted
 from .fsa_properties import is_coaccessible
+from .fsa_properties import is_arc_sorted_and_deterministic
+from .fsa_properties import is_epsilon_free
 
 
 def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
@@ -256,4 +257,59 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
 
+    return out_fsa
+
+
+def remove_epsilon(fsa: Fsa) -> Fsa:
+    '''Remove epsilons (symbol zero) in the input Fsa.
+
+    Caution:
+      It only works on for CPU and doesn't support autograd.
+
+    Args:
+      fsa:
+        The input FSA. It can be either a single FSA or a FsaVec.
+        Must be top-sorted.
+    Returns:
+        The result Fsa, it's equivalent to the input ``fsa`` under
+        tropical semiring but will be epsilon-free.
+        It will be the same as the input ``fsa`` if the input
+        ``fsa`` is epsilon-free. Otherwise, a new epsilon-free fsa
+        is returned and the input ``fsa`` is NOT modified.
+    '''
+    properties = getattr(fsa, 'properties', None)
+    if properties is not None and is_epsilon_free(properties):
+        return fsa
+
+    ragged_arc = _k2.remove_epsilon(fsa.arcs)
+    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    return out_fsa
+
+
+def determinize(fsa: Fsa) -> Fsa:
+    '''Determinize the input Fsa.
+
+    Caution:
+      It only works on for CPU and doesn't support autograd.
+
+    Args:
+      fsa:
+        The input FSA. It can be either a single FSA or a FsaVec.
+        Must be top-sorted and connected. It's also expected to
+        be epsilon-free, but this is not checked; in any case,
+        epsilon will be treated as a normal symbol.
+    Returns:
+        The result Fsa, it's equivalent to the input ``fsa`` under
+        tropical semiring but will be deterministic.
+        It will be the same as the input ``fsa`` if the input
+        ``fsa`` has property kFsaPropertiesArcSortedAndDeterministic.
+        Otherwise, a new deterministic fsa is returned and the 
+        input ``fsa`` is NOT modified.
+    '''
+    properties = getattr(fsa, 'properties', None)
+    if properties is not None and is_arc_sorted_and_deterministic(properties):
+        return fsa
+
+    ragged_arc = _k2.determinize(fsa.arcs)
+    out_fsa = Fsa.from_ragged_arc(ragged_arc)
     return out_fsa

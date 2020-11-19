@@ -80,3 +80,36 @@ def is_coaccessible(p: int) -> bool:
       False otherwise.
     '''
     return _k2.is_coaccessible(p)
+
+
+def is_epsilon_free(p: int) -> bool:
+    '''Determine whether the given properties imply an FSA 
+       is epsilon free, i.e. no symbol zero (epsilon) 
+       present in the Fsa.
+
+    Args:
+      p:
+        An integer returned by :func:`get_properties`.
+
+    Returns:
+      True if `p` implies an FSA is epsilon free.
+      False otherwise.
+    '''
+    return _k2.is_epsilon_free(p)
+
+
+def is_arc_sorted_and_deterministic(p: int) -> bool:
+    '''Determine whether the given properties imply an FSA 
+       is arc sorted and deterministic, i.e. arcs leaving 
+       a given state are *strictly* sorted by label (no 
+       duplicates with the same label).
+
+    Args:
+      p:
+        An integer returned by :func:`get_properties`.
+
+    Returns:
+      True if `p` implies an FSA is arc sorted and deterministic.
+      False otherwise.
+    '''
+    return _k2.is_arc_sorted_and_deterministic(p)

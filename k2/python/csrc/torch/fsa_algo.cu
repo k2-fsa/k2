@@ -243,6 +243,28 @@ static void PybindUnion(py::module &m) {
       py::arg("fsas"), py::arg("need_arc_map") = true);
 }
 
+static void PybindRemoveEpsilon(py::module &m) {
+  m.def(
+      "remove_epsilon",
+      [](FsaOrVec &src) -> FsaOrVec {
+        FsaOrVec dest;
+        RemoveEpsilon(src, &dest);
+        return dest;
+      },
+      py::arg("src"));
+}
+
+static void PybindDeterminize(py::module &m) {
+  m.def(
+      "determinize",
+      [](FsaOrVec &src) -> FsaOrVec {
+        FsaOrVec dest;
+        Determinize(src, &dest);
+        return dest;
+      },
+      py::arg("src"));
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -255,4 +277,6 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindShortestPath(m);
   k2::PybindAddEpsilonSelfLoops(m);
   k2::PybindUnion(m);
+  k2::PybindRemoveEpsilon(m);
+  k2::PybindDeterminize(m);
 }

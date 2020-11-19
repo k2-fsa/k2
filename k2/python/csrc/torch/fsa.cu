@@ -61,6 +61,20 @@ static void PybindFsaBasicProperties(py::module &m) {
                kFsaPropertiesMaybeCoaccessible;
       },
       py::arg("properties"));
+  m.def(
+      "is_epsilon_free",
+      [](int32_t properties) -> bool {
+        return (properties & kFsaPropertiesEpsilonFree) ==
+               kFsaPropertiesEpsilonFree;
+      },
+      py::arg("properties"));
+  m.def(
+      "is_arc_sorted_and_deterministic",
+      [](int32_t properties) -> bool {
+        return (properties & kFsaPropertiesArcSortedAndDeterministic) ==
+               kFsaPropertiesArcSortedAndDeterministic;
+      },
+      py::arg("properties"));
 }
 
 static void PybindFsaUtil(py::module &m) {
