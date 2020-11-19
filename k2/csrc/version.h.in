@@ -1,7 +1,7 @@
 /**
  * @brief
  * This file contains information for building k2, which is helpful
- * for describing the environemnt in which k2 is used when creating
+ * for describing the environment in which k2 is used when creating
  * a issue on GitHub.
  *
  * @copyright
@@ -66,6 +66,17 @@ static constexpr const char *kTorchVersion = "@TORCH_VERSION@";
 
 // Which CUDA version PyTorch is using, e.g., 10.1
 static constexpr const char *kTorchCudaVersion = "@TORCH_CUDA_VERSION@";
+
+// Indicate whether NVTX is enabled or not
+#ifndef K2_ENABLE_NVTX
+#cmakedefine K2_ENABLE_NVTX
+#endif
+
+#ifdef K2_ENABLE_NVTX
+static constexpr bool kEnableNvtx = true;
+#else
+static constexpr bool kEnableNvtx = false;
+#endif
 
 }  // namespace k2
 
