@@ -27,7 +27,7 @@ def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
     ragged_arc, value_indexes = ragged_index(src.arcs,
                                              indexes=indexes,
                                              need_value_indexes=True)
-    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    out_fsa = Fsa(ragged_arc)
 
     for name, value in src.named_tensor_attr():
         setattr(out_fsa, name, index_select(value, value_indexes))
