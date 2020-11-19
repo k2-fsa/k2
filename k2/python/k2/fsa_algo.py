@@ -1,4 +1,5 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                      Xiaomi Corporation (authors: Haowen Qiu)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -283,6 +284,8 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
 
     ragged_arc = _k2.remove_epsilon(fsa.arcs)
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    for name, value in fsa.named_non_tensor_attr():
+        setattr(out_fsa, name, value)
     return out_fsa
 
 
@@ -312,4 +315,6 @@ def determinize(fsa: Fsa) -> Fsa:
 
     ragged_arc = _k2.determinize(fsa.arcs)
     out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    for name, value in fsa.named_non_tensor_attr():
+        setattr(out_fsa, name, value)
     return out_fsa

@@ -1,4 +1,5 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                      Xiaomi Corporation (authors: Haowen Qiu)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -83,9 +84,9 @@ def is_coaccessible(p: int) -> bool:
 
 
 def is_epsilon_free(p: int) -> bool:
-    '''Determine whether the given properties imply an FSA 
-       is epsilon free, i.e. no symbol zero (epsilon) 
-       present in the Fsa.
+    '''Determine whether the given properties imply an 
+       epsilon-free FSA , i.e. no symbol zero (epsilon) 
+       is present in the Fsa.
 
     Args:
       p:
