@@ -196,14 +196,14 @@ bool IsRandEquivalentUnweighted(FsaOrVec &a, FsaOrVec &b,
   if (a.Context()->GetDeviceType() != kCpu ||
       b.Context()->GetDeviceType() != kCpu) {
     FsaOrVec a_cpu = a.To(GetCpuContext()), b_cpu = b.To(GetCpuContext());
-    return IsRandEquivalentUnweighted(a_cpu, b_cpu,
-                                      treat_epsilons_specially, npath);
+    return IsRandEquivalentUnweighted(a_cpu, b_cpu, treat_epsilons_specially,
+                                      npath);
   }
   if (a.NumAxes() > 2) {
     for (int32_t i = 0; i < a.Dim0(); i++) {
       Fsa a_part = a.Index(0, i), b_part = b.Index(0, i);
-      if (!IsRandEquivalentUnweighted(a_part, b_part,
-                                      treat_epsilons_specially, npath))
+      if (!IsRandEquivalentUnweighted(a_part, b_part, treat_epsilons_specially,
+                                      npath))
         return false;
     }
     return true;
@@ -222,17 +222,15 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
   K2_CHECK_EQ(b.NumAxes(), a.NumAxes());
   if (a.Context()->GetDeviceType() != kCpu ||
       b.Context()->GetDeviceType() != kCpu) {
-    FsaOrVec a_cpu = a.To(GetCpuContext()),
-        b_cpu = b.To(GetCpuContext());
+    FsaOrVec a_cpu = a.To(GetCpuContext()), b_cpu = b.To(GetCpuContext());
     return IsRandEquivalent(a, b, log_semiring, beam, treat_epsilons_specially,
                             delta, npath);
   }
   if (a.NumAxes() > 2) {
     for (int32_t i = 0; i < a.Dim0(); i++) {
       Fsa a_part = a.Index(0, i), b_part = b.Index(0, i);
-      if (!IsRandEquivalent(a_part, b_part, log_semiring,
-                            beam, treat_epsilons_specially,
-                            delta, npath))
+      if (!IsRandEquivalent(a_part, b_part, log_semiring, beam,
+                            treat_epsilons_specially, delta, npath))
         return false;
     }
     return true;

@@ -20,7 +20,9 @@
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host/connect.h"
+#include "k2/csrc/host/determinize.h"
 #include "k2/csrc/host/intersect.h"
+#include "k2/csrc/host/rmepsilon.h"
 #include "k2/csrc/host/topsort.h"
 #include "k2/csrc/host_shim.h"
 
@@ -177,6 +179,93 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
   }
   *out = creator.GetFsaVec();
   return ok;
+}
+
+// Will be used in RemoveEpsilon and Determinize below to process FsaVec input
+// recursively.
+void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *), FsaOrVec &src,
+                      FsaOrVec *dest) {
+  // src is actually an FsaVec.  Just recurse for now.
+  K2_CHECK_EQ(src.NumAxes(), 3);
+  int32_t num_fsas = src.shape.Dim0();
+  std::vector<Fsa> srcs(num_fsas), dests(num_fsas);
+  for (int32_t i = 0; i < num_fsas; ++i) {
+    srcs[i] = src.Index(0, i);
+    f(srcs[i], &(dests[i]));
+  }
+  *dest = Stack(0, num_fsas, dests.data());
+}
+
+void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest) {
+  int32_t num_axes = src.NumAxes();
+  if (num_axes < 2 || num_axes > 3) {
+    K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
+  } else if (num_axes == 3) {
+    return RecursionWrapper(RemoveEpsilon, src, dest);
+  }
+
+  k2host::Fsa host_fsa = FsaToHostFsa(src);
+  int32_t num_states = host_fsa.NumStates();
+  K2_CHECK_EQ(num_states, src.Dim0());
+  std::vector<double> max_forward_weights(num_states);
+  std::vector<double> max_backward_weights(num_states);
+  k2host::WfsaWithFbWeights max_wfsa(host_fsa, k2host::kMaxWeight,
+                                     max_forward_weights.data(),
+                                     max_backward_weights.data());
+  // pass infinity as beam since we don't do pruning here.
+  float beam = std::numeric_limits<float>::infinity();
+  k2host::EpsilonsRemoverMax eps_remover(max_wfsa, beam);
+  k2host::Array2Size<int32_t> fsa_size, arc_derivs_size;
+  eps_remover.GetSizes(&fsa_size, &arc_derivs_size);
+  FsaCreator fsa_creator(fsa_size);
+  k2host::Fsa host_dest_fsa = fsa_creator.GetHostFsa();
+  k2host::Array2Storage<typename k2host::MaxTracebackState::DerivType *,
+                        int32_t>
+      derivs_storage(arc_derivs_size, 1);
+  auto &arc_derivs = derivs_storage.GetArray2();
+  // We don't really need `arc_derivs` here but the host version doesn't support
+  // passing NULL. As most of work in `EpsilonRemover` has been done in
+  // `GetSize`, passing a non-null arc_derivs here would be fine for now. Note
+  // we may remove this version of `RemoveEpsilon` once we have get the GPU
+  // version done.
+  eps_remover.GetOutput(&host_dest_fsa, &arc_derivs);
+  *dest = fsa_creator.GetFsa();
+}
+
+void Determinize(FsaOrVec &src, FsaOrVec *dest) {
+  int32_t num_axes = src.NumAxes();
+  if (num_axes < 2 || num_axes > 3) {
+    K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
+  } else if (num_axes == 3) {
+    return RecursionWrapper(Determinize, src, dest);
+  }
+  k2host::Fsa host_fsa = FsaToHostFsa(src);
+  int32_t num_states = host_fsa.NumStates();
+  K2_CHECK_EQ(num_states, src.Dim0());
+  std::vector<double> max_forward_weights(num_states);
+  std::vector<double> max_backward_weights(num_states);
+  k2host::WfsaWithFbWeights max_wfsa(host_fsa, k2host::kMaxWeight,
+                                     max_forward_weights.data(),
+                                     max_backward_weights.data());
+  // pass infinity as beam since we don't do pruning here.
+  float beam = std::numeric_limits<float>::infinity();
+  int32_t max_step = -1;  // no limit
+  k2host::DeterminizerMax determinizer(max_wfsa, beam, max_step);
+  k2host::Array2Size<int32_t> fsa_size, arc_derivs_size;
+  determinizer.GetSizes(&fsa_size, &arc_derivs_size);
+  FsaCreator fsa_creator(fsa_size);
+  k2host::Fsa host_dest_fsa = fsa_creator.GetHostFsa();
+  k2host::Array2Storage<typename k2host::MaxTracebackState::DerivType *,
+                        int32_t>
+      derivs_storage(arc_derivs_size, 1);
+  auto &arc_derivs = derivs_storage.GetArray2();
+  // We don't really need `arc_derivs` here but the host version doesn't support
+  // passing NULL. As most of work in `Determinizer` has been done in
+  // `GetSize`, passing a non-null arc_derivs here would be fine for now. Note
+  // we may remove this version of `Determinize` once we have get the GPU
+  // version done.
+  determinizer.GetOutput(&host_dest_fsa, &arc_derivs);
+  *dest = fsa_creator.GetFsa();
 }
 
 Fsa LinearFsa(const Array1<int32_t> &symbols) {
