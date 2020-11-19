@@ -35,52 +35,61 @@ bool IsRandEquivalentWrapper(
 
 
 TEST(Intersect, Simple) {
-  std::string s = R"(0 1 1 1.0
+  for (int i = 0; i < 2; i++) {
+    K2_LOG(INFO) << "Intersection for " << (i == 0 ? "CPU" : "GPU");
+    ContextPtr c = (i == 0 ? GetCpuContext() : GetCudaContext());
+    std::string s = R"(0 1 1 1.0
     1 1 1 50.0
     1 2 2 2.0
     2 3 -1 3.0
     3
   )";
-  auto fsa = FsaFromString(s);
+    auto fsa = FsaFromString(s).To(c);
 
-  // clang-format off
-  DenseFsaVec dfsavec {
-    RaggedShape("[ [ x x x ] ]"),
-        Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf]]")  // NOLINT
-        };
-  // clang-format on
+    // clang-format off
+    DenseFsaVec dfsavec {
+      RaggedShape("[ [ x x x ] ]").To(c),
+          Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf]]").To(c)  // NOLINT
+      };
+    // clang-format on
 
-  float beam = 100000;
-  int32_t max_active = 10000, min_active = 0;
+    float beam = 100000;
+    int32_t max_active = 10000, min_active = 0;
 
-  FsaVec out_fsas;
-  Array1<int32_t> arc_map_a, arc_map_b;
-  IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active, &out_fsas,
-                       &arc_map_a, &arc_map_b);
-  K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
-               << ", arc_map_b = " << arc_map_b;
+    FsaVec out_fsas;
+    Array1<int32_t> arc_map_a, arc_map_b;
+    IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active, &out_fsas,
+                         &arc_map_a, &arc_map_b);
+    K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
+                 << ", arc_map_b = " << arc_map_b;
 
-  FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
-  K2_LOG(INFO) << "fsas_b = " << fsas_b;
-  FsaVec out_fsas2;
-  Array1<int32_t> arc_map_a2, arc_map_b2;
-  // IntersectDensePruned() treats epsilons as normal symbols.
-  bool treat_epsilons_specially = false;
-  Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
-            &arc_map_b2);
-  K2_CHECK(IsRandEquivalentWrapper(out_fsas, out_fsas2,
-                                   treat_epsilons_specially));
+    FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
+    K2_LOG(INFO) << "fsas_b = " << fsas_b;
+    FsaVec out_fsas2;
+    ContextPtr cpu = GetCpuContext();
+    Array1<int32_t> arc_map_a2, arc_map_b2;
+    // IntersectDensePruned() treats epsilons as normal symbols.
+    bool treat_epsilons_specially = false;
+    fsa = fsa.To(cpu);
+    fsas_b = fsas_b.To(cpu);
+    Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
+              &arc_map_b2);
 
-  K2_LOG(INFO) << "out_fsas2 = " << out_fsas2 << ", arc_map_a2 = " << arc_map_a2
-               << ", arc_map_b2 = " << arc_map_b2;
+    out_fsas = out_fsas.To(cpu);
+    K2_CHECK(IsRandEquivalentWrapper(out_fsas, out_fsas2,
+                                     treat_epsilons_specially));
 
-  /*
-    int32_t gt = kFsaPropertiesTopSorted | kFsaPropertiesTopSortedAndAcyclic;
-    int32_t p = GetFsaBasicProperties(fsa);
-    EXPECT_NE(p & gt, gt);
-  */
+    K2_LOG(INFO) << "out_fsas2 = " << out_fsas2 << ", arc_map_a2 = " << arc_map_a2
+                 << ", arc_map_b2 = " << arc_map_b2;
 
-  // CheckArrayData(arc_map, {0, 1, 3, 4, 2});
+    /*
+      int32_t gt = kFsaPropertiesTopSorted | kFsaPropertiesTopSortedAndAcyclic;
+      int32_t p = GetFsaBasicProperties(fsa);
+      EXPECT_NE(p & gt, gt);
+    */
+
+    // CheckArrayData(arc_map, {0, 1, 3, 4, 2});
+  }
 }
 
 TEST(Intersect, TwoDense) {

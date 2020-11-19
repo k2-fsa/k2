@@ -564,39 +564,6 @@ class Fsa(object):
         self.scores.requires_grad_(requires_grad)
         return self
 
-    def clone(self) -> 'Fsa':
-        """
-        Return an Fsa that is a clone of this one, i.e. a close approximation
-        to what you'd get if you did .clone() on all its tensor members.
-        Any non-tensor attributes are copied over
-        """
-        arcs = self.arcs.clone()
-
-        ans = Fsa(arcs, properties=self.properties)
-
-        for name, value in self.named_tensor_attr(include_scores = False):
-            setattr(ans, name, value.clone())
-
-        for name, value in self.named_non_tensor_attr(include_scores = False):
-            setattr(ans, name, value.clone())
-
-        # Just copy elements of the _cache that we might already have..
-        # These don't directly participate in autograd, and are not supposed to
-        # be modified by the user, so this should be safe (i.e. it should
-        # be safe to do this without clone(); these are mostly not tensors
-        # anyway.
-        for name, value in self._cache:
-            ans._cache[name] = value
-
-        # The properties won't have changed.
-        ans.__dict__.set('_properties', self.properties)
-
-        # The following is a magic invocation to make sure
-        # the backprop happens.
-        autograd_utils.phantom_set_scores_to(ans, self.scores)
-
-        return ans
-
 
     def invert_(self) -> 'Fsa':
         '''Swap the ``labels`` and ``aux_labels``.
@@ -636,6 +603,9 @@ class Fsa(object):
         # FSA.
         self.properties
         return self
+
+    def invert(self) -> 'Fsa':
+        return self.clone().invert_()
 
     def is_cpu(self) -> bool:
         '''Return true if this FSA is on CPU.
@@ -713,38 +683,93 @@ class Fsa(object):
         # _tensor_attr and _non_tensor_attr.
         return Fsa(dict_in['arcs'], aux_labels=dict_in.get('aux_labels', None))
 
-    def to_(self, device: torch.device) -> 'Fsa':
+    def to(self, device: torch.device) -> 'Fsa':
         '''Move the FSA onto a given device.
-
-        Caution:
-          This is an in-place operation.
 
         Args:
           device:
             An instance of `torch.device`. It supports only cpu and cuda.
 
         Returns:
-          Return `self`.
+          Returns a new Fsa which is this object copied to the given device
+         (or this object itself, if the device was the same)
         '''
+        # Keep this code in sync with that in clone()
         assert device.type in ('cpu', 'cuda')
-        if device.type == 'cpu' and self.is_cpu():
-            return self
-        elif device.type == 'cuda' and self.is_cuda():
+        if device == self.scores.device:
             return self
 
-        if device.type == 'cpu':
-            self.arcs = self.arcs.to_cpu()
-        else:
-            self.arcs = self.arcs.to_cuda(device.index)
+        ans = Fsa(self.arcs.to(device), properties=self.properties)
 
-        for name, value in self.named_tensor_attr():
-            setattr(self, name, value.to(device))
+        for name, value in self.named_tensor_attr(include_scores = False):
+            setattr(ans, name, value.to(device))
 
-        self._cache = OrderedDict()
+        for name, value in self.named_non_tensor_attr(include_scores = False):
+            setattr(ans, name, value)
 
-        return self
+        # Don't copy members of self._cache.  They don't all have convenient
+        # .to() methods.
 
-    def named_tensor_attr(self, include_scores: bool = True) -> Iterator[Tuple[str, torch.Tensor]]:
+        # The following is a magic invocation to make sure
+        # the backprop happens.
+        autograd_utils.phantom_set_scores_to(ans, self.scores.to(device))
+
+        return ans
+
+    def clone(self) -> 'Fsa':
+        """
+        Return an Fsa that is a clone of this one, i.e. a close approximation
+        to what you'd get if you did .clone() on all its tensor members.
+        Any non-tensor attributes are copied over.
+        """
+        # Keep this code in sync with that in to()
+        ans = Fsa(self.arcs.clone(), properties=self.properties)
+
+        for name, value in self.named_tensor_attr(include_scores = False):
+            setattr(ans, name, value.clone())
+
+        for name, value in self.named_non_tensor_attr(include_scores = False):
+            setattr(ans, name, value)
+
+        # Just copy elements of the _cache that we might already have..
+        # These don't directly participate in autograd, and are not supposed to
+        # be modified by the user, so this should be safe (i.e. it should
+        # be safe to do this without clone(); these are mostly not tensors
+        # anyway.
+        for name, value in self._cache:
+            ans._cache[name] = value
+
+        # The following is a magic invocation to make sure
+        # the backprop happens.
+        autograd_utils.phantom_set_scores_to(ans, self.scores)
+
+        return ans
+
+    def detach(self) -> 'Fsa':
+        """
+        Return an Fsa that shares the underlying data with this one,
+        except gradients are not tracked.
+        Any non-tensor attributes are copied over.
+        """
+        ans = Fsa(self.arcs.detach(), properties=self.properties)
+
+        for name, value in self.named_tensor_attr(include_scores = False):
+            setattr(ans, name, value.detach())
+
+        for name, value in self.named_non_tensor_attr(include_scores = False):
+            setattr(ans, name, value)
+
+        # Just copy elements of the _cache that we might already have..
+        # These don't directly participate in autograd, and are not supposed to
+        # be modified by the user, so this should be safe (i.e. it should
+        # be safe to do this without clone(); these are mostly not tensors
+        # anyway.
+        for name, value in self._cache:
+            ans._cache[name] = value
+        return ans
+
+    def named_tensor_attr(self,
+                          include_scores: bool = True) -> Iterator[Tuple[str, torch.Tensor]]:
         '''Return an iterator over tensor attributes containing both
         the name of the attribute as well as the tensor value.
 
@@ -902,10 +927,3 @@ class _PhantomSetScoresFunction(torch.autograd.Function):
     @staticmethod
     def backward(ctx, out_fsa_scores_grad: torch.Tensor) -> Tuple[None, torch.Tensor]:
         return out_fsa_scores_grad
-
-def phantom_set_scores_to(fsa, scores_value) -> None:
-    # we don't need the output value of the following call
-    # (which it fsa.score), since it is accessible through `fsa`.
-    # The fact that it was returned from a torch.autograd.Function
-    # gives it a grad_fn (assuming scores_value had requires_grad == True.)
-    _PhantomSetScoresFunction.apply(fsa, scores_value)
