@@ -24,6 +24,22 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   using PyClass = Ragged<T>;
   py::class_<PyClass> pyclass(m, name);
 
+  pyclass.def("to", [](const PyClass &self, py::object device) -> PyClass {
+    std::string device_type = static_cast<py::str>(device.attr("type"));
+    K2_CHECK(device_type == "cpu" || device_type == "cuda")
+        << "Unsupported device type: " << device_type;
+
+    ContextPtr &context = self.Context();
+    if (device_type == "cpu") {
+      if (context->GetDeviceType() == kCpu) return self;
+      return self.To(GetCpuContext());
+    }
+
+    if (context->GetDeviceType() == kCuda) return self;
+    int32_t device_index = static_cast<py::int_>(device.attr("index"));
+    return self.To(GetCudaContext(device_index));
+  }, py::arg("device"));
+
   pyclass.def("to_cpu", [](const PyClass &self) -> PyClass {
     return self.To(GetCpuContext());
   });

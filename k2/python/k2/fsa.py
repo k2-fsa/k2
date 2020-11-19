@@ -618,10 +618,7 @@ class Fsa(object):
         elif device.type == 'cuda' and self.is_cuda():
             return self
 
-        if device.type == 'cpu':
-            self.arcs = self.arcs.to_cpu()
-        else:
-            self.arcs = self.arcs.to_cuda(device.index)
+        self.arcs = self.arcs.to(device)
 
         for name, value in self.named_tensor_attr():
             setattr(self, name, value.to(device))
