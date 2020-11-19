@@ -18,6 +18,11 @@ if(K2_HAVE_CXXABI_H)
   target_compile_definitions(k2_log PRIVATE K2_HAVE_CXXABI_H=1)
 endif()
 
+add_library(k2_nvtx nvtx.cu)
+if(K2_ENABLE_NVTX)
+  target_compile_definitions(k2_nvtx PUBLIC K2_ENABLE_NVTX=1)
+endif()
+
 # please keep it sorted
 set(context_srcs
   algorithms.cu
@@ -54,6 +59,7 @@ set_target_properties(context PROPERTIES OUTPUT_NAME "k2context")
 target_link_libraries(context PUBLIC cub)
 target_link_libraries(context PUBLIC fsa)
 target_link_libraries(context PUBLIC k2_log)
+target_link_libraries(context PUBLIC k2_nvtx)
 target_link_libraries(context PUBLIC moderngpu)
 if(USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
@@ -75,6 +81,7 @@ set(cuda_tests
   host_shim_test
   intersect_test
   log_test
+  nvtx_test
   ragged_shape_test
   ragged_test
   tensor_test

@@ -28,12 +28,11 @@ elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWABLE_BUILD_TYPES)
     choose one from ${ALLOWABLE_BUILD_TYPES}")
 endif()
 
-
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 option(USE_PYTORCH "Whether to build with PyTorch" ON)
+option(K2_ENABLE_NVTX "Whether to build with the NVTX library" ON)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
