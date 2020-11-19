@@ -8,6 +8,8 @@
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
+#ifndef K2_CSRC_NVTX_H_
+#define K2_CSRC_NVTX_H_
 
 #include "nvToolsExt.h"
 
@@ -46,3 +48,5 @@ class NvtxRange {
 #endif
 
 }  // namespace k2
+
+#endif  // K2_CSRC_NVTX_H_
