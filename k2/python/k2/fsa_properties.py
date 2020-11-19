@@ -5,27 +5,34 @@
 import torch  # noqa
 import _k2
 
-from .fsa import Fsa
 
 
-def get_properties(fsa: Fsa) -> int:
-    '''Get the properties of an FSA.
+VALID = 0x01   # Valid from a formatting perspective
+NONEMPTY = 0x02 # Nonempty as in, has at least one arc.
+TOPSORTED = 0x04,  # FSA is top-sorted, but possibly with
+                               # self-loops, dest_state >= src_state
+TOPSORTED_AND_ACYCLIC = 0x08  # Fsa is topsorted, dest_state > src_state
+ARC_SORTED = 0x10  # Fsa is arc-sorted: arcs leaving a state
+              # are are sorted by label first and then on
+              # `dest_state`, see operator< in struct Arc in /k2/csrc/fsa.h
+              # (Note: labels are treated as uint32 for purpose of sorting!)
 
-    Note that the properties of an FSA is encoded into an integer.
-    The integer is expected to be passed to one of the `is_*` functions
-    in this module, e.g., :func:`is_arc_sorted`.
+ARC_SORTED_AND_DETERMINISTIC  # Arcs leaving a given state
+                                         # are *strictly* sorted by
+                                         # label, i.e. no duplicates
+                                         # with the same label.
+EPSILON_FREE = 0x40  # Label zero (epsilon) is not present..
+MAYBE_ACESSIBLE = 0x80 # True if there are no obvious signs
+                                 # of states not being accessible or
+                                 # co-accessible, i.e. states with no
+                                 # arcs entering them
+MAYBE_COACCESSIBLE = 0x0100  # True if there are no obvious signs of
+                                        # states not being co-accessible, i.e.
+                                        # i.e. states with no arcs leaving them
+ALL = 0x01FF
 
-    Args:
-      fsa:
-        The input FSA.
 
-    Returns:
-      An integer which encodes the properties of the given FSA.
-    '''
-    return _k2.get_fsa_basic_properties(fsa.arcs)
-
-
-def properties_to_str(p: int) -> str:
+def to_str(p: int) -> str:
     '''Convert properties to a string for debug purpose.
 
     Args:
@@ -36,47 +43,3 @@ def properties_to_str(p: int) -> str:
       A string representation of the input properties.
     '''
     return _k2.fsa_properties_as_str(p)
-
-
-def is_arc_sorted(p: int) -> bool:
-    '''Determine whether the given properties imply an arc_sorted FSA.
-
-    Args:
-      p:
-        An integer returned by :func:`get_properties`.
-
-    Returns:
-      True if `p` implies an arc_sorted FSA.
-      False otherwise.
-    '''
-    return _k2.is_arc_sorted(p)
-
-
-def is_accessible(p: int) -> bool:
-    '''Determine whether the given properties imply an FSA that
-    has all states being accessible.
-
-    Args:
-      p:
-        An integer returned by :func:`get_properties`.
-
-    Returns:
-      True if `p` implies an FSA with all states being accessible.
-      False otherwise.
-    '''
-    return _k2.is_accessible(p)
-
-
-def is_coaccessible(p: int) -> bool:
-    '''Determine whether the given properties imply an FSA that
-    has all states being coaccessible.
-
-    Args:
-      p:
-        An integer returned by :func:`get_properties`.
-
-    Returns:
-      True if `p` implies an FSA with all states being coaccessible.
-      False otherwise.
-    '''
-    return _k2.is_coaccessible(p)
