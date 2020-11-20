@@ -3,12 +3,14 @@
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                      Xiaomi Corporation (authors: Haowen Qiu)
  *                      Guoguo Chen
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -17,6 +19,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/host_shim.h"
 #include "k2/python/csrc/torch/fsa.h"
 #include "k2/python/csrc/torch/torch_util.h"
 #include "torch/extension.h"
@@ -37,44 +40,8 @@ static void PybindFsaBasicProperties(py::module &m) {
         return tot_properties;
       },
       py::arg("fsa_vec"));
-
-  m.def(
-      "is_arc_sorted",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesArcSorted) ==
-               kFsaPropertiesArcSorted;
-      },
-      py::arg("properties"));
-
-  m.def(
-      "is_accessible",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesMaybeAccessible) ==
-               kFsaPropertiesMaybeAccessible;
-      },
-      py::arg("properties"));
-
-  m.def(
-      "is_coaccessible",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesMaybeCoaccessible) ==
-               kFsaPropertiesMaybeCoaccessible;
-      },
-      py::arg("properties"));
-  m.def(
-      "is_epsilon_free",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesEpsilonFree) ==
-               kFsaPropertiesEpsilonFree;
-      },
-      py::arg("properties"));
-  m.def(
-      "is_arc_sorted_and_deterministic",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesArcSortedAndDeterministic) ==
-               kFsaPropertiesArcSortedAndDeterministic;
-      },
-      py::arg("properties"));
+  // We don't wrap the flag values from C++ to Python, we just reproduce in
+  // Python directly.
 }
 
 static void PybindFsaUtil(py::module &m) {
@@ -185,6 +152,27 @@ static void PybindFsaUtil(py::module &m) {
   // returns Ragged<int32_t>
   m.def("_get_leaving_arc_index_batches", &GetLeavingArcIndexBatches,
         py::arg("fsas"), py::arg("state_batches"));
+
+  m.def(
+      "_is_rand_equivalent",
+      [](FsaOrVec &a, FsaOrVec &b, bool log_semiring,
+         float beam = k2host::kFloatInfinity,
+         bool treat_epsilons_specially = true, float delta = 1e-6,
+         int32_t npath = 100) -> bool {
+        // if we pass npath as type `std::size_t` here, pybind11 will
+        // report warning `pointless comparison of unsigned integer
+        // with zero` when instantiating this binding (I guess it's
+        // related to pybind11's implementation), so we here pass
+        // npath as type int32_t and cast it to std::size_t. Anyway,
+        // it's safe to do the cast here.
+        return IsRandEquivalent(a, b, log_semiring, beam,
+                                treat_epsilons_specially, delta,
+                                static_cast<std::size_t>(npath));
+      },
+      py::arg("a"), py::arg("b"), py::arg("log_semiring"),
+      py::arg("beam") = k2host::kFloatInfinity,
+      py::arg("treat_epsilons_specially") = true, py::arg("delta") = 1e-6,
+      py::arg("npath") = 100);
 }
 
 template <typename T>

@@ -63,9 +63,9 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
 
     Args:
       a_fsa:
-        The first input FSA on CPU. It can be either a single FSA or a FsaVec.
+        The first input FSA on CPU. It can be either a single FSA or an FsaVec.
       b_fsa:
-        The second input FSA on CPU. it can be either a single FSA or a FsaVec.
+        The second input FSA on CPU. it can be either a single FSA or an FsaVec.
 
     Caution:
       The two input FSAs MUST be arc sorted.
@@ -205,7 +205,7 @@ def shortest_path(fsa: Fsa, use_float_scores: bool) -> Fsa:
 
     Args:
       fsa:
-        The input FSA. It can be either a single FSA or a FsaVec.
+        The input FSA. It can be either a single FSA or an FsaVec.
       use_float_scores:
         True to use float, i.e., single precision floating point, for scores.
         False to use double.
@@ -235,7 +235,7 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
 
     Args:
       fsa:
-        The input FSA. It can be either a single FSA or a FsaVec.
+        The input FSA. It can be either a single FSA or an FsaVec.
 
     Returns:
       An instance of :class:`Fsa` that has an epsilon self-loop on every
@@ -265,7 +265,7 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
 
     Args:
       fsa:
-        The input FSA. It can be either a single FSA or a FsaVec.
+        The input FSA. It can be either a single FSA or an FsaVec.
         Must be top-sorted.
     Returns:
         The result Fsa, it's equivalent to the input ``fsa`` under
@@ -293,7 +293,7 @@ def determinize(fsa: Fsa) -> Fsa:
 
     Args:
       fsa:
-        The input FSA. It can be either a single FSA or a FsaVec.
+        The input FSA. It can be either a single FSA or an FsaVec.
         Must be top-sorted and connected. It's also expected to
         be epsilon-free, but this is not checked; in any case,
         epsilon will be treated as a normal symbol.

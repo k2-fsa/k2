@@ -20,6 +20,7 @@ from .ops import index
 from .ops import index_add
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
+from .utils import is_rand_equivalent
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
