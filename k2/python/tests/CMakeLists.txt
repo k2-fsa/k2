@@ -22,6 +22,7 @@ set(py_test_files
   get_tot_scores_test.py
   connect_test.py
   dense_fsa_vec_test.py
+  determinize_test.py
   fsa_test.py
   index_test.py
   index_add_test.py
@@ -29,6 +30,7 @@ set(py_test_files
   intersect_dense_pruned_test.py
   intersect_test.py
   linear_fsa_test.py
+  remove_epsilon_test.py
   shortest_path_test.py
   top_sort_test.py
   union_test.py

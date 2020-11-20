@@ -1,4 +1,5 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                      Xiaomi Corporation (authors: Haowen Qiu)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -11,6 +12,7 @@ from .fsa import Fsa
 from _k2 import _create_fsa_vec
 from _k2 import _fsa_to_str
 from _k2 import _fsa_to_tensor
+from _k2 import _is_rand_equivalent
 from graphviz import Digraph
 
 
@@ -197,3 +199,55 @@ def create_fsa_vec(fsas: List[Fsa]) -> Fsa:
                 else:
                     setattr(fsa_vec, name, value)
     return fsa_vec
+
+
+def is_rand_equivalent(a: Fsa,
+                       b: Fsa,
+                       log_semiring: bool,
+                       beam: float = float('inf'),
+                       treat_epsilons_specially: bool = True,
+                       delta: float = 1e-6,
+                       npath: int = 100) -> bool:
+    '''Check if the Fsa `a` appears to be equivalent to `b` by 
+       randomly checking some symbol sequences in them.
+
+    Caution:
+      It only works on for CPU.
+
+    Args:
+      a:
+        One of the input FSA. It can be either a single FSA or an FsaVec.
+        Must be top-sorted and on CPU.
+      b:
+        The other input FSA. It must have the same NumAxes() as a.
+        Must be top-sorted and on CPU.
+      log_semiring: 
+        The semiring to be used for all weight measurements;
+        if false then we use 'max' on alternative paths; if
+        true we use 'log-add'.
+      beam:
+         beam > 0 that affects pruning; the algorithm will only check 
+         paths within `beam` of the total score of the lattice (for 
+         tropical semiring, it's max weight over all paths from start
+         state to final state; for log semiring, it's log-sum probs over
+         all paths) in `a` or `b`.
+      treat_epsilons_specially:
+         We'll do `intersection` between generated path and a or b when 
+         check equivalence. Generally, if it's true, we will treat
+         epsilons as epsilon when doing intersection; Otherwise, epsilons
+         will just be treated as any other symbol.
+      delta:
+         Tolerance for path weights to check the equivalence.
+         If abs(weights_a, weights_b) <= delta, we say the two
+         paths are equivalent.
+      npath:
+         The number of paths will be generated to check the 
+         equivalence of `a` and `b`
+    Returns:
+       True if the Fsa `a` appears to be equivalent to `b` by randomly
+       generating `npath` paths from one of them and then checking if the symbol
+       sequence exists in the other one and if the total weight for that symbol
+       sequence is the same in both FSAs.
+    '''
+    return _is_rand_equivalent(a.arcs, b.arcs, log_semiring, beam,
+                               treat_epsilons_specially, delta, npath)

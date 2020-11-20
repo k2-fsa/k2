@@ -278,7 +278,7 @@ Array1<bool> IsConnected(FsaOrVec &fsas);
     existence, the weights on the paths will not be checked.
 
    (for FsaVec):
-     Returns true if IsRandEquivalentByCheckPathSymbols is true for all of
+     Returns true if IsRandEquivalentUnweighted is true for all of
      the corresponding elements of a and b.
 
    The algorithm is done on CPU; the FSAs will be copied to CPU if needed.
@@ -300,9 +300,11 @@ bool IsRandEquivalentUnweighted(FsaOrVec &a, FsaOrVec &b,
   sequence is the same in both FSAs.
 
   @param [in]  a          One of the FSAs to be checked the equivalence.
-                          Must be top-sorted and have NumAxes() == 2 and on CPU.
+                          Must be top-sorted and on CPU.
+                          It could be a single Fsa or an FsaVec.
   @param [in]  b          The other FSA to be checked the equivalence.
-                          Must be top-sorted and have NumAxes() == 2 and on CPU.
+                          Must be top-sorted and on CPU.
+                          There must be b.NumAxes() == a.NumAxes()
   @param [in]  log_semiring The semiring to be used for all weight measurements;
                           if false then we use 'max' on alternative paths; if
                           true we use 'log-add'.
