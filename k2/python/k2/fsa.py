@@ -87,7 +87,7 @@ class Fsa(object):
       Implementation note: most of this class's attributes are not
       real attributes in the objcet's dict; the real attributes are
       'arcs', '_non_tensor_attr', '_tensor_attr', '_properties',
-      '_cache', and possibly '_inv_properties'.
+      '_cache'.
 
     '''
 
@@ -175,10 +175,11 @@ class Fsa(object):
         # - `_cache`
         #     It contains tensors for autograd. Users should NOT manipulate it.
         #     The dict is filled in automagically.
+
         self._tensor_attr = OrderedDict()
         self._non_tensor_attr = OrderedDict()
-
         self._cache = OrderedDict()
+
         # The `_cache` dict contains the following attributes:
         #
         #  - `state_batches`:
@@ -231,8 +232,8 @@ class Fsa(object):
             # in the normal way as if __setattr__ was not defined.
             object.__setattr__(key, value)
 
-        if name in ('_tensor_attr', '_non_tensor_attr', 'arcs', '_properties',
-                    '_inv_properties', '_cache'):
+        if name in ('_tensor_attr', '_non_tensor_attr', 'arcs',
+                    '_cache'):
             object.__setattr__(self, name, value)
 
         elif isinstance(value, torch.Tensor):
@@ -250,7 +251,9 @@ class Fsa(object):
                 # to integer patterns here.
                 self.arcs.values()[:, -1] = _as_int(value.detach())
         else:
-            assert name != 'properties'
+            assert name != 'properties'  # should be set by getter/setter or by
+                                         # doing self.__dict__['properties'] =
+                                         # foo
             self._non_tensor_attr[name] = value
 
 
