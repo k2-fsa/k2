@@ -46,7 +46,7 @@ class TestUnion(unittest.TestCase):
             fsa1 = k2.Fsa.from_str(s1)
             fsa2 = k2.Fsa.from_str(s2)
 
-            fsa_vec = k2.create_fsa_vec([fsa0, fsa1, fsa2]).to_(device)
+            fsa_vec = k2.create_fsa_vec([fsa0, fsa1, fsa2]).to(device)
 
             fsa = k2.union(fsa_vec)
             assert torch.allclose(
@@ -103,9 +103,9 @@ class TestUnion(unittest.TestCase):
         cuda_device = torch.device('cuda', 0)
 
         for device in (cpu_device, cuda_device):
-            fsa0 = k2.Fsa.from_str(s0).to_(device).requires_grad_(True)
-            fsa1 = k2.Fsa.from_str(s1).to_(device).requires_grad_(True)
-            fsa2 = k2.Fsa.from_str(s2).to_(device).requires_grad_(True)
+            fsa0 = k2.Fsa.from_str(s0).to(device).requires_grad_(True)
+            fsa1 = k2.Fsa.from_str(s1).to(device).requires_grad_(True)
+            fsa2 = k2.Fsa.from_str(s2).to(device).requires_grad_(True)
 
             fsa_vec = k2.create_fsa_vec([fsa0, fsa1, fsa2])
             fsa = k2.union(fsa_vec)

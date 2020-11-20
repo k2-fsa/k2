@@ -24,11 +24,11 @@ ARC_SORTED_AND_DETERMINISTIC = 0x20 # Arcs leaving a given state are *strictly*
                                     # sorted by label, i.e. no duplicates with
                                     # the same label.
 EPSILON_FREE = 0x40  # Label zero (epsilon) is not present..
-MAYBE_ACESSIBLE = 0x80 # True if there are no obvious signs
+ACCESSIBLE = 0x80 # True if there are no obvious signs
                                  # of states not being accessible or
                                  # co-accessible, i.e. states with no
                                  # arcs entering them
-MAYBE_COACCESSIBLE = 0x0100  # True if there are no obvious signs of
+COACCESSIBLE = 0x0100  # True if there are no obvious signs of
                                         # states not being co-accessible, i.e.
                                         # i.e. states with no arcs leaving them
 ALL = 0x01FF

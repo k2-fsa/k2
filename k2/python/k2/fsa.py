@@ -10,8 +10,8 @@ from typing import Iterator
 from typing import Optional
 from typing import Tuple
 from typing import Union
-import .fsa_properties
-import .autograd_utils
+from . import fsa_properties
+from . import autograd_utils
 
 import torch
 import _k2
@@ -126,17 +126,17 @@ class Fsa(object):
         '''
         self._init_internal()
         if isinstance(arcs, torch.Tensor):
-            arcs: RaggedArc = _fsa_from_tensor(tensor)
+            arcs: RaggedArc = _fsa_from_tensor(arcs)
         self.arcs: RaggedArc = arcs
 
-        self.__dict__.set('_properties', properties)
+        self.__dict__['_properties'] = properties
         self._tensor_attr['scores'] = _as_float(self.arcs.values()[:, -1])
         if aux_labels is not None:
             self.aux_labels = aux_labels.to(torch.int32)
         # Access the properties field (it's a @property, i.e. it has a
         # getter) which sets up the properties and also checks that
         # the FSA is valid.
-        self.properties
+        _ = self.properties
 
     def __str__(self) -> str:
         '''Return a string representation of this object (note: does not
@@ -252,7 +252,7 @@ class Fsa(object):
                 self.arcs.values()[:, -1] = _as_int(value.detach())
         else:
             assert name != 'properties'  # should be set by getter/setter or by
-                                         # doing self.__dict__['properties'] =
+                                         # doing self.__dict__['_properties'] =
                                          # foo
             self._non_tensor_attr[name] = value
 
@@ -288,7 +288,7 @@ class Fsa(object):
             properties = _k2.get_fsa_basic_properties(self.arcs)
         else:
             properties = _k2.get_fsa_vec_basic_properties(self.arcs)
-        self.__dict__.set('_properties', properties)
+        self.__dict__['_properties'] = properties
         if properties & fsa_properties.VALID != 1:
             raise ValueError(
                 "Fsa is not valid, properties are: {} = {}, arcs are: {}".
@@ -296,12 +296,12 @@ class Fsa(object):
                        str(self.arcs)))
         return properties
 
-    @property
+    @properties.setter
     def properties(self, value) -> None:
         """ Only supports setting self.property to None; any other
         value should be set internally by writing to self.__dict__ directly."""
         if value == None:
-            self.__dict__.set('_properties', None)
+            self.__dict__['_properties'] = None
         else:
             raise RuntimeError("""Currently we don't allow the .properties of an Fsa
             to be set this way, except to None""");
@@ -389,7 +389,7 @@ class Fsa(object):
         if not name in cache:
             cache[name] = _k2._get_entering_arc_index_batches(
                 self.arcs,
-                incoming_arcs=self.get_incoming_arcs()
+                incoming_arcs=self.get_incoming_arcs(),
                 state_batches=self.get_state_batches())
         return cache[name]
 
@@ -418,7 +418,7 @@ class Fsa(object):
                 func = _k2._get_forward_scores_double
             forward_scores_tropical, entering_arcs = func(
                 self.arcs,
-                state_batches=self.get_state_batches()
+                state_batches=self.get_state_batches(),
                 entering_arc_batches=self.get_entering_arc_batches(),
                 log_semiring=False)
             cache[name] = forward_scores_tropical
@@ -442,7 +442,7 @@ class Fsa(object):
                 func = _k2._get_forward_scores_double
             self[name], _ = func(
                 self.arcs,
-                state_batches=self.get_state_batches()
+                state_batches=self.get_state_batches(),
                 entering_arc_batches=self.get_entering_arc_batches(),
                 log_semiring=True)
         return cache[name]
@@ -656,7 +656,6 @@ class Fsa(object):
         # the backprop on the scores happens.
         autograd_utils.phantom_set_scores_to(ans, self.scores[start:end])
 
-        out_fsa._init_properties()
         return out_fsa
 
     def arcs_as_tensor(self) -> torch.Tensor:
@@ -854,16 +853,8 @@ class Fsa(object):
         assert len(fields) == 4 or len(fields) == 5
         if len(fields) == 5:
             acceptor = False
-
-        ans = cls.__new__(cls)
-        super(Fsa, ans).__init__()
-        ans._init_internal()
         arcs, aux_labels = _fsa_from_str(s, acceptor, False)
-        ans.arcs = arcs
-        ans._init_properties()
-        ans._tensor_attr['scores'] = _as_float(ans.arcs.values()[:, -1])
-        if aux_labels is not None:
-            ans.aux_labels = aux_labels.to(torch.int32)
+        ans = Fsa(arcs, aux_labels = aux_labels)
         return ans
 
     @classmethod

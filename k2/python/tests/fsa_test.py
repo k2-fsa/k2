@@ -308,7 +308,7 @@ class TestFsa(unittest.TestCase):
 
         ragged_arc = _k2._fsa_to_fsa_vec(fsa.arcs)
         del fsa
-        fsa_vec = k2.Fsa.from_ragged_arc(ragged_arc)
+        fsa_vec = k2.Fsa(ragged_arc)
         del ragged_arc
 
         assert fsa_vec.shape == (1, None, None)
@@ -382,12 +382,12 @@ class TestFsa(unittest.TestCase):
         assert fsa.is_cpu()
 
         device = torch.device('cuda', 0)
-        fsa.to_(device)
+        fsa.to(device)
         assert fsa.is_cuda()
         assert fsa.device == device
 
         device = torch.device('cpu')
-        fsa.to_(device)
+        fsa.to(device)
         assert fsa.is_cpu()
         assert fsa.device == device
 
