@@ -714,16 +714,23 @@ TEST(ArrayTest, TestArray2Io) {
 
 TEST(ArrayTest, Array1Test) {
   TestArray1<int32_t, kCpu>();
-  TestArray1<int32_t, kCuda>();
   TestArray1<double, kCpu>();
+
+#ifdef K2_USE_CUDA
+  TestArray1<int32_t, kCuda>();
   TestArray1<double, kCuda>();
+#endif
 }
 
 TEST(ArrayTest, Array2Test) {
+  TestArray1<int32_t, kCpu>();
   TestArray2<int32_t, kCpu>();
-  TestArray2<int32_t, kCuda>();
   TestArray2<double, kCpu>();
+#ifdef K2_USE_CUDA
+  TestArray1<int32_t, kCuda>();
+  TestArray2<int32_t, kCuda>();
   TestArray2<double, kCuda>();
+#endif
 }
 
 }  // namespace k2

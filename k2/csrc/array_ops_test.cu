@@ -271,9 +271,12 @@ void TestExclusiveSumArray1(int32_t num_elem) {
 
 TEST(OpsTest, ExclusiveSumArray1Test) {
   TestExclusiveSumArray1<int32_t, int32_t, kCpu>(1000);
-  TestExclusiveSumArray1<int32_t, int32_t, kCuda>(1000);
   TestExclusiveSumArray1<float, double, kCpu>(1000);
+
+#ifdef K2_USE_CUDA
+  TestExclusiveSumArray1<int32_t, int32_t, kCuda>(1000);
   TestExclusiveSumArray1<float, double, kCuda>(1000);
+#endif
 }
 
 template <typename T>
@@ -546,7 +549,9 @@ TEST(OpsTest, ExclusiveSumArray2Test) {
   int32_t rows = RandInt(500, 1000);
   int32_t cols = RandInt(500, 1000);
   TestExclusiveSumArray2<int32_t, kCpu>(rows, cols);
+#ifdef K2_USE_CUDA
   TestExclusiveSumArray2<int32_t, kCuda>(rows, cols);
+#endif
 }
 
 template <typename T, DeviceType d>
@@ -626,7 +631,10 @@ void TestArrayMaxAndOr() {
 
 TEST(OpsTest, ArrayMaxAndOrTest) {
   TestArrayMaxAndOr<int32_t, kCpu>();
+
+#ifdef K2_USE_CUDA
   TestArrayMaxAndOr<int32_t, kCuda>();
+#endif
 }
 
 template <typename T, DeviceType d>
@@ -762,9 +770,11 @@ void TestAppend() {
 
 TEST(OpsTest, AppendTest) {
   TestAppend<int32_t, kCpu>();
-  TestAppend<int32_t, kCuda>();
   TestAppend<float, kCpu>();
+#ifdef K2_USE_CUDA
+  TestAppend<int32_t, kCuda>();
   TestAppend<float, kCuda>();
+#endif
 }
 
 template <DeviceType d>
@@ -902,7 +912,9 @@ void TestSpliceRowSplits() {
 
 TEST(OpsTest, SpliceRowSplitsTest) {
   TestSpliceRowSplits<kCpu>();
+#ifdef K2_USE_CUDA
   TestSpliceRowSplits<kCuda>();
+#endif
 }
 
 template <typename T, DeviceType d>
@@ -945,11 +957,13 @@ void TestRangeAndRandomArray1() {
 
 TEST(OpsTest, RangeTest) {
   TestRangeAndRandomArray1<int32_t, kCpu>();
-  TestRangeAndRandomArray1<int32_t, kCuda>();
   TestRangeAndRandomArray1<float, kCpu>();
-  TestRangeAndRandomArray1<float, kCuda>();
   TestRangeAndRandomArray1<double, kCpu>();
+#ifdef K2_USE_CUDA
+  TestRangeAndRandomArray1<int32_t, kCuda>();
+  TestRangeAndRandomArray1<float, kCuda>();
   TestRangeAndRandomArray1<double, kCuda>();
+#endif
 }
 
 template <DeviceType d>
@@ -1174,7 +1188,9 @@ void TestValidateRowSplitsAndIds() {
 
 TEST(OpsTest, ValidateRowSplitsAndIdsTest) {
   TestValidateRowSplitsAndIds<kCpu>();
+#ifdef K2_USE_CUDA
   TestValidateRowSplitsAndIds<kCuda>();
+#endif
 }
 
 template <DeviceType d>
@@ -1231,7 +1247,9 @@ void TestGetCounts() {
 
 TEST(OpsTest, GetCountsTest) {
   TestGetCounts<kCpu>();
+#ifdef K2_USE_CUDA
   TestGetCounts<kCuda>();
+#endif
 }
 
 template <DeviceType d, typename S, typename T>
@@ -1382,9 +1400,11 @@ TEST(OpsTest, Array2IndexTest) {
 
 TEST(OpsTest, MonotonicLowerBoundTest) {
   TestMonotonicLowerBound<kCpu, int32_t, int32_t>();
-  TestMonotonicLowerBound<kCuda, int32_t, int32_t>();
   TestMonotonicLowerBound<kCpu, int32_t, double>();
+#ifdef K2_USE_CUDA
+  TestMonotonicLowerBound<kCuda, int32_t, int32_t>();
   TestMonotonicLowerBound<kCuda, int32_t, double>();
+#endif
 }
 
 }  // namespace k2

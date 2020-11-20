@@ -99,7 +99,9 @@ void TestRenumbering() {
 
 TEST(AlgorithmsTest, TestRenumbering) {
   TestRenumbering<kCpu>();
+#ifdef K2_USE_CUDA
   TestRenumbering<kCuda>();
+#endif
 }
 
 }  // namespace k2

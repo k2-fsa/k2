@@ -31,8 +31,15 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
-option(USE_PYTORCH "Whether to build with PyTorch" ON)
+option(K2_USE_PYTORCH "Whether to build with PyTorch" ON)
 option(K2_ENABLE_NVTX "Whether to build with the NVTX library" ON)
+option(K2_USE_CUDA "Whether to build with CUDA support" ON)
+
+if(NOT K2_USE_PYTORCH)
+  message(FATAL_ERROR "\
+    Please set K2_USE_PYTORCH to ON.
+    Support for other frameworks will be added later")
+endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
@@ -93,25 +100,29 @@ set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
 # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
 message(WARNING "arch 62/72 are not supported for now")
-set(K2_COMPUTE_ARCHS 35 50 60 61 70 75)
+#set(K2_COMPUTE_ARCHS 35 50 60 61 70 75)
+set(K2_COMPUTE_ARCHS 60)
 foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
   set(CMAKE_CUDA_ARCHITECTURES "${COMPUTE_ARCH}-real;${COMPUTE_ARCH}-virtual;${CMAKE_CUDA_ARCHITECTURES}")
 endforeach()
 # ========= Settings for CUB end=========
 
-
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(pybind11)
-if(USE_PYTORCH)
+if(K2_USE_PYTORCH)
   add_definitions(-DK2_USE_PYTORCH)
   include(torch)
 endif()
 include(cub)
 include(moderngpu)
 include(googletest)
+
+if(K2_USE_CUDA)
+  add_definitions(-DK2_USE_CUDA)
+endif()
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CUDA_FLAGS}")
 
