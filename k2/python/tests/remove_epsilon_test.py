@@ -36,11 +36,11 @@ class TestRemoveEpsilon(unittest.TestCase):
             9
         '''
         fsa = k2.Fsa.from_str(s)
-        prop = k2.get_properties(fsa)
-        self.assertFalse(k2.is_epsilon_free(prop))
+        prop = fsa.properties
+        self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
         dest = k2.remove_epsilon(fsa)
-        prop = k2.get_properties(dest)
-        self.assertTrue(k2.is_epsilon_free(prop))
+        prop = dest.properties
+        self.assertTrue(prop & k2.fsa_properties.EPSILON_FREE)
         log_semiring = False
         self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
 
