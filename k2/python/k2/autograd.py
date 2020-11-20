@@ -147,11 +147,9 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             max_active_states=max_active_states,
             min_active_states=min_active_states)
 
-        out_fsa[0] = Fsa.from_ragged_arc(ragged_arc)
+        out_fsa[0] = Fsa(ragged_arc)
 
-        for name, a_value in a_fsas.named_tensor_attr():
-            if name == 'scores':
-                continue
+        for name, a_value in a_fsas.named_tensor_attr(include_scores = False):
             value = _k2.index_select(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
@@ -258,11 +256,9 @@ class _UnionFunction(torch.autograd.Function):
         '''
         need_arc_map = True
         ragged_arc, arc_map = _k2.union(fsas.arcs, need_arc_map)
-        out_fsa[0] = Fsa.from_ragged_arc(ragged_arc)
+        out_fsa[0] = Fsa(ragged_arc)
 
-        for name, value in fsas.named_tensor_attr():
-            if name == 'scores':
-                continue
+        for name, value in fsas.named_tensor_attr(include_scores = False):
             value = _k2.index_select(value, arc_map)
             setattr(out_fsa[0], name, value)
 

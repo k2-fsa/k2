@@ -34,14 +34,14 @@ class TestDeterminize(unittest.TestCase):
             8
         '''
         fsa = k2.Fsa.from_str(s)
-        prop = k2.get_properties(fsa)
-        self.assertFalse(k2.is_arc_sorted_and_deterministic(prop))
+        prop = fsa.properties
+        self.assertFalse(prop & k2.fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0)
         dest = k2.determinize(fsa)
         log_semiring = False
         self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
         arc_sorted = k2.arc_sort(dest)
-        prop = k2.get_properties(arc_sorted)
-        self.assertTrue(k2.is_arc_sorted_and_deterministic(prop))
+        prop = arc_sorted.properties
+        self.assertTrue(prop & k2.fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0)
 
 
 if __name__ == '__main__':

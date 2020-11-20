@@ -112,4 +112,4 @@ def convert_dense_to_fsa_vec(dense_fsa_vec: DenseFsaVec) -> Fsa:
       The converted FsaVec .
     '''
     ragged_arc = _k2.convert_dense_to_fsa_vec(dense_fsa_vec.dense_fsa_vec)
-    return Fsa.from_ragged_arc(ragged_arc)
+    return Fsa(ragged_arc)

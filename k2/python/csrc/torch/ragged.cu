@@ -50,6 +50,10 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
     return self.To(GetCpuContext());
   });
 
+  pyclass.def("clone", [](const PyClass &self) -> PyClass {
+    return self.Clone();
+  });
+
   pyclass.def("is_cpu", [](const PyClass &self) -> bool {
     return self.Context()->GetDeviceType() == kCpu;
   });

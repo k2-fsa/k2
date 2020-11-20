@@ -64,11 +64,13 @@ enum FsaBasicProperties {
   kFsaPropertiesArcSorted =
       0x10,  // Arcs leaving a given state are sorted by label first and then on
              // `dest_state`, see operator< in struct Arc above.
+             // (Note: labels are treated as uint32 for purpose of sorting!)
   kFsaPropertiesArcSortedAndDeterministic = 0x20,  // Arcs leaving a given state
                                                    // are *strictly* sorted by
                                                    // label, i.e. no duplicates
                                                    // with the same label.
-  kFsaPropertiesEpsilonFree = 0x40,  // Symbol zero (epsilon) is not present..
+
+  kFsaPropertiesEpsilonFree = 0x40,  // Label zero (epsilon) is not present..
   kFsaPropertiesMaybeAccessible = 0x80,  // True if there are no obvious signs
                                          // of states not being accessible or
                                          // co-accessible, i.e. states with no

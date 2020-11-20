@@ -40,44 +40,8 @@ static void PybindFsaBasicProperties(py::module &m) {
         return tot_properties;
       },
       py::arg("fsa_vec"));
-
-  m.def(
-      "is_arc_sorted",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesArcSorted) ==
-               kFsaPropertiesArcSorted;
-      },
-      py::arg("properties"));
-
-  m.def(
-      "is_accessible",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesMaybeAccessible) ==
-               kFsaPropertiesMaybeAccessible;
-      },
-      py::arg("properties"));
-
-  m.def(
-      "is_coaccessible",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesMaybeCoaccessible) ==
-               kFsaPropertiesMaybeCoaccessible;
-      },
-      py::arg("properties"));
-  m.def(
-      "is_epsilon_free",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesEpsilonFree) ==
-               kFsaPropertiesEpsilonFree;
-      },
-      py::arg("properties"));
-  m.def(
-      "is_arc_sorted_and_deterministic",
-      [](int32_t properties) -> bool {
-        return (properties & kFsaPropertiesArcSortedAndDeterministic) ==
-               kFsaPropertiesArcSortedAndDeterministic;
-      },
-      py::arg("properties"));
+  // We don't wrap the flag values from C++ to Python, we just reproduce in
+  // Python directly.
 }
 
 static void PybindFsaUtil(py::module &m) {

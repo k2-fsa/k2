@@ -173,7 +173,7 @@ def create_fsa_vec(fsas: List[Fsa]) -> Fsa:
         ragged_arc_list.append(fsa.arcs)
 
     ragged_arcs = _create_fsa_vec(ragged_arc_list)
-    fsa_vec = Fsa.from_ragged_arc(ragged_arcs)
+    fsa_vec = Fsa(ragged_arcs)
 
     tensor_attr_names = set(
         name for name, _ in fsa.named_tensor_attr() for fsa in fsas)

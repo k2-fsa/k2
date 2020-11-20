@@ -9,6 +9,9 @@ from typing import Dict
 from typing import Iterator
 from typing import Optional
 from typing import Tuple
+from typing import Union
+from . import fsa_properties
+from .autograd_utils import phantom_set_scores_to
 
 import torch
 import _k2
@@ -20,6 +23,8 @@ from _k2 import _fsa_from_str
 from _k2 import _fsa_from_tensor
 from _k2 import _fsa_to_str
 from _k2 import _fsa_to_tensor
+
+
 
 
 class Fsa(object):
@@ -65,9 +70,10 @@ class Fsa(object):
                        ``aux_labels`` to an integer and vice versa.
 
     - ``properties``: An integer that encodes the properties of the FSA. It is
-                      returned by :func:`get_properties`.
+                      accessed as fsa.properties (read-only!)
 
-    It MAY have other attributes that set by users.
+    It MAY have other attributes that set by users.  Tensor attributes should
+    have the same 1st dimension as the number of arcs in the FSA.
 
     CAUTION:
       When an attribute is an instance of ``torch.Tensor``, its ``shape[0]``
@@ -77,11 +83,18 @@ class Fsa(object):
     NOTE:
       ``symbols`` and ``aux_symbols`` are symbol tables, while ``labels``
       and ``aux_labels`` are instances of ``torch.Tensor``.
+
+      Implementation note: most of this class's attributes are not
+      real attributes in the objcet's dict; the real attributes are
+      'arcs', '_non_tensor_attr', '_tensor_attr', '_properties',
+      '_cache'.
+
     '''
 
     def __init__(self,
-                 tensor: torch.Tensor,
-                 aux_labels: Optional[torch.Tensor] = None) -> None:
+                 arcs: Union[torch.Tensor, RaggedArc],
+                 aux_labels: Optional[torch.Tensor] = None,
+                 properties = None) -> None:
         '''Build an Fsa from a tensor with optional aux_labels.
 
         It is useful when loading an Fsa from file.
@@ -103,15 +116,27 @@ class Fsa(object):
             so it has as many rows as `tensor`. It is a 1-D tensor of dtype
             `torch.int32`.
 
+          properties:
+            Tensor properties if known (should only be provided by
+            internal code, as they are not checked; intended for use
+            by Fsa.clone())
+
         Returns:
           An instance of Fsa.
         '''
         self._init_internal()
-        self.arcs: RaggedArc = _fsa_from_tensor(tensor)
-        self._init_properties()
+        if isinstance(arcs, torch.Tensor):
+            arcs: RaggedArc = _fsa_from_tensor(arcs)
+        self.arcs: RaggedArc = arcs
+
+        self.__dict__['_properties'] = properties
         self._tensor_attr['scores'] = _as_float(self.arcs.values()[:, -1])
         if aux_labels is not None:
             self.aux_labels = aux_labels.to(torch.int32)
+        # Access the properties field (it's a @property, i.e. it has a
+        # getter) which sets up the properties and also checks that
+        # the FSA is valid.
+        _ = self.properties
 
     def __str__(self) -> str:
         '''Return a string representation of this object (note: does not
@@ -135,17 +160,6 @@ class Fsa(object):
             self._properties) + "."
         return ans
 
-    def _init_properties(self) -> None:
-        if self.arcs.num_axes() == 2:
-            properties = _k2.get_fsa_basic_properties(self.arcs)
-        else:
-            properties = _k2.get_fsa_vec_basic_properties(self.arcs)
-        self._properties = properties
-        if properties & 1 != 1:
-            raise ValueError(
-                "Fsa is not valid, properties are: {} = {}, arcs are: {}".
-                format(properties, _k2.fsa_properties_as_str(properties),
-                       str(self.arcs)))
 
     def _init_internal(self) -> None:
         # There are three kinds of attribute dictionaries:
@@ -158,14 +172,15 @@ class Fsa(object):
         # - `_non_tensor_attr`
         #     It saves non-tensor attributes, e.g., :class:`SymbolTable`.
         #
-        # - `_grad_cache`
+        # - `_cache`
         #     It contains tensors for autograd. Users should NOT manipulate it.
         #     The dict is filled in automagically.
+
         self._tensor_attr = OrderedDict()
         self._non_tensor_attr = OrderedDict()
+        self._cache = OrderedDict()
 
-        self._grad_cache = OrderedDict()
-        # The `_grad_cache` dict contains the following attributes:
+        # The `_cache` dict contains the following attributes:
         #
         #  - `state_batches`:
         #           returned by :func:`_k2._get_state_batches`
@@ -209,9 +224,18 @@ class Fsa(object):
           We save a reference to ``value``. If you need to change ``value``
           afterwards, please consider passing a copy of it.
         '''
-        if name in ('_tensor_attr', '_non_tensor_attr', 'arcs', '_properties',
-                    '_grad_cache'):
+
+        if hasattr(type(self), name) or name in self.__dict__:
+            # For attribute names that have a getter/setter function (like 'property'
+            # or which exist as members of the object's __dict__ (like
+            # 'arcs', '_tensor_attr', '_non_tensor_attr'), do the member lookup
+            # in the normal way as if __setattr__ was not defined.
+            object.__setattr__(key, value)
+
+        if name in ('_tensor_attr', '_non_tensor_attr', 'arcs',
+                    '_cache'):
             object.__setattr__(self, name, value)
+
         elif isinstance(value, torch.Tensor):
             assert value.shape[0] == self.arcs.values().shape[0]
             if name == 'labels':
@@ -227,92 +251,158 @@ class Fsa(object):
                 # to integer patterns here.
                 self.arcs.values()[:, -1] = _as_int(value.detach())
         else:
-            assert name != 'properties'
+            assert name != 'properties'  # should be set by getter/setter or by
+                                         # doing self.__dict__['_properties'] =
+                                         # foo
             self._non_tensor_attr[name] = value
 
-    def __getattr__(self, name: str) -> Any:
-        if name == 'labels':
+
+    @property
+    def labels(self) -> torch.Tensor:
+        try:
             return self.arcs.values()[:, 2]
-        elif name in self._tensor_attr:
+        except:
+            # print the exception because it will probably be lost, since
+            # python's getting code will back off to __getattr__.
+            traceback.print_exc()
+            raise e
+
+    @property
+    def labels(self, values) -> None:
+        assert value.dtype == torch.int32
+        self.arcs.values()[:, 2] = values
+        # Invalidate the properties since we changed the labels.
+        self._properties = None
+
+
+    @property
+    def properties(self) -> int:
+        # instead of accessing self._properties, we use
+        # self.__dict__.{get,set}('_properties') in order to
+        # avoid calling __getattr__ and any complexity involved in that.
+        properties = self.__dict__.get('_properties', None)
+        if properties != None:
+            return properties  # Return cached properties.
+
+        if self.arcs.num_axes() == 2:
+            properties = _k2.get_fsa_basic_properties(self.arcs)
+        else:
+            properties = _k2.get_fsa_vec_basic_properties(self.arcs)
+        self.__dict__['_properties'] = properties
+        if properties & fsa_properties.VALID != 1:
+            raise ValueError(
+                "Fsa is not valid, properties are: {} = {}, arcs are: {}".
+                format(properties, fsa_properties.to_str(properties),
+                       str(self.arcs)))
+        return properties
+
+    @properties.setter
+    def properties(self, value) -> None:
+        """ Only supports setting self.properties to None; any other
+        value should be set internally by writing to self.__dict__ directly."""
+        if value == None:
+            self.__dict__['_properties'] = None
+        else:
+            raise RuntimeError("""Currently we don't allow the .properties of an Fsa
+            to be set this way, except to None""");
+
+    @property
+    def properties_str(self) -> str:
+        return _k2.fsa_properties_as_str(self.properties)
+
+    @property
+    def requires_grad(self) -> bool:
+        return self.scores.requires_grad
+
+    @property
+    def grad(self) -> torch.Tensor:
+        return self.scores.grad
+
+
+
+    def __getattr__(self, name: str) -> Any:
+        """
+        Note: for attributes that exist as properties, e.g.
+        self.labels, self.properties, self.requires_grad, we won't
+        reach this code because Python checks the class dict before
+        calling getattr.  The same is true for instance attributes
+        such as self.{_tensor_attr,_non_tensor_attr,_cache,_properties}
+
+        The 'virtual' members of this class are those in self._tensor_attr
+        and self._non_tensor_attr.
+        """
+        if name in self._tensor_attr:
             return self._tensor_attr[name]
         elif name in self._non_tensor_attr:
             return self._non_tensor_attr[name]
-        elif name in self._grad_cache:
-            return self._grad_cache[name]
-        elif name == 'properties':
-            return self._properties
-        elif name == 'properties_str':
-            return _k2.fsa_properties_as_str(self._properties)
-        elif name == 'requires_grad':
-            return self.scores.requires_grad
-        elif name == 'grad':
-            return self.scores.grad
+        elif name in self._cache:
+            return self._cache[name]
+
 
         raise AttributeError(f'Unknown attribute {name}')
 
     def __delattr__(self, name: str) -> None:
-        assert name not in ('arcs', 'scores', 'labels', 'properties',
-                            '_properties', '_grad_cache')
+        # We won't allow deletion of class attributes such as @property
+        # getters
+        assert name not in Fsa.__dict__
+        # ... or instance attributes such as self._tensor_attr or
+        # self._properties
+        assert name not in self.__dict__
 
         if name in self._tensor_attr:
             del self._tensor_attr[name]
         elif name in self._non_tensor_attr:
             del self._non_tensor_attr[name]
-        elif name in self._grad_cache:
-            del self._grad_cache[name]
+        elif name in self._cache:
+            del self._cache[name]
         else:
-            super().__delattr__(name)
-
-    def _update_cache(self, name: str, value: Any) -> None:
-        self._grad_cache[name] = value
+            raise AttributeError("No such attribute in Fsa: " + name)
 
     def get_state_batches(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.state_batches.
            For use by internal k2 code.  Used in many algorithms.'''
-        if hasattr(self, 'state_batches') is False:
-            state_batches = _k2._get_state_batches(self.arcs, transpose=True)
-            self._update_cache('state_batches', state_batches)
-        return self.state_batches
+        name, cache = 'state_batches', self._cache
+        if not name in cache:
+            cache[name] = _k2._get_state_batches(self.arcs, transpose=True)
+        return cache[name]
 
     def get_dest_states(self) -> torch.Tensor:
         '''Get (and compute if necessary) cached property self.dest_states.
            For use by internal k2 code, relates to best-path.'''
-        if hasattr(self, 'dest_states') is False:
-            dest_states = _k2._get_dest_states(self.arcs, as_idx01=True)
-            self._update_cache('dest_states', dest_states)
-        return self.dest_states
+        name, cache = 'dest_states', self._cache
+        if not name in cache:
+            cache[name] = _k2._get_dest_states(self.arcs, as_idx01=True)
+        return cache[name]
 
     def get_incoming_arcs(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.incoming_arcs
            For use by internal k2 code, relates to best-path'''
-        if hasattr(self, 'incoming_arcs') is False:
+        name, cache = 'incoming_arcs', self._cache
+        if not name in cache:
             dest_states = self.get_dest_states()
-            incoming_arcs = _k2._get_incoming_arcs(self.arcs, dest_states)
-            self._update_cache('incoming_arcs', incoming_arcs)
-        return self.incoming_arcs
+            cache[name] = _k2._get_incoming_arcs(self.arcs,
+                                                 self.get_dest_states())
+        return cache[name]
 
     def get_entering_arc_batches(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.entering_arc_batches
            For use by internal k2 code, used in many algorithms.'''
-        if hasattr(self, 'entering_arc_batches') is False:
-            incoming_arcs = self.get_incoming_arcs()
-            state_batches = self.get_state_batches()
-            entering_arc_batches = _k2._get_entering_arc_index_batches(
+        name, cache = 'entering_arc_batches', self._cache
+        if not name in cache:
+            cache[name] = _k2._get_entering_arc_index_batches(
                 self.arcs,
-                incoming_arcs=incoming_arcs,
-                state_batches=state_batches)
-            self._update_cache('entering_arc_batches', entering_arc_batches)
-        return self.entering_arc_batches
+                incoming_arcs=self.get_incoming_arcs(),
+                state_batches=self.get_state_batches())
+        return cache[name]
 
     def get_leaving_arc_batches(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.leaving_arc_batches
            For use by internal k2 code, used in many algorithms.'''
-        if hasattr(self, 'leaving_arc_batches') is False:
-            state_batches = self.get_state_batches()
-            leaving_arc_batches = _k2._get_leaving_arc_index_batches(
-                self.arcs, state_batches)
-            self._update_cache('leaving_arc_batches', leaving_arc_batches)
-        return self.leaving_arc_batches
+        name, cache = 'leaving_arc_batches', self._cache
+        if not name in cache:
+            cache[name] = _k2._get_leaving_arc_index_batches(
+                self.arcs, self.get_state_batches())
+        return cache[name]
 
     def get_forward_scores_tropical(self, use_float_scores) -> torch.Tensor:
         '''Get (and compute if necessary) cached property
@@ -322,23 +412,20 @@ class Fsa(object):
         total-scores.  These are raw forward-scores and not differentiable.'''
         name = 'forward_scores_tropical' + ('float'
                                             if use_float_scores else 'double')
-        if hasattr(self, name) is False:
+        cache = self._cache
+        if not name in cache:
             if use_float_scores:
                 func = _k2._get_forward_scores_float
             else:
                 func = _k2._get_forward_scores_double
-
-            state_batches = self.get_state_batches()
-            entering_arc_batches = self.get_entering_arc_batches()
-
             forward_scores_tropical, entering_arcs = func(
                 self.arcs,
-                state_batches=state_batches,
-                entering_arc_batches=entering_arc_batches,
+                state_batches=self.get_state_batches(),
+                entering_arc_batches=self.get_entering_arc_batches(),
                 log_semiring=False)
-            self._update_cache(name, forward_scores_tropical)
-            self._update_cache('entering_arcs', entering_arcs)
-        return getattr(self, name)
+            cache[name] = forward_scores_tropical
+            cache['entering_arcs'] = entering_arcs
+        return cache[name]
 
     def get_forward_scores_log(self, use_float_scores) -> torch.Tensor:
         '''Get (and compute if necessary) cached property
@@ -347,24 +434,20 @@ class Fsa(object):
         For use by internal k2 code, used in getting total-score for
         log semiring
         '''
-        if hasattr(self, 'forward_scores_log') is False \
-                or (use_float_scores is True and self.forward_scores_log.dtype == torch.float64) \
-                or (use_float_scores is False and self.forward_scores_log.dtype == torch.float32): # noqa
+        name = 'forward_scores_log' + ('float'
+                                       if use_float_scores else 'double')
+        cache = self._cache
+        if not name in cache:
             if use_float_scores:
                 func = _k2._get_forward_scores_float
             else:
                 func = _k2._get_forward_scores_double
-
-            state_batches = self.get_state_batches()
-            entering_arc_batches = self.get_entering_arc_batches()
-
-            forward_scores_log, _ = func(
+            cache[name], _ = func(
                 self.arcs,
-                state_batches=state_batches,
-                entering_arc_batches=entering_arc_batches,
+                state_batches=self.get_state_batches(),
+                entering_arc_batches=self.get_entering_arc_batches(),
                 log_semiring=True)
-            self._update_cache('forward_scores_log', forward_scores_log)
-        return self.forward_scores_log
+        return cache[name]
 
     def get_tot_scores_tropical(self, use_float_scores) -> torch.Tensor:
         '''Compute total-scores in tropical semiring (one per FSA), which is the same
@@ -375,16 +458,16 @@ class Fsa(object):
         '''
         name = 'tot_scores_tropical_' + ('float'
                                          if use_float_scores else 'double')
-        if hasattr(self, name) is False:
+        cache = self._cache
+        if not name in cache:
             if use_float_scores is True:
                 func = _k2._get_tot_scores_float
             else:
                 func = _k2._get_tot_scores_double
             forward_scores_tropical = self.get_forward_scores_tropical(
                 use_float_scores)
-            tot_scores_tropical = func(self.arcs, forward_scores_tropical)
-            self._update_cache(name, tot_scores_tropical)
-        return getattr(self, name)
+            cache[name] = func(self.arcs, forward_scores_tropical)
+        return cache[name]
 
     def get_tot_scores_log(self, use_float_scores) -> torch.Tensor:
         '''Compute total-scores in log semiring (one per FSA).
@@ -394,15 +477,15 @@ class Fsa(object):
            total-scores.
         '''
         name = 'tot_scores_log_' + ('float' if use_float_scores else 'double')
-        if hasattr(self, name) is False:
+        cache = self._cache
+        if not name in cache:
             if use_float_scores is True:
                 func = _k2._get_tot_scores_float
             else:
                 func = _k2._get_tot_scores_double
             forward_scores_log = self.get_forward_scores_log(use_float_scores)
-            tot_scores_log = func(self.arcs, forward_scores_log)
-            self._update_cache(name, tot_scores_log)
-        return getattr(self, name)
+            cache[name] = func(self.arcs, forward_scores_log)
+        return cache[name]
 
     def get_backward_scores_tropical(self, use_float_scores) -> torch.Tensor:
         '''Compute backward-scores in tropical semiring, i.e. best-path-to-end
@@ -410,7 +493,8 @@ class Fsa(object):
         '''
         name = 'backward_scores_tropical_' + ('float' if use_float_scores else
                                               'double')
-        if hasattr(self, name) is False:
+        cache = self._cache
+        if not name in cache:
             if use_float_scores:
                 func = _k2._get_backward_scores_float
             else:
@@ -426,8 +510,8 @@ class Fsa(object):
                 leaving_arc_batches=leaving_arc_batches,
                 tot_scores=tot_scores_tropical,
                 log_semiring=False)
-            self._update_cache(name, backward_scores_tropical)
-        return getattr(self, name)
+            cache[name] = backward_scores_tropical
+        return cache[name]
 
     def get_backward_scores_log(self, use_float_scores) -> torch.Tensor:
         '''Compute backward-scores in tropical semiring, i.e. total-score-to-end.
@@ -435,7 +519,8 @@ class Fsa(object):
         '''
         name = 'backward_scores_log_' + ('float'
                                          if use_float_scores else 'double')
-        if hasattr(self, name) is False:
+        cache = self._cache
+        if not name in cache:
             if use_float_scores:
                 func = _k2._get_backward_scores_float
             else:
@@ -444,24 +529,22 @@ class Fsa(object):
             state_batches = self.get_state_batches()
             leaving_arc_batches = self.get_leaving_arc_batches()
             tot_scores_log = self.get_tot_scores_log(use_float_scores)
-            backward_scores_log = func(self.arcs,
-                                       state_batches=state_batches,
-                                       leaving_arc_batches=leaving_arc_batches,
-                                       tot_scores=tot_scores_log,
-                                       log_semiring=True)
-            self._update_cache(name, backward_scores_log)
-        return getattr(self, name)
+            cache[name] = func(self.arcs,
+                               state_batches=state_batches,
+                               leaving_arc_batches=leaving_arc_batches,
+                               tot_scores=tot_scores_log,
+                               log_semiring=True)
+        return cache[name]
 
     def get_entering_arcs(self, use_float_scores) -> torch.Tensor:
         '''Compute, for each state, the index of the best arc entering it.
            For internal k2 use.
         '''
-        if hasattr(self, 'entering_arcs') is False:
+        name, cache = 'entering_arcs', self._cache
+        if not name in cache:
+            # the following will set self._cache['entering_arcs']
             self.get_forward_scores_tropical(use_float_scores)
-        # If the following fails, there may be some kind of code error.
-        # It should be computed when we call get_forward_scores_tropical,
-        # unless someone
-        return self.entering_arcs
+        return cache[name]
 
     def requires_grad_(self, requires_grad: bool) -> 'Fsa':
         '''Change if autograd should record operations on this FSA:
@@ -486,13 +569,14 @@ class Fsa(object):
         self.scores.requires_grad_(requires_grad)
         return self
 
+
     def invert_(self) -> 'Fsa':
         '''Swap the ``labels`` and ``aux_labels``.
 
         If there are symbol tables associated with ``labels`` and
         ``aux_labels``, they are also swapped.
 
-        It is a no-op if the FSA contains no ``aux_labels``.
+        It is an error if the FSA contains no ``aux_labels``.
 
         CAUTION:
           The function name ends with an underscore which means this
@@ -501,28 +585,32 @@ class Fsa(object):
         Returns:
           Return ``self``.
         '''
-        if hasattr(self, 'aux_labels'):
-            aux_labels = self.aux_labels
-            self.aux_labels = self.labels.clone()
-            self.labels = aux_labels
+        if not hasattr(self, 'aux_labels'):
+            raise RuntimeError("invert_ cannot be called on acceptors (no aux_labels)")
+
+        aux_labels = self.aux_labels
+        self.aux_labels = self.labels.clone()
+        self.labels = aux_labels
 
         symbols = getattr(self, 'symbols', None)
         aux_symbols = getattr(self, 'aux_symbols', None)
-
         if symbols is not None:
             del self.symbols
-
         if aux_symbols is not None:
             del self.aux_symbols
-
         if symbols is not None:
             self.aux_symbols = symbols
-
         if aux_symbols is not None:
             self.symbols = aux_symbols
-
-        self._init_properties()
+        # set the properties to None because they are now invalid...
+        self.properties = None
+        # access self.properties which will do a validity check on the modified
+        # FSA.
+        self.properties
         return self
+
+    def invert(self) -> 'Fsa':
+        return self.clone().invert_()
 
     def is_cpu(self) -> bool:
         '''Return true if this FSA is on CPU.
@@ -548,12 +636,9 @@ class Fsa(object):
         '''Get the i-th FSA.
 
         Caution:
-          `self` has to be an FsaVec.
-
+          `self` has to be an FsaVec, i.e. len(self.shape) == 3
         Args:
-          i:
-            The i-th FSA to select. 0 <= i < self.arcs.dim0().
-
+          i: The i-th FSA to select. 0 <= i < self.arcs.dim0().
         Returns:
           The i-th FSA. Note it is a single FSA.
         '''
@@ -562,14 +647,17 @@ class Fsa(object):
         ragged_arc, start = self.arcs.index(0, i)
         end = start + ragged_arc.values().shape[0]
 
-        out_fsa = Fsa.from_ragged_arc(ragged_arc)
-        for name, value in self.named_tensor_attr():
+        out_fsa = Fsa(ragged_arc)
+        for name, value in self.named_tensor_attr(include_scores = False):
             setattr(out_fsa, name, value[start:end])
 
         for name, value in self.named_non_tensor_attr():
             setattr(out_fsa, name, value)
 
-        out_fsa._init_properties()
+        # The following is a magic invocation to make sure
+        # the backprop on the scores happens.
+        phantom_set_scores_to(out_fsa, self.scores[start:end])
+
         return out_fsa
 
     def arcs_as_tensor(self) -> torch.Tensor:
@@ -599,43 +687,107 @@ class Fsa(object):
         # _tensor_attr and _non_tensor_attr.
         return Fsa(dict_in['arcs'], aux_labels=dict_in.get('aux_labels', None))
 
-    def to_(self, device: torch.device) -> 'Fsa':
+    def to(self, device: torch.device) -> 'Fsa':
         '''Move the FSA onto a given device.
-
-        Caution:
-          This is an in-place operation.
 
         Args:
           device:
             An instance of `torch.device`. It supports only cpu and cuda.
 
         Returns:
-          Return `self`.
+          Returns a new Fsa which is this object copied to the given device
+         (or this object itself, if the device was the same)
         '''
+        # Keep this code in sync with that in clone()
         assert device.type in ('cpu', 'cuda')
-        if device.type == 'cpu' and self.is_cpu():
-            return self
-        elif device.type == 'cuda' and self.is_cuda():
+        if device == self.scores.device:
             return self
 
-        self.arcs = self.arcs.to(device)
+        ans = Fsa(self.arcs.to(device), properties=self.properties)
 
-        for name, value in self.named_tensor_attr():
-            setattr(self, name, value.to(device))
+        for name, value in self.named_tensor_attr(include_scores = False):
+            setattr(ans, name, value.to(device))
 
-        self._grad_cache = OrderedDict()
+        for name, value in self.named_non_tensor_attr():
+            setattr(ans, name, value)
 
-        return self
+        # Don't copy members of self._cache.  They don't all have convenient
+        # .to() methods.
 
-    def named_tensor_attr(self) -> Iterator[Tuple[str, torch.Tensor]]:
+        # The following is a magic invocation to make sure
+        # the backprop happens.
+        phantom_set_scores_to(ans, self.scores.to(device))
+
+        return ans
+
+    def clone(self) -> 'Fsa':
+        """
+        Return an Fsa that is a clone of this one, i.e. a close approximation
+        to what you'd get if you did .clone() on all its tensor members.
+        Any non-tensor attributes are copied over.
+        """
+        # Keep this code in sync with that in to()
+        ans = Fsa(self.arcs.clone(), properties=self.properties)
+
+        for name, value in self.named_tensor_attr(include_scores = False):
+            setattr(ans, name, value.clone())
+
+        for name, value in self.named_non_tensor_attr():
+            setattr(ans, name, value)
+
+        # Just copy elements of the _cache that we might already have..
+        # These don't directly participate in autograd, and are not supposed to
+        # be modified by the user, so this should be safe (i.e. it should
+        # be safe to do this without clone(); these are mostly not tensors
+        # anyway.
+        for name, value in self._cache:
+            ans._cache[name] = value
+
+        # The following is a magic invocation to make sure
+        # the backprop happens.
+        phantom_set_scores_to(ans, self.scores)
+
+        return ans
+
+    def detach(self) -> 'Fsa':
+        """
+        Return an Fsa that shares the underlying data with this one,
+        except gradients are not tracked.
+        Any non-tensor attributes are copied over.
+        """
+        ans = Fsa(self.arcs, properties=self.properties)
+
+        for name, value in self.named_tensor_attr(include_scores = False):
+            setattr(ans, name, value.detach())
+
+        for name, value in self.named_non_tensor_attr():
+            setattr(ans, name, value)
+
+        # Just copy elements of the _cache that we might already have..
+        # These don't directly participate in autograd, and are not supposed to
+        # be modified by the user, so this should be safe (i.e. it should
+        # be safe to do this without clone(); these are mostly not tensors
+        # anyway.
+        for name, value in self._cache:
+            ans._cache[name] = value
+        return ans
+
+    def named_tensor_attr(self,
+                          include_scores: bool = True) -> Iterator[Tuple[str, torch.Tensor]]:
         '''Return an iterator over tensor attributes containing both
         the name of the attribute as well as the tensor value.
 
         Returns:
           A tuple containing the name and the value.
         '''
-        for name, value in self._tensor_attr.items():
-            yield name, value
+        if include_scores:
+            for name, value in self._tensor_attr.items():
+                yield name, value
+        else:
+            for name, value in self._tensor_attr.items():
+                if name != 'scores':
+                    yield name, value
+
 
     def named_non_tensor_attr(self) -> Iterator[Tuple[str, Any]]:
         '''Return an iterator over non-tensor attributes containing both
@@ -660,29 +812,6 @@ class Fsa(object):
             return (self.arcs.dim0(), None, None)
         else:
             raise ValueError(f'Unsupported num_axes: {self.arcs.num_axes()}')
-
-    @classmethod
-    def from_ragged_arc(cls, ragged_arc: RaggedArc) -> 'Fsa':
-        '''Create an Fsa from a RaggedArc directly.
-
-        Note:
-          Fsa algorithms will always produce some RaggedArc output. You can
-          use this function to construct a Python FSA from RaggedArc.
-
-        Args:
-          ragged_arc:
-            The input ragged arc. It is usually generated by some FSA
-            algorithms. You do not need to know how to construct it in Python.
-        Returns:
-          An Fsa.
-        '''
-        ans = cls.__new__(cls)
-        super(Fsa, ans).__init__()
-        ans._init_internal()
-        ans.arcs = ragged_arc
-        ans._init_properties()
-        ans._tensor_attr['scores'] = _as_float(ans.arcs.values()[:, -1])
-        return ans
 
     @classmethod
     def from_str(cls, s: str) -> 'Fsa':
@@ -726,16 +855,8 @@ class Fsa(object):
         assert len(fields) == 4 or len(fields) == 5
         if len(fields) == 5:
             acceptor = False
-
-        ans = cls.__new__(cls)
-        super(Fsa, ans).__init__()
-        ans._init_internal()
         arcs, aux_labels = _fsa_from_str(s, acceptor, False)
-        ans.arcs = arcs
-        ans._init_properties()
-        ans._tensor_attr['scores'] = _as_float(ans.arcs.values()[:, -1])
-        if aux_labels is not None:
-            ans.aux_labels = aux_labels.to(torch.int32)
+        ans = Fsa(arcs, aux_labels = aux_labels)
         return ans
 
     @classmethod
@@ -770,13 +891,5 @@ class Fsa(object):
             Optional. If true, interpret the input string as an acceptor;
             otherwise, interpret it as a transducer.
         '''
-        ans = cls.__new__(cls)
-        super(Fsa, ans).__init__()
-        ans._init_internal()
         arcs, aux_labels = _fsa_from_str(s, acceptor, True)
-        ans.arcs = arcs
-        ans._init_properties()
-        ans._tensor_attr['scores'] = _as_float(ans.arcs.values()[:, -1])
-        if aux_labels is not None:
-            ans.aux_labels = aux_labels.to(torch.int32)
-        return ans
+        return Fsa(arcs, aux_labels = aux_labels)

@@ -14,13 +14,8 @@ from .fsa_algo import linear_fsa
 from .fsa_algo import remove_epsilon
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
-from .fsa_properties import get_properties
-from .fsa_properties import is_accessible
-from .fsa_properties import is_arc_sorted
-from .fsa_properties import is_arc_sorted_and_deterministic
-from .fsa_properties import is_coaccessible
-from .fsa_properties import is_epsilon_free
-from .fsa_properties import properties_to_str
+
+from .fsa_properties import to_str as properties_to_str
 from .ops import index
 from .ops import index_add
 from .symbol_table import SymbolTable
@@ -41,19 +36,12 @@ __all__ = [
     'connect',
     'create_fsa_vec',
     'determinize',
-    'get_properties',
     'get_tot_scores',
     'index',
     'index_add',
     'index_select',
     'intersect',
     'intersect_dense_pruned',
-    'is_accessible',
-    'is_arc_sorted',
-    'is_arc_sorted_and_deterministic',
-    'is_coaccessible',
-    'is_epsilon_free',
-    'is_rand_equivalent',
     'linear_fsa',
     'properties_to_str',
     'remove_epsilon',
@@ -61,6 +49,7 @@ __all__ = [
     'to_dot',
     'to_str',
     'to_tensor',
+    'properties_to_str'
     'top_sort',
     'union',
 ]

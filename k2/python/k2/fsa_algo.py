@@ -11,11 +11,7 @@ import _k2
 
 from .autograd import index_select
 from .fsa import Fsa
-from .fsa_properties import is_accessible
-from .fsa_properties import is_arc_sorted
-from .fsa_properties import is_coaccessible
-from .fsa_properties import is_arc_sorted_and_deterministic
-from .fsa_properties import is_epsilon_free
+from . import fsa_properties
 
 
 def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
@@ -33,7 +29,7 @@ def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
       A vector of FSAs if the input is a list of list of integers.
     '''
     ragged_arc = _k2.linear_fsa(symbols)
-    fsa = Fsa.from_ragged_arc(ragged_arc)
+    fsa = Fsa(ragged_arc)
     return fsa
 
 
@@ -53,7 +49,7 @@ def top_sort(fsa: Fsa) -> Fsa:
     '''
     need_arc_map = True
     ragged_arc, arc_map = _k2.top_sort(fsa.arcs, need_arc_map=need_arc_map)
-    sorted_fsa = Fsa.from_ragged_arc(ragged_arc)
+    sorted_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_tensor_attr():
         setattr(sorted_fsa, name, index_select(value, arc_map))
     for name, value in fsa.named_non_tensor_attr():
@@ -95,7 +91,7 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
                                                      treat_epsilons_specially,
                                                      need_arc_map)
 
-    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    out_fsa = Fsa(ragged_arc)
     for name, a_value in a_fsa.named_tensor_attr():
         if hasattr(b_fsa, name):
             # Both a_fsa and b_fsa have this attribute.
@@ -152,13 +148,13 @@ def connect(fsa: Fsa) -> Fsa:
     '''
     properties = getattr(fsa, 'properties', None)
     if properties is not None \
-            and is_accessible(properties) \
-            and is_coaccessible(properties):
+            and properties & fsa_properties.ACCESSIBLE != 0 \
+            and properties & fsa_properties.COACCESSIBLE != 0:
         return fsa
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.connect(fsa.arcs, need_arc_map=need_arc_map)
-    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    out_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_tensor_attr():
         setattr(out_fsa, name, index_select(value, arc_map))
     for name, value in fsa.named_non_tensor_attr():
@@ -186,12 +182,12 @@ def arc_sort(fsa: Fsa) -> Fsa:
       and the input ``fsa`` is NOT modified.
     '''
     properties = getattr(fsa, 'properties', None)
-    if properties is not None and is_arc_sorted(properties):
+    if properties is not None and properties & fsa_properties.ARC_SORTED != 0:
         return fsa
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.arc_sort(fsa.arcs, need_arc_map=need_arc_map)
-    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    out_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_tensor_attr():
         setattr(out_fsa, name, index_select(value, arc_map))
     for name, value in fsa.named_non_tensor_attr():
@@ -219,7 +215,7 @@ def shortest_path(fsa: Fsa, use_float_scores: bool) -> Fsa:
     '''
     entering_arcs = fsa.get_entering_arcs(use_float_scores)
     ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
-    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    out_fsa = Fsa(ragged_arc)
 
     arc_map = ragged_int.values()
     for name, value in fsa.named_tensor_attr():
@@ -250,7 +246,7 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
     ragged_arc, arc_map = _k2.add_epsilon_self_loops(fsa.arcs,
                                                      need_arc_map=need_arc_map)
 
-    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    out_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_tensor_attr():
         new_value = index_select(value, arc_map)
         setattr(out_fsa, name, new_value)
@@ -279,11 +275,11 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
         is returned and the input ``fsa`` is NOT modified.
     '''
     properties = getattr(fsa, 'properties', None)
-    if properties is not None and is_epsilon_free(properties):
+    if properties is not None and properties & fsa_properties.EPSILON_FREE != 0:
         return fsa
 
     ragged_arc = _k2.remove_epsilon(fsa.arcs)
-    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    out_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
     return out_fsa
@@ -306,15 +302,15 @@ def determinize(fsa: Fsa) -> Fsa:
         tropical semiring but will be deterministic.
         It will be the same as the input ``fsa`` if the input
         ``fsa`` has property kFsaPropertiesArcSortedAndDeterministic.
-        Otherwise, a new deterministic fsa is returned and the 
+        Otherwise, a new deterministic fsa is returned and the
         input ``fsa`` is NOT modified.
     '''
     properties = getattr(fsa, 'properties', None)
-    if properties is not None and is_arc_sorted_and_deterministic(properties):
+    if properties is not None and properties & fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0:
         return fsa
 
     ragged_arc = _k2.determinize(fsa.arcs)
-    out_fsa = Fsa.from_ragged_arc(ragged_arc)
+    out_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
     return out_fsa
