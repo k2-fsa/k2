@@ -29,7 +29,7 @@ class _PhantomSetScoresFunction(torch.autograd.Function):
 
 def phantom_set_scores_to(fsa, scores_value) -> None:
     # we don't need the output value of the following call
-    # (which it fsa.score), since it is accessible through `fsa`.
+    # (which is fsa.scores), since it is accessible through `fsa`.
     # The fact that it was returned from a torch.autograd.Function
     # gives it a grad_fn (assuming scores_value had requires_grad == True.)
     _PhantomSetScoresFunction.apply(fsa, scores_value)

@@ -298,7 +298,7 @@ class Fsa(object):
 
     @properties.setter
     def properties(self, value) -> None:
-        """ Only supports setting self.property to None; any other
+        """ Only supports setting self.properties to None; any other
         value should be set internally by writing to self.__dict__ directly."""
         if value == None:
             self.__dict__['_properties'] = None
@@ -308,14 +308,14 @@ class Fsa(object):
 
     @property
     def properties_str(self) -> str:
-        return _k2.fsa_properties_as_str(self._properties)
+        return _k2.fsa_properties_as_str(self.properties)
 
     @property
     def requires_grad(self) -> bool:
         return self.scores.requires_grad
 
     @property
-    def grad(self) -> bool:
+    def grad(self) -> torch.Tensor:
         return self.scores.grad
 
 
@@ -355,6 +355,8 @@ class Fsa(object):
             del self._non_tensor_attr[name]
         elif name in self._cache:
             del self._cache[name]
+        else:
+            raise AttributeError("No such attribute in Fsa: " + name)
 
     def get_state_batches(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.state_batches.
@@ -753,7 +755,7 @@ class Fsa(object):
         except gradients are not tracked.
         Any non-tensor attributes are copied over.
         """
-        ans = Fsa(self.arcs.detach(), properties=self.properties)
+        ans = Fsa(self.arcs, properties=self.properties)
 
         for name, value in self.named_tensor_attr(include_scores = False):
             setattr(ans, name, value.detach())
@@ -891,25 +893,3 @@ class Fsa(object):
         '''
         arcs, aux_labels = _fsa_from_str(s, acceptor, True)
         return Fsa(arcs, aux_labels = aux_labels)
-
-
-
-# This is a trick when we want to set the scores of an Fsa to a certain
-# value but we know they *already have that value*.
-#
-# The 'forward' function "pretends" to set out_fsa.scores to
-# 'unused_in_fsa_scores', and it returns out_fsa.scores.  This will
-# attach a _grad_fn to out_fsa.scores, if unused_in_fsa_scores.requires_grad
-# was true.
-#
-# The backprop is as if the function was just a copy (i.e. it copies
-# the output gradient)
-class _PhantomSetScoresFunction(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, out_fsa,
-                unused_in_fsa_scores: torch.Tensor) -> torch.Tensor:
-        return out_fsa.scores
-
-    @staticmethod
-    def backward(ctx, out_fsa_scores_grad: torch.Tensor) -> Tuple[None, torch.Tensor]:
-        return out_fsa_scores_grad
