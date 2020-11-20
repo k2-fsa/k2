@@ -453,7 +453,7 @@ class DetState {
    */
   void AcceptIncomingArc(int32_t state_id,
                          const std::shared_ptr<TracebackState> &src,
-                         int32_t incoming_arc_index, int32_t arc_weight) {
+                         int32_t incoming_arc_index, float arc_weight) {
     auto ret = elements.insert({state_id, nullptr});
     if (ret.second) {  // No such state existed in `elements`
       ret.first->second = std::make_shared<TracebackState>(
@@ -606,10 +606,8 @@ int32_t DetState<TracebackState>::ProcessArcs(
     det_state->Normalize(wfsa_in, &arc_weight, &deriv_info);
     if (det_state->forward_backward_prob >= prune_cutoff) {
       bool is_new_state = state_map->GetOutputState(det_state, fsa);
-      arcs_out->push_back(
-          {this->state_id, det_state->state_id,
-                static_cast<int32_t>(iter->first),
-                arc_weight});
+      arcs_out->push_back({this->state_id, det_state->state_id,
+                           static_cast<int32_t>(iter->first), arc_weight});
       derivs_per_arc->push_back(std::move(deriv_info));
       if (is_new_state)
         queue->push(std::unique_ptr<DetState<TracebackState>>(det_state));

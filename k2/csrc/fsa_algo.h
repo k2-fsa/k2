@@ -196,6 +196,42 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 /*
+    Remove epsilons (symbol zero) in the input Fsas, it works for both
+    Fsa and FsaVec.
+    @param [in] src   Source Fsa or FsaVec. Must be top-sorted as we will
+                      compute forward and backward scores on it.
+    @param [out] dest Destination; at exit will be equivalent to `src` under
+                      tropical semiring but will be epsilon-free, i.e.
+                      there's no arc in dest with arc.label==0, its
+                      Properties() will contain kFsaPropertiesEpsilonFree.
+    We don't output arc_map here as this version will not support autograd; we
+    also don't support pruning here.
+
+    CAUTION: It only works for CPU;
+ */
+void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest);
+
+/*
+    Determinize the input Fsas, it works for both Fsa and FsaVec.
+    @param [in] src   Source Fsa or FsaVec. Must be top-sorted as we will
+                      compute forward and backward scores on it.
+                      Expected to be epsilon free, but this is not checked;
+                      in any case, epsilon will be treated as a normal
+                      symbol. We also assume src is connected.
+    @param [out] dest Destination; at exit will be equivalent to `src` under
+                      tropical semiring but will be deterministic, i.e.
+                      there are no duplicate labels for arcs leaving a given
+                      state; if you call ArcSort on `dest`, then the
+                      ans's Properties() will contain
+                      kFsaPropertiesArcSortedAndDeterministic.
+    We don't output arc_map here as this version will not support autograd; we
+    also don't support pruning here.
+
+    CAUTION: It only works for CPU;
+ */
+void Determinize(FsaOrVec &src, FsaOrVec *dest);
+
+/*
   Create a linear FSA from a sequence of symbols
 
     @param [in] symbols  Input symbol sequence (must not contain

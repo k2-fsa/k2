@@ -55,7 +55,9 @@ static int32_t MapStates(const k2host::Fsa &fsa_in,
   // identify all states that should be kept
   auto &non_eps_in_values = *non_eps_in;
   auto &state_map_values = *state_map;
-  non_eps_in_values[0] = 1;  // the start state should always be kept.
+  // the start state and final state should always be kept.
+  non_eps_in_values[0] = 1;
+  non_eps_in_values[fsa_in.FinalState()] = 1;
   for (const auto &arc : fsa_in) {
     // We suppose the input fsa is top-sorted, but only check this in DEBUG
     // time.

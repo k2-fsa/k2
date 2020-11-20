@@ -81,9 +81,6 @@ class EpsilonsRemover {
                            will be in the same order that they were in `fsa_in`.
                            Must be initialized; search for 'initialized
                            definition' in class Array2 in array.h for meaning.
-    @param [out] arc_weights_out   Weights per arc of output FSA;
-                                   Must be allocated with size num-arcs of
-                                  `fsa_out` at entry.
     @param [out] arc_derivs Indexed by arc in `fsa_out`, must be initialized.
 
                        When TracebackState is MaxTracebackState,

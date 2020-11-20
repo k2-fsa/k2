@@ -8,10 +8,13 @@ from .fsa import Fsa
 from .fsa_algo import add_epsilon_self_loops
 from .fsa_algo import arc_sort
 from .fsa_algo import connect
+from .fsa_algo import determinize
 from .fsa_algo import intersect
 from .fsa_algo import linear_fsa
+from .fsa_algo import remove_epsilon
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
+
 from .fsa_properties import to_str as properties_to_str
 from .ops import index
 from .ops import index_add
@@ -31,16 +34,16 @@ __all__ = [
     'arc_sort',
     'connect',
     'create_fsa_vec',
+    'determinize',
     'get_tot_scores',
     'index',
     'index_add',
     'index_select',
     'intersect',
     'intersect_dense_pruned',
-    'is_accessible',
-    'is_arc_sorted',
-    'is_coaccessible',
     'linear_fsa',
+    'properties_to_str',
+    'remove_epsilon',
     'shortest_path',
     'to_dot',
     'to_str',
