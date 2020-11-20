@@ -11,7 +11,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 from . import fsa_properties
-from . import autograd_utils
+from .autograd_utils import phantom_set_scores_to
 
 import torch
 import _k2
@@ -440,7 +440,7 @@ class Fsa(object):
                 func = _k2._get_forward_scores_float
             else:
                 func = _k2._get_forward_scores_double
-            self[name], _ = func(
+            cache[name], _ = func(
                 self.arcs,
                 state_batches=self.get_state_batches(),
                 entering_arc_batches=self.get_entering_arc_batches(),
@@ -654,7 +654,7 @@ class Fsa(object):
 
         # The following is a magic invocation to make sure
         # the backprop on the scores happens.
-        autograd_utils.phantom_set_scores_to(ans, self.scores[start:end])
+        phantom_set_scores_to(out_fsa, self.scores[start:end])
 
         return out_fsa
 
@@ -706,7 +706,7 @@ class Fsa(object):
         for name, value in self.named_tensor_attr(include_scores = False):
             setattr(ans, name, value.to(device))
 
-        for name, value in self.named_non_tensor_attr(include_scores = False):
+        for name, value in self.named_non_tensor_attr():
             setattr(ans, name, value)
 
         # Don't copy members of self._cache.  They don't all have convenient
@@ -714,7 +714,7 @@ class Fsa(object):
 
         # The following is a magic invocation to make sure
         # the backprop happens.
-        autograd_utils.phantom_set_scores_to(ans, self.scores.to(device))
+        phantom_set_scores_to(ans, self.scores.to(device))
 
         return ans
 
@@ -730,7 +730,7 @@ class Fsa(object):
         for name, value in self.named_tensor_attr(include_scores = False):
             setattr(ans, name, value.clone())
 
-        for name, value in self.named_non_tensor_attr(include_scores = False):
+        for name, value in self.named_non_tensor_attr():
             setattr(ans, name, value)
 
         # Just copy elements of the _cache that we might already have..
@@ -743,7 +743,7 @@ class Fsa(object):
 
         # The following is a magic invocation to make sure
         # the backprop happens.
-        autograd_utils.phantom_set_scores_to(ans, self.scores)
+        phantom_set_scores_to(ans, self.scores)
 
         return ans
 
@@ -758,7 +758,7 @@ class Fsa(object):
         for name, value in self.named_tensor_attr(include_scores = False):
             setattr(ans, name, value.detach())
 
-        for name, value in self.named_non_tensor_attr(include_scores = False):
+        for name, value in self.named_non_tensor_attr():
             setattr(ans, name, value)
 
         # Just copy elements of the _cache that we might already have..
@@ -889,16 +889,8 @@ class Fsa(object):
             Optional. If true, interpret the input string as an acceptor;
             otherwise, interpret it as a transducer.
         '''
-        ans = cls.__new__(cls)
-        super(Fsa, ans).__init__()
-        ans._init_internal()
         arcs, aux_labels = _fsa_from_str(s, acceptor, True)
-        ans.arcs = arcs
-        ans._init_properties()
-        ans._tensor_attr['scores'] = _as_float(ans.arcs.values()[:, -1])
-        if aux_labels is not None:
-            ans.aux_labels = aux_labels.to(torch.int32)
-        return ans
+        return Fsa(arcs, aux_labels = aux_labels)
 
 
 

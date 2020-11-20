@@ -400,6 +400,3 @@ def union(fsas: Fsa) -> Fsa:
     out_fsa = [0]  # as a placeholder
     _UnionFunction.apply(fsas, out_fsa, fsas.scores)
     return out_fsa[0]
-
-
-# See also autograd_utils.py

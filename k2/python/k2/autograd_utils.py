@@ -25,7 +25,7 @@ class _PhantomSetScoresFunction(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, out_fsa_scores_grad: torch.Tensor) -> Tuple[None, torch.Tensor]:
-        return out_fsa_scores_grad
+        return None, out_fsa_scores_grad
 
 def phantom_set_scores_to(fsa, scores_value) -> None:
     # we don't need the output value of the following call

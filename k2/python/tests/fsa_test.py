@@ -382,12 +382,12 @@ class TestFsa(unittest.TestCase):
         assert fsa.is_cpu()
 
         device = torch.device('cuda', 0)
-        fsa.to(device)
+        fsa = fsa.to(device)
         assert fsa.is_cuda()
         assert fsa.device == device
 
         device = torch.device('cpu')
-        fsa.to(device)
+        fsa = fsa.to(device)
         assert fsa.is_cpu()
         assert fsa.device == device
 
