@@ -267,7 +267,7 @@ class Fsa(object):
             traceback.print_exc()
             raise e
 
-    @property
+    @labels.setter
     def labels(self, values) -> None:
         assert value.dtype == torch.int32
         self.arcs.values()[:, 2] = values
