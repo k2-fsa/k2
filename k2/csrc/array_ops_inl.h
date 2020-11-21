@@ -698,6 +698,7 @@ Array2<T> Index(const Array2<T> &src, const Array1<int32_t> &indexes,
           for (int32_t j = 0; j < dim1; j++)
             ans_acc(i, j) = T(0);
         } else {
+#pragma unroll(4)
           for (int32_t j = 0; j < dim1; j++)
             ans_acc(i, j) = src_acc(index, j);
         }

@@ -1353,9 +1353,9 @@ TEST(OpsTest, Array2IndexTest) {
 
 
     Array1<int32_t> indexes_no_minus_one = RandUniformArray1<int32_t>(
-        c, ans_dim0, 0, src_dim1 - 1),
+        c, ans_dim0, 0, src_dim0 - 1),
                  indexes_minus_one = RandUniformArray1<int32_t>(
-                     c, ans_dim0, -1, src_dim1 - 1);
+                     c, ans_dim0, -1, src_dim0 - 1);
 
     Array2<T> ans_no_minus_one = Index(src, indexes_no_minus_one, false),
        ans_no_minus_one_check = Index(src, indexes_no_minus_one, true);
@@ -1368,9 +1368,11 @@ TEST(OpsTest, Array2IndexTest) {
     indexes_minus_one = indexes_minus_one.To(cpu_context);
 
     auto src_acc = src.Accessor(), ans_minus_one_acc = ans_minus_one.Accessor();
+    K2_LOG(INFO) << "src = " << src << ", indexes = " << indexes_minus_one
+                 << ", ans = " << ans_minus_one;
     for (int32_t i = 0; i < ans_dim0; i++) {
       int32_t index = indexes_minus_one[i];
-      for (int32_t j = 0; i < src_dim1; i++) {
+      for (int32_t j = 0; i < src_dim1; j++) {
         ASSERT_EQ(ans_minus_one_acc(i, j), (index < 0 ? 0 : src_acc(index, j)));
       }
     }

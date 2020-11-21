@@ -477,7 +477,8 @@ class Array2 {
     K2_CHECK_LE(end, dim0_);
     int32_t num_rows = (end - start) / inc;
     return Array2<T>(num_rows, dim1_, elem_stride0_ * inc,
-                     byte_offset_ + elem_stride0_ * start * ElementSize(),
+                     byte_offset_ +
+                     elem_stride0_ * static_cast<size_t>(start) * ElementSize(),
                      region_);
   }
 
@@ -495,8 +496,7 @@ class Array2 {
     K2_CHECK_LE(end, dim1_);
     return Array2<T>(
         dim0_, end - start, elem_stride0_,
-        byte_offset_ +
-            (start * static_cast<size_t>(elem_stride0_) * ElementSize()),
+        byte_offset_ + (start * ElementSize()),
         region_);
   }
 
