@@ -204,12 +204,17 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
                       tropical semiring but will be epsilon-free, i.e.
                       there's no arc in dest with arc.label==0, its
                       Properties() will contain kFsaPropertiesEpsilonFree.
-    We don't output arc_map here as this version will not support autograd; we
-    also don't support pruning here.
+    @param [out] arc_derivs  If not nullptr, at exit arc_dervis.NumAxes() == 2,
+                      its rows are indexed by arc-indexes in `dest`. Row i in
+                      arc_derivs is the sequence of arcs in `src` that arc
+                      `i` in `dest` corresponds to; the weight of the arc in
+                      `dest` will equal the sum of those input arcs' weights.
+    Note we don't support pruning here.
 
     CAUTION: It only works for CPU;
  */
-void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest);
+void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
+                   Ragged<int32_t> *arc_derivs = nullptr);
 
 /*
     Determinize the input Fsas, it works for both Fsa and FsaVec.
@@ -224,12 +229,17 @@ void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest);
                       state; if you call ArcSort on `dest`, then the
                       ans's Properties() will contain
                       kFsaPropertiesArcSortedAndDeterministic.
-    We don't output arc_map here as this version will not support autograd; we
-    also don't support pruning here.
+    @param [out] arc_derivs  If not nullptr, at exit arc_dervis.NumAxes() == 2,
+                      its rows are indexed by arc-indexes in `dest`. Row i in
+                      arc_derivs is the sequence of arcs in `src` that arc
+                      `i` in `dest` corresponds to; the weight of the arc in
+                      `dest` will equal the sum of those input arcs' weights.
+    Note we don't support pruning here.
 
     CAUTION: It only works for CPU;
  */
-void Determinize(FsaOrVec &src, FsaOrVec *dest);
+void Determinize(FsaOrVec &src, FsaOrVec *dest,
+                 Ragged<int32_t> *arc_derivs = nullptr);
 
 /*
   Create a linear FSA from a sequence of symbols

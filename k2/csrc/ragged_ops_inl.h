@@ -132,6 +132,15 @@ Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
   return Ragged<T>(ans_shape, ans_values);
 }
 
+template <typename T>
+Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src) {
+  K2_CHECK(axis == 0 || axis == 1);
+  K2_CHECK_GT(num_srcs, 0);
+  std::vector<Ragged<T> *> temp(num_srcs);
+  for (int32_t i = 0; i != num_srcs; ++i) temp[i] = src + i;
+  return Append(axis, num_srcs, temp.data());
+}
+
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos <= shape.TotSize(axis).
 template <typename T>

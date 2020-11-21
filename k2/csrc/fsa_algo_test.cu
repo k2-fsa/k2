@@ -486,11 +486,14 @@ TEST(FsaAlgo, RemoveEpsilons) {
     int32_t prop = GetFsaBasicProperties(src);
     EXPECT_NE(prop & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
     Fsa dest;
-    RemoveEpsilon(src, &dest);
+    Ragged<int32_t> arc_derivs;
+    RemoveEpsilon(src, &dest, &arc_derivs);
     prop = GetFsaBasicProperties(dest);
     EXPECT_EQ(prop & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
     bool log_semiring = false;
     EXPECT_TRUE(IsRandEquivalent(src, dest, log_semiring));
+    // TODO(haowen): check arc dervis
+    K2_LOG(INFO) << arc_derivs;
   }
 
   {
@@ -540,7 +543,9 @@ TEST(FsaAlgo, Determinize) {
     EXPECT_NE(prop & kFsaPropertiesArcSortedAndDeterministic,
               kFsaPropertiesArcSortedAndDeterministic);
     Fsa dest;
-    Determinize(src, &dest);
+    Ragged<int32_t> arc_derivs;
+    Determinize(src, &dest, &arc_derivs);
+    K2_LOG(INFO) << arc_derivs;
     bool log_semiring = false;
     EXPECT_TRUE(IsRandEquivalent(src, dest, log_semiring));
     Fsa sorted;
