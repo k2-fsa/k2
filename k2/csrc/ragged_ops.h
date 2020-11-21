@@ -140,7 +140,6 @@ void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
  */
 RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src);
 
-
 /*
   Return a modified version of `src` in which all sub-lists on the last axis of
   the tenor have size modified by `size_delta`.  `size_delta` may have either
@@ -154,8 +153,8 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src);
      @param [in] size_delta  Amount by which to change the size of sub-lists.
                       May be either sign; if negative, we'll reduce the
                       sub-list size by this amount, possibly leaving empty
-                      sub-lists (but it's an error if this would reduce any sub-list
-                      size below zero).
+                      sub-lists (but it's an error if this would reduce any
+                      sub-list size below zero).
      @return          Returns the modified RaggedShape.  The RowSplits()
                       and RowIds() of its last axis will not be shared
                       with `src`.
@@ -281,11 +280,9 @@ Ragged<T> Transpose(Ragged<T> &src,
                     Array1<int32_t> *value_indexes_out = nullptr) {
   Array1<int32_t> value_indexes;
   RaggedShape ans_shape = Transpose(src.shape, &value_indexes);
-  if (value_indexes_out)
-    *value_indexes_out = value_indexes;
+  if (value_indexes_out) *value_indexes_out = value_indexes;
   return Ragged<T>(ans_shape, src.values[value_indexes]);
 }
-
 
 /*
    Append a list of RaggedShape to form a single RaggedShape
@@ -347,7 +344,6 @@ void GetRowInfo(RaggedShape &src, Array1<int32_t *> *row_splits,
 void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
                      Array2<int32_t *> *row_splits, Array2<int32_t *> *row_ids);
 
-
 /*
   Return a random RaggedShape, with a CPU context.  Intended for testing.
 
@@ -376,7 +372,6 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
   Notice the other version of this function below.
  */
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
-
 
 /*
   Return ragged shape with only a subset of the elements on the last
@@ -435,6 +430,13 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src);
 */
 template <typename T>
 Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src);
+
+/*
+  This version of Append() has one fewer levels of pointer indirection,
+  it is just a wrapper for the version above.
+ */
+template <typename T>
+Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src);
 
 /*
   Construct a RaggedShape with 2 axes.
@@ -516,7 +518,8 @@ RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1);
      @param [in] num_axes   Number of axes of ragged shape desired; must be at
                             least 2.
      @param [in] tot_sizes  (CPU Pointer!)  Total size on each axis.
-                           `tot_sizes[0]` through `tot_sizes[num_axes-1]` must be set.
+                           `tot_sizes[0]` through `tot_sizes[num_axes-1]` must
+                            be set.
 
      @return           The returned RaggedShape satisfies
                        ans.TotSize(axis) == tot_sizes[axis], and has all
@@ -532,7 +535,6 @@ RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
   Require num_axes >= 2.
 */
 RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes);
-
 
 inline RaggedShape RaggedShapeFromTotSizes(ContextPtr &c,
                                            std::vector<int32_t> &tot_sizes) {
@@ -653,7 +655,6 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols);
 Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
                                      RaggedShape &ans_ragged_shape);
 
-
 /* Return true if the objects represent the same ragged shape.
    They must be on the same device. */
 bool Equal(RaggedShape &a, RaggedShape &b);
@@ -664,7 +665,6 @@ template <typename T>
 bool Equal(Ragged<T> &a, Ragged<T> &b) {
   return Equal(a.shape, b.shape) && Equal(a.values, b.values);
 }
-
 
 /*
   Indexing operation on ragged tensor's shape (indexing axis 0 with
@@ -687,7 +687,6 @@ bool Equal(Ragged<T> &a, Ragged<T> &b) {
 */
 RaggedShape Index(RaggedShape &src, const Array1<int32_t> &indexes,
                   Array1<int32_t> *elem_indexes = nullptr);
-
 
 /*
   Indexing operation on ragged tensor, returns src[indexes], where

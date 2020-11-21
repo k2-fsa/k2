@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -183,25 +184,29 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
 
 // Will be used in RemoveEpsilon and Determinize below to process FsaVec input
 // recursively.
-void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *), FsaOrVec &src,
-                      FsaOrVec *dest) {
+void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *, Ragged<int32_t> *),
+                      FsaOrVec &src, FsaOrVec *dest,
+                      Ragged<int32_t> *arc_deriv) {
   // src is actually an FsaVec.  Just recurse for now.
   K2_CHECK_EQ(src.NumAxes(), 3);
   int32_t num_fsas = src.shape.Dim0();
   std::vector<Fsa> srcs(num_fsas), dests(num_fsas);
+  std::vector<Ragged<int32_t>> arc_derivs(num_fsas);
   for (int32_t i = 0; i < num_fsas; ++i) {
     srcs[i] = src.Index(0, i);
-    f(srcs[i], &(dests[i]));
+    f(srcs[i], &(dests[i]), arc_deriv != nullptr ? &(arc_derivs[i]) : nullptr);
   }
   *dest = Stack(0, num_fsas, dests.data());
+  if (arc_deriv != nullptr) *arc_deriv = Append(0, num_fsas, arc_derivs.data());
 }
 
-void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest) {
+void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
+                   Ragged<int32_t> *arc_derivs /*=nullptr*/) {
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
   } else if (num_axes == 3) {
-    return RecursionWrapper(RemoveEpsilon, src, dest);
+    return RecursionWrapper(RemoveEpsilon, src, dest, arc_derivs);
   }
 
   k2host::Fsa host_fsa = FsaToHostFsa(src);
@@ -219,25 +224,23 @@ void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest) {
   eps_remover.GetSizes(&fsa_size, &arc_derivs_size);
   FsaCreator fsa_creator(fsa_size);
   k2host::Fsa host_dest_fsa = fsa_creator.GetHostFsa();
-  k2host::Array2Storage<typename k2host::MaxTracebackState::DerivType *,
-                        int32_t>
-      derivs_storage(arc_derivs_size, 1);
-  auto &arc_derivs = derivs_storage.GetArray2();
-  // We don't really need `arc_derivs` here but the host version doesn't support
-  // passing NULL. As most of work in `EpsilonRemover` has been done in
-  // `GetSize`, passing a non-null arc_derivs here would be fine for now. Note
-  // we may remove this version of `RemoveEpsilon` once we have get the GPU
-  // version done.
-  eps_remover.GetOutput(&host_dest_fsa, &arc_derivs);
+  K2_STATIC_ASSERT(
+      (std::is_same<k2host::MaxTracebackState::DerivType, int32_t>::value));
+  Ragged2Creator<int32_t> ragged_creator(arc_derivs_size);
+  k2host::Array2<int32_t *, int32_t> host_arc_derivs =
+      ragged_creator.GetHostArray2();
+  eps_remover.GetOutput(&host_dest_fsa, &host_arc_derivs);
   *dest = fsa_creator.GetFsa();
+  if (arc_derivs != nullptr) *arc_derivs = ragged_creator.GetRagged2();
 }
 
-void Determinize(FsaOrVec &src, FsaOrVec *dest) {
+void Determinize(FsaOrVec &src, FsaOrVec *dest,
+                 Ragged<int32_t> *arc_derivs /*=nullptr*/) {
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
   } else if (num_axes == 3) {
-    return RecursionWrapper(Determinize, src, dest);
+    return RecursionWrapper(Determinize, src, dest, arc_derivs);
   }
   k2host::Fsa host_fsa = FsaToHostFsa(src);
   int32_t num_states = host_fsa.NumStates();
@@ -255,17 +258,14 @@ void Determinize(FsaOrVec &src, FsaOrVec *dest) {
   determinizer.GetSizes(&fsa_size, &arc_derivs_size);
   FsaCreator fsa_creator(fsa_size);
   k2host::Fsa host_dest_fsa = fsa_creator.GetHostFsa();
-  k2host::Array2Storage<typename k2host::MaxTracebackState::DerivType *,
-                        int32_t>
-      derivs_storage(arc_derivs_size, 1);
-  auto &arc_derivs = derivs_storage.GetArray2();
-  // We don't really need `arc_derivs` here but the host version doesn't support
-  // passing NULL. As most of work in `Determinizer` has been done in
-  // `GetSize`, passing a non-null arc_derivs here would be fine for now. Note
-  // we may remove this version of `Determinize` once we have get the GPU
-  // version done.
-  determinizer.GetOutput(&host_dest_fsa, &arc_derivs);
+  K2_STATIC_ASSERT(
+      (std::is_same<k2host::MaxTracebackState::DerivType, int32_t>::value));
+  Ragged2Creator<int32_t> ragged_creator(arc_derivs_size);
+  k2host::Array2<int32_t *, int32_t> host_arc_derivs =
+      ragged_creator.GetHostArray2();
+  determinizer.GetOutput(&host_dest_fsa, &host_arc_derivs);
   *dest = fsa_creator.GetFsa();
+  if (arc_derivs != nullptr) *arc_derivs = ragged_creator.GetRagged2();
 }
 
 Fsa LinearFsa(const Array1<int32_t> &symbols) {

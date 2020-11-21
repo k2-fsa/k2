@@ -24,6 +24,52 @@
 namespace k2 {
 
 /*
+  This class is used to initialize a Ragged2 (i.e. a Ragged array with
+  NumAxes() == 2) with host::Array2size. Users then can call
+  this->GetHostArray2() to get a host Array2 object, or call
+  this->GetRagged2() to get a ragged array object, the two objects share
+  the same underlying memory.
+
+*/
+template <typename T>
+class Ragged2Creator {
+ public:
+  Ragged2Creator() = default;
+  /*
+    Initialize Ragged2 with host::Array2size, note that we just allocate
+    memory here and don't fill data, the caller is responsible for this.
+    Usually the user will call this->GetHostArray2() to get a k2host::Array2 and
+    write data into its `indexes` and `data`, then call this->GetRagged2() to
+    get a Ragged2.
+  */
+  explicit Ragged2Creator(const k2host::Array2Size<int32_t> &size) {
+    Init(size);
+  }
+
+  void Init(const k2host::Array2Size<int32_t> &size) {
+    row_splits1_ = Array1<int32_t>(GetCpuContext(), size.size1 + 1);
+    // just for case of empty Ragged or k2host::Array2 object, may be written
+    // by the caller
+    row_splits1_.Data()[0] = 0;
+    values_ = Array1<T>(GetCpuContext(), size.size2);
+  }
+
+  Ragged<T> GetRagged2() {
+    RaggedShape shape = RaggedShape2(&row_splits1_, nullptr, values_.Dim());
+    return Ragged<T>(shape, values_);
+  }
+
+  k2host::Array2<T *, int32_t> GetHostArray2() {
+    return k2host::Array2<T *, int32_t>(row_splits1_.Dim() - 1, values_.Dim(),
+                                        row_splits1_.Data(), values_.Data());
+  }
+
+ private:
+  Array1<int32_t> row_splits1_;
+  Array1<T> values_;
+};
+
+/*
    Convert an Fsa (CPU only!) to k2host::Fsa.
 
       @param [in] fsa  FSA to convert
