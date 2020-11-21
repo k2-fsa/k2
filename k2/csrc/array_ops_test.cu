@@ -1372,7 +1372,7 @@ TEST(OpsTest, Array2IndexTest) {
                  << ", ans = " << ans_minus_one;
     for (int32_t i = 0; i < ans_dim0; i++) {
       int32_t index = indexes_minus_one[i];
-      for (int32_t j = 0; i < src_dim1; j++) {
+      for (int32_t j = 0; j < src_dim1; j++) {
         ASSERT_EQ(ans_minus_one_acc(i, j), (index < 0 ? 0 : src_acc(index, j)));
       }
     }
