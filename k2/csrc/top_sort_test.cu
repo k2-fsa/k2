@@ -111,7 +111,11 @@ TEST(TopSort, VectorOfFsas) {
 }
 
 TEST(TopSort, RandomSingleFsa) {
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     Fsa fsa = GetRandFsa();
     fsa = fsa.To(context);
 
@@ -136,9 +140,13 @@ TEST(TopSort, RandomSingleFsa) {
 }
 
 TEST(TopSort, RandomVectorOfFsas) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   int num_fsas = 1 + RandInt(0, 100);
   ContextPtr cpu = GetCpuContext();
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+  for (auto &context : contexts) {
     std::vector<Fsa> fsas(num_fsas);
     for (int32_t i = 0; i != num_fsas; ++i) {
       fsas[i] = GetRandFsa();
@@ -201,8 +209,12 @@ TEST(TopSort, RandomVectorOfFsas) {
 // another random test which uses IsRandEquivalent to check the result
 TEST(TopSort, RandomVectorOfFsas1) {
   ContextPtr cpu = GetCpuContext();
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   for (int32_t n = 0; n != 1; ++n) {
-    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : contexts) {
       // Here we generate acyclic Fsas for testing as current
       // implementation of GPU TopSort supposes the input Fsas are acyclic.
       FsaVec random_fsas = RandomFsaVec(1, 1000, true);

@@ -174,41 +174,43 @@ class TestFsa(unittest.TestCase):
                 dtype=torch.float32))
 
     def test_transducer_from_tensor(self):
-        device_id = 0
-        device = torch.device('cuda', device_id)
-        fsa_tensor = torch.tensor(
-            [[0, 1, 2, _k2._float_as_int(-1.2)],
-             [0, 2, 10, _k2._float_as_int(-2.2)],
-             [1, 6, -1, _k2._float_as_int(-4.2)],
-             [1, 3, 3, _k2._float_as_int(-3.2)],
-             [2, 6, -1, _k2._float_as_int(-5.2)],
-             [2, 4, 2, _k2._float_as_int(-6.2)],
-             [3, 6, -1, _k2._float_as_int(-7.2)],
-             [5, 0, 1, _k2._float_as_int(-8.2)]],
-            dtype=torch.int32).to(device)
-        aux_labels_tensor = torch.tensor([22, 100, 16, 33, 26, 22, 36, 50],
-                                         dtype=torch.int32).to(device)
-        fsa = k2.Fsa(fsa_tensor, aux_labels_tensor)
-        assert fsa.aux_labels.dtype == torch.int32
-        assert fsa.aux_labels.device.type == 'cuda'
-        assert torch.allclose(
-            fsa.aux_labels,
-            torch.tensor([22, 100, 16, 33, 26, 22, 36, 50],
-                         dtype=torch.int32).to(device))
+        devices = [torch.device('cpu')]
+        if k2.use_cuda():
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
+            fsa_tensor = torch.tensor(
+                [[0, 1, 2, _k2._float_as_int(-1.2)],
+                 [0, 2, 10, _k2._float_as_int(-2.2)],
+                 [1, 6, -1, _k2._float_as_int(-4.2)],
+                 [1, 3, 3, _k2._float_as_int(-3.2)],
+                 [2, 6, -1, _k2._float_as_int(-5.2)],
+                 [2, 4, 2, _k2._float_as_int(-6.2)],
+                 [3, 6, -1, _k2._float_as_int(-7.2)],
+                 [5, 0, 1, _k2._float_as_int(-8.2)]],
+                dtype=torch.int32).to(device)
+            aux_labels_tensor = torch.tensor([22, 100, 16, 33, 26, 22, 36, 50],
+                                             dtype=torch.int32).to(device)
+            fsa = k2.Fsa(fsa_tensor, aux_labels_tensor)
+            assert fsa.aux_labels.dtype == torch.int32
+            assert fsa.aux_labels.device.type == device.type
+            assert torch.allclose(
+                fsa.aux_labels,
+                torch.tensor([22, 100, 16, 33, 26, 22, 36, 50],
+                             dtype=torch.int32).to(device))
 
-        expected_str = '''
-            0 1 2 22 -1.2
-            0 2 10 100 -2.2
-            1 6 -1 16 -4.2
-            1 3 3 33 -3.2
-            2 6 -1 26 -5.2
-            2 4 2 22 -6.2
-            3 6 -1 36 -7.2
-            5 0 1 50 -8.2
-            6
-        '''
-        assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            k2.to_str(fsa))
+            expected_str = '''
+                0 1 2 22 -1.2
+                0 2 10 100 -2.2
+                1 6 -1 16 -4.2
+                1 3 3 33 -3.2
+                2 6 -1 26 -5.2
+                2 4 2 22 -6.2
+                3 6 -1 36 -7.2
+                5 0 1 50 -8.2
+                6
+            '''
+            assert _remove_leading_spaces(
+                expected_str) == _remove_leading_spaces(k2.to_str(fsa))
 
     def test_transducer_from_str(self):
         s = '''
@@ -381,10 +383,11 @@ class TestFsa(unittest.TestCase):
         fsa = k2.Fsa.from_str(s)
         assert fsa.is_cpu()
 
-        device = torch.device('cuda', 0)
-        fsa = fsa.to(device)
-        assert fsa.is_cuda()
-        assert fsa.device == device
+        if k2.use_cuda():
+            device = torch.device('cuda', 0)
+            fsa = fsa.to(device)
+            assert fsa.is_cuda()
+            assert fsa.device == device
 
         device = torch.device('cpu')
         fsa = fsa.to(device)

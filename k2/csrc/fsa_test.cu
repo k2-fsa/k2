@@ -41,7 +41,11 @@ TEST(FsaIO, FromAndToTensor) {
     2 3 -1 3
     3
   )";
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     Fsa fsa = FsaFromString(s);
     fsa = fsa.To(context);
     Tensor tensor = FsaToTensor(fsa);
@@ -81,7 +85,11 @@ TEST(FsaVecIO, FromAndToTensor) {
     2 3 -1 3.5
     3
   )";
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     Fsa fsa1 = FsaFromString(s1);
     Fsa fsa2 = FsaFromString(s2);
 

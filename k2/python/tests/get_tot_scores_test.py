@@ -34,8 +34,10 @@ class TestGetTotScores(unittest.TestCase):
             9
         '''
         cpu_device = torch.device('cpu')
-        cuda_device = torch.device('cuda', 0)
-        for device in (cpu_device, cuda_device):
+        devices = [cpu_device]
+        if k2.use_cuda():
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
             fsa = k2.Fsa.from_str(s).to(device)
             fsa = k2.create_fsa_vec([fsa])
             fsa.requires_grad_(True)
@@ -115,8 +117,10 @@ class TestGetTotScores(unittest.TestCase):
         '''
 
         cpu_device = torch.device('cpu')
-        cuda_device = torch.device('cuda', 0)
-        for device in (cpu_device, cuda_device):
+        devices = [cpu_device]
+        if k2.use_cuda():
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
             fsa1 = k2.Fsa.from_str(s1).to(device)
             fsa2 = k2.Fsa.from_str(s2).to(device)
             fsa3 = k2.Fsa.from_str(s3).to(device)
@@ -196,8 +200,10 @@ class TestGetTotScores(unittest.TestCase):
             4
         '''
         cpu_device = torch.device('cpu')
-        cuda_device = torch.device('cuda', 0)
-        for device in (cpu_device, cuda_device):
+        devices = [cpu_device]
+        if k2.use_cuda():
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
             fsa = k2.Fsa.from_str(s).to(device)
             fsa.requires_grad_(True)
             fsa_vec = k2.create_fsa_vec([fsa])
@@ -259,8 +265,10 @@ class TestGetTotScores(unittest.TestCase):
             5
         '''
         cpu_device = torch.device('cpu')
-        cuda_device = torch.device('cuda', 0)
-        for device in (cpu_device, cuda_device):
+        devices = [cpu_device]
+        if k2.use_cuda():
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
             fsa1 = k2.Fsa.from_str(s1).to(device)
             fsa2 = k2.Fsa.from_str(s2).to(device)
 

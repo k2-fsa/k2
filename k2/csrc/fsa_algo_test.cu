@@ -38,7 +38,11 @@ TEST(ArcSort, NonEmptyFsa) {
     3 5 -1  -7.2
     5
     )";
-  for (auto &context : {GetCudaContext(), GetCpuContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     Fsa fsa = FsaFromString(s);
     fsa = fsa.To(context);
     int32_t prop = GetFsaBasicProperties(fsa);
@@ -99,7 +103,11 @@ TEST(ArcSort, NonEmptyFsaVec) {
   Fsa fsa2 = FsaFromString(s2);
   Fsa *fsa_array[] = {&fsa1, &fsa2};
 
-  for (auto &context : {GetCudaContext(), GetCpuContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
     fsa_vec = fsa_vec.To(context);
     Array1<int32_t> properties;
@@ -154,7 +162,11 @@ TEST(ArcSort, NonEmptyFsaVec) {
 }
 
 TEST(FsaAlgo, LinearFsa) {
-  for (auto &context : {GetCudaContext(), GetCpuContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     Array1<int32_t> symbols(context, std::vector<int32_t>{10, 20, 30});
     int32_t num_symbols = symbols.Dim();
     Fsa fsa = LinearFsa(symbols);
@@ -177,7 +189,11 @@ TEST(FsaAlgo, LinearFsaVec) {
   [100, 200, 300]
   ]
   */
-  for (auto &context : {GetCudaContext(), GetCpuContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 2, 5});
     Array1<int32_t> values(context,
                            std::vector<int32_t>{10, 20, 100, 200, 300});
@@ -267,7 +283,11 @@ TEST(FsaAlgo, AddEpsilonSelfLoopsFsa) {
     3 4 -1 0.5
     4
   )";
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     for (int32_t i = 0; i < 3; i++) {
       Fsa fsa1 = FsaFromString(s1).To(context);
       if (i > 0) {
@@ -331,7 +351,11 @@ TEST(FsaAlgo, ShortestPath) {
   3
   )";
 
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     Fsa fsa1 = FsaFromString(s1);
     Fsa fsa2 = FsaFromString(s2);
     Fsa fsa3 = FsaFromString(s3);
@@ -387,7 +411,12 @@ TEST(FsaAlgo, Union) {
     1
   )";
 
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     Fsa fsa1 = FsaFromString(s1);
     Fsa fsa2 = FsaFromString(s2);
     Fsa *fsa_array[] = {&fsa1, &fsa2};
@@ -406,7 +435,11 @@ TEST(FsaAlgo, UnionRandomFsas) {
   int32_t max_symbol = 100;
   int32_t min_num_arcs = max_num_fsas * 2;
   int32_t max_num_arcs = 100000;
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
                                min_num_arcs, max_num_arcs);
     fsas = fsas.To(context);

@@ -275,7 +275,9 @@ void TestGetDestStates() {
 
 TEST(FsaUtilsTest, TestGetDestStates) {
   TestGetDestStates<kCpu>();
+#ifdef K2_USE_CUDA
   TestGetDestStates<kCuda>();
+#endif
 }
 
 class StatesBatchSuiteTest : public ::testing::Test {
@@ -378,9 +380,13 @@ void CheckGetStatesBatchesResult(const FsaVec &fsas_vec_in,
 
 TEST_F(StatesBatchSuiteTest, TestGetStateBatches) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   {
     // simple case
-    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : contexts) {
       FsaVec fsa_vec = fsa_vec_.To(context);
       int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1);
       EXPECT_EQ(num_fsas, 3);
@@ -411,7 +417,7 @@ TEST_F(StatesBatchSuiteTest, TestGetStateBatches) {
   {
     // random case
     for (int32_t i = 0; i != 2; ++i) {
-      for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      for (auto &context : contexts) {
         FsaVec random_fsas = RandomFsaVec();
         FsaVec fsa_vec = random_fsas.To(context);
         int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1);
@@ -444,9 +450,13 @@ TEST_F(StatesBatchSuiteTest, TestGetStateBatches) {
 
 TEST_F(StatesBatchSuiteTest, TestIncomingArc) {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   {
     // simple case
-    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : contexts) {
       FsaVec fsa_vec = fsa_vec_.To(context);
       int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
               num_arcs = fsa_vec.NumElements();
@@ -480,9 +490,13 @@ TEST_F(StatesBatchSuiteTest, TestIncomingArc) {
 
 TEST_F(StatesBatchSuiteTest, TestLeavingArcIndexBatches) {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   {
     // simple case
-    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : contexts) {
       FsaVec fsa_vec = fsa_vec_.To(context);
       int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
               num_arcs = fsa_vec.NumElements();
@@ -514,9 +528,13 @@ TEST_F(StatesBatchSuiteTest, TestLeavingArcIndexBatches) {
 
 TEST_F(StatesBatchSuiteTest, TestEnteringArcIndexBatches) {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   {
     // simple case
-    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : contexts) {
       FsaVec fsa_vec = fsa_vec_.To(context);
       int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
               num_arcs = fsa_vec.NumElements();
@@ -548,9 +566,13 @@ TEST_F(StatesBatchSuiteTest, TestEnteringArcIndexBatches) {
 
 TEST_F(StatesBatchSuiteTest, TestForwardScores) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   {
     // simple case
-    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : contexts) {
       FsaVec fsa_vec = fsa_vec_.To(context);
       int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
               num_arcs = fsa_vec.NumElements();
@@ -592,7 +614,7 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
   {
     // random case
     for (int32_t i = 0; i != 2; ++i) {
-      for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      for (auto &context : contexts) {
         FsaVec random_fsas = RandomFsaVec();
         FsaVec fsa_vec = random_fsas.To(context);
         int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
@@ -632,9 +654,13 @@ TEST_F(StatesBatchSuiteTest, TestForwardScores) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestGetTotScores) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   {
     // simple case
-    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : contexts) {
       FsaVec fsa_vec = fsa_vec_.To(context);
       int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
               num_arcs = fsa_vec.NumElements();
@@ -671,9 +697,13 @@ TEST_F(StatesBatchSuiteTest, TestGetTotScores) {
 
 TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   {
     // simple case
-    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : contexts) {
       FsaVec fsa_vec = fsa_vec_.To(context);
       int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
               num_arcs = fsa_vec.NumElements();
@@ -747,7 +777,7 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
   {
     // random case
     for (int32_t i = 0; i != 2; ++i) {
-      for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      for (auto &context : contexts) {
         FsaVec random_fsas = RandomFsaVec();
         FsaVec fsa_vec = random_fsas.To(context);
         int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
@@ -815,9 +845,13 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
 }
 
 TEST_F(StatesBatchSuiteTest, TestArcScores) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
   {
     // simple case
-    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (auto &context : contexts) {
       FsaVec fsa_vec = fsa_vec_.To(context);
       int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
               num_arcs = fsa_vec.NumElements();
@@ -891,7 +925,11 @@ TEST(FsaUtils, ConvertDenseToFsaVec) {
   };
   // clang-format on
 
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+  std::vector<ContextPtr> contexts{GetCpuContext()};
+#ifdef K2_USE_CUDA
+  contexts.push_back(GetCudaContext());
+#endif
+  for (auto &context : contexts) {
     Array1<int32_t> row_splits(context, std::vector<int32_t>{0, 2, 5, 9});
     RaggedShape shape = RaggedShape2(&row_splits, nullptr, 9);
     Array1<float> tmp(context, data);

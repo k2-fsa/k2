@@ -39,14 +39,15 @@ class TestIndexSelect(unittest.TestCase):
 
         assert torch.allclose(c, expected)
 
-        device = torch.device('cuda', 0)
-        a = a.to(device)
-        b = b.to(device)
-        c = k2.index_select(a, b)
-        assert c.dtype == a.dtype
-        assert c.is_cuda
-        assert c.numel() == b.numel()
-        assert torch.allclose(c, expected.to(c))
+        if k2.use_cuda():
+            device = torch.device('cuda', 0)
+            a = a.to(device)
+            b = b.to(device)
+            c = k2.index_select(a, b)
+            assert c.dtype == a.dtype
+            assert c.is_cuda
+            assert c.numel() == b.numel()
+            assert torch.allclose(c, expected.to(c))
 
         # now for float32
         a = a.to(torch.float32).requires_grad_(True)
@@ -97,24 +98,25 @@ class TestIndexSelect(unittest.TestCase):
         assert torch.allclose(a.grad, new_a.grad)
 
         # now for cuda
-        device = torch.device('cuda', 0)
-        b = b.to(device)
+        if k2.use_cuda():
+            device = torch.device('cuda', 0)
+            b = b.to(device)
 
-        a.requires_grad_(False)
-        a = a.to(device).requires_grad_(True)
-        c = k2.index_select(a, b)
+            a.requires_grad_(False)
+            a = a.to(device).requires_grad_(True)
+            c = k2.index_select(a, b)
 
-        new_a.requires_grad_(False)
-        new_a = new_a.to(device).requires_grad_(True)
-        padded_a = torch.cat([torch.tensor([0]).to(a), new_a])
-        expected = padded_a.index_select(0, (b + 1).to(torch.int64))
+            new_a.requires_grad_(False)
+            new_a = new_a.to(device).requires_grad_(True)
+            padded_a = torch.cat([torch.tensor([0]).to(a), new_a])
+            expected = padded_a.index_select(0, (b + 1).to(torch.int64))
 
-        assert torch.allclose(c, expected.to(c))
+            assert torch.allclose(c, expected.to(c))
 
-        c.sum().backward()
-        expected.sum().backward()
+            c.sum().backward()
+            expected.sum().backward()
 
-        assert torch.allclose(a.grad, new_a.grad)
+            assert torch.allclose(a.grad, new_a.grad)
 
 
 if __name__ == '__main__':

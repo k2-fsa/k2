@@ -39,9 +39,10 @@ class TestUnion(unittest.TestCase):
         '''
 
         cpu_device = torch.device('cpu')
-        cuda_device = torch.device('cuda', 0)
-
-        for device in (cpu_device, cuda_device):
+        devices = [cpu_device]
+        if k2.use_cuda():
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
             fsa0 = k2.Fsa.from_str(s0)
             fsa1 = k2.Fsa.from_str(s1)
             fsa2 = k2.Fsa.from_str(s2)
@@ -100,9 +101,10 @@ class TestUnion(unittest.TestCase):
             2
         '''
         cpu_device = torch.device('cpu')
-        cuda_device = torch.device('cuda', 0)
-
-        for device in (cpu_device, cuda_device):
+        devices = [cpu_device]
+        if k2.use_cuda():
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
             fsa0 = k2.Fsa.from_str(s0).to(device).requires_grad_(True)
             fsa1 = k2.Fsa.from_str(s1).to(device).requires_grad_(True)
             fsa2 = k2.Fsa.from_str(s2).to(device).requires_grad_(True)
