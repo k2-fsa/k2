@@ -231,7 +231,7 @@ void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
 
     @param[in] c  Context for this array; note, this function will be slow
                   if this is not a CPU context
-    @param [in] dim    Dimension
+    @param [in] dim    Dimension, must be >=o 0
     @param[in] min_value  Minimum value allowed in the array
     @param[in] max_value  Maximum value allowed in the array;
                            require max_value >= min_value.
@@ -240,6 +240,32 @@ void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
                             T max_value);
+
+
+/*
+  Returns a random Array2, uniformly distributed betwen `min_value` and
+  `max_value`.  CAUTION: for now, this will be randomly generated on CPU and
+  then transferred to other devices if c is not a CPU context, so it will be
+  slow if c is not a CPU context.
+  Note: T should be floating-pointer type or integral type.
+
+  The resulting array will be randomly contiguous or not (for better testing
+  of bugs that depend on this property).
+
+    @param[in] c  Context for this array; note, this function will be slow
+                  if this is not a CPU context
+    @param [in] dim0    Dimension 0 of answer, must be >= 0.
+    @param [in] dim1    Dimension 1 of answer, must be >= 0.
+    @param[in] min_value  Minimum value allowed in the array
+    @param[in] max_value  Maximum value allowed in the array;
+                           require max_value >= min_value.
+    @return    Returns the randomly generated array
+ */
+template <typename T>
+Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
+                            T min_value, T max_value);
+
+
 
 /*
   Return a newly allocated Array1 whose values form a linear sequence,
@@ -379,6 +405,40 @@ Array2<T> ToContiguous(const Array2<T> &src);
 */
 template <typename T>
 bool Equal(const Array2<T> &a, const Array2<T> &b);
+
+/*
+  Index `src` with `indexes`, as in src[indexes].
+     @param [in] src   Array whose elements are to be read
+     @param [in] indexes  Indexes into `src`; must satisfy
+                       `0 <= indexes[i] < indexes.Dim()` if
+                       `allow_minus_one == true`,
+                       else -1 is also allowed and the corresponding
+                       output element will be zero.
+     @return  Returns an `Array1<T>` of dimension indexes.Dim(),
+               with `ans[i] = src[indexes[i]]` (or zero if
+               `allow_minus_one == true` and `indexes[i] == 0`).
+ */
+template <typename T>
+Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
+                bool allow_minus_one);
+
+
+/*
+  Index `src` with `indexes`, as in src[indexes].
+     @param [in] src   Array whose elements are to be read
+     @param [in] indexes  Indexes into `src`; must satisfy
+                       `0 <= indexes[i] < indexes.Dim0()` if
+                       `allow_minus_one == true`,
+                       else -1 is also allowed and the corresponding
+                       output element will be zero.
+     @return  Returns an `Array2<T>` of shape (indexes.Dim(), src.Dim1()),
+               with `ans[i,j] = src[indexes[i,j]]` (or zero if
+               `allow_minus_one == true` and `indexes[i] == 0`).
+ */
+template <typename T>
+Array2<T> Index(const Array2<T> &src, const Array1<int32_t> &indexes,
+                bool allow_minus_one);
+
 
 
 }  // namespace k2

@@ -32,6 +32,7 @@ class Shape {
     return dims_[i];
   }
 
+  // Stride for axis i, in elements, not bytes.
   int32_t Stride(int32_t i) const {
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, num_axes_);
@@ -45,6 +46,7 @@ class Shape {
     return std::vector<int32_t>(dims_, dims_ + num_axes_);
   }
 
+  // Strides, in elements, not bytes.
   std::vector<int32_t> Strides() const {
     return std::vector<int32_t>(strides_, strides_ + num_axes_);
   }
@@ -167,7 +169,9 @@ class Tensor {
   inline int32_t NumAxes() const { return impl_->shape.NumAxes(); }
   inline int32_t Dim(int32_t i) const { return impl_->shape.Dim(i); }
   inline std::vector<int32_t> Dims() const { return impl_->shape.Dims(); }
+  // Stride for axis i, in elements, not bytes.
   inline int32_t Stride(int32_t i) const { return impl_->shape.Stride(i); }
+  // Strides, in elements, not bytes.
   inline std::vector<int32_t> Strides() const { return impl_->shape.Strides(); }
   inline int32_t Nelement() const { return impl_->shape.Nelement(); }
   inline bool IsContiguous() const { return impl_->shape.IsContiguous(); }
@@ -197,6 +201,11 @@ class Tensor {
   void Init(ContextPtr c);
   TensorImplPtr impl_;  // Must always be non-NULL.
 };
+
+
+// the primary declaration is in tensor_ops.h; included here to avoid
+// compilation problems in array.h
+Tensor ToContiguous(const Tensor &src);
 
 }  // namespace k2
 #endif  // K2_CSRC_TENSOR_H_

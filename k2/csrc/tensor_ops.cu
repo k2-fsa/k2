@@ -5,7 +5,6 @@
 // See ../../LICENSE for clarification regarding multiple authors
 
 #include <vector>
-
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/tensor_ops.h"
 
@@ -134,5 +133,7 @@ Tensor Cast(Tensor src, Dtype new_dtype) {
                                     c, dim, src.Data<T>(), ans.Data<U>()))));
   return ans;
 }
+
+
 
 }  // namespace k2
