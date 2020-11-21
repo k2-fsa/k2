@@ -12,6 +12,8 @@
 #ifndef K2_CSRC_TIMER_H_
 #define K2_CSRC_TIMER_H_
 
+#include <mutex>  // NOLINT
+
 #include "k2/csrc/log.h"
 
 namespace k2 {

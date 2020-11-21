@@ -11,7 +11,7 @@
  */
 
 #include <cstdlib>
-#include <mutex>
+#include <mutex>  // NOLINT
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
@@ -47,7 +47,6 @@ class CpuContext : public Context {
   }
 };
 
-#ifdef K2_USE_CUDA
 class CudaContext : public Context {
  public:
   explicit CudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
@@ -102,7 +101,6 @@ class CudaContext : public Context {
   int32_t gpu_id_;
   cudaStream_t stream_;
 };
-#endif
 
 ContextPtr GetCpuContext() { return std::make_shared<CpuContext>(); }
 
