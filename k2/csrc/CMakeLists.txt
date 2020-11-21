@@ -42,6 +42,7 @@ set(context_srcs
   ragged_ops.cu
   tensor.cu
   tensor_ops.cu
+  timer.cu
   utils.cu
 )
 

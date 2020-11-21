@@ -72,7 +72,7 @@ void TestTranspose(int32_t num_rows, int32_t num_cols, int32_t num_reps = 1,
   // warm up in case that the first kernel launch takes longer time.
   Transpose<T>(context, src, &dest);
 
-  Timer t;
+  Timer t(dest.Context());
   for (int32_t i = 0; i < num_reps; ++i) {
     Transpose<T>(context, src, &dest);
   }
