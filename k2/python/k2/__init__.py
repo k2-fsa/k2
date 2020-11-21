@@ -47,8 +47,8 @@ __all__ = [
     'index_select',
     'intersect',
     'intersect_dense_pruned',
+    'is_rand_equivalent',
     'linear_fsa',
-    'properties_to_str'
     'properties_to_str',
     'remove_epsilon',
     'shortest_path',

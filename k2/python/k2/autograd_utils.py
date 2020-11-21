@@ -1,7 +1,7 @@
 # Copyright (c)  2020  Xiaomi Corp.   (author: Daniel Povey)
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from typing import List, Tuple
+from typing import Tuple
 import torch
 
 
@@ -16,6 +16,7 @@ import torch
 # The backprop is as if the function was just a copy (i.e. it copies
 # the output gradient)
 class _PhantomSetScoresFunction(torch.autograd.Function):
+
     @staticmethod
     def forward(ctx, out_fsa,
                 unused_in_fsa_scores: torch.Tensor) -> torch.Tensor:
@@ -24,8 +25,10 @@ class _PhantomSetScoresFunction(torch.autograd.Function):
         return out_fsa.scores
 
     @staticmethod
-    def backward(ctx, out_fsa_scores_grad: torch.Tensor) -> Tuple[None, torch.Tensor]:
+    def backward(ctx, out_fsa_scores_grad: torch.Tensor
+                ) -> Tuple[None, torch.Tensor]:  # noqa
         return None, out_fsa_scores_grad
+
 
 def phantom_set_scores_to(fsa, scores_value) -> None:
     # we don't need the output value of the following call

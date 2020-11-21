@@ -6,7 +6,6 @@ from typing import List, Tuple
 import torch
 import _k2
 
-
 from .fsa import Fsa
 from .dense_fsa_vec import DenseFsaVec
 
@@ -149,7 +148,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
         out_fsa[0] = Fsa(ragged_arc)
 
-        for name, a_value in a_fsas.named_tensor_attr(include_scores = False):
+        for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
             value = _k2.index_select(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
@@ -258,7 +257,7 @@ class _UnionFunction(torch.autograd.Function):
         ragged_arc, arc_map = _k2.union(fsas.arcs, need_arc_map)
         out_fsa[0] = Fsa(ragged_arc)
 
-        for name, value in fsas.named_tensor_attr(include_scores = False):
+        for name, value in fsas.named_tensor_attr(include_scores=False):
             value = _k2.index_select(value, arc_map)
             setattr(out_fsa[0], name, value)
 

@@ -1,4 +1,5 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                      Xiaomi Corp.   (author: Daniel Povey)
 #                      Guoguo Chen
 #
 # See ../../../LICENSE for clarification regarding multiple authors
@@ -22,8 +23,6 @@ from _k2 import _fsa_from_str
 from _k2 import _fsa_from_tensor
 from _k2 import _fsa_to_str
 from _k2 import _fsa_to_tensor
-
-
 
 
 class Fsa(object):
@@ -93,7 +92,7 @@ class Fsa(object):
     def __init__(self,
                  arcs: Union[torch.Tensor, RaggedArc],
                  aux_labels: Optional[torch.Tensor] = None,
-                 properties = None) -> None:
+                 properties=None) -> None:
         '''Build an Fsa from a tensor with optional aux_labels.
 
         It is useful when loading an Fsa from file.
@@ -243,25 +242,24 @@ class Fsa(object):
         else:
             self._non_tensor_attr[name] = value
 
-
     @property
     def labels(self) -> torch.Tensor:
         try:
             return self.arcs.values()[:, 2]
-        except:
+        except Exception as e:
             # print the exception because it will probably be lost, since
             # python's getting code will back off to __getattr__.
+            import traceback
             traceback.print_exc()
             raise e
 
     @labels.setter
     def labels(self, values) -> None:
         print("In labels setter")
-        assert value.dtype == torch.int32
+        assert values.dtype == torch.int32
         self.arcs.values()[:, 2] = values
         # Invalidate the properties since we changed the labels.
         self.__dict__['_properties'] = None
-
 
     @property
     def properties(self) -> int:
@@ -269,7 +267,7 @@ class Fsa(object):
         # self.__dict__.{get,set}('_properties') in order to
         # avoid calling __getattr__ and any complexity involved in that.
         properties = self.__dict__.get('_properties', None)
-        if properties != None:
+        if properties is not None:
             return properties  # Return cached properties.
 
         if self.arcs.num_axes() == 2:
@@ -314,7 +312,6 @@ class Fsa(object):
         elif name in self._cache:
             return self._cache[name]
 
-
         raise AttributeError(f'Unknown attribute {name}')
 
     def __delattr__(self, name: str) -> None:
@@ -338,7 +335,7 @@ class Fsa(object):
         '''Get (and compute if necessary) cached property self.state_batches.
            For use by internal k2 code.  Used in many algorithms.'''
         name, cache = 'state_batches', self._cache
-        if not name in cache:
+        if name not in cache:
             cache[name] = _k2._get_state_batches(self.arcs, transpose=True)
         return cache[name]
 
@@ -346,7 +343,7 @@ class Fsa(object):
         '''Get (and compute if necessary) cached property self.dest_states.
            For use by internal k2 code, relates to best-path.'''
         name, cache = 'dest_states', self._cache
-        if not name in cache:
+        if name not in cache:
             cache[name] = _k2._get_dest_states(self.arcs, as_idx01=True)
         return cache[name]
 
@@ -354,8 +351,7 @@ class Fsa(object):
         '''Get (and compute if necessary) cached property self.incoming_arcs
            For use by internal k2 code, relates to best-path'''
         name, cache = 'incoming_arcs', self._cache
-        if not name in cache:
-            dest_states = self.get_dest_states()
+        if name not in cache:
             cache[name] = _k2._get_incoming_arcs(self.arcs,
                                                  self.get_dest_states())
         return cache[name]
@@ -364,7 +360,7 @@ class Fsa(object):
         '''Get (and compute if necessary) cached property self.entering_arc_batches
            For use by internal k2 code, used in many algorithms.'''
         name, cache = 'entering_arc_batches', self._cache
-        if not name in cache:
+        if name not in cache:
             cache[name] = _k2._get_entering_arc_index_batches(
                 self.arcs,
                 incoming_arcs=self.get_incoming_arcs(),
@@ -375,7 +371,7 @@ class Fsa(object):
         '''Get (and compute if necessary) cached property self.leaving_arc_batches
            For use by internal k2 code, used in many algorithms.'''
         name, cache = 'leaving_arc_batches', self._cache
-        if not name in cache:
+        if name not in cache:
             cache[name] = _k2._get_leaving_arc_index_batches(
                 self.arcs, self.get_state_batches())
         return cache[name]
@@ -389,7 +385,7 @@ class Fsa(object):
         name = 'forward_scores_tropical' + ('float'
                                             if use_float_scores else 'double')
         cache = self._cache
-        if not name in cache:
+        if name not in cache:
             if use_float_scores:
                 func = _k2._get_forward_scores_float
             else:
@@ -413,7 +409,7 @@ class Fsa(object):
         name = 'forward_scores_log' + ('float'
                                        if use_float_scores else 'double')
         cache = self._cache
-        if not name in cache:
+        if name not in cache:
             if use_float_scores:
                 func = _k2._get_forward_scores_float
             else:
@@ -435,7 +431,7 @@ class Fsa(object):
         name = 'tot_scores_tropical_' + ('float'
                                          if use_float_scores else 'double')
         cache = self._cache
-        if not name in cache:
+        if name not in cache:
             if use_float_scores is True:
                 func = _k2._get_tot_scores_float
             else:
@@ -454,7 +450,7 @@ class Fsa(object):
         '''
         name = 'tot_scores_log_' + ('float' if use_float_scores else 'double')
         cache = self._cache
-        if not name in cache:
+        if name not in cache:
             if use_float_scores is True:
                 func = _k2._get_tot_scores_float
             else:
@@ -470,7 +466,7 @@ class Fsa(object):
         name = 'backward_scores_tropical_' + ('float' if use_float_scores else
                                               'double')
         cache = self._cache
-        if not name in cache:
+        if name not in cache:
             if use_float_scores:
                 func = _k2._get_backward_scores_float
             else:
@@ -496,7 +492,7 @@ class Fsa(object):
         name = 'backward_scores_log_' + ('float'
                                          if use_float_scores else 'double')
         cache = self._cache
-        if not name in cache:
+        if name not in cache:
             if use_float_scores:
                 func = _k2._get_backward_scores_float
             else:
@@ -517,7 +513,7 @@ class Fsa(object):
            For internal k2 use.
         '''
         name, cache = 'entering_arcs', self._cache
-        if not name in cache:
+        if name not in cache:
             # the following will set self._cache['entering_arcs']
             self.get_forward_scores_tropical(use_float_scores)
         return cache[name]
@@ -545,7 +541,6 @@ class Fsa(object):
         self.scores.requires_grad_(requires_grad)
         return self
 
-
     def invert_(self) -> 'Fsa':
         '''Swap the ``labels`` and ``aux_labels``.
 
@@ -562,7 +557,8 @@ class Fsa(object):
           Return ``self``.
         '''
         if not hasattr(self, 'aux_labels'):
-            raise RuntimeError("invert_ cannot be called on acceptors (no aux_labels)")
+            raise RuntimeError(
+                "invert_ cannot be called on acceptors (no aux_labels)")
 
         aux_labels = self.aux_labels
         self.aux_labels = self.labels.clone()
@@ -623,7 +619,7 @@ class Fsa(object):
         end = start + ragged_arc.values().shape[0]
 
         out_fsa = Fsa(ragged_arc)
-        for name, value in self.named_tensor_attr(include_scores = False):
+        for name, value in self.named_tensor_attr(include_scores=False):
             setattr(out_fsa, name, value[start:end])
 
         for name, value in self.named_non_tensor_attr():
@@ -680,7 +676,7 @@ class Fsa(object):
 
         ans = Fsa(self.arcs.to(device), properties=self.properties)
 
-        for name, value in self.named_tensor_attr(include_scores = False):
+        for name, value in self.named_tensor_attr(include_scores=False):
             setattr(ans, name, value.to(device))
 
         for name, value in self.named_non_tensor_attr():
@@ -704,7 +700,7 @@ class Fsa(object):
         # Keep this code in sync with that in to()
         ans = Fsa(self.arcs.clone(), properties=self.properties)
 
-        for name, value in self.named_tensor_attr(include_scores = False):
+        for name, value in self.named_tensor_attr(include_scores=False):
             setattr(ans, name, value.clone())
 
         for name, value in self.named_non_tensor_attr():
@@ -732,7 +728,7 @@ class Fsa(object):
         """
         ans = Fsa(self.arcs, properties=self.properties)
 
-        for name, value in self.named_tensor_attr(include_scores = False):
+        for name, value in self.named_tensor_attr(include_scores=False):
             setattr(ans, name, value.detach())
 
         for name, value in self.named_non_tensor_attr():
@@ -747,8 +743,8 @@ class Fsa(object):
             ans._cache[name] = value
         return ans
 
-    def named_tensor_attr(self,
-                          include_scores: bool = True) -> Iterator[Tuple[str, torch.Tensor]]:
+    def named_tensor_attr(self, include_scores: bool = True
+                         ) -> Iterator[Tuple[str, torch.Tensor]]:  # noqa
         '''Return an iterator over tensor attributes containing both
         the name of the attribute as well as the tensor value.
 
@@ -762,7 +758,6 @@ class Fsa(object):
             for name, value in self._tensor_attr.items():
                 if name != 'scores':
                     yield name, value
-
 
     def named_non_tensor_attr(self) -> Iterator[Tuple[str, Any]]:
         '''Return an iterator over non-tensor attributes containing both
@@ -831,7 +826,7 @@ class Fsa(object):
         if len(fields) == 5:
             acceptor = False
         arcs, aux_labels = _fsa_from_str(s, acceptor, False)
-        ans = Fsa(arcs, aux_labels = aux_labels)
+        ans = Fsa(arcs, aux_labels=aux_labels)
         return ans
 
     @classmethod
@@ -867,4 +862,4 @@ class Fsa(object):
             otherwise, interpret it as a transducer.
         '''
         arcs, aux_labels = _fsa_from_str(s, acceptor, True)
-        return Fsa(arcs, aux_labels = aux_labels)
+        return Fsa(arcs, aux_labels=aux_labels)

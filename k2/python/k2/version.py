@@ -20,8 +20,8 @@ def main():
     cmake_cxx_flags = _k2.version.cmake_cxx_flags
     torch_version = _k2.version.torch_version
     torch_cuda_version = _k2.version.torch_cuda_version
-    enable_nvtx = _k2.version.enable_nvtx;
-    use_cuda  = _k2.version.use_cuda;
+    enable_nvtx = _k2.version.enable_nvtx
+    use_cuda = _k2.version.use_cuda
 
     print(f'''
 k2 version: {version}
