@@ -123,8 +123,8 @@ ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
   if (gpu_id < 0) gpu_id = c10::cuda::current_device();
   return std::make_shared<PytorchCudaContext>(gpu_id);
 #else
-  K2_LOG(FATAL) << "k2 is compiled without CUDA!\n"
-    << "Please compile k2 with -DK2_USE_CUDA=ON";
+  K2_LOG(FATAL) << "\nk2 is compiled without CUDA!"
+    << "\nPlease compile k2 with -DK2_USE_CUDA=ON";
   return {};
 #endif
 }

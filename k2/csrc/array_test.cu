@@ -203,6 +203,7 @@ void TestArray1() {
 
   {
     // test To(context)
+#ifdef K2_USE_CUDA
     std::vector<T> data = {0, 1, 2, 3};
     Array1<T> cpu_array(cpu, data);
     Array1<T> cuda_array(GetCudaContext(), data);
@@ -213,6 +214,7 @@ void TestArray1() {
 
     CheckArrayEqual(cpu_array, cpu_dst);
     CheckArrayEqual(cuda_array, cuda_dst);
+#endif
   }
 
   {
@@ -280,6 +282,7 @@ void TestArray2() {
   }
 
   {
+#ifdef K2_USE_CUDA
     // test To(context)
     // case 1: contiguous
     //
@@ -312,9 +315,11 @@ void TestArray2() {
 
     // test operator <<
     K2_LOG(INFO) << array;
+#endif
   }
 
   {
+#if K2_USE_CUDA
     // test To(context)
     // case 2: non-contiguous
     //
@@ -351,6 +356,7 @@ void TestArray2() {
 
     // test operator <<
     K2_LOG(INFO) << array;
+#endif
   }
 
   {

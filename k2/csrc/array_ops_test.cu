@@ -101,7 +101,9 @@ TEST(OpsTest, TransposeTest) {
     };
     for (const auto &v : shapes) {
       TestTranspose<int32_t, kCpu>(v.first, v.second);
+#ifdef K2_USE_CUDA
       TestTranspose<int32_t, kCuda>(v.first, v.second);
+#endif
     }
   }
 
@@ -111,7 +113,9 @@ TEST(OpsTest, TransposeTest) {
       auto rows = RandInt(0, 3000);
       auto cols = RandInt(0, 3000);
       TestTranspose<int32_t, kCpu>(rows, cols);
+#ifdef K2_USE_CUDA
       TestTranspose<int32_t, kCuda>(rows, cols);
+#endif
     }
   }
 
@@ -119,11 +123,14 @@ TEST(OpsTest, TransposeTest) {
     // speed test for different data type
     // TODO(haowen): we may need to allocate different size of shared memory for
     // different data type to get the best performance
+
+#ifdef K2_USE_CUDA
     TestTranspose<char, kCuda>(1000, 2000, 100, true);
     TestTranspose<int16_t, kCuda>(1000, 2000, 100, true);
     TestTranspose<int32_t, kCuda>(1000, 2000, 100, true);
     TestTranspose<float, kCuda>(1000, 2000, 100, true);
     TestTranspose<double, kCuda>(1000, 2000, 100, true);
+#endif
   }
 }
 

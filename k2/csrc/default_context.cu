@@ -46,6 +46,7 @@ class CpuContext : public Context {
   }
 };
 
+#ifdef K2_USE_CUDA
 class CudaContext : public Context {
  public:
   explicit CudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
@@ -100,11 +101,18 @@ class CudaContext : public Context {
   int32_t gpu_id_;
   cudaStream_t stream_;
 };
+#endif
 
 ContextPtr GetCpuContext() { return std::make_shared<CpuContext>(); }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
+#ifdef K2_USE_CUDA
   return std::make_shared<CudaContext>(gpu_id);
+#else
+  K2_LOG(FATAL) << "\nk2 is compiled without CUDA!"
+    << "\nPlease compile k2 with -DK2_USE_CUDA=ON";
+  return {};
+#endif
 }
 
 }  // namespace k2
