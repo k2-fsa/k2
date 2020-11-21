@@ -704,7 +704,7 @@ TEST(ArrayTest, TestArray2Io) {
     os << a2;
     Array2<int32_t> b2(os.str());
     // also do basic check of Equal().
-    K2_CHECK(Equal(a2, b2));
+    ASSERT_EQ(Equal(a2, b2), true);
     if (dim0 * dim1 != 0) {
       b2 = -1;
       K2_CHECK(!Equal(a2, b2));

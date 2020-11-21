@@ -445,6 +445,21 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
 }
 
 template <typename T>
+Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
+                            T min_value, T max_value) {
+  int32_t dim1_extra = RandInt(0, 2),  // make it randomly not contiguous.
+            new_dim1 = dim1 + dim1_extra;
+  Array1<T> array1temp = RandUniformArray1<T>(
+      c, dim0 * new_dim1, min_value, max_value);
+  Array2<T> array2temp(array1temp, dim0, new_dim1);
+
+  int32_t offset = RandInt(0, dim1_extra);
+  return array2temp.ColArange(offset, offset + dim1);
+}
+
+
+
+template <typename T>
 Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
   K2_CHECK_GE(dim, 0);
   Array1<T> ans = Array1<T>(c, dim);
@@ -615,6 +630,107 @@ Array1<T> Plus(const Array1<T> &src, T t) {
   }
   return ans;
 }
+
+
+template <typename T>
+Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
+                bool allow_minus_one) {
+  ContextPtr &c = src.Context();
+  K2_CHECK(c->IsCompatible(*indexes.Context()));
+  int32_t ans_dim = indexes.Dim();
+  Array1<T> ans(c, ans_dim);
+  T *ans_data = ans.Data();
+  const T *src_data = src.Data();
+  const int32_t *index_data = indexes.Data();
+  DeviceType d = c->GetDeviceType();
+  if (allow_minus_one) {
+    if (d == kCpu) {
+#pragma unroll(4)
+      for (int32_t i = 0; i < ans_dim; i++) {
+        int32_t index = index_data[i];
+        T value = (index < 0 ? T(0) :
+                   src_data[index]);
+        ans_data[i] = value;
+      }
+    } else {
+      auto lambda_set_values = [=] __device__ (int32_t i) -> void {
+        int32_t index = index_data[i];
+        T value = (index < 0 ? T(0) :
+                   src_data[index]);
+        ans_data[i] = value;
+      };
+      EvalDevice(c, ans_dim, lambda_set_values);
+    }
+  } else {
+    if (d == kCpu) {
+#pragma unroll(4)
+      for (int32_t i = 0; i < ans_dim; i++)
+        ans_data[i] = src_data[index_data[i]];
+    } else {
+      auto lambda_set_values = [=] __device__ (int32_t i) -> void {
+        ans_data[i] = src_data[index_data[i]];
+      };
+      EvalDevice(c, ans_dim, lambda_set_values);
+    }
+  }
+  return ans;
+}
+
+
+template <typename T>
+Array2<T> Index(const Array2<T> &src, const Array1<int32_t> &indexes,
+                bool allow_minus_one) {
+  ContextPtr &c = src.Context();
+  K2_CHECK(c->IsCompatible(*indexes.Context()));
+  int32_t ans_dim0 = indexes.Dim(),
+              dim1 = src.Dim1();
+  Array2<T> ans(c, ans_dim0, dim1);
+  const int32_t *index_data = indexes.Data();
+  auto ans_acc = ans.Accessor();
+  auto src_acc = src.Accessor();
+  DeviceType d = c->GetDeviceType();
+  if (allow_minus_one) {
+    if (d == kCpu) {
+      for (int32_t i = 0; i < ans_dim0; i++) {
+       int32_t index = index_data[i];
+        if (index < 0) {
+#pragma unroll(4)
+          for (int32_t j = 0; j < dim1; j++)
+            ans_acc(i, j) = T(0);
+        } else {
+#pragma unroll(4)
+          for (int32_t j = 0; j < dim1; j++)
+            ans_acc(i, j) = src_acc(index, j);
+        }
+      }
+    } else {
+      auto lambda_set_values = [=] __device__ (int32_t i, int32_t j) -> void {
+        int32_t index = index_data[i];
+        ans_acc(i, j) = (index < 0 ? T(0) : src_acc(index, j));
+      };
+      Eval2Device(c, ans_dim0, dim1, lambda_set_values);
+    }
+  } else {
+    if (d == kCpu) {
+      for (int32_t i = 0; i < ans_dim0; i++) {
+        int32_t index = index_data[i];
+#pragma unroll(4)
+        for (int32_t j = 0; j < dim1; j++)
+          ans_acc(i, j) = src_acc(index, j);
+      }
+    } else {
+      auto lambda_set_values = [=] __device__ (int32_t i, int32_t j) -> void {
+        int32_t index = index_data[i];
+        ans_acc(i, j) = src_acc(index, j);
+      };
+      Eval2Device(c, ans_dim0, dim1, lambda_set_values);
+    }
+  }
+  return ans;
+}
+
+
+
 
 
 }  // namespace k2

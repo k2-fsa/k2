@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "k2/csrc/tensor_ops.h"
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa.h"
 

@@ -24,7 +24,6 @@
 #include "k2/csrc/eval.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/tensor.h"
-#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 
@@ -297,6 +296,9 @@ class Array1 {
      i.e. returned_array[i] = this_array[indexes[i]] for 0 <= i < indexes.Dim().
      Note 'indexes.Context()' must be compatible with the current Context(),
      i.e. `Context()->IsCompatible(indexes.Context())`.
+
+     See also the function Index(), declared in array_ops.h, which is like this
+     but also supports -1 as an index.
    */
   Array1 operator[](const Array1<int32_t> &indexes) const {
     const ContextPtr &c = Context();
@@ -475,7 +477,8 @@ class Array2 {
     K2_CHECK_LE(end, dim0_);
     int32_t num_rows = (end - start) / inc;
     return Array2<T>(num_rows, dim1_, elem_stride0_ * inc,
-                     byte_offset_ + elem_stride0_ * start * ElementSize(),
+                     byte_offset_ +
+                     elem_stride0_ * static_cast<size_t>(start) * ElementSize(),
                      region_);
   }
 
@@ -493,8 +496,7 @@ class Array2 {
     K2_CHECK_LE(end, dim1_);
     return Array2<T>(
         dim0_, end - start, elem_stride0_,
-        byte_offset_ +
-            (start * static_cast<size_t>(elem_stride0_) * ElementSize()),
+        byte_offset_ + (start * ElementSize()),
         region_);
   }
 
