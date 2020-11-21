@@ -69,6 +69,7 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install wheel twine
           python3 -m pip install bs4 requests tqdm
+          python3 -m pip install dataclasses
 
           ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
@@ -85,7 +86,7 @@ jobs:
           pwd
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DK2_USE_CUDA=OFF ..
+          cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
           cat k2/csrc/version.h
 
       - name: Build and Run Tests

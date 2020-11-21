@@ -54,11 +54,9 @@ void TestExclusiveSum() {
 
 TEST(UtilsTest, ExclusiveSum) {
   TestExclusiveSum<int32_t, kCpu>();
-  TestExclusiveSum<double, kCpu>();
-#ifdef K2_USE_CUDA
   TestExclusiveSum<int32_t, kCuda>();
+  TestExclusiveSum<double, kCpu>();
   TestExclusiveSum<double, kCuda>();
-#endif
 
   // TODO(haowen): add tests where output type differs from input type?
 }
@@ -112,11 +110,9 @@ void TestMaxValue() {
 
 TEST(UtilsTest, MaxValue) {
   TestMaxValue<int32_t, kCpu>();
-  TestMaxValue<double, kCpu>();
-#ifdef K2_USE_CUDA
   TestMaxValue<int32_t, kCuda>();
+  TestMaxValue<double, kCpu>();
   TestMaxValue<double, kCuda>();
-#endif
 }
 
 template <DeviceType d>
@@ -201,9 +197,7 @@ void TestRowSplitsToRowIds() {
 
 TEST(UtilsTest, RowSplitsToRowIds) {
   TestRowSplitsToRowIds<kCpu>();
-#ifdef K2_USE_CUDA
   TestRowSplitsToRowIds<kCuda>();
-#endif
 }
 
 template <DeviceType d>
@@ -304,10 +298,6 @@ void TestRowIdsToRowSplits() {
 
 TEST(UtilsTest, RowIdsToRowSplits) {
   TestRowIdsToRowSplits<kCpu>();
-
-#ifdef K2_USE_CUDA
   TestRowIdsToRowSplits<kCuda>();
-#endif
 }
-
 }  // namespace k2

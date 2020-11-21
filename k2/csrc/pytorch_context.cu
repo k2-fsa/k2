@@ -10,11 +10,10 @@
  */
 
 #include <memory>
-#ifdef K2_USE_CUDA
+#include <mutex>
+
 #include "c10/cuda/CUDACachingAllocator.h"
 #include "c10/cuda/CUDAFunctions.h"
-#endif
-
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
@@ -55,7 +54,7 @@ class PytorchCpuContext : public Context {
  private:
   torch::Allocator *allocator_;  // NOT owned here
 };
-#ifdef K2_USE_CUDA
+
 class PytorchCudaContext : public Context {
  public:
   explicit PytorchCudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
@@ -114,19 +113,25 @@ class PytorchCudaContext : public Context {
   torch::Allocator *allocator_;  // NOT owned here
   int32_t gpu_id_;
 };
-#endif
 
 ContextPtr GetCpuContext() { return std::make_shared<PytorchCpuContext>(); }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
-#ifdef K2_USE_CUDA
-  if (gpu_id < 0) gpu_id = c10::cuda::current_device();
-  return std::make_shared<PytorchCudaContext>(gpu_id);
-#else
-  K2_LOG(FATAL) << "\nk2 is compiled without CUDA!"
-    << "\nPlease compile k2 with -DK2_USE_CUDA=ON";
-  return {};
-#endif
+  static std::once_flag has_gpu_init_flag;
+  static bool has_gpu = false;
+  std::call_once(has_gpu_init_flag, []() {
+    if (torch::cuda::is_available())
+      has_gpu = true;
+    else
+      K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
+  });
+
+  if (has_gpu) {
+    if (gpu_id < 0) gpu_id = c10::cuda::current_device();
+    return std::make_shared<PytorchCudaContext>(gpu_id);
+  }
+
+  return GetCpuContext();
 }
 
 RegionPtr NewRegion(torch::Tensor &tensor) {

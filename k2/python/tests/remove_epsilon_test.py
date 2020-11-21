@@ -11,6 +11,7 @@
 import unittest
 
 import k2
+import torch
 
 
 class TestRemoveEpsilon(unittest.TestCase):

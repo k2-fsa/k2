@@ -33,7 +33,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 option(K2_USE_PYTORCH "Whether to build with PyTorch" ON)
 option(K2_ENABLE_NVTX "Whether to build with the NVTX library" ON)
-option(K2_USE_CUDA "Whether to build with CUDA support" ON)
 
 if(NOT K2_USE_PYTORCH)
   message(FATAL_ERROR "\
@@ -119,10 +118,6 @@ endif()
 include(cub)
 include(moderngpu)
 include(googletest)
-
-if(K2_USE_CUDA)
-  add_definitions(-DK2_USE_CUDA)
-endif()
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CUDA_FLAGS}")
 

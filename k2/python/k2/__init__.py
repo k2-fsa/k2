@@ -24,12 +24,6 @@ from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
 
-
-def use_cuda() -> bool:
-    import _k2
-    return _k2.version.use_cuda
-
-
 # please keep the list sorted
 __all__ = [
     'DenseFsaVec',

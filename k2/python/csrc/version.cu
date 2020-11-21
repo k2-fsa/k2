@@ -30,5 +30,4 @@ void PybindVersion(py::module &m) {
   version.attr("torch_version") = k2::kTorchVersion;
   version.attr("torch_cuda_version") = k2::kTorchCudaVersion;
   version.attr("enable_nvtx") = k2::kEnableNvtx;
-  version.attr("use_cuda") = k2::kUseCuda;
 }

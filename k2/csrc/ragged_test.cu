@@ -235,9 +235,7 @@ void TestMaxPerSubListTest() {
 
 TEST(RaggedShapeOpsTest, MaxPerSubListTest) {
   TestMaxPerSubListTest<int32_t, kCpu>();
-#ifdef K2_USE_CUDA
   TestMaxPerSubListTest<int32_t, kCuda>();
-#endif
 }
 
 template <typename T, DeviceType d>
@@ -293,9 +291,7 @@ void TestMinPerSubListTest() {
 
 TEST(RaggedShapeOpsTest, MinPerSubListTest) {
   TestMinPerSubListTest<int32_t, kCpu>();
-#ifdef K2_USE_CUDA
   TestMinPerSubListTest<int32_t, kCuda>();
-#endif
 }
 
 template <typename T, DeviceType d>
@@ -358,9 +354,7 @@ void TestAndOrPerSubListTest() {
 
 TEST(RaggedShapeOpsTest, AndOrPerSubListTest) {
   TestAndOrPerSubListTest<int32_t, kCpu>();
-#ifdef K2_USE_CUDA
   TestAndOrPerSubListTest<int32_t, kCuda>();
-#endif
 }
 
 void TestUnsqueeze(ContextPtr context, const RaggedShape &input_shape) {
@@ -435,13 +429,10 @@ TEST_F(RaggedShapeOpsSuiteTest, TestUnsqueezeCpu) {
   TestUnsqueeze(GetCpuContext(), simple_shape_);
   TestUnsqueeze(GetCpuContext(), random_shape_);
 }
-
-#ifdef K2_USE_CUDA
 TEST_F(RaggedShapeOpsSuiteTest, TestUnsqueezeGpu) {
   TestUnsqueeze(GetCudaContext(), simple_shape_);
   TestUnsqueeze(GetCudaContext(), random_shape_);
 }
-#endif
 
 
 TEST(RaggedShapeOpsTest, TestUnsqueezeParallel) {
@@ -536,12 +527,9 @@ void TestRemoveAxis(ContextPtr context, const RaggedShape &input_shape) {
 TEST_F(RaggedShapeOpsSuiteTest, TestRemoveAxisCpu) {
   TestRemoveAxis(GetCpuContext(), simple_shape_);
 }
-
-#ifdef K2_USE_CUDA
 TEST_F(RaggedShapeOpsSuiteTest, TestRemoveAxisGpu) {
   TestRemoveAxis(GetCudaContext(), simple_shape_);
 }
-#endif
 
 void TestGetOffsets(ContextPtr context) {
   for (int32_t i = 0; i != 2; ++i) {
@@ -573,10 +561,7 @@ void TestGetOffsets(ContextPtr context) {
 
 TEST(RaggedShapeOpsTest, TestGetOffsets) {
   TestGetOffsets(GetCpuContext());
-
-#ifdef K2_USE_CUDA
   TestGetOffsets(GetCudaContext());
-#endif
 }
 
 // returns a random ragged shape where the dims on axis 1 are all the same
@@ -663,9 +648,7 @@ void TestTranspose() {
 }
 TEST(RaggedShapeOpsTest, TestTranspose) {
   TestTranspose<kCpu>();
-#ifdef K2_USE_CUDA
   TestTranspose<kCuda>();
-#endif
 }
 
 template <DeviceType d, typename T>
@@ -739,11 +722,9 @@ void TestTransposeRagged() {
 }
 TEST(RaggedTest, TestTransposeRagged) {
   TestTransposeRagged<kCpu, int32_t>();
-  TestTransposeRagged<kCpu, double>();
-#ifdef K2_USE_CUDA
   TestTransposeRagged<kCuda, int32_t>();
+  TestTransposeRagged<kCpu, double>();
   TestTransposeRagged<kCuda, double>();
-#endif
 }
 
 template <DeviceType d>
@@ -767,9 +748,7 @@ void TestRowSplitsPtr() {
 }
 TEST(RaggedShapeOpsTest, TestRowSplitsPtr) {
   TestRowSplitsPtr<kCpu>();
-#ifdef K2_USE_CUDA
   TestRowSplitsPtr<kCuda>();
-#endif
 }
 
 void TestRaggedShape2(ContextPtr context, const RaggedShape &shape) {
@@ -832,13 +811,10 @@ TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape2Cpu) {
   TestRaggedShape2(GetCpuContext(), simple_shape_);
   TestRaggedShape2(GetCpuContext(), random_shape_);
 }
-
-#ifdef K2_USE_CUDA
 TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape2Gpu) {
   TestRaggedShape2(GetCudaContext(), simple_shape_);
   TestRaggedShape2(GetCudaContext(), random_shape_);
 }
-#endif
 
 void TestRaggedShape3(ContextPtr context, const RaggedShape &shape) {
   RaggedShape src_shape = shape.To(context);
@@ -897,13 +873,10 @@ TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape3Cpu) {
   TestRaggedShape3(GetCpuContext(), simple_shape_);
   TestRaggedShape3(GetCpuContext(), random_shape_);
 }
-
-#ifdef K2_USE_CUDA
 TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape3Gpu) {
   TestRaggedShape3(GetCudaContext(), simple_shape_);
   TestRaggedShape3(GetCudaContext(), random_shape_);
 }
-#endif
 
 void TestComposeShape(ContextPtr context, const RaggedShape &shape) {
   RaggedShape src_shape = shape.To(context);
@@ -929,13 +902,10 @@ TEST_F(RaggedShapeOpsSuiteTest, TestComposeShapeCpu) {
   TestComposeShape(GetCpuContext(), simple_shape_);
   TestComposeShape(GetCpuContext(), random_shape_);
 }
-
-#ifdef K2_USE_CUDA
 TEST_F(RaggedShapeOpsSuiteTest, TestComposeShapeGpu) {
   TestComposeShape(GetCudaContext(), simple_shape_);
   TestComposeShape(GetCudaContext(), random_shape_);
 }
-#endif
 
 void TestShapeFromTotSize(ContextPtr context, const RaggedShape &shape) {
   RaggedShape src_shape = shape.To(context);
@@ -963,13 +933,10 @@ TEST_F(RaggedShapeOpsSuiteTest, TestShapeFromTotSizeCpu) {
   TestShapeFromTotSize(GetCpuContext(), simple_shape_);
   TestShapeFromTotSize(GetCpuContext(), random_shape_);
 }
-
-#ifdef K2_USE_CUDA
 TEST_F(RaggedShapeOpsSuiteTest, TestShapeFromTotSizeGpu) {
   TestShapeFromTotSize(GetCudaContext(), simple_shape_);
   TestShapeFromTotSize(GetCudaContext(), random_shape_);
 }
-#endif
 
 template <typename T, DeviceType d>
 void TestRagged() {
@@ -1090,12 +1057,10 @@ void TestRagged() {
         row_splits1, row_splits2, row_splits3};
     // test To(ctx)
     {
-#ifdef K2_USE_CUDA
       // to GPU
       Ragged<T> other = ragged.To(GetCudaContext());
       CheckRowSplits(other.shape, row_splits_vec);
       CheckArrayData<T>(other.values, values_vec);
-#endif
     }
     {
       // to CPU
@@ -1151,15 +1116,13 @@ static void TestSortSublists() {
 }
 
 TEST(RaggedTest, Ragged) {
+  TestRagged<int32_t, kCuda>();
   TestRagged<int32_t, kCpu>();
+  TestRagged<double, kCuda>();
   TestRagged<double, kCpu>();
 
-#ifdef K2_USE_CUDA
-  TestRagged<double, kCuda>();
-  TestRagged<int32_t, kCuda>();
   TestSortSublists<int32_t>();
   TestSortSublists<double>();
-#endif
 }
 
 template <DeviceType d>
@@ -1295,9 +1258,7 @@ void TestAppend() {
 }
 TEST(RaggedShapeOpsTest, TestAppend) {
   TestAppend<kCpu>();
-#ifdef K2_USE_CUDA
   TestAppend<kCuda>();
-#endif
 }
 
 template <DeviceType d, typename T>
@@ -1387,12 +1348,9 @@ void TestAppendRagged() {
 }
 TEST(RaggedTest, TestAppendRagged) {
   TestAppendRagged<kCpu, int32_t>();
-  TestAppendRagged<kCpu, double>();
-
-#ifdef K2_USE_CUDA
   TestAppendRagged<kCuda, int32_t>();
+  TestAppendRagged<kCpu, double>();
   TestAppendRagged<kCuda, double>();
-#endif
 }
 
 void CheckResultOfIndex(const ContextPtr &context, RaggedShape shape,
@@ -1523,9 +1481,7 @@ void TestIndex(DeviceType d) {
 
 TEST(RaggedShapeOpsTest, TestIndex) {
   TestIndex(kCpu);
-#ifdef K2_USE_CUDA
   TestIndex(kCuda);
-#endif
 }
 
 TEST(GetTransposeReordering, NoDuplicates) {
@@ -1538,11 +1494,7 @@ TEST(GetTransposeReordering, NoDuplicates) {
   // row5         k10               l11
   std::vector<int32_t> col_indexes{4, 5, 0, 1, 5, 3, 0, 2, 4, 5, 1, 4};
   std::vector<int32_t> _row_splits{0, 2, 5, 6, 9, 10, 12};
-  std::vector<ContextPtr> contexts{GetCpuContext()};
-#ifdef K2_USE_CUDA
-  contexts.push_back(GetCudaContext());
-#endif
-  for (auto &context : contexts) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> row_splits(context, _row_splits);
     RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
     Array1<int32_t> values(context, col_indexes);
@@ -1555,11 +1507,7 @@ TEST(GetTransposeReordering, NoDuplicates) {
 }
 
 TEST(GetTransposeReordering, ThreeAxesEmptyCase) {
-  std::vector<ContextPtr> contexts{GetCpuContext()};
-#ifdef K2_USE_CUDA
-  contexts.push_back(GetCudaContext());
-#endif
-  for (auto &context : contexts) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     Ragged<int32_t> ragged("[ [ [ ] ] ]");
     ragged = ragged.To(context);
     Array1<int32_t> order = GetTransposeReordering(ragged, 0);
@@ -1574,11 +1522,7 @@ TEST(GetTransposeReordering, NoDuplicatesThreeAxes) {
   // row3   f5    g6          h7
   // row4                                  i8
   // row5                            j9    k10
-  std::vector<ContextPtr> contexts{GetCpuContext()};
-#ifdef K2_USE_CUDA
-  contexts.push_back(GetCudaContext());
-#endif
-  for (auto &context : contexts) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> col_indexes(
         context, std::vector<int32_t>{1, 3, 0, 2, 1, 0, 1, 3, 5, 4, 5});
     Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 4, 6});
@@ -1604,11 +1548,7 @@ TEST(GetTransposeReordering, WithDuplicates) {
   std::vector<int32_t> col_indexes{1, 1, 3, 3, 3, 0, 0, 2, 1,
                                    0, 1, 1, 3, 4, 4, 4, 3, 5};
   std::vector<int32_t> _row_splits{0, 5, 8, 9, 13, 16, 18};
-  std::vector<ContextPtr> contexts{GetCpuContext()};
-#ifdef K2_USE_CUDA
-  contexts.push_back(GetCudaContext());
-#endif
-  for (auto &context : contexts) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> row_splits(context, _row_splits);
     RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
     Array1<int32_t> values(context, col_indexes);
@@ -1628,11 +1568,7 @@ TEST(GetTransposeReordering, WithDuplicatesThreeAxes) {
   // row3   f9   g10,g11         h12
   // row4                                i13,i14,i15
   // row5                                 j16         k17
-  std::vector<ContextPtr> contexts{GetCpuContext()};
-#ifdef K2_USE_CUDA
-  contexts.push_back(GetCudaContext());
-#endif
-  for (auto &context : contexts) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> col_indexes(
         context, std::vector<int32_t>{1, 1, 3, 3, 3, 0, 0, 2, 1, 0, 1, 1, 3, 4,
                                       4, 4, 4, 5});
@@ -1650,11 +1586,7 @@ TEST(GetTransposeReordering, WithDuplicatesThreeAxes) {
 }
 
 TEST(ChangeSublistSize, TwoAxes) {
-  std::vector<ContextPtr> contexts{GetCpuContext()};
-#ifdef K2_USE_CUDA
-  contexts.push_back(GetCudaContext());
-#endif
-  for (auto &context : contexts) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 2, 5});
     RaggedShape src = RaggedShape2(&row_splits1, nullptr, -1);
 
@@ -1673,11 +1605,7 @@ TEST(ChangeSublistSize, TwoAxes) {
 }
 
 TEST(ChangeSublistSize, ThreeAxes) {
-  std::vector<ContextPtr> contexts{GetCpuContext()};
-#ifdef K2_USE_CUDA
-  contexts.push_back(GetCudaContext());
-#endif
-  for (auto &context : contexts) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     /*
      [
        [ [x, x, x], [x, x] ]
@@ -1748,9 +1676,7 @@ void TestGetCountsPartitioned() {
 
 TEST(RaggedShapeOpsTest, TestGetCountsPartitioned) {
   TestGetCountsPartitioned<kCpu>();
-#ifdef K2_USE_CUDA
   TestGetCountsPartitioned<kCuda>();
-#endif
 }
 
 template <DeviceType d>
@@ -1888,9 +1814,7 @@ void TestStack() {
 }
 TEST(RaggedShapeOpsTest, TestStack) {
   TestStack<kCpu>();
-#ifdef K2_USE_CUDA
   TestStack<kCuda>();
-#endif
 }
 
 template <DeviceType d, typename T>
@@ -1977,12 +1901,9 @@ void TestStackRagged() {
 }
 TEST(RaggedTest, TestStackRagged) {
   TestStackRagged<kCpu, int32_t>();
-  TestStackRagged<kCpu, double>();
-
-#ifdef K2_USE_CUDA
   TestStackRagged<kCuda, int32_t>();
+  TestStackRagged<kCpu, double>();
   TestStackRagged<kCuda, double>();
-#endif
 }
 
 
@@ -2075,9 +1996,7 @@ void TestMakeTransposable() {
 }
 TEST(RaggedShapeOpsTest, TestMakeTransposable) {
   TestMakeTransposable<kCpu>();
-#ifdef K2_USE_CUDA
   TestMakeTransposable<kCuda>();
-#endif
 }
 
 }  // namespace k2

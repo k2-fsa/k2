@@ -11,6 +11,7 @@
  */
 
 #include <cstdlib>
+#include <mutex>
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
@@ -106,13 +107,21 @@ class CudaContext : public Context {
 ContextPtr GetCpuContext() { return std::make_shared<CpuContext>(); }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
-#ifdef K2_USE_CUDA
-  return std::make_shared<CudaContext>(gpu_id);
-#else
-  K2_LOG(FATAL) << "\nk2 is compiled without CUDA!"
-    << "\nPlease compile k2 with -DK2_USE_CUDA=ON";
-  return {};
-#endif
+  static std::once_flag has_gpu_init_flag;
+  static bool has_gpu = false;
+  std::call_once(has_gpu_init_flag, []() {
+    int n = 0;
+    auto ret = cudaGetDeviceCount(&n);
+    K2_CHECK_CUDA_ERROR(ret);
+    if (n > 0)
+      has_gpu = true;
+    else
+      K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
+  });
+
+  if (has_gpu) return std::make_shared<CudaContext>(gpu_id);
+
+  return GetCpuContext();
 }
 
 }  // namespace k2

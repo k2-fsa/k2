@@ -77,18 +77,6 @@ static constexpr bool kEnableNvtx = true;
 #else
 static constexpr bool kEnableNvtx = false;
 #endif
-
-// Indicate whether k2 is compiled with CUDA or not
-#ifndef K2_USE_CUDA
-#cmakedefine K2_USE_CUDA
-#endif
-
-#ifdef K2_USE_CUDA
-static constexpr bool kUseCuda = true;
-#else
-static constexpr bool kUseCuda = false;
-#endif
-
 }  // namespace k2
 
 #endif  //  K2_CSRC_VERSION_H_
