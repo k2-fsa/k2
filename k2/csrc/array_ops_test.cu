@@ -213,7 +213,7 @@ void TestExclusiveSumArray1(int32_t num_elem) {
     // but its value will not be set.
     int32_t num_bytes = num_elem * sizeof(T);
     RegionPtr region = NewRegion(context, num_bytes);
-    S *region_data = region->GetData<S, d>();
+    S *region_data = region->GetData<S>();
     auto kind = GetMemoryCopyKind(*cpu, *region->context);
     MemoryCopy(static_cast<void *>(region_data),
                static_cast<const void *>(data.data()), src_dim * sizeof(T),
@@ -255,7 +255,7 @@ void TestExclusiveSumArray1(int32_t num_elem) {
     S *src_data = src.Data();
     int32_t num_bytes = num_elem * sizeof(S *);
     RegionPtr region = NewRegion(context, num_bytes);
-    S **region_data = region->GetData<S *, d>();
+    S **region_data = region->GetData<S *>();
     auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
       region_data[i] = &src_data[i];
     };
@@ -373,7 +373,7 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
     // allocate extra memory as there stride0 > 0
     int32_t num_bytes = rows * stride0 * sizeof(T);
     RegionPtr region = NewRegion(context, num_bytes);
-    T *region_data = region->GetData<T, d>();
+    T *region_data = region->GetData<T>();
     auto lambda_set_elems = [=] __host__ __device__(int32_t i,
                                                     int32_t j) -> void {
       region_data[i * stride0 + j] = src_data[i * cols + j];
@@ -409,7 +409,7 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
     // allocate extra memory as there stride0 > 0
     int32_t num_bytes = rows * stride0 * sizeof(T);
     RegionPtr region = NewRegion(context, num_bytes);
-    T *region_data = region->GetData<T, d>();
+    T *region_data = region->GetData<T>();
     auto lambda_set_elems = [=] __host__ __device__(int32_t i,
                                                     int32_t j) -> void {
       region_data[i * stride0 + j] = src_data[i * cols + j];
@@ -432,7 +432,7 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
     const T *src_data = data_array.Data();
     int32_t num_bytes = (rows * cols + 1) * sizeof(T);
     RegionPtr region = NewRegion(context, num_bytes);
-    T *region_data = region->GetData<T, d>();
+    T *region_data = region->GetData<T>();
     auto lambda_set_elems = [=] __host__ __device__(int32_t i,
                                                     int32_t j) -> void {
       region_data[i * cols + j] = src_data[i * cols + j];
@@ -481,7 +481,7 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
     // allocate extra memory as there stride0 > 0
     int32_t num_bytes = rows * stride0 * sizeof(T);
     RegionPtr region = NewRegion(context, num_bytes);
-    T *region_data = region->GetData<T, d>();
+    T *region_data = region->GetData<T>();
     auto lambda_set_elems = [=] __host__ __device__(int32_t i,
                                                     int32_t j) -> void {
       region_data[i * stride0 + j] = src_data[i * cols + j];
@@ -516,7 +516,7 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
     const T *src_data = data_array.Data();
     int32_t num_bytes = (rows * cols + 1) * sizeof(T);
     RegionPtr region = NewRegion(context, num_bytes);
-    T *region_data = region->GetData<T, d>();
+    T *region_data = region->GetData<T>();
     auto lambda_set_elems = [=] __host__ __device__(int32_t i,
                                                     int32_t j) -> void {
       region_data[i * cols + j] = src_data[i * cols + j];

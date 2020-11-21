@@ -11,6 +11,7 @@
 
 #include <gtest/gtest.h>
 
+#include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 
 namespace k2 {
@@ -52,6 +53,7 @@ __global__ void DummyKernel(int32_t *b, int32_t a) {
 
 TEST(Log, Cuda) {
   K2_LOG(INFO) << "Test log for cuda";
+  if (GetCudaContext()->GetDeviceType() == kCpu) return;
   int32_t a = 10;
   int32_t *b = nullptr;
   auto ret = cudaMalloc(&b, sizeof(a));

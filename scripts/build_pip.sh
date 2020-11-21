@@ -61,6 +61,11 @@ for libname in $libnames; do
   mv $build_dir/lib/lib*test*.so .temp_lib
 done
 
+# save the generated libs as we want to restore their RPATH
+mkdir -p $build_dir/.lib-bak
+
+cp -av $build_dir/lib/* $build_dir/.lib-bak
+
 for lib in $build_dir/lib/*.so; do
   # remove RPATH information
   strip $lib
@@ -69,6 +74,11 @@ done
 
 python3 setup.py bdist_wheel
 
+cp -av $build_dir/.lib-bak/*.so $build_dir/lib/
+
 for libname in $libnames; do
   mv .temp_lib/lib*test*.so $build_dir/lib/
 done
+
+rm -rfv $build_dir/.lib-bak
+

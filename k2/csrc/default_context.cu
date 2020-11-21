@@ -107,19 +107,18 @@ class CudaContext : public Context {
 ContextPtr GetCpuContext() { return std::make_shared<CpuContext>(); }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
-  static std::once_flag has_gpu_init_flag;
-  static bool has_gpu = false;
-  std::call_once(has_gpu_init_flag, []() {
+  static std::once_flag has_cuda_init_flag;
+  static bool has_cuda = false;
+  std::call_once(has_cuda_init_flag, []() {
     int n = 0;
     auto ret = cudaGetDeviceCount(&n);
-    K2_CHECK_CUDA_ERROR(ret);
-    if (n > 0)
-      has_gpu = true;
+    if (ret == cudaSuccess && n > 0)
+      has_cuda = true;
     else
       K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
   });
 
-  if (has_gpu) return std::make_shared<CudaContext>(gpu_id);
+  if (has_cuda) return std::make_shared<CudaContext>(gpu_id);
 
   return GetCpuContext();
 }

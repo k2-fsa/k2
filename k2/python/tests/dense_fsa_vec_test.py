@@ -73,6 +73,8 @@ class TestDenseFsaVec(unittest.TestCase):
         '''
 
     def test_dense_fsa_vec_cuda(self):
+        if not torch.cuda.is_available():
+            return
         device = torch.device('cuda', index=0)
         log_prob = torch.arange(20).reshape(2, 5, 2).to(torch.float32)
         supervision_segments = torch.tensor([
