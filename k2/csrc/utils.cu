@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "k2/csrc/math.h"
+#include "k2/csrc/nvtx.h"
 #include "k2/csrc/utils.h"
 
 namespace k2 {

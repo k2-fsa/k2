@@ -9,9 +9,9 @@
 #include <string>
 #include <vector>
 
-#include "k2/csrc/tensor_ops.h"
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa.h"
+#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 
@@ -30,6 +30,7 @@ std::istream &operator>>(std::istream &is, Arc &arc) {
 }
 
 std::string FsaPropertiesAsString(int32_t properties) {
+  NVTX_RANGE(__func__);
   static constexpr char kSep = '|';
   std::ostringstream os;
 
@@ -52,6 +53,7 @@ std::string FsaPropertiesAsString(int32_t properties) {
 
 void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
                               int32_t *tot_properties_out) {
+  NVTX_RANGE(__func__);
   if (fsa_vec.NumAxes() != 3) {
     K2_LOG(FATAL) << "Input has wrong num-axes " << fsa_vec.NumAxes()
                   << " vs. 3.";
@@ -212,6 +214,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 }
 
 FsaVec FsaToFsaVec(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   if (fsa.NumAxes() != 2) return fsa;
   ContextPtr &c = fsa.values.Context();
   RaggedShape first_axis = TrivialShape(c, fsa.shape.Dim0());
@@ -220,6 +223,7 @@ FsaVec FsaToFsaVec(const Fsa &fsa) {
 }
 
 int32_t GetFsaBasicProperties(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   if (fsa.NumAxes() != 2) return 0;
   FsaVec vec = FsaToFsaVec(fsa);
   Array1<int32_t> properties;
@@ -229,6 +233,7 @@ int32_t GetFsaBasicProperties(const Fsa &fsa) {
 }
 
 Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
+  NVTX_RANGE(__func__);
   const Arc *arcs_data = array.Data();
   ContextPtr &c = array.Context();
   int32_t num_arcs = array.Dim();
@@ -318,6 +323,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
 }
 
 Tensor FsaToTensor(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(fsa.NumAxes(), 2);
   Array2<int32_t> arcs_as_ints(fsa.values.Dim(), 4, 4, fsa.values.ByteOffset(),
                                fsa.values.GetRegion());
@@ -325,6 +331,7 @@ Tensor FsaToTensor(const Fsa &fsa) {
 }
 
 Fsa FsaFromTensor(Tensor &t, bool *error) {
+  NVTX_RANGE(__func__);
   if (!t.IsContiguous()) t = ToContiguous(t);
 
   *error = false;
@@ -349,6 +356,7 @@ Fsa FsaFromTensor(Tensor &t, bool *error) {
 }
 
 FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
+  NVTX_RANGE(__func__);
   if (!t.IsContiguous()) t = ToContiguous(t);
 
   *error = false;
@@ -447,6 +455,7 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
 }
 
 Tensor FsaVecToTensor(const FsaVec &fsa_vec) {
+  NVTX_RANGE(__func__);
   if (fsa_vec.NumAxes() != 3) {
     K2_LOG(FATAL) << "Expected num-axes == 3. Given: " << fsa_vec.NumAxes();
   }

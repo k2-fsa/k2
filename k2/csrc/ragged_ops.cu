@@ -49,6 +49,7 @@ namespace k2 {
 RaggedShape RandomRaggedShape(bool set_row_ids, int32_t min_num_axes,
                               int32_t max_num_axes, int32_t min_num_elements,
                               int32_t max_num_elements) {
+  NVTX_RANGE(__func__);
   ContextPtr c = GetCpuContext();
   K2_CHECK(min_num_axes >= 2 && max_num_axes >= min_num_axes &&
            min_num_elements >= 0 && max_num_elements >= min_num_elements);
@@ -96,6 +97,7 @@ RaggedShape RandomRaggedShape(bool set_row_ids, int32_t min_num_axes,
 
 RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
                          int32_t cached_tot_size) {
+  NVTX_RANGE(__func__);
   K2_CHECK(row_splits != nullptr || row_ids != nullptr)
       << "At least one of row_splits and row_ids must be defined";
   ContextPtr ctx = ::GetContext(row_splits, row_ids);
@@ -130,6 +132,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
 }
 
 RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
+  NVTX_RANGE(__func__);
   if (a.NumElements() != b.Dim0()) {
     K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()
                   << " vs. " << b.Dim0();
@@ -147,6 +150,7 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
                          Array1<int32_t> *row_splits2,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2) {
+  NVTX_RANGE(__func__);
   K2_CHECK(row_splits1 != nullptr || row_ids1 != nullptr)
       << "At least one of row_splits1 and row_ids1 must be defined";
   K2_CHECK(row_splits2 != nullptr || row_ids2 != nullptr)
@@ -220,6 +224,7 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
 
 RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
                                     int32_t *tot_sizes) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GE(num_axes, 2);
   std::vector<RaggedShapeDim> axes(num_axes - 1);
   // In future we might choose to allocate everything in one big array, to avoid
@@ -234,6 +239,7 @@ RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
 }
 
 Array1<int32_t *> GetRowSplitsPtr(RaggedShape &src) {
+  NVTX_RANGE(__func__);
   int32_t axes = src.NumAxes();
   K2_CHECK_GE(axes, 2);
   std::vector<int32_t *> row_splits_start(axes - 1);
@@ -261,6 +267,7 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   // an idx_0 to idx_minus1, where idx_minus1 is always 0 and 0 <= idx0 <
   // Dim0().
 
+  NVTX_RANGE(__func__);
   ContextPtr c = src.Context();
   K2_CHECK(axis >= 0 && axis <= src.NumAxes());
 

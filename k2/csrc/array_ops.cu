@@ -22,6 +22,7 @@ namespace k2 {
 // subtracting one from the dims of all but the last array.
 Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
                                 const Array1<int32_t> **src) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GT(num_arrays, 0);
   ContextPtr &c = src[0]->Context();
 
@@ -153,6 +154,7 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
 
 bool ValidateRowIds(const Array1<int32_t> &row_ids,
                     Array1<int32_t> *temp /*=nullptr*/) {
+  NVTX_RANGE(__func__);
   ContextPtr &ctx = row_ids.Context();
   const int32_t *data = row_ids.Data();
   int32_t dim = row_ids.Dim();
@@ -182,6 +184,7 @@ bool ValidateRowIds(const Array1<int32_t> &row_ids,
 
 bool ValidateRowSplits(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *temp /*=nullptr*/) {
+  NVTX_RANGE(__func__);
   ContextPtr &ctx = row_splits.Context();
   const int32_t *data = row_splits.Data();
   int32_t dim = row_splits.Dim();
@@ -211,6 +214,7 @@ bool ValidateRowSplits(const Array1<int32_t> &row_splits,
 bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
                              const Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp /*=nullptr*/) {
+  NVTX_RANGE(__func__);
   // Check if their context are compatible or not while getting
   ContextPtr ctx = GetContext(row_splits, row_ids);
   int32_t num_rows = row_splits.Dim() - 1, num_elems = row_ids.Dim();
@@ -254,6 +258,7 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
 
 void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *row_ids) {
+  NVTX_RANGE(__func__);
   ContextPtr c = GetContext(row_splits, *row_ids);
   int32_t num_elems = row_ids->Dim(), num_rows = row_splits.Dim() - 1;
   K2_CHECK_GE(num_rows, 0);
@@ -265,6 +270,7 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
 
 void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
                        Array1<int32_t> *row_splits) {
+  NVTX_RANGE(__func__);
   ContextPtr c = GetContext(*row_splits, row_ids);
   int32_t num_elems = row_ids.Dim(), num_rows = row_splits->Dim() - 1;
   K2_CHECK_GE(num_rows, 0);
@@ -276,6 +282,7 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
 }
 
 Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GE(n, 0);
   ContextPtr &c = src.Context();
   int32_t dim = src.Dim();
