@@ -180,9 +180,8 @@ class Fsa(object):
         #           returned by :func:`_k2._get_forward_scores_float` or
         #           :func:`_get_forward_scores_double` with `log_semiring=False`
 
-        for name in [ '_tensor_attr', '_non_tensor_attr', '_cache' ]:
+        for name in ['_tensor_attr', '_non_tensor_attr', '_cache']:
             self.__dict__[name] = dict()
-
 
         self._tensor_attr['scores'] = _as_float(self.arcs.values()[:, -1])
         if aux_labels is not None:
@@ -213,7 +212,6 @@ class Fsa(object):
         ans += "properties_str = " + _k2.fsa_properties_as_str(
             self._properties) + "."
         return ans
-
 
     def __setattr__(self, name: str, value: Any) -> None:
         '''
