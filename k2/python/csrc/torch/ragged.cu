@@ -37,7 +37,11 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
           return self.To(GetCpuContext());
         }
 
-        int32_t device_index = static_cast<py::int_>(device.attr("index"));
+        auto index_attr = static_cast<py::object>(device.attr("index"));
+        int32_t device_index = 0;
+        if (!index_attr.is_none())
+          device_index = static_cast<py::int_>(index_attr);
+
         if (context->GetDeviceType() == kCuda &&
             context->GetDeviceId() == device_index)
           return self;
@@ -50,9 +54,8 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
     return self.To(GetCpuContext());
   });
 
-  pyclass.def("clone", [](const PyClass &self) -> PyClass {
-    return self.Clone();
-  });
+  pyclass.def("clone",
+              [](const PyClass &self) -> PyClass { return self.Clone(); });
 
   pyclass.def("is_cpu", [](const PyClass &self) -> bool {
     return self.Context()->GetDeviceType() == kCpu;

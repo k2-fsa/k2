@@ -39,7 +39,7 @@ class TestUnion(unittest.TestCase):
         '''
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
+            devices.append(torch.device('cuda'))
 
         for device in devices:
             fsa0 = k2.Fsa.from_str(s0)
