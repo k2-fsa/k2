@@ -96,4 +96,7 @@ jobs:
           echo "number of cores: $(nproc)"
           cd build
           make
+          ./bin/cu_fsa_algo_test
+          ./bin/cu_fsa_utils_test
+          ./bin/cu_ragged_test
           ctest --output-on-failure

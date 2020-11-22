@@ -21,19 +21,19 @@
 
 namespace k2 {
 
-class BaseTimer {
+class TimerImpl {
  public:
-  BaseTimer() = default;
-  virtual ~BaseTimer() = default;
+  TimerImpl() = default;
+  virtual ~TimerImpl() = default;
   virtual void Reset() = 0;
   // Return time in seconds
   virtual double Elapsed() = 0;
 };
 
 // modified from https://github.com/kaldi-asr/kaldi/blob/master/src/base/timer.h
-class CpuTimer : public BaseTimer {
+class CpuTimerImpl : public TimerImpl {
  public:
-  CpuTimer() { Reset(); }
+  CpuTimerImpl() { Reset(); }
 
   void Reset() override { gettimeofday(&time_start_, nullptr); }
 
@@ -53,15 +53,15 @@ class CpuTimer : public BaseTimer {
   struct timeval time_start_;
 };
 
-class CudaTimer : public BaseTimer {
+class CudaTimerImpl : public TimerImpl {
  public:
-  explicit CudaTimer(cudaStream_t stream) : stream_(stream) {
+  explicit CudaTimerImpl(cudaStream_t stream) : stream_(stream) {
     K2_CUDA_SAFE_CALL(cudaEventCreate(&time_start_));
     K2_CUDA_SAFE_CALL(cudaEventCreate(&time_end_));
     Reset();
   }
 
-  ~CudaTimer() override {
+  ~CudaTimerImpl() override {
     K2_CUDA_SAFE_CALL(cudaEventDestroy(time_start_));
     K2_CUDA_SAFE_CALL(cudaEventDestroy(time_end_));
   }
@@ -91,10 +91,10 @@ class CudaTimer : public BaseTimer {
 Timer::Timer(ContextPtr context) {
   switch (context->GetDeviceType()) {
     case kCpu:
-      timer_ = std::make_unique<CpuTimer>();
+      timer_impl_ = std::make_unique<CpuTimerImpl>();
       break;
     case kCuda:
-      timer_ = std::make_unique<CudaTimer>(context->GetCudaStream());
+      timer_impl_ = std::make_unique<CudaTimerImpl>(context->GetCudaStream());
       break;
     default:
       K2_LOG(FATAL) << "Unsupported device type: " << context->GetDeviceType();
@@ -104,9 +104,9 @@ Timer::Timer(ContextPtr context) {
 
 Timer::~Timer() = default;
 
-void Timer::Reset() const { timer_->Reset(); }
+void Timer::Reset() const { timer_impl_->Reset(); }
 
 // Return time in seconds
-double Timer::Elapsed() const { return timer_->Elapsed(); }
+double Timer::Elapsed() const { return timer_impl_->Elapsed(); }
 
 }  // namespace k2

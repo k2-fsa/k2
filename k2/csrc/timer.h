@@ -19,7 +19,7 @@
 
 namespace k2 {
 
-class BaseTimer;
+class TimerImpl;
 
 class Timer {
  public:
@@ -32,7 +32,7 @@ class Timer {
   double Elapsed() const;
 
  private:
-  std::unique_ptr<BaseTimer> timer_;
+  std::unique_ptr<TimerImpl> timer_impl_;
 };
 
 }  // namespace k2
