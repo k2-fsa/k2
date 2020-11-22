@@ -435,6 +435,30 @@ class TestFsa(unittest.TestCase):
         [ [ 0 1 1 0.1 0 2 2 0.2 ] [ 1 2 3 0.3 ] [ 2 3 -1 0.4 ] [ ] ]
         '''
 
+    def test_invert(self):
+        s0 = '''
+            0 1 1 4 0.1
+            1 2 2 5 0.2
+            2 3 -1 -1 0.3
+            3
+        '''
+        s1 = '''
+            0 1 4 1 0.1
+            1 2 5 2 0.2
+            2 3 -1 -1 0.3
+            1
+        '''
+        fsa0 = k2.Fsa.from_str(s0).requires_grad_(True)
+        fsa1 = k2.Fsa.from_str(s1).requires_grad_(True)
+
+        fsa0.invert_()
+        assert str(fsa0) == str(fsa1)
+        fsa0.invert_()
+        fsa1.invert_()
+        assert str(fsa0) == str(fsa1)
+        fsa1.invert_()
+        assert str(fsa0) != str(fsa1)
+
 
 if __name__ == '__main__':
     unittest.main()
