@@ -23,6 +23,7 @@
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/eval.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor.h"
 
 namespace k2 {
@@ -301,6 +302,7 @@ class Array1 {
      but also supports -1 as an index.
    */
   Array1 operator[](const Array1<int32_t> &indexes) const {
+    NVTX_RANGE("Array1::operator[](Array1)");
     const ContextPtr &c = Context();
     K2_CHECK(c->IsCompatible(*indexes.Context()));
     int32_t ans_dim = indexes.Dim();

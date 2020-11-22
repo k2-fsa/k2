@@ -129,6 +129,7 @@ __global__ void TransposeKernel(int32_t rows, int32_t cols,
 // to compute exclusive sum for each row
 template <typename T>
 void ExclusiveSumPerRow(const Array2<T> &src, Array2<T> *dest) {
+  NVTX_RANGE("ExclusiveSumPerRow");
   int32_t rows = dest->Dim0();
   // note there may be dest->Dim1() == src.Dim1() + 1
   int32_t cols = dest->Dim1();
@@ -187,6 +188,7 @@ struct iterator_traits<k2::internal::ReversedPtr<T>> {
 namespace k2 {
 template <typename T>
 void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
+  NVTX_RANGE("Transpose");
   K2_CHECK(c->IsCompatible(*src.Context()));
   K2_CHECK(c->IsCompatible(*dest->Context()));
   int32_t rows = src.Dim0();
@@ -222,6 +224,7 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
 
 template <typename T>
 void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest) {
+  NVTX_RANGE("ExclusiveSumDeref");
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_dim = src.Dim();
   int32_t dest_dim = dest->Dim();
@@ -237,6 +240,7 @@ void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest) {
 
 template <typename T>
 void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis) {
+  NVTX_RANGE("ExclusiveSum");
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_major_dim = src.Dim0();  // the axis will be summed
@@ -282,6 +286,7 @@ void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis) {
 // Splice() in array_ops.cu, since it was modified from this code.
 template <typename T>
 Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
+  NVTX_RANGE("Append1");
   K2_CHECK_GT(num_arrays, 0);
   ContextPtr &c = src[0]->Context();
 
@@ -384,6 +389,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
 
 template <typename T>
 Array1<T> Append(int32_t src_size, const Array1<T> *src) {
+  NVTX_RANGE("Append2");
   K2_CHECK_GT(src_size, 0);
   std::vector<const Array1<T> *> srcs(src_size);
   for (int32_t i = 0; i != src_size; ++i) srcs[i] = src + i;
@@ -393,6 +399,7 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src) {
 
 template <typename T, typename Op>
 void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
+  NVTX_RANGE("ApplyOpOnArray1");
   K2_CHECK(IsCompatible(src, *dest));
   K2_CHECK_EQ(dest->Dim(), 1);
 
@@ -428,6 +435,7 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
                             T max_value) {
+  NVTX_RANGE("RandUniformArray1");
   static_assert(std::is_floating_point<T>::value || std::is_integral<T>::value,
                 "Only support floating-point and integral type");
   Array1<T> temp(GetCpuContext(), dim);
@@ -447,6 +455,7 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
 template <typename T>
 Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
                             T min_value, T max_value) {
+  NVTX_RANGE("RandUniformArray2");
   int32_t dim1_extra = RandInt(0, 2),  // make it randomly not contiguous.
             new_dim1 = dim1 + dim1_extra;
   Array1<T> array1temp = RandUniformArray1<T>(
@@ -461,6 +470,7 @@ Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
 
 template <typename T>
 Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
+  NVTX_RANGE("Range");
   K2_CHECK_GE(dim, 0);
   Array1<T> ans = Array1<T>(c, dim);
   T *ans_data = ans.Data();
@@ -478,6 +488,7 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
 
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src) {
+  NVTX_RANGE("ToContiguous");
   int32_t dim0 = src.Dim0();
   int32_t dim1 = src.Dim1();
   int32_t elem_stride0 = src.ElemStride0();
@@ -495,6 +506,7 @@ Array2<T> ToContiguous(const Array2<T> &src) {
 
 template <typename T>
 bool Equal(const Array1<T> &a, const Array1<T> &b) {
+  NVTX_RANGE("Equal(Array1)");
   K2_CHECK_EQ(a.Dim(), b.Dim());
   ContextPtr c = GetContext(a, b);
   const T *a_data = a.Data(), *b_data = b.Data();
@@ -516,6 +528,7 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
 
 template <typename T>
 bool Equal(const Array2<T> &a, const Array2<T> &b) {
+  NVTX_RANGE("Equal(Array2)");
   K2_CHECK_EQ(a.Dim0(), b.Dim0());
   K2_CHECK_EQ(a.Dim1(), b.Dim1());
   ContextPtr c = GetContext(a, b);
@@ -554,6 +567,7 @@ bool Equal(const Array2<T> &a, const Array2<T> &b) {
 
 template <typename T>
 bool IsMonotonic(const Array1<T> &a) {
+  NVTX_RANGE("IsMonotonic");
   ContextPtr &c = a.Context();
   int32_t dim = a.Dim();
   const T *data = a.Data();
@@ -576,6 +590,7 @@ bool IsMonotonic(const Array1<T> &a) {
 
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
+  NVTX_RANGE("MonotonicLowerBound");
   K2_STATIC_ASSERT((std::is_convertible<S, T>::value));
   K2_CHECK(IsCompatible(src, *dest));
   int32_t dim = src.Dim();
@@ -614,6 +629,7 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
 
 template <typename T>
 Array1<T> Plus(const Array1<T> &src, T t) {
+  NVTX_RANGE("Plus");
   ContextPtr &c = src.Context();
   int32_t dim = src.Dim();
   Array1<T> ans(c, dim);
@@ -635,6 +651,7 @@ Array1<T> Plus(const Array1<T> &src, T t) {
 template <typename T>
 Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
                 bool allow_minus_one) {
+  NVTX_RANGE("Index(Array1)");
   ContextPtr &c = src.Context();
   K2_CHECK(c->IsCompatible(*indexes.Context()));
   int32_t ans_dim = indexes.Dim();
@@ -680,6 +697,7 @@ Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
 template <typename T>
 Array2<T> Index(const Array2<T> &src, const Array1<int32_t> &indexes,
                 bool allow_minus_one) {
+  NVTX_RANGE("Index(Array2)");
   ContextPtr &c = src.Context();
   K2_CHECK(c->IsCompatible(*indexes.Context()));
   int32_t ans_dim0 = indexes.Dim(),

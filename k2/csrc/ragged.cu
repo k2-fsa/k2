@@ -228,6 +228,7 @@ RaggedShapeIndexIterator RaggedShape::Iterator() {
 }
 
 int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
+  NVTX_RANGE("RaggedShape::operator[]");
   K2_CHECK_EQ(static_cast<int32_t>(indexes.size()), NumAxes());
   K2_CHECK_EQ(Context()->GetDeviceType(), kCpu);
   int32_t cur_idx = indexes[0];
@@ -262,6 +263,7 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
 // TODO(dan): change this so that on error it prints a warning if
 // print_warnings==true, and then returns false.
 bool RaggedShape::Validate(bool print_warnings) const {
+  NVTX_RANGE("RaggedShape::Validate");
   ContextPtr c = Context();
   int32_t num_axes = axes_.size();
 
@@ -388,6 +390,7 @@ bool RaggedShape::Validate(bool print_warnings) const {
 
 
 bool Equal(RaggedShape &a, RaggedShape &b) {
+  NVTX_RANGE("Equal(RaggedShape)");
   if (a.NumAxes() != b.NumAxes()) return false;
   for (int32_t i = 1; i < a.NumAxes(); i++) {
     if (a.RowSplits(i).Dim() != b.RowSplits(i).Dim() ||

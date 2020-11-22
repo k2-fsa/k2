@@ -136,6 +136,7 @@ FsaVec FsaVecCreator::GetFsaVec() {
 */
 static Array1<bool> CheckProperties(FsaOrVec &fsas,
                                     bool (*f)(const k2host::Fsa &)) {
+  NVTX_RANGE("CheckProperties");
   ContextPtr &c = fsas.Context();
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);
   if (fsas.NumAxes() == 2) {
@@ -156,14 +157,17 @@ static Array1<bool> CheckProperties(FsaOrVec &fsas,
 }
 
 Array1<bool> IsTopSorted(FsaOrVec &fsas) {
+  NVTX_RANGE("IsTopSorted");
   return CheckProperties(fsas, k2host::IsTopSorted);
 }
 
 Array1<bool> IsArcSorted(FsaOrVec &fsas) {
+  NVTX_RANGE("IsArcSorted");
   return CheckProperties(fsas, k2host::IsArcSorted);
 }
 
 Array1<bool> HasSelfLoops(FsaOrVec &fsas) {
+  NVTX_RANGE("HasSelfLoops");
   return CheckProperties(fsas, k2host::HasSelfLoops);
 }
 
@@ -173,24 +177,29 @@ static bool IsAcyclicWapper(const k2host::Fsa &fsa) {
   return k2host::IsAcyclic(fsa, nullptr);
 }
 Array1<bool> IsAcyclic(FsaOrVec &fsas) {
+  NVTX_RANGE("IsAcyclic");
   return CheckProperties(fsas, IsAcyclicWapper);
 }
 
 Array1<bool> IsDeterministic(FsaOrVec &fsas) {
+  NVTX_RANGE("IsDeterministic");
   return CheckProperties(fsas, k2host::IsDeterministic);
 }
 
 Array1<bool> IsEpsilonFree(FsaOrVec &fsas) {
+  NVTX_RANGE("IsEpsilonFree");
   return CheckProperties(fsas, k2host::IsEpsilonFree);
 }
 
 Array1<bool> IsConnected(FsaOrVec &fsas) {
+  NVTX_RANGE("IsConnected");
   return CheckProperties(fsas, k2host::IsConnected);
 }
 
 bool IsRandEquivalentUnweighted(FsaOrVec &a, FsaOrVec &b,
                                 bool treat_epsilons_specially /*=true*/,
                                 std::size_t npath /*= 100*/) {
+  NVTX_RANGE("IsRandEquivalentUnweighted");
   K2_CHECK_GE(a.NumAxes(), 2);
   K2_CHECK_EQ(b.NumAxes(), a.NumAxes());
   if (a.Context()->GetDeviceType() != kCpu ||
@@ -218,6 +227,7 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
                       float beam /*=k2host::kFloatInfinity*/,
                       bool treat_epsilons_specially /*=true*/,
                       float delta /*=1e-6*/, std::size_t npath /*= 100*/) {
+  NVTX_RANGE("IsRandEquivalent");
   K2_CHECK_GE(a.NumAxes(), 2);
   K2_CHECK_EQ(b.NumAxes(), a.NumAxes());
   if (a.Context()->GetDeviceType() != kCpu ||
@@ -250,6 +260,7 @@ bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
 
 template <typename FloatType>
 Array1<FloatType> GetForwardScores(FsaVec &fsas, bool log_semiring) {
+  NVTX_RANGE("GetForwardScores");
   ContextPtr &c = fsas.Context();
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);
   K2_CHECK_EQ(fsas.NumAxes(), 3);
@@ -276,6 +287,7 @@ template <typename FloatType>
 Array1<FloatType> GetBackwardScores(
     FsaVec &fsas, const Array1<FloatType> *tot_scores /*= nullptr*/,
     bool log_semiring /*= true*/) {
+  NVTX_RANGE("GetBackwardScores");
   ContextPtr &c = fsas.Context();
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);
   K2_CHECK_EQ(fsas.NumAxes(), 3);

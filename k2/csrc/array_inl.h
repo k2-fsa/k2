@@ -42,6 +42,7 @@ Array1<T> Array1<T>::Clone() const {
 
 template <typename T>
 void Array1<T>::CopyFrom(const Array1<T> &src) {
+  NVTX_RANGE("Array1::CopyFrom");
   K2_CHECK_EQ(dim_, src.dim_);
   if (dim_ == 0) return;
   auto kind = GetMemoryCopyKind(*src.Context(), *Context());
