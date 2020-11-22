@@ -234,7 +234,6 @@ RaggedShapeIndexIterator RaggedShape::Iterator() {
 
 int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
   NVTX_RANGE("RaggedShape::op[](std::vector<int32>)");
-  NVTX_RANGE("RaggedShape::operator[]");
   K2_CHECK_EQ(static_cast<int32_t>(indexes.size()), NumAxes());
   K2_CHECK_EQ(Context()->GetDeviceType(), kCpu);
   int32_t cur_idx = indexes[0];
