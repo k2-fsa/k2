@@ -35,7 +35,7 @@ class TestGetTotScores(unittest.TestCase):
         '''
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append('cuda', 0)
+            devices.append(torch.device('cuda'))
 
         for device in devices:
             fsa = k2.Fsa.from_str(s).to(device)
@@ -118,7 +118,7 @@ class TestGetTotScores(unittest.TestCase):
 
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append('cuda', 0)
+            devices.append(torch.device('cuda'))
 
         for device in devices:
             fsa1 = k2.Fsa.from_str(s1).to(device)
@@ -201,7 +201,7 @@ class TestGetTotScores(unittest.TestCase):
         '''
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append('cuda', 0)
+            devices.append(torch.device('cuda'))
 
         for device in devices:
             fsa = k2.Fsa.from_str(s).to(device)
@@ -266,7 +266,7 @@ class TestGetTotScores(unittest.TestCase):
         '''
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append('cuda', 0)
+            devices.append(torch.device('cuda'))
 
         for device in devices:
             fsa1 = k2.Fsa.from_str(s1).to(device)
