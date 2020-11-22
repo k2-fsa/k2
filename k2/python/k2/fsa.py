@@ -3,7 +3,6 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from collections import OrderedDict
 from typing import Any
 from typing import Dict
 from typing import Iterator
@@ -124,50 +123,18 @@ class Fsa(object):
         Returns:
           An instance of Fsa.
         '''
-        self._init_internal()
         if isinstance(arcs, torch.Tensor):
             arcs: RaggedArc = _fsa_from_tensor(arcs)
-        self.arcs: RaggedArc = arcs
 
+        # Accessing self.__dict__ bypasses __setattr__.
+        self.__dict__['arcs'] = arcs
         self.__dict__['_properties'] = properties
-        self._tensor_attr['scores'] = _as_float(self.arcs.values()[:, -1])
-        if aux_labels is not None:
-            self.aux_labels = aux_labels.to(torch.int32)
-        # Access the properties field (it's a @property, i.e. it has a
-        # getter) which sets up the properties and also checks that
-        # the FSA is valid.
-        _ = self.properties
 
-    def __str__(self) -> str:
-        '''Return a string representation of this object (note: does not
-           contain all the information in it for now)'''
-        if hasattr(self, 'aux_labels'):
-            aux_labels = self.aux_labels.to(torch.int32)
-        else:
-            aux_labels = None
-        if self.arcs.num_axes() == 2:
-            ans = "k2.Fsa: " + _fsa_to_str(self.arcs, False, aux_labels)
-        else:
-            ans = "k2.FsaVec: \n"
-            for i in range(self.shape[0]):
-                # get the i-th Fsa
-                ragged_arc, start = self.arcs.index(0, i)
-                end = start + ragged_arc.values().shape[0]
-                ans += "FsaVec[" + str(i) + "]: " + _fsa_to_str(
-                    ragged_arc, False,
-                    None if aux_labels is None else aux_labels[start:end])
-        ans += "properties_str = " + _k2.fsa_properties_as_str(
-            self._properties) + "."
-        return ans
-
-
-    def _init_internal(self) -> None:
-        # There are three kinds of attribute dictionaries:
-        #
         # - `_tensor_attr`
         #     It saves attribute values of type torch.Tensor. `shape[0]` of
         #     attribute values have to be equal to the number of arcs
-        #     in the FSA.
+        #     in the FSA.  There are a couple of standard ones, 'aux_labels'
+        #     (present for transducers), and 'scores'.
         #
         # - `_non_tensor_attr`
         #     It saves non-tensor attributes, e.g., :class:`SymbolTable`.
@@ -175,11 +142,7 @@ class Fsa(object):
         # - `_cache`
         #     It contains tensors for autograd. Users should NOT manipulate it.
         #     The dict is filled in automagically.
-
-        self._tensor_attr = OrderedDict()
-        self._non_tensor_attr = OrderedDict()
-        self._cache = OrderedDict()
-
+        #
         # The `_cache` dict contains the following attributes:
         #
         #  - `state_batches`:
@@ -218,6 +181,41 @@ class Fsa(object):
         #           returned by :func:`_k2._get_forward_scores_float` or
         #           :func:`_get_forward_scores_double` with `log_semiring=False`
 
+        for name in [ '_tensor_attr', '_non_tensor_attr', '_cache' ]:
+            self.__dict__[name] = dict()
+
+
+        self._tensor_attr['scores'] = _as_float(self.arcs.values()[:, -1])
+        if aux_labels is not None:
+            self.aux_labels = aux_labels.to(torch.int32)
+        # Access the properties field (it's a @property, i.e. it has a
+        # getter) which sets up the properties and also checks that
+        # the FSA is valid.
+        _ = self.properties
+
+    def __str__(self) -> str:
+        '''Return a string representation of this object (note: does not
+           contain all the information in it for now)'''
+        if hasattr(self, 'aux_labels'):
+            aux_labels = self.aux_labels.to(torch.int32)
+        else:
+            aux_labels = None
+        if self.arcs.num_axes() == 2:
+            ans = "k2.Fsa: " + _fsa_to_str(self.arcs, False, aux_labels)
+        else:
+            ans = "k2.FsaVec: \n"
+            for i in range(self.shape[0]):
+                # get the i-th Fsa
+                ragged_arc, start = self.arcs.index(0, i)
+                end = start + ragged_arc.values().shape[0]
+                ans += "FsaVec[" + str(i) + "]: " + _fsa_to_str(
+                    ragged_arc, False,
+                    None if aux_labels is None else aux_labels[start:end])
+        ans += "properties_str = " + _k2.fsa_properties_as_str(
+            self._properties) + "."
+        return ans
+
+
     def __setattr__(self, name: str, value: Any) -> None:
         '''
         Caution:
@@ -225,18 +223,10 @@ class Fsa(object):
           afterwards, please consider passing a copy of it.
         '''
 
-        if hasattr(type(self), name) or name in self.__dict__:
-            # For attribute names that have a getter/setter function (like 'property'
-            # or which exist as members of the object's __dict__ (like
-            # 'arcs', '_tensor_attr', '_non_tensor_attr'), do the member lookup
-            # in the normal way as if __setattr__ was not defined.
-            object.__setattr__(key, value)
+        assert name not in ('_tensor_attr', '_non_tensor_attr', 'arcs',
+                            '_cache', '_properties', 'properties')
 
-        if name in ('_tensor_attr', '_non_tensor_attr', 'arcs',
-                    '_cache'):
-            object.__setattr__(self, name, value)
-
-        elif isinstance(value, torch.Tensor):
+        if isinstance(value, torch.Tensor):
             assert value.shape[0] == self.arcs.values().shape[0]
             if name == 'labels':
                 assert value.dtype == torch.int32
@@ -251,9 +241,6 @@ class Fsa(object):
                 # to integer patterns here.
                 self.arcs.values()[:, -1] = _as_int(value.detach())
         else:
-            assert name != 'properties'  # should be set by getter/setter or by
-                                         # doing self.__dict__['_properties'] =
-                                         # foo
             self._non_tensor_attr[name] = value
 
 
@@ -269,10 +256,11 @@ class Fsa(object):
 
     @labels.setter
     def labels(self, values) -> None:
+        print("In labels setter")
         assert value.dtype == torch.int32
         self.arcs.values()[:, 2] = values
         # Invalidate the properties since we changed the labels.
-        self._properties = None
+        self.__dict__['_properties'] = None
 
 
     @property
@@ -296,16 +284,6 @@ class Fsa(object):
                        str(self.arcs)))
         return properties
 
-    @properties.setter
-    def properties(self, value) -> None:
-        """ Only supports setting self.properties to None; any other
-        value should be set internally by writing to self.__dict__ directly."""
-        if value == None:
-            self.__dict__['_properties'] = None
-        else:
-            raise RuntimeError("""Currently we don't allow the .properties of an Fsa
-            to be set this way, except to None""");
-
     @property
     def properties_str(self) -> str:
         return _k2.fsa_properties_as_str(self.properties)
@@ -317,8 +295,6 @@ class Fsa(object):
     @property
     def grad(self) -> torch.Tensor:
         return self.scores.grad
-
-
 
     def __getattr__(self, name: str) -> Any:
         """
@@ -602,10 +578,9 @@ class Fsa(object):
             self.aux_symbols = symbols
         if aux_symbols is not None:
             self.symbols = aux_symbols
-        # set the properties to None because they are now invalid...
-        self.properties = None
+        self.__dict__['_properties'] = None
         # access self.properties which will do a validity check on the modified
-        # FSA.
+        # FSA after getting the properties
         self.properties
         return self
 
