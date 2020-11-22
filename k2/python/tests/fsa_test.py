@@ -176,7 +176,7 @@ class TestFsa(unittest.TestCase):
     def test_transducer_from_tensor(self):
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append('cuda', 0)
+            devices.append(torch.device('cuda', 0))
 
         for device in devices:
             fsa_tensor = torch.tensor(

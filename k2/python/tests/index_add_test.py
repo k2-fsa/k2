@@ -19,7 +19,7 @@ class TestIndexAdd(unittest.TestCase):
     def test_contiguous(self):
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append('cuda', 0)
+            devices.append(torch.device('cuda', 0))
 
         for device in devices:
             num_elements = torch.randint(10, 1000, (1,)).item()
@@ -43,7 +43,7 @@ class TestIndexAdd(unittest.TestCase):
     def test_non_contiguous(self):
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append('cuda', 0)
+            devices.append(torch.device('cuda', 0))
 
         for device in devices:
             num_elements = torch.randint(100, 10000, (1,)).item()
