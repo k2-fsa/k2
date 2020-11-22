@@ -171,7 +171,6 @@ class MultiGraphDenseIntersect {
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput(). */
   void Intersect() {
-    NVTX_RANGE("Intersect");
     /*
       T is the largest number of (frames+1) of neural net output, or the largest
       number of frames of log-likelihoods we count the final frame with (0,
@@ -182,6 +181,11 @@ class MultiGraphDenseIntersect {
       neural-net output.
     */
     int32_t T = b_fsas_.shape.MaxSize(1), num_fsas = b_fsas_.shape.Dim0();
+
+    std::ostringstream os;
+    os << "Intersect:T=" << T << ",num_fsas=" << num_fsas
+       << ",TotSize(1)=" << b_fsas_.shape.TotSize(1);
+    NVTX_RANGE(os.str().c_str());
 
     frames_.reserve(T + 1);
 
@@ -196,6 +200,7 @@ class MultiGraphDenseIntersect {
     frames_.pop_back();
 
     {
+      NVTX_RANGE("InitOshapeUnpruned..");
       // each of these have 3 axes.
       std::vector<RaggedShape *> arcs_shapes(T + 1);
       for (int32_t t = 0; t <= T; t++)
@@ -223,6 +228,7 @@ class MultiGraphDenseIntersect {
 
   // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
   std::unique_ptr<FrameInfo> InitialFrameInfo() {
+    NVTX_RANGE("InitialFrameInfo");
     int32_t num_fsas = b_fsas_.shape.Dim0();
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
 
@@ -626,20 +632,23 @@ class MultiGraphDenseIntersect {
     // Modifying the accessor is perhaps a little bit of a hack.
     if (a_fsas_.shape.Dim0() > 1) state_map_acc.elem_stride0 = 0;
 
-    auto lambda_set_state_map =
-        [=] __host__ __device__(int32_t arc_idx012) -> void {
-      int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
-      int32_t dest_state_idx01 = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
-      float end_loglike = ai_data[arc_idx012].end_loglike,
-            cutoff = cutoffs_data[fsa_id];
-      if (end_loglike > cutoff) {
-        // The following is a race condition as multiple threads may write to
-        // the same location, but it doesn't matter, the point is to assign
-        // one of the indexes.
-        state_map_acc(fsa_id, dest_state_idx01) = arc_idx012;
-      }
-    };
-    Eval(c_, arc_info.values.Dim(), lambda_set_state_map);
+    {
+      NVTX_RANGE("LambdaSetStateMap");
+      auto lambda_set_state_map =
+          [=] __host__ __device__(int32_t arc_idx012) -> void {
+        int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
+        int32_t dest_state_idx01 = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
+        float end_loglike = ai_data[arc_idx012].end_loglike,
+        cutoff = cutoffs_data[fsa_id];
+        if (end_loglike > cutoff) {
+          // The following is a race condition as multiple threads may write to
+          // the same location, but it doesn't matter, the point is to assign
+          // one of the indexes.
+          state_map_acc(fsa_id, dest_state_idx01) = arc_idx012;
+        }
+      };
+      Eval(c_, arc_info.values.Dim(), lambda_set_state_map);
+    }
 
     // renumber_arcs will be a renumbering that dictates which of the arcs
     // in 'ai' we keep
@@ -659,7 +668,9 @@ class MultiGraphDenseIntersect {
     renumber_states.Keep() = 0;
     char *keep_this_arc_data = renumber_arcs.Keep().Data(),
          *keep_this_state_data = renumber_states.Keep().Data();
+
     if (a_fsas_.shape.Dim0() > 1) {
+      NVTX_RANGE("LambdaSetKeepA");
       int32_t *state_map_data = state_map_.Data();
       auto lambda_set_keep =
           [=] __host__ __device__(int32_t arc_idx012) -> void {
@@ -674,10 +685,11 @@ class MultiGraphDenseIntersect {
       };
       Eval(c_, arc_info.values.Dim(), lambda_set_keep);
     } else {
+      NVTX_RANGE("LambdaSetKeepB");
       auto lambda_set_keep =
           [=] __host__ __device__(int32_t arc_idx012) -> void {
         int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]],
-                dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
+        dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
         int j = state_map_acc(fsa_id, dest_state);
         if (j != -1) {  // the dest-state was kept..
           keep_this_arc_data[arc_idx012] = 1;
@@ -699,6 +711,7 @@ class MultiGraphDenseIntersect {
     // with it.  It should be non-decreasing.
     Array1<int32_t> state_to_fsa_id(c_, num_states);
     {  // This block sets 'state_to_fsa_id'.
+      NVTX_RANGE("LambdaSetStateToFsaId");
       int32_t *state_to_fsa_id_data = state_to_fsa_id.Data();
       auto lambda_state_to_fsa_id =
           [=] __host__ __device__(int32_t arc_idx012) -> void {
@@ -735,78 +748,85 @@ class MultiGraphDenseIntersect {
     };
     Eval(c_, num_states, lambda_init_loglike);
 
-    // Modify the elements of `state_map` to refer to the indexes into
-    // `ans->states` / `kept_states_data`, rather than the indexes into ai_data.
-    // This will decrease some of the values in `state_map`, in general.
-    auto lambda_modify_state_map =
-        [=] __host__ __device__(int32_t arc_idx012) -> void {
-      int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
-      int32_t dest_state_idx = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
-      int32_t this_j = state_reorder_data[arc_idx012],
-              next_j = state_reorder_data[arc_idx012 + 1];
-      if (next_j > this_j) {
-        K2_CHECK_EQ(state_map_acc(fsa_id, dest_state_idx), arc_idx012);
-        // Note: this_j is an idx01 into ans->states.  previously state_map_data
-        // cotained an arc_idx012 (of the entering arc that won the race).
-        state_map_acc(fsa_id, dest_state_idx) = this_j;
-      }
-    };
-    Eval(c_, arc_info.values.Dim(), lambda_modify_state_map);
+    {
+      NVTX_RANGE("LambdaModifyStateMap");
+      // Modify the elements of `state_map` to refer to the indexes into
+      // `ans->states` / `kept_states_data`, rather than the indexes into ai_data.
+      // This will decrease some of the values in `state_map`, in general.
+      auto lambda_modify_state_map =
+          [=] __host__ __device__(int32_t arc_idx012) -> void {
+        int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
+        int32_t dest_state_idx = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
+        int32_t this_j = state_reorder_data[arc_idx012],
+        next_j = state_reorder_data[arc_idx012 + 1];
+        if (next_j > this_j) {
+          K2_CHECK_EQ(state_map_acc(fsa_id, dest_state_idx), arc_idx012);
+          // Note: this_j is an idx01 into ans->states.  previously state_map_data
+          // cotained an arc_idx012 (of the entering arc that won the race).
+          state_map_acc(fsa_id, dest_state_idx) = this_j;
+        }
+      };
+      Eval(c_, arc_info.values.Dim(), lambda_modify_state_map);
+    }
 
     // We'll set up the data of the kept arcs and states below...
     ArcInfo *kept_ai_data = cur_frame->arcs.values.Data();
     StateInfo *kept_states_data = ans->states.values.Data();
 
-    auto lambda_set_arcs_and_states =
-        [=] __host__ __device__(int32_t arc_idx012) -> void {
-      // arc_idx012 is the inde into the unpruned arcs, 'ai'
-      int32_t this_pruned_idx012 = arc_reorder_data[arc_idx012],
-              next_pruned_idx012 = arc_reorder_data[arc_idx012 + 1],
-              fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
+    {
+      NVTX_RANGE("LambdaSetArcsAndStates");
+      auto lambda_set_arcs_and_states =
+          [=] __host__ __device__(int32_t arc_idx012) -> void {
+        // arc_idx012 is the inde into the unpruned arcs, 'ai'
+        int32_t this_pruned_idx012 = arc_reorder_data[arc_idx012],
+        next_pruned_idx012 = arc_reorder_data[arc_idx012 + 1],
+        fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
 
-      // Note: I have a idea to reduce main-memory bandwidth by
-      // caching writes in a fixed-size array in shared memory
-      // (store: best-prob, index).  We'd go round robin, try e.g.
-      // twice.
-      // Would have to do this with a functor rather than a lambda,
-      // as __shared__ won't work on CPU.
-      if (next_pruned_idx012 > this_pruned_idx012) {
-        // ... this was one of the arcs to keep.  Load the ArcInfo from the
-        // un-pruned array..
-        ArcInfo info = ai_data[arc_idx012];
-        // state_idx01 is the index into ans->states, of the destination state.
-        // Note: multiple arcs may enter this state, which is why we had to set
-        // that in a separate kernel (lambda_modify_state_map).
-        int32_t state_idx01 =
-            state_map_acc(fsa_id, info.u.dest_a_fsas_state_idx01);
-        // multiple threads may write the same value to the address written to
-        // in the next line.
-        kept_states_data[state_idx01].a_fsas_state_idx01 =
-            info.u.dest_a_fsas_state_idx01;
-        info.u.dest_info_state_idx01 = state_idx01;
-        kept_ai_data[this_pruned_idx012] = info;
-        int32_t end_loglike_int = FloatToOrderedInt(info.end_loglike);
-        // Set the forward log-like of the dest state to the largest of any of
-        // those of the incoming arcs.  Note: we initialized this in
-        // lambda_init_loglike above.
-        atomicMax(&(kept_states_data[state_idx01].forward_loglike),
-                  end_loglike_int);
-      }
-    };
-    Eval(c_, arc_info.values.Dim(), lambda_set_arcs_and_states);
-
-    const int32_t *next_states_row_ids1 = ans->states.shape.RowIds(1).Data();
-    auto lambda_reset_state_map =
-        [=] __host__ __device__(int32_t state_idx01) -> void {
-      int32_t a_fsas_state_idx01 =
-                  kept_states_data[state_idx01].a_fsas_state_idx01,
-              fsa_idx0 = next_states_row_ids1[state_idx01];
-      K2_CHECK_EQ(state_map_acc(fsa_idx0, a_fsas_state_idx01), state_idx01);
-      // We're resetting state_map to its original clean condition.
-      state_map_acc(fsa_idx0, a_fsas_state_idx01) = -1;
-    };
-
-    Eval(c_, ans->states.values.Dim(), lambda_reset_state_map);
+        // Note: I have a idea to reduce main-memory bandwidth by
+        // caching writes in a fixed-size array in shared memory
+        // (store: best-prob, index).  We'd go round robin, try e.g.
+        // twice.
+        // Would have to do this with a functor rather than a lambda,
+        // as __shared__ won't work on CPU.
+        if (next_pruned_idx012 > this_pruned_idx012) {
+          // ... this was one of the arcs to keep.  Load the ArcInfo from the
+          // un-pruned array..
+          ArcInfo info = ai_data[arc_idx012];
+          // state_idx01 is the index into ans->states, of the destination state.
+          // Note: multiple arcs may enter this state, which is why we had to set
+          // that in a separate kernel (lambda_modify_state_map).
+          int32_t state_idx01 =
+              state_map_acc(fsa_id, info.u.dest_a_fsas_state_idx01);
+          // multiple threads may write the same value to the address written to
+          // in the next line.
+          kept_states_data[state_idx01].a_fsas_state_idx01 =
+              info.u.dest_a_fsas_state_idx01;
+          info.u.dest_info_state_idx01 = state_idx01;
+          kept_ai_data[this_pruned_idx012] = info;
+          int32_t end_loglike_int = FloatToOrderedInt(info.end_loglike);
+          // Set the forward log-like of the dest state to the largest of any of
+          // those of the incoming arcs.  Note: we initialized this in
+          // lambda_init_loglike above.
+          atomicMax(&(kept_states_data[state_idx01].forward_loglike),
+                    end_loglike_int);
+        }
+      };
+      Eval(c_, arc_info.values.Dim(), lambda_set_arcs_and_states);
+    }
+    {
+      NVTX_RANGE("LambdaResetStateMap");
+      const int32_t *next_states_row_ids1 = ans->states.shape.RowIds(1).Data();
+      auto lambda_reset_state_map =
+          [=] __host__ __device__(int32_t state_idx01) -> void {
+        int32_t a_fsas_state_idx01 =
+        kept_states_data[state_idx01].a_fsas_state_idx01,
+        fsa_idx0 = next_states_row_ids1[state_idx01];
+        K2_CHECK_EQ(state_map_acc(fsa_idx0, a_fsas_state_idx01), state_idx01);
+        // We're resetting state_map to its original clean condition.
+        state_map_acc(fsa_idx0, a_fsas_state_idx01) = -1;
+      };
+      Eval(c_, ans->states.values.Dim(), lambda_reset_state_map);
+    }
 
     return ans;
   }

@@ -307,6 +307,47 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   return RaggedShape(axes_out);
 }
 
+std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
+                                           int32_t axis) {
+  NVTX_RANGE(__func__);
+  K2_CHECK_EQ(axis, 0);
+  std::vector<RaggedShape> ans;
+  if (num_srcs == 0)
+    return ans;
+  ans.reserve(num_srcs);
+  ContextPtr c = src[0]->Context();
+
+  std::vector<int32_t> all_row_splits_vec(num_srcs * 2);
+  int32_t max_dim = 0;
+  // all_row_splits_vec will contain [ 0 d0 0 d1 0 d2 .. ]
+  // where d0 == src[0]->Dim0(), d1 == src[1]->Dim0()..
+  for (int32_t i = 0; i < num_srcs; i++) {
+    int32_t this_dim0 = src[i]->Dim0();
+    if (this_dim0 > max_dim)
+      max_dim = this_dim0;
+    all_row_splits_vec[i * 2] = 0;
+    all_row_splits_vec[i * 2 + 1] = this_dim0;
+  }
+  Array1<int32_t> all_row_splits(c, all_row_splits_vec);
+  Array1<int32_t> all_row_ids(c, max_dim, 0);
+
+  for (int32_t i = 0; i < num_srcs; i++) {
+    int32_t num_axes = src[i]->NumAxes();
+    std::vector<RaggedShapeDim> axes;
+    axes.reserve(num_axes);  //  note, the size of the `axes` of a RaggedShape
+                             //  is its NumAxes() - 1.
+    axes.resize(1);
+    int32_t this_old_dim0 = all_row_splits_vec[i * 2 + 1];
+    axes[0].row_splits = all_row_splits.Range(i * 2, 2);
+    axes[0].row_ids = all_row_ids.Range(0, this_old_dim0);
+    axes[0].cached_tot_size = this_old_dim0;
+    axes.insert(axes.end(), src[i]->Axes().begin(), src[i]->Axes().end());
+    ans.emplace_back(axes);
+  }
+  return ans;
+}
+
+
 /*
   Internal function used in Index(), which gets certain arrays used internally.
 
@@ -586,6 +627,7 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
 }
 
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
+  NVTX_RANGE("Append(RaggedShape)");
   if (num_srcs == 1) return **src;
   K2_CHECK_GT(num_srcs, 1);
   if (axis == 1) {
@@ -876,6 +918,7 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
 }
 
 RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src) {
+  NVTX_RANGE("Stack(RaggedShape)");
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK(axis >= 0 && axis <= 1);
 
@@ -888,20 +931,11 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src) {
     K2_CHECK(c->IsCompatible(*src[i]->Context()));
   }
 
-  std::vector<RaggedShape> unsqueezed(num_srcs);
+  std::vector<RaggedShape> unsqueezed = UnsqueezeParallel(
+      num_srcs, src, 0);
   std::vector<RaggedShape *> unsqueezed_ptrs(num_srcs);
-  {
-    ParallelRunner pr(c);
-    for (int32_t i = 0; i < num_srcs; i++) {
-      With w(pr.NewStream());
-      unsqueezed[i] = Unsqueeze(*src[i], 0);
-      unsqueezed_ptrs[i] = &unsqueezed[i];
-    }
-    // destructor will wait for work in those launched streams to finish.
-    // (well it won't actually wait, but it will force the current stream to
-    // wait.)
-  }
-
+  for (int32_t i = 0; i < num_srcs; i++)
+    unsqueezed_ptrs[i] = &(unsqueezed[i]);
   RaggedShape ans = Append(0, num_srcs, unsqueezed_ptrs.data());
   // Transpose will check if all src->Dim0() has the same value.
   if (axis == 1) ans = Transpose(ans);

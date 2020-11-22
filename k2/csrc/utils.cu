@@ -112,6 +112,7 @@ __global__ void RowSplitsToRowIdsKernel(int32_t num_rows,
 void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
                        const int32_t *row_splits, int32_t num_elems,
                        int32_t *row_ids) {
+  NVTX_RANGE(__func__);
   if (num_rows <= 0 || num_elems <= 0) return;
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
@@ -267,6 +268,7 @@ __global__ void RowIdsToRowSplitsKernel(int32_t num_elems,
 void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
                        bool no_empty_rows, int32_t num_rows,
                        int32_t *row_splits) {
+  NVTX_RANGE(__func__);
   // process corner case first
   if (num_elems == 0) {
     auto lambda_set_values = [=] __host__ __device__(int32_t i) {
@@ -561,6 +563,7 @@ __global__ void GetTaskRedirect(int32_t num_tasks, const int32_t *row_splits,
 
 void GetTaskRedirect(cudaStream_t stream, int32_t num_tasks,
                      const int32_t *row_splits, TaskRedirect *redirect_out) {
+  NVTX_RANGE(__func__);
   if (num_tasks <= 0) return;
   if (stream == kCudaStreamInvalid) {
     // there's not much point in using this on CPU as there are better ways

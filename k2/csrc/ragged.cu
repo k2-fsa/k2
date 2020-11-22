@@ -97,6 +97,7 @@ std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
 }
 
 Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
+  NVTX_RANGE("RaggedShape::RowIds()");
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
   RaggedShapeDim &rsd = axes_[axis - 1];
@@ -119,6 +120,7 @@ Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
 }
 
 int32_t RaggedShape::MaxSize(int32_t axis) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
   const auto &row_splits = axes_[axis - 1].row_splits;
@@ -158,6 +160,7 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
 
 RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
                                int32_t *value_offset /*= nullptr*/) {
+  NVTX_RANGE(__func__);
   // only support `axis == 0` for now
   K2_CHECK_EQ(axis, 0);
   K2_CHECK_GE(i, 0);
@@ -201,6 +204,7 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
 }
 
 void RaggedShape::Populate() {
+  NVTX_RANGE(__func__);
   int32_t num_axes = NumAxes();
   ParallelRunner pr(this->Context());
   for (int32_t i = 1; i < num_axes; ++i) {
@@ -212,6 +216,7 @@ void RaggedShape::Populate() {
 }
 
 RaggedShape RaggedShape::To(ContextPtr ctx) const {
+    NVTX_RANGE(__func__);
   if (ctx->IsCompatible(*Context())) return *this;
   std::vector<RaggedShapeDim> axes(axes_.size());
   int32_t num_axes = NumAxes();
@@ -228,7 +233,7 @@ RaggedShapeIndexIterator RaggedShape::Iterator() {
 }
 
 int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
-  NVTX_RANGE("RaggedShape::operator[]");
+  NVTX_RANGE("RaggedShape::op[](std::vector<int32>)");
   K2_CHECK_EQ(static_cast<int32_t>(indexes.size()), NumAxes());
   K2_CHECK_EQ(Context()->GetDeviceType(), kCpu);
   int32_t cur_idx = indexes[0];
@@ -242,6 +247,7 @@ int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
 }
 
 int32_t RaggedShape::TotSize(int32_t axis) const {
+  NVTX_RANGE("RaggedShape::TotSize");
   K2_CHECK_GE(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
   if (axis == 0)
@@ -402,6 +408,7 @@ bool Equal(RaggedShape &a, RaggedShape &b) {
 
 std::istream &operator>>(std::istream &is,
                          RaggedShape &shape) {
+  NVTX_RANGE("operator>>(RaggedShape)");
   // Note: element 0 of 'row_splits' will end up being
   // discarded; the others will become the axes of `shape`.
   std::vector<std::vector<int32_t> > row_splits;

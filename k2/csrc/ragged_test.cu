@@ -352,7 +352,7 @@ void TestAndOrPerSubListTest() {
   }
 }
 
-TEST(RagedShapeOpsTest, AndOrPerSubListTest) {
+TEST(RaggedShapeOpsTest, AndOrPerSubListTest) {
   TestAndOrPerSubListTest<int32_t, kCpu>();
   TestAndOrPerSubListTest<int32_t, kCuda>();
 }
@@ -433,6 +433,29 @@ TEST_F(RaggedShapeOpsSuiteTest, TestUnsqueezeGpu) {
   TestUnsqueeze(GetCudaContext(), simple_shape_);
   TestUnsqueeze(GetCudaContext(), random_shape_);
 }
+
+
+TEST(RaggedShapeOpsTest, TestUnsqueezeParallel) {
+  for (int32_t i = 0; i < 10; i++) {
+    ContextPtr c = (i % 2 == 0 ? GetCpuContext() : GetCudaContext());
+    int32_t num_shapes = RandInt(0, 10);
+
+    std::vector<RaggedShape*> orig_shapes;
+    for (int32_t i = 0; i < num_shapes; i++)
+      orig_shapes.push_back(new RaggedShape(RandomRaggedShape(false, 2, 5, 0, 1000).To(c)));
+    int32_t axis = 0;  // only one supported for now.
+    std::vector<RaggedShape> unsqueezed =
+        UnsqueezeParallel(num_shapes, orig_shapes.data(), axis);
+    for (int32_t i = 0; i < num_shapes; i++) {
+      ASSERT_EQ(unsqueezed[i].Validate(), true);
+      RaggedShape temp = RemoveAxis(unsqueezed[i], axis);
+      ASSERT_EQ(Equal(temp, *(orig_shapes[i])), true);
+      delete orig_shapes[i];
+    }
+  }
+}
+
+
 
 void TestRemoveAxis(ContextPtr context, const RaggedShape &input_shape) {
   RaggedShape src_shape = input_shape.To(context);
@@ -1882,6 +1905,31 @@ TEST(RaggedTest, TestStackRagged) {
   TestStackRagged<kCpu, double>();
   TestStackRagged<kCuda, double>();
 }
+
+
+TEST(RaggedTest, TestMaxSize) {
+  for (int32_t i = 0; i <= 10; i++) {
+    ContextPtr c = (i % 2 == 0 ? GetCpuContext() : GetCudaContext());
+    int32_t num_axes = RandInt(2, 4);
+    RaggedShape shape =
+        RandomRaggedShape(true, num_axes, num_axes, 0, 1000).To(c);
+    int32_t axis = RandInt(1, num_axes - 1);
+    int32_t max_size = shape.MaxSize(axis);
+    if (axis == 0) {
+      K2_CHECK(max_size == shape.Dim0());
+    } else {
+      Array1<int32_t> row_splits = shape.RowSplits(axis).To(GetCpuContext());
+      int32_t *row_splits_data = row_splits.Data();
+      int32_t m = 0;
+      for (int32_t i = 0; i + 1 < row_splits.Dim(); i++) {
+        int32_t size = row_splits_data[i+1] - row_splits_data[i];
+        if (size > m) m = size;
+      }
+      ASSERT_EQ(m, max_size);
+    }
+  }
+}
+
 
 template <DeviceType d>
 void TestMakeTransposable() {
