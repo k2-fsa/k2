@@ -17,9 +17,11 @@ import torch
 class TestIndexAdd(unittest.TestCase):
 
     def test_contiguous(self):
-        cpu_device = torch.device('cpu')
-        cuda_device = torch.device('cuda', 0)
-        for device in (cpu_device, cuda_device):
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append('cuda', 0)
+
+        for device in devices:
             num_elements = torch.randint(10, 1000, (1,)).item()
             src = torch.rand(num_elements, dtype=torch.float32).to(device)
 
@@ -39,9 +41,11 @@ class TestIndexAdd(unittest.TestCase):
             assert torch.allclose(src, saved[1:])
 
     def test_non_contiguous(self):
-        cpu_device = torch.device('cpu')
-        cuda_device = torch.device('cuda', 0)
-        for device in (cpu_device, cuda_device):
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append('cuda', 0)
+
+        for device in devices:
             num_elements = torch.randint(100, 10000, (1,)).item()
             src = torch.rand(num_elements, dtype=torch.float32).to(device)
             src_stride = torch.randint(2, 8, (1,)).item()

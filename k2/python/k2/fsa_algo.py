@@ -306,7 +306,8 @@ def determinize(fsa: Fsa) -> Fsa:
         input ``fsa`` is NOT modified.
     '''
     properties = getattr(fsa, 'properties', None)
-    if properties is not None and properties & fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0:
+    if properties is not None \
+            and properties & fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0: # noqa
         return fsa
 
     ragged_arc = _k2.determinize(fsa.arcs)

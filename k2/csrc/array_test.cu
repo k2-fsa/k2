@@ -470,7 +470,7 @@ void TestArray2() {
     RegionPtr region = NewRegion(context, num_element * element_size);
     std::vector<T> src_data(num_element);
     std::iota(src_data.begin(), src_data.end(), 0);
-    T *data = region->GetData<T, d>();
+    T *data = region->GetData<T>();
     auto kind = GetMemoryCopyKind(*cpu, *region->context);
     MemoryCopy(static_cast<void *>(data),
                static_cast<const void *>(src_data.data()),
@@ -569,7 +569,7 @@ void TestArray2() {
     RegionPtr region = NewRegion(context, num_element * element_size);
     std::vector<T> src_data(num_element);
     std::iota(src_data.begin(), src_data.end(), 0);
-    T *data = region->GetData<T, d>();
+    T *data = region->GetData<T>();
     auto kind = GetMemoryCopyKind(*cpu, *region->context);
     MemoryCopy(static_cast<void *>(data),
                static_cast<const void *>(src_data.data()),
@@ -629,7 +629,7 @@ void TestArray2() {
     RegionPtr region = NewRegion(context, num_element * element_size);
     std::vector<T> src_data(num_element);
     std::iota(src_data.begin(), src_data.end(), 0);
-    T *data = region->GetData<T, d>();
+    T *data = region->GetData<T>();
     auto kind = GetMemoryCopyKind(*cpu, *region->context);
     MemoryCopy(static_cast<void *>(data),
                static_cast<const void *>(src_data.data()),

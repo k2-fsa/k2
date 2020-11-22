@@ -208,7 +208,7 @@ def is_rand_equivalent(a: Fsa,
                        treat_epsilons_specially: bool = True,
                        delta: float = 1e-6,
                        npath: int = 100) -> bool:
-    '''Check if the Fsa `a` appears to be equivalent to `b` by 
+    '''Check if the Fsa `a` appears to be equivalent to `b` by
        randomly checking some symbol sequences in them.
 
     Caution:
@@ -221,18 +221,18 @@ def is_rand_equivalent(a: Fsa,
       b:
         The other input FSA. It must have the same NumAxes() as a.
         Must be top-sorted and on CPU.
-      log_semiring: 
+      log_semiring:
         The semiring to be used for all weight measurements;
         if false then we use 'max' on alternative paths; if
         true we use 'log-add'.
       beam:
-         beam > 0 that affects pruning; the algorithm will only check 
-         paths within `beam` of the total score of the lattice (for 
+         beam > 0 that affects pruning; the algorithm will only check
+         paths within `beam` of the total score of the lattice (for
          tropical semiring, it's max weight over all paths from start
          state to final state; for log semiring, it's log-sum probs over
          all paths) in `a` or `b`.
       treat_epsilons_specially:
-         We'll do `intersection` between generated path and a or b when 
+         We'll do `intersection` between generated path and a or b when
          check equivalence. Generally, if it's true, we will treat
          epsilons as epsilon when doing intersection; Otherwise, epsilons
          will just be treated as any other symbol.
@@ -241,7 +241,7 @@ def is_rand_equivalent(a: Fsa,
          If abs(weights_a, weights_b) <= delta, we say the two
          paths are equivalent.
       npath:
-         The number of paths will be generated to check the 
+         The number of paths will be generated to check the
          equivalence of `a` and `b`
     Returns:
        True if the Fsa `a` appears to be equivalent to `b` by randomly

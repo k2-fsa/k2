@@ -77,7 +77,6 @@ static constexpr bool kEnableNvtx = true;
 #else
 static constexpr bool kEnableNvtx = false;
 #endif
-
 }  // namespace k2
 
 #endif  //  K2_CSRC_VERSION_H_

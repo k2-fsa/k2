@@ -5,7 +5,7 @@ set(k2_srcs
   version.cu
 )
 
-if(USE_PYTORCH)
+if(K2_USE_PYTORCH)
   add_definitions(-DTORCH_API_INCLUDE_EXTENSION_H)
   add_subdirectory(torch)
   set(k2_srcs ${k2_srcs} ${torch_srcs})

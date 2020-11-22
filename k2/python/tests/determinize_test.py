@@ -6,12 +6,11 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R determinize_test.py
+#  ctest --verbose -R determinize_test_py
 
 import unittest
 
 import k2
-import torch
 
 
 class TestDeterminize(unittest.TestCase):
@@ -35,13 +34,15 @@ class TestDeterminize(unittest.TestCase):
         '''
         fsa = k2.Fsa.from_str(s)
         prop = fsa.properties
-        self.assertFalse(prop & k2.fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0)
+        self.assertFalse(
+            prop & k2.fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0)
         dest = k2.determinize(fsa)
         log_semiring = False
         self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
         arc_sorted = k2.arc_sort(dest)
         prop = arc_sorted.properties
-        self.assertTrue(prop & k2.fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0)
+        self.assertTrue(
+            prop & k2.fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0)
 
 
 if __name__ == '__main__':

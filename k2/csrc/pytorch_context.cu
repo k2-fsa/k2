@@ -10,6 +10,7 @@
  */
 
 #include <memory>
+#include <mutex>  // NOLINT
 
 #include "c10/cuda/CUDACachingAllocator.h"
 #include "c10/cuda/CUDAFunctions.h"
@@ -116,8 +117,21 @@ class PytorchCudaContext : public Context {
 ContextPtr GetCpuContext() { return std::make_shared<PytorchCpuContext>(); }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
-  if (gpu_id < 0) gpu_id = c10::cuda::current_device();
-  return std::make_shared<PytorchCudaContext>(gpu_id);
+  static std::once_flag has_cuda_init_flag;
+  static bool has_cuda = false;
+  std::call_once(has_cuda_init_flag, []() {
+    if (torch::cuda::is_available())
+      has_cuda = true;
+    else
+      K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
+  });
+
+  if (has_cuda) {
+    if (gpu_id < 0) gpu_id = c10::cuda::current_device();
+    return std::make_shared<PytorchCudaContext>(gpu_id);
+  }
+
+  return GetCpuContext();
 }
 
 RegionPtr NewRegion(torch::Tensor &tensor) {

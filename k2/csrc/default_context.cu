@@ -11,6 +11,7 @@
  */
 
 #include <cstdlib>
+#include <mutex>  // NOLINT
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
@@ -104,7 +105,20 @@ class CudaContext : public Context {
 ContextPtr GetCpuContext() { return std::make_shared<CpuContext>(); }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
-  return std::make_shared<CudaContext>(gpu_id);
+  static std::once_flag has_cuda_init_flag;
+  static bool has_cuda = false;
+  std::call_once(has_cuda_init_flag, []() {
+    int n = 0;
+    auto ret = cudaGetDeviceCount(&n);
+    if (ret == cudaSuccess && n > 0)
+      has_cuda = true;
+    else
+      K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
+  });
+
+  if (has_cuda) return std::make_shared<CudaContext>(gpu_id);
+
+  return GetCpuContext();
 }
 
 }  // namespace k2

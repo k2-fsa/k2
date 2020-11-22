@@ -362,8 +362,8 @@ struct Ragged {
   }
 
   // There is no need to clone the shape because it's a kind of convention that
-  // Array1's that are the row_ids or row_splits of a Ragged object are not mutable
-  // so they can be re-used.
+  // Array1's that are the row_ids or row_splits of a Ragged object are not
+  // mutable so they can be re-used.
   Ragged<T> Clone() const {
     return Ragged<T>(shape, values.Clone());
   }

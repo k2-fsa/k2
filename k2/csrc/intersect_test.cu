@@ -79,7 +79,8 @@ TEST(Intersect, Simple) {
     K2_CHECK(IsRandEquivalentWrapper(out_fsas, out_fsas2,
                                      treat_epsilons_specially));
 
-    K2_LOG(INFO) << "out_fsas2 = " << out_fsas2 << ", arc_map_a2 = " << arc_map_a2
+    K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
+                 << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_b2 = " << arc_map_b2;
 
     /*

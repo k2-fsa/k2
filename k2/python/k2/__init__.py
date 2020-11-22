@@ -14,7 +14,6 @@ from .fsa_algo import linear_fsa
 from .fsa_algo import remove_epsilon
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
-
 from .fsa_properties import to_str as properties_to_str
 from .ops import index
 from .ops import index_add
@@ -28,12 +27,12 @@ from .utils import to_tensor
 # please keep the list sorted
 __all__ = [
     'DenseFsaVec',
-    'convert_dense_to_fsa_vec',
     'Fsa',
     'SymbolTable',
     'add_epsilon_self_loops',
     'arc_sort',
     'connect',
+    'convert_dense_to_fsa_vec',
     'create_fsa_vec',
     'determinize',
     'get_tot_scores',
@@ -42,6 +41,7 @@ __all__ = [
     'index_select',
     'intersect',
     'intersect_dense_pruned',
+    'is_rand_equivalent',
     'linear_fsa',
     'properties_to_str',
     'remove_epsilon',
@@ -49,7 +49,7 @@ __all__ = [
     'to_dot',
     'to_str',
     'to_tensor',
-    'properties_to_str'
     'top_sort',
     'union',
+    'use_cuda',
 ]

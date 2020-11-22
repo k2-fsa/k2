@@ -42,10 +42,11 @@ set(context_srcs
   ragged_ops.cu
   tensor.cu
   tensor_ops.cu
+  timer.cu
   utils.cu
 )
 
-if(USE_PYTORCH)
+if(K2_USE_PYTORCH)
   list(APPEND context_srcs pytorch_context.cu)
 else()
   list(APPEND context_srcs default_context.cu)
@@ -62,7 +63,7 @@ target_link_libraries(context PUBLIC fsa)
 target_link_libraries(context PUBLIC k2_log)
 target_link_libraries(context PUBLIC k2_nvtx)
 target_link_libraries(context PUBLIC moderngpu)
-if(USE_PYTORCH)
+if(K2_USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
 endif()
 
