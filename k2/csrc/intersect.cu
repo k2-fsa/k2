@@ -196,6 +196,7 @@ class MultiGraphDenseIntersect {
     frames_.pop_back();
 
     {
+      NVTX_RANGE("InitOshapeUnpruned..");
       // each of these have 3 axes.
       std::vector<RaggedShape *> arcs_shapes(T + 1);
       for (int32_t t = 0; t <= T; t++)
@@ -223,6 +224,7 @@ class MultiGraphDenseIntersect {
 
   // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
   std::unique_ptr<FrameInfo> InitialFrameInfo() {
+    NVTX_RANGE("InitialFrameInfo");
     int32_t num_fsas = b_fsas_.shape.Dim0();
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
 

@@ -24,6 +24,7 @@ class Renumbering {
   Renumbering(ContextPtr c, int32_t num_old_elems) { Init(c, num_old_elems); }
 
   void Init(ContextPtr c, int32_t num_old_elems) {
+    NVTX_RANGE(__FUNCTION__);
     // make the underlying region allocate an extra element as we'll do
     // exclusive sum in New2Old() and Old2New()
     Array1<char> temp = Array1<char>(c, num_old_elems + 1);
@@ -33,6 +34,7 @@ class Renumbering {
   int32_t NumOldElems() const { return keep_.Dim(); }
 
   int32_t NumNewElems() {
+    NVTX_RANGE(__FUNCTION__);
     if (!old2new_.IsValid()) ComputeOld2New();
     return num_new_elems_;
   }
@@ -55,6 +57,7 @@ class Renumbering {
                   dimension).
   */
   Array1<int32_t> &New2Old() {
+    NVTX_RANGE(__FUNCTION__);
     if (!new2old_.IsValid()) ComputeNew2Old();
     return new2old_;
   }
@@ -70,6 +73,7 @@ class Renumbering {
                   Will be allocated with the same context as keep_.
   */
   Array1<int32_t> &Old2New() {
+    NVTX_RANGE(__FUNCTION__);
     if (!old2new_.IsValid()) ComputeOld2New();
     return old2new_;
   }
