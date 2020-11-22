@@ -20,9 +20,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04]
-        cuda: ["10.2"] # only for building
+        cuda: ["10.1", "10.2"]
         gcc: ["5"]
-        torch: ["1.6.0"]
+        torch: ["1.6.0", "1.7.0"]
         python-version: [3.6]
         build_type: ["Release", "Debug"]
 
