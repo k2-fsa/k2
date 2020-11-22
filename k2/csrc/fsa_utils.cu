@@ -185,6 +185,7 @@ static Fsa K2AcceptorFromStream(std::istringstream &is) {
 */
 static Fsa K2TransducerFromStream(std::istringstream &is,
                                   Array1<int32_t> *aux_labels) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK(aux_labels != nullptr);
 
   std::vector<int32_t> aux_labels_internal;
@@ -257,6 +258,7 @@ static Fsa K2TransducerFromStream(std::istringstream &is,
    @return It returns an Fsa on CPU.
 */
 static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
+  NVTX_RANGE(__FUNCTION__);
   std::vector<Arc> arcs;
   std::vector<std::vector<Arc>> state_to_arcs;  // indexed by states
   std::vector<std::string> splits;
@@ -373,6 +375,7 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
 */
 static Fsa OpenFstTransducerFromStream(std::istringstream &is,
                                        Array1<int32_t> *aux_labels) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK(aux_labels != nullptr);
 
   std::vector<std::vector<int32_t>> state_to_aux_labels;  // indexed by states
@@ -496,6 +499,7 @@ static Fsa OpenFstTransducerFromStream(std::istringstream &is,
 
 Fsa FsaFromString(const std::string &s, bool openfst /*= false*/,
                   Array1<int32_t> *aux_labels /*= nullptr*/) {
+  NVTX_RANGE(__FUNCTION__);
   std::istringstream is(s);
   K2_CHECK(is);
 
@@ -551,6 +555,7 @@ std::string FsaToString(const Fsa &fsa, bool openfst /*= false*/,
 }
 
 Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   ContextPtr &c = fsas.Context();
   int32_t num_arcs = fsas.NumElements();
@@ -579,6 +584,7 @@ Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
 }
 
 Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   ContextPtr &c = fsas.Context();
   Array1<int32_t> arc_dest_states = GetDestStates(fsas, true);
@@ -794,6 +800,7 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
 
 Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
                                 const Array1<int32_t> &dest_states) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK(IsCompatible(fsas, dest_states));
   ContextPtr &c = fsas.Context();
@@ -822,6 +829,7 @@ Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
 
 Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
                                           Ragged<int32_t> &state_batches) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK(IsCompatible(fsas, state_batches));
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(state_batches.NumAxes(), 3);
@@ -871,6 +879,7 @@ Ragged<int32_t> GetLeavingArcIndexBatches(FsaVec &fsas,
 Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
                                            Ragged<int32_t> &incoming_arcs,
                                            Ragged<int32_t> &state_batches) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK(IsCompatible(fsas, state_batches));
   K2_CHECK(IsCompatible(fsas, incoming_arcs));
   K2_CHECK_EQ(fsas.NumAxes(), 3);
@@ -927,6 +936,7 @@ Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
 }
 
 FsaVec ConvertDenseToFsaVec(DenseFsaVec &src) {
+  NVTX_RANGE(__FUNCTION__);
   ContextPtr &c = src.shape.Context();
   // caution: 'num_symbols' is the number of symbols excluding the final-symbol
   // -1.
@@ -1014,6 +1024,7 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
                                    Ragged<int32_t> &entering_arc_batches,
                                    bool log_semiring,
                                    Array1<int32_t> *entering_arcs) {
+  NVTX_RANGE(__FUNCTION__);
   K2_STATIC_ASSERT((std::is_same<float, FloatType>::value ||
                     std::is_same<double, FloatType>::value));
   K2_CHECK(IsCompatible(fsas, state_batches));
@@ -1227,6 +1238,7 @@ Array1<FloatType> GetBackwardScores(
     Ragged<int32_t> &leaving_arc_batches,
     const Array1<FloatType> *tot_scores /*= nullptr*/,
     bool log_semiring /*= true*/) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK(IsCompatible(fsas, state_batches));
   K2_CHECK(IsCompatible(fsas, leaving_arc_batches));
   K2_CHECK_EQ(fsas.NumAxes(), 3);
@@ -1425,6 +1437,7 @@ Array1<FloatType> GetBackwardScores(
 template <typename FloatType>
 Array1<FloatType> GetTotScores(FsaVec &fsas,
                                const Array1<FloatType> &forward_scores) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK(IsCompatible(fsas, forward_scores));
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   ContextPtr &c = fsas.Context();
@@ -1454,6 +1467,7 @@ template <typename FloatType>
 Array1<FloatType> GetArcScores(FsaVec &fsas,
                                const Array1<FloatType> &forward_scores,
                                const Array1<FloatType> &backward_scores) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK(IsCompatible(fsas, forward_scores));
   K2_CHECK(IsCompatible(fsas, backward_scores));
   K2_CHECK_EQ(fsas.NumAxes(), 3);
@@ -1528,6 +1542,7 @@ template Array1<double> GetTotScores(FsaVec &fsas,
 
 Fsa RandomFsa(bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
               int32_t min_num_arcs /*=0*/, int32_t max_num_arcs /*=1000*/) {
+  NVTX_RANGE(__FUNCTION__);
   ContextPtr c = GetCpuContext();
   K2_CHECK_GE(min_num_arcs, 0);
   K2_CHECK_GE(max_num_arcs, min_num_arcs);
@@ -1578,6 +1593,7 @@ FsaVec RandomFsaVec(int32_t min_num_fsas /*=1*/, int32_t max_num_fsas /*=1000*/,
                     bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
                     int32_t min_num_arcs /*=0*/,
                     int32_t max_num_arcs /*=1000*/) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK_GE(min_num_fsas, 0);
   K2_CHECK_GE(max_num_fsas, min_num_fsas);
   int32_t num_fsas = RandInt(min_num_fsas, max_num_fsas);
@@ -1592,6 +1608,7 @@ DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas, int32_t max_num_fsas,
                               int32_t min_frames, int32_t max_frames,
                               int32_t min_symbols, int32_t max_symbols,
                               float scores_scale) {
+  NVTX_RANGE(__FUNCTION__);
   ContextPtr c = GetCpuContext();
   int32_t num_fsas = RandInt(min_num_fsas, max_num_fsas);
 
@@ -1634,6 +1651,7 @@ DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas, int32_t max_num_fsas,
 }
 
 Ragged<int32_t> GetStartStates(FsaVec &src) {
+  NVTX_RANGE(__FUNCTION__);
   ContextPtr c = src.Context();
   K2_CHECK(src.NumAxes() == 3);
   int32_t num_fsas = src.Dim0();
@@ -1668,6 +1686,7 @@ Ragged<int32_t> GetStartStates(FsaVec &src) {
 }
 
 FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes) {
+  NVTX_RANGE(__FUNCTION__);
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(best_arc_indexes.NumAxes(), 2);
   K2_CHECK(IsCompatible(fsas, best_arc_indexes));

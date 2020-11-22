@@ -97,6 +97,7 @@ std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
 }
 
 Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
+  NVTX_RANGE("RaggedShape::RowIds()");
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
   RaggedShapeDim &rsd = axes_[axis - 1];

@@ -162,7 +162,7 @@ class RaggedShape {
 
   // TODO(dan): will at some point make it so check = false is the default.
   explicit RaggedShape(const std::vector<RaggedShapeDim> &axes,
-                       bool check = true)
+                       bool check = !internal::kDisableDebug)
       : axes_(axes) {
     if (check) Check();
   }

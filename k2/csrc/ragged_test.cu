@@ -1883,6 +1883,31 @@ TEST(RaggedTest, TestStackRagged) {
   TestStackRagged<kCuda, double>();
 }
 
+
+TEST(RaggedTest, TestMaxSize) {
+  for (int32_t i = 0; i <= 10; i++) {
+    ContextPtr c = (i % 2 == 0 ? GetCpuContext() : GetCudaContext());
+    int32_t num_axes = RandInt(2, 4);
+    RaggedShape shape =
+        RandomRaggedShape(true, num_axes, num_axes, 0, 1000).To(c);
+    int32_t axis = RandInt(1, num_axes - 1);
+    int32_t max_size = shape.MaxSize(axis);
+    if (axis == 0) {
+      K2_CHECK(max_size == shape.Dim0());
+    } else {
+      Array1<int32_t> row_splits = shape.RowSplits(axis).To(GetCpuContext());
+      int32_t *row_splits_data = row_splits.Data();
+      int32_t m = 0;
+      for (int32_t i = 0; i + 1 < row_splits.Dim(); i++) {
+        int32_t size = row_splits_data[i+1] - row_splits_data[i];
+        if (size > m) m = size;
+      }
+      ASSERT_EQ(m, max_size);
+    }
+  }
+}
+
+
 template <DeviceType d>
 void TestMakeTransposable() {
   ContextPtr cpu = GetCpuContext();  // will use to copy data
