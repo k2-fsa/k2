@@ -352,7 +352,7 @@ void TestAndOrPerSubListTest() {
   }
 }
 
-TEST(RagedShapeOpsTest, AndOrPerSubListTest) {
+TEST(RaggedShapeOpsTest, AndOrPerSubListTest) {
   TestAndOrPerSubListTest<int32_t, kCpu>();
   TestAndOrPerSubListTest<int32_t, kCuda>();
 }
@@ -433,6 +433,29 @@ TEST_F(RaggedShapeOpsSuiteTest, TestUnsqueezeGpu) {
   TestUnsqueeze(GetCudaContext(), simple_shape_);
   TestUnsqueeze(GetCudaContext(), random_shape_);
 }
+
+
+TEST(RaggedShapeOpsTest, TestUnsqueezeParallel) {
+  for (int32_t i = 0; i < 10; i++) {
+    ContextPtr c = (i % 2 == 0 ? GetCpuContext() : GetCudaContext());
+    int32_t num_shapes = RandInt(0, 10);
+
+    std::vector<RaggedShape*> orig_shapes;
+    for (int32_t i = 0; i < num_shapes; i++)
+      orig_shapes.push_back(new RaggedShape(RandomRaggedShape(false, 2, 5, 0, 1000).To(c)));
+    int32_t axis = 0;  // only one supported for now.
+    std::vector<RaggedShape> unsqueezed =
+        UnsqueezeParallel(num_shapes, orig_shapes.data(), axis);
+    for (int32_t i = 0; i < num_shapes; i++) {
+      ASSERT_EQ(unsqueezed[i].Validate(), true);
+      RaggedShape temp = RemoveAxis(unsqueezed[i], axis);
+      ASSERT_EQ(Equal(temp, *(orig_shapes[i])), true);
+      delete orig_shapes[i];
+    }
+  }
+}
+
+
 
 void TestRemoveAxis(ContextPtr context, const RaggedShape &input_shape) {
   RaggedShape src_shape = input_shape.To(context);

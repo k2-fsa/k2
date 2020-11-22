@@ -171,7 +171,6 @@ class MultiGraphDenseIntersect {
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput(). */
   void Intersect() {
-    NVTX_RANGE("Intersect");
     /*
       T is the largest number of (frames+1) of neural net output, or the largest
       number of frames of log-likelihoods we count the final frame with (0,
@@ -182,6 +181,11 @@ class MultiGraphDenseIntersect {
       neural-net output.
     */
     int32_t T = b_fsas_.shape.MaxSize(1), num_fsas = b_fsas_.shape.Dim0();
+
+    std::ostringstream os;
+    os << "Intersect:T=" << T << ",num_fsas=" << num_fsas
+       << ",TotSize(1)=" << b_fsas_.shape.TotSize(1);
+    NVTX_RANGE(os.str().c_str());
 
     frames_.reserve(T + 1);
 

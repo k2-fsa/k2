@@ -183,6 +183,24 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta);
  */
 RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
 
+
+/*
+  Parallel version of Unsqueeze() that effectively calls Unsqueeze() in parallel
+  for `num_srcs` RaggedShapes.  Currently only works for axis == 0
+      @param [in] num_srcs  `num_srcs >= 0` is the number of elements of the
+                         array that `src` points to.
+      @param [in]  srcs  The array of input RaggedShape, with elements
+                         `*(src[0])`, `*(src[1])`, and so on.
+      @param [in] axis  The axis to unsqueeze (see the other version of Unsqueeze()
+                        for explanation).  CAUTION: only supports axis == 0
+                        currently.
+      @return       Returns vector of unsqueezed RaggedShape, with
+                    `ans.size() == num_srcs.`
+ */
+std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
+                                           int32_t axis);
+
+
 /* Remove an axis; if it is not the last axis, this is done by appending lists
    (effectively the axis is combined with the following axis).  If it is the
    last axis it is just removed and the number of elements will be affected.
