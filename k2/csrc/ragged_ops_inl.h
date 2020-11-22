@@ -34,6 +34,8 @@ namespace k2 {
 
 template <typename T, typename Op>
 void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
+  NVTX_RANGE("ApplyOpPerSublist");
+  NVTX_RANGE(typeid(T).name());  // hopefully we'll see what the op was from this.
   K2_CHECK_GE(src.NumAxes(), 2);
   K2_CHECK(IsCompatible(src.shape, *dst));
 
@@ -82,6 +84,7 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
 
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
+  NVTX_RANGE("Stack1");
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe
   std::vector<RaggedShape *> src_shapes(num_srcs);
@@ -103,6 +106,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
 
 template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src) {
+  NVTX_RANGE("Stack2");
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK_GT(num_srcs, 0);
   std::vector<Ragged<T> *> temp(num_srcs);
@@ -112,6 +116,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src) {
 
 template <typename T>
 Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
+  NVTX_RANGE("Append1");
   if (num_srcs == 1) return **src;
   K2_CHECK_GT(num_srcs, 1);
   if (axis == 1) {
@@ -134,6 +139,7 @@ Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
 
 template <typename T>
 Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src) {
+  NVTX_RANGE("Append2");
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK_GT(num_srcs, 0);
   std::vector<Ragged<T> *> temp(num_srcs);
@@ -194,6 +200,7 @@ Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
 // TODO(fangjun): add test cases for `order`
 template <typename T, typename Op>
 static void SortSublistsCpu(Ragged<T> *src, Array1<int32_t> *order) {
+  NVTX_RANGE("SortSublistsCpu");
   T *p = src->values.Data();
   Op comp = Op();
 
@@ -217,6 +224,7 @@ static void SortSublistsCpu(Ragged<T> *src, Array1<int32_t> *order) {
 
 template <typename T, typename Op /* = LessThan<T> */>
 void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
+  NVTX_RANGE("SortSublists");
   if (order) {
     K2_DCHECK(IsCompatible(src->values, *order));
     K2_DCHECK_EQ(src->values.Dim(), order->Dim());
@@ -253,6 +261,7 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
 
 template <typename T>
 bool Ragged<T>::Validate(bool print_warnings) const {
+  NVTX_RANGE("Ragged::Validate");
   if (values.Dim() != shape.NumElements()) {
     if (print_warnings) {
       K2_LOG(WARNING) << "Dimension mismatch: values.Dim() == " << values.Dim()
@@ -266,6 +275,7 @@ bool Ragged<T>::Validate(bool print_warnings) const {
 // Defined here and not in ragged.h because it needs RemoveAxis.
 template <typename T>
 Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
+  NVTX_RANGE("Ragged::RemoveAxis");
   K2_CHECK(axis >= 0 && axis < NumAxes());
   RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
   return Ragged<T>(new_shape, values);

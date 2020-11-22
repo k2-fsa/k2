@@ -376,6 +376,7 @@ void ArcSort(Fsa *fsa) {
 }
 
 void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
+  NVTX_RANGE("ArcSort");
   if (!src.values.IsValid()) return;
 
   if (arc_map != nullptr)
@@ -397,6 +398,7 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
 // of this path. But we can consider it for the future.
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
                              const Array1<int32_t> &entering_arcs) {
+  NVTX_RANGE("ShortestPath->Ragged");
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   const int32_t *entering_arcs_data = entering_arcs.Data();
   const Arc *arcs_data = fsas.values.Data();
@@ -474,6 +476,7 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
 
 void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
                          Array1<int32_t> *arc_map /*= nullptr*/) {
+  NVTX_RANGE("AddEpsilonSelfLoops");
   ContextPtr &c = src.Context();
   const int32_t *old_row_splits1_data = src.RowSplits(1).Data(),
                 *old_row_ids1_data = src.RowIds(1).Data();
@@ -631,6 +634,7 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
 }
 
 Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
+  NVTX_RANGE("Union");
   K2_CHECK_EQ(fsas.NumAxes(), 3);
 
   ContextPtr &context = fsas.Context();

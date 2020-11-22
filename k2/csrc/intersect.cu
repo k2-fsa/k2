@@ -171,6 +171,7 @@ class MultiGraphDenseIntersect {
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput(). */
   void Intersect() {
+    NVTX_RANGE("Intersect");
     /*
       T is the largest number of (frames+1) of neural net output, or the largest
       number of frames of log-likelihoods we count the final frame with (0,
@@ -262,6 +263,7 @@ class MultiGraphDenseIntersect {
 
   void FormatOutput(FsaVec *ofsa, Array1<int32_t> *arc_map_a,
                     Array1<int32_t> *arc_map_b) {
+    NVTX_RANGE("FormatOutput");
     ContextPtr c_cpu = GetCpuContext();
     int32_t T = b_fsas_.shape.MaxSize(1);
 
@@ -591,6 +593,7 @@ class MultiGraphDenseIntersect {
              'states' member set up but not its 'arcs' member.
    */
   std::unique_ptr<FrameInfo> PropagateForward(int32_t t, FrameInfo *cur_frame) {
+    NVTX_RANGE("PropagateForward");
     int32_t num_fsas = NumFsas();
     // Ragged<StateInfo> &states = cur_frame->states;
     // ai has 3 axes: fsa_id, state, arc.
@@ -828,6 +831,7 @@ class MultiGraphDenseIntersect {
    */
   void PropagateBackward(int32_t t, FrameInfo *cur_frame,
                          FrameInfo *next_frame) {
+    NVTX_RANGE("PropagateBackward");
     int32_t num_states = cur_frame->states.values.Dim(),
             num_arcs = cur_frame->arcs.values.Dim();
     Ragged<StateInfo> &cur_states = cur_frame->states;  // 2 axes: fsa,state
@@ -1024,6 +1028,7 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
                           int32_t max_active_states, int32_t min_active_states,
                           FsaVec *out, Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b) {
+  NVTX_RANGE("IntersectDensePruned");
   FsaVec a_vec = FsaToFsaVec(a_fsas);
   MultiGraphDenseIntersect intersector(a_vec, b_fsas, beam, max_active_states,
                                        min_active_states);
