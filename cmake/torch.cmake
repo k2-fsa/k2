@@ -1,5 +1,6 @@
 
 # PYTHON_EXECUTABLE is set by pybind11.cmake
+message(STATUS "Python executable: ${PYTHON_EXECUTABLE}")
 execute_process(
   COMMAND "${PYTHON_EXECUTABLE}" -c "import os; import torch; print(os.path.dirname(torch.__file__))"
   OUTPUT_STRIP_TRAILING_WHITESPACE
