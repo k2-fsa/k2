@@ -106,6 +106,14 @@ foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
 endforeach()
 # ========= Settings for CUB end=========
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
+find_package(Valgrind)
+if(Valgrind_FOUND)
+  find_program(MEMORYCHECK_COMMAND ${Valgrind_EXECUTABLE})
+  set(MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full")
+  include(Dart)
+  message(STATUS "To check memory, run `ctest -R <NAME> -D ExperimentalMemCheck`")
+endif()
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
