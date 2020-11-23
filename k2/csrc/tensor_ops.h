@@ -8,8 +8,8 @@
 #ifndef K2_CSRC_TENSOR_OPS_H_
 #define K2_CSRC_TENSOR_OPS_H_
 
-#include "k2/csrc/tensor.h"
 #include "k2/csrc/array.h"
+#include "k2/csrc/tensor.h"
 
 namespace k2 {
 
@@ -38,7 +38,6 @@ Tensor ToContiguous(const Tensor &src);
  */
 Tensor Cast(Tensor src, Dtype new_dtype);
 
-
 /*
   Returns a Tensor that is a result of indexing `src` along its
   axis 0 with `indexes`, as if you had done src[indexes] in Pytorch.
@@ -53,7 +52,7 @@ Tensor Cast(Tensor src, Dtype new_dtype);
                      of `indexes` and the corresponding output elements
                      will be zero.
      @return   Returns a Tensor with the same dtype as `src`, and
-                     shape (indexes.Dim(), src.Dim(1), src.Dim2(2), ...),
+                     shape (indexes.Dim(), src.Dim(1), src.Dim(2), ...),
                      i.e. with the same num-axes as `src` and
                      axis 0's dim replaced with indexes.Dim().
  */
@@ -82,9 +81,7 @@ Tensor Index(Tensor &src, Array1<int32_t> &indexes,
                  `src` where i != -1,
                  did: `ans[indexes[i],j,k,..] += src[i,j,k..]`.
  */
-Tensor IndexAdd(Tensor &src,
-                Array1<int32_t> &indexes,
-                int32_t dim,
+Tensor IndexAdd(Tensor &src, Array1<int32_t> &indexes, int32_t dim,
                 bool allow_minus_one = true);
 
 /*
@@ -104,13 +101,8 @@ Tensor IndexAdd(Tensor &src,
                       `(*dest)[indexes[i],j,k..] += src[i,j,k]`
                       (if `indexes[i] != -1`).
  */
-void IndexAdd(Tensor &src,
-              Array1<int32_t> &indexes,
-              bool allow_minus_one,
+void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
               Tensor *dest);
-
-
-
 
 }  // namespace k2
 

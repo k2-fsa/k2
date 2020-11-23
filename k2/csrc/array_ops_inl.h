@@ -457,16 +457,14 @@ Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
                             T min_value, T max_value) {
   NVTX_RANGE("RandUniformArray2");
   int32_t dim1_extra = RandInt(0, 2),  // make it randomly not contiguous.
-            new_dim1 = dim1 + dim1_extra;
-  Array1<T> array1temp = RandUniformArray1<T>(
-      c, dim0 * new_dim1, min_value, max_value);
+      new_dim1 = dim1 + dim1_extra;
+  Array1<T> array1temp =
+      RandUniformArray1<T>(c, dim0 * new_dim1, min_value, max_value);
   Array2<T> array2temp(array1temp, dim0, new_dim1);
 
   int32_t offset = RandInt(0, dim1_extra);
   return array2temp.ColArange(offset, offset + dim1);
 }
-
-
 
 template <typename T>
 Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
@@ -475,8 +473,7 @@ Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
   Array1<T> ans = Array1<T>(c, dim);
   T *ans_data = ans.Data();
   if (c->GetDeviceType() == kCpu) {
-    for (int32_t i = 0; i < dim; i++)
-      ans_data[i] = first_value + i * inc;
+    for (int32_t i = 0; i < dim; i++) ans_data[i] = first_value + i * inc;
   } else {
     auto lambda_set_values = [=] __device__(int32_t i) -> void {
       ans_data[i] = first_value + i * inc;
@@ -525,7 +522,6 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
   }
 }
 
-
 template <typename T>
 bool Equal(const Array2<T> &a, const Array2<T> &b) {
   NVTX_RANGE("Equal(Array2)");
@@ -542,15 +538,13 @@ bool Equal(const Array2<T> &a, const Array2<T> &b) {
     return Equal(a1, b1);
   }
 
-  auto a_acc = a.Accessor(),
-      b_acc = b.Accessor();
+  auto a_acc = a.Accessor(), b_acc = b.Accessor();
 
   if (c->GetDeviceType() == kCpu) {
     size_t row_bytes = a.Dim1() * sizeof(T);
     for (int32_t row = 0; row < a.Dim0(); row++)
       if (memcmp(reinterpret_cast<const void *>(a_acc.Row(row)),
-                 reinterpret_cast<const void *>(b_acc.Row(row)),
-                 row_bytes))
+                 reinterpret_cast<const void *>(b_acc.Row(row)), row_bytes))
         return false;
     return true;
   } else {
@@ -564,7 +558,6 @@ bool Equal(const Array2<T> &a, const Array2<T> &b) {
   }
 }
 
-
 template <typename T>
 bool IsMonotonic(const Array1<T> &a) {
   NVTX_RANGE("IsMonotonic");
@@ -573,15 +566,13 @@ bool IsMonotonic(const Array1<T> &a) {
   const T *data = a.Data();
   if (c->GetDeviceType() == kCpu) {
     for (int i = 0; i + 1 < dim; i++)
-      if (data[i + 1] < data[i])
-        return false;
+      if (data[i + 1] < data[i]) return false;
     return true;
   } else {
     Array1<int32_t> is_monotonic(c, 1, 1);
     int32_t *is_monotonic_data = is_monotonic.Data();
     auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
-      if (data[i + 1] < data[i])
-        *is_monotonic_data = 0;
+      if (data[i + 1] < data[i]) *is_monotonic_data = 0;
     };
     Eval(c, dim - 1, lambda_test);
     return is_monotonic[0];
@@ -636,8 +627,7 @@ Array1<T> Plus(const Array1<T> &src, T t) {
   const T *data = src.Data();
   T *ans_data = ans.Data();
   if (c->GetDeviceType() == kCpu) {
-    for (int32_t i = 0; i < dim; ++i)
-      ans_data[i] = data[i] + t;
+    for (int32_t i = 0; i < dim; ++i) ans_data[i] = data[i] + t;
   } else {
     auto lambda_add = [=] __host__ __device__(int32_t i) -> void {
       ans_data[i] = data[i] + t;
@@ -646,7 +636,6 @@ Array1<T> Plus(const Array1<T> &src, T t) {
   }
   return ans;
 }
-
 
 template <typename T>
 Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
@@ -665,15 +654,13 @@ Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
 #pragma unroll(4)
       for (int32_t i = 0; i < ans_dim; i++) {
         int32_t index = index_data[i];
-        T value = (index < 0 ? T(0) :
-                   src_data[index]);
+        T value = (index < 0 ? T(0) : src_data[index]);
         ans_data[i] = value;
       }
     } else {
-      auto lambda_set_values = [=] __device__ (int32_t i) -> void {
+      auto lambda_set_values = [=] __device__(int32_t i) -> void {
         int32_t index = index_data[i];
-        T value = (index < 0 ? T(0) :
-                   src_data[index]);
+        T value = (index < 0 ? T(0) : src_data[index]);
         ans_data[i] = value;
       };
       EvalDevice(c, ans_dim, lambda_set_values);
@@ -684,7 +671,7 @@ Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
       for (int32_t i = 0; i < ans_dim; i++)
         ans_data[i] = src_data[index_data[i]];
     } else {
-      auto lambda_set_values = [=] __device__ (int32_t i) -> void {
+      auto lambda_set_values = [=] __device__(int32_t i) -> void {
         ans_data[i] = src_data[index_data[i]];
       };
       EvalDevice(c, ans_dim, lambda_set_values);
@@ -693,15 +680,13 @@ Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
   return ans;
 }
 
-
 template <typename T>
-Array2<T> Index(const Array2<T> &src, const Array1<int32_t> &indexes,
-                bool allow_minus_one) {
+Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
+                    bool allow_minus_one) {
   NVTX_RANGE("Index(Array2)");
   ContextPtr &c = src.Context();
   K2_CHECK(c->IsCompatible(*indexes.Context()));
-  int32_t ans_dim0 = indexes.Dim(),
-              dim1 = src.Dim1();
+  int32_t ans_dim0 = indexes.Dim(), dim1 = src.Dim1();
   Array2<T> ans(c, ans_dim0, dim1);
   const int32_t *index_data = indexes.Data();
   auto ans_acc = ans.Accessor();
@@ -710,19 +695,17 @@ Array2<T> Index(const Array2<T> &src, const Array1<int32_t> &indexes,
   if (allow_minus_one) {
     if (d == kCpu) {
       for (int32_t i = 0; i < ans_dim0; i++) {
-       int32_t index = index_data[i];
+        int32_t index = index_data[i];
         if (index < 0) {
 #pragma unroll(4)
-          for (int32_t j = 0; j < dim1; j++)
-            ans_acc(i, j) = T(0);
+          for (int32_t j = 0; j < dim1; j++) ans_acc(i, j) = T(0);
         } else {
 #pragma unroll(4)
-          for (int32_t j = 0; j < dim1; j++)
-            ans_acc(i, j) = src_acc(index, j);
+          for (int32_t j = 0; j < dim1; j++) ans_acc(i, j) = src_acc(index, j);
         }
       }
     } else {
-      auto lambda_set_values = [=] __device__ (int32_t i, int32_t j) -> void {
+      auto lambda_set_values = [=] __device__(int32_t i, int32_t j) -> void {
         int32_t index = index_data[i];
         ans_acc(i, j) = (index < 0 ? T(0) : src_acc(index, j));
       };
@@ -733,11 +716,10 @@ Array2<T> Index(const Array2<T> &src, const Array1<int32_t> &indexes,
       for (int32_t i = 0; i < ans_dim0; i++) {
         int32_t index = index_data[i];
 #pragma unroll(4)
-        for (int32_t j = 0; j < dim1; j++)
-          ans_acc(i, j) = src_acc(index, j);
+        for (int32_t j = 0; j < dim1; j++) ans_acc(i, j) = src_acc(index, j);
       }
     } else {
-      auto lambda_set_values = [=] __device__ (int32_t i, int32_t j) -> void {
+      auto lambda_set_values = [=] __device__(int32_t i, int32_t j) -> void {
         int32_t index = index_data[i];
         ans_acc(i, j) = src_acc(index, j);
       };
@@ -746,10 +728,6 @@ Array2<T> Index(const Array2<T> &src, const Array1<int32_t> &indexes,
   }
   return ans;
 }
-
-
-
-
 
 }  // namespace k2
 
