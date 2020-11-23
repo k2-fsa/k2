@@ -1305,25 +1305,22 @@ void TestMonotonicLowerBound() {
 TEST(OpsTest, Array1IndexTest) {
   for (int loop = 0; loop < 2; loop++) {
     ContextPtr c = (loop == 0 ? GetCpuContext() : GetCudaContext()),
-           cpu_context = GetCpuContext();
+               cpu_context = GetCpuContext();
 
-    int32_t src_dim = RandInt(1, 10),
-            ans_dim = RandInt(1, 10);
-
+    int32_t src_dim = RandInt(1, 10), ans_dim = RandInt(1, 10);
 
     using T = int64_t;
     Array1<T> src = RandUniformArray1<T>(c, src_dim, 0, 100);
 
-
-    Array1<int32_t> indexes_no_minus_one = RandUniformArray1<int32_t>(
-        c, ans_dim, 0, src_dim - 1),
-                 indexes_minus_one = RandUniformArray1<int32_t>(
-                     c, ans_dim, -1, src_dim - 1);
+    Array1<int32_t> indexes_no_minus_one =
+                        RandUniformArray1<int32_t>(c, ans_dim, 0, src_dim - 1),
+                    indexes_minus_one =
+                        RandUniformArray1<int32_t>(c, ans_dim, -1, src_dim - 1);
     Array1<T> ans_no_minus_one = Index(src, indexes_no_minus_one, false),
-        ans_no_minus_one_check = src[indexes_no_minus_one],
-       ans_no_minus_one_check2 = Index(src, indexes_no_minus_one, true);
-    ASSERT_EQ(Equal(ans_no_minus_one, ans_no_minus_one_check), true);
-    ASSERT_EQ(Equal(ans_no_minus_one, ans_no_minus_one_check2), true);
+              ans_no_minus_one_check = src[indexes_no_minus_one],
+              ans_no_minus_one_check2 = Index(src, indexes_no_minus_one, true);
+    ASSERT_TRUE(Equal(ans_no_minus_one, ans_no_minus_one_check));
+    ASSERT_TRUE(Equal(ans_no_minus_one, ans_no_minus_one_check2));
 
     Array1<T> ans_minus_one = Index(src, indexes_minus_one, true);
 
@@ -1337,31 +1334,28 @@ TEST(OpsTest, Array1IndexTest) {
   }
 }
 
-
-
 TEST(OpsTest, Array2IndexTest) {
   for (int loop = 0; loop < 2; loop++) {
     ContextPtr c = (loop == 0 ? GetCpuContext() : GetCudaContext()),
-           cpu_context = GetCpuContext();
+               cpu_context = GetCpuContext();
 
-    int32_t src_dim0 = RandInt(1, 10),
-            src_dim1 = RandInt(1, 10),
+    int32_t src_dim0 = RandInt(1, 10), src_dim1 = RandInt(1, 10),
             ans_dim0 = RandInt(1, 10);
 
     using T = int64_t;
     Array2<T> src = RandUniformArray2<T>(c, src_dim0, src_dim1, 0, 100);
 
-
     Array1<int32_t> indexes_no_minus_one = RandUniformArray1<int32_t>(
-        c, ans_dim0, 0, src_dim0 - 1),
-                 indexes_minus_one = RandUniformArray1<int32_t>(
-                     c, ans_dim0, -1, src_dim0 - 1);
+                        c, ans_dim0, 0, src_dim0 - 1),
+                    indexes_minus_one = RandUniformArray1<int32_t>(
+                        c, ans_dim0, -1, src_dim0 - 1);
 
-    Array2<T> ans_no_minus_one = Index(src, indexes_no_minus_one, false),
-       ans_no_minus_one_check = Index(src, indexes_no_minus_one, true);
-    ASSERT_EQ(Equal(ans_no_minus_one, ans_no_minus_one_check), true);
+    Array2<T> ans_no_minus_one = IndexRows(src, indexes_no_minus_one, false),
+              ans_no_minus_one_check =
+                  IndexRows(src, indexes_no_minus_one, true);
+    ASSERT_TRUE(Equal(ans_no_minus_one, ans_no_minus_one_check));
 
-    Array2<T> ans_minus_one = Index(src, indexes_minus_one, true);
+    Array2<T> ans_minus_one = IndexRows(src, indexes_minus_one, true);
 
     ans_minus_one = ans_minus_one.To(cpu_context);
     src = src.To(cpu_context);
@@ -1378,7 +1372,6 @@ TEST(OpsTest, Array2IndexTest) {
     }
   }
 }
-
 
 TEST(OpsTest, MonotonicLowerBoundTest) {
   TestMonotonicLowerBound<kCpu, int32_t, int32_t>();

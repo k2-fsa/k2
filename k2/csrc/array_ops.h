@@ -231,7 +231,7 @@ void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
 
     @param[in] c  Context for this array; note, this function will be slow
                   if this is not a CPU context
-    @param [in] dim    Dimension, must be >=o 0
+    @param [in] dim    Dimension, must be > 0
     @param[in] min_value  Minimum value allowed in the array
     @param[in] max_value  Maximum value allowed in the array;
                            require max_value >= min_value.
@@ -240,7 +240,6 @@ void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
                             T max_value);
-
 
 /*
   Returns a random Array2, uniformly distributed betwen `min_value` and
@@ -264,8 +263,6 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
 template <typename T>
 Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
                             T min_value, T max_value);
-
-
 
 /*
   Return a newly allocated Array1 whose values form a linear sequence,
@@ -320,7 +317,6 @@ bool Equal(const Array1<T> &a, const Array1<T> &b);
  */
 template <typename T>
 bool IsMonotonic(const Array1<T> &a);
-
 
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
@@ -398,7 +394,6 @@ Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n);
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src);
 
-
 /*
   Return true if all elements of the two arrays are equal.
   Will crash if the sizes differ.
@@ -410,36 +405,33 @@ bool Equal(const Array2<T> &a, const Array2<T> &b);
   Index `src` with `indexes`, as in src[indexes].
      @param [in] src   Array whose elements are to be read
      @param [in] indexes  Indexes into `src`; must satisfy
-                       `0 <= indexes[i] < indexes.Dim()` if
-                       `allow_minus_one == true`,
+                       `0 <= indexes[i] < src.Dim()` if
+                       `allow_minus_one == false`,
                        else -1 is also allowed and the corresponding
                        output element will be zero.
      @return  Returns an `Array1<T>` of dimension indexes.Dim(),
                with `ans[i] = src[indexes[i]]` (or zero if
-               `allow_minus_one == true` and `indexes[i] == 0`).
+               `allow_minus_one == true` and `indexes[i] == -1`).
  */
 template <typename T>
 Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
                 bool allow_minus_one);
 
-
 /*
-  Index `src` with `indexes`, as in src[indexes].
+  Index src's rows with `indexes` which contains the row indexes.
      @param [in] src   Array whose elements are to be read
      @param [in] indexes  Indexes into `src`; must satisfy
-                       `0 <= indexes[i] < indexes.Dim0()` if
-                       `allow_minus_one == true`,
+                       `0 <= indexes[i] < src.Dim0()` if
+                       `allow_minus_one == false`,
                        else -1 is also allowed and the corresponding
                        output element will be zero.
      @return  Returns an `Array2<T>` of shape (indexes.Dim(), src.Dim1()),
-               with `ans[i,j] = src[indexes[i,j]]` (or zero if
-               `allow_minus_one == true` and `indexes[i] == 0`).
+               with `ans[i,j] = src[indexes[i], j]` (or zero if
+               `allow_minus_one == true` and `indexes[i] == -1`).
  */
 template <typename T>
-Array2<T> Index(const Array2<T> &src, const Array1<int32_t> &indexes,
-                bool allow_minus_one);
-
-
+Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
+                    bool allow_minus_one);
 
 }  // namespace k2
 
