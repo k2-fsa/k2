@@ -450,6 +450,7 @@ class MultiGraphDenseIntersect {
 
     float default_beam = beam_, max_active = max_active_,
           min_active = min_active_;
+    K2_CHECK_LT(min_active, max_active);
 
     Array1<float> cutoffs(c_, num_fsas);
     float *cutoffs_data = cutoffs.Data();
@@ -460,29 +461,32 @@ class MultiGraphDenseIntersect {
             dynamic_beam = dynamic_beams_data[i];
       int32_t num_active =
           per_fsa_row_splits1_data[i + 1] - per_fsa_row_splits1_data[i];
-      float new_dynamic_beam;
       if (num_active <= max_active) {
         // Not constrained by max_active...
-        if (num_active > min_active) {
+        if (num_active >= min_active || num_active == 0) {
           // Neither the max_active nor min_active constraints
           // apply.  Gradually approach 'beam'
-          new_dynamic_beam = 0.8 * dynamic_beam + 0.2 * default_beam;
+          // (Also approach 'beam' if num_active == 0; we might as
+          // well, since there is nothing to prune here).
+          dynamic_beam = 0.8 * dynamic_beam + 0.2 * default_beam;
         } else {
           // We violated the min_active constraint -> increase beam
-          if (new_dynamic_beam < default_beam) new_dynamic_beam = default_beam;
+          if (dynamic_beam < default_beam)
+            dynamic_beam = default_beam;
           // gradually make the beam larger as long
           // as we are below min_active
-          new_dynamic_beam *= 1.25;
+          dynamic_beam *= 1.25;
         }
       } else {
         // We violated the max_active constraint -> decrease beam
-        if (new_dynamic_beam > default_beam) new_dynamic_beam = default_beam;
+        if (dynamic_beam > default_beam)
+          dynamic_beam = default_beam;
         // Decrease the beam as long as we have more than
         // max_active active states.
-        new_dynamic_beam *= 0.85;
+        dynamic_beam *= 0.9;
       }
-      dynamic_beams_data[i] = new_dynamic_beam;
-      cutoffs_data[i] = best_loglike - new_dynamic_beam;
+      dynamic_beams_data[i] = dynamic_beam;
+      cutoffs_data[i] = best_loglike - dynamic_beam;
     };
     Eval(c_, num_fsas, lambda_set_beam_and_cutoffs);
     return cutoffs;
