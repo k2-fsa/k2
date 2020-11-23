@@ -144,7 +144,7 @@ static void PybindRaggedImpl(py::module &m) {
 static void PybindRaggedShape(py::module &m) {
   using PyClass = RaggedShape;
   py::class_<PyClass> pyclass(m, "RaggedShape");
-  pyclass.def(py::init<const std::string&>(), py::arg("src"));
+  pyclass.def(py::init<const std::string &>(), py::arg("src"));
   pyclass.def("dim0", &PyClass::Dim0);
   pyclass.def("max_size", &PyClass::MaxSize, py::arg("axis"));
   pyclass.def("num_axes", &PyClass::NumAxes);
@@ -197,7 +197,10 @@ static void PybindRaggedShape(py::module &m) {
 }
 
 static void PybindRandomRaggedShape(py::module &m) {
-  m.def("random_ragged_shape", &RandomRaggedShape, "RandomRaggedShape");
+  m.def("random_ragged_shape", &RandomRaggedShape, "RandomRaggedShape",
+        py::arg("set_row_ids") = false, py::arg("min_num_axes") = 2,
+        py::arg("max_num_axes") = 4, py::arg("min_num_elements") = 0,
+        py::arg("max_num_elements") = 2000);
 }
 
 }  // namespace k2
