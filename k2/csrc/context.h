@@ -426,9 +426,9 @@ class With {
 
   Note the order of (a) and (b), and (d) and (e).  If you get this wrong,
 */
-class ParallelRunner {
+class ParallelRunnerActive {
  public:
-  explicit ParallelRunner(ContextPtr c);
+  explicit ParallelRunnerActive(ContextPtr c);
 
   // create a new stream, that first syncs with stream of c_ via an event.  The
   // destructor will cause the stream of c_ to wait on this stream in the
@@ -449,7 +449,7 @@ class ParallelRunner {
   // calling Finish() is equivalent to calling the destructor early.
   void Finish();
 
-  ~ParallelRunner() { Finish(); }
+  ~ParallelRunnerActive() { Finish(); }
 
  private:
   ContextPtr c_;
@@ -457,6 +457,18 @@ class ParallelRunner {
   cudaEvent_t event_;
 };
 
+// use the one that does nothing.  Turns out cudaStreamCreate and
+// cudaEventRecord() are too slow to make this worthwhile.
+class ParallelRunnerDummy {
+ public:
+  explicit ParallelRunnerDummy(ContextPtr c): stream_(c->GetCudaStream()) { }
+  cudaStream_t NewStream() { return stream_; }
+  void Finish() { }
+ private:
+  cudaStream_t stream_;
+};
+
+using ParallelRunner = ParallelRunnerDummy;
 }  // namespace k2
 
 #endif  // K2_CSRC_CONTEXT_H_
