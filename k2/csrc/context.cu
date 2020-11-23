@@ -29,7 +29,7 @@ RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes) {
   return ans;
 }
 
-ParallelRunner::ParallelRunner(ContextPtr c) : c_(c) {
+ParallelRunnerActive::ParallelRunnerActive(ContextPtr c) : c_(c) {
   if (c_->GetDeviceType() == kCuda) {
     auto ret = cudaEventCreate(&event_);
     K2_CHECK_CUDA_ERROR(ret);
@@ -38,7 +38,7 @@ ParallelRunner::ParallelRunner(ContextPtr c) : c_(c) {
     K2_CHECK_CUDA_ERROR(ret);
   }
 }
-cudaStream_t ParallelRunner::NewStream() {
+cudaStream_t ParallelRunnerActive::NewStream() {
   DeviceType d = c_->GetDeviceType();
   if (d == kCpu) {
     return kCudaStreamInvalid;
@@ -55,7 +55,7 @@ cudaStream_t ParallelRunner::NewStream() {
   }
 }
 
-void ParallelRunner::Finish() {
+void ParallelRunnerActive::Finish() {
   if (c_.get() == nullptr)
     return;
   if (c_->GetDeviceType() == kCuda) {

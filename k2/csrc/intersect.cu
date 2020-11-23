@@ -442,9 +442,8 @@ class MultiGraphDenseIntersect {
     Array1<float> max_per_fsa(c_, end_scores_per_fsa.Dim0());
     MaxPerSublist(end_scores_per_fsa, -std::numeric_limits<float>::infinity(),
                   &max_per_fsa);
-    const int32_t *per_fsa_row_splits1_data =
-        end_scores_per_fsa.shape.RowSplits(1).Data();
-
+    const int32_t *arc_end_scores_row_splits1_data =
+        arc_end_scores.RowSplits(1).Data();
     const float *max_per_fsa_data = max_per_fsa.Data();
     float *dynamic_beams_data = dynamic_beams_.Data();
 
@@ -460,7 +459,7 @@ class MultiGraphDenseIntersect {
       float best_loglike = max_per_fsa_data[i],
             dynamic_beam = dynamic_beams_data[i];
       int32_t num_active =
-          per_fsa_row_splits1_data[i + 1] - per_fsa_row_splits1_data[i];
+          arc_end_scores_row_splits1_data[i + 1] - arc_end_scores_row_splits1_data[i];
       if (num_active <= max_active) {
         // Not constrained by max_active...
         if (num_active >= min_active || num_active == 0) {
