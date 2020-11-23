@@ -20,6 +20,7 @@
 namespace k2 {
 
 k2host::Fsa FsaToHostFsa(Fsa &fsa) {
+    NVTX_RANGE(__func__);
   K2_CHECK_EQ(fsa.NumAxes(), 2);
   K2_CHECK_EQ(fsa.Context()->GetDeviceType(), kCpu);
   // reinterpret_cast works because the arcs have the same members
@@ -29,6 +30,7 @@ k2host::Fsa FsaToHostFsa(Fsa &fsa) {
 }
 
 k2host::Fsa FsaVecToHostFsa(FsaVec &fsa_vec, int32_t index) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(fsa_vec.NumAxes(), 3);
   K2_CHECK_LT(static_cast<uint32_t>(index),
               static_cast<uint32_t>(fsa_vec.Dim0()));
@@ -53,6 +55,7 @@ k2host::Fsa FsaVecToHostFsa(FsaVec &fsa_vec, int32_t index) {
 
 void FsaVecCreator::Init(
     const std::vector<k2host::Array2Size<int32_t>> &sizes) {
+  NVTX_RANGE(__func__);
   int32_t num_fsas = static_cast<int32_t>(sizes.size());
   K2_CHECK_GT(num_fsas, 0);
   ContextPtr c = GetCpuContext();
@@ -78,6 +81,7 @@ void FsaVecCreator::Init(
 }
 
 void FsaVecCreator::FinalizeRowSplits2() {
+  NVTX_RANGE(__func__);
   if (finalized_row_splits2_) return;
   finalized_row_splits2_ = true;
   int32_t num_fsas = row_splits1_.Dim() - 1;
@@ -102,6 +106,7 @@ void FsaVecCreator::FinalizeRowSplits2() {
 }
 
 k2host::Fsa FsaVecCreator::GetHostFsa(int32_t i) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(i, next_fsa_idx_);  // make sure they are called in order.
   next_fsa_idx_++;
 
@@ -117,6 +122,7 @@ k2host::Fsa FsaVecCreator::GetHostFsa(int32_t i) {
 }
 
 FsaVec FsaVecCreator::GetFsaVec() {
+  NVTX_RANGE(__func__);
   FinalizeRowSplits2();
   return Ragged<Arc>(
       RaggedShape3(&row_splits1_, nullptr, -1, &row_splits2_, nullptr, -1),
@@ -136,6 +142,7 @@ FsaVec FsaVecCreator::GetFsaVec() {
 */
 static Array1<bool> CheckProperties(FsaOrVec &fsas,
                                     bool (*f)(const k2host::Fsa &)) {
+  NVTX_RANGE(__func__);
   NVTX_RANGE("CheckProperties");
   ContextPtr &c = fsas.Context();
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);

@@ -15,6 +15,7 @@
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2 {
 

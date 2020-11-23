@@ -10,6 +10,7 @@
  */
 
 #include "k2/csrc/math.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2 {
 /*
@@ -20,6 +21,7 @@ namespace k2 {
   ...
  */
 int32_t HighestBitSet(int32_t i) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GE(i, 0);
   for (int64_t j = 0; j < 32; j++) {
     if (i < (1 << j)) {
@@ -30,6 +32,7 @@ int32_t HighestBitSet(int32_t i) {
 }
 
 int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GE(n, 0);
   n--;
   n |= n >> 1;
@@ -42,6 +45,7 @@ int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
 
 // returns random int32_t from [min..max]
 int32_t RandInt(int32_t min, int32_t max) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GE(max, min);
   // declare as static intentionally here to make it constructed only once and
   // retain its state between calls
@@ -53,6 +57,7 @@ int32_t RandInt(int32_t min, int32_t max) {
 // values.  I'm not implying this is a geometric distribution.  Anyway
 // we aren't relying on any exact properties.
 int32_t RandIntGeometric(int32_t min, int32_t max) {
+  NVTX_RANGE(__func__);
   static RandIntGeometricGenerator geneartor;
   return geneartor(min, max);
 }
@@ -60,6 +65,7 @@ int32_t RandIntGeometric(int32_t min, int32_t max) {
 namespace internal {
 template <typename Real>
 Real FixedRead(std::istream &is) {
+  NVTX_RANGE(__func__);
   is >> std::ws;
   char c = is.peek();
   if (c == '-') {

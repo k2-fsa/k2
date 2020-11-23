@@ -32,6 +32,7 @@ static constexpr const char *kDelim = " \t";
 
 // Convert a string to an integer. Abort the program on failure.
 static int32_t StringToInt(const std::string &s) {
+  NVTX_RANGE(__func__);
   K2_CHECK(!s.empty());
 
   bool ok = false;
@@ -53,6 +54,7 @@ static int32_t StringToInt(const std::string &s) {
 //               decimals. We have to test if the C code will behave the same
 //               w.r.t. locale as Python does.
 static float StringToFloat(const std::string &s) {
+  NVTX_RANGE(__func__);
   K2_CHECK(!s.empty());
   char *p = nullptr;
   float f = std::strtof(s.c_str(), &p);
@@ -62,6 +64,7 @@ static float StringToFloat(const std::string &s) {
 
 // Trim leading and trailing spaces of a string.
 static void TrimString(std::string *s) {
+  NVTX_RANGE(__func__);
   K2_CHECK_NE(s, nullptr);
   auto not_space = [](int32_t c) -> bool { return std::isspace(c) == 0; };
 
@@ -86,6 +89,7 @@ static void TrimString(std::string *s) {
 */
 static void SplitStringToVector(const std::string &in, const char *delim,
                                 std::vector<std::string> *out) {
+  NVTX_RANGE(__func__);
   K2_CHECK_NE(delim, nullptr);
   K2_CHECK_NE(out, nullptr);
   out->clear();
@@ -124,6 +128,7 @@ static void SplitStringToVector(const std::string &in, const char *delim,
    @return It returns an Fsa on CPU.
 */
 static Fsa K2AcceptorFromStream(std::istringstream &is) {
+  NVTX_RANGE(__func__);
   std::vector<Arc> arcs;
   std::vector<std::string> splits;
   std::string line;
@@ -517,6 +522,7 @@ Fsa FsaFromString(const std::string &s, bool openfst /*= false*/,
 
 std::string FsaToString(const Fsa &fsa, bool openfst /*= false*/,
                         const Array1<int32_t> *aux_labels /*= nullptr*/) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(fsa.NumAxes(), 2);
 
   if (fsa.Context()->GetDeviceType() != kCpu) {
