@@ -97,7 +97,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, a_fsas: Fsa, b_fsas: DenseFsaVec, out_fsa: List[Fsa],
-                beam: float, max_active_states: int, min_active_states: int,
+                search_beam: float, output_beam: float,
+                min_active_states: int, max_active_states: int,
                 unused_scores_a: torch.Tensor,
                 unused_scores_b: torch.Tensor) -> torch.Tensor:
         '''Intersect array of FSAs on CPU/GPU.
@@ -114,10 +115,13 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             A list containing ONLY one entry which will be set to the
             generated FSA on return. We pass it as a list since the return
             value can only be types of torch.Tensor in the `forward` function.
-          beam:
-            Decoding beam, e.g. 10.  Smaller is faster, larger is more exact
+          search_beam:
+            Decoding beam, e.g. 20.  Smaller is faster, larger is more exact
             (less pruning). This is the default value; it may be modified by
             `min_active_states` and `max_active_states`.
+          output_beam:
+            Pruning beam for the output of intersection (vs. best path); equivalent
+            to kaldi's lattice-beam.  E.g. 8.
           max_active_states:
             Maximum number of FSA states that are allowed to be active on any
             given frame for any given intersection/composition task. This is
@@ -142,9 +146,11 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         ragged_arc, arc_map_a, arc_map_b = _k2.intersect_dense_pruned(
             a_fsas=a_fsas.arcs,
             b_fsas=b_fsas.dense_fsa_vec,
-            beam=beam,
-            max_active_states=max_active_states,
-            min_active_states=min_active_states)
+            search_beam=search_beam,
+            output_beam=output_beam,
+            min_active_states=min_active_states,
+            max_active_states=max_active_states)
+
 
         out_fsa[0] = Fsa(ragged_arc)
 
@@ -165,7 +171,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
     @staticmethod
     def backward(
             ctx, out_fsa_grad: torch.Tensor
-    ) -> Tuple[None, None, None, None, None, None, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[None, None, None, None, None, None, None, torch.Tensor, torch.Tensor]:
         a_scores, b_scores = ctx.saved_tensors
         arc_map_a = ctx.arc_map_a
         arc_map_b = ctx.arc_map_b
@@ -184,7 +190,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
         _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
-        return None, None, None, None, None, None, grad_a, grad_b
+        return None, None, None, None, None, None, None, grad_a, grad_b
 
 
 class _IndexSelectFunction(torch.autograd.Function):
@@ -304,9 +310,10 @@ def get_tot_scores(fsas: Fsa, log_semiring: bool,
     return tot_scores
 
 
-def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec, beam: float,
-                           max_active_states: int,
-                           min_active_states: int) -> Fsa:
+def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
+                           search_beam: float, output_beam: float,
+                           min_active_states: int, max_active_states: int) -> Fsa:
+
     '''Intersect array of FSAs on CPU/GPU.
 
     Caution:
@@ -320,20 +327,23 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec, beam: float,
         `a_fsas.shape[0] == 1` in which case the graph is shared.
       b_fsas:
         Input FSAs that correspond to neural network output.
-      beam:
-        Decoding beam, e.g. 10.  Smaller is faster, larger is more exact
+      search_beam:
+        Decoding beam, e.g. 20.  Smaller is faster, larger is more exact
         (less pruning). This is the default value; it may be modified by
         `min_active_states` and `max_active_states`.
-      max_active_states:
-        Maximum number of FSA states that are allowed to be active on any given
-        frame for any given intersection/composition task. This is advisory,
-        in that it will try not to exceed that but may not always succeed.
-        You can use a very large number if no constraint is needed.
+      output_beam:
+         Beam to prune output, similar to lattice-beam in Kaldi.  Relative
+         to best path of output.
       min_active_states:
         Minimum number of FSA states that are allowed to be active on any given
         frame for any given intersection/composition task. This is advisory,
         in that it will try not to have fewer than this number active.
         Set it to zero if there is no constraint.
+      max_active_states:
+        Maximum number of FSA states that are allowed to be active on any given
+        frame for any given intersection/composition task. This is advisory,
+        in that it will try not to exceed that but may not always succeed.
+        You can use a very large number if no constraint is needed.
 
     Returns:
       The result of the intersection.
@@ -342,8 +352,9 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec, beam: float,
 
     # the following return value is discarded since it is already contained
     # in `out_fsa[0].scores`
-    _IntersectDensePrunedFunction.apply(a_fsas, b_fsas, out_fsa, beam,
-                                        max_active_states, min_active_states,
+    _IntersectDensePrunedFunction.apply(a_fsas, b_fsas, out_fsa,
+                                        search_beam, output_beam,
+                                        min_active_states, max_active_states,
                                         a_fsas.scores, b_fsas.scores)
     return out_fsa[0]
 

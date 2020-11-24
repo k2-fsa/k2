@@ -58,7 +58,8 @@ TEST(Intersect, Simple) {
 
     FsaVec out_fsas;
     Array1<int32_t> arc_map_a, arc_map_b;
-    IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active, &out_fsas,
+    IntersectDensePruned(fsa, dfsavec, beam, beam,
+                         min_active, max_active, &out_fsas,
                          &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
                  << ", arc_map_b = " << arc_map_b;
@@ -115,7 +116,8 @@ TEST(Intersect, TwoDense) {
 
   FsaVec out_fsas;
   Array1<int32_t> arc_map_a, arc_map_b;
-  IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active, &out_fsas,
+  IntersectDensePruned(fsa, dfsavec, beam, beam,
+                       min_active, max_active,  &out_fsas,
                        &arc_map_a, &arc_map_b);
   K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
                << ", arc_map_b = " << arc_map_b;
@@ -164,7 +166,8 @@ TEST(Intersect, TwoFsas) {
 
   FsaVec out_fsas;
   Array1<int32_t> arc_map_a, arc_map_b;
-  IntersectDensePruned(fsa_vec, dfsavec, beam, max_active, min_active,
+  IntersectDensePruned(fsa_vec, dfsavec, beam, beam,
+                       min_active, max_active,
                        &out_fsas, &arc_map_a, &arc_map_b);
   K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
                << ", arc_map_b = " << arc_map_b;
@@ -214,7 +217,8 @@ TEST(Intersect, RandomSingle) {
     FsaVec out_fsas;
     float beam = 10000.0;
     int32_t max_active = 10000, min_active = 0;
-    IntersectDensePruned(fsa, dfsavec, beam, max_active, min_active, &out_fsas,
+    IntersectDensePruned(fsa, dfsavec, beam, beam,
+                         min_active, max_active,  &out_fsas,
                          &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
 
@@ -269,7 +273,8 @@ TEST(Intersect, RandomFsaVec) {
     FsaVec out_fsas;
     float beam = 10000.0;
     int32_t max_active = 10000, min_active = 0;
-    IntersectDensePruned(fsavec, dfsavec, beam, max_active, min_active,
+    IntersectDensePruned(fsavec, dfsavec, beam, beam,
+                         min_active, max_active,
                          &out_fsas, &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
 
@@ -282,7 +287,7 @@ TEST(Intersect, RandomFsaVec) {
 
     ArcSort(
         &fsavec);  // CAUTION if you later test the arc_maps: we arc-sort here,
-    // so the input `fsa` is not the same as before.
+                   // so the input `fsa` is not the same as before.
     bool treat_epsilons_specially = false;
     Intersect(fsavec, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
               &arc_map_b2);

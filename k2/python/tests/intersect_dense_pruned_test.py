@@ -35,10 +35,10 @@ class TestIntersectDensePruned(unittest.TestCase):
         dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
         out_fsa = k2.intersect_dense_pruned(fsa_vec,
                                             dense_fsa_vec,
-                                            beam=100000,
-                                            max_active_states=10000,
-                                            min_active_states=0)
-
+                                            search_beam=100000,
+                                            output_beam=100000,
+                                            min_active_states=0,
+                                            max_active_states=10000)
         scores = k2.get_tot_scores(out_fsa,
                                    log_semiring=False,
                                    use_float_scores=True)
@@ -77,9 +77,10 @@ class TestIntersectDensePruned(unittest.TestCase):
         dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
         out_fsa = k2.intersect_dense_pruned(fsa_vec,
                                             dense_fsa_vec,
-                                            beam=100000,
-                                            max_active_states=10000,
-                                            min_active_states=0)
+                                            search_beam=100000,
+                                            output_beam=100000,
+                                            min_active_states=0,
+                                            max_active_states=10000)
         assert out_fsa.shape == (2, None, None), 'There should be two FSAs!'
 
         scores = k2.get_tot_scores(out_fsa,
@@ -136,9 +137,10 @@ class TestIntersectDensePruned(unittest.TestCase):
         dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
         out_fsa = k2.intersect_dense_pruned(fsa_vec,
                                             dense_fsa_vec,
-                                            beam=100000,
-                                            max_active_states=10000,
-                                            min_active_states=0)
+                                            search_beam=100000,
+                                            output_beam=100000,
+                                            min_active_states=0,
+                                            max_active_states=10000)
         assert out_fsa.shape == (2, None, None), 'There should be two FSAs!'
 
         scores = k2.get_tot_scores(out_fsa,

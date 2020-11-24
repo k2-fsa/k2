@@ -139,16 +139,22 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
                          code changes to support.
          @param[in] b_fsas   Input FSAs that correspond to neural network
                          outputs (see documentation in fsa.h).
-         @param[in] beam   Decoding beam, e.g. 10.  Smaller is faster,
-                         larger is more exact (less pruning).  This is the
-                         default value; it may be modified by {min,max}_active.
+         @param[in] search_beam   Beam for frame-synchronous beam pruning, e.g. 20.
+                         Smaller is faster, larger is more exact (less pruning).
+                         This is the default value; it may be modified by
+                         {min,max}_active which dictate the minimum or maximum
+                         allowed number of active states per frame.
+         @param[in] output_beam   Beam with which we prune the output (analogous
+                         to lattice-beam in Kaldi), e.g. 8.  We discard arcs in the output
+                         that are not on a path that's within `output_beam`
+                         of the best path of the composed output.
+         @param[in] min_active  Minimum active states allowed per frame; beam
+                         will be decreased if the number of active states falls
+                         below this
          @param[in] max_active  Maximum active states allowed per frame.
                          (i.e. at each time-step in the sequences).  Sequence-
                          specific beam will be reduced if more than this number
                          of states are active.
-         @param[in] min_active  Minimum active states allowed per frame; beam
-                         will be decreased if the number of active states falls
-                         below this
          @param[out] out Output vector of composed, pruned FSAs, with same
                          Dim0() as b_fsas.  Elements of it may be empty if the
                          composition was empty, either intrinsically or due to
@@ -156,8 +162,9 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
          @param[out] arc_map_a  Vector of
 
 */
-void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
-                          int32_t max_active_states, int32_t min_active_states,
+void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
+                          float search_beam, float output_beam,
+                          int32_t min_active_states, int32_t max_active_states,
                           FsaVec *out, Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b);
 

@@ -140,19 +140,22 @@ static void PybindIntersect(py::module &m) {
 static void PybindIntersectDensePruned(py::module &m) {
   m.def(
       "intersect_dense_pruned",
-      [](FsaVec &a_fsas, DenseFsaVec &b_fsas, float beam,
-         int32_t max_active_states, int32_t min_active_states)
+      [](FsaVec &a_fsas, DenseFsaVec &b_fsas,
+         float search_beam, float output_beam,
+         int32_t min_active_states, int32_t max_active_states)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
         Array1<int32_t> arc_map_a;
         Array1<int32_t> arc_map_b;
         FsaVec out;
 
-        IntersectDensePruned(a_fsas, b_fsas, beam, max_active_states,
-                             min_active_states, &out, &arc_map_a, &arc_map_b);
+        IntersectDensePruned(a_fsas, b_fsas, search_beam, output_beam,
+                             min_active_states, max_active_states, &out,
+                             &arc_map_a, &arc_map_b);
         return std::make_tuple(out, ToTensor(arc_map_a), ToTensor(arc_map_b));
       },
-      py::arg("a_fsas"), py::arg("b_fsas"), py::arg("beam"),
-      py::arg("max_active_states"), py::arg("min_active_states"));
+      py::arg("a_fsas"), py::arg("b_fsas"), py::arg("search_beam"),
+      py::arg("output_beam"), py::arg("min_active_states"),
+      py::arg("max_active_states"));
 }
 
 static void PybindConnect(py::module &m) {
