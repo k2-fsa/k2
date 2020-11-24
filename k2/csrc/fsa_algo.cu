@@ -775,6 +775,9 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
   Array1<Arc> out_arcs(c, num_out_arcs);
   Arc *out_arcs_data = out_arcs.Data();
 
+  Array1<int32_t> tmp_arc_map(c, num_out_arcs, -1);
+  int32_t *tmp_arc_map_data = tmp_arc_map.Data();
+
   auto lambda_set_arcs = [=] __host__ __device__(int32_t fsa_arc_idx01) {
     int32_t fsa_state_idx0 = fsa_row_ids_data[fsa_arc_idx01];
     int32_t fsa_arc_idx0x = fsa_row_splits_data[fsa_state_idx0];
@@ -815,11 +818,15 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
       out_row_ids_data[0] = 0;
     }
 
+    tmp_arc_map_data[out_arc_idx01] = fsa_arc_idx01;
+
     out_arcs_data[out_arc_idx01] = arc;
     out_row_ids_data[out_arc_idx01] = arc.src_state;
   };
 
   Eval(c, fsa.values.Dim(), lambda_set_arcs);
+
+  if (arc_map != nullptr) *arc_map = std::move(tmp_arc_map);
   Array1<int32_t> out_row_splits(c, num_out_states + 1);
   RowIdsToRowSplits(out_row_ids, &out_row_splits);
   RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids, num_out_arcs);

@@ -593,9 +593,11 @@ TEST(FsaAlgo, ClosureSimpleCase) {
   )";
 
   Fsa fsa = FsaFromString(s);
+  Array1<int32_t> arc_map;
   K2_LOG(INFO) << "input fsa: \n" << FsaToString(fsa);
-  Fsa ans = Closure(fsa);
+  Fsa ans = Closure(fsa, &arc_map);
   K2_LOG(INFO) << "output fsa: \n" << FsaToString(ans);
+  K2_LOG(INFO) << "arc map: \n" << arc_map;
 }
 
 }  // namespace k2
