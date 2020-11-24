@@ -1,0 +1,58 @@
+{
+   leak_libcuda
+   Memcheck:Leak
+   match-leak-kinds:all
+   ...
+   obj:*libcuda.so*
+   ...
+}
+{
+   leak_lib_cuda
+   Memcheck:Leak
+   match-leak-kinds:all
+   ...
+   obj:*lib*_cuda.so*
+   ...
+}
+{
+   jump_libcuda
+   Memcheck:Jump
+   ...
+   obj:*libcuda.so*
+   ...
+}
+{
+   jump_lib_cuda
+   Memcheck:Jump
+   ...
+   obj:*lib*_cuda.so*
+   ...
+}
+{
+   cond_libcuda
+   Memcheck:Cond
+   ...
+   obj:*libcuda.so*
+   ...
+}
+{
+   cond_lib_cuda
+   Memcheck:Cond
+   ...
+   obj:*lib*_cuda.so*
+   ...
+}
+{
+   val8_libcuda
+   Memcheck:Value8
+   ...
+   obj:*libcuda.so*
+   ...
+}
+{
+   val8_lib_cuda
+   Memcheck:Value8
+   ...
+   obj:*lib*_cuda.so*
+   ...
+}
