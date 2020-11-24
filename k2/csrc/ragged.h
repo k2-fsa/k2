@@ -52,16 +52,12 @@ struct RaggedShapeDim {
 class RaggedShapeIndexIterator;
 class RaggedShape;
 // Will write the elements as x, e.g. "[ [ x x ] [x] ]"
-std::ostream &operator<<(std::ostream &stream,
-                         const RaggedShape &shape);
-
+std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape);
 
 // Reader from string, expects "x" (i.e. the letter x) for the elements, e.g. "[
 // [ x x ] [ x x x ] ]".  The spaces are optional.  Will crash if the input was
 // invalid (e.g. mismatched brackets or inconsistent depth).
-std::istream &operator>>(std::istream &stream,
-                         RaggedShape &shape);
-
+std::istream &operator>>(std::istream &stream, RaggedShape &shape);
 
 class RaggedShape {
  public:
@@ -150,13 +146,11 @@ class RaggedShape {
    */
   int32_t operator[](const std::vector<int32_t> &indexes);
 
-
   // Constructor from string; the elements should be readable from ostream to
   // something of type T.  E.g.  elements, e.g. src="[ [ 1 2 ] [ 0 4 5] ]", if T
   // is an integer type.  Intended for testing purposes.
   template <typename T>
-  explicit RaggedShape(const std::string &src, Array1<T> *contents);
-
+  RaggedShape(const std::string &src, Array1<T> *contents);
 
   RaggedShapeIndexIterator Iterator();
 
@@ -171,7 +165,7 @@ class RaggedShape {
     std::istringstream is(src);
     is >> *this >> std::ws;
     if (!is.eof() || is.fail())
-      K2_LOG(FATAL) <<  "Failed to construct RaggedShape from string: " << src;
+      K2_LOG(FATAL) << "Failed to construct RaggedShape from string: " << src;
   }
 
   // A RaggedShape constructed this way will not be a valid RaggedShape.
@@ -184,7 +178,7 @@ class RaggedShape {
 
   RaggedShape(const RaggedShape &other) = default;
   // Move constructor
-  RaggedShape(RaggedShape &&other): axes_(std::move(other.axes_)) { }
+  RaggedShape(RaggedShape &&other) : axes_(std::move(other.axes_)) {}
   RaggedShape &operator=(const RaggedShape &other) = default;
 
   // Axes() is intended for internal-ish use; users shouldn't really have to
@@ -214,8 +208,7 @@ class RaggedShape {
 };
 
 // prints a RaggedShape, for debug purposes.  May change later how this works.
-std::ostream &operator<<(std::ostream &stream,
-                         const RaggedShape &shape);
+std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape);
 
 /*
   This is intended only for use in debugging.  It only works if the shape is
@@ -291,7 +284,7 @@ struct Ragged {
     std::istringstream is(src);
     is >> *this >> std::ws;
     if (!is.eof() || is.fail())
-      K2_LOG(FATAL) <<  "Failed to construct Ragged array from string: " << src;
+      K2_LOG(FATAL) << "Failed to construct Ragged array from string: " << src;
   }
 
   // Default constructor will not leave this a valid Ragged object, you
@@ -307,7 +300,6 @@ struct Ragged {
   Ragged(const Ragged<T> &src) = default;
   // Move constructor
   Ragged(Ragged<T> &&src) = default;
-
 
   // This will only work on the CPU, and is intended for use in testing code.
   // See also member-function Index().
