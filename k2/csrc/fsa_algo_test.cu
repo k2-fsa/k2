@@ -585,4 +585,17 @@ TEST(FsaAlgo, Determinize) {
   }
 }
 
+TEST(FsaAlgo, ClosureSimpleCase) {
+  std::string s = R"(0 1 1 0.1
+    1 2 2 0.2
+    2 3 -1 0.3
+    3
+  )";
+
+  Fsa fsa = FsaFromString(s);
+  K2_LOG(INFO) << "input fsa: \n" << FsaToString(fsa);
+  Fsa ans = Closure(fsa);
+  K2_LOG(INFO) << "output fsa: \n" << FsaToString(ans);
+}
+
 }  // namespace k2

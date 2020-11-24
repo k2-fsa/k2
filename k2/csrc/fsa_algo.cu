@@ -788,6 +788,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
       //   - dest_state == 0
       //   - label == 0
       arc.dest_state = 0;
+      K2_DCHECK_EQ(arc.label, -1);
       arc.label = 0;
     }
 
@@ -799,15 +800,17 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
     } else {
       out_arc_idx01 = fsa_arc_idx01;
       if (fsa_arc_idx1 == this_state_num_arcs - 1) {
-        Arc new_arc(0, fsa_final_state, 0, 0.0f);
+        // This is the last arc of the original start state,
+        // so we add a new arc just after it.
+        Arc new_arc(0, fsa_final_state, -1, 0.0f);
         out_arcs_data[out_arc_idx01 + 1] = new_arc;
         out_row_ids_data[out_arc_idx01 + 1] = 0;
       }
     }
 
-    // it may happen that the start state have no leaving arcs
+    // it may happen that the start state has no leaving arcs
     if (fsa_row_splits_data[1] == 0) {
-      Arc new_arc(0, fsa_final_state, 0, 0.0f);
+      Arc new_arc(0, fsa_final_state, -1, 0.0f);
       out_arcs_data[0] = new_arc;
       out_row_ids_data[0] = 0;
     }
