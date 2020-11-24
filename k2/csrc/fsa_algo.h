@@ -305,6 +305,38 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
  */
 Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map = nullptr);
 
+/* Compute the closure of an FSA.
+
+   The closure is implemented in the following way:
+
+   - For all arcs entering the final-state, change the destination-state from
+   the final-state to state 0 (the start state), and the label from -1 to 0.
+
+   - Add an arc from the start-state to the final-state (with label -1, and
+   score 0, of course); this can be the last numbered arc of the start state of
+   the output. The implementation wouldn't be in-place, we'd create a new FSA.
+   Assume that the original start state has two arcs, then the arc-map would be
+   [ 0 1 -1 2 3 ... ].
+
+   Note: the output will be arc-sorted if the input was arc-sorted and
+   epsilon-free (actually we only need for the start-state to not have epsilon
+   arcs leaving it). The output will not be epsilon-free though, so if an
+   epsilon-free output is desired, which it generally will be, the caller will
+   need to determinize afterward.
+
+   Caution: The caller will have to modify any extra labels (like aux_labels) to
+   deal with -1's correctly.
+
+   @param in]   fsa        The input FSA.
+   @param [out] arc_map    It maps the arc indexes of the output fsa
+                           to the input fsa. That is,
+                           arc_map[out_arc_index] = fsa_arc_index.
+                           Its entry may be -1 if there is no
+                           corresponding arc in fsa.
+   @return It returns a closure of the input fsa.
+ */
+Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_
