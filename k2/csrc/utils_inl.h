@@ -25,7 +25,7 @@
 
 namespace k2 {
 template <typename SrcPtr, typename DestPtr>
-void ExclusiveSum(ContextPtr &c, int32_t n, const SrcPtr src, DestPtr dest) {
+void ExclusiveSum(ContextPtr c, int32_t n, const SrcPtr src, DestPtr dest) {
   K2_CHECK_GE(n, 0);
   DeviceType d = c->GetDeviceType();
   using SumType = typename std::decay<decltype(dest[0])>::type;
@@ -52,7 +52,7 @@ void ExclusiveSum(ContextPtr &c, int32_t n, const SrcPtr src, DestPtr dest) {
   }
 }
 template <typename T>
-T MaxValue(ContextPtr &c, int32_t nelems, const T *t) {
+T MaxValue(ContextPtr c, int32_t nelems, const T *t) {
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     // note the return value is initialized with T(0)

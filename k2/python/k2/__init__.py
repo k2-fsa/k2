@@ -17,6 +17,8 @@ from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
 from .ops import index
 from .ops import index_add
+from .ragged_shape import RaggedShape
+from .ragged_shape import random_ragged_shape
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
 from .utils import is_rand_equivalent
@@ -29,6 +31,7 @@ __all__ = [
     'DenseFsaVec',
     'Fsa',
     'SymbolTable',
+    'RaggedShape',
     'add_epsilon_self_loops',
     'arc_sort',
     'connect',
@@ -44,6 +47,7 @@ __all__ = [
     'is_rand_equivalent',
     'linear_fsa',
     'properties_to_str',
+    'random_ragged_shape',
     'remove_epsilon',
     'shortest_path',
     'to_dot',

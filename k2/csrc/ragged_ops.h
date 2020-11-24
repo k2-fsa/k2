@@ -67,6 +67,12 @@ void MinPerSublist(Ragged<T> &src, T default_value, Array1<T> *min_values) {
   ApplyOpPerSublist<T, MinOp<T>>(src, default_value, min_values);
 }
 
+// Same with `MaxPerSubList`, but output the sum of values in each sub-list.
+template <typename T>
+void SumPerSublist(Ragged<T> &src, T default_value, Array1<T> *sum_values) {
+  ApplyOpPerSublist<T, SumOp<T>>(src, default_value, sum_values);
+}
+
 // Same with `MaxPerSubList`, but with Op as `LogAdd`.
 template <typename T>
 void LogSumPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst_values) {
@@ -183,7 +189,6 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta);
  */
 RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
 
-
 /*
   Parallel version of Unsqueeze() that effectively calls Unsqueeze() in parallel
   for `num_srcs` RaggedShapes.  Currently only works for axis == 0
@@ -191,15 +196,14 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
                          array that `src` points to.
       @param [in]  srcs  The array of input RaggedShape, with elements
                          `*(src[0])`, `*(src[1])`, and so on.
-      @param [in] axis  The axis to unsqueeze (see the other version of Unsqueeze()
-                        for explanation).  CAUTION: only supports axis == 0
-                        currently.
+      @param [in] axis  The axis to unsqueeze (see the other version of
+                        Unsqueeze() for explanation).
+                        CAUTION: only supports axis == 0 currently.
       @return       Returns vector of unsqueezed RaggedShape, with
                     `ans.size() == num_srcs.`
  */
 std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
                                            int32_t axis);
-
 
 /* Remove an axis; if it is not the last axis, this is done by appending lists
    (effectively the axis is combined with the following axis).  If it is the
@@ -545,7 +549,7 @@ RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1);
                        filled in, and its cached_tot_size elements
                        set.
  */
-RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
+RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
                                     int32_t *tot_sizes);
 
 /*
