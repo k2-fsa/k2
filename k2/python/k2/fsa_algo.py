@@ -278,10 +278,15 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
     if properties is not None and properties & fsa_properties.EPSILON_FREE != 0:
         return fsa
 
-    ragged_arc = _k2.remove_epsilon(fsa.arcs)
-    out_fsa = Fsa(ragged_arc)
+    ragged_arc, arc_derivs = _k2.remove_epsilon(fsa.arcs)
+    aux_labels = None
+    if hasattr(fsa, 'aux_labels'):
+        aux_labels = _k2.simple_ragged_index_select(fsa.aux_labels, arc_derivs)
+    out_fsa = Fsa(ragged_arc, aux_labels)
+
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
+
     return out_fsa
 
 
@@ -310,8 +315,13 @@ def determinize(fsa: Fsa) -> Fsa:
             and properties & fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0: # noqa
         return fsa
 
-    ragged_arc = _k2.determinize(fsa.arcs)
-    out_fsa = Fsa(ragged_arc)
+    ragged_arc, arc_derivs = _k2.determinize(fsa.arcs)
+    aux_labels = None
+    if hasattr(fsa, 'aux_labels'):
+        aux_labels = _k2.simple_ragged_index_select(fsa.aux_labels, arc_derivs)
+    out_fsa = Fsa(ragged_arc, aux_labels)
+
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
+
     return out_fsa
