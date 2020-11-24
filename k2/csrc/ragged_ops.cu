@@ -222,7 +222,7 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
   return RaggedShape(axes);
 }
 
-RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
+RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
                                     int32_t *tot_sizes) {
   NVTX_RANGE(__func__);
   K2_CHECK_GE(num_axes, 2);
@@ -319,8 +319,7 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
   NVTX_RANGE(__func__);
   K2_CHECK_EQ(axis, 0);
   std::vector<RaggedShape> ans;
-  if (num_srcs == 0)
-    return ans;
+  if (num_srcs == 0) return ans;
   ans.reserve(num_srcs);
   ContextPtr c = src[0]->Context();
 
@@ -330,8 +329,7 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
   // where d0 == src[0]->Dim0(), d1 == src[1]->Dim0()..
   for (int32_t i = 0; i < num_srcs; i++) {
     int32_t this_dim0 = src[i]->Dim0();
-    if (this_dim0 > max_dim)
-      max_dim = this_dim0;
+    if (this_dim0 > max_dim) max_dim = this_dim0;
     all_row_splits_vec[i * 2] = 0;
     all_row_splits_vec[i * 2 + 1] = this_dim0;
   }
@@ -353,7 +351,6 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
   }
   return ans;
 }
-
 
 /*
   Internal function used in Index(), which gets certain arrays used internally.
@@ -938,11 +935,9 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src) {
     K2_CHECK(c->IsCompatible(*src[i]->Context()));
   }
 
-  std::vector<RaggedShape> unsqueezed = UnsqueezeParallel(
-      num_srcs, src, 0);
+  std::vector<RaggedShape> unsqueezed = UnsqueezeParallel(num_srcs, src, 0);
   std::vector<RaggedShape *> unsqueezed_ptrs(num_srcs);
-  for (int32_t i = 0; i < num_srcs; i++)
-    unsqueezed_ptrs[i] = &(unsqueezed[i]);
+  for (int32_t i = 0; i < num_srcs; i++) unsqueezed_ptrs[i] = &(unsqueezed[i]);
   RaggedShape ans = Append(0, num_srcs, unsqueezed_ptrs.data());
   // Transpose will check if all src->Dim0() has the same value.
   if (axis == 1) ans = Transpose(ans);
