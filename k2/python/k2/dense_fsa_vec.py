@@ -66,9 +66,7 @@ class DenseFsaVec(object):
         device = log_probs.device
         indexes = torch.cat(indexes).to(device)
 
-        scores = log_probs.new_empty(cur,
-                                     C + 1,
-                                     requires_grad=log_probs.requires_grad)
+        scores = torch.new_empty(cur, C + 1, dtype=log_probs.dtype)
         scores[:, 1:] = log_probs.reshape(-1, C).index_select(0, indexes)
 
         # `scores` contains -infinity in certain locations: in scores[j,0] where

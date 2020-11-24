@@ -212,10 +212,22 @@ TEST(Intersect, RandomSingle) {
 
     K2_LOG(INFO) << "dfsavec= " << dfsavec;
 
+    if (true) {
+      // trying to find bugs where the cutoffs might get mixed up between
+      // FSAs
+      auto dfsa_acc = dfsavec.scores.Accessor();
+      for (int32_t n = 0; n < 10; n++) {
+        int32_t i = RandInt(0, dfsavec.scores.Dim0() - 1);
+        for (int32_t j = 0; j < dfsavec.scores.Dim1(); j++) {
+          dfsa_acc(i, j) += -2000.0;
+        }
+      }
+    }
+
     Array1<int32_t> arc_map_a, arc_map_b;
 
     FsaVec out_fsas;
-    float beam = 10000.0;
+    float beam = 1000.0;
     int32_t max_active = 10000, min_active = 0;
     IntersectDensePruned(fsa, dfsavec, beam, beam,
                          min_active, max_active,  &out_fsas,
@@ -246,7 +258,7 @@ TEST(Intersect, RandomSingle) {
 TEST(Intersect, RandomFsaVec) {
   for (int32_t i = 0; i < 10; i++) {
     K2_LOG(INFO) << "Iteration of testing: i = " << i;
-    int32_t max_symbol = 10, min_num_arcs = 0, max_num_arcs = 20;
+    int32_t max_symbol = 10, min_num_arcs = 0, max_num_arcs = 200;
     bool acyclic = false;
 
     int32_t num_b_fsas = RandInt(1, 5),
@@ -264,6 +276,18 @@ TEST(Intersect, RandomFsaVec) {
         RandomDenseFsaVec(num_b_fsas, num_b_fsas, min_frames, max_frames,
                           min_nsymbols, max_nsymbols, scores_scale);
 
+    if (true) {
+      // trying to find bugs where the cutoffs might get mixed up between
+      // FSAs
+      auto dfsa_acc = dfsavec.scores.Accessor();
+      for (int32_t n = 0; n < 10; n++) {
+        int32_t i = RandInt(0, dfsavec.scores.Dim0() - 1);
+        for (int32_t j = 0; j < dfsavec.scores.Dim1(); j++) {
+          dfsa_acc(i, j) += -2000.0;
+        }
+      }
+    }
+
     K2_LOG(INFO) << "fsavec = " << fsavec;
 
     K2_LOG(INFO) << "dfsavec= " << dfsavec;
@@ -272,7 +296,7 @@ TEST(Intersect, RandomFsaVec) {
 
     FsaVec out_fsas;
     float search_beam = 1000.0, output_beam = 1000.0;
-    int32_t max_active = 10000, min_active = 0;
+    int32_t min_active = 0, max_active = 10;
     IntersectDensePruned(fsavec, dfsavec, search_beam, output_beam,
                          min_active, max_active,
                          &out_fsas, &arc_map_a, &arc_map_b);

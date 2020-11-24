@@ -127,8 +127,8 @@ class MultiGraphDenseIntersect {
         b_fsas_(b_fsas),
         search_beam_(search_beam),
         output_beam_(output_beam),
-        max_active_(max_active),
         min_active_(min_active),
+        max_active_(max_active),
         dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), search_beam) {
     NVTX_RANGE(__func__);
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
@@ -490,20 +490,20 @@ class MultiGraphDenseIntersect {
       cutoffs_data[i] = best_loglike - dynamic_beam;
     };
     Eval(c_, num_fsas, lambda_set_beam_and_cutoffs);
+
     return cutoffs;
   }
 
   /*
-    Returns un-pruned list of arcs on this frame, consisting of all arcs leaving
-    the states active on 'cur_frame'.  (Note: this is the 1st pass of pruning,
-    the forward pass).
+    Returns list of arcs on this frame, consisting of all arcs leaving
+    the states active on 'cur_frame'.
 
        @param [in] t       The time-index (on which to look up log-likes),
                            t >= 0
        @param [in] cur_frame   The FrameInfo for the current frame; only its
                        'states' member is expected to be set up on entry.
    */
-  Ragged<ArcInfo> GetUnprunedArcs(int32_t t, FrameInfo *cur_frame) {
+  Ragged<ArcInfo> GetArcs(int32_t t, FrameInfo *cur_frame) {
     NVTX_RANGE(__func__);
     Ragged<StateInfo> &states = cur_frame->states;
     const StateInfo *state_values = states.values.Data();
@@ -607,10 +607,10 @@ class MultiGraphDenseIntersect {
     NVTX_RANGE("PropagateForward");
     int32_t num_fsas = NumFsas();
     // Ragged<StateInfo> &states = cur_frame->states;
-    // ai has 3 axes: fsa_id, state, arc.
-    Ragged<ArcInfo> arc_info = GetUnprunedArcs(t, cur_frame);
+    // arc_info has 3 axes: fsa_id, state, arc.
+    Ragged<ArcInfo> arc_info = GetArcs(t, cur_frame);
 
-    const ArcInfo *ai_data = arc_info.values.Data();
+    ArcInfo *ai_data = arc_info.values.Data();
     Array1<float> ai_data_array1(c_, arc_info.values.Dim());
     float *ai_data_array1_data = ai_data_array1.Data();
     auto lambda_set_ai_data = [=] __host__ __device__(int32_t i) -> void {
@@ -655,24 +655,13 @@ class MultiGraphDenseIntersect {
       Eval(c_, arc_info.NumElements(), lambda_set_state_map);
     }
 
-    // renumber_arcs will be a renumbering that dictates which of the arcs
-    // in 'ai' we keep
-    Renumbering renumber_arcs(c_, arc_info.NumElements());
-
     // renumber_states will be a renumbering that dictates which of the arcs in
     // 'ai' correspond to unique states.  Only one arc for each dest-state is
     // kept (it doesn't matter which one).
     Renumbering renumber_states(c_, arc_info.NumElements());
 
-    // Note: we don't just keep arcs that were above the pruning threshold, we
-    // keep all arcs whose destination-states survived pruning.  This is like
-    // less aggressive pruning, we use it since there's no real extra cost.
-    // Later we'll prune with the lattice beam, using both forward and backward
-    // scores.
-    renumber_arcs.Keep() = 0;
     renumber_states.Keep() = 0;
-    char *keep_this_arc_data = renumber_arcs.Keep().Data(),
-         *keep_this_state_data = renumber_states.Keep().Data();
+    char *keep_this_state_data = renumber_states.Keep().Data();
 
     if (a_fsas_.shape.Dim0() > 1) {
       NVTX_RANGE("LambdaSetKeepA");
@@ -682,7 +671,6 @@ class MultiGraphDenseIntersect {
         int32_t dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
         int32_t j = state_map_data[dest_state];
         if (j != -1) {  // the dest-state was kept..
-          keep_this_arc_data[arc_idx012] = 1;
           // caution: keep_this_state_data is indexed by *arc*
           if (j == arc_idx012)  // this arc 'won' the data race..
             keep_this_state_data[arc_idx012] = 1;
@@ -697,7 +685,6 @@ class MultiGraphDenseIntersect {
         dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
         int j = state_map_acc(fsa_id, dest_state);
         if (j != -1) {  // the dest-state was kept..
-          keep_this_arc_data[arc_idx012] = 1;
           // caution: keep_this_state_data is indexed by *arc*
           if (j == arc_idx012)  // this arc 'won' the data race..
             keep_this_state_data[arc_idx012] = 1;
@@ -706,10 +693,8 @@ class MultiGraphDenseIntersect {
       Eval(c_, arc_info.NumElements(), lambda_set_keep);
     }
 
-    int32_t num_arcs = renumber_arcs.NumNewElems(),
-            num_states = renumber_states.NumNewElems();
-    int32_t *arc_reorder_data = renumber_arcs.Old2New().Data(),
-            *state_reorder_data = renumber_states.Old2New().Data();
+    int32_t num_states = renumber_states.NumNewElems();
+    int32_t *state_reorder_data = renumber_states.Old2New().Data();
 
     // state_to_fsa_id maps from an index into the next frame's
     // FrameInfo::states.values() vector to the sequence-id (fsa_id) associated
@@ -731,13 +716,7 @@ class MultiGraphDenseIntersect {
 
       K2_DCHECK(IsMonotonic(state_to_fsa_id));
     }
-    // The following creates a structure that will contain a subset of the elements
-    // of `arc_info`, determined by the renumbering in `renumber_arcs`.
-    Array1<ArcInfo> curr_frame_arc_array1(c_, num_arcs);
-    RaggedShape curr_frame_arc_shape =
-        SubsampleRaggedShape(arc_info.shape, renumber_arcs);
-    cur_frame->arcs =
-        Ragged<ArcInfo>(curr_frame_arc_shape, curr_frame_arc_array1);
+    cur_frame->arcs = arc_info;
 
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
     Array1<int32_t> states_row_splits1(c_, num_fsas + 1);
@@ -746,10 +725,10 @@ class MultiGraphDenseIntersect {
         RaggedShape2(&states_row_splits1, &state_to_fsa_id, num_states),
         Array1<StateInfo>(c_, num_states));
     StateInfo *ans_states_data = ans->states.values.Data();
-    const int32_t minus_inf =
+    const int32_t minus_inf_int =
         FloatToOrderedInt(-std::numeric_limits<float>::infinity());
     auto lambda_init_loglike = [=] __host__ __device__(int32_t i) -> void {
-      ans_states_data[i].forward_loglike = minus_inf;
+      ans_states_data[i].forward_loglike = minus_inf_int;
     };
     Eval(c_, num_states, lambda_init_loglike);
 
@@ -774,47 +753,39 @@ class MultiGraphDenseIntersect {
       Eval(c_, arc_info.NumElements(), lambda_modify_state_map);
     }
 
-    // We'll set up the data of the kept arcs and states below...
-    ArcInfo *kept_ai_data = cur_frame->arcs.values.Data();
+    // We'll set up the data of the kept states below...
     StateInfo *kept_states_data = ans->states.values.Data();
 
     {
       NVTX_RANGE("LambdaSetArcsAndStates");
       auto lambda_set_arcs_and_states =
           [=] __host__ __device__(int32_t arc_idx012) -> void {
-        // arc_idx012 is the inde into the unpruned arcs, 'ai'
-        int32_t this_pruned_idx012 = arc_reorder_data[arc_idx012],
-        next_pruned_idx012 = arc_reorder_data[arc_idx012 + 1],
-        fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
+        int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
 
-        // Note: I have a idea to reduce main-memory bandwidth by
-        // caching writes in a fixed-size array in shared memory
-        // (store: best-prob, index).  We'd go round robin, try e.g.
-        // twice.
-        // Would have to do this with a functor rather than a lambda,
-        // as __shared__ won't work on CPU.
-        if (next_pruned_idx012 > this_pruned_idx012) {
-          // ... this was one of the arcs to keep.  Load the ArcInfo from the
-          // un-pruned array..
-          ArcInfo info = ai_data[arc_idx012];
-          // state_idx01 is the index into ans->states, of the destination state.
-          // Note: multiple arcs may enter this state, which is why we had to set
-          // that in a separate kernel (lambda_modify_state_map).
-          int32_t state_idx01 =
-              state_map_acc(fsa_id, info.u.dest_a_fsas_state_idx01);
-          // multiple threads may write the same value to the address written to
-          // in the next line.
-          kept_states_data[state_idx01].a_fsas_state_idx01 =
-              info.u.dest_a_fsas_state_idx01;
-          info.u.dest_info_state_idx01 = state_idx01;
-          kept_ai_data[this_pruned_idx012] = info;
-          int32_t end_loglike_int = FloatToOrderedInt(info.end_loglike);
-          // Set the forward log-like of the dest state to the largest of any of
-          // those of the incoming arcs.  Note: we initialized this in
-          // lambda_init_loglike above.
-          atomicMax(&(kept_states_data[state_idx01].forward_loglike),
-                    end_loglike_int);
-        }
+        ArcInfo &info = ai_data[arc_idx012];
+
+        int32_t dest_a_fsas_state_idx01 = info.u.dest_a_fsas_state_idx01;
+        // state_idx01 is the index into ans->states, of the destination state.
+        // Note: multiple arcs may enter this state, which is why we had to set
+        // that in a separate kernel (lambda_modify_state_map).
+        int32_t state_idx01 =
+           state_map_acc(fsa_id, dest_a_fsas_state_idx01);
+        info.u.dest_info_state_idx01 = state_idx01;
+
+        // state_idx01 will be -1 for states that were pruned out because
+        // they were outside the beam.
+        if (state_idx01 < 0)
+          return;
+        // multiple threads may write the same value to the address written to
+        // in the next line.
+        kept_states_data[state_idx01].a_fsas_state_idx01 =
+            dest_a_fsas_state_idx01;
+        int32_t end_loglike_int = FloatToOrderedInt(info.end_loglike);
+        // Set the forward log-like of the dest state to the largest of any of
+        // those of the incoming arcs.  Note: we initialized this in
+        // lambda_init_loglike above.
+        atomicMax(&(kept_states_data[state_idx01].forward_loglike),
+                  end_loglike_int);
       };
       Eval(c_, arc_info.NumElements(), lambda_set_arcs_and_states);
     }
@@ -824,8 +795,8 @@ class MultiGraphDenseIntersect {
       auto lambda_reset_state_map =
           [=] __host__ __device__(int32_t state_idx01) -> void {
         int32_t a_fsas_state_idx01 =
-        kept_states_data[state_idx01].a_fsas_state_idx01,
-        fsa_idx0 = next_states_row_ids1[state_idx01];
+           kept_states_data[state_idx01].a_fsas_state_idx01,
+           fsa_idx0 = next_states_row_ids1[state_idx01];
         K2_CHECK_EQ(state_map_acc(fsa_idx0, a_fsas_state_idx01), state_idx01);
         // We're resetting state_map to its original clean condition.
         state_map_acc(fsa_idx0, a_fsas_state_idx01) = -1;
@@ -865,12 +836,11 @@ class MultiGraphDenseIntersect {
     int32_t *a_fsas_row_ids1 = a_fsas_.shape.RowIds(1).Data(),
             *a_fsas_row_splits1 = a_fsas_.shape.RowSplits(1).Data();
 
-    const int32_t minus_inf =
-        FloatToOrderedInt(-std::numeric_limits<float>::infinity());
+    float minus_inf = -std::numeric_limits<float>::infinity();
 
     /* arc_backward_probs represents the backward-prob at the beginning of the
-       arc.  Indexing is [frame_state_index][arc_index], where frame_state_index
-       and arc_index are respectively idx01 and idx2 w.r.t. frames_[t]->arcs. */
+       arc.  Indexing is [state_idx01][arc_idx2], (where state_idx01 and
+       arc_idx2 are named w.r.t. frames_[t]->arcs. */
     RaggedShape sub_curr_frame_shape = RemoveAxis(cur_frame->arcs.shape, 0);
     Array1<float> sub_curr_frame_values(c_, num_arcs);
     Ragged<float> arc_backward_prob(sub_curr_frame_shape,
@@ -915,28 +885,30 @@ class MultiGraphDenseIntersect {
                 fsa_idx0xx = arcs_row_splits2[fsa_idx0x],
                 arcs_idx12 = arcs_idx012 - fsa_idx0xx;
 
-        int32_t dest_state_idx01 = arc->u.dest_info_state_idx01,
-                next_state_idx0x = next_states_row_splits1[fsa_idx0],
-                dest_state_idx1 = dest_state_idx01 - next_state_idx0x;
-        arc->u.dest_info_state_idx1 = dest_state_idx1;
-
-        float arc_loglike = arc->arc_loglike;
-        float dest_state_backward_loglike =
-            next_states_data[dest_state_idx01].backward_loglike;
-        // 'backward_loglike' is the loglike at the beginning of the arc
-        float backward_loglike = arc_loglike + dest_state_backward_loglike;
-        float src_state_forward_loglike = OrderedIntToFloat(
-            cur_states_data[arcs_rowids2[arcs_idx012]].forward_loglike);
-        char keep_this_arc =
-            (backward_loglike + src_state_forward_loglike >= -output_beam);
+        int32_t dest_state_idx01 = arc->u.dest_info_state_idx01;
+        char keep_this_arc = 0;
+        float backward_loglike = minus_inf;
+        if (dest_state_idx01 >= 0) {  // Dest-state was not pruned out..
+          int32_t next_state_idx0x = next_states_row_splits1[fsa_idx0],
+                   dest_state_idx1 = dest_state_idx01 - next_state_idx0x;
+          arc->u.dest_info_state_idx1 = dest_state_idx1;
+          float arc_loglike = arc->arc_loglike;
+          float dest_state_backward_loglike =
+              next_states_data[dest_state_idx01].backward_loglike;
+          // 'backward_loglike' is the loglike at the beginning of the arc
+          backward_loglike = arc_loglike + dest_state_backward_loglike;
+          float src_state_forward_loglike = OrderedIntToFloat(
+              cur_states_data[arcs_rowids2[arcs_idx012]].forward_loglike);
+          keep_this_arc =
+              (backward_loglike + src_state_forward_loglike >= -output_beam);
+        }
         int32_t oshape_arc_idx0x = oshape_row_splits1[fsa_idx0],
                 oshape_arc_idx01 = oshape_arc_idx0x + t,
-                oshape_arc_idx01x = oshape_row_splits2[oshape_arc_idx01],
-                oshape_arc_idx01xx = oshape_row_splits3[oshape_arc_idx01x],
-                oshape_arc_idx0123 = oshape_arc_idx01xx + arcs_idx12;
-        // note, for the previous line: indexes 1 and 2 of FrameInfo::arcs
-        // (==state,arc) become indexes 2 and 3 of oshape_unpruned_.
-
+               oshape_arc_idx01x = oshape_row_splits2[oshape_arc_idx01],
+              oshape_arc_idx01xx = oshape_row_splits3[oshape_arc_idx01x],
+              oshape_arc_idx0123 = oshape_arc_idx01xx + arcs_idx12;
+          // note, for the previous line: indexes 1 and 2 of FrameInfo::arcs
+          // (==state,arc) become indexes 2 and 3 of oshape_unpruned_.
         keep_arcs_data[oshape_arc_idx0123] = keep_this_arc;
         arc_backward_prob_data[arcs_idx012] = backward_loglike;
       };
@@ -951,15 +923,14 @@ class MultiGraphDenseIntersect {
     /* note, the elements of state_backward_prob that don't have arcs leaving
        them will be set to the supplied default.  */
     Array1<float> state_backward_prob(c_, num_states);
-    MaxPerSublist(arc_backward_prob, -std::numeric_limits<float>::infinity(),
-                  &state_backward_prob);
+    MaxPerSublist(arc_backward_prob, minus_inf, &state_backward_prob);
+
     const float *state_backward_prob_data = state_backward_prob.Data();
     const int32_t *cur_states_row_ids1 =
         cur_frame->states.shape.RowIds(1).Data();
 
     int32_t num_fsas = NumFsas();
     assert(cur_frame->states.shape.Dim0() == num_fsas);
-    float float_minus_inf = -std::numeric_limits<float>::infinity();
     auto lambda_set_state_backward_prob =
         [=] __host__ __device__(int32_t state_idx01) -> void {
       StateInfo *info = cur_states_data + state_idx01;
@@ -1003,7 +974,7 @@ class MultiGraphDenseIntersect {
         // after pruning due to numerical roundoff effects near the boundary
         // at `-beam`.  It would otherwise be correct and harmless to omit
         // this if-block.
-        backward_loglike = float_minus_inf;
+        backward_loglike = minus_inf;
       }
       info->backward_loglike = backward_loglike;
     };
@@ -1054,15 +1025,16 @@ class MultiGraphDenseIntersect {
 
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                           float search_beam, float output_beam,
-                          int32_t max_active_states, int32_t min_active_states,
+                          int32_t min_active_states, int32_t max_active_states,
                           FsaVec *out, Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b) {
   NVTX_RANGE("IntersectDensePruned");
   FsaVec a_vec = FsaToFsaVec(a_fsas);
   MultiGraphDenseIntersect intersector(a_vec, b_fsas,
                                        search_beam, output_beam,
-                                       max_active_states,
-                                       min_active_states);
+                                       min_active_states,
+                                       max_active_states);
+
   intersector.Intersect();
   intersector.FormatOutput(out, arc_map_a, arc_map_b);
 }
