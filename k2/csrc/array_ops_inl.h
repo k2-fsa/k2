@@ -467,7 +467,7 @@ Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
 }
 
 template <typename T>
-Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc /*=1*/) {
+Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc /*=1*/) {
   NVTX_RANGE("Range");
   K2_CHECK_GE(dim, 0);
   Array1<T> ans = Array1<T>(c, dim);

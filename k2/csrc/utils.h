@@ -198,7 +198,7 @@ namespace k2 {
   10 15 ].
  */
 template <typename SrcPtr, typename DestPtr>
-void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest);
+void ExclusiveSum(ContextPtr c, int32_t n, SrcPtr src, DestPtr dest);
 
 /* Return the maximum value of the device array 't'.  Note: the sum will be
    initialized with T(0).
@@ -208,7 +208,7 @@ void ExclusiveSum(ContextPtr &c, int32_t n, SrcPtr src, DestPtr dest);
    additional cost.
  */
 template <typename T>
-T MaxValue(ContextPtr &c, int32_t nelems, const T *t);
+T MaxValue(ContextPtr c, int32_t nelems, const T *t);
 
 /*
   This is a rather special purpose function that is used in RaggedShape.
@@ -237,7 +237,7 @@ T MaxValue(ContextPtr &c, int32_t nelems, const T *t);
    Note: there is another function of the same name using the Array1 interface,
    declared in array_ops.h, that may be more convenient.
 */
-void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
+void RowSplitsToRowIds(ContextPtr c, int32_t num_rows,
                        const int32_t *row_splits, int32_t num_elems,
                        int32_t *row_ids);
 
@@ -303,7 +303,7 @@ RowIdFromRowSplits(int32_t num_rows, const int32_t *row_splits, int32_t index,
    Note: there is another function of the same name using the Array1 interface,
    declared in array_ops.h, that may be more convenient.
  */
-void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
+void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
                        bool no_empty_rows, int32_t num_rows,
                        int32_t *row_splits);
 

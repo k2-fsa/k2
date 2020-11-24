@@ -343,7 +343,7 @@ ContextPtr GetPinnedContext();
                           region will have bytes_used == num_bytes; if the user
                           wants to change this they can do it afterward.
 */
-RegionPtr NewRegion(ContextPtr &context, std::size_t num_bytes);
+RegionPtr NewRegion(ContextPtr context, std::size_t num_bytes);
 
 /*
   Convenience wrapper for NewRegion() that takes the context from a provided
@@ -461,9 +461,10 @@ class ParallelRunnerActive {
 // cudaEventRecord() are too slow to make this worthwhile.
 class ParallelRunnerDummy {
  public:
-  explicit ParallelRunnerDummy(ContextPtr c): stream_(c->GetCudaStream()) { }
+  explicit ParallelRunnerDummy(ContextPtr c) : stream_(c->GetCudaStream()) {}
   cudaStream_t NewStream() { return stream_; }
-  void Finish() { }
+  void Finish() {}
+
  private:
   cudaStream_t stream_;
 };

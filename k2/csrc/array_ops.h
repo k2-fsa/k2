@@ -269,7 +269,7 @@ Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
    so ans[i] = first_value + i * inc.
 */
 template <typename T>
-Array1<T> Range(ContextPtr &c, int32_t dim, T first_value, T inc = 1);
+Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc = 1);
 
 /*
   This is a convenience wrapper for the function of the same name in utils.h.

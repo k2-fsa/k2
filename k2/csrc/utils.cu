@@ -110,7 +110,7 @@ __global__ void RowSplitsToRowIdsKernel(int32_t num_rows,
        }
        x[orig_i] = x[i];
 */
-void RowSplitsToRowIds(ContextPtr &c, int32_t num_rows,
+void RowSplitsToRowIds(ContextPtr c, int32_t num_rows,
                        const int32_t *row_splits, int32_t num_elems,
                        int32_t *row_ids) {
   NVTX_RANGE(__func__);
@@ -266,7 +266,7 @@ __global__ void RowIdsToRowSplitsKernel(int32_t num_elems,
 }
 
 // see declaration in utils.h for documentation.
-void RowIdsToRowSplits(ContextPtr &c, int32_t num_elems, const int32_t *row_ids,
+void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
                        bool no_empty_rows, int32_t num_rows,
                        int32_t *row_splits) {
   NVTX_RANGE(__func__);

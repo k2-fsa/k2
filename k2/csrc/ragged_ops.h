@@ -549,7 +549,7 @@ RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1);
                        filled in, and its cached_tot_size elements
                        set.
  */
-RaggedShape RaggedShapeFromTotSizes(ContextPtr &c, int32_t num_axes,
+RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
                                     int32_t *tot_sizes);
 
 /*
