@@ -39,14 +39,21 @@ bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
   int32_t num_fsas = src.shape.Dim0();
   std::vector<Fsa> srcs(num_fsas), dests(num_fsas);
   std::vector<Array1<int32_t>> arc_maps(num_fsas);
+  int32_t tot_num_arcs = 0;
   for (int32_t i = 0; i < num_fsas; ++i) {
     srcs[i] = src.Index(0, i);
     // Recurse.
-    if (!f(srcs[i], &(dests[i]), (arc_map ? &(arc_maps[i]) : nullptr)))
+    if (!f(srcs[i], &(dests[i]),
+           (arc_map != nullptr ? &(arc_maps[i]) : nullptr)))
       return false;
+    if (arc_map != nullptr) {
+      // convert arc indexes in arc_maps from idx2 to idx012
+      arc_maps[i] = Plus(arc_maps[i], tot_num_arcs);
+      tot_num_arcs += srcs[i].NumElements();
+    }
   }
   *dest = Stack(0, num_fsas, dests.data());
-  if (arc_map) *arc_map = Append(num_fsas, arc_maps.data());
+  if (arc_map != nullptr) *arc_map = Append(num_fsas, arc_maps.data());
   return true;
 }
 
@@ -197,9 +204,16 @@ void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *, Ragged<int32_t> *),
   int32_t num_fsas = src.shape.Dim0();
   std::vector<Fsa> srcs(num_fsas), dests(num_fsas);
   std::vector<Ragged<int32_t>> arc_derivs(num_fsas);
+  int32_t tot_num_arcs = 0;
   for (int32_t i = 0; i < num_fsas; ++i) {
     srcs[i] = src.Index(0, i);
     f(srcs[i], &(dests[i]), arc_deriv != nullptr ? &(arc_derivs[i]) : nullptr);
+    if (arc_deriv != nullptr) {
+      // convert arc indexes in arc_derivs from idx2 to idx012
+      Array1<int32_t> &values = arc_derivs[i].values;
+      values = Plus(values, tot_num_arcs);
+      tot_num_arcs += srcs[i].NumElements();
+    }
   }
   *dest = Stack(0, num_fsas, dests.data());
   if (arc_deriv != nullptr) *arc_deriv = Append(0, num_fsas, arc_derivs.data());

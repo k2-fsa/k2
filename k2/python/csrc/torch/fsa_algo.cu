@@ -247,10 +247,11 @@ static void PybindUnion(py::module &m) {
 static void PybindRemoveEpsilon(py::module &m) {
   m.def(
       "remove_epsilon",
-      [](FsaOrVec &src) -> FsaOrVec {
+      [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
-        RemoveEpsilon(src, &dest);
-        return dest;
+        Ragged<int32_t> arc_derivs;
+        RemoveEpsilon(src, &dest, &arc_derivs);
+        return std::make_pair(dest, arc_derivs);
       },
       py::arg("src"));
 }
@@ -258,10 +259,11 @@ static void PybindRemoveEpsilon(py::module &m) {
 static void PybindDeterminize(py::module &m) {
   m.def(
       "determinize",
-      [](FsaOrVec &src) -> FsaOrVec {
+      [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
-        Determinize(src, &dest);
-        return dest;
+        Ragged<int32_t> arc_derivs;
+        Determinize(src, &dest, &arc_derivs);
+        return std::make_pair(dest, arc_derivs);
       },
       py::arg("src"));
 }
