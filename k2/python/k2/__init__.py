@@ -31,6 +31,7 @@ __all__ = [
     'DenseFsaVec',
     'Fsa',
     'SymbolTable',
+    'RaggedShape',
     'add_epsilon_self_loops',
     'arc_sort',
     'connect',
