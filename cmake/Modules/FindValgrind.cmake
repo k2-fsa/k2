@@ -36,9 +36,9 @@ mark_as_advanced(Valgrind_INCLUDE_DIR Valgrind_EXECUTABLE)
 
 if(NOT Valgrind_FOUND)
   if(Valgrind_FIND_REQUIRED)
-     message(FATAL_ERROR "Valgrind required but it seems has not be installed. ${ERR_MSG}")
+     message(FATAL_ERROR "Valgrind required but it seems it has not be installed.")
   endif()
 else()
-  message(STATUS "Found Valgrind")
+  message(STATUS "Found Valgrind: ${Valgrind_EXECUTABLE}")
 endif()
 
