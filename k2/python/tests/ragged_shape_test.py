@@ -86,7 +86,6 @@ class TestRaggedShape(unittest.TestCase):
         shape = k2.random_ragged_shape(True, 3, 5, 100)
         assert shape.num_axes() >= 3
         assert shape.num_elements() >= 100
-        # TODO(liyong) wrap and test RaggedShape::Axes
 
 
 if __name__ == '__main__':
