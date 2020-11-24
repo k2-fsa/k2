@@ -460,14 +460,14 @@ class MultiGraphDenseIntersect {
         [=] __host__ __device__(int32_t i) -> void {
       float best_loglike = max_per_fsa_data[i],
             dynamic_beam = dynamic_beams_data[i];
-      int32_t num_active =
+      int32_t active_states =
           arc_end_scores_row_splits1_data[i + 1] - arc_end_scores_row_splits1_data[i];
-      if (num_active <= max_active) {
+      if (active_states <= max_active) {
         // Not constrained by max_active...
-        if (num_active >= min_active || num_active == 0) {
+        if (active_states >= min_active || active_states == 0) {
           // Neither the max_active nor min_active constraints
           // apply.  Gradually approach 'beam'
-          // (Also approach 'beam' if num_active == 0; we might as
+          // (Also approach 'beam' if active_states == 0; we might as
           // well, since there is nothing to prune here).
           dynamic_beam = 0.8 * dynamic_beam + 0.2 * default_beam;
         } else {

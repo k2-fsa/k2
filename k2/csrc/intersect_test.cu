@@ -271,9 +271,9 @@ TEST(Intersect, RandomFsaVec) {
     Array1<int32_t> arc_map_a, arc_map_b;
 
     FsaVec out_fsas;
-    float beam = 10000.0;
+    float search_beam = 1000.0, output_beam = 1000.0;
     int32_t max_active = 10000, min_active = 0;
-    IntersectDensePruned(fsavec, dfsavec, beam, beam,
+    IntersectDensePruned(fsavec, dfsavec, search_beam, output_beam,
                          min_active, max_active,
                          &out_fsas, &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
