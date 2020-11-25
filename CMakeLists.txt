@@ -75,6 +75,15 @@ include(CheckIncludeFileCXX)
 check_include_file_cxx(cxxabi.h K2_HAVE_CXXABI_H)
 check_include_file_cxx(execinfo.h K2_HAVE_EXECINFO_H)
 
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag("-std=c++14" K2_COMPILER_SUPPORTS_CXX14)
+if(NOT K2_COMPILER_SUPPORTS_CXX14)
+  message(FATAL_ERROR "
+    k2 requires a compiler supporting at least C++14.
+    If you are using GCC, please upgrade it to at least version 5.0.
+    If you are using Clang, please upgrade it to at least version 3.4.")
+endif()
+
 # ========= Settings for CUB begin =========
 # the following settings are modified from cub/CMakeLists.txt
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "The C++ version to be used.")
