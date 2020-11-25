@@ -586,18 +586,118 @@ TEST(FsaAlgo, Determinize) {
 }
 
 TEST(FsaAlgo, ClosureSimpleCase) {
+  // 0 -> 1 -> 2 -> 3
   std::string s = R"(0 1 1 0.1
     1 2 2 0.2
     2 3 -1 0.3
     3
   )";
 
-  Fsa fsa = FsaFromString(s);
-  Array1<int32_t> arc_map;
-  K2_LOG(INFO) << "input fsa: \n" << FsaToString(fsa);
-  Fsa ans = Closure(fsa, &arc_map);
-  K2_LOG(INFO) << "output fsa: \n" << FsaToString(ans);
-  K2_LOG(INFO) << "arc map: \n" << arc_map;
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Fsa fsa = FsaFromString(s).To(context);
+    Array1<int32_t> arc_map;
+    Fsa ans = Closure(fsa, &arc_map);
+
+    arc_map = arc_map.To(GetCpuContext());
+    CheckArrayData(arc_map, std::vector<int32_t>{0, -1, 1, 2});
+
+    ans = ans.To(GetCpuContext());
+    EXPECT_EQ(ans.TotSize(0), 4);  // number of states
+    EXPECT_EQ(ans.TotSize(1), 4);  // number of arcs
+
+    EXPECT_EQ((ans[{0, 0}]), (Arc{0, 1, 1, 0.1f}));   // state 0, arc 0
+    EXPECT_EQ((ans[{0, 1}]), (Arc{0, 3, -1, 0.0f}));  // state 0, arc 1
+    EXPECT_EQ((ans[{1, 0}]), (Arc{1, 2, 2, 0.2f}));   // state 1, arc 0
+    EXPECT_EQ((ans[{2, 0}]), (Arc{2, 0, 0, 0.3f}));   // state 2, arc 0
+  }
+}
+
+TEST(FsaAlgo, ClosureStartStateWithoutLeavingArcs) {
+  // the start state has no leaving arcs
+  // 1 -> 2 -> 3
+  std::string s = R"(1 2 2 0.2
+    2 3 -1 0.3
+    3
+  )";
+
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Fsa fsa = FsaFromString(s).To(context);
+    Array1<int32_t> arc_map;
+    Fsa ans = Closure(fsa, &arc_map);
+
+    arc_map = arc_map.To(GetCpuContext());
+    CheckArrayData(arc_map, std::vector<int32_t>{-1, 0, 1});
+
+    ans = ans.To(GetCpuContext());
+    EXPECT_EQ(ans.TotSize(0), 4);  // number of states
+    EXPECT_EQ(ans.TotSize(1), 3);  // number of arcs
+
+    EXPECT_EQ((ans[{0, 0}]), (Arc{0, 3, -1, 0.0f}));  // state 0, arc 0
+    EXPECT_EQ((ans[{1, 0}]), (Arc{1, 2, 2, 0.2f}));   // state 1, arc 0
+    EXPECT_EQ((ans[{2, 0}]), (Arc{2, 0, 0, 0.3f}));   // state 2, arc 0
+  }
+}
+
+TEST(FsaAlgo, ClosureRandomCase) {
+  bool acyclic = false;
+  int32_t max_symbol = 50;
+  int32_t min_num_arcs = 1;
+  int32_t max_num_arcs = 1000;
+
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Fsa fsa = RandomFsa(acyclic, max_symbol, min_num_arcs, max_num_arcs);
+    fsa = fsa.To(context);
+
+    Array1<int32_t> arc_map;
+    Fsa ans = Closure(fsa, &arc_map);
+    fsa = fsa.To(GetCpuContext());
+    ans = ans.To(GetCpuContext());
+    arc_map = arc_map.To(GetCpuContext());
+
+    int start_state_num_arcs = fsa.RowSplits(1)[1] - ans.RowSplits(1)[0];
+    if (fsa.TotSize(0) < 2) {
+      // this is an empty FSA
+      EXPECT_EQ(ans.NumElements(), 0);
+      EXPECT_EQ(arc_map.Dim(), 0);
+      continue;
+    }
+
+    // for non-empty FSAs
+
+    const Arc *src_arcs_data = fsa.values.Data();
+    const Arc *ans_arcs_data = ans.values.Data();
+    int32_t src_num_states = fsa.Dim0();
+    for (int32_t i = 0; i != start_state_num_arcs; ++i) {
+      EXPECT_EQ(arc_map[i], i);
+      if (src_arcs_data[i].dest_state != src_num_states - 1) {
+        EXPECT_EQ(src_arcs_data[i], ans_arcs_data[i]);
+      } else {
+        EXPECT_EQ(src_arcs_data[i].src_state, ans_arcs_data[i].src_state);
+        EXPECT_EQ(src_arcs_data[i].score, ans_arcs_data[i].score);
+        EXPECT_EQ(ans_arcs_data[i].dest_state, 0);
+        EXPECT_EQ(src_arcs_data[i].label, -1);
+        EXPECT_EQ(ans_arcs_data[i].label, 0);
+      }
+    }
+
+    EXPECT_EQ(arc_map[start_state_num_arcs], -1);  // this arc is added by us
+    EXPECT_EQ(ans_arcs_data[start_state_num_arcs],
+              Arc(0, src_num_states - 1, -1, 0.0f));
+
+    int32_t ans_num_arcs = ans.NumElements();
+    for (int32_t i = start_state_num_arcs + 1; i != ans_num_arcs; ++i) {
+      EXPECT_EQ(arc_map[i], i - 1);
+      if (src_arcs_data[i - 1].dest_state != src_num_states - 1) {
+        EXPECT_EQ(src_arcs_data[i - 1], ans_arcs_data[i]);
+      } else {
+        EXPECT_EQ(src_arcs_data[i - 1].src_state, ans_arcs_data[i].src_state);
+        EXPECT_EQ(src_arcs_data[i - 1].score, ans_arcs_data[i].score);
+        EXPECT_EQ(ans_arcs_data[i].dest_state, 0);
+        EXPECT_EQ(src_arcs_data[i - 1].label, -1);
+        EXPECT_EQ(ans_arcs_data[i].label, 0);
+      }
+    }
+  }
 }
 
 }  // namespace k2

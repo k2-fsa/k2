@@ -318,16 +318,15 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map = nullptr);
    Assume that the original start state has two arcs, then the arc-map would be
    [ 0 1 -1 2 3 ... ].
 
-   Note: the output will be arc-sorted if the input was arc-sorted and
-   epsilon-free (actually we only need for the start-state to not have epsilon
-   arcs leaving it). The output will not be epsilon-free though, so if an
-   epsilon-free output is desired, which it generally will be, the caller will
-   need to determinize afterward.
+   Note: The output will not be epsilon-free though, so if an epsilon-free
+   output is desired, which it generally will be, the caller will need to
+   determinize afterward.
 
    Caution: The caller will have to modify any extra labels (like aux_labels) to
    deal with -1's correctly.
 
-   @param in]   fsa        The input FSA.
+   @param in]   fsa        The input FSA. Must have NumAxes() == 2, e.g., it
+                           must be a single FSA.
    @param [out] arc_map    It maps the arc indexes of the output fsa
                            to the input fsa. That is,
                            arc_map[out_arc_index] = fsa_arc_index.

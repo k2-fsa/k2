@@ -782,8 +782,8 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
     int32_t fsa_state_idx0 = fsa_row_ids_data[fsa_arc_idx01];
     int32_t fsa_arc_idx0x = fsa_row_splits_data[fsa_state_idx0];
     int32_t fsa_arc_idx1 = fsa_arc_idx01 - fsa_arc_idx0x;
-    int32_t this_state_num_arcs = fsa_row_splits_data[fsa_state_idx0 + 1] -
-                                  fsa_row_splits_data[fsa_state_idx0];
+    int32_t this_state_num_arcs =
+        fsa_row_splits_data[fsa_state_idx0 + 1] - fsa_arc_idx0x;
 
     Arc arc = fsa_arcs_data[fsa_arc_idx01];
     if (arc.dest_state == fsa_final_state) {
