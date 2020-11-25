@@ -172,8 +172,19 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
   This is 'normal' intersection (we would call this Compose() for FSTs, but
   you can do that using Intersect(), by calling this and then Invert()
   (or just attaching the other aux_labels).  NOTE: epsilons are not treated
-  specially, so this will only give the conventionally-correct answer
-  if either a_fsas or b_fsas is epsilon free.
+  specially, so this will only give you the conventionally-correct
+  answer if one of the following conditions hold:
+
+      - Any zero symbols in your graphs were never intended to be treated as
+        epsilons, but have some other meaning (e.g. they are just regular
+        symbols, or blank or something like that).
+      - a_fsas or b_fsas are both epsilon free
+      - One of a_fsas or b_fsas was originally epsilon-free, and you
+        modified it with AddEpsilonSelfLoops()
+      - Neither a_fsas or b_fsas was originally epsilon-free, you modified
+        both of them by calling AddEpsilonSelfLoops(), and you don't care
+        about duplicate paths with the same weight (search online
+        for "epsilon-sequencing problem").
 
         @param [in] a_fsas  Fsa or FsaVec that is one of the arguments
                            for composition (i.e. 2 or 3 axes)
