@@ -325,3 +325,28 @@ def determinize(fsa: Fsa) -> Fsa:
         setattr(out_fsa, name, value)
 
     return out_fsa
+
+
+def closure(fsa: Fsa) -> Fsa:
+    '''Compute the Kleene closure of the input FSA.
+
+    Args:
+      fsa:
+        The input FSA. It has to be a single FSA. That is,
+        len(fsa.shape) == 2.
+    Returns:
+      The result FSA which is the Kleene closure of the input FSA.
+    '''
+    need_arc_map = True
+    ragged_arc, arc_map = _k2.closure(fsa.arcs, need_arc_map=need_arc_map)
+
+    out_fsa = Fsa(ragged_arc)
+    for name, value in fsa.named_tensor_attr():
+        # TODO(fangjun): process aux_labels separately
+        new_value = index_select(value, arc_map)
+        setattr(out_fsa, name, new_value)
+
+    for name, value in fsa.named_non_tensor_attr():
+        setattr(out_fsa, name, value)
+
+    return out_fsa

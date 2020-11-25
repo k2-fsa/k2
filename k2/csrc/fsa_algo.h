@@ -320,12 +320,12 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map = nullptr);
 
    Note: The output will not be epsilon-free though, so if an epsilon-free
    output is desired, which it generally will be, the caller will need to
-   determinize afterward.
+   RemoveEpsilon afterward.
 
    Caution: The caller will have to modify any extra labels (like aux_labels) to
    deal with -1's correctly.
 
-   @param in]   fsa        The input FSA. Must have NumAxes() == 2, e.g., it
+   @param in]   fsa        The input FSA. Must have NumAxes() == 2, i.e., it
                            must be a single FSA.
    @param [out] arc_map    It maps the arc indexes of the output fsa
                            to the input fsa. That is,
