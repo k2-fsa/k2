@@ -3,7 +3,7 @@
  * ops_test
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu, Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -28,6 +28,7 @@
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/test_utils.h"
 #include "k2/csrc/timer.h"
 
 namespace k2 {
@@ -1410,6 +1411,33 @@ TEST(OpsTest, Array2IndexTest) {
       }
     }
   }
+}
+
+template <typename T>
+static void Array1SortTest() {
+  std::vector<T> data = {3, 2, 5, 1};
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // with index map
+      Array1<T> array(context, data);
+      Array1<int32_t> index_map;
+      Sort(&array, &index_map);
+      CheckArrayData(array, std::vector<T>{1, 2, 3, 5});
+      CheckArrayData(index_map, std::vector<int32_t>{3, 1, 0, 2});
+    }
+
+    {
+      // without index map
+      Array1<T> array(context, data);
+      Sort(&array);
+      CheckArrayData(array, std::vector<T>{1, 2, 3, 5});
+    }
+  }
+}
+
+TEST(OpsTest, Array1Sort) {
+  Array1SortTest<int32_t>();
+  Array1SortTest<float>();
 }
 
 }  // namespace k2

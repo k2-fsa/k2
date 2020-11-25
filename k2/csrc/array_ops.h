@@ -479,6 +479,17 @@ template <typename T>
 Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
                     bool allow_minus_one);
 
+/* Sort an array **in-place** in ascending order.
+
+   @param [inout]   array        The array to be sorted.
+   @param [out]     index_map    If non-null, it maps the index
+                                 of the returned array to the original
+                                 unsorted array. That is,
+                                 out[i] = unsorted[index_map[i]].
+ */
+template <typename T>
+void Sort(Array1<T> *array, Array1<int32_t> *index_map = nullptr);
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_ARRAY_OPS_H_
