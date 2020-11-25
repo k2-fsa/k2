@@ -337,13 +337,46 @@ def closure(fsa: Fsa) -> Fsa:
     Returns:
       The result FSA which is the Kleene closure of the input FSA.
     '''
+
+    def fix_aux_labels(src_aux_labels: torch.Tensor,
+                       src_row_splits1: torch.Tensor,
+                       arc_map: torch.Tensor) -> torch.Tensor:
+        '''Fix the aux labels of the outut FSA.
+
+        Since :func:`_k2.closure` changes the labels of arcs entering
+        the final state to 0, we need to change their corresponding
+        aux labels to 0.
+
+        Args:
+          src_aux_labels:
+            The aux labels of the input FSA.
+          src_row_splits:
+            The row splits1 of the input FSA.
+          arc_map:
+            The arc map produced by :func:`_k2.closure`.
+        Returns:
+          The aux_labels of the output fsa after converting -1 to 0.
+        '''
+        minus_one_index = torch.nonzero(src_aux_labels == -1, as_tuple=False)
+        src_start_state_last_arc_index = src_row_splits1[1]
+
+        minus_one_index[minus_one_index > src_start_state_last_arc_index] += 1
+
+        # now minus one index contains arc indexes into the output FSA
+        ans_aux_labels = index_select(src_aux_labels, arc_map)
+        ans_aux_labels[minus_one_index] = 0
+        ans_aux_labels[src_start_state_last_arc_index] = -1
+        return ans_aux_labels
+
     need_arc_map = True
     ragged_arc, arc_map = _k2.closure(fsa.arcs, need_arc_map=need_arc_map)
 
     out_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_tensor_attr():
-        # TODO(fangjun): process aux_labels separately
-        new_value = index_select(value, arc_map)
+        if name == 'aux_labels':
+            new_value = fix_aux_labels(value, fsa.arcs.row_splits(1), arc_map)
+        else:
+            new_value = index_select(value, arc_map)
         setattr(out_fsa, name, new_value)
 
     for name, value in fsa.named_non_tensor_attr():

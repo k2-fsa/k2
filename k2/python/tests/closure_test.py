@@ -29,6 +29,8 @@ class TestClosure(unittest.TestCase):
 
         for device in devices:
             fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
+            fsa.aux_labels = torch.tensor([10, 20, -1],
+                                          dtype=torch.int32).to(device)
             ans = k2.closure(fsa)
 
             assert torch.allclose(
@@ -47,6 +49,10 @@ class TestClosure(unittest.TestCase):
             assert torch.allclose(
                 ans.scores,
                 torch.tensor([0.1, 0.0, 0.2, 0.3]).to(device))
+
+            assert torch.allclose(
+                ans.aux_labels,
+                torch.tensor([10, -1, 20, 0]).to(ans.aux_labels))
 
     def test_complex_fsa(self):
         s = '''
@@ -68,6 +74,8 @@ class TestClosure(unittest.TestCase):
 
         for device in devices:
             fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
+            fsa.aux_labels = torch.tensor([0, 1, -1, 2, 3, -1, 4, 5, 6, -1],
+                                          dtype=torch.int32).to(device)
             ans = k2.closure(fsa)
             assert torch.allclose(
                 ans.arcs.values()[:, :3],
@@ -94,6 +102,11 @@ class TestClosure(unittest.TestCase):
             assert torch.allclose(
                 fsa.grad,
                 torch.tensor([0., 1., 2., 4, 5, 6, 7, 8, 9, 10.]).to(fsa.grad))
+
+            assert torch.allclose(
+                ans.aux_labels,
+                torch.tensor([0, 1, 0, -1, 2, 3, 0, 4, 5, 6,
+                              0]).to(ans.aux_labels))
 
 
 if __name__ == '__main__':

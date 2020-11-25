@@ -775,7 +775,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
   Array1<Arc> out_arcs(c, num_out_arcs);
   Arc *out_arcs_data = out_arcs.Data();
 
-  Array1<int32_t> tmp_arc_map(c, num_out_arcs, -1);
+  Array1<int32_t> tmp_arc_map(c, num_out_arcs);
   int32_t *tmp_arc_map_data = tmp_arc_map.Data();
 
   auto lambda_set_arcs = [=] __host__ __device__(int32_t fsa_arc_idx01) {
@@ -808,6 +808,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
         Arc new_arc(0, fsa_final_state, -1, 0.0f);
         out_arcs_data[out_arc_idx01 + 1] = new_arc;
         out_row_ids_data[out_arc_idx01 + 1] = 0;
+        tmp_arc_map_data[out_arc_idx01 + 1] = -1;
       }
     }
 
@@ -816,6 +817,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
       Arc new_arc(0, fsa_final_state, -1, 0.0f);
       out_arcs_data[0] = new_arc;
       out_row_ids_data[0] = 0;
+      tmp_arc_map_data[0] = -1;
     }
 
     tmp_arc_map_data[out_arc_idx01] = fsa_arc_idx01;
@@ -830,13 +832,23 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
 
   Array1<int32_t> out_row_splits(c, num_out_states + 1);
   int32_t *out_row_splits_data = out_row_splits.Data();
-  auto lambda_set_row_splits = [=] __host__ __device__(int32_t i) {
-    if (i == 0)
-      out_row_splits_data[i] = 0;
-    else
-      out_row_splits_data[i] = fsa_row_splits_data[i] + 1;
-  };
-  Eval(c, out_row_splits.Dim(), lambda_set_row_splits);
+  if (c->GetDeviceType() == kCpu) {
+    int32_t n = out_row_splits.Dim();
+    for (int32_t i = 0; i != n; ++i) {
+      if (i == 0)
+        out_row_splits_data[i] = 0;
+      else
+        out_row_splits_data[i] = fsa_row_splits_data[i] + 1;
+    }
+  } else {
+    auto lambda_set_row_splits = [=] __device__(int32_t i) {
+      if (i == 0)
+        out_row_splits_data[i] = 0;
+      else
+        out_row_splits_data[i] = fsa_row_splits_data[i] + 1;
+    };
+    EvalDevice(c, out_row_splits.Dim(), lambda_set_row_splits);
+  }
 
   RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids, num_out_arcs);
   Fsa ans = Ragged<Arc>(shape, out_arcs);
