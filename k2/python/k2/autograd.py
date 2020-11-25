@@ -97,9 +97,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, a_fsas: Fsa, b_fsas: DenseFsaVec, out_fsa: List[Fsa],
-                search_beam: float, output_beam: float,
-                min_active_states: int, max_active_states: int,
-                unused_scores_a: torch.Tensor,
+                search_beam: float, output_beam: float, min_active_states: int,
+                max_active_states: int, unused_scores_a: torch.Tensor,
                 unused_scores_b: torch.Tensor) -> torch.Tensor:
         '''Intersect array of FSAs on CPU/GPU.
 
@@ -120,8 +119,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             (less pruning). This is the default value; it may be modified by
             `min_active_states` and `max_active_states`.
           output_beam:
-            Pruning beam for the output of intersection (vs. best path); equivalent
-            to kaldi's lattice-beam.  E.g. 8.
+            Pruning beam for the output of intersection (vs. best path);
+            equivalent to kaldi's lattice-beam.  E.g. 8.
           max_active_states:
             Maximum number of FSA states that are allowed to be active on any
             given frame for any given intersection/composition task. This is
@@ -151,7 +150,6 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             min_active_states=min_active_states,
             max_active_states=max_active_states)
 
-
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
@@ -169,9 +167,8 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         return out_fsa[0].scores
 
     @staticmethod
-    def backward(
-            ctx, out_fsa_grad: torch.Tensor
-    ) -> Tuple[None, None, None, None, None, None, None, torch.Tensor, torch.Tensor]:
+    def backward(ctx, out_fsa_grad: torch.Tensor) \
+            -> Tuple[None, None, None, None, None, None, None, torch.Tensor, torch.Tensor]: # noqa
         a_scores, b_scores = ctx.saved_tensors
         arc_map_a = ctx.arc_map_a
         arc_map_b = ctx.arc_map_b
@@ -312,8 +309,8 @@ def get_tot_scores(fsas: Fsa, log_semiring: bool,
 
 def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
                            search_beam: float, output_beam: float,
-                           min_active_states: int, max_active_states: int) -> Fsa:
-
+                           min_active_states: int,
+                           max_active_states: int) -> Fsa:
     '''Intersect array of FSAs on CPU/GPU.
 
     Caution:
@@ -352,10 +349,10 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
 
     # the following return value is discarded since it is already contained
     # in `out_fsa[0].scores`
-    _IntersectDensePrunedFunction.apply(a_fsas, b_fsas, out_fsa,
-                                        search_beam, output_beam,
-                                        min_active_states, max_active_states,
-                                        a_fsas.scores, b_fsas.scores)
+    _IntersectDensePrunedFunction.apply(a_fsas, b_fsas, out_fsa, search_beam,
+                                        output_beam, min_active_states,
+                                        max_active_states, a_fsas.scores,
+                                        b_fsas.scores)
     return out_fsa[0]
 
 
