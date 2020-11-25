@@ -271,6 +271,22 @@ static void PybindDeterminize(py::module &m) {
       py::arg("src"));
 }
 
+static void PybindClosure(py::module &m) {
+  // clang-format off
+  m.def(
+      "closure",
+      [](Fsa &src, bool need_arc_map = true)
+          -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        Array1<int32_t> arc_map;
+        Fsa out = Closure(src, need_arc_map ? &arc_map : nullptr);
+        torch::optional<torch::Tensor> arc_map_tensor;
+        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        return std::make_pair(out, arc_map_tensor);
+      },
+      py::arg("src"), py::arg("need_arc_map"));
+  // clang-format on
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -285,4 +301,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindUnion(m);
   k2::PybindRemoveEpsilon(m);
   k2::PybindDeterminize(m);
+  k2::PybindClosure(m);
 }

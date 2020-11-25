@@ -5,7 +5,6 @@ import torch
 import _k2
 import numpy as np
 
-
 from .fsa import Fsa
 
 
@@ -66,7 +65,7 @@ class DenseFsaVec(object):
         device = log_probs.device
         indexes = torch.cat(indexes).to(device)
 
-        scores = torch.new_empty(cur, C + 1, dtype=log_probs.dtype)
+        scores = torch.empty(cur, C + 1, dtype=log_probs.dtype, device=device)
         scores[:, 1:] = log_probs.reshape(-1, C).index_select(0, indexes)
 
         # `scores` contains -infinity in certain locations: in scores[j,0] where

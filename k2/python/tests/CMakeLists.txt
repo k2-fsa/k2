@@ -19,14 +19,15 @@ endfunction()
 set(py_test_files
   add_epsilon_self_loops_test.py
   arc_sort_test.py
-  get_tot_scores_test.py
+  closure_test.py
   connect_test.py
   dense_fsa_vec_test.py
   determinize_test.py
   fsa_test.py
-  index_test.py
+  get_tot_scores_test.py
   index_add_test.py
   index_select_test.py
+  index_test.py
   intersect_dense_pruned_test.py
   intersect_test.py
   linear_fsa_test.py

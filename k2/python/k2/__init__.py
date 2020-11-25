@@ -7,6 +7,7 @@ from .dense_fsa_vec import convert_dense_to_fsa_vec
 from .fsa import Fsa
 from .fsa_algo import add_epsilon_self_loops
 from .fsa_algo import arc_sort
+from .fsa_algo import closure
 from .fsa_algo import connect
 from .fsa_algo import determinize
 from .fsa_algo import intersect
@@ -34,6 +35,7 @@ __all__ = [
     'RaggedShape',
     'add_epsilon_self_loops',
     'arc_sort',
+    'closure',
     'connect',
     'convert_dense_to_fsa_vec',
     'create_fsa_vec',

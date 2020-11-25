@@ -509,7 +509,7 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     if (num_states < 2) {
       K2_CHECK_EQ(num_states, 0);
       *dest = src;
-      if (arc_map) *arc_map = Array1<int32_t>(c, 0);
+      if (arc_map != nullptr) *arc_map = Array1<int32_t>(c, 0);
       return;
     }
 
@@ -742,6 +742,114 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
   if (arc_map != nullptr) *arc_map = std::move(tmp_arc_map);
   Array1<int32_t> out_row_splits(context, num_out_states + 1);
   RowIdsToRowSplits(out_row_ids, &out_row_splits);
+  RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids, num_out_arcs);
+  Fsa ans = Ragged<Arc>(shape, out_arcs);
+  return ans;
+}
+
+Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
+  K2_CHECK_EQ(fsa.NumAxes(), 2) << "We support only a single FSA.";
+  ContextPtr &c = fsa.Context();
+
+  int32_t num_states = fsa.Dim0();
+  if (num_states < 2) {
+    K2_CHECK_EQ(num_states, 0)
+        << "An empty fsa should contain no states at all";
+    if (arc_map != nullptr) *arc_map = Array1<int32_t>(c, 0);
+    return fsa;  // return itself if the input fsa is empty
+  }
+
+  const int32_t *fsa_row_splits_data = fsa.RowSplits(1).Data();
+  const int32_t *fsa_row_ids_data = fsa.RowIds(1).Data();
+  const Arc *fsa_arcs_data = fsa.values.Data();
+  int32_t fsa_final_state = num_states - 1;
+
+  int32_t num_out_states = num_states;
+
+  // An arc from the start state to the final state with label == 0 is added.
+  int32_t num_out_arcs = fsa.values.Dim() + 1;
+
+  Array1<int32_t> out_row_ids(c, num_out_arcs);
+  int32_t *out_row_ids_data = out_row_ids.Data();
+
+  Array1<Arc> out_arcs(c, num_out_arcs);
+  Arc *out_arcs_data = out_arcs.Data();
+
+  Array1<int32_t> tmp_arc_map(c, num_out_arcs);
+  int32_t *tmp_arc_map_data = tmp_arc_map.Data();
+
+  auto lambda_set_arcs = [=] __host__ __device__(int32_t fsa_arc_idx01) {
+    int32_t fsa_state_idx0 = fsa_row_ids_data[fsa_arc_idx01];
+    int32_t fsa_arc_idx0x = fsa_row_splits_data[fsa_state_idx0];
+    int32_t fsa_arc_idx1 = fsa_arc_idx01 - fsa_arc_idx0x;
+    int32_t this_state_num_arcs =
+        fsa_row_splits_data[fsa_state_idx0 + 1] - fsa_arc_idx0x;
+
+    Arc arc = fsa_arcs_data[fsa_arc_idx01];
+    if (arc.dest_state == fsa_final_state) {
+      // modify arcs entering the final state such that:
+      //   - dest_state == 0
+      //   - label == 0
+      arc.dest_state = 0;
+      K2_DCHECK_EQ(arc.label, -1);
+      arc.label = 0;
+    }
+
+    int out_arc_idx01;
+    if (arc.src_state > 0) {
+      // this arc is not originated from the start state, so its index is
+      // incremented
+      out_arc_idx01 = fsa_arc_idx01 + 1;
+    } else {
+      out_arc_idx01 = fsa_arc_idx01;
+      if (fsa_arc_idx1 == this_state_num_arcs - 1) {
+        // This is the last arc of the original start state,
+        // so we add a new arc just after it.
+        Arc new_arc(0, fsa_final_state, -1, 0.0f);
+        out_arcs_data[out_arc_idx01 + 1] = new_arc;
+        out_row_ids_data[out_arc_idx01 + 1] = 0;
+        tmp_arc_map_data[out_arc_idx01 + 1] = -1;
+      }
+    }
+
+    // it may happen that the start state has no leaving arcs
+    if (fsa_row_splits_data[1] == 0) {
+      Arc new_arc(0, fsa_final_state, -1, 0.0f);
+      out_arcs_data[0] = new_arc;
+      out_row_ids_data[0] = 0;
+      tmp_arc_map_data[0] = -1;
+    }
+
+    tmp_arc_map_data[out_arc_idx01] = fsa_arc_idx01;
+
+    out_arcs_data[out_arc_idx01] = arc;
+    out_row_ids_data[out_arc_idx01] = arc.src_state;
+  };
+
+  Eval(c, fsa.values.Dim(), lambda_set_arcs);
+
+  if (arc_map != nullptr) *arc_map = std::move(tmp_arc_map);
+
+  Array1<int32_t> out_row_splits(c, num_out_states + 1);
+  int32_t *out_row_splits_data = out_row_splits.Data();
+  if (c->GetDeviceType() == kCpu) {
+    int32_t n = out_row_splits.Dim();
+    for (int32_t i = 0; i != n; ++i) {
+      if (i == 0)
+        out_row_splits_data[i] = 0;
+      else
+        out_row_splits_data[i] = fsa_row_splits_data[i] + 1;
+    }
+  } else {
+    auto lambda_set_row_splits = [=] __device__(int32_t i) {
+      if (i == 0)
+        out_row_splits_data[i] = 0;
+      else
+        out_row_splits_data[i] = fsa_row_splits_data[i] + 1;
+    };
+    EvalDevice(c, out_row_splits.Dim(), lambda_set_row_splits);
+  }
+
   RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids, num_out_arcs);
   Fsa ans = Ragged<Arc>(shape, out_arcs);
   return ans;
