@@ -827,8 +827,17 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
   Eval(c, fsa.values.Dim(), lambda_set_arcs);
 
   if (arc_map != nullptr) *arc_map = std::move(tmp_arc_map);
+
   Array1<int32_t> out_row_splits(c, num_out_states + 1);
-  RowIdsToRowSplits(out_row_ids, &out_row_splits);
+  int32_t *out_row_splits_data = out_row_splits.Data();
+  auto lambda_set_row_splits = [=] __host__ __device__(int32_t i) {
+    if (i == 0)
+      out_row_splits_data[i] = 0;
+    else
+      out_row_splits_data[i] = fsa_row_splits_data[i] + 1;
+  };
+  Eval(c, out_row_splits.Dim(), lambda_set_row_splits);
+
   RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids, num_out_arcs);
   Fsa ans = Ragged<Arc>(shape, out_arcs);
   return ans;
