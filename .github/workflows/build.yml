@@ -87,7 +87,7 @@ jobs:
           pwd
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_ENABLE_NVTX=OFF ..
           cat k2/csrc/version.h
 
       - name: Build _k2
@@ -95,10 +95,7 @@ jobs:
         run: |
           echo "number of cores: $(nproc)"
           cd build
-          make VERBOSE=1
-          ls -lh lib/*
-          rm lib/*
-          make VERBOSE=1 _k2
+          make VERBOSE=1 -j _k2
           ls -lh lib/*
 
       - name: Build pip packages

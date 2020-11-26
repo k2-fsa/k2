@@ -20,7 +20,7 @@
 namespace k2 {
 
 k2host::Fsa FsaToHostFsa(Fsa &fsa) {
-    NVTX_RANGE(__func__);
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(fsa.NumAxes(), 2);
   K2_CHECK_EQ(fsa.Context()->GetDeviceType(), kCpu);
   // reinterpret_cast works because the arcs have the same members
@@ -142,7 +142,6 @@ FsaVec FsaVecCreator::GetFsaVec() {
 */
 static Array1<bool> CheckProperties(FsaOrVec &fsas,
                                     bool (*f)(const k2host::Fsa &)) {
-  NVTX_RANGE(__func__);
   NVTX_RANGE("CheckProperties");
   ContextPtr &c = fsas.Context();
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);

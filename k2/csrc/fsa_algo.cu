@@ -256,6 +256,7 @@ void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
 
 void Determinize(FsaOrVec &src, FsaOrVec *dest,
                  Ragged<int32_t> *arc_derivs /*=nullptr*/) {
+  NVTX_RANGE(__func__);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
@@ -748,6 +749,7 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
 }
 
 Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(fsa.NumAxes(), 2) << "We support only a single FSA.";
   ContextPtr &c = fsa.Context();
 

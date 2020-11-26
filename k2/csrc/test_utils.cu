@@ -22,6 +22,7 @@
 namespace k2 {
 
 void ToNotTopSorted(Fsa *fsa) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(fsa->Context()->GetDeviceType(), kCpu);
 
   int32_t num_states = fsa->TotSize(0);
@@ -53,6 +54,7 @@ void ToNotTopSorted(Fsa *fsa) {
 }
 
 Fsa GetRandFsa() {
+  NVTX_RANGE(__func__);
   k2host::RandFsaOptions opts;
   opts.num_syms = 5 + RandInt(0, 100);
   opts.num_states = 10 + RandInt(0, 2000);
