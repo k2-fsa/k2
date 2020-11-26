@@ -315,4 +315,38 @@ Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
   return ans;
 }
 
+Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src) {
+  NVTX_RANGE(K2_FUNC);
+  ContextPtr &c = src.Context();
+  int32_t src_dim = src.Dim();
+  const int32_t *src_data = src.Data();
+  if (src_dim == 0) {
+    return Array1<int32_t>(c, 0);
+  }
+
+  K2_DCHECK_GT(src.Back(), 0);  // just call Back when debugging
+  // note `src[0]` may do a DeviceToHost memory copy
+  int32_t ans_dim = src[0];
+  Array1<int32_t> ans(c, ans_dim, 0);  // init with 0
+  int32_t *ans_data = ans.Data();
+
+  DeviceType d = c->GetDeviceType();
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i != src_dim; ++i) {
+      K2_DCHECK((i + 1 == src_dim || src_data[i + 1] <= src_data[i]));
+      if (i + 1 == src_dim || src_data[i + 1] < src_data[i])
+        ans_data[src_data[i] - 1] = i + 1;
+    }
+  } else {
+    auto lambda_set_values = [=] __device__(int32_t i) -> void {
+      K2_DCHECK((i + 1 == src_dim || src_data[i + 1] <= src_data[i]));
+      if (i + 1 == src_dim || src_data[i + 1] < src_data[i])
+        ans_data[src_data[i] - 1] = i + 1;
+    };
+    EvalDevice(c, src_dim, lambda_set_values);
+  }
+  MonotonicDecreasingUpperBound(ans, &ans);
+  return ans;
+}
+
 }  // namespace k2

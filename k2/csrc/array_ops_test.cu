@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <numeric>
@@ -1222,6 +1223,122 @@ void TestMonotonicLowerBound() {
 TEST(OpsTest, MonotonicLowerBoundTest) {
   TestMonotonicLowerBound<int32_t, int32_t>();
   TestMonotonicLowerBound<int32_t, double>();
+}
+
+template <typename S, typename T>
+void TestMonotonicDecreasingUpperBound() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // empty case
+      std::vector<S> values;
+      Array1<S> src(context, values);
+      Array1<T> dest(context, 0);
+      MonotonicDecreasingUpperBound(src, &dest);
+      EXPECT_EQ(dest.Dim(), 0);
+    }
+
+    {
+      // simple case
+      std::vector<S> values = {10, 7, 3, 5, 4, 1, 0, 2};
+      std::vector<T> expected_data = {10, 7, 5, 5, 4, 2, 2, 2};
+      ASSERT_EQ(values.size(), expected_data.size());
+      Array1<S> src(context, values);
+      Array1<T> dest(context, static_cast<int32_t>(values.size()));
+      MonotonicDecreasingUpperBound(src, &dest);
+      dest = dest.To(cpu);
+      std::vector<T> data(dest.Data(), dest.Data() + dest.Dim());
+      EXPECT_EQ(data, expected_data);
+    }
+
+    {
+      // simple case with dest = &src
+      std::vector<S> values = {10, 7, 3, 5, 4, 1, 0, 2};
+      std::vector<T> expected_data = {10, 7, 5, 5, 4, 2, 2, 2};
+      ASSERT_EQ(values.size(), expected_data.size());
+      Array1<S> src(context, values);
+      MonotonicDecreasingUpperBound(src, &src);
+      src = src.To(cpu);
+      std::vector<T> data(src.Data(), src.Data() + src.Dim());
+      EXPECT_EQ(data, expected_data);
+    }
+
+    {
+      // random large case
+      for (int32_t i = 0; i != 2; ++i) {
+        int32_t n = RandInt(1, 10000);
+        int32_t src_dim = RandInt(0, 10000);
+        Array1<S> src = RandUniformArray1(context, src_dim, 0, n - 1);
+        Array1<T> dest(context, src_dim);
+        MonotonicDecreasingUpperBound(src, &dest);
+        dest = dest.To(cpu);
+        std::vector<T> data(dest.Data(), dest.Data() + dest.Dim());
+        src = src.To(cpu);
+        int32_t *src_data = src.Data();
+        S max_value = std::numeric_limits<S>::min();
+        std::vector<T> expected_data(src_dim);
+        for (int32_t i = src_dim - 1; i >= 0; --i) {
+          max_value = std::max(src_data[i], max_value);
+          expected_data[i] = max_value;
+        }
+        EXPECT_EQ(data, expected_data);
+      }
+    }
+  }
+}
+
+TEST(OpsTest, MonotonicDecreasingUpperBoundTest) {
+  TestMonotonicDecreasingUpperBound<int32_t, int32_t>();
+  TestMonotonicDecreasingUpperBound<int32_t, double>();
+}
+
+TEST(OpsTest, InvertMonotonicDecreasingTest) {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext()}) {
+    {
+      // empty case
+      std::vector<int32_t> values;
+      Array1<int32_t> src(context, values);
+      Array1<int32_t> dest = InvertMonotonicDecreasing(src);
+      EXPECT_EQ(dest.Dim(), 0);
+    }
+
+    {
+      // simple case
+      std::vector<int32_t> values = {6, 4, 4, 2};
+      Array1<int32_t> src(context, values);
+      Array1<int32_t> dest = InvertMonotonicDecreasing(src);
+      EXPECT_EQ(dest.Dim(), 6);
+      dest = dest.To(cpu);
+      std::vector<int32_t> data(dest.Data(), dest.Data() + dest.Dim());
+      std::vector<int32_t> expected_data = {4, 4, 3, 3, 1, 1};
+      EXPECT_EQ(data, expected_data);
+
+      // convert back
+      dest = dest.To(context);
+      Array1<int32_t> src1 = InvertMonotonicDecreasing(dest);
+      EXPECT_TRUE(Equal(src1, src));
+    }
+
+    {
+      // random large case
+      for (int32_t i = 0; i != 2; ++i) {
+        int32_t n = RandInt(1, 1000);
+        int32_t src_dim = RandInt(0, 1000);
+        Array1<int32_t> src = RandUniformArray1(cpu, src_dim, 1, n);
+        // TODO(haowen): call GPU sort when it's merged
+        int32_t *src_data = src.Data();
+        std::sort(src_data, src_data + src_dim, std::greater<>());
+        src = src.To(context);
+
+        Array1<int32_t> dest = InvertMonotonicDecreasing(src);
+
+        // convert back
+        Array1<int32_t> src1 = InvertMonotonicDecreasing(dest);
+        EXPECT_TRUE(Equal(src1, src));
+      }
+    }
+  }
 }
 
 TEST(OpsTest, Array1IndexTest) {
