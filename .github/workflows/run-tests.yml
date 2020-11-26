@@ -99,5 +99,7 @@ jobs:
         run: |
           echo "number of cores: $(nproc)"
           cd build
-          make -j
+          # we cannot use -j here because of limited RAM
+          # of the VM provided by GitHub actions
+          make
           ctest --output-on-failure
