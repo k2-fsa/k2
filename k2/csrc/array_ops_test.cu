@@ -3,7 +3,7 @@
  * ops_test
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu, Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -28,6 +28,7 @@
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/test_utils.h"
 #include "k2/csrc/timer.h"
 
 namespace k2 {
@@ -1410,6 +1411,83 @@ TEST(OpsTest, Array2IndexTest) {
       }
     }
   }
+}
+
+template <typename T>
+static void Array1SortTestSimple() {
+  std::vector<T> data = {3, 2, 5, 1};
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // with index map
+      Array1<T> array(context, data);
+      Array1<int32_t> index_map;
+      Sort(&array, &index_map);
+      CheckArrayData(array, std::vector<T>{1, 2, 3, 5});
+      CheckArrayData(index_map, std::vector<int32_t>{3, 1, 0, 2});
+    }
+
+    {
+      // without index map
+      Array1<T> array(context, data);
+      Sort(&array);
+      CheckArrayData(array, std::vector<T>{1, 2, 3, 5});
+    }
+  }
+}
+
+template <typename T>
+static void Array1SortTestEmpty() {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<T> array(context, 0);
+    Array1<int32_t> index_map;
+    Sort(&array, &index_map);
+    EXPECT_EQ(array.Dim(), 0);
+    EXPECT_EQ(index_map.Dim(), 0);
+  }
+}
+
+template <typename T>
+static void Array1SortTestRandom() {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    int32_t dim = RandInt(0, 10000);
+    int32_t min_value = RandInt(-1000, 1000);
+    int32_t max_value = min_value + RandInt(0, 3000);
+    {
+      // with index map
+      Array1<T> array =
+          RandUniformArray1<T>(context, dim, min_value, max_value);
+      Array1<T> data = array.Clone();
+
+      Array1<int32_t> index_map;
+      Sort(&array, &index_map);
+      array = array.To(GetCpuContext());
+      EXPECT_TRUE(std::is_sorted(array.Data(), array.Data() + array.Dim()));
+
+      index_map = index_map.To(GetCpuContext());
+      for (int32_t i = 0; i != array.Dim(); ++i)
+        EXPECT_EQ(array[i], data[index_map[i]]);
+    }
+
+    {
+      // without index_map
+      Array1<T> array =
+          RandUniformArray1<T>(context, dim, min_value, max_value);
+      Sort(&array);
+      array = array.To(GetCpuContext());
+      EXPECT_TRUE(std::is_sorted(array.Data(), array.Data() + array.Dim()));
+    }
+  }
+}
+
+TEST(OpsTest, Array1Sort) {
+  Array1SortTestSimple<int32_t>();
+  Array1SortTestSimple<float>();
+
+  Array1SortTestEmpty<int32_t>();
+  Array1SortTestEmpty<float>();
+
+  Array1SortTestRandom<int32_t>();
+  Array1SortTestRandom<float>();
 }
 
 }  // namespace k2

@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cassert>
 #include <limits>
+#include <memory>
 #include <random>
 #include <type_traits>
 #include <utility>
@@ -30,7 +31,9 @@
 
 #include "cub/cub.cuh"
 #include "k2/csrc/macros.h"
+#include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/utils.h"
+#include "moderngpu/kernel_mergesort.hxx"
 
 namespace k2 {
 namespace internal {
@@ -767,6 +770,44 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
     }
   }
   return ans;
+}
+
+template <typename T, typename Compare>
+static void SortCpu(Array1<T> *array, Array1<int32_t> *index_map) {
+  Compare comp;
+  if (index_map != nullptr) {
+    Array1<int32_t> tmp_index_map = Range(array->Context(), array->Dim(), 0);
+    const T *array_data = array->Data();
+    std::sort(tmp_index_map.Data(), tmp_index_map.Data() + tmp_index_map.Dim(),
+              [array_data, comp](int32_t i, int32_t j) {
+                return comp(array_data[i], array_data[j]);
+              });
+    *index_map = std::move(tmp_index_map);
+  }
+
+  std::sort(array->Data(), array->Data() + array->Dim(), comp);
+}
+
+template <typename T, typename Compare /*= LessThan<T>*/>
+void Sort(Array1<T> *array, Array1<int32_t> *index_map /*= nullptr*/) {
+  if (!array->IsValid()) return;
+
+  ContextPtr &context = array->Context();
+  if (context->GetDeviceType() == kCpu)
+    return SortCpu<T, Compare>(array, index_map);
+
+  K2_DCHECK_EQ(context->GetDeviceType(), kCuda);
+
+  std::unique_ptr<mgpu::context_t> mgpu_context =
+      GetModernGpuAllocator(context->GetDeviceId());
+
+  if (index_map != nullptr) {
+    *index_map = Range(context, array->Dim(), 0);
+    mgpu::mergesort(array->Data(), index_map->Data(), array->Dim(), Compare(),
+                    *mgpu_context);
+  } else {
+    mgpu::mergesort(array->Data(), array->Dim(), Compare(), *mgpu_context);
+  }
 }
 
 }  // namespace k2
