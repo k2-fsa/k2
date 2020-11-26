@@ -2,12 +2,14 @@
  * @brief python wrappers for Ragged<T>.
  *
  * @copyright
- * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang, Liyong Guo)
+ *                      Xiaomi Corporation (authors: Haowen Qiu)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,12 +20,17 @@
 #include "torch/extension.h"
 
 namespace k2 {
-
 template <typename T>
 static void PybindRaggedTpl(py::module &m, const char *name) {
   using PyClass = Ragged<T>;
   py::class_<PyClass> pyclass(m, name);
 
+  pyclass.def(py::init([](const RaggedShape &shape,
+                          torch::Tensor values) -> std::unique_ptr<PyClass> {
+                K2_CHECK_EQ(shape.NumElements(), values.sizes()[0]);
+                return std::make_unique<PyClass>(shape, FromTensor<T>(values));
+              }),
+              py::arg("shape"), py::arg("values"));
   pyclass.def(
       "to",
       [](const PyClass &self, py::object device) -> PyClass {
@@ -116,8 +123,8 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   // Return a pair:
   // - Ragged<T>
   // - value_indexes_out
-  //     a 1-D torch::Tensor of dtype torch.int32 if need_value_indexes_out ==
-  //     true, None if need_value_indexes_out == false
+  //     a 1-D torch::Tensor of dtype torch.int32 if need_value_indexes_out
+  //     == true, None if need_value_indexes_out == false
   m.def(
       "index",
       [](PyClass &src, torch::Tensor indexes, bool need_value_indexes = true)
@@ -200,11 +207,30 @@ static void PybindRaggedShape(py::module &m) {
   });
 }
 
-static void PybindRandomRaggedShape(py::module &m) {
+static void PybindRaggedShapeUtils(py::module &m) {
   m.def("random_ragged_shape", &RandomRaggedShape, "RandomRaggedShape",
         py::arg("set_row_ids") = false, py::arg("min_num_axes") = 2,
         py::arg("max_num_axes") = 4, py::arg("min_num_elements") = 0,
         py::arg("max_num_elements") = 2000);
+  m.def(
+      "create_ragged_shape2",
+      [](torch::optional<torch::Tensor> row_splits,
+         torch::optional<torch::Tensor> row_ids,
+         int32_t cached_tot_size = -1) -> RaggedShape {
+        if (!row_splits.has_value() && !row_ids.has_value())
+          K2_LOG(FATAL) << "Both row_splits and row_ids are None";
+        Array1<int32_t> array_row_splits;
+        if (row_splits.has_value())
+          array_row_splits = FromTensor<int32_t>(row_splits.value());
+        Array1<int32_t> array_row_ids;
+        if (row_ids.has_value())
+          array_row_ids = FromTensor<int32_t>(row_ids.value());
+        return RaggedShape2(
+            row_splits.has_value() ? &array_row_splits : nullptr,
+            row_ids.has_value() ? &array_row_ids : nullptr, cached_tot_size);
+      },
+      py::arg("row_splits"), py::arg("row_ids"),
+      py::arg("cached_tot_size") = -1);
 }
 
 }  // namespace k2
@@ -212,5 +238,5 @@ static void PybindRandomRaggedShape(py::module &m) {
 void PybindRagged(py::module &m) {
   k2::PybindRaggedImpl(m);
   k2::PybindRaggedShape(m);
-  k2::PybindRandomRaggedShape(m);
+  k2::PybindRaggedShapeUtils(m);
 }
