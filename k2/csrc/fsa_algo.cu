@@ -26,6 +26,7 @@
 #include "k2/csrc/host/rmepsilon.h"
 #include "k2/csrc/host/topsort.h"
 #include "k2/csrc/host_shim.h"
+#include "k2/csrc/macros.h"
 
 // this contains a subset of the algorithms in fsa_algo.h; currently it just
 // contains one that are wrappings of the corresponding algorithms in
@@ -34,7 +35,7 @@ namespace k2 {
 
 bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
                       Fsa *dest, Array1<int32_t> *arc_map) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   // src is actually an FsaVec.  Just recurse for now.
   int32_t num_fsas = src.shape.Dim0();
   std::vector<Fsa> srcs(num_fsas), dests(num_fsas);
@@ -58,7 +59,7 @@ bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
 }
 
 bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
@@ -83,7 +84,7 @@ bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
 }
 
 bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
@@ -110,7 +111,7 @@ bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
 bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
                bool treat_epsilons_specially, FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(a_fsas.NumAxes() >= 2 && a_fsas.NumAxes() <= 3);
   K2_CHECK(b_fsas.NumAxes() >= 2 && b_fsas.NumAxes() <= 3);
   ContextPtr c = a_fsas.Context();
@@ -198,7 +199,7 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
 void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *, Ragged<int32_t> *),
                       FsaOrVec &src, FsaOrVec *dest,
                       Ragged<int32_t> *arc_deriv) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   // src is actually an FsaVec.  Just recurse for now.
   K2_CHECK_EQ(src.NumAxes(), 3);
   int32_t num_fsas = src.shape.Dim0();
@@ -221,7 +222,7 @@ void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *, Ragged<int32_t> *),
 
 void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
                    Ragged<int32_t> *arc_derivs /*=nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
@@ -256,7 +257,7 @@ void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
 
 void Determinize(FsaOrVec &src, FsaOrVec *dest,
                  Ragged<int32_t> *arc_derivs /*=nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
@@ -290,7 +291,7 @@ void Determinize(FsaOrVec &src, FsaOrVec *dest,
 }
 
 Fsa LinearFsa(const Array1<int32_t> &symbols) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = symbols.Context();
   int32_t n = symbols.Dim(), num_states = n + 2, num_arcs = n + 1;
   Array1<int32_t> row_splits1 = Range(c, num_states + 1, 0),
@@ -314,7 +315,7 @@ Fsa LinearFsa(const Array1<int32_t> &symbols) {
 }
 
 FsaVec LinearFsas(Ragged<int32_t> &symbols) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(symbols.NumAxes(), 2);
   ContextPtr &c = symbols.Context();
 
@@ -394,13 +395,13 @@ struct ArcComparer {
 }  // namespace
 
 void ArcSort(Fsa *fsa) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   if (fsa->NumAxes() < 2) return;  // it is empty
   SortSublists<Arc, ArcComparer>(fsa);
 }
 
 void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
-  NVTX_RANGE("ArcSort");
+  NVTX_RANGE(K2_FUNC);
   if (!src.values.IsValid()) return;
 
   if (arc_map != nullptr)
@@ -422,7 +423,7 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
 // of this path. But we can consider it for the future.
 Ragged<int32_t> ShortestPath(FsaVec &fsas,
                              const Array1<int32_t> &entering_arcs) {
-  NVTX_RANGE("ShortestPath->Ragged");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   const int32_t *entering_arcs_data = entering_arcs.Data();
   const Arc *arcs_data = fsas.values.Data();
@@ -500,7 +501,7 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
 
 void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
                          Array1<int32_t> *arc_map /*= nullptr*/) {
-  NVTX_RANGE("AddEpsilonSelfLoops");
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   const int32_t *old_row_splits1_data = src.RowSplits(1).Data(),
                 *old_row_ids1_data = src.RowIds(1).Data();
@@ -658,7 +659,7 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
 }
 
 Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
-  NVTX_RANGE("Union");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(fsas.NumAxes(), 3);
 
   ContextPtr &context = fsas.Context();
@@ -749,7 +750,7 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
 }
 
 Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(fsa.NumAxes(), 2) << "We support only a single FSA.";
   ContextPtr &c = fsa.Context();
 

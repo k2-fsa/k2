@@ -19,6 +19,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/utils.h"
 
@@ -61,7 +62,7 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest);
  */
 template <typename S, typename T>
 void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_dim = src.Dim();
   int32_t dest_dim = dest->Dim();
@@ -80,7 +81,7 @@ void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
  */
 template <typename T>
 Array1<T> ExclusiveSum(const Array1<T> &src) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   Array1<T> ans(src.Context(), src.Dim());
   ExclusiveSum(src, &ans);
   return ans;

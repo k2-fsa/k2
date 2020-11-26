@@ -16,13 +16,15 @@
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host_shim.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
+#include "k2/csrc/nvtx.h"
 #include "k2/csrc/test_utils.h"
 
 namespace k2 {
 
 void ToNotTopSorted(Fsa *fsa) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(fsa->Context()->GetDeviceType(), kCpu);
 
   int32_t num_states = fsa->TotSize(0);
@@ -54,7 +56,7 @@ void ToNotTopSorted(Fsa *fsa) {
 }
 
 Fsa GetRandFsa() {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   k2host::RandFsaOptions opts;
   opts.num_syms = 5 + RandInt(0, 100);
   opts.num_states = 10 + RandInt(0, 2000);

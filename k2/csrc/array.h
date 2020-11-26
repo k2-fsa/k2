@@ -23,6 +23,7 @@
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/eval.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor.h"
 
@@ -101,7 +102,7 @@ class Array1 {
      @param [in] size   Number of elements to include, 0 <= size <= Dim()-start
   */
   Array1<T> Range(int32_t start, int32_t size) const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, Dim());
     K2_CHECK_GE(size, 0);
@@ -118,7 +119,7 @@ class Array1 {
                         start <= end <= Dim().
   */
   Array1<T> Arange(int32_t start, int32_t end) const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, dim_);
     K2_CHECK_GE(end, start);
@@ -140,7 +141,7 @@ class Array1 {
   // TODO(haowen): does not support inc < 0 with below implementations, we may
   // not need a negative version, will revisit it later
   Tensor Range(int32_t start, int32_t size, int32_t inc) const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_GE(size, 0);
     K2_CHECK_GT(inc, 0);
@@ -156,7 +157,7 @@ class Array1 {
   // when changing the tensor's data, it will also change data in the parent
   // array as they share the memory.
   Tensor ToTensor() const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {Dim()};
     Shape shape(dims);  // strides == 1
@@ -179,7 +180,7 @@ class Array1 {
      context).
   */
   Array1 To(ContextPtr ctx) const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     if (ctx->IsCompatible(*Context())) return *this;
     Array1 ans(ctx, Dim());
     ans.CopyFrom(*this);
@@ -194,7 +195,7 @@ class Array1 {
   template <typename S>
   Array1<typename std::enable_if<!std::is_same<S, T>::value, S>::type> AsType()
       const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     // S != T
     Array1<S> ans(Context(), Dim());
     S *ans_data = ans.Data();
@@ -225,7 +226,7 @@ class Array1 {
     Region and not to the data directly.
   */
   void Resize(int32_t new_size) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     if (new_size < dim_) {
       K2_CHECK_GE(new_size, 0);
     } else {
@@ -262,7 +263,7 @@ class Array1 {
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
   T operator[](int32_t i) const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, Dim());
     const T *data = Data() + i;
@@ -289,7 +290,7 @@ class Array1 {
 
   /* Setting all elements to a scalar */
   void operator=(const T t) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     T *data = Data();
     if (Context()->GetDeviceType() == kCpu) {
       for (int i = 0; i < dim_; i++) data[i] = t;
@@ -310,7 +311,7 @@ class Array1 {
      but also supports -1 as an index.
    */
   Array1 operator[](const Array1<int32_t> &indexes) const {
-    NVTX_RANGE("Array1::operator[](Array1)");
+    NVTX_RANGE(K2_FUNC);
     const ContextPtr &c = Context();
     K2_CHECK(c->IsCompatible(*indexes.Context()));
     int32_t ans_dim = indexes.Dim();
@@ -332,7 +333,7 @@ class Array1 {
 
   // constructor from CPU array (transfers to GPU if necessary)
   Array1(ContextPtr ctx, const std::vector<T> &src) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     Init(ctx, src.size());
     T *data = Data();
     auto kind = GetMemoryCopyKind(*GetCpuContext(), *Context());
@@ -356,7 +357,7 @@ class Array1 {
     to the same data as the (possibly-copied) tensor.
    */
   explicit Array1(const Tensor &tensor) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     Dtype type = DtypeOf<ValueType>::dtype;
     K2_CHECK_EQ(type, tensor.GetDtype());
     if (tensor.IsContiguous()) {
@@ -452,7 +453,7 @@ class Array2 {
   /*  returns a flat version of this, appending the rows; will copy the data if
       it was not contiguous. */
   Array1<T> Flatten() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     if (dim1_ == elem_stride0_) {
       return Array1<T>(dim0_ * dim1_, region_, byte_offset_);
     } else {
@@ -484,7 +485,7 @@ class Array2 {
                         increases.  Require inc > 0.
   */
   Array2<T> RowArange(int32_t start, int32_t end, int32_t inc = 1) const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GT(inc, 0);
     K2_CHECK_GE(start, 0);
     K2_CHECK_GE(end, start);
@@ -505,7 +506,7 @@ class Array2 {
      @param [in] end    One-past-the-last column that *should not* be included.
   */
   Array2<T> ColArange(int32_t start, int32_t end) const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_GE(end, start);
     K2_CHECK_LE(end, dim1_);
@@ -515,7 +516,7 @@ class Array2 {
 
   // return a row (indexing on the 0th axis)
   Array1<T> operator[](int32_t i) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, dim0_);
     int32_t byte_offset = byte_offset_ + i * elem_stride0_ * ElementSize();
@@ -575,7 +576,7 @@ class Array2 {
 
   // Setting all elements to a scalar
   void operator=(const T t) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     T *data = Data();
     int32_t elem_stride0 = elem_stride0_;
     auto lambda_set_elems = [=] __host__ __device__(int32_t i,
@@ -594,7 +595,7 @@ class Array2 {
     is not compatible with the current context.
   */
   Array2<T> To(ContextPtr ctx) const {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     if (ctx->IsCompatible(*Context())) return *this;
 
     Array2<T> ans(ctx, dim0_, dim1_);
@@ -616,7 +617,7 @@ class Array2 {
   // when changing the tensor's data, it will also change data in the parent
   // array as they share the memory.
   Tensor ToTensor() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {dim0_, dim1_};
     std::vector<int32_t> strides = {elem_stride0_, 1};
@@ -627,7 +628,7 @@ class Array2 {
   // Return one column of this Array2, as a Tensor.  (Will point to the
   // same data).
   Tensor Col(int32_t i) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(dim1_));
     Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {dim0_};
@@ -662,7 +663,7 @@ class Array2 {
 
   */
   explicit Array2(Tensor &t, bool copy_for_strides = true) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     auto type = t.GetDtype();
     K2_CHECK_EQ(type, DtypeOf<T>::dtype);
     const auto &shape = t.GetShape();
@@ -705,7 +706,7 @@ class Array2 {
   // extended __host__ __device__ lambda
   // must have public access.
   void CopyDataFromTensor(const Tensor &t) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     T *this_data = Data();
     const T *t_data = t.Data<T>();
     int32_t elem_stride0 = elem_stride0_;

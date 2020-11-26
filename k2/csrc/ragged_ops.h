@@ -19,6 +19,7 @@
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/utils.h"
 
@@ -300,7 +301,7 @@ RaggedShape Transpose(RaggedShape &src,
 template <typename T>
 Ragged<T> Transpose(Ragged<T> &src,
                     Array1<int32_t> *value_indexes_out = nullptr) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   Array1<int32_t> value_indexes;
   RaggedShape ans_shape = Transpose(src.shape, &value_indexes);
   if (value_indexes_out) *value_indexes_out = value_indexes;

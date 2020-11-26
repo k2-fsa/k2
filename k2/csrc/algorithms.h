@@ -14,6 +14,7 @@
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/macros.h"
 
 //  this really contains various utilities that are useful for k2 algorithms.
 namespace k2 {
@@ -24,7 +25,7 @@ class Renumbering {
   Renumbering(ContextPtr c, int32_t num_old_elems) { Init(c, num_old_elems); }
 
   void Init(ContextPtr c, int32_t num_old_elems) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     // make the underlying region allocate an extra element as we'll do
     // exclusive sum in New2Old() and Old2New()
     Array1<char> temp = Array1<char>(c, num_old_elems + 1);
@@ -34,7 +35,7 @@ class Renumbering {
   int32_t NumOldElems() const { return keep_.Dim(); }
 
   int32_t NumNewElems() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     if (!old2new_.IsValid()) ComputeOld2New();
     return num_new_elems_;
   }
@@ -57,7 +58,7 @@ class Renumbering {
                   dimension).
   */
   Array1<int32_t> &New2Old() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     if (!new2old_.IsValid()) ComputeNew2Old();
     return new2old_;
   }
@@ -73,7 +74,7 @@ class Renumbering {
                   Will be allocated with the same context as keep_.
   */
   Array1<int32_t> &Old2New() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     if (!old2new_.IsValid()) ComputeOld2New();
     return old2new_;
   }
@@ -83,9 +84,9 @@ class Renumbering {
   // ComputeNew2Old() also computes old2new_ if needed.
   void ComputeNew2Old();
 
-  Array1<char> keep_;    // array of elements to keep; dimension is the
-                         // `num_old_elems` provided in the constructor but it
-                         // was allocated with one extra element.
+  Array1<char> keep_;  // array of elements to keep; dimension is the
+                       // `num_old_elems` provided in the constructor but it
+                       // was allocated with one extra element.
   Array1<int32_t> old2new_;
   int32_t num_new_elems_;  // equals last element of old2new_; set when
                            // old2new_ is created.
