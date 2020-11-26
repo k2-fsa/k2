@@ -119,5 +119,50 @@ class TestIndexSelect(unittest.TestCase):
             assert torch.allclose(a.grad, new_a.grad)
 
 
+class TestSimpleRaggedIndexSelect(unittest.TestCase):
+
+    def test_1d(self):
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
+            row_splits1 = torch.tensor([0, 3, 5, 6, 6, 9],
+                                       dtype=torch.int32,
+                                       device=device)
+            # we don't need to call shape2.to(device) here as shape2
+            # will be on the same device as row_splits
+            shape2 = k2.create_ragged_shape2(row_splits1, None, 9)
+            values = torch.tensor([1, 0, 4, 2, 3, 0, 4, 5, 2],
+                                  dtype=torch.int32,
+                                  device=device)
+            ragged2 = k2.RaggedInt(shape2, values)
+
+            # contiguous
+            src = torch.tensor([0, 2, 0, 10, 0, -1],
+                               dtype=torch.int32,
+                               device=device)
+            ans = k2.simple_ragged_index_select(src, ragged2)
+            self.assertEqual(ans.dtype, src.dtype)
+            self.assertEqual(ans.numel(), shape2.dim0())
+            expected = torch.tensor([2, 10, 0, 0, -1],
+                                    dtype=torch.int32,
+                                    device=device)
+            self.assertTrue(torch.allclose(ans, expected))
+
+            # non-contiguous
+            src = src.expand(3, -1).t().flatten()[::3]
+            self.assertFalse(src.is_contiguous())
+            self.assertEqual(src.stride(0), 3)
+            ans = k2.simple_ragged_index_select(src, ragged2)
+            self.assertEqual(ans.dtype, src.dtype)
+            self.assertEqual(ans.numel(), shape2.dim0())
+            self.assertTrue(ans.is_contiguous())
+            self.assertEqual(ans.stride(0), 1)
+            expected = torch.tensor([2, 10, 0, 0, -1],
+                                    dtype=torch.int32,
+                                    device=device)
+            self.assertTrue(torch.allclose(ans, expected))
+
+
 if __name__ == '__main__':
     unittest.main()

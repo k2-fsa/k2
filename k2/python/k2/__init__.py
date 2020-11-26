@@ -1,3 +1,5 @@
+from _k2 import RaggedInt
+from _k2 import simple_ragged_index_select
 from .autograd import get_tot_scores
 from .autograd import index_select
 from .autograd import intersect_dense_pruned
@@ -18,6 +20,7 @@ from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
 from .ops import index
 from .ops import index_add
+from .ragged_shape import create_ragged_shape2
 from .ragged_shape import RaggedShape
 from .ragged_shape import random_ragged_shape
 from .symbol_table import SymbolTable
@@ -32,6 +35,7 @@ __all__ = [
     'DenseFsaVec',
     'Fsa',
     'SymbolTable',
+    'RaggedInt',
     'RaggedShape',
     'add_epsilon_self_loops',
     'arc_sort',
@@ -39,6 +43,7 @@ __all__ = [
     'connect',
     'convert_dense_to_fsa_vec',
     'create_fsa_vec',
+    'create_ragged_shape2',
     'determinize',
     'get_tot_scores',
     'index',
@@ -52,6 +57,7 @@ __all__ = [
     'random_ragged_shape',
     'remove_epsilon',
     'shortest_path',
+    'simple_ragged_index_select',
     'to_dot',
     'to_str',
     'to_tensor',
