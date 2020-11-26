@@ -169,7 +169,7 @@ inline cudaMemcpyKind GetMemoryCopyKind(const Context &src,
 // for `context`.
 inline void MemoryCopy(void *dst, const void *src, std::size_t count,
                        cudaMemcpyKind kind, Context *context) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   cudaError_t ret;
   if (kind == cudaMemcpyHostToHost) {
     memcpy(dst, src, count);
@@ -292,7 +292,7 @@ struct Region : public std::enable_shared_from_this<Region> {
                          larger of double the current size, or
                          the next power of 2 greater than `new_bytes_used`). */
   void Extend(size_t new_bytes_used) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     if (new_bytes_used <= bytes_used) return;
     if (num_bytes < new_bytes_used) {  // reallocate and copy
       size_t new_size = std::max<size_t>(num_bytes * 2, new_bytes_used);

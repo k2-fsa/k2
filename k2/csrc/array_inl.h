@@ -29,13 +29,14 @@
 #include <vector>
 
 #include "cub/cub.cuh"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/utils.h"
 
 namespace k2 {
 
 template <typename T>
 Array1<T> Array1<T>::Clone() const {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   Array1<T> ans(Context(), Dim());
   ans.CopyFrom(*this);
   return ans;
@@ -43,7 +44,7 @@ Array1<T> Array1<T>::Clone() const {
 
 template <typename T>
 void Array1<T>::CopyFrom(const Array1<T> &src) {
-  NVTX_RANGE("Array1::CopyFrom");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(dim_, src.dim_);
   if (dim_ == 0) return;
   auto kind = GetMemoryCopyKind(*src.Context(), *Context());

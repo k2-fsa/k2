@@ -15,10 +15,12 @@
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2 {
 void Renumbering::ComputeOld2New() {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   old2new_ = Array1<int32_t>(keep_.Context(), keep_.Dim() + 1);
   ExclusiveSum(keep_, &old2new_);
   num_new_elems_ = old2new_.Back();
@@ -32,7 +34,7 @@ namespace {
 // CUDA limitations about lambdas in classes with private members.
 inline void ComputeNew2OldHelper(ContextPtr &c, const int32_t *old2new_data,
                                  int32_t *new2old_data, int32_t old_dim) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   // Note: the following accesses data one past the end of (current)
   // old2new_, but it does actually exist.
   if (c->GetDeviceType() == kCpu) {
@@ -53,7 +55,7 @@ inline void ComputeNew2OldHelper(ContextPtr &c, const int32_t *old2new_data,
 }  // namespace
 
 void Renumbering::ComputeNew2Old() {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   if (!old2new_.IsValid()) ComputeOld2New();
   new2old_ = Array1<int32_t>(keep_.Context(), num_new_elems_ + 1);
   const int32_t *old2new_data = old2new_.Data();
