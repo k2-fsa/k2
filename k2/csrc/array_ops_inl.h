@@ -772,27 +772,29 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
   return ans;
 }
 
-template <typename T>
+template <typename T, typename Compare>
 static void SortCpu(Array1<T> *array, Array1<int32_t> *index_map) {
+  Compare comp;
   if (index_map != nullptr) {
     Array1<int32_t> tmp_index_map = Range(array->Context(), array->Dim(), 0);
     const T *array_data = array->Data();
     std::sort(tmp_index_map.Data(), tmp_index_map.Data() + tmp_index_map.Dim(),
-              [array_data](int32_t i, int32_t j) {
-                return array_data[i] < array_data[j];
+              [array_data, comp](int32_t i, int32_t j) {
+                return comp(array_data[i], array_data[j]);
               });
     *index_map = std::move(tmp_index_map);
   }
 
-  std::sort(array->Data(), array->Data() + array->Dim());
+  std::sort(array->Data(), array->Data() + array->Dim(), comp);
 }
 
-template <typename T>
+template <typename T, typename Compare /*= LessThan<T>*/>
 void Sort(Array1<T> *array, Array1<int32_t> *index_map /*= nullptr*/) {
   if (!array->IsValid()) return;
 
   ContextPtr &context = array->Context();
-  if (context->GetDeviceType() == kCpu) return SortCpu(array, index_map);
+  if (context->GetDeviceType() == kCpu)
+    return SortCpu<T, Compare>(array, index_map);
 
   K2_DCHECK_EQ(context->GetDeviceType(), kCuda);
 
@@ -801,11 +803,10 @@ void Sort(Array1<T> *array, Array1<int32_t> *index_map /*= nullptr*/) {
 
   if (index_map != nullptr) {
     *index_map = Range(context, array->Dim(), 0);
-    mgpu::mergesort(array->Data(), index_map->Data(), array->Dim(),
-                    mgpu::less_t<T>(), *mgpu_context);
-  } else {
-    mgpu::mergesort(array->Data(), array->Dim(), mgpu::less_t<T>(),
+    mgpu::mergesort(array->Data(), index_map->Data(), array->Dim(), Compare(),
                     *mgpu_context);
+  } else {
+    mgpu::mergesort(array->Data(), array->Dim(), Compare(), *mgpu_context);
   }
 }
 
