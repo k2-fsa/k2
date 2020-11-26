@@ -13,27 +13,31 @@ you install is compatible with the CUDA toolkit you are using.
 For example, if your local CUDA toolkit version is 10.1, and
 you want to install `torch 1.6.0`, you should install it with:
 
-```
+```bash
 pip install torch==1.6.0+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
-If you use conda to manage packages, you can install those 
+If you use conda to manage packages, you can install those
 dependencies with:
 
-```
+```bash
 conda create -n k2 python=3.7
 conda activate k2
 conda install pytorch==1.6.0 cudatoolkit=10.1 -c pytorch
 ```
 
-To install other versions of torch, please check below URLs:
+To install other versions of torch, please check the following URLs:
 
-https://pytorch.org/get-started/locally/
+- https://pytorch.org/get-started/locally/
 
-https://pytorch.org/get-started/previous-versions/
+- https://pytorch.org/get-started/previous-versions/
+
+**HINT**: If you install k2 from pre-built wheel packages, neither do you need
+a GPU nor need to install CUDA toolkit. k2 is ready to run with a CPU. However,
+you still need to install PyTorch with CUDA support.
 
 
-## Install k2 from Pre-built wheel packages
+## Install k2 from pre-built wheel packages
 
 There are two ways to install k2 from pre-built wheel packages.
 
@@ -91,10 +95,10 @@ Before compiling k2, some preparation work has to be done:
   CUDA toolkit you are using.
 
 (Note we need NVCC to build k2, if you use conda to install CUDA toolkit,
-you may need to install nvcc_linux-64 or cudatoolkit-dev as well since the
+you may need to install `nvcc_linux-64` or `cudatoolkit-dev` as well since the
 default installation of CUDA toolkit in conda did not include NVCC.
-However, nvcc_linux-64 or cudatoolkit-dev may not work well on all platforms,
-so it's better if can install CUDA toolkit using a normal way instead of 
+However, `nvcc_linux-64` or `cudatoolkit-dev` may not work well on all platforms,
+so it's better if you can install CUDA toolkit using a normal way instead of
 using conda if you want to build k2 from source.)
 
 After setting up the environment, we are ready to build k2:
@@ -121,7 +125,14 @@ can be installed with
 pip install dist/k2-0.1.1.dev20201125-cp38-cp38-linux_x86_64.whl
 ```
 
-**HINT**: You may get a wheel with a different filename.
+**HINT**: You may get a wheel with a different filename. To run tests,
+you have to install the following requirements first:
+
+```bash
+sudo apt-get install graphviz
+cd k2
+pip3 install -r ./requirements.txt
+```
 
 You can run tests with
 
