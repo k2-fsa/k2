@@ -124,6 +124,7 @@ class Fsa(object):
         '''
         if isinstance(arcs, torch.Tensor):
             arcs: RaggedArc = _fsa_from_tensor(arcs)
+        assert isinstance(arcs, RaggedArc)
 
         # Accessing self.__dict__ bypasses __setattr__.
         self.__dict__['arcs'] = arcs
