@@ -111,7 +111,7 @@ static void PybindIntersect(py::module &m) {
                   need_arc_map ? &a_arc_map : nullptr,
                   need_arc_map ? &b_arc_map : nullptr);
         FsaOrVec ans;
-        if (out.Dim0() == 1)
+        if (a_fsas.NumAxes() == 2 && b_fsas.NumAxes() == 2)
           ans = GetFsaVecElement(out, 0);
         else
           ans = out;
@@ -140,9 +140,9 @@ static void PybindIntersect(py::module &m) {
 static void PybindIntersectDensePruned(py::module &m) {
   m.def(
       "intersect_dense_pruned",
-      [](FsaVec &a_fsas, DenseFsaVec &b_fsas,
-         float search_beam, float output_beam,
-         int32_t min_active_states, int32_t max_active_states)
+      [](FsaVec &a_fsas, DenseFsaVec &b_fsas, float search_beam,
+         float output_beam, int32_t min_active_states,
+         int32_t max_active_states)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
         Array1<int32_t> arc_map_a;
         Array1<int32_t> arc_map_b;
