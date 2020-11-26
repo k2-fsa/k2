@@ -41,7 +41,7 @@ you still need to install PyTorch with CUDA support.
 
 There are two ways to install k2 from pre-built wheel packages.
 
-### (1) From PyPI using `pip install k2`
+### (1) From PyPI using `pip install --pre k2`
 
   The wheel packages on PyPI are built using torch==1.6.0+cu101 on Ubuntu 18.04.
   If you are using other Linux systems, the pre-built wheel packages may NOT
@@ -150,10 +150,13 @@ make -j
 ctest --parallel <JOBNUM>
 ```
 
-If Valgrind is installed, you can check heap corruptions and memory leaks by
+If `valgrind` is installed, you can check heap corruptions and memory leaks by
 
 ```bash
 cd build
 make -j
 ctest -R <TESTNAME> -D ExperimentalMemCheck
 ```
+
+**HINT**: You can install `valgrind` with `sudo apt-get install valgrind`
+on Ubuntu.

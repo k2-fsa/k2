@@ -24,7 +24,7 @@ jobs:
       matrix:
         os: [ubuntu-16.04, ubuntu-18.04]
         cuda: ["10.1", "10.2"]
-        gcc: ["5", "6"]
+        gcc: ["6", "7"]
         torch: ["1.6.0", "1.7.0"]
         python-version: [3.6, 3.7, 3.8]
 

@@ -10,8 +10,11 @@ case "$cuda" in
     filename=cuda_10.0.130_410.48_linux
     ;;
   10.1)
-    url=https://developer.nvidia.com/compute/cuda/10.1/Prod/local_installers/cuda_10.1.105_418.39_linux.run
-    filename=cuda_10.1.105_418.39_linux.run
+    # WARNING: there are bugs in
+    # https://developer.nvidia.com/compute/cuda/10.1/Prod/local_installers/cuda_10.1.105_418.39_linux.run
+    # with GCC 7. Please use the following version
+    url=http://developer.download.nvidia.com/compute/cuda/10.1/Prod/local_installers/cuda_10.1.243_418.87.00_linux.run
+    filename=cuda_10.1.243_418.87.00_linux.run
     ;;
   10.2)
     url=http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/cuda_10.2.89_440.33.01_linux.run
