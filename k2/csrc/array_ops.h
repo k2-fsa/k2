@@ -318,6 +318,30 @@ bool Equal(const Array1<T> &a, const Array1<T> &b);
 template <typename T>
 bool IsMonotonic(const Array1<T> &a);
 
+
+
+/*
+  Generalized function inverse for an array viewed as a function which is
+  monotonically decreasing.
+
+     @param [in] src   Array which is monotonically decreasing (not necessarily
+                      strictly) and whose last element is zero, e.g.
+                      [ 5 5 4 2 0 ]
+     @return          Returns an array such with ans.Dim() == src[0] + 1,
+                      sich that ans[i] = min(j >= 0 : src[i] <= j).
+                      In this case the result would be:
+                      [ 4 4 3 3 2 0 ].
+
+    Note:             InvertMonotonicDecreasing(InvertMonotonicDecreasing(x)
+                      will always equal x if x satisfies the preconditions.
+
+   Implementation notes: allocate ans as zeros; run lambda { if
+   (src[i+1] < src[i]) ans[src[i] - 1] = i + 1 } -> ans = [ 0 4 0 3 2 0 ]
+   in this example; call MonotonicDecreasingUpperBound(ans, &ans).
+ */
+Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src);
+
+
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
    and non-decreasing.
@@ -375,10 +399,30 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
   At exit, `d = *dest` will be the largest sequence that is monotonically
   increasing (i.e. `d[i] <= d[i+1]`) and for which `d[i] <= src[i]`.  We
   compute this using an inclusive scan using a min operator on the
-  reverse of the arrays `src` and `dest`.
+  reverse of the array `src` with output to the reverse of the
+  array `dest`.
  */
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest);
+
+
+/*
+  Compute a monotonically decreasing upper bound on the array `src`,
+  putting the result in `dest` (which may be the same array as `src`).
+
+      @param [in] src  Source array (may be empty)
+      @param [out] dest   Destination array (already allocated);
+                       must be on the same device as `src` and have the same
+                       dimension; may be the same as `src`.
+
+  At exit, `d = *dest` will be the smallest sequence that is monotonically
+  decreasing (i.e. `d[i] >= d[i+1]`) and for which `d[i] >= src[i]`.  We
+  compute this using an inclusive scan using a max operator on the reverse
+  of array `src` with output to the reverse of array `dest`.
+ */
+template <typename S, typename T>
+void MonotonicDecreasingUpperBound(const Array1<S> &src, Array1<T> *dest);
+
 
 /*
    Returns counts of numbers in the array
