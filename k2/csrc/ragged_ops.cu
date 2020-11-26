@@ -377,6 +377,7 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
                                 const Array1<int32_t> &new2old,
                                 Array2<int32_t> *old_offsets,
                                 Array2<int32_t> *new_offsets) {
+  NVTX_RANGE(__func__);
   K2_CHECK(src.NumAxes() > 1);
   ContextPtr &c = src.Context();
   int32_t num_axes = src.NumAxes(), ans_dim0 = new2old.Dim();
@@ -407,6 +408,7 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
 
 RaggedShape Index(RaggedShape &src, const Array1<int32_t> &new2old,
                   Array1<int32_t> *elem_indexes /*=nullptr*/) {
+  NVTX_RANGE(__func__);
   ContextPtr c = src.Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
   K2_CHECK(IsCompatible(src, new2old));
@@ -584,6 +586,7 @@ Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
 
 void GetRowInfo(RaggedShape &src, Array1<int32_t *> *row_splits,
                 Array1<int32_t *> *row_ids) {
+  NVTX_RANGE(__func__);
   int32_t axes = src.NumAxes();
   K2_CHECK_GE(axes, 2);
   src.Populate();
@@ -601,6 +604,7 @@ void GetRowInfo(RaggedShape &src, Array1<int32_t *> *row_splits,
 void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
                      Array2<int32_t *> *row_splits,
                      Array2<int32_t *> *row_ids) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GT(num_srcs, 0);
   int32_t num_axes_in = src[0]->NumAxes();
   K2_CHECK_GE(num_axes_in, 2);
@@ -752,6 +756,7 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
 }
 
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GT(src.NumAxes(), 2);
   K2_CHECK(axis >= 0 && axis < src.NumAxes());
 
@@ -779,6 +784,7 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
 }
 
 RaggedShape MakeTransposable(RaggedShape &src) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GE(src.NumAxes(), 2);
   int32_t src_dim0 = src.Dim0(), src_tot_size1 = src.TotSize(1);
   if (src_dim0 <= 1) return src;
@@ -866,6 +872,7 @@ RaggedShape MakeTransposable(RaggedShape &src) {
 
 // transpose axes 0 and 1.
 RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GT(src.NumAxes(), 2);
   ContextPtr c = src.Context();
   int32_t src_dim0 = src.Dim0(), src_tot_size1 = src.TotSize(1);
@@ -945,6 +952,7 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src) {
 }
 
 RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
+  NVTX_RANGE(__func__);
   // row_splits= [
   Array1<int32_t> row_splits = Range<int32_t>(c, 2, 0, num_elems);
   Array1<int32_t> row_ids(c, num_elems, 0);
@@ -952,6 +960,7 @@ RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
 }
 
 RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1) {
+  NVTX_RANGE(__func__);
   Array1<int32_t> row_splits = Range<int32_t>(c, dim0 + 1, 0, dim1);
   int32_t *row_splits_data = row_splits.Data();
   Array1<int32_t> row_ids(c, dim0 * dim1);
@@ -965,6 +974,7 @@ RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1) {
 
 Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
                                      RaggedShape &ans_ragged_shape) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(src.NumAxes(), 2);
   K2_CHECK_EQ(ans_ragged_shape.NumAxes(), 2);
   K2_CHECK(IsCompatible(src, ans_ragged_shape));
@@ -978,6 +988,7 @@ Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
 
 static Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
                                                  int32_t num_cols) {
+  NVTX_RANGE(__func__);
   std::vector<std::vector<int32_t>> column_indexes(num_cols);  // [column][row]
   const int32_t *values_data = src.values.Data();
   int32_t n = src.values.Dim();
@@ -998,6 +1009,7 @@ static Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
 
 static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
                                                            int32_t num_cols) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(src.NumAxes(), 3);
   ContextPtr &context = src.Context();
   K2_CHECK_EQ(context->GetDeviceType(), kCuda);
@@ -1043,6 +1055,7 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
 }
 
 Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
+  NVTX_RANGE(__func__);
   ContextPtr &context = src.Context();
   if (src.NumAxes() < 2) {
     // src is empty
@@ -1092,6 +1105,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
 }
 
 RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GE(src.NumAxes(), 2);
   // the result will have the same num-axes as `src` (the NumAxes() of the
   // object is not the same as the number of RaggedShapeDim axes).
@@ -1162,6 +1176,7 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
 }
 
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(renumbering.NumOldElems(), src.NumElements());
 
   // Make sure final row-ids are populated.
@@ -1175,6 +1190,7 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
 
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &r_before_last,
                                  Renumbering &r_last) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(r_before_last.NumOldElems(), src.TotSize(src.NumAxes() - 2));
   K2_CHECK_EQ(r_last.NumOldElems(), src.NumElements());
 
@@ -1260,6 +1276,7 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &r_before_last,
 }
 
 RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GE(num_axes, 2);
   std::vector<RaggedShapeDim> axes(num_axes - 1);
   axes[0].row_splits = Array1<int32_t>(c, 1, 0);

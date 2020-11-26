@@ -300,6 +300,7 @@ RaggedShape Transpose(RaggedShape &src,
 template <typename T>
 Ragged<T> Transpose(Ragged<T> &src,
                     Array1<int32_t> *value_indexes_out = nullptr) {
+  NVTX_RANGE(__func__);
   Array1<int32_t> value_indexes;
   RaggedShape ans_shape = Transpose(src.shape, &value_indexes);
   if (value_indexes_out) *value_indexes_out = value_indexes;

@@ -24,6 +24,7 @@ namespace k2 {
 // See declaration in fsa_util.h
 FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
                       Array1<int32_t> *arc_map) {
+  NVTX_RANGE(__func__);
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   ContextPtr &c = fsas.Context();
   K2_CHECK_LE(order.Dim(), fsas.TotSize(1));
@@ -137,6 +138,7 @@ class TopSorter {
     state, so we remove them.
    */
   std::unique_ptr<Ragged<int32_t>> GetInitialBatch() {
+    NVTX_RANGE(__func__);
     // Initialize it with a list of all states that currently have zero
     // in-degree.
     int32_t num_states = state_in_degree_.Dim();
@@ -174,6 +176,7 @@ class TopSorter {
          @return   Returns the states which, after processing.
    */
   std::unique_ptr<Ragged<int32_t>> GetNextBatch(Ragged<int32_t> &cur_states) {
+    NVTX_RANGE(__func__);
     // Process arcs leaving all states in `cur`
 
     // First figure out how many arcs leave each state.
@@ -278,6 +281,7 @@ class TopSorter {
     reachable from the start state).
    */
   std::unique_ptr<Ragged<int32_t>> GetFinalBatch() {
+    NVTX_RANGE(__func__);
     int32_t num_fsas = NumFsas();
     const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
     Array1<int32_t> has_final_state(c_, num_fsas + 1);
@@ -310,6 +314,7 @@ class TopSorter {
   }
 
   void InitDestStatesAndInDegree() {
+    NVTX_RANGE(__func__);
     int32_t num_fsas = fsas_.shape.TotSize(0),
             num_states = fsas_.shape.TotSize(1);
 
@@ -359,6 +364,7 @@ class TopSorter {
                  states.)
    */
   FsaVec TopSort(Array1<int32_t> *arc_map) {
+    NVTX_RANGE(__func__);
     InitDestStatesAndInDegree();
 
     std::vector<std::unique_ptr<Ragged<int32_t>>> iters;
@@ -424,6 +430,7 @@ class TopSorter {
 };
 
 void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map) {
+  NVTX_RANGE(__func__);
   K2_CHECK_GE(src.NumAxes(), 2);
   K2_CHECK_LE(src.NumAxes(), 3);
   if (src.NumAxes() == 2) {
