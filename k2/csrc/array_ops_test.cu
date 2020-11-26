@@ -1414,7 +1414,7 @@ TEST(OpsTest, Array2IndexTest) {
 }
 
 template <typename T>
-static void Array1SortTest() {
+static void Array1SortTestSimple() {
   std::vector<T> data = {3, 2, 5, 1};
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     {
@@ -1435,9 +1435,59 @@ static void Array1SortTest() {
   }
 }
 
+template <typename T>
+static void Array1SortTestEmpty() {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<T> array(context, 0);
+    Array1<int32_t> index_map;
+    Sort(&array, &index_map);
+    EXPECT_EQ(array.Dim(), 0);
+    EXPECT_EQ(index_map.Dim(), 0);
+  }
+}
+
+template <typename T>
+static void Array1SortTestRandom() {
+  int32_t num = RandIntGenerator()(0, 10000);
+  std::vector<T> data(num);
+  std::iota(data.begin(), data.end(), 0);
+  std::vector<T> saved_data = data;
+
+  std::random_shuffle(data.begin(), data.end());
+
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // with index map
+      Array1<T> array(context, data);
+      Array1<int32_t> index_map;
+      Sort(&array, &index_map);
+      CheckArrayData(array, saved_data);
+      array = array.To(GetCpuContext());
+      index_map = index_map.To(GetCpuContext());
+
+      for (int32_t i = 0; i != num; ++i)
+        EXPECT_EQ(array[i], data[index_map[i]]);
+    }
+
+    {
+      // without index_map
+      Array1<T> array(context, data);
+      Sort(&array);
+
+      CheckArrayData(array, saved_data);
+    }
+  }
+}
+
 TEST(OpsTest, Array1Sort) {
-  Array1SortTest<int32_t>();
-  Array1SortTest<float>();
+  Array1SortTestSimple<int32_t>();
+  Array1SortTestSimple<float>();
+
+  Array1SortTestEmpty<int32_t>();
+  Array1SortTestEmpty<float>();
+
+  Array1SortTestRandom<int32_t>();
+  Array1SortTestRandom<float>();
 }
 
 }  // namespace k2
