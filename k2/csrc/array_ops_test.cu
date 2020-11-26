@@ -1448,33 +1448,33 @@ static void Array1SortTestEmpty() {
 
 template <typename T>
 static void Array1SortTestRandom() {
-  int32_t num = RandIntGenerator()(0, 10000);
-  std::vector<T> data(num);
-  std::iota(data.begin(), data.end(), 0);
-  std::vector<T> saved_data = data;
-
-  std::random_shuffle(data.begin(), data.end());
-
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    int32_t dim = RandInt(0, 10000);
+    int32_t min_value = RandInt(-1000, 1000);
+    int32_t max_value = min_value + RandInt(0, 3000);
     {
       // with index map
-      Array1<T> array(context, data);
+      Array1<T> array =
+          RandUniformArray1<T>(context, dim, min_value, max_value);
+      Array1<T> data = array.Clone();
+
       Array1<int32_t> index_map;
       Sort(&array, &index_map);
-      CheckArrayData(array, saved_data);
       array = array.To(GetCpuContext());
-      index_map = index_map.To(GetCpuContext());
+      EXPECT_TRUE(std::is_sorted(array.Data(), array.Data() + array.Dim()));
 
-      for (int32_t i = 0; i != num; ++i)
+      index_map = index_map.To(GetCpuContext());
+      for (int32_t i = 0; i != array.Dim(); ++i)
         EXPECT_EQ(array[i], data[index_map[i]]);
     }
 
     {
       // without index_map
-      Array1<T> array(context, data);
+      Array1<T> array =
+          RandUniformArray1<T>(context, dim, min_value, max_value);
       Sort(&array);
-
-      CheckArrayData(array, saved_data);
+      array = array.To(GetCpuContext());
+      EXPECT_TRUE(std::is_sorted(array.Data(), array.Data() + array.Dim()));
     }
   }
 }
