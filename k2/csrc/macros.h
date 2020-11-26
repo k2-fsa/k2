@@ -9,8 +9,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_MACROS_H_
-#define K2_MACROS_H_
+#ifndef K2_CSRC_MACROS_H_
+#define K2_CSRC_MACROS_H_
 
 #if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__) || \
     defined(__PRETTY_FUNCTION__)
@@ -21,4 +21,4 @@
 #define K2_FUNC __func__
 #endif
 
-#endif  // K2_MACROS_H_
+#endif  // K2_CSRC_MACROS_H_

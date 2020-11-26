@@ -619,6 +619,45 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
   }
 }
 
+template <typename S, typename T>
+void MonotonicDecreasingUpperBound(const Array1<S> &src, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
+  K2_STATIC_ASSERT((std::is_convertible<S, T>::value));
+  K2_CHECK(IsCompatible(src, *dest));
+  int32_t dim = src.Dim();
+  K2_CHECK_EQ(dest->Dim(), dim);
+
+  ContextPtr &c = src.Context();
+  const S *src_data = src.Data();
+  T *dest_data = dest->Data();
+
+  if (c->GetDeviceType() == kCpu) {
+    S max_value = std::numeric_limits<S>::min();
+    for (int32_t i = dim - 1; i >= 0; --i) {
+      max_value = std::max(src_data[i], max_value);
+      // we suppose it's safe to assign a value with type `S`
+      // to a value with type `T`
+      dest_data[i] = max_value;
+    }
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    MaxOp<S> max_op;
+    internal::ConstReversedPtr<S> src_ptr =
+        internal::ConstReversedPtr<S>(src_data, dim);
+    internal::ReversedPtr<T> dest_ptr =
+        internal::ReversedPtr<T>(dest_data, dim);
+    // The first time is to determine temporary device storage requirements.
+    std::size_t temp_storage_bytes = 0;
+    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+        nullptr, temp_storage_bytes, src_ptr, dest_ptr, max_op, dim,
+        c->GetCudaStream()));
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+        d_temp_storage.Data(), temp_storage_bytes, src_ptr, dest_ptr, max_op,
+        dim, c->GetCudaStream()));
+  }
+}
+
 template <typename T>
 Array1<T> Plus(const Array1<T> &src, T t) {
   NVTX_RANGE(K2_FUNC);
