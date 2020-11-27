@@ -1295,7 +1295,7 @@ TEST(OpsTest, MonotonicDecreasingUpperBoundTest) {
 
 TEST(OpsTest, InvertMonotonicDecreasingTest) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
-  for (auto &context : {GetCpuContext()}) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     {
       // empty case
       std::vector<int32_t> values;
@@ -1326,20 +1326,153 @@ TEST(OpsTest, InvertMonotonicDecreasingTest) {
       for (int32_t i = 0; i != 2; ++i) {
         int32_t n = RandInt(1, 1000);
         int32_t src_dim = RandInt(0, 1000);
-        Array1<int32_t> src = RandUniformArray1(cpu, src_dim, 1, n);
-        // TODO(haowen): call GPU sort when it's merged
-        int32_t *src_data = src.Data();
-        std::sort(src_data, src_data + src_dim, std::greater<>());
-        src = src.To(context);
-
+        Array1<int32_t> src = RandUniformArray1(context, src_dim, 1, n);
+        Sort<int32_t, GreaterThan<int32_t>>(&src);
         Array1<int32_t> dest = InvertMonotonicDecreasing(src);
-
         // convert back
         Array1<int32_t> src1 = InvertMonotonicDecreasing(dest);
         EXPECT_TRUE(Equal(src1, src));
       }
     }
   }
+}
+
+template <typename T>
+void ArrayPlusTest() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i != 2; ++i) {
+      {
+        // normal case
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src1 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src2 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> dest(context, dim);
+        Plus(src1, src2, &dest);
+        Array1<T> ans = Plus(src1, src2);
+        EXPECT_EQ(ans.Dim(), dim);
+
+        src1.To(cpu);
+        src2.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src1[n] + src2[n];
+        }
+        CheckArrayData(dest, expected);
+        CheckArrayData(ans, expected);
+      }
+      {
+        // special case: &src1 == &src2 == dest
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src_copy = src.Clone();
+        Plus(src, src, &src);
+        src_copy.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src_copy[n] + src_copy[n];
+        }
+        CheckArrayData(src, expected);
+      }
+    }
+  }
+}
+
+TEST(OpsTest, PlusTest) {
+  ArrayPlusTest<int32_t>();
+  ArrayPlusTest<float>();
+}
+
+template <typename T>
+void ArrayMinusTest() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i != 2; ++i) {
+      {
+        // normal case
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src1 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src2 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> dest(context, dim);
+        Minus(src1, src2, &dest);
+        Array1<T> ans = Minus(src1, src2);
+        EXPECT_EQ(ans.Dim(), dim);
+
+        src1.To(cpu);
+        src2.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src1[n] - src2[n];
+        }
+        CheckArrayData(dest, expected);
+        CheckArrayData(ans, expected);
+      }
+      {
+        // special case: &src1 == &src2 == dest
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src = RandUniformArray1<T>(context, dim, 0, 1000);
+        Minus(src, src, &src);
+        Array1<T> expected(context, dim, T(0));
+        CheckArrayData(src, expected);
+      }
+    }
+  }
+}
+
+TEST(OpsTest, MinusTest) {
+  ArrayMinusTest<int32_t>();
+  ArrayMinusTest<float>();
+}
+
+template <typename T>
+void ArrayTimesTest() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i != 2; ++i) {
+      {
+        // normal case
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src1 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src2 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> dest(context, dim);
+        Times(src1, src2, &dest);
+        Array1<T> ans = Times(src1, src2);
+        EXPECT_EQ(ans.Dim(), dim);
+
+        src1.To(cpu);
+        src2.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src1[n] * src2[n];
+        }
+        CheckArrayData(dest, expected);
+        CheckArrayData(ans, expected);
+      }
+      {
+        // special case: &src1 == &src2 == dest
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src_copy = src.Clone();
+        Times(src, src, &src);
+        src_copy.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src_copy[n] * src_copy[n];
+        }
+        CheckArrayData(src, expected);
+      }
+    }
+  }
+}
+
+TEST(OpsTest, TimesTest) {
+  ArrayTimesTest<int32_t>();
+  ArrayTimesTest<float>();
 }
 
 TEST(OpsTest, Array1IndexTest) {

@@ -226,6 +226,63 @@ void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
 }
 
 /*
+  Call BinaryOp on each element in `src1` and `src2`, then write the result
+  to the corresponding element in `dest`, i.e.
+  for 0 <= i < dest_dim = src1_dim == src2_dim.
+    dest[i] = BinaryOp(src1[i], src2[i])
+  Noted `src1`, `src2` and `dest` must have the same Dim() and on the same
+  device. It is allowable for &src1 == &src2 == dest.
+*/
+template <typename T, typename BinaryOp>
+void ApplyBinaryOpOnArray1(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest);
+
+// Call PlusOp on `src1` and `src2` and save the result to `dest`,
+// i.e. dest[i] = src1[i] + src2[i]
+template <typename T>
+void Plus(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  ApplyBinaryOpOnArray1<T, PlusOp<T>>(src1, src2, dest);
+}
+
+// A wrapper function for Plus above, ans[i] = src1[i] + src2[i].
+template <typename T>
+Array1<T> Plus(Array1<T> &src1, Array1<T> &src2) {
+  K2_CHECK_EQ(src1.Dim(), src2.Dim());
+  Array1<T> ans(GetContext(src1, src2), src1.Dim());
+  Plus(src1, src2, &ans);
+  return ans;
+}
+
+// Same with `Plus`, but with `MinusOp`, i.e. dest[i] = src1[i] - src2[i].
+template <typename T>
+void Minus(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  ApplyBinaryOpOnArray1<T, MinusOp<T>>(src1, src2, dest);
+}
+
+// A wrapper function for Minus above, ans[i] = src1[i] - src2[i].
+template <typename T>
+Array1<T> Minus(Array1<T> &src1, Array1<T> &src2) {
+  K2_CHECK_EQ(src1.Dim(), src2.Dim());
+  Array1<T> ans(GetContext(src1, src2), src1.Dim());
+  Minus(src1, src2, &ans);
+  return ans;
+}
+
+// Same with `Plus`, but with `TimesOp`, i.e. dest[i] = src1[i] * src2[i].
+template <typename T>
+void Times(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  ApplyBinaryOpOnArray1<T, TimesOp<T>>(src1, src2, dest);
+}
+
+// A wrapper function for Times above, ans[i] = src1[i] * src2[i].
+template <typename T>
+Array1<T> Times(Array1<T> &src1, Array1<T> &src2) {
+  K2_CHECK_EQ(src1.Dim(), src2.Dim());
+  Array1<T> ans(GetContext(src1, src2), src1.Dim());
+  Times(src1, src2, &ans);
+  return ans;
+}
+
+/*
   Returns a random Array1, uniformly distributed betwen `min_value` and
   `max_value`.  CAUTION: for now, this will be randomly generated on CPU and
   then transferred to other devices if c is not a CPU context, so it will be

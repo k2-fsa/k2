@@ -71,7 +71,7 @@ void MinPerSublist(Ragged<T> &src, T default_value, Array1<T> *min_values) {
 // Same with `MaxPerSubList`, but output the sum of values in each sub-list.
 template <typename T>
 void SumPerSublist(Ragged<T> &src, T default_value, Array1<T> *sum_values) {
-  ApplyOpPerSublist<T, SumOp<T>>(src, default_value, sum_values);
+  ApplyOpPerSublist<T, PlusOp<T>>(src, default_value, sum_values);
 }
 
 // Same with `MaxPerSubList`, but with Op as `LogAdd`.
