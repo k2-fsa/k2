@@ -83,7 +83,9 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
       attributes will be discarded and will not be kept in the output FSA).
 
     Returns:
-      The result of intersecting a_fsa and b_fsa.
+      The result of intersecting a_fsa and b_fsa. len(out_fsa.shape) is 2
+      if and only if the two input FSAs are single FSAs;
+      otherwise, len(out_fsa.shape) is 3.
     '''
     treat_epsilons_specially = True
     need_arc_map = True

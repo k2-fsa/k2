@@ -47,6 +47,7 @@ class TestIntersect(unittest.TestCase):
         b_fsa.requires_grad_(True)
 
         fsa = k2.intersect(a_fsa, b_fsa)
+        assert len(fsa.shape) == 2
         actual_str = k2.to_str(fsa)
         expected_str = '\n'.join(
             ['0 1 1 10.1', '1 2 2 20.3', '2 3 -1 30.5', '3'])
@@ -61,6 +62,14 @@ class TestIntersect(unittest.TestCase):
 
         assert torch.allclose(b_fsa.scores.grad,
                               torch.tensor([1, 1, 1], dtype=torch.float32))
+
+        # if any of the input FSA is an FsaVec,
+        # the outupt FSA is also an FsaVec.
+        a_fsa.scores.grad = None
+        b_fsa.scores.grad = None
+        a_fsa = k2.create_fsa_vec([a_fsa])
+        fsa = k2.intersect(a_fsa, b_fsa)
+        assert len(fsa.shape) == 3
 
 
 if __name__ == '__main__':
