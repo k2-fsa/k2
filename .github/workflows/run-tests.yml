@@ -20,15 +20,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04]
-        cuda: ["10.1", "10.2"]
+        cuda: ["10.1"]
         gcc: ["5"]
-        torch: ["1.6.0", "1.7.0"]
+        torch: ["1.6.0"]
         python-version: [3.6]
-        # build_type: ["Release", "Debug"]
-        #
-        # disable release build for github actions since it results
-        # in segfault which CANNOT be reproduced locally.
-        build_type: ["Debug"]
+        build_type: ["Release", "Debug"]
 
     steps:
       # refer to https://github.com/actions/checkout
@@ -56,6 +52,10 @@ jobs:
           echo "CXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
           echo "CUDAHOSTCXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
 
+      - name: Display GCC version
+        run: |
+          gcc --version
+
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -70,11 +70,10 @@ jobs:
           torch: ${{ matrix.torch }}
         shell: bash
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install wheel twine
-          python3 -m pip install bs4 requests tqdm
-          python3 -m pip install dataclasses graphviz
-          sudo apt-get install python-pydot python-pydot-ng graphviz
+          python3 -m pip install -qq --upgrade pip six
+          python3 -m pip install -qq bs4 requests tqdm
+          python3 -m pip install -qq dataclasses graphviz
+          sudo apt-get -qq install graphviz
 
           ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
@@ -94,7 +93,7 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ..
           cat k2/csrc/version.h
 
-      - name: Build and Run Tests
+      - name: ${{ matrix.build_type }} Build
         shell: bash
         run: |
           echo "number of cores: $(nproc)"
@@ -102,4 +101,15 @@ jobs:
           # we cannot use -j here because of limited RAM
           # of the VM provided by GitHub actions
           make
+
+      - name: Display Build Information
+        shell: bash
+        run: |
+          export PYTHONPATH=$PWD/k2/python:$PWD/build/lib:$PYTHONPATH
+          python3 -m k2.version
+
+      - name: Run Tests
+        shell: bash
+        run: |
+          cd build
           ctest --output-on-failure

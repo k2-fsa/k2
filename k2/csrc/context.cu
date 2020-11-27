@@ -15,6 +15,17 @@
 
 namespace k2 {
 
+void CudaStreamOverride::Push(cudaStream_t stream) {
+  stack_.push_back(stream);
+  stream_override_ = stream;
+}
+
+void CudaStreamOverride::Pop(cudaStream_t stream) {
+  K2_DCHECK(!stack_.empty());
+  K2_DCHECK_EQ(stack_.back(), stream);
+  stack_.pop_back();
+}
+
 RegionPtr NewRegion(ContextPtr context, std::size_t num_bytes) {
   // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
   // overwrite if needed.
