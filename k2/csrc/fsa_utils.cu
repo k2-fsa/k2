@@ -1757,4 +1757,11 @@ FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes) {
   return ans;
 }
 
+FsaVec GetIncomingFsaVec(FsaVec &fsas) {
+  Array1<int32_t> dest_states = GetDestStates(fsas, true);
+  Ragged<int32_t> arc_indexes = GetIncomingArcs(fsas, dest_states);
+  return FsaVec(arc_indexes.shape, fsas.values[arc_indexes.values]);
+}
+
+
 }  // namespace k2

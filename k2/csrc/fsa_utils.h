@@ -197,6 +197,17 @@ Ragged<int32_t> GetEnteringArcIndexBatches(FsaVec &fsas,
 Ragged<int32_t> GetIncomingArcs(FsaVec &fsas,
                                 const Array1<int32_t> &dest_states);
 
+
+
+/*
+  Rearrange an FsaVec into a different arrangement of arcs which will actually
+  not be a valid FsaVec but will contain the same information in a different
+  form.. the arcs are rearranged so they are listed by the dest_state, not
+  src_state.  Implementation is 2 lines, using GetIncomingArcs().
+ */
+FsaVec GetIncomingFsaVec(FsaVec &fsas);
+
+
 /*
    Compute and return forward scores per state (like alphas in Baum-Welch),
    or forward best-path scores if log_semiring == false.

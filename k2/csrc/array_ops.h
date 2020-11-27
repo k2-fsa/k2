@@ -330,7 +330,7 @@ bool IsMonotonic(const Array1<T> &a);
                       strictly) and whose last element is zero, e.g.
                       [ 5 5 4 2 0 ]
      @return          Returns an array such with ans.Dim() == src[0] + 1,
-                      sich that ans[i] = min(j >= 0 : src[i] <= j).
+                      sich that ans[i] = min(j >= 0 : src[j] <= i).
                       In this case the result would be:
                       [ 4 4 3 3 2 0 ].
 
@@ -338,7 +338,7 @@ bool IsMonotonic(const Array1<T> &a);
                       will always equal x if x satisfies the preconditions.
 
    Implementation notes: allocate ans as zeros; run lambda { if
-   (src[i+1] < src[i]) ans[src[i] - 1] = i + 1 } -> ans = [ 0 4 0 3 2 0 ]
+   (i+1 == dim || src[i+1] < src[i]) ans[src[i] - 1] = i + 1 } -> ans = [ 0 4 0 3 2 0 ]
    in this example; call MonotonicDecreasingUpperBound(ans, &ans).
  */
 Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src);

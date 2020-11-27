@@ -168,23 +168,20 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                           FsaVec *out, Array1<int32_t> *arc_map_a,
                           Array1<int32_t> *arc_map_b);
 
+/* IntersectDense is a version of IntersectDensePruned that does not
+   do pruning in the 1st pass.
+ */
+void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
+                    float output_beam, FsaVec *out,
+                    Array1<int32_t> *arc_map_a,
+                    Array1<int32_t> *arc_map_b);
+
+
 /*
   This is 'normal' intersection (we would call this Compose() for FSTs, but
   you can do that using Intersect(), by calling this and then Invert()
-  (or just attaching the other aux_labels).  NOTE: epsilons are not treated
-  specially, so this will only give you the conventionally-correct
-  answer if one of the following conditions hold:
+  (or just attaching the other aux_labels).
 
-      - Any zero symbols in your graphs were never intended to be treated as
-        epsilons, but have some other meaning (e.g. they are just regular
-        symbols, or blank or something like that).
-      - a_fsas or b_fsas are both epsilon free
-      - One of a_fsas or b_fsas was originally epsilon-free, and you
-        modified it with AddEpsilonSelfLoops()
-      - Neither a_fsas or b_fsas was originally epsilon-free, you modified
-        both of them by calling AddEpsilonSelfLoops(), and you don't care
-        about duplicate paths with the same weight (search online
-        for "epsilon-sequencing problem").
 
         @param [in] a_fsas  Fsa or FsaVec that is one of the arguments
                            for composition (i.e. 2 or 3 axes)
@@ -193,11 +190,31 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
         @param [in] treat_epsilons_specially   If true, epsilons will
                           be treated as epsilon, meaning epsilon arcs
                           can match with an implicit epsilon self-loop.
-
                           If false, epsilons will be treated as real,
                           normal symbols (to have them treated as epsilons
                           in this case you may have to add epsilon self-loops
                           to whichever of the inputs is naturally epsilon-free).
+
+         If treat_epsilons_specially is false, you'll get the correct results
+         if one of the following conditions hold:
+
+        - Any zero symbols in your graphs were never intended to be treated as
+          epsilons, but have some other meaning (e.g. they are just regular
+          symbols, or blank or something like that).
+        - a_fsas or b_fsas are both epsilon free
+        - One of a_fsas or b_fsas was originally epsilon-free, and you
+          modified it with AddEpsilonSelfLoops()
+        - Neither a_fsas or b_fsas was originally epsilon-free, you modified
+          both of them by calling AddEpsilonSelfLoops(), and you don't care
+          about duplicate paths with the same weight (search online
+          for "epsilon-sequencing problem").
+
+          If treat_epsilons_specially is true, you'll get the correct results
+          except that our algorithm does not have an epsilon-sequencing
+          filter, so you may get multiple equivalent paths corresponding
+          to different orders of processing epsilons; for many
+          applications this does not matter.
+
         @param [out] out    Output Fsa, will be an FsaVec (NumAxes() == 3)
                            regardless of the num_axes of the arguments.
         @param [out] arc_map_a  If not nullptr, this function will write to
@@ -207,7 +224,6 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
         @return   Returns true if intersection was successful for all inputs
                   (requires input FSAs to be arc-sorted and at least one of
                   them to be epsilon free).
-
  */
 bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
                bool treat_epsilons_specially, FsaVec *out,
