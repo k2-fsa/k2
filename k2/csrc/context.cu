@@ -16,11 +16,13 @@
 namespace k2 {
 
 void CudaStreamOverride::Push(cudaStream_t stream) {
+  if (stream == static_cast<cudaStream_t>(0x0)) return;
   stack_.push_back(stream);
   stream_override_ = stream;
 }
 
 void CudaStreamOverride::Pop(cudaStream_t stream) {
+  if (stream == static_cast<cudaStream_t>(0x0)) return;
   K2_DCHECK(!stack_.empty());
   K2_DCHECK_EQ(stack_.back(), stream);
   stack_.pop_back();
@@ -49,12 +51,14 @@ ParallelRunnerActive::ParallelRunnerActive(ContextPtr c) : c_(c) {
     K2_CHECK_CUDA_ERROR(ret);
   }
 }
-cudaStream_t ParallelRunnerActive::NewStream() {
+cudaStream_t ParallelRunnerActive::NewStream(
+    std::size_t num_work_items /*=0*/) {
   DeviceType d = c_->GetDeviceType();
   if (d == kCpu) {
     return kCudaStreamInvalid;
   } else {
     K2_CHECK_EQ(d, kCuda);
+    if (num_work_items < 10000) return static_cast<cudaStream_t>(0x0);
     cudaStream_t stream;
     auto ret = cudaStreamCreate(&stream);
     K2_CHECK_CUDA_ERROR(ret);
