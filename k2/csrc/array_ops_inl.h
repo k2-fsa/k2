@@ -436,6 +436,34 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
   }
 }
 
+template <typename T, typename BinaryOp>
+void ApplyBinaryOpOnArray1(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_NE(dest, nullptr);
+
+  int32_t dim = src1.Dim();
+  K2_CHECK_EQ(dim, src2.Dim());
+  K2_CHECK_EQ(dim, dest->Dim());
+  ContextPtr c = GetContext(src1, src2, *dest);
+
+  const T *src1_data = src1.Data();
+  const T *src2_data = src2.Data();
+  T *dest_data = dest->Data();
+
+  BinaryOp op;
+  DeviceType d = c->GetDeviceType();
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i != dim; ++i) {
+      dest_data[i] = op(src1_data[i], src2_data[i]);
+    }
+  } else {
+    auto lambda_set_values = [=] __device__(int32_t i) -> void {
+      dest_data[i] = op(src1_data[i], src2_data[i]);
+    };
+    EvalDevice(c, dim, lambda_set_values);
+  }
+}
+
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
                             T max_value) {
