@@ -374,11 +374,11 @@ class CudaStreamOverride {
     else
       return stream;
   }
-  void Push(cudaStream_t stream) {
+  [[gnu::noinline]] void Push(cudaStream_t stream) {
     stack_.push_back(stream);
     stream_override_ = stream;
   }
-  void Pop(cudaStream_t stream) {
+  [[gnu::noinline]] void Pop(cudaStream_t stream) {
     K2_DCHECK(!stack_.empty());
     K2_DCHECK_EQ(stack_.back(), stream);
     stack_.pop_back();
