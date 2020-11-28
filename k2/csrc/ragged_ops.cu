@@ -1176,6 +1176,56 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
   return RaggedShape(ans_axes);
 }
 
+RaggedShape Prefix(RaggedShape &src, int32_t n) {
+  NVTX_RANGE(K2_FUNC);
+  int32_t dim0 = src.Dim0();
+  K2_CHECK(n >= 0 && n <= dim0);
+
+  src.Populate();
+  int32_t num_axes = src.NumAxes();
+  RaggedShape src_cpu = src.To(GetCpuContext());
+  const std::vector<RaggedShapeDim> &axes_in = src.Axes();
+  const std::vector<RaggedShapeDim> &axes_in_cpu = src_cpu.Axes();
+  std::vector<RaggedShapeDim> axes_out(axes_in.size());
+
+  int32_t row_end = n;
+  for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
+    axes_out[axis].row_splits = axes_in[axis].row_splits.Arange(0, row_end + 1);
+    row_end = axes_in_cpu[axis].row_splits[row_end];
+    axes_out[axis].row_ids = axes_in[axis].row_ids.Arange(0, row_end);
+    axes_out[axis].cached_tot_size = row_end;
+  }
+  return RaggedShape(axes_out);
+}
+
+std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
+                                     const std::vector<int32_t> &sizes) {
+  NVTX_RANGE(K2_FUNC);
+  src.Populate();
+  int32_t dim0 = src.Dim0();
+  int32_t num_axes = src.NumAxes();
+  RaggedShape src_cpu = src.To(GetCpuContext());
+  const std::vector<RaggedShapeDim> &axes_in = src.Axes();
+  const std::vector<RaggedShapeDim> &axes_in_cpu = src_cpu.Axes();
+
+  int32_t ans_size = static_cast<int32_t>(sizes.size());
+  std::vector<RaggedShape> ans(ans_size);
+  for (int32_t i = 0; i != ans_size; ++i) {
+    std::vector<RaggedShapeDim> axes_out(axes_in.size());
+    int32_t row_end = sizes[i];
+    K2_CHECK(row_end >= 0 && row_end <= dim0);
+    for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
+      axes_out[axis].row_splits =
+          axes_in[axis].row_splits.Arange(0, row_end + 1);
+      row_end = axes_in_cpu[axis].row_splits[row_end];
+      axes_out[axis].row_ids = axes_in[axis].row_ids.Arange(0, row_end);
+      axes_out[axis].cached_tot_size = row_end;
+    }
+    ans[i] = RaggedShape(axes_out);
+  }
+  return ans;
+}
+
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(renumbering.NumOldElems(), src.NumElements());

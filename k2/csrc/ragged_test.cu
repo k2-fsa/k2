@@ -1860,4 +1860,117 @@ TEST(RaggedShapeOpsTest, TestMakeTransposable) {
   }
 }
 
+TEST(RaggedShapeOpsTest, PrefixTest) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // simple case
+      const std::vector<int32_t> row_splits1 = {0, 2, 5, 6, 8};
+      const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10, 12, 13};
+      Array1<int32_t> row_splits1_array(context, row_splits1);
+      Array1<int32_t> row_splits2_array(context, row_splits2);
+      RaggedShape shape = RaggedShape3(&row_splits1_array, nullptr, -1,
+                                       &row_splits2_array, nullptr, -1);
+      int32_t dim0 = shape.Dim0();
+      int32_t num_axes = shape.NumAxes();
+      EXPECT_EQ(dim0, 4);
+      EXPECT_EQ(num_axes, 3);
+      {
+        // n == 0
+        int32_t n = 0;
+        std::vector<std::vector<int32_t>> expected_row_splits = {{0}, {0}};
+        RaggedShape result = Prefix(shape, n);
+        EXPECT_TRUE(IsCompatible(shape, result));
+        EXPECT_EQ(result.Dim0(), n);
+        EXPECT_EQ(result.NumAxes(), num_axes);
+        for (int32_t i = 1; i != num_axes; ++i) {
+          CheckArrayData(result.RowSplits(i), expected_row_splits[i - 1]);
+        }
+      }
+
+      {
+        // n > 0 && n < dim0
+        int32_t n = 2;
+        std::vector<std::vector<int32_t>> expected_row_splits = {
+            {0, 2, 5}, {0, 2, 3, 4, 6, 7}};
+        RaggedShape result = Prefix(shape, n);
+        EXPECT_TRUE(IsCompatible(shape, result));
+        EXPECT_EQ(result.Dim0(), n);
+        EXPECT_EQ(result.NumAxes(), num_axes);
+        for (int32_t i = 1; i != num_axes; ++i) {
+          CheckArrayData(result.RowSplits(i), expected_row_splits[i - 1]);
+        }
+      }
+
+      {
+        // n == dim0
+        int32_t n = 4;
+        std::vector<std::vector<int32_t>> expected_row_splits = {
+            {0, 2, 5}, {0, 2, 3, 4, 6, 7}};
+        RaggedShape result = Prefix(shape, n);
+        EXPECT_TRUE(IsCompatible(shape, result));
+        EXPECT_EQ(result.Dim0(), n);
+        EXPECT_EQ(result.NumAxes(), num_axes);
+        CheckArrayData(result.RowSplits(1), row_splits1);
+        CheckArrayData(result.RowSplits(2), row_splits2);
+      }
+    }
+
+    {
+      // test with random large size
+      for (int32_t i = 0; i < 2; ++i) {
+        RaggedShape shape = RandomRaggedShape(false, 2, 4, 0, 1000).To(context);
+        int32_t dim0 = shape.Dim0();
+        int32_t num_axes = shape.NumAxes();
+        int32_t n = RandInt(0, dim0);
+        RaggedShape result = Prefix(shape, n);
+        EXPECT_TRUE(IsCompatible(shape, result));
+        EXPECT_EQ(result.Dim0(), n);
+        EXPECT_EQ(result.NumAxes(), num_axes);
+        // just check row_splits1 here would be fine, as we have tested it with
+        // simple case. We just confirm it can run successfully with kinds of
+        // different random shapes.
+        CheckArrayData(result.RowSplits(1), shape.RowSplits(1).Range(0, n + 1));
+      }
+    }
+  }
+}
+
+TEST(RaggedShapeOpsTest, GetPrefixesTest) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // test with random large size
+      for (int32_t i = 0; i < 100; ++i) {
+        RaggedShape shape = RandomRaggedShape(false, 2, 4, 0, 1000).To(context);
+        int32_t dim0 = shape.Dim0();
+        int32_t num_axes = shape.NumAxes();
+        int32_t ans_num = RandInt(0, 10);
+        std::vector<int32_t> sizes;
+        for (int32_t j = 0; j != ans_num; ++j)
+          sizes.push_back(RandInt(0, dim0));
+        ASSERT_EQ(sizes.size(), ans_num);
+        std::vector<RaggedShape> ans = GetPrefixes(shape, sizes);
+        ASSERT_EQ(ans.size(), ans_num);
+
+        for (int32_t j = 0; j != ans_num; ++j) {
+          int32_t n = sizes[j];
+
+          RaggedShape ans_j = ans[j];
+          EXPECT_TRUE(IsCompatible(shape, ans_j));
+          EXPECT_EQ(ans_j.Dim0(), n);
+          EXPECT_EQ(ans_j.NumAxes(), num_axes);
+
+          RaggedShape result = Prefix(shape, n);
+          EXPECT_TRUE(IsCompatible(shape, result));
+          EXPECT_EQ(result.Dim0(), n);
+          EXPECT_EQ(result.NumAxes(), num_axes);
+
+          for (int32_t m = 1; m != num_axes; ++m) {
+            EXPECT_TRUE(Equal(result.RowSplits(m), ans_j.RowSplits(m)));
+          }
+        }
+      }
+    }
+  }
+}
+
 }  // namespace k2
