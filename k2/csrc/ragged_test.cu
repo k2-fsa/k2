@@ -1939,7 +1939,7 @@ TEST(RaggedShapeOpsTest, GetPrefixesTest) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     {
       // test with random large size
-      for (int32_t i = 0; i < 100; ++i) {
+      for (int32_t i = 0; i < 2; ++i) {
         RaggedShape shape = RandomRaggedShape(false, 2, 4, 0, 1000).To(context);
         int32_t dim0 = shape.Dim0();
         int32_t num_axes = shape.NumAxes();

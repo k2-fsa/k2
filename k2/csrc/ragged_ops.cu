@@ -1183,15 +1183,15 @@ RaggedShape Prefix(RaggedShape &src, int32_t n) {
 
   src.Populate();
   int32_t num_axes = src.NumAxes();
-  RaggedShape src_cpu = src.To(GetCpuContext());
+  K2_CHECK_GE(num_axes, 2);
   const std::vector<RaggedShapeDim> &axes_in = src.Axes();
-  const std::vector<RaggedShapeDim> &axes_in_cpu = src_cpu.Axes();
   std::vector<RaggedShapeDim> axes_out(axes_in.size());
 
   int32_t row_end = n;
   for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
     axes_out[axis].row_splits = axes_in[axis].row_splits.Arange(0, row_end + 1);
-    row_end = axes_in_cpu[axis].row_splits[row_end];
+    // notice here we may do a memory copy from GPU to CPU.
+    row_end = axes_in[axis].row_splits[row_end];
     axes_out[axis].row_ids = axes_in[axis].row_ids.Arange(0, row_end);
     axes_out[axis].cached_tot_size = row_end;
   }
@@ -1204,24 +1204,37 @@ std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
   src.Populate();
   int32_t dim0 = src.Dim0();
   int32_t num_axes = src.NumAxes();
-  RaggedShape src_cpu = src.To(GetCpuContext());
+  K2_CHECK_GE(num_axes, 2);
+  ContextPtr &c = src.Context();
   const std::vector<RaggedShapeDim> &axes_in = src.Axes();
-  const std::vector<RaggedShapeDim> &axes_in_cpu = src_cpu.Axes();
 
+  // get those row_end elements at each axis.
   int32_t ans_size = static_cast<int32_t>(sizes.size());
+  Array1<int32_t> row_ends(c, num_axes * ans_size);
+  Array1<int32_t> sizes_array(GetCpuContext(), sizes);
+  Array1<int32_t> indexes = row_ends.Arange(0, ans_size);
+  indexes.CopyFrom(sizes_array);
+  for (int32_t axis = 1; axis < num_axes; ++axis) {
+    Array1<int32_t> curr_axis_row_ends =
+        row_ends.Arange(axis * ans_size, (axis + 1) * ans_size);
+    axes_in[axis - 1].row_splits.Index(indexes, &curr_axis_row_ends);
+    indexes = curr_axis_row_ends;
+  }
+
+  row_ends = row_ends.To(GetCpuContext());
   std::vector<RaggedShape> ans(ans_size);
   for (int32_t i = 0; i != ans_size; ++i) {
     std::vector<RaggedShapeDim> axes_out(axes_in.size());
-    int32_t row_end = sizes[i];
+    int32_t row_end = row_ends[i];
     K2_CHECK(row_end >= 0 && row_end <= dim0);
     for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
       axes_out[axis].row_splits =
           axes_in[axis].row_splits.Arange(0, row_end + 1);
-      row_end = axes_in_cpu[axis].row_splits[row_end];
+      row_end = row_ends[i + (axis + 1) * ans_size];
       axes_out[axis].row_ids = axes_in[axis].row_ids.Arange(0, row_end);
       axes_out[axis].cached_tot_size = row_end;
     }
-    ans[i] = RaggedShape(axes_out);
+    ans[i] = RaggedShape(axes_out, false);
   }
   return ans;
 }

@@ -312,12 +312,24 @@ class Array1 {
    */
   Array1 operator[](const Array1<int32_t> &indexes) const {
     NVTX_RANGE(K2_FUNC);
-    const ContextPtr &c = Context();
-    K2_CHECK(c->IsCompatible(*indexes.Context()));
+    const ContextPtr &c = GetContext(*this, indexes);
     int32_t ans_dim = indexes.Dim();
     Array1<T> ans(c, ans_dim);
+    this->Index(indexes, &ans);
+    return ans;
+  }
+
+  // Same with above operator[](const Array1<int32_t> &indexes), but with the
+  // output array memory allocated by the caller.
+  // Must have ans.Dim() == indexes.Dim() and IsCompatible(*ans, *this)
+  void Index(const Array1<int32_t> &indexes, Array1<T> *ans) const {
+    NVTX_RANGE(K2_FUNC);
+    K2_CHECK_NE(ans, nullptr);
+    const ContextPtr &c = GetContext(*this, indexes, *ans);
+    int32_t ans_dim = indexes.Dim();
+    K2_CHECK_EQ(ans_dim, indexes.Dim());
     const T *this_data = Data();
-    T *ans_data = ans.Data();
+    T *ans_data = ans->Data();
     const int32_t *indexes_data = indexes.Data();
     if (c->GetDeviceType() == kCpu) {
       for (int32_t i = 0; i < ans_dim; i++)
@@ -328,7 +340,6 @@ class Array1 {
       };
       EvalDevice(c, ans_dim, lambda_copy_elems);
     }
-    return ans;
   }
 
   // constructor from CPU array (transfers to GPU if necessary)
