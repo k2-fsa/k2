@@ -172,25 +172,23 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src);
  */
 RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta);
 
-
 /*
   Return a sub-part of a RaggedShape containing indexes 0 through n-1 of
   its 1st axis.
       @param [in] src  Source RaggedShape
       @param [in] n    Number of (leading) indexes to keep; result will
-                       satisfy ans.Dim0() == n.
+                       satisfy ans.Dim0() == n; Must have 0 <= n <= src.Dim0().
       @return          Returns RaggedShape containing a prefix of `src`.
                        It will share memory with `src`.
  */
 RaggedShape Prefix(RaggedShape &src, int32_t n);
-
 
 /*
   Return a vector of RaggedShapes containing various prefixes of `src`.
 
         @param [in] src    Source RaggedShape
         @param [in] sizes  Lengths of desired prefixes; all elements
-                           will satisfy 0 <= sizes[i] < src.Dim0().
+                           will satisfy 0 <= sizes[i] <= src.Dim0().
         @return   Returns vector of prefixes of a RaggedShape;
                   ans[i] will be equal to Prefix(src, sizes[i]).
                   We provide this interface because individual
