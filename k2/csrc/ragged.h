@@ -78,6 +78,9 @@ class RaggedShape {
      `other`, not `*this`, if you make many calls to Append().  This is due to
      the policy used in Region::Extend(), where it at least doubles the size
      each time, similar to std::vector.
+     Be very careful with this, because many operations on Ragged tensors will
+     silently share memory (there is normally an implicit assumption that
+     the row_splits and row_indexes are constant).
   */
   void Append(const RaggedShape &other);
 

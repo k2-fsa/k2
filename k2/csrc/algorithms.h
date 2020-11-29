@@ -21,6 +21,10 @@ namespace k2 {
 class Renumbering {
  public:
   Renumbering() = default;
+  // copy constructor
+  Renumbering(const Renumbering &src) = default;
+  // move constructor
+  Renumbering(Renumbering &&src) = default;
   Renumbering(ContextPtr c, int32_t num_old_elems) { Init(c, num_old_elems); }
 
   void Init(ContextPtr c, int32_t num_old_elems) {
@@ -91,6 +95,8 @@ class Renumbering {
                            // old2new_ is created.
   Array1<int32_t> new2old_;
 };
+
+
 
 }  // namespace k2
 

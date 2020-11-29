@@ -546,6 +546,14 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_splits2,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2);
 
+/* See documentation of RaggedShape3, this is an obvious extension. */
+RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
+                         Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
+                         Array1<int32_t> *row_splits2,
+                         Array1<int32_t> *row_ids2, int32_t cached_tot_size2,
+                         Array1<int32_t> *row_splits3,
+                         Array1<int32_t> *row_ids3, int32_t cached_tot_size3);
+
 /*
   Returns a RaggedShape with 2 axes, with Dim0() == 1 and
   TotSize(1) = num_elems.
