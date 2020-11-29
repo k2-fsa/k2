@@ -383,8 +383,8 @@ bool IsMonotonic(const Array1<T> &a);
   monotonically decreasing.
 
      @param [in] src   Array which is monotonically decreasing (not necessarily
-                      strictly) and whose last element is zero, e.g.
-                      [ 5 5 4 2 0 ]
+                      strictly) and whose elements are all positive, e.g.
+                      [ 5 5 4 2 1 ]
      @return          Returns an array such with ans.Dim() == src[0] + 1,
                       sich that ans[i] = min(j >= 0 : src[j] <= i).
      @return          Returns an array such with ans.Dim() == src[0],
