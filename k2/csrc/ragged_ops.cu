@@ -280,7 +280,7 @@ RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
   } else {
     // work out row_splits1, see code in RaggedShape2 above for the reason
     int32_t num_rows = row_ids1->Dim() == 0 ? 0 : row_ids1->Back() + 1;
-    Array1<int32_t> row_splits_array(ctx1, num_rows + 1);
+    Array1<int32_t> row_splits_array(ctx, num_rows + 1);
     RowIdsToRowSplits(*row_ids1, &row_splits_array);
     axes[0].row_splits = row_splits_array;
   }
