@@ -3,7 +3,7 @@
  * ops_test
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu, Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <numeric>
@@ -27,6 +28,7 @@
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/test_utils.h"
 #include "k2/csrc/timer.h"
 
 namespace k2 {
@@ -1224,6 +1226,255 @@ TEST(OpsTest, MonotonicLowerBoundTest) {
   TestMonotonicLowerBound<int32_t, double>();
 }
 
+template <typename S, typename T>
+void TestMonotonicDecreasingUpperBound() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // empty case
+      std::vector<S> values;
+      Array1<S> src(context, values);
+      Array1<T> dest(context, 0);
+      MonotonicDecreasingUpperBound(src, &dest);
+      EXPECT_EQ(dest.Dim(), 0);
+    }
+
+    {
+      // simple case
+      std::vector<S> values = {10, 7, 3, 5, 4, 1, 0, 2};
+      std::vector<T> expected_data = {10, 7, 5, 5, 4, 2, 2, 2};
+      ASSERT_EQ(values.size(), expected_data.size());
+      Array1<S> src(context, values);
+      Array1<T> dest(context, static_cast<int32_t>(values.size()));
+      MonotonicDecreasingUpperBound(src, &dest);
+      dest = dest.To(cpu);
+      std::vector<T> data(dest.Data(), dest.Data() + dest.Dim());
+      EXPECT_EQ(data, expected_data);
+    }
+
+    {
+      // simple case with dest = &src
+      std::vector<S> values = {10, 7, 3, 5, 4, 1, 0, 2};
+      std::vector<T> expected_data = {10, 7, 5, 5, 4, 2, 2, 2};
+      ASSERT_EQ(values.size(), expected_data.size());
+      Array1<S> src(context, values);
+      MonotonicDecreasingUpperBound(src, &src);
+      src = src.To(cpu);
+      std::vector<T> data(src.Data(), src.Data() + src.Dim());
+      EXPECT_EQ(data, expected_data);
+    }
+
+    {
+      // random large case
+      for (int32_t i = 0; i != 2; ++i) {
+        int32_t n = RandInt(1, 10000);
+        int32_t src_dim = RandInt(0, 10000);
+        Array1<S> src = RandUniformArray1(context, src_dim, 0, n - 1);
+        Array1<T> dest(context, src_dim);
+        MonotonicDecreasingUpperBound(src, &dest);
+        dest = dest.To(cpu);
+        std::vector<T> data(dest.Data(), dest.Data() + dest.Dim());
+        src = src.To(cpu);
+        int32_t *src_data = src.Data();
+        S max_value = std::numeric_limits<S>::min();
+        std::vector<T> expected_data(src_dim);
+        for (int32_t i = src_dim - 1; i >= 0; --i) {
+          max_value = std::max(src_data[i], max_value);
+          expected_data[i] = max_value;
+        }
+        EXPECT_EQ(data, expected_data);
+      }
+    }
+  }
+}
+
+TEST(OpsTest, MonotonicDecreasingUpperBoundTest) {
+  TestMonotonicDecreasingUpperBound<int32_t, int32_t>();
+  TestMonotonicDecreasingUpperBound<int32_t, double>();
+}
+
+TEST(OpsTest, InvertMonotonicDecreasingTest) {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // empty case
+      std::vector<int32_t> values;
+      Array1<int32_t> src(context, values);
+      Array1<int32_t> dest = InvertMonotonicDecreasing(src);
+      EXPECT_EQ(dest.Dim(), 0);
+    }
+
+    {
+      // simple case
+      std::vector<int32_t> values = {6, 4, 4, 2};
+      Array1<int32_t> src(context, values);
+      Array1<int32_t> dest = InvertMonotonicDecreasing(src);
+      EXPECT_EQ(dest.Dim(), 6);
+      dest = dest.To(cpu);
+      std::vector<int32_t> data(dest.Data(), dest.Data() + dest.Dim());
+      std::vector<int32_t> expected_data = {4, 4, 3, 3, 1, 1};
+      EXPECT_EQ(data, expected_data);
+
+      // convert back
+      dest = dest.To(context);
+      Array1<int32_t> src1 = InvertMonotonicDecreasing(dest);
+      EXPECT_TRUE(Equal(src1, src));
+    }
+
+    {
+      // random large case
+      for (int32_t i = 0; i != 2; ++i) {
+        int32_t n = RandInt(1, 1000);
+        int32_t src_dim = RandInt(0, 1000);
+        Array1<int32_t> src = RandUniformArray1(context, src_dim, 1, n);
+        Sort<int32_t, GreaterThan<int32_t>>(&src);
+        Array1<int32_t> dest = InvertMonotonicDecreasing(src);
+        // convert back
+        Array1<int32_t> src1 = InvertMonotonicDecreasing(dest);
+        EXPECT_TRUE(Equal(src1, src));
+      }
+    }
+  }
+}
+
+template <typename T>
+void ArrayPlusTest() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i != 2; ++i) {
+      {
+        // normal case
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src1 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src2 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> dest(context, dim);
+        Plus(src1, src2, &dest);
+        Array1<T> ans = Plus(src1, src2);
+        EXPECT_EQ(ans.Dim(), dim);
+
+        src1.To(cpu);
+        src2.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src1[n] + src2[n];
+        }
+        CheckArrayData(dest, expected);
+        CheckArrayData(ans, expected);
+      }
+      {
+        // special case: &src1 == &src2 == dest
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src_copy = src.Clone();
+        Plus(src, src, &src);
+        src_copy.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src_copy[n] + src_copy[n];
+        }
+        CheckArrayData(src, expected);
+      }
+    }
+  }
+}
+
+TEST(OpsTest, PlusTest) {
+  ArrayPlusTest<int32_t>();
+  ArrayPlusTest<float>();
+}
+
+template <typename T>
+void ArrayMinusTest() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i != 2; ++i) {
+      {
+        // normal case
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src1 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src2 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> dest(context, dim);
+        Minus(src1, src2, &dest);
+        Array1<T> ans = Minus(src1, src2);
+        EXPECT_EQ(ans.Dim(), dim);
+
+        src1.To(cpu);
+        src2.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src1[n] - src2[n];
+        }
+        CheckArrayData(dest, expected);
+        CheckArrayData(ans, expected);
+      }
+      {
+        // special case: &src1 == &src2 == dest
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src = RandUniformArray1<T>(context, dim, 0, 1000);
+        Minus(src, src, &src);
+        Array1<T> expected(context, dim, T(0));
+        CheckArrayData(src, expected);
+      }
+    }
+  }
+}
+
+TEST(OpsTest, MinusTest) {
+  ArrayMinusTest<int32_t>();
+  ArrayMinusTest<float>();
+}
+
+template <typename T>
+void ArrayTimesTest() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i != 2; ++i) {
+      {
+        // normal case
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src1 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src2 = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> dest(context, dim);
+        Times(src1, src2, &dest);
+        Array1<T> ans = Times(src1, src2);
+        EXPECT_EQ(ans.Dim(), dim);
+
+        src1.To(cpu);
+        src2.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src1[n] * src2[n];
+        }
+        CheckArrayData(dest, expected);
+        CheckArrayData(ans, expected);
+      }
+      {
+        // special case: &src1 == &src2 == dest
+        int32_t dim = RandInt(0, 1000);
+        Array1<T> src = RandUniformArray1<T>(context, dim, 0, 1000);
+        Array1<T> src_copy = src.Clone();
+        Times(src, src, &src);
+        src_copy.To(cpu);
+        Array1<T> expected(cpu, dim);
+        T *expected_data = expected.Data();
+        for (int32_t n = 0; n != dim; ++n) {
+          expected_data[n] = src_copy[n] * src_copy[n];
+        }
+        CheckArrayData(src, expected);
+      }
+    }
+  }
+}
+
+TEST(OpsTest, TimesTest) {
+  ArrayTimesTest<int32_t>();
+  ArrayTimesTest<float>();
+}
+
 TEST(OpsTest, Array1IndexTest) {
   for (int loop = 0; loop < 2; loop++) {
     ContextPtr c = (loop == 0 ? GetCpuContext() : GetCudaContext()),
@@ -1293,6 +1544,83 @@ TEST(OpsTest, Array2IndexTest) {
       }
     }
   }
+}
+
+template <typename T>
+static void Array1SortTestSimple() {
+  std::vector<T> data = {3, 2, 5, 1};
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // with index map
+      Array1<T> array(context, data);
+      Array1<int32_t> index_map;
+      Sort(&array, &index_map);
+      CheckArrayData(array, std::vector<T>{1, 2, 3, 5});
+      CheckArrayData(index_map, std::vector<int32_t>{3, 1, 0, 2});
+    }
+
+    {
+      // without index map
+      Array1<T> array(context, data);
+      Sort(&array);
+      CheckArrayData(array, std::vector<T>{1, 2, 3, 5});
+    }
+  }
+}
+
+template <typename T>
+static void Array1SortTestEmpty() {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    Array1<T> array(context, 0);
+    Array1<int32_t> index_map;
+    Sort(&array, &index_map);
+    EXPECT_EQ(array.Dim(), 0);
+    EXPECT_EQ(index_map.Dim(), 0);
+  }
+}
+
+template <typename T>
+static void Array1SortTestRandom() {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    int32_t dim = RandInt(0, 10000);
+    int32_t min_value = RandInt(-1000, 1000);
+    int32_t max_value = min_value + RandInt(0, 3000);
+    {
+      // with index map
+      Array1<T> array =
+          RandUniformArray1<T>(context, dim, min_value, max_value);
+      Array1<T> data = array.Clone();
+
+      Array1<int32_t> index_map;
+      Sort(&array, &index_map);
+      array = array.To(GetCpuContext());
+      EXPECT_TRUE(std::is_sorted(array.Data(), array.Data() + array.Dim()));
+
+      index_map = index_map.To(GetCpuContext());
+      for (int32_t i = 0; i != array.Dim(); ++i)
+        EXPECT_EQ(array[i], data[index_map[i]]);
+    }
+
+    {
+      // without index_map
+      Array1<T> array =
+          RandUniformArray1<T>(context, dim, min_value, max_value);
+      Sort(&array);
+      array = array.To(GetCpuContext());
+      EXPECT_TRUE(std::is_sorted(array.Data(), array.Data() + array.Dim()));
+    }
+  }
+}
+
+TEST(OpsTest, Array1Sort) {
+  Array1SortTestSimple<int32_t>();
+  Array1SortTestSimple<float>();
+
+  Array1SortTestEmpty<int32_t>();
+  Array1SortTestEmpty<float>();
+
+  Array1SortTestRandom<int32_t>();
+  Array1SortTestRandom<float>();
 }
 
 }  // namespace k2

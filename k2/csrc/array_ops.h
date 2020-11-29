@@ -19,6 +19,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/utils.h"
 
@@ -61,7 +62,7 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest);
  */
 template <typename S, typename T>
 void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_dim = src.Dim();
   int32_t dest_dim = dest->Dim();
@@ -80,7 +81,7 @@ void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
  */
 template <typename T>
 Array1<T> ExclusiveSum(const Array1<T> &src) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   Array1<T> ans(src.Context(), src.Dim());
   ExclusiveSum(src, &ans);
   return ans;
@@ -225,6 +226,63 @@ void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
 }
 
 /*
+  Call BinaryOp on each element in `src1` and `src2`, then write the result
+  to the corresponding element in `dest`, i.e.
+  for 0 <= i < dest_dim = src1_dim == src2_dim.
+    dest[i] = BinaryOp(src1[i], src2[i])
+  Noted `src1`, `src2` and `dest` must have the same Dim() and on the same
+  device. It is allowable for &src1 == &src2 == dest.
+*/
+template <typename T, typename BinaryOp>
+void ApplyBinaryOpOnArray1(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest);
+
+// Call PlusOp on `src1` and `src2` and save the result to `dest`,
+// i.e. dest[i] = src1[i] + src2[i]
+template <typename T>
+void Plus(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  ApplyBinaryOpOnArray1<T, PlusOp<T>>(src1, src2, dest);
+}
+
+// A wrapper function for Plus above, ans[i] = src1[i] + src2[i].
+template <typename T>
+Array1<T> Plus(Array1<T> &src1, Array1<T> &src2) {
+  K2_CHECK_EQ(src1.Dim(), src2.Dim());
+  Array1<T> ans(GetContext(src1, src2), src1.Dim());
+  Plus(src1, src2, &ans);
+  return ans;
+}
+
+// Same with `Plus`, but with `MinusOp`, i.e. dest[i] = src1[i] - src2[i].
+template <typename T>
+void Minus(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  ApplyBinaryOpOnArray1<T, MinusOp<T>>(src1, src2, dest);
+}
+
+// A wrapper function for Minus above, ans[i] = src1[i] - src2[i].
+template <typename T>
+Array1<T> Minus(Array1<T> &src1, Array1<T> &src2) {
+  K2_CHECK_EQ(src1.Dim(), src2.Dim());
+  Array1<T> ans(GetContext(src1, src2), src1.Dim());
+  Minus(src1, src2, &ans);
+  return ans;
+}
+
+// Same with `Plus`, but with `TimesOp`, i.e. dest[i] = src1[i] * src2[i].
+template <typename T>
+void Times(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  ApplyBinaryOpOnArray1<T, TimesOp<T>>(src1, src2, dest);
+}
+
+// A wrapper function for Times above, ans[i] = src1[i] * src2[i].
+template <typename T>
+Array1<T> Times(Array1<T> &src1, Array1<T> &src2) {
+  K2_CHECK_EQ(src1.Dim(), src2.Dim());
+  Array1<T> ans(GetContext(src1, src2), src1.Dim());
+  Times(src1, src2, &ans);
+  return ans;
+}
+
+/*
   Returns a random Array1, uniformly distributed betwen `min_value` and
   `max_value`.  CAUTION: for now, this will be randomly generated on CPU and
   then transferred to other devices if c is not a CPU context, so it will be
@@ -320,8 +378,6 @@ bool Equal(const Array1<T> &a, const Array1<T> &b);
 template <typename T>
 bool IsMonotonic(const Array1<T> &a);
 
-
-
 /*
   Generalized function inverse for an array viewed as a function which is
   monotonically decreasing.
@@ -331,18 +387,23 @@ bool IsMonotonic(const Array1<T> &a);
                       [ 5 5 4 2 0 ]
      @return          Returns an array such with ans.Dim() == src[0] + 1,
                       sich that ans[i] = min(j >= 0 : src[j] <= i).
+     @return          Returns an array such with ans.Dim() == src[0],
+                      such that ans[i] = min(j >= 0 : src[j] <= i).
+                      We pretend values past the end of `src` are zeros.
                       In this case the result would be:
-                      [ 4 4 3 3 2 0 ].
+                      [ 5 4 3 3 2].
+                      Noticed ans[0] = 5 here, we get it because we pretend
+                      `src` is [5 5 4 2 1 0]
 
-    Note:             InvertMonotonicDecreasing(InvertMonotonicDecreasing(x)
+    Note:             InvertMonotonicDecreasing(InvertMonotonicDecreasing(x))
                       will always equal x if x satisfies the preconditions.
 
-   Implementation notes: allocate ans as zeros; run lambda { if
-   (i+1 == dim || src[i+1] < src[i]) ans[src[i] - 1] = i + 1 } -> ans = [ 0 4 0 3 2 0 ]
+   Implementation notes: allocate ans as zeros; run lambda {
+   if (i + 1 == src_dim || src[i+1] < src[i])
+       ans[src[i] - 1] = i + 1 } -> ans = [ 5 4 0 3 2]
    in this example; call MonotonicDecreasingUpperBound(ans, &ans).
  */
 Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src);
-
 
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
@@ -407,7 +468,6 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest);
 
-
 /*
   Compute a monotonically decreasing upper bound on the array `src`,
   putting the result in `dest` (which may be the same array as `src`).
@@ -424,7 +484,6 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest);
  */
 template <typename S, typename T>
 void MonotonicDecreasingUpperBound(const Array1<S> &src, Array1<T> *dest);
-
 
 /*
    Returns counts of numbers in the array
@@ -478,6 +537,18 @@ Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
 template <typename T>
 Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
                     bool allow_minus_one);
+
+/* Sort an array **in-place**.
+
+   @param [inout]   array        The array to be sorted.
+   @param [out]     index_map    If non-null, it maps the index
+                                 of the returned array to the original
+                                 unsorted array. That is,
+                                 out[i] = unsorted[index_map[i]]
+                                 for i in [0, array->Dim()).
+ */
+template <typename T, typename Compare = LessThan<T>>
+void Sort(Array1<T> *array, Array1<int32_t> *index_map = nullptr);
 
 }  // namespace k2
 

@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
 
@@ -52,7 +53,7 @@ namespace k2 {
 
 void PrintRaggedShapePart(std::ostream &stream, const RaggedShape &shape,
                           int32_t axis, int32_t begin_pos, int32_t end_pos) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
            begin_pos <= end_pos && end_pos <= shape.TotSize(axis));
   for (int32_t d = begin_pos; d < end_pos; ++d) {
@@ -86,7 +87,7 @@ std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
       stream << "Invalid RaggedShape: { ";
       stream << " num-axes = " << shape.NumAxes();
       for (int32_t i = 1; i < shape.NumAxes(); i++) {
-        const RaggedShapeDim &axis = shape.Axes()[i-1];
+        const RaggedShapeDim &axis = shape.Axes()[i - 1];
         if (axis.row_splits.IsValid())
           stream << " RowSplits(" << i << ")=" << axis.row_splits;
         if (axis.row_ids.IsValid())
@@ -99,7 +100,7 @@ std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
 }
 
 Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
-  NVTX_RANGE("RaggedShape::RowIds()");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
   RaggedShapeDim &rsd = axes_[axis - 1];
@@ -122,7 +123,7 @@ Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
 }
 
 int32_t RaggedShape::MaxSize(int32_t axis) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
   const auto &row_splits = axes_[axis - 1].row_splits;
@@ -162,7 +163,7 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
 
 RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
                                int32_t *value_offset /*= nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   // only support `axis == 0` for now
   K2_CHECK_EQ(axis, 0);
   K2_CHECK_GE(i, 0);
@@ -206,7 +207,7 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
 }
 
 void RaggedShape::Populate() {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   int32_t num_axes = NumAxes();
   ParallelRunner pr(this->Context());
   for (int32_t i = 1; i < num_axes; ++i) {
@@ -218,7 +219,7 @@ void RaggedShape::Populate() {
 }
 
 RaggedShape RaggedShape::To(ContextPtr ctx) const {
-    NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   if (ctx->IsCompatible(*Context())) return *this;
   std::vector<RaggedShapeDim> axes(axes_.size());
   int32_t num_axes = NumAxes();
@@ -235,7 +236,7 @@ RaggedShapeIndexIterator RaggedShape::Iterator() {
 }
 
 int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
-  NVTX_RANGE("RaggedShape::op[](std::vector<int32>)");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(static_cast<int32_t>(indexes.size()), NumAxes());
   K2_CHECK_EQ(Context()->GetDeviceType(), kCpu);
   int32_t cur_idx = indexes[0];
@@ -249,7 +250,7 @@ int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
 }
 
 int32_t RaggedShape::TotSize(int32_t axis) const {
-  NVTX_RANGE("RaggedShape::TotSize");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
   if (axis == 0)
@@ -271,7 +272,7 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
 // TODO(dan): change this so that on error it prints a warning if
 // print_warnings==true, and then returns false.
 bool RaggedShape::Validate(bool print_warnings) const {
-  NVTX_RANGE("RaggedShape::Validate");
+  NVTX_RANGE(K2_FUNC);
   ContextPtr c = Context();
   int32_t num_axes = axes_.size();
 
@@ -286,25 +287,24 @@ bool RaggedShape::Validate(bool print_warnings) const {
         if (print_warnings)
           K2_LOG(WARNING)
               << "Ragged shape validation failed, row_splits.Back()="
-              << rsd.row_splits.Back() << " vs. cached-tot-size="
-              << rsd.cached_tot_size;
+              << rsd.row_splits.Back()
+              << " vs. cached-tot-size=" << rsd.cached_tot_size;
         return false;
       }
       if (!((rsd.row_ids.Dim() == 0 ||
              rsd.cached_tot_size == rsd.row_ids.Dim()))) {
         if (print_warnings)
-          K2_LOG(WARNING)
-              << "Ragged shape validation failed, row_ids.Dim()="
-              << rsd.row_ids.Dim() << " vs. cached-tot-size="
-              << rsd.cached_tot_size;
+          K2_LOG(WARNING) << "Ragged shape validation failed, row_ids.Dim()="
+                          << rsd.row_ids.Dim()
+                          << " vs. cached-tot-size=" << rsd.cached_tot_size;
         return false;
       }
     } else {
       if (rsd.cached_tot_size != -1 || rsd.row_ids.Dim() != 0) {
         if (print_warnings)
-          K2_LOG(WARNING)
-              << "Ragged shape validation failed, cached_tot_size="
-              << rsd.cached_tot_size << ", row-ids.Dim()=" << rsd.row_ids.Dim();
+          K2_LOG(WARNING) << "Ragged shape validation failed, cached_tot_size="
+                          << rsd.cached_tot_size
+                          << ", row-ids.Dim()=" << rsd.row_ids.Dim();
         return false;
       }
     }
@@ -396,9 +396,8 @@ bool RaggedShape::Validate(bool print_warnings) const {
   return true;
 }
 
-
 bool Equal(RaggedShape &a, RaggedShape &b) {
-  NVTX_RANGE("Equal(RaggedShape)");
+  NVTX_RANGE(K2_FUNC);
   if (a.NumAxes() != b.NumAxes()) return false;
   for (int32_t i = 1; i < a.NumAxes(); i++) {
     if (a.RowSplits(i).Dim() != b.RowSplits(i).Dim() ||
@@ -408,14 +407,12 @@ bool Equal(RaggedShape &a, RaggedShape &b) {
   return true;
 }
 
-std::istream &operator>>(std::istream &is,
-                         RaggedShape &shape) {
-  NVTX_RANGE("operator>>(RaggedShape)");
+std::istream &operator>>(std::istream &is, RaggedShape &shape) {
+  NVTX_RANGE(K2_FUNC);
   // Note: element 0 of 'row_splits' will end up being
   // discarded; the others will become the axes of `shape`.
-  std::vector<std::vector<int32_t> > row_splits;
-  int32_t cur_level = 0,
-      num_elems = 0;
+  std::vector<std::vector<int32_t>> row_splits;
+  int32_t cur_level = 0, num_elems = 0;
   while (1) {
     is >> std::ws;  // eat whitespace
     if (!is.good()) {
@@ -434,7 +431,7 @@ std::istream &operator>>(std::istream &is,
       }
     } else if (c == static_cast<int32_t>(']')) {
       cur_level--;
-      if (cur_level <= 0) {  // Done; return...
+      if (cur_level <= 0) {   // Done; return...
         if (cur_level < 0) {  // ']' without '['.
           is.setstate(std::ios::failbit);
           return is;
@@ -454,8 +451,9 @@ std::istream &operator>>(std::istream &is,
         return is;
       }
       row_splits[cur_level].push_back(
-          (cur_level + 1 >= row_splits.size()) ?
-          num_elems : (row_splits[cur_level+1].size() - 1));
+          (cur_level + 1 >= row_splits.size())
+              ? num_elems
+              : (row_splits[cur_level + 1].size() - 1));
     } else if (c == static_cast<int32_t>('x')) {
       if (cur_level != static_cast<int32_t>(row_splits.size()) ||
           cur_level < 2) {
@@ -469,6 +467,5 @@ std::istream &operator>>(std::istream &is,
     }
   }
 }
-
 
 }  // namespace k2

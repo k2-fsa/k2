@@ -19,6 +19,7 @@
 #include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/utils.h"
 
@@ -70,7 +71,7 @@ void MinPerSublist(Ragged<T> &src, T default_value, Array1<T> *min_values) {
 // Same with `MaxPerSubList`, but output the sum of values in each sub-list.
 template <typename T>
 void SumPerSublist(Ragged<T> &src, T default_value, Array1<T> *sum_values) {
-  ApplyOpPerSublist<T, SumOp<T>>(src, default_value, sum_values);
+  ApplyOpPerSublist<T, PlusOp<T>>(src, default_value, sum_values);
 }
 
 // Same with `MaxPerSubList`, but with Op as `LogAdd`.
@@ -328,7 +329,7 @@ RaggedShape Transpose(RaggedShape &src,
 template <typename T>
 Ragged<T> Transpose(Ragged<T> &src,
                     Array1<int32_t> *value_indexes_out = nullptr) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   Array1<int32_t> value_indexes;
   RaggedShape ans_shape = Transpose(src.shape, &value_indexes);
   if (value_indexes_out) *value_indexes_out = value_indexes;

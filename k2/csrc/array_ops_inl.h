@@ -23,13 +23,17 @@
 #include <algorithm>
 #include <cassert>
 #include <limits>
+#include <memory>
 #include <random>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "cub/cub.cuh"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/utils.h"
+#include "moderngpu/kernel_mergesort.hxx"
 
 namespace k2 {
 namespace internal {
@@ -129,7 +133,7 @@ __global__ void TransposeKernel(int32_t rows, int32_t cols,
 // to compute exclusive sum for each row
 template <typename T>
 void ExclusiveSumPerRow(const Array2<T> &src, Array2<T> *dest) {
-  NVTX_RANGE("ExclusiveSumPerRow");
+  NVTX_RANGE(K2_FUNC);
   int32_t rows = dest->Dim0();
   // note there may be dest->Dim1() == src.Dim1() + 1
   int32_t cols = dest->Dim1();
@@ -188,7 +192,7 @@ struct iterator_traits<k2::internal::ReversedPtr<T>> {
 namespace k2 {
 template <typename T>
 void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
-  NVTX_RANGE("Transpose");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(c->IsCompatible(*src.Context()));
   K2_CHECK(c->IsCompatible(*dest->Context()));
   int32_t rows = src.Dim0();
@@ -224,7 +228,7 @@ void Transpose(ContextPtr &c, const Array2<T> &src, Array2<T> *dest) {
 
 template <typename T>
 void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest) {
-  NVTX_RANGE("ExclusiveSumDeref");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_dim = src.Dim();
   int32_t dest_dim = dest->Dim();
@@ -240,7 +244,7 @@ void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest) {
 
 template <typename T>
 void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis) {
-  NVTX_RANGE("ExclusiveSum");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK(IsCompatible(src, *dest));
   int32_t src_major_dim = src.Dim0();  // the axis will be summed
@@ -286,7 +290,7 @@ void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis) {
 // Splice() in array_ops.cu, since it was modified from this code.
 template <typename T>
 Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
-  NVTX_RANGE("Append1");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_arrays, 0);
   ContextPtr &c = src[0]->Context();
 
@@ -389,7 +393,7 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
 
 template <typename T>
 Array1<T> Append(int32_t src_size, const Array1<T> *src) {
-  NVTX_RANGE("Append2");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(src_size, 0);
   std::vector<const Array1<T> *> srcs(src_size);
   for (int32_t i = 0; i != src_size; ++i) srcs[i] = src + i;
@@ -399,7 +403,7 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src) {
 
 template <typename T, typename Op>
 void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
-  NVTX_RANGE("ApplyOpOnArray1");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(IsCompatible(src, *dest));
   K2_CHECK_EQ(dest->Dim(), 1);
 
@@ -432,10 +436,38 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
   }
 }
 
+template <typename T, typename BinaryOp>
+void ApplyBinaryOpOnArray1(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_NE(dest, nullptr);
+
+  int32_t dim = src1.Dim();
+  K2_CHECK_EQ(dim, src2.Dim());
+  K2_CHECK_EQ(dim, dest->Dim());
+  ContextPtr c = GetContext(src1, src2, *dest);
+
+  const T *src1_data = src1.Data();
+  const T *src2_data = src2.Data();
+  T *dest_data = dest->Data();
+
+  BinaryOp op;
+  DeviceType d = c->GetDeviceType();
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i != dim; ++i) {
+      dest_data[i] = op(src1_data[i], src2_data[i]);
+    }
+  } else {
+    auto lambda_set_values = [=] __device__(int32_t i) -> void {
+      dest_data[i] = op(src1_data[i], src2_data[i]);
+    };
+    EvalDevice(c, dim, lambda_set_values);
+  }
+}
+
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
                             T max_value) {
-  NVTX_RANGE("RandUniformArray1");
+  NVTX_RANGE(K2_FUNC);
   static_assert(std::is_floating_point<T>::value || std::is_integral<T>::value,
                 "Only support floating-point and integral type");
   Array1<T> temp(GetCpuContext(), dim);
@@ -455,7 +487,7 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
 template <typename T>
 Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
                             T min_value, T max_value) {
-  NVTX_RANGE("RandUniformArray2");
+  NVTX_RANGE(K2_FUNC);
   int32_t dim1_extra = RandInt(0, 2),  // make it randomly not contiguous.
       new_dim1 = dim1 + dim1_extra;
   Array1<T> array1temp =
@@ -468,7 +500,7 @@ Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
 
 template <typename T>
 Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc /*=1*/) {
-  NVTX_RANGE("Range");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(dim, 0);
   Array1<T> ans = Array1<T>(c, dim);
   T *ans_data = ans.Data();
@@ -485,7 +517,7 @@ Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc /*=1*/) {
 
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src) {
-  NVTX_RANGE("ToContiguous");
+  NVTX_RANGE(K2_FUNC);
   int32_t dim0 = src.Dim0();
   int32_t dim1 = src.Dim1();
   int32_t elem_stride0 = src.ElemStride0();
@@ -503,7 +535,7 @@ Array2<T> ToContiguous(const Array2<T> &src) {
 
 template <typename T>
 bool Equal(const Array1<T> &a, const Array1<T> &b) {
-  NVTX_RANGE("Equal(Array1)");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(a.Dim(), b.Dim());
   ContextPtr c = GetContext(a, b);
   const T *a_data = a.Data(), *b_data = b.Data();
@@ -524,7 +556,7 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
 
 template <typename T>
 bool Equal(const Array2<T> &a, const Array2<T> &b) {
-  NVTX_RANGE("Equal(Array2)");
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(a.Dim0(), b.Dim0());
   K2_CHECK_EQ(a.Dim1(), b.Dim1());
   ContextPtr c = GetContext(a, b);
@@ -560,7 +592,7 @@ bool Equal(const Array2<T> &a, const Array2<T> &b) {
 
 template <typename T>
 bool IsMonotonic(const Array1<T> &a) {
-  NVTX_RANGE("IsMonotonic");
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = a.Context();
   int32_t dim = a.Dim();
   const T *data = a.Data();
@@ -581,7 +613,7 @@ bool IsMonotonic(const Array1<T> &a) {
 
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
-  NVTX_RANGE("MonotonicLowerBound");
+  NVTX_RANGE(K2_FUNC);
   K2_STATIC_ASSERT((std::is_convertible<S, T>::value));
   K2_CHECK(IsCompatible(src, *dest));
   int32_t dim = src.Dim();
@@ -618,9 +650,48 @@ void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
   }
 }
 
+template <typename S, typename T>
+void MonotonicDecreasingUpperBound(const Array1<S> &src, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
+  K2_STATIC_ASSERT((std::is_convertible<S, T>::value));
+  K2_CHECK(IsCompatible(src, *dest));
+  int32_t dim = src.Dim();
+  K2_CHECK_EQ(dest->Dim(), dim);
+
+  ContextPtr &c = src.Context();
+  const S *src_data = src.Data();
+  T *dest_data = dest->Data();
+
+  if (c->GetDeviceType() == kCpu) {
+    S max_value = std::numeric_limits<S>::min();
+    for (int32_t i = dim - 1; i >= 0; --i) {
+      max_value = std::max(src_data[i], max_value);
+      // we suppose it's safe to assign a value with type `S`
+      // to a value with type `T`
+      dest_data[i] = max_value;
+    }
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    MaxOp<S> max_op;
+    internal::ConstReversedPtr<S> src_ptr =
+        internal::ConstReversedPtr<S>(src_data, dim);
+    internal::ReversedPtr<T> dest_ptr =
+        internal::ReversedPtr<T>(dest_data, dim);
+    // The first time is to determine temporary device storage requirements.
+    std::size_t temp_storage_bytes = 0;
+    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+        nullptr, temp_storage_bytes, src_ptr, dest_ptr, max_op, dim,
+        c->GetCudaStream()));
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CHECK_CUDA_ERROR(cub::DeviceScan::InclusiveScan(
+        d_temp_storage.Data(), temp_storage_bytes, src_ptr, dest_ptr, max_op,
+        dim, c->GetCudaStream()));
+  }
+}
+
 template <typename T>
 Array1<T> Plus(const Array1<T> &src, T t) {
-  NVTX_RANGE("Plus");
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   int32_t dim = src.Dim();
   Array1<T> ans(c, dim);
@@ -640,7 +711,7 @@ Array1<T> Plus(const Array1<T> &src, T t) {
 template <typename T>
 Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
                 bool allow_minus_one) {
-  NVTX_RANGE("Index(Array1)");
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   K2_CHECK(c->IsCompatible(*indexes.Context()));
   int32_t ans_dim = indexes.Dim();
@@ -683,7 +754,7 @@ Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
 template <typename T>
 Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
                     bool allow_minus_one) {
-  NVTX_RANGE("Index(Array2)");
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   K2_CHECK(c->IsCompatible(*indexes.Context()));
   int32_t ans_dim0 = indexes.Dim(), dim1 = src.Dim1();
@@ -727,6 +798,44 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
     }
   }
   return ans;
+}
+
+template <typename T, typename Compare>
+static void SortCpu(Array1<T> *array, Array1<int32_t> *index_map) {
+  Compare comp;
+  if (index_map != nullptr) {
+    Array1<int32_t> tmp_index_map = Range(array->Context(), array->Dim(), 0);
+    const T *array_data = array->Data();
+    std::sort(tmp_index_map.Data(), tmp_index_map.Data() + tmp_index_map.Dim(),
+              [array_data, comp](int32_t i, int32_t j) {
+                return comp(array_data[i], array_data[j]);
+              });
+    *index_map = std::move(tmp_index_map);
+  }
+
+  std::sort(array->Data(), array->Data() + array->Dim(), comp);
+}
+
+template <typename T, typename Compare /*= LessThan<T>*/>
+void Sort(Array1<T> *array, Array1<int32_t> *index_map /*= nullptr*/) {
+  if (!array->IsValid()) return;
+
+  ContextPtr &context = array->Context();
+  if (context->GetDeviceType() == kCpu)
+    return SortCpu<T, Compare>(array, index_map);
+
+  K2_DCHECK_EQ(context->GetDeviceType(), kCuda);
+
+  std::unique_ptr<mgpu::context_t> mgpu_context =
+      GetModernGpuAllocator(context->GetDeviceId());
+
+  if (index_map != nullptr) {
+    *index_map = Range(context, array->Dim(), 0);
+    mgpu::mergesort(array->Data(), index_map->Data(), array->Dim(), Compare(),
+                    *mgpu_context);
+  } else {
+    mgpu::mergesort(array->Data(), array->Dim(), Compare(), *mgpu_context);
+  }
 }
 
 }  // namespace k2

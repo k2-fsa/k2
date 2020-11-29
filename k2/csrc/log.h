@@ -20,6 +20,8 @@
 #include <sstream>
 #include <string>
 
+#include "k2/csrc/macros.h"
+
 #ifdef __CUDA_ARCH__
 #define K2_CUDA_HOSTDEV __host__ __device__
 #else
@@ -157,11 +159,11 @@ class Voidifier {
 
 #define K2_STATIC_ASSERT(x) static_assert(x, "")
 
-#define K2_CHECK(x)                                              \
-  (x) ? (void)0                                                  \
-      : ::k2::internal::Voidifier() &                            \
-            ::k2::internal::Logger(__FILE__, __func__, __LINE__, \
-                                   ::k2::internal::FATAL)        \
+#define K2_CHECK(x)                                             \
+  (x) ? (void)0                                                 \
+      : ::k2::internal::Voidifier() &                           \
+            ::k2::internal::Logger(__FILE__, K2_FUNC, __LINE__, \
+                                   ::k2::internal::FATAL)       \
                 << "Check failed: " << #x << " "
 
 // WARNING: x and y may be evaluated multiple times, but this happens only
@@ -183,7 +185,7 @@ class Voidifier {
 #define _K2_CHECK_OP(x, y, op)                                              \
   ((x)op(y)) ? (void)0                                                      \
              : ::k2::internal::Voidifier() &                                \
-                   ::k2::internal::Logger(__FILE__, __func__, __LINE__,     \
+                   ::k2::internal::Logger(__FILE__, K2_FUNC, __LINE__,      \
                                           ::k2::internal::FATAL)            \
                        << "Check failed: " << #x << " " << #op << " " << #y \
                        << " (" << (x) << " vs. " << (y) << ") "
@@ -196,7 +198,7 @@ class Voidifier {
 #define K2_CHECK_GE(x, y) _K2_CHECK_OP(x, y, >=)
 
 #define K2_LOG(x) \
-  ::k2::internal::Logger(__FILE__, __func__, __LINE__, ::k2::internal::x)
+  ::k2::internal::Logger(__FILE__, K2_FUNC, __LINE__, ::k2::internal::x)
 
 // `x` would be error code returned from any cuda function call or kernel
 // launch.

@@ -5,7 +5,9 @@
 // See ../../LICENSE for clarification regarding multiple authors
 
 #include <vector>
+
 #include "k2/csrc/dtype.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor_ops.h"
 
@@ -16,7 +18,7 @@ void CopyTensorElements2d(ContextPtr c, int32_t dim0, int32_t dim1,
                           const T *src_data, int32_t src_stride0,
                           int32_t src_stride1, T *dest_data,
                           int32_t dest_stride0, int32_t dest_stride1) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     // this is just an optimization, the other branch would work for CPU too.
@@ -40,7 +42,7 @@ template <typename T>
 void CopyTensorElements1d(ContextPtr c, int32_t dim, const T *src_data,
                           int32_t src_stride, T *dest_data,
                           int32_t dest_stride) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     // this is just an optimization, the other branch would work for CPU too.
@@ -59,7 +61,7 @@ void CopyTensorElements1d(ContextPtr c, int32_t dim, const T *src_data,
 // attempt to discover the simplest pattern that covers the copy, or to be smart
 // about memory loads if it turns out to be a transposition.
 void CopyTensorElements(Tensor src, Tensor dest) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(src.SameDim(dest));
   ContextPtr c = GetContext(src, dest);
   int32_t num_axes = src.NumAxes();
@@ -99,7 +101,7 @@ void CopyTensorElements(Tensor src, Tensor dest) {
 Tensor ToContiguous(const Tensor &src) {
   // things like this would be more efficient if we supported something like
   // PyTorch's ArrayRef.  not so critical to address that now though.
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   Tensor ans(src.Context(), src.GetDtype(), src.GetShape().Dims());
   CopyTensorElements(src, ans);
   return ans;
@@ -108,7 +110,7 @@ Tensor ToContiguous(const Tensor &src) {
 template <typename T, typename U>
 void CastTensorElements1dContiguous(ContextPtr c, int32_t dim,
                                     const T *src_data, U *dest_data) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
     // this is just an optimization, the other branch would work for CPU too.
@@ -124,7 +126,7 @@ void CastTensorElements1dContiguous(ContextPtr c, int32_t dim,
 }
 
 Tensor Cast(Tensor src, Dtype new_dtype) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   if (!src.IsContiguous()) src = ToContiguous(src);
 
   ContextPtr c = src.Context();
@@ -140,7 +142,5 @@ Tensor Cast(Tensor src, Dtype new_dtype) {
                                     c, dim, src.Data<T>(), ans.Data<U>()))));
   return ans;
 }
-
-
 
 }  // namespace k2

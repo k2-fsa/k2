@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/macros.h"
 
 namespace k2 {
 
@@ -22,7 +23,7 @@ namespace k2 {
 // subtracting one from the dims of all but the last array.
 Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
                                 const Array1<int32_t> **src) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_arrays, 0);
   ContextPtr &c = src[0]->Context();
 
@@ -154,7 +155,7 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
 
 bool ValidateRowIds(const Array1<int32_t> &row_ids,
                     Array1<int32_t> *temp /*=nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &ctx = row_ids.Context();
   const int32_t *data = row_ids.Data();
   int32_t dim = row_ids.Dim();
@@ -184,7 +185,7 @@ bool ValidateRowIds(const Array1<int32_t> &row_ids,
 
 bool ValidateRowSplits(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *temp /*=nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &ctx = row_splits.Context();
   const int32_t *data = row_splits.Data();
   int32_t dim = row_splits.Dim();
@@ -214,7 +215,7 @@ bool ValidateRowSplits(const Array1<int32_t> &row_splits,
 bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
                              const Array1<int32_t> &row_ids,
                              Array1<int32_t> *temp /*=nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   // Check if their context are compatible or not while getting
   ContextPtr ctx = GetContext(row_splits, row_ids);
   int32_t num_rows = row_splits.Dim() - 1, num_elems = row_ids.Dim();
@@ -258,7 +259,7 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
 
 void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *row_ids) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   ContextPtr c = GetContext(row_splits, *row_ids);
   int32_t num_elems = row_ids->Dim(), num_rows = row_splits.Dim() - 1;
   K2_CHECK_GE(num_rows, 0);
@@ -270,7 +271,7 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
 
 void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
                        Array1<int32_t> *row_splits) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   ContextPtr c = GetContext(*row_splits, row_ids);
   int32_t num_elems = row_ids.Dim(), num_rows = row_splits->Dim() - 1;
   K2_CHECK_GE(num_rows, 0);
@@ -282,7 +283,7 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
 }
 
 Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(n, 0);
   ContextPtr &c = src.Context();
   int32_t dim = src.Dim();
@@ -311,6 +312,40 @@ Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
         d_temp_storage.Data(), temp_storage_bytes, src_data, ans_data, n + 1, 0,
         n, dim, c->GetCudaStream()));
   }
+  return ans;
+}
+
+Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src) {
+  NVTX_RANGE(K2_FUNC);
+  ContextPtr &c = src.Context();
+  int32_t src_dim = src.Dim();
+  const int32_t *src_data = src.Data();
+  if (src_dim == 0) {
+    return Array1<int32_t>(c, 0);
+  }
+
+  K2_DCHECK_GT(src.Back(), 0);  // just call Back when debugging
+  // note `src[0]` may do a DeviceToHost memory copy
+  int32_t ans_dim = src[0];
+  Array1<int32_t> ans(c, ans_dim, 0);  // init with 0
+  int32_t *ans_data = ans.Data();
+
+  DeviceType d = c->GetDeviceType();
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i != src_dim; ++i) {
+      K2_DCHECK((i + 1 == src_dim || src_data[i + 1] <= src_data[i]));
+      if (i + 1 == src_dim || src_data[i + 1] < src_data[i])
+        ans_data[src_data[i] - 1] = i + 1;
+    }
+  } else {
+    auto lambda_set_values = [=] __device__(int32_t i) -> void {
+      K2_DCHECK((i + 1 == src_dim || src_data[i + 1] <= src_data[i]));
+      if (i + 1 == src_dim || src_data[i + 1] < src_data[i])
+        ans_data[src_data[i] - 1] = i + 1;
+    };
+    EvalDevice(c, src_dim, lambda_set_values);
+  }
+  MonotonicDecreasingUpperBound(ans, &ans);
   return ans;
 }
 

@@ -553,10 +553,26 @@ struct MinOp {
 };
 
 template <typename T>
-struct SumOp {
+struct PlusOp {
   __host__ __device__ __forceinline__ T operator()(const T &a,
                                                    const T &b) const {
     return a + b;
+  }
+};
+
+template <typename T>
+struct MinusOp {
+  __host__ __device__ __forceinline__ T operator()(const T &a,
+                                                   const T &b) const {
+    return a - b;
+  }
+};
+
+template <typename T>
+struct TimesOp {
+  __host__ __device__ __forceinline__ T operator()(const T &a,
+                                                   const T &b) const {
+    return a * b;
   }
 };
 
@@ -581,6 +597,14 @@ struct LessThan {
   __host__ __device__ __forceinline__ bool operator()(const T &a,
                                                       const T &b) const {
     return a < b;
+  }
+};
+
+template <typename T>
+struct GreaterThan {
+  __host__ __device__ __forceinline__ bool operator()(const T &a,
+                                                      const T &b) const {
+    return a > b;
   }
 };
 

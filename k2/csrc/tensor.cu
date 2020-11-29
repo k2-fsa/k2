@@ -15,8 +15,9 @@
 #include <vector>
 
 #include "k2/csrc/dtype.h"
-#include "k2/csrc/nvtx.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor.h"
 #include "k2/csrc/tensor_ops.h"
 
@@ -24,7 +25,7 @@ namespace k2 {
 
 Shape::Shape(const std::vector<int32_t> &dims)
     : num_axes_(static_cast<int32_t>(dims.size())) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_LT(num_axes_, kMaxDim);
 
   std::copy(dims.begin(), dims.end(), dims_);
@@ -44,7 +45,7 @@ Shape::Shape(const std::vector<int32_t> &dims)
 Shape::Shape(const std::vector<int32_t> &dims,
              const std::vector<int32_t> strides)
     : num_axes_(static_cast<int32_t>(dims.size())) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_LT(num_axes_, kMaxDim);
   K2_CHECK_EQ(static_cast<int32_t>(strides.size()), num_axes_);
   std::copy(dims.begin(), dims.end(), dims_);
@@ -55,7 +56,7 @@ Shape::Shape(const std::vector<int32_t> &dims,
 }
 
 int32_t Shape::ComputeNumElement() const {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   if (num_axes_ == 0) return 0;
 
   int32_t elements = 1;
@@ -66,7 +67,7 @@ int32_t Shape::ComputeNumElement() const {
 }
 
 int32_t Shape::ComputeStorageSize() const {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   if (num_axes_ == 0) return 0;
 
   int32_t size = 1;
@@ -77,7 +78,7 @@ int32_t Shape::ComputeStorageSize() const {
 }
 
 bool Shape::ComputeIsContiguous() const {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   int32_t z = 1;
   for (int32_t i = num_axes_ - 1; i >= 0; --i) {
     K2_CHECK_GE(strides_[i], z);
@@ -91,7 +92,7 @@ bool Shape::ComputeIsContiguous() const {
 
 Tensor::Tensor(ContextPtr c, Dtype type, const Shape &shape)
     : impl_(std::make_shared<TensorImpl>()) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   impl_->dtype = type;
   impl_->shape = shape;
   Init(c);
@@ -99,7 +100,7 @@ Tensor::Tensor(ContextPtr c, Dtype type, const Shape &shape)
 
 Tensor::Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims)
     : impl_(std::make_shared<TensorImpl>()) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   impl_->dtype = type;
   impl_->shape = Shape(dims);
   Init(c);
@@ -108,7 +109,7 @@ Tensor::Tensor(ContextPtr c, Dtype type, const std::vector<int32_t> &dims)
 Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
                int32_t byte_offset)
     : impl_(std::make_shared<TensorImpl>()) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   int32_t storage_size = shape.StorageSize();
   int32_t element_size = TraitsOf(type).NumBytes();
   impl_->dtype = type;
@@ -120,7 +121,7 @@ Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
 }
 
 Tensor Tensor::Index(int32_t axis, int32_t index) const {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   const auto &this_shape = impl_->shape;
   K2_CHECK_LT(axis, this_shape.NumAxes());
   K2_CHECK_LT(index, this_shape.Dim(axis));
@@ -136,7 +137,7 @@ Tensor Tensor::Index(int32_t axis, int32_t index) const {
 }
 
 void Tensor::Init(ContextPtr c) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   int32_t storage_size = impl_->shape.StorageSize();
   int32_t element_size = TraitsOf(impl_->dtype).NumBytes();
   impl_->data = NewRegion(c, static_cast<size_t>(storage_size * element_size));
