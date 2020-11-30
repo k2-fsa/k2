@@ -26,6 +26,9 @@ class Renumbering {
   Renumbering(const Renumbering &src) = default;
   // move constructor
   Renumbering(Renumbering &&src) = default;
+  // move assignment
+  Renumbering &operator=(Renumbering &&) = default;
+
   Renumbering(ContextPtr c, int32_t num_old_elems) { Init(c, num_old_elems); }
 
   void Init(ContextPtr c, int32_t num_old_elems) {

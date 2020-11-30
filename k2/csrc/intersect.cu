@@ -480,10 +480,17 @@ class MultiGraphDenseIntersect {
     // at time T_i.
     Array1<int32_t> t_per_fsa(c_, num_fsas_ + 1);
     int32_t *t_per_fsa_data = t_per_fsa.Data();
-    auto lambda_set_t_per_fsa_etc = [=] __host__ __device__ (int32_t i) -> void {
-      t_per_fsa_data[i] = fsa_info_data[i].T + 1;
-    };
-    Eval(c_, num_fsas_, lambda_set_t_per_fsa_etc);
+
+    // lambda is too short, we may run into compiler bug, so use if/else.
+    if (c_->GetDeviceType() == kCpu) {
+      for (int32_t i = 0; i < num_fsas_; i++)
+        t_per_fsa_data[i] = fsa_info_data[i].T + 1;
+    } else {
+      auto lambda_set_t_per_fsa_etc = [=] __host__ __device__ (int32_t i) -> void {
+        t_per_fsa_data[i] = fsa_info_data[i].T + 1;
+      };
+      EvalDevice(c_, num_fsas_, lambda_set_t_per_fsa_etc);
+    }
     ExclusiveSum(t_per_fsa, &t_per_fsa);
 
     // now t_per_fsa is the row_splits1 of the shape we'll be returning.  It allocates
