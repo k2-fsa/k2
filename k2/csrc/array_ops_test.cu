@@ -1507,6 +1507,25 @@ TEST(OpsTest, Array1IndexTest) {
   }
 }
 
+
+TEST(OpsTest, InvertPermutationTest) {
+  for (int loop = 0; loop < 2; loop++) {
+    ContextPtr c = (loop == 0 ? GetCpuContext() : GetCudaContext()),
+               cpu_context = GetCpuContext();
+    for (int i = 0; i < 10; i++) {
+      int32_t len = RandInt(0, 10);
+      std::vector permutation(len);
+      std::iota(permutation.begin(), permutation.end(), 0);
+      std::random_shuffle(permutation.begin(), permutation.end());
+      Array1<int32_t> permutation_array(c, permutation);
+      Array1<int32_t> permutation_array_inv = InvertPermutation(permutation_array);
+      Array1<int32_t> range = permutation_array[permutation_array_inv],
+                     range2 = Range(c, len, 0);
+      K2_CHECK(Equal(range, range2));
+    }
+  }
+}
+
 TEST(OpsTest, Array2IndexTest) {
   for (int loop = 0; loop < 2; loop++) {
     ContextPtr c = (loop == 0 ? GetCpuContext() : GetCudaContext()),

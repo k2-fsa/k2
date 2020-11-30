@@ -403,6 +403,16 @@ bool IsMonotonic(const Array1<T> &a);
  */
 Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src);
 
+
+/*
+  Assuming `src` is a permutation of Range(0, src.Dim()), returns the inverse of
+  that permutation, such that ans[src[i]] = i.  It is an error, and may cause a
+  segfault or undefined results, if `src` was not a permutation of Range(0,
+  src.Dim()).
+ */
+Array1<int32_t> InvertPermutation(const Array1<int32_t> &src);
+
+
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
    and non-decreasing.

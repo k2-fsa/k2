@@ -349,4 +349,23 @@ Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src) {
   return ans;
 }
 
+Array1<int32_t> InvertPermutation(const Array1<int32_t> &src) {
+  ContextPtr &c = src.Context();
+  int32_t dim = src.Dim();
+  Array1<int32_t> ans(c, dim);
+  const int32_t *src_data = src.Data();
+  int32_t *ans_data = ans.Data();
+
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i < dim; i++)
+      ans_data[src_data[i]] = i;
+  } else {
+    auto lambda_set_ans = [=] __device__ (int32_t i) -> void {
+      ans_data[src_data[i]] = i;
+    };
+    Eval(c, dim, lambda_set_ans);
+  }
+  return ans;
+}
+
 }  // namespace k2

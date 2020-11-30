@@ -115,13 +115,14 @@ class MultiGraphDenseIntersect {
     K2_CHECK_GT(num_fsas_, 0);
     K2_CHECK(b_fsas.scores.IsContiguous());
     K2_CHECK_GT(output_beam, 0);
-    // Set up carcs_
-    InitCompressedArcs();
 
     {
       Array1<int32_t> dest_states = GetDestStates(a_fsas_, true);
       incoming_arcs_ = GetIncomingArcs(a_fsas_, dest_states);
     }
+
+    // Set up carcs_
+    InitCompressedArcs();
 
     {
       int32_t axis = 0, num_srcs = 2;
@@ -434,7 +435,30 @@ class MultiGraphDenseIntersect {
 
 
   void InitCompressedArcs() {
-    K2_LOG(FATAL) << "Not implemented";
+    int32_t tot_arcs = a_fsas_.NumElements();
+    carcs_ = Array1<CompressedArc>(c_, tot_arcs);
+    CompressedArc *carcs_data = carcs_.Data();
+    const Arc *arcs_data = a_fsas_.values.Data();
+    const int32_t *a_fsas_row_ids1 = a_fsas_.RowIds(1).Data(),
+                  *a_fsas_row_ids2 = a_fsas_.RowIds(2).Data();
+
+    // incoming_indexes maps from position in normally-arranged arcs (i.e. arc_idx012 in
+    // a_fsas_) to the position that that arc has in incoming_arcs_.
+    Array1<int32_t> incoming_indexes = InvertPermutation(incoming_arcs_.values);
+    const int32_t *incoming_indexes_data = incoming_indexes.Data();
+
+    auto set_carcs_lambda = [=] __host__ __device__ (int32_t i) -> void {
+      Arc arc = arcs_data[i];
+      CompressedArc carc;
+      carc.src_state = uint16_t(arc.src_state);
+      carc.dest_state = uint16_t(arc.dest_state);
+      carc.label_plus_one = uint16_t(arc.label + 1);
+      carc.fsa_idx = a_fsas_row_ids1[a_fsas_row_ids2[i]];
+      carc.incoming_arc_idx012 = incoming_indexes_data[i];
+      carc.score = arc.score;
+      carcs_data[i] = carc;
+    };
+    Eval(c_, tot_arcs, set_carcs_lambda);
   }
 
   void InitFsaInfo() {
