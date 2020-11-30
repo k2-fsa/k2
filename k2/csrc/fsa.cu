@@ -500,4 +500,14 @@ std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec) {
   return os << " }";
 }
 
+DenseFsaVec DenseFsaVec::operator[] (const Array1<int32_t> &indexes) {
+  Array1<int32_t> elem_indexes;
+  RaggedShape ans_shape = Index(this->shape, indexes,
+                                &elem_indexes);
+  bool allow_minus_one = false;
+  Array2<float> ans_scores = IndexRows(this->scores, elem_indexes,
+                                       allow_minus_one);
+  return DenseFsaVec(ans_shape, ans_scores);
+}
+
 }  // namespace k2

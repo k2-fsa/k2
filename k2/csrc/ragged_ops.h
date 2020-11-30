@@ -807,6 +807,13 @@ Ragged<T> Index(Ragged<T> &src, const Array1<int32_t> &indexes,
   return ans;
 }
 
+/*
+  Returns a vector that indexes `shape` to put its rows in decreasing order of
+  length.  I.e. so that `Index(shape, GetDecreasingSizeOrder(shape))` will
+  give rows of decreasing length.
+ */
+Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape);
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_RAGGED_OPS_H_

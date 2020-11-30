@@ -193,7 +193,6 @@ RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
 }
 
 
-
 RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
                                     int32_t *tot_sizes) {
   NVTX_RANGE(K2_FUNC);
@@ -1321,5 +1320,15 @@ RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes) {
   for (int32_t a = 1; a + 1 < num_axes; a++) axes[a] = axes[0];
   return RaggedShape(axes);
 }
+
+Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
+  ContextPtr c = shape.Context();
+
+  Array1<int32_t> sizes = RowSplitsToSizes(shape.RowSplits(1));
+  Array1<int32_t> index_map;
+  Sort<int32_t, GreaterThan<int32_t> > (&sizes, &index_map);
+  return index_map;
+}
+
 
 }  // namespace k2

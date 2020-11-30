@@ -147,8 +147,9 @@ class MultiGraphDenseIntersect {
       int32_t prev_t = r_data[1] - r_data[0];
       for (int32_t i = 1; i + 1 < r.Dim(); i++) {
         int32_t this_t = r_data[i+1] - r_data[i];
-        if (this_t < prev_t)
-          K2_LOG(FATAL) << "Sequences (DenseFsaVec) must be in sorted from greatest to least.";
+        if (this_t > prev_t)
+          K2_LOG(FATAL) << "Sequences (DenseFsaVec) must be in sorted "
+              "order from greatest to least length.";
         prev_t = this_t;
       }
       T_ = r_data[1] - r_data[0];  // longest first, so T_ is the length of the
@@ -385,8 +386,6 @@ class MultiGraphDenseIntersect {
 
       int32_t ans_dest_state_idx012 = states_old2new_data[unpruned_dest_state_idx],
          ans_dest_state_idx012_next = states_old2new_data[unpruned_dest_state_idx + 1];
-      K2_LOG(INFO) << "Dest-state-idx012 = " << ans_dest_state_idx012
-                   << ", next = " << ans_dest_state_idx012;
       char keep_this_arc = (char)0;
 
       const float *forward_state_scores_t = forward_state_scores_data[t_idx1],
@@ -398,7 +397,6 @@ class MultiGraphDenseIntersect {
                                            arc_score +
                                            backward_state_scores_t1[a_fsas_dest_state_idx01];
         if (arc_forward_backward_score > cutoff) {
-          K2_LOG(INFO) << "Score " << arc_forward_backward_score << " > cutoff";
           keep_this_arc = (char)1;
           Arc arc;
           arc.label = static_cast<int32_t>(carc.label_plus_one) - 1;
@@ -411,8 +409,6 @@ class MultiGraphDenseIntersect {
           arc.dest_state = dest_state_idx12;
           arc.score = arc_score;
           ans_arcs_data[arc_idx0123] = arc;
-        } else {
-          K2_LOG(INFO) << "Score " << arc_forward_backward_score << " <= cutoff";
         }
       }
       keep_arc_data[arc_idx0123] = keep_this_arc;
@@ -450,9 +446,6 @@ class MultiGraphDenseIntersect {
     // a_fsas_) to the position that that arc has in incoming_arcs_.
     Array1<int32_t> incoming_indexes = InvertPermutation(incoming_arcs_.values);
     const int32_t *incoming_indexes_data = incoming_indexes.Data();
-
-    K2_LOG(INFO) << "Incoming_indexes = " << incoming_indexes
-                 << " which is inverse of " << incoming_arcs_.values;
 
     auto set_carcs_lambda = [=] __host__ __device__ (int32_t i) -> void {
       Arc arc = arcs_data[i];
@@ -658,13 +651,6 @@ class MultiGraphDenseIntersect {
                              scores_data[carc.label_plus_one +
                                          fsa_info.scores_offset +
                                          scores_stride * forward_scores_t];
-        K2_LOG(INFO) << "Forward: src_state_idx1 = " << src_state_idx1
-                     << ", src_state_idx01 = " << src_state_idx01
-                     << ", arc_end_prob = " << src_prob << " + " << carc.score
-                     << " + " << scores_data[carc.label_plus_one +
-                                         fsa_info.scores_offset +
-                                         scores_stride * forward_scores_t]
-                     << " = " << arc_end_prob;
         // For the forward pass we write the arc-end probs out-of-order
         // w.r.t. the regular ordering of the arcs, so we can more easily
         // do the reduction at the destination states.
@@ -684,11 +670,6 @@ class MultiGraphDenseIntersect {
     Eval(c_, tot_arcs, lambda_set_arc_scores);
     MaxPerSublist(step.arc_scores, -std::numeric_limits<float>::infinity(),
                   &step.state_scores);
-    K2_LOG(INFO) << "Previous step's state scores are: forward "
-                 << prev_step.forward_state_scores
-                 << ", backward " << prev_step.backward_state_scores;
-    K2_LOG(INFO) << "For this step, arc_scores = " << step.arc_scores
-                 << ", state_scores = " << step.state_scores;
   }
 
   /*
@@ -726,7 +707,6 @@ class MultiGraphDenseIntersect {
       score_cutoffs_data[fsa_idx0] = tot_score_min - output_beam;
     };
     Eval(c_, num_fsas_, lambda_set_cutoffs);
-    K2_LOG(INFO) << "Cutoffs = " << score_cutoffs;
     return score_cutoffs;
   }
 

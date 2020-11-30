@@ -534,6 +534,10 @@ class Array2 {
     return Array1<T>(dim1_, region_, byte_offset);
   }
 
+
+  // Instead of: Array2<T> operator[](const Array1<int32_t> &indexes)
+  // see IndexRows(), declared in array_ops.h.
+
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
   Array2()
       : dim0_(0),

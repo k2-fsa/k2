@@ -342,6 +342,18 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *row_ids);
 
 /*
+  Given a vector of row_splits, return a vector of sizes.
+
+     @param [in] row_splits   Row-splits array, should be non-decreasing,
+                            and have Dim() >= 1
+     @return   Returns array of sizes, satisfying `ans.Dim() ==
+              row_splits.Dim() - 1` and
+              `ans[i] = row_splits[i+1] - row_splits[i]`.
+ */
+Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits);
+
+
+/*
   This is a convenience wrapper for the function of the same name in utils.h.
    @param [in] row_ids     Input row_ids vector, of dimension num_elems
    @param [out] row_splits  row_splits vector to whose data we will write,
@@ -377,6 +389,13 @@ bool Equal(const Array1<T> &a, const Array1<T> &b);
  */
 template <typename T>
 bool IsMonotonic(const Array1<T> &a);
+/*
+  Return true if array `a` is monotonically decreasing, i.e.
+  a[i+1] >= a[i].
+ */
+template <typename T>
+bool IsMonotonicDecreasing(const Array1<T> &a);
+
 
 /*
   Generalized function inverse for an array viewed as a function which is
@@ -549,11 +568,12 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
 /* Sort an array **in-place**.
 
    @param [inout]   array        The array to be sorted.
-   @param [out]     index_map    If non-null, it maps the index
-                                 of the returned array to the original
-                                 unsorted array. That is,
-                                 out[i] = unsorted[index_map[i]]
-                                 for i in [0, array->Dim()).
+   @param [out]     index_map    If non-null, it will be set to
+                          a new array that maps the index of the returned array
+                          to the original unsorted array. That is, out[i] =
+                          unsorted[index_map[i]] for i in [0, array->Dim()) if
+                          `unsorted` was the value of `array` at input and `out`
+                          is the value after the function call.
  */
 template <typename T, typename Compare = LessThan<T>>
 void Sort(Array1<T> *array, Array1<int32_t> *index_map = nullptr);

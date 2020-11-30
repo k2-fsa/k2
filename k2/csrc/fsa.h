@@ -159,6 +159,11 @@ struct DenseFsaVec {
   DenseFsaVec To(ContextPtr c) const {
     return DenseFsaVec(shape.To(c), scores.To(c));
   }
+  /* Indexing operator that rearranges the sequences, analogous to: RaggedShape
+     Index(RaggedShape &src, const Array1<int32_t> &indexes).  Currently just
+     used for testing.
+   */
+  DenseFsaVec operator[] (const Array1<int32_t> &indexes);
 };
 
 std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec);

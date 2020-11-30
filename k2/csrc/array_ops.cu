@@ -363,9 +363,29 @@ Array1<int32_t> InvertPermutation(const Array1<int32_t> &src) {
     auto lambda_set_ans = [=] __device__ (int32_t i) -> void {
       ans_data[src_data[i]] = i;
     };
-    Eval(c, dim, lambda_set_ans);
+    EvalDevice(c, dim, lambda_set_ans);
   }
   return ans;
 }
+
+Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits) {
+  K2_CHECK_GT(row_splits.Dim(), 0);
+  ContextPtr c = row_splits.Context();
+  int32_t num_rows = row_splits.Dim() - 1;
+  Array1<int32_t> sizes(c, num_rows);
+  const int32_t *row_splits_data = row_splits.Data();
+  int32_t *sizes_data = sizes.Data();
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i < num_rows; i++)
+      sizes_data[i] = row_splits_data[i + 1] - row_splits_data[i];
+  } else {
+    auto lambda_set_sizes = [=] __device__ (int32_t i) -> void {
+      sizes_data[i] = row_splits_data[i + 1] - row_splits_data[i];
+    };
+    EvalDevice(c, num_rows, lambda_set_sizes);
+  }
+  return sizes;
+}
+
 
 }  // namespace k2
