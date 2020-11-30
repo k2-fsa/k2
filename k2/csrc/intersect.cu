@@ -526,6 +526,9 @@ class MultiGraphDenseIntersect {
         num_copies_per_fsa),
                 num_fsas_per_t_cpu = num_fsas_per_t.To(c_cpu);
 
+    K2_LOG(INFO) << " num_fsas_per_t = " << num_fsas_per_t
+                 << ", num_copies_per_fsa = " << num_copies_per_fsa;
+
     Array1<int32_t> a_fsas_row_splits1_cpu = a_fsas_.RowSplits(1).To(c_cpu),
                   a_fsas_row_splits12_cpu = a_fsas_.RowSplits(2)[
                       a_fsas_.RowSplits(1)].To(c_cpu);
@@ -565,7 +568,7 @@ class MultiGraphDenseIntersect {
         step.backward_state_scores = step.state_scores.Arange(tot_states,
                                                               tot_states + num_states_backward);
       } else {
-        step.arc_scores = Ragged<float>(bf_shape_prefixes[nb],
+        step.arc_scores = Ragged<float>(bf_shape_prefixes[nf],
                                         arc_scores_.Arange(0, tot_arcs +
                                                            num_arcs_forward));
         step.backward_arc_scores = arc_scores_.Arange(0, tot_arcs);
@@ -670,6 +673,11 @@ class MultiGraphDenseIntersect {
     Eval(c_, tot_arcs, lambda_set_arc_scores);
     MaxPerSublist(step.arc_scores, -std::numeric_limits<float>::infinity(),
                   &step.state_scores);
+    K2_LOG(INFO) << "Previous state scores are (forward) " << prev_step.forward_state_scores
+                 << ", (backward) " << prev_step.backward_state_scores
+                 << ", arc scores are: " << step.arc_scores
+                 << ", current state scores are (forward) " << step.forward_state_scores
+                 << ", (backward) " << step.backward_state_scores;
   }
 
   /*
@@ -707,6 +715,7 @@ class MultiGraphDenseIntersect {
       score_cutoffs_data[fsa_idx0] = tot_score_min - output_beam;
     };
     Eval(c_, num_fsas_, lambda_set_cutoffs);
+    K2_LOG(INFO) << "Scores cutoffs are " << score_cutoffs;
     return score_cutoffs;
   }
 

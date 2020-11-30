@@ -225,7 +225,7 @@ TEST(Intersect, RandomFsaVec) {
     Array1<int32_t> arc_map_a, arc_map_b;
 
     FsaVec out_fsas;
-    float output_beam = 1000.0;
+    float output_beam = 100000.0; // TODO...
     IntersectDense(fsavec, dfsavec, output_beam,
                    &out_fsas, &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
