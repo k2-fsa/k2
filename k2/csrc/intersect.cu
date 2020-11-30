@@ -435,6 +435,7 @@ class MultiGraphDenseIntersect {
 
 
   void InitCompressedArcs() {
+    NVTX_RANGE(__func__);
     int32_t tot_arcs = a_fsas_.NumElements();
     carcs_ = Array1<CompressedArc>(c_, tot_arcs);
     CompressedArc *carcs_data = carcs_.Data();
@@ -462,7 +463,29 @@ class MultiGraphDenseIntersect {
   }
 
   void InitFsaInfo() {
-    K2_LOG(FATAL) << "Not implemented";
+    NVTX_RANGE(__func__);
+    int32_t *b_fsas_row_splits1_data = b_fsas_.shape.RowSplits(1).Data(),
+            *a_fsas_row_splits1_data = a_fsas_.shape.RowSplits(1).Data(),
+            *a_fsas_row_splits2_data = a_fsas_.shape.RowSplits(2).Data();
+    int32_t scores_stride = b_fsas_.scores.ElemStride0();
+
+    fsa_info_ = Array1<FsaInfo>(c_, num_fsas_ + 1);
+    FsaInfo *fsa_info_data = fsa_info_.Data();
+    auto lambda_set_fsa_info = [=] __host__ __device__ (int32_t i) -> void {
+      FsaInfo info;
+      if (i < num_fsas_) {
+        info.T = uint16_t(b_fsas_row_splits1_data[i+1] - b_fsas_row_splits1_data[i]);
+        info.num_states = uint16_t(a_fsas_row_splits1_data[i+1] - a_fsas_row_splits1_data[i]);
+      } else {
+        info.T = 0;
+        info.num_states = 0;
+      }
+      info.scores_offset = b_fsas_row_splits1_data[i] * scores_stride;
+      info.state_offset = a_fsas_row_splits1_data[i];
+      info.arc_offset = a_fsas_row_splits2_data[info.state_offset];
+      fsa_info_data[i] = info;
+    };
+    Eval(c_, num_fsas_ + 1, lambda_set_fsa_info);
   }
 
   /*
@@ -753,6 +776,7 @@ class MultiGraphDenseIntersect {
     // scores_offset is the offset of first location in b_fsas_.scores.Data()
     // that is for this FSA, i.e. b_fsas_.scores.Data()[scores_offset] is the
     // score for t=0, symbol=-1 of this FSA.
+    // scores_offset == b_fsas_.shape.RowSplits(1)[fsa_idx] * b_fsas_.scores.ElemStride0().
     int32_t scores_offset;
     // state_offset is the idx0x corresponding to this FSA in a_fsas_.
     int32_t state_offset;

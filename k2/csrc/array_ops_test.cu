@@ -1514,7 +1514,7 @@ TEST(OpsTest, InvertPermutationTest) {
                cpu_context = GetCpuContext();
     for (int i = 0; i < 10; i++) {
       int32_t len = RandInt(0, 10);
-      std::vector permutation(len);
+      std::vector<int32_t> permutation(len);
       std::iota(permutation.begin(), permutation.end(), 0);
       std::random_shuffle(permutation.begin(), permutation.end());
       Array1<int32_t> permutation_array(c, permutation);
