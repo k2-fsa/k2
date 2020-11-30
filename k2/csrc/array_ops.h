@@ -385,14 +385,12 @@ bool IsMonotonic(const Array1<T> &a);
      @param [in] src   Array which is monotonically decreasing (not necessarily
                       strictly) and whose elements are all positive, e.g.
                       [ 5 5 4 2 1 ]
-     @return          Returns an array such with ans.Dim() == src[0] + 1,
-                      sich that ans[i] = min(j >= 0 : src[j] <= i).
-     @return          Returns an array such with ans.Dim() == src[0],
+     @return          Returns an array such that ans.Dim() == src[0],
                       such that ans[i] = min(j >= 0 : src[j] <= i).
                       We pretend values past the end of `src` are zeros.
                       In this case the result would be:
                       [ 5 4 3 3 2].
-                      Noticed ans[0] = 5 here, we get it because we pretend
+                      Notice ans[0] = 5 here, we get it because we pretend
                       `src` is [5 5 4 2 1 0]
 
     Note:             InvertMonotonicDecreasing(InvertMonotonicDecreasing(x))
