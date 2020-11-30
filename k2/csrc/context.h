@@ -443,9 +443,20 @@ class ParallelRunnerActive {
   // so that you won't need to directly pass this into Eval(); the context
   // will call CudaStreamOverride::OverrideStream() and replace it
   // with this stream automatically.
-  cudaStream_t NewStream();
+  //
+  //    @param [in] num_work_items   Provided by the caller, saying how many
+  //               elements approximately may be processed with this stream.
+  //               If it's less than some internal threshold (e.g. 10k, we'd
+  //               tune it), we would not create a new stream; instead, we
+  //               just return stream 0 (the default stream).
+  //    @return Returns the created new stream, or stream 0 if num_work_items
+  //            is less than the internal threshold (i.e. 10k for now).
+  cudaStream_t NewStream(std::size_t num_work_items = 0);
 
-  // calling Finish() is equivalent to calling the destructor early.
+  // Calling Finish() is equivalent to calling the destructor early.
+  // But user should never call this directly if they use
+  // `With w(pr.NewStream())` and `w` is not destructed; instead, they should
+  // wait the destructor of `pr` to call this.
   void Finish();
 
   ~ParallelRunnerActive() { Finish(); }
@@ -468,7 +479,7 @@ class ParallelRunnerDummy {
   cudaStream_t stream_;
 };
 
-using ParallelRunner = ParallelRunnerDummy;
+using ParallelRunner = ParallelRunnerActive;
 }  // namespace k2
 
 #endif  // K2_CSRC_CONTEXT_H_
