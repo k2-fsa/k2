@@ -89,9 +89,8 @@ class MultiGraphDenseIntersect {
 
        @param [in] a_fsas  The decoding graphs, one per sequence.  E.g. might
                            just be a linear sequence of phones, or might be
-                           something more complicated.  Must have either the
-                           same Dim0() as b_fsas, or Dim0() == 1 in which
-                           case the graph is shared.
+                           something more complicated.  Must have the
+                           same Dim0() as b_fsas.
        @param [in] b_fsas  The neural-net output, with each frame containing the
                            log-likes of each phone.  A series of sequences of
                            (in general) different length.  MUST BE SORTED BY
@@ -113,7 +112,6 @@ class MultiGraphDenseIntersect {
     K2_CHECK(a_fsas_.Dim0() == b_fsas_.shape.Dim0());
     num_fsas_ = a_fsas_.Dim0();
     K2_CHECK_GT(num_fsas_, 0);
-    K2_CHECK(b_fsas.scores.IsContiguous());
     K2_CHECK_GT(output_beam, 0);
 
     {
@@ -505,7 +503,7 @@ class MultiGraphDenseIntersect {
     NVTX_RANGE(__func__);
     // This vector, of length num_fsas_, tells us how many copies of (the states
     // of the i'th decoding graph) we have.  It equals (the length of the sequence
-    // of log-likes in n_fsas_) + 1.  It is monotonically decreasing (thanks to
+    // of log-likes in b_fsas_) + 1.  It is monotonically decreasing (thanks to
     // how we require the FSAs to be sorted).
     Array1<int32_t> num_copies_per_fsa(c_, num_fsas_);
     const int32_t *b_row_splits_data = b_fsas_.shape.RowSplits(1).Data();
@@ -791,7 +789,7 @@ class MultiGraphDenseIntersect {
 
   struct FsaInfo {
     // T is the number of frames in b_fsas_.scores that we have for this FSA, i.e.
-    // `b_fsas_.scores.RowSplits(1)[i+1] -  b_fsas_.scores.RowSplits(1)[i].`
+    // `b_fsas_.shape.RowSplits(1)[i+1] -  b_fsas_.shape.RowSplits(1)[i].`
     // The number of copies of the states of a_fsas_ that we have in the total
     // state space equals T+1, i.e. we have copies of those states for times
     // 0 <= t <= T.

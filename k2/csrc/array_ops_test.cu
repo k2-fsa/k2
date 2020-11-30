@@ -1642,4 +1642,30 @@ TEST(OpsTest, Array1Sort) {
   Array1SortTestRandom<float>();
 }
 
+
+TEST(OpsTest, Array2Assign) {
+  for (int loop = 0; loop < 10; loop++) {
+    ContextPtr c = ((loop % 2) == 0 ? GetCpuContext() : GetCudaContext());
+
+    int32_t src_dim0 = RandInt(1, 10), src_dim1 = RandInt(1, 10);
+
+    using T = int64_t;
+    Array2<T> src = RandUniformArray2<T>(c, src_dim0, src_dim1, 0, 100);
+
+    Array2<T> dest = RandUniformArray2<T>(c, src_dim0, src_dim1, 0, 100);
+
+    Assign(src, &dest);
+
+    K2_CHECK(Equal(src, dest));
+
+    if (src.ElemStride0() == src_dim1 && dest.ElemStride0() == src_dim1) {
+      // test cross-device copy, which is only supported for contiguous input
+      ContextPtr c_other = ((loop % 2) != 0 ? GetCpuContext() : GetCudaContext());
+      Array2<T> dest2 = RandUniformArray2<T>(c_other, src_dim0, src_dim1, 0, 100);
+      Assign(src, &dest2);
+      K2_CHECK(Equal(src.To(c_other), dest2));
+    }
+  }
+}
+
 }  // namespace k2

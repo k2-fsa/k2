@@ -558,6 +558,16 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
 template <typename T, typename Compare = LessThan<T>>
 void Sort(Array1<T> *array, Array1<int32_t> *index_map = nullptr);
 
+
+/*
+  Assign elements from `src` to `dest`; they must have the same shape.  For now
+  this only supports cross-device copy if the data is contiguous.
+ */
+template <typename T>
+void Assign(Array2<T> &src, Array2<T> *dest);
+
+
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_ARRAY_OPS_H_

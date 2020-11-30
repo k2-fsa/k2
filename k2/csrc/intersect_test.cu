@@ -36,15 +36,17 @@ bool IsRandEquivalentWrapper(
 
 
 TEST(Intersect, Simple) {
-  for (int i = 0; i < 2; i++) {
+  // tests single FSA and also 2 copies of a single FSA.
+  for (int i = 0; i < 4; i++) {
     K2_LOG(INFO) << "Intersection for " << (i == 0 ? "CPU" : "GPU");
-    ContextPtr c = (i == 0 ? GetCpuContext() : GetCudaContext());
+    ContextPtr c = (i % 2 == 0 ? GetCpuContext() : GetCudaContext());
     std::string s = R"(0 1 1 1.0
     1 1 1 50.0
     1 2 2 2.0
     2 3 -1 3.0
     3
   )";
+
     auto fsa = FsaFromString(s).To(c);
 
     // clang-format off
@@ -53,6 +55,28 @@ TEST(Intersect, Simple) {
           Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf]]").To(c)  // NOLINT
       };
     // clang-format on
+
+    if (i >= 2) {
+      // Duplicate fsa and dfsavec, stacking 2 copies.
+      { // fsa
+        Fsa *fsa_vec [] = { &fsa, &fsa };
+        FsaVec temp = Stack(0, 2, fsa_vec);
+        fsa = temp;
+      }
+      { // dfsavec
+        int32_t nrows = dfsavec.scores.Dim0();
+        Array2<float> scores2(c, nrows * 2,
+                              dfsavec.scores.Dim1());
+        Array2<float> scores2a = scores2.RowArange(0, nrows),
+                      scores2b = scores2.RowArange(nrows, nrows * 2);
+        Assign(dfsavec.scores, &scores2a);
+        Assign(dfsavec.scores, &scores2b);
+
+        RaggedShape *dfsavec_shapes [] = { &dfsavec.shape, &dfsavec.shape };
+        RaggedShape stacked_shape = Stack(0, 2, dfsavec_shapes);
+        dfsavec = DenseFsaVec(stacked_shape, scores2);
+      }
+    }
 
     float output_beam = 100000;
 
