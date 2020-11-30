@@ -152,7 +152,19 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_splits2,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2) {
   NVTX_RANGE(K2_FUNC);
-  return ComposeRaggedShapes(RaggedShape2(row_splits1, row_ids1, cached_tot_size1),
+
+  RaggedShape shape1 = RaggedShape2(row_splits1, row_ids1, cached_tot_size1);
+
+
+  Array1<int32_t> temp_array;
+  if (row_splits2 == nullptr) {
+    K2_CHECK_NE(row_ids2, nullptr) << "Either row-splits or row-ids must be defined";
+    temp_array = Array1<int32_t>(row_ids2->Context(), shape1.NumElements() + 1);
+    row_splits2 = &temp_array;
+    RowIdsToRowSplits(*row_ids2, row_splits2);
+  }
+
+  return ComposeRaggedShapes(shape1,
                              RaggedShape2(row_splits2, row_ids2, cached_tot_size2));
 }
 
@@ -165,11 +177,19 @@ RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids3, int32_t cached_tot_size3) {
   NVTX_RANGE(__func__);
 
-  return
-      ComposeRaggedShapes(
-          ComposeRaggedShapes(RaggedShape2(row_splits1, row_ids1, cached_tot_size1),
-                              RaggedShape2(row_splits2, row_ids2, cached_tot_size2)),
-          RaggedShape2(row_splits3, row_ids3, cached_tot_size3));
+
+  RaggedShape shape12 = RaggedShape3(row_splits1, row_ids1, cached_tot_size1,
+                                     row_splits2, row_ids2, cached_tot_size2);
+  Array1<int32_t> temp_array;
+  if (row_splits3 == nullptr) {
+    K2_CHECK_NE(row_ids3, nullptr) << "Either row-splits or row-ids must be defined";
+    temp_array = Array1<int32_t>(row_ids3->Context(), shape12.NumElements() + 1);
+    row_splits3 = &temp_array;
+    RowIdsToRowSplits(*row_ids3, row_splits3);
+  }
+  return ComposeRaggedShapes(shape12,
+                             RaggedShape2(row_splits3, row_ids3,
+                                          cached_tot_size3));
 }
 
 

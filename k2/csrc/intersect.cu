@@ -304,7 +304,7 @@ class MultiGraphDenseIntersect {
       int32_t ans_fsa_idx0x = ans_row_splits1_data[fsa_idx0],
                   ans_idx01 = ans_fsa_idx0x + t;
       ans_row_ids2_data[ans_idx012] = ans_idx01;
-      ans_state_idx01_data[ans_idx012] = a_fsas_state_idx1;
+      ans_state_idx01_data[ans_idx012] = a_fsas_state_idx01;
       // note: fsa_info.state_offset == a_fsas_row_splits2_data[a_fsas_state_idx01];
       int32_t num_arcs = a_fsas_row_splits2_data[a_fsas_state_idx01 + 1] -
               a_fsas_row_splits2_data[a_fsas_state_idx01];
@@ -713,18 +713,17 @@ class MultiGraphDenseIntersect {
     Array1<float> score_cutoffs(c_, num_fsas_);
     float *score_cutoffs_data = score_cutoffs.Data();
     float output_beam = output_beam_;
+    const float minus_inf = -std::numeric_limits<float>::infinity();
     auto lambda_set_cutoffs = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
       FsaInfo fsa_info = fsa_info_data[fsa_idx0];
-      float tot_score_start = backward_state_scores_t0[0],
-        tot_score_end = forward_state_scores_data[fsa_info.T]
-                 [fsa_info.state_offset + fsa_info.num_states - 1],
-        tot_score_avg = 0.5 * (tot_score_start + tot_score_end),
-        tot_score_diff = fabs(tot_score_end - tot_score_start);
-      // TODO(dan): remove the following after the code is tested.
-      K2_CHECK(tot_score_diff < 0.1);
-      // subtracting the difference in scores is to help make sure we don't completely prune
-      // away all states.
-      score_cutoffs_data[fsa_idx0] = tot_score_avg - tot_score_diff - output_beam;
+      float tot_score_start = (fsa_info.num_states == 0 ? minus_inf :
+                               backward_state_scores_t0[0]),
+        tot_score_end = (fsa_info.num_states == 0 ? minus_inf :
+                         forward_state_scores_data[fsa_info.T]
+                         [fsa_info.state_offset + fsa_info.num_states - 1]),
+        tot_score_min = (tot_score_start < tot_score_end ?
+                        tot_score_start : tot_score_end);
+      score_cutoffs_data[fsa_idx0] = tot_score_min - output_beam;
     };
     Eval(c_, num_fsas_, lambda_set_cutoffs);
     K2_LOG(INFO) << "Cutoffs = " << score_cutoffs;

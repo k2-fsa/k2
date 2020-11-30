@@ -1658,10 +1658,11 @@ TEST(OpsTest, Array2Assign) {
 
     K2_CHECK(Equal(src, dest));
 
-    if (src.ElemStride0() == src_dim1 && dest.ElemStride0() == src_dim1) {
+    ContextPtr c_other = ((loop % 2) != 0 ? GetCpuContext() : GetCudaContext());
+    Array2<T> dest2 = RandUniformArray2<T>(c_other, src_dim0, src_dim1, 0, 100);
+
+    if (src.ElemStride0() == src_dim1 && dest2.ElemStride0() == src_dim1) {
       // test cross-device copy, which is only supported for contiguous input
-      ContextPtr c_other = ((loop % 2) != 0 ? GetCpuContext() : GetCudaContext());
-      Array2<T> dest2 = RandUniformArray2<T>(c_other, src_dim0, src_dim1, 0, 100);
       Assign(src, &dest2);
       K2_CHECK(Equal(src.To(c_other), dest2));
     }

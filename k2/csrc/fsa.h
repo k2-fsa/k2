@@ -153,6 +153,7 @@ struct DenseFsaVec {
       : shape(shape), scores(scores) {
     K2_CHECK(IsCompatible(shape, scores));
     K2_CHECK_EQ(shape.NumElements(), scores.Dim0());
+    K2_CHECK_EQ(shape.NumAxes(), 2);
   }
   ContextPtr Context() const { return shape.Context(); }
   DenseFsaVec To(ContextPtr c) const {
