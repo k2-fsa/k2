@@ -1,5 +1,5 @@
 /**
- * @brief Unittest for compose.cu (actually that implements Intersect()..)
+ * @brief Unittests for intersect_pruned.cu and intersect.cu
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation    (authors: Daniel Povey)
@@ -34,7 +34,68 @@ bool IsRandEquivalentWrapper(
 }
 
 
+
 TEST(Intersect, Simple) {
+  for (int i = 0; i < 2; i++) {
+    K2_LOG(INFO) << "Intersection for " << (i == 0 ? "CPU" : "GPU");
+    ContextPtr c = (i == 0 ? GetCpuContext() : GetCudaContext());
+    std::string s = R"(0 1 1 1.0
+    1 1 1 50.0
+    1 2 2 2.0
+    2 3 -1 3.0
+    3
+  )";
+    auto fsa = FsaFromString(s).To(c);
+
+    // clang-format off
+    DenseFsaVec dfsavec {
+      RaggedShape("[ [ x x x ] ]").To(c),
+          Array2<float>("[ [ -Inf 0.1 0.2 0.3 ] [ -Inf 0.04 0.05 0.06 ] [ 1.0 -Inf -Inf -Inf]]").To(c)  // NOLINT
+      };
+    // clang-format on
+
+    float output_beam = 100000;
+
+    FsaVec out_fsas;
+    Array1<int32_t> arc_map_a, arc_map_b;
+    IntersectDense(fsa, dfsavec, output_beam,
+                   &out_fsas,
+                   &arc_map_a, &arc_map_b);
+    K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
+                 << ", arc_map_b = " << arc_map_b;
+
+    FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
+    K2_LOG(INFO) << "fsas_b = " << fsas_b;
+    FsaVec out_fsas2;
+    ContextPtr cpu = GetCpuContext();
+    Array1<int32_t> arc_map_a2, arc_map_b2;
+    // IntersectDense() treats epsilons as normal symbols.
+    bool treat_epsilons_specially = false;
+    fsa = fsa.To(cpu);
+    fsas_b = fsas_b.To(cpu);
+    Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
+              &arc_map_b2);
+
+    out_fsas = out_fsas.To(cpu);
+    K2_CHECK(IsRandEquivalentWrapper(out_fsas, out_fsas2,
+                                     treat_epsilons_specially));
+
+    K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
+                 << ", arc_map_a2 = " << arc_map_a2
+                 << ", arc_map_b2 = " << arc_map_b2;
+
+    /*
+      int32_t gt = kFsaPropertiesTopSorted | kFsaPropertiesTopSortedAndAcyclic;
+      int32_t p = GetFsaBasicProperties(fsa);
+      EXPECT_NE(p & gt, gt);
+    */
+
+    // CheckArrayData(arc_map, {0, 1, 3, 4, 2});
+  }
+}
+
+
+TEST(IntersectPruned, Simple) {
   for (int i = 0; i < 2; i++) {
     K2_LOG(INFO) << "Intersection for " << (i == 0 ? "CPU" : "GPU");
     ContextPtr c = (i == 0 ? GetCpuContext() : GetCudaContext());
@@ -94,7 +155,7 @@ TEST(Intersect, Simple) {
   }
 }
 
-TEST(Intersect, TwoDense) {
+TEST(IntersectPruned, TwoDense) {
   std::string s = R"(0 1 1 1.0
     1 1 1 50.0
     1 2 2 2.0
@@ -137,7 +198,7 @@ TEST(Intersect, TwoDense) {
                << ", arc_map_b2 = " << arc_map_b2;
 }
 
-TEST(Intersect, TwoFsas) {
+TEST(IntersectPruned, TwoFsas) {
   std::string s1 = R"(0 1 1 1.0
     1 2 2 2.0
     2 3 -1 3.0
@@ -187,7 +248,7 @@ TEST(Intersect, TwoFsas) {
                << ", arc_map_b2 = " << arc_map_b2;
 }
 
-TEST(Intersect, RandomSingle) {
+TEST(IntersectPruned, RandomSingle) {
   for (int32_t i = 0; i < 10; i++) {
     K2_LOG(INFO) << "Iteration of testing: i = " << i;
     int32_t max_symbol = 10, min_num_arcs = 0, max_num_arcs = 10;
@@ -255,7 +316,7 @@ TEST(Intersect, RandomSingle) {
 }
 
 
-TEST(Intersect, RandomFsaVec) {
+TEST(IntersectPruned, RandomFsaVec) {
   for (int32_t i = 0; i < 10; i++) {
     K2_LOG(INFO) << "Iteration of testing: i = " << i;
     int32_t max_symbol = 10, min_num_arcs = 0, max_num_arcs = 200;
