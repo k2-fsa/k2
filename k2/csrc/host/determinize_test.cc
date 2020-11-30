@@ -69,7 +69,7 @@ class DeterminizeTest : public ::testing::Test {
 
 TEST_F(DeterminizeTest, DeterminizePrunedMax) {
   float beam = 10.0;
-  DeterminizerMax determinizer(*max_wfsa_, beam, 100);
+  DeterminizerPrunedMax determinizer(*max_wfsa_, beam, 100);
   Array2Size<int32_t> fsa_size, arc_derivs_size;
   determinizer.GetSizes(&fsa_size, &arc_derivs_size);
 
@@ -93,7 +93,7 @@ TEST_F(DeterminizeTest, DeterminizePrunedMax) {
 
 TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
   float beam = 10.0;
-  DeterminizerLogSum determinizer(*log_wfsa_, beam, 100);
+  DeterminizerPrunedLogSum determinizer(*log_wfsa_, beam, 100);
   Array2Size<int32_t> fsa_size, arc_derivs_size;
   determinizer.GetSizes(&fsa_size, &arc_derivs_size);
 
@@ -115,6 +115,52 @@ TEST_F(DeterminizeTest, DeterminizePrunedLogSum) {
   EXPECT_TRUE(IsRandEquivalent<kLogSumWeight>(log_wfsa_->fsa, fsa_out, beam));
   // TODO(haowen): how to check `arc_derivs_out` here, may return `num_steps` to
   // check the sum of `derivs_out` for each output arc?
+}
+
+TEST_F(DeterminizeTest, DeterminizeMax) {
+  DeterminizerMax determinizer(*fsa_, 100);
+  Array2Size<int32_t> fsa_size, arc_derivs_size;
+  determinizer.GetSizes(&fsa_size, &arc_derivs_size);
+
+  FsaCreator fsa_creator(fsa_size);
+  auto &fsa_out = fsa_creator.GetFsa();
+  Array2Storage<typename MaxTracebackState::DerivType *, int32_t>
+      derivs_storage(arc_derivs_size, 1);
+  auto &arc_derivs = derivs_storage.GetArray2();
+
+  determinizer.GetOutput(&fsa_out, &arc_derivs);
+
+  EXPECT_TRUE(IsDeterministic(fsa_out));
+
+  ASSERT_EQ(fsa_out.size1, 7);
+  ASSERT_EQ(fsa_out.size2, 9);
+  ASSERT_EQ(arc_derivs.size1, 9);
+  ASSERT_EQ(arc_derivs.size2, 12);
+
+  EXPECT_TRUE(IsRandEquivalent<kMaxWeight>(*fsa_, fsa_out));
+}
+
+TEST_F(DeterminizeTest, DeterminizeLogSum) {
+  DeterminizerLogSum determinizer(*fsa_, 100);
+  Array2Size<int32_t> fsa_size, arc_derivs_size;
+  determinizer.GetSizes(&fsa_size, &arc_derivs_size);
+
+  FsaCreator fsa_creator(fsa_size);
+  auto &fsa_out = fsa_creator.GetFsa();
+  Array2Storage<typename LogSumTracebackState::DerivType *, int32_t>
+      derivs_storage(arc_derivs_size, 1);
+  auto &arc_derivs = derivs_storage.GetArray2();
+
+  determinizer.GetOutput(&fsa_out, &arc_derivs);
+
+  EXPECT_TRUE(IsDeterministic(fsa_out));
+
+  ASSERT_EQ(fsa_out.size1, 7);
+  ASSERT_EQ(fsa_out.size2, 9);
+  ASSERT_EQ(arc_derivs.size1, 9);
+  ASSERT_EQ(arc_derivs.size2, 15);
+
+  EXPECT_TRUE(IsRandEquivalent<kLogSumWeight>(*fsa_, fsa_out));
 }
 
 }  // namespace k2host

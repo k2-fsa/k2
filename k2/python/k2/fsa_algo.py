@@ -301,8 +301,8 @@ def determinize(fsa: Fsa) -> Fsa:
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
-        Must be top-sorted and connected. It's also expected to
-        be epsilon-free, but this is not checked; in any case,
+        Must be connected. It's also expected to be epsilon-free,
+        but this is not checked; in any case,
         epsilon will be treated as a normal symbol.
     Returns:
         The result Fsa, it's equivalent to the input ``fsa`` under
