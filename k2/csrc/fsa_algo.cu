@@ -267,15 +267,8 @@ void Determinize(FsaOrVec &src, FsaOrVec *dest,
   k2host::Fsa host_fsa = FsaToHostFsa(src);
   int32_t num_states = host_fsa.NumStates();
   K2_CHECK_EQ(num_states, src.Dim0());
-  std::vector<double> max_forward_weights(num_states);
-  std::vector<double> max_backward_weights(num_states);
-  k2host::WfsaWithFbWeights max_wfsa(host_fsa, k2host::kMaxWeight,
-                                     max_forward_weights.data(),
-                                     max_backward_weights.data());
-  // pass infinity as beam since we don't do pruning here.
-  float beam = std::numeric_limits<float>::infinity();
   int32_t max_step = -1;  // no limit
-  k2host::DeterminizerMax determinizer(max_wfsa, beam, max_step);
+  k2host::DeterminizerMax determinizer(host_fsa, max_step);
   k2host::Array2Size<int32_t> fsa_size, arc_derivs_size;
   determinizer.GetSizes(&fsa_size, &arc_derivs_size);
   FsaCreator fsa_creator(fsa_size);

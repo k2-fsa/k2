@@ -38,7 +38,7 @@ class TestDeterminize(unittest.TestCase):
         self.fsa = k2host.str_to_fsa(s)
         self.num_states = self.fsa.num_states()
 
-    def test_max_weight(self):
+    def test_pruned_max(self):
         forward_max_weights = k2host.DoubleArray1.create_array_with_size(
             self.num_states)
         backward_max_weights = k2host.DoubleArray1.create_array_with_size(
@@ -48,7 +48,7 @@ class TestDeterminize(unittest.TestCase):
                                         forward_max_weights,
                                         backward_max_weights)
         beam = 10.0
-        determinizer = k2host.DeterminizerMax(wfsa, beam, 100)
+        determinizer = k2host.DeterminizerPrunedMax(wfsa, beam, 100)
         fsa_size = k2host.IntArray2Size()
         arc_derivs_size = k2host.IntArray2Size()
         determinizer.get_sizes(fsa_size, arc_derivs_size)
@@ -65,7 +65,7 @@ class TestDeterminize(unittest.TestCase):
         self.assertTrue(
             k2host.is_rand_equivalent_max_weight(self.fsa, fsa_out, beam))
 
-    def test_logsum_weight(self):
+    def test_pruned_logsum(self):
         forward_logsum_weights = k2host.DoubleArray1.create_array_with_size(
             self.num_states)
         backward_logsum_weights = k2host.DoubleArray1.create_array_with_size(
@@ -75,7 +75,7 @@ class TestDeterminize(unittest.TestCase):
                                         forward_logsum_weights,
                                         backward_logsum_weights)
         beam = 10.0
-        determinizer = k2host.DeterminizerLogSum(wfsa, beam, 100)
+        determinizer = k2host.DeterminizerPrunedLogSum(wfsa, beam, 100)
         fsa_size = k2host.IntArray2Size()
         arc_derivs_size = k2host.IntArray2Size()
         determinizer.get_sizes(fsa_size, arc_derivs_size)

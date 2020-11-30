@@ -17,8 +17,8 @@ from _k2host import _arc_sort
 from _k2host import _TopSorter
 from _k2host import _Connection
 from _k2host import _Intersection
-from _k2host import _DeterminizerMax
-from _k2host import _DeterminizerLogSum
+from _k2host import _DeterminizerPrunedMax
+from _k2host import _DeterminizerPrunedLogSum
 from _k2host import _EpsilonsRemoverMax
 from _k2host import _EpsilonsRemoverLogSum
 
@@ -88,7 +88,7 @@ class Intersection(_Intersection):
             arc_map_b.get_base() if arc_map_b is not None else None)
 
 
-class DeterminizerMax(_DeterminizerMax):
+class DeterminizerPrunedMax(_DeterminizerPrunedMax):
 
     def __init__(self, fsa_in: WfsaWithFbWeights, beam: float, max_step: int):
         super().__init__(fsa_in, beam, max_step)
@@ -101,7 +101,7 @@ class DeterminizerMax(_DeterminizerMax):
         return super().get_output(fsa_out.get_base(), arc_derivs.get_base())
 
 
-class DeterminizerLogSum(_DeterminizerLogSum):
+class DeterminizerPrunedLogSum(_DeterminizerPrunedLogSum):
 
     def __init__(self, fsa_in: WfsaWithFbWeights, beam: float, max_step: int):
         super().__init__(fsa_in, beam, max_step)

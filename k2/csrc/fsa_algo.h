@@ -139,15 +139,15 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
                          code changes to support.
          @param[in] b_fsas   Input FSAs that correspond to neural network
                          outputs (see documentation in fsa.h).
-         @param[in] search_beam   Beam for frame-synchronous beam pruning, e.g. 20.
-                         Smaller is faster, larger is more exact (less pruning).
-                         This is the default value; it may be modified by
-                         {min,max}_active which dictate the minimum or maximum
-                         allowed number of active states per frame.
+         @param[in] search_beam   Beam for frame-synchronous beam pruning,
+                    e.g. 20. Smaller is faster, larger is more exact
+                    (less pruning). This is the default value; it may be
+                    modified by {min,max}_active which dictate the minimum
+                    or maximum allowed number of active states per frame.
          @param[in] output_beam   Beam with which we prune the output (analogous
-                         to lattice-beam in Kaldi), e.g. 8.  We discard arcs in the output
-                         that are not on a path that's within `output_beam`
-                         of the best path of the composed output.
+                         to lattice-beam in Kaldi), e.g. 8.  We discard arcs in
+                         the output that are not on a path that's within
+                         `output_beam` of the best path of the composed output.
          @param[in] min_active  Minimum active states allowed per frame; beam
                          will be decreased if the number of active states falls
                          below this
@@ -236,8 +236,7 @@ void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
 
 /*
     Determinize the input Fsas, it works for both Fsa and FsaVec.
-    @param [in] src   Source Fsa or FsaVec. Must be top-sorted as we will
-                      compute forward and backward scores on it.
+    @param [in] src   Source Fsa or FsaVec.
                       Expected to be epsilon free, but this is not checked;
                       in any case, epsilon will be treated as a normal
                       symbol. We also assume src is connected.
