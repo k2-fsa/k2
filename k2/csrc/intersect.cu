@@ -75,6 +75,11 @@ using namespace intersect_internal;  // NOLINT
 
    Can use either different decoding graphs (one per acoustic sequence) or a
    shared graph.
+
+   How to use this object:
+       Construct it
+       Call Intersect()
+       Call FormatOutput()
 */
 class MultiGraphDenseIntersect {
  public:
@@ -165,240 +170,10 @@ class MultiGraphDenseIntersect {
      output; the output is provided when you call FormatOutput(). */
   void Intersect() {
     NVTX_RANGE(__func__);
-    // TODO.
-    K2_LOG(FATAL) << "Not implemented";
+    DoStep0();
+    for (int32_t t = 1; t <= T_; t++)
+      DoStep(t);
   }
-
-
-  void InitCompressedArcs() {
-    K2_LOG(FATAL) << "Not implemented";
-  }
-
-  void InitFsaInfo() {
-    K2_LOG(FATAL) << "Not implemented";
-  }
-
-  /*
-    InitSteps() sets up steps_; it works out metadata and allocates memory, but
-    does not do any of the actual computation.
-   */
-  void InitSteps() {
-    NVTX_RANGE(__func__);
-    // This vector, of length num_fsas_, tells us how many copies of (the states
-    // of the i'th decoding graph) we have.  It equals (the length of the sequence
-    // of log-likes in n_fsas_) + 1.  It is monotonically decreasing (thanks to
-    // how we require the FSAs to be sorted).
-    Array1<int32_t> num_copies_per_fsa(c_, num_fsas_);
-    const int32_t *b_row_splits_data = b_fsas_.shape.RowSplits(1).Data();
-    int32_t *num_copies_per_fsa_data = num_copies_per_fsa.Data();
-    auto lambda_set_num_copies = [=]  __host__ __device__ (int32_t i) -> void {
-      num_copies_per_fsa_data[i] = 1 + b_row_splits_data[i + 1] - b_row_splits_data[i];
-    };
-    Eval(c_, num_fsas_, lambda_set_num_copies);
-
-    std::vector<int32_t> range(num_fsas_ + 1);
-    // fill with num_fsas_, num_fsas_ + 1, num_fsas_ + 2, ... num_fsas_ * 2.
-    std::iota(range.begin(), range.end(), num_fsas_);
-    std::vector<RaggedShape> bf_shape_prefixes = GetPrefixes(backward_then_forward_shape_,
-                                                             range),
-                             fb_shape_prefixes = GetPrefixes(forward_then_backward_shape_,
-                                                             range);
-
-
-    ContextPtr c_cpu = GetCpuContext();
-
-    // This vector, of length T_ + 1, tells us, for each frame 0 <= t <= T, how
-    // many FSAs have a copy of their decoding-graph states alive on this
-    // time-index.  It equals InvertMonotonicDecreasing(num_copies_per_fsa_)
-    // and it is also the case that InvertMonotonicDecreasing(num_fsas_per_t_)
-    // == num_copies_per_fsa_.
-    Array1<int32_t> num_fsas_per_t = InvertMonotonicDecreasing(
-        num_copies_per_fsa),
-                num_fsas_per_t_cpu = num_fsas_per_t.To(c_cpu);
-
-    Array1<int32_t> a_fsas_row_splits1_cpu = a_fsas_.RowSplits(1).To(c_cpu),
-                  a_fsas_row_splits12_cpu = a_fsas_.RowSplits(2)[
-                      a_fsas_.RowSplits(1)].To(c_cpu);
-    int32_t tot_arcs = a_fsas_.NumElements(),
-          tot_states = a_fsas_.TotSize(1);
-
-    std::vector<Step> steps(T_ + 1);
-
-    for (int32_t t = 0; t <= T_; t++) {
-      Step &step = steps[t];
-      step.forward_t = t;
-      step.backward_t = T_ - t;
-      step.forward_before_backward = (step.forward_t <= step.backward_t);
-      int32_t nf = step.forward_num_fsas = num_fsas_per_t_cpu[step.forward_t],
-              nb = step.backward_num_fsas = num_fsas_per_t_cpu[step.backward_t];
-
-
-      int32_t num_arcs_forward = a_fsas_row_splits12_cpu[nf],
-             num_arcs_backward = a_fsas_row_splits12_cpu[nb],
-            num_states_forward = a_fsas_row_splits1_cpu[nf],
-           num_states_backward = a_fsas_row_splits1_cpu[nb];
-
-      if (step.forward_before_backward) {
-        // fb_shape_prefixes[nb] is incoming_arcs_.shape appended with the first
-        // `nb` FSAs of a_fsas_.shape.  Note: for purposes of allocation (and
-        // reduction of arcs->states) we assume that for the forward pass all
-        // the FSAs are active; this may not really be true, but it keeps the
-        // shapes regular.
-        step.arc_scores = Ragged<float>(fb_shape_prefixes[nb],
-                                        arc_scores_.Arange(0, tot_arcs +
-                                                           num_arcs_backward));
-        step.forward_arc_scores = arc_scores_.Arange(0, tot_arcs);
-        step.backward_arc_scores = arc_scores_.Arange(tot_arcs,
-                                                      tot_arcs + num_arcs_backward);
-        step.state_scores = Array1<float>(c_, tot_states + num_states_backward);
-        step.forward_state_scores = step.state_scores.Arange(0, tot_states);
-        step.backward_state_scores = step.state_scores.Arange(0, num_states_backward);
-      } else {
-        step.arc_scores = Ragged<float>(bf_shape_prefixes[nb],
-                                        arc_scores_.Arange(0, tot_arcs +
-                                                           num_arcs_forward));
-        step.backward_arc_scores = arc_scores_.Arange(0, tot_arcs);
-        step.forward_arc_scores = arc_scores_.Arange(tot_arcs,
-                                                     tot_arcs + num_arcs_forward);
-        step.state_scores = Array1<float>(c_, tot_states + num_states_forward);
-        step.backward_state_scores = step.state_scores.Arange(0, tot_states);
-        step.forward_state_scores = step.state_scores.Arange(0, num_states_forward);
-      }
-    }
-  }
-
-
-
-  void DoStep0() {
-    NVTX_RANGE(__func__);
-    // Run step zero of the computation: this initializes the forward probabilities on
-    // frame 0, and the backward probabilities on the last frame for each sequence.
-    std::vector<float*> backward_state_scores_vec(T_ + 1);
-    int32_t tot_states = a_fsas_.TotSize(1);
-    for (int32_t t = 0; t <= T_; t++) {
-      int32_t bt = steps_[t].backward_t;
-      backward_state_scores_vec[bt] = steps_[t].backward_state_scores.Data();
-    }
-    backward_state_scores_ = Array1<float*>(c_, backward_state_scores_vec);
-    float **backward_state_scores_data = backward_state_scores_.Data();
-    float *forward_scores_t0 = steps_[0].forward_state_scores.Data();
-    int32_t *a_fsas_row_ids1 = a_fsas_.RowIds(1).Data();
-    FsaInfo *fsa_info_data = fsa_info_.Data();
-    const float minus_inf = -std::numeric_limits<float>::infinity();
-    auto lambda_init_state_scores = [=] __host__ __device__ (int32_t state_idx01) -> void {
-      int32_t fsa_idx0 = a_fsas_row_ids1[state_idx01];
-      FsaInfo this_info = fsa_info_data[fsa_idx0];
-      int32_t state_idx0x = this_info.state_offset,
-          state_idx1 = state_idx01 - state_idx0x;
-      float start_loglike = (state_idx1 == 0 ? 0 : minus_inf),
-         end_loglike = (state_idx1 + 1 == this_info.num_states ? 0 :
-                      minus_inf);
-      float *backward_state_scores_last_frame = backward_state_scores_data[this_info.T];
-      forward_scores_t0[state_idx01] = start_loglike;
-      backward_state_scores_last_frame[state_idx01] = end_loglike;
-    };
-    Eval(c_, tot_states, lambda_init_state_scores);
-  }
-
-  /* Called for 1 <= t <= T_, does one step of propagation (does forward and
-     backward simultaneously, for different time steps) */
-  void DoStep(int32_t t) {
-    NVTX_RANGE(__func__);
-    Step &step = steps_[t], &prev_step = steps_[t-1];
-
-    int32_t forward_num_fsas = step.forward_num_fsas,
-           backward_num_fsas = step.backward_num_fsas;
-    float *forward_arc_scores_data = step.forward_arc_scores.Data(),
-         *backward_arc_scores_data = step.backward_arc_scores.Data(),
-     *prev_forward_state_scores_data = prev_step.forward_state_scores.Data(),
-  *next_backward_state_scores_data = prev_step.backward_state_scores.Data();
-
-    // the frame from which we need to read scores is actually forward_t - 1,
-    // e.g. if we are writing the state-probs on frame t=1 we need to read the
-    // scores on t=1.
-    int32_t forward_scores_t = step.forward_t - 1,
-           backward_state_scores_t = step.backward_t;
-
-
-    CompressedArc *carcs_data = carcs_.Data();
-    FsaInfo *fsa_info_data = fsa_info_.Data();
-    float *scores_data = b_fsas_.scores.Data();
-    int32_t scores_stride = b_fsas_.scores.ElemStride0();
-
-    auto lambda_set_arc_scores = [=] __host__ __device__ (int32_t arc_idx012) -> void {
-      CompressedArc carc = carcs_data[arc_idx012];
-      int32_t fsa_idx = carc.fsa_idx;
-      FsaInfo fsa_info = fsa_info_data[fsa_idx];
-      // First, forward pass.  We read from the src_state of the arc
-      if (fsa_idx < forward_num_fsas) {
-        int32_t src_state_idx1 = carc.src_state,
-               src_state_idx01 = fsa_info.state_offset + src_state_idx1;
-        float src_prob = prev_forward_state_scores_data[src_state_idx01];
-        float arc_end_prob = src_prob + carc.score +
-                             scores_data[carc.label_plus_one +
-                                         fsa_info.scores_offset +
-                                         scores_stride * forward_scores_t];
-        // For the forward pass we write the arc-end probs out-of-order
-        // w.r.t. the regular ordering of the arcs, so we can more easily
-        // do the reduction at the destination states.
-        forward_arc_scores_data[carc.incoming_arc_idx012] = arc_end_prob;
-      }
-      if (fsa_idx < backward_num_fsas) {
-        int32_t dest_state_idx1 = carc.dest_state,
-               dest_state_idx01 = fsa_info.state_offset + dest_state_idx1;
-        float dest_prob = next_backward_state_scores_data[dest_state_idx01];
-        float arc_begin_prob = dest_prob + carc.score +
-                             scores_data[carc.label_plus_one +
-                                         fsa_info.scores_offset +
-                                         scores_stride * backward_state_scores_t];
-        backward_arc_scores_data[arc_idx012] = arc_begin_prob;
-      }
-    };
-    Eval(c_, step.arc_scores.NumElements(), lambda_set_arc_scores);
-    MaxPerSublist(step.arc_scores, -std::numeric_limits<float>::infinity(),
-                  &step.state_scores);
-  }
-
-  /*
-    Called after DoStep() is done for all time steps, returns the total scores
-    minus output_beam_.  (This is what it does in the absence of roundoff error
-    making the forward and backward tot_scores differ; when they do, it tries to
-    pick a looser beam if there is significant roundoff).
-   */
-  Array1<float> GetScoreCutoffs() {
-    std::vector<float*> forward_state_scores_vec(T_);
-    int32_t tot_states = a_fsas_.TotSize(1);
-    for (int32_t t = 0; t <= T_; t++) {
-      int32_t ft = steps_[t].forward_t;  // actually == t, but it's clearer.
-      forward_state_scores_vec[ft] = steps_[t].forward_state_scores.Data();
-    }
-    forward_state_scores_ = Array1<float*>(c_, forward_state_scores_vec);
-    float **forward_state_scores_data = forward_state_scores_.Data();
-
-    float *backward_state_scores_t0 = steps_[0].backward_state_scores.Data();
-    FsaInfo *fsa_info_data = fsa_info_.Data();
-    Array1<float> score_cutoffs(c_, num_fsas_);
-    float *score_cutoffs_data = score_cutoffs.Data();
-    float output_beam = output_beam_;
-    auto lambda_set_cutoffs = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
-      FsaInfo fsa_info = fsa_info_data[fsa_idx0];
-      float tot_score_start = backward_state_scores_t0[0],
-        tot_score_end = forward_state_scores_data[fsa_info.T]
-                 [fsa_info.state_offset + fsa_info.num_states - 1],
-        tot_score_avg = 0.5 * (tot_score_start + tot_score_end),
-        tot_score_diff = fabs(tot_score_end - tot_score_start);
-      // TODO(dan): remove the following after the code is tested.
-      K2_CHECK(tot_score_diff < 0.1);
-      // subtracting the difference in scores is to help make sure we don't completely prune
-      // away all states.
-      score_cutoffs_data[fsa_idx0] = tot_score_avg - tot_score_diff - output_beam;
-    };
-    Eval(c_, num_fsas_, lambda_set_cutoffs);
-    K2_LOG(INFO) << "Cutoffs = " << score_cutoffs;
-    return score_cutoffs;
-  }
-
-
   /*
     Does pruning and returns a ragged array indexed [fsa][state][arc], containing
     the result of intersection.
@@ -652,6 +427,239 @@ class MultiGraphDenseIntersect {
                        ans.values[renumber_arcs.New2Old()]);
   }
 
+  // We can't actually make the rest private for reasons relating to use of
+  // __host__ __device__ lambdas, but logically the rest would be private.
+
+  //private:
+
+
+  void InitCompressedArcs() {
+    K2_LOG(FATAL) << "Not implemented";
+  }
+
+  void InitFsaInfo() {
+    K2_LOG(FATAL) << "Not implemented";
+  }
+
+  /*
+    InitSteps() sets up steps_; it works out metadata and allocates memory, but
+    does not do any of the actual computation.
+   */
+  void InitSteps() {
+    NVTX_RANGE(__func__);
+    // This vector, of length num_fsas_, tells us how many copies of (the states
+    // of the i'th decoding graph) we have.  It equals (the length of the sequence
+    // of log-likes in n_fsas_) + 1.  It is monotonically decreasing (thanks to
+    // how we require the FSAs to be sorted).
+    Array1<int32_t> num_copies_per_fsa(c_, num_fsas_);
+    const int32_t *b_row_splits_data = b_fsas_.shape.RowSplits(1).Data();
+    int32_t *num_copies_per_fsa_data = num_copies_per_fsa.Data();
+    auto lambda_set_num_copies = [=]  __host__ __device__ (int32_t i) -> void {
+      num_copies_per_fsa_data[i] = 1 + b_row_splits_data[i + 1] - b_row_splits_data[i];
+    };
+    Eval(c_, num_fsas_, lambda_set_num_copies);
+
+    std::vector<int32_t> range(num_fsas_ + 1);
+    // fill with num_fsas_, num_fsas_ + 1, num_fsas_ + 2, ... num_fsas_ * 2.
+    std::iota(range.begin(), range.end(), num_fsas_);
+    std::vector<RaggedShape> bf_shape_prefixes = GetPrefixes(backward_then_forward_shape_,
+                                                             range),
+                             fb_shape_prefixes = GetPrefixes(forward_then_backward_shape_,
+                                                             range);
+
+
+    ContextPtr c_cpu = GetCpuContext();
+
+    // This vector, of length T_ + 1, tells us, for each frame 0 <= t <= T, how
+    // many FSAs have a copy of their decoding-graph states alive on this
+    // time-index.  It equals InvertMonotonicDecreasing(num_copies_per_fsa_)
+    // and it is also the case that InvertMonotonicDecreasing(num_fsas_per_t_)
+    // == num_copies_per_fsa_.
+    Array1<int32_t> num_fsas_per_t = InvertMonotonicDecreasing(
+        num_copies_per_fsa),
+                num_fsas_per_t_cpu = num_fsas_per_t.To(c_cpu);
+
+    Array1<int32_t> a_fsas_row_splits1_cpu = a_fsas_.RowSplits(1).To(c_cpu),
+                  a_fsas_row_splits12_cpu = a_fsas_.RowSplits(2)[
+                      a_fsas_.RowSplits(1)].To(c_cpu);
+    int32_t tot_arcs = a_fsas_.NumElements(),
+          tot_states = a_fsas_.TotSize(1);
+
+    std::vector<Step> steps(T_ + 1);
+
+    for (int32_t t = 0; t <= T_; t++) {
+      Step &step = steps[t];
+      step.forward_t = t;
+      step.backward_t = T_ - t;
+      step.forward_before_backward = (step.forward_t <= step.backward_t);
+      int32_t nf = step.forward_num_fsas = num_fsas_per_t_cpu[step.forward_t],
+              nb = step.backward_num_fsas = num_fsas_per_t_cpu[step.backward_t];
+
+
+      int32_t num_arcs_forward = a_fsas_row_splits12_cpu[nf],
+             num_arcs_backward = a_fsas_row_splits12_cpu[nb],
+            num_states_forward = a_fsas_row_splits1_cpu[nf],
+           num_states_backward = a_fsas_row_splits1_cpu[nb];
+
+      if (step.forward_before_backward) {
+        // fb_shape_prefixes[nb] is incoming_arcs_.shape appended with the first
+        // `nb` FSAs of a_fsas_.shape.  Note: for purposes of allocation (and
+        // reduction of arcs->states) we assume that for the forward pass all
+        // the FSAs are active; this may not really be true, but it keeps the
+        // shapes regular.
+        step.arc_scores = Ragged<float>(fb_shape_prefixes[nb],
+                                        arc_scores_.Arange(0, tot_arcs +
+                                                           num_arcs_backward));
+        step.forward_arc_scores = arc_scores_.Arange(0, tot_arcs);
+        step.backward_arc_scores = arc_scores_.Arange(tot_arcs,
+                                                      tot_arcs + num_arcs_backward);
+        step.state_scores = Array1<float>(c_, tot_states + num_states_backward);
+        step.forward_state_scores = step.state_scores.Arange(0, tot_states);
+        step.backward_state_scores = step.state_scores.Arange(0, num_states_backward);
+      } else {
+        step.arc_scores = Ragged<float>(bf_shape_prefixes[nb],
+                                        arc_scores_.Arange(0, tot_arcs +
+                                                           num_arcs_forward));
+        step.backward_arc_scores = arc_scores_.Arange(0, tot_arcs);
+        step.forward_arc_scores = arc_scores_.Arange(tot_arcs,
+                                                     tot_arcs + num_arcs_forward);
+        step.state_scores = Array1<float>(c_, tot_states + num_states_forward);
+        step.backward_state_scores = step.state_scores.Arange(0, tot_states);
+        step.forward_state_scores = step.state_scores.Arange(0, num_states_forward);
+      }
+    }
+  }
+
+
+
+  void DoStep0() {
+    NVTX_RANGE(__func__);
+    // Run step zero of the computation: this initializes the forward probabilities on
+    // frame 0, and the backward probabilities on the last frame for each sequence.
+    std::vector<float*> backward_state_scores_vec(T_ + 1);
+    int32_t tot_states = a_fsas_.TotSize(1);
+    for (int32_t t = 0; t <= T_; t++) {
+      int32_t bt = steps_[t].backward_t;
+      backward_state_scores_vec[bt] = steps_[t].backward_state_scores.Data();
+    }
+    backward_state_scores_ = Array1<float*>(c_, backward_state_scores_vec);
+    float **backward_state_scores_data = backward_state_scores_.Data();
+    float *forward_scores_t0 = steps_[0].forward_state_scores.Data();
+    int32_t *a_fsas_row_ids1 = a_fsas_.RowIds(1).Data();
+    FsaInfo *fsa_info_data = fsa_info_.Data();
+    const float minus_inf = -std::numeric_limits<float>::infinity();
+    auto lambda_init_state_scores = [=] __host__ __device__ (int32_t state_idx01) -> void {
+      int32_t fsa_idx0 = a_fsas_row_ids1[state_idx01];
+      FsaInfo this_info = fsa_info_data[fsa_idx0];
+      int32_t state_idx0x = this_info.state_offset,
+          state_idx1 = state_idx01 - state_idx0x;
+      float start_loglike = (state_idx1 == 0 ? 0 : minus_inf),
+         end_loglike = (state_idx1 + 1 == this_info.num_states ? 0 :
+                      minus_inf);
+      float *backward_state_scores_last_frame = backward_state_scores_data[this_info.T];
+      forward_scores_t0[state_idx01] = start_loglike;
+      backward_state_scores_last_frame[state_idx01] = end_loglike;
+    };
+    Eval(c_, tot_states, lambda_init_state_scores);
+  }
+
+  /* Called for 1 <= t <= T_, does one step of propagation (does forward and
+     backward simultaneously, for different time steps) */
+  void DoStep(int32_t t) {
+    NVTX_RANGE(__func__);
+    Step &step = steps_[t], &prev_step = steps_[t-1];
+
+    int32_t forward_num_fsas = step.forward_num_fsas,
+           backward_num_fsas = step.backward_num_fsas;
+    float *forward_arc_scores_data = step.forward_arc_scores.Data(),
+         *backward_arc_scores_data = step.backward_arc_scores.Data(),
+     *prev_forward_state_scores_data = prev_step.forward_state_scores.Data(),
+  *next_backward_state_scores_data = prev_step.backward_state_scores.Data();
+
+    // the frame from which we need to read scores is actually forward_t - 1,
+    // e.g. if we are writing the state-probs on frame t=1 we need to read the
+    // scores on t=1.
+    int32_t forward_scores_t = step.forward_t - 1,
+           backward_state_scores_t = step.backward_t;
+
+
+    CompressedArc *carcs_data = carcs_.Data();
+    FsaInfo *fsa_info_data = fsa_info_.Data();
+    float *scores_data = b_fsas_.scores.Data();
+    int32_t scores_stride = b_fsas_.scores.ElemStride0();
+
+    auto lambda_set_arc_scores = [=] __host__ __device__ (int32_t arc_idx012) -> void {
+      CompressedArc carc = carcs_data[arc_idx012];
+      int32_t fsa_idx = carc.fsa_idx;
+      FsaInfo fsa_info = fsa_info_data[fsa_idx];
+      // First, forward pass.  We read from the src_state of the arc
+      if (fsa_idx < forward_num_fsas) {
+        int32_t src_state_idx1 = carc.src_state,
+               src_state_idx01 = fsa_info.state_offset + src_state_idx1;
+        float src_prob = prev_forward_state_scores_data[src_state_idx01];
+        float arc_end_prob = src_prob + carc.score +
+                             scores_data[carc.label_plus_one +
+                                         fsa_info.scores_offset +
+                                         scores_stride * forward_scores_t];
+        // For the forward pass we write the arc-end probs out-of-order
+        // w.r.t. the regular ordering of the arcs, so we can more easily
+        // do the reduction at the destination states.
+        forward_arc_scores_data[carc.incoming_arc_idx012] = arc_end_prob;
+      }
+      if (fsa_idx < backward_num_fsas) {
+        int32_t dest_state_idx1 = carc.dest_state,
+               dest_state_idx01 = fsa_info.state_offset + dest_state_idx1;
+        float dest_prob = next_backward_state_scores_data[dest_state_idx01];
+        float arc_begin_prob = dest_prob + carc.score +
+                             scores_data[carc.label_plus_one +
+                                         fsa_info.scores_offset +
+                                         scores_stride * backward_state_scores_t];
+        backward_arc_scores_data[arc_idx012] = arc_begin_prob;
+      }
+    };
+    Eval(c_, step.arc_scores.NumElements(), lambda_set_arc_scores);
+    MaxPerSublist(step.arc_scores, -std::numeric_limits<float>::infinity(),
+                  &step.state_scores);
+  }
+
+  /*
+    Called after DoStep() is done for all time steps, returns the total scores
+    minus output_beam_.  (This is what it does in the absence of roundoff error
+    making the forward and backward tot_scores differ; when they do, it tries to
+    pick a looser beam if there is significant roundoff).
+   */
+  Array1<float> GetScoreCutoffs() {
+    std::vector<float*> forward_state_scores_vec(T_);
+    int32_t tot_states = a_fsas_.TotSize(1);
+    for (int32_t t = 0; t <= T_; t++) {
+      int32_t ft = steps_[t].forward_t;  // actually == t, but it's clearer.
+      forward_state_scores_vec[ft] = steps_[t].forward_state_scores.Data();
+    }
+    forward_state_scores_ = Array1<float*>(c_, forward_state_scores_vec);
+    float **forward_state_scores_data = forward_state_scores_.Data();
+
+    float *backward_state_scores_t0 = steps_[0].backward_state_scores.Data();
+    FsaInfo *fsa_info_data = fsa_info_.Data();
+    Array1<float> score_cutoffs(c_, num_fsas_);
+    float *score_cutoffs_data = score_cutoffs.Data();
+    float output_beam = output_beam_;
+    auto lambda_set_cutoffs = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
+      FsaInfo fsa_info = fsa_info_data[fsa_idx0];
+      float tot_score_start = backward_state_scores_t0[0],
+        tot_score_end = forward_state_scores_data[fsa_info.T]
+                 [fsa_info.state_offset + fsa_info.num_states - 1],
+        tot_score_avg = 0.5 * (tot_score_start + tot_score_end),
+        tot_score_diff = fabs(tot_score_end - tot_score_start);
+      // TODO(dan): remove the following after the code is tested.
+      K2_CHECK(tot_score_diff < 0.1);
+      // subtracting the difference in scores is to help make sure we don't completely prune
+      // away all states.
+      score_cutoffs_data[fsa_idx0] = tot_score_avg - tot_score_diff - output_beam;
+    };
+    Eval(c_, num_fsas_, lambda_set_cutoffs);
+    K2_LOG(INFO) << "Cutoffs = " << score_cutoffs;
+    return score_cutoffs;
+  }
 
 
 
