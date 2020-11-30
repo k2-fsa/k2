@@ -453,7 +453,10 @@ class ParallelRunnerActive {
   //            is less than the internal threshold (i.e. 10k for now).
   cudaStream_t NewStream(std::size_t num_work_items = 0);
 
-  // calling Finish() is equivalent to calling the destructor early.
+  // Calling Finish() is equivalent to calling the destructor early.
+  // But user should never call this directly if they use
+  // `With w(pr.NewStream())` and `w` is not destructed; instead, they should
+  // wait the destructor of `pr` to call this.
   void Finish();
 
   ~ParallelRunnerActive() { Finish(); }
