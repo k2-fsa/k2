@@ -232,14 +232,14 @@ class MultiGraphDenseIntersect {
           int32_t backward_state_idx = (2 * fsa_info.state_offset) + state_idx1,
                   forward_state_idx = backward_state_idx + fsa_info.num_states;
 
-          char keep = (char)0;
+          char keep = 0;
           if (t <= fsa_info.T) {
             // This time is within the bounds for this FSA..
             float forward_score = state_scores_data[t][forward_state_idx],
                   backward_score =
                       state_scores_data[fsa_info.T - t][backward_state_idx];
 
-            if (forward_score + backward_score > cutoff) keep = (char)1;
+            if (forward_score + backward_score > cutoff) keep = 1;
           }
           keep_state_data[i] = keep;
         });
@@ -386,7 +386,7 @@ class MultiGraphDenseIntersect {
                       states_old2new_data[unpruned_dest_state_idx],
                   ans_dest_state_idx012_next =
                       states_old2new_data[unpruned_dest_state_idx + 1];
-          char keep_this_arc = (char)0;
+          char keep_this_arc = 0;
 
           const float *forward_state_scores = state_scores_data[t_idx1];
           // 'next_backward_state_scores' is the state_scores vector for the
@@ -408,7 +408,7 @@ class MultiGraphDenseIntersect {
                 forward_state_scores[forward_src_state_idx] + arc_score +
                 next_backward_state_scores[backward_dest_state_idx];
             if (arc_forward_backward_score > cutoff) {
-              keep_this_arc = (char)1;
+              keep_this_arc = 1;
               Arc arc;
               arc.label = static_cast<int32_t>(carc.label_plus_one) - 1;
               // the idx12 into `ans`, which includes the 't' and 'state'
