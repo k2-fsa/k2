@@ -319,19 +319,18 @@ bool RaggedShape::Validate(bool print_warnings) const {
       const int32_t *row_splits_data = rsd.row_splits.Data();
       int32_t num_rows = rsd.row_splits.Dim() - 1;
 
-      auto lambda_check_row_splits =
-          [=] __host__ __device__(int32_t i) -> void {
-        int32_t this_idx = row_splits_data[i];
-        if (i == 0 && this_idx != 0) *ok_data = 0;
-        if (i < num_rows) {
-          int32_t next_idx = row_splits_data[i + 1];
-          if (next_idx < this_idx) *ok_data = 0;
-        } else {
-          K2_CHECK(i == num_rows);
-          *num_elems_data = this_idx;
-        }
-      };
-      Eval(c, num_rows + 1, lambda_check_row_splits);
+      K2_EVAL(
+          c, num_rows + 1, lambda_check_row_splits, (int32_t i)->void {
+            int32_t this_idx = row_splits_data[i];
+            if (i == 0 && this_idx != 0) *ok_data = 0;
+            if (i < num_rows) {
+              int32_t next_idx = row_splits_data[i + 1];
+              if (next_idx < this_idx) *ok_data = 0;
+            } else {
+              K2_CHECK(i == num_rows);
+              *num_elems_data = this_idx;
+            }
+          });
       meta = meta.To(GetCpuContext());
       num_elems = meta[1];
       int32_t ok = meta[0];
@@ -367,17 +366,17 @@ bool RaggedShape::Validate(bool print_warnings) const {
               num_rows = rsd.row_splits.Dim() - 1;
 
       K2_CHECK_EQ(num_elems, num_elems_from_row_ids);
-      auto lambda_check_row_ids = [=] __host__ __device__(int32_t i) -> void {
-        int32_t this_row = row_ids_data[i];
-        if (this_row < 0 || this_row >= num_rows ||
-            i < row_splits_data[this_row] ||
-            i >= row_splits_data[this_row + 1]) {
-          *ok_data = 0;
-          *bad_index_data = i;
-        }
-      };
       // TODO: could do this and the other one in separate streams.
-      Eval(c, num_elems, lambda_check_row_ids);
+      K2_EVAL(
+          c, num_elems, lambda_check_row_ids, (int32_t i)->void {
+            int32_t this_row = row_ids_data[i];
+            if (this_row < 0 || this_row >= num_rows ||
+                i < row_splits_data[this_row] ||
+                i >= row_splits_data[this_row + 1]) {
+              *ok_data = 0;
+              *bad_index_data = i;
+            }
+          });
       meta = meta.To(GetCpuContext());  // since we have 2 accesses, this should
                                         // be faster.
       int32_t ok = meta[0];

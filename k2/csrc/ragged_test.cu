@@ -1287,16 +1287,16 @@ void CheckResultOfIndex(const ContextPtr &context, RaggedShape shape,
   Array1<int32_t *> row_splits_ptrs = GetRowSplitsPtr(shape);
   int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
   // Set old_offsets
-  auto lambda_get_old_offsets = [=] __host__ __device__(int32_t i) {
-    // 0 <= i <= dim0
-    int32_t cur_offset = i;
-    for (int32_t axis = 0; axis < num_axes; axis++) {
-      old_offsets_acc(axis, i) = cur_offset;
-      if (axis + 1 == num_axes) return;
-      cur_offset = row_splits_ptrs_data[axis][cur_offset];
-    }
-  };
-  Eval(context, src_dim0 + 1, lambda_get_old_offsets);
+  K2_EVAL(
+      context, src_dim0 + 1, lambda_get_old_offsets, (int32_t i) {
+        // 0 <= i <= dim0
+        int32_t cur_offset = i;
+        for (int32_t axis = 0; axis < num_axes; axis++) {
+          old_offsets_acc(axis, i) = cur_offset;
+          if (axis + 1 == num_axes) return;
+          cur_offset = row_splits_ptrs_data[axis][cur_offset];
+        }
+      });
   old_offsets = old_offsets.To(cpu);
   auto cpu_offsets_acc = old_offsets.Accessor();
   shape = shape.To(cpu);

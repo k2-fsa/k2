@@ -38,15 +38,15 @@ FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
                 *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
                 *fsas_row_splits2_data = fsas.RowSplits(2).Data();
   int32_t *old2new_data = old2new_map.Data(), *num_arcs_data = num_arcs.Data();
-  auto lambda_set_old2new_and_num_arcs =
-      [=] __host__ __device__(int32_t new_state_idx01) -> void {
-    int32_t old_state_idx01 = order_data[new_state_idx01];
-    old2new_data[old_state_idx01] = new_state_idx01;
-    int32_t num_arcs = fsas_row_splits2_data[old_state_idx01 + 1] -
-                       fsas_row_splits2_data[old_state_idx01];
-    num_arcs_data[new_state_idx01] = num_arcs;
-  };
-  Eval(c, new_num_states, lambda_set_old2new_and_num_arcs);
+  K2_EVAL(
+      c, new_num_states, lambda_set_old2new_and_num_arcs,
+      (int32_t new_state_idx01)->void {
+        int32_t old_state_idx01 = order_data[new_state_idx01];
+        old2new_data[old_state_idx01] = new_state_idx01;
+        int32_t num_arcs = fsas_row_splits2_data[old_state_idx01 + 1] -
+                           fsas_row_splits2_data[old_state_idx01];
+        num_arcs_data[new_state_idx01] = num_arcs;
+      });
 
   Array1<int32_t> new_row_splits1, new_row_ids1;
   if (order.Dim() == fsas.TotSize(1)) {
@@ -81,31 +81,31 @@ FsaVec RenumberFsaVec(FsaVec &fsas, const Array1<int32_t> &order,
   // program will abort with an error.
   Array1<int32_t> all_dest_states_kept(c, 1, 1);
   int32_t *all_dest_states_kept_data = all_dest_states_kept.Data();
-  auto lambda_set_arcs = [=] __host__ __device__(int32_t ans_idx012) -> void {
-    int32_t ans_idx01 = ans_row_ids2_data[ans_idx012],  // state index
-        ans_idx01x = ans_row_splits2_data[ans_idx01],
-            ans_idx0 = ans_row_ids1_data[ans_idx01],  // FSA index
-        ans_idx0x = ans_row_splits1_data[ans_idx0],
-            ans_idx1 = ans_idx01 - ans_idx0x,
-            ans_idx2 = ans_idx012 - ans_idx01x,
-            fsas_idx01 = order_data[ans_idx01],
-            fsas_idx01x = fsas_row_splits2_data[fsas_idx01],
-            fsas_idx012 = fsas_idx01x + ans_idx2;
-    Arc arc = fsas_arcs[fsas_idx012];
-    int32_t fsas_src_idx1 = arc.src_state, fsas_dest_idx1 = arc.dest_state,
-            fsas_idx0x = fsas_row_splits1_data[ans_idx0],
-            fsas_src_idx01 = fsas_idx0x + fsas_src_idx1,
-            fsas_dest_idx01 = fsas_idx0x + fsas_dest_idx1;
-    K2_CHECK_EQ(old2new_data[fsas_src_idx01], ans_idx01);
-    int32_t ans_dest_idx01 = old2new_data[fsas_dest_idx01];
-    int32_t ans_dest_idx1 = ans_dest_idx01 - ans_idx0x;
-    arc.src_state = ans_idx1;
-    arc.dest_state = ans_dest_idx1;
-    ans_arcs_data[ans_idx012] = arc;
-    if (arc_map_data != nullptr) arc_map_data[ans_idx012] = fsas_idx012;
-    if (ans_dest_idx01 == -1) all_dest_states_kept_data[0] = 0;
-  };
-  Eval(c, ans_num_arcs, lambda_set_arcs);
+  K2_EVAL(
+      c, ans_num_arcs, lambda_set_arcs, (int32_t ans_idx012)->void {
+        int32_t ans_idx01 = ans_row_ids2_data[ans_idx012],  // state index
+            ans_idx01x = ans_row_splits2_data[ans_idx01],
+                ans_idx0 = ans_row_ids1_data[ans_idx01],  // FSA index
+            ans_idx0x = ans_row_splits1_data[ans_idx0],
+                ans_idx1 = ans_idx01 - ans_idx0x,
+                ans_idx2 = ans_idx012 - ans_idx01x,
+                fsas_idx01 = order_data[ans_idx01],
+                fsas_idx01x = fsas_row_splits2_data[fsas_idx01],
+                fsas_idx012 = fsas_idx01x + ans_idx2;
+        Arc arc = fsas_arcs[fsas_idx012];
+        int32_t fsas_src_idx1 = arc.src_state, fsas_dest_idx1 = arc.dest_state,
+                fsas_idx0x = fsas_row_splits1_data[ans_idx0],
+                fsas_src_idx01 = fsas_idx0x + fsas_src_idx1,
+                fsas_dest_idx01 = fsas_idx0x + fsas_dest_idx1;
+        K2_CHECK_EQ(old2new_data[fsas_src_idx01], ans_idx01);
+        int32_t ans_dest_idx01 = old2new_data[fsas_dest_idx01];
+        int32_t ans_dest_idx1 = ans_dest_idx01 - ans_idx0x;
+        arc.src_state = ans_idx1;
+        arc.dest_state = ans_dest_idx1;
+        ans_arcs_data[ans_idx012] = arc;
+        if (arc_map_data != nullptr) arc_map_data[ans_idx012] = fsas_idx012;
+        if (ans_dest_idx01 == -1) all_dest_states_kept_data[0] = 0;
+      });
   K2_CHECK_EQ(all_dest_states_kept[0], 1)
       << "The dest_state of an arc from a kept state is not present in `order`";
   return FsaVec(ans_shape, ans_arcs);
@@ -149,13 +149,13 @@ class TopSorter {
     const int32_t *state_in_degree_data = state_in_degree_.Data(),
                   *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
                   *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
-    auto lambda_set_keep = [=] __host__ __device__(int32_t fsas_idx01) -> void {
-      // Make this state a member of the initial batch if it has zero in-degree
-      // (note: this won't include final states, as we incremented their
-      // in-degree to avoid them appearing here.)
-      keep_data[fsas_idx01] = state_in_degree_data[fsas_idx01] == 0;
-    };
-    Eval(c_, num_states, lambda_set_keep);
+    K2_EVAL(
+        c_, num_states, lambda_set_keep, (int32_t fsas_idx01)->void {
+          // Make this state a member of the initial batch if it has zero
+          // in-degree (note: this won't include final states, as we incremented
+          // their in-degree to avoid them appearing here.)
+          keep_data[fsas_idx01] = state_in_degree_data[fsas_idx01] == 0;
+        });
 
     Array1<int32_t> first_iter_values = state_renumbering.New2Old();
     Array1<int32_t> first_iter_row_ids = fsas_.RowIds(1)[first_iter_values];
@@ -184,14 +184,14 @@ class TopSorter {
     int32_t *num_arcs_per_state_data = num_arcs_per_state.Data();
     const int32_t *states_data = cur_states.values.Data(),
                   *fsas_row_splits2_data = fsas_.RowSplits(2).Data();
-    auto lambda_set_arcs_per_state =
-        [=] __host__ __device__(int32_t states_idx01) {
+    K2_EVAL(
+        c_, cur_states.NumElements(), lambda_set_arcs_per_state,
+        (int32_t states_idx01) {
           int32_t fsas_idx01 = states_data[states_idx01],
                   num_arcs = fsas_row_splits2_data[fsas_idx01 + 1] -
                              fsas_row_splits2_data[fsas_idx01];
           num_arcs_per_state_data[states_idx01] = num_arcs;
-        };
-    Eval(c_, cur_states.NumElements(), lambda_set_arcs_per_state);
+        });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
     RaggedShape arcs_shape = ComposeRaggedShapes(
@@ -216,29 +216,29 @@ class TopSorter {
     char *keep_arc_data = arc_renumbering.Keep().Data();
     int32_t *state_in_degree_data = state_in_degree_.Data(),
             *next_iter_states_data = next_iter_states.Data();
-    auto lambda_set_arc_renumbering =
-        [=] __host__ __device__(int32_t arcs_idx012) -> void {
-      // note: the prefix `arcs_` means it is an idxXXX w.r.t. `arcs_shape`.
-      // the prefix `fsas_` means the variable is an idxXXX w.r.t. `fsas_`.
-      int32_t arcs_idx01 = arcs_row_ids2_data[arcs_idx012],
-              arcs_idx01x = arcs_row_splits2_data[arcs_idx01],
-              arcs_idx2 = arcs_idx012 - arcs_idx01x,
-              fsas_idx01 = states_data[arcs_idx01],  // a state index
-          fsas_idx01x = fsas_row_splits2_data[fsas_idx01],
-              fsas_idx012 = fsas_idx01x + arcs_idx2,
-              fsas_dest_state_idx01 = dest_states_data[fsas_idx012];
-      // if this arc is a self-loop, just ignore this arc as we have processed
-      // the dest_state (==src_state)
-      if (fsas_dest_state_idx01 == fsas_idx01) {
-        keep_arc_data[arcs_idx012] = 0;
-        return;
-      }
-      if ((keep_arc_data[arcs_idx012] = AtomicDecAndCompareZero(
-               state_in_degree_data + fsas_dest_state_idx01))) {
-        next_iter_states_data[arcs_idx012] = fsas_dest_state_idx01;
-      }
-    };
-    Eval(c_, arcs_shape.NumElements(), lambda_set_arc_renumbering);
+    K2_EVAL(
+        c_, arcs_shape.NumElements(), lambda_set_arc_renumbering,
+        (int32_t arcs_idx012)->void {
+          // note: the prefix `arcs_` means it is an idxXXX w.r.t. `arcs_shape`.
+          // the prefix `fsas_` means the variable is an idxXXX w.r.t. `fsas_`.
+          int32_t arcs_idx01 = arcs_row_ids2_data[arcs_idx012],
+                  arcs_idx01x = arcs_row_splits2_data[arcs_idx01],
+                  arcs_idx2 = arcs_idx012 - arcs_idx01x,
+                  fsas_idx01 = states_data[arcs_idx01],  // a state index
+              fsas_idx01x = fsas_row_splits2_data[fsas_idx01],
+                  fsas_idx012 = fsas_idx01x + arcs_idx2,
+                  fsas_dest_state_idx01 = dest_states_data[fsas_idx012];
+          // if this arc is a self-loop, just ignore this arc as we have
+          // processed the dest_state (==src_state)
+          if (fsas_dest_state_idx01 == fsas_idx01) {
+            keep_arc_data[arcs_idx012] = 0;
+            return;
+          }
+          if ((keep_arc_data[arcs_idx012] = AtomicDecAndCompareZero(
+                   state_in_degree_data + fsas_dest_state_idx01))) {
+            next_iter_states_data[arcs_idx012] = fsas_dest_state_idx01;
+          }
+        });
 
     Array1<int32_t> new2old_map = arc_renumbering.New2Old();
     if (new2old_map.Dim() == 0) {
@@ -252,14 +252,14 @@ class TopSorter {
                                                                // FSA index
     const int32_t *new2old_map_data = new2old_map.Data();
     int32_t *new_states_row_ids_data = new_states_row_ids.Data();
-    auto lambda_set_row_ids =
-        [=] __host__ __device__(int32_t new_state_idx) -> void {
-      int32_t arcs_idx012 = new2old_map_data[new_state_idx],
-              arcs_idx01 = arcs_row_ids2_data[arcs_idx012],  // state index
-          arcs_idx0 = arcs_row_ids1_data[arcs_idx01];        // FSA index
-      new_states_row_ids_data[new_state_idx] = arcs_idx0;
-    };
-    Eval(c_, new_states.Dim(), lambda_set_row_ids);
+    K2_EVAL(
+        c_, new_states.Dim(), lambda_set_row_ids,
+        (int32_t new_state_idx)->void {
+          int32_t arcs_idx012 = new2old_map_data[new_state_idx],
+                  arcs_idx01 = arcs_row_ids2_data[arcs_idx012],  // state index
+              arcs_idx0 = arcs_row_ids1_data[arcs_idx01];        // FSA index
+          new_states_row_ids_data[new_state_idx] = arcs_idx0;
+        });
 
     int32_t num_fsas = fsas_.Dim0();
     Array1<int32_t> new_states_row_splits(c_, num_fsas + 1);
@@ -286,13 +286,12 @@ class TopSorter {
     const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
     Array1<int32_t> has_final_state(c_, num_fsas + 1);
     int32_t *has_final_state_data = has_final_state.Data();
-    auto lambda_set_has_final_state =
-        [=] __host__ __device__(int32_t i) -> void {
-      int32_t split = fsas_row_splits1_data[i],
-              next_split = fsas_row_splits1_data[i + 1];
-      has_final_state_data[i] = (next_split > split);
-    };
-    Eval(c_, num_fsas, lambda_set_has_final_state);
+    K2_EVAL(
+        c_, num_fsas, lambda_set_has_final_state, (int32_t i)->void {
+          int32_t split = fsas_row_splits1_data[i],
+                  next_split = fsas_row_splits1_data[i + 1];
+          has_final_state_data[i] = (next_split > split);
+        });
     ExclusiveSum(has_final_state, &has_final_state);
 
     int32_t n = has_final_state[num_fsas];
@@ -300,16 +299,16 @@ class TopSorter {
         RaggedShape2(&has_final_state, nullptr, n), Array1<int32_t>(c_, n));
     int32_t *ans_data = ans->values.Data();
     const int32_t *ans_row_ids1_data = ans->RowIds(1).Data();
-    auto lambda_set_final_state = [=] __host__ __device__(int32_t i) -> void {
-      int32_t fsa_idx0 = ans_row_ids1_data[i],
-              final_state = fsas_row_splits1_data[fsa_idx0 + 1] - 1;
-      // If the following fails, it likely means an input FSA was invalid (e.g.
-      // had exactly one state, which is not allowed).  Either that, or a code
-      // error.
-      K2_CHECK_GT(final_state, fsas_row_splits1_data[fsa_idx0]);
-      ans_data[i] = final_state;
-    };
-    Eval(c_, n, lambda_set_final_state);
+    K2_EVAL(
+        c_, n, lambda_set_final_state, (int32_t i)->void {
+          int32_t fsa_idx0 = ans_row_ids1_data[i],
+                  final_state = fsas_row_splits1_data[fsa_idx0 + 1] - 1;
+          // If the following fails, it likely means an input FSA was invalid
+          // (e.g. had exactly one state, which is not allowed).  Either that,
+          // or a code error.
+          K2_CHECK_GT(final_state, fsas_row_splits1_data[fsa_idx0]);
+          ans_data[i] = final_state;
+        });
     return ans;
   }
 
@@ -330,13 +329,12 @@ class TopSorter {
     char *keep_arc_data = arc_renumbering.Keep().Data();
     const int32_t *dest_states_data = dest_states_.values.Data(),
                   *fsas_row_ids2_data = fsas_.RowIds(2).Data();
-    auto lambda_set_keep_arc =
-        [=] __host__ __device__(int32_t arc_idx012) -> void {
-      int32_t dest_state_idx01 = dest_states_data[arc_idx012],
-              src_state_idx01 = fsas_row_ids2_data[arc_idx012];
-      keep_arc_data[arc_idx012] = dest_state_idx01 != src_state_idx01;
-    };
-    Eval(c_, num_arcs, lambda_set_keep_arc);
+    K2_EVAL(
+        c_, num_arcs, lambda_set_keep_arc, (int32_t arc_idx012)->void {
+          int32_t dest_state_idx01 = dest_states_data[arc_idx012],
+                  src_state_idx01 = fsas_row_ids2_data[arc_idx012];
+          keep_arc_data[arc_idx012] = dest_state_idx01 != src_state_idx01;
+        });
     state_in_degree_ =
         GetCounts(dest_states_.values[arc_renumbering.New2Old()], num_states);
 
@@ -344,16 +342,16 @@ class TopSorter {
     const int32_t *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
 
     // Increment the in-degree of final-states
-    auto lambda_inc_final_state_in_degree =
-        [=] __host__ __device__(int32_t fsa_idx0) -> void {
-      int32_t this_idx01 = fsas_row_splits1_data[fsa_idx0],
-              next_idx01 = fsas_row_splits1_data[fsa_idx0 + 1];
-      if (next_idx01 > this_idx01) {
-        int32_t final_state = next_idx01 - 1;
-        state_in_degree_data[final_state] += 1;
-      };
-    };
-    Eval(c_, num_fsas, lambda_inc_final_state_in_degree);
+    K2_EVAL(
+        c_, num_fsas, lambda_inc_final_state_in_degree,
+        (int32_t fsa_idx0)->void {
+          int32_t this_idx01 = fsas_row_splits1_data[fsa_idx0],
+                  next_idx01 = fsas_row_splits1_data[fsa_idx0 + 1];
+          if (next_idx01 > this_idx01) {
+            int32_t final_state = next_idx01 - 1;
+            state_in_degree_data[final_state] += 1;
+          };
+        });
   }
 
   /* Does the main work of top-sorting and returns the resulting FSAs.
@@ -380,21 +378,22 @@ class TopSorter {
                     *fsas_row_splits1_data = fsas_.RowSplits(1).Data();
       Array1<int32_t> start_state_present(c_, 1, 1);
       int32_t *start_state_present_data = start_state_present.Data();
-      auto lambda_set_start_state_present =
-          [=] __host__ __device__(int32_t fsa_idx0) -> void {
-        int32_t start_state_idx0x = fsas_row_splits1_data[fsa_idx0],
-                next_start_state_idx0x = fsas_row_splits1_data[fsa_idx0 + 1];
-        if (next_start_state_idx0x > start_state_idx0x) {  // non-empty Fsa
-          // `first_state_idx01` is the 1st state in the first batch of this fsa
-          // (it must be the start state of this Fsa according to our
-          // implementation of `GetFirstBatch`
-          int32_t first_state_idx01 =
-              first_batch_states_data[first_batch_row_splits1_data[fsa_idx0]];
-          if (first_state_idx01 != start_state_idx0x)
-            start_state_present_data[0] = 0;
-        }
-      };
-      Eval(c_, num_fsas, lambda_set_start_state_present);
+      K2_EVAL(
+          c_, num_fsas, lambda_set_start_state_present,
+          (int32_t fsa_idx0)->void {
+            int32_t start_state_idx0x = fsas_row_splits1_data[fsa_idx0],
+                    next_start_state_idx0x =
+                        fsas_row_splits1_data[fsa_idx0 + 1];
+            if (next_start_state_idx0x > start_state_idx0x) {  // non-empty Fsa
+              // `first_state_idx01` is the 1st state in the first batch of this
+              // fsa (it must be the start state of this Fsa according to our
+              // implementation of `GetFirstBatch`
+              int32_t first_state_idx01 = first_batch_states_data
+                  [first_batch_row_splits1_data[fsa_idx0]];
+              if (first_state_idx01 != start_state_idx0x)
+                start_state_present_data[0] = 0;
+            }
+          });
       K2_CHECK_EQ(start_state_present[0], 1)
           << "Our current implementation requires that the start state in each "
              "Fsa must be present in the first batch";

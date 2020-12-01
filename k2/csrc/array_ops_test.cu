@@ -25,6 +25,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/context.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
@@ -251,10 +252,9 @@ void TestExclusiveSumArray1(int32_t num_elem) {
       int32_t num_bytes = num_elem * sizeof(S *);
       RegionPtr region = NewRegion(context, num_bytes);
       S **region_data = region->GetData<S *>();
-      auto lambda_set_values = [=] __host__ __device__(int32_t i) -> void {
-        region_data[i] = &src_data[i];
-      };
-      Eval(context, num_elem, lambda_set_values);
+      K2_EVAL(
+          context, num_elem, lambda_set_values,
+          (int32_t i)->void { region_data[i] = &src_data[i]; });
       // not src_ptr.Dim() == src_dim == num_elem - 1
       Array1<const S *> src_ptr(src_dim, region, 0);
       Array1<S> dest(context, num_elem);
@@ -361,11 +361,10 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
       int32_t num_bytes = rows * stride0 * sizeof(T);
       RegionPtr region = NewRegion(context, num_bytes);
       T *region_data = region->GetData<T>();
-      auto lambda_set_elems = [=] __host__ __device__(int32_t i,
-                                                      int32_t j) -> void {
-        region_data[i * stride0 + j] = src_data[i * cols + j];
-      };
-      Eval2(context, rows, cols, lambda_set_elems);
+      K2_EVAL2(
+          context, rows, cols, lambda_set_elems, (int32_t i, int32_t j)->void {
+            region_data[i * stride0 + j] = src_data[i * cols + j];
+          });
       Array2<T> src(rows, cols, stride0, 0, region);
       ExclusiveSum(src, &src, axis);
       CheckExclusiveSumArray2Result(data, src, axis);
@@ -397,11 +396,10 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
       int32_t num_bytes = rows * stride0 * sizeof(T);
       RegionPtr region = NewRegion(context, num_bytes);
       T *region_data = region->GetData<T>();
-      auto lambda_set_elems = [=] __host__ __device__(int32_t i,
-                                                      int32_t j) -> void {
-        region_data[i * stride0 + j] = src_data[i * cols + j];
-      };
-      Eval2(context, rows, cols, lambda_set_elems);
+      K2_EVAL2(
+          context, rows, cols, lambda_set_elems, (int32_t i, int32_t j)->void {
+            region_data[i * stride0 + j] = src_data[i * cols + j];
+          });
       Array2<T> src(rows, cols, stride0, 0, region);
       Array2<T> dest(context, rows, cols);
       ExclusiveSum(src, &dest, axis);
@@ -420,11 +418,10 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
       int32_t num_bytes = (rows * cols + 1) * sizeof(T);
       RegionPtr region = NewRegion(context, num_bytes);
       T *region_data = region->GetData<T>();
-      auto lambda_set_elems = [=] __host__ __device__(int32_t i,
-                                                      int32_t j) -> void {
-        region_data[i * cols + j] = src_data[i * cols + j];
-      };
-      Eval2(context, rows, cols, lambda_set_elems);
+      K2_EVAL2(
+          context, rows, cols, lambda_set_elems, (int32_t i, int32_t j)->void {
+            region_data[i * cols + j] = src_data[i * cols + j];
+          });
       Array2<T> src(rows, cols, cols, 0, region);
       {
         // dest.stride0 == dest.cols
@@ -469,11 +466,10 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
       int32_t num_bytes = rows * stride0 * sizeof(T);
       RegionPtr region = NewRegion(context, num_bytes);
       T *region_data = region->GetData<T>();
-      auto lambda_set_elems = [=] __host__ __device__(int32_t i,
-                                                      int32_t j) -> void {
-        region_data[i * stride0 + j] = src_data[i * cols + j];
-      };
-      Eval2(context, rows, cols, lambda_set_elems);
+      K2_EVAL2(
+          context, rows, cols, lambda_set_elems, (int32_t i, int32_t j)->void {
+            region_data[i * stride0 + j] = src_data[i * cols + j];
+          });
       Array2<T> src(rows, cols, stride0, 0, region);
       ExclusiveSum(src, &src, axis);
       CheckExclusiveSumArray2Result(data, src, axis);
@@ -504,11 +500,10 @@ void TestExclusiveSumArray2(int32_t rows, int32_t cols) {
       int32_t num_bytes = (rows * cols + 1) * sizeof(T);
       RegionPtr region = NewRegion(context, num_bytes);
       T *region_data = region->GetData<T>();
-      auto lambda_set_elems = [=] __host__ __device__(int32_t i,
-                                                      int32_t j) -> void {
-        region_data[i * cols + j] = src_data[i * cols + j];
-      };
-      Eval2(context, rows, cols, lambda_set_elems);
+      K2_EVAL2(
+          context, rows, cols, lambda_set_elems, (int32_t i, int32_t j)->void {
+            region_data[i * cols + j] = src_data[i * cols + j];
+          });
       Array2<T> src(rows, cols, cols, 0, region);
       {
         // dest.stride0 == dest.cols

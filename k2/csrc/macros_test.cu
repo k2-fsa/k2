@@ -38,6 +38,23 @@ static void TestEval() {
   }
 }
 
+static void TestEval2() {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    Array1<int32_t> array1 = Range(c, 6, 0);
+    Array2<int32_t> array(array1, 2, 3);
+    int32_t *array_data = array.Data();
+    int32_t elem_stride0 = array.ElemStride0();
+    ContextPtr &context = array.Context();
+    K2_EVAL2(
+        context, array.Dim0(), array.Dim1(), lambda_inc,
+        (int32_t i, int32_t j)->void {
+          array_data[i * elem_stride0 + j] += 1;
+        });
+    CheckArrayData(array.Flatten(), std::vector<int32_t>{1, 2, 3, 4, 5, 6});
+  }
+}
+
 TEST(Macros, Eval) { TestEval(); }
+TEST(Macros, Eval2) { TestEval2(); }
 
 }  // namespace k2

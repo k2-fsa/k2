@@ -21,6 +21,7 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/macros.h"
 #include "k2/csrc/tensor.h"
 
 namespace k2 {
@@ -33,10 +34,9 @@ void CheckArrayEqual(const Array1<T> &a, const Array1<T> &b) {
   const T *da = a.Data();
   const T *db = b.Data();
   auto n = a.Dim();
-  auto compare = [=] __host__ __device__(int32_t i) -> void {
-    K2_CHECK_EQ(da[i], db[i]);
-  };
-  Eval(a.Context(), n, compare);
+  K2_EVAL(
+      a.Context(), n, compare,
+      (int32_t i)->void { K2_CHECK_EQ(da[i], db[i]); });
 }
 
 template <typename T>

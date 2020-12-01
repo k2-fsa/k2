@@ -149,56 +149,55 @@ void RowSplitsToRowIds(ContextPtr c, int32_t num_rows,
       // asymptotic time complexity (assuming all kernels run in parallel),
       // specifically: O(log(largest(row_splits[i+1]-row_splits[i])))
 
-      auto lambda_init_minus_one = [=] __host__ __device__(int32_t i) {
-        row_ids[i] = -1;
-      };
-      Eval(c, num_elems + 1, lambda_init_minus_one);
+      K2_EVAL(
+          c, num_elems + 1, lambda_init_minus_one,
+          (int32_t i) { row_ids[i] = -1; });
 
-      auto lambda_phase_one = [=] __host__ __device__(int32_t i) {
-        int32_t this_row_split = row_splits[i],
-                next_row_split =
-                    (i < num_rows ? row_splits[i + 1] : this_row_split + 1);
-        if (this_row_split < next_row_split) row_ids[this_row_split] = i;
-        // we have to fill in row_ids[this_row_split],
-        // row_ids[this_row_split+1]... row_ids[next_row_split-1] with the same
-        // value but that could be a long loop. Instead we write at
-        // this_row_split and all indexes this_row_split < i < next_row_split
-        // such that i is the result of rounding up this_row_split to
-        // (something)*2^n, for n = 1, 2, 3, ... this will take time logarithmic
-        // in (next_row_split - this_row_split). we can then fill in the gaps
-        // with a logarithmic-time loop, by looking for a value that's not (-1)
-        // by rounding the current index down to successively higher powers
-        // of 2.
-        for (int32_t power = 0, j = this_row_split;
-             j + (1 << power) < next_row_split; power++) {
-          if (j & (1 << power)) {
-            j += (1 << power);
-            // we know that j is now < next_row_split, because we checked "j +
-            // (1<<power) < next_row_split" in the loop condition.
-            // Note, we don't want a loop-within-a-loop because of how SIMT
-            // works...
-            row_ids[j] = i;
-          }
-        }
-      };
-      Eval(c, num_elems + 1, lambda_phase_one);
+      K2_EVAL(
+          c, num_elems + 1, lambda_phase_one, (int32_t i) {
+            int32_t this_row_split = row_splits[i],
+                    next_row_split =
+                        (i < num_rows ? row_splits[i + 1] : this_row_split + 1);
+            if (this_row_split < next_row_split) row_ids[this_row_split] = i;
+            // we have to fill in row_ids[this_row_split],
+            // row_ids[this_row_split+1]... row_ids[next_row_split-1] with the
+            // same value but that could be a long loop. Instead we write at
+            // this_row_split and all indexes this_row_split < i <
+            // next_row_split such that i is the result of rounding up
+            // this_row_split to (something)*2^n, for n = 1, 2, 3, ... this will
+            // take time logarithmic in (next_row_split - this_row_split). we
+            // can then fill in the gaps with a logarithmic-time loop, by
+            // looking for a value that's not (-1) by rounding the current index
+            // down to successively higher powers of 2.
+            for (int32_t power = 0, j = this_row_split;
+                 j + (1 << power) < next_row_split; power++) {
+              if (j & (1 << power)) {
+                j += (1 << power);
+                // we know that j is now < next_row_split, because we checked "j
+                // + (1<<power) < next_row_split" in the loop condition. Note,
+                // we don't want a loop-within-a-loop because of how SIMT
+                // works...
+                row_ids[j] = i;
+              }
+            }
+          });
 
-      auto lambda_phase_two = [=] __host__ __device__(int32_t j) {
-        int32_t row_index = row_ids[j];
-        if (row_index != -1) return;
-        int32_t power = 0, j2 = j;
-        for (; row_index != -1; power++) {
-          if (j2 & (1 << power)) {
-            j2 -= (1 << power);
-            row_index = row_ids[j2];
-          }
-          assert(power < 31);
-        }
-        row_ids[j] = row_ids[j2];
-      };
       // could do the next line for num_elems+1, but the element at `num_elems`
       // will already be set.
-      Eval(c, num_elems, lambda_phase_two);
+      K2_EVAL(
+          c, num_elems, lambda_phase_two, (int32_t j) {
+            int32_t row_index = row_ids[j];
+            if (row_index != -1) return;
+            int32_t power = 0, j2 = j;
+            for (; row_index != -1; power++) {
+              if (j2 & (1 << power)) {
+                j2 -= (1 << power);
+                row_index = row_ids[j2];
+              }
+              assert(power < 31);
+            }
+            row_ids[j] = row_ids[j2];
+          });
     }
   }
 }
@@ -273,10 +272,8 @@ void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
   NVTX_RANGE(K2_FUNC);
   // process corner case first
   if (num_elems == 0) {
-    auto lambda_set_values = [=] __host__ __device__(int32_t i) {
-      row_splits[i] = 0;
-    };
-    Eval(c, num_rows + 1, lambda_set_values);
+    K2_EVAL(
+        c, num_rows + 1, lambda_set_values, (int32_t i) { row_splits[i] = 0; });
     return;
   }
   DeviceType d = c->GetDeviceType();
@@ -298,7 +295,7 @@ void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
   } else {
     K2_CHECK_EQ(d, kCuda);
     if (no_empty_rows) {
-      auto lambda_simple = [=] __host__ __device__(int32_t i) {
+      auto lambda_simple = [=] __device__(int32_t i) {
         int32_t this_row = row_ids[i], prev_row;
         if (i > 0) {
           // (normal case)
@@ -314,7 +311,7 @@ void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
           row_splits[this_row] = i;
         }
       };
-      Eval(c, num_elems, lambda_simple);
+      EvalDevice(c, num_elems, lambda_simple);
       return;
     } else {
       // By doing "+ 2" instead of "+ 1" we increase the minimum number of

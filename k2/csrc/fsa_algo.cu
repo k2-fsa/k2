@@ -293,17 +293,17 @@ Fsa LinearFsa(const Array1<int32_t> &symbols) {
   Array1<Arc> arcs(c, num_arcs);
   Arc *arcs_data = arcs.Data();
   const int32_t *symbols_data = symbols.Data();
-  auto lambda_set_arcs = [=] __host__ __device__(int32_t arc_idx01) -> void {
-    int32_t src_state = arc_idx01, dest_state = arc_idx01 + 1,
-            // -1 == kFinalSymbol
-        symbol = (arc_idx01 < n ? symbols_data[arc_idx01] : -1);
-    if (arc_idx01 < n) K2_CHECK_NE(symbol, -1);
-    float score = 0.0;
-    arcs_data[arc_idx01] = Arc(src_state, dest_state, symbol, score);
-    // the final state has no leaving arcs.
-    if (arc_idx01 == 0) row_splits1_data[num_states] = num_arcs;
-  };
-  Eval(c, num_arcs, lambda_set_arcs);
+  K2_EVAL(
+      c, num_arcs, lambda_set_arcs, (int32_t arc_idx01)->void {
+        int32_t src_state = arc_idx01, dest_state = arc_idx01 + 1,
+                // -1 == kFinalSymbol
+            symbol = (arc_idx01 < n ? symbols_data[arc_idx01] : -1);
+        if (arc_idx01 < n) K2_CHECK_NE(symbol, -1);
+        float score = 0.0;
+        arcs_data[arc_idx01] = Arc(src_state, dest_state, symbol, score);
+        // the final state has no leaving arcs.
+        if (arc_idx01 == 0) row_splits1_data[num_states] = num_arcs;
+      });
   return Ragged<Arc>(RaggedShape2(&row_splits1, &row_ids1, num_arcs), arcs);
 }
 
@@ -329,41 +329,43 @@ FsaVec LinearFsas(Ragged<int32_t> &symbols) {
                 *symbols_data = symbols.values.Data();
   Array1<Arc> arcs(c, num_arcs);
   Arc *arcs_data = arcs.Data();
-  auto lambda = [=] __host__ __device__(int32_t state_idx01) -> void {
-    int32_t fsa_idx0 = row_ids1_data[state_idx01],
-            state_idx0x = row_splits1_data[fsa_idx0],
-            next_state_idx0x = row_splits1_data[fsa_idx0 + 1],
-            idx1 = state_idx01 - state_idx0x;
+  K2_EVAL(
+      c, num_states, lambda, (int32_t state_idx01)->void {
+        int32_t fsa_idx0 = row_ids1_data[state_idx01],
+                state_idx0x = row_splits1_data[fsa_idx0],
+                next_state_idx0x = row_splits1_data[fsa_idx0 + 1],
+                idx1 = state_idx01 - state_idx0x;
 
-    // the following works because each FSA has one fewer arcs than states.
-    int32_t arc_idx0xx = state_idx0x - fsa_idx0,
-            next_arc_idx0xx = next_state_idx0x - (fsa_idx0 + 1),
-            // the following may look a bit wrong.. here, the idx1 is the same
-            // as the idx12 if the arc exists, because each state has one arc
-            // leaving it (except the last state).
-        arc_idx012 = arc_idx0xx + idx1;
-    // the following works because each FSA has one fewer symbols than arcs
-    // (however it doesn't work for the last arc of each FSA; we check below.)
-    int32_t symbol_idx01 = arc_idx012 - fsa_idx0;
-    if (arc_idx012 < next_arc_idx0xx) {
-      int32_t src_state = idx1, dest_state = idx1 + 1,
-              symbol =
-                  (arc_idx012 + 1 < next_arc_idx0xx ? symbols_data[symbol_idx01]
-                                                    : -1);  // kFinalSymbol
-      float score = 0.0;
-      arcs_data[arc_idx012] = Arc(src_state, dest_state, symbol, score);
-      row_ids2_data[arc_idx012] = state_idx01;
-    } else {
-      // The following ensures that the last element of row_splits1_data
-      // (i.e. row_splits1[num_states]) is set to num_arcs.  It also writes
-      // something unnecessary for the last state of each FSA but the last one,
-      // which will cause 2 threads to write the same item to the same location.
-      // Note that there is no arc with index `arc_idx01`, if you reach here.
-      row_splits2_data[state_idx01 + 1] = arc_idx012;
-    }
-    row_splits2_data[state_idx01] = arc_idx012;
-  };
-  Eval(c, num_states, lambda);
+        // the following works because each FSA has one fewer arcs than states.
+        int32_t arc_idx0xx = state_idx0x - fsa_idx0,
+                next_arc_idx0xx = next_state_idx0x - (fsa_idx0 + 1),
+                // the following may look a bit wrong.. here, the idx1 is the
+                // same as the idx12 if the arc exists, because each state has
+                // one arc leaving it (except the last state).
+            arc_idx012 = arc_idx0xx + idx1;
+        // the following works because each FSA has one fewer symbols than arcs
+        // (however it doesn't work for the last arc of each FSA; we check
+        // below.)
+        int32_t symbol_idx01 = arc_idx012 - fsa_idx0;
+        if (arc_idx012 < next_arc_idx0xx) {
+          int32_t src_state = idx1, dest_state = idx1 + 1,
+                  symbol = (arc_idx012 + 1 < next_arc_idx0xx
+                                ? symbols_data[symbol_idx01]
+                                : -1);  // kFinalSymbol
+          float score = 0.0;
+          arcs_data[arc_idx012] = Arc(src_state, dest_state, symbol, score);
+          row_ids2_data[arc_idx012] = state_idx01;
+        } else {
+          // The following ensures that the last element of row_splits1_data
+          // (i.e. row_splits1[num_states]) is set to num_arcs.  It also writes
+          // something unnecessary for the last state of each FSA but the last
+          // one, which will cause 2 threads to write the same item to the same
+          // location. Note that there is no arc with index `arc_idx01`, if you
+          // reach here.
+          row_splits2_data[state_idx01 + 1] = arc_idx012;
+        }
+        row_splits2_data[state_idx01] = arc_idx012;
+      });
 
   return Ragged<Arc>(
       RaggedShape3(&states_shape.RowSplits(1), &states_shape.RowIds(1),
@@ -434,32 +436,32 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
   Array1<int32_t> state_best_arc_index_array(context, num_states, -1);
   int32_t *state_best_arc_index_array_data = state_best_arc_index_array.Data();
 
-  auto lambda_set_num_best_arcs = [=] __host__ __device__(int32_t fsas_idx0) {
-    int32_t state_idx01 = row_splits1_data[fsas_idx0];
-    int32_t state_idx01_next = row_splits1_data[fsas_idx0 + 1];
+  K2_EVAL(
+      context, num_fsas, lambda_set_num_best_arcs, (int32_t fsas_idx0) {
+        int32_t state_idx01 = row_splits1_data[fsas_idx0];
+        int32_t state_idx01_next = row_splits1_data[fsas_idx0 + 1];
 
-    if (state_idx01_next == state_idx01) {
-      // this fsa is empty, so there is no best path available
-      num_best_arcs_per_fsa_data[fsas_idx0] = 0;
-      return;
-    }
+        if (state_idx01_next == state_idx01) {
+          // this fsa is empty, so there is no best path available
+          num_best_arcs_per_fsa_data[fsas_idx0] = 0;
+          return;
+        }
 
-    int32_t final_state_idx01 = state_idx01_next - 1;
-    int32_t cur_state = final_state_idx01;
-    int32_t cur_index = entering_arcs_data[cur_state];
-    int32_t num_arcs = 0;
-    int32_t *p = state_best_arc_index_array_data + final_state_idx01;
-    while (cur_index != -1) {
-      *p = cur_index;
-      --p;
+        int32_t final_state_idx01 = state_idx01_next - 1;
+        int32_t cur_state = final_state_idx01;
+        int32_t cur_index = entering_arcs_data[cur_state];
+        int32_t num_arcs = 0;
+        int32_t *p = state_best_arc_index_array_data + final_state_idx01;
+        while (cur_index != -1) {
+          *p = cur_index;
+          --p;
 
-      cur_state = arcs_data[cur_index].src_state + state_idx01;
-      cur_index = entering_arcs_data[cur_state];
-      ++num_arcs;
-    }
-    num_best_arcs_per_fsa_data[fsas_idx0] = num_arcs;
-  };
-  Eval(context, num_fsas, lambda_set_num_best_arcs);
+          cur_state = arcs_data[cur_index].src_state + state_idx01;
+          cur_index = entering_arcs_data[cur_state];
+          ++num_arcs;
+        }
+        num_best_arcs_per_fsa_data[fsas_idx0] = num_arcs;
+      });
   ExclusiveSum(num_best_arcs_per_fsa, &num_best_arcs_per_fsa);
 
   RaggedShape shape = RaggedShape2(&num_best_arcs_per_fsa, nullptr, -1);
@@ -470,23 +472,24 @@ Ragged<int32_t> ShortestPath(FsaVec &fsas,
   Array1<int32_t> best_path_arc_indexes(context, shape.NumElements());
   int32_t *best_path_arc_indexes_data = best_path_arc_indexes.Data();
 
-  auto lambda_set_best_arcs = [=] __host__ __device__(int32_t ans_idx01) {
-    int32_t fsa_idx0 = shape_row_ids1_data[ans_idx01];
-    int32_t ans_idx0x = shape_row_splits1_data[fsa_idx0];
-    int32_t ans_idx1 = ans_idx01 - ans_idx0x;
+  K2_EVAL(
+      context, shape.NumElements(), lambda_set_best_arcs, (int32_t ans_idx01) {
+        int32_t fsa_idx0 = shape_row_ids1_data[ans_idx01];
+        int32_t ans_idx0x = shape_row_splits1_data[fsa_idx0];
+        int32_t ans_idx1 = ans_idx01 - ans_idx0x;
 
-    int32_t num_arcs_this_fsa = num_best_arcs_per_fsa_data[fsa_idx0 + 1] -
-                                num_best_arcs_per_fsa_data[fsa_idx0];
-    if (num_arcs_this_fsa == 0) return;
+        int32_t num_arcs_this_fsa = num_best_arcs_per_fsa_data[fsa_idx0 + 1] -
+                                    num_best_arcs_per_fsa_data[fsa_idx0];
+        if (num_arcs_this_fsa == 0) return;
 
-    int32_t final_state_idx01_this_fsa = row_splits1_data[fsa_idx0 + 1] - 1;
+        int32_t final_state_idx01_this_fsa = row_splits1_data[fsa_idx0 + 1] - 1;
 
-    const int32_t *p_start = state_best_arc_index_array_data +
-                             final_state_idx01_this_fsa - num_arcs_this_fsa + 1;
+        const int32_t *p_start = state_best_arc_index_array_data +
+                                 final_state_idx01_this_fsa -
+                                 num_arcs_this_fsa + 1;
 
-    best_path_arc_indexes_data[ans_idx01] = p_start[ans_idx1];
-  };
-  Eval(context, shape.NumElements(), lambda_set_best_arcs);
+        best_path_arc_indexes_data[ans_idx01] = p_start[ans_idx1];
+      });
 
   Ragged<int32_t> ans(shape, best_path_arc_indexes);
   return ans;
@@ -524,36 +527,35 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     ParallelRunner pr(c);
     {
       With w(pr.NewStream());
-      auto lambda_copy_data =
-          [=] __host__ __device__(int32_t arc_idx01) -> void {
-        int32_t state_idx0 = old_row_ids1_data[arc_idx01],
-                new_arc_idx01 = arc_idx01 + 1 + state_idx0;
-        // the "+1" above is because we put the self-loop first.
-        new_row_ids1_data[new_arc_idx01] = state_idx0;
-        new_arcs_data[new_arc_idx01] = old_arcs_data[arc_idx01];
-        if (arc_map_data) arc_map_data[new_arc_idx01] = arc_idx01;
-      };
-      Eval(c, old_num_arcs, lambda_copy_data);
+      K2_EVAL(
+          c, old_num_arcs, lambda_copy_data, (int32_t arc_idx01)->void {
+            int32_t state_idx0 = old_row_ids1_data[arc_idx01],
+                    new_arc_idx01 = arc_idx01 + 1 + state_idx0;
+            // the "+1" above is because we put the self-loop first.
+            new_row_ids1_data[new_arc_idx01] = state_idx0;
+            new_arcs_data[new_arc_idx01] = old_arcs_data[arc_idx01];
+            if (arc_map_data) arc_map_data[new_arc_idx01] = arc_idx01;
+          });
     }
     {
       With w(pr.NewStream());
-      auto lambda_set_new_data =
-          [=] __host__ __device__(int32_t state_idx0) -> void {
-        int32_t old_arc_idx0x = old_row_splits1_data[state_idx0],
-                new_arc_idx0x = old_arc_idx0x + state_idx0;
-        new_row_splits1_data[state_idx0] = new_arc_idx0x;
-        if (state_idx0 + 1 < num_states) {        // not final-state
-          int32_t new_arc_idx01 = new_arc_idx0x;  // the 1st arc is the loop
-          new_row_ids1_data[new_arc_idx01] = state_idx0;
-          new_arcs_data[new_arc_idx01] = Arc(state_idx0, state_idx0, 0, 0.0);
-          if (arc_map_data) arc_map_data[new_arc_idx01] = -1;
-        } else {
-          // Note: if num_states was zero we would have returned above, so we
-          // don't have to worry about empty FSAs.
-          new_row_splits1_data[num_states] = new_arc_idx0x;
-        }
-      };
-      Eval(c, num_states, lambda_set_new_data);
+      K2_EVAL(
+          c, num_states, lambda_set_new_data, (int32_t state_idx0)->void {
+            int32_t old_arc_idx0x = old_row_splits1_data[state_idx0],
+                    new_arc_idx0x = old_arc_idx0x + state_idx0;
+            new_row_splits1_data[state_idx0] = new_arc_idx0x;
+            if (state_idx0 + 1 < num_states) {        // not final-state
+              int32_t new_arc_idx01 = new_arc_idx0x;  // the 1st arc is the loop
+              new_row_ids1_data[new_arc_idx01] = state_idx0;
+              new_arcs_data[new_arc_idx01] =
+                  Arc(state_idx0, state_idx0, 0, 0.0);
+              if (arc_map_data) arc_map_data[new_arc_idx01] = -1;
+            } else {
+              // Note: if num_states was zero we would have returned above, so
+              // we don't have to worry about empty FSAs.
+              new_row_splits1_data[num_states] = new_arc_idx0x;
+            }
+          });
     }
     pr.Finish();
     *dest = Ragged<Arc>(
@@ -570,12 +572,11 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     }
     Array1<int32_t> fsa_nonempty(c, num_fsas + 1);
     int32_t *fsa_nonempty_data = fsa_nonempty.Data();
-    auto lambda_set_fsa_nonempty =
-        [=] __host__ __device__(int32_t fsa_idx0) -> void {
-      fsa_nonempty_data[fsa_idx0] =
-          (old_row_splits1_data[fsa_idx0 + 1] > old_row_splits1_data[fsa_idx0]);
-    };
-    Eval(c, num_fsas, lambda_set_fsa_nonempty);
+    K2_EVAL(
+        c, num_fsas, lambda_set_fsa_nonempty, (int32_t fsa_idx0)->void {
+          fsa_nonempty_data[fsa_idx0] = (old_row_splits1_data[fsa_idx0 + 1] >
+                                         old_row_splits1_data[fsa_idx0]);
+        });
     ExclusiveSum(fsa_nonempty, &fsa_nonempty);
     const int32_t *old_row_splits2_data = src.RowSplits(2).Data(),
                   *old_row_ids2_data = src.RowIds(2).Data();
@@ -601,47 +602,49 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
     ParallelRunner pr(c);
     {
       With w(pr.NewStream());
-      auto lambda_copy_data =
-          [=] __host__ __device__(int32_t arc_idx012) -> void {
-        int32_t state_idx01 = old_row_ids2_data[arc_idx012],
-                fsa_idx0 = old_row_ids1_data[state_idx01],
-                fsa_idx0_mod = fsa_idx0_mod_data[fsa_idx0],
-                new_arc_idx012 = arc_idx012 + 1 + state_idx01 - fsa_idx0_mod;
-        // The "+1" above is because we put the self-loop first.  The
-        // "-fsa_idx0_mod" is because final-states don't get a self-loop.
-        new_row_ids2_data[new_arc_idx012] = state_idx01;
-        new_arcs_data[new_arc_idx012] = old_arcs_data[arc_idx012];
-        if (arc_map_data) arc_map_data[new_arc_idx012] = arc_idx012;
-      };
-      Eval(c, old_num_arcs, lambda_copy_data);
+      K2_EVAL(
+          c, old_num_arcs, lambda_copy_data, (int32_t arc_idx012)->void {
+            int32_t state_idx01 = old_row_ids2_data[arc_idx012],
+                    fsa_idx0 = old_row_ids1_data[state_idx01],
+                    fsa_idx0_mod = fsa_idx0_mod_data[fsa_idx0],
+                    new_arc_idx012 =
+                        arc_idx012 + 1 + state_idx01 - fsa_idx0_mod;
+            // The "+1" above is because we put the self-loop first.  The
+            // "-fsa_idx0_mod" is because final-states don't get a self-loop.
+            new_row_ids2_data[new_arc_idx012] = state_idx01;
+            new_arcs_data[new_arc_idx012] = old_arcs_data[arc_idx012];
+            if (arc_map_data) arc_map_data[new_arc_idx012] = arc_idx012;
+          });
     }
     {
       With w(pr.NewStream());
-      auto lambda_set_new_data =
-          [=] __host__ __device__(int32_t state_idx01) -> void {
-        int32_t fsa_idx0 = old_row_ids1_data[state_idx01],
-                fsa_idx0_mod = fsa_idx0_mod_data[fsa_idx0],
-                state_idx0x = old_row_splits1_data[fsa_idx0],
-                next_state_idx0x = old_row_splits1_data[fsa_idx0 + 1],
-                old_arc_idx01x = old_row_splits2_data[state_idx01];
-        // Below the "+ state_idx01" is because each state gets a self-loop, and
-        // the "- fsa_idx0_mod" is because final-states don't get a self-loop.
-        int32_t new_arc_idx01x = old_arc_idx01x + state_idx01 - fsa_idx0_mod;
-        // The self-loop arc is the first arc:
-        int32_t new_arc_idx012 = new_arc_idx01x;
-        new_row_splits2_data[state_idx01] = new_arc_idx01x;
-        if (state_idx01 + 1 < next_state_idx0x) {  // not final-state
-          new_row_ids2_data[new_arc_idx012] = state_idx01;
-          int32_t state_idx1 = state_idx01 - state_idx0x;
-          new_arcs_data[new_arc_idx012] = Arc(state_idx1, state_idx1, 0, 0.0);
-          if (arc_map_data) arc_map_data[new_arc_idx012] = -1;
-        } else if (state_idx01 + 1 == num_states) {
-          // Note: if num_states was zero  we would have returned above, so we
-          // dont have to worry about an empty FsaVec.
-          new_row_splits2_data[num_states] = new_arc_idx01x;
-        }
-      };
-      Eval(c, num_states, lambda_set_new_data);
+      K2_EVAL(
+          c, num_states, lambda_set_new_data, (int32_t state_idx01)->void {
+            int32_t fsa_idx0 = old_row_ids1_data[state_idx01],
+                    fsa_idx0_mod = fsa_idx0_mod_data[fsa_idx0],
+                    state_idx0x = old_row_splits1_data[fsa_idx0],
+                    next_state_idx0x = old_row_splits1_data[fsa_idx0 + 1],
+                    old_arc_idx01x = old_row_splits2_data[state_idx01];
+            // Below the "+ state_idx01" is because each state gets a self-loop,
+            // and the "- fsa_idx0_mod" is because final-states don't get a
+            // self-loop.
+            int32_t new_arc_idx01x =
+                old_arc_idx01x + state_idx01 - fsa_idx0_mod;
+            // The self-loop arc is the first arc:
+            int32_t new_arc_idx012 = new_arc_idx01x;
+            new_row_splits2_data[state_idx01] = new_arc_idx01x;
+            if (state_idx01 + 1 < next_state_idx0x) {  // not final-state
+              new_row_ids2_data[new_arc_idx012] = state_idx01;
+              int32_t state_idx1 = state_idx01 - state_idx0x;
+              new_arcs_data[new_arc_idx012] =
+                  Arc(state_idx1, state_idx1, 0, 0.0);
+              if (arc_map_data) arc_map_data[new_arc_idx012] = -1;
+            } else if (state_idx01 + 1 == num_states) {
+              // Note: if num_states was zero  we would have returned above, so
+              // we dont have to worry about an empty FsaVec.
+              new_row_splits2_data[num_states] = new_arc_idx01x;
+            }
+          });
     }
     pr.Finish();
     *dest =
@@ -683,56 +686,56 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map /*= nullptr*/) {
   int32_t *out_row_ids_data = out_row_ids.Data();
   Arc *out_arcs_data = out_arcs.Data();
 
-  auto lambda_set_out = [=] __host__ __device__(int32_t fsas_arc_idx012) {
-    int32_t fsas_state_idx01 = fsas_row_ids2_data[fsas_arc_idx012];
-    int32_t fsas_idx0 = fsas_row_ids1_data[fsas_state_idx01];
-    int32_t this_fsa_final_state_idx01 =
-        fsas_row_splits1_data[fsas_idx0 + 1] - 1;
+  K2_EVAL(
+      context, num_arcs, lambda_set_out, (int32_t fsas_arc_idx012) {
+        int32_t fsas_state_idx01 = fsas_row_ids2_data[fsas_arc_idx012];
+        int32_t fsas_idx0 = fsas_row_ids1_data[fsas_state_idx01];
+        int32_t this_fsa_final_state_idx01 =
+            fsas_row_splits1_data[fsas_idx0 + 1] - 1;
 
-    K2_DCHECK_GT(this_fsa_final_state_idx01, fsas_state_idx01)
-        << "We support only FSAs with at least two states at present";
+        K2_DCHECK_GT(this_fsa_final_state_idx01, fsas_state_idx01)
+            << "We support only FSAs with at least two states at present";
 
-    int32_t fsas_state_idx0x = fsas_row_splits1_data[fsas_idx0];
-    int32_t fsas_state_idx1 = fsas_state_idx01 - fsas_state_idx0x;
-    int32_t this_fsa_final_state_idx1 =
-        this_fsa_final_state_idx01 - fsas_state_idx0x;
+        int32_t fsas_state_idx0x = fsas_row_splits1_data[fsas_idx0];
+        int32_t fsas_state_idx1 = fsas_state_idx01 - fsas_state_idx0x;
+        int32_t this_fsa_final_state_idx1 =
+            this_fsa_final_state_idx01 - fsas_state_idx0x;
 
-    int32_t fsas_arc_idx0xx = fsas_row_splits2_data[fsas_state_idx0x];
+        int32_t fsas_arc_idx0xx = fsas_row_splits2_data[fsas_state_idx0x];
 
-    // fsa0: +1 (a new start state)
-    // fsa1: +0 (the final state of fsa0 is removed)
-    // fsa2: -1 (the final state of fsa1 is removed)
-    // fsa3: -2 (the final state of fsa2 is removed)
-    int32_t state_offset = 1 - fsas_idx0;
-    int32_t out_state_idx0 = fsas_state_idx01 + state_offset;
+        // fsa0: +1 (a new start state)
+        // fsa1: +0 (the final state of fsa0 is removed)
+        // fsa2: -1 (the final state of fsa1 is removed)
+        // fsa3: -2 (the final state of fsa2 is removed)
+        int32_t state_offset = 1 - fsas_idx0;
+        int32_t out_state_idx0 = fsas_state_idx01 + state_offset;
 
-    int32_t out_arc_idx01 = fsas_arc_idx012 + num_fsas;
-    out_row_ids_data[out_arc_idx01] = out_state_idx0;
-    Arc arc = arcs_data[fsas_arc_idx012];
+        int32_t out_arc_idx01 = fsas_arc_idx012 + num_fsas;
+        out_row_ids_data[out_arc_idx01] = out_state_idx0;
+        Arc arc = arcs_data[fsas_arc_idx012];
 
-    K2_DCHECK_EQ(arc.src_state, fsas_state_idx1);
+        K2_DCHECK_EQ(arc.src_state, fsas_state_idx1);
 
-    if (arc.dest_state == this_fsa_final_state_idx1)
-      arc.dest_state = out_final_state;
-    else
-      arc.dest_state = arc.dest_state - arc.src_state + out_state_idx0;
+        if (arc.dest_state == this_fsa_final_state_idx1)
+          arc.dest_state = out_final_state;
+        else
+          arc.dest_state = arc.dest_state - arc.src_state + out_state_idx0;
 
-    arc.src_state = out_state_idx0;
-    out_arcs_data[out_arc_idx01] = arc;
-    tmp_arc_map_data[out_arc_idx01] = fsas_arc_idx012;
+        arc.src_state = out_state_idx0;
+        out_arcs_data[out_arc_idx01] = arc;
+        tmp_arc_map_data[out_arc_idx01] = fsas_arc_idx012;
 
-    if (fsas_arc_idx0xx == fsas_arc_idx012) {
-      // add a new arc from the new start state to the start state
-      // of this fsa
-      //
-      // WARNING: we cannot use fsas_state_idx01 here
-      // since the start state may have no leaving arcs!
-      Arc arc(0, fsas_state_idx0x + state_offset, 0, 0);
-      out_arcs_data[fsas_idx0] = arc;
-      out_row_ids_data[fsas_idx0] = 0;
-    }
-  };
-  Eval(context, num_arcs, lambda_set_out);
+        if (fsas_arc_idx0xx == fsas_arc_idx012) {
+          // add a new arc from the new start state to the start state
+          // of this fsa
+          //
+          // WARNING: we cannot use fsas_state_idx01 here
+          // since the start state may have no leaving arcs!
+          Arc arc(0, fsas_state_idx0x + state_offset, 0, 0);
+          out_arcs_data[fsas_idx0] = arc;
+          out_row_ids_data[fsas_idx0] = 0;
+        }
+      });
 
   if (arc_map != nullptr) *arc_map = std::move(tmp_arc_map);
   Array1<int32_t> out_row_splits(context, num_out_states + 1);
@@ -774,77 +777,67 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
   Array1<int32_t> tmp_arc_map(c, num_out_arcs);
   int32_t *tmp_arc_map_data = tmp_arc_map.Data();
 
-  auto lambda_set_arcs = [=] __host__ __device__(int32_t fsa_arc_idx01) {
-    int32_t fsa_state_idx0 = fsa_row_ids_data[fsa_arc_idx01];
-    int32_t fsa_arc_idx0x = fsa_row_splits_data[fsa_state_idx0];
-    int32_t fsa_arc_idx1 = fsa_arc_idx01 - fsa_arc_idx0x;
-    int32_t this_state_num_arcs =
-        fsa_row_splits_data[fsa_state_idx0 + 1] - fsa_arc_idx0x;
+  K2_EVAL(
+      c, fsa.values.Dim(), lambda_set_arcs, (int32_t fsa_arc_idx01) {
+        int32_t fsa_state_idx0 = fsa_row_ids_data[fsa_arc_idx01];
+        int32_t fsa_arc_idx0x = fsa_row_splits_data[fsa_state_idx0];
+        int32_t fsa_arc_idx1 = fsa_arc_idx01 - fsa_arc_idx0x;
+        int32_t this_state_num_arcs =
+            fsa_row_splits_data[fsa_state_idx0 + 1] - fsa_arc_idx0x;
 
-    Arc arc = fsa_arcs_data[fsa_arc_idx01];
-    if (arc.dest_state == fsa_final_state) {
-      // modify arcs entering the final state such that:
-      //   - dest_state == 0
-      //   - label == 0
-      arc.dest_state = 0;
-      K2_DCHECK_EQ(arc.label, -1);
-      arc.label = 0;
-    }
+        Arc arc = fsa_arcs_data[fsa_arc_idx01];
+        if (arc.dest_state == fsa_final_state) {
+          // modify arcs entering the final state such that:
+          //   - dest_state == 0
+          //   - label == 0
+          arc.dest_state = 0;
+          K2_DCHECK_EQ(arc.label, -1);
+          arc.label = 0;
+        }
 
-    int out_arc_idx01;
-    if (arc.src_state > 0) {
-      // this arc is not originated from the start state, so its index is
-      // incremented
-      out_arc_idx01 = fsa_arc_idx01 + 1;
-    } else {
-      out_arc_idx01 = fsa_arc_idx01;
-      if (fsa_arc_idx1 == this_state_num_arcs - 1) {
-        // This is the last arc of the original start state,
-        // so we add a new arc just after it.
-        Arc new_arc(0, fsa_final_state, -1, 0.0f);
-        out_arcs_data[out_arc_idx01 + 1] = new_arc;
-        out_row_ids_data[out_arc_idx01 + 1] = 0;
-        tmp_arc_map_data[out_arc_idx01 + 1] = -1;
-      }
-    }
+        int out_arc_idx01;
+        if (arc.src_state > 0) {
+          // this arc is not originated from the start state, so its index is
+          // incremented
+          out_arc_idx01 = fsa_arc_idx01 + 1;
+        } else {
+          out_arc_idx01 = fsa_arc_idx01;
+          if (fsa_arc_idx1 == this_state_num_arcs - 1) {
+            // This is the last arc of the original start state,
+            // so we add a new arc just after it.
+            Arc new_arc(0, fsa_final_state, -1, 0.0f);
+            out_arcs_data[out_arc_idx01 + 1] = new_arc;
+            out_row_ids_data[out_arc_idx01 + 1] = 0;
+            tmp_arc_map_data[out_arc_idx01 + 1] = -1;
+          }
+        }
 
-    // it may happen that the start state has no leaving arcs
-    if (fsa_row_splits_data[1] == 0) {
-      Arc new_arc(0, fsa_final_state, -1, 0.0f);
-      out_arcs_data[0] = new_arc;
-      out_row_ids_data[0] = 0;
-      tmp_arc_map_data[0] = -1;
-    }
+        // it may happen that the start state has no leaving arcs
+        if (fsa_row_splits_data[1] == 0) {
+          Arc new_arc(0, fsa_final_state, -1, 0.0f);
+          out_arcs_data[0] = new_arc;
+          out_row_ids_data[0] = 0;
+          tmp_arc_map_data[0] = -1;
+        }
 
-    tmp_arc_map_data[out_arc_idx01] = fsa_arc_idx01;
+        tmp_arc_map_data[out_arc_idx01] = fsa_arc_idx01;
 
-    out_arcs_data[out_arc_idx01] = arc;
-    out_row_ids_data[out_arc_idx01] = arc.src_state;
-  };
-
-  Eval(c, fsa.values.Dim(), lambda_set_arcs);
+        out_arcs_data[out_arc_idx01] = arc;
+        out_row_ids_data[out_arc_idx01] = arc.src_state;
+      });
 
   if (arc_map != nullptr) *arc_map = std::move(tmp_arc_map);
 
   Array1<int32_t> out_row_splits(c, num_out_states + 1);
   int32_t *out_row_splits_data = out_row_splits.Data();
-  if (c->GetDeviceType() == kCpu) {
-    int32_t n = out_row_splits.Dim();
-    for (int32_t i = 0; i != n; ++i) {
-      if (i == 0)
-        out_row_splits_data[i] = 0;
-      else
-        out_row_splits_data[i] = fsa_row_splits_data[i] + 1;
-    }
-  } else {
-    auto lambda_set_row_splits = [=] __device__(int32_t i) {
-      if (i == 0)
-        out_row_splits_data[i] = 0;
-      else
-        out_row_splits_data[i] = fsa_row_splits_data[i] + 1;
-    };
-    EvalDevice(c, out_row_splits.Dim(), lambda_set_row_splits);
-  }
+
+  K2_EVAL(
+      c, out_row_splits.Dim(), lambda_set_row_splits, (int32_t i) {
+        if (i == 0)
+          out_row_splits_data[i] = 0;
+        else
+          out_row_splits_data[i] = fsa_row_splits_data[i] + 1;
+      });
 
   RaggedShape shape = RaggedShape2(&out_row_splits, &out_row_ids, num_out_arcs);
   Fsa ans = Ragged<Arc>(shape, out_arcs);

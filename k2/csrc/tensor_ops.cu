@@ -29,12 +29,11 @@ void CopyTensorElements2d(ContextPtr c, int32_t dim0, int32_t dim1,
       }
     }
   } else {
-    auto lambda_set_elems = [=] __host__ __device__(int32_t i,
-                                                    int32_t j) -> void {
-      dest_data[i * dest_stride0 + j * dest_stride1] =
-          src_data[i * src_stride0 + j * src_stride1];
-    };
-    Eval2(c, dim0, dim1, lambda_set_elems);
+    K2_EVAL2(
+        c, dim0, dim1, lambda_set_elems, (int32_t i, int32_t j)->void {
+          dest_data[i * dest_stride0 + j * dest_stride1] =
+              src_data[i * src_stride0 + j * src_stride1];
+        });
   }
 }
 
@@ -43,18 +42,10 @@ void CopyTensorElements1d(ContextPtr c, int32_t dim, const T *src_data,
                           int32_t src_stride, T *dest_data,
                           int32_t dest_stride) {
   NVTX_RANGE(K2_FUNC);
-  DeviceType d = c->GetDeviceType();
-  if (d == kCpu) {
-    // this is just an optimization, the other branch would work for CPU too.
-    for (int32_t i = 0; i < dim; i++) {
-      dest_data[i * dest_stride] = src_data[i * src_stride];
-    }
-  } else {
-    auto lambda_set_elems = [=] __host__ __device__(int32_t i) -> void {
-      dest_data[i * dest_stride] = src_data[i * src_stride];
-    };
-    Eval(c, dim, lambda_set_elems);
-  }
+  K2_EVAL(
+      c, dim, lambda_set_elems, (int32_t i)->void {
+        dest_data[i * dest_stride] = src_data[i * src_stride];
+      });
 }
 
 // TODO(dan): this is far from ideal in terms of efficiency.  There is no
@@ -111,18 +102,9 @@ template <typename T, typename U>
 void CastTensorElements1dContiguous(ContextPtr c, int32_t dim,
                                     const T *src_data, U *dest_data) {
   NVTX_RANGE(K2_FUNC);
-  DeviceType d = c->GetDeviceType();
-  if (d == kCpu) {
-    // this is just an optimization, the other branch would work for CPU too.
-    for (int32_t i = 0; i < dim; i++) {
-      dest_data[i] = static_cast<U>(src_data[i]);
-    }
-  } else {
-    auto lambda_cast_elems = [=] __host__ __device__(int32_t i) -> void {
-      dest_data[i] = static_cast<U>(src_data[i]);
-    };
-    Eval(c, dim, lambda_cast_elems);
-  }
+  K2_EVAL(
+      c, dim, lambda_cast_elems,
+      (int32_t i)->void { dest_data[i] = static_cast<U>(src_data[i]); });
 }
 
 Tensor Cast(Tensor src, Dtype new_dtype) {

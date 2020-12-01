@@ -322,15 +322,15 @@ Array1<FloatType> GetBackwardScores(
     K2_CHECK_EQ(tot_scores->Context()->GetDeviceType(), kCpu);
     K2_CHECK_EQ(tot_scores->Dim(), num_fsas);
     const FloatType *tot_scores_data = tot_scores->Data();
-    auto lambda_add_tot_scores = [=] __host__ __device__(int32_t state_idx01) {
-      int32_t fsa_idx0 = fsa_row_ids1[state_idx01];
-      if (tot_scores_data[fsa_idx0] != negative_infinity) {
-        state_scores_data[state_idx01] -= tot_scores_data[fsa_idx0];
-      } else {
-        state_scores_data[state_idx01] = negative_infinity;
-      }
-    };
-    Eval(c, num_states, lambda_add_tot_scores);
+    K2_EVAL(
+        c, num_states, lambda_add_tot_scores, (int32_t state_idx01) {
+          int32_t fsa_idx0 = fsa_row_ids1[state_idx01];
+          if (tot_scores_data[fsa_idx0] != negative_infinity) {
+            state_scores_data[state_idx01] -= tot_scores_data[fsa_idx0];
+          } else {
+            state_scores_data[state_idx01] = negative_infinity;
+          }
+        });
   }
 
   return state_scores.AsType<FloatType>();

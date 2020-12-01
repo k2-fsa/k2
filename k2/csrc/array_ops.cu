@@ -95,18 +95,18 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
       // elements being processed is small. What we're saying is that the
       // arrays' sizes are fairly balanced, so we launch with a simple
       // rectangular kernel.
-      auto lambda_set_data = [=] __host__ __device__(int32_t i,
-                                                     int32_t j) -> void {
-        int32_t row_start = row_splits_data[i],
-                row_end = row_splits_data[i + 1];
-        const int32_t *src_ptr = src_ptrs_data[i];
-        // not we have dropped the last element of src[i] in row_splits_data,
-        // so here it will not be copied.
-        if (j < row_end - row_start) {
-          ans_data[row_start + j] = src_ptr[j] + data_offsets_data[i];
-        }
-      };
-      Eval2(c, num_arrays, max_dim, lambda_set_data);
+      K2_EVAL2(
+          c, num_arrays, max_dim, lambda_set_data,
+          (int32_t i, int32_t j)->void {
+            int32_t row_start = row_splits_data[i],
+                    row_end = row_splits_data[i + 1];
+            const int32_t *src_ptr = src_ptrs_data[i];
+            // not we have dropped the last element of src[i] in
+            // row_splits_data, so here it will not be copied.
+            if (j < row_end - row_start) {
+              ans_data[row_start + j] = src_ptr[j] + data_offsets_data[i];
+            }
+          });
     } else {
       int32_t block_dim = 256;
       while (block_dim * 4 < avg_input_size && block_dim < 8192) block_dim *= 2;
@@ -133,21 +133,21 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
       Array1<uint64_t> index_map_gpu(c, index_map);
       const uint64_t *index_map_data = index_map_gpu.Data();
 
-      auto lambda_set_data_blocks = [=] __host__ __device__(int32_t i,
-                                                            int32_t j) {
-        uint64_t index = index_map_data[i];
-        uint32_t orig_i = static_cast<uint32_t>(index),
-                 block_index = static_cast<uint32_t>(index >> 32);
-        int32_t row_start = row_splits_data[orig_i],
-                row_end = row_splits_data[orig_i + 1],
-                orig_j = (block_index * block_dim) + j;
-        const int32_t *src_ptr = src_ptrs_data[orig_i];
-        if (orig_j < row_end - row_start) {
-          ans_data[row_start + orig_j] =
-              src_ptr[orig_j] + data_offsets_data[orig_i];
-        }
-      };
-      Eval2(c, index_map_gpu.Dim(), block_dim, lambda_set_data_blocks);
+      K2_EVAL2(
+          c, index_map_gpu.Dim(), block_dim, lambda_set_data_blocks,
+          (int32_t i, int32_t j) {
+            uint64_t index = index_map_data[i];
+            uint32_t orig_i = static_cast<uint32_t>(index),
+                     block_index = static_cast<uint32_t>(index >> 32);
+            int32_t row_start = row_splits_data[orig_i],
+                    row_end = row_splits_data[orig_i + 1],
+                    orig_j = (block_index * block_dim) + j;
+            const int32_t *src_ptr = src_ptrs_data[orig_i];
+            if (orig_j < row_end - row_start) {
+              ans_data[row_start + orig_j] =
+                  src_ptr[orig_j] + data_offsets_data[orig_i];
+            }
+          });
     }
   }
   return ans;
@@ -174,12 +174,12 @@ bool ValidateRowIds(const Array1<int32_t> &row_ids,
   *temp = 0;
 
   int32_t *temp_data = temp->Data();
-  auto lambda_check_row_ids = [=] __host__ __device__(int32_t i) -> void {
-    if (data[i] > data[i + 1]) *temp_data = 1;  // means it's bad.
-  };
   // Note: we know that dim >= 1 as we would have returned above if dim == 0.
   // This will do nothing if (dim-1) == 0 as we have checked the first element.
-  Eval(ctx, dim - 1, lambda_check_row_ids);
+  K2_EVAL(
+      ctx, dim - 1, lambda_check_row_ids, (int32_t i)->void {
+        if (data[i] > data[i + 1]) *temp_data = 1;  // means it's bad.
+      });
   return (*temp)[0] == 0;
 }
 
@@ -203,12 +203,12 @@ bool ValidateRowSplits(const Array1<int32_t> &row_splits,
   *temp = 0;
 
   int32_t *temp_data = temp->Data();
-  auto lambda_check_row_splits = [=] __host__ __device__(int32_t i) -> void {
-    if (data[i] > data[i + 1]) *temp_data = 1;  // means it's bad.
-  };
   // Note: we know that dim >= 1 as we would have returned above if dim == 0.
   // This will do nothing if (dim-1) == 0 as we have checked the first element.
-  Eval(ctx, dim - 1, lambda_check_row_splits);
+  K2_EVAL(
+      ctx, dim - 1, lambda_check_row_splits, (int32_t i)->void {
+        if (data[i] > data[i + 1]) *temp_data = 1;  // means it's bad.
+      });
   return (*temp)[0] == 0;
 }
 
@@ -237,23 +237,26 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
   *temp = 0;
 
   int32_t *temp_data = temp_array.Data();
-  auto lambda_check_row_ids = [=] __host__ __device__(int32_t i) -> void {
-    // check row_splits
-    bool invalid_splits =
-        (i < num_rows && row_splits_data[i] > row_splits_data[i + 1]);
-    // check row_ids
-    bool invalid_ids =
-        (i < (num_elems - 1) && row_ids_data[i] > row_ids_data[i + 1]);
-    if (invalid_splits || invalid_ids) *temp_data = 1;
-    // check if row_splits and row_ids agree with each other
-    if (i < num_elems) {
-      int32_t this_row = row_ids_data[i];
-      if (this_row < 0 || this_row >= num_rows ||
-          i < row_splits_data[this_row] || i >= row_splits_data[this_row + 1])
-        *temp_data = 1;
-    }
-  };
-  Eval(ctx, std::max(num_elems, num_rows), lambda_check_row_ids);
+
+  K2_EVAL(
+      ctx, std::max(num_elems, num_rows), lambda_check_row_ids,
+      (int32_t i)->void {
+        // check row_splits
+        bool invalid_splits =
+            (i < num_rows && row_splits_data[i] > row_splits_data[i + 1]);
+        // check row_ids
+        bool invalid_ids =
+            (i < (num_elems - 1) && row_ids_data[i] > row_ids_data[i + 1]);
+        if (invalid_splits || invalid_ids) *temp_data = 1;
+        // check if row_splits and row_ids agree with each other
+        if (i < num_elems) {
+          int32_t this_row = row_ids_data[i];
+          if (this_row < 0 || this_row >= num_rows ||
+              i < row_splits_data[this_row] ||
+              i >= row_splits_data[this_row + 1])
+            *temp_data = 1;
+        }
+      });
   return (*temp)[0] == 0;
 }
 
@@ -330,21 +333,13 @@ Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src) {
   Array1<int32_t> ans(c, ans_dim, 0);  // init with 0
   int32_t *ans_data = ans.Data();
 
-  DeviceType d = c->GetDeviceType();
-  if (c->GetDeviceType() == kCpu) {
-    for (int32_t i = 0; i != src_dim; ++i) {
-      K2_DCHECK((i + 1 == src_dim || src_data[i + 1] <= src_data[i]));
-      if (i + 1 == src_dim || src_data[i + 1] < src_data[i])
-        ans_data[src_data[i] - 1] = i + 1;
-    }
-  } else {
-    auto lambda_set_values = [=] __device__(int32_t i) -> void {
-      K2_DCHECK((i + 1 == src_dim || src_data[i + 1] <= src_data[i]));
-      if (i + 1 == src_dim || src_data[i + 1] < src_data[i])
-        ans_data[src_data[i] - 1] = i + 1;
-    };
-    EvalDevice(c, src_dim, lambda_set_values);
-  }
+  K2_EVAL(
+      c, src_dim, lambda_set_values, (int32_t i)->void {
+        K2_DCHECK((i + 1 == src_dim || src_data[i + 1] <= src_data[i]));
+        if (i + 1 == src_dim || src_data[i + 1] < src_data[i])
+          ans_data[src_data[i] - 1] = i + 1;
+      });
+
   MonotonicDecreasingUpperBound(ans, &ans);
   return ans;
 }
