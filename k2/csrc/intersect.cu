@@ -688,7 +688,7 @@ class MultiGraphDenseIntersect {
       // then (forward scores, arranged as in incoming_arcs_.shape).
       // We are interested in the backward-prob at state 0 (start state)
       // and the forward-prob in the final state.
-      int32_t backward_state_idx = fsa_info.state_offset,
+      int32_t backward_state_idx = (2 * fsa_info.state_offset),
          forward_state_idx = backward_state_idx + (2 * fsa_info.num_states) - 1;
       // We get the start and end scoreas after fsa_info.T steps of propagation,
       // and the result is in the state_scores of the Step indexed fsa_info.T.
@@ -701,6 +701,8 @@ class MultiGraphDenseIntersect {
                            this_state_scores[forward_state_idx]),
          tot_score_min = (tot_score_start < tot_score_end ?
                           tot_score_start : tot_score_end);
+      K2_CHECK(tot_score_end == tot_score_start ||
+               fabs(tot_score_end - tot_score_start) < 1.0);  // TODO: remove this
       score_cutoffs_data[fsa_idx0] = tot_score_min - output_beam;
     };
     Eval(c_, num_fsas_, lambda_set_cutoffs);

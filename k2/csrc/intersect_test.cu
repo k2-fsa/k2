@@ -78,7 +78,7 @@ TEST(Intersect, Simple) {
       }
     }
 
-    float output_beam = 100000;
+    float output_beam = 1000;
 
     FsaVec out_fsas;
     Array1<int32_t> arc_map_a, arc_map_b;
@@ -99,6 +99,37 @@ TEST(Intersect, Simple) {
     fsas_b = fsas_b.To(cpu);
     Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
               &arc_map_b2);
+
+
+    { // check arc map for out_fsas, arc_map_a, arc_map_b
+      DenseFsaVec dfsavec2 = dfsavec.To(cpu);
+      int32_t num_arcs = out_fsas.NumElements();
+      for (int32_t i = 0; i < num_arcs; i++) {
+        int32_t arc_idx_a = arc_map_a[i], arc_idx_b = arc_map_b[i];
+        float score_a = fsa.values[arc_idx_a].score,
+              score_b = dfsavec2.scores.Data()[arc_idx_b],
+       score_composed = out_fsas.values[i].score;
+        float margin = 1.0e-04 * (fabs(score_a) + fabs(score_b));
+        K2_CHECK( (score_a + score_b) == score_composed ||
+                  fabs(score_a + score_b - score_composed < margin));
+      }
+    }
+
+    { // check arc map for out_fsas2, arc_map_a2, arc_map_b2
+      int32_t num_arcs = out_fsas2.NumElements();
+      for (int32_t i = 0; i < num_arcs; i++) {
+        int32_t arc_idx_a = arc_map_a2[i], arc_idx_b = arc_map_b2[i];
+        float score_a = fsa.values[arc_idx_a].score,
+              score_b = fsas_b.values[arc_idx_b].score,
+       score_composed = out_fsas2.values[i].score;
+        float margin = 1.0e-04 * (fabs(score_a) + fabs(score_b));
+        K2_CHECK( (score_a + score_b) == score_composed ||
+                  fabs(score_a + score_b - score_composed < margin));
+      }
+    }
+
+
+
 
     out_fsas = out_fsas.To(cpu);
     K2_CHECK(IsRandEquivalentWrapper(out_fsas, out_fsas2,
