@@ -158,6 +158,26 @@ static void PybindIntersectDensePruned(py::module &m) {
       py::arg("max_active_states"));
 }
 
+
+static void PybindIntersectDense(py::module &m) {
+  m.def(
+      "intersect_dense",
+      [](FsaVec &a_fsas, DenseFsaVec &b_fsas,
+         float output_beam)
+          -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
+        Array1<int32_t> arc_map_a;
+        Array1<int32_t> arc_map_b;
+        FsaVec out;
+
+        IntersectDense(a_fsas, b_fsas, output_beam, &out,
+                       &arc_map_a, &arc_map_b);
+        return std::make_tuple(out, ToTensor(arc_map_a), ToTensor(arc_map_b));
+      },
+      py::arg("a_fsas"), py::arg("b_fsas"),
+      py::arg("output_beam"));
+}
+
+
 static void PybindConnect(py::module &m) {
   m.def(
       "connect",
@@ -294,6 +314,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindTopSort(m);
   k2::PybindIntersect(m);
   k2::PybindIntersectDensePruned(m);
+  k2::PybindIntersectDense(m);
   k2::PybindConnect(m);
   k2::PybindArcSort(m);
   k2::PybindShortestPath(m);

@@ -3,6 +3,7 @@ from _k2 import simple_ragged_index_select
 from .autograd import get_tot_scores
 from .autograd import index_select
 from .autograd import intersect_dense_pruned
+from .autograd import intersect_dense
 from .autograd import union
 from .dense_fsa_vec import DenseFsaVec
 from .dense_fsa_vec import convert_dense_to_fsa_vec
@@ -50,6 +51,7 @@ __all__ = [
     'index_add',
     'index_select',
     'intersect',
+    'intersect_dense',
     'intersect_dense_pruned',
     'is_rand_equivalent',
     'linear_fsa',
