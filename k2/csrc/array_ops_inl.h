@@ -592,7 +592,7 @@ bool IsMonotonic(const Array1<T> &a) {
   } else {
     Array1<int32_t> is_monotonic(c, 1, 1);
     int32_t *is_monotonic_data = is_monotonic.Data();
-    auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_test = [=]  __device__(int32_t i) -> void {
       if (data[i + 1] < data[i]) *is_monotonic_data = 0;
     };
     EvalDevice(c, dim - 1, lambda_test);
@@ -614,7 +614,7 @@ bool IsMonotonicDecreasing(const Array1<T> &a) {
   } else {
     Array1<int32_t> is_monotonic(c, 1, 1);
     int32_t *is_monotonic_data = is_monotonic.Data();
-    auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_test = [=]  __device__(int32_t i) -> void {
       if (data[i + 1] > data[i]) *is_monotonic_data = 0;
     };
     EvalDevice(c, dim - 1, lambda_test);
