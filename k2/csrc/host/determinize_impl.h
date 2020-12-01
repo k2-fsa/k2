@@ -503,11 +503,10 @@ class DetState {
     been called on *this.
 
               @param [in] wfsa_in  The input FSA that we are determinizing,
-    along with forward-backward weights. The input FSA should normally be
-    epsilon-free as epsilons are treated as a normal symbol; and require
-                                 wfsa_in.weight_tpe == kMaxWeight, for
-                                 now (might later create a version of this code
-                                 that works
+                                   along with forward-backward weights.
+                                   The input FSA should normally be
+                                   epsilon-free as epsilons are treated as
+                                   a normal symbol.
               @param [in] prune_cutoff   Cutoff on forward-backward likelihood
                                  that we use for pruning; will equal
                                  wfsa_in.backward_state_weights[0] - prune_beam.
@@ -523,13 +522,36 @@ class DetState {
                                  in the output FSA.
               @return   Returns a number that approximately indicates how much
                        computation was done (so we can avoid it taking too
-    long).
+                       long).
   */
   int32_t ProcessArcs(const WfsaWithFbWeights &wfsa_in, double prune_cutoff,
                       std::vector<Arc> *arcs_out,
                       std::vector<std::vector<DerivType>> *derivs_per_arc,
                       DetStateMap<TracebackState> *state_map,
                       DetStatePriorityQueue<TracebackState> *queue);
+
+  /*
+    A version of `ProcessArcs` above without pruning.
+  */
+  int32_t ProcessArcs(const Fsa &fsa_in, std::vector<Arc> *arcs_out,
+                      std::vector<std::vector<DerivType>> *derivs_per_arc,
+                      DetStateMap<TracebackState> *state_map,
+                      DetStatePriorityQueue<TracebackState> *queue);
+
+ private:
+  /*
+    Process arcs leaving this determinized state and write its successor
+    DetStates (unnormalized) to label_to_state. Will be called in `ProcessArcs`.
+          @param [in] fsa     The input FSA that we are determinizing.
+          @param [out] label_to_state Maps from label to the successor
+                              DetStates (unnormalized) of this determinized
+                              state.
+          @return   Returns a number that approximately indicates how much
+                    computation was done (so we can avoid it taking too long).
+  */
+  int32_t GetDetStatesSuccessor(
+      const Fsa &fsa,
+      std::unordered_map<uint32_t, DetState<TracebackState> *> &label_to_state);
 
   /*
     Normalizes this DetState by reducing seq_len to the extent possible
@@ -552,23 +574,19 @@ class DetState {
    */
   void Normalize(const WfsaWithFbWeights &wfsa_in, float *removed_weight,
                  std::vector<DerivType> *deriv_info);
+  /*
+    A version of `Normalize` which does not require forward/backward weights,
+    it will be called in the un-pruned version of `ProcessArcs`.
+  */
+  void Normalize(const Fsa &fsa_in, float *removed_weight,
+                 std::vector<DerivType> *deriv_info);
 };
 
 template <class TracebackState>
-int32_t DetState<TracebackState>::ProcessArcs(
-    const WfsaWithFbWeights &wfsa_in, double prune_cutoff,
-    std::vector<Arc> *arcs_out,
-    std::vector<std::vector<typename TracebackState::DerivType>>
-        *derivs_per_arc,
-    DetStateMap<TracebackState> *state_map,
-    DetStatePriorityQueue<TracebackState> *queue) {
+int32_t DetState<TracebackState>::GetDetStatesSuccessor(
+    const Fsa &fsa,
+    std::unordered_map<uint32_t, DetState<TracebackState> *> &label_to_state) {
   int32_t num_steps = 0;
-
-  std::unordered_map<uint32_t, DetState<TracebackState> *> label_to_state;
-
-  // The following loop populates `label_to_state`, creating successor
-  // DetStates (unnormalized).
-  const Fsa &fsa = wfsa_in.fsa;
   const auto arcs = fsa.data + fsa.indexes[0];
   for (const auto &elem : elements) {
     const auto &state_ptr = elem.second;
@@ -594,7 +612,20 @@ int32_t DetState<TracebackState>::ProcessArcs(
            elements.begin()->second->state_id ==
                fsa.FinalState());  // I'm assuming the input
                                    // FSA is connected.
+  return num_steps;
+}
 
+template <class TracebackState>
+int32_t DetState<TracebackState>::ProcessArcs(
+    const WfsaWithFbWeights &wfsa_in, double prune_cutoff,
+    std::vector<Arc> *arcs_out,
+    std::vector<std::vector<typename TracebackState::DerivType>>
+        *derivs_per_arc,
+    DetStateMap<TracebackState> *state_map,
+    DetStatePriorityQueue<TracebackState> *queue) {
+  const Fsa &fsa = wfsa_in.fsa;
+  std::unordered_map<uint32_t, DetState<TracebackState> *> label_to_state;
+  int32_t num_steps = GetDetStatesSuccessor(fsa, label_to_state);
   // The following loop normalizes successor det-states, outputs the arcs
   // that lead to them, and adds them to the queue if necessary.
   for (auto iter = label_to_state.begin(); iter != label_to_state.end();
@@ -616,6 +647,36 @@ int32_t DetState<TracebackState>::ProcessArcs(
     } else {
       delete det_state;
     }
+  }
+  return num_steps;
+}
+
+template <class TracebackState>
+int32_t DetState<TracebackState>::ProcessArcs(
+    const Fsa &fsa_in, std::vector<Arc> *arcs_out,
+    std::vector<std::vector<typename TracebackState::DerivType>>
+        *derivs_per_arc,
+    DetStateMap<TracebackState> *state_map,
+    DetStatePriorityQueue<TracebackState> *queue) {
+  std::unordered_map<uint32_t, DetState<TracebackState> *> label_to_state;
+  int32_t num_steps = GetDetStatesSuccessor(fsa_in, label_to_state);
+  // The following loop normalizes successor det-states, outputs the arcs
+  // that lead to them, and adds them to the queue if necessary.
+  for (auto iter = label_to_state.begin(); iter != label_to_state.end();
+       ++iter) {
+    DetState<TracebackState> *det_state = iter->second;
+
+    float arc_weight;
+    std::vector<DerivType> deriv_info;
+    det_state->Normalize(fsa_in, &arc_weight, &deriv_info);
+    bool is_new_state = state_map->GetOutputState(det_state, fsa_in);
+    arcs_out->push_back({this->state_id, det_state->state_id,
+                         static_cast<int32_t>(iter->first), arc_weight});
+    derivs_per_arc->push_back(std::move(deriv_info));
+    if (is_new_state)
+      queue->push(std::unique_ptr<DetState<TracebackState>>(det_state));
+    else
+      delete det_state;
   }
   return num_steps;
 }
@@ -672,6 +733,34 @@ void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
   // the following will set removed_weight and deriv_info.
   // `arcs` is needed to look up the weight.
   const Arc *arcs = wfsa_in.fsa.data;
+  TraceBack(&cur_states, num_steps, arcs, removed_weight, deriv_info);
+
+  normalized = true;
+}
+
+template <class TracebackState>
+void DetState<TracebackState>::Normalize(const Fsa &fsa_in,
+                                         float *removed_weight,
+                                         std::vector<DerivType> *deriv_info) {
+  std::unordered_set<TracebackState *> cur_states;
+  for (const auto &p : elements) {
+    TracebackState *state = p.second.get();
+    cur_states.insert(state);
+  }
+
+  int32_t new_seq_len = GetMostRecentCommonAncestor(&cur_states);
+  // now cur_states.size() == 1.
+  K2_CHECK_EQ(cur_states.size(), 1);
+  K2_CHECK_LE(new_seq_len, seq_len);
+
+  const TracebackState *base_state = *(cur_states.begin());
+  this->forward_backward_prob = 0;  // always set to 0 in un-pruned version
+  int32_t num_steps = seq_len - new_seq_len;
+  this->seq_len = new_seq_len;
+
+  // the following will set removed_weight and deriv_info.
+  // `arcs` is needed to look up the weight.
+  const Arc *arcs = fsa_in.data;
   TraceBack(&cur_states, num_steps, arcs, removed_weight, deriv_info);
 
   normalized = true;

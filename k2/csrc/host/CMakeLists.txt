@@ -9,6 +9,7 @@ add_library(fsa SHARED
     aux_labels.cc
     connect.cc
     determinize.cc
+    determinize_pruned.cc
     fsa.cc
     fsa_equivalent.cc
     fsa_renderer.cc
