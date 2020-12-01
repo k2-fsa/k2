@@ -122,19 +122,18 @@ class MultiGraphDenseIntersect {
     // Set up carcs_
     InitCompressedArcs();
 
+    RaggedShape combined_shape;
     {
-      int32_t axis = 0, num_srcs = 2;
-      RaggedShape *vec1[2] = { &incoming_arcs_.shape, &a_fsas_.shape };
-      forward_then_backward_shape_ = Append(axis, num_srcs, vec1);
-      RaggedShape *vec2[2] = { &a_fsas_.shape, &incoming_arcs_.shape };
-      backward_then_forward_shape_ = Append(axis, num_srcs, vec2);
+      int32_t axis = 1, num_srcs = 2;
+      RaggedShape *vec[2] = { &a_fsas_.shape, &incoming_arcs_.shape };
+      combined_shape = Append(axis, num_srcs, vec);
     }
 
-
     int32_t num_arcs = a_fsas_.NumElements();
-    // arc_scores_ will be used for forward and backward computations
+    // arc_scores_ will be used for backward and forward computations
     // simultaneously.
-    arc_scores_ = Array1<float>(c_, num_arcs * 2);
+    arc_scores_ = Ragged<float>(combined_shape,
+                                Array1<float>(c_, num_arcs * 2));
 
     // set up fsa_info_
     InitFsaInfo();
@@ -204,7 +203,7 @@ class MultiGraphDenseIntersect {
     // of all the states of FSA index 1, and so on.  In fact not all FSAs have
     // this many frames, most of them have fewer copies, but using this regular
     // structure avoids having to compute any extra row_ids vectors and the
-    // like.  The out-of-range elements will be seto to zero.
+    // like.  The out-of-range elements will be set to zero.
 
     Renumbering renumber_states(c_, product);
     char *keep_state_data = renumber_states.Keep().Data();
@@ -212,9 +211,7 @@ class MultiGraphDenseIntersect {
     int32_t T = T_;
     const int32_t *a_fsas_row_ids1_data = a_fsas_.RowIds(1).Data();
     FsaInfo *fsa_info_data = fsa_info_.Data();
-
-    float **forward_state_scores_data = forward_state_scores_.Data(),
-         **backward_state_scores_data = backward_state_scores_.Data();
+    float **state_scores_data = state_scores_.Data();
 
     // the following lambda will set elements within `keep_state_data` to 0 or 1.
     auto lambda_set_keep = [=] __host__ __device__ (int32_t i) -> void {
@@ -228,17 +225,20 @@ class MultiGraphDenseIntersect {
       float cutoff = score_cutoffs_data[fsa_idx0];
 
       int32_t idx_within_fsa = i - (T+1) * fsa_info.state_offset,
-                    t = idx_within_fsa / fsa_info.num_states,
-           state_idx1 = idx_within_fsa % fsa_info.num_states,
-           state_idx01 = fsa_info.state_offset + state_idx1;
+                      t = idx_within_fsa / fsa_info.num_states,
+             state_idx1 = idx_within_fsa % fsa_info.num_states;
+      // In the state_scores arrays, there are 2 copies of each FSA's states,
+      // for backward and forward.
+      int32_t backward_state_idx = (2 * fsa_info.state_offset) + state_idx1,
+            forward_state_idx = backward_state_idx + fsa_info.num_states;
 
       char keep = (char)0;
       if (t <= fsa_info.T) {
-        // This time is within the bounds for this FSA
-        const float *forward_state_scores_t = forward_state_scores_data[t],
-                   *backward_state_scores_t = backward_state_scores_data[t];
-        if (forward_state_scores_t[state_idx01] +
-            backward_state_scores_t[state_idx01] > cutoff)
+        // This time is within the bounds for this FSA..
+        float forward_score = state_scores_data[t][forward_state_idx],
+            backward_score = state_scores_data[fsa_info.T - t][backward_state_idx];
+
+        if (forward_score + backward_score > cutoff)
           keep = (char)1;
       }
       keep_state_data[i] = keep;
@@ -268,7 +268,7 @@ class MultiGraphDenseIntersect {
     }
     ExclusiveSum(t_per_fsa, &t_per_fsa);
 
-    // now t_per_fsa is the row_splits1 of the shape we'll be returning.  It allocates
+    // now t_per_fsa is the row_splits1 of the shape indexed we'll be returning.  It allocates
     // fsa_info_data[i].T + 1 time-indexes to the i'th fsa.
     Array1<int32_t> &ans_row_splits1 = t_per_fsa;
     const int32_t *ans_row_splits1_data = ans_row_splits1.Data();
@@ -312,7 +312,6 @@ class MultiGraphDenseIntersect {
       if (t == fsa_info.T)  // No arcs leave copies of states on the last frame
                             // for each FSA.
         num_arcs = 0;
-      K2_CHECK_EQ(0, 0); // temp
       ans_num_arcs_data[ans_idx012] = num_arcs;
     };
     Eval(c_, ans_tot_num_states, lambda_set_row_ids2);
@@ -366,8 +365,7 @@ class MultiGraphDenseIntersect {
                    + arc_idx3; //  arc_idx3 is an idx2 w.r.t. a_fsas.
       CompressedArc carc = carcs_data[a_fsas_arc_idx012];
       K2_CHECK_EQ(a_fsas_state_idx1, (int32_t)carc.src_state);
-      int32_t a_fsas_dest_state_idx1 = carc.dest_state,
-            a_fsas_dest_state_idx01 = fsa_info.state_offset + a_fsas_dest_state_idx1;
+      int32_t a_fsas_dest_state_idx1 = carc.dest_state;
       arc_map_a_data[arc_idx0123] = a_fsas_arc_idx012;
       int32_t scores_index = fsa_info.scores_offset + (scores_stride * t_idx1) +
                        carc.label_plus_one;
@@ -388,14 +386,23 @@ class MultiGraphDenseIntersect {
          ans_dest_state_idx012_next = states_old2new_data[unpruned_dest_state_idx + 1];
       char keep_this_arc = (char)0;
 
-      const float *forward_state_scores_t = forward_state_scores_data[t_idx1],
-                  *backward_state_scores_t1 = backward_state_scores_data[t_idx1 + 1];
+      const float *forward_state_scores = state_scores_data[t_idx1];
+      // 'next_backward_state_scores' is the state_scores vector for the next
+      // frame (t_idx1 + 1); the backward scores are in the opposite order so we
+      // index as ((int32_t)fsa_info.T) - (t_idx1 + 1).
+      const float *next_backward_state_scores = state_scores_data[((int32_t)fsa_info.T) - (t_idx1 + 1)];
 
       if (ans_dest_state_idx012 < ans_dest_state_idx012_next) {
-        // The dest-state of this arc has a number (was not pruned away)
-        float arc_forward_backward_score = forward_state_scores_t[a_fsas_state_idx01] +
+        // The dest-state of this arc has a number (was not pruned away).
+        // below, backward_dest_state_idx and forward_src_state_idx are into the
+        // state_scores arrays.
+        int32_t backward_dest_state_idx = (2 * fsa_info.state_offset) +
+                                          a_fsas_dest_state_idx1,
+                  forward_src_state_idx = (2 * fsa_info.state_offset) +
+                                          fsa_info.num_states + a_fsas_state_idx1;
+        float arc_forward_backward_score = forward_state_scores[forward_src_state_idx] +
                                            arc_score +
-                                           backward_state_scores_t1[a_fsas_dest_state_idx01];
+                                           next_backward_state_scores[backward_dest_state_idx];
         if (arc_forward_backward_score > cutoff) {
           keep_this_arc = (char)1;
           Arc arc;
@@ -440,7 +447,9 @@ class MultiGraphDenseIntersect {
     CompressedArc *carcs_data = carcs_.Data();
     const Arc *arcs_data = a_fsas_.values.Data();
     const int32_t *a_fsas_row_ids1 = a_fsas_.RowIds(1).Data(),
-                  *a_fsas_row_ids2 = a_fsas_.RowIds(2).Data();
+                  *a_fsas_row_ids2 = a_fsas_.RowIds(2).Data(),
+               *a_fsas_row_splits1 = a_fsas_.RowSplits(1).Data(),
+               *a_fsas_row_splits2 = a_fsas_.RowSplits(2).Data();
 
     // incoming_indexes maps from position in normally-arranged arcs (i.e. arc_idx012 in
     // a_fsas_) to the position that that arc has in incoming_arcs_.
@@ -454,8 +463,23 @@ class MultiGraphDenseIntersect {
       carc.dest_state = uint16_t(arc.dest_state);
       carc.label_plus_one = uint16_t(arc.label + 1);
       carc.fsa_idx = a_fsas_row_ids1[a_fsas_row_ids2[i]];
-      carc.incoming_arc_idx012 = incoming_indexes_data[i];
       carc.score = arc.score;
+      { // set carc.incoming_arc_idx012
+        int32_t this_fsa_first_arc = a_fsas_row_splits2[
+            a_fsas_row_splits1[carc.fsa_idx]],
+                next_fsa_first_arc = a_fsas_row_splits2[
+                    a_fsas_row_splits1[carc.fsa_idx + 1]],
+                 this_fsa_num_arcs = next_fsa_first_arc - this_fsa_first_arc;
+        int32_t incoming_arc_idx012 = incoming_indexes_data[i],
+                 incoming_arc_idx12 = incoming_arc_idx012 - this_fsa_first_arc;
+        // The arrangement of arcs in arc_scores_ (and Step::arc_scores) comes
+        // from appending a_fsas_.shape and incoming_arcs_.shape along axis 1.
+        // So (2 * this_fsa_first_arc) is the start of this FSA's data, and
+        // adding this_fsa_num_arcs means skipping over the arcs arranged
+        // as in a_fsas_.shape.
+        carc.incoming_arc_idx012 = 2 * this_fsa_first_arc + this_fsa_num_arcs +
+                                   incoming_arc_idx12;
+      }
       carcs_data[i] = carc;
     };
     Eval(c_, tot_arcs, set_carcs_lambda);
@@ -506,13 +530,11 @@ class MultiGraphDenseIntersect {
     };
     Eval(c_, num_fsas_, lambda_set_num_copies);
 
-    std::vector<int32_t> range(num_fsas_ + 1);
-    // fill with num_fsas_, num_fsas_ + 1, num_fsas_ + 2, ... num_fsas_ * 2.
-    std::iota(range.begin(), range.end(), num_fsas_);
-    std::vector<RaggedShape> bf_shape_prefixes = GetPrefixes(backward_then_forward_shape_,
-                                                             range),
-                             fb_shape_prefixes = GetPrefixes(forward_then_backward_shape_,
-                                                             range);
+    std::vector<int32_t> range(num_fsas_);
+    // fill with 1, 2, .. num_fsas_.
+    std::iota(range.begin(), range.end(), 1);
+    std::vector<RaggedShape> arc_scores_prefixes = GetPrefixes(arc_scores_.shape,
+                                                               range);
 
 
     ContextPtr c_cpu = GetCpuContext();
@@ -526,9 +548,6 @@ class MultiGraphDenseIntersect {
         num_copies_per_fsa),
                 num_fsas_per_t_cpu = num_fsas_per_t.To(c_cpu);
 
-    K2_LOG(INFO) << " num_fsas_per_t = " << num_fsas_per_t
-                 << ", num_copies_per_fsa = " << num_copies_per_fsa;
-
     Array1<int32_t> a_fsas_row_splits1_cpu = a_fsas_.RowSplits(1).To(c_cpu),
                   a_fsas_row_splits12_cpu = a_fsas_.RowSplits(2)[
                       a_fsas_.RowSplits(1)].To(c_cpu);
@@ -539,79 +558,48 @@ class MultiGraphDenseIntersect {
 
     for (int32_t t = 0; t <= T_; t++) {
       Step &step = steps_[t];
-      step.forward_t = t;
-      step.backward_t = T_ - t;
-      step.forward_before_backward = (step.forward_t <= step.backward_t);
-      int32_t nf = step.forward_num_fsas = num_fsas_per_t_cpu[step.forward_t],
-              nb = step.backward_num_fsas = num_fsas_per_t_cpu[step.backward_t];
+      step.t = t;
+      step.num_fsas = num_fsas_per_t_cpu[t];
 
+      // the - 1 is because arc_scores_prefixes contains prefixes
+      // of length 1, 2, .. (starts from 1 not 0).
+      RaggedShape &shape = arc_scores_prefixes[step.num_fsas - 1];
+      step.arc_scores = Ragged<float>(shape,
+                                      arc_scores_.values.Arange(0, shape.NumElements()));
 
-      int32_t num_arcs_forward = a_fsas_row_splits12_cpu[nf],
-             num_arcs_backward = a_fsas_row_splits12_cpu[nb],
-            num_states_forward = a_fsas_row_splits1_cpu[nf],
-           num_states_backward = a_fsas_row_splits1_cpu[nb];
-
-      if (step.forward_before_backward) {
-        // fb_shape_prefixes[nb] is incoming_arcs_.shape appended with the first
-        // `nb` FSAs of a_fsas_.shape.  Note: for purposes of allocation (and
-        // reduction of arcs->states) we assume that for the forward pass all
-        // the FSAs are active; this may not really be true, but it keeps the
-        // shapes regular.
-        step.arc_scores = Ragged<float>(fb_shape_prefixes[nb],
-                                        arc_scores_.Arange(0, tot_arcs +
-                                                           num_arcs_backward));
-        step.forward_arc_scores = arc_scores_.Arange(0, tot_arcs);
-        step.backward_arc_scores = arc_scores_.Arange(tot_arcs,
-                                                      tot_arcs + num_arcs_backward);
-        step.state_scores = Array1<float>(c_, tot_states + num_states_backward);
-        step.forward_state_scores = step.state_scores.Arange(0, tot_states);
-        step.backward_state_scores = step.state_scores.Arange(tot_states,
-                                                              tot_states + num_states_backward);
-      } else {
-        step.arc_scores = Ragged<float>(bf_shape_prefixes[nf],
-                                        arc_scores_.Arange(0, tot_arcs +
-                                                           num_arcs_forward));
-        step.backward_arc_scores = arc_scores_.Arange(0, tot_arcs);
-        step.forward_arc_scores = arc_scores_.Arange(tot_arcs,
-                                                     tot_arcs + num_arcs_forward);
-        step.state_scores = Array1<float>(c_, tot_states + num_states_forward);
-        step.backward_state_scores = step.state_scores.Arange(0, tot_states);
-        step.forward_state_scores = step.state_scores.Arange(tot_states,
-                                                             tot_states + num_states_forward);
-      }
+      int32_t num_states = a_fsas_row_splits1_cpu[step.num_fsas];
+      // * 2 because have both forward and backward.
+      step.state_scores = Array1<float>(c_, 2 * num_states);
     }
   }
-
-
 
   void DoStep0() {
     NVTX_RANGE(__func__);
     // Run step zero of the computation: this initializes the forward probabilities on
     // frame 0, and the backward probabilities on the last frame for each sequence.
-    std::vector<float*> backward_state_scores_vec(T_ + 1);
-    int32_t tot_states = a_fsas_.TotSize(1);
-    for (int32_t t = 0; t <= T_; t++) {
-      int32_t bt = steps_[t].backward_t;
-      backward_state_scores_vec[bt] = steps_[t].backward_state_scores.Data();
-    }
-    backward_state_scores_ = Array1<float*>(c_, backward_state_scores_vec);
-    float **backward_state_scores_data = backward_state_scores_.Data();
-    float *forward_scores_t0 = steps_[0].forward_state_scores.Data();
+
+    float *scores = steps_[0].state_scores.Data();
     int32_t *a_fsas_row_ids1 = a_fsas_.RowIds(1).Data();
     FsaInfo *fsa_info_data = fsa_info_.Data();
     const float minus_inf = -std::numeric_limits<float>::infinity();
     auto lambda_init_state_scores = [=] __host__ __device__ (int32_t state_idx01) -> void {
       int32_t fsa_idx0 = a_fsas_row_ids1[state_idx01];
       FsaInfo this_info = fsa_info_data[fsa_idx0];
-      int32_t state_idx0x = this_info.state_offset,
-          state_idx1 = state_idx01 - state_idx0x;
+      // we could also write:
+      // backward_state_idx = (2 * this_info.state_offset) + state_idx1,
+      // where state_idx1 = this_info.state_offset - state_idx01.
+      // Each FSA has (its states for backward, its states for forward).
+      int32_t backward_state_idx = this_info.state_offset + state_idx01,
+         forward_state_idx = backward_state_idx + this_info.num_states,
+         state_idx1 = state_idx01 - this_info.state_offset;
+
       float start_loglike = (state_idx1 == 0 ? 0 : minus_inf),
          end_loglike = (state_idx1 + 1 == this_info.num_states ? 0 :
-                      minus_inf);
-      float *backward_state_scores_last_frame = backward_state_scores_data[this_info.T];
-      forward_scores_t0[state_idx01] = start_loglike;
-      backward_state_scores_last_frame[state_idx01] = end_loglike;
+                        minus_inf);
+      scores[forward_state_idx] = start_loglike;
+      scores[backward_state_idx] = end_loglike;
     };
+    int32_t tot_states = a_fsas_.TotSize(1);
     Eval(c_, tot_states, lambda_init_state_scores);
   }
 
@@ -619,22 +607,16 @@ class MultiGraphDenseIntersect {
      backward simultaneously, for different time steps) */
   void DoStep(int32_t t) {
     NVTX_RANGE(__func__);
-    Step &step = steps_[t], &prev_step = steps_[t-1];
+    Step &step = steps_[t],
+          &prev_step = steps_[t-1];
 
-    int32_t forward_num_fsas = step.forward_num_fsas,
-           backward_num_fsas = step.backward_num_fsas,
-                    tot_arcs = a_fsas_.NumElements();
-    float *forward_arc_scores_data = step.forward_arc_scores.Data(),
-         *backward_arc_scores_data = step.backward_arc_scores.Data(),
-     *prev_forward_state_scores_data = prev_step.forward_state_scores.Data(),
-  *next_backward_state_scores_data = prev_step.backward_state_scores.Data();
+    // Divide by two because each arc is repeated twice in arc_scores (once for
+    // forward, once for backward).  The same kernel instance does both the forward
+    // and backward passes, so we can avoid reading the arc twice.
+    int32_t num_arcs = step.arc_scores.values.Dim() / 2;
 
-    // the frame from which we need to read scores is actually forward_t - 1,
-    // e.g. if we are writing the state-probs on frame t=1 we need to read the
-    // scores on t=1.
-    int32_t forward_scores_t = step.forward_t - 1,
-           backward_state_scores_t = step.backward_t;
-
+    float *arc_scores_data = step.arc_scores.values.Data(),
+      *prev_state_scores_data = prev_step.state_scores.Data();
 
     CompressedArc *carcs_data = carcs_.Data();
     FsaInfo *fsa_info_data = fsa_info_.Data();
@@ -646,38 +628,37 @@ class MultiGraphDenseIntersect {
       int32_t fsa_idx = carc.fsa_idx;
       FsaInfo fsa_info = fsa_info_data[fsa_idx];
       // First, forward pass.  We read from the src_state of the arc
-      if (fsa_idx < forward_num_fsas) {
-        int32_t src_state_idx1 = carc.src_state,
-               src_state_idx01 = fsa_info.state_offset + src_state_idx1;
-        float src_prob = prev_forward_state_scores_data[src_state_idx01];
-        float arc_end_prob = src_prob + carc.score +
-                             scores_data[carc.label_plus_one +
-                                         fsa_info.scores_offset +
-                                         scores_stride * forward_scores_t];
-        // For the forward pass we write the arc-end probs out-of-order
-        // w.r.t. the regular ordering of the arcs, so we can more easily
-        // do the reduction at the destination states.
-        forward_arc_scores_data[carc.incoming_arc_idx012] = arc_end_prob;
-      }
-      if (fsa_idx < backward_num_fsas) {
-        int32_t dest_state_idx1 = carc.dest_state,
-               dest_state_idx01 = fsa_info.state_offset + dest_state_idx1;
-        float dest_prob = next_backward_state_scores_data[dest_state_idx01];
-        float arc_begin_prob = dest_prob + carc.score +
-                             scores_data[carc.label_plus_one +
-                                         fsa_info.scores_offset +
-                                         scores_stride * backward_state_scores_t];
-        backward_arc_scores_data[arc_idx012] = arc_begin_prob;
-      }
+
+      int32_t src_state_idx1 = carc.src_state,
+             dest_state_idx1 = carc.dest_state;
+      int32_t dest_state_scores_index_backward = 2 * fsa_info.state_offset +
+                                                 dest_state_idx1,
+               src_state_scores_index_forward = 2 * fsa_info.state_offset +
+                                   fsa_info.num_states + src_state_idx1;
+
+
+      float forward_src_prob = prev_state_scores_data[src_state_scores_index_forward],
+        backward_dest_prob = prev_state_scores_data[dest_state_scores_index_backward];
+
+      float b_score_forward = scores_data[fsa_info.scores_offset +
+                                          (scores_stride * (t - 1)) +
+                                          carc.label_plus_one],
+         b_score_backward = scores_data[fsa_info.scores_offset +
+                                        (scores_stride * (fsa_info.T - t)) +
+                                        carc.label_plus_one];
+      float forward_arc_end_prob = forward_src_prob + carc.score + b_score_forward,
+         backward_arc_begin_prob = backward_dest_prob + carc.score + b_score_backward;
+
+      // These are indexes into step.arc_scores.values.Data().
+      int32_t arc_idx_for_backward = arc_idx012 + fsa_info.arc_offset,
+           arc_idx_for_forward = carc.incoming_arc_idx012;
+
+      arc_scores_data[arc_idx_for_forward] = forward_arc_end_prob;
+      arc_scores_data[arc_idx_for_backward] = backward_arc_begin_prob;
     };
-    Eval(c_, tot_arcs, lambda_set_arc_scores);
+    Eval(c_, num_arcs, lambda_set_arc_scores);
     MaxPerSublist(step.arc_scores, -std::numeric_limits<float>::infinity(),
                   &step.state_scores);
-    K2_LOG(INFO) << "Previous state scores are (forward) " << prev_step.forward_state_scores
-                 << ", (backward) " << prev_step.backward_state_scores
-                 << ", arc scores are: " << step.arc_scores
-                 << ", current state scores are (forward) " << step.forward_state_scores
-                 << ", (backward) " << step.backward_state_scores;
   }
 
   /*
@@ -687,17 +668,14 @@ class MultiGraphDenseIntersect {
     pick a looser beam if there is significant roundoff).
    */
   Array1<float> GetScoreCutoffs() {
-    std::vector<float*> forward_state_scores_vec(T_ + 1);
+    std::vector<float*> state_scores_vec(T_ + 1);
     int32_t tot_states = a_fsas_.TotSize(1);
     for (int32_t t = 0; t <= T_; t++) {
-      int32_t ft = steps_[t].forward_t;  // actually == t, but it's clearer.
-      forward_state_scores_vec[ft] = steps_[t].forward_state_scores.Data();
+      state_scores_vec[t] = steps_[t].state_scores.Data();
     }
-    forward_state_scores_ = Array1<float*>(c_, forward_state_scores_vec);
-    float **forward_state_scores_data = forward_state_scores_.Data();
+    state_scores_ = Array1<float*>(c_, state_scores_vec);
+    float **state_scores_data = state_scores_.Data();
 
-    // Step T_ has the backward scores for t=0 (steps_[T_].backward_t == 0).
-    float *backward_state_scores_t0 = steps_[T_].backward_state_scores.Data();
     FsaInfo *fsa_info_data = fsa_info_.Data();
     Array1<float> score_cutoffs(c_, num_fsas_);
     float *score_cutoffs_data = score_cutoffs.Data();
@@ -705,17 +683,27 @@ class MultiGraphDenseIntersect {
     const float minus_inf = -std::numeric_limits<float>::infinity();
     auto lambda_set_cutoffs = [=] __host__ __device__ (int32_t fsa_idx0) -> void {
       FsaInfo fsa_info = fsa_info_data[fsa_idx0];
+      // In the scores array, we have FSA 0 then FSA1 and so on; for each
+      // FSA we have (backward scores, arranged as in a_fsas_.shape),
+      // then (forward scores, arranged as in incoming_arcs_.shape).
+      // We are interested in the backward-prob at state 0 (start state)
+      // and the forward-prob in the final state.
+      int32_t backward_state_idx = fsa_info.state_offset,
+         forward_state_idx = backward_state_idx + (2 * fsa_info.num_states) - 1;
+      // We get the start and end scoreas after fsa_info.T steps of propagation,
+      // and the result is in the state_scores of the Step indexed fsa_info.T.
+      float *this_state_scores = state_scores_data[fsa_info.T];
+      // Take the worst of the state scores; this will reduce the chance of
+      // roundoff errors causing all states to be pruned away.
       float tot_score_start = (fsa_info.num_states == 0 ? minus_inf :
-                               backward_state_scores_t0[0]),
-        tot_score_end = (fsa_info.num_states == 0 ? minus_inf :
-                         forward_state_scores_data[fsa_info.T]
-                         [fsa_info.state_offset + fsa_info.num_states - 1]),
-        tot_score_min = (tot_score_start < tot_score_end ?
-                        tot_score_start : tot_score_end);
+                               this_state_scores[backward_state_idx]),
+          tot_score_end = (fsa_info.num_states == 0 ? minus_inf :
+                           this_state_scores[forward_state_idx]),
+         tot_score_min = (tot_score_start < tot_score_end ?
+                          tot_score_start : tot_score_end);
       score_cutoffs_data[fsa_idx0] = tot_score_min - output_beam;
     };
     Eval(c_, num_fsas_, lambda_set_cutoffs);
-    K2_LOG(INFO) << "Scores cutoffs are " << score_cutoffs;
     return score_cutoffs;
   }
 
@@ -740,9 +728,13 @@ class MultiGraphDenseIntersect {
     uint16_t label_plus_one;
     // FSA index, as uint16.
     uint16_t fsa_idx;
-    // The idx012 of the position of this arc in the 'incoming arcs' array as
-    // returned by GetIncomingArcs().  This is where we'll write the end-loglike
-    // of this arc in the forward propagation, to make the reduction easier.
+    // The idx012 of the position of this arc in the arc_scores_ array in the
+    // Step.  This position is obtained by (1) renumbering the arc-indexes in
+    // a_fsas_ to produce incoming_arcs_, (2) appending a_fsas_.shape and
+    // incoming_arcs_.shape along their axis 1 so they are ordered as: (arcs for
+    // fsa 0) (incoming arcs for fsa 0) (arcs for fsa 1) (incoming arcs for fsa
+    // 1) and so on.  This is where we'll write the end-loglike of this arc in
+    // the forward propagation, to make the reduction easier.
     int32_t incoming_arc_idx012;
     float score;
   };
@@ -756,24 +748,13 @@ class MultiGraphDenseIntersect {
   Ragged<int32_t> incoming_arcs_;
 
 
-  // forward_then_backward_shape_ is a shape with NumAxes()==3, equal to
-  // (incoming_arcs_.shape, a_fsas_.shape) appended together.  The name is
-  // because incoming_arcs_.shape is used for reduction of arc-scores to
-  // state-scores in the forward pass, and a_fsas_.shape in the backward pass.
-  // Prefixes of forward_then_backward_shape_ are used as the shape of the
-  // "early" members of fb_state_scores_, those for which t_forward <= t_backward.
-  // FSAs active in the forward pass is >= those active in the backward pass.
-  RaggedShape forward_then_backward_shape_;
-
-  // backward_then_forward_shape is (a_fsas_.shape, incoming_arcs_.shape)
-  // appended together.  Read docs for forward_then_backward_shape_ to
-  // understand.
-  RaggedShape backward_then_forward_shape_;
-
-  // Temporary array used in combined forward+backward computation, of dimension
-  // a_fsas_.TotSize(2) * 2.  Used indirectly through fb_arc_scores_, which
-  // share this data.
-  Array1<float> arc_scores_;
+  // The shape of arc_scores_ the result of appending a_fsas_.shape and incoming_arcs_.shape
+  // along axis 1 (i.e. states).  arc_scores_ is used to take the max of the forward and
+  // backward probabilities in parallel on each frame.  Each FSA has twice
+  // the number of of states as in a_fsas_, and twice the number of arcs;
+  // and the order is (the arcs/states as in a_fsas_, for backward propagation),
+  // then (the arcs/states as in incoming_arcs_, for forward propagation).
+  Ragged<float> arc_scores_;
 
   struct FsaInfo {
     // T is the number of frames in b_fsas_.scores that we have for this FSA, i.e.
@@ -799,108 +780,43 @@ class MultiGraphDenseIntersect {
   Array1<FsaInfo> fsa_info_;
 
   struct Step {
-    // 0 < forward_t <= T_ is the time whose states we are writing to in the
+    // 0 <= t <= T_ is the time whose states we are writing to in the
     // forward pass on this step of the algorithm (we read from those on time
-    // forward_t - 1)
-    int32_t forward_t;
-    // backward_t = T_ - t_forward is the time whose states we are writing
-    // to in the backward pass on this step of the algorithm (we read from those
-    // on time backward_t + 1)
-    int32_t backward_t;
+    // t - 1).  For the backward pass on an FSA with `FsaInfo info`, we write to states
+    // with time `t = info.T - t`.
+    // (Note: t==0 is a special case where we just initialize the times, there is
+    // no propagation.  However we do create the Step struct.)  See DoStep0() for that.
+    int32_t t;
 
-    // true if forward_t <= backward_t.  Affects the order in which we append
-    // the states we're processing for the forward and backward passes into a single
-    // array (if true, forward goes first).
-    bool forward_before_backward;
+    // num_fsas is the number of FSAs that have states active on time t.
+    int32_t num_fsas;
 
-    // forward_num_fsas == num_fsas_for_t_[forward_t] is the number of FSAs that have states
-    // active on t == forward_t.
-    int32_t forward_num_fsas;
 
-    // forward_num_fsas_full is num_fsas_ if forward_before_backward == true,
-    // else forward_num_fsas.  (This is a padding we use so that we can share the
-    // shape information for the arrays, they become prefixes of the same array).
-    int32_t forward_num_fsas_full;
-
-    // backward_num_fsas == num_fsas_for_t_[backward_t] is the number of FSAs that have states
-    // active on t == backward_t.
-    int32_t backward_num_fsas;
-
-    // backward_num_fsas_full is num_fsas_ if backward_before_backward == true,
-    // else backward_num_fsas.  (This is a padding we use so that we can share the
-    // shape information for the arrays, they become prefixes of the same array).
-    int32_t backward_num_fsas_full;
-
-    // Ragged array where we will write the scores of arcs before reduction.
-    // The shapes for all of these use shared memory, and so do the floats
-    // (they are sub-arrays of arc_scores_).
-    // If forward_before_backward it contains the forward scores first;
-    // else the backward scores.
+    // Ragged array where we will write the scores of arcs before reduction;
+    // this is a sub-array of arc_scores_, consisting of the first
+    // `num_fsas` FSAs.
     Ragged<float> arc_scores;
 
-    // forward_arc_scores is a sub-array of `arc_scores` containing
-    // the arc-end probs we write for the forward pass prior to reduction.
-    // Its Dim() is the total num-arcs corresponding to forward_num_fsas.
-    Array1<float> forward_arc_scores;
-
-    // backward_arc_scores is a sub-array of `arc_scores` containing
-    // the arc-begin probs we write for the backward pass prior to reduction.
-    // Its Dim() is the total num-arcs corresponding to backward_num_fsas.
-    Array1<float> backward_arc_scores;
-
-    // `state_scores` is where we reduce `arc_scores` to, its Dim() equals
+    // `state_scores` is where we reduce `arc_scores` to; its Dim() equals
     // arc_scores.TotSize(1).  [arc_scores has 3 axes]. This storage is ACTALLY
-    // ALLOCATED HERE, unlike other arrays declared here.  state_scores.Dim() is
-    // the num-states corresponding to backward_num_fsas_full plus the
-    // num-states corresponding to forward_num_fsas_full (the order depends on
-    // whether forward_before_backward == true).
+    // ALLOCATED HERE, unlike other arrays declared here.
+    // The order is:  [backward scores for FSA 0][forward scores for FSA 0]
+    // [backward scores for FSA 1][forward scores for FSA 1] and so on.
     Array1<float> state_scores;
-
-    // `forward_state_scores` is the sub-array of `state_scores` containing just
-    // the forward probs written in this step; its Dim() is the number of states
-    // corresponding to forward_num_fsas_full.  It's not needed here directly,
-    // but in the next step.
-    Array1<float> forward_state_scores;
-
-    // `backward_state_scores` is the sub-array of `state_scores` containing just
-    // the backward probs written in this step; its Dim() is the number of
-    // states corresponding to backward_num_fsas_full.  It's not needed here
-    // directly, but in the next step.
-    Array1<float> backward_state_scores;
   };
 
   // steps_.size() ==  T_ + 1.
   // steps_[0] is "special", on that step we do initialization.
   std::vector<Step> steps_;
 
-  // It happens to be convenient to cache these two things here; they point to
-  // data owned in the elements of steps_.forward_state_scores and
-  // backward_state_scores.
-  Array1<float*> forward_state_scores_;
-  Array1<float*> backward_state_scores_;
+  // Pointer to the Data() pointers of the state_scores elements of steps_[i] for
+  // 0 <= i <= T_.
+  Array1<float*> state_scores_;
 
   float output_beam_;
 
   int32_t T_;  // == b_fsas_.MaxSize(1)
 
-  // forward_probs_ contains the forward probabilities.
-  // Its NumAxes() == 2, it's of dimension [num_fsas][tot_states_per_fsa]
-  // where "tot_states_per_fsa" correponds to the elements of tot_states_per_fsa_.
-  Ragged<float> forward_probs_;
-
-  // backward_probs_ has the same shape as forward_probs_.  backward_probs_[i] +
-  // forward_probs[i] equals the probability of paths including that arc divided
-  // by the total-prob of the lattice.
-  Ragged<float> backward_probs_;
-
-  // forward_probs_temp_ is a temporary used in computing forward_probs_ on each
-  // frames; its dimension is a_fsas_.TotSize(2) * (b_fsas_.Dim0() /
-  // a_fsas_.Dim0()), and it's arranged the same way as a_fsas_incoming_.
-  Array1<float> forward_probs_temp_;
-
-  // This is as oshape_unpruned_, but after the backward-pass pruning.
-  // It is indexed [fsa_id][t][state][arc].
-  RaggedShape oshape_pruned_;
 };
 
 void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas, float output_beam,
