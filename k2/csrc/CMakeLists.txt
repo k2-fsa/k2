@@ -63,6 +63,7 @@ target_link_libraries(context PUBLIC fsa)
 target_link_libraries(context PUBLIC k2_log)
 target_link_libraries(context PUBLIC k2_nvtx)
 target_link_libraries(context PUBLIC moderngpu)
+target_link_libraries(context PUBLIC ${CUDA_cusparse_LIBRARY})
 if(K2_USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
 endif()
@@ -89,6 +90,7 @@ set(cuda_tests
   tensor_test
   top_sort_test
   utils_test
+  cusparse_test
 )
 
 # utility function to add gtest
