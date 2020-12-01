@@ -606,10 +606,33 @@ bool IsMonotonic(const Array1<T> &a) {
     auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
       if (data[i + 1] < data[i]) *is_monotonic_data = 0;
     };
-    Eval(c, dim - 1, lambda_test);
+    EvalDevice(c, dim - 1, lambda_test);
     return is_monotonic[0];
   }
 }
+
+
+template <typename T>
+bool IsMonotonicDecreasing(const Array1<T> &a) {
+  NVTX_RANGE(K2_FUNC);
+  ContextPtr &c = a.Context();
+  int32_t dim = a.Dim();
+  const T *data = a.Data();
+  if (c->GetDeviceType() == kCpu) {
+    for (int i = 0; i + 1 < dim; i++)
+      if (data[i + 1] > data[i]) return false;
+    return true;
+  } else {
+    Array1<int32_t> is_monotonic(c, 1, 1);
+    int32_t *is_monotonic_data = is_monotonic.Data();
+    auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
+      if (data[i + 1] > data[i]) *is_monotonic_data = 0;
+    };
+    EvalDevice(c, dim - 1, lambda_test);
+    return is_monotonic[0];
+  }
+}
+
 
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
@@ -827,7 +850,7 @@ void Sort(Array1<T> *array, Array1<int32_t> *index_map /*= nullptr*/) {
   K2_DCHECK_EQ(context->GetDeviceType(), kCuda);
 
   std::unique_ptr<mgpu::context_t> mgpu_context =
-      GetModernGpuAllocator(context->GetDeviceId());
+      GetModernGpuAllocator(context);
 
   if (index_map != nullptr) {
     *index_map = Range(context, array->Dim(), 0);
@@ -837,6 +860,43 @@ void Sort(Array1<T> *array, Array1<int32_t> *index_map /*= nullptr*/) {
     mgpu::mergesort(array->Data(), array->Dim(), Compare(), *mgpu_context);
   }
 }
+
+template <typename T>
+void Assign(Array2<T> &src, Array2<T> *dest) {
+  K2_CHECK_EQ(src.Dim0(), dest->Dim0());
+  K2_CHECK_EQ(src.Dim1(), dest->Dim1());
+  int32_t dim0 = src.Dim0(), dim1 = src.Dim1(),
+    src_stride = src.ElemStride0(),
+   dest_stride = dest->ElemStride0();
+
+  if (src_stride == dim1 && dest_stride == dim1) {
+    cudaMemcpyKind memcpy_kind = GetMemoryCopyKind(*src.Context(),
+                                                   *dest->Context());
+    size_t num_bytes = dim0 * src.ElementSize() * dim1;
+    MemoryCopy((void*)dest->Data(), (const void*)src.Data(),
+               num_bytes, memcpy_kind, src.Context().get());
+  } else {
+    // this branch does not support cross-device copy.
+    ContextPtr c = GetContext(src, *dest);
+    T *dest_data = dest->Data();
+    const T *src_data = src.Data();
+    if (c->GetDeviceType() == kCpu) {
+      size_t row_length_bytes = src.ElementSize() * dim1;
+      for (int32_t r = 0; r < dim0;
+           r++, dest_data += dest_stride, src_data += src_stride) {
+        memcpy(static_cast<void*>(dest_data),
+               static_cast<const void*>(src_data),
+               row_length_bytes);
+      }
+    } else {
+      auto lambda_copy_data = [=] __device__ (int32_t i, int32_t j) {
+        dest_data[i * dest_stride + j] = src_data[i * src_stride + j];
+      };
+      Eval2Device(c, dim0, dim1, lambda_copy_data);
+    }
+  }
+}
+
 
 }  // namespace k2
 

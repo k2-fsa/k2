@@ -342,6 +342,18 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *row_ids);
 
 /*
+  Given a vector of row_splits, return a vector of sizes.
+
+     @param [in] row_splits   Row-splits array, should be non-decreasing,
+                            and have Dim() >= 1
+     @return   Returns array of sizes, satisfying `ans.Dim() ==
+              row_splits.Dim() - 1` and
+              `ans[i] = row_splits[i+1] - row_splits[i]`.
+ */
+Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits);
+
+
+/*
   This is a convenience wrapper for the function of the same name in utils.h.
    @param [in] row_ids     Input row_ids vector, of dimension num_elems
    @param [out] row_splits  row_splits vector to whose data we will write,
@@ -377,20 +389,27 @@ bool Equal(const Array1<T> &a, const Array1<T> &b);
  */
 template <typename T>
 bool IsMonotonic(const Array1<T> &a);
+/*
+  Return true if array `a` is monotonically decreasing, i.e.
+  a[i+1] >= a[i].
+ */
+template <typename T>
+bool IsMonotonicDecreasing(const Array1<T> &a);
+
 
 /*
   Generalized function inverse for an array viewed as a function which is
   monotonically decreasing.
 
      @param [in] src   Array which is monotonically decreasing (not necessarily
-                      strictly) and all elements are positive, e.g.
+                      strictly) and whose elements are all positive, e.g.
                       [ 5 5 4 2 1 ]
-     @return          Returns an array such with ans.Dim() == src[0],
+     @return          Returns an array such that ans.Dim() == src[0],
                       such that ans[i] = min(j >= 0 : src[j] <= i).
                       We pretend values past the end of `src` are zeros.
                       In this case the result would be:
                       [ 5 4 3 3 2].
-                      Noticed ans[0] = 5 here, we get it because we pretend
+                      Notice ans[0] = 5 here, we get it because we pretend
                       `src` is [5 5 4 2 1 0]
 
     Note:             InvertMonotonicDecreasing(InvertMonotonicDecreasing(x))
@@ -402,6 +421,16 @@ bool IsMonotonic(const Array1<T> &a);
    in this example; call MonotonicDecreasingUpperBound(ans, &ans).
  */
 Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src);
+
+
+/*
+  Assuming `src` is a permutation of Range(0, src.Dim()), returns the inverse of
+  that permutation, such that ans[src[i]] = i.  It is an error, and may cause a
+  segfault or undefined results, if `src` was not a permutation of Range(0,
+  src.Dim()).
+ */
+Array1<int32_t> InvertPermutation(const Array1<int32_t> &src);
+
 
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
@@ -539,14 +568,25 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
 /* Sort an array **in-place**.
 
    @param [inout]   array        The array to be sorted.
-   @param [out]     index_map    If non-null, it maps the index
-                                 of the returned array to the original
-                                 unsorted array. That is,
-                                 out[i] = unsorted[index_map[i]]
-                                 for i in [0, array->Dim()).
+   @param [out]     index_map    If non-null, it will be set to
+                          a new array that maps the index of the returned array
+                          to the original unsorted array. That is, out[i] =
+                          unsorted[index_map[i]] for i in [0, array->Dim()) if
+                          `unsorted` was the value of `array` at input and `out`
+                          is the value after the function call.
  */
 template <typename T, typename Compare = LessThan<T>>
 void Sort(Array1<T> *array, Array1<int32_t> *index_map = nullptr);
+
+
+/*
+  Assign elements from `src` to `dest`; they must have the same shape.  For now
+  this only supports cross-device copy if the data is contiguous.
+ */
+template <typename T>
+void Assign(Array2<T> &src, Array2<T> *dest);
+
+
 
 }  // namespace k2
 

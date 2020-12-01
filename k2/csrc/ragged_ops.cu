@@ -152,76 +152,46 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_splits2,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(row_splits1 != nullptr || row_ids1 != nullptr)
-      << "At least one of row_splits1 and row_ids1 must be defined";
-  K2_CHECK(row_splits2 != nullptr || row_ids2 != nullptr)
-      << "At least one of row_splits2 and row_ids2 must be defined";
 
-  // check context
-  ContextPtr ctx1 = ::GetContext(row_splits1, row_ids1);
-  ContextPtr ctx2 = ::GetContext(row_splits2, row_ids2);
-  K2_CHECK(ctx1->IsCompatible(*ctx2));
+  RaggedShape shape1 = RaggedShape2(row_splits1, row_ids1, cached_tot_size1);
 
-  // check row_splits and row_ids of axis-1
-  if (cached_tot_size1 != -1) {
-    if (row_ids1 != nullptr) K2_CHECK_EQ(cached_tot_size1, row_ids1->Dim());
-    if (row_splits1 != nullptr) {
-      // may be slow as it may copy memory from device to host
-      K2_DCHECK_EQ(cached_tot_size1, row_splits1->Back());
-    }
+
+  Array1<int32_t> temp_array;
+  if (row_splits2 == nullptr) {
+    K2_CHECK_NE(row_ids2, nullptr) << "Either row-splits or row-ids must be defined";
+    temp_array = Array1<int32_t>(row_ids2->Context(), shape1.NumElements() + 1);
+    row_splits2 = &temp_array;
+    RowIdsToRowSplits(*row_ids2, row_splits2);
   }
 
-  // check row_splits and row_ids of axis-2
-  if (cached_tot_size2 != -1) {
-    if (row_ids2 != nullptr) K2_CHECK_EQ(cached_tot_size2, row_ids2->Dim());
-    if (row_splits2 != nullptr) {
-      // may be slow as it may copy memory from device to host
-      K2_DCHECK_EQ(cached_tot_size2, row_splits2->Back());
-    }
-  }
-
-  std::vector<RaggedShapeDim> axes(2);
-  // set row_splits and row_ids for axis 1
-  if (row_splits1 != nullptr) {
-    axes[0].row_splits = *row_splits1;
-  } else {
-    // work out row_splits1, see code in RaggedShape2 above for the reason
-    int32_t num_rows = row_ids1->Dim() == 0 ? 0 : row_ids1->Back() + 1;
-    Array1<int32_t> row_splits_array(ctx1, num_rows + 1);
-    RowIdsToRowSplits(*row_ids1, &row_splits_array);
-    axes[0].row_splits = row_splits_array;
-  }
-  if (row_ids1 != nullptr) axes[0].row_ids = *row_ids1;
-  if (cached_tot_size1 == -1) {
-    cached_tot_size1 =
-        row_ids1 != nullptr ? row_ids1->Dim() : axes[0].row_splits.Back();
-  }
-  axes[0].cached_tot_size = cached_tot_size1;
-
-  // set row_splits and row_ids for axis 2
-  if (row_splits2 != nullptr) {
-    axes[1].row_splits = *row_splits2;
-  } else {
-    // work out row_splits1, see code in RaggedShape2 above for the reason
-    int32_t num_rows = row_ids2->Dim() == 0 ? 0 : row_ids2->Back() + 1;
-    Array1<int32_t> row_splits_array(ctx1, num_rows + 1);
-    RowIdsToRowSplits(*row_ids2, &row_splits_array);
-    axes[1].row_splits = row_splits_array;
-  }
-  if (row_ids2 != nullptr) axes[1].row_ids = *row_ids2;
-  if (cached_tot_size2 == -1) {
-    cached_tot_size2 =
-        row_ids2 != nullptr ? row_ids2->Dim() : axes[1].row_splits.Back();
-  }
-  axes[1].cached_tot_size = cached_tot_size2;
-
-  // we don't check here if
-  // row_splits1[row_splits1.Dim() - 1] == row_ids1.Dim()
-  //   == (row_splits2.Dim() - 1)
-  //   >= (row_ids2[row_ids2.Dim() - 1] + 1)
-  // but RaggedShape(axes) below will check this.
-  return RaggedShape(axes);
+  return ComposeRaggedShapes(shape1,
+                             RaggedShape2(row_splits2, row_ids2, cached_tot_size2));
 }
+
+
+RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
+                         Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
+                         Array1<int32_t> *row_splits2,
+                         Array1<int32_t> *row_ids2, int32_t cached_tot_size2,
+                         Array1<int32_t> *row_splits3,
+                         Array1<int32_t> *row_ids3, int32_t cached_tot_size3) {
+  NVTX_RANGE(__func__);
+
+
+  RaggedShape shape12 = RaggedShape3(row_splits1, row_ids1, cached_tot_size1,
+                                     row_splits2, row_ids2, cached_tot_size2);
+  Array1<int32_t> temp_array;
+  if (row_splits3 == nullptr) {
+    K2_CHECK_NE(row_ids3, nullptr) << "Either row-splits or row-ids must be defined";
+    temp_array = Array1<int32_t>(row_ids3->Context(), shape12.NumElements() + 1);
+    row_splits3 = &temp_array;
+    RowIdsToRowSplits(*row_ids3, row_splits3);
+  }
+  return ComposeRaggedShapes(shape12,
+                             RaggedShape2(row_splits3, row_ids3,
+                                          cached_tot_size3));
+}
+
 
 RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
                                     int32_t *tot_sizes) {
@@ -1042,7 +1012,7 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   };
 
   std::unique_ptr<mgpu::context_t> mgpu_context =
-      GetModernGpuAllocator(context->GetDeviceId());
+      GetModernGpuAllocator(context);
 
   int32_t n = src.values.Dim();
   Array1<int32_t> ans = Range(context, n, 0);
@@ -1050,7 +1020,7 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   K2_CUDA_SAFE_CALL(mgpu::segmented_sort(ans.Data(),       // keys
                                          ans.Dim(),        // count
                                          segments.Data(),  // segments
-                                         segments.Dim(),   // num_segments
+                                         segments.Dim() - 1, // num_segments
                                          lambda_comp, *mgpu_context));
   return ans;
 }
@@ -1098,7 +1068,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   };
 
   std::unique_ptr<mgpu::context_t> mgpu_context =
-      GetModernGpuAllocator(context->GetDeviceId());
+      GetModernGpuAllocator(context);
 
   K2_CUDA_SAFE_CALL(mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
 
@@ -1350,5 +1320,15 @@ RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes) {
   for (int32_t a = 1; a + 1 < num_axes; a++) axes[a] = axes[0];
   return RaggedShape(axes);
 }
+
+Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
+  ContextPtr c = shape.Context();
+
+  Array1<int32_t> sizes = RowSplitsToSizes(shape.RowSplits(1));
+  Array1<int32_t> index_map;
+  Sort<int32_t, GreaterThan<int32_t> > (&sizes, &index_map);
+  return index_map;
+}
+
 
 }  // namespace k2

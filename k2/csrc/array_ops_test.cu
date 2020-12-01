@@ -1507,6 +1507,25 @@ TEST(OpsTest, Array1IndexTest) {
   }
 }
 
+
+TEST(OpsTest, InvertPermutationTest) {
+  for (int loop = 0; loop < 2; loop++) {
+    ContextPtr c = (loop == 0 ? GetCpuContext() : GetCudaContext()),
+               cpu_context = GetCpuContext();
+    for (int i = 0; i < 10; i++) {
+      int32_t len = RandInt(0, 10);
+      std::vector<int32_t> permutation(len);
+      std::iota(permutation.begin(), permutation.end(), 0);
+      std::random_shuffle(permutation.begin(), permutation.end());
+      Array1<int32_t> permutation_array(c, permutation);
+      Array1<int32_t> permutation_array_inv = InvertPermutation(permutation_array);
+      Array1<int32_t> range = permutation_array[permutation_array_inv],
+                     range2 = Range(c, len, 0);
+      K2_CHECK(Equal(range, range2));
+    }
+  }
+}
+
 TEST(OpsTest, Array2IndexTest) {
   for (int loop = 0; loop < 2; loop++) {
     ContextPtr c = (loop == 0 ? GetCpuContext() : GetCudaContext()),
@@ -1621,6 +1640,33 @@ TEST(OpsTest, Array1Sort) {
 
   Array1SortTestRandom<int32_t>();
   Array1SortTestRandom<float>();
+}
+
+
+TEST(OpsTest, Array2Assign) {
+  for (int loop = 0; loop < 10; loop++) {
+    ContextPtr c = ((loop % 2) == 0 ? GetCpuContext() : GetCudaContext());
+
+    int32_t src_dim0 = RandInt(1, 10), src_dim1 = RandInt(1, 10);
+
+    using T = int64_t;
+    Array2<T> src = RandUniformArray2<T>(c, src_dim0, src_dim1, 0, 100);
+
+    Array2<T> dest = RandUniformArray2<T>(c, src_dim0, src_dim1, 0, 100);
+
+    Assign(src, &dest);
+
+    K2_CHECK(Equal(src, dest));
+
+    ContextPtr c_other = ((loop % 2) != 0 ? GetCpuContext() : GetCudaContext());
+    Array2<T> dest2 = RandUniformArray2<T>(c_other, src_dim0, src_dim1, 0, 100);
+
+    if (src.ElemStride0() == src_dim1 && dest2.ElemStride0() == src_dim1) {
+      // test cross-device copy, which is only supported for contiguous input
+      Assign(src, &dest2);
+      K2_CHECK(Equal(src.To(c_other), dest2));
+    }
+  }
 }
 
 }  // namespace k2

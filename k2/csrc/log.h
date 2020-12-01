@@ -123,6 +123,11 @@ class Logger {
     return *this;
   }
 
+  K2_CUDA_HOSTDEV const Logger &operator<<(float f) const {
+    printf("%f", f);
+    return *this;
+  }
+
   K2_CUDA_HOSTDEV const Logger &operator<<(double d) const {
     printf("%f", d);
     return *this;
