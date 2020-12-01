@@ -133,7 +133,7 @@ class MultiGraphDenseIntersectPruned {
         min_active_(min_active),
         max_active_(max_active),
         dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), search_beam) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
     K2_CHECK(b_fsas.scores.IsContiguous());
     K2_CHECK_GT(search_beam, 0);
@@ -187,7 +187,7 @@ class MultiGraphDenseIntersectPruned {
       1).  So the #states is 2 greater than the actual number of frames in the
       neural-net output.
     */
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     int32_t T = b_fsas_.shape.MaxSize(1), num_fsas = b_fsas_.shape.Dim0();
 
     std::ostringstream os;
@@ -436,7 +436,7 @@ class MultiGraphDenseIntersectPruned {
     min_active and max_active.
   */
   Array1<float> GetPruningCutoffs(Ragged<float> &arc_end_scores) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     int32_t num_fsas = arc_end_scores.shape.Dim0();
 
     // get the maximum score from each sub-list (i.e. each FSA, on this frame).
@@ -508,7 +508,7 @@ class MultiGraphDenseIntersectPruned {
                        'states' member is expected to be set up on entry.
    */
   Ragged<ArcInfo> GetArcs(int32_t t, FrameInfo *cur_frame) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     Ragged<StateInfo> &states = cur_frame->states;
     const StateInfo *state_values = states.values.Data();
 

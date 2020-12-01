@@ -155,19 +155,18 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
 
   RaggedShape shape1 = RaggedShape2(row_splits1, row_ids1, cached_tot_size1);
 
-
   Array1<int32_t> temp_array;
   if (row_splits2 == nullptr) {
-    K2_CHECK_NE(row_ids2, nullptr) << "Either row-splits or row-ids must be defined";
+    K2_CHECK_NE(row_ids2, nullptr)
+        << "Either row-splits or row-ids must be defined";
     temp_array = Array1<int32_t>(row_ids2->Context(), shape1.NumElements() + 1);
     row_splits2 = &temp_array;
     RowIdsToRowSplits(*row_ids2, row_splits2);
   }
 
-  return ComposeRaggedShapes(shape1,
-                             RaggedShape2(row_splits2, row_ids2, cached_tot_size2));
+  return ComposeRaggedShapes(
+      shape1, RaggedShape2(row_splits2, row_ids2, cached_tot_size2));
 }
-
 
 RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
@@ -175,23 +174,22 @@ RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2,
                          Array1<int32_t> *row_splits3,
                          Array1<int32_t> *row_ids3, int32_t cached_tot_size3) {
-  NVTX_RANGE(__func__);
-
+  NVTX_RANGE(K2_FUNC);
 
   RaggedShape shape12 = RaggedShape3(row_splits1, row_ids1, cached_tot_size1,
                                      row_splits2, row_ids2, cached_tot_size2);
   Array1<int32_t> temp_array;
   if (row_splits3 == nullptr) {
-    K2_CHECK_NE(row_ids3, nullptr) << "Either row-splits or row-ids must be defined";
-    temp_array = Array1<int32_t>(row_ids3->Context(), shape12.NumElements() + 1);
+    K2_CHECK_NE(row_ids3, nullptr)
+        << "Either row-splits or row-ids must be defined";
+    temp_array =
+        Array1<int32_t>(row_ids3->Context(), shape12.NumElements() + 1);
     row_splits3 = &temp_array;
     RowIdsToRowSplits(*row_ids3, row_splits3);
   }
-  return ComposeRaggedShapes(shape12,
-                             RaggedShape2(row_splits3, row_ids3,
-                                          cached_tot_size3));
+  return ComposeRaggedShapes(
+      shape12, RaggedShape2(row_splits3, row_ids3, cached_tot_size3));
 }
-
 
 RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
                                     int32_t *tot_sizes) {
@@ -1016,10 +1014,10 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   int32_t n = src.values.Dim();
   Array1<int32_t> ans = Range(context, n, 0);
   if (n == 0) return ans;
-  K2_CUDA_SAFE_CALL(mgpu::segmented_sort(ans.Data(),       // keys
-                                         ans.Dim(),        // count
-                                         segments.Data(),  // segments
-                                         segments.Dim() - 1, // num_segments
+  K2_CUDA_SAFE_CALL(mgpu::segmented_sort(ans.Data(),          // keys
+                                         ans.Dim(),           // count
+                                         segments.Data(),     // segments
+                                         segments.Dim() - 1,  // num_segments
                                          lambda_comp, *mgpu_context));
   return ans;
 }
@@ -1324,9 +1322,8 @@ Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
 
   Array1<int32_t> sizes = RowSplitsToSizes(shape.RowSplits(1));
   Array1<int32_t> index_map;
-  Sort<int32_t, GreaterThan<int32_t> > (&sizes, &index_map);
+  Sort<int32_t, GreaterThan<int32_t>>(&sizes, &index_map);
   return index_map;
 }
-
 
 }  // namespace k2

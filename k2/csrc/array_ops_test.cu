@@ -1502,7 +1502,6 @@ TEST(OpsTest, Array1IndexTest) {
   }
 }
 
-
 TEST(OpsTest, InvertPermutationTest) {
   for (int loop = 0; loop < 2; loop++) {
     ContextPtr c = (loop == 0 ? GetCpuContext() : GetCudaContext()),
@@ -1513,9 +1512,10 @@ TEST(OpsTest, InvertPermutationTest) {
       std::iota(permutation.begin(), permutation.end(), 0);
       std::random_shuffle(permutation.begin(), permutation.end());
       Array1<int32_t> permutation_array(c, permutation);
-      Array1<int32_t> permutation_array_inv = InvertPermutation(permutation_array);
+      Array1<int32_t> permutation_array_inv =
+          InvertPermutation(permutation_array);
       Array1<int32_t> range = permutation_array[permutation_array_inv],
-                     range2 = Range(c, len, 0);
+                      range2 = Range(c, len, 0);
       K2_CHECK(Equal(range, range2));
     }
   }
@@ -1636,7 +1636,6 @@ TEST(OpsTest, Array1Sort) {
   Array1SortTestRandom<int32_t>();
   Array1SortTestRandom<float>();
 }
-
 
 TEST(OpsTest, Array2Assign) {
   for (int loop = 0; loop < 10; loop++) {

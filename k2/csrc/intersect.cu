@@ -102,7 +102,7 @@ class MultiGraphDenseIntersect {
   MultiGraphDenseIntersect(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                            float output_beam)
       : a_fsas_(a_fsas), b_fsas_(b_fsas), output_beam_(output_beam) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
 
     K2_CHECK(a_fsas_.Dim0() == b_fsas_.shape.Dim0());
@@ -166,7 +166,7 @@ class MultiGraphDenseIntersect {
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput(). */
   void Intersect() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     DoStep0();
     for (int32_t t = 1; t <= T_; t++) DoStep(t);
   }
@@ -189,7 +189,7 @@ class MultiGraphDenseIntersect {
    */
   FsaVec FormatOutput(Array1<int32_t> *arc_map_a_out,
                       Array1<int32_t> *arc_map_b_out) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     Array1<float> score_cutoffs = GetScoreCutoffs();
     float *score_cutoffs_data = score_cutoffs.Data();
     int32_t num_states = a_fsas_.TotSize(1);
@@ -441,7 +441,7 @@ class MultiGraphDenseIntersect {
   // private:
 
   void InitCompressedArcs() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     int32_t tot_arcs = a_fsas_.NumElements();
     carcs_ = Array1<CompressedArc>(c_, tot_arcs);
     CompressedArc *carcs_data = carcs_.Data();
@@ -489,7 +489,7 @@ class MultiGraphDenseIntersect {
   }
 
   void InitFsaInfo() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     int32_t *b_fsas_row_splits1_data = b_fsas_.shape.RowSplits(1).Data(),
             *a_fsas_row_splits1_data = a_fsas_.shape.RowSplits(1).Data(),
             *a_fsas_row_splits2_data = a_fsas_.shape.RowSplits(2).Data();
@@ -522,7 +522,7 @@ class MultiGraphDenseIntersect {
     does not do any of the actual computation.
    */
   void InitSteps() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     // This vector, of length num_fsas_, tells us how many copies of (the states
     // of the i'th decoding graph) we have.  It equals (the length of the
     // sequence of log-likes in b_fsas_) + 1.  It is monotonically decreasing
@@ -579,7 +579,7 @@ class MultiGraphDenseIntersect {
   }
 
   void DoStep0() {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     // Run step zero of the computation: this initializes the forward
     // probabilities on frame 0, and the backward probabilities on the last
     // frame for each sequence.
@@ -612,7 +612,7 @@ class MultiGraphDenseIntersect {
   /* Called for 1 <= t <= T_, does one step of propagation (does forward and
      backward simultaneously, for different time steps) */
   void DoStep(int32_t t) {
-    NVTX_RANGE(__func__);
+    NVTX_RANGE(K2_FUNC);
     Step &step = steps_[t], &prev_step = steps_[t - 1];
 
     // Divide by two because each arc is repeated twice in arc_scores (once for
