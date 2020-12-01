@@ -850,7 +850,7 @@ void Sort(Array1<T> *array, Array1<int32_t> *index_map /*= nullptr*/) {
   K2_DCHECK_EQ(context->GetDeviceType(), kCuda);
 
   std::unique_ptr<mgpu::context_t> mgpu_context =
-      GetModernGpuAllocator(context->GetDeviceId());
+      GetModernGpuAllocator(context);
 
   if (index_map != nullptr) {
     *index_map = Range(context, array->Dim(), 0);

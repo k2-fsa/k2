@@ -100,6 +100,10 @@ TEST(Intersect, Simple) {
     Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
               &arc_map_b2);
 
+    K2_LOG(INFO) << "out_fsas device type is " << out_fsas.Context()->GetDeviceType();
+    out_fsas = out_fsas.To(cpu);
+    arc_map_a = arc_map_a.To(cpu);
+    arc_map_b = arc_map_b.To(cpu);
 
     { // check arc map for out_fsas, arc_map_a, arc_map_b
       DenseFsaVec dfsavec2 = dfsavec.To(cpu);
@@ -111,7 +115,7 @@ TEST(Intersect, Simple) {
        score_composed = out_fsas.values[i].score;
         float margin = 1.0e-04 * (fabs(score_a) + fabs(score_b));
         K2_CHECK( (score_a + score_b) == score_composed ||
-                  fabs(score_a + score_b - score_composed < margin));
+                  fabs(score_a + score_b - score_composed) < margin);
       }
     }
 
@@ -124,14 +128,10 @@ TEST(Intersect, Simple) {
        score_composed = out_fsas2.values[i].score;
         float margin = 1.0e-04 * (fabs(score_a) + fabs(score_b));
         K2_CHECK( (score_a + score_b) == score_composed ||
-                  fabs(score_a + score_b - score_composed < margin));
+                  fabs(score_a + score_b - score_composed) < margin);
       }
     }
 
-
-
-
-    out_fsas = out_fsas.To(cpu);
     K2_CHECK(IsRandEquivalentWrapper(out_fsas, out_fsas2,
                                      treat_epsilons_specially));
 
@@ -215,6 +215,9 @@ TEST(Intersect, RandomSingle) {
 TEST(Intersect, RandomFsaVec) {
   for (int32_t i = 0; i < 10; i++) {
     K2_LOG(INFO) << "Iteration of testing: i = " << i;
+    ContextPtr c = (i % 2 == 0 ? GetCpuContext() : GetCudaContext());
+    ContextPtr cpu = GetCpuContext();
+
     int32_t max_symbol = 10, min_num_arcs = 0, max_num_arcs = 200;
     bool acyclic = false;
 
@@ -223,7 +226,7 @@ TEST(Intersect, RandomFsaVec) {
 
     Fsa fsavec = RandomFsaVec(num_a_fsas, num_a_fsas,
                               acyclic, max_symbol,
-                              min_num_arcs, max_num_arcs);
+                              min_num_arcs, max_num_arcs).To(c);
     ArcSort(&fsavec);
 
     int32_t min_frames = 0, max_frames = 10,
@@ -238,6 +241,7 @@ TEST(Intersect, RandomFsaVec) {
     K2_LOG(INFO) << "Dfsa-vec after reordering is " << dfsavec;
 
     if (true) {
+
       // trying to find bugs where the cutoffs might get mixed up between
       // FSAs
       auto dfsa_acc = dfsavec.scores.Accessor();
@@ -248,6 +252,7 @@ TEST(Intersect, RandomFsaVec) {
         }
       }
     }
+    dfsavec = dfsavec.To(c);
 
     K2_LOG(INFO) << "fsavec = " << fsavec;
 
@@ -261,7 +266,27 @@ TEST(Intersect, RandomFsaVec) {
                    &out_fsas, &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
 
+
+    fsavec = fsavec.To(cpu);
+    out_fsas = out_fsas.To(cpu);
+    arc_map_a = arc_map_a.To(cpu);
+    arc_map_b = arc_map_b.To(cpu);
+    { // check arc map for out_fsas, arc_map_a, arc_map_b
+      DenseFsaVec dfsavec2 = dfsavec.To(cpu);
+      int32_t num_arcs = out_fsas.NumElements();
+      for (int32_t i = 0; i < num_arcs; i++) {
+        int32_t arc_idx_a = arc_map_a[i], arc_idx_b = arc_map_b[i];
+        float score_a = fsavec.values[arc_idx_a].score,
+              score_b = dfsavec2.scores.Data()[arc_idx_b],
+       score_composed = out_fsas.values[i].score;
+        float margin = 1.0e-04 * (fabs(score_a) + fabs(score_b));
+        K2_CHECK( (score_a + score_b) == score_composed ||
+                  fabs(score_a + score_b - score_composed) < margin);
+      }
+    }
+
     FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
+    fsas_b = fsas_b.To(cpu);
     K2_LOG(INFO) << "fsas_b = " << fsas_b;
     FsaVec out_fsas2;
     Array1<int32_t> arc_map_a2, arc_map_b2;
@@ -279,6 +304,22 @@ TEST(Intersect, RandomFsaVec) {
                  << ", arc_map_b2 = " << arc_map_b2;
     K2_CHECK(IsRandEquivalentWrapper(out_fsas, out_fsas2,
                                      treat_epsilons_specially));
+
+
+    { // check arc map for out_fsas2, arc_map_a2, arc_map_b2
+      int32_t num_arcs = out_fsas2.NumElements();
+      for (int32_t i = 0; i < num_arcs; i++) {
+        int32_t arc_idx_a = arc_map_a2[i], arc_idx_b = arc_map_b2[i];
+        float score_a = fsavec.values[arc_idx_a].score,
+              score_b = fsas_b.values[arc_idx_b].score,
+       score_composed = out_fsas2.values[i].score;
+        float margin = 1.0e-04 * (fabs(score_a) + fabs(score_b));
+        K2_CHECK( (score_a + score_b) == score_composed ||
+                  fabs(score_a + score_b - score_composed) < margin);
+      }
+    }
+
+
   }
 }
 
@@ -509,13 +550,15 @@ TEST(IntersectPruned, RandomFsaVec) {
     K2_LOG(INFO) << "Iteration of testing: i = " << i;
     int32_t max_symbol = 10, min_num_arcs = 0, max_num_arcs = 200;
     bool acyclic = false;
+    ContextPtr c = (i % 2 == 0 ? GetCpuContext() : GetCudaContext()),
+             cpu = GetCpuContext();
 
     int32_t num_b_fsas = RandInt(1, 5),
         num_a_fsas = (RandInt(0, 1) ? 1 : num_b_fsas);
 
     Fsa fsavec = RandomFsaVec(num_a_fsas, num_a_fsas,
                               acyclic, max_symbol,
-                              min_num_arcs, max_num_arcs);
+                              min_num_arcs, max_num_arcs).To(c);
     ArcSort(&fsavec);
 
     int32_t min_frames = 0, max_frames = 10,
@@ -536,6 +579,7 @@ TEST(IntersectPruned, RandomFsaVec) {
         }
       }
     }
+    dfsavec = dfsavec.To(c);
 
     K2_LOG(INFO) << "fsavec = " << fsavec;
 
@@ -550,6 +594,26 @@ TEST(IntersectPruned, RandomFsaVec) {
                          min_active, max_active,
                          &out_fsas, &arc_map_a, &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
+
+    out_fsas = out_fsas.To(cpu);
+    fsavec = fsavec.To(cpu);
+    dfsavec = dfsavec.To(cpu);
+    arc_map_a = arc_map_a.To(cpu);
+    arc_map_b = arc_map_b.To(cpu);
+
+    { // check arc map for out_fsas, arc_map_a, arc_map_b
+      int32_t num_arcs = out_fsas.NumElements();
+      for (int32_t i = 0; i < num_arcs; i++) {
+        int32_t arc_idx_a = arc_map_a[i], arc_idx_b = arc_map_b[i];
+        float score_a = fsavec.values[arc_idx_a].score,
+              score_b = dfsavec.scores.Data()[arc_idx_b],
+       score_composed = out_fsas.values[i].score;
+        float margin = 1.0e-04 * (fabs(score_a) + fabs(score_b));
+        K2_CHECK( (score_a + score_b) == score_composed ||
+                  fabs(score_a + score_b - score_composed) < margin);
+      }
+    }
+
 
     FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
     K2_LOG(INFO) << "fsas_b = " << fsas_b;

@@ -44,9 +44,8 @@ class ModernGpuAllocator : public mgpu::standard_context_t {
 
 namespace k2 {
 
-std::unique_ptr<mgpu::context_t> GetModernGpuAllocator(
-    int32_t device_id /*= -1*/) {
-  return std::make_unique<ModernGpuAllocator>(GetCudaContext(device_id));
+std::unique_ptr<mgpu::context_t> GetModernGpuAllocator(ContextPtr c) {
+  return std::make_unique<ModernGpuAllocator>(c);
 }
 
 }  // namespace k2

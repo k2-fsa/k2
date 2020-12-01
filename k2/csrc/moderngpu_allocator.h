@@ -15,12 +15,13 @@
 
 #include <memory>
 
+#include "k2/csrc/context.h"
 #include "moderngpu/context.hxx"
 
 namespace k2 {
-// Return a context for moderngpu that has a better memory allocator
+// Return a context for moderngpu that is a warpper of the given CUDA allocator
 // than mgpu::standard_context_t
-std::unique_ptr<mgpu::context_t> GetModernGpuAllocator(int32_t device_id = -1);
+std::unique_ptr<mgpu::context_t> GetModernGpuAllocator(ContextPtr c);
 
 }  // namespace k2
 

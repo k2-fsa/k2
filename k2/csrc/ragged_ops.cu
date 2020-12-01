@@ -1012,7 +1012,7 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   };
 
   std::unique_ptr<mgpu::context_t> mgpu_context =
-      GetModernGpuAllocator(context->GetDeviceId());
+      GetModernGpuAllocator(context);
 
   int32_t n = src.values.Dim();
   Array1<int32_t> ans = Range(context, n, 0);
@@ -1020,7 +1020,7 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   K2_CUDA_SAFE_CALL(mgpu::segmented_sort(ans.Data(),       // keys
                                          ans.Dim(),        // count
                                          segments.Data(),  // segments
-                                         segments.Dim(),   // num_segments
+                                         segments.Dim() - 1, // num_segments
                                          lambda_comp, *mgpu_context));
   return ans;
 }
@@ -1068,7 +1068,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   };
 
   std::unique_ptr<mgpu::context_t> mgpu_context =
-      GetModernGpuAllocator(context->GetDeviceId());
+      GetModernGpuAllocator(context);
 
   K2_CUDA_SAFE_CALL(mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
 

@@ -230,6 +230,10 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
     K2_DCHECK_EQ(src->values.Dim(), order->Dim());
   }
   K2_DCHECK_GE(src->NumAxes(), 2);
+
+  if (src->values.Dim() == 0)
+    return;
+
   if (src->Context()->GetDeviceType() == kCpu) {
     SortSublistsCpu<T, Op>(src, order);
     return;
@@ -238,7 +242,7 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
   K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda);
 
   std::unique_ptr<mgpu::context_t> context =
-      GetModernGpuAllocator(src->Context()->GetDeviceId());
+      GetModernGpuAllocator(src->Context());
 
   Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
   if (order)
@@ -247,14 +251,14 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
                                      order->Data(),       // indices
                                      src->values.Dim(),   // count
                                      segment.Data(),      // segments
-                                     segment.Dim(),       // num_segments
+                                     segment.Dim() - 1,   // num_segments
                                      Op(),                // cmp
                                      *context));          // context
   else
     K2_CUDA_SAFE_CALL(mgpu::segmented_sort(src->values.Data(),  // keys
                                            src->values.Dim(),   // count
                                            segment.Data(),      // segments
-                                           segment.Dim(),       // num_segments
+                                           segment.Dim() - 1,   // num_segments
                                            Op(),                // cmp
                                            *context));          // context
 }
