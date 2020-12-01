@@ -21,4 +21,16 @@
 #define K2_FUNC __func__
 #endif
 
+#define K2_EVAL(context, dim, lambda_name, ...)           \
+  do {                                                    \
+    if (context->GetDeviceType() == kCpu) {               \
+      auto lambda_name = [=] __VA_ARGS__;                 \
+      int32_t _dim = dim;                                 \
+      for (int32_t i = 0; i != _dim; ++i) lambda_name(i); \
+    } else {                                              \
+      auto lambda_name = [=] __device__ __VA_ARGS__;      \
+      EvalDevice(context, dim, lambda_name);              \
+    }                                                     \
+  } while (0)
+
 #endif  // K2_CSRC_MACROS_H_

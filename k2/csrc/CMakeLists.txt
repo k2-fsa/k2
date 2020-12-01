@@ -84,6 +84,7 @@ set(cuda_tests
   host_shim_test
   intersect_test
   log_test
+  macros_test
   nvtx_test
   ragged_shape_test
   ragged_test
