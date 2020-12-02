@@ -23,6 +23,8 @@ add_library(fsa SHARED
     )
 set_target_properties(fsa PROPERTIES OUTPUT_NAME "k2fsa")
 target_link_libraries(fsa PUBLIC k2_log)
+target_include_directories(fsa PUBLIC  ${CUDA_TOOLKIT_INCLUDE})
+target_link_libraries(fsa PUBLIC k2_nvtx)
 
 #---------------------------- Test K2 host sources ----------------------------
 
