@@ -184,6 +184,40 @@ struct TensorTag {};
 Tensor FromTensor(torch::Tensor &tensor, TensorTag);
 torch::Tensor ToTensor(Tensor &tensor);
 
+/* Transfer an object to a specific device.
+
+   Note: If the object is already on the given device, itself
+   is returned; otherwise, a new object is created and returned.
+
+   @param [in] pyclass  The given object. It should have two methods:
+                        `Context()` and `To()`.
+   @param [in] device   It is an instance of `torch.device`.
+
+   @return  Return an object on the given `device`.
+ */
+template <typename PyClass>
+PyClass To(PyClass &pyclass, py::object device) {
+  std::string device_type = static_cast<py::str>(device.attr("type"));
+  K2_CHECK(device_type == "cpu" || device_type == "cuda")
+      << "Unsupported device type: " << device_type;
+
+  ContextPtr &context = pyclass.Context();
+  if (device_type == "cpu") {
+    if (context->GetDeviceType() == kCpu) return pyclass;
+    return pyclass.To(GetCpuContext());
+  }
+
+  auto index_attr = static_cast<py::object>(device.attr("index"));
+  int32_t device_index = 0;
+  if (!index_attr.is_none()) device_index = static_cast<py::int_>(index_attr);
+
+  if (context->GetDeviceType() == kCuda &&
+      context->GetDeviceId() == device_index)
+    return pyclass;
+
+  return pyclass.To(GetCudaContext(device_index));
+}
+
 }  // namespace k2
 
 #endif  // K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_

@@ -86,12 +86,71 @@ class DenseFsaVec(object):
         self.dense_fsa_vec = _k2.DenseFsaVec(scores, row_splits)
         self.scores = scores  # for back propagation
 
+    @classmethod
+    def _from_dense_fsa_vec(cls, dense_fsa_vec: _k2.DenseFsaVec,
+                            scores: torch.Tensor) -> 'DenseFsaVec':
+        '''Construct a DenseFsaVec from `_k2.DenseFsaVec` and `scores`.
+
+        Note: It is intended for internal use. Users will normally not use it.
+
+        Args:
+          dense_fsa_vec: An instance of `_k2.DenseFsaVec`.
+          scores: The `scores` of `_k2.DenseFsaVec` for back propagation.
+
+        Return:
+          An instance of DenseFsaVec.
+        '''
+        ans = cls.__new__(cls)
+        super(DenseFsaVec, ans).__init__()
+        ans.dense_fsa_vec = dense_fsa_vec
+        ans.scores = scores
+        return ans
+
     def dim0(self) -> int:
         '''Return number of supervision segments'''
         return self.dense_fsa_vec.dim0()
 
     def __str__(self) -> str:
         return self.dense_fsa_vec.to_str()
+
+    @property
+    def device(self) -> torch.device:
+        return self.scores.device
+
+    def is_cpu(self) -> bool:
+        '''Return true if this DenseFsaVec is on CPU.
+
+        Returns:
+          True if the DenseFsaVec is on CPU; False otherwise.
+        '''
+        return self.device.type == 'cpu'
+
+    def is_cuda(self) -> bool:
+        '''Return true if this DenseFsaVec is on GPU.
+
+        Returns:
+          True if the DenseFsaVec is on GPU; False otherwise.
+        '''
+        return self.device.type == 'cuda'
+
+    def to(self, device: torch.device) -> 'DenseFsaVec':
+        '''Move the DenseFsaVec onto a given device.
+
+        Args:
+          device:
+            An instance of `torch.device`. It supports only cpu and cuda.
+
+        Returns:
+          Returns a new DenseFsaVec which is this object copied to the given
+          device (or this object itself, if the device was the same).
+        '''
+        assert device.type in ('cpu', 'cuda')
+        if device == self.scores.device:
+            return self
+
+        scores = self.scores.to(device)
+        dense_fsa_vec = self.dense_fsa_vec.to(device)
+        return DenseFsaVec._from_dense_fsa_vec(dense_fsa_vec, scores)
 
 
 def convert_dense_to_fsa_vec(dense_fsa_vec: DenseFsaVec) -> Fsa:

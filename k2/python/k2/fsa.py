@@ -1,5 +1,5 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
-#                      Xiaomi Corp.   (author: Daniel Povey)
+#                      Xiaomi Corp.       (author: Daniel Povey)
 #                      Guoguo Chen
 #
 # See ../../../LICENSE for clarification regarding multiple authors
@@ -588,7 +588,7 @@ class Fsa(object):
         Returns:
           True if the FSA is on CPU; False otherwise.
         '''
-        return self.arcs.is_cpu()
+        return self.device.type == 'cpu'
 
     def is_cuda(self) -> bool:
         '''Return true if this FSA is on GPU.
@@ -596,7 +596,7 @@ class Fsa(object):
         Returns:
           True if the FSA is on GPU; False otherwise.
         '''
-        return self.arcs.is_cuda()
+        return self.device.type == 'cuda'
 
     @property
     def device(self) -> torch.device:
@@ -666,7 +666,7 @@ class Fsa(object):
 
         Returns:
           Returns a new Fsa which is this object copied to the given device
-         (or this object itself, if the device was the same)
+          (or this object itself, if the device was the same)
         '''
         # Keep this code in sync with that in clone()
         assert device.type in ('cpu', 'cuda')
