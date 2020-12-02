@@ -18,11 +18,14 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2host {
 
 void ComputeForwardMaxWeights(const Fsa &fsa, double *state_weights,
                               std::vector<int32_t> *arc_indexes /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   if (IsEmpty(fsa)) return;
   K2_DCHECK(IsValid(fsa));  // TODO(dan): make this run only in paranoid mode.
   K2_CHECK_NE(state_weights, nullptr);

@@ -12,6 +12,7 @@
  */
 
 #include "k2/csrc/host/properties.h"
+#include "k2/csrc/nvtx.h"
 
 #include <algorithm>
 #include <stack>
@@ -25,6 +26,7 @@
 namespace k2host {
 
 bool IsValid(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   if (IsEmpty(fsa)) return true;
   int32_t num_states = fsa.NumStates();
   // Nonempty fsa contains at least two states,
@@ -54,6 +56,7 @@ bool IsValid(const Fsa &fsa) {
 }
 
 bool IsTopSorted(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   for (const auto &arc : fsa) {
     if (arc.dest_state < arc.src_state) return false;
   }
@@ -61,6 +64,7 @@ bool IsTopSorted(const Fsa &fsa) {
 }
 
 bool IsArcSorted(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   int32_t num_states = fsa.NumStates();
   const auto begin = fsa.data;
   const auto &arc_indexes = fsa.indexes;
@@ -73,6 +77,7 @@ bool IsArcSorted(const Fsa &fsa) {
 }
 
 bool HasSelfLoops(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   for (const auto &arc : fsa) {
     if (arc.dest_state == arc.src_state) return true;
   }
@@ -81,6 +86,7 @@ bool HasSelfLoops(const Fsa &fsa) {
 
 // Detect cycles using DFS traversal
 bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
+  NVTX_RANGE(__func__);
   using dfs::DfsState;
   using dfs::kNotVisited;
   using dfs::kVisited;
@@ -133,6 +139,7 @@ bool IsAcyclic(const Fsa &fsa, std::vector<int32_t> *order /*= nullptr*/) {
 }
 
 bool IsDeterministic(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   std::unordered_set<int32_t> labels;
   int32_t state = 0;
   for (const auto &arc : fsa) {
@@ -149,6 +156,7 @@ bool IsDeterministic(const Fsa &fsa) {
 }
 
 bool IsEpsilonFree(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   for (const auto &arc : fsa) {
     if (arc.label == kEpsilon) return false;
   }
@@ -156,6 +164,7 @@ bool IsEpsilonFree(const Fsa &fsa) {
 }
 
 bool IsUnweighted(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   for (const auto &arc : fsa) {
     if (arc.weight != 0.0) return false;
   }
@@ -163,6 +172,7 @@ bool IsUnweighted(const Fsa &fsa) {
 }
 
 bool IsConnected(const Fsa &fsa) {
+  NVTX_RANGE(__func__);
   std::vector<int32_t> state_map;
   ConnectCore(fsa, &state_map);
   return static_cast<int32_t>(state_map.size()) == fsa.NumStates();
