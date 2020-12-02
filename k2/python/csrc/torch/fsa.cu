@@ -275,6 +275,13 @@ static void PybindDenseFsaVec(py::module &m) {
     os << "scores:" << self.scores << '\n';
     return os.str();
   });
+
+  pyclass.def(
+      "to",
+      [](const PyClass &self, py::object device) -> PyClass {
+        return To(self, device);
+      },
+      py::arg("device"));
 }
 
 static void PybindConvertDenseToFsaVec(py::module &m) {

@@ -29,6 +29,11 @@ class TestDenseFsaVec(unittest.TestCase):
 
         dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
         assert dense_fsa_vec.dim0() == 5, 'It should contain 5 segments'
+        assert dense_fsa_vec.is_cpu()
+        if torch.cuda.is_available():
+            device = torch.device('cuda', 0)
+            dense_fsa_vec_cuda = dense_fsa_vec.to(device)
+            assert dense_fsa_vec_cuda.is_cuda()
         print(dense_fsa_vec)
         print(log_prob)
         # TODO(fangjun): Let the computer check the output
@@ -89,6 +94,9 @@ class TestDenseFsaVec(unittest.TestCase):
 
         dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
         assert dense_fsa_vec.dim0() == 5, 'It should contain 5 segments'
+        assert dense_fsa_vec.is_cuda()
+        cpu_dense_fsa_vec = dense_fsa_vec.to(torch.device('cpu'))
+        assert cpu_dense_fsa_vec.is_cpu()
         print(dense_fsa_vec)
         print(log_prob)
 

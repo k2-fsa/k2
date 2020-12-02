@@ -34,26 +34,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   pyclass.def(
       "to",
       [](const PyClass &self, py::object device) -> PyClass {
-        std::string device_type = static_cast<py::str>(device.attr("type"));
-        K2_CHECK(device_type == "cpu" || device_type == "cuda")
-            << "Unsupported device type: " << device_type;
-
-        ContextPtr &context = self.Context();
-        if (device_type == "cpu") {
-          if (context->GetDeviceType() == kCpu) return self;
-          return self.To(GetCpuContext());
-        }
-
-        auto index_attr = static_cast<py::object>(device.attr("index"));
-        int32_t device_index = 0;
-        if (!index_attr.is_none())
-          device_index = static_cast<py::int_>(index_attr);
-
-        if (context->GetDeviceType() == kCuda &&
-            context->GetDeviceId() == device_index)
-          return self;
-
-        return self.To(GetCudaContext(device_index));
+        return To(self, device);
       },
       py::arg("device"));
 
@@ -161,26 +142,7 @@ static void PybindRaggedShape(py::module &m) {
   pyclass.def(
       "to",
       [](const PyClass &self, py::object device) -> PyClass {
-        std::string device_type = static_cast<py::str>(device.attr("type"));
-        K2_CHECK(device_type == "cpu" || device_type == "cuda")
-            << "Unsupported device type: " << device_type;
-
-        ContextPtr &context = self.Context();
-        if (device_type == "cpu") {
-          if (context->GetDeviceType() == kCpu) return self;
-          return self.To(GetCpuContext());
-        }
-
-        auto index_attr = static_cast<py::object>(device.attr("index"));
-        int32_t device_index = 0;
-        if (!index_attr.is_none())
-          device_index = static_cast<py::int_>(index_attr);
-
-        if (context->GetDeviceType() == kCuda &&
-            context->GetDeviceId() == device_index)
-          return self;
-
-        return self.To(GetCudaContext(device_index));
+        return To(self, device);
       },
       py::arg("device"));
 
