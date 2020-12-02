@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "k2/csrc/nvtx.h"
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
