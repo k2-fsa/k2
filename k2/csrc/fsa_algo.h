@@ -225,8 +225,8 @@ void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                   (requires input FSAs to be arc-sorted and at least one of
                   them to be epsilon free).
  */
-bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
-               bool treat_epsilons_specially, FsaVec *out,
+bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
+               int32_t properties_b, bool treat_epsilons_specially, FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 /*

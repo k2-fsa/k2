@@ -87,9 +87,12 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
       if and only if the two input FSAs are single FSAs;
       otherwise, len(out_fsa.shape) is 3.
     '''
+    properties_a = a_fsa.properties if a_fsa.properties is not None else -1
+    properties_b = b_fsa.properties if b_fsa.properties is not None else -1
     treat_epsilons_specially = True
     need_arc_map = True
-    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, b_fsa.arcs,
+    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, properties_a,
+                                                     b_fsa.arcs, properties_b,
                                                      treat_epsilons_specially,
                                                      need_arc_map)
 
