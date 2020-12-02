@@ -148,7 +148,8 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
     properties_b = GetFsaBasicProperties(b_fsas);
   }
   bool check_properties = true;
-  if ((properties_a & kFsaPropertiesArcSorted) && (properties_b & kFsaPropertiesArcSorted)) {
+  if ((properties_a & kFsaPropertiesArcSorted) &&
+      (properties_b & kFsaPropertiesArcSorted)) {
     check_properties = false;
   }
   int32_t num_fsas = std::max(num_fsas_a, num_fsas_b);

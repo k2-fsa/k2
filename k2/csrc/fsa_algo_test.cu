@@ -234,8 +234,8 @@ TEST(FsaAlgo, IntersectFsaVec) {
   Array1<int32_t> arc_map_a;
   Array1<int32_t> arc_map_b;
   bool treat_epsilons_specially = true;
-  Intersect(fsa1, fsa2, treat_epsilons_specially, &fsa_vec, &arc_map_a,
-            &arc_map_b);
+  Intersect(fsa1, -1, fsa2, -1, treat_epsilons_specially,
+            &fsa_vec, &arc_map_a, &arc_map_b);
   /* fsa_vec is
     0 1 1 10.1      // (0), a_arc_0 + b_arc_0
     0 2 1 10.2      // (1)  a_arc_1 + b_arc_0
