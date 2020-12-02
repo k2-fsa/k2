@@ -42,7 +42,7 @@ class NvtxRange {
 #endif
 
 #ifdef K2_ENABLE_NVTX
-#define NVTX_RANGE(name) NvtxRange K2_UNIQUE_VARIABLE_NAME(k2_nvtx_)(name)
+#define NVTX_RANGE(name) k2::NvtxRange K2_UNIQUE_VARIABLE_NAME(k2_nvtx_)(name)
 #else
 #define NVTX_RANGE(name)
 #endif
