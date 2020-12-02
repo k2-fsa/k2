@@ -76,9 +76,9 @@ enum FsaBasicProperties {
                                          // co-accessible, i.e. states with no
                                          // arcs entering them
   kFsaPropertiesMaybeCoaccessible =
-      0x0100,                           // True if there are no obvious signs of
-                                        // states not being co-accessible, i.e.
-                                        // i.e. states with no arcs leaving them
+      0x0100,  // True if there are no obvious signs of
+               // states not being co-accessible, i.e.
+               // i.e. states with no arcs leaving them
   kFsaAllProperties = 0x01FF
 };
 
@@ -155,7 +155,7 @@ struct DenseFsaVec {
     K2_CHECK_EQ(shape.NumElements(), scores.Dim0());
     K2_CHECK_EQ(shape.NumAxes(), 2);
   }
-  ContextPtr Context() const { return shape.Context(); }
+  ContextPtr &Context() const { return shape.Context(); }
   DenseFsaVec To(ContextPtr c) const {
     return DenseFsaVec(shape.To(c), scores.To(c));
   }
@@ -163,7 +163,7 @@ struct DenseFsaVec {
      Index(RaggedShape &src, const Array1<int32_t> &indexes).  Currently just
      used for testing.
    */
-  DenseFsaVec operator[] (const Array1<int32_t> &indexes);
+  DenseFsaVec operator[](const Array1<int32_t> &indexes);
 };
 
 std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec);
