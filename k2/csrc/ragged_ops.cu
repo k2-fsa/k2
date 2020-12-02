@@ -155,19 +155,18 @@ RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
 
   RaggedShape shape1 = RaggedShape2(row_splits1, row_ids1, cached_tot_size1);
 
-
   Array1<int32_t> temp_array;
   if (row_splits2 == nullptr) {
-    K2_CHECK_NE(row_ids2, nullptr) << "Either row-splits or row-ids must be defined";
+    K2_CHECK_NE(row_ids2, nullptr)
+        << "Either row-splits or row-ids must be defined";
     temp_array = Array1<int32_t>(row_ids2->Context(), shape1.NumElements() + 1);
     row_splits2 = &temp_array;
     RowIdsToRowSplits(*row_ids2, row_splits2);
   }
 
-  return ComposeRaggedShapes(shape1,
-                             RaggedShape2(row_splits2, row_ids2, cached_tot_size2));
+  return ComposeRaggedShapes(
+      shape1, RaggedShape2(row_splits2, row_ids2, cached_tot_size2));
 }
-
 
 RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
@@ -175,23 +174,22 @@ RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids2, int32_t cached_tot_size2,
                          Array1<int32_t> *row_splits3,
                          Array1<int32_t> *row_ids3, int32_t cached_tot_size3) {
-  NVTX_RANGE(__func__);
-
+  NVTX_RANGE(K2_FUNC);
 
   RaggedShape shape12 = RaggedShape3(row_splits1, row_ids1, cached_tot_size1,
                                      row_splits2, row_ids2, cached_tot_size2);
   Array1<int32_t> temp_array;
   if (row_splits3 == nullptr) {
-    K2_CHECK_NE(row_ids3, nullptr) << "Either row-splits or row-ids must be defined";
-    temp_array = Array1<int32_t>(row_ids3->Context(), shape12.NumElements() + 1);
+    K2_CHECK_NE(row_ids3, nullptr)
+        << "Either row-splits or row-ids must be defined";
+    temp_array =
+        Array1<int32_t>(row_ids3->Context(), shape12.NumElements() + 1);
     row_splits3 = &temp_array;
     RowIdsToRowSplits(*row_ids3, row_splits3);
   }
-  return ComposeRaggedShapes(shape12,
-                             RaggedShape2(row_splits3, row_ids3,
-                                          cached_tot_size3));
+  return ComposeRaggedShapes(
+      shape12, RaggedShape2(row_splits3, row_ids3, cached_tot_size3));
 }
-
 
 RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
                                     int32_t *tot_sizes) {
@@ -257,23 +255,22 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
     row_ids_dim = src.Dim0();  // e.g. [ 0 0 0 0 0 ]
     mem = Array1<int32_t>(c, row_splits_dim + row_ids_dim);
     int32_t *mem_data = mem.Data();
-    auto lambda_set_mem = [=] __host__ __device__(int32_t i) -> void {
-      if (i == 1)
-        mem_data[i] = row_ids_dim;
-      else
-        mem_data[i] = 0;
-    };
-    Eval(c, mem.Dim(), lambda_set_mem);
+    K2_EVAL(
+        c, mem.Dim(), lambda_set_mem, (int32_t i)->void {
+          if (i == 1)
+            mem_data[i] = row_ids_dim;
+          else
+            mem_data[i] = 0;
+        });
   } else {
     int32_t tot_size = src.TotSize(axis);
     row_splits_dim = tot_size + 1;
     row_ids_dim = tot_size;
     mem = Array1<int32_t>(c, row_splits_dim + row_ids_dim);
     int32_t *mem_data = mem.Data();
-    auto lambda_set_mem2 = [=] __host__ __device__(int32_t i) -> void {
-      mem_data[i] = i % (tot_size + 1);
-    };
-    Eval(c, mem.Dim(), lambda_set_mem2);
+    K2_EVAL(
+        c, mem.Dim(), lambda_set_mem2,
+        (int32_t i)->void { mem_data[i] = i % (tot_size + 1); });
   }
   axes_out[axis].row_splits = mem.Range(0, row_splits_dim);
   axes_out[axis].row_ids = mem.Range(row_splits_dim, row_ids_dim);
@@ -360,20 +357,20 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
        new_offsets_acc = new_offsets->Accessor();
   // Set old_offsets; and for now, set new_offsets to the corresponding
   // sizes of the output slices.
-  auto lambda_set_offsets = [=] __host__ __device__(int32_t i) {
-    // 0 <= i < ans_dim0
-    int32_t old_offset = new2old_data[i], old_offset_next = old_offset + 1;
-    for (int32_t axis = 0;; axis++) {
-      old_offsets_acc(axis, i) = old_offset;
-      // Below, 'new_offsets_acc' currently contains the size rather
-      // than the offset; we need to do exclusive-sum.
-      new_offsets_acc(axis, i) = old_offset_next - old_offset;
-      if (axis + 1 == num_axes) return;
-      old_offset = src_row_splits_ptrs_data[axis][old_offset];
-      old_offset_next = src_row_splits_ptrs_data[axis][old_offset_next];
-    }
-  };
-  Eval(c, ans_dim0, lambda_set_offsets);
+  K2_EVAL(
+      c, ans_dim0, lambda_set_offsets, (int32_t i)->void {
+        // 0 <= i < ans_dim0
+        int32_t old_offset = new2old_data[i], old_offset_next = old_offset + 1;
+        for (int32_t axis = 0;; axis++) {
+          old_offsets_acc(axis, i) = old_offset;
+          // Below, 'new_offsets_acc' currently contains the size rather
+          // than the offset; we need to do exclusive-sum.
+          new_offsets_acc(axis, i) = old_offset_next - old_offset;
+          if (axis + 1 == num_axes) return;
+          old_offset = src_row_splits_ptrs_data[axis][old_offset];
+          old_offset_next = src_row_splits_ptrs_data[axis][old_offset_next];
+        }
+      });
   ExclusiveSum(*new_offsets, new_offsets);
 }
 
@@ -788,10 +785,9 @@ RaggedShape MakeTransposable(RaggedShape &src) {
       axis1_shape.row_ids = Array1<int32_t>(c, ans_tot_size1);
       int32_t *row_ids1_data = axis1_shape.row_ids.Data();
       axis1_shape.cached_tot_size = ans_tot_size1;
-      auto lambda_set_row_ids1 = [=] __host__ __device__(int32_t i) {
-        row_ids1_data[i] = i / max_size;
-      };
-      Eval(c, ans_tot_size1, lambda_set_row_ids1);
+      K2_EVAL(
+          c, ans_tot_size1, lambda_set_row_ids1,
+          (int32_t i)->void { row_ids1_data[i] = i / max_size; });
     }
     if (num_axes > 2) {
       RaggedShapeDim &axis2_shape = axes_out[1];
@@ -802,22 +798,25 @@ RaggedShape MakeTransposable(RaggedShape &src) {
         axis2_shape.cached_tot_size = src.TotSize(2);
         axis2_shape.row_splits = Array1<int32_t>(c, ans_tot_size1 + 1);
         int32_t *ans_row_splits2_data = axis2_shape.row_splits.Data();
-        auto lambda_set_row_splits2 = [=] __host__ __device__(int32_t idx01) {
-          if (idx01 == ans_tot_size1) {
-            ans_row_splits2_data[idx01] = src_row_splits2_data[src_tot_size1];
-            return;
-          }
-          int32_t idx0 = idx01 / max_size, idx1 = idx01 % max_size;
-          int32_t idx0x = src_row_splits1_data[idx0],
-                  idx0x_next = src_row_splits1_data[idx0 + 1];
-          int32_t num_elems_this_row = idx0x_next - idx0x;
-          if (idx1 < num_elems_this_row)
-            ans_row_splits2_data[idx01] = src_row_splits2_data[idx0x + idx1];
-          else
-            ans_row_splits2_data[idx01] =
-                src_row_splits2_data[idx0x_next];  // append empty row
-        };
-        Eval(c, ans_tot_size1 + 1, lambda_set_row_splits2);
+        K2_EVAL(
+            c, ans_tot_size1 + 1, lambda_set_row_splits2,
+            (int32_t idx01)->void {
+              if (idx01 == ans_tot_size1) {
+                ans_row_splits2_data[idx01] =
+                    src_row_splits2_data[src_tot_size1];
+                return;
+              }
+              int32_t idx0 = idx01 / max_size, idx1 = idx01 % max_size;
+              int32_t idx0x = src_row_splits1_data[idx0],
+                      idx0x_next = src_row_splits1_data[idx0 + 1];
+              int32_t num_elems_this_row = idx0x_next - idx0x;
+              if (idx1 < num_elems_this_row)
+                ans_row_splits2_data[idx01] =
+                    src_row_splits2_data[idx0x + idx1];
+              else
+                ans_row_splits2_data[idx01] =
+                    src_row_splits2_data[idx0x_next];  // append empty row
+            });
       }
       {
         // set ans.RowIds(2);
@@ -826,13 +825,13 @@ RaggedShape MakeTransposable(RaggedShape &src) {
         axis2_shape.row_ids = Array1<int32_t>(c, tot_size2);
         int32_t *ans_row_ids2_data = axis2_shape.row_ids.Data();
         const int32_t *src_row_ids2_data = src.RowIds(2).Data();
-        auto lambda_set_row_ids2 = [=] __host__ __device__(int32_t idx012) {
-          int32_t src_idx01 = src_row_ids2_data[idx012];
-          int32_t src_idx0 = src_row_ids1_data[src_idx01];
-          int32_t src_idx1 = src_idx01 - src_row_splits1_data[src_idx0];
-          ans_row_ids2_data[idx012] = (src_idx0 * max_size) + src_idx1;
-        };
-        Eval(c, tot_size2, lambda_set_row_ids2);
+        K2_EVAL(
+            c, tot_size2, lambda_set_row_ids2, (int32_t idx012)->void {
+              int32_t src_idx01 = src_row_ids2_data[idx012];
+              int32_t src_idx0 = src_row_ids1_data[src_idx01];
+              int32_t src_idx1 = src_idx01 - src_row_splits1_data[src_idx0];
+              ans_row_ids2_data[idx012] = (src_idx0 * max_size) + src_idx1;
+            });
       }
     }
   }
@@ -863,11 +862,11 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
   // to the first index into src_no_axis0.
   Array1<int32_t> renumbering(c, src_tot_size1);
   int32_t *renumbering_data = renumbering.Data();
-  auto lambda_set_renumbering = [=] __host__ __device__(int32_t i) {
-    int32_t j = i % src_dim0, k = i / src_dim0, i_old = j * src_dim1 + k;
-    renumbering_data[i] = i_old;
-  };
-  Eval(c, src_tot_size1, lambda_set_renumbering);
+  K2_EVAL(
+      c, src_tot_size1, lambda_set_renumbering, (int32_t i)->void {
+        int32_t j = i % src_dim0, k = i / src_dim0, i_old = j * src_dim1 + k;
+        renumbering_data[i] = i_old;
+      });
 
   RaggedShape src_no_axis0_renumbered =
       Index(src_no_axis0, renumbering, value_indexes);
@@ -877,20 +876,20 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
   std::vector<RaggedShapeDim> ans_axis0(1);
   Array1<int32_t> mem(c, row_splits_dim + row_ids_dim);
   int32_t *mem_data = mem.Data();
-  auto lambda_set_row_info = [=] __host__ __device__(int32_t i) {
-    int32_t val;
-    if (i >= row_splits_dim) {
-      // row_ids
-      int32_t elem_idx = i - row_splits_dim;
-      val = elem_idx / src_dim0;
-    } else {
-      // row_splits
-      int32_t row_idx = i;
-      val = row_idx * src_dim0;
-    }
-    mem_data[i] = val;
-  };
-  Eval(c, row_splits_dim + row_ids_dim, lambda_set_row_info);
+  K2_EVAL(
+      c, row_splits_dim + row_ids_dim, lambda_set_row_info, (int32_t i)->void {
+        int32_t val;
+        if (i >= row_splits_dim) {
+          // row_ids
+          int32_t elem_idx = i - row_splits_dim;
+          val = elem_idx / src_dim0;
+        } else {
+          // row_splits
+          int32_t row_idx = i;
+          val = row_idx * src_dim0;
+        }
+        mem_data[i] = val;
+      });
   ans_axis0[0].row_splits = mem.Range(0, row_splits_dim);
   ans_axis0[0].row_ids = mem.Range(row_splits_dim, row_ids_dim);
   ans_axis0[0].cached_tot_size = row_ids_dim;
@@ -936,10 +935,9 @@ RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1) {
   int32_t *row_splits_data = row_splits.Data();
   Array1<int32_t> row_ids(c, dim0 * dim1);
   int32_t *row_ids_data = row_ids.Data();
-  auto lambda_set_row_ids = [=] __host__ __device__(int32_t i, int32_t j) {
-    row_ids_data[i * dim1 + j] = i;
-  };
-  Eval2(c, dim0, dim1, lambda_set_row_ids);
+  K2_EVAL2(
+      c, dim0, dim1, lambda_set_row_ids,
+      (int32_t i, int32_t j)->void { row_ids_data[i * dim1 + j] = i; });
   return RaggedShape2(&row_splits, &row_ids, dim0 * dim1);
 }
 
@@ -1017,10 +1015,10 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   int32_t n = src.values.Dim();
   Array1<int32_t> ans = Range(context, n, 0);
   if (n == 0) return ans;
-  K2_CUDA_SAFE_CALL(mgpu::segmented_sort(ans.Data(),       // keys
-                                         ans.Dim(),        // count
-                                         segments.Data(),  // segments
-                                         segments.Dim() - 1, // num_segments
+  K2_CUDA_SAFE_CALL(mgpu::segmented_sort(ans.Data(),          // keys
+                                         ans.Dim(),           // count
+                                         segments.Data(),     // segments
+                                         segments.Dim() - 1,  // num_segments
                                          lambda_comp, *mgpu_context));
   return ans;
 }
@@ -1101,43 +1099,43 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
     ParallelRunner pr(c);
     {
       With w(pr.NewStream());
-      auto lambda_set_row_splits =
-          [=] __host__ __device__(int32_t idx0) -> void {
-        row_splits_data[idx0] = src_row_splits_data[idx0] + size_delta * idx0;
-      };
-      Eval(c, num_rows + 1, lambda_set_row_splits);
+      K2_EVAL(
+          c, num_rows + 1, lambda_set_row_splits, (int32_t idx0)->void {
+            row_splits_data[idx0] =
+                src_row_splits_data[idx0] + size_delta * idx0;
+          });
     }
 
     {
       With w(pr.NewStream());
-      auto lambda_set_row_ids1 =
-          [=] __host__ __device__(int32_t src_idx01) -> void {
-        int32_t src_idx0 = src_row_ids_data[src_idx01],
-                src_idx0x = src_row_splits_data[src_idx0],
-                src_idx1 = src_idx01 - src_idx0x,
-                new_idx0x = row_splits_data[src_idx0],
-                new_idx0x_next = row_splits_data[src_idx0 + 1],
-                new_idx01 = new_idx0x + src_idx1;
-        // it's only necessary to guard the next statement with in 'if' because
-        // size_delta might be negative.
-        if (new_idx01 < new_idx0x_next) row_ids_data[new_idx01] = src_idx0;
-      };
-      Eval(c, src_num_elems, lambda_set_row_ids1);
+      K2_EVAL(
+          c, src_num_elems, lambda_set_row_ids1, (int32_t src_idx01)->void {
+            int32_t src_idx0 = src_row_ids_data[src_idx01],
+                    src_idx0x = src_row_splits_data[src_idx0],
+                    src_idx1 = src_idx01 - src_idx0x,
+                    new_idx0x = row_splits_data[src_idx0],
+                    new_idx0x_next = row_splits_data[src_idx0 + 1],
+                    new_idx01 = new_idx0x + src_idx1;
+            // it's only necessary to guard the next statement with in 'if'
+            // because size_delta might be negative.
+            if (new_idx01 < new_idx0x_next) row_ids_data[new_idx01] = src_idx0;
+          });
     }
     if (size_delta > 0) {
       // This sets the row-ids that are not set by lambda_set_row_ids1.
       With w(pr.NewStream());
-      auto lambda_set_row_ids2 = [=] __host__ __device__(int32_t i) -> void {
-        int32_t idx0 = i / size_delta, n = i % size_delta, next_idx0 = idx0 + 1;
-        // The following formula is the same as the one in
-        // lambda_set_row_splits; we want to compute the new value of
-        // row_splits_data[next_idx0] without waiting for that kernel to
-        // terminate.
-        int32_t next_idx0x =
-            src_row_splits_data[next_idx0] + size_delta * next_idx0;
-        row_ids_data[next_idx0x - 1 - n] = idx0;
-      };
-      Eval(c, num_rows * size_delta, lambda_set_row_ids2);
+      K2_EVAL(
+          c, num_rows * size_delta, lambda_set_row_ids2, (int32_t i)->void {
+            int32_t idx0 = i / size_delta, n = i % size_delta,
+                    next_idx0 = idx0 + 1;
+            // The following formula is the same as the one in
+            // lambda_set_row_splits; we want to compute the new value of
+            // row_splits_data[next_idx0] without waiting for that kernel to
+            // terminate.
+            int32_t next_idx0x =
+                src_row_splits_data[next_idx0] + size_delta * next_idx0;
+            row_ids_data[next_idx0x - 1 - n] = idx0;
+          });
     }
     // make the ParallelRunner go out of scope (should do this before any
     // validation code that gets invoked by the constructor of RaggedShape
@@ -1272,33 +1270,32 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &r_before_last,
   }
   {
     With w(pr.NewStream());
-    auto lambda_set_row_ids1_and_row_splits2 =
-        [=] __host__ __device__(int32_t new_idx01) -> void {
-      // row_ids1 maps from idx01 -> idx0.  Select subset of
-      // idx01's; the idx0 stays the same.
-      int32_t old_idx01 = idx01_new2old_data[new_idx01];
-      if (new_idx01 < new_tot_size1)
-        new_row_ids1_data[new_idx01] = old_row_ids1_data[old_idx01];
-      // row_splits2 maps from idx01 -> idx012.  Map both indexes.
-      // idx01's; the idx0 stays the same.
-      new_row_splits2_data[new_idx01] =
-          idx012_old2new_data[old_row_splits2_data[old_idx01]];
-    };
-    Eval(c, new_tot_size1 + 1, lambda_set_row_ids1_and_row_splits2);
+    K2_EVAL(
+        c, new_tot_size1 + 1, lambda_set_row_ids1_and_row_splits2,
+        (int32_t new_idx01)->void {
+          // row_ids1 maps from idx01 -> idx0.  Select subset of
+          // idx01's; the idx0 stays the same.
+          int32_t old_idx01 = idx01_new2old_data[new_idx01];
+          if (new_idx01 < new_tot_size1)
+            new_row_ids1_data[new_idx01] = old_row_ids1_data[old_idx01];
+          // row_splits2 maps from idx01 -> idx012.  Map both indexes.
+          // idx01's; the idx0 stays the same.
+          new_row_splits2_data[new_idx01] =
+              idx012_old2new_data[old_row_splits2_data[old_idx01]];
+        });
   }
 
   {
     With w(pr.NewStream());
-    auto lambda_set_row_ids2 =
-        [=] __host__ __device__(int32_t new_idx012) -> void {
-      // row_ids2 maps from idx012 -> idx01.  Both must be mapped.
+    K2_EVAL(
+        c, new_tot_size2, lambda_set_row_ids2, (int32_t new_idx012)->void {
+          // row_ids2 maps from idx012 -> idx01.  Both must be mapped.
 
-      int32_t old_idx012 = idx012_new2old_data[new_idx012];
-      int32_t old_idx01 = old_row_ids2_data[old_idx012],
-              new_idx01 = idx01_old2new_data[old_idx01];
-      new_row_ids2_data[new_idx012] = new_idx01;
-    };
-    Eval(c, new_tot_size2, lambda_set_row_ids2);
+          int32_t old_idx012 = idx012_new2old_data[new_idx012];
+          int32_t old_idx01 = old_row_ids2_data[old_idx012],
+                  new_idx01 = idx01_old2new_data[old_idx01];
+          new_row_ids2_data[new_idx012] = new_idx01;
+        });
   }
 
   before_last.row_ids = before_last_row_ids;
@@ -1326,9 +1323,8 @@ Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
 
   Array1<int32_t> sizes = RowSplitsToSizes(shape.RowSplits(1));
   Array1<int32_t> index_map;
-  Sort<int32_t, GreaterThan<int32_t> > (&sizes, &index_map);
+  Sort<int32_t, GreaterThan<int32_t>>(&sizes, &index_map);
   return index_map;
 }
-
 
 }  // namespace k2

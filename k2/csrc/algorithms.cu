@@ -37,19 +37,13 @@ inline void ComputeNew2OldHelper(ContextPtr &c, const int32_t *old2new_data,
   NVTX_RANGE(K2_FUNC);
   // Note: the following accesses data one past the end of (current)
   // old2new_, but it does actually exist.
-  if (c->GetDeviceType() == kCpu) {
-    for (int32_t old_idx = 0; old_idx < old_dim; old_idx++)
-      if (old2new_data[old_idx + 1] > old2new_data[old_idx])
-        new2old_data[old2new_data[old_idx]] = old_idx;
-    new2old_data[old2new_data[old_dim]] = old_dim;
-  } else {
-    auto lambda_set_new2old = [=] __device__(int32_t old_idx) {
-      if (old_idx == old_dim ||
-          old2new_data[old_idx + 1] > old2new_data[old_idx])
-        new2old_data[old2new_data[old_idx]] = old_idx;
-    };
-    EvalDevice(c, old_dim + 1, lambda_set_new2old);
-  }
+
+  K2_EVAL(
+      c, old_dim + 1, lambda_set_new2old, (int32_t old_idx) {
+        if (old_idx == old_dim ||
+            old2new_data[old_idx + 1] > old2new_data[old_idx])
+          new2old_data[old2new_data[old_idx]] = old_idx;
+      });
 }
 
 }  // namespace

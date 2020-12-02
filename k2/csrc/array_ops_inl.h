@@ -336,16 +336,16 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       // elements being processed is small. What we're saying is that the
       // arrays' sizes are fairly balanced, so we launch with a simple
       // rectangular kernel.
-      auto lambda_set_data = [=] __host__ __device__(int32_t i,
-                                                     int32_t j) -> void {
-        int32_t row_start = row_splits_data[i],
-                row_end = row_splits_data[i + 1];
-        const T *src_ptr = src_ptrs_data[i];
-        if (j < row_end - row_start) {
-          ans_data[row_start + j] = src_ptr[j];
-        }
-      };
-      Eval2(c, num_arrays, max_dim, lambda_set_data);
+      K2_EVAL2(
+          c, num_arrays, max_dim, lambda_set_data,
+          (int32_t i, int32_t j)->void {
+            int32_t row_start = row_splits_data[i],
+                    row_end = row_splits_data[i + 1];
+            const T *src_ptr = src_ptrs_data[i];
+            if (j < row_end - row_start) {
+              ans_data[row_start + j] = src_ptr[j];
+            }
+          });
     } else {
       int32_t block_dim = 256;
       while (block_dim * 4 < avg_input_size && block_dim < 8192) block_dim *= 2;
@@ -372,20 +372,20 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
       Array1<uint64_t> index_map_gpu(c, index_map);
       const uint64_t *index_map_data = index_map_gpu.Data();
 
-      auto lambda_set_data_blocks = [=] __host__ __device__(int32_t i,
-                                                            int32_t j) {
-        uint64_t index = index_map_data[i];
-        uint32_t orig_i = static_cast<uint32_t>(index),
-                 block_index = static_cast<uint32_t>(index >> 32);
-        int32_t row_start = row_splits_data[orig_i],
-                row_end = row_splits_data[orig_i + 1],
-                orig_j = (block_index * block_dim) + j;
-        const T *src_ptr = src_ptrs_data[orig_i];
-        if (orig_j < row_end - row_start) {
-          ans_data[row_start + orig_j] = src_ptr[orig_j];
-        }
-      };
-      Eval2(c, index_map_gpu.Dim(), block_dim, lambda_set_data_blocks);
+      K2_EVAL2(
+          c, index_map_gpu.Dim(), block_dim, lambda_set_data_blocks,
+          (int32_t i, int32_t j) {
+            uint64_t index = index_map_data[i];
+            uint32_t orig_i = static_cast<uint32_t>(index),
+                     block_index = static_cast<uint32_t>(index >> 32);
+            int32_t row_start = row_splits_data[orig_i],
+                    row_end = row_splits_data[orig_i + 1],
+                    orig_j = (block_index * block_dim) + j;
+            const T *src_ptr = src_ptrs_data[orig_i];
+            if (orig_j < row_end - row_start) {
+              ans_data[row_start + orig_j] = src_ptr[orig_j];
+            }
+          });
     }
   }
   return ans;
@@ -451,17 +451,10 @@ void ApplyBinaryOpOnArray1(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
   T *dest_data = dest->Data();
 
   BinaryOp op;
-  DeviceType d = c->GetDeviceType();
-  if (c->GetDeviceType() == kCpu) {
-    for (int32_t i = 0; i != dim; ++i) {
-      dest_data[i] = op(src1_data[i], src2_data[i]);
-    }
-  } else {
-    auto lambda_set_values = [=] __device__(int32_t i) -> void {
-      dest_data[i] = op(src1_data[i], src2_data[i]);
-    };
-    EvalDevice(c, dim, lambda_set_values);
-  }
+
+  K2_EVAL(
+      c, dim, lambda_set_values,
+      (int32_t i)->void { dest_data[i] = op(src1_data[i], src2_data[i]); });
 }
 
 template <typename T>
@@ -504,14 +497,10 @@ Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc /*=1*/) {
   K2_CHECK_GE(dim, 0);
   Array1<T> ans = Array1<T>(c, dim);
   T *ans_data = ans.Data();
-  if (c->GetDeviceType() == kCpu) {
-    for (int32_t i = 0; i < dim; i++) ans_data[i] = first_value + i * inc;
-  } else {
-    auto lambda_set_values = [=] __device__(int32_t i) -> void {
-      ans_data[i] = first_value + i * inc;
-    };
-    EvalDevice(c, dim, lambda_set_values);
-  }
+
+  K2_EVAL(
+      c, dim, lambda_set_values,
+      (int32_t i)->void { ans_data[i] = first_value + i * inc; });
   return ans;
 }
 
@@ -525,11 +514,11 @@ Array2<T> ToContiguous(const Array2<T> &src) {
   Array2<T> ans(src.Context(), src.Dim0(), src.Dim1());
   T *out = ans.Data();
   const T *in = src.Data();
-  auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
-                                                   int32_t j) -> void {
-    out[i * dim1 + j] = in[i * elem_stride0 + j];
-  };
-  Eval2(src.Context(), dim0, dim1, lambda_copy_elems);
+  K2_EVAL2(
+      src.Context(), dim0, dim1, lambda_copy_elems,
+      (int32_t i, int32_t j)->void {
+        out[i * dim1 + j] = in[i * elem_stride0 + j];
+      });
   return ans;
 }
 
@@ -546,10 +535,10 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
   } else {
     Array1<int32_t> is_same(c, 1, 1);
     int32_t *is_same_data = is_same.Data();
-    auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_test = [=] __device__(int32_t i) -> void {
       if (a_data[i] != b_data[i]) *is_same_data = 0;
     };
-    Eval(c, a.Dim(), lambda_test);
+    EvalDevice(c, a.Dim(), lambda_test);
     return is_same[0];
   }
 }
@@ -582,7 +571,7 @@ bool Equal(const Array2<T> &a, const Array2<T> &b) {
   } else {
     Array1<int32_t> is_same(c, 1, 1);
     int32_t *is_same_data = is_same.Data();
-    auto lambda_test = [=] __host__ __device__(int32_t i, int32_t j) -> void {
+    auto lambda_test = [=] __device__(int32_t i, int32_t j) -> void {
       if (a_acc(i, j) != b_acc(i, j)) *is_same_data = 0;
     };
     Eval2Device(c, a.Dim0(), a.Dim1(), lambda_test);
@@ -603,14 +592,13 @@ bool IsMonotonic(const Array1<T> &a) {
   } else {
     Array1<int32_t> is_monotonic(c, 1, 1);
     int32_t *is_monotonic_data = is_monotonic.Data();
-    auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_test = [=] __device__(int32_t i) -> void {
       if (data[i + 1] < data[i]) *is_monotonic_data = 0;
     };
     EvalDevice(c, dim - 1, lambda_test);
     return is_monotonic[0];
   }
 }
-
 
 template <typename T>
 bool IsMonotonicDecreasing(const Array1<T> &a) {
@@ -625,14 +613,13 @@ bool IsMonotonicDecreasing(const Array1<T> &a) {
   } else {
     Array1<int32_t> is_monotonic(c, 1, 1);
     int32_t *is_monotonic_data = is_monotonic.Data();
-    auto lambda_test = [=] __host__ __device__(int32_t i) -> void {
+    auto lambda_test = [=] __device__(int32_t i) -> void {
       if (data[i + 1] > data[i]) *is_monotonic_data = 0;
     };
     EvalDevice(c, dim - 1, lambda_test);
     return is_monotonic[0];
   }
 }
-
 
 template <typename S, typename T>
 void MonotonicLowerBound(const Array1<S> &src, Array1<T> *dest) {
@@ -720,14 +707,8 @@ Array1<T> Plus(const Array1<T> &src, T t) {
   Array1<T> ans(c, dim);
   const T *data = src.Data();
   T *ans_data = ans.Data();
-  if (c->GetDeviceType() == kCpu) {
-    for (int32_t i = 0; i < dim; ++i) ans_data[i] = data[i] + t;
-  } else {
-    auto lambda_add = [=] __host__ __device__(int32_t i) -> void {
-      ans_data[i] = data[i] + t;
-    };
-    Eval(c, dim, lambda_add);
-  }
+  K2_EVAL(
+      c, dim, lambda_add, (int32_t i)->void { ans_data[i] = data[i] + t; });
   return ans;
 }
 
@@ -865,16 +846,16 @@ template <typename T>
 void Assign(Array2<T> &src, Array2<T> *dest) {
   K2_CHECK_EQ(src.Dim0(), dest->Dim0());
   K2_CHECK_EQ(src.Dim1(), dest->Dim1());
-  int32_t dim0 = src.Dim0(), dim1 = src.Dim1(),
-    src_stride = src.ElemStride0(),
-   dest_stride = dest->ElemStride0();
+  int32_t dim0 = src.Dim0(), dim1 = src.Dim1(), src_stride = src.ElemStride0(),
+          dest_stride = dest->ElemStride0();
 
   if (src_stride == dim1 && dest_stride == dim1) {
-    cudaMemcpyKind memcpy_kind = GetMemoryCopyKind(*src.Context(),
-                                                   *dest->Context());
+    cudaMemcpyKind memcpy_kind =
+        GetMemoryCopyKind(*src.Context(), *dest->Context());
     size_t num_bytes = dim0 * src.ElementSize() * dim1;
-    MemoryCopy((void*)dest->Data(), (const void*)src.Data(),
-               num_bytes, memcpy_kind, src.Context().get());
+    MemoryCopy(reinterpret_cast<void *>(dest->Data()),
+               reinterpret_cast<const void *>(src.Data()), num_bytes,
+               memcpy_kind, src.Context().get());
   } else {
     // this branch does not support cross-device copy.
     ContextPtr c = GetContext(src, *dest);
@@ -884,19 +865,17 @@ void Assign(Array2<T> &src, Array2<T> *dest) {
       size_t row_length_bytes = src.ElementSize() * dim1;
       for (int32_t r = 0; r < dim0;
            r++, dest_data += dest_stride, src_data += src_stride) {
-        memcpy(static_cast<void*>(dest_data),
-               static_cast<const void*>(src_data),
-               row_length_bytes);
+        memcpy(static_cast<void *>(dest_data),
+               static_cast<const void *>(src_data), row_length_bytes);
       }
     } else {
-      auto lambda_copy_data = [=] __device__ (int32_t i, int32_t j) {
+      auto lambda_copy_data = [=] __device__(int32_t i, int32_t j) {
         dest_data[i * dest_stride + j] = src_data[i * src_stride + j];
       };
       Eval2Device(c, dim0, dim1, lambda_copy_data);
     }
   }
 }
-
 
 }  // namespace k2
 

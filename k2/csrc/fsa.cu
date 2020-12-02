@@ -92,67 +92,69 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
   int32_t *properties_data = properties.Data();
   char *reachable_data = reachable.Data();  // access co_reachable via this.
 
-  auto lambda_get_properties = [=] __host__ __device__(int32_t idx012) -> void {
-    Arc arc = arcs_data[idx012];
-    Arc prev_arc;
-    if (idx012 > 0) prev_arc = arcs_data[idx012 - 1];
-    int32_t idx01 = row_ids2_data[idx012], idx01x = row_splits2_data[idx01],
-            idx2 = idx012 - idx01x, idx0 = row_ids1_data[idx01],
-            idx0x = row_splits1_data[idx0],
-            idx0x_next = row_splits1_data[idx0 + 1], idx1 = idx01 - idx0x,
-            idx0xx = row_splits2_data[idx0x];
-    int32_t this_fsa_num_states = idx0x_next - idx0x;
+  K2_EVAL(
+      c, num_arcs, lambda_get_properties, (int32_t idx012)->void {
+        Arc arc = arcs_data[idx012];
+        Arc prev_arc;
+        if (idx012 > 0) prev_arc = arcs_data[idx012 - 1];
+        int32_t idx01 = row_ids2_data[idx012], idx01x = row_splits2_data[idx01],
+                idx2 = idx012 - idx01x, idx0 = row_ids1_data[idx01],
+                idx0x = row_splits1_data[idx0],
+                idx0x_next = row_splits1_data[idx0 + 1], idx1 = idx01 - idx0x,
+                idx0xx = row_splits2_data[idx0x];
+        int32_t this_fsa_num_states = idx0x_next - idx0x;
 
-    int32_t neg_property = 0;
-    if (arc.src_state != idx1) neg_property |= kFsaPropertiesValid;
-    if (arc.dest_state < 0 || arc.dest_state >= this_fsa_num_states)
-      neg_property |= kFsaPropertiesValid;
-    if (arc.dest_state <= arc.src_state) {
-      neg_property |= kFsaPropertiesTopSortedAndAcyclic;
-      if (arc.dest_state < arc.src_state)
-        neg_property |= kFsaPropertiesTopSorted;
-    }
-    if (arc.label == 0) neg_property |= kFsaPropertiesEpsilonFree;
-    if (arc.label < 0) {
-      if (arc.label != -1) {  // neg. symbols != -1 are not allowed.
-        neg_property |= kFsaPropertiesValid;
-      } else {
-        if (arc.dest_state != this_fsa_num_states - 1)
+        int32_t neg_property = 0;
+        if (arc.src_state != idx1) neg_property |= kFsaPropertiesValid;
+        if (arc.dest_state < 0 || arc.dest_state >= this_fsa_num_states)
           neg_property |= kFsaPropertiesValid;
-      }
-    }
-    if (arc.label != -1 && arc.dest_state == this_fsa_num_states - 1)
-      neg_property |= kFsaPropertiesValid;
-    if (arc.dest_state < 0 || arc.dest_state >= this_fsa_num_states)
-      neg_property |= kFsaPropertiesValid;
-    else if (arc.dest_state != arc.src_state)
-      reachable_data[idx0x + arc.dest_state] = static_cast<char>(1);
+        if (arc.dest_state <= arc.src_state) {
+          neg_property |= kFsaPropertiesTopSortedAndAcyclic;
+          if (arc.dest_state < arc.src_state)
+            neg_property |= kFsaPropertiesTopSorted;
+        }
+        if (arc.label == 0) neg_property |= kFsaPropertiesEpsilonFree;
+        if (arc.label < 0) {
+          if (arc.label != -1) {  // neg. symbols != -1 are not allowed.
+            neg_property |= kFsaPropertiesValid;
+          } else {
+            if (arc.dest_state != this_fsa_num_states - 1)
+              neg_property |= kFsaPropertiesValid;
+          }
+        }
+        if (arc.label != -1 && arc.dest_state == this_fsa_num_states - 1)
+          neg_property |= kFsaPropertiesValid;
+        if (arc.dest_state < 0 || arc.dest_state >= this_fsa_num_states)
+          neg_property |= kFsaPropertiesValid;
+        else if (arc.dest_state != arc.src_state)
+          reachable_data[idx0x + arc.dest_state] = static_cast<char>(1);
 
-    if (idx0xx == idx012) {
-      // first arc in this FSA (whether or not it's from state 0..)
-      reachable_data[idx0x] = static_cast<char>(1);  // state 0 is reachable.
-      // final state is always co-reachable.
-      // Note: below, we're effectively accessing co_reachable_data.
-      reachable_data[num_states + idx0x_next - 1] = static_cast<char>(1);
-    }
+        if (idx0xx == idx012) {
+          // first arc in this FSA (whether or not it's from state 0..)
+          reachable_data[idx0x] =
+              static_cast<char>(1);  // state 0 is reachable.
+          // final state is always co-reachable.
+          // Note: below, we're effectively accessing co_reachable_data.
+          reachable_data[num_states + idx0x_next - 1] = static_cast<char>(1);
+        }
 
-    if (arc.dest_state != arc.src_state)
-      // Note: below, we're effectively accessing co_reachable_data.
-      reachable_data[num_states + idx01] = 1;
-    if (idx2 != 0) {
-      // this is not the first arc leaving this state...
-      if (static_cast<uint32_t>(arc.label) <=
-          static_cast<uint32_t>(prev_arc.label))
-        neg_property |= kFsaPropertiesArcSortedAndDeterministic;
-      if (static_cast<uint32_t>(arc.label) <
-          static_cast<uint32_t>(prev_arc.label))
-        neg_property |= kFsaPropertiesArcSorted;
-      if (arc.label == prev_arc.label && arc.dest_state < prev_arc.dest_state)
-        neg_property |= kFsaPropertiesArcSorted;
-    }
-    properties_data[idx012] = ~neg_property;
-  };
-  Eval(c, num_arcs, lambda_get_properties);
+        if (arc.dest_state != arc.src_state)
+          // Note: below, we're effectively accessing co_reachable_data.
+          reachable_data[num_states + idx01] = 1;
+        if (idx2 != 0) {
+          // this is not the first arc leaving this state...
+          if (static_cast<uint32_t>(arc.label) <=
+              static_cast<uint32_t>(prev_arc.label))
+            neg_property |= kFsaPropertiesArcSortedAndDeterministic;
+          if (static_cast<uint32_t>(arc.label) <
+              static_cast<uint32_t>(prev_arc.label))
+            neg_property |= kFsaPropertiesArcSorted;
+          if (arc.label == prev_arc.label &&
+              arc.dest_state < prev_arc.dest_state)
+            neg_property |= kFsaPropertiesArcSorted;
+        }
+        properties_data[idx012] = ~neg_property;
+      });
 
   // Figure out the properties per FSA.
   RaggedShape fsa_to_arcs_shape = RemoveAxis(fsa_vec.shape, 1),
@@ -192,19 +194,18 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
     char *reachable_per_fsa_data = reachable_per_fsa.Data(),
          *co_reachable_per_fsa_data = co_reachable_per_fsa.Data();
 
-    auto lambda_finalize_properties =
-        [=] __host__ __device__(int32_t i) -> void {
-      int32_t neg_properties = ~(properties_per_fsa_data[i]);
-      char reachable = reachable_per_fsa_data[i],
-           co_reachable = co_reachable_per_fsa_data[i];
-      int32_t fsa_has_no_arcs = (row_splits2_data[row_splits1_data[i]] ==
-                                 row_splits2_data[row_splits1_data[i + 1]]);
-      neg_properties |= (!reachable * kFsaPropertiesMaybeAccessible) |
-                        (!co_reachable * kFsaPropertiesMaybeCoaccessible) |
-                        (fsa_has_no_arcs * kFsaPropertiesNonempty);
-      properties_per_fsa_data[i] = ~neg_properties;
-    };
-    Eval(c, num_fsas, lambda_finalize_properties);
+    K2_EVAL(
+        c, num_fsas, lambda_finalize_properties, (int32_t i)->void {
+          int32_t neg_properties = ~(properties_per_fsa_data[i]);
+          char reachable = reachable_per_fsa_data[i],
+               co_reachable = co_reachable_per_fsa_data[i];
+          int32_t fsa_has_no_arcs = (row_splits2_data[row_splits1_data[i]] ==
+                                     row_splits2_data[row_splits1_data[i + 1]]);
+          neg_properties |= (!reachable * kFsaPropertiesMaybeAccessible) |
+                            (!co_reachable * kFsaPropertiesMaybeCoaccessible) |
+                            (fsa_has_no_arcs * kFsaPropertiesNonempty);
+          properties_per_fsa_data[i] = ~neg_properties;
+        });
 
     And(properties_per_fsa, static_cast<int32_t>(kFsaAllProperties),
         &properties_total);
@@ -254,17 +255,17 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   Array1<int32_t> row_ids1(c, num_arcs);  // maps arc->state.
   int32_t *row_ids1_data = row_ids1.Data();
 
-  auto lambda_misc = [=] __host__ __device__(int32_t i) -> void {
-    row_ids1_data[i] = arcs_data[i].src_state;
-    if (arcs_data[i].label == -1) {
-      int32_t final_state = arcs_data[i].dest_state;
-      int32_t old_value = num_states_data[0];
-      if (old_value >= 0 && old_value != final_state + 1)
-        num_states_data[1] = 0;  // set error flag.
-      num_states_data[0] = final_state + 1;
-    }
-  };
-  Eval(c, num_arcs, lambda_misc);
+  K2_EVAL(
+      c, num_arcs, lambda_misc, (int32_t i)->void {
+        row_ids1_data[i] = arcs_data[i].src_state;
+        if (arcs_data[i].label == -1) {
+          int32_t final_state = arcs_data[i].dest_state;
+          int32_t old_value = num_states_data[0];
+          if (old_value >= 0 && old_value != final_state + 1)
+            num_states_data[1] = 0;  // set error flag.
+          num_states_data[0] = final_state + 1;
+        }
+      });
   num_states_array = num_states_array.To(GetCpuContext());
   int32_t num_states = num_states_array[0], error_flag = num_states_array[1];
   if (error_flag == 0) {
@@ -280,11 +281,11 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
 
     Array1<int32_t> max_state(c, num_arcs);
     int32_t *max_state_data = max_state.Data();
-    auto lambda_get_dest_state = [=] __host__ __device__(int32_t i) -> void {
-      int32_t dest = arcs_data[i].dest_state, src = arcs_data[i].src_state;
-      max_state_data[i] = (dest > src ? dest : src);
-    };
-    Eval(c, num_arcs, lambda_get_dest_state);
+    K2_EVAL(
+        c, num_arcs, lambda_get_dest_state, (int32_t i)->void {
+          int32_t dest = arcs_data[i].dest_state, src = arcs_data[i].src_state;
+          max_state_data[i] = (dest > src ? dest : src);
+        });
     Array1<int32_t> max_state0 = max_state.Range(0, 1);
     Max(max_state, 0, &max_state0);
     num_states = max_state[0] + 2;
@@ -425,16 +426,15 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error) {
   int32_t *row_ids12_data = row_ids12.Data();
   Arc *arcs_data = arcs.Data();
 
-  auto lambda_make_row_ids2 =
-      [=] __host__ __device__(int32_t arc_idx012) -> void {
-    int32_t fsa_idx0 = row_ids12_data[arc_idx012],
-            state_idx0x = row_splits1_data[fsa_idx0];
-    int32_t state_idx1 = arcs_data[arc_idx012].src_state,
-            state_idx01 = state_idx0x + state_idx1;
-    row_ids12_data[arc_idx012] =
-        state_idx01;  // we're turning this into the row_ids2.
-  };
-  Eval(c, num_arcs, lambda_make_row_ids2);
+  K2_EVAL(
+      c, num_arcs, lambda_make_row_ids2, (int32_t arc_idx012)->void {
+        int32_t fsa_idx0 = row_ids12_data[arc_idx012],
+                state_idx0x = row_splits1_data[fsa_idx0];
+        int32_t state_idx1 = arcs_data[arc_idx012].src_state,
+                state_idx01 = state_idx0x + state_idx1;
+        row_ids12_data[arc_idx012] =
+            state_idx01;  // we're turning this into the row_ids2.
+      });
 
   Array1<int32_t> &row_ids2 =
       row_ids12;  // we overwrote the data in the lambda above.

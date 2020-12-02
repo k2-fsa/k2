@@ -200,10 +200,9 @@ class Array1 {
     Array1<S> ans(Context(), Dim());
     S *ans_data = ans.Data();
     const T *this_data = Data();
-    auto lambda_set_values = [=] __host__ __device__(int32_t i) {
-      ans_data[i] = static_cast<S>(this_data[i]);
-    };
-    Eval(Context(), Dim(), lambda_set_values);
+    K2_EVAL(
+        Context(), Dim(), lambda_set_values,
+        (int32_t i) { ans_data[i] = static_cast<S>(this_data[i]); });
     return ans;
   }
   template <typename S>
@@ -292,14 +291,9 @@ class Array1 {
   void operator=(const T t) {
     NVTX_RANGE(K2_FUNC);
     T *data = Data();
-    if (Context()->GetDeviceType() == kCpu) {
-      for (int i = 0; i < dim_; i++) data[i] = t;
-    } else {
-      auto lambda_set_values = [=] __device__(int32_t i) -> void {
-        data[i] = t;
-      };
-      EvalDevice(Context(), dim_, lambda_set_values);
-    }
+
+    K2_EVAL(
+        Context(), dim_, lambda_set_values, (int32_t i)->void { data[i] = t; });
   }
 
   /* Gathers elements in current array according to `indexes` and returns it,
@@ -331,15 +325,10 @@ class Array1 {
     const T *this_data = Data();
     T *ans_data = ans->Data();
     const int32_t *indexes_data = indexes.Data();
-    if (c->GetDeviceType() == kCpu) {
-      for (int32_t i = 0; i < ans_dim; i++)
-        ans_data[i] = this_data[indexes_data[i]];
-    } else {
-      auto lambda_copy_elems = [=] __device__(int32_t i) -> void {
-        ans_data[i] = this_data[indexes_data[i]];
-      };
-      EvalDevice(c, ans_dim, lambda_copy_elems);
-    }
+
+    K2_EVAL(
+        c, ans_dim, lambda_copy_elems,
+        (int32_t i)->void { ans_data[i] = this_data[indexes_data[i]]; });
   }
 
   // constructor from CPU array (transfers to GPU if necessary)
@@ -476,11 +465,11 @@ class Array2 {
       T *data = array.Data();
       int32_t dim1 = dim1_;
       int32_t elem_stride0 = elem_stride0_;
-      auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
-                                                       int32_t j) -> void {
-        data[i * dim1 + j] = this_data[i * elem_stride0 + j];
-      };
-      Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
+      K2_EVAL2(
+          region_->context, dim0_, dim1_, lambda_copy_elems,
+          (int32_t i, int32_t j)->void {
+            data[i * dim1 + j] = this_data[i * elem_stride0 + j];
+          });
       return array;
     }
   }
@@ -594,11 +583,9 @@ class Array2 {
     NVTX_RANGE(K2_FUNC);
     T *data = Data();
     int32_t elem_stride0 = elem_stride0_;
-    auto lambda_set_elems = [=] __host__ __device__(int32_t i,
-                                                    int32_t j) -> void {
-      data[i * elem_stride0 + j] = t;
-    };
-    Eval2(Context(), dim0_, dim1_, lambda_set_elems);
+    K2_EVAL2(
+        Context(), dim0_, dim1_, lambda_set_elems,
+        (int32_t i, int32_t j)->void { data[i * elem_stride0 + j] = t; });
   }
 
   /*
@@ -726,12 +713,12 @@ class Array2 {
     const T *t_data = t.Data<T>();
     int32_t elem_stride0 = elem_stride0_;
     int32_t elem_stride1 = t.GetShape().Stride(1);
-    auto lambda_copy_elems = [=] __host__ __device__(int32_t i,
-                                                     int32_t j) -> void {
-      this_data[i * elem_stride0 + j] =
-          t_data[i * elem_stride0 + j * elem_stride1];
-    };
-    Eval2(region_->context, dim0_, dim1_, lambda_copy_elems);
+    K2_EVAL2(
+        region_->context, dim0_, dim1_, lambda_copy_elems,
+        (int32_t i, int32_t j)->void {
+          this_data[i * elem_stride0 + j] =
+              t_data[i * elem_stride0 + j * elem_stride1];
+        });
   }
 
  private:
