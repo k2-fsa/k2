@@ -186,7 +186,7 @@ class TopSorter {
                   *fsas_row_splits2_data = fsas_.RowSplits(2).Data();
     K2_EVAL(
         c_, cur_states.NumElements(), lambda_set_arcs_per_state,
-        (int32_t states_idx01) {
+        (int32_t states_idx01)->void {
           int32_t fsas_idx01 = states_data[states_idx01],
                   num_arcs = fsas_row_splits2_data[fsas_idx01 + 1] -
                              fsas_row_splits2_data[fsas_idx01];
@@ -306,7 +306,7 @@ class TopSorter {
           // If the following fails, it likely means an input FSA was invalid
           // (e.g. had exactly one state, which is not allowed).  Either that,
           // or a code error.
-          K2_CHECK_GT(final_state, fsas_row_splits1_data[fsa_idx0]);
+          K2_DCHECK_GT(final_state, fsas_row_splits1_data[fsa_idx0]);
           ans_data[i] = final_state;
         });
     return ans;

@@ -51,16 +51,16 @@ You can replace the above code with `K2_EVAL` by the following code:
 @endcode
  */
 
-#define K2_EVAL(context, dim, lambda_name, ...)           \
-  do {                                                    \
-    if (context->GetDeviceType() == kCpu) {               \
-      auto lambda_name = [=] __VA_ARGS__;                 \
-      int32_t _dim = dim;                                 \
-      for (int32_t i = 0; i != _dim; ++i) lambda_name(i); \
-    } else {                                              \
-      auto lambda_name = [=] __device__ __VA_ARGS__;      \
-      EvalDevice(context, dim, lambda_name);              \
-    }                                                     \
+#define K2_EVAL(context, dim, lambda_name, ...)                        \
+  do {                                                                 \
+    if (context->GetDeviceType() == kCpu) {                            \
+      auto lambda_name = [=] __VA_ARGS__;                              \
+      int32_t lambda_name##_dim = dim;                                 \
+      for (int32_t i = 0; i != lambda_name##_dim; ++i) lambda_name(i); \
+    } else {                                                           \
+      auto lambda_name = [=] __device__ __VA_ARGS__;                   \
+      EvalDevice(context, dim, lambda_name);                           \
+    }                                                                  \
   } while (0)
 
 /*
@@ -100,18 +100,18 @@ You can replace the above code with `K2_EVAL2` by the following code:
       });
 @endcode
  */
-#define K2_EVAL2(context, m, n, lambda_name, ...)            \
-  do {                                                       \
-    if (context->GetDeviceType() == kCpu) {                  \
-      auto lambda_name = [=] __VA_ARGS__;                    \
-      int32_t _m = m;                                        \
-      int32_t _n = n;                                        \
-      for (int32_t i = 0; i != _m; ++i)                      \
-        for (int32_t j = 0; j != _n; ++j) lambda_name(i, j); \
-    } else {                                                 \
-      auto lambda_name = [=] __device__ __VA_ARGS__;         \
-      Eval2Device(context, m, n, lambda_name);               \
-    }                                                        \
+#define K2_EVAL2(context, m, n, lambda_name, ...)                         \
+  do {                                                                    \
+    if (context->GetDeviceType() == kCpu) {                               \
+      auto lambda_name = [=] __VA_ARGS__;                                 \
+      int32_t lambda_name##_m = m;                                        \
+      int32_t lambda_name##_n = n;                                        \
+      for (int32_t i = 0; i != lambda_name##_m; ++i)                      \
+        for (int32_t j = 0; j != lambda_name##_n; ++j) lambda_name(i, j); \
+    } else {                                                              \
+      auto lambda_name = [=] __device__ __VA_ARGS__;                      \
+      Eval2Device(context, m, n, lambda_name);                            \
+    }                                                                     \
   } while (0)
 
 #endif  // K2_CSRC_MACROS_H_

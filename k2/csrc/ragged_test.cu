@@ -1288,7 +1288,7 @@ void CheckResultOfIndex(const ContextPtr &context, RaggedShape shape,
   int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
   // Set old_offsets
   K2_EVAL(
-      context, src_dim0 + 1, lambda_get_old_offsets, (int32_t i) {
+      context, src_dim0 + 1, lambda_get_old_offsets, (int32_t i)->void {
         // 0 <= i <= dim0
         int32_t cur_offset = i;
         for (int32_t axis = 0; axis < num_axes; axis++) {

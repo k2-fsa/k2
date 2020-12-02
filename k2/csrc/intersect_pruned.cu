@@ -432,8 +432,8 @@ class MultiGraphDenseIntersectPruned {
                     states).  The cutoffs will be of the form: the best score
                     for any arc, minus the dynamic beam.  See the code for how
                     the dynamic beam is adjusted; it will approach
-    'search_beam_' as long as the number of active states in each FSA is between
-    min_active and max_active.
+                    'search_beam_' as long as the number of active states in
+                    each FSA is between min_active and max_active.
   */
   Array1<float> GetPruningCutoffs(Ragged<float> &arc_end_scores) {
     NVTX_RANGE(K2_FUNC);
@@ -808,8 +808,8 @@ class MultiGraphDenseIntersectPruned {
             int32_t a_fsas_state_idx01 =
                         kept_states_data[state_idx01].a_fsas_state_idx01,
                     fsa_idx0 = next_states_row_ids1[state_idx01];
-            K2_CHECK_EQ(state_map_acc(fsa_idx0, a_fsas_state_idx01),
-                        state_idx01);
+            K2_DCHECK_EQ(state_map_acc(fsa_idx0, a_fsas_state_idx01),
+                         state_idx01);
             // We're resetting state_map to its original clean condition.
             state_map_acc(fsa_idx0, a_fsas_state_idx01) = -1;
           });

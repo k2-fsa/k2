@@ -358,7 +358,7 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   // Set old_offsets; and for now, set new_offsets to the corresponding
   // sizes of the output slices.
   K2_EVAL(
-      c, ans_dim0, lambda_set_offsets, (int32_t i) {
+      c, ans_dim0, lambda_set_offsets, (int32_t i)->void {
         // 0 <= i < ans_dim0
         int32_t old_offset = new2old_data[i], old_offset_next = old_offset + 1;
         for (int32_t axis = 0;; axis++) {
@@ -787,7 +787,7 @@ RaggedShape MakeTransposable(RaggedShape &src) {
       axis1_shape.cached_tot_size = ans_tot_size1;
       K2_EVAL(
           c, ans_tot_size1, lambda_set_row_ids1,
-          (int32_t i) { row_ids1_data[i] = i / max_size; });
+          (int32_t i)->void { row_ids1_data[i] = i / max_size; });
     }
     if (num_axes > 2) {
       RaggedShapeDim &axis2_shape = axes_out[1];
@@ -799,7 +799,8 @@ RaggedShape MakeTransposable(RaggedShape &src) {
         axis2_shape.row_splits = Array1<int32_t>(c, ans_tot_size1 + 1);
         int32_t *ans_row_splits2_data = axis2_shape.row_splits.Data();
         K2_EVAL(
-            c, ans_tot_size1 + 1, lambda_set_row_splits2, (int32_t idx01) {
+            c, ans_tot_size1 + 1, lambda_set_row_splits2,
+            (int32_t idx01)->void {
               if (idx01 == ans_tot_size1) {
                 ans_row_splits2_data[idx01] =
                     src_row_splits2_data[src_tot_size1];
@@ -825,7 +826,7 @@ RaggedShape MakeTransposable(RaggedShape &src) {
         int32_t *ans_row_ids2_data = axis2_shape.row_ids.Data();
         const int32_t *src_row_ids2_data = src.RowIds(2).Data();
         K2_EVAL(
-            c, tot_size2, lambda_set_row_ids2, (int32_t idx012) {
+            c, tot_size2, lambda_set_row_ids2, (int32_t idx012)->void {
               int32_t src_idx01 = src_row_ids2_data[idx012];
               int32_t src_idx0 = src_row_ids1_data[src_idx01];
               int32_t src_idx1 = src_idx01 - src_row_splits1_data[src_idx0];
@@ -862,7 +863,7 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
   Array1<int32_t> renumbering(c, src_tot_size1);
   int32_t *renumbering_data = renumbering.Data();
   K2_EVAL(
-      c, src_tot_size1, lambda_set_renumbering, (int32_t i) {
+      c, src_tot_size1, lambda_set_renumbering, (int32_t i)->void {
         int32_t j = i % src_dim0, k = i / src_dim0, i_old = j * src_dim1 + k;
         renumbering_data[i] = i_old;
       });
@@ -876,7 +877,7 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
   Array1<int32_t> mem(c, row_splits_dim + row_ids_dim);
   int32_t *mem_data = mem.Data();
   K2_EVAL(
-      c, row_splits_dim + row_ids_dim, lambda_set_row_info, (int32_t i) {
+      c, row_splits_dim + row_ids_dim, lambda_set_row_info, (int32_t i)->void {
         int32_t val;
         if (i >= row_splits_dim) {
           // row_ids
@@ -936,7 +937,7 @@ RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1) {
   int32_t *row_ids_data = row_ids.Data();
   K2_EVAL2(
       c, dim0, dim1, lambda_set_row_ids,
-      (int32_t i, int32_t j) { row_ids_data[i * dim1 + j] = i; });
+      (int32_t i, int32_t j)->void { row_ids_data[i * dim1 + j] = i; });
   return RaggedShape2(&row_splits, &row_ids, dim0 * dim1);
 }
 

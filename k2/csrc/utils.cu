@@ -151,10 +151,10 @@ void RowSplitsToRowIds(ContextPtr c, int32_t num_rows,
 
       K2_EVAL(
           c, num_elems + 1, lambda_init_minus_one,
-          (int32_t i) { row_ids[i] = -1; });
+          (int32_t i)->void { row_ids[i] = -1; });
 
       K2_EVAL(
-          c, num_elems + 1, lambda_phase_one, (int32_t i) {
+          c, num_elems + 1, lambda_phase_one, (int32_t i)->void {
             int32_t this_row_split = row_splits[i],
                     next_row_split =
                         (i < num_rows ? row_splits[i + 1] : this_row_split + 1);
@@ -185,7 +185,7 @@ void RowSplitsToRowIds(ContextPtr c, int32_t num_rows,
       // could do the next line for num_elems+1, but the element at `num_elems`
       // will already be set.
       K2_EVAL(
-          c, num_elems, lambda_phase_two, (int32_t j) {
+          c, num_elems, lambda_phase_two, (int32_t j)->void {
             int32_t row_index = row_ids[j];
             if (row_index != -1) return;
             int32_t power = 0, j2 = j;
@@ -273,7 +273,8 @@ void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
   // process corner case first
   if (num_elems == 0) {
     K2_EVAL(
-        c, num_rows + 1, lambda_set_values, (int32_t i) { row_splits[i] = 0; });
+        c, num_rows + 1, lambda_set_values,
+        (int32_t i)->void { row_splits[i] = 0; });
     return;
   }
   DeviceType d = c->GetDeviceType();

@@ -785,13 +785,16 @@ Ragged<int32_t> GetStateBatches(FsaVec &fsas, bool transpose) {
         int32_t idx0 = ans_row_ids1_data[idx01],  // Fsa index
             idx0x = ans_row_splits1_data[idx0], idx1 = idx01 - idx0x,
                 fsas_idx0x =
-                    fsas_row_splits1_data[idx0],  // 1st state-idx (idx01)
+                    fsas_row_splits1_data[idx0];  // 1st state-idx (idx01)
                                                   // in fsas_, for this FSA
-            fsas_idx01 = fsas_idx0x + idx1,       // the idx1 is actually the
-                                                  // batch-index, this statement
-            // reflects the 'un-consolidated'
-            // format of `batch_starts`.
-            this_batch_start = batch_starts_data[fsas_idx01];
+
+        int32_t fsas_idx01 =
+            fsas_idx0x + idx1;  // the idx1 is actually the
+                                // batch-index, this statement
+                                // reflects the 'un-consolidated'
+                                // format of `batch_starts`.
+
+        int32_t this_batch_start = batch_starts_data[fsas_idx01];
         ans_row_splits2_data[idx01] = this_batch_start;
       });
 
@@ -1768,6 +1771,5 @@ FsaVec GetIncomingFsaVec(FsaVec &fsas) {
   Ragged<int32_t> arc_indexes = GetIncomingArcs(fsas, dest_states);
   return FsaVec(arc_indexes.shape, fsas.values[arc_indexes.values]);
 }
-
 
 }  // namespace k2
