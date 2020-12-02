@@ -1508,6 +1508,28 @@ TEST(ChangeSublistSize, TwoAxes) {
   }
 }
 
+TEST(ChangeSublistSizePinned, TwoAxes) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 2, 5, 5});
+      RaggedShape src = RaggedShape2(&row_splits1, nullptr, -1);
+
+      int32_t size_delta = 2;
+      RaggedShape dst = ChangeSublistSizePinned(src, size_delta);
+      CheckArrayData(dst.RowSplits(1), std::vector<int32_t>{0, 4, 9, 9});
+
+      size_delta = -3;
+      dst = ChangeSublistSizePinned(src, size_delta);
+      CheckArrayData(dst.RowSplits(1), std::vector<int32_t>{0, 0, 0, 0});
+
+      size_delta = 0;
+      dst = ChangeSublistSizePinned(src, size_delta);
+      CheckArrayData(dst.RowSplits(1), std::vector<int32_t>{0, 2, 5, 5});
+    }
+  }
+}
+
+
 TEST(ChangeSublistSize, ThreeAxes) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     /*
@@ -1538,6 +1560,38 @@ TEST(ChangeSublistSize, ThreeAxes) {
     CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 3, 5, 6, 8, 11});
   }
 }
+
+
+TEST(ChangeSublistSizePinned, ThreeAxes) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    /*
+     [
+       [ [x, x, x], [x, x] ]
+       [ [x], [x, x], [], [x, x, x] ]
+     ]
+     */
+    Array1<int32_t> row_splits1(context, std::vector<int32_t>{0, 2, 6});
+    Array1<int32_t> row_splits2(context,
+                                std::vector<int32_t>{0, 3, 5, 6, 8, 8, 11});
+    RaggedShape src =
+        RaggedShape3(&row_splits1, nullptr, -1, &row_splits2, nullptr, -1);
+
+    int32_t size_delta = 2;
+    RaggedShape dst = ChangeSublistSizePinned(src, size_delta);
+    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 5, 9, 12, 16, 16, 21});
+
+
+    size_delta = -2;
+
+    dst = ChangeSublistSizePinned(src, size_delta);
+    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 1, 1, 1, 1, 1, 2});
+
+    size_delta = 0;
+    dst = ChangeSublistSizePinned(src, size_delta);
+    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 3, 5, 6, 8, 8, 11});
+  }
+}
+
 
 TEST(RaggedShapeOpsTest, TestGetCountsPartitioned) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data

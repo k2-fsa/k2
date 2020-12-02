@@ -106,7 +106,8 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
     if (row_ids != nullptr) K2_CHECK_EQ(cached_tot_size, row_ids->Dim());
     if (row_splits != nullptr) {
       // may be slow as it may copy memory from device to host
-      K2_DCHECK_EQ(cached_tot_size, row_splits->Back());
+      K2_DCHECK_EQ(cached_tot_size, row_splits->Back()) << "Bad row splits is: "
+                                                        << *row_splits;
     }
   }
   std::vector<RaggedShapeDim> axes(1);
@@ -1143,6 +1144,46 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
   }
   return RaggedShape(ans_axes);
 }
+
+// TODO(dan): this could definitely be made more efficient.
+RaggedShape ChangeSublistSizePinned(RaggedShape &src, int32_t size_delta) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_GE(src.NumAxes(), 2);
+
+  // the result will have the same num-axes as `src` (the NumAxes() of the
+  // object is not the same as the number of RaggedShapeDim axes).
+  std::vector<RaggedShapeDim> ans_axes(src.NumAxes() - 1);
+  int32_t last_axis = src.NumAxes() - 1;
+  // The following will only do something if src.NumAxes() > 2.
+  for (int32_t i = 0; i + 1 < last_axis; ++i) ans_axes[i] = src.Axes()[i];
+
+  ContextPtr &c = src.Context();
+
+  int32_t num_rows = src.TotSize(last_axis - 1);
+  ans_axes.back().row_splits = Array1<int32_t>(c, num_rows + 1);
+
+  const int32_t *src_row_splits_data = src.RowSplits(last_axis).Data();
+  int32_t *row_splits_data = ans_axes.back().row_splits.Data();
+
+  K2_EVAL(c, num_rows, lambda_set_row_sizes, (int32_t idx0) -> void {
+      int32_t orig_size = src_row_splits_data[idx0 + 1] -
+                          src_row_splits_data[idx0],
+                          size;
+      if (orig_size == 0 || orig_size + size_delta <= 0)
+        size = 0;
+      else
+        size = orig_size + size_delta;
+      row_splits_data[idx0] = size;
+    });
+  ExclusiveSum(ans_axes.back().row_splits, &ans_axes.back().row_splits);
+  ans_axes.back().row_ids = Array1<int32_t>(c, ans_axes.back().row_splits.Back());
+  RowSplitsToRowIds(ans_axes.back().row_splits,
+                    &ans_axes.back().row_ids);
+  ans_axes.back().cached_tot_size = ans_axes.back().row_ids.Dim();
+  return RaggedShape(ans_axes);
+}
+
+
 
 RaggedShape Prefix(RaggedShape &src, int32_t n) {
   NVTX_RANGE(K2_FUNC);
