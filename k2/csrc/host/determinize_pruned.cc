@@ -89,7 +89,7 @@ float DeterminizerPruned<TracebackState>::GetOutput(
   std::vector<int32_t> arc_map;
   // output fsa
   K2_CHECK_EQ(arcs_.size(), fsa_out->size2);
-  CreateFsa(arcs_, fsa_out, &arc_map);
+  CreateTopSortedFsa(arcs_, fsa_out, &arc_map);
   K2_CHECK_EQ(arcs_.size(), arc_map.size());
 
   // output arc derivative information

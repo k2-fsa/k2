@@ -416,8 +416,8 @@ void RandFsaGenerator::GetOutput(Fsa *fsa_out) {
   std::copy(fsa.data, fsa.data + fsa.size2, fsa_out->data);
 }
 
-void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
-               std::vector<int32_t> *arc_map /*=null_ptr*/) {
+void CreateTopSortedFsa(const std::vector<Arc> &arcs, Fsa *fsa,
+                        std::vector<int32_t> *arc_map /*=null_ptr*/) {
   using dfs::DfsState;
   using dfs::kNotVisited;
   using dfs::kVisited;
@@ -503,6 +503,65 @@ void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
       arc_map_out.push_back(arc_with_index.second);
     }
   }
+  fsa->indexes[num_states] = num_arcs;
+  if (arc_map != nullptr) arc_map->swap(arc_map_out);
+}
+
+void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
+               std::vector<int32_t> *arc_map /*=null_ptr*/) {
+  K2_CHECK_NE(fsa, nullptr);
+  if (arcs.empty()) return;
+
+  int32_t old_final_state = -1;
+  using ArcWithIndex = std::pair<Arc, int32_t>;
+  int32_t arc_id = 0;
+  std::vector<std::vector<ArcWithIndex>> state_to_arcs;  // indexed by states
+  for (const auto &arc : arcs) {
+    if (arc.label == -1) {
+      // if old_final_state != -1, there must be arc.dest_state ==
+      // old_final_state, as we suppose there is only one final state.
+      K2_CHECK(old_final_state == -1 || arc.dest_state == old_final_state);
+      old_final_state = arc.dest_state;
+    }
+    int32_t src_state = arc.src_state;
+    int32_t dest_state = arc.dest_state;
+    int32_t new_size = std::max(src_state, dest_state);
+    if (new_size >= state_to_arcs.size()) state_to_arcs.resize(new_size + 1);
+    state_to_arcs[src_state].push_back({arc, arc_id++});
+  }
+
+  int32_t num_states = static_cast<int32_t>(state_to_arcs.size());
+  K2_CHECK_EQ(fsa->size1, num_states);
+  K2_CHECK_EQ(fsa->size2, arcs.size());
+  // there's no leaving arc from final state
+  K2_CHECK_EQ(state_to_arcs[old_final_state].size(), 0);
+
+  int32_t final_state = num_states - 1;
+  std::vector<int32_t> new_to_old(num_states);
+  // we move old_final_state to the end so that final state will be
+  // the largest state.
+  for (int32_t i = 0; i < old_final_state; ++i) new_to_old[i] = i;
+  for (int32_t i = old_final_state; i < final_state; ++i) new_to_old[i] = i + 1;
+  new_to_old[final_state] = old_final_state;
+  std::vector<int32_t> old_to_new(num_states);
+  for (int32_t i = 0; i != num_states; ++i) old_to_new[new_to_old[i]] = i;
+
+  std::vector<int32_t> arc_map_out;
+  arc_map_out.reserve(arcs.size());
+
+  int32_t num_arcs = 0;
+  for (int32_t i = 0; i != num_states; ++i) {
+    int32_t old_state = new_to_old[i];
+    fsa->indexes[i] = num_arcs;
+    for (auto arc_with_index : state_to_arcs[old_state]) {
+      auto &arc = arc_with_index.first;
+      arc.src_state = i;
+      arc.dest_state = old_to_new[arc.dest_state];
+      fsa->data[num_arcs++] = arc;
+      arc_map_out.push_back(arc_with_index.second);
+    }
+  }
+
   fsa->indexes[num_states] = num_arcs;
   if (arc_map != nullptr) arc_map->swap(arc_map_out);
 }
