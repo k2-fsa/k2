@@ -185,6 +185,10 @@ void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
 
         @param [in] a_fsas  Fsa or FsaVec that is one of the arguments
                            for composition (i.e. 2 or 3 axes)
+        @param [in] properties_a  properties for a_fsas. Will be computed
+                           internally if its value is -1.
+        @param [in] properties_b  properties for b_fsas. Will be computed
+                           internally if its value is -1.
         @param [in] b_fsas  Fsa or FsaVec that is one of the arguments
                            for composition (i.e. 2 or 3 axes)
         @param [in] treat_epsilons_specially   If true, epsilons will
