@@ -9,6 +9,8 @@
 #ifndef K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_
 #define K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_
 
+#include <string>
+
 #include "k2/csrc/array.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
