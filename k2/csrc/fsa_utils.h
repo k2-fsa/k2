@@ -417,9 +417,10 @@ Ragged<int32_t> GetStartStates(FsaVec &src);
 /* Create a FsaVec from a tensor of best arc indexes returned by `ShortestPath`.
 
    @param [in] fsas   Input FsaVec. It must be the same FsaVec for getting
-                      `best_arc_indexes`.
-   @param [in] best_arc_indexes
-                      It is returned by `ShortestPath`.
+                     `best_arc_indexes`.
+   @param [in] best_arc_index
+                      As returned by `ShortestPath`; has 2 axes, indexed
+                      [fsa_idx][list of arcs]
 
 
    @return returns a linear FsaVec that contains the best path of `fsas`.

@@ -172,6 +172,20 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src);
  */
 RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta);
 
+/*
+  A version of ChangeSublistSize() with different behavior for edge
+  cases.  If size_delta is positive and the original size of a sub-list
+  was zero, then the sub-list is left at zero size, e.g.:
+
+    ChangeSublistSizePinned( [[ x x ] [ ]], 1) returns [[ x x x ] []].
+
+  If size_delta is negative then if reducing the size would take us below
+  zero size we let the size be zero (unlike in ChangeSublistSize(), where this
+  would be an error).   So
+     ChangeSublistSizePinned( [[ x x x ] [ ]], -2) returns [[ x ] []].
+ */
+RaggedShape ChangeSublistSizePinned(RaggedShape &src, int32_t size_delta);
+
 
 /*
   Return a sub-part of a RaggedShape containing indexes 0 through n-1 of

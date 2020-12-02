@@ -1706,8 +1706,9 @@ FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes) {
   K2_CHECK(IsCompatible(fsas, best_arc_indexes));
   K2_CHECK_EQ(fsas.Dim0(), best_arc_indexes.Dim0());
 
-  // if there are n arcs, there are n + 1 states
-  RaggedShape states_shape = ChangeSublistSize(best_arc_indexes.shape, 1);
+  // if there are n arcs (for n > 0), there are n + 1 states; if there are 0
+  // arcs, there are 0 states (that FSA will have no arcs or states).
+  RaggedShape states_shape = ChangeSublistSizePinned(best_arc_indexes.shape, 1);
   const int32_t *states_shape_row_splits1_data =
       states_shape.RowSplits(1).Data();
 
@@ -1715,6 +1716,14 @@ FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes) {
   int32_t num_states = states_shape.NumElements();
   int32_t num_arcs = best_arc_indexes.shape.NumElements();
   ContextPtr &context = fsas.Context();
+
+  if (num_arcs == 0) {
+    RaggedShape shape_a = RegularRaggedShape(context, num_fsas, 0),
+                shape_b = RegularRaggedShape(context, 0, 0);
+    return FsaVec(ComposeRaggedShapes(shape_a, shape_b),
+                  Array1<Arc>(context, 0));
+  }
+
   Array1<int32_t> row_splits2(context, num_states + 1);
   Array1<int32_t> row_ids2(context, num_arcs);
   int32_t *row_splits2_data = row_splits2.Data();
