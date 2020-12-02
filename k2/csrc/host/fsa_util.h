@@ -217,13 +217,34 @@ class FsaCreator {
   std::vector<Arc> arcs_;
 };
 
-/* Create an acyclic FSA from a list of arcs.
+/* Create an acyclic FSA from a list of arcs. The returned Fsa is top-sorted and
+   acyclic.
 
    Arcs do not need to be pre-sorted by src_state.
    If there is a cycle, it aborts.
 
    The start state MUST be 0. The final state will be automatically determined
    by topological sort.
+
+   @param [in] arcs  A list of arcs.
+   @param [out] fsa  Output fsa which is top-sorted. Must be initialized;
+                     search for 'initialized definition' in class Array2
+                     in array.h for meaning.
+   @param [out] arc_map   If non-NULL, this function will
+                            output a map from the arc-index in `fsa` to
+                            the corresponding arc-index in input `arcs`.
+*/
+void CreateTopSortedFsa(const std::vector<Arc> &arcs, Fsa *fsa,
+                        std::vector<int32_t> *arc_map = nullptr);
+
+/* Create an FSA from a list of arcs.
+
+   Arcs do not need to be pre-sorted by src_state.
+
+   The start state MUST be 0. There must be only one state whose all entering
+   arcs have label -1 and there's no arc leaving this state, this state will
+   be the final state; otherwise, if we cannot find such a state,
+   the program will abort with an error.
 
    @param [in] arcs  A list of arcs.
    @param [out] fsa  Output fsa. Must be initialized; search for 'initialized

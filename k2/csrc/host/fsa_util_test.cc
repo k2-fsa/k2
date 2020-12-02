@@ -259,7 +259,7 @@ TEST(FsaUtil, FsaCreator) {
   }
 }
 
-TEST(FsaAlgo, CreateFsa) {
+TEST(FsaAlgo, CreateTopSortedFsa) {
   {
     // clang-format off
     std::vector<Arc> arcs = {
@@ -283,11 +283,37 @@ TEST(FsaAlgo, CreateFsa) {
     FsaCreator fsa_creator(fsa_size);
     auto &fsa_out = fsa_creator.GetFsa();
     std::vector<int32_t> arc_map;
-    CreateFsa(arcs, &fsa_out, &arc_map);
+    CreateTopSortedFsa(arcs, &fsa_out, &arc_map);
+    EXPECT_TRUE(IsTopSortedAndAcyclic(fsa_out));
 
     EXPECT_EQ(arc_map.size(), arcs.size());
     EXPECT_THAT(arc_map,
                 ::testing::ElementsAre(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11));
+  }
+}
+
+TEST(FsaAlgo, CreateFsa) {
+  {
+    // clang-format off
+    std::vector<Arc> arcs = {
+      {0, 3, 3, 0},
+      {1, 3, 2, 0},
+      {3, 1, 1, 0},
+      {1, 4, 4, 0},
+      {1, 2, -1, 0},
+      {4, 2, -1, 0},
+    };
+    // clang-format on
+    Array2Size<int32_t> fsa_size;
+    fsa_size.size1 = 5;            // num_states
+    fsa_size.size2 = arcs.size();  // num_arcs
+    FsaCreator fsa_creator(fsa_size);
+    auto &fsa_out = fsa_creator.GetFsa();
+    std::vector<int32_t> arc_map;
+    CreateFsa(arcs, &fsa_out, &arc_map);
+
+    EXPECT_EQ(arc_map.size(), arcs.size());
+    EXPECT_THAT(arc_map, ::testing::ElementsAre(0, 1, 3, 4, 2, 5));
   }
 }
 }  // namespace k2host
