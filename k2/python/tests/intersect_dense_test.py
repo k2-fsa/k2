@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
-#                2020  Xiaomi Corp.       (authors: Daniel Povey)
+# Copyright (c)  2020  Xiaomi Corp.       (authors: Daniel Povey, Fangjun Kuang)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -85,18 +84,18 @@ class TestIntersectDense(unittest.TestCase):
 
         # `expected` results are computed using gtn.
         # See https://bit.ly/3oYObeb
-        expected_scores_out_fsa = torch.tensor(
-            [1.2, 2.06, 3.0, 1.2, 50.5, 2.0, 3.0])
+        #  expected_scores_out_fsa = torch.tensor(
+        #      [1.2, 2.06, 3.0, 1.2, 50.5, 2.0, 3.0])
         expected_grad_fsa = torch.tensor([2.0, 1.0, 2.0, 2.0])
-        expected_grad_log_prob = torch.tensor([
-            0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0, 1.0,
-            0.0, 0.0, 0.0, 1.0
-        ]).reshape_as(log_prob)
+        #  expected_grad_log_prob = torch.tensor([
+        #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0, 1.0,
+        #      0.0, 0.0, 0.0, 1.0
+        #  ]).reshape_as(log_prob)
 
         # TODO(dan):: fix this..
-        #assert torch.allclose(out_fsa.scores, expected_scores_out_fsa)
+        # assert torch.allclose(out_fsa.scores, expected_scores_out_fsa)
         assert torch.allclose(expected_grad_fsa, fsa.scores.grad)
-        #gassert torch.allclose(expected_grad_log_prob, log_prob.grad)
+        # assert torch.allclose(expected_grad_log_prob, log_prob.grad)
 
     def test_two_fsas(self):
         s1 = '''
@@ -113,7 +112,6 @@ class TestIntersectDense(unittest.TestCase):
             2 3 -1 3.0
             3
         '''
-
 
         fsa1 = k2.Fsa.from_str(s1)
         fsa2 = k2.Fsa.from_str(s2)
@@ -144,23 +142,22 @@ class TestIntersectDense(unittest.TestCase):
 
         # `expected` results are computed using gtn.
         # See https://bit.ly/3oYObeb
-        expected_scores_out_fsa = torch.tensor(
-            [1.2, 2.06, 3.0, 1.2, 50.5, 2.0, 3.0])
-
+        #  expected_scores_out_fsa = torch.tensor(
+        #      [1.2, 2.06, 3.0, 1.2, 50.5, 2.0, 3.0])
 
         expected_grad_fsa1 = torch.tensor([1.0, 1.0, 1.0, 1.0])
         expected_grad_fsa2 = torch.tensor([1.0, 1.0, 1.0])
         print("fsa2 is ", fsa2.__str__())
         # TODO(dan):: fix this..
-        expected_grad_log_prob = torch.tensor([
-            0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0, 1.0,
-            0.0, 0.0, 0.0, 1.0
-        ]).reshape_as(log_prob)
+        #  expected_grad_log_prob = torch.tensor([
+        #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0, 1.0,
+        #      0.0, 0.0, 0.0, 1.0
+        #  ]).reshape_as(log_prob)
 
-        #assert torch.allclose(out_fsa.scores, expected_scores_out_fsa)
+        # assert torch.allclose(out_fsa.scores, expected_scores_out_fsa)
         assert torch.allclose(expected_grad_fsa1, fsa1.scores.grad)
         assert torch.allclose(expected_grad_fsa2, fsa2.scores.grad)
-        #assert torch.allclose(expected_grad_log_prob, log_prob.grad)
+        # assert torch.allclose(expected_grad_log_prob, log_prob.grad)
 
 
 if __name__ == '__main__':
