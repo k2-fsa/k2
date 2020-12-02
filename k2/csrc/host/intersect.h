@@ -34,6 +34,8 @@ class Intersection {
      @param [in] treat_epsilons_specially  If true, treat epsilons
                       as epsilon; if false, threat them as any other
                       symbol.
+     @param [in] check_properties  If true check properties; otherwise do not
+                      check, assuming properties have been checked by the caller.
   */
   Intersection(const Fsa &a, const Fsa &b,
                bool treat_epsilons_specially = true,
