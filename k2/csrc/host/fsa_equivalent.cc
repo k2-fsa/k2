@@ -28,6 +28,8 @@
 #include "k2/csrc/host/topsort.h"
 #include "k2/csrc/host/util.h"
 #include "k2/csrc/host/weights.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace {
 /*
@@ -39,6 +41,7 @@ namespace {
  */
 static bool Connect(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
+  NVTX_RANGE(K2_FUNC);
   k2host::Connection connection(fsa_in);
   k2host::Array2Size<int32_t> fsa_size;
 
@@ -61,6 +64,7 @@ static bool Connect(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
  */
 static void ArcSort(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_out, nullptr);
   k2host::ArcSorter sorter(fsa_in);
   k2host::Array2Size<int32_t> fsa_size;
@@ -81,6 +85,7 @@ static void ArcSort(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
  */
 static void TopSort(const k2host::Fsa &fsa_in, k2host::FsaCreator *fsa_out,
                     std::vector<int32_t> *arc_map = nullptr) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_out, nullptr);
   k2host::TopSorter sorter(fsa_in);
   k2host::Array2Size<int32_t> fsa_size;
@@ -103,6 +108,7 @@ static bool Intersect(const k2host::Fsa &a, const k2host::Fsa &b,
                       bool treat_epsilons_specially, k2host::FsaCreator *c,
                       std::vector<int32_t> *arc_map_a = nullptr,
                       std::vector<int32_t> *arc_map_b = nullptr) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(c, nullptr);
   k2host::Intersection intersection(a, b, treat_epsilons_specially);
   k2host::Array2Size<int32_t> fsa_size;
@@ -128,6 +134,7 @@ static bool Intersect(const k2host::Fsa &a, const k2host::Fsa &b,
 static bool RandomPath(const k2host::Fsa &fsa_in, bool no_eps_arc,
                        k2host::FsaCreator *path,
                        std::vector<int32_t> *arc_map = nullptr) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(path, nullptr);
   k2host::RandPath rand_path(fsa_in, no_eps_arc);
   k2host::Array2Size<int32_t> fsa_size;
@@ -145,6 +152,7 @@ static bool RandomPath(const k2host::Fsa &fsa_in, bool no_eps_arc,
 static void SetDifference(const std::unordered_set<int32_t> &a,
                           const std::unordered_set<int32_t> &b,
                           std::unordered_set<int32_t> *c) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(c, nullptr);
   c->clear();
   for (const auto &v : a) {
@@ -162,6 +170,7 @@ namespace k2host {
 bool IsRandEquivalent(const Fsa &a, const Fsa &b,
                       bool treat_epsilons_specially /*=true*/,
                       std::size_t npath /*=100*/) {
+  NVTX_RANGE(K2_FUNC);
   FsaCreator valid_a_storage, valid_b_storage;
   ::Connect(a, &valid_a_storage);
   ::Connect(b, &valid_b_storage);
@@ -217,6 +226,7 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
                       bool treat_epsilons_specially /*=true*/,
                       float delta /*=1e-6*/, bool top_sorted /*=true*/,
                       std::size_t npath /*= 100*/) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(beam, 0);
   // TODO(haowen): for now we only support top-sorted input Fsas
   K2_CHECK(top_sorted);
@@ -245,11 +255,9 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
     return false;
 
   double dist_a = ShortestDistance<Type>(valid_a),
-      dist_b = ShortestDistance<Type>(valid_b),
-      loglike_cutoff_a = dist_a - beam,
-      loglike_cutoff_b = dist_b - beam;
-  if (abs(dist_a - dist_b) > delta)
-    return false;
+         dist_b = ShortestDistance<Type>(valid_b),
+         loglike_cutoff_a = dist_a - beam, loglike_cutoff_b = dist_b - beam;
+  if (abs(dist_a - dist_b) > delta) return false;
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -305,6 +313,7 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(const Fsa &a, const Fsa &b,
                                             float beam,
                                             bool top_sorted /*= true*/,
                                             std::size_t npath /*= 100*/) {
+  NVTX_RANGE(K2_FUNC);
   // TODO(haowen): the implementation may be not correct, we need to check this
   K2_LOG(FATAL)
       << "Don't call this function for now, the implementation may be "
@@ -389,6 +398,7 @@ bool IsRandEquivalentAfterRmEpsPrunedLogSum(const Fsa &a, const Fsa &b,
 }
 
 void RandPath::GetSizes(Array2Size<int32_t> *fsa_size) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
 
@@ -470,6 +480,7 @@ void RandPath::GetSizes(Array2Size<int32_t> *fsa_size) {
 }
 
 bool RandPath::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_out, nullptr);
   if (!status_) return false;
 

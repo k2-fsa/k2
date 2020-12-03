@@ -20,9 +20,12 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2host {
 void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   arc_indexes_.clear();
@@ -72,6 +75,7 @@ void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
 }
 
 bool TopSorter::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   if (!is_acyclic_) return false;
 
   // output FSA

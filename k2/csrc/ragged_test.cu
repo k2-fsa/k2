@@ -1578,8 +1578,8 @@ TEST(ChangeSublistSizePinned, ThreeAxes) {
 
     int32_t size_delta = 2;
     RaggedShape dst = ChangeSublistSizePinned(src, size_delta);
-    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 5, 9, 12, 16, 16, 21});
-
+    CheckArrayData(dst.RowSplits(2),
+                   std::vector<int32_t>{0, 5, 9, 12, 16, 16, 21});
 
     size_delta = -2;
 
@@ -1588,7 +1588,8 @@ TEST(ChangeSublistSizePinned, ThreeAxes) {
 
     size_delta = 0;
     dst = ChangeSublistSizePinned(src, size_delta);
-    CheckArrayData(dst.RowSplits(2), std::vector<int32_t>{0, 3, 5, 6, 8, 8, 11});
+    CheckArrayData(dst.RowSplits(2),
+                   std::vector<int32_t>{0, 3, 5, 6, 8, 8, 11});
   }
 }
 

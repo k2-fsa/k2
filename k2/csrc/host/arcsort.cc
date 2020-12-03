@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "k2/csrc/host/fsa.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2host {
 void ArcSorter::GetSizes(Array2Size<int32_t> *fsa_size) const {
@@ -26,6 +28,7 @@ void ArcSorter::GetSizes(Array2Size<int32_t> *fsa_size) const {
 }
 
 void ArcSorter::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_out, nullptr);
   K2_CHECK_EQ(fsa_out->size1, fsa_in_.size1);
   K2_CHECK_EQ(fsa_out->size2, fsa_in_.size2);
@@ -58,6 +61,7 @@ void ArcSorter::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
 }
 
 void ArcSort(Fsa *fsa, int32_t *arc_map /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa, nullptr);
 
   std::vector<int32_t> indexes(fsa->size2);

@@ -17,10 +17,11 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/nvtx.h"
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace {
 
@@ -43,7 +44,7 @@ static inline int32_t InsertIntersectionState(
 namespace k2host {
 
 void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   status_ = true;
@@ -176,7 +177,7 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
 
 bool Intersection::GetOutput(Fsa *c, int32_t *arc_map_a /*= nullptr*/,
                              int32_t *arc_map_b /*= nullptr*/) {
-  NVTX_RANGE(__func__);
+  NVTX_RANGE(K2_FUNC);
   if (c->size1 == 0 && c->size2 == 0) {
     c->indexes[0] = 0;
     return status_;

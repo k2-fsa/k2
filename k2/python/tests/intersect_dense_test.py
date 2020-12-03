@@ -205,7 +205,5 @@ class TestIntersectDense(unittest.TestCase):
         scores.sum().backward()
 
 
-
-
 if __name__ == '__main__':
     unittest.main()

@@ -25,6 +25,8 @@
 #include "k2/csrc/host/connect.h"
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace {
 
@@ -139,6 +141,7 @@ void SplitStringToVector(const std::string &in, const char *delim,
 namespace k2host {
 
 void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(arc_indexes, nullptr);
   K2_CHECK_EQ(arc_indexes->size1, fsa.size1);
   K2_CHECK_EQ(arc_indexes->size2, fsa.size2);
@@ -169,6 +172,7 @@ void GetEnteringArcs(const Fsa &fsa, Array2<int32_t *, int32_t> *arc_indexes) {
 void GetArcWeights(const float *arc_weights_in,
                    const Array2<int32_t *, int32_t> &arc_map,
                    float *arc_weights_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(arc_weights_in, nullptr);
   K2_CHECK_NE(arc_weights_out, nullptr);
   for (int32_t i = 0; i != arc_map.size1; ++i) {
@@ -183,6 +187,7 @@ void GetArcWeights(const float *arc_weights_in,
 
 void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
                    int32_t num_arcs, float *arc_weights_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(arc_weights_in, nullptr);
   K2_CHECK_NE(arc_weights_out, nullptr);
   for (int32_t i = 0; i != num_arcs; ++i) {
@@ -192,6 +197,7 @@ void GetArcWeights(const float *arc_weights_in, const int32_t *arc_map,
 
 void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
                  std::vector<int32_t> *arc_map /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa, nullptr);
   if (arc_map != nullptr) arc_map->clear();
 
@@ -229,6 +235,7 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
 
 void ConvertIndexes1(const int32_t *arc_map, int32_t num_arcs,
                      int64_t *indexes_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(arc_map, nullptr);
   K2_CHECK_GE(num_arcs, 0);
   K2_CHECK_NE(indexes_out, nullptr);
@@ -237,6 +244,7 @@ void ConvertIndexes1(const int32_t *arc_map, int32_t num_arcs,
 
 void GetArcIndexes2(const Array2<int32_t *, int32_t> &arc_map,
                     int64_t *indexes1, int64_t *indexes2) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(indexes1, nullptr);
   K2_CHECK_NE(indexes2, nullptr);
   std::copy(arc_map.data + arc_map.indexes[0],
@@ -250,6 +258,7 @@ void GetArcIndexes2(const Array2<int32_t *, int32_t> &arc_map,
 }
 
 void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
 
@@ -294,6 +303,7 @@ void StringToFsa::GetSizes(Array2Size<int32_t> *fsa_size) {
 }
 
 void StringToFsa::GetOutput(Fsa *fsa_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_out, nullptr);
   K2_CHECK_EQ(fsa_out->size1, arcs_.size());
 
@@ -307,6 +317,7 @@ void StringToFsa::GetOutput(Fsa *fsa_out) {
 }
 
 std::string FsaToString(const Fsa &fsa) {
+  NVTX_RANGE(K2_FUNC);
   if (IsEmpty(fsa)) return "";
 
   static constexpr const char *kSep = " ";
@@ -332,6 +343,7 @@ RandFsaOptions::RandFsaOptions() {
 }
 
 void RandFsaGenerator::GetSizes(Array2Size<int32_t> *fsa_size) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
 
@@ -407,6 +419,7 @@ void RandFsaGenerator::GetSizes(Array2Size<int32_t> *fsa_size) {
 }
 
 void RandFsaGenerator::GetOutput(Fsa *fsa_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_out, nullptr);
 
   const auto &fsa = fsa_creator_.GetFsa();
@@ -418,6 +431,7 @@ void RandFsaGenerator::GetOutput(Fsa *fsa_out) {
 
 void CreateTopSortedFsa(const std::vector<Arc> &arcs, Fsa *fsa,
                         std::vector<int32_t> *arc_map /*=null_ptr*/) {
+  NVTX_RANGE(K2_FUNC);
   using dfs::DfsState;
   using dfs::kNotVisited;
   using dfs::kVisited;
@@ -509,6 +523,7 @@ void CreateTopSortedFsa(const std::vector<Arc> &arcs, Fsa *fsa,
 
 void CreateFsa(const std::vector<Arc> &arcs, Fsa *fsa,
                std::vector<int32_t> *arc_map /*=null_ptr*/) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa, nullptr);
   if (arcs.empty()) return;
 

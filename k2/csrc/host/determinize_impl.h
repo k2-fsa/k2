@@ -27,6 +27,8 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/util.h"
 #include "k2/csrc/host/weights.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2host {
 /*
@@ -454,6 +456,7 @@ class DetState {
   void AcceptIncomingArc(int32_t state_id,
                          const std::shared_ptr<TracebackState> &src,
                          int32_t incoming_arc_index, float arc_weight) {
+    NVTX_RANGE(K2_FUNC);
     auto ret = elements.insert({state_id, nullptr});
     if (ret.second) {  // No such state existed in `elements`
       ret.first->second = std::make_shared<TracebackState>(
@@ -586,6 +589,7 @@ template <class TracebackState>
 int32_t DetState<TracebackState>::GetDetStatesSuccessor(
     const Fsa &fsa,
     std::unordered_map<uint32_t, DetState<TracebackState> *> &label_to_state) {
+  NVTX_RANGE(K2_FUNC);
   int32_t num_steps = 0;
   const auto arcs = fsa.data + fsa.indexes[0];
   for (const auto &elem : elements) {
@@ -623,6 +627,7 @@ int32_t DetState<TracebackState>::ProcessArcs(
         *derivs_per_arc,
     DetStateMap<TracebackState> *state_map,
     DetStatePriorityQueue<TracebackState> *queue) {
+  NVTX_RANGE(K2_FUNC);
   const Fsa &fsa = wfsa_in.fsa;
   std::unordered_map<uint32_t, DetState<TracebackState> *> label_to_state;
   int32_t num_steps = GetDetStatesSuccessor(fsa, label_to_state);
@@ -658,6 +663,7 @@ int32_t DetState<TracebackState>::ProcessArcs(
         *derivs_per_arc,
     DetStateMap<TracebackState> *state_map,
     DetStatePriorityQueue<TracebackState> *queue) {
+  NVTX_RANGE(K2_FUNC);
   std::unordered_map<uint32_t, DetState<TracebackState> *> label_to_state;
   int32_t num_steps = GetDetStatesSuccessor(fsa_in, label_to_state);
   // The following loop normalizes successor det-states, outputs the arcs
@@ -697,6 +703,7 @@ template <class TracebackState>
 void DetState<TracebackState>::Normalize(const WfsaWithFbWeights &wfsa_in,
                                          float *removed_weight,
                                          std::vector<DerivType> *deriv_info) {
+  NVTX_RANGE(K2_FUNC);
   std::unordered_set<TracebackState *> cur_states;
 
   double fb_prob = -std::numeric_limits<double>::infinity();
@@ -742,6 +749,7 @@ template <class TracebackState>
 void DetState<TracebackState>::Normalize(const Fsa &fsa_in,
                                          float *removed_weight,
                                          std::vector<DerivType> *deriv_info) {
+  NVTX_RANGE(K2_FUNC);
   std::unordered_set<TracebackState *> cur_states;
   for (const auto &p : elements) {
     TracebackState *state = p.second.get();
@@ -790,6 +798,7 @@ class DetStateMap {
               false otherwise.
    */
   bool GetOutputState(DetState<TracebackState> *a, const Fsa &fsa) {
+    NVTX_RANGE(K2_FUNC);
     std::pair<uint64_t, uint64_t> compact;
     DetStateToCompact(*a, fsa, &compact);
     auto p = map_.insert({compact, cur_output_state_});
@@ -828,6 +837,7 @@ class DetStateMap {
   */
   void DetStateToCompact(const DetState<MaxTracebackState> &d, const Fsa &fsa,
                          std::pair<uint64_t, uint64_t> *vec) {
+    NVTX_RANGE(K2_FUNC);
     assert(d.normalized);
 
     uint64_t a = 17489 * d.seq_len, b = d.seq_len;
@@ -853,6 +863,7 @@ class DetStateMap {
 
   void DetStateToCompact(const DetState<LogSumTracebackState> &d,
                          const Fsa &fsa, std::pair<uint64_t, uint64_t> *vec) {
+    NVTX_RANGE(K2_FUNC);
     assert(d.normalized);
 
     uint64_t a = 17489 * d.seq_len, b = d.seq_len;
