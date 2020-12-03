@@ -130,10 +130,34 @@ static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
     return ans;
   }
 
-  return {};
+  // for non contiguous tensors
+  // we require that the stride for columns is 1
+  K2_CHECK_EQ(static_cast<int32_t>(src.strides()[1]), 1);
+  K2_CHECK_EQ(static_cast<int32_t>(ans.strides()[1]), 1);
+  int64_t src_stride = src.strides()[0];
+  int64_t index_stride = index.strides()[0];
+  int64_t ans_stride = ans.strides()[0];
+
+  K2_EVAL(
+      context, index_numel, lambda_noncontiguous, (int32_t i)->void {
+        int32_t src_i = index_data[i * index_stride];
+        const T *src_cur_row = src_data + src_i * src_stride;
+        T *ans_cur_row = ans_data + i * ans_stride;
+        if (src_i != -1) {
+          K2_DCHECK_GE(src_i, 0);
+          K2_DCHECK_LT(src_i, src_num_rows);
+          for (int32_t j = 0; j != src_num_cols; ++j)
+            ans_cur_row[j] = src_cur_row[j];
+        } else {
+          for (int32_t j = 0; j != src_num_cols; ++j) ans_cur_row[j] = 0;
+        }
+      });
+
+  return ans;
 }
 
-torch::Tensor IndexSelectWrapper(torch::Tensor src, torch::Tensor index) {
+static torch::Tensor IndexSelectWrapper(torch::Tensor src,
+                                        torch::Tensor index) {
   NVTX_RANGE(K2_FUNC);
   auto scalar_type = src.scalar_type();
   if (src.dim() == 1) {
@@ -250,8 +274,8 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
   return ans;
 }
 
-torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
-                                             Ragged<int32_t> &indexes) {
+static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
+                                                    Ragged<int32_t> &indexes) {
   auto scalar_type = src.scalar_type();
   if (src.dim() == 1) {
     switch (scalar_type) {
@@ -280,7 +304,7 @@ torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
   }
 }
 
-void IndexSelect(py::module &m) {
+static void IndexSelect(py::module &m) {
   m.def("index_select", &IndexSelectWrapper, py::arg("src"), py::arg("index"));
   m.def("simple_ragged_index_select", &SimpleRaggedIndexSelectWrapper,
         py::arg("src"), py::arg("indexes"));
