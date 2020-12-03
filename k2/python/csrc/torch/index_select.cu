@@ -11,6 +11,7 @@
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
+#include <vector>
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/macros.h"
@@ -287,16 +288,6 @@ static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
         K2_LOG(FATAL) << "Unsupported scalar type: " << scalar_type;
         return {};
     }
-#if 0
-  } else if (src.dim() == 2) {
-    case ToScalarType<int32_t>::value:
-      return SimpleRaggedIndexSelect2D<int32_t>(src, indexes);
-    case ToScalarType<float>::value:
-      return SimpleRaggedIndexSelect2D<float>(src, indexes);
-    default:
-      K2_LOG(FATAL) << "Unsupported scalar type: " << scalar_type;
-      return {};
-#endif
   } else {
     K2_LOG(FATAL) << "Unsupported dim: " << src.dim()
                   << ". It supports only 1-D or 2-D tensors";
