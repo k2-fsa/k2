@@ -152,6 +152,8 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
       (properties_b & kFsaPropertiesArcSorted)) {
     check_properties = false;
   }
+  K2_CHECK_EQ(check_properties, false)
+    << "Both a_fsas and b_fsas should be arc-sorted";
   int32_t num_fsas = std::max(num_fsas_a, num_fsas_b);
 
   std::vector<std::unique_ptr<k2host::Intersection>> intersections(num_fsas);
