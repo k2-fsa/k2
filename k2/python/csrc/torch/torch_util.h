@@ -220,6 +220,16 @@ PyClass To(PyClass &pyclass, py::object device) {
   return pyclass.To(GetCudaContext(device_index));
 }
 
+/* Create a k2 context from a torch tensor.
+
+   @param [in] tensor  A torch::Tensor. It has to be
+                       either on CPU or on CUDA GPU.
+
+   @return Return either a CpuContext or a CudaContext
+           depending on where the given tensor resides.
+ */
+ContextPtr GetContext(torch::Tensor tensor);
+
 }  // namespace k2
 
 #endif  // K2_PYTHON_CSRC_TORCH_TORCH_UTIL_H_

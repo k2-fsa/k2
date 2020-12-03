@@ -22,8 +22,17 @@
 
 namespace k2 {
 
-// It implements  (*in_out)[index[i]] += value[i]
-// for i in range(index.numel())
+/* Accumulate the elements of tensor into the `in_out` tensor by adding to
+   the indices in the order given in `index`.
+
+   For example, in_out[index[i]] += value[i] if index[i] >= 0.
+   If index[i] is -1, value[i] is ignored.
+
+   @param  [in]  index   A 1-D contiguous tensor of dtype torch.int32.
+   @param  [in]  value   A 1-D tensor.
+   @param  [inout] in_out  A 1-D tensor.
+ */
+// template<typename T> // TODO(fangjun): change it to a template
 static void IndexAdd1D(torch::Tensor index, torch::Tensor value,
                        torch::Tensor *in_out) {
   NVTX_RANGE(K2_FUNC);

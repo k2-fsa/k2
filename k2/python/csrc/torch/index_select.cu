@@ -24,6 +24,21 @@
 
 namespace k2 {
 
+/* Returns a 1-D tensor which indexes the src tensor using entries
+   from `index`.
+
+   @param  [in]  src    A 1-D tensor.
+   @param  [in]  index  A 1-D tensor with dtype torch.int32.
+                        It has to satisfy:
+                            -1 <= index[i] < src.numel()
+                            for i in [0, index.numel())
+                        If index[i] is -1, then ans[i] is 0
+                        We require that index.is_contiguous() is true.
+   @return
+      Returns a 1-D tensor such that:
+          ans[i] = src[index[i]] if index[i] > 0
+          ans[i] = 0 if index[i] is -1
+ */
 template <typename T>
 static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
   NVTX_RANGE(K2_FUNC);
@@ -32,13 +47,15 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
 
   K2_CHECK_EQ(index.dim(), 1);
   K2_CHECK_EQ(index.scalar_type(), ToScalarType<int32_t>::value);
+  K2_CHECK(index.is_contiguous());
+  K2_CHECK_EQ(src.device(), index.device());
 
-  ContextPtr context;
-  if (src.device().type() == torch::kCPU) {
-    context = GetCpuContext();
-  } else {
-    K2_CHECK(src.is_cuda());
-    context = GetCudaContext(src.device().index());
+  if (src.is_contiguous()) {
+    Array1<T> src_array = FromTensor<T>(src);
+    Array1<int32_t> index_array = FromTensor<int32_t>(index);
+    bool allow_minus_one = true;
+    Array1<T> ans_array = Index(src_array, index_array, allow_minus_one);
+    return ToTensor(ans_array);
   }
 
   const T *src_data = src.data_ptr<T>();
@@ -49,31 +66,12 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
   T *ans_data = ans.data_ptr<T>();
   int32_t index_numel = index.numel();
 
-  if (src.is_contiguous() && index.is_contiguous()) {
-    K2_EVAL(
-        context, index_numel, lambda, (int32_t i)->void {
-          int32_t src_i = index_data[i];
-          if (src_i != -1) {
-            K2_DCHECK_GE(src_i, 0);
-            K2_DCHECK_LT(src_i, src_numel);
-
-            ans_data[i] = src_data[src_i];
-          } else {
-            ans_data[i] = 0;
-          }
-        });
-
-    return ans;
-  }
-
-  // for non contiguous tensors
   int64_t src_stride = src.strides()[0];
-  int64_t index_stride = index.strides()[0];
   int64_t ans_stride = ans.strides()[0];
 
   K2_EVAL(
-      context, index_numel, lambda_noncontiguous, (int32_t i)->void {
-        int32_t src_i = index_data[i * index_stride];
+      GetContext(src), index_numel, lambda_noncontiguous, (int32_t i)->void {
+        int32_t src_i = index_data[i];
         if (src_i != -1) {
           K2_DCHECK_GE(src_i, 0);
           K2_DCHECK_LT(src_i, src_numel);
@@ -86,6 +84,22 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
   return ans;
 }
 
+/* Returns a 2-D tensor which indexes the src tensor using entries
+   from `index`.
+
+   @param  [in]  src    A 2-D tensor. If it is non-contiguous, then it
+                        has to satisfy src.strides()[1] == 1.
+
+   @param  [in]  index  A 1-D tensor with dtype torch.int32.
+                        It has to satisfy:
+                            -1 <= index[i] < src.numel()
+                            for i in [0, index.numel())
+                        If index[i] is -1, then ans[i] is 0
+   @return
+      Returns a 1-D tensor such that:
+          ans[i] = src[index[i]] if index[i] > 0
+          ans[i] = 0 if index[i] is -1
+ */
 template <typename T>
 static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
   NVTX_RANGE(K2_FUNC);
@@ -94,67 +108,15 @@ static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
 
   K2_CHECK_EQ(index.dim(), 1);
   K2_CHECK_EQ(index.scalar_type(), ToScalarType<int32_t>::value);
+  K2_CHECK(index.is_contiguous());
+  K2_CHECK_EQ(src.device(), index.device());
 
-  ContextPtr context;
-  if (src.device().type() == torch::kCPU) {
-    context = GetCpuContext();
-  } else {
-    K2_CHECK(src.is_cuda());
-    context = GetCudaContext(src.device().index());
-  }
+  Array2<T> src_array = FromTensor<T>(src, Array2Tag{});
+  Array1<int32_t> index_array = FromTensor<int32_t>(index);
+  bool allow_minus_one = true;
+  Array2<T> ans_array = IndexRows(src_array, index_array, allow_minus_one);
 
-  const T *src_data = src.data_ptr<T>();
-  int32_t src_num_rows = static_cast<int32_t>(src.sizes()[0]);
-  int32_t src_num_cols = static_cast<int32_t>(src.sizes()[1]);
-  const int32_t *index_data = index.data_ptr<int32_t>();
-
-  std::vector<int64_t> ans_sizes = {index.sizes()[0], src.sizes()[1]};
-  torch::Tensor ans = torch::empty(ans_sizes, src.options());
-  T *ans_data = ans.data_ptr<T>();
-  int32_t index_numel = index.numel();
-
-  if (src.is_contiguous() && index.is_contiguous()) {
-    K2_EVAL(
-        context, index_numel, lambda, (int32_t i)->void {
-          int32_t src_i = index_data[i];
-          const T *src_cur_row = src_data + src_i * src_num_cols;
-          T *ans_cur_row = ans_data + i * src_num_cols;
-          if (src_i != -1) {
-            K2_DCHECK_GE(src_i, 0);
-            K2_DCHECK_LT(src_i, src_num_rows);
-            for (int32_t j = 0; j != src_num_cols; ++j)
-              ans_cur_row[j] = src_cur_row[j];
-          } else {
-            for (int32_t j = 0; j != src_num_cols; ++j) ans_cur_row[j] = 0;
-          }
-        });
-    return ans;
-  }
-
-  // for non contiguous tensors
-  // we require that the stride for columns is 1
-  K2_CHECK_EQ(static_cast<int32_t>(src.strides()[1]), 1);
-  K2_CHECK_EQ(static_cast<int32_t>(ans.strides()[1]), 1);
-  int64_t src_stride = src.strides()[0];
-  int64_t index_stride = index.strides()[0];
-  int64_t ans_stride = ans.strides()[0];
-
-  K2_EVAL(
-      context, index_numel, lambda_noncontiguous, (int32_t i)->void {
-        int32_t src_i = index_data[i * index_stride];
-        const T *src_cur_row = src_data + src_i * src_stride;
-        T *ans_cur_row = ans_data + i * ans_stride;
-        if (src_i != -1) {
-          K2_DCHECK_GE(src_i, 0);
-          K2_DCHECK_LT(src_i, src_num_rows);
-          for (int32_t j = 0; j != src_num_cols; ++j)
-            ans_cur_row[j] = src_cur_row[j];
-        } else {
-          for (int32_t j = 0; j != src_num_cols; ++j) ans_cur_row[j] = 0;
-        }
-      });
-
-  return ans;
+  return ToTensor(ans_array);
 }
 
 static torch::Tensor IndexSelectWrapper(torch::Tensor src,
@@ -181,7 +143,6 @@ static torch::Tensor IndexSelectWrapper(torch::Tensor src,
         K2_LOG(FATAL) << "Unsupported scalar type: " << scalar_type;
         return {};
     }
-
   } else {
     K2_LOG(FATAL) << "Unsupported dim: " << src.dim()
                   << ".\nIt supports only 1-D and 2-D tensors.";
@@ -215,13 +176,8 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
 
   K2_CHECK_EQ(indexes.NumAxes(), 2);
 
-  ContextPtr context;
-  if (src.device().type() == torch::kCPU) {
-    context = GetCpuContext();
-  } else {
-    K2_CHECK(src.is_cuda());
-    context = GetCudaContext(src.device().index());
-  }
+  ContextPtr context = GetContext(src);
+  K2_CHECK(context->IsCompatible(*indexes.Context()));
 
   int32_t src_numel = src.numel();
   const T *src_data = src.data_ptr<T>();
@@ -290,7 +246,7 @@ static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
     }
   } else {
     K2_LOG(FATAL) << "Unsupported dim: " << src.dim()
-                  << ". It supports only 1-D or 2-D tensors";
+                  << ". It supports only 1-D tensors";
     return {};
   }
 }

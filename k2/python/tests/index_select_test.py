@@ -73,13 +73,10 @@ class TestIndexSelect(unittest.TestCase):
 
     def test_1d_non_contiguous(self):
         a = torch.arange(20).to(torch.int32)[::2]
-        b = torch.tensor([
-            -1, -2, -1, -2, 1, -2, 2, -2, 0, -2, 1, -2, 5, -2, 3, -2, 9, -2,
-            -1, -2, 8, -2, 7, -2, 7, -2, 6, -2
-        ]).to(torch.int32)[::2]
+        b = torch.tensor([-1, -1, 1, 2, 0, 1, 5, 3, 9, -1, 8, 7, 7,
+                          6]).to(torch.int32)
         padded_a = torch.cat([torch.tensor([0]).to(a), a])
         assert a.is_contiguous() is False
-        assert b.is_contiguous() is False
         c = k2.index_select(a, b)
         expected = padded_a.index_select(0, (b + 1).to(torch.int64))
         assert torch.allclose(c, expected)
@@ -169,7 +166,7 @@ class TestIndexSelect(unittest.TestCase):
         for device in devices:
             num_rows = torch.randint(1, 2000, size=(1,)).item()
             num_cols = torch.randint(1, 2000, size=(1,)).item()
-            stride = torch.randint(1, num_rows // 10, size=(1,)).item()
+            stride = torch.randint(2, num_rows // 10, size=(1,)).item()
             a = torch.randint(-1000,
                               1000,
                               size=(num_rows, num_cols),
