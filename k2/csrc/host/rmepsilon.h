@@ -24,18 +24,19 @@
 namespace k2host {
 
 /*
-   Output an Fsa that is equivalent to the input but which has no
-   epsilons. `TracebackState` could be either `MaxTracebackState` or
-   `LogSumTracebackState`, search in `determinize_impl.h` for their definitions.
+   Pruned version of `remove epsilon` which outputs an Fsa that is equivalent to
+   the input but which has no epsilons. `TracebackState` could be either
+   `MaxTracebackState` or `LogSumTracebackState`, search in `determinize_impl.h`
+   for their definitions.
 
    The input FSA needs to have associated weights, because they will be used to
-       choose the best path among alternative epsilon paths between states
-       when the template parameter is MaxTracebackState, or
-       do log-sum on weights along alternative epsilon paths when the template
-       parameter is LogSumTracebackState.
+   choose the best path among alternative epsilon paths between states when the
+   template parameter is MaxTracebackState, or do log-sum on weights along
+   alternative epsilon paths when the template parameter is
+   LogSumTracebackState.
  */
 template <typename TracebackState>
-class EpsilonsRemover {
+class EpsilonsRemoverPruned {
  public:
   /* Lightweight constructor that just keeps const references to the input
      parameters.
@@ -53,7 +54,7 @@ class EpsilonsRemover {
                          keep paths that are within `beam` of the best path.
                          Just make this very large if you don't want pruning.
   */
-  EpsilonsRemover(const WfsaWithFbWeights &fsa_in, float beam)
+  EpsilonsRemoverPruned(const WfsaWithFbWeights &fsa_in, float beam)
       : fsa_in_(fsa_in), beam_(beam) {
     K2_CHECK_GT(beam, 0);
     if (std::is_same<TracebackState, MaxTracebackState>::value)
@@ -114,22 +115,8 @@ class EpsilonsRemover {
   std::vector<std::vector<typename TracebackState::DerivType>> arc_derivs_;
 };
 
-using EpsilonsRemoverMax = EpsilonsRemover<MaxTracebackState>;
-using EpsilonsRemoverLogSum = EpsilonsRemover<LogSumTracebackState>;
-
-/*
-  Version of RmEpsilonsPrunedMax that doesn't support pruning; see its
-  documentation.
- */
-void RmEpsilonsMax(const Fsa &a, Fsa *b,
-                   std::vector<std::vector<int32_t>> *arc_map);
-
-/*
-  Version of RmEpsilonsLogSum that doesn't support pruning; see its
-  documentation.
- */
-void RmEpsilonsLogSum(const Fsa &a, Fsa *b,
-                      std::vector<std::vector<int32_t>> *arc_map);
+using EpsilonsRemoverPrunedMax = EpsilonsRemoverPruned<MaxTracebackState>;
+using EpsilonsRemoverPrunedLogSum = EpsilonsRemoverPruned<LogSumTracebackState>;
 
 }  // namespace k2host
 

@@ -111,8 +111,8 @@ void PybindDeterminizerPrunedTpl(py::module &m, const char *name) {
 }
 
 template <typename TracebackState>
-void PybindEpsilonsRemoverTpl(py::module &m, const char *name) {
-  using PyClass = k2host::EpsilonsRemover<TracebackState>;
+void PybindEpsilonsRemoverPrunedTpl(py::module &m, const char *name) {
+  using PyClass = k2host::EpsilonsRemoverPruned<TracebackState>;
   py::class_<PyClass>(m, name)
       .def(py::init<const k2host::WfsaWithFbWeights &, float>(),
            py::arg("fsa_in"), py::arg("beam"))
@@ -137,7 +137,8 @@ void PybindFsaAlgo(py::module &m) {
   PybindDeterminizerPrunedTpl<k2host::LogSumTracebackState>(
       m, "_DeterminizerPrunedLogSum");
 
-  PybindEpsilonsRemoverTpl<k2host::MaxTracebackState>(m, "_EpsilonsRemoverMax");
-  PybindEpsilonsRemoverTpl<k2host::LogSumTracebackState>(
-      m, "_EpsilonsRemoverLogSum");
+  PybindEpsilonsRemoverPrunedTpl<k2host::MaxTracebackState>(
+      m, "_EpsilonsRemoverPrunedMax");
+  PybindEpsilonsRemoverPrunedTpl<k2host::LogSumTracebackState>(
+      m, "_EpsilonsRemoverPrunedLogSum");
 }
