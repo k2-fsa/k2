@@ -176,33 +176,36 @@ class TestIntersectDense(unittest.TestCase):
             3
         '''
 
-        fsa1 = k2.Fsa.from_str(s1)
-        fsa2 = k2.Fsa.from_str(s2)
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
+            fsa1 = k2.Fsa.from_str(s1)
+            fsa2 = k2.Fsa.from_str(s2)
 
-        fsa1.requires_grad_(True)
-        fsa2.requires_grad_(True)
+            fsa1.requires_grad_(True)
+            fsa2.requires_grad_(True)
 
-        fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
+            fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
+            log_prob = torch.rand((2, 500, 3),
+                                  dtype=torch.float32,
+                                  device=device,
+                                  requires_grad=True)
 
-        device = torch.device('cuda')
-        log_prob = torch.rand((2, 500, 3),
-                              dtype=torch.float32,
-                              device=device,
-                              requires_grad=True)
+            supervision_segments = torch.tensor([[0, 0, 490], [1, 0, 300]],
+                                                dtype=torch.int32)
+            dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
+            fsa_vec = fsa_vec.to(device)
+            out_fsa = k2.intersect_dense(fsa_vec,
+                                         dense_fsa_vec,
+                                         output_beam=100000)
+            assert out_fsa.shape == (2, None,
+                                     None), 'There should be two FSAs!'
 
-        supervision_segments = torch.tensor([[0, 0, 490], [1, 0, 300]],
-                                            dtype=torch.int32)
-        dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
-        fsa_vec = fsa_vec.to(device)
-        out_fsa = k2.intersect_dense(fsa_vec,
-                                     dense_fsa_vec,
-                                     output_beam=100000)
-        assert out_fsa.shape == (2, None, None), 'There should be two FSAs!'
-
-        scores = k2.get_tot_scores(out_fsa,
-                                   log_semiring=False,
-                                   use_float_scores=True)
-        scores.sum().backward()
+            scores = k2.get_tot_scores(out_fsa,
+                                       log_semiring=False,
+                                       use_float_scores=True)
+            scores.sum().backward()
 
 
 if __name__ == '__main__':
