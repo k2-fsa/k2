@@ -60,7 +60,7 @@ struct DenseFsa {
     return arc_offset +
            (state_index <= T ? state_index * num_symbols : T * num_symbols + 1);
   }
-  Arc arc(int32_t arc_index) {
+  Arc arc(int32_t arc_index) const {
     arc_index -= arc_offset;
     int32_t state_index = (arc_index - arc_offset) / num_symbols;
     return Arc(state_index, state_index + 1,
@@ -128,8 +128,8 @@ struct DenseFsaVecMeta {
     return reinterpret_cast<DenseFsaVecFrameInfo *>(seg_frame_index +
                                                     (num_segs + 1));
   }
-  int32_t frame_info_dim() { return seg_frame_index[num_segs]; }
-  int32_t num_frames_padded() { return seg_frame_index[num_segs]; }
+  int32_t frame_info_dim() const { return seg_frame_index[num_segs]; }
+  int32_t num_frames_padded() const { return seg_frame_index[num_segs]; }
 
   // and next we have the following, which will be used from
   // the Python calling code to copy the neural-net output to the correct
@@ -148,7 +148,7 @@ struct DenseFsaVecMeta {
   int32_t *frame_index() {
     return reinterpret_cast<int32_t *>(frame_info() + frame_info_dim());
   }
-  int32_t frame_index_dim() {
+  int32_t frame_index_dim() const {
     int32_t num_frames_padded = seg_frame_index[num_segs],
             num_frames = num_frames_padded - num_segs;
     return num_frames;
@@ -266,12 +266,12 @@ struct DenseFsaVec {
   const DenseFsaVecMeta *meta;
   const float *data;
 
-  DenseFsa operator[](int32_t seg_id) {
+  DenseFsa operator[](int32_t seg_id) const {
     K2_CHECK_LT(seg_id, meta->num_segs);
     int32_t start_frame_index = meta->seg_frame_index[seg_id],
             end_frame_index = meta->seg_frame_index[seg_id + 1];
     // below, the -1 is to exclude the zero-padding frame.
-    int23_t T = end_frame_index - start_frame_index - 1;
+    int32_t T = end_frame_index - start_frame_index - 1;
     int32_t arc_offset = meta->num_symbols * start_frame_index;
     return DenseFsa(T, num_symbols, arc_offset, this->data);
   }

@@ -1176,7 +1176,8 @@ RaggedShape ChangeSublistSizePinned(RaggedShape &src, int32_t size_delta) {
       row_splits_data[idx0] = size;
     });
   ExclusiveSum(ans_axes.back().row_splits, &ans_axes.back().row_splits);
-  ans_axes.back().row_ids = Array1<int32_t>(c, ans_axes.back().row_splits.Back());
+  ans_axes.back().row_ids =
+      Array1<int32_t>(c, ans_axes.back().row_splits.Back());
   RowSplitsToRowIds(ans_axes.back().row_splits,
                     &ans_axes.back().row_ids);
   ans_axes.back().cached_tot_size = ans_axes.back().row_ids.Dim();

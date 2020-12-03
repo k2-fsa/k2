@@ -22,6 +22,8 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2host {
 
@@ -37,6 +39,7 @@ namespace k2host {
 // http://www.openfst.org/doxygen/fst/html/connect_8h_source.html
 // is used as a reference while implementing this function.
 bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
+  NVTX_RANGE(K2_FUNC);
   using dfs::DfsState;
   using dfs::kNotVisited;
   using dfs::kVisited;
@@ -201,6 +204,7 @@ bool ConnectCore(const Fsa &fsa, std::vector<int32_t> *state_map) {
 }
 
 void Connection::GetSizes(Array2Size<int32_t> *fsa_size) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
   no_accessible_state_ = false;
@@ -254,6 +258,7 @@ void Connection::GetSizes(Array2Size<int32_t> *fsa_size) {
 }
 
 bool Connection::GetOutput(Fsa *fsa_out, int32_t *arc_map /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   if (no_accessible_state_) return true;
 
   // output FSA

@@ -19,6 +19,8 @@
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace {
 
@@ -37,6 +39,7 @@ namespace {
 static void CountExtraStates(const k2host::Fsa &fsa_in,
                              const k2host::AuxLabels &labels_in,
                              std::vector<int32_t> *num_extra_states) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(num_extra_states->size(), fsa_in.NumStates());
   auto &states = *num_extra_states;
   const auto arcs = fsa_in.data + fsa_in.indexes[0];
@@ -68,6 +71,7 @@ static void CountExtraStates(const k2host::Fsa &fsa_in,
 static void MapStates(const std::vector<int32_t> &num_extra_states,
                       std::vector<int32_t> *state_map,
                       std::vector<int32_t> *state_ids) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(state_map->size(), num_extra_states.size());
   K2_CHECK_EQ(state_ids->size(), num_extra_states.size());
   auto &s_map = *state_map;
@@ -93,6 +97,7 @@ static void MapStates(const std::vector<int32_t> &num_extra_states,
 namespace k2host {
 
 void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(aux_size, nullptr);
   aux_size->size1 = arc_map_.size;
   int32_t num_labels = 0;
@@ -106,6 +111,7 @@ void AuxLabels1Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
 }
 
 void AuxLabels1Mapper::GetOutput(AuxLabels *labels_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(labels_out, nullptr);
   auto &start_pos = labels_out->indexes;
   auto &labels = labels_out->data;
@@ -124,6 +130,7 @@ void AuxLabels1Mapper::GetOutput(AuxLabels *labels_out) {
 }
 
 void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(aux_size, nullptr);
   aux_size->size1 = arc_map_.size1;
   int32_t num_labels = 0;
@@ -136,6 +143,7 @@ void AuxLabels2Mapper::GetSizes(Array2Size<int32_t> *aux_size) const {
 }
 
 void AuxLabels2Mapper::GetOutput(AuxLabels *labels_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(labels_out, nullptr);
   auto &start_pos = labels_out->indexes;
   auto &labels = labels_out->data;
@@ -157,6 +165,7 @@ void AuxLabels2Mapper::GetOutput(AuxLabels *labels_out) {
 
 void FstInverter::GetSizes(Array2Size<int32_t> *fsa_size,
                            Array2Size<int32_t> *aux_size) const {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   K2_CHECK_NE(aux_size, nullptr);
   int32_t num_extra_states = 0;
@@ -177,6 +186,7 @@ void FstInverter::GetSizes(Array2Size<int32_t> *fsa_size,
 }
 
 void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_out, nullptr);
   K2_CHECK_NE(labels_out, nullptr);
 

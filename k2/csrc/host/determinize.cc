@@ -24,12 +24,15 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2host {
 
 template <typename TracebackState>
 void Determinizer<TracebackState>::GetSizes(
     Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *arc_derivs_size) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   K2_CHECK_NE(arc_derivs_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
@@ -77,6 +80,7 @@ template <typename TracebackState>
 void Determinizer<TracebackState>::GetOutput(
     Fsa *fsa_out,
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
+  NVTX_RANGE(K2_FUNC);
   if (IsEmpty(fsa_in_)) return;
 
   K2_CHECK_NE(fsa_out, nullptr);
@@ -114,6 +118,7 @@ LogSumTracebackLink::LogSumTracebackLink(
 
 int32_t GetMostRecentCommonAncestor(
     std::unordered_set<LogSumTracebackState *> *cur_states) {
+  NVTX_RANGE(K2_FUNC);
   int32_t ans = 0;
   std::unordered_set<LogSumTracebackState *> prev_states;
   for (; cur_states->size() != 1; ans++) {
@@ -131,6 +136,7 @@ int32_t GetMostRecentCommonAncestor(
 
 int32_t GetMostRecentCommonAncestor(
     std::unordered_set<MaxTracebackState *> *cur_states) {
+  NVTX_RANGE(K2_FUNC);
   int32_t ans = 0;
   std::unordered_set<MaxTracebackState *> prev_states;
   for (; cur_states->size() != 1; ans++) {
@@ -147,6 +153,7 @@ int32_t GetMostRecentCommonAncestor(
 void TraceBack(std::unordered_set<LogSumTracebackState *> *cur_states,
                int32_t num_steps, const Arc *arcs_in, float *weight_out,
                std::vector<std::pair<int32_t, float>> *deriv_out) {
+  NVTX_RANGE(K2_FUNC);
   std::unordered_set<LogSumTracebackState *> prev_states;
   assert(cur_states->size() == 1);
   // In the standard forward-backward algorithm for HMMs this backward_prob
@@ -193,6 +200,7 @@ void TraceBack(std::unordered_set<MaxTracebackState *> *cur_states,
                int32_t num_steps,
                const Arc *unused,  // arcs_in, unused.
                float *weight_out, std::vector<int32_t> *deriv_out) {
+  NVTX_RANGE(K2_FUNC);
   (void)unused;
   K2_CHECK_EQ(cur_states->size(), 1);
   MaxTracebackState *state = *(cur_states->begin());

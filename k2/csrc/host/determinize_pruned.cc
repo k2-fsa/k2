@@ -23,12 +23,15 @@
 #include "k2/csrc/host/fsa_util.h"
 #include "k2/csrc/host/properties.h"
 #include "k2/csrc/host/util.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2host {
 
 template <typename TracebackState>
 void DeterminizerPruned<TracebackState>::GetSizes(
     Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *arc_derivs_size) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   K2_CHECK_NE(arc_derivs_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
@@ -81,6 +84,7 @@ template <typename TracebackState>
 float DeterminizerPruned<TracebackState>::GetOutput(
     Fsa *fsa_out,
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
+  NVTX_RANGE(K2_FUNC);
   if (IsEmpty(fsa_in_.fsa)) return beam_;
 
   K2_CHECK_NE(fsa_out, nullptr);
