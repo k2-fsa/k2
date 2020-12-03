@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                      Xiaomi Corp.       (authors: Daniel Povey)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -117,6 +118,13 @@ class TestIndexSelect(unittest.TestCase):
             expected.sum().backward()
 
             assert torch.allclose(a.grad, new_a.grad)
+
+    def test_2d(self):
+        a = torch.arange(10).reshape(5, 2).to(torch.int32)
+        b = torch.tensor([0, -1, -1, 1, 3, 2, -1, 4]).to(torch.int32)
+        print(a.is_contiguous(), a)
+        c = k2.index_select(a, b)
+        print(c)
 
 
 class TestSimpleRaggedIndexSelect(unittest.TestCase):
