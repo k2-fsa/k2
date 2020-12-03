@@ -89,7 +89,10 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     '''
     treat_epsilons_specially = True
     need_arc_map = True
-    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs, b_fsa.arcs,
+    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs,
+                                                     a_fsa.properties,
+                                                     b_fsa.arcs,
+                                                     b_fsa.properties,
                                                      treat_epsilons_specially,
                                                      need_arc_map)
 

@@ -108,8 +108,8 @@ bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
   return ans;
 }
 
-bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
-               bool treat_epsilons_specially, FsaVec *out,
+bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
+               int32_t properties_b, bool treat_epsilons_specially, FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(a_fsas.NumAxes() >= 2 && a_fsas.NumAxes() <= 3);
@@ -118,13 +118,13 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
   K2_CHECK_EQ(c->GetDeviceType(), kCpu);
   if (a_fsas.NumAxes() == 2) {
     FsaVec a_fsas_vec = FsaToFsaVec(a_fsas);
-    return Intersect(a_fsas_vec, b_fsas, treat_epsilons_specially, out,
-                     arc_map_a, arc_map_b);
+    return Intersect(a_fsas_vec, properties_a, b_fsas, properties_b,
+                     treat_epsilons_specially, out, arc_map_a, arc_map_b);
   }
   if (b_fsas.NumAxes() == 2) {
     FsaVec b_fsas_vec = FsaToFsaVec(b_fsas);
-    return Intersect(a_fsas, b_fsas_vec, treat_epsilons_specially, out,
-                     arc_map_a, arc_map_b);
+    return Intersect(a_fsas, properties_a, b_fsas_vec, properties_b,
+                     treat_epsilons_specially, out, arc_map_a, arc_map_b);
   }
 
   int32_t num_fsas_a = a_fsas.Dim0(), num_fsas_b = b_fsas.Dim0();
@@ -141,6 +141,19 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
     }
     // the check on the previous line will fail.
   }
+  if (properties_a < 0) {
+    properties_a = GetFsaBasicProperties(a_fsas);
+  }
+  if (properties_b < 0) {
+    properties_b = GetFsaBasicProperties(b_fsas);
+  }
+  bool check_properties = true;
+  if ((properties_a & kFsaPropertiesArcSorted) &&
+      (properties_b & kFsaPropertiesArcSorted)) {
+    check_properties = false;
+  }
+  K2_CHECK_EQ(check_properties, false)
+    << "Both a_fsas and b_fsas should be arc-sorted";
   int32_t num_fsas = std::max(num_fsas_a, num_fsas_b);
 
   std::vector<std::unique_ptr<k2host::Intersection>> intersections(num_fsas);
@@ -149,7 +162,7 @@ bool Intersect(FsaOrVec &a_fsas, FsaOrVec &b_fsas,
     k2host::Fsa host_fsa_a = FsaVecToHostFsa(a_fsas, i * stride_a),
                 host_fsa_b = FsaVecToHostFsa(b_fsas, i * stride_b);
     intersections[i] = std::make_unique<k2host::Intersection>(
-        host_fsa_a, host_fsa_b, treat_epsilons_specially);
+        host_fsa_a, host_fsa_b, treat_epsilons_specially, check_properties);
     intersections[i]->GetSizes(&(sizes[i]));
   }
   FsaVecCreator creator(sizes);

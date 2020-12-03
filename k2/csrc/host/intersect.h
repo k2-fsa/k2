@@ -34,11 +34,15 @@ class Intersection {
      @param [in] treat_epsilons_specially  If true, treat epsilons
                       as epsilon; if false, threat them as any other
                       symbol.
+     @param [in] check_properties  If true check properties; otherwise do not
+                      check, assuming properties have been checked by the caller.
   */
   Intersection(const Fsa &a, const Fsa &b,
-               bool treat_epsilons_specially = true) :
+               bool treat_epsilons_specially = true,
+               bool check_properties = true) :
       a_(a), b_(b),
-      treat_epsilons_specially_(treat_epsilons_specially) {}
+      treat_epsilons_specially_(treat_epsilons_specially),
+      check_properties_(check_properties) {}
 
   /*
     Do enough work to know how much memory will be needed, and output
@@ -81,6 +85,7 @@ class Intersection {
   Fsa b_;
 
   bool treat_epsilons_specially_;
+  bool check_properties_;
   bool status_;
   std::vector<int32_t> arc_indexes_;  // arc_index of fsa_out
   std::vector<Arc> arcs_;             // arcs of fsa_out

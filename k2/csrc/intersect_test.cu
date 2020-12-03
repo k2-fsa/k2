@@ -92,8 +92,8 @@ TEST(Intersect, Simple) {
     bool treat_epsilons_specially = false;
     fsa = fsa.To(cpu);
     fsas_b = fsas_b.To(cpu);
-    Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
-              &arc_map_b2);
+    Intersect(fsa, -1, fsas_b, -1, treat_epsilons_specially,
+              &out_fsas2, &arc_map_a2, &arc_map_b2);
 
     K2_LOG(INFO) << "out_fsas device type is "
                  << out_fsas.Context()->GetDeviceType();
@@ -196,8 +196,8 @@ TEST(Intersect, RandomSingle) {
     ArcSort(&fsa);  // CAUTION if you later test the arc_maps: we arc-sort here,
     // so the input `fsa` is not the same as before.
     bool treat_epsilons_specially = false;
-    Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
-              &arc_map_b2);
+    Intersect(fsa, -1, fsas_b, -1, treat_epsilons_specially,
+              &out_fsas2, &arc_map_a2, &arc_map_b2);
     K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                  << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_b2 = " << arc_map_b2;
@@ -287,8 +287,8 @@ TEST(Intersect, RandomFsaVec) {
     ArcSort(&fsavec);  // CAUTION if you later test the arc_maps: we arc-sort
                        // here, so the input `fsa` is not the same as before.
     bool treat_epsilons_specially = false;
-    Intersect(fsavec, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
-              &arc_map_b2);
+    Intersect(fsavec, -1, fsas_b, -1, treat_epsilons_specially,
+              &out_fsas2, &arc_map_a2, &arc_map_b2);
     K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                  << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_b2 = " << arc_map_b2;
@@ -348,8 +348,8 @@ TEST(IntersectPruned, Simple) {
     bool treat_epsilons_specially = false;
     fsa = fsa.To(cpu);
     fsas_b = fsas_b.To(cpu);
-    Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
-              &arc_map_b2);
+    Intersect(fsa, -1, fsas_b, -1, treat_epsilons_specially,
+              &out_fsas2, &arc_map_a2, &arc_map_b2);
 
     out_fsas = out_fsas.To(cpu);
     K2_CHECK(
@@ -402,8 +402,8 @@ TEST(IntersectPruned, TwoDense) {
   Array1<int32_t> arc_map_a2, arc_map_b2;
   // IntersectDensePruned() treats epsilons as normal symbols.
   bool treat_epsilons_specially = false;
-  Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
-            &arc_map_b2);
+  Intersect(fsa, -1, fsas_b, -1, treat_epsilons_specially,
+            &out_fsas2, &arc_map_a2, &arc_map_b2);
   K2_CHECK(
       IsRandEquivalentWrapper(out_fsas, out_fsas2, treat_epsilons_specially));
 
@@ -451,8 +451,8 @@ TEST(IntersectPruned, TwoFsas) {
   Array1<int32_t> arc_map_a2, arc_map_b2;
   // IntersectDensePruned() treats epsilons as normal symbols.
   bool treat_epsilons_specially = false;
-  Intersect(fsa_vec, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
-            &arc_map_b2);
+  Intersect(fsa_vec, -1, fsas_b, -1, treat_epsilons_specially,
+            &out_fsas2, &arc_map_a2, &arc_map_b2);
   K2_CHECK(
       IsRandEquivalentWrapper(out_fsas, out_fsas2, treat_epsilons_specially));
 
@@ -516,8 +516,8 @@ TEST(IntersectPruned, RandomSingle) {
     ArcSort(&fsa);  // CAUTION if you later test the arc_maps: we arc-sort here,
     // so the input `fsa` is not the same as before.
     bool treat_epsilons_specially = false;
-    Intersect(fsa, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
-              &arc_map_b2);
+    Intersect(fsa, -1, fsas_b, -1, treat_epsilons_specially,
+              &out_fsas2, &arc_map_a2, &arc_map_b2);
     K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                  << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_b2 = " << arc_map_b2;
@@ -604,8 +604,8 @@ TEST(IntersectPruned, RandomFsaVec) {
     ArcSort(&fsavec);  // CAUTION if you later test the arc_maps: we arc-sort
                        // here, so the input `fsa` is not the same as before.
     bool treat_epsilons_specially = false;
-    Intersect(fsavec, fsas_b, treat_epsilons_specially, &out_fsas2, &arc_map_a2,
-              &arc_map_b2);
+    Intersect(fsavec, -1, fsas_b, -1, treat_epsilons_specially,
+              &out_fsas2, &arc_map_a2, &arc_map_b2);
     K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                  << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_b2 = " << arc_map_b2;

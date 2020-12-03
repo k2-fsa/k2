@@ -54,12 +54,18 @@ void Intersection::GetSizes(Array2Size<int32_t> *fsa_size) {
   arc_map_b_.clear();
 
   if (IsEmpty(a_) || IsEmpty(b_)) return;
-  if (!IsArcSorted(a_) || !IsArcSorted(b_)) {
-    K2_LOG(WARNING) << "One of the inputs is not arc-sorted";
-    if (!IsArcSorted(a_)) K2_LOG(INFO) << "Not arc-sorted: " << a_;
-    if (!IsArcSorted(b_)) K2_LOG(INFO) << "Not arc-sorted: " << b_;
-    status_ = false;
-    return;
+  if (check_properties_) {
+    if (!IsArcSorted(a_)) {
+      K2_LOG(INFO) << "Not arc-sorted: " << a_;
+      status_ = false;
+      return;
+    }
+
+    if (!IsArcSorted(b_)) {
+      K2_LOG(INFO) << "Not arc-sorted: " << b_;
+      status_ = false;
+      return;
+    }
   }
 
   int32_t final_state_a = a_.FinalState();

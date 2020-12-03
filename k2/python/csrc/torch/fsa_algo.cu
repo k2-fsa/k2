@@ -99,7 +99,8 @@ static void PybindLinearFsa(py::module &m) {
 static void PybindIntersect(py::module &m) {
   m.def(
       "intersect",  // works only on CPU
-      [](FsaOrVec &a_fsas, FsaOrVec &b_fsas,
+      [](FsaOrVec &a_fsas, int32_t properties_a,
+         FsaOrVec &b_fsas, int32_t properties_b,
          bool treat_epsilons_specially = true,
          bool need_arc_map =
              true) -> std::tuple<FsaOrVec, torch::optional<torch::Tensor>,
@@ -107,7 +108,8 @@ static void PybindIntersect(py::module &m) {
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         FsaVec out;
-        Intersect(a_fsas, b_fsas, treat_epsilons_specially, &out,
+        Intersect(a_fsas, properties_a, b_fsas, properties_b,
+                  treat_epsilons_specially, &out,
                   need_arc_map ? &a_arc_map : nullptr,
                   need_arc_map ? &b_arc_map : nullptr);
         FsaOrVec ans;
@@ -123,7 +125,8 @@ static void PybindIntersect(py::module &m) {
         }
         return std::make_tuple(ans, a_tensor, b_tensor);
       },
-      py::arg("a_fsas"), py::arg("b_fsas"),
+      py::arg("a_fsas"), py::arg("properties_a"),
+      py::arg("b_fsas"), py::arg("properties_b"),
       py::arg("treat_epsilons_specially") = true,
       py::arg("need_arc_map") = true,
       R"(
