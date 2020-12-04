@@ -165,7 +165,7 @@ static void Index2DImpl(ContextPtr context, const T *src_data,
       for (int32_t i = 0; i != ans_dim; ++i) {
         int32_t index = indexes_data[i];
         K2_DCHECK_LT(index, src_dim0);
-        K2_DCHECK(index >= 0 || index == -1);
+        K2_DCHECK_GE(index, -1);
         T *cur_ans_data = ans_data + i * ans_stride;
         const T *cur_src_data = src_data + index * src_stride;
         if (index == -1) {
@@ -174,20 +174,22 @@ static void Index2DImpl(ContextPtr context, const T *src_data,
           memcpy(cur_ans_data, cur_src_data, src_dim1 * sizeof(T));
         }
       }
-    } else {
-      auto lambda_set = [=] __device__(int32_t i, int32_t j) -> void {
-        int32_t index = indexes_data[i];
-        K2_DCHECK_LT(index, src_dim0);
-        K2_DCHECK(index >= 0 || index == -1);
-        T *cur_ans_data = ans_data + i * ans_stride;
-        const T *cur_src_data = src_data + index * src_stride;
-        if (index == -1)
-          cur_ans_data[j] = 0;
-        else
-          cur_ans_data[j] = cur_src_data[j];
-      };
-      Eval2Device(context, ans_dim, src_dim1, lambda_set);
+      return;
     }
+
+    // now for CUDA
+    auto lambda_set = [=] __device__(int32_t i, int32_t j) -> void {
+      int32_t index = indexes_data[i];
+      K2_DCHECK_LT(index, src_dim0);
+      K2_DCHECK_GE(index, -1);
+      T *cur_ans_data = ans_data + i * ans_stride;
+      const T *cur_src_data = src_data + index * src_stride;
+      if (index == -1)
+        cur_ans_data[j] = 0;
+      else
+        cur_ans_data[j] = cur_src_data[j];
+    };
+    Eval2Device(context, ans_dim, src_dim1, lambda_set);
     return;
   }
 
@@ -202,17 +204,19 @@ static void Index2DImpl(ContextPtr context, const T *src_data,
       const T *cur_src_data = src_data + index * src_stride;
       memcpy(cur_ans_data, cur_src_data, src_dim1 * sizeof(T));
     }
-  } else {
-    auto lambda_set = [=] __device__(int32_t i, int32_t j) -> void {
-      int32_t index = indexes_data[i];
-      K2_DCHECK_LT(index, src_dim0);
-      K2_DCHECK_GE(index, 0);
-      T *cur_ans_data = ans_data + i * ans_stride;
-      const T *cur_src_data = src_data + index * src_stride;
-      cur_ans_data[j] = cur_src_data[j];
-    };
-    Eval2Device(context, ans_dim, src_dim1, lambda_set);
+    return;
   }
+
+  // now for CUDA
+  auto lambda_set = [=] __device__(int32_t i, int32_t j) -> void {
+    int32_t index = indexes_data[i];
+    K2_DCHECK_LT(index, src_dim0);
+    K2_DCHECK_GE(index, 0);
+    T *cur_ans_data = ans_data + i * ans_stride;
+    const T *cur_src_data = src_data + index * src_stride;
+    cur_ans_data[j] = cur_src_data[j];
+  };
+  Eval2Device(context, ans_dim, src_dim1, lambda_set);
 }
 
 // See the documentation for `Index`.
@@ -276,14 +280,91 @@ Tensor Index(Tensor &src, Array1<int32_t> &indexes,
   switch (src.NumAxes()) {
     case 1:
       return Index1D(src, indexes, allow_minus_one);
-      break;
     case 2:
       return Index2D(src, indexes, allow_minus_one);
+    default:
+      K2_LOG(FATAL) << "Unsupported number of axes: " << src.NumAxes()
+                    << "\n. Only 1-D and 2-D tensors are supported.";
+      return src;  // prevent compiler warnings
+  }
+}
+
+template <typename T>
+static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
+                           int32_t src_dim, int32_t src_stride,
+                           const int32_t *indexes_data, bool allow_minus_one,
+                           int32_t dest_dim, int32_t dest_stride,
+                           T *dest_data) {
+  if (allow_minus_one) {
+    K2_EVAL(
+        context, src_dim, lambda_add, (int32_t i)->void {
+          int32_t index = indexes_data[i];
+          K2_DCHECK_LT(index, dest_dim);
+          K2_DCHECK_GE(index, -1);
+
+          if (index != -1)
+            AtomicAdd(dest_data + index * dest_stride,
+                      src_data[i * src_stride]);
+        });
+    return;
+  }
+
+  // handle the case: allow_minus_one == false
+  K2_EVAL(
+      context, src_dim, lambda_add, (int32_t i)->void {
+        int32_t index = indexes_data[i];
+        K2_DCHECK_LT(index, dest_dim);
+        K2_DCHECK_GE(index, 0);
+        AtomicAdd(dest_data + index * dest_stride, src_data[i * src_stride]);
+      });
+}
+
+static void IndexAdd1D(Tensor &src, Array1<int32_t> &indexes,
+                       bool allow_minus_one, Tensor *dest) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(src.NumAxes(), 1);
+  K2_CHECK_NE(dest, nullptr);
+  K2_CHECK_EQ(dest->NumAxes(), 1);
+  ContextPtr context = GetContext(src, indexes, *dest);
+
+  Dtype dtype = src.GetDtype();
+
+  const int32_t *indexes_data = indexes.Data();
+
+  int32_t src_dim = src.Dim(0);
+  K2_CHECK_EQ(src_dim, indexes.Dim());
+  int32_t src_stride = src.Stride(0);
+
+  int32_t dest_dim = dest->Dim(0);
+  int32_t dest_stride = dest->Stride(0);
+
+  // atomiAdd is not available for some types, e.g., int8_t and int16_t
+  // see
+  // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomicadd
+  FOR_REAL_AND_INT32_TYPES(
+      dtype, T,
+      IndexAdd1DImpl<T>(context, src.Data<T>(), src_dim, src_stride,
+                        indexes_data, allow_minus_one, dest_dim, dest_stride,
+                        dest->Data<T>()));
+}
+
+static void IndexAdd2D(Tensor &src, Array1<int32_t> &indexes,
+                       bool allow_minus_one, Tensor *dest) {}
+
+void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
+              Tensor *dest) {
+  NVTX_RANGE(K2_FUNC);
+  switch (src.NumAxes()) {
+    case 1:
+      IndexAdd1D(src, indexes, allow_minus_one, dest);
+      break;
+    case 2:
+      IndexAdd2D(src, indexes, allow_minus_one, dest);
       break;
     default:
       K2_LOG(FATAL) << "Unsupported number of axes: " << src.NumAxes()
                     << "\n. Only 1-D and 2-D tensors are supported.";
-      return Tensor(GetCpuContext(), kFloatDtype, {0});
+      break;
   }
 }
 

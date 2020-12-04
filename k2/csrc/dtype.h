@@ -172,6 +172,28 @@ struct DtypeOf<uint64_t> {
         break;                                                           \
     }                                                                    \
   } while (0)
+
+#define FOR_REAL_AND_INT32_TYPES(DtypeValue, TypeName, ...) \
+  do {                                                      \
+    switch (DtypeValue) {                                   \
+      case kFloatDtype: {                                   \
+        using TypeName = float;                             \
+        __VA_ARGS__;                                        \
+        break;                                              \
+      }                                                     \
+      case kDoubleDtype: {                                  \
+        using TypeName = double;                            \
+        __VA_ARGS__;                                        \
+        break;                                              \
+      }                                                     \
+      case kInt32Dtype: {                                   \
+        using TypeName = int32_t;                           \
+        __VA_ARGS__;                                        \
+        break;                                              \
+      }                                                     \
+    }                                                       \
+  } while (0)
+
 }  // namespace k2
 
 #endif  // K2_CSRC_DTYPE_H_

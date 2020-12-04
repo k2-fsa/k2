@@ -47,7 +47,8 @@ static Array1<int32_t> GenerateRandomIndexes(ContextPtr context,
 
 /* Get the test data for `Index`.
 
-   @param [in]  stride  A positive number indicating the expected stride
+   @param [in] context  It specifies the device where the output tensor resides.
+   @param [in] stride   A positive number indicating the expected stride
                         of the output `tensor`.
    @param [in] allow_minus_one
                         If it is true, then -1 is a valid entry in the returned
@@ -88,6 +89,24 @@ static Tensor GenerateRandDataForIndex1D(ContextPtr context, int32_t stride,
   return ans;
 }
 
+/* Get the test data for `Index`.
+
+   @param [in] context  It specifies the device where the output tensor resides.
+   @param [in] stride   A positive number indicating the expected row stride
+                        of the output `tensor`.
+   @param [in] num_rows  Number of rows in the returned tensor.
+   @param [in] num_cols  Number of columns in the returned tensor.
+   @param [in] allow_minus_one
+                        If it is true, then -1 is a valid entry in the returned
+                        `indexes` array. If it is false, all elements in the
+                        returned `indexes` array are non-negative.
+   @param [out] indexes The output indexes containing entries in the range
+                        [0, tensor.Dim(0)) if allow_minus_one is false;
+                        [-1, tensor.Dim(0)) if allow_minus_one is true.
+
+   @return Returns a 2-D tensor with the given `stride`, `num_rows` and
+           `num_cols`.
+ */
 template <typename T>
 static Tensor GenerateRandDataForIndex2D(ContextPtr context, int32_t stride,
                                          int32_t num_rows, int32_t num_cols,
@@ -119,7 +138,7 @@ static Tensor GenerateRandDataForIndex2D(ContextPtr context, int32_t stride,
 }
 
 template <typename T>
-void TestIndex1D() {
+static void TestIndex1D() {
   bool allow_minus_one;
   int32_t stride;
   for (int32_t i = 0; i != 8; ++i) {
@@ -154,7 +173,7 @@ void TestIndex1D() {
 }
 
 template <typename T>
-void TestIndex2D() {
+static void TestIndex2D() {
   bool allow_minus_one;
   int32_t stride;
   int32_t num_rows;
@@ -208,5 +227,59 @@ TEST(Index, Index2D) {
   TestIndex2D<float>();
   TestIndex2D<int32_t>();
 }
+
+// TODO(fangjun): use random generated data for testing
+template <typename T>
+static void TestIndexAdd1D() {
+  {
+    bool allow_minus_one = true;
+    std::vector<T> src_vec = {10, 20, 30, 40, 5};
+    std::vector<int32_t> indexes_vec = {-1, 0, 3, 2, 0};
+
+    // ContextPtr context = GetCpuContext();
+    ContextPtr context = GetCudaContext();
+    Array1<T> src_array(context, src_vec);
+    Array1<int32_t> indexes_array(context, indexes_vec);
+    Tensor src = src_array.ToTensor();
+
+    Shape shape({4});
+    Tensor dest(context, DtypeOf<T>::dtype, shape);
+    T *dest_data = dest.Data<T>();
+
+    K2_EVAL(
+        context, 4, lambda_set_zero, (int32_t i)->void { dest_data[i] = 0; });
+    K2_LOG(INFO) << Array1<T>(src);
+    K2_LOG(INFO) << Array1<T>(dest);
+    K2_LOG(INFO) << indexes_array;
+    IndexAdd(src, indexes_array, allow_minus_one, &dest);
+    K2_LOG(INFO) << Array1<T>(dest);
+  }
+
+  {
+    bool allow_minus_one = false;
+    std::vector<T> src_vec = {10, 20, 30, 40, 5, 9, 8};
+    std::vector<int32_t> indexes_vec = {0, 2, 3, 2, 0, 1, 1};
+
+    // ContextPtr context = GetCpuContext();
+    ContextPtr context = GetCudaContext();
+    Array1<T> src_array(context, src_vec);
+    Array1<int32_t> indexes_array(context, indexes_vec);
+    Tensor src = src_array.ToTensor();
+
+    Shape shape({4});
+    Tensor dest(context, DtypeOf<T>::dtype, shape);
+    T *dest_data = dest.Data<T>();
+
+    K2_EVAL(
+        context, 4, lambda_set_zero, (int32_t i)->void { dest_data[i] = 0; });
+    K2_LOG(INFO) << Array1<T>(src);
+    K2_LOG(INFO) << Array1<T>(dest);
+    K2_LOG(INFO) << indexes_array;
+    IndexAdd(src, indexes_array, allow_minus_one, &dest);
+    K2_LOG(INFO) << Array1<T>(dest);
+  }
+}
+
+TEST(IndexAdd, IndexAdd1D) { TestIndexAdd1D<float>(); }
 
 }  // namespace k2
