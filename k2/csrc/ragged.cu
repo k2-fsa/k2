@@ -103,7 +103,7 @@ Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
-  RaggedShapeLayer &rsd = axes_[axis - 1];
+  RaggedShapeLayer &rsd = layers_[axis - 1];
   auto &row_splits = rsd.row_splits;
   auto &row_ids = rsd.row_ids;
   // there must be row_splits.Dim() >=1 according to the definition of
@@ -126,7 +126,7 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
-  const auto &row_splits = axes_[axis - 1].row_splits;
+  const auto &row_splits = layers_[axis - 1].row_splits;
   const int32_t num_rows = row_splits.Dim() - 1;
   if (num_rows == 0) return 0;
   const int32_t *row_splits_data = row_splits.Data();
@@ -221,10 +221,10 @@ void RaggedShape::Populate() {
 RaggedShape RaggedShape::To(ContextPtr ctx) const {
   NVTX_RANGE(K2_FUNC);
   if (ctx->IsCompatible(*Context())) return *this;
-  std::vector<RaggedShapeLayer> axes(axes_.size());
+  std::vector<RaggedShapeLayer> axes(layers_.size());
   int32_t num_axes = NumAxes();
   for (int32_t i = 1; i < num_axes; ++i) {
-    axes[i - 1].row_splits = axes_[i - 1].row_splits.To(ctx);
+    axes[i - 1].row_splits = layers_[i - 1].row_splits.To(ctx);
     // leave row_ids and cached_tot_size unset
     axes[i - 1].cached_tot_size = -1;
   }
@@ -241,7 +241,7 @@ int32_t RaggedShape::operator[](const std::vector<int32_t> &indexes) {
   K2_CHECK_EQ(Context()->GetDeviceType(), kCpu);
   int32_t cur_idx = indexes[0];
   for (int32_t i = 1; i < NumAxes(); i++) {
-    Array1<int32_t> &row_splits = axes_[i - 1].row_splits;
+    Array1<int32_t> &row_splits = layers_[i - 1].row_splits;
     K2_CHECK(cur_idx >= 0 && cur_idx + 1 < row_splits.Dim());
     cur_idx = row_splits[cur_idx];
     cur_idx += indexes[i];
@@ -256,7 +256,7 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
   if (axis == 0)
     return Dim0();
   else {
-    const RaggedShapeLayer &rsd = axes_[axis - 1];
+    const RaggedShapeLayer &rsd = layers_[axis - 1];
     if (rsd.cached_tot_size >= 0) {
       return rsd.cached_tot_size;
     } else {
@@ -274,12 +274,12 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
 bool RaggedShape::Validate(bool print_warnings) const {
   NVTX_RANGE(K2_FUNC);
   ContextPtr c = Context();
-  int32_t num_axes = axes_.size();
+  int32_t num_axes = layers_.size();
 
   ParallelRunner pr(c);
   for (int32_t axis = 0; axis < num_axes; ++axis) {
     With w(pr.NewStream());
-    const RaggedShapeLayer &rsd = axes_[axis];
+    const RaggedShapeLayer &rsd = layers_[axis];
     K2_CHECK_GE(rsd.row_splits.Dim(), 0);
     if (rsd.cached_tot_size >= 0) {
       if (!(rsd.row_splits.Dim() == 0 ||
@@ -335,20 +335,20 @@ bool RaggedShape::Validate(bool print_warnings) const {
       num_elems = meta[1];
       int32_t ok = meta[0];
       if (!ok) {
-        K2_LOG(FATAL) << "Problem validating row-splits: for axes_[" << axis
+        K2_LOG(FATAL) << "Problem validating row-splits: for layers_[" << axis
                       << "], row_splits = " << rsd.row_splits;
       }
       if (rsd.cached_tot_size > 0 && rsd.cached_tot_size != num_elems) {
-        K2_LOG(FATAL) << "Problem validating row-splits: for axes_[" << axis
+        K2_LOG(FATAL) << "Problem validating row-splits: for layers_[" << axis
                       << "], row_splits[-1] = " << num_elems
                       << " but cached_tot_size == " << rsd.cached_tot_size;
       }
     }
     if (axis + 1 < num_axes) {
-      int32_t next_num_rows = axes_[axis + 1].row_splits.Dim() - 1;
+      int32_t next_num_rows = layers_[axis + 1].row_splits.Dim() - 1;
       if (num_elems != next_num_rows) {
-        K2_LOG(FATAL) << "Ragged shape has num_elems for axes_[" << axis
-                      << "] == " << num_elems << " and num-rows for axes_["
+        K2_LOG(FATAL) << "Ragged shape has num_elems for layers_[" << axis
+                      << "] == " << num_elems << " and num-rows for layers_["
                       << (axis + 1) << "] == " << next_num_rows;
       }
     }
@@ -381,15 +381,15 @@ bool RaggedShape::Validate(bool print_warnings) const {
                                         // be faster.
       int32_t ok = meta[0];
       if (!ok) {
-        K2_LOG(FATAL) << "Problem validating row-ids: for axes_[" << axis
+        K2_LOG(FATAL) << "Problem validating row-ids: for layers_[" << axis
                       << "], row_splits = " << rsd.row_splits
                       << ", row_ids = " << rsd.row_ids << ", see index "
                       << meta[1] << " of row_ids, whose dim is "
                       << rsd.row_ids.Dim();
       }
     }
-    if (axis + 1 < axes_.size()) {
-      K2_CHECK(IsCompatible(rsd.row_splits, axes_[axis + 1].row_splits));
+    if (axis + 1 < layers_.size()) {
+      K2_CHECK(IsCompatible(rsd.row_splits, layers_[axis + 1].row_splits));
     }
   }
   return true;
