@@ -239,7 +239,7 @@ TEST(RaggedShapeTest, RaggedShape) {
       const std::vector<std::vector<int32_t>> row_ids_vec = {row_ids1, row_ids2,
                                                              row_ids3};
 
-      const auto &curr_axes = shape.Axes();
+      const auto &curr_axes = shape.Layers();
       for (int32_t i = 1; i < shape.NumAxes(); ++i) {
         const Array1<int32_t> &curr_row_ids = curr_axes[i - 1].row_ids;
         // copy data from CPU/GPU to CPU
@@ -310,7 +310,7 @@ TEST(RaggedShapeTest, RandomRaggedShape) {
     RaggedShape shape = RandomRaggedShape(true, 3, 5, 100);
     EXPECT_GE(shape.NumAxes(), 3);
     EXPECT_GE(shape.NumElements(), 100);
-    const auto &axes = shape.Axes();
+    const auto &axes = shape.Layers();
     EXPECT_GE(axes.back().row_ids.Dim(), 100);
   }
 }

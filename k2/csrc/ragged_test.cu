@@ -346,8 +346,8 @@ void TestUnsqueeze(const RaggedShape &input_shape) {
       // axis = 0.
       RaggedShape shape = Unsqueeze(src_shape, 0);
       int32_t dim0 = src_shape.Dim0();
-      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeLayer> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
 
       {
         const Array1<int32_t> &row_splits0 = dest_axes[0].row_splits;
@@ -374,8 +374,8 @@ void TestUnsqueeze(const RaggedShape &input_shape) {
       int32_t axis = 1;
       RaggedShape shape = Unsqueeze(src_shape, axis);
       int32_t tot_size = shape.TotSize(axis);
-      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeLayer> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
 
       {
         for (auto i = 0; i < axis; ++i) {
@@ -442,8 +442,8 @@ void TestRemoveAxis(const RaggedShape &input_shape) {
       // axis = 0.
       int32_t axis = 0;
       RaggedShape shape = RemoveAxis(src_shape, axis);
-      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeLayer> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
       ASSERT_EQ(src_axes.size(), 3);
       ASSERT_EQ(dest_axes.size(), 2);
 
@@ -459,8 +459,8 @@ void TestRemoveAxis(const RaggedShape &input_shape) {
       // axis = 1
       int32_t axis = 1;
       RaggedShape shape = RemoveAxis(src_shape, axis);
-      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeLayer> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
       ASSERT_EQ(src_axes.size(), 3);
       ASSERT_EQ(dest_axes.size(), 2);
 
@@ -488,8 +488,8 @@ void TestRemoveAxis(const RaggedShape &input_shape) {
       // axis = 3
       int32_t axis = 3;  // the last axis
       RaggedShape shape = RemoveAxis(src_shape, axis);
-      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeLayer> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
       ASSERT_EQ(src_axes.size(), 3);
       ASSERT_EQ(dest_axes.size(), 2);
 
