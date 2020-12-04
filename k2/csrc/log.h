@@ -17,6 +17,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <sstream>
 #include <string>
 
@@ -214,13 +215,19 @@ class Voidifier {
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 
-// The parameter should be cuda function call or kernel launch.
-#define K2_CUDA_SAFE_CALL(...)                                   \
-  do {                                                           \
-    __VA_ARGS__;                                                 \
-    if (!::k2::internal::kDisableDebug) cudaDeviceSynchronize(); \
-    cudaError_t e = cudaGetLastError();                          \
-    K2_CHECK_CUDA_ERROR(e);                                      \
+// The parameter of `K2_CUDA_SAFE_CALL` should be cuda function call or kernel
+// launch.
+// Noted we would never call `cudaDeviceSynchronize` in release mode and
+// user can even disable this call for debug mode by setting an environment
+// variable `K2_SYNC_KERNELS` with any non-empty value.
+#define K2_CUDA_SAFE_CALL(...)                     \
+  do {                                             \
+    __VA_ARGS__;                                   \
+    if (!::k2::internal::kDisableDebug &&          \
+        std::getenv("K2_SYNC_KERNELS") != nullptr) \
+      cudaDeviceSynchronize();                     \
+    cudaError_t e = cudaGetLastError();            \
+    K2_CHECK_CUDA_ERROR(e);                        \
   } while (0)
 
 // ============================================================
