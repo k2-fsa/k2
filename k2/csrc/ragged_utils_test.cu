@@ -29,9 +29,10 @@ namespace k2 {
 TEST(RaggedUtilsTest, CheckAxisEqual) {
 
   RaggedShape shape1(" [[ x x x ] [ x x ]]"),
+      shape1b(" [[ x x x ] [ x x ]]"),
       shape2("[[ x x x ] [ x ]]");
 
-  RaggedShape *array[] = { &shape1, &shape1, &shape1, &shape2, &shape2 };
+  RaggedShape *array[] = { &shape1, &shape1b, &shape1, &shape2, &shape2 };
   int32_t axis = 0;
   CheckAxisEqual(0, axis, array);
   CheckAxisEqual(1, axis, array);

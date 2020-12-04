@@ -27,11 +27,14 @@ void CheckAxisEqual(int32_t num_srcs,
   if (num_srcs <= 1)
     return;
   K2_CHECK(axis >= 0 && axis + 1 < src[0]->NumAxes());
-  std::vector<int32_t*> row_splits_data_vec(num_srcs);
+  std::vector<int32_t*> row_splits_data_vec;
+  row_splits_data_vec.reserve(num_srcs);
   int32_t row_splits_dim, row_ids_dim;
   for (int32_t s = 0; s < num_srcs; s++) {
     // RowSplits(1) .. is the lowest numbered row-splits...
-    row_splits_data_vec[s] = src[s]->RowSplits(axis + 1).Data();
+    int32_t *data = src[s]->RowSplits(axis + 1).Data();
+    if (s == 0 || data != row_splits_data_vec[0])
+      row_splits_data_vec.push_back(data);
     if (s == 0) {
       row_splits_dim = src[s]->RowSplits(axis + 1).Dim();
       row_ids_dim = src[s]->RowIds(axis + 1).Dim();
@@ -40,13 +43,16 @@ void CheckAxisEqual(int32_t num_srcs,
       K2_CHECK_EQ(row_ids_dim, src[s]->RowIds(axis + 1).Dim());
     }
   }
+  if (row_splits_data_vec.size() <= 1)
+    return;
   ContextPtr c = src[0]->Context();
 #ifndef NDEBUG
   Array1<int32_t> is_bad(c, 1, 0);
   Array1<int32_t*> row_splits_ptrs(c, row_splits_data_vec);
   int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
   int32_t *is_bad_data = is_bad.Data();
-  K2_EVAL2(c, num_srcs - 1, row_splits_dim, lambda_check_row_splits,
+  K2_EVAL2(c, row_splits_ptrs.Dim() - 1,
+           row_splits_dim, lambda_check_row_splits,
            (int32_t i, int32_t j) -> void {
              if (row_splits_ptrs_data[i+1][j] !=
                  row_splits_ptrs_data[0][j])
