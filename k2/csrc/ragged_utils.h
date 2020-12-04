@@ -98,7 +98,9 @@ RaggedShape AppendRaggedAxisBefore(int32_t num_srcs,
    (Check the usage message carefully, because this interface is not very
    intuitive).
 
-      @param [in] num_srcs   Number of sources to append/merge (size of array `src`)
+      @param [in] num_srcs   Number of sources to append/merge (size of array `src`).
+                             Must be >= 1 (otherwise there would be no way to
+                             determine the context).
       @param [in] axis       Axis to operate on, viewed as index into src[i]->Axes().
                              Must satisfy 0 <= axis < src[0]->Axes()  - 1.
       @param [in] src        Array of sources; must have the same device and num-axes,

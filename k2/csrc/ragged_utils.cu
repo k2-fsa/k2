@@ -69,5 +69,30 @@ void CheckAxisEqual(int32_t num_srcs,
 }
 
 
+RaggedShape AppendRaggedAxisAfter(int32_t num_srcs,
+                                  int32_t axis,
+                                  RaggedShape **src,
+                                  Array1<int32_t> *merge_map = nullptr) {
+  K2_CHECK_GT(num_srcs, 0);
+  K2_CHECK_GE(axis, 0);
+  K2_CHECK_LT(axis + 1, src[0]->NumAxes());
+  if (num_srcs == 1) {
+    if (merge_map)
+      *merge_map = Range(src[0]->Context(), src[0]->TotSize(axis + 1), 0);
+    return *src[0];
+  }
+  int32_t row_splits_dim,
+      tot_row_ids_dim;
+  std::vector<int32_t> row_ids_dims_vec(num_srcs);
+  std::vector<int32_t*> row_splits_ptrs_vec(num_srcs);
+  std::vector<int32_t*> row_ids_ptrs_vec(num_srcs);
+  // set these up...
+
+    return EmptyRaggedShape(
+
+
+}
+
+
 
 }  // namespace k2

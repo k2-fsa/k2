@@ -1380,4 +1380,6 @@ Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
   return index_map;
 }
 
+RaggedShape GetAxis(RaggedShape &src, int32_t axis) {
+
 }  // namespace k2

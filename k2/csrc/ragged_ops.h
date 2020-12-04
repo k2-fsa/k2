@@ -293,6 +293,18 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
 
 /*
+  Returns a `sub-shape` of `src` consisting of one of its RaggedShapeDim
+  elements, i.e. one of the levels of its shape.  This returned shape
+  will have NumAxes() == 2, but it is the minimal case of a RaggedShape.
+
+    @param [in] src   Source RaggedShape
+    @param [in] axis  Axis that is desired, from 0 .. src.NumAxes() - 2.
+                      View this as an index into its Axes() vector.
+ */
+RaggedShape GetAxis(RaggedShape &src, int32_t axis);
+
+
+/*
   Returns a CPU array of shape (src[0]->NumAxes() + 1) by (num_srcs + 1), where
   each row is the exclusive-sum of the TotSize() of the respective sources,
   on the previous axis (or 1 for axis 0).  Specifically: it's the same
