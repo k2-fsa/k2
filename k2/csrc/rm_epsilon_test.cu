@@ -10,6 +10,8 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/rm_epsilon.h"
