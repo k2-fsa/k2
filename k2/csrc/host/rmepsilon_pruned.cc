@@ -9,8 +9,6 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "k2/csrc/host/rmepsilon.h"
-
 #include <algorithm>
 #include <map>
 #include <memory>
@@ -21,7 +19,10 @@
 
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/properties.h"
+#include "k2/csrc/host/rmepsilon.h"
 #include "k2/csrc/host/util.h"
+#include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace {
 
@@ -45,6 +46,7 @@ namespace {
 static int32_t MapStates(const k2host::Fsa &fsa_in,
                          std::vector<char> *non_eps_in,
                          std::vector<int32_t> *state_map) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(non_eps_in, nullptr);
   K2_CHECK_NE(state_map, nullptr);
 
@@ -61,7 +63,6 @@ static int32_t MapStates(const k2host::Fsa &fsa_in,
   for (const auto &arc : fsa_in) {
     // We suppose the input fsa is top-sorted, but only check this in DEBUG
     // time.
-
     K2_DCHECK_GE(arc.dest_state, arc.src_state);
     if (arc.label != k2host::kEpsilon) non_eps_in_values[arc.dest_state] = 1;
   }
@@ -110,6 +111,7 @@ static void TraceBackRmEpsilons(
     std::map<int32_t, k2host::LogSumTracebackState *> *curr_states,
     const k2host::Arc *arcs_in, int32_t last_arc_index,
     std::vector<std::pair<int32_t, float>> *deriv_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(curr_states->size(), 1);
   deriv_out->clear();
   // push derivative info of the last arc
@@ -162,6 +164,7 @@ static void TraceBackRmEpsilons(
     std::map<int32_t, k2host::MaxTracebackState *> *curr_states,
     const k2host::Arc *unused,  // arcs_in, unused
     int32_t last_arc_index, std::vector<int32_t> *deriv_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(curr_states->size(), 1);
   deriv_out->clear();
   // push derivative info of the last arc
@@ -178,8 +181,9 @@ static void TraceBackRmEpsilons(
 namespace k2host {
 
 template <typename TracebackState>
-void EpsilonsRemover<TracebackState>::GetSizes(
+void EpsilonsRemoverPruned<TracebackState>::GetSizes(
     Array2Size<int32_t> *fsa_size, Array2Size<int32_t> *arc_derivs_size) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(fsa_size, nullptr);
   K2_CHECK_NE(arc_derivs_size, nullptr);
   fsa_size->size1 = fsa_size->size2 = 0;
@@ -277,9 +281,10 @@ void EpsilonsRemover<TracebackState>::GetSizes(
 }
 
 template <typename TracebackState>
-void EpsilonsRemover<TracebackState>::GetOutput(
+void EpsilonsRemoverPruned<TracebackState>::GetOutput(
     Fsa *fsa_out,
     Array2<typename TracebackState::DerivType *, int32_t> *arc_derivs) {
+  NVTX_RANGE(K2_FUNC);
   if (IsEmpty(fsa_in_.fsa)) return;
 
   K2_CHECK_NE(fsa_out, nullptr);
@@ -305,7 +310,7 @@ void EpsilonsRemover<TracebackState>::GetOutput(
 }
 
 // explicit instantiation here
-template class EpsilonsRemover<MaxTracebackState>;
-template class EpsilonsRemover<LogSumTracebackState>;
+template class EpsilonsRemoverPruned<MaxTracebackState>;
+template class EpsilonsRemoverPruned<LogSumTracebackState>;
 
 }  // namespace k2host

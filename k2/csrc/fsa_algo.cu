@@ -142,18 +142,16 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
     // the check on the previous line will fail.
   }
   if (properties_a < 0) {
-    properties_a = GetFsaBasicProperties(a_fsas);
+    Array1<int32_t> properties_a_out(c, num_fsas_a);
+    GetFsaVecBasicProperties(a_fsas, &properties_a_out, &properties_a);
   }
   if (properties_b < 0) {
-    properties_b = GetFsaBasicProperties(b_fsas);
+    Array1<int32_t> properties_b_out(c, num_fsas_b);
+    GetFsaVecBasicProperties(b_fsas, &properties_b_out, &properties_b);
   }
-  bool check_properties = true;
-  if ((properties_a & kFsaPropertiesArcSorted) &&
-      (properties_b & kFsaPropertiesArcSorted)) {
-    check_properties = false;
-  }
-  K2_CHECK_EQ(check_properties, false)
-    << "Both a_fsas and b_fsas should be arc-sorted";
+  bool arc_sorted = (properties_a & kFsaPropertiesArcSorted) &&
+                    (properties_b & kFsaPropertiesArcSorted);
+  K2_CHECK(arc_sorted) << "Both a_fsas and b_fsas should be arc-sorted";
   int32_t num_fsas = std::max(num_fsas_a, num_fsas_b);
 
   std::vector<std::unique_ptr<k2host::Intersection>> intersections(num_fsas);
@@ -162,7 +160,7 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
     k2host::Fsa host_fsa_a = FsaVecToHostFsa(a_fsas, i * stride_a),
                 host_fsa_b = FsaVecToHostFsa(b_fsas, i * stride_b);
     intersections[i] = std::make_unique<k2host::Intersection>(
-        host_fsa_a, host_fsa_b, treat_epsilons_specially, check_properties);
+        host_fsa_a, host_fsa_b, treat_epsilons_specially, false);
     intersections[i]->GetSizes(&(sizes[i]));
   }
   FsaVecCreator creator(sizes);
@@ -253,7 +251,7 @@ void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
                                      max_backward_weights.data());
   // pass infinity as beam since we don't do pruning here.
   float beam = std::numeric_limits<float>::infinity();
-  k2host::EpsilonsRemoverMax eps_remover(max_wfsa, beam);
+  k2host::EpsilonsRemoverPrunedMax eps_remover(max_wfsa, beam);
   k2host::Array2Size<int32_t> fsa_size, arc_derivs_size;
   eps_remover.GetSizes(&fsa_size, &arc_derivs_size);
   FsaCreator fsa_creator(fsa_size);

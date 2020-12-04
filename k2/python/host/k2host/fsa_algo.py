@@ -19,8 +19,8 @@ from _k2host import _Connection
 from _k2host import _Intersection
 from _k2host import _DeterminizerPrunedMax
 from _k2host import _DeterminizerPrunedLogSum
-from _k2host import _EpsilonsRemoverMax
-from _k2host import _EpsilonsRemoverLogSum
+from _k2host import _EpsilonsRemoverPrunedMax
+from _k2host import _EpsilonsRemoverPrunedLogSum
 
 
 class ArcSorter(_ArcSorter):
@@ -114,7 +114,7 @@ class DeterminizerPrunedLogSum(_DeterminizerPrunedLogSum):
         return super().get_output(fsa_out.get_base(), arc_derivs.get_base())
 
 
-class EpsilonsRemoverMax(_EpsilonsRemoverMax):
+class EpsilonsRemoverPrunedMax(_EpsilonsRemoverPrunedMax):
 
     def __init__(self, fsa_in: WfsaWithFbWeights, beam: float):
         super().__init__(fsa_in, beam)
@@ -127,7 +127,7 @@ class EpsilonsRemoverMax(_EpsilonsRemoverMax):
         return super().get_output(fsa_out.get_base(), arc_derivs.get_base())
 
 
-class EpsilonsRemoverLogSum(_EpsilonsRemoverLogSum):
+class EpsilonsRemoverPrunedLogSum(_EpsilonsRemoverPrunedLogSum):
 
     def __init__(self, fsa_in: WfsaWithFbWeights, beam: float):
         super().__init__(fsa_in, beam)

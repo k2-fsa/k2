@@ -41,7 +41,7 @@ class TestRmEpsilon(unittest.TestCase):
         self.fsa = k2host.str_to_fsa(s)
         self.num_states = self.fsa.num_states()
 
-    def test_max_weight(self):
+    def test_pruned_max(self):
         forward_max_weights = k2host.DoubleArray1.create_array_with_size(
             self.num_states)
         backward_max_weights = k2host.DoubleArray1.create_array_with_size(
@@ -51,7 +51,7 @@ class TestRmEpsilon(unittest.TestCase):
                                         forward_max_weights,
                                         backward_max_weights)
         beam = 8.0
-        remover = k2host.EpsilonsRemoverMax(wfsa, beam)
+        remover = k2host.EpsilonsRemoverPrunedMax(wfsa, beam)
         fsa_size = k2host.IntArray2Size()
         arc_derivs_size = k2host.IntArray2Size()
         remover.get_sizes(fsa_size, arc_derivs_size)
@@ -68,7 +68,7 @@ class TestRmEpsilon(unittest.TestCase):
         self.assertTrue(
             k2host.is_rand_equivalent_max_weight(self.fsa, fsa_out, beam))
 
-    def test_logsum_weight(self):
+    def test_pruned_logsum(self):
         forward_logsum_weights = k2host.DoubleArray1.create_array_with_size(
             self.num_states)
         backward_logsum_weights = k2host.DoubleArray1.create_array_with_size(
@@ -78,7 +78,7 @@ class TestRmEpsilon(unittest.TestCase):
                                         forward_logsum_weights,
                                         backward_logsum_weights)
         beam = 8.0
-        remover = k2host.EpsilonsRemoverLogSum(wfsa, beam)
+        remover = k2host.EpsilonsRemoverPrunedLogSum(wfsa, beam)
         fsa_size = k2host.IntArray2Size()
         arc_derivs_size = k2host.IntArray2Size()
         remover.get_sizes(fsa_size, arc_derivs_size)
@@ -99,8 +99,8 @@ class TestRmEpsilon(unittest.TestCase):
         #    k2host.is_rand_equivalent_after_rmeps_pruned_logsum(
         #        self.fsa, fsa_out, beam))
         # cast float to int
-        arc_ids = k2host.StridedIntArray1.from_float_tensor(arc_derivs.data[:,
-                                                                            0])
+        arc_ids = k2host.StridedIntArray1.from_float_tensor(
+            arc_derivs.data[:, 0])
         # we may get different value of `arc_ids.get_data(1)`
         # with different STL implementations as we use
         # `std::unordered_map` in implementation of rmepsilon,
