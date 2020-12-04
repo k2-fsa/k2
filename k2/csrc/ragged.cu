@@ -87,12 +87,12 @@ std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
       stream << "Invalid RaggedShape: { ";
       stream << " num-axes = " << shape.NumAxes();
       for (int32_t i = 1; i < shape.NumAxes(); i++) {
-        const RaggedShapeDim &axis = shape.Axes()[i - 1];
-        if (axis.row_splits.IsValid())
-          stream << " RowSplits(" << i << ")=" << axis.row_splits;
-        if (axis.row_ids.IsValid())
-          stream << "RowIds(" << i << ")=" << axis.row_ids;
-        stream << "cached_tot_size[" << i << "]=" << axis.cached_tot_size;
+        const RaggedShapeLayer &layer = shape.Layers()[i - 1];
+        if (layer.row_splits.IsValid())
+          stream << " RowSplits(" << i << ")=" << layer.row_splits;
+        if (layer.row_ids.IsValid())
+          stream << "RowIds(" << i << ")=" << layer.row_ids;
+        stream << "cached_tot_size[" << i << "]=" << layer.cached_tot_size;
       }
       return stream << " }";
     }
@@ -103,11 +103,11 @@ Array1<int32_t> &RaggedShape::RowIds(int32_t axis) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, NumAxes());
-  RaggedShapeDim &rsd = axes_[axis - 1];
+  RaggedShapeLayer &rsd = axes_[axis - 1];
   auto &row_splits = rsd.row_splits;
   auto &row_ids = rsd.row_ids;
   // there must be row_splits.Dim() >=1 according to the definition of
-  // RaggedShapeDim.
+  // RaggedShapeLayer.
   K2_CHECK_GE(row_splits.Dim(), 1);
   if (!row_ids.IsValid()) {
     if (rsd.cached_tot_size < 0)
@@ -169,19 +169,19 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
   K2_CHECK_GE(i, 0);
   int32_t num_axes = NumAxes();
   K2_CHECK_GE(num_axes, 2);
-  const auto &src_axes = Axes();
+  const auto &src_axes = Layers();
   K2_CHECK_LT(i + 1, src_axes[0].row_splits.Dim());
 
   if (i == 0 && Dim0() == 1) {
     // Just remove first axis.  Common case so we make it efficient.
-    std::vector<RaggedShapeDim> ans_axes(src_axes.begin() + 1, src_axes.end());
+    std::vector<RaggedShapeLayer> ans_axes(src_axes.begin() + 1, src_axes.end());
     if (value_offset) *value_offset = 0;
     return RaggedShape(ans_axes, false);
   }
 
   int32_t idx_begin = (i != 0 ? src_axes[0].row_splits[i] : 0),
           idx_end = src_axes[0].row_splits[i + 1];
-  std::vector<RaggedShapeDim> axes(src_axes.size() - 1);
+  std::vector<RaggedShapeLayer> axes(src_axes.size() - 1);
   ContextPtr c = Context();
   for (int32_t i = 2; i < num_axes; ++i) {
     const Array1<int32_t> &src_row_splits = RowSplits(i),
@@ -221,7 +221,7 @@ void RaggedShape::Populate() {
 RaggedShape RaggedShape::To(ContextPtr ctx) const {
   NVTX_RANGE(K2_FUNC);
   if (ctx->IsCompatible(*Context())) return *this;
-  std::vector<RaggedShapeDim> axes(axes_.size());
+  std::vector<RaggedShapeLayer> axes(axes_.size());
   int32_t num_axes = NumAxes();
   for (int32_t i = 1; i < num_axes; ++i) {
     axes[i - 1].row_splits = axes_[i - 1].row_splits.To(ctx);
@@ -256,14 +256,14 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
   if (axis == 0)
     return Dim0();
   else {
-    const RaggedShapeDim &rsd = axes_[axis - 1];
+    const RaggedShapeLayer &rsd = axes_[axis - 1];
     if (rsd.cached_tot_size >= 0) {
       return rsd.cached_tot_size;
     } else {
       // if we had row_ids set up, we should have set cached_tot_size.
       K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
       K2_CHECK_GT(rsd.row_splits.Dim(), 0);
-      const_cast<RaggedShapeDim &>(rsd).cached_tot_size = rsd.row_splits.Back();
+      const_cast<RaggedShapeLayer &>(rsd).cached_tot_size = rsd.row_splits.Back();
       return rsd.cached_tot_size;
     }
   }
@@ -279,7 +279,7 @@ bool RaggedShape::Validate(bool print_warnings) const {
   ParallelRunner pr(c);
   for (int32_t axis = 0; axis < num_axes; ++axis) {
     With w(pr.NewStream());
-    const RaggedShapeDim &rsd = axes_[axis];
+    const RaggedShapeLayer &rsd = axes_[axis];
     K2_CHECK_GE(rsd.row_splits.Dim(), 0);
     if (rsd.cached_tot_size >= 0) {
       if (!(rsd.row_splits.Dim() == 0 ||
@@ -441,7 +441,7 @@ std::istream &operator>>(std::istream &is, RaggedShape &shape) {
           // row_splits is 0 0.
           row_splits.push_back(std::vector<int32_t>(1, 0));
         }
-        std::vector<RaggedShapeDim> axes(row_splits.size());
+        std::vector<RaggedShapeLayer> axes(row_splits.size());
         for (size_t i = 0; i < row_splits.size(); i++) {
           axes[i].row_splits = Array1<int32_t>(GetCpuContext(), row_splits[i]);
           axes[i].cached_tot_size = -1;

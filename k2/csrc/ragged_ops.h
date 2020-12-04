@@ -293,7 +293,7 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
 
 /*
-  Returns a `sub-shape` of `src` consisting of one of its RaggedShapeDim
+  Returns a `sub-shape` of `src` consisting of one of its RaggedShapeLayer
   elements, i.e. one of the levels of its shape.  This returned shape
   will have NumAxes() == 2, but it is the minimal case of a RaggedShape.
 

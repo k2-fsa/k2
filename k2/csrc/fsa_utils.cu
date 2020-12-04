@@ -1576,10 +1576,10 @@ Fsa RandomFsa(bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
   int32_t *ans_row_splits1_data = ans_row_splits1.Data();
   ans_row_splits1_data[dim0 + 1] = ans_row_splits1_data[dim0];
   // create returned shape
-  RaggedShapeDim ans_shape_dim;
+  RaggedShapeLayer ans_shape_dim;
   ans_shape_dim.row_splits = ans_row_splits1;
   ans_shape_dim.cached_tot_size = shape.TotSize(1);
-  RaggedShape ans_shape(std::vector<RaggedShapeDim>{ans_shape_dim}, true);
+  RaggedShape ans_shape(std::vector<RaggedShapeLayer>{ans_shape_dim}, true);
   ans_shape.Populate();
 
   // will be used to generate scores on arcs.

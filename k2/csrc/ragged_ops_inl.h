@@ -340,7 +340,7 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
     // row_splits is [ 0 ].
     row_splits.push_back(std::vector<int32_t>(1, 0));
   }
-  std::vector<RaggedShapeDim> axes(row_splits.size());
+  std::vector<RaggedShapeLayer> axes(row_splits.size());
   for (size_t i = 0; i < row_splits.size(); i++) {
     axes[i].row_splits = Array1<int32_t>(GetCpuContext(), row_splits[i]);
     axes[i].cached_tot_size = -1;

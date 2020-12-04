@@ -29,7 +29,7 @@
 namespace k2 {
 
 /*
-  This checks that the RaggedShapeDim indexed `axis`, i.e. src.Axes()[axis],
+  This checks that the RaggedShapeLayer indexed `axis`, i.e. src.Axes()[axis],
   is the same for all sources (i.e. represents the same ragged shape).
 
   This function may do a quick or more thorough check depending on the debug

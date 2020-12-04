@@ -72,7 +72,7 @@ void CheckAxisEqual(int32_t num_srcs,
 RaggedShape AppendRaggedAxisAfter(int32_t num_srcs,
                                   int32_t axis,
                                   RaggedShape **src,
-                                  Array1<int32_t> *merge_map = nullptr) {
+                                  Array1<int32_t> *merge_map) {
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK_GE(axis, 0);
   K2_CHECK_LT(axis + 1, src[0]->NumAxes());
@@ -88,7 +88,7 @@ RaggedShape AppendRaggedAxisAfter(int32_t num_srcs,
   std::vector<int32_t*> row_ids_ptrs_vec(num_srcs);
   // set these up...
 
-    return EmptyRaggedShape(
+  // TODO(dan).
 
 
 }

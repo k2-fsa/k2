@@ -26,13 +26,16 @@
 
 namespace k2 {
 
-// Caution, RaggedShapeDim is mostly for internal use and users should not
-// generally interact with it directly.
+// Caution, RaggedShapeLayer is mostly for internal use and users should not
+// generally interact with it directly.  A layer represents the connection between
+// one axis and the next; a RaggedShape with a single layer is the minimal
+// RaggedShape.
+//
 // Note: row_splits is of size num_rows + 1 and row_ids is of size
 // num_elements.
-struct RaggedShapeDim {
+struct RaggedShapeLayer {
   // Search for "row_splits concept" in utils.h for explanation.  row_splits
-  // is required; it must always be nonempty for a RaggedShapeDim to be valid.
+  // is required; it must always be nonempty for a RaggedShapeLayer to be valid.
   Array1<int32_t> row_splits;
   // Search for "row_ids concept" in utils.h for explanation
   Array1<int32_t> row_ids;
@@ -68,7 +71,7 @@ class RaggedShape {
   /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and
      for axis=0 the returned value is the same as Dim0().
      Caution: we use const_cast inside this function as it may actually modify
-     the cached_tot_size members of RaggedShapeDim if not set.
+     the cached_tot_size members of RaggedShapeLayer if not set.
   */
   int32_t TotSize(int32_t axis) const;
 
@@ -97,14 +100,14 @@ class RaggedShape {
   Array1<int32_t> &RowSplits(int32_t axis) {
     K2_CHECK_GT(axis, 0);
     K2_CHECK_LT(axis, NumAxes());
-    // Note row_splits is always nonempty for valid RaggedShapeDim.
+    // Note row_splits is always nonempty for valid RaggedShapeLayer.
     return axes_[axis - 1].row_splits;
   }
 
   const Array1<int32_t> &RowSplits(int32_t axis) const {
     K2_CHECK_GT(axis, 0);
     K2_CHECK_LT(axis, NumAxes());
-    // Note row_splits is always nonempty for valid RaggedShapeDim.
+    // Note row_splits is always nonempty for valid RaggedShapeLayer.
     return axes_[axis - 1].row_splits;
   }
 
@@ -158,7 +161,7 @@ class RaggedShape {
   RaggedShapeIndexIterator Iterator();
 
   // TODO(dan): will at some point make it so check = false is the default.
-  explicit RaggedShape(const std::vector<RaggedShapeDim> &axes,
+  explicit RaggedShape(const std::vector<RaggedShapeLayer> &axes,
                        bool check = !internal::kDisableDebug)
       : axes_(axes) {
     if (check) Check();
@@ -184,9 +187,9 @@ class RaggedShape {
   RaggedShape(RaggedShape &&other) : axes_(std::move(other.axes_)) {}
   RaggedShape &operator=(const RaggedShape &other) = default;
 
-  // Axes() is intended for internal-ish use; users shouldn't really have to
+  // Layers() is intended for internal-ish use; users shouldn't really have to
   // interact with it.
-  const std::vector<RaggedShapeDim> &Axes() const { return axes_; }
+  const std::vector<RaggedShapeLayer> &Layers() const { return axes_; }
 
   // Check the RaggedShape for consistency; die on failure.
   void Check() {
@@ -207,7 +210,7 @@ class RaggedShape {
 
   // indexed by axis-index minus one... axis 0 is special, its dim
   // equals axes_[0].row_splits.Dim()-1.
-  std::vector<RaggedShapeDim> axes_;
+  std::vector<RaggedShapeLayer> axes_;
 };
 
 // prints a RaggedShape, for debug purposes.  May change later how this works.
