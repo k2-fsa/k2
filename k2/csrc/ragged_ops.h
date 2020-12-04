@@ -186,35 +186,6 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta);
  */
 RaggedShape ChangeSublistSizePinned(RaggedShape &src, int32_t size_delta);
 
-
-/*
-  Return a sub-part of a RaggedShape containing indexes 0 through n-1 of
-  its 1st axis.
-      @param [in] src  Source RaggedShape
-      @param [in] n    Number of (leading) indexes to keep; result will
-                       satisfy ans.Dim0() == n.  Must have 0 <= n <= src.Dim0().
-
-      @return          Returns RaggedShape containing a prefix of `src`.
-                       It will share memory with `src`.
- */
-RaggedShape Prefix(RaggedShape &src, int32_t n);
-
-
-/*
-  Return a vector of RaggedShapes containing various prefixes of `src`.
-
-        @param [in] src    Source RaggedShape
-        @param [in] sizes  Lengths of desired prefixes; all elements
-                           will satisfy 0 <= sizes[i] <= src.Dim0().
-        @return   Returns vector of prefixes of a RaggedShape;
-                  ans[i] will be equal to Prefix(src, sizes[i]).
-                  We provide this interface because individual
-                  calls to `Prefix` would otherwise require multiple
-                  GPU->CPU memory transfers.
- */
-std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
-                                     const std::vector<int32_t> &sizes);
-
 /*
   Return a sub-part of a RaggedShape containing indexes 0 through n-1 of
   its 1st axis.
@@ -241,6 +212,35 @@ RaggedShape Prefix(RaggedShape &src, int32_t n);
 std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
                                      const std::vector<int32_t> &sizes);
 
+/*
+  Append a single element to each sub-array of a ragged matrix (we consider
+  only its last axis).
+     @param [in] src     Source ragged tensor
+     @param [in] suffix  Array containing elements to append (they will
+                         be appended regardless of value, for now).
+                         Must have
+                         `suffix.Dim() == src.TotSize(src.NumAxes() - 2)`
+     @return         Returns ragged tensor with same num-axes as `src`,
+                     and NumElements() equal to src.NumElements() +
+                     suffix.Dim()
+ */
+Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
+                                  const Array1<int32_t> &suffix);
+
+/*
+  Prepend a single element to each sub-array of a ragged matrix (we consider
+  only its last axis).
+     @param [in] src     Source ragged tensor
+     @param [in] prefix  Array containing elements to prepend (they will
+                         be prepended regardless of value, for now).
+                         Must have
+                         `prefix.Dim() == src.TotSize(src.NumAxes() - 2)`
+     @return         Returns ragged tensor with same num-axes as `src`,
+                     and NumElements() equal to src.NumElements() +
+                     suffix.Dim()
+ */
+Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
+                                  const Array1<int32_t> &prefix);
 /*
   Insert a new axis at position `axis`, with 0 <= axis <= src.NumAxes(), for
   which the only allowed index will be 0 (which is another way of saying: all
@@ -478,6 +478,18 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
 RaggedShape SubsampleRaggedShape(RaggedShape &src,
                                  Renumbering &renumbering_before_last,
                                  Renumbering &renumbering_last);
+
+/*
+  Return ragged array with only a subset of the bottom-level elements kept.
+  Require renumbering.NumOldElems() == src.NumElements().  Note: all
+  dimensions and tot-sizes preceding the final axis will remain the same, which
+  might give rise to empty lists.
+ */
+template <typename T>
+Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering) {
+  return Ragged<T>(SubsampleRaggedShape(src.shape, renumbering),
+                   src.values[renumbering.New2Old()]);
+}
 
 /*
   Stack a list of Ragged arrays to create a Ragged array with one more axis.
