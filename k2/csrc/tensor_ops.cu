@@ -319,6 +319,35 @@ static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
       });
 }
 
+template <typename T>
+static void IndexAdd2DImpl(ContextPtr context, const T *src_data,
+                           int32_t src_dim0, int32_t src_dim1,
+                           int32_t src_stride, const int32_t *indexes_data,
+                           bool allow_minus_one, int32_t dest_dim,
+                           int32_t dest_stride, T *dest_data) {
+  if (allow_minus_one) {
+    K2_EVAL2(
+        context, src_dim0, src_dim1, lambda_add, (int32_t i, int32_t j)->void {
+          int32_t index = indexes_data[i];
+          K2_DCHECK_LT(index, dest_dim);
+          K2_DCHECK_GE(index, -1);
+          if (index != -1)
+            AtomicAdd(dest_data + index * dest_stride + j,
+                      src_data[i * src_stride + j]);
+        });
+    return;
+  }
+
+  K2_EVAL2(
+      context, src_dim0, src_dim1, lambda_add, (int32_t i, int32_t j)->void {
+        int32_t index = indexes_data[i];
+        K2_DCHECK_LT(index, dest_dim);
+        K2_DCHECK_GE(index, 0);
+        AtomicAdd(dest_data + index * dest_stride + j,
+                  src_data[i * src_stride + j]);
+      });
+}
+
 static void IndexAdd1D(Tensor &src, Array1<int32_t> &indexes,
                        bool allow_minus_one, Tensor *dest) {
   NVTX_RANGE(K2_FUNC);
@@ -370,32 +399,13 @@ static void IndexAdd2D(Tensor &src, Array1<int32_t> &indexes,
   int32_t dest_stride = dest->Stride(0);
   K2_CHECK_EQ(dest->Stride(1), 1);
 
-  // TODO(fangjun): use a template
-  using T = float;
-  const T *src_data = src.Data<T>();
   const int32_t *indexes_data = indexes.Data();
-  T *dest_data = dest->Data<T>();
-  if (allow_minus_one) {
-    K2_EVAL2(
-        context, src_dim0, src_dim1, lambda_add, (int32_t i, int32_t j)->void {
-          int32_t index = indexes_data[i];
-          K2_DCHECK_LT(index, dest_dim);
-          K2_DCHECK_GE(index, -1);
-          if (index != -1)
-            AtomicAdd(dest_data + index * dest_stride + j,
-                      src_data[i * src_stride + j]);
-        });
-    return;
-  }
 
-  K2_EVAL2(
-      context, src_dim0, src_dim1, lambda_add, (int32_t i, int32_t j)->void {
-        int32_t index = indexes_data[i];
-        K2_DCHECK_LT(index, dest_dim);
-        K2_DCHECK_GE(index, 0);
-        AtomicAdd(dest_data + index * dest_stride + j,
-                  src_data[i * src_stride + j]);
-      });
+  FOR_REAL_AND_INT32_TYPES(
+      dtype, T,
+      IndexAdd2DImpl<T>(context, src.Data<T>(), src_dim0, src_dim1, src_stride,
+                        indexes_data, allow_minus_one, dest_dim, dest_stride,
+                        dest->Data<T>()));
 }
 
 void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,

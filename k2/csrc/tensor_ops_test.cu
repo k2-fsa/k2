@@ -280,6 +280,46 @@ static void TestIndexAdd1D() {
   }
 }
 
-TEST(IndexAdd, IndexAdd1D) { TestIndexAdd1D<float>(); }
+template <typename T>
+static void TestIndexAdd2D() {
+  bool allow_minus_one = true;
+
+  std::vector<T> src_vec = {10, 20, 30, 40, 50, 60, 70, 80, 5, 8, 3, 6};
+  std::vector<int32_t> indexes_vec = {-1, 0, 1, 1, 0, 0};
+
+  // ContextPtr context = GetCpuContext();
+  ContextPtr context = GetCudaContext();
+  Array1<T> src_array(context, src_vec);
+  const T *src_array_data = src_array.Data();
+  Array1<int32_t> indexes_array(context, indexes_vec);
+  Shape src_shape({6, 2});
+  Tensor src(context, DtypeOf<T>::dtype, src_shape);
+  T *src_data = src.Data<T>();
+  K2_EVAL(
+      context, 12, lambda_copy_data,
+      (int32_t i)->void { src_data[i] = src_array_data[i]; });
+
+  Shape shape({2, 2});
+  Tensor dest(context, DtypeOf<T>::dtype, shape);
+  T *dest_data = dest.Data<T>();
+
+  K2_EVAL(
+      context, 4, lambda_set_zero, (int32_t i)->void { dest_data[i] = 0; });
+  K2_LOG(INFO) << Array1<T>(src);
+  K2_LOG(INFO) << Array1<T>(dest);
+  K2_LOG(INFO) << indexes_array;
+  IndexAdd(src, indexes_array, allow_minus_one, &dest);
+  K2_LOG(INFO) << Array1<T>(dest);
+}
+
+TEST(IndexAdd, IndexAdd1D) {
+  TestIndexAdd1D<float>();
+  TestIndexAdd1D<int32_t>();
+}
+
+TEST(IndexAdd, IndexAdd2D) {
+  TestIndexAdd2D<float>();
+  TestIndexAdd2D<int32_t>();
+}
 
 }  // namespace k2
