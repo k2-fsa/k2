@@ -173,25 +173,31 @@ struct DtypeOf<uint64_t> {
     }                                                                    \
   } while (0)
 
-#define FOR_REAL_AND_INT32_TYPES(DtypeValue, TypeName, ...) \
-  do {                                                      \
-    switch (DtypeValue) {                                   \
-      case kFloatDtype: {                                   \
-        using TypeName = float;                             \
-        __VA_ARGS__;                                        \
-        break;                                              \
-      }                                                     \
-      case kDoubleDtype: {                                  \
-        using TypeName = double;                            \
-        __VA_ARGS__;                                        \
-        break;                                              \
-      }                                                     \
-      case kInt32Dtype: {                                   \
-        using TypeName = int32_t;                           \
-        __VA_ARGS__;                                        \
-        break;                                              \
-      }                                                     \
-    }                                                       \
+#define FOR_REAL_AND_INT32_TYPES(DtypeValue, TypeName, ...)              \
+  do {                                                                   \
+    switch (DtypeValue) {                                                \
+      case kFloatDtype: {                                                \
+        using TypeName = float;                                          \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      case kDoubleDtype: {                                               \
+        using TypeName = double;                                         \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      case kInt32Dtype: {                                                \
+        using TypeName = int32_t;                                        \
+        __VA_ARGS__;                                                     \
+        break;                                                           \
+      }                                                                  \
+      default:                                                           \
+        K2_LOG(FATAL)                                                    \
+            << "Dtype " << TraitsOf(DtypeValue).Name()                   \
+            << " not covered in switch statement.  p not supported for " \
+               "this type?";                                             \
+        break;                                                           \
+    }                                                                    \
   } while (0)
 
 }  // namespace k2
