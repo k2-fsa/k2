@@ -90,6 +90,7 @@ set(cuda_tests
   nvtx_test
   ragged_shape_test
   ragged_test
+  ragged_utils_test
   tensor_test
   top_sort_test
   utils_test

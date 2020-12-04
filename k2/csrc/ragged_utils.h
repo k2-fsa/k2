@@ -37,6 +37,9 @@ namespace k2 {
   for the axes to be the same and the program needs to exit or raise an
   exception if not.
 
+  Note: you can use the function Equal(RaggedShape&, RaggedShape&) if you
+  want to check the return status directly.
+
     @param [in] num_srcs   Length of the list of sources.
     @param [in] axis       Axis to check, e.g. 0; must satisfy
                            `0 <= axis < src[0]->NumAxes() - 1.`
@@ -46,7 +49,6 @@ namespace k2 {
 void CheckAxisEqual(int32_t num_srcs,
                     int32_t axis,
                     RaggedShape **src);
-
 
 
 /*
