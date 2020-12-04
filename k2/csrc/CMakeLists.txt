@@ -41,6 +41,7 @@ set(context_srcs
   moderngpu_allocator.cu
   ragged.cu
   ragged_ops.cu
+  rm_epsilon.cu
   tensor.cu
   tensor_ops.cu
   timer.cu
