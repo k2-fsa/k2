@@ -18,6 +18,7 @@
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/rm_epsilon.h"
 
 namespace k2 {
 void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
