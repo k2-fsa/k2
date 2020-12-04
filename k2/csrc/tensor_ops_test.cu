@@ -8,6 +8,9 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <algorithm>
+#include <vector>
+
 #include "gtest/gtest.h"
 #include "k2/csrc/tensor_ops.h"
 
