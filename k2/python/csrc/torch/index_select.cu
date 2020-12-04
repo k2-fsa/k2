@@ -18,6 +18,7 @@
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/tensor_ops.h"
 #include "k2/python/csrc/torch/index_select.h"
 #include "k2/python/csrc/torch/torch_util.h"
 #include "torch/extension.h"
@@ -33,7 +34,7 @@ namespace k2 {
                             -1 <= index[i] < src.numel()
                             for i in [0, index.numel())
                         If index[i] is -1, then ans[i] is 0
-                        We require that index.is_contiguous() is true.
+                        CAUTION: We require that index.is_contiguous() is true.
    @return
       Returns a 1-D tensor such that:
           ans[i] = src[index[i]] if index[i] > 0
@@ -50,38 +51,17 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
   K2_CHECK(index.is_contiguous());
   K2_CHECK_EQ(src.device(), index.device());
 
+  Array1<int32_t> index_array = FromTensor<int32_t>(index);
   if (src.is_contiguous()) {
     Array1<T> src_array = FromTensor<T>(src);
-    Array1<int32_t> index_array = FromTensor<int32_t>(index);
     bool allow_minus_one = true;
     Array1<T> ans_array = Index(src_array, index_array, allow_minus_one);
     return ToTensor(ans_array);
   }
 
-  const T *src_data = src.data_ptr<T>();
-  int32_t src_numel = src.numel();
-  const int32_t *index_data = index.data_ptr<int32_t>();
-
-  torch::Tensor ans = torch::empty(index.sizes(), src.options());
-  T *ans_data = ans.data_ptr<T>();
-  int32_t index_numel = index.numel();
-
-  int64_t src_stride = src.strides()[0];
-  int64_t ans_stride = ans.strides()[0];
-
-  K2_EVAL(
-      GetContext(src), index_numel, lambda_noncontiguous, (int32_t i)->void {
-        int32_t src_i = index_data[i];
-        if (src_i != -1) {
-          K2_DCHECK_GE(src_i, 0);
-          K2_DCHECK_LT(src_i, src_numel);
-
-          ans_data[i * ans_stride] = src_data[src_i * src_stride];
-        } else {
-          ans_data[i * ans_stride] = 0;
-        }
-      });
-  return ans;
+  Tensor tensor = FromTensor(src, TensorTag{});
+  Tensor ans = Index(tensor, index_array);
+  return ToTensor(ans);
 }
 
 /* Returns a 2-D tensor which indexes the src tensor using entries
@@ -95,6 +75,7 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
                             -1 <= index[i] < src.numel()
                             for i in [0, index.numel())
                         If index[i] is -1, then ans[i] is 0
+                        CAUTION: We require that index.is_contiguous() is true.
    @return
       Returns a 1-D tensor such that:
           ans[i] = src[index[i]] if index[i] > 0
