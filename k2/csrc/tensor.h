@@ -94,6 +94,8 @@ class Shape {
   bool ComputeIsContiguous() const;
 };
 
+std::ostream &operator<<(std::ostream &os, const Shape &shape);
+
 struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
   // This struct is not visible to the user and should be accessed via the
   // public
@@ -106,6 +108,10 @@ struct TensorImpl : public std::enable_shared_from_this<TensorImpl> {
   // we plan to generally hold Tensors as pointers, so there isn't much
   // need for an empty constructor).
   RegionPtr data;
+  TensorImpl() = default;
+  TensorImpl(const Shape &shape, Dtype dtype, size_t byte_offset,
+             RegionPtr data)
+      : shape(shape), dtype(dtype), byte_offset(byte_offset), data(data) {}
 };
 
 using TensorImplPtr = std::shared_ptr<TensorImpl>;
@@ -182,12 +188,6 @@ class Tensor {
     The returned value may share the same underlying `data` memory as *this.
     This should work even for tensors with empty data.
 
-    If dim_ == 0 and region_ is NULL, this will return a direct copy of *this
-    (i.e.  with region_ also NULL)
-
-    If dim == 0 and region_ is non-NULL, it will return a copy of *this with an
-    empty region with the supplied context (if different from current region's
-    context).
 
     Note: the answer will always be contiguous, i.e. there is a possibility that
     it will have a different memory layout than the input.  [Internally it will
@@ -199,9 +199,9 @@ class Tensor {
 
  private:
   void Init(ContextPtr c);
+  explicit Tensor(TensorImplPtr impl);
   TensorImplPtr impl_;  // Must always be non-NULL.
 };
-
 
 // the primary declaration is in tensor_ops.h; included here to avoid
 // compilation problems in array.h

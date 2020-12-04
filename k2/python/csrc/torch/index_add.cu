@@ -176,10 +176,12 @@ static void IndexAdd2D(torch::Tensor index, torch::Tensor value,
   // for non-contiguous case
   // we require that the stride for columns is 1
   K2_CHECK_EQ(static_cast<int32_t>(in_out->strides()[1]), 1);
-  K2_CHECK_EQ(static_cast<int32_t>(value.strides()[1]), 1);
   int64_t in_out_stride = in_out->strides()[0];
   int64_t index_stride = index.strides()[0];
-  int64_t value_stride = value.strides()[0];
+
+  // NOTE: value.strides() may be `(0, 0)`.
+  int64_t value_stride0 = value.strides()[0];
+  int64_t value_stride1 = value.strides()[1];
 
   K2_EVAL(
       context, index_numel, lambda_noncontiguous, (int32_t i)->void {
@@ -189,13 +191,13 @@ static void IndexAdd2D(torch::Tensor index, torch::Tensor value,
         K2_DCHECK_LT(in_out_i, in_out_num_rows);
 
         float *cur_in_out_data = in_out_data + in_out_i * in_out_stride;
-        const float *cur_value_data = value_data + i * value_stride;
+        const float *cur_value_data = value_data + i * value_stride0;
         for (int32_t j = 0; j != in_out_num_cols; ++j) {
 #ifdef __CUDA_ARCH__
           atomicAdd(cur_in_out_data + j, cur_value_data[j]);
 #else
           // for host thread, we assume single thread at present
-          cur_in_out_data[j] += cur_value_data[j];
+          cur_in_out_data[j] += cur_value_data[j * value_stride1];
 #endif
         }
       });

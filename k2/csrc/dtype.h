@@ -121,47 +121,47 @@ struct DtypeOf<uint64_t> {
   Evaluates Expr for TypeName being all dtypes.  E.g.
      FOR_ALL_DTYPES(t.GetDtype(), T, SomeFuncCall<T>(a,b,c..));
  */
-#define FOR_ALL_DTYPES(DtypeValue, TypeName, Expr)                       \
+#define FOR_ALL_DTYPES(DtypeValue, TypeName, ...)                        \
   do {                                                                   \
     switch (DtypeValue) {                                                \
       case kFloatDtype: {                                                \
         using TypeName = float;                                          \
-        Expr;                                                            \
+        __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
       case kDoubleDtype: {                                               \
         using TypeName = double;                                         \
-        Expr;                                                            \
+        __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
       case kInt8Dtype: {                                                 \
         using TypeName = int8_t;                                         \
-        Expr;                                                            \
+        __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
       case kInt16Dtype: {                                                \
         using TypeName = int16_t;                                        \
-        Expr;                                                            \
+        __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
       case kInt32Dtype: {                                                \
         using TypeName = int32_t;                                        \
-        Expr;                                                            \
+        __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
       case kInt64Dtype: {                                                \
         using TypeName = int64_t;                                        \
-        Expr;                                                            \
+        __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
       case kUint32Dtype: {                                               \
         using TypeName = uint32_t;                                       \
-        Expr;                                                            \
+        __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
       case kUint64Dtype: {                                               \
         using TypeName = uint64_t;                                       \
-        Expr;                                                            \
+        __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
       default:                                                           \

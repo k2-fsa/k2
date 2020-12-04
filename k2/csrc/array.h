@@ -417,6 +417,15 @@ struct ConstArray2Accessor {
   ConstArray2Accessor &operator=(const ConstArray2Accessor &other) = default;
 };
 
+// NOTE: The following two forward declarations
+// are used to prevent calling the non-template `ToContiguous()`
+// in `Array2::To()`.
+template<typename T>
+class Array2;
+
+template <typename T>
+Array2<T> ToContiguous(const Array2<T> &src);
+
 /*
   Array2 is a 2-dimensional array (== matrix), that is contiguous in the
   2nd dimension, i.e. a row-major matrix.

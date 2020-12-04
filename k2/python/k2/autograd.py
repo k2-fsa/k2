@@ -326,9 +326,6 @@ class _IndexSelectFunction(torch.autograd.Function):
                           dtype=torch.float32,
                           device=src.device,
                           requires_grad=False)
-        if out_grad.stride()[0] == 0:
-            # TODO(fangjun): why is the stride of out_grad 0 ??
-            out_grad = out_grad.clone()
         _k2.index_add(index, out_grad.clone(), ans)
         return ans, None
 

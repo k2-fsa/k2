@@ -42,7 +42,9 @@ Tensor Cast(Tensor src, Dtype new_dtype);
   Returns a Tensor that is a result of indexing `src` along its
   axis 0 with `indexes`, as if you had done src[indexes] in Pytorch.
 
-     @param [in] src  Source tensor, to be indexed
+     @param [in] src  Source tensor, to be indexed. Currently, it
+                      supports only 1-D and 2-D tensors. If the
+                      tensor is 2-D, it requires that its Stride(1) is 1.
      @param [in] indexes   Indexes to use; if allow_minus_one == false,
                      must satisfy 0 <= indexes[i] < src.Dim(0);
                      if allow_minus_one == true, -1 is also allowed
