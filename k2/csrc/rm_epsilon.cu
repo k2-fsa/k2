@@ -201,7 +201,22 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
   // here.  I'm not saying we need such a recursive implementation, necessarily;
   // only that there is not a fundamental reason why Append() can't work in this
   // case.
-  *dest_fsa = Append(axis, 2, vecs);
+  FsaVec dest_fsa_unsorted = Append(axis, 2, vecs);
+
+  Ragged<int32_t> non_epsilon_arc_map_ragged(
+      RegularRaggedShape(c, non_epsilon_fsa.NumElements(),
+                         non_epsilon_fsa.NumElements()),
+      non_epsilon_arc_map);
+
+  Ragged<int32_t> dest_unsorted_arc_map;
+  {  // This block creates 'dest_unsorted_arc_map' which combines combined_foll_arc_map,
+     // combined_prec_arc_map and non_epsilon_arc_map.
+    //
+
+  }
+
+
+
 
   // TODO: work out how to combine the arc maps.
   // Can do arc-sorting *after* combining the arc maps, which will make

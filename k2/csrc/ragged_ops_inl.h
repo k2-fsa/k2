@@ -3,7 +3,7 @@
  * ragged_ops_inl
  *
  * @note
- * This is to be included only from ragged.h.
+ * This is to be included only from ragged_ops.h.
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
