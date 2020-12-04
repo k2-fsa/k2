@@ -603,7 +603,8 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
   *row_ids = row_ids_ptrs.To(ctx);
 }
 
-RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
+RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
+                   Array1<int32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) return **src;
   K2_CHECK_GT(num_srcs, 1);

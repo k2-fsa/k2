@@ -388,10 +388,17 @@ Ragged<T> Transpose(Ragged<T> &src,
                            same value
       @param [in] num_srcs Number of source shapes to append; require
                            num_srcs > 0.
+      @param [out] merge_map  If not nullptr, will be set to the merge-map
+                          that tells us for each 0 <= i < ans.NumElements(),
+                          which element of `src` it came from (available
+                          as `ans[i]i % num_srcs`) and its element-index within
+                          `src[i]` (available as `ans[i] / num_srcs`.
+
       @param [in] src      Array of sources to append
       @return      Returns the appended RaggedShape.
 */
-RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src);
+RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
+                   Array1<int32_t> *merge_map = nullptr);
 
 /*
     Gets an array of pointers to the row_splits of `src`, on the same
