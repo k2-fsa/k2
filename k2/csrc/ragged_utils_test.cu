@@ -45,4 +45,18 @@ TEST(RaggedUtilsTest, CheckAxisEqual) {
   CheckAxisEqual(2, axis, array + 3);
 }
 
+TEST(RaggedUtilsTest, GetLayer) {
+
+  RaggedShape shape1(" [[[ x x x ] [ x x ]]]"),
+      shape2(" [[ x x x ] [ x x ]]"),
+      shape3("[[x x]]");
+
+  RaggedShape shape2b = GetLayer(shape1, 1),
+              shape3b = GetLayer(shape1, 0);
+  ASSERT_TRUE(Equal(shape2, shape2b));
+  ASSERT_TRUE(Equal(shape3, shape3b));
+}
+
+
+
 }  // namespace k2

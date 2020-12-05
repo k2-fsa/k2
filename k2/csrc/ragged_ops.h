@@ -298,10 +298,10 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
   will have NumAxes() == 2, but it is the minimal case of a RaggedShape.
 
     @param [in] src   Source RaggedShape
-    @param [in] axis  Axis that is desired, from 0 .. src.NumAxes() - 2.
-                      View this as an index into its Axes() vector.
+    @param [in] layer  Layer that is desired, from 0 .. src.NumAxes() - 2.
+                      View this as an index into its Layers() vector.
  */
-RaggedShape GetAxis(RaggedShape &src, int32_t axis);
+RaggedShape GetLayer(RaggedShape &src, int32_t layer);
 
 
 /*
