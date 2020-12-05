@@ -2044,12 +2044,13 @@ TEST(RaggedTest, AddSuffixToRaggedTest) {
         EXPECT_EQ(dst.NumElements(), src.NumElements() + suffix.Dim());
         Ragged<int32_t> src_cpu = src.To(GetCpuContext());
         Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
-        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
-        Array1<int32_t> src_row_ids = src_cpu.RowIds(num_axes - 1);
-        Array1<int32_t> suffix_cpu = suffix.To(GetCpuContext());
-        for (int32_t i = 0; i < src.NumElements(); ++i) {
-          EXPECT_EQ(dst_cpu.values[i + src_row_ids[i]], src_cpu.values[i]);
+        for (RaggedShapeIndexIterator src_iter = src_cpu.shape.Iterator();
+            !src_iter.Done(); src_iter.Next()) {
+          const std::vector<int32_t> &src_indexes = src_iter.Value();
+          EXPECT_EQ(dst_cpu[src_indexes], src_cpu[src_indexes]);
         }
+        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
+        Array1<int32_t> suffix_cpu = suffix.To(GetCpuContext());
         for (int32_t i = 0; i < suffix.Dim(); ++i) {
           EXPECT_EQ(dst_cpu.values[src_row_splits[i + 1] + i], suffix_cpu[i]);
         }
@@ -2073,12 +2074,15 @@ TEST(RaggedTest, AddPrefixToRaggedTest) {
         EXPECT_EQ(dst.NumElements(), src.NumElements() + prefix.Dim());
         Ragged<int32_t> src_cpu = src.To(GetCpuContext());
         Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
-        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
-        Array1<int32_t> src_row_ids = src_cpu.RowIds(num_axes - 1);
-        Array1<int32_t> prefix_cpu = prefix.To(GetCpuContext());
-        for (int32_t i = 0; i < src.NumElements(); ++i) {
-          EXPECT_EQ(dst_cpu.values[i + src_row_ids[i] + 1], src_cpu.values[i]);
+        for (RaggedShapeIndexIterator src_iter = src_cpu.shape.Iterator();
+            !src_iter.Done(); src_iter.Next()) {
+          const std::vector<int32_t> &src_indexes = src_iter.Value();
+          std::vector<int32_t> dst_indexes(src_indexes);
+          dst_indexes.back() += 1;  // increase the last index by 1
+          EXPECT_EQ(dst_cpu[dst_indexes], src_cpu[src_indexes]);
         }
+        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
+        Array1<int32_t> prefix_cpu = prefix.To(GetCpuContext());
         for (int32_t i = 0; i < prefix.Dim(); ++i) {
           EXPECT_EQ(dst_cpu.values[src_row_splits[i] + i], prefix_cpu[i]);
         }
