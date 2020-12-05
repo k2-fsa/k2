@@ -80,6 +80,17 @@ int32_t Shape::ComputeStorageSize() const {
 
 bool Shape::ComputeIsContiguous() const {
   NVTX_RANGE(K2_FUNC);
+
+  // It may happen that all strides are zero,
+  // i.e., the tensor contains only one element.
+  // In this case, the tensor is contiguous.
+  int32_t s = 0;
+  for (int32_t i = num_axes_ - 1; i >= 0; --i) {
+    K2_CHECK_GE(strides_[i], 0);
+    s += strides_[i];
+  }
+  if (s == 0) return true;
+
   int32_t z = 1;
   for (int32_t i = num_axes_ - 1; i >= 0; --i) {
     K2_CHECK_GE(strides_[i], z);

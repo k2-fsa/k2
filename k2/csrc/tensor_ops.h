@@ -90,7 +90,7 @@ Tensor IndexAdd(Tensor &src, Array1<int32_t> &indexes, int32_t dim,
   Version of IndexAdd() that does not allocate the tensor, but expects it
   to already be allocated (and set to zero, if appropriate).
            @param [in] src  Source tensor whose elements are to be added to
-                            `dest`
+                            `dest`. It supports only 1-D and 2-D tensors.
            @param [in] indexes  Indexes with `indexes.Dim() == src.Dim(0)`.
                       If allow_minus_one == false, these must
                       satisfy 0 <= indexes[i] < dim; if allow_minus_one == true,

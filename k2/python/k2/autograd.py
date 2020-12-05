@@ -326,7 +326,7 @@ class _IndexSelectFunction(torch.autograd.Function):
                           dtype=torch.float32,
                           device=src.device,
                           requires_grad=False)
-        _k2.index_add(index, out_grad.clone(), ans)
+        _k2.index_add(index, out_grad, ans)
         return ans, None
 
 
