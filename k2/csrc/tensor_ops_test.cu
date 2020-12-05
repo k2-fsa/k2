@@ -305,11 +305,13 @@ static void TestIndexAdd2D() {
 
 TEST(IndexAdd, IndexAdd1D) {
   TestIndexAdd1D<float>();
+  TestIndexAdd1D<double>();
   TestIndexAdd1D<int32_t>();
 }
 
 TEST(IndexAdd, IndexAdd2D) {
   TestIndexAdd2D<float>();
+  TestIndexAdd2D<double>();
   TestIndexAdd2D<int32_t>();
 }
 
