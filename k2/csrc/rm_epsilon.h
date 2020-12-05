@@ -39,6 +39,10 @@ namespace k2 {
      @param [in] dest  Output FsaVec; will contain all the states that had
                        epsilon arcs leaving them or entering them, plus any
                        initial and final final states in `src`.
+                       Noted if src[i] has no arc (but has some states),
+                       we would not keep the start state and final state of it
+                       in the corresponding output Fsa dest[i], i.e. dest[i]
+                       will be an empty Fsa.
     @param [out]       Will be set to a new Array1 mapping from the
                        state_idx01's in `dest` to the corresponding
                        state_idx01's in `src`.
@@ -58,6 +62,10 @@ void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
      @param [in] dest  Output FsaVec; will contain all the states that had
                        non-epsilon arcs leaving them or entering them, plus any
                        initial and final final states in `src`.
+                       Noted if src[i] has no arc (but has some states),
+                       we would not keep the start state and final state of it
+                       in the corresponding output Fsa dest[i], i.e. dest[i]
+                       will be an empty Fsa.
      @param [out]      Will be set to the renumbering object from the old to new
                        state indexes.
     @param [out] arc_map  Will be set to a new Array1, mapping from the
