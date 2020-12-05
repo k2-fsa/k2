@@ -193,7 +193,10 @@ class Tensor {
     it will have a different memory layout than the input.  [Internally it will
     call `Contiguous()`.
   */
-  Tensor To(ContextPtr ctx);
+  Tensor To(ContextPtr ctx) const;
+
+  // Return a contiguous tensor that does not share memory with this tensor.
+  Tensor Clone() const;
 
   ContextPtr &Context() const { return impl_->data->context; }
 

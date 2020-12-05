@@ -16,26 +16,24 @@
 
 namespace k2 {
 
-/* Generate random indexes for testing `Index`.
+/* Return 1-D array filled with random values.
 
    @param [in] context  The device context specifying where the returned
                         array resides.
    @param [in] allow_minus_one
                         If true, the returned array will contain values
                         in the range [-1, max_value]; [0, max_value] otherwise.
-   @param [in] num_indexes_elements
-                        It specifies the length of the returned array.
+   @param [in] dim        It specifies the length of the returned array.
    @param [in] max_value  It specifies the maximum value the returned array can
                           contain.
 
-   @return  Return a 1-D array that can be used for testing `Index`.
+   @return  Return a 1-D array with the given `dim`.
  */
 
 static Array1<int32_t> GenerateRandomIndexes(ContextPtr context,
-                                             bool allow_minus_one,
-                                             int32_t num_indexes_elements,
+                                             bool allow_minus_one, int32_t dim,
                                              int32_t max_value) {
-  std::vector<int32_t> indexes(num_indexes_elements);
+  std::vector<int32_t> indexes(dim);
   int32_t start = allow_minus_one ? -1 : 0;
   for (int32_t &i : indexes) {
     int32_t tmp = RandInt(-max_value, max_value);
@@ -45,38 +43,24 @@ static Array1<int32_t> GenerateRandomIndexes(ContextPtr context,
   return Array1<int32_t>(context, indexes);
 }
 
-/* Get the test data for `Index`.
+/* Return a 1-D tensor with random entries.
 
    @param [in] context  It specifies the device where the output tensor resides.
+   @param [in] dim      Number of elements contained in the returned tensor.
    @param [in] stride   A positive number indicating the expected stride
                         of the output `tensor`.
-   @param [in] allow_minus_one
-                        If it is true, then -1 is a valid entry in the returned
-                        `indexes` array. If it is false, all elements in the
-                        returned `indexes` array are non-negative.
-   @param [out] indexes The output indexes containing entries in the range
-                        [0, tensor.Dim(0)) if allow_minus_one is false;
-                        [-1, tensor.Dim(0)) if allow_minus_one is true.
 
-   @return Returns a 1-D tensor with the given `stride`.
+   @return Returns a 1-D tensor with the given `dim` and `stride`.
  */
 template <typename T>
-static Tensor GenerateRandDataForIndex1D(ContextPtr context, int32_t stride,
-                                         bool allow_minus_one,
-                                         Array1<int32_t> *indexes) {
-  K2_CHECK_NE(indexes, nullptr);
+static Tensor GenerateRandTensor1D(ContextPtr context, int32_t dim,
+                                   int32_t stride) {
   K2_CHECK_GT(stride, 0);
 
-  int32_t num_tensor_elements = RandInt(1, 100);
-  int32_t num_indexes_elements = RandInt(1, 20000);
-
-  *indexes = GenerateRandomIndexes(
-      context, allow_minus_one, num_indexes_elements, num_tensor_elements - 1);
-
-  std::vector<T> data_vec(num_tensor_elements);
+  std::vector<T> data_vec(dim);
   for (T &d : data_vec) d = RandInt(-1000, 1000);
 
-  Shape shape({num_tensor_elements}, {stride});
+  Shape shape({dim}, {stride});
 
   Array1<T> array(context, data_vec);
   const T *array_data = array.Data();
@@ -84,42 +68,30 @@ static Tensor GenerateRandDataForIndex1D(ContextPtr context, int32_t stride,
   Tensor ans(context, DtypeOf<T>::dtype, shape);
   T *ans_data = ans.Data<T>();
   K2_EVAL(
-      context, num_tensor_elements, lambda_set,
+      context, dim, lambda_set,
       (int32_t i)->void { ans_data[i * stride] = array_data[i]; });
   return ans;
 }
 
-/* Get the test data for `Index`.
+/* Return a 2-D tensor filled with random values.
 
-   @param [in] context  It specifies the device where the output tensor resides.
-   @param [in] stride   A positive number indicating the expected row stride
-                        of the output `tensor`.
+   @param [in] context   It specifies the device where the output tensor
+                         resides.
    @param [in] num_rows  Number of rows in the returned tensor.
    @param [in] num_cols  Number of columns in the returned tensor.
-   @param [in] allow_minus_one
-                        If it is true, then -1 is a valid entry in the returned
-                        `indexes` array. If it is false, all elements in the
-                        returned `indexes` array are non-negative.
-   @param [out] indexes The output indexes containing entries in the range
-                        [0, tensor.Dim(0)) if allow_minus_one is false;
-                        [-1, tensor.Dim(0)) if allow_minus_one is true.
+   @param [in] stride    A positive number indicating the expected row stride
+                         of the output `tensor`.
 
-   @return Returns a 2-D tensor with the given `stride`, `num_rows` and
-           `num_cols`.
+   @return Returns a 2-D tensor with the given `num_rows`, `num_cols` and
+           `stride`.
  */
 template <typename T>
-static Tensor GenerateRandDataForIndex2D(ContextPtr context, int32_t stride,
-                                         int32_t num_rows, int32_t num_cols,
-                                         bool allow_minus_one,
-                                         Array1<int32_t> *indexes) {
+static Tensor GenerateRandTensor2D(ContextPtr context, int32_t num_rows,
+                                   int32_t num_cols, int32_t stride) {
   int32_t num_tensor_elements = num_rows * num_cols;
-  int32_t num_indexes_elements = RandInt(1, 10);
   K2_CHECK_GT(num_cols, 0);
   K2_CHECK_GE(stride, num_cols);
   K2_CHECK_GE(num_rows, 0);
-
-  *indexes = GenerateRandomIndexes(context, allow_minus_one,
-                                   num_indexes_elements, num_rows - 1);
 
   std::vector<T> data_vec(num_tensor_elements);
   for (T &d : data_vec) d = RandInt(-1000, 1000);
@@ -141,13 +113,19 @@ template <typename T>
 static void TestIndex1D() {
   bool allow_minus_one;
   int32_t stride;
+  int32_t indexes_dim;
+  int32_t numel;
   for (int32_t i = 0; i != 8; ++i) {
     stride = RandInt(1, 10);
     allow_minus_one = RandInt(-1000, 1000) & 1;
-    Array1<int32_t> indexes;
+    indexes_dim = RandInt(1, 20000);
+    numel = RandInt(1, 20000);
+
     ContextPtr context = (i & 1) ? GetCpuContext() : GetCudaContext();
-    Tensor src = GenerateRandDataForIndex1D<T>(context, stride, allow_minus_one,
-                                               &indexes);
+    Array1<int32_t> indexes =
+        GenerateRandomIndexes(context, allow_minus_one, indexes_dim, numel - 1);
+
+    Tensor src = GenerateRandTensor1D<T>(context, numel, stride);
     Tensor ans = Index(src, indexes, allow_minus_one);
     ASSERT_TRUE(ans.IsContiguous());
     ASSERT_EQ(ans.NumAxes(), 1);
@@ -178,15 +156,19 @@ static void TestIndex2D() {
   int32_t stride;
   int32_t num_rows;
   int32_t num_cols;
+  int32_t indexes_dim;
   for (int32_t i = 0; i != 8; ++i) {
     num_rows = RandInt(1, 100);
     num_cols = RandInt(1, 100);
     stride = RandInt(0, 10) + num_cols;
+    indexes_dim = RandInt(1, 10000);
     allow_minus_one = RandInt(-1000, 1000) & 1;
-    Array1<int32_t> indexes;
+
     ContextPtr context = (i & 1) ? GetCpuContext() : GetCudaContext();
-    Tensor src = GenerateRandDataForIndex2D<T>(
-        context, stride, num_rows, num_cols, allow_minus_one, &indexes);
+    Array1<int32_t> indexes = GenerateRandomIndexes(context, allow_minus_one,
+                                                    indexes_dim, num_rows - 1);
+
+    Tensor src = GenerateRandTensor2D<T>(context, num_rows, num_cols, stride);
     Tensor ans = Index(src, indexes, allow_minus_one);
 
     ASSERT_TRUE(ans.IsContiguous());
@@ -228,88 +210,97 @@ TEST(Index, Index2D) {
   TestIndex2D<int32_t>();
 }
 
-// TODO(fangjun): use random generated data for testing
 template <typename T>
 static void TestIndexAdd1D() {
-  {
-    bool allow_minus_one = true;
-    std::vector<T> src_vec = {10, 20, 30, 40, 5};
-    std::vector<int32_t> indexes_vec = {-1, 0, 3, 2, 0};
+  bool allow_minus_one;
+  int32_t src_stride;
+  int32_t dest_stride;
+  int32_t src_dim;
+  int32_t dest_dim;
+  for (int32_t i = 0; i != 8; ++i) {
+    src_stride = RandInt(1, 10);
+    dest_stride = RandInt(1, 10);
+    allow_minus_one = RandInt(-1000, 1000) & 1;
+    src_dim = RandInt(1, 20000);
+    dest_dim = RandInt(1, 20000);
 
-    // ContextPtr context = GetCpuContext();
-    ContextPtr context = GetCudaContext();
-    Array1<T> src_array(context, src_vec);
-    Array1<int32_t> indexes_array(context, indexes_vec);
-    Tensor src = src_array.ToTensor();
+    ContextPtr context = (i & 1) ? GetCpuContext() : GetCudaContext();
 
-    Shape shape({4});
-    Tensor dest(context, DtypeOf<T>::dtype, shape);
-    T *dest_data = dest.Data<T>();
+    Array1<int32_t> indexes =
+        GenerateRandomIndexes(context, allow_minus_one, src_dim, dest_dim - 1);
 
-    K2_EVAL(
-        context, 4, lambda_set_zero, (int32_t i)->void { dest_data[i] = 0; });
-    K2_LOG(INFO) << Array1<T>(src);
-    K2_LOG(INFO) << Array1<T>(dest);
-    K2_LOG(INFO) << indexes_array;
-    IndexAdd(src, indexes_array, allow_minus_one, &dest);
-    K2_LOG(INFO) << Array1<T>(dest);
-  }
+    Tensor src = GenerateRandTensor1D<T>(context, src_dim, src_stride);
+    Tensor dest = GenerateRandTensor1D<T>(context, dest_dim, dest_stride);
+    Tensor saved_dest = dest.Clone();
 
-  {
-    bool allow_minus_one = false;
-    std::vector<T> src_vec = {10, 20, 30, 40, 5, 9, 8};
-    std::vector<int32_t> indexes_vec = {0, 2, 3, 2, 0, 1, 1};
+    IndexAdd(src, indexes, allow_minus_one, &dest);
 
-    // ContextPtr context = GetCpuContext();
-    ContextPtr context = GetCudaContext();
-    Array1<T> src_array(context, src_vec);
-    Array1<int32_t> indexes_array(context, indexes_vec);
-    Tensor src = src_array.ToTensor();
+    src = src.To(GetCpuContext());
+    dest = dest.To(src.Context());
+    indexes = indexes.To(dest.Context());
+    saved_dest = saved_dest.To(src.Context());
+    const T *src_data = src.Data<T>();
+    const T *dest_data = dest.Data<T>();
+    const int32_t *indexes_data = indexes.Data();
+    T *saved_dest_data = saved_dest.Data<T>();
+    for (int32_t i = 0; i != src_dim; ++i) {
+      int32_t index = indexes_data[i];
+      if (index == -1) continue;
+      saved_dest_data[index] += src_data[i];
+    }
 
-    Shape shape({4});
-    Tensor dest(context, DtypeOf<T>::dtype, shape);
-    T *dest_data = dest.Data<T>();
-
-    K2_EVAL(
-        context, 4, lambda_set_zero, (int32_t i)->void { dest_data[i] = 0; });
-    K2_LOG(INFO) << Array1<T>(src);
-    K2_LOG(INFO) << Array1<T>(dest);
-    K2_LOG(INFO) << indexes_array;
-    IndexAdd(src, indexes_array, allow_minus_one, &dest);
-    K2_LOG(INFO) << Array1<T>(dest);
+    for (int32_t i = 0; i != dest_dim; ++i)
+      EXPECT_EQ(dest_data[i], saved_dest_data[i]);
   }
 }
 
 template <typename T>
 static void TestIndexAdd2D() {
-  bool allow_minus_one = true;
+  bool allow_minus_one;
+  int32_t src_stride;
+  int32_t dest_stride;
+  int32_t num_src_rows;
+  int32_t num_dest_rows;
+  int32_t num_cols;
+  for (int32_t i = 0; i != 8; ++i) {
+    num_src_rows = RandInt(1, 100);
+    num_dest_rows = RandInt(1, 100);
+    num_cols = RandInt(1, 100);
+    src_stride = RandInt(0, 10) + num_cols;
+    dest_stride = RandInt(0, 10) + num_cols;
+    allow_minus_one = RandInt(-1000, 1000) & 1;
 
-  std::vector<T> src_vec = {10, 20, 30, 40, 50, 60, 70, 80, 5, 8, 3, 6};
-  std::vector<int32_t> indexes_vec = {-1, 0, 1, 1, 0, 0};
+    ContextPtr context = (i & 1) ? GetCpuContext() : GetCudaContext();
+    Array1<int32_t> indexes = GenerateRandomIndexes(
+        context, allow_minus_one, num_src_rows, num_dest_rows - 1);
 
-  // ContextPtr context = GetCpuContext();
-  ContextPtr context = GetCudaContext();
-  Array1<T> src_array(context, src_vec);
-  const T *src_array_data = src_array.Data();
-  Array1<int32_t> indexes_array(context, indexes_vec);
-  Shape src_shape({6, 2});
-  Tensor src(context, DtypeOf<T>::dtype, src_shape);
-  T *src_data = src.Data<T>();
-  K2_EVAL(
-      context, 12, lambda_copy_data,
-      (int32_t i)->void { src_data[i] = src_array_data[i]; });
+    Tensor src =
+        GenerateRandTensor2D<T>(context, num_src_rows, num_cols, src_stride);
+    Tensor dest =
+        GenerateRandTensor2D<T>(context, num_dest_rows, num_cols, dest_stride);
+    Tensor saved_dest = dest.Clone();
 
-  Shape shape({2, 2});
-  Tensor dest(context, DtypeOf<T>::dtype, shape);
-  T *dest_data = dest.Data<T>();
+    IndexAdd(src, indexes, allow_minus_one, &dest);
 
-  K2_EVAL(
-      context, 4, lambda_set_zero, (int32_t i)->void { dest_data[i] = 0; });
-  K2_LOG(INFO) << Array1<T>(src);
-  K2_LOG(INFO) << Array1<T>(dest);
-  K2_LOG(INFO) << indexes_array;
-  IndexAdd(src, indexes_array, allow_minus_one, &dest);
-  K2_LOG(INFO) << Array1<T>(dest);
+    src = src.To(GetCpuContext());
+    dest = dest.To(src.Context());
+    indexes = indexes.To(dest.Context());
+    saved_dest = saved_dest.To(src.Context());
+    const T *src_data = src.Data<T>();
+    const T *dest_data = dest.Data<T>();
+    const int32_t *indexes_data = indexes.Data();
+    T *saved_dest_data = saved_dest.Data<T>();
+    for (int32_t i = 0; i != num_src_rows; ++i) {
+      int32_t index = indexes_data[i];
+      if (index == -1) continue;
+      for (int j = 0; j != num_cols; ++j)
+        saved_dest_data[index * num_cols + j] += src_data[i * num_cols + j];
+    }
+
+    int32_t n = num_dest_rows * num_cols;
+    for (int32_t i = 0; i != n; ++i)
+      EXPECT_EQ(dest_data[i], saved_dest_data[i]);
+  }
 }
 
 TEST(IndexAdd, IndexAdd1D) {

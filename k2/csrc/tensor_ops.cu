@@ -233,7 +233,6 @@ static Tensor Index1D(Tensor &src, Array1<int32_t> &indexes,
   K2_CHECK(ans.IsContiguous());
 
   int32_t src_stride = src.Stride(0);
-
   const int32_t *indexes_data = indexes.Data();
   int32_t src_dim = src.Dim(0);
   int32_t ans_dim = ans.Dim(0);

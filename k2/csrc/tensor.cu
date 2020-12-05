@@ -166,7 +166,7 @@ void Tensor::Init(ContextPtr c) {
 
 Tensor::Tensor(TensorImplPtr impl) : impl_(impl) {}
 
-Tensor Tensor::To(ContextPtr ctx) {
+Tensor Tensor::To(ContextPtr ctx) const {
   NVTX_RANGE(K2_FUNC);
   if (!IsContiguous()) return ToContiguous(*this).To(ctx);
 
@@ -179,6 +179,23 @@ Tensor Tensor::To(ContextPtr ctx) {
   auto kind = GetMemoryCopyKind(*Context(), *ctx);
   MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
              region->num_bytes, kind, ctx.get());
+  TensorImplPtr impl =
+      std::make_shared<TensorImpl>(GetShape(), GetDtype(), size_t(0), region);
+  return Tensor(impl);
+}
+
+Tensor Tensor::Clone() const {
+  NVTX_RANGE(K2_FUNC);
+  if (!IsContiguous()) return ToContiguous(*this);
+
+  ContextPtr &context = Context();
+  RegionPtr region = NewRegion(context, GetRegion()->num_bytes);
+
+  int8_t *dst = region->GetData<int8_t>();
+  const int8_t *src = GetRegion()->GetData<int8_t>();
+  auto kind = GetMemoryCopyKind(*context, *context);
+  MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
+             region->num_bytes, kind, context.get());
   TensorImplPtr impl =
       std::make_shared<TensorImpl>(GetShape(), GetDtype(), size_t(0), region);
   return Tensor(impl);
