@@ -47,25 +47,28 @@ void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
         int32_t state_idx01 = src_row_ids2_data[arc_idx012],
                 fsa_idx0 = src_row_ids1_data[state_idx01];
         // note start_state is idx0x
-        int32_t start_state = src_row_splits1_data[fsa_idx0],
+        int32_t start_state_this_fsa = src_row_splits1_data[fsa_idx0],
                 start_state_next_fsa = src_row_splits1_data[fsa_idx0 + 1],
-                first_arc_idx0xx = src_row_splits2_data[start_state];
+                first_arc_idx0xx_this_fsa =
+                    src_row_splits2_data[start_state_this_fsa];
         Arc cur_arc = src_arcs_data[arc_idx012];
         // we only keep epsilon arcs
         arc_keep_data[arc_idx012] = (cur_arc.label == 0);
         if (cur_arc.label == 0) {
           // we keep any state who has entering or leaving epsilon arcs.
-          int32_t cur_arc_src_state_idx01 = start_state + cur_arc.src_state;
-          int32_t cur_arc_dest_state_idx01 = start_state + cur_arc.dest_state;
+          int32_t cur_arc_src_state_idx01 =
+              start_state_this_fsa + cur_arc.src_state;
+          int32_t cur_arc_dest_state_idx01 =
+              start_state_this_fsa + cur_arc.dest_state;
           state_keep_data[cur_arc_src_state_idx01] = 1;
           state_keep_data[cur_arc_dest_state_idx01] = 1;
         }
         // We always keep start state and final state for each non-empty fsa,
         // but only set `state_keep_data` when we process the first arc
         // of this fsa.
-        if (start_state_next_fsa > start_state &&
-            arc_idx012 == first_arc_idx0xx) {
-          state_keep_data[start_state] = 1;
+        if (start_state_next_fsa > start_state_this_fsa &&
+            arc_idx012 == first_arc_idx0xx_this_fsa) {
+          state_keep_data[start_state_this_fsa] = 1;
           state_keep_data[start_state_next_fsa - 1] = 1;
         }
       });
@@ -73,15 +76,10 @@ void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
   Array1<int32_t> state_new_to_old = state_renumbering.New2Old();
   Array1<int32_t> state_old_to_new = state_renumbering.Old2New();
   Array1<int32_t> arc_new_to_old = arc_renumbering.New2Old();
-  Array1<int32_t> arc_old_to_new = arc_renumbering.Old2New();
   const int32_t *state_old_to_new_data = state_old_to_new.Data(),
-                *state_new_to_old_data = state_new_to_old.Data(),
-                *arc_old_to_new_data = arc_old_to_new.Data(),
                 *arc_new_to_old_data = arc_new_to_old.Data();
 
   // get row_splits1 and row_ids of dest
-  // TODO(haowen): should I put it in ParallelRunner even if ParallelRunner does
-  // nothing currently
   Array1<int32_t> dest_row_splits1 = state_old_to_new[src.RowSplits(1)];
   Array1<int32_t> dest_row_ids1 = src.RowIds(1)[state_new_to_old];
 
@@ -103,21 +101,20 @@ void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
         int32_t src_start_state_idx0x = src_row_splits1_data[fsa_idx0],
                 dest_start_state_idx0x =
                     state_old_to_new_data[src_start_state_idx0x];
-        Arc cur_arc =
-            src_arcs_data[src_arc_idx012];  // note cur_arc is arc in `src`
-        K2_DCHECK_EQ(cur_arc.label, 0);
+        Arc cur_src_arc = src_arcs_data[src_arc_idx012];
+        K2_DCHECK_EQ(cur_src_arc.label, 0);
         // TODO(Haowen): remove below check after testing
-        int32_t cur_arc_src_state_idx01 =
-            cur_arc.src_state + src_start_state_idx0x;
-        K2_DCHECK_EQ(cur_arc_src_state_idx01, src_state_idx01);
-        int32_t cur_arc_dest_state_idx01 =
-            cur_arc.dest_state + src_start_state_idx0x;
+        int32_t cur_src_arc_src_state_idx01 =
+            cur_src_arc.src_state + src_start_state_idx0x;
+        K2_DCHECK_EQ(cur_src_arc_src_state_idx01, src_state_idx01);
+        int32_t cur_src_arc_dest_state_idx01 =
+            cur_src_arc.dest_state + src_start_state_idx0x;
         int32_t cur_dest_arc_dest_state_idx01 =
-            state_old_to_new_data[cur_arc_dest_state_idx01];
+            state_old_to_new_data[cur_src_arc_dest_state_idx01];
         dest_arcs_data[dest_arc_idx012] =
             Arc(dest_state_idx01 - dest_start_state_idx0x,
                 cur_dest_arc_dest_state_idx01 - dest_start_state_idx0x, 0,
-                cur_arc.score);
+                cur_src_arc.score);
       });
   *state_map = state_new_to_old;
   *arc_map = arc_new_to_old;
