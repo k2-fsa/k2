@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <sstream>
 #include <string>
 
