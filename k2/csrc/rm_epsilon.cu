@@ -79,25 +79,11 @@ void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
                 *arc_old_to_new_data = arc_old_to_new.Data(),
                 *arc_new_to_old_data = arc_new_to_old.Data();
 
-  // get row_splits1 of dest
-  Array1<int32_t> dest_row_splits1 = Array1<int32_t>(c, num_fsas + 1);
-  int32_t *dest_row_splits1_data = dest_row_splits1.Data();
-  K2_EVAL(
-      c, num_fsas, lambda_set_dest_row_splits1, (int32_t fsa_idx01)->void {
-        int32_t src_start_state_this_fsa = src_row_splits1_data[fsa_idx01],
-                src_start_state_next_fsa = src_row_splits1_data[fsa_idx01 + 1];
-        if (src_start_state_next_fsa > src_start_state_this_fsa) {
-          int32_t dest_start_state_this_fsa =
-                      state_old_to_new_data[src_start_state_this_fsa],
-                  dest_final_state_this_fsa =
-                      state_old_to_new_data[src_start_state_next_fsa - 1];
-          dest_row_splits1_data[fsa_idx01] =
-              dest_final_state_this_fsa - dest_start_state_this_fsa + 1;
-        } else {
-          dest_row_splits1_data[fsa_idx01] = 0;
-        }
-      });
-  ExclusiveSum(dest_row_splits1.Arange(0, num_fsas), &dest_row_splits1);
+  // get row_splits1 and row_ids of dest
+  // TODO(haowen): should I put it in ParallelRunner even if ParallelRunner does
+  // nothing currently
+  Array1<int32_t> dest_row_splits1 = state_old_to_new[src.RowSplits(1)];
+  Array1<int32_t> dest_row_ids1 = src.RowIds(1)[state_new_to_old];
 
   // get arcs and row_ids2 of dest
   int32_t dest_num_arcs = arc_new_to_old.Dim();
@@ -135,9 +121,8 @@ void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
       });
   *state_map = state_new_to_old;
   *arc_map = arc_new_to_old;
-  RaggedShape dest_shape =
-      RaggedShape3(&dest_row_splits1, nullptr, state_new_to_old.Dim(), nullptr,
-                   &dest_row_ids2, arc_new_to_old.Dim());
+  RaggedShape dest_shape = RaggedShape3(&dest_row_splits1, &dest_row_ids1, -1,
+                                        nullptr, &dest_row_ids2, dest_num_arcs);
   *dest = FsaVec(dest_shape, dest_arcs);
 }
 
