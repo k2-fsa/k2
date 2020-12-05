@@ -42,7 +42,9 @@ Tensor Cast(Tensor src, Dtype new_dtype);
   Returns a Tensor that is a result of indexing `src` along its
   axis 0 with `indexes`, as if you had done src[indexes] in Pytorch.
 
-     @param [in] src  Source tensor, to be indexed
+     @param [in] src  Source tensor, to be indexed. Currently, it
+                      supports only 1-D and 2-D tensors. If the
+                      tensor is 2-D, it requires that its Stride(1) is 1.
      @param [in] indexes   Indexes to use; if allow_minus_one == false,
                      must satisfy 0 <= indexes[i] < src.Dim(0);
                      if allow_minus_one == true, -1 is also allowed
@@ -87,8 +89,8 @@ Tensor IndexAdd(Tensor &src, Array1<int32_t> &indexes, int32_t dim,
 /*
   Version of IndexAdd() that does not allocate the tensor, but expects it
   to already be allocated (and set to zero, if appropriate).
-           @param [in] src  Source tensor whose elemnts are to be added to
-                            `dest`
+           @param [in] src  Source tensor whose elements are to be added to
+                            `dest`. It supports only 1-D and 2-D tensors.
            @param [in] indexes  Indexes with `indexes.Dim() == src.Dim(0)`.
                       If allow_minus_one == false, these must
                       satisfy 0 <= indexes[i] < dim; if allow_minus_one == true,

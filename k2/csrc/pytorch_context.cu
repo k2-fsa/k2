@@ -152,7 +152,7 @@ RegionPtr NewRegion(torch::Tensor &tensor) {
   auto *managed_tensor = new ManagedTensor(tensor);
   ans->data = tensor.data_ptr();
   ans->deleter_context = managed_tensor;
-  ans->num_bytes = tensor.nbytes();
+  ans->num_bytes = tensor.storage().nbytes();
   ans->bytes_used = ans->num_bytes;
   return ans;
 }

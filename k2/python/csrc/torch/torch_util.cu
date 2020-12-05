@@ -139,4 +139,11 @@ torch::Tensor ToTensor(Tensor &tensor) {
       [saved_region = tensor.GetRegion()](void *) {}, options);
 }
 
+ContextPtr GetContext(torch::Tensor tensor) {
+  if (tensor.device().type() == torch::kCPU) return GetCpuContext();
+
+  K2_CHECK(tensor.is_cuda());
+  return GetCudaContext(tensor.device().index());
+}
+
 }  // namespace k2
