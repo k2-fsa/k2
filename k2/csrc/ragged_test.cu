@@ -5,6 +5,7 @@
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                      Microsoft Corporation (authors: Yiming Wang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -2023,6 +2024,65 @@ TEST(RaggedShapeOpsTest, GetPrefixesTest) {
             EXPECT_TRUE(Equal(result.RowSplits(m), ans_j.RowSplits(m)));
           }
         }
+      }
+    }
+  }
+}
+
+TEST(RaggedTest, AddSuffixToRaggedTest) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // test with random large size
+      for (int32_t i = 0; i < 10; ++i) {
+        Ragged<int32_t> src = RandomRagged<int32_t>().To(context);
+        int32_t num_axes = src.NumAxes();
+        Array1<int32_t> suffix =
+            RandUniformArray1<int32_t>(context, src.TotSize(num_axes - 2),
+                                       0, 100);
+        Ragged<int32_t> dst = AddSuffixToRagged(src, suffix);
+        EXPECT_EQ(dst.NumAxes(), num_axes);
+        EXPECT_EQ(dst.NumElements(), src.NumElements() + suffix.Dim());
+        Ragged<int32_t> src_cpu = src.To(GetCpuContext());
+        Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
+        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
+        Array1<int32_t> src_row_ids = src_cpu.RowIds(num_axes - 1);
+        Array1<int32_t> suffix_cpu = suffix.To(GetCpuContext())
+        for (int32_t i = 0; i < src.NumElements(); ++i) {
+          EXPECT_EQ(dst_cpu.values[i + src_row_ids[i]], src_cpu.values[i]);
+        }
+        for (int32_t i = 0; i < suffix.Dim(); ++i) {
+          EXPECT_EQ(dst_cpu.values[src_row_splits[i + 1] + i], suffix_cpu[i]);
+        }
+      }
+    }
+  }
+}
+
+TEST(RaggedTest, AddPrefixToRaggedTest) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // test with random large size
+      for (int32_t i = 0; i < 10; ++i) {
+        Ragged<int32_t> src = RandomRagged<int32_t>().To(context);
+        int32_t num_axes = src.NumAxes();
+        Array1<int32_t> prefix =
+            RandUniformArray1<int32_t>(context, src.TotSize(num_axes - 2),
+                                       0, 100);
+        Ragged<int32_t> dst = AddPrefixToRagged(src, prefix);
+        EXPECT_EQ(dst.NumAxes(), num_axes);
+        EXPECT_EQ(dst.NumElements(), src.NumElements() + prefix.Dim());
+        Ragged<int32_t> src_cpu = src.To(GetCpuContext());
+        Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
+        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
+        Array1<int32_t> src_row_ids = src_cpu.RowIds(num_axes - 1);
+        Array1<int32_t> prefix_cpu = prefix.To(GetCpuContext())
+        for (int32_t i = 0; i < src.NumElements(); ++i) {
+          EXPECT_EQ(dst_cpu.values[i + src_row_ids[i] + 1], src_cpu.values[i]);
+        }
+        for (int32_t i = 0; i < prefix.Dim(); ++i) {
+          EXPECT_EQ(dst_cpu.values[src_row_splits[i] + i], prefix_cpu[i]);
+        }
+
       }
     }
   }

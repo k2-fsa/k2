@@ -1257,8 +1257,9 @@ Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
   ContextPtr &c = src.Context();
   Array1<int32_t> dst_values(c, src.NumElements() + suffix.Dim());
   int32_t *dst_values_data = dst_values.Data();
-  // "row_splits1" and "row_ids1" below are actually on the last axis. We name them with "1" so that we can use
-  // "idx01" and "idx0" for those indexes in lambda, following the naming convention explained in k2/csrc/utils.h
+  // "row_splits1" and "row_ids1" below are actually on the last axis. We name
+  // them with "1" so that we can use "idx01" and "idx0" for those indexes in
+  // lambda, following the naming convention explained in k2/csrc/utils.h
   const int32_t *src_row_splits1_data = src.RowSplits(num_axes - 1).Data(),
                 *src_row_ids1_data = src.RowIds(num_axes - 1).Data(),
                 *src_values_data = src.values.Data(),
@@ -1288,8 +1289,9 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
   ContextPtr &c = src.Context();
   Array1<int32_t> dst_values(c, src.NumElements() + prefix.Dim());
   int32_t *dst_values_data = dst_values.Data();
-  // "row_splits1" and "row_ids1" below are actually on the last axis. We name them with "1" so that we can use
-  // "idx01" and "idx0" for those indexes in lambda, following the naming convention explained in k2/csrc/utils.h
+  // "row_splits1" and "row_ids1" below are actually on the last axis. We name
+  // them with "1" so that we can use "idx01" and "idx0" for those indexes in
+  // lambda, following the naming convention explained in k2/csrc/utils.h
   const int32_t *src_row_splits1_data = src.RowSplits(num_axes - 1).Data(),
                 *src_row_ids1_data = src.RowIds(num_axes - 1).Data(),
                 *src_values_data = src.values.Data(),
