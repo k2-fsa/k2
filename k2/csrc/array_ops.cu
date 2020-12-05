@@ -442,8 +442,7 @@ Array1<int32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes)
                     c->GetCudaStream()>>>(
                         num_srcs, threads_per_row, row_splits_data,
                         tot_size, merge_map_data));
-
-  // TODO.
+  return ans;
 }
 
 

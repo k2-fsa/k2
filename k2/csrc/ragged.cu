@@ -168,7 +168,7 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
   K2_CHECK_EQ(axis, 0);
   K2_CHECK_GE(i, 0);
   int32_t num_axes = NumAxes();
-  K2_CHECK_GE(num_axes, 2);
+  K2_CHECK_GT(num_axes, 2);
   const auto &src_axes = Layers();
   K2_CHECK_LT(i + 1, src_axes[0].row_splits.Dim());
 

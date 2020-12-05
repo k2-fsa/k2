@@ -330,7 +330,7 @@ struct Ragged {
   bool Validate(bool print_warnings = true) const;
 
   /*
-    It is an error to call this if this.shape.NumAxes() < 2.  This will return
+    It is an error to call this if this.shape.NumAxes() <= 2.  This will return
     a Ragged<T> with one fewer axis, containing only the elements of
     *this for which the value on the provided axis is i; it will share
     the underlying data with `*this` where possible. CAUTION: currently this

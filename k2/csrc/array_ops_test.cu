@@ -1663,4 +1663,15 @@ TEST(OpsTest, Array2Assign) {
   }
 }
 
+TEST(OpsTest, SizesToMergeMapTest) {
+  for (int loop = 0; loop < 10; loop++) {
+    ContextPtr c = ((loop % 2) == 0 ? GetCpuContext() : GetCudaContext());
+    std::vector<int32_t> sizes = { 3, 5, 11 };
+    Array1<int32_t> merge_map = SizesToMergeMap(c, sizes);
+    std::vector<int32_t> expected_map = { 0, 3, 6, 2, 5, 8, 11, 14, 1 };
+    CheckArrayData(merge_map, expected_map);
+  }
+}
+
+
 }  // namespace k2

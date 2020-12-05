@@ -17,6 +17,7 @@
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_utils.h"
+#include "k2/csrc/ragged_ops.h"
 
 namespace k2 {
 
@@ -69,28 +70,111 @@ void CheckAxisEqual(int32_t num_srcs,
 }
 
 
-RaggedShape AppendRaggedAxisAfter(int32_t num_srcs,
-                                  int32_t axis,
+RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
+                                  int32_t layer,
                                   RaggedShape **src,
                                   Array1<int32_t> *merge_map) {
   K2_CHECK_GT(num_srcs, 0);
-  K2_CHECK_GE(axis, 0);
-  K2_CHECK_LT(axis + 1, src[0]->NumAxes());
+  K2_CHECK_GE(layer, 0);
+  K2_CHECK_LT(layer + 1, src[0]->NumAxes());
   if (num_srcs == 1) {
     if (merge_map)
-      *merge_map = Range(src[0]->Context(), src[0]->TotSize(axis + 1), 0);
+      *merge_map = Range(src[0]->Context(), src[0]->TotSize(layer + 1), 0);
     return *src[0];
   }
-  int32_t row_splits_dim,
-      tot_row_ids_dim;
+
   std::vector<int32_t> row_ids_dims_vec(num_srcs);
   std::vector<int32_t*> row_splits_ptrs_vec(num_srcs);
   std::vector<int32_t*> row_ids_ptrs_vec(num_srcs);
-  // set these up...
 
-  // TODO(dan).
+  int32_t num_axes = src[0]->NumAxes(),
+          num_rows = src[0]->TotSize(layer),
+       tot_elems = 0;
+  for (int32_t i = 0; i < num_srcs; i++) {
+    if (i > 0) {
+      K2_CHECK_EQ(src[i]->NumAxes(), num_axes);
+      K2_CHECK_EQ(src[i]->TotSize(layer), num_rows);
+    }
+    Array1<int32_t> &row_ids = src[i]->RowIds(layer + 1),
+                 &row_splits = src[i]->RowSplits(layer + 1);
+    tot_elems += (row_ids_dims_vec[i] = row_ids.Dim());
+    row_splits_ptrs_vec[i] = row_splits.Data();
+    row_ids_ptrs_vec[i] = row_ids.Data();
+  }
+  ContextPtr c = src[0]->Context();
 
+  int32_t new_num_rows = num_rows * num_srcs;
+  Array1<int32_t> row_ids(c, tot_elems),
+      row_splits(c, new_num_rows + 1);
+  int32_t *row_splits_data = row_splits.Data();
+  Array1<int32_t*> row_splits_ptrs(c, row_splits_ptrs_vec);
+  int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
 
+  if (c->GetDeviceType() == kCpu) {
+    int32_t row_splits_sum = 0;
+    row_splits_data[0] = 0;
+    for (int32_t i = 0; i < num_rows; i++) {
+      for (int32_t j = 0; j < num_srcs; j++) {
+        int32_t row_len = row_splits_ptrs_data[j][i+1] -
+                          row_splits_ptrs_data[j][i];
+        row_splits_sum += row_len;
+        row_splits_data[i * num_srcs + j + 1] = row_splits_sum;
+      }
+    }
+  } else {
+
+    if (num_srcs <= 16) {
+      // If num_srcs is not too large, we do an optimization.  Instead
+      // of computing the length of each row (as row_splits[i+1] - row_splits[i])
+      // and doing exclusive-sum to get the row_splits, we sum up
+      //  `num_srcs` row_splits numbered `i, i+1, .. i+num_srcs-1.`
+      // (These numberings map to source i % num_srcs at position i / num_srcs).
+      // This gives us the same answer, with less latency.
+      auto lambda_get_row_splits = [=] __device__ (int32_t i) -> void {
+        int32_t sum = 0;
+        for (int32_t j = i; j < i + num_srcs; j++) {
+          int32_t src = j % num_srcs,
+                  pos = j / num_srcs;
+          int32_t this_row_split = row_splits_ptrs_data[src][pos];
+          sum += this_row_split;
+        }
+        row_splits_data[i] = sum;
+      };
+      EvalDevice(c, new_num_rows + 1, lambda_get_row_splits);
+    } else {
+      // Set the row_splits initially to the sizes, then do exclusive-sum.
+      auto lambda_get_sizes = [=] __device__ (int32_t i) -> void {
+        int32_t src = i % num_srcs, pos = i / num_srcs;
+        int32_t this_size = row_splits_ptrs_data[src][pos + 1] -
+             row_splits_ptrs_data[src][pos];
+        row_splits_data[i] = this_size;
+      };
+      EvalDevice(c, new_num_rows + 1, lambda_get_sizes);
+      ExclusiveSum(row_splits, &row_splits);
+    }
+  }
+  RowSplitsToRowIds(row_splits, &row_ids);
+
+  if (merge_map != nullptr) {
+    *merge_map = Array1<int32_t>(c, tot_elems);
+    const int32_t *row_ids_data = row_ids.Data();
+    int32_t *merge_map_data = merge_map->Data();
+
+    K2_EVAL(c, tot_elems, lambda_set_merge_map, (int32_t idx01) -> void {
+        int32_t idx0 = row_ids_data[idx01],
+               idx1x = row_splits_data[idx0],
+                idx1 = idx01 - idx1x,
+                 src = idx0 % num_srcs,
+            src_idx0 = idx0 / num_srcs,
+           src_idx0x = row_splits_ptrs_data[src][src_idx0],
+           src_idx01 = src_idx0x + idx1;
+        // We multiply the src_idx01 by num_srcs as a way of encoding it and the src
+        // into a single integer.
+        merge_map_data[idx01] = src + (num_srcs * src_idx01);
+      });
+  }
+
+  return RaggedShape2(&row_splits, &row_ids, tot_elems);
 }
 
 

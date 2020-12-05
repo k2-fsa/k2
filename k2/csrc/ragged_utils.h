@@ -91,45 +91,47 @@ RaggedShape AppendRaggedAxisBefore(int32_t num_srcs,
 
 
 /*
-   Appending operation on a single axis of an array of RaggedShape sources,
-   that uses the order: Row 0 of source 0; row 0 of source 1, etc.,
+   Intersperses rows from a single layer of an array of RaggedShape sources,
+   using the order: Row 0 of source 0; row 0 of source 1, etc.,
    i.e. row 0 of all sources, then row 1 of all sources.
 
    (Check the usage message carefully, because this interface is not very
    intuitive).
 
-      @param [in] num_srcs   Number of sources to append/merge (size of array `src`).
+      @param [in] num_srcs   Number of sources to intersperse (size of array `src`).
                              Must be >= 1 (otherwise there would be no way to
                              determine the context).
-      @param [in] axis       Axis to operate on, viewed as index into src[i]->Axes().
-                             Must satisfy 0 <= axis < src[0]->Axes()  - 1.
+      @param [in] layer      Layer to operate on, viewed as index into src[i]->Layers().
+                             Must satisfy 0 <= layer < src[0]->NumAxes()  - 1.
       @param [in] src        Array of sources; must have the same device and num-axes,
-                             and src[i]->TotSize(axis) must be the same for all
+                             and src[i]->TotSize(layer) must be the same for all
                              i.
       @param [out,optional]  merge_map    If not nullptr, will be set to an array
-                             that indicates the source of each element on axis
-                             `axis+1`, with merge_map->Dim() == the sum of
-                             src[i]->TotSize(axis+1).  If `m = (*merge_map)[i]`,
+                             that indicates the source of each element of this
+                             layer, with merge_map->Dim() == the sum of
+                             src[i]->TotSize(layer+1).  If `m = (*merge_map)[i]`,
                              then `m % num_srcs` indicates the source for this
                              element and `m / num_srcs` indicates the position of this
                              element within its source.
 
-      @return               Return a RaggedShape with `NumAxes() == 2`, i.e. `Axes().size() == 1`,
-                            that is the result of appending the sources together; its
-                            TotSize(0) will be the sum of src[i]->TotSize(axis),
-                            and its TotSize(1) will be the sum of src[i]->TotSize(axis+1).
-                            Its order will be: all elements of *src[0], all elements of
-                            *src[1], and so on.
+      @return               Return a RaggedShape with `NumAxes() == 2`, i.e. one layer,
+                            that is the result of appending th
+                            sources together; its
+                            TotSize(0) will be the sum of src[i]->TotSize(layer),
+                            i.e. `num_srcs times src[0]->TotSize(layer)` since they
+                            are all the same;
+                            and its TotSize(1) will be the sum of `src[i]->TotSize(layer+1)`.
+                            The rows of the source shape are interspersed.
 
-    EXAMPLE: suppose num_srcs == 2, and axis == 0, and src[0]->NumAxes() == 2.
+    EXAMPLE: suppose num_srcs == 2, and layer == 0, and src[0]->NumAxes() == 2.
     And suppose *src[0] == [ x x x ] [ x x ] and *src[1] = [ x ] [ x x x ].  Then
     ans == [ x x x ] [ x ] [ x x ] [ x x x ], and merge_map (if requested) will
     be [ 0 2 4 1 6 8 3 5 7 ].
  */
-RaggedShape AppendRaggedAxisAfter(int32_t num_srcs,
-                                  int32_t axis,
-                                  RaggedShape **src,
-                                  Array1<int32_t> *merge_map = nullptr);
+RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
+                                   int32_t layer,
+                                   RaggedShape **src,
+                                   Array1<int32_t> *merge_map = nullptr);
 
 /*
   Merge a ragged axis given a 'merge_map' obtained from a previous operation on an
