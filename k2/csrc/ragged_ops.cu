@@ -106,8 +106,8 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
     if (row_ids != nullptr) K2_CHECK_EQ(cached_tot_size, row_ids->Dim());
     if (row_splits != nullptr) {
       // may be slow as it may copy memory from device to host
-      K2_DCHECK_EQ(cached_tot_size, row_splits->Back()) << "Bad row splits is: "
-                                                        << *row_splits;
+      K2_DCHECK_EQ(cached_tot_size, row_splits->Back())
+          << "Bad row splits is: " << *row_splits;
     }
   }
   std::vector<RaggedShapeDim> axes(1);
@@ -1165,26 +1165,24 @@ RaggedShape ChangeSublistSizePinned(RaggedShape &src, int32_t size_delta) {
   const int32_t *src_row_splits_data = src.RowSplits(last_axis).Data();
   int32_t *row_splits_data = ans_axes.back().row_splits.Data();
 
-  K2_EVAL(c, num_rows, lambda_set_row_sizes, (int32_t idx0) -> void {
-      int32_t orig_size = src_row_splits_data[idx0 + 1] -
-                          src_row_splits_data[idx0],
-                          size;
-      if (orig_size == 0 || orig_size + size_delta <= 0)
-        size = 0;
-      else
-        size = orig_size + size_delta;
-      row_splits_data[idx0] = size;
-    });
+  K2_EVAL(
+      c, num_rows, lambda_set_row_sizes, (int32_t idx0)->void {
+        int32_t orig_size =
+                    src_row_splits_data[idx0 + 1] - src_row_splits_data[idx0],
+                size;
+        if (orig_size == 0 || orig_size + size_delta <= 0)
+          size = 0;
+        else
+          size = orig_size + size_delta;
+        row_splits_data[idx0] = size;
+      });
   ExclusiveSum(ans_axes.back().row_splits, &ans_axes.back().row_splits);
   ans_axes.back().row_ids =
       Array1<int32_t>(c, ans_axes.back().row_splits.Back());
-  RowSplitsToRowIds(ans_axes.back().row_splits,
-                    &ans_axes.back().row_ids);
+  RowSplitsToRowIds(ans_axes.back().row_splits, &ans_axes.back().row_ids);
   ans_axes.back().cached_tot_size = ans_axes.back().row_ids.Dim();
   return RaggedShape(ans_axes);
 }
-
-
 
 RaggedShape Prefix(RaggedShape &src, int32_t n) {
   NVTX_RANGE(K2_FUNC);
@@ -1247,6 +1245,18 @@ std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
     ans[i] = RaggedShape(axes_out, false);
   }
   return ans;
+}
+
+Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
+                                  const Array1<int32_t> &suffix) {
+  K2_LOG(FATAL) << "Not Implemented!";
+  return Ragged<int32_t>();
+}
+
+Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
+                                  const Array1<int32_t> &prefix) {
+  K2_LOG(FATAL) << "Not Implemented!";
+  return Ragged<int32_t>();
 }
 
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {

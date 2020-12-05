@@ -16,7 +16,7 @@ add_library(fsa SHARED
     fsa_util.cc
     intersect.cc
     properties.cc
-    rmepsilon.cc
+    rmepsilon_pruned.cc
     topsort.cc
     util.cc
     weights.cc

@@ -71,7 +71,7 @@ class RmEpsilonTest : public ::testing::Test {
 
 TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
   float beam = 8.0;
-  EpsilonsRemoverMax eps_remover(*max_wfsa_, beam);
+  EpsilonsRemoverPrunedMax eps_remover(*max_wfsa_, beam);
   Array2Size<int32_t> fsa_size, arc_derivs_size;
   eps_remover.GetSizes(&fsa_size, &arc_derivs_size);
 
@@ -95,7 +95,7 @@ TEST_F(RmEpsilonTest, RmEpsilonsPrunedMax) {
 
 TEST_F(RmEpsilonTest, RmEpsilonsPrunedLogSum) {
   float beam = 8.0;
-  EpsilonsRemoverLogSum eps_remover(*log_wfsa_, beam);
+  EpsilonsRemoverPrunedLogSum eps_remover(*log_wfsa_, beam);
   Array2Size<int32_t> fsa_size, arc_derivs_size;
   eps_remover.GetSizes(&fsa_size, &arc_derivs_size);
 
