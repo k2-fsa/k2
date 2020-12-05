@@ -91,6 +91,8 @@ set(cuda_tests
   ragged_shape_test
   ragged_test
   ragged_utils_test
+  rm_epsilon_test
+  tensor_ops_test
   tensor_test
   top_sort_test
   utils_test

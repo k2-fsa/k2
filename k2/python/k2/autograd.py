@@ -322,7 +322,7 @@ class _IndexSelectFunction(torch.autograd.Function):
     def backward(ctx, out_grad) -> Tuple[torch.Tensor, None]:
         src, index = ctx.saved_tensors
 
-        ans = torch.zeros(src.size(0),
+        ans = torch.zeros(src.shape,
                           dtype=torch.float32,
                           device=src.device,
                           requires_grad=False)
@@ -476,9 +476,8 @@ def intersect_dense(a_fsas: Fsa, b_fsas: DenseFsaVec,
 
     # the following return value is discarded since it is already contained
     # in `out_fsa[0].scores`
-    _IntersectDenseFunction.apply(a_fsas, b_fsas, out_fsa,
-                                  output_beam, a_fsas.scores,
-                                  b_fsas.scores)
+    _IntersectDenseFunction.apply(a_fsas, b_fsas, out_fsa, output_beam,
+                                  a_fsas.scores, b_fsas.scores)
     return out_fsa[0]
 
 

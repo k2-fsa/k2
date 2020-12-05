@@ -17,6 +17,8 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+#include <mutex>  // NOLINT
 #include <sstream>
 #include <string>
 
@@ -214,13 +216,27 @@ class Voidifier {
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 
-// The parameter should be cuda function call or kernel launch.
-#define K2_CUDA_SAFE_CALL(...)                                   \
-  do {                                                           \
-    __VA_ARGS__;                                                 \
-    if (!::k2::internal::kDisableDebug) cudaDeviceSynchronize(); \
-    cudaError_t e = cudaGetLastError();                          \
-    K2_CHECK_CUDA_ERROR(e);                                      \
+inline bool EnableCudaDeviceSync() {
+  static std::once_flag init_flag;
+  static bool enable_cuda_sync = false;
+  std::call_once(init_flag, []() {
+    enable_cuda_sync = (std::getenv("K2_SYNC_KERNELS") != nullptr);
+  });
+  return enable_cuda_sync;
+}
+// The parameter of `K2_CUDA_SAFE_CALL` should be cuda function call or kernel
+// launch.
+// Noted we would never call `cudaDeviceSynchronize` in release mode and
+// user can even disable this call for debug mode by setting an environment
+// variable `K2_SYNC_KERNELS` with any non-empty value, see
+// function EnableCudaDeviceSync above.
+#define K2_CUDA_SAFE_CALL(...)                                    \
+  do {                                                            \
+    __VA_ARGS__;                                                  \
+    if (!::k2::internal::kDisableDebug && EnableCudaDeviceSync()) \
+      cudaDeviceSynchronize();                                    \
+    cudaError_t e = cudaGetLastError();                           \
+    K2_CHECK_CUDA_ERROR(e);                                       \
   } while (0)
 
 // ============================================================
