@@ -29,13 +29,40 @@ class Renumbering {
   // move assignment
   Renumbering &operator=(Renumbering &&) = default;
 
-  Renumbering(ContextPtr c, int32_t num_old_elems) { Init(c, num_old_elems); }
+  /*
+     This constructor will allocate memory for `keep_` array with size
+     `num_old_elems`. User then can call `Keep` to get `keep_` and set values in
+     it (1 if kept, 0 if not kept), then call `New2Old` to map new indexes to
+     old indexes or `Old2New` to map old indexes to new indexes.
 
-  void Init(ContextPtr c, int32_t num_old_elems) {
+        @param [in] c The context this Renumbering object will work on.
+        @param [in] num_old_elems  The number of old indexes (i.e.
+                      keep_.Dim() or NumOldElems()).
+        @param [in] init_keep_with_zero  If true, we will initialize `keep_`
+                      with 0 when creating; if false, we just allocate memory
+                      and don't initialize it. CAUTION: usually user should
+                      leave it as false (the default value), as coalesced
+                      writing to an array (i.e `keep_`) would be much more
+                      efficient than writing individual 1's, especially
+                      considering that we have used another kernel to
+                      initialize the `keep` array with 0 if
+                      `init_keep_with_zero` = true. We suggest users should
+                      set it with true only when it's hard for them to set
+                      both 1s (kept indexes) and 0s (not kept indexes) in one
+                      kernel.
+  */
+  Renumbering(ContextPtr c, int32_t num_old_elems,
+              bool init_keep_with_zero = false) {
+    Init(c, num_old_elems, init_keep_with_zero);
+  }
+
+  void Init(ContextPtr c, int32_t num_old_elems,
+            bool init_keep_with_zero = false) {
     NVTX_RANGE(K2_FUNC);
     // make the underlying region allocate an extra element as we'll do
     // exclusive sum in New2Old() and Old2New()
     Array1<char> temp = Array1<char>(c, num_old_elems + 1);
+    if (init_keep_with_zero) temp = 0;
     keep_ = temp.Range(0, num_old_elems);
   }
 
@@ -99,8 +126,6 @@ class Renumbering {
                            // old2new_ is created.
   Array1<int32_t> new2old_;
 };
-
-
 
 }  // namespace k2
 
