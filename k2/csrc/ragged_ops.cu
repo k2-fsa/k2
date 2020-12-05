@@ -5,6 +5,7 @@
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                      Microsoft Corporation (authors: Yiming Wang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -1249,14 +1250,62 @@ std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
 
 Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
                                   const Array1<int32_t> &suffix) {
-  K2_LOG(FATAL) << "Not Implemented!";
-  return Ragged<int32_t>();
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(suffix.Dim(), src.TotSize(src.NumAxes() - 2));
+  ContextPtr &c = src.Context();
+  Array1<int32_t> dst_values(c, src.NumElements() + suffix.Dim());
+  int32_t *dst_values_data = dst_values.Data();
+  int32_t num_axes = src.NumAxes();
+  const int32_t *src_row_splits_lastm1_data =
+      src.RowSplits(num_axes - 1).Data(),
+                *src_row_ids_lastm1_data = src.RowIds(num_axes - 1).Data(),
+                *src_values_data = src.values.Data(),
+                *suffix_data = suffix.Data();
+
+  K2_EVAL(
+      c, src.NumElements(), lambda_copy_src, (int32_t idx)->void {
+        int32_t dst_idx = idx + src_row_ids_lastm1_data[idx];
+        dst_values_data[dst_idx] = src_values_data[idx];
+      });
+  K2_EVAL(
+       c, suffix.Dim(), lambda_copy_suffix, (int32_t idx)->void {
+         int32_t row_id = src_row_ids_lastm1_data[idx];
+         int32_t dst_idx = src_row_splits_lastm1_data[row_id + 1] - 1;
+         dst_values_data[dst_idx] = suffix_data[idx];
+     });
+  RaggedShape dst_shape = ChangeSublistSize(src.shape, 1);
+
+  return Ragged<int32_t>(dst_shape, dst_values);
 }
 
 Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
                                   const Array1<int32_t> &prefix) {
-  K2_LOG(FATAL) << "Not Implemented!";
-  return Ragged<int32_t>();
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(prefix.Dim(), src.TotSize(src.NumAxes() - 2));
+  ContextPtr &c = src.Context();
+  Array1<int32_t> dst_values(c, src.NumElements() + prefix.Dim());
+  int32_t *dst_values_data = dst_values.Data();
+  int32_t num_axes = src.NumAxes();
+  const int32_t *src_row_splits_lastm1_data =
+      src.RowSplits(num_axes - 1).Data(),
+                *src_row_ids_lastm1_data = src.RowIds(num_axes - 1).Data(),
+                *src_values_data = src.values.Data(),
+                *prefix_data = prefix.Data();
+
+  K2_EVAL(
+      c, src.NumElements(), lambda_copy_src, (int32_t idx)->void {
+        int32_t dst_idx = idx + src_row_ids_lastm1_data[idx] + 1;
+        dst_values_data[dst_idx] = src_values_data[idx];
+      });
+  K2_EVAL(
+       c, prefix.Dim(), lambda_copy_prefix, (int32_t idx)->void {
+         int32_t row_id = src_row_ids_lastm1_data[idx];
+         int32_t dst_idx = src_row_splits_lastm1_data[row_id];
+         dst_values_data[dst_idx] = prefix_data[idx];
+     });
+  RaggedShape dst_shape = ChangeSublistSize(src.shape, 1);
+
+  return Ragged<int32_t>(dst_shape, dst_values);
 }
 
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {

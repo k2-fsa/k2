@@ -237,7 +237,7 @@ Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
                          `prefix.Dim() == src.TotSize(src.NumAxes() - 2)`
      @return         Returns ragged tensor with same num-axes as `src`,
                      and NumElements() equal to src.NumElements() +
-                     suffix.Dim()
+                     prefix.Dim()
  */
 Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
                                   const Array1<int32_t> &prefix);
