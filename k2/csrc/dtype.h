@@ -173,16 +173,11 @@ struct DtypeOf<uint64_t> {
     }                                                                    \
   } while (0)
 
-#define FOR_REAL_AND_INT32_TYPES(DtypeValue, TypeName, ...)              \
+#define FOR_FLOAT_AND_INT32_TYPES(DtypeValue, TypeName, ...)             \
   do {                                                                   \
     switch (DtypeValue) {                                                \
       case kFloatDtype: {                                                \
         using TypeName = float;                                          \
-        __VA_ARGS__;                                                     \
-        break;                                                           \
-      }                                                                  \
-      case kDoubleDtype: {                                               \
-        using TypeName = double;                                         \
         __VA_ARGS__;                                                     \
         break;                                                           \
       }                                                                  \
