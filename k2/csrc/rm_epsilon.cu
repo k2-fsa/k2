@@ -276,7 +276,6 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
     // (etc.) of epsilon_closure_prec.
 
     ExclusiveSum(nonepsilon_num_foll_eps, &nonepsilon_num_foll_eps);
-    Array1<int32_t> &prec_row_splits = nonepsilon_num_foll_eps;
 
     // The basic logic of this block will be similar to the block in
     // which we set combined_foll, except the order of non-epsilon and

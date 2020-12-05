@@ -370,7 +370,7 @@ static void IndexAdd1D(Tensor &src, Array1<int32_t> &indexes,
   // atomiAdd is not available for some types, e.g., int8_t and int16_t
   // see
   // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomicadd
-  FOR_REAL_AND_INT32_TYPES(
+  FOR_FLOAT_AND_INT32_TYPES(
       dtype, T,
       IndexAdd1DImpl<T>(context, src.Data<T>(), src_dim, src_stride,
                         indexes_data, allow_minus_one, dest_dim, dest_stride,
@@ -401,7 +401,7 @@ static void IndexAdd2D(Tensor &src, Array1<int32_t> &indexes,
 
   const int32_t *indexes_data = indexes.Data();
 
-  FOR_REAL_AND_INT32_TYPES(
+  FOR_FLOAT_AND_INT32_TYPES(
       dtype, T,
       IndexAdd2DImpl<T>(context, src.Data<T>(), src_dim0, src_dim1, src_stride0,
                         src_stride1, indexes_data, allow_minus_one, dest_dim,
