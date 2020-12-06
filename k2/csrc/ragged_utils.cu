@@ -37,11 +37,11 @@ void CheckAxisEqual(int32_t num_srcs,
     if (s == 0 || data != row_splits_data_vec[0])
       row_splits_data_vec.push_back(data);
     if (s == 0) {
-      row_splits_dim = src[s]->RowSplits(axis + 1).Dim();
-      row_ids_dim = src[s]->RowIds(axis + 1).Dim();
+      row_splits_dim = src[s]->TotSize(axis) + 1;
+      row_ids_dim = src[s]->TotSize(axis + 1);
     } else {
-      K2_CHECK_EQ(row_splits_dim, src[s]->RowSplits(axis + 1).Dim());
-      K2_CHECK_EQ(row_ids_dim, src[s]->RowIds(axis + 1).Dim());
+      K2_CHECK_EQ(row_splits_dim, src[s]->TotSize(axis) + 1);
+      K2_CHECK_EQ(row_ids_dim, src[s]->TotSize(axis + 1));
     }
   }
   if (row_splits_data_vec.size() <= 1) {
@@ -73,9 +73,9 @@ void CheckAxisEqual(int32_t num_srcs,
 
 
 RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
-                                  int32_t layer,
-                                  RaggedShape **src,
-                                  Array1<uint32_t> *merge_map) {
+                                   int32_t layer,
+                                   RaggedShape **src,
+                                   Array1<uint32_t> *merge_map) {
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK_GE(layer, 0);
   K2_CHECK_LT(layer + 1, src[0]->NumAxes());
@@ -87,7 +87,6 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
   }
 
   std::vector<int32_t*> row_splits_ptrs_vec(num_srcs);
-  std::vector<int32_t*> row_ids_ptrs_vec(num_srcs);
 
   int32_t num_axes = src[0]->NumAxes(),
           num_rows = src[0]->TotSize(layer),
@@ -97,11 +96,9 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
       K2_CHECK_EQ(src[i]->NumAxes(), num_axes);
       K2_CHECK_EQ(src[i]->TotSize(layer), num_rows);
     }
-    Array1<int32_t> &row_ids = src[i]->RowIds(layer + 1),
-                 &row_splits = src[i]->RowSplits(layer + 1);
-    tot_elems += row_ids.Dim();
+    Array1<int32_t> &row_splits = src[i]->RowSplits(layer + 1);
+    tot_elems += src[i]->TotSize(layer + 1);
     row_splits_ptrs_vec[i] = row_splits.Data();
-    row_ids_ptrs_vec[i] = row_ids.Data();
   }
   ContextPtr c = src[0]->Context();
 
@@ -177,6 +174,70 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
   }
 
   return RaggedShape2(&row_splits, &row_ids, tot_elems);
+}
+
+
+RaggedShape MergeRaggedLayer(int32_t num_srcs,
+                             int32_t layer,
+                             RaggedShape **src,
+                             const Array1<uint32_t> &merge_map,
+                             Array1<uint32_t> *merge_map_out) {
+  K2_CHECK_GT(num_srcs, 0);
+  K2_CHECK_GE(layer, 0);
+  K2_CHECK_LT(layer + 1, src[0]->NumAxes());
+
+  ContextPtr c = src[0]->Context();
+  std::vector<int32_t*> row_splits_ptrs_vec(num_srcs);
+
+  int32_t tot_rows = 0, tot_elems = 0;
+  for (int32_t i = 0; i < num_srcs; i++) {
+    tot_rows += src[i]->TotSize(layer);
+    tot_elems += src[i]->TotSize(layer + 1);
+    row_splits_ptrs_vec[i] = src[i]->RowSplits(layer + 1).Data();
+  }
+  K2_CHECK_EQ(tot_rows, merge_map.Dim());
+
+  Array1<int32_t> row_splits_out(c, merge_map.Dim());
+  Array1<int32_t> row_ids_out(c, tot_elems);
+
+  const uint32_t *merge_map_data = merge_map.Data();
+  Array1<int32_t*> row_splits_ptrs(c, row_splits_ptrs_vec);
+  int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
+  int32_t *sizes_data = row_splits_out.Data();
+
+  K2_EVAL(c, tot_rows, lambda_set_sizes, (int32_t i) -> void {
+      uint32_t m = merge_map_data[i],
+             src = m % num_srcs,
+             pos = m / num_srcs;
+      int32_t size = row_splits_ptrs_data[src][pos + 1] -
+                     row_splits_ptrs_data[src][pos];
+      sizes_data[i] = size;
+    });
+  ExclusiveSum(row_splits_out, &row_splits_out);
+  RowSplitsToRowIds(row_splits_out, &row_ids_out);
+
+  if (merge_map_out != nullptr) {
+    *merge_map_out = Array1<uint32_t>(c, tot_elems);
+    const int32_t *row_ids_data = row_ids_out.Data(),
+               *row_splits_data = row_splits_out.Data();
+    uint32_t *merge_map_out_data = merge_map_out->Data();
+
+    K2_EVAL(c, tot_elems, lambda_set_merge_map, (int32_t idx01) -> void {
+        int32_t idx0 = row_ids_data[idx01],
+               idx1x = row_splits_data[idx0],
+                idx1 = idx01 - idx1x,
+                   m = merge_map_data[idx0],
+                 src = m % num_srcs,
+            src_idx0 = m / num_srcs,
+           src_idx0x = row_splits_ptrs_data[src][src_idx0],
+           src_idx01 = src_idx0x + idx1;
+        // We multiply the src_idx01 by num_srcs as a way of encoding it and the src
+        // into a single integer.
+        merge_map_out_data[idx01] = uint32_t(src) +
+                                    ((uint32_t)num_srcs * uint32_t(src_idx01));
+      });
+  }
+  return RaggedShape2(&row_splits_out, &row_ids_out, tot_elems);
 }
 
 

@@ -134,26 +134,31 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
                                    Array1<uint32_t> *merge_map = nullptr);
 
 /*
-  Merge a ragged axis given a 'merge_map' obtained from a previous operation on an
-  axis.
+  Merge a ragged axis given a 'merge_map' obtained from an operation on a previous
+  layer, creating a merge_map for the next layer.
 
      @param [in] num_srcs  Number of RaggedShapes being merged
-     @param [in] axis      Axis to operate on, viewed as index into src[i]->Axes(),
-                           with 0 <= axis < src[i]->NumAxes() - 1 (for 0 <= i < num_srcs).
+     @param [in] layer     Layer to operate on, viewed as index into src[i]->Layers(),
+                           with 0 <= layer < src[i]->NumAxes() - 1
      @param [in] src       src   Array of pointers to RaggedShapes to be merged;
                            we will merge the contents of `*src[0]`, `*src[1]` and so on.
-     @param [in] merge_map Merge map likely obtained from a previous operation on.
-                           merge_map.Dim() must equal the sum of src[i]->TotSize(axis).
-                           If merge_map[i] == m, then we must take the i'th row
-                           of this axis from source m % num_srcs, at position
-                           m / num_srcs (i.e. within that source)
+     @param [in] merge_map Merge map likely obtained from a previous operation on
+                           the same inputs.  merge_map.Dim() must equal the sum
+                           of src[i]->TotSize(layer).  If merge_map[i] == m, then
+                           we must take the i'th row of this axis from source m
+                           % num_srcs, at position within that source equal to  m / num_srcs.
      @param [out] merge_map_out  If not nullptr, will be set to a newly allocated
-                          Array1 with Dim() equal to the sum of src[i]->TotSize(axis+1),
-                          indicating the sources of the elements of this axis
-                          (row-indexes of the next axis).
+                          Array1 with Dim() equal to the sum of src[i]->TotSize(layer+1),
+                          indicating the sources of the rows of the next layer.
+
+     @return              Return a RaggedShape with `NumAxes() == 2`, i.e. one layer,
+                          that is the result of merging layer numbered `layer` of the
+                          sources together as dictated by `merge_map`.  Its
+                          TotSize(0) will be the sum of src[i]->TotSize(layer),
+                          and its TotSize(1) will be the sum of `src[i]->TotSize(layer+1)`.
  */
-RaggedShape MergeRaggedAxis(int32_t num_srcs,
-                            int32_t axis,
+RaggedShape MergeRaggedLayer(int32_t num_srcs,
+                            int32_t layer,
                             RaggedShape **src,
                             const Array1<uint32_t> &merge_map,
                             Array1<uint32_t> *merge_map_out = nullptr);
