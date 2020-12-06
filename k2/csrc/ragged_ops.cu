@@ -608,7 +608,11 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
 static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
                                Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
-  if (num_srcs == 1) return **src;
+  if (num_srcs == 1) {
+    if (merge_map)
+      *merge_map = Arange<uint32_t>(src[0]->Context(), 0, src[0]->NumElements());
+    return **src;
+  }
   K2_CHECK_GT(num_srcs, 1);
 
   int32_t num_axes = src[0]->NumAxes();
@@ -723,7 +727,7 @@ static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
   }
   if (merge_map) {
     std::vector<int32_t> num_elems_out(num_srcs);
-    for (int32_t i = 1; i < num_srcs; ++i)
+    for (int32_t i = 0; i < num_srcs; ++i)
       num_elems_out[i] = src[i]->NumElements();
     *merge_map = SizesToMergeMap(c, num_elems_out);
   }

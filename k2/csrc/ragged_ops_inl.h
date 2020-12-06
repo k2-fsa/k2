@@ -86,23 +86,19 @@ template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src,
                 Array1<uint32_t> *merge_map /* = nullptr */) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(axis == 0 || axis == 1);
-  K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe
+  K2_CHECK_GT(num_srcs, 0);
+  Array1<uint32_t> merge_map_temp;
+  Array1<uint32_t> *merge_map_ptr = (merge_map != nullptr ? merge_map :
+                                     &merge_map_temp);
   std::vector<RaggedShape *> src_shapes(num_srcs);
   std::vector<const Array1<T> *> src_values(num_srcs);
   for (int32_t i = 0; i != num_srcs; ++i) {
     src_shapes[i] = &(src[i]->shape);
     src_values[i] = &(src[i]->values);
   }
-  // below line will check if srcs are compatible with each other or not, i.e.
-  // context compatibility and num-axes compatibility.
-  RaggedShape ans_shape = Stack(0, num_srcs, src_shapes.data());
-  Array1<T> ans_values = Append(num_srcs, src_values.data());
-  Ragged<T> ans(ans_shape, ans_values);
-  if (axis == 1)
-    return Transpose(ans);
-  else
-    return ans;
+  RaggedShape ans_shape = Stack(axis, num_srcs, src_shapes.data(), merge_map_ptr);
+  Array1<T> ans_values = MergeWithMap(*merge_map_ptr, num_srcs, src_values.data());
+  return Ragged<T>(ans_shape, ans_values);
 }
 
 template <typename T>
@@ -120,25 +116,21 @@ template <typename T>
 Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src,
                  Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
-  if (num_srcs == 1) return **src;
-  K2_CHECK_GT(num_srcs, 1);
-  if (axis == 1) {
-    // Transpose in Stack will check if all src->Dim0() have the same value.
-    Ragged<T> temp = Stack(axis, num_srcs, src);
-    temp.shape = RemoveAxis(temp.shape, axis);
-    return temp;
-  }
-  K2_CHECK_EQ(axis, 0) << "Append() with axis > 1 not yet supported";
+  K2_CHECK_GT(num_srcs, 0);
+  Array1<uint32_t> merge_map_temp;
+  Array1<uint32_t> *merge_map_ptr = (merge_map != nullptr ? merge_map :
+                                     &merge_map_temp);
   std::vector<RaggedShape *> src_shapes(num_srcs);
   std::vector<const Array1<T> *> src_values(num_srcs);
   for (int32_t i = 0; i != num_srcs; ++i) {
     src_shapes[i] = &(src[i]->shape);
     src_values[i] = &(src[i]->values);
   }
-  RaggedShape ans_shape = Append(0, num_srcs, src_shapes.data());
-  Array1<T> ans_values = Append(num_srcs, src_values.data());
+  RaggedShape ans_shape = Append(axis, num_srcs, src_shapes.data(), merge_map_ptr);
+  Array1<T> ans_values = MergeWithMap(*merge_map_ptr, num_srcs, src_values.data());
   return Ragged<T>(ans_shape, ans_values);
 }
+
 
 template <typename T>
 Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src,

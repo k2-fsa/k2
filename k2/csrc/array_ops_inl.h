@@ -504,6 +504,11 @@ Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc /*=1*/) {
   return ans;
 }
 
+template<typename T>
+Array1<T> Arange(ContextPtr c, T begin, T end, T inc) {
+  return Range<T>(c, (end + inc - 1 - begin) / inc, begin, inc);
+}
+
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src) {
   NVTX_RANGE(K2_FUNC);
@@ -876,6 +881,32 @@ void Assign(Array2<T> &src, Array2<T> *dest) {
     }
   }
 }
+
+template <typename T>
+Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map,
+                       int32_t num_srcs, const Array1<T> **src) {
+  int32_t dim = merge_map.Dim();
+  ContextPtr &c = merge_map.Context();
+  std::vector<const T*> src_ptrs_vec(num_srcs);
+  int32_t src_tot_dim = 0;
+  for (int32_t i = 0; i < num_srcs; i++) {
+    src_tot_dim += src[i]->Dim();
+    src_ptrs_vec[i] = src[i]->Data();
+  }
+  Array1<const T*> src_ptrs(c, src_ptrs_vec);
+  Array1<T> ans(c, dim);
+  const uint32_t *merge_map_data = merge_map.Data();
+  T *ans_data = ans.Data();
+  const T **src_ptrs_data = src_ptrs.Data();
+  K2_EVAL(c, dim, lambda_merge_data, (int32_t i) -> void {
+      uint32_t m = merge_map_data[i],
+         src_idx = m % (uint32_t)num_srcs,
+         src_pos = m / (uint32_t)num_srcs;
+      ans_data[i] = src_ptrs_data[src_idx][src_pos];
+    });
+  return ans;
+}
+
 
 }  // namespace k2
 
