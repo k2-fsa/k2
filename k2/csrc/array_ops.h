@@ -388,7 +388,7 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
    from the row_ids and row_splits.
 
    EXAMPLE.  Suppose sizes is [ 3, 5, 1 ].  Then merge_map will be:
-    [ 0, 3, 6, 2, 5, 8, 11, 14, 1 ].
+    [ 0, 3, 6, 1, 4, 7, 11, 14, 2 ].
  */
 Array1<int32_t> SizesToMergeMap(ContextPtr c,
                                 const std::vector<int32_t> &sizes);

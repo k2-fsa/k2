@@ -33,7 +33,7 @@ namespace k2 {
   is the same for all sources (i.e. represents the same ragged shape).
 
   This function may do a quick or more thorough check depending on the debug
-  level k2 was compiled with it is intended for situations where it's required
+  level k2 was compiled with; it is intended for situations where it's required
   for the axes to be the same and the program needs to exit or raise an
   exception if not.
 

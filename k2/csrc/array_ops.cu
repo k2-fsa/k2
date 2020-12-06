@@ -380,9 +380,9 @@ Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits) {
 //  be a loop over rows, i.e. (gridDim.x * blockDim.x) / threads_per_row >=
 //  num_rows
 __global__ void SizesToMergeMapKernel(int32_t num_rows,
-                                        int32_t threads_per_row,
-                                        const int32_t *row_splits,
-                                        int32_t num_elems, int32_t *row_ids) {
+                                      int32_t threads_per_row,
+                                      const int32_t *row_splits,
+                                      int32_t num_elems, int32_t *row_ids) {
   int32_t thread = blockIdx.x * blockDim.x + threadIdx.x,
           num_threads = gridDim.x * blockDim.x, row = thread / threads_per_row,
           thread_this_row = thread % threads_per_row;
@@ -396,7 +396,7 @@ __global__ void SizesToMergeMapKernel(int32_t num_rows,
 
 #pragma unroll (4)
   for (; thread_this_row < row_length; thread_this_row += threads_per_row)
-    row_ids[this_row_split + thread_this_row] = row;
+    row_ids[this_row_split + thread_this_row] = row + num_rows * thread_this_row;
 }
 
 
@@ -421,14 +421,14 @@ Array1<int32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes)
       int32_t begin = cur,  // i.e. the previous end.
                 end = row_splits_cpu_data[src+1];
       for (; cur != end; ++cur) {
-        // the 'src' says which source this item came from, and (cur - begin) *
-        // num_srcs is the position within that source.
+        // the 'src' says which source this item came from, and (cur - begin)
+        // is the position within that source.
         ans_data[cur] = src + (cur - begin) * num_srcs;
       }
     }
     return ans;
   }
-
+  K2_CHECK(c->GetDeviceType() == kCuda);
   Array1<int32_t> row_splits = row_splits_cpu.To(c);
   int32_t *row_splits_data = row_splits.Data();
   int32_t *merge_map_data = ans.Data();

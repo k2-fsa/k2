@@ -1380,7 +1380,7 @@ Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
   return index_map;
 }
 
-RaggedShape GetLayer(RaggedShape &src, int32_t layer) {
+RaggedShape GetLayer(const RaggedShape &src, int32_t layer) {
   K2_CHECK_GE(layer, 0);
   K2_CHECK_LT(layer, src.NumAxes() - 1);
   std::vector<RaggedShapeLayer> layers;

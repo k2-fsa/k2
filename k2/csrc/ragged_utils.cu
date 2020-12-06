@@ -44,8 +44,10 @@ void CheckAxisEqual(int32_t num_srcs,
       K2_CHECK_EQ(row_ids_dim, src[s]->RowIds(axis + 1).Dim());
     }
   }
-  if (row_splits_data_vec.size() <= 1)
+  if (row_splits_data_vec.size() <= 1) {
+    // No point in checking because the row_splits all had the same address.
     return;
+  }
   ContextPtr c = src[0]->Context();
 #ifndef NDEBUG
   Array1<int32_t> is_bad(c, 1, 0);
@@ -59,7 +61,7 @@ void CheckAxisEqual(int32_t num_srcs,
                  row_splits_ptrs_data[0][j])
                is_bad_data[0] = 1;
            });
-  if (!(is_bad[0] == 0)) {
+  if (is_bad[0] == 1) {
     std::ostringstream arrays_os;
     for (int32_t i = 0; i < num_srcs; i++)
       arrays_os << "Shape " << i << " = " << *(src[i]) << "; ";
@@ -83,7 +85,6 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
     return *src[0];
   }
 
-  std::vector<int32_t> row_ids_dims_vec(num_srcs);
   std::vector<int32_t*> row_splits_ptrs_vec(num_srcs);
   std::vector<int32_t*> row_ids_ptrs_vec(num_srcs);
 
@@ -97,7 +98,7 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
     }
     Array1<int32_t> &row_ids = src[i]->RowIds(layer + 1),
                  &row_splits = src[i]->RowSplits(layer + 1);
-    tot_elems += (row_ids_dims_vec[i] = row_ids.Dim());
+    tot_elems += row_ids.Dim();
     row_splits_ptrs_vec[i] = row_splits.Data();
     row_ids_ptrs_vec[i] = row_ids.Data();
   }

@@ -68,7 +68,7 @@ TEST(RaggedUtilsTest, IntersperseRaggedLayerSimpleLayer0) {
   int32_t layer = 0;
   Array1<int32_t> merge_map;
   RaggedShape shape = IntersperseRaggedLayer(2, layer, shapes, &merge_map);
-  std::vector<int32_t> merge_values = { 0, 2, 4, 1, 6, 8, 3, 5, 7 };
+  std::vector<int32_t> merge_values = { 0, 2, 4, 1, 6, 8 };
   CheckArrayData(merge_map, merge_values);
   ASSERT_TRUE(Equal(shape, shape3));
 }

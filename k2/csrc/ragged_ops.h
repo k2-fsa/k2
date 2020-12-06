@@ -301,7 +301,7 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
     @param [in] layer  Layer that is desired, from 0 .. src.NumAxes() - 2.
                       View this as an index into its Layers() vector.
  */
-RaggedShape GetLayer(RaggedShape &src, int32_t layer);
+RaggedShape GetLayer(const RaggedShape &src, int32_t layer);
 
 
 /*
@@ -400,13 +400,13 @@ Ragged<T> Transpose(Ragged<T> &src,
                            same value
       @param [in] num_srcs Number of source shapes to append; require
                            num_srcs > 0.
+      @param [in] src      Array of sources to append
       @param [out] merge_map  If not nullptr, will be set to the merge-map
                           that tells us for each 0 <= i < ans.NumElements(),
                           which element of `src` it came from (available
-                          as `ans[i]i % num_srcs`) and its element-index within
-                          `src[i]` (available as `ans[i] / num_srcs`.
+                          as `merge_map[i] % num_srcs`) and its element-index within
+                          `src[i]` (available as `merge_map[i] / num_srcs`.
 
-      @param [in] src      Array of sources to append
       @return      Returns the appended RaggedShape.
 */
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,

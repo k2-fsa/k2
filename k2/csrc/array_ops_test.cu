@@ -1664,11 +1664,12 @@ TEST(OpsTest, Array2Assign) {
 }
 
 TEST(OpsTest, SizesToMergeMapTest) {
-  for (int loop = 0; loop < 10; loop++) {
+  for (int loop = 0; loop < 2; loop++) {
     ContextPtr c = ((loop % 2) == 0 ? GetCpuContext() : GetCudaContext());
-    std::vector<int32_t> sizes = { 3, 5, 11 };
+    std::vector<int32_t> sizes = { 3, 5, 1 };
     Array1<int32_t> merge_map = SizesToMergeMap(c, sizes);
-    std::vector<int32_t> expected_map = { 0, 3, 6, 2, 5, 8, 11, 14, 1 };
+    std::vector<int32_t> expected_map = { 0, 3, 6, 1, 4, 7, 10, 13, 2 };
+    K2_LOG(INFO) << "merge_map is " << merge_map;
     CheckArrayData(merge_map, expected_map);
   }
 }

@@ -6,9 +6,7 @@
  * This is to be included only from ragged_utils.h.
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
- *                      Mobvoi Inc.        (authors: Fangjun Kuang)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
