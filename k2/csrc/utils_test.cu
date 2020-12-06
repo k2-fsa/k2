@@ -143,7 +143,7 @@ TEST(UtilsTest, RowSplitsToRowIds) {
       RaggedShape shape =
           RandomRaggedShape(true, 2, 2, min_num_elements, 10000);
       ASSERT_EQ(shape.NumAxes(), 2);
-      const auto &axes = shape.Axes();
+      const auto &axes = shape.Layers();
       ASSERT_EQ(axes.size(), 1);
       // note `src_row_splits` is on CPU as it is created with RandomRaggedShape
       const Array1<int32_t> &src_row_splits = axes[0].row_splits;
@@ -236,7 +236,7 @@ TEST(UtilsTest, RowIdsToRowSplits) {
       RaggedShape shape =
           RandomRaggedShape(true, 2, 2, min_num_elements, 10000);
       ASSERT_EQ(shape.NumAxes(), 2);
-      const auto &axes = shape.Axes();
+      const auto &axes = shape.Layers();
       ASSERT_EQ(axes.size(), 1);
       // note `src_row_ids` is on CPU as it is created with RandomRaggedShape
       const Array1<int32_t> &src_row_ids = axes[0].row_ids;

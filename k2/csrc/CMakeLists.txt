@@ -41,6 +41,7 @@ set(context_srcs
   moderngpu_allocator.cu
   ragged.cu
   ragged_ops.cu
+  ragged_utils.cu
   rm_epsilon.cu
   tensor.cu
   tensor_ops.cu
@@ -89,6 +90,7 @@ set(cuda_tests
   nvtx_test
   ragged_shape_test
   ragged_test
+  ragged_utils_test
   rm_epsilon_test
   tensor_ops_test
   tensor_test

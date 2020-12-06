@@ -365,6 +365,35 @@ Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits);
 void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
                        Array1<int32_t> *row_splits);
 
+
+/*
+  Creates a merge-map from a vector of sizes.  A merge-map is something we
+  sometimes create when we want to combine elements from a fixed number of
+  sources.  If there are `num_srcs` sources, `merge_map[i] % num_srcs`
+  gives the index of the source that the i'th element came from,
+  and `merge_map[i] / num_srcs` is the index within the i'th source.
+
+  This function is for when the sources are to be appended together.
+
+     @param [in] c      Context which we want the result to use
+     @param [in] sizes  Sizes of source arrays, which are to be appended.
+                        Must have `sizes[i] > 0`.  `ans.Dim()` will equal
+                        the sum of `sizes`.
+     @return            Returns the merge map.
+
+
+   NOTE: this function makes the most sense to call when you won't be
+   needing the row-splits or row-ids that can be obtained from `sizes`.
+   If you need those, it would be easier to create the merge_map directly
+   from the row_ids and row_splits.
+
+   EXAMPLE.  Suppose sizes is [ 3, 5, 1 ].  Then merge_map will be:
+    [ 0, 3, 6, 1, 4, 7, 11, 14, 2 ].
+ */
+Array1<int32_t> SizesToMergeMap(ContextPtr c,
+                                const std::vector<int32_t> &sizes);
+
+
 /*
   Returns a new Array1<T> whose elements are this array's elements plus t.
  */

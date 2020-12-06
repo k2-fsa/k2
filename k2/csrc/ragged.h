@@ -26,13 +26,16 @@
 
 namespace k2 {
 
-// Caution, RaggedShapeDim is mostly for internal use and users should not
-// generally interact with it directly.
+// Caution, RaggedShapeLayer is mostly for internal use and users should not
+// generally interact with it directly.  A layer represents the connection between
+// one axis and the next; a RaggedShape with a single layer is the minimal
+// RaggedShape.
+//
 // Note: row_splits is of size num_rows + 1 and row_ids is of size
 // num_elements.
-struct RaggedShapeDim {
+struct RaggedShapeLayer {
   // Search for "row_splits concept" in utils.h for explanation.  row_splits
-  // is required; it must always be nonempty for a RaggedShapeDim to be valid.
+  // is required; it must always be nonempty for a RaggedShapeLayer to be valid.
   Array1<int32_t> row_splits;
   // Search for "row_ids concept" in utils.h for explanation
   Array1<int32_t> row_ids;
@@ -62,13 +65,13 @@ std::istream &operator>>(std::istream &stream, RaggedShape &shape);
 class RaggedShape {
  public:
   int32_t Dim0() const {
-    K2_CHECK_GT(axes_.size(), 0);
-    return axes_[0].row_splits.Dim() - 1;
+    K2_CHECK_GT(layers_.size(), 0);
+    return layers_[0].row_splits.Dim() - 1;
   }
   /* Return the  total size on this axis.  Requires 0 <= axis < NumAxes() and
      for axis=0 the returned value is the same as Dim0().
      Caution: we use const_cast inside this function as it may actually modify
-     the cached_tot_size members of RaggedShapeDim if not set.
+     the cached_tot_size members of RaggedShapeLayer if not set.
   */
   int32_t TotSize(int32_t axis) const;
 
@@ -97,15 +100,15 @@ class RaggedShape {
   Array1<int32_t> &RowSplits(int32_t axis) {
     K2_CHECK_GT(axis, 0);
     K2_CHECK_LT(axis, NumAxes());
-    // Note row_splits is always nonempty for valid RaggedShapeDim.
-    return axes_[axis - 1].row_splits;
+    // Note row_splits is always nonempty for valid RaggedShapeLayer.
+    return layers_[axis - 1].row_splits;
   }
 
   const Array1<int32_t> &RowSplits(int32_t axis) const {
     K2_CHECK_GT(axis, 0);
     K2_CHECK_LT(axis, NumAxes());
-    // Note row_splits is always nonempty for valid RaggedShapeDim.
-    return axes_[axis - 1].row_splits;
+    // Note row_splits is always nonempty for valid RaggedShapeLayer.
+    return layers_[axis - 1].row_splits;
   }
 
   /*
@@ -117,14 +120,14 @@ class RaggedShape {
     return const_cast<RaggedShape *>(this)->RowIds(axis);
   }
 
-  int32_t NumAxes() const { return static_cast<int32_t>(axes_.size()) + 1; }
+  int32_t NumAxes() const { return static_cast<int32_t>(layers_.size()) + 1; }
 
   // Gives max size of any list on the provided axis,
   // with 0 < axis < NumAxes().  Equals max difference between successive
   // row_splits on that axis.
   int32_t MaxSize(int32_t axis);
 
-  ContextPtr &Context() const { return axes_[0].row_splits.Context(); }
+  ContextPtr &Context() const { return layers_[0].row_splits.Context(); }
 
   /*
     It is an error to call this if this.NumAxes() < 2.  This will return
@@ -158,9 +161,9 @@ class RaggedShape {
   RaggedShapeIndexIterator Iterator();
 
   // TODO(dan): will at some point make it so check = false is the default.
-  explicit RaggedShape(const std::vector<RaggedShapeDim> &axes,
+  explicit RaggedShape(const std::vector<RaggedShapeLayer> &layers,
                        bool check = !internal::kDisableDebug)
-      : axes_(axes) {
+      : layers_(layers) {
     if (check) Check();
   }
 
@@ -181,12 +184,12 @@ class RaggedShape {
 
   RaggedShape(const RaggedShape &other) = default;
   // Move constructor
-  RaggedShape(RaggedShape &&other) : axes_(std::move(other.axes_)) {}
+  RaggedShape(RaggedShape &&other) : layers_(std::move(other.layers_)) {}
   RaggedShape &operator=(const RaggedShape &other) = default;
 
-  // Axes() is intended for internal-ish use; users shouldn't really have to
+  // Layers() is intended for internal-ish use; users shouldn't really have to
   // interact with it.
-  const std::vector<RaggedShapeDim> &Axes() const { return axes_; }
+  const std::vector<RaggedShapeLayer> &Layers() const { return layers_; }
 
   // Check the RaggedShape for consistency; die on failure.
   void Check() {
@@ -206,8 +209,8 @@ class RaggedShape {
   // a fixed length array (more efficient)
 
   // indexed by axis-index minus one... axis 0 is special, its dim
-  // equals axes_[0].row_splits.Dim()-1.
-  std::vector<RaggedShapeDim> axes_;
+  // equals layers_[0].row_splits.Dim()-1.
+  std::vector<RaggedShapeLayer> layers_;
 };
 
 // prints a RaggedShape, for debug purposes.  May change later how this works.
@@ -327,7 +330,7 @@ struct Ragged {
   bool Validate(bool print_warnings = true) const;
 
   /*
-    It is an error to call this if this.shape.NumAxes() < 2.  This will return
+    It is an error to call this if this.shape.NumAxes() <= 2.  This will return
     a Ragged<T> with one fewer axis, containing only the elements of
     *this for which the value on the provided axis is i; it will share
     the underlying data with `*this` where possible. CAUTION: currently this

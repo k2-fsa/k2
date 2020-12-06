@@ -293,6 +293,18 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
 
 /*
+  Returns a `sub-shape` of `src` consisting of one of its RaggedShapeLayer
+  elements, i.e. one of the levels of its shape.  This returned shape
+  will have NumAxes() == 2, but it is the minimal case of a RaggedShape.
+
+    @param [in] src   Source RaggedShape
+    @param [in] layer  Layer that is desired, from 0 .. src.NumAxes() - 2.
+                      View this as an index into its Layers() vector.
+ */
+RaggedShape GetLayer(const RaggedShape &src, int32_t layer);
+
+
+/*
   Returns a CPU array of shape (src[0]->NumAxes() + 1) by (num_srcs + 1), where
   each row is the exclusive-sum of the TotSize() of the respective sources,
   on the previous axis (or 1 for axis 0).  Specifically: it's the same
@@ -389,9 +401,16 @@ Ragged<T> Transpose(Ragged<T> &src,
       @param [in] num_srcs Number of source shapes to append; require
                            num_srcs > 0.
       @param [in] src      Array of sources to append
+      @param [out] merge_map  If not nullptr, will be set to the merge-map
+                          that tells us for each 0 <= i < ans.NumElements(),
+                          which element of `src` it came from (available
+                          as `merge_map[i] % num_srcs`) and its element-index within
+                          `src[i]` (available as `merge_map[i] / num_srcs`.
+
       @return      Returns the appended RaggedShape.
 */
-RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src);
+RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
+                   Array1<int32_t> *merge_map = nullptr);
 
 /*
     Gets an array of pointers to the row_splits of `src`, on the same

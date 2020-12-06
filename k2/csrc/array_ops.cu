@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "k2/csrc/array.h"
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/macros.h"
 
@@ -372,5 +373,78 @@ Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits) {
 
   return sizes;
 }
+
+
+//  This is modified from RowSplitsToRowIdsKernel.
+//  When we invoke this we make a big enough grid that there doesn't have to
+//  be a loop over rows, i.e. (gridDim.x * blockDim.x) / threads_per_row >=
+//  num_rows
+__global__ void SizesToMergeMapKernel(int32_t num_rows,
+                                      int32_t threads_per_row,
+                                      const int32_t *row_splits,
+                                      int32_t num_elems, int32_t *row_ids) {
+  int32_t thread = blockIdx.x * blockDim.x + threadIdx.x,
+          num_threads = gridDim.x * blockDim.x, row = thread / threads_per_row,
+          thread_this_row = thread % threads_per_row;
+
+  if (row >= num_rows) return;
+  K2_CHECK_GE(num_threads / threads_per_row, num_rows);
+
+  int32_t this_row_split = row_splits[row],
+          next_row_split = row_splits[row + 1],
+          row_length = next_row_split - this_row_split;
+
+#pragma unroll (4)
+  for (; thread_this_row < row_length; thread_this_row += threads_per_row)
+    row_ids[this_row_split + thread_this_row] = row + num_rows * thread_this_row;
+}
+
+
+Array1<int32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes) {
+  int32_t num_srcs = sizes.size();
+
+  ContextPtr cpu_context = GetCpuContext();
+  Array1<int32_t> row_splits_cpu(cpu_context, num_srcs + 1);
+  int32_t *row_splits_cpu_data = row_splits_cpu.Data();
+  int32_t tot_size = 0;
+  row_splits_cpu_data[0] = 0;
+  for (int32_t i = 0; i < num_srcs; i++) {
+    tot_size += sizes[i];
+    row_splits_cpu_data[i+1] = tot_size;
+  }
+  Array1<int32_t> ans(c, tot_size);
+
+  if (c->GetDeviceType() == kCpu) {
+    int32_t *ans_data = ans.Data();
+    int32_t cur = 0;
+    for (int32_t src = 0; src < num_srcs; src++) {
+      int32_t begin = cur,  // i.e. the previous end.
+                end = row_splits_cpu_data[src+1];
+      for (; cur != end; ++cur) {
+        // the 'src' says which source this item came from, and (cur - begin)
+        // is the position within that source.
+        ans_data[cur] = src + (cur - begin) * num_srcs;
+      }
+    }
+    return ans;
+  }
+  K2_CHECK(c->GetDeviceType() == kCuda);
+  Array1<int32_t> row_splits = row_splits_cpu.To(c);
+  int32_t *row_splits_data = row_splits.Data();
+  int32_t *merge_map_data = ans.Data();
+  int32_t avg_elems_per_row = (tot_size + num_srcs - 1) / num_srcs,
+            threads_per_row = RoundUpToNearestPowerOfTwo(avg_elems_per_row),
+              tot_threads = num_srcs * threads_per_row;
+  int32_t block_size = 256;
+  int32_t grid_size = NumBlocks(tot_threads, block_size);
+
+  K2_CUDA_SAFE_CALL(SizesToMergeMapKernel<<<grid_size, block_size, 0,
+                    c->GetCudaStream()>>>(
+                        num_srcs, threads_per_row, row_splits_data,
+                        tot_size, merge_map_data));
+  return ans;
+}
+
+
 
 }  // namespace k2
