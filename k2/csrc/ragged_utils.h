@@ -40,28 +40,27 @@ namespace k2 {
   Note: you can use the function Equal(RaggedShape&, RaggedShape&) if you
   want to check the return status directly.
 
-    @param [in] num_srcs   Length of the list of sources.
-    @param [in] axis       Axis to check, e.g. 0; must satisfy
+    @param [in] layer       Layer to check, e.g. 0; must satisfy
                            `0 <= axis < src[0]->NumAxes() - 1.`
+    @param [in] num_srcs   Length of the list of sources.
     @param [in] srcs      The sources to check
 
  */
-void CheckAxisEqual(int32_t num_srcs,
-                    int32_t axis,
-                    RaggedShape **src);
+void CheckLayerEqual(int32_t layer,
+                     int32_t num_srcs,
+                     RaggedShape **src);
 
 
 /*
-   Stacking operation on a single axis of an array of RaggedShape sources,
-   that uses the order "all rows for source 0" then "all rows for source 1",
-   etc.,
+   Stacking operation on a single layer of an array of RaggedShape sources,
+   appending inthe order "all rows for source 0" then "all rows for source 1".
 
    (Check the usage message carefully, because this interface is not very
    intuitive).
 
+      @param [in] layer      Layer to operate on, viewed as index into src[i]->Layers().
+                             Must satisfy 0 <= axis < src[0]->NumAxes()  - 1.
       @param [in] num_srcs   Number of sources to append/merge (size of array `src`)
-      @param [in] axis       Axis to operate on, viewed as index into src[i]->Axes().
-                             Must satisfy 0 <= axis < src[0]->Axes()  - 1.
       @param [in] src        Array of sources, must have the same device and num-axes.
       @param [out,optional]  merge_map    If not nullptr, will be set to an array
                              that indicates the source of each element on axis
@@ -71,7 +70,7 @@ void CheckAxisEqual(int32_t num_srcs,
                              item and `m / num_srcs` indicates the position of this
                              item within its source.
 
-      @return               Return a RaggedShape with `NumAxes() == 2`, i.e. `Axes().size() == 1`,
+      @return               Return a RaggedShape with `NumAxes() == 2`, i.e. `Layers().size() == 1`,
                             that is the result of appending the sources together; its
                             TotSize(0) will be the sum of src[i]->TotSize(axis),
                             and its TotSize(1) will be the sum of src[i]->TotSize(axis+1).
@@ -83,10 +82,10 @@ void CheckAxisEqual(int32_t num_srcs,
     ans == [ x x x ] [ x ] [ ] [ x x ], and merge_map (if requested) will
     be [ 0 2 4 6 1 3 ].
  */
-RaggedShape AppendRaggedAxisBefore(int32_t num_srcs,
-                                   int32_t axis,
-                                   RaggedShape **src,
-                                   Array1<uint32_t> *merge_map = nullptr);
+RaggedShape AppendRaggedLayer(int32_t axis,
+                              int32_t num_srcs,
+                              RaggedShape **src,
+                              Array1<uint32_t> *merge_map = nullptr);
 
 
 
@@ -98,11 +97,11 @@ RaggedShape AppendRaggedAxisBefore(int32_t num_srcs,
    (Check the usage message carefully, because this interface is not very
    intuitive).
 
+      @param [in] layer      Layer to operate on, viewed as index into src[i]->Layers().
+                             Must satisfy 0 <= layer < src[0]->NumAxes()  - 1.
       @param [in] num_srcs   Number of sources to intersperse (size of array `src`).
                              Must be >= 1 (otherwise there would be no way to
                              determine the context).
-      @param [in] layer      Layer to operate on, viewed as index into src[i]->Layers().
-                             Must satisfy 0 <= layer < src[0]->NumAxes()  - 1.
       @param [in] src        Array of sources; must have the same device and num-axes,
                              and src[i]->TotSize(layer) must be the same for all
                              i.
@@ -128,8 +127,8 @@ RaggedShape AppendRaggedAxisBefore(int32_t num_srcs,
     ans == [ x x x ] [ x ] [ x x ] [ x x x ], and merge_map (if requested) will
     be [ 0 2 4 1 6 8 3 5 7 ].
  */
-RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
-                                   int32_t layer,
+RaggedShape IntersperseRaggedLayer(int32_t layer,
+                                  int32_t num_srcs,
                                    RaggedShape **src,
                                    Array1<uint32_t> *merge_map = nullptr);
 
@@ -137,9 +136,9 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
   Merge a ragged axis given a 'merge_map' obtained from an operation on a previous
   layer, creating a merge_map for the next layer.
 
-     @param [in] num_srcs  Number of RaggedShapes being merged
      @param [in] layer     Layer to operate on, viewed as index into src[i]->Layers(),
                            with 0 <= layer < src[i]->NumAxes() - 1
+     @param [in] num_srcs  Number of RaggedShapes being merged
      @param [in] src       src   Array of pointers to RaggedShapes to be merged;
                            we will merge the contents of `*src[0]`, `*src[1]` and so on.
      @param [in] merge_map Merge map likely obtained from a previous operation on
@@ -157,11 +156,23 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
                           TotSize(0) will be the sum of src[i]->TotSize(layer),
                           and its TotSize(1) will be the sum of `src[i]->TotSize(layer+1)`.
  */
-RaggedShape MergeRaggedLayer(int32_t num_srcs,
-                            int32_t layer,
+RaggedShape MergeRaggedLayer(int32_t layer,
+                             int32_t num_srcs,
                             RaggedShape **src,
                             const Array1<uint32_t> &merge_map,
                             Array1<uint32_t> *merge_map_out = nullptr);
+
+/*
+  An operation on one layer of a ragged shape that subsamples the rows.
+
+    @param [in] src   Source RaggedShape; only layer `layer` will be read
+                      (viewed as index into src.Layers()).
+    @param [in] layer  Layer to subsample; must satisfy 0 <= layer < src.NumAxes() - 1.
+    @param [in] subsample_factor  Factor by which we subsample the rows;
+                      must be a divisor of src.TotSize(layer).
+ */
+RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
+                                 int32_t subsample_factor);
 
 
 

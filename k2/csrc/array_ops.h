@@ -328,8 +328,13 @@ Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
   Return a newly allocated Array1 whose values form a linear sequence,
    so ans[i] = first_value + i * inc.
 */
-template <typename T>
+template <typename T = int32_t>
 Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc = 1);
+
+
+template<typename T = int32_t>
+Array1<T> Arange(ContextPtr c, T begin, T end, T inc = 1);
+
 
 /*
   This is a convenience wrapper for the function of the same name in utils.h.
@@ -390,8 +395,8 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
    EXAMPLE.  Suppose sizes is [ 3, 5, 1 ].  Then merge_map will be:
     [ 0, 3, 6, 1, 4, 7, 11, 14, 2 ].
  */
-Array1<int32_t> SizesToMergeMap(ContextPtr c,
-                                const std::vector<int32_t> &sizes);
+Array1<uint32_t> SizesToMergeMap(ContextPtr c,
+                                 const std::vector<int32_t> &sizes);
 
 
 /*
@@ -614,6 +619,26 @@ void Sort(Array1<T> *array, Array1<int32_t> *index_map = nullptr);
  */
 template <typename T>
 void Assign(Array2<T> &src, Array2<T> *dest);
+
+
+/*
+  Merge an array of Array1<T> with a `merge_map` which indicates which items
+  to get from which positions (doesn't do any checking of the merge_map values!)
+
+    @param [in] merge_map   Array which is required to have the same dimension as
+                        the sum of src[i]->Dim().  If merge_map[i] == m, it indicates
+                        that the i'th position in the answer should come from element
+                        `m / num_srcs` within `*src[m % num_srcs]`.
+    @param [in] num_srcs   Number of Array1's in the source array
+    @param [in] src       Array of sources; total Dim() must equal merge_map.Dim()
+    @return               Returns array with elements combined from those in `src`.
+
+   CAUTION: may segfault if merge_map contains invalid values.
+ */
+template <typename T>
+Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map,
+                       int32_t num_srcs, const Array1<T> **src);
+
 
 
 

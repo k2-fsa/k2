@@ -21,6 +21,7 @@
 #include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/ragged_utils.h"
 #include "moderngpu/kernel_mergesort.hxx"
 
 namespace {
@@ -603,16 +604,17 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
   *row_ids = row_ids_ptrs.To(ctx);
 }
 
-RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
-                   Array1<int32_t> *merge_map /* == nullptr*/) {
+
+static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
+                               Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
-  if (num_srcs == 1) return **src;
-  K2_CHECK_GT(num_srcs, 1);
-  if (axis == 1) {
-    RaggedShape temp = Stack(axis, num_srcs, src);
-    return RemoveAxis(temp, axis);
+  if (num_srcs == 1) {
+    if (merge_map)
+      *merge_map = Arange<uint32_t>(src[0]->Context(), 0, src[0]->NumElements());
+    return **src;
   }
-  K2_CHECK_EQ(axis, 0) << "Append() with axis > 1 not yet supported";
+  K2_CHECK_GT(num_srcs, 1);
+
   int32_t num_axes = src[0]->NumAxes();
   ContextPtr c = src[0]->Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
@@ -631,7 +633,8 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
   for (int32_t axis = 0; axis < num_axes; ++axis)
     tot_sizes_out[axis] = offsets_acc(axis + 1, num_srcs);
 
-  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes,
+                                            tot_sizes_out.data());
 
   Array2<int32_t *> src_row_splits, src_row_ids;
   GetRowInfoMulti(num_srcs, src, &src_row_splits, &src_row_ids);
@@ -722,7 +725,49 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
                        tot_work, target_num_loops, lambda_set_row_ids);
     }
   }
+  if (merge_map) {
+    std::vector<int32_t> num_elems_out(num_srcs);
+    for (int32_t i = 0; i < num_srcs; ++i)
+      num_elems_out[i] = src[i]->NumElements();
+    *merge_map = SizesToMergeMap(c, num_elems_out);
+  }
   return ans;
+}
+
+RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
+                   Array1<uint32_t> *merge_map /* == nullptr*/) {
+  K2_CHECK(num_srcs > 0);
+  if (axis == 0)
+    return AppendAxis0(num_srcs, src, merge_map);
+
+  K2_CHECK_LT(static_cast<uint32_t>(axis),
+              static_cast<uint32_t>(src[0]->NumAxes()));
+
+  int32_t num_axes = src[0]->NumAxes();
+  std::vector<RaggedShapeLayer> ans_layers(num_axes - 1);
+
+  // If axis >= 2, some layers of `src` will pass through unchanged (we should
+  // check that they are identical across all sources).
+  for (int32_t l = 0; l + 1 < axis; l++) {
+    CheckLayerEqual(l, num_srcs, src);
+    ans_layers[l] = src[0]->Layers()[l];
+  }
+
+  Array1<uint32_t> merge_map_local;
+  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map : &merge_map_local);
+  RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m),
+              t = SubsampleRaggedLayer(s, 0, num_srcs);
+  ans_layers[axis - 1] = t.Layers()[0];
+
+  for (int32_t l = axis; l + 1 < num_axes; l++) {
+    Array1<uint32_t> merge_map_next;
+    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map : &merge_map_next);
+    RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
+    ans_layers[l] = r.Layers()[0];
+    merge_map_local = merge_map_next;
+  }
+  // TODO(dan) after this is debugged: add ", false".
+  return RaggedShape(ans_layers);
 }
 
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
@@ -900,28 +945,64 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
   return ComposeRaggedShapes(temp, src_no_axis0_renumbered);
 }
 
-RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src) {
+RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
+                  Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK(axis >= 0 && axis <= 1);
-
   ContextPtr c = src[0]->Context();
-  int32_t num_axes = src[0]->NumAxes();
 
-  // Check if they have the same num-axes and compatible context
-  for (int32_t i = 1; i < num_srcs; ++i) {
-    K2_CHECK_EQ(num_axes, src[i]->NumAxes());
-    K2_CHECK(c->IsCompatible(*src[i]->Context()));
+  if (axis == 0) {
+    RaggedShape ans_appended = AppendAxis0(num_srcs, src, merge_map);
+    ContextPtr cpu = GetCpuContext();
+    Array1<int32_t> row_splits(cpu, num_srcs + 1);
+    int32_t *row_splits_data = row_splits.Data();
+    for (int32_t i = 0; i < num_srcs; i++)
+      row_splits_data[i] = src[i]->Dim0();
+    int32_t cutoff = 32;
+    if (num_srcs < cutoff) row_splits = row_splits.To(c);
+    ExclusiveSum(row_splits, &row_splits);
+    if (num_srcs >= cutoff) row_splits = row_splits.To(c);
+    int32_t num_elems = ans_appended.Dim0();
+    Array1<int32_t> row_ids(c, num_elems);
+    RowSplitsToRowIds(row_splits, &row_ids);
+    RaggedShape ans_layer0 = RaggedShape2(&row_splits, &row_ids, num_elems);
+    return ComposeRaggedShapes(ans_layer0, ans_appended);
   }
 
-  std::vector<RaggedShape> unsqueezed = UnsqueezeParallel(num_srcs, src, 0);
-  std::vector<RaggedShape *> unsqueezed_ptrs(num_srcs);
-  for (int32_t i = 0; i < num_srcs; i++) unsqueezed_ptrs[i] = &(unsqueezed[i]);
-  RaggedShape ans = Append(0, num_srcs, unsqueezed_ptrs.data());
-  // Transpose will check if all src->Dim0() has the same value.
-  if (axis == 1) ans = Transpose(ans);
-  return ans;
+
+  K2_CHECK_LT(static_cast<uint32_t>(axis),
+              static_cast<uint32_t>(src[0]->NumAxes()));
+
+  int32_t num_axes = src[0]->NumAxes();
+  std::vector<RaggedShapeLayer> ans_layers(num_axes);
+
+  // If axis >= 2, some layers of `src` will pass through unchanged (we should
+  // check that they are identical across all sources).
+  for (int32_t l = 0; l + 1 < axis; l++) {
+    CheckLayerEqual(l, num_srcs, src);
+    ans_layers[l] = src[0]->Layers()[l];
+  }
+
+  Array1<uint32_t> merge_map_local;
+  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map : &merge_map_local);
+  RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m);
+  // note: s.Dim0() will be a multiple of num_srcs.
+  ans_layers[axis - 1] = RegularRaggedShape(c, s.Dim0() / num_srcs, num_srcs).Layers()[0];
+  ans_layers[axis] = s.Layers()[0];
+
+  for (int32_t l = axis; l + 1 < num_axes; l++) {
+    Array1<uint32_t> merge_map_next;
+    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map : &merge_map_next);
+    RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
+    ans_layers[l + 1] = r.Layers()[0];
+    merge_map_local = merge_map_next;
+  }
+  // TODO(dan) after this is debugged: add ", false".
+  return RaggedShape(ans_layers);
 }
+
+
 
 RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
   NVTX_RANGE(K2_FUNC);
