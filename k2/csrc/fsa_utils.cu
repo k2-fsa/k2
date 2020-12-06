@@ -1781,4 +1781,19 @@ FsaVec GetIncomingFsaVec(FsaVec &fsas) {
   return FsaVec(arc_indexes.shape, fsas.values[arc_indexes.values]);
 }
 
+Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
+                               Ragged<int32_t> &step2_arc_map) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(step1_arc_map.NumAxes(), 2);
+  K2_CHECK_EQ(step2_arc_map.NumAxes(), 2);
+  ContextPtr c = GetContext(step1_arc_map, step2_arc_map);
+  int32_t arc_map1_dim0 = step1_arc_map.Dim0(),
+          arc_map2_dim0 = step2_arc_map.Dim0();
+
+  Ragged<int32_t> step1_elements = Index(step1_arc_map, step2_arc_map.values);
+  RaggedShape composed_shape =
+      ComposeRaggedShapes(step2_arc_map.shape, step1_elements.shape);
+  return Ragged<int32_t>(RemoveAxis(composed_shape, 1), step1_elements.values);
+}
+
 }  // namespace k2

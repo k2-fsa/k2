@@ -526,10 +526,11 @@ __host__ __device__ __forceinline__ void AtomicAdd(T *address, T value) {
 // devices with compute capability lower than 6.0.
 // The following implementation is copied from
 // https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
-__device__ __forceinline__ void AtomicAdd(double *address, double value) {
+__host__ __device__ __forceinline__ void AtomicAdd(double *address,
+                                                   double value) {
 #if __CUDA_ARCH__ >= 600
   atomicAdd(address, value);
-#else
+#elif defined(__CUDA_ARCH__)
   // clang-format off
   unsigned long long int *address_as_ull = reinterpret_cast<unsigned long long int *>(address);  // NOLINT
   unsigned long long int old = *address_as_ull;  // NOLINT
@@ -543,6 +544,9 @@ __device__ __forceinline__ void AtomicAdd(double *address, double value) {
     // Note: uses integer comparison to avoid hang in case of NaN
     // (since NaN != NaN)
   } while (assumed != old);
+#else
+  // For host code, we assume single-threaded for now).
+  *address += value;
 #endif
 }
 
