@@ -27,23 +27,23 @@
 
 namespace k2 {
 
-TEST(RaggedUtilsTest, CheckAxisEqual) {
+TEST(RaggedUtilsTest, CheckLayerEqual) {
 
   RaggedShape shape1(" [[ x x x ] [ x x ]]"),
       shape1b(" [[ x x x ] [ x x ]]"),
       shape2("[[ x x x ] [ x ]]");
 
   RaggedShape *array[] = { &shape1, &shape1b, &shape1, &shape2, &shape2 };
-  int32_t axis = 0;
-  CheckAxisEqual(0, axis, array);
-  CheckAxisEqual(1, axis, array);
-  CheckAxisEqual(2, axis, array);
-  CheckAxisEqual(3, axis, array);
+  int32_t layer = 0;
+  CheckLayerEqual(layer, 0, array);
+  CheckLayerEqual(layer, 1, array);
+  CheckLayerEqual(layer, 2, array);
+  CheckLayerEqual(layer, 3, array);
 #ifndef NDEBUG
   // this won't actualy die if we compiled with NDEBUG.
-  ASSERT_DEATH(CheckAxisEqual(4, axis, array), "");
+  ASSERT_DEATH(CheckLayerEqual(layer, 4, array), "");
 #endif
-  CheckAxisEqual(2, axis, array + 3);
+  CheckLayerEqual(layer, 2, array + 3);
 }
 
 TEST(RaggedUtilsTest, GetLayer) {
@@ -68,7 +68,7 @@ TEST(RaggedUtilsTest, IntersperseRaggedLayerSimpleLayer0) {
     RaggedShape *shapes[] = {&shape1, &shape2};
     int32_t layer = 0;
     Array1<uint32_t> merge_map;
-    RaggedShape shape = IntersperseRaggedLayer(2, layer, shapes, &merge_map);
+    RaggedShape shape = IntersperseRaggedLayer(layer, 2, shapes, &merge_map);
     std::vector<uint32_t> merge_values = { 0, 2, 4, 1, 6, 8 };
     CheckArrayData(merge_map, merge_values);
     ASSERT_TRUE(Equal(shape, shape3));
@@ -83,7 +83,7 @@ TEST(RaggedUtilsTest, IntersperseRaggedLayerSimpleLayer1) {
 
     RaggedShape *shapes[] = {&shape1, &shape2};
     int32_t layer = 1;
-    RaggedShape shape = IntersperseRaggedLayer(2, layer, shapes, nullptr);
+    RaggedShape shape = IntersperseRaggedLayer(layer, 2, shapes, nullptr);
     ASSERT_TRUE(Equal(shape, shape3));
   }
 }
@@ -102,7 +102,7 @@ TEST(RaggedUtilsTest, IntersperseRaggedLayerLong) {
     int32_t layer = 0;
     Array1<uint32_t> merge_map;
 
-    RaggedShape shape = IntersperseRaggedLayer(20, layer, shapes, &merge_map);
+    RaggedShape shape = IntersperseRaggedLayer(layer, 20, shapes, &merge_map);
     K2_LOG(INFO) << "merge_map = " << merge_map;
 
     ContextPtr cpu = GetCpuContext();
@@ -143,7 +143,7 @@ TEST(RaggedUtilsTest, MergeRaggedLayerSimpleLayer0) {
     RaggedShape *shapes[] = {&shape1, &shape2};
     Array1<uint32_t> merge_map_out;
     int32_t layer = 0;
-    RaggedShape merged = MergeRaggedLayer(2, layer, shapes,
+    RaggedShape merged = MergeRaggedLayer(layer, 2, shapes,
                                           merge_map,
                                           &merge_map_out);
     std::vector<uint32_t> merge_map_out_vec = { 0, 2, 4, 6, 8, 1 };
@@ -161,11 +161,23 @@ TEST(RaggedUtilsTest, MergeRaggedLayerSimpleLayer1) {
     RaggedShape *shapes[] = {&shape1, &shape2};
     Array1<uint32_t> merge_map_out;
     int32_t layer = 1;
-    RaggedShape merged = MergeRaggedLayer(2, layer, shapes,
+    RaggedShape merged = MergeRaggedLayer(layer, 2, shapes,
                                           merge_map,
                                           &merge_map_out);
     std::vector<uint32_t> merge_map_out_vec = { 0, 2, 4, 6, 8, 1 };
     CheckArrayData(merge_map_out, merge_map_out_vec);
+  }
+}
+
+TEST(RaggedUtilsTest, SubsampleRaggedLayer) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    RaggedShape shape1 = RaggedShape(" [[ x ] [ x] [ x x ] [x ]]").To(c),
+               shape1b = RaggedShape("[[[ x ] [ x] [ x x ] [x ]]]").To(c),
+                shape2 = RaggedShape(" [[ x x ] [ x x x ]]").To(c);
+    RaggedShape ans1 = SubsampleRaggedLayer(shape1, 0, 2),
+                ans2 = SubsampleRaggedLayer(shape1b, 1, 2);
+    K2_CHECK(Equal(shape2, ans1));
+    K2_CHECK(Equal(shape2, ans2));
   }
 }
 

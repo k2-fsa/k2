@@ -83,7 +83,8 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
 }
 
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src,
+                Array1<uint32_t> *merge_map /* = nullptr */) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK_GT(num_srcs, 0);  // can later relax this, maybe
@@ -105,17 +106,19 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
 }
 
 template <typename T>
-Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src) {
+Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
+                Array1<uint32_t> *merge_map /* = nullptr */) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK_GT(num_srcs, 0);
   std::vector<Ragged<T> *> temp(num_srcs);
   for (int32_t i = 0; i != num_srcs; ++i) temp[i] = src + i;
-  return Stack(axis, num_srcs, temp.data());
+  return Stack(axis, num_srcs, temp.data(), merge_map);
 }
 
 template <typename T>
-Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
+Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src,
+                 Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) return **src;
   K2_CHECK_GT(num_srcs, 1);
@@ -138,7 +141,8 @@ Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src) {
 }
 
 template <typename T>
-Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src) {
+Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src,
+                 Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK_GT(num_srcs, 0);
