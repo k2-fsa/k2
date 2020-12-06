@@ -86,7 +86,7 @@ void CheckAxisEqual(int32_t num_srcs,
 RaggedShape AppendRaggedAxisBefore(int32_t num_srcs,
                                    int32_t axis,
                                    RaggedShape **src,
-                                   Array1<int32_t> *merge_map = nullptr);
+                                   Array1<uint32_t> *merge_map = nullptr);
 
 
 
@@ -131,7 +131,7 @@ RaggedShape AppendRaggedAxisBefore(int32_t num_srcs,
 RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
                                    int32_t layer,
                                    RaggedShape **src,
-                                   Array1<int32_t> *merge_map = nullptr);
+                                   Array1<uint32_t> *merge_map = nullptr);
 
 /*
   Merge a ragged axis given a 'merge_map' obtained from a previous operation on an
@@ -155,8 +155,8 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
 RaggedShape MergeRaggedAxis(int32_t num_srcs,
                             int32_t axis,
                             RaggedShape **src,
-                            const Array1<int32_t> &merge_map,
-                            Array1<int32_t> *merge_map_out = nullptr);
+                            const Array1<uint32_t> &merge_map,
+                            Array1<uint32_t> *merge_map_out = nullptr);
 
 
 

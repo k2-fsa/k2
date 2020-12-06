@@ -66,9 +66,9 @@ TEST(RaggedUtilsTest, IntersperseRaggedLayerSimpleLayer0) {
 
   RaggedShape *shapes[] = {&shape1, &shape2};
   int32_t layer = 0;
-  Array1<int32_t> merge_map;
+  Array1<uint32_t> merge_map;
   RaggedShape shape = IntersperseRaggedLayer(2, layer, shapes, &merge_map);
-  std::vector<int32_t> merge_values = { 0, 2, 4, 1, 6, 8 };
+  std::vector<uint32_t> merge_values = { 0, 2, 4, 1, 6, 8 };
   CheckArrayData(merge_map, merge_values);
   ASSERT_TRUE(Equal(shape, shape3));
 }
@@ -95,7 +95,7 @@ TEST(RaggedUtilsTest, IntersperseRaggedLayerLong) {
     shapes[i] = i % 2 == 0 ? &shape1 : &shape2;
   }
   int32_t layer = 0;
-  Array1<int32_t> merge_map;
+  Array1<uint32_t> merge_map;
 
   RaggedShape shape = IntersperseRaggedLayer(20, layer, shapes, &merge_map);
   K2_LOG(INFO) << "merge_map = " << merge_map;

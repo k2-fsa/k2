@@ -75,13 +75,14 @@ void CheckAxisEqual(int32_t num_srcs,
 RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
                                   int32_t layer,
                                   RaggedShape **src,
-                                  Array1<int32_t> *merge_map) {
+                                  Array1<uint32_t> *merge_map) {
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK_GE(layer, 0);
   K2_CHECK_LT(layer + 1, src[0]->NumAxes());
   if (num_srcs == 1) {
     if (merge_map)
-      *merge_map = Range(src[0]->Context(), src[0]->TotSize(layer + 1), 0);
+      *(reinterpret_cast<Array1<int32_t>*>(merge_map)) =
+          Range(src[0]->Context(), src[0]->TotSize(layer + 1), 0);
     return *src[0];
   }
 
@@ -157,9 +158,9 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
   RowSplitsToRowIds(row_splits, &row_ids);
 
   if (merge_map != nullptr) {
-    *merge_map = Array1<int32_t>(c, tot_elems);
+    *merge_map = Array1<uint32_t>(c, tot_elems);
     const int32_t *row_ids_data = row_ids.Data();
-    int32_t *merge_map_data = merge_map->Data();
+    uint32_t *merge_map_data = merge_map->Data();
 
     K2_EVAL(c, tot_elems, lambda_set_merge_map, (int32_t idx01) -> void {
         int32_t idx0 = row_ids_data[idx01],
@@ -171,7 +172,7 @@ RaggedShape IntersperseRaggedLayer(int32_t num_srcs,
            src_idx01 = src_idx0x + idx1;
         // We multiply the src_idx01 by num_srcs as a way of encoding it and the src
         // into a single integer.
-        merge_map_data[idx01] = src + (num_srcs * src_idx01);
+        merge_map_data[idx01] = uint32_t(src) + ((uint32_t)num_srcs * uint32_t(src_idx01));
       });
   }
 
