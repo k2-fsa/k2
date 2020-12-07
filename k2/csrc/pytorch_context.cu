@@ -106,9 +106,16 @@ class PytorchCudaContext : public Context {
 
   int32_t GetDeviceId() const override { return gpu_id_; }
 
-  cudaStream_t GetCudaStream() const override {
-    return g_stream_override.OverrideStream(
-        c10::cuda::getCurrentCUDAStream(gpu_id_));
+  /* @param  [out]  p  It is the address of an instance of
+                       c10::cuda::CUDAStream.
+   */
+  cudaStream_t GetCudaStream(void *p = nullptr) const override {
+    c10::cuda::CUDAStream cuda_stream =
+        c10::cuda::getCurrentCUDAStream(gpu_id_);
+    if (p != nullptr)
+      *reinterpret_cast<c10::cuda::CUDAStream *>(p) = cuda_stream;
+
+    return g_stream_override.OverrideStream(cuda_stream);
   }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
@@ -201,8 +208,11 @@ class PytorchPinnedContext : public Context {
         memcpy(dst, src, num_bytes);
         break;
       case kCuda: {
-        // from host to device
-        c10::cuda::CUDAStream stream = c10::cuda::getCurrentCUDAStream();
+        // give some arbitrary value to the constructor of CUDAStream
+        c10::cuda::CUDAStream cuda_stream(
+            c10::Stream(c10::Stream::DEFAULT, c10::Device("cuda:0")));
+
+        cudaStream_t stream = dst_context->GetCudaStream(&cuda_stream);
         cudaError_t ret = cudaMemcpyAsync(dst, src, num_bytes,
                                           cudaMemcpyHostToDevice, stream);
         K2_CHECK_CUDA_ERROR(ret);
@@ -210,7 +220,7 @@ class PytorchPinnedContext : public Context {
         // CAUTION: we assume that src points to the beginning of the memory
         // returned by `this` context. Otherwise, the following call is a no-op.
         ret = THCCachingHostAllocator_recordEvent(const_cast<void *>(src),
-                                                  stream);
+                                                  cuda_stream);
         K2_CHECK_CUDA_ERROR(ret);
         break;
       }
