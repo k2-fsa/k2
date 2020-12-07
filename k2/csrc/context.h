@@ -90,12 +90,7 @@ class Context : public std::enable_shared_from_this<Context> {
 
   // Return the cuda stream associated with this context, or
   // kCudaStreamInvalid if this is not a CUDA context.
-  //
-  // @param [out] opaque  Implementations are allowed to return an extra value
-  //                      via the opaque pointer.
-  virtual cudaStream_t GetCudaStream(void *opaque = nullptr) const {
-    return kCudaStreamInvalid;
-  }
+  virtual cudaStream_t GetCudaStream() const { return kCudaStreamInvalid; }
 
   /*
     Allocate memory on this device (raise an exception on failure, which we

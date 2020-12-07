@@ -39,6 +39,7 @@ set(context_srcs
   host_shim.cu
   math.cu
   moderngpu_allocator.cu
+  pinned_context.cu
   ragged.cu
   ragged_ops.cu
   ragged_utils.cu

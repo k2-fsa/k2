@@ -1686,8 +1686,8 @@ static void PinnedContextSpeedTest() {
   Timer timer(cuda);
 
   int32_t bytes = (1 << 20) * 100;  // 100MB
-  for (int32_t i = 0; i != 10; ++i) {
-    int32_t num_bytes = bytes + i;
+  for (int32_t i = 0; i != 5; ++i) {
+    int32_t num_bytes = bytes;  // + i;
     total_bytes += num_bytes;
 
     Array1<int8_t> cpu_array(cpu, num_bytes);
