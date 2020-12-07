@@ -168,7 +168,7 @@ ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
   return GetCpuContext();
 }
 
-RegionPtr NewRegion(torch::Tensor &tensor) {
+RegionPtr NewRegion(torch::Tensor tensor) {
   auto ans = std::make_shared<Region>();
   if (tensor.device().type() == torch::kCPU) {
     ans->context = GetCpuContext();
