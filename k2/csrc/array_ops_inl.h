@@ -890,9 +890,11 @@ Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map,
   std::vector<const T*> src_ptrs_vec(num_srcs);
   int32_t src_tot_dim = 0;
   for (int32_t i = 0; i < num_srcs; i++) {
+    K2_CHECK(c->IsCompatible(*src[i]->Context()));
     src_tot_dim += src[i]->Dim();
     src_ptrs_vec[i] = src[i]->Data();
   }
+  K2_CHECK(src_tot_dim == dim);
   Array1<const T*> src_ptrs(c, src_ptrs_vec);
   Array1<T> ans(c, dim);
   const uint32_t *merge_map_data = merge_map.Data();
