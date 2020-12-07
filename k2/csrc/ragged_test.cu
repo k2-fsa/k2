@@ -2144,4 +2144,31 @@ TEST(RaggedTest, AddPrefixToRaggedTest) {
   }
 }
 
+TEST(RaggedShapeOpsTest, Merge) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    RaggedShape shape1 = RaggedShape("[ [ x x ] [ x ] [] ]").To(c),  // m: 0 3 6, m_out:  0 3, 6,
+                shape2 = RaggedShape("[ [ x] [ x x x ] ]").To(c), // m: 1 4, m_out: 1, 4 7 10
+                shape3 = RaggedShape("[ [ ] [ x x ] [] ]").To(c); // m: 2 5 8, m_out: ,2 5,
+
+
+    RaggedShape ans_ref = RaggedShape("[ [] [x] [x x x] [] [] [x x] [x x] [x] ]").To(c);
+
+    // This is a mixed-up kind of merge map that doesn't appear naturally (they
+    // are always in-order from each source, right now) but it should still
+    // work.
+    std::vector<uint32_t> merge_map_data = {  6, 1, 4, 8, 2, 5, 0, 3 };
+    Array1<uint32_t> merge_map_in(c, merge_map_data);
+    RaggedShape *srcs[] = { &shape1, &shape2, &shape3 };
+
+    Array1<uint32_t> merge_map_out;
+    RaggedShape merged = Merge(3, srcs, merge_map_in, &merge_map_out);
+
+    ASSERT_EQ(true, Equal(ans_ref, merged));
+
+    std::vector<uint32_t> merge_map_out_data = { 1, 4, 7, 10, 2, 5, 0, 3, 6 };
+    CheckArrayData(merge_map_out, merge_map_out_data);
+  }
+}
+
+
 }  // namespace k2
