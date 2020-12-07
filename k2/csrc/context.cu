@@ -77,7 +77,7 @@ void ParallelRunnerActive::Finish() {
     for (std::size_t i = 0; i != streams_.size(); ++i) {
       // create and record event on `stream_[i]`, and wait on c_->GetCudaStream
       cudaEvent_t event;
-      auto ret = cudaEventCreate(&event);
+      auto ret = cudaEventCreateWithFlags(&event, cudaEventDisableTiming);
       K2_CHECK_CUDA_ERROR(ret);
       ret = cudaEventRecord(event, streams_[i]);
       K2_CHECK_CUDA_ERROR(ret);

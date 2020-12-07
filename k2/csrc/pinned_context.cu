@@ -251,7 +251,7 @@ class PinnedAllocator {
   std::mutex mutex_;
 };
 
-PinnedAllocator *GetPinnedAllocator() {
+static PinnedAllocator *GetPinnedAllocator() {
   static std::once_flag init_flag;
   static PinnedAllocator *allocator = nullptr;
 
