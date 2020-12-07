@@ -345,19 +345,27 @@ ContextPtr GetCpuContext();
 // for testing purposes without an external neural-network toolkit.  If you want
 // to use (say) PyTorch's memory manager, you should use a Context passed in
 // from PyTorch
+//
+// CAUTION: If there are no CUDA capable GPUs, it returns a CPU context!
 ContextPtr GetCudaContext(int32_t gpu_id = -1);
 
 /* Returns a (CPU) context that will allocate pinned memory.  (This is CPU
    memory that's pinned for faster GPU memory transfers).  May or may not
    return the same value as ::k2::GetCpuContext()... this is so, for instance,
    if you have a GPU PyTorch context you can get a CPU PyTorch context.
-   Returns a (CPU) context that will allocate pinned memory.
+
+   CAUTION: If there are no CUDA capable GPUs, it returns a CPU context!
+ */
+ContextPtr GetPinnedContext();
+
+/* Return a (CPU) context that will allocate pinned memory if device_type
+   is kCuda. It is equivalent to GetCpuContext() if device_type is kCpu.
 
    @param [in] device_type  If device_type is kCpu, it is equivalent
                             to `GetCpuContext()`. If device_type is kCuda,
-                            it returns a context that allocates pinned memory.
+                            it is equivalent to `GetPinnedContext()`.
 */
-ContextPtr GetPinnedContext(DeviceType device_type);
+ContextPtr GetContextForTransfer(DeviceType device_type);
 
 /**
    Allocate a new Region.

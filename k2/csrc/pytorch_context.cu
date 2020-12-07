@@ -68,7 +68,7 @@ class PytorchCpuContext : public Context {
         memcpy(dst, src, num_bytes);
         break;
       case kCuda: {
-        ContextPtr pinned_context = GetPinnedContext(kCuda);
+        ContextPtr pinned_context = GetPinnedContext();
         auto region = NewRegion(pinned_context, num_bytes);
         memcpy(region->data, src, num_bytes);
         pinned_context->CopyDataTo(num_bytes, region->data, dst_context, dst);
@@ -226,15 +226,19 @@ class PytorchPinnedContext : public Context {
 
 ContextPtr GetCpuContext() { return std::make_shared<PytorchCpuContext>(); }
 
-ContextPtr GetPinnedContext(DeviceType device_type) {
+ContextPtr GetPinnedContext() {
+  std::call_once(has_cuda_init_flag, InitHasCuda);
+  if (has_cuda) return std::make_shared<PytorchPinnedContext>();
+
+  return GetCpuContext();
+}
+
+ContextPtr GetContextForTransfer(DeviceType device_type) {
   switch (device_type) {
     case kCpu:
       return GetCpuContext();
     case kCuda:
-      std::call_once(has_cuda_init_flag, InitHasCuda);
-      if (has_cuda) return std::make_shared<PytorchPinnedContext>();
-
-      return GetCpuContext();
+      return GetPinnedContext();
     default:
       K2_LOG(FATAL) << "Unsupported device type: " << device_type;
       return nullptr;

@@ -1674,10 +1674,10 @@ TEST(OpsTest, SizesToMergeMapTest) {
   }
 }
 
-TEST(PinnedContext, SpeedTest) {
+static void PinnedContextSpeedTest() {
   ContextPtr cpu = GetCpuContext();
   ContextPtr cuda = GetCudaContext();
-  ContextPtr pinned = GetPinnedContext(kCuda);
+  ContextPtr pinned = GetPinnedContext();
 
   double elapsed_cpu = 0.;
   double elapsed_pinned = 0.;
@@ -1685,35 +1685,48 @@ TEST(PinnedContext, SpeedTest) {
 
   Timer timer(cuda);
 
-  int32_t bytes = (1 << 20) * 10;  // 10MB
-  for (int32_t i = 0; i != 100; ++i) {
-    int32_t num_bytes = bytes + i % 8;
+  int32_t bytes = (1 << 20) * 100;  // 100MB
+  for (int32_t i = 0; i != 10; ++i) {
+    int32_t num_bytes = bytes + i;
     total_bytes += num_bytes;
 
-    auto cpu_region = NewRegion(cpu, num_bytes);
-    auto cuda_region1 = NewRegion(cuda, num_bytes);
-    auto cuda_region2 = NewRegion(cuda, num_bytes);
-    auto pinned_region = NewRegion(pinned, num_bytes);
+    Array1<int8_t> cpu_array(cpu, num_bytes);
+    Array1<int8_t> cuda_array1(cuda, num_bytes);
+    Array1<int8_t> cuda_array2(cuda, num_bytes);
+    Array1<int8_t> pinned_array(pinned, num_bytes);
+
+    int8_t *cpu_array_data = cpu_array.Data();
+    int8_t *pinned_array_data = pinned_array.Data();
+
+    for (int32_t k = 0; k != num_bytes; ++k) {
+      cpu_array_data[k] = static_cast<int8_t>(RandInt(-128, 127));
+      pinned_array_data[k] = static_cast<int8_t>(RandInt(-128, 127));
+    }
 
     if (i & 1) {
       timer.Reset();
-      cpu->CopyDataTo(num_bytes, cpu_region->data, cuda, cuda_region1->data);
+      // CAUTION: it includes the time for allocating extra pinned memory
+      // and extra copying from non-pinned to pinned memory.
+      cpu->CopyDataTo(num_bytes, cpu_array.Data(), cuda, cuda_array1.Data());
       elapsed_cpu += timer.Elapsed();
 
       timer.Reset();
-      pinned->CopyDataTo(num_bytes, pinned_region->data, cuda,
-                         cuda_region2->data);
+      pinned->CopyDataTo(num_bytes, pinned_array.Data(), cuda,
+                         cuda_array2.Data());
       elapsed_pinned += timer.Elapsed();
     } else {
       timer.Reset();
-      pinned->CopyDataTo(num_bytes, pinned_region->data, cuda,
-                         cuda_region2->data);
+      pinned->CopyDataTo(num_bytes, pinned_array.Data(), cuda,
+                         cuda_array2.Data());
       elapsed_pinned += timer.Elapsed();
 
       timer.Reset();
-      cpu->CopyDataTo(num_bytes, cpu_region->data, cuda, cuda_region1->data);
+      cpu->CopyDataTo(num_bytes, cpu_array.Data(), cuda, cuda_array1.Data());
       elapsed_cpu += timer.Elapsed();
     }
+
+    CheckArrayData(cpu_array, cuda_array1);
+    CheckArrayData(pinned_array, cuda_array2);
   }
 
   printf("non-pinned memory copy (host->device): : %.2f GB/s\n",
@@ -1722,5 +1735,7 @@ TEST(PinnedContext, SpeedTest) {
   printf("pinned memory copy (host->device): : %.2f GB/s\n",
          (total_bytes / (1 << 30)) / elapsed_pinned);
 }
+
+TEST(PinnedContext, SpeedTest) { PinnedContextSpeedTest(); }
 
 }  // namespace k2
