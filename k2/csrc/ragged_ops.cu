@@ -1377,7 +1377,7 @@ Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
   // them with "1" so that we can use "idx01" and "idx0" for those indexes in
   // lambda, following the naming convention explained in k2/csrc/utils.h
   const int32_t *dst_row_splits1_data =
-    dst_shape.RowSplits(num_axes - 1).Data(),
+      dst_shape.RowSplits(num_axes - 1).Data(),
                 *dst_row_ids1_data = dst_shape.RowIds(num_axes - 1).Data(),
                 *src_values_data = src.values.Data(),
                 *suffix_data = suffix.Data();
@@ -1412,7 +1412,7 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
   // them with "1" so that we can use "idx01" and "idx0" for those indexes in
   // lambda, following the naming convention explained in k2/csrc/utils.h
   const int32_t *dst_row_splits1_data =
-    dst_shape.RowSplits(num_axes - 1).Data(),
+      dst_shape.RowSplits(num_axes - 1).Data(),
                 *dst_row_ids1_data = dst_shape.RowIds(num_axes - 1).Data(),
                 *src_values_data = src.values.Data(),
                 *prefix_data = prefix.Data();

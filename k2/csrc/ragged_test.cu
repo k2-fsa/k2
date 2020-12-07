@@ -2032,14 +2032,16 @@ TEST(RaggedShapeOpsTest, GetPrefixesTest) {
 
 TEST(RaggedShapeOpsTest, AppendMoreAxes) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape1 = RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
-                shape2 = RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+    RaggedShape shape1 = RaggedShape(
+        "[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 = RaggedShape(
+                    "[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
                 shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
 
-    RaggedShape appended_axis2_ref =
-        RaggedShape("[ [ [[ x x ][ x ][]] [[x ][x][ x ]] ] [[[x ][ x x][]]]]").To(c);
-    RaggedShape appended_axis3_ref =
-        RaggedShape("[ [ [[ x x x ]] [[x x x ]] ] [[[x x x]]]]").To(c);
+    RaggedShape appended_axis2_ref = RaggedShape(
+        "[ [ [[ x x ][ x ][]] [[x ][x][ x ]] ] [[[x ][ x x][]]]]").To(c);
+    RaggedShape appended_axis3_ref = RaggedShape(
+        "[ [ [[ x x x ]] [[x x x ]] ] [[[x x x]]]]").To(c);
     RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
     Array1<uint32_t> merge_map2;
     Array1<uint32_t> merge_map3;
@@ -2059,12 +2061,15 @@ TEST(RaggedShapeOpsTest, AppendMoreAxes) {
 
 TEST(RaggedShapeOpsTest, StackMoreAxes) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape1 = RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
-                shape2 = RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+    RaggedShape shape1 = RaggedShape(
+        "[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 = RaggedShape(
+                    "[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
                 shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
 
-    RaggedShape stacked_ref =
-        RaggedShape("[ [ [[[ x x ]][[ x ]][[]]] [[[x ]][[x]][[ x ]]] ] [[[[x ]][[ x x]][[]]]]]").To(c);
+    RaggedShape stacked_ref = RaggedShape(
+        "[ [ [[[ x x ]][[ x ]][[]]] [[[x ]][[x]][[ x ]]] ] "
+        "[[[[x ]][[ x x]][[]]]]]").To(c);
     RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
     Array1<uint32_t> merge_map2;
     Array1<uint32_t> merge_map3;
@@ -2084,12 +2089,16 @@ TEST(RaggedShapeOpsTest, StackMoreAxes) {
 
 TEST(RaggedShapeOpsTest, Merge) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape1 = RaggedShape("[ [ x x ] [ x ] [] ]").To(c),  // m: 0 3 6, m_out:  0 3, 6,
-                shape2 = RaggedShape("[ [ x] [ x x x ] ]").To(c), // m: 1 4, m_out: 1, 4 7 10
-                shape3 = RaggedShape("[ [ ] [ x x ] [] ]").To(c); // m: 2 5 8, m_out: ,2 5,
+    RaggedShape shape1 = RaggedShape(
+        "[ [ x x ] [ x ] [] ]").To(c),  // m: 0 3 6, m_out:  0 3, 6,
+                shape2 = RaggedShape(
+                    "[ [ x] [ x x x ] ]").To(c),  // m: 1 4, m_out: 1, 4 7 10
+                shape3 = RaggedShape(
+                    "[ [ ] [ x x ] [] ]").To(c);  // m: 2 5 8, m_out: ,2 5,
 
 
-    RaggedShape ans_ref = RaggedShape("[ [] [x] [x x x] [] [] [x x] [x x] [x] ]").To(c);
+    RaggedShape ans_ref =
+        RaggedShape("[ [] [x] [x x x] [] [] [x x] [x x] [x] ]").To(c);
 
     // This is a mixed-up kind of merge map that doesn't appear naturally (they
     // are always in-order from each source, right now) but it should still
