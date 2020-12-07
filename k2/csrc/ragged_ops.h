@@ -877,6 +877,45 @@ Ragged<T> Index(Ragged<T> &src, const Array1<int32_t> &indexes,
 }
 
 /*
+   Merge a list of RaggedShape by combining their top-level lists (those
+   obtained by indexing on their axis 0) with the provided merge_map
+   that indicates the order to take items in.
+
+      @param [in] num_srcs Number of source shapes to append; require
+                           num_srcs > 0.
+      @param [in] src      Array of sources to append; must have compatible
+                           contexts and the same number of axes.
+      @param [in] merge_map   Merge map (probably obtained from some previous
+                           ragged operation) that dictates the order in which
+                           to combine elements.  `merge_map.Dim()` must equal
+                           the sum of `src[i]->Dim0()` for all 0 <= i < num-srcs.
+                           If `merge_map[i] == m` then at position i on
+                           axis 0 of the output we take element `m / num_srcs`
+                           on axis 0 of the source numbered `m % num_srcs`.
+      @param [out] merge_map_out  If not nullptr, will be set to the merge-map
+                          that tells us for each 0 <= i < ans.NumElements(),
+                          which element of `src` it came from (available
+                          as `merge_map[i] % num_srcs`) and its element-index within
+                          `src[i]` (available as `merge_map[i] / num_srcs`.
+
+      @return       Returns the appended RaggedShape.  Will have the same
+                    number of axes as the sources.
+*/
+RaggedShape Merge(int32_t num_srcs,
+                  RaggedShape **src,
+                  const Array1<uint32_t> &merge_map,
+                  Array1<uint32_t> *merge_map_out = nullptr);
+
+/*  Version of Merge that works on Ragged objects; see documentation for Merge()
+    above. */
+template <typename T>
+Ragged<T> Merge(int32_t num_srcs,
+                Ragged<T> **src,
+                const Array1<uint32_t> &merge_map,
+                Array1<uint32_t> *merge_map_out = nullptr);
+
+
+/*
   Returns a vector that indexes `shape` to put its rows in decreasing order of
   length.  I.e. so that `Index(shape, GetDecreasingSizeOrder(shape))` will
   give rows of decreasing length.
