@@ -1685,7 +1685,7 @@ TEST(PinnedContext, SpeedTest) {
 
   Timer timer(cuda);
 
-  int32_t bytes = (1 << 20) * 100;  // 100MB
+  int32_t bytes = (1 << 20) * 10;  // 10MB
   for (int32_t i = 0; i != 100; ++i) {
     int32_t num_bytes = bytes + i;
     total_bytes += num_bytes;

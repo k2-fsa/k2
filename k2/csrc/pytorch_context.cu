@@ -21,6 +21,15 @@
 
 namespace k2 {
 
+static std::once_flag has_cuda_init_flag;
+static bool has_cuda = false;
+static void InitHasCuda() {
+  if (torch::cuda::is_available())
+    has_cuda = true;
+  else
+    K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
+}
+
 class PytorchCpuContext : public Context {
  public:
   PytorchCpuContext() {
@@ -113,7 +122,7 @@ class PytorchCudaContext : public Context {
 
 class PytorchPinnedContext : public Context {
  public:
-  explicit PytorchPinnedContext() {
+  PytorchPinnedContext() {
     allocator_ = at::cuda::getPinnedMemoryAllocator();
     K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
@@ -147,18 +156,15 @@ class PytorchPinnedContext : public Context {
 ContextPtr GetCpuContext() { return std::make_shared<PytorchCpuContext>(); }
 
 ContextPtr GetPinnedContext() {
-  return std::make_shared<PytorchPinnedContext>();
+  std::call_once(has_cuda_init_flag, InitHasCuda);
+
+  if (has_cuda) return std::make_shared<PytorchPinnedContext>();
+
+  return GetCpuContext();
 }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
-  static std::once_flag has_cuda_init_flag;
-  static bool has_cuda = false;
-  std::call_once(has_cuda_init_flag, []() {
-    if (torch::cuda::is_available())
-      has_cuda = true;
-    else
-      K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
-  });
+  std::call_once(has_cuda_init_flag, InitHasCuda);
 
   if (has_cuda) {
     if (gpu_id < 0) gpu_id = c10::cuda::current_device();
