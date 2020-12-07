@@ -54,6 +54,7 @@ execute_process(COMMAND
   OUTPUT_VARIABLE K2_OS
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+string(REGEX REPLACE "^\"+|\"+$" "" K2_OS "${K2_OS}")
 message(STATUS "K2_OS: ${K2_OS}")
 
 find_package(Git REQUIRED)
