@@ -611,7 +611,8 @@ static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) {
     if (merge_map)
-      *merge_map = Arange<uint32_t>(src[0]->Context(), 0, src[0]->NumElements());
+      *merge_map = Arange<uint32_t>(src[0]->Context(), 0,
+                                    src[0]->NumElements());
     return **src;
   }
   K2_CHECK_GT(num_srcs, 1);
@@ -755,7 +756,8 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
   }
 
   Array1<uint32_t> merge_map_local;
-  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map : &merge_map_local);
+  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map :
+                              &merge_map_local);
   RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m),
               t = SubsampleRaggedLayer(s, 0, num_srcs);
   ans_layers[axis - 1] = t.Layers()[0];
@@ -989,10 +991,12 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
   }
 
   Array1<uint32_t> merge_map_local;
-  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map : &merge_map_local);
+  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map :
+                              &merge_map_local);
   RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m);
   // note: s.Dim0() will be a multiple of num_srcs.
-  ans_layers[axis - 1] = RegularRaggedShape(c, s.Dim0() / num_srcs, num_srcs).Layers()[0];
+  ans_layers[axis - 1] = RegularRaggedShape(c, s.Dim0() / num_srcs,
+                                            num_srcs).Layers()[0];
   ans_layers[axis] = s.Layers()[0];
 
   for (int32_t l = axis; l + 1 < num_axes; l++) {
