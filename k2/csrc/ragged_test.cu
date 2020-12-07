@@ -2097,20 +2097,15 @@ TEST(RaggedTest, AddSuffixToRaggedTest) {
         EXPECT_EQ(dst.NumElements(), src.NumElements() + suffix.Dim());
         Ragged<int32_t> src_cpu = src.To(GetCpuContext());
         Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
+        for (RaggedShapeIndexIterator src_iter = src_cpu.shape.Iterator();
+            !src_iter.Done(); src_iter.Next()) {
+          const std::vector<int32_t> &src_indexes = src_iter.Value();
+          EXPECT_EQ(dst_cpu[src_indexes], src_cpu[src_indexes]);
+        }
+        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
         Array1<int32_t> suffix_cpu = suffix.To(GetCpuContext());
-        Array1<int32_t> dst_row_splits = dst_cpu.RowSplits(num_axes - 1);
-        for (RaggedShapeIndexIterator dst_iter = dst_cpu.shape.Iterator();
-            !dst_iter.Done(); dst_iter.Next()) {
-          const std::vector<int32_t> &dst_indexes = dst_iter.Value();
-          int32_t idx0 = dst_indexes[num_axes - 2];
-          int32_t size0 = dst_row_splits[idx0 + 1] - dst_row_splits[idx0];
-          ASSERT_GT(size0, 0);
-          if (dst_indexes.back() == size0 - 1) {
-            EXPECT_EQ(dst_cpu[dst_indexes], suffix_cpu[idx0]);
-          } else {
-            ASSERT_LT(dst_indexes.back(), size0 - 1);
-            EXPECT_EQ(dst_cpu[dst_indexes], src_cpu[dst_indexes]);
-          }
+        for (int32_t i = 0; i < suffix.Dim(); ++i) {
+           EXPECT_EQ(dst_cpu.values[src_row_splits[i + 1] + i], suffix_cpu[i]);
         }
       }
     }
@@ -2132,20 +2127,17 @@ TEST(RaggedTest, AddPrefixToRaggedTest) {
         EXPECT_EQ(dst.NumElements(), src.NumElements() + prefix.Dim());
         Ragged<int32_t> src_cpu = src.To(GetCpuContext());
         Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
+        for (RaggedShapeIndexIterator src_iter = src_cpu.shape.Iterator();
+            !src_iter.Done(); src_iter.Next()) {
+          const std::vector<int32_t> &src_indexes = src_iter.Value();
+          std::vector<int32_t> dst_indexes(src_indexes);
+          dst_indexes.back() += 1;  // increase the last index by 1
+          EXPECT_EQ(dst_cpu[dst_indexes], src_cpu[src_indexes]);
+        }
+        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
         Array1<int32_t> prefix_cpu = prefix.To(GetCpuContext());
-        Array1<int32_t> dst_row_splits = dst_cpu.RowSplits(num_axes - 1);
-        for (RaggedShapeIndexIterator dst_iter = dst_cpu.shape.Iterator();
-            !dst_iter.Done(); dst_iter.Next()) {
-          const std::vector<int32_t> &dst_indexes = dst_iter.Value();
-          int32_t idx0 = dst_indexes[num_axes - 2];
-          if (dst_indexes.back() == 0) {
-            EXPECT_EQ(dst_cpu[dst_indexes], prefix_cpu[idx0]);
-          } else {
-            ASSERT_GT(dst_indexes.back(), 0);
-            std::vector<int32_t> src_indexes(dst_indexes);
-            src_indexes.back() -= 1;  // decrease the last index by 1
-            EXPECT_EQ(dst_cpu[dst_indexes], src_cpu[src_indexes]);
-          }
+        for (int32_t i = 0; i < prefix.Dim(); ++i) {
+          EXPECT_EQ(dst_cpu.values[src_row_splits[i] + i], prefix_cpu[i]);
         }
       }
     }
