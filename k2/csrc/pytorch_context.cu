@@ -13,6 +13,7 @@
 #include <mutex>  // NOLINT
 
 #include "ATen/cuda/PinnedMemoryAllocator.h"
+#include "THC/THCCachingHostAllocator.h"
 #include "c10/cuda/CUDACachingAllocator.h"
 #include "c10/cuda/CUDAFunctions.h"
 #include "k2/csrc/context.h"
@@ -57,6 +58,26 @@ class PytorchCpuContext : public Context {
 
   bool IsCompatible(const Context &other) const override {
     return other.GetDeviceType() == kCpu;
+  }
+
+  void CopyDataTo(size_t num_bytes, const void *src, ContextPtr dst_context,
+                  void *dst) override {
+    DeviceType device_type = dst_context->GetDeviceType();
+    switch (device_type) {
+      case kCpu:
+        memcpy(dst, src, num_bytes);
+        break;
+      case kCuda: {
+        ContextPtr pinned_context = GetPinnedContext(kCuda);
+        auto region = NewRegion(pinned_context, num_bytes);
+        memcpy(region->data, src, num_bytes);
+        pinned_context->CopyDataTo(num_bytes, region->data, dst_context, dst);
+        break;
+      }
+      default:
+        K2_LOG(FATAL) << "Unsupported device type: " << device_type;
+        break;
+    }
   }
 
  private:
@@ -115,6 +136,28 @@ class PytorchCudaContext : public Context {
     K2_CHECK_CUDA_ERROR(ret);
   }
 
+  void CopyDataTo(size_t num_bytes, const void *src, ContextPtr dst_context,
+                  void *dst) override {
+    DeviceType device_type = dst_context->GetDeviceType();
+    switch (device_type) {
+      case kCpu: {
+        cudaError_t ret =
+            cudaMemcpy(dst, src, num_bytes, cudaMemcpyDeviceToHost);
+        K2_CHECK_CUDA_ERROR(ret);
+        break;
+      }
+      case kCuda: {
+        cudaError_t ret = cudaMemcpyAsync(
+            dst, src, num_bytes, cudaMemcpyDeviceToDevice, GetCudaStream());
+        K2_CHECK_CUDA_ERROR(ret);
+        break;
+      }
+      default:
+        K2_LOG(FATAL) << "Unsupported device type: " << device_type;
+        break;
+    }
+  }
+
  private:
   torch::Allocator *allocator_;  // NOT owned here
   int32_t gpu_id_;
@@ -149,18 +192,53 @@ class PytorchPinnedContext : public Context {
     return other.GetDeviceType() == kCpu;
   }
 
+  void CopyDataTo(size_t num_bytes, const void *src, ContextPtr dst_context,
+                  void *dst) override {
+    DeviceType device_type = dst_context->GetDeviceType();
+    switch (device_type) {
+      case kCpu:
+        // we assume that src and dst do not overlap
+        memcpy(dst, src, num_bytes);
+        break;
+      case kCuda: {
+        // from host to device
+        c10::cuda::CUDAStream stream = c10::cuda::getCurrentCUDAStream();
+        cudaError_t ret = cudaMemcpyAsync(dst, src, num_bytes,
+                                          cudaMemcpyHostToDevice, stream);
+        K2_CHECK_CUDA_ERROR(ret);
+
+        // CAUTION: we assume that src points to the beginning of the memory
+        // returned by `this` context. Otherwise, the following call is a no-op.
+        ret = THCCachingHostAllocator_recordEvent(const_cast<void *>(src),
+                                                  stream);
+        K2_CHECK_CUDA_ERROR(ret);
+        break;
+      }
+      default:
+        K2_LOG(FATAL) << "Unsupported device type: " << device_type;
+        break;
+    }
+  }
+
  private:
   torch::Allocator *allocator_;  // NOT owned here
 };
 
 ContextPtr GetCpuContext() { return std::make_shared<PytorchCpuContext>(); }
 
-ContextPtr GetPinnedContext() {
-  std::call_once(has_cuda_init_flag, InitHasCuda);
+ContextPtr GetPinnedContext(DeviceType device_type) {
+  switch (device_type) {
+    case kCpu:
+      return GetCpuContext();
+    case kCuda:
+      std::call_once(has_cuda_init_flag, InitHasCuda);
+      if (has_cuda) return std::make_shared<PytorchPinnedContext>();
 
-  if (has_cuda) return std::make_shared<PytorchPinnedContext>();
-
-  return GetCpuContext();
+      return GetCpuContext();
+    default:
+      K2_LOG(FATAL) << "Unsupported device type: " << device_type;
+      return nullptr;
+  }
 }
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {

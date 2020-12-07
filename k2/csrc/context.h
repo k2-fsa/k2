@@ -4,7 +4,8 @@
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
+ *                                                   Haowen Qiu
+ *                                                   Fangjun Kuang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -136,6 +137,31 @@ class Context : public std::enable_shared_from_this<Context> {
     something more fine-grained.)
    */
   virtual void Sync() const {}
+
+  /* Copy data between contexts.
+
+     - For copying from host to host, it uses memcpy. We assume that src and dst
+       do not overlap.
+
+     - For copying from host to device, it allocates a block of pinned memory as
+       an intermediate buffer. The data is first copied to the buffer
+       using memcpy and then it is copied from the buffer to the device
+       using cudaMemcpyAsync.
+
+     - For copying from device to device, it uses cudaMemcpyAsync.
+
+     - For copying from device to host, it uses cudaMemcpy.
+
+     @param [in]   num_bytes  Number of bytes to be copied.
+     @param [in]   src   The src pointer. It has to point to a memory block
+                         allocated by `this` context.
+     @param [in]   dst_context  The context of `dst` from which its memory
+                                 gets allocated.
+     @param [in]   dst   The dst pointer. It has to point to a memory block
+                         allocated by `dst_context`.
+   */
+  virtual void CopyDataTo(size_t num_bytes, const void *src,
+                          ContextPtr dst_context, void *dst) = 0;
 };
 
 // Note currently we just support single GPU device, but finally we may need to
@@ -164,7 +190,7 @@ inline void MemoryCopy(void *dst, const void *src, std::size_t count,
   NVTX_RANGE(K2_FUNC);
   cudaError_t ret;
   if (kind == cudaMemcpyHostToHost) {
-    memcpy(dst, src, count);
+    memcpy(dst, src, count);  // we assume that src and dst do not overlap
     return;
   } else if (kind != cudaMemcpyDeviceToDevice) {
     ret = cudaMemcpy(dst, src, count, kind);
@@ -321,12 +347,17 @@ ContextPtr GetCpuContext();
 // from PyTorch
 ContextPtr GetCudaContext(int32_t gpu_id = -1);
 
-// Returns a (CPU) context that will allocate pinned memory.  (This is CPU
-// memory that's pinned for faster GPU memory transfers).  May or may not
-// return the same value as ::k2::GetCpuContext()... this is so, for instance,
-// if you have a GPU PyTorch context you can get a CPU PyTorch context.
-// Returns a (CPU) context that will allocate pinned memory.
-ContextPtr GetPinnedContext();
+/* Returns a (CPU) context that will allocate pinned memory.  (This is CPU
+   memory that's pinned for faster GPU memory transfers).  May or may not
+   return the same value as ::k2::GetCpuContext()... this is so, for instance,
+   if you have a GPU PyTorch context you can get a CPU PyTorch context.
+   Returns a (CPU) context that will allocate pinned memory.
+
+   @param [in] device_type  If device_type is kCpu, it is equivalent
+                            to `GetCpuContext()`. If device_type is kCuda,
+                            it returns a context that allocates pinned memory.
+*/
+ContextPtr GetPinnedContext(DeviceType device_type);
 
 /**
    Allocate a new Region.

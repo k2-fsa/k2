@@ -1677,7 +1677,7 @@ TEST(OpsTest, SizesToMergeMapTest) {
 TEST(PinnedContext, SpeedTest) {
   ContextPtr cpu = GetCpuContext();
   ContextPtr cuda = GetCudaContext();
-  ContextPtr pinned = GetPinnedContext();
+  ContextPtr pinned = GetPinnedContext(kCuda);
 
   double elapsed_cpu = 0.;
   double elapsed_pinned = 0.;
@@ -1687,7 +1687,7 @@ TEST(PinnedContext, SpeedTest) {
 
   int32_t bytes = (1 << 20) * 10;  // 10MB
   for (int32_t i = 0; i != 100; ++i) {
-    int32_t num_bytes = bytes + i;
+    int32_t num_bytes = bytes + i % 8;
     total_bytes += num_bytes;
 
     auto cpu_region = NewRegion(cpu, num_bytes);
@@ -1697,23 +1697,21 @@ TEST(PinnedContext, SpeedTest) {
 
     if (i & 1) {
       timer.Reset();
-      MemoryCopy(cuda_region1->data, cpu_region->data, num_bytes,
-                 cudaMemcpyHostToDevice, nullptr);
+      cpu->CopyDataTo(num_bytes, cpu_region->data, cuda, cuda_region1->data);
       elapsed_cpu += timer.Elapsed();
 
       timer.Reset();
-      MemoryCopy(cuda_region2->data, pinned_region->data, num_bytes,
-                 cudaMemcpyHostToDevice, nullptr);
+      pinned->CopyDataTo(num_bytes, pinned_region->data, cuda,
+                         cuda_region2->data);
       elapsed_pinned += timer.Elapsed();
     } else {
       timer.Reset();
-      MemoryCopy(cuda_region2->data, pinned_region->data, num_bytes,
-                 cudaMemcpyHostToDevice, nullptr);
+      pinned->CopyDataTo(num_bytes, pinned_region->data, cuda,
+                         cuda_region2->data);
       elapsed_pinned += timer.Elapsed();
 
       timer.Reset();
-      MemoryCopy(cuda_region1->data, cpu_region->data, num_bytes,
-                 cudaMemcpyHostToDevice, nullptr);
+      cpu->CopyDataTo(num_bytes, cpu_region->data, cuda, cuda_region1->data);
       elapsed_cpu += timer.Elapsed();
     }
   }
