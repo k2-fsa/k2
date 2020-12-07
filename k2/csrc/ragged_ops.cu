@@ -949,7 +949,8 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
                   Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
-  K2_CHECK(axis >= 0 && axis <= 1);
+  K2_CHECK_LT(static_cast<uint32_t>(axis),
+              static_cast<uint32_t>(src[0]->NumAxes()));
   ContextPtr c = src[0]->Context();
 
   if (axis == 0) {
