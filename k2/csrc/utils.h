@@ -503,6 +503,53 @@ __host__ __device__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
 #endif
 }
 
+/* Add a value to a memory address atomically.
+
+   It implements `*address += value`.
+
+   CAUTION: For host code, we assume single-threaded for now.
+
+   @param  [inout]  address  The memory address.
+   @param  in]      value    The value to be added.
+ */
+template <typename T>
+__host__ __device__ __forceinline__ void AtomicAdd(T *address, T value) {
+#ifdef __CUDA_ARCH__
+  atomicAdd(address, value);
+#else
+  // For host code, we assume single-threaded for now).
+  *address += value;
+#endif
+}
+
+// atomicAdd() for double-precision floating-point numbers is not available on
+// devices with compute capability lower than 6.0.
+// The following implementation is copied from
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#atomic-functions
+__host__ __device__ __forceinline__ void AtomicAdd(double *address,
+                                                   double value) {
+#if __CUDA_ARCH__ >= 600
+  atomicAdd(address, value);
+#elif defined(__CUDA_ARCH__)
+  // clang-format off
+  unsigned long long int *address_as_ull = reinterpret_cast<unsigned long long int *>(address);  // NOLINT
+  unsigned long long int old = *address_as_ull;  // NOLINT
+  unsigned long long int assumed;  // NOLINT
+  // clang-format on
+  do {
+    assumed = old;
+    old =
+        atomicCAS(address_as_ull, assumed,
+                  __double_as_longlong(value + __longlong_as_double(assumed)));
+    // Note: uses integer comparison to avoid hang in case of NaN
+    // (since NaN != NaN)
+  } while (assumed != old);
+#else
+  // For host code, we assume single-threaded for now).
+  *address += value;
+#endif
+}
+
 /*
  1:1 Conversion float <---> sortable int32_t We convert floats to sortable ints
  in order to use native atomics operation, which are way faster than looping

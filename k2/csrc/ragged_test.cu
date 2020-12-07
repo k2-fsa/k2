@@ -42,14 +42,14 @@ class RaggedShapeOpsSuiteTest : public ::testing::Test {
                                               12, 13, 15, 15, 16};
     const std::vector<int32_t> row_ids3 = {0, 0, 1, 2, 2, 3, 3, 3,
                                            4, 5, 5, 5, 6, 7, 7, 9};
-    std::vector<RaggedShapeDim> axes;
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
+    std::vector<RaggedShapeLayer> axes;
+    axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits1),
                                      Array1<int32_t>(context, row_ids1),
                                      static_cast<int32_t>(row_ids1.size())});
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
+    axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits2),
                                      Array1<int32_t>(context, row_ids2),
                                      static_cast<int32_t>(row_ids2.size())});
-    axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
+    axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits3),
                                      Array1<int32_t>(context, row_ids3),
                                      static_cast<int32_t>(row_ids3.size())});
 
@@ -140,10 +140,10 @@ void TestMaxPerSubListTest() {
     {
       // empty case
       const std::vector<int32_t> row_splits = {0};
-      RaggedShapeDim shape_dim;
+      RaggedShapeLayer shape_dim;
       shape_dim.row_splits = Array1<int32_t>(context, row_splits);
       shape_dim.cached_tot_size = 0;
-      std::vector<RaggedShapeDim> axes = {shape_dim};
+      std::vector<RaggedShapeLayer> axes = {shape_dim};
       RaggedShape shape(axes, true);
       Array1<T> values(context, 0);
       Ragged<T> ragged(shape, values);
@@ -158,10 +158,10 @@ void TestMaxPerSubListTest() {
 
     {
       const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
-      RaggedShapeDim shape_dim;
+      RaggedShapeLayer shape_dim;
       shape_dim.row_splits = Array1<int32_t>(context, row_splits);
       shape_dim.cached_tot_size = row_splits.back();
-      std::vector<RaggedShapeDim> axes = {shape_dim};
+      std::vector<RaggedShapeLayer> axes = {shape_dim};
       RaggedShape shape(axes, true);
       const std::vector<T> values_vec = {1, 3, 2, 8, 0, -1};
       Array1<T> values(context, values_vec);
@@ -192,10 +192,10 @@ void TestMaxPerSubListTest() {
       if (context->GetDeviceType() == kCuda) {
         // copy shape to GPU
         const Array1<T> &row_splits = shape.RowSplits(1);
-        RaggedShapeDim shape_dim;
+        RaggedShapeLayer shape_dim;
         shape_dim.row_splits = row_splits.To(GetCudaContext());
         shape_dim.cached_tot_size = shape.NumElements();
-        std::vector<RaggedShapeDim> axes = {shape_dim};
+        std::vector<RaggedShapeLayer> axes = {shape_dim};
         gpu_shape = RaggedShape(axes, true);
       }
 
@@ -290,10 +290,10 @@ void TestAndOrPerSubListTest() {
     {
       // And
       const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
-      RaggedShapeDim shape_dim;
+      RaggedShapeLayer shape_dim;
       shape_dim.row_splits = Array1<int32_t>(context, row_splits);
       shape_dim.cached_tot_size = row_splits.back();
-      std::vector<RaggedShapeDim> axes = {shape_dim};
+      std::vector<RaggedShapeLayer> axes = {shape_dim};
       RaggedShape shape(axes, true);
       const std::vector<T> values_vec = {1, 3, 3, 6, 11, 0};
       Array1<T> values(context, values_vec);
@@ -313,10 +313,10 @@ void TestAndOrPerSubListTest() {
     {
       // Or
       const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
-      RaggedShapeDim shape_dim;
+      RaggedShapeLayer shape_dim;
       shape_dim.row_splits = Array1<int32_t>(context, row_splits);
       shape_dim.cached_tot_size = row_splits.back();
-      std::vector<RaggedShapeDim> axes = {shape_dim};
+      std::vector<RaggedShapeLayer> axes = {shape_dim};
       RaggedShape shape(axes, true);
       const std::vector<T> values_vec = {1, 3, 3, 4, 6, 0};
       Array1<T> values(context, values_vec);
@@ -347,8 +347,8 @@ void TestUnsqueeze(const RaggedShape &input_shape) {
       // axis = 0.
       RaggedShape shape = Unsqueeze(src_shape, 0);
       int32_t dim0 = src_shape.Dim0();
-      const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
 
       {
         const Array1<int32_t> &row_splits0 = dest_axes[0].row_splits;
@@ -375,8 +375,8 @@ void TestUnsqueeze(const RaggedShape &input_shape) {
       int32_t axis = 1;
       RaggedShape shape = Unsqueeze(src_shape, axis);
       int32_t tot_size = shape.TotSize(axis);
-      const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
 
       {
         for (auto i = 0; i < axis; ++i) {
@@ -443,8 +443,8 @@ void TestRemoveAxis(const RaggedShape &input_shape) {
       // axis = 0.
       int32_t axis = 0;
       RaggedShape shape = RemoveAxis(src_shape, axis);
-      const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
       ASSERT_EQ(src_axes.size(), 3);
       ASSERT_EQ(dest_axes.size(), 2);
 
@@ -460,8 +460,8 @@ void TestRemoveAxis(const RaggedShape &input_shape) {
       // axis = 1
       int32_t axis = 1;
       RaggedShape shape = RemoveAxis(src_shape, axis);
-      const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
       ASSERT_EQ(src_axes.size(), 3);
       ASSERT_EQ(dest_axes.size(), 2);
 
@@ -489,8 +489,8 @@ void TestRemoveAxis(const RaggedShape &input_shape) {
       // axis = 3
       int32_t axis = 3;  // the last axis
       RaggedShape shape = RemoveAxis(src_shape, axis);
-      const std::vector<RaggedShapeDim> &src_axes = src_shape.Axes();
-      const std::vector<RaggedShapeDim> &dest_axes = shape.Axes();
+      const std::vector<RaggedShapeLayer> &src_axes = src_shape.Layers();
+      const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
       ASSERT_EQ(src_axes.size(), 3);
       ASSERT_EQ(dest_axes.size(), 2);
 
@@ -901,14 +901,14 @@ void TestRagged() {
                                              4, 5, 5, 5, 6, 7, 7, 9};
       const std::vector<T> values_vec = {1, 2, 4, 3, 0, 7, 8, 9,
                                          6, 3, 5, 7, 2, 3, 4, 8};
-      std::vector<RaggedShapeDim> axes;
-      axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
+      std::vector<RaggedShapeLayer> axes;
+      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits1),
                                        Array1<int32_t>(context, row_ids1),
                                        static_cast<int32_t>(row_ids1.size())});
-      axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
+      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits2),
                                        Array1<int32_t>(context, row_ids2),
                                        static_cast<int32_t>(row_ids2.size())});
-      axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
+      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits3),
                                        Array1<int32_t>(context, row_ids3),
                                        static_cast<int32_t>(row_ids3.size())});
 
@@ -1831,6 +1831,7 @@ void TestStackRagged() {
     }
   }
 }
+
 TEST(RaggedTest, TestStackRagged) {
   TestStackRagged<int32_t>();
   TestStackRagged<double>();
@@ -2026,6 +2027,58 @@ TEST(RaggedShapeOpsTest, GetPrefixesTest) {
         }
       }
     }
+  }
+}
+
+TEST(RaggedShapeOpsTest, AppendMoreAxes) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    RaggedShape shape1 = RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 = RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+                shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
+
+    RaggedShape appended_axis2_ref =
+        RaggedShape("[ [ [[ x x ][ x ][]] [[x ][x][ x ]] ] [[[x ][ x x][]]]]").To(c);
+    RaggedShape appended_axis3_ref =
+        RaggedShape("[ [ [[ x x x ]] [[x x x ]] ] [[[x x x]]]]").To(c);
+    RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
+    Array1<uint32_t> merge_map2;
+    Array1<uint32_t> merge_map3;
+    RaggedShape appended_axis2 = Append(2, 3, srcs, &merge_map2);
+    RaggedShape appended_axis3 = Append(3, 3, srcs, &merge_map3);
+    K2_LOG(INFO) << "appended_axis2 = " << appended_axis2;
+    K2_LOG(INFO) << "appended_axis3 = " << appended_axis3;
+
+    K2_CHECK(Equal(appended_axis2, appended_axis2_ref));
+    K2_CHECK(Equal(appended_axis2, appended_axis2_ref));
+
+    std::vector<uint32_t> merge_values = { 0, 3, 1, 6, 4, 2, 9, 7, 10 };
+    CheckArrayData(merge_map2, merge_values);
+    CheckArrayData(merge_map3, merge_values);
+  }
+}
+
+TEST(RaggedShapeOpsTest, StackMoreAxes) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    RaggedShape shape1 = RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 = RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+                shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
+
+    RaggedShape stacked_ref =
+        RaggedShape("[ [ [[[ x x ]][[ x ]][[]]] [[[x ]][[x]][[ x ]]] ] [[[[x ]][[ x x]][[]]]]]").To(c);
+    RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
+    Array1<uint32_t> merge_map2;
+    Array1<uint32_t> merge_map3;
+    RaggedShape stacked_axis2 = Stack(2, 3, srcs, &merge_map2);
+    RaggedShape stacked_axis3 = Stack(3, 3, srcs, &merge_map3);
+    K2_LOG(INFO) << "stacked_axis2 = " << stacked_axis2;
+    K2_LOG(INFO) << "stacked_axis3 = " << stacked_axis3;
+
+    K2_CHECK(Equal(stacked_axis2, stacked_ref));
+    K2_CHECK(Equal(stacked_axis2, stacked_ref));
+
+    std::vector<uint32_t> merge_values = { 0, 3, 1, 6, 4, 2, 9, 7, 10 };
+    CheckArrayData(merge_map2, merge_values);
+    CheckArrayData(merge_map3, merge_values);
   }
 }
 

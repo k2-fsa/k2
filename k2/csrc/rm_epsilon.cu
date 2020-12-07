@@ -23,12 +23,206 @@
 namespace k2 {
 void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
                           Array1<int32_t> *arc_map) {
-  K2_LOG(FATAL) << "Not Implemented!";
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK(dest != nullptr && state_map != nullptr && arc_map != nullptr);
+  K2_CHECK_EQ(src.NumAxes(), 3);
+  ContextPtr &c = src.Context();
+  int32_t num_fsas = src.Dim0(), num_states = src.TotSize(1),
+          num_arcs = src.TotSize(2);
+  const int32_t *src_row_splits1_data = src.RowSplits(1).Data(),
+                *src_row_ids1_data = src.RowIds(1).Data(),
+                *src_row_splits2_data = src.RowSplits(2).Data(),
+                *src_row_ids2_data = src.RowIds(2).Data();
+  const Arc *src_arcs_data = src.values.Data();
+  // only keep states with epsilons entering them or leaving them
+  Renumbering state_renumbering(c, num_states, true);
+  // `state_renumbering.Keep()` has been initialized with 0s as we only set 1s
+  // in below lambda.
+  char *state_keep_data = state_renumbering.Keep().Data();
+  // only keep epsilon arcs
+  Renumbering arc_renumbering(c, num_arcs);
+  char *arc_keep_data = arc_renumbering.Keep().Data();
+  K2_EVAL(
+      c, num_arcs, lambda_set_keep, (int32_t arc_idx012)->void {
+        int32_t state_idx01 = src_row_ids2_data[arc_idx012],
+                fsa_idx0 = src_row_ids1_data[state_idx01];
+        // note start_state is idx0x
+        int32_t start_state_this_fsa = src_row_splits1_data[fsa_idx0],
+                start_state_next_fsa = src_row_splits1_data[fsa_idx0 + 1],
+                first_arc_idx0xx_this_fsa =
+                    src_row_splits2_data[start_state_this_fsa];
+        Arc cur_arc = src_arcs_data[arc_idx012];
+        // we only keep epsilon arcs
+        arc_keep_data[arc_idx012] = (cur_arc.label == 0);
+        if (cur_arc.label == 0) {
+          // we keep any state who has entering or leaving epsilon arcs.
+          int32_t cur_arc_src_state_idx01 =
+              start_state_this_fsa + cur_arc.src_state;
+          int32_t cur_arc_dest_state_idx01 =
+              start_state_this_fsa + cur_arc.dest_state;
+          state_keep_data[cur_arc_src_state_idx01] = 1;
+          state_keep_data[cur_arc_dest_state_idx01] = 1;
+        }
+        // We always keep start state and final state for each non-empty fsa,
+        // but only set `state_keep_data` when we process the first arc
+        // of this fsa.
+        if (start_state_next_fsa > start_state_this_fsa &&
+            arc_idx012 == first_arc_idx0xx_this_fsa) {
+          state_keep_data[start_state_this_fsa] = 1;
+          state_keep_data[start_state_next_fsa - 1] = 1;
+        }
+      });
+
+  Array1<int32_t> state_new_to_old = state_renumbering.New2Old();
+  Array1<int32_t> state_old_to_new = state_renumbering.Old2New();
+  Array1<int32_t> arc_new_to_old = arc_renumbering.New2Old();
+  const int32_t *state_old_to_new_data = state_old_to_new.Data(),
+                *arc_new_to_old_data = arc_new_to_old.Data();
+
+  // get row_splits1 and row_ids of dest
+  Array1<int32_t> dest_row_splits1 = state_old_to_new[src.RowSplits(1)];
+  Array1<int32_t> dest_row_ids1 = src.RowIds(1)[state_new_to_old];
+
+  // get arcs and row_ids2 of dest
+  int32_t dest_num_arcs = arc_new_to_old.Dim();
+  Array1<int32_t> dest_row_ids2 = Array1<int32_t>(c, dest_num_arcs);
+  int32_t *dest_row_ids2_data = dest_row_ids2.Data();
+  Array1<Arc> dest_arcs = Array1<Arc>(c, dest_num_arcs);
+  Arc *dest_arcs_data = dest_arcs.Data();
+  K2_EVAL(
+      c, dest_num_arcs, lambda_set_dest_arc_and_row_ids2,
+      (int32_t dest_arc_idx012)->void {
+        int32_t src_arc_idx012 = arc_new_to_old_data[dest_arc_idx012],
+                src_state_idx01 = src_row_ids2_data[src_arc_idx012],
+                dest_state_idx01 = state_old_to_new_data[src_state_idx01];
+        // set row_ids2 of dest
+        dest_row_ids2_data[dest_arc_idx012] = dest_state_idx01;
+        int32_t fsa_idx0 = src_row_ids1_data[src_state_idx01];
+        int32_t src_start_state_idx0x = src_row_splits1_data[fsa_idx0],
+                dest_start_state_idx0x =
+                    state_old_to_new_data[src_start_state_idx0x];
+        Arc cur_src_arc = src_arcs_data[src_arc_idx012];
+        K2_DCHECK_EQ(cur_src_arc.label, 0);
+        // TODO(Haowen): remove below check after testing
+        int32_t cur_src_arc_src_state_idx01 =
+            cur_src_arc.src_state + src_start_state_idx0x;
+        K2_DCHECK_EQ(cur_src_arc_src_state_idx01, src_state_idx01);
+        int32_t cur_src_arc_dest_state_idx01 =
+            cur_src_arc.dest_state + src_start_state_idx0x;
+        int32_t cur_dest_arc_dest_state_idx01 =
+            state_old_to_new_data[cur_src_arc_dest_state_idx01];
+        dest_arcs_data[dest_arc_idx012] =
+            Arc(dest_state_idx01 - dest_start_state_idx0x,
+                cur_dest_arc_dest_state_idx01 - dest_start_state_idx0x, 0,
+                cur_src_arc.score);
+      });
+  *state_map = state_new_to_old;
+  *arc_map = arc_new_to_old;
+  RaggedShape dest_shape = RaggedShape3(&dest_row_splits1, &dest_row_ids1, -1,
+                                        nullptr, &dest_row_ids2, dest_num_arcs);
+  *dest = FsaVec(dest_shape, dest_arcs);
 }
 
 void ComputeNonEpsilonSubset(FsaVec &src, FsaVec *dest, Renumbering *state_map,
                              Array1<int32_t> *arc_map) {
-  K2_LOG(FATAL) << "Not Implemented!";
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK(dest != nullptr && state_map != nullptr && arc_map != nullptr);
+  K2_CHECK_EQ(src.NumAxes(), 3);
+  ContextPtr &c = src.Context();
+  int32_t num_fsas = src.Dim0(), num_states = src.TotSize(1),
+          num_arcs = src.TotSize(2);
+  const int32_t *src_row_splits1_data = src.RowSplits(1).Data(),
+                *src_row_ids1_data = src.RowIds(1).Data(),
+                *src_row_splits2_data = src.RowSplits(2).Data(),
+                *src_row_ids2_data = src.RowIds(2).Data();
+  const Arc *src_arcs_data = src.values.Data();
+  // only keep states with non-epsilons entering them or leaving them
+  *state_map = Renumbering(c, num_states, true);
+  Renumbering &state_renumbering = *state_map;
+  // `state_renumbering.Keep()` has been initialized with 0s as we only set 1s
+  // in below lambda.
+  char *state_keep_data = state_renumbering.Keep().Data();
+  // only keep non-epsilon arcs
+  Renumbering arc_renumbering(c, num_arcs);
+  char *arc_keep_data = arc_renumbering.Keep().Data();
+  K2_EVAL(
+      c, num_arcs, lambda_set_keep, (int32_t arc_idx012)->void {
+        int32_t state_idx01 = src_row_ids2_data[arc_idx012],
+                fsa_idx0 = src_row_ids1_data[state_idx01];
+        // note start_state is idx0x
+        int32_t start_state_this_fsa = src_row_splits1_data[fsa_idx0],
+                start_state_next_fsa = src_row_splits1_data[fsa_idx0 + 1],
+                first_arc_idx0xx_this_fsa =
+                    src_row_splits2_data[start_state_this_fsa];
+        Arc cur_arc = src_arcs_data[arc_idx012];
+        // we only keep non-epsilon arcs
+        arc_keep_data[arc_idx012] = (cur_arc.label != 0);
+        if (cur_arc.label != 0) {
+          // we keep any state who has entering or leaving non-epsilon arcs.
+          int32_t cur_arc_src_state_idx01 =
+              start_state_this_fsa + cur_arc.src_state;
+          int32_t cur_arc_dest_state_idx01 =
+              start_state_this_fsa + cur_arc.dest_state;
+          state_keep_data[cur_arc_src_state_idx01] = 1;
+          state_keep_data[cur_arc_dest_state_idx01] = 1;
+        }
+        // We always keep start state and final state for each non-empty fsa,
+        // but only set `state_keep_data` when we process the first arc
+        // of this fsa.
+        if (start_state_next_fsa > start_state_this_fsa &&
+            arc_idx012 == first_arc_idx0xx_this_fsa) {
+          state_keep_data[start_state_this_fsa] = 1;
+          state_keep_data[start_state_next_fsa - 1] = 1;
+        }
+      });
+
+  Array1<int32_t> state_new_to_old = state_renumbering.New2Old();
+  Array1<int32_t> state_old_to_new = state_renumbering.Old2New();
+  Array1<int32_t> arc_new_to_old = arc_renumbering.New2Old();
+  const int32_t *state_old_to_new_data = state_old_to_new.Data(),
+                *arc_new_to_old_data = arc_new_to_old.Data();
+
+  // get row_splits1 and row_ids of dest
+  Array1<int32_t> dest_row_splits1 = state_old_to_new[src.RowSplits(1)];
+  Array1<int32_t> dest_row_ids1 = src.RowIds(1)[state_new_to_old];
+
+  // get arcs and row_ids2 of dest
+  int32_t dest_num_arcs = arc_new_to_old.Dim();
+  Array1<int32_t> dest_row_ids2 = Array1<int32_t>(c, dest_num_arcs);
+  int32_t *dest_row_ids2_data = dest_row_ids2.Data();
+  Array1<Arc> dest_arcs = Array1<Arc>(c, dest_num_arcs);
+  Arc *dest_arcs_data = dest_arcs.Data();
+  K2_EVAL(
+      c, dest_num_arcs, lambda_set_dest_arc_and_row_ids2,
+      (int32_t dest_arc_idx012)->void {
+        int32_t src_arc_idx012 = arc_new_to_old_data[dest_arc_idx012],
+                src_state_idx01 = src_row_ids2_data[src_arc_idx012],
+                dest_state_idx01 = state_old_to_new_data[src_state_idx01];
+        // set row_ids2 of dest
+        dest_row_ids2_data[dest_arc_idx012] = dest_state_idx01;
+        int32_t fsa_idx0 = src_row_ids1_data[src_state_idx01];
+        int32_t src_start_state_idx0x = src_row_splits1_data[fsa_idx0],
+                dest_start_state_idx0x =
+                    state_old_to_new_data[src_start_state_idx0x];
+        Arc cur_src_arc = src_arcs_data[src_arc_idx012];
+        K2_DCHECK_NE(cur_src_arc.label, 0);
+        // TODO(Haowen): remove below check after testing
+        int32_t cur_src_arc_src_state_idx01 =
+            cur_src_arc.src_state + src_start_state_idx0x;
+        K2_DCHECK_EQ(cur_src_arc_src_state_idx01, src_state_idx01);
+        int32_t cur_src_arc_dest_state_idx01 =
+            cur_src_arc.dest_state + src_start_state_idx0x;
+        int32_t cur_dest_arc_dest_state_idx01 =
+            state_old_to_new_data[cur_src_arc_dest_state_idx01];
+        dest_arcs_data[dest_arc_idx012] =
+            Arc(dest_state_idx01 - dest_start_state_idx0x,
+                cur_dest_arc_dest_state_idx01 - dest_start_state_idx0x,
+                cur_src_arc.label, cur_src_arc.score);
+      });
+  *arc_map = arc_new_to_old;
+  RaggedShape dest_shape = RaggedShape3(&dest_row_splits1, &dest_row_ids1, -1,
+                                        nullptr, &dest_row_ids2, dest_num_arcs);
+  *dest = FsaVec(dest_shape, dest_arcs);
 }
 
 void MapFsaVecStates(FsaVec &src, const Array1<int32_t> &state_row_splits,
@@ -179,7 +373,6 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
     // (etc.) of epsilon_closure_prec.
 
     ExclusiveSum(nonepsilon_num_foll_eps, &nonepsilon_num_foll_eps);
-    Array1<int32_t> &prec_row_splits = nonepsilon_num_foll_eps;
 
     // The basic logic of this block will be similar to the block in
     // which we set combined_foll, except the order of non-epsilon and
@@ -201,7 +394,22 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
   // here.  I'm not saying we need such a recursive implementation, necessarily;
   // only that there is not a fundamental reason why Append() can't work in this
   // case.
-  *dest_fsa = Append(axis, 2, vecs);
+  FsaVec dest_fsa_unsorted = Append(axis, 2, vecs);
+
+  Ragged<int32_t> non_epsilon_arc_map_ragged(
+      RegularRaggedShape(c, non_epsilon_fsa.NumElements(),
+                         non_epsilon_fsa.NumElements()),
+      non_epsilon_arc_map);
+
+  Ragged<int32_t> dest_unsorted_arc_map;
+  {  // This block creates 'dest_unsorted_arc_map' which combines combined_foll_arc_map,
+     // combined_prec_arc_map and non_epsilon_arc_map.
+    //
+
+  }
+
+
+
 
   // TODO: work out how to combine the arc maps.
   // Can do arc-sorting *after* combining the arc maps, which will make

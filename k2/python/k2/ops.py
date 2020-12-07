@@ -5,7 +5,6 @@
 import torch
 import _k2
 
-
 from .autograd import index_select
 from .fsa import Fsa
 from .ragged import index as ragged_index
@@ -56,10 +55,13 @@ def index_add(index: torch.Tensor, value: torch.Tensor,
     Args:
       index:
         A 1-D tensor with dtype torch.int32.  -1 <= index[i] < in_out.shape[0]
+        CAUTION: It has to be contiguous.
       value:
-        A 1-D tensor with dtype torch.float32. index.numel() == value.numel()
+        A 1-D or 2-D tensor with dtype torch.float32 or torch.float32.
+        index.shape[0] == value.shape[0]
       in_out:
-        A 1-D tensor with dtype torch.float32.
+        A 1-D or 2-D tensor with the same dtype as `value`. It satisfies
+        in_out.shape[1] == value.shape[1]
 
     Returns:
       Return None.

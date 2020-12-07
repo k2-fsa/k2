@@ -62,14 +62,14 @@ TEST(RaggedShapeTest, RaggedShape) {
                                                 12, 13, 15, 15, 16};
       const std::vector<int32_t> row_ids3 = {0, 0, 1, 2, 2, 3, 3, 3,
                                              4, 5, 5, 5, 6, 7, 7, 9};
-      std::vector<RaggedShapeDim> axes;
-      axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits1),
+      std::vector<RaggedShapeLayer> axes;
+      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits1),
                                        Array1<int32_t>(context, row_ids1),
                                        static_cast<int32_t>(row_ids1.size())});
-      axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits2),
+      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits2),
                                        Array1<int32_t>(context, row_ids2),
                                        static_cast<int32_t>(row_ids2.size())});
-      axes.emplace_back(RaggedShapeDim{Array1<int32_t>(context, row_splits3),
+      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits3),
                                        Array1<int32_t>(context, row_ids3),
                                        static_cast<int32_t>(row_ids3.size())});
 
@@ -183,13 +183,13 @@ TEST(RaggedShapeTest, RaggedShape) {
                                                 12, 13, 15, 15, 16};
       Array1<int32_t> row_ids;  // invalid row_ids as it has no context,
                                 // shape.RowIds(axis) will create it.
-      std::vector<RaggedShapeDim> axes;
+      std::vector<RaggedShapeLayer> axes;
       axes.emplace_back(
-          RaggedShapeDim{Array1<int32_t>(context, row_splits1), row_ids, -1});
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits1), row_ids, -1});
       axes.emplace_back(
-          RaggedShapeDim{Array1<int32_t>(context, row_splits2), row_ids, -1});
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits2), row_ids, -1});
       axes.emplace_back(
-          RaggedShapeDim{Array1<int32_t>(context, row_splits3), row_ids, -1});
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits3), row_ids, -1});
       RaggedShape shape(axes, true);
 
       EXPECT_EQ(shape.NumAxes(), 4);
@@ -219,13 +219,13 @@ TEST(RaggedShapeTest, RaggedShape) {
                                                 12, 13, 15, 15, 16};
       Array1<int32_t> row_ids;  // invalid row_ids as it has no context,
                                 // shape.RowIds(axis) will create it.
-      std::vector<RaggedShapeDim> axes;
+      std::vector<RaggedShapeLayer> axes;
       axes.emplace_back(
-          RaggedShapeDim{Array1<int32_t>(context, row_splits1), row_ids, -1});
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits1), row_ids, -1});
       axes.emplace_back(
-          RaggedShapeDim{Array1<int32_t>(context, row_splits2), row_ids, -1});
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits2), row_ids, -1});
       axes.emplace_back(
-          RaggedShapeDim{Array1<int32_t>(context, row_splits3), row_ids, -1});
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits3), row_ids, -1});
       RaggedShape shape(axes, true);
 
       // test Populate(), it will create row_ids and cached_tot_size from
@@ -239,7 +239,7 @@ TEST(RaggedShapeTest, RaggedShape) {
       const std::vector<std::vector<int32_t>> row_ids_vec = {row_ids1, row_ids2,
                                                              row_ids3};
 
-      const auto &curr_axes = shape.Axes();
+      const auto &curr_axes = shape.Layers();
       for (int32_t i = 1; i < shape.NumAxes(); ++i) {
         const Array1<int32_t> &curr_row_ids = curr_axes[i - 1].row_ids;
         // copy data from CPU/GPU to CPU
@@ -270,13 +270,13 @@ TEST(RaggedShapeTest, RaggedShapeIterator) {
                                             12, 13, 15, 15, 16};
   Array1<int32_t> row_ids;  // invalid row_ids as it has no context,
                             // shape.RowIds(axis) will create it.
-  std::vector<RaggedShapeDim> axes;
+  std::vector<RaggedShapeLayer> axes;
   axes.emplace_back(
-      RaggedShapeDim{Array1<int32_t>(context, row_splits1), row_ids, -1});
+      RaggedShapeLayer{Array1<int32_t>(context, row_splits1), row_ids, -1});
   axes.emplace_back(
-      RaggedShapeDim{Array1<int32_t>(context, row_splits2), row_ids, -1});
+      RaggedShapeLayer{Array1<int32_t>(context, row_splits2), row_ids, -1});
   axes.emplace_back(
-      RaggedShapeDim{Array1<int32_t>(context, row_splits3), row_ids, -1});
+      RaggedShapeLayer{Array1<int32_t>(context, row_splits3), row_ids, -1});
   RaggedShape shape(axes, true);
 
   int32_t index = 0;
@@ -310,7 +310,7 @@ TEST(RaggedShapeTest, RandomRaggedShape) {
     RaggedShape shape = RandomRaggedShape(true, 3, 5, 100);
     EXPECT_GE(shape.NumAxes(), 3);
     EXPECT_GE(shape.NumElements(), 100);
-    const auto &axes = shape.Axes();
+    const auto &axes = shape.Layers();
     EXPECT_GE(axes.back().row_ids.Dim(), 100);
   }
 }

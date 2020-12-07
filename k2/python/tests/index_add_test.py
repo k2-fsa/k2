@@ -57,14 +57,14 @@ class TestIndexAdd(unittest.TestCase):
                                   num_elements, (num_indexes,),
                                   dtype=torch.int32).to(device)
 
-            value = torch.rand(num_indexes, dtype=torch.float32).to(device)
+            value_stride = torch.randint(2, 6, (1,)).item()
+            value = torch.rand(num_indexes * value_stride,
+                               dtype=torch.float32).to(device)
 
-            index_stride = torch.randint(2, 6, (1,)).item()
-            index = index[::index_stride]
-            value = value[::index_stride]
+            value = value[::value_stride]
 
             assert src.is_contiguous() is False
-            assert index.is_contiguous() is False
+            assert index.is_contiguous()
             assert value.is_contiguous() is False
 
             saved = src.clone()

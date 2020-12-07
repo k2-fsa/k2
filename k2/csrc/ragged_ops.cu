@@ -22,6 +22,7 @@
 #include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/ragged_utils.h"
 #include "moderngpu/kernel_mergesort.hxx"
 
 namespace {
@@ -59,7 +60,7 @@ RaggedShape RandomRaggedShape(bool set_row_ids, int32_t min_num_axes,
   int32_t num_elements = RandIntGeometric(min_num_elements, max_num_elements);
 
   bool done_repeats = false;
-  std::vector<RaggedShapeDim> axes(num_axes - 1);
+  std::vector<RaggedShapeLayer> axes(num_axes - 1);
   for (int32_t axis = num_axes - 2; axis >= 0; axis--) {
     // this axis will have row_ids of length num_elements and
     // row_splits of length to be determined.
@@ -111,7 +112,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
           << "Bad row splits is: " << *row_splits;
     }
   }
-  std::vector<RaggedShapeDim> axes(1);
+  std::vector<RaggedShapeLayer> axes(1);
   if (row_splits != nullptr) {
     axes[0].row_splits = *row_splits;
   } else {
@@ -140,9 +141,9 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
     K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()
                   << " vs. " << b.Dim0();
   }
-  const auto &a_axes = a.Axes();
-  const auto &b_axes = b.Axes();
-  std::vector<RaggedShapeDim> axes(a_axes.size() + b_axes.size());
+  const auto &a_axes = a.Layers();
+  const auto &b_axes = b.Layers();
+  std::vector<RaggedShapeLayer> axes(a_axes.size() + b_axes.size());
   std::size_t a_size = a_axes.size(), b_size = b_axes.size();
   for (std::size_t i = 0; i < a_size; ++i) axes[i] = a_axes[i];
   for (std::size_t i = 0; i < b_size; ++i) axes[i + a_size] = b_axes[i];
@@ -197,7 +198,7 @@ RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
                                     int32_t *tot_sizes) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(num_axes, 2);
-  std::vector<RaggedShapeDim> axes(num_axes - 1);
+  std::vector<RaggedShapeLayer> axes(num_axes - 1);
   // In future we might choose to allocate everything in one big array, to avoid
   // multiple allocations, but for now just do it the simple way.
   for (int32_t axis = 1; axis < num_axes; ++axis) {
@@ -242,12 +243,12 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   ContextPtr c = src.Context();
   K2_CHECK(axis >= 0 && axis <= src.NumAxes());
 
-  const std::vector<RaggedShapeDim> &axes_in = src.Axes();
+  const std::vector<RaggedShapeLayer> &axes_in = src.Layers();
   int32_t num_axes_in = src.NumAxes();
 
-  // Note: in RaggedShape, the vector of RaggedShapeDim is of length
+  // Note: in RaggedShape, the vector of RaggedShapeLayer is of length
   // num_axes - 1, so the output will have one more axis than the input.
-  std::vector<RaggedShapeDim> axes_out(num_axes_in);
+  std::vector<RaggedShapeLayer> axes_out(num_axes_in);
 
   int32_t row_splits_dim, row_ids_dim;
   Array1<int32_t> mem;
@@ -279,7 +280,7 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   axes_out[axis].cached_tot_size = row_ids_dim;
   for (int32_t i = 0; i < axis; ++i) axes_out[i] = axes_in[i];
   // Note: the returned array has `num_axes_in + 1` axes, so its
-  // array of RaggedShapeDim is of length `num_axes_in`.
+  // array of RaggedShapeLayer is of length `num_axes_in`.
   for (int32_t i = axis + 1; i < num_axes_in; ++i) axes_out[i] = axes_in[i - 1];
   return RaggedShape(axes_out);
 }
@@ -308,15 +309,15 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
 
   for (int32_t i = 0; i < num_srcs; i++) {
     int32_t num_axes = src[i]->NumAxes();
-    std::vector<RaggedShapeDim> axes;
-    axes.reserve(num_axes);  //  note, the size of the `axes` of a RaggedShape
+    std::vector<RaggedShapeLayer> axes;
+    axes.reserve(num_axes);  //  note, the size of the `layers` of a RaggedShape
                              //  is its NumAxes() - 1.
     axes.resize(1);
     int32_t this_old_dim0 = all_row_splits_vec[i * 2 + 1];
     axes[0].row_splits = all_row_splits.Range(i * 2, 2);
     axes[0].row_ids = all_row_ids.Range(0, this_old_dim0);
     axes[0].cached_tot_size = this_old_dim0;
-    axes.insert(axes.end(), src[i]->Axes().begin(), src[i]->Axes().end());
+    axes.insert(axes.end(), src[i]->Layers().begin(), src[i]->Layers().end());
     ans.emplace_back(axes);
   }
   return ans;
@@ -604,15 +605,17 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
   *row_ids = row_ids_ptrs.To(ctx);
 }
 
-RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
+
+static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
+                               Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
-  if (num_srcs == 1) return **src;
-  K2_CHECK_GT(num_srcs, 1);
-  if (axis == 1) {
-    RaggedShape temp = Stack(axis, num_srcs, src);
-    return RemoveAxis(temp, axis);
+  if (num_srcs == 1) {
+    if (merge_map)
+      *merge_map = Arange<uint32_t>(src[0]->Context(), 0, src[0]->NumElements());
+    return **src;
   }
-  K2_CHECK_EQ(axis, 0) << "Append() with axis > 1 not yet supported";
+  K2_CHECK_GT(num_srcs, 1);
+
   int32_t num_axes = src[0]->NumAxes();
   ContextPtr c = src[0]->Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
@@ -631,7 +634,8 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
   for (int32_t axis = 0; axis < num_axes; ++axis)
     tot_sizes_out[axis] = offsets_acc(axis + 1, num_srcs);
 
-  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes,
+                                            tot_sizes_out.data());
 
   Array2<int32_t *> src_row_splits, src_row_ids;
   GetRowInfoMulti(num_srcs, src, &src_row_splits, &src_row_ids);
@@ -722,7 +726,49 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src) {
                        tot_work, target_num_loops, lambda_set_row_ids);
     }
   }
+  if (merge_map) {
+    std::vector<int32_t> num_elems_out(num_srcs);
+    for (int32_t i = 0; i < num_srcs; ++i)
+      num_elems_out[i] = src[i]->NumElements();
+    *merge_map = SizesToMergeMap(c, num_elems_out);
+  }
   return ans;
+}
+
+RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
+                   Array1<uint32_t> *merge_map /* == nullptr*/) {
+  K2_CHECK(num_srcs > 0);
+  if (axis == 0)
+    return AppendAxis0(num_srcs, src, merge_map);
+
+  K2_CHECK_LT(static_cast<uint32_t>(axis),
+              static_cast<uint32_t>(src[0]->NumAxes()));
+
+  int32_t num_axes = src[0]->NumAxes();
+  std::vector<RaggedShapeLayer> ans_layers(num_axes - 1);
+
+  // If axis >= 2, some layers of `src` will pass through unchanged (we should
+  // check that they are identical across all sources).
+  for (int32_t l = 0; l + 1 < axis; l++) {
+    CheckLayerEqual(l, num_srcs, src);
+    ans_layers[l] = src[0]->Layers()[l];
+  }
+
+  Array1<uint32_t> merge_map_local;
+  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map : &merge_map_local);
+  RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m),
+              t = SubsampleRaggedLayer(s, 0, num_srcs);
+  ans_layers[axis - 1] = t.Layers()[0];
+
+  for (int32_t l = axis; l + 1 < num_axes; l++) {
+    Array1<uint32_t> merge_map_next;
+    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map : &merge_map_next);
+    RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
+    ans_layers[l] = r.Layers()[0];
+    merge_map_local = merge_map_next;
+  }
+  // TODO(dan) after this is debugged: add ", false".
+  return RaggedShape(ans_layers);
 }
 
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
@@ -735,9 +781,9 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis) {
   // axes i and i+1 in the source.
   src.Populate();
 
-  const std::vector<RaggedShapeDim> &axes_in = src.Axes();
+  const std::vector<RaggedShapeLayer> &axes_in = src.Layers();
 
-  std::vector<RaggedShapeDim> axes_out(axes_in.size() - 1);
+  std::vector<RaggedShapeLayer> axes_out(axes_in.size() - 1);
   int32_t axes_out_size = static_cast<int32_t>(axes_out.size());
 
   for (int32_t i = 0; i < axis - 1; ++i) axes_out[i] = axes_in[i];
@@ -767,15 +813,15 @@ RaggedShape MakeTransposable(RaggedShape &src) {
 
   src.Populate();
 
-  const std::vector<RaggedShapeDim> &axes_in = src.Axes();
-  std::vector<RaggedShapeDim> axes_out(num_axes - 1);
+  const std::vector<RaggedShapeLayer> &axes_in = src.Layers();
+  std::vector<RaggedShapeLayer> axes_out(num_axes - 1);
   const int32_t *src_row_splits1_data = src.RowSplits(1).Data();
   const int32_t *src_row_ids1_data = src.RowIds(1).Data();
 
   {
     ParallelRunner pr(c);
 
-    RaggedShapeDim &axis1_shape = axes_out[0];
+    RaggedShapeLayer &axis1_shape = axes_out[0];
     {
       // set ans.RowSplits(1);
       With w(pr.NewStream());
@@ -792,7 +838,7 @@ RaggedShape MakeTransposable(RaggedShape &src) {
           (int32_t i)->void { row_ids1_data[i] = i / max_size; });
     }
     if (num_axes > 2) {
-      RaggedShapeDim &axis2_shape = axes_out[1];
+      RaggedShapeLayer &axis2_shape = axes_out[1];
       const int32_t *src_row_splits2_data = src.RowSplits(2).Data();
       {
         // set ans.RowSplits(2);
@@ -875,7 +921,7 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
 
   int32_t num_rows = src_dim1, row_splits_dim = num_rows + 1,
           row_ids_dim = src_tot_size1;
-  std::vector<RaggedShapeDim> ans_axis0(1);
+  std::vector<RaggedShapeLayer> ans_axis0(1);
   Array1<int32_t> mem(c, row_splits_dim + row_ids_dim);
   int32_t *mem_data = mem.Data();
   K2_EVAL(
@@ -900,28 +946,65 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
   return ComposeRaggedShapes(temp, src_no_axis0_renumbered);
 }
 
-RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src) {
+RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
+                  Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
-  K2_CHECK(axis >= 0 && axis <= 1);
-
+  K2_CHECK_LT(static_cast<uint32_t>(axis),
+              static_cast<uint32_t>(src[0]->NumAxes()));
   ContextPtr c = src[0]->Context();
-  int32_t num_axes = src[0]->NumAxes();
 
-  // Check if they have the same num-axes and compatible context
-  for (int32_t i = 1; i < num_srcs; ++i) {
-    K2_CHECK_EQ(num_axes, src[i]->NumAxes());
-    K2_CHECK(c->IsCompatible(*src[i]->Context()));
+  if (axis == 0) {
+    RaggedShape ans_appended = AppendAxis0(num_srcs, src, merge_map);
+    ContextPtr cpu = GetCpuContext();
+    Array1<int32_t> row_splits(cpu, num_srcs + 1);
+    int32_t *row_splits_data = row_splits.Data();
+    for (int32_t i = 0; i < num_srcs; i++)
+      row_splits_data[i] = src[i]->Dim0();
+    int32_t cutoff = 32;
+    if (num_srcs < cutoff) row_splits = row_splits.To(c);
+    ExclusiveSum(row_splits, &row_splits);
+    if (num_srcs >= cutoff) row_splits = row_splits.To(c);
+    int32_t num_elems = ans_appended.Dim0();
+    Array1<int32_t> row_ids(c, num_elems);
+    RowSplitsToRowIds(row_splits, &row_ids);
+    RaggedShape ans_layer0 = RaggedShape2(&row_splits, &row_ids, num_elems);
+    return ComposeRaggedShapes(ans_layer0, ans_appended);
   }
 
-  std::vector<RaggedShape> unsqueezed = UnsqueezeParallel(num_srcs, src, 0);
-  std::vector<RaggedShape *> unsqueezed_ptrs(num_srcs);
-  for (int32_t i = 0; i < num_srcs; i++) unsqueezed_ptrs[i] = &(unsqueezed[i]);
-  RaggedShape ans = Append(0, num_srcs, unsqueezed_ptrs.data());
-  // Transpose will check if all src->Dim0() has the same value.
-  if (axis == 1) ans = Transpose(ans);
-  return ans;
+
+  K2_CHECK_LT(static_cast<uint32_t>(axis),
+              static_cast<uint32_t>(src[0]->NumAxes()));
+
+  int32_t num_axes = src[0]->NumAxes();
+  std::vector<RaggedShapeLayer> ans_layers(num_axes);
+
+  // If axis >= 2, some layers of `src` will pass through unchanged (we should
+  // check that they are identical across all sources).
+  for (int32_t l = 0; l + 1 < axis; l++) {
+    CheckLayerEqual(l, num_srcs, src);
+    ans_layers[l] = src[0]->Layers()[l];
+  }
+
+  Array1<uint32_t> merge_map_local;
+  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map : &merge_map_local);
+  RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m);
+  // note: s.Dim0() will be a multiple of num_srcs.
+  ans_layers[axis - 1] = RegularRaggedShape(c, s.Dim0() / num_srcs, num_srcs).Layers()[0];
+  ans_layers[axis] = s.Layers()[0];
+
+  for (int32_t l = axis; l + 1 < num_axes; l++) {
+    Array1<uint32_t> merge_map_next;
+    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map : &merge_map_next);
+    RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
+    ans_layers[l + 1] = r.Layers()[0];
+    merge_map_local = merge_map_next;
+  }
+  // TODO(dan) after this is debugged: add ", false".
+  return RaggedShape(ans_layers);
 }
+
+
 
 RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
   NVTX_RANGE(K2_FUNC);
@@ -1079,11 +1162,11 @@ RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(src.NumAxes(), 2);
   // the result will have the same num-axes as `src` (the NumAxes() of the
-  // object is not the same as the number of RaggedShapeDim axes).
-  std::vector<RaggedShapeDim> ans_axes(src.NumAxes() - 1);
+  // object is not the same as the number of RaggedShapeLayer axes).
+  std::vector<RaggedShapeLayer> ans_axes(src.NumAxes() - 1);
   int32_t last_axis = src.NumAxes() - 1;
   // The following will only do something if src.NumAxes() > 2.
-  for (int32_t i = 0; i + 1 < last_axis; ++i) ans_axes[i] = src.Axes()[i];
+  for (int32_t i = 0; i + 1 < last_axis; ++i) ans_axes[i] = src.Layers()[i];
 
   ContextPtr &c = src.Context();
   int32_t num_rows = src.TotSize(last_axis - 1),
@@ -1152,11 +1235,11 @@ RaggedShape ChangeSublistSizePinned(RaggedShape &src, int32_t size_delta) {
   K2_CHECK_GE(src.NumAxes(), 2);
 
   // the result will have the same num-axes as `src` (the NumAxes() of the
-  // object is not the same as the number of RaggedShapeDim axes).
-  std::vector<RaggedShapeDim> ans_axes(src.NumAxes() - 1);
+  // object is not the same as the number of RaggedShapeLayer axes).
+  std::vector<RaggedShapeLayer> ans_axes(src.NumAxes() - 1);
   int32_t last_axis = src.NumAxes() - 1;
   // The following will only do something if src.NumAxes() > 2.
-  for (int32_t i = 0; i + 1 < last_axis; ++i) ans_axes[i] = src.Axes()[i];
+  for (int32_t i = 0; i + 1 < last_axis; ++i) ans_axes[i] = src.Layers()[i];
 
   ContextPtr &c = src.Context();
 
@@ -1193,8 +1276,8 @@ RaggedShape Prefix(RaggedShape &src, int32_t n) {
   src.Populate();
   int32_t num_axes = src.NumAxes();
   K2_CHECK_GE(num_axes, 2);
-  const std::vector<RaggedShapeDim> &axes_in = src.Axes();
-  std::vector<RaggedShapeDim> axes_out(axes_in.size());
+  const std::vector<RaggedShapeLayer> &axes_in = src.Layers();
+  std::vector<RaggedShapeLayer> axes_out(axes_in.size());
 
   int32_t row_end = n;
   for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
@@ -1215,7 +1298,7 @@ std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
   int32_t num_axes = src.NumAxes();
   K2_CHECK_GE(num_axes, 2);
   ContextPtr &c = src.Context();
-  const std::vector<RaggedShapeDim> &axes_in = src.Axes();
+  const std::vector<RaggedShapeLayer> &axes_in = src.Layers();
 
   // get those row_end elements at each axis.
   int32_t ans_size = static_cast<int32_t>(sizes.size());
@@ -1233,7 +1316,7 @@ std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
   row_ends = row_ends.To(GetCpuContext());
   std::vector<RaggedShape> ans(ans_size);
   for (int32_t i = 0; i != ans_size; ++i) {
-    std::vector<RaggedShapeDim> axes_out(axes_in.size());
+    std::vector<RaggedShapeLayer> axes_out(axes_in.size());
     int32_t row_end = row_ends[i];
     K2_CHECK(row_end >= 0 && row_end <= dim0);
     for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
@@ -1322,7 +1405,7 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
 
   // Make sure final row-ids are populated.
   src.RowIds(src.NumAxes() - 1);
-  std::vector<RaggedShapeDim> axes = src.Axes();
+  std::vector<RaggedShapeLayer> axes = src.Layers();
   axes.back().row_ids = axes.back().row_ids[renumbering.New2Old()];
   axes.back().row_splits = renumbering.Old2New()[axes.back().row_splits];
   axes.back().cached_tot_size = axes.back().row_ids.Dim();
@@ -1338,14 +1421,14 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &r_before_last,
   // Make sure final and before-final row-ids are populated.
   src.RowIds(src.NumAxes() - 2);
   src.RowIds(src.NumAxes() - 1);
-  std::vector<RaggedShapeDim> axes = src.Axes();
+  std::vector<RaggedShapeLayer> axes = src.Layers();
 
   // Suppose this shape has 3 axes (0,1,2).  Its NumAxes()==3;
   // axes.size()==2.
   // r_before_last deals with the numbering on axis 1.
   // r_last deals with the numbering on axis 2.
 
-  RaggedShapeDim &before_last = axes[axes.size() - 2],
+  RaggedShapeLayer &before_last = axes[axes.size() - 2],
                  &last = axes[axes.size() - 1];
 
   int32_t new_tot_size1 = r_before_last.NumNewElems(),
@@ -1418,7 +1501,7 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &r_before_last,
 RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(num_axes, 2);
-  std::vector<RaggedShapeDim> axes(num_axes - 1);
+  std::vector<RaggedShapeLayer> axes(num_axes - 1);
   axes[0].row_splits = Array1<int32_t>(c, 1, 0);
   // row_ids will be the empty vector, with context `c`.
   axes[0].row_ids = axes[0].row_splits.Range(0, 0);
@@ -1435,5 +1518,15 @@ Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
   Sort<int32_t, GreaterThan<int32_t>>(&sizes, &index_map);
   return index_map;
 }
+
+RaggedShape GetLayer(const RaggedShape &src, int32_t layer) {
+  K2_CHECK_GE(layer, 0);
+  K2_CHECK_LT(layer, src.NumAxes() - 1);
+  std::vector<RaggedShapeLayer> layers;
+  layers.push_back(src.Layers()[layer]);
+  bool check = false;
+  return RaggedShape(layers, check);
+}
+
 
 }  // namespace k2

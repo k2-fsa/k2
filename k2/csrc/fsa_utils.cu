@@ -1576,10 +1576,10 @@ Fsa RandomFsa(bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
   int32_t *ans_row_splits1_data = ans_row_splits1.Data();
   ans_row_splits1_data[dim0 + 1] = ans_row_splits1_data[dim0];
   // create returned shape
-  RaggedShapeDim ans_shape_dim;
+  RaggedShapeLayer ans_shape_dim;
   ans_shape_dim.row_splits = ans_row_splits1;
   ans_shape_dim.cached_tot_size = shape.TotSize(1);
-  RaggedShape ans_shape(std::vector<RaggedShapeDim>{ans_shape_dim}, true);
+  RaggedShape ans_shape(std::vector<RaggedShapeLayer>{ans_shape_dim}, true);
   ans_shape.Populate();
 
   // will be used to generate scores on arcs.
@@ -1779,6 +1779,21 @@ FsaVec GetIncomingFsaVec(FsaVec &fsas) {
   Array1<int32_t> dest_states = GetDestStates(fsas, true);
   Ragged<int32_t> arc_indexes = GetIncomingArcs(fsas, dest_states);
   return FsaVec(arc_indexes.shape, fsas.values[arc_indexes.values]);
+}
+
+Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
+                               Ragged<int32_t> &step2_arc_map) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(step1_arc_map.NumAxes(), 2);
+  K2_CHECK_EQ(step2_arc_map.NumAxes(), 2);
+  ContextPtr c = GetContext(step1_arc_map, step2_arc_map);
+  int32_t arc_map1_dim0 = step1_arc_map.Dim0(),
+          arc_map2_dim0 = step2_arc_map.Dim0();
+
+  Ragged<int32_t> step1_elements = Index(step1_arc_map, step2_arc_map.values);
+  RaggedShape composed_shape =
+      ComposeRaggedShapes(step2_arc_map.shape, step1_elements.shape);
+  return Ragged<int32_t>(RemoveAxis(composed_shape, 1), step1_elements.values);
 }
 
 }  // namespace k2

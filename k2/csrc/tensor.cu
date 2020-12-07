@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "k2/csrc/dtype.h"
@@ -79,6 +80,17 @@ int32_t Shape::ComputeStorageSize() const {
 
 bool Shape::ComputeIsContiguous() const {
   NVTX_RANGE(K2_FUNC);
+
+  // It may happen that all strides are zero,
+  // i.e., the tensor contains only one element.
+  // In this case, the tensor is contiguous.
+  int32_t s = 0;
+  for (int32_t i = num_axes_ - 1; i >= 0; --i) {
+    K2_CHECK_GE(strides_[i], 0);
+    s += strides_[i];
+  }
+  if (s == 0) return true;
+
   int32_t z = 1;
   for (int32_t i = num_axes_ - 1; i >= 0; --i) {
     K2_CHECK_GE(strides_[i], z);
@@ -88,6 +100,25 @@ bool Shape::ComputeIsContiguous() const {
     }
   }
   return true;
+}
+
+std::ostream &operator<<(std::ostream &os, const Shape &shape) {
+  os << "num_axes: " << shape.NumAxes() << "\n";
+  os << "dims: ";
+  std::string sep;
+  for (int32_t i = 0; i != shape.NumAxes(); ++i) {
+    os << sep << shape.Dim(i);
+    sep = " ";
+  };
+  os << "\n";
+  os << "strides: ";
+  sep = "";
+  for (int32_t i = 0; i != shape.NumAxes(); ++i) {
+    os << sep << shape.Stride(i);
+    sep = " ";
+  }
+  os << "\n";
+  return os;
 }
 
 Tensor::Tensor(ContextPtr c, Dtype type, const Shape &shape)
@@ -142,6 +173,43 @@ void Tensor::Init(ContextPtr c) {
   int32_t element_size = TraitsOf(impl_->dtype).NumBytes();
   impl_->data = NewRegion(c, static_cast<size_t>(storage_size * element_size));
   impl_->byte_offset = 0;
+}
+
+Tensor::Tensor(TensorImplPtr impl) : impl_(impl) {}
+
+Tensor Tensor::To(ContextPtr ctx) const {
+  NVTX_RANGE(K2_FUNC);
+  if (!IsContiguous()) return ToContiguous(*this).To(ctx);
+
+  if (ctx->IsCompatible(*Context())) return *this;
+
+  RegionPtr region = NewRegion(ctx, GetRegion()->num_bytes);
+
+  int8_t *dst = region->GetData<int8_t>();
+  const int8_t *src = GetRegion()->GetData<int8_t>();
+  auto kind = GetMemoryCopyKind(*Context(), *ctx);
+  MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
+             region->num_bytes, kind, ctx.get());
+  TensorImplPtr impl =
+      std::make_shared<TensorImpl>(GetShape(), GetDtype(), size_t(0), region);
+  return Tensor(impl);
+}
+
+Tensor Tensor::Clone() const {
+  NVTX_RANGE(K2_FUNC);
+  if (!IsContiguous()) return ToContiguous(*this);
+
+  ContextPtr &context = Context();
+  RegionPtr region = NewRegion(context, GetRegion()->num_bytes);
+
+  int8_t *dst = region->GetData<int8_t>();
+  const int8_t *src = GetRegion()->GetData<int8_t>();
+  auto kind = GetMemoryCopyKind(*context, *context);
+  MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
+             region->num_bytes, kind, context.get());
+  TensorImplPtr impl =
+      std::make_shared<TensorImpl>(GetShape(), GetDtype(), size_t(0), region);
+  return Tensor(impl);
 }
 
 }  // namespace k2
