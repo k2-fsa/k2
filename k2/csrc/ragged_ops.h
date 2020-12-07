@@ -130,10 +130,8 @@ void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
      @param [in] src_size  The number of `RaggedShape`s in `src`
      @param [in] src    The shapes to be stacked
      @param [in] axis   The new axis whose dimension will equal src_size.
-                        CAUTION: only axis == 0 and axis == 1 are supported
-                        right now, and for the axis==1 case we have a
-                        requirement that all the src[i]->Dim0() have the
-                        same value.
+                        Dimensions/shapes of all previous axes must be
+                        identical.
      @param [out] merge_map  If not nullptr, will be set to the merge-map
                          that tells us for each 0 <= i < ans.NumElements(),
                          which element of `src` it came from (available
@@ -524,8 +522,8 @@ Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering) {
   the source Ragged arrays' shapes must have the same NumAxes().
 
      @param [in] axis   The new axis whose dimension will equal num_srcs.
-                        CAUTION: only axis == 0 and axis == 1 are
-                        supported right now.
+                        The shapes/dimensions must be the same for all
+                        preceding axes.
      @param [in] num_srcs  The number of `RaggedShape`s in `src`
      @param [in] src       The shapes to be stacked
      @param [out] merge_map  If not nullptr, will be set to the merge-map
