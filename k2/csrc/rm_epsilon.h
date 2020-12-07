@@ -80,21 +80,22 @@ void ComputeNonEpsilonSubset(FsaVec &src, FsaVec *dest, Renumbering *state_map,
       @param [in] src   Source FsaVec, to be mapped
       @param [in] state_row_splits   The row_splits vector for `dest`, which
                          determines the number of states for each output FSA
-      @param [out] state_row_ids  The row_ids vector corresponding to
+      @param [in] state_row_ids  The row_ids vector corresponding to
                         `state_row_splits`
-      @param [in] map   Map from state_idx01's in `src` to state_idx01's in
-                       `dest`, with -1 for states that are to be removed.  Note:
-                        the number of states in `src` may be smaller or larger
-                        than state_row_ids.Dim().
+      @param [in] state_map   Map from state_idx01's in `src` to state_idx01's
+                        in `dest`, with -1 for states that are to be removed.
+                        Note: the number of states in `src` may be smaller or
+                        larger than state_row_ids.Dim().
+                        Must have state_map.Dim() == src.TotSize(1).
       @param [out] dest  Destination FsaVec; at exit, will contain all arcs in
                         `src` whose src_state and dest_state are both kept
                         (i.e. not mapped to -1).
-      @param [out] arc_map Will be set to a new Array1 that maps from arc-index
-                        in `dest` to original arc-index in `src`.
+      @param [out] arc_map Will be set to a new Array1 that maps from arc_idx012
+                        in `dest` to original arc_idx012 in `src`.
 
 */
-void MapFsaVecStates(FsaVec &src, const Array1<int32_t> &state_row_splits,
-                     const Array1<int32_t> &state_row_ids,
+void MapFsaVecStates(FsaVec &src, Array1<int32_t> &state_row_splits,
+                     Array1<int32_t> &state_row_ids,
                      const Array1<int32_t> &state_map, FsaVec *dest,
                      Array1<int32_t> *arc_map);
 

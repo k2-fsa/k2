@@ -190,4 +190,61 @@ TEST(RmEpsilon, ComputeEpsilonAndNonEpsilonSubsetRandom) {
   }
 }
 
+TEST(RmEpsilon, MapFsaVecStatesSimple) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    std::string s1 = R"(0 1 1 1
+    1 2 0 1 
+    1 3 2 1 
+    2 3 3 1 
+    3 4 4 1 
+    3 5 5 1 
+    4 5 6 1 
+    4 6 -1 1
+    5 6 -1 1
+    6
+  )";
+    std::string s2 = R"(0 1 0 1
+    1 2 0 1 
+    2 3 0 1 
+    3 4 4 1 
+    3 5 -1 1 
+    4 5 -1 1
+    5
+  )";
+    Fsa fsa1 = FsaFromString(s1);
+    Fsa fsa2 = FsaFromString(s2);
+    Fsa *fsa_array[] = {&fsa1, &fsa2};
+    FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+    fsa_vec = fsa_vec.To(context);
+
+    // dest has 3 fsas
+    const std::vector<int32_t> dest_row_splits1_values = {0, 8, 12, 16};
+    Array1<int32_t> dest_row_splits1(context, dest_row_splits1_values);
+    int32_t dest_num_states = dest_row_splits1_values.back();
+    Array1<int32_t> dest_row_ids1(context, dest_num_states);
+    RowSplitsToRowIds(dest_row_splits1, &dest_row_ids1);
+    // keep state 0, 1, 2, 4, 6 in fsa1, map to 0, 2, 4, 6, 7 in dest;
+    // keep state 0, 1, 3 in fsa2, map to 13, 14, 15 in dest
+    const std::vector<int32_t> state_map_values = {0,  2,  4,  -1, 6,  -1, 7,
+                                                   13, 14, -1, 15, -1, -1};
+    Array1<int32_t> state_map(context, state_map_values);
+
+    FsaVec dest;
+    Array1<int32_t> arc_map;
+    MapFsaVecStates(fsa_vec, dest_row_splits1, dest_row_ids1, state_map, &dest,
+                    &arc_map);
+    EXPECT_EQ(dest.NumAxes(), 3);
+    EXPECT_TRUE(Equal(dest.RowSplits(1), dest_row_splits1));
+    std::vector<int32_t> expected_dest_row_ids2 = {0, 2, 6, 13};
+    CheckArrayData(dest.RowIds(2), expected_dest_row_ids2);
+
+    EXPECT_EQ(dest.NumElements(), arc_map.Dim());
+    std::vector<int32_t> expected_arc_map = {0, 1, 7, 9};
+    CheckArrayData(arc_map, expected_arc_map);
+    K2_LOG(INFO) << dest;
+    K2_LOG(INFO) << arc_map;
+  }
+}
+// TODO(haowen): add random tests
+
 }  // namespace k2
