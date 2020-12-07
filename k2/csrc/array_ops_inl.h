@@ -885,6 +885,7 @@ void Assign(Array2<T> &src, Array2<T> *dest) {
 template <typename T>
 Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map,
                        int32_t num_srcs, const Array1<T> **src) {
+  NVTX_RANGE(K2_FUNC);
   int32_t dim = merge_map.Dim();
   ContextPtr &c = merge_map.Context();
   std::vector<const T*> src_ptrs_vec(num_srcs);

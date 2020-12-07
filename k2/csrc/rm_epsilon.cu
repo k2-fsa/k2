@@ -243,8 +243,8 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
 }
 
 void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
-                                     Ragged<int32_t> *arc_map) {
-  ContextPtr c = GetContext(src_fsa, *dest_fsa, *arc_map);
+                                     Ragged<int32_t> *arc_map_out) {
+  ContextPtr c = GetContext(src_fsa, *dest_fsa, *arc_map_out);
   Array1<int32_t> epsilons_state_map, epsilons_arc_map;
   FsaVec epsilon_fsa;
   ComputeEpsilonSubset(src_fsa, &epsilon_fsa, &epsilons_state_map,
@@ -381,6 +381,7 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
     // that there is no need to re-sort the arcs, which could be slow.
   }
 
+  // NOTE: important that order matches with `arc_maps` below.
   FsaVec *vecs[3] = {&combined_foll, &combined_prec, &non_epsilon_fsa};
   int32_t axis = 2;
 
@@ -394,7 +395,8 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
   // here.  I'm not saying we need such a recursive implementation, necessarily;
   // only that there is not a fundamental reason why Append() can't work in this
   // case.
-  FsaVec dest_fsa_unsorted = Append(axis, 2, vecs);
+  Array1<uint32_t> arcs_merge_map;
+  FsaVec dest_fsa_unsorted = Append(axis, 2, vecs, &arcs_merge_map);
 
   Ragged<int32_t> non_epsilon_arc_map_ragged(
       RegularRaggedShape(c, non_epsilon_fsa.NumElements(),
@@ -402,17 +404,32 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
       non_epsilon_arc_map);
 
   Ragged<int32_t> dest_unsorted_arc_map;
-  {  // This block creates 'dest_unsorted_arc_map' which combines combined_foll_arc_map,
-     // combined_prec_arc_map and non_epsilon_arc_map.
-    //
+  if (arc_map_out != nullptr) {
+    // This block creates 'dest_unsorted_arc_map' which combines combined_foll_arc_map,
+     // combined_prec_arc_map and non_epsilon_arc_map_ragged
 
+    // NOTE: important that order matches with `vecs` above.
+    Ragged<int32_t> *arc_maps_full[] = { &combined_foll_arc_map,
+                                         &combined_prec_arc_map,
+                                         &non_epsilon_arc_map_ragged };
+
+    dest_unsorted_arc_map = Merge(3, arc_maps_full, arcs_merge_map,
+                                  nullptr);
   }
 
 
-
-
-  // TODO: work out how to combine the arc maps.
-  // Can do arc-sorting *after* combining the arc maps, which will make
-  // the reordering of the arc-maps.
+  int32_t props = GetFsaBasicProperties(dest_fsa_unsorted);
+  if (props & kFsaPropertiesArcSorted == 0) {
+    // `dest_fsa_unsorted` was not arc sorted.
+    Array1<int32_t> arcsort_arc_map;
+    ArcSort(dest_fsa_unsorted, dest_fsa, &arcsort_arc_map);
+    if (arc_map_out != nullptr)
+      *arc_map_out = Index(dest_unsorted_arc_map, arcsort_arc_map);
+  } else {
+    *dest_fsa = dest_fsa_unsorted;
+    if (arc_map_out != nullptr)
+      *arc_map_out = dest_unsorted_arc_map;
+  }
 }
+
 }  // namespace k2

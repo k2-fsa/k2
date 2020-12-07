@@ -155,11 +155,14 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
                           sources together as dictated by `merge_map`.  Its
                           TotSize(0) will be the sum of src[i]->TotSize(layer),
                           and its TotSize(1) will be the sum of `src[i]->TotSize(layer+1)`.
+
+   See also MergeRagged() in ragged_ops.h, which is supposed to be a more user-facing
+   version of this function.
  */
 RaggedShape MergeRaggedLayer(int32_t layer,
                              int32_t num_srcs,
-                            RaggedShape **src,
-                            const Array1<uint32_t> &merge_map,
+                             RaggedShape **src,
+                             const Array1<uint32_t> &merge_map,
                             Array1<uint32_t> *merge_map_out = nullptr);
 
 /*
