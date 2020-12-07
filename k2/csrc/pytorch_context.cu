@@ -12,6 +12,7 @@
 #include <memory>
 #include <mutex>  // NOLINT
 
+#include "ATen/cuda/PinnedMemoryAllocator.h"
 #include "c10/cuda/CUDACachingAllocator.h"
 #include "c10/cuda/CUDAFunctions.h"
 #include "k2/csrc/context.h"
@@ -26,8 +27,6 @@ class PytorchCpuContext : public Context {
     allocator_ = torch::GetAllocator(torch::kCPU);
     K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
-
-  ContextPtr GetPinnedContext() override { return nullptr; }
 
   DeviceType GetDeviceType() const override { return kCpu; }
 
@@ -73,8 +72,6 @@ class PytorchCudaContext : public Context {
     K2_CHECK(allocator_->raw_deleter() != nullptr);
   }
 
-  ContextPtr GetPinnedContext() override { return nullptr; }
-
   DeviceType GetDeviceType() const override { return kCuda; }
 
   int32_t GetDeviceId() const override { return gpu_id_; }
@@ -114,7 +111,44 @@ class PytorchCudaContext : public Context {
   int32_t gpu_id_;
 };
 
+class PytorchPinnedContext : public Context {
+ public:
+  explicit PytorchPinnedContext() {
+    allocator_ = at::cuda::getPinnedMemoryAllocator();
+    K2_CHECK(allocator_->raw_deleter() != nullptr);
+  }
+
+  DeviceType GetDeviceType() const override { return kCpu; }
+
+  void *Allocate(std::size_t bytes, void **deleter_context) override {
+    void *p = allocator_->raw_allocate(bytes);
+    if (deleter_context != nullptr) *deleter_context = nullptr;
+    return p;
+  }
+
+  void Deallocate(void *data, void *deleter_context) override {
+    if (deleter_context != nullptr) {
+      // a non-empty `deleter_context` indicates that
+      // the memory is passed from a `torch::Tensor`
+      delete reinterpret_cast<ManagedTensor *>(deleter_context);
+    } else {
+      allocator_->raw_deallocate(data);
+    }
+  }
+
+  bool IsCompatible(const Context &other) const override {
+    return other.GetDeviceType() == kCpu;
+  }
+
+ private:
+  torch::Allocator *allocator_;  // NOT owned here
+};
+
 ContextPtr GetCpuContext() { return std::make_shared<PytorchCpuContext>(); }
+
+ContextPtr GetPinnedContext() {
+  return std::make_shared<PytorchPinnedContext>();
+}
 
 ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
   static std::once_flag has_cuda_init_flag;

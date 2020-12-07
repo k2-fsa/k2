@@ -1666,13 +1666,63 @@ TEST(OpsTest, Array2Assign) {
 TEST(OpsTest, SizesToMergeMapTest) {
   for (int loop = 0; loop < 2; loop++) {
     ContextPtr c = ((loop % 2) == 0 ? GetCpuContext() : GetCudaContext());
-    std::vector<int32_t> sizes = { 3, 5, 1 };
+    std::vector<int32_t> sizes = {3, 5, 1};
     Array1<uint32_t> merge_map = SizesToMergeMap(c, sizes);
-    std::vector<uint32_t> expected_map = { 0, 3, 6, 1, 4, 7, 10, 13, 2 };
+    std::vector<uint32_t> expected_map = {0, 3, 6, 1, 4, 7, 10, 13, 2};
     K2_LOG(INFO) << "merge_map is " << merge_map;
     CheckArrayData(merge_map, expected_map);
   }
 }
 
+TEST(PinnedContext, SpeedTest) {
+  ContextPtr cpu = GetCpuContext();
+  ContextPtr cuda = GetCudaContext();
+  ContextPtr pinned = GetPinnedContext();
+
+  double elapsed_cpu = 0.;
+  double elapsed_pinned = 0.;
+  double total_bytes = 0.;
+
+  Timer timer(cuda);
+
+  int32_t bytes = (1 << 20) * 100;  // 100MB
+  for (int32_t i = 0; i != 100; ++i) {
+    int32_t num_bytes = bytes + i;
+    total_bytes += num_bytes;
+
+    auto cpu_region = NewRegion(cpu, num_bytes);
+    auto cuda_region1 = NewRegion(cuda, num_bytes);
+    auto cuda_region2 = NewRegion(cuda, num_bytes);
+    auto pinned_region = NewRegion(pinned, num_bytes);
+
+    if (i & 1) {
+      timer.Reset();
+      MemoryCopy(cuda_region1->data, cpu_region->data, num_bytes,
+                 cudaMemcpyHostToDevice, nullptr);
+      elapsed_cpu += timer.Elapsed();
+
+      timer.Reset();
+      MemoryCopy(cuda_region2->data, pinned_region->data, num_bytes,
+                 cudaMemcpyHostToDevice, nullptr);
+      elapsed_pinned += timer.Elapsed();
+    } else {
+      timer.Reset();
+      MemoryCopy(cuda_region2->data, pinned_region->data, num_bytes,
+                 cudaMemcpyHostToDevice, nullptr);
+      elapsed_pinned += timer.Elapsed();
+
+      timer.Reset();
+      MemoryCopy(cuda_region1->data, cpu_region->data, num_bytes,
+                 cudaMemcpyHostToDevice, nullptr);
+      elapsed_cpu += timer.Elapsed();
+    }
+  }
+
+  printf("non-pinned memory copy (host->device): : %.2f GB/s\n",
+         (total_bytes / (1 << 30)) / elapsed_cpu);
+
+  printf("pinned memory copy (host->device): : %.2f GB/s\n",
+         (total_bytes / (1 << 30)) / elapsed_pinned);
+}
 
 }  // namespace k2

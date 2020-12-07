@@ -79,14 +79,6 @@ class Context : public std::enable_shared_from_this<Context> {
   // note: shared_from_this(), which returns a std::shared_ptr<Context>, is
   // public, inherited from std::enable_shared_from_this<Context>.
 
-  // Returns a (CPU) context that will allocate pinned memory.  (This is CPU
-  // memory that's pinned for faster GPU memory transfers).  May or may not
-  // return the same value as ::k2::GetCpuContext()... this is so, for instance,
-  // if you have a GPU PyTorch context you can get a CPU PyTorch context.
-  // NOTE: for now this won't do anything, we can do without pinned memory
-  // for the time being.
-  virtual ContextPtr GetPinnedContext() = 0;
-
   // Returns kCuda if this device is a CUDA device, or kCpu if it's the CPU.
   virtual DeviceType GetDeviceType() const = 0;
 
@@ -329,6 +321,10 @@ ContextPtr GetCpuContext();
 // from PyTorch
 ContextPtr GetCudaContext(int32_t gpu_id = -1);
 
+// Returns a (CPU) context that will allocate pinned memory.  (This is CPU
+// memory that's pinned for faster GPU memory transfers).  May or may not
+// return the same value as ::k2::GetCpuContext()... this is so, for instance,
+// if you have a GPU PyTorch context you can get a CPU PyTorch context.
 // Returns a (CPU) context that will allocate pinned memory.
 ContextPtr GetPinnedContext();
 
