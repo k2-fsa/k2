@@ -1256,26 +1256,28 @@ Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
   K2_CHECK_EQ(suffix.Dim(), src.TotSize(num_axes - 2));
   ContextPtr &c = src.Context();
   Array1<int32_t> dst_values(c, src.NumElements() + suffix.Dim());
-  int32_t *dst_values_data = dst_values.Data();
+  RaggedShape dst_shape = ChangeSublistSize(src.shape, 1);
   // "row_splits1" and "row_ids1" below are actually on the last axis. We name
   // them with "1" so that we can use "idx01" and "idx0" for those indexes in
   // lambda, following the naming convention explained in k2/csrc/utils.h
-  const int32_t *src_row_splits1_data = src.RowSplits(num_axes - 1).Data(),
-                *src_row_ids1_data = src.RowIds(num_axes - 1).Data(),
+  const int32_t *dst_row_splits1_data = dst_shape.RowSplits(num_axes - 1).Data(),
+                *dst_row_ids1_data = dst_shape.RowIds(num_axes - 1).Data(),
                 *src_values_data = src.values.Data(),
                 *suffix_data = suffix.Data();
+  int32_t *dst_values_data = dst_values.Data();
 
   K2_EVAL(
-      c, src.NumElements(), lambda_copy_src, (int32_t idx01)->void {
-        int32_t dst_idx01 = idx01 + src_row_ids1_data[idx01];
-        dst_values_data[dst_idx01] = src_values_data[idx01];
+      c, dst_shape.NumElements(), lambda_copy_values, (int32_t idx01)->void {
+        int32_t idx0 = dst_row_ids1_data[idx01];
+        if (idx01 == dst_row_splits1_data[idx0 + 1] - 1) {
+          // idx01 points to the last element of this row; copy from suffix
+          dst_values_data[idx01] = suffix_data[idx0];
+        } else {
+          // copy from src
+          int32_t src_idx01 = idx01 - dst_row_ids1_data[idx01];
+          dst_values_data[idx01] = src_values_data[src_idx01];
+        }
       });
-  K2_EVAL(
-       c, suffix.Dim(), lambda_copy_suffix, (int32_t idx0)->void {
-         int32_t dst_idx01 = src_row_splits1_data[idx0 + 1] + idx0;
-         dst_values_data[dst_idx01] = suffix_data[idx0];
-     });
-  RaggedShape dst_shape = ChangeSublistSize(src.shape, 1);
 
   return Ragged<int32_t>(dst_shape, dst_values);
 }
@@ -1288,26 +1290,28 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
   K2_CHECK_EQ(prefix.Dim(), src.TotSize(num_axes - 2));
   ContextPtr &c = src.Context();
   Array1<int32_t> dst_values(c, src.NumElements() + prefix.Dim());
-  int32_t *dst_values_data = dst_values.Data();
+  RaggedShape dst_shape = ChangeSublistSize(src.shape, 1);
   // "row_splits1" and "row_ids1" below are actually on the last axis. We name
   // them with "1" so that we can use "idx01" and "idx0" for those indexes in
   // lambda, following the naming convention explained in k2/csrc/utils.h
-  const int32_t *src_row_splits1_data = src.RowSplits(num_axes - 1).Data(),
-                *src_row_ids1_data = src.RowIds(num_axes - 1).Data(),
+  const int32_t *dst_row_splits1_data = dst_shape.RowSplits(num_axes - 1).Data(),
+                *dst_row_ids1_data = dst_shape.RowIds(num_axes - 1).Data(),
                 *src_values_data = src.values.Data(),
                 *prefix_data = prefix.Data();
+  int32_t *dst_values_data = dst_values.Data();
 
   K2_EVAL(
-      c, src.NumElements(), lambda_copy_src, (int32_t idx01)->void {
-        int32_t dst_idx01 = idx01 + src_row_ids1_data[idx01] + 1;
-        dst_values_data[dst_idx01] = src_values_data[idx01];
+      c, dst_shape.NumElements(), lambda_copy_values, (int32_t idx01)->void {
+        int32_t idx0 = dst_row_ids1_data[idx01];
+        if (idx01 == dst_row_splits1_data[idx0]) {
+          // idx01 points to the first element of this row; copy from prefix
+          dst_values_data[idx01] = prefix_data[idx0];
+        } else {
+          // copy from src
+          int32_t src_idx01 = idx01 - dst_row_ids1_data[idx01] - 1;
+          dst_values_data[idx01] = src_values_data[src_idx01];
+        }
       });
-  K2_EVAL(
-       c, prefix.Dim(), lambda_copy_prefix, (int32_t idx0)->void {
-         int32_t dst_idx01 = src_row_splits1_data[idx0] + idx0;
-         dst_values_data[dst_idx01] = prefix_data[idx0];
-     });
-  RaggedShape dst_shape = ChangeSublistSize(src.shape, 1);
 
   return Ragged<int32_t>(dst_shape, dst_values);
 }
