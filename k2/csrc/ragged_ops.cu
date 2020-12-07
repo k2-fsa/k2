@@ -761,8 +761,10 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
 
   for (int32_t l = axis; l + 1 < num_axes; l++) {
     Array1<uint32_t> merge_map_next;
-    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map : &merge_map_next);
-    RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
+    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map :
+                                &merge_map_next);
+    RaggedShape r = MergeRaggedLayer(l, num_srcs, src,
+                                     merge_map_local, this_m);
     ans_layers[l] = r.Layers()[0];
     merge_map_local = merge_map_next;
   }
@@ -949,7 +951,8 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
                   Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
-  K2_CHECK(axis >= 0 && axis <= 1);
+  K2_CHECK_LT(static_cast<uint32_t>(axis),
+              static_cast<uint32_t>(src[0]->NumAxes()));
   ContextPtr c = src[0]->Context();
 
   if (axis == 0) {
@@ -993,9 +996,36 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
 
   for (int32_t l = axis; l + 1 < num_axes; l++) {
     Array1<uint32_t> merge_map_next;
-    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map : &merge_map_next);
-    RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
+    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map :
+                                &merge_map_next);
+    RaggedShape r = MergeRaggedLayer(l, num_srcs, src,
+                                     merge_map_local, this_m);
     ans_layers[l + 1] = r.Layers()[0];
+    merge_map_local = merge_map_next;
+  }
+  // TODO(dan) after this is debugged: add ", false".
+  return RaggedShape(ans_layers);
+}
+
+
+RaggedShape Merge(int32_t num_srcs,
+                  RaggedShape **src,
+                  const Array1<uint32_t> &merge_map,
+                  Array1<uint32_t> *merge_map_out) {
+  K2_CHECK(num_srcs > 0);
+  int32_t num_layers = src[0]->NumAxes() - 1;
+
+  std::vector<RaggedShapeLayer> ans_layers(num_layers);
+
+  // Note: this is a shallow copy.
+  Array1<uint32_t> merge_map_local = merge_map;
+
+  for (int32_t l = 0; l < num_layers; l++) {
+    Array1<uint32_t> merge_map_next;
+    Array1<uint32_t> *this_m = (l + 1 == num_layers ? merge_map_out :
+                                &merge_map_next);
+    RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
+    ans_layers[l] = r.Layers()[0];
     merge_map_local = merge_map_next;
   }
   // TODO(dan) after this is debugged: add ", false".

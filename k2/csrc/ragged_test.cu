@@ -2028,4 +2028,86 @@ TEST(RaggedShapeOpsTest, GetPrefixesTest) {
   }
 }
 
+TEST(RaggedShapeOpsTest, AppendMoreAxes) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    RaggedShape shape1 = RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 = RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+                shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
+
+    RaggedShape appended_axis2_ref =
+        RaggedShape("[ [ [[ x x ][ x ][]] [[x ][x][ x ]] ] [[[x ][ x x][]]]]").To(c);
+    RaggedShape appended_axis3_ref =
+        RaggedShape("[ [ [[ x x x ]] [[x x x ]] ] [[[x x x]]]]").To(c);
+    RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
+    Array1<uint32_t> merge_map2;
+    Array1<uint32_t> merge_map3;
+    RaggedShape appended_axis2 = Append(2, 3, srcs, &merge_map2);
+    RaggedShape appended_axis3 = Append(3, 3, srcs, &merge_map3);
+    K2_LOG(INFO) << "appended_axis2 = " << appended_axis2;
+    K2_LOG(INFO) << "appended_axis3 = " << appended_axis3;
+
+    K2_CHECK(Equal(appended_axis2, appended_axis2_ref));
+    K2_CHECK(Equal(appended_axis2, appended_axis2_ref));
+
+    std::vector<uint32_t> merge_values = { 0, 3, 1, 6, 4, 2, 9, 7, 10 };
+    CheckArrayData(merge_map2, merge_values);
+    CheckArrayData(merge_map3, merge_values);
+  }
+}
+
+
+
+TEST(RaggedShapeOpsTest, StackMoreAxes) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    RaggedShape shape1 = RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 = RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+                shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
+
+    RaggedShape stacked_ref =
+        RaggedShape("[ [ [[[ x x ]][[ x ]][[]]] [[[x ]][[x]][[ x ]]] ] [[[[x ]][[ x x]][[]]]]]").To(c);
+    RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
+    Array1<uint32_t> merge_map2;
+    Array1<uint32_t> merge_map3;
+    RaggedShape stacked_axis2 = Stack(2, 3, srcs, &merge_map2);
+    RaggedShape stacked_axis3 = Stack(3, 3, srcs, &merge_map3);
+    K2_LOG(INFO) << "stacked_axis2 = " << stacked_axis2;
+    K2_LOG(INFO) << "stacked_axis3 = " << stacked_axis3;
+
+    K2_CHECK(Equal(stacked_axis2, stacked_ref));
+    K2_CHECK(Equal(stacked_axis2, stacked_ref));
+
+    std::vector<uint32_t> merge_values = { 0, 3, 1, 6, 4, 2, 9, 7, 10 };
+    CheckArrayData(merge_map2, merge_values);
+    CheckArrayData(merge_map3, merge_values);
+  }
+}
+
+
+TEST(RaggedShapeOpsTest, Merge) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    RaggedShape shape1 = RaggedShape("[ [ x x ] [ x ] [] ]").To(c),  // m: 0 3 6, m_out:  0 3, 6,
+                shape2 = RaggedShape("[ [ x] [ x x x ] ]").To(c), // m: 1 4, m_out: 1, 4 7 10
+                shape3 = RaggedShape("[ [ ] [ x x ] [] ]").To(c); // m: 2 5 8, m_out: ,2 5,
+
+
+    RaggedShape ans_ref = RaggedShape("[ [] [x] [x x x] [] [] [x x] [x x] [x] ]").To(c);
+
+    // This is a mixed-up kind of merge map that doesn't appear naturally (they
+    // are always in-order from each source, right now) but it should still
+    // work.
+    std::vector<uint32_t> merge_map_data = {  6, 1, 4, 8, 2, 5, 0, 3 };
+    Array1<uint32_t> merge_map_in(c, merge_map_data);
+    RaggedShape *srcs[] = { &shape1, &shape2, &shape3 };
+
+    Array1<uint32_t> merge_map_out;
+    RaggedShape merged = Merge(3, srcs, merge_map_in, &merge_map_out);
+
+    ASSERT_EQ(true, Equal(ans_ref, merged));
+
+    std::vector<uint32_t> merge_map_out_data = { 1, 4, 7, 10, 2, 5, 0, 3, 6 };
+    CheckArrayData(merge_map_out, merge_map_out_data);
+  }
+}
+
+
 }  // namespace k2

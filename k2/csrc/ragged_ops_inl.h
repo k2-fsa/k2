@@ -143,6 +143,31 @@ Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src,
   return Append(axis, num_srcs, temp.data());
 }
 
+template <typename T>
+Ragged<T> Merge(int32_t num_srcs,
+                Ragged<T> **src,
+                const Array1<uint32_t> &merge_map,
+                Array1<uint32_t> *merge_map_out) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_GT(num_srcs, 0);
+  Array1<uint32_t> merge_map_temp;
+  Array1<uint32_t> *merge_map_ptr = (merge_map_out != nullptr ? merge_map_out :
+                                     &merge_map_temp);
+  std::vector<RaggedShape *> src_shapes(num_srcs);
+  std::vector<const Array1<T> *> src_values(num_srcs);
+  for (int32_t i = 0; i != num_srcs; ++i) {
+    src_shapes[i] = &(src[i]->shape);
+    src_values[i] = &(src[i]->values);
+  }
+  RaggedShape ans_shape = Merge(num_srcs, src_shapes.data(), merge_map,
+                                merge_map_ptr);
+  Array1<T> ans_values = MergeWithMap(*merge_map_ptr, num_srcs,
+                                      src_values.data());
+  return Ragged<T>(ans_shape, ans_values);
+}
+
+
+
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos <= shape.TotSize(axis).
 template <typename T>
