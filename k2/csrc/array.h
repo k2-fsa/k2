@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <iostream>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -420,7 +421,7 @@ struct ConstArray2Accessor {
 // NOTE: The following two forward declarations
 // are used to prevent calling the non-template `ToContiguous()`
 // in `Array2::To()`.
-template<typename T>
+template <typename T>
 class Array2;
 
 template <typename T>
@@ -531,7 +532,6 @@ class Array2 {
     int32_t byte_offset = byte_offset_ + i * elem_stride0_ * ElementSize();
     return Array1<T>(dim1_, region_, byte_offset);
   }
-
 
   // Instead of: Array2<T> operator[](const Array1<int32_t> &indexes)
   // see IndexRows(), declared in array_ops.h.
@@ -746,6 +746,15 @@ class Array2 {
 };
 
 inline int32_t ToPrintable(char c) { return static_cast<int32_t>(c); }
+
+// clang-format off
+inline
+typename std::enable_if<!std::is_same<char, int8_t>::value, int32_t>::type
+ToPrintable(int8_t c) {
+  return static_cast<int32_t>(c);
+}
+// clang-format on
+
 template <typename T>
 T ToPrintable(T t) {
   return t;

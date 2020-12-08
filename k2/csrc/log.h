@@ -110,6 +110,11 @@ class Logger {
     }
   }
 
+  K2_CUDA_HOSTDEV const Logger &operator<<(int8_t i) const {
+    printf("%d", i);
+    return *this;
+  }
+
   K2_CUDA_HOSTDEV const Logger &operator<<(const char *s) const {
     printf("%s", s);
     return *this;

@@ -26,7 +26,6 @@ class CpuContext : public Context {
  public:
   CpuContext() = default;
   ContextPtr GetCpuContext() override { return shared_from_this(); }
-  ContextPtr GetPinnedContext() override { return nullptr; }
   DeviceType GetDeviceType() const override { return kCpu; }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
@@ -61,7 +60,6 @@ class CudaContext : public Context {
     K2_CHECK_CUDA_ERROR(ret);
   }
   ContextPtr GetCpuContext() override { return k2::GetCpuContext(); }
-  ContextPtr GetPinnedContext() override { return nullptr; }
   DeviceType GetDeviceType() const override { return kCuda; }
   int32_t GetDeviceId() const override { return gpu_id_; }
 

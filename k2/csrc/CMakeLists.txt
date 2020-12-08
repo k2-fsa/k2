@@ -39,6 +39,7 @@ set(context_srcs
   host_shim.cu
   math.cu
   moderngpu_allocator.cu
+  pinned_context.cu
   ragged.cu
   ragged_ops.cu
   ragged_utils.cu
@@ -88,6 +89,7 @@ set(cuda_tests
   log_test
   macros_test
   nvtx_test
+  pinned_context_test
   ragged_shape_test
   ragged_test
   ragged_utils_test

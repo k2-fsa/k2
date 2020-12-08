@@ -22,7 +22,7 @@ namespace k2 {
 
 class ManagedTensor {
  public:
-  explicit ManagedTensor(torch::Tensor &tensor) : handle_(tensor) {}
+  explicit ManagedTensor(torch::Tensor tensor) : handle_(tensor) {}
 
  private:
   torch::Tensor handle_;  // retain a copy of the tensor passed from Python
@@ -32,7 +32,7 @@ class ManagedTensor {
 //
 // The resulting region shares the underlying memory with
 // the given tensor.
-RegionPtr NewRegion(torch::Tensor &tensor);
+RegionPtr NewRegion(torch::Tensor tensor);
 
 }  // namespace k2
 
