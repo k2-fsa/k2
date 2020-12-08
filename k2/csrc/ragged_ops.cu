@@ -1127,8 +1127,7 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
     return false;  // either true or false is fine
   };
 
-  std::unique_ptr<mgpu::context_t> mgpu_context =
-      GetModernGpuAllocator(context);
+  mgpu::context_t *mgpu_context = GetModernGpuAllocator(context);
 
   int32_t n = src.values.Dim();
   Array1<int32_t> ans = Range(context, n, 0);
@@ -1183,8 +1182,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
     return false;  // we can return either true or false here.
   };
 
-  std::unique_ptr<mgpu::context_t> mgpu_context =
-      GetModernGpuAllocator(context);
+  mgpu::context_t *mgpu_context = GetModernGpuAllocator(context);
 
   K2_CUDA_SAFE_CALL(mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
 

@@ -96,8 +96,10 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src,
     src_shapes[i] = &(src[i]->shape);
     src_values[i] = &(src[i]->values);
   }
-  RaggedShape ans_shape = Stack(axis, num_srcs, src_shapes.data(), merge_map_ptr);
-  Array1<T> ans_values = MergeWithMap(*merge_map_ptr, num_srcs, src_values.data());
+  RaggedShape ans_shape =
+      Stack(axis, num_srcs, src_shapes.data(), merge_map_ptr);
+  Array1<T> ans_values =
+      MergeWithMap(*merge_map_ptr, num_srcs, src_values.data());
   return Ragged<T>(ans_shape, ans_values);
 }
 
@@ -126,8 +128,10 @@ Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src,
     src_shapes[i] = &(src[i]->shape);
     src_values[i] = &(src[i]->values);
   }
-  RaggedShape ans_shape = Append(axis, num_srcs, src_shapes.data(), merge_map_ptr);
-  Array1<T> ans_values = MergeWithMap(*merge_map_ptr, num_srcs, src_values.data());
+  RaggedShape ans_shape =
+      Append(axis, num_srcs, src_shapes.data(), merge_map_ptr);
+  Array1<T> ans_values =
+      MergeWithMap(*merge_map_ptr, num_srcs, src_values.data());
   return Ragged<T>(ans_shape, ans_values);
 }
 
@@ -262,8 +266,7 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
 
   K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda);
 
-  std::unique_ptr<mgpu::context_t> context =
-      GetModernGpuAllocator(src->Context());
+  mgpu::context_t *context = GetModernGpuAllocator(src->Context());
 
   Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
   if (order)
