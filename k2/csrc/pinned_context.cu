@@ -92,7 +92,7 @@ class PinnedAllocator {
     //
     // The purpose is to reduce the time of waiting for
     // the pending events.
-    for (int32_t iter = 0; iter < 2; ++iter) {
+    for (int32_t iter = 0; iter <= 2; ++iter) {
       if (cuda_events_.size() > 100 || iter > 1) {
         // ProcessEvents may free blocks
         cudaError_t err = ProcessEvents();
