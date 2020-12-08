@@ -463,6 +463,79 @@ class TestFsa(unittest.TestCase):
         fsa1.invert_()
         assert str(fsa0) != str(fsa1)
 
+    def test_single_fsa_as_dict(self):
+        s = '''
+            0 1 1 10 0.1
+            1 2 -1 -1 0.2
+            2
+        '''
+
+        sym_str = '''
+            a 1
+        '''
+        symbol_table = k2.SymbolTable.from_str(sym_str)
+        fsa = k2.Fsa.from_str(s)
+        fsa.symbols = symbol_table
+        del symbol_table
+
+        fsa.tensor_attr1 = torch.tensor([1, 2])
+        fsa.tensor_attr2 = torch.tensor([[10, 20], [30, 40.]])
+        fsa.non_tensor_attr1 = 'test-fsa'
+        fsa.non_tensor_attr2 = 20201208
+
+        fsa_dict = fsa.as_dict()
+        del fsa
+
+        fsa = k2.Fsa.from_dict(fsa_dict)
+        assert torch.all(torch.eq(fsa.tensor_attr1, torch.tensor([1, 2])))
+        assert torch.all(
+            torch.eq(fsa.tensor_attr2, torch.tensor([[10, 20], [30, 40]])))
+        assert fsa.non_tensor_attr1 == 'test-fsa'
+        assert fsa.non_tensor_attr2 == 20201208
+        assert fsa.symbols.get('a') == 1
+        assert fsa.symbols.get(1) == 'a'
+
+    def test_fsa_vec_as_dict(self):
+        s1 = '''
+            0 1 1 10 0.1
+            1 2 -1 -1 0.2
+            2
+        '''
+        s2 = '''
+            0 1 -1 30 0.3
+            1
+        '''
+        fsa1 = k2.Fsa.from_str(s1)
+        fsa2 = k2.Fsa.from_str(s2)
+        fsa = k2.create_fsa_vec([fsa1, fsa2])
+        del fsa1, fsa2
+
+        sym_str = '''
+            a 1
+        '''
+        symbol_table = k2.SymbolTable.from_str(sym_str)
+        fsa.symbols = symbol_table
+        del symbol_table
+
+        fsa.tensor_attr1 = torch.tensor([1, 2, 3])
+        fsa.tensor_attr2 = torch.tensor([[10, 20], [30, 40.], [50, 60]])
+        fsa.non_tensor_attr1 = 'test-fsa-vec'
+        fsa.non_tensor_attr2 = 20201208
+
+        fsa_dict = fsa.as_dict()
+        del fsa
+
+        fsa = k2.Fsa.from_dict(fsa_dict)
+        assert fsa.shape == (2, None, None)
+        assert torch.all(torch.eq(fsa.tensor_attr1, torch.tensor([1, 2, 3])))
+        assert torch.all(
+            torch.eq(fsa.tensor_attr2,
+                     torch.tensor([[10, 20], [30, 40], [50, 60]])))
+        assert fsa.non_tensor_attr1 == 'test-fsa-vec'
+        assert fsa.non_tensor_attr2 == 20201208
+        assert fsa.symbols.get('a') == 1
+        assert fsa.symbols.get(1) == 'a'
+
 
 if __name__ == '__main__':
     unittest.main()

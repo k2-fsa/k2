@@ -83,7 +83,7 @@ class Fsa(object):
       and ``aux_labels`` are instances of ``torch.Tensor``.
 
       Implementation note: most of this class's attributes are not
-      real attributes in the objcet's dict; the real attributes are
+      real attributes in the object's dict; the real attributes are
       'arcs', '_non_tensor_attr', '_tensor_attr', '_properties',
       '_cache'.
 
@@ -193,25 +193,34 @@ class Fsa(object):
         _ = self.properties
 
     def __str__(self) -> str:
-        '''Return a string representation of this object (note: does not
-           contain all the information in it for now)'''
+        '''Return a string representation of this object
+
+        For visualization and debug only.
+        '''
         if hasattr(self, 'aux_labels'):
             aux_labels = self.aux_labels.to(torch.int32)
         else:
             aux_labels = None
         if self.arcs.num_axes() == 2:
-            ans = "k2.Fsa: " + _fsa_to_str(self.arcs, False, aux_labels)
+            ans = 'k2.Fsa: ' + _fsa_to_str(self.arcs, False, aux_labels)
         else:
-            ans = "k2.FsaVec: \n"
+            ans = 'k2.FsaVec: \n'
             for i in range(self.shape[0]):
                 # get the i-th Fsa
                 ragged_arc, start = self.arcs.index(0, i)
                 end = start + ragged_arc.values().shape[0]
-                ans += "FsaVec[" + str(i) + "]: " + _fsa_to_str(
+                ans += 'FsaVec[' + str(i) + ']: ' + _fsa_to_str(
                     ragged_arc, False,
                     None if aux_labels is None else aux_labels[start:end])
-        ans += "properties_str = " + _k2.fsa_properties_as_str(
-            self._properties) + "."
+        ans += 'properties_str = ' + _k2.fsa_properties_as_str(
+            self._properties) + '.'
+        for name, value in self.named_tensor_attr(include_scores=False):
+            sep = '\n'
+            ans += f'{sep}{name}: {value}'
+        for name, value in self.named_non_tensor_attr():
+            sep = '\n'
+            ans += f'{sep}{name}: {value}'
+
         return ans
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -254,7 +263,6 @@ class Fsa(object):
 
     @labels.setter
     def labels(self, values) -> None:
-        print("In labels setter")
         assert values.dtype == torch.int32
         self.arcs.values()[:, 2] = values
         # Invalidate the properties since we changed the labels.
@@ -276,7 +284,7 @@ class Fsa(object):
         self.__dict__['_properties'] = properties
         if properties & fsa_properties.VALID != 1:
             raise ValueError(
-                "Fsa is not valid, properties are: {} = {}, arcs are: {}".
+                'Fsa is not valid, properties are: {} = {}, arcs are: {}'.
                 format(properties, fsa_properties.to_str(properties),
                        str(self.arcs)))
         return properties
@@ -294,7 +302,7 @@ class Fsa(object):
         return self.scores.grad
 
     def __getattr__(self, name: str) -> Any:
-        """
+        '''
         Note: for attributes that exist as properties, e.g.
         self.labels, self.properties, self.requires_grad, we won't
         reach this code because Python checks the class dict before
@@ -303,7 +311,7 @@ class Fsa(object):
 
         The 'virtual' members of this class are those in self._tensor_attr
         and self._non_tensor_attr.
-        """
+        '''
         if name in self._tensor_attr:
             return self._tensor_attr[name]
         elif name in self._non_tensor_attr:
@@ -328,7 +336,7 @@ class Fsa(object):
         elif name in self._cache:
             del self._cache[name]
         else:
-            raise AttributeError("No such attribute in Fsa: " + name)
+            raise AttributeError('No such attribute in Fsa: ' + name)
 
     def get_state_batches(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.state_batches.
@@ -557,7 +565,7 @@ class Fsa(object):
         '''
         if not hasattr(self, 'aux_labels'):
             raise RuntimeError(
-                "invert_ cannot be called on acceptors (no aux_labels)")
+                'invert_ cannot be called on acceptors (no aux_labels)')
 
         aux_labels = self.aux_labels
         self.aux_labels = self.labels.clone()
@@ -642,20 +650,32 @@ class Fsa(object):
     def as_dict(self) -> Dict[str, Any]:
         '''Convert this Fsa to a dict (probably for purposes of serialization
           with, e.g., torch.save).
+
+        Caution:
+          `self.requires_grad` attribute is not saved.
+        Returns:
+          A `dict` that can be used to reconstruct this FSA by using
+          `Fsa.from_dict`.
         '''
         ans = dict()
         ans['arcs'] = _fsa_to_tensor(self.arcs)
-        if hasattr(self, 'aux_labels'):
-            ans['aux_labels'] = self.aux_labels
-        # TODO(dan): add other properties, e.g. from _tensor_attr and
-        # _non_tensor_attr.
+
+        for name, value in self.named_tensor_attr(include_scores=False):
+            ans[name] = value
+
+        for name, value in self.named_non_tensor_attr():
+            ans[name] = value
+
         return ans
 
     @classmethod
     def from_dict(cls, dict_in: Dict[str, Any]) -> 'Fsa':
-        # TODO(dan): deal with other properties, e.g. that will go to from
-        # _tensor_attr and _non_tensor_attr.
-        return Fsa(dict_in['arcs'], aux_labels=dict_in.get('aux_labels', None))
+        fsa = Fsa(dict_in['arcs'], aux_labels=dict_in.get('aux_labels', None))
+        for key, value in dict_in.items():
+            if key in ['arcs', 'aux_labels']:
+                continue
+            setattr(fsa, key, value)
+        return fsa
 
     def to(self, device: torch.device) -> 'Fsa':
         '''Move the FSA onto a given device.
@@ -691,11 +711,11 @@ class Fsa(object):
         return ans
 
     def clone(self) -> 'Fsa':
-        """
+        '''
         Return an Fsa that is a clone of this one, i.e. a close approximation
         to what you'd get if you did .clone() on all its tensor members.
         Any non-tensor attributes are copied over.
-        """
+        '''
         # Keep this code in sync with that in to()
         ans = Fsa(self.arcs.clone(), properties=self.properties)
 
@@ -720,11 +740,11 @@ class Fsa(object):
         return ans
 
     def detach(self) -> 'Fsa':
-        """
+        '''
         Return an Fsa that shares the underlying data with this one,
         except gradients are not tracked.
         Any non-tensor attributes are copied over.
-        """
+        '''
         ans = Fsa(self.arcs, properties=self.properties)
 
         for name, value in self.named_tensor_attr(include_scores=False):
