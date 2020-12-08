@@ -9,6 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <mutex>
 #include <utility>
 
 #include "k2/csrc/context.h"
@@ -44,8 +45,31 @@ class ModernGpuAllocator : public mgpu::standard_context_t {
 
 namespace k2 {
 
-std::unique_ptr<mgpu::context_t> GetModernGpuAllocator(ContextPtr c) {
-  return std::make_unique<ModernGpuAllocator>(c);
+// maximum number of GPUs supported by k2
+static constexpr int32_t kMaxNumGpus = 16;
+
+static mgpu::context_t *mgpu_contexts[kMaxNumGpus];
+static std::once_flag mgpu_once_flags[kMaxNumGpus];
+
+static void InitModernGpuAllocator(ContextPtr context) {
+  int32_t device_index = context->GetDeviceId();
+  K2_CHECK_GE(device_index, 0);
+  K2_CHECK_LT(device_index, kMaxNumGpus);
+  // it is never freed
+  mgpu_contexts[device_index] = new ModernGpuAllocator(context);
+}
+
+mgpu::context_t *GetModernGpuAllocator(ContextPtr context) {
+  K2_CHECK_EQ(context->GetDeviceType(), kCuda);
+
+  int32_t device_index = context->GetDeviceId();
+  K2_CHECK_GE(device_index, 0);
+  K2_CHECK_LT(device_index, kMaxNumGpus);
+
+  std::call_once(mgpu_once_flags[device_index], InitModernGpuAllocator,
+                 context);
+
+  return mgpu_contexts[device_index];
 }
 
 }  // namespace k2

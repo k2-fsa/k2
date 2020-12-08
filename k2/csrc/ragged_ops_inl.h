@@ -262,8 +262,7 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
 
   K2_DCHECK_EQ(src->Context()->GetDeviceType(), kCuda);
 
-  std::unique_ptr<mgpu::context_t> context =
-      GetModernGpuAllocator(src->Context());
+  mgpu::context_t *context = GetModernGpuAllocator(src->Context());
 
   Array1<int32_t> &segment = src->shape.RowSplits(src->NumAxes() - 1);
   if (order)
