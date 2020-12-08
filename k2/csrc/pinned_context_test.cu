@@ -17,6 +17,10 @@
 namespace k2 {
 
 TEST(PinnedContext, Cache) {
+  if (GetCudaContext()->GetDeviceType() == kCpu) {
+    // No CUDA capable devices are found, skip the test.
+    return;
+  }
   // NOTE: this test has to be run before all other
   // tests in this file since it assumes that the
   // memory pool of PinnedContext is empty at the
@@ -29,6 +33,7 @@ TEST(PinnedContext, Cache) {
     Array1<int8_t> a1(pinned, 100);
     p = a1.Data();
   }
+
   // at this point, a1 is freed but its
   // memory is not returned to the system
   // and can be reused in later allocations
