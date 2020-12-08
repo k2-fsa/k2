@@ -5,6 +5,7 @@
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                      Yiming Wang
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -1830,6 +1831,7 @@ void TestStackRagged() {
     }
   }
 }
+
 TEST(RaggedTest, TestStackRagged) {
   TestStackRagged<int32_t>();
   TestStackRagged<double>();
@@ -2030,14 +2032,16 @@ TEST(RaggedShapeOpsTest, GetPrefixesTest) {
 
 TEST(RaggedShapeOpsTest, AppendMoreAxes) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape1 = RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
-                shape2 = RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+    RaggedShape shape1 = RaggedShape(
+        "[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 = RaggedShape(
+                    "[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
                 shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
 
-    RaggedShape appended_axis2_ref =
-        RaggedShape("[ [ [[ x x ][ x ][]] [[x ][x][ x ]] ] [[[x ][ x x][]]]]").To(c);
-    RaggedShape appended_axis3_ref =
-        RaggedShape("[ [ [[ x x x ]] [[x x x ]] ] [[[x x x]]]]").To(c);
+    RaggedShape appended_axis2_ref = RaggedShape(
+        "[ [ [[ x x ][ x ][]] [[x ][x][ x ]] ] [[[x ][ x x][]]]]").To(c);
+    RaggedShape appended_axis3_ref = RaggedShape(
+        "[ [ [[ x x x ]] [[x x x ]] ] [[[x x x]]]]").To(c);
     RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
     Array1<uint32_t> merge_map2;
     Array1<uint32_t> merge_map3;
@@ -2055,16 +2059,17 @@ TEST(RaggedShapeOpsTest, AppendMoreAxes) {
   }
 }
 
-
-
 TEST(RaggedShapeOpsTest, StackMoreAxes) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape1 = RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
-                shape2 = RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+    RaggedShape shape1 = RaggedShape(
+        "[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 = RaggedShape(
+                    "[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
                 shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
 
-    RaggedShape stacked_ref =
-        RaggedShape("[ [ [[[ x x ]][[ x ]][[]]] [[[x ]][[x]][[ x ]]] ] [[[[x ]][[ x x]][[]]]]]").To(c);
+    RaggedShape stacked_ref = RaggedShape(
+        "[ [ [[[ x x ]][[ x ]][[]]] [[[x ]][[x]][[ x ]]] ] "
+        "[[[[x ]][[ x x]][[]]]]]").To(c);
     RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
     Array1<uint32_t> merge_map2;
     Array1<uint32_t> merge_map3;
@@ -2082,15 +2087,18 @@ TEST(RaggedShapeOpsTest, StackMoreAxes) {
   }
 }
 
-
 TEST(RaggedShapeOpsTest, Merge) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape1 = RaggedShape("[ [ x x ] [ x ] [] ]").To(c),  // m: 0 3 6, m_out:  0 3, 6,
-                shape2 = RaggedShape("[ [ x] [ x x x ] ]").To(c), // m: 1 4, m_out: 1, 4 7 10
-                shape3 = RaggedShape("[ [ ] [ x x ] [] ]").To(c); // m: 2 5 8, m_out: ,2 5,
+    RaggedShape shape1 = RaggedShape(
+        "[ [ x x ] [ x ] [] ]").To(c),  // m: 0 3 6, m_out:  0 3, 6,
+                shape2 = RaggedShape(
+                    "[ [ x] [ x x x ] ]").To(c),  // m: 1 4, m_out: 1, 4 7 10
+                shape3 = RaggedShape(
+                    "[ [ ] [ x x ] [] ]").To(c);  // m: 2 5 8, m_out: ,2 5,
 
 
-    RaggedShape ans_ref = RaggedShape("[ [] [x] [x x x] [] [] [x x] [x x] [x] ]").To(c);
+    RaggedShape ans_ref =
+        RaggedShape("[ [] [x] [x x x] [] [] [x x] [x x] [x] ]").To(c);
 
     // This is a mixed-up kind of merge map that doesn't appear naturally (they
     // are always in-order from each source, right now) but it should still
@@ -2109,5 +2117,66 @@ TEST(RaggedShapeOpsTest, Merge) {
   }
 }
 
+TEST(RaggedTest, AddSuffixToRaggedTest) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // test with random large size
+      for (int32_t i = 0; i < 10; ++i) {
+        Ragged<int32_t> src = RandomRagged<int32_t>().To(context);
+        int32_t num_axes = src.NumAxes();
+        Array1<int32_t> suffix =
+            RandUniformArray1<int32_t>(context, src.TotSize(num_axes - 2),
+                                       0, 100);
+        Ragged<int32_t> dst = AddSuffixToRagged(src, suffix);
+        EXPECT_EQ(dst.NumAxes(), num_axes);
+        EXPECT_EQ(dst.NumElements(), src.NumElements() + suffix.Dim());
+        Ragged<int32_t> src_cpu = src.To(GetCpuContext());
+        Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
+        for (RaggedShapeIndexIterator src_iter = src_cpu.shape.Iterator();
+            !src_iter.Done(); src_iter.Next()) {
+          const std::vector<int32_t> &src_indexes = src_iter.Value();
+          EXPECT_EQ(dst_cpu[src_indexes], src_cpu[src_indexes]);
+        }
+        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
+        Array1<int32_t> suffix_cpu = suffix.To(GetCpuContext());
+        for (int32_t i = 0; i < suffix.Dim(); ++i) {
+           EXPECT_EQ(dst_cpu.values[src_row_splits[i + 1] + i], suffix_cpu[i]);
+        }
+      }
+    }
+  }
+}
+
+TEST(RaggedTest, AddPrefixToRaggedTest) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // test with random large size
+      for (int32_t i = 0; i < 10; ++i) {
+        Ragged<int32_t> src = RandomRagged<int32_t>().To(context);
+        int32_t num_axes = src.NumAxes();
+        Array1<int32_t> prefix =
+            RandUniformArray1<int32_t>(context, src.TotSize(num_axes - 2),
+                                       0, 100);
+        Ragged<int32_t> dst = AddPrefixToRagged(src, prefix);
+        EXPECT_EQ(dst.NumAxes(), num_axes);
+        EXPECT_EQ(dst.NumElements(), src.NumElements() + prefix.Dim());
+        Ragged<int32_t> src_cpu = src.To(GetCpuContext());
+        Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
+        for (RaggedShapeIndexIterator src_iter = src_cpu.shape.Iterator();
+            !src_iter.Done(); src_iter.Next()) {
+          const std::vector<int32_t> &src_indexes = src_iter.Value();
+          std::vector<int32_t> dst_indexes(src_indexes);
+          dst_indexes.back() += 1;  // increase the last index by 1
+          EXPECT_EQ(dst_cpu[dst_indexes], src_cpu[src_indexes]);
+        }
+        Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
+        Array1<int32_t> prefix_cpu = prefix.To(GetCpuContext());
+        for (int32_t i = 0; i < prefix.Dim(); ++i) {
+          EXPECT_EQ(dst_cpu.values[src_row_splits[i] + i], prefix_cpu[i]);
+        }
+      }
+    }
+  }
+}
 
 }  // namespace k2

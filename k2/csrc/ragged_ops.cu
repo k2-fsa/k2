@@ -5,6 +5,7 @@
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                      Yiming Wang
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -610,7 +611,8 @@ static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) {
     if (merge_map)
-      *merge_map = Arange<uint32_t>(src[0]->Context(), 0, src[0]->NumElements());
+      *merge_map = Arange<uint32_t>(src[0]->Context(), 0,
+                                    src[0]->NumElements());
     return **src;
   }
   K2_CHECK_GT(num_srcs, 1);
@@ -754,7 +756,8 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
   }
 
   Array1<uint32_t> merge_map_local;
-  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map : &merge_map_local);
+  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map :
+                              &merge_map_local);
   RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m),
               t = SubsampleRaggedLayer(s, 0, num_srcs);
   ans_layers[axis - 1] = t.Layers()[0];
@@ -988,10 +991,12 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
   }
 
   Array1<uint32_t> merge_map_local;
-  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map : &merge_map_local);
+  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map :
+                              &merge_map_local);
   RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m);
   // note: s.Dim0() will be a multiple of num_srcs.
-  ans_layers[axis - 1] = RegularRaggedShape(c, s.Dim0() / num_srcs, num_srcs).Layers()[0];
+  ans_layers[axis - 1] = RegularRaggedShape(c, s.Dim0() / num_srcs,
+                                            num_srcs).Layers()[0];
   ans_layers[axis] = s.Layers()[0];
 
   for (int32_t l = axis; l + 1 < num_axes; l++) {
@@ -1361,14 +1366,72 @@ std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
 
 Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
                                   const Array1<int32_t> &suffix) {
-  K2_LOG(FATAL) << "Not Implemented!";
-  return Ragged<int32_t>();
+  NVTX_RANGE(K2_FUNC);
+  int32_t num_axes = src.NumAxes();
+  K2_CHECK_GE(num_axes, 2);
+  K2_CHECK_EQ(suffix.Dim(), src.TotSize(num_axes - 2));
+  ContextPtr &c = src.Context();
+  Array1<int32_t> dst_values(c, src.NumElements() + suffix.Dim());
+  RaggedShape dst_shape = ChangeSublistSize(src.shape, 1);
+  // "row_splits1" and "row_ids1" below are actually on the last axis. We name
+  // them with "1" so that we can use "idx01" and "idx0" for those indexes in
+  // lambda, following the naming convention explained in k2/csrc/utils.h
+  const int32_t *dst_row_splits1_data =
+      dst_shape.RowSplits(num_axes - 1).Data(),
+                *dst_row_ids1_data = dst_shape.RowIds(num_axes - 1).Data(),
+                *src_values_data = src.values.Data(),
+                *suffix_data = suffix.Data();
+  int32_t *dst_values_data = dst_values.Data();
+
+  K2_EVAL(
+      c, dst_shape.NumElements(), lambda_copy_values, (int32_t idx01)->void {
+        int32_t idx0 = dst_row_ids1_data[idx01];
+        if (idx01 == dst_row_splits1_data[idx0 + 1] - 1) {
+          // idx01 points to the last element of this row; copy from suffix
+          dst_values_data[idx01] = suffix_data[idx0];
+        } else {
+          // copy from src
+          int32_t src_idx01 = idx01 - dst_row_ids1_data[idx01];
+          dst_values_data[idx01] = src_values_data[src_idx01];
+        }
+      });
+
+  return Ragged<int32_t>(dst_shape, dst_values);
 }
 
 Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
                                   const Array1<int32_t> &prefix) {
-  K2_LOG(FATAL) << "Not Implemented!";
-  return Ragged<int32_t>();
+  NVTX_RANGE(K2_FUNC);
+  int32_t num_axes = src.NumAxes();
+  K2_CHECK_GE(num_axes, 2);
+  K2_CHECK_EQ(prefix.Dim(), src.TotSize(num_axes - 2));
+  ContextPtr &c = src.Context();
+  Array1<int32_t> dst_values(c, src.NumElements() + prefix.Dim());
+  RaggedShape dst_shape = ChangeSublistSize(src.shape, 1);
+  // "row_splits1" and "row_ids1" below are actually on the last axis. We name
+  // them with "1" so that we can use "idx01" and "idx0" for those indexes in
+  // lambda, following the naming convention explained in k2/csrc/utils.h
+  const int32_t *dst_row_splits1_data =
+      dst_shape.RowSplits(num_axes - 1).Data(),
+                *dst_row_ids1_data = dst_shape.RowIds(num_axes - 1).Data(),
+                *src_values_data = src.values.Data(),
+                *prefix_data = prefix.Data();
+  int32_t *dst_values_data = dst_values.Data();
+
+  K2_EVAL(
+      c, dst_shape.NumElements(), lambda_copy_values, (int32_t idx01)->void {
+        int32_t idx0 = dst_row_ids1_data[idx01];
+        if (idx01 == dst_row_splits1_data[idx0]) {
+          // idx01 points to the first element of this row; copy from prefix
+          dst_values_data[idx01] = prefix_data[idx0];
+        } else {
+          // copy from src
+          int32_t src_idx01 = idx01 - dst_row_ids1_data[idx01] - 1;
+          dst_values_data[idx01] = src_values_data[src_idx01];
+        }
+      });
+
+  return Ragged<int32_t>(dst_shape, dst_values);
 }
 
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering) {
