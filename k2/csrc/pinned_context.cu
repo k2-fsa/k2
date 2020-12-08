@@ -82,27 +82,41 @@ class PinnedAllocator {
     K2_CHECK_NE(ptr, nullptr);
     std::lock_guard<std::mutex> lock(mutex_);
 
-    // ProcessEvents may free blocks
-    cudaError_t err = ProcessEvents();
-    if (err != cudaSuccess) return err;
+    // If the number of outstanding cuda events is larger
+    // than 100, we will invoke `ProcessEvents()`, which
+    // may make some blocks available for reuse.
+    //
+    // If the number of cuda_events_ is small,
+    // we first try to find a block from the pool. If it
+    // cannot find one, we then invoke `ProcessEvents`.
+    //
+    // The purpose is to reduce the time of waiting for
+    // the pending events.
+    for (int32_t iter = 0; iter < 2; ++iter) {
+      if (cuda_events_.size() > 100 || iter > 1) {
+        // ProcessEvents may free blocks
+        cudaError_t err = ProcessEvents();
+        if (err != cudaSuccess) return err;
+      }
 
-    // search for the smallest block which can hold this allocation
-    BlockSize search_key(size);
-    auto it = available_.lower_bound(search_key);
-    if (it != available_.end()) {
-      // we find an unused block
-      Block &block = blocks_.at(it->ptr);
-      K2_CHECK(!block.allocated && block.event_count == 0);
-      block.allocated = true;
-      *ptr = block.ptr;
-      available_.erase(it);
-      return cudaSuccess;
+      // search for the smallest block which can hold this allocation
+      BlockSize search_key(size);
+      auto it = available_.lower_bound(search_key);
+      if (it != available_.end()) {
+        // we find an unused block
+        Block &block = blocks_.at(it->ptr);
+        K2_CHECK(!block.allocated && block.event_count == 0);
+        block.allocated = true;
+        *ptr = block.ptr;
+        available_.erase(it);
+        return cudaSuccess;
+      }
     }
 
     // we need to allocate a new block.
     // note that cudaMallocHost may not touch pointer if size is 0
     *ptr = 0;
-    err = cudaMallocHost(ptr, size);
+    cudaError_t err = cudaMallocHost(ptr, size);
     if (err != cudaSuccess) return err;
 
     blocks_.insert({*ptr, Block(size, *ptr, true)});
