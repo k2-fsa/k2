@@ -25,7 +25,7 @@
 
 namespace k2 {
 
-namespace internal {
+namespace {
 
 struct BlockSize {
   size_t size;  // size of this memory block in bytes
@@ -78,7 +78,6 @@ class PinnedAllocator {
      @return Return cudaSuccess on success. Return a CUDA error code on failure.
    */
   cudaError_t Malloc(size_t size, void **ptr) {
-    K2_LOG(INFO) << "allocate " << size << " bytes";
     NVTX_RANGE(K2_FUNC);
     K2_CHECK_NE(ptr, nullptr);
     std::lock_guard<std::mutex> lock(mutex_);
@@ -91,7 +90,6 @@ class PinnedAllocator {
     BlockSize search_key(size);
     auto it = available_.lower_bound(search_key);
     if (it != available_.end()) {
-      K2_LOG(INFO) << "Found free block: " << it->ptr;
       // we find an unused block
       Block &block = blocks_.at(it->ptr);
       K2_CHECK(!block.allocated && block.event_count == 0);
@@ -108,7 +106,6 @@ class PinnedAllocator {
     if (err != cudaSuccess) return err;
 
     blocks_.insert({*ptr, Block(size, *ptr, true)});
-    K2_LOG(INFO) << "allocate a new block: " << *ptr;
     return cudaSuccess;
   }
 
@@ -120,7 +117,6 @@ class PinnedAllocator {
      @return Return cudaSuccess on success. Return a CUDA error code on failure.
    */
   cudaError_t Free(void *ptr) {
-    K2_LOG(INFO) << "free " << ptr;
     NVTX_RANGE(K2_FUNC);
     if (ptr == nullptr) return cudaSuccess;
     std::lock_guard<std::mutex> lock(mutex_);
@@ -143,12 +139,10 @@ class PinnedAllocator {
     if (err != cudaSuccess) return err;
 
     if (block.event_count == 0) {
-      K2_LOG(INFO) << "Insert " << ptr << " into available_";
       // the block can be re-used if there are no outstanding cuda events
       available_.insert(block);
     }
 
-    K2_LOG(INFO) << "Freed " << ptr;
     return cudaSuccess;
   }
 
@@ -177,7 +171,6 @@ class PinnedAllocator {
  private:
   cudaError_t InsertEvents(Block &block) {
     NVTX_RANGE(K2_FUNC);
-    K2_LOG(INFO) << "insert events for: " << block.ptr;
     // InsertEvents is called from `Free`, which has already held the mutex.
     std::unordered_set<cudaStream_t> streams(std::move(block.streams));
     for (auto it = streams.begin(); it != streams.end(); ++it) {
@@ -225,10 +218,7 @@ class PinnedAllocator {
       Block &block = blocks_.at(e.second);
       --block.event_count;
 
-      if (block.event_count == 0 && !block.allocated) {
-        K2_LOG(INFO) << "Put " << block.ptr << "  into available_";
-        available_.insert(block);
-      }
+      if (block.event_count == 0 && !block.allocated) available_.insert(block);
 
       cuda_events_.pop_front();
     }
@@ -263,11 +253,11 @@ static PinnedAllocator *GetPinnedAllocator() {
   return allocator;
 }
 
-}  // namespace internal
+}  // namespace
 
 class PinnedContext : public Context {
  public:
-  PinnedContext() { allocator_ = internal::GetPinnedAllocator(); }
+  PinnedContext() { allocator_ = GetPinnedAllocator(); }
 
   DeviceType GetDeviceType() const override { return kCpu; }
 
@@ -311,7 +301,7 @@ class PinnedContext : public Context {
   }
 
  private:
-  internal::PinnedAllocator *allocator_;  // NOT owned here
+  PinnedAllocator *allocator_;  // NOT owned here
 };
 
 ContextPtr GetPinnedContext() {

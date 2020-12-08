@@ -145,8 +145,9 @@ class PytorchCudaContext : public Context {
         break;
       }
       case kCuda: {
-        cudaError_t ret = cudaMemcpyAsync(
-            dst, src, num_bytes, cudaMemcpyDeviceToDevice, GetCudaStream());
+        cudaError_t ret =
+            cudaMemcpyAsync(dst, src, num_bytes, cudaMemcpyDeviceToDevice,
+                            dst_context->GetCudaStream());
         K2_CHECK_CUDA_ERROR(ret);
         break;
       }

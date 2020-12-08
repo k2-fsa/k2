@@ -89,6 +89,7 @@ set(cuda_tests
   log_test
   macros_test
   nvtx_test
+  pinned_context_test
   ragged_shape_test
   ragged_test
   ragged_utils_test
