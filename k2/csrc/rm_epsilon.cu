@@ -20,6 +20,20 @@
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/rm_epsilon.h"
 
+namespace {
+// Will be used in `ComputeEpsilonClosureOneIter` below
+struct ArcComparer {
+  __host__ __device__ __forceinline__ bool operator()(
+      const k2::Arc &lhs, const k2::Arc &rhs) const {
+    // Compares `dest_state` first, then `score` (in ascending order);
+    if (lhs.dest_state != rhs.dest_state)
+      return lhs.dest_state < rhs.dest_state;
+    else
+      return lhs.score > rhs.score;
+  }
+};
+}  // namespace
+
 namespace k2 {
 void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
                           Array1<int32_t> *arc_map) {
@@ -349,7 +363,203 @@ void ComputeEpsilonClosure(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
 
 void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
                                   Ragged<int32_t> *arc_map) {
-  K2_LOG(FATAL) << "Not Implemented!";
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK(closure_fsa != nullptr && arc_map != nullptr);
+  FsaVec &src = epsilon_fsa;
+  K2_CHECK_EQ(src.NumAxes(), 3);
+  ContextPtr &c = src.Context();
+  int32_t num_fsas = src.Dim0(), num_states = src.TotSize(1),
+          src_num_arcs = src.TotSize(2);
+  const int32_t *src_row_splits1_data = src.RowSplits(1).Data(),
+                *src_row_ids1_data = src.RowIds(1).Data(),
+                *src_row_splits2_data = src.RowSplits(2).Data(),
+                *src_row_ids2_data = src.RowIds(2).Data();
+  const Arc *src_arcs_data = src.values.Data();
+  // Suppose we append another axis (axis 4) to `src`, then src_row_splits3 is
+  // indexed by arc indexes in `src`. The number of elements for row i on
+  // this axis is the number of arcs we will expand from arc i in `src`.
+  // By saying `expand`, we mean for each arc i in `src`, suppose it's
+  // src_state is `s` and dest_state is `d` and `d` has `n` leaving arcs whose
+  // dest_state are `d1`, `d2`, ..., `dn`, then we will generate `n+1` arcs from
+  // current arc i, their src_states are `s`, and dest_states are `d`, `d1`,
+  // `d2`, ..., `dn`. Thus, the number of elements for row i will be `n + 1`.
+  Array1<int32_t> src_row_splits3(c, src_num_arcs + 1);
+  int32_t *src_row_splits3_data = src_row_splits3.Data();
+  K2_EVAL(
+      c, src_num_arcs, lambda_set_row_splits3_data, (int32_t arc_idx012)->void {
+        int32_t cur_arc_dest_state_idx1 = src_arcs_data[arc_idx012].dest_state;
+        int32_t state_idx01 = src_row_ids2_data[arc_idx012],
+                fsa_idx0 = src_row_ids1_data[state_idx01],
+                start_state_idx0x = src_row_splits1_data[fsa_idx0],
+                dest_state_idx01 = start_state_idx0x + cur_arc_dest_state_idx1;
+        int32_t num_leaving_arcs_of_dest_state =
+            src_row_splits2_data[dest_state_idx01 + 1] -
+            src_row_splits2_data[dest_state_idx01];
+        src_row_splits3_data[arc_idx012] = 1 + num_leaving_arcs_of_dest_state;
+      });
+  ExclusiveSum(src_row_splits3.Arange(0, src_num_arcs), &src_row_splits3);
+  // note below code has a Device to Host memory copy.
+  int32_t expand_arc_nums = src_row_splits3.Back();
+
+  // Here we'll create an Ragged<Arc> `expand` with NumAxes() == 4, its shape
+  // is ComposeRaggedShapes(src.shape, RaggedShape2(&src_row_splits3, null,
+  // expand_arc_nums)), its value is expand_arcs. For each row i in
+  // `src_row_splits3`, the corresponding arcs in `expand_arcs` are those arcs
+  // we generate from arc i in `src`. Then, we can get `closure_fsa` by just
+  // doing RemoveAxis(expand, 2). Of course after that we still need to sort
+  // those arcs leaving from each state in `closure_fsa` on (dest_state then
+  // weight), and then for consecutive arcs who have the same dest_state, we
+  // only keep the first arc (who has the largest weight, as we sort state's
+  // score in ascending order) as one of arc of the returned  `closure_fsa`.
+  Array1<Arc> expand_arcs(c, expand_arc_nums);
+  Arc *expand_arcs_data = expand_arcs.Data();
+  RaggedShape expand_shape = ComposeRaggedShapes(
+      src.shape, RaggedShape2(&src_row_splits3, nullptr, expand_arc_nums));
+  // just create an alias `expand_row_splits3_data` to use in below lambda.
+  const int32_t *expand_row_splits3_data = src_row_splits3_data;
+  // expand_row_ids3 is the row_ids corresponding to expand_row_splits3.
+  const int32_t *expand_row_ids3_data = expand_shape.RowIds(3).Data();
+  // Here we pretend we crate an Ragged<int32_t> `expand_arc_map` with NumAxes()
+  // ==2, row i in it is the sequence of src_arc_idx012 that arc i in expand
+  // corresponds to.
+  Array1<int32_t> expand_arc_map_row_splits(c, expand_arc_nums + 1);
+  int32_t *expand_arc_map_row_splits_data = expand_arc_map_row_splits.Data();
+  K2_EVAL(
+      c, expand_arc_nums, lambda_set_expand_arc_map_row_splits,
+      (int32_t expand_arc_idx0123)->void {
+        // src_arc_idx012 equals to expand_arc_idx012
+        int32_t src_arc_idx012 = expand_row_ids3_data[expand_arc_idx0123],
+                expand_arc_idx012x = expand_row_splits3_data[src_arc_idx012],
+                expand_arc_idx3 = expand_arc_idx0123 - expand_arc_idx012x;
+        // expand_arc_idx3 != 0 means this arc is an `expanded` arc, so the
+        // length of the corresponding arc-map sequence is 2
+        expand_arc_map_row_splits_data[expand_arc_idx0123] =
+            (expand_arc_idx3 != 0 ? 2 : 1);
+      });
+  ExclusiveSum(expand_arc_map_row_splits.Arange(0, expand_arc_nums),
+               &expand_arc_map_row_splits);
+  // note below code has a Device to Host memory copy.
+  int32_t expand_arc_map_num_values = expand_arc_map_row_splits.Back();
+  Array1<int32_t> expand_arc_map_row_ids(c, expand_arc_map_num_values);
+  Array1<int32_t> expand_arc_map_values(c, expand_arc_map_num_values);
+  int32_t *expand_arc_map_row_ids_data = expand_arc_map_row_ids.Data(),
+          *expand_arc_map_values_data = expand_arc_map_values.Data();
+
+  K2_EVAL(
+      c, expand_arc_nums, lambda_set_expand_arcs,
+      (int32_t expand_arc_idx0123)->void {
+        // src_arc_idx012 equals to expand_arc_idx012
+        int32_t src_arc_idx012 = expand_row_ids3_data[expand_arc_idx0123],
+                expand_arc_idx012x = expand_row_splits3_data[src_arc_idx012],
+                expand_arc_idx3 = expand_arc_idx0123 - expand_arc_idx012x;
+        const Arc &cur_src_arc = src_arcs_data[src_arc_idx012];
+        // set arc map info, `expand_arc_map_idx0x` is the first index for arc
+        // map of arc expand_arc_idx0123 in `expand`.
+        int32_t expand_arc_map_idx0x =
+            expand_arc_map_row_splits_data[expand_arc_idx0123];
+        expand_arc_map_row_ids_data[expand_arc_map_idx0x] = expand_arc_idx0123;
+        expand_arc_map_values_data[expand_arc_map_idx0x] = src_arc_idx012;
+        if (expand_arc_idx3 != 0) {
+          // it's an `expanded` arc, we need to create a new arc whose src_state
+          // is cur_src_arc.src_state and dest_state is the dest state of the
+          // corresponding arc leaving cur_src_arc.dest_state.
+          int32_t cur_src_arc_dest_state_idx1 =
+              src_arcs_data[src_arc_idx012].dest_state;
+          int32_t cur_state_idx01 = src_row_ids2_data[src_arc_idx012],
+                  fsa_idx0 = src_row_ids1_data[cur_state_idx01],
+                  start_state_idx0x = src_row_splits1_data[fsa_idx0],
+                  dest_state_idx01 =
+                      start_state_idx0x + cur_src_arc_dest_state_idx1;
+          // leaving_arc_idx01x is the index of the first arc leaving
+          // cur_src_arc.dest_state. Noticed that we minus `1` here when
+          // computing `leaving_arc_idx012` as the first arc in current state of
+          // `expand` is just copying from cur_src_arc (the else branch
+          // below that has `expand_arc_idx3 == 0`), it's not an `expanded` arc.
+          int32_t leaving_arc_idx01x = src_row_splits2_data[dest_state_idx01],
+                  leaving_arc_idx012 = leaving_arc_idx01x + expand_arc_idx3 - 1;
+          const Arc &cur_expanding_arc = src_arcs_data[leaving_arc_idx012];
+          // the label of the expanded arc is always `0` as the input fsa is
+          // `epsilon_fsa` (containing only epsilon arcs), the score is the sum
+          // of cur_src_arc's score and the expanding-arc's score.
+          expand_arcs_data[expand_arc_idx0123] =
+              Arc(cur_src_arc.src_state, cur_expanding_arc.dest_state, 0,
+                  cur_src_arc.score + cur_expanding_arc.score);
+          // it's an expanded arc, so there are two elements in its arc map.
+          expand_arc_map_row_ids_data[expand_arc_map_idx0x + 1] =
+              expand_arc_idx0123;
+          expand_arc_map_values_data[expand_arc_map_idx0x + 1] =
+              leaving_arc_idx012;
+        } else {
+          // it's not the `expanded` arc, just copy current arc in `src`.
+          expand_arcs_data[expand_arc_idx0123] = cur_src_arc;
+        }
+      });
+  expand_shape = RemoveAxis(expand_shape, 2);
+  Array1<int32_t> sort_arc_map(c, expand_arc_nums);
+  FsaVec expand(expand_shape, expand_arcs);
+  SortSublists<Arc, ArcComparer>(&expand, &sort_arc_map);
+
+  // For consecutive arcs who have the same dest_state, we only keep the first
+  // arc (it has the largest score, as we sort state's score in
+  // ascending order).
+  Renumbering arc_renumbering(c, expand_arc_nums);
+  char *arc_keep_data = arc_renumbering.Keep().Data();
+  const int32_t *cur_expand_row_ids2_data = expand.RowIds(2).Data(),
+                *cur_expand_row_splits2_data = expand.RowSplits(2).Data();
+  K2_EVAL(
+      c, expand_arc_nums, lambda_set_keep, (int32_t arc_idx012)->void {
+        int32_t expand_state_idx01 = cur_expand_row_ids2_data[arc_idx012],
+                expand_arc_idx01x =
+                    cur_expand_row_splits2_data[expand_state_idx01];
+        if (arc_idx012 == expand_arc_idx01x) {
+          // always keep the first leaving arc of this state
+          arc_keep_data[arc_idx012] = 1;
+        } else {
+          // arc_idx012 >= expand_arc_idx01x, so there must be multiple leaving
+          // arcs from current state (i.e. `expand_state_idx01`), it's safe to
+          // -1 below.
+          int32_t cur_arc_dest_state = expand_arcs_data[arc_idx012].dest_state,
+                  pre_arc_dest_state =
+                      expand_arcs_data[arc_idx012 - 1].dest_state;
+          arc_keep_data[arc_idx012] =
+              (cur_arc_dest_state != pre_arc_dest_state);
+        }
+      });
+
+  Array1<int32_t> arc_old_to_new = arc_renumbering.Old2New();
+  Array1<int32_t> arc_new_to_old = arc_renumbering.New2Old();
+  Array1<int32_t> closure_fsa_row_splits2 = arc_old_to_new[expand.RowSplits(2)];
+  Array1<int32_t> closure_fsa_row_ids2 = expand.RowIds(2)[arc_new_to_old];
+  int32_t closure_fsa_num_arcs = arc_renumbering.NumNewElems();
+  Array1<Arc> closure_fsa_arcs(c, closure_fsa_num_arcs);
+  Arc *closure_fsa_arcs_data = closure_fsa_arcs.Data();
+  Array1<int32_t> arc_map_indexes(c, closure_fsa_num_arcs);
+  int32_t *arc_map_indexes_data = arc_map_indexes.Data();
+  const int32_t *sort_arc_map_data = sort_arc_map.Data(),
+                *arc_new_to_old_data = arc_new_to_old.Data();
+  K2_EVAL(
+      c, closure_fsa_num_arcs, lambda_set_arc_map_indexes_and_arcs,
+      (int32_t closure_fsa_arc_idx012)->void {
+        int32_t expand_arc_idx012 = arc_new_to_old_data[closure_fsa_arc_idx012];
+        closure_fsa_arcs_data[closure_fsa_arc_idx012] =
+            expand_arcs_data[expand_arc_idx012];
+        // noted we have sort `expand` before, but `expand_arc_map.values` is
+        // indexed by the indexes before sorting
+        int32_t expand_arc_idx012_before_sort =
+            sort_arc_map_data[expand_arc_idx012];
+        arc_map_indexes_data[closure_fsa_arc_idx012] =
+            expand_arc_idx012_before_sort;
+      });
+  RaggedShape closure_fsa_shape = ComposeRaggedShapes(
+      GetLayer(src.shape, 0),
+      RaggedShape2(&closure_fsa_row_splits2, &closure_fsa_row_ids2,
+                   closure_fsa_num_arcs));
+  *closure_fsa = FsaVec(closure_fsa_shape, closure_fsa_arcs);
+
+  Ragged<int32_t> expand_arc_map(
+      RaggedShape2(&expand_arc_map_row_splits, &expand_arc_map_row_ids, -1),
+      expand_arc_map_values);
+  *arc_map = Index(expand_arc_map, arc_map_indexes);
 }
 
 void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,

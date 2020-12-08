@@ -124,22 +124,19 @@ void ComputeEpsilonClosure(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
 
 /*
  One iteration of the algorithm in ComputeEpsilonClosure().
-   @param [in] FSA containing only epsilon arcs (possibly already passed through
-                   one or more iterations of closure).  Must have 3 axes.
+   @param [in] epsilon_fsa  The input FSA containing only epsilon arcs
+                   (possibly already passed through one or more iterations
+                   of closure). Must have 3 axes.
    @param [out] closure_fsa   FSA that is the result of one iteration of
-                    closure/ Will contain an arc from state s1 to s2 if there
+                    closure. Will contain an arc from state s1 to s2 if there
                     was already such an arc in `epsilon_fsa` or if there was
                     a state s3 such that there was an arc from s1 to s2 and
                     one from s2 to s3. Will contain at most one arc from one
                     state to any other state.
     @param [out] arc_map   For each arc in closure_fsa, contains the sequence of
-                  arc_idx012's in epsilon_fsa that was the source.
-
-  Implementation notes from Dan: I suggest to over-generate arcs,
-  (i.e. for each arc, generate n extra arcs if its dest-state had n arcs leaving
-  it), then arc-sort with an operator that sorts on (dest-state then weight),
-  then mark arcs to be (kept or not) according to whether the previous arc was
-  to the same dest state, then renumber with a Renumbering class.
+                  arc_idx012's in epsilon_fsa that was the source (the sequence
+                  length is 1 or 2 depending on the arc is just copying from
+                  `epsilon_fsa` (s1->s2) or it's an expanded arc (s1->s3).
 */
 void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
                                   Ragged<int32_t> *arc_map);
