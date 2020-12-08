@@ -9,7 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <utility>
 
 #include "k2/csrc/context.h"
