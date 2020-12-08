@@ -218,6 +218,8 @@ class Fsa(object):
             sep = '\n'
             ans += f'{sep}{name}: {value}'
         for name, value in self.named_non_tensor_attr():
+            if name == 'symbols':
+                continue
             sep = '\n'
             ans += f'{sep}{name}: {value}'
 
