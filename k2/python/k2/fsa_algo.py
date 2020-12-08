@@ -3,8 +3,9 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from typing import Union
 from typing import List
+from typing import Optional
+from typing import Union
 
 import torch
 import _k2
@@ -14,8 +15,9 @@ from .fsa import Fsa
 from . import fsa_properties
 
 
-def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
-    '''Construct an linear FSA from symbols.
+def linear_fsa(symbols: Union[List[int], List[List[int]]],
+               device: Optional[torch.device] = None) -> Fsa:
+    '''Construct a linear FSA or a Linear FsaVec from symbols.
 
     Note:
       The scores of arcs in the returned FSA are all 0.
@@ -23,12 +25,25 @@ def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
     Args:
       symbols:
         A list of integers or a list of list of integers.
+      device:
+        It is either a CPU or a CUDA device. If None is passed,
+        the returned Fsa is on CPU.
 
     Returns:
       An FSA if the input is a list of integers.
-      A vector of FSAs if the input is a list of list of integers.
+      A FsaVec if the input is a list of list of integers.
     '''
-    ragged_arc = _k2.linear_fsa(symbols)
+    if device is not None:
+        if device.type == 'cpu':
+            device_id = -1
+        elif device.type == 'cuda':
+            device_id = device.index if device.index is not None else 0
+        else:
+            raise ValueError(f'Unsupported device type: {device.type}')
+    else:
+        device_id = -1
+
+    ragged_arc = _k2.linear_fsa(symbols, device_id)
     fsa = Fsa(ragged_arc)
     return fsa
 
@@ -89,12 +104,9 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     '''
     treat_epsilons_specially = True
     need_arc_map = True
-    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs,
-                                                     a_fsa.properties,
-                                                     b_fsa.arcs,
-                                                     b_fsa.properties,
-                                                     treat_epsilons_specially,
-                                                     need_arc_map)
+    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
+        a_fsa.arcs, a_fsa.properties, b_fsa.arcs, b_fsa.properties,
+        treat_epsilons_specially, need_arc_map)
 
     out_fsa = Fsa(ragged_arc)
     for name, a_value in a_fsa.named_tensor_attr():
