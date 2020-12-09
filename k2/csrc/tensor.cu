@@ -187,9 +187,7 @@ Tensor Tensor::To(ContextPtr ctx) const {
 
   int8_t *dst = region->GetData<int8_t>();
   const int8_t *src = GetRegion()->GetData<int8_t>();
-  auto kind = GetMemoryCopyKind(*Context(), *ctx);
-  MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
-             region->num_bytes, kind, ctx.get());
+  Context()->CopyDataTo(region->num_bytes, src, ctx, dst);
   TensorImplPtr impl =
       std::make_shared<TensorImpl>(GetShape(), GetDtype(), size_t(0), region);
   return Tensor(impl);
@@ -204,9 +202,7 @@ Tensor Tensor::Clone() const {
 
   int8_t *dst = region->GetData<int8_t>();
   const int8_t *src = GetRegion()->GetData<int8_t>();
-  auto kind = GetMemoryCopyKind(*context, *context);
-  MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
-             region->num_bytes, kind, context.get());
+  context->CopyDataTo(region->num_bytes, src, context, dst);
   TensorImplPtr impl =
       std::make_shared<TensorImpl>(GetShape(), GetDtype(), size_t(0), region);
   return Tensor(impl);

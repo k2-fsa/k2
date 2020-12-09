@@ -39,11 +39,9 @@ void CheckArrayData(const Array1<T> &array, const std::vector<T> &target) {
   ASSERT_EQ(array.Dim(), target.size());
   const T *array_data = array.Data();
   // copy data from CPU/GPU to CPU
-  auto kind = GetMemoryCopyKind(*array.Context(), *GetCpuContext());
   std::vector<T> cpu_data(array.Dim());
-  MemoryCopy(static_cast<void *>(cpu_data.data()),
-             static_cast<const void *>(array_data),
-             array.Dim() * array.ElementSize(), kind, nullptr);
+  array.Context()->CopyDataTo(array.Dim() * array.ElementSize(), array_data,
+                              GetCpuContext(), cpu_data.data());
   EXPECT_EQ(cpu_data, target);
 }
 
