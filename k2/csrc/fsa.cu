@@ -238,6 +238,10 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   const Arc *arcs_data = array.Data();
   ContextPtr &c = array.Context();
   int32_t num_arcs = array.Dim();
+  // We choose to return an Fsa with no states and no arcs.  We could also have
+  // chosen to return an Fsa with 2 states and no arcs.
+  if (num_arcs == 0)
+    return Fsa(EmptyRaggedShape(c, 2), Array1<Arc>(c, 0));
   *error = false;
 
   // If the FSA has arcs entering the final state, that will
