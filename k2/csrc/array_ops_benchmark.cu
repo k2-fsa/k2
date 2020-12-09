@@ -14,7 +14,7 @@
 
 template <typename T>
 static void BM_ExclusiveSum(benchmark::State &state) {
-  using namespace k2;  // TODO(fangjun): get rid of `using`
+  using namespace k2;  // TODO(fangjun): get rid of `using`  // NOLINT
   ContextPtr context = GetCudaContext();
   Timer timer(context);
   int32_t num_bytes_processed = 0;
