@@ -299,7 +299,8 @@ def determinize(fsa: Fsa) -> Fsa:
     '''Determinize the input Fsa.
 
     Caution:
-      It only works on for CPU and doesn't support autograd.
+      It only works on for CPU and doesn't support autograd (for now;
+      this is not a fundamental limitation).
 
     Args:
       fsa:

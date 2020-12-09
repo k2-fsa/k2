@@ -200,13 +200,17 @@ std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec);
 */
 Fsa FsaFromTensor(Tensor &t, bool *error);
 
+
 Fsa FsaFromArray1(Array1<Arc> &arc, bool *error);
 
 /*
   Returns a single Tensor that represents the FSA; this is just the vector of
-  Arc reinterpreted as  num_arcs by 4 Tensor of int32_t.  It can be converted
-  back to an equivalent FSA using `FsaFromTensor`.  Notice: this is not the
-  same format as we use to serialize FsaVec.
+  Arc reinterpreted as a (num_arcs by 4) Tensor of int32_t.  It can be converted
+  back to an equivalent FSA using `FsaFromTensor`.  Notice: this is not the same
+  format as we use to serialize FsaVec.  Also the round-trip conversion to
+  Tensor and back may not preserve the number of states for FSAs that had no
+  arcs entering the final-state, since we have to guess the number of states in
+  this case.
 
   It is an error if `fsa.NumAxes() != 2`.
  */
@@ -265,8 +269,6 @@ Tensor FsaVecToTensor(const FsaVec &fsa_vec);
 
 */
 FsaVec FsaVecFromTensor(Tensor &t, bool *error);
-
-FsaVec FsaVecFromArray1(Array1<Arc> &arc, bool *error);  // TODO: implement it
 
 /*
   Return one Fsa in an FsaVec.  Note, this has to make copies of the

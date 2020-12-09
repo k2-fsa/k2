@@ -173,7 +173,6 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
   int64_t src_stride = src.strides()[0];
   int64_t ans_stride = ans.strides()[0];
 
-#if !defined(NDEBUG)
   // check if there is at most one non-zero element in src for each sub-list
   Ragged<int32_t> non_zero_elems(indexes.shape,
                                  Array1<int32_t>(context, indexes_num_elems));
@@ -189,15 +188,29 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
   Array1<int32_t> counts(context, indexes_dim0);
   SumPerSublist(non_zero_elems, 0, &counts);
   const int32_t *counts_data = counts.Data();
-  Array1<int32_t> status(context, 1, 0);
+  Array1<int32_t> status(context, 1, 0); // 0 -> success; otherwise 1 + row_id
+                                         // of bad row in `indexes`
   int32_t *status_data = status.Data();
   K2_EVAL(
       context, counts.Dim(), lambda_check_status, (int32_t i)->void {
-        if (counts_data[i] > 1) status_data[0] = 1;
+        if (counts_data[i] > 1) status_data[0] = 1 + i;
       });
-  K2_CHECK_EQ(status[0], 0) << "There must be at most one non-zero "
-                               "element in src for any sub-list in indexes";
-#endif
+  int32_t s = status[0];
+  if (s != 0) {
+    Array1<T> indexed_values(context, indexes_num_elems);
+    T *indexed_values_data = indexed_values.Data();
+    K2_EVAL(context, indexes_num_elems, lambda_set_values, (int32_t i) -> void {
+        int32_t src_index = indexes_data[i];
+        indexed_values_data[i] = src_data[src_index * src_stride];
+      });
+    Array1<int32_t> row_splits = indexes.RowSplits(1);
+
+    K2_LOG(FATAL) << "There must be at most one non-zero "
+        "element in src for any sub-list in indexes; sub-list "
+                  << (s-1) << " has too many elements: "
+                  << indexed_values.Arange(row_splits[s-1],
+                                           row_splits[s]);
+  }
 
   K2_EVAL(
       context, indexes_num_elems, lambda_set_ans_data, (int32_t i)->void {
