@@ -112,12 +112,6 @@ void MapFsaVecStates(FsaVec &src, Array1<int32_t> &state_row_splits,
      @param [out] closure_fsa  FSA containing the closure of the epsilon arcs.
                            Will be arc-sorted, and no state will have more than
                            one arc to any other state.
-
-  Implementation notes from Dan: I suggest to repeatedly call
-  ComputeEpsilonClosureOneIter() until there is no further change in the
-  FsaVec (this can be by simple comparison on arcs vector, since thanks to
-  sorting the order is deterministic).  Obviously the arc_maps from the
-  individual iterations must be composed.
 */
 void ComputeEpsilonClosure(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
                            Ragged<int32_t> *arc_map);
