@@ -34,13 +34,23 @@ struct Arc {
         label(label),
         score(score) {}
 
-  bool operator<(const Arc &other) const {
+  __host__ __device__ __forceinline__ bool operator==(const Arc &other) const {
+    return src_state == other.src_state && dest_state == other.dest_state &&
+           label == other.label && fabsf(score - other.score) < 1e-5;
+  }
+
+  __host__ __device__ __forceinline__ bool operator!=(const Arc &other) const {
+    return !(*this == other);
+  }
+
+  __host__ __device__ __forceinline__ bool operator<(const Arc &other) const {
     // Compares `label` first, then `dest_state`;
     // compare label as unsigned so -1 comes after other symbols, since some
     // algorithms may require epsilons to be first.
-    return std::tie(reinterpret_cast<const uint32_t &>(label), dest_state) <
-           std::tie(reinterpret_cast<const uint32_t &>(other.label),
-                    other.dest_state);
+    if (label != other.label)
+      return static_cast<uint32_t>(label) < static_cast<uint32_t>(other.label);
+    else
+      return dest_state < other.dest_state;
   }
 };
 

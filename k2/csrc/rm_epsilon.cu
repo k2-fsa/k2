@@ -358,7 +358,29 @@ void MapFsaVecStates(FsaVec &src, Array1<int32_t> &state_row_splits,
 
 void ComputeEpsilonClosure(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
                            Ragged<int32_t> *arc_map) {
-  K2_LOG(FATAL) << "Not Implemented!";
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK(closure_fsa != nullptr && arc_map != nullptr);
+  K2_CHECK_EQ(epsilon_fsa.NumAxes(), 3);
+
+  // We repeatedly call ComputeEpsilonClosureOneIter() until there is no further
+  // change in the FsaVec (this can be by simple comparison on arcs vector,
+  // since thanks to sorting the order is deterministic).
+  Array1<Arc> epsilon_fsa_arcs = epsilon_fsa.values;
+  ComputeEpsilonClosureOneIter(epsilon_fsa, closure_fsa, arc_map);
+  Array1<Arc> closure_fsa_arcs = closure_fsa->values;
+  // note function `Equal` for Array1 requires the input two arrays have the
+  // same size.
+  while (epsilon_fsa_arcs.Dim() != closure_fsa_arcs.Dim() ||
+         !Equal(epsilon_fsa_arcs, closure_fsa_arcs)) {
+    epsilon_fsa_arcs = closure_fsa_arcs;
+    FsaVec cur_iter_closure_fsa;
+    Ragged<int32_t> cur_iter_arc_map;
+    ComputeEpsilonClosureOneIter(*closure_fsa, &cur_iter_closure_fsa,
+                                 &cur_iter_arc_map);
+    closure_fsa_arcs = cur_iter_closure_fsa.values;
+    *closure_fsa = cur_iter_closure_fsa;
+    *arc_map = ComposeArcMaps(*arc_map, cur_iter_arc_map);
+  }
 }
 
 void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
@@ -375,14 +397,15 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
                 *src_row_splits2_data = src.RowSplits(2).Data(),
                 *src_row_ids2_data = src.RowIds(2).Data();
   const Arc *src_arcs_data = src.values.Data();
-  // Suppose we append another axis (axis 4) to `src`, then src_row_splits3 is
-  // indexed by arc indexes in `src`. The number of elements for row i on
-  // this axis is the number of arcs we will expand from arc i in `src`.
-  // By saying `expand`, we mean for each arc i in `src`, suppose it's
-  // src_state is `s` and dest_state is `d` and `d` has `n` leaving arcs whose
-  // dest_state are `d1`, `d2`, ..., `dn`, then we will generate `n+1` arcs from
-  // current arc i, their src_states are `s`, and dest_states are `d`, `d1`,
-  // `d2`, ..., `dn`. Thus, the number of elements for row i will be `n + 1`.
+  // Suppose we append another axis (axis 3) to `src` (so src.NumAxes() will be
+  // 4), then src_row_splits3 is indexed by arc indexes in `src`. The number of
+  // elements for row i on axis 3 is the number of arcs we will expand from
+  // arc i in `src`. By saying `expand`, we mean for each arc i in `src`,
+  // suppose it's src_state is `s` and dest_state is `d` and `d` has `n` leaving
+  // arcs whose dest_state are `d1`, `d2`, ..., `dn`, then we will generate
+  // `n+1` arcs from current arc i, their src_states are `s`, and dest_states
+  // are `d`, `d1`, `d2`, ..., `dn`. Thus, the number of elements for row i will
+  // be `n + 1`.
   Array1<int32_t> src_row_splits3(c, src_num_arcs + 1);
   int32_t *src_row_splits3_data = src_row_splits3.Data();
   K2_EVAL(
@@ -403,7 +426,7 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
 
   // Here we'll create an Ragged<Arc> `expand` with NumAxes() == 4, its shape
   // is ComposeRaggedShapes(src.shape, RaggedShape2(&src_row_splits3, null,
-  // expand_arc_nums)), its value is expand_arcs. For each row i in
+  // expand_arc_nums)), its value is `expand_arcs` below. For each row i in
   // `src_row_splits3`, the corresponding arcs in `expand_arcs` are those arcs
   // we generate from arc i in `src`. Then, we can get `closure_fsa` by just
   // doing RemoveAxis(expand, 2). Of course after that we still need to sort
@@ -420,7 +443,7 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
   // expand_row_ids3 is the row_ids corresponding to expand_row_splits3.
   const int32_t *expand_row_ids3_data = expand_shape.RowIds(3).Data();
   // Here we pretend we crate an Ragged<int32_t> `expand_arc_map` with NumAxes()
-  // ==2, row i in it is the sequence of src_arc_idx012 that arc i in expand
+  // ==2, row i in it is the sequence of src_arc_idx012 that arc i in `expand`
   // corresponds to.
   Array1<int32_t> expand_arc_map_row_splits(c, expand_arc_nums + 1);
   int32_t *expand_arc_map_row_splits_data = expand_arc_map_row_splits.Data();
@@ -463,8 +486,7 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
           // it's an `expanded` arc, we need to create a new arc whose src_state
           // is cur_src_arc.src_state and dest_state is the dest state of the
           // corresponding arc leaving cur_src_arc.dest_state.
-          int32_t cur_src_arc_dest_state_idx1 =
-              src_arcs_data[src_arc_idx012].dest_state;
+          int32_t cur_src_arc_dest_state_idx1 = cur_src_arc.dest_state;
           int32_t cur_state_idx01 = src_row_ids2_data[src_arc_idx012],
                   fsa_idx0 = src_row_ids1_data[cur_state_idx01],
                   start_state_idx0x = src_row_splits1_data[fsa_idx0],

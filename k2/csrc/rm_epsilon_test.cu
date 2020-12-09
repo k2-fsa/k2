@@ -282,4 +282,40 @@ TEST(RmEpsilon, ComputeEpsilonClosureOneIterSimple) {
   // TODO(haowen): add random tests
 }
 
+TEST(RmEpsilon, ComputeEpsilonClosureSimple) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    std::string s1 = R"(0 1 0 1
+    1 2 0 1 
+    1 3 0 1 
+    2 3 0 1 
+    3 4 0 1 
+    3 5 0 1 
+    4 5 0 1 
+    6
+  )";
+    std::string s2 = R"(0 1 0 1
+    1 2 0 1 
+    2 3 0 1 
+    3 4 0 1 
+    5
+  )";
+    Fsa fsa1 = FsaFromString(s1);
+    Fsa fsa2 = FsaFromString(s2);
+    Fsa *fsa_array[] = {&fsa1, &fsa2};
+    FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+    fsa_vec = fsa_vec.To(context);
+
+    FsaVec dest;
+    Ragged<int32_t> arc_map;
+    ComputeEpsilonClosure(fsa_vec, &dest, &arc_map);
+    EXPECT_EQ(dest.NumAxes(), 3);
+    EXPECT_EQ(arc_map.NumAxes(), 2);
+    K2_LOG(INFO) << dest;
+    K2_LOG(INFO) << arc_map;
+    EXPECT_EQ(dest.NumElements(), 25);
+    EXPECT_EQ(arc_map.Dim0(), 25);
+  }
+  // TODO(haowen): add random tests
+}
+
 }  // namespace k2

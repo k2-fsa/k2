@@ -384,26 +384,10 @@ FsaVec LinearFsas(Ragged<int32_t> &symbols) {
       arcs);
 }
 
-namespace {
-struct ArcComparer {
-  __host__ __device__ __forceinline__ bool operator()(const Arc &lhs,
-                                                      const Arc &rhs) const {
-    // Compares `label` first, then `dest_state`;
-    // compare label as unsigned so -1 comes after other symbols, since some
-    // algorithms may require epsilons to be first.
-    if (lhs.label != rhs.label)
-      return static_cast<uint32_t>(lhs.label) <
-             static_cast<uint32_t>(rhs.label);
-    else
-      return lhs.dest_state < rhs.dest_state;
-  }
-};
-}  // namespace
-
 void ArcSort(Fsa *fsa) {
   NVTX_RANGE(K2_FUNC);
   if (fsa->NumAxes() < 2) return;  // it is empty
-  SortSublists<Arc, ArcComparer>(fsa);
+  SortSublists<Arc>(fsa);
 }
 
 void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
@@ -414,7 +398,7 @@ void ArcSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*= nullptr*/) {
     *arc_map = Array1<int32_t>(src.Context(), src.NumElements());
 
   Fsa tmp(src.shape, src.values.Clone());
-  SortSublists<Arc, ArcComparer>(&tmp, arc_map);
+  SortSublists<Arc>(&tmp, arc_map);
   *dest = tmp;
 }
 

@@ -25,15 +25,6 @@
 
 namespace k2 {
 
-// clang-format off
-bool operator==(const Arc &a, const Arc &b) {
-  return a.src_state == b.src_state && \
-         a.dest_state == b.dest_state && \
-         a.label == b.label && \
-         fabs(a.score - b.score) < 1e-6;
-}
-// clang-format on
-
 template <typename T>
 void CheckArrayData(const Array1<T> &array, const std::vector<T> &target) {
   ASSERT_EQ(array.Dim(), target.size());
