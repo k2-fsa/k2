@@ -1,6 +1,8 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
 # See ../../../LICENSE for clarification regarding multiple authors
 
+from typing import Union
+
 import torch
 import _k2
 import numpy as np
@@ -133,17 +135,22 @@ class DenseFsaVec(object):
         '''
         return self.device.type == 'cuda'
 
-    def to(self, device: torch.device) -> 'DenseFsaVec':
+    def to(self, device: Union[torch.device, str]) -> 'DenseFsaVec':
         '''Move the DenseFsaVec onto a given device.
 
         Args:
           device:
-            An instance of `torch.device`. It supports only cpu and cuda.
+            An instance of `torch.device` or a string that can be used to
+            construct a `torch.device`, e.g., 'cpu', 'cuda:0'.
+            It supports only cpu and cuda devices.
 
         Returns:
           Returns a new DenseFsaVec which is this object copied to the given
           device (or this object itself, if the device was the same).
         '''
+        if isinstance(device, str):
+            device = torch.device(device)
+
         assert device.type in ('cpu', 'cuda')
         if device == self.scores.device:
             return self

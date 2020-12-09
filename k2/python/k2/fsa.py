@@ -679,18 +679,23 @@ class Fsa(object):
             setattr(fsa, key, value)
         return fsa
 
-    def to(self, device: torch.device) -> 'Fsa':
+    def to(self, device: Union[str, torch.device]) -> 'Fsa':
         '''Move the FSA onto a given device.
 
         Args:
           device:
-            An instance of `torch.device`. It supports only cpu and cuda.
+            An instance of `torch.device` or a string that can be used to
+            construct a `torch.device`, e.g., 'cpu', 'cuda:0'.
+            It supports only cpu and cuda devices.
 
         Returns:
           Returns a new Fsa which is this object copied to the given device
           (or this object itself, if the device was the same)
         '''
         # Keep this code in sync with that in clone()
+        if isinstance(device, str):
+            device = torch.device(device)
+
         assert device.type in ('cpu', 'cuda')
         if device == self.scores.device:
             return self
