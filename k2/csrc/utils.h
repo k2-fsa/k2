@@ -150,7 +150,7 @@ namespace k2 {
         int32_t idx0, idx1, idx2;  # provided
         int32_t idx0x = t.row_splits1[idx0],
             idx01 = idx0x + idx1,
-            idx01x = t.row_splits2[idx1],
+            idx01x = t.row_splits2[idx01],
             idx012 = idx01x + idx2,
             idx0xx = t.row_splits2[idx0x],
             idx12 = idx012 - idx0xx;
