@@ -8,65 +8,87 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include "benchmark/benchmark.h"
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/log.h"
 #include "k2/csrc/timer.h"
 
 namespace k2 {
 
-void SetProblemSizes(const std::vector<int32_t> &sizes,
-                     benchmark::internal::Benchmark *benchmark) {
-  for (auto s : sizes) benchmark->Arg(s);
+// ------- from google/benchmark  ---- begin ----
+#if defined(__GNUC__)
+#define K2_ALWAYS_INLINE __attribute__((always_inline))
+#else
+#define K2_ALWAYS_INLINE
+#endif
+
+// The DoNotOptimize(...) function can be used to prevent a value or
+// expression from being optimized away by the compiler. This function is
+// intended to add little to no overhead.
+// See: https://youtu.be/nXaxk27zwlk?t=2441
+template <class Tp>
+inline K2_ALWAYS_INLINE void DoNotOptimize(Tp const &value) {
+  asm volatile("" : : "r,m"(value) : "memory");
 }
 
+template <class Tp>
+inline K2_ALWAYS_INLINE void DoNotOptimize(Tp &value) {
+#if defined(__clang__)
+  asm volatile("" : "+r,m"(value) : : "memory");
+#else
+  asm volatile("" : "+m,r"(value) : : "memory");
+#endif
+}
+// ------- from google/benchmark  ---- end ----
+
+/* Return the number of milliseconds per iteration on average.
+
+   @param  [in]  dim  Number of elements in Array1<T> for testing.
+   @return Return number of ms per iteration on avarage.
+ */
 template <typename T>
-static void BM_ExclusiveSum(benchmark::State &state) {
+static float BM_ExclusiveSum(int32_t dim) {
   ContextPtr context = GetCudaContext();
 
-  for (int32_t i = 0; i != 10; ++i) {  // warm up
-    Array1<T> src = RandUniformArray1<T>(context, 100, -1000, 1000);
-    Array1<T> dst = ExclusiveSum(src);
+  Array1<T> src = RandUniformArray1<T>(context, dim, -1000, 1000);
+  for (int32_t i = 0; i != 30; ++i) {  // warm up
+    DoNotOptimize(ExclusiveSum(src));
   }
 
-  Timer timer(context);
-  int32_t offset = RandInt(-3, 3);
-  while (offset == 0) offset = RandInt(-2, 2);
+  int32_t num_iter = std::min(500, 1000000 / dim);
+  K2_CHECK_GT(num_iter, 0);
 
-  int32_t dim = state.range(0) + offset;
-  for (auto _ : state) {
-    Array1<T> src = RandUniformArray1<T>(context, dim, -1000, 1000);
-    timer.Reset();
-    Array1<T> dst = ExclusiveSum(src);
-    state.SetIterationTime(timer.Elapsed());  // in seconds
+  cudaEvent_t start;
+  cudaEvent_t stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+  cudaStream_t stream = context->GetCudaStream();
+  cudaEventRecord(start, stream);
+  for (int32_t i = 0; i != num_iter; ++i) {
+    DoNotOptimize(ExclusiveSum(src));
   }
-  state.SetLabel(std::to_string(offset));
+  cudaEventRecord(stop, stream);
+  cudaEventSynchronize(stop);
+
+  float ms = 0;
+  cudaEventElapsedTime(&ms, start, stop);
+  ms /= num_iter;
+
+  cudaEventDestroy(start);
+  cudaEventDestroy(stop);
+  return ms;
 }
 
-static void RegisterBenchmarks() {
-  {
-    benchmark::internal::Benchmark *b = benchmark::RegisterBenchmark(
-        "ExclusiveSum_int32", BM_ExclusiveSum<int32_t>);
-    b->MinTime(1)  // to run for at least 1 second
-        ->RangeMultiplier(10)
-        ->Range(10, 10 << 10)
-        ->Unit(benchmark::kMillisecond);
-  }
-
-  {
-    benchmark::internal::Benchmark *b = benchmark::RegisterBenchmark(
-        "ExclusiveSum_float", BM_ExclusiveSum<float>);
-    b->MinTime(1)  // to run for at least 1 second
-        ->RangeMultiplier(10)
-        ->Range(10, 10 << 10)
-        ->Unit(benchmark::kMillisecond);
+static void RunBenchmarks() {
+  std::vector<int32_t> problems_sizes = {100, 500, 1000, 2000, 5000, 10000};
+  for (auto s : problems_sizes) {
+    float ms = BM_ExclusiveSum<int32_t>(s);
+    printf("%6d -->\t%.5f ms\n", s, ms);
   }
 }
 
 }  // namespace k2
 
-int main(int argc, char **argv) {
-  benchmark::Initialize(&argc, argv);
-  if (benchmark::ReportUnrecognizedArguments(argc, argv)) return EXIT_FAILURE;
-  k2::RegisterBenchmarks();
-  benchmark::RunSpecifiedBenchmarks();
+int main() {
+  k2::RunBenchmarks();
+  return 0;
 }
