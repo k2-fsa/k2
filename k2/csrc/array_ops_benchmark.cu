@@ -45,13 +45,17 @@ inline K2_ALWAYS_INLINE void DoNotOptimize(Tp &value) {
    @param  [in]  dim  Number of elements in Array1<T> for testing.
    @return Return number of ms per iteration on avarage.
  */
+
 template <typename T>
-static float BM_ExclusiveSum(int32_t dim) {
+using UnaryOp = Array1<T> (*)(const Array1<T> &);
+
+template <typename T>
+static float BM_ExclusiveSum(int32_t dim, UnaryOp<T> op) {
   ContextPtr context = GetCudaContext();
 
   Array1<T> src = RandUniformArray1<T>(context, dim, -1000, 1000);
   for (int32_t i = 0; i != 30; ++i) {  // warm up
-    DoNotOptimize(ExclusiveSum(src));
+    DoNotOptimize(op(src));
   }
 
   int32_t num_iter = std::min(500, 1000000 / dim);
@@ -64,7 +68,7 @@ static float BM_ExclusiveSum(int32_t dim) {
   cudaStream_t stream = context->GetCudaStream();
   cudaEventRecord(start, stream);
   for (int32_t i = 0; i != num_iter; ++i) {
-    DoNotOptimize(ExclusiveSum(src));
+    DoNotOptimize(op(src));
   }
   cudaEventRecord(stop, stream);
   cudaEventSynchronize(stop);
@@ -81,7 +85,7 @@ static float BM_ExclusiveSum(int32_t dim) {
 static void RunBenchmarks() {
   std::vector<int32_t> problems_sizes = {100, 500, 1000, 2000, 5000, 10000};
   for (auto s : problems_sizes) {
-    float ms = BM_ExclusiveSum<int32_t>(s);
+    float ms = BM_ExclusiveSum<int32_t>(s, ExclusiveSum<int32_t>);
     printf("%6d -->\t%.5f ms\n", s, ms);
   }
 }

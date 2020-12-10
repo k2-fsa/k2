@@ -130,7 +130,7 @@ class RaggedShape {
   ContextPtr &Context() const { return layers_[0].row_splits.Context(); }
 
   /*
-    It is an error to call this if this.NumAxes() < 2.  This will return
+    It is an error to call this if this.NumAxes() <= 2.  This will return
     a RaggedShape with one fewer axis, containing only the elements of
     *this for which the value on axis `axis` is i.  CAUTION:
     currently this only works for `axis == 0`.

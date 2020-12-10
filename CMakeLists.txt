@@ -136,9 +136,6 @@ endif()
 include(cub)
 include(moderngpu)
 include(googletest)
-if(K2_ENABLE_BENCHMARK)
-  include(benchmark)
-endif()
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CUDA_FLAGS}")
 
