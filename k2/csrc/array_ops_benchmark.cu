@@ -43,11 +43,10 @@ static void BM_ExclusiveSum(benchmark::State &state) {
 }
 
 static void RegisterBenchmarks() {
-  const int32_t kNumIterations = 1e4;
   {
     benchmark::internal::Benchmark *b = benchmark::RegisterBenchmark(
         "ExclusiveSum_int32", BM_ExclusiveSum<int32_t>);
-    b->Iterations(kNumIterations)
+    b->MinTime(1)  // to run for at least 1 second
         ->RangeMultiplier(10)
         ->Range(10, 10 << 10)
         ->Unit(benchmark::kMillisecond);
@@ -56,7 +55,7 @@ static void RegisterBenchmarks() {
   {
     benchmark::internal::Benchmark *b = benchmark::RegisterBenchmark(
         "ExclusiveSum_float", BM_ExclusiveSum<float>);
-    b->Iterations(kNumIterations)
+    b->MinTime(1)  // to run for at least 1 second
         ->RangeMultiplier(10)
         ->Range(10, 10 << 10)
         ->Unit(benchmark::kMillisecond);
