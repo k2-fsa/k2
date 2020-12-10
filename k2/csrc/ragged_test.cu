@@ -2179,4 +2179,48 @@ TEST(RaggedTest, AddPrefixToRaggedTest) {
   }
 }
 
+TEST(RaggedTest, RemoveValuesLeq) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<int32_t> r = Ragged<int32_t>(" [ [ 3 4 ] [ 5 7 8 ] ]").To(c),
+                   s3 = Ragged<int32_t>(" [ [4] [5 7 8]]").To(c),
+                   s5 = Ragged<int32_t>(" [ [] [ 7 8]]").To(c);
+    Ragged<int32_t> ans1 = RemoveValuesLeq(r, 3),
+                    ans2 = RemoveValuesLeq(r, 5);
+    K2_LOG(INFO) << "ans2 = " << ans2;
+    EXPECT_EQ(true, Equal(ans1, s3));
+    EXPECT_EQ(true, Equal(ans2, s5));
+  }
+}
+
+
+TEST(RaggedTest, IndexArrayRagged) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<int32_t> r = Ragged<int32_t>(" [ [ 2 0 ] [ 1 2 3 ] ]").To(c);
+    Array1<float> f(c, std::vector<float>({ 0.0, 1.0, 2.0, 3.0, 4.0}));
+
+    Ragged<float> fr = Ragged<float>(" [ [ 2.0 0.0 ] [ 1.0 2.0 3.0 ] ]").To(c),
+                 ans = Index(f, r);
+    EXPECT_EQ(true, Equal(ans, fr));
+  }
+}
+
+
+
+TEST(RaggedTest, IndexRaggedRagged) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    Ragged<int32_t> r = Ragged<int32_t>(" [ [ 2 0 ] [ 1 2 3 ] ]").To(c);
+
+    Ragged<int32_t> s = Ragged<int32_t>(" [ [ 10 10 ] [ 11 ] [ 12 12 ] [ 13 ] [ 14 14] ]").To(c);
+
+
+    Ragged<int32_t> sr1 = Ragged<int32_t>(" [ [ [12 12] [10 10] ] [ [11] [12 12] [13] ] ]").To(c);
+
+    Ragged<int32_t> sr2 = Ragged<int32_t>(" [ [ 12 12 10 10 ] [ 11 12 12 13 ] ]").To(c);
+
+    EXPECT_EQ(true, Equal(Index(s, r, false), sr1));
+    EXPECT_EQ(true, Equal(Index(s, r, true), sr2));
+  }
+}
+
+
 }  // namespace k2

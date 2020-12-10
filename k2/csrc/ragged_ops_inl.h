@@ -171,6 +171,19 @@ Ragged<T> Merge(int32_t num_srcs,
 }
 
 
+template <typename T>
+Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
+  ContextPtr c = src.Context();
+  Renumbering r(c, src.NumElements());
+  const T *values_data = src.values.Data();
+  char *keep = r.Keep().Data();
+  K2_EVAL(c, src.NumElements(), lambda_set_keep, (int32_t i) -> void {
+      keep[i] = (char) (values_data[i] > cutoff);
+    });
+  return SubsampleRagged(src, r);
+}
+
+
 
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos <= shape.TotSize(axis).
@@ -308,6 +321,8 @@ Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
   RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
   return Ragged<T>(new_shape, values);
 }
+
+
 template <typename T>
 std::istream &operator>>(std::istream &is, Ragged<T> &r) {
   // Note: the top element of 'row_splits' will end up being
@@ -374,6 +389,18 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
   K2_CHECK(r.values.Dim() == r.shape.NumElements());
   return is;
 }
+
+
+template <typename T>
+Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes,
+                bool remove_axis) {
+  Ragged<T> r = Index(src, indexes.values);
+  RaggedShape s = ComposeRaggedShapes(indexes.shape, r.shape);
+  Ragged<T> ans(s, r.values);
+  return (remove_axis ? RemoveAxis(ans, ans.NumAxes() - 2) : ans);
+}
+
+
 
 }  // namespace k2
 

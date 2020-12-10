@@ -298,6 +298,15 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
 */
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
 
+
+// See documentation of class-member that this wraps.
+template <typename T>
+Ragged<T> RemoveAxis(Ragged<T> &src, int32_t axis) {
+  return src.RemoveAxis(axis);
+}
+
+
+
 /*
   Returns a `sub-shape` of `src` consisting of one of its RaggedShapeLayer
   elements, i.e. one of the levels of its shape.  This returned shape
@@ -811,12 +820,12 @@ Ragged<int32_t> GetCountsPartitioned(Ragged<int32_t> &src,
 
 /* Return true if the objects represent the same ragged shape.
    They must be on the same device. */
-bool Equal(RaggedShape &a, RaggedShape &b);
+bool Equal(const RaggedShape &a, const RaggedShape &b);
 
 /* Return true if the objects represent the same ragged array with the same
    values.  They must be on the same device. */
 template <typename T>
-bool Equal(Ragged<T> &a, Ragged<T> &b) {
+bool Equal(const Ragged<T> &a, const Ragged<T> &b) {
   return Equal(a.shape, b.shape) && Equal(a.values, b.values);
 }
 
@@ -911,6 +920,55 @@ Ragged<T> Merge(int32_t num_srcs,
                 Ragged<T> **src,
                 const Array1<uint32_t> &merge_map,
                 Array1<uint32_t> *merge_map_out = nullptr);
+
+
+/*
+  Returns a ragged tensor after removing all 'values' that were <= a provided
+  cutoff.  Leaves all layers of the shape except for the last one unaffected.
+  Equivalent to SubsampleRaggedShape with a numbering given by (src.values[i] <=
+  cutoff).
+ */
+template <typename T>
+Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff);
+
+
+/*
+   Index array with ragged tensor.
+       @param [in] src   Source array, to be indexed
+       @param [in] indexes   Indexes into source array; the values must
+                          satisfy `0 <= indexes.values[i] < src.Dim()`.
+       @return   Returns ragged tensor with shape `indexes.shape`
+                 and values `src[indexes.values]`.
+*/
+template <typename T>
+Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes) {
+   return Ragged<T>(indexes.shape, src[indexes.values]);
+}
+
+
+
+/*
+   Index ragged tensor with ragged tensor.
+       @param [in] src   Source tensor, to be indexed (on its axis 0)
+       @param [in] indexes   Indexes into source array; the values must
+                          satisfy `0 <= indexes.values[i] < src.Dim0()`.
+       @param [in] remove_axis  If remove_axis == true,
+             then we remove the last-but-one axis, which has the effect
+             of appending lists, e.g.
+              `Index( [[ 10 11 ] [ 12 13 ]],  [[ 0 1 ]])` would
+             give us `[[ 10 11 12 13 ]]`.  If remove_axis == false
+             the answer will have at least 3 axes, e.g.
+             `[[[ 10 11 ] [ 12 13 ]]]` in this case.
+
+       @return  Returns indexed tensor.
+
+    CAUTION: the validity of the indexes is not checked, which may
+    result in segfault or undefined values.
+*/
+template <typename T>
+Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes,
+                bool remove_axis);
+
 
 
 /*
