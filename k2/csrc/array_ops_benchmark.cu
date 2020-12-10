@@ -23,35 +23,43 @@ template <typename T>
 static void BM_ExclusiveSum(benchmark::State &state) {
   ContextPtr context = GetCudaContext();
 
-  for (int32_t i = 0; i != 3; ++i) {  // warm up
+  for (int32_t i = 0; i != 10; ++i) {  // warm up
     Array1<T> src = RandUniformArray1<T>(context, 100, -1000, 1000);
     Array1<T> dst = ExclusiveSum(src);
   }
 
   Timer timer(context);
+  int32_t offset = RandInt(-3, 3);
+  while (offset == 0) offset = RandInt(-2, 2);
+
+  int32_t dim = state.range(0) + offset;
   for (auto _ : state) {
-    int32_t dim = state.range(0);
     Array1<T> src = RandUniformArray1<T>(context, dim, -1000, 1000);
     timer.Reset();
     Array1<T> dst = ExclusiveSum(src);
     state.SetIterationTime(timer.Elapsed());  // in seconds
   }
+  state.SetLabel(std::to_string(offset));
 }
 
 static void RegisterBenchmarks() {
+  const int32_t kNumIterations = 1e4;
   {
     benchmark::internal::Benchmark *b = benchmark::RegisterBenchmark(
         "ExclusiveSum_int32", BM_ExclusiveSum<int32_t>);
-    SetProblemSizes({100, 500, 1000, 2000, 5000, 10000}, b);
-    b->Unit(benchmark::kMillisecond);
+    b->Iterations(kNumIterations)
+        ->RangeMultiplier(10)
+        ->Range(10, 10 << 10)
+        ->Unit(benchmark::kMillisecond);
   }
 
   {
     benchmark::internal::Benchmark *b = benchmark::RegisterBenchmark(
         "ExclusiveSum_float", BM_ExclusiveSum<float>);
-
-    SetProblemSizes({100, 500, 1000, 2000, 5000, 10000}, b);
-    // b->Unit(benchmark::kMillisecond);
+    b->Iterations(kNumIterations)
+        ->RangeMultiplier(10)
+        ->Range(10, 10 << 10)
+        ->Unit(benchmark::kMillisecond);
   }
 }
 
