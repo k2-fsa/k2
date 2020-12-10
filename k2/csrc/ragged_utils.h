@@ -181,7 +181,6 @@ RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
 
 
 
-
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_RAGGED_UTILS_H_

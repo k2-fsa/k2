@@ -395,7 +395,7 @@ bool RaggedShape::Validate(bool print_warnings) const {
   return true;
 }
 
-bool Equal(RaggedShape &a, RaggedShape &b) {
+bool Equal(const RaggedShape &a, const RaggedShape &b) {
   NVTX_RANGE(K2_FUNC);
   if (a.NumAxes() != b.NumAxes()) return false;
   for (int32_t i = 1; i < a.NumAxes(); i++) {
