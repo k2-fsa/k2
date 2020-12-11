@@ -133,10 +133,10 @@ void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
                         Dimensions/shapes of all previous axes must be
                         identical.
      @param [out] merge_map  If not nullptr, will be set to the merge-map
-                         that tells us for each 0 <= i < ans.NumElements(),
-                         which element of `src` it came from (available
-                         as `merge_map[i] % num_srcs`) and its element-index within
-                         `src[i]` (available as `merge_map[i] / num_srcs`.
+                       that tells us for each 0 <= i < ans.NumElements(),
+                       which element of `src` it came from (available
+                       as `merge_map[i] % num_srcs`) and its element-index
+                       within `src[i]` (available as `merge_map[i] / num_srcs`.
 
 
      @return  The appended result.
@@ -151,7 +151,6 @@ void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
  */
 RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
                   Array1<uint32_t> *merge_map = nullptr);
-
 
 /*
   Return a modified version of `src` in which all sub-lists on the last axis of
@@ -298,14 +297,11 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
 */
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
 
-
 // See documentation of class-member that this wraps.
 template <typename T>
 Ragged<T> RemoveAxis(Ragged<T> &src, int32_t axis) {
   return src.RemoveAxis(axis);
 }
-
-
 
 /*
   Returns a `sub-shape` of `src` consisting of one of its RaggedShapeLayer
@@ -317,7 +313,6 @@ Ragged<T> RemoveAxis(Ragged<T> &src, int32_t axis) {
                       View this as an index into its Layers() vector.
  */
 RaggedShape GetLayer(const RaggedShape &src, int32_t layer);
-
 
 /*
   Returns a CPU array of shape (src[0]->NumAxes() + 1) by (num_srcs + 1), where
@@ -417,10 +412,10 @@ Ragged<T> Transpose(Ragged<T> &src,
                            num_srcs > 0.
       @param [in] src      Array of sources to append
       @param [out] merge_map  If not nullptr, will be set to the merge-map
-                          that tells us for each 0 <= i < ans.NumElements(),
-                          which element of `src` it came from (available
-                          as `merge_map[i] % num_srcs`) and its element-index within
-                          `src[i]` (available as `merge_map[i] / num_srcs`.
+                        that tells us for each 0 <= i < ans.NumElements(),
+                        which element of `src` it came from (available
+                        as `merge_map[i] % num_srcs`) and its element-index
+                        within `src[i]` (available as `merge_map[i] / num_srcs`.
 
       @return      Returns the appended RaggedShape.
 */
@@ -536,10 +531,10 @@ Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering) {
      @param [in] num_srcs  The number of `RaggedShape`s in `src`
      @param [in] src       The shapes to be stacked
      @param [out] merge_map  If not nullptr, will be set to the merge-map
-                         that tells us for each 0 <= i < ans.NumElements(),
-                         which element of `src` it came from (available
-                         as `merge_map[i] % num_srcs`) and its element-index within
-                         `src[i]` (available as `merge_map[i] / num_srcs`.
+                       that tells us for each 0 <= i < ans.NumElements(),
+                       which element of `src` it came from (available
+                       as `merge_map[i] % num_srcs`) and its element-index
+                       within `src[i]` (available as `merge_map[i] / num_srcs`.
 
 
      @return  The appended result.
@@ -574,10 +569,10 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
                            num_srcs > 0.
       @param [in] src      Array of sources to append
       @param [out] merge_map  If not nullptr, will be set to the merge-map
-                         that tells us for each 0 <= i < ans.NumElements(),
-                         which element of `src` it came from (available
-                         as `merge_map[i] % num_srcs`) and its element-index within
-                         `src[i]` (available as `merge_map[i] / num_srcs`.
+                       that tells us for each 0 <= i < ans.NumElements(),
+                       which element of `src` it came from (available
+                       as `merge_map[i] % num_srcs`) and its element-index
+                       within `src[i]` (available as `merge_map[i] / num_srcs`.
 
       @return      Returns the appended RaggedShape.
 */
@@ -893,34 +888,31 @@ Ragged<T> Index(Ragged<T> &src, const Array1<int32_t> &indexes,
       @param [in] src      Array of sources to append; must have compatible
                            contexts and the same number of axes.
       @param [in] merge_map   Merge map (probably obtained from some previous
-                           ragged operation) that dictates the order in which
-                           to combine elements.  `merge_map.Dim()` must equal
-                           the sum of `src[i]->Dim0()` for all 0 <= i < num-srcs.
-                           If `merge_map[i] == m` then at position i on
-                           axis 0 of the output we take element `m / num_srcs`
-                           on axis 0 of the source numbered `m % num_srcs`.
+                         ragged operation) that dictates the order in which
+                         to combine elements.  `merge_map.Dim()` must equal
+                         the sum of `src[i]->Dim0()` for all 0 <= i < num-srcs.
+                         If `merge_map[i] == m` then at position i on axis 0 of
+                         the output we take element `m / num_srcs` on axis 0 of
+                         the source numbered `m % num_srcs`.
       @param [out] merge_map_out  If not nullptr, will be set to the merge-map
-                          that tells us for each 0 <= i < ans.NumElements(),
-                          which element of `src` it came from (available
-                          as `merge_map[i] % num_srcs`) and its element-index within
-                          `src[i]` (available as `merge_map[i] / num_srcs`.
+                        that tells us for each 0 <= i < ans.NumElements(),
+                        which element of `src` it came from (available
+                        as `merge_map[i] % num_srcs`) and its element-index
+                        within `src[i]` (available as `merge_map[i] / num_srcs`.
 
       @return       Returns the appended RaggedShape.  Will have the same
                     number of axes as the sources.
 */
-RaggedShape Merge(int32_t num_srcs,
-                  RaggedShape **src,
+RaggedShape Merge(int32_t num_srcs, RaggedShape **src,
                   const Array1<uint32_t> &merge_map,
                   Array1<uint32_t> *merge_map_out = nullptr);
 
 /*  Version of Merge that works on Ragged objects; see documentation for Merge()
     above. */
 template <typename T>
-Ragged<T> Merge(int32_t num_srcs,
-                Ragged<T> **src,
+Ragged<T> Merge(int32_t num_srcs, Ragged<T> **src,
                 const Array1<uint32_t> &merge_map,
                 Array1<uint32_t> *merge_map_out = nullptr);
-
 
 /*
   Returns a ragged tensor after removing all 'values' that were <= a provided
@@ -930,7 +922,6 @@ Ragged<T> Merge(int32_t num_srcs,
  */
 template <typename T>
 Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff);
-
 
 /*
    Index array with ragged tensor.
@@ -942,10 +933,8 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff);
 */
 template <typename T>
 Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes) {
-   return Ragged<T>(indexes.shape, src[indexes.values]);
+  return Ragged<T>(indexes.shape, src[indexes.values]);
 }
-
-
 
 /*
    Index ragged tensor with ragged tensor.
@@ -966,10 +955,7 @@ Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes) {
     result in segfault or undefined values.
 */
 template <typename T>
-Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes,
-                bool remove_axis);
-
-
+Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes, bool remove_axis);
 
 /*
   Returns a vector that indexes `shape` to put its rows in decreasing order of

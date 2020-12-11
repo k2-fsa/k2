@@ -174,7 +174,8 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
 
   if (i == 0 && Dim0() == 1) {
     // Just remove first axis.  Common case so we make it efficient.
-    std::vector<RaggedShapeLayer> ans_axes(src_axes.begin() + 1, src_axes.end());
+    std::vector<RaggedShapeLayer> ans_axes(src_axes.begin() + 1,
+                                           src_axes.end());
     if (value_offset) *value_offset = 0;
     return RaggedShape(ans_axes, false);
   }
@@ -263,7 +264,8 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
       // if we had row_ids set up, we should have set cached_tot_size.
       K2_CHECK_EQ(rsd.row_ids.Dim(), 0);
       K2_CHECK_GT(rsd.row_splits.Dim(), 0);
-      const_cast<RaggedShapeLayer &>(rsd).cached_tot_size = rsd.row_splits.Back();
+      const_cast<RaggedShapeLayer &>(rsd).cached_tot_size =
+          rsd.row_splits.Back();
       return rsd.cached_tot_size;
     }
   }

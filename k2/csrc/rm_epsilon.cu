@@ -586,7 +586,11 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
 
 void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
                                      Ragged<int32_t> *arc_map_out) {
-  ContextPtr c = GetContext(src_fsa, *dest_fsa, *arc_map_out);
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK(dest_fsa != nullptr && arc_map_out != nullptr);
+  K2_CHECK_EQ(src_fsa.NumAxes(), 3);
+  ContextPtr &c = src_fsa.Context();
+
   Array1<int32_t> epsilons_state_map, epsilons_arc_map;
   FsaVec epsilon_fsa;
   ComputeEpsilonSubset(src_fsa, &epsilon_fsa, &epsilons_state_map,
@@ -606,22 +610,38 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
   ComputeNonEpsilonSubset(src_fsa, &non_epsilon_fsa,
                           &non_epsilon_state_renumbering, &non_epsilon_arc_map);
 
-  // Combine the info in epsilons_state_map
-  // and non_epsilon_state_renumbering.Old2New(),
-  // to create a state-map from the states in (epsilon_fsa or
-  // epsilon_fsa_closure) to those in non_epsilon_fsa (or -1 for those states
-  // which are not present in non_epsilon_fsa.
+  // Combine the info in epsilons_state_map and
+  // non_epsilon_state_renumbering.Old2New(), to create a state-map from the
+  // states in epsilon_fsa (or epsilon_fsa_closure, as they have the same
+  // states) to those in non_epsilon_fsa (or -1 for those states which are not
+  // present in non_epsilon_fsa.
   Array1<int32_t> epsilon_to_noneps_state_map(c, epsilon_fsa.TotSize(1));
-  // [lambda here to set epsilon_to_noneps_state_map)
+  int32_t *epsilon_to_noneps_state_map_data =
+      epsilon_to_noneps_state_map.Data();
+  const int32_t *epsilons_state_map_data = epsilons_state_map.Data(),
+                *non_epsilon_state_map_old_to_new_data =
+                    non_epsilon_state_renumbering.Old2New().Data();
+  const char *non_epsilon_state_renumbering_keep_data =
+      non_epsilon_state_renumbering.Keep().Data();
+  K2_EVAL(
+      c, epsilon_to_noneps_state_map.Dim(),
+      lambda_set_epsilon_to_noneps_state_map,
+      (int32_t epsilon_fsa_state_idx01)->void {
+        int32_t src_fsa_state_idx01 =
+            epsilons_state_map_data[epsilon_fsa_state_idx01];
+        epsilon_to_noneps_state_map_data[epsilon_fsa_state_idx01] =
+            non_epsilon_state_renumbering_keep_data[src_fsa_state_idx01] == 1
+                ? non_epsilon_state_map_old_to_new_data[src_fsa_state_idx01]
+                : -1;
+      });
 
   // `epsilon_closure_mapped` will have (a subset of) the arcs of the
-  // epsilon-closure FSA in the same numbering as those of non_epsilon_fsa.
+  // epsilon-closure FSA, with the same states numbering non_epsilon_fsa.
   FsaVec epsilon_closure_mapped;
   Array1<int32_t> epsilon_closure_mapped_arc_map1;
   MapFsaVecStates(epsilon_fsa_closure, non_epsilon_fsa.RowSplits(1),
-                  non_epsilon_fsa.RowSplits(1), epsilon_to_noneps_state_map,
+                  non_epsilon_fsa.RowIds(1), epsilon_to_noneps_state_map,
                   &epsilon_closure_mapped, &epsilon_closure_mapped_arc_map1);
-
   // arc_map from epsilon_closure_mapped back to `src_fsa`.
   Ragged<int32_t> epsilon_closure_mapped_arc_map =
       Index(epsilon_closure_arc_map, epsilon_closure_mapped_arc_map1);
@@ -634,26 +654,74 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
   // epsilon_prec_renumbering will remap the arcs in epsilon_closure_mapped to
   // the subset of arcs that we'll combine with the *preceding* arc (i.e.
   // entering their src_state).
-  Renumbering epsilon_prec_renumbering(c, epsilon_closure_mapped.NumElements());
+  int32_t epsilon_closure_mapped_num_arcs =
+      epsilon_closure_mapped.NumElements();
+  Renumbering epsilon_prec_renumbering(c, epsilon_closure_mapped_num_arcs);
   char *epsilon_prec_renumbering_keep_data =
       epsilon_prec_renumbering.Keep().Data();
 
-  Array1<int32_t> epsilon_num_foll_arcs(
-      c, epsilon_closure_mapped.NumElements() + 1);
+  Array1<int32_t> epsilon_num_foll_arcs(c, epsilon_closure_mapped_num_arcs + 1);
   int32_t *epsilon_num_foll_arcs_data = epsilon_num_foll_arcs.Data();
-
-  // Lambda:
-  //   For each epsilon arc in epsilon_closure_mapped, we'll decide whether to
-  //   combine it with *following* non-epsilon arcs or *preceding* non-epsilon
-  //   arcs. We combine it with *following* non-epsilon arcs if it is leaving
-  //   from the start-state or if the num-non-epsilon-arcs leaving its dest
-  //   state is less than the num-non-epsilon-arcs entering its src state.
+  // For each epsilon arc in epsilon_closure_mapped, we'll decide whether to
+  // combine it with *following* non-epsilon arcs or *preceding* non-epsilon
+  // arcs. We combine it with *following* non-epsilon arcs if it is leaving
+  // from the start-state or if the num-non-epsilon-arcs leaving its dest
+  // state is less than the num-non-epsilon-arcs entering its src state.
   //
-  //   If we decided to combine it with following non-epsilon arcs then we set
-  //   epsilon_num_foll_arcs_data to the number of non-epsilon-arcs leaving
-  //   the dest-state, and set epsilon_prec_renumbering_keep_data to 0.
-  //   Else (combining with preceding arcs) we set epsilon_num_foll_arcs_data to
-  //   0 and set epsilon_prec_renumbering_keep_data to 1.
+  // If we decided to combine it with following non-epsilon arcs then we set
+  // epsilon_num_foll_arcs_data to the number of non-epsilon-arcs leaving
+  // the dest-state, and set epsilon_prec_renumbering_keep_data to 0.
+  // Else (combining with preceding arcs) we set epsilon_num_foll_arcs_data to
+  // 0 and set epsilon_prec_renumbering_keep_data to 1.
+  const int32_t *epsilon_closure_mapped_row_splits1_data =
+                    epsilon_closure_mapped.RowSplits(1).Data(),
+                *epsilon_closure_mapped_row_ids1_data =
+                    epsilon_closure_mapped.RowIds(1).Data(),
+                *epsilon_closure_mapped_row_ids2_data =
+                    epsilon_closure_mapped.RowIds(2).Data(),
+                *non_epsilon_fsa_row_splits2_data =
+                    non_epsilon_fsa.RowSplits(2).Data(),
+                *non_epsilon_incoming_arcs_row_splits2_data =
+                    non_epsilon_incoming_arcs.RowSplits(2).Data();
+  const Arc *epsilon_closure_mapped_arcs_data =
+                epsilon_closure_mapped.values.Data(),
+            *non_epsilon_fsa_arcs_data = non_epsilon_fsa.values.Data();
+  K2_EVAL(
+      c, epsilon_closure_mapped_num_arcs,
+      lambda_set_combined_with_preceding_or_following,
+      (int32_t arc_idx012)->void {
+        int32_t state_idx01 = epsilon_closure_mapped_row_ids2_data[arc_idx012],
+                fsa_idx0 = epsilon_closure_mapped_row_ids1_data[state_idx01],
+                start_state_idx0x =
+                    epsilon_closure_mapped_row_splits1_data[fsa_idx0];
+        const Arc &cur_arc = epsilon_closure_mapped_arcs_data[arc_idx012];
+        // TODO(haowen): remove below checks after testing
+        K2_CHECK_EQ(cur_arc.label, 0);
+        int32_t src_state_idx01 = start_state_idx0x + cur_arc.src_state;
+        K2_CHECK_EQ(src_state_idx01, state_idx01);
+        int32_t dest_state_idx01 = start_state_idx0x + cur_arc.dest_state;
+        // note `epsilon_closure_mapped` shares the same row_splits1 and
+        // with `non_epsilon_fsa` and `non_epsilon_incoming_arcs`, so the order
+        // of states (i.e. state_idx01) in them are same.
+        int32_t num_non_eps_arcs_entering_src_state =
+            non_epsilon_incoming_arcs_row_splits2_data[state_idx01 + 1] -
+            non_epsilon_incoming_arcs_row_splits2_data[state_idx01];
+        int32_t num_non_eps_arcs_leaving_dest_state =
+            non_epsilon_fsa_row_splits2_data[dest_state_idx01 + 1] -
+            non_epsilon_fsa_row_splits2_data[dest_state_idx01];
+        if (state_idx01 == start_state_idx0x ||
+            num_non_eps_arcs_leaving_dest_state <
+                num_non_eps_arcs_entering_src_state) {
+          // We'll combine this arc with *following* non-epsilon arcs
+          epsilon_prec_renumbering_keep_data[arc_idx012] = 0;
+          epsilon_num_foll_arcs_data[arc_idx012] =
+              num_non_eps_arcs_leaving_dest_state;
+
+        } else {
+          epsilon_prec_renumbering_keep_data[arc_idx012] = 1;
+          epsilon_num_foll_arcs_data[arc_idx012] = 0;
+        }
+      });
 
   // `combined_foll` will be set to an FSA, with the same state numbering as
   // `non_epsilon_fsa`, containing the arcs which arose by combining epsilon
@@ -661,7 +729,9 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
   FsaVec combined_foll;
   Ragged<int32_t> combined_foll_arc_map;
   {  // This block will set combined_foll and combined_foll_arc_map
-    ExclusiveSum(epsilon_num_foll_arcs, &epsilon_num_foll_arcs);
+    ExclusiveSum(
+        epsilon_num_foll_arcs.Arange(0, epsilon_closure_mapped_num_arcs),
+        &epsilon_num_foll_arcs);
     Array1<int32_t> &foll_row_splits = epsilon_num_foll_arcs;
     int32_t num_arcs = foll_row_splits.Back();
     Array1<int32_t> foll_row_ids(c, num_arcs);
@@ -676,11 +746,36 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
     // non_epsilon_fsa of the following arc which we're combining this epsilon
     // arc with
     Array1<int32_t> foll_non_eps_arc_idx(c, num_arcs);
+    int32_t *foll_non_eps_arc_idx_data = foll_non_eps_arc_idx.Data();
     Array1<Arc> arcs(c, num_arcs);
-    {
-      // lambda that sets foll_non_eps_arc_idx and arcs.
-    }
-
+    Arc *arcs_data = arcs.Data();
+    const int32_t *foll_row_splits_data = foll_row_splits.Data(),
+                  *foll_row_ids_data = foll_row_ids.Data();
+    K2_EVAL(
+        c, num_arcs, lambda_set_foll_non_eps_arc_idx_and_arcs,
+        (int32_t foll_idx01)->void {
+          int32_t foll_idx0 = foll_row_ids_data[foll_idx01],
+                  foll_idx0x = foll_row_splits_data[foll_idx0],
+                  foll_idx1 = foll_idx01 - foll_idx0x;
+          // foll_idx0 is arc_idx012 in epsilon_clousre_mapped
+          int32_t state_idx01 = epsilon_closure_mapped_row_ids2_data[foll_idx0],
+                  fsa_idx0 = epsilon_closure_mapped_row_ids1_data[state_idx01],
+                  start_state_idx0x =
+                      epsilon_closure_mapped_row_splits1_data[fsa_idx0];
+          const Arc &cur_arc = epsilon_closure_mapped_arcs_data[foll_idx0];
+          int32_t dest_state_idx01 = start_state_idx0x + cur_arc.dest_state;
+          // foll_idx1 is the arc we'll combined with in those leaving arcs of
+          // dest_state.
+          int32_t leaving_arcs_idx01x =
+                      non_epsilon_fsa_row_splits2_data[dest_state_idx01],
+                  leaving_arcs_idx012 = leaving_arcs_idx01x + foll_idx1;
+          const Arc &cur_combined_arc =
+              non_epsilon_fsa_arcs_data[leaving_arcs_idx012];
+          arcs_data[foll_idx01] = Arc(
+              cur_arc.src_state, cur_combined_arc.dest_state,
+              cur_combined_arc.label, cur_arc.score + cur_combined_arc.score);
+          foll_non_eps_arc_idx_data[foll_idx01] = leaving_arcs_idx012;
+        });
     RaggedShape epsilon_closure_combined_with_fool =
         ComposeRaggedShapes(epsilon_closure_mapped.shape, foll_shape);
     RaggedShape foll_fsa_shape =
@@ -706,21 +801,99 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
   FsaVec combined_prec;
   Ragged<int32_t> combined_prec_arc_map;
 
-  {  //  This block will set combined_prec and combined_prec_arc_map
-    //  nonepsilon_num_foll_eps[i] tells us, for each arc in non_epsilon_fsa,
-    // how many epsilon arcs leave the state that follows it.
-    Array1<int32_t> nonepsilon_num_foll_eps(c,
-                                            non_epsilon_fsa.NumElements() + 1);
-    // will set nonepsilon_num_foll_eps using a lambda that uses the row-ids
+  {  //  This block will set combined_prec and combined_prec_arc_map.
+     //  non_epsilon_num_foll_eps[i] tells us, for each arc in non_epsilon_fsa,
+     // how many epsilon arcs leave the dest state of this arc.
+    int32_t non_epsilon_fsa_num_arcs = non_epsilon_fsa.NumElements();
+    Array1<int32_t> non_epsilon_num_foll_eps(c, non_epsilon_fsa_num_arcs + 1);
+    // will set non_epsilon_num_foll_eps using a lambda that uses the row-ids
     // (etc.) of epsilon_closure_prec.
+    int32_t *non_epsilon_num_foll_eps_data = non_epsilon_num_foll_eps.Data();
+    const Arc *non_epsilon_fsa_arcs_data = non_epsilon_fsa.values.Data(),
+              *epsilon_closure_prec_arcs_data =
+                  epsilon_closure_prec.values.Data();
+    const int32_t *non_epsilon_fsa_row_ids2_data =
+                      non_epsilon_fsa.RowIds(2).Data(),
+                  *non_epsilon_fsa_row_ids1_data =
+                      non_epsilon_fsa.RowIds(1).Data(),
+                  *non_epsilon_fsa_row_splits1_data =
+                      non_epsilon_fsa.RowSplits(1).Data(),
+                  *epsilon_closure_prec_row_splits2_data =
+                      epsilon_closure_prec.RowSplits(2).Data();
+    K2_EVAL(
+        c, non_epsilon_fsa_num_arcs, lambda_set_non_epsilon_num_foll_eps,
+        (int32_t arc_idx012)->void {
+          int32_t dest_state_idx1 =
+              non_epsilon_fsa_arcs_data[arc_idx012].dest_state;
+          int32_t state_idx01 = non_epsilon_fsa_row_ids2_data[arc_idx012],
+                  fsa_idx0 = non_epsilon_fsa_row_ids1_data[state_idx01],
+                  start_state_idx0x =
+                      non_epsilon_fsa_row_splits1_data[fsa_idx0],
+                  dest_state_idx01 = start_state_idx0x + dest_state_idx1;
+          // note epsilon_closure_prev shares the same row_splits1 and row_ids1
+          // with non_epsilon_fsa, so states numbering in them are same.
+          non_epsilon_num_foll_eps_data[arc_idx012] =
+              epsilon_closure_prec_row_splits2_data[dest_state_idx01 + 1] -
+              epsilon_closure_prec_row_splits2_data[dest_state_idx01];
+        });
 
-    ExclusiveSum(nonepsilon_num_foll_eps, &nonepsilon_num_foll_eps);
+    ExclusiveSum(non_epsilon_num_foll_eps.Arange(0, non_epsilon_fsa_num_arcs),
+                 &non_epsilon_num_foll_eps);
+    Array1<int32_t> &foll_row_splits = non_epsilon_num_foll_eps;
+    int32_t num_arcs = foll_row_splits.Back();
+    Array1<int32_t> foll_row_ids(c, num_arcs);
+    RowSplitsToRowIds(foll_row_splits, &foll_row_ids);
+    // This shape just says, for each arc in non_epsilon_fsa
+    // that is to be combined with following epsilon arcs, how many following
+    // epsilon arcs it is combined with (else 0).
+    RaggedShape foll_shape =
+        RaggedShape2(&foll_row_splits, &foll_row_ids, num_arcs);
 
-    // The basic logic of this block will be similar to the block in
-    // which we set combined_foll, except the order of non-epsilon and
-    // epsilon are different.  By indexing/numbering things by the *first*
-    // of the two arcs (rather than, say, by the epsilon) we ensure
-    // that there is no need to re-sort the arcs, which could be slow.
+    // foll_eps_arc_idx will be set in the lambda to the arc-index within
+    // epsilon_closure_prec of the following epsilon arc which we're combining
+    // this non-epsilon arc (in non_epsilon_fsa) with
+    Array1<int32_t> foll_eps_arc_idx(c, num_arcs);
+    int32_t *foll_eps_arc_idx_data = foll_eps_arc_idx.Data();
+    Array1<Arc> arcs(c, num_arcs);
+    Arc *arcs_data = arcs.Data();
+    const int32_t *foll_row_splits_data = foll_row_splits.Data(),
+                  *foll_row_ids_data = foll_row_ids.Data();
+    K2_EVAL(
+        c, num_arcs, lambda_set_foll_eps_arc_idx_and_arcs,
+        (int32_t foll_idx01)->void {
+          int32_t foll_idx0 = foll_row_ids_data[foll_idx01],
+                  foll_idx0x = foll_row_splits_data[foll_idx0],
+                  foll_idx1 = foll_idx01 - foll_idx0x;
+          // foll_idx0 is arc_idx012 in non_epsilon_fsa
+          int32_t state_idx01 = non_epsilon_fsa_row_ids2_data[foll_idx0],
+                  fsa_idx0 = non_epsilon_fsa_row_ids1_data[state_idx01],
+                  start_state_idx0x =
+                      non_epsilon_fsa_row_splits1_data[fsa_idx0];
+          const Arc &cur_arc = non_epsilon_fsa_arcs_data[foll_idx0];
+          int32_t dest_state_idx01 = start_state_idx0x + cur_arc.dest_state;
+          // foll_idx1 is the arc we'll combined with in those leaving arcs of
+          // dest_state_idx01 in epsilon_closure_prec.
+          int32_t leaving_arcs_idx01x =
+                      epsilon_closure_prec_row_splits2_data[dest_state_idx01],
+                  leaving_arcs_idx012 = leaving_arcs_idx01x + foll_idx1;
+          const Arc &cur_combined_arc =
+              epsilon_closure_prec_arcs_data[leaving_arcs_idx012];
+          arcs_data[foll_idx01] =
+              Arc(cur_arc.src_state, cur_combined_arc.dest_state, cur_arc.label,
+                  cur_arc.score + cur_combined_arc.score);
+          foll_eps_arc_idx_data[foll_idx01] = leaving_arcs_idx012;
+        });
+    RaggedShape epsilon_closure_combined_with_prec =
+        ComposeRaggedShapes(non_epsilon_fsa.shape, foll_shape);
+    RaggedShape prec_fsa_shape =
+        RemoveAxis(epsilon_closure_combined_with_prec, 2);
+
+    combined_prec = FsaVec(prec_fsa_shape, arcs);
+
+    Ragged<int32_t> epsilon_closure_prec_arc_map_prec =
+        Index(epsilon_closure_prec_arc_map, foll_eps_arc_idx);
+    combined_prec_arc_map = AddPrefixToRagged(
+        epsilon_closure_prec_arc_map_prec, non_epsilon_arc_map[foll_row_ids]);
   }
 
   // NOTE: important that order matches with `arc_maps` below.
@@ -738,11 +911,10 @@ void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
   // only that there is not a fundamental reason why Append() can't work in this
   // case.
   Array1<uint32_t> arcs_merge_map;
-  FsaVec dest_fsa_unsorted = Append(axis, 2, vecs, &arcs_merge_map);
+  FsaVec dest_fsa_unsorted = Append(axis, 3, vecs, &arcs_merge_map);
 
   Ragged<int32_t> non_epsilon_arc_map_ragged(
-      RegularRaggedShape(c, non_epsilon_fsa.NumElements(),
-                         non_epsilon_fsa.NumElements()),
+      RegularRaggedShape(c, non_epsilon_fsa.NumElements(), 1),
       non_epsilon_arc_map);
 
   Ragged<int32_t> dest_unsorted_arc_map;
