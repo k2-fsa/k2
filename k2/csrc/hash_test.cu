@@ -50,7 +50,7 @@ void TestHashConstruct() {
           int32_t value = (int32_t)values_data[i],
                   count = counts_data[key],
                           success;
-          if (Hash32::Insert(acc, key, value, nullptr)) {
+          if (acc.Insert(key, value, nullptr)) {
             success = 1;
           } else {
             success = 0;

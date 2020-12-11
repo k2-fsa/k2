@@ -96,79 +96,66 @@ class Hash32 {
   };
 
 
-  struct Accessor {
+  class Accessor {
+   public:
     Accessor(uint64_t *data,
              uint32_t num_buckets_mask,
              int32_t bucket_num_bitsm1) :
-        data(data), num_buckets_mask(num_buckets_mask),
-        bucket_num_bitsm1(bucket_num_bitsm1) { }
+        data_(data), num_buckets_mask_(num_buckets_mask),
+        bucket_num_bitsm1_(bucket_num_bitsm1) { }
 
     // Copy constructor
     Accessor(const Accessor &src) = default;
 
-    // pointer to data (it really contains Element)
-    uint64_t *data;
-    // num_buckets_mask is num_buckets (i.e. size of `data_` array) minus one;
-    // num_buckets is a power of 2 so this can be used as a mask to get a number
-    // modulo num_buckets.
-    uint32_t num_buckets_mask;
-    // A number satisfying num_buckets == 1 << (1+bucket_num_bitsm1_)
-    // the number of bits in `num_buckets` minus one.
-    uint32_t bucket_num_bitsm1;
-  };
-
-  Accessor GetAccessor() { return Accessor(data_.Data(),
-                                           uint32_t(data_.Dim()) - 1,
-                                           buckets_num_bitsm1_); }
-
-  /*
+   /*
     Try to insert pair (key,value) into hash.
-    @param [in] acc  Accessor object, on device
-    @param [in] key  Key into hash; may be any value except UINT32_MAX (not checked!)
-    @param [in] value  Value to set; may be any value
-    @param [out] old_value  If not nullptr, this location will be set to
-    the existing value *if this key was already present*
-    in the hash (or set by another thread in this kernel),
-    i.e. only if this function returns false.
-    @return  Returns true if this (key,value) pair was inserted, false otherwise.
-  */
-  static __forceinline__ __host__ __device__ bool Insert(
-      Accessor acc, uint32_t key, int32_t value,
-      int32_t *old_value = nullptr) {
-    uint32_t cur_bucket = key & acc.num_buckets_mask,
-         leftover_index = 1 | (key >> acc.bucket_num_bitsm1);
+      @param [in] key  Key into hash; may be any value except UINT32_MAX (not checked!)
+      @param [in] value  Value to set; may be any value
+      @param [out] old_value  If not nullptr, this location will be set to
+                    the existing value *if this key was already present* in the
+                    hash (or set by another thread in this kernel), i.e. only if
+                    this function returns false.
 
-    Element new_elem;
-    new_elem.p.key = key;
-    new_elem.p.value = value;
+       @return  Returns true if this (key,value) pair was inserted, false otherwise.
 
-    while (1) {
-      Element old_elem;
-      old_elem.i = acc.data[cur_bucket];
-      if (old_elem.p.key == key) return false;  // key exists in hash
-      else if (~old_elem.p.key == 0) {
-        // we have a version of AtomicCAS that also works on host.
-        uint64_t old_i = AtomicCAS((unsigned long long*)(acc.data + cur_bucket),
-                                   old_elem.i, new_elem.i);
-        if (old_i == old_elem.i) return true;  // Successfully inserted.
-        old_elem.i = old_i;
-        if (old_elem.p.key == key) return false;  // Another thread inserted this
-        // same key.
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+   */
+    __forceinline__ __host__ __device__ bool Insert(uint32_t key, int32_t value,
+                                                    int32_t *old_value = nullptr) const {
+      uint32_t cur_bucket = key & num_buckets_mask_,
+           leftover_index = 1 | (key >> bucket_num_bitsm1_);
+
+      Element new_elem;
+      new_elem.p.key = key;
+      new_elem.p.value = value;
+
+      while (1) {
+        Element old_elem;
+        old_elem.i = data_[cur_bucket];
+        if (old_elem.p.key == key) return false;  // key exists in hash
+        else if (~old_elem.p.key == 0) {
+          // we have a version of AtomicCAS that also works on host.
+          uint64_t old_i = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
+                                     old_elem.i, new_elem.i);
+          if (old_i == old_elem.i) return true;  // Successfully inserted.
+          old_elem.i = old_i;
+          if (old_elem.p.key == key) return false;  // Another thread inserted this
+          // same key.
+        }
+
+        // Rotate bucket index until we find a free location.  This will
+        // eventually visit all bucket indexes before it returns to the same
+        // location, because leftover_index is odd (so only satisfies
+        // (n * leftover_index) % num_buckets == 0 for n == num_buckets).
+        cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
       }
-
-      // Rotate bucket index until we find a free location.  This will
-      // eventually visit all bucket indexes before it returns to the same
-      // location, because leftover_index is odd (so only satisfies
-      // (n * leftover_index) % num_buckets == 0 for n == num_buckets).
-      cur_bucket = (cur_bucket + leftover_index) & acc.num_buckets_mask;
     }
-  }
 
+    /*
+    Looks up this key in this hash; outputs value and memory location of the
+    value if found.
 
-  /*
-    Looks up this key in this hash; outputs value and memory location of the value if found.
-
-      @param [in] acc    Accessor of hash
       @param [in] key    Key to look up, may have any value except UINT32_MAX
       @param [out] value_out  If found, value will be written to here.  This may
                         seem redundant with value_location, but this should
@@ -176,56 +163,113 @@ class Hash32 {
                         redundant memory reads.
       @param [out] value_location  Memory address of the value corresponding to
                         this key, in case the caller wants to overwrite it.
-       @return          Returns true if an item with this key was found in the
-                    hash, otherwise false.
-  */
-  static __forceinline__ __host__ __device__ bool Find(
-      Accessor acc, uint32_t key, int32_t *value_out,
-      int32_t **value_location_out = nullptr) {
-    uint32_t cur_bucket = key & acc.num_buckets_mask,
-         leftover_index = 1 | (key >> acc.bucket_num_bitsm1);
-    while (1) {
-      Element old_elem;
-      old_elem.i = acc.data[cur_bucket];
-      if (old_elem.p.key == key) {
-        *value_out = old_elem.p.value;
-        if (value_location_out)
-          *value_location_out   =
-              &(reinterpret_cast<Element*>(acc.data+cur_bucket)->p.value);
-        return true;
-      } else if (~old_elem.p.key == 0) {
-        return false;
-      } else {
-        cur_bucket = (cur_bucket + leftover_index) & acc.num_buckets_mask;
+      @return          Returns true if an item with this key was found in the
+                       hash, otherwise false.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+    */
+    __forceinline__ __host__ __device__ bool Find(
+        uint32_t key, int32_t *value_out,
+        int32_t **value_location_out = nullptr) const {
+      uint32_t cur_bucket = key & num_buckets_mask_,
+           leftover_index = 1 | (key >> bucket_num_bitsm1_);
+      while (1) {
+        Element old_elem;
+        old_elem.i = data_[cur_bucket];
+        if (old_elem.p.key == key) {
+          *value_out = old_elem.p.value;
+          if (value_location_out)
+            *value_location_out   =
+                &(reinterpret_cast<Element*>(data_+cur_bucket)->p.value);
+          return true;
+        } else if (~old_elem.p.key == 0) {
+          return false;
+        } else {
+          cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
+        }
       }
+    }
+
+    /* Deletes a key from a hash.  Caution: this cannot be combined with other
+       operations on a hash; after you delete a key you cannot do Insert() or
+       Find() until you have deleted all keys.  This is an open-addressing hash
+       table with no tombstones, which is why this limitation exists).
+
+       @param [in] key   Key to be deleted.   Each key present in the hash must
+                         be deleted  by exactly one thread, or it will loop
+                         forever!
+
+      Note: the const is with respect to the metadata only; required, to avoid
+      compilation errors.
+    */
+    __forceinline__ __host__ __device__ void Delete(uint32_t key) const {
+      uint32_t cur_bucket = key & num_buckets_mask_,
+           leftover_index = 1 | (key >> bucket_num_bitsm1_);
+      while (1) {
+        Element old_elem;
+        old_elem.i = data_[cur_bucket];
+        if (old_elem.p.key == key) {
+          data_[cur_bucket] = ~((uint64_t)0);
+          return;
+        } else {
+          cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
+        }
+      }
+    }
+
+   private:
+
+    // pointer to data (it really contains struct Element)
+    uint64_t *data_;
+    // num_buckets_mask is num_buckets (i.e. size of `data_` array) minus one;
+    // num_buckets is a power of 2 so this can be used as a mask to get a number
+    // modulo num_buckets.
+    uint32_t num_buckets_mask_;
+    // A number satisfying num_buckets == 1 << (1+bucket_num_bitsm1_)
+    // the number of bits in `num_buckets` minus one.
+    uint32_t bucket_num_bitsm1_;
+  };
+
+  Accessor GetAccessor() { return Accessor(data_.Data(),
+                                           uint32_t(data_.Dim()) - 1,
+                                           buckets_num_bitsm1_); }
+
+
+  void Destroy() { data_ = Array1<uint64_t>(); }
+
+  void CheckNonempty() {
+    if (data_.Dim() == 0) return;
+    ContextPtr c = Context();
+    Array1<int32_t> error(c, 1, -1);
+    int32_t *error_data = error.Data();
+    uint64_t *hash_data = data_.Data();
+
+    K2_EVAL(Context(), data_.Dim(), lambda_check_data, (int32_t i) -> void {
+        if ( ~(hash_data[i]) != 0) {
+          error_data[0] = i;
+        }});
+    int32_t i = error[0];
+    if (i >= 0) { // there was an error; i is the index into the hash where
+                  // there was an element.
+      Element elem;
+      elem.i = data_[i];
+      K2_LOG(FATAL) << "Destroying hash: still contains values: position "
+                    << i << ", key = " << elem.p.key
+                    << ", value = " << elem.p.value;
     }
   }
 
-  // Deletes a key from a hash.  Caution: this cannot be combined with other
-  // operations on a hash; after you delete a key you cannot do Insert() or Find()
-  // until you have deleted all keys; and each key must be deleted by exactly one
-  // thread.  (This is an open-addressing hash table with no tombstones,
-  // which is why this limitation exists).
-  //
-  // If you delete a key which is not there, or which another thread has already
-  // deleted, this will loop forever.
-  static __forceinline__ __host__ __device__ void Delete(Accessor acc, uint32_t key) {
-    uint32_t cur_bucket = key & acc.num_buckets_mask,
-         leftover_index = 1 | (key >> acc.bucket_num_bitsm1);
-    while (1) {
-      Element old_elem;
-      old_elem.i = acc.data[cur_bucket];
-      if (old_elem.p.key == key) {
-        acc.data[cur_bucket] = ~((uint64_t)0);
-        return;
-      } else {
-        cur_bucket = (cur_bucket + leftover_index) & acc.num_buckets_mask;
-      }
-    }
+  // The destructor checks that the hash is empty, if we are in debug mode.
+  // If you don't want this, call Destroy() before the destructor is called.
+  ~Hash32() {
+    if (data_.Dim() != 0)
+#ifndef NDEBUG
+      CheckNonempty();
+#endif
   }
 
-  // not actually private because of CUDA compiler limitations
-  // private:
+ private:
 
   Array1<uint64_t> data_;
   // number satisfying data_.Dim() == 1 << (1+bucket_num_bitsm1_)
