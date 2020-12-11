@@ -45,26 +45,30 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
 
 /*
   How Hash32 works:
+    - It's a map from uint32_t to int32_t.  (All keys except
+      ~0 == -1 == UINT32_MAX are allowed).
     - Each bucket has a struct { uint32_t key; int32_t value; }
     - If there is no value present, we set the key to ~0 == -1.
-    - num_buckets is a power of 2.
+    - The number of buckets is a power of 2 provided by the user.
     - When accessing hash[key], we use bucket_index == key % num_buckets,
-        leftover_index = 1 + key / num_buckets.  (This is the leftover part
-        of the index, shifted to be greater than 0).
-
+      leftover_index = 1 | ((key * 2) / num_buckets).  This is
+      leftover part of the index times 2, plus 1.
     - If the bucket at `bucket_index` is occupied, we look in locations
       `bucket_index + n * leftover_index` for n = 1, 2, ....;  this choice
       ensures that if multiple keys hash to the same bucket, they don't
-      all access the same sequence of locations.
+      all access the same sequence of locations; and leftover_index being
+      odd ensures we eventually try all locations (of course for reasonable
+      hash occupancy levels, we shouldn't ever have to try more than two
+      or three).
+    - When deleting values from the hash you must delete them all at
+      once (necessary because there is no concept of a "tombstone".
 
-    - The method of writing to the hash is:
-         bool FindOrAdd(uint32_t, uint32_t value);
-      which returns true if it added the element (else it found an existing
-      element, but we don't guarantee that the
+  You use it by: constructing it, obtaining its Accessor with GetAccessor(), and
+  inside kernels (or host code), calling functions Insert(), Find() or Delete()
+  of the Accessor object.  There is no resizing; sizing it correctly is the
+  caller's responsibility and if the hash gets full the code will just loop
+  forever (of course it will get extremely slow before it reaches that point).
 */
-
-
-
 class Hash32 {
  public:
 
@@ -77,12 +81,10 @@ class Hash32 {
         << " num_buckets must be a power of 2.";
   }
 
-
   // Shallow copy
   Hash32 &operator=(const Hash32 &src) = default;
   // Copy constructor (shallow copy)
   Hash32(const Hash32 &src) = default;
-
 
   ContextPtr &Context() { return data_.Context(); }
 
@@ -94,7 +96,6 @@ class Hash32 {
       int32_t value;  // value stored.  can be any int32_t.
     } p;
   };
-
 
   class Accessor {
    public:
@@ -268,15 +269,12 @@ class Hash32 {
       CheckNonempty();
 #endif
   }
-
  private:
-
   Array1<uint64_t> data_;
   // number satisfying data_.Dim() == 1 << (1+bucket_num_bitsm1_)
   int32_t buckets_num_bitsm1_;
 
 };
-
 
 }  // namespace k2
 
