@@ -71,12 +71,11 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
 */
 class Hash32 {
  public:
-
-  Hash32(ContextPtr c, int32_t num_buckets): data_(c, num_buckets, ~(uint64_t)0),
-                                             buckets_num_bitsm1_(0) {
+  Hash32(ContextPtr c, int32_t num_buckets):
+      data_(c, num_buckets, ~(uint64_t)0), buckets_num_bitsm1_(0) {
     K2_CHECK_GT(num_buckets, 64);
     int32_t n = 2;
-    for (; n < num_buckets; n *= 2, buckets_num_bitsm1_++);
+    for (; n < num_buckets; n *= 2, buckets_num_bitsm1_++) { }
     K2_CHECK_EQ(num_buckets, 2 << buckets_num_bitsm1_)
         << " num_buckets must be a power of 2.";
   }
@@ -122,15 +121,14 @@ class Hash32 {
       Note: the const is with respect to the metadata only; it is required, to
       avoid compilation errors.
    */
-    __forceinline__ __host__ __device__ bool Insert(uint32_t key, int32_t value,
-                                                    int32_t *old_value = nullptr) const {
+    __forceinline__ __host__ __device__ bool Insert(
+        uint32_t key, int32_t value,
+        int32_t *old_value = nullptr) const {
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> bucket_num_bitsm1_);
-
       Element new_elem;
       new_elem.p.key = key;
       new_elem.p.value = value;
-
       while (1) {
         Element old_elem;
         old_elem.i = data_[cur_bucket];
@@ -141,8 +139,8 @@ class Hash32 {
                                      old_elem.i, new_elem.i);
           if (old_i == old_elem.i) return true;  // Successfully inserted.
           old_elem.i = old_i;
-          if (old_elem.p.key == key) return false;  // Another thread inserted this
-          // same key.
+          if (old_elem.p.key == key) return false;  // Another thread inserted
+                                                    // this key
         }
 
         // Rotate bucket index until we find a free location.  This will
@@ -220,7 +218,6 @@ class Hash32 {
     }
 
    private:
-
     // pointer to data (it really contains struct Element)
     uint64_t *data_;
     // num_buckets_mask is num_buckets (i.e. size of `data_` array) minus one;
@@ -247,9 +244,8 @@ class Hash32 {
     uint64_t *hash_data = data_.Data();
 
     K2_EVAL(Context(), data_.Dim(), lambda_check_data, (int32_t i) -> void {
-        if ( ~(hash_data[i]) != 0) {
-          error_data[0] = i;
-        }});
+        if (~(hash_data[i]) != 0) error_data[0] = i;
+      });
     int32_t i = error[0];
     if (i >= 0) { // there was an error; i is the index into the hash where
                   // there was an element.
@@ -269,11 +265,11 @@ class Hash32 {
       CheckNonempty();
 #endif
   }
+
  private:
   Array1<uint64_t> data_;
   // number satisfying data_.Dim() == 1 << (1+bucket_num_bitsm1_)
   int32_t buckets_num_bitsm1_;
-
 };
 
 }  // namespace k2
