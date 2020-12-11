@@ -58,6 +58,33 @@ void TestHashConstruct() {
           }
           success_data[i] = success;
         });
+
+      K2_EVAL(c, num_elems, lambda_check_find, (int32_t i) -> void {
+          uint32_t key = (uint32_t)keys_data[i];
+          int32_t value = (int32_t)values_data[i],
+                success = success_data[i];
+
+          int32_t val, *val_addr;
+          bool ans = acc.Find(key, &val, &val_addr),
+              ans2 = acc.Find(key + key_bound, &val, &val_addr);
+          K2_CHECK(ans);  // key should be present.
+          K2_CHECK(!ans2);  // key == key + key_bound should not be present.
+
+          if (success) {
+            // if this was the key that won the data race, its value should be
+            // present.
+            K2_CHECK_EQ(val, value);
+            K2_CHECK_EQ(*val_addr, value);
+          }
+        });
+
+      K2_EVAL(c, num_elems, lambda_check_delete, (int32_t i) -> void {
+          uint32_t key = (uint32_t)keys_data[i];
+          int32_t success = success_data[i];
+
+          if (success)
+            acc.Delete(key);
+        });
     }
   }
 }
