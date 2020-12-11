@@ -54,12 +54,12 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
       leftover_index = 1 | ((key * 2) / num_buckets).  This is
       leftover part of the index times 2, plus 1.
     - If the bucket at `bucket_index` is occupied, we look in locations
-      `bucket_index + n * leftover_index` for n = 1, 2, ....;  this choice
-      ensures that if multiple keys hash to the same bucket, they don't
-      all access the same sequence of locations; and leftover_index being
-      odd ensures we eventually try all locations (of course for reasonable
-      hash occupancy levels, we shouldn't ever have to try more than two
-      or three).
+      `(bucket_index + n * leftover_index)%num_buckets` for n = 1, 2, ...;
+      this choice ensures that if multiple keys hash to the same bucket,
+      they don't all access the same sequence of locations; and leftover_index
+      being odd ensures we eventually try all locations (of course for
+      reasonable hash occupancy levels, we shouldn't ever have to try
+      more than two or three).
     - When deleting values from the hash you must delete them all at
       once (necessary because there is no concept of a "tombstone".
 
@@ -71,14 +71,19 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
 */
 class Hash32 {
  public:
+  /* Constructor.  Context can be for CPU or GPU.  num_buckets must be a power of 2
+     with num_buckets >= 128 (an arbitrarily chosen cutoff) */
   Hash32(ContextPtr c, int32_t num_buckets):
       data_(c, num_buckets, ~(uint64_t)0), buckets_num_bitsm1_(0) {
-    K2_CHECK_GT(num_buckets, 64);
+    K2_CHECK_GE(num_buckets, 128);
     int32_t n = 2;
     for (; n < num_buckets; n *= 2, buckets_num_bitsm1_++) { }
     K2_CHECK_EQ(num_buckets, 2 << buckets_num_bitsm1_)
         << " num_buckets must be a power of 2.";
   }
+
+  // Only to be used prior to assignment.
+  Hash32() { }
 
   // Shallow copy
   Hash32 &operator=(const Hash32 &src) = default;
@@ -236,7 +241,7 @@ class Hash32 {
 
   void Destroy() { data_ = Array1<uint64_t>(); }
 
-  void CheckNonempty() {
+  void CheckEmpty() {
     if (data_.Dim() == 0) return;
     ContextPtr c = Context();
     Array1<int32_t> error(c, 1, -1);
@@ -262,7 +267,7 @@ class Hash32 {
   ~Hash32() {
 #ifndef NDEBUG
     if (data_.Dim() != 0)
-      CheckNonempty();
+      CheckEmpty();
 #endif
   }
 
