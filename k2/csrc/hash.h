@@ -264,8 +264,8 @@ class Hash32 {
   // The destructor checks that the hash is empty, if we are in debug mode.
   // If you don't want this, call Destroy() before the destructor is called.
   ~Hash32() {
-    if (data_.Dim() != 0)
 #ifndef NDEBUG
+    if (data_.Dim() != 0)
       CheckNonempty();
 #endif
   }
