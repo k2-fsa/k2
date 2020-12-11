@@ -16,7 +16,8 @@
 
 namespace k2 {
 
-TEST(Hash, Construct) {
+
+void TestHashConstruct() {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     for (int32_t size: { 128, 1024, 2048, 65536, 1048576 }) {
       Hash32 hash(c, size);
@@ -44,8 +45,7 @@ TEST(Hash, Construct) {
            *success_data = success.Data(),
             *counts_data = count_per_key.Data();
       Hash32::Accessor acc = hash.GetAccessor();
-      //K2_EVAL(c, num_elems, lambda_insert_pairs, (int32_t i) -> void {
-      auto lambda_insert_pairs = [=] (int32_t i) -> void {
+      K2_EVAL(c, num_elems, lambda_insert_pairs, (int32_t i) -> void {
           uint32_t key = (uint32_t)keys_data[i];
           int32_t value = (int32_t)values_data[i],
                   count = counts_data[key],
@@ -57,9 +57,14 @@ TEST(Hash, Construct) {
             K2_CHECK(count > 1) << ", key = " << key << ", i = " << i;
           }
           success_data[i] = success;
-      };
+        });
     }
   }
+}
+
+TEST(Hash, Construct) {
+  // This indirection gets around a limitation of the CUDA compiler.
+  TestHashConstruct();
 }
 
 }  // namespace k2
