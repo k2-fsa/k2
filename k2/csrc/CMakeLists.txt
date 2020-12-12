@@ -127,6 +127,5 @@ foreach(name IN LISTS cuda_tests)
 endforeach()
 
 if(K2_ENABLE_BENCHMARK)
-  add_executable(array_ops_benchmark array_ops_benchmark.cu)
-  target_link_libraries(array_ops_benchmark PRIVATE context)
+  add_subdirectory(benchmark)
 endif()
