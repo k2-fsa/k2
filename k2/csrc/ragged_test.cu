@@ -2209,12 +2209,12 @@ TEST(RaggedTest, IndexRaggedRagged) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     Ragged<int32_t> r = Ragged<int32_t>(" [ [ 2 0 ] [ 1 2 3 ] ]").To(c);
 
-    Ragged<int32_t> s = Ragged<int32_t>(" [ [ 10 10 ] [ 11 ] [ 12 12 ] [ 13 ] [ 14 14] ]").To(c);
+    Ragged<int32_t> s = Ragged<int32_t>(" [ [ 10 10 ] [ 11 ] [ 12 12 ] [ 13 ] [ 14 14] ]").To(c);  // NOLINT
 
 
-    Ragged<int32_t> sr1 = Ragged<int32_t>(" [ [ [12 12] [10 10] ] [ [11] [12 12] [13] ] ]").To(c);
+    Ragged<int32_t> sr1 = Ragged<int32_t>(" [ [ [12 12] [10 10] ] [ [11] [12 12] [13] ] ]").To(c);  // NOLINT
 
-    Ragged<int32_t> sr2 = Ragged<int32_t>(" [ [ 12 12 10 10 ] [ 11 12 12 13 ] ]").To(c);
+    Ragged<int32_t> sr2 = Ragged<int32_t>(" [ [ 12 12 10 10 ] [ 11 12 12 13 ] ]").To(c);  // NOLINT
 
     EXPECT_EQ(true, Equal(Index(s, r, false), sr1));
     EXPECT_EQ(true, Equal(Index(s, r, true), sr2));

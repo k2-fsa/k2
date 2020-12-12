@@ -942,10 +942,8 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff);
 */
 template <typename T>
 Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes) {
-   return Ragged<T>(indexes.shape, src[indexes.values]);
+  return Ragged<T>(indexes.shape, src[indexes.values]);
 }
-
-
 
 /*
    Index ragged tensor with ragged tensor.

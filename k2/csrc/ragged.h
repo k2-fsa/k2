@@ -24,9 +24,9 @@
 namespace k2 {
 
 // Caution, RaggedShapeLayer is mostly for internal use and users should not
-// generally interact with it directly.  A layer represents the connection between
-// one axis and the next; a RaggedShape with a single layer is the minimal
-// RaggedShape.
+// generally interact with it directly.  A layer represents the connection
+// between one axis and the next; a RaggedShape with a single layer is the
+// minimal RaggedShape.
 //
 // Note: row_splits is of size num_rows + 1 and row_ids is of size
 // num_elements.

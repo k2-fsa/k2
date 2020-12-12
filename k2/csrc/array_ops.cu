@@ -395,14 +395,14 @@ __global__ void SizesToMergeMapKernel(int32_t num_rows,
           next_row_split = row_splits[row + 1],
           row_length = next_row_split - this_row_split;
 
-#pragma unroll (4)
+#pragma unroll(4)
   for (; thread_this_row < row_length; thread_this_row += threads_per_row)
     merge_map[this_row_split + thread_this_row] =
         uint32_t(row) + uint32_t(num_rows) * uint32_t(thread_this_row);
 }
 
-
-Array1<uint32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes) {
+Array1<uint32_t> SizesToMergeMap(ContextPtr c,
+                                 const std::vector<int32_t> &sizes) {
   int32_t num_srcs = sizes.size();
 
   ContextPtr cpu_context = GetCpuContext();
@@ -425,7 +425,8 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes
       for (; cur != end; ++cur) {
         // the 'src' says which source this item came from, and (cur - begin)
         // is the position within that source.
-        ans_data[cur] = uint32_t(src)+ uint32_t(cur - begin) * uint32_t(num_srcs);
+        ans_data[cur] =
+            uint32_t(src) + uint32_t(cur - begin) * uint32_t(num_srcs);
       }
     }
     return ans;
@@ -446,7 +447,5 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes
                         tot_size, merge_map_data));
   return ans;
 }
-
-
 
 }  // namespace k2

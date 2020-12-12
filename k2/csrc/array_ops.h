@@ -15,6 +15,7 @@
 
 #include <cassert>
 #include <type_traits>
+#include <vector>
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
