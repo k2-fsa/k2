@@ -49,12 +49,9 @@ void TestArray1() {
       ASSERT_EQ(array.Dim(), 5);
       std::vector<T> data(array.Dim());
       std::iota(data.begin(), data.end(), 0);
-      T *array_data = array.Data();
       // copy data from CPU to CPU/GPU
-      auto kind = GetMemoryCopyKind(*cpu, *array.Context());
-      MemoryCopy(static_cast<void *>(array_data),
-                 static_cast<void *>(data.data()),
-                 array.Dim() * array.ElementSize(), kind, nullptr);
+      cpu->CopyDataTo(array.Dim() * array.ElementSize(), data.data(),
+                      array.Context(), array.Data());
       for (int32_t i = 0; i < array.Dim(); ++i) {
         EXPECT_EQ(array[i], i);
       }
@@ -145,13 +142,10 @@ void TestArray1() {
       EXPECT_EQ(shape.Stride(0), inc);
       // copy data from CPU/GPU to CPU
       const T *sub_tensor_data = sub_tensor.Data<T>();
-      auto kind = GetMemoryCopyKind(*(sub_tensor.GetRegion()->context), *cpu);
       std::vector<T> cpu_data(shape.StorageSize());
-      MemoryCopy(
-          static_cast<void *>(cpu_data.data()),
-          static_cast<const void *>(sub_tensor_data),
+      sub_tensor.Context()->CopyDataTo(
           shape.StorageSize() * TraitsOf(sub_tensor.GetDtype()).NumBytes(),
-          kind, nullptr);
+          sub_tensor_data, cpu, cpu_data.data());
       int32_t dim0 = shape.Dim(0);
       int32_t stride0 = shape.Stride(0);
       for (int32_t i = 0, j = start; i < dim0; ++i, j += inc) {
@@ -182,12 +176,10 @@ void TestArray1() {
       EXPECT_EQ(shape.Stride(0), 1);
       // copy data from CPU/GPU to CPU
       const T *tensor_data = tensor.Data<T>();
-      auto kind = GetMemoryCopyKind(*(tensor.GetRegion()->context), *cpu);
       std::vector<T> cpu_data(shape.StorageSize());
-      MemoryCopy(static_cast<void *>(cpu_data.data()),
-                 static_cast<const void *>(tensor_data),
-                 shape.StorageSize() * TraitsOf(tensor.GetDtype()).NumBytes(),
-                 kind, nullptr);
+      tensor.Context()->CopyDataTo(
+          shape.StorageSize() * TraitsOf(tensor.GetDtype()).NumBytes(),
+          tensor_data, cpu, cpu_data.data());
       int32_t dim0 = shape.Dim(0);
       int32_t stride0 = shape.Stride(0);
       for (int32_t i = 0, j = 0; i < dim0; ++i, ++j) {
@@ -317,11 +309,8 @@ void TestArray2() {
 
       auto region = NewRegion(context, data.size() * sizeof(T));
 
-      auto dst = region->template GetData<T>();
-      auto kind = GetMemoryCopyKind(*cpu, *context);
-      MemoryCopy(static_cast<void *>(dst),
-                 static_cast<const void *>(data.data()),
-                 data.size() * sizeof(T), kind, region->context.get());
+      cpu->CopyDataTo(data.size() * sizeof(T), data.data(), context,
+                      region->data);
 
       Array2<T> array(kDim0, kDim1, kElemStride0, 0, region);
 
@@ -360,10 +349,8 @@ void TestArray2() {
         int32_t elem_stride0 = array.ElemStride0();
         int32_t num_element_copy = array.Dim0() * array.ElemStride0();
         std::vector<T> cpu_data(num_element_copy);
-        auto kind = GetMemoryCopyKind(*array.Context(), *cpu);
-        MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(array_data),
-                   num_element_copy * array.ElementSize(), kind, nullptr);
+        array.Context()->CopyDataTo(num_element_copy * array.ElementSize(),
+                                    array_data, cpu, cpu_data.data());
         for (int32_t i = 0, n = 0; i < array.Dim0(); ++i) {
           for (int32_t j = 0; j < array.Dim1(); ++j) {
             EXPECT_EQ(cpu_data[i * elem_stride0 + j], data[n++]);
@@ -377,11 +364,10 @@ void TestArray2() {
           Array1<T> sub_array = array[i];
           const T *sub_array_data = sub_array.Data();
           ASSERT_EQ(sub_array.Dim(), array.Dim1());
-          auto kind = GetMemoryCopyKind(*sub_array.Context(), *cpu);
           std::vector<T> sub_array_cpu_data(sub_array.Dim());
-          MemoryCopy(static_cast<void *>(sub_array_cpu_data.data()),
-                     static_cast<const void *>(sub_array_data),
-                     sub_array.Dim() * sub_array.ElementSize(), kind, nullptr);
+          sub_array.Context()->CopyDataTo(
+              sub_array.Dim() * sub_array.ElementSize(), sub_array_data, cpu,
+              sub_array_cpu_data.data());
           for (int32_t j = 0; j < sub_array.Dim(); ++j) {
             EXPECT_EQ(sub_array_cpu_data[j], data[i * array.ElemStride0() + j]);
           }
@@ -393,11 +379,11 @@ void TestArray2() {
         Array1<T> sub_array = array.Flatten();
         const T *sub_array_data = sub_array.Data();
         ASSERT_EQ(sub_array.Dim(), array.Dim0() * array.Dim1());
-        auto kind = GetMemoryCopyKind(*sub_array.Context(), *cpu);
         std::vector<T> sub_array_cpu_data(sub_array.Dim());
-        MemoryCopy(static_cast<void *>(sub_array_cpu_data.data()),
-                   static_cast<const void *>(sub_array_data),
-                   sub_array.Dim() * sub_array.ElementSize(), kind, nullptr);
+
+        sub_array.Context()->CopyDataTo(
+            sub_array.Dim() * sub_array.ElementSize(), sub_array_data, cpu,
+            sub_array_cpu_data.data());
         for (int32_t i = 0; i < sub_array.Dim(); ++i) {
           EXPECT_EQ(sub_array_cpu_data[i], data[i]);
         }
@@ -416,12 +402,10 @@ void TestArray2() {
         EXPECT_EQ(shape.Stride(0), array.ElemStride0());
         EXPECT_EQ(shape.Stride(1), 1);
         const T *tensor_data = tensor.Data<T>();
-        auto kind = GetMemoryCopyKind(*tensor.GetRegion()->context, *cpu);
         std::vector<T> cpu_tensor_data(shape.StorageSize());
-        MemoryCopy(static_cast<void *>(cpu_tensor_data.data()),
-                   static_cast<const void *>(tensor_data),
-                   shape.StorageSize() * TraitsOf(tensor.GetDtype()).NumBytes(),
-                   kind, nullptr);
+        tensor.Context()->CopyDataTo(
+            shape.StorageSize() * TraitsOf(tensor.GetDtype()).NumBytes(),
+            tensor_data, cpu, cpu_tensor_data.data());
         for (int32_t m = 0; m < shape.Dim(0); ++m) {
           for (int32_t n = 0; n < shape.Dim(1); ++n) {
             int32_t value =
@@ -460,11 +444,8 @@ void TestArray2() {
       std::vector<T> src_data(num_element);
       std::iota(src_data.begin(), src_data.end(), 0);
       T *data = region->GetData<T>();
-      auto kind = GetMemoryCopyKind(*cpu, *region->context);
-      MemoryCopy(static_cast<void *>(data),
-                 static_cast<const void *>(src_data.data()),
-                 num_element * element_size, kind, nullptr);
-
+      cpu->CopyDataTo(num_element * element_size, src_data.data(),
+                      region->context, data);
       {
         // created with region, contiguous on 0 aixs
         Array2<T> array(4, 5, 5, 0, region);
@@ -478,10 +459,8 @@ void TestArray2() {
         int32_t elem_stride0 = array.ElemStride0();
         int32_t num_element_copy = array.Dim0() * array.ElemStride0();
         std::vector<T> cpu_data(num_element_copy);
-        kind = GetMemoryCopyKind(*array.Context(), *cpu);
-        MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(array_data),
-                   num_element_copy * array.ElementSize(), kind, nullptr);
+        array.Context()->CopyDataTo(num_element_copy * array.ElementSize(),
+                                    array_data, cpu, cpu_data.data());
         for (int32_t i = 0, n = 0; i < array.Dim0(); ++i) {
           for (int32_t j = 0; j < array.Dim1(); ++j) {
             EXPECT_EQ(cpu_data[i * elem_stride0 + j], src_data[n++]);
@@ -493,11 +472,10 @@ void TestArray2() {
           Array1<T> sub_array = array.Flatten();
           const T *sub_array_data = sub_array.Data();
           ASSERT_EQ(sub_array.Dim(), array.Dim0() * array.Dim1());
-          kind = GetMemoryCopyKind(*sub_array.Context(), *cpu);
           std::vector<T> sub_array_cpu_data(sub_array.Dim());
-          MemoryCopy(static_cast<void *>(sub_array_cpu_data.data()),
-                     static_cast<const void *>(sub_array_data),
-                     sub_array.Dim() * sub_array.ElementSize(), kind, nullptr);
+          sub_array.Context()->CopyDataTo(
+              sub_array.Dim() * sub_array.ElementSize(), sub_array_data, cpu,
+              sub_array_cpu_data.data());
           for (int32_t i = 0, n = 0; i < array.Dim0(); ++i) {
             for (int32_t j = 0; j < array.Dim1(); ++j) {
               EXPECT_EQ(sub_array_cpu_data[n++],
@@ -521,10 +499,8 @@ void TestArray2() {
         int32_t elem_stride0 = array.ElemStride0();
         int32_t num_element_copy = array.Dim0() * array.ElemStride0();
         std::vector<T> cpu_data(num_element_copy);
-        kind = GetMemoryCopyKind(*array.Context(), *cpu);
-        MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(array_data),
-                   num_element_copy * array.ElementSize(), kind, nullptr);
+        array.Context()->CopyDataTo(num_element_copy * array.ElementSize(),
+                                    array_data, cpu, cpu_data.data());
         for (int32_t i = 0; i < array.Dim0(); ++i) {
           for (int32_t j = 0; j < array.Dim1(); ++j) {
             EXPECT_EQ(cpu_data[i * elem_stride0 + j],
@@ -537,11 +513,10 @@ void TestArray2() {
           Array1<T> sub_array = array.Flatten();
           const T *sub_array_data = sub_array.Data();
           ASSERT_EQ(sub_array.Dim(), array.Dim0() * array.Dim1());
-          kind = GetMemoryCopyKind(*sub_array.Context(), *cpu);
           std::vector<T> sub_array_cpu_data(sub_array.Dim());
-          MemoryCopy(static_cast<void *>(sub_array_cpu_data.data()),
-                     static_cast<const void *>(sub_array_data),
-                     sub_array.Dim() * sub_array.ElementSize(), kind, nullptr);
+          sub_array.Context()->CopyDataTo(
+              sub_array.Dim() * sub_array.ElementSize(), sub_array_data, cpu,
+              sub_array_cpu_data.data());
           for (int32_t i = 0, n = 0; i < array.Dim0(); ++i) {
             for (int32_t j = 0; j < array.Dim1(); ++j) {
               EXPECT_EQ(sub_array_cpu_data[n++],
@@ -559,11 +534,8 @@ void TestArray2() {
       RegionPtr region = NewRegion(context, num_element * element_size);
       std::vector<T> src_data(num_element);
       std::iota(src_data.begin(), src_data.end(), 0);
-      T *data = region->GetData<T>();
-      auto kind = GetMemoryCopyKind(*cpu, *region->context);
-      MemoryCopy(static_cast<void *>(data),
-                 static_cast<const void *>(src_data.data()),
-                 num_element * element_size, kind, nullptr);
+      cpu->CopyDataTo(num_element * element_size, src_data.data(),
+                      region->context, region->data);
       std::vector<int32_t> dims = {2, 4};
       std::vector<int32_t> strides = {10, 1};
       Shape shape(dims, strides);
@@ -579,10 +551,8 @@ void TestArray2() {
         const T *array_data = array.Data();
         int32_t num_element_copy = array.Dim0() * array.ElemStride0();
         std::vector<T> cpu_data(num_element_copy);
-        kind = GetMemoryCopyKind(*array.Context(), *cpu);
-        MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(array_data),
-                   num_element_copy * array.ElementSize(), kind, nullptr);
+        array.Context()->CopyDataTo(num_element_copy * array.ElementSize(),
+                                    array_data, cpu, cpu_data.data());
         for (int32_t i = 0; i < array.Dim0(); ++i) {
           for (int32_t j = 0; j < array.Dim1(); ++j) {
             EXPECT_EQ(
@@ -597,11 +567,10 @@ void TestArray2() {
         Array1<T> sub_array = array.Flatten();
         const T *sub_array_data = sub_array.Data();
         ASSERT_EQ(sub_array.Dim(), array.Dim0() * array.Dim1());
-        kind = GetMemoryCopyKind(*sub_array.Context(), *cpu);
         std::vector<T> sub_array_cpu_data(sub_array.Dim());
-        MemoryCopy(static_cast<void *>(sub_array_cpu_data.data()),
-                   static_cast<const void *>(sub_array_data),
-                   sub_array.Dim() * sub_array.ElementSize(), kind, nullptr);
+        sub_array.Context()->CopyDataTo(
+            sub_array.Dim() * sub_array.ElementSize(), sub_array_data, cpu,
+            sub_array_cpu_data.data());
         for (int32_t i = 0, n = 0; i < array.Dim0(); ++i) {
           for (int32_t j = 0; j < array.Dim1(); ++j) {
             EXPECT_EQ(
@@ -619,11 +588,8 @@ void TestArray2() {
       RegionPtr region = NewRegion(context, num_element * element_size);
       std::vector<T> src_data(num_element);
       std::iota(src_data.begin(), src_data.end(), 0);
-      T *data = region->GetData<T>();
-      auto kind = GetMemoryCopyKind(*cpu, *region->context);
-      MemoryCopy(static_cast<void *>(data),
-                 static_cast<const void *>(src_data.data()),
-                 num_element * element_size, kind, nullptr);
+      cpu->CopyDataTo(num_element * element_size, src_data.data(),
+                      region->context, region->data);
       std::vector<int32_t> dims = {2, 4};
       std::vector<int32_t> strides = {10, 2};
       Shape shape(dims, strides);
@@ -638,10 +604,8 @@ void TestArray2() {
         const T *array_data = array.Data();
         int32_t num_element_copy = array.Dim0() * array.ElemStride0();
         std::vector<T> cpu_data(num_element_copy);
-        kind = GetMemoryCopyKind(*array.Context(), *cpu);
-        MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(array_data),
-                   num_element_copy * array.ElementSize(), kind, nullptr);
+        array.Context()->CopyDataTo(num_element_copy * array.ElementSize(),
+                                    array_data, cpu, cpu_data.data());
         for (int32_t i = 0; i < array.Dim0(); ++i) {
           for (int32_t j = 0; j < array.Dim1(); ++j) {
             EXPECT_EQ(
@@ -656,11 +620,10 @@ void TestArray2() {
         Array1<T> sub_array = array.Flatten();
         const T *sub_array_data = sub_array.Data();
         ASSERT_EQ(sub_array.Dim(), array.Dim0() * array.Dim1());
-        kind = GetMemoryCopyKind(*sub_array.Context(), *cpu);
         std::vector<T> sub_array_cpu_data(sub_array.Dim());
-        MemoryCopy(static_cast<void *>(sub_array_cpu_data.data()),
-                   static_cast<const void *>(sub_array_data),
-                   sub_array.Dim() * sub_array.ElementSize(), kind, nullptr);
+        sub_array.Context()->CopyDataTo(
+            sub_array.Dim() * sub_array.ElementSize(), sub_array_data, cpu,
+            sub_array_cpu_data.data());
         for (int32_t i = 0, n = 0; i < array.Dim0(); ++i) {
           for (int32_t j = 0; j < array.Dim1(); ++j) {
             EXPECT_EQ(

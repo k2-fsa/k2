@@ -504,7 +504,7 @@ Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc /*=1*/) {
   return ans;
 }
 
-template<typename T>
+template <typename T>
 Array1<T> Arange(ContextPtr c, T begin, T end, T inc) {
   return Range<T>(c, (end + inc - 1 - begin) / inc, begin, inc);
 }
@@ -854,12 +854,9 @@ void Assign(Array2<T> &src, Array2<T> *dest) {
           dest_stride = dest->ElemStride0();
 
   if (src_stride == dim1 && dest_stride == dim1) {
-    cudaMemcpyKind memcpy_kind =
-        GetMemoryCopyKind(*src.Context(), *dest->Context());
     size_t num_bytes = dim0 * src.ElementSize() * dim1;
-    MemoryCopy(reinterpret_cast<void *>(dest->Data()),
-               reinterpret_cast<const void *>(src.Data()), num_bytes,
-               memcpy_kind, src.Context().get());
+    src.Context()->CopyDataTo(num_bytes, src.Data(), dest->Context(),
+                              dest->Data());
   } else {
     // this branch does not support cross-device copy.
     ContextPtr c = GetContext(src, *dest);
@@ -882,12 +879,12 @@ void Assign(Array2<T> &src, Array2<T> *dest) {
 }
 
 template <typename T>
-Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map,
-                       int32_t num_srcs, const Array1<T> **src) {
+Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
+                       const Array1<T> **src) {
   NVTX_RANGE(K2_FUNC);
   int32_t dim = merge_map.Dim();
   ContextPtr &c = merge_map.Context();
-  std::vector<const T*> src_ptrs_vec(num_srcs);
+  std::vector<const T *> src_ptrs_vec(num_srcs);
   int32_t src_tot_dim = 0;
   for (int32_t i = 0; i < num_srcs; i++) {
     K2_CHECK(c->IsCompatible(*src[i]->Context()));
@@ -895,20 +892,19 @@ Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map,
     src_ptrs_vec[i] = src[i]->Data();
   }
   K2_CHECK(src_tot_dim == dim);
-  Array1<const T*> src_ptrs(c, src_ptrs_vec);
+  Array1<const T *> src_ptrs(c, src_ptrs_vec);
   Array1<T> ans(c, dim);
   const uint32_t *merge_map_data = merge_map.Data();
   T *ans_data = ans.Data();
   const T **src_ptrs_data = src_ptrs.Data();
-  K2_EVAL(c, dim, lambda_merge_data, (int32_t i) -> void {
-      uint32_t m = merge_map_data[i],
-         src_idx = m % (uint32_t)num_srcs,
-         src_pos = m / (uint32_t)num_srcs;
-      ans_data[i] = src_ptrs_data[src_idx][src_pos];
-    });
+  K2_EVAL(
+      c, dim, lambda_merge_data, (int32_t i)->void {
+        uint32_t m = merge_map_data[i], src_idx = m % (uint32_t)num_srcs,
+                 src_pos = m / (uint32_t)num_srcs;
+        ans_data[i] = src_ptrs_data[src_idx][src_pos];
+      });
   return ans;
 }
-
 
 }  // namespace k2
 

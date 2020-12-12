@@ -164,42 +164,6 @@ class Context : public std::enable_shared_from_this<Context> {
                           ContextPtr dst_context, void *dst) = 0;
 };
 
-// Note currently we just support single GPU device, but finally we may need to
-// handle different GPU devices on multiple machines, that's also the reason
-// that we pass `Context` instead of `DeviceType` as the input parameter here.
-inline cudaMemcpyKind GetMemoryCopyKind(const Context &src,
-                                        const Context &dst) {
-  if (src.GetDeviceType() == kCpu && dst.GetDeviceType() == kCpu) {
-    return cudaMemcpyHostToHost;
-  } else if (src.GetDeviceType() == kCpu && dst.GetDeviceType() == kCuda) {
-    return cudaMemcpyHostToDevice;
-  } else if (src.GetDeviceType() == kCuda && dst.GetDeviceType() == kCpu) {
-    return cudaMemcpyDeviceToHost;
-  } else if (src.GetDeviceType() == kCuda && dst.GetDeviceType() == kCuda) {
-    return cudaMemcpyDeviceToDevice;
-  } else {
-    K2_LOG(FATAL) << "Unsupported Context";
-    return cudaMemcpyDefault;
-  }
-}
-
-// if you know kind != cudaMemcpyDeviceToDevice, you can pass in nullptr
-// for `context`.
-inline void MemoryCopy(void *dst, const void *src, std::size_t count,
-                       cudaMemcpyKind kind, Context *context) {
-  NVTX_RANGE(K2_FUNC);
-  cudaError_t ret;
-  if (kind == cudaMemcpyHostToHost) {
-    memcpy(dst, src, count);  // we assume that src and dst do not overlap
-    return;
-  } else if (kind != cudaMemcpyDeviceToDevice) {
-    ret = cudaMemcpy(dst, src, count, kind);
-  } else {
-    ret = cudaMemcpyAsync(dst, src, count, kind, context->GetCudaStream());
-  }
-  K2_CHECK_CUDA_ERROR(ret);
-}
-
 /*
   NOTE: let's leave this for later, this won't be needed initially.
 
@@ -320,8 +284,7 @@ struct Region : public std::enable_shared_from_this<Region> {
       new_size = i;  // Round up `new_size` to a power of 2.
       void *new_deleter_context;
       void *new_data = context->Allocate(new_size, &new_deleter_context);
-      cudaMemcpyKind kind = GetMemoryCopyKind(*context, *context);
-      MemoryCopy(new_data, data, bytes_used, kind, context.get());
+      context->CopyDataTo(bytes_used, data, context, new_data);
       context->Deallocate(data, deleter_context);
       data = new_data;
       deleter_context = new_deleter_context;
