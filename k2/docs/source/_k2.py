@@ -3,6 +3,7 @@
 class RaggedInt: pass
 class RaggedArc: pass
 class RaggedShape: pass
+class DenseFsaVec: pass
 def simple_ragged_index_select(): pass
 def _as_float(): pass
 def _as_int(): pass

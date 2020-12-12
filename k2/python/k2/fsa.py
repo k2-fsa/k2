@@ -36,39 +36,46 @@ class Fsa(object):
 
     An instance of FSA has the following attributes:
 
-    - ``arcs``: You will NOT use it directly in Python. It is an instance
-                of ``_k2.RaggedArc`` with only one method ``values()`` which
-                returns a 2-D `torch.Tensor`` of dtype ``torch.int32`` with 4
-                columns. Its number of rows indicates the number of arcs in the
-                FSA. The first column represents the source states, second
-                column the destination states, third column the labels and the
-                fourth column is the score. Note that the score is actually
-                a float number but it is **reinterpreted** as an integer.
+    arcs
+      You will NOT use it directly in Python. It is an instance of
+      ``_k2.RaggedArc`` with only one method ``values()`` which
+      returns a 2-D `torch.Tensor`` of dtype ``torch.int32`` with 4
+      columns. Its number of rows indicates the number of arcs in the
+      FSA. The first column represents the source states, second
+      column the destination states, third column the labels and the
+      fourth column is the score. Note that the score is actually
+      a float number but it is **reinterpreted** as an integer.
 
-    - ``scores``: A 1-D ``torch.Tensor`` of dtype ``torch.float32``. It has
-                  as many entries as the number of arcs representing the score
-                  of every arc.
+    scores
+      A 1-D ``torch.Tensor`` of dtype ``torch.float32``. It has
+      as many entries as the number of arcs representing the score
+      of every arc.
 
-    - ``labels``: A 1-D ``torch.Tensor`` of dtype ``torch.int32``. It has as
-                  many entries as the number of arcs representing the label of
-                  every arc.
+    labels
+      1-D ``torch.Tensor`` of dtype ``torch.int32``. It has as
+      many entries as the number of arcs representing the label of
+      every arc.
 
 
     It MAY have the following attributes:
 
-    - ``symbols``: An instance of ``k2.SymbolTable``. It maps an entry in
-                   ``labels`` to an integer and vice versa. It is used for
-                   visualization only.
+    symbols
+      An instance of ``k2.SymbolTable``. It maps an entry in
+      ``labels`` to an integer and vice versa. It is used for
+      visualization only.
 
-    - ``aux_labels`: A 1-D ``torch.Tensor`` of dtype ``torch.int32``. It has the
-                     same shape as ``labels``. NOTE: We will change it to a
-                     ragged tensor in the future.
+    aux_labels
+      A 1-D ``torch.Tensor`` of dtype ``torch.int32``. It has the
+      same shape as ``labels``. NOTE: We will change it to a
+      ragged tensor in the future.
 
-    - ``aux_symbols``: An instance of ``k2.SymbolTable. It maps an entry in
-                       ``aux_labels`` to an integer and vice versa.
+    aux_symbols
+      An instance of ``k2.SymbolTable``. It maps an entry in
+      ``aux_labels`` to an integer and vice versa.
 
-    - ``properties``: An integer that encodes the properties of the FSA. It is
-                      accessed as fsa.properties (read-only!)
+    properties
+      An integer that encodes the properties of the FSA. It is
+      accessed as fsa.properties (read-only!)
 
     It MAY have other attributes that set by users.  Tensor attributes should
     have the same 1st dimension as the number of arcs in the FSA.

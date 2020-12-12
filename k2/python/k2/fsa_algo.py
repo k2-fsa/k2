@@ -74,13 +74,13 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
       The rules for assigning the attributes of the output Fsa are as follows:
 
       - (1) For attributes where only one source (a_fsa or b_fsa) has that
-      attribute: Copy via arc_map, or use zero if arc_map has -1. This rule
-      works for both floating point and integer attributes.
+        attribute: Copy via arc_map, or use zero if arc_map has -1. This rule
+        works for both floating point and integer attributes.
 
       - (2) For attributes where both sources (a_fsa and b_fsa) have that
-      attribute: For floating point attributes: sum via arc_maps, or use zero
-      if arc_map has -1. For integer attributes, it's not supported for now (the
-      attributes will be discarded and will not be kept in the output FSA).
+        attribute: For floating point attributes: sum via arc_maps, or use zero
+        if arc_map has -1. For integer attributes, it's not supported for now (the
+        attributes will be discarded and will not be kept in the output FSA).
 
     Returns:
       The result of intersecting a_fsa and b_fsa. len(out_fsa.shape) is 2
@@ -89,12 +89,9 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     '''
     treat_epsilons_specially = True
     need_arc_map = True
-    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs,
-                                                     a_fsa.properties,
-                                                     b_fsa.arcs,
-                                                     b_fsa.properties,
-                                                     treat_epsilons_specially,
-                                                     need_arc_map)
+    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
+        a_fsa.arcs, a_fsa.properties, b_fsa.arcs, b_fsa.properties,
+        treat_epsilons_specially, need_arc_map)
 
     out_fsa = Fsa(ragged_arc)
     for name, a_value in a_fsa.named_tensor_attr():

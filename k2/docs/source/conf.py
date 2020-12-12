@@ -13,6 +13,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../../python'))
+sys.path.insert(0, os.path.abspath('.'))
 
 import sphinx_rtd_theme
 
@@ -32,6 +33,7 @@ version = '0.0.1'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'recommonmark',
     'sphinx.ext.autodoc',
     'sphinx.ext.githubpages',
     'sphinx.ext.linkcode',
@@ -43,7 +45,10 @@ extensions = [
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
-source_suffix = ['.rst']
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+}
 master_doc = 'index'
 
 # List of patterns, relative to source directory, that match files and
