@@ -44,14 +44,14 @@ class RaggedShapeOpsSuiteTest : public ::testing::Test {
                                            4, 5, 5, 5, 6, 7, 7, 9};
     std::vector<RaggedShapeLayer> axes;
     axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits1),
-                                     Array1<int32_t>(context, row_ids1),
-                                     static_cast<int32_t>(row_ids1.size())});
+                                       Array1<int32_t>(context, row_ids1),
+                                       static_cast<int32_t>(row_ids1.size())});
     axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits2),
-                                     Array1<int32_t>(context, row_ids2),
-                                     static_cast<int32_t>(row_ids2.size())});
+                                       Array1<int32_t>(context, row_ids2),
+                                       static_cast<int32_t>(row_ids2.size())});
     axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits3),
-                                     Array1<int32_t>(context, row_ids3),
-                                     static_cast<int32_t>(row_ids3.size())});
+                                       Array1<int32_t>(context, row_ids3),
+                                       static_cast<int32_t>(row_ids3.size())});
 
     simple_shape_ = RaggedShape(axes, true);
 
@@ -173,10 +173,9 @@ void TestMaxPerSubListTest() {
       MaxPerSublist(ragged, default_value, &max_values);
       // copy memory from GPU/CPU to CPU
       std::vector<T> cpu_data(max_values.Dim());
-      auto kind = GetMemoryCopyKind(*max_values.Context(), *cpu);
-      MemoryCopy(static_cast<void *>(cpu_data.data()),
-                 static_cast<const void *>(max_values.Data()),
-                 max_values.Dim() * max_values.ElementSize(), kind, nullptr);
+      max_values.Context()->CopyDataTo(
+          max_values.Dim() * max_values.ElementSize(), max_values.Data(), cpu,
+          cpu_data.data());
       std::vector<T> expected_data = {3, default_value, 8, default_value};
       EXPECT_EQ(cpu_data, expected_data);
     }
@@ -902,15 +901,18 @@ void TestRagged() {
       const std::vector<T> values_vec = {1, 2, 4, 3, 0, 7, 8, 9,
                                          6, 3, 5, 7, 2, 3, 4, 8};
       std::vector<RaggedShapeLayer> axes;
-      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits1),
-                                       Array1<int32_t>(context, row_ids1),
-                                       static_cast<int32_t>(row_ids1.size())});
-      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits2),
-                                       Array1<int32_t>(context, row_ids2),
-                                       static_cast<int32_t>(row_ids2.size())});
-      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits3),
-                                       Array1<int32_t>(context, row_ids3),
-                                       static_cast<int32_t>(row_ids3.size())});
+      axes.emplace_back(
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits1),
+                           Array1<int32_t>(context, row_ids1),
+                           static_cast<int32_t>(row_ids1.size())});
+      axes.emplace_back(
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits2),
+                           Array1<int32_t>(context, row_ids2),
+                           static_cast<int32_t>(row_ids2.size())});
+      axes.emplace_back(
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits3),
+                           Array1<int32_t>(context, row_ids3),
+                           static_cast<int32_t>(row_ids3.size())});
 
       RaggedShape shape(axes, true);
       Array1<T> values(context, values_vec);
@@ -1530,7 +1532,6 @@ TEST(ChangeSublistSizePinned, TwoAxes) {
   }
 }
 
-
 TEST(ChangeSublistSize, ThreeAxes) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     /*
@@ -1562,7 +1563,6 @@ TEST(ChangeSublistSize, ThreeAxes) {
   }
 }
 
-
 TEST(ChangeSublistSizePinned, ThreeAxes) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     /*
@@ -1593,7 +1593,6 @@ TEST(ChangeSublistSizePinned, ThreeAxes) {
                    std::vector<int32_t>{0, 3, 5, 6, 8, 8, 11});
   }
 }
-
 
 TEST(RaggedShapeOpsTest, TestGetCountsPartitioned) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
@@ -2032,17 +2031,18 @@ TEST(RaggedShapeOpsTest, GetPrefixesTest) {
 
 TEST(RaggedShapeOpsTest, AppendMoreAxes) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape1 = RaggedShape(
-        "[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
-                shape2 = RaggedShape(
-                    "[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+    RaggedShape shape1 =
+                    RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 =
+                    RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
                 shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
 
-    RaggedShape appended_axis2_ref = RaggedShape(
-        "[ [ [[ x x ][ x ][]] [[x ][x][ x ]] ] [[[x ][ x x][]]]]").To(c);
-    RaggedShape appended_axis3_ref = RaggedShape(
-        "[ [ [[ x x x ]] [[x x x ]] ] [[[x x x]]]]").To(c);
-    RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
+    RaggedShape appended_axis2_ref =
+        RaggedShape("[ [ [[ x x ][ x ][]] [[x ][x][ x ]] ] [[[x ][ x x][]]]]")
+            .To(c);
+    RaggedShape appended_axis3_ref =
+        RaggedShape("[ [ [[ x x x ]] [[x x x ]] ] [[[x x x]]]]").To(c);
+    RaggedShape *srcs[] = {&shape1, &shape2, &shape3};
     Array1<uint32_t> merge_map2;
     Array1<uint32_t> merge_map3;
     RaggedShape appended_axis2 = Append(2, 3, srcs, &merge_map2);
@@ -2053,7 +2053,7 @@ TEST(RaggedShapeOpsTest, AppendMoreAxes) {
     K2_CHECK(Equal(appended_axis2, appended_axis2_ref));
     K2_CHECK(Equal(appended_axis2, appended_axis2_ref));
 
-    std::vector<uint32_t> merge_values = { 0, 3, 1, 6, 4, 2, 9, 7, 10 };
+    std::vector<uint32_t> merge_values = {0, 3, 1, 6, 4, 2, 9, 7, 10};
     CheckArrayData(merge_map2, merge_values);
     CheckArrayData(merge_map3, merge_values);
   }
@@ -2061,16 +2061,18 @@ TEST(RaggedShapeOpsTest, AppendMoreAxes) {
 
 TEST(RaggedShapeOpsTest, StackMoreAxes) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape1 = RaggedShape(
-        "[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
-                shape2 = RaggedShape(
-                    "[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
+    RaggedShape shape1 =
+                    RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
+                shape2 =
+                    RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
                 shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
 
-    RaggedShape stacked_ref = RaggedShape(
-        "[ [ [[[ x x ]][[ x ]][[]]] [[[x ]][[x]][[ x ]]] ] "
-        "[[[[x ]][[ x x]][[]]]]]").To(c);
-    RaggedShape* srcs[] = { &shape1, &shape2, &shape3 };
+    RaggedShape stacked_ref =
+        RaggedShape(
+            "[ [ [[[ x x ]][[ x ]][[]]] [[[x ]][[x]][[ x ]]] ] "
+            "[[[[x ]][[ x x]][[]]]]]")
+            .To(c);
+    RaggedShape *srcs[] = {&shape1, &shape2, &shape3};
     Array1<uint32_t> merge_map2;
     Array1<uint32_t> merge_map3;
     RaggedShape stacked_axis2 = Stack(2, 3, srcs, &merge_map2);
@@ -2081,7 +2083,7 @@ TEST(RaggedShapeOpsTest, StackMoreAxes) {
     K2_CHECK(Equal(stacked_axis2, stacked_ref));
     K2_CHECK(Equal(stacked_axis2, stacked_ref));
 
-    std::vector<uint32_t> merge_values = { 0, 3, 1, 6, 4, 2, 9, 7, 10 };
+    std::vector<uint32_t> merge_values = {0, 3, 1, 6, 4, 2, 9, 7, 10};
     CheckArrayData(merge_map2, merge_values);
     CheckArrayData(merge_map3, merge_values);
   }
@@ -2089,13 +2091,12 @@ TEST(RaggedShapeOpsTest, StackMoreAxes) {
 
 TEST(RaggedShapeOpsTest, Merge) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape1 = RaggedShape(
-        "[ [ x x ] [ x ] [] ]").To(c),  // m: 0 3 6, m_out:  0 3, 6,
-                shape2 = RaggedShape(
-                    "[ [ x] [ x x x ] ]").To(c),  // m: 1 4, m_out: 1, 4 7 10
-                shape3 = RaggedShape(
-                    "[ [ ] [ x x ] [] ]").To(c);  // m: 2 5 8, m_out: ,2 5,
-
+    RaggedShape shape1 = RaggedShape("[ [ x x ] [ x ] [] ]")
+                             .To(c),  // m: 0 3 6, m_out:  0 3, 6,
+        shape2 = RaggedShape("[ [ x] [ x x x ] ]")
+                     .To(c),  // m: 1 4, m_out: 1, 4 7 10
+        shape3 =
+            RaggedShape("[ [ ] [ x x ] [] ]").To(c);  // m: 2 5 8, m_out: ,2 5,
 
     RaggedShape ans_ref =
         RaggedShape("[ [] [x] [x x x] [] [] [x x] [x x] [x] ]").To(c);
@@ -2103,16 +2104,16 @@ TEST(RaggedShapeOpsTest, Merge) {
     // This is a mixed-up kind of merge map that doesn't appear naturally (they
     // are always in-order from each source, right now) but it should still
     // work.
-    std::vector<uint32_t> merge_map_data = {  6, 1, 4, 8, 2, 5, 0, 3 };
+    std::vector<uint32_t> merge_map_data = {6, 1, 4, 8, 2, 5, 0, 3};
     Array1<uint32_t> merge_map_in(c, merge_map_data);
-    RaggedShape *srcs[] = { &shape1, &shape2, &shape3 };
+    RaggedShape *srcs[] = {&shape1, &shape2, &shape3};
 
     Array1<uint32_t> merge_map_out;
     RaggedShape merged = Merge(3, srcs, merge_map_in, &merge_map_out);
 
     ASSERT_EQ(true, Equal(ans_ref, merged));
 
-    std::vector<uint32_t> merge_map_out_data = { 1, 4, 7, 10, 2, 5, 0, 3, 6 };
+    std::vector<uint32_t> merge_map_out_data = {1, 4, 7, 10, 2, 5, 0, 3, 6};
     CheckArrayData(merge_map_out, merge_map_out_data);
   }
 }
@@ -2124,23 +2125,22 @@ TEST(RaggedTest, AddSuffixToRaggedTest) {
       for (int32_t i = 0; i < 10; ++i) {
         Ragged<int32_t> src = RandomRagged<int32_t>().To(context);
         int32_t num_axes = src.NumAxes();
-        Array1<int32_t> suffix =
-            RandUniformArray1<int32_t>(context, src.TotSize(num_axes - 2),
-                                       0, 100);
+        Array1<int32_t> suffix = RandUniformArray1<int32_t>(
+            context, src.TotSize(num_axes - 2), 0, 100);
         Ragged<int32_t> dst = AddSuffixToRagged(src, suffix);
         EXPECT_EQ(dst.NumAxes(), num_axes);
         EXPECT_EQ(dst.NumElements(), src.NumElements() + suffix.Dim());
         Ragged<int32_t> src_cpu = src.To(GetCpuContext());
         Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
         for (RaggedShapeIndexIterator src_iter = src_cpu.shape.Iterator();
-            !src_iter.Done(); src_iter.Next()) {
+             !src_iter.Done(); src_iter.Next()) {
           const std::vector<int32_t> &src_indexes = src_iter.Value();
           EXPECT_EQ(dst_cpu[src_indexes], src_cpu[src_indexes]);
         }
         Array1<int32_t> src_row_splits = src_cpu.RowSplits(num_axes - 1);
         Array1<int32_t> suffix_cpu = suffix.To(GetCpuContext());
         for (int32_t i = 0; i < suffix.Dim(); ++i) {
-           EXPECT_EQ(dst_cpu.values[src_row_splits[i + 1] + i], suffix_cpu[i]);
+          EXPECT_EQ(dst_cpu.values[src_row_splits[i + 1] + i], suffix_cpu[i]);
         }
       }
     }
@@ -2154,16 +2154,15 @@ TEST(RaggedTest, AddPrefixToRaggedTest) {
       for (int32_t i = 0; i < 10; ++i) {
         Ragged<int32_t> src = RandomRagged<int32_t>().To(context);
         int32_t num_axes = src.NumAxes();
-        Array1<int32_t> prefix =
-            RandUniformArray1<int32_t>(context, src.TotSize(num_axes - 2),
-                                       0, 100);
+        Array1<int32_t> prefix = RandUniformArray1<int32_t>(
+            context, src.TotSize(num_axes - 2), 0, 100);
         Ragged<int32_t> dst = AddPrefixToRagged(src, prefix);
         EXPECT_EQ(dst.NumAxes(), num_axes);
         EXPECT_EQ(dst.NumElements(), src.NumElements() + prefix.Dim());
         Ragged<int32_t> src_cpu = src.To(GetCpuContext());
         Ragged<int32_t> dst_cpu = dst.To(GetCpuContext());
         for (RaggedShapeIndexIterator src_iter = src_cpu.shape.Iterator();
-            !src_iter.Done(); src_iter.Next()) {
+             !src_iter.Done(); src_iter.Next()) {
           const std::vector<int32_t> &src_indexes = src_iter.Value();
           std::vector<int32_t> dst_indexes(src_indexes);
           dst_indexes.back() += 1;  // increase the last index by 1

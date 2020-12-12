@@ -47,11 +47,12 @@ void Array1<T>::CopyFrom(const Array1<T> &src) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(dim_, src.dim_);
   if (dim_ == 0) return;
-  auto kind = GetMemoryCopyKind(*src.Context(), *Context());
+
   const T *src_data = src.Data();
   T *dst_data = this->Data();
-  MemoryCopy(static_cast<void *>(dst_data), static_cast<const void *>(src_data),
-             Dim() * ElementSize(), kind, Context().get());
+
+  src.Context()->CopyDataTo(Dim() * ElementSize(), src_data, Context(),
+                            dst_data);
 }
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
