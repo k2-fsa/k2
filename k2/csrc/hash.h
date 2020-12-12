@@ -137,21 +137,26 @@ class Hash32 {
       while (1) {
         Element old_elem;
         old_elem.i = data_[cur_bucket];
-        if (old_elem.p.key == key) return false;  // key exists in hash
+        if (old_elem.p.key == key) {
+          if (old_value) *old_value = old_elem.p.value;
+          return false;  // key exists in hash
+        }
         else if (~old_elem.p.key == 0) {
           // we have a version of AtomicCAS that also works on host.
           uint64_t old_i = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
                                      old_elem.i, new_elem.i);
           if (old_i == old_elem.i) return true;  // Successfully inserted.
           old_elem.i = old_i;
-          if (old_elem.p.key == key) return false;  // Another thread inserted
-                                                    // this key
+          if (old_elem.p.key == key) {
+            if (old_value) *old_value = old_elem.p.value;
+            return false;  // Another thread inserted this key
+          }
         }
-
         // Rotate bucket index until we find a free location.  This will
         // eventually visit all bucket indexes before it returns to the same
         // location, because leftover_index is odd (so only satisfies
         // (n * leftover_index) % num_buckets == 0 for n == num_buckets).
+        // Note: n here is the number of times we went around the loop.
         cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
       }
     }
