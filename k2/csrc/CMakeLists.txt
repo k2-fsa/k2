@@ -84,6 +84,7 @@ set(cuda_tests
   fsa_algo_test
   fsa_test
   fsa_utils_test
+  hash_test
   host_shim_test
   intersect_test
   log_test

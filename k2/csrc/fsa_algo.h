@@ -154,7 +154,9 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
          @param[in] max_active  Maximum active states allowed per frame.
                          (i.e. at each time-step in the sequences).  Sequence-
                          specific beam will be reduced if more than this number
-                         of states are active.
+                         of states are active.  The hash size used per FSA is 4
+                         times (this rounded up to a power of 2), so this affects
+                         memory consumption.
          @param[out] out Output vector of composed, pruned FSAs, with same
                          Dim0() as b_fsas.  Elements of it may be empty if the
                          composition was empty, either intrinsically or due to

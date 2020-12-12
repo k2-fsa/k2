@@ -64,10 +64,7 @@ void TestTranspose(int32_t num_rows, int32_t num_cols, int32_t num_reps = 1,
   int32_t num_bytes = num_elements * sizeof(T);
   auto src_region = NewRegion(context, num_bytes);
   Array2<T> src(num_rows, num_cols, num_cols, 0, src_region);
-  auto kind = GetMemoryCopyKind(*cpu, *src.Context());
-  MemoryCopy(static_cast<void *>(src.Data()),
-             static_cast<const void *>(host_src.data()), num_bytes, kind,
-             src.Context().get());
+  cpu->CopyDataTo(num_bytes, host_src.data(), src.Context(), src.Data());
 
   auto dest_region = NewRegion(context, num_bytes);
   Array2<T> dest(num_cols, num_rows, num_rows, 0, dest_region);
@@ -82,9 +79,7 @@ void TestTranspose(int32_t num_rows, int32_t num_cols, int32_t num_reps = 1,
   double elapsed = t.Elapsed();
 
   std::vector<T> host_dest(num_elements);
-  kind = GetMemoryCopyKind(*dest.Context(), *cpu);
-  MemoryCopy(static_cast<void *>(host_dest.data()),
-             static_cast<const void *>(dest.Data()), num_bytes, kind, nullptr);
+  dest.Context()->CopyDataTo(num_bytes, dest.Data(), cpu, host_dest.data());
 
   ASSERT_EQ(host_dest, gold);
 
@@ -149,10 +144,8 @@ void CheckExclusiveSumArray1Result(const std::vector<S> &src_data,
                                    const Array1<T> &dest) {
   // copy data from CPU to CPU/GPU
   std::vector<T> dest_data(dest.Dim());
-  auto kind = GetMemoryCopyKind(*dest.Context(), *GetCpuContext());
-  MemoryCopy(static_cast<void *>(dest_data.data()),
-             static_cast<const void *>(dest.Data()),
-             dest.Dim() * dest.ElementSize(), kind, nullptr);
+  dest.Context()->CopyDataTo(dest.Dim() * dest.ElementSize(), dest.Data(),
+                             GetCpuContext(), dest_data.data());
   std::vector<T> expected_data(dest.Dim());
   ComputeExclusiveSum(src_data, &expected_data);
   ASSERT_EQ(dest_data.size(), expected_data.size());
@@ -209,11 +202,8 @@ void TestExclusiveSumArray1(int32_t num_elem) {
       // but its value will not be set.
       int32_t num_bytes = num_elem * sizeof(T);
       RegionPtr region = NewRegion(context, num_bytes);
-      S *region_data = region->GetData<S>();
-      auto kind = GetMemoryCopyKind(*cpu, *region->context);
-      MemoryCopy(static_cast<void *>(region_data),
-                 static_cast<const void *>(data.data()), src_dim * sizeof(T),
-                 kind, region->context.get());
+      cpu->CopyDataTo(src_dim * sizeof(T), data.data(), region->context,
+                      region->data);
       Array1<S> src(src_dim, region, 0);
       Array1<T> dest(context, num_elem);
       ASSERT_EQ(dest.Dim(), src.Dim() + 1);
@@ -322,10 +312,9 @@ void CheckExclusiveSumArray2Result(const std::vector<T> &src_data,
   Array1<T> dest_array1 = dest.Flatten();
   // copy data from CPU to CPU/GPU
   std::vector<T> dest_data(dest_rows * dest_cols);
-  auto kind = GetMemoryCopyKind(*dest_array1.Context(), *GetCpuContext());
-  MemoryCopy(static_cast<void *>(dest_data.data()),
-             static_cast<const void *>(dest_array1.Data()),
-             dest_array1.Dim() * dest_array1.ElementSize(), kind, nullptr);
+  dest_array1.Context()->CopyDataTo(
+      dest_array1.Dim() * dest_array1.ElementSize(), dest_array1.Data(),
+      GetCpuContext(), dest_data.data());
   std::vector<T> expected_data(dest_rows * dest_cols);
   ComputeExclusiveSumArray2(src_data, dest_rows, dest_cols, &expected_data,
                             axis);
@@ -628,10 +617,8 @@ void TestAppend() {
         EXPECT_EQ(dst.Dim(), 8);
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
-        auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
-        MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(dst.Data()),
-                   dst.Dim() * dst.ElementSize(), kind, nullptr);
+        dst.Context()->CopyDataTo(dst.Dim() * dst.ElementSize(), dst.Data(),
+                                  cpu, cpu_data.data());
         EXPECT_EQ(cpu_data, expected_data);
       }
 
@@ -644,10 +631,8 @@ void TestAppend() {
 
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
-        auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
-        MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(dst.Data()),
-                   dst.Dim() * dst.ElementSize(), kind, nullptr);
+        dst.Context()->CopyDataTo(dst.Dim() * dst.ElementSize(), dst.Data(),
+                                  cpu, cpu_data.data());
         EXPECT_EQ(cpu_data, expected_data);
       }
     }
@@ -672,10 +657,8 @@ void TestAppend() {
         EXPECT_EQ(dst.Dim(), total_size);
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
-        auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
-        MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(dst.Data()),
-                   dst.Dim() * dst.ElementSize(), kind, nullptr);
+        dst.Context()->CopyDataTo(dst.Dim() * dst.ElementSize(), dst.Data(),
+                                  cpu, cpu_data.data());
         std::vector<T> expected_data(dst.Dim());
         std::iota(expected_data.begin(), expected_data.end(), 0);
         EXPECT_EQ(cpu_data, expected_data);
@@ -715,10 +698,8 @@ void TestAppend() {
         EXPECT_EQ(dst.Dim(), total_size);
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
-        auto kind = GetMemoryCopyKind(*dst.Context(), *cpu);
-        MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(dst.Data()),
-                   dst.Dim() * dst.ElementSize(), kind, nullptr);
+        dst.Context()->CopyDataTo(dst.Dim() * dst.ElementSize(), dst.Data(),
+                                  cpu, cpu_data.data());
         std::vector<T> expected_data(dst.Dim());
         std::iota(expected_data.begin(), expected_data.end(), 0);
         EXPECT_EQ(cpu_data, expected_data);

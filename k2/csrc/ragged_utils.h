@@ -163,7 +163,7 @@ RaggedShape MergeRaggedLayer(int32_t layer,
                              int32_t num_srcs,
                              RaggedShape **src,
                              const Array1<uint32_t> &merge_map,
-                            Array1<uint32_t> *merge_map_out = nullptr);
+                             Array1<uint32_t> *merge_map_out = nullptr);
 
 /*
   An operation on one layer of a ragged shape that subsamples the rows.
@@ -176,7 +176,6 @@ RaggedShape MergeRaggedLayer(int32_t layer,
  */
 RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
                                  int32_t subsample_factor);
-
 
 
 

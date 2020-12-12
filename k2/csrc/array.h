@@ -336,10 +336,8 @@ class Array1 {
   Array1(ContextPtr ctx, const std::vector<T> &src) {
     NVTX_RANGE(K2_FUNC);
     Init(ctx, src.size());
-    T *data = Data();
-    auto kind = GetMemoryCopyKind(*GetCpuContext(), *Context());
-    MemoryCopy(static_cast<void *>(data), static_cast<const void *>(src.data()),
-               src.size() * ElementSize(), kind, Context().get());
+    ContextPtr cpu_ctx = GetCpuContext();
+    cpu_ctx->CopyDataTo(src.size() * ElementSize(), src.data(), ctx, Data());
   }
 
   // default constructor
@@ -613,11 +611,9 @@ class Array2 {
 
     if (elem_stride0_ == dim1_) {
       // the current array is contiguous, use memcpy
-      auto kind = GetMemoryCopyKind(*Context(), *ctx);
       T *dst = ans.Data();
       const T *src = Data();
-      MemoryCopy(static_cast<void *>(dst), static_cast<const void *>(src),
-                 dim0_ * dim1_ * ElementSize(), kind, ctx.get());
+      Context()->CopyDataTo(dim0_ * dim1_ * ElementSize(), src, ctx, dst);
       return ans;
     } else {
       return ToContiguous(*this).To(ctx);

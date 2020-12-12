@@ -66,19 +66,17 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
 
     // This code is based on the example here:
     // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
-    void *d_temp_storage = NULL;
     std::size_t temp_storage_bytes = 0;
 
     // the first time is to determine temporary device storage requirements
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
+        nullptr, temp_storage_bytes, values_data, output_data, num_rows,
         row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
-    void *deleter_context;
-    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
-        row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
-    c->Deallocate(d_temp_storage, deleter_context);
+        d_temp_storage.Data(), temp_storage_bytes, values_data, output_data,
+        num_rows, row_splits, row_splits + 1, op, default_value,
+        c->GetCudaStream()));
   }
 }
 
@@ -168,6 +166,19 @@ Ragged<T> Merge(int32_t num_srcs,
   Array1<T> ans_values = MergeWithMap(*merge_map_ptr, num_srcs,
                                       src_values.data());
   return Ragged<T>(ans_shape, ans_values);
+}
+
+
+template <typename T>
+Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
+  ContextPtr c = src.Context();
+  Renumbering r(c, src.NumElements());
+  const T *values_data = src.values.Data();
+  char *keep = r.Keep().Data();
+  K2_EVAL(c, src.NumElements(), lambda_set_keep, (int32_t i) -> void {
+      keep[i] = (char) (values_data[i] > cutoff);
+    });
+  return SubsampleRagged(src, r);
 }
 
 
@@ -297,17 +308,19 @@ bool Ragged<T>::Validate(bool print_warnings) const {
     }
     return false;
   }
-  return shape.Validate();
+  return shape.Validate(print_warnings);
 }
 
 // Defined here and not in ragged.h because it needs RemoveAxis.
 template <typename T>
 Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(axis >= 0 && axis < NumAxes());
+  K2_CHECK(NumAxes() > 2 && axis >= 0 && axis < NumAxes() - 1);
   RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
   return Ragged<T>(new_shape, values);
 }
+
+
 template <typename T>
 std::istream &operator>>(std::istream &is, Ragged<T> &r) {
   // Note: the top element of 'row_splits' will end up being
@@ -374,6 +387,18 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
   K2_CHECK(r.values.Dim() == r.shape.NumElements());
   return is;
 }
+
+
+template <typename T>
+Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes,
+                bool remove_axis) {
+  Ragged<T> r = Index(src, indexes.values);
+  RaggedShape s = ComposeRaggedShapes(indexes.shape, r.shape);
+  Ragged<T> ans(s, r.values);
+  return (remove_axis ? RemoveAxis(ans, ans.NumAxes() - 2) : ans);
+}
+
+
 
 }  // namespace k2
 

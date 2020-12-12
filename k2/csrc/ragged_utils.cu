@@ -28,12 +28,12 @@ void CheckLayerEqual(int32_t layer,
   if (num_srcs <= 1)
     return;
   K2_CHECK(layer >= 0 && layer + 1 < src[0]->NumAxes());
-  std::vector<int32_t*> row_splits_data_vec;
+  std::vector<const int32_t*> row_splits_data_vec;
   row_splits_data_vec.reserve(num_srcs);
   int32_t row_splits_dim, row_ids_dim;
   for (int32_t s = 0; s < num_srcs; s++) {
     // RowSplits(1) .. is the lowest numbered row-splits...
-    int32_t *data = src[s]->RowSplits(layer + 1).Data();
+    const int32_t *data = src[s]->RowSplits(layer + 1).Data();
     if (s == 0 || data != row_splits_data_vec[0])
       row_splits_data_vec.push_back(data);
     if (s == 0) {
@@ -48,12 +48,12 @@ void CheckLayerEqual(int32_t layer,
     // No point in checking because the row_splits all had the same address.
     return;
   }
-  ContextPtr c = src[0]->Context();
+  ContextPtr &c = src[0]->Context();
 #ifndef NDEBUG
   Array1<int32_t> is_bad(c, 1, 0);
-  Array1<int32_t*> row_splits_ptrs(c, row_splits_data_vec);
-  int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
-  int32_t *is_bad_data = is_bad.Data();
+  Array1<const int32_t*> row_splits_ptrs(c, row_splits_data_vec);
+  const int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
+  const int32_t *is_bad_data = is_bad.Data();
   K2_EVAL2(c, row_splits_ptrs.Dim() - 1,
            row_splits_dim, lambda_check_row_splits,
            (int32_t i, int32_t j) -> void {
@@ -121,15 +121,14 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
       }
     }
   } else {
-
     if (num_srcs <= 16) {
       // If num_srcs is not too large, we do an optimization.  Instead
-      // of computing the length of each row (as row_splits[i+1] - row_splits[i])
-      // and doing exclusive-sum to get the row_splits, we sum up
+      // of computing the length of each row (as row_splits[i+1] -
+      // row_splits[i]) and doing exclusive-sum to get the row_splits, we sum up
       //  `num_srcs` row_splits numbered `i, i+1, .. i+num_srcs-1.`
       // (These numberings map to source i % num_srcs at position i / num_srcs).
       // This gives us the same answer, with less latency.
-      auto lambda_get_row_splits = [=] __device__ (int32_t i) -> void {
+      auto lambda_get_row_splits = [=] __device__(int32_t i) -> void {
         int32_t sum = 0;
         for (int32_t j = i; j < i + num_srcs; j++) {
           int32_t src = j % num_srcs,
@@ -142,7 +141,7 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
       EvalDevice(c, new_num_rows + 1, lambda_get_row_splits);
     } else {
       // Set the row_splits initially to the sizes, then do exclusive-sum.
-      auto lambda_get_sizes = [=] __device__ (int32_t i) -> void {
+      auto lambda_get_sizes = [=] __device__(int32_t i) -> void {
         int32_t src = i % num_srcs, pos = i / num_srcs;
         int32_t this_size = row_splits_ptrs_data[src][pos + 1] -
              row_splits_ptrs_data[src][pos];
@@ -167,9 +166,10 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
             src_idx0 = idx0 / num_srcs,
            src_idx0x = row_splits_ptrs_data[src][src_idx0],
            src_idx01 = src_idx0x + idx1;
-        // We multiply the src_idx01 by num_srcs as a way of encoding it and the src
-        // into a single integer.
-        merge_map_data[idx01] = uint32_t(src) + ((uint32_t)num_srcs * uint32_t(src_idx01));
+        // We multiply the src_idx01 by num_srcs as a way of encoding it and the
+        // src into a single integer.
+        merge_map_data[idx01] =
+            uint32_t(src) + ((uint32_t)num_srcs * uint32_t(src_idx01));
       });
   }
 
@@ -181,12 +181,12 @@ RaggedShape MergeRaggedLayer(int32_t layer,
                              int32_t num_srcs,
                              RaggedShape **src,
                              const Array1<uint32_t> &merge_map,
-                             Array1<uint32_t> *merge_map_out) {
+                             Array1<uint32_t> *merge_map_out /*= nullptr*/) {
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK_GE(layer, 0);
   K2_CHECK_LT(layer + 1, src[0]->NumAxes());
 
-  ContextPtr c = src[0]->Context();
+  ContextPtr &c = src[0]->Context();
   std::vector<int32_t*> row_splits_ptrs_vec(num_srcs);
 
   int32_t tot_rows = 0, tot_elems = 0;
@@ -224,15 +224,15 @@ RaggedShape MergeRaggedLayer(int32_t layer,
 
     K2_EVAL(c, tot_elems, lambda_set_merge_map, (int32_t idx01) -> void {
         int32_t idx0 = row_ids_data[idx01],
-               idx1x = row_splits_data[idx0],
-                idx1 = idx01 - idx1x,
+               idx0x = row_splits_data[idx0],
+                idx1 = idx01 - idx0x,
                    m = merge_map_data[idx0],
                  src = m % num_srcs,
             src_idx0 = m / num_srcs,
            src_idx0x = row_splits_ptrs_data[src][src_idx0],
            src_idx01 = src_idx0x + idx1;
-        // We multiply the src_idx01 by num_srcs as a way of encoding it and the src
-        // into a single integer.
+        // We multiply the src_idx01 by num_srcs as a way of encoding it and the
+        // src into a single integer.
         merge_map_out_data[idx01] = uint32_t(src) +
                                     ((uint32_t)num_srcs * uint32_t(src_idx01));
       });
@@ -243,11 +243,11 @@ RaggedShape MergeRaggedLayer(int32_t layer,
 
 RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
                                  int32_t subsample_factor) {
-  K2_CHECK_LT(static_cast<uint32_t>(layer),
-              static_cast<uint32_t>(src.NumAxes() - 1));
+  K2_CHECK_GE(layer, 0);
+  K2_CHECK_LT(layer, src.NumAxes() - 1);
   int32_t num_rows = src.TotSize(layer),
          num_elems = src.TotSize(layer + 1);
-  K2_CHECK(src.TotSize(layer) % subsample_factor == 0);
+  K2_CHECK_EQ(src.TotSize(layer) % subsample_factor, 0);
 
   ContextPtr &c = src.Context();
 
@@ -271,11 +271,10 @@ RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
       return block_size * ((n + block_size - 1) / block_size);
     };
     // this rounding is to avoid one warp having to do 2 jobs, which would slow
-    // down the code due to warp divergene.
+    // down the code due to warp divergence.
     int32_t num_elems_plus = lambda_round_up(num_elems);
 
-
-    auto lambda_set_row_splits_and_ids = [=] __device__ (int32_t i) -> void {
+    auto lambda_set_row_splits_and_ids = [=] __device__(int32_t i) -> void {
       if (i >= num_elems_plus) {
         int32_t r = i - num_elems_plus;
         new_row_splits_data[r] = row_splits_data[r * subsample_factor];
@@ -283,7 +282,8 @@ RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
         new_row_ids_data[i] = row_ids_data[i] / subsample_factor;
       }
     };
-    EvalDevice(c, num_elems_plus + new_num_rows + 1, lambda_set_row_splits_and_ids);
+    EvalDevice(c, num_elems_plus + new_num_rows + 1,
+               lambda_set_row_splits_and_ids);
   }
   return RaggedShape2(&new_row_splits, &new_row_ids, num_elems);
 }
