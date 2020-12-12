@@ -3,7 +3,5 @@ dataclasses
 sphinx_rtd_theme
 sphinx
 sphinx-autodoc-typehints
---pre
-k2
 -f https://download.pytorch.org/whl/torch_stable.html
 torch==1.6.0+cu101
