@@ -5,7 +5,7 @@
 
 .. image:: _static/logo.png
     :alt: k2 logo
-    :width: 320px
+    :width: 80px
     :align: center
 
 -----------
