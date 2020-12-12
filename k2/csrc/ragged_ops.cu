@@ -349,7 +349,7 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
                                 Array2<int32_t> *old_offsets,
                                 Array2<int32_t> *new_offsets) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(src.NumAxes() > 1);
+  K2_CHECK_GT(src.NumAxes(), 1);
   ContextPtr &c = src.Context();
   int32_t num_axes = src.NumAxes(), ans_dim0 = new2old.Dim();
   int32_t *const *src_row_splits_ptrs_data = src_row_splits_ptrs.Data();
@@ -380,7 +380,7 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
 RaggedShape Index(RaggedShape &src, const Array1<int32_t> &new2old,
                   Array1<int32_t> *elem_indexes /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
   K2_CHECK(IsCompatible(src, new2old));
   int32_t num_axes = src.NumAxes(), src_dim0 = src.Dim0(),

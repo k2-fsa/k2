@@ -154,6 +154,7 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src);
 
    It appends the arrays with an offset.  Define:
         offset[i] = (sum of last element of src[j] for j < i).
+        offset[i] = 0 for i = 0.
    This function appends the arrays, while leaving out the last element
    of all but the last of the arrays in `src`, and also adding the
    offsets mentioned above for each array.
@@ -393,7 +394,7 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
    from the row_ids and row_splits.
 
    EXAMPLE.  Suppose sizes is [ 3, 5, 1 ].  Then merge_map will be:
-    [ 0, 3, 6, 1, 4, 7, 11, 14, 2 ].
+    [ 0, 3, 6, 1, 4, 7, 10, 13, 2 ].
  */
 Array1<uint32_t> SizesToMergeMap(ContextPtr c,
                                  const std::vector<int32_t> &sizes);

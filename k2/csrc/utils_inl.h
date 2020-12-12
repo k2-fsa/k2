@@ -67,18 +67,15 @@ T MaxValue(ContextPtr c, int32_t nelems, const T *t) {
     T init = T(0);
     Array1<T> max_array(c, 1, T(0));
     T *max_value = max_array.Data();
-    void *d_temp_storage = NULL;
     std::size_t temp_storage_bytes = 0;
     // the first time is to determine temporary device storage requirements
     K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, t, max_value, nelems, max_op, init,
+        nullptr, temp_storage_bytes, t, max_value, nelems, max_op, init,
         c->GetCudaStream()));
-    void *deleter_context;
-    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
     K2_CHECK_CUDA_ERROR(cub::DeviceReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, t, max_value, nelems, max_op, init,
-        c->GetCudaStream()));
-    c->Deallocate(d_temp_storage, deleter_context);
+        d_temp_storage.Data(), temp_storage_bytes, t, max_value, nelems, max_op,
+        init, c->GetCudaStream()));
     // this will convert to memory on CPU
     return max_array[0];
   }

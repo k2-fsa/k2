@@ -422,17 +422,15 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest) {
   } else {
     K2_CHECK(c->GetDeviceType() == kCuda);
 
-    void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
     // the first time is to determine temporary device storage requirements
     K2_CUDA_SAFE_CALL(cub::DeviceReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, src_data, dest_data, size, op,
+        nullptr, temp_storage_bytes, src_data, dest_data, size, op,
         default_value, c->GetCudaStream()));
-    void *deleter_context;
-    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
     K2_CUDA_SAFE_CALL(cub::DeviceReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, src_data, dest_data, size, op,
-        default_value, c->GetCudaStream()));
+        d_temp_storage.Data(), temp_storage_bytes, src_data, dest_data, size,
+        op, default_value, c->GetCudaStream()));
   }
 }
 
@@ -886,13 +884,13 @@ Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
   ContextPtr &c = merge_map.Context();
   std::vector<const T *> src_ptrs_vec(num_srcs);
   int32_t src_tot_dim = 0;
-  for (int32_t i = 0; i < num_srcs; i++) {
+  for (int32_t i = 0; i < num_srcs; ++i) {
     K2_CHECK(c->IsCompatible(*src[i]->Context()));
     src_tot_dim += src[i]->Dim();
     src_ptrs_vec[i] = src[i]->Data();
   }
-  K2_CHECK(src_tot_dim == dim);
-  Array1<const T *> src_ptrs(c, src_ptrs_vec);
+  K2_CHECK_EQ(src_tot_dim, dim);
+  Array1<const T*> src_ptrs(c, src_ptrs_vec);
   Array1<T> ans(c, dim);
   const uint32_t *merge_map_data = merge_map.Data();
   T *ans_data = ans.Data();
