@@ -53,7 +53,7 @@ void CheckLayerEqual(int32_t layer,
   Array1<int32_t> is_bad(c, 1, 0);
   Array1<const int32_t*> row_splits_ptrs(c, row_splits_data_vec);
   const int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
-  const int32_t *is_bad_data = is_bad.Data();
+  int32_t *is_bad_data = is_bad.Data();
   K2_EVAL2(c, row_splits_ptrs.Dim() - 1,
            row_splits_dim, lambda_check_row_splits,
            (int32_t i, int32_t j) -> void {
