@@ -54,12 +54,12 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
       leftover_index = 1 | ((key * 2) / num_buckets).  This is
       leftover part of the index times 2, plus 1.
     - If the bucket at `bucket_index` is occupied, we look in locations
-      `bucket_index + n * leftover_index` for n = 1, 2, ....;  this choice
-      ensures that if multiple keys hash to the same bucket, they don't
-      all access the same sequence of locations; and leftover_index being
-      odd ensures we eventually try all locations (of course for reasonable
-      hash occupancy levels, we shouldn't ever have to try more than two
-      or three).
+      `(bucket_index + n * leftover_index)%num_buckets` for n = 1, 2, ...;
+      this choice ensures that if multiple keys hash to the same bucket,
+      they don't all access the same sequence of locations; and leftover_index
+      being odd ensures we eventually try all locations (of course for
+      reasonable hash occupancy levels, we shouldn't ever have to try
+      more than two or three).
     - When deleting values from the hash you must delete them all at
       once (necessary because there is no concept of a "tombstone".
 
@@ -71,14 +71,19 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
 */
 class Hash32 {
  public:
+  /* Constructor.  Context can be for CPU or GPU.  num_buckets must be a power of 2
+     with num_buckets >= 128 (an arbitrarily chosen cutoff) */
   Hash32(ContextPtr c, int32_t num_buckets):
       data_(c, num_buckets, ~(uint64_t)0), buckets_num_bitsm1_(0) {
-    K2_CHECK_GT(num_buckets, 64);
+    K2_CHECK_GE(num_buckets, 128);
     int32_t n = 2;
     for (; n < num_buckets; n *= 2, buckets_num_bitsm1_++) { }
     K2_CHECK_EQ(num_buckets, 2 << buckets_num_bitsm1_)
         << " num_buckets must be a power of 2.";
   }
+
+  // Only to be used prior to assignment.
+  Hash32() { }
 
   // Shallow copy
   Hash32 &operator=(const Hash32 &src) = default;
@@ -132,21 +137,26 @@ class Hash32 {
       while (1) {
         Element old_elem;
         old_elem.i = data_[cur_bucket];
-        if (old_elem.p.key == key) return false;  // key exists in hash
+        if (old_elem.p.key == key) {
+          if (old_value) *old_value = old_elem.p.value;
+          return false;  // key exists in hash
+        }
         else if (~old_elem.p.key == 0) {
           // we have a version of AtomicCAS that also works on host.
           uint64_t old_i = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
                                      old_elem.i, new_elem.i);
           if (old_i == old_elem.i) return true;  // Successfully inserted.
           old_elem.i = old_i;
-          if (old_elem.p.key == key) return false;  // Another thread inserted
-                                                    // this key
+          if (old_elem.p.key == key) {
+            if (old_value) *old_value = old_elem.p.value;
+            return false;  // Another thread inserted this key
+          }
         }
-
         // Rotate bucket index until we find a free location.  This will
         // eventually visit all bucket indexes before it returns to the same
         // location, because leftover_index is odd (so only satisfies
         // (n * leftover_index) % num_buckets == 0 for n == num_buckets).
+        // Note: n here is the number of times we went around the loop.
         cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
       }
     }
@@ -236,7 +246,7 @@ class Hash32 {
 
   void Destroy() { data_ = Array1<uint64_t>(); }
 
-  void CheckNonempty() {
+  void CheckEmpty() {
     if (data_.Dim() == 0) return;
     ContextPtr c = Context();
     Array1<int32_t> error(c, 1, -1);
@@ -262,7 +272,7 @@ class Hash32 {
   ~Hash32() {
 #ifndef NDEBUG
     if (data_.Dim() != 0)
-      CheckNonempty();
+      CheckEmpty();
 #endif
   }
 

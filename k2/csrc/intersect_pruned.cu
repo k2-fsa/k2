@@ -15,6 +15,7 @@
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/hash.h"
 #include "k2/csrc/ragged_ops.h"
 
 namespace k2 {
@@ -121,7 +122,7 @@ class MultiGraphDenseIntersectPruned {
                            be active on any given frame for any given
                            intersection/composition task. This is advisory,
                            in that it will try not to exceed that but may not
-                           always succeed.
+                           always succeed.  This determines the hash size.
    */
   MultiGraphDenseIntersectPruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                                  float search_beam, float output_beam,
@@ -144,13 +145,20 @@ class MultiGraphDenseIntersectPruned {
              a_fsas.shape.Dim0() == 1);
     K2_CHECK_GE(b_fsas.shape.Dim0(), 1);
     int32_t num_seqs = b_fsas.shape.Dim0();
+
+
+    int32_t num_buckets = RoundUpToNearestPowerOfTwo(b_fsas.shape.Dim0() * 4 *
+                                                     max_active);
+    if (num_buckets < 128)
+      num_buckets = 128;
+    state_map_ = Hash32(c_, num_buckets);
     if (a_fsas.shape.Dim0() == 1) {
       a_fsas_stride_ = 0;
-      state_map_ = Array2<int32_t>(c_, num_seqs, a_fsas.shape.TotSize(1), -1);
+      state_map_fsa_stride_ = a_fsas.NumElements();
     } else {
       K2_CHECK_EQ(a_fsas.shape.Dim0(), b_fsas.shape.Dim0());
       a_fsas_stride_ = 1;
-      state_map_ = Array2<int32_t>(c_, 1, a_fsas.shape.TotSize(1), -1);
+      state_map_fsa_stride_ = 0;
     }
   }
 
@@ -616,10 +624,11 @@ class MultiGraphDenseIntersectPruned {
     int32_t num_fsas = NumFsas();
     // Ragged<StateInfo> &states = cur_frame->states;
     // arc_info has 3 axes: fsa_id, state, arc.
-    Ragged<ArcInfo> arc_info = GetArcs(t, cur_frame);
+    cur_frame->arcs = GetArcs(t, cur_frame);
+    Ragged<ArcInfo> &arc_info = cur_frame->arcs;
 
     ArcInfo *ai_data = arc_info.values.Data();
-    Array1<float> ai_data_array1(c_, arc_info.values.Dim());
+    Array1<float> ai_data_array1(c_, cur_frame->arcs.values.Dim());
     float *ai_data_array1_data = ai_data_array1.Data();
     K2_EVAL(
         c_, ai_data_array1.Dim(), lambda_set_ai_data,
@@ -635,14 +644,15 @@ class MultiGraphDenseIntersectPruned {
     // them.
     int32_t *ai_row_ids1 = arc_info.shape.RowIds(1).Data(),
             *ai_row_ids2 = arc_info.shape.RowIds(2).Data();
-    auto state_map_acc = state_map_.Accessor();
-    // We use a separate state_map vector per FSA we're processing if a_fsas_
-    // only has one FSA (in this case it means we're sharing the FSA among
-    // potentially multiple streams).
-    // But if there is >1 FSA in a_fsas_, then a_fsas_ is indexed by the idx01
-    // into a_fsas_ and we don't need a stride.
-    // Modifying the accessor is perhaps a little bit of a hack.
-    if (a_fsas_.shape.Dim0() > 1) state_map_acc.elem_stride0 = 0;
+    auto state_map_acc = state_map_.GetAccessor();
+    int32_t state_map_fsa_stride = state_map_fsa_stride_;
+
+    // renumber_states will be a renumbering that dictates which of the arcs in
+    // 'ai' correspond to unique states.  Only one arc for each dest-state is
+    // kept (it doesn't matter which one).
+    Renumbering renumber_states(c_, arc_info.NumElements());
+    char *keep_this_state_data = renumber_states.Keep().Data();
+
 
     {
       NVTX_RANGE("LambdaSetStateMap");
@@ -654,54 +664,23 @@ class MultiGraphDenseIntersectPruned {
                 ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
             float end_loglike = ai_data[arc_idx012].end_loglike,
                   cutoff = cutoffs_data[fsa_id];
+            char keep_this_state = 0;  // only one arc entering any state will have
+                                       // its 'keep_this_state_data' entry set to 1.
             if (end_loglike > cutoff) {
-              // The following is a race condition as multiple threads may write
-              // to the same location, but it doesn't matter, the point is to
-              // assign one of the indexes.
-              state_map_acc(fsa_id, dest_state_idx01) = arc_idx012;
+              int32_t state_map_idx = dest_state_idx01 +
+                                      fsa_id * state_map_fsa_stride;
+              if (state_map_acc.Insert(state_map_idx, arc_idx012))
+                keep_this_state = 1;
             }
+            keep_this_state_data[arc_idx012] = keep_this_state;
           });
     }
 
-    // renumber_states will be a renumbering that dictates which of the arcs in
-    // 'ai' correspond to unique states.  Only one arc for each dest-state is
-    // kept (it doesn't matter which one).
-    Renumbering renumber_states(c_, arc_info.NumElements());
-
-    renumber_states.Keep() = 0;
-    char *keep_this_state_data = renumber_states.Keep().Data();
-
-    if (a_fsas_.shape.Dim0() > 1) {
-      NVTX_RANGE("LambdaSetKeepA");
-      int32_t *state_map_data = state_map_.Data();
-      K2_EVAL(
-          c_, arc_info.NumElements(), lambda_set_keep,
-          (int32_t arc_idx012)->void {
-            int32_t dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
-            int32_t j = state_map_data[dest_state];
-            if (j != -1) {  // the dest-state was kept..
-              // caution: keep_this_state_data is indexed by *arc*
-              if (j == arc_idx012)  // this arc 'won' the data race..
-                keep_this_state_data[arc_idx012] = 1;
-            }
-          });
-    } else {
-      NVTX_RANGE("LambdaSetKeepB");
-      K2_EVAL(
-          c_, arc_info.NumElements(), lambda_set_keep,
-          (int32_t arc_idx012)->void {
-            int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]],
-                    dest_state = ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
-            int j = state_map_acc(fsa_id, dest_state);
-            if (j != -1) {  // the dest-state was kept..
-              // caution: keep_this_state_data is indexed by *arc*
-              if (j == arc_idx012)  // this arc 'won' the data race..
-                keep_this_state_data[arc_idx012] = 1;
-            }
-          });
-    }
 
     int32_t num_states = renumber_states.NumNewElems();
+    // state_reorder_data maps from (state_idx01 on next frame) to (the
+    // arc_idx012 on this frame which is the source arc which we arbitrarily
+    // choose as being "responsible" for the creation of that state).
     int32_t *state_reorder_data = renumber_states.Old2New().Data();
 
     // state_to_fsa_id maps from an index into the next frame's
@@ -724,7 +703,6 @@ class MultiGraphDenseIntersectPruned {
 
       K2_DCHECK(IsMonotonic(state_to_fsa_id));
     }
-    cur_frame->arcs = arc_info;
 
     std::unique_ptr<FrameInfo> ans = std::make_unique<FrameInfo>();
     Array1<int32_t> states_row_splits1(c_, num_fsas + 1);
@@ -750,16 +728,22 @@ class MultiGraphDenseIntersectPruned {
           c_, arc_info.NumElements(), lambda_modify_state_map,
           (int32_t arc_idx012)->void {
             int32_t fsa_id = ai_row_ids1[ai_row_ids2[arc_idx012]];
-            int32_t dest_state_idx =
+            int32_t dest_state_idx01 =
                 ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
             int32_t this_j = state_reorder_data[arc_idx012],
                     next_j = state_reorder_data[arc_idx012 + 1];
             if (next_j > this_j) {
-              K2_CHECK_EQ(state_map_acc(fsa_id, dest_state_idx), arc_idx012);
-              // Note: this_j is an idx01 into ans->states.  previously
-              // state_map_data cotained an arc_idx012 (of the entering arc that
-              // won the race).
-              state_map_acc(fsa_id, dest_state_idx) = this_j;
+              int32_t state_map_idx = dest_state_idx01 +
+                                      fsa_id * state_map_fsa_stride;
+              int32_t value, *value_addr;
+              bool ans = state_map_acc.Find(state_map_idx,
+                                            &value, &value_addr);
+              K2_CHECK(ans);
+              K2_CHECK_EQ(value, arc_idx012);
+              // Note: this_j is an idx01 into ans->states.  previously it
+              // contained an arc_idx012 (of the entering arc that won the
+              // race).
+              *value_addr = this_j;
             }
           });
     }
@@ -768,7 +752,7 @@ class MultiGraphDenseIntersectPruned {
     StateInfo *kept_states_data = ans->states.values.Data();
 
     {
-      NVTX_RANGE("LambdaSetArcsAndStates");
+      NVTX_RANGE("LambdaSetStates");
       K2_EVAL(
           c_, arc_info.NumElements(), lambda_set_arcs_and_states,
           (int32_t arc_idx012)->void {
@@ -777,16 +761,21 @@ class MultiGraphDenseIntersectPruned {
             ArcInfo &info = ai_data[arc_idx012];
 
             int32_t dest_a_fsas_state_idx01 = info.u.dest_a_fsas_state_idx01;
+
+
+            int32_t state_map_idx = dest_a_fsas_state_idx01 +
+                                    fsa_id * state_map_fsa_stride;
+            int32_t state_idx01;
+            if (!state_map_acc.Find(state_map_idx, &state_idx01))
+              state_idx01 = -1;   // The destination state did not survive pruning.
+
             // state_idx01 is the index into ans->states, of the destination
             // state. Note: multiple arcs may enter this state, which is why we
             // had to set that in a separate kernel (lambda_modify_state_map).
-            int32_t state_idx01 =
-                state_map_acc(fsa_id, dest_a_fsas_state_idx01);
             info.u.dest_info_state_idx01 = state_idx01;
+            if (state_idx01 < 0)
+              return;
 
-            // state_idx01 will be -1 for states that were pruned out because
-            // they were outside the beam.
-            if (state_idx01 < 0) return;
             // multiple threads may write the same value to the address written
             // to in the next line.
             kept_states_data[state_idx01].a_fsas_state_idx01 =
@@ -808,13 +797,11 @@ class MultiGraphDenseIntersectPruned {
             int32_t a_fsas_state_idx01 =
                         kept_states_data[state_idx01].a_fsas_state_idx01,
                     fsa_idx0 = next_states_row_ids1[state_idx01];
-            K2_DCHECK_EQ(state_map_acc(fsa_idx0, a_fsas_state_idx01),
-                         state_idx01);
-            // We're resetting state_map to its original clean condition.
-            state_map_acc(fsa_idx0, a_fsas_state_idx01) = -1;
+            int32_t state_map_idx = a_fsas_state_idx01 +
+                                    fsa_idx0 * state_map_fsa_stride;
+            state_map_acc.Delete(state_map_idx);
           });
     }
-
     return ans;
   }
 
@@ -1006,9 +993,19 @@ class MultiGraphDenseIntersectPruned {
   Array1<float> dynamic_beams_;  // dynamic beams (initially just search_beam_
                                  // but change due to max_active/min_active
                                  // constraints).
-  Array2<int32_t> state_map_;    // state_map_ is of shape
-                                 // (n, a_fsas_.TotSize(1)) where n is
-  // 1 if a_fsas_.Dim0() > 1, else b_fsas_.Dim0().
+
+  int32_t state_map_fsa_stride_;  // state_map_fsa_stride_ is a_fsas_.TotSize(1) if
+                                  // a_fsas_.Dim0() == 1, else 0.
+
+  Hash32 state_map_;             // state_map_ maps from:
+                                 // key == (state_map_fsa_stride_ * n) + a_fsas_state_idx01,
+                                 //    where n is the fsa_idx, i.e. the index into b_fsas_
+                                 // to
+                                 //   value,  where at different stages of PropagateForward(),
+                                 // value is an arc_idx012 (into cur_frame->arcs), and
+                                 // then later a state_idx01 into the next frame's `state`
+                                 // member.
+
 
   // The 1st dim is needed because If all the
   // streams share the same FSA in a_fsas_, we need
