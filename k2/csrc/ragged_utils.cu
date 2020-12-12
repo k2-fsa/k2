@@ -28,12 +28,12 @@ void CheckLayerEqual(int32_t layer,
   if (num_srcs <= 1)
     return;
   K2_CHECK(layer >= 0 && layer + 1 < src[0]->NumAxes());
-  std::vector<int32_t*> row_splits_data_vec;
+  std::vector<const int32_t*> row_splits_data_vec;
   row_splits_data_vec.reserve(num_srcs);
   int32_t row_splits_dim, row_ids_dim;
   for (int32_t s = 0; s < num_srcs; s++) {
     // RowSplits(1) .. is the lowest numbered row-splits...
-    int32_t *data = src[s]->RowSplits(layer + 1).Data();
+    const int32_t *data = src[s]->RowSplits(layer + 1).Data();
     if (s == 0 || data != row_splits_data_vec[0])
       row_splits_data_vec.push_back(data);
     if (s == 0) {
@@ -48,12 +48,12 @@ void CheckLayerEqual(int32_t layer,
     // No point in checking because the row_splits all had the same address.
     return;
   }
-  ContextPtr c = src[0]->Context();
+  ContextPtr &c = src[0]->Context();
 #ifndef NDEBUG
   Array1<int32_t> is_bad(c, 1, 0);
-  Array1<int32_t*> row_splits_ptrs(c, row_splits_data_vec);
-  int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
-  int32_t *is_bad_data = is_bad.Data();
+  Array1<const int32_t*> row_splits_ptrs(c, row_splits_data_vec);
+  const int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
+  const int32_t *is_bad_data = is_bad.Data();
   K2_EVAL2(c, row_splits_ptrs.Dim() - 1,
            row_splits_dim, lambda_check_row_splits,
            (int32_t i, int32_t j) -> void {
@@ -181,12 +181,12 @@ RaggedShape MergeRaggedLayer(int32_t layer,
                              int32_t num_srcs,
                              RaggedShape **src,
                              const Array1<uint32_t> &merge_map,
-                             Array1<uint32_t> *merge_map_out) {
+                             Array1<uint32_t> *merge_map_out /*= nullptr*/) {
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK_GE(layer, 0);
   K2_CHECK_LT(layer + 1, src[0]->NumAxes());
 
-  ContextPtr c = src[0]->Context();
+  ContextPtr &c = src[0]->Context();
   std::vector<int32_t*> row_splits_ptrs_vec(num_srcs);
 
   int32_t tot_rows = 0, tot_elems = 0;
@@ -224,8 +224,8 @@ RaggedShape MergeRaggedLayer(int32_t layer,
 
     K2_EVAL(c, tot_elems, lambda_set_merge_map, (int32_t idx01) -> void {
         int32_t idx0 = row_ids_data[idx01],
-               idx1x = row_splits_data[idx0],
-                idx1 = idx01 - idx1x,
+               idx0x = row_splits_data[idx0],
+                idx1 = idx01 - idx0x,
                    m = merge_map_data[idx0],
                  src = m % num_srcs,
             src_idx0 = m / num_srcs,
@@ -243,11 +243,11 @@ RaggedShape MergeRaggedLayer(int32_t layer,
 
 RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
                                  int32_t subsample_factor) {
-  K2_CHECK_LT(static_cast<uint32_t>(layer),
-              static_cast<uint32_t>(src.NumAxes() - 1));
+  K2_CHECK_GE(layer, 0);
+  K2_CHECK_LT(layer, src.NumAxes() - 1);
   int32_t num_rows = src.TotSize(layer),
          num_elems = src.TotSize(layer + 1);
-  K2_CHECK(src.TotSize(layer) % subsample_factor == 0);
+  K2_CHECK_EQ(src.TotSize(layer) % subsample_factor, 0);
 
   ContextPtr &c = src.Context();
 
@@ -271,7 +271,7 @@ RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
       return block_size * ((n + block_size - 1) / block_size);
     };
     // this rounding is to avoid one warp having to do 2 jobs, which would slow
-    // down the code due to warp divergene.
+    // down the code due to warp divergence.
     int32_t num_elems_plus = lambda_round_up(num_elems);
 
 

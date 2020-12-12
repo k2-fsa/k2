@@ -597,7 +597,7 @@ TEST(RaggedShapeOpsTest, TestTranspose) {
         for (auto iter = transposed.Iterator(); !iter.Done(); iter.Next()) {
           std::vector<int32_t> index = iter.Value();
           int32_t i = transposed[index];  // Just make sure this doesn't crash,
-                                          // dont need the value.
+                                          // don't need the value.
           std::swap(index[0], index[1]);
           i = to_transpose[index];  // don't need the value, just need to make
                                     // sure it's an allowable index.
@@ -1907,7 +1907,7 @@ TEST(RaggedShapeOpsTest, TestMakeTransposable) {
         }
         if (num_axes > 2) {
           for (auto iter = shape.Iterator(); !iter.Done(); iter.Next()) {
-            std::vector<int32_t> index = iter.Value();
+            const std::vector<int32_t> &index = iter.Value();
             EXPECT_EQ(shape[index], result[index]);
           }
         }

@@ -21,7 +21,6 @@
 #endif
 
 #include <algorithm>
-#include <cassert>
 #include <random>
 #include <string>
 #include <type_traits>

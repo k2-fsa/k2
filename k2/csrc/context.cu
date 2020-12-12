@@ -26,7 +26,10 @@ void CudaStreamOverride::Pop(cudaStream_t stream) {
   K2_DCHECK(!stack_.empty());
   K2_DCHECK_EQ(stack_.back(), stream);
   stack_.pop_back();
-  if (stack_.empty()) stream_override_ = static_cast<cudaStream_t>(0x0);
+  if (stack_.empty())
+    stream_override_ = static_cast<cudaStream_t>(0x0);
+  else
+    stream_override_ = stack_.back();
 }
 
 RegionPtr NewRegion(ContextPtr context, std::size_t num_bytes) {

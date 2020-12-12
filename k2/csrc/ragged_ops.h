@@ -895,7 +895,7 @@ Ragged<T> Index(Ragged<T> &src, const Array1<int32_t> &indexes,
       @param [in] merge_map   Merge map (probably obtained from some previous
                            ragged operation) that dictates the order in which
                            to combine elements.  `merge_map.Dim()` must equal
-                           the sum of `src[i]->Dim0()` for all 0 <= i < num-srcs.
+                           the sum of `src[i]->Dim0()` for all 0 <= i < num_srcs.
                            If `merge_map[i] == m` then at position i on
                            axis 0 of the output we take element `m / num_srcs`
                            on axis 0 of the source numbered `m % num_srcs`.

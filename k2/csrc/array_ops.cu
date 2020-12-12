@@ -62,7 +62,7 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
   int32_t *data_offsets_data = data_offsets.Data();
 
   if (c->GetDeviceType() == kCpu) {
-    // a simple loop is faster, although the other branchs should still work on
+    // a simple loop is faster, although the other branches should still work on
     // CPU.
     for (int32_t i = 0; i < num_arrays; i++) {
       int32_t this_dim = src[i]->Dim();
@@ -430,7 +430,7 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes
     }
     return ans;
   }
-  K2_CHECK(c->GetDeviceType() == kCuda);
+  K2_CHECK_EQ(c->GetDeviceType(), kCuda);
   Array1<int32_t> row_splits = row_splits_cpu.To(c);
   int32_t *row_splits_data = row_splits.Data();
   uint32_t *merge_map_data = ans.Data();
