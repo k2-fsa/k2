@@ -121,7 +121,7 @@ def linkcode_resolve(domain, info):
     try:
         filename = '%s#L%d-L%d' % find_source()
     except Exception:
-        filename = info['module'].replace('.', '/') + '.py'
+        return None
     idx = filename.find('k2')
     filename = filename[idx:]
     return f'https://github.com/k2-fsa/k2/blob/master/k2/python/{filename}'
