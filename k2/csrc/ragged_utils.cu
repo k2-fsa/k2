@@ -121,15 +121,14 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
       }
     }
   } else {
-
     if (num_srcs <= 16) {
       // If num_srcs is not too large, we do an optimization.  Instead
-      // of computing the length of each row (as row_splits[i+1] - row_splits[i])
-      // and doing exclusive-sum to get the row_splits, we sum up
+      // of computing the length of each row (as row_splits[i+1] -
+      // row_splits[i]) and doing exclusive-sum to get the row_splits, we sum up
       //  `num_srcs` row_splits numbered `i, i+1, .. i+num_srcs-1.`
       // (These numberings map to source i % num_srcs at position i / num_srcs).
       // This gives us the same answer, with less latency.
-      auto lambda_get_row_splits = [=] __device__ (int32_t i) -> void {
+      auto lambda_get_row_splits = [=] __device__(int32_t i) -> void {
         int32_t sum = 0;
         for (int32_t j = i; j < i + num_srcs; j++) {
           int32_t src = j % num_srcs,
@@ -142,7 +141,7 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
       EvalDevice(c, new_num_rows + 1, lambda_get_row_splits);
     } else {
       // Set the row_splits initially to the sizes, then do exclusive-sum.
-      auto lambda_get_sizes = [=] __device__ (int32_t i) -> void {
+      auto lambda_get_sizes = [=] __device__(int32_t i) -> void {
         int32_t src = i % num_srcs, pos = i / num_srcs;
         int32_t this_size = row_splits_ptrs_data[src][pos + 1] -
              row_splits_ptrs_data[src][pos];
@@ -167,9 +166,10 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
             src_idx0 = idx0 / num_srcs,
            src_idx0x = row_splits_ptrs_data[src][src_idx0],
            src_idx01 = src_idx0x + idx1;
-        // We multiply the src_idx01 by num_srcs as a way of encoding it and the src
-        // into a single integer.
-        merge_map_data[idx01] = uint32_t(src) + ((uint32_t)num_srcs * uint32_t(src_idx01));
+        // We multiply the src_idx01 by num_srcs as a way of encoding it and the
+        // src into a single integer.
+        merge_map_data[idx01] =
+            uint32_t(src) + ((uint32_t)num_srcs * uint32_t(src_idx01));
       });
   }
 
@@ -231,8 +231,8 @@ RaggedShape MergeRaggedLayer(int32_t layer,
             src_idx0 = m / num_srcs,
            src_idx0x = row_splits_ptrs_data[src][src_idx0],
            src_idx01 = src_idx0x + idx1;
-        // We multiply the src_idx01 by num_srcs as a way of encoding it and the src
-        // into a single integer.
+        // We multiply the src_idx01 by num_srcs as a way of encoding it and the
+        // src into a single integer.
         merge_map_out_data[idx01] = uint32_t(src) +
                                     ((uint32_t)num_srcs * uint32_t(src_idx01));
       });
@@ -274,8 +274,7 @@ RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
     // down the code due to warp divergence.
     int32_t num_elems_plus = lambda_round_up(num_elems);
 
-
-    auto lambda_set_row_splits_and_ids = [=] __device__ (int32_t i) -> void {
+    auto lambda_set_row_splits_and_ids = [=] __device__(int32_t i) -> void {
       if (i >= num_elems_plus) {
         int32_t r = i - num_elems_plus;
         new_row_splits_data[r] = row_splits_data[r * subsample_factor];
@@ -283,7 +282,8 @@ RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
         new_row_ids_data[i] = row_ids_data[i] / subsample_factor;
       }
     };
-    EvalDevice(c, num_elems_plus + new_num_rows + 1, lambda_set_row_splits_and_ids);
+    EvalDevice(c, num_elems_plus + new_num_rows + 1,
+               lambda_set_row_splits_and_ids);
   }
   return RaggedShape2(&new_row_splits, &new_row_ids, num_elems);
 }
