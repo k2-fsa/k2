@@ -1,5 +1,5 @@
-k2.fsa
-------
+Fsa Class
+---------
 
 .. currentmodule:: k2
 

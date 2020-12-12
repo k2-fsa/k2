@@ -1,5 +1,5 @@
-k2.symbol_table
----------------
+Symbol Class
+------------
 
 .. currentmodule:: k2
 
@@ -7,4 +7,3 @@ k2.symbol_table
     :members:
     :special-members:
     :private-members:
-
