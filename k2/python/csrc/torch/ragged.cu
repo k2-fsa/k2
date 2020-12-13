@@ -122,11 +122,28 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         return std::make_pair(ans, value_indexes_tensor);
       },
       py::arg("src"), py::arg("indexes"), py::arg("need_value_indexes") = true);
+
+  m.def(
+      "index_ragged_with_ragged_int",
+      [](Ragged<T> &src, Ragged<int32_t> &indexes) -> Ragged<T> {
+        bool remove_axis = true;
+        return Index(src, indexes, remove_axis);
+      },
+      py::arg("src"), py::arg("indexes"));
 }
 
 static void PybindRaggedImpl(py::module &m) {
   PybindRaggedTpl<Arc>(m, "RaggedArc");
   PybindRaggedTpl<int32_t>(m, "RaggedInt");
+
+  m.def(
+      "index_tensor_with_ragged_int",
+      [](torch::Tensor src, Ragged<int32_t> &indexes) -> Ragged<int32_t> {
+        K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
+        Array1<int32_t> src_array = FromTensor<int32_t>(src);
+        return Index(src_array, indexes);
+      },
+      py::arg("src"), py::arg("indexes"));
 }
 
 static void PybindRaggedShape(py::module &m) {

@@ -9,11 +9,40 @@ from typing import Optional
 import torch
 
 from .fsa import Fsa
+from .ragged import index as ragged_index
+from .ops import index_select
 from _k2 import _create_fsa_vec
 from _k2 import _fsa_to_str
 from _k2 import _fsa_to_tensor
 from _k2 import _is_rand_equivalent
 from graphviz import Digraph
+
+
+def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
+    '''Select a list of FSAs from `src`.
+
+    Args:
+      src:
+        An FsaVec.
+      indexes:
+        A 1-D torch.Tensor of dtype `torch.int32` containing
+        the ids of FSAs to select.
+
+    Returns:
+      Return an FsaVec containing only those FSAs specified by `indexes`.
+    '''
+    ragged_arc, value_indexes = ragged_index(src.arcs,
+                                             indexes=indexes,
+                                             need_value_indexes=True)
+    out_fsa = Fsa(ragged_arc)
+
+    for name, value in src.named_tensor_attr():
+        setattr(out_fsa, name, index_select(value, value_indexes))
+
+    for name, value in src.named_non_tensor_attr():
+        setattr(out_fsa, name, value)
+
+    return out_fsa
 
 
 def to_str(fsa: Fsa, openfst: bool = False) -> str:
