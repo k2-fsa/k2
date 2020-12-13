@@ -12,9 +12,8 @@ from typing import Tuple
 from typing import Union
 from . import fsa_properties
 from .autograd_utils import phantom_set_scores_to
+from .utils import to_dot
 
-
-import k2.utils
 import os
 import shutil
 import torch
@@ -249,7 +248,7 @@ class Fsa(object):
            title:
               Title to be displayed in image, e.g. 'A simple FSA example'
         '''
-        digraph = k2.utils.to_dot(self, title=title)
+        digraph = to_dot(self, title=title)
 
         _, extension = os.path.splitext(filename)
         if extension == '' or extension[0] != '.':
