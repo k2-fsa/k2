@@ -1,10 +1,9 @@
-k2.symbol_table
----------------
+Symbol Class
+------------
 
 .. currentmodule:: k2
 
 .. autoclass:: SymbolTable
-    :members:
-    :special-members:
-    :private-members:
-
+   :members:
+   :special-members:
+   :private-members:

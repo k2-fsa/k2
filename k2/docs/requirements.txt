@@ -1,7 +1,7 @@
+recommonmark
 graphviz
 dataclasses
 sphinx_rtd_theme
-sphinx==3.1.2
-sphinx-autodoc-typehints==1.11.0
+sphinx
+sphinx-autodoc-typehints
 torch
-k2-fsa==0.0.5
