@@ -14,35 +14,49 @@
 namespace k2 {
 
 template <typename T>
-static BenchmarkRun BenchmarkExclusiveSum(int32_t dim) {
+static BenchmarkStat BenchmarkExclusiveSum(int32_t dim) {
   ContextPtr context = GetCudaContext();
   int32_t num_iter = std::min(500, 1000000 / dim);
   Array1<T> src = RandUniformArray1<T>(context, dim, -1000, 1000);
 
-  BenchmarkRun run;
-  run.name = std::string("ExclusiveSum_") + std::to_string(dim);
-  run.num_iter = num_iter;
+  BenchmarkStat stat;
+  stat.num_iter = num_iter;
 
   // there are overloads of ExclusiveSum, so we use an explicit conversion here.
-  run.eplased_per_iter =
+  stat.eplased_per_iter =
       BenchmarkOp(num_iter, context,
                   (Array1<T>(*)(const Array1<T> &))(&ExclusiveSum<T>), src);
-  return run;
+  return stat;
 }
 
-static void RunBenchmarks() {
-  std::vector<int32_t> problems_sizes = {100, 500, 1000, 2000, 5000, 10000};
-  std::vector<BenchmarkRun> results;
+static void RegisterBenchmarkExclusiveSum() {
+  std::vector<int32_t> problems_sizes = {100,  500,   1000,  2000,
+                                         5000, 10000, 100000};
   for (auto s : problems_sizes) {
-    auto r = BenchmarkExclusiveSum<int32_t>(s);
-    results.push_back(r);
+    std::string name = std::string("ExclusiveSum_") + std::to_string(s);
+    RegisterBenchmark(name, [s]() -> BenchmarkStat {
+      return BenchmarkExclusiveSum<int32_t>(s);
+    });
   }
+}
+
+static void RunBechmarks() {
+  auto &registered_benchmarks = *GetRegisteredBenchmarks();
+  std::vector<BenchmarkRun> results;
+  for (const auto &b : registered_benchmarks) {
+    BenchmarkRun run;
+    run.name = b->name;
+    run.stat = b->func();
+    results.push_back(run);
+  }
+
   for (const auto &r : results) std::cout << r.ToString() << "\n";
 }
 
 }  // namespace k2
 
 int main() {
-  k2::RunBenchmarks();
+  k2::RegisterBenchmarkExclusiveSum();
+  k2::RunBechmarks();
   return 0;
 }

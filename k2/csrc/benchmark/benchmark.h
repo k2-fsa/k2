@@ -11,9 +11,12 @@
 #ifndef K2_CSRC_BENCHMARK_BENCHMARK_H_
 #define K2_CSRC_BENCHMARK_BENCHMARK_H_
 
+#include <functional>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "k2/csrc/log.h"
 #include "k2/csrc/timer.h"
@@ -81,15 +84,44 @@ BenchmarkOp(int32_t num_iter, ContextPtr context, Op &&op, Args &&... args) {
   return timer.Elapsed() / num_iter;
 }
 
-// TODO(fangjun): Implement a reporter for formatted printing.
-struct BenchmarkRun {
-  std::string name;        // name of this run
+struct BenchmarkStat {
   int32_t num_iter;        // number of iterations of this run
   float eplased_per_iter;  // number of seconds per iteration on average
+};
 
+// TODO(fangjun): Implement a reporter for formatted printing.
+struct BenchmarkRun {
+  std::string name;  // name of this run
+  BenchmarkStat stat;
   // Return a string representation of this object
   std::string ToString() const;
 };
+
+using BenchmarkFunc = std::function<struct BenchmarkStat()>;
+
+struct BenchmarkInstance {
+  std::string name;
+  BenchmarkFunc func;
+
+  BenchmarkInstance(const std::string &name, BenchmarkFunc func)
+      : name(name), func(func) {}
+};
+
+/* Register a benchmark.
+
+   @param [in] name  The name of the benchmark.
+   @param [in] func  The function to be run for the benchmark.
+ */
+void RegisterBenchmark(const std::string &name, BenchmarkFunc func);
+
+/* Get a list of registered benchmarks.
+ */
+std::vector<std::unique_ptr<BenchmarkInstance>> *GetRegisteredBenchmarks();
+
+/* Filter registered benchmarks whose name does not match
+   the given regular expression.
+ */
+void FilterRegisteredBenchmarks(const std::string &regex);
 
 }  // namespace k2
 
