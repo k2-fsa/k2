@@ -8,15 +8,14 @@ from typing import Optional
 
 import torch
 
-from .fsa import Fsa
 from _k2 import _create_fsa_vec
 from _k2 import _fsa_to_str
 from _k2 import _fsa_to_tensor
 from _k2 import _is_rand_equivalent
-from graphviz import Digraph
 
 
-def to_str(fsa: Fsa, openfst: bool = False) -> str:
+
+def to_str(fsa: 'Fsa', openfst: bool = False) -> str:
     '''Convert an Fsa to a string.
 
     Note:
@@ -36,7 +35,7 @@ def to_str(fsa: Fsa, openfst: bool = False) -> str:
     return _fsa_to_str(fsa.arcs, openfst, aux_labels)
 
 
-def to_tensor(fsa: Fsa) -> torch.Tensor:
+def to_tensor(fsa: 'Fsa') -> torch.Tensor:
     '''Convert an Fsa to a Tensor.
 
     You can save the tensor to disk and read it later
@@ -57,7 +56,7 @@ def to_tensor(fsa: Fsa) -> torch.Tensor:
     return _fsa_to_tensor(fsa.arcs)
 
 
-def to_dot(fsa: Fsa, title: Optional[str] = None) -> Digraph:
+def to_dot(fsa: 'Fsa', title: Optional[str] = None) -> 'Digraph':
     '''Visualize an Fsa via graphviz.
 
     Note:
@@ -73,6 +72,13 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> Digraph:
     Returns:
       a Diagraph from grahpviz.
     '''
+
+    try:
+        import graphviz
+    except:
+        print("You cannot use `to_dot` unless the graphviz package is installed.")
+        raise
+
     assert len(fsa.shape) == 2, 'FsaVec is not supported'
     if hasattr(fsa, 'aux_labels'):
         aux_labels = fsa.aux_labels
@@ -105,7 +111,7 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> Digraph:
     }
 
     final_state = -1
-    dot = Digraph(name=name, graph_attr=graph_attr)
+    dot = graphviz.Digraph(name=name, graph_attr=graph_attr)
 
     seen = set()
     i = -1
@@ -148,7 +154,8 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> Digraph:
     return dot
 
 
-def create_fsa_vec(fsas: List[Fsa]) -> Fsa:
+
+def create_fsa_vec(fsas):
     '''Create an FsaVec from a list of FSAs
 
     We use the following rules to set the attributes of the output FsaVec:
@@ -201,8 +208,8 @@ def create_fsa_vec(fsas: List[Fsa]) -> Fsa:
     return fsa_vec
 
 
-def is_rand_equivalent(a: Fsa,
-                       b: Fsa,
+def is_rand_equivalent(a: 'Fsa',
+                       b: 'Fsa',
                        log_semiring: bool,
                        beam: float = float('inf'),
                        treat_epsilons_specially: bool = True,

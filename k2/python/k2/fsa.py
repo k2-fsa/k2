@@ -13,6 +13,10 @@ from typing import Union
 from . import fsa_properties
 from .autograd_utils import phantom_set_scores_to
 
+
+import k2.utils
+import os
+import shutil
 import torch
 import _k2
 
@@ -231,6 +235,35 @@ class Fsa(object):
             ans += f'{sep}{name}: {value}'
 
         return ans
+
+
+    def save_image(self, filename: str, title: Optional[str] = None):
+        '''
+        Render FSA as an image via graphviz, and save to file `filename`.
+        `filename` must have a suffix that graphviz understands, such as
+        'pdf', 'svg' or 'png'.
+
+        Args:
+           filename:
+              Filename to save to, e.g. 'foo.png'
+           title:
+              Title to be displayed in image, e.g. 'A simple FSA example'
+        '''
+        digraph = k2.utils.to_dot(self, title=title)
+
+        _, extension = os.path.splitext(filename)
+        if extension == '' or extension[0] != '.':
+            raise ValueError("Filename needs to have a suffix like .png, .pdf, .svg: {}".format(
+                filename))
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            temp_fn = digraph.render(filename='temp',
+                                     directory=tmp_dir,
+                                     format=extension[1:],
+                                     cleanup=True)
+
+            shutil.move(temp_fn, filename)
 
     def __setattr__(self, name: str, value: Any) -> None:
         '''
