@@ -4,4 +4,4 @@ dataclasses
 sphinx_rtd_theme
 sphinx
 sphinx-autodoc-typehints
-torch
+torch>=1.6.0

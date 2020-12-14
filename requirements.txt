@@ -1,4 +1,2 @@
-clang-format==9.0.0
-flake8==3.8.3
-graphviz==0.14.1
-yapf==0.27.0
+graphviz
+torch>=1.6.0

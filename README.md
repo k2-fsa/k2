@@ -1,5 +1,5 @@
 <div align="center">
-<img src="./k2/docs/source/logo.png" width=376>
+<img src="./docs/source/logo.png" width=376>
 
 [![Documentation Status](https://readthedocs.org/projects/k2/badge/?version=latest)](https://k2.readthedocs.io/en/latest/?badge=latest)
 

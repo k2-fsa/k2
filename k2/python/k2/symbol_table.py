@@ -100,7 +100,7 @@ class SymbolTable(object):
             corresponding to the symbol.
 
         Returns:
-          An id or a symbol depending on the given ``k``.
+          An id or a symbol depending on the given `k`.
         '''
         if isinstance(k, int):
             return self._id2sym[k]

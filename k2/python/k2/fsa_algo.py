@@ -98,7 +98,7 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     for name, a_value in a_fsa.named_tensor_attr():
         if hasattr(b_fsa, name):
             # Both a_fsa and b_fsa have this attribute.
-            # We only support attributes with dtype ``torch.float32``.
+            # We only support attributes with dtype `torch.float32`.
             # Other kinds of attributes are discarded.
             if a_value.dtype != torch.float32:
                 continue
@@ -173,16 +173,16 @@ def arc_sort(fsa: Fsa) -> Fsa:
       Arcs are sorted by labels first, and then by dest states.
 
     Caution:
-      If the input ``fsa`` is already arc sorted, we return it directly.
+      If the input `fsa` is already arc sorted, we return it directly.
       Otherwise, a new sorted fsa is returned.
 
     Args:
       fsa:
         The input FSA.
     Returns:
-      The sorted FSA. It is the same as the input ``fsa`` if the input
-      ``fsa`` is arc sorted. Otherwise, a new sorted fsa is returned
-      and the input ``fsa`` is NOT modified.
+      The sorted FSA. It is the same as the input `fsa` if the input
+      `fsa` is arc sorted. Otherwise, a new sorted fsa is returned
+      and the input `fsa` is NOT modified.
     '''
     properties = getattr(fsa, 'properties', None)
     if properties is not None and properties & fsa_properties.ARC_SORTED != 0:
@@ -271,11 +271,11 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
         Must be top-sorted.
     Returns:
-        The result Fsa, it's equivalent to the input ``fsa`` under
+        The result Fsa, it's equivalent to the input `fsa` under
         tropical semiring but will be epsilon-free.
-        It will be the same as the input ``fsa`` if the input
-        ``fsa`` is epsilon-free. Otherwise, a new epsilon-free fsa
-        is returned and the input ``fsa`` is NOT modified.
+        It will be the same as the input `fsa` if the input
+        `fsa` is epsilon-free. Otherwise, a new epsilon-free fsa
+        is returned and the input `fsa` is NOT modified.
     '''
     properties = getattr(fsa, 'properties', None)
     if properties is not None and properties & fsa_properties.EPSILON_FREE != 0:
@@ -307,12 +307,12 @@ def determinize(fsa: Fsa) -> Fsa:
         but this is not checked; in any case,
         epsilon will be treated as a normal symbol.
     Returns:
-        The result Fsa, it's equivalent to the input ``fsa`` under
+        The result Fsa, it's equivalent to the input `fsa` under
         tropical semiring but will be deterministic.
-        It will be the same as the input ``fsa`` if the input
-        ``fsa`` has property kFsaPropertiesArcSortedAndDeterministic.
+        It will be the same as the input `fsa` if the input
+        `fsa` has property kFsaPropertiesArcSortedAndDeterministic.
         Otherwise, a new deterministic fsa is returned and the
-        input ``fsa`` is NOT modified.
+        input `fsa` is NOT modified.
     '''
     properties = getattr(fsa, 'properties', None)
     if properties is not None \
