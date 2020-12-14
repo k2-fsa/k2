@@ -8,7 +8,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 #include <ctime>
-#include <regex>
+#include <regex>  // NOLINT
 #include <sstream>
 #include <string>
 
