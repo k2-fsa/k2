@@ -151,15 +151,18 @@ class MultiGraphDenseIntersectPruned {
     if (num_buckets < 128)
       num_buckets = 128;
     state_map_ = Hash32(c_, num_buckets);
+    int32_t num_a_copies;
     if (a_fsas.shape.Dim0() == 1) {
       a_fsas_stride_ = 0;
       state_map_fsa_stride_ = a_fsas.TotSize(1);
+      num_a_copies = b_fsas.shape.Dim0();
     } else {
       K2_CHECK_EQ(a_fsas.shape.Dim0(), b_fsas.shape.Dim0());
       a_fsas_stride_ = 1;
       state_map_fsa_stride_ = 0;
+      num_a_copies = 1;
     }
-    int64_t num_keys = state_map_fsa_stride_ * (int64_t)a_fsas.TotSize(1);
+    int64_t num_keys = num_a_copies * (int64_t)a_fsas.TotSize(1);
     K2_CHECK(num_keys == (uint32_t)num_keys);
   }
 
