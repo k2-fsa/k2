@@ -161,7 +161,7 @@ class MultiGraphDenseIntersectPruned {
       state_map_fsa_stride_ = 0;
     }
     int64_t num_keys = state_map_fsa_stride_ * (int64_t)a_fsas.TotSize(1);
-    K2_CHECK(num_keys == (int32_t)num_keys);
+    K2_CHECK(num_keys == (uint32_t)num_keys);
   }
 
   // The information we have for each frame of the pruned-intersection (really:
