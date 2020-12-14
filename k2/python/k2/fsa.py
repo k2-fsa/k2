@@ -251,8 +251,8 @@ class Fsa(object):
 
         return ans
 
-
-    def draw(self, filename: Optional[str], title: Optional[str] = None) -> 'Digraph':
+    def draw(self, filename: Optional[str],
+             title: Optional[str] = None) -> 'Digraph':  # noqa
         '''
         Render FSA as an image via graphviz, and return the Digraph object;
         and optionally save to file `filename`.
@@ -272,8 +272,9 @@ class Fsa(object):
 
         _, extension = os.path.splitext(filename)
         if extension == '' or extension[0] != '.':
-            raise ValueError("Filename needs to have a suffix like .png, .pdf, .svg: {}".format(
-                filename))
+            raise ValueError(
+                "Filename needs to have a suffix like .png, .pdf, .svg: {}".
+                format(filename))
 
         if filename:
             import tempfile
@@ -680,9 +681,8 @@ class Fsa(object):
             raise RuntimeError(
                 'invert_ cannot be called on acceptors (no aux_labels)')
         if not isinstance(self.aux_labels, torch.Tensor):
-            raise RuntimeError(
-                'current invert_ method only supports case where aux_labels is a tensor'
-            )
+            raise RuntimeError('current invert_ method only supports case '
+                               'where aux_labels is a tensor')
 
         aux_labels = self.aux_labels
         self.aux_labels = self.labels.clone()

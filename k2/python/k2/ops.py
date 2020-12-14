@@ -3,7 +3,7 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from typing import List, Tuple
+from typing import Tuple
 from typing import Union
 import torch
 import _k2
@@ -126,7 +126,7 @@ def index_add(index: torch.Tensor, value: torch.Tensor,
 
 def index_ragged_int(src: _k2.RaggedInt,
                      indexes: Union[torch.Tensor, _k2.RaggedInt]
-                    ) -> _k2.RaggedInt:
+                    ) -> _k2.RaggedInt:  # noqa
     '''Indexing ragged tensor with a 1-D tensor or a ragged tensor.
 
     Args:
@@ -134,12 +134,13 @@ def index_ragged_int(src: _k2.RaggedInt,
         Source ragged tensor to index; must have num_axes() == 2.
       indexes:
         It can be a tensor or a ragged tensor.
-        If it's a tensor, it must be a 1-D tensor and `indexes.dtype == torch.int32`.
-        Values in it will be interpreted as indexes into axis 0 of `src`, 
+        If it's a tensor, it must be a 1-D tensor and
+        `indexes.dtype == torch.int32`.
+        Values in it will be interpreted as indexes into axis 0 of `src`,
         i.e. 0 <= indexes[i] < src.dim0().
-        If it's a ragged tensor, `indexes.values` will be interpreted as indexes into 
-        axis 0 of `src`, i.e. 0 <= indexes.values[i] < src.dim0(); Must have 
-        num_axes() == 2.
+        If it's a ragged tensor, `indexes.values` will be interpreted as
+        indexes into axis 0 of `src`, i.e. 0 <= indexes.values[i] < src.dim0();
+        Must have num_axes() == 2.
 
     Returns:
       Return the indexed ragged tensor with ans.num_axes() == 2
@@ -161,25 +162,28 @@ def index_tensor_with_ragged_int(src: torch.Tensor,
       src:
         Source 1-D tensor to index, must have `src.dtype == torch.int32`
       indexes:
-        A ragged tensor, `indexes.values` will be interpreted as indexes into `src`.
+        A ragged tensor, `indexes.values` will be interpreted as indexes
+        into `src`.
         i.e. 0 <= indexes.values[i] < src.numel();
 
     Returns:
-      Returns ragged tensor with shape `indexes.shape` and values `src[indexes.values]`.
+      Returns ragged tensor with shape `indexes.shape` and
+      values `src[indexes.values]`.
     '''
     return _k2.index_tensor_with_ragged_int(src, indexes)
 
 
 def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
-                ) -> Union[torch.Tensor, _k2.RaggedInt]:
+                ) -> Union[torch.Tensor, _k2.RaggedInt]:  # noqa
     '''It's a wrapper of index_tensor and index_ragged_int above
 
     Args:
       src:
         Source 1-D tensor to index, must have `src.dtype == torch.int32`
       indexes:
-        If it's a ragged tensor, `indexes.values` will be interpreted as indexes into `src`.
-        i.e. 0 <= indexes.values[i] < src.numel(); 
+        If it's a ragged tensor, `indexes.values` will be interpreted as
+        indexes into `src`.
+        i.e. 0 <= indexes.values[i] < src.numel();
         If it's a tensor, its values will be interpreted as indexes into `src`.
 
     Returns:
@@ -194,7 +198,7 @@ def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
 
 def index_attr(src: Union[torch.Tensor, _k2.RaggedInt],
                indexes: Union[torch.Tensor, _k2.RaggedInt]
-              ) -> Union[torch.Tensor, _k2.RaggedInt]:
+              ) -> Union[torch.Tensor, _k2.RaggedInt]:  # noqa
     '''Indexing a 1-D tensor with a tensor a ragged tensor, it's a wrapper
     of index_tensor_with_ragged_int and index_select.
     '''

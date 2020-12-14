@@ -369,7 +369,6 @@ class TestFsa(unittest.TestCase):
         fsa.draw(filename='foo.png')
         os.remove('foo.png')
 
-
     def test_to(self):
         s = '''
             0 1 -1 1
