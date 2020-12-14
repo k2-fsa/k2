@@ -14,6 +14,7 @@ import unittest
 import torch
 import _k2  # for test only, users should not import it.
 import k2
+import os
 
 
 def _remove_leading_spaces(s: str) -> str:
@@ -364,17 +365,10 @@ class TestFsa(unittest.TestCase):
         fsa = k2.Fsa.from_str(_remove_leading_spaces(rules))
         fsa.symbols = symbols
         fsa.aux_symbols = aux_symbols
-        dot = k2.to_dot(fsa)
 
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            dot.render(filename='fsa',
-                       directory=tmp_dir,
-                       format='pdf',
-                       cleanup=True)
-            # the fsa is saved to tmp_dir/fsa.pdf
-            import os
-            os.system('ls -l {}/fsa.pdf'.format(tmp_dir))
+        fsa.draw(filename='foo.png')
+        os.remove('foo.png')
+
 
     def test_to(self):
         s = '''

@@ -13,7 +13,8 @@ from typing import Union
 from . import fsa_properties
 from .autograd_utils import phantom_set_scores_to
 from .ops import index_ragged_int
-
+import os
+import shutil
 import torch
 import _k2
 
@@ -68,12 +69,10 @@ class Fsa(object):
       visualization only.
 
     aux_labels
-      A 1-D `torch.Tensor` of dtype `torch.int32` or a
-      ragged tensor with type `_k2.RaggedInt`. It contains
-      auxiliary labels per arc.  If it's a tensor,
-      `aux_labels.numel()` equals to the number of arcs.
-      if it's `_k2.RaggedInt`, then `aux_labels.dim0()`
-      equals to the number of arcs.
+     A 1-D `torch.Tensor` of dtype `torch.int32` or a ragged tensor with type
+     `_k2.RaggedInt`. It contains auxiliary labels per arc.  If it's a tensor,
+     `aux_labels.numel()` equals to the number of arcs.  if it's
+     `_k2.RaggedInt`, then `aux_labels.dim0()` equals to the number of arcs.
 
     aux_symbols
       An instance of `k2.SymbolTable`. It maps an entry in
@@ -251,6 +250,41 @@ class Fsa(object):
             ans += f'{sep}{name}: {value}'
 
         return ans
+
+
+    def draw(self, filename: Optional[str], title: Optional[str] = None) -> 'Digraph':
+        '''
+        Render FSA as an image via graphviz, and return the Digraph object;
+        and optionally save to file `filename`.
+        `filename` must have a suffix that graphviz understands, such as
+        'pdf', 'svg' or 'png'.
+
+        Args:
+           filename:
+              Filename to (optionally) save to, e.g. 'foo.png', 'foo.svg',
+              'foo.png'  (must have a suffix that graphviz understands).
+           title:
+              Title to be displayed in image, e.g. 'A simple FSA example'
+        '''
+        from .utils import to_dot
+
+        digraph = to_dot(self, title=title)
+
+        _, extension = os.path.splitext(filename)
+        if extension == '' or extension[0] != '.':
+            raise ValueError("Filename needs to have a suffix like .png, .pdf, .svg: {}".format(
+                filename))
+
+        if filename:
+            import tempfile
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                temp_fn = digraph.render(filename='temp',
+                                         directory=tmp_dir,
+                                         format=extension[1:],
+                                         cleanup=True)
+
+                shutil.move(temp_fn, filename)
+        return digraph
 
     def __setattr__(self, name: str, value: Any) -> None:
         '''
