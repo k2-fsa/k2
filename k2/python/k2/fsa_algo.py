@@ -80,8 +80,9 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
 
       - (2) For attributes where both sources (a_fsa and b_fsa) have that
         attribute: For floating point attributes: sum via arc_maps, or use zero
-        if arc_map has -1. For integer attributes, it's not supported for now (the
-        attributes will be discarded and will not be kept in the output FSA).
+        if arc_map has -1. For integer attributes, it's not supported for now
+        (the attributes will be discarded and will not be kept in the output
+        FSA).
 
     Returns:
       The result of intersecting a_fsa and b_fsa. len(out_fsa.shape) is 2

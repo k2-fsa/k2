@@ -160,6 +160,9 @@ std::string GenerateBenchmarkName(const std::string &base_name,
 // for debugging only
 void PrintRegisteredBenchmarks();
 
+// Return the seed that can be used for random generators.
+int32_t GetSeed();
+
 }  // namespace k2
 
 #endif  // K2_CSRC_BENCHMARK_BENCHMARK_H_

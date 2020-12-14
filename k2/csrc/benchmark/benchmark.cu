@@ -154,4 +154,11 @@ std::string GetCurrentDateTime() {
   return std::string(kPrefix) + std::ctime(&t);
 }
 
+int32_t GetSeed() {
+  static const char *seed = std::getenv("K2_SEED");
+  if (seed == nullptr) return 0;
+
+  return atoi(seed);  // 0 is returned if K2_SEED is not a numeric string.
+}
+
 }  // namespace k2

@@ -294,14 +294,17 @@ Array1<T> Times(Array1<T> &src1, Array1<T> &src2) {
     @param[in] c  Context for this array; note, this function will be slow
                   if this is not a CPU context
     @param [in] dim    Dimension, must be > 0
-    @param[in] min_value  Minimum value allowed in the array
-    @param[in] max_value  Maximum value allowed in the array;
+    @param [in] min_value  Minimum value allowed in the array
+    @param [in] max_value  Maximum value allowed in the array;
                            require max_value >= min_value.
+    @param [in] seed  The seed for the random generator. 0 to
+                      use the default seed. Set it to a non-zero
+                      value for reproducibility.
     @return    Returns the randomly generated array
  */
 template <typename T>
-Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
-                            T max_value);
+Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value, T max_value,
+                            int32_t seed = 0);
 
 /*
   Returns a random Array2, uniformly distributed betwen `min_value` and
@@ -333,10 +336,8 @@ Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
 template <typename T = int32_t>
 Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc = 1);
 
-
-template<typename T = int32_t>
+template <typename T = int32_t>
 Array1<T> Arange(ContextPtr c, T begin, T end, T inc = 1);
-
 
 /*
   This is a convenience wrapper for the function of the same name in utils.h.
@@ -359,7 +360,6 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
  */
 Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits);
 
-
 /*
   This is a convenience wrapper for the function of the same name in utils.h.
    @param [in] row_ids     Input row_ids vector, of dimension num_elems
@@ -371,7 +371,6 @@ Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits);
  */
 void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
                        Array1<int32_t> *row_splits);
-
 
 /*
   Creates a merge-map from a vector of sizes.  A merge-map is something we
@@ -399,7 +398,6 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
  */
 Array1<uint32_t> SizesToMergeMap(ContextPtr c,
                                  const std::vector<int32_t> &sizes);
-
 
 /*
   Returns a new Array1<T> whose elements are this array's elements plus t.
@@ -432,7 +430,6 @@ bool IsMonotonic(const Array1<T> &a);
 template <typename T>
 bool IsMonotonicDecreasing(const Array1<T> &a);
 
-
 /*
   Generalized function inverse for an array viewed as a function which is
   monotonically decreasing.
@@ -458,7 +455,6 @@ bool IsMonotonicDecreasing(const Array1<T> &a);
  */
 Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src);
 
-
 /*
   Assuming `src` is a permutation of Range(0, src.Dim()), returns the inverse of
   that permutation, such that ans[src[i]] = i.  It is an error, and may cause a
@@ -466,7 +462,6 @@ Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src);
   src.Dim()).
  */
 Array1<int32_t> InvertPermutation(const Array1<int32_t> &src);
-
 
 /*
    Validate a row_ids vector; this just makes sure its elements are nonnegative
@@ -614,7 +609,6 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
 template <typename T, typename Compare = LessThan<T>>
 void Sort(Array1<T> *array, Array1<int32_t> *index_map = nullptr);
 
-
 /*
   Assign elements from `src` to `dest`; they must have the same shape.  For now
   this only supports cross-device copy if the data is contiguous.
@@ -622,27 +616,26 @@ void Sort(Array1<T> *array, Array1<int32_t> *index_map = nullptr);
 template <typename T>
 void Assign(Array2<T> &src, Array2<T> *dest);
 
-
 /*
   Merge an array of Array1<T> with a `merge_map` which indicates which items
   to get from which positions (doesn't do any checking of the merge_map values!)
 
-    @param [in] merge_map   Array which is required to have the same dimension as
-                        the sum of src[i]->Dim().  If merge_map[i] == m, it indicates
-                        that the i'th position in the answer should come from element
-                        `m / num_srcs` within `*src[m % num_srcs]`.
-    @param [in] num_srcs   Number of Array1's in the source array
-    @param [in] src       Array of sources; total Dim() must equal merge_map.Dim()
-    @return               Returns array with elements combined from those in `src`.
+    @param [in] merge_map   Array which is required to have the same dimension
+                            as the sum of src[i]->Dim().
+                            If merge_map[i] == m, it indicates that the i'th
+                            position in the answer should come from
+                            element `m / num_srcs` within `*src[m % num_srcs]`.
+    @param [in] num_srcs  Number of Array1's in the source array
+    @param [in] src       Array of sources; total Dim() must equal
+                          merge_map.Dim()
+    @return               Returns array with elements combined from those in
+                          `src`.
 
    CAUTION: may segfault if merge_map contains invalid values.
  */
 template <typename T>
-Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map,
-                       int32_t num_srcs, const Array1<T> **src);
-
-
-
+Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
+                       const Array1<T> **src);
 
 }  // namespace k2
 

@@ -25,6 +25,10 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   using PyClass = Ragged<T>;
   py::class_<PyClass> pyclass(m, name);
 
+  pyclass.def(py::init([](const std::string &s) -> std::unique_ptr<PyClass> {
+    return std::make_unique<PyClass>(s);
+  }));
+
   pyclass.def(py::init([](const RaggedShape &shape,
                           torch::Tensor values) -> std::unique_ptr<PyClass> {
                 K2_CHECK_EQ(shape.NumElements(), values.sizes()[0]);
