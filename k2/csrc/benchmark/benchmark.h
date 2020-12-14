@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "k2/csrc/dtype.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/timer.h"
 
@@ -130,6 +131,15 @@ std::vector<BenchmarkRun> RunBechmarks();
 /* Return current date time as a string
  */
 std::string GetCurrentDateTime();
+
+template <typename T>
+std::string GenerateBenchmarkName(const std::string &base_name,
+                                  DeviceType device_type) {
+  std::ostringstream os;
+  os << base_name << '_' << TraitsOf(DtypeOf<T>::dtype).Name() << '_'
+     << device_type;
+  return os.str();
+}
 
 }  // namespace k2
 

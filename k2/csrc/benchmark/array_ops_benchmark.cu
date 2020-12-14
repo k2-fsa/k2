@@ -16,8 +16,16 @@
 namespace k2 {
 
 template <typename T>
-static BenchmarkStat BenchmarkExclusiveSum(int32_t dim) {
-  ContextPtr context = GetCudaContext();
+static BenchmarkStat BenchmarkExclusiveSum(int32_t dim,
+                                           DeviceType device_type) {
+  ContextPtr context;
+  if (device_type == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(device_type, kCuda);
+    context = GetCudaContext();
+  }
+
   int32_t num_iter = std::min(500, 1000000 / dim);
   Array1<T> src = RandUniformArray1<T>(context, dim, -1000, 1000);
 
@@ -31,34 +39,41 @@ static BenchmarkStat BenchmarkExclusiveSum(int32_t dim) {
   return stat;
 }
 
-static void RegisterBenchmarkExclusiveSum() {
+template <typename T>
+static void RegisterBenchmarkExclusiveSum(DeviceType device_type) {
   std::vector<int32_t> problems_sizes = {100,  500,   1000,  2000,
                                          5000, 10000, 100000};
   for (auto s : problems_sizes) {
-    std::string name = std::string("ExclusiveSum_") + std::to_string(s);
-    RegisterBenchmark(name, [s]() -> BenchmarkStat {
-      return BenchmarkExclusiveSum<int32_t>(s);
+    std::string name = GenerateBenchmarkName<T>("ExclusiveSum", device_type) +
+                       "_" + std::to_string(s);
+    RegisterBenchmark(name, [s, device_type]() -> BenchmarkStat {
+      return BenchmarkExclusiveSum<T>(s, device_type);
     });
+  }
+}
+
+static void RunArrayOpsBenchmark() {
+  std::cout << GetCurrentDateTime() << "\n";
+  std::cout << GetDeviceInfo() << "\n";
+
+  RegisterBenchmarkExclusiveSum<int32_t>(kCpu);
+  RegisterBenchmarkExclusiveSum<int32_t>(kCuda);
+
+  // Users can set a regular expression via environment
+  // variable `K2_BENCHMARK_FILTER` such that only benchmarks
+  // with name matching the pattern are candidates to run.
+  const char *filter = std::getenv("K2_BENCHMARK_FILTER");
+  if (filter != nullptr) FilterRegisteredBenchmarks(filter);
+
+  std::vector<BenchmarkRun> results = RunBechmarks();
+  for (const auto &r : results) {
+    std::cout << r << "\n";
   }
 }
 
 }  // namespace k2
 
 int main() {
-  std::cout << k2::GetCurrentDateTime() << "\n";
-  std::cout << k2::GetDeviceInfo() << "\n";
-
-  k2::RegisterBenchmarkExclusiveSum();
-
-  // Users can set a regular expression via environment
-  // variable `K2_BENCHMARK_FILTER` such that only benchmarks
-  // with name matching the pattern are candidates to run.
-  const char *filter = std::getenv("K2_BENCHMARK_FILTER");
-  if (filter != nullptr) k2::FilterRegisteredBenchmarks(filter);
-
-  std::vector<k2::BenchmarkRun> results = k2::RunBechmarks();
-  for (const auto &r : results) {
-    std::cout << r << "\n";
-  }
+  k2::RunArrayOpsBenchmark();
   return 0;
 }
