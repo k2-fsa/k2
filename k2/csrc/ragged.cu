@@ -180,7 +180,7 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
   int32_t idx_begin = (i != 0 ? src_axes[0].row_splits[i] : 0),
           idx_end = src_axes[0].row_splits[i + 1];
   std::vector<RaggedShapeLayer> axes(src_axes.size() - 1);
-  ContextPtr c = Context();
+  ContextPtr &c = Context();
   for (int32_t i = 2; i < num_axes; ++i) {
     const Array1<int32_t> &src_row_splits = RowSplits(i),
                           &src_row_ids = RowIds(i);

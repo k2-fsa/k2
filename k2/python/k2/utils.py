@@ -8,7 +8,9 @@ from typing import Optional
 
 import torch
 
-import k2.fsa
+from .fsa import FSA
+from .ragged import index as ragged_index
+from .ops import index_select
 
 from _k2 import _create_fsa_vec
 from _k2 import _fsa_to_str
@@ -16,8 +18,34 @@ from _k2 import _fsa_to_tensor
 from _k2 import _is_rand_equivalent
 
 
+def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
+    '''Select a list of FSAs from `src`.
 
-def to_str(fsa: 'Fsa', openfst: bool = False) -> str:
+    Args:
+      src:
+        An FsaVec.
+      indexes:
+        A 1-D torch.Tensor of dtype `torch.int32` containing
+        the ids of FSAs to select.
+
+    Returns:
+      Return an FsaVec containing only those FSAs specified by `indexes`.
+    '''
+    ragged_arc, value_indexes = ragged_index(src.arcs,
+                                             indexes=indexes,
+                                             need_value_indexes=True)
+    out_fsa = Fsa(ragged_arc)
+
+    for name, value in src.named_tensor_attr():
+        setattr(out_fsa, name, index_select(value, value_indexes))
+
+    for name, value in src.named_non_tensor_attr():
+        setattr(out_fsa, name, value)
+
+    return out_fsa
+
+
+def to_str(fsa: Fsa, openfst: bool = False) -> str:
     '''Convert an Fsa to a string.
 
     Note:
@@ -37,7 +65,7 @@ def to_str(fsa: 'Fsa', openfst: bool = False) -> str:
     return _fsa_to_str(fsa.arcs, openfst, aux_labels)
 
 
-def to_tensor(fsa: 'Fsa') -> torch.Tensor:
+def to_tensor(fsa: Fsa) -> torch.Tensor:
     '''Convert an Fsa to a Tensor.
 
     You can save the tensor to disk and read it later
@@ -58,7 +86,7 @@ def to_tensor(fsa: 'Fsa') -> torch.Tensor:
     return _fsa_to_tensor(fsa.arcs)
 
 
-def to_dot(fsa: 'Fsa', title: Optional[str] = None) -> 'Digraph':
+def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':
     '''Visualize an Fsa via graphviz.
 
     Note:
@@ -182,7 +210,7 @@ def create_fsa_vec(fsas):
         ragged_arc_list.append(fsa.arcs)
 
     ragged_arcs = _create_fsa_vec(ragged_arc_list)
-    fsa_vec = k2.fsa.Fsa(ragged_arcs)
+    fsa_vec = Fsa(ragged_arcs)
 
     tensor_attr_names = set(
         name for name, _ in fsa.named_tensor_attr() for fsa in fsas)
@@ -210,8 +238,8 @@ def create_fsa_vec(fsas):
     return fsa_vec
 
 
-def is_rand_equivalent(a: 'Fsa',
-                       b: 'Fsa',
+def is_rand_equivalent(a: Fsa,
+                       b: Fsa,
                        log_semiring: bool,
                        beam: float = float('inf'),
                        treat_epsilons_specially: bool = True,

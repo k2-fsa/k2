@@ -153,12 +153,14 @@ class MultiGraphDenseIntersectPruned {
     state_map_ = Hash32(c_, num_buckets);
     if (a_fsas.shape.Dim0() == 1) {
       a_fsas_stride_ = 0;
-      state_map_fsa_stride_ = a_fsas.NumElements();
+      state_map_fsa_stride_ = a_fsas.TotSize(1);
     } else {
       K2_CHECK_EQ(a_fsas.shape.Dim0(), b_fsas.shape.Dim0());
       a_fsas_stride_ = 1;
       state_map_fsa_stride_ = 0;
     }
+    int64_t num_keys = state_map_fsa_stride_ * (int64_t)a_fsas.TotSize(1);
+    K2_CHECK(num_keys == (uint32_t)num_keys);
   }
 
   // The information we have for each frame of the pruned-intersection (really:
@@ -663,8 +665,9 @@ class MultiGraphDenseIntersectPruned {
                 ai_data[arc_idx012].u.dest_a_fsas_state_idx01;
             float end_loglike = ai_data[arc_idx012].end_loglike,
                   cutoff = cutoffs_data[fsa_id];
-            char keep_this_state = 0;  // only one arc entering any state will have
-                                       // its 'keep_this_state_data' entry set to 1.
+            char keep_this_state = 0;  // only one arc entering any state will
+                                       // have its 'keep_this_state_data' entry
+                                       // set to 1.
             if (end_loglike > cutoff) {
               int32_t state_map_idx = dest_state_idx01 +
                                       fsa_id * state_map_fsa_stride;
@@ -766,7 +769,8 @@ class MultiGraphDenseIntersectPruned {
                                     fsa_id * state_map_fsa_stride;
             int32_t state_idx01;
             if (!state_map_acc.Find(state_map_idx, &state_idx01))
-              state_idx01 = -1;   // The destination state did not survive pruning.
+              state_idx01 = -1;   // The destination state did not survive
+                                  // pruning.
 
             // state_idx01 is the index into ans->states, of the destination
             // state. Note: multiple arcs may enter this state, which is why we
@@ -993,18 +997,17 @@ class MultiGraphDenseIntersectPruned {
                                  // but change due to max_active/min_active
                                  // constraints).
 
-  int32_t state_map_fsa_stride_;  // state_map_fsa_stride_ is a_fsas_.TotSize(1) if
-                                  // a_fsas_.Dim0() == 1, else 0.
+  int32_t state_map_fsa_stride_;  // state_map_fsa_stride_ is a_fsas_.TotSize(1)
+                                  // if a_fsas_.Dim0() == 1, else 0.
 
-  Hash32 state_map_;             // state_map_ maps from:
-                                 // key == (state_map_fsa_stride_ * n) + a_fsas_state_idx01,
-                                 //    where n is the fsa_idx, i.e. the index into b_fsas_
-                                 // to
-                                 //   value,  where at different stages of PropagateForward(),
-                                 // value is an arc_idx012 (into cur_frame->arcs), and
-                                 // then later a state_idx01 into the next frame's `state`
-                                 // member.
-
+  Hash32 state_map_;  // state_map_ maps from:
+                      // key == (state_map_fsa_stride_*n) + a_fsas_state_idx01,
+                      //    where n is the fsa_idx, i.e. the index into b_fsas_
+                      // to
+                      // value, where at different stages of PropagateForward(),
+                      // value is an arc_idx012 (into cur_frame->arcs), and
+                      // then later a state_idx01 into the next frame's `state`
+                      // member.
 
   // The 1st dim is needed because If all the
   // streams share the same FSA in a_fsas_, we need
