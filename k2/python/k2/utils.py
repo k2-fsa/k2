@@ -8,6 +8,8 @@ from typing import Optional
 
 import torch
 
+import k2.fsa
+
 from _k2 import _create_fsa_vec
 from _k2 import _fsa_to_str
 from _k2 import _fsa_to_tensor
@@ -180,7 +182,7 @@ def create_fsa_vec(fsas):
         ragged_arc_list.append(fsa.arcs)
 
     ragged_arcs = _create_fsa_vec(ragged_arc_list)
-    fsa_vec = Fsa(ragged_arcs)
+    fsa_vec = k2.fsa.Fsa(ragged_arcs)
 
     tensor_attr_names = set(
         name for name, _ in fsa.named_tensor_attr() for fsa in fsas)
