@@ -154,12 +154,14 @@ class MultiGraphDenseIntersectPruned {
     state_map_ = Hash32(c_, num_buckets);
     if (a_fsas.shape.Dim0() == 1) {
       a_fsas_stride_ = 0;
-      state_map_fsa_stride_ = a_fsas.NumElements();
+      state_map_fsa_stride_ = a_fsas.TotSize(1);
     } else {
       K2_CHECK_EQ(a_fsas.shape.Dim0(), b_fsas.shape.Dim0());
       a_fsas_stride_ = 1;
       state_map_fsa_stride_ = 0;
     }
+    int64_t num_keys = state_map_fsa_stride_ * (int64_t)a_fsas.TotSize(1);
+    K2_CHECK(num_keys == (int32_t)num_keys);
   }
 
   // The information we have for each frame of the pruned-intersection (really:
