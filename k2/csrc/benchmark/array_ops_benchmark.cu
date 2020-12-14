@@ -8,6 +8,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <cstdlib>
+
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/benchmark/benchmark.h"
 
@@ -43,11 +45,20 @@ static void RegisterBenchmarkExclusiveSum() {
 }  // namespace k2
 
 int main() {
+  std::cout << k2::GetCurrentDateTime() << "\n";
+  std::cout << k2::GetDeviceInfo() << "\n";
+
   k2::RegisterBenchmarkExclusiveSum();
-  k2::FilterRegisteredBenchmarks("1000");
+
+  // Users can set a regular expression via environment
+  // variable `K2_BENCHMARK_FILTER` such that only benchmarks
+  // with name matching the pattern are candidates to run.
+  const char *filter = std::getenv("K2_BENCHMARK_FILTER");
+  if (filter != nullptr) k2::FilterRegisteredBenchmarks(filter);
+
   std::vector<k2::BenchmarkRun> results = k2::RunBechmarks();
   for (const auto &r : results) {
-    std::cout << r.ToString() << "\n";
+    std::cout << r << "\n";
   }
   return 0;
 }

@@ -23,41 +23,7 @@
 
 namespace k2 {
 
-// ------- from google/benchmark  ---- begin ----
-#if defined(__GNUC__)
-#define K2_ALWAYS_INLINE __attribute__((always_inline))
-#else
-#define K2_ALWAYS_INLINE
-#endif
-
-// The DoNotOptimize(...) function can be used to prevent a value or
-// expression from being optimized away by the compiler. This function is
-// intended to add little to no overhead.
-// See: https://youtu.be/nXaxk27zwlk?t=2441
-template <class Tp>
-inline K2_ALWAYS_INLINE void DoNotOptimize(Tp const &value) {
-  asm volatile("" : : "r,m"(value) : "memory");
-}
-
-template <class Tp>
-inline K2_ALWAYS_INLINE void DoNotOptimize(Tp &value) {
-#if defined(__clang__)
-  asm volatile("" : "+r,m"(value) : : "memory");
-#else
-  asm volatile("" : "+m,r"(value) : : "memory");
-#endif
-}
-// ------- from google/benchmark  ---- end ----
-
-// If `Op(Args...)` returns void, then
-// `ReturnVoid<Op, Args...>::value` is true.
-// Otherwise it is false.
-template <typename Op, typename... Args>
-struct ReturnVoid
-    : public std::is_same<void, typename std::result_of<Op(Args...)>::type> {};
-
-/*
-  For `Op(Args...)` that returns non-void.
+/* Run an op for a given number of iterations.
 
   @param [in]  num_iter   Number iterations to run.
   @param [in]  context    The context for creating timer.
@@ -67,22 +33,48 @@ struct ReturnVoid
   @return Number of elapsed seconds per iteration on average.
  */
 template <typename Op, typename... Args>
-typename std::enable_if<!ReturnVoid<Op, Args...>::value, float>::type
-BenchmarkOp(int32_t num_iter, ContextPtr context, Op &&op, Args &&... args) {
+float BenchmarkOp(int32_t num_iter, ContextPtr context, Op &&op,
+                  Args &&... args) {
   K2_CHECK_GT(num_iter, 0);
 
   for (int32_t i = 0; i != 30; ++i) {
     // warm up
-    DoNotOptimize(std::forward<Op>(op)(std::forward<Args>(args)...));
+    std::forward<Op>(op)(std::forward<Args>(args)...);
   }
 
   Timer timer(context);
   for (int32_t i = 0; i != num_iter; ++i) {
-    DoNotOptimize(std::forward<Op>(op)(std::forward<Args>(args)...));
+    std::forward<Op>(op)(std::forward<Args>(args)...);
   }
 
   return timer.Elapsed() / num_iter;
 }
+
+struct DeviceInfo {
+  std::string device_name;
+  int32_t compute_capability_major;
+  int32_t compute_capability_minor;
+  float gpu_clock_freq;  // in GHz
+  int32_t driver_version_major;
+  int32_t driver_version_minor;
+  int32_t runtime_version_major;
+  int32_t runtime_version_minor;
+  int32_t warp_size;
+  float l2_cache_size;               // in MB
+  float total_global_mem;            // in GB
+  float total_const_mem;             // in KB
+  float total_shared_mem_per_block;  // in KB
+  float total_shared_mem_per_mp;     // in KB
+  int32_t ecc_enabled;
+  int32_t num_multiprocessors;
+  int32_t num_cuda_cores;
+
+  std::string ToString() const;
+};
+
+std::ostream &operator<<(std::ostream &os, const DeviceInfo &info);
+
+DeviceInfo GetDeviceInfo();
 
 struct BenchmarkStat {
   int32_t num_iter;        // number of iterations of this run
@@ -97,7 +89,9 @@ struct BenchmarkRun {
   std::string ToString() const;
 };
 
-using BenchmarkFunc = std::function<struct BenchmarkStat()>;
+std::ostream &operator<<(std::ostream &os, const BenchmarkRun &run);
+
+using BenchmarkFunc = std::function<BenchmarkStat()>;
 
 struct BenchmarkInstance {
   std::string name;
@@ -123,7 +117,7 @@ std::vector<std::unique_ptr<BenchmarkInstance>> *GetRegisteredBenchmarks();
 
    @param [in] pattern The regular expression. Benchmark names that
                        does not match the pattern will be excluded
-                       and will not be run while invoking `RunBechmarks()`.
+                       and will not be run while invoking `RunBenchmarks()`.
  */
 void FilterRegisteredBenchmarks(const std::string &pattern);
 
@@ -132,6 +126,10 @@ void FilterRegisteredBenchmarks(const std::string &pattern);
    @return Return the benchmark results.
  */
 std::vector<BenchmarkRun> RunBechmarks();
+
+/* Return current date time as a string
+ */
+std::string GetCurrentDateTime();
 
 }  // namespace k2
 
