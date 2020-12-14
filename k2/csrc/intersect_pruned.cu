@@ -146,8 +146,7 @@ class MultiGraphDenseIntersectPruned {
     K2_CHECK_GE(b_fsas.shape.Dim0(), 1);
     int32_t num_seqs = b_fsas.shape.Dim0();
 
-
-    int32_t num_buckets = RoundUpToNearestPowerOfTwo(b_fsas.shape.Dim0() * 4 *
+    int32_t num_buckets = RoundUpToNearestPowerOfTwo(num_seqs * 4 *
                                                      max_active);
     if (num_buckets < 128)
       num_buckets = 128;
