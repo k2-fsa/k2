@@ -8,7 +8,7 @@ from typing import Optional
 
 import torch
 
-from .fsa import FSA
+from .fsa import Fsa
 from .ragged import index as ragged_index
 from .ops import index_select
 
