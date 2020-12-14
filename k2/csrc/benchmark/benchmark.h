@@ -24,6 +24,11 @@
 
 namespace k2 {
 
+// When helper information, e.g., date time
+// and device information, is printed,
+// each line is prepended with `kPrefix`
+constexpr const char *kPrefix = "# ";
+
 /* Run an op for a given number of iterations.
 
   @param [in]  num_iter   Number iterations to run.
@@ -78,16 +83,26 @@ std::ostream &operator<<(std::ostream &os, const DeviceInfo &info);
 DeviceInfo GetDeviceInfo();
 
 struct BenchmarkStat {
-  int32_t num_iter;        // number of iterations of this run
-  float eplased_per_iter;  // number of seconds per iteration on average
+  std::string op_name;  // operator name (i.e., function name) of the benchmark
+  int32_t num_iter;     // number of iterations of this run
+  float eplased_per_iter;  // number of microseconds per iteration on average
+  int32_t problem_size;
+  std::string dtype_name;  // e.g., int32_t, float
+  DeviceType device_type;  // e.g., kCpu, kCuda
 };
 
 // TODO(fangjun): Implement a reporter for formatted printing.
 struct BenchmarkRun {
-  std::string name;  // name of this run
+  std::string name;  // name of the benchmark
   BenchmarkStat stat;
-  // Return a string representation of this object
+
+  // Return a string representation in CSV of this object
   std::string ToString() const;
+
+  // Keep in sync with ToString()
+  //
+  // Return the field name of CSV format returned by `ToString()`
+  static std::string GetFieldsName();
 };
 
 std::ostream &operator<<(std::ostream &os, const BenchmarkRun &run);
@@ -140,6 +155,9 @@ std::string GenerateBenchmarkName(const std::string &base_name,
      << device_type;
   return os.str();
 }
+
+// for debugging only
+void PrintRegisteredBenchmarks();
 
 }  // namespace k2
 

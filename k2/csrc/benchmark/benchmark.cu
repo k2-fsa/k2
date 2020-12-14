@@ -8,6 +8,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 #include <ctime>
+#include <iostream>
 #include <regex>  // NOLINT
 #include <sstream>
 #include <string>
@@ -19,30 +20,32 @@ namespace k2 {
 
 std::string DeviceInfo::ToString() const {
   std::ostringstream os;
-  os << "CUDA device name: " << device_name << "\n";
-  os << "Compute capability: " << compute_capability_major << "."
+  os << kPrefix << "CUDA device name: " << device_name << "\n";
+  os << kPrefix << "Compute capability: " << compute_capability_major << "."
      << compute_capability_minor << "\n";
-  os << "GPU clock freq: " << gpu_clock_freq << " GHz"
+  os << kPrefix << "GPU clock freq: " << gpu_clock_freq << " GHz"
      << "\n";
-  os << "Driver version: " << driver_version_major << "."
+  os << kPrefix << "Driver version: " << driver_version_major << "."
      << driver_version_minor << "\n";
-  os << "Runtime version: " << runtime_version_major << "."
+  os << kPrefix << "Runtime version: " << runtime_version_major << "."
      << runtime_version_minor << "\n";
-  os << "Warp size: " << warp_size << "\n";
-  os << "L2 cache size: " << l2_cache_size << " MB"
+  os << kPrefix << "Warp size: " << warp_size << "\n";
+  os << kPrefix << "L2 cache size: " << l2_cache_size << " MB"
      << "\n";
-  os << "Total global memory: " << total_global_mem << " GB"
+  os << kPrefix << "Total global memory: " << total_global_mem << " GB"
      << "\n";
-  os << "Total const memory: " << total_const_mem << " KB"
+  os << kPrefix << "Total const memory: " << total_const_mem << " KB"
      << "\n";
-  os << "Total shared memory per block: " << total_shared_mem_per_block << " KB"
+  os << kPrefix
+     << "Total shared memory per block: " << total_shared_mem_per_block << " KB"
      << "\n";
-  os << "Total shared memory per multiprocessor: " << total_shared_mem_per_mp
+  os << kPrefix
+     << "Total shared memory per multiprocessor: " << total_shared_mem_per_mp
      << " KB"
      << "\n";
-  os << "ECC enabled: " << ecc_enabled << "\n";
-  os << "Number of multiprocessors: " << num_multiprocessors << "\n";
-  os << "Number of CUDA cores: " << num_cuda_cores << "\n";
+  os << kPrefix << "ECC enabled: " << ecc_enabled << "\n";
+  os << kPrefix << "Number of multiprocessors: " << num_multiprocessors << "\n";
+  os << kPrefix << "Number of CUDA cores: " << num_cuda_cores << "\n";
   return os.str();
 }
 
@@ -84,9 +87,17 @@ DeviceInfo GetDeviceInfo() {
   return info;
 }
 
+std::string BenchmarkRun::GetFieldsName() {
+  std::ostringstream os;
+  os << "op_name,dtype,device,problem_size,"
+        "number_of_iterations,elapsed_us_per_iteration";
+  return os.str();
+}
+
 std::string BenchmarkRun::ToString() const {
   std::ostringstream os;
-  os << name << "," << stat.num_iter << "," << std::fixed
+  os << stat.op_name << "," << stat.dtype_name << "," << stat.device_type << ","
+     << stat.problem_size << "," << stat.num_iter << "," << std::fixed
      << stat.eplased_per_iter;
   return os.str();
 }
@@ -131,9 +142,16 @@ void FilterRegisteredBenchmarks(const std::string &pattern) {
   std::swap(kept, benchmarks);
 }
 
+void PrintRegisteredBenchmarks() {
+  auto &benchmarks = *GetRegisteredBenchmarks();
+  for (const auto &b : benchmarks) {
+    std::cout << kPrefix << b->name << "\n";
+  }
+}
+
 std::string GetCurrentDateTime() {
   std::time_t t = std::time(nullptr);
-  return std::ctime(&t);
+  return std::string(kPrefix) + std::ctime(&t);
 }
 
 }  // namespace k2

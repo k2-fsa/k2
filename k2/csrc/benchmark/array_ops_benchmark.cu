@@ -30,12 +30,17 @@ static BenchmarkStat BenchmarkExclusiveSum(int32_t dim,
   Array1<T> src = RandUniformArray1<T>(context, dim, -1000, 1000);
 
   BenchmarkStat stat;
+  stat.op_name = "ExclusiveSum";
   stat.num_iter = num_iter;
+  stat.problem_size = dim;
+  stat.dtype_name = TraitsOf(DtypeOf<T>::dtype).Name();
+  stat.device_type = device_type;
 
   // there are overloads of ExclusiveSum, so we use an explicit conversion here.
   stat.eplased_per_iter =
       BenchmarkOp(num_iter, context,
                   (Array1<T>(*)(const Array1<T> &))(&ExclusiveSum<T>), src);
+  stat.eplased_per_iter *= 1e6;  // from seconds to microseconds
   return stat;
 }
 
@@ -66,6 +71,7 @@ static void RunArrayOpsBenchmark() {
   if (filter != nullptr) FilterRegisteredBenchmarks(filter);
 
   std::vector<BenchmarkRun> results = RunBechmarks();
+  std::cout << BenchmarkRun::GetFieldsName() << "\n";
   for (const auto &r : results) {
     std::cout << r << "\n";
   }
