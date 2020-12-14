@@ -61,7 +61,7 @@ mkdir -p $build_dir/.lib-bak
 cp -v $build_dir/lib/*.so $build_dir/.lib-bak
 
 for lib in $build_dir/lib/*.so; do
-  strip $lib
+  #strip $lib
   if command -v chrpath > /dev/null 2>&1; then
     # remove RPATH information
     chrpath -r '$ORIGIN' $lib
