@@ -100,6 +100,26 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
     os << self;
     return os.str();
   });
+  pyclass.def(py::pickle(
+      [](const PyClass &obj) {
+        Array1<int32_t> row_splits1 = obj.RowSplits(1);
+        Array1<int32_t> row_ids1 = obj.RowIds(1);
+        Array1<T> values = obj.values;
+        return py::make_tuple(ToTensor(row_splits1), ToTensor(row_ids1),
+                              ToTensor(values));
+      },
+      [](py::tuple t) {
+        if (t.size() != 3) throw std::runtime_error("Invalid state!");
+        torch::Tensor row_splits1_tensor = t[0].cast<torch::Tensor>();
+        Array1<int32_t> row_splits1 = FromTensor<int32_t>(row_splits1_tensor);
+        torch::Tensor row_ids1_tensor = t[1].cast<torch::Tensor>();
+        Array1<int32_t> row_ids1 = FromTensor<int32_t>(row_ids1_tensor);
+        torch::Tensor values_tensor = t[2].cast<torch::Tensor>();
+        Array1<T> values = FromTensor<T>(values_tensor);
+        RaggedShape shape = RaggedShape2(&row_splits1, &row_ids1, -1);
+        PyClass obj(shape, values);
+        return obj;
+      }));
 
   // Return a pair:
   // - Ragged<T>
@@ -122,11 +142,28 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         return std::make_pair(ans, value_indexes_tensor);
       },
       py::arg("src"), py::arg("indexes"), py::arg("need_value_indexes") = true);
+
+  m.def(
+      "index_ragged_with_ragged_int",
+      [](Ragged<T> &src, Ragged<int32_t> &indexes) -> Ragged<T> {
+        bool remove_axis = true;
+        return Index(src, indexes, remove_axis);
+      },
+      py::arg("src"), py::arg("indexes"));
 }
 
 static void PybindRaggedImpl(py::module &m) {
   PybindRaggedTpl<Arc>(m, "RaggedArc");
   PybindRaggedTpl<int32_t>(m, "RaggedInt");
+
+  m.def(
+      "index_tensor_with_ragged_int",
+      [](torch::Tensor src, Ragged<int32_t> &indexes) -> Ragged<int32_t> {
+        K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
+        Array1<int32_t> src_array = FromTensor<int32_t>(src);
+        return Index(src_array, indexes);
+      },
+      py::arg("src"), py::arg("indexes"));
 }
 
 static void PybindRaggedShape(py::module &m) {

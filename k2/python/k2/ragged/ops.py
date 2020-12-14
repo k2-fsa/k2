@@ -3,14 +3,16 @@
 # See ../../../../LICENSE for clarification regarding multiple authors
 
 from typing import Tuple, Optional
+from typing import Union
 import torch
 import _k2
 
 
-def index(src: _k2.RaggedArc,
+def index(src: Union[_k2.RaggedArc, _k2.RaggedInt],
           indexes: torch.Tensor,
           need_value_indexes: bool = True
-         ) -> Tuple[_k2.RaggedArc, Optional[torch.Tensor]]:  # noqa
+         ) -> Tuple[Union[_k2.RaggedArc, _k2.
+                          RaggedInt], Optional[torch.Tensor]]:  # noqa
     '''Indexing operation on ragged tensor, returns src[indexes], where
     the elements of `indexes` are interpreted as indexes into axis 0 of
     `src`.
@@ -31,7 +33,7 @@ def index(src: _k2.RaggedArc,
 
     Returns:
       Return a tuple containing:
-       - `ans` of type `_k2.RaggedArc`.
+       - `ans` of type `_k2.RaggedArc` or `_k2.RaggedInt` (same as the type of `src`).
        - None if `need_value_indexes` is False; a 1-D torch.tensor of
          dtype `torch.int32` containing the indexes into `src.values()` that
          `ans.values()` has.
