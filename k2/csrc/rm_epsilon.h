@@ -43,7 +43,7 @@ namespace k2 {
                        we would not keep the start state and final state of it
                        in the corresponding output Fsa dest[i], i.e. dest[i]
                        will be an empty Fsa.
-    @param [out]       Will be set to a new Array1 mapping from the
+    @param [out] state_map  Will be set to a new Array1 mapping from the
                        state_idx01's in `dest` to the corresponding
                        state_idx01's in `src`.
     @param [out] arc_map  Will be set to a new Array1, mapping from the
@@ -66,8 +66,8 @@ void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
                        we would not keep the start state and final state of it
                        in the corresponding output Fsa dest[i], i.e. dest[i]
                        will be an empty Fsa.
-     @param [out]      Will be set to the renumbering object from the old to new
-                       state indexes.
+     @param [out] state_map  Will be set to the renumbering object from the old
+                       to new state indexes.
     @param [out] arc_map  Will be set to a new Array1, mapping from the
                        arc_idx012's in `dest` to the corresponding arc_idx012's
                        in `src`.

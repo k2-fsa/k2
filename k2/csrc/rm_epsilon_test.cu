@@ -11,11 +11,13 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <limits>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/host_shim.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/rm_epsilon.h"
 #include "k2/csrc/test_utils.h"
@@ -316,6 +318,61 @@ TEST(RmEpsilon, ComputeEpsilonClosureSimple) {
     EXPECT_EQ(arc_map.Dim0(), 25);
   }
   // TODO(haowen): add random tests
+}
+
+TEST(RmEpsilon, RemoveEpsilonsIterativeTropicalSimple) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    std::string s1 = R"(0 1 1 1
+    1 2 0 1 
+    1 3 2 1 
+    2 3 3 1 
+    3 4 4 1 
+    3 5 5 1 
+    4 5 6 1 
+    4 6 7 1
+    5 6 0 1
+    5 7 -1 0
+    6 7 -1 0
+    7
+  )";
+    std::string s2 = R"(0 1 0 1
+    1 2 0 1 
+    2 3 0 1 
+    3 4 4 1 
+    3 5 -1 1 
+    4 5 -1 1
+    5
+  )";
+    Fsa fsa1 = FsaFromString(s1);
+    Fsa fsa2 = FsaFromString(s2);
+    Fsa *fsa_array[] = {&fsa1, &fsa2};
+    FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+    fsa_vec = fsa_vec.To(context);
+
+    FsaVec dest;
+    Ragged<int32_t> arc_map;
+    RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
+    EXPECT_EQ(dest.NumAxes(), 3);
+    EXPECT_EQ(arc_map.NumAxes(), 2);
+    K2_LOG(INFO) << dest;
+    K2_LOG(INFO) << arc_map;
+    Array1<int32_t> properties;
+    int32_t p;
+    GetFsaVecBasicProperties(dest, &properties, &p);
+    EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+    bool log_semiring = false;
+    float beam = std::numeric_limits<float>::infinity();
+    fsa_vec = fsa_vec.To(GetCpuContext());
+    dest = dest.To(GetCpuContext());
+    // as both fsa_vec and dest would be top-sorted, we can call
+    // IsRandEquivalent to check the result, but for now top-sorted Fsas, how
+    // can we check the result?
+    EXPECT_TRUE(
+        IsRandEquivalent(fsa_vec, dest, log_semiring, beam, true, 0.001));
+  }
+  // TODO(haowen): add simple tests that we combine with preceding or following
+  // arcs
+  // TODO(haowen): add random tests, including non-top-sorted version
 }
 
 }  // namespace k2
