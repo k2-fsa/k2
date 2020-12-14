@@ -27,7 +27,7 @@ static BenchmarkStat BenchmarkExclusiveSum(int32_t dim,
   }
 
   int32_t num_iter = std::min(500, 1000000 / dim);
-  Array1<T> src = RandUniformArray1<T>(context, dim, -1000, 1000);
+  Array1<T> src = RandUniformArray1<T>(context, dim, -1000, 1000, GetSeed());
 
   BenchmarkStat stat;
   stat.op_name = "ExclusiveSum";
@@ -55,7 +55,8 @@ static BenchmarkStat BenchmarkRowSplitsToRowIds(int32_t dim,
   }
 
   int32_t num_iter = std::min(500, 1000000 / dim);
-  Array1<int32_t> sizes = RandUniformArray1<int32_t>(context, dim, 0, 1000);
+  Array1<int32_t> sizes =
+      RandUniformArray1<int32_t>(context, dim, 0, 1000, GetSeed());
   Array1<int32_t> row_splits = ExclusiveSum(sizes);
   Array1<int32_t> row_ids(context, row_splits.Back());
 
