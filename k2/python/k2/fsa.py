@@ -31,56 +31,63 @@ class Fsa(object):
     '''This class represents a single fsa or a vector of fsas.
 
     When it denotes a single FSA, its attribute :attr:`shape` is a tuple
-    containing two elements ``(num_states, None)``; when it represents
+    containing two elements `(num_states, None)`; when it represents
     a vector of FSAs it is a tuple with three
-    elements ``(num_fsas, None, None)``.  (Caution: it's possible
-    for a vector of FSAs to have zero or one elements).
+    elements `(num_fsas, None, None)`.
+
+    CAUTION::
+      It's possible for a vector of FSAs to have zero or one elements.
 
     An instance of FSA has the following attributes:
 
-    - ``arcs``: You will NOT use it directly in Python. It is an instance
-                of ``_k2.RaggedArc`` with only one method ``values()`` which
-                returns a 2-D `torch.Tensor`` of dtype ``torch.int32`` with 4
-                columns. Its number of rows indicates the number of arcs in the
-                FSA. The first column represents the source states, second
-                column the destination states, third column the labels and the
-                fourth column is the score. Note that the score is actually
-                a float number but it is **reinterpreted** as an integer.
+    arcs
+      You will NOT use it directly in Python. It is an instance of
+      `_k2.RaggedArc` with only one method `values()` which
+      returns a 2-D `torch.Tensor` of dtype `torch.int32` with 4
+      columns. Its number of rows indicates the number of arcs in the
+      FSA. The first column represents the source states, second
+      column the destination states, third column the labels and the
+      fourth column is the score. Note that the score is actually
+      a float number but it is **reinterpreted** as an integer.
 
-    - ``scores``: A 1-D ``torch.Tensor`` of dtype ``torch.float32``. It has
-                  as many entries as the number of arcs representing the score
-                  of every arc.
+    scores
+      A 1-D `torch.Tensor` of dtype `torch.float32`. It has
+      as many entries as the number of arcs representing the score
+      of every arc.
 
-    - ``labels``: A 1-D ``torch.Tensor`` of dtype ``torch.int32``. It has as
-                  many entries as the number of arcs representing the label of
-                  every arc.
+    labels
+      1-D `torch.Tensor` of dtype `torch.int32`. It has as
+      many entries as the number of arcs representing the label of
+      every arc.
 
 
     It MAY have the following attributes:
 
-    - ``symbols``: An instance of ``k2.SymbolTable``. It maps an entry in
-                   ``labels`` to an integer and vice versa. It is used for
-                   visualization only.
+    symbols
+      An instance of `k2.SymbolTable`. It maps an entry in
+      `labels` to an integer and vice versa. It is used for
+      visualization only.
 
-    - ``aux_labels`: A 1-D ``torch.Tensor`` of dtype ``torch.int32`` or a
-                     ragged tensor with type ``_k2.RaggedInt``. It contains
-                     auxiliary labels per arc.  If it's a tensor,
-                     ``aux_labels.numel()`` equals to the number of arcs.
-                     if it's ``_k2.RaggedInt``, then ``aux_labels.dim0()``
-                     equals to the number of arcs.
+    aux_labels
+     A 1-D `torch.Tensor` of dtype `torch.int32` or a ragged tensor with type
+     `_k2.RaggedInt`. It contains auxiliary labels per arc.  If it's a tensor,
+     `aux_labels.numel()` equals to the number of arcs.  if it's
+     `_k2.RaggedInt`, then `aux_labels.dim0()` equals to the number of arcs.
 
-    - ``aux_symbols``: An instance of ``k2.SymbolTable. It maps an entry in
-                       ``aux_labels`` to an integer and vice versa.
+    aux_symbols
+      An instance of `k2.SymbolTable`. It maps an entry in
+      `aux_labels` to an integer and vice versa.
 
-    - ``properties``: An integer that encodes the properties of the FSA. It is
-                      accessed as fsa.properties (read-only!)
+    properties
+      An integer that encodes the properties of the FSA. It is
+      accessed as fsa.properties (read-only!)
 
     It MAY have other attributes that set by users.  Tensor attributes should
     have the same 1st dimension as the number of arcs in the FSA, Ragged
     attributes should have the same dim0 as the number of arcs in the FSA.
 
     CAUTION:
-      When an attribute is an instance of ``torch.Tensor``, its ``shape[0]``
+      When an attribute is an instance of `torch.Tensor`, its `shape[0]`
       has to be equal to the number arcs. Otherwise, an assertion error
       will be thrown.
       When an attribute is an instance of ``_k2.RaggedInt``, its ``dim0()``
@@ -88,9 +95,9 @@ class Fsa(object):
       will be thrown.
 
     NOTE:
-      ``symbols`` and ``aux_symbols`` are symbol tables, while ``labels``
-      is instances of ``torch.Tensor`` and ``aux_labels`` is instances of
-      ``torch.Tensor`` or ``_k2.RaggedInt``
+      `symbols` and `aux_symbols` are symbol tables, while `labels`
+      is instances of `torch.Tensor` and `aux_labels` is instances of
+      `torch.Tensor` or `_k2.RaggedInt`.
 
       Implementation note: most of this class's attributes are not
       real attributes in the object's dict; the real attributes are
@@ -123,13 +130,13 @@ class Fsa(object):
           aux_labels:
             Optional. If not None, it associates an aux_label with every arc,
             so it has as many rows as `tensor`. It is a 1-D tensor of dtype
-            `torch.int32` or _k2.RaggedInt whose `dim0()` equals to the
+            `torch.int32` or `_k2.RaggedInt` whose `dim0()` equals to the
             number of arcs.
 
           properties:
             Tensor properties if known (should only be provided by
             internal code, as they are not checked; intended for use
-            by Fsa.clone())
+            by `Fsa.clone()`)
 
         Returns:
           An instance of Fsa.
@@ -282,8 +289,14 @@ class Fsa(object):
     def __setattr__(self, name: str, value: Any) -> None:
         '''
         Caution:
-          We save a reference to ``value``. If you need to change ``value``
+          We save a reference to `value`. If you need to change `value`
           afterwards, please consider passing a copy of it.
+
+        Args:
+          name:
+            Name of the attribute.
+          value:
+            Value of the attribute.
         '''
 
         assert name not in ('_tensor_attr', '_non_tensor_attr', 'arcs',
@@ -308,6 +321,11 @@ class Fsa(object):
 
     @property
     def labels(self) -> torch.Tensor:
+        '''Return the labels.
+
+        Returns:
+          Return a 1-D `torch.Tensor` with dtype `torch.int32`.
+        '''
         try:
             return self.arcs.values()[:, 2]
         except Exception as e:
@@ -319,6 +337,12 @@ class Fsa(object):
 
     @labels.setter
     def labels(self, values) -> None:
+        '''Set labels.
+
+        Args:
+          values:
+            A 1-D `torch.tensor` with dtype `torch.int32`.
+        '''
         assert values.dtype == torch.int32
         self.arcs.values()[:, 2] = values
         # Invalidate the properties since we changed the labels.
@@ -439,12 +463,18 @@ class Fsa(object):
                 self.arcs, self.get_state_batches())
         return cache[name]
 
-    def get_forward_scores_tropical(self, use_float_scores) -> torch.Tensor:
+    def get_forward_scores_tropical(self,
+                                    use_float_scores: bool) -> torch.Tensor:
         '''Get (and compute if necessary) cached property
         self.forward_scores_tropical.
 
         For use by internal k2 code, used in getting best-path or (tropical)
-        total-scores.  These are raw forward-scores and not differentiable.'''
+        total-scores.  These are raw forward-scores and not differentiable.
+
+        Args:
+          use_float_scores:
+            True to use `float`. False to use `double`.
+        '''
         name = 'forward_scores_tropical' + ('float'
                                             if use_float_scores else 'double')
         cache = self._cache
@@ -462,12 +492,16 @@ class Fsa(object):
             cache['entering_arcs'] = entering_arcs
         return cache[name]
 
-    def get_forward_scores_log(self, use_float_scores) -> torch.Tensor:
+    def get_forward_scores_log(self, use_float_scores: bool) -> torch.Tensor:
         '''Get (and compute if necessary) cached property
         self.forward_scores_log.
 
         For use by internal k2 code, used in getting total-score for
-        log semiring
+        log semiring.
+
+        Args:
+          use_float_scores:
+            True to use `float`. False to use `double`.
         '''
         name = 'forward_scores_log' + ('float'
                                        if use_float_scores else 'double')
@@ -484,12 +518,18 @@ class Fsa(object):
                 log_semiring=True)
         return cache[name]
 
-    def get_tot_scores_tropical(self, use_float_scores) -> torch.Tensor:
+    def get_tot_scores_tropical(self, use_float_scores: bool) -> torch.Tensor:
         '''Compute total-scores in tropical semiring (one per FSA), which is the same
            as the best-path score.
-           CAUTION: these are just the raw total-scores and are
-           not differentiable.   Use k2.get_tot_scores(self) to
+
+           CAUTION
+             These are just the raw total-scores and are
+           not differentiable.   Use `k2.get_tot_scores(self)` to
            get differentiable total-scores.
+
+        Args:
+          use_float_scores:
+            True to use `float`. False to use `double`.
         '''
         name = 'tot_scores_tropical_' + ('float'
                                          if use_float_scores else 'double')
@@ -504,12 +544,16 @@ class Fsa(object):
             cache[name] = func(self.arcs, forward_scores_tropical)
         return cache[name]
 
-    def get_tot_scores_log(self, use_float_scores) -> torch.Tensor:
+    def get_tot_scores_log(self, use_float_scores: bool) -> torch.Tensor:
         '''Compute total-scores in log semiring (one per FSA).
            as the best-path score.
            CAUTION: these are just the raw total-scores and are not
            differentiable.  Use k2.get_tot_scores(self) to get differentiable
            total-scores.
+
+        Args:
+          use_float_scores:
+            True to use `float`. False to use `double`.
         '''
         name = 'tot_scores_log_' + ('float' if use_float_scores else 'double')
         cache = self._cache
@@ -522,9 +566,14 @@ class Fsa(object):
             cache[name] = func(self.arcs, forward_scores_log)
         return cache[name]
 
-    def get_backward_scores_tropical(self, use_float_scores) -> torch.Tensor:
+    def get_backward_scores_tropical(self,
+                                     use_float_scores: bool) -> torch.Tensor:
         '''Compute backward-scores in tropical semiring, i.e. best-path-to-end
            costs.  For internal k2 use.  Not differentiable.
+
+        Args:
+          use_float_scores:
+            True to use `float`. False to use `double`.
         '''
         name = 'backward_scores_tropical_' + ('float' if use_float_scores else
                                               'double')
@@ -548,9 +597,13 @@ class Fsa(object):
             cache[name] = backward_scores_tropical
         return cache[name]
 
-    def get_backward_scores_log(self, use_float_scores) -> torch.Tensor:
+    def get_backward_scores_log(self, use_float_scores: bool) -> torch.Tensor:
         '''Compute backward-scores in tropical semiring, i.e. total-score-to-end.
            for each state.  For internal k2 use.  Not differentiable.
+
+        Args:
+          use_float_scores:
+            True to use `float`. False to use `double`.
         '''
         name = 'backward_scores_log_' + ('float'
                                          if use_float_scores else 'double')
@@ -571,9 +624,13 @@ class Fsa(object):
                                log_semiring=True)
         return cache[name]
 
-    def get_entering_arcs(self, use_float_scores) -> torch.Tensor:
+    def get_entering_arcs(self, use_float_scores: bool) -> torch.Tensor:
         '''Compute, for each state, the index of the best arc entering it.
            For internal k2 use.
+
+        Args:
+          use_float_scores:
+            True to use `float`. False to use `double`.
         '''
         name, cache = 'entering_arcs', self._cache
         if name not in cache:
@@ -605,19 +662,19 @@ class Fsa(object):
         return self
 
     def invert_(self) -> 'Fsa':
-        '''Swap the ``labels`` and ``aux_labels``.
+        '''Swap the `labels` and `aux_labels`.
 
-        If there are symbol tables associated with ``labels`` and
-        ``aux_labels``, they are also swapped.
+        If there are symbol tables associated with `labels` and
+        `aux_labels`, they are also swapped.
 
-        It is an error if the FSA contains no ``aux_labels``.
+        It is an error if the FSA contains no `aux_labels`.
 
         CAUTION:
           The function name ends with an underscore which means this
           is an **in-place** operation.
 
         Returns:
-          Return ``self``.
+          Return `self`.
         '''
         if not hasattr(self, 'aux_labels'):
             raise RuntimeError(
@@ -864,8 +921,8 @@ class Fsa(object):
     def shape(self) -> Tuple[int, ...]:
         '''
         Returns:
-          ``(num_states, None)`` if this is an Fsa;
-          ``(num_fsas, None, None)`` if this is an FsaVec.
+          `(num_states, None)` if this is an Fsa;
+          `(num_fsas, None, None)` if this is an FsaVec.
         '''
         if self.arcs.num_axes() == 2:
             return (self.arcs.dim0(), None)

@@ -11,8 +11,9 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+import re
 import sys
-sys.path.insert(0, os.path.abspath('../../python'))
+sys.path.insert(0, os.path.abspath('../../k2/python'))
 sys.path.insert(0, os.path.abspath('.'))
 
 import sphinx_rtd_theme
@@ -23,9 +24,19 @@ project = 'k2'
 copyright = '2020, k2 development team'
 author = 'k2 development team'
 
+
+def get_version():
+    cmake_file = '../../CMakeLists.txt'
+    with open(cmake_file) as f:
+        content = f.read()
+
+    version = re.search(r'set\(K2_VERSION (.*)\)', content).group(1)
+    return version.strip('"')
+
+
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
-version = '0.0.1'
+version = get_version()
+release = version
 
 # -- General configuration ---------------------------------------------------
 
@@ -119,9 +130,10 @@ def linkcode_resolve(domain, info):
     if domain != 'py' or not info['module']:
         return None
     try:
-        filename = '%s#L%d-L%d' % find_source()
+        filename = '{}#L{}-L{}'.format(*find_source())
     except Exception:
         return None
-    idx = filename.find('k2')
+
+    idx = filename.rfind('k2')
     filename = filename[idx:]
     return f'https://github.com/k2-fsa/k2/blob/master/k2/python/{filename}'
