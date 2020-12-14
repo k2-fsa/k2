@@ -132,7 +132,7 @@ std::vector<std::unique_ptr<BenchmarkInstance>> *GetRegisteredBenchmarks();
    the given regular expression.
 
    @param [in] pattern The regular expression. Benchmark names that
-                       does not match the pattern will be excluded
+                       do not match the pattern will be excluded
                        and will not be run while invoking `RunBenchmarks()`.
  */
 void FilterRegisteredBenchmarks(const std::string &pattern);
@@ -143,7 +143,8 @@ void FilterRegisteredBenchmarks(const std::string &pattern);
  */
 std::vector<BenchmarkRun> RunBechmarks();
 
-/* Return current date time as a string
+/* Return current date time as a string.
+   E.g., Mon Dec 14 14:08:33 2020
  */
 std::string GetCurrentDateTime();
 
