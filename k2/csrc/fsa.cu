@@ -55,6 +55,11 @@ std::string FsaPropertiesAsString(int32_t properties) {
 void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
                               int32_t *tot_properties_out) {
   NVTX_RANGE(K2_FUNC);
+
+  Array1<int32_t> properties_out_temp;
+  if (!properties_out)
+    properties_out = &properties_out_temp;
+
   if (fsa_vec.NumAxes() != 3) {
     K2_LOG(FATAL) << "Input has wrong num-axes " << fsa_vec.NumAxes()
                   << " vs. 3.";
@@ -209,7 +214,8 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 
     And(properties_per_fsa, static_cast<int32_t>(kFsaAllProperties),
         &properties_total);
-    *tot_properties_out = properties_total[0];
+    if (tot_properties_out)
+      *tot_properties_out = properties_total[0];
     *properties_out = properties_per_fsa;
   }
 }

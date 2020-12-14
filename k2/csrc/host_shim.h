@@ -346,11 +346,9 @@ bool IsRandEquivalentUnweighted(FsaOrVec &a, FsaOrVec &b,
   sequence is the same in both FSAs.
 
   @param [in]  a          One of the FSAs to be checked the equivalence.
-                          Must be top-sorted and on CPU.
-                          It could be a single Fsa or an FsaVec.
-  @param [in]  b          The other FSA to be checked the equivalence.
-                          Must be top-sorted and on CPU.
-                          There must be b.NumAxes() == a.NumAxes()
+                          May be a single Fsa or an FsaVec.
+  @param [in]  b          The other FSA to check the equivalence.
+                          Must satisfy b.NumAxes() == a.NumAxes().
   @param [in]  log_semiring The semiring to be used for all weight measurements;
                           if false then we use 'max' on alternative paths; if
                           true we use 'log-add'.
@@ -379,18 +377,22 @@ bool IsRandEquivalentUnweighted(FsaOrVec &a, FsaOrVec &b,
                           paths are equivalent.
   @param [in]  npath      The number of paths will be generated to check the
                           equivalence of `a` and `b`
+
+  @return   If a.NumAxes() == b.NumAxes() returns true if the two FSAs are
+           equivalent (or at least our random test did not prove them to be
+           inequivalent).
  */
-bool IsRandEquivalent(Fsa &a, Fsa &b, bool log_semiring,
+bool IsRandEquivalent(FsaOrVec &a, FsaOrVec &b, bool log_semiring,
                       float beam = k2host::kFloatInfinity,
                       bool treat_epsilons_specially = true, float delta = 1e-6,
                       std::size_t npath = 100);
 
 /*
-  Wrap forward and backward scores computation in `host/weights.h` (noted
-  `score` is called `weight` there), they are generally for test purpose for now
-  and work only for CPU. Users usually would not call these functions. Instead,
-  Call `GetForwadScores` or `GetBackwardScores` in fsa_utils.h if you want to
-  get FsaVec's forward or backward scores in production code.
+  Wrap forward and backward scores computation in `host/weights.h` these are
+  generally for test purpose for now and work only for CPU. Users usually would
+  not call these functions. Instead, Call `GetForwadScores` or
+  `GetBackwardScores` in fsa_utils.h if you want to get FsaVec's forward or
+  backward scores in production code.
 */
 
 /*

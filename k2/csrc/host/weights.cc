@@ -204,4 +204,75 @@ void WfsaWithFbWeights::ComputeBackardWeights() {
   }
 }
 
+
+struct ShortestDistanceInfo {
+  int32_t best_path_length;
+  bool in_queue;
+  double score;
+  ShortestDistanceInfo():
+      best_path_length(-1),
+      score(-std::numeric_limits<double>::infinity()),
+      in_queue(false) { }
+  ShortestDistanceInfo(const ShortestDistanceInfo &other) = default;
+  ShortestDistanceInfo &operator=(const ShortestDistanceInfo &other) = default;
+};
+
+double ShortestDistanceMaxGeneric(Fsa &fsa) {
+  int32_t num_states = fsa.NumStates();
+  std::vector<ShortestDistanceInfo> info(num_states);
+  info[0].score = 0;
+  info[0].best_path_length = 0;
+  info[0].in_queue = true;
+  std::vector<int32_t> queue;
+  queue.push_back(0);
+
+  while (!queue.empty()) {
+    int32_t s = queue.back();
+    queue.pop_back();
+    ShortestDistanceInfo &this_info = info[s];
+    this_info.in_queue = false;
+    int32_t arc_begin = fsa.indexes[s],
+        arc_end = fsa.indexes[s + 1];
+    for (int32_t arc_idx = arc_begin; arc_idx != arc_end; ++arc_idx) {
+      Arc &arc = fsa.data[arc_idx];
+      int32_t dest_state = arc.dest_state;
+      ShortestDistanceInfo &next_info = info[dest_state];
+      if (info.score + arc.weight > next_info.score) {
+        next_info.score = info.score + arc.weight;
+        next_info.best_path_length = info.best_path_length + 1;
+        if (next_info.best_path_length > num_states) {
+          // negative-cost cycle.
+          return std::numeric_limits<double>::infinity();
+        }
+        if (!next_info.in_queue) {
+          next_info.in_queue = true;
+          queue.push_back(next_info);
+        }
+      }
+    }
+  }
+  return info[num_states - 1].score;
+}
+
+template <>
+inline double ShortestDistance<kLogSumWeight>(const Fsa &fsa) {
+  if (IsEmpty(fsa)) return kDoubleNegativeInfinity;
+  std::vector<double> state_weights(fsa.NumStates());
+  ComputeForwardWeights<Type>(fsa, state_weights.data());
+  return state_weights[fsa.FinalState()];
+}
+
+template <>
+double ShortestDistance<kMaxWeight>(const Fsa &fsa) {
+  if (IsEmpty(fsa)) return kDoubleNegativeInfinity;
+  std::vector<double> state_weights(fsa.NumStates());
+  if (IsTopSorted(fsa)) {
+    ComputeForwardWeights<Type>(fsa, state_weights.data());
+    return state_weights[fsa.FinalState()];
+  } else {
+    return ShortestDistanceMaxGeneric(fsa);
+  }
+}
+
+
 }  // namespace k2host

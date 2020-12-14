@@ -238,7 +238,8 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
   ::Connect(b, &connected_b_storage, &connected_b_arc_map);
   ::ArcSort(connected_a_storage.GetFsa(), &valid_a_storage,
             &valid_a_arc_map);  // required by `intersect`
-  ::ArcSort(connected_b_storage.GetFsa(), &valid_b_storage, &valid_b_arc_map);
+  ::ArcSort(connected_b_storage.GetFsa(), &valid_b_storage,
+            &valid_b_arc_map);
   const auto &valid_a = valid_a_storage.GetFsa();
   const auto &valid_b = valid_b_storage.GetFsa();
   if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;

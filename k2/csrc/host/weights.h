@@ -148,12 +148,22 @@ inline void ComputeBackwardWeights<kLogSumWeight>(const Fsa &fsa,
                 Must satisfy IsValid(fsa) (and IsTopSorted(fsa)?).
  */
 template <FbWeightType Type>
-double ShortestDistance(const Fsa &fsa) {
-  if (IsEmpty(fsa)) return kDoubleNegativeInfinity;
-  std::vector<double> state_weights(fsa.NumStates());
-  ComputeForwardWeights<Type>(fsa, state_weights.data());
-  return state_weights[fsa.FinalState()];
-}
+double ShortestDistance(const Fsa &fsa);
+// override for different weight types..
+template <>
+inline double ShortestDistance<kLogSumWeight>(const Fsa &fsa);
+template <>
+inline double ShortestDistance<kMaxWeight>(const Fsa &fsa);
+
+/*
+  Generic shortest-distance algorithm that uses max on weights and does not
+  require its input to be top-sorted.  Is called from
+  ShortestDistance<kMaxWeight>() if its input is not top-sorted.  Must satisfy
+  IsValid(fsa), but no other properties are required.  Will return infinity if
+  there is a positive-score (i.e. negative-cost) self-loop
+ */
+double ShortestDistanceMaxGeneric(Fsa &fsa);
+
 
 struct WfsaWithFbWeights {
   const Fsa &fsa;

@@ -328,11 +328,11 @@ int32_t GetFsaBasicProperties(const Fsa &fsa);
 
      @param [in] fsa_vec   FSAs to compute the properties of.  It is an
                            error if fsa_vec.NumAxes() != 3 (will crash).
-     @param [out] properties_out  The properties per FSA will be written to
-                   here, on the same device as `fsa_vec`.  This array
-                   will be assigned to (does not have to be correctly sized at
-                   entry).
-     @param [out] tot_properties_out  The `and` of all properties in
+     @param [out] properties_out  If not nullptr, the properties per FSA will
+                   be written to here, on the same device as `fsa_vec`.  This
+                   array will be assigned to (does not have to be correctly
+                   sized at entry).
+     @param [out] tot_properties_out  If not nullptr, the `and` of all properties in
                   `properties_out` will be written to this host
                   (i.e. CPU-memory) pointer.
 */
