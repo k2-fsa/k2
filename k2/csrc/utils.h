@@ -383,6 +383,29 @@ __global__ void eval_lambda_redirect(int32_t num_jobs, TaskRedirect *redirect,
   lambda(task_id, num_threads_this_task, thread_idx_of_task);
 }
 
+
+template <typename LambdaT>
+__global__ void eval_lambda_redirect_large(int32_t num_jobs, TaskRedirect *redirect,
+                                         int32_t num_threads_per_job,
+                                         LambdaT lambda) {
+  int32_t thread_idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x
+                       + threadIdx.x,
+          num_threads = gridDim.x * gridDim.y * blockDim.x,
+              job_id = thread_idx / num_threads_per_job,
+          thread_this_job = thread_idx % num_threads_per_job;
+
+  if (job_id >= num_jobs) return;
+  K2_CHECK_GE(num_threads / num_threads_per_job, num_jobs);
+
+  int32_t task_id = redirect[job_id].task_id;
+  int32_t num_threads_this_task =
+      num_threads_per_job * redirect[job_id].num_jobs_this_task;
+  int32_t thread_idx_of_task =
+      redirect[job_id].job_id_this_task * num_threads_per_job + thread_this_job;
+  lambda(task_id, num_threads_this_task, thread_idx_of_task);
+}
+
+
 /*
   EvalWithRedirect() is like Eval() but for when the task have variable
   amounts of work to do (most naturally involving loops).  You would call
@@ -452,12 +475,23 @@ void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
   } else {
     num_threads_per_job =
         RoundUpToNearestPowerOfTwo(num_threads_per_job / target_num_loops);
+    if (num_threads_per_job < 1)
+      num_threads_per_job = 1;
     int32_t tot_threads = num_threads_per_job * num_jobs;
     int32_t block_size = 256;
     int32_t grid_size = NumBlocks(tot_threads, block_size);
-    K2_CUDA_SAFE_CALL(eval_lambda_redirect<LambdaT>
-                      <<<grid_size, block_size, 0, stream>>>(
-                          num_jobs, redirect, num_threads_per_job, lambda));
+    if (grid_size < 65536) {
+      K2_CUDA_SAFE_CALL(eval_lambda_redirect<LambdaT>
+                        <<<grid_size, block_size, 0, stream>>>(
+                            num_jobs, redirect, num_threads_per_job, lambda));
+    } else {
+      dim3 grid_dim(4096, NumBlocks(grid_size, 4096), 1),
+          block_dim(block_size, 1, 1);
+      K2_CUDA_SAFE_CALL(eval_lambda_redirect_large<LambdaT>
+                        <<<grid_dim, block_dim, 0, stream>>>(
+                            num_jobs, redirect, num_threads_per_job, lambda));
+
+    }
   }
 }
 
