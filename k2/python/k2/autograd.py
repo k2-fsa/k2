@@ -7,6 +7,7 @@ import torch
 import _k2
 
 from .fsa import Fsa
+from .ops import index_attr
 from .dense_fsa_vec import DenseFsaVec
 
 
@@ -153,7 +154,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
-            value = _k2.index_select(a_value, arc_map_a)
+            value = index_attr(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():
@@ -246,7 +247,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
-            value = _k2.index_select(a_value, arc_map_a)
+            value = index_attr(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():
@@ -283,53 +284,6 @@ class _IntersectDenseFunction(torch.autograd.Function):
         return None, None, None, None, grad_a, grad_b
 
 
-class _IndexSelectFunction(torch.autograd.Function):
-
-    @staticmethod
-    def forward(ctx, src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
-        '''Returns a new tensor which indexes the input tensor along dimension 0
-        using the entries in `index`.
-
-        If the entry in `index` is -1, then the corresponding entry in the
-        returned tensor is 0.
-
-        Caution:
-          `index.dtype == torch.int32` and `index.ndim == 1`.
-
-        Args:
-          src:
-            The input tensor. Either 1-D or 2-D with dtype torch.int32 or
-            torch.float32.
-          index:
-            1-D tensor of dtype torch.int32 containing the indexes.
-            If an entry is -1, the corresponding entry in the returned value
-            is 0. The elements of `index` should be in the range
-            `[-1..src.shape[0]-1]`.
-
-        Returns:
-          A tensor with shape (index.numel(), *src.shape[1:]) and dtype the
-          same as `src`, e.g. if `src.ndim == 1`, ans.shape would be
-          (index.shape[0],); if `src.ndim == 2`, ans.shape would be
-          (index.shape[0], src.shape[1]).
-          Will satisfy `ans[i] == src[index[i]]` if `src.ndim == 1`,
-          or `ans[i,j] == src[index[i],j]` if `src.ndim == 2`, except for
-          entries where `index[i] == -1` which will be zero.
-        '''
-        ctx.save_for_backward(src, index)
-        return _k2.index_select(src, index)
-
-    @staticmethod
-    def backward(ctx, out_grad) -> Tuple[torch.Tensor, None]:
-        src, index = ctx.saved_tensors
-
-        ans = torch.zeros(src.shape,
-                          dtype=torch.float32,
-                          device=src.device,
-                          requires_grad=False)
-        _k2.index_add(index, out_grad, ans)
-        return ans, None
-
-
 class _UnionFunction(torch.autograd.Function):
 
     @staticmethod
@@ -354,7 +308,7 @@ class _UnionFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, value in fsas.named_tensor_attr(include_scores=False):
-            value = _k2.index_select(value, arc_map)
+            value = index_attr(value, arc_map)
             setattr(out_fsa[0], name, value)
 
         for name, value in fsas.named_non_tensor_attr():
@@ -479,39 +433,6 @@ def intersect_dense(a_fsas: Fsa, b_fsas: DenseFsaVec,
     _IntersectDenseFunction.apply(a_fsas, b_fsas, out_fsa, output_beam,
                                   a_fsas.scores, b_fsas.scores)
     return out_fsa[0]
-
-
-def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
-    '''Returns a new tensor which indexes the input tensor along dimension 0
-    using the entries in `index`.
-
-    If the entry in `index` is -1, then the corresponding entry in the
-    returned tensor is 0.
-
-    Caution:
-      `index.dtype == torch.int32` and `index.ndim == 1`.
-
-    Args:
-      src:
-        The input tensor. Either 1-D or 2-D with dtype torch.int32 or
-        torch.float32.
-      index:
-        1-D tensor of dtype torch.int32 containing the indexes.
-        If an entry is -1, the corresponding entry in the returned value
-        is 0. The elements of `index` should be in the range
-        `[-1..src.shape[0]-1]`.
-
-    Returns:
-      A tensor with shape (index.numel(), *src.shape[1:]) and dtype the
-      same as `src`, e.g. if `src.ndim == 1`, ans.shape would be
-      (index.shape[0],); if `src.ndim == 2`, ans.shape would be
-      (index.shape[0], src.shape[1]).
-      Will satisfy `ans[i] == src[index[i]]` if `src.ndim == 1`,
-      or `ans[i,j] == src[index[i],j]` if `src.ndim == 2`, except for
-      entries where `index[i] == -1` which will be zero.
-    '''
-    ans = _IndexSelectFunction.apply(src, index)
-    return ans
 
 
 def union(fsas: Fsa) -> Fsa:

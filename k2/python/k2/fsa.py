@@ -1,5 +1,5 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
-#                      Xiaomi Corp.       (author: Daniel Povey)
+#                      Xiaomi Corp.       (author: Daniel Povey, Haowen Qiu)
 #                      Guoguo Chen
 #
 # See ../../../LICENSE for clarification regarding multiple authors
@@ -12,6 +12,7 @@ from typing import Tuple
 from typing import Union
 from . import fsa_properties
 from .autograd_utils import phantom_set_scores_to
+from .ops import index_ragged_int
 
 import torch
 import _k2
@@ -67,9 +68,12 @@ class Fsa(object):
       visualization only.
 
     aux_labels
-      A 1-D `torch.Tensor` of dtype `torch.int32`. It has the
-      same shape as `labels`. NOTE: We will change it to a
-      ragged tensor in the future.
+      A 1-D `torch.Tensor` of dtype `torch.int32` or a
+      ragged tensor with type `_k2.RaggedInt`. It contains
+      auxiliary labels per arc.  If it's a tensor,
+      `aux_labels.numel()` equals to the number of arcs.
+      if it's `_k2.RaggedInt`, then `aux_labels.dim0()`
+      equals to the number of arcs.
 
     aux_symbols
       An instance of `k2.SymbolTable`. It maps an entry in
@@ -80,16 +84,21 @@ class Fsa(object):
       accessed as fsa.properties (read-only!)
 
     It MAY have other attributes that set by users.  Tensor attributes should
-    have the same 1st dimension as the number of arcs in the FSA.
+    have the same 1st dimension as the number of arcs in the FSA, Ragged
+    attributes should have the same dim0 as the number of arcs in the FSA.
 
     CAUTION:
       When an attribute is an instance of `torch.Tensor`, its `shape[0]`
       has to be equal to the number arcs. Otherwise, an assertion error
       will be thrown.
+      When an attribute is an instance of ``_k2.RaggedInt``, its ``dim0()``
+      has to be equal to the number arcs. Otherwise, an assertion error
+      will be thrown.
 
     NOTE:
       `symbols` and `aux_symbols` are symbol tables, while `labels`
-      and `aux_labels` are instances of `torch.Tensor`.
+      is instances of `torch.Tensor` and `aux_labels` is instances of
+      `torch.Tensor` or `_k2.RaggedInt`.
 
       Implementation note: most of this class's attributes are not
       real attributes in the object's dict; the real attributes are
@@ -98,10 +107,11 @@ class Fsa(object):
 
     '''
 
-    def __init__(self,
-                 arcs: Union[torch.Tensor, RaggedArc],
-                 aux_labels: Optional[torch.Tensor] = None,
-                 properties=None) -> None:
+    def __init__(
+            self,
+            arcs: Union[torch.Tensor, RaggedArc],
+            aux_labels: Optional[Union[torch.Tensor, _k2.RaggedInt]] = None,
+            properties=None) -> None:
         '''Build an Fsa from a tensor with optional aux_labels.
 
         It is useful when loading an Fsa from file.
@@ -121,7 +131,8 @@ class Fsa(object):
           aux_labels:
             Optional. If not None, it associates an aux_label with every arc,
             so it has as many rows as `tensor`. It is a 1-D tensor of dtype
-            `torch.int32`.
+            `torch.int32` or `_k2.RaggedInt` whose `dim0()` equals to the
+            number of arcs.
 
           properties:
             Tensor properties if known (should only be provided by
@@ -143,7 +154,9 @@ class Fsa(object):
         #     It saves attribute values of type torch.Tensor. `shape[0]` of
         #     attribute values have to be equal to the number of arcs
         #     in the FSA.  There are a couple of standard ones, 'aux_labels'
-        #     (present for transducers), and 'scores'.
+        #     (present for transducers), and 'scores'. It also saves
+        #     attribute values of type _k2.RaggedInt, e.g. `aux_labels` if
+        #     it has type of _k2.RaggedInt instead of torch.Tensor.
         #
         # - `_non_tensor_attr`
         #     It saves non-tensor attributes, e.g., :class:`SymbolTable`.
@@ -195,7 +208,11 @@ class Fsa(object):
 
         self._tensor_attr['scores'] = _as_float(self.arcs.values()[:, -1])
         if aux_labels is not None:
-            self.aux_labels = aux_labels.to(torch.int32)
+            if isinstance(aux_labels, torch.Tensor):
+                self.aux_labels = aux_labels.to(torch.int32)
+            else:
+                # ragged tensor
+                self.aux_labels = aux_labels
         # Access the properties field (it's a @property, i.e. it has a
         # getter) which sets up the properties and also checks that
         # the FSA is valid.
@@ -206,7 +223,8 @@ class Fsa(object):
 
         For visualization and debug only.
         '''
-        if hasattr(self, 'aux_labels'):
+        if hasattr(self, 'aux_labels') and isinstance(self.aux_labels,
+                                                      torch.Tensor):
             aux_labels = self.aux_labels.to(torch.int32)
         else:
             aux_labels = None
@@ -627,6 +645,10 @@ class Fsa(object):
         if not hasattr(self, 'aux_labels'):
             raise RuntimeError(
                 'invert_ cannot be called on acceptors (no aux_labels)')
+        if not isinstance(self.aux_labels, torch.Tensor):
+            raise RuntimeError(
+                'current invert_ method only supports case where aux_labels is a tensor'
+            )
 
         aux_labels = self.aux_labels
         self.aux_labels = self.labels.clone()
@@ -688,7 +710,14 @@ class Fsa(object):
 
         out_fsa = Fsa(ragged_arc)
         for name, value in self.named_tensor_attr(include_scores=False):
-            setattr(out_fsa, name, value[start:end])
+            if isinstance(value, torch.Tensor):
+                setattr(out_fsa, name, value[start:end])
+            else:
+                indexes = torch.arange(start,
+                                       end,
+                                       dtype=torch.int32,
+                                       device=self.device)
+                setattr(out_fsa, name, index_ragged_int(value, indexes))
 
         for name, value in self.named_non_tensor_attr():
             setattr(out_fsa, name, value)

@@ -19,7 +19,7 @@ namespace k2 {
 
 void TestHashConstruct() {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    for (int32_t size: { 128, 1024, 2048, 65536, 1048576 }) {
+    for (int32_t size : {128, 1024, 2048, 65536, 1048576}) {
       Hash32 hash(c, size);
 
       // obviously we're not going to fill it completely... this hash is not
