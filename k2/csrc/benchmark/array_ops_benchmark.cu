@@ -44,6 +44,39 @@ static BenchmarkStat BenchmarkExclusiveSum(int32_t dim,
   return stat;
 }
 
+static BenchmarkStat BenchmarkRowSplitsToRowIds(int32_t dim,
+                                                DeviceType device_type) {
+  ContextPtr context;
+  if (device_type == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(device_type, kCuda);
+    context = GetCudaContext();
+  }
+
+  int32_t num_iter = std::min(500, 1000000 / dim);
+  Array1<int32_t> sizes = RandUniformArray1<int32_t>(context, dim, 0, 1000);
+  Array1<int32_t> row_splits = ExclusiveSum(sizes);
+  Array1<int32_t> row_ids(context, row_splits.Back());
+
+  BenchmarkStat stat;
+  stat.op_name = "RowSplitsToRowIds";
+  stat.num_iter = num_iter;
+  stat.problem_size = dim;
+  stat.dtype_name = TraitsOf(DtypeOf<int32_t>::dtype).Name();
+  stat.device_type = device_type;
+
+  // there are overloads of RowSplitsToRowIds,
+  // so we use an explicit conversion here.
+  stat.eplased_per_iter =
+      BenchmarkOp(num_iter, context,
+                  (void (*)(const Array1<int32_t> &, Array1<int32_t> *))(
+                      &RowSplitsToRowIds),
+                  row_splits, &row_ids);
+  stat.eplased_per_iter *= 1e6;  // from seconds to microseconds
+  return stat;
+}
+
 template <typename T>
 static void RegisterBenchmarkExclusiveSum(DeviceType device_type) {
   std::vector<int32_t> problems_sizes = {100,  500,   1000,  2000,
@@ -57,12 +90,28 @@ static void RegisterBenchmarkExclusiveSum(DeviceType device_type) {
   }
 }
 
+static void RegisterBenchmarkRowSplitsToRowIds(DeviceType device_type) {
+  std::vector<int32_t> problems_sizes = {100,  500,   1000,  2000,
+                                         5000, 10000, 100000};
+  for (auto s : problems_sizes) {
+    std::string name =
+        GenerateBenchmarkName<int32_t>("RowSplitsToRowIds", device_type) + "_" +
+        std::to_string(s);
+    RegisterBenchmark(name, [s, device_type]() -> BenchmarkStat {
+      return BenchmarkRowSplitsToRowIds(s, device_type);
+    });
+  }
+}
+
 static void RunArrayOpsBenchmark() {
   std::cout << GetCurrentDateTime() << "\n";
   std::cout << GetDeviceInfo() << "\n";
 
   RegisterBenchmarkExclusiveSum<int32_t>(kCpu);
   RegisterBenchmarkExclusiveSum<int32_t>(kCuda);
+
+  RegisterBenchmarkRowSplitsToRowIds(kCpu);
+  RegisterBenchmarkRowSplitsToRowIds(kCuda);
 
   // Users can set a regular expression via environment
   // variable `K2_BENCHMARK_FILTER` such that only benchmarks
