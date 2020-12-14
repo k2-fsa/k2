@@ -73,7 +73,6 @@ class CudaTimerImpl : public TimerImpl {
   // Return time in seconds
   double Elapsed() override {
     K2_CUDA_SAFE_CALL(cudaEventRecord(time_end_, stream_));
-    K2_CUDA_SAFE_CALL(cudaEventSynchronize(time_start_));
     K2_CUDA_SAFE_CALL(cudaEventSynchronize(time_end_));
 
     float ms_elapsed;

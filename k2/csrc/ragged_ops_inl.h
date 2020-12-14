@@ -66,19 +66,17 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
 
     // This code is based on the example here:
     // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
-    void *d_temp_storage = NULL;
     std::size_t temp_storage_bytes = 0;
 
     // the first time is to determine temporary device storage requirements
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
+        nullptr, temp_storage_bytes, values_data, output_data, num_rows,
         row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
-    void *deleter_context;
-    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
-        d_temp_storage, temp_storage_bytes, values_data, output_data, num_rows,
-        row_splits, row_splits + 1, op, default_value, c->GetCudaStream()));
-    c->Deallocate(d_temp_storage, deleter_context);
+        d_temp_storage.Data(), temp_storage_bytes, values_data, output_data,
+        num_rows, row_splits, row_splits + 1, op, default_value,
+        c->GetCudaStream()));
   }
 }
 
@@ -310,14 +308,14 @@ bool Ragged<T>::Validate(bool print_warnings) const {
     }
     return false;
   }
-  return shape.Validate();
+  return shape.Validate(print_warnings);
 }
 
 // Defined here and not in ragged.h because it needs RemoveAxis.
 template <typename T>
 Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(axis >= 0 && axis < NumAxes());
+  K2_CHECK(NumAxes() > 2 && axis >= 0 && axis < NumAxes() - 1);
   RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
   return Ragged<T>(new_shape, values);
 }

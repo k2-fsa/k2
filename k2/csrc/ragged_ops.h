@@ -133,10 +133,10 @@ void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
                         Dimensions/shapes of all previous axes must be
                         identical.
      @param [out] merge_map  If not nullptr, will be set to the merge-map
-                       that tells us for each 0 <= i < ans.NumElements(),
-                       which element of `src` it came from (available
-                       as `merge_map[i] % num_srcs`) and its element-index
-                       within `src[i]` (available as `merge_map[i] / num_srcs`.
+                         that tells us for each 0 <= i < ans.NumElements(),
+                         which element of `src` it came from (available
+                         as `merge_map[i] % num_srcs`) and its element-index
+  within `src[i]` (available as `merge_map[i] / num_srcs`.
 
 
      @return  The appended result.
@@ -412,10 +412,10 @@ Ragged<T> Transpose(Ragged<T> &src,
                            num_srcs > 0.
       @param [in] src      Array of sources to append
       @param [out] merge_map  If not nullptr, will be set to the merge-map
-                        that tells us for each 0 <= i < ans.NumElements(),
-                        which element of `src` it came from (available
-                        as `merge_map[i] % num_srcs`) and its element-index
-                        within `src[i]` (available as `merge_map[i] / num_srcs`.
+                          that tells us for each 0 <= i < ans.NumElements(),
+                          which element of `src` it came from (available
+                          as `merge_map[i] % num_srcs`) and its element-index
+   within `src[i]` (available as `merge_map[i] / num_srcs`.
 
       @return      Returns the appended RaggedShape.
 */
@@ -531,10 +531,10 @@ Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering) {
      @param [in] num_srcs  The number of `RaggedShape`s in `src`
      @param [in] src       The shapes to be stacked
      @param [out] merge_map  If not nullptr, will be set to the merge-map
-                       that tells us for each 0 <= i < ans.NumElements(),
-                       which element of `src` it came from (available
-                       as `merge_map[i] % num_srcs`) and its element-index
-                       within `src[i]` (available as `merge_map[i] / num_srcs`.
+                         that tells us for each 0 <= i < ans.NumElements(),
+                         which element of `src` it came from (available
+                         as `merge_map[i] % num_srcs`) and its element-index
+  within `src[i]` (available as `merge_map[i] / num_srcs`.
 
 
      @return  The appended result.
@@ -569,10 +569,10 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
                            num_srcs > 0.
       @param [in] src      Array of sources to append
       @param [out] merge_map  If not nullptr, will be set to the merge-map
-                       that tells us for each 0 <= i < ans.NumElements(),
-                       which element of `src` it came from (available
-                       as `merge_map[i] % num_srcs`) and its element-index
-                       within `src[i]` (available as `merge_map[i] / num_srcs`.
+                         that tells us for each 0 <= i < ans.NumElements(),
+                         which element of `src` it came from (available
+                         as `merge_map[i] % num_srcs`) and its element-index
+   within `src[i]` (available as `merge_map[i] / num_srcs`.
 
       @return      Returns the appended RaggedShape.
 */
@@ -888,17 +888,17 @@ Ragged<T> Index(Ragged<T> &src, const Array1<int32_t> &indexes,
       @param [in] src      Array of sources to append; must have compatible
                            contexts and the same number of axes.
       @param [in] merge_map   Merge map (probably obtained from some previous
-                         ragged operation) that dictates the order in which
-                         to combine elements.  `merge_map.Dim()` must equal
-                         the sum of `src[i]->Dim0()` for all 0 <= i < num-srcs.
-                         If `merge_map[i] == m` then at position i on axis 0 of
-                         the output we take element `m / num_srcs` on axis 0 of
-                         the source numbered `m % num_srcs`.
+                           ragged operation) that dictates the order in which
+                           to combine elements.  `merge_map.Dim()` must equal
+                           the sum of `src[i]->Dim0()` for all 0 <= i <
+   num_srcs. If `merge_map[i] == m` then at position i on axis 0 of the output
+   we take element `m / num_srcs` on axis 0 of the source numbered `m %
+   num_srcs`.
       @param [out] merge_map_out  If not nullptr, will be set to the merge-map
-                        that tells us for each 0 <= i < ans.NumElements(),
-                        which element of `src` it came from (available
-                        as `merge_map[i] % num_srcs`) and its element-index
-                        within `src[i]` (available as `merge_map[i] / num_srcs`.
+                          that tells us for each 0 <= i < ans.NumElements(),
+                          which element of `src` it came from (available
+                          as `merge_map[i] % num_srcs`) and its element-index
+   within `src[i]` (available as `merge_map[i] / num_srcs`.
 
       @return       Returns the appended RaggedShape.  Will have the same
                     number of axes as the sources.

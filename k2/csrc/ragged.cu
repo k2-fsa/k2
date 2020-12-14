@@ -144,18 +144,15 @@ int32_t RaggedShape::MaxSize(int32_t axis) {
     Array1<int32_t> max_array(Context(), 1, 0);
     int32_t *max_value = max_array.Data();
 
-    void *d_temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
     // the first time is to determine temporary device storage requirements
-    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes,
+    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Max(nullptr, temp_storage_bytes,
                                              row_splits_diff, max_value,
                                              num_rows, c->GetCudaStream()));
-    void *deleter_context;
-    d_temp_storage = c->Allocate(temp_storage_bytes, &deleter_context);
-    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Max(d_temp_storage, temp_storage_bytes,
-                                             row_splits_diff, max_value,
-                                             num_rows, c->GetCudaStream()));
-    c->Deallocate(d_temp_storage, deleter_context);
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CUDA_SAFE_CALL(cub::DeviceReduce::Max(
+        d_temp_storage.Data(), temp_storage_bytes, row_splits_diff, max_value,
+        num_rows, c->GetCudaStream()));
     // this will convert to memory on CPU
     return max_array[0];
   }
@@ -183,7 +180,7 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
   int32_t idx_begin = (i != 0 ? src_axes[0].row_splits[i] : 0),
           idx_end = src_axes[0].row_splits[i + 1];
   std::vector<RaggedShapeLayer> axes(src_axes.size() - 1);
-  ContextPtr c = Context();
+  ContextPtr &c = Context();
   for (int32_t i = 2; i < num_axes; ++i) {
     const Array1<int32_t> &src_row_splits = RowSplits(i),
                           &src_row_ids = RowIds(i);
@@ -275,7 +272,7 @@ int32_t RaggedShape::TotSize(int32_t axis) const {
 // print_warnings==true, and then returns false.
 bool RaggedShape::Validate(bool print_warnings) const {
   NVTX_RANGE(K2_FUNC);
-  ContextPtr c = Context();
+  ContextPtr &c = Context();
   int32_t num_axes = layers_.size();
 
   ParallelRunner pr(c);

@@ -9,7 +9,8 @@ from typing import List
 import torch
 import _k2
 
-from .autograd import index_select
+from .ops import index_attr
+from .ops import index_select
 from .fsa import Fsa
 from . import fsa_properties
 
@@ -51,7 +52,7 @@ def top_sort(fsa: Fsa) -> Fsa:
     ragged_arc, arc_map = _k2.top_sort(fsa.arcs, need_arc_map=need_arc_map)
     sorted_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_tensor_attr():
-        setattr(sorted_fsa, name, index_select(value, arc_map))
+        setattr(sorted_fsa, name, index_attr(value, arc_map))
     for name, value in fsa.named_non_tensor_attr():
         setattr(sorted_fsa, name, value)
 
@@ -74,13 +75,13 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
       The rules for assigning the attributes of the output Fsa are as follows:
 
       - (1) For attributes where only one source (a_fsa or b_fsa) has that
-      attribute: Copy via arc_map, or use zero if arc_map has -1. This rule
-      works for both floating point and integer attributes.
+        attribute: Copy via arc_map, or use zero if arc_map has -1. This rule
+        works for both floating point and integer attributes.
 
       - (2) For attributes where both sources (a_fsa and b_fsa) have that
-      attribute: For floating point attributes: sum via arc_maps, or use zero
-      if arc_map has -1. For integer attributes, it's not supported for now (the
-      attributes will be discarded and will not be kept in the output FSA).
+        attribute: For floating point attributes: sum via arc_maps, or use zero
+        if arc_map has -1. For integer attributes, it's not supported for now (the
+        attributes will be discarded and will not be kept in the output FSA).
 
     Returns:
       The result of intersecting a_fsa and b_fsa. len(out_fsa.shape) is 2
@@ -89,12 +90,9 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     '''
     treat_epsilons_specially = True
     need_arc_map = True
-    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(a_fsa.arcs,
-                                                     a_fsa.properties,
-                                                     b_fsa.arcs,
-                                                     b_fsa.properties,
-                                                     treat_epsilons_specially,
-                                                     need_arc_map)
+    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
+        a_fsa.arcs, a_fsa.properties, b_fsa.arcs, b_fsa.properties,
+        treat_epsilons_specially, need_arc_map)
 
     out_fsa = Fsa(ragged_arc)
     for name, a_value in a_fsa.named_tensor_attr():
@@ -112,13 +110,13 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
             setattr(out_fsa, name, value)
         else:
             # only a_fsa has this attribute, copy it via arc_map
-            value = index_select(a_value, a_arc_map)
+            value = index_attr(a_value, a_arc_map)
             setattr(out_fsa, name, value)
 
     # now copy tensor attributes that are in b_fsa but are not in a_fsa
     for name, b_value in b_fsa.named_tensor_attr():
         if not hasattr(out_fsa, name):
-            value = index_select(b_value, b_arc_map)
+            value = index_attr(b_value, b_arc_map)
             setattr(out_fsa, name, value)
 
     for name, a_value in a_fsa.named_non_tensor_attr():
@@ -161,7 +159,7 @@ def connect(fsa: Fsa) -> Fsa:
     ragged_arc, arc_map = _k2.connect(fsa.arcs, need_arc_map=need_arc_map)
     out_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_tensor_attr():
-        setattr(out_fsa, name, index_select(value, arc_map))
+        setattr(out_fsa, name, index_attr(value, arc_map))
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
 
@@ -194,7 +192,7 @@ def arc_sort(fsa: Fsa) -> Fsa:
     ragged_arc, arc_map = _k2.arc_sort(fsa.arcs, need_arc_map=need_arc_map)
     out_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_tensor_attr():
-        setattr(out_fsa, name, index_select(value, arc_map))
+        setattr(out_fsa, name, index_attr(value, arc_map))
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
 
@@ -224,7 +222,7 @@ def shortest_path(fsa: Fsa, use_float_scores: bool) -> Fsa:
 
     arc_map = ragged_int.values()
     for name, value in fsa.named_tensor_attr():
-        setattr(out_fsa, name, index_select(value, arc_map))
+        setattr(out_fsa, name, index_attr(value, arc_map))
 
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
@@ -253,7 +251,7 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
 
     out_fsa = Fsa(ragged_arc)
     for name, value in fsa.named_tensor_attr():
-        new_value = index_select(value, arc_map)
+        new_value = index_attr(value, arc_map)
         setattr(out_fsa, name, new_value)
 
     for name, value in fsa.named_non_tensor_attr():
@@ -286,7 +284,7 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
     ragged_arc, arc_derivs = _k2.remove_epsilon(fsa.arcs)
     aux_labels = None
     if hasattr(fsa, 'aux_labels'):
-        aux_labels = _k2.simple_ragged_index_select(fsa.aux_labels, arc_derivs)
+        aux_labels = index_attr(fsa.aux_labels, arc_derivs)
     out_fsa = Fsa(ragged_arc, aux_labels)
 
     for name, value in fsa.named_non_tensor_attr():
@@ -324,7 +322,7 @@ def determinize(fsa: Fsa) -> Fsa:
     ragged_arc, arc_derivs = _k2.determinize(fsa.arcs)
     aux_labels = None
     if hasattr(fsa, 'aux_labels'):
-        aux_labels = _k2.simple_ragged_index_select(fsa.aux_labels, arc_derivs)
+        aux_labels = index_attr(fsa.aux_labels, arc_derivs)
     out_fsa = Fsa(ragged_arc, aux_labels)
 
     for name, value in fsa.named_non_tensor_attr():

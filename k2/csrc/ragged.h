@@ -17,19 +17,16 @@
 #include <utility>
 #include <vector>
 
-#include "k2/csrc/algorithms.h"
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
-#include "k2/csrc/eval.h"
 #include "k2/csrc/log.h"
-#include "k2/csrc/utils.h"
 
 namespace k2 {
 
 // Caution, RaggedShapeLayer is mostly for internal use and users should not
-// generally interact with it directly.  A layer represents the connection between
-// one axis and the next; a RaggedShape with a single layer is the minimal
-// RaggedShape.
+// generally interact with it directly.  A layer represents the connection
+// between one axis and the next; a RaggedShape with a single layer is the
+// minimal RaggedShape.
 //
 // Note: row_splits is of size num_rows + 1 and row_ids is of size
 // num_elements.
@@ -130,7 +127,7 @@ class RaggedShape {
   ContextPtr &Context() const { return layers_[0].row_splits.Context(); }
 
   /*
-    It is an error to call this if this.NumAxes() < 2.  This will return
+    It is an error to call this if this.NumAxes() <= 2.  This will return
     a RaggedShape with one fewer axis, containing only the elements of
     *this for which the value on axis `axis` is i.  CAUTION:
     currently this only works for `axis == 0`.
@@ -151,12 +148,6 @@ class RaggedShape {
     this is on the GPU.
    */
   int32_t operator[](const std::vector<int32_t> &indexes);
-
-  // Constructor from string; the elements should be readable from ostream to
-  // something of type T.  E.g.  elements, e.g. src="[ [ 1 2 ] [ 0 4 5] ]", if T
-  // is an integer type.  Intended for testing purposes.
-  template <typename T>
-  RaggedShape(const std::string &src, Array1<T> *contents);
 
   RaggedShapeIndexIterator Iterator();
 
@@ -232,14 +223,13 @@ class RaggedShapeIndexIterator {
     linear_idx_++;
     if (!Done()) UpdateVec();
   }
-  bool Done() { return linear_idx_ == num_elements_; }
+  bool Done() const { return linear_idx_ == num_elements_; }
 
-  explicit RaggedShapeIndexIterator(RaggedShape &shape)
-      : shape_(shape),
-        linear_idx_(0),
+  explicit RaggedShapeIndexIterator(const RaggedShape &shape)
+      : linear_idx_(0),
         idx_(shape.NumAxes()),
         num_elements_(shape.NumElements()) {
-    K2_CHECK_EQ(shape_.Context()->GetDeviceType(), kCpu);
+    K2_CHECK_EQ(shape.Context()->GetDeviceType(), kCpu);
     for (int32_t i = 0; i + 1 < shape.NumAxes(); ++i) {
       row_splits_.push_back(shape.RowSplits(i + 1).Data());
       row_ids_.push_back(shape.RowIds(i + 1).Data());
@@ -268,7 +258,6 @@ class RaggedShapeIndexIterator {
   };
   std::vector<const int32_t *> row_splits_;
   std::vector<const int32_t *> row_ids_;
-  RaggedShape &shape_;
   int32_t linear_idx_;
   std::vector<int32_t> idx_;
   const int32_t num_elements_;
@@ -306,6 +295,7 @@ struct Ragged {
   Ragged(const Ragged<T> &src) = default;
   // Move constructor
   Ragged(Ragged<T> &&src) = default;
+  Ragged& operator=(Ragged<T> &&src) = default;
 
   // This will only work on the CPU, and is intended for use in testing code.
   // See also member-function Index().
@@ -351,6 +341,8 @@ struct Ragged {
   // Note *this is conceptually unchanged by this operation but non-const
   // because this->shape's row-ids may need to be generated.
   // This function is defined in ragged_ops_inl.h.
+  //
+  // Requires NumAxes() > 2 and 0 <= axis < NumAxes() - 1;
   Ragged<T> RemoveAxis(int32_t axis);
 
   Ragged<T> To(ContextPtr ctx) const {

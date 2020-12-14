@@ -31,13 +31,11 @@ static void CheckRowSplitsOrIds(k2::RaggedShape &shape,
     k2::Array1<int32_t> curr_row_splits =
         row_splits ? shape.RowSplits(i) : shape.RowIds(i);
     // copy data from CPU/GPU to CPU
-    auto kind =
-        GetMemoryCopyKind(*curr_row_splits.Context(), *k2::GetCpuContext());
     std::vector<int32_t> cpu_data(curr_row_splits.Dim());
-    k2::MemoryCopy(static_cast<void *>(cpu_data.data()),
-                   static_cast<const void *>(curr_row_splits.Data()),
-                   curr_row_splits.Dim() * curr_row_splits.ElementSize(), kind,
-                   nullptr);
+    curr_row_splits.Context()->CopyDataTo(
+        curr_row_splits.Dim() * curr_row_splits.ElementSize(),
+        curr_row_splits.Data(), k2::GetCpuContext(), cpu_data.data());
+
     EXPECT_EQ(cpu_data, target[i - 1]);
   }
 }
@@ -63,15 +61,18 @@ TEST(RaggedShapeTest, RaggedShape) {
       const std::vector<int32_t> row_ids3 = {0, 0, 1, 2, 2, 3, 3, 3,
                                              4, 5, 5, 5, 6, 7, 7, 9};
       std::vector<RaggedShapeLayer> axes;
-      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits1),
-                                       Array1<int32_t>(context, row_ids1),
-                                       static_cast<int32_t>(row_ids1.size())});
-      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits2),
-                                       Array1<int32_t>(context, row_ids2),
-                                       static_cast<int32_t>(row_ids2.size())});
-      axes.emplace_back(RaggedShapeLayer{Array1<int32_t>(context, row_splits3),
-                                       Array1<int32_t>(context, row_ids3),
-                                       static_cast<int32_t>(row_ids3.size())});
+      axes.emplace_back(
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits1),
+                           Array1<int32_t>(context, row_ids1),
+                           static_cast<int32_t>(row_ids1.size())});
+      axes.emplace_back(
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits2),
+                           Array1<int32_t>(context, row_ids2),
+                           static_cast<int32_t>(row_ids2.size())});
+      axes.emplace_back(
+          RaggedShapeLayer{Array1<int32_t>(context, row_splits3),
+                           Array1<int32_t>(context, row_ids3),
+                           static_cast<int32_t>(row_ids3.size())});
 
       RaggedShape shape(axes, true);
 
@@ -243,12 +244,10 @@ TEST(RaggedShapeTest, RaggedShape) {
       for (int32_t i = 1; i < shape.NumAxes(); ++i) {
         const Array1<int32_t> &curr_row_ids = curr_axes[i - 1].row_ids;
         // copy data from CPU/GPU to CPU
-        auto kind = GetMemoryCopyKind(*curr_row_ids.Context(), *cpu);
         std::vector<int32_t> cpu_data(curr_row_ids.Dim());
-        k2::MemoryCopy(static_cast<void *>(cpu_data.data()),
-                       static_cast<const void *>(curr_row_ids.Data()),
-                       curr_row_ids.Dim() * curr_row_ids.ElementSize(), kind,
-                       nullptr);
+        curr_row_ids.Context()->CopyDataTo(
+            curr_row_ids.Dim() * curr_row_ids.ElementSize(),
+            curr_row_ids.Data(), cpu, cpu_data.data());
         EXPECT_EQ(cpu_data, row_ids_vec[i - 1]);
         EXPECT_EQ(curr_axes[i - 1].cached_tot_size, row_ids_vec[i - 1].size());
       }

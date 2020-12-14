@@ -28,7 +28,6 @@
 namespace k2 {
 
 TEST(RaggedUtilsTest, CheckLayerEqual) {
-
   RaggedShape shape1(" [[ x x x ] [ x x ]]"),
       shape1b(" [[ x x x ] [ x x ]]"),
       shape2("[[ x x x ] [ x ]]");
@@ -47,7 +46,6 @@ TEST(RaggedUtilsTest, CheckLayerEqual) {
 }
 
 TEST(RaggedUtilsTest, GetLayer) {
-
   RaggedShape shape1(" [[[ x x x ] [ x x ]]]"),
       shape2(" [[ x x x ] [ x x ]]"),
       shape3("[[x x]]");
@@ -112,7 +110,7 @@ TEST(RaggedUtilsTest, IntersperseRaggedLayerLong) {
     merge_map = merge_map.To(cpu);
     K2_CHECK_EQ(shape.Dim0(), 20 * 2);
     int32_t *shape_row_splits1_data = shape.RowSplits(1).Data();
-    for (int32_t i = 0; i < (20 * 2); i++) {  // to because each shape1,shape2 have 2 sub-lists.
+    for (int32_t i = 0; i < (20 * 2); i++) {  // two because each shape1,shape2 have 2 sub-lists.  // NOLINT
       RaggedShape &src_shape = (i % 2 == 0 ? shape1 : shape2);
       int32_t *src_shape_row_splits1_data = src_shape.RowSplits(1).Data();
       int32_t row_begin = shape_row_splits1_data[i],

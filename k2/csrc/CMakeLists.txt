@@ -84,6 +84,7 @@ set(cuda_tests
   fsa_algo_test
   fsa_test
   fsa_utils_test
+  hash_test
   host_shim_test
   intersect_test
   log_test
@@ -124,3 +125,7 @@ endfunction()
 foreach(name IN LISTS cuda_tests)
   k2_add_cuda_test(${name})
 endforeach()
+
+if(K2_ENABLE_BENCHMARK)
+  add_subdirectory(benchmark)
+endif()

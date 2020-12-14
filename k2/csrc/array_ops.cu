@@ -62,7 +62,7 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
   int32_t *data_offsets_data = data_offsets.Data();
 
   if (c->GetDeviceType() == kCpu) {
-    // a simple loop is faster, although the other branchs should still work on
+    // a simple loop is faster, although the other branches should still work on
     // CPU.
     for (int32_t i = 0; i < num_arrays; i++) {
       int32_t this_dim = src[i]->Dim();
@@ -395,14 +395,14 @@ __global__ void SizesToMergeMapKernel(int32_t num_rows,
           next_row_split = row_splits[row + 1],
           row_length = next_row_split - this_row_split;
 
-#pragma unroll (4)
+#pragma unroll(4)
   for (; thread_this_row < row_length; thread_this_row += threads_per_row)
     merge_map[this_row_split + thread_this_row] =
         uint32_t(row) + uint32_t(num_rows) * uint32_t(thread_this_row);
 }
 
-
-Array1<uint32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes) {
+Array1<uint32_t> SizesToMergeMap(ContextPtr c,
+                                 const std::vector<int32_t> &sizes) {
   int32_t num_srcs = sizes.size();
 
   ContextPtr cpu_context = GetCpuContext();
@@ -425,12 +425,13 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes
       for (; cur != end; ++cur) {
         // the 'src' says which source this item came from, and (cur - begin)
         // is the position within that source.
-        ans_data[cur] = uint32_t(src)+ uint32_t(cur - begin) * uint32_t(num_srcs);
+        ans_data[cur] =
+            uint32_t(src) + uint32_t(cur - begin) * uint32_t(num_srcs);
       }
     }
     return ans;
   }
-  K2_CHECK(c->GetDeviceType() == kCuda);
+  K2_CHECK_EQ(c->GetDeviceType(), kCuda);
   Array1<int32_t> row_splits = row_splits_cpu.To(c);
   int32_t *row_splits_data = row_splits.Data();
   uint32_t *merge_map_data = ans.Data();
@@ -446,7 +447,5 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c, const std::vector<int32_t> &sizes
                         tot_size, merge_map_data));
   return ans;
 }
-
-
 
 }  // namespace k2
