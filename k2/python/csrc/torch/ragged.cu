@@ -100,6 +100,26 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
     os << self;
     return os.str();
   });
+  pyclass.def(py::pickle(
+      [](const PyClass &obj) {
+        Array1<int32_t> row_splits1 = obj.RowSplits(1);
+        Array1<int32_t> row_ids1 = obj.RowIds(1);
+        Array1<T> values = obj.values;
+        return py::make_tuple(ToTensor(row_splits1), ToTensor(row_ids1),
+                              ToTensor(values));
+      },
+      [](py::tuple t) {
+        if (t.size() != 3) throw std::runtime_error("Invalid state!");
+        torch::Tensor row_splits1_tensor = t[0].cast<torch::Tensor>();
+        Array1<int32_t> row_splits1 = FromTensor<int32_t>(row_splits1_tensor);
+        torch::Tensor row_ids1_tensor = t[1].cast<torch::Tensor>();
+        Array1<int32_t> row_ids1 = FromTensor<int32_t>(row_ids1_tensor);
+        torch::Tensor values_tensor = t[2].cast<torch::Tensor>();
+        Array1<T> values = FromTensor<T>(values_tensor);
+        RaggedShape shape = RaggedShape2(&row_splits1, &row_ids1, -1);
+        PyClass obj(shape, values);
+        return obj;
+      }));
 
   // Return a pair:
   // - Ragged<T>
