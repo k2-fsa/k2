@@ -475,6 +475,8 @@ void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
   } else {
     num_threads_per_job =
         RoundUpToNearestPowerOfTwo(num_threads_per_job / target_num_loops);
+    if (num_threads_per_job < 1)
+      num_threads_per_job = 1;
     int32_t tot_threads = num_threads_per_job * num_jobs;
     int32_t block_size = 256;
     int32_t grid_size = NumBlocks(tot_threads, block_size);
