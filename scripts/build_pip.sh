@@ -75,3 +75,4 @@ mv $build_dir/.lib-bak/*.so $build_dir/lib/
 mv .temp_lib/lib*test*.so $build_dir/lib/
 
 rm -rfv $build_dir/.lib-bak
+rm -rf $build_dir/lib/k2

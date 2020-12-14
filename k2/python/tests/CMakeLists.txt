@@ -11,7 +11,7 @@ function(k2_add_py_test source)
   get_filename_component(k2_path ${CMAKE_CURRENT_LIST_DIR} DIRECTORY)
 
   set_property(TEST ${name}
-    PROPERTY ENVIRONMENT "PYTHONPATH=$<TARGET_FILE_DIR:_k2>:${k2_path}:$ENV{PYTHONPATH}"
+    PROPERTY ENVIRONMENT "PYTHONPATH=${k2_path}:$<TARGET_FILE_DIR:_k2>:$ENV{PYTHONPATH}"
   )
 endfunction()
 
