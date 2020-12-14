@@ -28,11 +28,12 @@ set(py_test_files
   index_add_test.py
   index_select_test.py
   index_test.py
-  intersect_dense_test.py
   intersect_dense_pruned_test.py
+  intersect_dense_test.py
   intersect_test.py
   linear_fsa_test.py
   ragged_shape_test.py
+  ragged_test.py
   remove_epsilon_test.py
   shortest_path_test.py
   top_sort_test.py

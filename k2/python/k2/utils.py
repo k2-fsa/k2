@@ -3,7 +3,6 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from typing import List
 from typing import Optional
 
 import torch
@@ -86,11 +85,10 @@ def to_tensor(fsa: Fsa) -> torch.Tensor:
     return _fsa_to_tensor(fsa.arcs)
 
 
-def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':
+def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
     '''Visualize an Fsa via graphviz.
 
     Note:
-      The type hint for the return value is omitted.
       Graphviz is needed only when this function is called.
 
     Args:
@@ -105,8 +103,10 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':
 
     try:
         import graphviz
-    except:
-        print("You cannot use `to_dot` unless the graphviz package is installed.")
+    except Exception:
+        print(
+            'You cannot use `to_dot` unless the graphviz package is installed.'
+        )
         raise
 
     assert len(fsa.shape) == 2, 'FsaVec is not supported'
@@ -182,7 +182,6 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':
         weight = f'{weight:.2f}'.rstrip('0').rstrip('.')
         dot.edge(src_state, dst_state, label=f'{label}{aux_label}/{weight}')
     return dot
-
 
 
 def create_fsa_vec(fsas):
