@@ -125,3 +125,7 @@ endfunction()
 foreach(name IN LISTS cuda_tests)
   k2_add_cuda_test(${name})
 endforeach()
+
+if(K2_ENABLE_BENCHMARK)
+  add_subdirectory(benchmark)
+endif()
