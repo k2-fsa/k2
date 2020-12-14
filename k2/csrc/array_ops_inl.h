@@ -150,9 +150,10 @@ void ExclusiveSumPerRow(const Array2<T> &src, Array2<T> *dest) {
 template <typename T, typename std::enable_if<std::is_floating_point<T>::value,
                                               T>::type * = nullptr>
 void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
-                        T *data) {
+                        T *data, int32_t seed = 0) {
   std::random_device rd;
   std::mt19937 gen(rd());
+  if (seed != 0) gen = std::mt19937(seed);
   std::uniform_real_distribution<T> dis(min_value, max_value);
   for (int32_t i = 0; i < dim; ++i) data[i] = dis(gen);
 }
@@ -160,9 +161,10 @@ void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
 template <typename T, typename std::enable_if<std::is_integral<T>::value,
                                               T>::type * = nullptr>
 void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
-                        T *data) {
+                        T *data, int32_t seed = 0) {
   std::random_device rd;
   std::mt19937 gen(rd());
+  if (seed != 0) gen = std::mt19937(seed);
   // TODO(haowen): uniform_int_distribution does not support bool and char,
   // we may need to add some check here?
   std::uniform_int_distribution<T> dis(min_value, max_value);
@@ -456,8 +458,8 @@ void ApplyBinaryOpOnArray1(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
 }
 
 template <typename T>
-Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
-                            T max_value) {
+Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value, T max_value,
+                            int32_t seed /*= 0*/) {
   NVTX_RANGE(K2_FUNC);
   static_assert(std::is_floating_point<T>::value || std::is_integral<T>::value,
                 "Only support floating-point and integral type");
@@ -470,7 +472,7 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value,
   if (max_value == min_value) {
     for (int32_t i = 0; i < dim; ++i) data[i] = min_value;
   } else {
-    internal::RandArray1Internal<T>(c, dim, min_value, max_value, data);
+    internal::RandArray1Internal<T>(c, dim, min_value, max_value, data, seed);
   }
   return temp.To(c);
 }
@@ -890,7 +892,7 @@ Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
     src_ptrs_vec[i] = src[i]->Data();
   }
   K2_CHECK_EQ(src_tot_dim, dim);
-  Array1<const T*> src_ptrs(c, src_ptrs_vec);
+  Array1<const T *> src_ptrs(c, src_ptrs_vec);
   Array1<T> ans(c, dim);
   const uint32_t *merge_map_data = merge_map.Data();
   T *ans_data = ans.Data();

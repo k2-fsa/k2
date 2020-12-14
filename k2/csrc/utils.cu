@@ -11,6 +11,8 @@
 
 #include <algorithm>
 
+
+#include "cub/cub.cuh"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/nvtx.h"
@@ -129,6 +131,26 @@ void RowSplitsToRowIds(ContextPtr c, int32_t num_rows,
   } else {
     K2_CHECK_EQ(d, kCuda);
     if (1) {
+#if 1
+      auto lambda_set_minus_1 = [=] __device__(int32_t i) -> void {
+        row_ids[i] = -1;
+      };
+      EvalDevice(c, num_elems, lambda_set_minus_1);
+
+      auto lambda_set_row_ids_start = [=] __device__(int32_t i) -> void {
+        if (row_splits[i + 1] > row_splits[i]) row_ids[row_splits[i]] = i;
+      };
+      EvalDevice(c, num_rows, lambda_set_row_ids_start);
+
+      size_t temp_storage_bytes;
+      cub::DeviceScan::InclusiveScan(nullptr, temp_storage_bytes, row_ids,
+                                     row_ids, MaxOp<int32_t>(), num_elems,
+                                     c->GetCudaStream());
+      Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+      cub::DeviceScan::InclusiveScan(d_temp_storage.Data(), temp_storage_bytes,
+                                     row_ids, row_ids, MaxOp<int32_t>(),
+                                     num_elems, c->GetCudaStream());
+#else
       // TODO: compare this for speed with the other branch.  This is branch is
       // much simpler, and will be considerably faster for "normal" cases ->
       // probably preferred.
@@ -141,6 +163,7 @@ void RowSplitsToRowIds(ContextPtr c, int32_t num_rows,
       K2_CUDA_SAFE_CALL(RowSplitsToRowIdsKernel<<<grid_size, block_size, 0,
                                                   c->GetCudaStream()>>>(
           num_rows, threads_per_row, row_splits, num_elems, row_ids));
+#endif
     } else {
       // TODO: Will probably just delete this branch at some point.
 
