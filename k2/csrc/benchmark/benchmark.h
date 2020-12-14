@@ -120,8 +120,18 @@ std::vector<std::unique_ptr<BenchmarkInstance>> *GetRegisteredBenchmarks();
 
 /* Filter registered benchmarks whose name does not match
    the given regular expression.
+
+   @param [in] pattern The regular expression. Benchmark names that
+                       does not match the pattern will be excluded
+                       and will not be run while invoking `RunBechmarks()`.
  */
-void FilterRegisteredBenchmarks(const std::string &regex);
+void FilterRegisteredBenchmarks(const std::string &pattern);
+
+/* Run registered benchmarks.
+
+   @return Return the benchmark results.
+ */
+std::vector<BenchmarkRun> RunBechmarks();
 
 }  // namespace k2
 

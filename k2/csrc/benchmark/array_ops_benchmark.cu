@@ -40,23 +40,14 @@ static void RegisterBenchmarkExclusiveSum() {
   }
 }
 
-static void RunBechmarks() {
-  auto &registered_benchmarks = *GetRegisteredBenchmarks();
-  std::vector<BenchmarkRun> results;
-  for (const auto &b : registered_benchmarks) {
-    BenchmarkRun run;
-    run.name = b->name;
-    run.stat = b->func();
-    results.push_back(run);
-  }
-
-  for (const auto &r : results) std::cout << r.ToString() << "\n";
-}
-
 }  // namespace k2
 
 int main() {
   k2::RegisterBenchmarkExclusiveSum();
-  k2::RunBechmarks();
+  k2::FilterRegisteredBenchmarks("1000");
+  std::vector<k2::BenchmarkRun> results = k2::RunBechmarks();
+  for (const auto &r : results) {
+    std::cout << r.ToString() << "\n";
+  }
   return 0;
 }
