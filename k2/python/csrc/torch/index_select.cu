@@ -188,8 +188,8 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
   Array1<int32_t> counts(context, indexes_dim0);
   SumPerSublist(non_zero_elems, 0, &counts);
   const int32_t *counts_data = counts.Data();
-  Array1<int32_t> status(context, 1, 0); // 0 -> success; otherwise 1 + row_id
-                                         // of bad row in `indexes`
+  Array1<int32_t> status(context, 1, 0);  // 0 -> success; otherwise 1 + row_id
+                                          // of bad row in `indexes`
   int32_t *status_data = status.Data();
   K2_EVAL(
       context, counts.Dim(), lambda_check_status, (int32_t i)->void {
