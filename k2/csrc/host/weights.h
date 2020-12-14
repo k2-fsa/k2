@@ -151,9 +151,9 @@ template <FbWeightType Type>
 double ShortestDistance(const Fsa &fsa);
 // override for different weight types..
 template <>
-inline double ShortestDistance<kLogSumWeight>(const Fsa &fsa);
+double ShortestDistance<kLogSumWeight>(const Fsa &fsa);
 template <>
-inline double ShortestDistance<kMaxWeight>(const Fsa &fsa);
+double ShortestDistance<kMaxWeight>(const Fsa &fsa);
 
 /*
   Generic shortest-distance algorithm that uses max on weights and does not
@@ -162,7 +162,7 @@ inline double ShortestDistance<kMaxWeight>(const Fsa &fsa);
   IsValid(fsa), but no other properties are required.  Will return infinity if
   there is a positive-score (i.e. negative-cost) self-loop
  */
-double ShortestDistanceMaxGeneric(Fsa &fsa);
+double ShortestDistanceMaxGeneric(const Fsa &fsa);
 
 
 struct WfsaWithFbWeights {

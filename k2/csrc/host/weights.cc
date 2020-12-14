@@ -217,18 +217,20 @@ struct ShortestDistanceInfo {
   ShortestDistanceInfo &operator=(const ShortestDistanceInfo &other) = default;
 };
 
-double ShortestDistanceMaxGeneric(Fsa &fsa) {
+double ShortestDistanceMaxGeneric(const Fsa &fsa) {
   int32_t num_states = fsa.NumStates();
   std::vector<ShortestDistanceInfo> info(num_states);
   info[0].score = 0;
   info[0].best_path_length = 0;
   info[0].in_queue = true;
-  std::vector<int32_t> queue;
+
+  std::deque<int32_t> queue;
+
   queue.push_back(0);
 
   while (!queue.empty()) {
-    int32_t s = queue.back();
-    queue.pop_back();
+    int32_t s = queue.front();
+    queue.pop_front();
     ShortestDistanceInfo &this_info = info[s];
     this_info.in_queue = false;
     int32_t arc_begin = fsa.indexes[s],
@@ -237,16 +239,16 @@ double ShortestDistanceMaxGeneric(Fsa &fsa) {
       Arc &arc = fsa.data[arc_idx];
       int32_t dest_state = arc.dest_state;
       ShortestDistanceInfo &next_info = info[dest_state];
-      if (info.score + arc.weight > next_info.score) {
-        next_info.score = info.score + arc.weight;
-        next_info.best_path_length = info.best_path_length + 1;
+      if (this_info.score + arc.weight > next_info.score) {
+        next_info.score = this_info.score + arc.weight;
+        next_info.best_path_length = this_info.best_path_length + 1;
         if (next_info.best_path_length > num_states) {
           // negative-cost cycle.
           return std::numeric_limits<double>::infinity();
         }
         if (!next_info.in_queue) {
           next_info.in_queue = true;
-          queue.push_back(next_info);
+          queue.push_back(arc.dest_state);
         }
       }
     }
@@ -255,10 +257,10 @@ double ShortestDistanceMaxGeneric(Fsa &fsa) {
 }
 
 template <>
-inline double ShortestDistance<kLogSumWeight>(const Fsa &fsa) {
+double ShortestDistance<kLogSumWeight>(const Fsa &fsa) {
   if (IsEmpty(fsa)) return kDoubleNegativeInfinity;
   std::vector<double> state_weights(fsa.NumStates());
-  ComputeForwardWeights<Type>(fsa, state_weights.data());
+  ComputeForwardWeights<kLogSumWeight>(fsa, state_weights.data());
   return state_weights[fsa.FinalState()];
 }
 
@@ -267,7 +269,7 @@ double ShortestDistance<kMaxWeight>(const Fsa &fsa) {
   if (IsEmpty(fsa)) return kDoubleNegativeInfinity;
   std::vector<double> state_weights(fsa.NumStates());
   if (IsTopSorted(fsa)) {
-    ComputeForwardWeights<Type>(fsa, state_weights.data());
+    ComputeForwardWeights<kMaxWeight>(fsa, state_weights.data());
     return state_weights[fsa.FinalState()];
   } else {
     return ShortestDistanceMaxGeneric(fsa);

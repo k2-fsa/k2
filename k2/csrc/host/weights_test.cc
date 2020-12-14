@@ -129,6 +129,19 @@ TEST_F(WeightsTest, ShortestDistance) {
     double distance = ShortestDistance<kLogSumWeight>(*fsa_);
     EXPECT_NEAR(distance, 14.143222, 1e-3);
   }
+
+  { // shortest-distance for non-top-sorted input (works only for max semiring).
+    std::vector<Arc> arcs = {
+      {0, 2, 1, 1},  {1, 3, -1, 2}, {2, 1, 1, 1}
+    };
+    FsaCreator fsa_creator(arcs, 3);
+    Fsa fsa = fsa_creator.GetFsa();
+    double distance = ShortestDistance<kMaxWeight>(fsa),
+          distance2 = ShortestDistanceMaxGeneric(fsa);
+    EXPECT_NEAR(distance, 4, 1e-3);
+    EXPECT_NEAR(distance2, 4, 1e-3);
+  }
+
 }
 
 TEST_F(WeightsTest, WfsaWithFbWeightsMax) {
