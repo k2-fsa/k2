@@ -28,6 +28,9 @@ class Renumbering {
   Renumbering(Renumbering &&src) = default;
   // move assignment
   Renumbering &operator=(Renumbering &&) = default;
+  // copy assignment
+  Renumbering &operator=(const Renumbering &) = default;
+
 
   /*
      This constructor will allocate memory for `keep_` array with size

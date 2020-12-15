@@ -1562,4 +1562,80 @@ RaggedShape GetLayer(const RaggedShape &src, int32_t layer) {
 }
 
 
+void DecomposeRaggedShape(const RaggedShape &src,
+                          int32_t axis,
+                          RaggedShape *top, RaggedShape *bottom) {
+  K2_CHECK_GT(axis, 0);
+  K2_CHECK_LT(axis, src.NumAxes() - 1);
+  const std::vector<RaggedShapeLayer> &src_layers = src.Layers();
+  std::vector<RaggedShapeLayer> top_layers(axis),
+      bottom_layers(src_layers.size() - axis);
+  int32_t src_size = src_layers.size();
+  for (int32_t i = 0; i < axis; ++i)
+    top_layers[i] = src_layers[i];
+  for (int32_t i = axis; i < src_size; ++i)
+    bottom_layers[i - axis] = src_layers[i];
+  *top = RaggedShape(top_layers);
+  *bottom = RaggedShape(bottom_layers);
+}
+
+RaggedShape RemoveEmptyLists(RaggedShape &src_shape,
+                             int32_t axis,
+                             Renumbering *renumbering_out) {
+  if (axis == 0) {
+    return RemoveEmptyListsAxis0(src_shape, renumbering_out);
+  }
+  RaggedShape top_shape, bottom_shape;
+  DecomposeRaggedShape(src_shape, axis, &top_shape, &bottom_shape);
+
+  Renumbering r_temp;
+  if (!renumbering_out)
+    renumbering_out = &r_temp;
+  bottom_shape = RemoveEmptyListsAxis0(bottom_shape, renumbering_out);
+  top_shape = SubsampleRaggedShape(top_shape, *renumbering_out);
+  return ComposeRaggedShapes(top_shape, bottom_shape);
+}
+
+
+RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
+                                  Renumbering *renumbering_out) {
+  ContextPtr c = src_shape.Context();
+  int32_t num_lists = src_shape.Dim0();
+  Renumbering r(c, num_lists);
+  int32_t *row_splits_data = src_shape.RowSplits(1).Data();
+  char *keep_data = r.Keep().Data();
+  K2_EVAL(c, num_lists + 1, lambda_set_keep, (int32_t i) -> void {
+      keep_data[i] = (row_splits_data[i+1] != row_splits_data[i]);
+    });
+  src_shape.RowIds(1);  // make sure RowIds(1) is populated.
+  std::vector<RaggedShapeLayer> layers = src_shape.Layers();
+  int32_t num_layers = layers.size();
+  int32_t new_num_lists = r.NumNewElems(),
+              num_elems = src_shape.TotSize(1);  // unchanged old vs. new.
+  Array1<int32_t> new_row_splits(c, new_num_lists + 1),
+      new_row_ids = r.Old2New()[src_shape.RowIds(1)];
+  int32_t *new_row_splits_data = new_row_splits.Data();
+  const int32_t *old_row_splits_data = src_shape.RowSplits(1).Data(),
+                       *new2old_data = r.New2Old().Data();
+  // set `new_row_splits_data`.
+  K2_EVAL(c, new_num_lists + 1, lambda_set_new_row_splits, (int32_t new_i) -> void {
+      int32_t j;
+      if (new_i == new_num_lists) {
+        j = num_elems;
+      } else {
+        int32_t old_i = new2old_data[new_i];
+        j = old_row_splits_data[old_i];
+      }
+      new_row_splits_data[new_i] = j;
+    });
+  layers[0].row_splits = new_row_splits;
+  layers[0].row_ids = new_row_ids;
+  // no need to set its cached_tot_size; that didn't change.
+  if (renumbering_out)
+    *renumbering_out = std::move(r);
+  return RaggedShape(layers);
+}
+
+
+
 }  // namespace k2

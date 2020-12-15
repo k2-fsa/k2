@@ -62,10 +62,7 @@ void Renumbering::ComputeNew2Old() {
 Renumbering::Renumbering(const Array1<char> &keep,
                          const Array1<int32_t> &old2new,
                          const Array1<int32_t> &new2old):
-    keep_(keep), old2new(old2new), num_new_elems_(new2old.Dim()),  new2old(new2old) { }
-    keep_(old2new.Context(), old2new_.Dim()).Arange(0, old2new.Dim() - 1)
-    old2new_(old2new.Arange(0, old2new.Dim() - 1)),
-    num_new_elems_(new2old.Dim()),
+    keep_(keep), old2new_(old2new), num_new_elems_(new2old.Dim()),
     new2old_(new2old) { }
 
 

@@ -254,6 +254,75 @@ TEST(RaggedShapeTest, RaggedShape) {
     }
   }
 }
+
+
+TEST(RaggedShapeTest, DecomposeRaggedShape) {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    {
+      RaggedShape s(c, "[ [ x x ] [ x ] ]"),
+          t(c, "[ [ x ] [ x x ] [ x x x x ] ]"),
+          u = ComposeRaggedShapes(s, t);
+
+      RaggedShape s2, t2;
+      DecomposeRaggedShape(u, 1, &s2, &t2);
+      EXPECT_EQ(Equal(s, s2), true);
+      EXPECT_EQ(Equal(t, t2), true);
+    }
+  }
+}
+
+
+
+TEST(RaggedShapeTest, RemoveEmptyListsAxis0) {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    {
+      RaggedShape s(c, "[ [ [ x ] [x ] ] [ ] [ [ x ] ] [ ]  ]"),
+          t(c, "[ [ [ x ] [x ] ] [ [ x ] ] ]");
+
+      Renumbering r;
+      RaggedShape t2 = RemoveEmptyListsAxis0(s, &r);
+      EXPECT_EQ(Equal(t, t2), true);
+    }
+
+    {
+      RaggedShape s(c, "[ [ x x ] [ ] [ x ] [ ]  ]"),
+          t(c, "[ [ x x ] [ x ] ]");
+      RaggedShape t2 = RemoveEmptyListsAxis0(s);
+      EXPECT_EQ(Equal(t, t2), true);
+    }
+
+    {
+      RaggedShape s(c, "[ [ x x ] [ ] [ x ] [ ]  ]"),
+          t(c, "[ [ x x ] [ x ] ]");
+      Renumbering r;
+      RaggedShape t2 = RemoveEmptyLists(s, 0, &r);
+      EXPECT_EQ(Equal(t, t2), true);
+    }
+  }
+}
+
+
+TEST(RaggedShapeTest, RemoveEmptyLists) {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    {
+      RaggedShape s(c, "[ [ [ x ] [ ] ]  [ ] [ [ x ] ] [ ]  ]"),
+          t(c, "[ [ [ x ] ]  [ ] [ [ x ] ] [ ]  ]");
+
+      Renumbering r;
+      RaggedShape t2 = RemoveEmptyLists(s, 1, &r);
+      EXPECT_EQ(Equal(t, t2), true);
+    }
+  }
+}
+
+
+
+
+
+
 TEST(RaggedShapeTest, RaggedShapeIterator) {
   // note RaggedShapeIndexIterator works only for CPU
   ContextPtr context = GetCpuContext();
