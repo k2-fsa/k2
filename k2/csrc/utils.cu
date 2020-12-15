@@ -11,12 +11,13 @@
 
 #include <algorithm>
 
-
 #include "cub/cub.cuh"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
+#include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/utils.h"
+#include "moderngpu/kernel_load_balance.hxx"
 
 namespace k2 {
 
@@ -132,6 +133,10 @@ void RowSplitsToRowIds(ContextPtr c, int32_t num_rows,
     K2_CHECK_EQ(d, kCuda);
     if (1) {
 #if 1
+      mgpu::context_t *mgpu_allocator = GetModernGpuAllocator(c);
+      mgpu::load_balance_search(num_elems, row_splits, num_rows, row_ids,
+                                *mgpu_allocator);
+#elif 0
       auto lambda_set_minus_1 = [=] __device__(int32_t i) -> void {
         row_ids[i] = -1;
       };

@@ -61,7 +61,7 @@ static BenchmarkStat BenchmarkRowSplitsToRowIds(int32_t dim,
   Array1<int32_t> row_ids(context, row_splits.Back());
 
   BenchmarkStat stat;
-  stat.op_name = "RowSplitsToRowIds";
+  stat.op_name = "RowSplitsToRowIds_" + std::to_string(row_ids.Dim());
   stat.num_iter = num_iter;
   stat.problem_size = dim;
   stat.dtype_name = TraitsOf(DtypeOf<int32_t>::dtype).Name();
