@@ -559,7 +559,7 @@ Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n);
     @param [in] c  Context of `src_data`.
     @param [in] src_data  The source array.
     @param [in] src_dim   The dimension of the src array.
-    @param  [in] n         Number of counts; we require `0 <= src_date[i] < n`.
+    @param [in] n         Number of counts; we require `0 <= src_data[i] < n`.
 
     See also GetCounts above.
  */
