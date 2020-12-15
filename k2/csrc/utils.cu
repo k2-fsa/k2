@@ -19,6 +19,7 @@
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/utils.h"
 #include "moderngpu/kernel_load_balance.hxx"
+#include "moderngpu/kernel_sortedsearch.hxx"
 
 namespace k2 {
 
@@ -325,6 +326,20 @@ void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
   } else {
     K2_CHECK_EQ(d, kCuda);
 #if 1
+    // moderngpu is faster
+    auto lambda_set_row_splits = [=] __device__(int32_t i) {
+      if (i == num_rows)
+        row_splits[i] = num_elems;
+      else
+        row_splits[i] = i;
+    };
+    EvalDevice(c, num_rows + 1, lambda_set_row_splits);
+
+    mgpu::context_t *mgpu_allocator = GetModernGpuAllocator(c);
+    mgpu::sorted_search<mgpu::bounds_lower>(
+        row_splits, num_rows, row_ids, num_elems, row_splits,
+        LessThan<int32_t>(), *mgpu_allocator);
+#elif 0
     Array1<int32_t> counts = GetCounts(c, row_ids, num_elems, num_rows + 1);
     ExclusiveSum(c, num_rows + 1, counts.Data(), row_splits);
 #else
