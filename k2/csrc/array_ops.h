@@ -554,6 +554,18 @@ void MonotonicDecreasingUpperBound(const Array1<S> &src, Array1<T> *dest);
 */
 Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n);
 
+/* Returns counts of numbers in the array.
+
+    @param [in] c  Context of `src_data`.
+    @param [in] src_data  The source array.
+    @param [in] src_dim   The dimension of the src array.
+    @param [in] n         Number of counts; we require `0 <= src_data[i] < n`.
+
+    See also GetCounts above.
+ */
+Array1<int32_t> GetCounts(ContextPtr c, const int32_t *src_data,
+                          int32_t src_dim, int32_t n);
+
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src);
 

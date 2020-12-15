@@ -477,7 +477,8 @@ class Fsa(object):
 
         Args:
           use_double_scores:
-            True to use `double precision` floating point. False to use `single precision`.
+            True to use `double precision` floating point.
+            False to use `single precision`.
         '''
         name = 'forward_scores_tropical' + ('double'
                                             if use_double_scores else 'float')
@@ -505,7 +506,8 @@ class Fsa(object):
 
         Args:
           use_double_scores:
-            True to use `double precision` floating point. False to use `single precision`.
+            True to use `double precision` floating point.
+            False to use `single precision`.
         '''
         name = 'forward_scores_log' + ('double'
                                        if use_double_scores else 'float')
@@ -533,7 +535,8 @@ class Fsa(object):
 
         Args:
           use_double_scores:
-            True to use `double precision` floating point. False to use `single precision`.
+            True to use `double precision` floating point.
+            False to use `single precision`.
         '''
         name = 'tot_scores_tropical_' + ('double'
                                          if use_double_scores else 'false')
@@ -557,7 +560,8 @@ class Fsa(object):
 
         Args:
           use_double_scores:
-            True to use `double precision` floating point. False to use `single precision`.
+            True to use `double precision` floating point.
+            False to use `single precision`.
         '''
         name = 'tot_scores_log_' + ('double' if use_double_scores else 'float')
         cache = self._cache
@@ -577,7 +581,8 @@ class Fsa(object):
 
         Args:
           use_double_scores:
-            True to use `double precision` floating point. False to use `single precision`.
+            True to use `double precision` floating point.
+            False to use `single precision`.
         '''
         name = 'backward_scores_tropical_' + ('double' if use_double_scores
                                               else 'float')
@@ -607,7 +612,8 @@ class Fsa(object):
 
         Args:
           use_double_scores:
-            True to use `double precision` floating point. False to use `single precision`.
+            True to use `double precision` floating point.
+            False to use `single precision`.
         '''
         name = 'backward_scores_log_' + ('double'
                                          if use_double_scores else 'float')
@@ -634,7 +640,8 @@ class Fsa(object):
 
         Args:
           use_double_scores:
-            True to use `double precision` floating point. False to use `single precision`.
+            True to use `double precision` floating point.
+            False to use `single precision`.
         '''
         name, cache = 'entering_arcs', self._cache
         if name not in cache:
