@@ -2,7 +2,7 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Optional
 from typing import Generic
 from typing import TypeVar
@@ -22,11 +22,11 @@ class SymbolTable(Generic[Symbol]):
     The SymbolTable can only be read to/written from disk if the
     symbols are strings.
     '''
-    _id2sym: Dict[int, Symbol]
+    _id2sym: Dict[int, Symbol] = field(default_factory=dict)
     '''Map an integer to a symbol.
     '''
 
-    _sym2id: Dict[Symbol, int]
+    _sym2id: Dict[Symbol, int] = field(default_factory=dict)
     '''Map a symbol to an integer.
     '''
 
