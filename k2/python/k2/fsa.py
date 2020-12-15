@@ -468,7 +468,7 @@ class Fsa(object):
         return cache[name]
 
     def get_forward_scores_tropical(self,
-                                    use_float_scores: bool) -> torch.Tensor:
+                                    use_double_scores: bool) -> torch.Tensor:
         '''Get (and compute if necessary) cached property
         self.forward_scores_tropical.
 
@@ -476,17 +476,17 @@ class Fsa(object):
         total-scores.  These are raw forward-scores and not differentiable.
 
         Args:
-          use_float_scores:
-            True to use `float`. False to use `double`.
+          use_double_scores:
+            True to use `double precision` floating point. False to use `single precision`.
         '''
-        name = 'forward_scores_tropical' + ('float'
-                                            if use_float_scores else 'double')
+        name = 'forward_scores_tropical' + ('double'
+                                            if use_double_scores else 'float')
         cache = self._cache
         if name not in cache:
-            if use_float_scores:
-                func = _k2._get_forward_scores_float
-            else:
+            if use_double_scores:
                 func = _k2._get_forward_scores_double
+            else:
+                func = _k2._get_forward_scores_float
             forward_scores_tropical, entering_arcs = func(
                 self.arcs,
                 state_batches=self.get_state_batches(),
@@ -496,7 +496,7 @@ class Fsa(object):
             cache['entering_arcs'] = entering_arcs
         return cache[name]
 
-    def get_forward_scores_log(self, use_float_scores: bool) -> torch.Tensor:
+    def get_forward_scores_log(self, use_double_scores: bool) -> torch.Tensor:
         '''Get (and compute if necessary) cached property
         self.forward_scores_log.
 
@@ -504,17 +504,17 @@ class Fsa(object):
         log semiring.
 
         Args:
-          use_float_scores:
-            True to use `float`. False to use `double`.
+          use_double_scores:
+            True to use `double precision` floating point. False to use `single precision`.
         '''
-        name = 'forward_scores_log' + ('float'
-                                       if use_float_scores else 'double')
+        name = 'forward_scores_log' + ('double'
+                                       if use_double_scores else 'float')
         cache = self._cache
         if name not in cache:
-            if use_float_scores:
-                func = _k2._get_forward_scores_float
-            else:
+            if use_double_scores:
                 func = _k2._get_forward_scores_double
+            else:
+                func = _k2._get_forward_scores_float
             cache[name], _ = func(
                 self.arcs,
                 state_batches=self.get_state_batches(),
@@ -522,7 +522,7 @@ class Fsa(object):
                 log_semiring=True)
         return cache[name]
 
-    def get_tot_scores_tropical(self, use_float_scores: bool) -> torch.Tensor:
+    def get_tot_scores_tropical(self, use_double_scores: bool) -> torch.Tensor:
         '''Compute total-scores in tropical semiring (one per FSA), which is the same
            as the best-path score.
 
@@ -532,23 +532,23 @@ class Fsa(object):
            get differentiable total-scores.
 
         Args:
-          use_float_scores:
-            True to use `float`. False to use `double`.
+          use_double_scores:
+            True to use `double precision` floating point. False to use `single precision`.
         '''
-        name = 'tot_scores_tropical_' + ('float'
-                                         if use_float_scores else 'double')
+        name = 'tot_scores_tropical_' + ('double'
+                                         if use_double_scores else 'false')
         cache = self._cache
         if name not in cache:
-            if use_float_scores is True:
-                func = _k2._get_tot_scores_float
-            else:
+            if use_double_scores is True:
                 func = _k2._get_tot_scores_double
+            else:
+                func = _k2._get_tot_scores_float
             forward_scores_tropical = self.get_forward_scores_tropical(
-                use_float_scores)
+                use_double_scores)
             cache[name] = func(self.arcs, forward_scores_tropical)
         return cache[name]
 
-    def get_tot_scores_log(self, use_float_scores: bool) -> torch.Tensor:
+    def get_tot_scores_log(self, use_double_scores: bool) -> torch.Tensor:
         '''Compute total-scores in log semiring (one per FSA).
            as the best-path score.
            CAUTION: these are just the raw total-scores and are not
@@ -556,42 +556,42 @@ class Fsa(object):
            total-scores.
 
         Args:
-          use_float_scores:
-            True to use `float`. False to use `double`.
+          use_double_scores:
+            True to use `double precision` floating point. False to use `single precision`.
         '''
-        name = 'tot_scores_log_' + ('float' if use_float_scores else 'double')
+        name = 'tot_scores_log_' + ('double' if use_double_scores else 'float')
         cache = self._cache
         if name not in cache:
-            if use_float_scores is True:
-                func = _k2._get_tot_scores_float
-            else:
+            if use_double_scores is True:
                 func = _k2._get_tot_scores_double
-            forward_scores_log = self.get_forward_scores_log(use_float_scores)
+            else:
+                func = _k2._get_tot_scores_float
+            forward_scores_log = self.get_forward_scores_log(use_double_scores)
             cache[name] = func(self.arcs, forward_scores_log)
         return cache[name]
 
     def get_backward_scores_tropical(self,
-                                     use_float_scores: bool) -> torch.Tensor:
+                                     use_double_scores: bool) -> torch.Tensor:
         '''Compute backward-scores in tropical semiring, i.e. best-path-to-end
            costs.  For internal k2 use.  Not differentiable.
 
         Args:
-          use_float_scores:
-            True to use `float`. False to use `double`.
+          use_double_scores:
+            True to use `double precision` floating point. False to use `single precision`.
         '''
-        name = 'backward_scores_tropical_' + ('float' if use_float_scores else
-                                              'double')
+        name = 'backward_scores_tropical_' + ('double' if use_double_scores
+                                              else 'float')
         cache = self._cache
         if name not in cache:
-            if use_float_scores:
-                func = _k2._get_backward_scores_float
-            else:
+            if use_double_scores:
                 func = _k2._get_backward_scores_double
+            else:
+                func = _k2._get_backward_scores_float
 
             state_batches = self.get_state_batches()
             leaving_arc_batches = self.get_leaving_arc_batches()
             tot_scores_tropical = self.get_tot_scores_tropical(
-                use_float_scores)
+                use_double_scores)
             backward_scores_tropical = func(
                 self.arcs,
                 state_batches=state_batches,
@@ -601,26 +601,26 @@ class Fsa(object):
             cache[name] = backward_scores_tropical
         return cache[name]
 
-    def get_backward_scores_log(self, use_float_scores: bool) -> torch.Tensor:
+    def get_backward_scores_log(self, use_double_scores: bool) -> torch.Tensor:
         '''Compute backward-scores in tropical semiring, i.e. total-score-to-end.
            for each state.  For internal k2 use.  Not differentiable.
 
         Args:
-          use_float_scores:
-            True to use `float`. False to use `double`.
+          use_double_scores:
+            True to use `double precision` floating point. False to use `single precision`.
         '''
-        name = 'backward_scores_log_' + ('float'
-                                         if use_float_scores else 'double')
+        name = 'backward_scores_log_' + ('double'
+                                         if use_double_scores else 'float')
         cache = self._cache
         if name not in cache:
-            if use_float_scores:
-                func = _k2._get_backward_scores_float
-            else:
+            if use_double_scores:
                 func = _k2._get_backward_scores_double
+            else:
+                func = _k2._get_backward_scores_float
 
             state_batches = self.get_state_batches()
             leaving_arc_batches = self.get_leaving_arc_batches()
-            tot_scores_log = self.get_tot_scores_log(use_float_scores)
+            tot_scores_log = self.get_tot_scores_log(use_double_scores)
             cache[name] = func(self.arcs,
                                state_batches=state_batches,
                                leaving_arc_batches=leaving_arc_batches,
@@ -628,18 +628,18 @@ class Fsa(object):
                                log_semiring=True)
         return cache[name]
 
-    def get_entering_arcs(self, use_float_scores: bool) -> torch.Tensor:
+    def get_entering_arcs(self, use_double_scores: bool) -> torch.Tensor:
         '''Compute, for each state, the index of the best arc entering it.
            For internal k2 use.
 
         Args:
-          use_float_scores:
-            True to use `float`. False to use `double`.
+          use_double_scores:
+            True to use `double precision` floating point. False to use `single precision`.
         '''
         name, cache = 'entering_arcs', self._cache
         if name not in cache:
             # the following will set self._cache['entering_arcs']
-            self.get_forward_scores_tropical(use_float_scores)
+            self.get_forward_scores_tropical(use_double_scores)
         return cache[name]
 
     def requires_grad_(self, requires_grad: bool) -> 'Fsa':

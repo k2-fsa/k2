@@ -38,7 +38,7 @@ class TestIntersectDense(unittest.TestCase):
                                      output_beam=100000)
         scores = k2.get_tot_scores(out_fsa,
                                    log_semiring=False,
-                                   use_float_scores=True)
+                                   use_double_scores=False)
         scores.sum().backward()
 
         # `expected` results are computed using gtn.
@@ -79,7 +79,7 @@ class TestIntersectDense(unittest.TestCase):
 
         scores = k2.get_tot_scores(out_fsa,
                                    log_semiring=False,
-                                   use_float_scores=True)
+                                   use_double_scores=False)
         scores.sum().backward()
 
         # `expected` results are computed using gtn.
@@ -137,7 +137,7 @@ class TestIntersectDense(unittest.TestCase):
 
         scores = k2.get_tot_scores(out_fsa,
                                    log_semiring=False,
-                                   use_float_scores=True)
+                                   use_double_scores=False)
         scores.sum().backward()
 
         # `expected` results are computed using gtn.
@@ -204,7 +204,7 @@ class TestIntersectDense(unittest.TestCase):
 
             scores = k2.get_tot_scores(out_fsa,
                                        log_semiring=False,
-                                       use_float_scores=True)
+                                       use_double_scores=False)
             scores.sum().backward()
 
 
