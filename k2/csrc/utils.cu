@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "cub/cub.cuh"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/moderngpu_allocator.h"
@@ -323,6 +324,10 @@ void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
     }
   } else {
     K2_CHECK_EQ(d, kCuda);
+#if 1
+    Array1<int32_t> counts = GetCounts(c, row_ids, num_elems, num_rows + 1);
+    ExclusiveSum(c, num_rows + 1, counts.Data(), row_splits);
+#else
     if (no_empty_rows) {
       auto lambda_simple = [=] __device__(int32_t i) {
         int32_t this_row = row_ids[i], prev_row;
@@ -356,6 +361,7 @@ void RowIdsToRowSplits(ContextPtr c, int32_t num_elems, const int32_t *row_ids,
                                                   c->GetCudaStream()>>>(
           num_elems, threads_per_elem, row_ids, num_rows, row_splits));
     }
+#endif
   }
 }
 

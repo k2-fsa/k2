@@ -286,37 +286,40 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
                     row_splits->Data());
 }
 
-Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
+Array1<int32_t> GetCounts(ContextPtr c, const int32_t *src_data,
+                          int32_t src_dim, int32_t n) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(n, 0);
-  ContextPtr &c = src.Context();
-  int32_t dim = src.Dim();
-  const int32_t *src_data = src.Data();
   Array1<int32_t> ans(c, n, 0);  // init with 0
   int32_t *ans_data = ans.Data();
   if (n == 0) {
-    K2_CHECK_EQ(dim, 0);
+    K2_CHECK_EQ(src_dim, 0);
     return ans;
   }
 
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
-    for (int32_t i = 0; i < dim; ++i) {
+    for (int32_t i = 0; i < src_dim; ++i) {
       ++ans_data[src_data[i]];
     }
   } else {
     K2_CHECK_EQ(d, kCuda);
     std::size_t temp_storage_bytes = 0;
     K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
-        nullptr, temp_storage_bytes, src_data, ans_data, n + 1, 0, n, dim,
+        nullptr, temp_storage_bytes, src_data, ans_data, n + 1, 0, n, src_dim,
         c->GetCudaStream()));  // The first time is to determine temporary
                                // device storage requirements.
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
     K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
         d_temp_storage.Data(), temp_storage_bytes, src_data, ans_data, n + 1, 0,
-        n, dim, c->GetCudaStream()));
+        n, src_dim, c->GetCudaStream()));
   }
   return ans;
+}
+
+Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
+  NVTX_RANGE(K2_FUNC);
+  return GetCounts(src.Context(), src.Data(), src.Dim(), n);
 }
 
 Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src) {
@@ -374,16 +377,13 @@ Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits) {
   return sizes;
 }
 
-
 //  This is modified from RowSplitsToRowIdsKernel.
 //  When we invoke this we make a big enough grid that there doesn't have to
 //  be a loop over rows, i.e. (gridDim.x * blockDim.x) / threads_per_row >=
 //  num_rows
-__global__ void SizesToMergeMapKernel(int32_t num_rows,
-                                      int32_t threads_per_row,
+__global__ void SizesToMergeMapKernel(int32_t num_rows, int32_t threads_per_row,
                                       const int32_t *row_splits,
-                                      int32_t num_elems,
-                                      uint32_t *merge_map) {
+                                      int32_t num_elems, uint32_t *merge_map) {
   int32_t thread = blockIdx.x * blockDim.x + threadIdx.x,
           num_threads = gridDim.x * blockDim.x, row = thread / threads_per_row,
           thread_this_row = thread % threads_per_row;
@@ -412,7 +412,7 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c,
   row_splits_cpu_data[0] = 0;
   for (int32_t i = 0; i < num_srcs; i++) {
     tot_size += sizes[i];
-    row_splits_cpu_data[i+1] = tot_size;
+    row_splits_cpu_data[i + 1] = tot_size;
   }
   Array1<uint32_t> ans(c, tot_size);
 
@@ -421,7 +421,7 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c,
     int32_t cur = 0;
     for (int32_t src = 0; src < num_srcs; src++) {
       int32_t begin = cur,  // i.e. the previous end.
-                end = row_splits_cpu_data[src+1];
+          end = row_splits_cpu_data[src + 1];
       for (; cur != end; ++cur) {
         // the 'src' says which source this item came from, and (cur - begin)
         // is the position within that source.
@@ -436,15 +436,15 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c,
   int32_t *row_splits_data = row_splits.Data();
   uint32_t *merge_map_data = ans.Data();
   int32_t avg_elems_per_row = (tot_size + num_srcs - 1) / num_srcs,
-            threads_per_row = RoundUpToNearestPowerOfTwo(avg_elems_per_row),
-              tot_threads = num_srcs * threads_per_row;
+          threads_per_row = RoundUpToNearestPowerOfTwo(avg_elems_per_row),
+          tot_threads = num_srcs * threads_per_row;
   int32_t block_size = 256;
   int32_t grid_size = NumBlocks(tot_threads, block_size);
 
-  K2_CUDA_SAFE_CALL(SizesToMergeMapKernel<<<grid_size, block_size, 0,
-                    c->GetCudaStream()>>>(
-                        num_srcs, threads_per_row, row_splits_data,
-                        tot_size, merge_map_data));
+  K2_CUDA_SAFE_CALL(
+      SizesToMergeMapKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
+          num_srcs, threads_per_row, row_splits_data, tot_size,
+          merge_map_data));
   return ans;
 }
 
