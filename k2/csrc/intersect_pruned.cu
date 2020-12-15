@@ -58,11 +58,11 @@ struct ArcInfo {              // for an arc that wasn't pruned away...
     // names for clarity.
     int32_t dest_a_fsas_state_idx01;  // The destination-state as an index
     // into a_fsas_.
-    int32_t dest_info_state_idx01;  // The destination-state as an index into
-    // the next FrameInfo's `arcs` or `states`
-    int32_t dest_info_state_idx1;  // The destination-state as an index the
-    // next FrameInfo's `arcs` or `states`,
-    // this time omitting the FSA-index.
+    int32_t dest_info_state_idx1;  // The destination-state as an idx1 into the
+                                   // next FrameInfo's `arcs` or `states`,
+                                   // omitting the FSA-index which can be worked
+                                   // out from the structure of this frame's
+                                   // ArcInfo.
   } u;
   float end_loglike;  // loglike at the end of the arc just before
   // (conceptually) it joins the destination state.
@@ -501,7 +501,7 @@ class MultiGraphDenseIntersectPruned {
             if (dynamic_beam > default_beam) dynamic_beam = default_beam;
             // Decrease the beam as long as we have more than
             // max_active active states.
-            dynamic_beam *= 0.9;
+            dynamic_beam *= 0.8;
           }
           dynamic_beams_data[i] = dynamic_beam;
           cutoffs_data[i] = best_loglike - dynamic_beam;
@@ -641,6 +641,8 @@ class MultiGraphDenseIntersectPruned {
 
     // `cutoffs` is of dimension num_fsas.
     Array1<float> cutoffs = GetPruningCutoffs(ai_loglikes);
+    if (t % 100 == 0)
+      K2_LOG(INFO) << "Dynamic_beams = " << dynamic_beams_;
     float *cutoffs_data = cutoffs.Data();
 
     // write certain indexes ( into ai.values) to state_map_.Data().  Keeps
@@ -757,6 +759,8 @@ class MultiGraphDenseIntersectPruned {
     StateInfo *kept_states_data = ans->states.values.Data();
 
     {
+      int32_t *ans_states_row_splits1_data = ans->states.RowSplits(1).Data();
+
       NVTX_RANGE("LambdaSetStates");
       K2_EVAL(
           c_, arc_info.NumElements(), lambda_set_arcs_and_states,
@@ -775,11 +779,17 @@ class MultiGraphDenseIntersectPruned {
               state_idx01 = -1;   // The destination state did not survive
                                   // pruning.
 
-            // state_idx01 is the index into ans->states, of the destination
-            // state. Note: multiple arcs may enter this state, which is why we
-            // had to set that in a separate kernel (lambda_modify_state_map).
-            info.u.dest_info_state_idx01 = state_idx01;
-            if (state_idx01 < 0)
+            int32_t state_idx1;
+            if (state_idx01 >= 0) {
+              int32_t state_idx0x = ans_states_row_splits1_data[fsa_id];
+              state_idx1 = state_idx01 - state_idx0x;
+            } else {
+              state_idx1 = -1;  // Meaning: invalid.
+            }
+            // state_idx1 is the idx1 into ans->states, of the destination
+            // state.
+            info.u.dest_info_state_idx1 = state_idx1;
+            if (state_idx1 < 0)
               return;
 
             // multiple threads may write the same value to the address written
@@ -802,7 +812,7 @@ class MultiGraphDenseIntersectPruned {
           (int32_t state_idx01)->void {
             int32_t a_fsas_state_idx01 =
                         kept_states_data[state_idx01].a_fsas_state_idx01,
-                    fsa_idx0 = next_states_row_ids1[state_idx01];
+                fsa_idx0 = next_states_row_ids1[state_idx01];
             int32_t state_map_idx = a_fsas_state_idx01 +
                                     fsa_idx0 * state_map_fsa_stride;
             state_map_acc.Delete(state_map_idx);
@@ -811,44 +821,114 @@ class MultiGraphDenseIntersectPruned {
     return ans;
   }
 
+
+  /*
+    Sets backward_loglike fields of StateInfo to the negative of the forward
+    prob if (this is the final-state or !only_final_probs), else -infinity.
+
+    This is used in computing the backward loglikes/scores for purposes of
+    pruning.  This may be done after we're finished decoding/intersecting,
+    or while we are still decoding.
+
+    While we are still ddecoding, a background process will do pruning concurrently with
+    the forward computation, for purposes of reducing memory usage (and so that
+    most of the pruning can be made concurrent with the forward computation).  In this
+    case we want to avoid pruning away anything that wouldn't have been pruned
+    away if we were to have waited to the end; and it turns out that
+    setting the backward probs to the negative of the forward probs (i.e.
+    for all states, not just final states) accomplishes this.  The issue
+    was mentioned in the "Exact Lattice Generation.." paper and also in the
+    code for Kaldi's lattice-faster-decoder.
+
+      @param [in] cur_frame    Frame on which to set the backward probs
+      @return   Returns a Renumbering object that says how we prune the
+             state indexes on this final frame (maps between old state_idx01
+             and new state_idx01).  Will be the identity renumbering since
+             these states won't be pruned.
+  */
+  Renumbering SetBackwardProbsFinal(FrameInfo *cur_frame) {
+    NVTX_RANGE("SetBackwardProbsFinal");
+    Ragged<StateInfo> &cur_states = cur_frame->states;  // 2 axes: fsa,state
+    int32_t num_states = cur_states.values.Dim();
+    if (num_states == 0)
+      return;
+    StateInfo *cur_states_data = cur_states.values.Data();
+    int32_t *a_fsas_row_ids1 = a_fsas_.shape.RowIds(1).Data(),
+            *a_fsas_row_splits1 = a_fsas_.shape.RowSplits(1).Data();
+    double minus_inf = -std::numeric_limits<double>::infinity();
+
+    K2_EVAL(c_, num_states, lambda_set_backward_prob, (int32_t state_idx01) -> void {
+        StateInfo *info = cur_states_data + state_idx01;
+        int32_t fsas_state_idx01 = info->a_fsas_state_idx01,
+                     a_fsas_idx0 = a_fsas_row_ids1_data[fsas_state_idx01],
+                  states_idx0 = cur_states_row_ids1[state_idx01],
+                  fsas_state_idx0x_next = a_fsas_row_splits1_data[a_fsas_idx0 + 1];
+        double backward_loglike,
+            forward_loglike = info->forward_loglike;
+        if (!only_final_probs || fsas_state_idx01 + 1 == fsas_state_idx0x_next &&
+            (forward_loglike - forward_loglike == 0)) // not -infinity...
+          backward_loglike = -forward_loglike;
+        else
+          backward_loglike = minus_inf;
+        info->backward_loglike = backward_loglike;
+      });
+    return IdentityRenumbering(num_states);
+  }
+
   /*
     Does backward propagation of log-likes, which means setting the
-    backward_loglike field of the StateInfo variable.  These backward log-likes
-    are normalized in such a way that you can add them with the forward
-    log-likes to produce the log-likelihood ratio vs the best path (this will be
-    non-positive).  To do this, for the final state we have to set the backward
-    log-like to the negative of the forward log-like.
+    backward_loglike field of the StateInfo variable (for cur_frame); and
+    prune/renumber the states of next_frame and the arcs of cur_frame.
+
+    These backward log-likes are normalized in such a way that you can add them
+    with the forward log-likes to produce the log-likelihood ratio vs the best
+    path (this will be non-positive).  (To do this, for the final state we have
+    to set the backward log-like to the negative of the forward log-like; see
+    SetBackwardProbsFinal()).
 
        @param [in] t       The time-index (on which to look up log-likes),
                            t >= 0
-       @param [in]  cur_frame    The FrameInfo for the frame on which we want to
-                                 set the forward log-like
-       @param [in]  next_frame  NULL if this is is the last frame of the
-                                sequence; otherwise the next frame's FrameInfo;
-                                arcs on `cur_frame` have transitions to states
-                                on `next_frame`. The `backward_loglike` values
-                                in `next_frame` are assumed to already be set.
-   */
-  void PropagateBackward(int32_t t, FrameInfo *cur_frame,
-                         FrameInfo *next_frame) {
-    NVTX_RANGE("PropagateBackward");
+       @param [in]  next_frame_renumbering  Renumbering object that shows
+                              how we pruned states on `next_frame`.
+       @param [in]  cur_frame The FrameInfo for the frame on which we want to
+                              set the forward log-like, and prune the arcs
+                              and states.
+       @param [in]  next_frame The next frame's FrameInfo;
+                              arcs on `cur_frame` have destination-states
+                              on `next_frame`. The `backward_loglike` values
+                              in `next_frame` are assumed to already be set.
+       @param [in] allow_prune_states  True if it is OK to prune states on
+                             this frame (sometimes it's not OK because we
+                             don't plan to prune on the preceding frame,
+                             so it's not safe to prune the states because
+                             they might still have incoming arcs.
+       @return   Returns a Renumbering object that says how we pruned states
+                (state_idx01) on this frame.  Will be given to
+                PropagateBackwardAndPrune() for the previous frame, so it knows
+                how to interpret the destination-states of arcs on the previous
+                frame.  If allow_prune_states == false, this function will return
+                the identity renumbering.
+  */
+  Renumbering PropagateBackwardAndPrune(int32_t t,
+                                        Renumbering &next_frame_renumbering,
+                                        FrameInfo *cur_frame,
+                                        FrameInfo *next_frame,
+                                        bool allow_prune_states) {
+    NVTX_RANGE("PropagateBackwardAndPrune");
     int32_t num_states = cur_frame->states.NumElements(),
             num_arcs = cur_frame->arcs.NumElements();
     Ragged<StateInfo> &cur_states = cur_frame->states;  // 2 axes: fsa,state
+
     StateInfo *cur_states_data = cur_states.values.Data();
 
-    int32_t *a_fsas_row_ids1 = a_fsas_.shape.RowIds(1).Data(),
-            *a_fsas_row_splits1 = a_fsas_.shape.RowSplits(1).Data();
+    int32_t *a_fsas_row_ids1_data = a_fsas_.shape.RowIds(1).Data(),
+            *a_fsas_row_splits1_data = a_fsas_.shape.RowSplits(1).Data();
+    int32_t *next_states_old2new = next_frame_renumbering.Old2New().Data();
 
     float minus_inf = -std::numeric_limits<float>::infinity();
 
-    /* arc_backward_probs represents the backward-prob at the beginning of the
-       arc.  Indexing is [state_idx01][arc_idx2], (where state_idx01 and
-       arc_idx2 are named w.r.t. frames_[t]->arcs. */
-    RaggedShape sub_curr_frame_shape = RemoveAxis(cur_frame->arcs.shape, 0);
-    Array1<float> sub_curr_frame_values(c_, num_arcs);
-    Ragged<float> arc_backward_prob(sub_curr_frame_shape,
-                                    sub_curr_frame_values);
+    Ragged<float> arc_backward_prob(cur_frame->arcs.shape,
+                                    Array1<float>(c_, cur_frame->arcs.NumElements()));
     float *arc_backward_prob_data = arc_backward_prob.values.Data();
 
     ArcInfo *ai_data = cur_frame->arcs.values.Data();
@@ -858,44 +938,42 @@ class MultiGraphDenseIntersectPruned {
             *arcs_row_splits2 = cur_frame->arcs.shape.RowSplits(2).Data();
     float output_beam = output_beam_;
 
-    int32_t *oshape_row_splits1 = oshape_unpruned_.RowSplits(1).Data(),
-            *oshape_row_splits2 = oshape_unpruned_.RowSplits(2).Data(),
-            *oshape_row_splits3 = oshape_unpruned_.RowSplits(3).Data();
+    // compute arc backward probs, and set elements of 'keep_arcs'
+    int32_t num_arcs = cur_frame->arcs.NumElements(),
+          num_states = cur_frame->arcs.TotSize(1);
+    Renumbering renumber_arcs(num_arcs),
+        renumber_states(num_states);
+    char *keep_arcs_data = renumber_arcs.Data();
 
-    // these have the "output" formatting where we number things with
-    // oshape_unpruned_, which is indexed [fsa][t][state][arc].
-    char *keep_arcs_data = renumber_output_arcs_.Keep().Data(),
-         *keep_states_data = renumber_output_states_.Keep().Data();
+    StateInfo *cur_states_data = cur_frame->states.values.Data();
 
-    if (next_frame != NULL) {
-      // compute arc backward probs, and set elements of 'keep_arcs'
+    // next_states_row_splits1 maps from fsa_idx0 to state_idx01.  This is after pruning.
+    int32_t *next_states_row_splits1_pruned =
+        next_frame->states.shape.RowSplits(1).Data();
 
-      StateInfo *cur_states_data = cur_frame->states.values.Data();
-
-      // arc_row_ids maps from arc-idx to frame-state-idx, i.e. idx012 into
-      // `arcs` to idx01 into `arcs`.
-
-      // next_states_row_splits1 maps from fsa_idx0 to state_idx01
-      int32_t *next_states_row_splits1 =
-          next_frame->states.shape.RowSplits(1).Data();
-
-      StateInfo *next_states_data = next_frame->states.values.Data();
-      K2_EVAL(
-          c_, arc_backward_prob.NumElements(),
-          lambda_set_arc_backward_prob_and_keep, (int32_t arcs_idx012)->void {
-            ArcInfo *arc = ai_data + arcs_idx012;
-            int32_t state_idx01 = arcs_rowids2[arcs_idx012],
-                    fsa_idx0 = arcs_rowids1[state_idx01],
+    StateInfo *next_states_data = next_frame->states.values.Data();
+    K2_EVAL(
+        c_, num_arcs,
+        lambda_set_arc_backward_prob_and_keep, (int32_t arcs_idx012)->void {
+          ArcInfo *arc = ai_data + arcs_idx012;
+          int32_t state_idx01 = arcs_rowids2[arcs_idx012],
+                     fsa_idx0 = arcs_rowids1[state_idx01],
                     fsa_idx0x = arcs_row_splits1[fsa_idx0],
-                    fsa_idx0xx = arcs_row_splits2[fsa_idx0x],
-                    arcs_idx12 = arcs_idx012 - fsa_idx0xx;
+                   fsa_idx0xx = arcs_row_splits2[fsa_idx0x],
+                   arcs_idx12 = arcs_idx012 - fsa_idx0xx;
 
-            int32_t dest_state_idx01 = arc->u.dest_info_state_idx01;
-            char keep_this_arc = 0;
-            float backward_loglike = minus_inf;
-            if (dest_state_idx01 >= 0) {  // Dest-state was not pruned out..
+          int32_t dest_state_idx1_unpruned = arc->u.dest_info_state_idx1;
+
+          float backward_loglike = minus_inf;
+          char keep_this_arc = 0;
+          if (dest_state_idx01_unpruned >= 0) {  // Dest-state was not pruned out in forward pass
+            int32_t dest_state_idx01_pruned = next_states_old2new[dest_state_idx01_unpruned],
+               dest_state_idx01_pruned_next = next_states_old2new[dest_state_idx01_unpruned + 1];
+            if (dest_state_idx01_pruned_next != dest_state_idx01_pruned) {
+              // Dest state has not already been pruned out in the backward pass...
+
               int32_t next_state_idx0x = next_states_row_splits1[fsa_idx0],
-                      dest_state_idx1 = dest_state_idx01 - next_state_idx0x;
+                       dest_state_idx1 = dest_state_idx01 - next_state_idx0x;
               arc->u.dest_info_state_idx1 = dest_state_idx1;
               float arc_loglike = arc->arc_loglike;
               float dest_state_backward_loglike =
@@ -904,8 +982,11 @@ class MultiGraphDenseIntersectPruned {
               backward_loglike = arc_loglike + dest_state_backward_loglike;
               float src_state_forward_loglike = OrderedIntToFloat(
                   cur_states_data[arcs_rowids2[arcs_idx012]].forward_loglike);
-              keep_this_arc = (backward_loglike + src_state_forward_loglike >=
-                               -output_beam);
+
+              if (backward_loglike + src_state_forward_loglike >= -output_beam)
+                keep_this_arc = 1;
+              else
+                backward_loglike = minus_inf;  // ignore arcs outside beam.
             }
             int32_t oshape_arc_idx0x = oshape_row_splits1[fsa_idx0],
                     oshape_arc_idx01 = oshape_arc_idx0x + t,
@@ -939,9 +1020,9 @@ class MultiGraphDenseIntersectPruned {
         (int32_t state_idx01)->void {
           StateInfo *info = cur_states_data + state_idx01;
           int32_t fsas_state_idx01 = info->a_fsas_state_idx01,
-                  a_fsas_idx0 = a_fsas_row_ids1[fsas_state_idx01],
+                  a_fsas_idx0 = a_fsas_row_ids1_data[fsas_state_idx01],
                   states_idx0 = cur_states_row_ids1[state_idx01],
-                  fsas_state_idx0x_next = a_fsas_row_splits1[a_fsas_idx0 + 1];
+                  fsas_state_idx0x_next = a_fsas_row_splits1_data[a_fsas_idx0 + 1];
           // Note: a_fsas_idx0 and states_idx0 will be the same if
           // a_fsas_.Dim0() >= b_fsas_.Dim0().
           float forward_loglike = OrderedIntToFloat(info->forward_loglike),
@@ -957,8 +1038,22 @@ class MultiGraphDenseIntersectPruned {
           } else {
             backward_loglike = state_backward_prob_data[state_idx01];
           }
-          char keep_this_state =
-              (backward_loglike + forward_loglike >= -output_beam);
+
+          // We previously did: char keep_this_state = (backward_loglike +
+          // forward_loglike >= -output_beam); but comparing with minus_inf is
+          // more consistent with how we're treating the arcs; we set
+          // backward_probs arcs outside the beam to minus_inf, so
+          // backward_loglike will only be finite if the state had at least one
+          // arc leaving it that was within the beam, which implies the state is
+          // also within the beam.
+          //
+          // Read the following statement as: (backward_loglike != -infinity),
+          // which is what it comes down to; but we do it in a round-about way
+          // like this to avoid the compiler optimizing it out under -Ofast; we
+          // don't really plan to support -Ofast, but we also are not actively
+          // looking to fail under that compilation settting.
+          char keep_this_state = (backward_loglike + forward_loglike >
+                                  64.0 * -output_beam);
 
           // we can use the arcs row-splits because the structure of
           // FrameInfo::states is the same as the top level structure of

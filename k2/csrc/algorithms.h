@@ -56,6 +56,16 @@ class Renumbering {
     Init(c, num_old_elems, init_keep_with_zero);
   }
 
+  /*
+    This constructor is not intended for use by users; it is used by
+    IdentityRenumbering().  Just sets members to the provided arrays and
+    num_new_elems_ to new2old.Dim().
+  */
+  Renumbering(const Array1<char> &keep,
+              const Array1<int32_t> &old2new,
+              const Array1<int32_t> &new2old);
+
+
   void Init(ContextPtr c, int32_t num_old_elems,
             bool init_keep_with_zero = false) {
     NVTX_RANGE(K2_FUNC);
@@ -121,11 +131,15 @@ class Renumbering {
   Array1<char> keep_;  // array of elements to keep; dimension is the
                        // `num_old_elems` provided in the constructor but it
                        // was allocated with one extra element.
-  Array1<int32_t> old2new_;
+  Array1<int32_t> old2new_;  // note: actual dimension is num-old-elems + 1.
   int32_t num_new_elems_;  // equals last element of old2new_; set when
                            // old2new_ is created.
   Array1<int32_t> new2old_;
 };
+
+// returns a Renumbering object that is the identity map.  Caution; its Keep()
+// elements are not set up.
+Renumbering IdentityRenumbering(ContextPtr c, int32_t size);
 
 }  // namespace k2
 

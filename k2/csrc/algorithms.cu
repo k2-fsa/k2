@@ -59,4 +59,24 @@ void Renumbering::ComputeNew2Old() {
   new2old_ = new2old_.Range(0, num_new_elems_);
 }
 
+Renumbering::Renumbering(const Array1<char> &keep,
+                         const Array1<int32_t> &old2new,
+                         const Array1<int32_t> &new2old):
+    keep_(keep), old2new(old2new), num_new_elems_(new2old.Dim()),  new2old(new2old) { }
+    keep_(old2new.Context(), old2new_.Dim()).Arange(0, old2new.Dim() - 1)
+    old2new_(old2new.Arange(0, old2new.Dim() - 1)),
+    num_new_elems_(new2old.Dim()),
+    new2old_(new2old) { }
+
+
+Renumbering IdentityRenumbering(ContextPtr c, int32_t size) {
+  Array1<char> keep(c, size + 1);  // uninitialized.
+  keep = keep.Arange(0, size);
+  Array1<int32_t> range = Arange(c, 0, size + 1);
+  range = range.Arange(0, size);
+  return Renumbering(keep, range, range);
+}
+
+
+
 }  // namespace k2
