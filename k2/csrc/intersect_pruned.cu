@@ -887,12 +887,15 @@ class MultiGraphDenseIntersectPruned {
        @param [in] t       The time-index (on which to look up log-likes),
                            t >= 0
        @param [in]  cur_frame The FrameInfo for the frame on which we want to
-                              set the forward log-like, and prune the arcs
-                              and states.
-       @param [in]  next_frame The next frame's FrameInfo;
-                              arcs on `cur_frame` have destination-states
-                              on `next_frame`. The `backward_loglike` values
-                              in `next_frame` are assumed to already be set.
+                              set the forward log-like, and prune the arcs.
+
+       @param [in]  next_frame The next frame's FrameInfo; we will prune the
+                             states on this frame (which also affects the
+                             shape of the 'arcs').
+                             Arcs on `cur_frame` have destination-states
+                             on `next_frame`. The `backward_loglike` values
+                             of states on `next_frame` are assumed to
+                             already be set.
   */
   void PropagateBackwardAndPrune(int32_t t,
                                  FrameInfo *cur_frame,
@@ -925,14 +928,16 @@ class MultiGraphDenseIntersectPruned {
           num_states = cur_frame->arcs.TotSize(1),
      next_num_states = next_frame->states.TotSize(1);
 
-    Renumbering renumber_cur_arcs(c_, num_arcs),
+    Renumbering renumber_cur_arcs(c_, num_arcs);
         renumber_next_states(c_, next_num_states);
     char *keep_cur_arcs_data = renumber_cur_arcs.Keep().Data(),
       *keep_next_states_data = renumber_next_states.Keep().Data();
 
+    StateInfo *next_states_data = next_frame->states.values.Data();
+
     K2_EVAL(c_, next_num_states, lambda_set_keep_next_states, (int32_t next_state_idx01) -> void {
-        keep_next_states_data[next_state_idx01] = (next_states_data[next_state_idx01] !=
-                                                   minus_inf);
+        keep_next_states_data[next_state_idx01] =
+            (next_states_data[next_state_idx01].backward_loglike != minus_inf);
       });
     int32_t *next_states_old2new_data = renumber_next_states.Old2New().Data();
 
@@ -942,7 +947,6 @@ class MultiGraphDenseIntersectPruned {
     int32_t *next_states_row_splits1 =
         next_frame->states.shape.RowSplits(1).Data();
 
-    StateInfo *next_states_data = next_frame->states.values.Data();
     K2_EVAL(
         c_, num_arcs,
         lambda_set_arc_backward_prob_and_keep, (int32_t arcs_idx012)->void {

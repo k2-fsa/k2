@@ -344,9 +344,9 @@ class Array1 {
   Array1(const Array1 &) = default;
   // move constructor
   Array1(Array1 &&) = default;
-  // assignment operator
+  // assignment operator (shallow); see Assign() for assignment of elements.
   Array1 &operator=(const Array1 &) = default;
-  // move assignment operator
+  // move assignment operator (shallow)
   Array1 &operator=(Array1 &&) = default;
 
   /*
@@ -567,9 +567,9 @@ class Array2 {
   Array2(const Array2 &other) = default;
   // move constructor
   Array2(Array2 &&other) = default;
-  // assignment operator
+  // assignment operator (shallow); see Assign() for assignment of elements.
   Array2 &operator=(const Array2 &other) = default;
-  // move assignment operator
+  // move assignment operator (shallow);
   Array2 &operator=(Array2 &&other) = default;
 
   /* stride on 1st axis is 1 (in elements). */

@@ -549,6 +549,29 @@ RaggedShape RemoveEmptyLists(RaggedShape &src_shape,
                              int32_t axis,
                              Renumbering *renumbering = nullptr);
 
+/*
+  Removes some subset of empty lists on a particular axis (not last axis) of
+  a RaggedShape, returning the modified shape with those lists removed.
+
+     @param [in] src_shape   RaggedShape that possibly has empty lists
+                          to be removed
+     @param [in] axis     Axis that is not the last axis of `src_shape`,
+                          i.e. with `axis + 1 < src_shape.NumAxes()`.
+     @param [in] renumbering  If not nullptr, a renumbering object that maps
+                         between old and new indexes on axis `axis` (e.g. if
+                         `axis == 0` would map between idx0's and idx0's; if
+                         `axis == 1`, would map between idx01's and idx01's).
+                         It is assumed that this renumbering preserves
+                         all lists that are nonempty.
+     @return             Returns modified shape with ans.NumAxes() == src_shape.NumAxes().
+                         ans.TotSize(axis) may differ from src_shape.TotSize(axis),
+                         but other TotSize() values, and the numbering on other axes,
+                         will remain the same.
+ */
+RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape,
+                                 int32_t axis,
+                                 Renumbering &renumbering);
+
 
 /*
   Removes empty lists on axis 0 of a RaggedShape, returning the modified shape
@@ -565,6 +588,25 @@ RaggedShape RemoveEmptyLists(RaggedShape &src_shape,
 */
 RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
                                   Renumbering *renumbering = nullptr);
+
+/*
+  Removes some (but not necessarily all) empty lists on axis 0 of a RaggedShape,
+  returning the modified shape with those lists removed.  Note: a list
+  containing empty lists is not empty. (this is what we mean by the "Simple"
+  part of the name, as it means we only have to deal with one layer).
+
+     @param [in] src_shape   RaggedShape that possibly has empty lists on its
+                         axis 0
+     @param [out] renumbering  If not nullptr, a renumbering object that maps
+                         between old and new indexes on axis 0, i.e. between
+                         old and new idx0's.  The removed lists must be empty.
+
+     @return             Returns modified shape with ans.NumAxes() == src_shape.NumAxes().
+                         ans.Dim0() may differ from src_shape.Dim0(), but for axis > 0,
+                         we have `ans.TotSize(axis) == src.TotSize(axis)`.
+ */
+RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
+                                Renumbering &renumbering);
 
 
 

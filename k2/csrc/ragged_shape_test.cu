@@ -300,6 +300,30 @@ TEST(RaggedShapeTest, RemoveEmptyListsAxis0) {
       RaggedShape t2 = RemoveEmptyLists(s, 0, &r);
       EXPECT_EQ(Equal(t, t2), true);
     }
+
+
+    {
+      RaggedShape s(c, "[ [ x x ] [ ] [ x ] [ ]  ]"),
+          t(c, "[ [ x x ] [ ] [ x ] ]");
+
+      Array1<char> keep(c, std::vector<char>({ (char)1, (char)1, (char)1, (char)0 }));
+      Renumbering r(c, 4);
+      Assign(keep, &r.Keep());
+      RaggedShape t2 = RenumberAxis0Simple(s, r);
+      EXPECT_EQ(Equal(t, t2), true);
+    }
+
+    {
+      RaggedShape s(c, "[ [ x x ] [ ] [ x ] [ ]  ]"),
+          t(c, "[ [ x x ] [ ] [ x ] ]");
+
+      Array1<char> keep(c, std::vector<char>({ (char)0, (char)1, (char)1, (char)0 }));
+      Renumbering r(c, 4);
+      Assign(keep, &r.Keep());
+#ifndef NDEBUG
+      ASSERT_DEATH(RenumberAxis0Simple(s, r), "");
+#endif
+    }
   }
 }
 

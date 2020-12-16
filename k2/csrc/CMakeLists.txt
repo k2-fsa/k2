@@ -29,7 +29,7 @@ set(context_srcs
   algorithms.cu
   array_ops.cu
   intersect.cu
-  intersect_pruned.cu
+#  intersect_pruned.cu
   top_sort.cu
   context.cu
   dtype.cu
@@ -86,7 +86,7 @@ set(cuda_tests
   fsa_utils_test
   hash_test
   host_shim_test
-  intersect_test
+#  intersect_test
   log_test
   macros_test
   nvtx_test
