@@ -7,7 +7,7 @@ exclude =
   setup.py,
   build,
   k2/python/host,
-  k2/docs
+  docs
 
 ignore =
   # E127 continuation line over-indented for visual indent

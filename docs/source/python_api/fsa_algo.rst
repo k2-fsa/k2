@@ -1,5 +1,5 @@
 Fsa Algorithms
---------------
+==============
 
 .. currentmodule:: k2
 

@@ -200,7 +200,7 @@ def arc_sort(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def shortest_path(fsa: Fsa, use_float_scores: bool) -> Fsa:
+def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
     '''Return the shortest paths as linear FSAs from the start state
     to the final state in the tropical semiring.
 
@@ -210,14 +210,14 @@ def shortest_path(fsa: Fsa, use_float_scores: bool) -> Fsa:
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
-      use_float_scores:
-        True to use float, i.e., single precision floating point, for scores.
-        False to use double.
+      use_double_scores:
+        False to use float, i.e., single precision floating point, for scores.
+        True to use double.
 
     Returns:
           FsaVec, it contains the best paths as linear FSAs
     '''
-    entering_arcs = fsa.get_entering_arcs(use_float_scores)
+    entering_arcs = fsa.get_entering_arcs(use_double_scores)
     ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
     out_fsa = Fsa(ragged_arc)
 

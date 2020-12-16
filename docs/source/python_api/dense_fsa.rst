@@ -1,9 +1,9 @@
-Fsa
-===
+DenseFsaVec
+===========
 
 .. currentmodule:: k2
 
-.. autoclass:: Fsa
+.. autoclass:: DenseFsaVec
    :members:
    :special-members:
    :private-members:

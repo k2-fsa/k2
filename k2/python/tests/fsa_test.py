@@ -525,15 +525,13 @@ class TestFsa(unittest.TestCase):
         assert fsa.symbols.get('a') == 1
         assert fsa.symbols.get(1) == 'a'
 
-
-
     def test_fsa_vec_as_dict_ragged(self):
         r = k2.RaggedInt(k2.RaggedShape('[ [ x x ] [x] [ x x ] [x]]'),
-                         torch.tensor([ 3, 4, 5, 6, 7, 8], dtype=torch.int32))
+                         torch.tensor([3, 4, 5, 6, 7, 8], dtype=torch.int32))
         g = k2.Fsa.from_str('0  1  3  0.0\n  1 2 -1 0.0\n  2')
-        h = k2.create_fsa_vec([g,g])
+        h = k2.create_fsa_vec([g, g])
         h.aux_labels = r
-        assert(h[0].aux_labels.dim0() == h[0].labels.shape[0])
+        assert (h[0].aux_labels.dim0() == h[0].labels.shape[0])
 
 
 if __name__ == '__main__':

@@ -18,21 +18,26 @@ class DenseFsaVec(object):
 
         Args:
           log_probs:
-            A 3-D tensor of dtype ``torch.float32`` with shape ``(N, T, C)``,
-            where ``N`` is the number of sequences, ``T`` the maximum input
-            length, and ``C`` the number of output classes.
+            A 3-D tensor of dtype `torch.float32` with shape `(N, T, C)`,
+            where `N` is the number of sequences, `T` the maximum input
+            length, and `C` the number of output classes.
           supervision_segments:
-            A 2-D **CPU** tensor of dtype ``torch.int32`` with 3 columns.
+            A 2-D **CPU** tensor of dtype `torch.int32` with 3 columns.
             Each row contains information for a supervision segment. Column 0
-            is the ``sequence_index`` indicating which sequence this segment
-            comes from; column 1 specifies the ``start_frame`` of this segment
-            within the sequence; column 2 contains the ``duration`` of this
+            is the `sequence_index` indicating which sequence this segment
+            comes from; column 1 specifies the `start_frame` of this segment
+            within the sequence; column 2 contains the `duration` of this
             segment.
 
             Note:
-              - ``0 < start_frame + duration <= T``
-              - ``0 <= start_frame < T``
-              - ``duration > 0``
+              - `0 < start_frame + duration <= T`
+              - `0 <= start_frame < T`
+              - `duration > 0`
+
+            Caution:
+              The last column, i.e., the duration column, has to be sorted
+              in **decreasing** order. That is, the first supervision_segment
+              (the first row) has the largest duration.
         '''
         assert log_probs.ndim == 3
         assert log_probs.dtype == torch.float32
@@ -93,7 +98,8 @@ class DenseFsaVec(object):
                             scores: torch.Tensor) -> 'DenseFsaVec':
         '''Construct a DenseFsaVec from `_k2.DenseFsaVec` and `scores`.
 
-        Note: It is intended for internal use. Users will normally not use it.
+        Note:
+          It is intended for internal use. Users will normally not use it.
 
         Args:
           dense_fsa_vec: An instance of `_k2.DenseFsaVec`.
@@ -109,7 +115,7 @@ class DenseFsaVec(object):
         return ans
 
     def dim0(self) -> int:
-        '''Return number of supervision segments'''
+        '''Return number of supervision segments.'''
         return self.dense_fsa_vec.dim0()
 
     def __str__(self) -> str:

@@ -14,7 +14,7 @@ from .dense_fsa_vec import DenseFsaVec
 class _GetTotScoresFunction(torch.autograd.Function):
 
     @staticmethod
-    def forward(ctx, fsas: Fsa, log_semiring: bool, use_float_scores: bool,
+    def forward(ctx, fsas: Fsa, log_semiring: bool, use_double_scores: bool,
                 unused_scores: torch.Tensor) -> torch.Tensor:
         '''Compute the total loglikes of an FsaVec.
 
@@ -24,17 +24,17 @@ class _GetTotScoresFunction(torch.autograd.Function):
           log_semiring:
             True to use log semiring.
             False to use tropical semiring.
-          use_float_scores:
-            True to use float, i.e., single precision floating point,
-            to compute log likes. False to use double precision.
+          use_double_scores:
+            False to use float, i.e., single precision floating point,
+            to compute log likes. True to use double precision.
           unused_scores:
             It is used only for backward propagation purpose.
             It equals to `fsas.scores`.
 
         Returns:
           The forward loglike contained in a 1-D tensor.
-          If `use_float_scores==True`, its dtype is `torch.float32`;
-          it is `torch.float64` otherwise.
+          If `use_double_scores==True`, its dtype is `torch.float64`;
+          it is `torch.float32` otherwise.
         '''
         # the .detach() below avoids a reference cycle; if we didn't do that,
         # the backward_fn of tot_scores would be set to this object, giving
@@ -42,15 +42,15 @@ class _GetTotScoresFunction(torch.autograd.Function):
         # to `fsas`.
         if log_semiring is False:
             tot_scores = fsas.get_tot_scores_tropical(
-                use_float_scores).detach()
+                use_double_scores).detach()
         else:
-            tot_scores = fsas.get_tot_scores_log(use_float_scores).detach()
+            tot_scores = fsas.get_tot_scores_log(use_double_scores).detach()
 
-        # NOTE: since `fsas`, `log_semiring` and `use_float_scores` are
+        # NOTE: since `fsas`, `log_semiring` and `use_double_scores` are
         # not tensors, they are saved as attributes of `ctx`.
         ctx.fsas = fsas
         ctx.log_semiring = log_semiring
-        ctx.use_float_scores = use_float_scores
+        ctx.use_double_scores = use_double_scores
 
         ctx.save_for_backward(unused_scores)
 
@@ -61,31 +61,31 @@ class _GetTotScoresFunction(torch.autograd.Function):
                 ) -> Tuple[None, None, None, torch.Tensor]:  # noqa
         fsas = ctx.fsas
         log_semiring = ctx.log_semiring
-        use_float_scores = ctx.use_float_scores
+        use_double_scores = ctx.use_double_scores
         scores, = ctx.saved_tensors
 
         if log_semiring is False:
-            entering_arcs = fsas.get_entering_arcs(use_float_scores)
+            entering_arcs = fsas.get_entering_arcs(use_double_scores)
             _, ragged_int = _k2.shortest_path(fsas.arcs, entering_arcs)
-            if use_float_scores:
-                out_grad = _k2._get_tot_scores_float_tropical_backward(
+            if use_double_scores:
+                out_grad = _k2._get_tot_scores_double_tropical_backward(
                     fsas.arcs, ragged_int, tot_scores_grad)
             else:
-                out_grad = _k2._get_tot_scores_double_tropical_backward(
+                out_grad = _k2._get_tot_scores_float_tropical_backward(
                     fsas.arcs, ragged_int, tot_scores_grad)
             # We return four values since the `forward` method accepts four
             # arguments (excluding ctx).
-            #      fsas, log_semiring, use_float_scores, unused_scores
+            #      fsas, log_semiring, use_double_scores, unused_scores
             return None, None, None, out_grad
         else:
-            forward_scores = fsas.get_forward_scores_log(use_float_scores)
-            backward_scores = fsas.get_backward_scores_log(use_float_scores)
-            if use_float_scores:
-                func = _k2._get_arc_scores_float
-                bprop_func = _k2._get_tot_scores_float_log_backward
-            else:
+            forward_scores = fsas.get_forward_scores_log(use_double_scores)
+            backward_scores = fsas.get_backward_scores_log(use_double_scores)
+            if use_double_scores:
                 func = _k2._get_arc_scores_double
                 bprop_func = _k2._get_tot_scores_double_log_backward
+            else:
+                func = _k2._get_arc_scores_float
+                bprop_func = _k2._get_tot_scores_float_log_backward
 
             arc_scores = func(fsas=fsas.arcs,
                               forward_scores=forward_scores,
@@ -332,7 +332,7 @@ class _UnionFunction(torch.autograd.Function):
 
 
 def get_tot_scores(fsas: Fsa, log_semiring: bool,
-                   use_float_scores: bool) -> torch.Tensor:
+                   use_double_scores: bool) -> torch.Tensor:
     '''Compute the total loglikes of an FsaVec.
     Args:
       fsas:
@@ -340,17 +340,17 @@ def get_tot_scores(fsas: Fsa, log_semiring: bool,
       log_semiring:
         True to use log semiring.
         False to use tropical semiring.
-      use_float_scores:
-        True to use float, i.e., single precision floating point,
-        to compute log likes. False to use double precision.
+      use_double_scores:
+        False to use float, i.e., single precision floating point,
+        to compute log likes. True to use double precision.
 
     Returns:
       The forward loglike contained in a 1-D tensor.
-      If `use_float_scores==True`, its dtype is `torch.float32`;
-      it is `torch.float64` otherwise.
+      If `use_double_scores==True`, its dtype is `torch.float64`;
+      it is `torch.float32` otherwise.
     '''
     tot_scores = _GetTotScoresFunction.apply(fsas, log_semiring,
-                                             use_float_scores, fsas.scores)
+                                             use_double_scores, fsas.scores)
     return tot_scores
 
 

@@ -385,9 +385,10 @@ __global__ void eval_lambda_redirect(int32_t num_jobs, TaskRedirect *redirect,
 
 
 template <typename LambdaT>
-__global__ void eval_lambda_redirect_large(int32_t num_jobs, TaskRedirect *redirect,
-                                         int32_t num_threads_per_job,
-                                         LambdaT lambda) {
+__global__ void eval_lambda_redirect_large(int32_t num_jobs,
+                                           TaskRedirect *redirect,
+                                           int32_t num_threads_per_job,
+                                           LambdaT lambda) {
   int32_t thread_idx = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x
                        + threadIdx.x,
           num_threads = gridDim.x * gridDim.y * blockDim.x,
@@ -404,7 +405,6 @@ __global__ void eval_lambda_redirect_large(int32_t num_jobs, TaskRedirect *redir
       redirect[job_id].job_id_this_task * num_threads_per_job + thread_this_job;
   lambda(task_id, num_threads_this_task, thread_idx_of_task);
 }
-
 
 /*
   EvalWithRedirect() is like Eval() but for when the task have variable
@@ -490,7 +490,6 @@ void EvalWithRedirect(cudaStream_t stream, int32_t num_jobs,
       K2_CUDA_SAFE_CALL(eval_lambda_redirect_large<LambdaT>
                         <<<grid_dim, block_dim, 0, stream>>>(
                             num_jobs, redirect, num_threads_per_job, lambda));
-
     }
   }
 }
