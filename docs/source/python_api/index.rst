@@ -7,5 +7,8 @@ Python API Reference
    :caption: Python API
 
    fsa
+   dense_fsa
    fsa_algo
    symbol_table
+   version
+

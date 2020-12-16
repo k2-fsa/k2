@@ -1,5 +1,5 @@
-Symbol Class
-------------
+SymbolTable
+===========
 
 .. currentmodule:: k2
 

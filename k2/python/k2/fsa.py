@@ -35,7 +35,7 @@ class Fsa(object):
     a vector of FSAs it is a tuple with three
     elements `(num_fsas, None, None)`.
 
-    CAUTION::
+    CAUTION:
       It's possible for a vector of FSAs to have zero or one elements.
 
     An instance of FSA has the following attributes:
@@ -84,13 +84,13 @@ class Fsa(object):
 
     It MAY have other attributes that set by users.  Tensor attributes should
     have the same 1st dimension as the number of arcs in the FSA, Ragged
-    attributes should have the same dim0 as the number of arcs in the FSA.
+    attributes should have the same `dim0` as the number of arcs in the FSA.
 
     CAUTION:
       When an attribute is an instance of `torch.Tensor`, its `shape[0]`
       has to be equal to the number arcs. Otherwise, an assertion error
       will be thrown.
-      When an attribute is an instance of ``_k2.RaggedInt``, its ``dim0()``
+      When an attribute is an instance of `_k2.RaggedInt`, its `dim0()`
       has to be equal to the number arcs. Otherwise, an assertion error
       will be thrown.
 
@@ -101,8 +101,8 @@ class Fsa(object):
 
       Implementation note: most of this class's attributes are not
       real attributes in the object's dict; the real attributes are
-      'arcs', '_non_tensor_attr', '_tensor_attr', '_properties',
-      '_cache'.
+      `arcs`, `_non_tensor_attr`, `_tensor_attr`, `_properties`,
+      `_cache`.
 
     '''
 
@@ -257,7 +257,7 @@ class Fsa(object):
         Render FSA as an image via graphviz, and return the Digraph object;
         and optionally save to file `filename`.
         `filename` must have a suffix that graphviz understands, such as
-        'pdf', 'svg' or 'png'.
+        `pdf`, `svg` or `png`.
 
         Args:
            filename:
@@ -526,12 +526,11 @@ class Fsa(object):
 
     def get_tot_scores_tropical(self, use_double_scores: bool) -> torch.Tensor:
         '''Compute total-scores in tropical semiring (one per FSA), which is the same
-           as the best-path score.
+        as the best-path score.
 
-           CAUTION
-             These are just the raw total-scores and are
-           not differentiable.   Use `k2.get_tot_scores(self)` to
-           get differentiable total-scores.
+        CAUTION:
+          These are just the raw total-scores and are not differentiable.
+          Use `k2.get_tot_scores(self)` to get differentiable total-scores.
 
         Args:
           use_double_scores:
@@ -552,11 +551,12 @@ class Fsa(object):
         return cache[name]
 
     def get_tot_scores_log(self, use_double_scores: bool) -> torch.Tensor:
-        '''Compute total-scores in log semiring (one per FSA).
-           as the best-path score.
-           CAUTION: these are just the raw total-scores and are not
-           differentiable.  Use k2.get_tot_scores(self) to get differentiable
-           total-scores.
+        '''Compute total-scores in log semiring (one per FSA) as the
+        best-path score.
+
+        CAUTION:
+          These are just the raw total-scores and are not differentiable.
+          Use `k2.get_tot_scores(self)` to get differentiable total-scores.
 
         Args:
           use_double_scores:
@@ -577,7 +577,7 @@ class Fsa(object):
     def get_backward_scores_tropical(self,
                                      use_double_scores: bool) -> torch.Tensor:
         '''Compute backward-scores in tropical semiring, i.e. best-path-to-end
-           costs.  For internal k2 use.  Not differentiable.
+        costs.  For internal k2 use.  Not differentiable.
 
         Args:
           use_double_scores:
@@ -608,7 +608,7 @@ class Fsa(object):
 
     def get_backward_scores_log(self, use_double_scores: bool) -> torch.Tensor:
         '''Compute backward-scores in tropical semiring, i.e. total-score-to-end.
-           for each state.  For internal k2 use.  Not differentiable.
+        for each state.  For internal k2 use.  Not differentiable.
 
         Args:
           use_double_scores:
@@ -636,7 +636,7 @@ class Fsa(object):
 
     def get_entering_arcs(self, use_double_scores: bool) -> torch.Tensor:
         '''Compute, for each state, the index of the best arc entering it.
-           For internal k2 use.
+        For internal k2 use.
 
         Args:
           use_double_scores:
@@ -656,7 +656,7 @@ class Fsa(object):
         Returns this FSA.
         You can test whether this object has the requires_grad property
         true or false by accessing self.requires_grad (handled in
-        __getattr__).
+        `__getattr__`).
 
         Caution:
           This is an **in-place** operation as you can see that the function
@@ -715,6 +715,16 @@ class Fsa(object):
         return self
 
     def invert(self) -> 'Fsa':
+        '''Swap the `labels` and `aux_labels`.
+
+        If there are symbol tables associated with `labels` and
+        `aux_labels`, they are also swapped.
+
+        It is an error if the FSA contains no `aux_labels`.
+
+        Returns:
+          Return a new Fsa.
+        '''
         return self.clone().invert_()
 
     def is_cpu(self) -> bool:
@@ -783,7 +793,7 @@ class Fsa(object):
 
     def as_dict(self) -> Dict[str, Any]:
         '''Convert this Fsa to a dict (probably for purposes of serialization
-          with, e.g., torch.save).
+        , e.g., torch.save).
 
         Caution:
           `self.requires_grad` attribute is not saved.
@@ -948,15 +958,15 @@ class Fsa(object):
 
         The given string `s` consists of lines with the following format:
 
-        (1) When it represents an acceptor:
+        (1) When it represents an acceptor::
 
                 src_state dest_state label score
 
-        (2) When it represents a transducer:
+        (2) When it represents a transducer::
 
                 src_state dest_state label aux_label score
 
-        The line for the final state consists of only one field:
+        The line for the final state consists of only one field::
 
                 final_state
 
@@ -968,9 +978,10 @@ class Fsa(object):
           The first column has to be non-decreasing.
 
         Caution:
-          The final state has the largest state number. There is only
-          one final state. All arcs that are connected to the final state
-          have label -1.
+          The final state has the largest state number. There is **ONLY**
+          ONE final state. All arcs that are connected to the final state
+          have label -1. If there are aux_labels, they are also -1 for
+          arcs entering the final state.
 
         Args:
           s:
@@ -993,15 +1004,15 @@ class Fsa(object):
 
         The given string `s` consists of lines with the following format:
 
-        (1) When it represents an acceptor:
+        (1) When it represents an acceptor::
 
                 src_state dest_state label score
 
-        (2) When it represents a transducer:
+        (2) When it represents a transducer::
 
                 src_state dest_state label aux_label score
 
-        The line for the final state consists of two fields:
+        The line for the final state consists of two fields::
 
                 final_state score
 

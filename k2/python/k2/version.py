@@ -1,10 +1,25 @@
 #!/usr/bin/env python3
 
+# Copyright (c)  2020  Xiaomi Corp.   (author: Fangjun Kuang)
+# See ../../../LICENSE for clarification regarding multiple authors
+
 import torch  # noqa
 import _k2
 
 
 def main():
+    '''Collect the information about the environment in which k2 was built.
+
+    When reporting issues, please use::
+
+        python3 -m k2.version
+
+    to collect the environment information about k2.
+
+    Please also attach the environment information about PyTorch using::
+
+        python3 -m torch.utils.collect_env
+    '''
     print('Collecting environment information...')
     version = _k2.version.__version__
     git_sha1 = _k2.version.git_sha1
