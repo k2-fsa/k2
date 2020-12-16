@@ -334,6 +334,7 @@ class _UnionFunction(torch.autograd.Function):
 def get_tot_scores(fsas: Fsa, log_semiring: bool,
                    use_double_scores: bool) -> torch.Tensor:
     '''Compute the total loglikes of an FsaVec.
+
     Args:
       fsas:
         The input FsaVec.

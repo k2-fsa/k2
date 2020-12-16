@@ -1,7 +1,8 @@
-recommonmark
-graphviz
 dataclasses
-sphinx_rtd_theme
+graphviz
+recommonmark
 sphinx
 sphinx-autodoc-typehints
+sphinx_rtd_theme
+sphinxcontrib-bibtex
 torch>=1.6.0

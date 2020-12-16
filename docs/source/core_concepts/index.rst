@@ -1,0 +1,403 @@
+Core concepts in k2
+===================
+
+Please refer to :cite:`mohri1997finite`, :cite:`mohri2002weighted`, and
+:cite:`mohri2008speech` for an introduction about weighted finite state
+acceptor (WFSA) and weighted finite state transducer (WFST).
+
+We use FSA to represent either WFSA or WFST in k2.
+
+
+A simple FSA example
+---------------------
+
+A simple FSA is shown in :numref:`a simple fsa`.
+
+.. _a simple fsa:
+.. figure:: images/simple_fsa.svg
+    :alt: A simple FSA in k2
+    :align: center
+    :figwidth: 600px
+
+    A simple FSA in k2.
+
+- It has three states: 0, 1, and 2. State 0 is the start state
+  and state 2 is the final state.
+- There are 2 arcs. The first arc is from state 0 to state 1
+  with label 10 and score 0.1. The second arc is from state 1 to
+  the final state 2 with label -1 and score 0.2.
+
+.. HINT::
+
+  We use arc weight and arc score interchangeably in k2.
+
+The above FSA is created with the following code:
+
+.. code-block:: python
+
+    import k2
+    s = '''
+    0 1 10 0.1
+    1 2 -1 0.2
+    2
+    '''
+    fsa = k2.Fsa.from_str(s)
+    fsa.draw('simple_fsa.svg')
+
+We summarize the **unique** features of FSA in k2 in below:
+
+  - There is only one start state
+  - The start state is **always** 0
+  - All other states have a state number greater than 0
+  - There is only one final state
+  - The final state **always** has the **largest** state number
+  - Arcs entering the final state **always** have -1 as the label
+  - Arcs that do not enter the final state cannot have -1 as the label
+
+.. HINT::
+
+  Different from other frameworks, FSAs in k2 have only a single final state.
+
+  If you want to convert an FSA from another framework to k2 that contains
+  multiple final states, you can create an extra state and consider it as
+  the super final state. For each final state in the FSA, add an arc to this
+  super final state with label -1 and score 0. The resulting FSA will contain
+  only a single final state.
+
+  Similarly, if it contains multiple start states, you can add a super start
+  state and set both the label and score of the arcs added from the super start
+  state to the start state to 0.
+
+Attributes
+----------
+
+Arbitrary attributes can be attached to the arcs of an FSA.
+For example, we can attach a tensor attribute to an FSA indicating
+the output label of arcs so that the FSA is converted to an FST.
+
+The attached attributes are **automaticaly propagated** through operations,
+with ``autograd`` if they are real-valued tensors.
+
+The following code converts the above simple acceptor to a transducer:
+
+.. code-block:: python
+
+    import k2
+    import torch
+    s = '''
+    0 1 10 0.1
+    1 2 -1 0.2
+    2
+    '''
+    fsa = k2.Fsa.from_str(s)
+    fsa.aux_labels = torch.tensor([100, -1], dtype=torch.int32)
+    fsa.draw('simple_fst.svg')
+
+
+The resulting FST is visualized in :numref:`a simple fst`.
+
+.. _a simple fst:
+.. figure:: images/simple_fst.svg
+    :alt: A simple FST in k2
+    :align: center
+    :figwidth: 600px
+
+    A simple FST in k2.
+
+.. CAUTION::
+
+  There are NO **output labels** in k2. Every arc has a label and you
+  can attach arbitrary attributes with arbitrary name to it.
+
+  If the attached attribute is an N-D tensor, its ``shape[0]`` has to
+  equal the number of arcs in the FSA.
+
+.. NOTE::
+
+  The visualization code handles the attributes ``aux_labels`` specially.
+  Other than this, ``aux_labels`` is like any other attributes that are
+  attached to an FSA.
+
+Semirings
+---------
+
+k2 supports two kinds of semirings:
+
+  - tropical semiring
+  - log semiring
+
+Tropical semiring
+~~~~~~~~~~~~~~~~~
+
+In tropical semirings, it takes the **max** score of alternative paths.
+
+For example, for the FSA in :numref:`tropical`:
+
+.. _tropical:
+.. figure:: images/fsa2.svg
+    :alt: An FSA with two alternative paths
+    :align: center
+    :figwidth: 600px
+
+    An FSA with two alternative paths to the final states.
+
+There are two paths from the start state to the final state:
+
+  - Path 0: state 0 -> state 1 -> state 3 with score: 0.1 + 0 = 0.1
+  - Path 1: state 0 -> state 2 -> state 3 with score: 0.2 + 0 = 0.2
+
+So in the tropical semiring, the best score is ``max(0.1, 0.2) == 0.2``.
+
+In k2, you would use the following code to compute it:
+
+.. code-block:: python
+
+    import k2
+    s = '''
+    0 1 10 0.1
+    0 2 20 0.2
+    1 3 -1 0
+    2 3 -1 0
+    3
+    '''
+    fsa = k2.Fsa.from_str(s)
+    fsa.draw('fsa2.svg')
+    fsa = k2.create_fsa_vec([fsa])
+    total_scores = k2.get_tot_scores(fsa, log_semiring=False, use_double_scores=False)
+    print(total_scores)
+    # It prints: tensor([0.2000])
+
+.. HINT::
+
+    :func:`k2.get_tot_scores` takes a vector of FSAs as input,
+    so we use :func:`k2.create_fsa_vec` to turn an FSA into a vector of FSAs.
+
+    Most operations in k2 take a vector of FSAs as input and process them
+    in parallel.
+
+Log semiring
+~~~~~~~~~~~~
+
+In log semirings, it takes the **log_add** score of alternative paths.
+
+For example, if there are two paths with score ``a`` and ``b``, then the
+total score is ``log(exp(a) + exp(b))``.
+
+Take the FSA in :numref:`tropical` as an example, the total score is
+``log(exp(0.1) + exp(0.2)) = 0.8444``.
+
+The code in k2 looks like:
+
+.. code-block:: python
+
+    import k2
+    s = '''
+    0 1 10 0.1
+    0 2 20 0.2
+    1 3 -1 0
+    2 3 -1 0
+    3
+    '''
+    fsa = k2.Fsa.from_str(s)
+    fsa = k2.create_fsa_vec([fsa])
+    total_scores = k2.get_tot_scores(fsa, log_semiring=True, use_double_scores=False)
+    print(total_scores)
+    # It prints: tensor([0.8444])
+
+Vectors of FSAs
+---------------
+
+The Python class :class:`k2.Fsa` can represent either a single FSA
+or a 1-D vector of FSAs.
+
+Most operations in k2 are done on a vector of FSAs in parallel.
+
+.. HINT::
+
+  In the documentation, we usually use ``FsaVec`` to represent
+  a vector of FSAs. There is no Python class ``FsaVec``, only
+  :class:`k2.Fsa`.
+
+.. NOTE::
+
+  :func:`k2.create_fsa_vec` can create a FsaVec from a list of
+  FSAs. and :func:`k2.Fsa.__getitem__` selects an FSA with specified
+  index from a FsaVec.
+
+Autograd
+--------
+
+Nearly all operations in k2 support autograd, which is compatible
+with PyTorch. It can be extended to support other frameworks as well,
+e.g., TensorFlow.
+
+Gradients are computed with respect to the arc scores. We do not
+pose any constraints on where the arc scores can come from. For instance,
+they can be the output of some neural networks or they can come from
+some n-gram language models.
+
+Autograd is implemented by keeping track of the "source arcs" of arcs that
+are the output of an operation. Internally, it outputs an arc map, saying
+for each output arc, which input arc it corresponds to.
+
+For example, in composition an output arc would usually come from a pair
+of arcs, one in each input FSA.
+
+.. HINT::
+
+  arc map and autograd are implementation details and are not visible to Python
+  API users.
+
+In the following we give two examples about autograd with the following FSA
+in the context of computing total scores with tropical semiring and log semiring.
+
+
+.. _autograd example:
+.. figure:: images/autograd.svg
+    :alt: An FSA for demonstrating autograd.
+    :align: center
+    :figwidth: 600px
+
+    An example FSA for demonstrating autograd in k2.
+
+Arc scores ``a``, ``b``, ``c``, and ``d`` are some numbers not known yet.
+They can come from the output of some neural network and their value depends
+on the internal parameters of the neural network which are updated
+by some gradient descent based algorithms.
+
+Example 1: Autograd in tropical semiring
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following code shows how to compute the best score of the shortest path for
+the FSA given in :numref:`autograd example`:
+
+.. code-block:: python
+
+  import k2
+
+  nnet_output = torch.tensor([0.1, 1, 0.2, 0.5], dtype=torch.float32)
+  # assume nnet_output is the output of some neural network
+  nnet_output.requires_grad_(True)
+  s = '''
+  0 1 10 0
+  0 2 20 0
+  1 3 -1 0
+  2 3 -1 0
+  3
+  '''
+  fsa = k2.Fsa.from_str(s)
+  fsa.scores = nnet_output
+  fsa.draw('autograd_tropical.svg')
+  fsa_vec = k2.create_fsa_vec([fsa])
+  total_scores = k2.get_tot_scores(fsa_vec, log_semiring=False, use_double_scores=False)
+
+  total_scores.backward()
+  print(nnet_output.grad)
+  # It prints: tensor([0., 1., 0., 1.])
+
+.. figure:: images/autograd_tropical.svg
+    :alt: An example FSA for autograd with tropical scores
+    :align: center
+    :figwidth: 600px
+
+    Output of the above code: autograd_tropical.svg
+
+**Explanation**:
+    - We assume that ``nnet_output = torch.tensor([a, b, c, d]) = torch.tensor([0.1, 1, 0.2, 0.5])``
+      and we set ``nnet_output.requires_grad_(True)`` to simulate that it comes from the output of
+      some neural network.
+
+    - Arc 0: state 0 -> state 1, with score 0.1
+    - Arc 1: state 0 -> state 2, with score 1
+    - Arc 2: state 1 -> state 3, with score 0.2
+    - Arc 3: state 2 -> state 3, witch score 0.5
+    - Score of path arc 0 -> arc 2 is 0.1 + 0.2 = 0.3
+    - Score of path arc 1 -> arc 3 is 1 + 0.5 = 1.5
+    - The best path consists of arc 1 and arc 3.
+    - The best path score is ``s = b + d``
+
+    So it is quite straightforward to compute the gradients
+    of best_score ``s`` with respect to ``a``, ``b``, ``c`` and ``d``.
+
+    .. math::
+
+      \frac{\partial s}{\partial a} = 0
+
+      \frac{\partial s}{\partial b} = \frac{\partial (b + d)}{\partial b} = 1
+
+      \frac{\partial s}{\partial c} = 0
+
+      \frac{\partial s}{\partial b} = \frac{\partial (b + d)}{\partial d} = 1
+
+    Therefore, the gradient of ``nnet_output`` is ``[0, 1, 0, 1]``.
+
+Example 2: Autograd in log semiring
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For the log semiring, we just change::
+
+  total_scores = k2.get_tot_scores(fsa_vec, log_semiring=False, use_double_scores=False)
+
+to::
+
+  total_scores = k2.get_tot_scores(fsa_vec, log_semiring=True, use_double_scores=False)
+
+For completeness and ease of reference, we repost the code below.
+
+.. code-block:: python
+
+    import k2
+
+    nnet_output = torch.tensor([0.1, 1, 0.2, 0.5], dtype=torch.float32)
+    # assume nnet_output is the output of some neural network
+    nnet_output.requires_grad_(True)
+    s = '''
+    0 1 10 0
+    0 2 20 0
+    1 3 -1 0
+    2 3 -1 0
+    3
+    '''
+    fsa = k2.Fsa.from_str(s)
+    fsa.scores = nnet_output
+    fsa.draw('autograd_log.svg')
+    fsa_vec = k2.create_fsa_vec([fsa])
+    total_scores = k2.get_tot_scores(fsa_vec, log_semiring=True, use_double_scores=False)
+
+    total_scores.backward()
+    print(nnet_output.grad)
+    # It prints: tensor([0.2315, 0.7685, 0.2315, 0.7685])
+
+**Explanation**:
+  In log semiring, the total score ``s`` is computed using ``log_add``:
+
+  .. math::
+
+    s &= \log(\mathrm{e}^{a + c} + \mathrm{e}^{b + d})\\
+    \frac{\partial s}{\partial a} = \frac{\mathrm{e}^{a + c}}{\mathrm{e^{a+c}} + \mathrm{e}^{b+d}} &= \frac{\mathrm{e}^{0.3}}{\mathrm{e}^{0.3} + \mathrm{e}^{1.5}} = 0.2315\\
+    \frac{\partial s}{\partial b} = \frac{\mathrm{e}^{b + d}}{\mathrm{e^{a+c}} + \mathrm{e}^{b+d}} &= \frac{\mathrm{e}^{1.3}}{\mathrm{e}^{0.3} + \mathrm{e}^{1.5}} = 0.7685\\
+    \frac{\partial s}{\partial c} = \frac{\mathrm{e}^{a + c}}{\mathrm{e^{a+c}} + \mathrm{e}^{b+d}} &= \frac{\mathrm{e}^{0.3}}{\mathrm{e}^{0.3} + \mathrm{e}^{1.5}} = 0.2315\\
+    \frac{\partial s}{\partial d} = \frac{\mathrm{e}^{b + d}}{\mathrm{e^{a+c}} + \mathrm{e}^{b+d}} &= \frac{\mathrm{e}^{1.3}}{\mathrm{e}^{0.3} + \mathrm{e}^{1.5}} = 0.7685
+
+ Therefore, the gradient of ``nnet_output`` is ``[0.2315, 0.7685, 0.2315, 0.7685]``.
+
+.. NOTE::
+
+  The example FSA is fairly simple and its main purpose is to demostrate how to use autograd in k2.
+  All of this happens automagically.
+
+
+Dense fsa vec
+-------------
+
+TBD
+
+Ragged arrays
+-------------
+
+TBD
+
+References
+----------
+
+.. bibliography::
