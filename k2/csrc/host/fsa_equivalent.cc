@@ -171,6 +171,10 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
                       bool treat_epsilons_specially /*=true*/,
                       std::size_t npath /*=100*/) {
   NVTX_RANGE(K2_FUNC);
+  if (!IsValid(a) || !IsValid(b)) {
+    K2_LOG(WARNING) << "One or more of the inputs is not valid.";
+    return false;
+  }
   FsaCreator valid_a_storage, valid_b_storage;
   ::Connect(a, &valid_a_storage);
   ::Connect(b, &valid_b_storage);
@@ -178,6 +182,7 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
   ArcSort(&valid_b_storage.GetFsa());
   const auto &valid_a = valid_a_storage.GetFsa();
   const auto &valid_b = valid_b_storage.GetFsa();
+
   if (IsEmpty(valid_a) && IsEmpty(valid_b)) return true;
   if (IsEmpty(valid_a) || IsEmpty(valid_b)) return false;
 
@@ -227,6 +232,10 @@ bool IsRandEquivalent(const Fsa &a, const Fsa &b,
                       float delta /*=1e-6*/, bool top_sorted /*=true*/,
                       std::size_t npath /*= 100*/) {
   NVTX_RANGE(K2_FUNC);
+  if (!IsValid(a) || !IsValid(b)) {
+    K2_LOG(WARNING) << "One or more of the inputs is not valid.";
+    return false;
+  }
   K2_CHECK_GT(beam, 0);
   // TODO(haowen): for now we only support top-sorted input Fsas
   K2_CHECK(top_sorted);

@@ -447,6 +447,17 @@ FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes);
 Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
                                Ragged<int32_t> &step2_arc_map);
 
+/*
+  This function detects if there are any FSAs in an FsaVec that have exactly one
+  state (which is not allowed; the empty FSA may have either 0 or 2 states); and
+  it removes those states.  These states cannot have any arcs leaving them; if
+  they do, it is an error and this function may crash or give undefined output.
+
+    @param [in,out] fsas  FsaVec to possibly modify; must have 3 axes.
+ */
+void FixNumStates(FsaVec *fsas);
+
+
 }  // namespace k2
 
 #endif  //  K2_CSRC_FSA_UTILS_H_

@@ -1789,4 +1789,31 @@ Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
   return Index(step1_arc_map, step2_arc_map, true);
 }
 
+void FixNumStates(FsaVec *fsas) {
+  K2_CHECK_EQ(fsas->NumAxes(), 3);
+  ContextPtr c = fsas->Context();
+  int32_t num_fsas = fsas->Dim0(),
+        num_states = fsas->TotSize(1);
+
+  Array1<int32_t> changed(c, 1, 0);
+  Renumbering renumber_states(c, num_states);
+  renumber_states.Keep() = (char)1;  // by default keep all states..
+
+  int32_t *changed_data = changed.Data();
+  char *keep_data = renumber_states.Keep().Data();
+  const int32_t *row_splits1_data = fsas->RowSplits(1).Data();
+  K2_EVAL(c, num_fsas, lambda_set_must_remove, (int32_t i) -> void {
+      int32_t num_states = (row_splits1_data[i+1] -
+                            row_splits1_data[i]);
+      if (num_states == 1)
+        keep_data[row_splits1_data[i]] = 0;
+      changed_data[0] = 1;
+    });
+  if (changed[0] == 0)
+    return;  // an optimization..
+  fsas->shape = RemoveSomeEmptyLists(fsas->shape, 1,
+                                     renumber_states);
+}
+
+
 }  // namespace k2

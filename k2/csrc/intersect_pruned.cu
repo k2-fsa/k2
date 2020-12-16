@@ -68,7 +68,6 @@ struct ArcInfo {              // for an arc that wasn't pruned away...
   // (conceptually) it joins the destination state.
 };
 
-/*
 static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
   os << "StateInfo{" << s.a_fsas_state_idx01 << ","
      << OrderedIntToFloat(s.forward_loglike) << "," << s.backward_loglike
@@ -81,7 +80,7 @@ static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
      << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike << "}";
   return os;
 }
-*/
+
 
 }  // namespace intersect_pruned_internal
 
@@ -208,7 +207,9 @@ class MultiGraphDenseIntersectPruned {
        << ",TotSize(1)=" << b_fsas_.shape.TotSize(1);
     NVTX_RANGE(os.str().c_str());
 
-    frames_.reserve(T + 1);
+    // we'll initially populate frames_[0.. T+1], but discard the one at T+1,
+    // which has no arcs or states, the ones we use are from 0 to T.
+    frames_.reserve(T + 2);
 
     frames_.push_back(InitialFrameInfo());
 
@@ -219,8 +220,6 @@ class MultiGraphDenseIntersectPruned {
     // last PropagateForward so that the 'arcs' member of frames_[T]
     // is set up (it has no arcs but we need the shape).
     frames_.pop_back();
-
-
 
     SetBackwardProbsFinal(frames_[T].get());
     for (int32_t t = T - 1; t >= 0; t--) {
@@ -274,11 +273,21 @@ class MultiGraphDenseIntersectPruned {
                     Array1<int32_t> *arc_map_b) {
     NVTX_RANGE("FormatOutput");
 
+    int32_t T = T_;
+
+
+    ContextPtr c_cpu = GetCpuContext();
+    Array1<ArcInfo *> arcs_data_ptrs(c_cpu, T + 1);
+    for (int32_t t = 0; t <= T; t++) {
+      arcs_data_ptrs.Data()[t] = frames_[t]->arcs.values.Data();
+    }
+    // transfer to GPU if we're using a GPU
+    arcs_data_ptrs = arcs_data_ptrs.To(c_);
+    ArcInfo **arcs_data_ptrs_data = arcs_data_ptrs.Data();
+
     RaggedShape oshape;
     // see documentation of Stack() in ragged_ops.h for explanation.
     Array1<uint32_t> oshape_merge_map;
-
-    int32_t T = T_;
 
     {
       NVTX_RANGE("InitOshape");
@@ -294,8 +303,6 @@ class MultiGraphDenseIntersectPruned {
     }
 
 
-    ContextPtr c_cpu = GetCpuContext();
-
     int32_t *oshape_row_ids3 = oshape.RowIds(3).Data(),
             *oshape_row_ids2 = oshape.RowIds(2).Data(),
             *oshape_row_ids1 = oshape.RowIds(1).Data(),
@@ -303,14 +310,6 @@ class MultiGraphDenseIntersectPruned {
             *oshape_row_splits2 = oshape.RowSplits(2).Data(),
             *oshape_row_splits1 = oshape.RowSplits(1).Data();
 
-    Array1<ArcInfo *> ai_data_ptrs(c_cpu, T + 1);
-
-    for (int32_t t = 0; t <= T; t++) {
-      ai_data_ptrs.Data()[t] = frames_[t]->arcs.values.Data();
-    }
-    // transfer to GPU if we're using a GPU
-    ai_data_ptrs = ai_data_ptrs.To(c_);
-    ArcInfo **ai_data_ptrs_data = ai_data_ptrs.Data();
 
     int32_t num_arcs = oshape.NumElements();
     *arc_map_a = Array1<int32_t>(c_, num_arcs);
@@ -338,15 +337,16 @@ class MultiGraphDenseIntersectPruned {
              oarc_idx01x_next = oshape_row_splits2[oarc_idx01 + 1];
 
           int32_t m = oshape_merge_map_data[oarc_idx0123],
-                  t = m % (T + 1),
+                  t = m % (T + 1),  // actually we won't get t == T
+                                    // here since those frames have no arcs.
         arcs_idx012 = m / (T + 1);  // arc_idx012 into FrameInfo::arcs on time t,
                                     // index of the arc on that frame.
 
           K2_CHECK_EQ(t, oarc_idx1);
 
-          const ArcInfo *ai_data = ai_data_ptrs_data[t];
+          const ArcInfo *arcs_data = arcs_data_ptrs_data[t];
 
-          ArcInfo arc_info = ai_data[arcs_idx012];
+          ArcInfo arc_info = arcs_data[arcs_idx012];
           Arc arc;
           arc.src_state = oarc_idx012 - oarc_idx0xx;
           // Note: the idx1 w.r.t. the frame's `arcs` is an idx2 w.r.t. `oshape`.
@@ -369,6 +369,9 @@ class MultiGraphDenseIntersectPruned {
 
     // Remove axis 1, which corresponds to time.
     *ofsa = FsaVec(RemoveAxis(oshape, 1), arcs_out);
+    // If any FSAs have exactly 1 state (and it would have no arcs), remove that
+    // state (they would not be valid).
+    FixNumStates(ofsa);
   }
 
   /*
@@ -810,7 +813,7 @@ class MultiGraphDenseIntersectPruned {
     K2_EVAL(c_, num_states, lambda_set_backward_prob, (int32_t state_idx01) -> void {
         StateInfo *info = cur_states_data + state_idx01;
         double backward_loglike,
-            forward_loglike = info->forward_loglike;
+            forward_loglike = OrderedIntToFloat(info->forward_loglike);
         if (forward_loglike - forward_loglike == 0) { // not -infinity...
           // canonically we'd set this to zero, but setting it to the forward
           // loglike when this is the final-state (in a_fsas_) has the effect of
@@ -827,6 +830,7 @@ class MultiGraphDenseIntersectPruned {
         }
         info->backward_loglike = backward_loglike;
       });
+    K2_LOG(INFO) << "states = " << cur_frame->states;
   }
 
   /*
@@ -899,6 +903,10 @@ class MultiGraphDenseIntersectPruned {
               next_arcs_row_splits2_data[next_state_idx01]) ||
              (next_states_data[next_state_idx01].backward_loglike != minus_inf));
       });
+
+    K2_LOG(INFO) << "For t = " << t << ", renumber_next_states.Keep() = "
+                 << renumber_next_states.Keep()
+                 << ", next_states = " << next_frame->states;
 
     Array1<int32_t> next_states_row_splits1 = next_frame->states.RowSplits(1);
     const int32_t *next_states_row_splits1_data_old =
@@ -1018,6 +1026,11 @@ class MultiGraphDenseIntersectPruned {
           }
           info->backward_loglike = backward_loglike;
         });
+
+    K2_LOG(INFO) << "For t = " << t << ", renumber_cur_arcs.Keep() = "
+                 << renumber_cur_arcs.Keep() << ", cur_arcs = "
+                 << cur_frame->arcs;
+
     cur_frame->arcs = SubsampleRagged(cur_frame->arcs,
                                       renumber_cur_arcs);
   }

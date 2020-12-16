@@ -256,7 +256,10 @@ TEST(Intersect, RandomFsaVec) {
     float output_beam = 100000.0;  // TODO(Dan) ...
     IntersectDense(fsavec, dfsavec, output_beam, &out_fsas, &arc_map_a,
                    &arc_map_b);
-    K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
+    K2_LOG(INFO) << "out_fsas = " << out_fsas
+                 << ", arc_map_a = " << arc_map_a
+                 << ", arc_map_b = " << arc_map_b;
+
 
     fsavec = fsavec.To(cpu);
     out_fsas = out_fsas.To(cpu);
@@ -287,8 +290,20 @@ TEST(Intersect, RandomFsaVec) {
     ArcSort(&fsavec);  // CAUTION if you later test the arc_maps: we arc-sort
                        // here, so the input `fsa` is not the same as before.
     bool treat_epsilons_specially = false;
-    Intersect(fsavec, -1, fsas_b, -1, treat_epsilons_specially,
-              &out_fsas2, &arc_map_a2, &arc_map_b2);
+
+
+    {
+      Array1<int32_t> arc_map_a2_temp,
+          arc_map_b2_temp;
+      FsaVec out_fsas2_temp;
+      Intersect(fsavec, -1, fsas_b, -1, treat_epsilons_specially,
+                &out_fsas2_temp, &arc_map_a2_temp, &arc_map_b2_temp);
+      Array1<int32_t> connect_arc_map;
+      Connect(out_fsas2_temp, &out_fsas2, &connect_arc_map);
+      arc_map_a2 = arc_map_a2_temp[connect_arc_map];
+      arc_map_b2 = arc_map_b2_temp[connect_arc_map];
+    }
+
     K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                  << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_b2 = " << arc_map_b2;
@@ -573,7 +588,9 @@ TEST(IntersectPruned, RandomFsaVec) {
     int32_t min_active = 0, max_active = 10;
     IntersectDensePruned(fsavec, dfsavec, search_beam, output_beam, min_active,
                          max_active, &out_fsas, &arc_map_a, &arc_map_b);
-    K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
+    K2_LOG(INFO) << "out_fsas = " << out_fsas
+                 << ", arc_map_a = " << arc_map_a
+                 << ", arc_map_b = " << arc_map_b;
 
     out_fsas = out_fsas.To(cpu);
     fsavec = fsavec.To(cpu);
@@ -604,8 +621,17 @@ TEST(IntersectPruned, RandomFsaVec) {
     ArcSort(&fsavec);  // CAUTION if you later test the arc_maps: we arc-sort
                        // here, so the input `fsa` is not the same as before.
     bool treat_epsilons_specially = false;
-    Intersect(fsavec, -1, fsas_b, -1, treat_epsilons_specially,
-              &out_fsas2, &arc_map_a2, &arc_map_b2);
+    {
+      Array1<int32_t> arc_map_a2_temp,
+          arc_map_b2_temp;
+      FsaVec out_fsas2_temp;
+      Intersect(fsavec, -1, fsas_b, -1, treat_epsilons_specially,
+                &out_fsas2_temp, &arc_map_a2_temp, &arc_map_b2_temp);
+      Array1<int32_t> connect_arc_map;
+      Connect(out_fsas2_temp, &out_fsas2, &connect_arc_map);
+      arc_map_a2 = arc_map_a2_temp[connect_arc_map];
+      arc_map_b2 = arc_map_b2_temp[connect_arc_map];
+    }
     K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                  << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_b2 = " << arc_map_b2;
