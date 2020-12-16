@@ -30,6 +30,11 @@ class SymbolTable(Generic[Symbol]):
     '''Map a symbol to an integer.
     '''
 
+    _next_available_id: int = 1
+    '''A helper internal field that helps adding new symbols 
+    to the table efficiently.
+    '''
+
     eps: Symbol = '<eps>'
     '''Null symbol, always mapped to index 0.
     '''
@@ -49,6 +54,8 @@ class SymbolTable(Generic[Symbol]):
         else:
             assert self._id2sym[0] == self.eps
             assert self._sym2id[self.eps] == 0
+
+        self._next_available_id = max(self._id2sym) + 1
 
     @staticmethod
     def from_str(s: str) -> 'SymbolTable':
@@ -79,7 +86,7 @@ class SymbolTable(Generic[Symbol]):
             id2sym[idx] = sym
             sym2id[sym] = idx
 
-        return SymbolTable(_id2sym=id2sym, _sym2id=sym2id)
+        return SymbolTable(_id2sym=id2sym, _sym2id=sym2id, eps=id2sym[0])
 
     @staticmethod
     def from_file(filename: str) -> 'SymbolTable':
@@ -140,18 +147,23 @@ class SymbolTable(Generic[Symbol]):
         Returns:
             The int id to which the symbol has been assigned.
         '''
-        # Already in the table? Return it's ID.
+        # Already in the table? Return its ID.
         if symbol in self._sym2id:
             return self._sym2id[symbol]
         # Specific ID not provided - use next available.
         if index is None:
-            index = len(self)
+            index = self._next_available_id
         # Specific ID provided but not available.
         if index in self._id2sym:
             raise ValueError(f"Cannot assign id '{index}' to '{symbol}' - "
                              f"already occupied by {self._id2sym[index]}")
         self._sym2id[symbol] = index
         self._id2sym[index] = symbol
+
+        # Update next available ID if needed
+        if self._next_available_id <= index:
+            self._next_available_id = index + 1
+
         return index
 
     def get(self, k: Union[int, Symbol]) -> Union[Symbol, int]:
@@ -183,18 +195,29 @@ class SymbolTable(Generic[Symbol]):
         Returns:
             A new symbol table.
         '''
-        common_ids = set(self._id2sym).intersection(other._id2sym)
-        assert self.eps == other.eps, f'Mismatched epsilon symbol: ' \
-                                      f'{self.eps} != {other.eps}'
-        for idx in common_ids:
-            assert self[idx] == other[idx], f'ID conflict for id: {idx}, ' \
-                                            f'self[idx] = "{self[idx]}", ' \
-                                            f'other[idx] = "{other[idx]}"'
+        self._check_compatible(other)
         return SymbolTable(
             _id2sym={**self._id2sym, **other._id2sym},
             _sym2id={**self._sym2id, **other._sym2id},
             eps=self.eps
         )
+
+    def _check_compatible(self, other: 'SymbolTable') -> None:
+        # Epsilon compatibility
+        assert self.eps == other.eps, f'Mismatched epsilon symbol: ' \
+                                      f'{self.eps} != {other.eps}'
+        # IDs compatibility
+        common_ids = set(self._id2sym).intersection(other._id2sym)
+        for idx in common_ids:
+            assert self[idx] == other[idx], f'ID conflict for id: {idx}, ' \
+                                            f'self[idx] = "{self[idx]}", ' \
+                                            f'other[idx] = "{other[idx]}"'
+        # Symbols compatibility
+        common_symbols = set(self._sym2id).intersection(other._sym2id)
+        for sym in common_symbols:
+            assert self[sym] == other[sym], f'ID conflict for id: {sym}, ' \
+                                            f'self[sym] = "{self[sym]}", ' \
+                                            f'other[sym] = "{other[sym]}"'
 
     def __getitem__(self, item: Union[int, Symbol]) -> Union[Symbol, int]:
         return self.get(item)
