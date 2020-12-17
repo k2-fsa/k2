@@ -454,6 +454,9 @@ Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
   they do, it is an error and this function may crash or give undefined output.
 
     @param [in,out] fsas  FsaVec to possibly modify; must have 3 axes.
+
+  CAUTION: this is not used right now and I'm not sure if there are any
+  situations where it really should be used; think carefully before using it.
  */
 void FixNumStates(FsaVec *fsas);
 

@@ -147,7 +147,8 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
   std::size_t a_size = a_axes.size(), b_size = b_axes.size();
   for (std::size_t i = 0; i < a_size; ++i) axes[i] = a_axes[i];
   for (std::size_t i = 0; i < b_size; ++i) axes[i + a_size] = b_axes[i];
-  return RaggedShape(axes);
+  bool validate = false;
+  return RaggedShape(axes, validate);
 }
 
 RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,

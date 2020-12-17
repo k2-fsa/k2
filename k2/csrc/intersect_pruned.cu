@@ -278,12 +278,58 @@ class MultiGraphDenseIntersectPruned {
 
     ContextPtr c_cpu = GetCpuContext();
     Array1<ArcInfo *> arcs_data_ptrs(c_cpu, T + 1);
+    Array1<int32_t *> arcs_row_splits1_ptrs(c_cpu, T + 1);
     for (int32_t t = 0; t <= T; t++) {
       arcs_data_ptrs.Data()[t] = frames_[t]->arcs.values.Data();
+      arcs_row_splits1_ptrs.Data()[t] = frames_[t]->arcs.RowSplits(1).Data();
     }
     // transfer to GPU if we're using a GPU
     arcs_data_ptrs = arcs_data_ptrs.To(c_);
     ArcInfo **arcs_data_ptrs_data = arcs_data_ptrs.Data();
+    arcs_row_splits1_ptrs = arcs_row_splits1_ptrs.To(c_);
+    int32_t **arcs_row_splits1_ptrs_data = arcs_row_splits1_ptrs.Data();
+    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
+    const int32_t *a_fsas_row_splits1 = a_fsas_.RowSplits(1).Data();
+    int32_t a_fsas_stride = a_fsas_stride_;  // 0 or 1 depending if the decoding
+                                             // graph is shared.
+    int32_t num_fsas = b_fsas_.shape.Dim0();
+
+    RaggedShape final_arcs_shape;
+    { /*  This block populates `final_arcs_shape`.  It is the shape of a ragged
+          tensor of arcs that conceptually would live at frames_[T+1]->arcs.  It
+          contains no actual arcs, but may contain some states, that represent
+          "missing" final-states.  The problem we are trying to solve is that
+          there was a start-state for an FSA but no final-state because it did
+          not survive pruning, and this could lead to an output FSA that is
+          invalid or is misinterpreted (because we are interpreting a non-final
+          state as a final state).
+       */
+      Array1<int32_t> num_extra_states(c_, num_fsas + 1);
+      int32_t *num_extra_states_data = num_extra_states.Data();
+      K2_EVAL(c_, num_fsas, lambda_set_num_extra_states, (int32_t i) -> void {
+          int32_t final_t = b_fsas_row_splits1[i+1] - b_fsas_row_splits1[i];
+          int32_t *arcs_row_splits1_data = arcs_row_splits1_ptrs_data[final_t];
+          int32_t num_states_final_t = arcs_row_splits1_data[i + 1] -
+                                       arcs_row_splits1_data[i];
+          K2_CHECK_LE(num_states_final_t, 1);
+
+          // has_start_state is 1 if there is a start-state; note, we don't prune
+          // the start-states, so they'll be present if they were present in a_fsas_.
+          int32_t has_start_state = (a_fsas_row_splits1[i * a_fsas_stride] <
+                                     a_fsas_row_splits1[i * a_fsas_stride + 1]);
+
+          // num_extra_states_data[i] will be 1 if there was a start state but no final-state;
+          // else, 0.
+          num_extra_states_data[i] = has_start_state * (1 - num_states_final_t);
+        });
+      K2_LOG(INFO) << "num_extra_states = " << num_extra_states;
+      ExclusiveSum(num_extra_states, &num_extra_states);
+
+      RaggedShape top_shape = RaggedShape2(&num_extra_states, nullptr, -1),
+               bottom_shape = RegularRaggedShape(c_, top_shape.NumElements(), 0);
+      final_arcs_shape = ComposeRaggedShapes(top_shape, bottom_shape);
+    }
+
 
     RaggedShape oshape;
     // see documentation of Stack() in ragged_ops.h for explanation.
@@ -292,14 +338,15 @@ class MultiGraphDenseIntersectPruned {
     {
       NVTX_RANGE("InitOshape");
       // each of these have 3 axes.
-      std::vector<RaggedShape *> arcs_shapes(T + 1);
+      std::vector<RaggedShape *> arcs_shapes(T + 2);
       for (int32_t t = 0; t <= T; t++)
         arcs_shapes[t] = &(frames_[t]->arcs.shape);
+      arcs_shapes[T + 1] = &final_arcs_shape;
 
       // oshape is a 4-axis ragged tensor which is indexed:
       //   oshape[fsa_index][t][state_idx][arc_idx]
       int32_t axis = 1;
-      oshape = Stack(axis, T + 1, arcs_shapes.data(), &oshape_merge_map);
+      oshape = Stack(axis, T + 2, arcs_shapes.data(), &oshape_merge_map);
     }
 
 
@@ -321,7 +368,6 @@ class MultiGraphDenseIntersectPruned {
     const Arc *a_fsas_arcs = a_fsas_.values.Data();
     int32_t b_fsas_num_cols = b_fsas_.scores.Dim1();
     const int32_t *b_fsas_row_ids1 = b_fsas_.shape.RowIds(1).Data();
-    const int32_t *b_fsas_row_splits1 = b_fsas_.shape.RowSplits(1).Data();
 
     const uint32_t *oshape_merge_map_data = oshape_merge_map.Data();
 
@@ -337,9 +383,9 @@ class MultiGraphDenseIntersectPruned {
              oarc_idx01x_next = oshape_row_splits2[oarc_idx01 + 1];
 
           int32_t m = oshape_merge_map_data[oarc_idx0123],
-                  t = m % (T + 1),  // actually we won't get t == T
+                  t = m % (T + 2),  // actually we won't get t == T or t == T + 1
                                     // here since those frames have no arcs.
-        arcs_idx012 = m / (T + 1);  // arc_idx012 into FrameInfo::arcs on time t,
+        arcs_idx012 = m / (T + 2);  // arc_idx012 into FrameInfo::arcs on time t,
                                     // index of the arc on that frame.
 
           K2_CHECK_EQ(t, oarc_idx1);
@@ -369,9 +415,6 @@ class MultiGraphDenseIntersectPruned {
 
     // Remove axis 1, which corresponds to time.
     *ofsa = FsaVec(RemoveAxis(oshape, 1), arcs_out);
-    // If any FSAs have exactly 1 state (and it would have no arcs), remove that
-    // state (they would not be valid).
-    FixNumStates(ofsa);
   }
 
   /*

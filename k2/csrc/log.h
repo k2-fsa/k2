@@ -229,6 +229,17 @@ inline bool EnableCudaDeviceSync() {
   });
   return enable_cuda_sync;
 }
+
+inline bool DisableChecks() {
+  static std::once_flag init_flag;
+  static bool disable_checks = false;
+  std::call_once(init_flag, []() {
+      disable_checks = (std::getenv("K2_DISABLE_CHECKS") != nullptr);
+  });
+  return disable_checks;
+}
+
+
 // The parameter of `K2_CUDA_SAFE_CALL` should be cuda function call or kernel
 // launch.
 // Noted we would never call `cudaDeviceSynchronize` in release mode and
