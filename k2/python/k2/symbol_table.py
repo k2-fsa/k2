@@ -87,7 +87,9 @@ class SymbolTable(Generic[Symbol]):
             id2sym[idx] = sym
             sym2id[sym] = idx
 
-        return SymbolTable(_id2sym=id2sym, _sym2id=sym2id, eps=id2sym[0])
+        eps = id2sym.get(0, None)
+
+        return SymbolTable(_id2sym=id2sym, _sym2id=sym2id, eps=eps)
 
     @staticmethod
     def from_file(filename: str) -> 'SymbolTable':

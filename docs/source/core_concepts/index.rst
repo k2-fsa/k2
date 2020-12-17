@@ -55,7 +55,7 @@ We summarize the **unique** features of FSA in k2 in below:
   - Arcs that do not enter the final state cannot have -1 as the label
   - States have no scores
   - All scores are on the arcs
-  - We store weights in the **positive** sense rather than as costs
+  - We store weights in the **positive** ``sense`` rather than as costs
 
     .. CAUTION::
 
@@ -77,6 +77,10 @@ We summarize the **unique** features of FSA in k2 in below:
   Similarly, if it contains multiple start states, you can add a super start
   state and set both the label and score of the arcs added from the super start
   state to the start state to 0.
+
+.. NOTE::
+
+  k2 supports conversion of FSAs from OpenFST. See :func:`k2.Fsa.from_openfst`.
 
 Attributes
 ----------
@@ -131,10 +135,24 @@ The resulting FST is visualized in :numref:`a simple fst`.
 Semirings
 ---------
 
-k2 supports two kinds of semirings:
+In the FSA literature, generality is achieved through the concept
+of "semirings". The two most common are the "tropical semiring"
+and "log semiring". The way we will explain these is a little
+different from the literature because we are using the **opposite** sign.
 
-  - tropical semiring
-  - log semiring
+We won't get into the formalism here, but it relates to what happens
+when you combine scores from multiple alternative paths.
+
+The two common semirings supported by k2 are:
+
+  - **tropical semiring**: take the maximum score (or minimum cost)
+  - **log semiring**: log-add the scores (or the negatives of the costs).
+
+While k2 only supports these two operations for the core operations,
+the framework is designed to be flexible through the concept of
+"attributes" which make it possible to implement the kinds of
+things that are normally accomplished through exotic semirings
+such as the Gallic semiring.
 
 Tropical semiring
 ~~~~~~~~~~~~~~~~~
@@ -156,7 +174,9 @@ There are two paths from the start state to the final state:
   - Path 0: state 0 -> state 1 -> state 3, with score: 0.1 + 0 = 0.1
   - Path 1: state 0 -> state 2 -> state 3, with score: 0.2 + 0 = 0.2
 
-So in the tropical semiring, the best score is ``max(0.1, 0.2) == 0.2``.
+So in the tropical semiring, we would consider that "total score" of
+this FSA is ``max(0.1, 0.2) == 0.2``.
+
 
 In k2, you would use the following code to compute it:
 
@@ -337,7 +357,7 @@ the FSA given in :numref:`autograd example`:
 
       \frac{\partial s}{\partial c} = 0
 
-      \frac{\partial s}{\partial b} = \frac{\partial (b + d)}{\partial d} = 1
+      \frac{\partial s}{\partial d} = \frac{\partial (b + d)}{\partial d} = 1
 
     Therefore, the gradient of ``nnet_output`` is ``[0, 1, 0, 1]``.
 
