@@ -523,7 +523,7 @@ class Array2 {
   }
 
   // return a row (indexing on the 0th axis)
-  Array1<T> operator[](int32_t i) {
+  Array1<T> Row(int32_t i) {
     NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, dim0_);

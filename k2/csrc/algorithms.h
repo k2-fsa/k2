@@ -113,17 +113,20 @@ class Renumbering {
   /* Return a mapping from old index to new index. This is created on demand
      (must only be called after the Keep() array has been populated).
 
+       @param [in] extra_element  If true, will return the array of size
+                  NumOldElems() + 1, which includes one more element;
+                  otherwise it will return an array of size NumOldElems().
+                  This array is just the exclusive sum of Keep().
+                  It gives the mapping for indexes that are kept; element
+                  i is kept if `Old2New()[i+1] > Old2New()[i]`.
+
        @return    Returns an array mapping the old indexes to the new indexes.
-                  Its dimension is the number of old indexes (i.e. keep_.Dim()
-                  or NumOldElems()). It is just the exclusive sum of Keep().
-                  It gives the mapping for indexes that are kept; ignore the
-                  non-kept elements of it.
-                  Will be allocated with the same context as keep_.
   */
-  Array1<int32_t> &Old2New() {
+  Array1<int32_t> Old2New(bool extra_element = false) {
     NVTX_RANGE(K2_FUNC);
     if (!old2new_.IsValid()) ComputeOld2New();
-    return old2new_;
+    if (extra_element) return old2new_;
+    else return old2new_.Arange(0, old2new_.Dim() - 1);
   }
 
  private:
@@ -134,7 +137,8 @@ class Renumbering {
   Array1<char> keep_;  // array of elements to keep; dimension is the
                        // `num_old_elems` provided in the constructor but it
                        // was allocated with one extra element.
-  Array1<int32_t> old2new_;  // note: actual dimension is num-old-elems + 1.
+  Array1<int32_t> old2new_;  // note: dimension is num-old-elems + 1.
+  Array1<int32_t> old2new_part_;  // range of old2new_, of dim num-old-elems.
   int32_t num_new_elems_;  // equals last element of old2new_; set when
                            // old2new_ is created.
   Array1<int32_t> new2old_;

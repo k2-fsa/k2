@@ -221,10 +221,15 @@ class MultiGraphDenseIntersectPruned {
     // is set up (it has no arcs but we need the shape).
     frames_.pop_back();
 
-    SetBackwardProbsFinal(frames_[T].get());
-    for (int32_t t = T - 1; t >= 0; t--) {
-      PropagateBackwardAndPrune(t, frames_[t].get(),
-                                frames_[t + 1].get());
+    // each time we prune, prune 30 frames; but shift by 20 frames each
+    // time so there are 10 frames of overlap.
+    int32_t prune_num_frames = 30,
+                 prune_shift = 20;
+    for (int32_t start_t = T - prune_num_frames;
+         start_t + prune_num_frames > 0;  start_t -= prune_shift) {
+      int32_t prune_start = std::max<int32_t>(start_t, 0),
+               prune_end = start_t + prune_num_frames;
+      PruneTimeRange(prune_start, prune_end);
     }
   }
 
@@ -878,8 +883,10 @@ class MultiGraphDenseIntersectPruned {
 
   /*
     Does backward propagation of log-likes, which means setting the
-    backward_loglike field of the StateInfo variable (for cur_frame); and
-    prune/renumber the states of next_frame and the arcs of cur_frame.
+    backward_loglike field of the StateInfo variable (for cur_frame);
+    and works out which arcs and which states are to be pruned
+    on cur_frame; this information is output to Array1<char>'s which
+    are supplied by the caller.
 
     These backward log-likes are normalized in such a way that you can add them
     with the forward log-likes to produce the log-likelihood ratio vs the best
@@ -890,25 +897,35 @@ class MultiGraphDenseIntersectPruned {
     This function also prunes arc-indexes on `cur_frame` and state-indexes
     on `next_frame`.
 
-       @param [in] t       The time-index (on which to look up log-likes),
-                           t >= 0
+       @param [in] t      The time-index (on which to look up log-likes);
+                          equals time index of `cur_frame`; t >= 0
        @param [in]  cur_frame The FrameInfo for the frame on which we want to
-                              set the forward log-like, and prune the arcs.
-
-       @param [in]  next_frame The next frame's FrameInfo; we will prune the
-                             states on this frame (which also affects the
-                             shape of the 'arcs').
-                             Arcs on `cur_frame` have destination-states
-                             on `next_frame`. The `backward_loglike` values
-                             of states on `next_frame` are assumed to
-                             already be set.
+                          set the forward log-like, and output pruning info
+                          for arcs and states
+       @param [in]  next_frame The next frame's FrameInfo, on which to look
+                           up log-likes for the next frame; the
+                           `backward_loglike` values of states on `next_frame`
+                           are assumed to already be set, either by
+                           SetBackwardProbsFinal() or a previous call to
+                           PropagateBackward().
+       @param [out] cur_frame_states_keep   An array, created by the caller,
+                        to which we'll write 1s for elements of cur_frame->states
+                        which we need to keep, and 0s for others.
+       @param [out] cur_frame_arcs_keep   An array, created by the caller,
+                        to which we'll write 1s for elements of cur_frame->arcs
+                        which we need to keep (because they survived pruning),
+                        and 0s for others.
   */
-  void PropagateBackwardAndPrune(int32_t t,
-                                 FrameInfo *cur_frame,
-                                 FrameInfo *next_frame) {
-    NVTX_RANGE("PropagateBackwardAndPrune");
+  void PropagateBackward(int32_t t,
+                         FrameInfo *cur_frame,
+                         FrameInfo *next_frame,
+                         Array1<char> *cur_frame_states_keep,
+                         Array1<char> *cur_frame_arcs_keep) {
+    NVTX_RANGE("PropagateBackward");
     int32_t num_states = cur_frame->states.NumElements(),
             num_arcs = cur_frame->arcs.NumElements();
+    K2_CHECK_EQ(num_states, cur_frame_states_keep->Dim());
+    K2_CHECK_EQ(num_arcs, cur_frame_arcs_keep->Dim());
 
     int32_t *a_fsas_row_ids1_data = a_fsas_.shape.RowIds(1).Data(),
             *a_fsas_row_splits1_data = a_fsas_.shape.RowSplits(1).Data();
@@ -929,109 +946,54 @@ class MultiGraphDenseIntersectPruned {
     // compute arc backward probs, and set elements of 'keep_arcs'
     int32_t next_num_states = next_frame->states.TotSize(1);
 
-    Renumbering renumber_cur_arcs(c_, num_arcs),
-        renumber_next_states(c_, next_num_states);
-    char *keep_cur_arcs_data = renumber_cur_arcs.Keep().Data(),
-      *keep_next_states_data = renumber_next_states.Keep().Data();
+    char *keep_cur_arcs_data = cur_frame_arcs_keep->Data(),
+        *keep_cur_states_data = cur_frame_states_keep->Data();
+
+    const int32_t *next_states_row_splits1_data =
+        next_frame->states.RowSplits(1).Data();
 
     StateInfo *next_states_data = next_frame->states.values.Data();
-    int32_t *next_arcs_row_splits2_data = next_frame->arcs.RowSplits(2).Data();
-    K2_EVAL(c_, next_num_states, lambda_set_keep_next_states, (int32_t next_state_idx01) -> void {
-        // Keep a state if there are arcs leaving it on the next frame (this is
-        // required because we don't want to renumber the next frame's arcs); or
-        // if its backward_loglike is nevertheless not minus_inf because it is a
-        // final-state.
-        keep_next_states_data[next_state_idx01] =
-            ((next_arcs_row_splits2_data[next_state_idx01+1] !=
-              next_arcs_row_splits2_data[next_state_idx01]) ||
-             (next_states_data[next_state_idx01].backward_loglike != minus_inf));
-      });
-
-    K2_LOG(INFO) << "For t = " << t << ", renumber_next_states.Keep() = "
-                 << renumber_next_states.Keep()
-                 << ", next_states = " << next_frame->states;
-
-    Array1<int32_t> next_states_row_splits1 = next_frame->states.RowSplits(1);
-    const int32_t *next_states_row_splits1_data_old =
-        next_states_row_splits1.Data();
-
-    // Renumber the states on the next frame (note: the shape of the `states` is
-    // the same as the 1st layer of the shape of the `arcs`).
-    next_frame->arcs.shape = RemoveSomeEmptyLists(next_frame->arcs.shape, 1,
-                                                  renumber_next_states);
-    next_frame->states.shape = GetLayer(next_frame->arcs.shape, 0);
-    next_frame->states.values = next_frame->states.values[renumber_next_states.New2Old()];
-
-    StateInfo *next_states_data_new = next_frame->states.values.Data();
-
-    const int32_t *next_states_row_splits1_data_new
-        = next_frame->states.RowSplits(1).Data();
-
-    int32_t *next_states_old2new_data = renumber_next_states.Old2New().Data();
-
     StateInfo *cur_states_data = cur_frame->states.values.Data();
 
-    // next_states_row_splits1 maps from fsa_idx0 to state_idx01.
-    int32_t *next_states_row_splits1_new =
-        next_frame->states.shape.RowSplits(1).Data();
-
+    // TODO: use K2_EVALa
     //K2_EVAL(
     //    c_, num_arcs,
     //        lambda_set_arc_backward_prob_and_keep, (int32_t arcs_idx012)->void {
 
     auto lambda_set_arc_backward_prob_and_keep = [=]  __host__ __device__ (int32_t arcs_idx012) -> void {
-          ArcInfo *arc = ai_data + arcs_idx012;
-          int32_t state_idx01 = arcs_rowids2[arcs_idx012],
-                     fsa_idx0 = arcs_rowids1[state_idx01],
-          next_states_idx0x_old = next_states_row_splits1_data_old[fsa_idx0],
-          next_states_idx0x_new = next_states_row_splits1_data_new[fsa_idx0];
+      ArcInfo *arc = ai_data + arcs_idx012;
+      int32_t state_idx01 = arcs_rowids2[arcs_idx012],
+                 fsa_idx0 = arcs_rowids1[state_idx01],
+        next_states_idx0x = next_states_row_splits1_data[fsa_idx0];
 
-          // `old` and `new` here are before and after pruning the state-ids of
-          // the next frame, see `renumber_next_states`.
-          // Note: if dest_state_idx1_old == -1, dest_state_idx01_old has a meaningless
-          // value below, but it's never referenced.
-          int32_t dest_state_idx1_old = arc->u.dest_info_state_idx1,
-                 dest_state_idx01_old = next_states_idx0x_old + dest_state_idx1_old,
-                 dest_state_idx01_new = -1,
-                  dest_state_idx1_new = -1;
-          float backward_loglike = minus_inf;
-          char keep_this_arc = 0;
-          if (dest_state_idx1_old == -1 ||
-              next_states_old2new_data[dest_state_idx01_old + 1] ==
-              next_states_old2new_data[dest_state_idx01_old]) {
-            // dest_state_idx1_old == -1 means this arc was already pruned in
-            // the forward pass.. do nothing.
-            // If the second half of the || is true, it means the dest-state of
-            // this arc was pruned away.
-            // Do nothing.
-          } else {
-            dest_state_idx01_new = next_states_old2new_data[dest_state_idx01_old];
-            dest_state_idx1_new = dest_state_idx01_new - next_states_idx0x_new;
-            float arc_loglike = arc->arc_loglike;
-            float dest_state_backward_loglike =
-                next_states_data_new[dest_state_idx01_new].backward_loglike;
-            // 'backward_loglike' is the loglike at the beginning of the arc
-            backward_loglike = arc_loglike + dest_state_backward_loglike;
-            float src_state_forward_loglike = OrderedIntToFloat(
-                cur_states_data[arcs_rowids2[arcs_idx012]].forward_loglike);
-            if (backward_loglike + src_state_forward_loglike >= -output_beam) {
-              keep_this_arc = 1;
-            } else {
-              backward_loglike = minus_inf;  // Don't let arcs outside beam
-                                             // contribute to their
-                                             // start-states's backward prob
-                                             // (we'll use that to prune them
-                                             // away.)
-            }
-          }
-          keep_cur_arcs_data[arcs_idx012] = keep_this_arc;
-          // Correct the dest-state in the arc for the pruning of the next
-          // frame's states.
-          // We store the idx1 rather than the idx01 because it's more convenient
-          // later on while formatting the output, although it's a little
-          // inconvenient for this operation.
-          arc->u.dest_info_state_idx1 = dest_state_idx1_new;
-          arc_backward_prob_data[arcs_idx012] = backward_loglike;
+      // Note: if dest_state_idx1 == -1, dest_state_idx01 has a meaningless
+      // value below, but it's never referenced.
+      int32_t dest_state_idx1 = arc->u.dest_info_state_idx1,
+             dest_state_idx01 = next_states_idx0x + dest_state_idx1;
+      float backward_loglike = minus_inf;
+      char keep_this_arc = 0;
+      if (dest_state_idx1 == -1) {
+          // dest_state_idx1 == -1 means this arc was already pruned in
+          // the forward pass.. do nothing.
+      } else {
+        float arc_loglike = arc->arc_loglike;
+        float dest_state_backward_loglike =
+            next_states_data[dest_state_idx01].backward_loglike;
+        // 'backward_loglike' is the loglike at the beginning of the arc
+        backward_loglike = arc_loglike + dest_state_backward_loglike;
+        float src_state_forward_loglike = OrderedIntToFloat(
+            cur_states_data[arcs_rowids2[arcs_idx012]].forward_loglike);
+        if (backward_loglike + src_state_forward_loglike >= -output_beam) {
+          keep_this_arc = 1;
+        } else {
+          backward_loglike = minus_inf;  // Don't let arcs outside beam
+                                         // contribute to their start-states's
+                                         // backward prob (we'll use that to
+                                         // prune the start-states away.)
+        }
+      }
+      keep_cur_arcs_data[arcs_idx012] = keep_this_arc;
+      arc_backward_prob_data[arcs_idx012] = backward_loglike;
     };
     // TODO: after debugging, maybe use K2_EVAL.
     Eval(c_, num_arcs, lambda_set_arc_backward_prob_and_keep);
@@ -1068,15 +1030,290 @@ class MultiGraphDenseIntersectPruned {
             backward_loglike = state_backward_prob_data[state_idx01];
           }
           info->backward_loglike = backward_loglike;
+          keep_cur_states_data[state_idx01] = (backward_loglike != minus_inf);
         });
-
-    K2_LOG(INFO) << "For t = " << t << ", renumber_cur_arcs.Keep() = "
-                 << renumber_cur_arcs.Keep() << ", cur_arcs = "
-                 << cur_frame->arcs;
-
-    cur_frame->arcs = SubsampleRagged(cur_frame->arcs,
-                                      renumber_cur_arcs);
   }
+
+  /*
+    This function does backward propagation and pruning of arcs and states for a
+    specific time range.
+        @param [in] start_t   Lowest `t` value to call PropagateBackward() for
+                            and to prune its arcs and states.  Require t >= 0.
+        @param [in] end_t    One-past-the-highest `t` value to call PropagateBackward()
+                            and to prune its arcs and states.  Require that
+                            `frames_[t+1]` already be set up; this requires at least
+                            end_t <= T.
+    Arcs on frames t >= end_t and states on frame t > end_t are ignored; the backward
+    probs on time end_t are set by SetBackwardProbsFinal(), see its documentation
+    to understand what this does if we haven't yet reached the end of one of the
+    sequences.
+
+    After this function is done, the arcs for `frames_[t]` with start_t <= t < end_t and
+    the states for `frames_[t]` with start_t < t < end_t will have their numbering changed.
+    (We don't renumber the states on start_t because that would require the dest-states
+     of the arcs on time `start_t - 1` to be modified).  TODO: check this...
+   */
+  void PruneTimeRange(int32_t start_t,
+                      int32_t end_t) {
+    SetBackwardProbsFinal(frames_[end_t].get());
+    ContextPtr cpu = GetCpuContext();
+    int32_t num_fsas = b_fsas_.shape.Dim0(),
+               num_t = end_t - start_t;
+    Array1<int32_t> old_states_offsets(cpu, num_t + 1),
+        old_arcs_offsets(cpu, num_t + 1);
+    int32_t tot_states = 0, tot_arcs = 0;
+    {
+      int32_t *old_states_offsets_data = old_states_offsets.Data(),
+                *old_arcs_offsets_data = old_arcs_offsets.Data();
+      for (int32_t i = 0; i <= num_t; i++) {
+        int32_t t = start_t + i;
+        old_states_offsets_data[i] = tot_states;
+        old_arcs_offsets_data[i] = tot_arcs;
+        if (i < num_t) {
+          tot_states += frames_[t]->arcs.TotSize(1);
+          tot_arcs += frames_[t]->arcs.TotSize(2);
+        }
+      }
+    }
+
+
+    // contains respectively: row_splits1_ptrs, row_ids1_ptrs,
+    // row_splits1_ptrs, row_splits2_ptrs,
+    // old_arcs_ptrs (really type ArcInfo*),
+    // old_states_ptrs (really type StateInfo*).
+    Array1<void*> old_all_ptrs(cpu, num_t * 6);
+
+    Renumbering renumber_states(c_, tot_states),
+        renumber_arcs(c_, tot_arcs);
+    {
+      void                    **all_p = old_all_ptrs.Data();
+      int32_t **old_row_splits1_ptrs_data = (int32_t**)all_p,
+                 **old_row_ids1_ptrs_data = (int32_t**)all_p + num_t,
+          **old_row_splits2_ptrs_data = (int32_t**)all_p + 2 * num_t,
+             **old_row_ids2_ptrs_data = (int32_t**)all_p + 3 * num_t;
+      StateInfo **old_states_ptrs_data = (StateInfo**)all_p + 4 * num_t;
+      ArcInfo **old_arcs_ptrs_data = (ArcInfo**)all_p + 5 * num_t;
+      int32_t *old_states_offsets_data = old_states_offsets.Data(),
+                *old_arcs_offsets_data = old_arcs_offsets.Data();
+
+      for (int32_t t = end_t - 1; t >= start_t; --t) {
+        int32_t i = t - start_t;
+        Array1<char> this_states_keep =
+            renumber_states.Keep().Arange(old_states_offsets_data[i],
+                                          old_states_offsets_data[i + 1]),
+            this_arcs_keep =
+            renumber_arcs.Keep().Arange(old_arcs_offsets_data[i],
+                                        old_arcs_offsets_data[i + 1]);
+        FrameInfo *cur_frame = frames_[t].get();
+        PropagateBackward(t, cur_frame, frames_[t+1].get(),
+                          &this_states_keep, &this_arcs_keep);
+
+        old_row_splits1_ptrs_data[i] = cur_frame->arcs.RowSplits(1).Data();
+        old_row_ids1_ptrs_data[i] = cur_frame->arcs.RowIds(1).Data();
+        old_row_splits2_ptrs_data[i] = cur_frame->arcs.RowSplits(2).Data();
+        old_row_ids2_ptrs_data[i] = cur_frame->arcs.RowIds(2).Data();
+        old_arcs_ptrs_data[i] = cur_frame->arcs.values.Data();
+        old_states_ptrs_data[i] = cur_frame->states.values.Data();
+
+        // We can't discard any states on t == start_t because: if it is not t ==
+        // 0, it would be inconvenient to map the dest-states of arcs on t - 1;
+        // and if it is t == 0, this may remove the start-state, which would make
+        // it more complex to avoid invalid FSAs (e.g. with an end-state but no
+        // start-state, or in which we incorrectly interpret a non-start state as
+        // the start state).
+        if (i == 0)  // t == start_t
+          this_states_keep = (char)1;  // set all elements of the array
+        // `states_keep` to 1.
+      }
+    }
+
+    old_states_offsets = old_states_offsets.To(c_);
+    old_arcs_offsets = old_arcs_offsets.To(c_);
+    Array1<int32_t> new_states_offsets = renumber_states.Old2New(true)[old_states_offsets],
+                      new_arcs_offsets = renumber_arcs.Old2New(true)[old_arcs_offsets];
+    int32_t new_num_states = renumber_states.NumNewElems(),
+              new_num_arcs =  renumber_arcs.NumNewElems();
+    // These arrays map to the (t - start_t) corresponding to this state or arc
+    // in the new numbering, i.e. the frame index minus start_t.
+    Array1<int32_t> new_state_to_frame(c_, new_num_states),
+        new_arc_to_frame(c_, new_num_arcs);
+    RowSplitsToRowIds(new_states_offsets, &new_state_to_frame);
+    RowSplitsToRowIds(new_arcs_offsets, &new_arc_to_frame);
+    const int32_t *old_states_offsets_data = old_states_offsets.Data(),
+                  *new_states_offsets_data = new_states_offsets.Data(),
+                    *old_arcs_offsets_data = old_arcs_offsets.Data(),
+                    *new_arcs_offsets_data = new_arcs_offsets.Data(),
+                  *new_state_to_frame_data = new_state_to_frame.Data(),
+                    *new_arc_to_frame_data = new_arc_to_frame.Data(),
+                      *states_old2new_data = renumber_states.Old2New().Data(),
+                      *states_new2old_data = renumber_states.New2Old().Data(),
+                        *arcs_old2new_data = renumber_arcs.Old2New().Data(),
+                        *arcs_new2old_data = renumber_arcs.New2Old().Data();
+
+    // Allocate the new row_splits and row_ids vectors for the shapes on the
+    // individual frames, and the new arc-info and state-info.
+    Array2<int32_t> all_row_splits1(c_, num_t, num_fsas + 1);
+    auto all_row_splits1_acc = all_row_splits1.Accessor();
+    Array1<int32_t> all_row_ids1(c_, new_num_states);
+    // the "+ num_t" below is for the extra element of each row_splits array.
+    Array1<int32_t> all_row_splits2(c_, new_num_states + num_t);
+    Array1<int32_t> all_row_ids2(c_, new_num_arcs);
+    Array1<StateInfo> all_states(c_, new_num_states);
+    Array1<ArcInfo> all_arcs(c_, new_num_arcs);
+
+    int32_t *all_row_ids1_data = all_row_ids1.Data(),
+            *all_row_ids2_data = all_row_ids2.Data(),
+         *all_row_splits2_data = all_row_splits2.Data();
+    StateInfo *all_states_data = all_states.Data();
+    ArcInfo *all_arcs_data = all_arcs.Data();
+
+    old_all_ptrs = old_all_ptrs.To(c_);
+    void **all_p = old_all_ptrs.Data();
+
+    auto lambda_set_new_row_splits1 = [=] __host__ __device__ (int32_t t_offset,
+                                                               int32_t fsa_idx) -> void {
+      // note, t_offset is t - t_start.
+      int32_t *old_row_splits1 = (int32_t*) all_p[t_offset];
+      int32_t old_idx0x = old_row_splits1[fsa_idx];
+      // "pos" means position in appended states vector
+      // old_start_pos means start for this `t`.
+      int32_t old_start_pos = old_states_offsets_data[t_offset],
+                    old_pos = old_start_pos + old_idx0x,
+              new_start_pos = states_old2new_data[old_start_pos],
+                    new_pos = states_old2new_data[old_pos],
+                  new_idx0x = new_pos - new_start_pos;
+      all_row_splits1_acc(t_offset, fsa_idx) = new_idx0x;
+      // TODO: set elem zero of row-splits?
+
+      if (fsa_idx == 0) {
+        // We assign the `fsa_idx == 0` version of the kernel to set the initial
+        // zero in each row_splits vector.
+        all_row_splits2_data[new_pos + t_offset] = 0;
+      }
+    };
+    Eval2(c_, num_t, num_fsas + 1, lambda_set_new_row_splits1);
+
+    // TODO, see if there is better way of mapping states for arc-end stuff..
+
+    // TODO, use K2_EVAL.
+    auto lambda_per_state = [=] __host__ __device__ (int32_t new_i) -> void {
+      // new_i is position in appended vector of all states.
+      int32_t    t_offset = new_state_to_frame_data[new_i],
+      old_state_start_pos = old_states_offsets_data[t_offset],
+        new_arc_start_pos = new_arcs_offsets_data[t_offset],
+        old_arc_start_pos = old_arcs_offsets_data[t_offset],
+                    old_i = states_new2old_data[new_i],
+          old_state_idx01 = old_i - old_state_start_pos;
+
+
+      // this old_states_data is from its FrameInfo::states.
+      const StateInfo *old_states_data = (StateInfo*)all_p[4 * num_t + t_offset];
+      const int32_t *old_row_ids1_data = (int32_t*)all_p[1 * num_t + t_offset],
+                 *old_row_splits2_data = (int32_t*)all_p[2 * num_t + t_offset];
+
+      // set the row-ids1 (these contain FSA-ids).
+      all_row_ids1_data[new_i] = old_row_ids1_data[old_state_idx01];
+
+
+      {  // set the row-splits2.
+        // We make each kernel responsible for the *next* row_splits entry,
+        // i.e. for its new_state_idx01 plus one.  This solves the problem of no
+        // kernel being responsible for the last row-splits entry.  We
+        // separately wrote the zeros for the 1st row-splits entry, in a
+        // previous kernel.
+        //
+        // It's safe to use old_state_idx01+1 instead of doing the same mapping
+        // from new_i+1 that we do from new_i to old_state_idx01, because
+        // we know this state was kept (because it has a new_i index.)
+        int32_t old_arc_idx01x_next = old_row_splits2_data[old_state_idx01+1],
+                   old_arc_pos_next = old_arc_idx01x_next + old_arc_start_pos,
+                   new_arc_pos_next = arcs_old2new_data[old_arc_pos_next],
+                new_arc_idx01x_next = new_arc_pos_next - new_arc_start_pos;
+
+        // "+ t_offset" is to compensate for the extra element of each row_splits
+        // vector.  The "+ 1" is about the "next", i.e. each kernel is responsible
+        // for the next row_splits element, and none is responsible for the initial zero;
+        // that is set in a previous kernel.
+        all_row_splits2_data[new_i + t_offset + 1] = new_arc_idx01x_next;
+      }
+      all_states_data[new_i] = old_states_data[old_state_idx01];
+
+    };
+    Eval(c_, new_num_states, lambda_per_state);
+
+    // TODO, use K2_EVAL.
+    auto lambda_set_arcs = [=] __host__ __device__ (int32_t new_i) -> void {
+      // new_i is position in appended vector of all arcs
+      int32_t    t_offset = new_arc_to_frame_data[new_i],
+      new_state_start_pos = new_states_offsets_data[t_offset],
+      old_state_start_pos = old_states_offsets_data[t_offset],
+ next_old_state_start_pos = old_states_offsets_data[t_offset + 1],
+        old_arc_start_pos = old_arcs_offsets_data[t_offset],
+                    old_i = arcs_new2old_data[new_i],
+           old_arc_idx012 = old_i - old_arc_start_pos;
+
+      ArcInfo *old_info_data =  (ArcInfo*)all_p[5 * num_t + t_offset];
+      int32_t *old_row_ids2_data = (int32_t*)all_p[3 * num_t + t_offset],
+             *old_row_ids1_data  = (int32_t*)all_p[1 * num_t + t_offset],
+      *next_old_row_splits1_data = (int32_t*)all_p[t_offset + 1];
+
+      int32_t old_src_state_idx01 = old_row_ids2_data[old_arc_idx012],
+                         fsa_idx0 = old_row_ids1_data[old_src_state_idx01],
+                old_src_state_pos = old_src_state_idx01 + old_state_start_pos,
+                new_src_state_pos = states_old2new_data[old_src_state_pos],
+              new_src_state_idx01 = new_src_state_pos - new_state_start_pos;
+
+      all_row_ids2_data[new_i] = new_src_state_idx01;
+
+      ArcInfo info = old_info_data[old_arc_idx012];
+      // idx1 of the state in the next frame's `states` object.
+      int32_t dest_info_state_idx1 = info.u.dest_info_state_idx1;
+
+      // the naming below is unusual; by "pos" we mean position in the old or
+      // new "all_states" or "all_arcs" vectors, which have all frames appended.
+      // (the new ones physically exist; the old ones don't, but they are the
+      // numberings used in renumber_states.Keep() and renumber_arcs.Keep().)
+      int32_t old_dest_state_idx0x = next_old_row_splits1_data[fsa_idx0],
+              old_dest_state_idx01 = old_dest_state_idx0x + dest_info_state_idx1,
+          old_dest_state_idx0x_pos = next_old_state_start_pos + old_dest_state_idx0x,
+          old_dest_state_idx01_pos = next_old_state_start_pos + old_dest_state_idx01,
+          new_dest_state_idx0x_pos = states_old2new_data[old_dest_state_idx0x_pos],
+          new_dest_state_idx01_pos = states_old2new_data[old_dest_state_idx01_pos],
+               new_dest_state_idx1 = new_dest_state_idx01_pos - new_dest_state_idx0x_pos;
+      info.u.dest_info_state_idx1 = new_dest_state_idx1;
+      all_arcs_data[new_i] = info;
+    };
+    Eval(c_, new_num_arcs, lambda_set_arcs);
+
+    // Now reconstruct the states and arcs for all the frames we pruned, from
+    // sub-parts of the arrays we just created.
+    new_states_offsets = new_states_offsets.To(cpu);
+    new_arcs_offsets = new_arcs_offsets.To(cpu);
+    new_states_offsets_data = new_states_offsets.Data();
+    new_arcs_offsets_data = new_arcs_offsets.Data();
+    for (int32_t i = 0; i < num_t; i++) {  // i corresponds to "t_offset".
+      int32_t state_offset = new_states_offsets_data[i],
+         next_state_offset = new_states_offsets_data[i + 1],
+                arc_offset = new_arcs_offsets_data[i],
+           next_arc_offset = new_arcs_offsets_data[i + 1];
+
+      // next line: operator[] into Array2 gives Array1, one row.
+      Array1<int32_t> row_splits1 = all_row_splits1.Row(i),
+                         row_ids1 = all_row_ids1.Arange(state_offset, next_state_offset),
+                      row_splits2 = all_row_splits2.Arange(state_offset + i, next_state_offset + (i+1)),
+                         row_ids2 = all_row_ids2.Arange(arc_offset, next_arc_offset);
+      Array1<ArcInfo> arcs = all_arcs.Arange(arc_offset, next_arc_offset);
+
+      RaggedShape arcs_shape = RaggedShape3(&row_splits1, &row_ids1, -1,
+                                            &row_splits2, &row_ids2, -1);
+      int32_t         t = start_t + i;
+      frames_[t]->arcs = Ragged<ArcInfo>(arcs_shape, arcs);
+      Array1<StateInfo> states = all_states.Arange(state_offset, next_state_offset);
+      RaggedShape states_shape = GetLayer(arcs_shape, 0);
+      frames_[t]->states = Ragged<StateInfo>(states_shape, states);
+    }
+  }
+
 
   ContextPtr c_;
   FsaVec &a_fsas_;         // Note: a_fsas_ has 3 axes.

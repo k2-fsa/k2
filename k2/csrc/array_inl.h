@@ -72,7 +72,7 @@ std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
   Array2<T> array_cpu = array.To(GetCpuContext());
   int32_t num_rows = array_cpu.Dim0();
   for (int32_t i = 0; i < num_rows; ++i) {
-    stream << ToPrintable(array_cpu[i]);
+    stream << ToPrintable(array_cpu.Row(i));
     if (i + 1 < num_rows) stream << '\n';
   }
   return stream << "\n]";
