@@ -4,9 +4,7 @@ Installation
 
 .. HINT::
 
-  Neither do you need a GPU to **run** k2 nor do you need a GPU to **build** k2.
-
-  You can play with k2 without a GPU.
+  Neither sudo priviledges nor GPU is required to build, install, and run k2.
 
 Dependencies installation
 -------------------------
@@ -65,7 +63,7 @@ k2 from source in this case.
     k2 is still under active development and we are trying to keep
     the packages on PyPI up to date. Please use ``--pre`` in ``pip install``.
 
-    If you want to try the latest version, please the following section
+    If you want to try the latest version, please refer to
     :ref:`install k2 from source`.
 
 From GitHub actions

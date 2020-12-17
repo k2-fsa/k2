@@ -5,7 +5,7 @@ Please refer to :cite:`mohri1997finite`, :cite:`mohri2002weighted`, and
 :cite:`mohri2008speech` for an introduction about weighted finite state
 acceptor (WFSA) and weighted finite state transducer (WFST).
 
-We use FSA to represent either WFSA or WFST in k2.
+We use FSA to indicate either WFSA or WFST in k2.
 
 
 A simple FSA example
@@ -115,8 +115,8 @@ The resulting FST is visualized in :numref:`a simple fst`.
 .. NOTE::
 
   The visualization code handles the attributes ``aux_labels`` specially.
-  Other than this, ``aux_labels`` is like any other attributes that are
-  attached to an FSA.
+  Other than this, ``aux_labels`` is like any other attributes attached
+  to the FSA.
 
 Semirings
 ---------
@@ -143,8 +143,8 @@ For example, for the FSA in :numref:`tropical`:
 
 There are two paths from the start state to the final state:
 
-  - Path 0: state 0 -> state 1 -> state 3 with score: 0.1 + 0 = 0.1
-  - Path 1: state 0 -> state 2 -> state 3 with score: 0.2 + 0 = 0.2
+  - Path 0: state 0 -> state 1 -> state 3, with score: 0.1 + 0 = 0.1
+  - Path 1: state 0 -> state 2 -> state 3, with score: 0.2 + 0 = 0.2
 
 So in the tropical semiring, the best score is ``max(0.1, 0.2) == 0.2``.
 
@@ -215,8 +215,8 @@ Most operations in k2 are done on a vector of FSAs in parallel.
 .. HINT::
 
   In the documentation, we usually use ``FsaVec`` to represent
-  a vector of FSAs. There is no Python class ``FsaVec``, only
-  :class:`k2.Fsa`.
+  a vector of FSAs. However, there is actually no Python class ``FsaVec``,
+  only :class:`k2.Fsa`.
 
 .. NOTE::
 
@@ -231,9 +231,9 @@ Nearly all operations in k2 support autograd, which is compatible
 with PyTorch. It can be extended to support other frameworks as well,
 e.g., TensorFlow.
 
-Gradients are computed with respect to the arc scores. We do not
+Gradients are computed with respect to arc scores. We do not
 pose any constraints on where the arc scores can come from. For instance,
-they can be the output of some neural networks or they can come from
+they can be the output of some neural network or from
 some n-gram language models.
 
 Autograd is implemented by keeping track of the "source arcs" of arcs that
@@ -311,13 +311,13 @@ the FSA given in :numref:`autograd example`:
     - Arc 1: state 0 -> state 2, with score 1
     - Arc 2: state 1 -> state 3, with score 0.2
     - Arc 3: state 2 -> state 3, witch score 0.5
-    - Score of path arc 0 -> arc 2 is 0.1 + 0.2 = 0.3
-    - Score of path arc 1 -> arc 3 is 1 + 0.5 = 1.5
+    - Score of path 0: arc 0 -> arc 2 is 0.1 + 0.2 = 0.3
+    - Score of path 1: arc 1 -> arc 3 is 1 + 0.5 = 1.5
     - The best path consists of arc 1 and arc 3.
-    - The best path score is ``s = b + d``
+    - The best score is ``s = b + d = 1.5``
 
     So it is quite straightforward to compute the gradients
-    of best_score ``s`` with respect to ``a``, ``b``, ``c`` and ``d``.
+    of the `best score` ``s`` with respect to ``a``, ``b``, ``c`` and ``d``.
 
     .. math::
 
@@ -383,19 +383,128 @@ For completeness and ease of reference, we repost the code below.
 
 .. NOTE::
 
-  The example FSA is fairly simple and its main purpose is to demostrate how to use autograd in k2.
+  The example FSA is fairly simple and its main purpose is to demostrate how to
+  use autograd in k2.
+
   All of this happens automagically.
 
 
-Dense fsa vec
--------------
+Dense fsa vector
+----------------
 
-TBD
+We have mentioned that gradients are computed with respect to arc scores
+and arc scores may come from the output of some neural network.
 
-Ragged arrays
--------------
+This brings up the question::
 
-TBD
+  How to convert the output of a neural network to an FSA?
+
+To answer this question, we need to identify:
+
+  - What are the states?
+  - What are the arcs ?
+
+    - source state
+    - destination state
+    - label
+    - score
+
+Let's assume a neural network predicts the pseudo probabilities
+for three symbols:
+
+  - blank :math:`\sqcup`
+  - letter O
+  - letter K
+
+At frame 0, suppose the last layer **log-softmax** of the network produces
+the following output:
+
++---------+--------------------+--------------------+--------------------+
+|         | :math:`\sqcup`     |          O         |          K         |
++---------+--------------------+--------------------+--------------------+
+| frame 0 | log(0.60) = -0.51  | log(0.30) = -1.20  | log(0.10) = -2.30  |
++---------+--------------------+--------------------+--------------------+
+
+We would convert it to an FSA shown in :numref:`dense_fsa_vec_frame_0`.
+
+.. _dense_fsa_vec_frame_0:
+
+.. figure:: images/dense_fsa_vec_frame_0.svg
+    :alt: FSA for frame 0
+    :align: center
+    :figwidth: 600px
+
+    Convert output for frame 0 to an FSA in k2.
+
+**Explanation**:
+  - The resulting FSA has 3 states
+  - State 0 has 3 leaving arcs pointing to state 1 with scores
+    from the network output at frame 0
+
+.. NOTE::
+
+  In other frameworks, the resulting FSA has only two states, i.e., state 1
+  is the final state. In k2, however, we require that arcs entering the
+  final state have label -1 on them. Therefore, the FSA has 3 states in k2.
+
+At frame 1, the network may produce the following output:
+
++---------+--------------------+--------------------+--------------------+
+|         | :math:`\sqcup`     |          O         |          K         |
++---------+--------------------+--------------------+--------------------+
+| frame 0 | log(0.60) = -0.51  | log(0.30) = -1.20  | log(0.10) = -2.30  |
++---------+--------------------+--------------------+--------------------+
+| frame 1 | log(0.25) = -1.39  |  log(0.15) = -1.90 |  log(0.60) = -0.51 |
++---------+--------------------+--------------------+--------------------+
+
+The corresponding FSA is visualized in :numref:`dense_fsa_vec_frame_01`.
+
+.. _dense_fsa_vec_frame_01:
+
+.. figure:: images/dense_fsa_vec_frame_01.svg
+    :alt: FSA for frame 0 and frame 1
+    :align: center
+    :figwidth: 600px
+
+    Convert outputs for frame 0 and frame 1 to an FSA in k2.
+
+**Explanation**:
+  - State 1 has 3 leaving arcs pointing to state 2 with scores
+    from the network output at frame 1
+
+  - The arcs from state 0 to state 1 remain the same
+
+A short summary:
+  The two examples shown in the above demonstrate how to construct
+  an FSA from the output a neural network with one frame and two frames.
+  It is straightforward to extend it to N frames.
+
+In practice, some frames in the output are just paddings and k2 supports
+constructing an FSA from a subset of frames from the output by specifying
+two conditions: the start frame index and number of frames (i.e., duration).
+
+The meaning of ``dense`` in the name ``dense fsa vector`` is that for every
+frame in the network output, there exist as many arcs as the dimension
+of the output between two states in the resulting FSA.
+
+Since the structure of the resulting FSA is quite regular, k2 only saves
+a 2-D tensor containing the scores and interprets it as an FSA on the fly
+when needed.
+
+.. HINT::
+
+  Can you figure out the number of states and arcs of the resulting FSA
+  from a 2-D tensor that contains scores?
+
+To construct a vector of dense FSAs,  you can either:
+
+  - Extract multiple subsets from the network output and construct
+    a dense FSA for each of them
+  - Change the network to produce a batch of outputs and construct a dense
+    FSA for each output in the batch
+
+Please refer to the constructor of :func:`k2.DenseFsaVec.__init__`
+to gain more insight.
 
 References
 ----------

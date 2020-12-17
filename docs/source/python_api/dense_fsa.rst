@@ -7,3 +7,5 @@ DenseFsaVec
    :members:
    :special-members:
    :private-members:
+
+.. autofunction:: convert_dense_to_fsa_vec
