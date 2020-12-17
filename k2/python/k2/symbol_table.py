@@ -12,7 +12,8 @@ from typing import Union
 Symbol = TypeVar('Symbol')
 
 
-@dataclass(repr=False)  # Disable __repr__ otherwise it could freeze e.g. Jupyter.
+# Disable __repr__ otherwise it could freeze e.g. Jupyter.
+@dataclass(repr=False)
 class SymbolTable(Generic[Symbol]):
     '''SymbolTable that maps symbol IDs, found on the FSA arcs to
     actual objects. These objects can be arbitrary Python objects
@@ -31,7 +32,7 @@ class SymbolTable(Generic[Symbol]):
     '''
 
     _next_available_id: int = 1
-    '''A helper internal field that helps adding new symbols 
+    '''A helper internal field that helps adding new symbols
     to the table efficiently.
     '''
 
@@ -86,7 +87,9 @@ class SymbolTable(Generic[Symbol]):
             id2sym[idx] = sym
             sym2id[sym] = idx
 
-        return SymbolTable(_id2sym=id2sym, _sym2id=sym2id, eps=id2sym[0])
+        eps = id2sym.get(0, None)
+
+        return SymbolTable(_id2sym=id2sym, _sym2id=sym2id, eps=eps)
 
     @staticmethod
     def from_file(filename: str) -> 'SymbolTable':
@@ -186,7 +189,7 @@ class SymbolTable(Generic[Symbol]):
     def merge(self, other: 'SymbolTable') -> 'SymbolTable':
         '''Create a union of two SymbolTables.
         Raises an AssertionError if the same IDs are occupied by
-         different symbols.
+        different symbols.
 
         Args:
             other:
@@ -223,7 +226,10 @@ class SymbolTable(Generic[Symbol]):
         return self.get(item)
 
     def __contains__(self, item: Union[int, Symbol]) -> bool:
-        return item in self._id2sym if isinstance(item, int) else item in self._sym2id
+        if isinstance(item, int):
+            return item in self._id2sym
+        else:
+            return item in self._sym2id
 
     def __len__(self) -> int:
         return len(self._id2sym)

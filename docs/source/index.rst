@@ -10,7 +10,7 @@
 
 -----------
 
-K2
+k2
 ==
 
 The vision of k2 is to be able to seamlessly integrate Finite State
@@ -36,4 +36,5 @@ development of ASR technology.
    :caption: Contents:
 
    installation
+   core_concepts/index
    python_api/index
