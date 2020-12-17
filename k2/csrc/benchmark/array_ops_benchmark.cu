@@ -153,8 +153,7 @@ static void RegisterBenchmarkRowIdsToRowSplits(DeviceType device_type) {
 }
 
 static void RunArrayOpsBenchmark() {
-  std::cout << GetCurrentDateTime() << "\n";
-  std::cout << GetDeviceInfo() << "\n";
+  PrintEnvironemntInfo();
 
   RegisterBenchmarkExclusiveSum<int32_t>(kCpu);
   RegisterBenchmarkExclusiveSum<int32_t>(kCuda);

@@ -163,6 +163,16 @@ void PrintRegisteredBenchmarks();
 // Return the seed that can be used for random generators.
 int32_t GetSeed();
 
+/* Print environment information of the current benchmark.
+
+  Environment information includes:
+
+    - current date time
+    - device information
+    - how k2 was built (information from version.h)
+ */
+void PrintEnvironemntInfo();
+
 }  // namespace k2
 
 #endif  // K2_CSRC_BENCHMARK_BENCHMARK_H_
