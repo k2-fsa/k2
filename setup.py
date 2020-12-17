@@ -75,6 +75,13 @@ def get_short_description():
     return 'FSA/FST algorithms, intended to (eventually) be interoperable with PyTorch and similar'
 
 
+dev_requirements = [
+    'clang-format==9.0.0',
+    'flake8==3.8.3',
+    'yapf==0.27.0',
+]
+
+
 setuptools.setup(
     python_requires='>=3.6',
     name='k2',
@@ -92,6 +99,9 @@ setuptools.setup(
     },
     packages=['k2', 'k2.ragged'],
     install_requires=['torch', 'graphviz'],
+    extras_require={
+        'dev': dev_requirements
+    },
     data_files=[('', ['LICENSE'])],
     cmdclass={'bdist_wheel': bdist_wheel},
     classifiers=[
