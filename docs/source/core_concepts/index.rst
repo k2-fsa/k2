@@ -476,12 +476,12 @@ The corresponding FSA is visualized in :numref:`dense_fsa_vec_frame_01`.
 
 A short summary:
   The two examples shown in the above demonstrate how to construct
-  an FSA from the output a neural network with one frame and two frames.
+  an FSA from the output of a neural network with one frame and two frames.
   It is straightforward to extend it to N frames.
 
 In practice, some frames in the output are just paddings and k2 supports
-constructing an FSA from a subset of frames from the output by specifying
-two conditions: the start frame index and number of frames (i.e., duration).
+constructing an FSA from a subset of frames from the output by specifying:
+the start frame index and number of frames (i.e., duration).
 
 The meaning of ``dense`` in the name ``dense fsa vector`` is that for every
 frame in the network output, there exist as many arcs as the dimension
@@ -494,7 +494,7 @@ when needed.
 .. HINT::
 
   Can you figure out the number of states and arcs of the resulting FSA
-  from a 2-D tensor that contains scores?
+  from a 2-D tensor containing scores with ``m`` rows and ``n`` columns?
 
 To construct a vector of dense FSAs,  you can either:
 
