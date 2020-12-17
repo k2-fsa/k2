@@ -53,6 +53,16 @@ We summarize the **unique** features of FSA in k2 in below:
   - The final state **always** has the **largest** state number
   - Arcs entering the final state **always** have -1 as the label
   - Arcs that do not enter the final state cannot have -1 as the label
+  - States have no scores
+  - All scores are on the arcs
+  - We store weights in the **positive** sense rather than as costs
+
+    .. CAUTION::
+
+        We store them as log-probs rather than negative log-probs,
+        and call them ``"scores"`` to indicate this.
+
+        They can come directly from the output of a log-softmax layer.
 
 .. HINT::
 
@@ -61,8 +71,8 @@ We summarize the **unique** features of FSA in k2 in below:
   If you want to convert an FSA from another framework to k2 that contains
   multiple final states, you can create an extra state and consider it as
   the super final state. For each final state in the FSA, add an arc to this
-  super final state with label -1 and score 0. The resulting FSA will contain
-  only a single final state.
+  super final state with label -1 and score equal to the final-weight of that
+  final state. The resulting FSA will contain only a single final state.
 
   Similarly, if it contains multiple start states, you can add a super start
   state and set both the label and score of the arcs added from the super start

@@ -187,7 +187,7 @@ class SymbolTable(Generic[Symbol]):
     def merge(self, other: 'SymbolTable') -> 'SymbolTable':
         '''Create a union of two SymbolTables.
         Raises an AssertionError if the same IDs are occupied by
-         different symbols.
+        different symbols.
 
         Args:
             other:
