@@ -112,6 +112,11 @@ void MapFsaVecStates(FsaVec &src, Array1<int32_t> &state_row_splits,
      @param [out] closure_fsa  FSA containing the closure of the epsilon arcs.
                            Will be arc-sorted, and no state will have more than
                            one arc to any other state.
+
+    CAUTION: For any epsilon cycle, e.g. s1->s1, if its score is negative or
+    zero, we'll delete this arc; if its score is positive, we'll abort the
+    program as positive score means we'll get infinity weight under tropical
+    semiring.
 */
 void ComputeEpsilonClosure(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
                            Ragged<int32_t> *arc_map);
