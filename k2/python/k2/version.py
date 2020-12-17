@@ -3,6 +3,7 @@
 # Copyright (c)  2020  Xiaomi Corp.   (author: Fangjun Kuang)
 # See ../../../LICENSE for clarification regarding multiple authors
 
+import os
 import torch  # noqa
 import _k2
 
@@ -36,6 +37,15 @@ def main():
     torch_version = _k2.version.torch_version
     torch_cuda_version = _k2.version.torch_cuda_version
     enable_nvtx = _k2.version.enable_nvtx
+    disable_debug = _k2.version.disable_debug
+    sync_kernels = os.getenv('K2_SYNC_KERNELS', None)
+
+    if sync_kernels is None:
+        sync_kernels = False
+    elif sync_kernels == '':
+        # It's enabled as long as it is defined, no matter
+        # what the value is
+        sync_kernels = True
 
     print(f'''
 k2 version: {version}
@@ -53,6 +63,8 @@ CMAKE_CXX_FLAGS: {cmake_cxx_flags}
 PyTorch version used to build k2: {torch_version}
 PyTorch is using Cuda: {torch_cuda_version}
 NVTX enabled: {enable_nvtx}
+Disable debug: {disable_debug}
+Sync kernels : {sync_kernels}
     ''')
 
 
