@@ -6,6 +6,7 @@ endfunction()
 
 add_library(benchmark benchmark.cu)
 target_link_libraries(benchmark PUBLIC context)
+target_include_directories(benchmark PUBLIC ${CMAKE_BINARY_DIR})
 
 # Please keep the source files sorted
 set(benchmark_sources

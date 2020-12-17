@@ -165,6 +165,15 @@ class Voidifier {
   K2_CUDA_HOSTDEV void operator&(const Logger &)const {}
 };
 
+inline bool EnableCudaDeviceSync() {
+  static std::once_flag init_flag;
+  static bool enable_cuda_sync = false;
+  std::call_once(init_flag, []() {
+    enable_cuda_sync = (std::getenv("K2_SYNC_KERNELS") != nullptr);
+  });
+  return enable_cuda_sync;
+}
+
 }  // namespace internal
 
 }  // namespace k2
@@ -221,27 +230,20 @@ class Voidifier {
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
 
-inline bool EnableCudaDeviceSync() {
-  static std::once_flag init_flag;
-  static bool enable_cuda_sync = false;
-  std::call_once(init_flag, []() {
-    enable_cuda_sync = (std::getenv("K2_SYNC_KERNELS") != nullptr);
-  });
-  return enable_cuda_sync;
-}
 // The parameter of `K2_CUDA_SAFE_CALL` should be cuda function call or kernel
 // launch.
 // Noted we would never call `cudaDeviceSynchronize` in release mode and
 // user can even disable this call for debug mode by setting an environment
 // variable `K2_SYNC_KERNELS` with any non-empty value, see
 // function EnableCudaDeviceSync above.
-#define K2_CUDA_SAFE_CALL(...)                                    \
-  do {                                                            \
-    __VA_ARGS__;                                                  \
-    if (!::k2::internal::kDisableDebug && EnableCudaDeviceSync()) \
-      cudaDeviceSynchronize();                                    \
-    cudaError_t e = cudaGetLastError();                           \
-    K2_CHECK_CUDA_ERROR(e);                                       \
+#define K2_CUDA_SAFE_CALL(...)                \
+  do {                                        \
+    __VA_ARGS__;                              \
+    if (!::k2::internal::kDisableDebug &&     \
+        k2::internal::EnableCudaDeviceSync()) \
+      cudaDeviceSynchronize();                \
+    cudaError_t e = cudaGetLastError();       \
+    K2_CHECK_CUDA_ERROR(e);                   \
   } while (0)
 
 // ============================================================
