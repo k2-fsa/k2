@@ -138,6 +138,7 @@ class MultiGraphDenseIntersectPruned {
         dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), search_beam) {
     NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
+    T_ = b_fsas_.shape.MaxSize(1);
     K2_CHECK(b_fsas.scores.IsContiguous());
     K2_CHECK_GT(search_beam, 0);
     K2_CHECK_GT(output_beam, 0);
@@ -166,6 +167,38 @@ class MultiGraphDenseIntersectPruned {
     }
     int64_t num_keys = num_a_copies * (int64_t)a_fsas.TotSize(1);
     K2_CHECK(num_keys == (uint32_t)num_keys);
+
+    { // set up do_pruning_after_ and prune_t_begin_end_.
+
+      do_pruning_after_.resize(T_ + 1, (char)0);
+
+      // each time we prune, prune 30 frames; but shift by 20 frames each
+      // time so there are 10 frames of overlap.
+      int32_t prune_num_frames = 30,
+                   prune_shift = 20,
+                             T = T_;
+      K2_CHECK_GT(prune_num_frames, prune_shift);
+      // The first begin_t is negative but will be rounded up to zero to get the
+      // start of the range.  The motivation is: we don't want to wait until we
+      // have processed `prune_num_frames` frames to prune for the first time,
+      // because that first interval of not-pruning, being larger than normal,
+      // would dominate the maximum memory used by intersection.
+      for (int32_t begin_t = prune_shift - prune_num_frames; ;
+           begin_t += prune_shift) {
+        int32_t prune_begin = std::max<int32_t>(0, begin_t),
+                  prune_end = begin_t + prune_num_frames;
+        bool last = false;
+        if (prune_end >= T) {
+          prune_end = T;
+          last = true;
+        }
+        K2_CHECK_LT(prune_begin, prune_end);
+        do_pruning_after_[prune_end - 1] = (char)1;
+        prune_t_begin_end_.push_back({prune_begin, prune_end});
+        if (last)
+          break;
+      }
+    }
   }
 
   // The information we have for each frame of the pruned-intersection (really:
@@ -202,13 +235,14 @@ class MultiGraphDenseIntersectPruned {
       neural-net output.
     */
     NVTX_RANGE(K2_FUNC);
-    T_ = b_fsas_.shape.MaxSize(1);
     int32_t num_fsas = b_fsas_.shape.Dim0(), T = T_;
 
     std::ostringstream os;
     os << "Intersect:T=" << T << ",num_fsas=" << num_fsas
        << ",TotSize(1)=" << b_fsas_.shape.TotSize(1);
     NVTX_RANGE(os.str().c_str());
+
+    std::thread backward_thread(BackwardPassStatic, this);
 
     // we'll initially populate frames_[0.. T+1], but discard the one at T+1,
     // which has no arcs or states, the ones we use are from 0 to T.
@@ -218,28 +252,32 @@ class MultiGraphDenseIntersectPruned {
 
     for (int32_t t = 0; t <= T; t++) {
       frames_.push_back(PropagateForward(t, frames_.back().get()));
+      if (do_pruning_after_[t])
+        semaphore_.Signal(c_);  // let a phase of backward-pass pruning commence.
     }
     // The FrameInfo for time T+1 will have no states.  We did that
     // last PropagateForward so that the 'arcs' member of frames_[T]
     // is set up (it has no arcs but we need the shape).
     frames_.pop_back();
 
-
-    std::thread backward_thread(BackwardPassStatic, this);
     backward_thread.join();
   }
 
   void BackwardPass() {
+    int32_t num_fsas = b_fsas_.shape.Dim0(),
+      num_work_items = max_active_ * num_fsas * T_;
+    ParallelRunner pr(c_);
+    // if num_work_items is big enough, it will actually create a new stream.
+    cudaStream_t stream = pr.NewStream(num_work_items);
+    With w(stream);  // This overrides whatever stream c_ contains with `stream`, if it's not
+
+
     NVTX_RANGE(K2_FUNC);
-    // each time we prune, prune 30 frames; but shift by 20 frames each
-    // time so there are 10 frames of overlap.
-    int32_t prune_num_frames = 30,
-                 prune_shift = 20,
-                           T = T_;
-    for (int32_t start_t = 0; start_t < T; start_t += prune_shift) {
-      int32_t prune_start = start_t,
-                prune_end = std::min<int32_t>(start_t + prune_num_frames, T);
-      PruneTimeRange(prune_start, prune_end);
+    for (size_t i = 0; i < prune_t_begin_end_.size(); i++) {
+      semaphore_.Wait(c_);
+      int32_t prune_t_begin = prune_t_begin_end_[i].first,
+                prune_t_end = prune_t_begin_end_[i].second;
+      PruneTimeRange(prune_t_begin, prune_t_end);
     }
   }
 
@@ -1047,7 +1085,7 @@ class MultiGraphDenseIntersectPruned {
   /*
     This function does backward propagation and pruning of arcs and states for a
     specific time range.
-        @param [in] start_t   Lowest `t` value to call PropagateBackward() for
+        @param [in] begin_t   Lowest `t` value to call PropagateBackward() for
                             and to prune its arcs and states.  Require t >= 0.
         @param [in] end_t    One-past-the-highest `t` value to call PropagateBackward()
                             and to prune its arcs and states.  Require that
@@ -1058,17 +1096,17 @@ class MultiGraphDenseIntersectPruned {
     to understand what this does if we haven't yet reached the end of one of the
     sequences.
 
-    After this function is done, the arcs for `frames_[t]` with start_t <= t < end_t and
-    the states for `frames_[t]` with start_t < t < end_t will have their numbering changed.
-    (We don't renumber the states on start_t because that would require the dest-states
-     of the arcs on time `start_t - 1` to be modified).  TODO: check this...
+    After this function is done, the arcs for `frames_[t]` with begin_t <= t < end_t and
+    the states for `frames_[t]` with begin_t < t < end_t will have their numbering changed.
+    (We don't renumber the states on begin_t because that would require the dest-states
+     of the arcs on time `begin_t - 1` to be modified).  TODO: check this...
    */
-  void PruneTimeRange(int32_t start_t,
+  void PruneTimeRange(int32_t begin_t,
                       int32_t end_t) {
     SetBackwardProbsFinal(frames_[end_t].get());
     ContextPtr cpu = GetCpuContext();
     int32_t num_fsas = b_fsas_.shape.Dim0(),
-               num_t = end_t - start_t;
+               num_t = end_t - begin_t;
     Array1<int32_t> old_states_offsets(cpu, num_t + 1),
         old_arcs_offsets(cpu, num_t + 1);
     int32_t tot_states = 0, tot_arcs = 0;
@@ -1076,7 +1114,7 @@ class MultiGraphDenseIntersectPruned {
       int32_t *old_states_offsets_data = old_states_offsets.Data(),
                 *old_arcs_offsets_data = old_arcs_offsets.Data();
       for (int32_t i = 0; i <= num_t; i++) {
-        int32_t t = start_t + i;
+        int32_t t = begin_t + i;
         old_states_offsets_data[i] = tot_states;
         old_arcs_offsets_data[i] = tot_arcs;
         if (i < num_t) {
@@ -1106,8 +1144,8 @@ class MultiGraphDenseIntersectPruned {
       int32_t *old_states_offsets_data = old_states_offsets.Data(),
                 *old_arcs_offsets_data = old_arcs_offsets.Data();
 
-      for (int32_t t = end_t - 1; t >= start_t; --t) {
-        int32_t i = t - start_t;
+      for (int32_t t = end_t - 1; t >= begin_t; --t) {
+        int32_t i = t - begin_t;
         Array1<char> this_states_keep =
             renumber_states.Keep().Arange(old_states_offsets_data[i],
                                           old_states_offsets_data[i + 1]),
@@ -1125,13 +1163,13 @@ class MultiGraphDenseIntersectPruned {
         old_arcs_ptrs_data[i] = cur_frame->arcs.values.Data();
         old_states_ptrs_data[i] = cur_frame->states.values.Data();
 
-        // We can't discard any states on t == start_t because: if it is not t ==
+        // We can't discard any states on t == begin_t because: if it is not t ==
         // 0, it would be inconvenient to map the dest-states of arcs on t - 1;
         // and if it is t == 0, this may remove the start-state, which would make
         // it more complex to avoid invalid FSAs (e.g. with an end-state but no
         // start-state, or in which we incorrectly interpret a non-start state as
         // the start state).
-        if (i == 0)  // t == start_t
+        if (i == 0)  // t == begin_t
           this_states_keep = (char)1;  // set all elements of the array
         // `states_keep` to 1.
       }
@@ -1143,8 +1181,8 @@ class MultiGraphDenseIntersectPruned {
                       new_arcs_offsets = renumber_arcs.Old2New(true)[old_arcs_offsets];
     int32_t new_num_states = renumber_states.NumNewElems(),
               new_num_arcs =  renumber_arcs.NumNewElems();
-    // These arrays map to the (t - start_t) corresponding to this state or arc
-    // in the new numbering, i.e. the frame index minus start_t.
+    // These arrays map to the (t - begin_t) corresponding to this state or arc
+    // in the new numbering, i.e. the frame index minus begin_t.
     Array1<int32_t> new_state_to_frame(c_, new_num_states),
         new_arc_to_frame(c_, new_num_arcs);
     RowSplitsToRowIds(new_states_offsets, &new_state_to_frame);
@@ -1324,7 +1362,7 @@ class MultiGraphDenseIntersectPruned {
 
       RaggedShape arcs_shape = RaggedShape3(&row_splits1, &row_ids1, -1,
                                             &row_splits2, &row_ids2, -1);
-      int32_t         t = start_t + i;
+      int32_t         t = begin_t + i;
       frames_[t]->arcs = Ragged<ArcInfo>(arcs_shape, arcs);
       Array1<StateInfo> states = all_states.Arange(state_offset, next_state_offset);
       RaggedShape states_shape = GetLayer(arcs_shape, 0);
@@ -1367,9 +1405,26 @@ class MultiGraphDenseIntersectPruned {
   // from active states to the position in the
   // `states` array.  Between frames, all values
   // have -1 in them.
-
   std::vector<std::unique_ptr<FrameInfo>> frames_;
 
+  // logically an array of bool, of size T_ + 1; for each 0 <= t <= T, after the
+  // forward pass finishes propagation with cur_frame_ == t, if
+  // do_pruning_after_[t] is false it will continue as normal; otherwise (if
+  // true), it will signal `semaphore_`.
+  std::vector<char> do_pruning_after_;
+
+  // For each t for which do_pruning_after_[t] is true, there will be a
+  // pair (begin_t, end_t) in prune_t_begin_end giving the
+  // arguments for which we will invoke PruneTimeRange() after the forward-pass
+  // for time t has completed.  The size of this array equals the sum
+  // of nonzero elements of do_pruning_after_.
+  std::vector<std::pair<int32_t, int32_t> > prune_t_begin_end_;
+
+  // Each time the forward-pass finishes forward processing for a t value for
+  // which do_pruning_after_[t] is true, it will signal this semaphore; the
+  // backward-pass thread (which does pruning) will wait on it as many times as
+  // do_pruning_after_[t] is set to true.
+  Semaphore semaphore_;
 };
 
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,

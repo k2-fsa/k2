@@ -161,8 +161,15 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
                          Dim0() as b_fsas.  Elements of it may be empty if the
                          composition was empty, either intrinsically or due to
                          failure of pruned search.
-         @param[out] arc_map_a  Vector of
-
+         @param[out] arc_map_a  Will be set to a vector with Dim() equal to
+                         the number of arcs in `out`, whose elements contain
+                         the corresponding arc_idx01 in a_fsas.
+         @param[out] arc_map_b  Will be set to a vector with Dim() equal to
+                         the number of arcs in `out`, whose elements contain
+                         the corresponding arc-index in b_fsas; this arc-index
+                         is defined as the offset into b_fsas.scores, which is
+                         well defined if the shape is known because we require
+                         it to be contiguous.
 */
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                           float search_beam, float output_beam,

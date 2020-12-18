@@ -366,7 +366,10 @@ inline DeviceType DeviceOf(const T &t) {
 
 // This is for use by ParallelRunner and Context.  Users probably should not
 // interact with this directly.  The idea is that the Context object will call
-// this to possibly override its default thread. The
+// this to possibly override its default thread.  The user would
+// create a new stream by calling ParallelRunner's NewStream() method, and
+// do `With w(stream);` which calls Push(stream), and later Pop(stream) when it
+// goes out of scope.
 class CudaStreamOverride {
  public:
   inline cudaStream_t OverrideStream(cudaStream_t stream) {
@@ -412,6 +415,7 @@ class With {
     - Consuming thread (maybe repeatedly) calls semaphore.Wait(ctx);
  */
 class Semaphore {
+ public:
   Semaphore(): device_type_(kUnk), semaphore_(0) { }
 
   void Signal(ContextPtr c);
