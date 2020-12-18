@@ -10,6 +10,7 @@
  */
 
 #include <limits>
+#include <thread>
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
@@ -68,6 +69,7 @@ struct ArcInfo {              // for an arc that wasn't pruned away...
   // (conceptually) it joins the destination state.
 };
 
+/*
 static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
   os << "StateInfo{" << s.a_fsas_state_idx01 << ","
      << OrderedIntToFloat(s.forward_loglike) << "," << s.backward_loglike
@@ -80,6 +82,7 @@ static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
      << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike << "}";
   return os;
 }
+*/
 
 
 }  // namespace intersect_pruned_internal
@@ -221,16 +224,27 @@ class MultiGraphDenseIntersectPruned {
     // is set up (it has no arcs but we need the shape).
     frames_.pop_back();
 
+
+    std::thread backward_thread(BackwardPassStatic, this);
+    backward_thread.join();
+  }
+
+  void BackwardPass() {
+    NVTX_RANGE(K2_FUNC);
     // each time we prune, prune 30 frames; but shift by 20 frames each
     // time so there are 10 frames of overlap.
     int32_t prune_num_frames = 30,
-                 prune_shift = 20;
-    for (int32_t start_t = T - prune_num_frames;
-         start_t + prune_num_frames > 0;  start_t -= prune_shift) {
-      int32_t prune_start = std::max<int32_t>(start_t, 0),
-               prune_end = start_t + prune_num_frames;
+                 prune_shift = 20,
+                           T = T_;
+    for (int32_t start_t = 0; start_t < T; start_t += prune_shift) {
+      int32_t prune_start = start_t,
+                prune_end = std::min<int32_t>(start_t + prune_num_frames, T);
       PruneTimeRange(prune_start, prune_end);
     }
+  }
+
+  static void BackwardPassStatic(MultiGraphDenseIntersectPruned *c) {
+    c->BackwardPass();
   }
 
   // Return FrameInfo for 1st frame, with `states` set but `arcs` not set.
@@ -327,7 +341,6 @@ class MultiGraphDenseIntersectPruned {
           // else, 0.
           num_extra_states_data[i] = has_start_state * (1 - num_states_final_t);
         });
-      K2_LOG(INFO) << "num_extra_states = " << num_extra_states;
       ExclusiveSum(num_extra_states, &num_extra_states);
 
       RaggedShape top_shape = RaggedShape2(&num_extra_states, nullptr, -1),
@@ -637,8 +650,6 @@ class MultiGraphDenseIntersectPruned {
 
     // `cutoffs` is of dimension num_fsas.
     Array1<float> cutoffs = GetPruningCutoffs(ai_loglikes);
-    if (t % 100 == 0)
-      K2_LOG(INFO) << "Dynamic_beams = " << dynamic_beams_;
     float *cutoffs_data = cutoffs.Data();
 
     // write certain indexes ( into ai.values) to state_map_.Data().  Keeps
@@ -878,7 +889,6 @@ class MultiGraphDenseIntersectPruned {
         }
         info->backward_loglike = backward_loglike;
       });
-    K2_LOG(INFO) << "states = " << cur_frame->states;
   }
 
   /*
@@ -1266,21 +1276,29 @@ class MultiGraphDenseIntersectPruned {
       all_row_ids2_data[new_i] = new_src_state_idx01;
 
       ArcInfo info = old_info_data[old_arc_idx012];
-      // idx1 of the state in the next frame's `states` object.
-      int32_t dest_info_state_idx1 = info.u.dest_info_state_idx1;
 
-      // the naming below is unusual; by "pos" we mean position in the old or
-      // new "all_states" or "all_arcs" vectors, which have all frames appended.
-      // (the new ones physically exist; the old ones don't, but they are the
-      // numberings used in renumber_states.Keep() and renumber_arcs.Keep().)
-      int32_t old_dest_state_idx0x = next_old_row_splits1_data[fsa_idx0],
-              old_dest_state_idx01 = old_dest_state_idx0x + dest_info_state_idx1,
-          old_dest_state_idx0x_pos = next_old_state_start_pos + old_dest_state_idx0x,
-          old_dest_state_idx01_pos = next_old_state_start_pos + old_dest_state_idx01,
-          new_dest_state_idx0x_pos = states_old2new_data[old_dest_state_idx0x_pos],
-          new_dest_state_idx01_pos = states_old2new_data[old_dest_state_idx01_pos],
-               new_dest_state_idx1 = new_dest_state_idx01_pos - new_dest_state_idx0x_pos;
-      info.u.dest_info_state_idx1 = new_dest_state_idx1;
+      if (t_offset + 1 == num_t) {
+        // Do nothing; this is the last frame of the batch of frames that we are
+        // pruning, so we don't need to renumber the destination-states of the
+        // arcs leaving it because the next frame's states have not been pruned
+        // (so the numbering stays the same).
+      } else {
+        // idx1 of the state in the next frame's `states` object.
+        int32_t dest_info_state_idx1 = info.u.dest_info_state_idx1;
+
+        // the naming below is unusual; by "pos" we mean position in the old or
+        // new "all_states" or "all_arcs" vectors, which have all frames appended.
+        // (the new ones physically exist; the old ones don't, but they are the
+        // numberings used in renumber_states.Keep() and renumber_arcs.Keep().)
+        int32_t old_dest_state_idx0x = next_old_row_splits1_data[fsa_idx0],
+        old_dest_state_idx01 = old_dest_state_idx0x + dest_info_state_idx1,
+        old_dest_state_idx0x_pos = next_old_state_start_pos + old_dest_state_idx0x,
+        old_dest_state_idx01_pos = next_old_state_start_pos + old_dest_state_idx01,
+        new_dest_state_idx0x_pos = states_old2new_data[old_dest_state_idx0x_pos],
+        new_dest_state_idx01_pos = states_old2new_data[old_dest_state_idx01_pos],
+        new_dest_state_idx1 = new_dest_state_idx01_pos - new_dest_state_idx0x_pos;
+        info.u.dest_info_state_idx1 = new_dest_state_idx1;
+      }
       all_arcs_data[new_i] = info;
     };
     Eval(c_, new_num_arcs, lambda_set_arcs);

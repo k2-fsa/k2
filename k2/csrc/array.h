@@ -103,7 +103,6 @@ class Array1 {
      @param [in] size   Number of elements to include, 0 <= size <= Dim()-start
   */
   Array1<T> Range(int32_t start, int32_t size) const {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, Dim());
     K2_CHECK_GE(size, 0);
@@ -120,7 +119,6 @@ class Array1 {
                         start <= end <= Dim().
   */
   Array1<T> Arange(int32_t start, int32_t end) const {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, dim_);
     K2_CHECK_GE(end, start);

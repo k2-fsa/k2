@@ -16,14 +16,17 @@
 
 #include <algorithm>
 #include <cassert>
+#include <deque>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <ostream>
 #include <type_traits>
 #include <vector>
 
 #include "k2/csrc/log.h"
 #include "k2/csrc/nvtx.h"
+#include "k2/csrc/semaphore.h"
 
 namespace k2 {
 
@@ -396,6 +399,34 @@ class With {
  private:
   cudaStream_t stream_;
 };
+
+
+/*
+  Our class Semaphore is a slight extension of std::counting_semaphore that also
+  takes care of stream synchronization.  The projected use-case is when two
+  threads (possibly with different CUDA streams, if we are using CUDA) have a
+  producer-consumer relationship, such that one is waiting for the other.
+  The projected use is:
+    - Construct semaphore
+    - Producing thread (maybe repeatedly) calls semaphore.Signal(ctx);
+    - Consuming thread (maybe repeatedly) calls semaphore.Wait(ctx);
+ */
+class Semaphore {
+  Semaphore(): device_type_(kUnk), semaphore_(0) { }
+
+  void Signal(ContextPtr c);
+
+  void Wait(ContextPtr c);
+
+ private:
+  DeviceType device_type_;  // makes sure it's always used with the same device
+                            // type.
+  k2std::counting_semaphore semaphore_;
+  std::mutex events_mutex_;
+  std::deque<cudaEvent_t> events_;
+};
+
+
 
 /*
   Class ParallelRunner allows you to invoke CUDA kernels in parallel.

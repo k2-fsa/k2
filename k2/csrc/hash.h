@@ -73,11 +73,15 @@ class Hash32 {
  public:
   /* Constructor.  Context can be for CPU or GPU.  num_buckets must be a power of 2
      with num_buckets >= 128 (an arbitrarily chosen cutoff) */
-  Hash32(ContextPtr c, int32_t num_buckets):
-      data_(c, num_buckets, ~(uint64_t)0), buckets_num_bitsm1_(0) {
+  Hash32(ContextPtr c, int32_t num_buckets) {
+    std::ostringstream os;
+    os << K2_FUNC << ":num_buckets=" << num_buckets;
+    NVTX_RANGE(os.str().c_str());
+    data_ = Array1<uint64_t>(c, num_buckets, ~(uint64_t)0);
     K2_CHECK_GE(num_buckets, 128);
     int32_t n = 2;
-    for (; n < num_buckets; n *= 2, buckets_num_bitsm1_++) { }
+    for (buckets_num_bitsm1_ = 0; n < num_buckets;
+         n *= 2, buckets_num_bitsm1_++) { }
     K2_CHECK_EQ(num_buckets, 2 << buckets_num_bitsm1_)
         << " num_buckets must be a power of 2.";
   }

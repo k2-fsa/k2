@@ -489,7 +489,10 @@ TEST(IntersectPruned, RandomSingle) {
       num_fsas = RandInt(2, 5);
     }
 
-    int32_t min_frames = 0, max_frames = 10, min_nsymbols = max_symbol + 1,
+    // set max_frames = 50 to be larger than the chunk sizes used for pruning
+    // in intersect_pruned.cu (see call to PruneTimeRange()).
+    int32_t min_frames = 0, max_frames = 50,
+          min_nsymbols = max_symbol + 1,
             max_nsymbols = max_symbol + 4;
     float scores_scale = 1.0;
     DenseFsaVec dfsavec =
