@@ -179,9 +179,10 @@ void PrintEnvironemntInfo() {
   os << kPrefix << "torch CUDA version: " << kTorchCudaVersion << "\n";
   os << kPrefix << "NVTX enabled: " << kEnableNvtx << "\n";
   os << kPrefix << "Debug disabled: " << internal::kDisableDebug << "\n";
-  os << kPrefix
-     << "cuda device sync enabled: " << internal::EnableCudaDeviceSync()
-     << "\n";
+  os << kPrefix << "cuda device sync enabled: "
+     << internal::EnableCudaDeviceSync() << "\n";
+  os << kPrefix << "Checks disabled: " << internal::DisableChecks() << "\n";
+
 
   // print it to stderr so that it can be redirected
   std::cerr << os.str() << "\n";

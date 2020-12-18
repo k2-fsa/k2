@@ -138,7 +138,6 @@ class Renumbering {
                        // `num_old_elems` provided in the constructor but it
                        // was allocated with one extra element.
   Array1<int32_t> old2new_;  // note: dimension is num-old-elems + 1.
-  Array1<int32_t> old2new_part_;  // range of old2new_, of dim num-old-elems.
   int32_t num_new_elems_;  // equals last element of old2new_; set when
                            // old2new_ is created.
   Array1<int32_t> new2old_;

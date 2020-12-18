@@ -129,7 +129,7 @@ void GetBlockSizesForLambda2(int32_t m, int32_t n, dim3 *block_dim,
 }
 
 
-void Semaphore:: Signal(ContextPtr c) {
+void Semaphore::Signal(ContextPtr c) {
   DeviceType device_type = c->GetDeviceType();
   if (device_type_ == kUnk)
     device_type_ = device_type;
@@ -145,7 +145,7 @@ void Semaphore:: Signal(ContextPtr c) {
     cudaStream_t stream = c->GetCudaStream();
     e = cudaEventRecord(event, stream);
     K2_CHECK_CUDA_ERROR(e) << "Error recording event.";
-    std::unique_lock<std::mutex> lock(events_mutex_);
+    std::lock_guard<std::mutex> lock(events_mutex_);
     events_.push_back(event);
   }
   semaphore_.release();
@@ -162,7 +162,7 @@ void Semaphore::Wait(ContextPtr c) {
   if (device_type == kCuda) {
     cudaEvent_t event;
     {
-      std::unique_lock<std::mutex> lock(events_mutex_);
+      std::lock_guard<std::mutex> lock(events_mutex_);
       K2_CHECK(!events_.empty());  // would be code bug.
       event = events_.front();
       events_.pop_front();

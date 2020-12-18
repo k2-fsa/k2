@@ -8,6 +8,10 @@
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
+
+#ifndef K2_CSRC_SEMAPHORE_H_
+#define K2_CSRC_SEMAPHORE_H_
+
 #include <mutex>
 #include <condition_variable>
 #include "k2/csrc/log.h"
@@ -24,10 +28,10 @@ namespace k2std {
 // counting_semaphore (at the time of writing, we compile with C++14.)
 class counting_semaphore {
 public:
-  counting_semaphore(int count = 0): count_(count) { }
+  explicit counting_semaphore(int count = 0): count_(count) { }
 
   void release() {  // could also be 'signal'
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     ++count_;
     cv_.notify_one();
   }
@@ -45,4 +49,7 @@ private:
 };
 
 
-}
+}  // namespace k2
+
+
+#endif  // K2_CSRC_SEMAPHORE_H_

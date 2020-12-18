@@ -175,6 +175,8 @@ inline bool EnableCudaDeviceSync() {
 }
 
 inline bool DisableChecks() {
+  // Currently this just disables the checks called in the constructor of
+  // RaggedShape, which can otherwise dominate the time when in debug mode.
   static std::once_flag init_flag;
   static bool disable_checks = false;
   std::call_once(init_flag, []() {
