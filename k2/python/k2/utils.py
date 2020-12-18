@@ -24,7 +24,7 @@ def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
       src:
         An FsaVec.
       indexes:
-        A 1-D torch.Tensor of dtype `torch.int32` containing
+        A 1-D `torch.Tensor` of dtype `torch.int32` containing
         the ids of FSAs to select.
 
     Returns:
@@ -78,7 +78,7 @@ def to_tensor(fsa: Fsa) -> torch.Tensor:
       fsa:
         The input Fsa.
     Returns:
-      A ``torch.Tensor`` of dtype ``torch.int32``. It is a 2-D tensor
+      A `torch.Tensor` of dtype `torch.int32`. It is a 2-D tensor
       if the input is a single FSA. It is a 1-D tensor if the input
       is a vector of FSAs.
     '''
@@ -190,11 +190,11 @@ def create_fsa_vec(fsas):
     We use the following rules to set the attributes of the output FsaVec:
 
     - For tensor attributes, we assume that all input FSAs have the same
-    attribute name and the values are concatenated.
+      attribute name and the values are concatenated.
 
     - For non-tensor attributes, if any two of the input FSAs have the same
-    attribute name, then we assume that their attribute values are equal and
-    the output FSA will inherit the attribute.
+      attribute name, then we assume that their attribute values are equal and
+      the output FSA will inherit the attribute.
 
     Args:
       fsas:
@@ -245,10 +245,10 @@ def is_rand_equivalent(a: Fsa,
                        delta: float = 1e-6,
                        npath: int = 100) -> bool:
     '''Check if the Fsa `a` appears to be equivalent to `b` by
-       randomly checking some symbol sequences in them.
+    randomly checking some symbol sequences in them.
 
     Caution:
-      It only works on for CPU.
+      It works only on CPU.
 
     Args:
       a:

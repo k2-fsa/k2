@@ -320,6 +320,30 @@ TEST(RmEpsilon, ComputeEpsilonClosureSimple) {
   // TODO(haowen): add random tests
 }
 
+// arc_map is arc_map from dest to src
+void CheckArcMap(FsaVec &src, FsaVec &dest, Ragged<int32_t> &arc_map) {
+  ContextPtr cpu = GetCpuContext();
+  src = src.To(cpu);
+  dest = dest.To(cpu);
+  arc_map = arc_map.To(cpu);
+  int32_t dest_num_arcs = dest.NumElements();
+  ASSERT_EQ(arc_map.NumAxes(), 2);
+  ASSERT_EQ(dest_num_arcs, arc_map.Dim0());
+  const Arc *src_arcs = src.values.Data();
+  const Arc *dest_arcs = dest.values.Data();
+  const int32_t *arc_map_row_splits = arc_map.RowSplits(1).Data(),
+                *arc_map_values = arc_map.values.Data();
+  for (int32_t i = 0; i != dest_num_arcs; ++i) {
+    float score = 0.0;
+    for (int32_t j = arc_map_row_splits[i]; j != arc_map_row_splits[i + 1];
+         ++j) {
+      score += src_arcs[arc_map_values[j]].score;
+    }
+    float dest_arc_score = dest_arcs[i].score;
+    EXPECT_NEAR(dest_arc_score, score, 0.01);
+  }
+}
+
 TEST(RmEpsilon, RemoveEpsilonsIterativeTropicalSimple) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     std::string s1 = R"(0 1 1 1
@@ -343,36 +367,130 @@ TEST(RmEpsilon, RemoveEpsilonsIterativeTropicalSimple) {
     4 5 -1 1
     5
   )";
-    Fsa fsa1 = FsaFromString(s1);
-    Fsa fsa2 = FsaFromString(s2);
-    Fsa *fsa_array[] = {&fsa1, &fsa2};
-    FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
-    fsa_vec = fsa_vec.To(context);
+    {
+      // test with single Fsa
+      Fsa fsa = FsaFromString(s2);
+      fsa = fsa.To(context);
 
-    FsaVec dest;
-    Ragged<int32_t> arc_map;
-    RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
-    EXPECT_EQ(dest.NumAxes(), 3);
-    EXPECT_EQ(arc_map.NumAxes(), 2);
-    K2_LOG(INFO) << dest;
-    K2_LOG(INFO) << arc_map;
-    Array1<int32_t> properties;
-    int32_t p;
-    GetFsaVecBasicProperties(dest, &properties, &p);
-    EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
-    bool log_semiring = false;
-    float beam = std::numeric_limits<float>::infinity();
-    fsa_vec = fsa_vec.To(GetCpuContext());
-    dest = dest.To(GetCpuContext());
-    // as both fsa_vec and dest would be top-sorted, we can call
-    // IsRandEquivalent to check the result, but for now top-sorted Fsas, how
-    // can we check the result?
-    EXPECT_TRUE(
-        IsRandEquivalent(fsa_vec, dest, log_semiring, beam, true, 0.001));
+      FsaVec dest;
+      Ragged<int32_t> arc_map;
+      RemoveEpsilonsIterativeTropical(fsa, &dest, &arc_map);
+      EXPECT_EQ(dest.NumAxes(), 2);
+      EXPECT_EQ(arc_map.NumAxes(), 2);
+      K2_LOG(INFO) << dest;
+      K2_LOG(INFO) << arc_map;
+      int32_t p = GetFsaBasicProperties(dest);
+      EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+      bool log_semiring = false;
+      float beam = std::numeric_limits<float>::infinity();
+      fsa = fsa.To(GetCpuContext());
+      dest = dest.To(GetCpuContext());
+      EXPECT_TRUE(IsRandEquivalent(fsa, dest, log_semiring, beam, true, 0.001));
+      CheckArcMap(fsa, dest, arc_map);
+    }
+    {
+      // test with FsaVec
+      Fsa fsa1 = FsaFromString(s1);
+      Fsa fsa2 = FsaFromString(s2);
+      Fsa *fsa_array[] = {&fsa1, &fsa2};
+      FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+      fsa_vec = fsa_vec.To(context);
+
+      FsaVec dest;
+      Ragged<int32_t> arc_map;
+      RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
+      EXPECT_EQ(dest.NumAxes(), 3);
+      EXPECT_EQ(arc_map.NumAxes(), 2);
+      K2_LOG(INFO) << dest;
+      K2_LOG(INFO) << arc_map;
+      Array1<int32_t> properties;
+      int32_t p;
+      GetFsaVecBasicProperties(dest, &properties, &p);
+      EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+      bool log_semiring = false;
+      float beam = std::numeric_limits<float>::infinity();
+      fsa_vec = fsa_vec.To(GetCpuContext());
+      dest = dest.To(GetCpuContext());
+      EXPECT_TRUE(
+          IsRandEquivalent(fsa_vec, dest, log_semiring, beam, true, 0.001));
+      CheckArcMap(fsa_vec, dest, arc_map);
+    }
   }
-  // TODO(haowen): add simple tests that we combine with preceding or following
-  // arcs
-  // TODO(haowen): add random tests, including non-top-sorted version
+}
+
+TEST(RmEpsilon, TestRemoveEpsilonsIterativeTropicalWithRandomTopSortedFsa) {
+  for (int32_t i = 0; i != 1; ++i) {
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      int32_t min_num_fsas = 1;
+      int32_t max_num_fsas = 1000;
+      bool acyclic = true;
+      // set max_symbol=10 so that we have a high probability
+      // to create Fsas with epsilon arcs.
+      int32_t max_symbol = 10;
+      int32_t min_num_arcs = 0;
+      int32_t max_num_arcs = 10000;
+      FsaVec fsa_vec = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
+                                    max_symbol, min_num_arcs, max_num_arcs);
+      fsa_vec = fsa_vec.To(context);
+
+      FsaVec dest;
+      Ragged<int32_t> arc_map;
+      RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
+      EXPECT_EQ(dest.NumAxes(), 3);
+      EXPECT_EQ(arc_map.NumAxes(), 2);
+      Array1<int32_t> properties;
+      int32_t p;
+      GetFsaVecBasicProperties(dest, &properties, &p);
+      EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+      bool log_semiring = false;
+      float beam = std::numeric_limits<float>::infinity();
+      fsa_vec = fsa_vec.To(GetCpuContext());
+      dest = dest.To(GetCpuContext());
+      EXPECT_TRUE(
+          IsRandEquivalent(fsa_vec, dest, log_semiring, beam, true, 0.1));
+      CheckArcMap(fsa_vec, dest, arc_map);
+    }
+  }
+}
+
+TEST(RmEpsilon, TestRemoveEpsilonsIterativeTropicalWithRandomNonTopSortedFsa) {
+  for (int32_t i = 0; i != 1; ++i) {
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      int32_t min_num_fsas = 1;
+      int32_t max_num_fsas = 1000;
+      bool acyclic = false;
+      // set max_symbol=10 so that we have a high probability
+      // to create Fsas with epsilon arcs.
+      int32_t max_symbol = 10;
+      int32_t min_num_arcs = 0;
+      int32_t max_num_arcs = 10000;
+      FsaVec fsa_vec = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
+                                    max_symbol, min_num_arcs, max_num_arcs);
+      // convert arcs' scores to negative as we don't allow positive epsilon
+      // cycles in `RemoveEpsilonIterativeTropical`.
+      Arc *fsa_vec_arcs_data = fsa_vec.values.Data();
+      for (int32_t n = 0; n != fsa_vec.NumElements(); ++n) {
+        Arc &cur_arc = fsa_vec_arcs_data[n];
+        if (cur_arc.score > 0) cur_arc.score = -cur_arc.score;
+      }
+      fsa_vec = fsa_vec.To(context);
+
+      FsaVec dest;
+      Ragged<int32_t> arc_map;
+      RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
+      EXPECT_EQ(dest.NumAxes(), 3);
+      EXPECT_EQ(arc_map.NumAxes(), 2);
+      Array1<int32_t> properties;
+      int32_t p;
+      GetFsaVecBasicProperties(dest, &properties, &p);
+      EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+      fsa_vec = fsa_vec.To(GetCpuContext());
+      dest = dest.To(GetCpuContext());
+      EXPECT_TRUE(IsRandEquivalentUnweighted(fsa_vec, dest, true));
+      CheckArcMap(fsa_vec, dest, arc_map);
+      // TODO(haowen): how to check if the weights of sequences are correct?
+    }
+  }
 }
 
 }  // namespace k2

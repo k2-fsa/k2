@@ -157,7 +157,7 @@ class RaggedShape {
       : layers_(layers) {
     // the check can be disabled by settin the environment variable
     // K2_DISABLE_CHECKS.
-    if (check && !DisableChecks()) Check();
+    if (check && !internal::DisableChecks()) Check();
   }
 
   explicit RaggedShape(const std::string &src) {

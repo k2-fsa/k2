@@ -15,6 +15,8 @@
 
 #include "k2/csrc/benchmark/benchmark.h"
 #include "k2/csrc/benchmark/helper_cuda.h"
+#include "k2/csrc/log.h"
+#include "k2/csrc/version.h"
 
 namespace k2 {
 
@@ -159,6 +161,30 @@ int32_t GetSeed() {
   if (seed == nullptr) return 0;
 
   return atoi(seed);  // 0 is returned if K2_SEED is not a numeric string.
+}
+
+void PrintEnvironemntInfo() {
+  std::ostringstream os;
+  os << GetCurrentDateTime();
+  os << GetDeviceInfo() << "\n";
+
+  os << kPrefix << "cuDNN version: " << kCudnnVersion << "\n";
+  os << kPrefix << "Build type: " << kBuildType << "\n";
+  os << kPrefix << "OS: " << kOS << "\n";
+  os << kPrefix << "CMake version: " << kCMakeVersion << "\n";
+  os << kPrefix << "GCC version: " << kGCCVersion << "\n";
+  os << kPrefix << "CMake CUDA flags: " << kCMakeCudaFlags << "\n";
+  os << kPrefix << "CMake CXX flags: " << kCMakeCxxFlags << "\n";
+  os << kPrefix << "torch version: " << kTorchVersion << "\n";
+  os << kPrefix << "torch CUDA version: " << kTorchCudaVersion << "\n";
+  os << kPrefix << "NVTX enabled: " << kEnableNvtx << "\n";
+  os << kPrefix << "Debug disabled: " << internal::kDisableDebug << "\n";
+  os << kPrefix
+     << "cuda device sync enabled: " << internal::EnableCudaDeviceSync()
+     << "\n";
+
+  // print it to stderr so that it can be redirected
+  std::cerr << os.str() << "\n";
 }
 
 }  // namespace k2

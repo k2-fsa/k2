@@ -221,7 +221,7 @@ bool ValidateRowSplitsAndIds(const Array1<int32_t> &row_splits,
   ContextPtr ctx = GetContext(row_splits, row_ids);
   int32_t num_rows = row_splits.Dim() - 1, num_elems = row_ids.Dim();
   if (num_rows < 0 || (num_rows == 0 && num_elems > 0)) return false;
-  if (row_splits[0] != 0 || row_ids[0] < 0) return false;
+  if (row_splits[0] != 0 || (num_elems > 0 && row_ids[0] < 0)) return false;
   if (num_elems != row_splits[num_rows]) return false;
 
   const int32_t *row_ids_data = row_ids.Data(),

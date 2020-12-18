@@ -1,5 +1,5 @@
 <div align="center">
-<img src="./docs/source/logo.png" width=376>
+<img src="https://raw.githubusercontent.com/k2-fsa/k2/master/docs/source/_static/logo.png" width=376>
 
 [![Documentation Status](https://readthedocs.org/projects/k2/badge/?version=latest)](https://k2.readthedocs.io/en/latest/?badge=latest)
 

@@ -16,6 +16,7 @@ from .fsa_algo import determinize
 from .fsa_algo import intersect
 from .fsa_algo import linear_fsa
 from .fsa_algo import remove_epsilon
+from .fsa_algo import remove_epsilons_iterative_tropical
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
@@ -67,6 +68,7 @@ __all__ = [
     'properties_to_str',
     'random_ragged_shape',
     'remove_epsilon',
+    'remove_epsilons_iterative_tropical',
     'shortest_path',
     'simple_ragged_index_select',
     'to_dot',

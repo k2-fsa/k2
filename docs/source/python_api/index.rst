@@ -10,5 +10,5 @@ Python API Reference
    dense_fsa
    fsa_algo
    symbol_table
+   utils
    version
-

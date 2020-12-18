@@ -8,6 +8,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include "k2/csrc/log.h"
 #include "k2/csrc/version.h"
 #include "k2/python/csrc/version.h"
 
@@ -30,4 +31,5 @@ void PybindVersion(py::module &m) {
   version.attr("torch_version") = k2::kTorchVersion;
   version.attr("torch_cuda_version") = k2::kTorchCudaVersion;
   version.attr("enable_nvtx") = k2::kEnableNvtx;
+  version.attr("disable_debug") = k2::internal::kDisableDebug;
 }

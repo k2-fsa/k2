@@ -44,5 +44,28 @@ class TestRemoveEpsilon(unittest.TestCase):
         self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
 
 
+class TestRemoveEpsilonsIterativeTropical(unittest.TestCase):
+
+    def test1(self):
+        s = '''
+            0 1 0 1 1
+            1 2 0 2 1
+            2 3 0 3 1
+            3 4 4 4 1
+            3 5 -1 5 1
+            4 5 -1 6 1
+            5
+        '''
+        fsa = k2.Fsa.from_str(s)
+        print(fsa.aux_labels)
+        prop = fsa.properties
+        self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
+        dest = k2.remove_epsilons_iterative_tropical(fsa)
+        prop = dest.properties
+        self.assertTrue(prop & k2.fsa_properties.EPSILON_FREE)
+        log_semiring = False
+        self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
+
+
 if __name__ == '__main__':
     unittest.main()
