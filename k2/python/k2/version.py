@@ -38,8 +38,8 @@ def main():
     torch_cuda_version = _k2.version.torch_cuda_version
     enable_nvtx = _k2.version.enable_nvtx
     disable_debug = _k2.version.disable_debug
-    sync_kernels = (os.getenv('K2_SYNC_KERNELS', None) != None)
-    disable_checks = (os.getenv('K2_DISABLE_CHECKS', None) != None)
+    sync_kernels = os.getenv('K2_SYNC_KERNELS', None) is not None
+    disable_checks = os.getenv('K2_DISABLE_CHECKS', None) is not None
 
     print(f'''
 k2 version: {version}
@@ -59,6 +59,7 @@ PyTorch is using Cuda: {torch_cuda_version}
 NVTX enabled: {enable_nvtx}
 Disable debug: {disable_debug}
 Sync kernels : {sync_kernels}
+Disable checks: {disable_checks}
     ''')
 
 
