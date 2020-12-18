@@ -282,10 +282,43 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
     if properties is not None and properties & fsa_properties.EPSILON_FREE != 0:
         return fsa
 
-    ragged_arc, arc_derivs = _k2.remove_epsilon(fsa.arcs)
+    ragged_arc, arc_map = _k2.remove_epsilon(fsa.arcs)
     aux_labels = None
     if hasattr(fsa, 'aux_labels'):
-        aux_labels = index_attr(fsa.aux_labels, arc_derivs)
+        aux_labels = index_attr(fsa.aux_labels, arc_map)
+    out_fsa = Fsa(ragged_arc, aux_labels)
+
+    for name, value in fsa.named_non_tensor_attr():
+        setattr(out_fsa, name, value)
+
+    return out_fsa
+
+
+def remove_epsilons_iterative_tropical(fsa: Fsa) -> Fsa:
+    '''Remove epsilons (symbol zero) in the input Fsa.
+
+    Caution:
+      It doesn't support autograd for now.
+
+    Args:
+      fsa:
+        The input FSA. It can be either a single FSA or an FsaVec.
+        It can be either top-sorted or non-top-sorted.
+    Returns:
+        The result Fsa, it's equivalent to the input `fsa` under
+        tropical semiring but will be epsilon-free.
+        It will be the same as the input `fsa` if the input
+        `fsa` is epsilon-free. Otherwise, a new epsilon-free fsa
+        is returned and the input `fsa` is NOT modified.
+    '''
+    properties = getattr(fsa, 'properties', None)
+    if properties is not None and properties & fsa_properties.EPSILON_FREE != 0:
+        return fsa
+
+    ragged_arc, arc_map = _k2.remove_epsilons_iterative_tropical(fsa.arcs)
+    aux_labels = None
+    if hasattr(fsa, 'aux_labels'):
+        aux_labels = index_attr(fsa.aux_labels, arc_map)
     out_fsa = Fsa(ragged_arc, aux_labels)
 
     for name, value in fsa.named_non_tensor_attr():
@@ -320,10 +353,10 @@ def determinize(fsa: Fsa) -> Fsa:
             and properties & fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0: # noqa
         return fsa
 
-    ragged_arc, arc_derivs = _k2.determinize(fsa.arcs)
+    ragged_arc, arc_map = _k2.determinize(fsa.arcs)
     aux_labels = None
     if hasattr(fsa, 'aux_labels'):
-        aux_labels = index_attr(fsa.aux_labels, arc_derivs)
+        aux_labels = index_attr(fsa.aux_labels, arc_map)
     out_fsa = Fsa(ragged_arc, aux_labels)
 
     for name, value in fsa.named_non_tensor_attr():

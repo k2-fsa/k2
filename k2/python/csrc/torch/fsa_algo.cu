@@ -17,6 +17,7 @@
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
+#include "k2/csrc/rm_epsilon.h"
 #include "k2/python/csrc/torch/fsa_algo.h"
 #include "k2/python/csrc/torch/torch_util.h"
 
@@ -99,9 +100,8 @@ static void PybindLinearFsa(py::module &m) {
 static void PybindIntersect(py::module &m) {
   m.def(
       "intersect",  // works only on CPU
-      [](FsaOrVec &a_fsas, int32_t properties_a,
-         FsaOrVec &b_fsas, int32_t properties_b,
-         bool treat_epsilons_specially = true,
+      [](FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
+         int32_t properties_b, bool treat_epsilons_specially = true,
          bool need_arc_map =
              true) -> std::tuple<FsaOrVec, torch::optional<torch::Tensor>,
                                  torch::optional<torch::Tensor>> {
@@ -125,9 +125,8 @@ static void PybindIntersect(py::module &m) {
         }
         return std::make_tuple(ans, a_tensor, b_tensor);
       },
-      py::arg("a_fsas"), py::arg("properties_a"),
-      py::arg("b_fsas"), py::arg("properties_b"),
-      py::arg("treat_epsilons_specially") = true,
+      py::arg("a_fsas"), py::arg("properties_a"), py::arg("b_fsas"),
+      py::arg("properties_b"), py::arg("treat_epsilons_specially") = true,
       py::arg("need_arc_map") = true,
       R"(
       If treat_epsilons_specially it will treat epsilons as epsilons; otherwise
@@ -161,25 +160,21 @@ static void PybindIntersectDensePruned(py::module &m) {
       py::arg("max_active_states"));
 }
 
-
 static void PybindIntersectDense(py::module &m) {
   m.def(
       "intersect_dense",
-      [](FsaVec &a_fsas, DenseFsaVec &b_fsas,
-         float output_beam)
+      [](FsaVec &a_fsas, DenseFsaVec &b_fsas, float output_beam)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
         Array1<int32_t> arc_map_a;
         Array1<int32_t> arc_map_b;
         FsaVec out;
 
-        IntersectDense(a_fsas, b_fsas, output_beam, &out,
-                       &arc_map_a, &arc_map_b);
+        IntersectDense(a_fsas, b_fsas, output_beam, &out, &arc_map_a,
+                       &arc_map_b);
         return std::make_tuple(out, ToTensor(arc_map_a), ToTensor(arc_map_b));
       },
-      py::arg("a_fsas"), py::arg("b_fsas"),
-      py::arg("output_beam"));
+      py::arg("a_fsas"), py::arg("b_fsas"), py::arg("output_beam"));
 }
-
 
 static void PybindConnect(py::module &m) {
   m.def(
@@ -275,9 +270,18 @@ static void PybindRemoveEpsilon(py::module &m) {
       "remove_epsilon",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
-        Ragged<int32_t> arc_derivs;
-        RemoveEpsilon(src, &dest, &arc_derivs);
-        return std::make_pair(dest, arc_derivs);
+        Ragged<int32_t> arc_map;
+        RemoveEpsilon(src, &dest, &arc_map);
+        return std::make_pair(dest, arc_map);
+      },
+      py::arg("src"));
+  m.def(
+      "remove_epsilons_iterative_tropical",
+      [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        FsaOrVec dest;
+        Ragged<int32_t> arc_map;
+        RemoveEpsilonsIterativeTropical(src, &dest, &arc_map);
+        return std::make_pair(dest, arc_map);
       },
       py::arg("src"));
 }
@@ -287,9 +291,9 @@ static void PybindDeterminize(py::module &m) {
       "determinize",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
-        Ragged<int32_t> arc_derivs;
-        Determinize(src, &dest, &arc_derivs);
-        return std::make_pair(dest, arc_derivs);
+        Ragged<int32_t> arc_map;
+        Determinize(src, &dest, &arc_map);
+        return std::make_pair(dest, arc_map);
       },
       py::arg("src"));
 }
