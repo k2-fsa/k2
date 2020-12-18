@@ -598,13 +598,17 @@ __host__ __device__ __forceinline__ float OrderedIntToFloat(int32_t i) {
 }
 
 /*
-  Host version of Cuda's atomicMax function, marked __host__ (the default) for
+  host version of Cuda's atomicMax function, marked __host__ (the default) for
   clarity.  So we can use this in lambdas that run on both host and device.
  */
-__host__ __forceinline__ int32_t atomicMax(int32_t *address, int32_t val) {
+__host__ __device__ __forceinline__ int32_t AtomicMax(int32_t *address, int32_t val) {
+#if defined(__CUDA_ARCH__)
+  return atomicMax(address, val);
+#else
   int32_t old = *address;
   if (old < val) *address = val;
   return old;
+#endif
 }
 
 // have to figure out if there's a better place to put this

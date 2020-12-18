@@ -173,7 +173,7 @@ TEST(Intersect, RandomSingle) {
       for (int32_t n = 0; n < 10; n++) {
         int32_t i = RandInt(0, dfsavec.scores.Dim0() - 1);
         for (int32_t j = 0; j < dfsavec.scores.Dim1(); j++) {
-          dfsa_acc(i, j) += -2000.0;
+          dfsa_acc(i, j) += -100.0;
         }
       }
     }
@@ -240,7 +240,7 @@ TEST(Intersect, RandomFsaVec) {
       for (int32_t n = 0; n < 10; n++) {
         int32_t i = RandInt(0, dfsavec.scores.Dim0() - 1);
         for (int32_t j = 0; j < dfsavec.scores.Dim1(); j++) {
-          dfsa_acc(i, j) += -2000.0;
+          dfsa_acc(i, j) += -100.0;
         }
       }
     }
@@ -510,7 +510,7 @@ TEST(IntersectPruned, RandomSingle) {
       for (int32_t n = 0; n < 10; n++) {
         int32_t i = RandInt(0, dfsavec.scores.Dim0() - 1);
         for (int32_t j = 0; j < dfsavec.scores.Dim1(); j++) {
-          dfsa_acc(i, j) += -2000.0;
+          dfsa_acc(i, j) += -100.0;
         }
       }
     }
@@ -574,7 +574,7 @@ TEST(IntersectPruned, RandomFsaVec) {
       for (int32_t n = 0; n < 10; n++) {
         int32_t i = RandInt(0, dfsavec.scores.Dim0() - 1);
         for (int32_t j = 0; j < dfsavec.scores.Dim1(); j++) {
-          dfsa_acc(i, j) += -2000.0;
+          dfsa_acc(i, j) += -100.0;
         }
       }
     }

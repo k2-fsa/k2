@@ -79,11 +79,12 @@ static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
 
 static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
   os << "ArcInfo{" << a.a_fsas_arc_idx012 << "," << a.arc_loglike << ","
-     << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike << "}";
+     << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike
+     << "[i=" << FloatToOrderedInt(a.end_loglike) << "]"
+     << "}";
   return os;
 }
 */
-
 
 }  // namespace intersect_pruned_internal
 
@@ -845,7 +846,7 @@ class MultiGraphDenseIntersectPruned {
             // Set the forward log-like of the dest state to the largest of any
             // of those of the incoming arcs.  Note: we initialized this in
             // lambda_init_loglike above.
-            atomicMax(&(kept_states_data[state_idx01].forward_loglike),
+            AtomicMax(&(kept_states_data[state_idx01].forward_loglike),
                       end_loglike_int);
           });
     }
@@ -991,7 +992,7 @@ class MultiGraphDenseIntersectPruned {
             *arcs_row_splits2 = cur_frame->arcs.shape.RowSplits(2).Data();
     float output_beam = output_beam_;
 
-    // compute arc backward probs, and set elements of 'keep_arcs'
+    // compute arc backward probs, and set elements of 'keep_cur_arcs_data'
     int32_t next_num_states = next_frame->states.TotSize(1);
 
     char *keep_cur_arcs_data = cur_frame_arcs_keep->Data(),
@@ -1003,16 +1004,12 @@ class MultiGraphDenseIntersectPruned {
     StateInfo *next_states_data = next_frame->states.values.Data();
     StateInfo *cur_states_data = cur_frame->states.values.Data();
 
-    // TODO: use K2_EVALa
-    //K2_EVAL(
-    //    c_, num_arcs,
-    //        lambda_set_arc_backward_prob_and_keep, (int32_t arcs_idx012)->void {
-
-    auto lambda_set_arc_backward_prob_and_keep = [=]  __host__ __device__ (int32_t arcs_idx012) -> void {
+    K2_EVAL(c_, num_arcs, lambda_set_arc_backward_prob_and_keep,
+            (int32_t arcs_idx012) -> void {
       ArcInfo *arc = ai_data + arcs_idx012;
       int32_t state_idx01 = arcs_rowids2[arcs_idx012],
-                 fsa_idx0 = arcs_rowids1[state_idx01],
-        next_states_idx0x = next_states_row_splits1_data[fsa_idx0];
+                 seq_idx0 = arcs_rowids1[state_idx01],  // 'seq' == fsa-idx in b
+        next_states_idx0x = next_states_row_splits1_data[seq_idx0];
 
       // Note: if dest_state_idx1 == -1, dest_state_idx01 has a meaningless
       // value below, but it's never referenced.
@@ -1031,6 +1028,9 @@ class MultiGraphDenseIntersectPruned {
         backward_loglike = arc_loglike + dest_state_backward_loglike;
         float src_state_forward_loglike = OrderedIntToFloat(
             cur_states_data[arcs_rowids2[arcs_idx012]].forward_loglike);
+
+        // should be <= 0.0, mathematically.
+        K2_CHECK_LT(backward_loglike, -src_state_forward_loglike + 2.0);
         if (backward_loglike + src_state_forward_loglike >= -output_beam) {
           keep_this_arc = 1;
         } else {
@@ -1042,9 +1042,7 @@ class MultiGraphDenseIntersectPruned {
       }
       keep_cur_arcs_data[arcs_idx012] = keep_this_arc;
       arc_backward_prob_data[arcs_idx012] = backward_loglike;
-    };
-    // TODO: after debugging, maybe use K2_EVAL.
-    Eval(c_, num_arcs, lambda_set_arc_backward_prob_and_keep);
+      });
 
     /* note, the elements of state_backward_prob that don't have arcs leaving
        them will be set to the supplied default.  */
@@ -1218,11 +1216,12 @@ class MultiGraphDenseIntersectPruned {
     old_all_ptrs = old_all_ptrs.To(c_);
     void **all_p = old_all_ptrs.Data();
 
-    auto lambda_set_new_row_splits1 = [=] __host__ __device__ (int32_t t_offset,
-                                                               int32_t fsa_idx) -> void {
+    K2_EVAL2(c_, num_t, num_fsas + 1,
+             lambda_set_new_row_splits1, (int32_t t_offset,
+                                          int32_t seq_idx) -> void {
       // note, t_offset is t - t_start.
       int32_t *old_row_splits1 = (int32_t*) all_p[t_offset];
-      int32_t old_idx0x = old_row_splits1[fsa_idx];
+      int32_t old_idx0x = old_row_splits1[seq_idx];
       // "pos" means position in appended states vector
       // old_start_pos means start for this `t`.
       int32_t old_start_pos = old_states_offsets_data[t_offset],
@@ -1230,21 +1229,17 @@ class MultiGraphDenseIntersectPruned {
               new_start_pos = states_old2new_data[old_start_pos],
                     new_pos = states_old2new_data[old_pos],
                   new_idx0x = new_pos - new_start_pos;
-      all_row_splits1_acc(t_offset, fsa_idx) = new_idx0x;
+      all_row_splits1_acc(t_offset, seq_idx) = new_idx0x;
       // TODO: set elem zero of row-splits?
 
-      if (fsa_idx == 0) {
-        // We assign the `fsa_idx == 0` version of the kernel to set the initial
+      if (seq_idx == 0) {
+        // We assign the `seq_idx == 0` version of the kernel to set the initial
         // zero in each row_splits vector.
         all_row_splits2_data[new_pos + t_offset] = 0;
       }
-    };
-    Eval2(c_, num_t, num_fsas + 1, lambda_set_new_row_splits1);
+             });
 
-    // TODO, see if there is better way of mapping states for arc-end stuff..
-
-    // TODO, use K2_EVAL.
-    auto lambda_per_state = [=] __host__ __device__ (int32_t new_i) -> void {
+    K2_EVAL(c_, new_num_states, lambda_per_state, (int32_t new_i) -> void {
       // new_i is position in appended vector of all states.
       int32_t    t_offset = new_state_to_frame_data[new_i],
       old_state_start_pos = old_states_offsets_data[t_offset],
@@ -1285,12 +1280,9 @@ class MultiGraphDenseIntersectPruned {
         all_row_splits2_data[new_i + t_offset + 1] = new_arc_idx01x_next;
       }
       all_states_data[new_i] = old_states_data[old_state_idx01];
+      });
 
-    };
-    Eval(c_, new_num_states, lambda_per_state);
-
-    // TODO, use K2_EVAL.
-    auto lambda_set_arcs = [=] __host__ __device__ (int32_t new_i) -> void {
+    K2_EVAL(c_, new_num_arcs, lambda_set_arcs, (int32_t new_i) -> void {
       // new_i is position in appended vector of all arcs
       int32_t    t_offset = new_arc_to_frame_data[new_i],
       new_state_start_pos = new_states_offsets_data[t_offset],
@@ -1338,8 +1330,7 @@ class MultiGraphDenseIntersectPruned {
         info.u.dest_info_state_idx1 = new_dest_state_idx1;
       }
       all_arcs_data[new_i] = info;
-    };
-    Eval(c_, new_num_arcs, lambda_set_arcs);
+      });
 
     // Now reconstruct the states and arcs for all the frames we pruned, from
     // sub-parts of the arrays we just created.
@@ -1362,7 +1353,7 @@ class MultiGraphDenseIntersectPruned {
 
       RaggedShape arcs_shape = RaggedShape3(&row_splits1, &row_ids1, -1,
                                             &row_splits2, &row_ids2, -1);
-      int32_t         t = begin_t + i;
+      int32_t t = begin_t + i;
       frames_[t]->arcs = Ragged<ArcInfo>(arcs_shape, arcs);
       Array1<StateInfo> states = all_states.Arange(state_offset, next_state_offset);
       RaggedShape states_shape = GetLayer(arcs_shape, 0);

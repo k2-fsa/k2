@@ -56,25 +56,26 @@ Shape::Shape(const std::vector<int32_t> &dims,
   storage_size_ = ComputeStorageSize();
 }
 
-int32_t Shape::ComputeNumElement() const {
+int64_t Shape::ComputeNumElement() const {
   NVTX_RANGE(K2_FUNC);
   if (num_axes_ == 0) return 0;
 
-  int32_t elements = 1;
+  int64_t elements = 1;
   for (int32_t i = 0; i < num_axes_; ++i) {
     elements *= dims_[i];
   }
   return elements;
 }
 
-int32_t Shape::ComputeStorageSize() const {
+int64_t Shape::ComputeStorageSize() const {
   NVTX_RANGE(K2_FUNC);
   if (num_axes_ == 0) return 0;
 
-  int32_t size = 1;
+  int64_t size = 1;
   for (int32_t i = 0; i < num_axes_; ++i) {
-    size += (dims_[i] - 1) * strides_[i];
+    size += (dims_[i] - 1) * (int64_t)strides_[i];
   }
+  K2_CHECK_GE(size, 0);
   return size;
 }
 
@@ -91,7 +92,7 @@ bool Shape::ComputeIsContiguous() const {
   }
   if (s == 0) return true;
 
-  int32_t z = 1;
+  int64_t z = 1;
   for (int32_t i = num_axes_ - 1; i >= 0; --i) {
     K2_CHECK_GE(strides_[i], z);
     if (dims_[i] != 1) {
@@ -141,8 +142,8 @@ Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
                int32_t byte_offset)
     : impl_(std::make_shared<TensorImpl>()) {
   NVTX_RANGE(K2_FUNC);
-  int32_t storage_size = shape.StorageSize();
-  int32_t element_size = TraitsOf(type).NumBytes();
+  size_t storage_size = shape.StorageSize();
+  size_t element_size = TraitsOf(type).NumBytes();
   impl_->dtype = type;
   impl_->shape = shape;
   impl_->data = region;
