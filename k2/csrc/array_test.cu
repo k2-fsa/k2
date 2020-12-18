@@ -276,6 +276,7 @@ void TestArray2() {
 
       auto cpu_array = array.To(cpu);
       auto cuda_array = array.To(GetCudaContext());
+      auto cpu_acc = cpu_array.Accessor();
 
       ASSERT_EQ(cpu_array.ElemStride0(), cpu_array.Dim1());
       ASSERT_EQ(cuda_array.ElemStride0(), cuda_array.Dim1());
@@ -285,8 +286,8 @@ void TestArray2() {
         for (auto c = 0; c != kDim1; ++c) {
           // WARNING: it's inefficient to access elements of Array2
           // with operator [][]
-          EXPECT_EQ(cpu_array[r][c], k);
-          EXPECT_EQ(cuda_array[r][c], k);
+          EXPECT_EQ(cpu_acc(r, c), k);
+          EXPECT_EQ(cuda_array.Row(r)[c], k);
           ++k;
         }
 
@@ -316,14 +317,15 @@ void TestArray2() {
 
       auto cpu_array = array.To(cpu);
       auto cuda_array = array.To(GetCudaContext());
+      auto cpu_acc = cpu_array.Accessor();
 
       auto k = 0;
       for (auto r = 0; r != kDim0; ++r)
         for (auto c = 0; c != kDim1; ++c) {
           // WARNING: it's inefficient to access elements of Array2
           // with operator [][]
-          EXPECT_EQ(cpu_array[r][c], k);
-          EXPECT_EQ(cuda_array[r][c], k);
+          EXPECT_EQ(cpu_acc(r,c), k);
+          EXPECT_EQ(cuda_array.Row(r)[c], k);
           ++k;
         }
 
@@ -361,7 +363,7 @@ void TestArray2() {
       {
         // test operator[]
         for (int32_t i = 0; i < array.Dim0(); ++i) {
-          Array1<T> sub_array = array[i];
+          Array1<T> sub_array = array.Row(i);
           const T *sub_array_data = sub_array.Data();
           ASSERT_EQ(sub_array.Dim(), array.Dim1());
           std::vector<T> sub_array_cpu_data(sub_array.Dim());

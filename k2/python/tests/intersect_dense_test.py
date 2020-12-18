@@ -187,12 +187,12 @@ class TestIntersectDense(unittest.TestCase):
             fsa2.requires_grad_(True)
 
             fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
-            log_prob = torch.rand((2, 500, 3),
+            log_prob = torch.rand((2, 100, 3),
                                   dtype=torch.float32,
                                   device=device,
                                   requires_grad=True)
 
-            supervision_segments = torch.tensor([[0, 0, 490], [1, 0, 300]],
+            supervision_segments = torch.tensor([[0, 0, 95], [1, 20, 50]],
                                                 dtype=torch.int32)
             dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
             fsa_vec = fsa_vec.to(device)
@@ -206,6 +206,7 @@ class TestIntersectDense(unittest.TestCase):
                                        log_semiring=False,
                                        use_double_scores=False)
             scores.sum().backward()
+
 
 
 if __name__ == '__main__':

@@ -30,6 +30,19 @@ TEST(HostShim, FsaToHostFsa) {
   // TODO(fangjun): check the content of host_fsa
 }
 
+
+TEST(HostShim, IsRandEquivalent) {
+  // check that empty FSAs with zero vs 2 states are equivalent.
+  FsaVec f("[ [ [] [] ] [] [] ]"),
+      g("[ [ [] [] ] [ [] [] ] [ [] [] ] ]");
+  EXPECT_EQ(f.NumAxes(), 3);
+  EXPECT_EQ(g.NumAxes(), 3);
+
+  EXPECT_EQ(IsRandEquivalent(f, g, true), true);
+}
+
+
+
 TEST(HostShim, FsaVecToHostFsa) {
   std::string s1 = R"( 0 1 1 1
     1 2 2 2

@@ -103,7 +103,6 @@ class Array1 {
      @param [in] size   Number of elements to include, 0 <= size <= Dim()-start
   */
   Array1<T> Range(int32_t start, int32_t size) const {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, Dim());
     K2_CHECK_GE(size, 0);
@@ -120,7 +119,6 @@ class Array1 {
                         start <= end <= Dim().
   */
   Array1<T> Arange(int32_t start, int32_t end) const {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, dim_);
     K2_CHECK_GE(end, start);
@@ -344,9 +342,9 @@ class Array1 {
   Array1(const Array1 &) = default;
   // move constructor
   Array1(Array1 &&) = default;
-  // assignment operator
+  // assignment operator (shallow); see Assign() for assignment of elements.
   Array1 &operator=(const Array1 &) = default;
-  // move assignment operator
+  // move assignment operator (shallow)
   Array1 &operator=(Array1 &&) = default;
 
   /*
@@ -523,7 +521,7 @@ class Array2 {
   }
 
   // return a row (indexing on the 0th axis)
-  Array1<T> operator[](int32_t i) {
+  Array1<T> Row(int32_t i) {
     NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, dim0_);
@@ -567,9 +565,9 @@ class Array2 {
   Array2(const Array2 &other) = default;
   // move constructor
   Array2(Array2 &&other) = default;
-  // assignment operator
+  // assignment operator (shallow); see Assign() for assignment of elements.
   Array2 &operator=(const Array2 &other) = default;
-  // move assignment operator
+  // move assignment operator (shallow);
   Array2 &operator=(Array2 &&other) = default;
 
   /* stride on 1st axis is 1 (in elements). */

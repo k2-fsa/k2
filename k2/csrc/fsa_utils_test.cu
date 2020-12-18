@@ -1010,4 +1010,21 @@ TEST(FsaUtils, ComposeArcMapsTest) {
   }
 }
 
+
+TEST(FixNumStates, FixNumStates) {
+  FsaVec f("[ [ [] []  ] [ [] [] ] ]"),
+      g("[ [ []  ] [ [] [] ] ]"),
+      h("[ [ ] [ [] [] ] ]");
+
+  FsaVec f2(f), g2(g), h2(h);
+
+  FixNumStates(&f2);
+  FixNumStates(&g2);
+  FixNumStates(&h2);
+
+  EXPECT_EQ(Equal(f, f2), true);
+  EXPECT_EQ(Equal(h, g2), true);
+  EXPECT_EQ(Equal(h, h2), true);
+}
+
 }  // namespace k2

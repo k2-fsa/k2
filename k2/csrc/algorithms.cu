@@ -26,7 +26,6 @@ void Renumbering::ComputeOld2New() {
   num_new_elems_ = old2new_.Back();
   K2_CHECK_GE(num_new_elems_, 0);
   K2_CHECK_LE(num_new_elems_, keep_.Dim());
-  old2new_ = old2new_.Range(0, keep_.Dim());
 }
 
 namespace {
@@ -58,5 +57,22 @@ void Renumbering::ComputeNew2Old() {
                        keep_.Dim());
   new2old_ = new2old_.Range(0, num_new_elems_);
 }
+
+Renumbering::Renumbering(const Array1<char> &keep,
+                         const Array1<int32_t> &old2new,
+                         const Array1<int32_t> &new2old):
+    keep_(keep), old2new_(old2new),
+    num_new_elems_(new2old.Dim()),
+    new2old_(new2old) { }
+
+
+Renumbering IdentityRenumbering(ContextPtr c, int32_t size) {
+  Array1<char> keep(c, size + 1);  // uninitialized.
+  keep = keep.Arange(0, size);
+  Array1<int32_t> range = Arange(c, 0, size + 1);
+  return Renumbering(keep, range, range.Arange(0, size));
+}
+
+
 
 }  // namespace k2

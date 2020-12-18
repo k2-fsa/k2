@@ -128,4 +128,50 @@ void GetBlockSizesForLambda2(int32_t m, int32_t n, dim3 *block_dim,
   }
 }
 
+
+void Semaphore::Signal(ContextPtr c) {
+  DeviceType device_type = c->GetDeviceType();
+  if (device_type_ == kUnk)
+    device_type_ = device_type;
+  else
+    K2_CHECK_EQ(device_type, device_type_)
+        << "Semaphore must always be used with the same device type.";
+  if (device_type == kCuda) {
+    cudaEvent_t event;
+    cudaError_t e = cudaEventCreateWithFlags(&event, cudaEventDisableTiming);
+    K2_CHECK_CUDA_ERROR(e) << "Error creating event";
+    // Note: this stream is subject to being overridden by With(stream..), see
+    // class With.
+    cudaStream_t stream = c->GetCudaStream();
+    e = cudaEventRecord(event, stream);
+    K2_CHECK_CUDA_ERROR(e) << "Error recording event.";
+    std::lock_guard<std::mutex> lock(events_mutex_);
+    events_.push_back(event);
+  }
+  semaphore_.release();
+}
+
+void Semaphore::Wait(ContextPtr c) {
+  DeviceType device_type = c->GetDeviceType();
+  if (device_type_ == kUnk)
+    device_type_ = device_type;
+  else
+    K2_CHECK_EQ(device_type, device_type_)
+        << "Semaphore must always be used with the same device type.";
+  semaphore_.acquire();
+  if (device_type == kCuda) {
+    cudaEvent_t event;
+    {
+      std::lock_guard<std::mutex> lock(events_mutex_);
+      K2_CHECK(!events_.empty());  // would be code bug.
+      event = events_.front();
+      events_.pop_front();
+    }
+    int flags = 0;
+    cudaError_t e = cudaStreamWaitEvent(c->GetCudaStream(), event,
+                                        flags);
+    K2_CHECK_CUDA_ERROR(e) << "Error waiting on event.";
+  }
+}
+
 }  // namespace k2

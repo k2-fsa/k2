@@ -155,7 +155,9 @@ class RaggedShape {
   explicit RaggedShape(const std::vector<RaggedShapeLayer> &layers,
                        bool check = !internal::kDisableDebug)
       : layers_(layers) {
-    if (check) Check();
+    // the check can be disabled by settin the environment variable
+    // K2_DISABLE_CHECKS.
+    if (check && !internal::DisableChecks()) Check();
   }
 
   explicit RaggedShape(const std::string &src) {
@@ -164,6 +166,12 @@ class RaggedShape {
     if (!is.eof() || is.fail())
       K2_LOG(FATAL) << "Failed to construct RaggedShape from string: " << src;
   }
+
+  // Construct from context and string.  This uses delegating constructors, (a
+  // c++11 feature), and an explicitly constructed RaggedShape
+  // "RaggedShape(src)"
+  RaggedShape(ContextPtr context, const std::string &src):
+      RaggedShape(RaggedShape(src).To(context)) { }
 
   // A RaggedShape constructed this way will not be a valid RaggedShape.
   // The constructor is provided so you can immediately assign to it.

@@ -878,6 +878,29 @@ void Assign(Array2<T> &src, Array2<T> *dest) {
   }
 }
 
+
+template <typename S, typename T>
+void Assign(Array1<S> &src, Array1<T> *dest) {
+  K2_CHECK_EQ(src.Dim(), dest->Dim());
+  int32_t dim = src.Dim();
+  if (std::is_same<S,T>::value) {
+    size_t num_bytes = dim * sizeof(S);
+    src.Context()->CopyDataTo(num_bytes, src.Data(), dest->Context(),
+                              dest->Data());
+  } else {
+    if (!src.Context()->IsCompatible(*dest->Context())) {
+      Array1<S> src_new = src.To(dest->Context());
+      Assign(src_new, dest);
+    }
+    const S *src_data = src.Data();
+    T *dest_data = dest->Data();
+    K2_EVAL(src.Context(), dim, lambda_copy_data, (int32_t i) -> void {
+        dest_data[i] = src_data[i];
+      });
+  }
+}
+
+
 template <typename T>
 Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
                        const Array1<T> **src) {

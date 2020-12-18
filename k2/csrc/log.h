@@ -174,6 +174,17 @@ inline bool EnableCudaDeviceSync() {
   return enable_cuda_sync;
 }
 
+inline bool DisableChecks() {
+  // Currently this just disables the checks called in the constructor of
+  // RaggedShape, which can otherwise dominate the time when in debug mode.
+  static std::once_flag init_flag;
+  static bool disable_checks = false;
+  std::call_once(init_flag, []() {
+      disable_checks = (std::getenv("K2_DISABLE_CHECKS") != nullptr);
+  });
+  return disable_checks;
+}
+
 }  // namespace internal
 
 }  // namespace k2
@@ -246,7 +257,8 @@ inline bool EnableCudaDeviceSync() {
     K2_CHECK_CUDA_ERROR(e);                   \
   } while (0)
 
-// ============================================================
+
+// ------------------------------------------------------------
 //       For debug check
 // ------------------------------------------------------------
 

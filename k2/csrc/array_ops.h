@@ -629,6 +629,13 @@ template <typename T>
 void Assign(Array2<T> &src, Array2<T> *dest);
 
 /*
+  Assign elements from `src` to `dest`; they must have the same Dim().
+ */
+template <typename S, typename T>
+void Assign(Array1<S> &src, Array1<T> *dest);
+
+
+/*
   Merge an array of Array1<T> with a `merge_map` which indicates which items
   to get from which positions (doesn't do any checking of the merge_map values!)
 

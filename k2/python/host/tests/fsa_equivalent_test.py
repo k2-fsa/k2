@@ -60,7 +60,7 @@ class TestIsFsaEquivalent(unittest.TestCase):
         self.assertFalse(k2host.is_rand_equivalent(fsa_a, fsa_b, 100))
 
     def test_good_case_1(self):
-        # both fsas will be empty after triming
+        # both fsas will be empty after trimming
         s_a = r'''
         0 1 1 0
         0 2 2 0
@@ -84,7 +84,8 @@ class TestIsFsaEquivalent(unittest.TestCase):
         1 2 3 0
         1 3 4 0
         2 3 5 0
-        3
+        3 4 -1 0
+        4
         '''
         fsa_a = k2host.str_to_fsa(s_a)
         self.assertTrue(k2host.is_rand_equivalent(fsa_a, fsa_a))
@@ -96,7 +97,8 @@ class TestIsFsaEquivalent(unittest.TestCase):
         0 3 8 0
         1 4 4 0
         2 4 5 0
-        4
+        4 5 -1 0
+        5
         '''
         fsa_a = k2host.str_to_fsa(s_a)
         s_b = r'''
@@ -105,7 +107,8 @@ class TestIsFsaEquivalent(unittest.TestCase):
         0 3 9 0
         1 4 5 0
         2 4 4 0
-        4
+        4 5 -1 0
+        5
         '''
         fsa_b = k2host.str_to_fsa(s_b)
         self.assertTrue(k2host.is_rand_equivalent(fsa_a, fsa_b))
@@ -195,7 +198,7 @@ class TestRandPath(unittest.TestCase):
         0 1 1 0
         0 2 2 0
         1 3 4 0
-        3
+        4
         '''
         fsa = k2host.str_to_fsa(s_a)
         rand_path = k2host.RandPath(fsa, False)
@@ -217,7 +220,8 @@ class TestRandPath(unittest.TestCase):
         2 4 5 0
         3 4 7 0
         4 5 9 0
-        5
+        5 6 -1 0
+        6
         '''
         fsa = k2host.str_to_fsa(s_a)
         rand_path = k2host.RandPath(fsa, False)
@@ -233,7 +237,8 @@ class TestRandPath(unittest.TestCase):
         0 1 1 0
         1 2 3 0
         2 3 4 0
-        3
+        3 4 -1 0
+        4
         '''
         fsa = k2host.str_to_fsa(s_a)
         rand_path = k2host.RandPath(fsa, False)
@@ -245,10 +250,10 @@ class TestRandPath(unittest.TestCase):
         self.assertTrue(status)
         self.assertFalse(k2host.is_empty(path))
         self.assertFalse(arc_map.empty())
-        expected_arc_indexes = torch.IntTensor([0, 1, 2, 3, 3])
+        expected_arc_indexes = torch.IntTensor([0, 1, 2, 3, 4, 4])
         expected_arcs = torch.IntTensor([[0, 1, 1, 0], [1, 2, 3, 0],
-                                         [2, 3, 4, 0]])
-        expected_arc_map = torch.IntTensor([0, 1, 2])
+                                         [2, 3, 4, 0], [3, 4, -1, 0]])
+        expected_arc_map = torch.IntTensor([0, 1, 2, 3])
         self.assertTrue(torch.equal(path.indexes, expected_arc_indexes))
         self.assertTrue(torch.equal(path.data, expected_arcs))
         self.assertTrue(torch.equal(arc_map.data, expected_arc_map))
@@ -262,7 +267,8 @@ class TestRandPath(unittest.TestCase):
         2 4 5 0
         3 4 7 0
         4 5 9 0
-        5
+        5 6 -1 0
+        6
         '''
         fsa = k2host.str_to_fsa(s_a)
         rand_path = k2host.RandPath(fsa, True)
@@ -285,7 +291,8 @@ class TestRandPath(unittest.TestCase):
         3 5 7 0
         3 4 8 0
         4 5 9 0
-        5
+        5 6 -1 0
+        6
         '''
         fsa = k2host.str_to_fsa(s_a)
         rand_path = k2host.RandPath(fsa, True)

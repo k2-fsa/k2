@@ -51,7 +51,7 @@ class Shape {
     return std::vector<int32_t>(strides_, strides_ + num_axes_);
   }
 
-  int32_t StorageSize() const { return storage_size_; }
+  int64_t StorageSize() const { return storage_size_; }
 
   bool IsContiguous() const { return is_contiguous_; }
 
@@ -79,8 +79,8 @@ class Shape {
   static const int32_t kMaxDim = 4;  // Will increase this as needed
 
   int32_t num_axes_ = 0;  // Must be >= 0
-  int32_t num_element_ = 0;
-  int32_t storage_size_ = 0;
+  int64_t num_element_ = 0;
+  int64_t storage_size_ = 0;
   bool is_contiguous_ = true;
 
   // elements of dims_ and strides_ >= num_axes_ are currently not set;
@@ -89,8 +89,10 @@ class Shape {
   int32_t strides_[kMaxDim];  // Strides in elements
 
   // compute the number of elements
-  int32_t ComputeNumElement() const;
-  int32_t ComputeStorageSize() const;
+  int64_t ComputeNumElement() const;
+  // compute the size of storage needed to hold this tensor, in elements.
+  // (different than ComputeNumElements(), because of strides).
+  int64_t ComputeStorageSize() const;
   bool ComputeIsContiguous() const;
 };
 
