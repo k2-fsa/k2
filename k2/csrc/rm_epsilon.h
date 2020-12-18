@@ -141,12 +141,12 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
                                   Ragged<int32_t> *arc_map);
 
 /*
-  Remove epsilons from FsaVec in `src_fsa`, producing an FsaVec `dest_fsa` which
-  is equivalent (in tropical semiring).  Uses an iterative algorithm which tries
-  to minimize the number of arcs in the resulting FSA (epsilons are combined
-  with either preceding or following arcs).
+  Remove epsilons from FsaOrVec in `src_fsa`, producing an FsaOrVec `dest_fsa`
+  which is equivalent (in tropical semiring).  Uses an iterative algorithm which
+  tries to minimize the number of arcs in the resulting FSA (epsilons are
+  combined with either preceding or following arcs).
 */
-void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
+void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
                                      Ragged<int32_t> *arc_map);
 }  // namespace k2
 

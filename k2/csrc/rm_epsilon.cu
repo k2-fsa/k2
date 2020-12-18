@@ -1004,13 +1004,23 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
   *arc_map = Index(expand_arc_map, arc_map_indexes);
 }
 
-void RemoveEpsilonsIterativeTropical(FsaVec &src_fsa, FsaVec *dest_fsa,
+void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
                                      Ragged<int32_t> *arc_map_out) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(dest_fsa != nullptr && arc_map_out != nullptr);
-  K2_CHECK_EQ(src_fsa.NumAxes(), 3);
-  ContextPtr &c = src_fsa.Context();
+  K2_CHECK_GE(src_fsa.NumAxes(), 2);
+  K2_CHECK_LE(src_fsa.NumAxes(), 3);
+  if (src_fsa.NumAxes() == 2) {
+    // Turn single Fsa into FsaVec.
+    Fsa *srcs = &src_fsa;
+    FsaVec src_vec = CreateFsaVec(1, &srcs), dest_vec;
+    // Recurse..
+    RemoveEpsilonsIterativeTropical(src_vec, &dest_vec, arc_map_out);
+    *dest_fsa = GetFsaVecElement(dest_vec, 0);
+    return;
+  }
 
+  ContextPtr &c = src_fsa.Context();
   Array1<int32_t> epsilons_state_map, epsilons_arc_map;
   FsaVec epsilon_fsa;
   ComputeEpsilonSubset(src_fsa, &epsilon_fsa, &epsilons_state_map,

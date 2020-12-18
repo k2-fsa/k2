@@ -367,30 +367,54 @@ TEST(RmEpsilon, RemoveEpsilonsIterativeTropicalSimple) {
     4 5 -1 1
     5
   )";
-    Fsa fsa1 = FsaFromString(s1);
-    Fsa fsa2 = FsaFromString(s2);
-    Fsa *fsa_array[] = {&fsa1, &fsa2};
-    FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
-    fsa_vec = fsa_vec.To(context);
+    {
+      // test with single Fsa
+      Fsa fsa = FsaFromString(s2);
+      fsa = fsa.To(context);
 
-    FsaVec dest;
-    Ragged<int32_t> arc_map;
-    RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
-    EXPECT_EQ(dest.NumAxes(), 3);
-    EXPECT_EQ(arc_map.NumAxes(), 2);
-    K2_LOG(INFO) << dest;
-    K2_LOG(INFO) << arc_map;
-    Array1<int32_t> properties;
-    int32_t p;
-    GetFsaVecBasicProperties(dest, &properties, &p);
-    EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
-    bool log_semiring = false;
-    float beam = std::numeric_limits<float>::infinity();
-    fsa_vec = fsa_vec.To(GetCpuContext());
-    dest = dest.To(GetCpuContext());
-    EXPECT_TRUE(
-        IsRandEquivalent(fsa_vec, dest, log_semiring, beam, true, 0.001));
-    CheckArcMap(fsa_vec, dest, arc_map);
+      FsaVec dest;
+      Ragged<int32_t> arc_map;
+      RemoveEpsilonsIterativeTropical(fsa, &dest, &arc_map);
+      EXPECT_EQ(dest.NumAxes(), 2);
+      EXPECT_EQ(arc_map.NumAxes(), 2);
+      K2_LOG(INFO) << dest;
+      K2_LOG(INFO) << arc_map;
+      int32_t p = GetFsaBasicProperties(dest);
+      EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+      bool log_semiring = false;
+      float beam = std::numeric_limits<float>::infinity();
+      fsa = fsa.To(GetCpuContext());
+      dest = dest.To(GetCpuContext());
+      EXPECT_TRUE(IsRandEquivalent(fsa, dest, log_semiring, beam, true, 0.001));
+      CheckArcMap(fsa, dest, arc_map);
+    }
+    {
+      // test with FsaVec
+      Fsa fsa1 = FsaFromString(s1);
+      Fsa fsa2 = FsaFromString(s2);
+      Fsa *fsa_array[] = {&fsa1, &fsa2};
+      FsaVec fsa_vec = CreateFsaVec(2, &fsa_array[0]);
+      fsa_vec = fsa_vec.To(context);
+
+      FsaVec dest;
+      Ragged<int32_t> arc_map;
+      RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
+      EXPECT_EQ(dest.NumAxes(), 3);
+      EXPECT_EQ(arc_map.NumAxes(), 2);
+      K2_LOG(INFO) << dest;
+      K2_LOG(INFO) << arc_map;
+      Array1<int32_t> properties;
+      int32_t p;
+      GetFsaVecBasicProperties(dest, &properties, &p);
+      EXPECT_EQ(p & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
+      bool log_semiring = false;
+      float beam = std::numeric_limits<float>::infinity();
+      fsa_vec = fsa_vec.To(GetCpuContext());
+      dest = dest.To(GetCpuContext());
+      EXPECT_TRUE(
+          IsRandEquivalent(fsa_vec, dest, log_semiring, beam, true, 0.001));
+      CheckArcMap(fsa_vec, dest, arc_map);
+    }
   }
 }
 
