@@ -32,6 +32,7 @@ set(py_test_files
   intersect_dense_test.py
   intersect_test.py
   linear_fsa_test.py
+  ragged_ops_test.py
   ragged_shape_test.py
   ragged_test.py
   remove_epsilon_test.py

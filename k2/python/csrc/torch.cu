@@ -18,10 +18,12 @@
 #include "k2/python/csrc/torch/index_add.h"
 #include "k2/python/csrc/torch/index_select.h"
 #include "k2/python/csrc/torch/ragged.h"
+#include "k2/python/csrc/torch/ragged_ops.h"
 
 void PybindTorch(py::module &m) {
   PybindArc(m);
   PybindRagged(m);
+  PybindRaggedOps(m);
   PybindFsa(m);
   PybindFsaAlgo(m);
   PybindIndexAdd(m);

@@ -79,12 +79,12 @@ def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
         `[-1..src.shape[0]-1]`.
 
     Returns:
-      A tensor with shape (index.numel(), *src.shape[1:]) and dtype the
-      same as `src`, e.g. if `src.ndim == 1`, ans.shape would be
-      (index.shape[0],); if `src.ndim == 2`, ans.shape would be
-      (index.shape[0], src.shape[1]).
+      A tensor with shape ``(index.numel(), *src.shape[1:])`` and dtype the
+      same as `src`, e.g. if `src.ndim == 1`, `ans.shape` would be
+      `(index.shape[0],)`; if `src.ndim == 2`, `ans.shape` would be
+      `(index.shape[0], src.shape[1])`.
       Will satisfy `ans[i] == src[index[i]]` if `src.ndim == 1`,
-      or `ans[i,j] == src[index[i],j]` if `src.ndim == 2`, except for
+      or `ans[i, j] == src[index[i], j]` if `src.ndim == 2`, except for
       entries where `index[i] == -1` which will be zero.
     '''
     ans = _IndexSelectFunction.apply(src, index)

@@ -43,3 +43,33 @@ def index(src: Union[_k2.RaggedArc, _k2.RaggedInt],
                                    indexes=indexes,
                                    need_value_indexes=need_value_indexes)
     return ans, value_indexes
+
+
+def remove_values_leq(src: _k2.RaggedInt, cutoff: int) -> _k2.RaggedInt:
+    '''Remove values less than or equal to `cutoff` from a ragged tensor.
+
+    Args:
+      src:
+        The source ragged tensor.
+      cutoff:
+        The threshold. Elements less than or equal to this threshold is removed
+        from `src`.
+    Returns:
+      A new ragged tensor whose elements are all **greater than** `cutoff`.
+    '''
+    return _k2.remove_values_leq(src, cutoff)
+
+
+def remove_values_equal(src: _k2.RaggedInt, target: int) -> _k2.RaggedInt:
+    '''Remove values equal to `target` from a ragged tensor.
+
+    Args:
+      src:
+        The source ragged tensor.
+      target:
+        The target value. Elements whose value equal to `target` are removed
+        from `src`.
+    Returns:
+      A new ragged tensor whose elements do **not equal to** `target`.
+    '''
+    return _k2.remove_values_equal(src, target)

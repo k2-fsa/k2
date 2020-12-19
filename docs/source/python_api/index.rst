@@ -12,3 +12,5 @@ Python API Reference
    symbol_table
    utils
    version
+   ops
+   ragged_ops
