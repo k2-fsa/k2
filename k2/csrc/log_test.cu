@@ -17,6 +17,7 @@
 namespace k2 {
 
 TEST(Log, Cpu) {
+  K2_LOG(TRACE) << "Trace message";
   K2_LOG(DEBUG) << "Debug message";
   K2_LOG(INFO) << "Info message";
   K2_LOG(WARNING) << "Warning message";
@@ -52,6 +53,7 @@ __global__ void DummyKernel(int32_t *b, int32_t a) {
 }
 
 TEST(Log, Cuda) {
+  K2_LOG(TRACE) << "Trace message for cuda";
   K2_LOG(INFO) << "Test log for cuda";
   if (GetCudaContext()->GetDeviceType() == kCpu) return;
   int32_t a = 10;

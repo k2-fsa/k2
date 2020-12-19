@@ -113,3 +113,11 @@ jobs:
         run: |
           cd build
           ctest --output-on-failure
+          # default log level is INFO
+          ./bin/cu_log_test --gtest_filter="Log.Cpu"
+          K2_LOG_LEVEL=TRACE ./bin/cu_log_test --gtest_filter="Log.Cpu"
+          K2_LOG_LEVEL=DEBUG ./bin/cu_log_test --gtest_filter="Log.Cpu"
+          K2_LOG_LEVEL=INFO ./bin/cu_log_test --gtest_filter="Log.Cpu"
+          K2_LOG_LEVEL=WARNING ./bin/cu_log_test --gtest_filter="Log.Cpu"
+          K2_LOG_LEVEL=ERROR ./bin/cu_log_test --gtest_filter="Log.Cpu"
+          K2_LOG_LEVEL=FATAL ./bin/cu_log_test --gtest_filter="Log.Cpu"
