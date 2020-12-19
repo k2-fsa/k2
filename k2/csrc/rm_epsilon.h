@@ -21,15 +21,155 @@
 namespace k2 {
 
 /*
-  Epsilon removal algorithm (for tropical semiring):
+  Notes on our iterative epsilon removal algorithm (for tropical semiring),
+  RemoveEpsilonsIterativeTropical().
 
-  Involves first separating epsilon and non-epsilon arcs, doing a closure on
-  the epsilon part so we have direct epsilon arcs between pairs of states that
-  can reach each other by epsilons; then re-combining the epsilon and
-  non-epsilon parts of the FSA.  We decide, for each epsilon in the closure of
-  the epsilon part, whether to combine it with following or preceding
-  non-epsilon arcs based on which would produce fewer additional arcs.
+  We first separate epsilon and non-epsilon arcs (while leaving the
+  state numbering fixed); doing a closure on the epsilon part so we have direct
+  epsilon arcs between pairs of states that can reach each other by epsilons;
+  then combining the epsilon and non-epsilon arcs to produce non-epsilon arcs.
+
+  We keep the original numbering of the states.  We'll us capital letters for
+  sets of arcs.  Note: epsilon self-loops can be discarded whenever they appear
+  if their score is <= 0; if there is scores is >0 we can abort the algorithm
+  because it woudl imply that the FSA has some paths with infinite score but
+  finite number of real symbols.
+
+
+     N = set of non-epsilon arcs in thw input
+     E = set of epsilon-arcs e in input
+     C = closure of set of epsilon-arcs e in input, i.e. for distinct states
+         a,b,c, if C contains epsilon arc from a->b and b->c, it will alos
+         contain one from a->c.
+     C_f = subset of C that we decide, based on heuristics with the goal of
+         minimizing the size of the output, to combine with the following
+         non-epsilon arcs ,
+    C_p = subset of C, C \ C_f (C minus C_f), that we decide to combine with the
+         preceding non-epsilon arc, based on a heuristic that we choose, with
+         the constraint that arcs that leave the start-state cannot be in P.
+     F = set of arcs that arises from combination of arcs e in C_f with all arcs in N
+         that leave the destination-state of e, i.e. arc-combinations [e,n];
+         we'll use square brackets for sequences of arcs to distinguish from other
+         uses of parentheses.
+     P = set of arcs that arises from combination of arcs e in C_p with all arcs in N
+         that enter the source-state of e, i.e. arc-combinations [n,e].
+     Q = set of arcs that arises from combination of arcs e in C_p with all arcs in F
+         that enter the source-state of e.  i.e. from arc-combinations [f,e]
+
+  At the start of the algorithm we have the set of arcs
+     N u E    (u means union).
+  After epsilon-closure we have:
+     N u C     ...  this is equivalent to N u E by properties of epsilon-closure.
+  Then we divide C in to two subsets: we have
+     N u C_f u C_p   ... equivalent to N u C for obvious reasons.
+  Then we add F:
+     N u C_f u C_p u F .. equivalent to the above because for each arc in F
+                      there is a path of two arcs in (C_f, N) that has the same
+                      weight and symbol
+  Then we add P:
+     N u C_f u C_p u F u P  .. equivalent to the above because for each arc in P
+                       there is a path of two arcs in (N, C_p) that has the same
+                       weight and symbol
+  Then we add Q:
+     N u C_f u C_p u F u P u Q .. equivalent to the above because for each arc in Q
+                       there is a path of two arcs in (P, C_p) that has the same
+                       weight and symbol
+
+ The final stage is to remove C_f and C_p, leaving us with
+     U u F u P u Q
+ which is epsilon-free.  We need to demonstrate that we can remove C_f and C_p
+ while preserving equivalence.  This is the not-quite-so-trivial part of the proof.
+ Let A be the FSA containing arcs
+
+     N u C_f u C_p u F u P u Q
+
+ and B be the FSA containing arcs
+
+     U u F u P u Q.
+
+ We show that B and A are equivalent by showing that for any path in A that has
+ at least one epsilon arc, there is a path in B with the same "real" symbol sequence
+ (i.e. after removing epsilons) and a score that is at least as large.  We
+ show this inductively by demonstrating that for any path P in A that has at
+ least one epsilon, there is a path P' in A that satisifes the following properties:
+
+    - The score of P' is >= the score of P
+    - P' has the same real symbol-sequence as P (i.e. the same sequence after
+      removing epsilons)
+    - Either:
+       - (a) P' has one fewer epsilon arc than P, or
+       - (b) P' has the same number of epsilons as P, but one fewer
+             "implicit epsilons", where we consider that arcs in F or P
+             have one "implicit epsilon" and arcs in Q have two
+             "implicit epsilons".
+
+ The above lets us argue that we will eventually reach a path in A with no epsilons,
+ which must also be in B.
+
+===
+
+ Consider the path P in A; we want to show there is a path P' with the properties
+ mentioned above.
+
+   (i) First imagine that P has two successive epsilon arcs, from states a->b and
+  b->c.  These arcs must both be in either C_f or C_p and hence in C.  But because C is the
+  result of epsilon closure there must be an epsilon from a->c with a score at
+  least as great as the sum of the original two paths' scores; so we can reduce the
+  number of epsilons by one.
+
+  [[Note regarding epsilon-loops: if a and c are the same state, there are two
+  choices: if the score is <=0 then we can remove the epsilon from our path
+  entirely while having the same symnbol sequence and at least as large a score;
+  if the score is >0 then the graph contained positive-score epsilon cycles
+  which is equivalent to infinite score, which is invalid.]]
+
+  We can use (i) as needed until there are no successive epsilons, so the following
+  arguments will consider only isolated epsilons.  Note on terminology: we use
+  letters a,b,c,d for epsilon arcs below.
+
+   (ii) Consider an epsilon-arc a in C_f.  This must be followed by a non-epsilon
+     arc (assuing we already reduced via (i)), and this non-epsilon arc must
+     be in N, F, P or Q.  Briefly the cases are as follows:
+        - following arc n is in N -> we can replace [a,n] by the
+                          appropriate arc f in F, leaving us with one fewer epsilon.
+        - following arc f is in F -> there was originally a pair [b,n]
+                           from which f was constructed; so we can expand f to
+                           [b,n] and then reduce [a,b] to a single epsilon c via
+                           argument (i); this leaves us with [c,n], which is
+                           case (b) above, i.e. the same number of epsilons
+                           but one fewer implicit epsilon.
+        - following arc p is in P -> there was originally a pair [n,b] from which
+                           p was constructed, where b is in C_p; and there is an
+                           arc f in F to which [a,n] was expanded;
+                           and an arc q in Q to which [f,b] was expanded; so
+                           we can reduce [a,p] to q.
+        - following arc q is in Q -> arc q was expanded from arcs [f,b] with f in F
+                           and b in C_p; and F was expanded from [c,n] with c
+                           in C_f and n in N, so we can reduce sequence  [a,c,n,b]
+                           to [d,n,b] by reducing [a,c] to d via (i), and further
+                           to [d,p] by combining [n,b] to the arc in P that was
+                           constructed from that pair; so we have reduced [a,q]
+                           to [d,p] which has one fewer implicit epsilon.
+
+  (iii) Consider an epsilon-arc a in C_p.   (Note: by construction, this cannot
+     leave the start state so there must be a preceding arc).  We are assuming we
+     already reduced via (i) so the preceding arc is non-epsilon; it must be in
+     N, F, P or Q.
+        - preceding arc n is in N -> we can replace [n,a] by the
+                          appropriate arc p in F, leaving us with one fewer epsilon.
+        - preceding arc f is in F -> we can replace [f,a] by the arc q in Q
+                          that was constructed from it.
+        - preceding arc p is in P -> there was originally a pair
+                           [n,b] from which p was expanded, where b is in C_p;
+                           we reduce [b,a] to c using argument (i), leaving us
+                           with [n,c] which has one fewer implicit epsilon.
+        - preceding arc q is in Q -> arc q was expanded from arcs [f,b] with f in F
+                          and b in C_p. [b,a] to c via argument (i), leaving
+                          us with [f,c] which has one fewer implicit epsilon than
+                          [a,q].
 */
+
+
 
 /*
   Extract just the epsilon arcs and the states with epsilons entering and
@@ -145,9 +285,21 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
   which is equivalent (in tropical semiring).  Uses an iterative algorithm which
   tries to minimize the number of arcs in the resulting FSA (epsilons are
   combined with either preceding or following arcs).
+
+    @param [in] src_fsa    FSA to remove epsilons from.  It is an error if
+                        src_fsa has epsilon loops with score greater than zero.
+    @param [out] dest_fsa  Result will be written to here; will be equivalent
+                          to `src_fsa` in the tropical semiring, and will be
+                          epsilon-free.
+    @param [out] arc_map  If not nullptr, a map from arc in `dest_fsa` to the
+                          corresponding sequence of arcs in `src_fsa` will be
+                          written here.
+
+   For an explanation of how this algorithm works and a proof-sketch, see the
+   comment at the top of this file.
 */
 void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
-                                     Ragged<int32_t> *arc_map);
+                                     Ragged<int32_t> *arc_map = nullptr);
 }  // namespace k2
 
 #endif  // K2_CSRC_RM_EPSILON_H_
