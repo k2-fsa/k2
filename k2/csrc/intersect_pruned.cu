@@ -136,7 +136,8 @@ class MultiGraphDenseIntersectPruned {
         output_beam_(output_beam),
         min_active_(min_active),
         max_active_(max_active),
-        dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), search_beam) {
+        dynamic_beams_(a_fsas.Context(), b_fsas.shape.Dim0(), search_beam),
+        forward_semaphore_(1) {
     NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
     T_ = b_fsas_.shape.MaxSize(1);
@@ -253,8 +254,14 @@ class MultiGraphDenseIntersectPruned {
 
     for (int32_t t = 0; t <= T; t++) {
       frames_.push_back(PropagateForward(t, frames_.back().get()));
-      if (do_pruning_after_[t])
-        semaphore_.Signal(c_);  // let a phase of backward-pass pruning commence.
+      if (do_pruning_after_[t]) {
+        // let a phase of backward-pass pruning commence.
+        backward_semaphore_.Signal(c_);
+        // note: normally we should acquire forward_semaphore_ without having to
+        // wait.  It avoids the backward pass getting too far behind the forward
+        // pass, which could mean too much memory is used.
+        forward_semaphore_.acquire();
+      }
     }
     // The FrameInfo for time T+1 will have no states.  We did that
     // last PropagateForward so that the 'arcs' member of frames_[T]
@@ -275,10 +282,11 @@ class MultiGraphDenseIntersectPruned {
 
     NVTX_RANGE(K2_FUNC);
     for (size_t i = 0; i < prune_t_begin_end_.size(); i++) {
-      semaphore_.Wait(c_);
+      backward_semaphore_.Wait(c_);
       int32_t prune_t_begin = prune_t_begin_end_[i].first,
                 prune_t_end = prune_t_begin_end_[i].second;
       PruneTimeRange(prune_t_begin, prune_t_end);
+      forward_semaphore_.release();
     }
   }
 
@@ -1415,7 +1423,20 @@ class MultiGraphDenseIntersectPruned {
   // which do_pruning_after_[t] is true, it will signal this semaphore; the
   // backward-pass thread (which does pruning) will wait on it as many times as
   // do_pruning_after_[t] is set to true.
-  Semaphore semaphore_;
+  Semaphore backward_semaphore_;
+
+  // The function of forward_semaphore_ is to ensure that the backward (pruning)
+  // pass doesn't "get too far behind" relative to the forward pass, which might
+  // cause us to use more memory than expected.  (Note: the backward pass is
+  // normally a bit faster than the forward pass, so typically this won't be a
+  // problem).  Each time the backward pass has finished one round of pruning it
+  // signals this semaphore.  each time after the forward pass signals the
+  // backward pass that it's ready to prune, it waits on this semaphore
+  // immediately afterward.  But because forward_semaphore_ is initialized to 1
+  // rather than zero, the effect is that the forward pass is waiting for the
+  // *previous* phase of backward pruning to complete, rather than the current
+  // one.
+  k2std::counting_semaphore forward_semaphore_;
 };
 
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
