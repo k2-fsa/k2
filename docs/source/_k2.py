@@ -15,6 +15,29 @@ class RaggedArc:
 
 class RaggedShape:
 
+    def __init__(self, s: str):
+        '''Construct a ragged shape from a string.
+
+        For example:
+
+            .. code-block:: python
+
+                s = '[ [x x] [x] [x x x] ]'
+                shape = k2.RaggedShape(s)
+                assert shape.dim0() == 3
+                assert shape.num_axes() == 2
+                assert shape.max_size(1) == 2
+                assert shape.num_elements() == 6
+                assert shape.tot_size(1) == 6
+                assert torch.all(torch.eq(shape.row_ids(1), torch.tensor([0, 0, 1, 2, 2, 2])))
+                assert torch.all(torch.eq(shape.row_splits(1), torch.tensor([0, 2, 3, 6])))
+
+        Args:
+          s:
+            A string representation of the ragged shape. See its
+            usage in the above example code.
+        '''
+
     def dim0(self) -> int:
         '''Returns number of elements of dimension 0.
 
