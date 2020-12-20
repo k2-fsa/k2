@@ -182,7 +182,7 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
 }
 
 template <typename T>
-Ragged<T> RemoveValuesEqual(Ragged<T> &src, T target) {
+Ragged<T> RemoveValuesEq(Ragged<T> &src, T target) {
   ContextPtr &c = src.Context();
   Renumbering r(c, src.NumElements());
   const T *values_data = src.values.Data();
@@ -321,7 +321,7 @@ bool Ragged<T>::Validate(bool print_warnings) const {
   return shape.Validate(print_warnings);
 }
 
-// Defined here and not in ragged.h because it needs RemoveAxis.
+// Defined here and not in ragged.h because it needs RemoveAxis(RaggedShape&, int).
 template <typename T>
 Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
   NVTX_RANGE(K2_FUNC);

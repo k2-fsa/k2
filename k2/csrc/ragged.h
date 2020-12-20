@@ -346,11 +346,20 @@ struct Ragged {
                      values.Range(values_offset, sub_shape.NumElements()));
   }
 
-  // Note *this is conceptually unchanged by this operation but non-const
-  // because this->shape's row-ids may need to be generated.
-  // This function is defined in ragged_ops_inl.h.
-  //
-  // Requires NumAxes() > 2 and 0 <= axis < NumAxes() - 1;
+  /*
+    Return a version of `*this` with one one axis removed, done by appending
+    lists (this axis is combined with the following axis).  Effectively removes
+    element numbered `axis` from the vector of tot_sizes `[ src.TotSize(0),
+    src.TotSize(1), ... src.TotSize(axis - 1) ]`
+
+    Note *this is conceptually unchanged by this operation but non-const
+    because this->shape's row-ids may need to be generated.
+    This function is defined in ragged_ops_inl.h.
+
+        @param [in] axis  Axis to remove.  Requires 0 <= axis < NumAxes() - 1.
+        @return  Returns the modified ragged tensor, which will share the same
+            `values` and some of the same shape metdata as `*this`.
+  */
   Ragged<T> RemoveAxis(int32_t axis);
 
   Ragged<T> To(ContextPtr ctx) const {

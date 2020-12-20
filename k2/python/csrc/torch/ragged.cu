@@ -104,6 +104,17 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
     os << self;
     return os.str();
   });
+
+  pyclass.def(
+      "tot_sizes",
+      [](const PyClass &self) -> py::list {
+        int32_t num_axes = self.NumAxes();
+        py::list ans(num_axes);
+        for (int32_t i = 0; i < self.NumAxes(); i++)
+          ans[i] = self.TotSize(i);
+        return ans;
+      });
+
   pyclass.def(py::pickle(
       [](const PyClass &obj) {
         Array1<int32_t> row_splits1 = obj.RowSplits(1);
@@ -202,6 +213,17 @@ static void PybindRaggedShape(py::module &m) {
         return ToTensor(row_splits);
       },
       py::arg("axis"));
+
+  pyclass.def(
+      "tot_sizes",
+      [](const PyClass &self) -> py::list {
+        int32_t num_axes = self.NumAxes();
+        py::list ans(num_axes);
+        for (int32_t i = 0; i < self.NumAxes(); i++)
+          ans[i] = self.TotSize(i);
+        return ans;
+      });
+
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     std::ostringstream os;

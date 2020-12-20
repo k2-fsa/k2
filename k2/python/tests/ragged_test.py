@@ -28,6 +28,8 @@ class TestRagged(unittest.TestCase):
         assert torch.all(
             torch.eq(ragged_int.row_splits(1), torch.tensor([0, 2, 3])))
 
+        self.assertEqual([2, 3], ragged_int.tot_sizes())
+
 
 if __name__ == '__main__':
     unittest.main()
