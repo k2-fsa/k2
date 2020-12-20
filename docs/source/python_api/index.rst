@@ -14,3 +14,4 @@ Python API Reference
    version
    ops
    ragged_ops
+   _k2
