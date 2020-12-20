@@ -171,7 +171,7 @@ Ragged<T> Merge(int32_t num_srcs,
 
 template <typename T>
 Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
-  ContextPtr c = src.Context();
+  ContextPtr &c = src.Context();
   Renumbering r(c, src.NumElements());
   const T *values_data = src.values.Data();
   char *keep = r.Keep().Data();
@@ -181,7 +181,17 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
   return SubsampleRagged(src, r);
 }
 
-
+template <typename T>
+Ragged<T> RemoveValuesEqual(Ragged<T> &src, T target) {
+  ContextPtr &c = src.Context();
+  Renumbering r(c, src.NumElements());
+  const T *values_data = src.values.Data();
+  char *keep = r.Keep().Data();
+  K2_EVAL(c, src.NumElements(), lambda_set_keep, (int32_t i) -> void {
+      keep[i] = (char) (values_data[i] != target);
+    });
+  return SubsampleRagged(src, r);
+}
 
 // Recursive function that prints (part of) a ragged shape.
 // 0 <=  begin_pos <= end_pos <= shape.TotSize(axis).

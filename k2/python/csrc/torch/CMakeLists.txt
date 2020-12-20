@@ -6,6 +6,7 @@ set(torch_srcs
   index_add.cu
   index_select.cu
   ragged.cu
+  ragged_ops.cu
   torch_util.cu
 )
 

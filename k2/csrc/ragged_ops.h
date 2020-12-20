@@ -1026,6 +1026,15 @@ template <typename T>
 Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff);
 
 /*
+  Returns a ragged tensor after removing all 'values' that equal a provided
+  target.  Leaves all layers of the shape except for the last one unaffected.
+  Equivalent to SubsampleRaggedShape with a numbering given by (src.values[i] ==
+  target).
+*/
+template <typename T>
+Ragged<T> RemoveValuesEqual(Ragged<T> &src, T target);
+
+/*
    Index array with ragged tensor.
        @param [in] src   Source array, to be indexed
        @param [in] indexes   Indexes into source array; the values must

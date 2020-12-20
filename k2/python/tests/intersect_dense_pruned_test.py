@@ -166,9 +166,9 @@ class TestIntersectDensePruned(unittest.TestCase):
         assert torch.allclose(expected_grad_fsa2, fsa2.scores.grad)
         assert torch.allclose(expected_grad_log_prob, log_prob.grad)
 
-
     def test_two_fsas_long_pruned(self):
-        # as test_two_fsas_long in intersect_dense_test.py, but with pruned intersection
+        # as test_two_fsas_long in intersect_dense_test.py,
+        # but with pruned intersection
         s1 = '''
             0 1 1 1.0
             1 1 1 50.0
@@ -206,7 +206,8 @@ class TestIntersectDensePruned(unittest.TestCase):
             fsa_vec = fsa_vec.to(device)
             out_fsa = k2.intersect_dense_pruned(fsa_vec,
                                                 dense_fsa_vec,
-                                                search_beam=100, output_beam=100,
+                                                search_beam=100,
+                                                output_beam=100,
                                                 min_active_states=1,
                                                 max_active_states=10)
             assert out_fsa.shape == (2, None,
