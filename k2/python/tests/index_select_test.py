@@ -218,7 +218,7 @@ class TestSimpleRaggedIndexSelect(unittest.TestCase):
                                        device=device)
             # we don't need to call shape2.to(device) here as shape2
             # will be on the same device as row_splits
-            shape2 = k2.create_ragged_shape2(row_splits1, None, 9)
+            shape2 = k2.ragged.create_ragged_shape2(row_splits1, None, 9)
             values = torch.tensor([1, 0, 4, 2, 3, 0, 4, 5, 2],
                                   dtype=torch.int32,
                                   device=device)

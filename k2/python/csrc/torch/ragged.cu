@@ -70,6 +70,12 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
     return ToTensor(values);
   });
 
+  pyclass.def("num_elements", &PyClass::NumElements);
+
+  pyclass.def("shape", [](PyClass &self) -> RaggedShape {
+      return self.shape;
+    });
+
   pyclass.def(
       "row_splits",
       [](PyClass &self, int32_t axis) -> torch::Tensor {
@@ -104,6 +110,17 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
     os << self;
     return os.str();
   });
+
+  pyclass.def(
+      "tot_sizes",
+      [](const PyClass &self) -> py::list {
+        int32_t num_axes = self.NumAxes();
+        py::list ans(num_axes);
+        for (int32_t i = 0; i < self.NumAxes(); i++)
+          ans[i] = self.TotSize(i);
+        return ans;
+      });
+
   pyclass.def(py::pickle(
       [](const PyClass &obj) {
         Array1<int32_t> row_splits1 = obj.RowSplits(1);
@@ -203,6 +220,17 @@ static void PybindRaggedShape(py::module &m) {
       },
       py::arg("axis"));
 
+  pyclass.def(
+      "tot_sizes",
+      [](const PyClass &self) -> py::list {
+        int32_t num_axes = self.NumAxes();
+        py::list ans(num_axes);
+        for (int32_t i = 0; i < self.NumAxes(); i++)
+          ans[i] = self.TotSize(i);
+        return ans;
+      });
+
+
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     std::ostringstream os;
     os << self;
@@ -234,7 +262,17 @@ static void PybindRaggedShapeUtils(py::module &m) {
       },
       py::arg("row_splits"), py::arg("row_ids"),
       py::arg("cached_tot_size") = -1);
+  m.def(
+      "compose_ragged_shapes", ComposeRaggedShapes,
+      py::arg("a"), py::arg("b"));
+
+  m.def("ragged_shape_remove_axis",  [](RaggedShape &src, int32_t axis) -> RaggedShape {
+      return RemoveAxis(src, axis);
+    }, py::arg("src"), py::arg("axis"));
+
 }
+
+
 
 }  // namespace k2
 

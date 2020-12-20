@@ -280,9 +280,12 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
 std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
                                            int32_t axis);
 
-/* Remove an axis; if it is not the last axis, this is done by appending lists
+/*
+   Remove an axis; if it is not the last axis, this is done by appending lists
    (effectively the axis is combined with the following axis).  If it is the
-   last axis it is just removed and the number of elements will be affected.
+   last axis it is just removed and the number of elements may be changed.
+   Effectively removes element numbered `axis` from the vector tot_sizes
+   `[ src.TotSize(0), src.TotSize(1), ... src.TotSize(axis - 1) ]`
 
           @param [in] src Ragged shape to remove axis of (`src` is conceptually
                       unchanged by this operation but non-const because row-ids
@@ -292,12 +295,27 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
           @param [in] axis  Axis to remove; must satisfy
                             0 <= axis < src.NumAxes()
           @return      Returns the modified shape with one fewer axis; will
-                       satisfy ans.TotSize(axis) == src.TotSize(axis + 1).
+                       satisfy ans.TotSize(axis) == src.TotSize(axis + 1)
                        if axis < src.NumAxes() - 1.
 */
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
 
-// See documentation of class-member that this wraps.
+/*
+    Return a version of `src` with one one axis removed, done by appending
+    lists (this axis is combined with the following axis).  Effectively removes
+    element numbered `axis` from the vector of tot_sizes `[ src.TotSize(0),
+    src.TotSize(1), ... src.TotSize(axis - 1) ]`
+
+    Note *this is conceptually unchanged by this operation but non-const
+    because this->shape's row-ids may need to be generated.
+    This function is defined in ragged_ops_inl.h.
+
+        @param [in] src   Source ragged tensor to modify.
+        @param [in] axis  Axis to remove.  Requires 0 <= axis < NumAxes() - 1.
+
+        @return  Returns the modified ragged tensor, which will share the same
+            `values` and some of the same shape metdata as `*this`.
+  */
 template <typename T>
 Ragged<T> RemoveAxis(Ragged<T> &src, int32_t axis) {
   return src.RemoveAxis(axis);
@@ -1032,7 +1050,7 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff);
   target).
 */
 template <typename T>
-Ragged<T> RemoveValuesEqual(Ragged<T> &src, T target);
+Ragged<T> RemoveValuesEq(Ragged<T> &src, T target);
 
 /*
    Index array with ragged tensor.

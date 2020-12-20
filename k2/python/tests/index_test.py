@@ -87,7 +87,7 @@ class TestIndexRaggedInt(unittest.TestCase):
             src_row_splits = torch.tensor([0, 2, 3, 3, 6],
                                           dtype=torch.int32,
                                           device=device)
-            src_shape = k2.create_ragged_shape2(src_row_splits, None, 6)
+            src_shape = k2.ragged.create_ragged_shape2(src_row_splits, None, 6)
             src_values = torch.tensor([1, 2, 3, 4, 5, 6],
                                       dtype=torch.int32,
                                       device=device)
@@ -97,7 +97,7 @@ class TestIndexRaggedInt(unittest.TestCase):
             index_row_splits = torch.tensor([0, 2, 2, 3, 7],
                                             dtype=torch.int32,
                                             device=device)
-            index_shape = k2.create_ragged_shape2(index_row_splits, None, 7)
+            index_shape = k2.ragged.create_ragged_shape2(index_row_splits, None, 7)
             index_values = torch.tensor([0, 3, 2, 1, 2, 1, 0],
                                         dtype=torch.int32,
                                         device=device)
@@ -142,7 +142,7 @@ class TestIndexTensorWithRaggedInt(unittest.TestCase):
             index_row_splits = torch.tensor([0, 2, 2, 3, 7],
                                             dtype=torch.int32,
                                             device=device)
-            index_shape = k2.create_ragged_shape2(index_row_splits, None, 7)
+            index_shape = k2.ragged.create_ragged_shape2(index_row_splits, None, 7)
             index_values = torch.tensor([0, 3, 2, 3, 5, 1, 3],
                                         dtype=torch.int32,
                                         device=device)
