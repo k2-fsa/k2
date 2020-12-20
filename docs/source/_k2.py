@@ -15,7 +15,7 @@ class RaggedArc:
 
 class RaggedShape:
 
-    def __init__(self, s: str):
+    def __init__(self, src: str):
         '''Construct a ragged shape from a string.
 
         For example:
@@ -33,7 +33,7 @@ class RaggedShape:
                 assert torch.all(torch.eq(shape.row_splits(1), torch.tensor([0, 2, 3, 6])))
 
         Args:
-          s:
+          src:
             A string representation of the ragged shape. See its
             usage in the above example code.
         '''
