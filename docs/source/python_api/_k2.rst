@@ -1,0 +1,13 @@
+
+_k2
+===
+
+.. currentmodule:: _k2
+
+RaggedShape
+-----------
+
+.. autoclass:: RaggedShape
+   :members:
+
+   .. automethod:: __str__(RaggedShape)
