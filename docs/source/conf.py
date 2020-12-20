@@ -138,6 +138,9 @@ def linkcode_resolve(domain, info):
     except Exception:
         return None
 
+    if '_k2' in filename:
+        return None
+
     idx = filename.rfind('k2')
     filename = filename[idx:]
     return f'https://github.com/k2-fsa/k2/blob/master/k2/python/{filename}'
