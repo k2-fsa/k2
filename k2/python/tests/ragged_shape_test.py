@@ -71,21 +71,35 @@ class TestRaggedShape(unittest.TestCase):
     def test_random_ragged_shape(self):
         # test case reference:
         # https://github.com/k2-fsa/k2/blob/master/k2/csrc/ragged_shape_test.cu#L304
-        shape = k2.random_ragged_shape(False, 2, 4, 0, 0)
+        shape = k2.ragged.random_ragged_shape(False, 2, 4, 0, 0)
         assert shape.num_axes() >= 2
         assert shape.num_elements() == 0
 
-        shape = k2.random_ragged_shape()
+        shape = k2.ragged.random_ragged_shape()
         assert shape.num_axes() >= 2
         assert shape.num_elements() >= 0
 
-        shape = k2.random_ragged_shape(False, 3, 5, 100)
+        shape = k2.ragged.random_ragged_shape(False, 3, 5, 100)
         assert shape.num_axes() >= 3
         assert shape.num_elements() >= 100
 
-        shape = k2.random_ragged_shape(True, 3, 5, 100)
+        shape = k2.ragged.random_ragged_shape(True, 3, 5, 100)
         assert shape.num_axes() >= 3
         assert shape.num_elements() >= 100
+
+    def test_compose_ragged_shape(self):
+        a = k2.RaggedInt('[ [ 0 ] [ 1 2 ] ]')
+        b = k2.RaggedInt('[ [ 3 ] [ 4 5 ] [ 6 7 ] ]')
+        prod = k2.RaggedInt('[ [ [ 3 ] ] [ [ 4 5 ] [ 6 7 ] ] ]')
+        ashape = a.shape()
+        bshape = b.shape()
+        abshape = k2.ragged.compose_ragged_shapes(ashape, bshape)
+        # should also be available under k2.ragged.
+        abshape2 = k2.ragged.compose_ragged_shapes(ashape, bshape)
+        self.assertEqual(str(abshape), str(prod.shape()))
+        self.assertEqual(str(abshape2), str(prod.shape()))
+        prod2 = k2.RaggedInt(abshape2, b.values())
+        self.assertEqual(str(prod), str(prod2))
 
 
 if __name__ == '__main__':

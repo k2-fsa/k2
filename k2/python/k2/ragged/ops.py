@@ -57,7 +57,7 @@ def remove_values_leq(src: _k2.RaggedInt, cutoff: int) -> _k2.RaggedInt:
     Returns:
       A new ragged tensor whose elements are all **greater than** `cutoff`.
     '''
-    return _k2.remove_values_leq(src, cutoff)
+    return _k2.ragged_int_remove_values_leq(src, cutoff)
 
 
 def remove_values_eq(src: _k2.RaggedInt, target: int) -> _k2.RaggedInt:
@@ -72,22 +72,27 @@ def remove_values_eq(src: _k2.RaggedInt, target: int) -> _k2.RaggedInt:
     Returns:
       A new ragged tensor whose elements do **not equal to** `target`.
     '''
-    return _k2.remove_values_eq(src, target)
+    return _k2.ragged_int_remove_values_eq(src, target)
 
-def remove_axis(src: _k2.RaggedInt, axis: int) -> _k2.RaggedInt:
+def remove_axis(src: Union[_k2.RaggedInt,_k2.RaggedShape], axis: int) -> _k2.RaggedInt:
     '''Remove an axis from a ragged tensor.
 
     Args:
       src:
         The source ragged tensor.
       axis:
-        The axis to remove.  Must satisfy `0 <= axis < src.num_axes() - 1`.
+        The axis to remove.  If src is a _k2.RaggedShape it must satisfy `0 <= axis < src.num_axes()`;
+        otherwise it must satisfy `0 <= axis < src.num_axes() - 1` (we can't remove the last axis
+        in this case as the dimension of the values would change).
     Returns:
        A new ragged tensor with one fewer axis than `src`.
        The vector of `ans.tot_sizes()` will be the same as `src.tot_sizes()`,
        but with element `axis` removed.
     '''
-    return _k2.remove_axis(src, axis)
+    if isinstance(src, _k2.RaggedShape):
+        return _k2.ragged_shape_remove_axis(src, axis)
+    else:
+        return _k2.ragged_int_remove_axis(src, axis)
 
 def to_list(src: _k2.RaggedInt) -> List:
     '''Turn a ragged tensor of ints into a List of Lists [of Lists..] of ints.
@@ -98,4 +103,4 @@ def to_list(src: _k2.RaggedInt) -> List:
     Returns:
        A list of list of ints containing the same elements and structure as `src`.
     '''
-    return _k2.to_list(src)
+    return _k2.ragged_int_to_list(src)

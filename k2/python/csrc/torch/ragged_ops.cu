@@ -15,9 +15,10 @@ namespace k2 {
 
 
 template <typename T>
-static void PybindRemoveAxis(py::module &m, const char *name) {
+static void PybindRaggedRemoveAxis(py::module &m, const char *name) {
   m.def(name, &RemoveAxis<T>, py::arg("src"), py::arg("axis"));
 }
+
 
 template <typename T>
 static void PybindRemoveValuesLeq(py::module &m, const char *name) {
@@ -56,7 +57,7 @@ py::list RaggedInt32ToList(Ragged<int32_t> &r, int32_t axis,
   return ans;
 };
 
-static void PybindToLists(py::module &m, const char *name) {
+static void PybindRaggedIntToList(py::module &m, const char *name) {
   m.def(name, [](Ragged<int32_t> &src) -> py::list {
       Ragged<int32_t> r = src.To(GetCpuContext());
       return RaggedInt32ToList(r, 0, 0, r.Dim0());
@@ -64,13 +65,13 @@ static void PybindToLists(py::module &m, const char *name) {
 }
 
 
-static void PybindRaggedOpsImpl(py::module &m) {
-  PybindRemoveAxis<int32_t>(m, "remove_axis");
-  PybindRemoveValuesLeq<int32_t>(m, "remove_values_leq");
-  PybindRemoveValuesEq<int32_t>(m, "remove_values_eq");
-  PybindToLists(m, "to_list");
-}
-
 }  // namespace k2
 
-void PybindRaggedOps(py::module &m) { k2::PybindRaggedOpsImpl(m); }
+void PybindRaggedOps(py::module &m) {
+  using namespace k2;
+  PybindRaggedRemoveAxis<int32_t>(m, "ragged_int_remove_axis");
+  PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
+  PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
+  PybindRaggedIntToList(m, "ragged_int_to_list");
+
+}

@@ -1,6 +1,7 @@
 import torch  # noqa
 from _k2 import RaggedInt
 from _k2 import simple_ragged_index_select
+
 from .autograd import get_tot_scores
 from .autograd import intersect_dense_pruned
 from .autograd import intersect_dense
@@ -26,9 +27,7 @@ from .ops import index_ragged_int
 from .ops import index_select
 from .ops import index_tensor
 from .ops import index_tensor_with_ragged_int
-from .ragged_shape import create_ragged_shape2
-from .ragged_shape import RaggedShape
-from .ragged_shape import random_ragged_shape
+from .ragged import RaggedShape
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
 from .utils import index
@@ -50,7 +49,6 @@ __all__ = [
     'connect',
     'convert_dense_to_fsa_vec',
     'create_fsa_vec',
-    'create_ragged_shape2',
     'determinize',
     'get_tot_scores',
     'index',
@@ -66,7 +64,6 @@ __all__ = [
     'is_rand_equivalent',
     'linear_fsa',
     'properties_to_str',
-    'random_ragged_shape',
     'remove_epsilon',
     'remove_epsilons_iterative_tropical',
     'shortest_path',
