@@ -9,11 +9,7 @@ import torch
 
 import k2
 import _k2
-
 from .fsa import Fsa
-from .ragged import index as ragged_index
-from .ops import index_select
-
 
 
 def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
@@ -29,13 +25,13 @@ def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
     Returns:
       Return an FsaVec containing only those FSAs specified by `indexes`.
     '''
-    ragged_arc, value_indexes = ragged_index(src.arcs,
-                                             indexes=indexes,
-                                             need_value_indexes=True)
+    ragged_arc, value_indexes = k2.ragged.index(src.arcs,
+                                                indexes=indexes,
+                                                need_value_indexes=True)
     out_fsa = Fsa(ragged_arc)
 
     for name, value in src.named_tensor_attr():
-        setattr(out_fsa, name, index_select(value, value_indexes))
+        setattr(out_fsa, name, k2.ops.index_select(value, value_indexes))
 
     for name, value in src.named_non_tensor_attr():
         setattr(out_fsa, name, value)
