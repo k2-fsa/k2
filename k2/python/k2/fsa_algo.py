@@ -426,9 +426,6 @@ def closure(fsa: Fsa) -> Fsa:
 def invert(fsa: Fsa) -> Fsa:
     '''Invert an FST, swapping the labels in the FSA with the auxiliary labels.
 
-    Noted this version only accepts fsa.aux_labels as RaggedInt, if it's a tensor,
-    you should call `fsa.invert_()` as it would be much cheaper.
-
     Caution:
       It only works on for CPU and doesn't support autograd.
 
@@ -438,6 +435,9 @@ def invert(fsa: Fsa) -> Fsa:
     Returns:
         The inverted Fsa, it's top-sorted if `fsa` is top-sorted. 
     '''
-    assert isinstance(fsa.aux_labels, _k2.RaggedInt)
-    ragged_arc, aux_labels = _k2.invert(fsa.arcs, fsa.aux_labels)
-    return Fsa(ragged_arc, aux_labels)
+    if isinstance(fsa.aux_labels, torch.Tensor):
+        return fsa.invert()
+    else:
+        assert isinstance(fsa.aux_labels, _k2.RaggedInt)
+        ragged_arc, aux_labels = _k2.invert(fsa.arcs, fsa.aux_labels)
+        return Fsa(ragged_arc, aux_labels)
