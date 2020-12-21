@@ -540,7 +540,7 @@ Ragged arrays
 -------------
 
 Ragged arrays are the **core** data structures in k2 designed
-by Daniel Povey `independently`. We were later told that TensorFlow
+by us `independently`. We were later told that TensorFlow
 was using the same ideas
 (See `tf.ragged <https://www.tensorflow.org/guide/ragged_tensor>`_).
 
@@ -693,9 +693,8 @@ time. For arc `i`, `row_ids[i]` tells the state number to which this arc belongs
 
 .. HINT::
 
-  `row_ids` and `row_splits` contain the same information. `row_ids` is provided to
-  make some operations faster.
-
+  `row_ids` and `row_splits` contain **nearly** the same information.
+  `row_ids` is provided to make some operations faster.
 
 Next we show how to represent an FsaVec with a ragged array in k2. Assume that
 the FsaVec contains two FSAs, one given in :numref:`ragged1` and the other is shown
