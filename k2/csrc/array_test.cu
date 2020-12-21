@@ -248,7 +248,7 @@ void TestArray1() {
       // copy data from CPU/GPU to CPU
       const T *array_data = array.Data();
       // data.size() == 5, array.Dim() == 8, there are 3 uninitialized elements.
-      for (int32_t i = 0; i < data.size(); ++i) {
+      for (int32_t i = 0; i < (int32_t)data.size(); ++i) {
         EXPECT_EQ(array[i], data[i]);
       }
     }
