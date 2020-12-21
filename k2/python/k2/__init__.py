@@ -2,6 +2,13 @@ import torch  # noqa
 from _k2 import RaggedInt
 from _k2 import simple_ragged_index_select
 
+from . import autograd
+from . import autograd_utils
+from . import dense_fsa_vec
+from . import fsa
+from . import ops
+from . import utils
+
 from .autograd import get_tot_scores
 from .autograd import intersect_dense_pruned
 from .autograd import intersect_dense
@@ -45,6 +52,7 @@ __all__ = [
     'RaggedShape',
     'add_epsilon_self_loops',
     'arc_sort',
+    'autograd_utils',
     'closure',
     'connect',
     'convert_dense_to_fsa_vec',

@@ -4,27 +4,20 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
+import k2
 from typing import Any
 from typing import Dict
 from typing import Iterator
 from typing import Optional
 from typing import Tuple
 from typing import Union
-from . import fsa_properties
-from .autograd_utils import phantom_set_scores_to
-from .ops import index_ragged_int
+from k2 import fsa_properties
 import os
 import shutil
 import torch
 import _k2
-
 from _k2 import RaggedArc
-from _k2 import _as_float
-from _k2 import _as_int
-from _k2 import _fsa_from_str
-from _k2 import _fsa_from_tensor
-from _k2 import _fsa_to_str
-from _k2 import _fsa_to_tensor
+
 
 
 class Fsa(object):
@@ -142,7 +135,7 @@ class Fsa(object):
           An instance of Fsa.
         '''
         if isinstance(arcs, torch.Tensor):
-            arcs: RaggedArc = _fsa_from_tensor(arcs)
+            arcs: RaggedArc = _k2.fsa_from_tensor(arcs)
         assert isinstance(arcs, RaggedArc)
 
         # Accessing self.__dict__ bypasses __setattr__.
@@ -167,45 +160,45 @@ class Fsa(object):
         # The `_cache` dict contains the following attributes:
         #
         #  - `state_batches`:
-        #           returned by :func:`_k2._get_state_batches`
+        #           returned by :func:`_k2.get_state_batches`
         #  - `dest_states`:
-        #           returned by :func:`_k2._get_dest_states`
+        #           returned by :func:`_k2.get_dest_states`
         #  - `incoming_arcs`:
-        #           returned by :func:`_k2._get_incoming_arcs`
+        #           returned by :func:`_k2.get_incoming_arcs`
         #  - `entering_arc_batches`:
-        #           returned by :func:`_k2._get_entering_arc_index_batches`
+        #           returned by :func:`_k2.get_entering_arc_index_batches`
         #  - `leaving_arc_batches`:
-        #           returned by :func:`_k2._get_leaving_arc_index_batches`
+        #           returned by :func:`_k2.get_leaving_arc_index_batches`
         #  - `forward_scores_tropical`:
-        #           returned by :func:`_k2._get_forward_scores_float`
+        #           returned by :func:`_k2.get_forward_scores_float`
         #           with `log_semiring=False`
         #  - `forward_scores_log`:
-        #           returned by :func:`_k2._get_forward_scores_float` or
+        #           returned by :func:`_k2.get_forward_scores_float` or
         #           :func:`_get_forward_scores_double` with `log_semiring=True`
         #  - `tot_scores_tropical`:
-        #           returned by :func:`_k2._get_tot_scores_float` or
-        #           :func:`_k2._get_tot_scores_double` with
+        #           returned by :func:`_k2.get_tot_scores_float` or
+        #           :func:`_k2.get_tot_scores_double` with
         #           `forward_scores_tropical`.
         #  - `tot_scores_log`:
-        #           returned by :func:`_k2._get_tot_scores_float` or
-        #           :func:`_k2._get_tot_scores_double` with
+        #           returned by :func:`_k2.get_tot_scores_float` or
+        #           :func:`_k2.get_tot_scores_double` with
         #           `forward_scores_log`.
         #  - `backward_scores_tropical`:
-        #           returned by :func:`_k2._get_backward_scores_float` or
-        #           :func:`_k2._get_backward_scores_double` with
+        #           returned by :func:`_k2.get_backward_scores_float` or
+        #           :func:`_k2.get_backward_scores_double` with
         #           `log_semiring=False`
         #  - `backward_scores_log_semiring`:
-        #           returned by :func:`_k2._get_backward_scores_float` or
-        #           :func:`_k2._get_backward_scores_double` with
+        #           returned by :func:`_k2.get_backward_scores_float` or
+        #           :func:`_k2.get_backward_scores_double` with
         #           `log_semiring=True`
         #  - `entering_arcs`:
-        #           returned by :func:`_k2._get_forward_scores_float` or
+        #           returned by :func:`_k2.get_forward_scores_float` or
         #           :func:`_get_forward_scores_double` with `log_semiring=False`
 
         for name in ['_tensor_attr', '_non_tensor_attr', '_cache']:
             self.__dict__[name] = dict()
 
-        self._tensor_attr['scores'] = _as_float(self.arcs.values()[:, -1])
+        self._tensor_attr['scores'] = _k2.as_float(self.arcs.values()[:, -1])
         if aux_labels is not None:
             if isinstance(aux_labels, torch.Tensor):
                 self.aux_labels = aux_labels.to(torch.int32)
@@ -228,14 +221,14 @@ class Fsa(object):
         else:
             aux_labels = None
         if self.arcs.num_axes() == 2:
-            ans = 'k2.Fsa: ' + _fsa_to_str(self.arcs, False, aux_labels)
+            ans = 'k2.Fsa: ' + _k2.fsa_to_str(self.arcs, False, aux_labels)
         else:
             ans = 'k2.FsaVec: \n'
             for i in range(self.shape[0]):
                 # get the i-th Fsa
                 ragged_arc, start = self.arcs.index(0, i)
                 end = start + ragged_arc.values().shape[0]
-                ans += 'FsaVec[' + str(i) + ']: ' + _fsa_to_str(
+                ans += 'FsaVec[' + str(i) + ']: ' + _k2.fsa_to_str(
                     ragged_arc, False,
                     None if aux_labels is None else aux_labels[start:end])
         ans += 'properties_str = ' + _k2.fsa_properties_as_str(
@@ -266,9 +259,8 @@ class Fsa(object):
            title:
               Title to be displayed in image, e.g. 'A simple FSA example'
         '''
-        from .utils import to_dot
 
-        digraph = to_dot(self, title=title)
+        digraph = k2.utils.to_dot(self, title=title)
 
         _, extension = os.path.splitext(filename)
         if extension == '' or extension[0] != '.':
@@ -316,7 +308,7 @@ class Fsa(object):
                 assert value.dtype == torch.float32
                 # NOTE: we **reinterpret** the float patterns
                 # to integer patterns here.
-                self.arcs.values()[:, -1] = _as_int(value.detach())
+                self.arcs.values()[:, -1] = _k2.as_int(value.detach())
         elif isinstance(value, _k2.RaggedInt):
             assert value.dim0() == self.arcs.values().shape[0]
             self._tensor_attr[name] = value
@@ -427,7 +419,7 @@ class Fsa(object):
            For use by internal k2 code.  Used in many algorithms.'''
         name, cache = 'state_batches', self._cache
         if name not in cache:
-            cache[name] = _k2._get_state_batches(self.arcs, transpose=True)
+            cache[name] = _k2.get_state_batches(self.arcs, transpose=True)
         return cache[name]
 
     def get_dest_states(self) -> torch.Tensor:
@@ -435,7 +427,7 @@ class Fsa(object):
            For use by internal k2 code, relates to best-path.'''
         name, cache = 'dest_states', self._cache
         if name not in cache:
-            cache[name] = _k2._get_dest_states(self.arcs, as_idx01=True)
+            cache[name] = _k2.get_dest_states(self.arcs, as_idx01=True)
         return cache[name]
 
     def get_incoming_arcs(self) -> _k2.RaggedInt:
@@ -443,7 +435,7 @@ class Fsa(object):
            For use by internal k2 code, relates to best-path'''
         name, cache = 'incoming_arcs', self._cache
         if name not in cache:
-            cache[name] = _k2._get_incoming_arcs(self.arcs,
+            cache[name] = _k2.get_incoming_arcs(self.arcs,
                                                  self.get_dest_states())
         return cache[name]
 
@@ -452,7 +444,7 @@ class Fsa(object):
            For use by internal k2 code, used in many algorithms.'''
         name, cache = 'entering_arc_batches', self._cache
         if name not in cache:
-            cache[name] = _k2._get_entering_arc_index_batches(
+            cache[name] = _k2.get_entering_arc_index_batches(
                 self.arcs,
                 incoming_arcs=self.get_incoming_arcs(),
                 state_batches=self.get_state_batches())
@@ -463,7 +455,7 @@ class Fsa(object):
            For use by internal k2 code, used in many algorithms.'''
         name, cache = 'leaving_arc_batches', self._cache
         if name not in cache:
-            cache[name] = _k2._get_leaving_arc_index_batches(
+            cache[name] = _k2.get_leaving_arc_index_batches(
                 self.arcs, self.get_state_batches())
         return cache[name]
 
@@ -485,9 +477,9 @@ class Fsa(object):
         cache = self._cache
         if name not in cache:
             if use_double_scores:
-                func = _k2._get_forward_scores_double
+                func = _k2.get_forward_scores_double
             else:
-                func = _k2._get_forward_scores_float
+                func = _k2.get_forward_scores_float
             forward_scores_tropical, entering_arcs = func(
                 self.arcs,
                 state_batches=self.get_state_batches(),
@@ -514,9 +506,9 @@ class Fsa(object):
         cache = self._cache
         if name not in cache:
             if use_double_scores:
-                func = _k2._get_forward_scores_double
+                func = _k2.get_forward_scores_double
             else:
-                func = _k2._get_forward_scores_float
+                func = _k2.get_forward_scores_float
             cache[name], _ = func(
                 self.arcs,
                 state_batches=self.get_state_batches(),
@@ -542,9 +534,9 @@ class Fsa(object):
         cache = self._cache
         if name not in cache:
             if use_double_scores is True:
-                func = _k2._get_tot_scores_double
+                func = _k2.get_tot_scores_double
             else:
-                func = _k2._get_tot_scores_float
+                func = _k2.get_tot_scores_float
             forward_scores_tropical = self.get_forward_scores_tropical(
                 use_double_scores)
             cache[name] = func(self.arcs, forward_scores_tropical)
@@ -567,9 +559,9 @@ class Fsa(object):
         cache = self._cache
         if name not in cache:
             if use_double_scores is True:
-                func = _k2._get_tot_scores_double
+                func = _k2.get_tot_scores_double
             else:
-                func = _k2._get_tot_scores_float
+                func = _k2.get_tot_scores_float
             forward_scores_log = self.get_forward_scores_log(use_double_scores)
             cache[name] = func(self.arcs, forward_scores_log)
         return cache[name]
@@ -589,9 +581,9 @@ class Fsa(object):
         cache = self._cache
         if name not in cache:
             if use_double_scores:
-                func = _k2._get_backward_scores_double
+                func = _k2.get_backward_scores_double
             else:
-                func = _k2._get_backward_scores_float
+                func = _k2.get_backward_scores_float
 
             state_batches = self.get_state_batches()
             leaving_arc_batches = self.get_leaving_arc_batches()
@@ -620,9 +612,9 @@ class Fsa(object):
         cache = self._cache
         if name not in cache:
             if use_double_scores:
-                func = _k2._get_backward_scores_double
+                func = _k2.get_backward_scores_double
             else:
-                func = _k2._get_backward_scores_float
+                func = _k2.get_backward_scores_float
 
             state_batches = self.get_state_batches()
             leaving_arc_batches = self.get_leaving_arc_batches()
@@ -771,14 +763,14 @@ class Fsa(object):
                                        end,
                                        dtype=torch.int32,
                                        device=self.device)
-                setattr(out_fsa, name, index_ragged_int(value, indexes))
+                setattr(out_fsa, name, k2.ops.index_ragged_int(value, indexes))
 
         for name, value in self.named_non_tensor_attr():
             setattr(out_fsa, name, value)
 
         # The following is a magic invocation to make sure
         # the backprop on the scores happens.
-        phantom_set_scores_to(out_fsa, self.scores[start:end])
+        k2.autograd_utils.phantom_set_scores_to(out_fsa, self.scores[start:end])
 
         return out_fsa
 
@@ -789,7 +781,7 @@ class Fsa(object):
            A more convenient way to serialize a Tensor is to use `as_dict`
            and `from_dict`
         '''
-        return _fsa_to_tensor(self.arcs)
+        return _k2.fsa_to_tensor(self.arcs)
 
     def as_dict(self) -> Dict[str, Any]:
         '''Convert this Fsa to a dict (probably for purposes of serialization
@@ -802,7 +794,7 @@ class Fsa(object):
           `Fsa.from_dict`.
         '''
         ans = dict()
-        ans['arcs'] = _fsa_to_tensor(self.arcs)
+        ans['arcs'] = _k2.fsa_to_tensor(self.arcs)
 
         for name, value in self.named_tensor_attr(include_scores=False):
             ans[name] = value
@@ -855,7 +847,7 @@ class Fsa(object):
 
         # The following is a magic invocation to make sure
         # the backprop happens.
-        phantom_set_scores_to(ans, self.scores.to(device))
+        k2.autograd_utils.phantom_set_scores_to(ans, self.scores.to(device))
 
         return ans
 
@@ -884,7 +876,7 @@ class Fsa(object):
 
         # The following is a magic invocation to make sure
         # the backprop happens.
-        phantom_set_scores_to(ans, self.scores)
+        k2.autograd_utils.phantom_set_scores_to(ans, self.scores)
 
         return ans
 
@@ -994,7 +986,7 @@ class Fsa(object):
         assert len(fields) == 4 or len(fields) == 5
         if len(fields) == 5:
             acceptor = False
-        arcs, aux_labels = _fsa_from_str(s, acceptor, False)
+        arcs, aux_labels = _k2.fsa_from_str(s, acceptor, False)
         ans = Fsa(arcs, aux_labels=aux_labels)
         return ans
 
@@ -1030,5 +1022,5 @@ class Fsa(object):
             Optional. If true, interpret the input string as an acceptor;
             otherwise, interpret it as a transducer.
         '''
-        arcs, aux_labels = _fsa_from_str(s, acceptor, True)
+        arcs, aux_labels = _k2.fsa_from_str(s, acceptor, True)
         return Fsa(arcs, aux_labels=aux_labels)

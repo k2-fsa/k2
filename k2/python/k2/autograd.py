@@ -5,9 +5,9 @@ from typing import List, Tuple
 
 import torch
 import _k2
+import k2
 
 from .fsa import Fsa
-from .ops import index_attr
 from .dense_fsa_vec import DenseFsaVec
 
 
@@ -68,10 +68,10 @@ class _GetTotScoresFunction(torch.autograd.Function):
             entering_arcs = fsas.get_entering_arcs(use_double_scores)
             _, ragged_int = _k2.shortest_path(fsas.arcs, entering_arcs)
             if use_double_scores:
-                out_grad = _k2._get_tot_scores_double_tropical_backward(
+                out_grad = _k2.get_tot_scores_double_tropical_backward(
                     fsas.arcs, ragged_int, tot_scores_grad)
             else:
-                out_grad = _k2._get_tot_scores_float_tropical_backward(
+                out_grad = _k2.get_tot_scores_float_tropical_backward(
                     fsas.arcs, ragged_int, tot_scores_grad)
             # We return four values since the `forward` method accepts four
             # arguments (excluding ctx).
@@ -81,11 +81,11 @@ class _GetTotScoresFunction(torch.autograd.Function):
             forward_scores = fsas.get_forward_scores_log(use_double_scores)
             backward_scores = fsas.get_backward_scores_log(use_double_scores)
             if use_double_scores:
-                func = _k2._get_arc_scores_double
-                bprop_func = _k2._get_tot_scores_double_log_backward
+                func = _k2.get_arc_scores_double
+                bprop_func = _k2.get_tot_scores_double_log_backward
             else:
-                func = _k2._get_arc_scores_float
-                bprop_func = _k2._get_tot_scores_float_log_backward
+                func = _k2.get_arc_scores_float
+                bprop_func = _k2.get_tot_scores_float_log_backward
 
             arc_scores = func(fsas=fsas.arcs,
                               forward_scores=forward_scores,
@@ -154,7 +154,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
-            value = index_attr(a_value, arc_map_a)
+            value = k2.index_attr(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():
@@ -247,7 +247,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
-            value = index_attr(a_value, arc_map_a)
+            value = k2.index_attr(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():
@@ -308,7 +308,7 @@ class _UnionFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, value in fsas.named_tensor_attr(include_scores=False):
-            value = index_attr(value, arc_map)
+            value = k2.index_attr(value, arc_map)
             setattr(out_fsa[0], name, value)
 
         for name, value in fsas.named_non_tensor_attr():

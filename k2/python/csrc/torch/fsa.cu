@@ -48,7 +48,7 @@ static void PybindFsaUtil(py::module &m) {
   // TODO(fangjun): add docstring in Python describing
   // the format of the input tensor when it is a FsaVec.
   m.def(
-      "_fsa_from_tensor",
+      "fsa_from_tensor",
       [](torch::Tensor tensor) -> FsaOrVec {
         auto k2_tensor = FromTensor(tensor, TensorTag{});
         bool error = true;
@@ -68,7 +68,7 @@ static void PybindFsaUtil(py::module &m) {
       py::arg("tensor"));
 
   m.def(
-      "_fsa_to_tensor",
+      "fsa_to_tensor",
       [](const FsaOrVec &fsa) -> torch::Tensor {
         if (fsa.NumAxes() == 2) {
           Tensor tensor = FsaToTensor(fsa);
@@ -84,7 +84,7 @@ static void PybindFsaUtil(py::module &m) {
       py::arg("fsa"));
 
   m.def(
-      "_fsa_to_str",
+      "fsa_to_str",
       [](Fsa &fsa, bool openfst = false,
          torch::optional<torch::Tensor> aux_labels =
              torch::nullopt) -> std::string {
@@ -97,7 +97,7 @@ static void PybindFsaUtil(py::module &m) {
       py::arg("aux_labels") = py::none());
 
   m.def(
-      "_fsa_from_str",
+      "fsa_from_str",
       [](const std::string &s, bool acceptor = true, bool openfst = false)
           -> std::pair<Fsa, torch::optional<torch::Tensor>> {
         Array1<int32_t> aux_labels;
@@ -113,24 +113,24 @@ static void PybindFsaUtil(py::module &m) {
       "returned FSA is an acceptor");
 
   // the following methods are for debugging only
-  m.def("_fsa_to_fsa_vec", &FsaToFsaVec, py::arg("fsa"));
+  m.def("fsa_to_fsa_vec", &FsaToFsaVec, py::arg("fsa"));
 
-  m.def("_get_fsa_vec_element", &GetFsaVecElement, py::arg("vec"),
+  m.def("get_fsa_vec_element", &GetFsaVecElement, py::arg("vec"),
         py::arg("i"));
 
   m.def(
-      "_create_fsa_vec",
+      "create_fsa_vec",
       [](std::vector<Fsa *> &fsas) -> FsaVec {
         return CreateFsaVec(fsas.size(), fsas.data());
       },
       py::arg("fsas"));
 
   // returns Ragged<int32_t>
-  m.def("_get_state_batches", &GetStateBatches, py::arg("fsas"),
+  m.def("get_state_batches", &GetStateBatches, py::arg("fsas"),
         py::arg("transpose") = true);
 
   m.def(
-      "_get_dest_states",
+      "get_dest_states",
       [](FsaVec &fsas, bool as_idx01) -> torch::Tensor {
         Array1<int32_t> ans = GetDestStates(fsas, as_idx01);
         return ToTensor(ans);
@@ -138,7 +138,7 @@ static void PybindFsaUtil(py::module &m) {
       py::arg("fsas"), py::arg("as_idx01"));
 
   m.def(
-      "_get_incoming_arcs",
+      "get_incoming_arcs",
       [](FsaVec &fsas, torch::Tensor dest_states) -> Ragged<int32_t> {
         Array1<int32_t> dest_states_array = FromTensor<int32_t>(dest_states);
         return GetIncomingArcs(fsas, dest_states_array);
@@ -146,15 +146,15 @@ static void PybindFsaUtil(py::module &m) {
       py::arg("fsas"), py::arg("dest_states"));
 
   // returns Ragged<int32_t>
-  m.def("_get_entering_arc_index_batches", &GetEnteringArcIndexBatches,
+  m.def("get_entering_arc_index_batches", &GetEnteringArcIndexBatches,
         py::arg("fsas"), py::arg("incoming_arcs"), py::arg("state_batches"));
 
   // returns Ragged<int32_t>
-  m.def("_get_leaving_arc_index_batches", &GetLeavingArcIndexBatches,
+  m.def("get_leaving_arc_index_batches", &GetLeavingArcIndexBatches,
         py::arg("fsas"), py::arg("state_batches"));
 
   m.def(
-      "_is_rand_equivalent",
+      "is_rand_equivalent",
       [](FsaOrVec &a, FsaOrVec &b, bool log_semiring,
          float beam = k2host::kFloatInfinity,
          bool treat_epsilons_specially = true, float delta = 1e-6,
@@ -435,20 +435,20 @@ void PybindFsa(py::module &m) {
   k2::PybindDenseFsaVec(m);
   k2::PybindConvertDenseToFsaVec(m);
   k2::PybindFsaBasicProperties(m);
-  k2::PybindGetForwardScores<float>(m, "_get_forward_scores_float");
-  k2::PybindGetForwardScores<double>(m, "_get_forward_scores_double");
-  k2::PybindGetBackwardScores<float>(m, "_get_backward_scores_float");
-  k2::PybindGetBackwardScores<double>(m, "_get_backward_scores_double");
-  k2::PybindGetTotScores<float>(m, "_get_tot_scores_float");
-  k2::PybindGetTotScores<double>(m, "_get_tot_scores_double");
-  k2::PybindGetArcScores<float>(m, "_get_arc_scores_float");
-  k2::PybindGetArcScores<double>(m, "_get_arc_scores_double");
+  k2::PybindGetForwardScores<float>(m, "get_forward_scores_float");
+  k2::PybindGetForwardScores<double>(m, "get_forward_scores_double");
+  k2::PybindGetBackwardScores<float>(m, "get_backward_scores_float");
+  k2::PybindGetBackwardScores<double>(m, "get_backward_scores_double");
+  k2::PybindGetTotScores<float>(m, "get_tot_scores_float");
+  k2::PybindGetTotScores<double>(m, "get_tot_scores_double");
+  k2::PybindGetArcScores<float>(m, "get_arc_scores_float");
+  k2::PybindGetArcScores<double>(m, "get_arc_scores_double");
   k2::PybindGetTotScoresTropicalBackward<float>(
-      m, "_get_tot_scores_float_tropical_backward");
+      m, "get_tot_scores_float_tropical_backward");
   k2::PybindGetTotScoresTropicalBackward<double>(
-      m, "_get_tot_scores_double_tropical_backward");
+      m, "get_tot_scores_double_tropical_backward");
   k2::PybindGetTotScoresLogBackward<float>(
-      m, "_get_tot_scores_float_log_backward");
+      m, "get_tot_scores_float_log_backward");
   k2::PybindGetTotScoresLogBackward<double>(
-      m, "_get_tot_scores_double_log_backward");
+      m, "get_tot_scores_double_log_backward");
 }
