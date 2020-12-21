@@ -37,4 +37,5 @@ development of ASR technology.
 
    installation
    core_concepts/index
+   python_tutorials/index
    python_api/index
