@@ -536,6 +536,220 @@ To construct a vector of dense FSAs,  you can either:
 Please refer to the constructor of :func:`k2.DenseFsaVec.__init__`
 to gain more insight.
 
+Ragged arrays
+-------------
+
+Ragged arrays are the **core** data structures in k2 designed
+by Daniel Povey `independently`. We were later told that TensorFlow
+was using the same ideas
+(See `tf.ragged <https://www.tensorflow.org/guide/ragged_tensor>`_).
+
+Before describing what ragged arrays are. Let us first revisit how
+compressed sparse row matrices
+(`CSR matrices <https://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_row_(CSR,_CRS_or_Yale_format)>`_)
+are represented.
+
+For the `following matrix <https://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_row_(CSR,_CRS_or_Yale_format)>`_:
+
+
+.. math::
+
+  \begin{pmatrix}
+  5 & 0 & 0 & 0 \\
+  0 & 8 & 0 & 0 \\
+  0 & 0 & 3 & 0 \\
+  0 & 6 & 0 & 0 \\
+  \end{pmatrix}
+
+It can be represented by 3 arrays in CSR format:
+
+  - `values      = [5, 8, 3, 6]`
+  - `col_indexes = [0, 1, 2, 1]`
+  - `row_indexes = [0, 1, 2, 3, 4]`
+
+where `values` contains the non-zero entries of the matrix (row-by-row).
+`col_indexes` contains the column indexes of the non-zero entries in `values`.
+
+For instance:
+
+  - `values[0] = 5` belongs to column 0, so `col_indexes[0] = 0`
+  - `values[1] = 8` belongs to column 1, so `col_indexes[1] = 1`
+  - `values[3] = 6` belongs to column 1, so `col_indexes[3] = 1`
+
+Note that `values` and `col_indexes` have the same number of elements.
+
+The most interesting part is `row_indexes`. It is **NOT** the row indexes
+of the non-zero entries in `values`. Instead, it encodes the index in `values`
+and `col_indexes` where the given row starts.
+
+- `row_indexes[0] = 0`, so the entries for row 0 start at index 0 in `values`
+
+    - `values[0] = 5` is the first entry for row 0
+
+- `row_indexes[1] = 1`, so the entries for row 1 start at index 1 in `values`
+
+    - `values[1] = 8` is the first entry for row 1
+
+- `row_indexes[2] = 2`, so the entries for row 2 start at index 2 in `values`
+
+    - `values[2] = 3` is the first entry for row 2
+
+- `row_indexes[3] = 3`, so the entries for row 3 start at index 3 in `values`
+
+    - `values[3] = 6` is the first entry for row 3
+
+.. Caution::
+
+     Why is `row_indexes[4] = 4`?
+
+`row_indexes[3]` specifies where row 3 starts, whereas `row_indexes[4]` indicates
+where row 3 ends.
+
+The above matrix contains one non-zero entries for each row. Let us see a more
+general matrix:
+
+.. math::
+
+  \begin{pmatrix}
+  10 & 20 &  0 &  0 &  0 &  0 \\
+   0 & 30 &  0 & 40 &  0 &  0 \\
+   0 &  0 & 50 & 60 & 70 &  0 \\
+   0 &  0 &  0 &  0 &  0 & 80 \\
+  \end{pmatrix}
+
+
+The 3 arrays for the above matrix in CSR format look like:
+
+  - `values      = [10, 20, 30, 40, 50, 60, 70, 80]`
+  - `col_indexes = [ 0,  1,  1,  3,  2,  3,  4, 5]`
+  - `row_indexes = [0, 2, 4, 7, 8]`
+
+**Explanation**:
+  - `values` contains the non-zero entries of the matrix
+  - `values[0] = 10` belongs to column 0, so `col_indexes[0] = 0`
+  - `values[7] = 80` belongs to column 5, so `col_indexes[7] = 5`
+  - The first entry of row 0 is 10 which is the index 0 in `values`, so `row_indexes[0] = 0`
+  - The first entry of row 1 is 30 which is the index 2 in `values`, so `row_indexes[1] = 2`
+  - The first entry of row 2 is 50 which is the index 4 in `values`, so `row_indexes[2] = 4`
+  - The first entry of row 3 is 80 which is the index 7 in `values`, so `row_indexes[3] = 7`
+  - Row 3 contains only 1 element, so `row_indexes[4] = row_indexes[3] + 1 = 8`
+
+.. Hint::
+
+    We summarize the characteristics of ``row_indexes`` below:
+
+      - It is non-decreasing
+      - Its last entry denotes the number of non-zero entries in the matrix
+      - Its size is `num_rows + 1`
+      - `row_indexes[i+1] - row_indexes[i]` gives the number of non-zero entries in row i
+      - Row `i` contains all zeros if `row_indexes[i+1] == row_indexes[i]`
+
+Now we come back to ragged arrays in k2.
+
+In k2, `row_indexes` is called `row_splits`, compatible with TensorFlow's `RaggedTensor`.
+
+For the following FSA:
+
+.. _ragged1:
+.. figure:: images/ragged.svg
+    :alt: A simple FSA
+    :align: center
+    :figwidth: 600px
+
+    An example FSA.
+
+It is represented in k2 by two arrays:
+
+  - `values = [arc0, arc1, arc2, arc3, arc4, arc5, arc6]`
+  - `row_splits = [0, 3, 4, 6, 7, 7]`
+
+      - Here `arc0` is an instance of C++ class ``Arc``.
+
+`values` saves all of the arcs ordered by state numbers in the FSA.
+
+`row_splits[i]` specifies the where arcs of state `i` begin in the array `values`.
+
+  - `row_splits[0] = 0`, the arcs of state 0 begin at index 0 in `values`
+  - `row_splits[1] = 3`, the arcs of state 1 begin at index 3 in `values`
+  - `row_splits[2] = 4`, the arcs of state 2 begin at index 4 in `values`
+  - `row_splits[3] = 6`, the arcs of state 3 begin at index 6 in `values`
+  - `row_splits` contains 6 entries, so the number of states is `6 - 1 = 5`
+  - The last entry of `row_splits` is 7, so there are 7 arcs in the FSA
+  - `row_splits[1] - row_splits[0] = 3`, so state 0 has 3 arcs
+  - `row_splits[2] - row_splits[1] = 1`, so state 1 has 1 arc
+  - `row_splits[3] - row_splits[2] = 2`, so state 2 has 2 arcs
+  - `row_splits[4] - row_splits[3] = 1`, so state 3 has 1 arc
+  - `row_splits[5] - row_splits[4] = 0`, so state 4 has no arcs at all
+
+**Question**
+  To which state does arc `i` belong?
+
+The above question can be answered in `O(n)` time, where `n` is the number of states,
+by iterating over `row_splits`.
+
+In `k2`, an extra array called `row_ids` is provided to implement such tasks in `O(1)`
+time. For arc `i`, `row_ids[i]` tells the state number to which this arc belongs.
+
+
+.. HINT::
+
+  `row_ids` and `row_splits` contain the same information. `row_ids` is provided to
+  make some operations faster.
+
+
+Next we show how to represent an FsaVec with a ragged array in k2. Assume that
+the FsaVec contains two FSAs, one given in :numref:`ragged1` and the other is shown
+in :numref:`ragged2`:
+
+.. _ragged2:
+.. figure:: images/ragged2.svg
+    :alt: A simple FSA
+    :align: center
+    :figwidth: 600px
+
+    The second FSA in the FsaVec.
+
+The `values` array is: `[arc0, arc1, arc2, arc3, arc4, arc5, arc6, arc7, arc8, arc9, arc10]`.
+
+There are two `row_splits` arrays:
+
+  - `row_splits1` is `[0, 5, 9]`
+
+    - `row_splits1[0]` indicates the index into `row_splits2` where the state of FSA 0 begins
+    - `row_splits1[1]` indicates the index into `row_splits2` where the state of FSA 1 begins
+    - `row_splits1[2] - row_splits1[1]` is the number of states in FSA 1, which is 4
+    - `row_splits1[1] - row_splits1[0]` is the number of states in FSA 0, which is 5
+    - The last entry in `row_splits1` is 9, so there are 9 states in total in the FsaVec
+    - The size of `row_splits1` is 3, so there are `3 - 1 = 2` FSAs in the FsaVec
+
+  - `row_splits2` is `[0, 3, 4, 6, 7, 7, 8, 10, 11, 11]`
+
+    - Since `row_splits1[0] = 0` and `row_splits1[1] = 5`, `row_splits2[0]` to `row_splits2[5]`
+      represent the information of FSA 0
+
+        - `row_splits2[0]` is 0, indicating the arcs of state 0 in FSA 0 begin at index 0 in `values`
+        - `row_splits2[1]` is 3, indicating the arcs of state 1 in FSA 0 begin at index 3 in `values`
+        - `row_splits2[4]` is 7, indicating the arcs of state 4 in FSA 0 begin at index 7 in `values`
+        - `row_splits2[5] - row_splits2[4] = 7 - 7` is 0, indicating the number of arcs of state 4 in FSA 0 is 0
+
+    - Since `row_splits1[1] = 5` and `row_splits1[2] = 9`, `row_splits2[5]` to `row_splits2[9]`
+      represent the information of FSA 1
+
+        - `row_splits2[5]` is 7, indicating the arcs of state 0 in FSA 1 begin at index 7 in `values`
+        - `row_splits2[6]` is 8, indicating the arcs of state 1 in FSA 1 begin at index 8 in `values`
+        - `row_splits2[7]` is 10, indicating the arcs of state 2 in FSA 1 begin at index 10 in `values`
+        - `row_splits2[9] - row_splits2[8] = 11 - 11` is 0, indicating the number of arcs of state 3 in FSA 1 is 0
+
+**Summary**
+  - FSA and FsaVec are represented as ragged arrays in k2
+  - With ragged arrays, it's straightforward to get the following
+    information with no loops:
+
+    - Number of states in the FSA
+    - Number of arcs in the FSA
+    - Number of arcs of a certain state in the FSA
+    - To which state arc `i` belongs
+
 References
 ----------
 
