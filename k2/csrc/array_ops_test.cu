@@ -149,7 +149,7 @@ void CheckExclusiveSumArray1Result(const std::vector<S> &src_data,
   std::vector<T> expected_data(dest.Dim());
   ComputeExclusiveSum(src_data, &expected_data);
   ASSERT_EQ(dest_data.size(), expected_data.size());
-  for (auto i = 0; i != dest_data.size(); ++i) {
+  for (size_t i = 0; i != dest_data.size(); ++i) {
     EXPECT_EQ(dest_data[i], expected_data[i]);
   }
 }
@@ -269,7 +269,7 @@ void ComputeExclusiveSumArray2(const std::vector<T> &src, int32_t dest_rows,
   if (axis == 0) {
     if (dst.size() > src.size()) {
       // dst.rows == src.rows + 1
-      K2_CHECK_EQ(src.size(), dest_cols * (dest_rows - 1));
+      K2_CHECK_EQ((int32_t)src.size(), dest_cols * (dest_rows - 1));
     }
     for (int32_t j = 0; j != dest_cols; ++j) {
       T sum = T(0);
@@ -286,7 +286,7 @@ void ComputeExclusiveSumArray2(const std::vector<T> &src, int32_t dest_rows,
     int32_t src_cols = dest_cols;
     if (dst.size() > src.size()) {
       // dst.cols == src.cols + 1
-      K2_CHECK_EQ(src.size(), dest_rows * (dest_cols - 1));
+      K2_CHECK_EQ((int32_t)src.size(), dest_rows * (dest_cols - 1));
       src_cols = dest_cols - 1;
     }
     for (int32_t i = 0; i != dest_rows; ++i) {

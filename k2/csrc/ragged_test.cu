@@ -362,7 +362,7 @@ void TestUnsqueeze(const RaggedShape &input_shape) {
       }
 
       {
-        for (auto i = 0; i != src_axes.size(); ++i) {
+        for (size_t i = 0; i != src_axes.size(); ++i) {
           CheckArrayData(src_axes[i].row_splits, dest_axes[i + 1].row_splits);
           CheckArrayData(src_axes[i].row_ids, dest_axes[i + 1].row_ids);
         }
@@ -378,7 +378,7 @@ void TestUnsqueeze(const RaggedShape &input_shape) {
       const std::vector<RaggedShapeLayer> &dest_axes = shape.Layers();
 
       {
-        for (auto i = 0; i < axis; ++i) {
+        for (int32_t i = 0; i < axis; ++i) {
           CheckArrayData(src_axes[i].row_splits, dest_axes[i].row_splits);
           CheckArrayData(src_axes[i].row_ids, dest_axes[i].row_ids);
         }

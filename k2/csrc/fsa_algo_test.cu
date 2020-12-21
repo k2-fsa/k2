@@ -19,6 +19,109 @@
 #include "k2/csrc/test_utils.h"
 
 namespace k2 {
+
+
+
+TEST(FsaAlgo, TestExpandArcsA) {
+  FsaVec fsa1("[ [ [ ] [ ] ] ]");
+  RaggedShape labels_shape("[]");
+  FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape,
+                                    nullptr, nullptr);
+  K2_CHECK(Equal(fsa1_expanded, fsa1));
+}
+
+
+TEST(FsaAlgo, TestExpandArcsB) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec fsa1(c, "[ [ [ 0  1  -1  0.0  ] [ ] ] ]");
+    RaggedShape labels_shape(c, "[ [ x ] ]");
+    Array1<int32_t> fsa_arc_map, labels_arc_map;
+    FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape,
+                                      &fsa_arc_map, &labels_arc_map);
+
+    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 ]"),
+        labels_arc_map_ref(c, "[ 0 ]");
+    K2_CHECK(Equal(fsa1_expanded, fsa1));
+    K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
+    K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
+  }
+}
+
+
+TEST(FsaAlgo, TestExpandArcsC) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec fsa1(c, "[ [ [ 0  1  -1  2.0  ] [ ] ] ]");
+    RaggedShape labels_shape(c, "[ [ x x ] ]");
+    Array1<int32_t> fsa_arc_map, labels_arc_map;
+    FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape,
+                                      &fsa_arc_map, &labels_arc_map);
+    K2_LOG(INFO) << "fsa1_expanded = " << fsa1_expanded;
+    FsaVec fsa1_expanded_ref(c, "[ [ [ 0  1 0 2.0 ] [ 1 2 -1 0.0 ] [ ] ] ]");
+
+
+    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 -1 ]"),
+        labels_arc_map_ref(c, "[ 0 1 ]");
+    K2_CHECK(Equal(fsa1_expanded, fsa1_expanded_ref));
+    K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
+    K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
+  }
+}
+
+
+TEST(FsaAlgo, TestExpandArcsD) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec fsa1(c, "[ [ [ 0  1  -1  2.0  0 1 -1 1.0 ] [ ] ] ]");
+    RaggedShape labels_shape(c, "[ [ x x ] [ x ] ]");
+    Array1<int32_t> fsa_arc_map, labels_arc_map;
+    FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape,
+                                      &fsa_arc_map, &labels_arc_map);
+    K2_LOG(INFO) << "fsa1_expanded = " << fsa1_expanded;
+    FsaVec fsa1_expanded_ref(c, "[ [ [ 0  1 0 2.0  0 2 -1 1.0 ] [ 1 2 -1 0.0 ] [ ] ] ]");
+
+    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 1 -1 ]"),
+        labels_arc_map_ref(c, "[ 0 2 1 ]");
+
+    K2_LOG(INFO) << "labels_arc_map = " << labels_arc_map
+                 << ", fsa_arc_map = " << fsa_arc_map;
+
+    K2_CHECK(Equal(fsa1_expanded, fsa1_expanded_ref));
+    K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
+    K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
+  }
+}
+
+
+TEST(FsaAlgo, TestExpandArcsRandom) {
+  int32_t min_num_fsas = 1;
+  int32_t max_num_fsas = 100;
+  bool acyclic = true;  // so IsRandEquivalent() can work.
+  int32_t max_symbol = 100;
+  int32_t min_num_arcs = max_num_fsas * 2;
+  int32_t max_num_arcs = 10000;
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i < 4; i++) {
+      FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                                 min_num_arcs, max_num_arcs).To(context);
+      int32_t num_arcs = fsas.NumElements();
+      Array1<int32_t> rand = RandUniformArray1(context, num_arcs + 1, 0, 4);
+      ExclusiveSum(rand, &rand);
+      RaggedShape labels_shape = RaggedShape2(&rand, nullptr, -1);
+      Array1<int32_t> fsa_arc_map,
+          labels_arc_map;
+      FsaVec fsas_expanded = ExpandArcs(fsas, labels_shape,
+                                        &fsa_arc_map, &labels_arc_map);
+      // note: by default, IsRandEquivalent() does treat epsilons specially, which
+      // is what we want.
+      K2_CHECK(IsRandEquivalent(fsas, fsas_expanded, false));
+      //K2_LOG(INFO) << "fsa_arc_map = " << fsa_arc_map
+      ///                   << ", labels_arc_map = " << labels_arc_map;
+    }
+  }
+}
+
+
+
+
 TEST(ArcSort, EmptyFsa) {
   Fsa fsa;
   ArcSort(&fsa);
@@ -400,11 +503,11 @@ TEST(FsaAlgo, Union) {
 
 TEST(FsaAlgo, UnionRandomFsas) {
   int32_t min_num_fsas = 1;
-  int32_t max_num_fsas = 1000;
+  int32_t max_num_fsas = 100;
   bool acyclic = false;
   int32_t max_symbol = 100;
   int32_t min_num_arcs = max_num_fsas * 2;
-  int32_t max_num_arcs = 100000;
+  int32_t max_num_arcs = 10000;
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
                                min_num_arcs, max_num_arcs);
@@ -698,5 +801,12 @@ TEST(FsaAlgo, ClosureRandomCase) {
     }
   }
 }
+
+
+
+
+
+
+
 
 }  // namespace k2

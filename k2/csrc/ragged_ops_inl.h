@@ -359,9 +359,9 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
         return is;
       }
       row_splits[cur_level].push_back(
-          (cur_level + 1 >= row_splits.size())
-              ? static_cast<int32_t>(elems.size())
-              : (row_splits[cur_level + 1].size() - 1));
+          (cur_level + 1 >= (int32_t)row_splits.size())
+          ? static_cast<int32_t>(elems.size())
+          : (row_splits[cur_level + 1].size() - 1));
       is.get();  // consume character 'c'
       if (cur_level == 0) break;
     } else {

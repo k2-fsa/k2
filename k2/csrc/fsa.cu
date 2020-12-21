@@ -316,7 +316,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
   int32_t tot_properties = GetFsaBasicProperties(ans);
   // TODO: check properties, at least
   int32_t required_props = (kFsaPropertiesValid | kFsaPropertiesNonempty);
-  if (tot_properties & required_props != required_props) {
+  if ((tot_properties & required_props) != required_props) {
     K2_LOG(WARNING) << "Did not have expected properties "
                     << FsaPropertiesAsString(tot_properties & required_props)
                     << " vs. " << FsaPropertiesAsString(required_props)

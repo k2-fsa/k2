@@ -289,6 +289,13 @@ struct Ragged {
     if (!is.eof() || is.fail())
       K2_LOG(FATAL) << "Failed to construct Ragged array from string: " << src;
   }
+  // Construct from context and string.  This uses delegating constructors, (a
+  // c++11 feature), and an explicitly constructed Ragged<T>
+  // "Ragged<T>(src)"
+  Ragged(ContextPtr context, const std::string &src):
+      Ragged(Ragged<T>(src).To(context)) { }
+
+
 
   // Default constructor will not leave this a valid Ragged object, you
   // shouldn't do anything with it.  Both members will be initialized with

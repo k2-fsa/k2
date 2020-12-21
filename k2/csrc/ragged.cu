@@ -387,7 +387,7 @@ bool RaggedShape::Validate(bool print_warnings) const {
                       << rsd.row_ids.Dim();
       }
     }
-    if (axis + 1 < layers_.size()) {
+    if (axis + 1 < (int32_t)layers_.size()) {
       K2_CHECK(IsCompatible(rsd.row_splits, layers_[axis + 1].row_splits));
     }
   }
@@ -449,7 +449,7 @@ std::istream &operator>>(std::istream &is, RaggedShape &shape) {
         return is;
       }
       row_splits[cur_level].push_back(
-          (cur_level + 1 >= row_splits.size())
+          (cur_level + 1 >= (int32_t)row_splits.size())
               ? num_elems
               : (row_splits[cur_level + 1].size() - 1));
     } else if (c == static_cast<int32_t>('x')) {

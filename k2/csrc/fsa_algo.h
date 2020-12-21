@@ -375,6 +375,54 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map = nullptr);
  */
 Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
 
+
+/*
+  This is a utility function that can be used in inversion of an FSA whose
+  aux_labels have a ragged structure (e.g. contain strings); it expands
+  arcs into sequences of arcs.
+
+   @param [in] fsas       Fsa or FsaVec to be expanded
+   @param [in] labels_shape This might correspond to the shape of the `aux_labels`;
+                         it is a shape with `labels_shape.NumAxes() == 2` and
+                         `arcs.shape.Dim0() == fsas.NumElements()`.  The i'th arc
+                         of the FsaVec will be expanded to a sequence of
+                         `max(1, l)` arcs, where l is the length of the i'th
+                         list in `labels_shape`
+   @param [out] fsas_arc_map  If not nullptr, will be set to to a new array of
+                         size `ans.NumElements()`, whose i'th element
+                         is the arc-index into `fsas.values` where the score
+                         of this arc came from, or -1 if the score was set to
+                         zero (because it was not the first arc of a chain).
+
+                         CAUTION REGARDING LABELS: for arcs whose label is not
+                         -1 (i.e. not to the final-state) we put both the score
+                         and label on the first arc of the sequence.  However,
+                         for arcs to the final state, in order to keep the
+                         output as stochastic as possible and also valid we put
+                         the score on the 1st arc and the label on the last arc
+                         (the -1 label can only be on arc to final-state).  The
+                         entry in `fsas_arc_map` follows the *score*, not the
+                         label, so be careful if you use it to propagate other
+                         kinds of labels.  You can always get it right by
+                         manually setting all -1's to zero, and then set all
+                         labels -1 if the corresponding label of the FSA is -1.
+   @param [out] labels_arc_map  If not nullptr, will be set to to a new array of
+                        size `ans.NumElements()`, whose i'th element is the
+                        0 <= j < labels_shape.NumElements() (an idx01) that says
+                        which element of the i'th sequence of `labels_shape` this
+                        arc corresponds to, or -1 if there was no such element
+                        because that sub-list was empty.
+   @return  Returns the expanded Fsa or FsaVec (will satisfy
+                        `ans.NumAxes() == fsas.NumAxes()`, and will be equivalent
+                        to `fsas` in both tropical or log-sum semring.
+ */
+FsaOrVec ExpandArcs(FsaOrVec &fsas,
+                    RaggedShape &labels_shape,
+                    Array1<int32_t> *fsas_arc_map = nullptr,
+                    Array1<int32_t> *labels_arc_map = nullptr);
+
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_

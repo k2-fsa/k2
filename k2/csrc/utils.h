@@ -137,7 +137,7 @@ namespace k2 {
            idx0x_next = t.row_splits1[idx0 + 1],
            idx0xx = t.row_splits2[idx0x],
            idx0xx_next = t.row_splits2[idx0x_next],
-           size_0xx = idx0xx_next - idx0xx
+           len12 = idx0xx_next - idx0xx
      (The _next suffix is used when we're querying the most specific known index
      plus one, in this case index 0 but for instance, idx01x_next would mean
      that we were querying idx01x after incrementing the index on axis 1.)
@@ -510,13 +510,6 @@ __host__ __device__ __forceinline__ float IntAsFloat(int32_t i) {
   } u;
   u.i = i;
   return u.f;
-}
-
-/* Atomically decrement *i and return true if it is zero after the decrement (it
-is an error if it was less than zero).  This is the host version, without
-synchronization
-   (
-__host__ __forceinline__ bool AtomicDecAndCompareZero(int32_t *i) {
 }
 
 /* Atomically decrement *i and return true if it is zero after the decrement (it
