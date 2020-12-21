@@ -96,7 +96,7 @@ void TopSort(FsaVec &src, FsaVec *dest, Array1<int32_t> *arc_map = nullptr);
             Caution: true return status does not imply that the returned FSA
             is nonempty.
  */
-bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+bool TopSortHost(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
 /*
   Add epsilon self-loops to an Fsa or FsaVec (this is required when composing
@@ -155,8 +155,8 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
                          (i.e. at each time-step in the sequences).  Sequence-
                          specific beam will be reduced if more than this number
                          of states are active.  The hash size used per FSA is 4
-                         times (this rounded up to a power of 2), so this affects
-                         memory consumption.
+                         times (this rounded up to a power of 2), so this
+                         affects memory consumption.
          @param[out] out Output vector of composed, pruned FSAs, with same
                          Dim0() as b_fsas.  Elements of it may be empty if the
                          composition was empty, either intrinsically or due to
@@ -180,11 +180,9 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
 /* IntersectDense is a version of IntersectDensePruned that does not
    do pruning in the 1st pass.
  */
-void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
-                    float output_beam, FsaVec *out,
-                    Array1<int32_t> *arc_map_a,
+void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas, float output_beam,
+                    FsaVec *out, Array1<int32_t> *arc_map_a,
                     Array1<int32_t> *arc_map_b);
-
 
 /*
   This is 'normal' intersection (we would call this Compose() for FSTs, but
@@ -375,19 +373,19 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map = nullptr);
  */
 Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
 
-
 /*
   This is a utility function that can be used in inversion of an FSA whose
   aux_labels have a ragged structure (e.g. contain strings); it expands
   arcs into sequences of arcs.
 
    @param [in] fsas       Fsa or FsaVec to be expanded
-   @param [in] labels_shape This might correspond to the shape of the `aux_labels`;
-                         it is a shape with `labels_shape.NumAxes() == 2` and
-                         `arcs.shape.Dim0() == fsas.NumElements()`.  The i'th arc
-                         of the FsaVec will be expanded to a sequence of
-                         `max(1, l)` arcs, where l is the length of the i'th
-                         list in `labels_shape`
+   @param [in] labels_shape This might correspond to the shape of the
+                         `aux_labels`; it is a shape with
+                         `labels_shape.NumAxes() == 2` and
+                         `arcs.shape.Dim0() == fsas.NumElements()`.
+                         The i'th arc of the FsaVec will be expanded to a
+                         sequence of `max(1, l)` arcs, where l is the
+                         length of the i'th list in `labels_shape`
    @param [out] fsas_arc_map  If not nullptr, will be set to to a new array of
                          size `ans.NumElements()`, whose i'th element
                          is the arc-index into `fsas.values` where the score
@@ -409,19 +407,40 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
    @param [out] labels_arc_map  If not nullptr, will be set to to a new array of
                         size `ans.NumElements()`, whose i'th element is the
                         0 <= j < labels_shape.NumElements() (an idx01) that says
-                        which element of the i'th sequence of `labels_shape` this
-                        arc corresponds to, or -1 if there was no such element
-                        because that sub-list was empty.
+                        which element of the i'th sequence of `labels_shape`
+                        this arc corresponds to, or -1 if there was no such
+                        element because that sub-list was empty.
    @return  Returns the expanded Fsa or FsaVec (will satisfy
-                        `ans.NumAxes() == fsas.NumAxes()`, and will be equivalent
-                        to `fsas` in both tropical or log-sum semring.
+                        `ans.NumAxes() == fsas.NumAxes()`, and will be
+                        equivalent to `fsas` in both tropical or log-sum
+                        semring.
  */
-FsaOrVec ExpandArcs(FsaOrVec &fsas,
-                    RaggedShape &labels_shape,
+FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
                     Array1<int32_t> *fsas_arc_map = nullptr,
                     Array1<int32_t> *labels_arc_map = nullptr);
 
-
+/*
+  Invert an FST, swapping the labels in the FSA with the auxiliary labels.
+  (e.g. swap input and output symbols in FST, but you decide which is which).
+  Because each arc may have more than one auxiliary label, in general
+  the output FSA may have more states than the input FSA.
+  CAUTION: it works only for CPU. It's just a wrapper of `FstInverter`
+  in `host/aux_labels.h`.
+    @param [in] src             Input Fsa or FsaVec.
+    @param [in] src_aux_labels  aux_labels of `src`, must have NumAxes() == 2
+                                and Dim0() == src.NumElements(). Each row in it
+                                is the aux_labels for each arc in `src`.
+    @param [out] dest   Output Fsa or FsaVec, it's the inverted Fsa. At exit
+                        dest.NumAxes() == src.NumAxes() and num-states of it
+                        >= num_states in src. labels in `dest` will correspond
+                        to those in `src_aux_labels`.
+                        If `src` is top-sorted, then `dest` will be top-sorted
+                        as well.
+    @param [out] dest_aux_labels aux_labels of dest, will be the same as labels
+                        in `src`, although epsilons will be removed.
+ */
+void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
+                Ragged<int32_t> *dest_aux_labels);
 
 }  // namespace k2
 
