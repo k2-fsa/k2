@@ -26,14 +26,14 @@ class TestFsa(unittest.TestCase):
 
     def test_acceptor_from_tensor(self):
         fsa_tensor = torch.tensor(
-            [[0, 1, 2, _k2._float_as_int(-1.2)],
-             [0, 2, 10, _k2._float_as_int(-2.2)],
-             [1, 6, -1, _k2._float_as_int(-3.2)],
-             [1, 3, 3, _k2._float_as_int(-4.2)],
-             [2, 6, -1, _k2._float_as_int(-5.2)],
-             [2, 4, 2, _k2._float_as_int(-6.2)],
-             [3, 6, -1, _k2._float_as_int(-7.2)],
-             [5, 0, 1, _k2._float_as_int(-8.2)]],
+            [[0, 1, 2, _k2.float_as_int(-1.2)],
+             [0, 2, 10, _k2.float_as_int(-2.2)],
+             [1, 6, -1, _k2.float_as_int(-3.2)],
+             [1, 3, 3, _k2.float_as_int(-4.2)],
+             [2, 6, -1, _k2.float_as_int(-5.2)],
+             [2, 4, 2, _k2.float_as_int(-6.2)],
+             [3, 6, -1, _k2.float_as_int(-7.2)],
+             [5, 0, 1, _k2.float_as_int(-8.2)]],
             dtype=torch.int32)
 
         fsa = k2.Fsa(fsa_tensor)
@@ -181,14 +181,14 @@ class TestFsa(unittest.TestCase):
 
         for device in devices:
             fsa_tensor = torch.tensor(
-                [[0, 1, 2, _k2._float_as_int(-1.2)],
-                 [0, 2, 10, _k2._float_as_int(-2.2)],
-                 [1, 6, -1, _k2._float_as_int(-4.2)],
-                 [1, 3, 3, _k2._float_as_int(-3.2)],
-                 [2, 6, -1, _k2._float_as_int(-5.2)],
-                 [2, 4, 2, _k2._float_as_int(-6.2)],
-                 [3, 6, -1, _k2._float_as_int(-7.2)],
-                 [5, 0, 1, _k2._float_as_int(-8.2)]],
+                [[0, 1, 2, _k2.float_as_int(-1.2)],
+                 [0, 2, 10, _k2.float_as_int(-2.2)],
+                 [1, 6, -1, _k2.float_as_int(-4.2)],
+                 [1, 3, 3, _k2.float_as_int(-3.2)],
+                 [2, 6, -1, _k2.float_as_int(-5.2)],
+                 [2, 4, 2, _k2.float_as_int(-6.2)],
+                 [3, 6, -1, _k2.float_as_int(-7.2)],
+                 [5, 0, 1, _k2.float_as_int(-8.2)]],
                 dtype=torch.int32).to(device)
             aux_labels_tensor = torch.tensor([22, 100, 16, 33, 26, 22, 36, 50],
                                              dtype=torch.int32).to(device)
@@ -310,7 +310,7 @@ class TestFsa(unittest.TestCase):
 
         # now test vector of FSAs
 
-        ragged_arc = _k2._fsa_to_fsa_vec(fsa.arcs)
+        ragged_arc = _k2.fsa_to_fsa_vec(fsa.arcs)
         del fsa
         fsa_vec = k2.Fsa(ragged_arc)
         del ragged_arc
