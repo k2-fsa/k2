@@ -7,14 +7,9 @@ from typing import Optional
 
 import torch
 
+import k2
+import _k2
 from .fsa import Fsa
-from .ragged import index as ragged_index
-from .ops import index_select
-
-from _k2 import _create_fsa_vec
-from _k2 import _fsa_to_str
-from _k2 import _fsa_to_tensor
-from _k2 import _is_rand_equivalent
 
 
 def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
@@ -30,13 +25,13 @@ def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
     Returns:
       Return an FsaVec containing only those FSAs specified by `indexes`.
     '''
-    ragged_arc, value_indexes = ragged_index(src.arcs,
-                                             indexes=indexes,
-                                             need_value_indexes=True)
+    ragged_arc, value_indexes = k2.ragged.index(src.arcs,
+                                                indexes=indexes,
+                                                need_value_indexes=True)
     out_fsa = Fsa(ragged_arc)
 
     for name, value in src.named_tensor_attr():
-        setattr(out_fsa, name, index_select(value, value_indexes))
+        setattr(out_fsa, name, k2.ops.index_select(value, value_indexes))
 
     for name, value in src.named_non_tensor_attr():
         setattr(out_fsa, name, value)
@@ -61,7 +56,7 @@ def to_str(fsa: Fsa, openfst: bool = False) -> str:
         aux_labels = fsa.aux_labels.to(torch.int32)
     else:
         aux_labels = None
-    return _fsa_to_str(fsa.arcs, openfst, aux_labels)
+    return _k2.fsa_to_str(fsa.arcs, openfst, aux_labels)
 
 
 def to_tensor(fsa: Fsa) -> torch.Tensor:
@@ -82,7 +77,7 @@ def to_tensor(fsa: Fsa) -> torch.Tensor:
       if the input is a single FSA. It is a 1-D tensor if the input
       is a vector of FSAs.
     '''
-    return _fsa_to_tensor(fsa.arcs)
+    return _k2.fsa_to_tensor(fsa.arcs)
 
 
 def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
@@ -208,7 +203,7 @@ def create_fsa_vec(fsas):
         assert len(fsa.shape) == 2
         ragged_arc_list.append(fsa.arcs)
 
-    ragged_arcs = _create_fsa_vec(ragged_arc_list)
+    ragged_arcs = _k2.create_fsa_vec(ragged_arc_list)
     fsa_vec = Fsa(ragged_arcs)
 
     tensor_attr_names = set(
@@ -285,5 +280,5 @@ def is_rand_equivalent(a: Fsa,
        sequence exists in the other one and if the total weight for that symbol
        sequence is the same in both FSAs.
     '''
-    return _is_rand_equivalent(a.arcs, b.arcs, log_semiring, beam,
-                               treat_epsilons_specially, delta, npath)
+    return _k2.is_rand_equivalent(a.arcs, b.arcs, log_semiring, beam,
+                                   treat_epsilons_specially, delta, npath)
