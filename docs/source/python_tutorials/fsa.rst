@@ -6,7 +6,7 @@ In this tutorial, we will show:
 
   - How to create an FSA in k2
   - How to create a 1-D vector of FSAs in k2
-  - Common methods of k2
+  - Common methods of :class:`k2.Fsa`
 
 
 Create a single FSA
