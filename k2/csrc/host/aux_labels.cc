@@ -61,12 +61,14 @@ static void CountExtraStates(const k2host::Fsa &fsa_in,
                                `state_map[i]` in the output FSA.
                                At exit, it will be
                                state_map[0] = 0,
-                               state_map[i] = state_map[i-1]
+                               state_map[i] = num_extra_states[0]
+                                            + state_map[i-1]
                                             + num_extra_states[i]
                                             + 1, for any i >=1
   @param [out] state_ids       At exit, it will be
                                state_ids[0] = 0,
-                               state_ids[i] = state_map[i-1], for any i >= 1.
+                               state_ids[1] = num_extra_states[0],
+                               state_ids[i] = state_map[i-1], for any i > 1.
 */
 static void MapStates(const std::vector<int32_t> &num_extra_states,
                       std::vector<int32_t> *state_map,
@@ -76,15 +78,12 @@ static void MapStates(const std::vector<int32_t> &num_extra_states,
   K2_CHECK_EQ(state_ids->size(), num_extra_states.size());
   auto &s_map = *state_map;
   auto &s_ids = *state_ids;
-  // we suppose there's no arcs entering the start state (i.e. state id of the
-  // start state in output FSA will be 0), otherwise we may need to create a new
-  // state as the real start state.
-  K2_CHECK_EQ(num_extra_states[0], 0);
+
   auto num_states_in = num_extra_states.size();
   // process from the second state
   s_map[0] = 0;
   s_ids[0] = 0;
-  int32_t num_states_out = 0;
+  int32_t num_states_out = num_extra_states[0];
   for (auto i = 1; i != num_states_in; ++i) {
     s_ids[i] = num_states_out;
     // `+1` as we did not count state `i` itself in `num_extra_states`
