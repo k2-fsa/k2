@@ -639,6 +639,7 @@ The 3 arrays for the above matrix in CSR format look like:
     We summarize the characteristics of ``row_indexes`` below:
 
       - It is non-decreasing
+      - Its first entry is 0
       - Its last entry denotes the number of non-zero entries in the matrix
       - Its size is `num_rows + 1`
       - `row_indexes[i+1] - row_indexes[i]` gives the number of non-zero entries in row i
