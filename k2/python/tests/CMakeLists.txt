@@ -31,6 +31,7 @@ set(py_test_files
   intersect_dense_pruned_test.py
   intersect_dense_test.py
   intersect_test.py
+  invert_test.py
   linear_fsa_test.py
   ragged_ops_test.py
   ragged_shape_test.py

@@ -273,7 +273,7 @@ TEST(TopSort, RandomVectorOfFsas1) {
       for (int32_t i = 0; i != num_fsas; ++i) {
         Fsa cpu_fsa_vec_i = cpu_fsa_vec.Index(0, i);
         Fsa host_sorted_i;
-        HostTopSort(cpu_fsa_vec_i, &host_sorted_i);
+        TopSortHost(cpu_fsa_vec_i, &host_sorted_i);
         Fsa sorted_i = cpu_sorted.Index(0, i);
         EXPECT_EQ(properties[i] & gt, gt);
         EXPECT_TRUE(is_top_sorted[i]);

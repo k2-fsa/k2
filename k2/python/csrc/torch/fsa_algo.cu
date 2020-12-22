@@ -314,6 +314,19 @@ static void PybindClosure(py::module &m) {
   // clang-format on
 }
 
+static void PybindInvert(py::module &m) {
+  m.def(
+      "invert",
+      [](FsaOrVec &src, Ragged<int32_t> &src_aux_labels)
+          -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        FsaOrVec dest;
+        Ragged<int32_t> dest_aux_labels;
+        InvertHost(src, src_aux_labels, &dest, &dest_aux_labels);
+        return std::make_pair(dest, dest_aux_labels);
+      },
+      py::arg("src"), py::arg("src_aux_labels"));
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -330,4 +343,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindRemoveEpsilon(m);
   k2::PybindDeterminize(m);
   k2::PybindClosure(m);
+  k2::PybindInvert(m);
 }

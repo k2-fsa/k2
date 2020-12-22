@@ -20,44 +20,37 @@
 
 namespace k2 {
 
-
-
 TEST(FsaAlgo, TestExpandArcsA) {
   FsaVec fsa1("[ [ [ ] [ ] ] ]");
   RaggedShape labels_shape("[]");
-  FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape,
-                                    nullptr, nullptr);
+  FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape, nullptr, nullptr);
   K2_CHECK(Equal(fsa1_expanded, fsa1));
 }
-
 
 TEST(FsaAlgo, TestExpandArcsB) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     FsaVec fsa1(c, "[ [ [ 0  1  -1  0.0  ] [ ] ] ]");
     RaggedShape labels_shape(c, "[ [ x ] ]");
     Array1<int32_t> fsa_arc_map, labels_arc_map;
-    FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape,
-                                      &fsa_arc_map, &labels_arc_map);
+    FsaVec fsa1_expanded =
+        ExpandArcs(fsa1, labels_shape, &fsa_arc_map, &labels_arc_map);
 
-    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 ]"),
-        labels_arc_map_ref(c, "[ 0 ]");
+    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 ]"), labels_arc_map_ref(c, "[ 0 ]");
     K2_CHECK(Equal(fsa1_expanded, fsa1));
     K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
     K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
   }
 }
 
-
 TEST(FsaAlgo, TestExpandArcsC) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     FsaVec fsa1(c, "[ [ [ 0  1  -1  2.0  ] [ ] ] ]");
     RaggedShape labels_shape(c, "[ [ x x ] ]");
     Array1<int32_t> fsa_arc_map, labels_arc_map;
-    FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape,
-                                      &fsa_arc_map, &labels_arc_map);
+    FsaVec fsa1_expanded =
+        ExpandArcs(fsa1, labels_shape, &fsa_arc_map, &labels_arc_map);
     K2_LOG(INFO) << "fsa1_expanded = " << fsa1_expanded;
     FsaVec fsa1_expanded_ref(c, "[ [ [ 0  1 0 2.0 ] [ 1 2 -1 0.0 ] [ ] ] ]");
-
 
     Array1<int32_t> fsa_arc_map_ref(c, "[ 0 -1 ]"),
         labels_arc_map_ref(c, "[ 0 1 ]");
@@ -67,16 +60,16 @@ TEST(FsaAlgo, TestExpandArcsC) {
   }
 }
 
-
 TEST(FsaAlgo, TestExpandArcsD) {
   for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
     FsaVec fsa1(c, "[ [ [ 0  1  -1  2.0  0 1 -1 1.0 ] [ ] ] ]");
     RaggedShape labels_shape(c, "[ [ x x ] [ x ] ]");
     Array1<int32_t> fsa_arc_map, labels_arc_map;
-    FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape,
-                                      &fsa_arc_map, &labels_arc_map);
+    FsaVec fsa1_expanded =
+        ExpandArcs(fsa1, labels_shape, &fsa_arc_map, &labels_arc_map);
     K2_LOG(INFO) << "fsa1_expanded = " << fsa1_expanded;
-    FsaVec fsa1_expanded_ref(c, "[ [ [ 0  1 0 2.0  0 2 -1 1.0 ] [ 1 2 -1 0.0 ] [ ] ] ]");
+    FsaVec fsa1_expanded_ref(
+        c, "[ [ [ 0  1 0 2.0  0 2 -1 1.0 ] [ 1 2 -1 0.0 ] [ ] ] ]");
 
     Array1<int32_t> fsa_arc_map_ref(c, "[ 0 1 -1 ]"),
         labels_arc_map_ref(c, "[ 0 2 1 ]");
@@ -90,7 +83,6 @@ TEST(FsaAlgo, TestExpandArcsD) {
   }
 }
 
-
 TEST(FsaAlgo, TestExpandArcsRandom) {
   int32_t min_num_fsas = 1;
   int32_t max_num_fsas = 100;
@@ -100,27 +92,24 @@ TEST(FsaAlgo, TestExpandArcsRandom) {
   int32_t max_num_arcs = 10000;
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     for (int32_t i = 0; i < 4; i++) {
-      FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
-                                 min_num_arcs, max_num_arcs).To(context);
+      FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
+                                 max_symbol, min_num_arcs, max_num_arcs)
+                        .To(context);
       int32_t num_arcs = fsas.NumElements();
       Array1<int32_t> rand = RandUniformArray1(context, num_arcs + 1, 0, 4);
       ExclusiveSum(rand, &rand);
       RaggedShape labels_shape = RaggedShape2(&rand, nullptr, -1);
-      Array1<int32_t> fsa_arc_map,
-          labels_arc_map;
-      FsaVec fsas_expanded = ExpandArcs(fsas, labels_shape,
-                                        &fsa_arc_map, &labels_arc_map);
-      // note: by default, IsRandEquivalent() does treat epsilons specially, which
-      // is what we want.
+      Array1<int32_t> fsa_arc_map, labels_arc_map;
+      FsaVec fsas_expanded =
+          ExpandArcs(fsas, labels_shape, &fsa_arc_map, &labels_arc_map);
+      // note: by default, IsRandEquivalent() does treat epsilons specially,
+      // which is what we want.
       K2_CHECK(IsRandEquivalent(fsas, fsas_expanded, false));
-      //K2_LOG(INFO) << "fsa_arc_map = " << fsa_arc_map
+      // K2_LOG(INFO) << "fsa_arc_map = " << fsa_arc_map
       ///                   << ", labels_arc_map = " << labels_arc_map;
     }
   }
 }
-
-
-
 
 TEST(ArcSort, EmptyFsa) {
   Fsa fsa;
@@ -802,11 +791,56 @@ TEST(FsaAlgo, ClosureRandomCase) {
   }
 }
 
-
-
-
-
-
-
+TEST(FsaAlgo, InvertHostTest) {
+  // top-sorted FSA
+  std::string s1 = R"(0 1 1 0 
+    0 1 0 0
+    0 3 2 0
+    1 2 3 0
+    1 3 4 0
+    1 5 -1 0
+    2 3 0 0
+    2 5 -1 0
+    4 5 -1 0
+    5
+    )";
+  // non-top-sorted FSA
+  std::string s2 = R"(0 1 1 0 
+    0 1 0 0
+    0 3 2 0
+    1 2 3 0
+    1 3 4 0
+    2 1 5 0
+    2 5 -1 0
+    3 1 6 0
+    4 5 -1 0
+    5
+    )";
+  Fsa fsa1 = FsaFromString(s1);
+  Fsa fsa2 = FsaFromString(s2);
+  Fsa *fsa_array[] = {&fsa1, &fsa2};
+  FsaVec src = CreateFsaVec(2, &fsa_array[0]);
+  Ragged<int32_t> aux_labels(
+      "[ [1 2] [3] [] [5 6 7] [] [-1] [] [-1] [-1] [1 2] [3] [] [5 6 7] [] "
+      "[8] [-1] [9 10] [-1] ]");
+  FsaVec dest;
+  Ragged<int32_t> dest_aux_labels;
+  InvertHost(src, aux_labels, &dest, &dest_aux_labels);
+  K2_LOG(INFO) << dest;
+  K2_LOG(INFO) << dest_aux_labels;
+  std::vector<Arc> expected_arcs = {
+      {0, 1, 1, 0},  {0, 2, 3, 0},  {0, 6, 0, 0},  {1, 2, 2, 0}, {2, 3, 5, 0},
+      {2, 6, 0, 0},  {2, 8, -1, 0}, {3, 4, 6, 0},  {4, 5, 7, 0}, {5, 6, 0, 0},
+      {5, 8, -1, 0}, {7, 8, -1, 0}, {0, 1, 1, 0},  {0, 3, 3, 0}, {0, 7, 0, 0},
+      {1, 3, 2, 0},  {2, 3, 10, 0}, {3, 4, 5, 0},  {3, 7, 0, 0}, {4, 5, 6, 0},
+      {5, 6, 7, 0},  {6, 3, 8, 0},  {6, 9, -1, 0}, {7, 2, 9, 0}, {8, 9, -1, 0}};
+  CheckArrayData(dest.values, expected_arcs);
+  Ragged<int32_t> expected_aux_labels(
+      "[ [] [] [2] [1] [] [4] [-1] [] [3] [] [-1] [-1] [] [] [2] [1] [6] [] "
+      "[4] [] [3] [5] [-1] [] [-1]]");
+  CheckArrayData(dest_aux_labels.RowSplits(1),
+                 expected_aux_labels.RowSplits(1));
+  CheckArrayData(dest_aux_labels.values, expected_aux_labels.values);
+}
 
 }  // namespace k2

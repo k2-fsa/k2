@@ -22,6 +22,7 @@ from .fsa_algo import closure
 from .fsa_algo import connect
 from .fsa_algo import determinize
 from .fsa_algo import intersect
+from .fsa_algo import invert
 from .fsa_algo import linear_fsa
 from .fsa_algo import remove_epsilon
 from .fsa_algo import remove_epsilons_iterative_tropical
@@ -69,6 +70,7 @@ __all__ = [
     'intersect',
     'intersect_dense',
     'intersect_dense_pruned',
+    'invert',
     'is_rand_equivalent',
     'linear_fsa',
     'properties_to_str',

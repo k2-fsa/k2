@@ -20,6 +20,7 @@
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
+#include "k2/csrc/host/aux_labels.h"
 #include "k2/csrc/host/connect.h"
 #include "k2/csrc/host/determinize.h"
 #include "k2/csrc/host/intersect.h"
@@ -83,13 +84,13 @@ bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
   return ans;
 }
 
-bool HostTopSort(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
+bool TopSortHost(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
   } else if (num_axes == 3) {
-    return RecursionWrapper(HostTopSort, src, dest, arc_map);
+    return RecursionWrapper(TopSortHost, src, dest, arc_map);
   }
 
   k2host::Fsa host_fsa = FsaToHostFsa(src);
@@ -839,15 +840,13 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
   return ans;
 }
 
-
-FsaOrVec ExpandArcs(FsaOrVec &fsas,
-                    RaggedShape &labels_shape,
+FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
                     Array1<int32_t> *fsas_arc_map,
                     Array1<int32_t> *labels_arc_map) {
   if (fsas.NumAxes() == 2) {
     FsaVec fsas_temp = FsaToFsaVec(fsas);
-    return ExpandArcs(fsas_temp, labels_shape,
-                      fsas_arc_map, labels_arc_map).RemoveAxis(0);
+    return ExpandArcs(fsas_temp, labels_shape, fsas_arc_map, labels_arc_map)
+        .RemoveAxis(0);
   }
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(labels_shape.NumAxes(), 2);
@@ -878,41 +877,46 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas,
   int32_t *num_ostates_for_data = num_ostates_for.Data();
 
   const int32_t *labels_row_splits1_data = labels_shape.RowSplits(1).Data(),
-                  *fsas_row_splits2_data = fsas.RowSplits(2).Data(),
-          *state_to_foo_row_splits1_data = state_to_foo.RowSplits(1).Data(),
-             *state_to_foo_row_ids1_data = state_to_foo.RowIds(1).Data();
+                *fsas_row_splits2_data = fsas.RowSplits(2).Data(),
+                *state_to_foo_row_splits1_data =
+                    state_to_foo.RowSplits(1).Data(),
+                *state_to_foo_row_ids1_data = state_to_foo.RowIds(1).Data();
 
-  K2_EVAL(c, foo_size, lambda_set_num_ostates, (int32_t idx01) -> void {
-      // note: the idx01, idx0, idx0x are into `state_to_foo`.
-      // This idx0 is a state-index into `fsas` (an idx01 w.r.t. `fsas`).
-      int32_t idx0 = state_to_foo_row_ids1_data[idx01],
-             idx0x = state_to_foo_row_splits1_data[idx0],
-              idx1 = idx01 - idx0x;  // idx1 is `foo`.
-      int32_t num_ostates;
-      if (idx1 == 0) {
-        num_ostates = 1;  // this is a copy of the original state.
-      } else {
-        int32_t fsas_arc_idx2 = idx1 - 1,
-             fsas_state_idx01 = idx0,
-              fsas_arc_idx01x = fsas_row_splits2_data[fsas_state_idx01],
-              fsas_arc_idx012 = fsas_arc_idx01x + fsas_arc_idx2,
-              labels_shape_idx0 = fsas_arc_idx012,
-             labels_shape_idx0x = labels_row_splits1_data[labels_shape_idx0],
-        labels_shape_idx0x_next = labels_row_splits1_data[labels_shape_idx0 + 1],
-              labels_shape_len1 = labels_shape_idx0x_next - labels_shape_idx0x;
-        // A sequence of n symbols will require n-1 extra states to represent it.
-        num_ostates = max(labels_shape_len1 - 1, (int32_t)0);
-      }
-      num_ostates_for_data[idx01] = num_ostates;
-    });
+  K2_EVAL(
+      c, foo_size, lambda_set_num_ostates, (int32_t idx01)->void {
+        // note: the idx01, idx0, idx0x are into `state_to_foo`.
+        // This idx0 is a state-index into `fsas` (an idx01 w.r.t. `fsas`).
+        int32_t idx0 = state_to_foo_row_ids1_data[idx01],
+                idx0x = state_to_foo_row_splits1_data[idx0],
+                idx1 = idx01 - idx0x;  // idx1 is `foo`.
+        int32_t num_ostates;
+        if (idx1 == 0) {
+          num_ostates = 1;  // this is a copy of the original state.
+        } else {
+          int32_t fsas_arc_idx2 = idx1 - 1, fsas_state_idx01 = idx0,
+                  fsas_arc_idx01x = fsas_row_splits2_data[fsas_state_idx01],
+                  fsas_arc_idx012 = fsas_arc_idx01x + fsas_arc_idx2,
+                  labels_shape_idx0 = fsas_arc_idx012,
+                  labels_shape_idx0x =
+                      labels_row_splits1_data[labels_shape_idx0],
+                  labels_shape_idx0x_next =
+                      labels_row_splits1_data[labels_shape_idx0 + 1],
+                  labels_shape_len1 =
+                      labels_shape_idx0x_next - labels_shape_idx0x;
+          // A sequence of n symbols will require n-1 extra states to represent
+          // it.
+          num_ostates = max(labels_shape_len1 - 1, (int32_t)0);
+        }
+        num_ostates_for_data[idx01] = num_ostates;
+      });
   ExclusiveSum(num_ostates_for, &num_ostates_for);
   Array1<int32_t> &foo_to_ostates_row_splits = num_ostates_for;
-  RaggedShape foo_to_ostates = RaggedShape2(&foo_to_ostates_row_splits, nullptr, -1);
-
+  RaggedShape foo_to_ostates =
+      RaggedShape2(&foo_to_ostates_row_splits, nullptr, -1);
 
   // to_ostates_shape has 4 axes: [fsa_id][orig_state][foo][ostate]
-  // where foo is a general-purpose index that ranges over the (num_arcs + 1) of the
-  // original state.
+  // where foo is a general-purpose index that ranges over the (num_arcs + 1) of
+  // the original state.
   RaggedShape to_ostates_shape = ComposeRaggedShapes(
       ComposeRaggedShapes(GetLayer(fsas.shape, 0), state_to_foo),
       foo_to_ostates);
@@ -921,57 +925,56 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas,
   const int32_t *tos_row_splits1_data = to_ostates_shape.RowSplits(1).Data(),
                 *tos_row_ids1_data = to_ostates_shape.RowIds(1).Data(),
                 *tos_row_splits2_data = to_ostates_shape.RowSplits(2).Data(),
-                   *tos_row_ids2_data = to_ostates_shape.RowIds(2).Data(),
+                *tos_row_ids2_data = to_ostates_shape.RowIds(2).Data(),
                 *tos_row_splits3_data = to_ostates_shape.RowSplits(3).Data(),
-                   *tos_row_ids3_data = to_ostates_shape.RowIds(3).Data();
+                *tos_row_ids3_data = to_ostates_shape.RowIds(3).Data();
 
   // `num_oarcs` gives the number of arcs in the returned (output) FSA for each
   // `ostate` (i.e. leaving each state in the returned FSA).
   int32_t tot_ostates = to_ostates_shape.NumElements();
   Array1<int32_t> num_oarcs(c, tot_ostates + 1);
   int32_t *num_oarcs_data = num_oarcs.Data();
-  K2_EVAL(c, tot_ostates, lambda_set_num_oarcs, (int32_t idx0123) -> void {
-      // All these indexes are into `to_ostates_shape`, indexed
-      // `[fsa][state][foo][ostate].`
-      int32_t idx012 = tos_row_ids3_data[idx0123],
-             idx012x = tos_row_splits3_data[idx012],
-               idx01 = tos_row_ids2_data[idx012],
-              idx01x = tos_row_splits2_data[idx01],
-         idx01x_next = tos_row_splits2_data[idx01 + 1],
-                len2 = idx01x_next - idx01x,
-                idx2 = idx012 - idx01x,
+  K2_EVAL(
+      c, tot_ostates, lambda_set_num_oarcs, (int32_t idx0123)->void {
+        // All these indexes are into `to_ostates_shape`, indexed
+        // `[fsa][state][foo][ostate].`
+        int32_t idx012 = tos_row_ids3_data[idx0123],
+                idx012x = tos_row_splits3_data[idx012],
+                idx01 = tos_row_ids2_data[idx012],
+                idx01x = tos_row_splits2_data[idx01],
+                idx01x_next = tos_row_splits2_data[idx01 + 1],
+                len2 = idx01x_next - idx01x, idx2 = idx012 - idx01x,
                 idx3 = idx0123 - idx012x;
-      int32_t num_arcs;
-      if (idx2 == 0) {
-        K2_CHECK_EQ(idx3, 0);
-        // This ostate corresponds to the original state; it is not one of the
-        // extra states added to support chains of arcs.
-        // The original state had `orig_num_arcs` leaving it, which is the
-        // number of `foo` indexes minus one.
-        int32_t orig_num_arcs = len2 - 1;
-        num_arcs = orig_num_arcs;
-      } else {
-        // All newly-created states have exactly one arc leaving them.
-        num_arcs = 1;
-      }
-      num_oarcs_data[idx0123] = num_arcs;
-    });
+        int32_t num_arcs;
+        if (idx2 == 0) {
+          K2_CHECK_EQ(idx3, 0);
+          // This ostate corresponds to the original state; it is not one of the
+          // extra states added to support chains of arcs.
+          // The original state had `orig_num_arcs` leaving it, which is the
+          // number of `foo` indexes minus one.
+          int32_t orig_num_arcs = len2 - 1;
+          num_arcs = orig_num_arcs;
+        } else {
+          // All newly-created states have exactly one arc leaving them.
+          num_arcs = 1;
+        }
+        num_oarcs_data[idx0123] = num_arcs;
+      });
   ExclusiveSum(num_oarcs, &num_oarcs);
   Array1<int32_t> &ostate_to_oarcs_row_splits = num_oarcs;
-  RaggedShape ostate_to_oarcs = RaggedShape2(&ostate_to_oarcs_row_splits,
-                                             nullptr, -1);
+  RaggedShape ostate_to_oarcs =
+      RaggedShape2(&ostate_to_oarcs_row_splits, nullptr, -1);
 
   // `full_shape` has 5 axes: [fsa][orig_state][foo][ostate][oarc]
-  RaggedShape full_shape = ComposeRaggedShapes(to_ostates_shape,
-                                               ostate_to_oarcs);
+  RaggedShape full_shape =
+      ComposeRaggedShapes(to_ostates_shape, ostate_to_oarcs);
   // for the lower-order row-splits and row-ids, use tot_row_{splits,idx}n_data
   const int32_t *full_row_splits4_data = full_shape.RowSplits(4).Data(),
-                   *full_row_ids4_data = full_shape.RowIds(4).Data();
+                *full_row_ids4_data = full_shape.RowIds(4).Data();
   int32_t tot_oarcs = full_shape.NumElements();
   K2_CHECK_GE(tot_oarcs, fsas.NumElements());
 
-  int32_t *fsas_arc_map_data = nullptr,
-         *labels_arc_map_data = nullptr;
+  int32_t *fsas_arc_map_data = nullptr, *labels_arc_map_data = nullptr;
   if (fsas_arc_map) {
     *fsas_arc_map = Array1<int32_t>(c, tot_oarcs);
     fsas_arc_map_data = fsas_arc_map->Data();
@@ -984,96 +987,95 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas,
   Arc *oarcs_data = oarcs.Data();
   const Arc *arcs_data = fsas.values.Data();
 
-  K2_EVAL(c, tot_oarcs, lambda_set_arcs, (int32_t idx01234) -> void {
-      // All these indexes are into `full_shape`, indexed
-      // `[fsa][state][foo][ostate][oarc].`
-      int32_t idx0123 = full_row_ids4_data[idx01234],
-             idx0123x = full_row_splits4_data[idx0123],
-                 idx4 = idx01234 - idx0123x,
-               idx012 = tos_row_ids3_data[idx0123],
-              idx012x = tos_row_splits3_data[idx012],
-                 idx3 = idx0123 - idx012x,
-                idx01 = tos_row_ids2_data[idx012],
-               idx01x = tos_row_splits2_data[idx01],
-                 idx2 = idx012 - idx01x,
-                 idx0 = tos_row_ids1_data[idx01],
+  K2_EVAL(
+      c, tot_oarcs, lambda_set_arcs, (int32_t idx01234)->void {
+        // All these indexes are into `full_shape`, indexed
+        // `[fsa][state][foo][ostate][oarc].`
+        int32_t idx0123 = full_row_ids4_data[idx01234],
+                idx0123x = full_row_splits4_data[idx0123],
+                idx4 = idx01234 - idx0123x, idx012 = tos_row_ids3_data[idx0123],
+                idx012x = tos_row_splits3_data[idx012],
+                idx3 = idx0123 - idx012x, idx01 = tos_row_ids2_data[idx012],
+                idx01x = tos_row_splits2_data[idx01], idx2 = idx012 - idx01x,
+                idx0 = tos_row_ids1_data[idx01],
                 idx0x = tos_row_splits1_data[idx0],
-              idx0xxx = tos_row_splits3_data[tos_row_splits2_data[idx0x]];
+                idx0xxx = tos_row_splits3_data[tos_row_splits2_data[idx0x]];
 
+        int32_t fsa_idx01x = fsas_row_splits2_data[idx01];
 
-      int32_t fsa_idx01x = fsas_row_splits2_data[idx01];
+        int32_t fsa_idx2;  // the idx2 (arc-index) into `fsas` of the input arc
+                           // that's most relevant to us..
+        int32_t seq_pos;  // seq_pos is our index into the sequence of arcs that
+                          // we produce for each original arc
+        if (idx2 == 0) {
+          K2_CHECK_EQ(idx3, 0);
+          fsa_idx2 = idx4;  // corresponds to foo=0, so idx3 will be 0; the idx4
+                            // enumerates the arcs leaving it..
+          seq_pos = 0;
+        } else {
+          // this is one of the extra `foo` indexes, one per arc in the input
+          // FSA that leaves this state; each of those `foo` indexes has
+          // (seq_len - 1) states in it (idx3=0,1..seq_len-1); and each state
+          // has one arc leaving it (idx4==0).
+          K2_CHECK_EQ(idx4, 0);
+          fsa_idx2 = idx2 - 1;
+          seq_pos = idx3 + 1;
+        }
+        int32_t fsa_idx012 = fsa_idx01x + fsa_idx2;  // index of the arc in
+                                                     // source FSA FSA that
+                                                     // we're expanding..
+        Arc iarc = arcs_data[fsa_idx012];
 
-      int32_t fsa_idx2;  // the idx2 (arc-index) into `fsas` of the input arc
-                         // that's most relevant to us..
-      int32_t seq_pos;  // seq_pos is our index into the sequence of arcs that
-                        // we produce for each original arc
-      if (idx2 == 0) {
-        K2_CHECK_EQ(idx3, 0);
-        fsa_idx2 = idx4;  // corresponds to foo=0, so idx3 will be 0; the idx4
-                          // enumerates the arcs leaving it..
-        seq_pos = 0;
-      } else {
-        // this is one of the extra `foo` indexes, one per arc in the input FSA
-        // that leaves this state; each of those `foo` indexes has (seq_len - 1)
-        // states in it (idx3=0,1..seq_len-1); and each state has one arc
-        // leaving it (idx4==0).
-        K2_CHECK_EQ(idx4, 0);
-        fsa_idx2 = idx2 - 1;
-        seq_pos = idx3 + 1;
-      }
-      int32_t fsa_idx012 = fsa_idx01x + fsa_idx2;  // index of the arc in source
-                                                   // FSA FSA that we're
-                                                   // expanding..
-      Arc iarc = arcs_data[fsa_idx012];
+        int32_t labels_idx0x = labels_row_splits1_data[fsa_idx012],
+                labels_next_idx0x = labels_row_splits1_data[fsa_idx012 + 1],
+                labels_len1 = labels_next_idx0x - labels_idx0x;
+        // labels_len1 is length of label sequence for this arc
+        K2_CHECK_LT(seq_pos, max(int32_t(1), labels_len1));
 
-      int32_t labels_idx0x = labels_row_splits1_data[fsa_idx012],
-         labels_next_idx0x = labels_row_splits1_data[fsa_idx012 + 1],
-               labels_len1 = labels_next_idx0x - labels_idx0x;
-      // labels_len1 is length of label sequence for this arc
-      K2_CHECK_LT(seq_pos, max(int32_t(1), labels_len1));
+        int32_t dest_idx01 = idx0x + iarc.dest_state,  // original destination
+                                                       // state-index
+            orig_dest_idx0123 =
+                tos_row_splits3_data[tos_row_splits2_data[dest_idx01]];
 
-      int32_t dest_idx01 = idx0x + iarc.dest_state,   // original destination
-                                                      // state-index
-       orig_dest_idx0123 = tos_row_splits3_data[tos_row_splits2_data[dest_idx01]];
+        Arc oarc;
+        oarc.src_state = idx0123 - idx0xxx;
+        // If this is the last arc in the sequence, the dest-state is the
+        // original dest-state of the arc.  Otherwise the dest-state is one of
+        // the new states that we created. The idx123 will be an idx1 after
+        // removing axes.
+        int32_t dest_idx123;
+        if (seq_pos + 1 >= labels_len1) {  // last arc in sequence..
+          dest_idx123 = orig_dest_idx0123 - idx0xxx;
+        } else {
+          int32_t dest_state_idx2 = fsa_idx2 + 1,  // index `foo` equals
+                                                   // orig_arc_idx+1
+              dest_state_idx3 = seq_pos,           // ostate index..
+              dest_idx012 = idx01x + dest_state_idx2,
+                  dest_idx012x = tos_row_splits3_data[dest_idx012],
+                  dest_idx0123 = dest_idx012x + dest_state_idx3;
+          dest_idx123 = dest_idx0123 - idx0xxx;
+        }
+        oarc.dest_state = dest_idx123;  // indexes 1,2,3 will be combined; in
+                                        // the output FSA it will be an idx1.
 
-      Arc oarc;
-      oarc.src_state = idx0123 - idx0xxx;
-      // If this is the last arc in the sequence, the dest-state is the original
-      // dest-state of the arc.  Otherwise the dest-state is one of the new
-      // states that we created.
-      // The idx123 will be an idx1 after removing axes.
-      int32_t dest_idx123;
-      if (seq_pos + 1 >= labels_len1) {  // last arc in sequence..
-        dest_idx123 = orig_dest_idx0123 - idx0xxx;
-      } else {
-        int32_t dest_state_idx2 = fsa_idx2 + 1,  // index `foo` equals
-                                                 // orig_arc_idx+1
-                dest_state_idx3 = seq_pos, // ostate index..
-                    dest_idx012 = idx01x + dest_state_idx2,
-                   dest_idx012x = tos_row_splits3_data[dest_idx012],
-                   dest_idx0123 = dest_idx012x + dest_state_idx3;
-        dest_idx123 = dest_idx0123 - idx0xxx;
-      }
-      oarc.dest_state = dest_idx123; // indexes 1,2,3 will be combined; in the output FSA it will be an idx1.
-
-      if (fsas_arc_map_data)
-        fsas_arc_map_data[idx01234] = (seq_pos == 0 ? fsa_idx012 : -1);
-      if (labels_arc_map_data)
-        labels_arc_map_data[idx01234] = (seq_pos < labels_len1 ?
-                                         labels_idx0x + seq_pos : -1);
-      if (iarc.label != -1) {
-        // normal case.. label goes on 1st arc in sequence
-        oarc.label = (seq_pos == 0 ? iarc.label : 0);
-      } else {
-        // If the arc was to the final-state, we need to keep the label on the
-        // last arc of the sequence to keep the output valid.  The following
-        // would be "seq_pos + 1 == labels_len1 ? -1 : 0", but we make it ">="
-        // not "=" to account for the case seq_pos=0, labels_len1 = 0.
-        oarc.label = (seq_pos + 1 >= labels_len1 ? -1 : 0);
-      }
-      oarc.score = (seq_pos == 0 ? iarc.score : 0.0);
-      oarcs_data[idx01234] = oarc;
-    });
+        if (fsas_arc_map_data)
+          fsas_arc_map_data[idx01234] = (seq_pos == 0 ? fsa_idx012 : -1);
+        if (labels_arc_map_data)
+          labels_arc_map_data[idx01234] =
+              (seq_pos < labels_len1 ? labels_idx0x + seq_pos : -1);
+        if (iarc.label != -1) {
+          // normal case.. label goes on 1st arc in sequence
+          oarc.label = (seq_pos == 0 ? iarc.label : 0);
+        } else {
+          // If the arc was to the final-state, we need to keep the label on the
+          // last arc of the sequence to keep the output valid.  The following
+          // would be "seq_pos + 1 == labels_len1 ? -1 : 0", but we make it ">="
+          // not "=" to account for the case seq_pos=0, labels_len1 = 0.
+          oarc.label = (seq_pos + 1 >= labels_len1 ? -1 : 0);
+        }
+        oarc.score = (seq_pos == 0 ? iarc.score : 0.0);
+        oarcs_data[idx01234] = oarc;
+      });
 
   // remove current axes 1 and 2... [after removing axis 1, old axis 2 becomes
   // axis 1, so remove axis 1 twice].
@@ -1081,6 +1083,72 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas,
   return FsaVec(RemoveAxis(temp, 1), oarcs);
 }
 
+// Will be used in InvertHost to process FsaVec input recursively.
+void RecursionWrapperAuxLabels(void (*f)(FsaOrVec &, Ragged<int32_t> &,
+                                         FsaOrVec *, Ragged<int32_t> *),
+                               FsaOrVec &src, Ragged<int32_t> &src_aux_labels,
+                               FsaOrVec *dest,
+                               Ragged<int32_t> *dest_aux_labels) {
+  NVTX_RANGE(K2_FUNC);
+  // src is actually an FsaVec.  Just recurse for now.
+  K2_CHECK_EQ(src.NumAxes(), 3);
+  int32_t num_fsas = src.shape.Dim0();
+  std::vector<Fsa> srcs(num_fsas), dests(num_fsas);
+  std::vector<Ragged<int32_t>> src_aux_labels_vec(num_fsas),
+      dest_aux_labels_vec(num_fsas);
+  int32_t tot_num_arcs = 0;
+  Array1<int32_t> src_aux_labels_row_splits = src_aux_labels.RowSplits(1),
+                  src_aux_labels_values = src_aux_labels.values;
+  for (int32_t i = 0; i < num_fsas; ++i) {
+    srcs[i] = src.Index(0, i);
+    int32_t cur_num_arcs = srcs[i].NumElements();
+    // below block get aux_labels for srcs[i]
+    // TODO(haowen): replace with Range op for ragged
+    {
+      Array1<int32_t> row_splits = src_aux_labels_row_splits.Arange(
+          tot_num_arcs, tot_num_arcs + cur_num_arcs + 1);
+      Array1<int32_t> values =
+          src_aux_labels_values.Arange(row_splits[0], row_splits.Back());
+      row_splits = Minus(row_splits, row_splits[0]);
+      RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
+      src_aux_labels_vec[i] = Ragged<int32_t>(shape, values);
+    }
+    f(srcs[i], src_aux_labels_vec[i], &(dests[i]), &(dest_aux_labels_vec[i]));
+    tot_num_arcs += cur_num_arcs;
+  }
+  *dest = Stack(0, num_fsas, dests.data());
+  *dest_aux_labels = Append(0, num_fsas, dest_aux_labels_vec.data());
+}
 
+void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
+                Ragged<int32_t> *dest_aux_labels) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(src_aux_labels.NumAxes(), 2);
+  K2_CHECK_EQ(src_aux_labels.Dim0(), src.NumElements());
+  K2_CHECK(dest != nullptr && dest_aux_labels != nullptr);
+  int32_t num_axes = src.NumAxes();
+  if (num_axes < 2 || num_axes > 3) {
+    K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
+  } else if (num_axes == 3) {
+    return RecursionWrapperAuxLabels(InvertHost, src, src_aux_labels, dest,
+                                     dest_aux_labels);
+  }
+
+  k2host::Fsa host_fsa = FsaToHostFsa(src);
+  // k2host::AuxLabels is a k2host::Array2
+  k2host::AuxLabels host_aux_labels(
+      src_aux_labels.Dim0(), src_aux_labels.NumElements(),
+      src_aux_labels.RowSplits(1).Data(), src_aux_labels.values.Data());
+  k2host::FstInverter inverter(host_fsa, host_aux_labels);
+  k2host::Array2Size<int32_t> fsa_size, aux_size;
+  inverter.GetSizes(&fsa_size, &aux_size);
+  FsaCreator fsa_creator(fsa_size);
+  k2host::Fsa host_dest_fsa = fsa_creator.GetHostFsa();
+  Ragged2Creator<int32_t> ragged_creator(aux_size);
+  k2host::AuxLabels host_dest_aux_labels = ragged_creator.GetHostArray2();
+  inverter.GetOutput(&host_dest_fsa, &host_dest_aux_labels);
+  *dest = fsa_creator.GetFsa();
+  *dest_aux_labels = ragged_creator.GetRagged2();
+}
 
 }  // namespace k2
