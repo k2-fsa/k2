@@ -11,6 +11,8 @@
 import unittest
 
 import k2
+import numpy as np
+import torch
 
 
 class TestRaggedOps(unittest.TestCase):
@@ -77,8 +79,8 @@ class TestRaggedOps(unittest.TestCase):
             [ [1 -1 0] [2 10] [] [3] [5 8] ]
         '''
         src = k2.RaggedFloat(s)
-        ans = k2.ragged.max_per_sublist(src, 0)
-        print(ans)
+        ans = k2.ragged.max_per_sublist(src, -np.inf)
+        torch.allclose(ans, torch.tensor([1, 10, -np.inf, 3, 8.]))
 
 
 if __name__ == '__main__':
