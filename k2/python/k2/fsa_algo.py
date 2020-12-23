@@ -380,6 +380,8 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
         `fsa` is epsilon-free. Otherwise, a new epsilon-free fsa
         is returned and the input `fsa` is NOT modified.
     '''
+    assert fsa.is_cpu()
+    assert fsa.requires_grad is False
     if fsa.properties & fsa_properties.EPSILON_FREE != 0:
         return fsa
 
@@ -448,6 +450,8 @@ def determinize(fsa: Fsa) -> Fsa:
         Otherwise, a new deterministic fsa is returned and the
         input `fsa` is NOT modified.
     '''
+    assert fsa.is_cpu()
+    assert fsa.requires_grad is False
     if fsa.properties & fsa_properties.ARC_SORTED_AND_DETERMINISTIC != 0:  # noqa
         return fsa
 
@@ -477,7 +481,7 @@ def closure(fsa: Fsa) -> Fsa:
     def fix_aux_labels(src_aux_labels: torch.Tensor,
                        src_row_splits1: torch.Tensor,
                        arc_map: torch.Tensor) -> torch.Tensor:
-        '''Fix the aux labels of the outut FSA.
+        '''Fix the aux labels of the output FSA.
 
         Since :func:`_k2.closure` changes the labels of arcs entering
         the final state to 0, we need to change their corresponding
@@ -525,7 +529,7 @@ def invert(fsa: Fsa) -> Fsa:
     '''Invert an FST, swapping the labels in the FSA with the auxiliary labels.
 
     Caution:
-      It only works on for CPU and doesn't support autograd.
+      It only works on CPU and doesn't support autograd.
 
     Args:
       fsa:
@@ -533,6 +537,8 @@ def invert(fsa: Fsa) -> Fsa:
     Returns:
         The inverted Fsa, it's top-sorted if `fsa` is top-sorted. 
     '''
+    assert fsa.is_cpu()
+    assert fsa.requires_grad is False
     if isinstance(fsa.aux_labels, torch.Tensor):
         return fsa.invert()
     else:

@@ -46,7 +46,7 @@ class TestCompose(unittest.TestCase):
         scores = k2.get_tot_scores(ans,
                                    log_semiring=True,
                                    use_double_scores=False)
-        # The ground truth for `scores`, `a_fsa.grad` and `b_fsa.grad`
+        # The reference values for `scores`, `a_fsa.grad` and `b_fsa.grad`
         # are computed using GTN.
         # See https://bit.ly/3heLAJq
         assert scores.item() == 10

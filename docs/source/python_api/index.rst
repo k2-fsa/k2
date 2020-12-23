@@ -14,4 +14,5 @@ Python API Reference
    version
    ops
    ragged_ops
+   ragged_shape
    _k2

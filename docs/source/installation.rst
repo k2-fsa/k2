@@ -161,15 +161,26 @@ To run tests in parallel::
 
   cd build
   make -j
-  ctest --parallel <JOBNUM>
+  ctest --output-on-failure --parallel <JOBNUM>
 
 If `valgrind` is installed, you can check heap corruptions and memory leaks by::
 
   cd build
   make -j
-  ctest -R <TESTNAME> -D ExperimentalMemCheck
+  ctest --output-on-failure -R <TESTNAME> -D ExperimentalMemCheck
 
 .. HINT::
 
   You can install `valgrind` with `sudo apt-get install valgrind`
   on Ubuntu.
+
+Reporting issues
+----------------
+
+If you encounter any errors while using k2 after installation, please
+create an issue `on GitHub <https://github.com/k2-fsa/k2/issues/new>`_
+and tell us your current environment by posting the output of the following
+two commands::
+
+  python3 -m k2.version
+  python3 -m torch.utils.collect_env
