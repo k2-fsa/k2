@@ -85,5 +85,4 @@ __all__ = [
     'to_tensor',
     'top_sort',
     'union',
-    'use_cuda',
 ]
