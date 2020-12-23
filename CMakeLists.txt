@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(k2 CUDA CXX)
 
-set(K2_VERSION "0.1.1")
+set(K2_VERSION "0.1.2")
 
 # ----------------- Supported build types for K2 project -----------------
 set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)

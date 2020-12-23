@@ -3,13 +3,13 @@ from .ops import (
     remove_values_eq,
     remove_values_leq,
     remove_axis,
-    to_list
+    to_list,
 )
 from .ragged_shape import (
     compose_ragged_shapes,
     create_ragged_shape2,
     RaggedShape,
-    random_ragged_shape
+    random_ragged_shape,
 )
 
 __all__ = [
@@ -21,5 +21,5 @@ __all__ = [
     'remove_values_eq',
     'remove_values_leq',
     'remove_axis',
-    'to_list'
+    'to_list',
 ]

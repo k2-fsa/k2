@@ -18,7 +18,7 @@ class TestInvert(unittest.TestCase):
 
     def test_aux_as_tensor(self):
         s = '''
-            0 1 1 1 0 
+            0 1 1 1 0
             0 1 0 2 0
             0 3 2 3 0
             1 2 3 4 0
@@ -36,7 +36,7 @@ class TestInvert(unittest.TestCase):
 
     def test_aux_as_ragged(self):
         s = '''
-            0 1 1 0 
+            0 1 1 0
             0 1 0 0
             0 3 2 0
             1 2 3 0
@@ -58,7 +58,7 @@ class TestInvert(unittest.TestCase):
         dest = k2.invert(fsa)
         print(dest)  # will print aux_labels as well
         expected_fsa_str = '''
-            0 1 1 0 
+            0 1 1 0
             0 3 3 0
             0 7 0 0
             1 3 2 0

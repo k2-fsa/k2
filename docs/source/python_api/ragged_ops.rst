@@ -8,6 +8,11 @@ index
 
 .. autofunction:: index
 
+remove_axis
+-----------
+
+.. autofunction:: remove_axis
+
 remove_values_leq
 ------------------
 

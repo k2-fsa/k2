@@ -22,6 +22,11 @@ connect
 
 .. autofunction:: connect
 
+compose
+-------
+
+.. autofunction:: compose
+
 determinize
 -----------
 
@@ -47,6 +52,11 @@ intersect_dense_pruned
 
 .. autofunction:: intersect_dense_pruned
 
+invert
+------
+
+.. autofunction:: invert
+
 linear_fsa
 ----------
 
@@ -56,6 +66,11 @@ remove_epsilon
 --------------
 
 .. autofunction:: remove_epsilon
+
+remove_epsilons_iterative_tropical
+----------------------------------
+
+.. autofunction:: remove_epsilons_iterative_tropical
 
 shortest_path
 -------------

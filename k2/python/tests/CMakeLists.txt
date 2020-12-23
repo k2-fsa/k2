@@ -20,6 +20,7 @@ set(py_test_files
   add_epsilon_self_loops_test.py
   arc_sort_test.py
   closure_test.py
+  compose_test.py
   connect_test.py
   dense_fsa_vec_test.py
   determinize_test.py
