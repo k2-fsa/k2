@@ -40,7 +40,7 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
   K2_CHECK(IsCompatible(src.shape, *dst));
 
   int32_t last_axis = src.NumAxes() - 1;
-  const Array1<int32_t> &row_splits_array = src.shape.RowSplits(last_axis);
+  const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
   int32_t num_rows = row_splits_array.Dim() - 1;
   K2_CHECK_EQ(num_rows, dst->Dim());
 
@@ -62,7 +62,7 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst) {
       output_data[i] = val;
     }
   } else {
-    K2_CHECK(c->GetDeviceType() == kCuda);
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
 
     // This code is based on the example here:
     // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html

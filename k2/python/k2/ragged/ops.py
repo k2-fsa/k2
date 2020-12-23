@@ -1,4 +1,7 @@
-# Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+# Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang
+#                                                   Daniel Povey
+#                                                   Haowen Qiu)
+#
 #
 # See ../../../../LICENSE for clarification regarding multiple authors
 
@@ -110,3 +113,16 @@ def to_list(src: _k2.RaggedInt) -> List:
        as `src`.
     '''
     return _k2.ragged_int_to_list(src)
+
+
+def max_per_sublist(src: _k2.RaggedFloat,
+                    default_value: float) -> torch.Tensor:
+    '''Return the max value per sublist.
+
+    Args:
+      src:
+        The source ragged tensor.
+      default_value:
+        The initial value for computing max.
+    '''
+    return _k2.max_per_sublist(src, default_value)

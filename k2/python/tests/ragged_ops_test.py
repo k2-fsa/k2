@@ -72,6 +72,14 @@ class TestRaggedOps(unittest.TestCase):
         ans = k2.ragged.remove_values_eq(src, 8)
         self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]')
 
+    def test_max_per_sublist(self):
+        s = '''
+            [ [1 -1 0] [2 10] [] [3] [5 8] ]
+        '''
+        src = k2.RaggedFloat(s)
+        ans = k2.ragged.max_per_sublist(src, 0)
+        print(ans)
+
 
 if __name__ == '__main__':
     unittest.main()

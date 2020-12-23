@@ -1,4 +1,5 @@
 import torch  # noqa
+from _k2 import RaggedFloat
 from _k2 import RaggedInt
 from _k2 import simple_ragged_index_select
 
