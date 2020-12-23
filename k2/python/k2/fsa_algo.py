@@ -534,7 +534,7 @@ def invert(fsa: Fsa) -> Fsa:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
     Returns:
-        The inverted Fsa, it's top-sorted if `fsa` is top-sorted. 
+      The inverted Fsa, it's top-sorted if `fsa` is top-sorted.
     '''
     assert fsa.is_cpu()
     assert fsa.requires_grad is False

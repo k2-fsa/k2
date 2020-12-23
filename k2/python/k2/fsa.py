@@ -19,7 +19,6 @@ import _k2
 from _k2 import RaggedArc
 
 
-
 class Fsa(object):
     '''This class represents a single fsa or a vector of fsas.
 
@@ -436,7 +435,7 @@ class Fsa(object):
         name, cache = 'incoming_arcs', self._cache
         if name not in cache:
             cache[name] = _k2.get_incoming_arcs(self.arcs,
-                                                 self.get_dest_states())
+                                                self.get_dest_states())
         return cache[name]
 
     def get_entering_arc_batches(self) -> _k2.RaggedInt:
@@ -770,7 +769,8 @@ class Fsa(object):
 
         # The following is a magic invocation to make sure
         # the backprop on the scores happens.
-        k2.autograd_utils.phantom_set_scores_to(out_fsa, self.scores[start:end])
+        k2.autograd_utils.phantom_set_scores_to(out_fsa,
+                                                self.scores[start:end])
 
         return out_fsa
 

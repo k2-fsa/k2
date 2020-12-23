@@ -12,7 +12,7 @@ from typing import Optional
 def create_ragged_shape2(row_splits: Optional[torch.Tensor] = None,
                          row_ids: Optional[torch.Tensor] = None,
                          cached_tot_size: Optional[int] = -1
-                        ) -> _k2.RaggedShape:
+                        ) -> _k2.RaggedShape:  # noqa
     '''Construct a RaggedShape from row_ids and/or row_splits vectors.  For
     the overall concepts, please see comments in k2/csrc/utils.h.
 
@@ -48,4 +48,5 @@ def compose_ragged_shapes(a: _k2.RaggedShape,
     return _k2.compose_ragged_shapes(a, b)
 
 
-# for remove_axis, please see ops.py where we put it because the name also applies to ragged.
+# for remove_axis, please see ops.py where we put it because the
+# name also applies to ragged.

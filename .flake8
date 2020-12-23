@@ -12,3 +12,5 @@ exclude =
 ignore =
   # E127 continuation line over-indented for visual indent
   E127,
+  # F401, import but not used
+  F401,
