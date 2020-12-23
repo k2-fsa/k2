@@ -178,7 +178,6 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
         return intersect(a_fsa, b_fsa)
 
     assert isinstance(a_fsa.aux_labels, torch.Tensor)
-    assert isinstance(b_fsa.aux_labels, torch.Tensor)
 
     a_fsa = a_fsa.invert()
     a_fsa = arc_sort(a_fsa)
