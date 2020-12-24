@@ -203,8 +203,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
           a_fsas:
             Input FsaVec, i.e., `decoding graphs`, one per sequence. It might
             just be a linear sequence of phones, or might be something more
-            complicated. Must have either `a_fsas.shape[0] == b_fsas.dim0()`, or
-            `a_fsas.shape[0] == 1` in which case the graph is shared.
+            complicated. Must have `a_fsas.shape[0] == b_fsas.dim0()`.
           b_fsas:
             Input FSAs that correspond to neural network output.
           out_fsa:
@@ -415,8 +414,7 @@ def intersect_dense(a_fsas: Fsa, b_fsas: DenseFsaVec,
       a_fsas:
         Input FsaVec, i.e., `decoding graphs`, one per sequence. It might just
         be a linear sequence of phones, or might be something more complicated.
-        Must have either `a_fsas.shape[0] == b_fsas.dim0()`, or
-        `a_fsas.shape[0] == 1` in which case the graph is shared.
+        Must have `a_fsas.shape[0] == b_fsas.dim0()`.
       b_fsas:
         Input FSAs that correspond to neural network output.
       output_beam:

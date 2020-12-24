@@ -105,7 +105,7 @@ class MultiGraphDenseIntersect {
     NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
 
-    K2_CHECK(a_fsas_.Dim0() == b_fsas_.shape.Dim0());
+    K2_CHECK_EQ(a_fsas_.Dim0(), b_fsas_.shape.Dim0());
     num_fsas_ = a_fsas_.Dim0();
     K2_CHECK_GT(num_fsas_, 0);
     K2_CHECK_GT(output_beam, 0);

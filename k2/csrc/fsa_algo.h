@@ -179,6 +179,9 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
 
 /* IntersectDense is a version of IntersectDensePruned that does not
    do pruning in the 1st pass.
+
+   CAUTION: Unlike `IntersectDensePruned`, it requires that
+   a_fsas.Dim0() == b_fsas.shape.Dim0().
  */
 void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas, float output_beam,
                     FsaVec *out, Array1<int32_t> *arc_map_a,
