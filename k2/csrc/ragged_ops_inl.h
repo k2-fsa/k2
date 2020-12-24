@@ -22,6 +22,7 @@
 #endif
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <vector>
