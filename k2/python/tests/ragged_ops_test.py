@@ -80,7 +80,32 @@ class TestRaggedOps(unittest.TestCase):
         '''
         src = k2.RaggedFloat(s)
         ans = k2.ragged.max_per_sublist(src, -np.inf)
-        torch.allclose(ans, torch.tensor([1, 10, -np.inf, 3, 8.]))
+        assert torch.allclose(ans, torch.tensor([1, 10, -np.inf, 3, 8.]))
+
+    def test_sum_per_sublist(self):
+        s = '''
+            [ [1 -1 0] [2 10] [] [3] [5 8] ]
+        '''
+        src = k2.RaggedFloat(s)
+        ans = k2.ragged.sum_per_sublist(src, 0)
+        assert torch.allclose(ans, torch.tensor([0, 12, 0, 3, 13.]))
+
+    def test_log_sum_per_sublist(self):
+        s = '''
+            [ [1 -1 0] [2 10] [] [3] [5 8] ]
+        '''
+        src = k2.RaggedFloat(s)
+        ans = k2.ragged.log_sum_per_sublist(src)
+        assert torch.allclose(
+            ans,
+            torch.tensor([
+                np.log(np.exp(1) + np.exp(-1) + np.exp(0)),
+                np.log(np.exp(2) + np.exp(10)),
+                -np.inf,
+                3,
+                np.log(np.exp(5) + np.exp(8)),
+            ],
+                         dtype=torch.float32))
 
 
 if __name__ == '__main__':

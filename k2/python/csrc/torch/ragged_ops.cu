@@ -65,16 +65,16 @@ static void PybindRaggedIntToList(py::module &m, const char *name) {
       py::arg("src"));
 }
 
-template <typename T>
-static void PybindMaxPerSublist(py::module &m, const char *name) {
+template <typename T, typename Op>
+static void PybindOpPerSublist(py::module &m, Op op, const char *name) {
   m.def(
       name,
-      [](Ragged<T> &src, T default_value) -> torch::Tensor {
-        Array1<T> max_values(src.Context(), src.TotSize(src.NumAxes() - 2));
-        MaxPerSublist(src, default_value, &max_values);
-        return ToTensor(max_values);
+      [op](Ragged<T> &src, T initial_value) -> torch::Tensor {
+        Array1<T> values(src.Context(), src.TotSize(src.NumAxes() - 2));
+        op(src, initial_value, &values);
+        return ToTensor(values);
       },
-      py::arg("src"), py::arg("default_value"));
+      py::arg("src"), py::arg("initial_value"));
 }
 
 }  // namespace k2
@@ -85,5 +85,7 @@ void PybindRaggedOps(py::module &m) {
   PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
   PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
   PybindRaggedIntToList(m, "ragged_int_to_list");
-  PybindMaxPerSublist<float>(m, "max_per_sublist");
+  PybindOpPerSublist<float>(m, MaxPerSublist<float>, "max_per_sublist");
+  PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
+  PybindOpPerSublist<float>(m, LogSumPerSublist<float>, "log_sum_per_sublist");
 }

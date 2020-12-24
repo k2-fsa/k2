@@ -5,8 +5,9 @@
 #
 # See ../../../../LICENSE for clarification regarding multiple authors
 
-from typing import Tuple, Optional, List
-from typing import Union
+from typing import Optional, List, Tuple, Union
+
+import numpy as np
 import torch
 import _k2
 
@@ -116,13 +117,49 @@ def to_list(src: _k2.RaggedInt) -> List:
 
 
 def max_per_sublist(src: _k2.RaggedFloat,
-                    default_value: float) -> torch.Tensor:
+                    initial_value: Optional[float] = -np.inf) -> torch.Tensor:
     '''Return the max value per sublist.
+
+    Note:
+      max is taken over the last axis.
 
     Args:
       src:
         The source ragged tensor.
-      default_value:
+      initial_value:
         The initial value for computing max.
     '''
-    return _k2.max_per_sublist(src, default_value)
+    return _k2.max_per_sublist(src, initial_value)
+
+
+def sum_per_sublist(src: _k2.RaggedFloat,
+                    initial_value: Optional[float] = 0) -> torch.Tensor:
+    '''Return the sum per sublist.
+
+    Note:
+      sum is taken over the last axis.
+
+    Args:
+      src:
+        The source ragged tensor.
+      initial_value:
+        The initial value for computing sum.
+    '''
+    return _k2.sum_per_sublist(src, initial_value)
+
+
+def log_sum_per_sublist(src: _k2.RaggedFloat,
+                        initial_value: Optional[float] = -np.inf
+                       ) -> torch.Tensor:
+    '''Return the `log-add` sum per sublist.
+
+    Note:
+      log-add sum is taken over the last axis.
+
+    Args:
+      src:
+        The source ragged tensor.
+      initial_value:
+        The initial value for computing log-add sum.
+    '''
+    return _k2.log_sum_per_sublist(src, initial_value)
