@@ -93,8 +93,7 @@ Ragged<T> NormalizePerSublist(Ragged<T> &src) {
   LogSumPerSublist(src, negative_infinity, &values);
 
   const T *values_data = values.Data();
-  int32_t num_rows = values.Dim();
-  const int32_t *row_splits_data = src.RowSplits(num_axes - 1).Data();
+  const int32_t *row_ids_data = src.RowIds(num_axes - 1).Data();
 
   Array1<T> ans_values(context, src.values.Dim());
   Ragged<T> ans(src.shape, ans_values);
@@ -103,14 +102,11 @@ Ragged<T> NormalizePerSublist(Ragged<T> &src) {
   const T *src_data = src.values.Data();
 
   K2_EVAL(
-      context, num_rows, lambda_do_normalization, (int32_t i)->void {
-        int32_t begin = row_splits_data[i];
-        int32_t end = row_splits_data[i + 1];
-        T normalizer = values_data[i];
+      context, ans_values.Dim(), lambda_do_normalization, (int32_t i)->void {
+        int32_t row = row_ids_data[i];
+        T normalizer = values_data[row];
 
-        // it also handles the case when the sublist is empty
-        for (int32_t k = begin; k != end; ++k)
-          ans_data[k] = src_data[k] - normalizer;
+        ans_data[i] = src_data[i] - normalizer;
       });
   return ans;
 }
