@@ -74,38 +74,38 @@ class TestRaggedOps(unittest.TestCase):
         ans = k2.ragged.remove_values_eq(src, 8)
         self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]')
 
-    def test_max_per_sublist(self):
+    def test_normalize_scores(self):
         s = '''
             [ [1 -1 0] [2 10] [] [3] [5 8] ]
         '''
-        src = k2.RaggedFloat(s)
-        ans = k2.ragged.max_per_sublist(src, -np.inf)
-        assert torch.allclose(ans, torch.tensor([1, 10, -np.inf, 3, 8.]))
+        src = k2.ragged.RaggedFloat(s)
+        saved = src.scores.clone().detach()
+        saved.requires_grad_(True)
+        src.requires_grad_(True)
 
-    def test_sum_per_sublist(self):
-        s = '''
-            [ [1 -1 0] [2 10] [] [3] [5 8] ]
-        '''
-        src = k2.RaggedFloat(s)
-        ans = k2.ragged.sum_per_sublist(src, 0)
-        assert torch.allclose(ans, torch.tensor([0, 12, 0, 3, 13.]))
+        ans = k2.ragged.normalize_scores(src)
 
-    def test_log_sum_per_sublist(self):
-        s = '''
-            [ [1 -1 0] [2 10] [] [3] [5 8] ]
-        '''
-        src = k2.RaggedFloat(s)
-        ans = k2.ragged.log_sum_per_sublist(src)
-        assert torch.allclose(
-            ans,
-            torch.tensor([
-                np.log(np.exp(1) + np.exp(-1) + np.exp(0)),
-                np.log(np.exp(2) + np.exp(10)),
-                -np.inf,
-                3,
-                np.log(np.exp(5) + np.exp(8)),
-            ],
-                         dtype=torch.float32))
+        scale = torch.arange(ans.scores.numel())
+
+        (ans.scores * scale).sum().backward()
+
+        expected = saved.new_zeros(*ans.scores.shape)
+
+        normalizer = saved[:3].exp().sum().log()
+        expected[:3] = saved[:3] - normalizer
+
+        normalizer = saved[3:5].exp().sum().log()
+        expected[3:5] = saved[3:5] - normalizer
+
+        expected[5] = 0  # it has only one entry
+
+        normalizer = saved[6:8].exp().sum().log()
+        expected[6:8] = saved[6:8] - normalizer
+
+        self.assertTrue(torch.allclose(expected, ans.scores))
+        (expected * scale).sum().backward()
+
+        self.assertTrue(torch.allclose(saved.grad, src.grad))
 
 
 if __name__ == '__main__':

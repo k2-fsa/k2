@@ -2,7 +2,6 @@
 #                                                   Daniel Povey
 #                                                   Haowen Qiu)
 #
-#
 # See ../../../../LICENSE for clarification regarding multiple authors
 
 from typing import Optional, List, Tuple, Union
@@ -114,52 +113,3 @@ def to_list(src: _k2.RaggedInt) -> List:
        as `src`.
     '''
     return _k2.ragged_int_to_list(src)
-
-
-def max_per_sublist(src: _k2.RaggedFloat,
-                    initial_value: Optional[float] = -np.inf) -> torch.Tensor:
-    '''Return the max value per sublist.
-
-    Note:
-      max is taken over the last axis.
-
-    Args:
-      src:
-        The source ragged tensor.
-      initial_value:
-        The initial value for computing max.
-    '''
-    return _k2.max_per_sublist(src, initial_value)
-
-
-def sum_per_sublist(src: _k2.RaggedFloat,
-                    initial_value: Optional[float] = 0) -> torch.Tensor:
-    '''Return the sum per sublist.
-
-    Note:
-      sum is taken over the last axis.
-
-    Args:
-      src:
-        The source ragged tensor.
-      initial_value:
-        The initial value for computing sum.
-    '''
-    return _k2.sum_per_sublist(src, initial_value)
-
-
-def log_sum_per_sublist(src: _k2.RaggedFloat,
-                        initial_value: Optional[float] = -np.inf
-                       ) -> torch.Tensor:
-    '''Return the `log-add` sum per sublist.
-
-    Note:
-      log-add sum is taken over the last axis.
-
-    Args:
-      src:
-        The source ragged tensor.
-      initial_value:
-        The initial value for computing log-add sum.
-    '''
-    return _k2.log_sum_per_sublist(src, initial_value)

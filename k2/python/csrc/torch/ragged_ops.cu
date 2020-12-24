@@ -2,7 +2,8 @@
  * @brief python wrappers for ragged_ops.h
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corp.       (author: Fangjun Kuang)
+ * Copyright (c)  2020  Xiaomi Corp.       (author: Fangjun Kuang
+ *                                                  Daniel Povey)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -65,16 +66,65 @@ static void PybindRaggedIntToList(py::module &m, const char *name) {
       py::arg("src"));
 }
 
-template <typename T, typename Op>
-static void PybindOpPerSublist(py::module &m, Op op, const char *name) {
-  m.def(
-      name,
-      [op](Ragged<T> &src, T initial_value) -> torch::Tensor {
-        Array1<T> values(src.Context(), src.TotSize(src.NumAxes() - 2));
-        op(src, initial_value, &values);
-        return ToTensor(values);
-      },
-      py::arg("src"), py::arg("initial_value"));
+template <typename T>
+static void PybindNormalizePerSublist(py::module &m, const char *name) {
+  m.def(name, &NormalizePerSublist<T>, py::arg("src"));
+}
+
+template <typename T>
+static void PybindNormalizePerSublistBackward(py::module &m, const char *name) {
+  m.def(name,
+        /*
+           @param [in] out      It is the output of `NormalizePerSublist(src)`.
+           @param [in] out_grad The gradient for `out`.
+           @return  Return the gradient for `src`.
+         */
+        [](Ragged<T> &out, torch::Tensor out_grad) -> torch::Tensor {
+          Array1<T> out_grad_array = FromTensor<T>(out_grad);
+          K2_CHECK_EQ(out.values.Dim(), out_grad_array.Dim());
+
+          ContextPtr context = GetContext(out, out_grad_array);
+          Ragged<T> out_grad_ragged(out.shape, out_grad_array);
+
+          int32_t num_axes = out.NumAxes();
+          Array1<T> out_grad_sum(context, out.TotSize(num_axes - 2));
+          SumPerSublist<T>(out_grad_ragged, 0, &out_grad_sum);
+          const T *out_grad_sum_data = out_grad_sum.Data();
+
+          Array1<T> ans_grad_array(context, out_grad_array.Dim());
+          const T *out_data = out.values.Data();
+          const T *out_grad_data = out_grad_array.Data();
+          T *ans_grad_data = ans_grad_array.Data();
+          const int32_t *row_splits_data = out.RowSplits(num_axes - 1).Data();
+          int32_t num_rows = out_grad_sum.Dim();
+
+          if (std::is_same<T, float>::value) {
+            // use `expf` for float
+            K2_EVAL(
+                context, num_rows, lambda_set_ans_grad, (int32_t i)->void {
+                  int32_t begin = row_splits_data[i];
+                  int32_t end = row_splits_data[i + 1];
+                  T scale = out_grad_sum_data[i];
+                  for (int32_t k = begin; k != end; ++k) {
+                    ans_grad_data[k] =
+                        out_grad_data[k] - expf(out_data[k]) * scale;
+                  }
+                });
+          } else {
+            // use `exp` for double
+            K2_EVAL(
+                context, num_rows, lambda_set_ans_grad, (int32_t i)->void {
+                  int32_t begin = row_splits_data[i];
+                  int32_t end = row_splits_data[i + 1];
+                  T scale = out_grad_sum_data[i];
+                  for (int32_t k = begin; k != end; ++k) {
+                    ans_grad_data[k] =
+                        out_grad_data[k] - exp(out_data[k]) * scale;
+                  }
+                });
+          }
+          return ToTensor(ans_grad_array);
+        });
 }
 
 }  // namespace k2
@@ -85,7 +135,6 @@ void PybindRaggedOps(py::module &m) {
   PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
   PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
   PybindRaggedIntToList(m, "ragged_int_to_list");
-  PybindOpPerSublist<float>(m, MaxPerSublist<float>, "max_per_sublist");
-  PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
-  PybindOpPerSublist<float>(m, LogSumPerSublist<float>, "log_sum_per_sublist");
+  PybindNormalizePerSublist<float>(m, "normalize_per_sublist");
+  PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
 }

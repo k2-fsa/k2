@@ -81,6 +81,40 @@ void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst) {
 }
 
 template <typename T>
+Ragged<T> NormalizePerSublist(Ragged<T> &src) {
+  K2_STATIC_ASSERT(
+      (std::is_same<float, T>::value || std::is_same<double, T>::value));
+  T negative_infinity = -std::numeric_limits<T>::infinity();
+
+  ContextPtr &context = src.Context();
+  int32_t num_axes = src.NumAxes();
+  Array1<T> values(context, src.TotSize(num_axes - 2));
+  LogSumPerSublist(src, negative_infinity, &values);
+
+  const T *values_data = values.Data();
+  int32_t num_rows = values.Dim();
+  const int32_t *row_splits_data = src.RowSplits(num_axes - 1).Data();
+
+  Array1<T> ans_values(context, src.values.Dim());
+  Ragged<T> ans(src.shape, ans_values);
+
+  T *ans_data = ans.values.Data();
+  const T *src_data = src.values.Data();
+
+  K2_EVAL(
+      context, num_rows, lambda_do_normalization, (int32_t i)->void {
+        int32_t begin = row_splits_data[i];
+        int32_t end = row_splits_data[i + 1];
+        T normalizer = values_data[i];
+
+        // it also handles the case when the sublist is empty
+        for (int32_t k = begin; k != end; ++k)
+          ans_data[k] = src_data[k] - normalizer;
+      });
+  return ans;
+}
+
+template <typename T>
 Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> **src,
                 Array1<uint32_t> *merge_map /* = nullptr */) {
   NVTX_RANGE(K2_FUNC);

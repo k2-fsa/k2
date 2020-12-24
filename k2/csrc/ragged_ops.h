@@ -82,6 +82,20 @@ void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
   ApplyOpPerSublist<T, LogAdd<T>>(src, initial_value, dst_values);
 }
 
+/* Normalize per sublist.
+
+   The normalization per sublist is done as follows:
+
+      1. Compute the log sum using LogSumPerSublist
+      2. Subtract the log sum from the sublist
+      3. Return the resulting sublist
+   @param [in] src  The source ragged tensor. The normalization
+                    is done on the last axis.
+   @return The normalized ragged tensor.
+ */
+template <typename T>
+Ragged<T> NormalizePerSublist(Ragged<T> &src);
+
 /*
   Output to an array `and_values` the result of reducing each sub-list along
   the last axis of `src` with operator &, i.e. bit-wise and.
