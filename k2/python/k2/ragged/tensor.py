@@ -22,7 +22,7 @@ class RaggedFloat(object):
             ragged = _k2.RaggedFloat(ragged)
 
         self.ragged = ragged
-        self._scores = ragged.values().clone()
+        self._scores = ragged.values()
 
     def __str__(self) -> str:
         return str(self.ragged)

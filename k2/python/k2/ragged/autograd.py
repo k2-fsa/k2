@@ -71,6 +71,30 @@ class _NormalizeScores(torch.autograd.Function):
 
 
 def normalize_scores(src: RaggedFloat) -> RaggedFloat:
+    '''Normalize a ragged tensor of scores.
+
+    The normalization per sublist is done as follows:
+
+        1. Compute the log sum per sublist
+        2. Subtract the log sum computed above from the sublist and return
+        it
+
+    Note:
+      If a sublist contains 3 elements `[a, b, c]`, then the log sum
+      is defined as::
+
+        s = log(exp(a) + exp(b) + exp(c))
+
+      The resulting sublist looks like::
+
+        [a - s, b - s, c - s]
+
+    Args:
+      src:
+        The source ragged tensor.
+    Returns:
+      The normalized ragged tensor.
+    '''
     out = [None]  # placeholder
 
     # the return value is discarded for the following call
