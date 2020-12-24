@@ -117,7 +117,8 @@ static void PybindNormalizePerSublistBackward(py::module &m, const char *name) {
               });
         }
         return ToTensor(ans_grad_array);
-      });
+      },
+      py::arg("out"), py::arg("out_grad"));
 }
 
 }  // namespace k2
