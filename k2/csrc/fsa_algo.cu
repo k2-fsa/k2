@@ -841,8 +841,8 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
 }
 
 FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
-                    Array1<int32_t> *fsas_arc_map,
-                    Array1<int32_t> *labels_arc_map) {
+                    Array1<int32_t> *fsas_arc_map /*=nullptr*/,
+                    Array1<int32_t> *labels_arc_map /*=nullptr*/) {
   if (fsas.NumAxes() == 2) {
     FsaVec fsas_temp = FsaToFsaVec(fsas);
     return ExpandArcs(fsas_temp, labels_shape, fsas_arc_map, labels_arc_map)
@@ -1081,6 +1081,67 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
   // axis 1, so remove axis 1 twice].
   RaggedShape temp = RemoveAxis(full_shape, 1);
   return FsaVec(RemoveAxis(temp, 1), oarcs);
+}
+
+void Invert(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
+            Ragged<int32_t> *dest_aux_labels,
+            Array1<int32_t> *arc_map /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(src_aux_labels.NumAxes(), 2);
+  K2_CHECK_EQ(src_aux_labels.Dim0(), src.NumElements());
+  K2_CHECK(dest != nullptr && dest_aux_labels != nullptr);
+  ContextPtr c = GetContext(src, src_aux_labels);
+  if (src.NumAxes() == 2) {
+    Fsa *srcs = &src;
+    FsaVec src_vec = CreateFsaVec(1, &srcs), dest_vec;
+    Invert(src_vec, src_aux_labels, &dest_vec, dest_aux_labels, arc_map);
+    *dest = GetFsaVecElement(dest_vec, 0);
+    return;
+  }
+  Array1<int32_t> src_arc_map, labels_arc_map;
+  *dest = ExpandArcs(src, src_aux_labels.shape, &src_arc_map, &labels_arc_map);
+  // swap labels and aux_labels
+  int32_t dest_num_arcs = dest->NumElements();
+  Arc *dest_arcs_data = dest->values.Data();
+  const int32_t *labels_arc_map_data = labels_arc_map.Data(),
+                *src_aux_labels_data = src_aux_labels.values.Data();
+  Array1<int32_t> dest_aux_labels_row_splits(c, dest_num_arcs + 1);
+  int32_t *dest_aux_labels_row_splits_data = dest_aux_labels_row_splits.Data();
+  K2_EVAL(
+      c, dest_num_arcs, lambda_set_dest_aux_labels_num,
+      (int32_t dest_idx012)->void {
+        Arc &dest_arc = dest_arcs_data[dest_idx012];
+        // we'll remove epsilons in dest_aux_labels
+        dest_aux_labels_row_splits_data[dest_idx012] =
+            dest_arc.label == 0 ? 0 : 1;
+      });
+  ExclusiveSum(dest_aux_labels_row_splits.Arange(0, dest_num_arcs),
+               &dest_aux_labels_row_splits);
+  RaggedShape dest_aux_labels_shape =
+      RaggedShape2(&dest_aux_labels_row_splits, nullptr, -1);
+  Array1<int32_t> dest_aux_labels_values(c,
+                                         dest_aux_labels_shape.NumElements());
+  int32_t *dest_aux_labels_values_data = dest_aux_labels_values.Data();
+  K2_EVAL(
+      c, dest_num_arcs, lambda_set_dest_labels_and_aux_labels,
+      (int32_t dest_idx012)->void {
+        Arc &dest_arc = dest_arcs_data[dest_idx012];
+        // swap label and aux_label
+        if (dest_arc.label != 0) {
+          int32_t dest_aux_labels_idx0x =
+              dest_aux_labels_row_splits_data[dest_idx012];
+          // every arc in dest has at most one aux_label (as the aux_label is
+          // the label of src on this arc)
+          dest_aux_labels_values_data[dest_aux_labels_idx0x] = dest_arc.label;
+        }
+        int32_t src_aux_labels_idx01 = labels_arc_map_data[dest_idx012];
+        dest_arc.label = src_aux_labels_idx01 == -1
+                             ? 0
+                             : src_aux_labels_data[src_aux_labels_idx01];
+      });
+  *dest_aux_labels =
+      Ragged<int32_t>(dest_aux_labels_shape, dest_aux_labels_values);
+  if (arc_map != nullptr) *arc_map = src_arc_map;
 }
 
 // Will be used in InvertHost to process FsaVec input recursively.

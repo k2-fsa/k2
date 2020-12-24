@@ -421,6 +421,45 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
 FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
                     Array1<int32_t> *fsas_arc_map = nullptr,
                     Array1<int32_t> *labels_arc_map = nullptr);
+/*
+  Invert an FST, swapping the labels in the FSA with the auxiliary labels.
+  (e.g. swap input and output symbols in FST, but you decide which is which).
+  Because each arc may have more than one auxiliary label, in general
+  the output FSA may have more states than the input FSA.
+
+    @param [in] src             Input Fsa or FsaVec.
+    @param [in] src_aux_labels  aux_labels of `src`, must have NumAxes() == 2
+                                and Dim0() == src.NumElements(). Each row in it
+                                is the aux_labels for each arc in `src`.
+                                Noted for final-arcs (arcs entering the final
+                                state), only the last aux_label can be -1, i.e.
+                                the aux_labels for final-arcs should be
+                                [x1,x2,...xn, -1] where xi != -1 for i from 1
+                                to n (which also implies that aux_labels for
+                                final-arc must at least contain -1).
+                                For other arcs that are not final-arcs,
+                                the corresponding aux_labels must contain no
+                                -1.
+    @param [out] dest   Output Fsa or FsaVec, it's the inverted Fsa. At exit
+                        dest.NumAxes() == src.NumAxes() and num-states of it
+                        >= num_states in src. labels in `dest` will correspond
+                        to those in `src_aux_labels`.
+                        If `src` is top-sorted, then `dest` will be top-sorted
+                        as well.
+    @param [out] dest_aux_labels aux_labels of dest, will be the same as labels
+                        in `src`.
+    @param [out] arc_map  If not nullptr, will be set to to a new array of
+                         size `ans.NumElements()`, whose i'th element
+                         is the arc-index into `fsas.values` where the score
+                         of this arc came from, or -1 if the score was set to
+                         zero (because it was not the first arc of a chain).
+                         Noted arc_map follows the *score*, not label, see
+                         `fsas_arc_map` in above function `expand_arcs` for
+                         details.
+ */
+void Invert(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
+            Ragged<int32_t> *dest_aux_labels,
+            Array1<int32_t> *arc_map = nullptr);
 
 /*
   Invert an FST, swapping the labels in the FSA with the auxiliary labels.
@@ -433,6 +472,15 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
     @param [in] src_aux_labels  aux_labels of `src`, must have NumAxes() == 2
                                 and Dim0() == src.NumElements(). Each row in it
                                 is the aux_labels for each arc in `src`.
+                                Noted for final-arcs (arcs entering the final
+                                state), only the last aux_label can be -1, i.e.
+                                the aux_labels for final-arcs should be
+                                [x1,x2,...xn, -1] where xi != -1 for i from 1
+                                to n (which also implies that aux_labels for
+                                final-arc must at least contain -1).
+                                For other arcs that are not final-arcs,
+                                the corresponding aux_labels must contain no
+                                -1.
     @param [out] dest   Output Fsa or FsaVec, it's the inverted Fsa. At exit
                         dest.NumAxes() == src.NumAxes() and num-states of it
                         >= num_states in src. labels in `dest` will correspond

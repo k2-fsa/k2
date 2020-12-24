@@ -221,27 +221,32 @@ void FstInverter::GetOutput(Fsa *fsa_out, AuxLabels *labels_out) {
     int32_t dest_state = arc.dest_state;
     if (dest_state == final_state_in) {
       // every arc entering the final state must have exactly
-      // one olabel == kFinalSymbol
-      K2_CHECK_EQ(pos_begin + 1, pos_end);
-      K2_CHECK_EQ(labels_in_.data[pos_begin], kFinalSymbol);
+      // one olabel == kFinalSymbol (the last one)
+      K2_CHECK_LT(pos_begin, pos_end);
+      K2_CHECK_EQ(labels_in_.data[pos_end - 1], kFinalSymbol);
     }
     if (pos_end - pos_begin <= 1) {
       int32_t curr_label =
           (pos_end - pos_begin == 0) ? kEpsilon : labels_in_.data[pos_begin];
+      if (dest_state != final_state_in) K2_CHECK_NE(curr_label, kFinalSymbol);
       arcs.emplace_back(state_map[src_state], state_map[dest_state], curr_label,
                         arc.weight);
     } else {
       // expand arcs with olabels
+      K2_CHECK_NE(labels_in_.data[pos_begin], kFinalSymbol);
       arcs.emplace_back(state_map[src_state], state_ids[dest_state] + 1,
                         labels_in_.data[pos_begin], arc.weight);
       start_pos.push_back(num_non_eps_ilabel_processed);
       for (int32_t pos = pos_begin + 1; pos < pos_end - 1; ++pos) {
         ++state_ids[dest_state];
+        K2_CHECK_NE(labels_in_.data[pos], kFinalSymbol);
         arcs.emplace_back(state_ids[dest_state], state_ids[dest_state] + 1,
                           labels_in_.data[pos], 0.0);
         start_pos.push_back(num_non_eps_ilabel_processed);
       }
       ++state_ids[dest_state];
+      if (dest_state != final_state_in)
+        K2_CHECK_NE(labels_in_.data[pos_end - 1], kFinalSymbol);
       arcs.emplace_back(state_ids[dest_state], state_map[arc.dest_state],
                         labels_in_.data[pos_end - 1], 0.0);
     }

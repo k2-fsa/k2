@@ -207,17 +207,16 @@ void ReorderArcs(const std::vector<Arc> &arcs, Fsa *fsa,
 
   using ArcWithIndex = std::pair<Arc, int32_t>;
   int32_t arc_id = 0;
-  std::vector<std::vector<ArcWithIndex>> vec;
+  std::size_t num_states = fsa->size1;
+  std::vector<std::vector<ArcWithIndex>> vec(num_states);
   for (const auto &arc : arcs) {
     auto src_state = arc.src_state;
     auto dest_state = arc.dest_state;
-    auto new_size = std::max(src_state, dest_state);
-    if (new_size >= vec.size()) vec.resize(new_size + 1);
+    K2_CHECK_LT(src_state, num_states);
+    K2_CHECK_LT(dest_state, num_states);
     vec[src_state].push_back({arc, arc_id++});
   }
 
-  std::size_t num_states = vec.size();
-  K2_CHECK_EQ(num_states, fsa->size1);
   std::vector<int32_t> arc_map_out;
   arc_map_out.reserve(arcs.size());
 

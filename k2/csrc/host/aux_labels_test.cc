@@ -263,17 +263,18 @@ TEST(AuxLabels, InvertFst) {
                                                     5, 6, 7, 7, 8));
   }
   {
-    // non-top-sorted input FSA and there are arcs entering the start state
+    // non-top-sorted input FSA and there are arcs entering the start state and
+    // there are multiple olables for the final-arc
     std::vector<Arc> arcs = {{0, 1, 1, 0},  {0, 1, 0, 0}, {0, 3, 2, 0},
                              {1, 2, 3, 0},  {1, 0, 4, 0}, {2, 0, 5, 0},
                              {2, 5, -1, 0}, {3, 1, 6, 0}, {4, 5, -1, 0}};
     FsaCreator fsa_in_creator(arcs, 5);
     const auto &fsa_in = fsa_in_creator.GetFsa();
     EXPECT_FALSE(IsTopSorted(fsa_in));
-    std::vector<int32_t> start_pos = {0, 2, 3, 3, 6, 8, 11, 12, 14, 15};
+    std::vector<int32_t> start_pos = {0, 2, 3, 3, 6, 8, 11, 13, 15, 18};
     EXPECT_EQ(start_pos.size(), fsa_in.size2 + 1);
-    std::vector<int32_t> labels = {1,  2,  3,  5,  6,  7,  8, 9,
-                                   10, 11, 12, -1, 13, 14, -1};
+    std::vector<int32_t> labels = {1,  2,  3,  5,  6,  7,  8,  9,  10,
+                                   11, 12, 13, -1, 14, 15, 16, 17, -1};
     AuxLabels labels_in(static_cast<int32_t>(start_pos.size()) - 1,
                         static_cast<int32_t>(labels.size()), start_pos.data(),
                         labels.data());
@@ -289,29 +290,32 @@ TEST(AuxLabels, InvertFst) {
 
     EXPECT_FALSE(IsTopSorted(fsa_out));
     std::vector<Arc> arcs_out = {
-        {0, 4, 1, 0},  {0, 6, 3, 0},   {0, 10, 0, 0},  {1, 0, 9, 0},
-        {2, 3, 11, 0}, {3, 0, 12, 0},  {4, 6, 2, 0},   {5, 6, 14, 0},
-        {6, 7, 5, 0},  {6, 1, 8, 0},   {7, 8, 6, 0},   {8, 9, 7, 0},
-        {9, 2, 10, 0}, {9, 12, -1, 0}, {10, 5, 13, 0}, {11, 12, -1, 0}};
+        {0, 4, 1, 0},    {0, 6, 3, 0},    {0, 10, 0, 0},  {1, 0, 9, 0},
+        {2, 3, 11, 0},   {3, 0, 12, 0},   {4, 6, 2, 0},   {5, 6, 15, 0},
+        {6, 7, 5, 0},    {6, 1, 8, 0},    {7, 8, 6, 0},   {8, 9, 7, 0},
+        {9, 2, 10, 0},   {9, 12, 13, 0},  {10, 5, 14, 0}, {11, 13, 16, 0},
+        {12, 15, -1, 0}, {13, 14, 17, 0}, {14, 15, -1, 0}};
     ASSERT_EQ(fsa_out.size2, arcs_out.size());
     for (auto i = 0; i != arcs_out.size(); ++i) {
       EXPECT_EQ(fsa_out.data[i], arcs_out[i]);
     }
-    ASSERT_EQ(fsa_out.size1, 13);
+    ASSERT_EQ(fsa_out.size1, 16);
     std::vector<int32_t> arc_indexes(fsa_out.indexes,
                                      fsa_out.indexes + fsa_out.size1 + 1);
-    EXPECT_THAT(arc_indexes, ::testing::ElementsAre(0, 3, 4, 5, 6, 7, 8, 10, 11,
-                                                    12, 14, 15, 16, 16));
+    EXPECT_THAT(arc_indexes,
+                ::testing::ElementsAre(0, 3, 4, 5, 6, 7, 8, 10, 11, 12, 14, 15,
+                                       16, 17, 18, 19, 19));
 
-    ASSERT_EQ(labels_out.size1, 16);
+    ASSERT_EQ(labels_out.size1, 19);
     ASSERT_EQ(labels_out.size2, 8);
     std::vector<int32_t> out_indexes(labels_out.indexes,
                                      labels_out.indexes + labels_out.size1 + 1);
     std::vector<int32_t> out_data(labels_out.data,
                                   labels_out.data + labels_out.size2);
     EXPECT_THAT(out_data, ::testing::ElementsAre(2, 4, 5, 1, 6, 3, -1, -1));
-    EXPECT_THAT(out_indexes, ::testing::ElementsAre(0, 0, 0, 1, 2, 2, 3, 4, 5,
-                                                    5, 5, 5, 6, 6, 7, 7, 8));
+    EXPECT_THAT(out_indexes,
+                ::testing::ElementsAre(0, 0, 0, 1, 2, 2, 3, 4, 5, 5, 5, 5, 6, 6,
+                                       6, 6, 6, 7, 7, 8));
   }
 }
 
