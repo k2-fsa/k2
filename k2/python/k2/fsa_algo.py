@@ -527,9 +527,6 @@ def closure(fsa: Fsa) -> Fsa:
 def invert(fsa: Fsa) -> Fsa:
     '''Invert an FST, swapping the labels in the FSA with the auxiliary labels.
 
-    Caution:
-      It only works on CPU and doesn't support autograd.
-
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
@@ -542,5 +539,7 @@ def invert(fsa: Fsa) -> Fsa:
         return fsa.invert()
     else:
         assert isinstance(fsa.aux_labels, _k2.RaggedInt)
-        ragged_arc, aux_labels = _k2.invert(fsa.arcs, fsa.aux_labels)
+        need_arc_map = False
+        ragged_arc, aux_labels, _ = _k2.invert(fsa.arcs, fsa.aux_labels,
+                                               need_arc_map)
         return Fsa(ragged_arc, aux_labels)

@@ -317,14 +317,20 @@ static void PybindClosure(py::module &m) {
 static void PybindInvert(py::module &m) {
   m.def(
       "invert",
-      [](FsaOrVec &src, Ragged<int32_t> &src_aux_labels)
-          -> std::pair<FsaOrVec, Ragged<int32_t>> {
+      [](FsaOrVec &src, Ragged<int32_t> &src_aux_labels,
+         bool need_arc_map =
+             true) -> std::tuple<FsaOrVec, Ragged<int32_t>,
+                                 torch::optional<torch::Tensor>> {
         FsaOrVec dest;
         Ragged<int32_t> dest_aux_labels;
-        InvertHost(src, src_aux_labels, &dest, &dest_aux_labels);
-        return std::make_pair(dest, dest_aux_labels);
+        Array1<int32_t> arc_map;
+        Invert(src, src_aux_labels, &dest, &dest_aux_labels,
+               need_arc_map ? &arc_map : nullptr);
+        torch::optional<torch::Tensor> arc_map_tensor;
+        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        return std::make_tuple(dest, dest_aux_labels, arc_map_tensor);
       },
-      py::arg("src"), py::arg("src_aux_labels"));
+      py::arg("src"), py::arg("src_aux_labels"), py::arg("need_arc_map"));
 }
 
 }  // namespace k2

@@ -20,97 +20,6 @@
 
 namespace k2 {
 
-TEST(FsaAlgo, TestExpandArcsA) {
-  FsaVec fsa1("[ [ [ ] [ ] ] ]");
-  RaggedShape labels_shape("[]");
-  FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape, nullptr, nullptr);
-  K2_CHECK(Equal(fsa1_expanded, fsa1));
-}
-
-TEST(FsaAlgo, TestExpandArcsB) {
-  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
-    FsaVec fsa1(c, "[ [ [ 0  1  -1  0.0  ] [ ] ] ]");
-    RaggedShape labels_shape(c, "[ [ x ] ]");
-    Array1<int32_t> fsa_arc_map, labels_arc_map;
-    FsaVec fsa1_expanded =
-        ExpandArcs(fsa1, labels_shape, &fsa_arc_map, &labels_arc_map);
-
-    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 ]"), labels_arc_map_ref(c, "[ 0 ]");
-    K2_CHECK(Equal(fsa1_expanded, fsa1));
-    K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
-    K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
-  }
-}
-
-TEST(FsaAlgo, TestExpandArcsC) {
-  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
-    FsaVec fsa1(c, "[ [ [ 0  1  -1  2.0  ] [ ] ] ]");
-    RaggedShape labels_shape(c, "[ [ x x ] ]");
-    Array1<int32_t> fsa_arc_map, labels_arc_map;
-    FsaVec fsa1_expanded =
-        ExpandArcs(fsa1, labels_shape, &fsa_arc_map, &labels_arc_map);
-    K2_LOG(INFO) << "fsa1_expanded = " << fsa1_expanded;
-    FsaVec fsa1_expanded_ref(c, "[ [ [ 0  1 0 2.0 ] [ 1 2 -1 0.0 ] [ ] ] ]");
-
-    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 -1 ]"),
-        labels_arc_map_ref(c, "[ 0 1 ]");
-    K2_CHECK(Equal(fsa1_expanded, fsa1_expanded_ref));
-    K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
-    K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
-  }
-}
-
-TEST(FsaAlgo, TestExpandArcsD) {
-  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
-    FsaVec fsa1(c, "[ [ [ 0  1  -1  2.0  0 1 -1 1.0 ] [ ] ] ]");
-    RaggedShape labels_shape(c, "[ [ x x ] [ x ] ]");
-    Array1<int32_t> fsa_arc_map, labels_arc_map;
-    FsaVec fsa1_expanded =
-        ExpandArcs(fsa1, labels_shape, &fsa_arc_map, &labels_arc_map);
-    K2_LOG(INFO) << "fsa1_expanded = " << fsa1_expanded;
-    FsaVec fsa1_expanded_ref(
-        c, "[ [ [ 0  1 0 2.0  0 2 -1 1.0 ] [ 1 2 -1 0.0 ] [ ] ] ]");
-
-    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 1 -1 ]"),
-        labels_arc_map_ref(c, "[ 0 2 1 ]");
-
-    K2_LOG(INFO) << "labels_arc_map = " << labels_arc_map
-                 << ", fsa_arc_map = " << fsa_arc_map;
-
-    K2_CHECK(Equal(fsa1_expanded, fsa1_expanded_ref));
-    K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
-    K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
-  }
-}
-
-TEST(FsaAlgo, TestExpandArcsRandom) {
-  int32_t min_num_fsas = 1;
-  int32_t max_num_fsas = 100;
-  bool acyclic = true;  // so IsRandEquivalent() can work.
-  int32_t max_symbol = 100;
-  int32_t min_num_arcs = max_num_fsas * 2;
-  int32_t max_num_arcs = 10000;
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    for (int32_t i = 0; i < 4; i++) {
-      FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
-                                 max_symbol, min_num_arcs, max_num_arcs)
-                        .To(context);
-      int32_t num_arcs = fsas.NumElements();
-      Array1<int32_t> rand = RandUniformArray1(context, num_arcs + 1, 0, 4);
-      ExclusiveSum(rand, &rand);
-      RaggedShape labels_shape = RaggedShape2(&rand, nullptr, -1);
-      Array1<int32_t> fsa_arc_map, labels_arc_map;
-      FsaVec fsas_expanded =
-          ExpandArcs(fsas, labels_shape, &fsa_arc_map, &labels_arc_map);
-      // note: by default, IsRandEquivalent() does treat epsilons specially,
-      // which is what we want.
-      K2_CHECK(IsRandEquivalent(fsas, fsas_expanded, false));
-      // K2_LOG(INFO) << "fsa_arc_map = " << fsa_arc_map
-      ///                   << ", labels_arc_map = " << labels_arc_map;
-    }
-  }
-}
-
 TEST(ArcSort, EmptyFsa) {
   Fsa fsa;
   ArcSort(&fsa);
@@ -791,6 +700,97 @@ TEST(FsaAlgo, ClosureRandomCase) {
   }
 }
 
+TEST(FsaAlgo, TestExpandArcsA) {
+  FsaVec fsa1("[ [ [ ] [ ] ] ]");
+  RaggedShape labels_shape("[]");
+  FsaVec fsa1_expanded = ExpandArcs(fsa1, labels_shape, nullptr, nullptr);
+  K2_CHECK(Equal(fsa1_expanded, fsa1));
+}
+
+TEST(FsaAlgo, TestExpandArcsB) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec fsa1(c, "[ [ [ 0  1  -1  0.0  ] [ ] ] ]");
+    RaggedShape labels_shape(c, "[ [ x ] ]");
+    Array1<int32_t> fsa_arc_map, labels_arc_map;
+    FsaVec fsa1_expanded =
+        ExpandArcs(fsa1, labels_shape, &fsa_arc_map, &labels_arc_map);
+
+    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 ]"), labels_arc_map_ref(c, "[ 0 ]");
+    K2_CHECK(Equal(fsa1_expanded, fsa1));
+    K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
+    K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestExpandArcsC) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec fsa1(c, "[ [ [ 0  1  -1  2.0  ] [ ] ] ]");
+    RaggedShape labels_shape(c, "[ [ x x ] ]");
+    Array1<int32_t> fsa_arc_map, labels_arc_map;
+    FsaVec fsa1_expanded =
+        ExpandArcs(fsa1, labels_shape, &fsa_arc_map, &labels_arc_map);
+    K2_LOG(INFO) << "fsa1_expanded = " << fsa1_expanded;
+    FsaVec fsa1_expanded_ref(c, "[ [ [ 0  1 0 2.0 ] [ 1 2 -1 0.0 ] [ ] ] ]");
+
+    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 -1 ]"),
+        labels_arc_map_ref(c, "[ 0 1 ]");
+    K2_CHECK(Equal(fsa1_expanded, fsa1_expanded_ref));
+    K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
+    K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestExpandArcsD) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec fsa1(c, "[ [ [ 0  1  -1  2.0  0 1 -1 1.0 ] [ ] ] ]");
+    RaggedShape labels_shape(c, "[ [ x x ] [ x ] ]");
+    Array1<int32_t> fsa_arc_map, labels_arc_map;
+    FsaVec fsa1_expanded =
+        ExpandArcs(fsa1, labels_shape, &fsa_arc_map, &labels_arc_map);
+    K2_LOG(INFO) << "fsa1_expanded = " << fsa1_expanded;
+    FsaVec fsa1_expanded_ref(
+        c, "[ [ [ 0  1 0 2.0  0 2 -1 1.0 ] [ 1 2 -1 0.0 ] [ ] ] ]");
+
+    Array1<int32_t> fsa_arc_map_ref(c, "[ 0 1 -1 ]"),
+        labels_arc_map_ref(c, "[ 0 2 1 ]");
+
+    K2_LOG(INFO) << "labels_arc_map = " << labels_arc_map
+                 << ", fsa_arc_map = " << fsa_arc_map;
+
+    K2_CHECK(Equal(fsa1_expanded, fsa1_expanded_ref));
+    K2_CHECK(Equal(fsa_arc_map, fsa_arc_map_ref));
+    K2_CHECK(Equal(labels_arc_map, labels_arc_map_ref));
+  }
+}
+
+TEST(FsaAlgo, TestExpandArcsRandom) {
+  int32_t min_num_fsas = 1;
+  int32_t max_num_fsas = 100;
+  bool acyclic = true;  // so IsRandEquivalent() can work.
+  int32_t max_symbol = 100;
+  int32_t min_num_arcs = max_num_fsas * 2;
+  int32_t max_num_arcs = 10000;
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i < 4; i++) {
+      FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
+                                 max_symbol, min_num_arcs, max_num_arcs)
+                        .To(context);
+      int32_t num_arcs = fsas.NumElements();
+      Array1<int32_t> rand = RandUniformArray1(context, num_arcs + 1, 0, 4);
+      ExclusiveSum(rand.Arange(0, num_arcs), &rand);
+      RaggedShape labels_shape = RaggedShape2(&rand, nullptr, -1);
+      Array1<int32_t> fsa_arc_map, labels_arc_map;
+      FsaVec fsas_expanded =
+          ExpandArcs(fsas, labels_shape, &fsa_arc_map, &labels_arc_map);
+      // note: by default, IsRandEquivalent() does treat epsilons specially,
+      // which is what we want.
+      K2_CHECK(IsRandEquivalent(fsas, fsas_expanded, false));
+      // K2_LOG(INFO) << "fsa_arc_map = " << fsa_arc_map
+      ///                   << ", labels_arc_map = " << labels_arc_map;
+    }
+  }
+}
+
 TEST(FsaAlgo, InvertHostTest) {
   // top-sorted FSA
   std::string s1 = R"(0 1 1 0 
@@ -826,8 +826,6 @@ TEST(FsaAlgo, InvertHostTest) {
   FsaVec dest;
   Ragged<int32_t> dest_aux_labels;
   InvertHost(src, aux_labels, &dest, &dest_aux_labels);
-  K2_LOG(INFO) << dest;
-  K2_LOG(INFO) << dest_aux_labels;
   std::vector<Arc> expected_arcs = {
       {0, 1, 1, 0},  {0, 2, 3, 0},  {0, 6, 0, 0},  {1, 2, 2, 0}, {2, 3, 5, 0},
       {2, 6, 0, 0},  {2, 8, -1, 0}, {3, 4, 6, 0},  {4, 5, 7, 0}, {5, 6, 0, 0},
@@ -843,4 +841,143 @@ TEST(FsaAlgo, InvertHostTest) {
   CheckArrayData(dest_aux_labels.values, expected_aux_labels.values);
 }
 
+TEST(FsaAlgo, InvertTest) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    // top-sorted FSA
+    std::string s1 = R"(0 1 1 1
+    0 1 0 2
+    0 3 2 3
+    1 2 3 4
+    1 3 4 5
+    1 5 -1 6
+    2 3 0 7
+    2 5 -1 8
+    4 5 -1 9
+    5
+    )";
+    // non-top-sorted FSA
+    std::string s2 = R"(0 1 1 1
+    0 1 0 2
+    0 3 2 3
+    1 2 3 4
+    1 3 4 5
+    2 0 5 6
+    2 5 -1 7
+    3 1 6 8
+    4 5 -1 9
+    5
+    )";
+    Fsa fsa1 = FsaFromString(s1);
+    Fsa fsa2 = FsaFromString(s2);
+    Fsa *fsa_array[] = {&fsa1, &fsa2};
+    FsaVec src = CreateFsaVec(2, &fsa_array[0]);
+    src = src.To(c);
+    Ragged<int32_t> aux_labels(
+        c,
+        "[ [1 2] [3] [] [5 6 7] [] [8 9 -1] [] [10 -1] [-1] [1 2] [3] [] [5 6 "
+        "7] "
+        "[] "
+        "[8 9] [-1] [10 11] [12 -1] ]");
+    FsaVec dest;
+    Ragged<int32_t> dest_aux_labels;
+    Array1<int32_t> arc_map;
+    Invert(src, aux_labels, &dest, &dest_aux_labels, &arc_map);
+    FsaVec expected_fsa(
+        "[ [ [ 0 1 1 1 0 2 3 2 0 9 0 3 ] [ 1 2 2 0 ] [ 2 3 5 4 2 9 0 5 2 5 8 6 "
+        "] "
+        "[ 3 4 6 0 ] [ 4 7 7 0 ] [ 5 6 9 0 ] [ 6 11 -1 0 ] [ 7 9 0 7 7 8 10 8 "
+        "] "
+        "[ 8 11 -1 0 ] [ ] [ 10 11 -1 9 ] [ ] ] [ [ 0 1 1 1 0 2 3 2 0 7 0 3 ] "
+        "[ "
+        "1 2 2 0 ] [ 2 3 5 4 2 7 0 5 ] [ 3 4 6 0 ] [ 4 5 7 0 ] [ 5 6 8 6 5 11 "
+        "-1 "
+        "7 ] [ 6 0 9 0 ] [ 7 8 10 8 ] [ 8 2 11 0 ] [ 9 10 12 9 ] [ 10 11 -1 0 "
+        "] "
+        "[ ] ] ]");
+    Ragged<int32_t> expected_aux_labels(
+        "[ [ 1 ] [ ] [ 2 ] [ ] [ 3 ] [ 4 ] [ ] [ ] [ ] [ ] [ -1 ] [ ] [ ] [ -1 "
+        "] "
+        "[ -1 ] [ 1 ] [ ] [ 2 ] [ ] [ 3 ] [ 4 ] [ ] [ ] [ 5 ] [ -1 ] [ ] [ 6 ] "
+        "[ "
+        "] [ ] [ -1 ] ]");
+    Array1<int32_t> expected_arc_map(
+        "[ 0 1 2 -1 3 4 5 -1 -1 -1 -1 6 7 -1 8 9 10 11 -1 12 13 -1 -1 14 15 -1 "
+        "16 -1 17 -1 ]");
+    CheckArrayData(dest.values, expected_fsa.values);
+    CheckArrayData(dest_aux_labels.RowSplits(1),
+                   expected_aux_labels.RowSplits(1));
+    CheckArrayData(dest_aux_labels.values, expected_aux_labels.values);
+    CheckArrayData(arc_map, expected_arc_map);
+
+    ContextPtr cpu = GetCpuContext();
+    src = src.To(cpu);
+    dest = dest.To(cpu);
+    aux_labels = aux_labels.To(cpu);
+    FsaVec cpu_dest;
+    Ragged<int32_t> cpu_dest_aux_labels;
+    InvertHost(src, aux_labels, &cpu_dest, &cpu_dest_aux_labels);
+    // as fsa2 is not top-sorted
+    EXPECT_TRUE(IsRandEquivalentUnweighted(dest, cpu_dest, true));
+  }
+}
+
+TEST(FsaAlgo, TestInvertRandom) {
+  ContextPtr cpu = GetCpuContext();
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i < 1; i++) {
+      int32_t min_num_fsas = 1;
+      int32_t max_num_fsas = 100;
+      bool acyclic = true;  // so IsRandEquivalent() can work.
+      int32_t max_symbol = 100;
+      int32_t min_num_arcs = max_num_fsas * 2;
+      int32_t max_num_arcs = 10000;
+      FsaVec src = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                                min_num_arcs, max_num_arcs);
+      int32_t num_arcs = src.NumElements();
+      Array1<int32_t> rand = RandUniformArray1(cpu, num_arcs + 1, 0, 4);
+      ExclusiveSum(rand.Arange(0, num_arcs), &rand);
+      RaggedShape aux_labels_shape = RaggedShape2(&rand, nullptr, -1);
+      // so that final-arcs always have at least one aux_label (which must be
+      // -1)
+      aux_labels_shape = ChangeSublistSize(aux_labels_shape, 1);
+      Array1<int32_t> aux_labels_value =
+          RandUniformArray1(cpu, aux_labels_shape.NumElements(), 0, 50);
+      Ragged<int32_t> aux_labels(aux_labels_shape, aux_labels_value);
+      // set the last aux_labels to -1 if it's a final-arc
+      const int32_t *src_row_splits1 = src.RowSplits(1).Data(),
+                    *src_row_ids1 = src.RowIds(1).Data(),
+                    *src_row_splits2 = src.RowSplits(2).Data(),
+                    *src_row_ids2 = src.RowIds(2).Data(),
+                    *aux_labels_row_splits = aux_labels.RowSplits(1).Data();
+      int32_t *aux_labels_value_data = aux_labels.values.Data();
+      const Arc *arcs_data = src.values.Data();
+      for (int32_t idx012 = 0; idx012 != num_arcs; ++idx012) {
+        int32_t dest_state_idx1 = arcs_data[idx012].dest_state,
+                src_state_idx01 = src_row_ids2[idx012],
+                fsa_idx0 = src_row_ids1[src_state_idx01],
+                start_state_idx0x = src_row_splits1[fsa_idx0],
+                next_start_state_idx0x = src_row_splits1[fsa_idx0 + 1],
+                dest_state_idx01 = start_state_idx0x + dest_state_idx1;
+        if (next_start_state_idx0x > start_state_idx0x &&
+            dest_state_idx01 == next_start_state_idx0x - 1) {
+          int32_t aux_labels_idx0x = aux_labels_row_splits[idx012],
+                  next_aux_labels_idx0x = aux_labels_row_splits[idx012 + 1];
+          if (next_aux_labels_idx0x > aux_labels_idx0x)
+            aux_labels_value_data[next_aux_labels_idx0x - 1] = -1;
+        }
+      }
+      FsaVec cpu_dest;
+      Ragged<int32_t> cpu_dest_aux_labels;
+      InvertHost(src, aux_labels, &cpu_dest, &cpu_dest_aux_labels);
+
+      src.To(context);
+      aux_labels.To(context);
+      FsaVec dest;
+      Ragged<int32_t> dest_aux_labels;
+      Invert(src, aux_labels, &dest, &dest_aux_labels);
+      dest = dest.To(cpu);
+      EXPECT_TRUE(IsRandEquivalent(dest, cpu_dest, true));
+    }
+  }
+}
 }  // namespace k2

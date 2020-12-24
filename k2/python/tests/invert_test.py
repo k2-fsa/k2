@@ -57,25 +57,6 @@ class TestInvert(unittest.TestCase):
         fsa.aux_labels = k2.RaggedInt(aux_shape, aux_values)
         dest = k2.invert(fsa)
         print(dest)  # will print aux_labels as well
-        expected_fsa_str = '''
-            0 1 1 0
-            0 3 3 0
-            0 7 0 0
-            1 3 2 0
-            2 3 10 0
-            3 4 5 0
-            3 7 0 0
-            4 5 6 0
-            5 6 7 0
-            6 3 8 0
-            6 9 -1 0
-            7 2 9 0
-            8 9 -1 0
-            9
-        '''
-        expected_fsa = k2.Fsa.from_str(expected_fsa_str)
-        print(dest.arcs)
-        print(expected_fsa.arcs)
         # TODO(haowen): wrap C++ code to check equality for Ragged?
 
 
