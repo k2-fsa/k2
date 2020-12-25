@@ -71,54 +71,82 @@ static void PybindNormalizePerSublist(py::module &m, const char *name) {
   m.def(name, &NormalizePerSublist<T>, py::arg("src"));
 }
 
+/* Backward propagation for NormalizePerSublist.
+
+   @param [in] out      It is the output of `NormalizePerSublist(src)`.
+   @param [in] out_grad The gradient for `out`.
+   @return  Return the gradient for `src`.
+ */
+template <typename T>
+static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out,
+                                                 torch::Tensor out_grad) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(out_grad.dim(), 1)
+      << "Expected dim: 1. Given: " << out_grad.dim();
+  K2_CHECK_EQ(out_grad.scalar_type(), ToScalarType<T>::value)
+      << "Expected scalar type: " << ToScalarType<T>::value
+      << ". Given: " << out_grad.scalar_type();
+
+  ContextPtr context = GetContext(out_grad);
+  K2_CHECK(context->IsCompatible(*out.Context()));
+
+  int32_t num_axes = out.NumAxes();
+  Array1<T> out_grad_sum(context, out.TotSize(num_axes - 2));
+  T *out_grad_sum_data = out_grad_sum.Data();
+  const T *out_grad_data = out_grad.data_ptr<T>();
+
+  int64_t stride = out_grad.strides()[0];
+  if (stride != 0) {
+    Array1<T> out_grad_array = FromTensor<T>(out_grad);
+    K2_CHECK_EQ(out.values.Dim(), out_grad_array.Dim());
+
+    Ragged<T> out_grad_ragged(out.shape, out_grad_array);
+    SumPerSublist<T>(out_grad_ragged, 0, &out_grad_sum);
+  } else {
+    // stride is 0;
+    // the sum is the number_of_elements_in_the_sublist * out_grad[0]
+    const int32_t *row_splits_data = out.RowSplits(num_axes - 1).Data();
+    K2_EVAL(
+        context, out_grad_sum.Dim(), lambda_compute_out_grad_sum,
+        (int32_t i)->void {
+          int32_t begin = row_splits_data[i];
+          int32_t end = row_splits_data[i + 1];
+          out_grad_sum_data[i] = (end - begin) * out_grad_data[0];
+        });
+  }
+
+  Array1<T> ans_grad_array(context, out.NumElements());
+  T *ans_grad_data = ans_grad_array.Data();
+  const T *out_data = out.values.Data();
+  const int32_t *row_ids_data = out.RowIds(num_axes - 1).Data();
+  int32_t num_elements = ans_grad_array.Dim();
+
+  if (std::is_same<T, float>::value) {
+    // use `expf` for float
+    K2_EVAL(
+        context, num_elements, lambda_set_ans_grad, (int32_t i)->void {
+          int32_t row = row_ids_data[i];
+          T scale = out_grad_sum_data[row];
+          ans_grad_data[i] =
+              out_grad_data[i * stride] - expf(out_data[i]) * scale;
+        });
+  } else {
+    // use `exp` for double
+    K2_EVAL(
+        context, num_elements, lambda_set_ans_grad, (int32_t i)->void {
+          int32_t row = row_ids_data[i];
+          T scale = out_grad_sum_data[row];
+          ans_grad_data[i] =
+              out_grad_data[i * stride] - exp(out_data[i]) * scale;
+        });
+  }
+  return ToTensor(ans_grad_array);
+}
+
 template <typename T>
 static void PybindNormalizePerSublistBackward(py::module &m, const char *name) {
-  m.def(
-      name,
-      /*
-         @param [in] out      It is the output of `NormalizePerSublist(src)`.
-         @param [in] out_grad The gradient for `out`.
-         @return  Return the gradient for `src`.
-       */
-      [](Ragged<T> &out, torch::Tensor out_grad) -> torch::Tensor {
-        Array1<T> out_grad_array = FromTensor<T>(out_grad);
-        K2_CHECK_EQ(out.values.Dim(), out_grad_array.Dim());
-
-        ContextPtr context = GetContext(out, out_grad_array);
-        Ragged<T> out_grad_ragged(out.shape, out_grad_array);
-
-        int32_t num_axes = out.NumAxes();
-        Array1<T> out_grad_sum(context, out.TotSize(num_axes - 2));
-        SumPerSublist<T>(out_grad_ragged, 0, &out_grad_sum);
-        const T *out_grad_sum_data = out_grad_sum.Data();
-
-        Array1<T> ans_grad_array(context, out_grad_array.Dim());
-        const T *out_data = out.values.Data();
-        const T *out_grad_data = out_grad_array.Data();
-        T *ans_grad_data = ans_grad_array.Data();
-        const int32_t *row_ids_data = out.RowIds(num_axes - 1).Data();
-        int32_t num_elements = ans_grad_array.Dim();
-
-        if (std::is_same<T, float>::value) {
-          // use `expf` for float
-          K2_EVAL(
-              context, num_elements, lambda_set_ans_grad, (int32_t i)->void {
-                int32_t row = row_ids_data[i];
-                T scale = out_grad_sum_data[row];
-                ans_grad_data[i] = out_grad_data[i] - expf(out_data[i]) * scale;
-              });
-        } else {
-          // use `exp` for double
-          K2_EVAL(
-              context, num_elements, lambda_set_ans_grad, (int32_t i)->void {
-                int32_t row = row_ids_data[i];
-                T scale = out_grad_sum_data[row];
-                ans_grad_data[i] = out_grad_data[i] - exp(out_data[i]) * scale;
-              });
-        }
-        return ToTensor(ans_grad_array);
-      },
-      py::arg("out"), py::arg("out_grad"));
+  m.def(name, NormalizePerSublistBackward<T>, py::arg("out"),
+        py::arg("out_grad"));
 }
 
 }  // namespace k2

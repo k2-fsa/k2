@@ -74,7 +74,7 @@ class TestRaggedOps(unittest.TestCase):
         ans = k2.ragged.remove_values_eq(src, 8)
         self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]')
 
-    def test_normalize_scores(self):
+    def test_normalize_scores_non_zero_stride(self):
         s = '''
             [ [1 -1 0] [2 10] [] [3] [5 8] ]
         '''
@@ -87,6 +87,7 @@ class TestRaggedOps(unittest.TestCase):
 
         scale = torch.arange(ans.scores.numel())
 
+        # the stride of grad is not 0
         (ans.scores * scale).sum().backward()
 
         expected = saved.new_zeros(*ans.scores.shape)
@@ -104,6 +105,38 @@ class TestRaggedOps(unittest.TestCase):
 
         self.assertTrue(torch.allclose(expected, ans.scores))
         (expected * scale).sum().backward()
+
+        self.assertTrue(torch.allclose(saved.grad, src.grad))
+
+    def test_normalize_scores_zero_stride(self):
+        s = '''
+            [ [1 3 5] [2 -1] [] [3] [5 2] ]
+        '''
+        src = k2.ragged.RaggedFloat(s)
+        saved = src.scores.clone().detach()
+        saved.requires_grad_(True)
+        src.requires_grad_(True)
+
+        ans = k2.ragged.normalize_scores(src)
+
+        # the stride of grad is 0
+        ans.scores.sum().backward()
+
+        expected = saved.new_zeros(*ans.scores.shape)
+
+        normalizer = saved[:3].exp().sum().log()
+        expected[:3] = saved[:3] - normalizer
+
+        normalizer = saved[3:5].exp().sum().log()
+        expected[3:5] = saved[3:5] - normalizer
+
+        expected[5] = 0  # it has only one entry
+
+        normalizer = saved[6:8].exp().sum().log()
+        expected[6:8] = saved[6:8] - normalizer
+
+        self.assertTrue(torch.allclose(expected, ans.scores))
+        expected.sum().backward()
 
         self.assertTrue(torch.allclose(saved.grad, src.grad))
 

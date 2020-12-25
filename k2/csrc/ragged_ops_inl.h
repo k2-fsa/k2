@@ -83,6 +83,7 @@ void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst) {
 
 template <typename T>
 Ragged<T> NormalizePerSublist(Ragged<T> &src) {
+  NVTX_RANGE(K2_FUNC);
   K2_STATIC_ASSERT(
       (std::is_same<float, T>::value || std::is_same<double, T>::value));
   T negative_infinity = -std::numeric_limits<T>::infinity();

@@ -55,14 +55,6 @@ class _NormalizeScores(torch.autograd.Function):
     def backward(ctx,
                  out_grad: torch.Tensor) -> Tuple[None, None, torch.Tensor]:
         out = ctx.out
-
-        # TODO(fangjun): remove clone
-        #
-        # we use clone here since out_grad.stride may be 0, which
-        # cannot be converted to k2::Array<T>
-        if out_grad.stride()[0] == 0:
-            out_grad = out_grad.clone()
-
         ans_grad = _k2.normalize_per_sublist_backward(out.ragged, out_grad)
         return (
             None,  # src

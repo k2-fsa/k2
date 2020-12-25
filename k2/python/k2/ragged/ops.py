@@ -4,10 +4,14 @@
 #
 # See ../../../../LICENSE for clarification regarding multiple authors
 
-from typing import Optional, List, Tuple, Union
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import torch
+
 import _k2
 
 
