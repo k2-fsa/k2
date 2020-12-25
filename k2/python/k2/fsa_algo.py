@@ -59,7 +59,8 @@ def top_sort(fsa: Fsa) -> Fsa:
     return sorted_fsa
 
 
-def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
+def intersect(a_fsa: Fsa, b_fsa: Fsa,
+              treat_epsilons_specially: bool = True) -> Fsa:
     '''Compute the intersection of two FSAs on CPU.
 
     Args:
@@ -67,6 +68,12 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
         The first input FSA on CPU. It can be either a single FSA or an FsaVec.
       b_fsa:
         The second input FSA on CPU. it can be either a single FSA or an FsaVec.
+      treat_epsilons_specially:
+        If True, epsilons will be treated as epsilon, meaning epsilon arcs can
+        match with an implicit epsilon self-loop.
+        If False, epsilons will be treated as real, normal symbols (to have
+        them treated as epsilons in this case you may have to add epsilon
+        self-loops to whichever of the inputs is naturally epsilon-free).
 
     Caution:
       The two input FSAs MUST be arc sorted.
@@ -94,7 +101,6 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     assert a_fsa.properties & fsa_properties.ARC_SORTED != 0
     assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
 
-    treat_epsilons_specially = True
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
         a_fsa.arcs, a_fsa.properties, b_fsa.arcs, b_fsa.properties,
@@ -135,7 +141,8 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
+def compose(a_fsa: Fsa, b_fsa: Fsa,
+            treat_epsilons_specially: bool = True) -> Fsa:
     '''Compute the composition of two FSAs on CPU.
 
     Note:
@@ -147,6 +154,12 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
         The first input FSA on CPU. It can be either a single FSA or an FsaVec.
       b_fsa:
         The second input FSA on CPU. it can be either a single FSA or an FsaVec.
+      treat_epsilons_specially:
+        If True, epsilons will be treated as epsilon, meaning epsilon arcs can
+        match with an implicit epsilon self-loop.
+        If False, epsilons will be treated as real, normal symbols (to have
+        them treated as epsilons in this case you may have to add epsilon
+        self-loops to whichever of the inputs is naturally epsilon-free).
 
     Caution:
       `b_fsa` has to be arc sorted.
@@ -172,10 +185,10 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     assert a_fsa.is_cpu()
     assert b_fsa.is_cpu()
     if not hasattr(a_fsa, 'aux_labels'):
-        return intersect(a_fsa, b_fsa)
+        return intersect(a_fsa, b_fsa, treat_epsilons_specially)
 
     if not hasattr(b_fsa, 'aux_labels'):
-        return intersect(a_fsa, b_fsa)
+        return intersect(a_fsa, b_fsa, treat_epsilons_specially)
 
     assert isinstance(a_fsa.aux_labels, torch.Tensor)
 
@@ -185,7 +198,6 @@ def compose(a_fsa: Fsa, b_fsa: Fsa) -> Fsa:
     assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
 
     need_arc_map = True
-    treat_epsilons_specially = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
         a_fsa.arcs, a_fsa.properties, b_fsa.arcs, b_fsa.properties,
         treat_epsilons_specially, need_arc_map)
