@@ -2029,6 +2029,125 @@ TEST(RaggedShapeOpsTest, GetPrefixesTest) {
   }
 }
 
+TEST(RaggedShapeOpsTest, ArangeTest) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // simple case
+      const std::vector<int32_t> row_splits1 = {0, 2, 3, 4, 6, 7, 10};
+      // const std::vector<int32_t> row_ids1 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
+      const std::vector<int32_t> row_splits2 = {0,  2,  3,  5,  8, 9,
+                                                12, 13, 15, 15, 16};
+      // const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 2, 3, 3, 3,
+      // 4, 5, 5, 5, 6, 7, 7, 9};
+      Array1<int32_t> row_splits1_array(context, row_splits1);
+      Array1<int32_t> row_splits2_array(context, row_splits2);
+      RaggedShape shape = RaggedShape3(&row_splits1_array, nullptr, -1,
+                                       &row_splits2_array, nullptr, -1);
+      std::vector<int32_t> values(shape.NumElements());
+      std::iota(values.begin(), values.end(), 10);
+      Array1<int32_t> values_array(context, values);
+      Ragged<int32_t> ragged(shape, values_array);
+      int32_t dim0 = shape.Dim0();
+      int32_t num_axes = shape.NumAxes();
+      EXPECT_EQ(dim0, 6);
+      EXPECT_EQ(num_axes, 3);
+      {
+        // axis == 0, begin == end
+        int32_t axis = 0;
+        int32_t begin = 1, end = 1;
+        std::vector<std::vector<int32_t>> expected_row_splits = {{0}, {0}};
+        std::pair<int32_t, int32_t> value_range;
+        RaggedShape result = Arange(shape, axis, begin, end, &value_range);
+        EXPECT_TRUE(IsCompatible(shape, result));
+        EXPECT_EQ(result.Dim0(), 0);
+        EXPECT_EQ(result.NumAxes(), num_axes);
+        for (int32_t i = 1; i != num_axes; ++i) {
+          CheckArrayData(result.RowSplits(i), expected_row_splits[i - 1]);
+        }
+        std::pair<int32_t, int32_t> expected_value_range = {1, 1};
+        EXPECT_EQ(value_range, expected_value_range);
+        EXPECT_EQ(result.NumElements(), value_range.second - value_range.first);
+
+        // test `Arange` for ragged array
+        Ragged<int32_t> ragged_result = Arange(ragged, axis, begin, end);
+        EXPECT_EQ(ragged_result.values.Dim(), 0);
+      }
+
+      {
+        // axis == 0, begin  < end == Dim0() + 1
+        int32_t axis = 0;
+        int32_t begin = 3, end = 7;
+        std::vector<std::vector<int32_t>> expected_row_splits = {
+            {0, 2, 3, 6}, {0, 1, 4, 5, 7, 7, 8}};
+        std::pair<int32_t, int32_t> value_range;
+        RaggedShape result = Arange(shape, axis, begin, end, &value_range);
+        EXPECT_TRUE(IsCompatible(shape, result));
+        EXPECT_EQ(result.NumAxes(), num_axes);
+        for (int32_t i = 1; i != num_axes; ++i) {
+          CheckArrayData(result.RowSplits(i), expected_row_splits[i - 1]);
+        }
+        std::pair<int32_t, int32_t> expected_value_range = {8, 16};
+        EXPECT_EQ(value_range, expected_value_range);
+        EXPECT_EQ(result.NumElements(), value_range.second - value_range.first);
+
+        // test `Arange` for ragged array
+        Ragged<int32_t> ragged_result = Arange(ragged, axis, begin, end);
+        std::vector<int32_t> expected_values = {18, 19, 20, 21, 22, 23, 24, 25};
+        CheckArrayData(ragged_result.values, expected_values);
+      }
+
+      {
+        // axis == 1
+        int32_t axis = 1;
+        int32_t begin = 6, end = 9;
+        std::vector<int32_t> expected_row_splits = {0, 1, 3};
+        std::pair<int32_t, int32_t> value_range;
+        RaggedShape result = Arange(shape, axis, begin, end, &value_range);
+        EXPECT_TRUE(IsCompatible(shape, result));
+        EXPECT_EQ(result.NumAxes(), 2);
+        CheckArrayData(result.RowSplits(1), expected_row_splits);
+        std::pair<int32_t, int32_t> expected_value_range = {12, 15};
+        EXPECT_EQ(value_range, expected_value_range);
+        EXPECT_EQ(result.NumElements(), value_range.second - value_range.first);
+
+        // test `Arange` for ragged array
+        Ragged<int32_t> ragged_result = Arange(ragged, axis, begin, end);
+        std::vector<int32_t> expected_values = {22, 23, 24};
+        CheckArrayData(ragged_result.values, expected_values);
+      }
+    }
+
+    {
+      // test with random large size
+      for (int32_t i = 0; i < 2; ++i) {
+        RaggedShape shape = RandomRaggedShape(false, 2, 4, 0, 1000).To(context);
+        int32_t num_axes = shape.NumAxes();
+        int32_t axis = RandInt(0, num_axes - 2);
+        int32_t tot_size = shape.TotSize(axis);
+        int32_t begin = RandInt(0, tot_size + 1);
+        int32_t end = RandInt(begin, tot_size + 1);
+        std::pair<int32_t, int32_t> value_range;
+        RaggedShape result = Arange(shape, axis, begin, end, &value_range);
+        EXPECT_TRUE(IsCompatible(shape, result));
+        EXPECT_EQ(result.Dim0(), std::max(0, end - begin - 1));
+        EXPECT_EQ(result.NumAxes(), num_axes - axis);
+        // just check row_splits1 here would be fine, as we have tested it with
+        // simple case. We just confirm it can run successfully with kinds of
+        // different random shapes.
+        if (begin == end) {
+          CheckArrayData(result.RowSplits(1), std::vector<int32_t>{0});
+        } else {
+          Array1<int32_t> row_splits1 =
+              shape.RowSplits(axis + 1).Arange(begin, end);
+          row_splits1 = Minus(row_splits1, row_splits1[0]);
+          CheckArrayData(result.RowSplits(1), row_splits1);
+        }
+        EXPECT_EQ(result.NumElements(), value_range.second - value_range.first);
+      }
+    }
+  }
+}
+
 TEST(RaggedShapeOpsTest, AppendMoreAxes) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     RaggedShape shape1 =
@@ -2181,45 +2300,45 @@ TEST(RaggedTest, AddPrefixToRaggedTest) {
 TEST(RaggedTest, RemoveValuesLeq) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     Ragged<int32_t> r = Ragged<int32_t>(" [ [ 3 4 ] [ 5 7 8 ] ]").To(c),
-                   s3 = Ragged<int32_t>(" [ [4] [5 7 8]]").To(c),
-                   s5 = Ragged<int32_t>(" [ [] [ 7 8]]").To(c);
-    Ragged<int32_t> ans1 = RemoveValuesLeq(r, 3),
-                    ans2 = RemoveValuesLeq(r, 5);
+                    s3 = Ragged<int32_t>(" [ [4] [5 7 8]]").To(c),
+                    s5 = Ragged<int32_t>(" [ [] [ 7 8]]").To(c);
+    Ragged<int32_t> ans1 = RemoveValuesLeq(r, 3), ans2 = RemoveValuesLeq(r, 5);
     K2_LOG(INFO) << "ans2 = " << ans2;
     EXPECT_EQ(true, Equal(ans1, s3));
     EXPECT_EQ(true, Equal(ans2, s5));
   }
 }
 
-
 TEST(RaggedTest, IndexArrayRagged) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     Ragged<int32_t> r = Ragged<int32_t>(" [ [ 2 0 ] [ 1 2 3 ] ]").To(c);
-    Array1<float> f(c, std::vector<float>({ 0.0, 1.0, 2.0, 3.0, 4.0}));
+    Array1<float> f(c, std::vector<float>({0.0, 1.0, 2.0, 3.0, 4.0}));
 
     Ragged<float> fr = Ragged<float>(" [ [ 2.0 0.0 ] [ 1.0 2.0 3.0 ] ]").To(c),
-                 ans = Index(f, r);
+                  ans = Index(f, r);
     EXPECT_EQ(true, Equal(ans, fr));
   }
 }
-
-
 
 TEST(RaggedTest, IndexRaggedRagged) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     Ragged<int32_t> r = Ragged<int32_t>(" [ [ 2 0 ] [ 1 2 3 ] ]").To(c);
 
-    Ragged<int32_t> s = Ragged<int32_t>(" [ [ 10 10 ] [ 11 ] [ 12 12 ] [ 13 ] [ 14 14] ]").To(c);  // NOLINT
+    Ragged<int32_t> s =
+        Ragged<int32_t>(" [ [ 10 10 ] [ 11 ] [ 12 12 ] [ 13 ] [ 14 14] ]")
+            .To(c);  // NOLINT
 
+    Ragged<int32_t> sr1 =
+        Ragged<int32_t>(" [ [ [12 12] [10 10] ] [ [11] [12 12] [13] ] ]")
+            .To(c);  // NOLINT
 
-    Ragged<int32_t> sr1 = Ragged<int32_t>(" [ [ [12 12] [10 10] ] [ [11] [12 12] [13] ] ]").To(c);  // NOLINT
-
-    Ragged<int32_t> sr2 = Ragged<int32_t>(" [ [ 12 12 10 10 ] [ 11 12 12 13 ] ]").To(c);  // NOLINT
+    Ragged<int32_t> sr2 =
+        Ragged<int32_t>(" [ [ 12 12 10 10 ] [ 11 12 12 13 ] ]")
+            .To(c);  // NOLINT
 
     EXPECT_EQ(true, Equal(Index(s, r, false), sr1));
     EXPECT_EQ(true, Equal(Index(s, r, true), sr2));
   }
 }
-
 
 }  // namespace k2

@@ -606,14 +606,13 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
   *row_ids = row_ids_ptrs.To(ctx);
 }
 
-
 static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
                                Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) {
     if (merge_map)
-      *merge_map = Arange<uint32_t>(src[0]->Context(), 0,
-                                    src[0]->NumElements());
+      *merge_map =
+          Arange<uint32_t>(src[0]->Context(), 0, src[0]->NumElements());
     return **src;
   }
   K2_CHECK_GT(num_srcs, 1);
@@ -636,8 +635,7 @@ static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
   for (int32_t axis = 0; axis < num_axes; ++axis)
     tot_sizes_out[axis] = offsets_acc(axis + 1, num_srcs);
 
-  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes,
-                                            tot_sizes_out.data());
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
 
   Array2<int32_t *> src_row_splits, src_row_ids;
   GetRowInfoMulti(num_srcs, src, &src_row_splits, &src_row_ids);
@@ -740,8 +738,7 @@ static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
                    Array1<uint32_t> *merge_map /* == nullptr*/) {
   K2_CHECK(num_srcs > 0);
-  if (axis == 0)
-    return AppendAxis0(num_srcs, src, merge_map);
+  if (axis == 0) return AppendAxis0(num_srcs, src, merge_map);
 
   K2_CHECK_LT(static_cast<uint32_t>(axis),
               static_cast<uint32_t>(src[0]->NumAxes()));
@@ -757,18 +754,17 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
   }
 
   Array1<uint32_t> merge_map_local;
-  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map :
-                              &merge_map_local);
+  Array1<uint32_t> *this_m =
+      (axis + 1 == num_axes ? merge_map : &merge_map_local);
   RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m),
               t = SubsampleRaggedLayer(s, 0, num_srcs);
   ans_layers[axis - 1] = t.Layers()[0];
 
   for (int32_t l = axis; l + 1 < num_axes; l++) {
     Array1<uint32_t> merge_map_next;
-    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map :
-                                &merge_map_next);
-    RaggedShape r = MergeRaggedLayer(l, num_srcs, src,
-                                     merge_map_local, this_m);
+    Array1<uint32_t> *this_m =
+        (l + 2 == num_axes ? merge_map : &merge_map_next);
+    RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
     ans_layers[l] = r.Layers()[0];
     merge_map_local = merge_map_next;
   }
@@ -964,8 +960,7 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
     ContextPtr cpu = GetCpuContext();
     Array1<int32_t> row_splits(cpu, num_srcs + 1);
     int32_t *row_splits_data = row_splits.Data();
-    for (int32_t i = 0; i < num_srcs; i++)
-      row_splits_data[i] = src[i]->Dim0();
+    for (int32_t i = 0; i < num_srcs; i++) row_splits_data[i] = src[i]->Dim0();
     int32_t cutoff = 32;
     if (num_srcs < cutoff) row_splits = row_splits.To(c);
     ExclusiveSum(row_splits, &row_splits);
@@ -976,7 +971,6 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
     RaggedShape ans_layer0 = RaggedShape2(&row_splits, &row_ids, num_elems);
     return ComposeRaggedShapes(ans_layer0, ans_appended);
   }
-
 
   K2_CHECK_LT(static_cast<uint32_t>(axis),
               static_cast<uint32_t>(src[0]->NumAxes()));
@@ -992,20 +986,19 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
   }
 
   Array1<uint32_t> merge_map_local;
-  Array1<uint32_t> *this_m = (axis + 1 == num_axes ? merge_map :
-                              &merge_map_local);
+  Array1<uint32_t> *this_m =
+      (axis + 1 == num_axes ? merge_map : &merge_map_local);
   RaggedShape s = IntersperseRaggedLayer(axis - 1, num_srcs, src, this_m);
   // note: s.Dim0() will be a multiple of num_srcs.
-  ans_layers[axis - 1] = RegularRaggedShape(c, s.Dim0() / num_srcs,
-                                            num_srcs).Layers()[0];
+  ans_layers[axis - 1] =
+      RegularRaggedShape(c, s.Dim0() / num_srcs, num_srcs).Layers()[0];
   ans_layers[axis] = s.Layers()[0];
 
   for (int32_t l = axis; l + 1 < num_axes; l++) {
     Array1<uint32_t> merge_map_next;
-    Array1<uint32_t> *this_m = (l + 2 == num_axes ? merge_map :
-                                &merge_map_next);
-    RaggedShape r = MergeRaggedLayer(l, num_srcs, src,
-                                     merge_map_local, this_m);
+    Array1<uint32_t> *this_m =
+        (l + 2 == num_axes ? merge_map : &merge_map_next);
+    RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
     ans_layers[l + 1] = r.Layers()[0];
     merge_map_local = merge_map_next;
   }
@@ -1013,9 +1006,7 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
   return RaggedShape(ans_layers);
 }
 
-
-RaggedShape Merge(int32_t num_srcs,
-                  RaggedShape **src,
+RaggedShape Merge(int32_t num_srcs, RaggedShape **src,
                   const Array1<uint32_t> &merge_map,
                   Array1<uint32_t> *merge_map_out) {
   K2_CHECK(num_srcs > 0);
@@ -1028,8 +1019,8 @@ RaggedShape Merge(int32_t num_srcs,
 
   for (int32_t l = 0; l < num_layers; l++) {
     Array1<uint32_t> merge_map_next;
-    Array1<uint32_t> *this_m = (l + 1 == num_layers ? merge_map_out :
-                                &merge_map_next);
+    Array1<uint32_t> *this_m =
+        (l + 1 == num_layers ? merge_map_out : &merge_map_next);
     RaggedShape r = MergeRaggedLayer(l, num_srcs, src, merge_map_local, this_m);
     ans_layers[l] = r.Layers()[0];
     merge_map_local = merge_map_next;
@@ -1037,8 +1028,6 @@ RaggedShape Merge(int32_t num_srcs,
   // TODO(dan) after this is debugged: add ", false".
   return RaggedShape(ans_layers);
 }
-
-
 
 RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
   NVTX_RANGE(K2_FUNC);
@@ -1363,6 +1352,47 @@ std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
   return ans;
 }
 
+RaggedShape Arange(RaggedShape &src, int32_t axis, int32_t begin, int32_t end,
+                   std::pair<int32_t, int32_t> *value_range /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
+  int32_t num_axes = src.NumAxes();
+  K2_CHECK_GE(num_axes, 2);
+  K2_CHECK(axis >= 0 && axis < num_axes - 1);
+  K2_CHECK(begin >= 0 && begin <= end && end <= src.TotSize(axis) + 1);
+
+  if (begin == end) {
+    RaggedShape ans = EmptyRaggedShape(src.Context(), num_axes - axis);
+    // as begin == end, user always get empty values when doing
+    // `src.values.Arange(begin, end)`
+    if (value_range != nullptr) *value_range = std::make_pair(begin, end);
+    return ans;
+  }
+
+  src.Populate();
+  const std::vector<RaggedShapeLayer> &axes_in = src.Layers();
+  // `-1` as Layers().size is NumAxes() - 1
+  std::vector<RaggedShapeLayer> axes_out(num_axes - axis - 1);
+
+  int32_t row_begin = begin, row_end = end - 1;
+  for (int32_t cur_axis = axis; cur_axis < num_axes - 1; ++cur_axis) {
+    axes_out[cur_axis - axis].row_splits =
+        axes_in[cur_axis].row_splits.Arange(row_begin, row_end + 1);
+    int32_t row_id = row_begin;
+    // notice here we may do memory copy from GPU to CPU.
+    row_begin = axes_in[cur_axis].row_splits[row_begin];
+    row_end = axes_in[cur_axis].row_splits[row_end];
+    axes_out[cur_axis - axis].row_splits =
+        Minus(axes_out[cur_axis - axis].row_splits, row_begin);
+    axes_out[cur_axis - axis].row_ids =
+        axes_in[cur_axis].row_ids.Arange(row_begin, row_end);
+    axes_out[cur_axis - axis].row_ids =
+        Minus(axes_out[cur_axis - axis].row_ids, row_id);
+    axes_out[cur_axis - axis].cached_tot_size = row_end - row_begin;
+  }
+  if (value_range != nullptr) *value_range = std::make_pair(row_begin, row_end);
+  return RaggedShape(axes_out);
+}
+
 Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
                                   const Array1<int32_t> &suffix) {
   NVTX_RANGE(K2_FUNC);
@@ -1376,7 +1406,7 @@ Ragged<int32_t> AddSuffixToRagged(Ragged<int32_t> &src,
   // them with "1" so that we can use "idx01" and "idx0" for those indexes in
   // lambda, following the naming convention explained in k2/csrc/utils.h
   const int32_t *dst_row_splits1_data =
-      dst_shape.RowSplits(num_axes - 1).Data(),
+                    dst_shape.RowSplits(num_axes - 1).Data(),
                 *dst_row_ids1_data = dst_shape.RowIds(num_axes - 1).Data(),
                 *src_values_data = src.values.Data(),
                 *suffix_data = suffix.Data();
@@ -1411,7 +1441,7 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
   // them with "1" so that we can use "idx01" and "idx0" for those indexes in
   // lambda, following the naming convention explained in k2/csrc/utils.h
   const int32_t *dst_row_splits1_data =
-      dst_shape.RowSplits(num_axes - 1).Data(),
+                    dst_shape.RowSplits(num_axes - 1).Data(),
                 *dst_row_ids1_data = dst_shape.RowIds(num_axes - 1).Data(),
                 *src_values_data = src.values.Data(),
                 *prefix_data = prefix.Data();
@@ -1463,7 +1493,7 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &r_before_last,
   // r_last deals with the numbering on axis 2.
 
   RaggedShapeLayer &before_last = axes[axes.size() - 2],
-                 &last = axes[axes.size() - 1];
+                   &last = axes[axes.size() - 1];
 
   int32_t new_tot_size1 = r_before_last.NumNewElems(),
           new_tot_size2 = r_last.NumNewElems();
@@ -1562,9 +1592,7 @@ RaggedShape GetLayer(const RaggedShape &src, int32_t layer) {
   return RaggedShape(layers, check);
 }
 
-
-void DecomposeRaggedShape(const RaggedShape &src,
-                          int32_t axis,
+void DecomposeRaggedShape(const RaggedShape &src, int32_t axis,
                           RaggedShape *top, RaggedShape *bottom) {
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, src.NumAxes() - 1);
@@ -1572,16 +1600,14 @@ void DecomposeRaggedShape(const RaggedShape &src,
   std::vector<RaggedShapeLayer> top_layers(axis),
       bottom_layers(src_layers.size() - axis);
   int32_t src_size = src_layers.size();
-  for (int32_t i = 0; i < axis; ++i)
-    top_layers[i] = src_layers[i];
+  for (int32_t i = 0; i < axis; ++i) top_layers[i] = src_layers[i];
   for (int32_t i = axis; i < src_size; ++i)
     bottom_layers[i - axis] = src_layers[i];
   *top = RaggedShape(top_layers);
   *bottom = RaggedShape(bottom_layers);
 }
 
-RaggedShape RemoveEmptyLists(RaggedShape &src_shape,
-                             int32_t axis,
+RaggedShape RemoveEmptyLists(RaggedShape &src_shape, int32_t axis,
                              Renumbering *renumbering_out) {
   if (axis == 0) {
     return RemoveEmptyListsAxis0(src_shape, renumbering_out);
@@ -1590,16 +1616,13 @@ RaggedShape RemoveEmptyLists(RaggedShape &src_shape,
   DecomposeRaggedShape(src_shape, axis, &top_shape, &bottom_shape);
 
   Renumbering r_temp;
-  if (!renumbering_out)
-    renumbering_out = &r_temp;
+  if (!renumbering_out) renumbering_out = &r_temp;
   bottom_shape = RemoveEmptyListsAxis0(bottom_shape, renumbering_out);
   top_shape = SubsampleRaggedShape(top_shape, *renumbering_out);
   return ComposeRaggedShapes(top_shape, bottom_shape);
 }
 
-
-RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape,
-                                 int32_t axis,
+RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape, int32_t axis,
                                  Renumbering &renumbering) {
   if (axis == 0) {
     return RenumberAxis0Simple(src_shape, renumbering);
@@ -1612,22 +1635,20 @@ RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape,
   return ComposeRaggedShapes(top_shape, bottom_shape);
 }
 
-
-
 RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
                                   Renumbering *renumbering_out) {
   Renumbering r_temp;
-  if (!renumbering_out)
-    renumbering_out = &r_temp;
+  if (!renumbering_out) renumbering_out = &r_temp;
 
   ContextPtr c = src_shape.Context();
   int32_t num_lists = src_shape.Dim0();
   *renumbering_out = Renumbering(c, num_lists);
   int32_t *row_splits_data = src_shape.RowSplits(1).Data();
   char *keep_data = renumbering_out->Keep().Data();
-  K2_EVAL(c, num_lists + 1, lambda_set_keep, (int32_t i) -> void {
-      keep_data[i] = (row_splits_data[i+1] != row_splits_data[i]);
-    });
+  K2_EVAL(
+      c, num_lists + 1, lambda_set_keep, (int32_t i)->void {
+        keep_data[i] = (row_splits_data[i + 1] != row_splits_data[i]);
+      });
   return RenumberAxis0Simple(src_shape, *renumbering_out);
 }
 
@@ -1639,12 +1660,12 @@ RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
   std::vector<RaggedShapeLayer> layers = src_shape.Layers();
   int32_t num_layers = layers.size();
   int32_t new_num_lists = renumbering.NumNewElems(),
-              num_elems = src_shape.TotSize(1);  // unchanged old vs. new.
+          num_elems = src_shape.TotSize(1);  // unchanged old vs. new.
   Array1<int32_t> new_row_splits(c, new_num_lists + 1),
       new_row_ids = renumbering.Old2New()[src_shape.RowIds(1)];
   int32_t *new_row_splits_data = new_row_splits.Data();
   const int32_t *old_row_splits_data = src_shape.RowSplits(1).Data(),
-                       *new2old_data = renumbering.New2Old().Data();
+                *new2old_data = renumbering.New2Old().Data();
   // set `new_row_splits_data`.
 
 #ifndef NDEBUG
@@ -1653,35 +1674,35 @@ RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
     int32_t *is_ok_data = is_ok.Data();
     int32_t old_num_lists = src_shape.Dim0();
     const int32_t *old2new_data = renumbering.Old2New().Data();
-    K2_EVAL(c, old_num_lists, lambda_check_preconditions, (int32_t i) -> void {
-        if (old2new_data[i+1] == old2new_data[i]) {  // This list not kept
-          if (old_row_splits_data[i+1] != old_row_splits_data[i]) {
-            // this list was nonempty...
-            is_ok_data[0] = 0;
+    K2_EVAL(
+        c, old_num_lists, lambda_check_preconditions, (int32_t i)->void {
+          if (old2new_data[i + 1] == old2new_data[i]) {  // This list not kept
+            if (old_row_splits_data[i + 1] != old_row_splits_data[i]) {
+              // this list was nonempty...
+              is_ok_data[0] = 0;
+            }
           }
-        }
-      });
+        });
     K2_CHECK_NE(is_ok[0], 0) << "RenumberAxis0Simple(): preconditions not met; "
-        "renumbering removes nonempty lists.";
+                                "renumbering removes nonempty lists.";
   }
 #endif
 
-  K2_EVAL(c, new_num_lists + 1, lambda_set_new_row_splits, (int32_t new_i) -> void {
-      int32_t j;
-      if (new_i == new_num_lists) {
-        j = num_elems;
-      } else {
-        int32_t old_i = new2old_data[new_i];
-        j = old_row_splits_data[old_i];
-      }
-      new_row_splits_data[new_i] = j;
-    });
+  K2_EVAL(
+      c, new_num_lists + 1, lambda_set_new_row_splits, (int32_t new_i)->void {
+        int32_t j;
+        if (new_i == new_num_lists) {
+          j = num_elems;
+        } else {
+          int32_t old_i = new2old_data[new_i];
+          j = old_row_splits_data[old_i];
+        }
+        new_row_splits_data[new_i] = j;
+      });
   layers[0].row_splits = new_row_splits;
   layers[0].row_ids = new_row_ids;
   // no need to set its cached_tot_size; that didn't change.
   return RaggedShape(layers);
 }
-
-
 
 }  // namespace k2
