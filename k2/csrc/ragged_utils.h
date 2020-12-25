@@ -114,7 +114,7 @@ RaggedShape AppendRaggedLayer(int32_t axis,
                              element within its source.
 
       @return               Return a RaggedShape with `NumAxes() == 2`, i.e. one layer,
-                            that is the result of appending th
+                            that is the result of appending the
                             sources together; its
                             TotSize(0) will be the sum of src[i]->TotSize(layer),
                             i.e. `num_srcs times src[0]->TotSize(layer)` since they

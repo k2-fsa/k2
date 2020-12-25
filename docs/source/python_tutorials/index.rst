@@ -1,5 +1,5 @@
 
-Python Tutorials
+Python tutorials
 ================
 
 .. toctree::

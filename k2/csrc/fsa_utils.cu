@@ -1052,7 +1052,7 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
           num_arcs = fsas.TotSize(2);
   int32_t num_batches = state_batches.Dim0();
   // just using DCHECK below to save time in production code
-  K2_DCHECK(state_batches.TotSize(1) == num_fsas * num_batches);
+  K2_DCHECK_EQ(state_batches.TotSize(1), num_fsas * num_batches);
   K2_DCHECK_EQ(state_batches.NumElements(), num_states);
   K2_DCHECK_EQ(entering_arc_batches.Dim0(), num_batches);
   K2_DCHECK_EQ(entering_arc_batches.TotSize(1), state_batches.TotSize(1));
@@ -1797,7 +1797,7 @@ void FixNumStates(FsaVec *fsas) {
 
   Array1<int32_t> changed(c, 1, 0);
   Renumbering renumber_states(c, num_states);
-  renumber_states.Keep() = (char)1;  // by default keep all states..
+  renumber_states.Keep() = static_cast<char>(1);  // by default keep all states.
 
   int32_t *changed_data = changed.Data();
   char *keep_data = renumber_states.Keep().Data();

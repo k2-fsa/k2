@@ -32,7 +32,7 @@ namespace k2 {
 
      @param [in] src            Input ragged array; must have src.NumAxes()
                                 >= 2. src.values is allowed to be empty.
-     @param [in] default_value  Value to initialize the reduction with;
+     @param [in] initial_value  Value to initialize the reduction with;
      @param [out] dst           Array to which the reduction values will be
                                 written. Must satisfy
                                 dst->Dim() == rows along the last axis in src,
@@ -40,15 +40,15 @@ namespace k2 {
 */
 
 template <typename T, typename Op>
-void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst);
+void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst);
 /*
   Output to an array `max_values` the maximum of each sub-list along the last
-  axis of `src` i.e. the max taken over the last axis), or `default_value`,
+  axis of `src` i.e. the max taken over the last axis), or `initial_value`,
   whichever was larger.
 
      @param [in] src            Input ragged array; must have src.NumAxes()
                                 >= 2. src.values is allowed to be empty.
-     @param [in] default_value  Value to use for maximum operation as a default
+     @param [in] initial_value  Value to use for maximum operation as a default
                                 so max is taken over this and the elements
                                 of sub-lists in `src`.
      @param [out] max_values    Array to which the maximum values will be
@@ -58,29 +58,43 @@ void ApplyOpPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst);
                                 src.RowSplits(src.NumAxes() - 1).Dim() - 1.
  */
 template <typename T>
-void MaxPerSublist(Ragged<T> &src, T default_value, Array1<T> *max_values) {
-  ApplyOpPerSublist<T, MaxOp<T>>(src, default_value, max_values);
+void MaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *max_values) {
+  ApplyOpPerSublist<T, MaxOp<T>>(src, initial_value, max_values);
 }
 
 // Same with `MaxPerSubList`, but output the `min_value` in each sub-list.
 template <typename T>
-void MinPerSublist(Ragged<T> &src, T default_value, Array1<T> *min_values) {
-  ApplyOpPerSublist<T, MinOp<T>>(src, default_value, min_values);
+void MinPerSublist(Ragged<T> &src, T initial_value, Array1<T> *min_values) {
+  ApplyOpPerSublist<T, MinOp<T>>(src, initial_value, min_values);
 }
 
 // Same with `MaxPerSubList`, but output the sum of values in each sub-list.
 template <typename T>
-void SumPerSublist(Ragged<T> &src, T default_value, Array1<T> *sum_values) {
-  ApplyOpPerSublist<T, PlusOp<T>>(src, default_value, sum_values);
+void SumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *sum_values) {
+  ApplyOpPerSublist<T, PlusOp<T>>(src, initial_value, sum_values);
 }
 
 // Same with `MaxPerSubList`, but with Op as `LogAdd`.
 template <typename T>
-void LogSumPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst_values) {
+void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
   K2_STATIC_ASSERT(
       (std::is_same<float, T>::value || std::is_same<double, T>::value));
-  ApplyOpPerSublist<T, LogAdd<T>>(src, default_value, dst_values);
+  ApplyOpPerSublist<T, LogAdd<T>>(src, initial_value, dst_values);
 }
+
+/* Normalize per sublist.
+
+   The normalization per sublist is done as follows:
+
+      1. Compute the log sum using LogSumPerSublist
+      2. Subtract the log sum from the sublist
+      3. Return the resulting sublist
+   @param [in] src  The source ragged tensor. The normalization
+                    is done on the last axis.
+   @return The normalized ragged tensor.
+ */
+template <typename T>
+Ragged<T> NormalizePerSublist(Ragged<T> &src);
 
 /*
   Output to an array `and_values` the result of reducing each sub-list along
@@ -88,7 +102,7 @@ void LogSumPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst_values) {
 
      @param [in] src            Input ragged array; must have src.NumAxes()
                                 >= 2. src.values is allowed to be empty.
-     @param [in] default_value  Value to initialize the reduction with; should
+     @param [in] initial_value  Value to initialize the reduction with; should
                                 probably be all-ones.
      @param [out] and_values    Array to which the bitwise-and values will be
                                 written. Must satisfy
@@ -96,14 +110,14 @@ void LogSumPerSublist(Ragged<T> &src, T default_value, Array1<T> *dst_values) {
   2), i.e. the total size on the second-to-last axis of `src`.
 */
 template <typename T>
-void AndPerSublist(Ragged<T> &src, T default_value, Array1<T> *and_values) {
-  ApplyOpPerSublist<T, BitAndOp<T>>(src, default_value, and_values);
+void AndPerSublist(Ragged<T> &src, T initial_value, Array1<T> *and_values) {
+  ApplyOpPerSublist<T, BitAndOp<T>>(src, initial_value, and_values);
 }
 
 // bitwise or
 template <typename T>
-void OrPerSublist(Ragged<T> &src, T default_value, Array1<T> *or_values) {
-  ApplyOpPerSublist<T, BitOrOp<T>>(src, default_value, or_values);
+void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
+  ApplyOpPerSublist<T, BitOrOp<T>>(src, initial_value, or_values);
 }
 
 /*
@@ -332,7 +346,6 @@ Ragged<T> RemoveAxis(Ragged<T> &src, int32_t axis) {
  */
 RaggedShape GetLayer(const RaggedShape &src, int32_t layer);
 
-
 /*
   This is the inverse of ComposeRaggedShapes(); it splits up a RaggedShape
   into two pieces such that `top->NumElements() == bottom->Dim0()`.
@@ -347,8 +360,7 @@ RaggedShape GetLayer(const RaggedShape &src, int32_t layer);
                         `top->NumElements() == bottom->Dim0()` and
                         `Equal(src, ComposeRaggedShapes(*top, *bottom))`
  */
-void DecomposeRaggedShape(const RaggedShape &src,
-                          int32_t axis,
+void DecomposeRaggedShape(const RaggedShape &src, int32_t axis,
                           RaggedShape *top, RaggedShape *bottom);
 
 /*
@@ -530,9 +542,7 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
 
   Notice the other version of this function below.
  */
-RaggedShape SubsampleRaggedShape(RaggedShape &src,
-                                 Renumbering &renumbering);
-
+RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
 
 /*
   Return ragged shape with only a subset of the elements on the last
@@ -558,13 +568,13 @@ RaggedShape SubsampleRaggedShape(RaggedShape &src,
                          between old and new indexes on axis `axis` (e.g. if
                          `axis == 0` would map between idx0's and idx0's; if
                          `axis == 1`, would map between idx01's and idx01's).
-     @return             Returns modified shape with ans.NumAxes() == src_shape.NumAxes().
-                         ans.TotSize(axis) may differ from src_shape.TotSize(axis),
-                         but other TotSize() values, and the numbering on other axes,
-                         will remain the same.
+     @return             Returns modified shape with
+                         ans.NumAxes() == src_shape.NumAxes().
+                         ans.TotSize(axis) may differ from
+                         src_shape.TotSize(axis), but other TotSize() values,
+                         and the numbering on other axes, will remain the same.
  */
-RaggedShape RemoveEmptyLists(RaggedShape &src_shape,
-                             int32_t axis,
+RaggedShape RemoveEmptyLists(RaggedShape &src_shape, int32_t axis,
                              Renumbering *renumbering = nullptr);
 
 /*
@@ -581,15 +591,14 @@ RaggedShape RemoveEmptyLists(RaggedShape &src_shape,
                          `axis == 1`, would map between idx01's and idx01's).
                          It is assumed that this renumbering preserves
                          all lists that are nonempty.
-     @return             Returns modified shape with ans.NumAxes() == src_shape.NumAxes().
-                         ans.TotSize(axis) may differ from src_shape.TotSize(axis),
-                         but other TotSize() values, and the numbering on other axes,
-                         will remain the same.
+     @return             Returns modified shape with
+                         ans.NumAxes() == src_shape.NumAxes().
+                         ans.TotSize(axis) may differ from
+                         src_shape.TotSize(axis), but other TotSize() values,
+                         and the numbering on other axes, will remain the same.
  */
-RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape,
-                                 int32_t axis,
+RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape, int32_t axis,
                                  Renumbering &renumbering);
-
 
 /*
   Removes empty lists on axis 0 of a RaggedShape, returning the modified shape
@@ -600,9 +609,11 @@ RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape,
      @param [out] renumbering  If not nullptr, a renumbering object that maps
                          between old and new indexes on axis 0, i.e. between
                          old and new idx0's.
-     @return             Returns modified shape with ans.NumAxes() == src_shape.NumAxes().
-                         ans.Dim0() may differ from src_shape.Dim0(), but for axis > 0,
-                         we have `ans.TotSize(axis) == src.TotSize(axis)`.
+     @return             Returns modified shape with
+                         ans.NumAxes() == src_shape.NumAxes().
+                         ans.Dim0() may differ from src_shape.Dim0(),
+                         but for axis > 0, we have
+                         `ans.TotSize(axis) == src.TotSize(axis)`.
 */
 RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
                                   Renumbering *renumbering = nullptr);
@@ -619,14 +630,14 @@ RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
                          between old and new indexes on axis 0, i.e. between
                          old and new idx0's.  The removed lists must be empty.
 
-     @return             Returns modified shape with ans.NumAxes() == src_shape.NumAxes().
-                         ans.Dim0() may differ from src_shape.Dim0(), but for axis > 0,
-                         we have `ans.TotSize(axis) == src.TotSize(axis)`.
+     @return             Returns modified shape with
+                         ans.NumAxes() == src_shape.NumAxes().
+                         ans.Dim0() may differ from src_shape.Dim0(),
+                         but for axis > 0, we have
+                         `ans.TotSize(axis) == src.TotSize(axis)`.
  */
 RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
                                 Renumbering &renumbering);
-
-
 
 /*
   Return ragged array with only a subset of the bottom-level elements kept.

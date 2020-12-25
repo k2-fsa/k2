@@ -1,10 +1,17 @@
-# Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+# Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang
+#                                                   Daniel Povey
+#                                                   Haowen Qiu)
 #
 # See ../../../../LICENSE for clarification regarding multiple authors
 
-from typing import Tuple, Optional, List
+from typing import List
+from typing import Optional
+from typing import Tuple
 from typing import Union
+
+import numpy as np
 import torch
+
 import _k2
 
 

@@ -91,7 +91,7 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
   int32_t num_axes = src[0]->NumAxes(),
           num_rows = src[0]->TotSize(layer),
        tot_elems = 0;
-  for (int32_t i = 0; i < num_srcs; i++) {
+  for (int32_t i = 0; i < num_srcs; ++i) {
     if (i > 0) {
       K2_CHECK_EQ(src[i]->NumAxes(), num_axes);
       K2_CHECK_EQ(src[i]->TotSize(layer), num_rows);
@@ -100,7 +100,7 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
     tot_elems += src[i]->TotSize(layer + 1);
     row_splits_ptrs_vec[i] = row_splits.Data();
   }
-  ContextPtr c = src[0]->Context();
+  ContextPtr &c = src[0]->Context();
 
   int32_t new_num_rows = num_rows * num_srcs;
   Array1<int32_t> row_ids(c, tot_elems),
@@ -160,8 +160,8 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
 
     K2_EVAL(c, tot_elems, lambda_set_merge_map, (int32_t idx01) -> void {
         int32_t idx0 = row_ids_data[idx01],
-               idx1x = row_splits_data[idx0],
-                idx1 = idx01 - idx1x,
+               idx0x = row_splits_data[idx0],
+                idx1 = idx01 - idx0x,
                  src = idx0 % num_srcs,
             src_idx0 = idx0 / num_srcs,
            src_idx0x = row_splits_ptrs_data[src][src_idx0],
