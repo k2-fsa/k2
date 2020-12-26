@@ -7,36 +7,8 @@ from typing import Optional
 
 import torch
 
-import k2
 import _k2
 from .fsa import Fsa
-
-
-def index(src: Fsa, indexes: torch.Tensor) -> Fsa:
-    '''Select a list of FSAs from `src`.
-
-    Args:
-      src:
-        An FsaVec.
-      indexes:
-        A 1-D `torch.Tensor` of dtype `torch.int32` containing
-        the ids of FSAs to select.
-
-    Returns:
-      Return an FsaVec containing only those FSAs specified by `indexes`.
-    '''
-    ragged_arc, value_indexes = k2.ragged.index(src.arcs,
-                                                indexes=indexes,
-                                                need_value_indexes=True)
-    out_fsa = Fsa(ragged_arc)
-
-    for name, value in src.named_tensor_attr():
-        setattr(out_fsa, name, k2.ops.index_select(value, value_indexes))
-
-    for name, value in src.named_non_tensor_attr():
-        setattr(out_fsa, name, value)
-
-    return out_fsa
 
 
 def to_str(fsa: Fsa, openfst: bool = False) -> str:
@@ -281,4 +253,4 @@ def is_rand_equivalent(a: Fsa,
        sequence is the same in both FSAs.
     '''
     return _k2.is_rand_equivalent(a.arcs, b.arcs, log_semiring, beam,
-                                   treat_epsilons_specially, delta, npath)
+                                  treat_epsilons_specially, delta, npath)

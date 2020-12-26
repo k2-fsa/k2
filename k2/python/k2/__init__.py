@@ -30,16 +30,13 @@ from .fsa_algo import remove_epsilons_iterative_tropical
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
+from .ops import index
 from .ops import index_add
-from .ops import index_attr
-from .ops import index_ragged_int
 from .ops import index_select
 from .ops import index_tensor
-from .ops import index_tensor_with_ragged_int
 from .ragged import RaggedShape
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec
-from .utils import index
 from .utils import is_rand_equivalent
 from .utils import to_dot
 from .utils import to_str
@@ -64,11 +61,8 @@ __all__ = [
     'get_tot_scores',
     'index',
     'index_add',
-    'index_attr',
-    'index_ragged_int',
     'index_select',
     'index_tensor',
-    'index_tensor_with_ragged_int',
     'intersect',
     'intersect_dense',
     'intersect_dense_pruned',

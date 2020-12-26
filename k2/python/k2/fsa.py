@@ -762,7 +762,7 @@ class Fsa(object):
                                        end,
                                        dtype=torch.int32,
                                        device=self.device)
-                setattr(out_fsa, name, k2.ops.index_ragged_int(value, indexes))
+                setattr(out_fsa, name, k2.ops.index(value, indexes))
 
         for name, value in self.named_non_tensor_attr():
             setattr(out_fsa, name, value)

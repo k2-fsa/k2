@@ -118,6 +118,8 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
 
   pyclass.def(py::pickle(
       [](const PyClass &obj) {
+        K2_CHECK_EQ(obj.NumAxes(), 2)
+            << "Only support Ragged with NumAxes() == 2 for now";
         Array1<int32_t> row_splits1 = obj.RowSplits(1);
         Array1<int32_t> row_ids1 = obj.RowIds(1);
         Array1<T> values = obj.values;
@@ -125,7 +127,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
                               ToTensor(values));
       },
       [](py::tuple t) {
-        if (t.size() != 3) throw std::runtime_error("Invalid state!");
+        K2_CHECK_EQ(t.size(), 3) << "Invalid state";
         torch::Tensor row_splits1_tensor = t[0].cast<torch::Tensor>();
         Array1<int32_t> row_splits1 = FromTensor<int32_t>(row_splits1_tensor);
         torch::Tensor row_ids1_tensor = t[1].cast<torch::Tensor>();
@@ -160,7 +162,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       py::arg("src"), py::arg("indexes"), py::arg("need_value_indexes") = true);
 
   m.def(
-      "index_ragged_with_ragged_int",
+      "index",
       [](Ragged<T> &src, Ragged<int32_t> &indexes) -> Ragged<T> {
         bool remove_axis = true;
         return Index(src, indexes, remove_axis);
@@ -174,7 +176,7 @@ static void PybindRaggedImpl(py::module &m) {
   PybindRaggedTpl<float>(m, "RaggedFloat");
 
   m.def(
-      "index_tensor_with_ragged_int",
+      "index",
       [](torch::Tensor src, Ragged<int32_t> &indexes) -> Ragged<int32_t> {
         K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
         Array1<int32_t> src_array = FromTensor<int32_t>(src);
