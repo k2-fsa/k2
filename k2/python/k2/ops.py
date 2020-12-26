@@ -6,7 +6,9 @@
 from typing import Tuple
 from typing import Union
 import torch
+import k2
 import _k2
+from .fsa import Fsa
 from .ragged import index as ragged_index
 
 
@@ -124,9 +126,36 @@ def index_add(index: torch.Tensor, value: torch.Tensor,
     _k2.index_add(index, value, in_out)
 
 
-def index_ragged_int(src: _k2.RaggedInt,
-                     indexes: Union[torch.Tensor, _k2.RaggedInt]
-                    ) -> _k2.RaggedInt:  # noqa
+def index_fsa(src: Fsa, indexes: torch.Tensor) -> Fsa:
+    '''Select a list of FSAs from `src` with a 1-D tensor.
+
+    Args:
+      src:
+        An FsaVec.
+      indexes:
+        A 1-D `torch.Tensor` of dtype `torch.int32` containing
+        the ids of FSAs to select.
+
+    Returns:
+      Return an FsaVec containing only those FSAs specified by `indexes`.
+    '''
+    ragged_arc, value_indexes = k2.ragged.index(src.arcs,
+                                                indexes=indexes,
+                                                need_value_indexes=True)
+    out_fsa = Fsa(ragged_arc)
+
+    for name, value in src.named_tensor_attr():
+        setattr(out_fsa, name, k2.ops.index_select(value, value_indexes))
+
+    for name, value in src.named_non_tensor_attr():
+        setattr(out_fsa, name, value)
+
+    return out_fsa
+
+
+def index_ragged(src: _k2.RaggedInt,
+                 indexes: Union[torch.Tensor, _k2.RaggedInt]
+                ) -> _k2.RaggedInt:  # noqa
     '''Indexing ragged tensor with a 1-D tensor or a ragged tensor.
 
     Args:
@@ -151,31 +180,12 @@ def index_ragged_int(src: _k2.RaggedInt,
         ans, _ = ragged_index(src, indexes)
         return ans
     else:
-        return _k2.index_ragged_with_ragged_int(src, indexes)
-
-
-def index_tensor_with_ragged_int(src: torch.Tensor,
-                                 indexes: _k2.RaggedInt) -> _k2.RaggedInt:
-    '''Indexing a 1-D tensor with a ragged tensor.
-
-    Args:
-      src:
-        Source 1-D tensor to index, must have `src.dtype == torch.int32`
-      indexes:
-        A ragged tensor, `indexes.values` will be interpreted as indexes
-        into `src`.
-        i.e. 0 <= indexes.values[i] < src.numel();
-
-    Returns:
-      Returns ragged tensor with shape `indexes.shape` and
-      values `src[indexes.values]`.
-    '''
-    return _k2.index_tensor_with_ragged_int(src, indexes)
+        return _k2.index(src, indexes)
 
 
 def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
                 ) -> Union[torch.Tensor, _k2.RaggedInt]:  # noqa
-    '''It's a wrapper of index_tensor and index_ragged_int above
+    '''Indexing a 1-D tensor with a 1-D tensor a ragged tensor.
 
     Args:
       src:
@@ -193,16 +203,22 @@ def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
         return index_select(src, indexes)
     else:
         # TODO(haowen): it does not autograd now.
-        return index_tensor_with_ragged_int(src, indexes)
+        return _k2.index(src, indexes)
 
 
-def index_attr(src: Union[torch.Tensor, _k2.RaggedInt],
-               indexes: Union[torch.Tensor, _k2.RaggedInt]
-              ) -> Union[torch.Tensor, _k2.RaggedInt]:  # noqa
-    '''Indexing a 1-D tensor with a tensor a ragged tensor, it's a wrapper
-    of index_tensor_with_ragged_int and index_select.
+def index(src: Union[Fsa, torch.Tensor, _k2.RaggedInt],
+          indexes: Union[torch.Tensor, _k2.RaggedInt]
+         ) -> Union[Fsa, torch.Tensor, _k2.RaggedInt]:  # noqa
+    '''Indexing an Fsa or a 1-D tensor with a tensor or a ragged tensor.
+    It's a wrapper of above function `index_fsa`, `index_tensor` and 
+    `index_ragged`.
     '''
-    if isinstance(src, torch.Tensor):
+    if isinstance(src, Fsa):
+        # currently we only support index Fsa with a tensor.
+        assert isinstance(indexes, torch.Tensor)
+        return index_fsa(src, indexes)
+    elif isinstance(src, torch.Tensor):
         return index_tensor(src, indexes)
     else:
-        return index_ragged_int(src, indexes)
+        assert isinstance(src, _k2.RaggedInt)
+        return index_ragged(src, indexes)

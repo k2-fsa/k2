@@ -154,7 +154,7 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
-            value = k2.index_attr(a_value, arc_map_a)
+            value = k2.index(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():
@@ -246,7 +246,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, a_value in a_fsas.named_tensor_attr(include_scores=False):
-            value = k2.index_attr(a_value, arc_map_a)
+            value = k2.index(a_value, arc_map_a)
             setattr(out_fsa[0], name, value)
 
         for name, a_value in a_fsas.named_non_tensor_attr():
@@ -307,7 +307,7 @@ class _UnionFunction(torch.autograd.Function):
         out_fsa[0] = Fsa(ragged_arc)
 
         for name, value in fsas.named_tensor_attr(include_scores=False):
-            value = k2.index_attr(value, arc_map)
+            value = k2.index(value, arc_map)
             setattr(out_fsa[0], name, value)
 
         for name, value in fsas.named_non_tensor_attr():
