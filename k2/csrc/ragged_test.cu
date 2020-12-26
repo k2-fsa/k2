@@ -2076,7 +2076,7 @@ TEST(RaggedShapeOpsTest, ArangeTest) {
       {
         // axis == 0, begin  < end == Dim0() + 1
         int32_t axis = 0;
-        int32_t begin = 3, end = 7;
+        int32_t begin = 3, end = 6;
         std::vector<std::vector<int32_t>> expected_row_splits = {
             {0, 2, 3, 6}, {0, 1, 4, 5, 7, 7, 8}};
         std::pair<int32_t, int32_t> value_range;
@@ -2099,7 +2099,7 @@ TEST(RaggedShapeOpsTest, ArangeTest) {
       {
         // axis == 1
         int32_t axis = 1;
-        int32_t begin = 6, end = 9;
+        int32_t begin = 6, end = 8;
         std::vector<int32_t> expected_row_splits = {0, 1, 3};
         std::pair<int32_t, int32_t> value_range;
         RaggedShape result = Arange(shape, axis, begin, end, &value_range);
@@ -2124,12 +2124,12 @@ TEST(RaggedShapeOpsTest, ArangeTest) {
         int32_t num_axes = shape.NumAxes();
         int32_t axis = RandInt(0, num_axes - 2);
         int32_t tot_size = shape.TotSize(axis);
-        int32_t begin = RandInt(0, tot_size + 1);
-        int32_t end = RandInt(begin, tot_size + 1);
+        int32_t begin = RandInt(0, tot_size);
+        int32_t end = RandInt(begin, tot_size);
         std::pair<int32_t, int32_t> value_range;
         RaggedShape result = Arange(shape, axis, begin, end, &value_range);
         EXPECT_TRUE(IsCompatible(shape, result));
-        EXPECT_EQ(result.Dim0(), std::max(0, end - begin - 1));
+        EXPECT_EQ(result.Dim0(), std::max(0, end - begin));
         EXPECT_EQ(result.NumAxes(), num_axes - axis);
         // just check row_splits1 here would be fine, as we have tested it with
         // simple case. We just confirm it can run successfully with kinds of
@@ -2138,7 +2138,7 @@ TEST(RaggedShapeOpsTest, ArangeTest) {
           CheckArrayData(result.RowSplits(1), std::vector<int32_t>{0});
         } else {
           Array1<int32_t> row_splits1 =
-              shape.RowSplits(axis + 1).Arange(begin, end);
+              shape.RowSplits(axis + 1).Arange(begin, end + 1);
           row_splits1 = Minus(row_splits1, row_splits1[0]);
           CheckArrayData(result.RowSplits(1), row_splits1);
         }

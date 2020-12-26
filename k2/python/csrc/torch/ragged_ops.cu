@@ -21,6 +21,15 @@ static void PybindRaggedRemoveAxis(py::module &m, const char *name) {
 }
 
 template <typename T>
+static void PybindRaggedArange(py::module &m, const char *name) {
+  m.def(
+      name,
+      [](Ragged<T> &src, int32_t axis, int32_t begin,
+         int32_t end) -> Ragged<T> { return Arange<T>(src, axis, begin, end); },
+      py::arg("src"), py::arg("axis"), py::arg("begin"), py::arg("end"));
+}
+
+template <typename T>
 static void PybindRemoveValuesLeq(py::module &m, const char *name) {
   m.def(name, &RemoveValuesLeq<T>, py::arg("src"), py::arg("cutoff"));
 }
@@ -154,6 +163,7 @@ static void PybindNormalizePerSublistBackward(py::module &m, const char *name) {
 void PybindRaggedOps(py::module &m) {
   using namespace k2;  // NOLINT
   PybindRaggedRemoveAxis<int32_t>(m, "ragged_int_remove_axis");
+  PybindRaggedArange<int32_t>(m, "ragged_int_arange");
   PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
   PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
   PybindRaggedIntToList(m, "ragged_int_to_list");

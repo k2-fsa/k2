@@ -758,11 +758,9 @@ class Fsa(object):
             if isinstance(value, torch.Tensor):
                 setattr(out_fsa, name, value[start:end])
             else:
-                indexes = torch.arange(start,
-                                       end,
-                                       dtype=torch.int32,
-                                       device=self.device)
-                setattr(out_fsa, name, k2.ops.index(value, indexes))
+                assert isinstance(value, _k2.RaggedInt)
+                setattr(out_fsa, name,
+                        _k2.ragged_int_arange(value, 0, start, end))
 
         for name, value in self.named_non_tensor_attr():
             setattr(out_fsa, name, value)
