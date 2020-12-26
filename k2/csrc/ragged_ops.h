@@ -232,6 +232,40 @@ std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
                                      const std::vector<int32_t> &sizes);
 
 /*
+  Return a sub-range of `src` containing indexes `begin` through `end - 1`
+  along axis `axis` of src.
+      @param [in] src   Source RaggedShape. Must have src.NumAxes() >= 2.
+      @param [in] axis  The axis we'll get ans, must have
+                        0 <= axis < src.NumAxes() - 1.
+      @param [in] begin The first element we'll get along axis `axis`.
+                        Must have 0 <= begin <= end <= src.TotSize(axis) + 1.
+      @param [in] end   The one-past-the-last element we'll get along axis
+                       `axis`.
+                       Must have 0 <= begin <= end <= src.TotSize(axis) + 1.
+      @param [out] value_range If non-null, will be set to a pair
+                        (val_begin, val_end) and users can get the values
+                        of ans with src.values.Arange(val_begin, val_end).
+      @return   Returns a RaggedShape with NumAxes() == src.NumAxes() - `axis`,
+                it contains element of `src` along axis `axis` from `begin`
+                to `end - 1`.
+ */
+RaggedShape Arange(RaggedShape &src, int32_t axis, int32_t begin, int32_t end,
+                   std::pair<int32_t, int32_t> *value_range = nullptr);
+
+/*
+  Returns a Ragged array which is a sub-range of `src` containing indexes
+  `begin` through `end - 1` along axis `axis` of src. See above version for
+  RaggedShape for the requirements of input parameters.
+ */
+template <typename T>
+Ragged<T> Arange(Ragged<T> &src, int32_t axis, int32_t begin, int32_t end) {
+  std::pair<int32_t, int32_t> value_range;
+  RaggedShape ans_shape = Arange(src.shape, axis, begin, end, &value_range);
+  return Ragged<T>(ans_shape,
+                   src.values.Arange(value_range.first, value_range.second));
+}
+
+/*
   Append a single element to each sub-array of a ragged matrix (we consider
   only its last axis).
      @param [in] src     Source ragged tensor
