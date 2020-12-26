@@ -46,6 +46,7 @@ set(context_srcs
   rm_epsilon.cu
   tensor.cu
   tensor_ops.cu
+  thread_pool.cu
   timer.cu
   utils.cu
 )
@@ -97,6 +98,7 @@ set(cuda_tests
   rm_epsilon_test
   tensor_ops_test
   tensor_test
+  thread_pool_test
   top_sort_test
   utils_test
 )
