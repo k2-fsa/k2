@@ -10,7 +10,6 @@
  */
 
 #include <limits>
-#include <thread>
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
@@ -18,6 +17,7 @@
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/hash.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/thread_pool.h"
 
 namespace k2 {
 
@@ -244,7 +244,8 @@ class MultiGraphDenseIntersectPruned {
        << ",TotSize(1)=" << b_fsas_.shape.TotSize(1);
     NVTX_RANGE(os.str().c_str());
 
-    std::thread backward_thread(BackwardPassStatic, this);
+    ThreadPool* pool = GetThreadPool();
+    pool->SubmitTask([this]() { BackwardPassStatic(this); });
 
     // we'll initially populate frames_[0.. T+1], but discard the one at T+1,
     // which has no arcs or states, the ones we use are from 0 to T.
@@ -268,7 +269,7 @@ class MultiGraphDenseIntersectPruned {
     // is set up (it has no arcs but we need the shape).
     frames_.pop_back();
 
-    backward_thread.join();
+    pool->WaitAllTasksFinished();
   }
 
   void BackwardPass() {
