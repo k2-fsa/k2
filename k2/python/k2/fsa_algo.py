@@ -188,7 +188,7 @@ def compose(a_fsa: Fsa, b_fsa: Fsa,
         return intersect(a_fsa, b_fsa, treat_epsilons_specially)
 
     if not hasattr(b_fsa, 'aux_labels'):
-        return intersect(a_fsa, b_fsa, treat_epsilons_specially)
+        return invert(intersect(invert(a_fsa), b_fsa, treat_epsilons_specially))
 
     assert isinstance(a_fsa.aux_labels, torch.Tensor)
 
