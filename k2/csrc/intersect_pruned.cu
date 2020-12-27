@@ -245,7 +245,7 @@ class MultiGraphDenseIntersectPruned {
     NVTX_RANGE(os.str().c_str());
 
     ThreadPool* pool = GetThreadPool();
-    pool->RunTask([this]() { BackwardPassStatic(this); });
+    pool->SubmitTask([this]() { BackwardPassStatic(this); });
 
     // we'll initially populate frames_[0.. T+1], but discard the one at T+1,
     // which has no arcs or states, the ones we use are from 0 to T.

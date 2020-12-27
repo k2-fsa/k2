@@ -34,22 +34,27 @@ class ThreadPool {
    */
   explicit ThreadPool(int32_t num_threads);
 
-  /* It ask all threads in the pool to exit after processing what they
-   * are currently executing. If there are still tasks in the queue, they
-   * will not be executed.
-   */
+  // It has un-copyable members of type `std::mutex` and
+  // `std::condition_variable` so this class is not copyable.
+
+  // The destructor waits for all threads in the pool to exit.
   ~ThreadPool();
+
+  // return the number of threads in the pool
+  int32_t GetNumThreads() const {
+    return static_cast<int32_t>(threads_.size());
+  }
 
   /* Insert a task into the queue. It is executed immediately
    * if there are currently idle threads. Otherwise, it is saved
-   * in the queue and waits for threads to be free to pop it from
+   * in the queue and waits for an idle thread to be free to pop it from
    * the queue and to execute it.
    *
    * @param [in] task   The task to be run. It should be convertible to
    *                    `std::function<void()>`.
    */
   template <typename Lambda>
-  void RunTask(Lambda task) {
+  void SubmitTask(Lambda task) {
     K2_CHECK_GT(threads_.size(), 0u);
     std::lock_guard<std::mutex> lock(mutex_);
     tasks_.emplace(static_cast<TaskFunc>(task));

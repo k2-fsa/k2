@@ -28,6 +28,7 @@ ThreadPool::ThreadPool(int32_t num_threads)
 }
 
 ThreadPool::~ThreadPool() {
+  WaitAllTasksFinished();
   {
     std::lock_guard<std::mutex> lock(mutex_);
     keep_running_ = false;
