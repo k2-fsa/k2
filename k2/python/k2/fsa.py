@@ -1036,8 +1036,8 @@ class Fsa(object):
         of all arcs leaving a state equal to 1.
 
         Caution:
-          The function name ends with a underline indicating this function
-          will change `self` in-place.
+          The function name ends with an underline indicating this function
+          will modify `self` **in-place**.
         '''
         scores = torch.randn_like(self.scores)
         ragged_scores = k2.ragged.RaggedFloat(self.arcs.shape(), scores)
