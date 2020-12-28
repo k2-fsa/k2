@@ -1,6 +1,7 @@
 # Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
 # See ../../../../LICENSE for clarification regarding multiple authors
 
+from typing import Optional
 from typing import Union
 
 import torch
@@ -17,9 +18,34 @@ class RaggedFloat(object):
     is to implement autograd for :class:`_k2.RaggedFloat`.
     '''
 
-    def __init__(self, ragged: Union[str, _k2.RaggedFloat]):
+    def __init__(self,
+                 ragged: Union[str, _k2.RaggedFloat, _k2.RaggedShape],
+                 values: Optional[torch.Tensor] = None):
+        '''Construct an instance of :class:`k2.RaggedFloat`.
+
+        Args:
+          ragged:
+            It can be the following types:
+
+                - a string. Example value:
+
+                    [ [1 2] [] [5 10 20] ]
+
+                - an instance of :class:`_k2.RaggedFloat`
+
+                - an instance of :class:`_k2.RaggedShape`. In this case, you
+                  have to provide the additional argument `values`.
+          values:
+            Needed only when `ragged` is an instance of :class:`_k2.RaggedFloat`.
+            It is a 1-D torch.Tensor with dtype torch.float32.
+        '''
         if isinstance(ragged, str):
             ragged = _k2.RaggedFloat(ragged)
+        elif isinstance(ragged, _k2.RaggedShape):
+            assert values is not None
+            ragged = _k2.RaggedFloat(ragged, values)
+
+        assert isinstance(ragged, _k2.RaggedFloat)
 
         self.ragged = ragged
         self._scores = ragged.values()
