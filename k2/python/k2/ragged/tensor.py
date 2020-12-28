@@ -36,8 +36,9 @@ class RaggedFloat(object):
                 - an instance of :class:`_k2.RaggedShape`. In this case, you
                   have to provide the additional argument `values`.
           values:
-            Needed only when `ragged` is an instance of :class:`_k2.RaggedFloat`.
-            It is a 1-D torch.Tensor with dtype torch.float32.
+            Needed only when `ragged` is an instance of
+            :class:`_k2.RaggedFloat`. It is a 1-D torch.Tensor with dtype
+            torch.float32.
         '''
         if isinstance(ragged, str):
             ragged = _k2.RaggedFloat(ragged)
