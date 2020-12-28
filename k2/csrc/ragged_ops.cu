@@ -118,7 +118,7 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
   } else {
     // we need to work out row_splits as we always require row_splits is not
     // empty for RaggedShape. Note here we suppose the last element in row_ids
-    // is num_rows - 1, i.e. there's no empty rows after row `row_ids[-1]`.
+    // is num_rows - 1, i.e. there're no empty rows after row `row_ids[-1]`.
     int32_t num_rows = row_ids->Dim() == 0 ? 0 : row_ids->Back() + 1;
     Array1<int32_t> row_splits_array(ctx, num_rows + 1);
     RowIdsToRowSplits(*row_ids, &row_splits_array);
@@ -141,6 +141,7 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
     K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()
                   << " vs. " << b.Dim0();
   }
+  K2_CHECK(IsCompatible(a, b));
   const auto &a_axes = a.Layers();
   const auto &b_axes = b.Layers();
   std::vector<RaggedShapeLayer> axes(a_axes.size() + b_axes.size());
@@ -196,7 +197,7 @@ RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
 }
 
 RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
-                                    int32_t *tot_sizes) {
+                                    const int32_t *tot_sizes) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(num_axes, 2);
   std::vector<RaggedShapeLayer> axes(num_axes - 1);
@@ -1570,12 +1571,12 @@ RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes) {
   // row_ids will be the empty vector, with context `c`.
   axes[0].row_ids = axes[0].row_splits.Range(0, 0);
   axes[0].cached_tot_size = 0;
-  for (int32_t a = 1; a + 1 < num_axes; a++) axes[a] = axes[0];
+  for (int32_t a = 1; a + 1 < num_axes; ++a) axes[a] = axes[0];
   return RaggedShape(axes);
 }
 
 Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
-  ContextPtr c = shape.Context();
+  ContextPtr &c = shape.Context();
 
   Array1<int32_t> sizes = RowSplitsToSizes(shape.RowSplits(1));
   Array1<int32_t> index_map;
@@ -1599,7 +1600,7 @@ void DecomposeRaggedShape(const RaggedShape &src, int32_t axis,
   const std::vector<RaggedShapeLayer> &src_layers = src.Layers();
   std::vector<RaggedShapeLayer> top_layers(axis),
       bottom_layers(src_layers.size() - axis);
-  int32_t src_size = src_layers.size();
+  int32_t src_size = static_cast<int32_t>(src_layers.size());
   for (int32_t i = 0; i < axis; ++i) top_layers[i] = src_layers[i];
   for (int32_t i = axis; i < src_size; ++i)
     bottom_layers[i - axis] = src_layers[i];
@@ -1640,13 +1641,13 @@ RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
   Renumbering r_temp;
   if (!renumbering_out) renumbering_out = &r_temp;
 
-  ContextPtr c = src_shape.Context();
+  ContextPtr &c = src_shape.Context();
   int32_t num_lists = src_shape.Dim0();
   *renumbering_out = Renumbering(c, num_lists);
-  int32_t *row_splits_data = src_shape.RowSplits(1).Data();
+  const int32_t *row_splits_data = src_shape.RowSplits(1).Data();
   char *keep_data = renumbering_out->Keep().Data();
   K2_EVAL(
-      c, num_lists + 1, lambda_set_keep, (int32_t i)->void {
+      c, num_lists, lambda_set_keep, (int32_t i)->void {
         keep_data[i] = (row_splits_data[i + 1] != row_splits_data[i]);
       });
   return RenumberAxis0Simple(src_shape, *renumbering_out);

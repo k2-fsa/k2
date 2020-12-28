@@ -355,7 +355,7 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
      @param [in] row_splits   Row-splits array, should be non-decreasing,
                             and have Dim() >= 1
      @return   Returns array of sizes, satisfying `ans.Dim() ==
-              row_splits.Dim() - 1` and
+               row_splits.Dim() - 1` and
               `ans[i] = row_splits[i+1] - row_splits[i]`.
  */
 Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits);

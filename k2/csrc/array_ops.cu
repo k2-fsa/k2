@@ -363,7 +363,7 @@ Array1<int32_t> InvertPermutation(const Array1<int32_t> &src) {
 
 Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits) {
   K2_CHECK_GT(row_splits.Dim(), 0);
-  ContextPtr c = row_splits.Context();
+  ContextPtr &c = row_splits.Context();
   int32_t num_rows = row_splits.Dim() - 1;
   Array1<int32_t> sizes(c, num_rows);
   const int32_t *row_splits_data = row_splits.Data();

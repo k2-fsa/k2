@@ -230,6 +230,16 @@ static void PybindRaggedShape(py::module &m) {
     os << self;
     return os.str();
   });
+
+  pyclass.def(
+      "index",
+      [](PyClass &self, int32_t axis,
+         int32_t i) -> std::pair<PyClass, int32_t> {
+        int32_t value_offset;
+        RaggedShape ans = self.Index(axis, i, &value_offset);
+        return std::make_pair(ans, value_offset);
+      },
+      py::arg("axis"), py::arg("i"));
 }
 
 static void PybindRaggedShapeUtils(py::module &m) {
