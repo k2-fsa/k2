@@ -1039,7 +1039,7 @@ class Fsa(object):
           The function name ends with a underline indicating this function
           will change `self` in-place.
         '''
-        scores = torch.randn(self.scores.size())
+        scores = torch.randn_like(self.scores)
         ragged_scores = k2.ragged.RaggedFloat(self.arcs.shape(), scores)
         ragged_scores = k2.ragged.normalize_scores(ragged_scores)
 
