@@ -4,19 +4,23 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-import k2
 from typing import Any
 from typing import Dict
 from typing import Iterator
 from typing import Optional
 from typing import Tuple
 from typing import Union
-from k2 import fsa_properties
+
 import os
 import shutil
 import torch
+
+import k2
+import k2.ragged
 import _k2
+
 from _k2 import RaggedArc
+from k2 import fsa_properties
 
 
 class Fsa(object):
@@ -1024,3 +1028,20 @@ class Fsa(object):
         '''
         arcs, aux_labels = _k2.fsa_from_str(s, acceptor, True)
         return Fsa(arcs, aux_labels=aux_labels)
+
+    def set_scores_stochastic_(self) -> None:
+        '''Set `scores` to random numbers.
+
+        Scores are normalized per state. That is, the sum of the probabilities
+        of all arcs leaving a state equal to 1.
+
+        Caution:
+          The function name ends with an underline indicating this function
+          will modify `self` **in-place**.
+        '''
+        scores = torch.randn_like(self.scores)
+        ragged_scores = k2.ragged.RaggedFloat(self.arcs.shape(), scores)
+        ragged_scores = k2.ragged.normalize_scores(ragged_scores)
+
+        # note that `self.scores` also works here, but [:] is more efficient
+        self.scores[:] = ragged_scores.scores
