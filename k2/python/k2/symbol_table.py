@@ -2,12 +2,14 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from dataclasses import dataclass
+from dataclasses import field
+from typing import Dict
 from typing import Generic
+from typing import List
+from typing import Optional
 from typing import TypeVar
 from typing import Union
-
 
 Symbol = TypeVar('Symbol')
 
@@ -87,7 +89,7 @@ class SymbolTable(Generic[Symbol]):
             id2sym[idx] = sym
             sym2id[sym] = idx
 
-        eps = id2sym.get(0, None)
+        eps = id2sym.get(0, '<eps>')
 
         return SymbolTable(_id2sym=id2sym, _sym2id=sym2id, eps=eps)
 
@@ -199,11 +201,11 @@ class SymbolTable(Generic[Symbol]):
             A new symbol table.
         '''
         self._check_compatible(other)
-        return SymbolTable(
-            _id2sym={**self._id2sym, **other._id2sym},
-            _sym2id={**self._sym2id, **other._sym2id},
-            eps=self.eps
-        )
+
+        id2sym = {**self._id2sym, **other._id2sym}
+        sym2id = {**self._sym2id, **other._sym2id}
+
+        return SymbolTable(_id2sym=id2sym, _sym2id=sym2id, eps=self.eps)
 
     def _check_compatible(self, other: 'SymbolTable') -> None:
         # Epsilon compatibility
@@ -233,3 +235,20 @@ class SymbolTable(Generic[Symbol]):
 
     def __len__(self) -> int:
         return len(self._id2sym)
+
+    @property
+    def ids(self) -> List[int]:
+        '''Returns a list of integer IDs corresponding to the symbols.
+        '''
+        ans = list(self._id2sym.keys())
+        ans.sort()
+        return ans
+
+    @property
+    def symbols(self) -> List[Symbol]:
+        '''Returns a list of symbols (e.g., strings) corresponding to
+        the integer IDs.
+        '''
+        ans = list(self._sym2id.keys())
+        ans.sort()
+        return ans
