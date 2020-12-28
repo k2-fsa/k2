@@ -599,6 +599,11 @@ class TestFsa(unittest.TestCase):
         assert fsa.scores.item() == 100, f'fsa.scores is {fsa.scores}'
         assert scores.item() == 98
 
+        # CAUTION: had we used fsa.scores = scores,
+        # would we have `fsa.scores != fsa.arcs.values()[:, -1]`.
+        # That is, `fsa.scores` shares memory with `scores`, but not with fsa.arcs.values!
+        assert _k2.as_float(fsa.arcs.values()[:, -1]).item() == 100
+
 
 if __name__ == '__main__':
     unittest.main()
