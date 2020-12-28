@@ -210,7 +210,7 @@ def index(src: Union[Fsa, torch.Tensor, _k2.RaggedInt],
           indexes: Union[torch.Tensor, _k2.RaggedInt]
          ) -> Union[Fsa, torch.Tensor, _k2.RaggedInt]:  # noqa
     '''Indexing an Fsa or a 1-D tensor with a tensor or a ragged tensor.
-    It's a wrapper of above function `index_fsa`, `index_tensor` and 
+    It's a wrapper of above function `index_fsa`, `index_tensor` and
     `index_ragged`.
     '''
     if isinstance(src, Fsa):

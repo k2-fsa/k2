@@ -349,7 +349,7 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
 RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
 
 /*
-    Return a version of `src` with one one axis removed, done by appending
+    Return a version of `src` with one axis removed, done by appending
     lists (this axis is combined with the following axis).  Effectively removes
     element numbered `axis` from the vector of tot_sizes `[ src.TotSize(0),
     src.TotSize(1), ... src.TotSize(axis - 1) ]`
@@ -375,7 +375,7 @@ Ragged<T> RemoveAxis(Ragged<T> &src, int32_t axis) {
   will have NumAxes() == 2, but it is the minimal case of a RaggedShape.
 
     @param [in] src   Source RaggedShape
-    @param [in] layer  Layer that is desired, from 0 .. src.NumAxes() - 2.
+    @param [in] layer Layer that is desired, from 0 .. src.NumAxes() - 2.
                       View this as an index into its Layers() vector.
  */
 RaggedShape GetLayer(const RaggedShape &src, int32_t layer);
@@ -851,7 +851,7 @@ RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1);
                        set.
  */
 RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
-                                    int32_t *tot_sizes);
+                                    const int32_t *tot_sizes);
 
 /*
   Returns an empty ragged shape with the specified number of axes.

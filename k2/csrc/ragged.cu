@@ -184,6 +184,8 @@ RaggedShape RaggedShape::Index(int32_t axis, int32_t i,
   for (int32_t i = 2; i < num_axes; ++i) {
     const Array1<int32_t> &src_row_splits = RowSplits(i),
                           &src_row_ids = RowIds(i);
+    // TODO(fangjun): see https://github.com/k2-fsa/k2/pull/547
+    // for how to optimize it (do all transfer in a single kernel).
     int32_t idx_begin_next = (idx_begin != 0 ? src_row_splits[idx_begin] : 0),
             idx_end_next = src_row_splits[idx_end];
 

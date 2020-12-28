@@ -354,7 +354,7 @@ struct Ragged {
   }
 
   /*
-    Return a version of `*this` with one one axis removed, done by appending
+    Return a version of `*this` with one axis removed, done by appending
     lists (this axis is combined with the following axis).  Effectively removes
     element numbered `axis` from the vector of tot_sizes `[ src.TotSize(0),
     src.TotSize(1), ... src.TotSize(axis - 1) ]`
