@@ -25,19 +25,19 @@ class RaggedFloat(object):
 
         Args:
           ragged:
-            It can be the following types:
+            It can be one of the following types:
 
-                - a string. Example value:
+                - A string. Example value::
 
                     [ [1 2] [] [5 10 20] ]
 
-                - an instance of :class:`_k2.RaggedFloat`
+                - An instance of :class:`_k2.RaggedFloat`
 
-                - an instance of :class:`_k2.RaggedShape`. In this case, you
+                - An instance of :class:`_k2.RaggedShape`. In this case, you
                   have to provide the additional argument `values`.
           values:
-            Needed only when `ragged` is an instance of
-            :class:`_k2.RaggedFloat`. It is a 1-D torch.Tensor with dtype
+            Required only when `ragged` is an instance of
+            :class:`_k2.RaggedShape`. It is a 1-D torch.Tensor with dtype
             torch.float32.
         '''
         if isinstance(ragged, str):
