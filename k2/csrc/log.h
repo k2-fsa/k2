@@ -171,6 +171,16 @@ class Logger {
     return *this;
   }
 
+  K2_CUDA_HOSTDEV const Logger &operator<<(uint64_t i) const {
+    if (cur_level_ <= level_) printf("%llu", (long long unsigned int)i);
+    return *this;
+  }
+
+  K2_CUDA_HOSTDEV const Logger &operator<<(int64_t i) const {
+    if (cur_level_ <= level_) printf("%lli", (long long int)i);
+    return *this;
+  }
+
   K2_CUDA_HOSTDEV const Logger &operator<<(float f) const {
     if (cur_level_ <= level_) printf("%f", f);
     return *this;

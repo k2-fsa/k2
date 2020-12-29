@@ -63,18 +63,6 @@ class Array1 {
   // now.
   const RegionPtr &GetRegion() const { return region_; }
 
-  // generally Callable will be some kind of lambda or function object; it
-  // should be possible to evaluate it on the CUDA device (if we're compiling
-  // with CUDA) and also on the CPU.  We'll do src(i) to evaluate element i.
-  // NOTE: we assume this thread is already set to use the device associated
-  // with the context in 'ctx', if it's a CUDA context.
-  template <typename Callable>
-  Array1(ContextPtr ctx, int32_t size, Callable &&callable) {
-    Init(ctx, size);
-    T *data = Data();
-    SetData(ctx, data, size, std::forward<Callable>(callable));
-  }
-
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
 
   // read in same format as operator<< and operator>>, i.e. "[ 10 20 30 ]"

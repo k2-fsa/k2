@@ -130,9 +130,9 @@ void ComputeExclusiveSum(const std::vector<S> &src, std ::vector<T> *dest) {
   auto &dst = *dest;
   K2_CHECK_GE(dst.size(), src.size());
   T sum = T(0);
-  auto dst_size = dst.size();
-  auto src_size = src.size();
-  for (auto i = 0; i != dst_size; ++i) {
+  size_t dst_size = dst.size();
+  size_t src_size = src.size();
+  for (size_t i = 0; i != dst_size; ++i) {
     dst[i] = sum;
     if (i >= src_size) break;
     sum += src[i];
@@ -219,10 +219,11 @@ void TestExclusiveSumArray1(int32_t num_elem) {
       std::iota(data.begin(), data.end(), static_cast<S>(start));
       Array1<S> src(context, data);
       S *src_data = src.Data();
-      auto lambda_set_values = [=] __host__ __device__(int32_t i) -> const S * {
-        return &src_data[i];
-      };
-      Array1<const S *> src_ptr(context, num_elem, lambda_set_values);
+      Array1<const S *> src_ptr(context, num_elem);
+      const S **src_ptr_data = src_ptr.Data();
+      K2_EVAL(context, num_elem, lambda_set_values, (int32_t i) -> void {
+          src_ptr_data[i] = src_data + i;
+        });
       Array1<S> dest(context, num_elem);
       ExclusiveSumDeref(src_ptr, &dest);
       CheckExclusiveSumArray1Result(data, dest);

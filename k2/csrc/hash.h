@@ -148,14 +148,14 @@ class Hash {
       const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       const int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
 
-      K2_DCHECK_EQ(key & ~((uint64_t(1)<<NUM_KEY_BITS)-1), 0);
-      K2_DCHECK_EQ(value & ~VALUE_MASK, 0);
+      K2_CHECK_EQ(key & ~((uint64_t(1)<<NUM_KEY_BITS)-1), 0);
+      K2_CHECK_EQ(value & ~VALUE_MASK, 0);
 
       uint64_t new_elem = (key << (64 - NUM_KEY_BITS)) | value;
       while (1) {
-        int64_t cur_elem = data_[cur_bucket];
+        uint64_t cur_elem = data_[cur_bucket];
         if ((cur_elem >> NUM_VALUE_BITS) == key) {
-          if (cur_value) *cur_value = cur_elem & VALUE_MASK;
+          if (old_value) *old_value = cur_elem & VALUE_MASK;
           return false;  // key exists in hash
         }
         else if (~cur_elem == 0) {
@@ -237,8 +237,8 @@ class Hash {
       Note: the const is with respect to the metadata only; it is required, to
       avoid compilation errors.
      */
-    __forceinline__ __host__ __device__ bool WriteValue(
-        uint64_t *key_value_location, uint64_t key, uint64_t value) {
+    __forceinline__ __host__ __device__ void WriteValue(
+        uint64_t *key_value_location, uint64_t key, uint64_t value) const {
       const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       *key_value_location = (key << NUM_VALUE_BITS) | value;
     }
@@ -315,11 +315,11 @@ class Hash {
     int32_t i = error[0];
     if (i >= 0) { // there was an error; i is the index into the hash where
                   // there was an element.
-      Element elem;
-      elem.i = data_[i];
+      int64_t elem = data_[i];
+      // We don't know the number of bits the user was using for the key vs.
+      // value, so print in hex, maybe they can figure it out.
       K2_LOG(FATAL) << "Destroying hash: still contains values: position "
-                    << i << ", key = " << elem.p.key
-                    << ", value = " << elem.p.value;
+                    << i << ", key,value = " << std::hex << elem;
     }
   }
 

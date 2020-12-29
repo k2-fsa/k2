@@ -70,6 +70,7 @@ __all__ = [
     'is_rand_equivalent',
     'linear_fsa',
     'properties_to_str',
+    'ragged',
     'remove_epsilon',
     'remove_epsilons_iterative_tropical',
     'shortest_path',

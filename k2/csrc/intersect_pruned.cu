@@ -155,7 +155,7 @@ class MultiGraphDenseIntersectPruned {
                                                      max_active);
     if (num_buckets < 128)
       num_buckets = 128;
-    state_map_ = Hash32(c_, num_buckets);
+    state_map_ = Hash(c_, num_buckets);
     int32_t num_a_copies;
     if (a_fsas.shape.Dim0() == 1) {
       a_fsas_stride_ = 0;
@@ -168,7 +168,11 @@ class MultiGraphDenseIntersectPruned {
       num_a_copies = 1;
     }
     int64_t num_keys = num_a_copies * (int64_t)a_fsas.TotSize(1);
-    K2_CHECK(num_keys == (uint32_t)num_keys);
+    hash_use_40_key_bits_ = (num_keys != (uint32_t)num_keys);
+    if (hash_use_40_key_bits_) {
+      K2_CHECK((num_keys >> 40) == 0)
+          << "Decoding graph * minibatch size too big";
+    }
 
     { // set up do_pruning_after_ and prune_t_begin_end_.
 
@@ -254,7 +258,10 @@ class MultiGraphDenseIntersectPruned {
     frames_.push_back(InitialFrameInfo());
 
     for (int32_t t = 0; t <= T; t++) {
-      frames_.push_back(PropagateForward(t, frames_.back().get()));
+      if (hash_use_40_key_bits_)
+        frames_.push_back(PropagateForward<40>(t, frames_.back().get()));
+      else
+        frames_.push_back(PropagateForward<32>(t, frames_.back().get()));
       if (do_pruning_after_[t]) {
         // let a phase of backward-pass pruning commence.
         backward_semaphore_.Signal(c_);
@@ -690,6 +697,17 @@ class MultiGraphDenseIntersectPruned {
     // Ragged<StateInfo> &states = cur_frame->states;
     // arc_info has 3 axes: fsa_id, state, arc.
     cur_frame->arcs = GetArcs(t, cur_frame);
+
+    if (NUM_KEY_BITS > 32) { // a check.
+      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS,
+                             shift = std::min<int32_t>(31, NUM_VALUE_BITS);
+      // the 'min' part is to avoid a compiler warning about 'shift count too
+      // large' for code that is anyway unreachable.
+      K2_CHECK_EQ(cur_frame->arcs.NumElements() >> shift, 0) <<
+          "Too many arcs to store in hash; try smaller NUM_KEY_BITS (would "
+          "require code change) or reduce max_states or minibatch size.";
+    }
+
     Ragged<ArcInfo> &arc_info = cur_frame->arcs;
 
     ArcInfo *ai_data = arc_info.values.Data();
@@ -709,7 +727,7 @@ class MultiGraphDenseIntersectPruned {
     // them.
     int32_t *ai_row_ids1 = arc_info.shape.RowIds(1).Data(),
             *ai_row_ids2 = arc_info.shape.RowIds(2).Data();
-    auto state_map_acc = state_map_.GetAccessor<num_key_bits>();
+    auto state_map_acc = state_map_.GetAccessor<NUM_KEY_BITS>();
     int64_t state_map_fsa_stride = state_map_fsa_stride_;
 
     // renumber_states will be a renumbering that dictates which of the arcs in
@@ -798,17 +816,18 @@ class MultiGraphDenseIntersectPruned {
             int32_t this_j = state_reorder_data[arc_idx012],
                     next_j = state_reorder_data[arc_idx012 + 1];
             if (next_j > this_j) {
-              int64_t state_map_idx = dest_state_idx01 +
+              uint64_t state_map_idx = dest_state_idx01 +
                                       fsa_id * state_map_fsa_stride;
               uint64_t value, *key_value_addr;
               bool ans = state_map_acc.Find(state_map_idx,
-                                            &value, &value_addr);
-              K2_CHECK(ans);
-              K2_CHECK_EQ(value, arc_idx012);
+                                            &value, &key_value_addr);
+              K2_DCHECK(ans);
+              K2_DCHECK_EQ(static_cast<int32_t>(value), arc_idx012);
               // Note: this_j is an idx01 into ans->states.  previously it
               // contained an arc_idx012 (of the entering arc that won the
               // race).
-              *value_addr = this_j;
+              state_map_acc.WriteValue(key_value_addr, state_map_idx,
+                                       (uint64_t)this_j);
             }
           });
     }
@@ -830,17 +849,18 @@ class MultiGraphDenseIntersectPruned {
             int32_t dest_a_fsas_state_idx01 = info.u.dest_a_fsas_state_idx01;
 
 
-            int64_t state_map_idx = dest_a_fsas_state_idx01 +
-                                    fsa_id * state_map_fsa_stride;
-            int32_t state_idx01;
+            uint64_t state_map_idx = dest_a_fsas_state_idx01 +
+                                     fsa_id * state_map_fsa_stride;
+            uint64_t state_idx01;
+            const uint64_t minus_one = ~(uint64_t)0;
             if (!state_map_acc.Find(state_map_idx, &state_idx01))
-              state_idx01 = -1;   // The destination state did not survive
-                                  // pruning.
+              state_idx01 = minus_one;   // The destination state did not survive
+                                         // pruning.
 
             int32_t state_idx1;
-            if (state_idx01 >= 0) {
+            if (state_idx01 != minus_one) {
               int32_t state_idx0x = ans_states_row_splits1_data[fsa_id];
-              state_idx1 = state_idx01 - state_idx0x;
+              state_idx1 = static_cast<int32_t>(state_idx01) - state_idx0x;
             } else {
               state_idx1 = -1;  // Meaning: invalid.
             }
@@ -1393,7 +1413,7 @@ class MultiGraphDenseIntersectPruned {
                                   // if a_fsas_.Dim0() == 1, else 0.
 
 
-  Hash32 state_map_;  // state_map_ maps from:
+  Hash state_map_;    // state_map_ maps from:
                       // key == (state_map_fsa_stride_*n) + a_fsas_state_idx01,
                       //    where n is the fsa_idx, i.e. the index into b_fsas_
                       // to
@@ -1401,6 +1421,14 @@ class MultiGraphDenseIntersectPruned {
                       // value is an arc_idx012 (into cur_frame->arcs), and
                       // then later a state_idx01 into the next frame's `state`
                       // member.
+
+  // if false, NUM_KEY_BITS == 32; if true, NUM_KEY_BITS == 40, for hash code.
+  // We use 40 key bits in cases where the (decoding graph num-states *
+  // minibatch-size) is larger than can fit in 32 bits.  We could probably set
+  // it always to 40, but probably 32 will enable more compiler optimizations
+  // so we use 32 when possible.
+  bool hash_use_40_key_bits_ = false;
+
 
   // The 1st dim is needed because If all the
   // streams share the same FSA in a_fsas_, we need
