@@ -672,6 +672,9 @@ class MultiGraphDenseIntersectPruned {
     Does the forward-propagation (basically: the decoding step) and
     returns a newly allocated FrameInfo* object for the next frame.
 
+      num_key_bits (template argument): either 32 (normal case) or 40: it is
+            the number number of bits in `state_map_idx`.
+
       @param [in] t   Time-step that we are processing arcs leaving from;
                    will be called with t=0, t=1, ...
       @param [in] cur_frame  FrameInfo object for the states corresponding to
@@ -680,6 +683,7 @@ class MultiGraphDenseIntersectPruned {
      @return  Returns FrameInfo object corresponding to time t+1; will have its
              'states' member set up but not its 'arcs' member.
    */
+  template <int32_t NUM_KEY_BITS>
   std::unique_ptr<FrameInfo> PropagateForward(int32_t t, FrameInfo *cur_frame) {
     NVTX_RANGE("PropagateForward");
     int32_t num_fsas = NumFsas();
@@ -705,15 +709,14 @@ class MultiGraphDenseIntersectPruned {
     // them.
     int32_t *ai_row_ids1 = arc_info.shape.RowIds(1).Data(),
             *ai_row_ids2 = arc_info.shape.RowIds(2).Data();
-    auto state_map_acc = state_map_.GetAccessor();
-    int32_t state_map_fsa_stride = state_map_fsa_stride_;
+    auto state_map_acc = state_map_.GetAccessor<num_key_bits>();
+    int64_t state_map_fsa_stride = state_map_fsa_stride_;
 
     // renumber_states will be a renumbering that dictates which of the arcs in
     // 'ai' correspond to unique states.  Only one arc for each dest-state is
     // kept (it doesn't matter which one).
     Renumbering renumber_states(c_, arc_info.NumElements());
     char *keep_this_state_data = renumber_states.Keep().Data();
-
 
     {
       NVTX_RANGE("LambdaSetStateMap");
@@ -729,9 +732,9 @@ class MultiGraphDenseIntersectPruned {
                                        // have its 'keep_this_state_data' entry
                                        // set to 1.
             if (end_loglike > cutoff) {
-              int32_t state_map_idx = dest_state_idx01 +
-                                      fsa_id * state_map_fsa_stride;
-              if (state_map_acc.Insert(state_map_idx, arc_idx012))
+              uint64_t state_map_idx = dest_state_idx01 +
+                          fsa_id * state_map_fsa_stride;
+              if (state_map_acc.Insert(state_map_idx, (uint64_t)arc_idx012))
                 keep_this_state = 1;
             }
             keep_this_state_data[arc_idx012] = keep_this_state;
@@ -795,9 +798,9 @@ class MultiGraphDenseIntersectPruned {
             int32_t this_j = state_reorder_data[arc_idx012],
                     next_j = state_reorder_data[arc_idx012 + 1];
             if (next_j > this_j) {
-              int32_t state_map_idx = dest_state_idx01 +
+              int64_t state_map_idx = dest_state_idx01 +
                                       fsa_id * state_map_fsa_stride;
-              int32_t value, *value_addr;
+              uint64_t value, *key_value_addr;
               bool ans = state_map_acc.Find(state_map_idx,
                                             &value, &value_addr);
               K2_CHECK(ans);
@@ -827,7 +830,7 @@ class MultiGraphDenseIntersectPruned {
             int32_t dest_a_fsas_state_idx01 = info.u.dest_a_fsas_state_idx01;
 
 
-            int32_t state_map_idx = dest_a_fsas_state_idx01 +
+            int64_t state_map_idx = dest_a_fsas_state_idx01 +
                                     fsa_id * state_map_fsa_stride;
             int32_t state_idx01;
             if (!state_map_acc.Find(state_map_idx, &state_idx01))
@@ -868,7 +871,7 @@ class MultiGraphDenseIntersectPruned {
             int32_t a_fsas_state_idx01 =
                         kept_states_data[state_idx01].a_fsas_state_idx01,
                 fsa_idx0 = next_states_row_ids1[state_idx01];
-            int32_t state_map_idx = a_fsas_state_idx01 +
+            int64_t state_map_idx = a_fsas_state_idx01 +
                                     fsa_idx0 * state_map_fsa_stride;
             state_map_acc.Delete(state_map_idx);
           });
@@ -1388,6 +1391,7 @@ class MultiGraphDenseIntersectPruned {
 
   int32_t state_map_fsa_stride_;  // state_map_fsa_stride_ is a_fsas_.TotSize(1)
                                   // if a_fsas_.Dim0() == 1, else 0.
+
 
   Hash32 state_map_;  // state_map_ maps from:
                       // key == (state_map_fsa_stride_*n) + a_fsas_state_idx01,

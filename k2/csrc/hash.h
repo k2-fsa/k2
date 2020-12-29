@@ -44,12 +44,17 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
 }
 
 /*
-  How Hash32 works:
-    - It's a map from uint32_t to int32_t.  (All keys except
-      ~0 == -1 == UINT32_MAX are allowed).
-    - Each bucket has a struct { uint32_t key; int32_t value; }
-    - If there is no value present, we set the key to ~0 == -1.
-    - The number of buckets is a power of 2 provided by the user.
+  How class Hash works:
+
+    - It can function as a map from key=uint32_t to value=uint32_t, or from
+      key=uint64_t to value=uint64_t where you choose NUM_KEY_BITS and
+      `key` must have only up to NUM_KEY_BITS set and `value` must have
+      only up to (64-NUM_KEY_BITS) set.  You decide NUM_KEY_BITS when
+      you call Hash::Accessor<NUM_KEY_BITS>()
+    - You can store any (key,value) pair except the pair where all the bits of
+      both and key and value are set [that is used to mean "nothing here"]
+    - The number of buckets is a power of 2 provided by the user to the constructor;
+      currently no resizing is supported.
     - When accessing hash[key], we use bucket_index == key % num_buckets,
       leftover_index = 1 | ((key * 2) / num_buckets).  This is
       leftover part of the index times 2, plus 1.
@@ -63,17 +68,18 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
     - When deleting values from the hash you must delete them all at
       once (necessary because there is no concept of a "tombstone".
 
-  You use it by: constructing it, obtaining its Accessor with GetAccessor(), and
-  inside kernels (or host code), calling functions Insert(), Find() or Delete()
-  of the Accessor object.  There is no resizing; sizing it correctly is the
-  caller's responsibility and if the hash gets full the code will just loop
-  forever (of course it will get extremely slow before it reaches that point).
+  You use it by: constructing it, obtaining its Accessor with
+  GetAccessor<NUM_KEY_BITS>(), and inside kernels (or host code), calling
+  functions Insert(), Find() or Delete() of the Accessor object.  There is no
+  resizing; sizing it correctly is the caller's responsibility and if the hash
+  gets full the code will just loop forever (of course it will get extremely
+  slow before it reaches that point).
 */
-class Hash32 {
+class Hash {
  public:
   /* Constructor.  Context can be for CPU or GPU.  num_buckets must be a power of 2
      with num_buckets >= 128 (an arbitrarily chosen cutoff) */
-  Hash32(ContextPtr c, int32_t num_buckets) {
+  Hash(ContextPtr c, int32_t num_buckets) {
     std::ostringstream os;
     os << K2_FUNC << ":num_buckets=" << num_buckets;
     NVTX_RANGE(os.str().c_str());
@@ -87,26 +93,23 @@ class Hash32 {
   }
 
   // Only to be used prior to assignment.
-  Hash32() { }
+  Hash() { }
 
   // Shallow copy
-  Hash32 &operator=(const Hash32 &src) = default;
+  Hash &operator=(const Hash &src) = default;
   // Copy constructor (shallow copy)
-  Hash32(const Hash32 &src) = default;
+  Hash(const Hash &src) = default;
 
   ContextPtr &Context() { return data_.Context(); }
 
-  union Element {
-    uint64_t i;
-    struct {
-      uint32_t key;   // note: if ~key == 0, i.e. key == UINT32_MAX, it means
-      // there is no entry here.
-      int32_t value;  // value stored.  can be any int32_t.
-    } p;
-  };
 
-  class Accessor {
+  // Note: this is the generic version of class Accessor, intended for use where
+  // 32 < NUM_KEY_BITS < 64.  We also override the template for NUM_KEY_BITS ==
+  // 32, mostly for efficiency since presumably different instructions can be
+  // used there.
+  template <int32_t NUM_KEY_BITS> class Accessor {
    public:
+    // constructor of Accessor is for use by class Hash, not by the user.
     Accessor(uint64_t *data,
              uint32_t num_buckets_mask,
              int32_t bucket_num_bitsm1) :
@@ -118,8 +121,15 @@ class Hash32 {
 
    /*
     Try to insert pair (key,value) into hash.
-      @param [in] key  Key into hash; may be any value except UINT32_MAX (not checked!)
-      @param [in] value  Value to set; may be any value
+      @param [in] key  Key into hash; it is required that no bits except the lowest-order
+                       NUM_KEY_BITS may be set.
+
+      @param [in] value  Value to set; it is is required that no bits except the
+                     lowest-order (NUM_VALUE_BITS = 64 - NUM_KEY_BITS) may be set;
+                     it is also an error if ~((key << NUM_VALUE_BITS) | value) == 0,
+                     i.e. if all the allowed bits of both `key` and `value` are
+                     set.
+
       @param [out] old_value  If not nullptr, this location will be set to
                     the existing value *if this key was already present* in the
                     hash (or set by another thread in this kernel), i.e. only if
@@ -131,28 +141,31 @@ class Hash32 {
       avoid compilation errors.
    */
     __forceinline__ __host__ __device__ bool Insert(
-        uint32_t key, int32_t value,
-        int32_t *old_value = nullptr) const {
-      uint32_t cur_bucket = key & num_buckets_mask_,
+        uint64_t key, uint64_t value,
+        uint64_t *old_value = nullptr) const {
+      uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
            leftover_index = 1 | (key >> bucket_num_bitsm1_);
-      Element new_elem;
-      new_elem.p.key = key;
-      new_elem.p.value = value;
+      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      const int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
+
+      K2_DCHECK_EQ(key & ~((uint64_t(1)<<NUM_KEY_BITS)-1), 0);
+      K2_DCHECK_EQ(value & ~VALUE_MASK, 0);
+
+      uint64_t new_elem = (key << (64 - NUM_KEY_BITS)) | value;
       while (1) {
-        Element old_elem;
-        old_elem.i = data_[cur_bucket];
-        if (old_elem.p.key == key) {
-          if (old_value) *old_value = old_elem.p.value;
+        int64_t cur_elem = data_[cur_bucket];
+        if ((cur_elem >> NUM_VALUE_BITS) == key) {
+          if (cur_value) *cur_value = cur_elem & VALUE_MASK;
           return false;  // key exists in hash
         }
-        else if (~old_elem.p.key == 0) {
+        else if (~cur_elem == 0) {
           // we have a version of AtomicCAS that also works on host.
-          uint64_t old_i = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
-                                     old_elem.i, new_elem.i);
-          if (old_i == old_elem.i) return true;  // Successfully inserted.
-          old_elem.i = old_i;
-          if (old_elem.p.key == key) {
-            if (old_value) *old_value = old_elem.p.value;
+          uint64_t old_elem = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
+                                        cur_elem, new_elem);
+          if (old_elem == cur_elem) return true;  // Successfully inserted.
+          cur_elem = old_elem;
+          if (cur_elem >> NUM_VALUE_BITS == key) {
+            if (old_value) *old_value = cur_elem & VALUE_MASK;
             return false;  // Another thread inserted this key
           }
         }
@@ -166,16 +179,19 @@ class Hash32 {
     }
 
     /*
-    Looks up this key in this hash; outputs value and memory location of the
-    value if found.
+    Looks up this key in this hash; outputs value and optionally the
+    location of the (key,value) pair if found.
 
-      @param [in] key    Key to look up, may have any value except UINT32_MAX
+      @param [in] key    Key to look up; bits other than the lowest-order NUM_KEY_BITS
+                      bits must not be set.
       @param [out] value_out  If found, value will be written to here.  This may
-                        seem redundant with value_location, but this should
+                        seem redundant with key_value_location, but this should
                         compile to a local variable, and we want to avoid
                         redundant memory reads.
-      @param [out] value_location  Memory address of the value corresponding to
-                        this key, in case the caller wants to overwrite it.
+      @param [out] key_value_location  (optional) The memory address of the
+                       (key,value) pair, in case the caller wants to overwrite
+                       the value via WriteValue(); must be used for no other
+                       purpose.
       @return          Returns true if an item with this key was found in the
                        hash, otherwise false.
 
@@ -183,25 +199,48 @@ class Hash32 {
       avoid compilation errors.
     */
     __forceinline__ __host__ __device__ bool Find(
-        uint32_t key, int32_t *value_out,
-        int32_t **value_location_out = nullptr) const {
+        uint64_t key, uint64_t *value_out,
+        uint64_t **key_value_location = nullptr) const {
+      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      const int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
+
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> bucket_num_bitsm1_);
       while (1) {
-        Element old_elem;
-        old_elem.i = data_[cur_bucket];
-        if (old_elem.p.key == key) {
-          *value_out = old_elem.p.value;
-          if (value_location_out)
-            *value_location_out   =
-                &(reinterpret_cast<Element*>(data_+cur_bucket)->p.value);
-          return true;
-        } else if (~old_elem.p.key == 0) {
+        uint64_t old_elem = data_[cur_bucket];
+        if (~old_elem == 0) {
           return false;
+        } else if ((old_elem >> NUM_VALUE_BITS) == key) {
+          *value_out = old_elem & VALUE_MASK;
+          if (key_value_location)
+            *key_value_location = data_ + cur_bucket;
+          return true;
         } else {
           cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
         }
       }
+    }
+
+    /*
+      Overwrite a value in a (key,value) pair whose location was obtained using
+      Find().
+          @param [in] key_value_location   Location that was obtained from
+                         a successful call to Find().
+          @param [in] key  Required to be the same key that was provided to
+                        Find(); it is an error otherwise.
+          @param [in] value  Value to write; bits of higher order than
+                       (NUM_VALUE_BITS = 64 - NUM_KEY_BITS) may not be set.
+                       It is also an error if ~((key << NUM_VALUE_BITS) | value) == 0,
+                       i.e. if all the allowed bits of both `key` and `value` are
+                       set; but this is not checked.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+     */
+    __forceinline__ __host__ __device__ bool WriteValue(
+        uint64_t *key_value_location, uint64_t key, uint64_t value) {
+      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      *key_value_location = (key << NUM_VALUE_BITS) | value;
     }
 
     /* Deletes a key from a hash.  Caution: this cannot be combined with other
@@ -216,13 +255,13 @@ class Hash32 {
       Note: the const is with respect to the metadata only; required, to avoid
       compilation errors.
     */
-    __forceinline__ __host__ __device__ void Delete(uint32_t key) const {
+    __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
+      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> bucket_num_bitsm1_);
       while (1) {
-        Element old_elem;
-        old_elem.i = data_[cur_bucket];
-        if (old_elem.p.key == key) {
+        uint64_t old_elem = data_[cur_bucket];
+        if (old_elem >> NUM_VALUE_BITS == key) {
           data_[cur_bucket] = ~((uint64_t)0);
           return;
         } else {
@@ -243,9 +282,22 @@ class Hash32 {
     uint32_t bucket_num_bitsm1_;
   };
 
-  Accessor GetAccessor() { return Accessor(data_.Data(),
-                                           uint32_t(data_.Dim()) - 1,
-                                           buckets_num_bitsm1_); }
+
+
+  /*
+    Return an Accessor object which can be used in kernel code (or on CPU if the
+    context is a CPU context).
+
+    Template argument `NUM_KEY_BITS` may be any number in [1,63] but probably
+    will be something like 32 or 40; the number of bits in the key
+    will be 64 minus that.
+   */
+  template <int32_t NUM_KEY_BITS>
+  Accessor<NUM_KEY_BITS> GetAccessor() {
+    return Accessor<NUM_KEY_BITS>(data_.Data(),
+                                  uint32_t(data_.Dim()) - 1,
+                                  buckets_num_bitsm1_);
+  }
 
 
   void Destroy() { data_ = Array1<uint64_t>(); }
@@ -273,7 +325,7 @@ class Hash32 {
 
   // The destructor checks that the hash is empty, if we are in debug mode.
   // If you don't want this, call Destroy() before the destructor is called.
-  ~Hash32() {
+  ~Hash() {
 #ifndef NDEBUG
     if (data_.Dim() != 0)
       CheckEmpty();
