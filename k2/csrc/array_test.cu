@@ -87,18 +87,6 @@ void TestArray1() {
     }
 
     {
-      // created with Array1(ContextPtr, int32_t size, Callable &&callable)
-      auto lambda_set_values = [] __host__ __device__(int32_t i) -> T {
-        return i * i;
-      };
-      Array1<T> array(context, 5, lambda_set_values);
-      ASSERT_EQ(array.Dim(), 5);
-      for (int32_t i = 0; i < array.Dim(); ++i) {
-        EXPECT_EQ(array[i], i * i);
-      }
-    }
-
-    {
       // created with Array(ContextPtr, const std:vector<T>&)
       std::vector<T> data(5);
       std::iota(data.begin(), data.end(), 0);

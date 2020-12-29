@@ -17,10 +17,11 @@
 namespace k2 {
 
 
+template <int32_t NUM_KEY_BITS>
 void TestHashConstruct() {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     for (int32_t size : {128, 1024, 2048, 65536, 1048576}) {
-      Hash32 hash(c, size);
+      Hash hash(c, size);
 
       // obviously we're not going to fill it completely... this hash is not
       // resizable.
@@ -28,28 +29,31 @@ void TestHashConstruct() {
 
       // Some keys may be identical.
       int32_t key_bound = num_elems * 2;
-      Array1<int32_t> keys = RandUniformArray1(c, num_elems,
+      Array1<uint32_t> keys = RandUniformArray1<uint32_t>(c, num_elems,
                                                 0, key_bound - 1),
-                    values = RandUniformArray1(c, num_elems,
+                     values = RandUniformArray1<uint32_t>(c, num_elems,
                                                0, 10000),
                              success(c, num_elems, 0);
 
-      Array1<int32_t> count_per_key = GetCounts(keys, key_bound);
+      Array1<int32_t> count_per_key = GetCounts(reinterpret_cast<Array1<int32_t>&>(keys),
+                                                key_bound);
 
       if (size <= 2048) {
         K2_LOG(INFO) << "keys = " << keys << ", values = " << values
                      << ", counts = " << count_per_key;
       }
-      int32_t *keys_data = keys.Data(),
+      uint32_t *keys_data = keys.Data(),
             *values_data = values.Data(),
-           *success_data = success.Data(),
-            *counts_data = count_per_key.Data();
-      Hash32::Accessor acc = hash.GetAccessor();
+            *success_data = success.Data();
+      int32_t   *counts_data = count_per_key.Data();
+      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      Hash::Accessor<NUM_KEY_BITS> acc = hash.GetAccessor<NUM_KEY_BITS>();
       K2_EVAL(c, num_elems, lambda_insert_pairs, (int32_t i) -> void {
-          uint32_t key = (uint32_t)keys_data[i];
-          int32_t value = (int32_t)values_data[i],
-                  count = counts_data[key],
-                          success;
+          uint32_t key = keys_data[i],
+                 value = values_data[i],
+                         success;
+          int32_t count = counts_data[key];
+
           if (acc.Insert(key, value, nullptr)) {
             success = 1;
           } else {
@@ -60,13 +64,14 @@ void TestHashConstruct() {
         });
 
       K2_EVAL(c, num_elems, lambda_check_find, (int32_t i) -> void {
-          uint32_t key = (uint32_t)keys_data[i];
-          int32_t value = (int32_t)values_data[i],
-                success = success_data[i];
+          uint32_t key = keys_data[i],
+                 value = values_data[i],
+               success = success_data[i];
 
-          int32_t val, *val_addr;
-          bool ans = acc.Find(key, &val, &val_addr),
-              ans2 = acc.Find(key + key_bound, &val, &val_addr);
+          uint64_t val;
+          uint64_t *key_val_addr;
+          bool ans = acc.Find(key, &val, &key_val_addr),
+              ans2 = acc.Find(key + key_bound, &val, &key_val_addr);
           K2_CHECK(ans);  // key should be present.
           K2_CHECK(!ans2);  // key == key + key_bound should not be present.
 
@@ -74,13 +79,13 @@ void TestHashConstruct() {
             // if this was the key that won the data race, its value should be
             // present.
             K2_CHECK_EQ(val, value);
-            K2_CHECK_EQ(*val_addr, value);
+            K2_CHECK_EQ(*key_val_addr, ((uint64_t(key) << NUM_VALUE_BITS) | (uint64_t)value));
           }
         });
 
       K2_EVAL(c, num_elems, lambda_check_delete, (int32_t i) -> void {
           uint32_t key = (uint32_t)keys_data[i];
-          int32_t success = success_data[i];
+          uint32_t success = success_data[i];
 
           if (success)
             acc.Delete(key);
@@ -91,7 +96,11 @@ void TestHashConstruct() {
 
 TEST(Hash, Construct) {
   // This indirection gets around a limitation of the CUDA compiler.
-  TestHashConstruct();
+  TestHashConstruct<32>();
+
+  TestHashConstruct<40>();
+
+  TestHashConstruct<28>();
 }
 
 }  // namespace k2

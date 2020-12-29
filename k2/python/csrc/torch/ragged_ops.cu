@@ -74,8 +74,10 @@ static void PybindNormalizePerSublist(py::module &m, const char *name) {
 /* Backward propagation for NormalizePerSublist.
 
    @param [in] out      It is the output of `NormalizePerSublist(src)`.
-   @param [in] out_grad The gradient for `out`.
-   @return  Return the gradient for `src`.
+   @param [in] out_grad The gradient for `out`; must have same type as `out`
+                        (float or double), and shape (out.NumElements(),).
+   @return  Return the gradient for `src`.  A torch.Tensor with shape
+                        (out.NumElements(),).
  */
 template <typename T>
 static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out,
