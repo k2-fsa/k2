@@ -604,6 +604,21 @@ class TestFsa(unittest.TestCase):
         # That is, `fsa.scores` shares memory with `scores`, but not with fsa.arcs.values!
         assert _k2.as_float(fsa.arcs.values()[:, -1]).item() == 100
 
+    def test_detach(self):
+        s = '''
+            0 1 -1 10.0
+            1
+        '''
+        fsa = k2.Fsa.from_str(s)
+        fsa.requires_grad_(True)
+
+        detached = fsa.detach()
+        assert detached.requires_grad is False
+        assert fsa.requires_grad is True
+
+        # the underlying memory is shared!
+        assert detached.scores.data_ptr() == fsa.scores.data_ptr()
+
 
 if __name__ == '__main__':
     unittest.main()
