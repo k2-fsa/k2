@@ -4,11 +4,13 @@
 # See ../../../LICENSE for clarification regarding multiple authors
 
 from typing import Optional
+from typing import Union
 
 import torch
 
 import _k2
 from .fsa import Fsa
+from .symbol_table import SymbolTable
 
 
 def to_str(fsa: Fsa, openfst: bool = False) -> str:
@@ -84,6 +86,48 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
         aux_labels = None
         name = 'WFSA'
 
+    def convert_aux_label_to_symbol(
+            aux_labels: Union[torch.Tensor, _k2.RaggedInt],
+            arc_index: int,
+            symbols: Optional[SymbolTable] = None) -> str:
+        '''Convert aux_label(s) to symbol(s).
+
+        Args:
+          aux_labels:
+            The aux_labels of an FSA.
+          arc_index:
+            The index of the arc.
+          symbols:
+            Symbol table of the FSA associated with the `aux_labels`.
+        Returns:
+          If `aux_labels` is a torch.Tensor, it returns a single string.
+          If `aux_labels` is a ragged tensor, it returns a string with symbols
+          separated by a space.
+        '''
+        if isinstance(aux_labels, torch.Tensor):
+            ans = int(aux_labels[arc_index])
+            if ans != -1 and symbols is not None:
+                ans = symbols[ans]
+            return f':{ans}'
+        assert isinstance(aux_labels, _k2.RaggedInt)
+        assert aux_labels.num_axes() == 2
+        row_splits = aux_labels.row_splits(1).cpu()
+        begin = row_splits[arc_index]
+        end = row_splits[arc_index + 1]
+        if end == begin:
+            return ':<eps>'
+
+        labels = aux_labels.values()[begin:end]
+        ans = []
+        for label in labels.tolist():
+            if label == -1:
+                ans.append('-1')
+            elif symbols is not None:
+                ans.append(symbols[label])
+            else:
+                ans.append(f'{label}')
+        return f':{" ".join(ans)}'
+
     graph_attr = {
         'rankdir': 'LR',
         'size': '8.5,11',
@@ -132,12 +176,12 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
                 dot.node(dst_state, label=dst_state, **default_node_attr)
             seen.add(dst_state)
         if aux_labels is not None:
-            aux_label = int(aux_labels[i])
-            if hasattr(fsa, 'aux_symbols') and aux_label != -1:
-                aux_label = fsa.aux_symbols.get(aux_label)
-                if aux_label == '<eps>':
-                    aux_label = 'ε'
-            aux_label = f':{aux_label}'
+            if hasattr(fsa, 'aux_symbols'):
+                aux_label = convert_aux_label_to_symbol(
+                    aux_labels, i, fsa.aux_symbols)
+            else:
+                aux_label = convert_aux_label_to_symbol(aux_labels, i, None)
+            aux_label = aux_label.replace('<eps>', 'ε')
         else:
             aux_label = ''
 
