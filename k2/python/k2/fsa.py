@@ -1045,28 +1045,3 @@ class Fsa(object):
 
         # note that `self.scores` also works here, but [:] is more efficient
         self.scores[:] = ragged_scores.scores
-
-    def detach(self) -> 'Fsa':
-        '''Return a new FSA, detached from the current graph.
-
-        Like torch.Tensor.detach(), the returned FSA shares the underlying
-        memory with `self`. The only difference is that the returned FSA's
-        requires_grad is False.
-
-        Caution:
-          The returned FSA shares memory with this FSA.
-
-        Returns:
-          Return an FSA whose `requires_grad` is False.
-        '''
-        # Keep this code in sync with that in to()
-        ans = Fsa(self.arcs, properties=self.properties)
-
-        for name, value in self.named_tensor_attr(include_scores=False):
-            setattr(ans, name, value)
-
-        for name, value in self.named_non_tensor_attr():
-            setattr(ans, name, value)
-
-        ans.scores = self.scores.detach()
-        return ans
