@@ -601,7 +601,8 @@ class TestFsa(unittest.TestCase):
 
         # CAUTION: had we used fsa.scores = scores,
         # would we have `fsa.scores != fsa.arcs.values()[:, -1]`.
-        # That is, `fsa.scores` shares memory with `scores`, but not with fsa.arcs.values!
+        # That is, `fsa.scores` shares memory with `scores`,
+        # but not with fsa.arcs.values!
         assert _k2.as_float(fsa.arcs.values()[:, -1]).item() == 100
 
     def test_detach(self):
