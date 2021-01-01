@@ -42,6 +42,7 @@ class RaggedFloat(object):
         '''
         if isinstance(ragged, str):
             ragged = _k2.RaggedFloat(ragged)
+            assert values is None
         elif isinstance(ragged, _k2.RaggedShape):
             assert values is not None
             ragged = _k2.RaggedFloat(ragged, values)
@@ -49,7 +50,10 @@ class RaggedFloat(object):
         assert isinstance(ragged, _k2.RaggedFloat)
 
         self.ragged = ragged
-        self._scores = ragged.values()
+        if values is not None:
+            self._scores = values
+        else:
+            self._scores = ragged.values()
 
     def __str__(self) -> str:
         return str(self.ragged)

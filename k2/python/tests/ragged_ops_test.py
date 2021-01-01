@@ -140,6 +140,42 @@ class TestRaggedOps(unittest.TestCase):
 
         self.assertTrue(torch.allclose(saved.grad, src.grad))
 
+    def test_normalize_scores_from_shape(self):
+        s = '''
+            0 1 1 0.
+            0 1 2 0.
+            0 1 3 0.
+            1 2 4 0.
+            1 2 5 0.
+            2 3 -1 0.
+            3
+        '''
+        fsa = k2.Fsa.from_str(s)
+        scores = torch.arange(fsa.scores.numel(), dtype=torch.float32)
+        scores.requires_grad_(True)
+
+        ragged_scores = k2.ragged.RaggedFloat(fsa.arcs.shape(), scores)
+        assert ragged_scores.requires_grad is True
+
+        normalized_scores = k2.ragged.normalize_scores(ragged_scores)
+        assert normalized_scores.requires_grad is True
+
+        fsa.scores = normalized_scores.scores
+        assert fsa.scores.requires_grad is True
+
+        # arcs leaving state 0
+        self.assertAlmostEqual(fsa.scores[:3].exp().sum().item(),
+                               1.0,
+                               places=6)
+
+        # arcs leaving state 1
+        self.assertAlmostEqual(fsa.scores[3:5].exp().sum().item(),
+                               1.0,
+                               places=6)
+
+        # arcs leaving state 2
+        self.assertAlmostEqual(fsa.scores[5].exp().sum().item(), 1.0, places=6)
+
 
 if __name__ == '__main__':
     unittest.main()
