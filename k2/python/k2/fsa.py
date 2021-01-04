@@ -1045,6 +1045,7 @@ class Fsa(object):
         '''
         assert scores.ndim == 1
         assert scores.dtype == torch.float32
+        assert scores.numel() == self.scores.numel()
 
         ragged_scores = k2.ragged.RaggedFloat(
             self.arcs.shape().to(scores.device), scores)
