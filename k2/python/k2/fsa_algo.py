@@ -143,7 +143,7 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa,
 
 def compose(a_fsa: Fsa, b_fsa: Fsa,
             treat_epsilons_specially: bool = True,
-            inner_labels: string = None) -> Fsa:
+            inner_labels: str = None) -> Fsa:
     '''Compute the composition of two FSAs (currently on CPU).
 
     Note:

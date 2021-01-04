@@ -19,8 +19,8 @@ class TestCompose(unittest.TestCase):
 
     def test_compose(self):
         s = '''
-            0 1 1 1 1.0
-            0 2 1 2 2.5
+            0 1 11 1 1.0
+            0 2 12 2 2.5
             1 3 -1 -1 0
             2 3 -1 -1 2.5
             3
