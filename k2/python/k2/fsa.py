@@ -1030,10 +1030,14 @@ class Fsa(object):
         return Fsa(arcs, aux_labels=aux_labels)
 
     def set_scores_stochastic_(self, scores) -> None:
-        '''Normalize the given `scores` and assign it to self.
+        '''Normalize the given `scores` and assign it to `self.scores`.
 
-        Scores are normalized per state. That is, the sum of the probabilities
-        of all arcs leaving a state equals to 1.
+        Args:
+          scores:
+            Tensor of scores of dtype torch.float32, and shape equal to
+            `self.scores.shape` (one axis). Will be normalized so the
+            sum, after exponentiating, of the scores leaving each state
+            that has at least one arc leaving it is 1.
 
         Caution:
           The function name ends with an underline indicating this function
