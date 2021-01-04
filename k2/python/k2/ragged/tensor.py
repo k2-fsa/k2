@@ -16,6 +16,8 @@ class RaggedFloat(object):
 
     It is a wrapper of :class:`_k2.RaggedFloat`, whose purpose
     is to implement autograd for :class:`_k2.RaggedFloat`.
+
+    Currently, it is used only in `k2.ragged.normalize_scores`.
     '''
 
     def __init__(self,
@@ -42,6 +44,7 @@ class RaggedFloat(object):
         '''
         if isinstance(ragged, str):
             ragged = _k2.RaggedFloat(ragged)
+            assert values is None
         elif isinstance(ragged, _k2.RaggedShape):
             assert values is not None
             ragged = _k2.RaggedFloat(ragged, values)
@@ -49,20 +52,23 @@ class RaggedFloat(object):
         assert isinstance(ragged, _k2.RaggedFloat)
 
         self.ragged = ragged
-        self._scores = ragged.values()
+        if values is not None:
+            self._values = values
+        else:
+            self._values = ragged.values()
 
     def __str__(self) -> str:
         return str(self.ragged)
 
     @property
-    def scores(self) -> torch.Tensor:
+    def values(self) -> torch.Tensor:
         '''Return the underlying array as a 1-D torch.Tensor.
         '''
-        return self._scores
+        return self._values
 
     @property
     def grad(self) -> torch.Tensor:
-        return self._scores.grad
+        return self._values.grad
 
     @property
     def requires_grad(self) -> bool:
@@ -70,12 +76,12 @@ class RaggedFloat(object):
         Return True if this object requires grad.
         Return False otherwise.
         '''
-        return self._scores.requires_grad
+        return self._values.requires_grad
 
     def requires_grad_(self, requires_grad: bool) -> 'RaggedFloat':
         '''Change if autograd should record operations on this tensor.
 
-        Sets the `scores`'s requires_grad attribute in-place.
+        Sets the `values`'s requires_grad attribute in-place.
         Returns this object.
         You can test whether this object has the requires_grad property
         true or false by accessing self.requires_grad property.
@@ -91,5 +97,5 @@ class RaggedFloat(object):
         Returns:
           This object itself.
         '''
-        self._scores.requires_grad_(requires_grad)
+        self._values.requires_grad_(requires_grad)
         return self

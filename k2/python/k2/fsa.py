@@ -1027,44 +1027,28 @@ class Fsa(object):
         arcs, aux_labels = _k2.fsa_from_str(s, acceptor, True)
         return Fsa(arcs, aux_labels=aux_labels)
 
-    def set_scores_stochastic_(self) -> None:
-        '''Set `scores` to random numbers.
+    def set_scores_stochastic_(self, scores) -> None:
+        '''Normalize the given `scores` and assign it to `self.scores`.
 
-        Scores are normalized per state. That is, the sum of the probabilities
-        of all arcs leaving a state equal to 1.
+        Args:
+          scores:
+            Tensor of scores of dtype torch.float32, and shape equal to
+            `self.scores.shape` (one axis). Will be normalized so the
+            sum, after exponentiating, of the scores leaving each state
+            that has at least one arc leaving it is 1.
 
         Caution:
           The function name ends with an underline indicating this function
           will modify `self` **in-place**.
         '''
-        scores = torch.randn_like(self.scores)
-        ragged_scores = k2.ragged.RaggedFloat(self.arcs.shape(), scores)
+        assert scores.ndim == 1
+        assert scores.dtype == torch.float32
+        assert scores.numel() == self.scores.numel()
+
+        ragged_scores = k2.ragged.RaggedFloat(
+            self.arcs.shape().to(scores.device), scores)
         ragged_scores = k2.ragged.normalize_scores(ragged_scores)
 
-        # note that `self.scores` also works here, but [:] is more efficient
-        self.scores[:] = ragged_scores.scores
-
-    def detach(self) -> 'Fsa':
-        '''Return a new FSA, detached from the current graph.
-
-        Like torch.Tensor.detach(), the returned FSA shares the underlying
-        memory with `self`. The only difference is that the returned FSA's
-        requires_grad is False.
-
-        Caution:
-          The returned FSA shares memory with this FSA.
-
-        Returns:
-          Return an FSA whose `requires_grad` is False.
-        '''
-        # Keep this code in sync with that in to()
-        ans = Fsa(self.arcs, properties=self.properties)
-
-        for name, value in self.named_tensor_attr(include_scores=False):
-            setattr(ans, name, value)
-
-        for name, value in self.named_non_tensor_attr():
-            setattr(ans, name, value)
-
-        ans.scores = self.scores.detach()
-        return ans
+        # Note we use `to` here since `scores` and `self.scores` may not
+        # be on the same device.
+        self.scores = ragged_scores.values.to(self.scores.device)

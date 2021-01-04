@@ -9,9 +9,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import numpy as np
 import torch
-
 import _k2
 
 
@@ -117,3 +115,27 @@ def to_list(src: _k2.RaggedInt) -> List:
        as `src`.
     '''
     return _k2.ragged_int_to_list(src)
+
+
+def sum_per_sublist(src: _k2.RaggedFloat,
+                    initial_value: float = 0) -> torch.Tensor:
+    '''Return the sum of each sublist.
+
+    For example, if `src` has the following values::
+
+        [ [a b] [h j k] [m] ]
+
+    Then it returns a 1-D tensor with 3 entries:
+
+        - entry 0: a + b + initial_value
+        - entry 1: h + j + k + initial_value
+        - entry 2: m + initial_value
+
+    Args:
+      src:
+        A ragged float tensor. Note that the sum is performed on the last axis.
+    Returns:
+      Return a 1-D torch.Tensor with dtype torch.float32. Its `numel` equals to
+      `src.tot_size(src.num_axes() - 2)`.
+    '''
+    return _k2.sum_per_sublist(src, initial_value)
