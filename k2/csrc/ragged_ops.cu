@@ -1359,7 +1359,7 @@ RaggedShape Arange(RaggedShape &src, int32_t axis, int32_t begin, int32_t end,
   int32_t num_axes = src.NumAxes();
   K2_CHECK_GE(num_axes, 2);
   K2_CHECK(axis >= 0 && axis < num_axes - 1);
-  K2_CHECK(begin >= 0 && begin <= end && end <= src.TotSize(axis) + 1);
+  K2_CHECK(begin >= 0 && begin <= end && end <= src.TotSize(axis));
 
   if (begin == end) {
     RaggedShape ans = EmptyRaggedShape(src.Context(), num_axes - axis);
@@ -1370,18 +1370,44 @@ RaggedShape Arange(RaggedShape &src, int32_t axis, int32_t begin, int32_t end,
   }
 
   src.Populate();
+  ContextPtr &c = src.Context();
   const std::vector<RaggedShapeLayer> &axes_in = src.Layers();
+  int32_t ans_num_axes = num_axes - axis;
   // `-1` as Layers().size is NumAxes() - 1
-  std::vector<RaggedShapeLayer> axes_out(num_axes - axis - 1);
+  std::vector<RaggedShapeLayer> axes_out(ans_num_axes - 1);
 
-  int32_t row_begin = begin, row_end = end - 1;
+  // get those `row_begin` and `row_end` indexes for all axes in a kernel so we
+  // can do just one GPU to CPU memory transfer.
+  // the format of `indexes` is: row_begin_axis0, row_end_axis0,
+  // row_begin_axis1, row_end_axis2, etc. axis0, axis1 here are the axis of ans.
+  Array1<int32_t> indexes(c, ans_num_axes * 2);
+  int32_t *indexes_data = indexes.Data();
+  Array1<int32_t *> src_row_splits_ptr = GetRowSplitsPtr(src);
+  int32_t **src_row_splits_ptr_data = src_row_splits_ptr.Data();
+  K2_EVAL(
+      c, 1, lambda_set_indexes, (int32_t i)->void {
+        // we just start a kernel with only one element here.
+        K2_CHECK_EQ(i, 0);
+        int32_t row_begin = begin, row_end = end;
+        indexes_data[0] = row_begin, indexes_data[1] = row_end;
+        for (int32_t cur_axis = axis; cur_axis < num_axes - 1; ++cur_axis) {
+          row_begin = src_row_splits_ptr_data[cur_axis][row_begin];
+          row_end = src_row_splits_ptr_data[cur_axis][row_end];
+          int32_t indexes_pos = ((cur_axis - axis) + 1) * 2;
+          indexes_data[indexes_pos] = row_begin;
+          indexes_data[indexes_pos + 1] = row_end;
+        }
+      });
+  indexes = indexes.To(GetCpuContext());
+
+  int32_t row_begin = indexes[0], row_end = indexes[1];
   for (int32_t cur_axis = axis; cur_axis < num_axes - 1; ++cur_axis) {
     axes_out[cur_axis - axis].row_splits =
         axes_in[cur_axis].row_splits.Arange(row_begin, row_end + 1);
     int32_t row_id = row_begin;
-    // notice here we may do memory copy from GPU to CPU.
-    row_begin = axes_in[cur_axis].row_splits[row_begin];
-    row_end = axes_in[cur_axis].row_splits[row_end];
+    int32_t indexes_pos = ((cur_axis - axis) + 1) * 2;
+    row_begin = indexes[indexes_pos];
+    row_end = indexes[indexes_pos + 1];
     axes_out[cur_axis - axis].row_splits =
         Minus(axes_out[cur_axis - axis].row_splits, row_begin);
     axes_out[cur_axis - axis].row_ids =

@@ -238,10 +238,10 @@ std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
       @param [in] axis  The axis we'll get ans, must have
                         0 <= axis < src.NumAxes() - 1.
       @param [in] begin The first element we'll get along axis `axis`.
-                        Must have 0 <= begin <= end <= src.TotSize(axis) + 1.
+                        Must have 0 <= begin <= end <= src.TotSize(axis).
       @param [in] end   The one-past-the-last element we'll get along axis
                        `axis`.
-                       Must have 0 <= begin <= end <= src.TotSize(axis) + 1.
+                       Must have 0 <= begin <= end <= src.TotSize(axis).
       @param [out] value_range If non-null, will be set to a pair
                         (val_begin, val_end) and users can get the values
                         of ans with src.values.Arange(val_begin, val_end).
