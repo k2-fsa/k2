@@ -36,7 +36,7 @@ class TestCompose(unittest.TestCase):
         '''
         b_fsa = k2.Fsa.from_str(s).requires_grad_(True)
 
-        ans = k2.compose(a_fsa, b_fsa)
+        ans = k2.compose(a_fsa, b_fsa, inner_labels='inner')
         ans = k2.connect(ans)
 
         # Convert a single FSA to a FsaVec.
@@ -53,7 +53,7 @@ class TestCompose(unittest.TestCase):
         scores.backward()
         assert torch.allclose(a_fsa.grad, torch.tensor([0., 1., 0., 1.]))
         assert torch.allclose(b_fsa.grad, torch.tensor([0., 1., 0., 1.]))
-
+        print(ans)
 
 if __name__ == '__main__':
     unittest.main()
