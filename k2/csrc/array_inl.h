@@ -105,7 +105,8 @@ std::istream &operator>>(std::istream &is, Array2<T> &array) {
           num_rows++;
           if (num_rows == 1) {
             row_length = vec.size();
-          } else if (vec.size() != row_length * num_rows) {
+          } else if (static_cast<int32_t>(vec.size()) !=
+                     row_length * num_rows) {
             is.setstate(std::ios::failbit);
             return is;
           }

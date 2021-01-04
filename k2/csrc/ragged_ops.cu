@@ -1732,4 +1732,47 @@ RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
   return RaggedShape(layers);
 }
 
+RaggedShape CoveringShape(int32_t num_srcs, RaggedShape **srcs) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_GT(num_srcs, 0);
+  if (num_srcs == 1) return *srcs[0];
+
+  K2_CHECK_EQ(srcs[0]->NumAxes(), 2);
+  int32_t dim0 = srcs[0]->Dim0();
+  ContextPtr &c = srcs[0]->Context();
+  for (int32_t i = 1; i != num_srcs; ++i) {
+    K2_CHECK_EQ(srcs[i]->NumAxes(), 2);
+    K2_CHECK_EQ(srcs[i]->Dim0(), dim0);
+    K2_CHECK(c->IsCompatible(*srcs[i]->Context()));
+  }
+
+  // get row splits of srcs
+  Array1<int32_t *> row_splits_ptrs(GetCpuContext(), num_srcs);
+  int32_t **splits_ptr_data = row_splits_ptrs.Data();
+  for (int32_t i = 0; i != num_srcs; ++i) {
+    splits_ptr_data[i] = srcs[i]->RowSplits(1).Data();
+  }
+  row_splits_ptrs = row_splits_ptrs.To(c);
+  int32_t **src_row_splits_ptr_data = row_splits_ptrs.Data();
+
+  RaggedShape shape = RegularRaggedShape(c, dim0, num_srcs);
+  Array1<int32_t> values(c, dim0 * num_srcs);
+  // elements in row i of `sublist_sizes` are the sizes of row i
+  // of src[0], src[1]...
+  Ragged<int32_t> sublist_sizes(shape, values);
+  int32_t *values_data = sublist_sizes.values.Data();
+  K2_EVAL2(
+      c, dim0, num_srcs, lambda_set_sublist_sizes,
+      (int32_t i, int32_t j)->void {
+        values_data[i * num_srcs + j] =
+            src_row_splits_ptr_data[j][i + 1] - src_row_splits_ptr_data[j][i];
+      });
+
+  Array1<int32_t> ans_row_splits(c, dim0 + 1);
+  Array1<int32_t> ans_row_sizes = ans_row_splits.Arange(0, dim0);
+  MaxPerSublist(sublist_sizes, 0, &ans_row_sizes);
+  ExclusiveSum(ans_row_sizes, &ans_row_splits);
+  return RaggedShape2(&ans_row_splits, nullptr, -1);
+}
+
 }  // namespace k2
