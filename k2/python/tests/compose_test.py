@@ -39,9 +39,7 @@ class TestCompose(unittest.TestCase):
         ans = k2.compose(a_fsa, b_fsa)
         ans = k2.connect(ans)
 
-        # Convert a single FSA to a FsaVec.
-        # It will retain `requires_grad_` of `ans`.
-        ans.__dict__['arcs'] = _k2.create_fsa_vec([ans.arcs])
+        ans = k2.create_fsa_vec([ans])
 
         scores = k2.get_tot_scores(ans,
                                    log_semiring=True,
