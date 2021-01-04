@@ -1138,6 +1138,19 @@ Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes, bool remove_axis);
  */
 Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape);
 
+/*
+  Given a list of shapes with 2 axes and the same Dim0(), return the
+  smallest shape that 'covers' all of them, i.e. size the i'th sub-list of the
+  answer is the maximum of the sizes of the i'th sub-list of `srcs`
+    @param [in] num_srcs  Number of source shapes; must have 2 axes and
+                          `Dim0()` all equal
+    @param [in] srcs      Array of input shapes; inputs are `*(srcs[0])`,
+                          `*(srcs[1])` ...
+    @return      Returns shape with the same Dim0() as all the `srcs` and
+                 sub-list sizes equal to the maximum of those of the sources.
+*/
+RaggedShape CoveringShape(int32_t num_srcs, RaggedShape **srcs);
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_RAGGED_OPS_H_
