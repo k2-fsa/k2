@@ -151,6 +151,18 @@ static void PybindNormalizePerSublistBackward(py::module &m, const char *name) {
         py::arg("out_grad"));
 }
 
+template <typename T, typename Op>
+static void PybindOpPerSublist(py::module &m, Op op, const char *name) {
+  m.def(
+      name,
+      [op](Ragged<T> &src, T initial_value) -> torch::Tensor {
+        Array1<T> values(src.Context(), src.TotSize(src.NumAxes() - 2));
+        op(src, initial_value, &values);
+        return ToTensor(values);
+      },
+      py::arg("src"), py::arg("initial_value"));
+}
+
 }  // namespace k2
 
 void PybindRaggedOps(py::module &m) {
@@ -161,4 +173,5 @@ void PybindRaggedOps(py::module &m) {
   PybindRaggedIntToList(m, "ragged_int_to_list");
   PybindNormalizePerSublist<float>(m, "normalize_per_sublist");
   PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
+  PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
 }

@@ -1029,19 +1029,22 @@ class Fsa(object):
         arcs, aux_labels = _k2.fsa_from_str(s, acceptor, True)
         return Fsa(arcs, aux_labels=aux_labels)
 
-    def set_scores_stochastic_(self) -> None:
-        '''Set `scores` to random numbers.
+    def set_scores_stochastic_(self, scores) -> None:
+        '''Normalize the given `scores` and assign it to self.
 
         Scores are normalized per state. That is, the sum of the probabilities
-        of all arcs leaving a state equal to 1.
+        of all arcs leaving a state equals to 1.
 
         Caution:
           The function name ends with an underline indicating this function
           will modify `self` **in-place**.
         '''
-        scores = torch.randn_like(self.scores)
+        assert scores.ndim == 1
+        assert scores.dtype == torch.float32
+
         ragged_scores = k2.ragged.RaggedFloat(self.arcs.shape(), scores)
         ragged_scores = k2.ragged.normalize_scores(ragged_scores)
 
-        # note that `self.scores` also works here, but [:] is more efficient
-        self.scores[:] = ragged_scores.scores
+        # Note we use `to` here since `scores` and `self.scores` may not
+        # be on the same device.
+        self.scores = ragged_scores.values.to(self.scores.device)

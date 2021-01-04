@@ -40,16 +40,16 @@ class _NormalizeScores(torch.autograd.Function):
             in the list since this function can only return values of type
             `torch.Tensor`. On input, we check that `len(out) == 1`.
           unused_scores:
-            Its sole purpose is for autograd. It equals to `src.scores`.
+            Its sole purpose is for autograd. It equals to `src.values`.
         Returns:
-          Returns a tensor that equals to `out.scores`. Callers should
+          Returns a tensor that equals to `out.values`. Callers should
           discard the return value.
         '''
         assert len(out) == 1
         ans_ragged = _k2.normalize_per_sublist(src.ragged)
         out[0] = RaggedFloat(ans_ragged)
         ctx.out = out[0]  # save for backward
-        return out[0].scores
+        return out[0].values
 
     @staticmethod
     def backward(ctx,
@@ -90,7 +90,7 @@ def normalize_scores(src: RaggedFloat) -> RaggedFloat:
     out = [None]  # placeholder
 
     # the return value is discarded for the following call
-    # as it equals to out[0].scores
-    _NormalizeScores.apply(src, out, src.scores)
+    # as it equals to out[0].values
+    _NormalizeScores.apply(src, out, src.values)
 
     return out[0]
