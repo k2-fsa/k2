@@ -142,12 +142,19 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa,
 
 
 def compose(a_fsa: Fsa, b_fsa: Fsa,
-            treat_epsilons_specially: bool = True) -> Fsa:
-    '''Compute the composition of two FSAs on CPU.
+            treat_epsilons_specially: bool = True,
+            inner_labels: str = None) -> Fsa:
+    '''Compute the composition of two FSAs (currently on CPU).
 
     Note:
       If there is no `aux_labels` in the input FSAs, it is
-      equivalent to :func:`k2.intersect`.
+      equivalent to :func:`k2.intersect`.  The difference from :func:`k2.intersect`
+      is when a_fsa has the `aux_labels` attribute set.  These are interpreted
+      as output labels (olabels), and the composition involves matching the olabels
+      of a with the ilabels of b.  This is implemented by intersecting the
+      inverse of a_fsa (a_fsa_inv) with b_fsa, then replacing the ilabels of the
+      result with the original ilabels on a_fsa which are now the aux_labels of
+      a_fsa_inv.
 
     Args:
       a_fsa:
@@ -160,6 +167,10 @@ def compose(a_fsa: Fsa, b_fsa: Fsa,
         If False, epsilons will be treated as real, normal symbols (to have
         them treated as epsilons in this case you may have to add epsilon
         self-loops to whichever of the inputs is naturally epsilon-free).
+     inner_labels:
+        If specified (and if a_fsa has `aux_labels`), the labels that we matched
+        on, which would normally be discarded, will instead be copied to
+        this attribute name.
 
     Caution:
       `b_fsa` has to be arc sorted.
@@ -181,6 +192,7 @@ def compose(a_fsa: Fsa, b_fsa: Fsa,
       The result of composing a_fsa and b_fsa. `len(out_fsa.shape)` is 2
       if and only if the two input FSAs are single FSAs;
       otherwise, `len(out_fsa.shape)` is 3.
+
     '''
     assert a_fsa.is_cpu()
     assert b_fsa.is_cpu()
@@ -192,21 +204,23 @@ def compose(a_fsa: Fsa, b_fsa: Fsa,
 
     assert isinstance(a_fsa.aux_labels, torch.Tensor)
 
-    a_fsa = a_fsa.invert()
-    a_fsa = arc_sort(a_fsa)
+    a_fsa_inv = arc_sort(a_fsa.invert())
 
     assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
 
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
-        a_fsa.arcs, a_fsa.properties, b_fsa.arcs, b_fsa.properties,
+        a_fsa_inv.arcs, a_fsa_inv.properties, b_fsa.arcs, b_fsa.properties,
         treat_epsilons_specially, need_arc_map)
 
     out_fsa = Fsa(ragged_arc)
-    out_fsa.labels = index(a_fsa.aux_labels, a_arc_map)
+    if inner_labels is not None:
+        # out_fsa.`inner_labels` = out_fsa.labels
+        setattr(out_fsa, inner_labels, out_fsa.labels)
+    out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
     out_fsa.aux_labels = index(b_fsa.aux_labels, b_arc_map)
 
-    for name, a_value in a_fsa.named_tensor_attr():
+    for name, a_value in a_fsa_inv.named_tensor_attr():
         if hasattr(b_fsa, name):
             # Both a_fsa and b_fsa have this attribute.
             # We only support attributes with dtype `torch.float32`.
@@ -230,7 +244,7 @@ def compose(a_fsa: Fsa, b_fsa: Fsa,
             value = index(b_value, b_arc_map)
             setattr(out_fsa, name, value)
 
-    for name, a_value in a_fsa.named_non_tensor_attr():
+    for name, a_value in a_fsa_inv.named_non_tensor_attr():
         if name == 'symbols':
             continue
 
