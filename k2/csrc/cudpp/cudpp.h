@@ -103,7 +103,7 @@ class CUDPPMultiSplitPlan {
   unsigned int m_numBuckets;
   k2::Array1<uint32_t> m_d_mask;
   k2::Array1<uint32_t> m_d_out;
-  unsigned int *m_d_fin;
+  k2::Array1<uint32_t> m_d_fin;
   unsigned int *m_d_temp_keys;
   unsigned int *m_d_temp_values;
   // unsigned long long int *m_d_key_value_pairs;
@@ -233,17 +233,17 @@ void reducedBitSortKeysOnly(unsigned int *d_inp, uint numElements,
 
   cub::DeviceRadixSort::SortPairs(
       nullptr, temp_storage_bytes, plan->m_d_mask.Data(), plan->m_d_out.Data(),
-      d_inp, plan->m_d_fin, numElements, 0, logBuckets);
+      d_inp, plan->m_d_fin.Data(), numElements, 0, logBuckets);
   k2::Array1<int8_t> d_temp_storage(plan->m_config.context, temp_storage_bytes);
 
   markBins_general<<<numBlocks, numThreads>>>(
       plan->m_d_mask.Data(), d_inp, numElements, numBuckets, bucketMapper);
   cub::DeviceRadixSort::SortPairs(d_temp_storage.Data(), temp_storage_bytes,
                                   plan->m_d_mask.Data(), plan->m_d_out.Data(),
-                                  d_inp, plan->m_d_fin, numElements, 0,
+                                  d_inp, plan->m_d_fin.Data(), numElements, 0,
                                   int(ceil(log2(float(numBuckets)))));
 
-  CUDA_SAFE_CALL(cudaMemcpy(d_inp, plan->m_d_fin,
+  CUDA_SAFE_CALL(cudaMemcpy(d_inp, plan->m_d_fin.Data(),
                             numElements * sizeof(unsigned int),
                             cudaMemcpyDeviceToDevice));
 }
@@ -2651,7 +2651,7 @@ void cudppMultiSplitDispatch(unsigned int *d_keys, unsigned int *d_values,
       case CUDPP_CUSTOM_BUCKET_MAPPER:
         if (numBuckets <= 32)
           multisplit_key_only(
-              d_keys, plan->m_d_fin, numElements, numBuckets, ms_context,
+              d_keys, plan->m_d_fin.Data(), numElements, numBuckets, ms_context,
               CustomBucketMapper<Lambda>(bucketMappingFunc), true);
         else
           reducedBitSortKeysOnly(d_keys, numElements, numBuckets,

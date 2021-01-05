@@ -210,14 +210,8 @@ void allocMultiSplitStorage(CUDPPMultiSplitPlan *plan) {
     plan->m_d_out =
         k2::Array1<uint32_t>(plan->m_config.context, plan->m_numElements, 0);
   }
-  CUDA_SAFE_CALL(
-      cudaMalloc((void **)&plan->m_d_fin,
-                 plan->m_numElements *
-                     sizeof(unsigned int)));  // final masks (used for reduced
-                                              // bit method, etc.)
-
-  CUDA_SAFE_CALL(
-      cudaMemset(plan->m_d_fin, 0, sizeof(unsigned int) * plan->m_numElements));
+  plan->m_d_fin =
+      k2::Array1<uint32_t>(plan->m_config.context, plan->m_numElements, 0);
 }
 
 /** @brief Deallocates intermediate memory from allocMultiSplitStorage.
@@ -229,7 +223,6 @@ void freeMultiSplitStorage(CUDPPMultiSplitPlan *plan) {
   if (plan->m_config.options & CUDPP_OPTION_KEY_VALUE_PAIRS) {
     cudaFree(plan->m_d_key_value_pairs);
   }
-  cudaFree(plan->m_d_fin);
 }
 
 /** @} */  // end multisplit functions
