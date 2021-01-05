@@ -1158,6 +1158,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   CUDPPConfiguration config;
   config.options = CUDPP_OPTION_KEYS_ONLY;
   config.bucket_mapper = CUDPP_CUSTOM_BUCKET_MAPPER;
+  config.context = context;
 
   CUDPPMultiSplitPlan plan(config, num_elements, num_buckets);
   cudppMultiSplitCustomBucketMapper(&plan,

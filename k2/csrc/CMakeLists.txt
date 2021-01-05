@@ -49,6 +49,9 @@ set(context_srcs
   thread_pool.cu
   timer.cu
   utils.cu
+  #
+  cudpp/cudpp_plan.cu
+  cudpp/multisplit_app.cu
 )
 
 if(K2_USE_PYTORCH)
@@ -68,7 +71,6 @@ target_link_libraries(context PUBLIC fsa)
 target_link_libraries(context PUBLIC k2_log)
 target_link_libraries(context PUBLIC k2_nvtx)
 target_link_libraries(context PUBLIC moderngpu)
-target_link_libraries(context PUBLIC cudpp)
 if(K2_USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
 endif()
@@ -132,5 +134,3 @@ endforeach()
 if(K2_ENABLE_BENCHMARK)
   add_subdirectory(benchmark)
 endif()
-
-add_subdirectory(cudpp)

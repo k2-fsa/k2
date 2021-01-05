@@ -94,12 +94,15 @@ void multisplit_allocate_key_only(size_t num_elements, uint32_t num_buckets,
     }
   }
 
-  cudaMalloc((void **)&context.d_histogram,
-             sizeof(uint32_t) * num_buckets * num_sub_problems);
+  context.d_histogram =
+      k2::Array1<uint32_t>(context.context, num_buckets * num_sub_problems);
+
   cub::DeviceScan::ExclusiveSum(
-      context.d_temp_storage, context.temp_storage_bytes, context.d_histogram,
-      context.d_histogram, num_buckets * num_sub_problems);
-  cudaMalloc((void **)&context.d_temp_storage, context.temp_storage_bytes);
+      nullptr, context.temp_storage_bytes, context.d_histogram.Data(),
+      context.d_histogram.Data(), num_buckets * num_sub_problems);
+
+  context.d_temp_storage =
+      k2::Array1<int8_t>(context.context, context.temp_storage_bytes);
 }
 //=============
 void multisplit_allocate_key_value(size_t num_elements, uint32_t num_buckets,
@@ -160,21 +163,21 @@ void multisplit_allocate_key_value(size_t num_elements, uint32_t num_buckets,
     }
   }
 
-  cudaMalloc((void **)&context.d_histogram,
-             sizeof(uint32_t) * num_buckets * num_sub_problems);
+  context.d_histogram =
+      k2::Array1<uint32_t>(context.context, num_buckets * num_sub_problems);
+
   cub::DeviceScan::ExclusiveSum(
-      context.d_temp_storage, context.temp_storage_bytes, context.d_histogram,
-      context.d_histogram, num_buckets * num_sub_problems);
-  cudaMalloc((void **)&context.d_temp_storage, context.temp_storage_bytes);
+      nullptr, context.temp_storage_bytes, context.d_histogram.Data(),
+      context.d_histogram.Data(), num_buckets * num_sub_problems);
+
+  context.d_temp_storage =
+      k2::Array1<int8_t>(context.context, context.temp_storage_bytes);
 }
 
 //----------------------
 // Memory releases:
 //----------------------
-void multisplit_release_memory(multisplit_context &context) {
-  cudaFree(context.d_histogram);
-  cudaFree(context.d_temp_storage);
-}
+void multisplit_release_memory(multisplit_context &context) {}
 template <typename key_type>
 struct sample_bucket : public std::unary_function<key_type, uint32_t> {
   __forceinline__ __device__ __host__ uint32_t operator()(key_type a) const {

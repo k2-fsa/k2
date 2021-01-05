@@ -6,6 +6,8 @@
 #include <stdint.h>
 
 #include "cub/cub.cuh"
+#include "k2/csrc/array.h"
+#include "k2/csrc/context.h"
 #include "k2/csrc/cudpp/cuda_util.h"
 #include "k2/csrc/cudpp/multisplit_kernel.cuh"
 
@@ -32,8 +34,8 @@ enum CUDPPBucketMapper {
  */
 struct CUDPPConfiguration {
   unsigned int options;  //!< Options to configure the algorithm
-  CUDPPBucketMapper
-      bucket_mapper;  //!< The bucket mapping function for multisplit
+  CUDPPBucketMapper bucket_mapper;
+  k2::ContextPtr context;
 };
 
 //=========================================================================
@@ -85,17 +87,11 @@ class CustomBucketMapper {
   Lambda bucketMapper;
 };
 
-class multisplit_context {
- public:
-  void *d_temp_storage;
-  size_t temp_storage_bytes;
-  uint32_t *d_histogram;
-  multisplit_context() {
-    d_temp_storage = NULL;
-    temp_storage_bytes = 0;
-    d_histogram = NULL;
-  }
-  ~multisplit_context() {}
+struct multisplit_context {
+  k2::Array1<int8_t> d_temp_storage;
+  k2::Array1<uint32_t> d_histogram;
+  k2::ContextPtr context;
+  size_t temp_storage_bytes = 0;
 };
 
 class CUDPPMultiSplitPlan {
@@ -298,8 +294,9 @@ void multisplit_key_only(key_type *d_key_in, key_type *d_key_out,
 
     // ============ Scan stage:
     cub::DeviceScan::ExclusiveSum(
-        context.d_temp_storage, context.temp_storage_bytes, context.d_histogram,
-        context.d_histogram, num_buckets * num_sub_problems);
+        context.d_temp_storage.Data(), context.temp_storage_bytes,
+        context.d_histogram.Data(), context.d_histogram.Data(),
+        num_buckets * num_sub_problems);
 
     // ============ Post scan stage:
     multisplit_WMS_postscan_function(d_key_in, d_key_out, num_elements,
@@ -314,8 +311,9 @@ void multisplit_key_only(key_type *d_key_in, key_type *d_key_out,
 
     // ===== Scan stage
     cub::DeviceScan::ExclusiveSum(
-        context.d_temp_storage, context.temp_storage_bytes, context.d_histogram,
-        context.d_histogram, num_buckets * num_sub_problems);
+        context.d_temp_storage.Data(), context.temp_storage_bytes,
+        context.d_histogram.Data(), context.d_histogram.Data(),
+        num_buckets * num_sub_problems);
 
     // ===== Postscan stage
     multisplit_BMS_postscan_function(d_key_in, d_key_out, num_elements,
@@ -332,7 +330,8 @@ void multisplit_key_only(key_type *d_key_in, key_type *d_key_out,
   if (bucket_offsets != NULL && num_buckets <= 32) {
     bucket_offsets[0] = 0;
     for (uint32_t i = 1; i < num_buckets; i++) {
-      cudaMemcpy(&bucket_offsets[i], context.d_histogram + i * num_sub_problems,
+      cudaMemcpy(&bucket_offsets[i],
+                 context.d_histogram.Data() + i * num_sub_problems,
                  sizeof(uint32_t), cudaMemcpyDeviceToHost);
     }
   }
@@ -429,8 +428,9 @@ void multisplit_key_value(key_type *d_key_in, value_type *d_value_in,
 
     // ============ Scan stage:
     cub::DeviceScan::ExclusiveSum(
-        context.d_temp_storage, context.temp_storage_bytes, context.d_histogram,
-        context.d_histogram, num_buckets * num_sub_problems);
+        context.d_temp_storage.Data(), context.temp_storage_bytes,
+        context.d_histogram.Data(), context.d_histogram.Data(),
+        num_buckets * num_sub_problems);
 
     // ============ Post scan stage:
     multisplit_WMS_pairs_postscan_function(
@@ -445,8 +445,9 @@ void multisplit_key_value(key_type *d_key_in, value_type *d_value_in,
 
     // ===== Scan stage
     cub::DeviceScan::ExclusiveSum(
-        context.d_temp_storage, context.temp_storage_bytes, context.d_histogram,
-        context.d_histogram, num_buckets * num_sub_problems);
+        context.d_temp_storage.Data(), context.temp_storage_bytes,
+        context.d_histogram.Data(), context.d_histogram.Data(),
+        num_buckets * num_sub_problems);
 
     // ===== Postscan stage
     multisplit_BMS_pairs_postscan_function(
@@ -465,7 +466,8 @@ void multisplit_key_value(key_type *d_key_in, value_type *d_value_in,
   if (bucket_offsets != NULL && num_buckets <= 32) {
     bucket_offsets[0] = 0;
     for (uint32_t i = 1; i < num_buckets; i++) {
-      cudaMemcpy(&bucket_offsets[i], context.d_histogram + i * num_sub_problems,
+      cudaMemcpy(&bucket_offsets[i],
+                 context.d_histogram.Data() + i * num_sub_problems,
                  sizeof(uint32_t), cudaMemcpyDeviceToHost);
     }
   }
@@ -488,7 +490,8 @@ void multisplit_WMS_prescan_function(
     histogram_pre_scan_compaction<MULTISPLIT_NUM_WARPS,
                                   MULTISPLIT_WMS_K_ONE_ROLL>
         <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-            d_key_in, context.d_histogram, num_elements, bucket_identifier);
+            d_key_in, context.d_histogram.Data(), num_elements,
+            bucket_identifier);
 #endif
   } else if (num_buckets <= 4) {
     num_blocks_pre = (num_blocks_raw + MULTISPLIT_WMS_K_TWO_ROLL - 1) /
@@ -501,13 +504,15 @@ void multisplit_WMS_prescan_function(
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 3, 2,
                                MULTISPLIT_WMS_K_TWO_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 4:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 4, 2,
                                MULTISPLIT_WMS_K_TWO_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -524,25 +529,29 @@ void multisplit_WMS_prescan_function(
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 5, 3,
                                MULTISPLIT_WMS_K_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 6:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 6, 3,
                                MULTISPLIT_WMS_K_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 7:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 7, 3,
                                MULTISPLIT_WMS_K_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 8:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 8, 3,
                                MULTISPLIT_WMS_K_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -559,49 +568,57 @@ void multisplit_WMS_prescan_function(
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 9, 4,
                                MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 10:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 10, 4,
                                MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 11:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 11, 4,
                                MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 12:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 12, 4,
                                MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 13:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 13, 4,
                                MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 14:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 14, 4,
                                MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 15:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 15, 4,
                                MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 16:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 16, 4,
                                MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -618,97 +635,113 @@ void multisplit_WMS_prescan_function(
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 17, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 18:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 18, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 19:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 19, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 20:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 20, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 21:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 21, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 22:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 22, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 23:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 23, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 24:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 24, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 25:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 25, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 26:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 26, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 27:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 27, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 28:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 28, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 29:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 29, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 30:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 30, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 31:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 31, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 32:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 32, 5,
                                MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -731,7 +764,8 @@ void multisplit_WMS_pairs_prescan_function(
     histogram_pre_scan_compaction<MULTISPLIT_NUM_WARPS,
                                   MULTISPLIT_WMS_KV_ONE_ROLL>
         <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-            d_key_in, context.d_histogram, num_elements, bucket_identifier);
+            d_key_in, context.d_histogram.Data(), num_elements,
+            bucket_identifier);
 #endif
   } else if (num_buckets <= 4) {
     num_blocks_pre = (num_blocks_raw + MULTISPLIT_WMS_KV_TWO_ROLL - 1) /
@@ -744,13 +778,15 @@ void multisplit_WMS_pairs_prescan_function(
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 3, 2,
                                MULTISPLIT_WMS_KV_TWO_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 4:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 4, 2,
                                MULTISPLIT_WMS_KV_TWO_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -767,25 +803,29 @@ void multisplit_WMS_pairs_prescan_function(
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 5, 3,
                                MULTISPLIT_WMS_KV_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 6:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 6, 3,
                                MULTISPLIT_WMS_KV_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 7:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 7, 3,
                                MULTISPLIT_WMS_KV_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 8:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 8, 3,
                                MULTISPLIT_WMS_KV_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -802,49 +842,57 @@ void multisplit_WMS_pairs_prescan_function(
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 9, 4,
                                MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 10:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 10, 4,
                                MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 11:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 11, 4,
                                MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 12:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 12, 4,
                                MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 13:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 13, 4,
                                MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 14:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 14, 4,
                                MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 15:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 15, 4,
                                MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 16:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 16, 4,
                                MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -861,97 +909,113 @@ void multisplit_WMS_pairs_prescan_function(
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 17, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 18:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 18, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 19:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 19, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 20:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 20, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 21:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 21, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 22:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 22, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 23:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 23, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 24:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 24, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 25:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 25, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 26:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 26, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 27:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 27, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 28:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 28, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 29:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 29, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 30:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 30, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 31:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 31, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 32:
         multisplit_WMS_prescan<MULTISPLIT_NUM_WARPS, 32, 5,
                                MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -971,7 +1035,7 @@ void multisplit_WMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
 #if MULTISPLIT_SWITCH_STRATEGY_K > 1
     split_post_scan_compaction<MULTISPLIT_NUM_WARPS, MULTISPLIT_WMS_K_ONE_ROLL>
         <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-            d_key_in, context.d_histogram, d_key_out, num_elements,
+            d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
             bucket_identifier);
 #endif
   } else if (num_buckets <= 4) {
@@ -981,14 +1045,14 @@ void multisplit_WMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 3, 2,
                                 MULTISPLIT_WMS_K_TWO_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 4:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 4, 2,
                                 MULTISPLIT_WMS_K_TWO_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
 #endif
@@ -1002,28 +1066,28 @@ void multisplit_WMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 5, 3,
                                 MULTISPLIT_WMS_K_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 6:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 6, 3,
                                 MULTISPLIT_WMS_K_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 7:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 7, 3,
                                 MULTISPLIT_WMS_K_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 8:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 8, 3,
                                 MULTISPLIT_WMS_K_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
 #endif
@@ -1037,56 +1101,56 @@ void multisplit_WMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 9, 4,
                                 MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 10:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 10, 4,
                                 MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 11:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 11, 4,
                                 MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 12:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 12, 4,
                                 MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 13:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 13, 4,
                                 MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 14:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 14, 4,
                                 MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 15:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 15, 4,
                                 MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 16:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 16, 4,
                                 MULTISPLIT_WMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
 #endif
@@ -1100,112 +1164,112 @@ void multisplit_WMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 17, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 18:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 18, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 19:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 19, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 20:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 20, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 21:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 21, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 22:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 22, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 23:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 23, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 24:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 24, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 25:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 25, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 26:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 26, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 27:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 27, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 28:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 28, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 29:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 29, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 30:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 30, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 31:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 31, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 32:
         multisplit_WMS_postscan<MULTISPLIT_NUM_WARPS, 32, 5,
                                 MULTISPLIT_WMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
 #endif
@@ -1226,8 +1290,8 @@ void multisplit_WMS_pairs_postscan_function(
     split_post_scan_pairs_compaction<MULTISPLIT_NUM_WARPS,
                                      MULTISPLIT_WMS_KV_ONE_ROLL>
         <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-            d_key_in, d_value_in, context.d_histogram, d_key_out, d_value_out,
-            num_elements, bucket_identifier);
+            d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
+            d_value_out, num_elements, bucket_identifier);
 #endif
   } else if (num_buckets <= 4) {
     switch (num_buckets) {
@@ -1236,14 +1300,14 @@ void multisplit_WMS_pairs_postscan_function(
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 3, 2,
                                       MULTISPLIT_WMS_KV_TWO_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 4:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 4, 2,
                                       MULTISPLIT_WMS_KV_TWO_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
 #endif
@@ -1257,28 +1321,28 @@ void multisplit_WMS_pairs_postscan_function(
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 5, 3,
                                       MULTISPLIT_WMS_KV_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 6:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 6, 3,
                                       MULTISPLIT_WMS_KV_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 7:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 7, 3,
                                       MULTISPLIT_WMS_KV_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 8:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 8, 3,
                                       MULTISPLIT_WMS_KV_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
 #endif
@@ -1292,56 +1356,56 @@ void multisplit_WMS_pairs_postscan_function(
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 9, 4,
                                       MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 10:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 10, 4,
                                       MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 11:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 11, 4,
                                       MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 12:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 12, 4,
                                       MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 13:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 13, 4,
                                       MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 14:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 14, 4,
                                       MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 15:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 15, 4,
                                       MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 16:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 16, 4,
                                       MULTISPLIT_WMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
 #endif
@@ -1355,112 +1419,112 @@ void multisplit_WMS_pairs_postscan_function(
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 17, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 18:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 18, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 19:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 19, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 20:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 20, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 21:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 21, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 22:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 22, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 23:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 23, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 24:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 24, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 25:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 25, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_out, context.d_histogram, d_key_out,
+                d_key_in, d_value_out, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 26:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 26, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_out, context.d_histogram, d_key_out,
+                d_key_in, d_value_out, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 27:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 27, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_out, context.d_histogram, d_key_out,
+                d_key_in, d_value_out, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 28:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 28, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_out, context.d_histogram, d_key_out,
+                d_key_in, d_value_out, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 29:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 29, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_out, context.d_histogram, d_key_out,
+                d_key_in, d_value_out, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 30:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 30, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_out, context.d_histogram, d_key_out,
+                d_key_in, d_value_out, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 31:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 31, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_out, context.d_histogram, d_key_out,
+                d_key_in, d_value_out, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 32:
         multisplit_WMS_pairs_postscan<MULTISPLIT_NUM_WARPS, 32, 5,
                                       MULTISPLIT_WMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_out, context.d_histogram, d_key_out,
+                d_key_in, d_value_out, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
 #endif
@@ -1484,7 +1548,8 @@ void multisplit_BMS_prescan_function(
     multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 2, 1,
                            MULTISPLIT_BMS_K_TWO_ROLL>
         <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-            d_key_in, context.d_histogram, num_elements, bucket_identifier);
+            d_key_in, context.d_histogram.Data(), num_elements,
+            bucket_identifier);
 #endif
   } else if (num_buckets <= 4) {
     num_blocks_pre = (num_blocks_raw + MULTISPLIT_BMS_K_TWO_ROLL - 1) /
@@ -1496,13 +1561,15 @@ void multisplit_BMS_prescan_function(
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 3, 2,
                                MULTISPLIT_BMS_K_TWO_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 4:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 4, 2,
                                MULTISPLIT_BMS_K_TWO_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -1518,25 +1585,29 @@ void multisplit_BMS_prescan_function(
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 5, 3,
                                MULTISPLIT_BMS_K_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 6:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 6, 3,
                                MULTISPLIT_BMS_K_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 7:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 7, 3,
                                MULTISPLIT_BMS_K_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 8:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 8, 3,
                                MULTISPLIT_BMS_K_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -1552,49 +1623,57 @@ void multisplit_BMS_prescan_function(
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 9, 4,
                                MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 10:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 10,
                                4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 11:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 11,
                                4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 12:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 12,
                                4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 13:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 13,
                                4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 14:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 14,
                                4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 15:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 15,
                                4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 16:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 16,
                                4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -1610,97 +1689,113 @@ void multisplit_BMS_prescan_function(
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 17,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 18:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 18,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 19:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 19,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 20:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 20,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 21:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 21,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 22:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 22,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 23:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 23,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 24:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 24,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 25:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 25,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 26:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 26,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 27:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 27,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 28:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 28,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 29:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 29,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 30:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 30,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 31:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 31,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 32:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 32,
                                5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -1722,7 +1817,8 @@ void multisplit_BMS_pairs_prescan_function(
     multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 2, 1,
                            MULTISPLIT_BMS_KV_TWO_ROLL>
         <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-            d_key_in, context.d_histogram, num_elements, bucket_identifier);
+            d_key_in, context.d_histogram.Data(), num_elements,
+            bucket_identifier);
 #endif
   } else if (num_buckets <= 4) {
     num_blocks_pre = (num_blocks_raw + MULTISPLIT_BMS_KV_TWO_ROLL - 1) /
@@ -1734,13 +1830,15 @@ void multisplit_BMS_pairs_prescan_function(
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 3, 2,
                                MULTISPLIT_BMS_KV_TWO_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 4:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 4, 2,
                                MULTISPLIT_BMS_KV_TWO_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -1756,25 +1854,29 @@ void multisplit_BMS_pairs_prescan_function(
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 5, 3,
                                MULTISPLIT_BMS_KV_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 6:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 6, 3,
                                MULTISPLIT_BMS_KV_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 7:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 7, 3,
                                MULTISPLIT_BMS_KV_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 8:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 8, 3,
                                MULTISPLIT_BMS_KV_THREE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -1790,49 +1892,57 @@ void multisplit_BMS_pairs_prescan_function(
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 9, 4,
                                MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 10:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 10,
                                4, MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 11:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 11,
                                4, MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 12:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 12,
                                4, MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 13:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 13,
                                4, MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 14:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 14,
                                4, MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 15:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 15,
                                4, MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 16:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 16,
                                4, MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -1848,97 +1958,113 @@ void multisplit_BMS_pairs_prescan_function(
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 17,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 18:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 18,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 19:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 19,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 20:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 20,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 21:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 21,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 22:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 22,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 23:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 23,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 24:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 24,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 25:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 25,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 26:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 26,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 27:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 27,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 28:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 28,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 29:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 29,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 30:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 30,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 31:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 31,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
       case 32:
         multisplit_BMS_prescan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 32,
                                5, MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_pre, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, num_elements, bucket_identifier);
+                d_key_in, context.d_histogram.Data(), num_elements,
+                bucket_identifier);
         break;
 #endif
       default:
@@ -1958,7 +2084,7 @@ void multisplit_BMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
     multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 2, 1,
                             MULTISPLIT_BMS_K_TWO_ROLL>
         <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-            d_key_in, context.d_histogram, d_key_out, num_elements,
+            d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
             bucket_identifier);
 #endif
   } else if (num_buckets <= 4) {
@@ -1968,14 +2094,14 @@ void multisplit_BMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 3,
                                 2, MULTISPLIT_BMS_K_TWO_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 4:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 4,
                                 2, MULTISPLIT_BMS_K_TWO_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
 #endif
@@ -1989,28 +2115,28 @@ void multisplit_BMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 5,
                                 3, MULTISPLIT_BMS_K_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 6:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 6,
                                 3, MULTISPLIT_BMS_K_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 7:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 7,
                                 3, MULTISPLIT_BMS_K_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 8:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 8,
                                 3, MULTISPLIT_BMS_K_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
 #endif
@@ -2024,56 +2150,56 @@ void multisplit_BMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 9,
                                 4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 10:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 10,
                                 4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 11:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 11,
                                 4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 12:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 12,
                                 4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 13:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 13,
                                 4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 14:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 14,
                                 4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 15:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 15,
                                 4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 16:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 16,
                                 4, MULTISPLIT_BMS_K_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
 #endif
@@ -2087,112 +2213,112 @@ void multisplit_BMS_postscan_function(key_type *d_key_in, key_type *d_key_out,
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 17,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 18:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 18,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 19:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 19,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 20:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 20,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 21:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 21,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 22:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 22,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 23:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 23,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 24:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 24,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 25:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 25,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 26:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 26,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 27:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 27,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 28:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 28,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 29:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 29,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 30:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 30,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 31:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 31,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
       case 32:
         multisplit_BMS_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 32,
                                 5, MULTISPLIT_BMS_K_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, context.d_histogram, d_key_out, num_elements,
+                d_key_in, context.d_histogram.Data(), d_key_out, num_elements,
                 bucket_identifier);
         break;
 #endif
@@ -2213,8 +2339,8 @@ void multisplit_BMS_pairs_postscan_function(
     multisplit_BMS_pairs_postscan<MULTISPLIT_NUM_WARPS, MULTISPLIT_LOG_WARPS, 2,
                                   1, MULTISPLIT_BMS_KV_ONE_ROLL>
         <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-            d_key_in, d_value_in, context.d_histogram, d_key_out, d_value_out,
-            num_elements, bucket_identifier);
+            d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
+            d_value_out, num_elements, bucket_identifier);
 #endif
   } else if (num_buckets <= 4) {
     switch (num_buckets) {
@@ -2224,7 +2350,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 3, 2,
                                       MULTISPLIT_BMS_KV_TWO_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 4:
@@ -2232,7 +2358,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 4, 2,
                                       MULTISPLIT_BMS_KV_TWO_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
 #endif
@@ -2247,7 +2373,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 5, 3,
                                       MULTISPLIT_BMS_KV_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 6:
@@ -2255,7 +2381,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 6, 3,
                                       MULTISPLIT_BMS_KV_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 7:
@@ -2263,7 +2389,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 7, 3,
                                       MULTISPLIT_BMS_KV_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 8:
@@ -2271,7 +2397,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 8, 3,
                                       MULTISPLIT_BMS_KV_THREE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
 #endif
@@ -2286,7 +2412,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 9, 4,
                                       MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 10:
@@ -2294,7 +2420,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 10, 4,
                                       MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 11:
@@ -2302,7 +2428,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 11, 4,
                                       MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 12:
@@ -2310,7 +2436,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 12, 4,
                                       MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 13:
@@ -2318,7 +2444,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 13, 4,
                                       MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 14:
@@ -2326,7 +2452,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 14, 4,
                                       MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 15:
@@ -2334,7 +2460,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 15, 4,
                                       MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 16:
@@ -2342,7 +2468,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 16, 4,
                                       MULTISPLIT_BMS_KV_FOUR_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
 #endif
@@ -2357,7 +2483,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 17, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 18:
@@ -2365,7 +2491,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 18, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 19:
@@ -2373,7 +2499,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 19, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 20:
@@ -2381,7 +2507,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 20, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 21:
@@ -2389,7 +2515,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 21, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 22:
@@ -2397,7 +2523,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 22, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 23:
@@ -2405,7 +2531,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 23, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 24:
@@ -2413,7 +2539,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 24, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 25:
@@ -2421,7 +2547,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 25, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 26:
@@ -2429,7 +2555,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 26, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 27:
@@ -2437,7 +2563,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 27, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 28:
@@ -2445,7 +2571,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 28, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 29:
@@ -2453,7 +2579,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 29, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 30:
@@ -2461,7 +2587,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 30, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 31:
@@ -2469,7 +2595,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 31, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
       case 32:
@@ -2477,7 +2603,7 @@ void multisplit_BMS_pairs_postscan_function(
                                       MULTISPLIT_LOG_WARPS, 32, 5,
                                       MULTISPLIT_BMS_KV_FIVE_ROLL>
             <<<num_blocks_post, MULTISPLIT_TRHEADS_PER_BLOCK>>>(
-                d_key_in, d_value_in, context.d_histogram, d_key_out,
+                d_key_in, d_value_in, context.d_histogram.Data(), d_key_out,
                 d_value_out, num_elements, bucket_identifier);
         break;
 #endif
@@ -2508,6 +2634,7 @@ void cudppMultiSplitDispatch(unsigned int *d_keys, unsigned int *d_values,
                              const CUDPPMultiSplitPlan *plan) {
   cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
   multisplit_context ms_context;
+  ms_context.context = plan->m_config.context;
   if (numBuckets <= 32)
     multisplit_allocate_key_only(numElements, numBuckets, ms_context);
 
