@@ -92,11 +92,9 @@ struct multisplit_context {
   size_t temp_storage_bytes = 0;
 };
 
-class CUDPPMultiSplitPlan {
- public:
+struct CUDPPMultiSplitPlan {
   CUDPPMultiSplitPlan(CUDPPConfiguration config, size_t numElements,
                       size_t numBuckets);
-  ~CUDPPMultiSplitPlan();
   CUDPPConfiguration m_config;  //!< @internal Options structure
 
   unsigned int m_numElements;
@@ -104,15 +102,13 @@ class CUDPPMultiSplitPlan {
   k2::Array1<uint32_t> m_d_mask;
   k2::Array1<uint32_t> m_d_out;
   k2::Array1<uint32_t> m_d_fin;
+
+  k2::Array1<uint64_t> m_d_key_value_pairs;
   unsigned int *m_d_temp_keys;
   unsigned int *m_d_temp_values;
-  // unsigned long long int *m_d_key_value_pairs;
-  uint64_t *m_d_key_value_pairs;
 };
 
 void allocMultiSplitStorage(CUDPPMultiSplitPlan *plan);
-
-void freeMultiSplitStorage(CUDPPMultiSplitPlan *plan);
 
 void multisplit_allocate_key_only(size_t num_elements, uint32_t num_buckets,
                                   multisplit_context &context);
@@ -357,22 +353,22 @@ void reducedBitSortKeyValue(unsigned int *d_keys, unsigned int *d_values,
 
   cub::DeviceRadixSort::SortPairs(
       nullptr, temp_storage_bytes, plan->m_d_mask.Data(), plan->m_d_out.Data(),
-      plan->m_d_key_value_pairs, plan->m_d_key_value_pairs, numElements, 0,
-      int(ceil(log2(float(numBuckets)))));
+      plan->m_d_key_value_pairs.Data(), plan->m_d_key_value_pairs.Data(),
+      numElements, 0, int(ceil(log2(float(numBuckets)))));
 
   k2::Array1<int8_t> d_temp_storage(plan->m_config.context, temp_storage_bytes);
 
   markBins_general<<<numBlocks, numThreads>>>(
       plan->m_d_mask.Data(), d_keys, numElements, numBuckets, bucketMapper);
   packingKeyValuePairs<<<numBlocks, numThreads>>>(
-      plan->m_d_key_value_pairs, d_keys, d_values, numElements);
+      plan->m_d_key_value_pairs.Data(), d_keys, d_values, numElements);
   cub::DeviceRadixSort::SortPairs(d_temp_storage.Data(), temp_storage_bytes,
                                   plan->m_d_mask.Data(), plan->m_d_out.Data(),
-                                  plan->m_d_key_value_pairs,
-                                  plan->m_d_key_value_pairs, numElements, 0,
-                                  int(ceil(log2(float(numBuckets)))));
+                                  plan->m_d_key_value_pairs.Data(),
+                                  plan->m_d_key_value_pairs.Data(), numElements,
+                                  0, int(ceil(log2(float(numBuckets)))));
   unpackingKeyValuePairs<<<numBlocks, numThreads>>>(
-      plan->m_d_key_value_pairs, d_keys, d_values, numElements);
+      plan->m_d_key_value_pairs.Data(), d_keys, d_values, numElements);
 }
 
 /** @brief Performs multisplit on key-value pairs.

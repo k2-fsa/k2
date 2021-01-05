@@ -197,10 +197,8 @@ void allocMultiSplitStorage(CUDPPMultiSplitPlan *plan) {
   unsigned int nB = ceil(plan->m_numElements / (MULTISPLIT_NUM_WARPS * 32));
 
   if (plan->m_config.options & CUDPP_OPTION_KEY_VALUE_PAIRS) {
-    CUDA_SAFE_CALL(
-        cudaMalloc((void **)&plan->m_d_key_value_pairs,
-                   plan->m_numElements *
-                       sizeof(uint64)));  // key value pair intermediate vector.
+    plan->m_d_key_value_pairs =
+        k2::Array1<uint64_t>(plan->m_config.context, plan->m_numElements);
   }
 
   if (plan->m_numBuckets > 32) {
@@ -213,17 +211,3 @@ void allocMultiSplitStorage(CUDPPMultiSplitPlan *plan) {
   plan->m_d_fin =
       k2::Array1<uint32_t>(plan->m_config.context, plan->m_numElements, 0);
 }
-
-/** @brief Deallocates intermediate memory from allocMultiSplitStorage.
- *
- *
- * @param[in] plan Pointer to CUDPPMultiSplitPlan object
- **/
-void freeMultiSplitStorage(CUDPPMultiSplitPlan *plan) {
-  if (plan->m_config.options & CUDPP_OPTION_KEY_VALUE_PAIRS) {
-    cudaFree(plan->m_d_key_value_pairs);
-  }
-}
-
-/** @} */  // end multisplit functions
-/** @} */  // end cudpp_app

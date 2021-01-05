@@ -18,8 +18,8 @@ CUDPPMultiSplitPlan::CUDPPMultiSplitPlan(CUDPPConfiguration config,
   allocMultiSplitStorage(this);
 
   // use the allocated array for temporary storage of keys and values
-  m_d_temp_keys = (unsigned int *)m_d_key_value_pairs;
-  m_d_temp_values = (unsigned int *)m_d_key_value_pairs + numElements;
+  if (m_d_key_value_pairs.IsValid()) {
+    m_d_temp_keys = (unsigned int *)m_d_key_value_pairs.Data();
+    m_d_temp_values = (unsigned int *)m_d_key_value_pairs.Data() + numElements;
+  }
 }
-
-CUDPPMultiSplitPlan::~CUDPPMultiSplitPlan() { freeMultiSplitStorage(this); }
