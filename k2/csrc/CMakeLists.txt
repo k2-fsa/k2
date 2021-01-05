@@ -131,3 +131,5 @@ endforeach()
 if(K2_ENABLE_BENCHMARK)
   add_subdirectory(benchmark)
 endif()
+
+add_subdirectory(cudpp)
