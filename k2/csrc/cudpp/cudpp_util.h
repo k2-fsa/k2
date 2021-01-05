@@ -443,19 +443,6 @@ private:
   unsigned int elementsPerBucket;
 };
 
-class CustomBucketMapper {
-public:
-  CustomBucketMapper(BucketMappingFunc bucketMappingFunc) {
-    bucketMapper = bucketMappingFunc;
-  }
-
-  __device__ unsigned int operator()(unsigned int element) {
-    return (*bucketMapper)(element);
-  }
-
-private:
-  BucketMappingFunc bucketMapper;
-};
 
 #endif // __CUDPP_UTIL_H__
 

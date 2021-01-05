@@ -13,7 +13,7 @@
 #include <cudpp_util.h>
 #include "sharedmem.h"
 
-typedef unsigned int uint;
+typedef uint32_t uint;
 
 #ifdef WIN32
 
@@ -26,7 +26,7 @@ typedef unsigned _int64 uint64;
 #else
 
 #include <stdint.h>
-typedef unsigned long long int uint64;
+typedef uint64_t uint64;
 
 #endif
 
@@ -46,45 +46,8 @@ typedef unsigned long long int uint64;
  */
 
 //==========================================
-template<class T>
-__global__ void markBins_general(uint* d_mark, uint* d_elements,
-    uint numElements, uint numBuckets, T bucketMapper) {
-
-  unsigned int myId = threadIdx.x + blockIdx.x * blockDim.x;
-  unsigned int offset = blockDim.x * gridDim.x;
-  unsigned int logBuckets = ceil(log2((float) numBuckets));
-
-  for (int i = myId; i < numElements; i += offset) {
-    unsigned int myVal = d_elements[i];
-    unsigned int myBucket = bucketMapper(myVal);
-    d_mark[i] = myBucket;
-  }
-}
 //===========================================
-__global__ void packingKeyValuePairs(uint64* packed, uint* input_key,
-    uint* input_value, uint numElements) {
-  uint tid = threadIdx.x + blockIdx.x * blockDim.x;
-  if (tid > numElements)
-    return;
-
-  uint myKey = input_key[tid];
-  uint myValue = input_value[tid];
-  // putting the key as the more significant 32 bits.
-  uint64 output = (static_cast<uint64>(myKey) << 32)
-      + static_cast<uint>(myValue);
-  packed[tid] = output;
-}
 //===========================================
-__global__ void unpackingKeyValuePairs(uint64* packed, uint* out_key,
-    uint* out_value, uint numElements) {
-  uint tid = threadIdx.x + blockIdx.x * blockDim.x;
-  if (tid > numElements)
-    return;
-
-  uint64 myPacked = packed[tid];
-  out_value[tid] = static_cast<uint>(myPacked & 0x00000000FFFFFFFF);
-  out_key[tid] = static_cast<uint>(myPacked >> 32);
-}
 //=========================================================================
 // Compaction based on Warp-level Multisplit
 //=========================================================================
