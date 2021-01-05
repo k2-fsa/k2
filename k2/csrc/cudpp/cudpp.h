@@ -101,8 +101,8 @@ class CUDPPMultiSplitPlan {
 
   unsigned int m_numElements;
   unsigned int m_numBuckets;
-  unsigned int *m_d_mask;
-  unsigned int *m_d_out;
+  k2::Array1<uint32_t> m_d_mask;
+  k2::Array1<uint32_t> m_d_out;
   unsigned int *m_d_fin;
   unsigned int *m_d_temp_keys;
   unsigned int *m_d_temp_values;
@@ -223,7 +223,7 @@ __global__ void markBins_general(uint32_t *d_mark, uint32_t *d_elements,
 template <class T>
 void reducedBitSortKeysOnly(unsigned int *d_inp, uint numElements,
                             uint numBuckets, T bucketMapper,
-                            const CUDPPMultiSplitPlan *plan) {
+                            CUDPPMultiSplitPlan *plan) {
   unsigned int numThreads = MULTISPLIT_NUM_WARPS * 32;
   unsigned int numBlocks = (numElements + numThreads - 1) / numThreads;
   unsigned int logBuckets = ceil(log2((float)numBuckets));
@@ -231,16 +231,17 @@ void reducedBitSortKeysOnly(unsigned int *d_inp, uint numElements,
 
   if (numBuckets == 1) return;
 
-  cub::DeviceRadixSort::SortPairs(nullptr, temp_storage_bytes, plan->m_d_mask,
-                                  plan->m_d_out, d_inp, plan->m_d_fin,
-                                  numElements, 0, logBuckets);
+  cub::DeviceRadixSort::SortPairs(
+      nullptr, temp_storage_bytes, plan->m_d_mask.Data(), plan->m_d_out.Data(),
+      d_inp, plan->m_d_fin, numElements, 0, logBuckets);
   k2::Array1<int8_t> d_temp_storage(plan->m_config.context, temp_storage_bytes);
 
   markBins_general<<<numBlocks, numThreads>>>(
-      plan->m_d_mask, d_inp, numElements, numBuckets, bucketMapper);
-  cub::DeviceRadixSort::SortPairs(
-      d_temp_storage.Data(), temp_storage_bytes, plan->m_d_mask, plan->m_d_out,
-      d_inp, plan->m_d_fin, numElements, 0, int(ceil(log2(float(numBuckets)))));
+      plan->m_d_mask.Data(), d_inp, numElements, numBuckets, bucketMapper);
+  cub::DeviceRadixSort::SortPairs(d_temp_storage.Data(), temp_storage_bytes,
+                                  plan->m_d_mask.Data(), plan->m_d_out.Data(),
+                                  d_inp, plan->m_d_fin, numElements, 0,
+                                  int(ceil(log2(float(numBuckets)))));
 
   CUDA_SAFE_CALL(cudaMemcpy(d_inp, plan->m_d_fin,
                             numElements * sizeof(unsigned int),
@@ -348,27 +349,28 @@ void multisplit_key_only(key_type *d_key_in, key_type *d_key_out,
 template <class T>
 void reducedBitSortKeyValue(unsigned int *d_keys, unsigned int *d_values,
                             unsigned int numElements, unsigned int numBuckets,
-                            T bucketMapper, const CUDPPMultiSplitPlan *plan) {
+                            T bucketMapper, CUDPPMultiSplitPlan *plan) {
   unsigned int numThreads = MULTISPLIT_NUM_WARPS * 32;
   unsigned int numBlocks = (numElements + numThreads - 1) / numThreads;
   unsigned int logBuckets = ceil(log2((float)numBuckets));
   size_t temp_storage_bytes = 0;
 
-  cub::DeviceRadixSort::SortPairs(nullptr, temp_storage_bytes, plan->m_d_mask,
-                                  plan->m_d_out, plan->m_d_key_value_pairs,
-                                  plan->m_d_key_value_pairs, numElements, 0,
-                                  int(ceil(log2(float(numBuckets)))));
+  cub::DeviceRadixSort::SortPairs(
+      nullptr, temp_storage_bytes, plan->m_d_mask.Data(), plan->m_d_out.Data(),
+      plan->m_d_key_value_pairs, plan->m_d_key_value_pairs, numElements, 0,
+      int(ceil(log2(float(numBuckets)))));
 
   k2::Array1<int8_t> d_temp_storage(plan->m_config.context, temp_storage_bytes);
 
   markBins_general<<<numBlocks, numThreads>>>(
-      plan->m_d_mask, d_keys, numElements, numBuckets, bucketMapper);
+      plan->m_d_mask.Data(), d_keys, numElements, numBuckets, bucketMapper);
   packingKeyValuePairs<<<numBlocks, numThreads>>>(
       plan->m_d_key_value_pairs, d_keys, d_values, numElements);
-  cub::DeviceRadixSort::SortPairs(
-      d_temp_storage.Data(), temp_storage_bytes, plan->m_d_mask, plan->m_d_out,
-      plan->m_d_key_value_pairs, plan->m_d_key_value_pairs, numElements, 0,
-      int(ceil(log2(float(numBuckets)))));
+  cub::DeviceRadixSort::SortPairs(d_temp_storage.Data(), temp_storage_bytes,
+                                  plan->m_d_mask.Data(), plan->m_d_out.Data(),
+                                  plan->m_d_key_value_pairs,
+                                  plan->m_d_key_value_pairs, numElements, 0,
+                                  int(ceil(log2(float(numBuckets)))));
   unpackingKeyValuePairs<<<numBlocks, numThreads>>>(
       plan->m_d_key_value_pairs, d_keys, d_values, numElements);
 }
@@ -2623,7 +2625,7 @@ template <typename Lambda>
 void cudppMultiSplitDispatch(unsigned int *d_keys, unsigned int *d_values,
                              size_t numElements, size_t numBuckets,
                              Lambda &bucketMappingFunc,
-                             const CUDPPMultiSplitPlan *plan) {
+                             CUDPPMultiSplitPlan *plan) {
   cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
   multisplit_context ms_context;
   ms_context.context = plan->m_config.context;

@@ -204,14 +204,11 @@ void allocMultiSplitStorage(CUDPPMultiSplitPlan *plan) {
   }
 
   if (plan->m_numBuckets > 32) {
-    CUDA_SAFE_CALL(cudaMalloc(
-        (void **)&plan->m_d_mask,
-        (plan->m_numElements + 1) *
-            sizeof(unsigned int)));  // mask verctor, +1 added only for the
-                                     // near-far implementation
-    CUDA_SAFE_CALL(
-        cudaMalloc((void **)&plan->m_d_out,
-                   plan->m_numElements * sizeof(unsigned int)));  // gpu output
+    plan->m_d_mask = k2::Array1<uint32_t>(plan->m_config.context,
+                                          plan->m_numElements + 1, 0);
+
+    plan->m_d_out =
+        k2::Array1<uint32_t>(plan->m_config.context, plan->m_numElements, 0);
   }
   CUDA_SAFE_CALL(
       cudaMalloc((void **)&plan->m_d_fin,
@@ -219,12 +216,6 @@ void allocMultiSplitStorage(CUDPPMultiSplitPlan *plan) {
                      sizeof(unsigned int)));  // final masks (used for reduced
                                               // bit method, etc.)
 
-  if (plan->m_numBuckets > 32) {
-    CUDA_SAFE_CALL(cudaMemset(
-        plan->m_d_mask, 0, sizeof(unsigned int) * (plan->m_numElements + 1)));
-    CUDA_SAFE_CALL(cudaMemset(plan->m_d_out, 0,
-                              sizeof(unsigned int) * plan->m_numElements));
-  }
   CUDA_SAFE_CALL(
       cudaMemset(plan->m_d_fin, 0, sizeof(unsigned int) * plan->m_numElements));
 }
@@ -237,10 +228,6 @@ void allocMultiSplitStorage(CUDPPMultiSplitPlan *plan) {
 void freeMultiSplitStorage(CUDPPMultiSplitPlan *plan) {
   if (plan->m_config.options & CUDPP_OPTION_KEY_VALUE_PAIRS) {
     cudaFree(plan->m_d_key_value_pairs);
-  }
-  if (plan->m_numBuckets > 32) {
-    cudaFree(plan->m_d_mask);
-    cudaFree(plan->m_d_out);
   }
   cudaFree(plan->m_d_fin);
 }
