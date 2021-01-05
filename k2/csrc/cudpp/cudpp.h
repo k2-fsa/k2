@@ -13,11 +13,6 @@ extern cub::CachingDeviceAllocator g_allocator;
 
 typedef unsigned int (*BucketMappingFunc)(unsigned int);
 
-/**
- * @brief Options for configuring CUDPP algorithms.
- *
- * @see CUDPPConfiguration, cudppPlan, CUDPPAlgorithm
- */
 enum CUDPPOption {
   CUDPP_OPTION_KEYS_ONLY = 0x20,       /**< No associated value to a key
                                         * (for global radix sort) */
@@ -25,12 +20,8 @@ enum CUDPPOption {
 };
 
 enum CUDPPBucketMapper {
-  CUDPP_LSB_BUCKET_MAPPER,  //!< The bucket is determined by the element's LSBs.
-  CUDPP_MSB_BUCKET_MAPPER,  //!< The bucket is determined by the element's MSBs.
-  CUDPP_DEFAULT_BUCKET_MAPPER,  //!< The bucket is determined by the element's
-                                //!< value.
-  CUDPP_CUSTOM_BUCKET_MAPPER,   //!< The bucket mapping is a user-specified
-                                //!< function.
+  CUDPP_CUSTOM_BUCKET_MAPPER,  //!< The bucket mapping is a user-specified
+                               //!< function.
 };
 
 /**

@@ -17,6 +17,7 @@
 
 #include "cub/cub.cuh"
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/cudpp/cudpp.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/moderngpu_allocator.h"
@@ -1144,6 +1145,26 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
 
   K2_CHECK_EQ(device_type, kCuda);
 
+#if 1
+  const int32_t *values_data = src.values.Data();
+  int32_t num_buckets = num_cols;
+  int32_t num_elements = src.values.Dim();
+
+  Array1<int32_t> ans = Range(context, num_elements, 0);
+  auto lambda = [values_data, num_elements] __device__(uint32_t i) -> uint32_t {
+    return i < num_elements ? values_data[i] : 0;
+  };
+
+  CUDPPConfiguration config;
+  config.options = CUDPP_OPTION_KEYS_ONLY;
+  config.bucket_mapper = CUDPP_CUSTOM_BUCKET_MAPPER;
+
+  CUDPPMultiSplitPlan plan(config, num_elements, num_buckets);
+  cudppMultiSplitCustomBucketMapper(&plan,
+                                    reinterpret_cast<uint32_t *>(ans.Data()),
+                                    nullptr, num_elements, num_buckets, lambda);
+  return ans;
+#else
   if (src.NumAxes() == 3)
     return GetTransposeReorderingThreeAxesCuda(src, num_cols);
 
@@ -1176,8 +1197,8 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   mgpu::context_t *mgpu_context = GetModernGpuAllocator(context);
 
   K2_CUDA_SAFE_CALL(mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
-
   return ans;
+#endif
 }
 
 RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
