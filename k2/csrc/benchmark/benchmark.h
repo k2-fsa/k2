@@ -171,7 +171,7 @@ int32_t GetSeed();
     - device information
     - how k2 was built (information from version.h)
  */
-void PrintEnvironemntInfo();
+void PrintEnvironmentInfo();
 
 }  // namespace k2
 

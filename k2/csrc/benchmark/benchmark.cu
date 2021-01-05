@@ -163,7 +163,7 @@ int32_t GetSeed() {
   return atoi(seed);  // 0 is returned if K2_SEED is not a numeric string.
 }
 
-void PrintEnvironemntInfo() {
+void PrintEnvironmentInfo() {
   std::ostringstream os;
   os << GetCurrentDateTime();
   os << GetDeviceInfo() << "\n";
@@ -179,10 +179,10 @@ void PrintEnvironemntInfo() {
   os << kPrefix << "torch CUDA version: " << kTorchCudaVersion << "\n";
   os << kPrefix << "NVTX enabled: " << kEnableNvtx << "\n";
   os << kPrefix << "Debug disabled: " << internal::kDisableDebug << "\n";
-  os << kPrefix << "cuda device sync enabled: "
-     << internal::EnableCudaDeviceSync() << "\n";
+  os << kPrefix
+     << "cuda device sync enabled: " << internal::EnableCudaDeviceSync()
+     << "\n";
   os << kPrefix << "Checks disabled: " << internal::DisableChecks() << "\n";
-
 
   // print it to stderr so that it can be redirected
   std::cerr << os.str() << "\n";

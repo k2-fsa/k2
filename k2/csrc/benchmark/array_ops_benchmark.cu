@@ -153,7 +153,7 @@ static void RegisterBenchmarkRowIdsToRowSplits(DeviceType device_type) {
 }
 
 static void RunArrayOpsBenchmark() {
-  PrintEnvironemntInfo();
+  PrintEnvironmentInfo();
 
   RegisterBenchmarkExclusiveSum<int32_t>(kCpu);
   RegisterBenchmarkExclusiveSum<int32_t>(kCuda);
