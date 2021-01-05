@@ -185,15 +185,6 @@ struct sample_bucket : public std::unary_function<key_type, uint32_t> {
   }
 };
 
-//===============================================
-// Global
-//===============================================
-cub::CachingDeviceAllocator g_allocator(
-    true);  // Caching allocator for device memory
-//===============================================
-// Definitions:
-//===============================================
-
 /**
  * @brief From the programmer-specified multisplit configuration,
  *        creates internal memory for performing the multisplit.
