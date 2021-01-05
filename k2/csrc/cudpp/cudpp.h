@@ -1,12 +1,13 @@
-
+// this file is copied/modified from
+// https://github.com/cudpp/cudpp/blob/master/include/cudpp.h
 #ifndef K2_CSRC_CUDPP_CUDPP_H_
 #define K2_CSRC_CUDPP_CUDPP_H_
 
 #include <stdint.h>
 
 #include "cub/cub.cuh"
-#include "cuda_util.h"
-#include "multisplit_kernel.cuh"
+#include "k2/csrc/cudpp/cuda_util.h"
+#include "k2/csrc/cudpp/multisplit_kernel.cuh"
 
 extern cub::CachingDeviceAllocator g_allocator;
 
@@ -127,11 +128,6 @@ class CUDPPMultiSplitPlan {
 void allocMultiSplitStorage(CUDPPMultiSplitPlan *plan);
 
 void freeMultiSplitStorage(CUDPPMultiSplitPlan *plan);
-
-void cudppMultiSplitDispatch(unsigned int *d_keys, unsigned int *d_values,
-                             size_t numElements, size_t numBuckets,
-                             BucketMappingFunc bucketMappingFunc,
-                             const CUDPPMultiSplitPlan *plan);
 
 void multisplit_allocate_key_only(size_t num_elements, uint32_t num_buckets,
                                   multisplit_context &context);

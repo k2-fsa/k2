@@ -1,5 +1,7 @@
-#ifndef _CUDA_UTIL_H_
-#define _CUDA_UTIL_H_
+// this file is copied/modified from
+// https://github.com/cudpp/cudpp/blob/master/src/cudpp/cuda_util.h
+#ifndef K2_CSRC_CUDPP_CUDA_UTIL_H_
+#define K2_CSRC_CUDPP_CUDA_UTIL_H_
 
 #include <stdio.h>
 #include <stdlib.h>             /* EXIT_FAILURE */
@@ -47,4 +49,4 @@
     }
 #endif
 
-#endif
+#endif  // K2_CSRC_CUDPP_CUDA_UTIL_H_

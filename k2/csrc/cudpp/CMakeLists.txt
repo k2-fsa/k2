@@ -1,5 +1,5 @@
 
-include_directories(${CMAKE_CURRENT_LIST_DIR})
+# include_directories(${CMAKE_CURRENT_LIST_DIR})
 add_library(cudpp
   cudpp_plan.cu
   multisplit_app.cu

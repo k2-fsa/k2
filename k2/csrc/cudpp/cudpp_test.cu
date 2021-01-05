@@ -1,15 +1,16 @@
-#include <iostream>
-
-#include "cudpp.h"
-#include "cudpp_plan.h"
+// k2/csrc/cudpp/cudpp_test.cu
+//
+// Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
+//
+// See LICENSE for clarification regarding multiple authors
+//
 #include "k2/csrc/array.h"
+#include "k2/csrc/cudpp/cudpp.h"
 
 int main() {
   CUDPPConfiguration config;
   config.options = CUDPP_OPTION_KEY_VALUE_PAIRS;
   config.bucket_mapper = CUDPP_CUSTOM_BUCKET_MAPPER;
-
-  std::cout << "hello cudpp\n";
 
   std::vector<int32_t> k{0, 4, 3, 1, 2, 6, 8, 9};
   std::vector<int32_t> v{0, 40, 30, 10, 20, 60, 80, 90};
