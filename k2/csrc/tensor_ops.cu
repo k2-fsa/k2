@@ -335,15 +335,14 @@ static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
                          num_buckets] __device__(uint32_t i) -> uint32_t {
     // src_data entries belonging to -1 are placed into the last bucket
     // and is going to be ignored later via `Array1::Range`.
-    return i < num_elements
-               ? (indexes_data[i] == -1 ? num_buckets : indexes_data[i])
-               : 0;
+    //
+    // -1 is the largest unsigned integer, so it is OK to return -1.
+    return indexes_data[i];
   };
 
   Array1<int32_t> keys = Range(context, num_elements, 0);
-  MultiSplit(context, num_elements,
-             num_buckets + 1,  // +1 as the last bucket is for -1
-             bucket_mapping, reinterpret_cast<const uint32_t *>(keys.Data()),
+  MultiSplit(context, num_elements, num_buckets, bucket_mapping,
+             reinterpret_cast<const uint32_t *>(keys.Data()),
              reinterpret_cast<const uint32_t *>(src_copy_data),
              reinterpret_cast<uint32_t *>(keys.Data()),
              reinterpret_cast<uint32_t *>(src_copy_data));
