@@ -7,9 +7,12 @@
 
 #include <vector>
 
+#include "k2/csrc/cudpp/cudpp.h"
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
+#include "k2/csrc/ragged.h"
+#include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
@@ -290,11 +293,94 @@ Tensor Index(Tensor &src, Array1<int32_t> &indexes,
 
 template <typename T>
 static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
+                           int32_t src_dim, const int32_t *indexes_data,
+                           int32_t dest_dim, T *dest_data) {
+  // Note: we do not use static_assert here since T may be double
+  // at compile time.
+  //
+  // This function will never be called with T==double
+  // at runtime.
+  K2_CHECK_EQ(sizeof(T), sizeof(uint32_t));
+  K2_CHECK_EQ(context->GetDeviceType(), kCuda);
+  int32_t num_buckets = dest_dim;
+  int32_t num_elements = src_dim;
+
+  Array1<int32_t> row_splits(context, num_buckets + 1);
+  Array1<int32_t> histogram = row_splits.Range(0, num_buckets);
+
+  std::size_t temp_storage_bytes = 0;
+
+  // -1 is ignored in computing histogram
+  K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
+      nullptr, temp_storage_bytes,
+      reinterpret_cast<const uint32_t *>(indexes_data), histogram.Data(),
+      histogram.Dim() + 1, 0, histogram.Dim(), src_dim,
+      context->GetCudaStream()));
+
+  Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
+  K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
+      d_temp_storage.Data(), temp_storage_bytes,
+      reinterpret_cast<const uint32_t *>(indexes_data), histogram.Data(),
+      histogram.Dim() + 1, 0, histogram.Dim(), src_dim,
+      context->GetCudaStream()));
+
+  ExclusiveSum(histogram, &row_splits);
+
+  // we need a copy of `src_data` as it will be changed in MultiSplit.
+  Array1<T> src_copy(context, src_dim);
+  context->CopyDataTo(sizeof(T) * src_dim, src_data, context, src_copy.Data());
+  T *src_copy_data = src_copy.Data();
+
+  auto bucket_mapping = [indexes_data, num_elements,
+                         num_buckets] __device__(uint32_t i) -> uint32_t {
+    // src_data entries belonging to -1 are placed into the last bucket
+    // and is going to be ignored later via `Array1::Range`.
+    return i < num_elements
+               ? (indexes_data[i] == -1 ? num_buckets : indexes_data[i])
+               : 0;
+  };
+
+  CUDPPConfiguration config;
+  config.options = CUDPP_OPTION_KEY_VALUE_PAIRS;
+  config.bucket_mapper = CUDPP_CUSTOM_BUCKET_MAPPER;
+  config.context = context;
+
+  CUDPPMultiSplitPlan plan(config, num_elements, num_buckets);
+
+  Array1<int32_t> keys = Range(context, num_elements, 0);
+  cudppMultiSplitCustomBucketMapper(
+      &plan, reinterpret_cast<uint32_t *>(keys.Data()),
+      reinterpret_cast<uint32_t *>(src_copy_data), num_elements,
+      num_buckets + 1, bucket_mapping);  // +1 as the last bucket is for -1
+
+  RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
+  // Use `Range` to discard entries belonging to -1
+  Ragged<T> ragged(shape, src_copy.Range(0, shape.NumElements()));
+  K2_CHECK_EQ(ragged.TotSize(0), dest_dim);
+
+  Array1<T> tmp_out(context, dest_dim);
+  SumPerSublist<T>(ragged, T(0), &tmp_out);
+  const T *tmp_out_data = tmp_out.Data();
+  auto lambda_add = [=] __device__(int32_t i) {
+    dest_data[i] += tmp_out_data[i];
+  };
+  Eval(context, dest_dim, lambda_add);
+}
+
+template <typename T>
+static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
                            int32_t src_dim, int32_t src_stride,
                            const int32_t *indexes_data, bool allow_minus_one,
                            int32_t dest_dim, int32_t dest_stride,
                            T *dest_data) {
   if (allow_minus_one) {
+    if (sizeof(T) == sizeof(uint32_t) && src_stride == 1 && dest_stride == 1 &&
+        context->GetDeviceType() == kCuda) {
+      // use MultiSplit from CUDPP
+      IndexAdd1DImpl(context, src_data, src_dim, indexes_data, dest_dim,
+                     dest_data);
+      return;
+    }
     K2_EVAL(
         context, src_dim, lambda_add, (int32_t i)->void {
           int32_t index = indexes_data[i];

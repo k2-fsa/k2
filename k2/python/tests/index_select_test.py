@@ -164,9 +164,9 @@ class TestIndexSelect(unittest.TestCase):
         if torch.cuda.is_available():
             devices.append(torch.device('cuda', 0))
         for device in devices:
-            num_rows = torch.randint(1, 2000, size=(1,)).item()
+            num_rows = torch.randint(20, 2000, size=(1,)).item()
             num_cols = torch.randint(1, 2000, size=(1,)).item()
-            stride = torch.randint(2, num_rows // 10, size=(1,)).item()
+            stride = torch.randint(2, num_rows // 10 + 1, size=(1,)).item()
             a = torch.randint(-1000,
                               1000,
                               size=(num_rows, num_cols),
