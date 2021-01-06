@@ -67,65 +67,6 @@ class RaggedShapeOpsSuiteTest : public ::testing::Test {
   RaggedShape random_shape_;
 };
 
-TEST(RaggedShapeOpsTest, CoveringShape) {
-  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    {
-      // simple case
-      RaggedShape shape1 = RaggedShape("[ [ x x ] [ x ] [] ]").To(c),
-                  shape2 = RaggedShape("[ [ x] [ x x x ] [] ]").To(c),
-                  shape3 = RaggedShape("[ [ ] [ x x ] [] ]").To(c);
-
-      RaggedShape expected = RaggedShape("[ [x x] [x x x] [] ]").To(c);
-      RaggedShape *srcs[] = {&shape1, &shape2, &shape3};
-      RaggedShape ans = CoveringShape(3, srcs);
-      EXPECT_TRUE(Equal(expected, ans));
-    }
-    {
-      // another simple case: only one src
-      RaggedShape shape1 = RaggedShape("[ [ x x ] [ x ] [] ]").To(c);
-      RaggedShape *srcs[] = {&shape1};
-      RaggedShape ans = CoveringShape(1, srcs);
-      EXPECT_TRUE(Equal(shape1, ans));
-    }
-    {
-      // random case
-      for (int32_t i = 0; i != 2; ++i) {
-        int32_t num_shape = RandInt(1, 100);
-        int32_t dim0 = RandInt(1, 1000);
-        std::vector<RaggedShape> shape_vec(num_shape);
-        std::vector<RaggedShape *> shapes(num_shape);
-        for (int32_t j = 0; j != num_shape; ++j) {
-          Array1<int32_t> row_sizes =
-              RandUniformArray1<int32_t>(c, dim0 + 1, 0, 100);
-          ExclusiveSum(row_sizes, &row_sizes);
-          shape_vec[j] = RaggedShape2(&row_sizes, nullptr, -1);
-          ASSERT_TRUE(shape_vec[j].Context()->IsCompatible(*c));
-          ASSERT_EQ(shape_vec[j].Dim0(), dim0);
-          shapes[j] = &shape_vec[j];
-        }
-        RaggedShape ans = CoveringShape(num_shape, shapes.data());
-        // check ans
-        ASSERT_EQ(ans.NumAxes(), 2);
-        ASSERT_EQ(ans.Dim0(), dim0);
-        ASSERT_TRUE(ans.Context()->IsCompatible(*c));
-        ContextPtr cpu = GetCpuContext();
-        ans = ans.To(cpu);
-        for (int32_t j = 0; j != num_shape; ++j)
-          shape_vec[j] = shape_vec[j].To(cpu);
-        for (int32_t d = 0; d != dim0; ++d) {
-          int32_t max_row_size = 0;
-          for (int32_t j = 0; j != num_shape; ++j)
-            max_row_size = std::max(
-                shape_vec[j].RowSplits(1)[d + 1] - shape_vec[j].RowSplits(1)[d],
-                max_row_size);
-          EXPECT_EQ(max_row_size,
-                    ans.RowSplits(1)[d + 1] - ans.RowSplits(1)[d]);
-        }
-      }
-    }
-  }
-}
-
 TEST(RaggedShapeTest, TestConstructFromString) {
   RaggedShape rs(" [ [ x x ] [x] ]");
   Array1<int32_t> row_splits1(GetCpuContext(), std::vector<int32_t>{0, 2, 3});
@@ -2399,6 +2340,107 @@ TEST(RaggedTest, IndexRaggedRagged) {
 
     EXPECT_EQ(true, Equal(Index(s, r, false), sr1));
     EXPECT_EQ(true, Equal(Index(s, r, true), sr2));
+  }
+}
+
+TEST(RaggedShapeOpsTest, CoveringShape) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // simple case
+      RaggedShape shape1 = RaggedShape("[ [ x x ] [] [ x ] ]").To(c),
+                  shape2 = RaggedShape("[ [ x] [] [ x x x ] ]").To(c),
+                  shape3 = RaggedShape("[ [] [] [ x x ] ]").To(c);
+
+      RaggedShape expected = RaggedShape("[ [x x] [] [x x x] ]").To(c);
+      RaggedShape *srcs[] = {&shape1, &shape2, &shape3};
+      RaggedShape ans = CoveringShape(3, srcs);
+      EXPECT_TRUE(Equal(expected, ans));
+
+      // test CoveringShapeForwardMap
+      {
+        Array1<int32_t> elem_map = CoveringShapeForwardMap(shape1, ans);
+        std::vector<int32_t> expected_map = {0, 1, 2, -1, -1};
+        CheckArrayData(elem_map, expected_map);
+      }
+      {
+        Array1<int32_t> elem_map = CoveringShapeForwardMap(shape2, ans);
+        std::vector<int32_t> expected_map = {0, -1, 1, 2, 3};
+        CheckArrayData(elem_map, expected_map);
+      }
+      {
+        Array1<int32_t> elem_map = CoveringShapeForwardMap(shape3, ans);
+        std::vector<int32_t> expected_map = {-1, -1, 0, 1, -1};
+        CheckArrayData(elem_map, expected_map);
+      }
+    }
+    {
+      // another simple case: only one src
+      RaggedShape shape1 = RaggedShape("[ [ x x ] [ x ] [] ]").To(c);
+      RaggedShape *srcs[] = {&shape1};
+      RaggedShape ans = CoveringShape(1, srcs);
+      EXPECT_TRUE(Equal(shape1, ans));
+
+      // test CoveringShapeForwardMap
+      Array1<int32_t> elem_map = CoveringShapeForwardMap(shape1, ans);
+      std::vector<int32_t> expected_map = {0, 1, 2};
+      CheckArrayData(elem_map, expected_map);
+    }
+    {
+      // random case
+      for (int32_t i = 0; i != 1; ++i) {
+        int32_t num_shape = RandInt(1, 100);
+        int32_t dim0 = RandInt(1, 1000);
+        std::vector<RaggedShape> shape_vec(num_shape);
+        std::vector<RaggedShape *> shapes(num_shape);
+        for (int32_t j = 0; j != num_shape; ++j) {
+          Array1<int32_t> row_sizes =
+              RandUniformArray1<int32_t>(c, dim0 + 1, 0, 100);
+          ExclusiveSum(row_sizes, &row_sizes);
+          shape_vec[j] = RaggedShape2(&row_sizes, nullptr, -1);
+          ASSERT_TRUE(shape_vec[j].Context()->IsCompatible(*c));
+          ASSERT_EQ(shape_vec[j].Dim0(), dim0);
+          shapes[j] = &shape_vec[j];
+        }
+        RaggedShape ans = CoveringShape(num_shape, shapes.data());
+        std::vector<Array1<int32_t>> elem_map(num_shape);
+        for (int32_t j = 0; j != num_shape; ++j) {
+          elem_map[j] = CoveringShapeForwardMap(shape_vec[j], ans);
+        }
+        // check ans
+        ASSERT_EQ(ans.NumAxes(), 2);
+        ASSERT_EQ(ans.Dim0(), dim0);
+        ASSERT_TRUE(ans.Context()->IsCompatible(*c));
+        ContextPtr cpu = GetCpuContext();
+        ans = ans.To(cpu);
+        for (int32_t j = 0; j != num_shape; ++j)
+          shape_vec[j] = shape_vec[j].To(cpu);
+        for (int32_t d = 0; d != dim0; ++d) {
+          int32_t max_row_size = 0;
+          for (int32_t j = 0; j != num_shape; ++j)
+            max_row_size = std::max(
+                shape_vec[j].RowSplits(1)[d + 1] - shape_vec[j].RowSplits(1)[d],
+                max_row_size);
+          EXPECT_EQ(max_row_size,
+                    ans.RowSplits(1)[d + 1] - ans.RowSplits(1)[d]);
+        }
+
+        // test CoveringShapeForwardMap
+        for (int32_t j = 0; j != num_shape; ++j) {
+          Array1<int32_t> cur_elem_map = elem_map[j].To(cpu);
+          ASSERT_EQ(cur_elem_map.Dim(), ans.NumElements());
+          int32_t n = 0;
+          for (RaggedShapeIndexIterator ans_iter = ans.Iterator();
+               !ans_iter.Done(); ans_iter.Next()) {
+            const std::vector<int32_t> &ans_indexes = ans_iter.Value();
+            int32_t src_shape_linear_index = cur_elem_map[n];
+            if (src_shape_linear_index != -1) {
+              EXPECT_EQ(src_shape_linear_index, shape_vec[j][ans_indexes]);
+            }
+            ++n;
+          }
+        }
+      }
+    }
   }
 }
 

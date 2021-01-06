@@ -1775,4 +1775,39 @@ RaggedShape CoveringShape(int32_t num_srcs, RaggedShape **srcs) {
   return RaggedShape2(&ans_row_splits, nullptr, -1);
 }
 
+Array1<int32_t> CoveringShapeForwardMap(RaggedShape &src,
+                                        RaggedShape &covering) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(src.NumAxes(), 2);
+  K2_CHECK_EQ(covering.NumAxes(), 2);
+  K2_CHECK_EQ(src.Dim0(), covering.Dim0());
+  int32_t num_elems = covering.NumElements();
+  K2_CHECK_GE(num_elems, src.NumElements());
+  ContextPtr c = GetContext(src, covering);
+
+  Array1<int32_t> ans(c, num_elems);
+  int32_t *ans_data = ans.Data();
+  const int32_t *covering_row_splits_data = covering.RowSplits(1).Data(),
+                *covering_row_ids_data = covering.RowIds(1).Data(),
+                *src_row_splits_data = src.RowSplits(1).Data();
+  K2_EVAL(
+      c, num_elems, lambda_set_value, (int32_t covering_idx01)->void {
+        int32_t covering_idx0 = covering_row_ids_data[covering_idx01],
+                covering_idx0x = covering_row_splits_data[covering_idx0],
+                covering_idx1 = covering_idx01 - covering_idx0x;
+        // src and covering has the same dim0
+        int32_t src_idx0x = src_row_splits_data[covering_idx0],
+                src_cur_row_size =
+                    src_row_splits_data[covering_idx0 + 1] - src_idx0x;
+        K2_DCHECK_GE(
+            covering_row_splits_data[covering_idx0 + 1] - covering_idx0x,
+            src_cur_row_size);
+        if (covering_idx1 >= src_cur_row_size)
+          ans_data[covering_idx01] = -1;
+        else
+          ans_data[covering_idx01] = src_idx0x + covering_idx1;  // src_idx01
+      });
+  return ans;
+}
+
 }  // namespace k2
