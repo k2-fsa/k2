@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#include "k2/csrc/cudpp/cudpp.h"
+#include "k2/csrc/cudpp/multisplit.h"
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
@@ -340,18 +340,13 @@ static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
                : 0;
   };
 
-  CUDPPConfiguration config;
-  config.options = CUDPP_OPTION_KEY_VALUE_PAIRS;
-  config.bucket_mapper = CUDPP_CUSTOM_BUCKET_MAPPER;
-  config.context = context;
-
-  CUDPPMultiSplitPlan plan(config, num_elements, num_buckets);
-
   Array1<int32_t> keys = Range(context, num_elements, 0);
-  cudppMultiSplitCustomBucketMapper(
-      &plan, reinterpret_cast<uint32_t *>(keys.Data()),
-      reinterpret_cast<uint32_t *>(src_copy_data), num_elements,
-      num_buckets + 1, bucket_mapping);  // +1 as the last bucket is for -1
+  MultiSplit(context, num_elements,
+             num_buckets + 1,  // +1 as the last bucket is for -1
+             bucket_mapping, reinterpret_cast<const uint32_t *>(keys.Data()),
+             reinterpret_cast<const uint32_t *>(src_copy_data),
+             reinterpret_cast<uint32_t *>(keys.Data()),
+             reinterpret_cast<uint32_t *>(src_copy_data));
 
   RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
   // Use `Range` to discard entries belonging to -1

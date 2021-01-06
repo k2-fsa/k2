@@ -52,6 +52,7 @@ set(context_srcs
   #
   cudpp/cudpp_plan.cu
   cudpp/multisplit_app.cu
+  cudpp/multisplit.cu
 )
 
 if(K2_USE_PYTORCH)
