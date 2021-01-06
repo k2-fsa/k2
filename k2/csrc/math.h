@@ -124,6 +124,10 @@ inline std::istream &operator >>(std::istream &is, InputFixer<double> &f) {
   return is;
 }
 
+// Return the seed that can be used for random generators.
+// It reads the environment variable to get the seed.
+int32_t GetSeed();
+
 
 
 }  // namespace k2

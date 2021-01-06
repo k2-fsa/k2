@@ -50,7 +50,7 @@ int32_t RandInt(int32_t min, int32_t max) {
   K2_CHECK_GE(max, min);
   // declare as static intentionally here to make it constructed only once and
   // retain its state between calls
-  static RandIntGenerator geneartor;
+  static RandIntGenerator geneartor(GetSeed());
   return geneartor(min, max);
 }
 
@@ -59,8 +59,15 @@ int32_t RandInt(int32_t min, int32_t max) {
 // we aren't relying on any exact properties.
 int32_t RandIntGeometric(int32_t min, int32_t max) {
   NVTX_RANGE(K2_FUNC);
-  static RandIntGeometricGenerator geneartor;
+  static RandIntGeometricGenerator geneartor(GetSeed());
   return geneartor(min, max);
+}
+
+int32_t GetSeed() {
+  static const char *seed = std::getenv("K2_SEED");
+  if (seed == nullptr) return 0;
+
+  return atoi(seed);  // 0 is returned if K2_SEED is not a numeric string.
 }
 
 namespace internal {

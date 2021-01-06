@@ -16,6 +16,7 @@
 #include "k2/csrc/benchmark/benchmark.h"
 #include "k2/csrc/benchmark/helper_cuda.h"
 #include "k2/csrc/log.h"
+#include "k2/csrc/math.h"
 #include "k2/csrc/version.h"
 
 namespace k2 {
@@ -156,13 +157,6 @@ std::string GetCurrentDateTime() {
   return std::string(kPrefix) + std::ctime(&t);
 }
 
-int32_t GetSeed() {
-  static const char *seed = std::getenv("K2_SEED");
-  if (seed == nullptr) return 0;
-
-  return atoi(seed);  // 0 is returned if K2_SEED is not a numeric string.
-}
-
 void PrintEnvironmentInfo() {
   std::ostringstream os;
   os << GetCurrentDateTime();
@@ -183,6 +177,7 @@ void PrintEnvironmentInfo() {
      << "cuda device sync enabled: " << internal::EnableCudaDeviceSync()
      << "\n";
   os << kPrefix << "Checks disabled: " << internal::DisableChecks() << "\n";
+  os << kPrefix << "Seed: " << GetSeed() << "\n";
 
   // print it to stderr so that it can be redirected
   std::cerr << os.str() << "\n";
