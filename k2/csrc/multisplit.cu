@@ -6,6 +6,8 @@
  * https://github.com/cudpp/cudpp/blob/master/src/cudpp/kernel/multisplit_kernel.cuh
  */
 
+#include "k2/csrc/multisplit.h"
+
 namespace k2 {
 
 __global__ void PackingKeyValuePairs(int32_t num_elements,
@@ -32,11 +34,9 @@ __global__ void UnpackingKeyValuePairs(int32_t num_elements,
 
   uint64_t my_packed = packed[my_id];
 
-  if (out_key != nullptr)
-    out_key[my_id] = static_cast<uint32_t>(my_packed >> 32);
+  out_key[my_id] = static_cast<uint32_t>(my_packed >> 32);
 
-  if (out_value != nullptr)
-    out_value[my_id] = static_cast<uint32_t>(my_packed & 0x00000000ffffffff);
+  out_value[my_id] = static_cast<uint32_t>(my_packed & 0x00000000ffffffff);
 }
 
 }  // namespace k2

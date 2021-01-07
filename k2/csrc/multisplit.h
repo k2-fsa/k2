@@ -93,8 +93,8 @@ static __global__ void MarkBinsGeneral(const uint32_t *elements,
  *                          that `in_keys[i]` belongs to.
  * @param [in] in_keys      Pointer to the input keys array.
  * @param [in] in_values    Pointer to the input values array.
- * @param [in] out_keys     Pointer to the output keys array. If not NULL,
- *                          it will contain a sorted version of `in_keys`. The
+ * @param [in] out_keys     Pointer to the output keys array.
+ *                          It will contain a sorted version of `in_keys`. The
  *                          sort is performed according to the bucket
  *                          information of the input elements and it is sorted
  *                          in ascending order.
@@ -108,6 +108,11 @@ void MultiSplitKeyValuePairs(ContextPtr context, int32_t num_elements,
                              uint32_t *out_keys, uint32_t *out_values) {
   K2_CHECK_GT(num_elements, 0);
   K2_CHECK_GT(num_buckets, 0);
+  K2_CHECK_NE(in_keys, out_keys);
+  K2_CHECK_NE(in_values, out_values);
+  K2_CHECK_NE(out_keys, nullptr);
+  K2_CHECK_NE(out_values, nullptr);
+
   int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
   cudaStream_t stream = context->GetCudaStream();
 
@@ -115,38 +120,50 @@ void MultiSplitKeyValuePairs(ContextPtr context, int32_t num_elements,
   int32_t num_threads = kMultiSplitNumWarps * 32;
   int32_t num_blocks = (num_elements + num_threads - 1) / num_threads;
 
-  Array1<uint32_t> d_mask(context, num_elements, 0);
+  Array1<uint32_t> d_mask;
   const uint32_t *mask_data = in_keys;
 
   if (bucket_mapping_func != nullptr) {
+    d_mask = Array1<uint32_t>(context, num_elements);
     K2_CUDA_SAFE_CALL(MarkBinsGeneral<<<num_blocks, num_threads, 0, stream>>>(
         in_keys, num_elements, *bucket_mapping_func, d_mask.Data()));
     mask_data = d_mask.Data();
+
+    Array1<uint64_t> d_key_value_pairs(context, num_elements);
+    K2_CUDA_SAFE_CALL(
+        PackingKeyValuePairs<<<num_blocks, num_threads, 0, stream>>>(
+            num_elements, in_keys, in_values, d_key_value_pairs.Data()));
+
+    Array1<uint32_t> d_out(context, num_elements);
+    size_t temp_storage_bytes = 0;
+
+    K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+        nullptr, temp_storage_bytes, mask_data, d_out.Data(),
+        d_key_value_pairs.Data(), d_key_value_pairs.Data(), num_elements, 0,
+        log_buckets, stream));
+
+    Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
+
+    K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+        d_temp_storage.Data(), temp_storage_bytes, mask_data, d_out.Data(),
+        d_key_value_pairs.Data(), d_key_value_pairs.Data(), num_elements, 0,
+        log_buckets, stream));
+
+    K2_CUDA_SAFE_CALL(
+        UnpackingKeyValuePairs<<<num_blocks, num_threads, 0, stream>>>(
+            num_elements, d_key_value_pairs.Data(), out_keys, out_values));
+    return;
   }
 
-  Array1<uint64_t> d_key_value_pairs(context, num_elements);
-  K2_CUDA_SAFE_CALL(
-      PackingKeyValuePairs<<<num_blocks, num_threads, 0, stream>>>(
-          num_elements, in_keys, in_values, d_key_value_pairs.Data()));
-
-  Array1<uint32_t> d_out(context, num_elements, 0);
   size_t temp_storage_bytes = 0;
-
   K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
-      nullptr, temp_storage_bytes, mask_data, d_out.Data(),
-      d_key_value_pairs.Data(), d_key_value_pairs.Data(), num_elements, 0,
-      log_buckets, stream));
+      nullptr, temp_storage_bytes, in_keys, out_keys, in_values, out_values,
+      num_elements, 0, log_buckets, stream));
 
   Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
-
   K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
-      d_temp_storage.Data(), temp_storage_bytes, mask_data, d_out.Data(),
-      d_key_value_pairs.Data(), d_key_value_pairs.Data(), num_elements, 0,
-      log_buckets, stream));
-
-  K2_CUDA_SAFE_CALL(
-      UnpackingKeyValuePairs<<<num_blocks, num_threads, 0, stream>>>(
-          num_elements, d_key_value_pairs.Data(), out_keys, out_values));
+      d_temp_storage.Data(), temp_storage_bytes, in_keys, out_keys, in_values,
+      out_values, num_elements, 0, log_buckets, stream));
 }
 
 // See the doc for `MultiSplitKeyValuePairs`.
@@ -157,6 +174,8 @@ void MultiSplitKeysOnly(ContextPtr context, int32_t num_elements,
                         const uint32_t *in_keys, uint32_t *out_keys) {
   K2_CHECK_GT(num_elements, 0);
   K2_CHECK_GT(num_buckets, 0);
+  K2_CHECK_NE(in_keys, out_keys);
+
   int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
   cudaStream_t stream = context->GetCudaStream();
 
@@ -164,26 +183,38 @@ void MultiSplitKeysOnly(ContextPtr context, int32_t num_elements,
   int32_t num_threads = kMultiSplitNumWarps * 32;
   int32_t num_blocks = (num_elements + num_threads - 1) / num_threads;
 
-  Array1<uint32_t> d_mask(context, num_elements, 0);
+  Array1<uint32_t> d_mask;
   const uint32_t *mask_data = in_keys;
 
   if (bucket_mapping_func != nullptr) {
+    d_mask = Array1<uint32_t>(context, num_elements);
     K2_CUDA_SAFE_CALL(MarkBinsGeneral<<<num_blocks, num_threads, 0, stream>>>(
         in_keys, num_elements, *bucket_mapping_func, d_mask.Data()));
     mask_data = d_mask.Data();
+
+    Array1<uint32_t> d_out(context, num_elements);
+    size_t temp_storage_bytes = 0;
+
+    K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+        nullptr, temp_storage_bytes, mask_data, d_out.Data(), in_keys, out_keys,
+        num_elements, 0, log_buckets, stream));
+
+    Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
+    K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+        d_temp_storage.Data(), temp_storage_bytes, mask_data, d_out.Data(),
+        in_keys, out_keys, num_elements, 0, log_buckets, stream));
+    return;
   }
 
-  Array1<uint32_t> d_out(context, num_elements, 0);
   size_t temp_storage_bytes = 0;
-
-  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
-      nullptr, temp_storage_bytes, mask_data, d_out.Data(), in_keys, out_keys,
-      num_elements, 0, log_buckets, stream));
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortKeys(
+      nullptr, temp_storage_bytes, in_keys, out_keys, num_elements, 0,
+      log_buckets, stream));
 
   Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
-  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
-      d_temp_storage.Data(), temp_storage_bytes, mask_data, d_out.Data(),
-      in_keys, out_keys, num_elements, 0, log_buckets, stream));
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortKeys(
+      d_temp_storage.Data(), temp_storage_bytes, in_keys, out_keys,
+      num_elements, 0, log_buckets, stream));
 }
 
 }  // namespace k2
