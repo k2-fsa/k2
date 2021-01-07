@@ -243,6 +243,55 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
                int32_t properties_b, bool treat_epsilons_specially, FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
+
+
+/*
+  Device intersection code (does not treat epsilons specially, treats it as
+  any other symbol).
+
+  NOTE FOR THE FUTURE ON HANDLING EPSILONS (you may need to do some reading
+  about composition filters, as used in OpenFST, before understanding this
+  paragraph).  In future, in order to handle cases where epsilons need to
+  treated "as epsilons" on the device (GPU), we'll add code that can explicitly
+  add epsilon self-loops to the input FSAs, use IntersectDevice() on the FSAs
+  with those self-loops, and then, if composition filters are needed, add
+  filters that operate "after the fact", using the arc_map info (tracing back
+  all the way to the original inputs before adding epsilon self-loops) to
+  determine whether arcs were originally added as epsilon-self-loops.  I.e. we'd
+  compute C = A o B, create fake labels (like 0,1,2,3) for C that represent the
+  epsilon and epsilon-self-loop information of arcs, and compose C o F where F
+  is a small FSA with e.g. 2 or 3 states and 3 or 4 labels that represents the
+  epsilon filter.
+
+    @param [in] a_fsas  One of the two inputs to intersect.  Must be an FsaVec
+                      (a.NumAxes() == 3) even if it contains only one Fsa.
+    @param [in] properties_a  Properties of `a_fsas`.  Must include
+                      kFsaPropertiesValid.  Currently no other properties are
+                      required but in future we may require labels to be arc-sorted.
+    @param [in] b_fsas  Second of the inputs to intersect; must be an FsaVec.
+    @param [in] properties_b  Properties of `b_fsas`.  Must include
+                      kFsaPropertiesValid.
+    @param [in] b_to_a_map  Map from FSA-id in `b_fsas` to the corresponding
+                      FSA-id in `a_fsas` that we want to compose it with.
+                      E.g. might be the identity map, or all-to-zero, or
+                      something the user chooses.  Require `b_to_a_map.Dim() ==
+                      b_fsas.Dim0()` and `0 <= b_to_a_map[i] < a_fsas.Dim0()`.
+    @param [out,optional] arc_map_a   If not nullptr, will be set to a new
+                     array containing a map from arc-index in `out` to arc-index
+                     in `a_fsas`; elements will all be >= 0.
+    @param [out,optional] arc_map_b   If not nullptr, will be set to a new
+                     array containing a map from arc-index in `out` to arc-index
+                     in `b_fsas`; elements will all be >= 0.
+    @return  Returns composed FsaVec; will satisfy `ans.Dim0() == b_fsas.Dim0()`.
+ */
+FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a,
+                     FsaVec &b_fsas, int32_t properties_b,
+                     const Array1<int32_t> &b_to_a_map,
+                     FsaVec *out,
+                     Array1<int32_t> *arc_map_a,
+                     Array1<int32_t> *arc_map_b);
+
+
 /*
     Remove epsilons (symbol zero) in the input Fsas, it works for both
     Fsa and FsaVec.

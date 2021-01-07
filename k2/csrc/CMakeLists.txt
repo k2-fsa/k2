@@ -29,6 +29,7 @@ set(context_srcs
   algorithms.cu
   array_ops.cu
   intersect.cu
+  intersect_dense.cu
   intersect_pruned.cu
   top_sort.cu
   context.cu
