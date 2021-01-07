@@ -1144,6 +1144,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   if (device_type == kCpu) return GetTransposeReorderingCpu(src, num_cols);
 
   K2_CHECK_EQ(device_type, kCuda);
+  (void)GetTransposeReorderingThreeAxesCuda;  // remove compiler warnings
 
 #if 1
   const int32_t *values_data = src.values.Data();
