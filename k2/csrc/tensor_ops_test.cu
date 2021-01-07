@@ -13,35 +13,9 @@
 
 #include "gtest/gtest.h"
 #include "k2/csrc/tensor_ops.h"
+#include "k2/csrc/test_utils.h"
 
 namespace k2 {
-
-/* Return 1-D array filled with random values.
-
-   @param [in] context  The device context specifying where the returned
-                        array resides.
-   @param [in] allow_minus_one
-                        If true, the returned array will contain values
-                        in the range [-1, max_value]; [0, max_value] otherwise.
-   @param [in] dim        It specifies the length of the returned array.
-   @param [in] max_value  It specifies the maximum value the returned array can
-                          contain.
-
-   @return  Return a 1-D array with the given `dim`.
- */
-
-static Array1<int32_t> GenerateRandomIndexes(ContextPtr context,
-                                             bool allow_minus_one, int32_t dim,
-                                             int32_t max_value) {
-  std::vector<int32_t> indexes(dim);
-  int32_t start = allow_minus_one ? -1 : 0;
-  for (int32_t &i : indexes) {
-    int32_t tmp = RandInt(-max_value, max_value);
-    i = std::max(tmp, start);
-  }
-
-  return Array1<int32_t>(context, indexes);
-}
 
 /* Return a 1-D tensor with random entries.
 

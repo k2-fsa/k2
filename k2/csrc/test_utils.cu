@@ -76,4 +76,16 @@ Fsa GetRandFsa() {
   return ans;
 }
 
+Array1<int32_t> GenerateRandomIndexes(ContextPtr context, bool allow_minus_one,
+                                      int32_t dim, int32_t max_value) {
+  std::vector<int32_t> indexes(dim);
+  int32_t start = allow_minus_one ? -1 : 0;
+  for (int32_t &i : indexes) {
+    int32_t tmp = RandInt(-max_value, max_value);
+    i = std::max(tmp, start);
+  }
+
+  return Array1<int32_t>(context, indexes);
+}
+
 }  // namespace k2
