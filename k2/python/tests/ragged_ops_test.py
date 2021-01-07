@@ -10,6 +10,7 @@
 
 import unittest
 
+import _k2
 import k2
 import numpy as np
 import torch
@@ -79,18 +80,18 @@ class TestRaggedOps(unittest.TestCase):
             [ [1 -1 0] [2 10] [] [3] [5 8] ]
         '''
         src = k2.ragged.RaggedFloat(s)
-        saved = src.scores.clone().detach()
+        saved = src.values.clone().detach()
         saved.requires_grad_(True)
         src.requires_grad_(True)
 
         ans = k2.ragged.normalize_scores(src)
 
-        scale = torch.arange(ans.scores.numel())
+        scale = torch.arange(ans.values.numel())
 
         # the stride of grad is not 0
-        (ans.scores * scale).sum().backward()
+        (ans.values * scale).sum().backward()
 
-        expected = saved.new_zeros(*ans.scores.shape)
+        expected = saved.new_zeros(*ans.values.shape)
 
         normalizer = saved[:3].exp().sum().log()
         expected[:3] = saved[:3] - normalizer
@@ -103,7 +104,7 @@ class TestRaggedOps(unittest.TestCase):
         normalizer = saved[6:8].exp().sum().log()
         expected[6:8] = saved[6:8] - normalizer
 
-        self.assertTrue(torch.allclose(expected, ans.scores))
+        self.assertTrue(torch.allclose(expected, ans.values))
         (expected * scale).sum().backward()
 
         self.assertTrue(torch.allclose(saved.grad, src.grad))
@@ -113,16 +114,16 @@ class TestRaggedOps(unittest.TestCase):
             [ [1 3 5] [2 -1] [] [3] [5 2] ]
         '''
         src = k2.ragged.RaggedFloat(s)
-        saved = src.scores.clone().detach()
+        saved = src.values.clone().detach()
         saved.requires_grad_(True)
         src.requires_grad_(True)
 
         ans = k2.ragged.normalize_scores(src)
 
         # the stride of grad is 0
-        ans.scores.sum().backward()
+        ans.values.sum().backward()
 
-        expected = saved.new_zeros(*ans.scores.shape)
+        expected = saved.new_zeros(*ans.values.shape)
 
         normalizer = saved[:3].exp().sum().log()
         expected[:3] = saved[:3] - normalizer
@@ -135,10 +136,69 @@ class TestRaggedOps(unittest.TestCase):
         normalizer = saved[6:8].exp().sum().log()
         expected[6:8] = saved[6:8] - normalizer
 
-        self.assertTrue(torch.allclose(expected, ans.scores))
+        self.assertTrue(torch.allclose(expected, ans.values))
         expected.sum().backward()
 
         self.assertTrue(torch.allclose(saved.grad, src.grad))
+
+    def test_normalize_scores_from_shape(self):
+        s = '''
+            0 1 1 0.
+            0 1 2 0.
+            0 1 3 0.
+            1 2 4 0.
+            1 2 5 0.
+            2 3 -1 0.
+            3
+        '''
+        fsa = k2.Fsa.from_str(s)
+        scores = torch.arange(fsa.scores.numel(), dtype=torch.float32)
+        scores.requires_grad_(True)
+
+        ragged_scores = k2.ragged.RaggedFloat(fsa.arcs.shape(), scores)
+        assert ragged_scores.requires_grad is True
+
+        normalized_scores = k2.ragged.normalize_scores(ragged_scores)
+        assert normalized_scores.requires_grad is True
+
+        fsa.scores = normalized_scores.values
+        assert fsa.scores.requires_grad is True
+
+        # arcs leaving state 0
+        self.assertAlmostEqual(fsa.scores[:3].exp().sum().item(),
+                               1.0,
+                               places=6)
+
+        # arcs leaving state 1
+        self.assertAlmostEqual(fsa.scores[3:5].exp().sum().item(),
+                               1.0,
+                               places=6)
+
+        # arcs leaving state 2
+        self.assertAlmostEqual(fsa.scores[5].exp().sum().item(), 1.0, places=6)
+
+    def test_sum_per_sublist(self):
+        s = '''
+            0 1 1 0.
+            0 1 2 0.
+            0 1 3 0.
+            1 2 4 0.
+            1 2 5 0.
+            2 3 -1 0.
+            3
+        '''
+        fsa = k2.Fsa.from_str(s)
+        scores = torch.randn_like(fsa.scores)
+        fsa.set_scores_stochastic_(scores)
+        normalized_scores = k2.ragged.sum_per_sublist(
+            _k2.RaggedFloat(fsa.arcs.shape(), fsa.scores.exp()))
+        assert normalized_scores.numel() == fsa.arcs.dim0()
+
+        assert torch.allclose(normalized_scores[:-1],
+                              torch.ones(normalized_scores.numel() - 1))
+
+        # the final state has no leaving arcs
+        assert normalized_scores[-1].item() == 0
 
 
 if __name__ == '__main__':

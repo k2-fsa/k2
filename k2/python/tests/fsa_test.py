@@ -544,7 +544,8 @@ class TestFsa(unittest.TestCase):
             3
         '''
         fsa = k2.Fsa.from_str(s)
-        fsa.set_scores_stochastic_()
+        scores = torch.randn_like(fsa.scores)
+        fsa.set_scores_stochastic_(scores)
 
         # scores of state 0 should be normalized
         assert torch.allclose(fsa.scores[0:2].exp().sum(), torch.Tensor([1]))
@@ -601,7 +602,8 @@ class TestFsa(unittest.TestCase):
 
         # CAUTION: had we used fsa.scores = scores,
         # would we have `fsa.scores != fsa.arcs.values()[:, -1]`.
-        # That is, `fsa.scores` shares memory with `scores`, but not with fsa.arcs.values!
+        # That is, `fsa.scores` shares memory with `scores`,
+        # but not with fsa.arcs.values!
         assert _k2.as_float(fsa.arcs.values()[:, -1]).item() == 100
 
     def test_detach(self):

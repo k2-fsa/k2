@@ -1138,6 +1138,37 @@ Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes, bool remove_axis);
  */
 Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape);
 
+/*
+  Given a list of shapes with 2 axes and the same Dim0(), return the
+  smallest shape that 'covers' all of them, i.e. size the i'th sub-list of the
+  answer is the maximum of the sizes of the i'th sub-list of `srcs`
+    @param [in] num_srcs  Number of source shapes; must have 2 axes and
+                          `Dim0()` all equal
+    @param [in] srcs      Array of input shapes; inputs are `*(srcs[0])`,
+                          `*(srcs[1])` ...
+    @return      Returns shape with the same Dim0() as all the `srcs` and
+                 sub-list sizes equal to the maximum of those of the sources.
+*/
+RaggedShape CoveringShape(int32_t num_srcs, RaggedShape **srcs);
+
+/*
+   Returns an arc_map that says, for each element of `covering`, the
+   corresponding element of `src`, or -1 if there was no such element.
+    @param [in] src   Shape that was likely an input to `CoveringShape`,
+                      must have 2 axes.
+    @param [in] covering  Shape with 2 axes,
+                     `covering.Dim0()==src.Dim0()`, and sub-list sizes
+                     not less than the corresponding sub-list sizes of
+                     `src`.
+    @return  Returns an array with `Dim() == covering.NumElements()`,
+             containing, for each element of `covering`, either the
+             corresponding element of `src` or -1 if this was not
+             applicable.  E.g.  if src == [ [ x x ] [ x ] ] and
+             covering == [ [ x x x ] [x] ], would return [ 0 1 -1 2 ].
+*/
+Array1<int32_t> CoveringShapeForwardMap(RaggedShape &src,
+                                        RaggedShape &covering);
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_RAGGED_OPS_H_
