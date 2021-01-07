@@ -30,7 +30,7 @@ set(context_srcs
   array_ops.cu
   intersect.cu
   intersect_dense.cu
-  intersect_pruned.cu
+  intersect_dense_pruned.cu
   top_sort.cu
   context.cu
   dtype.cu

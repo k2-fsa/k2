@@ -124,15 +124,15 @@ class Hash {
     int32_t dim = data_.Dim(),
         num_value_bits = 64 - num_key_bits;
     const uint64_t *this_data = data_.Data();
-    uint64_t *new_data = new_hash.Data();
+    uint64_t *new_data = new_hash.data_.Data();
     size_t new_num_buckets_mask = ~static_cast<size_t>(new_num_buckets - 1),
-        new_bucket_num_bitsm1 = new_hash.bucket_num_bitsm1_;
+        new_buckets_num_bitsm1 = new_hash.buckets_num_bitsm1_;
 
     K2_EVAL(c, dim, lambda_copy_data, (int32_t i) -> void {
         uint64_t key_value = this_data[i];
         if (~key_value == 0) return;  // equals -1.. nothing there.
         uint64_t key = key_value >> num_value_bits,
-            leftover_index = 1 | (key >> new_bucket_num_bitsm1);
+            leftover_index = 1 | (key >> new_buckets_num_bitsm1);
         size_t cur_bucket = key & new_num_buckets_mask;
         while (1) {
           uint64_t assumed = ~((uint64_t)0),
@@ -165,9 +165,9 @@ class Hash {
     // constructor of Accessor is for use by class Hash, not by the user.
     Accessor(uint64_t *data,
              uint32_t num_buckets_mask,
-             int32_t bucket_num_bitsm1) :
+             int32_t buckets_num_bitsm1) :
         data_(data), num_buckets_mask_(num_buckets_mask),
-        bucket_num_bitsm1_(bucket_num_bitsm1) { }
+        buckets_num_bitsm1_(buckets_num_bitsm1) { }
 
     // Copy constructor
     Accessor(const Accessor &src) = default;
@@ -197,7 +197,7 @@ class Hash {
         uint64_t key, uint64_t value,
         uint64_t *old_value = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
-          leftover_index = 1 | (key >> bucket_num_bitsm1_);
+          leftover_index = 1 | (key >> buckets_num_bitsm1_);
       const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       const int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
 
@@ -258,7 +258,7 @@ class Hash {
       const int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
-           leftover_index = 1 | (key >> bucket_num_bitsm1_);
+           leftover_index = 1 | (key >> buckets_num_bitsm1_);
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
         if (~old_elem == 0) {
@@ -311,7 +311,7 @@ class Hash {
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
       const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       uint32_t cur_bucket = key & num_buckets_mask_,
-           leftover_index = 1 | (key >> bucket_num_bitsm1_);
+           leftover_index = 1 | (key >> buckets_num_bitsm1_);
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
         if (old_elem >> NUM_VALUE_BITS == key) {
@@ -330,25 +330,25 @@ class Hash {
     // num_buckets is a power of 2 so this can be used as a mask to get a number
     // modulo num_buckets.
     uint32_t num_buckets_mask_;
-    // A number satisfying num_buckets == 1 << (1+bucket_num_bitsm1_)
+    // A number satisfying num_buckets == 1 << (1+buckets_num_bitsm1_)
     // the number of bits in `num_buckets` minus one.
-    uint32_t bucket_num_bitsm1_;
+    uint32_t buckets_num_bitsm1_;
   };
 
 
   class GenericAccessor {
    public:
     // constructor of GenericAccessor is for use by class Hash, not by the user.
-    Accessor(uint32_t num_key_bits,
-             uint32_t bucket_num_bitsm1,
-             uint64_t *data,
-             uint32_t num_buckets_mask):
+    GenericAccessor(uint32_t num_key_bits,
+                    uint32_t buckets_num_bitsm1,
+                    uint64_t *data,
+                    uint32_t num_buckets_mask):
         num_value_bits_(64 - num_key_bits),
-        bucket_num_bitsm1_(bucket_num_bitsm1),
+        buckets_num_bitsm1_(buckets_num_bitsm1),
         data_(data), num_buckets_mask_(num_buckets_mask) { }
 
     // Copy constructor
-    Accessor(const Accessor &src) = default;
+    GenericAccessor(const GenericAccessor &src) = default;
 
    /*
     Try to insert pair (key,value) into hash.
@@ -375,7 +375,7 @@ class Hash {
         uint64_t key, uint64_t value,
         uint64_t *old_value = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
-           leftover_index = 1 | (key >> bucket_num_bitsm1_);
+           leftover_index = 1 | (key >> buckets_num_bitsm1_);
       const uint32_t num_value_bits = num_value_bits_,
           num_key_bits = 64 - num_value_bits;
       const int64_t VALUE_MASK = (uint64_t(1)<<num_value_bits)-1;
@@ -392,7 +392,7 @@ class Hash {
         }
         else if (~cur_elem == 0) {
           // we have a version of AtomicCAS that also works on host.
-          uint64_t old_elem = AtomicCAS((unsigned long long*)(new_data + cur_bucket),
+          uint64_t old_elem = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
                                         cur_elem, new_elem);
           if (old_elem == cur_elem) return true;  // Successfully inserted.
           cur_elem = old_elem;
@@ -433,12 +433,11 @@ class Hash {
     __forceinline__ __host__ __device__ bool Find(
         uint64_t key, uint64_t *value_out,
         uint64_t **key_value_location = nullptr) const {
-      const uint32_t num_value_bits = num_value_bits_,
-          num_key_bits = 64 - num_value_bits;
+      const uint32_t num_value_bits = num_value_bits_;
       const int64_t VALUE_MASK = (uint64_t(1)<<num_value_bits)-1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
-           leftover_index = 1 | (key >> bucket_num_bitsm1_);
+           leftover_index = 1 | (key >> buckets_num_bitsm1_);
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
         if (~old_elem == 0) {
@@ -489,7 +488,7 @@ class Hash {
     */
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
       uint32_t cur_bucket = key & num_buckets_mask_,
-           leftover_index = 1 | (key >> bucket_num_bitsm1_);
+           leftover_index = 1 | (key >> buckets_num_bitsm1_);
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
         if (old_elem >> num_value_bits_ == key) {
@@ -505,9 +504,9 @@ class Hash {
     // A number satisfying 0 < num_value_bits_ < 64; the number of bits
     // (out of 64) used for the value (rest are used for the key).
     uint32_t num_value_bits_;
-    // A number satisfying num_buckets == 1 << (1+bucket_num_bitsm1_)
+    // A number satisfying num_buckets == 1 << (1+buckets_num_bitsm1_)
     // the number of bits in `num_buckets` minus one.
-    uint32_t bucket_num_bitsm1_;
+    uint32_t buckets_num_bitsm1_;
     // pointer to data (it really contains struct Element)
     uint64_t *data_;
     // num_buckets_mask is num_buckets (i.e. size of `data_` array) minus one;
@@ -584,7 +583,7 @@ class Hash {
 
  private:
   Array1<uint64_t> data_;
-  // number satisfying data_.Dim() == 1 << (1+bucket_num_bitsm1_)
+  // number satisfying data_.Dim() == 1 << (1+buckets_num_bitsm1_)
   int32_t buckets_num_bitsm1_;
 };
 

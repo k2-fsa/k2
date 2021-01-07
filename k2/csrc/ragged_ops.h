@@ -781,9 +781,9 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
 
 /*
   This is a general method of creating higher-dimensional ragged shapes.
-     @param [in] a   RaggedShape describing the top level (first indexes)
+     @param [in] a   RaggedShape describing the top/first layers
                      of the returned shape
-     @param [in] b   RaggedShape describing the bottom level (later
+     @param [in] b   RaggedShape describing the bottom layers (later
                      indexes) of the returned shape.  We require
                      a.NumElements() == b.Dim0().
      @return     Returns the combined ragged shape.  Its number of axes
@@ -791,6 +791,22 @@ RaggedShape RaggedShape2(Array1<int32_t> *row_splits, Array1<int32_t> *row_ids,
                  axis of a and the first axis of b are combined).
  */
 RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b);
+
+/*  3-arg version of ComposeRaggedShapes,
+       @param [in] a  RaggedShape describing the top/first layers
+                     of the returned shape
+       @param [in] b  RaggedShape describing the intermediate layers
+                     of the returned shape, require b.Dim0() == a.NumElements()
+       @param [in] c  RaggedShape describing the lower/last layers
+                     of the returned shape, require c.Dim0() == b.NumElements()
+       @return Returns the combined ragged shape; its num-layers (==num-axes - 1)
+               will be the total of the num-layers of the sources.  Will share
+               memory with the inputs.
+*/
+RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b,
+                                const RaggedShape &c);
+
+
 
 /*
   Construct a RaggedShape with 3 axes.  For N=1 and 2 respectively:
@@ -1001,12 +1017,16 @@ bool Equal(const Ragged<T> &a, const Ragged<T> &b) {
                            Array1<int32_t> containing the indexes
                            into the elements of an array with shape
                            'src', that an array with shape 'ans'
-                           would have.  As in:
+                           would have (a new2old map).  As in:
                            `ans_values = src_values[*elem_indexes]`.
 
       @return Returns a ragged shape with
               `ans.NumAxes() == src.NumAxes()`
               and `ans.Dim0() == indexes.Dim()`.
+
+  NOET: if you are looking for something like ReorderRaggedShape(),
+  RenumberRaggedShape() or the like, this may be what you want.
+  (Reordering/renumbering is a special case of indexing)
 */
 RaggedShape Index(RaggedShape &src, const Array1<int32_t> &indexes,
                   Array1<int32_t> *elem_indexes = nullptr);

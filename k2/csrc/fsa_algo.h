@@ -160,16 +160,17 @@ void AddEpsilonSelfLoops(FsaOrVec &src, FsaOrVec *dest,
          @param[out] out Output vector of composed, pruned FSAs, with same
                          Dim0() as b_fsas.  Elements of it may be empty if the
                          composition was empty, either intrinsically or due to
-                         failure of pruned search.
+                         failure of pruned search.  All states in the output
+                         will be accessible and coaccessible, except for output
+                         FSAs that were empty (we include an initial and final
+                         state for those).
          @param[out] arc_map_a  Will be set to a vector with Dim() equal to
                          the number of arcs in `out`, whose elements contain
                          the corresponding arc_idx01 in a_fsas.
          @param[out] arc_map_b  Will be set to a vector with Dim() equal to
                          the number of arcs in `out`, whose elements contain
                          the corresponding arc-index in b_fsas; this arc-index
-                         is defined as the offset into b_fsas.scores, which is
-                         well defined if the shape is known because we require
-                         it to be contiguous.
+                         is the linear offset into b_fsas.scores.
 */
 void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                           float search_beam, float output_beam,
@@ -182,19 +183,42 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
 
    CAUTION: Unlike `IntersectDensePruned`, it requires that
    a_fsas.Dim0() == b_fsas.shape.Dim0().
+
+  This code is intended to run on GPU (but should also work on CPU).
+
+     @param[in] a_fsas   Input FSAs; must have 3 axes.
+     @param[in] b_fsas   Input dense FSAs that likely correspond to neural network
+                  outputs (see documentation in fsa.h).  Must satisfy
+                  b_fsas.shape.Dim0() == a_fsas.Dim0().
+     @param[in] output_beam   Beam with which we prune the output (analogous
+                  to lattice-beam in Kaldi), e.g. 8.  We discard arcs in
+                  the output that are not on a path that's within
+                 `output_beam` of the best path of the composed output.
+     @param[out] out Output vector of composed, pruned FSAs, with same
+                   Dim0() as a_fsas and b_fsas.  Elements of it may be
+                   empty if the composed results was empty.
+                   All states in the output will be accessible and coaccessible.
+     @param[out] arc_map_a  Will be set to a vector with Dim() equal to
+                   the number of arcs in `out`, whose elements contain
+                   the corresponding arc_idx01 in a_fsas.
+     @param[out] arc_map_b  Will be set to a vector with Dim() equal to
+                   the number of arcs in `out`, whose elements contain
+                   the corresponding arc-index in b_fsas; this arc-index
+                   is the linear offset into b_fsas.scores.
  */
 void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas, float output_beam,
                     FsaVec *out, Array1<int32_t> *arc_map_a,
                     Array1<int32_t> *arc_map_b);
 
 /*
-  This is 'normal' intersection (we would call this Compose() for FSTs, but
+  This is 'normal' intersection for CPU (we would call this Compose() for FSTs, but
   you can do that using Intersect(), by calling this and then Invert()
   (or just attaching the other aux_labels).
 
 
         @param [in] a_fsas  Fsa or FsaVec that is one of the arguments
-                           for composition (i.e. 2 or 3 axes)
+                           for composition (i.e. 2 or 3 axes).  Must be on
+                           CPU.
         @param [in] properties_a  properties for a_fsas. Will be computed
                            internally if its value is -1.
         @param [in] properties_b  properties for b_fsas. Will be computed
@@ -283,6 +307,12 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
                      array containing a map from arc-index in `out` to arc-index
                      in `b_fsas`; elements will all be >= 0.
     @return  Returns composed FsaVec; will satisfy `ans.Dim0() == b_fsas.Dim0()`.
+
+  CAUTION:
+    All states in the result will be accessible except possibly
+    the final-states; but they won't necessarily all be
+    coaccessible (i.e. be able to reach the end), so you may want to call
+    Connect() afterward if that matters to you.
  */
 FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a,
                      FsaVec &b_fsas, int32_t properties_b,

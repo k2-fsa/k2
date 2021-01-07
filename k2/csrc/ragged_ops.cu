@@ -144,13 +144,44 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
   K2_CHECK(IsCompatible(a, b));
   const auto &a_axes = a.Layers();
   const auto &b_axes = b.Layers();
-  std::vector<RaggedShapeLayer> axes(a_axes.size() + b_axes.size());
   std::size_t a_size = a_axes.size(), b_size = b_axes.size();
-  for (std::size_t i = 0; i < a_size; ++i) axes[i] = a_axes[i];
-  for (std::size_t i = 0; i < b_size; ++i) axes[i + a_size] = b_axes[i];
+  std::vector<RaggedShapeLayer> axes;
+  axes.reserve(a_size + b_size);
+  for (std::size_t i = 0; i < a_size; ++i) axes.emplace_back(a_axes[i]);
+  for (std::size_t i = 0; i < b_size; ++i) axes.emplace_back(b_axes[i]);
   bool validate = false;
   return RaggedShape(axes, validate);
 }
+
+
+RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b,
+                                const RaggedShape &c) {
+  NVTX_RANGE(K2_FUNC);
+  if (a.NumElements() != b.Dim0()) {
+    K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()
+                  << " vs. " << b.Dim0();
+  }
+  if (b.NumElements() != c.Dim0()) {
+    K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << b.NumElements()
+                  << " vs. " << c.Dim0();
+  }
+  K2_CHECK(IsCompatible(a, b));
+  K2_CHECK(IsCompatible(b, c));
+  const auto &a_axes = a.Layers();
+  const auto &b_axes = b.Layers();
+  const auto &c_axes = c.Layers();
+  std::size_t a_size = a_axes.size(),
+              b_size = b_axes.size(),
+              c_size = c_axes.size();
+  std::vector<RaggedShapeLayer> axes;
+  axes.reserve(a_size + b_size + c_size);
+  for (std::size_t i = 0; i < a_size; ++i) axes.emplace_back(a_axes[i]);
+  for (std::size_t i = 0; i < b_size; ++i) axes.emplace_back(b_axes[i]);
+  for (std::size_t i = 0; i < c_size; ++i) axes.emplace_back(c_axes[i]);
+  bool validate = false;
+  return RaggedShape(axes, validate);
+}
+
 
 RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
