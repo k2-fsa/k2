@@ -12,6 +12,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <vector>
 
@@ -1147,21 +1148,28 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   (void)GetTransposeReorderingThreeAxesCuda;  // remove compiler warnings
 
 #if 1
-  const int32_t *values_data = src.values.Data();
   int32_t num_buckets = num_cols;
   int32_t num_elements = src.values.Dim();
+  int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
 
+  Array1<int32_t> tmp_values(context, num_elements);
   Array1<int32_t> order = Range(context, num_elements, 0);
   Array1<int32_t> ans(context, num_elements);
 
-  auto bucket_mapping_lambda =
-      [values_data] __device__(uint32_t i) -> uint32_t {
-    return values_data[i];
-  };
+  cudaStream_t stream = context->GetCudaStream();
 
-  MultiSplitKeysOnly(context, num_elements, num_buckets, &bucket_mapping_lambda,
-                     reinterpret_cast<const uint32_t *>(order.Data()),
-                     reinterpret_cast<uint32_t *>(ans.Data()));
+  size_t temp_storage_bytes = 0;
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+      nullptr, temp_storage_bytes, src.values.Data(), tmp_values.Data(),
+      order.Data(), ans.Data(), num_elements, 0, log_buckets, stream));
+
+  Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
+
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+      d_temp_storage.Data(), temp_storage_bytes, src.values.Data(),
+      tmp_values.Data(), order.Data(), ans.Data(), num_elements, 0, log_buckets,
+      stream));
+
   return ans;
 #else
   if (src.NumAxes() == 3)

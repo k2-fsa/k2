@@ -6,8 +6,8 @@
  * https://github.com/cudpp/cudpp/blob/master/src/cudpp/app/multisplit_app.cu
  */
 
-#ifndef K2_CSRC_CUDPP_MULTISPLIT_H_
-#define K2_CSRC_CUDPP_MULTISPLIT_H_
+#ifndef K2_CSRC_MULTISPLIT_H_
+#define K2_CSRC_MULTISPLIT_H_
 
 #include <cmath>
 
@@ -220,4 +220,4 @@ void MultiSplitKeysOnly(ContextPtr context, int32_t num_elements,
 
 }  // namespace k2
 
-#endif  // K2_CSRC_CUDPP_MULTISPLIT_H_
+#endif  // K2_CSRC_MULTISPLIT_H_
