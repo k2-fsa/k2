@@ -24,8 +24,12 @@ __global__ void UnpackingKeyValuePairs(int32_t num_elements,
   if (my_id >= num_elements) return;
 
   uint64_t my_packed = packed[my_id];
-  out_value[my_id] = static_cast<uint32_t>(my_packed & 0x00000000ffffffff);
-  out_key[my_id] = static_cast<uint32_t>(my_packed >> 32);
+
+  if (out_key != nullptr)
+    out_key[my_id] = static_cast<uint32_t>(my_packed >> 32);
+
+  if (out_value != nullptr)
+    out_value[my_id] = static_cast<uint32_t>(my_packed & 0x00000000ffffffff);
 }
 
 }  // namespace k2

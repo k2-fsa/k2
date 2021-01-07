@@ -308,44 +308,31 @@ static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
   Array1<int32_t> row_splits(context, num_buckets + 1);
   Array1<int32_t> histogram = row_splits.Range(0, num_buckets);
 
+  cudaStream_t stream = context->GetCudaStream();
   std::size_t temp_storage_bytes = 0;
-
   // -1 is ignored in computing histogram
   K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
       nullptr, temp_storage_bytes,
       reinterpret_cast<const uint32_t *>(indexes_data), histogram.Data(),
-      histogram.Dim() + 1, 0, histogram.Dim(), src_dim,
-      context->GetCudaStream()));
+      histogram.Dim() + 1, 0, histogram.Dim(), src_dim, stream));
 
-  Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
-  K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
-      d_temp_storage.Data(), temp_storage_bytes,
-      reinterpret_cast<const uint32_t *>(indexes_data), histogram.Data(),
-      histogram.Dim() + 1, 0, histogram.Dim(), src_dim,
-      context->GetCudaStream()));
+  {
+    Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
+    K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
+        d_temp_storage.Data(), temp_storage_bytes,
+        reinterpret_cast<const uint32_t *>(indexes_data), histogram.Data(),
+        histogram.Dim() + 1, 0, histogram.Dim(), src_dim, stream));
+  }
 
   ExclusiveSum(histogram, &row_splits);
 
-  // we need a copy of `src_data` as it will be changed in MultiSplit.
   Array1<T> src_copy(context, src_dim);
-  context->CopyDataTo(sizeof(T) * src_dim, src_data, context, src_copy.Data());
-  T *src_copy_data = src_copy.Data();
 
-  auto bucket_mapping = [indexes_data, num_elements,
-                         num_buckets] __device__(uint32_t i) -> uint32_t {
-    // src_data entries belonging to -1 are placed into the last bucket
-    // and is going to be ignored later via `Array1::Range`.
-    //
-    // -1 is the largest unsigned integer, so it is OK to return -1.
-    return indexes_data[i];
-  };
-
-  Array1<int32_t> keys = Range(context, num_elements, 0);
+  uint32_t (*bucket_mapping)(uint32_t) = nullptr;
   MultiSplit(context, num_elements, num_buckets, bucket_mapping,
-             reinterpret_cast<const uint32_t *>(keys.Data()),
-             reinterpret_cast<const uint32_t *>(src_copy_data),
-             reinterpret_cast<uint32_t *>(keys.Data()),
-             reinterpret_cast<uint32_t *>(src_copy_data));
+             reinterpret_cast<const uint32_t *>(indexes_data),
+             reinterpret_cast<const uint32_t *>(src_data), nullptr,
+             reinterpret_cast<uint32_t *>(src_copy.Data()));
 
   RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
   // Use `Range` to discard entries belonging to -1
