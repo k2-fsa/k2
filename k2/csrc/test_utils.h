@@ -98,6 +98,22 @@ void CheckRowSplits(RaggedShape &shape,
 // Return a random acyclic FSA that is NOT topo sorted
 Fsa GetRandFsa();
 
+/* Return 1-D array filled with random values.
+
+   @param [in] context  The device context specifying where the returned
+                        array resides.
+   @param [in] allow_minus_one
+                        If true, the returned array will contain values
+                        in the range [-1, max_value]; [0, max_value] otherwise.
+   @param [in] dim        It specifies the length of the returned array.
+   @param [in] max_value  It specifies the maximum value the returned array can
+                          contain.
+
+   @return  Return a 1-D array with the given `dim`.
+ */
+Array1<int32_t> GenerateRandomIndexes(ContextPtr context, bool allow_minus_one,
+                                      int32_t dim, int32_t max_value);
+
 }  // namespace k2
 
 #endif  //  K2_CSRC_TEST_UTILS_H_

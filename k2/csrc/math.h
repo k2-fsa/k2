@@ -124,8 +124,12 @@ inline std::istream &operator >>(std::istream &is, InputFixer<double> &f) {
   return is;
 }
 
-
-
+// Return the seed that can be used for random generators.
+//
+// It reads the environment variable `K2_SEED` to get the seed.
+// If `K2_SEED` is not set or is not a numeric string,
+// it returns 0.
+int32_t GetSeed();
 }  // namespace k2
 
 #endif  // K2_CSRC_MATH_H_

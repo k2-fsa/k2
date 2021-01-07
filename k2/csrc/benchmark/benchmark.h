@@ -160,9 +160,6 @@ std::string GenerateBenchmarkName(const std::string &base_name,
 // for debugging only
 void PrintRegisteredBenchmarks();
 
-// Return the seed that can be used for random generators.
-int32_t GetSeed();
-
 /* Print environment information of the current benchmark.
 
   Environment information includes:
@@ -171,7 +168,7 @@ int32_t GetSeed();
     - device information
     - how k2 was built (information from version.h)
  */
-void PrintEnvironemntInfo();
+void PrintEnvironmentInfo();
 
 }  // namespace k2
 

@@ -53,5 +53,6 @@ class TestCompose(unittest.TestCase):
         assert torch.allclose(b_fsa.grad, torch.tensor([0., 1., 0., 1.]))
         print(ans)
 
+
 if __name__ == '__main__':
     unittest.main()
