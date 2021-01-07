@@ -1,3 +1,10 @@
+// k2/csrc/cudpp/multisplit.cu
+/*
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
+ *
+ * This file is modified from
+ * https://github.com/cudpp/cudpp/blob/master/src/cudpp/kernel/multisplit_kernel.cuh
+ */
 
 namespace k2 {
 
