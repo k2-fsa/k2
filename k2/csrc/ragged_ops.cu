@@ -21,7 +21,6 @@
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/moderngpu_allocator.h"
-#include "k2/csrc/multisplit.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/ragged_utils.h"
@@ -1153,21 +1152,20 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
 
   Array1<int32_t> tmp_values(context, num_elements);
-  Array1<int32_t> order = Range(context, num_elements, 0);
-  Array1<int32_t> ans(context, num_elements);
+  Array1<int32_t> ans = Range(context, num_elements, 0);
 
   cudaStream_t stream = context->GetCudaStream();
 
   size_t temp_storage_bytes = 0;
   K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
       nullptr, temp_storage_bytes, src.values.Data(), tmp_values.Data(),
-      order.Data(), ans.Data(), num_elements, 0, log_buckets, stream));
+      ans.Data(), ans.Data(), num_elements, 0, log_buckets, stream));
 
   Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
 
   K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
       d_temp_storage.Data(), temp_storage_bytes, src.values.Data(),
-      tmp_values.Data(), order.Data(), ans.Data(), num_elements, 0, log_buckets,
+      tmp_values.Data(), ans.Data(), ans.Data(), num_elements, 0, log_buckets,
       stream));
 
   return ans;

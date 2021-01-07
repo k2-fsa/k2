@@ -98,9 +98,11 @@ static __global__ void MarkBinsGeneral(const uint32_t *elements,
  *                          It will contain a sorted version of `in_keys`. The
  *                          sort is performed according to the bucket
  *                          information of the input elements and it is sorted
- *                          in ascending order.
+ *                          in ascending order. May be equal to `in_keys`.
  * @param [in] out_values   Pointer to the output values array. If not NULL,
  *                          it will contain a sorted version of `in_values`.
+ *                          May be equal to `in_values`.
+ *
  */
 template <typename Lambda>
 void MultiSplitKeyValuePairs(ContextPtr context, int32_t num_elements,
@@ -109,8 +111,6 @@ void MultiSplitKeyValuePairs(ContextPtr context, int32_t num_elements,
                              uint32_t *out_keys, uint32_t *out_values) {
   K2_CHECK_GT(num_elements, 0);
   K2_CHECK_GT(num_buckets, 0);
-  K2_CHECK_NE(in_keys, out_keys);
-  K2_CHECK_NE(in_values, out_values);
   K2_CHECK_NE(out_keys, nullptr);
   K2_CHECK_NE(out_values, nullptr);
 
@@ -175,7 +175,6 @@ void MultiSplitKeysOnly(ContextPtr context, int32_t num_elements,
                         const uint32_t *in_keys, uint32_t *out_keys) {
   K2_CHECK_GT(num_elements, 0);
   K2_CHECK_GT(num_buckets, 0);
-  K2_CHECK_NE(in_keys, out_keys);
 
   int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
   cudaStream_t stream = context->GetCudaStream();

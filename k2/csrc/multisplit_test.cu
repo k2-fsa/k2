@@ -44,18 +44,18 @@ static void TestKeyValuePairs() {
           context, num_elements, num_buckets, bucket_mapping,
           reinterpret_cast<const uint32_t *>(in_keys.Data()),
           reinterpret_cast<const uint32_t *>(in_values.Data()),
-          reinterpret_cast<uint32_t *>(out_keys.Data()),
-          reinterpret_cast<uint32_t *>(out_values.Data()));
+          reinterpret_cast<uint32_t *>(in_keys.Data()),
+          reinterpret_cast<uint32_t *>(in_values.Data()));
     } else {
       MultiSplitKeyValuePairs(
           context, num_elements, num_buckets, &lambda_bucket_mapping,
           reinterpret_cast<const uint32_t *>(in_keys.Data()),
           reinterpret_cast<const uint32_t *>(in_values.Data()),
-          reinterpret_cast<uint32_t *>(out_keys.Data()),
-          reinterpret_cast<uint32_t *>(out_values.Data()));
+          reinterpret_cast<uint32_t *>(in_keys.Data()),
+          reinterpret_cast<uint32_t *>(in_values.Data()));
     }
-    CheckArrayData(out_keys, {0, 0, 1, 1, 2, 3});
-    CheckArrayData(out_values, {8, 9, 100, 1000, 200, 30});
+    CheckArrayData(in_keys, {0, 0, 1, 1, 2, 3});
+    CheckArrayData(in_values, {8, 9, 100, 1000, 200, 30});
   }
 }
 
@@ -76,19 +76,17 @@ static void TestKeysOnly() {
 
   uint32_t (*bucket_mapping)(uint32_t) = nullptr;
   for (int32_t i = 0; i != 2; ++i) {
-    Array1<int32_t> out_keys(context, k.size());
-
     if (i == 0) {
       MultiSplitKeysOnly(context, num_elements, num_buckets, bucket_mapping,
                          reinterpret_cast<const uint32_t *>(in_keys.Data()),
-                         reinterpret_cast<uint32_t *>(out_keys.Data()));
+                         reinterpret_cast<uint32_t *>(in_keys.Data()));
     } else {
       MultiSplitKeysOnly(context, num_elements, num_buckets,
                          &lambda_bucket_mapping,
                          reinterpret_cast<const uint32_t *>(in_keys.Data()),
-                         reinterpret_cast<uint32_t *>(out_keys.Data()));
+                         reinterpret_cast<uint32_t *>(in_keys.Data()));
     }
-    CheckArrayData(out_keys, {0, 0, 1, 1, 2, 3});
+    CheckArrayData(in_keys, {0, 0, 1, 1, 2, 3});
   }
 }
 
