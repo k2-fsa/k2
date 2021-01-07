@@ -332,10 +332,10 @@ static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
   Array1<T> src_copy(context, src_dim);
 
   uint32_t (*bucket_mapping)(uint32_t) = nullptr;
-  MultiSplit(context, num_elements, num_buckets, bucket_mapping,
-             reinterpret_cast<const uint32_t *>(indexes_data),
-             reinterpret_cast<const uint32_t *>(src_data), nullptr,
-             reinterpret_cast<uint32_t *>(src_copy.Data()));
+  MultiSplitKeyValuePairs(context, num_elements, num_buckets, bucket_mapping,
+                          reinterpret_cast<const uint32_t *>(indexes_data),
+                          reinterpret_cast<const uint32_t *>(src_data), nullptr,
+                          reinterpret_cast<uint32_t *>(src_copy.Data()));
 
   RaggedShape shape = RaggedShape2(&row_splits, nullptr, -1);
   // Use `Range` to discard entries belonging to -1
@@ -371,11 +371,11 @@ static void IndexAdd1DImplWithoutMinusOne(ContextPtr context, const T *src_data,
   Array1<int32_t> row_ids(context, src_dim);
 
   uint32_t (*bucket_mapping)(uint32_t) = nullptr;
-  MultiSplit(context, num_elements, num_buckets, bucket_mapping,
-             reinterpret_cast<const uint32_t *>(indexes_data),
-             reinterpret_cast<const uint32_t *>(src_data),
-             reinterpret_cast<uint32_t *>(row_ids.Data()),
-             reinterpret_cast<uint32_t *>(src_copy.Data()));
+  MultiSplitKeyValuePairs(context, num_elements, num_buckets, bucket_mapping,
+                          reinterpret_cast<const uint32_t *>(indexes_data),
+                          reinterpret_cast<const uint32_t *>(src_data),
+                          reinterpret_cast<uint32_t *>(row_ids.Data()),
+                          reinterpret_cast<uint32_t *>(src_copy.Data()));
 
   RaggedShape shape = RaggedShape2(nullptr, &row_ids, -1);
   Ragged<T> ragged(shape, src_copy);

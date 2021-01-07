@@ -17,7 +17,7 @@
 
 #include "cub/cub.cuh"
 #include "k2/csrc/array_ops.h"
-#include "k2/csrc/cudpp/cudpp.h"
+#include "k2/csrc/cudpp/multisplit.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/moderngpu_allocator.h"
@@ -1135,7 +1135,7 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
 Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &context = src.Context();
-  if (src.NumAxes() < 2) {
+  if (src.NumAxes() < 2 || src.values.Dim() == 0) {
     // src is empty
     return Array1<int32_t>(context, 0);
   }
@@ -1150,20 +1150,17 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   int32_t num_buckets = num_cols;
   int32_t num_elements = src.values.Dim();
 
-  Array1<int32_t> ans = Range(context, num_elements, 0);
-  auto lambda = [values_data, num_elements] __device__(uint32_t i) -> uint32_t {
-    return i < num_elements ? values_data[i] : 0;
+  Array1<int32_t> order = Range(context, num_elements, 0);
+  Array1<int32_t> ans(context, num_elements);
+
+  auto bucket_mapping_lambda =
+      [values_data] __device__(uint32_t i) -> uint32_t {
+    return values_data[i];
   };
 
-  CUDPPConfiguration config;
-  config.options = CUDPP_OPTION_KEYS_ONLY;
-  config.bucket_mapper = CUDPP_CUSTOM_BUCKET_MAPPER;
-  config.context = context;
-
-  CUDPPMultiSplitPlan plan(config, num_elements, num_buckets);
-  cudppMultiSplitCustomBucketMapper(&plan,
-                                    reinterpret_cast<uint32_t *>(ans.Data()),
-                                    nullptr, num_elements, num_buckets, lambda);
+  MultiSplitKeysOnly(context, num_elements, num_buckets, &bucket_mapping_lambda,
+                     reinterpret_cast<const uint32_t *>(order.Data()),
+                     reinterpret_cast<uint32_t *>(ans.Data()));
   return ans;
 #else
   if (src.NumAxes() == 3)

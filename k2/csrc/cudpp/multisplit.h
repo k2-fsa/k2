@@ -102,10 +102,10 @@ static __global__ void MarkBinsGeneral(const uint32_t *elements,
  *                          it will contain a sorted version of `in_values`.
  */
 template <typename Lambda>
-void MultiSplit(ContextPtr context, int32_t num_elements, int32_t num_buckets,
-                Lambda *bucket_mapping_func, const uint32_t *in_keys,
-                const uint32_t *in_values, uint32_t *out_keys,
-                uint32_t *out_values) {
+void MultiSplitKeyValuePairs(ContextPtr context, int32_t num_elements,
+                             int32_t num_buckets, Lambda *bucket_mapping_func,
+                             const uint32_t *in_keys, const uint32_t *in_values,
+                             uint32_t *out_keys, uint32_t *out_values) {
   K2_CHECK_GT(num_elements, 0);
   K2_CHECK_GT(num_buckets, 0);
   int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
@@ -147,6 +147,41 @@ void MultiSplit(ContextPtr context, int32_t num_elements, int32_t num_buckets,
   K2_CUDA_SAFE_CALL(
       UnpackingKeyValuePairs<<<num_blocks, num_threads, 0, stream>>>(
           num_elements, d_key_value_pairs.Data(), out_keys, out_values));
+}
+
+template <typename Lambda>
+void MultiSplitKeysOnly(ContextPtr context, int32_t num_elements,
+                        int32_t num_buckets, Lambda *bucket_mapping_func,
+                        const uint32_t *in_keys, uint32_t *out_keys) {
+  K2_CHECK_GT(num_elements, 0);
+  K2_CHECK_GT(num_buckets, 0);
+  int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
+  cudaStream_t stream = context->GetCudaStream();
+
+  constexpr int32_t kMultiSplitNumWarps = 8;
+  int32_t num_threads = kMultiSplitNumWarps * 32;
+  int32_t num_blocks = (num_elements + num_threads - 1) / num_threads;
+
+  Array1<uint32_t> d_mask(context, num_elements, 0);
+  const uint32_t *mask_data = in_keys;
+
+  if (bucket_mapping_func != nullptr) {
+    K2_CUDA_SAFE_CALL(MarkBinsGeneral<<<num_blocks, num_threads, 0, stream>>>(
+        in_keys, num_elements, *bucket_mapping_func, d_mask.Data()));
+    mask_data = d_mask.Data();
+  }
+
+  Array1<uint32_t> d_out(context, num_elements, 0);
+  size_t temp_storage_bytes = 0;
+
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+      nullptr, temp_storage_bytes, mask_data, d_out.Data(), in_keys, out_keys,
+      num_elements, 0, log_buckets, stream));
+
+  Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+      d_temp_storage.Data(), temp_storage_bytes, mask_data, d_out.Data(),
+      in_keys, out_keys, num_elements, 0, log_buckets, stream));
 }
 
 }  // namespace k2
