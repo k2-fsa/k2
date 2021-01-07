@@ -7,9 +7,9 @@
 
 #include <vector>
 
-#include "k2/csrc/cudpp/multisplit.h"
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/macros.h"
+#include "k2/csrc/multisplit.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"

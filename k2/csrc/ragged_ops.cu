@@ -17,10 +17,10 @@
 
 #include "cub/cub.cuh"
 #include "k2/csrc/array_ops.h"
-#include "k2/csrc/cudpp/multisplit.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/moderngpu_allocator.h"
+#include "k2/csrc/multisplit.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/ragged_utils.h"

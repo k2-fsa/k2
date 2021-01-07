@@ -28,17 +28,17 @@ endif()
 set(context_srcs
   algorithms.cu
   array_ops.cu
-  intersect.cu
-  intersect_pruned.cu
-  top_sort.cu
   context.cu
   dtype.cu
   fsa.cu
   fsa_algo.cu
   fsa_utils.cu
   host_shim.cu
+  intersect.cu
+  intersect_pruned.cu
   math.cu
   moderngpu_allocator.cu
+  multisplit.cu
   pinned_context.cu
   ragged.cu
   ragged_ops.cu
@@ -48,11 +48,8 @@ set(context_srcs
   tensor_ops.cu
   thread_pool.cu
   timer.cu
+  top_sort.cu
   utils.cu
-  #
-  cudpp/cudpp_plan.cu
-  cudpp/multisplit_app.cu
-  cudpp/multisplit.cu
 )
 
 if(K2_USE_PYTORCH)
