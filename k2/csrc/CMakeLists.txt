@@ -91,6 +91,7 @@ set(cuda_tests
   intersect_test
   log_test
   macros_test
+  multisplit_test
   nvtx_test
   pinned_context_test
   ragged_shape_test
