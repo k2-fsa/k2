@@ -1,5 +1,5 @@
 /**
- * @brief Benchmarks for ragged_ops.
+ * @brief Benchmarks for tensor_ops.
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
@@ -11,7 +11,6 @@
 #include <cstdlib>
 
 #include "k2/csrc/benchmark/benchmark.h"
-#include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/tensor_ops.h"
 #include "k2/csrc/test_utils.h"
 

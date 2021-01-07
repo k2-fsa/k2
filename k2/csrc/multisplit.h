@@ -149,6 +149,8 @@ void MultiSplitKeyValuePairs(ContextPtr context, int32_t num_elements,
           num_elements, d_key_value_pairs.Data(), out_keys, out_values));
 }
 
+// See the doc for `MultiSplitKeyValuePairs`.
+// The only difference is that this function accepts only `keys`, no `values`.
 template <typename Lambda>
 void MultiSplitKeysOnly(ContextPtr context, int32_t num_elements,
                         int32_t num_buckets, Lambda *bucket_mapping_func,
