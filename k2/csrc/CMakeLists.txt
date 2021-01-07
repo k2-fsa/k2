@@ -38,7 +38,6 @@ set(context_srcs
   intersect_pruned.cu
   math.cu
   moderngpu_allocator.cu
-  multisplit.cu
   pinned_context.cu
   ragged.cu
   ragged_ops.cu
@@ -91,7 +90,6 @@ set(cuda_tests
   intersect_test
   log_test
   macros_test
-  multisplit_test
   nvtx_test
   pinned_context_test
   ragged_shape_test
