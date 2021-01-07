@@ -1,4 +1,4 @@
-// k2/csrc/cudpp/multisplit.cu
+// k2/csrc/multisplit.cu
 /*
  * Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
  *

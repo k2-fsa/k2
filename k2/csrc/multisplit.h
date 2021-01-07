@@ -1,4 +1,4 @@
-// k2/csrc/cudpp/multisplit.h
+// k2/csrc/multisplit.h
 /*
  * Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
  *
@@ -9,11 +9,12 @@
 #ifndef K2_CSRC_CUDPP_MULTISPLIT_H_
 #define K2_CSRC_CUDPP_MULTISPLIT_H_
 
+#include <cmath>
+
 #include "cub/cub.cuh"
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
-#include "math.h"
 
 namespace k2 {
 
