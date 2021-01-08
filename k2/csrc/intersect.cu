@@ -41,14 +41,13 @@ namespace intersect_internal {
 
 
 
-/*
 static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
   os << "StateInfo{" << s.a_fsas_state_idx01 << ","
-     << OrderedIntToFloat(s.forward_loglike) << "," << s.backward_loglike
-     << "}";
+     << s.b_fsas_state_idx01 << "}";
   return os;
 }
 
+/*
 static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
   os << "ArcInfo{" << a.a_fsas_arc_idx012 << "," << a.arc_loglike << ","
      << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike << "}";
@@ -96,8 +95,11 @@ class DeviceIntersector {
       a_fsas_(a_fsas),
       b_fsas_(b_fsas),
       b_to_a_map_(b_to_a_map),
-      b_state_bits_(HighestBitSet(b_fsas_.TotSize(1))),
-      key_bits_(b_state_bits_ + HighestBitSet(a_fsas_.shape.MaxSize(1))) {
+      b_state_bits_(2 + HighestBitSet(b_fsas_.TotSize(1))),
+      key_bits_(b_state_bits_ + 2 + HighestBitSet(a_fsas_.shape.MaxSize(1))) {
+
+    if (key_bits_ < 32)  // TEMP!!
+      key_bits_ = 32;
 
     // We may want to tune this hash size eventually.
     // Note: the hash size
@@ -396,6 +398,9 @@ class DeviceIntersector {
       const int32_t *a_fsas_row_splits2_data = a_fsas_.RowSplits(2).Data(),
           *b_fsas_row_splits2_data = b_fsas_.RowSplits(2).Data();
 
+
+      K2_LOG(INFO) << "states = " << states_;
+
       // TODO: use K2_EVAL
       //K2_EVAL(c_, num_states, lambda_find_num_arcs, ..
       auto lambda_find_num_arcs = [=] __host__ __device__ (int32_t i) -> void {
@@ -406,7 +411,7 @@ class DeviceIntersector {
             b_end_arc =  b_fsas_row_splits2_data[b_fsas_state_idx01 + 1],
             b_num_arcs = b_end_arc - b_start_arc;
         num_arcs_acc(0, i) = b_num_arcs;
-        int32_t a_fsas_state_idx01 = info.b_fsas_state_idx01,
+        int32_t a_fsas_state_idx01 = info.a_fsas_state_idx01,
             a_start_arc = a_fsas_row_splits2_data[a_fsas_state_idx01],
             a_end_arc =  a_fsas_row_splits2_data[a_fsas_state_idx01 + 1],
             a_num_arcs = a_end_arc - a_start_arc;
@@ -418,6 +423,7 @@ class DeviceIntersector {
                          num_arcs_b = num_arcs.Row(0);
       ExclusiveSum(row_splits_ab, &row_splits_ab);
 
+      K2_LOG(INFO) << "num_arcs[b,absum] = " << num_arcs;
 
       // tot_ab is total of (num-arcs from state a * num-arcs from state b).
       int32_t tot_ab = row_splits_ab[num_states],
@@ -425,11 +431,21 @@ class DeviceIntersector {
                            // and implement the other branch.
 
 
+      if (tot_ab == 0) {
+        K2_LOG(INFO) << "state-info = " << states_ << ", a_fsas = " << a_fsas_
+                     << ", b_fsas = " << b_fsas_;
+      }
+
       const Arc *a_arcs_data = a_fsas_.values.Data(),
           *b_arcs_data = b_fsas_.values.Data();
 
       int32_t key_bits = key_bits_, b_state_bits = b_state_bits_,
           value_bits = 64 - key_bits;
+
+
+      K2_LOG(INFO) << "key_bits = " << key_bits << ", value_bits = " << value_bits
+                   << ", b_state_bits = " << b_state_bits;
+
       // `value_big` is the largest power of 2 that can fit in the 'value' in
       // our hash table.  We use this to distinguish arc-indexes from state-indexes.
       uint64_t value_big = ((uint64_t)1) << (value_bits - 1);
@@ -494,7 +510,7 @@ class DeviceIntersector {
                 b_dest_state_idx01 = b_dest_state_idx1 + sinfo.b_fsas_state_idx01 -
                                      b_arcs_data[b_arc_idx012].src_state,
                 a_dest_state_idx1 = a_arcs_data[a_arc_idx012].dest_state;
-            uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) +
+            uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
                 b_dest_state_idx01, hash_value = value_big | i;
             // If it was successfully inserted, then this arc is assigned
             // responsibility for creating the state-id for its destination
@@ -507,12 +523,14 @@ class DeviceIntersector {
         };
         Eval(c_, tot_ab, lambda_set_keep_arc_newstate);
 
+        // TODO: resize hash..
+
         // When reading the code below, remember this code is a little unusual
         // because we have combined the renumberings for arcs and new-states
         // into one.
         int32_t num_kept_arcs = arcs_newstates_renumbering.Old2New(true)[tot_ab],
                  num_kept_tot = arcs_newstates_renumbering.New2Old().Dim(),
-              num_kept_states = num_kept_tot -  num_kept_arcs;
+              num_kept_states = num_kept_tot - num_kept_arcs;
 
         int32_t next_state_end = state_end + num_kept_states;
         iter_to_state_row_splits_cpu_.push_back(next_state_end);
@@ -565,7 +583,7 @@ class DeviceIntersector {
               a_dest_state_idx1 = a_arcs_data[a_arc_idx012].dest_state,
               a_dest_state_idx01 = a_fsas_row_splits1_data[b_to_a_map_data[b_fsa_idx0]] +
                     a_dest_state_idx1;
-          uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) +
+          uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
               b_dest_state_idx01;
           uint64_t value, *key_value_location;
           bool ans = state_pair_to_state_acc.Find(hash_key, &value,
