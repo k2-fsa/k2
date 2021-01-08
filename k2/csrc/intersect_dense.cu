@@ -64,7 +64,6 @@ static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
 
 using namespace intersect_dense_internal;  // NOLINT
 
-// Caution: this is really a .cu file.  It contains mixed host and device code.
 
 /*
    Intersection (a.k.a. composition) that corresponds to decoding for

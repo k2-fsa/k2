@@ -90,8 +90,6 @@ static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
 
 using namespace intersect_pruned_internal;  // NOLINT
 
-// Caution: this is really a .cu file.  It contains mixed host and device code.
-
 /*
    Pruned intersection (a.k.a. composition) that corresponds to decoding for
    speech recognition-type tasks.  Can use either different decoding graphs (one
@@ -141,7 +139,6 @@ class MultiGraphDenseIntersectPruned {
     NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
     T_ = b_fsas_.shape.MaxSize(1);
-    K2_CHECK(b_fsas.scores.IsContiguous());
     K2_CHECK_GT(search_beam, 0);
     K2_CHECK_GT(output_beam, 0);
     K2_CHECK_GE(min_active, 0);

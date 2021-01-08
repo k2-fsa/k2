@@ -347,20 +347,19 @@ class DeviceIntersector {
         arcs_out_data[new_arc_idx012] = out_arc;
       });
 
-    FsaVec ans = Ragged<Arc>(ans_shape, ans_values);
-
-    // TODO: remove the following, just return ans above.
-    int32_t properties;
-    Array1<int32_t> props_all;
-    GetFsaVecBasicProperties(ans, &props_all, &properties);
-    K2_CHECK_NE(properties & kFsaPropertiesValid, 0);
-    return ans;
+    return Ragged<Arc>(ans_shape, ans_values);
   }
 
   void Forward() {
     NVTX_RANGE(K2_FUNC);
     for (int32_t t = 0; ; t++) {
       NVTX_RANGE("LoopT");
+
+      if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
+        // enlarge hash..
+        state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
+                                    key_bits_);
+      }
 
       K2_CHECK_EQ(t + 2, int32_t(iter_to_state_row_splits_cpu_.size()));
 
@@ -491,8 +490,6 @@ class DeviceIntersector {
           }
           new_dest_state_data[i] = (char)new_dest_state;
           });
-
-        // TODO: resize hash..
 
         // When reading the code below, remember this code is a little unusual
         // because we have combined the renumberings for arcs and new-states
