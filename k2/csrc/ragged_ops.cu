@@ -1146,7 +1146,8 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   K2_CHECK_EQ(device_type, kCuda);
   (void)GetTransposeReorderingThreeAxesCuda;  // remove compiler warnings
 
-#if 1
+#if (__CUDACC_VER_MAJOR__ >= 10) && (__CUDACC_VER_MINOR__ >= 1) && \
+    (__CUDACC_VER_BUILD__ > 105)
   int32_t num_buckets = num_cols;
   int32_t num_elements = src.values.Dim();
   int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
