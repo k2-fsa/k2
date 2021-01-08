@@ -111,15 +111,19 @@ TEST(Intersect, Simple) {
       Intersect(fsa, -1, fsas_b, -1, treat_epsilons_specially,
                 &out_fsas2, &arc_map_a2, &arc_map_b2);
     }
+
+    out_fsas2b = out_fsas2b.To(cpu);
+    K2_CHECK(
+        IsRandEquivalentWrapper(out_fsas2, out_fsas2b, treat_epsilons_specially));
+
+    /*
     // TODO: really test.
     K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                  << ", out_fsas2b = " << out_fsas2b
                  << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_a3 = " << arc_map_a3
                  << ", arc_map_b2 = " << arc_map_b2
-                 << ", arc_map_b3 = " << arc_map_b3;
-
-
+                 << ", arc_map_b3 = " << arc_map_b3;*/
 
 
     K2_LOG(INFO) << "out_fsas device type is "
@@ -563,9 +567,30 @@ TEST(IntersectPruned, RandomSingle) {
     bool treat_epsilons_specially = false;
     Intersect(fsa, -1, fsas_b, -1, treat_epsilons_specially,
               &out_fsas2, &arc_map_a2, &arc_map_b2);
+
     K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
                  << ", arc_map_a2 = " << arc_map_a2
                  << ", arc_map_b2 = " << arc_map_b2;
+
+
+    { // tests IntersectDevice.
+      ContextPtr c = (i == 0 ? GetCpuContext() : GetCudaContext());
+      FsaVec fsas = FsaToFsaVec(fsa).To(c);
+      Array1<int32_t> b_to_a_map = Range<int32_t>(c, fsas_b.Dim0(), 0,
+                                                  (fsas.Dim0() == 1 ? 0 : 1));
+      fsas_b = fsas_b.To(c);
+      Array1<int32_t> arc_map_a3, arc_map_b3;
+      FsaVec out_fsas3 = IntersectDevice(fsas, -1, fsas_b, -1, b_to_a_map,
+                                         &arc_map_a3, &arc_map_b3).To(GetCpuContext());
+
+
+      K2_LOG(INFO) << "out_fsas3 = " << out_fsas3;
+
+      K2_CHECK(
+          IsRandEquivalentWrapper(out_fsas2, out_fsas3, treat_epsilons_specially));
+    }
+
+
     K2_CHECK(
         IsRandEquivalentWrapper(out_fsas, out_fsas2, treat_epsilons_specially));
   }

@@ -142,8 +142,6 @@ class DeviceIntersector {
 
     states_.Resize(num_initial_states, true);
     final_states_ = Array1<StateInfo>(c_, num_initial_states);
-    // we'll later add a constant to final_state_ids_.
-    final_state_ids_ = renumber_initial_states.Old2New();
 
     StateInfo *states_data = states_.Data(),
         *final_states_data = final_states_.Data();
@@ -171,8 +169,7 @@ class DeviceIntersector {
 
 
   /*
-    Adds the StateInfo for the final-states to the states_ array, and sets up
-    final_state_ids_.
+    Adds the StateInfo for the final-states to the states_ array.
   */
   void LastIter() {
     int32_t num_final_states = final_states_.Dim();
@@ -182,7 +179,6 @@ class DeviceIntersector {
     Array1<StateInfo> dest = states_.Arange(cur_num_states,
                                             tot_num_states);
     Assign(final_states_, &dest);
-    final_state_ids_ = Plus(final_state_ids_, cur_num_states);
     K2_CHECK_EQ(cur_num_states, iter_to_state_row_splits_cpu_.back());  // Remove this line.
     iter_to_state_row_splits_cpu_.push_back(tot_num_states);
   }
@@ -315,8 +311,7 @@ class DeviceIntersector {
     Arc *arcs_out_data = ans_values.Data();
     const int32_t *arcs_new2old_data = arcs_new2old.Data(),
                 *states_new2old_data = states_new2old.Data(),
-                *states_old2new_data = states_old2new.Data(),
-               *final_state_ids_data = final_state_ids_.Data();
+                *states_old2new_data = states_old2new.Data();
 
     const int32_t *ans_shape_row_ids2 = ans_shape.RowIds(2).Data(),
                   *ans_shape_row_ids1 = ans_shape.RowIds(1).Data(),
@@ -338,10 +333,7 @@ class DeviceIntersector {
         if (info.dest_ostate >= 0) {
           dest_state_idx01 = states_old2new_data[info.dest_ostate];
         } else {
-          dest_state_idx01 = states_old2new_data[final_state_ids_data[fsa_idx0]];
-          // actually might not really need this at all!!!  But check for now.
-          // TODO: remove it!
-          K2_CHECK_EQ(dest_state_idx01, ans_shape_row_splits1[fsa_idx0 + 1] - 1);
+          dest_state_idx01 = ans_shape_row_splits1[fsa_idx0 + 1] - 1;
         }
         int32_t fsa_idx0x = ans_shape_row_splits1[fsa_idx0],
           dest_state_idx1 = dest_state_idx01 - fsa_idx0x,
@@ -440,7 +432,7 @@ class DeviceIntersector {
           value_bits = 64 - key_bits;
       // `value_big` is the largest power of 2 that can fit in the 'value' in
       // our hash table.  We use this to distinguish arc-indexes from state-indexes.
-      uint64_t value_big = 1 << (value_bits - 1);
+      uint64_t value_big = ((uint64_t)1) << (value_bits - 1);
       auto state_pair_to_state_acc =
           state_pair_to_state_.GetGenericAccessor(key_bits);
 
@@ -518,7 +510,7 @@ class DeviceIntersector {
         // When reading the code below, remember this code is a little unusual
         // because we have combined the renumberings for arcs and new-states
         // into one.
-        int32_t num_kept_arcs = arcs_newstates_renumbering.Old2New()[tot_ab],
+        int32_t num_kept_arcs = arcs_newstates_renumbering.Old2New(true)[tot_ab],
                  num_kept_tot = arcs_newstates_renumbering.New2Old().Dim(),
               num_kept_states = num_kept_tot -  num_kept_arcs;
 
@@ -709,14 +701,6 @@ class DeviceIntersector {
   // state-pairs.  These will be added to the end of states_ after composition
   // has finished.
   Array1<StateInfo> final_states_;
-
-  // final_state_ids_ will be set, in LastIter(), to an array of dimension
-  // b_fsas_.Dim0() containing the final ostate-index in states_ for each
-  // FSA index 0 <= i < b_fsas_.Dim0() that had an initial-state;
-  // or a value that you should ignore for other i values.
-  // Caution: it's set in FirstIter
-  Array1<int32_t> final_state_ids_;
-
 
   // arcs_ is a resizable array of ArcInfo that conceptually is the elements
   // of a ragged array indexed [iter][state][arc], with row_splits1 == iter_to_state_row_splits_cpu_
