@@ -28,16 +28,15 @@ endif()
 set(context_srcs
   algorithms.cu
   array_ops.cu
-  intersect.cu
-  intersect_dense.cu
-  intersect_dense_pruned.cu
-  top_sort.cu
   context.cu
   dtype.cu
   fsa.cu
   fsa_algo.cu
   fsa_utils.cu
   host_shim.cu
+  intersect.cu
+  intersect_dense.cu
+  intersect_dense_pruned.cu
   math.cu
   moderngpu_allocator.cu
   pinned_context.cu
@@ -49,6 +48,7 @@ set(context_srcs
   tensor_ops.cu
   thread_pool.cu
   timer.cu
+  top_sort.cu
   utils.cu
 )
 

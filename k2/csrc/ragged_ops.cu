@@ -12,6 +12,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <vector>
 
@@ -1165,7 +1166,7 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
 Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &context = src.Context();
-  if (src.NumAxes() < 2) {
+  if (src.NumAxes() < 2 || src.values.Dim() == 0) {
     // src is empty
     return Array1<int32_t>(context, 0);
   }
@@ -1174,7 +1175,34 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   if (device_type == kCpu) return GetTransposeReorderingCpu(src, num_cols);
 
   K2_CHECK_EQ(device_type, kCuda);
+  (void)GetTransposeReorderingThreeAxesCuda;  // remove compiler warnings
 
+#if 1
+  int32_t num_buckets = num_cols;
+  int32_t num_elements = src.values.Dim();
+  int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
+
+  Array1<int32_t> ans = Range(context, num_elements, 0);
+
+  cudaStream_t stream = context->GetCudaStream();
+
+  size_t temp_storage_bytes = 0;
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+      nullptr, temp_storage_bytes, src.values.Data(),
+      static_cast<int32_t *>(nullptr), ans.Data(), ans.Data(), num_elements, 0,
+      log_buckets, stream));
+
+  Array1<int8_t> d_temp_storage(
+      context, temp_storage_bytes + num_elements * sizeof(int32_t));
+
+  K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
+      d_temp_storage.Data() + sizeof(int32_t) * num_elements,
+      temp_storage_bytes, src.values.Data(),
+      reinterpret_cast<int32_t *>(d_temp_storage.Data()), ans.Data(),
+      ans.Data(), num_elements, 0, log_buckets, stream));
+
+  return ans;
+#else
   if (src.NumAxes() == 3)
     return GetTransposeReorderingThreeAxesCuda(src, num_cols);
 
@@ -1207,8 +1235,8 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   mgpu::context_t *mgpu_context = GetModernGpuAllocator(context);
 
   K2_CUDA_SAFE_CALL(mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
-
   return ans;
+#endif
 }
 
 RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {

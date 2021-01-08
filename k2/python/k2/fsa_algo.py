@@ -141,19 +141,21 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa,
     return out_fsa
 
 
-def compose(a_fsa: Fsa, b_fsa: Fsa,
+def compose(a_fsa: Fsa,
+            b_fsa: Fsa,
             treat_epsilons_specially: bool = True,
             inner_labels: str = None) -> Fsa:
     '''Compute the composition of two FSAs (currently on CPU).
 
     Note:
       If there is no `aux_labels` in the input FSAs, it is
-      equivalent to :func:`k2.intersect`.  The difference from :func:`k2.intersect`
-      is when a_fsa has the `aux_labels` attribute set.  These are interpreted
-      as output labels (olabels), and the composition involves matching the olabels
-      of a with the ilabels of b.  This is implemented by intersecting the
-      inverse of a_fsa (a_fsa_inv) with b_fsa, then replacing the ilabels of the
-      result with the original ilabels on a_fsa which are now the aux_labels of
+      equivalent to :func:`k2.intersect`.
+      The difference from :func:`k2.intersect` is when a_fsa has the
+      `aux_labels` attribute set.  These are interpreted as output labels
+      (olabels), and the composition involves matching the olabels of a with
+      the ilabels of b.  This is implemented by intersecting the inverse of
+      a_fsa (a_fsa_inv) with b_fsa, then replacing the ilabels of the result
+      with the original ilabels on a_fsa which are now the aux_labels of
       a_fsa_inv.
 
     Args:
