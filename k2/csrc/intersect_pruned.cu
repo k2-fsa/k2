@@ -878,7 +878,7 @@ class MultiGraphDenseIntersectPruned {
             // Set the forward log-like of the dest state to the largest of any
             // of those of the incoming arcs.  Note: we initialized this in
             // lambda_init_loglike above.
-            AtomicMax(&(kept_states_data[state_idx01].forward_loglike),
+            atomicMax(&(kept_states_data[state_idx01].forward_loglike),
                       end_loglike_int);
           });
     }
