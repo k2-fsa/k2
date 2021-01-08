@@ -38,7 +38,7 @@ struct StateInfo {
   /* Note: this `backward_loglike` is the best score of any path from here to
      the end, minus the best path in the overall FSA, i.e. it's the backward
      score you get if, at the final-state, you set backward_loglike ==
-     forward_loglike. So backward_loglike + OrderedIntToFloat(forward_loglike)
+     -forward_loglike. So backward_loglike + OrderedIntToFloat(forward_loglike)
      <= 0, and you can treat it somewhat like a posterior (except they don't sum
      to one as we're using max, not log-add).
   */

@@ -123,7 +123,7 @@ class Hash {
         num_value_bits = 64 - num_key_bits;
     const uint64_t *this_data = data_.Data();
     uint64_t *new_data = new_hash.data_.Data();
-    size_t new_num_buckets_mask = ~static_cast<size_t>(new_num_buckets - 1),
+    size_t new_num_buckets_mask = static_cast<size_t>(new_num_buckets) - 1,
         new_buckets_num_bitsm1 = new_hash.buckets_num_bitsm1_;
 
     K2_EVAL(c, dim, lambda_copy_data, (int32_t i) -> void {
@@ -141,8 +141,8 @@ class Hash {
           // Keep iterating until we find a free spot in the new hash...
         }
       });
-
     *this = new_hash;
+    new_hash.Destroy();  // avoid failed check in destructor.
   }
 
   // Shallow copy
@@ -546,7 +546,8 @@ class Hash {
   }
 
 
-
+  // You should call this before the destructor is called if the hash will still
+  // contain values when it is destroyed, to bypass a check.
   void Destroy() { data_ = Array1<uint64_t>(); }
 
   void CheckEmpty() {

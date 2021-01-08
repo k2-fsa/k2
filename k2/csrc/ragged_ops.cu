@@ -155,8 +155,8 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
 }
 
 
-RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b,
-                                const RaggedShape &c) {
+RaggedShape ComposeRaggedShapes3(const RaggedShape &a, const RaggedShape &b,
+                                 const RaggedShape &c) {
   NVTX_RANGE(K2_FUNC);
   if (a.NumElements() != b.Dim0()) {
     K2_LOG(FATAL) << "ComposeRaggedShapes: shape mismatch: " << a.NumElements()

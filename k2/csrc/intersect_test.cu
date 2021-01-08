@@ -34,7 +34,7 @@ bool IsRandEquivalentWrapper(Fsa &a, Fsa &b, bool treat_epsilons_specially) {
 
 TEST(Intersect, Simple) {
   // tests single FSA and also 2 copies of a single FSA.
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 8; i++) {
     K2_LOG(INFO) << "Intersection for " << (i == 0 ? "CPU" : "GPU");
     ContextPtr c = (i % 2 == 0 ? GetCpuContext() : GetCudaContext());
     std::string s = R"(0 1 1 1.0
@@ -85,15 +85,42 @@ TEST(Intersect, Simple) {
 
     FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
     K2_LOG(INFO) << "fsas_b = " << fsas_b;
-    FsaVec out_fsas2;
+    FsaVec out_fsas2,
+        out_fsas2b;
     ContextPtr cpu = GetCpuContext();
     Array1<int32_t> arc_map_a2, arc_map_b2;
+
     // IntersectDense() treats epsilons as normal symbols.
     bool treat_epsilons_specially = false;
-    fsa = fsa.To(cpu);
-    fsas_b = fsas_b.To(cpu);
-    Intersect(fsa, -1, fsas_b, -1, treat_epsilons_specially,
-              &out_fsas2, &arc_map_a2, &arc_map_b2);
+
+    Array1<int32_t> arc_map_a3, arc_map_b3;
+
+    {
+      FsaVec fsas = FsaToFsaVec(fsa);
+      Array1<int32_t> b_to_a_map = Range<int32_t>(c, fsas_b.Dim0(), 0,
+                                                  (fsas.Dim0() == 1 ? 0 : 1));
+
+      out_fsas2b = IntersectDevice(fsas, -1, fsas_b, -1, b_to_a_map,
+                                   &arc_map_a3, &arc_map_b3);
+    }
+
+    {
+      fsa = fsa.To(cpu);
+      fsas_b = fsas_b.To(cpu);
+
+      Intersect(fsa, -1, fsas_b, -1, treat_epsilons_specially,
+                &out_fsas2, &arc_map_a2, &arc_map_b2);
+    }
+    // TODO: really test.
+    K2_LOG(INFO) << "out_fsas2 = " << out_fsas2
+                 << ", out_fsas2b = " << out_fsas2b
+                 << ", arc_map_a2 = " << arc_map_a2
+                 << ", arc_map_a3 = " << arc_map_a3
+                 << ", arc_map_b2 = " << arc_map_b2
+                 << ", arc_map_b3 = " << arc_map_b3;
+
+
+
 
     K2_LOG(INFO) << "out_fsas device type is "
                  << out_fsas.Context()->GetDeviceType();

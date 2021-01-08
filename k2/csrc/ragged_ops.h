@@ -803,8 +803,8 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b);
                will be the total of the num-layers of the sources.  Will share
                memory with the inputs.
 */
-RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b,
-                                const RaggedShape &c);
+RaggedShape ComposeRaggedShapes3(const RaggedShape &a, const RaggedShape &b,
+                                 const RaggedShape &c);
 
 
 

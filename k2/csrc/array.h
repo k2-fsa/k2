@@ -214,8 +214,15 @@ class Array1 {
     Note: this may change which memory other arrays point to, if they share
     the same Region, but it will be transparent because arrays point to the
     Region and not to the data directly.
+
+      @param [in] new_size     New size in elements to set the array to
+      @param [in] reduce_bytes_used  If set to true,
+                    will reduce the region->bytes_used to the size you are
+                    setting the array to; may only be used if this is the
+                    only array that points to that memory (e.g. if just
+                    created with a larger size than needed).
   */
-  void Resize(int32_t new_size) {
+  void Resize(int32_t new_size, bool reduce_bytes_used = false) {
     NVTX_RANGE(K2_FUNC);
     if (new_size < dim_) {
       K2_CHECK_GE(new_size, 0);
@@ -227,6 +234,10 @@ class Array1 {
       // overwrite *this with a new region if that's what you want.
       K2_CHECK_EQ(cur_bytes_used, region_->bytes_used);
       region_->Extend(new_bytes_used);
+    }
+    if (reduce_bytes_used) {
+      std::size_t new_bytes_used = byte_offset_ + sizeof(T) * new_size;
+      region_->bytes_used = new_bytes_used;
     }
     dim_ = new_size;
   }

@@ -917,9 +917,9 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
   // to_ostates_shape has 4 axes: [fsa_id][orig_state][foo][ostate]
   // where foo is a general-purpose index that ranges over the (num_arcs + 1) of
   // the original state.
-  RaggedShape to_ostates_shape = ComposeRaggedShapes(GetLayer(fsas.shape, 0),
-                                                     state_to_foo,
-                                                     foo_to_ostates);
+  RaggedShape to_ostates_shape = ComposeRaggedShapes3(GetLayer(fsas.shape, 0),
+                                                      state_to_foo,
+                                                      foo_to_ostates);
 
   // Below, `tos` means `to_ostates_shape`.
   const int32_t *tos_row_splits1_data = to_ostates_shape.RowSplits(1).Data(),
