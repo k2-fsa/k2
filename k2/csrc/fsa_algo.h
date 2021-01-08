@@ -315,11 +315,10 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
     Connect() afterward if that matters to you.
  */
 FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a,
-                     FsaVec &b_fsas, int32_t properties_b,
-                     const Array1<int32_t> &b_to_a_map,
-                     FsaVec *out,
-                     Array1<int32_t> *arc_map_a,
-                     Array1<int32_t> *arc_map_b);
+                       FsaVec &b_fsas, int32_t properties_b,
+                       const Array1<int32_t> &b_to_a_map,
+                       Array1<int32_t> *arc_map_a,
+                       Array1<int32_t> *arc_map_b);
 
 
 /*

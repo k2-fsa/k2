@@ -826,8 +826,8 @@ class MultiGraphDenseIntersectPruned {
               // Note: this_j is an idx01 into ans->states.  previously it
               // contained an arc_idx012 (of the entering arc that won the
               // race).
-              state_map_acc.WriteValue(key_value_addr, state_map_idx,
-                                       (uint64_t)this_j);
+              state_map_acc.SetValue(key_value_addr, state_map_idx,
+                                     (uint64_t)this_j);
             }
           });
     }

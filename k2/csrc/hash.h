@@ -119,8 +119,6 @@ class Hash {
     ContextPtr c = data_.Context();
     Hash new_hash(c, new_num_buckets);
 
-    auto new_accessor = new_hash.GetGenericAccessor(num_key_bits);
-
     int32_t dim = data_.Dim(),
         num_value_bits = 64 - num_key_bits;
     const uint64_t *this_data = data_.Data();

@@ -123,7 +123,8 @@ void TestHashConstruct2(int32_t num_key_bits) {
             *values_data = values.Data(),
             *success_data = success.Data();
       int32_t   *counts_data = count_per_key.Data();
-      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      const int32_t num_value_bits = 64 - num_key_bits;
+
       Hash::GenericAccessor acc = hash.GetGenericAccessor(num_key_bits);
       K2_EVAL(c, num_elems, lambda_insert_pairs, (int32_t i) -> void {
           uint32_t key = keys_data[i],
@@ -160,7 +161,7 @@ void TestHashConstruct2(int32_t num_key_bits) {
             // if this was the key that won the data race, its value should be
             // present.
             K2_CHECK_EQ(val, value);
-            K2_CHECK_EQ(*key_val_addr, ((uint64_t(key) << NUM_VALUE_BITS) | (uint64_t)value));
+            K2_CHECK_EQ(*key_val_addr, ((uint64_t(key) << num_value_bits) | (uint64_t)value));
           }
         });
 
