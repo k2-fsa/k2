@@ -13,7 +13,6 @@ from typing import List
 import unittest
 
 import k2
-import numpy as np
 import torch
 
 
