@@ -35,7 +35,8 @@ set(context_srcs
   fsa_utils.cu
   host_shim.cu
   intersect.cu
-  intersect_pruned.cu
+  intersect_dense.cu
+  intersect_dense_pruned.cu
   math.cu
   moderngpu_allocator.cu
   pinned_context.cu

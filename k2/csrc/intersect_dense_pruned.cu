@@ -40,7 +40,7 @@ struct StateInfo {
   /* Note: this `backward_loglike` is the best score of any path from here to
      the end, minus the best path in the overall FSA, i.e. it's the backward
      score you get if, at the final-state, you set backward_loglike ==
-     forward_loglike. So backward_loglike + OrderedIntToFloat(forward_loglike)
+     -forward_loglike. So backward_loglike + OrderedIntToFloat(forward_loglike)
      <= 0, and you can treat it somewhat like a posterior (except they don't sum
      to one as we're using max, not log-add).
   */
@@ -89,8 +89,6 @@ static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
 }  // namespace intersect_pruned_internal
 
 using namespace intersect_pruned_internal;  // NOLINT
-
-// Caution: this is really a .cu file.  It contains mixed host and device code.
 
 /*
    Pruned intersection (a.k.a. composition) that corresponds to decoding for
@@ -141,7 +139,6 @@ class MultiGraphDenseIntersectPruned {
     NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
     T_ = b_fsas_.shape.MaxSize(1);
-    K2_CHECK(b_fsas.scores.IsContiguous());
     K2_CHECK_GT(search_beam, 0);
     K2_CHECK_GT(output_beam, 0);
     K2_CHECK_GE(min_active, 0);
@@ -826,8 +823,8 @@ class MultiGraphDenseIntersectPruned {
               // Note: this_j is an idx01 into ans->states.  previously it
               // contained an arc_idx012 (of the entering arc that won the
               // race).
-              state_map_acc.WriteValue(key_value_addr, state_map_idx,
-                                       (uint64_t)this_j);
+              state_map_acc.SetValue(key_value_addr, state_map_idx,
+                                     (uint64_t)this_j);
             }
           });
     }
