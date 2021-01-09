@@ -56,7 +56,8 @@ def build_ctc_topo(tokens: List[int]) -> k2.Fsa:
 #
 # The CTC losses computed by warp-ctc, PyTorch, and k2 are identical.
 #
-# The gradients with respect to network outputs are also identical for PyTorch and k2.
+# The gradients with respect to network outputs are also identical
+# for PyTorch and k2.
 class TestCtcLossGradients(unittest.TestCase):
 
     def test_case1(self):
@@ -299,7 +300,7 @@ class TestCtcLossGradients(unittest.TestCase):
                                            supervision_segments).to(device)
 
             ctc_topo = build_ctc_topo([0, 1, 2, 3, 4])
-            #[ [b, c], [c, c], [a]]
+            # [ [b, c], [c, c], [a]]
             linear_fsa = k2.linear_fsa([[2, 3], [3, 3], [1]])
             decoding_graph = k2.intersect(ctc_topo, linear_fsa)
             decoding_graph = k2.connect(decoding_graph).invert_().to(device)
