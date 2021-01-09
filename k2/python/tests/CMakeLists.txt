@@ -34,6 +34,7 @@ set(py_test_files
   intersect_test.py
   invert_test.py
   linear_fsa_test.py
+  numerical_gradient_check_test.py
   ragged_ops_test.py
   ragged_shape_test.py
   ragged_test.py
