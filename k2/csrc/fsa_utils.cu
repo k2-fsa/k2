@@ -1668,8 +1668,8 @@ DenseFsaVec RandomDenseFsaVec(int32_t min_num_fsas, int32_t max_num_fsas,
 
 Ragged<int32_t> GetStartStates(FsaVec &src) {
   NVTX_RANGE(K2_FUNC);
-  ContextPtr c = src.Context();
-  K2_CHECK(src.NumAxes() == 3);
+  ContextPtr &c = src.Context();
+  K2_CHECK_EQ(src.NumAxes(), 3);
   int32_t num_fsas = src.Dim0();
   const int32_t *src_row_splits1_data = src.RowSplits(1).Data();
 
@@ -1693,7 +1693,7 @@ Ragged<int32_t> GetStartStates(FsaVec &src) {
       c, ans_dim, lambda_set_ans_values, (int32_t ans_idx01)->void {
         int32_t idx0 = ans_row_ids1_data[ans_idx01];
         int32_t src_start_state_idx01 = src_row_splits1_data[idx0];
-        K2_CHECK_GT(src_row_splits1_data[idx0 + 1], src_row_splits1_data[idx0]);
+        K2_DCHECK_GT(src_row_splits1_data[idx0 + 1], src_row_splits1_data[idx0]);
         ans_values_data[ans_idx01] = src_start_state_idx01;
       });
   return ans;
