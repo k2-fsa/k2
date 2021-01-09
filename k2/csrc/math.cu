@@ -26,7 +26,7 @@ int32_t HighestBitSet(int32_t i) {
   K2_CHECK_GE(i, 0);
   for (int64_t j = 0; j < 32; j++) {
     if (i < (1 << j)) {
-      return i - 1;
+      return j - 1;
     }
   }
   return 32;

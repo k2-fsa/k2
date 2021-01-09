@@ -199,7 +199,7 @@ void Max(Array1<T> &src, T default_value, Array1<T> *dest) {
 }
 
 template <typename T>
-T MaxValue(Array1<T> &src) {
+T MaxValue(const Array1<T> &src) {
   return MaxValue(src.Context(), src.Dim(), src.Data());
 }
 
