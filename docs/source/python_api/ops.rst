@@ -3,32 +3,32 @@ ops
 
 .. currentmodule:: k2
 
-index_select
-------------
+index
+-----
 
-.. autofunction:: index_select
+.. autofunction:: index
 
 index_add
 ---------
 
 .. autofunction:: index_add
 
-index_ragged_int
-----------------
+index_fsa
+---------
 
-.. autofunction:: index_ragged_int
+.. autofunction:: index_fsa
 
-index_tensor_with_ragged_int
-----------------------------
+index_ragged
+------------
 
-.. autofunction:: index_tensor_with_ragged_int
+.. autofunction:: index_ragged
+
+index_select
+------------
+
+.. autofunction:: index_select
 
 index_tensor
 ------------
 
 .. autofunction:: index_tensor
-
-index_attr
-----------
-
-.. autofunction:: index_attr

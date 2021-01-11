@@ -9,6 +9,10 @@ class RaggedInt:
     pass
 
 
+class RaggedFloat:
+    pass
+
+
 class RaggedArc:
     pass
 
