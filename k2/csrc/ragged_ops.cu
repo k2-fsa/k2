@@ -1073,7 +1073,6 @@ RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems) {
 RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1) {
   NVTX_RANGE(K2_FUNC);
   Array1<int32_t> row_splits = Range<int32_t>(c, dim0 + 1, 0, dim1);
-  int32_t *row_splits_data = row_splits.Data();
   Array1<int32_t> row_ids(c, dim0 * dim1);
   int32_t *row_ids_data = row_ids.Data();
   K2_EVAL2(

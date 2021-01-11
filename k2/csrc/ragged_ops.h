@@ -841,7 +841,7 @@ RaggedShape RaggedShape4(Array1<int32_t> *row_splits1,
 RaggedShape TrivialShape(ContextPtr &c, int32_t num_elems);
 
 /*
-  Returns a RaggedShape with Dim0() == dim0 and TotSize1() == dim0 * dim1.
+  Returns a RaggedShape with Dim0() == dim0 and TotSize(1) == dim0 * dim1.
   Require dim0 >= 0 and dim1 >= 0.
  */
 RaggedShape RegularRaggedShape(ContextPtr &c, int32_t dim0, int32_t dim1);

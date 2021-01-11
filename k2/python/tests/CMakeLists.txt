@@ -22,6 +22,7 @@ set(py_test_files
   closure_test.py
   compose_test.py
   connect_test.py
+  ctc_gradients_test.py
   dense_fsa_vec_test.py
   determinize_test.py
   fsa_test.py
@@ -34,6 +35,7 @@ set(py_test_files
   intersect_test.py
   invert_test.py
   linear_fsa_test.py
+  numerical_gradient_check_test.py
   ragged_ops_test.py
   ragged_shape_test.py
   ragged_test.py

@@ -9,6 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <algorithm>
 #include <limits>
 #include <vector>
 
@@ -54,7 +55,7 @@ struct ArcInfo {              // for an arc that wasn't pruned away...
   // the arc in a_fsas.
 
   union {
-    // these 3 different ways of storing the index of the destination state
+    // these 2 different ways of storing the index of the destination state
     // are used at different stages of the algorithm; we give them different
     // names for clarity.
     int32_t dest_a_fsas_state_idx01;  // The destination-state as an index
@@ -104,7 +105,7 @@ class MultiGraphDenseIntersectPruned {
        @param [in] a_fsas  The decoding graphs, one per sequence.  E.g. might
                            just be a linear sequence of phones, or might be
                            something more complicated.  Must have either the
-                           same Dim0() as b_fsas, or Size0()==1 in which
+                           same Dim0() as b_fsas, or Dim0()==1 in which
                            case the graph is shared.
        @param [in] b_fsas  The neural-net output, with each frame containing the
                            log-likes of each phone.  A series of sequences of
@@ -167,7 +168,7 @@ class MultiGraphDenseIntersectPruned {
     int64_t num_keys = num_a_copies * (int64_t)a_fsas.TotSize(1);
     hash_use_40_key_bits_ = (num_keys != (uint32_t)num_keys);
     if (hash_use_40_key_bits_) {
-      K2_CHECK((num_keys >> 40) == 0)
+      K2_CHECK_EQ(num_keys >> 40, 0)
           << "Decoding graph * minibatch size too big";
     }
 
@@ -231,7 +232,7 @@ class MultiGraphDenseIntersectPruned {
     /*
       T is the largest number of (frames+1) of neural net output, or the largest
       number of frames of log-likelihoods we count the final frame with (0,
-      -inf, -inf..) that is used for the final-arcc.  The largest number of
+      -inf, -inf..) that is used for the final-arc.  The largest number of
       states in the fsas represented by b_fsas equals T+1 (e.g. 1 frame would
       require 2 states, because that 1 frame is the arc from state 0 to state
       1).  So the #states is 2 greater than the actual number of frames in the
@@ -325,9 +326,8 @@ class MultiGraphDenseIntersectPruned {
           Ragged<StateInfo>(start_states.shape,
                             Array1<StateInfo>(c_, start_states.NumElements()));
       StateInfo *ans_states_values_data = ans->states.values.Data();
-      const int32_t *start_states_values_data = start_states.values.Data(),
-                    *start_states_row_ids1_data =
-                        start_states.shape.RowIds(1).Data();
+      const int32_t *start_states_values_data = start_states.values.Data();
+
       K2_EVAL(
           c_, start_states.NumElements(), lambda_set_state_info,
           (int32_t states_idx01)->void {
@@ -519,7 +519,7 @@ class MultiGraphDenseIntersectPruned {
     // the max will be -infinity for any FSA-id that doesn't have any active
     // states (e.g. because that stream has finished).
     // Casting to ragged2 just considers the top 2 indexes, ignoring the 3rd.
-    // i.e. it's indexed by [fsa_id][state].
+    // i.e. it's indexed by [fsa_id][arc].
     Ragged<float> end_scores_per_fsa = arc_end_scores.RemoveAxis(1);
     Array1<float> max_per_fsa(c_, end_scores_per_fsa.Dim0());
     MaxPerSublist(end_scores_per_fsa, -std::numeric_limits<float>::infinity(),
@@ -659,8 +659,7 @@ class MultiGraphDenseIntersectPruned {
           // are idx1's not idx01's, i.e. they don't contain the FSA-index,
           // where as the ai element is an idx01, so we need to do this to
           // convert to an idx01; this relies on the fact that
-          // sinfo.abs_state_id == arc.src_state
-          // + a_fsas_fsa_idx0x.
+          // sinfo.abs_state_id == arc.src_state + a_fsas_fsa_idx0x.
           ai.u.dest_a_fsas_state_idx01 =
               sinfo.a_fsas_state_idx01 + arc.dest_state - arc.src_state;
           ai_data[ai_arc_idx012] = ai;
@@ -670,7 +669,7 @@ class MultiGraphDenseIntersectPruned {
 
   // Later we may choose to support b_fsas_.Dim0() == 1 and a_fsas_.Dim0() > 1,
   // and we'll have to change various bits of code for that to work.
-  inline int32_t NumFsas() { return b_fsas_.shape.Dim0(); }
+  inline int32_t NumFsas() const { return b_fsas_.shape.Dim0(); }
 
   /*
     Does the forward-propagation (basically: the decoding step) and
@@ -696,7 +695,7 @@ class MultiGraphDenseIntersectPruned {
     cur_frame->arcs = GetArcs(t, cur_frame);
 
     if (NUM_KEY_BITS > 32) { // a check.
-      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS,
+      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS,
                              shift = std::min<int32_t>(31, NUM_VALUE_BITS);
       // the 'min' part is to avoid a compiler warning about 'shift count too
       // large' for code that is anyway unreachable.
@@ -719,11 +718,11 @@ class MultiGraphDenseIntersectPruned {
     Array1<float> cutoffs = GetPruningCutoffs(ai_loglikes);
     float *cutoffs_data = cutoffs.Data();
 
-    // write certain indexes ( into ai.values) to state_map_.Data().  Keeps
+    // write certain indexes (into ai.values) to state_map_.Data().  Keeps
     // track of the active states and will allow us to assign a numbering to
     // them.
-    int32_t *ai_row_ids1 = arc_info.shape.RowIds(1).Data(),
-            *ai_row_ids2 = arc_info.shape.RowIds(2).Data();
+    const int32_t *ai_row_ids1 = arc_info.shape.RowIds(1).Data(),
+                  *ai_row_ids2 = arc_info.shape.RowIds(2).Data();
     auto state_map_acc = state_map_.GetAccessor<NUM_KEY_BITS>();
     int64_t state_map_fsa_stride = state_map_fsa_stride_;
 
@@ -761,7 +760,7 @@ class MultiGraphDenseIntersectPruned {
     // state_reorder_data maps from (state_idx01 on next frame) to (the
     // arc_idx012 on this frame which is the source arc which we arbitrarily
     // choose as being "responsible" for the creation of that state).
-    int32_t *state_reorder_data = renumber_states.Old2New().Data();
+    const int32_t *state_reorder_data = renumber_states.Old2New().Data();
 
     // state_to_fsa_id maps from an index into the next frame's
     // FrameInfo::states.values() vector to the sequence-id (fsa_id) associated
@@ -1397,7 +1396,7 @@ class MultiGraphDenseIntersectPruned {
                            // (a_fsas_.Dim0() > 1), 0 if the decoding graph is
                            // shared (a_fsas_.Dim0() == 1).
   DenseFsaVec &b_fsas_;
-  int32_t T_;  // == b_fsas_.MaxSize(1).
+  int32_t T_;  // == b_fsas_.shape.MaxSize(1).
   float search_beam_;
   float output_beam_;
   int32_t min_active_;

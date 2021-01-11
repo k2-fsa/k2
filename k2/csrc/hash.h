@@ -93,7 +93,7 @@ class Hash {
   }
 
   // Only to be used prior to assignment.
-  Hash() { }
+  Hash() = default;
 
 
   int32_t NumBuckets() const { return data_.Dim(); }
@@ -150,7 +150,7 @@ class Hash {
   // Copy constructor (shallow copy)
   Hash(const Hash &src) = default;
 
-  ContextPtr &Context() { return data_.Context(); }
+  ContextPtr &Context() const { return data_.Context(); }
 
 
   // Note: this is the templated version of class Accessor, usable for any
@@ -196,8 +196,8 @@ class Hash {
         uint64_t *old_value = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
           leftover_index = 1 | (key >> buckets_num_bitsm1_);
-      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
-      const int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
+      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      constexpr int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
 
       K2_DCHECK_EQ(key & ~((uint64_t(1)<<NUM_KEY_BITS)-1), 0);
       K2_DCHECK_EQ(value & ~VALUE_MASK, 0);
@@ -252,8 +252,8 @@ class Hash {
     __forceinline__ __host__ __device__ bool Find(
         uint64_t key, uint64_t *value_out,
         uint64_t **key_value_location = nullptr) const {
-      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
-      const int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
+      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      constexpr int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
@@ -290,7 +290,7 @@ class Hash {
      */
     __forceinline__ __host__ __device__ void SetValue(
         uint64_t *key_value_location, uint64_t key, uint64_t value) const {
-      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       *key_value_location = (key << NUM_VALUE_BITS) | value;
     }
 
@@ -307,7 +307,7 @@ class Hash {
       compilation errors.
     */
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
-      const int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
       while (1) {
