@@ -32,6 +32,8 @@ from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
 from .ops import index
 from .ops import index_add
+from .ops import index_fsa
+from .ops import index_ragged
 from .ops import index_select
 from .ops import index_tensor
 from .ragged import RaggedShape
@@ -61,6 +63,8 @@ __all__ = [
     'get_tot_scores',
     'index',
     'index_add',
+    'index_fsa',
+    'index_ragged',
     'index_select',
     'index_tensor',
     'intersect',

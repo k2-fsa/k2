@@ -3,11 +3,6 @@ utils
 
 .. currentmodule:: k2
 
-index
------
-
-.. autofunction:: index
-
 to_str
 ------
 
