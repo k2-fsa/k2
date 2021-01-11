@@ -814,7 +814,7 @@ class MultiGraphDenseIntersectPruned {
             if (next_j > this_j) {
               uint64_t state_map_idx = dest_state_idx01 +
                                       fsa_id * state_map_fsa_stride;
-              uint64_t value, *key_value_addr;
+              uint64_t value, *key_value_addr = nullptr;
               bool ans = state_map_acc.Find(state_map_idx,
                                             &value, &key_value_addr);
               K2_DCHECK(ans);
