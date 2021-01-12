@@ -33,10 +33,14 @@ case ${torch} in
         package="torch==1.7.0"
         url=
         ;;
+      11.0)
+        package="torch==1.7.0+cu110"
+        url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
     esac
     ;;
   *)
-    echo "Unsupported Pytorch version: ${torch}"
+    echo "Unsupported PyTorch version: ${torch}"
     exit 1
     ;;
 esac

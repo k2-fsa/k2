@@ -133,7 +133,12 @@ if(K2_USE_PYTORCH)
   add_definitions(-DK2_USE_PYTORCH)
   include(torch)
 endif()
-include(cub)
+
+if(CUDA_VERSION VERSION_LESS 11.0)
+  # CUB is included in CUDA toolkit 11.0 and above
+  include(cub)
+endif()
+
 include(moderngpu)
 include(googletest)
 
