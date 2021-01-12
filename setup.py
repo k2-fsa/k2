@@ -39,9 +39,15 @@ def get_long_description():
 
 
 def get_cuda_version():
+    import torch
     from torch.utils import collect_env
-    cuda_version = collect_env.get_running_cuda_version(
-        collect_env.run).split('.')
+    running_cuda_version = collect_env.get_running_cuda_version(collect_env.run)
+    cuda_version = torch.version.cuda
+    if running_cuda_version is not None:
+        assert cuda_version in running_cuda_version, \
+                f'PyTorch is built with CUDA version: {cuda_version}.\n' \
+                f'The current running CUDA version is: {running_cuda_version}'
+    cuda_version = cuda_version.split('.')
     major, minor = int(cuda_version[0]), int(cuda_version[1])
     cuda_version = major * 10 + minor
     return f'{cuda_version}'
