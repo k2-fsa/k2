@@ -104,11 +104,11 @@ Install k2 from source
 
 Before compiling k2, some preparation work has to be done:
 
-- Have a compiler supporting at least c++14, e.g., GCC >= 5.0, Clang >= 3.4.
+- Have a compiler supporting at least C++14, e.g., GCC >= 5.0, Clang >= 3.4.
 - Install CMake. CMake 3.11.0 and 3.18.0 are known to work.
 - Install Python3. Python 3.6, 3.7 and 3.8 are known to work.
 - Install PyTorch. PyTorch 1.6 and 1.7 are known to work.
-- Install CUDA toolkit. CUDA 10.1 and 10.2 are known to work.
+- Install CUDA toolkit. CUDA 10.1, 10.2, and 11.0 are known to work.
 - Install cuDNN. Please install a version that is compatible with the
   CUDA toolkit you are using.
 

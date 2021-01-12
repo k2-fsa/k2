@@ -23,10 +23,13 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-16.04, ubuntu-18.04]
-        cuda: ["10.1", "10.2"]
+        cuda: ["10.1", "10.2", "11.0"] # 11.0 is for PyTorch 1.7.0 only
         gcc: ["5"]
         torch: ["1.6.0", "1.7.0"]
         python-version: [3.6, 3.7, 3.8]
+        exclude:
+          - cuda: "11.0"
+            torch: "1.6.0"
 
     steps:
       # refer to https://github.com/actions/checkout

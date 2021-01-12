@@ -64,7 +64,9 @@ set_target_properties(context PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set_target_properties(context PROPERTIES OUTPUT_NAME "k2context")
 
 # lib deps
-target_link_libraries(context PUBLIC cub)
+if(CUDA_VERSION VERSION_LESS 11.0)
+  target_link_libraries(context PUBLIC cub)
+endif()
 target_link_libraries(context PUBLIC fsa)
 target_link_libraries(context PUBLIC k2_log)
 target_link_libraries(context PUBLIC k2_nvtx)
