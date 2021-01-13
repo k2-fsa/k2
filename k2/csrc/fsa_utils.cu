@@ -1251,7 +1251,7 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
 
 
 template <typename FloatType>
-void GetArcScoresBackward(FsaVec &fsas,
+void BackpropGetArcScores(FsaVec &fsas,
                           Ragged<int32_t> &incoming_arcs,
                           const Array1<FloatType> &arc_scores_deriv,
                           Array1<FloatType> *forward_scores_deriv,
@@ -1539,12 +1539,10 @@ template Array1<double> GetForwardScores(FsaVec &fsas,
 template Array1<float> GetBackwardScores(FsaVec &fsas,
                                          Ragged<int32_t> &state_batches,
                                          Ragged<int32_t> &leaving_arc_batches,
-                                         const Array1<float> *tot_scores,
                                          bool log_semiring);
 template Array1<double> GetBackwardScores(FsaVec &fsas,
                                           Ragged<int32_t> &state_batches,
                                           Ragged<int32_t> &leaving_arc_batches,
-                                          const Array1<double> *tot_scores,
                                           bool log_semiring);
 
 template Array1<float> GetArcScores(FsaVec &fsas,
