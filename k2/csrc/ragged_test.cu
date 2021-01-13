@@ -22,6 +22,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/context.h"
+#include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
@@ -1491,6 +1492,34 @@ TEST(GetTransposeReordering, WithDuplicatesThreeAxes) {
     CheckArrayData(
         order, {5, 6, 9, 0, 1, 8, 10, 11, 7, 2, 3, 4, 12, 13, 14, 15, 16, 17});
     EXPECT_TRUE(context->IsCompatible(*order.Context()));
+  }
+}
+
+TEST(GetTransposeReordering, RandomFsaVecTest) {
+  for (int32_t iter = 0; iter != 8; ++iter) {
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      int n = RandInt(100, 200);
+      int32_t min_num_fsas = n;
+      int32_t max_num_fsas = n * 2;
+      bool acyclic = false;
+      int32_t max_symbol = 100;
+      int32_t min_num_arcs = min_num_fsas * 10;
+      int32_t max_num_arcs = max_num_fsas * 20;
+
+      FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
+                                 max_symbol, min_num_arcs, max_num_arcs);
+      fsas = fsas.To(context);
+      Array1<int32_t> dest_states = GetDestStates(fsas, true);
+      Ragged<int32_t> dest_states_tensor(fsas.shape, dest_states);
+      int32_t num_states = fsas.TotSize(1);
+      int32_t num_arcs = fsas.TotSize(2);
+      Array1<int32_t> order =
+          GetTransposeReordering(dest_states_tensor, num_states);
+      Sort(&order);
+      ASSERT_EQ(order.Dim(), num_arcs);
+      Array1<int32_t> expected = Range<int32_t>(context, num_arcs, 0);
+      CheckArrayData(order, expected);
+    }
   }
 }
 
