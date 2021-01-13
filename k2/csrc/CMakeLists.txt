@@ -43,6 +43,7 @@ set(context_srcs
   ragged.cu
   ragged_ops.cu
   ragged_utils.cu
+  rand.cu
   rm_epsilon.cu
   tensor.cu
   tensor_ops.cu
@@ -99,6 +100,7 @@ set(cuda_tests
   ragged_shape_test
   ragged_test
   ragged_utils_test
+  rand_test
   rm_epsilon_test
   tensor_ops_test
   tensor_test
