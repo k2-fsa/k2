@@ -1249,11 +1249,21 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
   return state_scores;
 }
 
+
+template <typename FloatType>
+void GetArcScoresBackward(FsaVec &fsas,
+                          Ragged<int32_t> &incoming_arcs,
+                          const Array1<FloatType> &arc_scores_deriv,
+                          Array1<FloatType> *forward_scores_deriv,
+                          Array1<FloatType> *backward_scores_deriv) {
+  // TODO..
+}
+
+
 template <typename FloatType>
 Array1<FloatType> GetBackwardScores(
     FsaVec &fsas, Ragged<int32_t> &state_batches,
     Ragged<int32_t> &leaving_arc_batches,
-    const Array1<FloatType> *tot_scores /*= nullptr*/,
     bool log_semiring /*= true*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(IsCompatible(fsas, state_batches));
@@ -1277,37 +1287,15 @@ Array1<FloatType> GetBackwardScores(
   Array1<FloatType> state_scores(c, num_states, negative_infinity);
   FloatType *state_scores_data = state_scores.Data();
   const int32_t *fsa_row_splits1 = fsas.RowSplits(1).Data();
-  if (tot_scores != nullptr) {
-    K2_CHECK(IsCompatible(fsas, *tot_scores));
-    K2_CHECK_EQ(tot_scores->Dim(), num_fsas);
-    const FloatType *tot_scores_data = tot_scores->Data();
-    // set the score of final state in fsa i to be negative of tot_scores[i]
-    K2_EVAL(
-        c, num_fsas, lambda_set_final_state_score, (int32_t fsa_idx) {
-          int32_t start_state = fsa_row_splits1[fsa_idx],
-                  start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
-          if (start_state_next_fsa - start_state > 0) {
-            // We never set the score of a state to positive_infinity, otherwise
-            // we may get NaN when add it with negative_infinity. But this
-            // usually would not happen for a connected FSA.
-            if (tot_scores_data[fsa_idx] != negative_infinity) {
-              state_scores_data[start_state_next_fsa - 1] =
-                  -tot_scores_data[fsa_idx];
-            } else {
-              state_scores_data[start_state_next_fsa - 1] = negative_infinity;
-            }
-          }
-        });
-  } else {
-    // set the score of final state in each fsa to be 0
-    K2_EVAL(
-        c, num_fsas, lambda_set_final_state_score, (int32_t fsa_idx) {
-          int32_t start_state = fsa_row_splits1[fsa_idx],
-                  start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
-          if (start_state_next_fsa - start_state > 0)
-            state_scores_data[start_state_next_fsa - 1] = 0;
-        });
-  }
+
+  // set the score of final state in each fsa to be 0
+  K2_EVAL(
+      c, num_fsas, lambda_set_final_state_score, (int32_t fsa_idx) {
+        int32_t start_state = fsa_row_splits1[fsa_idx],
+            start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
+        if (start_state_next_fsa - start_state > 0)
+          state_scores_data[start_state_next_fsa - 1] = 0;
+      });
 
   // get the 1st leaving arc index in each batch, +1 so we can get the number of
   // leaving arcs in each batch by taking the difference of adjacent elements
@@ -1493,8 +1481,10 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
   K2_CHECK_EQ(num_states, forward_scores.Dim());
   K2_CHECK_EQ(num_states, backward_scores.Dim());
 
-  Array1<FloatType> arc_scores(c, num_arcs);
-  FloatType *arc_scores_data = arc_scores.Data();
+  Array1<FloatType> arc_scores(c, num_arcs),
+      fsa_neg_tot_scores(c, num_fsas);  // minus the tot scores per FSA.
+  FloatType *arc_scores_data = arc_scores.Data(),
+      *fsa_neg_tot_scores_data = fsa_scores.Data();
 
   const int32_t *fsa_row_splits1 = fsas.RowSplits(1).Data();
   const int32_t *fsa_row_ids1 = fsas.RowIds(1).Data();
@@ -1502,6 +1492,18 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
   const Arc *arcs = fsas.values.Data();
   const FloatType *forward_scores_data = forward_scores.Data();
   const FloatType *backward_scores_data = backward_scores.Data();
+
+  K2_EVAL(c, num_fsas, lambda_set_fsa_scores, (int32_t fsa_idx0) -> void {
+      int32_t begin = fsa_row_splits1[fsa_idx0],
+          end = fsa_row_splits1[fsa_idx0 + 1];
+      FloatType tot_score = 0.0;
+      if (begin != end) {
+        tot_score = 0.5 * (forward_scores_data[end - 1] +
+                           bsackward_scores_data[begin]);
+      }
+      fsa_neg_tot_scores_data[fsa_idx0] = -tot_score;
+    });
+
   K2_EVAL(
       c, num_arcs, lambda_get_arc_scores, (int32_t arc_idx012) {
         int32_t src_state_idx1 = arcs[arc_idx012].src_state;
@@ -1515,7 +1517,8 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
         int32_t dest_state_idx01 = idx0x + dest_state_idx1;
         arc_scores_data[arc_idx012] = arc_score +
                                       forward_scores_data[src_state_idx01] +
-                                      backward_scores_data[dest_state_idx01];
+                                      backward_scores_data[dest_state_idx01] +
+                                      fsa_neg_tot_scores_data[idx0];
       });
 
   return arc_scores;

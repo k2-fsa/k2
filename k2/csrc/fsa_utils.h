@@ -239,6 +239,15 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
                                    bool log_semiring,
                                    Array1<int32_t> *entering_arcs = nullptr);
 
+
+template <typename FloatType>
+void GetForwardAndBackwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
+                                 Ragged<int32_t> &entering_arc_batches,
+                                   bool log_semiring,
+                                   Array1<int32_t> *entering_arcs = nullptr);
+
+
+
 /*
   Return array of total scores (one per FSA), e.g. could be interpreted as
   the data probability or partition function.
@@ -267,11 +276,6 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
                  leaving states in `state_batches`, indexed
                  [iter][fsa][state_list][arc_list], as returned by
                  GetLeavingArcIndexBatches().
-       @param [in] tot_scores  If provided, we'll treat the backward
-                  scores of final-states as the negative of these
-                  tot_scores (which must have
-                  `tot_scores->Dim() == fsas.Dim0())`; otherwise
-                  as zero.
        @param [in] log_semiring  If true, use LogAdd to combine
                   scores; if false, use max.
        @return  Returns a vector indexed by state-index (idx01 in fsas), with
@@ -285,13 +289,13 @@ Array1<FloatType> GetBackwardScores(
     const Array1<FloatType> *tot_scores = nullptr, bool log_semiring = true);
 
 /*
-  Compute and return arc-level forward-backward scores, which are:
-   `forward_score[src_state] + arc.score + backward_score[dest_state]`.
+  Compute and return arc-level posterior scores which are:
+  `forward_score[src_state] + arc.score + backward_score[dest_state] - tot_score[fsa]`,
+  where tot_score[fsa] is computed as the average of the forward score for the
+  final state of that FSA and the backward score of the initial state.
 
-   If you provided the `tot_scores` argument to GetBackwardScores, and if
-   log_semiring == true, then you can think of these as the log probability that
-   you go through that arc, which would be log(1.0) = 0.0 for an FSA with only
-   one path.
+   You can think of the result as the log probability that you go through that
+   arc, which would be log(1.0) = 0.0 for an FSA with only one path.
 
        @param [in] fsas   The FSAs that we want the arc-level probabilities
                          from
@@ -310,6 +314,33 @@ template <typename FloatType>
 Array1<FloatType> GetArcScores(FsaVec &fsas,
                                const Array1<FloatType> &forward_scores,
                                const Array1<FloatType> &backward_scores);
+
+/*
+  Does the backprop for GetArcScores(), outputting the deriv of the loss
+  function w.r.t the `forward_scores` and `backward_scores` args to
+  GetArcScores().
+       @param [in] fsas  The FSAs we're getting scores from, the same as the
+                        original arg to GetArcScores().
+       @param [in] incoming_arcs   The result of calling
+                       `GetIncomingArcs(fsas, GetDestStates(fsas, true))`
+       @param [in] arc_scores_deriv  The derivative of the loss function
+                       w.r.t. the return value of `GetArcScores()`
+       @param [out] forward_scores_deriv  The derivative of the loss function
+                       w.r.t. the input `forward_scores` to GetArcScores()
+                       will be written to here.
+       @param [out] backward_deriv  The derivative of the loss function
+                       w.r.t. the input `backward_scores` to GetArcScores()
+                      will be written to here.
+ */
+template <typename FloatType>
+void GetArcScoresBackward(FsaVec &fsas,
+                          Ragged<int32_t> &incoming_arcs,
+                          const Array1<FloatType> &arc_scores_deriv,
+                          Array1<FloatType> *forward_scores_deriv,
+                          Array1<FloatType> *backward_scores_deriv);
+
+
+
 
 /*
   Returns an array of the destination-states for all arcs in an FsaVec
