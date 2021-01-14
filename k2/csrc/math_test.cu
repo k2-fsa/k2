@@ -1,5 +1,5 @@
 /**
- * @brief Unin test for math.cu.
+ * @brief Unit test for math.cu.
  *
  *
  * @copyright

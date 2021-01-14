@@ -40,31 +40,51 @@ void SetSeed(ContextPtr context, uint64_t seed);
  *
  * low is inclusive and high is exclusive.
  *
- * `FloatType` can be either `float` or `double`.
+ * `T` can be `float`, `double`, or `int32_t`.
  *
- * @param [inout] array  The array is modified in-place.
+ * @param [in]  context      It specifies the device on which
+ *                           `array_data` resides
+ * @param [in]  low          The lower bound of the interval (inclusive).
+ * @param [in]  high         The upper bound of the interval (exclusive).
+ * @param [in]  dim          Number of elements in the output array.
+ * @param [out] array_data   Pointer to the beginning of the output array.
  */
-template <typename FloatType>
-void Rand(Array1<FloatType> *array, FloatType low = FloatType(0),
-          FloatType high = FloatType(1));
+template <typename T>
+void Rand(ContextPtr context, T low, T high, int32_t dim, T *array_data);
+
+/* Fill the given array with random numbers from a uniform distribution on
+ * the interval [low, high).
+ *
+ * low is inclusive and high is exclusive.
+ *
+ * `T` can be `float`, `double`, or `int32_t`.
+ *
+ * @param [in]  low       The lower bound of the interval (inclusive).
+ * @param [in]  high      The upper bound of the interval (exclusive).
+ * @param [out] array     The array is modified in-place.
+ */
+template <typename T>
+void Rand(T low, T high, Array1<T> *array) {
+  Rand(array->Context(), low, high, array->Dim(), array->Data());
+}
 
 /* Returns an array filled with random numbers from a uniform distribution on
  * the interval [low, high).
  *
  * low is inclusive and high is exclusive.
  *
- * `FloatType` can be either `float` or `double`.
+ * `T` can be `float`, `double`, or `int32_t`.
  *
  * @param [in]  context  It specifies the device on which the random
  *                       numbers are generated.
+ * @param [in]  low      The lower bound of the interval (inclusive).
+ * @param [in]  high     The upper bound of the interval (exclusive).
  * @param [in]  dim      The dimension of the returned array.
  */
-template <typename FloatType>
-Array1<FloatType> Rand(ContextPtr context, int32_t dim,
-                       FloatType low = FloatType(0),
-                       FloatType high = FloatType(1)) {
-  Array1<FloatType> ans(context, dim);
-  Rand(&ans, low, high);
+template <typename T>
+Array1<T> Rand(ContextPtr context, T low, T high, int32_t dim) {
+  Array1<T> ans(context, dim);
+  Rand(low, high, &ans);
   return ans;
 }
 
