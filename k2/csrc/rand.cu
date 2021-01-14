@@ -122,7 +122,7 @@ void Rand<float>(Array1<float> *array) {
     float4 r = curand_uniform4(&philox_state);
     array_data[i] = r.x;
   };
-  Eval(context, dim, generate_rand_lambda_float);
+  EvalDevice(context, dim, generate_rand_lambda_float);
 
   state.offset += 4;
 }
@@ -151,7 +151,7 @@ void Rand<double>(Array1<double> *array) {
     double2 r = curand_uniform2_double(&philox_state);
     array_data[i] = r.x;
   };
-  Eval(context, dim, generate_rand_lambda_double);
+  EvalDevice(context, dim, generate_rand_lambda_double);
 
   state.offset += 4;
 }
