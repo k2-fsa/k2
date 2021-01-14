@@ -45,9 +45,6 @@ class ModernGpuAllocator : public mgpu::standard_context_t {
 
 namespace k2 {
 
-// maximum number of GPUs supported by k2
-static constexpr int32_t kMaxNumGpus = 16;
-
 static mgpu::context_t *mgpu_contexts[kMaxNumGpus];
 static std::once_flag mgpu_once_flags[kMaxNumGpus];
 

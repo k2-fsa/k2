@@ -19,7 +19,7 @@
 #include <deque>
 #include <map>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <ostream>
 #include <type_traits>
 #include <vector>
@@ -29,6 +29,10 @@
 #include "k2/csrc/semaphore.h"
 
 namespace k2 {
+
+// Maximum number of GPUs supported by k2
+// You can change it to any positive number as you like.
+constexpr int32_t kMaxNumGpus = 16;
 
 enum class DeviceType {
   kUnk,
@@ -403,7 +407,6 @@ class With {
   cudaStream_t stream_;
 };
 
-
 /*
   Our class Semaphore is a slight extension of std::counting_semaphore that also
   takes care of stream synchronization.  The projected use-case is when two
@@ -416,7 +419,7 @@ class With {
  */
 class Semaphore {
  public:
-  Semaphore(): device_type_(kUnk), semaphore_(0) { }
+  Semaphore() : device_type_(kUnk), semaphore_(0) {}
 
   void Signal(ContextPtr c);
 
@@ -429,8 +432,6 @@ class Semaphore {
   std::mutex events_mutex_;
   std::deque<cudaEvent_t> events_;
 };
-
-
 
 /*
   Class ParallelRunner allows you to invoke CUDA kernels in parallel.

@@ -1,6 +1,6 @@
 /**
  * @brief
- * ragged
+ * math
  *
  * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
@@ -15,20 +15,27 @@
 
 namespace k2 {
 /*
-  Returns index of highest bit set, in range -1..31.
+  Returns index of highest bit set, in range -1..30.
   HighestBitSet(0) = -1,
   HighestBitSet(1) = 0,
-  HighestBitSet(2,3) = 1
+  HighestBitSet(2) = 1
+  HighestBitSet(3) = 1
   ...
  */
 int32_t HighestBitSet(int32_t i) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(i, 0);
-  for (int64_t j = 0; j < 32; j++) {
-    if (i < (1 << j)) {
+#if defined(__clang__) || defined (__GNUC__)
+  if (i == 0) return -1;
+  return 31 - static_cast<int32_t>(__builtin_clz(i));
+#else
+  for (int64_t j = 0; j < 32; ++j) {
+    if (i < ((int64_t)1 << j)) {
       return j - 1;
     }
   }
+#endif
+  K2_LOG(FATAL) << "Unreachable code";
   return 32;
 }
 

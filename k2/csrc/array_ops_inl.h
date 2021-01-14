@@ -467,8 +467,6 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value, T max_value,
   T *data = temp.Data();
   K2_CHECK_GE(max_value, min_value);
 
-  std::random_device rd;
-  std::mt19937 gen(rd());
   if (max_value == min_value) {
     for (int32_t i = 0; i < dim; ++i) data[i] = min_value;
   } else {
