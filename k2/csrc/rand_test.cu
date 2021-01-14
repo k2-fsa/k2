@@ -28,8 +28,8 @@ TEST(Rand, CUDA) {
   Rand(&a);
   K2_LOG(INFO) << a;  // [0.575718 0.517407 0.176948]
 
-  Array1<double> b = Rand<double>(c, 3);
-  K2_LOG(INFO) << b;  // [0.552894, 0.720282, 0.906524]
+  Array1<double> b = Rand<double>(c, 3, 0, 100);
+  K2_LOG(INFO) << b;  // [55.2894, 72.0282, 90.6524]
 #if 0
   import torch
   torch.manual_seed(20210113)

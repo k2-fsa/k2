@@ -36,21 +36,22 @@ uint64_t GetSeed(ContextPtr context);
 void SetSeed(ContextPtr context, uint64_t seed);
 
 /* Fill the given array with random numbers from a uniform distribution on
- * the interval (0.0, 1.0].
+ * the interval (low, high].
  *
- * 0 is exclusive and 1 is inclusive.
+ * low is exclusive and high is inclusive.
  *
  * `FloatType` can be either `float` or `double`.
  *
  * @param [inout] array  The array is modified in-place.
  */
 template <typename FloatType>
-void Rand(Array1<FloatType> *array);
+void Rand(Array1<FloatType> *array, FloatType low = FloatType(0),
+          FloatType high = FloatType(1));
 
 /* Returns an array filled with random numbers from a uniform distribution on
- * the interval [0, 1).
+ * the interval (low, high].
  *
- * 0 is inclusive and 1 is exclusive.
+ * low is exclusive and high is inclusive.
  *
  * `FloatType` can be either `float` or `double`.
  *
@@ -59,9 +60,11 @@ void Rand(Array1<FloatType> *array);
  * @param [in]  dim      The dimension of the returned array.
  */
 template <typename FloatType>
-Array1<FloatType> Rand(ContextPtr context, int32_t dim) {
+Array1<FloatType> Rand(ContextPtr context, int32_t dim,
+                       FloatType low = FloatType(0),
+                       FloatType high = FloatType(1)) {
   Array1<FloatType> ans(context, dim);
-  Rand(&ans);
+  Rand(&ans, low, high);
   return ans;
 }
 

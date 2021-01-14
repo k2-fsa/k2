@@ -50,22 +50,21 @@ static CpuRandState &GetCpuRandState() {
 }
 
 template <typename FloatType>
-static void RandCpu(int32_t dim, FloatType *out) {
+static void RandCpu(int32_t dim, FloatType low, FloatType high,
+                    FloatType *out) {
   static_assert(std::is_same<FloatType, float>::value ||
                     std::is_same<FloatType, double>::value,
                 "");
   // std::uniform_real_distribution returns a number in
-  // the interval [low, high], but we want (low, high].
+  // the interval [low, high), but we want (low, high].
   // That is, we want to exclude `low`.
-  FloatType high;
-  FloatType low;
 
   if (std::is_same<FloatType, float>::value) {
-    low = std::nexttowardf(0.0f, 1.0f);
-    high = std::nexttowardf(1.0f, 2.0f);
+    low = std::nexttowardf(low, low + 1);
+    high = std::nexttowardf(high, high + 1);
   } else {
-    low = std::nexttoward(0.0, 1.0);
-    high = std::nexttoward(1.0, 2.0);
+    low = std::nexttoward(low, low + 1);
+    high = std::nexttoward(high, high + 1);
   }
 
   std::uniform_real_distribution<FloatType> distribution(low, high);
@@ -103,7 +102,8 @@ void SetSeed(ContextPtr context, uint64_t seed) {
 }
 
 template <>
-void Rand<float>(Array1<float> *array) {
+void Rand<float>(Array1<float> *array, float low, float high) {
+  K2_CHECK_GT(high, low);
   ContextPtr &context = array->Context();
   int32_t dim = array->Dim();
   if (dim == 0) return;
@@ -111,7 +111,7 @@ void Rand<float>(Array1<float> *array) {
   float *array_data = array->Data();
   DeviceType device_type = context->GetDeviceType();
   if (device_type == kCpu) {
-    RandCpu(dim, array_data);
+    RandCpu(dim, low, high, array_data);
     return;
   }
 
@@ -124,7 +124,7 @@ void Rand<float>(Array1<float> *array) {
                 state.offset, &philox_state);
 
     float4 r = curand_uniform4(&philox_state);
-    array_data[i] = r.x;
+    array_data[i] = r.x * (high - low) + low;
   };
   EvalDevice(context, dim, generate_rand_lambda_float);
 
@@ -132,7 +132,8 @@ void Rand<float>(Array1<float> *array) {
 }
 
 template <>
-void Rand<double>(Array1<double> *array) {
+void Rand<double>(Array1<double> *array, double low, double high) {
+  K2_CHECK_GT(high, low);
   ContextPtr &context = array->Context();
   int32_t dim = array->Dim();
   if (dim == 0) return;
@@ -140,7 +141,7 @@ void Rand<double>(Array1<double> *array) {
   double *array_data = array->Data();
   DeviceType device_type = context->GetDeviceType();
   if (device_type == kCpu) {
-    RandCpu(dim, array_data);
+    RandCpu(dim, low, high, array_data);
     return;
   }
 
@@ -153,7 +154,7 @@ void Rand<double>(Array1<double> *array) {
                 state.offset, &philox_state);
 
     double2 r = curand_uniform2_double(&philox_state);
-    array_data[i] = r.x;
+    array_data[i] = r.x * (high - low) + low;
   };
   EvalDevice(context, dim, generate_rand_lambda_double);
 
