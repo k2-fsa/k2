@@ -744,7 +744,7 @@ TEST_F(StatesBatchSuiteTest, TestBackwardScores) {
   }
 }
 
-TEST_F(StatesBatchSuiteTest, TestArcScores) {
+TEST_F(StatesBatchSuiteTest, TestArcPost) {
   {
     // simple case
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -768,7 +768,7 @@ TEST_F(StatesBatchSuiteTest, TestArcScores) {
         Array1<float> backward_scores = GetBackwardScores<float>(
             fsa_vec, state_batches, leaving_arc_batches, false);
         Array1<float> arc_scores =
-            GetArcScores(fsa_vec, forward_scores, backward_scores);
+            GetArcPost(fsa_vec, forward_scores, backward_scores);
         EXPECT_EQ(arc_scores.Dim(), num_arcs);
         K2_LOG(INFO) << arc_scores;
         // [ 20 -inf 16 17 -inf 20 20 13 20 10 8 10 -inf -inf 10 21 -inf -inf

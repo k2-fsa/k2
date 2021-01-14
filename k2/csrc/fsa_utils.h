@@ -363,33 +363,36 @@ Array1<FloatType> BackpropGetBackwardScores(
                   with ans.Dim() == fsas.NumElements().
 */
 template <typename FloatType>
-Array1<FloatType> GetArcScores(FsaVec &fsas,
+Array1<FloatType> GetArcPost(FsaVec &fsas,
                                const Array1<FloatType> &forward_scores,
                                const Array1<FloatType> &backward_scores);
 
 /*
-  Does the backprop for GetArcScores(), outputting the deriv of the loss
+  Does the backprop for GetArcPost(), outputting the deriv of the loss
   function w.r.t the `forward_scores` and `backward_scores` args to
-  GetArcScores().
+  GetArcPost() and also w.r.t. the arc scores (Arc::score fields) of
+  the `fsas` argument.
        @param [in] fsas  The FSAs we're getting scores from, the same as the
-                        original arg to GetArcScores().
+                        original arg to GetArcPost().
        @param [in] incoming_arcs   The result of calling
                        `GetIncomingArcs(fsas, GetDestStates(fsas, true))`
-       @param [in] arc_scores_deriv  The derivative of the loss function
-                       w.r.t. the return value of `GetArcScores()`
+       @param [in] arc_post_deriv  The derivative of the loss function
+                       w.r.t. the return value of `GetArcPost()`
        @param [out] forward_scores_deriv  The derivative of the loss function
-                       w.r.t. the input `forward_scores` to GetArcScores()
+                       w.r.t. the input `forward_scores` to GetArcPost()
                        will be written to here.
        @param [out] backward_deriv  The derivative of the loss function
-                       w.r.t. the input `backward_scores` to GetArcScores()
+                       w.r.t. the input `backward_scores` to GetArcPost()
                       will be written to here.
  */
 template <typename FloatType>
-void BackpropGetArcScores(FsaVec &fsas,
-                          Ragged<int32_t> &incoming_arcs,
-                          const Array1<FloatType> &arc_scores_deriv,
-                          Array1<FloatType> *forward_scores_deriv,
-                          Array1<FloatType> *backward_scores_deriv);
+void BackpropGetArcPost(FsaVec &fsas,
+                        Ragged<int32_t> &incoming_arcs,
+                        const Array1<FloatType> &arc_post_deriv,
+                        Array1<FloatType> *arc_scores_deriv,
+                        Array1<FloatType> *forward_scores_deriv,
+                        Array1<FloatType> *backward_scores_deriv);
+
 
 
 

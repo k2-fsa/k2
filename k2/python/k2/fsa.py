@@ -142,6 +142,7 @@ class Fsa(object):
         assert isinstance(arcs, RaggedArc)
 
         # Accessing self.__dict__ bypasses __setattr__.
+        # Here we are setting self.arcs and self._properties.
         self.__dict__['arcs'] = arcs
         self.__dict__['_properties'] = properties
 
@@ -498,14 +499,15 @@ class Fsa(object):
     def get_forward_scores(self,
                            use_double_scores: bool,
                            log_semiring: bool) -> torch.Tensor:
-        '''Compute backward-scores, i.e. total weight (or best-path weight)
-        from each state to end state.  Supports autograd.
+        '''Compute forward-scores, i.e. total weight (or best-path weight)
+        from start state to each state.  Supports autograd.
 
         Args:
           use_double_scores: if True, use double precision.
           log_semiring: if True, use log semiring, else tropical.
-        Returns: a torch.Tensor with shape equal to self.
+        Returns: a torch.Tensor with shape equal to (num_states,)
         '''
+        # Caution: the reason we don't cache this is
         forward_scores = k2.autograd._GetForwardScoresFunction.apply(
             self, log_semiring, use_double_scores, self.scores)
         return forward_scores
@@ -604,15 +606,84 @@ class Fsa(object):
         Args:
           use_double_scores: if True, use double precision.
           log_semiring: if True, use log semiring, else tropical.
-        Returns: a torch.Tensor with shape equal to self.
+        Returns: a torch.Tensor with shape equal to (num_states,)
         '''
         backward_scores = k2.autograd._GetBackwardScoresFunction.apply(
             self, log_semiring, use_double_scores, self.scores)
         return backward_scores
 
+    def _get_arc_post(self,
+                        use_double_scores: bool,
+                        log_semiring: bool) -> torch.Tensor:
+        '''Compute scores on arcs, representing log probabilities;
+        with log_semiring=True you could call these log posteriors,
+        but if log_semiring=False they can only be interpreted as the
+        difference betwen the best-path score and the score of the
+        best path that includes this arc.
+
+        This version is not differentiable; see also get_arc_post().
+
+        Args:
+          use_double_scores: if True, use double precision.
+          log_semiring: if True, use log semiring, else tropical.
+        Returns: a torch.Tensor with shape equal to (num_arcs,)
+          and non-positive elements.
+
+        '''
+        name = 'arc_post_' + \
+               ('double_' if use_double_scores else 'float_') + \
+               ('log' if log_semiring else 'tropical')
+        cache = self._cache
+        if name not in cache:
+            forward_scores = self._get_forward_scores(use_double_scores,
+                                                      log_semiring)
+            backward_scores = self._get_backward_scores(use_double_scores,
+                                                        log_semiring)
+            func = (_k2.get_arc_post_double if use_double_scores else
+                    _k2.get_arc_post_float)
+            arc_post = func(fsas=self.arcs,
+                            forward_scores=forward_scores,
+                            backward_scores=backward_scores)
+            cache[name] = arc_post
+        return cache[name]
+
+    def get_arc_post(self,
+                     use_double_scores: bool,
+                     log_semiring: bool) -> torch.Tensor:
+        '''Compute scores on arcs, representing log probabilities;
+        with log_semiring=True you could call these log posteriors,
+        but if log_semiring=False they can only be interpreted as the
+        difference betwen the best-path score and the score of the
+        best path that includes this arc.
+        This version is differentiable; see also _get_arc_post().
+        Caution: because of how the autograd mechanics works and the
+        need to avoid circular references, this is not cached; it's
+        best to store it if you'll need it multiple times.
+
+        Args:
+          use_double_scores: if True, use double precision.
+          log_semiring: if True, use log semiring, else tropical.
+        Returns: a torch.Tensor with shape equal to (num_arcs,)
+          and non-positive elements.
+        '''
+        # We don't cache this!  User should store it if needed more than once,
+        # to avoid duplicate code in backprop.  We may be able to partially fix
+        # this at some point with a weak dictionary.
+        forward_scores = self.get_forward_scores(use_double_scores,
+                                                 log_semiring)
+        backward_scores = self._get_backward_scores(use_double_scores,
+                                                    log_semiring)
+
+        # Below, the last 3 args are active w.r.t. autograd, the backward function
+        # will return non-None derivatives for them.
+        arc_post = k2.autograd._GetArcPostFunction(use_double_scores, log_semiring,
+                                                   self.scores,
+                                                   forward_scores, backward_scores);
+        return arc_post
 
 
-    def get_entering_arcs(self, use_double_scores: bool) -> torch.Tensor:
+
+    def _get_entering_arcs(self, use_double_scores: bool) -> torch.Tensor:
         '''Compute, for each state, the index of the best arc entering it.
         For internal k2 use.
 
