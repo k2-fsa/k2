@@ -95,7 +95,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
   K2_EVAL(
       c, num_arcs, lambda_get_properties, (int32_t idx012)->void {
         Arc arc = arcs_data[idx012];
-        Arc prev_arc;
+        Arc prev_arc{};
         if (idx012 > 0) prev_arc = arcs_data[idx012 - 1];
         int32_t idx01 = row_ids2_data[idx012], idx01x = row_splits2_data[idx01],
                 idx2 = idx012 - idx01x, idx0 = row_ids1_data[idx01],

@@ -21,10 +21,11 @@
 namespace k2 {
 
 /*
-  Returns index of highest bit set, in range -1..31.
+  Returns index of highest bit set, in range -1..30.
   HighestBitSet(0) = -1,
   HighestBitSet(1) = 0,
-  HighestBitSet(2,3) = 1
+  HighestBitSet(2) = 1
+  HighestBitSet(3) = 1
   ...
 
   Note we may delete this function later if there's no other usage.

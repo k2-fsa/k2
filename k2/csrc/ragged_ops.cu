@@ -154,7 +154,6 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b) {
   return RaggedShape(axes, validate);
 }
 
-
 RaggedShape ComposeRaggedShapes3(const RaggedShape &a, const RaggedShape &b,
                                  const RaggedShape &c) {
   NVTX_RANGE(K2_FUNC);
@@ -171,8 +170,7 @@ RaggedShape ComposeRaggedShapes3(const RaggedShape &a, const RaggedShape &b,
   const auto &a_axes = a.Layers();
   const auto &b_axes = b.Layers();
   const auto &c_axes = c.Layers();
-  std::size_t a_size = a_axes.size(),
-              b_size = b_axes.size(),
+  std::size_t a_size = a_axes.size(), b_size = b_axes.size(),
               c_size = c_axes.size();
   std::vector<RaggedShapeLayer> axes;
   axes.reserve(a_size + b_size + c_size);
@@ -182,7 +180,6 @@ RaggedShape ComposeRaggedShapes3(const RaggedShape &a, const RaggedShape &b,
   bool validate = false;
   return RaggedShape(axes, validate);
 }
-
 
 RaggedShape RaggedShape3(Array1<int32_t> *row_splits1,
                          Array1<int32_t> *row_ids1, int32_t cached_tot_size1,
@@ -1188,24 +1185,23 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   int32_t num_elements = src.values.Dim();
   int32_t log_buckets = static_cast<int32_t>(ceilf(log2f(num_buckets)));
 
-  Array1<int32_t> ans = Range(context, num_elements, 0);
+  Array1<int32_t> order = Range(context, num_elements, 0);
+  Array1<int32_t> src_tmp_out(context, num_elements);
+  Array1<int32_t> ans(context, num_elements);
 
   cudaStream_t stream = context->GetCudaStream();
 
   size_t temp_storage_bytes = 0;
   K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
-      nullptr, temp_storage_bytes, src.values.Data(),
-      static_cast<int32_t *>(nullptr), ans.Data(), ans.Data(), num_elements, 0,
-      log_buckets, stream));
+      nullptr, temp_storage_bytes, src.values.Data(), src_tmp_out.Data(),
+      order.Data(), ans.Data(), num_elements, 0, log_buckets, stream));
 
-  Array1<int8_t> d_temp_storage(
-      context, temp_storage_bytes + num_elements * sizeof(int32_t));
+  Array1<int8_t> d_temp_storage(context, temp_storage_bytes);
 
   K2_CUDA_SAFE_CALL(cub::DeviceRadixSort::SortPairs(
-      d_temp_storage.Data() + sizeof(int32_t) * num_elements,
-      temp_storage_bytes, src.values.Data(),
-      reinterpret_cast<int32_t *>(d_temp_storage.Data()), ans.Data(),
-      ans.Data(), num_elements, 0, log_buckets, stream));
+      d_temp_storage.Data(), temp_storage_bytes, src.values.Data(),
+      src_tmp_out.Data(), order.Data(), ans.Data(), num_elements, 0,
+      log_buckets, stream));
 
   return ans;
 #else

@@ -23,22 +23,21 @@ namespace k2 {
 
 namespace intersect_internal {
 
-  struct StateInfo {
-    // the state_idx01 in a_fsas_.
-    int32_t a_fsas_state_idx01;
-    // the state_idx01 in b_fsas_.
-    int32_t b_fsas_state_idx01;
-  };
+struct StateInfo {
+  // the state_idx01 in a_fsas_.
+  int32_t a_fsas_state_idx01;
+  // the state_idx01 in b_fsas_.
+  int32_t b_fsas_state_idx01;
+};
 
-  struct ArcInfo {
-    int32_t src_ostate;  // source state-index which is index into states_.
-    int32_t dest_ostate;  // dest state-index which is index into states_.
-    int32_t a_arc_idx012;  // The idx012 of the source arc in a_fsas_.
-    int32_t b_arc_idx012;  // The idx012 of the source arc in b_fsas_.
-    // Note: other fields, e.g. the label and score, can be worked
-    // out from the arc-indexes.
-  };
-
+struct ArcInfo {
+  int32_t src_ostate;    // source state-index which is index into states_.
+  int32_t dest_ostate;   // dest state-index which is index into states_.
+  int32_t a_arc_idx012;  // The idx012 of the source arc in a_fsas_.
+  int32_t b_arc_idx012;  // The idx012 of the source arc in b_fsas_.
+  // Note: other fields, e.g. the label and score, can be worked
+  // out from the arc-indexes.
+};
 
 /*
 static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
@@ -48,22 +47,20 @@ static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
 }
 
 static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
-  os << "ArcInfo{" << a.a_fsas_arc_idx012 << "," << a.arc_loglike << ","
-     << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike << "}";
+  os << "ArcInfo{" << a.src_ostate << "," << a.dest_ostate << ","
+     << a.a_arc_idx012 << "," << a.b_arc_idx012 << "}";
   return os;
 }
 */
+
 
 }  // namespace intersect_internal
 
 using namespace intersect_internal;  // NOLINT
 
-// Caution: this is really a .cu file.  It contains mixed host and device code.
-
 /*
    Intersection (a.k.a. composition) that corresponds to decoding for
-   speech recognition-type tasks.  This version does only forward-backward
-   pruning in the backward pass; the forward pass does no pruning.
+   speech recognition-type tasks.
 
    Can use either different decoding graphs (one per acoustic sequence) or a
    shared graph.
@@ -241,10 +238,10 @@ class DeviceIntersector {
         // but not necessarily in a_fsas_, thanks to b_to_a_map_.
         int32_t fsa_idx0 = b_fsas_row_ids1_data[info.b_fsas_state_idx01],
               new_row_id = iter * num_fsas + fsa_idx0;
-        K2_CHECK_LT(static_cast<uint32_t>(fsa_idx0),
-                    static_cast<uint32_t>(num_fsas));
+        K2_DCHECK_LT(static_cast<uint32_t>(fsa_idx0),
+                     static_cast<uint32_t>(num_fsas));
         row_ids1_data[i] = new_row_id;
-      });
+    });
 
     Array1<int32_t> row_ids2(row_ids1),  // we'll later interpret this as the 2nd
                                          // level's row-ids.
@@ -489,7 +486,7 @@ class DeviceIntersector {
             }
           }
           new_dest_state_data[i] = (char)new_dest_state;
-          });
+        });
 
         // When reading the code below, remember this code is a little unusual
         // because we have combined the renumberings for arcs and new-states
@@ -548,11 +545,11 @@ class DeviceIntersector {
                     a_dest_state_idx1;
           uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
               b_dest_state_idx01;
-          uint64_t value, *key_value_location;
+          uint64_t value, *key_value_location = nullptr;
           bool ans = state_pair_to_state_acc.Find(hash_key, &value,
                                                   &key_value_location);
-          K2_CHECK(ans);
-          K2_CHECK_EQ(static_cast<int32_t>(value), arc_i);
+          K2_DCHECK(ans);
+          K2_DCHECK_EQ(value, (uint64_t)arc_i);
           int32_t dest_state_idx = state_end + i;
           state_pair_to_state_acc.SetValue(key_value_location, hash_key,
                                              (uint64_t)dest_state_idx);
@@ -561,8 +558,7 @@ class DeviceIntersector {
           dest_sinfo.a_fsas_state_idx01 = a_dest_state_idx01;
           dest_sinfo.b_fsas_state_idx01 = b_dest_state_idx01;
           states_data[dest_state_idx] = dest_sinfo;
-          });
-
+        });
 
         int32_t old_num_arcs = arcs_.Dim(),
             new_num_arcs = old_num_arcs + num_kept_arcs;
@@ -572,7 +568,7 @@ class DeviceIntersector {
                         << b_state_bits_ << ", key_bits=" << key_bits_
                         << ", value_bits=" << value_bits
                         << ", value_max=" << value_max
-                        << ", tot_ab=" << new_num_arcs
+                        << ", tot_ab=" << tot_ab
                         << ", next_state_end=" << next_state_end;
         }
 
@@ -619,7 +615,7 @@ class DeviceIntersector {
             uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) +
                 b_dest_state_idx01;
 
-            uint64_t value;
+            uint64_t value = 0;
             bool ans = state_pair_to_state_acc.Find(hash_key, &value);
             dest_state_idx = static_cast<uint32_t>(value);
           }  // else leave it at -1, it's a final-state and we allocate their
@@ -632,8 +628,7 @@ class DeviceIntersector {
           info.b_arc_idx012 = b_arc_idx012;
           arcs_data[old_num_arcs + new_arc_i] = info;
           arcs_row_ids_data[old_num_arcs + new_arc_i] = src_state_idx;
-          });
-
+        });
       } else {
         ExclusiveSum(num_arcs, &num_arcs, 1);  // sum
         // Plan to implement binary search here at some point, to get arc ranges...
@@ -649,8 +644,8 @@ class DeviceIntersector {
 
 
   ContextPtr c_;
-  FsaVec a_fsas_;  // a_fsas_: decoding graphs, with same Dim0() as
-                    // b_fsas_. Note: a_fsas_ has 3 axes.
+  FsaVec a_fsas_;  // a_fsas_: decoding graphs
+                   // Note: a_fsas_ has 3 axes.
 
   FsaVec b_fsas_;
 
@@ -690,12 +685,12 @@ class DeviceIntersector {
   //   state_pair = (a_fsas_state_idx1 << b_state_bits_) + b_fsas_state_idx01
   //
   // The number of bits in the key (max bits set in `state_pair`) is
-  // key_bits_ == b_state_bits_ + HighestBitSet(a_fsas_.MaxSize(1)).
+  // key_bits_ == b_state_bits_ + HighestBitSet(a_fsas_.MaxSize(1)) + 2.
   // The number of bits in the value is 64 minus this; we'll crash if
   // the number of states ends up being too large to store in this
   // value.
-  int32_t b_state_bits_;  // == HighestBitSet(b_fsas_.TotSize(1)).
-  int32_t key_bits_;  // b_state_bits_ + HighestBitSet(a_fsas_.MaxSize(1)).
+  int32_t b_state_bits_;  // == HighestBitSet(b_fsas_.TotSize(1)) + 2.
+  int32_t key_bits_;  // b_state_bits_ + HighestBitSet(a_fsas_.MaxSize(1)) + 2.
 
 
   Hash state_pair_to_state_;
