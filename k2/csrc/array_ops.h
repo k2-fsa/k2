@@ -285,7 +285,7 @@ Array1<T> Times(Array1<T> &src1, Array1<T> &src2) {
 }
 
 /*
-  Returns a random Array1, uniformly distributed betwen `min_value` and
+  Returns a random Array1, uniformly distributed between `min_value` and
   `max_value`.  CAUTION: for now, this will be randomly generated on CPU and
   then transferred to other devices if c is not a CPU context, so it will be
   slow if c is not a CPU context.

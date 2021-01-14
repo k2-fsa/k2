@@ -30,7 +30,7 @@ void CheckLayerEqual(int32_t layer,
   K2_CHECK(layer >= 0 && layer + 1 < src[0]->NumAxes());
   std::vector<const int32_t*> row_splits_data_vec;
   row_splits_data_vec.reserve(num_srcs);
-  int32_t row_splits_dim, row_ids_dim;
+  int32_t row_splits_dim = 0, row_ids_dim = 0;
   for (int32_t s = 0; s < num_srcs; s++) {
     // RowSplits(1) .. is the lowest numbered row-splits...
     const int32_t *data = src[s]->RowSplits(layer + 1).Data();

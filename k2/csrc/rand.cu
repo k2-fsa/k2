@@ -57,13 +57,17 @@ static void RandCpu(int32_t dim, FloatType *out) {
   // std::uniform_real_distribution returns a number in
   // the interval [low, high], but we want (low, high].
   // That is, we want to exclude `low`.
-  FloatType high = 1;
+  FloatType high;
   FloatType low;
+
   if (std::is_same<FloatType, float>::value) {
     low = std::nexttowardf(0.0f, 1.0f);
+    high = std::nexttowardf(1.0f, 2.0f);
   } else {
     low = std::nexttoward(0.0, 1.0);
+    high = std::nexttoward(1.0, 2.0);
   }
+
   std::uniform_real_distribution<FloatType> distribution(low, high);
   auto &generator = GetCpuRandState().generator;
 
