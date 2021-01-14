@@ -11,8 +11,8 @@
 #include <random>
 #include <type_traits>
 
-#include "curand.h"
-#include "curand_kernel.h"
+#include "curand.h"         // NOLINT
+#include "curand_kernel.h"  // NOLINT
 #include "k2/csrc/rand.h"
 
 namespace k2 {

@@ -19,7 +19,7 @@
 #include <deque>
 #include <map>
 #include <memory>
-#include <mutex>
+#include <mutex>  // NOLINT
 #include <ostream>
 #include <type_traits>
 #include <vector>
