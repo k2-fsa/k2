@@ -1484,7 +1484,7 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
   Array1<FloatType> arc_scores(c, num_arcs),
       fsa_neg_tot_scores(c, num_fsas);  // minus the tot scores per FSA.
   FloatType *arc_scores_data = arc_scores.Data(),
-      *fsa_neg_tot_scores_data = fsa_scores.Data();
+    *fsa_neg_tot_scores_data = fsa_neg_tot_scores.Data();
 
   const int32_t *fsa_row_splits1 = fsas.RowSplits(1).Data();
   const int32_t *fsa_row_ids1 = fsas.RowIds(1).Data();
@@ -1499,7 +1499,7 @@ Array1<FloatType> GetArcScores(FsaVec &fsas,
       FloatType tot_score = 0.0;
       if (begin != end) {
         tot_score = 0.5 * (forward_scores_data[end - 1] +
-                           bsackward_scores_data[begin]);
+                           backward_scores_data[begin]);
       }
       fsa_neg_tot_scores_data[fsa_idx0] = -tot_score;
     });

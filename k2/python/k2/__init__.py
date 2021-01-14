@@ -9,7 +9,6 @@ from . import fsa
 from . import ops
 from . import utils
 
-from .autograd import get_tot_scores
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
 from .autograd import union

@@ -552,7 +552,7 @@ class DeviceIntersector {
           bool ans = state_pair_to_state_acc.Find(hash_key, &value,
                                                   &key_value_location);
           K2_CHECK(ans);
-          K2_CHECK_EQ(value, arc_i);
+          K2_CHECK_EQ(static_cast<int32_t>(value), arc_i);
           int32_t dest_state_idx = state_end + i;
           state_pair_to_state_acc.SetValue(key_value_location, hash_key,
                                              (uint64_t)dest_state_idx);

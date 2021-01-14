@@ -232,6 +232,9 @@ FsaVec GetIncomingFsaVec(FsaVec &fsas);
       @return   Returns vector indexed by state-index (idx01 into fsas), i.e.
                `ans.Dim()==fsas.TotSize(1)`, containing forward scores.
                 (these will be zero for the start-states).
+
+    CAUTION: there is another version of GetBackwardScores() for CPU only,
+    declared in host_shim.h.
 */
 template <typename FloatType>
 Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
@@ -302,6 +305,9 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
        @return  Returns a vector indexed by state-index (idx01 in fsas), with
                `ans.Dim() == fsas.TotSize(1)`, containing backward
                scores.
+
+     CAUTION: there is another version of GetBackwardScores() for CPU only,
+     declared in host_shim.h.
  */
 template <typename FloatType>
 Array1<FloatType> GetBackwardScores(

@@ -209,22 +209,13 @@ static void PybindGetBackwardScores(py::module &m, const char *name) {
       name,
       [](FsaVec &fsas, Ragged<int32_t> &state_batches,
          Ragged<int32_t> &leaving_arc_batches,
-         torch::optional<torch::Tensor> tot_scores = torch::nullopt,
          bool log_semiring = true) -> torch::Tensor {
-        if (tot_scores.has_value()) {
-          const Array1<T> tot_scores_array = FromTensor<T>(tot_scores.value());
-          Array1<T> ans =
-              GetBackwardScores<T>(fsas, state_batches, leaving_arc_batches,
-                                   &tot_scores_array, log_semiring);
-          return ToTensor(ans);
-        } else {
-          Array1<T> ans = GetBackwardScores<T>(
-              fsas, state_batches, leaving_arc_batches, nullptr, log_semiring);
-          return ToTensor(ans);
-        }
+        Array1<T> ans = GetBackwardScores<T>(
+            fsas, state_batches, leaving_arc_batches, nullptr, log_semiring);
+        return ToTensor(ans);
       },
       py::arg("fsas"), py::arg("state_batches"), py::arg("leaving_arc_batches"),
-      py::arg("tot_scores") = py::none(), py::arg("log_semiring") = true);
+      py::arg("log_semiring") = true);
 }
 
 template <typename T>
