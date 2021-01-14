@@ -55,18 +55,6 @@ static void RandCpu(int32_t dim, FloatType low, FloatType high,
   static_assert(std::is_same<FloatType, float>::value ||
                     std::is_same<FloatType, double>::value,
                 "");
-  // std::uniform_real_distribution returns a number in
-  // the interval [low, high), but we want (low, high].
-  // That is, we want to exclude `low`.
-
-  if (std::is_same<FloatType, float>::value) {
-    low = std::nexttowardf(low, low + 1);
-    high = std::nexttowardf(high, high + 1);
-  } else {
-    low = std::nexttoward(low, low + 1);
-    high = std::nexttoward(high, high + 1);
-  }
-
   std::uniform_real_distribution<FloatType> distribution(low, high);
   auto &generator = GetCpuRandState().generator;
 
@@ -124,7 +112,14 @@ void Rand<float>(Array1<float> *array, float low, float high) {
                 state.offset, &philox_state);
 
     float4 r = curand_uniform4(&philox_state);
-    array_data[i] = r.x * (high - low) + low;
+
+    // curand_uniform4() returns a number in (0, 1],
+    // we want to transform it to [0, 1)
+    //
+    // CAUTION: `1 - r.x` is not used here as it may be rounded up to 1
+    // when `r.x` is close to 0
+    float t = (r.x == 1.0f) ? 0.0f : r.x;
+    array_data[i] = t * (high - low) + low;
   };
   EvalDevice(context, dim, generate_rand_lambda_float);
 
@@ -154,7 +149,9 @@ void Rand<double>(Array1<double> *array, double low, double high) {
                 state.offset, &philox_state);
 
     double2 r = curand_uniform2_double(&philox_state);
-    array_data[i] = r.x * (high - low) + low;
+    double t = (r.x == 1.0) ? 0.0 : r.x;
+
+    array_data[i] = t * (high - low) + low;
   };
   EvalDevice(context, dim, generate_rand_lambda_double);
 

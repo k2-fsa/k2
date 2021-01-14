@@ -36,9 +36,9 @@ uint64_t GetSeed(ContextPtr context);
 void SetSeed(ContextPtr context, uint64_t seed);
 
 /* Fill the given array with random numbers from a uniform distribution on
- * the interval (low, high].
+ * the interval [low, high).
  *
- * low is exclusive and high is inclusive.
+ * low is inclusive and high is exclusive.
  *
  * `FloatType` can be either `float` or `double`.
  *
@@ -49,9 +49,9 @@ void Rand(Array1<FloatType> *array, FloatType low = FloatType(0),
           FloatType high = FloatType(1));
 
 /* Returns an array filled with random numbers from a uniform distribution on
- * the interval (low, high].
+ * the interval [low, high).
  *
- * low is exclusive and high is inclusive.
+ * low is inclusive and high is exclusive.
  *
  * `FloatType` can be either `float` or `double`.
  *
