@@ -61,10 +61,7 @@ def top_sort(fsa: Fsa) -> Fsa:
 
 
 def intersect(a_fsa: Fsa, b_fsa: Fsa,
-              treat_epsilons_specially: bool = True,
-              seqframe_idx_name: Optional[str] = None,
-              frame_idx_name = Optional[str] = None,
-              seq_idx_name = Optional[str] = None) -> Fsa:
+              treat_epsilons_specially: bool = True) -> Fsa:
     '''Compute the intersection of two FSAs on CPU.
 
     Args:

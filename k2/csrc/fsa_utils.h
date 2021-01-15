@@ -546,6 +546,33 @@ Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
  */
 void FixNumStates(FsaVec *fsas);
 
+/* Compute the sequence indexes and frame indexes within a
+ * sequence from arc maps.
+ *
+ * @param [in] arc_map_b  It's the output from IntersectDense or
+ *                        IntersectDensePruned.
+ * @param [in] b_fsas     It's the input for IntersectDense or
+ *                        IntersectDensePruned.
+ * @param [out] seq_frame_idx
+ *                        It's idx01 into b_fsas.shape computed from arc_map_b.
+ *
+ *                        seq_frame_idx[i] = arc_map_b[i] / b_fsas.scores.Dim1()
+ *
+ *                        seq_frame_idx[i] contains the information about the
+ *                        sequence ID and frame ID within the sequence of the
+ *                        i-th arc of the output FSA from IntersectDense and
+ *                        IntersectDensePruned. The caller does not need to
+ *                        pre-allocate it.
+ *                        On return, its Dim() == arc_map_b.Dim()
+ * @param [out] frame_idx It contains a subset of information from
+ *                        `seq_frame_idx`. Unlike `seq_frame_idx`, it includes
+ *                        only the frame ID within the sequence.
+ *                        The caller does not need to pre-allocate it.
+ *                        On return, its Dim() == arc_map_b.Dim()
+ */
+void ComputeSeqFrameIdx(const Array1<int32_t> &arc_map_b, DenseFsaVec &b_fsas,
+                        Array1<int32_t> *seq_frame_idx,
+                        Array1<int32_t> *frame_idx);
 
 }  // namespace k2
 
