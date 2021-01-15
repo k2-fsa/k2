@@ -41,6 +41,7 @@ namespace k2 {
 
 template <typename T, typename Op>
 void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst);
+
 /*
   Output to an array `max_values` the maximum of each sub-list along the last
   axis of `src` i.e. the max taken over the last axis), or `initial_value`,
@@ -53,9 +54,7 @@ void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst);
                                 of sub-lists in `src`.
      @param [out] max_values    Array to which the maximum values will be
                                 written. Must satisfy
-                                max_values->Dim() == rows along the last axis in
-                                src, i.e.
-                                src.RowSplits(src.NumAxes() - 1).Dim() - 1.
+                                max_values->Dim() == src.TotSize(src.NumAxes() - 1).
  */
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *max_values) {
@@ -81,6 +80,26 @@ void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
       (std::is_same<float, T>::value || std::is_same<double, T>::value));
   ApplyOpPerSublist<T, LogAdd<T>>(src, initial_value, dst_values);
 }
+
+
+/*
+  Output to an array `max_values` the arg-max within each sub-list along the
+  last axis of `src` i.e. the max taken over the last axis), i.e. the index
+  within `src.values` of the maximum element of that sub-list, or -1
+  if the sub-list was empty or had value <= `initial_value`.  [or maybe
+  < `initial_value`, must check, that may be undefined.]
+
+     @param [in] src            Input ragged array; must have src.NumAxes()
+                                >= 2. src.values is allowed to be empty.
+     @param [out] argmax        Array to which the argmax indexes will be written.
+                                max_values->Dim() == src.TotSize(src.NumAxes() - 1).
+ */
+template <typename T>
+void ArgMaxPerSublist(Ragged<T> &src,
+                      T initial_value,
+                      Array1<int32_t> *argmax);
+
+
 
 /* Normalize per sublist.
 

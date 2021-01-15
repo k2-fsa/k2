@@ -234,6 +234,110 @@ TEST(RaggedShapeOpsTest, MaxPerSubListTest) {
   TestMaxPerSubListTest<int32_t>();
 }
 
+
+
+template <typename T>
+void TestArgMaxPerSubListTest() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // empty case
+      const std::vector<int32_t> row_splits = {0};
+      RaggedShapeLayer shape_dim;
+      shape_dim.row_splits = Array1<int32_t>(context, row_splits);
+      shape_dim.cached_tot_size = 0;
+      std::vector<RaggedShapeLayer> axes = {shape_dim};
+      RaggedShape shape(axes, true);
+      Array1<T> values(context, 0);
+      Ragged<T> ragged(shape, values);
+
+      int32_t num_rows = ragged.shape.Dim0();
+      ASSERT_EQ(num_rows, 0);
+      Array1<int32_t> argmax_values(context, num_rows);
+      // just run to check if there's any error
+      ArgMaxPerSublist(ragged, 1, &argmax_values);
+      EXPECT_EQ(argmax_values.Dim(), 0);
+    }
+
+    {
+      const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
+      RaggedShapeLayer shape_dim;
+      shape_dim.row_splits = Array1<int32_t>(context, row_splits);
+      shape_dim.cached_tot_size = row_splits.back();
+      std::vector<RaggedShapeLayer> axes = {shape_dim};
+      RaggedShape shape(axes, true);
+      const std::vector<T> values_vec = {1, 3, 2, 8, 0, -1};
+      Array1<T> values(context, values_vec);
+      Ragged<T> ragged(shape, values);
+
+      int32_t num_rows = ragged.shape.Dim0();
+      Array1<T> argmax_values(context, num_rows);
+      T default_value = 2;
+      ArgMaxPerSublist(ragged, default_value, &argmax_values);
+      // copy memory from GPU/CPU to CPU
+      std::vector<T> cpu_data(max_values.Dim());
+      max_values.Context()->CopyDataTo(
+          max_values.Dim() * max_values.ElementSize(), max_values.Data(), cpu,
+          cpu_data.data());
+      std::vector<T> expected_data = {1, -1, 3, -1};
+      EXPECT_EQ(cpu_data, expected_data);
+    }
+
+    {
+      // test with random large size
+      const int32_t min_num_elements = 2000;
+      // not random shape is on CPU
+      RaggedShape shape =
+          RandomRaggedShape(false, 2, 2, min_num_elements, 5000);
+      ASSERT_EQ(shape.NumAxes(), 2);
+      RaggedShape gpu_shape;
+      if (context->GetDeviceType() == kCuda) {
+        // copy shape to GPU
+        const Array1<T> &row_splits = shape.RowSplits(1);
+        RaggedShapeLayer shape_dim;
+        shape_dim.row_splits = row_splits.To(GetCudaContext());
+        shape_dim.cached_tot_size = shape.NumElements();
+        std::vector<RaggedShapeLayer> axes = {shape_dim};
+        gpu_shape = RaggedShape(axes, true);
+      }
+
+      int32_t num_elems = shape.NumElements();
+      std::vector<T> data(num_elems);
+      for (int32_t i = 0; i != 10; ++i) {
+        std::iota(data.begin(), data.end(), 0);
+        // randomly set data[pos] = num_elems which is
+        // greater than any element in data
+        int32_t pos = RandInt(0, num_elems - 1);
+        data[pos] = num_elems;
+        // find the corresponding row
+        int32_t num_rows = shape.Dim0();
+        const int32_t *row_splits_data = shape.RowSplits(1).Data();
+        int32_t row = 0;
+        for (int32_t i = 0; i < num_rows; ++i) {
+          if (pos >= row_splits_data[i] && pos < row_splits_data[i + 1]) {
+            row = i;
+            break;
+          }
+        }
+
+        Array1<T> values(context, data);
+        Ragged<T> ragged(context->GetDeviceType() == kCuda ? gpu_shape : shape,
+                         values);
+        Array1<int32_t> argmax_values(context, num_rows);
+        T default_value = 0;
+        // TODO: fix the following, will fail.
+        ArgMaxPerSublist(ragged, default_value, &argmax_values);
+        EXPECT_EQ(max_values[row], num_elems);
+      }
+    }
+  }
+}
+
+TEST(RaggedShapeOpsTest, ArgMaxPerSubListTest) {
+  TestArgMaxPerSubListTest<int32_t>();
+}
+
+
 template <typename T>
 void TestMinPerSubListTest() {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
@@ -2472,5 +2576,6 @@ TEST(RaggedShapeOpsTest, CoveringShape) {
     }
   }
 }
+
 
 }  // namespace k2
