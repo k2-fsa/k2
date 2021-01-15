@@ -40,9 +40,8 @@ class TestNumericalGradientCheck(unittest.TestCase):
             assert scores.requires_grad is True
             fsa_vec.scores = scores.to(torch.float32)
             log_semiring = switch[0].item() == 1
-            log_like = k2.get_tot_scores(fsa_vec,
-                                         log_semiring=log_semiring,
-                                         use_double_scores=True)
+            log_like = fsa_vec.get_tot_scores(log_semiring=log_semiring,
+                                              use_double_scores=True)
             return -2 * log_like
 
         devices = [torch.device('cpu')]
@@ -105,9 +104,8 @@ class TestNumericalGradientCheck(unittest.TestCase):
             assert scores.requires_grad is True
             fsa_vec.scores = scores.to(torch.float32)
             log_semiring = switch[0].item() == 1
-            log_like = k2.get_tot_scores(fsa_vec,
-                                         log_semiring=log_semiring,
-                                         use_double_scores=True)
+            log_like = fsa_vec.get_tot_scores(log_semiring=log_semiring,
+                                              use_double_scores=True)
             return -1.25 * log_like
 
         devices = [torch.device('cpu')]

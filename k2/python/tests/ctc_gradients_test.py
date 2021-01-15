@@ -112,9 +112,8 @@ class TestCtcLossGradients(unittest.TestCase):
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
                                               100.0)
 
-            k2_scores = k2.get_tot_scores(target_graph,
-                                          log_semiring=True,
-                                          use_double_scores=False)
+            k2_scores = target_graph.get_tot_scores(log_semiring=True,
+                                                    use_double_scores=False)
             assert torch.allclose(torch_loss, -1 * k2_scores)
 
             torch_loss.backward()
@@ -165,9 +164,8 @@ class TestCtcLossGradients(unittest.TestCase):
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
                                               100.0)
 
-            k2_scores = k2.get_tot_scores(target_graph,
-                                          log_semiring=True,
-                                          use_double_scores=False)
+            k2_scores = target_graph.get_tot_scores(log_semiring=True,
+                                                    use_double_scores=False)
             assert torch.allclose(torch_loss, -1 * k2_scores)
             assert torch.allclose(torch_loss,
                                   torch.tensor([7.355742931366]).to(device))
@@ -223,9 +221,8 @@ class TestCtcLossGradients(unittest.TestCase):
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
                                               100.0)
 
-            k2_scores = k2.get_tot_scores(target_graph,
-                                          log_semiring=True,
-                                          use_double_scores=False)
+            k2_scores = target_graph.get_tot_scores(log_semiring=True,
+                                                    use_double_scores=False)
             assert torch.allclose(torch_loss, -1 * k2_scores)
             assert torch.allclose(torch_loss,
                                   torch.tensor([4.938850402832]).to(device))
@@ -308,9 +305,8 @@ class TestCtcLossGradients(unittest.TestCase):
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
                                               100.0)
 
-            k2_scores = k2.get_tot_scores(target_graph,
-                                          log_semiring=True,
-                                          use_double_scores=False)
+            k2_scores = target_graph.get_tot_scores(log_semiring=True,
+                                                    use_double_scores=False)
             assert torch.allclose(torch_loss, -1 * k2_scores)
 
             scale = torch.tensor([1., -2, 3.5]).to(device)
@@ -368,9 +364,8 @@ class TestCtcLossGradients(unittest.TestCase):
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
                                               100.0)
 
-            k2_scores = k2.get_tot_scores(target_graph,
-                                          log_semiring=True,
-                                          use_double_scores=False)
+            k2_scores = target_graph.get_tot_scores(log_semiring=True,
+                                                    use_double_scores=False)
             assert torch.allclose(torch_loss, -1 * k2_scores)
             scale = torch.rand_like(torch_loss) * 100
             (torch_loss * scale).sum().backward()
@@ -452,9 +447,8 @@ class TestCtcLossGradients(unittest.TestCase):
             decoding_graph = k2.connect(decoding_graph).invert_().to(device)
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
                                               100.0)
-            k2_scores = k2.get_tot_scores(target_graph,
-                                          log_semiring=True,
-                                          use_double_scores=False)
+            k2_scores = target_graph.get_tot_scores(log_semiring=True,
+                                                    use_double_scores=False)
             assert torch.allclose(torch_loss, -1 * k2_scores)
             scale = torch.rand_like(torch_loss) * 100
             (torch_loss * scale).sum().backward()

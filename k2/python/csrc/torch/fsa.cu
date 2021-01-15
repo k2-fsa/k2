@@ -115,8 +115,7 @@ static void PybindFsaUtil(py::module &m) {
   // the following methods are for debugging only
   m.def("fsa_to_fsa_vec", &FsaToFsaVec, py::arg("fsa"));
 
-  m.def("get_fsa_vec_element", &GetFsaVecElement, py::arg("vec"),
-        py::arg("i"));
+  m.def("get_fsa_vec_element", &GetFsaVecElement, py::arg("vec"), py::arg("i"));
 
   m.def(
       "create_fsa_vec",
@@ -210,8 +209,8 @@ static void PybindGetBackwardScores(py::module &m, const char *name) {
       [](FsaVec &fsas, Ragged<int32_t> &state_batches,
          Ragged<int32_t> &leaving_arc_batches,
          bool log_semiring = true) -> torch::Tensor {
-        Array1<T> ans = GetBackwardScores<T>(
-            fsas, state_batches, leaving_arc_batches, nullptr, log_semiring);
+        Array1<T> ans = GetBackwardScores<T>(fsas, state_batches,
+                                             leaving_arc_batches, log_semiring);
         return ToTensor(ans);
       },
       py::arg("fsas"), py::arg("state_batches"), py::arg("leaving_arc_batches"),
@@ -415,8 +414,8 @@ static void PybindGetTotScoresTropicalBackward(py::module &m,
 
 template <typename T>
 static void PybindGetTotScoresLogBackward(py::module &m, const char *name) {
-  m.def(name, &GetTotScoresLogBackward<T>, py::arg("fsas"),
-        py::arg("arc_post"), py::arg("tot_scores_grad"));
+  m.def(name, &GetTotScoresLogBackward<T>, py::arg("fsas"), py::arg("arc_post"),
+        py::arg("tot_scores_grad"));
 }
 
 }  // namespace k2
@@ -438,8 +437,8 @@ void PybindFsa(py::module &m) {
       m, "get_tot_scores_float_tropical_backward");
   k2::PybindGetTotScoresTropicalBackward<double>(
       m, "get_tot_scores_double_tropical_backward");
-  k2::PybindGetTotScoresLogBackward<float>(
-      m, "get_tot_scores_float_log_backward");
+  k2::PybindGetTotScoresLogBackward<float>(m,
+                                           "get_tot_scores_float_log_backward");
   k2::PybindGetTotScoresLogBackward<double>(
       m, "get_tot_scores_double_log_backward");
 }

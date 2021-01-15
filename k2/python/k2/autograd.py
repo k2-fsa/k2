@@ -97,10 +97,6 @@ class _GetTotScoresFunction(torch.autograd.Function):
                 bprop_func = _k2.get_tot_scores_double_log_backward
             else:
                 bprop_func = _k2.get_tot_scores_float_log_backward
-
-            arc_post = func(fsas=fsas.arcs,
-                            forward_scores=forward_scores,
-                            backward_scores=backward_scores)
             scores_grad = bprop_func(fsas.arcs, arc_post, tot_scores_grad)
             return None, None, None, scores_grad
 
@@ -136,8 +132,9 @@ class _GetForwardScoresFunction(torch.autograd.Function):
         # that, the backward_fn of forward_scores, which is cached in `fsas`,
         # would be set to this object, giving `fsas` a reference to this object,
         # which also has a reference to `fsas`.
-        forward_scores = fsas._get_forward_scores(use_double_scores=use_double_scores,
-                                                  log_semiring=log_semiring).detach()
+        forward_scores = fsas._get_forward_scores(
+            use_double_scores=use_double_scores,
+            log_semiring=log_semiring).detach()
 
         # NOTE: since `fsas`, `log_semiring` and `use_double_scores` are
         # not tensors, they are saved as attributes of `ctx`.
@@ -159,24 +156,25 @@ class _GetForwardScoresFunction(torch.autograd.Function):
         entering_arcs = fsas._get_entering_arcs(use_double_scores)
         state_batches = fsas._get_state_batches()
         leaving_arc_batches = fsas._get_leaving_arc_batches()
-        backward_scores = fsas._get_backward_score(use_double_scores=use_double_scores,
-                                                   log_semiring=log_semiring)
-
+        backward_scores = fsas._get_backward_score(
+            use_double_scores=use_double_scores, log_semiring=log_semiring)
 
         # Note: perhaps _k2.backprop_get_backward_scores() can figure out the
         # type, float vs. double.  Whatever works and is easy, though..
-        scores_grad = _k2.backprop_get_backward_scores(
-            fsas, state_batches, leaving_arc_batches,
-            log_semiring, backward_scores, backward_scores_grad)
+        scores_grad = _k2.backprop_get_backward_scores(fsas, state_batches,
+                                                       leaving_arc_batches,
+                                                       log_semiring,
+                                                       backward_scores,
+                                                       backward_scores_grad)
 
         return None, None, None, scores_grad
+
 
 class _GetArcPostFunction(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, fsas: Fsa, log_semiring: bool, use_double_scores: bool,
-                unused_scores: torch.Tensor,
-                forward_scores: torch.Tensor,
+                unused_scores: torch.Tensor, forward_scores: torch.Tensor,
                 backward_scores: torch.Tensor) -> torch.Tensor:
         '''Compute the arc-level posteriors of an FsaVec
 
@@ -227,8 +225,8 @@ class _GetArcPostFunction(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, arc_post_grad: torch.Tensor
-                ) -> Tuple[None, None, None, torch.Tensor,
-                           torch.Tensor, torch.Tensor]:  # noqa
+                ) -> Tuple[None, None, None, torch.Tensor, torch.Tensor, torch.
+                           Tensor]:  # noqa
         fsas = ctx.fsas
         log_semiring = ctx.log_semiring
         use_double_scores = ctx.use_double_scores
@@ -238,8 +236,9 @@ class _GetArcPostFunction(torch.autograd.Function):
                       else _k2.get_arc_scores_float_log_backward)
 
         incoming_arcs = fsas._get_incoming_arcs()
-        (arc_scores_grad, forward_scores_grad, backward_scores_grad) = bprop_func(
-            fsas.arcs, incoming_arcs, arc_post_grad)
+        (arc_scores_grad, forward_scores_grad,
+         backward_scores_grad) = bprop_func(fsas.arcs, incoming_arcs,
+                                            arc_post_grad)
 
         return None, None, None, arc_scores_grad, forward_scores_grad, backward_scores_grad
 
@@ -478,8 +477,6 @@ class _UnionFunction(torch.autograd.Function):
                           requires_grad=False)
         _k2.index_add(arc_map, out_fsa_grad, ans)
         return None, None, ans
-
-
 
 
 def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,

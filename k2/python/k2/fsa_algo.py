@@ -346,7 +346,7 @@ def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
     Returns:
           FsaVec, it contains the best paths as linear FSAs
     '''
-    entering_arcs = fsa.get_entering_arcs(use_double_scores)
+    entering_arcs = fsa._get_entering_arcs(use_double_scores)
     ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
     out_fsa = Fsa(ragged_arc)
 
