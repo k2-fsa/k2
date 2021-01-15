@@ -482,7 +482,9 @@ class _UnionFunction(torch.autograd.Function):
 def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
                            search_beam: float, output_beam: float,
                            min_active_states: int,
-                           max_active_states: int) -> Fsa:
+                           max_active_states: int,
+                           seqframe_idx_name: Optional[str] = None,
+                           frame_idx_name = Optional[str] = None) -> Fsa:
     '''Intersect array of FSAs on CPU/GPU.
 
     Caution:
@@ -513,6 +515,19 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
         frame for any given intersection/composition task. This is advisory,
         in that it will try not to exceed that but may not always succeed.
         You can use a very large number if no constraint is needed.
+      seqframe_idx_name:
+        If set (e.g. to 'seqframe'), an attribute in the output will be created
+        that encodes the sequence-index and the frame-index within that sequence;
+        this is equivalent to a row-index into b_fsas.values, or, equivalently,
+        an element in b_fsas.shape.
+        # TODO: actually implement this.   It can be done by dividing the
+        # b_arc_map by stride of b.values.
+      frame_idx_name:
+        If set (e.g. to 'frame', an attribute in the output will be created
+        that contains the frame-index within the corresponding sequence.
+        # TODO: actually implement this.   It can be done by taking the
+        # seqframe indexes (call this s), and evaluating:
+        # `s - b.shape.row_splits(1)[b.shape.row_ids(1)[s]]`, I think.
 
     Returns:
       The result of the intersection.

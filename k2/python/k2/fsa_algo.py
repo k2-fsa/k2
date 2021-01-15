@@ -14,6 +14,7 @@ from .fsa import Fsa
 from .ops import index
 from .ops import index_select
 
+# Note: look also in autograd.py, differentiable operations may be there.
 
 def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
     '''Construct an linear FSA from symbols.
@@ -60,7 +61,10 @@ def top_sort(fsa: Fsa) -> Fsa:
 
 
 def intersect(a_fsa: Fsa, b_fsa: Fsa,
-              treat_epsilons_specially: bool = True) -> Fsa:
+              treat_epsilons_specially: bool = True,
+              seqframe_idx_name: Optional[str] = None,
+              frame_idx_name = Optional[str] = None,
+              seq_idx_name = Optional[str] = None) -> Fsa:
     '''Compute the intersection of two FSAs on CPU.
 
     Args:
@@ -571,3 +575,10 @@ def invert(fsa: Fsa) -> Fsa:
         ragged_arc, aux_labels, _ = _k2.invert(fsa.arcs, fsa.aux_labels,
                                                need_arc_map)
         return Fsa(ragged_arc, aux_labels)
+
+
+def create_sparse(row_indexes: torch.Tensor, col_indexes: torch.Tensor,
+                  arc_post: torch.Tensor, start_label: int = 1):
+    '''
+
+    '''

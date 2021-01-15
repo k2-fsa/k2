@@ -42,6 +42,7 @@ from .utils import is_rand_equivalent
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
+from .utils import create_sparse
 
 # please keep the list sorted
 __all__ = [
