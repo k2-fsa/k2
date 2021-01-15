@@ -260,13 +260,13 @@ void TestArgMaxPerSubListTest() {
     }
 
     {
-      const std::vector<int32_t> row_splits = {0, 2, 2, 5, 6};
+      const std::vector<int32_t> row_splits = {0, 3, 3, 6, 7};
       RaggedShapeLayer shape_dim;
       shape_dim.row_splits = Array1<int32_t>(context, row_splits);
       shape_dim.cached_tot_size = row_splits.back();
       std::vector<RaggedShapeLayer> axes = {shape_dim};
       RaggedShape shape(axes, true);
-      const std::vector<T> values_vec = {1, 3, 2, 8, 0, -1};
+      const std::vector<T> values_vec = {1, 3, 3, 2, 8, 0, -1};
       Array1<T> values(context, values_vec);
       Ragged<T> ragged(shape, values);
 
@@ -275,11 +275,13 @@ void TestArgMaxPerSubListTest() {
       T default_value = 2;
       ArgMaxPerSublist(ragged, default_value, &argmax_values);
       // copy memory from GPU/CPU to CPU
-      std::vector<T> cpu_data(max_values.Dim());
-      max_values.Context()->CopyDataTo(
-          max_values.Dim() * max_values.ElementSize(), max_values.Data(), cpu,
+      std::vector<T> cpu_data(argmax_values.Dim());
+      argmax_values.Context()->CopyDataTo(
+          argmax_values.Dim() * argmax_values.ElementSize(),
+          argmax_values.Data(), cpu,
           cpu_data.data());
-      std::vector<T> expected_data = {1, -1, 3, -1};
+      // below it's 2 not 1 because we take the last in case of ties.
+      std::vector<T> expected_data = {2, -1, 4, -1};
       EXPECT_EQ(cpu_data, expected_data);
     }
 
@@ -288,46 +290,41 @@ void TestArgMaxPerSubListTest() {
       const int32_t min_num_elements = 2000;
       // not random shape is on CPU
       RaggedShape shape =
-          RandomRaggedShape(false, 2, 2, min_num_elements, 5000);
+          RandomRaggedShape(false, 2, 2, min_num_elements, 5000).To(context);
       ASSERT_EQ(shape.NumAxes(), 2);
-      RaggedShape gpu_shape;
-      if (context->GetDeviceType() == kCuda) {
-        // copy shape to GPU
-        const Array1<T> &row_splits = shape.RowSplits(1);
-        RaggedShapeLayer shape_dim;
-        shape_dim.row_splits = row_splits.To(GetCudaContext());
-        shape_dim.cached_tot_size = shape.NumElements();
-        std::vector<RaggedShapeLayer> axes = {shape_dim};
-        gpu_shape = RaggedShape(axes, true);
-      }
 
       int32_t num_elems = shape.NumElements();
-      std::vector<T> data(num_elems);
+
       for (int32_t i = 0; i != 10; ++i) {
+
+        std::vector<T> data(num_elems * 2);
         std::iota(data.begin(), data.end(), 0);
-        // randomly set data[pos] = num_elems which is
-        // greater than any element in data
-        int32_t pos = RandInt(0, num_elems - 1);
-        data[pos] = num_elems;
-        // find the corresponding row
-        int32_t num_rows = shape.Dim0();
-        const int32_t *row_splits_data = shape.RowSplits(1).Data();
-        int32_t row = 0;
-        for (int32_t i = 0; i < num_rows; ++i) {
-          if (pos >= row_splits_data[i] && pos < row_splits_data[i + 1]) {
-            row = i;
-            break;
-          }
-        }
+        std::random_shuffle(data.begin(), data.end());
+        data.resize(num_elems);
 
         Array1<T> values(context, data);
-        Ragged<T> ragged(context->GetDeviceType() == kCuda ? gpu_shape : shape,
-                         values);
-        Array1<int32_t> argmax_values(context, num_rows);
-        T default_value = 0;
-        // TODO: fix the following, will fail.
+        Ragged<T> ragged(shape, values);
+
+        Array1<int32_t> argmax_values(context, ragged.Dim0());
+        int32_t default_value = 2;
         ArgMaxPerSublist(ragged, default_value, &argmax_values);
-        EXPECT_EQ(max_values[row], num_elems);
+
+        ContextPtr cpu = GetCpuContext();
+        ragged = ragged.To(cpu);
+        argmax_values = argmax_values.To(cpu);
+        for (int32_t row = 0; row < ragged.Dim0(); row++) {
+          int32_t begin = ragged.RowSplits(1)[row],
+                    end = ragged.RowSplits(1)[row+1];
+          int32_t max_val = 2,
+                 best_pos = -1;
+          for (int32_t pos = begin; pos < end; pos++) {
+            if (ragged.values[pos] >= max_val) {
+              max_val = ragged.values[pos];
+              best_pos = pos;
+            }
+          }
+          EXPECT_EQ(argmax_values[row], best_pos);
+        }
       }
     }
   }

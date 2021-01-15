@@ -445,10 +445,29 @@ struct Pair {
 
 template <typename T>
 struct PairInputIterator {
-  PairInputIterator(T *t): t_(t) { }
-  __device__ PairInputIterator(const PairIterator &other): t_(other.t_) { }
-  __device__ Pair<T> operator [](int32_t idx) {  return Pair<T> { t_[idx], idx }; }
-  T t_;
+  // most of the following typedefs won't really be used; they are added because
+  // cub uses iterator_traits, which requires them.
+  typedef Pair<T> value_type;
+  typedef int32_t difference_type;
+  typedef void pointer;
+  // `reference` is a kind of dumb requirement, see this
+  // https://stackoverflow.com/questions/8110017/how-exactly-does-the-reference-typedef-behave
+  typedef Pair<T>& reference;
+  typedef std::input_iterator_tag iterator_category;
+
+  PairInputIterator(const T *t) : t_(t), offset_(0) { }
+  __device__ PairInputIterator(const T *t, int32_t offset) :
+      t_(t), offset_(offset) { }
+  __device__ PairInputIterator(const PairInputIterator &other) :
+      t_(other.t_), offset_(other.offset_) { }
+  __device__ Pair<T> operator[](int32_t idx) const {
+    return Pair<T> { t_[idx], idx + offset_ };
+  }
+  __device__ PairInputIterator operator+(int32_t offset) {
+    return PairInputIterator { t_, offset + offset_ };
+  }
+  const T *t_;
+  int32_t offset_;
 };
 
 
@@ -456,7 +475,7 @@ template <typename T>
 struct PairOutputIteratorDeref {  // this is what you get when you dereference
                                   // PairOutputIterator, it pretends to be a Pair<T>
                                   // but really only stores the `idx` member.
-  __device__ PairOutputIteratorDeref(int32_t *i): i_(i) { }
+  __device__ PairOutputIteratorDeref(int32_t *i) : i_(i) { }
   __device__ PairOutputIteratorDeref &operator= (const Pair<T> &p) {
     *i_ = p.idx;
     return *this;
@@ -466,24 +485,41 @@ struct PairOutputIteratorDeref {  // this is what you get when you dereference
 
 template <typename T>
 struct PairOutputIterator {  // outputs just the index of the pair.
-  PairOutputIterator(int32_t *i): i_(i) { }
-  __device__ PairOutputIterator(const PairOutputIterator &other): i_(other.i_) { }
-  __device__ PairOutputIteratorDeref &operator [](int32_t idx) {
-    return PairOutputIteratorDeref(i_ + idx);
+  // most of the following typedefs won't really be used; they are added because
+  // cub uses iterator_traits, which requires them.
+  typedef Pair<T> value_type;
+  typedef size_t difference_type;
+  typedef void pointer;
+  typedef PairOutputIteratorDeref<T> reference;
+  typedef std::output_iterator_tag iterator_category;
+
+  PairOutputIterator(int32_t *i) : i_(i), offset_(0) { }
+  __device__ PairOutputIterator(int32_t *i, size_t offset) :
+      i_(i), offset_(offset) { }
+  __device__ PairOutputIterator(const PairOutputIterator &other) :
+      i_(other.i_), offset_(other.offset_) { }
+  __device__ PairOutputIteratorDeref<T> operator[](int32_t idx) const {
+    return PairOutputIteratorDeref<T>(i_ + idx);
   }
+  __device__ PairOutputIterator operator+(size_t offset) {
+    return PairOutputIterator { i_, offset_ + offset };
+  }
+
   int32_t *i_;
+  size_t offset_;
 };
 
 template <typename T>
 struct PairMaxOp {
-  __device__ operator() (const Pair<T> &a,
-                         const Pair<T> &b) const {
+  __device__ Pair<T> operator() (const Pair<T> &a,
+                                 const Pair<T> &b) const {
     // NOTE: could specialize this via a union, if T == int32_t, might be
     // marginally faster.
     if (a.t > b.t || (a.t == b.t && a.idx > b.idx))
       return a;
     else return b;
   }
+  PairMaxOp() { }
   __host__ __device__ PairMaxOp(PairMaxOp &) { }
 };
 
@@ -492,7 +528,7 @@ struct PairMaxOp {
 
 
 template <typename T>
-void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst) {
+void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(src.NumAxes(), 2);
   K2_CHECK(IsCompatible(src.shape, *dst));
@@ -521,7 +557,7 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst) {
           idx = j;
         }
       }
-      output_data[i] = j;
+      output_data[i] = idx;
     }
   } else {
     K2_CHECK_EQ(c->GetDeviceType(), kCuda);
@@ -529,7 +565,7 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst) {
 
     PairInputIterator<T> input_iter(values_data);
     PairOutputIterator<T> output_iter(output_data);
-    PairMaxOp op;
+    PairMaxOp<T> op;
     Pair<T> initial_pair { initial_value, -1 };
 
     // This code is based on the example here:
@@ -537,11 +573,11 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst) {
     std::size_t temp_storage_bytes = 0;
 
     // the first time is to determine temporary device storage requirements
-    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::ArgMax(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         nullptr, temp_storage_bytes, input_iter, output_iter, num_rows,
         row_splits, row_splits + 1, op, initial_pair, c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::ArgMax(
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
         num_rows, row_splits, row_splits + 1, op, initial_pair,
         c->GetCudaStream()));
