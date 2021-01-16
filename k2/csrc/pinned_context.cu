@@ -1,13 +1,6 @@
 /**
- * @brief PinnedContext that allocates pinned memory.
- *
- * The implementation is modified from
- * https://github.com/pytorch/pytorch/blob/master/aten/src/THC/THCCachingHostAllocator.cpp
- *
- * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

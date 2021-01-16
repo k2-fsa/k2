@@ -1,13 +1,8 @@
 /**
- * @brief
- * properties_test
- *
- * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Mahsa Yarmohammadi
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

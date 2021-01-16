@@ -1,11 +1,6 @@
 /**
- * @brief
- * remove epsilon
- *
- * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

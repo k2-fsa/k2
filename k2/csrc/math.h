@@ -1,11 +1,6 @@
 /**
- * @brief
- * math utilities
- *
- * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

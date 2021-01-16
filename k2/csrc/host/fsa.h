@@ -1,9 +1,8 @@
-// k2/csrc/fsa.h
-
-// Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Haowen Qiu)
-
-// See ../../LICENSE for clarification regarding multiple authors
+/**
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
+ *
+ * See LICENSE for clarification regarding multiple authors
+ */
 
 #ifndef K2_CSRC_HOST_FSA_H_
 #define K2_CSRC_HOST_FSA_H_

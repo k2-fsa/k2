@@ -1,14 +1,6 @@
 /**
- * @brief
- * ragged_utils_inl
- *
- * @note
- * This is to be included only from ragged_utils.h.
- *
- * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

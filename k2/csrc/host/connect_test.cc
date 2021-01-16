@@ -1,12 +1,7 @@
 /**
- * @brief
- * connect_test
- *
- * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Xiaomi Corporation (author: Haowen Qiu)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

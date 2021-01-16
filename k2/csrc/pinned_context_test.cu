@@ -1,10 +1,6 @@
 /**
- * @brief Unittest for pinned context.
- *
- * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

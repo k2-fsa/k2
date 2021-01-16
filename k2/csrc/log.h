@@ -1,13 +1,7 @@
 /**
- * @brief
- * log
- * Glog-like logging functions for k2.
- *
- * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Xiaomi Corporation (authors: Meixu Song)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  *
  *
