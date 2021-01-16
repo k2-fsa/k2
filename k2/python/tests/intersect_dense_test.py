@@ -39,9 +39,9 @@ class TestIntersectDense(unittest.TestCase):
                                      seqframe_idx_name='seqframe',
                                      frame_idx_name='frame')
         assert torch.allclose(out_fsa.seqframe,
-                              torch.tensor([0, 1, -1], dtype=torch.int32))
+                              torch.tensor([0, 1, 2], dtype=torch.int32))
         assert torch.allclose(out_fsa.frame,
-                              torch.tensor([0, 1, -1], dtype=torch.int32))
+                              torch.tensor([0, 1, 2], dtype=torch.int32))
 
         scores = out_fsa.get_tot_scores(log_semiring=False,
                                         use_double_scores=False)
@@ -86,11 +86,11 @@ class TestIntersectDense(unittest.TestCase):
 
         assert torch.allclose(
             out_fsa.seqframe,
-            torch.tensor([0, 1, 2, -1, 4, 5, -1], dtype=torch.int32))
+            torch.tensor([0, 1, 2, 3, 4, 5, 6], dtype=torch.int32))
 
         assert torch.allclose(
             out_fsa.frame,
-            torch.tensor([0, 1, 2, -1, 0, 1, -1], dtype=torch.int32))
+            torch.tensor([0, 1, 2, 3, 0, 1, 2], dtype=torch.int32))
 
         assert out_fsa.shape == (2, None, None), 'There should be two FSAs!'
 
@@ -153,11 +153,11 @@ class TestIntersectDense(unittest.TestCase):
                                      frame_idx_name='frame')
         assert torch.allclose(
             out_fsa.seqframe,
-            torch.tensor([0, 1, 2, -1, 4, 5, -1], dtype=torch.int32))
+            torch.tensor([0, 1, 2, 3, 4, 5, 6], dtype=torch.int32))
 
         assert torch.allclose(
             out_fsa.frame,
-            torch.tensor([0, 1, 2, -1, 0, 1, -1], dtype=torch.int32))
+            torch.tensor([0, 1, 2, 3, 0, 1, 2], dtype=torch.int32))
 
         assert out_fsa.shape == (2, None, None), 'There should be two FSAs!'
 
@@ -226,9 +226,7 @@ class TestIntersectDense(unittest.TestCase):
                                          output_beam=100000,
                                          seqframe_idx_name='seqframe',
                                          frame_idx_name='frame')
-            expected_seqframe = torch.cat(
-                [torch.arange(95), torch.tensor([-1])])
-            expected_seqframe = expected_seqframe.to(torch.int32).to(device)
+            expected_seqframe = torch.arange(96).to(torch.int32).to(device)
             assert torch.allclose(out_fsa.seqframe, expected_seqframe)
 
             # the second output FSA is empty since there is no self-loop in fsa2

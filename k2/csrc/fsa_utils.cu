@@ -1838,16 +1838,9 @@ void ComputeSeqFrameIdx(const Array1<int32_t> &arc_map_b, DenseFsaVec &b_fsas,
   K2_EVAL(
       context, dim, set_idx, (int32_t i)->void {
         int32_t idx01 = arc_map_b_data[i] / num_cols;
-        if (accessor(idx01, 0) != 0) {
-          seq_frame_idx_data[i] = idx01;
-          int32_t fsa_idx0 = row_ids1_data[idx01];
-          frame_idx_data[i] = idx01 - row_splits1_data[fsa_idx0];
-          return;
-        }
-
-        // this arc enters the final state
-        seq_frame_idx_data[i] = -1;
-        frame_idx_data[i] = -1;
+        seq_frame_idx_data[i] = idx01;
+        int32_t fsa_idx0 = row_ids1_data[idx01];
+        frame_idx_data[i] = idx01 - row_splits1_data[fsa_idx0];
       });
 }
 
