@@ -255,6 +255,11 @@ static void PybindDenseFsaVec(py::module &m) {
       "dim0", [](PyClass &self) -> int32_t { return self.shape.Dim0(); },
       "Returns number of supervisions contained in it");
 
+  pyclass.def("shape", [](PyClass &self) -> RaggedShape { return self.shape; });
+
+  pyclass.def("scores_dim1",
+              [](PyClass &self) -> int32_t { return self.scores.Dim1(); });
+
   // the `to_str` method is for debugging only
   pyclass.def("to_str", [](PyClass &self) -> std::string {
     std::ostringstream os;

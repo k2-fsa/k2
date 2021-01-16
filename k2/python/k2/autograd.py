@@ -1,7 +1,9 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
 # See ../../../LICENSE for clarification regarding multiple authors
 
-from typing import List, Tuple
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import torch
 import _k2
@@ -249,7 +251,9 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
     def forward(ctx, a_fsas: Fsa, b_fsas: DenseFsaVec, out_fsa: List[Fsa],
                 search_beam: float, output_beam: float, min_active_states: int,
                 max_active_states: int, unused_scores_a: torch.Tensor,
-                unused_scores_b: torch.Tensor) -> torch.Tensor:
+                unused_scores_b: torch.Tensor,
+                seqframe_idx_name: Optional[str] = None,
+                frame_idx_name: Optional[str] = None) -> torch.Tensor:
         '''Intersect array of FSAs on CPU/GPU.
 
         Args:
@@ -287,6 +291,14 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
           unused_scores_b:
             It equals to `b_fsas.scores` and its sole purpose is for back
             propagation.
+          seqframe_idx_name:
+            If set (e.g. to 'seqframe'), an attribute in the output will be created
+            that encodes the sequence-index and the frame-index within that sequence;
+            this is equivalent to a row-index into b_fsas.values, or, equivalently,
+            an element in b_fsas.shape.
+          frame_idx_name:
+            If set (e.g. to 'frame', an attribute in the output will be created
+            that contains the frame-index within the corresponding sequence.
         Returns:
            Return `out_fsa[0].scores`.
         '''
@@ -314,6 +326,25 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
         ctx.save_for_backward(unused_scores_a, unused_scores_b)
 
+        seqframe_idx = None
+        if frame_idx_name is not None:
+            num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+            seqframe_idx = arc_map_b // num_cols
+            shape = b_fsas.dense_fsa_vec.shape()
+            fsa_idx0 = _k2.index_select(shape.row_ids(1), seqframe_idx)
+            frame_idx = seqframe_idx - _k2.index_select(
+                shape.row_splits(1), fsa_idx0)
+            assert not hasattr(out_fsa[0], frame_idx_name)
+            setattr(out_fsa[0], frame_idx_name, frame_idx)
+
+        if seqframe_idx_name is not None:
+            if seqframe_idx is None:
+                num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+                seqframe_idx = arc_map_b // num_cols
+
+            assert not hasattr(out_fsa[0], seqframe_idx_name)
+            setattr(out_fsa[0], seqframe_idx_name, seqframe_idx)
+
         return out_fsa[0].scores
 
     @staticmethod
@@ -337,7 +368,18 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
         _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
-        return None, None, None, None, None, None, None, grad_a, grad_b
+        return (None, # a_fass
+                None, # b_fsas
+                None, # out_fsa
+                None, # search_beam
+                None, # output_beam
+                None, # min_active_states
+                None, # max_active_states
+                grad_a, # unused_scores_a
+                grad_b, # unused_scores_b
+                None, # seqframe_idx_name
+                None # frame_idx_name
+                )
 
 
 class _IntersectDenseFunction(torch.autograd.Function):
@@ -345,7 +387,9 @@ class _IntersectDenseFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a_fsas: Fsa, b_fsas: DenseFsaVec, out_fsa: List[Fsa],
                 output_beam: float, unused_scores_a: torch.Tensor,
-                unused_scores_b: torch.Tensor) -> torch.Tensor:
+                unused_scores_b: torch.Tensor,
+                seqframe_idx_name: Optional[str] = None,
+                frame_idx_name: Optional[str] = None) -> torch.Tensor:
         '''Intersect array of FSAs on CPU/GPU.
 
         Args:
@@ -382,6 +426,14 @@ class _IntersectDenseFunction(torch.autograd.Function):
           unused_scores_b:
             It equals to `b_fsas.scores` and its sole purpose is for back
             propagation.
+          seqframe_idx_name:
+            If set (e.g. to 'seqframe'), an attribute in the output will be created
+            that encodes the sequence-index and the frame-index within that sequence;
+            this is equivalent to a row-index into b_fsas.values, or, equivalently,
+            an element in b_fsas.shape.
+          frame_idx_name:
+            If set (e.g. to 'frame', an attribute in the output will be created
+            that contains the frame-index within the corresponding sequence.
         Returns:
            Return `out_fsa[0].scores`.
         '''
@@ -406,6 +458,25 @@ class _IntersectDenseFunction(torch.autograd.Function):
 
         ctx.save_for_backward(unused_scores_a, unused_scores_b)
 
+        seqframe_idx = None
+        if frame_idx_name is not None:
+            num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+            seqframe_idx = arc_map_b // num_cols
+            shape = b_fsas.dense_fsa_vec.shape()
+            fsa_idx0 = _k2.index_select(shape.row_ids(1), seqframe_idx)
+            frame_idx = seqframe_idx - _k2.index_select(
+                shape.row_splits(1), fsa_idx0)
+            assert not hasattr(out_fsa[0], frame_idx_name)
+            setattr(out_fsa[0], frame_idx_name, frame_idx)
+
+        if seqframe_idx_name is not None:
+            if seqframe_idx is None:
+                num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+                seqframe_idx = arc_map_b // num_cols
+
+            assert not hasattr(out_fsa[0], seqframe_idx_name)
+            setattr(out_fsa[0], seqframe_idx_name, seqframe_idx)
+
         return out_fsa[0].scores
 
     @staticmethod
@@ -429,7 +500,15 @@ class _IntersectDenseFunction(torch.autograd.Function):
         _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
         _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
-        return None, None, None, None, grad_a, grad_b
+        return (None, # a_fsas
+                None, # b_fsas
+                None, # out_fsa
+                None, # output_beam
+                grad_a, # unused_scores_a
+                grad_b, # unused_scores_b
+                None, # seqframe_idx_name
+                None # frame_idx_name
+                )
 
 
 class _UnionFunction(torch.autograd.Function):
@@ -484,7 +563,7 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
                            min_active_states: int,
                            max_active_states: int,
                            seqframe_idx_name: Optional[str] = None,
-                           frame_idx_name = Optional[str] = None) -> Fsa:
+                           frame_idx_name: Optional[str] = None) -> Fsa:
     '''Intersect array of FSAs on CPU/GPU.
 
     Caution:
@@ -520,14 +599,9 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
         that encodes the sequence-index and the frame-index within that sequence;
         this is equivalent to a row-index into b_fsas.values, or, equivalently,
         an element in b_fsas.shape.
-        # TODO: actually implement this.   It can be done by dividing the
-        # b_arc_map by stride of b.values.
       frame_idx_name:
         If set (e.g. to 'frame', an attribute in the output will be created
         that contains the frame-index within the corresponding sequence.
-        # TODO: actually implement this.   It can be done by taking the
-        # seqframe indexes (call this s), and evaluating:
-        # `s - b.shape.row_splits(1)[b.shape.row_ids(1)[s]]`, I think.
 
     Returns:
       The result of the intersection.
@@ -539,12 +613,15 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
     _IntersectDensePrunedFunction.apply(a_fsas, b_fsas, out_fsa, search_beam,
                                         output_beam, min_active_states,
                                         max_active_states, a_fsas.scores,
-                                        b_fsas.scores)
+                                        b_fsas.scores, seqframe_idx_name,
+                                        frame_idx_name)
     return out_fsa[0]
 
 
 def intersect_dense(a_fsas: Fsa, b_fsas: DenseFsaVec,
-                    output_beam: float) -> Fsa:
+                    output_beam: float,
+                    seqframe_idx_name: Optional[str] = None,
+                    frame_idx_name: Optional[str] = None) -> Fsa:
     '''Intersect array of FSAs on CPU/GPU.
 
     Caution:
@@ -560,6 +637,14 @@ def intersect_dense(a_fsas: Fsa, b_fsas: DenseFsaVec,
       output_beam:
          Beam to prune output, similar to lattice-beam in Kaldi.  Relative
          to best path of output.
+      seqframe_idx_name:
+        If set (e.g. to 'seqframe'), an attribute in the output will be created
+        that encodes the sequence-index and the frame-index within that sequence;
+        this is equivalent to a row-index into b_fsas.values, or, equivalently,
+        an element in b_fsas.shape.
+      frame_idx_name:
+        If set (e.g. to 'frame', an attribute in the output will be created
+        that contains the frame-index within the corresponding sequence.
 
     Returns:
       The result of the intersection (pruned to `output_beam`; this pruning
@@ -570,7 +655,8 @@ def intersect_dense(a_fsas: Fsa, b_fsas: DenseFsaVec,
     # the following return value is discarded since it is already contained
     # in `out_fsa[0].scores`
     _IntersectDenseFunction.apply(a_fsas, b_fsas, out_fsa, output_beam,
-                                  a_fsas.scores, b_fsas.scores)
+                                  a_fsas.scores, b_fsas.scores,
+                                  seqframe_idx_name, frame_idx_name)
     return out_fsa[0]
 
 
