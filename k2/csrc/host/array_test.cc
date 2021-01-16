@@ -211,9 +211,9 @@ void TestArray3(int32_t stride) {
   EXPECT_EQ(array2_copy.size1, array2.size1);
   EXPECT_EQ(array2_copy.size2, array2.size2);
   for (auto i = 0; i != array2.size1 + 1; ++i) {
-    // output indexes may starts from n > 0
+    // output indexes may start from n > 0
     EXPECT_EQ(array2_copy.indexes[i],
-              array2.indexes[i] + array1.size1 + array2.indexes[0]);
+              array2.indexes[i] + array1.size2 - array2.indexes[0]);
   }
   for (auto i = array2.indexes[0]; i != array2.indexes[array2.size1]; ++i) {
     EXPECT_EQ(array1_copy.data[i + array1.size2 - array2.indexes[0]],
