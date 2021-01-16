@@ -255,6 +255,11 @@ static void PybindDenseFsaVec(py::module &m) {
       "dim0", [](PyClass &self) -> int32_t { return self.shape.Dim0(); },
       "Returns number of supervisions contained in it");
 
+  pyclass.def("shape", [](PyClass &self) -> RaggedShape { return self.shape; });
+
+  pyclass.def("scores_dim1",
+              [](PyClass &self) -> int32_t { return self.scores.Dim1(); });
+
   // the `to_str` method is for debugging only
   pyclass.def("to_str", [](PyClass &self) -> std::string {
     std::ostringstream os;
@@ -418,21 +423,6 @@ static void PybindGetTotScoresLogBackward(py::module &m, const char *name) {
         py::arg("tot_scores_grad"));
 }
 
-static void PybindComputeSeqFrameIdx(py::module &m) {
-  m.def(
-      "compute_seq_frame_idx",
-      [](torch::Tensor arc_map_b,
-         DenseFsaVec &b_fsas) -> std::pair<torch::Tensor, torch::Tensor> {
-        Array1<int32_t> arc_map_b_array = FromTensor<int32_t>(arc_map_b);
-        Array1<int32_t> seq_frame_idx;
-        Array1<int32_t> frame_idx;
-        ComputeSeqFrameIdx(arc_map_b_array, b_fsas, &seq_frame_idx, &frame_idx);
-        return std::make_pair(ToTensor(seq_frame_idx), ToTensor(frame_idx));
-      },
-      py::arg("arc_map_b"), py::arg("b_fsas"),
-      "Return a tuple (seq_frame_idx, frame_idx)");
-}
-
 }  // namespace k2
 
 void PybindFsa(py::module &m) {
@@ -456,5 +446,4 @@ void PybindFsa(py::module &m) {
                                            "get_tot_scores_float_log_backward");
   k2::PybindGetTotScoresLogBackward<double>(
       m, "get_tot_scores_double_log_backward");
-  k2::PybindComputeSeqFrameIdx(m);
 }

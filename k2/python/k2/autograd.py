@@ -326,17 +326,24 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
 
         ctx.save_for_backward(unused_scores_a, unused_scores_b)
 
-        if seqframe_idx_name is not None or frame_idx_name is not None:
-            seqframe_idx, frame_idx = _k2.compute_seq_frame_idx(
-                arc_map_b, b_fsas.dense_fsa_vec)
+        seqframe_idx = None
+        if frame_idx_name is not None:
+            num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+            seqframe_idx = arc_map_b // num_cols
+            shape = b_fsas.dense_fsa_vec.shape()
+            fsa_idx0 = _k2.index_select(shape.row_ids(1), seqframe_idx)
+            frame_idx = seqframe_idx - _k2.index_select(
+                shape.row_splits(1), fsa_idx0)
+            assert not hasattr(out_fsa[0], frame_idx_name)
+            setattr(out_fsa[0], frame_idx_name, frame_idx)
 
-            if seqframe_idx_name is not None:
-                assert not hasattr(out_fsa[0], seqframe_idx_name)
-                setattr(out_fsa[0], seqframe_idx_name, seqframe_idx)
+        if seqframe_idx_name is not None:
+            if seqframe_idx is None:
+                num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+                seqframe_idx = arc_map_b // num_cols
 
-            if frame_idx_name is not None:
-                assert not hasattr(out_fsa[0], frame_idx_name)
-                setattr(out_fsa[0], frame_idx_name, frame_idx)
+            assert not hasattr(out_fsa[0], seqframe_idx_name)
+            setattr(out_fsa[0], seqframe_idx_name, seqframe_idx)
 
         return out_fsa[0].scores
 
@@ -451,17 +458,24 @@ class _IntersectDenseFunction(torch.autograd.Function):
 
         ctx.save_for_backward(unused_scores_a, unused_scores_b)
 
-        if seqframe_idx_name is not None or frame_idx_name is not None:
-            seqframe_idx, frame_idx = _k2.compute_seq_frame_idx(
-                arc_map_b, b_fsas.dense_fsa_vec)
+        seqframe_idx = None
+        if frame_idx_name is not None:
+            num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+            seqframe_idx = arc_map_b // num_cols
+            shape = b_fsas.dense_fsa_vec.shape()
+            fsa_idx0 = _k2.index_select(shape.row_ids(1), seqframe_idx)
+            frame_idx = seqframe_idx - _k2.index_select(
+                shape.row_splits(1), fsa_idx0)
+            assert not hasattr(out_fsa[0], frame_idx_name)
+            setattr(out_fsa[0], frame_idx_name, frame_idx)
 
-            if seqframe_idx_name is not None:
-                assert not hasattr(out_fsa[0], seqframe_idx_name)
-                setattr(out_fsa[0], seqframe_idx_name, seqframe_idx)
+        if seqframe_idx_name is not None:
+            if seqframe_idx is None:
+                num_cols = b_fsas.dense_fsa_vec.scores_dim1()
+                seqframe_idx = arc_map_b // num_cols
 
-            if frame_idx_name is not None:
-                assert not hasattr(out_fsa[0], frame_idx_name)
-                setattr(out_fsa[0], frame_idx_name, frame_idx)
+            assert not hasattr(out_fsa[0], seqframe_idx_name)
+            setattr(out_fsa[0], seqframe_idx_name, seqframe_idx)
 
         return out_fsa[0].scores
 

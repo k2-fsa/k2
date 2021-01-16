@@ -1816,32 +1816,4 @@ void FixNumStates(FsaVec *fsas) {
                                      renumber_states);
 }
 
-void ComputeSeqFrameIdx(const Array1<int32_t> &arc_map_b, DenseFsaVec &b_fsas,
-                        Array1<int32_t> *seq_frame_idx,
-                        Array1<int32_t> *frame_idx) {
-  K2_CHECK_NE(seq_frame_idx, nullptr);
-  K2_CHECK_NE(frame_idx, nullptr);
-
-  ContextPtr context = GetContext(arc_map_b, b_fsas);
-  int32_t dim = arc_map_b.Dim();
-  *seq_frame_idx = Array1<int32_t>(context, dim);
-  *frame_idx = Array1<int32_t>(context, dim);
-
-  int32_t num_cols = b_fsas.scores.Dim1();
-  const int32_t *row_splits1_data = b_fsas.shape.RowSplits(1).Data();
-  const int32_t *row_ids1_data = b_fsas.shape.RowIds(1).Data();
-  int32_t *seq_frame_idx_data = seq_frame_idx->Data();
-  int32_t *frame_idx_data = frame_idx->Data();
-  const int32_t *arc_map_b_data = arc_map_b.Data();
-  auto accessor = b_fsas.scores.Accessor();
-
-  K2_EVAL(
-      context, dim, set_idx, (int32_t i)->void {
-        int32_t idx01 = arc_map_b_data[i] / num_cols;
-        seq_frame_idx_data[i] = idx01;
-        int32_t fsa_idx0 = row_ids1_data[idx01];
-        frame_idx_data[i] = idx01 - row_splits1_data[fsa_idx0];
-      });
-}
-
 }  // namespace k2
