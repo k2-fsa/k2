@@ -1,11 +1,6 @@
 /**
- * @brief
- * Get stacktrace.
- *
- * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  *
  * Stack trace related stuff is from kaldi.

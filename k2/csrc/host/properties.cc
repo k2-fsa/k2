@@ -1,13 +1,8 @@
 /**
- * @brief
- * properties
- *
- * @copyright
  * Copyright (c)  2020  Haowen Qiu
  *                      Daniel Povey
  *                      Mahsa Yarmohammadi
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

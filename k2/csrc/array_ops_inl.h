@@ -1,15 +1,6 @@
 /**
- * @brief
- * array_ops_inl
- *
- * @note
- * Don't include this file directly; it is included by array_ops.h.
- * It contains implementation code.
- *
- * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

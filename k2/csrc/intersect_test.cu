@@ -1,10 +1,6 @@
 /**
- * @brief Unittests for intersect_pruned.cu and intersect.cu
- *
- * @copyright
  * Copyright (c)  2020  Xiaomi Corporation    (authors: Daniel Povey)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

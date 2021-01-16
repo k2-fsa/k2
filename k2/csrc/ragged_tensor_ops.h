@@ -1,11 +1,6 @@
 /**
- * @brief
- * ragged_tensor_ops
- *
- * @copyright
  * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

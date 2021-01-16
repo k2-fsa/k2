@@ -1,14 +1,8 @@
 /**
- * @brief Utilities for creating FSAs.
- *
- * Note that serializations are done in Python.
- *
- * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *                      Guoguo Chen
  *                      Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 

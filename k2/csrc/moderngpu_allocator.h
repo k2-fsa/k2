@@ -1,12 +1,6 @@
 /**
- * @brief This is an allocator for moderngpu only.
- *
- * Currently it is used by `SortSublists`.
- *
- * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
  *
- * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
 
