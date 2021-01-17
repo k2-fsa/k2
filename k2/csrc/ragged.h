@@ -220,13 +220,6 @@ class RaggedShape {
 template <typename T, int MAX_DIM>
 struct ArrayAccessor {
   T data[MAX_DIM];
-  ArrayAccessor() { }
-
-  __host__ __device__ ArrayAccessor(const ArrayAccessor &other) {
-      for (int i = 0; i < MAX_DIM; i++)
-        data[i] = other.data[i];
-  }
-
 };
 
 
