@@ -233,11 +233,11 @@ struct RowSplitsAccessor {
 
   RowSplitsAccessor(RaggedShape &src);
 
-  __host__ __device__ RowSplitsAccessor(
+  /*  __host__ __device__ RowSplitsAccessor(
       const RowSplitsAccessor &other) {
       for (int i = 0; i < MAX_LAYERS; i++)
         ptrs[i] = other.ptrs[i];
-  }
+        }*/
 
 };
 
@@ -251,11 +251,11 @@ struct RowIdsAccessor {
 
   RowIdsAccessor(RaggedShape &src);
 
-  __host__ __device__ RowIdsAccessor(
+  /*  __host__ __device__ RowIdsAccessor(
       const RowIdsAccessor &other) {
       for (int i = 0; i < MAX_LAYERS; i++)
         ptrs[i] = other.ptrs[i];
-  }
+        }*/
 };
 
 

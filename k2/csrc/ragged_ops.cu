@@ -767,7 +767,7 @@ static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
 
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
                    Array1<uint32_t> *merge_map /* == nullptr*/) {
-  K2_CHECK(num_srcs > 0);
+  K2_CHECK_GT(num_srcs, 0);
   if (axis == 0) return AppendAxis0(num_srcs, src, merge_map);
 
   K2_CHECK_LT(static_cast<uint32_t>(axis),
@@ -1877,7 +1877,7 @@ void RaggedShapeAxis0Splitter::Init(RaggedShape &src) {
   int32_t num_layers = src.NumLayers(),
     num_layers_out = num_layers - 1,
               dim0 = src.Dim0();
-  K2_CHECK(num_layers_out <= 4);  // If this fails, add something to the 4s and
+  K2_CHECK_LE(num_layers_out, 4);  // If this fails, add something to the 4s and
                                    // 5s here and in the header.
   K2_CHECK_GT(num_layers, 1);
 
