@@ -250,6 +250,118 @@ RaggedShape Prefix(RaggedShape &src, int32_t n);
 std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
                                      const std::vector<int32_t> &sizes);
 
+
+/*
+  This object splits a ragged shape on its axis 0, giving you efficient
+  axis to the sub-parts of it for each index into its axis0.
+ */
+class RaggedShapeAxis0Splitter {
+ public:
+  RaggedShapeAxis0Splitter(RaggedShape &src) { Init(src); }
+
+
+  /*
+     Return sub-part of `src`
+        @param [in] i   Index into axis 0 of `src`, with 0 <= i < src.Dim0().
+        @param [out] elem_offset  If not nullptr, will output to this
+                     location the offset into the `values` array that
+                     you'd need to start, to get the values of this
+                     sub-part of the ragged shape.  Will satisfy
+                     0 <= elem_offset <= src.NumElements().
+        @return  Returns the sub-part of `src`, with one fewer axis
+                  than `src`.  Is equivalent to calling src.Index(0, i,
+                  elem_offset), but more efficient if you'll do this for most of
+                  the `i`.
+  */
+  RaggedShape GetElement(int32_t i, int32_t *elem_offset = nullptr);
+
+  /*
+    This is provided in case you need to know how the indexes of the sub-pieces
+    relate to the indexes of the original array; GetOffset(i, axis)
+    gives the offset of an index on axis `axis - 1` of GetElement(i) versus axis
+    `axis` of `src`.
+
+    GetOffset(i, src.NumAxes() - 1) will equal the `elem_offset`
+    output by `GetElement(i, &elem_offset)`.
+
+
+    Below, `src` refers to the argument to the constructor.
+      @param [in] i  Element-index i, with 0 <= i <= src.Dim0()
+      @param [in] src_axis  Axis of `src`, with 0 = src_axis < src.NumAxes()
+      @return  Returns the offset, with 0 <= ans <= src.TotSize(src_axis)
+
+  */
+  int32_t GetOffset(int32_t i, int32_t src_axis) {
+    return composite_row_splits_cpu_.Accessor()(src_axis, i);
+  }
+
+
+  void Init(RaggedShape &src);  // called from constructor, to get around nvcc
+                                // limitations.  Do not call.
+
+
+ private:
+
+
+  // composite_row_splits is of shape (src.NumLayers() + 1, src.Dim0() + 1).
+  // Row 0 contains [ 0, 1, 2, ..  ];
+  // Row 1 contains src.RowSplits(1)
+  // Row 2 contains the row_splits12 = src.RowSplits(2)[src.RowSplits(1)]
+  //    .. etc.
+  // Note: we're making composite_row_splits_ a class member in case we need
+  // it later; otherwise it could be a local in the constructor.
+  Array2<int32_t> composite_row_splits_;
+  Array2<int32_t> composite_row_splits_cpu_;
+
+  // Let num_layers_out = composite_row_splits.Dim0() - 2 == src.NumLayers() -
+  // 1.  The first `num_layers_out` arrays in row_splits_out and row_ids_out
+  // will be populated.
+  //
+  // row_splits_out_[i] contains all the row_splits of layer i of the split
+  // outputs, appended together, of Dim() equal to src.TotSize(i+1) + src.Dim0()
+  // + 1; the extra Dim0() is needed because of the extra final element of each
+  // row_splits vector, plus 1 for an extra final zero that's convenient for the
+  // implementation.
+  Array1<int32_t> row_splits_out_[4];
+  // row_ids_out[i] contains all the row_ids of layer i of the outputs, appended
+  // together, of Dim() equal to src.TotSize(i+2).
+  Array1<int32_t> row_ids_out_[4];
+};
+
+
+template <typename T>
+class RaggedAxis0Splitter: public RaggedShapeAxis0Splitter {
+ public:
+  RaggedAxis0Splitter(Ragged<T> &src):
+      RaggedShapeAxis0Splitter(src.shape), values_(src.values) { }
+
+  /*
+     Return sub-part of `src`
+        @param [in] i   Index into axis 0 of `src`, with 0 <= i < src.Dim0().
+        @param [out] elem_offset  If not nullptr, will output to this
+                  location the offset into the `values` array that
+                  the answer's data starts from.  Will satisfy
+                  0 <= elem_offset <= src.NumElements().
+        @return  Returns the sub-part of `src`, with one fewer axis
+                  than `src`.  Is equivalent to calling src.Index(0, i,
+                  elem_offset), but more efficient if you'll do this for most of
+                  the `i`.
+  */
+  Ragged<T> GetElement(int32_t i, int32_t *elem_offset = nullptr) {
+    int32_t temp;
+    if (elem_offset == nullptr) elem_offset = &temp;
+    RaggedShape shape = RaggedShapeAxis0Splitter::GetElement(i, elem_offset);
+    return Ragged<T>(shape, values_.Arange(*elem_offset,
+                                           *elem_offset + shape.NumElements()));
+  }
+
+  // note, GetOffset() from the parent is available.
+ private:
+  Array1<T> values_;
+
+};
+
+
 /*
   Return a sub-range of `src` containing indexes `begin` through `end - 1`
   along axis `axis` of src.

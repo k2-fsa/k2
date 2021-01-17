@@ -574,7 +574,7 @@ Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
           ans_data[arc_idx012] = arcs_data[arc_idx012].dest_state;
         });
   } else {
-    const int32_t *row_ids2 = fsas.RowIds(2).Data();
+    const int32_t *row_ids2_data = fsas.RowIds(2).Data();
     K2_EVAL(
         c, num_arcs, lambda_set_dest_states01, (int32_t arc_idx012) {
           int32_t src_state = arcs_data[arc_idx012].src_state,
@@ -583,7 +583,7 @@ Array1<int32_t> GetDestStates(FsaVec &fsas, bool as_idx01) {
           // row_splits1[row_ids1[row_ids2[arc_idx012]]]; it's the idx01 of the
           // 1st state in this FSA.
           ans_data[arc_idx012] =
-              dest_state + (row_ids2[arc_idx012] - src_state);
+              dest_state + (row_ids2_data[arc_idx012] - src_state);
         });
   }
   return ans;
@@ -1059,6 +1059,12 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
   K2_DCHECK_EQ(entering_arc_batches.TotSize(2), num_states);
   K2_DCHECK_EQ(entering_arc_batches.NumElements(), num_arcs);
 
+
+  const int32_t *fsas_row_ids1_data = fsas.RowIds(1).Data(),
+             *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
+                *fsas_row_ids2_data = fsas.RowIds(2).Data();
+
+
   FloatType negative_infinity = -std::numeric_limits<FloatType>::infinity();
   Array1<FloatType> state_scores(c, num_states, negative_infinity);
   FloatType *state_scores_data = state_scores.Data();
@@ -1072,57 +1078,8 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
           state_scores_data[start_state] = 0;
       });
 
-  // get the 1st entering arc index in each batch, +1 so we can get the number
-  // of entering arcs in each batch by taking the difference of adjacent
-  // elements
-  Array1<int32_t> entering_arc_start_index(c, num_batches + 1);
-  int32_t *entering_arc_start_index_data = entering_arc_start_index.Data();
-  const int32_t *arc_batches_row_splits1 =
-      entering_arc_batches.RowSplits(1).Data();
-  const int32_t *arc_batches_row_splits2 =
-      entering_arc_batches.RowSplits(2).Data();
-  const int32_t *arc_batches_row_splits3 =
-      entering_arc_batches.RowSplits(3).Data();
-  K2_EVAL(
-      c, num_batches, lambda_set_entering_arc_start_index, (int32_t batch_idx) {
-        int32_t this_state_idx0xx =
-            arc_batches_row_splits2[batch_idx * num_fsas];
-        int32_t this_arc_idx0xxx = arc_batches_row_splits3[this_state_idx0xx];
-        entering_arc_start_index_data[batch_idx] = this_arc_idx0xxx;
-        if (batch_idx == num_batches - 1) {
-          // process the last element
-          int32_t next_state_idx0xx =
-              arc_batches_row_splits2[num_batches * num_fsas];
-          int32_t next_arc_idx0xxx = arc_batches_row_splits3[next_state_idx0xx];
-          entering_arc_start_index_data[num_batches] = next_arc_idx0xxx;
-        }
-      });
-
-  const int32_t *arc_batches_row_ids1 = entering_arc_batches.RowIds(1).Data();
-  const int32_t *arc_batches_row_ids2 = entering_arc_batches.RowIds(2).Data();
-  const int32_t *arc_batches_row_ids3 = entering_arc_batches.RowIds(3).Data();
-  const int32_t *entering_arc_ids = entering_arc_batches.values.Data();
-  const int32_t *states_data = state_batches.values.Data();
   const Arc *arcs = fsas.values.Data();
-  Array1<FloatType> entering_arc_score_values(
-      c, num_arcs);  // entering arc_scores in batches
-  FloatType *arc_scores_data = entering_arc_score_values.Data();
-  // copy entering_arc_start_index to cpu as we will access its elements in
-  // below Eval function for `lambda_set_entering_arc_scores`
-  Array1<int32_t> cpu_entering_arc_start_index =
-      entering_arc_start_index.To(GetCpuContext());
-  const int32_t *cpu_entering_arc_start = cpu_entering_arc_start_index.Data();
-  // copy the index of start state in each fsa to CPU
-  Array1<int32_t> &arc_batches_row_splits1_array =
-      entering_arc_batches.RowSplits(1);
-  Array1<int32_t> arc_batches_row_splits12_cpu =
-      entering_arc_batches.RowSplits(2)[arc_batches_row_splits1_array].To(
-          GetCpuContext());
-  K2_CHECK_EQ(arc_batches_row_splits12_cpu.Dim(), num_batches + 1);
-  const int32_t *arc_batches_row_splits12_cpu_data =
-      arc_batches_row_splits12_cpu.Data();
-  Array1<int32_t> arc_row_splits_mem(c, num_states + 1);
-  Array1<FloatType> score_cache(c, num_states + 1);
+
 
   int32_t *entering_arcs_data = nullptr;
   if (entering_arcs) {
@@ -1131,118 +1088,103 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
     entering_arcs_data = entering_arcs->Data();
   }
 
+
+  RaggedAxis0Splitter<int32_t> arc_batches_splitter(entering_arc_batches);
+
   // process batch sequentially.
   for (int32_t i = 0; i < num_batches; ++i) {
-    // get the range we would call Max/LogSum per sub list
-    int32_t this_state_idx0xx = arc_batches_row_splits12_cpu_data[i],
-            next_state_idx0xx = arc_batches_row_splits12_cpu_data[i + 1];
-    K2_CHECK_LT(this_state_idx0xx, num_states);
-    K2_CHECK_LE(next_state_idx0xx, num_states);
-    int32_t num_states_this_batch = next_state_idx0xx - this_state_idx0xx;
-    K2_CHECK_LT(num_states_this_batch, arc_row_splits_mem.Dim());
-    // we always use the first `num_states_this_batch` elements in
-    // arc_row_splits_mem.
-    Array1<int32_t> arc_row_splits_part = arc_row_splits_mem.Range(
-        0, num_states_this_batch + 1);  // +1 for the last element
-    int32_t num_arcs_this_batch =
-        cpu_entering_arc_start[i + 1] - cpu_entering_arc_start[i];
-    {
-      ParallelRunner pr(c);
-      // get entering arc scores
-      {
-        With w(pr.NewStream());
-        K2_EVAL(
-            c, num_arcs_this_batch, lambda_set_entering_arc_score,
-            (int32_t idx123) {
-              // all idx** in below code are the indexes to entering_arc_batches
-              int32_t idx0123 = entering_arc_start_index_data[i] + idx123;
-              int32_t idx012 = arc_batches_row_ids3[idx0123];
-              int32_t idx01 = arc_batches_row_ids2[idx012];
-              K2_CHECK_EQ(idx01 / num_fsas, i);  // idx01/num_fsas is batch_id
-              int32_t fsa_id = idx01 % num_fsas;
 
-              int32_t entering_arc_id = entering_arc_ids[idx0123];
-              float curr_arc_score = arcs[entering_arc_id].score;
-              int32_t src_state_idx1 = arcs[entering_arc_id].src_state;
-              int32_t src_state_idx01 =
-                  fsa_row_splits1[fsa_id] + src_state_idx1;
-              arc_scores_data[idx0123] =
-                  state_scores_data[src_state_idx01] + curr_arc_score;
-            });
-      }
-      {
-        With w(pr.NewStream());
-        // make entering arc row splits info in each batch starting from zero,
-        // we will use it to call MaxPerSublist or LogSumPerSubList
-        int32_t *sum_splits_data = arc_row_splits_part.Data();
-        K2_EVAL(
-            c, num_states_this_batch + 1, lambda_set_row_splits_for_sum,
-            (int32_t idx) {
-              sum_splits_data[idx] =
-                  arc_batches_row_splits3[idx + this_state_idx0xx] -
-                  arc_batches_row_splits3[this_state_idx0xx];
-            });
-      }
-    }
-    int32_t this_arc_idx0xxx = cpu_entering_arc_start[i];
-    Array1<FloatType> sub_scores_values =
-        entering_arc_score_values.Range(this_arc_idx0xxx, num_arcs_this_batch);
-    RaggedShape sub_scores_shape =
-        RaggedShape2(&arc_row_splits_part, nullptr, sub_scores_values.Dim());
-    Ragged<FloatType> sub_scores(sub_scores_shape, sub_scores_values);
-    // we always use the first num_rows elements in score_cache.
-    Array1<FloatType> sub_state_scores =
-        score_cache.Range(0, num_states_this_batch);
+    // entering_arc_batch is indexed [fsa][state_list][arc_list]
+    int32_t arc_begin;
+    Ragged<int32_t> entering_arc_batch = arc_batches_splitter.GetElement(i, &arc_begin);
+    const int32_t *entering_arc_batch_data = entering_arc_batch.values.Data();
+    int32_t state_begin = arc_batches_splitter.GetOffset(i, 2),
+              state_end = arc_batches_splitter.GetOffset(i + 1, 2),
+  num_states_this_batch = state_end - state_begin,
+    num_arcs_this_batch = entering_arc_batch.NumElements();
+    Array1<int32_t> states_batch = state_batches.values.Arange(state_begin,
+                                                               state_end);
+    const int32_t *states_batch_data = states_batch.Data();
+
+    Ragged<FloatType> entering_arc_batch_scores(entering_arc_batch.shape);
+    FloatType *entering_arc_batch_scores_data =
+        entering_arc_batch_scores.values.Data();
+
+    // get entering arc scores
+    K2_EVAL(
+        c, num_arcs_this_batch, lambda_set_entering_arc_score,
+        (int32_t idx012) -> void {
+          // `idx012` is into the batch.
+          int32_t fsas_arc_idx012 = entering_arc_batch_data[idx012];
+          float curr_arc_score = arcs[fsas_arc_idx012].score;
+          int32_t src_state_idx01 = fsas_row_ids2_data[fsas_arc_idx012];
+          entering_arc_batch_scores_data[idx012] =
+              state_scores_data[src_state_idx01] + curr_arc_score;
+        });
+
+
+    Array1<FloatType> state_batch_scores(c, num_states_this_batch);
+    FloatType *state_batch_scores_data = state_batch_scores.Data();
+
     // get scores per state in this batch
     if (log_semiring) {
-      LogSumPerSublist(sub_scores, negative_infinity, &sub_state_scores);
+      LogSumPerSublist(entering_arc_batch_scores, negative_infinity, &state_batch_scores);
     } else {
-      MaxPerSublist(sub_scores, negative_infinity, &sub_state_scores);
-      if (entering_arcs_data != nullptr) {
-        FloatType *sub_state_scores_data = sub_state_scores.Data(),
-                  *sub_scores_data = sub_scores.values.Data();
-        int32_t *sub_scores_row_ids_data = sub_scores.RowIds(1).Data();
-        const int32_t *sub_state_ids_data = states_data + this_state_idx0xx,
-                      *sub_entering_arc_ids_data =
-                          entering_arc_ids + this_arc_idx0xxx;
+      if (entering_arcs_data == nullptr) {
+        MaxPerSublist(entering_arc_batch_scores, negative_infinity, &state_batch_scores);
+      } else {
+
+        // entering_arc_idxs will contain indexes into `entering_arc_batch_scores`, equiv. to
+        // indexes into `entering_arc_batch`.
+        Array1<int32_t> entering_arc_idxs(c, num_states_this_batch);
+        ArgMaxPerSublist(entering_arc_batch_scores, negative_infinity,
+                         &entering_arc_idxs);
+
+        const int32_t *entering_arc_idxs_data = entering_arc_idxs.Data(),
+                     *entering_arc_batch_data = entering_arc_batch.values.Data();
+
         // arc_idx01 below is an index into sub_scores, it is also an arc_idx123
         // into entering_arc_batches.
         K2_EVAL(
-            c, sub_scores.NumElements(), lambda_set_entering_arcs,
-            (int32_t arc_idx01) {
-              // state_idx0 below is idx0 into `sub_scores`, also an index into
-              // `sub_scores`.
-              int32_t state_idx0 = sub_scores_row_ids_data[arc_idx01];
-              if (sub_scores_data[arc_idx01] ==
-                  sub_state_scores_data[state_idx0]) {
-                int32_t fsas_state_idx01 = sub_state_ids_data[state_idx0],
-                        fsas_entering_arc_idx012 =
-                            sub_entering_arc_ids_data[arc_idx01];
-                // The following statement has a race condition if there is a
-                // tie on scores, but this is OK and by design.  It makes the
-                // choice of traceback non-deterministic in these cases.
-                entering_arcs_data[fsas_state_idx01] = fsas_entering_arc_idx012;
+            c, num_states_this_batch, lambda_set_entering_arcs_etc,
+            (int32_t state_idx) {  // state_idx is into state_batch_scores_data
+                                   // and entering_arc_idxs.
+              // arc_idx is into entering_arc_batch_data.
+              int32_t arc_idx = entering_arc_idxs_data[state_idx];
+              FloatType score;
+              int32_t fsas_arc_idx012;
+              if (arc_idx == -1) {
+                score = negative_infinity;
+                fsas_arc_idx012 = -1;
+              } else {
+                fsas_arc_idx012 = entering_arc_batch_data[arc_idx];
+                score = entering_arc_batch_scores_data[arc_idx];
               }
+              // we'll later ignore this score if it was the start state.
+              state_batch_scores_data[state_idx] = score;
+              int32_t fsas_state_idx01 = states_batch_data[state_idx];
+              entering_arcs_data[fsas_state_idx01] = fsas_arc_idx012;
             });
       }
     }
-    const FloatType *sub_state_scores_data = sub_state_scores.Data();
-    // Copy those scores to corresponding state in state_scores.
-    // `state_idx12` is an idx12 w.r.t. state_batches and entering_arc_batches,
-    // but an idx1 w.r.t. sub_scores and an index into the array
-    // sub_state_scores.
+
+    // Copy those scores to the corresponding state in state_scores.
+    // `state_idx` is an index into `states_batch_data.values`.
     K2_EVAL(
         c, num_states_this_batch, lambda_copy_state_scores,
-        (int32_t state_idx12) {
-          int32_t batches_idx012 = this_state_idx0xx + state_idx12;
-          int32_t fsas_state_idx01 = states_data[batches_idx012];
-          int32_t batches_idx01 = arc_batches_row_ids2[batches_idx012];
-          int32_t fsa_idx0 = batches_idx01 % num_fsas;
-          int32_t start_state_idx01 = fsa_row_splits1[fsa_idx0];
-          // don't override score 0 in the start state in each fsa.
-          if (fsas_state_idx01 != start_state_idx01)
-            state_scores_data[fsas_state_idx01] =
-                sub_state_scores_data[state_idx12];
+        (int32_t state_idx) {
+          int32_t fsas_state_idx01 = states_batch_data[state_idx];
+          FloatType score = state_batch_scores_data[state_idx];
+          // The if-statement below is to prevent it overriding the zero score
+          // for the start-sattes.  We only bother checking whether it's a start
+          // state if the score is -infinity, to save memory bandwidth.  (It would
+          // always be -infinithy for start states because they have no entering arcs;
+          // these FSAs are acyclic.
+          if (score != negative_infinity ||
+              fsas_state_idx01 !=
+              fsas_row_splits1_data[fsas_row_ids1_data[fsas_state_idx01]]) {
+            state_scores_data[fsas_state_idx01] = score;
+          }
         });
   }
 
@@ -1275,7 +1217,6 @@ Array1<FloatType> GetBackwardScores(
   int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
           num_arcs = fsas.TotSize(2);
   int32_t num_batches = state_batches.Dim0();
-  K2_DCHECK(state_batches.TotSize(1) == num_fsas * num_batches);
   // just using DCHECK below to save time in production code
   K2_DCHECK_EQ(state_batches.NumElements(), num_states);
   K2_DCHECK_EQ(leaving_arc_batches.Dim0(), num_batches);
@@ -1286,157 +1227,151 @@ Array1<FloatType> GetBackwardScores(
   FloatType negative_infinity = -std::numeric_limits<FloatType>::infinity();
   Array1<FloatType> state_scores(c, num_states, negative_infinity);
   FloatType *state_scores_data = state_scores.Data();
-  const int32_t *fsa_row_splits1 = fsas.RowSplits(1).Data();
+  const int32_t *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
+                   *fsas_row_ids1_data = fsas.RowIds(1).Data(),
+                   *fsas_row_ids2_data = fsas.RowIds(2).Data();
+
 
   // set the score of final state in each fsa to be 0
   K2_EVAL(
       c, num_fsas, lambda_set_final_state_score, (int32_t fsa_idx) {
-        int32_t start_state = fsa_row_splits1[fsa_idx],
-            start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
+        int32_t start_state = fsas_row_splits1_data[fsa_idx],
+       start_state_next_fsa = fsas_row_splits1_data[fsa_idx + 1];
         if (start_state_next_fsa - start_state > 0)
           state_scores_data[start_state_next_fsa - 1] = 0;
       });
 
-  // get the 1st leaving arc index in each batch, +1 so we can get the number of
-  // leaving arcs in each batch by taking the difference of adjacent elements
-  Array1<int32_t> leaving_arc_start_index(c, num_batches + 1);
-  int32_t *leaving_arc_start_index_data = leaving_arc_start_index.Data();
-  const int32_t *arc_batches_row_splits1 =
-      leaving_arc_batches.RowSplits(1).Data();
-  const int32_t *arc_batches_row_splits2 =
-      leaving_arc_batches.RowSplits(2).Data();
-  const int32_t *arc_batches_row_splits3 =
-      leaving_arc_batches.RowSplits(3).Data();
-  K2_EVAL(
-      c, num_batches, lambda_set_leaving_arc_start_index, (int32_t batch_idx) {
-        int32_t this_state_idx0xx =
-            arc_batches_row_splits2[batch_idx * num_fsas];
-        int32_t this_arc_idx0xxx = arc_batches_row_splits3[this_state_idx0xx];
-        leaving_arc_start_index_data[batch_idx] = this_arc_idx0xxx;
-        if (batch_idx == num_batches - 1) {
-          // process the last element
-          int32_t next_state_idx0xx =
-              arc_batches_row_splits2[num_batches * num_fsas];
-          int32_t next_arc_idx0xxx = arc_batches_row_splits3[next_state_idx0xx];
-          leaving_arc_start_index_data[num_batches] = next_arc_idx0xxx;
-        }
-      });
+  RaggedAxis0Splitter<int32_t> arc_batches_splitter(leaving_arc_batches);
 
-  const int32_t *arc_batches_row_ids1 = leaving_arc_batches.RowIds(1).Data();
-  const int32_t *arc_batches_row_ids2 = leaving_arc_batches.RowIds(2).Data();
-  const int32_t *arc_batches_row_ids3 = leaving_arc_batches.RowIds(3).Data();
-  const int32_t *leaving_arc_ids = leaving_arc_batches.values.Data();
-  const int32_t *states_data = state_batches.values.Data();
   const Arc *arcs = fsas.values.Data();
-  Array1<FloatType> leaving_arc_score_values(
-      c, num_arcs);  // leaving arc_scores in batches
-  FloatType *arc_scores_data = leaving_arc_score_values.Data();
-  // copy leaving_arc_start_index to cpu as we will access its elements in below
-  // Eval function for `lambda_set_leaving_arc_scores`
-  Array1<int32_t> cpu_leaving_arc_start_index =
-      leaving_arc_start_index.To(GetCpuContext());
-  const int32_t *cpu_leaving_arc_start = cpu_leaving_arc_start_index.Data();
-  // copy the index of start state in each fsa to CPU
-  Array1<int32_t> arc_batches_row_splits1_array =
-      leaving_arc_batches.RowSplits(1);
-  Array1<int32_t> arc_batches_row_splits12_cpu =
-      leaving_arc_batches.RowSplits(2)[arc_batches_row_splits1_array].To(
-          GetCpuContext());
-  K2_CHECK_EQ(arc_batches_row_splits12_cpu.Dim(), num_batches + 1);
-  const int32_t *arc_batches_row_splits12_cpu_data =
-      arc_batches_row_splits12_cpu.Data();
-  Array1<int32_t> arc_row_splits_mem(c, num_states + 1);
-  Array1<FloatType> score_cache(c, num_states + 1);
+
+
   // process batch sequentially.
   for (int32_t i = num_batches - 1; i >= 0; --i) {
-    // get the range we would call Max/LogSum per sub list
-    int32_t this_state_idx0xx = arc_batches_row_splits12_cpu_data[i];
-    int32_t next_state_idx0xx =
-        arc_batches_row_splits12_cpu_data[i + 1];  // the 1st state idx in the
-                                                   // next batch
-    K2_CHECK_LT(this_state_idx0xx, num_states);
-    K2_CHECK_LE(next_state_idx0xx, num_states);
-    int32_t num_states_this_batch = next_state_idx0xx - this_state_idx0xx;
-    K2_CHECK_LT(num_states_this_batch, arc_row_splits_mem.Dim());
-    // we always use the first `num_states_this_batch` elements in
-    // arc_row_splits_mem.
-    Array1<int32_t> arc_row_splits_part = arc_row_splits_mem.Range(
-        0, num_states_this_batch + 1);  // +1 for the last element
-    int32_t num_arcs_this_batch =
-        cpu_leaving_arc_start[i + 1] - cpu_leaving_arc_start[i];
-    {
-      ParallelRunner pr(c);
-      // get leaving arc scores
-      {
-        With w(pr.NewStream());
-        K2_EVAL(
-            c, num_arcs_this_batch, lambda_set_leaving_arc_score,
-            (int32_t idx123) {
-              // all idx** in below code are the indexes to leaving_arc_batches
-              int32_t idx0123 = leaving_arc_start_index_data[i] + idx123;
-              int32_t idx012 = arc_batches_row_ids3[idx0123];
-              int32_t idx01 = arc_batches_row_ids2[idx012];
-              K2_CHECK_EQ(idx01 / num_fsas, i);  // idx01/num_fsas is batch_id
-              int32_t fsa_id = idx01 % num_fsas;
+    int32_t arc_begin;
+    Ragged<int32_t> this_arc_batch = arc_batches_splitter.GetElement(
+        i, &arc_begin);
+    int32_t state_begin = arc_batches_splitter.GetOffset(i, 2),
+              state_end = arc_batches_splitter.GetOffset(i + 1, 2),
+  num_states_this_batch = state_end - state_begin,
+    num_arcs_this_batch = this_arc_batch.NumElements();
 
-              int32_t leaving_arc_id = leaving_arc_ids[idx0123];
-              float curr_arc_score = arcs[leaving_arc_id].score;
-              int32_t dest_state_idx1 = arcs[leaving_arc_id].dest_state;
-              int32_t dest_state_idx01 =
-                  fsa_row_splits1[fsa_id] + dest_state_idx1;
-              arc_scores_data[idx0123] =
-                  state_scores_data[dest_state_idx01] + curr_arc_score;
-            });
-      }
-      {
-        With w(pr.NewStream());
-        // make leaving arc row splits info in each batch starting from zero,
-        // we will use it to call MaxPerSublist or LogSumPerSubList
-        int32_t *sum_splits_data = arc_row_splits_part.Data();
-        K2_EVAL(
-            c, num_states_this_batch + 1, lambda_set_row_splits_for_sum,
-            (int32_t idx) {
-              sum_splits_data[idx] =
-                  arc_batches_row_splits3[idx + this_state_idx0xx] -
-                  arc_batches_row_splits3[this_state_idx0xx];
-            });
-      }
-    }
-    int32_t this_arc_idx0xxx = cpu_leaving_arc_start[i];
-    Array1<FloatType> sub_scores_values =
-        leaving_arc_score_values.Range(this_arc_idx0xxx, num_arcs_this_batch);
-    RaggedShape sub_scores_shape =
-        RaggedShape2(&arc_row_splits_part, nullptr, sub_scores_values.Dim());
-    Ragged<FloatType> sub_scores(sub_scores_shape, sub_scores_values);
-    // we always use the first num_rows elements in score_cache.
-    Array1<FloatType> sub_state_scores =
-        score_cache.Range(0, num_states_this_batch);
-    // get scores per state in this batch
-    if (log_semiring)
-      LogSumPerSublist(sub_scores, negative_infinity, &sub_state_scores);
-    else
-      MaxPerSublist(sub_scores, negative_infinity, &sub_state_scores);
-    const FloatType *sub_state_scores_data = sub_state_scores.Data();
-    // copy those scores to corresponding state in state_scores
+    Ragged<FloatType> this_arc_batch_scores(this_arc_batch.shape);
+
+    const int32_t *this_arc_batch_data = this_arc_batch.values.Data();
+    FloatType *this_arc_batch_scores_data = this_arc_batch_scores.values.Data();
+
+    // Get arc backward scores at the beginning of arcs in this batch
     K2_EVAL(
-        c, num_states_this_batch, lambda_copy_state_scores, (int32_t idx2) {
-          int32_t idx012 = this_state_idx0xx + idx2;
-          int32_t state_idx012 = states_data[idx012];
-          int32_t idx01 = arc_batches_row_ids2[idx012];
-          int32_t fsa_id = idx01 % num_fsas;
-          int32_t start_state = fsa_row_splits1[fsa_id],
-                  start_state_next_fsa = fsa_row_splits1[fsa_id + 1];
-          if (start_state_next_fsa - start_state > 0) {  // non-empty fsa
-            int32_t final_state_idx = start_state_next_fsa - 1;
-            // don't override score in the final state in each fsa.
-            if (state_idx012 != final_state_idx)
-              state_scores_data[state_idx012] = sub_state_scores_data[idx2];
+        c, num_arcs_this_batch, lambda_set_leaving_arc_score,
+        (int32_t arc_idx) {
+          int32_t fsa_arc_idx012 = this_arc_batch_data[arc_idx];
+          float curr_arc_score = arcs[fsa_arc_idx012].score;
+          int32_t dest_state_idx1 = arcs[fsa_arc_idx012].dest_state,
+                   src_state_idx1 = arcs[fsa_arc_idx012].src_state,
+                  src_state_idx01 = fsas_row_ids2_data[fsa_arc_idx012],
+                            idx0x = src_state_idx01 - src_state_idx1,
+                 dest_state_idx01 = idx0x + dest_state_idx1;
+          this_arc_batch_scores_data[arc_idx] =
+              state_scores_data[dest_state_idx01] + curr_arc_score;
+        });
+
+
+    Array1<FloatType> this_batch_state_scores(c, num_states_this_batch);
+
+    // get scores per state in this batch
+    if (log_semiring) {
+      LogSumPerSublist(this_arc_batch_scores, negative_infinity,
+                       &this_batch_state_scores);
+    } else {
+      MaxPerSublist(this_arc_batch_scores, negative_infinity,
+                    &this_batch_state_scores);
+    }
+
+    Array1<int32_t> this_batch_state_ids =
+        state_batches.values.Arange(state_begin, state_end);
+    const int32_t *this_batch_state_ids_data = this_batch_state_ids.Data();
+
+    const FloatType *this_batch_state_scores_data =
+        this_batch_state_scores.Data();
+    // copy those scores to the corresponding states in state_scores (they are
+    // in a different order).
+    K2_EVAL(
+        c, num_states_this_batch, lambda_copy_state_scores, (int32_t state_idx) {
+          int32_t fsas_state_idx01 = this_batch_state_ids_data[state_idx];
+          FloatType score = this_batch_state_scores_data[state_idx];
+          if (score != negative_infinity ||
+              fsas_state_idx01 + 1 != fsas_row_splits1_data[
+                  fsas_row_ids1_data[fsas_state_idx01] + 1]) {
+            // The if-block is to ensure we don't overwrite the final-states'
+            // backward-probs (0) with -infinity.  We check the score first to
+            // avoid unnecessary memory traffic.
+            state_scores_data[fsas_state_idx01] = score;
           }
         });
   }
 
   return state_scores;
 }
+
+template <typename FloatType>
+Array1<FloatType> BackpropGetBackwardScores(
+    FsaVec &fsas,
+    Ragged<int32_t> &state_batches,
+    Ragged<int32_t> &entering_arc_batches,
+    bool log_semiring,
+    const Array1<FloatType> &backward_scores,
+    const Array1<FloatType> &backward_scores_deriv_in) {
+  NVTX_RANGE(K2_FUNC);
+  ContextPtr c = fsas.Context();
+
+  // We will be adding to the elements of `backward_scores_deriv`.
+  // `backward_scores_deriv_in` was just the derivative w.r.t. the output of
+  // GetBackwardScores(), but because GetBackwardScores() is recursive,
+  // the derivatives for earlier states contribute to those of later ones.
+  Array1<FloatType> backward_scores_deriv(backward_scores_deriv_in);
+
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  K2_CHECK_EQ(state_batches.NumAxes(), 3);
+  K2_CHECK_EQ(entering_arc_batches.NumAxes(), 4);
+  int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
+          num_arcs = fsas.TotSize(2);
+  Array1<FloatType> arc_scores_deriv(c, num_arcs);  // will return this
+
+
+  ContextPtr cpu = GetCpuContext();
+
+  if (log_semiring) {
+    // For each batch of states:
+    //  (considering arcs entering these states):
+    //
+    //  (1) these arcs will affect the backward_scores of the states
+    //      from which the arcs leave (src_states of the arcs).
+    //      use the src_state's backward_scores_deriv_copy and
+    //      the arc's contribution (call this alpha, between 0 and 1, they sum to 1) to
+    //      the backward_score at the start of the
+    //      arc, to figure out the deriv w.r.t. the arc prob itself.
+    //
+    //  (1) compute deriv contributions to states at the ends of the arcs.  this
+    //      is the alpha at the start of the arc, times the deriv at the start
+    //      of the arc.  the deriv contribution gets added into
+    //      backward_scores_deriv.
+
+
+
+  } else {
+    // in a single kernel, figure out the contribution of each arc to its
+    // source-state by seeing which arc contributes the max loglike;
+    // this uses the shape of the fsas.  Note, it's arbitrary in case of ties.
+
+    // Add that arc's deriv to its dest-state's deriv, via reduction using
+    // entering_arc_batches.  At the same time (while processing
+    // entering_arc_batches), write to arc_scores_deriv (involves the
+    // backward_scores_deriv_copy of the source-state
+
+  }
+}
+
 
 template <typename FloatType>
 Array1<FloatType> GetTotScores(FsaVec &fsas,
@@ -1452,12 +1387,12 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
   Array1<FloatType> tot_scores(c, num_fsas, negative_infinity);
   FloatType *tot_scores_data = tot_scores.Data();
 
-  const int32_t *fsa_row_splits1 = fsas.RowSplits(1).Data();
+  const int32_t *fsa_row_splits1_data = fsas.RowSplits(1).Data();
   const FloatType *forward_scores_data = forward_scores.Data();
   K2_EVAL(
       c, num_fsas, lambda_copy_tot_scores, (int32_t fsa_idx) {
-        int32_t start_state = fsa_row_splits1[fsa_idx],
-                start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
+        int32_t start_state = fsa_row_splits1_data[fsa_idx],
+                start_state_next_fsa = fsa_row_splits1_data[fsa_idx + 1];
         if (start_state_next_fsa > start_state) {  // non-empty fsa
           int32_t final_state_idx = start_state_next_fsa - 1;
           tot_scores_data[fsa_idx] = forward_scores_data[final_state_idx];

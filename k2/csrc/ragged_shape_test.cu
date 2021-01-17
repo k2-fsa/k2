@@ -103,6 +103,8 @@ TEST(RaggedShapeTest, RaggedShape) {
       EXPECT_EQ(shape.MaxSize(2), 3);
       EXPECT_EQ(shape.MaxSize(3), 3);
 
+      RaggedShapeAxis0Splitter splitter(shape);
+
       // test Index(axis, i)
       {
         // values: [[[ 1, 2], [4]], [[3, 0]]]
@@ -111,6 +113,9 @@ TEST(RaggedShapeTest, RaggedShape) {
         const std::vector<std::vector<int32_t>> sub_row_splits_vec = {
             {0, 2, 3}, {0, 2, 3, 5}};
         CheckRowSplitsOrIds(sub_shape, sub_row_splits_vec, true);
+
+        RaggedShape sub_shape2 = splitter.GetElement(0);
+        EXPECT_EQ(Equal(sub_shape, sub_shape2), true);
       }
       {
         // values: [[[7, 8, 9]], [[6], [3, 5, 7]], [[2]]]
@@ -119,6 +124,8 @@ TEST(RaggedShapeTest, RaggedShape) {
         const std::vector<std::vector<int32_t>> sub_row_splits_vec = {
             {0, 1, 3, 4}, {0, 3, 4, 7, 8}};
         CheckRowSplitsOrIds(sub_shape, sub_row_splits_vec, true);
+        RaggedShape sub_shape2 = splitter.GetElement(1);
+        EXPECT_EQ(Equal(sub_shape, sub_shape2), true);
       }
 
       {
@@ -128,6 +135,8 @@ TEST(RaggedShapeTest, RaggedShape) {
         const std::vector<std::vector<int32_t>> sub_row_splits_vec = {
             {0, 3}, {0, 2, 2, 3}};
         CheckRowSplitsOrIds(sub_shape, sub_row_splits_vec, true);
+        RaggedShape sub_shape2 = splitter.GetElement(2);
+        EXPECT_EQ(Equal(sub_shape, sub_shape2), true);
       }
 
       // test operator[](indexes)

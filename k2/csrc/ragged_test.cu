@@ -2574,5 +2574,23 @@ TEST(RaggedShapeOpsTest, CoveringShape) {
   }
 }
 
+TEST(RaggedShapeOpsTest, RaggedShapeAxis0Splitter) {
+  for (int32_t i = 0; i < 20; i++) {
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      RaggedShape random = RandomRaggedShape(false, 3, 6, 0, 2000);
+      int32_t dim0 = random.Dim0();
+      RaggedShapeAxis0Splitter splitter(random);
+      for (int32_t i = 0; i < dim0; i++) {
+        int32_t offset, offset2, offset3;
+        RaggedShape sub_shape1 = random.Index(0, i, &offset),
+                    sub_shape2 = splitter.GetElement(i, &offset2);
+        offset3 = splitter.GetOffset(i, random.NumAxes() - 1);
+        EXPECT_EQ(offset, offset2);
+        EXPECT_EQ(offset, offset3);
+        EXPECT_EQ(Equal(sub_shape1, sub_shape2), true);
+      }
+    }
+  }
+}
 
 }  // namespace k2

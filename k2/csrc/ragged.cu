@@ -468,4 +468,6 @@ std::istream &operator>>(std::istream &is, RaggedShape &shape) {
   }
 }
 
+
+
 }  // namespace k2

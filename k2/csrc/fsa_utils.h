@@ -321,8 +321,11 @@ Array1<FloatType> GetBackwardScores(
 
       @param [in] fsas  Input FsaVec, as given to GetBackwardScores()
       @param [in] state_batches  Batches of states, as given to
-                      GetBackwardScores()
-      @param [in] leaving_arc_batches  The same as given to GetBackwardScors()
+                  GetBackwardScores() and GetForwardScores()
+      @param [in] entering_arc_batches  Arcs-indexes (idx012's in fsas) of arcs
+                 entering states in `state_batches`, indexed
+                 [iter][fsa][state_list][arc_list], as returned by
+                 GetEnteringArcIndexBatches().
       @param [in] log_semiring  The same option as given to GetBackwardScors()
       @param [in] backward_scores   The return value of GetBackwardScores()
       @param [in] backward_scores_deriv  The derivative of the loss function
@@ -333,7 +336,7 @@ Array1<FloatType> GetBackwardScores(
 template <typename FloatType>
 Array1<FloatType> BackpropGetBackwardScores(
     FsaVec &fsas, Ragged<int32_t> &state_batches,
-    Ragged<int32_t> &leaving_arc_batches,
+    Ragged<int32_t> &entering_arc_batches,
     bool log_semiring,
     const Array1<FloatType> &backward_scores,
     const Array1<FloatType> &backward_scores_deriv);
