@@ -490,10 +490,8 @@ struct PairMaxOp {
                                                 const Pair<T> &b) const {
     // NOTE: could specialize this via a union, if T == int32_t, might be
     // marginally faster.
-    if (a.t > b.t || (a.t == b.t && a.idx > b.idx))
-      return a;
-    else
-      return b;
+    if (a.t > b.t || (a.t == b.t && a.idx > b.idx)) return a;
+    return b;
   }
 };
 
