@@ -115,8 +115,7 @@ static void PybindFsaUtil(py::module &m) {
   // the following methods are for debugging only
   m.def("fsa_to_fsa_vec", &FsaToFsaVec, py::arg("fsa"));
 
-  m.def("get_fsa_vec_element", &GetFsaVecElement, py::arg("vec"),
-        py::arg("i"));
+  m.def("get_fsa_vec_element", &GetFsaVecElement, py::arg("vec"), py::arg("i"));
 
   m.def(
       "create_fsa_vec",
@@ -209,22 +208,13 @@ static void PybindGetBackwardScores(py::module &m, const char *name) {
       name,
       [](FsaVec &fsas, Ragged<int32_t> &state_batches,
          Ragged<int32_t> &leaving_arc_batches,
-         torch::optional<torch::Tensor> tot_scores = torch::nullopt,
          bool log_semiring = true) -> torch::Tensor {
-        if (tot_scores.has_value()) {
-          const Array1<T> tot_scores_array = FromTensor<T>(tot_scores.value());
-          Array1<T> ans =
-              GetBackwardScores<T>(fsas, state_batches, leaving_arc_batches,
-                                   &tot_scores_array, log_semiring);
-          return ToTensor(ans);
-        } else {
-          Array1<T> ans = GetBackwardScores<T>(
-              fsas, state_batches, leaving_arc_batches, nullptr, log_semiring);
-          return ToTensor(ans);
-        }
+        Array1<T> ans = GetBackwardScores<T>(fsas, state_batches,
+                                             leaving_arc_batches, log_semiring);
+        return ToTensor(ans);
       },
       py::arg("fsas"), py::arg("state_batches"), py::arg("leaving_arc_batches"),
-      py::arg("tot_scores") = py::none(), py::arg("log_semiring") = true);
+      py::arg("log_semiring") = true);
 }
 
 template <typename T>
@@ -265,6 +255,11 @@ static void PybindDenseFsaVec(py::module &m) {
       "dim0", [](PyClass &self) -> int32_t { return self.shape.Dim0(); },
       "Returns number of supervisions contained in it");
 
+  pyclass.def("shape", [](PyClass &self) -> RaggedShape { return self.shape; });
+
+  pyclass.def("scores_dim1",
+              [](PyClass &self) -> int32_t { return self.scores.Dim1(); });
+
   // the `to_str` method is for debugging only
   pyclass.def("to_str", [](PyClass &self) -> std::string {
     std::ostringstream os;
@@ -294,16 +289,16 @@ static void PybindConvertDenseToFsaVec(py::module &m) {
 }
 
 template <typename T>
-static void PybindGetArcScores(py::module &m, const char *name) {
+static void PybindGetArcPost(py::module &m, const char *name) {
   m.def(
       name,
       [](FsaVec &fsas, torch::Tensor forward_scores,
          torch::Tensor backward_scores) -> torch::Tensor {
         Array1<T> forward_scores_array = FromTensor<T>(forward_scores);
         Array1<T> backward_scores_array = FromTensor<T>(backward_scores);
-        Array1<T> arc_scores =
-            GetArcScores<T>(fsas, forward_scores_array, backward_scores_array);
-        return ToTensor(arc_scores);
+        Array1<T> arc_post =
+            GetArcPost<T>(fsas, forward_scores_array, backward_scores_array);
+        return ToTensor(arc_post);
       },
       py::arg("fsas"), py::arg("forward_scores"), py::arg("backward_scores"));
 }
@@ -360,22 +355,22 @@ static torch::Tensor GetTotScoresTropicalBackward(
 /* Compute the backward propagation of GetTotScores in log semiring.
  *
    @param [in] fsa_vec     The input FsaVec for computing `GetTotScores`
-                           and `GetArcScores`.
-   @param [in] arc_scores  It is the return value of `GetArcScores`.
+                           and `GetArcPost`.
+   @param [in] arc_scores  It is the return value of `GetArcPost`.
    @param [in] tot_scores_grad  The gradient of total scores.
    @return It returns the gradient of scores of all arcs.
  */
 template <typename T>
 static torch::Tensor GetTotScoresLogBackward(FsaVec &fsas,
-                                             torch::Tensor arc_scores,
+                                             torch::Tensor arc_post,
                                              torch::Tensor tot_scores_grad) {
   K2_CHECK_EQ(fsas.NumAxes(), 3);
-  K2_CHECK_EQ(fsas.NumElements(), arc_scores.numel());
-  K2_CHECK(arc_scores.is_contiguous())
-      << "arc_scores is supposed to be computed by k2 "
+  K2_CHECK_EQ(fsas.NumElements(), arc_post.numel());
+  K2_CHECK(arc_post.is_contiguous())
+      << "arc_post is supposed to be computed by k2 "
          "so it should be contiguous!";
-  K2_CHECK_EQ(arc_scores.dim(), 1);
-  K2_CHECK_EQ(arc_scores.scalar_type(), ToScalarType<T>::value);
+  K2_CHECK_EQ(arc_post.dim(), 1);
+  K2_CHECK_EQ(arc_post.scalar_type(), ToScalarType<T>::value);
   K2_CHECK_EQ(tot_scores_grad.dim(), 1);
   K2_CHECK_EQ(tot_scores_grad.sizes()[0], static_cast<int64_t>(fsas.Dim0()));
   K2_CHECK_EQ(tot_scores_grad.scalar_type(), ToScalarType<T>::value);
@@ -391,14 +386,14 @@ static torch::Tensor GetTotScoresLogBackward(FsaVec &fsas,
 
   const int32_t *fsas_row_ids1 = fsas.RowIds(1).Data();
   const int32_t *fsas_row_ids2 = fsas.RowIds(2).Data();
-  const T *arc_scores_data = arc_scores.data_ptr<T>();
+  const T *arc_post_data = arc_post.data_ptr<T>();
 
   if (std::is_same<T, float>::value) {
     auto lambda = [=] __host__ __device__(int32_t arc_idx012) {
       int32_t state_idx01 = fsas_row_ids2[arc_idx012];
       int32_t fsa_idx0 = fsas_row_ids1[state_idx01];
       ans_grad_data[arc_idx012] =
-          expf(arc_scores_data[arc_idx012]) *
+          expf(arc_post_data[arc_idx012]) *
           tot_scores_grad_data[fsa_idx0 * tot_scores_grad_stride];
     };
     Eval(fsas.Context(), fsas.NumElements(), lambda);
@@ -407,7 +402,7 @@ static torch::Tensor GetTotScoresLogBackward(FsaVec &fsas,
       int32_t state_idx01 = fsas_row_ids2[arc_idx012];
       int32_t fsa_idx0 = fsas_row_ids1[state_idx01];
       ans_grad_data[arc_idx012] =
-          exp(arc_scores_data[arc_idx012]) *
+          exp(arc_post_data[arc_idx012]) *
           tot_scores_grad_data[fsa_idx0 * tot_scores_grad_stride];
     };
     Eval(fsas.Context(), fsas.NumElements(), lambda);
@@ -424,8 +419,8 @@ static void PybindGetTotScoresTropicalBackward(py::module &m,
 
 template <typename T>
 static void PybindGetTotScoresLogBackward(py::module &m, const char *name) {
-  m.def(name, &GetTotScoresLogBackward<T>, py::arg("fsas"),
-        py::arg("arc_scores"), py::arg("tot_scores_grad"));
+  m.def(name, &GetTotScoresLogBackward<T>, py::arg("fsas"), py::arg("arc_post"),
+        py::arg("tot_scores_grad"));
 }
 
 }  // namespace k2
@@ -441,14 +436,14 @@ void PybindFsa(py::module &m) {
   k2::PybindGetBackwardScores<double>(m, "get_backward_scores_double");
   k2::PybindGetTotScores<float>(m, "get_tot_scores_float");
   k2::PybindGetTotScores<double>(m, "get_tot_scores_double");
-  k2::PybindGetArcScores<float>(m, "get_arc_scores_float");
-  k2::PybindGetArcScores<double>(m, "get_arc_scores_double");
+  k2::PybindGetArcPost<float>(m, "get_arc_post_float");
+  k2::PybindGetArcPost<double>(m, "get_arc_post_double");
   k2::PybindGetTotScoresTropicalBackward<float>(
       m, "get_tot_scores_float_tropical_backward");
   k2::PybindGetTotScoresTropicalBackward<double>(
       m, "get_tot_scores_double_tropical_backward");
-  k2::PybindGetTotScoresLogBackward<float>(
-      m, "get_tot_scores_float_log_backward");
+  k2::PybindGetTotScoresLogBackward<float>(m,
+                                           "get_tot_scores_float_log_backward");
   k2::PybindGetTotScoresLogBackward<double>(
       m, "get_tot_scores_double_log_backward");
 }

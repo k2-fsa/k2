@@ -229,6 +229,107 @@ TEST(RaggedShapeOpsTest, MaxPerSubListTest) {
   TestMaxPerSubListTest<int32_t>();
 }
 
+
+
+template <typename T>
+void TestArgMaxPerSubListTest() {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // empty case
+      const std::vector<int32_t> row_splits = {0};
+      RaggedShapeLayer shape_dim;
+      shape_dim.row_splits = Array1<int32_t>(context, row_splits);
+      shape_dim.cached_tot_size = 0;
+      std::vector<RaggedShapeLayer> axes = {shape_dim};
+      RaggedShape shape(axes, true);
+      Array1<T> values(context, 0);
+      Ragged<T> ragged(shape, values);
+
+      int32_t num_rows = ragged.shape.Dim0();
+      ASSERT_EQ(num_rows, 0);
+      Array1<int32_t> argmax_values(context, num_rows);
+      // just run to check if there's any error
+      ArgMaxPerSublist(ragged, 1, &argmax_values);
+      EXPECT_EQ(argmax_values.Dim(), 0);
+    }
+
+    {
+      const std::vector<int32_t> row_splits = {0, 3, 3, 6, 7};
+      RaggedShapeLayer shape_dim;
+      shape_dim.row_splits = Array1<int32_t>(context, row_splits);
+      shape_dim.cached_tot_size = row_splits.back();
+      std::vector<RaggedShapeLayer> axes = {shape_dim};
+      RaggedShape shape(axes, true);
+      const std::vector<T> values_vec = {1, 3, 3, 2, 8, 0, -1};
+      Array1<T> values(context, values_vec);
+      Ragged<T> ragged(shape, values);
+
+      int32_t num_rows = ragged.shape.Dim0();
+      Array1<T> argmax_values(context, num_rows);
+      T default_value = 2;
+      ArgMaxPerSublist(ragged, default_value, &argmax_values);
+      // copy memory from GPU/CPU to CPU
+      std::vector<T> cpu_data(argmax_values.Dim());
+      argmax_values.Context()->CopyDataTo(
+          argmax_values.Dim() * argmax_values.ElementSize(),
+          argmax_values.Data(), cpu,
+          cpu_data.data());
+      // below it's 2 not 1 because we take the last in case of ties.
+      std::vector<T> expected_data = {2, -1, 4, -1};
+      EXPECT_EQ(cpu_data, expected_data);
+    }
+
+    {
+      // test with random large size
+      const int32_t min_num_elements = 2000;
+      // not random shape is on CPU
+      RaggedShape shape =
+          RandomRaggedShape(false, 2, 2, min_num_elements, 5000).To(context);
+      ASSERT_EQ(shape.NumAxes(), 2);
+
+      int32_t num_elems = shape.NumElements();
+
+      for (int32_t i = 0; i != 10; ++i) {
+
+        std::vector<T> data(num_elems * 2);
+        std::iota(data.begin(), data.end(), 0);
+        std::random_shuffle(data.begin(), data.end());
+        data.resize(num_elems);
+
+        Array1<T> values(context, data);
+        Ragged<T> ragged(shape, values);
+
+        Array1<int32_t> argmax_values(context, ragged.Dim0());
+        int32_t default_value = 2;
+        ArgMaxPerSublist(ragged, default_value, &argmax_values);
+
+        ContextPtr cpu = GetCpuContext();
+        ragged = ragged.To(cpu);
+        argmax_values = argmax_values.To(cpu);
+        for (int32_t row = 0; row < ragged.Dim0(); row++) {
+          int32_t begin = ragged.RowSplits(1)[row],
+                    end = ragged.RowSplits(1)[row+1];
+          int32_t max_val = 2,
+                 best_pos = -1;
+          for (int32_t pos = begin; pos < end; pos++) {
+            if (ragged.values[pos] >= max_val) {
+              max_val = ragged.values[pos];
+              best_pos = pos;
+            }
+          }
+          EXPECT_EQ(argmax_values[row], best_pos);
+        }
+      }
+    }
+  }
+}
+
+TEST(RaggedShapeOpsTest, ArgMaxPerSubListTest) {
+  TestArgMaxPerSubListTest<int32_t>();
+}
+
+
 template <typename T>
 void TestMinPerSubListTest() {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
@@ -2463,6 +2564,25 @@ TEST(RaggedShapeOpsTest, CoveringShape) {
             ++n;
           }
         }
+      }
+    }
+  }
+}
+
+TEST(RaggedShapeOpsTest, RaggedShapeAxis0Splitter) {
+  for (int32_t i = 0; i < 20; i++) {
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      RaggedShape random = RandomRaggedShape(false, 3, 6, 0, 2000);
+      int32_t dim0 = random.Dim0();
+      RaggedShapeAxis0Splitter splitter(random);
+      for (int32_t i = 0; i < dim0; i++) {
+        int32_t offset, offset2, offset3;
+        RaggedShape sub_shape1 = random.Index(0, i, &offset),
+                    sub_shape2 = splitter.GetElement(i, &offset2);
+        offset3 = splitter.GetOffset(i, random.NumAxes() - 1);
+        EXPECT_EQ(offset, offset2);
+        EXPECT_EQ(offset, offset3);
+        EXPECT_EQ(Equal(sub_shape1, sub_shape2), true);
       }
     }
   }

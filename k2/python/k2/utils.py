@@ -298,3 +298,44 @@ def is_rand_equivalent(a: Fsa,
     '''
     return _k2.is_rand_equivalent(a.arcs, b.arcs, log_semiring, beam,
                                   treat_epsilons_specially, delta, npath)
+
+
+
+def create_sparse(rows: torch.Tensor,
+                  cols: torch.Tensor,
+                  values: torch.Tensor,
+                  min_col_index: Optional[int] = None):
+    '''This is a utility function that creates a (torch) sparse matrix
+    likely intended to represent posteriors.  The likely usage is something like
+    (for example):
+
+    post = k2.create_sparse(fsa.seqframe, fsa.phones,
+                            fsa.get_arc_post(True,True).exp(),
+                            min_col_index=1)
+
+    (assuming `seqframe` and `phones` were integer-valued attributes of `fsa`).
+
+    Args:
+     rows:
+       Row indexes of the sparse matrix (a torch.Tensor), which must have
+       values >= 0; likely `fsa.seqframe`.   Must have row_indexes.dim == 1.
+       Will be converted to `dtype=torch.long`
+     cols:
+       Column indexes of the sparse matrix, with the same shape as `rows`.
+       Will be converted to `dtype=torch.long`
+     values:
+       Values of the sparse matrix, likely of dtype float or double, with the same
+       shape as `rows` and `cols`.
+     min_col_index:
+       If provided, before the sparse tensor is constructed we will filter out
+       elements with `cols[i] < min_col_index`.  Will likely be 0 or 1, if
+       set.  This is necessary if `col_indexes` may have values less than 0,
+       or if you want to filter out 0 values (e.g. as representing blanks).
+
+   Returns:
+    Returns a torch.Tensor that is sparse with coo (coordinate) format,
+    i.e. `layout=torch.sparse_coo` (which is actually the only sparse format
+    that torch currently supports).
+    '''
+    # TODO: implement this.  shouldn't be very complicated.
+    pass

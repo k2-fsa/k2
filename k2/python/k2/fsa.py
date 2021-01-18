@@ -142,6 +142,7 @@ class Fsa(object):
         assert isinstance(arcs, RaggedArc)
 
         # Accessing self.__dict__ bypasses __setattr__.
+        # Here we are setting self.arcs and self._properties.
         self.__dict__['arcs'] = arcs
         self.__dict__['_properties'] = properties
 
@@ -417,7 +418,7 @@ class Fsa(object):
         else:
             raise AttributeError('No such attribute in Fsa: ' + name)
 
-    def get_state_batches(self) -> _k2.RaggedInt:
+    def _get_state_batches(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.state_batches.
            For use by internal k2 code.  Used in many algorithms.'''
         name, cache = 'state_batches', self._cache
@@ -425,7 +426,7 @@ class Fsa(object):
             cache[name] = _k2.get_state_batches(self.arcs, transpose=True)
         return cache[name]
 
-    def get_dest_states(self) -> torch.Tensor:
+    def _get_dest_states(self) -> torch.Tensor:
         '''Get (and compute if necessary) cached property self.dest_states.
            For use by internal k2 code, relates to best-path.'''
         name, cache = 'dest_states', self._cache
@@ -433,154 +434,146 @@ class Fsa(object):
             cache[name] = _k2.get_dest_states(self.arcs, as_idx01=True)
         return cache[name]
 
-    def get_incoming_arcs(self) -> _k2.RaggedInt:
+    def _get_incoming_arcs(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.incoming_arcs
            For use by internal k2 code, relates to best-path'''
         name, cache = 'incoming_arcs', self._cache
         if name not in cache:
             cache[name] = _k2.get_incoming_arcs(self.arcs,
-                                                self.get_dest_states())
+                                                self._get_dest_states())
         return cache[name]
 
-    def get_entering_arc_batches(self) -> _k2.RaggedInt:
+    def _get_entering_arc_batches(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.entering_arc_batches
            For use by internal k2 code, used in many algorithms.'''
         name, cache = 'entering_arc_batches', self._cache
         if name not in cache:
             cache[name] = _k2.get_entering_arc_index_batches(
                 self.arcs,
-                incoming_arcs=self.get_incoming_arcs(),
-                state_batches=self.get_state_batches())
+                incoming_arcs=self._get_incoming_arcs(),
+                state_batches=self._get_state_batches())
         return cache[name]
 
-    def get_leaving_arc_batches(self) -> _k2.RaggedInt:
+    def _get_leaving_arc_batches(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.leaving_arc_batches
            For use by internal k2 code, used in many algorithms.'''
         name, cache = 'leaving_arc_batches', self._cache
         if name not in cache:
             cache[name] = _k2.get_leaving_arc_index_batches(
-                self.arcs, self.get_state_batches())
+                self.arcs, self._get_state_batches())
         return cache[name]
 
-    def get_forward_scores_tropical(self,
-                                    use_double_scores: bool) -> torch.Tensor:
+    def _get_forward_scores(self, use_double_scores: bool,
+                            log_semiring: bool) -> torch.Tensor:
         '''Get (and compute if necessary) cached property
-        self.forward_scores_tropical.
-
-        For use by internal k2 code, used in getting best-path or (tropical)
-        total-scores.  These are raw forward-scores and not differentiable.
+        self.forward_scores_xxx_yyy (where xxx indicates float-type and yyy indicates semiring).
+        For use by internal k2 code; returns the total score from start-state to
+        each state.  Not differentiable; see "get_forward_scores" which is the
+        differentiable version.
 
         Args:
           use_double_scores:
             True to use `double precision` floating point.
             False to use `single precision`.
+          log_semiring:
+            True to use log semiring (log-sum), false to use tropical (i.e. max
+            on scores).
         '''
-        name = 'forward_scores_tropical' + ('double'
-                                            if use_double_scores else 'float')
+        name = 'forward_scores_' + \
+               ('double_' if use_double_scores else 'float_') + \
+               ('log' if log_semiring else 'tropical')
         cache = self._cache
         if name not in cache:
             if use_double_scores:
                 func = _k2.get_forward_scores_double
             else:
                 func = _k2.get_forward_scores_float
-            forward_scores_tropical, entering_arcs = func(
+            cache[name], entering_arcs = func(
                 self.arcs,
-                state_batches=self.get_state_batches(),
-                entering_arc_batches=self.get_entering_arc_batches(),
-                log_semiring=False)
-            cache[name] = forward_scores_tropical
-            cache['entering_arcs'] = entering_arcs
+                state_batches=self._get_state_batches(),
+                entering_arc_batches=self._get_entering_arc_batches(),
+                log_semiring=log_semiring)
+            if not log_semiring:
+                cache['entering_arcs'] = entering_arcs
         return cache[name]
 
-    def get_forward_scores_log(self, use_double_scores: bool) -> torch.Tensor:
-        '''Get (and compute if necessary) cached property
-        self.forward_scores_log.
+    def get_forward_scores(self, use_double_scores: bool,
+                           log_semiring: bool) -> torch.Tensor:
+        '''Compute forward-scores, i.e. total weight (or best-path weight)
+        from start state to each state.  Supports autograd.
 
-        For use by internal k2 code, used in getting total-score for
-        log semiring.
+        Args:
+          use_double_scores: if True, use double precision.
+          log_semiring: if True, use log semiring, else tropical.
+        Returns: a torch.Tensor with shape equal to (num_states,)
+        '''
+        # Caution: the reason we don't cache this is
+        forward_scores = k2.autograd._GetForwardScoresFunction.apply(
+            self, log_semiring, use_double_scores, self.scores)
+        return forward_scores
+
+    def _get_tot_scores(self, use_double_scores: bool,
+                        log_semiring: bool) -> torch.Tensor:
+        '''Compute total-scores (one per FSA) as the
+        best-path score.  This version is not differentiable; see also
+       self.get_tot_scores() which is differentiable.
 
         Args:
           use_double_scores:
-            True to use `double precision` floating point.
-            False to use `single precision`.
+            If True, use `double precision` floating point; false; else single precision.
+          log_semiring:
+            True to use log semiring (log-sum), false to use tropical (i.e. max
+            on scores).
         '''
-        name = 'forward_scores_log' + ('double'
-                                       if use_double_scores else 'float')
-        cache = self._cache
-        if name not in cache:
-            if use_double_scores:
-                func = _k2.get_forward_scores_double
-            else:
-                func = _k2.get_forward_scores_float
-            cache[name], _ = func(
-                self.arcs,
-                state_batches=self.get_state_batches(),
-                entering_arc_batches=self.get_entering_arc_batches(),
-                log_semiring=True)
-        return cache[name]
-
-    def get_tot_scores_tropical(self, use_double_scores: bool) -> torch.Tensor:
-        '''Compute total-scores in tropical semiring (one per FSA), which is the same
-        as the best-path score.
-
-        CAUTION:
-          These are just the raw total-scores and are not differentiable.
-          Use `k2.get_tot_scores(self)` to get differentiable total-scores.
-
-        Args:
-          use_double_scores:
-            True to use `double precision` floating point.
-            False to use `single precision`.
-        '''
-        name = 'tot_scores_tropical_' + ('double'
-                                         if use_double_scores else 'false')
+        name = 'tot_scores_log_' + \
+               ('double_' if use_double_scores else 'float_') + \
+               ('log' if log_semiring else 'tropical')
         cache = self._cache
         if name not in cache:
             if use_double_scores is True:
                 func = _k2.get_tot_scores_double
             else:
                 func = _k2.get_tot_scores_float
-            forward_scores_tropical = self.get_forward_scores_tropical(
-                use_double_scores)
-            cache[name] = func(self.arcs, forward_scores_tropical)
+            forward_scores = self._get_forward_scores(use_double_scores,
+                                                      log_semiring)
+            total_scores = func(self.arcs, forward_scores)
+            cache[name] = total_scores
         return cache[name]
 
-    def get_tot_scores_log(self, use_double_scores: bool) -> torch.Tensor:
-        '''Compute total-scores in log semiring (one per FSA) as the
-        best-path score.
+    def get_tot_scores(self, use_double_scores: bool,
+                       log_semiring: bool) -> torch.Tensor:
+        '''Compute total-scores (one per FSA) as the
+        best-path score.  This version is differentiable.
 
-        CAUTION:
-          These are just the raw total-scores and are not differentiable.
-          Use `k2.get_tot_scores(self)` to get differentiable total-scores.
+        Args:
+          use_double_scores:
+            True to use `double precision` floating point;
+            False to use `single precision`.
+          log_semiring:
+            True to use log semiring (log-sum), false to use tropical (i.e. max
+            on scores).
+        '''
+        tot_scores = k2.autograd._GetTotScoresFunction.apply(
+            self, log_semiring, use_double_scores, self.scores)
+        return tot_scores
+
+    def _get_backward_scores(self, use_double_scores: bool,
+                             log_semiring: bool) -> torch.Tensor:
+        '''Compute backward-scores, i.e. total weight (or best-path weight)
+        from each state to the final state.  For internal k2 use.  Not differentiable.
+        See also get_backward_scores() which is differentiable.
 
         Args:
           use_double_scores:
             True to use `double precision` floating point.
             False to use `single precision`.
+          log_semiring:
+            True to use log semiring (log-sum), false to use tropical (i.e. max
+            on scores).
         '''
-        name = 'tot_scores_log_' + ('double' if use_double_scores else 'float')
-        cache = self._cache
-        if name not in cache:
-            if use_double_scores is True:
-                func = _k2.get_tot_scores_double
-            else:
-                func = _k2.get_tot_scores_float
-            forward_scores_log = self.get_forward_scores_log(use_double_scores)
-            cache[name] = func(self.arcs, forward_scores_log)
-        return cache[name]
-
-    def get_backward_scores_tropical(self,
-                                     use_double_scores: bool) -> torch.Tensor:
-        '''Compute backward-scores in tropical semiring, i.e. best-path-to-end
-        costs.  For internal k2 use.  Not differentiable.
-
-        Args:
-          use_double_scores:
-            True to use `double precision` floating point.
-            False to use `single precision`.
-        '''
-        name = 'backward_scores_tropical_' + ('double' if use_double_scores
-                                              else 'float')
+        name = 'backward_scores_' + \
+               ('double_' if use_double_scores else 'float_') + \
+               ('log' if log_semiring else 'tropical')
         cache = self._cache
         if name not in cache:
             if use_double_scores:
@@ -588,48 +581,99 @@ class Fsa(object):
             else:
                 func = _k2.get_backward_scores_float
 
-            state_batches = self.get_state_batches()
-            leaving_arc_batches = self.get_leaving_arc_batches()
-            tot_scores_tropical = self.get_tot_scores_tropical(
-                use_double_scores)
+            state_batches = self._get_state_batches()
+            leaving_arc_batches = self._get_leaving_arc_batches()
             backward_scores_tropical = func(
                 self.arcs,
                 state_batches=state_batches,
                 leaving_arc_batches=leaving_arc_batches,
-                tot_scores=tot_scores_tropical,
-                log_semiring=False)
+                log_semiring=log_semiring)
             cache[name] = backward_scores_tropical
         return cache[name]
 
-    def get_backward_scores_log(self, use_double_scores: bool) -> torch.Tensor:
-        '''Compute backward-scores in tropical semiring, i.e. total-score-to-end.
-        for each state.  For internal k2 use.  Not differentiable.
+    def get_backward_scores(self, use_double_scores: bool,
+                            log_semiring: bool) -> torch.Tensor:
+        '''Compute backward-scores, i.e. total weight (or best-path weight)
+        from each state to the final state.  Supports autograd.
 
         Args:
-          use_double_scores:
-            True to use `double precision` floating point.
-            False to use `single precision`.
+          use_double_scores: if True, use double precision.
+          log_semiring: if True, use log semiring, else tropical.
+        Returns: a torch.Tensor with shape equal to (num_states,)
         '''
-        name = 'backward_scores_log_' + ('double'
-                                         if use_double_scores else 'float')
+        backward_scores = k2.autograd._GetBackwardScoresFunction.apply(
+            self, log_semiring, use_double_scores, self.scores)
+        return backward_scores
+
+    def _get_arc_post(self, use_double_scores: bool,
+                      log_semiring: bool) -> torch.Tensor:
+        '''Compute scores on arcs, representing log probabilities;
+        with log_semiring=True you could call these log posteriors,
+        but if log_semiring=False they can only be interpreted as the
+        difference betwen the best-path score and the score of the
+        best path that includes this arc.
+
+        This version is not differentiable; see also get_arc_post().
+
+        Args:
+          use_double_scores: if True, use double precision.
+          log_semiring: if True, use log semiring, else tropical.
+        Returns: a torch.Tensor with shape equal to (num_arcs,)
+          and non-positive elements.
+
+        '''
+        name = 'arc_post_' + \
+               ('double_' if use_double_scores else 'float_') + \
+               ('log' if log_semiring else 'tropical')
         cache = self._cache
         if name not in cache:
-            if use_double_scores:
-                func = _k2.get_backward_scores_double
-            else:
-                func = _k2.get_backward_scores_float
-
-            state_batches = self.get_state_batches()
-            leaving_arc_batches = self.get_leaving_arc_batches()
-            tot_scores_log = self.get_tot_scores_log(use_double_scores)
-            cache[name] = func(self.arcs,
-                               state_batches=state_batches,
-                               leaving_arc_batches=leaving_arc_batches,
-                               tot_scores=tot_scores_log,
-                               log_semiring=True)
+            forward_scores = self._get_forward_scores(use_double_scores,
+                                                      log_semiring)
+            backward_scores = self._get_backward_scores(
+                use_double_scores, log_semiring)
+            func = (_k2.get_arc_post_double
+                    if use_double_scores else _k2.get_arc_post_float)
+            arc_post = func(fsas=self.arcs,
+                            forward_scores=forward_scores,
+                            backward_scores=backward_scores)
+            cache[name] = arc_post
         return cache[name]
 
-    def get_entering_arcs(self, use_double_scores: bool) -> torch.Tensor:
+    def get_arc_post(self, use_double_scores: bool,
+                     log_semiring: bool) -> torch.Tensor:
+        '''Compute scores on arcs, representing log probabilities;
+        with log_semiring=True you could call these log posteriors,
+        but if log_semiring=False they can only be interpreted as the
+        difference betwen the best-path score and the score of the
+        best path that includes this arc.
+        This version is differentiable; see also _get_arc_post().
+        Caution: because of how the autograd mechanics works and the
+        need to avoid circular references, this is not cached; it's
+        best to store it if you'll need it multiple times.
+
+        Args:
+          use_double_scores: if True, use double precision.
+          log_semiring: if True, use log semiring, else tropical.
+        Returns: a torch.Tensor with shape equal to (num_arcs,)
+          and non-positive elements.
+        '''
+        # We don't cache this!  User should store it if needed more than once,
+        # to avoid duplicate code in backprop.  We may be able to partially fix
+        # this at some point with a weak dictionary.
+        forward_scores = self._get_forward_scores(use_double_scores,
+                                                  log_semiring)
+        backward_scores = self._get_backward_scores(use_double_scores,
+                                                    log_semiring)
+
+        # Below, the last 3 args are active w.r.t. autograd, the backward function
+        # will return non-None derivatives for them.
+        arc_post = k2.autograd._GetArcPostFunction(use_double_scores,
+                                                   log_semiring, self.scores,
+                                                   forward_scores,
+                                                   backward_scores)
+        return arc_post
+
+    def _get_entering_arcs(self, use_double_scores: bool) -> torch.Tensor:
         '''Compute, for each state, the index of the best arc entering it.
         For internal k2 use.
 
@@ -641,7 +685,7 @@ class Fsa(object):
         name, cache = 'entering_arcs', self._cache
         if name not in cache:
             # the following will set self._cache['entering_arcs']
-            self.get_forward_scores_tropical(use_double_scores)
+            self._get_forward_scores(use_double_scores, False)
         return cache[name]
 
     def requires_grad_(self, requires_grad: bool) -> 'Fsa':
@@ -777,11 +821,12 @@ class Fsa(object):
         return out_fsa
 
     def arcs_as_tensor(self) -> torch.Tensor:
-        '''Return the core part of the Fsa (the arcs) serialized to a Tensor.
-           This can be passed to the constructor, along with the aux_labels if
-           present, to reconstruct this object.
-           A more convenient way to serialize a Tensor is to use `as_dict`
-           and `from_dict`
+        '''Return the core part of the Fsa (the arcs) serialized to a Tensor
+           of int32 type, with shape (num_arcs, 4); the floats are reinterpreted
+           as int32 and will appear as garbage if printed.  This can be passed
+           to the constructor, along with the aux_labels if present, to
+           reconstruct this object.  A more convenient way to serialize a Tensor
+           is to use `as_dict` and `from_dict`
         '''
         return _k2.fsa_to_tensor(self.arcs)
 

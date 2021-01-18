@@ -14,6 +14,7 @@ from .fsa import Fsa
 from .ops import index
 from .ops import index_select
 
+# Note: look also in autograd.py, differentiable operations may be there.
 
 def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
     '''Construct an linear FSA from symbols.
@@ -346,7 +347,7 @@ def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
     Returns:
           FsaVec, it contains the best paths as linear FSAs
     '''
-    entering_arcs = fsa.get_entering_arcs(use_double_scores)
+    entering_arcs = fsa._get_entering_arcs(use_double_scores)
     ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
     out_fsa = Fsa(ragged_arc)
 
@@ -571,3 +572,10 @@ def invert(fsa: Fsa) -> Fsa:
         ragged_arc, aux_labels, _ = _k2.invert(fsa.arcs, fsa.aux_labels,
                                                need_arc_map)
         return Fsa(ragged_arc, aux_labels)
+
+
+def create_sparse(row_indexes: torch.Tensor, col_indexes: torch.Tensor,
+                  arc_post: torch.Tensor, start_label: int = 1):
+    '''
+
+    '''

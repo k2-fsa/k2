@@ -226,12 +226,45 @@ FsaVec GetIncomingFsaVec(FsaVec &fsas);
       @return   Returns vector indexed by state-index (idx01 into fsas), i.e.
                `ans.Dim()==fsas.TotSize(1)`, containing forward scores.
                 (these will be zero for the start-states).
+
+    CAUTION: there is another version of GetBackwardScores() for CPU only,
+    declared in host_shim.h.
 */
 template <typename FloatType>
 Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
                                    Ragged<int32_t> &entering_arc_batches,
                                    bool log_semiring,
                                    Array1<int32_t> *entering_arcs = nullptr);
+
+/*
+  Does the back-propagation for GetForwardScores().
+     @param [in] fsas           Same object given to GetForwardScores()
+     @param [in] state_batches   Same object given to GetForwardScores()
+     @param [in] entering_arc_batches   Same object given to GetForwardScores()
+     @param [in] log_semiring    Same option as given to GetForwardScores()
+     @param [in] entering_arcs   Only if log_semiring is true, we require this to
+                                be supplied (i.e. not nullptr).  It must be the array
+                                that was output by GetForwardScores().
+     @param [in] forward_scores  The return value of GetForwardScores().
+     @param [in] forward_scores_deriv  The derivative of the loss function w.r.t.
+                                `forward_scores` (i.e. the return value of
+                                GetForwardScores()).
+     @return  Returns the derivative of the loss function w.r.t. the scores
+                               of the `fsas` argument to GetForwardScores().
+ */
+template <typename FloatType>
+Array1<FloatType> BackpropGetForwardScores(FsaVec &fsas,
+                                           Ragged<int32_t> &state_batches,
+                                           Ragged<int32_t> &entering_arc_batches,
+                                           bool log_semiring,
+                                           const Array1<int32_t> *entering_arcs,
+                                           const Array1<FloatType> &forward_scores,
+                                           const Array1<FloatType> &forward_scores_deriv);
+
+
+
+
+
 
 /*
   Return array of total scores (one per FSA), e.g. could be interpreted as
@@ -261,31 +294,57 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
                  leaving states in `state_batches`, indexed
                  [iter][fsa][state_list][arc_list], as returned by
                  GetLeavingArcIndexBatches().
-       @param [in] tot_scores  If provided, we'll treat the backward
-                  scores of final-states as the negative of these
-                  tot_scores (which must have
-                  `tot_scores->Dim() == fsas.Dim0())`; otherwise
-                  as zero.
        @param [in] log_semiring  If true, use LogAdd to combine
-                  scores; if false, use max.
+                 scores; if false, use max.
        @return  Returns a vector indexed by state-index (idx01 in fsas), with
                `ans.Dim() == fsas.TotSize(1)`, containing backward
                scores.
+
+     CAUTION: there is another version of GetBackwardScores() for CPU only,
+     declared in host_shim.h.
  */
 template <typename FloatType>
 Array1<FloatType> GetBackwardScores(
     FsaVec &fsas, Ragged<int32_t> &state_batches,
     Ragged<int32_t> &leaving_arc_batches,
-    const Array1<FloatType> *tot_scores = nullptr, bool log_semiring = true);
+    bool log_semiring = true);
+
 
 /*
-  Compute and return arc-level forward-backward scores, which are:
-   `forward_score[src_state] + arc.score + backward_score[dest_state]`.
+   Back-propagates through GetBackwardScores().
 
-   If you provided the `tot_scores` argument to GetBackwardScores, and if
-   log_semiring == true, then you can think of these as the log probability that
-   you go through that arc, which would be log(1.0) = 0.0 for an FSA with only
-   one path.
+      @param [in] fsas  Input FsaVec, as given to GetBackwardScores()
+      @param [in] state_batches  Batches of states, as given to
+                  GetBackwardScores() and GetForwardScores()
+      @param [in] entering_arc_batches  Arcs-indexes (idx012's in fsas) of arcs
+                 entering states in `state_batches`, indexed
+                 [iter][fsa][state_list][arc_list], as returned by
+                 GetEnteringArcIndexBatches().
+      @param [in] log_semiring  The same option as given to GetBackwardScors()
+      @param [in] backward_scores   The return value of GetBackwardScores()
+      @param [in] backward_scores_deriv  The derivative of the loss function
+                            w.r.t. the return value of `GetBackwardScores()`
+      @return  Returns the derivative of the loss function w.r.t. the scores
+              of the input arg `fsas` to this function.
+ */
+template <typename FloatType>
+Array1<FloatType> BackpropGetBackwardScores(
+    FsaVec &fsas, Ragged<int32_t> &state_batches,
+    Ragged<int32_t> &entering_arc_batches,
+    bool log_semiring,
+    const Array1<FloatType> &backward_scores,
+    const Array1<FloatType> &backward_scores_deriv);
+
+
+
+/*
+  Compute and return arc-level posterior scores which are:
+  `forward_score[src_state] + arc.score + backward_score[dest_state] - tot_score[fsa]`,
+  where tot_score[fsa] is computed as the average of the forward score for the
+  final state of that FSA and the backward score of the initial state.
+
+   You can think of the result as the log probability that you go through that
+   arc, which would be log(1.0) = 0.0 for an FSA with only one path.
 
        @param [in] fsas   The FSAs that we want the arc-level probabilities
                          from
@@ -301,9 +360,39 @@ Array1<FloatType> GetBackwardScores(
                   with ans.Dim() == fsas.NumElements().
 */
 template <typename FloatType>
-Array1<FloatType> GetArcScores(FsaVec &fsas,
+Array1<FloatType> GetArcPost(FsaVec &fsas,
                                const Array1<FloatType> &forward_scores,
                                const Array1<FloatType> &backward_scores);
+
+/*
+  Does the backprop for GetArcPost(), outputting the deriv of the loss
+  function w.r.t the `forward_scores` and `backward_scores` args to
+  GetArcPost() and also w.r.t. the arc scores (Arc::score fields) of
+  the `fsas` argument.
+       @param [in] fsas  The FSAs we're getting scores from, the same as the
+                        original arg to GetArcPost().
+       @param [in] incoming_arcs   The result of calling
+                       `GetIncomingArcs(fsas, GetDestStates(fsas, true))`
+       @param [in] arc_post_deriv  The derivative of the loss function
+                       w.r.t. the return value of `GetArcPost()`
+       @param [out] forward_scores_deriv  The derivative of the loss function
+                       w.r.t. the input `forward_scores` to GetArcPost()
+                       will be written to here.
+       @param [out] backward_deriv  The derivative of the loss function
+                       w.r.t. the input `backward_scores` to GetArcPost()
+                      will be written to here.
+ */
+template <typename FloatType>
+void BackpropGetArcPost(FsaVec &fsas,
+                        Ragged<int32_t> &incoming_arcs,
+                        const Array1<FloatType> &arc_post_deriv,
+                        Array1<FloatType> *arc_scores_deriv,
+                        Array1<FloatType> *forward_scores_deriv,
+                        Array1<FloatType> *backward_scores_deriv);
+
+
+
+
 
 /*
   Returns an array of the destination-states for all arcs in an FsaVec
@@ -453,7 +542,6 @@ Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
   situations where it really should be used; think carefully before using it.
  */
 void FixNumStates(FsaVec *fsas);
-
 
 }  // namespace k2
 

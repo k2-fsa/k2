@@ -9,7 +9,6 @@ from . import fsa
 from . import ops
 from . import utils
 
-from .autograd import get_tot_scores
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
 from .autograd import union
@@ -43,6 +42,7 @@ from .utils import is_rand_equivalent
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
+from .utils import create_sparse
 
 # please keep the list sorted
 __all__ = [
