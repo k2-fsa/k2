@@ -86,6 +86,7 @@ void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
   Output to an array `max_values` the arg-max within each sub-list along the
   last axis of `src` i.e. the max taken over the last axis), i.e. the index
   within `src.values` of the maximum element of that sub-list, or -1
+<<<<<<< HEAD
   if the sub-list was empty or all values in the sub-list are less than
   `initial_value`.
 
@@ -94,6 +95,15 @@ void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
      @param [out] argmax    Array to which the argmax indexes will be written.
                             argmax->Dim() == src.TotSize(src.NumAxes() - 2),
                             i.e. num-rows of last axis of `src`.
+=======
+  if the sub-list was empty or had value <= `initial_value`.  [or maybe
+  < `initial_value`, must check, that may be undefined.]
+
+     @param [in] src            Input ragged array; must have src.NumAxes()
+                                >= 2. src.values is allowed to be empty.
+     @param [out] argmax        Array to which the argmax indexes will be written.
+                                max_values->Dim() == src.TotSize(src.NumAxes() - 2).
+>>>>>>> dan-branch
  */
 template <typename T>
 void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *argmax);
