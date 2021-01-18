@@ -46,8 +46,10 @@ struct PtrPtr {
   explicit PtrPtr(const T **data) : data(data) {}
 
   // operator[] and operator+ are required by cub::DeviceScan::ExclusiveSum
-  __host__ __device__ T operator[](int32_t i) const { return *(data[i]); }
-  __host__ __device__ PtrPtr operator+(int32_t n) const {
+  __host__ __device__ __forceinline__ T operator[](int32_t i) const {
+    return *(data[i]);
+  }
+  __host__ __device__ __forceinline__ PtrPtr operator+(int32_t n) const {
     PtrPtr tmp(*this);
     tmp.data += n;
     return tmp;
@@ -65,8 +67,11 @@ struct ConstReversedPtr {
       : data(data + size - 1) {}
 
   // operator[] and operator+ are required by cub::DeviceScan::InclusiveScan
-  __host__ __device__ T operator[](int32_t i) const { return data[-i]; }
-  __host__ __device__ ConstReversedPtr operator+(int32_t n) const {
+  __host__ __device__ __forceinline__ T operator[](int32_t i) const {
+    return data[-i];
+  }
+  __host__ __device__ __forceinline__ ConstReversedPtr
+  operator+(int32_t n) const {
     ConstReversedPtr tmp(*this);
     tmp.data -= n;
     return tmp;
@@ -81,8 +86,10 @@ struct ReversedPtr {
   explicit ReversedPtr(T *data, int32_t size) : data(data + size - 1) {}
 
   // operator[] and operator+ are required by cub::DeviceScan::InclusiveScan
-  __host__ __device__ T &operator[](int32_t i) { return data[-i]; }
-  __host__ __device__ ReversedPtr operator+(int32_t n) const {
+  __host__ __device__ __forceinline__ T &operator[](int32_t i) {
+    return data[-i];
+  }
+  __host__ __device__ __forceinline__ ReversedPtr operator+(int32_t n) const {
     ReversedPtr tmp(*this);
     tmp.data -= n;
     return tmp;
@@ -876,12 +883,11 @@ void Assign(Array2<T> &src, Array2<T> *dest) {
   }
 }
 
-
 template <typename S, typename T>
 void Assign(Array1<S> &src, Array1<T> *dest) {
   K2_CHECK_EQ(src.Dim(), dest->Dim());
   int32_t dim = src.Dim();
-  if (std::is_same<S,T>::value) {
+  if (std::is_same<S, T>::value) {
     size_t num_bytes = dim * sizeof(S);
     src.Context()->CopyDataTo(num_bytes, src.Data(), dest->Context(),
                               dest->Data());
@@ -892,12 +898,11 @@ void Assign(Array1<S> &src, Array1<T> *dest) {
     }
     const S *src_data = src.Data();
     T *dest_data = dest->Data();
-    K2_EVAL(src.Context(), dim, lambda_copy_data, (int32_t i) -> void {
-        dest_data[i] = src_data[i];
-      });
+    K2_EVAL(
+        src.Context(), dim, lambda_copy_data,
+        (int32_t i)->void { dest_data[i] = src_data[i]; });
   }
 }
-
 
 template <typename T>
 Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,

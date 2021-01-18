@@ -54,7 +54,8 @@ void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst);
                                 of sub-lists in `src`.
      @param [out] max_values    Array to which the maximum values will be
                                 written. Must satisfy
-                                max_values->Dim() == src.TotSize(src.NumAxes() - 1).
+                                max_values->Dim() == src.TotSize(src.NumAxes() -
+  1).
  */
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *max_values) {
@@ -81,25 +82,20 @@ void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
   ApplyOpPerSublist<T, LogAdd<T>>(src, initial_value, dst_values);
 }
 
-
 /*
   Output to an array `max_values` the arg-max within each sub-list along the
   last axis of `src` i.e. the max taken over the last axis), i.e. the index
   within `src.values` of the maximum element of that sub-list, or -1
-  if the sub-list was empty or had value <= `initial_value`.  [or maybe
-  < `initial_value`, must check, that may be undefined.]
+  if the sub-list was empty or all values in the sub-list are less than
+  `initial_value`.
 
-     @param [in] src            Input ragged array; must have src.NumAxes()
-                                >= 2. src.values is allowed to be empty.
-     @param [out] argmax        Array to which the argmax indexes will be written.
-                                max_values->Dim() == src.TotSize(src.NumAxes() - 1).
+     @param [in] src        Input ragged array; must have src.NumAxes() >= 2.
+                            src.values is allowed to be empty.
+     @param [out] argmax    Array to which the argmax indexes will be written.
+                            max_values->Dim() == src.TotSize(src.NumAxes() - 1).
  */
 template <typename T>
-void ArgMaxPerSublist(Ragged<T> &src,
-                      T initial_value,
-                      Array1<int32_t> *argmax);
-
-
+void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *argmax);
 
 /* Normalize per sublist.
 
@@ -250,15 +246,13 @@ RaggedShape Prefix(RaggedShape &src, int32_t n);
 std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
                                      const std::vector<int32_t> &sizes);
 
-
 /*
   This object splits a ragged shape on its axis 0, giving you efficient
   axis to the sub-parts of it for each index into its axis0.
  */
 class RaggedShapeAxis0Splitter {
  public:
-  RaggedShapeAxis0Splitter(RaggedShape &src) { Init(src); }
-
+  explicit RaggedShapeAxis0Splitter(RaggedShape &src) { Init(src); }
 
   /*
      Return sub-part of `src`
@@ -295,14 +289,10 @@ class RaggedShapeAxis0Splitter {
     return composite_row_splits_cpu_.Accessor()(src_axis, i);
   }
 
-
   void Init(RaggedShape &src);  // called from constructor, to get around nvcc
                                 // limitations.  Do not call.
 
-
  private:
-
-
   // composite_row_splits is of shape (src.NumLayers() + 1, src.Dim0() + 1).
   // Row 0 contains [ 0, 1, 2, ..  ];
   // Row 1 contains src.RowSplits(1)
@@ -328,12 +318,11 @@ class RaggedShapeAxis0Splitter {
   Array1<int32_t> row_ids_out_[4];
 };
 
-
 template <typename T>
-class RaggedAxis0Splitter: public RaggedShapeAxis0Splitter {
+class RaggedAxis0Splitter : public RaggedShapeAxis0Splitter {
  public:
-  RaggedAxis0Splitter(Ragged<T> &src):
-      RaggedShapeAxis0Splitter(src.shape), values_(src.values) { }
+  explicit RaggedAxis0Splitter(Ragged<T> &src)
+      : RaggedShapeAxis0Splitter(src.shape), values_(src.values) {}
 
   /*
      Return sub-part of `src`
@@ -358,9 +347,7 @@ class RaggedAxis0Splitter: public RaggedShapeAxis0Splitter {
   // note, GetOffset() from the parent is available.
  private:
   Array1<T> values_;
-
 };
-
 
 /*
   Return a sub-range of `src` containing indexes `begin` through `end - 1`
@@ -930,14 +917,12 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b);
                      of the returned shape, require b.Dim0() == a.NumElements()
        @param [in] c  RaggedShape describing the lower/last layers
                      of the returned shape, require c.Dim0() == b.NumElements()
-       @return Returns the combined ragged shape; its num-layers (==num-axes - 1)
-               will be the total of the num-layers of the sources.  Will share
-               memory with the inputs.
+       @return Returns the combined ragged shape; its num-layers (==num-axes -
+   1) will be the total of the num-layers of the sources.  Will share memory
+   with the inputs.
 */
 RaggedShape ComposeRaggedShapes3(const RaggedShape &a, const RaggedShape &b,
                                  const RaggedShape &c);
-
-
 
 /*
   Construct a RaggedShape with 3 axes.  For N=1 and 2 respectively:
