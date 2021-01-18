@@ -443,16 +443,6 @@ struct Pair {
 
 template <typename T>
 struct PairInputIterator {
-  // most of the following typedefs won't really be used; they are added because
-  // cub uses iterator_traits, which requires them.
-  typedef Pair<T> value_type;
-  typedef int32_t difference_type;
-  typedef void pointer;
-  // `reference` is a kind of dumb requirement, see this
-  // https://stackoverflow.com/questions/8110017/how-exactly-does-the-reference-typedef-behave
-  typedef Pair<T> &reference;
-  typedef std::input_iterator_tag iterator_category;
-
   explicit PairInputIterator(const T *t) : t_(t), offset_(0) {}
   __device__ __forceinline__ PairInputIterator(const T *t, int32_t offset)
       : t_(t), offset_(offset) {}
@@ -483,14 +473,6 @@ struct PairOutputIteratorDeref {  // this is what you get when you dereference
 
 template <typename T>
 struct PairOutputIterator {  // outputs just the index of the pair.
-  // most of the following typedefs won't really be used; they are added because
-  // cub uses iterator_traits, which requires them.
-  typedef Pair<T> value_type;
-  typedef size_t difference_type;
-  typedef void pointer;
-  typedef PairOutputIteratorDeref<T> reference;
-  typedef std::output_iterator_tag iterator_category;
-
   explicit PairOutputIterator(int32_t *i) : i_(i) {}
   __device__ __forceinline__ PairOutputIteratorDeref<T> operator[](
       int32_t idx) const {
@@ -499,7 +481,6 @@ struct PairOutputIterator {  // outputs just the index of the pair.
   __device__ __forceinline__ PairOutputIterator operator+(size_t offset) {
     return PairOutputIterator{i_ + offset};
   }
-
   int32_t *i_;
 };
 
@@ -517,7 +498,22 @@ struct PairMaxOp {
 };
 
 }  // namespace argmax_internal
+}  // namespace k2
 
+namespace std {
+// those below typedefs are required by cub::DeviceSegmentedReduce:Reduce
+template <typename T>
+struct iterator_traits<k2::argmax_internal::PairInputIterator<T>> {
+  typedef k2::argmax_internal::Pair<T> value_type;
+};
+template <typename T>
+struct iterator_traits<k2::argmax_internal::PairOutputIterator<T>> {
+  typedef k2::argmax_internal::Pair<T> value_type;
+  typedef k2::argmax_internal::PairOutputIteratorDeref<T> reference;
+};
+}  // namespace std
+
+namespace k2 {
 template <typename T>
 void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
   NVTX_RANGE(K2_FUNC);
