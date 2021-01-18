@@ -1444,7 +1444,7 @@ Array1<FloatType> BackpropGetBackwardScores(
                  dest_state_idx01 = state_idx0x + dest_state_idx1;
 
           FloatType arc_deriv = 0.0;
-          if (best_leaving_arc_idx_data[src_state] == fsas_arc_idx012) {
+          if (best_leaving_arc_idx_data[src_state_idx01] == fsas_arc_idx012) {
             arc_deriv = backward_scores_deriv_data[src_state_idx01];
           }  // otherwise arc_deriv is 0.0, it's a don't-care.
           arc_scores_deriv_data[fsas_arc_idx012] = arc_deriv;

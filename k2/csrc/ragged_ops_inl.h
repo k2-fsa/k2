@@ -519,8 +519,6 @@ struct PairMaxOp {
       return a;
     else return b;
   }
-  PairMaxOp() { }
-  __host__ __device__ PairMaxOp(PairMaxOp &) { }
 };
 
 

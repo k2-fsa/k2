@@ -92,7 +92,7 @@ void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
      @param [in] src            Input ragged array; must have src.NumAxes()
                                 >= 2. src.values is allowed to be empty.
      @param [out] argmax        Array to which the argmax indexes will be written.
-                                max_values->Dim() == src.TotSize(src.NumAxes() - 1).
+                                max_values->Dim() == src.TotSize(src.NumAxes() - 2).
  */
 template <typename T>
 void ArgMaxPerSublist(Ragged<T> &src,

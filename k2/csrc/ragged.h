@@ -226,36 +226,23 @@ struct ArrayAccessor {
 // call this variable `xxx_row_splits_acc`
 template <int MAX_LAYERS>
 struct RowSplitsAccessor {
-  int32_t *ptrs[MAX_LAYERS];  // these are indexed by layer, from 0.
+  int32_t *ptrs[MAX_LAYERS] = {nullptr};  // these are indexed by layer, from 0.
 
   // row_splits_acc(1) == shape.RowSplits(1), for instance.
   int32_t *operator () (int32_t layer) { return ptrs[layer - 1]; }
 
   RowSplitsAccessor(RaggedShape &src);
-
-  /*  __host__ __device__ RowSplitsAccessor(
-      const RowSplitsAccessor &other) {
-      for (int i = 0; i < MAX_LAYERS; i++)
-        ptrs[i] = other.ptrs[i];
-        }*/
-
 };
 
 // call this variable `xxx_row_ids_acc`
 template <int MAX_LAYERS>
 struct RowIdsAccessor {
-  int32_t *ptrs[MAX_LAYERS];  // these are indexed by layer, from 0.
+  int32_t *ptrs[MAX_LAYERS] = {nullptr};  // these are indexed by layer, from 0.
 
-  // row_ids_acc(1) == shape.RowSplits(1), for instance.
+  // row_ids_acc(1) == shape.RowIds(1), for instance.
   int32_t *operator () (int32_t layer) { return ptrs[layer - 1]; }
 
   RowIdsAccessor(RaggedShape &src);
-
-  /*  __host__ __device__ RowIdsAccessor(
-      const RowIdsAccessor &other) {
-      for (int i = 0; i < MAX_LAYERS; i++)
-        ptrs[i] = other.ptrs[i];
-        }*/
 };
 
 
