@@ -60,13 +60,15 @@ void ThreadPool::ProcessTasks() {
       auto task = std::move(tasks_.front());
       tasks_.pop();
       if (!tasks_.empty()) not_empty_cond_.notify_one();
+      ++running_counter_;
       lock.unlock();  // let other threads proceed
       task();
       // any resource associated with `task` is freed here
     }
 
     lock.lock();
-    if (tasks_.empty()) {
+    --running_counter_;
+    if (tasks_.empty() && running_counter_ == 0) {
       finished_ = true;
       // if WaitAllTasksFinished() is waiting, wake it up
       empty_cond_.notify_one();

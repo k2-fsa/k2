@@ -99,6 +99,13 @@ class ThreadPool {
 
   // Set it to true when the task queue is empty
   bool finished_ = true;
+
+  // Whenever a thread is about to process a task,
+  // the counter is incremented
+  //
+  // Whenever a thread finishes processing a task,
+  // the counter is decremented.
+  int32_t running_counter_ = 0;
 };
 
 /* Get a pointer to global thread pool.
