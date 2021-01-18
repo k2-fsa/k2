@@ -240,9 +240,13 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
   Does the back-propagation for GetForwardScores().
      @param [in] fsas           Same object given to GetForwardScores()
      @param [in] state_batches   Same object given to GetForwardScores()
-     @param [in] entering_arc_batches   Same object given to GetForwardScores()
+     @param [in] leaving_arc_batches  Arc-indexes (idx012's in fsas) of arcs
+                leaving states in `state_batches`, indexed
+                [iter][fsa][state_list][arc_list], as returned by
+                GetLeavingArcIndexBatches().  CAUTION: not the same
+                as entering_arc_batches as used in GetForwardScores().
      @param [in] log_semiring    Same option as given to GetForwardScores()
-     @param [in] entering_arcs   Only if log_semiring is true, we require this
+     @param [in] entering_arcs   Only if log_semiring is false, we require this
                                  to be supplied (i.e. not nullptr).  It must be
                                  the array that was output by
                                  GetForwardScores().
@@ -256,7 +260,8 @@ Array1<FloatType> GetForwardScores(FsaVec &fsas, Ragged<int32_t> &state_batches,
 template <typename FloatType>
 Array1<FloatType> BackpropGetForwardScores(
     FsaVec &fsas, Ragged<int32_t> &state_batches,
-    Ragged<int32_t> &entering_arc_batches, bool log_semiring,
+    Ragged<int32_t> &leaving_arc_batches,
+    bool log_semiring,
     const Array1<int32_t> *entering_arcs,
     const Array1<FloatType> &forward_scores,
     const Array1<FloatType> &forward_scores_deriv);
