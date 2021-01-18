@@ -35,8 +35,8 @@ namespace k2 {
      @param [in] initial_value  Value to initialize the reduction with;
      @param [out] dst           Array to which the reduction values will be
                                 written. Must satisfy
-                                dst->Dim() == rows along the last axis in src,
-                                i.e. src.RowSplits(src.NumAxes() - 1).Dim() - 1.
+                                dst->Dim() == src.TotSize(src.NumAxes()
+                                - 2).  i.e. num-rows of last axis of `src`.
 */
 
 template <typename T, typename Op>
@@ -54,8 +54,8 @@ void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst);
                                 of sub-lists in `src`.
      @param [out] max_values    Array to which the maximum values will be
                                 written. Must satisfy
-                                max_values->Dim() == src.TotSize(src.NumAxes() -
-  1).
+                                max_values->Dim() == src.TotSize(src.NumAxes()
+                                - 2).  i.e. num-rows of last axis of `src`.
  */
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *max_values) {
@@ -92,7 +92,8 @@ void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
      @param [in] src        Input ragged array; must have src.NumAxes() >= 2.
                             src.values is allowed to be empty.
      @param [out] argmax    Array to which the argmax indexes will be written.
-                            max_values->Dim() == src.TotSize(src.NumAxes() - 1).
+                            max_values->Dim() == src.TotSize(src.NumAxes() - 2),
+                            i.e. num-rows of last axis of `src`.
  */
 template <typename T>
 void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *argmax);
@@ -122,7 +123,7 @@ Ragged<T> NormalizePerSublist(Ragged<T> &src);
      @param [out] and_values    Array to which the bitwise-and values will be
                                 written. Must satisfy
                                 and_values->Dim() == src.TotSize(src.NumAxes() -
-  2), i.e. the total size on the second-to-last axis of `src`.
+                                2), i.e. num-rows of the last axis of `src`.
 */
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T initial_value, Array1<T> *and_values) {
