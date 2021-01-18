@@ -32,11 +32,6 @@ determinize
 
 .. autofunction:: determinize
 
-get_tot_scores
---------------
-
-.. autofunction:: get_tot_scores
-
 intersect
 ---------
 

@@ -41,6 +41,7 @@ set(py_test_files
   ragged_test.py
   remove_epsilon_test.py
   shortest_path_test.py
+  sparse_test.py
   symbol_table_test.py
   top_sort_test.py
   union_test.py

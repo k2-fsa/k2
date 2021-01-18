@@ -27,3 +27,8 @@ is_rand_equivalent
 ------------------
 
 .. autofunction:: is_rand_equivalent
+
+create_sparse
+-------------
+
+.. autofunction:: create_sparse
