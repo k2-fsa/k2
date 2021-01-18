@@ -572,10 +572,3 @@ def invert(fsa: Fsa) -> Fsa:
         ragged_arc, aux_labels, _ = _k2.invert(fsa.arcs, fsa.aux_labels,
                                                need_arc_map)
         return Fsa(ragged_arc, aux_labels)
-
-
-def create_sparse(row_indexes: torch.Tensor, col_indexes: torch.Tensor,
-                  arc_post: torch.Tensor, start_label: int = 1):
-    '''
-
-    '''
