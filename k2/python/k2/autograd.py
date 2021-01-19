@@ -1,4 +1,6 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                      Xiaomi Corp.       (authors: Daniel Povey
+#                                                   Haowen Qiu)
 # See ../../../LICENSE for clarification regarding multiple authors
 
 from typing import List
@@ -156,9 +158,9 @@ class _GetForwardScoresFunction(torch.autograd.Function):
         forward_scores, = ctx.saved_tensors
 
         if log_semiring:
-            entering_arcs = fsas._get_entering_arcs(use_double_scores)
-        else:
             entering_arcs = None
+        else:
+            entering_arcs = fsas._get_entering_arcs(use_double_scores)
         state_batches = fsas._get_state_batches()
         leaving_arc_batches = fsas._get_leaving_arc_batches()
 

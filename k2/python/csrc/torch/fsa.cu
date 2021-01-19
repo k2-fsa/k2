@@ -204,7 +204,7 @@ static void PybindGetForwardScores(py::module &m, const char *name) {
 
 template <typename T>
 static void PybindBackpropGetForwardScores(py::module &m, const char *name) {
-  // entering_arcs is not empty only if log_semiring is true
+  // entering_arcs is not empty only if log_semiring is false
   m.def(
       name,
       [](FsaVec &fsas, Ragged<int32_t> &state_batches,
@@ -218,9 +218,9 @@ static void PybindBackpropGetForwardScores(py::module &m, const char *name) {
         Array1<int32_t> entering_arcs_array;
         const Array1<int32_t> *p_entering_arcs = nullptr;
 
-        if (log_semiring) {
+        if (!log_semiring) {
           K2_CHECK(entering_arcs.has_value())
-              << "You have to provide entering_arcs for log semiring";
+              << "You have to provide entering_arcs for tropical semiring";
           entering_arcs_array = FromTensor<int32_t>(*entering_arcs);
           p_entering_arcs = &entering_arcs_array;
         }
