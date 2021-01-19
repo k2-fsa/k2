@@ -420,7 +420,8 @@ class Fsa(object):
 
     def _get_state_batches(self) -> _k2.RaggedInt:
         '''Get (and compute if necessary) cached property self.state_batches.
-           For use by internal k2 code.  Used in many algorithms.'''
+        For use by internal k2 code.  Used in many algorithms.
+        '''
         name, cache = 'state_batches', self._cache
         if name not in cache:
             cache[name] = _k2.get_state_batches(self.arcs, transpose=True)
@@ -428,7 +429,8 @@ class Fsa(object):
 
     def _get_dest_states(self) -> torch.Tensor:
         '''Get (and compute if necessary) cached property self.dest_states.
-           For use by internal k2 code, relates to best-path.'''
+        For use by internal k2 code, relates to best-path.
+        '''
         name, cache = 'dest_states', self._cache
         if name not in cache:
             cache[name] = _k2.get_dest_states(self.arcs, as_idx01=True)
@@ -444,8 +446,10 @@ class Fsa(object):
         return cache[name]
 
     def _get_entering_arc_batches(self) -> _k2.RaggedInt:
-        '''Get (and compute if necessary) cached property self.entering_arc_batches
-           For use by internal k2 code, used in many algorithms.'''
+        '''Get (and compute if necessary) cached property
+        self.entering_arc_batches For use by internal k2 code,
+        used in many algorithms.
+        '''
         name, cache = 'entering_arc_batches', self._cache
         if name not in cache:
             cache[name] = _k2.get_entering_arc_index_batches(
@@ -455,8 +459,10 @@ class Fsa(object):
         return cache[name]
 
     def _get_leaving_arc_batches(self) -> _k2.RaggedInt:
-        '''Get (and compute if necessary) cached property self.leaving_arc_batches
-           For use by internal k2 code, used in many algorithms.'''
+        '''Get (and compute if necessary) cached property
+        self.leaving_arc_batches For use by internal k2 code,
+        used in many algorithms.
+        '''
         name, cache = 'leaving_arc_batches', self._cache
         if name not in cache:
             cache[name] = _k2.get_leaving_arc_index_batches(
@@ -466,10 +472,11 @@ class Fsa(object):
     def _get_forward_scores(self, use_double_scores: bool,
                             log_semiring: bool) -> torch.Tensor:
         '''Get (and compute if necessary) cached property
-        self.forward_scores_xxx_yyy (where xxx indicates float-type and yyy indicates semiring).
+        self.forward_scores_xxx_yyy (where xxx indicates float-type and yyy
+        indicates semiring).
         For use by internal k2 code; returns the total score from start-state to
-        each state.  Not differentiable; see "get_forward_scores" which is the
-        differentiable version.
+        each state.  Not differentiable; see :func:`get_forward_scores` which is
+        the differentiable version.
 
         Args:
           use_double_scores:
@@ -525,7 +532,7 @@ class Fsa(object):
             True to use log semiring (log-sum), false to use tropical (i.e. max
             on scores).
         '''
-        name = 'tot_scores_log_' + \
+        name = 'tot_scores_' + \
                ('double_' if use_double_scores else 'float_') + \
                ('log' if log_semiring else 'tropical')
         cache = self._cache
@@ -560,8 +567,9 @@ class Fsa(object):
     def _get_backward_scores(self, use_double_scores: bool,
                              log_semiring: bool) -> torch.Tensor:
         '''Compute backward-scores, i.e. total weight (or best-path weight)
-        from each state to the final state.  For internal k2 use.  Not differentiable.
-        See also get_backward_scores() which is differentiable.
+        from each state to the final state.  For internal k2 use.
+        Not differentiable. See also :func:`get_backward_scores`
+        which is differentiable.
 
         Args:
           use_double_scores:
@@ -570,6 +578,9 @@ class Fsa(object):
           log_semiring:
             True to use log semiring (log-sum), false to use tropical (i.e. max
             on scores).
+
+        Returns:
+          A torch.Tensor with shape equal to (num_states,)
         '''
         name = 'backward_scores_' + \
                ('double_' if use_double_scores else 'float_') + \
@@ -583,12 +594,11 @@ class Fsa(object):
 
             state_batches = self._get_state_batches()
             leaving_arc_batches = self._get_leaving_arc_batches()
-            backward_scores_tropical = func(
-                self.arcs,
-                state_batches=state_batches,
-                leaving_arc_batches=leaving_arc_batches,
-                log_semiring=log_semiring)
-            cache[name] = backward_scores_tropical
+            backward_scores = func(self.arcs,
+                                   state_batches=state_batches,
+                                   leaving_arc_batches=leaving_arc_batches,
+                                   log_semiring=log_semiring)
+            cache[name] = backward_scores
         return cache[name]
 
     def get_backward_scores(self, use_double_scores: bool,
@@ -599,7 +609,9 @@ class Fsa(object):
         Args:
           use_double_scores: if True, use double precision.
           log_semiring: if True, use log semiring, else tropical.
-        Returns: a torch.Tensor with shape equal to (num_states,)
+
+        Returns:
+          A torch.Tensor with shape equal to (num_states,)
         '''
         backward_scores = k2.autograd._GetBackwardScoresFunction.apply(
             self, log_semiring, use_double_scores, self.scores)
@@ -613,14 +625,14 @@ class Fsa(object):
         difference betwen the best-path score and the score of the
         best path that includes this arc.
 
-        This version is not differentiable; see also get_arc_post().
+        This version is not differentiable; see also :func:`get_arc_post`.
 
         Args:
           use_double_scores: if True, use double precision.
           log_semiring: if True, use log semiring, else tropical.
-        Returns: a torch.Tensor with shape equal to (num_arcs,)
+        Returns:
+          A torch.Tensor with shape equal to (num_arcs,)
           and non-positive elements.
-
         '''
         name = 'arc_post_' + \
                ('double_' if use_double_scores else 'float_') + \
@@ -644,32 +656,35 @@ class Fsa(object):
         '''Compute scores on arcs, representing log probabilities;
         with log_semiring=True you could call these log posteriors,
         but if log_semiring=False they can only be interpreted as the
-        difference betwen the best-path score and the score of the
+        difference between the best-path score and the score of the
         best path that includes this arc.
-        This version is differentiable; see also _get_arc_post().
-        Caution: because of how the autograd mechanics works and the
-        need to avoid circular references, this is not cached; it's
-        best to store it if you'll need it multiple times.
+        This version is differentiable; see also :func:`_get_arc_post`.
+
+        Caution:
+          Because of how the autograd mechanics works and the
+          need to avoid circular references, this is not cached;
+          it's best to store it if you'll need it multiple times.
 
         Args:
           use_double_scores: if True, use double precision.
           log_semiring: if True, use log semiring, else tropical.
-        Returns: a torch.Tensor with shape equal to (num_arcs,)
+        Returns:
+          a torch.Tensor with shape equal to (num_arcs,)
           and non-positive elements.
         '''
         # We don't cache this!  User should store it if needed more than once,
         # to avoid duplicate code in backprop.  We may be able to partially fix
         # this at some point with a weak dictionary.
-        forward_scores = self._get_forward_scores(use_double_scores,
-                                                  log_semiring)
-        backward_scores = self._get_backward_scores(use_double_scores,
-                                                    log_semiring)
+        forward_scores = self.get_forward_scores(use_double_scores,
+                                                 log_semiring)
+        backward_scores = self.get_backward_scores(use_double_scores,
+                                                   log_semiring)
 
         # Below, the last 3 args are active w.r.t. autograd, the backward function
         # will return non-None derivatives for them.
-        arc_post = k2.autograd._GetArcPostFunction(use_double_scores,
-                                                   log_semiring, self.scores,
-                                                   forward_scores,
+        arc_post = k2.autograd._GetArcPostFunction(self, log_semiring,
+                                                   use_double_scores,
+                                                   self.scores, forward_scores,
                                                    backward_scores)
         return arc_post
 

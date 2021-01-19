@@ -227,7 +227,7 @@ FsaVec GetIncomingFsaVec(FsaVec &fsas);
                `ans.Dim()==fsas.TotSize(1)`, containing forward scores.
                 (these will be zero for the start-states).
 
-    CAUTION: there is another version of GetBackwardScores() for CPU only,
+    CAUTION: there is another version of GetForwardScores() for CPU only,
     declared in host_shim.h.
 */
 template <typename FloatType>
@@ -289,7 +289,8 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
                  property kFsaPropertiesTopSortedAndAcyclic if you were
                  to compute properties.
        @param [in] state_batches  Batches of states, as returned by
-                  GetBatches (must have 3 axes: [iter][fsa][state_list]).
+                   GetStateBatches(fsas, true) (must have 3 axes:
+                   [iter][fsa][state_list]).
        @param [in] leaving_arc_batches  Arcs-indexes (idx012's in fsas) of arcs
                  leaving states in `state_batches`, indexed
                  [iter][fsa][state_list][arc_list], as returned by
@@ -297,8 +298,8 @@ Array1<FloatType> GetTotScores(FsaVec &fsas,
        @param [in] log_semiring  If true, use LogAdd to combine
                  scores; if false, use max.
        @return  Returns a vector indexed by state-index (idx01 in fsas), with
-               `ans.Dim() == fsas.TotSize(1)`, containing backward
-               scores.
+                `ans.Dim() == fsas.TotSize(1)`, containing backward
+                scores.
 
      CAUTION: there is another version of GetBackwardScores() for CPU only,
      declared in host_shim.h.
@@ -324,7 +325,7 @@ Array1<FloatType> GetBackwardScores(FsaVec &fsas,
       @param [in] backward_scores_deriv  The derivative of the loss function
                             w.r.t. the return value of `GetBackwardScores()`
       @return  Returns the derivative of the loss function w.r.t. the scores
-              of the input arg `fsas` to this function.
+               of the input arg `fsas` to this function.
  */
 template <typename FloatType>
 Array1<FloatType> BackpropGetBackwardScores(
