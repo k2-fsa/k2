@@ -43,7 +43,7 @@ class TestGetBackwardScores(unittest.TestCase):
                 expected_backward_scores[3] = 0
                 # yapf:disable
                 expected_backward_scores[2] = expected_backward_scores[3] + scores[6] # noqa
-                expected_backward_scores[1] = expected_backward_scores[3] + scores[5] # noaq
+                expected_backward_scores[1] = expected_backward_scores[3] + scores[5] # noqa
                 expected_backward_scores[0] = expected_backward_scores[1] + scores[1] # noqa
                 # yapf:enable
                 assert torch.allclose(backward_scores,
@@ -191,7 +191,7 @@ class TestGetBackwardScores(unittest.TestCase):
                 expected_backward_scores1[3] = 0
                 # yapf:disable
                 expected_backward_scores1[2] = expected_backward_scores1[3] + scores1[6] # noqa
-                expected_backward_scores1[1] = expected_backward_scores1[3] + scores1[5] # noaq
+                expected_backward_scores1[1] = expected_backward_scores1[3] + scores1[5] # noqa
                 expected_backward_scores1[0] = expected_backward_scores1[1] + scores1[1] # noqa
                 # yapf:enable
 
