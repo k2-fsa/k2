@@ -19,12 +19,13 @@ import torch
 def build_ctc_topo(tokens: List[int]) -> k2.Fsa:
     '''Build CTC topology.
 
-    The resulting topology converts repeated input
-    symbols to a single output symbol.
+    A token which appears once on the right side (i.e. olabels) may
+    appear multiple times on the left side (ilabels), possibly with
+    epsilons in between.
 
-    Caution:
-      The resulting topo is an FST. Epsilons are on the right
-      side (i.e., olabels) and tokens are on the left side (i.e., olabels)
+    When 0 appears on the left side, it represents the blank symbol;
+    when it appears on the right side, it indicates an epsilon. That
+    is, 0 has two meanings here.
 
     Args:
       tokens:
@@ -43,7 +44,7 @@ def build_ctc_topo(tokens: List[int]) -> k2.Fsa:
                 arcs += f'{i} {i} {tokens[i]} 0 0.0\n'
             else:
                 # we assume that eps has the same ID, i.e., 0, with
-                # the blank symbol. 0 on the left side represents
+                # the blank symbol. 0 on the left side represents the
                 # blank, and it represents `eps` on the right side.
                 arcs += f'{i} {j} {tokens[j]} {tokens[j]} 0.0\n'
         arcs += f'{i} {final_state} -1 -1 0.0\n'
