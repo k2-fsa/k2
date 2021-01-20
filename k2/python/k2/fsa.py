@@ -682,10 +682,9 @@ class Fsa(object):
 
         # Below, the last 3 args are active w.r.t. autograd, the backward function
         # will return non-None derivatives for them.
-        arc_post = k2.autograd._GetArcPostFunction(self, log_semiring,
-                                                   use_double_scores,
-                                                   self.scores, forward_scores,
-                                                   backward_scores)
+        arc_post = k2.autograd._GetArcPostFunction.apply(
+            self, log_semiring, use_double_scores, self.scores, forward_scores,
+            backward_scores)
         return arc_post
 
     def _get_entering_arcs(self, use_double_scores: bool) -> torch.Tensor:
