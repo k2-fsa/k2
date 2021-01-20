@@ -14,3 +14,5 @@ ignore =
   E127,
   # F401, import but not used
   F401,
+  # W504, line break after binary operator
+  W504,

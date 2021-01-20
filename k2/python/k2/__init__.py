@@ -9,7 +9,6 @@ from . import fsa
 from . import ops
 from . import utils
 
-from .autograd import get_tot_scores
 from .autograd import intersect_dense
 from .autograd import intersect_dense_pruned
 from .autograd import union
@@ -43,45 +42,4 @@ from .utils import is_rand_equivalent
 from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
-
-# please keep the list sorted
-__all__ = [
-    'DenseFsaVec',
-    'Fsa',
-    'RaggedInt',
-    'RaggedShape',
-    'SymbolTable',
-    'add_epsilon_self_loops',
-    'arc_sort',
-    'autograd_utils',
-    'closure',
-    'compose',
-    'connect',
-    'convert_dense_to_fsa_vec',
-    'create_fsa_vec',
-    'determinize',
-    'get_tot_scores',
-    'index',
-    'index_add',
-    'index_fsa',
-    'index_ragged',
-    'index_select',
-    'index_tensor',
-    'intersect',
-    'intersect_dense',
-    'intersect_dense_pruned',
-    'invert',
-    'is_rand_equivalent',
-    'linear_fsa',
-    'properties_to_str',
-    'ragged',
-    'remove_epsilon',
-    'remove_epsilons_iterative_tropical',
-    'shortest_path',
-    'simple_ragged_index_select',
-    'to_dot',
-    'to_str',
-    'to_tensor',
-    'top_sort',
-    'union',
-]
+from .utils import create_sparse

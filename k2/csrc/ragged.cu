@@ -21,10 +21,10 @@ struct RowSplitsDiff {
   explicit RowSplitsDiff(const int32_t *row_splits)
       : row_splits_data(row_splits) {}
   // operator[] and operator+ are required by cub::DeviceReduce::Max
-  __device__ int32_t operator[](int32_t i) const {
+  __device__ __forceinline__ int32_t operator[](int32_t i) const {
     return row_splits_data[i + 1] - row_splits_data[i];
   }
-  __device__ RowSplitsDiff operator+(int32_t n) const {
+  __device__ __forceinline__ RowSplitsDiff operator+(int32_t n) const {
     RowSplitsDiff tmp(*this);
     tmp.row_splits_data += n;
     return tmp;

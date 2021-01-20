@@ -41,9 +41,7 @@ class TestCompose(unittest.TestCase):
 
         ans = k2.create_fsa_vec([ans])
 
-        scores = k2.get_tot_scores(ans,
-                                   log_semiring=True,
-                                   use_double_scores=False)
+        scores = ans.get_tot_scores(log_semiring=True, use_double_scores=False)
         # The reference values for `scores`, `a_fsa.grad` and `b_fsa.grad`
         # are computed using GTN.
         # See https://bit.ly/3heLAJq

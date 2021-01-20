@@ -114,6 +114,8 @@ class RaggedShape {
 
   int32_t NumAxes() const { return static_cast<int32_t>(layers_.size()) + 1; }
 
+  int32_t NumLayers() const { return static_cast<int32_t>(layers_.size()); }
+
   // Gives max size of any list on the provided axis,
   // with 0 < axis < NumAxes().  Equals max difference between successive
   // row_splits on that axis.
@@ -165,8 +167,8 @@ class RaggedShape {
   // Construct from context and string.  This uses delegating constructors, (a
   // c++11 feature), and an explicitly constructed RaggedShape
   // "RaggedShape(src)"
-  RaggedShape(ContextPtr context, const std::string &src):
-      RaggedShape(RaggedShape(src).To(context)) { }
+  RaggedShape(ContextPtr context, const std::string &src)
+      : RaggedShape(RaggedShape(src).To(context)) {}
 
   // A RaggedShape constructed this way will not be a valid RaggedShape.
   // The constructor is provided so you can immediately assign to it.
@@ -205,6 +207,32 @@ class RaggedShape {
   // indexed by axis-index minus one... axis 0 is special, its dim
   // equals layers_[0].row_splits.Dim()-1.
   std::vector<RaggedShapeLayer> layers_;
+};
+
+template <typename T, int MAX_DIM>
+struct ArrayAccessor {
+  T data[MAX_DIM];
+};
+
+// call this variable `xxx_row_splits_acc`
+template <int MAX_LAYERS>
+struct RowSplitsAccessor {
+  int32_t *ptrs[MAX_LAYERS] = {nullptr};  // these are indexed by layer, from 0.
+
+  // row_splits_acc(1) == shape.RowSplits(1), for instance.
+  int32_t *operator()(int32_t layer) { return ptrs[layer - 1]; }
+
+  explicit RowSplitsAccessor(RaggedShape &src);
+};
+
+// call this variable `xxx_row_ids_acc`
+template <int MAX_LAYERS>
+struct RowIdsAccessor {
+  int32_t *ptrs[MAX_LAYERS] = {nullptr};  // these are indexed by layer, from 0.
+  // row_ids_acc(1) == shape.RowIds(1), for instance.
+  int32_t *operator()(int32_t layer) { return ptrs[layer - 1]; }
+
+  explicit RowIdsAccessor(RaggedShape &src);
 };
 
 // prints a RaggedShape, for debug purposes.  May change later how this works.
@@ -277,6 +305,10 @@ struct Ragged {
     K2_CHECK(IsCompatible(shape, values));
     K2_CHECK_EQ(shape.NumElements(), values.Dim());
   }
+
+  explicit Ragged(const RaggedShape &shape)
+      : shape(shape), values(shape.Context(), shape.NumElements()) {}
+
   // Defined in ragged_ops_inl.h
   explicit Ragged(const std::string &src) {
     std::istringstream is(src);
@@ -287,25 +319,19 @@ struct Ragged {
   // Construct from context and string.  This uses delegating constructors, (a
   // c++11 feature), and an explicitly constructed Ragged<T>
   // "Ragged<T>(src)"
-  Ragged(ContextPtr context, const std::string &src):
-      Ragged(Ragged<T>(src).To(context)) { }
-
-
+  Ragged(ContextPtr context, const std::string &src)
+      : Ragged(Ragged<T>(src).To(context)) {}
 
   // Default constructor will not leave this a valid Ragged object, you
   // shouldn't do anything with it.  Both members will be initialized with
   // default constructors.
   Ragged() = default;
 
-  // Note: 'values' will be uninitialized.
-  explicit Ragged(const RaggedShape &shape)
-      : shape(shape), values(shape.Context(), shape.NumElements()) {}
-
   Ragged &operator=(const Ragged<T> &src) = default;
   Ragged(const Ragged<T> &src) = default;
   // Move constructor
   Ragged(Ragged<T> &&src) = default;
-  Ragged& operator=(Ragged<T> &&src) = default;
+  Ragged &operator=(Ragged<T> &&src) = default;
 
   // This will only work on the CPU, and is intended for use in testing code.
   // See also member-function Index().
@@ -373,9 +399,7 @@ struct Ragged {
   // There is no need to clone the shape because it's a kind of convention that
   // Array1's that are the row_ids or row_splits of a Ragged object are not
   // mutable so they can be re-used.
-  Ragged<T> Clone() const {
-    return Ragged<T>(shape, values.Clone());
-  }
+  Ragged<T> Clone() const { return Ragged<T>(shape, values.Clone()); }
 };
 
 // e.g. will produce something like "[ [ 3 4 ] [ 1 ] ]".
@@ -388,5 +412,9 @@ template <typename T>
 std::istream &operator>>(std::istream &stream, Ragged<T> &r);
 
 }  // namespace k2
+
+#define IS_IN_K2_CSRC_RAGGED_H_
+#include "k2/csrc/ragged_inl.h"
+#undef IS_IN_K2_CSRC_RAGGED_H_
 
 #endif  // K2_CSRC_RAGGED_H_

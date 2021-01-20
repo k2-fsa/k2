@@ -111,9 +111,8 @@ class TestUnion(unittest.TestCase):
             fsa_vec = k2.create_fsa_vec([fsa0, fsa1, fsa2])
             fsa = k2.union(fsa_vec)
             fsa_vec = k2.create_fsa_vec([fsa])
-            log_like = k2.get_tot_scores(fsa_vec,
-                                         log_semiring=True,
-                                         use_double_scores=False)
+            log_like = fsa_vec.get_tot_scores(log_semiring=True,
+                                              use_double_scores=False)
             # expected log_like and gradients are computed using gtn.
             # See https://bit.ly/35uVaUv
             log_like.backward()

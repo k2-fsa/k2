@@ -30,12 +30,13 @@ namespace k2 {
      @param [in] initial_value  Value to initialize the reduction with;
      @param [out] dst           Array to which the reduction values will be
                                 written. Must satisfy
-                                dst->Dim() == rows along the last axis in src,
-                                i.e. src.RowSplits(src.NumAxes() - 1).Dim() - 1.
+                                dst->Dim() == src.TotSize(src.NumAxes()
+                                - 2).  i.e. num-rows of last axis of `src`.
 */
 
 template <typename T, typename Op>
 void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst);
+
 /*
   Output to an array `max_values` the maximum of each sub-list along the last
   axis of `src` i.e. the max taken over the last axis), or `initial_value`,
@@ -48,9 +49,8 @@ void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst);
                                 of sub-lists in `src`.
      @param [out] max_values    Array to which the maximum values will be
                                 written. Must satisfy
-                                max_values->Dim() == rows along the last axis in
-                                src, i.e.
-                                src.RowSplits(src.NumAxes() - 1).Dim() - 1.
+                                max_values->Dim() == src.TotSize(src.NumAxes()
+                                - 2).  i.e. num-rows of last axis of `src`.
  */
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *max_values) {
@@ -77,6 +77,22 @@ void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
   ApplyOpPerSublist<T, LogAdd<T>>(src, initial_value, dst_values);
 }
 
+/*
+  Output to an array `max_values` the arg-max within each sub-list along the
+  last axis of `src` i.e. the max taken over the last axis), i.e. the index
+  within `src.values` of the maximum element of that sub-list, or -1
+  if the sub-list was empty or all values in the sub-list are less than
+  `initial_value`.
+
+     @param [in] src        Input ragged array; must have src.NumAxes() >= 2.
+                            src.values is allowed to be empty.
+     @param [out] argmax    Array to which the argmax indexes will be written.
+                            argmax->Dim() == src.TotSize(src.NumAxes() - 2),
+                            i.e. num-rows of last axis of `src`.
+ */
+template <typename T>
+void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *argmax);
+
 /* Normalize per sublist.
 
    The normalization per sublist is done as follows:
@@ -102,7 +118,7 @@ Ragged<T> NormalizePerSublist(Ragged<T> &src);
      @param [out] and_values    Array to which the bitwise-and values will be
                                 written. Must satisfy
                                 and_values->Dim() == src.TotSize(src.NumAxes() -
-  2), i.e. the total size on the second-to-last axis of `src`.
+                                2), i.e. num-rows of the last axis of `src`.
 */
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T initial_value, Array1<T> *and_values) {
@@ -225,6 +241,109 @@ RaggedShape Prefix(RaggedShape &src, int32_t n);
  */
 std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
                                      const std::vector<int32_t> &sizes);
+
+/*
+  This object splits a ragged shape on its axis 0, giving you efficient
+  axis to the sub-parts of it for each index into its axis0.
+ */
+class RaggedShapeAxis0Splitter {
+ public:
+  explicit RaggedShapeAxis0Splitter(RaggedShape &src) { Init(src); }
+
+  /*
+     Return sub-part of `src`
+        @param [in] i   Index into axis 0 of `src`, with 0 <= i < src.Dim0().
+        @param [out] elem_offset  If not nullptr, will output to this
+                     location the offset into the `values` array that
+                     you'd need to start, to get the values of this
+                     sub-part of the ragged shape.  Will satisfy
+                     0 <= elem_offset <= src.NumElements().
+        @return  Returns the sub-part of `src`, with one fewer axis
+                  than `src`.  Is equivalent to calling src.Index(0, i,
+                  elem_offset), but more efficient if you'll do this for most of
+                  the `i`.
+  */
+  RaggedShape GetElement(int32_t i, int32_t *elem_offset = nullptr);
+
+  /*
+    This is provided in case you need to know how the indexes of the sub-pieces
+    relate to the indexes of the original array; GetOffset(i, axis)
+    gives the offset of an index on axis `axis - 1` of GetElement(i) versus axis
+    `axis` of `src`.
+
+    GetOffset(i, src.NumAxes() - 1) will equal the `elem_offset`
+    output by `GetElement(i, &elem_offset)`.
+
+
+    Below, `src` refers to the argument to the constructor.
+      @param [in] i  Element-index i, with 0 <= i <= src.Dim0()
+      @param [in] src_axis  Axis of `src`, with 0 = src_axis < src.NumAxes()
+      @return  Returns the offset, with 0 <= ans <= src.TotSize(src_axis)
+
+  */
+  int32_t GetOffset(int32_t i, int32_t src_axis) {
+    return composite_row_splits_cpu_.Accessor()(src_axis, i);
+  }
+
+  void Init(RaggedShape &src);  // called from constructor, to get around nvcc
+                                // limitations.  Do not call.
+
+ private:
+  // composite_row_splits is of shape (src.NumLayers() + 1, src.Dim0() + 1).
+  // Row 0 contains [ 0, 1, 2, ..  ];
+  // Row 1 contains src.RowSplits(1)
+  // Row 2 contains the row_splits12 = src.RowSplits(2)[src.RowSplits(1)]
+  //    .. etc.
+  // Note: we're making composite_row_splits_ a class member in case we need
+  // it later; otherwise it could be a local in the constructor.
+  Array2<int32_t> composite_row_splits_;
+  Array2<int32_t> composite_row_splits_cpu_;
+
+  // Let num_layers_out = composite_row_splits.Dim0() - 2 == src.NumLayers() -
+  // 1.  The first `num_layers_out` arrays in row_splits_out and row_ids_out
+  // will be populated.
+  //
+  // row_splits_out_[i] contains all the row_splits of layer i of the split
+  // outputs, appended together, of Dim() equal to src.TotSize(i+1) + src.Dim0()
+  // + 1; the extra Dim0() is needed because of the extra final element of each
+  // row_splits vector, plus 1 for an extra final zero that's convenient for the
+  // implementation.
+  Array1<int32_t> row_splits_out_[4];
+  // row_ids_out[i] contains all the row_ids of layer i of the outputs, appended
+  // together, of Dim() equal to src.TotSize(i+2).
+  Array1<int32_t> row_ids_out_[4];
+};
+
+template <typename T>
+class RaggedAxis0Splitter : public RaggedShapeAxis0Splitter {
+ public:
+  explicit RaggedAxis0Splitter(Ragged<T> &src)
+      : RaggedShapeAxis0Splitter(src.shape), values_(src.values) {}
+
+  /*
+     Return sub-part of `src`
+        @param [in] i   Index into axis 0 of `src`, with 0 <= i < src.Dim0().
+        @param [out] elem_offset  If not nullptr, will output to this
+                  location the offset into the `values` array that
+                  the answer's data starts from.  Will satisfy
+                  0 <= elem_offset <= src.NumElements().
+        @return  Returns the sub-part of `src`, with one fewer axis
+                  than `src`.  Is equivalent to calling src.Index(0, i,
+                  elem_offset), but more efficient if you'll do this for most of
+                  the `i`.
+  */
+  Ragged<T> GetElement(int32_t i, int32_t *elem_offset = nullptr) {
+    int32_t temp;
+    if (elem_offset == nullptr) elem_offset = &temp;
+    RaggedShape shape = RaggedShapeAxis0Splitter::GetElement(i, elem_offset);
+    return Ragged<T>(shape, values_.Arange(*elem_offset,
+                                           *elem_offset + shape.NumElements()));
+  }
+
+  // note, GetOffset() from the parent is available.
+ private:
+  Array1<T> values_;
+};
 
 /*
   Return a sub-range of `src` containing indexes `begin` through `end - 1`
@@ -794,14 +913,12 @@ RaggedShape ComposeRaggedShapes(const RaggedShape &a, const RaggedShape &b);
                      of the returned shape, require b.Dim0() == a.NumElements()
        @param [in] c  RaggedShape describing the lower/last layers
                      of the returned shape, require c.Dim0() == b.NumElements()
-       @return Returns the combined ragged shape; its num-layers (==num-axes - 1)
-               will be the total of the num-layers of the sources.  Will share
-               memory with the inputs.
+       @return Returns the combined ragged shape; its num-layers (==num-axes -
+   1) will be the total of the num-layers of the sources.  Will share memory
+   with the inputs.
 */
 RaggedShape ComposeRaggedShapes3(const RaggedShape &a, const RaggedShape &b,
                                  const RaggedShape &c);
-
-
 
 /*
   Construct a RaggedShape with 3 axes.  For N=1 and 2 respectively:

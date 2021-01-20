@@ -426,6 +426,139 @@ Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes, bool remove_axis) {
   return (remove_axis ? RemoveAxis(ans, ans.NumAxes() - 2) : ans);
 }
 
+namespace argmax_internal {
+template <typename T>
+struct Pair {
+  T t;
+  int32_t idx;
+};
+
+template <typename T>
+struct PairInputIterator {
+  explicit PairInputIterator(const T *t) : t_(t), offset_(0) {}
+  __device__ __forceinline__ PairInputIterator(const T *t, int32_t offset)
+      : t_(t), offset_(offset) {}
+  __device__ __forceinline__ Pair<T> operator[](int32_t idx) const {
+    return Pair<T>{t_[idx], idx + offset_};
+  }
+  __device__ __forceinline__ PairInputIterator operator+(int32_t offset) {
+    return PairInputIterator{t_, offset + offset_};
+  }
+  const T *t_;
+  int32_t offset_;
+};
+
+template <typename T>
+struct PairOutputIteratorDeref {  // this is what you get when you dereference
+                                  // PairOutputIterator, it pretends to be a
+                                  // Pair<T> but really only stores the `idx`
+                                  // member.
+  explicit __device__ __forceinline__ PairOutputIteratorDeref(int32_t *i)
+      : i_(i) {}
+  __device__ __forceinline__ PairOutputIteratorDeref &operator=(
+      const Pair<T> &p) {
+    *i_ = p.idx;
+    return *this;
+  }
+  int32_t *i_;
+};
+
+template <typename T>
+struct PairOutputIterator {  // outputs just the index of the pair.
+  explicit PairOutputIterator(int32_t *i) : i_(i) {}
+  __device__ __forceinline__ PairOutputIteratorDeref<T> operator[](
+      int32_t idx) const {
+    return PairOutputIteratorDeref<T>(i_ + idx);
+  }
+  __device__ __forceinline__ PairOutputIterator operator+(size_t offset) {
+    return PairOutputIterator{i_ + offset};
+  }
+  int32_t *i_;
+};
+
+template <typename T>
+struct PairMaxOp {
+  __device__ __forceinline__ Pair<T> operator()(const Pair<T> &a,
+                                                const Pair<T> &b) const {
+    // NOTE: could specialize this via a union, if T == int32_t, might be
+    // marginally faster.
+    if (a.t > b.t || (a.t == b.t && a.idx > b.idx)) return a;
+    return b;
+  }
+};
+
+}  // namespace argmax_internal
+}  // namespace k2
+
+namespace std {
+// those below typedefs are required by cub::DeviceSegmentedReduce:Reduce
+template <typename T>
+struct iterator_traits<k2::argmax_internal::PairInputIterator<T>> {
+  typedef k2::argmax_internal::Pair<T> value_type;
+};
+template <typename T>
+struct iterator_traits<k2::argmax_internal::PairOutputIterator<T>> {
+  typedef k2::argmax_internal::Pair<T> value_type;
+  typedef k2::argmax_internal::PairOutputIteratorDeref<T> reference;
+};
+}  // namespace std
+
+namespace k2 {
+template <typename T>
+void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_GE(src.NumAxes(), 2);
+  K2_CHECK(IsCompatible(src.shape, *dst));
+
+  int32_t last_axis = src.NumAxes() - 1;
+  const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
+  int32_t num_rows = row_splits_array.Dim() - 1;
+  K2_CHECK_EQ(num_rows, dst->Dim());
+
+  ContextPtr &c = src.Context();
+  const int32_t *row_splits = row_splits_array.Data();
+  const T *values_data = src.values.Data();
+  int32_t *output_data = dst->Data();
+
+  if (c->GetDeviceType() == kCpu) {
+    int32_t j = row_splits[0];
+    for (int32_t i = 0; i < num_rows; ++i) {
+      T val = initial_value;
+      int32_t idx = -1;
+
+      int32_t row_end = row_splits[i + 1];
+      for (; j < row_end; ++j) {
+        T elem = values_data[j];
+        if (elem >= val) {
+          val = elem;
+          idx = j;
+        }
+      }
+      output_data[i] = idx;
+    }
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    argmax_internal::PairInputIterator<T> input_iter(values_data);
+    argmax_internal::PairOutputIterator<T> output_iter(output_data);
+    argmax_internal::PairMaxOp<T> op;
+    argmax_internal::Pair<T> initial_pair{initial_value, -1};
+
+    // This code is based on the example here:
+    // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
+    std::size_t temp_storage_bytes = 0;
+
+    // the first time is to determine temporary device storage requirements
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        nullptr, temp_storage_bytes, input_iter, output_iter, num_rows,
+        row_splits, row_splits + 1, op, initial_pair, c->GetCudaStream()));
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
+        num_rows, row_splits, row_splits + 1, op, initial_pair,
+        c->GetCudaStream()));
+  }
+}
+
 }  // namespace k2
 
 #endif  // K2_CSRC_RAGGED_OPS_INL_H_

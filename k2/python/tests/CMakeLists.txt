@@ -26,6 +26,9 @@ set(py_test_files
   dense_fsa_vec_test.py
   determinize_test.py
   fsa_test.py
+  get_arc_post_test.py
+  get_backward_scores_test.py
+  get_forward_scores_test.py
   get_tot_scores_test.py
   index_add_test.py
   index_select_test.py
@@ -41,6 +44,7 @@ set(py_test_files
   ragged_test.py
   remove_epsilon_test.py
   shortest_path_test.py
+  sparse_test.py
   symbol_table_test.py
   top_sort_test.py
   union_test.py
