@@ -39,13 +39,13 @@ class TestGetForwardScores(unittest.TestCase):
                 fsa_vec = k2.create_fsa_vec([fsa])
                 forward_scores = fsa_vec.get_forward_scores(
                     use_double_scores=use_double_scores, log_semiring=False)
-                expected_scores = torch.tensor([
+                expected_forward_scores = torch.tensor([
                     0,  # start state
                     0.1,  # state 1, arc: 0 -> 1 (2/0.1)
                     2.2,  # state 2, arc: 0 -> 2 (3/2.2)
                     3.1,  # state 3, arc: 1 -> 3 (-1/3.0)
                 ]).to(forward_scores)
-                assert torch.allclose(forward_scores, expected_scores)
+                assert torch.allclose(forward_scores, expected_forward_scores)
                 scale = torch.arange(forward_scores.numel()).to(device)
                 (scale * forward_scores).sum().backward()
                 expected_grad = torch.tensor([0, 4, 2, 0, 0, 3,
@@ -58,19 +58,20 @@ class TestGetForwardScores(unittest.TestCase):
                 forward_scores = fsa_vec.get_forward_scores(
                     use_double_scores=use_double_scores, log_semiring=True)
                 scores = fsa.scores.detach().clone().requires_grad_(True)
-                expected_scores = torch.empty_like(forward_scores)
-                expected_scores[0] = 0
-                expected_scores[1] = scores[:2].exp().sum().log()
-                expected_scores[2] = (
-                    scores[2].exp() + (expected_scores[1] + scores[3]).exp() +
-                    (expected_scores[1] + scores[4]).exp()).log()
-                expected_scores[3] = (
-                    (expected_scores[1] + scores[5]).exp() +
-                    (expected_scores[2] + scores[6]).exp()).log()
-                assert torch.allclose(forward_scores, expected_scores)
+                expected_forward_scores = torch.empty_like(forward_scores)
+                expected_forward_scores[0] = 0
+                expected_forward_scores[1] = scores[:2].exp().sum().log()
+                expected_forward_scores[2] = (
+                    scores[2].exp() +
+                    (expected_forward_scores[1] + scores[3]).exp() +
+                    (expected_forward_scores[1] + scores[4]).exp()).log()
+                expected_forward_scores[3] = (
+                    (expected_forward_scores[1] + scores[5]).exp() +
+                    (expected_forward_scores[2] + scores[6]).exp()).log()
+                assert torch.allclose(forward_scores, expected_forward_scores)
 
                 (scale * forward_scores).sum().backward()
-                (scale * expected_scores).sum().backward()
+                (scale * expected_forward_scores).sum().backward()
                 assert torch.allclose(fsa.grad, scores.grad)
 
     def test_simple_fsa_case_2(self):
@@ -97,7 +98,7 @@ class TestGetForwardScores(unittest.TestCase):
                 fsa_vec = k2.create_fsa_vec([fsa])
                 forward_scores = fsa_vec.get_forward_scores(
                     use_double_scores=use_double_scores, log_semiring=False)
-                expected_scores = torch.tensor([
+                expected_forward_scores = torch.tensor([
                     0,  # start state
                     0.2,  # state 1
                     0.5 + 0.2,  # state 2
@@ -106,7 +107,7 @@ class TestGetForwardScores(unittest.TestCase):
                 ]).to(forward_scores)
                 # [0, 0.2, 0.7, 1.4, 2.2]
 
-                assert torch.allclose(forward_scores, expected_scores)
+                assert torch.allclose(forward_scores, expected_forward_scores)
                 scale = torch.arange(forward_scores.numel()).to(device)
                 (scale * forward_scores).sum().backward()
 
@@ -124,21 +125,22 @@ class TestGetForwardScores(unittest.TestCase):
                 forward_scores = fsa_vec.get_forward_scores(
                     use_double_scores=use_double_scores, log_semiring=True)
                 scores = fsa.scores.detach().clone().requires_grad_(True)
-                expected_scores = torch.empty_like(forward_scores)
-                expected_scores[0] = 0
-                expected_scores[1] = scores[:2].exp().sum().log()
-                expected_scores[2] = (
-                    (expected_scores[1] + scores[2]).exp() +
-                    (expected_scores[1] + scores[3]).exp() +
-                    (expected_scores[1] + scores[4]).exp()).log()
-                expected_scores[3] = (
-                    (expected_scores[2] + scores[5]).exp() +
-                    (expected_scores[2] + scores[6]).exp()).log()
-                expected_scores[4] = expected_scores[3] + scores[7]
+                expected_forward_scores = torch.empty_like(forward_scores)
+                expected_forward_scores[0] = 0
+                expected_forward_scores[1] = scores[:2].exp().sum().log()
+                expected_forward_scores[2] = (
+                    (expected_forward_scores[1] + scores[2]).exp() +
+                    (expected_forward_scores[1] + scores[3]).exp() +
+                    (expected_forward_scores[1] + scores[4]).exp()).log()
+                expected_forward_scores[3] = (
+                    (expected_forward_scores[2] + scores[5]).exp() +
+                    (expected_forward_scores[2] + scores[6]).exp()).log()
+                expected_forward_scores[
+                    4] = expected_forward_scores[3] + scores[7]
 
-                assert torch.allclose(forward_scores, expected_scores)
+                assert torch.allclose(forward_scores, expected_forward_scores)
                 (scale * forward_scores).sum().backward()
-                (scale * expected_scores).sum().backward()
+                (scale * expected_forward_scores).sum().backward()
                 assert torch.allclose(fsa.grad, scores.grad)
 
     def test_simple_fsa_vec(self):
@@ -180,9 +182,9 @@ class TestGetForwardScores(unittest.TestCase):
                                                  3.1]).to(forward_scores)
                 expected_scores2 = torch.tensor([0, 0.2, 0.7, 1.4,
                                                  2.2]).to(forward_scores)
-                expected_scores = torch.cat(
+                expected_forward_scores = torch.cat(
                     [expected_scores1, expected_scores2])
-                assert torch.allclose(forward_scores, expected_scores)
+                assert torch.allclose(forward_scores, expected_forward_scores)
 
                 scale1 = torch.arange(expected_scores1.numel()).to(device)
                 scale2 = torch.arange(expected_scores2.numel()).to(device)
@@ -232,14 +234,14 @@ class TestGetForwardScores(unittest.TestCase):
                     (expected_scores2[2] + scores2[6]).exp()).log()
                 expected_scores2[4] = expected_scores2[3] + scores2[7]
 
-                expected_scores = torch.cat(
+                expected_forward_scores = torch.cat(
                     [expected_scores1, expected_scores2])
                 assert torch.allclose(forward_scores,
-                                      expected_scores,
+                                      expected_forward_scores,
                                       atol=1e-4)
 
                 (scale * forward_scores).sum().backward()
-                (scale * expected_scores).sum().backward()
+                (scale * expected_forward_scores).sum().backward()
                 assert torch.allclose(fsa1.grad, scores1.grad)
                 assert torch.allclose(fsa2.grad, scores2.grad)
 
