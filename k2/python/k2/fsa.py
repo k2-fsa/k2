@@ -527,7 +527,8 @@ class Fsa(object):
 
         Args:
           use_double_scores:
-            If True, use `double precision` floating point; false; else single precision.
+            If True, use `double precision` floating point; false;
+            else single precision.
           log_semiring:
             True to use log semiring (log-sum), false to use tropical (i.e. max
             on scores).
@@ -680,8 +681,8 @@ class Fsa(object):
         backward_scores = self.get_backward_scores(use_double_scores,
                                                    log_semiring)
 
-        # Below, the last 3 args are active w.r.t. autograd, the backward function
-        # will return non-None derivatives for them.
+        # Below, the last 3 args are active w.r.t. autograd, the backward
+        # function will return non-None derivatives for them.
         arc_post = k2.autograd._GetArcPostFunction.apply(
             self, log_semiring, use_double_scores, self.scores, forward_scores,
             backward_scores)

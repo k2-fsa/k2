@@ -16,6 +16,7 @@ from .ops import index_select
 
 # Note: look also in autograd.py, differentiable operations may be there.
 
+
 def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
     '''Construct an linear FSA from symbols.
 

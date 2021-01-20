@@ -65,12 +65,12 @@ class _GetTotScoresFunction(torch.autograd.Function):
         """
         Caution: this backward function uses a slightly indirect approach to
         compute the gradients.  Since the tot_scores are just computed as
-        specific elements of `forward_scores`, the obvious way to get derivatives
-        w.r.t. fsas.scores would be to set gradients w.r.t. the forward scores
-        and then use BackpropGetForwardScores() to do the backprop.  But that
-        might be a little slower than what we actually do.  What we actually
-        do is to compute the backward scores and use them and the forward
-        scores to compute the posteriors, and let the derivs be the
+        specific elements of `forward_scores`, the obvious way to get
+        derivatives w.r.t. fsas.scores would be to set gradients w.r.t. the
+        forward scores and then use BackpropGetForwardScores() to do the
+        backprop.  But that might be a little slower than what we actually do.
+        What we actually do is to compute the backward scores and use them and
+        the forward scores to compute the posteriors, and let the derivs be the
         (posterior in FSA * loss_deriv w.r.t. that FSA's tot_prob).  The
         result is the same, and the underlying C++ code is simpler.
         (BackpropGetForwardScores() was added in order to compute slightly
@@ -228,7 +228,6 @@ class _GetBackwardScoresFunction(torch.autograd.Function):
     @staticmethod
     def backward(ctx, backward_scores_grad: torch.Tensor
                 ) -> Tuple[None, None, None, torch.Tensor]:  # noqa
-
         fsas = ctx.fsas
         log_semiring = ctx.log_semiring
         use_double_scores = ctx.use_double_scores
@@ -309,9 +308,10 @@ class _GetArcPostFunction(torch.autograd.Function):
         return arc_post
 
     @staticmethod
-    def backward(ctx, arc_post_grad: torch.Tensor
-                ) -> Tuple[None, None, None, torch.Tensor, torch.Tensor, torch.
-                           Tensor]:  # noqa
+    def backward(
+            ctx, arc_post_grad: torch.Tensor
+    ) -> Tuple[None, None, None, torch.Tensor, torch.Tensor,  # noqa
+               torch.Tensor]:
         fsas = ctx.fsas
         use_double_scores = ctx.use_double_scores
         forward_scores, backward_scores = ctx.saved_tensors
@@ -387,10 +387,10 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             It equals to `b_fsas.scores` and its sole purpose is for back
             propagation.
           seqframe_idx_name:
-            If set (e.g. to 'seqframe'), an attribute in the output will be created
-            that encodes the sequence-index and the frame-index within that sequence;
-            this is equivalent to a row-index into b_fsas.values, or, equivalently,
-            an element in b_fsas.shape.
+            If set (e.g. to 'seqframe'), an attribute in the output will be
+            created that encodes the sequence-index and the frame-index within
+            that sequence; this is equivalent to a row-index into b_fsas.values,
+            or, equivalently, an element in b_fsas.shape.
           frame_idx_name:
             If set (e.g. to 'frame', an attribute in the output will be created
             that contains the frame-index within the corresponding sequence.
@@ -527,10 +527,10 @@ class _IntersectDenseFunction(torch.autograd.Function):
             It equals to `b_fsas.scores` and its sole purpose is for back
             propagation.
           seqframe_idx_name:
-            If set (e.g. to 'seqframe'), an attribute in the output will be created
-            that encodes the sequence-index and the frame-index within that sequence;
-            this is equivalent to a row-index into b_fsas.values, or, equivalently,
-            an element in b_fsas.shape.
+            If set (e.g. to 'seqframe'), an attribute in the output will be
+            created that encodes the sequence-index and the frame-index within
+            that sequence; this is equivalent to a row-index into b_fsas.values,
+            or, equivalently, an element in b_fsas.shape.
           frame_idx_name:
             If set (e.g. to 'frame', an attribute in the output will be created
             that contains the frame-index within the corresponding sequence.
@@ -699,9 +699,9 @@ def intersect_dense_pruned(a_fsas: Fsa,
         You can use a very large number if no constraint is needed.
       seqframe_idx_name:
         If set (e.g. to 'seqframe'), an attribute in the output will be created
-        that encodes the sequence-index and the frame-index within that sequence;
-        this is equivalent to a row-index into b_fsas.values, or, equivalently,
-        an element in b_fsas.shape.
+        that encodes the sequence-index and the frame-index within that
+        sequence; this is equivalent to a row-index into b_fsas.values,
+        or, equivalently, an element in b_fsas.shape.
       frame_idx_name:
         If set (e.g. to 'frame', an attribute in the output will be created
         that contains the frame-index within the corresponding sequence.
@@ -743,9 +743,9 @@ def intersect_dense(a_fsas: Fsa,
          to best path of output.
       seqframe_idx_name:
         If set (e.g. to 'seqframe'), an attribute in the output will be created
-        that encodes the sequence-index and the frame-index within that sequence;
-        this is equivalent to a row-index into b_fsas.values, or, equivalently,
-        an element in b_fsas.shape.
+        that encodes the sequence-index and the frame-index within that
+        sequence; this is equivalent to a row-index into b_fsas.values,
+        or, equivalently, an element in b_fsas.shape.
       frame_idx_name:
         If set (e.g. to 'frame', an attribute in the output will be created
         that contains the frame-index within the corresponding sequence.
