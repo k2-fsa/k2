@@ -1207,19 +1207,21 @@ void BackpropGetArcPost(FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
   *backward_scores_deriv = Array1<FloatType>(c, num_states);
   // compute forward_scores_deriv
   Ragged<FloatType> ragged_forward_scores_deriv(fsas.shape, arc_post_deriv);
-  SumPerSublist(ragged_forward_scores_deriv, 0, forward_scores_deriv);
+  SumPerSublist<FloatType>(ragged_forward_scores_deriv, 0,
+                           forward_scores_deriv);
   // compute backward_scores_deriv
-  Array1<int32_t> incoming_arc_post_deriv =
+  Array1<FloatType> incoming_arc_post_deriv =
       arc_post_deriv[incoming_arcs.values];
   Ragged<FloatType> ragged_backward_scores_deriv(incoming_arcs.shape,
                                                  incoming_arc_post_deriv);
-  SumPerSublist(ragged_backward_scores_deriv, 0, backward_scores_deriv);
+  SumPerSublist<FloatType>(ragged_backward_scores_deriv, 0,
+                           backward_scores_deriv);
   // set the forward_scores_deriv for the final state and backward_scores_deriv
   // for the start state.
   Ragged<FloatType> arc_post_deriv_per_fsa =
       ragged_forward_scores_deriv.RemoveAxis(1);
   Array1<FloatType> tot_arc_post_deriv(c, num_fsas);
-  SumPerSublist(arc_post_deriv_per_fsa, 0, &tot_arc_post_deriv);
+  SumPerSublist<FloatType>(arc_post_deriv_per_fsa, 0, &tot_arc_post_deriv);
   FloatType *tot_arc_post_deriv_data = tot_arc_post_deriv.Data(),
             *forward_scores_deriv_data = forward_scores_deriv->Data(),
             *backward_scores_deriv_data = backward_scores_deriv->Data();
@@ -1237,16 +1239,16 @@ void BackpropGetArcPost(FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
       });
 }
 
-template <>
-void BackpropGetArcPost<float>(FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
-                               const Array1<float> &arc_post_deriv,
-                               Array1<float> *forward_scores_deriv,
-                               Array1<float> *backward_scores_deriv);
-template <>
-void BackpropGetArcPost<double>(FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
-                                const Array1<double> &arc_post_deriv,
-                                Array1<double> *forward_scores_deriv,
-                                Array1<double> *backward_scores_deriv);
+template void BackpropGetArcPost<float>(FsaVec &fsas,
+                                        Ragged<int32_t> &incoming_arcs,
+                                        const Array1<float> &arc_post_deriv,
+                                        Array1<float> *forward_scores_deriv,
+                                        Array1<float> *backward_scores_deriv);
+template void BackpropGetArcPost<double>(FsaVec &fsas,
+                                         Ragged<int32_t> &incoming_arcs,
+                                         const Array1<double> &arc_post_deriv,
+                                         Array1<double> *forward_scores_deriv,
+                                         Array1<double> *backward_scores_deriv);
 
 template <typename FloatType>
 Array1<FloatType> GetBackwardScores(FsaVec &fsas,
