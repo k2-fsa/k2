@@ -43,9 +43,6 @@ def build_ctc_topo(tokens: List[int]) -> k2.Fsa:
             if i == j:
                 arcs += f'{i} {i} {tokens[i]} 0 0.0\n'
             else:
-                # we assume that eps has the same ID, i.e., 0, with
-                # the blank symbol. 0 on the left side represents the
-                # blank, and it represents `eps` on the right side.
                 arcs += f'{i} {j} {tokens[j]} {tokens[j]} 0.0\n'
         arcs += f'{i} {final_state} -1 -1 0.0\n'
     arcs += f'{final_state}'
