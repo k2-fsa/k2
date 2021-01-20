@@ -1,4 +1,6 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+#                      Xiaomi Corp.       (authors: Daniel Povey
+#                                                   Haowen Qiu)
 # See ../../../LICENSE for clarification regarding multiple authors
 
 from typing import List
@@ -63,12 +65,12 @@ class _GetTotScoresFunction(torch.autograd.Function):
         """
         Caution: this backward function uses a slightly indirect approach to
         compute the gradients.  Since the tot_scores are just computed as
-        specific elements of `forward_scores`, the obvious way to get derivatives
-        w.r.t. fsas.scores would be to set gradients w.r.t. the forward scores
-        and then use BackpropGetForwardScores() to do the backprop.  But that
-        might be a little slower than what we actually do.  What we actually
-        do is to compute the backward scores and use them and the forward
-        scores to compute the posteriors, and let the derivs be the
+        specific elements of `forward_scores`, the obvious way to get
+        derivatives w.r.t. fsas.scores would be to set gradients w.r.t. the
+        forward scores and then use BackpropGetForwardScores() to do the
+        backprop.  But that might be a little slower than what we actually do.
+        What we actually do is to compute the backward scores and use them and
+        the forward scores to compute the posteriors, and let the derivs be the
         (posterior in FSA * loss_deriv w.r.t. that FSA's tot_prob).  The
         result is the same, and the underlying C++ code is simpler.
         (BackpropGetForwardScores() was added in order to compute slightly
@@ -143,9 +145,85 @@ class _GetForwardScoresFunction(torch.autograd.Function):
         ctx.fsas = fsas
         ctx.log_semiring = log_semiring
         ctx.use_double_scores = use_double_scores
-        ctx.save_for_backward(unused_scores)
+        ctx.save_for_backward(forward_scores)
 
         return forward_scores
+
+    @staticmethod
+    def backward(ctx, forward_scores_grad: torch.Tensor
+                ) -> Tuple[None, None, None, torch.Tensor]:  # noqa
+        fsas = ctx.fsas
+        log_semiring = ctx.log_semiring
+        use_double_scores = ctx.use_double_scores
+        forward_scores, = ctx.saved_tensors
+
+        if log_semiring:
+            entering_arcs = None
+        else:
+            entering_arcs = fsas._get_entering_arcs(use_double_scores)
+        state_batches = fsas._get_state_batches()
+        leaving_arc_batches = fsas._get_leaving_arc_batches()
+
+        bprop_func = (_k2.backprop_get_forward_scores_double
+                      if use_double_scores else
+                      _k2.backprop_get_forward_scores_float)
+
+        scores_grad = bprop_func(fsas.arcs,
+                                 state_batches=state_batches,
+                                 leaving_arc_batches=leaving_arc_batches,
+                                 log_semiring=log_semiring,
+                                 entering_arcs=entering_arcs,
+                                 forward_scores=forward_scores,
+                                 forward_scores_deriv=forward_scores_grad)
+
+        return (
+            None,  # fsas
+            None,  # log_semiring
+            None,  # use_double_scores
+            scores_grad  # unused_scores
+        )
+
+
+class _GetBackwardScoresFunction(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, fsas: Fsa, log_semiring: bool, use_double_scores: bool,
+                unused_scores: torch.Tensor) -> torch.Tensor:
+        '''Compute the backward scores of an FsaVec.
+
+        Args:
+          fsas:
+            The input FsaVec (must have 3 axes)
+          log_semiring:
+            True to use log semiring, false to use tropical
+          use_double_scores:
+            False to use float, i.e., single precision floating point,
+            to compute log likes. True to use double precision.
+          unused_scores:
+            It is used only for backward propagation purpose.
+            It should equal `fsas.scores`.
+
+        Returns:
+          A torch.Tensor with shape equal to (num_states,)
+        '''
+        # This function is called by fsas.get_backward_scores() and calls
+        # fsas._get_backward_scores() (which is not differentiable).  the
+        # .detach() below avoids a reference cycle, I believe; if we didn't do
+        # that, the backward_fn of backward_scores, which is cached in `fsas`,
+        # would be set to this object, giving `fsas` a reference to this object,
+        # which also has a reference to `fsas`.
+        backward_scores = fsas._get_backward_scores(
+            use_double_scores=use_double_scores,
+            log_semiring=log_semiring).detach()
+
+        # NOTE: since `fsas`, `log_semiring` and `use_double_scores` are
+        # not tensors, they are saved as attributes of `ctx`.
+        ctx.fsas = fsas
+        ctx.log_semiring = log_semiring
+        ctx.use_double_scores = use_double_scores
+        ctx.save_for_backward(backward_scores)
+
+        return backward_scores
 
     @staticmethod
     def backward(ctx, backward_scores_grad: torch.Tensor
@@ -153,23 +231,28 @@ class _GetForwardScoresFunction(torch.autograd.Function):
         fsas = ctx.fsas
         log_semiring = ctx.log_semiring
         use_double_scores = ctx.use_double_scores
-        scores, = ctx.saved_tensors
+        backward_scores, = ctx.saved_tensors
 
-        entering_arcs = fsas._get_entering_arcs(use_double_scores)
         state_batches = fsas._get_state_batches()
-        leaving_arc_batches = fsas._get_leaving_arc_batches()
-        backward_scores = fsas._get_backward_score(
-            use_double_scores=use_double_scores, log_semiring=log_semiring)
+        entering_arc_batches = fsas._get_entering_arc_batches()
 
-        # Note: perhaps _k2.backprop_get_backward_scores() can figure out the
-        # type, float vs. double.  Whatever works and is easy, though..
-        scores_grad = _k2.backprop_get_backward_scores(fsas, state_batches,
-                                                       leaving_arc_batches,
-                                                       log_semiring,
-                                                       backward_scores,
-                                                       backward_scores_grad)
+        bprop_func = (_k2.backprop_get_backward_scores_double
+                      if use_double_scores else
+                      _k2.backprop_get_backward_scores_float)
 
-        return None, None, None, scores_grad
+        scores_grad = bprop_func(fsas.arcs,
+                                 state_batches=state_batches,
+                                 entering_arc_batches=entering_arc_batches,
+                                 log_semiring=log_semiring,
+                                 backward_scores=backward_scores,
+                                 backward_scores_deriv=backward_scores_grad)
+
+        return (
+            None,  # fsas
+            None,  # log_semiring
+            None,  # use_double_scores
+            scores_grad  # unused_scores
+        )
 
 
 class _GetArcPostFunction(torch.autograd.Function):
@@ -201,7 +284,7 @@ class _GetArcPostFunction(torch.autograd.Function):
             explicit arg for backprop reasons.
 
         Returns:
-           The per-arc log-posterior for each arc in `fsas`.  If
+          The per-arc log-posterior for each arc in `fsas`.  If
           `use_double_scores==True`, its dtype is `torch.float64`; it is
           `torch.float32` otherwise.
 
@@ -219,38 +302,50 @@ class _GetArcPostFunction(torch.autograd.Function):
         # NOTE: since `fsas`, `log_semiring` and `use_double_scores` are
         # not tensors, they are saved as attributes of `ctx`.
         ctx.fsas = fsas
-        ctx.log_semiring = log_semiring
         ctx.use_double_scores = use_double_scores
 
-        ctx.save_for_backward(unused_scores, forward_scores, backward_scores)
-        return tot_scores
+        ctx.save_for_backward(forward_scores, backward_scores)
+        return arc_post
 
     @staticmethod
-    def backward(ctx, arc_post_grad: torch.Tensor
-                ) -> Tuple[None, None, None, torch.Tensor, torch.Tensor, torch.
-                           Tensor]:  # noqa
+    def backward(
+            ctx, arc_post_grad: torch.Tensor
+    ) -> Tuple[None, None, None, torch.Tensor, torch.Tensor,  # noqa
+               torch.Tensor]:
         fsas = ctx.fsas
-        log_semiring = ctx.log_semiring
         use_double_scores = ctx.use_double_scores
-        scores, forward_scores, backward_scores = ctx.saved_tensors
+        forward_scores, backward_scores = ctx.saved_tensors
 
-        bprop_func = (_k2.get_arc_scores_double_backward if use_double_scores
-                      else _k2.get_arc_scores_float_log_backward)
+        bprop_func = (_k2.backprop_get_arc_post_double if use_double_scores
+                      else _k2.backprop_get_arc_post_float)
 
         incoming_arcs = fsas._get_incoming_arcs()
-        (arc_scores_grad, forward_scores_grad,
-         backward_scores_grad) = bprop_func(fsas.arcs, incoming_arcs,
-                                            arc_post_grad)
+        forward_scores_grad, backward_scores_grad = bprop_func(
+            fsas.arcs, incoming_arcs, arc_post_grad)
+        arc_scores_grad = arc_post_grad.detach().clone()
 
-        return None, None, None, arc_scores_grad, forward_scores_grad, backward_scores_grad
+        return (
+            None,  # fsas
+            None,  # log_semiring
+            None,  # use_double_scores
+            arc_scores_grad,  # unused_scores
+            forward_scores_grad,  # forward_scores
+            backward_scores_grad  # backward_scores
+        )
 
 
 class _IntersectDensePrunedFunction(torch.autograd.Function):
 
     @staticmethod
-    def forward(ctx, a_fsas: Fsa, b_fsas: DenseFsaVec, out_fsa: List[Fsa],
-                search_beam: float, output_beam: float, min_active_states: int,
-                max_active_states: int, unused_scores_a: torch.Tensor,
+    def forward(ctx,
+                a_fsas: Fsa,
+                b_fsas: DenseFsaVec,
+                out_fsa: List[Fsa],
+                search_beam: float,
+                output_beam: float,
+                min_active_states: int,
+                max_active_states: int,
+                unused_scores_a: torch.Tensor,
                 unused_scores_b: torch.Tensor,
                 seqframe_idx_name: Optional[str] = None,
                 frame_idx_name: Optional[str] = None) -> torch.Tensor:
@@ -292,10 +387,10 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
             It equals to `b_fsas.scores` and its sole purpose is for back
             propagation.
           seqframe_idx_name:
-            If set (e.g. to 'seqframe'), an attribute in the output will be created
-            that encodes the sequence-index and the frame-index within that sequence;
-            this is equivalent to a row-index into b_fsas.values, or, equivalently,
-            an element in b_fsas.shape.
+            If set (e.g. to 'seqframe'), an attribute in the output will be
+            created that encodes the sequence-index and the frame-index within
+            that sequence; this is equivalent to a row-index into b_fsas.values,
+            or, equivalently, an element in b_fsas.shape.
           frame_idx_name:
             If set (e.g. to 'frame', an attribute in the output will be created
             that contains the frame-index within the corresponding sequence.
@@ -368,25 +463,30 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
         _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
-        return (None, # a_fass
-                None, # b_fsas
-                None, # out_fsa
-                None, # search_beam
-                None, # output_beam
-                None, # min_active_states
-                None, # max_active_states
-                grad_a, # unused_scores_a
-                grad_b, # unused_scores_b
-                None, # seqframe_idx_name
-                None # frame_idx_name
-                )
+        return (
+            None,  # a_fass
+            None,  # b_fsas
+            None,  # out_fsa
+            None,  # search_beam
+            None,  # output_beam
+            None,  # min_active_states
+            None,  # max_active_states
+            grad_a,  # unused_scores_a
+            grad_b,  # unused_scores_b
+            None,  # seqframe_idx_name
+            None  # frame_idx_name
+        )
 
 
 class _IntersectDenseFunction(torch.autograd.Function):
 
     @staticmethod
-    def forward(ctx, a_fsas: Fsa, b_fsas: DenseFsaVec, out_fsa: List[Fsa],
-                output_beam: float, unused_scores_a: torch.Tensor,
+    def forward(ctx,
+                a_fsas: Fsa,
+                b_fsas: DenseFsaVec,
+                out_fsa: List[Fsa],
+                output_beam: float,
+                unused_scores_a: torch.Tensor,
                 unused_scores_b: torch.Tensor,
                 seqframe_idx_name: Optional[str] = None,
                 frame_idx_name: Optional[str] = None) -> torch.Tensor:
@@ -427,10 +527,10 @@ class _IntersectDenseFunction(torch.autograd.Function):
             It equals to `b_fsas.scores` and its sole purpose is for back
             propagation.
           seqframe_idx_name:
-            If set (e.g. to 'seqframe'), an attribute in the output will be created
-            that encodes the sequence-index and the frame-index within that sequence;
-            this is equivalent to a row-index into b_fsas.values, or, equivalently,
-            an element in b_fsas.shape.
+            If set (e.g. to 'seqframe'), an attribute in the output will be
+            created that encodes the sequence-index and the frame-index within
+            that sequence; this is equivalent to a row-index into b_fsas.values,
+            or, equivalently, an element in b_fsas.shape.
           frame_idx_name:
             If set (e.g. to 'frame', an attribute in the output will be created
             that contains the frame-index within the corresponding sequence.
@@ -500,15 +600,16 @@ class _IntersectDenseFunction(torch.autograd.Function):
         _k2.index_add(arc_map_a, out_fsa_grad, grad_a)
         _k2.index_add(arc_map_b, out_fsa_grad, grad_b.view(-1))
 
-        return (None, # a_fsas
-                None, # b_fsas
-                None, # out_fsa
-                None, # output_beam
-                grad_a, # unused_scores_a
-                grad_b, # unused_scores_b
-                None, # seqframe_idx_name
-                None # frame_idx_name
-                )
+        return (
+            None,  # a_fsas
+            None,  # b_fsas
+            None,  # out_fsa
+            None,  # output_beam
+            grad_a,  # unused_scores_a
+            grad_b,  # unused_scores_b
+            None,  # seqframe_idx_name
+            None  # frame_idx_name
+        )
 
 
 class _UnionFunction(torch.autograd.Function):
@@ -558,8 +659,10 @@ class _UnionFunction(torch.autograd.Function):
         return None, None, ans
 
 
-def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
-                           search_beam: float, output_beam: float,
+def intersect_dense_pruned(a_fsas: Fsa,
+                           b_fsas: DenseFsaVec,
+                           search_beam: float,
+                           output_beam: float,
                            min_active_states: int,
                            max_active_states: int,
                            seqframe_idx_name: Optional[str] = None,
@@ -596,9 +699,9 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
         You can use a very large number if no constraint is needed.
       seqframe_idx_name:
         If set (e.g. to 'seqframe'), an attribute in the output will be created
-        that encodes the sequence-index and the frame-index within that sequence;
-        this is equivalent to a row-index into b_fsas.values, or, equivalently,
-        an element in b_fsas.shape.
+        that encodes the sequence-index and the frame-index within that
+        sequence; this is equivalent to a row-index into b_fsas.values,
+        or, equivalently, an element in b_fsas.shape.
       frame_idx_name:
         If set (e.g. to 'frame', an attribute in the output will be created
         that contains the frame-index within the corresponding sequence.
@@ -618,7 +721,8 @@ def intersect_dense_pruned(a_fsas: Fsa, b_fsas: DenseFsaVec,
     return out_fsa[0]
 
 
-def intersect_dense(a_fsas: Fsa, b_fsas: DenseFsaVec,
+def intersect_dense(a_fsas: Fsa,
+                    b_fsas: DenseFsaVec,
                     output_beam: float,
                     seqframe_idx_name: Optional[str] = None,
                     frame_idx_name: Optional[str] = None) -> Fsa:
@@ -639,9 +743,9 @@ def intersect_dense(a_fsas: Fsa, b_fsas: DenseFsaVec,
          to best path of output.
       seqframe_idx_name:
         If set (e.g. to 'seqframe'), an attribute in the output will be created
-        that encodes the sequence-index and the frame-index within that sequence;
-        this is equivalent to a row-index into b_fsas.values, or, equivalently,
-        an element in b_fsas.shape.
+        that encodes the sequence-index and the frame-index within that
+        sequence; this is equivalent to a row-index into b_fsas.values,
+        or, equivalently, an element in b_fsas.shape.
       frame_idx_name:
         If set (e.g. to 'frame', an attribute in the output will be created
         that contains the frame-index within the corresponding sequence.

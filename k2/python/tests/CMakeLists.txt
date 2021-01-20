@@ -26,6 +26,9 @@ set(py_test_files
   dense_fsa_vec_test.py
   determinize_test.py
   fsa_test.py
+  get_arc_post_test.py
+  get_backward_scores_test.py
+  get_forward_scores_test.py
   get_tot_scores_test.py
   index_add_test.py
   index_select_test.py
