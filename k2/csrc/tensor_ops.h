@@ -9,6 +9,7 @@
 #define K2_CSRC_TENSOR_OPS_H_
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/ragged.h"
 #include "k2/csrc/tensor.h"
 
 namespace k2 {
@@ -57,6 +58,8 @@ Tensor Cast(Tensor src, Dtype new_dtype);
                      shape (indexes.Dim(), src.Dim(1), src.Dim(2), ...),
                      i.e. with the same num-axes as `src` and
                      axis 0's dim replaced with indexes.Dim().
+                     Noted the ans would be contiguous even though `src`
+                     is not contiguous.
  */
 Tensor Index(Tensor &src, Array1<int32_t> &indexes,
              bool allow_minus_one = true);
@@ -106,6 +109,26 @@ Tensor IndexAdd(Tensor &src, Array1<int32_t> &indexes, int32_t dim,
 void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
               Tensor *dest);
 
+/*
+  Returns a 1-D Tensor that is a result of indexing 1-D `src` with Ragged array
+  `indexes` whose NumAxes() is 2. ans.Dims()[0] will equal to indexes.Dims0() as
+  we suppose there is at most one non-zero element in `src` for any indexes
+  sub-list in `indexes`.
+
+     @param [in] src  Source 1-D tensor, to be indexed.
+     @param [in] indexes   Indexes to use whose NumAxes() == 2, for any
+                      sub-list `i` in `indexes`, we suppose there is at most
+                      one non-zero element in `src` and we'll set ans[i]
+                      with that non-zero element; if all elements for
+                      sub-list `i` is zero or the sub-list is empty, we just
+                      set ans[i] == 0.
+     @return   Returns a Tensor with the same dtype as `src` and shape
+                     (indexes.Dim0()), i.e. a 1-D tensor whose number of
+                     elements equal to `indexes.Dim0()`.
+                     Noted the ans would be contiguous even though `src`
+                     is not contiguous.
+ */
+Tensor SimpleRaggedIndexSelect1D(Tensor &src, Ragged<int32_t> &indexes);
 }  // namespace k2
 
 #endif  // K2_CSRC_TENSOR_OPS_H_
