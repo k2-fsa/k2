@@ -139,8 +139,8 @@ static torch::Tensor IndexSelectWrapper(torch::Tensor src,
      @param [in] src  Source tensor, to be indexed.
      @param [in] indexes   Indexes to use whose NumAxes() == 2, for any
                       sub-list `i` in `indexes`, we suppose there is at most
-                      one non-zero element in `src` and we'll set ans[i]
-                      with that non-zero element; if all elements for
+                      one non-zero values in `src` and we'll set ans[i]
+                      with that non-zero value; if all values for
                       sub-list `i` is zero or the sub-list is empty, we just
                       set ans[i] == 0.
      @return   Returns a Tensor with the same dtype as `src` and shape

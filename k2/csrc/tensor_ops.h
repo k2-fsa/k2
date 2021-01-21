@@ -111,15 +111,15 @@ void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
 
 /*
   Returns a 1-D Tensor that is a result of indexing 1-D `src` with Ragged array
-  `indexes` whose NumAxes() is 2. ans.Dims()[0] will equal to indexes.Dims0() as
+  `indexes` whose NumAxes() is 2. ans.Dims()[0] will equal to indexes.Dim0() as
   we suppose there is at most one non-zero element in `src` for any indexes
   sub-list in `indexes`.
 
      @param [in] src  Source 1-D tensor, to be indexed.
      @param [in] indexes   Indexes to use whose NumAxes() == 2, for any
                       sub-list `i` in `indexes`, we suppose there is at most
-                      one non-zero element in `src` and we'll set ans[i]
-                      with that non-zero element; if all elements for
+                      one non-zero value in `src` and we'll set ans[i]
+                      with that non-zero value; if all values for
                       sub-list `i` is zero or the sub-list is empty, we just
                       set ans[i] == 0.
      @return   Returns a Tensor with the same dtype as `src` and shape
