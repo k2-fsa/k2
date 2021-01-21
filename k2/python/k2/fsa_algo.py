@@ -150,15 +150,16 @@ def compose(a_fsa: Fsa,
     '''Compute the composition of two FSAs (currently on CPU).
 
     Note:
-      If there is no `aux_labels` in the input FSAs, it is
-      equivalent to :func:`k2.intersect`.
-      The difference from :func:`k2.intersect` is when a_fsa has the
-      `aux_labels` attribute set.  These are interpreted as output labels
-      (olabels), and the composition involves matching the olabels of a with
+      `a_fsa.aux_labels` is required to be defined.
+
+      For both FSAs, the `aux_labels` attribute is interpreted as output
+      labels, (olabels), and the composition involves matching the olabels of a with
       the ilabels of b.  This is implemented by intersecting the inverse of
       a_fsa (a_fsa_inv) with b_fsa, then replacing the ilabels of the result
       with the original ilabels on a_fsa which are now the aux_labels of
-      a_fsa_inv.
+      a_fsa_inv.  If `b_fsa.aux_labels` is not defined, `b_fsa` is treated
+      as an acceptor (as in OpenFST), i.e. its olabels and ilabels are
+      assumed to be the same.
 
     Args:
       a_fsa:
@@ -203,9 +204,6 @@ def compose(a_fsa: Fsa,
     if not hasattr(a_fsa, 'aux_labels'):
         return intersect(a_fsa, b_fsa, treat_epsilons_specially)
 
-    if not hasattr(b_fsa, 'aux_labels'):
-        return intersect(a_fsa, b_fsa, treat_epsilons_specially)
-
     assert isinstance(a_fsa.aux_labels, torch.Tensor)
 
     a_fsa_inv = arc_sort(a_fsa.invert())
@@ -221,10 +219,14 @@ def compose(a_fsa: Fsa,
     if inner_labels is not None:
         # out_fsa.`inner_labels` = out_fsa.labels
         setattr(out_fsa, inner_labels, out_fsa.labels)
+    out_fsa.aux_labels = (index(b_fsa.aux_labels, b_arc_map)
+                          if defined b_fsa.aux_labels
+                          else out_fsa.labels)
     out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
-    out_fsa.aux_labels = index(b_fsa.aux_labels, b_arc_map)
 
     for name, a_value in a_fsa_inv.named_tensor_attr():
+        if name == 'aux_labels':
+            continue
         if hasattr(b_fsa, name):
             # Both a_fsa and b_fsa have this attribute.
             # We only support attributes with dtype `torch.float32`.
@@ -234,6 +236,9 @@ def compose(a_fsa: Fsa,
             b_value = getattr(b_fsa, name)
             assert b_value.dtype == torch.float32
 
+            # The following will actually overwrite `scores` with the same
+            # value it had before; but this enables the autograd to work since
+            # we do it using torch mechanisms.
             value = index_select(a_value, a_arc_map) + index_select(
                 b_value, b_arc_map)
             setattr(out_fsa, name, value)
@@ -244,6 +249,8 @@ def compose(a_fsa: Fsa,
 
     # now copy tensor attributes that are in b_fsa but are not in a_fsa
     for name, b_value in b_fsa.named_tensor_attr():
+        if name == 'aux_labels':
+            continue
         if not hasattr(out_fsa, name):
             value = index(b_value, b_arc_map)
             setattr(out_fsa, name, value)
