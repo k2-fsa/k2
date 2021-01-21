@@ -61,9 +61,7 @@ def linear_fst(symbols: Union[List[int], List[List[int]]],
                           List), 'aux_symbols and symbols does not match.'
         for sym in aux_symbols:
             sym.append(-1)  # -1 == kFinalSymbol
-        print(aux_symbols)
-        aux_labels = torch.IntTensor(aux_symbols)
-        print(aux_labels)
+        aux_labels = torch.IntTensor(aux_symbols).reshape(-1,)
     else:
         aux_symbols.append(-1)  # -1 == kFinalSymbol
         aux_labels = torch.IntTensor(aux_symbols)
