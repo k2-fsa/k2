@@ -1,5 +1,6 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
 #                      Xiaomi Corporation (authors: Haowen Qiu)
+#                2021  Mobvoi Inc.        (authors: Yaguang Hu)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -33,6 +34,32 @@ def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
     '''
     ragged_arc = _k2.linear_fsa(symbols)
     fsa = Fsa(ragged_arc)
+    return fsa
+
+
+def linear_fst(symbols: Union[List[int], List[List[int]]]) -> Fsa:
+    '''Construct an linear FST from symbols.
+
+    Note:
+      The scores of arcs in the returned FST are all 0.
+
+    Args:
+      symbols:
+        A list of integers or a list of list of integers.
+
+    Returns:
+      An FST if the input is a list of integers.
+      A vector of FSAs if the input is a list of list of integers.
+    '''
+    ragged_arc = _k2.linear_fsa(symbols)
+    if isinstance(symbols[0], List):
+        for sym in symbols:
+            sym.append(-1)  # -1 == kFinalSymbol
+        aux_labels = torch.IntTensor(symbols)
+    else:
+        symbols.append(-1)  # -1 == kFinalSymbol
+        aux_labels = torch.IntTensor(symbols)
+    fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
 
 
