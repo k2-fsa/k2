@@ -201,8 +201,7 @@ def compose(a_fsa: Fsa,
     '''
     assert a_fsa.is_cpu()
     assert b_fsa.is_cpu()
-    if not hasattr(a_fsa, 'aux_labels'):
-        return intersect(a_fsa, b_fsa, treat_epsilons_specially)
+    assert hasattr(a_fsa, 'aux_labels')
 
     assert isinstance(a_fsa.aux_labels, torch.Tensor)
 
