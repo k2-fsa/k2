@@ -35,7 +35,7 @@ namespace k2 {
 */
 
 template <typename T, typename Op>
-void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst);
+void SegmentedReduce(Ragged<T> &src, T initial_value, Array1<T> *dst);
 
 /*
   Output to an array `max_values` the maximum of each sub-list along the last
@@ -54,19 +54,19 @@ void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst);
  */
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *max_values) {
-  ApplyOpPerSublist<T, MaxOp<T>>(src, initial_value, max_values);
+  SegmentedReduce<T, MaxOp<T>>(src, initial_value, max_values);
 }
 
 // Same with `MaxPerSubList`, but output the `min_value` in each sub-list.
 template <typename T>
 void MinPerSublist(Ragged<T> &src, T initial_value, Array1<T> *min_values) {
-  ApplyOpPerSublist<T, MinOp<T>>(src, initial_value, min_values);
+  SegmentedReduce<T, MinOp<T>>(src, initial_value, min_values);
 }
 
 // Same with `MaxPerSubList`, but output the sum of values in each sub-list.
 template <typename T>
 void SumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *sum_values) {
-  ApplyOpPerSublist<T, PlusOp<T>>(src, initial_value, sum_values);
+  SegmentedReduce<T, PlusOp<T>>(src, initial_value, sum_values);
 }
 
 // Same with `MaxPerSubList`, but with Op as `LogAdd`.
@@ -74,7 +74,7 @@ template <typename T>
 void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
   K2_STATIC_ASSERT(
       (std::is_same<float, T>::value || std::is_same<double, T>::value));
-  ApplyOpPerSublist<T, LogAdd<T>>(src, initial_value, dst_values);
+  SegmentedReduce<T, LogAdd<T>>(src, initial_value, dst_values);
 }
 
 /*
@@ -122,13 +122,13 @@ Ragged<T> NormalizePerSublist(Ragged<T> &src);
 */
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T initial_value, Array1<T> *and_values) {
-  ApplyOpPerSublist<T, BitAndOp<T>>(src, initial_value, and_values);
+  SegmentedReduce<T, BitAndOp<T>>(src, initial_value, and_values);
 }
 
 // bitwise or
 template <typename T>
 void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
-  ApplyOpPerSublist<T, BitOrOp<T>>(src, initial_value, or_values);
+  SegmentedReduce<T, BitOrOp<T>>(src, initial_value, or_values);
 }
 
 /*
