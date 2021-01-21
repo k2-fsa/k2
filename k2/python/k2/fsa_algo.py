@@ -152,14 +152,14 @@ def compose(a_fsa: Fsa,
     Note:
       `a_fsa.aux_labels` is required to be defined.
 
-      For both FSAs, the `aux_labels` attribute is interpreted as output
-      labels, (olabels), and the composition involves matching the olabels of a with
-      the ilabels of b.  This is implemented by intersecting the inverse of
+      For both FSAs, the `aux_labels` attribute is interpreted as output labels,
+      (olabels), and the composition involves matching the olabels of a_fsa with
+      the ilabels of b_fsa.  This is implemented by intersecting the inverse of
       a_fsa (a_fsa_inv) with b_fsa, then replacing the ilabels of the result
       with the original ilabels on a_fsa which are now the aux_labels of
-      a_fsa_inv.  If `b_fsa.aux_labels` is not defined, `b_fsa` is treated
-      as an acceptor (as in OpenFST), i.e. its olabels and ilabels are
-      assumed to be the same.
+      a_fsa_inv.  If `b_fsa.aux_labels` is not defined, `b_fsa` is treated as an
+      acceptor (as in OpenFST), i.e. its olabels and ilabels are assumed to be
+      the same.
 
     Args:
       a_fsa:
@@ -219,7 +219,7 @@ def compose(a_fsa: Fsa,
         # out_fsa.`inner_labels` = out_fsa.labels
         setattr(out_fsa, inner_labels, out_fsa.labels)
     out_fsa.aux_labels = (index(b_fsa.aux_labels, b_arc_map)
-                          if defined b_fsa.aux_labels
+                          if hasattr(b_fsa, 'aux_labels')
                           else out_fsa.labels)
     out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
 
