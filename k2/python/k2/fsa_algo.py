@@ -37,15 +37,18 @@ def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
     return fsa
 
 
-def linear_fst(symbols: Union[List[int], List[List[int]]]) -> Fsa:
-    '''Construct an linear FST from symbols.
+def linear_fst(symbols: Union[List[int], List[List[int]]],
+               aux_symbols: Union[List[int], List[List[int]]]) -> Fsa:
+    '''Construct an linear FST from symbols and it's corresponding
+       auxiliary symbols.
 
     Note:
       The scores of arcs in the returned FST are all 0.
-      The input and output labels are the same in this function.
 
     Args:
       symbols:
+        A list of integers or a list of list of integers.
+      aux_symbols:
         A list of integers or a list of list of integers.
 
     Returns:
@@ -54,12 +57,16 @@ def linear_fst(symbols: Union[List[int], List[List[int]]]) -> Fsa:
     '''
     ragged_arc = _k2.linear_fsa(symbols)
     if isinstance(symbols[0], List):
-        for sym in symbols:
+        assert isinstance(aux_symbols[0],
+                          List), 'aux_symbols and symbols does not match.'
+        for sym in aux_symbols:
             sym.append(-1)  # -1 == kFinalSymbol
-        aux_labels = torch.IntTensor(symbols)
+        print(aux_symbols)
+        aux_labels = torch.IntTensor(aux_symbols)
+        print(aux_labels)
     else:
-        symbols.append(-1)  # -1 == kFinalSymbol
-        aux_labels = torch.IntTensor(symbols)
+        aux_symbols.append(-1)  # -1 == kFinalSymbol
+        aux_labels = torch.IntTensor(aux_symbols)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
 
@@ -89,7 +96,8 @@ def top_sort(fsa: Fsa) -> Fsa:
     return sorted_fsa
 
 
-def intersect(a_fsa: Fsa, b_fsa: Fsa,
+def intersect(a_fsa: Fsa,
+              b_fsa: Fsa,
               treat_epsilons_specially: bool = True) -> Fsa:
     '''Compute the intersection of two FSAs on CPU.
 
