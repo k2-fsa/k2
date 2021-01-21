@@ -817,8 +817,6 @@ void TestBackpropGetForwardScores(FsaVec &fsa_vec_in) {
           fsa_vec, state_batches, leaving_arc_batches, false, &entering_arcs,
           forward_scores, forward_scores_deriv_in);
       entering_arcs = entering_arcs.To(cpu);
-      forward_scores_deriv_in = forward_scores_deriv_in.To(cpu);
-      forward_scores_deriv_in_data = forward_scores_deriv_in.Data();
       Array1<FloatType> expected_arc_deriv(cpu, num_arcs, 0);
       FloatType *expected_arc_deriv_data = expected_arc_deriv.Data();
       Array1<int32_t> fsa_row_splits1_cpu = fsa_vec.RowSplits(1).To(cpu);
@@ -834,10 +832,7 @@ void TestBackpropGetForwardScores(FsaVec &fsa_vec_in) {
               int32_t src_state = arc.src_state + start_state;
               int32_t dst_state = arc.dest_state + start_state;
               ASSERT_EQ(state, dst_state);
-              expected_arc_deriv_data[arc_id] =
-                  forward_scores_deriv_in_data[dst_state];
-              forward_scores_deriv_in_data[src_state] =
-                  forward_scores_deriv_in_data[dst_state];
+              expected_arc_deriv_data[arc_id] = 1;
               state = src_state;
             }
           }
@@ -940,8 +935,51 @@ void TestBackpropGetBackwardScores(FsaVec &fsa_vec_in) {
           fsa_vec, state_batches, entering_arc_batches, false, backward_scores,
           backward_scores_deriv_in);
       ASSERT_EQ(arc_derivs.Dim(), num_arcs);
-      // TODO(haowen): add assert as we did in testing for
-      // BackpropGetForwardScores, we may need create best_leaving_arcs?
+      Array1<int32_t> fsa_row_splits1_cpu = fsa_vec.RowSplits(1).To(cpu);
+      Array1<int32_t> fsa_row_splits2_cpu = fsa_vec.RowSplits(2).To(cpu);
+      Array1<Arc> cpu_arcs = fsa_vec.values.To(cpu);
+      backward_scores = backward_scores.To(cpu);
+      Array1<FloatType> expected_arc_deriv(cpu, num_arcs, 0);
+      FloatType *expected_arc_deriv_data = expected_arc_deriv.Data();
+      const FloatType negative_infinity =
+          -std::numeric_limits<FloatType>::infinity();
+      for (int32_t fsa_idx = 0; fsa_idx != num_fsas; ++fsa_idx) {
+        int32_t start_state = fsa_row_splits1_cpu[fsa_idx],
+                start_state_next_fsa = fsa_row_splits1_cpu[fsa_idx + 1];
+        if (start_state_next_fsa > start_state) {
+          for (int32_t state = start_state;
+               state != start_state_next_fsa - 1;) {
+            FloatType score = negative_infinity;
+            int32_t arc_id = -1;
+            int32_t dest_state = -1;
+            // get best leaving arc id for the state, i.e. the arc contributes
+            // to the backward scores of the this state when computing backward
+            // scores for tropical semiring.
+            int32_t arc_begin = fsa_row_splits2_cpu[state],
+                    arc_end = fsa_row_splits2_cpu[state + 1];
+            ASSERT_GT(arc_end, arc_begin);  // as we suppose the input fsa
+                                            // connected for the test suite
+            for (int32_t cur_arc_id = arc_begin; cur_arc_id != arc_end;
+                 ++cur_arc_id) {
+              const Arc &arc = cpu_arcs[cur_arc_id];
+              ASSERT_EQ(state, start_state + arc.src_state);
+              int32_t cur_dest_state = start_state + arc.dest_state;
+              FloatType cur_score = arc.score + backward_scores[cur_dest_state];
+              // note below we use `>=` instead of `>` as we prefer larger
+              // arc_id which is consistent with BackpropGetBackwardScores.
+              if (cur_score >= score) {
+                score = cur_score;
+                arc_id = cur_arc_id;
+                dest_state = cur_dest_state;
+              }
+            }
+            expected_arc_deriv_data[arc_id] = 1;
+            state = dest_state;
+          }
+        }
+      }
+      ASSERT_EQ(arc_derivs.Dim(), num_arcs);
+      CheckArrayData(arc_derivs, expected_arc_deriv);
     }
     {
       // logsum
@@ -951,10 +989,6 @@ void TestBackpropGetBackwardScores(FsaVec &fsa_vec_in) {
           fsa_vec, state_batches, leaving_arc_batches, true);
       Array1<FloatType> arc_post =
           GetArcPost(fsa_vec, forward_scores, backward_scores);
-      FloatType *arc_post_data = arc_post.Data();
-      K2_EVAL(
-          context, num_arcs, lambda_exp_arc_post,
-          (int32_t i)->void { arc_post_data[i] = exp(arc_post_data[i]); });
       // set the backward_scores_deriv_in to all zeros except for a 1 at the
       // start-state. Then the returned derivative of
       // BackpropGetBackwardScores() should be identical to the posterior as
@@ -975,6 +1009,10 @@ void TestBackpropGetBackwardScores(FsaVec &fsa_vec_in) {
           fsa_vec, state_batches, entering_arc_batches, true, backward_scores,
           backward_scores_deriv_in);
       ASSERT_EQ(arc_derivs.Dim(), num_arcs);
+      FloatType *arc_post_data = arc_post.Data();
+      K2_EVAL(
+          context, num_arcs, lambda_exp_arc_post,
+          (int32_t i)->void { arc_post_data[i] = exp(arc_post_data[i]); });
       CheckArrayData(arc_derivs, arc_post);
     }
   }
@@ -986,8 +1024,13 @@ TEST_F(StatesBatchSuiteTest, TestBackpropBackwardScores) {
   for (int32_t i = 0; i != 2; ++i) {
     // random case
     FsaVec random_fsas = RandomFsaVec();
-    TestBackpropGetBackwardScores<float>(random_fsas);
-    TestBackpropGetBackwardScores<double>(random_fsas);
+    // make the fsa connected for easy testing for tropical version, the
+    // algorithm should work for non-connected fsa as well.
+    FsaVec connected;
+    bool status = Connect(random_fsas, &connected);
+    ASSERT_TRUE(status);
+    TestBackpropGetBackwardScores<float>(connected);
+    TestBackpropGetBackwardScores<double>(connected);
   }
 }
 
