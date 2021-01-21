@@ -42,6 +42,7 @@ def linear_fst(symbols: Union[List[int], List[List[int]]]) -> Fsa:
 
     Note:
       The scores of arcs in the returned FST are all 0.
+      The input and output labels are the same in this function.
 
     Args:
       symbols:
@@ -49,7 +50,7 @@ def linear_fst(symbols: Union[List[int], List[List[int]]]) -> Fsa:
 
     Returns:
       An FST if the input is a list of integers.
-      A vector of FSAs if the input is a list of list of integers.
+      A vector of FSTs if the input is a list of list of integers.
     '''
     ragged_arc = _k2.linear_fsa(symbols)
     if isinstance(symbols[0], List):
