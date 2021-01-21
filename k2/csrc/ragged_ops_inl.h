@@ -27,7 +27,7 @@
 namespace k2 {
 
 template <typename T, typename Op>
-void ApplyOpPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst) {
+void SegmentedReduce(Ragged<T> &src, T initial_value, Array1<T> *dst) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(src.NumAxes(), 2);
   K2_CHECK(IsCompatible(src.shape, *dst));

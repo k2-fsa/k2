@@ -633,6 +633,7 @@ void Assign(Array1<S> &src, Array1<T> *dest);
 /*
   Merge an array of Array1<T> with a `merge_map` which indicates which items
   to get from which positions (doesn't do any checking of the merge_map values!)
+  This relates to the `merge_map` args of various functions in ragged_utils.h.
 
     @param [in] merge_map   Array which is required to have the same dimension
                             as the sum of src[i]->Dim().
@@ -643,7 +644,9 @@ void Assign(Array1<S> &src, Array1<T> *dest);
     @param [in] src       Array of sources; total Dim() must equal
                           merge_map.Dim()
     @return               Returns array with elements combined from those in
-                          `src`.
+                          `src`.  Will satisfy `ans.Dim() == merge_map.Dim()`
+                          and
+                          `ans[i] = (**src[merge_map[i] % num_srcs])[merge_map[i] / num_srcs]`.
 
    CAUTION: may segfault if merge_map contains invalid values.
  */

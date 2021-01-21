@@ -1,5 +1,5 @@
 /**
-// Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
+// Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang, Haowen Qiu)
  *
  * See LICENSE for clarification regarding multiple authors
  */
@@ -283,6 +283,52 @@ TEST(IndexAdd, IndexAdd2D) {
   TestIndexAdd2D<float>();
   TestIndexAdd2D<double>();
   TestIndexAdd2D<int32_t>();
+}
+
+template <typename T>
+static void TestSimpleRaggedIndexSelect1D() {
+  // test with simple case should be good enough
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    // create src
+    int32_t stride = RandInt(1, 10);
+    std::vector<T> src_vec_data = {0, 2, 0, 10, 0, -1};
+    int32_t src_dim = static_cast<int32_t>(src_vec_data.size());
+    Shape shape({src_dim}, {stride});
+    Array1<T> array(context, src_vec_data);
+    const T *array_data = array.Data();
+    Tensor src(context, DtypeOf<T>::dtype, shape);
+    T *src_data = src.Data<T>();
+    K2_EVAL(
+        context, src_dim, lambda_set_src_data,
+        (int32_t i)->void { src_data[i * stride] = array_data[i]; });
+
+    // create indexes
+    std::vector<int32_t> row_splits_vec = {0, 3, 5, 6, 6, 9};
+    Array1<int32_t> row_splits(context, row_splits_vec);
+    RaggedShape indexes_shape = RaggedShape2(&row_splits, nullptr, -1);
+    std::vector<int32_t> indexes_values_vec = {1, 0, 4, 2, 3, 0, 4, 5, 2};
+    Array1<int32_t> indexes_values(context, indexes_values_vec);
+    Ragged<int32_t> indexes(indexes_shape, indexes_values);
+
+    Tensor ans = SimpleRaggedIndexSelect1D(src, indexes);
+    ASSERT_TRUE(ans.IsContiguous());
+    ASSERT_EQ(ans.NumAxes(), 1);
+    ASSERT_EQ(ans.Dim(0), indexes.Dim0());
+
+    ans = ans.To(GetCpuContext());
+    std::vector<T> expected_data = {2, 10, 0, 0, -1};
+    const T *ans_data = ans.Data<T>();
+    int32_t ans_dim = ans.Dim(0);
+    for (int32_t i = 0; i != ans_dim; ++i) {
+      EXPECT_EQ(ans_data[i], expected_data[i]);
+    }
+  }
+}
+
+TEST(Index, SimpleRaggedIndexSelect1D) {
+  TestSimpleRaggedIndexSelect1D<float>();
+  TestSimpleRaggedIndexSelect1D<double>();
+  TestSimpleRaggedIndexSelect1D<int32_t>();
 }
 
 }  // namespace k2
