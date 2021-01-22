@@ -29,7 +29,7 @@ def linear_fsa(labels: Union[List[int], List[List[int]]]) -> Fsa:
         A list of integers or a list of list of integers.
 
     Returns:
-      An FSA if the input is a list of integers.
+      An FSA if the labels is a list of integers.
       A vector of FSAs if the input is a list of list of integers.
     '''
     ragged_arc = _k2.linear_fsa(labels)
@@ -39,7 +39,7 @@ def linear_fsa(labels: Union[List[int], List[List[int]]]) -> Fsa:
 
 def linear_fst(labels: Union[List[int], List[List[int]]],
                aux_labels: Union[List[int], List[List[int]]]) -> Fsa:
-    '''Construct an linear FST from labels and it's corresponding
+    '''Construct an linear FST from labels and its corresponding
        auxiliary labels.
 
     Note:
@@ -52,7 +52,7 @@ def linear_fst(labels: Union[List[int], List[List[int]]],
         A list of integers or a list of list of integers.
 
     Returns:
-      An FST if the input is a list of integers.
+      An FST if the labels is a list of integers.
       A vector of FSTs if the input is a list of list of integers.
     '''
     ragged_arc = _k2.linear_fsa(labels)
