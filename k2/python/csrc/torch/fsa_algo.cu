@@ -98,8 +98,14 @@ static void PybindLinearFsa(py::module &m) {
 }
 
 static void PybindIntersect(py::module &m) {
+  // It is run on CUDA if and only if
+  //  - a_fsas is on GPU
+  //  - b_fsas is on GPU
+  //  - treat_epsilons_specially is False
+  //
+  // Otherwise, it is run on CPU
   m.def(
-      "intersect",  // works only on CPU
+      "intersect",
       [](FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
          int32_t properties_b, bool treat_epsilons_specially = true,
          bool need_arc_map =
@@ -108,10 +114,21 @@ static void PybindIntersect(py::module &m) {
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         FsaVec out;
-        Intersect(a_fsas, properties_a, b_fsas, properties_b,
-                  treat_epsilons_specially, &out,
-                  need_arc_map ? &a_arc_map : nullptr,
-                  need_arc_map ? &b_arc_map : nullptr);
+        if (!treat_epsilons_specially &&
+            a_fsas.Context()->GetDeviceType() == kCuda) {
+          FsaOrVec a_fsa = FsaToFsaVec(a_fsas);
+          FsaOrVec b_fsa = FsaToFsaVec(b_fsas);
+          Array1<int32_t> b_to_a_map(a_fsa.Context(), std::vector<int32_t>{0});
+
+          out = IntersectDevice(a_fsa, properties_a, b_fsa, properties_b,
+                                b_to_a_map, need_arc_map ? &a_arc_map : nullptr,
+                                need_arc_map ? &b_arc_map : nullptr);
+        } else {
+          Intersect(a_fsas, properties_a, b_fsas, properties_b,
+                    treat_epsilons_specially, &out,
+                    need_arc_map ? &a_arc_map : nullptr,
+                    need_arc_map ? &b_arc_map : nullptr);
+        }
         FsaOrVec ans;
         if (a_fsas.NumAxes() == 2 && b_fsas.NumAxes() == 2)
           ans = GetFsaVecElement(out, 0);
@@ -137,6 +154,38 @@ static void PybindIntersect(py::module &m) {
 
       a_arc_map maps arc indexes of the returned fsa to the input a_fsas.
       )");
+}
+
+static void PybindIntersectDevice(py::module &m) {
+  // It works on both GPU and CPU.
+  // But it is super slow on CPU.
+  // Do not use this one for CPU; use `Intersect` for CPU.
+  m.def(
+      "intersect_device",
+      [](FsaVec &a_fsas, int32_t properties_a, FsaVec &b_fsas,
+         int32_t properties_b, torch::Tensor b_to_a_map,
+         bool need_arc_map =
+             true) -> std::tuple<FsaVec, torch::optional<torch::Tensor>,
+                                 torch::optional<torch::Tensor>> {
+        Array1<int32_t> a_arc_map;
+        Array1<int32_t> b_arc_map;
+        Array1<int32_t> b_to_a_map_array = FromTensor<int32_t>(b_to_a_map);
+
+        FsaVec ans = IntersectDevice(a_fsas, properties_a, b_fsas, properties_b,
+                                     b_to_a_map_array,
+                                     need_arc_map ? &a_arc_map : nullptr,
+                                     need_arc_map ? &b_arc_map : nullptr);
+        torch::optional<torch::Tensor> a_tensor;
+        torch::optional<torch::Tensor> b_tensor;
+        if (need_arc_map) {
+          a_tensor = ToTensor(a_arc_map);
+          b_tensor = ToTensor(b_arc_map);
+        }
+        return std::make_tuple(ans, a_tensor, b_tensor);
+      },
+      py::arg("a_fsas"), py::arg("properties_a"), py::arg("b_fsas"),
+      py::arg("properties_b"), py::arg("b_to_a_map"),
+      py::arg("need_arc_map") = true);
 }
 
 static void PybindIntersectDensePruned(py::module &m) {
@@ -339,6 +388,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindLinearFsa(m);
   k2::PybindTopSort(m);
   k2::PybindIntersect(m);
+  k2::PybindIntersectDevice(m);
   k2::PybindIntersectDensePruned(m);
   k2::PybindIntersectDense(m);
   k2::PybindConnect(m);
