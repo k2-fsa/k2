@@ -56,17 +56,16 @@ def linear_fst(labels: Union[List[int], List[List[int]]],
       A vector of FSTs if the input is a list of list of integers.
     '''
     ragged_arc = _k2.linear_fsa(labels)
+    aux_labels_tmp = []
     if isinstance(labels[0], List):
         assert isinstance(aux_labels[0],
                           List), 'aux_labels and labels do not match.'
-        flattened_labels = []
         for aux in aux_labels:
-            flattened_labels.extend(aux + [-1])  # -1 == kFinalSymbol
-        aux_labels = torch.IntTensor(flattened_labels)
+            aux_labels_tmp.extend(aux + [-1])  # -1 == kFinalSymbol
+        aux_labels = torch.IntTensor(aux_labels_tmp)
     else:
-        aux_labels.append(-1)  # -1 == kFinalSymbol
-        aux_labels = torch.IntTensor(aux_labels)
-    fsa = Fsa(ragged_arc, aux_labels=aux_labels)
+        aux_labels_tmp = aux_labels + [-1]  # -1 == kFinalSymbol
+    fsa = Fsa(ragged_arc, aux_labels=torch.IntTensor(aux_labels_tmp))
     return fsa
 
 

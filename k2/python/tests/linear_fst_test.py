@@ -22,14 +22,15 @@ class TestLinearFst(unittest.TestCase):
         fst = k2.linear_fst(labels, aux_labels)
         assert len(fst.shape) == 2
         assert fst.shape[0] == len(labels) + 2, 'There should be 5 states'
-        assert fst.aux_labels.shape[0] == len(aux_labels)
+        assert fst.aux_labels.shape[0] == len(aux_labels) + 1
         assert torch.allclose(fst.scores,
                               torch.zeros(len(labels) + 1, dtype=torch.float32))
         assert torch.allclose(
             fst.arcs.values()[:, :-1],  # skip the last field `scores`
             torch.tensor([[0, 1, 2], [1, 2, 5], [2, 3, 8], [3, 4, -1]],
                          dtype=torch.int32))
-        assert torch.allclose(fst.aux_labels, torch.IntTensor(aux_labels))
+        assert torch.allclose(fst.aux_labels,
+                              torch.IntTensor(aux_labels + [-1]))
 
     def test_fst_vec(self):
         labels = [
