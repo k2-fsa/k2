@@ -63,8 +63,8 @@ def top_sort(fsa: Fsa) -> Fsa:
 
 def intersect_device(a_fsas: Fsa, b_fsas: Fsa,
                      b_to_a_map: torch.Tensor) -> Fsa:
-    '''Compute the intersection of two FSAs treating epsilon
-    as a real, normal symbols.
+    '''Compute the intersection of two FSAs treating epsilons
+    as real, normal symbols.
 
     This function supports both CPU and GPU. But it is very slow on CPU.
     That's why this function name ends with `_device`. It is intended for GPU.

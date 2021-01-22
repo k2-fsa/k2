@@ -117,9 +117,7 @@ class TestIntersect(unittest.TestCase):
         a_fsa.scores.grad = None
         b_fsa.scores.grad = None
         a_fsa = k2.create_fsa_vec([a_fsa])
-        fsa = k2.intersect(k2.arc_sort(a_fsa),
-                           k2.arc_sort(b_fsa),
-                           treat_epsilons_specially=False)
+        fsa = k2.intersect(k2.arc_sort(a_fsa), k2.arc_sort(b_fsa))
         assert len(fsa.shape) == 3
 
 

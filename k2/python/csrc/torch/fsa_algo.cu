@@ -9,6 +9,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <algorithm>
+#include <numeric>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -116,13 +118,20 @@ static void PybindIntersect(py::module &m) {
         FsaVec out;
         if (!treat_epsilons_specially &&
             a_fsas.Context()->GetDeviceType() == kCuda) {
-          FsaOrVec a_fsa = FsaToFsaVec(a_fsas);
-          FsaOrVec b_fsa = FsaToFsaVec(b_fsas);
-          Array1<int32_t> b_to_a_map(a_fsa.Context(), std::vector<int32_t>{0});
+          FsaVec a_fsa_vec = FsaToFsaVec(a_fsas);
+          FsaVec b_fsa_vec = FsaToFsaVec(b_fsas);
+          std::vector<int32_t> tmp_b_to_a_map(b_fsa_vec.Dim0());
+          if (a_fsa_vec.Dim0() == 1) {
+            std::fill(tmp_b_to_a_map.begin(), tmp_b_to_a_map.end(), 0);
+          } else {
+            std::iota(tmp_b_to_a_map.begin(), tmp_b_to_a_map.end(), 0);
+          }
+          Array1<int32_t> b_to_a_map(a_fsa_vec.Context(), tmp_b_to_a_map);
 
-          out = IntersectDevice(a_fsa, properties_a, b_fsa, properties_b,
-                                b_to_a_map, need_arc_map ? &a_arc_map : nullptr,
-                                need_arc_map ? &b_arc_map : nullptr);
+          out =
+              IntersectDevice(a_fsa_vec, properties_a, b_fsa_vec, properties_b,
+                              b_to_a_map, need_arc_map ? &a_arc_map : nullptr,
+                              need_arc_map ? &b_arc_map : nullptr);
         } else {
           Intersect(a_fsas, properties_a, b_fsas, properties_b,
                     treat_epsilons_specially, &out,
