@@ -19,12 +19,13 @@ import torch
 def build_ctc_topo(tokens: List[int]) -> k2.Fsa:
     '''Build CTC topology.
 
-    The resulting topology converts repeated input
-    symbols to a single output symbol.
+    A token which appears once on the right side (i.e. olabels) may
+    appear multiple times on the left side (ilabels), possibly with
+    epsilons in between.
 
-    Caution:
-      The resulting topo is an FST. Epsilons are on the left
-      side (i.e., ilabels) and tokens are on the right side (i.e., olabels)
+    When 0 appears on the left side, it represents the blank symbol;
+    when it appears on the right side, it indicates an epsilon. That
+    is, 0 has two meanings here.
 
     Args:
       tokens:
@@ -36,18 +37,38 @@ def build_ctc_topo(tokens: List[int]) -> k2.Fsa:
 
     num_states = len(tokens)
     final_state = num_states
-    rules = ''
+    arcs = ''
     for i in range(num_states):
         for j in range(num_states):
             if i == j:
-                rules += f'{i} {i} 0 {tokens[i]} 0.0\n'
+                arcs += f'{i} {i} {tokens[i]} 0 0.0\n'
             else:
-                rules += f'{i} {j} {tokens[j]} {tokens[j]} 0.0\n'
-        rules += f'{i} {final_state} -1 -1 0.0\n'
-    rules += f'{final_state}'
-    ans = k2.Fsa.from_str(rules)
-    ans = k2.arc_sort(ans)
+                arcs += f'{i} {j} {tokens[j]} {tokens[j]} 0.0\n'
+        arcs += f'{i} {final_state} -1 -1 0.0\n'
+    arcs += f'{final_state}'
+    ans = k2.Fsa.from_str(arcs)
     return ans
+
+
+def _visualize_ctc_topo():
+    '''See https://git.io/JtqyJ
+    for what the resulting ctc_topo looks like.
+    '''
+    tokens = [1, 2]
+    symbols = k2.SymbolTable.from_str('''
+        <blk> 0
+        a 1
+        b 2
+    ''')
+    aux_symbols = k2.SymbolTable.from_str('''
+        a 1
+        b 2
+    ''')
+    tokens_with_blank = [0] + tokens
+    ctc_topo = build_ctc_topo(tokens_with_blank)
+    ctc_topo.symbols = symbols
+    ctc_topo.aux_symbols = aux_symbols
+    ctc_topo.draw('ctc_topo.pdf')
 
 
 # Test cases are modified from
@@ -104,9 +125,10 @@ class TestCtcLossGradients(unittest.TestCase):
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
 
-            ctc_topo = build_ctc_topo([0, 1, 2, 3, 4])
+            ctc_topo_inv = k2.arc_sort(
+                build_ctc_topo([0, 1, 2, 3, 4]).invert_())
             linear_fsa = k2.linear_fsa([1])
-            decoding_graph = k2.intersect(ctc_topo, linear_fsa)
+            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
             decoding_graph = k2.connect(decoding_graph).invert_().to(device)
 
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
@@ -156,9 +178,10 @@ class TestCtcLossGradients(unittest.TestCase):
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
 
-            ctc_topo = build_ctc_topo([0, 1, 2, 3, 4])
+            ctc_topo_inv = k2.arc_sort(
+                build_ctc_topo([0, 1, 2, 3, 4]).invert_())
             linear_fsa = k2.linear_fsa([3, 3])
-            decoding_graph = k2.intersect(ctc_topo, linear_fsa)
+            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
             decoding_graph = k2.connect(decoding_graph).invert_().to(device)
 
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
@@ -213,9 +236,10 @@ class TestCtcLossGradients(unittest.TestCase):
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
 
-            ctc_topo = build_ctc_topo([0, 1, 2, 3, 4])
+            ctc_topo_inv = k2.arc_sort(
+                build_ctc_topo([0, 1, 2, 3, 4]).invert_())
             linear_fsa = k2.linear_fsa([2, 3])
-            decoding_graph = k2.intersect(ctc_topo, linear_fsa)
+            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
             decoding_graph = k2.connect(decoding_graph).invert_().to(device)
 
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
@@ -296,10 +320,11 @@ class TestCtcLossGradients(unittest.TestCase):
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
 
-            ctc_topo = build_ctc_topo([0, 1, 2, 3, 4])
+            ctc_topo_inv = k2.arc_sort(
+                build_ctc_topo([0, 1, 2, 3, 4]).invert_())
             # [ [b, c], [c, c], [a]]
             linear_fsa = k2.linear_fsa([[2, 3], [3, 3], [1]])
-            decoding_graph = k2.intersect(ctc_topo, linear_fsa)
+            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
             decoding_graph = k2.connect(decoding_graph).invert_().to(device)
 
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
@@ -355,10 +380,11 @@ class TestCtcLossGradients(unittest.TestCase):
             supervision_segments = torch.tensor([[0, 0, T]], dtype=torch.int32)
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
-            ctc_topo = build_ctc_topo(list(range(C)))
+            ctc_topo_inv = k2.arc_sort(
+                build_ctc_topo(list(range(C))).invert_())
             linear_fsa = k2.linear_fsa([targets.tolist()])
 
-            decoding_graph = k2.intersect(ctc_topo, linear_fsa)
+            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
             decoding_graph = k2.connect(decoding_graph).invert_().to(device)
 
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
@@ -438,12 +464,13 @@ class TestCtcLossGradients(unittest.TestCase):
                                                            dim=-1)
             dense_fsa_vec = k2.DenseFsaVec(k2_log_probs,
                                            supervision_segments).to(device)
-            ctc_topo = build_ctc_topo(list(range(C)))
+            ctc_topo_inv = k2.arc_sort(
+                build_ctc_topo(list(range(C))).invert_())
             linear_fsa = k2.linear_fsa([
                 targets[:target_length1].tolist(),
                 targets[target_length1:].tolist()
             ])
-            decoding_graph = k2.intersect(ctc_topo, linear_fsa)
+            decoding_graph = k2.intersect(ctc_topo_inv, linear_fsa)
             decoding_graph = k2.connect(decoding_graph).invert_().to(device)
             target_graph = k2.intersect_dense(decoding_graph, dense_fsa_vec,
                                               100.0)

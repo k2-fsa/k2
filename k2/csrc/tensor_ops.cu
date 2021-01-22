@@ -1,7 +1,8 @@
 // k2/csrc/cuda/tensor_ops.cu
 
 // Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
-//                                                   Fangjun Kuang)
+//                                                   Fangjun Kuang,
+//                                                   Haowen Qiu)
 
 // See ../../LICENSE for clarification regarding multiple authors
 
@@ -423,6 +424,87 @@ void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
                     << "\n. Only 1-D and 2-D tensors are supported.";
       break;
   }
+}
+
+template <typename T>
+static void SimpleRaggedIndexSelect1DImpl(ContextPtr context, const T *src_data,
+                                          int32_t src_stride, int32_t src_dim,
+                                          Ragged<int32_t> &indexes,
+                                          int32_t ans_dim, T *ans_data) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(indexes.NumAxes(), 2);
+  int32_t indexes_dim0 = indexes.Dim0(),
+          indexes_num_elems = indexes.NumElements();
+  const int32_t *indexes_row_ids_data = indexes.RowIds(1).Data();
+  const int32_t *indexes_data = indexes.values.Data();
+  K2_CHECK_EQ(ans_dim, indexes_dim0);
+
+  K2_EVAL(
+      context, ans_dim, lambda_init_ans,
+      (int32_t i)->void { ans_data[i] = 0; });
+  Array1<int32_t> non_zero_indexes(context, ans_dim, -1);
+  int32_t *non_zero_indexes_data = non_zero_indexes.Data();
+  K2_EVAL(
+      context, indexes_num_elems, lambda_set_ans_data, (int32_t i)->void {
+        int32_t src_index = indexes_data[i];
+        K2_CHECK_GE(src_index, 0);
+        K2_CHECK_LT(src_index, src_dim);
+        T value = src_data[src_index * src_stride];
+        int32_t ans_index = indexes_row_ids_data[i];
+        if (value != 0) {
+          non_zero_indexes_data[ans_index] = i;
+          ans_data[ans_index] = value;
+        }
+      });
+
+  // check if there is at most one non-zero element in src for each sub-list
+  Array1<int32_t> status(context, 1, 0);  // 0 -> success; otherwise 1 + row_id
+                                          // of bad row in `indexes`
+  int32_t *status_data = status.Data();
+  K2_EVAL(
+      context, indexes_num_elems, lambda_check_status, (int32_t i)->void {
+        int32_t src_index = indexes_data[i];
+        T value = src_data[src_index * src_stride];
+        int32_t ans_index = indexes_row_ids_data[i];
+        if (value != 0 && non_zero_indexes_data[ans_index] != i)
+          status_data[0] = 1 + ans_index;
+      });
+  int32_t s = status[0];
+  if (s != 0) {
+    Array1<T> indexed_values(context, indexes_num_elems);
+    T *indexed_values_data = indexed_values.Data();
+    K2_EVAL(
+        context, indexes_num_elems, lambda_set_values, (int32_t i)->void {
+          int32_t src_index = indexes_data[i];
+          indexed_values_data[i] = src_data[src_index * src_stride];
+        });
+    Array1<int32_t> row_splits = indexes.RowSplits(1);
+    K2_LOG(FATAL) << "There must be at most one non-zero "
+                     "element in src for any sub-list in indexes; sub-list "
+                  << (s - 1) << " has too many elements: "
+                  << indexed_values.Arange(row_splits[s - 1], row_splits[s]);
+  }
+}
+
+Tensor SimpleRaggedIndexSelect1D(Tensor &src, Ragged<int32_t> &indexes) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(src.NumAxes(), 1);
+  K2_CHECK(IsCompatible(src, indexes));
+
+  Dtype dtype = src.GetDtype();
+  ContextPtr &context = src.Context();
+  Tensor ans(context, dtype, {indexes.Dim0()});
+  K2_CHECK(ans.IsContiguous());
+
+  int32_t src_stride = src.Stride(0);
+  int32_t src_dim = src.Dim(0);
+  int32_t ans_dim = ans.Dim(0);
+  // Note below src.Data<T> will check if T is compatible with `dtype`.
+  FOR_ALL_DTYPES(dtype, T,
+                 SimpleRaggedIndexSelect1DImpl<T>(context, src.Data<T>(),
+                                                  src_stride, src_dim, indexes,
+                                                  ans_dim, ans.Data<T>()));
+  return ans;
 }
 
 }  // namespace k2
