@@ -100,7 +100,7 @@ static void PybindLinearFsa(py::module &m) {
 }
 
 static void PybindIntersect(py::module &m) {
-  // It is run on CUDA if and only if
+  // It runs on CUDA if and only if
   //  - a_fsas is on GPU
   //  - b_fsas is on GPU
   //  - treat_epsilons_specially is False
