@@ -105,7 +105,7 @@ static void PybindIntersect(py::module &m) {
   //  - b_fsas is on GPU
   //  - treat_epsilons_specially is False
   //
-  // Otherwise, it is run on CPU
+  // Otherwise, it is run on CPU.
   m.def(
       "intersect",
       [](FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,

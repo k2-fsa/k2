@@ -231,6 +231,11 @@ def compose(a_fsa: Fsa,
             inner_labels: str = None) -> Fsa:
     '''Compute the composition of two FSAs (currently on CPU).
 
+    When `treat_epsilons_specially` is True, this function works only on CPU.
+    When `treat_epsilons_specially` is False and both `a_fsa` and `b_fsa`
+    are on GPU, then this function works on GPU; in this case, the two
+    input FSAs do not need to be arc sorted.
+
     Note:
       `a_fsa.aux_labels` is required to be defined.
 
@@ -243,11 +248,14 @@ def compose(a_fsa: Fsa,
       acceptor (as in OpenFST), i.e. its olabels and ilabels are assumed to be
       the same.
 
+    Refer to :func:`k2.intersect` for how we assign the attributes of the
+    output FSA.
+
     Args:
       a_fsa:
-        The first input FSA on CPU. It can be either a single FSA or an FsaVec.
+        The first input FSA. It can be either a single FSA or an FsaVec.
       b_fsa:
-        The second input FSA on CPU. it can be either a single FSA or an FsaVec.
+        The second input FSA. it can be either a single FSA or an FsaVec.
       treat_epsilons_specially:
         If True, epsilons will be treated as epsilon, meaning epsilon arcs can
         match with an implicit epsilon self-loop.
@@ -260,20 +268,7 @@ def compose(a_fsa: Fsa,
         this attribute name.
 
     Caution:
-      `b_fsa` has to be arc sorted.
-
-    Caution:
-      The rules for assigning the attributes of the output Fsa are as follows:
-
-      - (1) For attributes where only one source (a_fsa or b_fsa) has that
-        attribute: Copy via arc_map, or use zero if arc_map has -1. This rule
-        works for both floating point and integer attributes.
-
-      - (2) For attributes where both sources (a_fsa and b_fsa) have that
-        attribute: For floating point attributes: sum via arc_maps, or use zero
-        if arc_map has -1. For integer attributes, it's not supported for now
-        (the attributes will be discarded and will not be kept in the output
-        FSA).
+      `b_fsa` has to be arc sorted if the function runs on CPU.
 
     Returns:
       The result of composing a_fsa and b_fsa. `len(out_fsa.shape)` is 2
@@ -281,15 +276,16 @@ def compose(a_fsa: Fsa,
       otherwise, `len(out_fsa.shape)` is 3.
 
     '''
-    assert a_fsa.is_cpu()
-    assert b_fsa.is_cpu()
     assert hasattr(a_fsa, 'aux_labels')
 
     assert isinstance(a_fsa.aux_labels, torch.Tensor)
 
-    a_fsa_inv = arc_sort(a_fsa.invert())
+    a_fsa_inv = a_fsa.invert()
+    if treat_epsilons_specially is True or a_fsa_inv.is_cpu():
+        a_fsa_inv = arc_sort(a_fsa_inv)
 
-    assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
+    if treat_epsilons_specially is True or b_fsa.is_cpu():
+        assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
 
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
