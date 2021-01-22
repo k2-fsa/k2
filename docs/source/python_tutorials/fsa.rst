@@ -111,15 +111,18 @@ Auxiliary labels
 
 You can also attach an integer attribute to every arc in the FSA. If the attribute
 name is ``aux_labels``, the resulting FSA is viewed as an FST in k2.
-:numref:`tutorial_fsa_aux` shows an example.
 
-.. _tutorial_fsa_aux:
-.. figure:: images/fsa_aux.png
-    :alt: fsa_aux.png
+An example is given below.
+
+.. code-block:: python
+
+   fsa.aux_labels = torch.tensor([10, 0, 30, -1, -1]).to(torch.int32)
+   fsa.draw('fsa_aux.svg', title='An FSA with aux_labels')
+
+.. figure:: images/fsa_aux.svg
+    :alt: fsa_aux.svg
     :align: center
     :figwidth: 600px
-
-    Attach ``aux_labels`` to an FSA.
 
 .. HINT::
 
@@ -132,15 +135,23 @@ Auxiliary symbol table
 
 If an FSA is assigned an attribute with name ``aux_symbols``,
 its ``aux_labels`` is visualized with human readable strings instead of integer
-IDs. An example is shown in :numref:`tutorial_fsa_aux_symbols`.
+IDs.
 
-.. _tutorial_fsa_aux_symbols:
-.. figure:: images/fsa_aux_symbols.png
-    :alt: fsa_aux_symbols.png
+The following is an example.
+
+.. code-block:: python
+
+  aux_symbols = k2.SymbolTable.from_str('''
+    A 10
+    B 30
+  ''')
+  fsa.aux_symbols = aux_symbols
+  fsa.draw('fsa_aux_symbols.svg', title='An FSA with aux_symbols')
+
+.. figure:: images/fsa_aux_symbols.svg
+    :alt: fsa_aux_symbols.svg
     :align: center
     :figwidth: 600px
-
-    Attach attribute ``aux_symbols`` to an FSA`.
 
 invert
 ~~~~~~
