@@ -40,7 +40,7 @@ def linear_fsa(labels: Union[List[int], List[List[int]]]) -> Fsa:
 def linear_fst(labels: Union[List[int], List[List[int]]],
                aux_labels: Union[List[int], List[List[int]]]) -> Fsa:
     '''Construct an linear FST from labels and its corresponding
-       auxiliary labels.
+    auxiliary labels.
 
     Note:
       The scores of arcs in the returned FST are all 0.
@@ -58,7 +58,7 @@ def linear_fst(labels: Union[List[int], List[List[int]]],
     ragged_arc = _k2.linear_fsa(labels)
     if isinstance(labels[0], List):
         assert isinstance(aux_labels[0],
-                          List), 'aux_labels and labels does not match.'
+                          List), 'aux_labels and labels do not match.'
         flattened_labels = []
         for aux in aux_labels:
             flattened_labels.extend(aux + [-1])  # -1 == kFinalSymbol
