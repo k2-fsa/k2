@@ -17,25 +17,25 @@ import torch
 class TestLinearFsa(unittest.TestCase):
 
     def test_single_fsa(self):
-        symbols = [2, 5, 8]
-        fsa = k2.linear_fsa(symbols)
+        labels = [2, 5, 8]
+        fsa = k2.linear_fsa(labels)
         assert len(fsa.shape) == 2
-        assert fsa.shape[0] == len(symbols) + 2, 'There should be 5 states'
+        assert fsa.shape[0] == len(labels) + 2, 'There should be 5 states'
         assert torch.allclose(
-            fsa.scores, torch.zeros(len(symbols) + 1, dtype=torch.float32))
+            fsa.scores, torch.zeros(len(labels) + 1, dtype=torch.float32))
         assert torch.allclose(
             fsa.arcs.values()[:, :-1],  # skip the last field `scores`
             torch.tensor([[0, 1, 2], [1, 2, 5], [2, 3, 8], [3, 4, -1]],
                          dtype=torch.int32))
 
     def test_fsa_vec(self):
-        symbols = [
+        labels = [
             [1, 3, 5],
             [2, 6],
             [8, 7, 9],
         ]
-        num_symbols = sum([len(s) for s in symbols])
-        fsa = k2.linear_fsa(symbols)
+        num_labels = sum([len(s) for s in labels])
+        fsa = k2.linear_fsa(labels)
         assert len(fsa.shape) == 3
         assert fsa.shape[0] == 3, 'There should be 3 FSAs'
         expected_arcs = [
@@ -60,7 +60,7 @@ class TestLinearFsa(unittest.TestCase):
             torch.tensor(expected_arcs, dtype=torch.int32))
         assert torch.allclose(
             fsa.scores,
-            torch.zeros(num_symbols + len(symbols), dtype=torch.float32))
+            torch.zeros(num_labels + len(labels), dtype=torch.float32))
 
 
 if __name__ == '__main__':

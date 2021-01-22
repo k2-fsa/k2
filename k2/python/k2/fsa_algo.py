@@ -18,53 +18,54 @@ from .ops import index_select
 # Note: look also in autograd.py, differentiable operations may be there.
 
 
-def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
-    '''Construct an linear FSA from symbols.
+def linear_fsa(labels: Union[List[int], List[List[int]]]) -> Fsa:
+    '''Construct an linear FSA from labels.
 
     Note:
       The scores of arcs in the returned FSA are all 0.
 
     Args:
-      symbols:
+      labels:
         A list of integers or a list of list of integers.
 
     Returns:
       An FSA if the input is a list of integers.
       A vector of FSAs if the input is a list of list of integers.
     '''
-    ragged_arc = _k2.linear_fsa(symbols)
+    ragged_arc = _k2.linear_fsa(labels)
     fsa = Fsa(ragged_arc)
     return fsa
 
 
-def linear_fst(symbols: Union[List[int], List[List[int]]],
-               aux_symbols: Union[List[int], List[List[int]]]) -> Fsa:
-    '''Construct an linear FST from symbols and it's corresponding
-       auxiliary symbols.
+def linear_fst(labels: Union[List[int], List[List[int]]],
+               aux_labels: Union[List[int], List[List[int]]]) -> Fsa:
+    '''Construct an linear FST from labels and it's corresponding
+       auxiliary labels.
 
     Note:
       The scores of arcs in the returned FST are all 0.
 
     Args:
-      symbols:
+      labels:
         A list of integers or a list of list of integers.
-      aux_symbols:
+      aux_labels:
         A list of integers or a list of list of integers.
 
     Returns:
       An FST if the input is a list of integers.
       A vector of FSTs if the input is a list of list of integers.
     '''
-    ragged_arc = _k2.linear_fsa(symbols)
-    if isinstance(symbols[0], List):
-        assert isinstance(aux_symbols[0],
-                          List), 'aux_symbols and symbols does not match.'
-        for sym in aux_symbols:
-            sym.append(-1)  # -1 == kFinalSymbol
-        aux_labels = torch.IntTensor(aux_symbols).reshape(-1,)
+    ragged_arc = _k2.linear_fsa(labels)
+    if isinstance(labels[0], List):
+        assert isinstance(aux_labels[0],
+                          List), 'aux_labels and labels does not match.'
+        flattened_labels = []
+        for aux in aux_labels:
+            flattened_labels.extend(aux + [-1])  # -1 == kFinalSymbol
+        aux_labels = torch.IntTensor(flattened_labels)
     else:
-        aux_symbols.append(-1)  # -1 == kFinalSymbol
-        aux_labels = torch.IntTensor(aux_symbols)
+        aux_labels.append(-1)  # -1 == kFinalSymbol
+        aux_labels = torch.IntTensor(aux_labels)
     fsa = Fsa(ragged_arc, aux_labels=aux_labels)
     return fsa
 
