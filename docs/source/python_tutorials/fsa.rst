@@ -119,11 +119,12 @@ name is ``aux_labels``, the resulting FSA is viewed as an FST in k2.
     :align: center
     :figwidth: 600px
 
-    Attach ``aux_labels`` to an FSA`.
+    Attach ``aux_labels`` to an FSA.
 
 .. HINT::
 
-  We require that `aux_labels` is a `torch.Tensor` with dtype `torch.int32`.
+  We require that `aux_labels` is either a `torch.Tensor` with dtype `torch.int32`
+  or a ragged tensor of type :class:`k2.RaggedInt`.
   Also note that the `aux_labels` for arcs entering the final state are -1.
 
 Auxiliary symbol table
