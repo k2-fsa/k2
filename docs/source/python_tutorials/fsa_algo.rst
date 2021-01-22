@@ -73,7 +73,8 @@ arc-sorted inputs. You can use :func:`k2.arc_sort` to convert
 an unsorted FSA/FsaVec into a sorted FSA/FsaVec.
 
 An FSA is sorted if for each state, its leaving arcs are sorted
-by ``labels`` in ascending order.
+by ``labels`` in ascending order. If there is a tie, destination
+states are used for sorting.
 
 .. CAUTION::
 
