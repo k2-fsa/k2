@@ -246,3 +246,124 @@ The following is an example.
   - :func:`k2.connect` supports **ONLY** CPU
   - autograd is also supported.
   - Its input can be either a single FSA or a FsaVec.
+
+
+.. _get_forward_scores_example:
+
+get_forward_scores
+~~~~~~~~~~~~~~~~~~
+
+:func:`k2.Fsa.get_forward_scores` computes and returns forward scores per state
+(like alphas in `Baum-Welch <https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm#Forward_procedure>`_)
+or forward best-path scores if ``log_semiring`` is `False`.
+
+.. Caution::
+
+  Arc scores are in log scale.
+
+We will use the following code as an example to demonstrate how :func:`k2.Fsa.get_forward_scores`
+works in k2.
+
+.. literalinclude:: ./code/get_forward_scores.py
+  :caption: :func:`k2.Fsa.get_forward_scores` example
+  :language: python
+  :lines: 2-
+
+.. figure:: images/get_forward_scores.svg
+    :alt: get_forward_scores
+    :align: center
+    :figwidth: 600px
+
+The outputs are::
+
+  get_forward_scores for log semiring: tensor([0.0000, 1.7130, 2.0513, 3.0777], dtype=torch.float64)
+  get_forward_scores for tropical semiring: tensor([0.0000, 1.2000, 1.3000, 1.8000], dtype=torch.float64)
+
+:func:`k2.Fsa.get_forward_scores` has two arguments:
+
+  - ``use_double_scores``
+
+    When it is `True`, double precision floats are used in the computation  and
+    the returned tensor has dtype `torch.float64`; when it is `False`, the computation
+    uses single precision floats and returned tensor's dtype is `torch.float32`.
+
+  - ``log_semiring``
+
+    When it is `True`, this function combines path scores with `LogAdd`, e.g., :math:`\log(e^a + e^b)`.
+    When it is `False`, path scores are combined with :math:`\max(a, b)`
+
+The following two subsections illustrate step by step how to obtain the above printed results.
+For ease of reference, we use :math:`f_i` to denote the forward score of state :math:`i`.
+
+log_semiring==True
+^^^^^^^^^^^^^^^^^^^
+
+It uses `LogAdd` to combine path scores.
+
+1. State 0 is the start state and :math:`f_0` is defined to be 0.
+2. :math:`f_1` is computed with the following formula:
+
+  .. math::
+
+    f_1 = \log(e^{f_0 + 1.2} + e^{f_0 + 0.8}) = \log(e^{1.2} + e^{0.8}) = 1.7130
+
+  where 1.2 is the score of one of the two arcs from state 0 to state 1; 0.8 is the score of
+  the other arc from state 0 to state 1.
+
+3. :math:`f_2` is computed by:
+
+   .. math::
+
+    f_2 = \log(e^{f_0 + 0.5} + e^{f_1 + 0.1}) = \log(e^{0.5} + e^{1.8130}) = 2.0513
+
+4. :math:`f_3` can be computed from :math:`f_1` and :math:`f_2`:
+
+   .. math::
+
+    f_3 = \log(e^{f_1 + 0.6} + e^{f_2 + 0.4}) = \log(e^{2.3130} + e^{2.4513}) = 3.0777
+
+log_semiring==False
+^^^^^^^^^^^^^^^^^^^
+
+It uses `max` to combine path scores.
+
+1. State 0 is the start state and :math:`f_0` is defined to be 0
+2. :math:`f_1 = \max(f_0 + 1.2, f_0 + 0.8) = \max(1.2, 0.8) = 1.2`
+3. :math:`f_2 = \max(f_0 + 0.5, f_1 + 0.1) = \max(0.5, 1.3) = 1.3`
+4. :math:`f_3 = \max(f_1 + 0.6, f_2 + 0.4) = \max(1.8, 1.7) = 1.8`
+
+
+.. NOTE::
+
+  - :func:`k2.Fsa.get_forward_scores` supports CUDA as well as CPU.
+  - autograd is also supported.
+  - It supports only FsaVec.
+
+get_tot_scores
+~~~~~~~~~~~~~~
+
+:func:`k2.Fsa.get_tot_scores` computes and returns forward scores of the final state of each FSA.
+Refer to :ref:`get_forward_scores_example` for how to compute forward scores.
+
+The following is an example of :func:`k2.Fsa.get_tot_scores`.
+
+.. literalinclude:: ./code/get_tot_scores.py
+  :caption: :func:`k2.Fsa.get_tot_scores` example
+  :language: python
+  :lines: 2-
+
+.. figure:: images/get_tot_scores.svg
+    :alt: get_tot_scores
+    :align: center
+    :figwidth: 600px
+
+It prints::
+
+  get_tot_scores for log semiring: tensor([3.0777], dtype=torch.float64)
+  get_tot_scores for tropical semiring: tensor([1.8000], dtype=torch.float64)
+
+.. NOTE::
+
+  - :func:`k2.Fsa.get_tot_scores` supports CUDA as well as CPU.
+  - autograd is also supported.
+  - It supports only FsaVec.
