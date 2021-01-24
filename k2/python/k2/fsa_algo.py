@@ -94,8 +94,7 @@ def top_sort(fsa: Fsa) -> Fsa:
     return sorted_fsa
 
 
-def intersect(a_fsa: Fsa,
-              b_fsa: Fsa,
+def intersect(a_fsa: Fsa, b_fsa: Fsa,
               treat_epsilons_specially: bool = True) -> Fsa:
     '''Compute the intersection of two FSAs on CPU.
 
@@ -252,9 +251,13 @@ def compose(a_fsa: Fsa,
     if inner_labels is not None:
         # out_fsa.`inner_labels` = out_fsa.labels
         setattr(out_fsa, inner_labels, out_fsa.labels)
-    out_fsa.aux_labels = (index(b_fsa.aux_labels, b_arc_map)
-                          if hasattr(b_fsa, 'aux_labels')
-                          else out_fsa.labels)
+
+    if hasattr(b_fsa, 'aux_labels'):
+        out_fsa.aux_labels = index(b_fsa.aux_labels, b_arc_map)
+    else:
+        # need a clone here since `Fsa.labels` is a reference
+        out_fsa.aux_labels = out_fsa.labels.clone()
+
     out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
 
     for name, a_value in a_fsa_inv.named_tensor_attr():
@@ -298,7 +301,9 @@ def compose(a_fsa: Fsa,
             setattr(out_fsa, name, a_value)
 
     for name, b_value in b_fsa.named_non_tensor_attr():
-        if not hasattr(out_fsa, name):
+        if name == 'symbols' and not hasattr(b_fsa, 'aux_labels'):
+            setattr(out_fsa, 'aux_symbols', b_value)
+        elif not hasattr(out_fsa, name):
             setattr(out_fsa, name, b_value)
 
     return out_fsa
