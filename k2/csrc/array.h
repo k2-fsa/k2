@@ -65,7 +65,7 @@ class Array1 {
 
   // Construct from context and string
   Array1(ContextPtr ctx, const std::string &str):
-      Array1(Array1<T>(str).To(ctx)) { }
+      Array1(Array1<T>(str).To(ctx)) { }  // NOLINT
 
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
   Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}

@@ -25,14 +25,15 @@ TEST(RandReal, CUDA) {
 
   Array1<double> b = Rand<double>(c, 0.0, 100.0, 3);
   K2_LOG(INFO) << b;  // [55.2894, 72.0282, 90.6524]
-#if 0
-  import torch
-  torch.manual_seed(20210113)
-  n = 3
-  print(torch.rand(n, device='cuda') # [0.4113, 0.2912, 0.7326]
-  print(torch.rand(n, device='cuda') # [0.5757, 0.5174, 0.1769]
-  print(torch.rand(n, device='cuda', dtype=torch.float64) # [0.5529, 0.7203, 0.9065]
-#endif
+  /*
+    import torch
+    torch.manual_seed(20210113)
+    n = 3
+    print(torch.rand(n, device='cuda') # [0.4113, 0.2912, 0.7326]
+    print(torch.rand(n, device='cuda') # [0.5757, 0.5174, 0.1769]
+    print(torch.rand(n, device='cuda', dtype=torch.float64) # [0.5529, 0.7203,
+    0.9065]
+  */
 }
 
 TEST(RandReal, CPU) {
