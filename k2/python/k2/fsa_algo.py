@@ -1,5 +1,6 @@
 # Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
 #                      Xiaomi Corporation (authors: Haowen Qiu)
+#                2021  Mobvoi Inc.        (authors: Yaguang Hu)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -17,22 +18,54 @@ from .ops import index_select
 # Note: look also in autograd.py, differentiable operations may be there.
 
 
-def linear_fsa(symbols: Union[List[int], List[List[int]]]) -> Fsa:
-    '''Construct an linear FSA from symbols.
+def linear_fsa(labels: Union[List[int], List[List[int]]]) -> Fsa:
+    '''Construct an linear FSA from labels.
 
     Note:
       The scores of arcs in the returned FSA are all 0.
 
     Args:
-      symbols:
+      labels:
         A list of integers or a list of list of integers.
 
     Returns:
-      An FSA if the input is a list of integers.
+      An FSA if the labels is a list of integers.
       A vector of FSAs if the input is a list of list of integers.
     '''
-    ragged_arc = _k2.linear_fsa(symbols)
+    ragged_arc = _k2.linear_fsa(labels)
     fsa = Fsa(ragged_arc)
+    return fsa
+
+
+def linear_fst(labels: Union[List[int], List[List[int]]],
+               aux_labels: Union[List[int], List[List[int]]]) -> Fsa:
+    '''Construct an linear FST from labels and its corresponding
+    auxiliary labels.
+
+    Note:
+      The scores of arcs in the returned FST are all 0.
+
+    Args:
+      labels:
+        A list of integers or a list of list of integers.
+      aux_labels:
+        A list of integers or a list of list of integers.
+
+    Returns:
+      An FST if the labels is a list of integers.
+      A vector of FSTs if the input is a list of list of integers.
+    '''
+    ragged_arc = _k2.linear_fsa(labels)
+    aux_labels_tmp = []
+    if isinstance(labels[0], List):
+        assert isinstance(aux_labels[0],
+                          List), 'aux_labels and labels do not match.'
+        for aux in aux_labels:
+            aux_labels_tmp.extend(aux + [-1])  # -1 == kFinalSymbol
+        aux_labels = torch.IntTensor(aux_labels_tmp)
+    else:
+        aux_labels_tmp = aux_labels + [-1]  # -1 == kFinalSymbol
+    fsa = Fsa(ragged_arc, aux_labels=torch.IntTensor(aux_labels_tmp))
     return fsa
 
 
@@ -300,7 +333,8 @@ def compose(a_fsa: Fsa,
     if hasattr(b_fsa, 'aux_labels'):
         out_fsa.aux_labels = index(b_fsa.aux_labels, b_arc_map)
     else:
-        out_fsa.aux_labels = out_fsa.labels
+        # need a clone here since `Fsa.labels` is a reference
+        out_fsa.aux_labels = out_fsa.labels.clone()
 
     out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
 
@@ -345,7 +379,9 @@ def compose(a_fsa: Fsa,
             setattr(out_fsa, name, a_value)
 
     for name, b_value in b_fsa.named_non_tensor_attr():
-        if not hasattr(out_fsa, name):
+        if name == 'symbols' and not hasattr(b_fsa, 'aux_labels'):
+            setattr(out_fsa, 'aux_symbols', b_value)
+        elif not hasattr(out_fsa, name):
             setattr(out_fsa, name, b_value)
 
     return out_fsa
