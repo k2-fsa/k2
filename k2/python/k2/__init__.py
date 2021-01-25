@@ -22,6 +22,7 @@ from .fsa_algo import compose
 from .fsa_algo import connect
 from .fsa_algo import determinize
 from .fsa_algo import intersect
+from .fsa_algo import intersect_device
 from .fsa_algo import invert
 from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fst

@@ -35,6 +35,7 @@ set(py_test_files
   index_test.py
   intersect_dense_pruned_test.py
   intersect_dense_test.py
+  intersect_device_test.py
   intersect_test.py
   invert_test.py
   linear_fsa_test.py
