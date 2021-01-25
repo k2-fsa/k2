@@ -103,11 +103,10 @@ struct SegmentedScanPlan {
 
 template <typename T, class Op, bool isBackward, bool isExclusive,
           bool doShiftFlagsLeft>
-void SegmentedScanArrayRecursive(ContextPtr context, T *d_out, const T *d_idata,
-                                 const uint32_t *d_iflags, T **d_blockSums,
-                                 uint32_t **block_flags,
-                                 uint32_t **block_indexes, int num_elements,
-                                 int level, bool sm12OrBetterHw) {
+static void SegmentedScanArrayRecursive(
+    ContextPtr context, T *d_out, const T *d_idata, const uint32_t *d_iflags,
+    T **d_blockSums, uint32_t **block_flags, uint32_t **block_indexes,
+    int num_elements, int level, bool sm12OrBetterHw) {
   int32_t numBlocks =
       max(1, (int32_t)std::ceil((double)num_elements /
                                 (SEGSCAN_ELTS_PER_THREAD * SCAN_CTA_SIZE)));
