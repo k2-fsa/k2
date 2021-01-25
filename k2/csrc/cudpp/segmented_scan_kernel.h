@@ -1,3 +1,6 @@
+// This file is from
+// cudpp/src/cudpp/kernel/segmented_scan_kernel.cuh
+//
 // ***************************************************************
 //  cuDPP -- CUDA Data Parallel Primitives library
 //  -------------------------------------------------------------
@@ -6,30 +9,7 @@
 //  -------------------------------------------------------------
 // This source code is distributed under the terms of license.txt in
 // the root directory of this source distribution.
-// ------------------------------------------------------------- 
-
-/**
-* @file
-* segmented_scan_kernel.cu
-*
-* @brief CUDPP kernel-level scan routines
-*/
-
-/** \defgroup cudpp_kernel CUDPP Kernel-Level API
-* The CUDPP Kernel-Level API contains functions that run on the GPU 
-* device across a grid of Cooperative Thread Array (CTA, aka Thread
-* Block).  These kernels are declared \c __global__ so that they 
-* must be invoked from host (CPU) code.  They generally invoke GPU 
-* \c __device__ routines in the CUDPP \link cudpp_cta CTA-Level API\endlink. 
-* Kernel-Level API functions are used by CUDPP 
-* \link cudpp_app Application-Level\endlink functions to implement their 
-* functionality.
-* @{
-*/
-
-/** @name Segmented scan Functions
-* @{
-*/
+// -------------------------------------------------------------
 
 #ifndef K2_CSRC_CUDPP_SEGMENTED_SCAN_KERNEL_H_
 #define K2_CSRC_CUDPP_SEGMENTED_SCAN_KERNEL_H_
@@ -42,20 +22,20 @@ namespace k2 {
 /**
 * @brief Main segmented scan kernel
 *
-* This __global__ device function performs one level of a multiblock 
-* segmented scan on an one-dimensioned array in \a d_idata, returning the 
-* result in \a d_odata (which may point to the same array).    
-* 
-* This function performs one level of a recursive, multiblock scan.  At the 
-* app level, this function is called by cudppSegmentedScan and used in combination 
-* with either vectorSegmentedAddUniform4() (forward) or 
+* This __global__ device function performs one level of a multiblock
+* segmented scan on an one-dimensioned array in \a d_idata, returning the
+* result in \a d_odata (which may point to the same array).
+*
+* This function performs one level of a recursive, multiblock scan.  At the
+* app level, this function is called by cudppSegmentedScan and used in combination
+* with either vectorSegmentedAddUniform4() (forward) or
 * vectorSegmentedAddUniformToRight4() (backward) to produce a complete segmented scan.
 *
-* Template parameter \a T is the datatype of the array to be scanned. 
-* Template parameter \a traits is the SegmentedScanTraits struct containing 
-* compile-time options for the segmented scan, such as whether it is forward 
+* Template parameter \a T is the datatype of the array to be scanned.
+* Template parameter \a traits is the SegmentedScanTraits struct containing
+* compile-time options for the segmented scan, such as whether it is forward
 * or backward, inclusive or exclusive, etc.
-* 
+*
 * @param[out] d_odata The output (scanned) array
 * @param[in] d_idata The input array to be scanned
 * @param[in] d_iflags The input array of flags
@@ -65,9 +45,9 @@ namespace k2 {
 * @param[in] numElements The number of elements to scan
 */
 template <class T, class traits>
-__global__ 
-void segmentedScan4(T                  *d_odata, 
-                    const T            *d_idata, 
+__global__
+void segmentedScan4(T                  *d_odata,
+                    const T            *d_idata,
                     const unsigned int *d_iflags,
                     unsigned int       numElements,
                     T                  *d_blockSums=0,
@@ -80,8 +60,8 @@ void segmentedScan4(T                  *d_odata,
 
     int ai, bi, aiDev, biDev;
 
-    // Chop up the shared memory into 4 contiguous spaces - the first 
-    // for the data, the second for the indices, the third for the 
+    // Chop up the shared memory into 4 contiguous spaces - the first
+    // for the data, the second for the indices, the third for the
     // read-only version of the flags and the last for the read-write
     // version of the flags
     unsigned int* indices = (unsigned int *)(temp + 2*blockDim.x);
@@ -95,23 +75,20 @@ void segmentedScan4(T                  *d_odata,
 
     // load data into shared memory
     loadForSegmentedScanSharedChunkFromMem4<T, traits>(
-        temp, threadScan0, threadScan1, threadFlag,  
-        flags, indices, d_idata, d_iflags, 
+        temp, threadScan0, threadScan1, threadFlag,
+        flags, indices, d_idata, d_iflags,
         numElements, devOffset, ai, bi, aiDev, biDev);
 
     segmentedScanCTA<T, traits>(
-        temp, flags, indices, 
+        temp, flags, indices,
         d_blockSums, d_blockFlags, d_blockIndices);
-        
+
     // write results to device memory
     storeForSegmentedScanSharedChunkToMem4<T, traits>(
-        d_odata, threadScan0, threadScan1, threadFlag, 
+        d_odata, threadScan0, threadScan1, threadFlag,
         temp, numElements,  devOffset, ai, bi, aiDev, biDev);
 }
 
 }  // namespace k2
 
 #endif  // K2_CSRC_CUDPP_SEGMENTED_SCAN_KERNEL_H_
-
-/** @} */ // end scan functions
-/** @} */ // end cudpp_kernel

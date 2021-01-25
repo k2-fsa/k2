@@ -1,32 +1,29 @@
+// This file is modified from cudpp/src/cudpp/cudpp_util.h
+// and cudpp/src/cudpp/sharedmem.h
+//
+// -------------------------------------------------------------
+// cuDPP -- CUDA Data Parallel Primitives library
+// -------------------------------------------------------------
+// $Revision: 5636 $
+// $Date: 2009-07-02 13:39:38 +1000 (Thu, 02 Jul 2009) $
+// -------------------------------------------------------------
+// This source code is distributed under the terms of license.txt in
+// the root directory of this source distribution.
+// -------------------------------------------------------------
 
 #ifndef K2_CSRC_CUDPP_CUDPP_UTIL_H_
 #define K2_CSRC_CUDPP_CUDPP_UTIL_H_
+
 #include <cfloat>
 
 namespace k2 {
 
-/** @brief Utility template struct for generating small vector types from scalar
- * types
- *
- * Given a base scalar type (\c int, \c float, etc.) and a vector length (1
- * through 4) as template parameters, this struct defines a vector type (\c
- * float3, \c int4, etc.) of the specified length and base type.  For example:
- * \code
- * template <class T>
- * __device__ void myKernel(T *data)
- * {
- *     typeToVector<T,4>::Result myVec4;             // create a vec4 of type T
- *     myVec4 = (typeToVector<T,4>::Result*)data[0]; // load first element of
- * data as a vec4
- * }
- * \endcode
- *
- * This functionality is implemented using template specialization.  Currently
- * specializations for int, float, and unsigned int vectors of lengths 2-4 are
- * defined.  Note that this results in types being generated at compile time --
- * there is no runtime cost.  typeToVector is used by the optimized scan \c
- * __device__ functions in scan_cta.cu.
- */
+constexpr int32_t SEGSCAN_ELTS_PER_THREAD = 8;
+constexpr int32_t SCAN_CTA_SIZE = 128;
+constexpr int32_t LOG_SCAN_CTA_SIZE = 7;
+constexpr int32_t WARP_SIZE = 32;
+constexpr int32_t LOG_WARP_SIZE = 5;
+
 template <typename T, int N>
 struct typeToVector {
   typedef T Result;
@@ -40,11 +37,6 @@ struct typeToVector<int, 4> {
 template <>
 struct typeToVector<float, 4> {
   typedef float4 Result;
-};
-
-template <>
-struct typeToVector<double, 4> {
-  typedef double4 Result;
 };
 
 template <>
@@ -93,11 +85,6 @@ __device__ inline float OperatorMin<float>::identity() const {
   return FLT_MAX;
 }
 
-template <>
-__device__ inline double OperatorMin<double>::identity() const {
-  return DBL_MAX;
-}
-
 template <typename T>
 class OperatorMax {
  public:
@@ -115,11 +102,6 @@ __device__ inline int OperatorMax<int>::identity() const {
 template <>
 __device__ inline float OperatorMax<float>::identity() const {
   return -FLT_MAX;
-}
-
-template <>
-__device__ inline double OperatorMax<double>::identity() const {
-  return -DBL_MAX;
 }
 
 template <typename T>
@@ -145,14 +127,6 @@ struct SharedMemory<float> {
   __device__ float *getPointer() {
     extern __shared__ float s_float[];
     return s_float;
-  }
-};
-
-template <>
-struct SharedMemory<double> {
-  __device__ double *getPointer() {
-    extern __shared__ double s_double[];
-    return s_double;
   }
 };
 

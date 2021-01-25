@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/cudpp/cudpp.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/moderngpu_allocator.h"
 #include "moderngpu/kernel_segsort.hxx"
@@ -556,6 +557,57 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
         d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
         num_rows, row_splits, row_splits + 1, op, initial_pair,
         c->GetCudaStream()));
+  }
+}
+
+template <typename T>
+void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
+  ContextPtr c = GetContext(src, *dst);
+  int32_t dim = dst->Dim();
+  K2_CHECK_EQ(src.values.Dim(), dim);
+
+  // flags is similar to `tails` (see concepts in k2/csrc/utils)
+  // But it indicates `heads` here. The very first segment always
+  // starts at zero, so flags[0] is always 0.
+  Array1<uint32_t> flags(c, dim);
+  uint32_t *flags_data = flags.Data();
+
+  Array1<int32_t> row_splits = src.RowSplits(src.NumAxes() - 1);
+  const int32_t *row_splits_data = row_splits.Data();
+  K2_EVAL(
+      c, row_splits.Dim() - 1, set_flags, (int32_t i)->void {
+        int32_t begin = row_splits_data[i];
+        int32_t end = row_splits_data[i + 1];
+        if (begin < end) {
+          flags_data[begin] = begin == 0 ? 0 : 1;
+
+          for (int32_t k = begin + 1; k != end; ++k) {
+            flags_data[k] = 0;
+          }
+        }
+      });
+
+  if (c->GetDeviceType() == kCuda) {
+    // defined in k2/csrc/cudpp/cudpp.{h,cu}
+    SegmentedExclusiveSum(c, src.values.Data(), dim, flags_data, dst->Data());
+    return;
+  }
+
+  K2_CHECK_EQ(c->GetDeviceType(), kCpu);
+
+  const T *src_values_data = src.values.Data();
+  T *dst_data = dst->Data();
+
+  T sum = 0;
+  for (int32_t i = 0; i != dim; ++i) {
+    if (flags_data[i] == 1) {
+      // a new sublist
+      sum = T(0);
+    }
+
+    T prev = src_values_data[i];
+    dst_data[i] = sum;
+    sum += prev;  // the last entry is discarded!
   }
 }
 

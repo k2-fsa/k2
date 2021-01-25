@@ -1,6 +1,7 @@
 /**
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
+ * Copyright (c)  2020-2021  Xiaomi Corporation (authors: Daniel Povey
+ *                                                        Haowen Qiu
+ *                                                        Fangjun Kuang)
  *
  * See LICENSE for clarification regarding multiple authors
  */
@@ -1300,6 +1301,17 @@ RaggedShape CoveringShape(int32_t num_srcs, RaggedShape **srcs);
 */
 Array1<int32_t> CoveringShapeForwardMap(RaggedShape &src,
                                         RaggedShape &covering);
+
+/* Compute exclusive sum per sub-list.
+ *
+ * @param [in] src  The input ragged tensor. The exclusive sum is computed
+ *                  for the last axis. CAUTION: The last entry of every sublist
+ *                  does not contribute to the final sum.
+ * @param [in] dst  The dest array. It satisfies dst.Dim() == src.values.Dim().
+ *                  CAUTION: It supports `dst == &src.values`.
+ */
+template <typename T>
+void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst);
 
 }  // namespace k2
 
