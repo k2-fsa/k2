@@ -573,17 +573,19 @@ void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
   uint32_t *flags_data = flags.Data();
 
   Array1<int32_t> row_splits = src.RowSplits(src.NumAxes() - 1);
+  Array1<int32_t> row_ids = src.RowIds(src.NumAxes() - 1);
   const int32_t *row_splits_data = row_splits.Data();
+  const int32_t *row_ids_data = row_ids.Data();
   K2_EVAL(
-      c, row_splits.Dim() - 1, set_flags, (int32_t i)->void {
-        int32_t begin = row_splits_data[i];
-        int32_t end = row_splits_data[i + 1];
-        if (begin < end) {
-          flags_data[begin] = begin == 0 ? 0 : 1;
-
-          for (int32_t k = begin + 1; k != end; ++k) {
-            flags_data[k] = 0;
-          }
+      c, dim, set_flags, (int32_t idx01)->void {
+        int32_t idx0 = row_ids_data[idx01];
+        int32_t idx0x = row_splits_data[idx0];
+        int32_t idx0x_next = row_splits_data[idx0 + 1];
+        if (idx0x < idx0x_next) {
+          if (idx01 == idx0x)
+            flags_data[idx01] = idx01 == 0 ? 0 : 1;
+          else
+            flags_data[idx01] = 0;
         }
       });
 
