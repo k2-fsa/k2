@@ -23,6 +23,7 @@
 // to this.
 namespace k2 {
 
+
 template <typename LambdaT>
 __global__ void eval_lambda(int32_t n, LambdaT lambda) {
   int32_t i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -227,10 +228,18 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
 }
 
 /*
-  This is a device version of Eval2().
+  This is a device-only version of Eval2(), for when you know you are using a GPU
+  and not the host CPU.
 
-  It will will evaluate lambda(i, j) for 0 <= i < m and 0 <= j < n,
-  on the GPU with stream `stream`
+  It will evaluate lambda(i, j) for 0 <= i < m and 0 <= j < n, on the GPU with
+  stream `stream`.   E.g. you might call it as:
+
+      Eval2Device(stream, 10, 20, [=] __device__ (int32_t i, int32_t j) { code here;  });
+
+   You will normally call this indirectly via the wrapper that takes the ContextPtr, e.g.
+
+     ContextPtr c;
+     Eval2Device(c, 10, 20, [=] __device__ (int32_t i, int32_t j) { code here;  });
  */
 template <typename LambdaT>
 void Eval2Device(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
@@ -260,8 +269,6 @@ void Eval2Device(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
 }
 
 
-
-
 template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
@@ -278,6 +285,75 @@ inline void Eval2Device(ContextPtrType c, int32_t m,
                         int32_t n, LambdaT &lambda) {
   Eval2Device(c->GetCudaStream(), m, n, lambda);
 }
+
+
+// e.g. ThreadsPerBlock = 256, ThreadsPerGroup = 8, ThreadGroupData = int32_t or
+// int32_t[8] or some class type.
+template <unsigned int ThreadsPerBlock,
+          unsigned int ThreadsPerGroup,
+          typename ThreadGroupDataT, typename LambdaT>
+__global__ void eval_lambda_group(int32_t n, LambdaT lambda) {
+  namespace cooperative_groups cg;
+  int32_t group_idx = threadIdx.x / ThreadsPerGroup;
+  int32_t i = (blockIdx.y * gridDim.x + blockIdx.x) * (ThreadsPerBlock / ThreadsPerGroup) + group_idx;
+  if (i >= n) return;
+  thread_block_tile<ThreadsPerGroup> g = cg::tiled_partition<ThreadsPerGroup>(this_thread_block());
+
+  __shared__ ThreadGroupDataT shared_data[ThreadsPerBlock / ThreadsPerGroup];
+  lambda(g, shared_data + group_idx, i);
+}
+
+
+/*
+  EvalGroupDevice() allows you to evaluate a kernel that uses a fixed-size group
+  of threads for every index 0 <= i < n.  The size must be a power of 2 not greater
+  than 256, and is provided via a template parameter.  The intention is that
+  you call it something like this:
+
+  const unsigned int thread_group_size = 8;
+  namespace cooperative_groups cg;
+  typedef group_shared_type int32_t;
+  auto lambda_foo = [=] __device__ (cg::tiled_partition<thread_group_size> g, // or auto g..
+                                    __shared__ group_shared_type *shared_data,
+                                    int32_t i) {
+     unsigned int r = g.thread_rank();
+     // note, g.size() == 8.
+
+     // code here.
+     // note: you may want to use g.sync(), which is like __synchtreads() but just
+     // for this thread group, of size 8 here.
+  });
+  ContextPtr c;
+  // actually the following will call a wrapper of EvalGroupDevice() of the same name,
+  // defined below..
+  EvalGroupDevice<8, group_shared_type>(c->GetCudaStream(), num_groups, lambda_foo);
+ */
+template <unsigned int ThreadsPerGroup, typename ThreadGroupDataT, typename LambdaT>
+void EvalGroupDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
+  if (n <= 0) return;  // actually it would be an error if n < 0.
+
+  K2_CHECK(stream != kCudaStreamInvalid);
+
+  const int32_t block_size = 256;
+      // next line == NumBlocks(n * ThreadsPerGroup, block_size), but works
+      // for (n*ThreadsPerGroup) outside int32_t range.
+  int32_t tot_grid_size = ((n * (int64_t)ThreadsPerGroup) + block_size - 1) / block_size;
+  int32_t x_grid_size = (tot_grid_size < (1 << 20) ?
+                         min<int32_t>(tot_grid_size, (1 << 10)) :
+                         32768),
+      y_grid_size = NumBlocks(tot_grid_size, x_grid_size);
+  dim3 grid_dim(x_grid_size, y_grid_size, 1), block_dim(block_size, 1, 1);
+  K2_CUDA_SAFE_CALL(eval_lambda_group<(unsigned int)block_size, ThreadsPerBlock, LambdaT>
+                    <<<grid_dim, block_dim, 0, stream>>>(n, lambda));
+
+}
+
+template <unsigned int ThreadsPerGroup, typename ThreadGroupDataT, typename LambdaT>
+void EvalGroupDevice(ContextPtr context, int32_t n, LambdaT &lambda) {
+  EvalGroupDevice<ThreadsPerGroup,ThreadGroupDataT,LambdaT>(context->GetCudaStream(),
+                                                            n, lambda);
+}
+
 
 // Also see EvalWithRedirect() in utils.h
 

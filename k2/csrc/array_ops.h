@@ -198,6 +198,15 @@ T MaxValue(const Array1<T> &src) {
   return MaxValue(src.Context(), src.Dim(), src.Data());
 }
 
+template <typename T>
+T Sum(const Array1<T> &src) {
+  // This could be more efficient, as ExclusiveSum() writes elements that it does not need to.
+  return (src.Dim() == 0 ? T(0) :
+          ExclusiveSum(src).Back());
+}
+
+
+
 /*
   Get the bitwise and reduction of the array `src`, using `default_value` (e.g.
   all ones) to initialize the reduction.
