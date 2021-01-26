@@ -173,27 +173,26 @@ namespace k2 {
       @param [in] n     Number of elements in the input and output arrays
                         (although only items up to n-1 in the input array will
                         affect the result).  Must be >= 0
-      @param [out] s    Array to which to write the exclusive sum (device
-                        pointer); size must be at least t.size() + 1.
-
-  IMPLEMENTATION NOTES:
-     - If size of t is small enough that it makes sense to do it in one
-  cooperative thread group (and maybe a small internal loop if needed), do that.
-     - Otherwise, do it with 3 consecutive kernels:
-       consider the input array to be made up of blocks of size BLOCK_SIZE,
-  equal to some power of 2.  First, invoke the same kernel we used above to
-  write the this-block-only partial sum for each block (note: only the 1st
-  kernel should write the initial 0, to avoid race conditions), so e.g. if the
-       input was [ 1 2 3 4 5 ] and BLOCK_SIZE = 2, the temporary array would be
-       [ 0 1 3 3 7 5 ].  Then use a single thread block to inclusive-sum the
-       values at multiples of BLOCK_SIZE, so the array looks like [ 0 1 3 3 10 5
-  ] (note: only the 7 changed, to 10 here).  Then use a single simple kernel to,
-  for each index i that is not a multiple of BLOCK_SIZE, add to it the value at
-  the most recent multiple of BLOCK_SIZE, so the array would look like [ 0 1 3 6
-  10 15 ].
+      @param [in] src    Array from which to read the input data
+      @param [out] dest    Array to which to write the exclusive sum
+                           (may be the same as src)
  */
 template <typename SrcPtr, typename DestPtr>
 void ExclusiveSum(ContextPtr c, int32_t n, SrcPtr src, DestPtr dest);
+
+/**
+  Perform inclusive cumulative sum: dest[i] = 0 + src[0] + src[1] + ...
+  src[i] for 0 <= i < n.
+
+      @param [in] c     Context object, specifies CPU or GPU
+      @param [in] n     Number of elements in the input and output arrays
+      @param [in] src    Array from which to read the input data
+      @param [out] dest    Array to which to write the inclusive sum
+                           (may be the same as src)
+ */
+template <typename SrcPtr, typename DestPtr>
+void InclusiveSum(ContextPtr c, int32_t n, SrcPtr src, DestPtr dest);
+
 
 /* Return the maximum value of the device array 't'.  Note: the sum will be
    initialized with T(0).

@@ -348,7 +348,8 @@ void EvalGroupDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
                          32768),
       y_grid_size = NumBlocks(tot_grid_size, x_grid_size);
   dim3 grid_dim(x_grid_size, y_grid_size, 1), block_dim(block_size, 1, 1);
-  K2_CUDA_SAFE_CALL(eval_lambda_group<(unsigned int)block_size, ThreadsPerGroup, LambdaT>
+  K2_CUDA_SAFE_CALL(eval_lambda_group<(unsigned int)block_size, ThreadsPerGroup,
+                                      ThreadGroupDataT, LambdaT>
                     <<<grid_dim, block_dim, 0, stream>>>(n, lambda));
 
 }

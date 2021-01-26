@@ -2284,7 +2284,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   namespace cg = cooperative_groups;
   const unsigned int thread_group_size = 8;  // Can tune this.  Power of 2,
                                              // 1<=thread_group_size<=256
-  const FloatType *arc_cdf_data = arc_cdf->Data();
+  const FloatType *arc_cdf_data = arc_cdf.Data();
   const Arc *arcs = fsas.values.Data();
 
 
@@ -2383,7 +2383,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
            int32_t next_state_idx01 = arcs[arc_idx012].dest_state + state_idx0x,
                next_arc_idx01x = fsas_row_splits2_data[next_state_idx01],
                next_arc_idx01x_next = fsas_row_splits2_data[next_state_idx01 + 1];
-           shared_data->begin_arc_idx0x = next_arc_idx01x;
+           shared_data->begin_arc_idx01x = next_arc_idx01x;
            shared_data->num_arcs = next_arc_idx01x_next - next_arc_idx01x;
            shared_data->p = p;
          }
@@ -2487,6 +2487,17 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   return ans;
 }
 
+
+template
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            Array1<float> &arc_cdf,
+                            const Array1<int32_t> &num_paths,
+                            Ragged<int32_t> &state_batches);
+template
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            Array1<double> &arc_cdf,
+                            const Array1<int32_t> &num_paths,
+                            Ragged<int32_t> &state_batches);
 
 
 }  // namespace k2

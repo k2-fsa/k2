@@ -524,7 +524,7 @@ Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
 
 /*
   Return a ragged array that represents the cumulative distribution function
-  (cdf) of the probability of entering arcs leaving each state of `fsas`.
+  (cdf) of the probability of arcs leaving each state of `fsas`.
   This is according to the distribution implied by the arc posteriors
   in `arc_post`.  It's intended so that given a distribution over
   arc probabilities you can prepare to call RandomPaths() to select
@@ -563,8 +563,8 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
                         fsas.Dim0().  Must be zero for any Fsa that
                         is equivalent to the empty Fsa (e.g. its
                         GetTotScores() entry is zero).
-   @param [in] state_batches  The result of calling GetStateBatches()
-                        on `fsas`.  Is needed so we can know the maximum
+   @param [in] state_batches  The result of calling GetStateBatches(fsas, true).
+                        Is needed so we can know the maximum
                         possible length of each path, to know how much memory to
                         allocate.
 

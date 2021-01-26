@@ -876,6 +876,9 @@ void TestBackpropGetForwardScores(FsaVec &fsa_vec_in) {
     }
   }
 }
+
+
+
 TEST_F(StatesBatchSuiteTest, TestBackpropForwardScores) {
   // simple case
   TestBackpropGetForwardScores<float>(fsa_vec_);
@@ -1033,6 +1036,127 @@ TEST_F(StatesBatchSuiteTest, TestBackpropBackwardScores) {
     TestBackpropGetBackwardScores<double>(connected);
   }
 }
+
+
+template <typename FloatType>
+void TestRandomPaths(FsaVec &fsa_vec_in) {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec fsa_vec = fsa_vec_in.To(context);
+    int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
+            num_arcs = fsa_vec.NumElements();
+
+    Ragged<int32_t> state_batches = GetStateBatches(fsa_vec, true);
+    Array1<int32_t> dest_states = GetDestStates(fsa_vec, true);
+    Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsa_vec, dest_states);
+    Ragged<int32_t> entering_arc_batches =
+        GetEnteringArcIndexBatches(fsa_vec, incoming_arcs, state_batches);
+    Ragged<int32_t> leaving_arc_batches =
+        GetLeavingArcIndexBatches(fsa_vec, state_batches);
+
+    {
+      // max
+      Array1<int32_t> entering_arcs;
+      Array1<FloatType> forward_scores = GetForwardScores<FloatType>(
+          fsa_vec, state_batches, entering_arc_batches, false, &entering_arcs);
+      Array1<FloatType> backward_scores = GetBackwardScores<FloatType>(
+          fsa_vec, state_batches, leaving_arc_batches, false);
+      // set the forward_scores_deriv_in to all zeros except for a 1 at the
+      // final-state. Then the returned derivative will be non-zero values
+      // only for those arcs along the best path.
+      Array1<FloatType> forward_scores_deriv_in(context, num_states, 0);
+      FloatType *forward_scores_deriv_in_data = forward_scores_deriv_in.Data();
+      const int32_t *fsa_row_splits1 = fsa_vec.RowSplits(1).Data();
+      K2_EVAL(
+          context, num_fsas, lambda_set_forward_derivs_in,
+          (int32_t fsa_idx)->void {
+            int32_t start_state = fsa_row_splits1[fsa_idx],
+                    start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
+            if (start_state_next_fsa - start_state > 0)
+              forward_scores_deriv_in_data[start_state_next_fsa - 1] = 1;
+          });
+      Array1<FloatType> arc_derivs = BackpropGetForwardScores(
+          fsa_vec, state_batches, leaving_arc_batches, false, &entering_arcs,
+          forward_scores, forward_scores_deriv_in);
+      entering_arcs = entering_arcs.To(cpu);
+      Array1<FloatType> expected_arc_deriv(cpu, num_arcs, 0);
+      FloatType *expected_arc_deriv_data = expected_arc_deriv.Data();
+      Array1<int32_t> fsa_row_splits1_cpu = fsa_vec.RowSplits(1).To(cpu);
+      Array1<Arc> cpu_arcs = fsa_vec.values.To(cpu);
+      for (int32_t fsa_idx = 0; fsa_idx != num_fsas; ++fsa_idx) {
+        int32_t start_state = fsa_row_splits1_cpu[fsa_idx],
+                start_state_next_fsa = fsa_row_splits1_cpu[fsa_idx + 1];
+        if (start_state_next_fsa > start_state) {
+          for (int32_t state = start_state_next_fsa - 1; state > start_state;) {
+            if (entering_arcs[state] != -1) {
+              int32_t arc_id = entering_arcs[state];
+              const Arc &arc = cpu_arcs[arc_id];
+              int32_t src_state = arc.src_state + start_state;
+              int32_t dst_state = arc.dest_state + start_state;
+              ASSERT_EQ(state, dst_state);
+              expected_arc_deriv_data[arc_id] = 1;
+              state = src_state;
+            }
+          }
+        }
+      }
+      ASSERT_EQ(arc_derivs.Dim(), num_arcs);
+      CheckArrayData(arc_derivs, expected_arc_deriv);
+    }
+    {
+      // logsum
+      Array1<FloatType> forward_scores = GetForwardScores<FloatType>(
+          fsa_vec, state_batches, entering_arc_batches, true);
+      Array1<FloatType> backward_scores = GetBackwardScores<FloatType>(
+          fsa_vec, state_batches, leaving_arc_batches, true);
+      // set the forward_scores_deriv_in to all zeros except for a 1 at the
+      // final-state. Then the returned derivative of
+      // BackpropGetForwardScores() should be identical to the posterior as
+      // obtained by doing GetArcPost() and exponentiating
+      Array1<FloatType> forward_scores_deriv_in(context, num_states, 0);
+      FloatType *forward_scores_deriv_in_data = forward_scores_deriv_in.Data();
+      const int32_t *fsa_row_splits1 = fsa_vec.RowSplits(1).Data();
+      K2_EVAL(
+          context, num_fsas, lambda_set_forward_derivs_in,
+          (int32_t fsa_idx)->void {
+            int32_t start_state = fsa_row_splits1[fsa_idx],
+                    start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
+            if (start_state_next_fsa - start_state > 0)
+              forward_scores_deriv_in_data[start_state_next_fsa - 1] = 1;
+          });
+      Array1<FloatType> arc_derivs = BackpropGetForwardScores(
+          fsa_vec, state_batches, leaving_arc_batches, true, nullptr,
+          forward_scores, forward_scores_deriv_in);
+      ASSERT_EQ(arc_derivs.Dim(), num_arcs);
+      Array1<FloatType> arc_post =
+          GetArcPost(fsa_vec, forward_scores, backward_scores);
+      FloatType *arc_post_data = arc_post.Data();
+      K2_EVAL(
+          context, num_arcs, lambda_exp_arc_post,
+          (int32_t i)->void { arc_post_data[i] = exp(arc_post_data[i]); });
+      CheckArrayData(arc_derivs, arc_post);
+    }
+  }
+}
+
+
+TEST_F(StatesBatchSuiteTest, TestRandomPaths) {
+  // simple case
+  TestRandomPaths<float>(fsa_vec_);
+  TestRandomPaths<double>(fsa_vec_);
+  for (int32_t i = 0; i != 2; ++i) {
+    // random case
+    FsaVec random_fsas = RandomFsaVec();
+    // make the fsa connected for easy testing for tropical version, the
+    // algorithm should work for non-connected fsa as well.
+    FsaVec connected;
+    bool status = Connect(random_fsas, &connected);
+    ASSERT_TRUE(status);
+    TestRandomPaths<float>(connected);
+    TestRandomPaths<double>(connected);
+  }
+}
+
 
 template <typename FloatType>
 void TestBackpropGetArcPost(FsaVec &fsa_vec_in) {

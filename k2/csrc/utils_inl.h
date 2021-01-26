@@ -42,6 +42,35 @@ void ExclusiveSum(ContextPtr c, int32_t n, const SrcPtr src, DestPtr dest) {
                                       src, dest, n, c->GetCudaStream()));
   }
 }
+
+template <typename SrcPtr, typename DestPtr>
+void InclusiveSum(ContextPtr c, int32_t n, const SrcPtr src, DestPtr dest) {
+  K2_CHECK_GE(n, 0);
+  DeviceType d = c->GetDeviceType();
+  using SumType = typename std::decay<decltype(dest[0])>::type;
+  if (d == kCpu) {
+    SumType sum = 0;
+    for (int32_t i = 0; i != n; ++i) {
+      auto prev = src[i];  // save a copy since src and dest
+                           // may share the underlying memory
+      sum += prev;
+      dest[i] = sum;
+    }
+  } else {
+    K2_CHECK_EQ(d, kCuda);
+    // Determine temporary device storage requirements
+    std::size_t temp_storage_bytes = 0;
+    // the following function will compute the number of required bytes
+    // for InclusiveSum
+    K2_CUDA_SAFE_CALL(cub::DeviceScan::InclusiveSum(
+        nullptr, temp_storage_bytes, src, dest, n, c->GetCudaStream()));
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CUDA_SAFE_CALL(
+        cub::DeviceScan::InclusiveSum(d_temp_storage.Data(), temp_storage_bytes,
+                                      src, dest, n, c->GetCudaStream()));
+  }
+}
+
 template <typename T>
 T MaxValue(ContextPtr c, int32_t nelems, const T *t) {
   DeviceType d = c->GetDeviceType();
