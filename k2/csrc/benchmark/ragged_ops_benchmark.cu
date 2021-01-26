@@ -66,11 +66,61 @@ static void RegisterBenchmarkGetTransposeReordering(DeviceType device_type) {
   }
 }
 
+template <typename T>
+static BenchmarkStat BenchmarkSegmentedExclusiveSum(int32_t dim,
+                                                    DeviceType device_type) {
+  ContextPtr context;
+  if (device_type == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(device_type, kCuda);
+    context = GetCudaContext();
+  }
+
+  int32_t num_iter = std::min(100, 10000 / dim);
+  int32_t min_num_elems = dim * 10;
+  int32_t max_num_elems = dim * 20;
+
+  Ragged<T> ragged =
+      RandomRagged<T>(0, 100, 2, 2, min_num_elems, max_num_elems).To(context);
+  int32_t num_elems = ragged.NumElements();
+  Array1<T> dst(context, num_elems);
+
+  BenchmarkStat stat;
+  stat.op_name = "SegmentedExclusiveSum" + std::to_string(ragged.Dim0()) + "_" +
+                 std::to_string(num_elems);
+  stat.num_iter = num_iter;
+  stat.problem_size = dim;
+  stat.dtype_name = TraitsOf(DtypeOf<int32_t>::dtype).Name();
+  stat.device_type = device_type;
+
+  stat.eplased_per_iter = BenchmarkOp(
+      num_iter, context,
+      (void (*)(Ragged<T> &, Array1<int32_t> *))(&SegmentedExclusiveSum<T>),
+      ragged, &dst);
+  stat.eplased_per_iter *= 1e6;  // from seconds to microseconds
+  return stat;
+}
+
+template <typename T>
+static void RegisterBenchmarkSegmentedExclusiveSum(DeviceType device_type) {
+  std::vector<int32_t> problems_sizes = {50, 100, 200, 500, 1000, 10000};
+  for (auto s : problems_sizes) {
+    std::string name =
+        GenerateBenchmarkName<T>("SegmentedExclusiveSum", device_type);
+    RegisterBenchmark(name, [s, device_type]() -> BenchmarkStat {
+      return BenchmarkSegmentedExclusiveSum<T>(s, device_type);
+    });
+  }
+}
+
 static void RunRaggedOpsBenchmark() {
   PrintEnvironmentInfo();
 
   RegisterBenchmarkGetTransposeReordering(kCpu);
   RegisterBenchmarkGetTransposeReordering(kCuda);
+  RegisterBenchmarkSegmentedExclusiveSum<int32_t>(kCpu);
+  RegisterBenchmarkSegmentedExclusiveSum<int32_t>(kCuda);
 
   // Users can set a regular expression via environment
   // variable `K2_BENCHMARK_FILTER` such that only benchmarks

@@ -1307,7 +1307,7 @@ Array1<int32_t> CoveringShapeForwardMap(RaggedShape &src,
  * @param [in] src  The input ragged tensor. The exclusive sum is computed
  *                  for the last axis. CAUTION: The last entry of every sublist
  *                  does not contribute to the final sum.
- * @param [out] dst The dest array. It satisfies dst.Dim() == src.values.Dim().
+ * @param [out] dst The dest array. It satisfies dst.Dim() == src.NumElements().
  *                  CAUTION: It supports `dst == &src.values`.
  */
 template <typename T>
