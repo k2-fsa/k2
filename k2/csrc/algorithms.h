@@ -121,7 +121,8 @@ class Renumbering {
     NVTX_RANGE(K2_FUNC);
     if (!old2new_.IsValid()) ComputeOld2New();
     if (extra_element) return old2new_;
-    else return old2new_.Arange(0, old2new_.Dim() - 1);
+
+    return old2new_.Arange(0, old2new_.Dim() - 1);
   }
 
  private:

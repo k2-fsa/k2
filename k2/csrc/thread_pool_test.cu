@@ -4,9 +4,11 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include <mutex>
+#include <algorithm>
+#include <mutex>  // NOLINT
 #include <string>
 #include <unordered_set>
+#include <utility>
 
 #include "gtest/gtest.h"
 #include "k2/csrc/math.h"
