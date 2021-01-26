@@ -15,6 +15,7 @@
 #include <cassert>
 #include <limits>
 #include <memory>
+#include <numeric>
 #include <random>
 #include <type_traits>
 #include <utility>
@@ -921,6 +922,26 @@ Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
         ans_data[i] = src_ptrs_data[src_idx][src_pos];
       });
   return ans;
+}
+
+template <typename T>
+T Sum(ContextPtr c, const T *src, int32_t dim) {
+  if (dim == 0) return 0;
+
+  if (c->GetDeviceType() == kCpu) return std::accumulate(src, src + dim, T(0));
+
+  K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+
+  size_t temp_storage_bytes = 0;
+  Array1<T> out(c, 1);
+  cudaStream_t stream = c->GetCudaStream();
+  K2_CUDA_SAFE_CALL(cub::DeviceReduce::Sum(nullptr, temp_storage_bytes, src,
+                                           out.Data(), dim, stream));
+
+  Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+  K2_CUDA_SAFE_CALL(cub::DeviceReduce::Sum(
+      d_temp_storage.Data(), temp_storage_bytes, src, out.Data(), dim, stream));
+  return out[0];
 }
 
 }  // namespace k2
