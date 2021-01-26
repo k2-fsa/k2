@@ -2120,11 +2120,11 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
       *state_post_data = state_post.Data();
   FloatType *arc_pdf_data = arc_pdf.Data();
   // it's row_ids2 if it's an FsaVec (3 axes), else row_ids1.
-  const int32_t *fsas_row_ids2 = fsas.RowIds(1 + state_axis),
-      *fsas_row_splits2 = fsas.RowSplits(1 + state_axis);
+  const int32_t *fsas_row_ids2_data = fsas.RowIds(1 + state_axis).Data(),
+      *fsas_row_splits2_data = fsas.RowSplits(1 + state_axis).Data();
   K2_EVAL(c, num_arcs, lambda_set_arc_probs, (int32_t i) {
-      FloatType arc_post = arc_posts_data[i];
-      int32_t state_idx = fsas_row_ids2[i];
+      FloatType arc_post = arc_post_data[i];
+      int32_t state_idx = fsas_row_ids2_data[i];
       arc_post -= state_post_data[state_idx];
       arc_pdf_data[i] = exp(arc_post);
     });
@@ -2155,8 +2155,8 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
   Array1<FloatType> arc_inv_tots(c, num_states);
   FloatType *arc_inv_tots_data = arc_inv_tots.Data();
   K2_EVAL(c, num_states, lambda_set_inv_tots, (int32_t i) {
-      int32_t begin_arc = fsas_row_splits2[i],
-          end_arc = fsas_row_splits2[i + 1];
+      int32_t begin_arc = fsas_row_splits2_data[i],
+          end_arc = fsas_row_splits2_data[i + 1];
       FloatType inv_tot = 1.0;
       if (end_arc > begin_arc) {
         FloatType this_tot = arc_cdf_data[end_arc - 1] +
@@ -2171,7 +2171,7 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
       arc_inv_tots_data[i] = inv_tot;
     });
   K2_EVAL(c, num_arcs, lambda_modify_cdf, (int32_t arc_idx012) {
-      int32_t state_idx01 = fsa_row_ids2[arc_idx012];
+      int32_t state_idx01 = fsas_row_ids2_data[arc_idx012];
       FloatType cdf_value = arc_cdf_data[arc_idx012],
           cdf_value_modified = cdf_value * arc_inv_tots_data[state_idx01];
       arc_cdf_data[arc_idx012] = cdf_value_modified;
@@ -2201,11 +2201,11 @@ struct PathState {
 }  // namespace random_path_internal
 
 template <typename FloatType>
-Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
                             Array1<FloatType> &arc_cdf,
                             const Array1<int32_t> &num_paths,
                             Ragged<int32_t> &state_batches) {
-  using namespace random_path_internal;
+  using namespace random_paths_internal;
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(fsas.NumElements(), arc_cdf.Dim());
   K2_CHECK_EQ(fsas.Dim0(), num_paths.Dim());
@@ -2222,8 +2222,8 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
   Array1<int32_t> num_state_batches(c, num_fsas);
   num_state_batches = -1;  // so we can more easily detect errors..
   int32_t max_batches = state_batches.Dim0();
-  const int32_t *state_batches_row_splits1 = state_batches.RowSplits(1),
-      *state_batches_row_splits2 = state_batches.RowSplits(2);
+  const int32_t *state_batches_row_splits1 = state_batches.RowSplits(1).Data(),
+      *state_batches_row_splits2 = state_batches.RowSplits(2).Data();
   int32_t *num_state_batches_data = num_state_batches.Data();
   K2_EVAL2(c, num_fsas, max_batches, lambda_set_num_state_batches, (int32_t i, int32_t b) {
       int32_t this_batch_start = state_batches_row_splits1[b],
@@ -2264,10 +2264,10 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
   // that not-needed element).
   ExclusiveSum(num_paths_sum, &num_paths_sum);
   int32_t tot_space_needed = storage_row_splits.Back(),
-      tot_num_paths = num_paths_sum.back();
+      tot_num_paths = num_paths_sum.Back();
 
   Array1<int32_t> paths_row_ids(c, tot_num_paths);
-  RowSplitsToRowIds(num_paths_sum, paths_row_ids);
+  RowSplitsToRowIds(num_paths_sum, &paths_row_ids);
   // (num_paths_sum, paths_row_ids) form respectively the row_splits and row_ids
   // of a ragged tensor with Dim0() == num_fsas and TotSize(1) == tot_num_paths.
 
@@ -2275,28 +2275,28 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
 
   const int32_t *paths_row_ids_data = paths_row_ids.Data(),
       *paths_row_splits_data = num_paths_sum_data, // an alias..
-      *fsas_row_ids2_data = fsas.RowIds(2),
-      *fsas_row_splits1_data = fsas.RowSplits(1),
-      *fsas_row_splits2_data = fsas.RowSplits(2),
-      *storage_row_splits_data = storage_row_splits.Data();
+      *fsas_row_ids2_data = fsas.RowIds(2).Data(),
+      *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
+      *fsas_row_splits2_data = fsas.RowSplits(2).Data();
 
   int32_t *path_storage_data = path_storage.Data();
 
-  namespace cooperative_groups cg;
+  namespace cg = cooperative_groups;
   const unsigned int thread_group_size = 8;  // Can tune this.  Power of 2,
                                              // 1<=thread_group_size<=256
   const FloatType *arc_cdf_data = arc_cdf->Data();
-  const Arc *arcs = fsas->values.Data();
+  const Arc *arcs = fsas.values.Data();
 
 
   if (c->GetDeviceType() == kCuda) {
-    auto lambda_set_paths = [=] __device__ (cg::tiled_partition<thread_group_size> g, // or auto g..
-                                            __shared__ PathState<FloatType> *shared_data,
-                                            int32_t i) {
+    auto lambda_set_paths = [=] __device__ (
+        cg::thread_block_tile<thread_group_size> g, // or auto g..
+        PathState<FloatType> *shared_data,
+        int32_t i) {
      // First get certain fixed information.  All threads get this, which might
      // not seem ideal but I think the GPU will consolidate the identical reads.
      int32_t fsa_idx = paths_row_ids_data[i],
-         state_idx0x = fsa_row_splits1_data[fsa_idx],
+         state_idx0x = fsas_row_splits1_data[fsa_idx],
          path_begin = paths_row_splits_data[fsa_idx],
          path_idx1 = i - path_begin,
          thread_idx = g.thread_rank(),
@@ -2315,8 +2315,8 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
        int32_t start_state = state_idx0x,
            path_end = paths_row_splits_data[fsa_idx + 1],
            num_paths = path_end - path_begin,
-           begin_arc = fsas_row_splits2[start_state],
-           end_arc = fsas_row_splits2[start_state + 1];
+           begin_arc = fsas_row_splits2_data[start_state],
+           end_arc = fsas_row_splits2_data[start_state + 1];
        shared_data->begin_arc_idx01x = begin_arc;
        shared_data->num_arcs = end_arc - begin_arc;
        FloatType p = ((FloatType)0.5 + path_idx1) / num_paths;
@@ -2352,11 +2352,11 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
        g.sync();
 
        int32_t arc_idx2 = thread_idx;
-       for (; arc_idx2 < num_arcs; arc_idx2 += g.size(); ++arc_idx2) {
+       for (; arc_idx2 < num_arcs; arc_idx2 += g.size()) {
          int32_t arc_idx012 = begin_arc_idx01x + arc_idx2;
          FloatType interval_start = arc_cdf_data[arc_idx012],
              interval_end = (arc_idx2 + 1 == num_arcs ? 1.0 :
-                             arc_cdf_data[begin_arc_idx012 + arc_idx2 + 1]);
+                             arc_cdf_data[arc_idx012 + 1]);
          K2_DCHECK_GE(interval_end, interval_start);
          K2_DCHECK_LE(interval_end, 1.0);
          if (p >= interval_start && p <= interval_end &&
@@ -2381,8 +2381,8 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
            p = (p - interval_start) / (interval_end - interval_start);
 
            int32_t next_state_idx01 = arcs[arc_idx012].dest_state + state_idx0x,
-               next_arc_idx01x = fsas_row_splits2[next_state_idx01],
-               next_arc_idx01x_next = fsas_row_splits2[next_state_idx01 + 1];
+               next_arc_idx01x = fsas_row_splits2_data[next_state_idx01],
+               next_arc_idx01x_next = fsas_row_splits2_data[next_state_idx01 + 1];
            shared_data->begin_arc_idx0x = next_arc_idx01x;
            shared_data->num_arcs = next_arc_idx01x_next - next_arc_idx01x;
            shared_data->p = p;
@@ -2392,12 +2392,12 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
     };
 
 
-    EvalGroupDevice<thread_group_size, PathStorage<FloatType>>(
+    EvalGroupDevice<thread_group_size, PathState<FloatType>>(
         c, tot_num_paths, lambda_set_paths);
   } else {
     // CPU.
     for (int32_t fsa_idx = 0; fsa_idx < num_fsas; fsa_idx++) {
-      int32_t state_idx0x = fsa_row_splits1_data[fsa_idx],
+      int32_t state_idx0x = fsas_row_splits1_data[fsa_idx],
           final_state = fsas_row_splits1_data[fsa_idx + 1] - 1,
           num_paths = num_paths_data[fsa_idx],
           num_batches = num_state_batches_data[fsa_idx];
@@ -2406,20 +2406,21 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
         int32_t *path_storage_start = path_storage_data +
             storage_row_splits_data[fsa_idx] + path_idx1 * num_batches;
 
-        int32_t cur_state = state_idx0x;  // Start state.  Note: start state is
-                                          // never the final state.
+        int32_t cur_state_idx01 = state_idx0x;  // Start state.  Note: start
+                                                // state is never the final
+                                                // state.
         FloatType p = ((FloatType)0.5 + path_idx1) / num_paths;
 
-
-        for (int32_t path_pos = 0; path_pos <= num_batches; path_pos++) {
+        int32_t path_pos;
+        for (path_pos = 0; path_pos <= num_batches; path_pos++) {
           // Note: if things are working correctly we should break from this
           // loop before it naturally terminates.
-          if (cur_state == final_state) {  // Finalize..
+          if (cur_state_idx01 == final_state) {  // Finalize..
             path_storage_start[0] = path_pos;
             break;
           }
-          int32_t arc_idx01x = fsas_row_splits2[cur_state],
-              arc_idx01x_next = fsas_row_splits2[cur_state_idx01 + 1];
+          int32_t arc_idx01x = fsas_row_splits2_data[cur_state_idx01],
+              arc_idx01x_next = fsas_row_splits2_data[cur_state_idx01 + 1];
           // std::upper_bound finds the first index i in the range
           //  [arc_idx01x+1 .. arc_idx01x_next-1] such that
           // arc_cdf_data[i] > p, and if it doesn't exist gives us
@@ -2434,7 +2435,7 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
           // + 1 to leave space to store the path length.
           path_storage_start[path_pos + 1] = arc_idx012;
           int32_t next_state_idx01 = arcs[arc_idx012].dest_state + state_idx0x;
-          cur_state = next_state_idx01;
+          cur_state_idx01 = next_state_idx01;
         }
         if (path_pos > num_batches)
           K2_LOG(FATAL) << "Bug in RandomPaths, please ask maintainers for help..";
@@ -2442,7 +2443,7 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
     }
   }
 
-  Array1<int32_t> path_lengths(tot_num_paths + 1);
+  Array1<int32_t> path_lengths(c, tot_num_paths + 1);
   int32_t *path_lengths_data = path_lengths.Data();
   K2_EVAL(c, tot_num_paths, lambda_get_path_lengths, (int32_t i) {
 
@@ -2461,26 +2462,26 @@ Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
   ExclusiveSum(path_lengths, &path_lengths);
   Array1<int32_t> ans_row_splits2(path_lengths);
 
-  Ragged<int32_t> ans(RaggedShape3(num_paths_sum, paths_row_ids, tot_num_paths,
-                                   ans_row_splits2, nullptr, -1));
-  const int32_t *ans_row_ids2 = ans.RowIds(2),
-      *ans_row_splits2 = ans.RowSplits(2),
-      *ans_row_ids1 = ans.RowIds(1),
-      *ans_row_splits1 = ans.RowSplits(1);
+  Ragged<int32_t> ans(RaggedShape3(&num_paths_sum, &paths_row_ids, tot_num_paths,
+                                   &ans_row_splits2, nullptr, -1));
+  const int32_t *ans_row_ids2_data = ans.RowIds(2).Data(),
+      *ans_row_splits2_data = ans.RowSplits(2).Data(),
+      *ans_row_ids1_data = ans.RowIds(1).Data(),
+      *ans_row_splits1_data = ans.RowSplits(1).Data();
   int32_t *ans_data = ans.values.Data();
-  int32_t ans_tot_size = ans_shape.NumElements();
+  int32_t ans_tot_size = ans.shape.NumElements();
   // TODO: maybe optimize the following for CPU, would be quite slow.
   K2_EVAL(c, ans_tot_size, lambda_format_ans_data, (int32_t ans_idx012) {
-      int32_t path_idx01 = ans_row_ids2[ans_idx012],
-          ans_idx01x = ans_row_splits2[ans_idx01],
+      int32_t path_idx01 = ans_row_ids2_data[ans_idx012],
+          ans_idx01x = ans_row_splits2_data[path_idx01],
           path_pos_idx2 = ans_idx012 - ans_idx01x,
-          fsa_idx1 = ans_row_ids1[path_idx01],
-          path_idx0x = ans_row_splits1[fsa_idx1],
+          fsa_idx0 = ans_row_ids1_data[path_idx01],
+          path_idx0x = ans_row_splits1_data[fsa_idx0],
           path_idx1 = path_idx01 - path_idx0x,
-          num_batches = num_state_batches_data[fsa_idx];
+          num_batches = num_state_batches_data[fsa_idx0];
 
       int32_t *path_storage_start = path_storage_data +
-          storage_row_splits_data[fsa_idx] + path_idx1 * num_batches;
+          storage_row_splits_data[fsa_idx0] + path_idx1 * num_batches;
       ans_data[ans_idx012] = path_storage_start[1 + path_pos_idx2];
     });
   return ans;

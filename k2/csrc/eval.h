@@ -16,6 +16,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <cooperative_groups.h>
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 
@@ -293,11 +294,12 @@ template <unsigned int ThreadsPerBlock,
           unsigned int ThreadsPerGroup,
           typename ThreadGroupDataT, typename LambdaT>
 __global__ void eval_lambda_group(int32_t n, LambdaT lambda) {
-  namespace cooperative_groups cg;
+  namespace cg = cooperative_groups;
   int32_t group_idx = threadIdx.x / ThreadsPerGroup;
   int32_t i = (blockIdx.y * gridDim.x + blockIdx.x) * (ThreadsPerBlock / ThreadsPerGroup) + group_idx;
   if (i >= n) return;
-  thread_block_tile<ThreadsPerGroup> g = cg::tiled_partition<ThreadsPerGroup>(this_thread_block());
+  cg::thread_block_tile<ThreadsPerGroup> g =
+      cg::tiled_partition<ThreadsPerGroup>(cg::this_thread_block());
 
   __shared__ ThreadGroupDataT shared_data[ThreadsPerBlock / ThreadsPerGroup];
   lambda(g, shared_data + group_idx, i);
@@ -313,9 +315,10 @@ __global__ void eval_lambda_group(int32_t n, LambdaT lambda) {
   const unsigned int thread_group_size = 8;
   namespace cooperative_groups cg;
   typedef group_shared_type int32_t;
-  auto lambda_foo = [=] __device__ (cg::tiled_partition<thread_group_size> g, // or auto g..
-                                    __shared__ group_shared_type *shared_data,
-                                    int32_t i) {
+  auto lambda_foo = [=] __device__ __forceinline__ (
+                     cg::tiled_partition<thread_group_size> g, // or auto g..
+                     group_shared_type *shared_data,
+                     int32_t i) {
      unsigned int r = g.thread_rank();
      // note, g.size() == 8.
 
@@ -333,17 +336,19 @@ void EvalGroupDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   if (n <= 0) return;  // actually it would be an error if n < 0.
 
   K2_CHECK(stream != kCudaStreamInvalid);
+  K2_STATIC_ASSERT((ThreadsPerGroup & (ThreadsPerGroup-1)) == 0 &&
+                   ThreadsPerGroup > 0 && ThreadsPerGroup <= 256);
 
   const int32_t block_size = 256;
       // next line == NumBlocks(n * ThreadsPerGroup, block_size), but works
       // for (n*ThreadsPerGroup) outside int32_t range.
   int32_t tot_grid_size = ((n * (int64_t)ThreadsPerGroup) + block_size - 1) / block_size;
   int32_t x_grid_size = (tot_grid_size < (1 << 20) ?
-                         min<int32_t>(tot_grid_size, (1 << 10)) :
+                         std::min<int32_t>(tot_grid_size, (1 << 10)) :
                          32768),
       y_grid_size = NumBlocks(tot_grid_size, x_grid_size);
   dim3 grid_dim(x_grid_size, y_grid_size, 1), block_dim(block_size, 1, 1);
-  K2_CUDA_SAFE_CALL(eval_lambda_group<(unsigned int)block_size, ThreadsPerBlock, LambdaT>
+  K2_CUDA_SAFE_CALL(eval_lambda_group<(unsigned int)block_size, ThreadsPerGroup, LambdaT>
                     <<<grid_dim, block_dim, 0, stream>>>(n, lambda));
 
 }

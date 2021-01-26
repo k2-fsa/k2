@@ -579,7 +579,7 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
   `num_paths` as a scalar.
  */
 template <typename FloatType>
-Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
                             Array1<FloatType> &arc_cdf,
                             const Array1<int32_t> &num_paths,
                             Ragged<int32_t> &state_batches);

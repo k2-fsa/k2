@@ -2040,11 +2040,10 @@ struct Hash {
 
 template <typename T>
 struct HashInputIterator {
-  explicit HashInputIterator(const int32_t *t) : t_(t), offset_(0) {}
-  __device__ __forceinline__ HashInputIterator(const int32_t *i)
+  explicit __host__ __device__ __forceinline__ HashInputIterator(const int32_t *i)
       : i_(i) { }
   __device__ __forceinline__ Hash<T> operator[](int32_t idx) const {
-    return Hash<T>{i, i, 31, 167};
+    return Hash<T>{*i_, *i_, 31, 167};
   }
   __device__ __forceinline__ HashInputIterator operator+(int32_t offset) {
     return HashInputIterator(i_ + offset);
@@ -2097,13 +2096,13 @@ struct HashCombineOp {
 namespace std {
 // those below typedefs are required by cub::DeviceSegmentedReduce:Reduce
 template <typename T>
-struct iterator_traits<k2::argmax_internal::HashInputIterator<T>> {
-  typedef k2::argmax_internal::Hash<T> value_type;
+struct iterator_traits<k2::hash_internal::HashInputIterator<T>> {
+  typedef k2::hash_internal::Hash<T> value_type;
 };
 template <typename T>
-struct iterator_traits<k2::argmax_internal::HashOutputIterator<T>> {
-  typedef k2::argmax_internal::Hash<T> value_type;
-  typedef k2::argmax_internal::HashOutputIteratorDeref<T> reference;
+struct iterator_traits<k2::hash_internal::HashOutputIterator<T>> {
+  typedef k2::hash_internal::Hash<T> value_type;
+  typedef k2::hash_internal::HashOutputIteratorDeref<T> reference;
 };
 }  // namespace std
 
@@ -2118,7 +2117,6 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
   ContextPtr c = src.Context();
   Array1<T> ans(c, num_rows);
 
-  ContextPtr &c = src.Context();
   const int32_t *row_splits = row_splits_array.Data();
   const int32_t *values_data = src.values.Data();
   T *output_data = ans.Data();
@@ -2140,7 +2138,7 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
     K2_CHECK_EQ(c->GetDeviceType(), kCuda);
     hash_internal::HashInputIterator<T> input_iter(values_data);
     hash_internal::HashOutputIterator<T> output_iter(output_data);
-    hash_internal::HashMaxOp<T> op;
+    hash_internal::HashCombineOp<T> op;
     hash_internal::Hash<T> initial_hash{ 0, 0, 1, 1 };
 
     // This code is based on the example here:
@@ -2150,11 +2148,11 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
     // the first time is to determine temporary device storage requirements
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         nullptr, temp_storage_bytes, input_iter, output_iter, num_rows,
-        row_splits, row_splits + 1, op, initial_pair, c->GetCudaStream()));
+        row_splits, row_splits + 1, op, initial_hash, c->GetCudaStream()));
     Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
     K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
         d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
-        num_rows, row_splits, row_splits + 1, op, initial_pair,
+        num_rows, row_splits, row_splits + 1, op, initial_hash,
         c->GetCudaStream()));
   }
   return ans;
