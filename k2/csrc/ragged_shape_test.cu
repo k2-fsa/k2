@@ -310,7 +310,8 @@ TEST(RaggedShapeTest, RemoveEmptyListsAxis0) {
       RaggedShape s(c, "[ [ x x ] [ ] [ x ] [ ]  ]"),
           t(c, "[ [ x x ] [ ] [ x ] ]");
 
-      Array1<char> keep(c, std::vector<char>({ (char)1, (char)1, (char)1, (char)0 }));
+      Array1<char> keep(
+          c, std::vector<char>({(char)1, (char)1, (char)1, (char)0}));  // NOLINT
       Renumbering r(c, 4);
       Assign(keep, &r.Keep());
       RaggedShape t2 = RenumberAxis0Simple(s, r);
@@ -321,7 +322,8 @@ TEST(RaggedShapeTest, RemoveEmptyListsAxis0) {
       RaggedShape s(c, "[ [ x x ] [ ] [ x ] [ ]  ]"),
           t(c, "[ [ x x ] [ ] [ x ] ]");
 
-      Array1<char> keep(c, std::vector<char>({ (char)0, (char)1, (char)1, (char)0 }));
+      Array1<char> keep(
+          c, std::vector<char>({(char)0, (char)1, (char)1, (char)0}));  // NOLINT
       Renumbering r(c, 4);
       Assign(keep, &r.Keep());
 #ifndef NDEBUG

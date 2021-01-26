@@ -307,7 +307,7 @@ void TestArray2() {
         for (auto c = 0; c != kDim1; ++c) {
           // WARNING: it's inefficient to access elements of Array2
           // with operator [][]
-          EXPECT_EQ(cpu_acc(r,c), k);
+          EXPECT_EQ(cpu_acc(r, c), k);
           EXPECT_EQ(cuda_array.Row(r)[c], k);
           ++k;
         }

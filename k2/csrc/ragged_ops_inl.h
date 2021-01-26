@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/cudpp/cudpp.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/moderngpu_allocator.h"
 #include "moderngpu/kernel_segsort.hxx"
@@ -556,6 +557,59 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
         d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
         num_rows, row_splits, row_splits + 1, op, initial_pair,
         c->GetCudaStream()));
+  }
+}
+
+template <typename T>
+void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
+  ContextPtr c = GetContext(src, *dst);
+  int32_t dim = dst->Dim();
+  K2_CHECK_EQ(src.values.Dim(), dim);
+
+  // flags is similar to `tails` (see concepts in k2/csrc/utils)
+  // But it indicates `heads` here. The very first segment always
+  // starts at zero, so flags[0] is always 0.
+  Array1<uint32_t> flags(c, dim);
+  uint32_t *flags_data = flags.Data();
+
+  Array1<int32_t> row_splits = src.RowSplits(src.NumAxes() - 1);
+  Array1<int32_t> row_ids = src.RowIds(src.NumAxes() - 1);
+  const int32_t *row_splits_data = row_splits.Data();
+  const int32_t *row_ids_data = row_ids.Data();
+  K2_EVAL(
+      c, dim, set_flags, (int32_t idx01)->void {
+        int32_t idx0 = row_ids_data[idx01];
+        int32_t idx0x = row_splits_data[idx0];
+        int32_t idx0x_next = row_splits_data[idx0 + 1];
+        if (idx0x < idx0x_next) {
+          if (idx01 == idx0x)
+            flags_data[idx01] = idx01 == 0 ? 0 : 1;
+          else
+            flags_data[idx01] = 0;
+        }
+      });
+
+  if (c->GetDeviceType() == kCuda) {
+    // defined in k2/csrc/cudpp/cudpp.{h,cu}
+    SegmentedExclusiveSum(c, src.values.Data(), dim, flags_data, dst->Data());
+    return;
+  }
+
+  K2_CHECK_EQ(c->GetDeviceType(), kCpu);
+
+  const T *src_values_data = src.values.Data();
+  T *dst_data = dst->Data();
+
+  T sum = 0;
+  for (int32_t i = 0; i != dim; ++i) {
+    if (flags_data[i] == 1) {
+      // a new sublist
+      sum = T(0);
+    }
+
+    T prev = src_values_data[i];
+    dst_data[i] = sum;
+    sum += prev;  // the last entry is discarded!
   }
 }
 

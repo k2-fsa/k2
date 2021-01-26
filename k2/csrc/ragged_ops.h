@@ -1,6 +1,7 @@
 /**
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey
- *                                                   Haowen Qiu)
+ * Copyright (c)  2020-2021  Xiaomi Corporation (authors: Daniel Povey
+ *                                                        Haowen Qiu
+ *                                                        Fangjun Kuang)
  *
  * See LICENSE for clarification regarding multiple authors
  */
@@ -1320,7 +1321,16 @@ template <typename T>
 Array1<T> ComputeHash(Ragged<int32_t> &src);
 
 
-
+/* Compute exclusive sum per sub-list.
+ *
+ * @param [in] src  The input ragged tensor. The exclusive sum is computed
+ *                  for the last axis. CAUTION: The last entry of every sublist
+ *                  does not contribute to the final sum.
+ * @param [out] dst The dest array. It satisfies dst.Dim() == src.values.Dim().
+ *                  CAUTION: It supports `dst == &src.values`.
+ */
+template <typename T>
+void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst);
 
 }  // namespace k2
 

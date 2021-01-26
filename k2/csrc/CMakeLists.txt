@@ -29,6 +29,7 @@ set(context_srcs
   algorithms.cu
   array_ops.cu
   context.cu
+  cudpp/cudpp.cu
   dtype.cu
   fsa.cu
   fsa_algo.cu
@@ -86,6 +87,7 @@ set(cuda_tests
   algorithms_test
   array_ops_test
   array_test
+  cudpp_test
   fsa_algo_test
   fsa_test
   fsa_utils_test
