@@ -55,6 +55,9 @@ bool ApproxEqual(FloatType a, FloatType b, double delta = 0.001) {
 template <typename T>
 void ExpectEqual(const std::vector<T> &expected, const std::vector<T> &actual,
                  double abs_error = 0.001) {
+  // noted abs_error is not used here, but will be used in below instantiation
+  // for double and float, so that when we call `ExpectEqual` in below
+  // `CheckArrayData` we don't need a if-else branch based on `T`.
   EXPECT_EQ(expected, actual);
 }
 
