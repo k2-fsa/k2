@@ -53,7 +53,7 @@ From PyPI
 
   pip install --pre k2
 
-The wheel packages on PyPI are built using `torch==1.6.0+cu101` on Ubuntu 18.04.
+The wheel packages on PyPI are built using `torch==1.7.0+cu101` on Ubuntu 18.04.
 If you are using other Linux systems or a different PyTorch version,
 the pre-built wheel packages may NOT work on your system, please install
 k2 from source in this case.

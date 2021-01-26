@@ -392,6 +392,8 @@ def connect(fsa: Fsa) -> Fsa:
 
     Removes states that are neither accessible nor co-accessible.
 
+    It works only on CPU.
+
     Note:
       A state is not accessible if it is not reachable from the start state.
       A state is not co-accessible if it cannot reach the final state.
@@ -410,6 +412,8 @@ def connect(fsa: Fsa) -> Fsa:
     if fsa.properties & fsa_properties.ACCESSIBLE != 0 and \
             fsa.properties & fsa_properties.COACCESSIBLE != 0:
         return fsa
+
+    assert fsa.is_cpu()
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.connect(fsa.arcs, need_arc_map=need_arc_map)
