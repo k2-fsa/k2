@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
-#include "k2/csrc/cudpp/cudpp.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/moderngpu_allocator.h"
 #include "moderngpu/kernel_segsort.hxx"
