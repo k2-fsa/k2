@@ -2559,24 +2559,42 @@ TEST(RaggedShapeOpsTest, RaggedShapeAxis0Splitter) {
 }
 template <typename T>
 static void TestSegmentedExclusiveSum() {
-  std::vector<T> expected_v = {0, 1, 3, 6,
-                               //
-                               0, 3, 7,
-                               //
-                               0, 5, 11, 18};
-
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    Ragged<T> src("[ [1 2 3 -1] [3 4 -1] [] [5 6 7 -1] ]");
-    src = src.To(c);
-    Array1<T> dst(c, src.values.Dim());
+    {
+      // simple case
+      Ragged<T> src("[ [1 2 3 -1] [3 4 -1] [] [5 6 7 -1] ]");
+      src = src.To(c);
+      Array1<T> dst(c, src.NumElements());
+      SegmentedExclusiveSum(src, &dst);
 
-    SegmentedExclusiveSum(src, &dst);
+      std::vector<T> expected = {0, 1, 3, 6,
+                                 //
+                                 0, 3, 7,
+                                 //
+                                 0, 5, 11, 18};
+      CheckArrayData(dst, expected);
 
-    Array1<T> expected(c, expected_v);
-    CheckArrayData(dst, expected);
+      // &src.values == dst
+      SegmentedExclusiveSum(src, &src.values);
+      CheckArrayData(src.values, expected);
+    }
+    {
+      // random case, we assume the implementation for cpu is correct and only
+      // test for Cuda version
+      if (c->GetDeviceType() == kCuda) {
+        for (int32_t i = 0; i != 2; ++i) {
+          Ragged<T> cpu_ragged = RandomRagged<T>(-1000, 1000, 2, 4, 0, 5000);
+          int32_t dim = cpu_ragged.NumElements();
+          Array1<T> cpu_dst(GetCpuContext(), dim);
+          SegmentedExclusiveSum(cpu_ragged, &cpu_dst);
 
-    SegmentedExclusiveSum(src, &src.values);
-    CheckArrayData(src.values, expected);
+          Ragged<T> ragged = cpu_ragged.To(c);
+          Array1<T> dst(c, dim);
+          SegmentedExclusiveSum(ragged, &dst);
+          CheckArrayData(dst, cpu_dst, 0.1);
+        }
+      }
+    }
   }
 }
 

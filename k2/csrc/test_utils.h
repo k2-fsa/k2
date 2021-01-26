@@ -53,25 +53,29 @@ bool ApproxEqual(FloatType a, FloatType b, double delta = 0.001) {
 }
 
 template <typename T>
-void ExpectEqual(const std::vector<T> &expected, const std::vector<T> &actual) {
+void ExpectEqual(const std::vector<T> &expected, const std::vector<T> &actual,
+                 double abs_error = 0.001) {
   EXPECT_EQ(expected, actual);
 }
 
 template <>
 inline void ExpectEqual<float>(const std::vector<float> &expected,
-                               const std::vector<float> &actual) {
-  EXPECT_FLOAT_ARRAY_APPROX_EQ(expected, actual, 0.001);
+                               const std::vector<float> &actual,
+                               double abs_error) {
+  EXPECT_FLOAT_ARRAY_APPROX_EQ(expected, actual, abs_error);
 }
 
 template <>
 inline void ExpectEqual<double>(const std::vector<double> &expected,
-                                const std::vector<double> &actual) {
-  EXPECT_FLOAT_ARRAY_APPROX_EQ(expected, actual, 0.001);
+                                const std::vector<double> &actual,
+                                double abs_error) {
+  EXPECT_FLOAT_ARRAY_APPROX_EQ(expected, actual, abs_error);
 }
 
 // check if `array` and `target` have the same values
 template <typename T>
-void CheckArrayData(const Array1<T> &array, const Array1<T> &target) {
+void CheckArrayData(const Array1<T> &array, const Array1<T> &target,
+                    double abs_error = 0.001) {
   ASSERT_EQ(array.Dim(), target.Dim());
   int32_t dim = array.Dim();
   ContextPtr cpu = GetCpuContext();
@@ -79,7 +83,7 @@ void CheckArrayData(const Array1<T> &array, const Array1<T> &target) {
   Array1<T> cpu_target = target.To(cpu);
   std::vector<T> array_data(cpu_array.Data(), cpu_array.Data() + dim);
   std::vector<T> target_data(cpu_target.Data(), cpu_target.Data() + dim);
-  ExpectEqual(target_data, array_data);
+  ExpectEqual(target_data, array_data, abs_error);
 }
 
 void CheckRowSplits(RaggedShape &shape,
