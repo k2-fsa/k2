@@ -177,6 +177,90 @@ TEST(FsaFromString, OpenFstTransducer) {
   }
 }
 
+TEST(FsaFromString, OpenFstAcceptorNonZeroStart) {
+  std::string s = R"(
+    1 0 0 0.1
+    0 0 4 0.3
+    0 0 3 0.2
+    0 0.4
+  )";
+  Fsa fsa = FsaFromString(s, true, nullptr);
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
+}
+
+TEST(FsaFromString, OpenFstAcceptorNonZeroStartCase2) {
+  std::string s = R"(
+    1 3 10 0.1
+    1 3 20 0.2
+    1 0 90 0.8
+    3 0 30 0.3
+    3 0 40 0.4
+    3 1 6 0.33
+    0 4 50 0.5
+    0 3 0 0.55
+    0 1 9 0.9
+    4 0.6
+  )";
+  Fsa fsa = FsaFromString(s, true, nullptr);
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 3, 10, -0.1f}));
+  EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 3, 20, -0.2f}));
+  EXPECT_EQ((fsa[{0, 2}]), (Arc{0, 1, 90, -0.8f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 4, 50, -0.5f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 3, 0, -0.55f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 0, 9, -0.9f}));
+  EXPECT_EQ((fsa[{3, 0}]), (Arc{3, 1, 30, -0.3f}));
+  EXPECT_EQ((fsa[{3, 1}]), (Arc{3, 1, 40, -0.4f}));
+  EXPECT_EQ((fsa[{3, 2}]), (Arc{3, 0, 6, -0.33f}));
+  EXPECT_EQ((fsa[{4, 0}]), (Arc{4, 5, -1, -0.6f}));
+}
+
+TEST(FsaFromString, OpenFstTransducerNonZeroStart) {
+  std::string s = R"(
+    1 0 0 0 0.1
+    0 0 4 40 0.3
+    0 0 3 30 0.2
+    0 0.4
+  )";
+  Array1<int32_t> aux_labels;
+  Fsa fsa = FsaFromString(s, true, &aux_labels);
+  CheckArrayData(aux_labels, {0, 40, 30, -1});
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
+}
+
+TEST(FsaFromString, OpenFstTransducerNonZeroStartCase2) {
+  std::string s = R"(
+    1 3 10 100 0.1
+    1 3 20 200 0.2
+    1 0 90 8 0.8
+    3 0 30 300 0.3
+    3 0 40 400 0.4
+    3 1 6 8 0.33
+    0 4 50 500 0.5
+    0 3 0 3 0.55
+    0 1 9 10 0.9
+    4 0.6
+  )";
+  Array1<int32_t> aux_labels;
+  Fsa fsa = FsaFromString(s, true, &aux_labels);
+  CheckArrayData(aux_labels, {100, 200, 8, 500, 3, 10, 300, 400, 8, -1});
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 3, 10, -0.1f}));
+  EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 3, 20, -0.2f}));
+  EXPECT_EQ((fsa[{0, 2}]), (Arc{0, 1, 90, -0.8f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 4, 50, -0.5f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 3, 0, -0.55f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 0, 9, -0.9f}));
+  EXPECT_EQ((fsa[{3, 0}]), (Arc{3, 1, 30, -0.3f}));
+  EXPECT_EQ((fsa[{3, 1}]), (Arc{3, 1, 40, -0.4f}));
+  EXPECT_EQ((fsa[{3, 2}]), (Arc{3, 0, 6, -0.33f}));
+  EXPECT_EQ((fsa[{4, 0}]), (Arc{4, 5, -1, -0.6f}));
+}
+
 // TODO(fangjun): write code to check the printed
 // strings matching expected ones.
 TEST(FsaToString, Acceptor) {

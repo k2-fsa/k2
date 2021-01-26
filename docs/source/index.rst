@@ -31,6 +31,10 @@ Error Rate when compared with existing technology; but the point is to
 do this in a much more general and extensible framework to allow further
 development of ASR technology.
 
+.. HINT::
+
+  We use the lowercase ``k`` in ``k2``. That is, it is ``k2``, not ``K2``.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

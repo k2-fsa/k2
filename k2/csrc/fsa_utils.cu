@@ -264,6 +264,9 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
   std::vector<std::string> splits;
   std::string line;
 
+  // We assume the source state of the first line
+  // is the start state in OpenFST.
+  int32_t start_state = -1;
   int32_t max_state = -1;
   int32_t num_arcs = 0;
   std::vector<int32_t> original_final_states;
@@ -287,6 +290,8 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
       int32_t symbol = StringToInt(splits[2]);
       float score = 0.0f;
       if (num_fields == 4u) score = -1.0f * StringToFloat(splits[3]);
+
+      if (start_state == -1) start_state = src_state;
 
       // Add the arc to "state_to_arcs".
       ++num_arcs;
@@ -328,6 +333,27 @@ static Fsa OpenFstAcceptorFromStream(std::istringstream &is) {
           -1,  // kFinalSymbol
           original_final_weights[i]);
       ++num_arcs;
+    }
+  }
+
+  if (start_state != 0) {
+    // swap start_state and 0
+    std::swap(state_to_arcs[0], state_to_arcs[start_state]);
+
+    // fix source state
+    for (auto &a : state_to_arcs[0]) a.src_state = 0;
+
+    for (auto &a : state_to_arcs[start_state]) a.src_state = start_state;
+
+    // fix dest state
+    for (auto &state_arcs : state_to_arcs) {
+      for (auto &a : state_arcs) {
+        if (a.dest_state == 0) {
+          a.dest_state = start_state;
+        } else if (a.dest_state == start_state) {
+          a.dest_state = 0;
+        }
+      }
     }
   }
 
@@ -385,6 +411,9 @@ static Fsa OpenFstTransducerFromStream(std::istringstream &is,
   std::vector<std::string> splits;
   std::string line;
 
+  // We assume the source state of the first line
+  // is the start state in OpenFST.
+  int32_t start_state = -1;
   int32_t max_state = -1;
   int32_t num_arcs = 0;
   std::vector<int32_t> original_final_states;
@@ -409,6 +438,8 @@ static Fsa OpenFstTransducerFromStream(std::istringstream &is,
       int32_t aux_label = StringToInt(splits[3]);
       float score = 0.0f;
       if (num_fields == 5u) score = -1.0f * StringToFloat(splits[4]);
+
+      if (start_state == -1) start_state = src_state;
 
       // Add the arc to "state_to_arcs", and aux_label to "state_to_aux_labels"
       ++num_arcs;
@@ -464,6 +495,28 @@ static Fsa OpenFstTransducerFromStream(std::istringstream &is,
       state_to_aux_labels[original_final_states[i]].push_back(
           -1);  // kFinalSymbol
       ++num_arcs;
+    }
+  }
+
+  if (start_state != 0) {
+    // swap start_state and 0
+    std::swap(state_to_arcs[0], state_to_arcs[start_state]);
+    std::swap(state_to_aux_labels[0], state_to_aux_labels[start_state]);
+
+    // fix source state
+    for (auto &a : state_to_arcs[0]) a.src_state = 0;
+
+    for (auto &a : state_to_arcs[start_state]) a.src_state = start_state;
+
+    // fix dest state
+    for (auto &state_arcs : state_to_arcs) {
+      for (auto &a : state_arcs) {
+        if (a.dest_state == 0) {
+          a.dest_state = start_state;
+        } else if (a.dest_state == start_state) {
+          a.dest_state = 0;
+        }
+      }
     }
   }
 

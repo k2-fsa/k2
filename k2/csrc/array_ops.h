@@ -696,6 +696,31 @@ template <typename T>
 Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
                        const Array1<T> **src);
 
+/* Compute the sum of an array.
+ *
+ * @param [in]  c    The context from which `src` is allocated.
+ * @param [in]  src  Starting address of the array.
+ * @param [in]  dim  Number of elements in the array.
+ *
+ * @return  Return `src[0] + src[1] + ... + src[dim-1]`.
+ *          If dim is 0, return 0.
+ */
+template<typename T>
+T Sum(ContextPtr c, const T* src, int32_t dim);
+
+/* Compute the sum of an array.
+ *
+ * @param [in] src Input array. If it is empty, 0 is returned.
+ *
+ * @return Return src[0] + src[1] + ... + src[src.Dim() - 1].
+ *         Return 0 if `src` is empty.
+ */
+template <typename T>
+T Sum(const Array1<T> &src) {
+  if (src.Dim() == 0) return 0;
+  return Sum(src.Context(), src.Data(), src.Dim());
+}
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_ARRAY_OPS_H_
