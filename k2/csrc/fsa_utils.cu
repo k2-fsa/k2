@@ -2180,16 +2180,18 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
       FloatType arc_post = arc_post_data[i];
       int32_t state_idx = fsas_row_ids2_data[i];
       arc_post -= state_post_data[state_idx];
-      arc_pdf_data[i] = exp(arc_post);
+      FloatType arc_pdf_val = exp(arc_post);
+      arc_pdf_data[i] = arc_pdf_val;
+      K2_DCHECK_GE(arc_pdf_val, 0);
     });
 
 
   Ragged<FloatType> arc_pdf_ragged(fsas.shape, arc_pdf);
 
-  // TODO: make this in-place.
   Array1<FloatType> arc_cdf(c, num_arcs);
 
   SegmentedExclusiveSum(arc_pdf_ragged, &arc_cdf);
+  FloatType *arc_cdf_data = arc_cdf.Data();
 
   /*
     The remaining code would not be necessary if we didn't have to deal with
@@ -2204,7 +2206,7 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
     arc leaving a specific state it "belongs to", without any danger of
     picking an arc that goes to a state that cannot reach the final state.
   */
-  FloatType *arc_cdf_data = arc_cdf.Data();
+
   // `arc_inv_tots` will contain the inverses of the totals of the arc_post values
   // leaving each state, if those totals were nonzero and finite; and otherwise, 1.0.
   Array1<FloatType> arc_inv_tots(c, num_states);
@@ -2230,6 +2232,8 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
           cdf_value_modified = cdf_value * arc_inv_tots_data[state_idx01];
       arc_cdf_data[arc_idx012] = cdf_value_modified;
     });
+
+
   return arc_cdf;
 }
 
@@ -2261,7 +2265,7 @@ struct PathState {
 
 template <typename FloatType>
 Ragged<int32_t> RandomPaths(FsaVec &fsas,
-                            Array1<FloatType> &arc_cdf,
+                            const Array1<FloatType> &arc_cdf,
                             const Array1<int32_t> &num_paths,
                             Ragged<int32_t> &state_batches) {
   using namespace random_paths_internal;
@@ -2285,13 +2289,17 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
          num_states = state_batches_row_splits2[this_batch_start + i + 1] -
           state_batches_row_splits2[this_batch_start + i];
       if (num_states == 0) {
-        num_state_batches_data[i] = 0;
-      } else {
-        int32_t prev_batch_start = state_batches_row_splits1[b - 1],
-            prev_num_states = state_batches_row_splits2[prev_batch_start + i + 1] -
+        if (b == 0) {
+          num_state_batches_data[i] = 0;
+        } else {
+          int32_t prev_batch_start = state_batches_row_splits1[b - 1],
+              prev_num_states = state_batches_row_splits2[prev_batch_start + i + 1] -
               state_batches_row_splits2[prev_batch_start + i];
-        if (prev_num_states != 0)
-          num_state_batches_data[i] = b;
+          if (prev_num_states != 0)
+            num_state_batches_data[i] = b;
+        }
+      } else if (b + 1 == max_batches) {
+        num_state_batches_data[i] = max_batches;
       }
     });
 
@@ -2337,11 +2345,10 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   int32_t *path_storage_data = path_storage.Data();
 
   namespace cg = cooperative_groups;
-  const unsigned int thread_group_size = 8;  // Can tune this.  Power of 2,
+  const unsigned int thread_group_size = 1;  // Can tune this.  Power of 2,
                                              // 1<=thread_group_size<=256
   const FloatType *arc_cdf_data = arc_cdf.Data();
   const Arc *arcs = fsas.values.Data();
-
 
   if (c->GetDeviceType() == kCuda) {
     auto lambda_set_paths = [=] __device__ (
@@ -2374,6 +2381,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
            end_arc = fsas_row_splits2_data[start_state + 1];
        shared_data->begin_arc_idx01x = begin_arc;
        shared_data->num_arcs = end_arc - begin_arc;
+       K2_CHECK_GT(shared_data->num_arcs, 0);
        FloatType p = ((FloatType)0.5 + path_idx1) / num_paths;
        shared_data->p = p;
      }
@@ -2395,7 +2403,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
        if (num_arcs == 0) {
          // If we reach a state with no arcs leaving it, it should be the final
          // state; otherwise something went wrong.
-         K2_CHECK_EQ(fsas_row_ids2_data[begin_arc_idx01x], final_state);
+         K2_CHECK_EQ(fsas_row_splits2_data[final_state], begin_arc_idx01x);
          if (thread_idx == 0) {
            int32_t path_length = path_pos;
            path_storage_start[0] = path_length;
@@ -2476,6 +2484,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
           }
           int32_t arc_idx01x = fsas_row_splits2_data[cur_state_idx01],
               arc_idx01x_next = fsas_row_splits2_data[cur_state_idx01 + 1];
+          K2_CHECK_GT(arc_idx01x_next, arc_idx01x);
           // std::upper_bound finds the first index i in the range
           //  [arc_idx01x+1 .. arc_idx01x_next-1] such that
           // arc_cdf_data[i] > p, and if it doesn't exist gives us
@@ -2545,30 +2554,33 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
 
 template
 Ragged<int32_t> RandomPaths(FsaVec &fsas,
-                            Array1<float> &arc_cdf,
+                            const Array1<float> &arc_cdf,
                             const Array1<int32_t> &num_paths,
                             Ragged<int32_t> &state_batches);
 template
 Ragged<int32_t> RandomPaths(FsaVec &fsas,
-                            Array1<double> &arc_cdf,
+                            const Array1<double> &arc_cdf,
                             const Array1<int32_t> &num_paths,
                             Ragged<int32_t> &state_batches);
 
 template <typename FloatType>
 Ragged<int32_t> RandomPaths(FsaVec &fsas,
-                            Array1<FloatType> &arc_cdf,
+                            const Array1<FloatType> &arc_cdf,
                             int32_t num_paths,
-                            Array1<FloatType> &tot_scores,
+                            const Array1<FloatType> &tot_scores,
                             Ragged<int32_t> &state_batches) {
   ContextPtr c = GetContext(fsas, arc_cdf, tot_scores, state_batches);
   int32_t num_fsas  = fsas.Dim0();
   Array1<int32_t> num_paths_array(c, num_fsas);
   int32_t *num_paths_data = num_paths_array.Data();
-  FloatType *tot_scores_data = tot_scores.Data();
-  FloatType minus_infinity = -std::numeric_limits<FloatType>::infinity();
+  const FloatType *tot_scores_data = tot_scores.Data();
+  // Compiler optimization seems to defeat a comparison with -infinity, on CPU.
+  // using std::numeric_limits<FloatType>::lowest() instead.
+  FloatType minus_inf = -std::numeric_limits<FloatType>::infinity();
   K2_EVAL(c, num_fsas, lambda_set_num_paths, (int32_t i) {
-      int32_t tot_score = tot_scores_data[i];
-      int32_t this_num_paths = (tot_score != minus_infinity ? num_paths : 0);
+      FloatType tot_score = tot_scores_data[i];
+      // use num_paths=0 if tot_scores[i] == 0.
+      int32_t this_num_paths = (tot_score > minus_inf ? num_paths : 0);
       num_paths_data[i] = this_num_paths;
     });
   return RandomPaths(fsas, arc_cdf, num_paths_array, state_batches);
@@ -2576,15 +2588,15 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
 
 template
 Ragged<int32_t> RandomPaths(FsaVec &fsas,
-                            Array1<float> &arc_cdf,
+                            const Array1<float> &arc_cdf,
                             int32_t num_paths,
-                            Array1<float> &tot_scores,
+                            const Array1<float> &tot_scores,
                             Ragged<int32_t> &state_batches);
 template
 Ragged<int32_t> RandomPaths(FsaVec &fsas,
-                            Array1<double> &arc_cdf,
+                            const Array1<double> &arc_cdf,
                             int32_t num_paths,
-                            Array1<double> &tot_scores,
+                            const Array1<double> &tot_scores,
                             Ragged<int32_t> &state_batches);
 
 }  // namespace k2
