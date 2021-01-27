@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R sparse_test_py
+#  ctest --verbose -R create_sparse_test_py
 
 import unittest
 
