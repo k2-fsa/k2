@@ -629,7 +629,6 @@ void Assign(Array2<T> &src, Array2<T> *dest);
 template <typename S, typename T>
 void Assign(Array1<S> &src, Array1<T> *dest);
 
-
 /*
   Merge an array of Array1<T> with a `merge_map` which indicates which items
   to get from which positions (doesn't do any checking of the merge_map values!)
@@ -645,8 +644,8 @@ void Assign(Array1<S> &src, Array1<T> *dest);
                           merge_map.Dim()
     @return               Returns array with elements combined from those in
                           `src`.  Will satisfy `ans.Dim() == merge_map.Dim()`
-                          and
-                          `ans[i] = (**src[merge_map[i] % num_srcs])[merge_map[i] / num_srcs]`.
+                          and `ans[i] = (**src[merge_map[i] % num_srcs])
+                          [merge_map[i] / num_srcs]`.
 
    CAUTION: may segfault if merge_map contains invalid values.
  */
@@ -663,8 +662,8 @@ Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
  * @return  Return `src[0] + src[1] + ... + src[dim-1]`.
  *          If dim is 0, return 0.
  */
-template<typename T>
-T Sum(ContextPtr c, const T* src, int32_t dim);
+template <typename T>
+T Sum(ContextPtr c, const T *src, int32_t dim);
 
 /* Compute the sum of an array.
  *
