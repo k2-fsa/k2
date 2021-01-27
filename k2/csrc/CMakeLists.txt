@@ -29,6 +29,7 @@ set(context_srcs
   algorithms.cu
   array_ops.cu
   context.cu
+  cudpp/cudpp.cu
   dtype.cu
   fsa.cu
   fsa_algo.cu
