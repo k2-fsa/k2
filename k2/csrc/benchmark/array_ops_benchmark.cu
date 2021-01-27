@@ -8,6 +8,7 @@
 
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/benchmark/benchmark.h"
+#include "k2/csrc/test_utils.h"
 
 namespace k2 {
 
@@ -110,6 +111,65 @@ static BenchmarkStat BenchmarkRowIdsToRowSplits(int32_t dim,
 }
 
 template <typename T>
+static BenchmarkStat BenchmarkAppend(int32_t num_array,
+                                     DeviceType device_type) {
+  ContextPtr context;
+  if (device_type == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(device_type, kCuda);
+    context = GetCudaContext();
+  }
+
+  std::vector<Array1<T>> arrays_vec(num_array);
+  std::vector<const Array1<T> *> arrays(num_array);
+  int32_t total_size = 0, max_size = 0;
+  // notice `j != num_array - 1` below, we may push a very long array
+  // after the loop
+  for (int32_t j = 0; j != num_array - 1; ++j) {
+    int32_t curr_array_size = RandInt(0, 10000);
+    std::vector<T> data(curr_array_size);
+    std::iota(data.begin(), data.end(), total_size);
+    total_size += curr_array_size;
+    arrays_vec[j] = Array1<T>(context, data);
+    arrays[j] = &arrays_vec[j];
+    if (curr_array_size > max_size) max_size = curr_array_size;
+  }
+  {
+    // below we may generate an array with very large size depend on the value
+    // of RandInt(0,1)
+    int32_t average_size = total_size / num_array;
+    int32_t curr_array_size =
+        RandInt(0, 1) == 0 ? RandInt(0, 10000) : average_size * 10;
+    std::vector<T> data(curr_array_size);
+    std::iota(data.begin(), data.end(), total_size);
+    total_size += curr_array_size;
+    arrays_vec[num_array - 1] = Array1<T>(context, data);
+    arrays[num_array - 1] = &arrays_vec[num_array - 1];
+    if (curr_array_size > max_size) max_size = curr_array_size;
+  }
+  bool is_balanced = (max_size < 2 * (total_size / num_array) + 512);
+  const Array1<T> **src = arrays.data();
+
+  BenchmarkStat stat;
+  stat.op_name = "Append_" + std::to_string(num_array) + "_" +
+                 std::to_string(total_size) + "_" +
+                 std::to_string(total_size / num_array) + "_" +
+                 std::to_string(max_size) + "_" + std::to_string(is_balanced);
+  int32_t num_iter = 20;
+  stat.num_iter = num_iter;
+  stat.problem_size = num_array;
+  stat.dtype_name = TraitsOf(DtypeOf<T>::dtype).Name();
+  stat.device_type = device_type;
+
+  stat.eplased_per_iter = BenchmarkOp(
+      num_iter, context,
+      (Array1<T>(*)(int32_t, const Array1<T> **))(&Append<T>), num_array, src);
+  stat.eplased_per_iter *= 1e6;  // from seconds to microseconds
+  return stat;
+}
+
+template <typename T>
 static void RegisterBenchmarkExclusiveSum(DeviceType device_type) {
   std::vector<int32_t> problems_sizes = {100,  500,   1000,  2000,
                                          5000, 10000, 100000};
@@ -148,6 +208,20 @@ static void RegisterBenchmarkRowIdsToRowSplits(DeviceType device_type) {
   }
 }
 
+template <typename T>
+static void RegisterBenchmarkAppend(DeviceType device_type) {
+  // problem_sizes here is the number of arrays to append
+  std::vector<int32_t> problems_sizes = {10,   50,   100,  200,  500,
+                                         1000, 2000, 5000, 10000};
+  for (auto s : problems_sizes) {
+    std::string name = GenerateBenchmarkName<T>("Append", device_type) + "_" +
+                       std::to_string(s);
+    RegisterBenchmark(name, [s, device_type]() -> BenchmarkStat {
+      return BenchmarkAppend<T>(s, device_type);
+    });
+  }
+}
+
 static void RunArrayOpsBenchmark() {
   PrintEnvironmentInfo();
 
@@ -159,6 +233,8 @@ static void RunArrayOpsBenchmark() {
 
   RegisterBenchmarkRowIdsToRowSplits(kCpu);
   RegisterBenchmarkRowIdsToRowSplits(kCuda);
+
+  RegisterBenchmarkAppend<int32_t>(kCuda);
 
   // Users can set a regular expression via environment
   // variable `K2_BENCHMARK_FILTER` such that only benchmarks
