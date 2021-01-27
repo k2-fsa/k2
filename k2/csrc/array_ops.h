@@ -71,6 +71,7 @@ void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
   ExclusiveSum(src.Context(), dest_dim, src.Data(), dest->Data());
 }
 
+
 /*  wrapper for the ExclusiveSum above.  Will satisfy
      ans[i] = sum_{j=0}^{i-1} src[j] for i > 0.
      ans[0] is always 0.
@@ -80,6 +81,36 @@ Array1<T> ExclusiveSum(const Array1<T> &src) {
   NVTX_RANGE(K2_FUNC);
   Array1<T> ans(src.Context(), src.Dim());
   ExclusiveSum(src, &ans);
+  return ans;
+}
+
+
+/*
+  Sets 'dest' to exclusive prefix sum of 'src'.
+    @param [in] src    Source data, to be summed.
+    @param [out] dest  Destination data (possibly &src).  Must satisfy
+                       dest.Dim() == src.Dim().
+                       At exit, will satisfy dest[i] == sum_{j=0}^{i} src[j].
+                       Must be pre-allocated and on the same device as src.
+ */
+template <typename S, typename T>
+void InclusiveSum(const Array1<S> &src, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
+  ContextPtr c = GetContext(src, *dest);
+  int32_t src_dim = src.Dim();
+  K2_CHECK_EQ(src_dim, dest->Dim());
+  InclusiveSum(c, src_dim, src.Data(), dest->Data());
+}
+
+
+/*  wrapper for the inclusiveSum above.  Will satisfy
+     ans[i] = sum_{j=0}^{i} src[j].
+ */
+template <typename T>
+Array1<T> InclusiveSum(const Array1<T> &src) {
+  NVTX_RANGE(K2_FUNC);
+  Array1<T> ans(src.Context(), src.Dim());
+  InclusiveSum(src, &ans);
   return ans;
 }
 
@@ -119,6 +150,8 @@ void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest);
  */
 template <typename T>
 void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis);
+
+
 
 //  wrapper for the ExclusiveSum above with axis = 1
 template <typename T>
@@ -197,6 +230,7 @@ template <typename T>
 T MaxValue(const Array1<T> &src) {
   return MaxValue(src.Context(), src.Dim(), src.Data());
 }
+
 
 /*
   Get the bitwise and reduction of the array `src`, using `default_value` (e.g.

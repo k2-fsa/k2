@@ -521,6 +521,109 @@ FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes);
 Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
                                Ragged<int32_t> &step2_arc_map);
 
+
+/*
+  Return a ragged array that represents the cumulative distribution function
+  (cdf) of the probability of arcs leaving each state of `fsas`.
+  This is according to the distribution implied by the arc posteriors
+  in `arc_post`.  It's intended so that given a distribution over
+  arc probabilities you can prepare to call RandomPaths() to select
+  arcs according to that probability distribution.
+
+
+    @param [in] fsas Fsa or FsaVec for which we want the cdf.
+    @param [in] arc_post  Arc-level posteriors for this FsaVec, probably
+                   from GetArcPost().  (Probably only makes sense if you had
+                   log_semiring=true when getting the forward and backward
+                   scores, but would still give you something otherwise.)
+
+    @return   Returns an Array<FloatType> with ans.Dim() == fsas.NumElements();
+                  the element corresponding the 1st arc leaving any state
+                  will always be 0.0, and the rest will be non-decreasing,
+                  representing the exclusive-sum of prior members of
+                  `arc_post` leaving that state, all divided by the sum
+                  of `arc_post` leaving that state; you can imagine
+                  that there is an implicit "last element" for each state
+                  that is equal to 1.0.  We are careful to eliminate
+                  roundoff errors of a type that would cause fatal
+                  errors in sampling.
+ */
+template <typename FloatType>
+Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
+                            Array1<FloatType> &arc_post);
+
+/*
+  Return pseudo-randomly chosen paths through acyclic FSAs.  (Actually the paths
+  are deterministic, taken at fixed intervals through a certain cdf).
+
+    @param [in] fsas  An FsaVec (3 axes) that we are sampling from.
+    @param [in] arc_cdf  The result of calling GetArcCdf() with `fsas`.
+    @param [in] num_paths  An array giving the number of paths that is
+                        requested for each Fsa, with num_paths.Dim() ==
+                        fsas.Dim0().  Must be zero for any Fsa that
+                        is equivalent to the empty Fsa (e.g. its
+                        GetTotScores() entry is -infinity).
+   @param [in] state_batches  The result of calling GetStateBatches(fsas, true).
+                        Is needed so we can know the maximum
+                        possible length of each path, to know how much memory to
+                        allocate.
+
+   @return  Returns a ragged tensor with 3 axes: [fsa][path][arc],
+            containing arc-indexes (idx012) into `fsas`,
+             with `ans.Dim0() == fsas.Dim0()`,
+            `ans.TotSize(1) == Sum(num_paths)`.  Each bottom-level
+            sub-list is a list of consecutive arcs from the start-state
+            to the final-state.
+
+  See also the other form of RandomPaths(), which allows you to provide
+  `num_paths` as a scalar.
+ */
+template <typename FloatType>
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            const Array1<FloatType> &arc_cdf,
+                            const Array1<int32_t> &num_paths,
+                            Ragged<int32_t> &state_batches);
+
+
+/*
+  Return pseudo-randomly chosen paths through acyclic FSAs.  (Actually the paths
+  are deterministic, taken at fixed intervals through a certain cdf).
+
+    @param [in] fsas  An FsaVec (3 axes) that we are sampling from.
+    @param [in] arc_cdf  The result of calling GetArcCdf() with `fsas`.
+    @param [in] num_paths  The number of paths requested for those FSAs
+                       that have successful paths through them.  (For other
+                       FSAs, no paths will be returned).
+    @param [in] tot_scores  Total score of each FSA in `fsas`, as returned
+                      by GetTotScores (semiring of forward_scores does not
+                      matter).  Is needed so we can know which FSAs
+                      had successful paths, i.e. had tot_score not equal to
+                      -infinity.
+    @param [in] state_batches  The result of calling GetStateBatches()
+                      on `fsas`.  Is needed so we can know the maximum
+                      possible length of each path, to know how much memory to
+                      allocate.
+
+   @return  Returns a ragged tensor with 3 axes: [fsa][path][arc],
+            containing arc-indexes (idx012) into `fsas`,
+             with `ans.Dim0() == fsas.Dim0()`.  Each bottom-level
+            sub-list is a list of consecutive arcs from the start-state
+            to the final-state.
+
+
+  See also the other form of RandomPaths(), which allows you to provide
+  `num_paths` separately for each Fsa.
+ */
+template <typename FloatType>
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            const Array1<FloatType> &arc_cdf,
+                            int32_t num_paths,
+                            const Array1<FloatType> &tot_scores,
+                            Ragged<int32_t> &state_batches);
+
+
+
+
 /*
   This function detects if there are any FSAs in an FsaVec that have exactly one
   state (which is not allowed; the empty FSA may have either 0 or 2 states); and

@@ -2003,4 +2003,166 @@ RaggedShape RaggedShapeAxis0Splitter::GetElement(int32_t i,
   return RaggedShape(out);
 }
 
+
+
+namespace hash_internal {
+// Utilities for hashing strings (actually: sequences of int32_t).
+
+/*
+  T can be int32_t or int64_t.
+  The following code shows what we are computing:
+
+    std::vector<int32_t> input;
+    T hash1 = 13, hash2 = 787;
+    for (size_t i = 0; i < input.size(); i++) {
+      hash1 = 31 * hash1 + input[i];
+      hash2 = 167 * hash2 + input[i];
+    }
+    hash = hash1 + 104729 * hash2;
+
+  I'm not sure that these constants are very optimal, but they are primes.
+
+  The actual calculation is a little different from the above because
+  of the need to do it via a reduction.
+*/
+template <typename T>
+struct Hash {
+  T hash1;
+  T hash2;
+  T product1;
+  T product2;
+
+  // Would like this to be a POD type so not adding the following constructor:
+  // Hash(int32_t i): hash1(i), hash2(i), product1(31), product2(167) { }
+  // .. but implementing it in HashInputIterator.
+
+};
+
+template <typename T>
+struct HashInputIterator {
+  explicit __host__ __device__ __forceinline__ HashInputIterator(const int32_t *i)
+      : i_(i) { }
+  __device__ __forceinline__ Hash<T> operator[](int32_t idx) const {
+    return Hash<T>{*i_, *i_, 31, 167};
+  }
+  __device__ __forceinline__ HashInputIterator operator+(int32_t offset) {
+    return HashInputIterator(i_ + offset);
+  }
+  const int32_t *i_;
+};
+
+template <typename T>
+struct HashOutputIteratorDeref {  // this is what you get when you dereference
+                                  // HashOutputIterator, it pretends to be a
+                                  // Hash<T> but really only stores the `idx`
+                                  // member.
+  explicit __device__ __forceinline__ HashOutputIteratorDeref(T *t)
+      : t_(t) {}
+  __device__ __forceinline__ HashOutputIteratorDeref &operator=(
+      const Hash<T> &h) {
+    *t_ = h.hash1 + 13 * h.product1 + 104729 * h.hash2 + (104729 * 787) * h.product2;
+    return *this;
+  }
+  T *t_;
+};
+
+template <typename T>
+struct HashOutputIterator {  // outputs just the index of the pair.
+  explicit HashOutputIterator(T *t) : t_(t) {}
+  __device__ __forceinline__ HashOutputIteratorDeref<T> operator[](
+      int32_t idx) const {
+    return HashOutputIteratorDeref<T>(t_ + idx);
+  }
+  __device__ __forceinline__ HashOutputIterator operator+(size_t offset) {
+    return HashOutputIterator{t_ + offset};
+  }
+  T *t_;
+};
+
+template <typename T>
+struct HashCombineOp {
+  __device__ __forceinline__ Hash<T> operator()(const Hash<T> &a,
+                                                const Hash<T> &b) const {
+    return Hash<T>{a.hash1 * b.product1 + b.hash1,
+                   a.hash2 * b.product2 + b.hash2,
+                   a.product1 * b.product1,
+                   a.product2 * b.product2};
+  }
+};
+
+}  // namespace hash_internal
+}  // namespace k2
+
+namespace std {
+// those below typedefs are required by cub::DeviceSegmentedReduce:Reduce
+template <typename T>
+struct iterator_traits<k2::hash_internal::HashInputIterator<T>> {
+  typedef k2::hash_internal::Hash<T> value_type;
+};
+template <typename T>
+struct iterator_traits<k2::hash_internal::HashOutputIterator<T>> {
+  typedef k2::hash_internal::Hash<T> value_type;
+  typedef k2::hash_internal::HashOutputIteratorDeref<T> reference;
+};
+}  // namespace std
+
+namespace k2 {
+template <typename T>
+Array1<T> ComputeHash(Ragged<int32_t> &src) {
+  NVTX_RANGE(K2_FUNC);
+
+  int32_t last_axis = src.NumAxes() - 1;
+  const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
+  int32_t num_rows = row_splits_array.Dim() - 1;
+  ContextPtr c = src.Context();
+  Array1<T> ans(c, num_rows);
+
+  const int32_t *row_splits = row_splits_array.Data();
+  const int32_t *values_data = src.values.Data();
+  T *output_data = ans.Data();
+
+  if (c->GetDeviceType() == kCpu) {
+    int32_t j = row_splits[0];
+    for (int32_t i = 0; i < num_rows; ++i) {
+      T hash1 = 13, hash2 = 787;
+      int32_t row_end = row_splits[i + 1];
+      for (; j < row_end; ++j) {
+        T elem = values_data[j];
+        hash1 = 31 * hash1 + elem;
+        hash2 = 167 * hash2 + elem;
+      }
+      T hash = hash1 + 104729 * hash2;
+      output_data[i] = hash;
+    }
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    hash_internal::HashInputIterator<T> input_iter(values_data);
+    hash_internal::HashOutputIterator<T> output_iter(output_data);
+    hash_internal::HashCombineOp<T> op;
+    hash_internal::Hash<T> initial_hash{ 0, 0, 1, 1 };
+
+    // This code is based on the example here:
+    // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
+    std::size_t temp_storage_bytes = 0;
+
+    // the first time is to determine temporary device storage requirements
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        nullptr, temp_storage_bytes, input_iter, output_iter, num_rows,
+        row_splits, row_splits + 1, op, initial_hash, c->GetCudaStream()));
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
+        num_rows, row_splits, row_splits + 1, op, initial_hash,
+        c->GetCudaStream()));
+  }
+  return ans;
+}
+
+// Instantiate template for int64 and int32.
+template
+Array1<int64_t> ComputeHash(Ragged<int32_t> &src);
+template
+Array1<int32_t> ComputeHash(Ragged<int32_t> &src);
+
+
 }  // namespace k2
