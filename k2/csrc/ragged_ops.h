@@ -1302,13 +1302,32 @@ RaggedShape CoveringShape(int32_t num_srcs, RaggedShape **srcs);
 Array1<int32_t> CoveringShapeForwardMap(RaggedShape &src,
                                         RaggedShape &covering);
 
+/*
+  Computes a hash-function of the bottom-level lists in `src`
+  (i.e. only uses the final layer of `src`).
+
+    @param [in] src   Ragged tensor of int32_t for which
+                 we want hashes of its final lists.
+    @return      Returns an array of int32_t or int64_t with
+            `ans.Dim() == src.TotSize(src.NumAxes() - 2)`.
+            If two lists in `src` were the same, the corresponding
+            hash values will be the same.
+
+   CAUTION: T must be int32_t or int64_t, and the template argument
+   cannot be deduced so must be supplied, e.g.
+     ComputeHash<int64_t>(src);
+  */
+template <typename T>
+Array1<T> ComputeHash(Ragged<int32_t> &src);
+
+
 /* Compute exclusive sum per sub-list.
  *
  * @param [in] src  The input ragged tensor. The exclusive sum is computed
  *                  for the last axis. CAUTION: The last entry of every sublist
  *                  does not contribute to the final sum.
  * @param [out] dst The dest array. It satisfies dst.Dim() == src.NumElements().
- *                  CAUTION: It supports `dst == &src.values`.
+ *                  Supports `dst == &src.values`.
  */
 template <typename T>
 void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst);

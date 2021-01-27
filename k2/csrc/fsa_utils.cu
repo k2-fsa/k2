@@ -11,6 +11,7 @@
 #include <sstream>
 #include <utility>
 #include <vector>
+#include <cooperative_groups.h>
 
 #include "k2/csrc/array.h"
 #include "k2/csrc/context.h"
@@ -2148,5 +2149,454 @@ void FixNumStates(FsaVec *fsas) {
   if (changed[0] == 0) return;  // an optimization..
   fsas->shape = RemoveSomeEmptyLists(fsas->shape, 1, renumber_states);
 }
+
+template <typename FloatType>
+Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
+                            Array1<FloatType> &arc_post) {
+  K2_CHECK_GE(fsas.NumAxes(), 2);
+  K2_CHECK_LE(fsas.NumAxes(), 3);
+  int32_t state_axis = (fsas.NumAxes() == 3 ? 1 : 0);
+  ContextPtr c = fsas.Context();
+  int32_t num_states = fsas.TotSize(state_axis),
+      num_arcs = fsas.NumElements();
+  Array1<FloatType> state_post(c, num_states);
+  // Use lowest() instead of -infinity() to initialize the sum, to avoid
+  // -infinity - (-infinity) = NaN; but actually this shouldn't really be an
+  // issue as we shouldn't be taking paths with scores equal to -infinity.
+  Ragged<FloatType> arc_post_ragged(fsas.shape, arc_post);
+  LogSumPerSublist(arc_post_ragged,
+                   std::numeric_limits<FloatType>::lowest(),
+                   &state_post);
+
+  Array1<FloatType> arc_pdf(c, num_arcs);
+  const Arc *arcs_data = fsas.values.Data();
+  const FloatType *arc_post_data = arc_post.Data(),
+      *state_post_data = state_post.Data();
+  FloatType *arc_pdf_data = arc_pdf.Data();
+  // it's row_ids2 if it's an FsaVec (3 axes), else row_ids1.
+  const int32_t *fsas_row_ids2_data = fsas.RowIds(1 + state_axis).Data(),
+      *fsas_row_splits2_data = fsas.RowSplits(1 + state_axis).Data();
+  K2_EVAL(c, num_arcs, lambda_set_arc_probs, (int32_t i) {
+      FloatType arc_post = arc_post_data[i];
+      int32_t state_idx = fsas_row_ids2_data[i];
+      arc_post -= state_post_data[state_idx];
+      FloatType arc_pdf_val = exp(arc_post);
+      arc_pdf_data[i] = arc_pdf_val;
+      K2_DCHECK_GE(arc_pdf_val, 0);
+    });
+
+
+  Ragged<FloatType> arc_pdf_ragged(fsas.shape, arc_pdf);
+
+  Array1<FloatType> arc_cdf(c, num_arcs);
+
+  SegmentedExclusiveSum(arc_pdf_ragged, &arc_cdf);
+  FloatType *arc_cdf_data = arc_cdf.Data();
+
+  /*
+    The remaining code would not be necessary if we didn't have to deal with
+    roundoff effects.  The point of the remaining code is to ensure that
+    the "implicit last element" is exactly 1.0 and not, say, 1.00001 or 0.9999999.
+
+    Specifically, we ensure that if exp(arc_post[arc_idx012]) == 0, then the
+    cdf value for the next arc (taking it to be 1.0 if this is the last arc
+    leaving this state) will be exactly equal to the cdf value for this arc.
+
+    This makes easier the job of deciding, for some  0 <= p <= 1.0, which
+    arc leaving a specific state it "belongs to", without any danger of
+    picking an arc that goes to a state that cannot reach the final state.
+  */
+
+  // `arc_inv_tots` will contain the inverses of the totals of the arc_post values
+  // leaving each state, if those totals were nonzero and finite; and otherwise, 1.0.
+  Array1<FloatType> arc_inv_tots(c, num_states);
+  FloatType *arc_inv_tots_data = arc_inv_tots.Data();
+  K2_EVAL(c, num_states, lambda_set_inv_tots, (int32_t i) {
+      int32_t begin_arc = fsas_row_splits2_data[i],
+          end_arc = fsas_row_splits2_data[i + 1];
+      FloatType inv_tot = 1.0;
+      if (end_arc > begin_arc) {
+        FloatType this_tot = arc_cdf_data[end_arc - 1] +
+            arc_pdf_data[end_arc - 1];
+        if (this_tot > 0)
+          inv_tot = 1.0 / this_tot;
+        // we'll leave inv_tot at 1.0 for states that had zero or NaN
+        // `this_tot`, which could happen if those states were not accessible or
+        // not coaccessible.
+      }
+      arc_inv_tots_data[i] = inv_tot;
+    });
+  K2_EVAL(c, num_arcs, lambda_modify_cdf, (int32_t arc_idx012) {
+      int32_t state_idx01 = fsas_row_ids2_data[arc_idx012];
+      FloatType cdf_value = arc_cdf_data[arc_idx012],
+          cdf_value_modified = cdf_value * arc_inv_tots_data[state_idx01];
+      arc_cdf_data[arc_idx012] = cdf_value_modified;
+    });
+
+
+  return arc_cdf;
+}
+
+template
+Array1<float> GetArcCdf(FsaOrVec &fsas, Array1<float> &arc_post);
+template
+Array1<double> GetArcCdf(FsaOrVec &fsas, Array1<double> &arc_post);
+
+
+
+namespace random_paths_internal {
+
+
+// shared state (the changing part of it) for the algorithm that gets the paths.
+template <typename FloatType>
+struct PathState {
+  int32_t begin_arc_idx01x;  // first arc_idx012 leaving this state..
+  int32_t num_arcs;          // num arcs leaving this state.
+
+  // `p` is a number in the interval [0, 1], which you can think of as being
+  // random (although it's initialized deterministically at fixed intervals).
+  // As we advance `cur_state_idx01` from the start state to later states in the
+  // path, we zoom in more and more; and `p` is always the position within the
+  // probability interval spanned by arcs leaving `cur_state_idx01`.
+  FloatType p;
+};
+
+}  // namespace random_path_internal
+
+template <typename FloatType>
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            const Array1<FloatType> &arc_cdf,
+                            const Array1<int32_t> &num_paths,
+                            Ragged<int32_t> &state_batches) {
+  using namespace random_paths_internal;
+  K2_CHECK_EQ(fsas.NumAxes(), 3);
+  K2_CHECK_EQ(fsas.NumElements(), arc_cdf.Dim());
+  K2_CHECK_EQ(fsas.Dim0(), num_paths.Dim());
+
+  ContextPtr c = GetContext(fsas, arc_cdf, num_paths, state_batches);
+  int32_t num_fsas = fsas.Dim0();
+
+  // For each FSA, work out the number of batches of states that it has,
+  // which will tell us how much memory we need to allocate.
+  Array1<int32_t> num_state_batches(c, num_fsas);
+  num_state_batches = -1;  // so we can more easily detect errors..
+  int32_t max_batches = state_batches.Dim0();
+  const int32_t *state_batches_row_splits1 = state_batches.RowSplits(1).Data(),
+      *state_batches_row_splits2 = state_batches.RowSplits(2).Data();
+  int32_t *num_state_batches_data = num_state_batches.Data();
+  K2_EVAL2(c, num_fsas, max_batches, lambda_set_num_state_batches, (int32_t i, int32_t b) {
+      int32_t this_batch_start = state_batches_row_splits1[b],
+         num_states = state_batches_row_splits2[this_batch_start + i + 1] -
+          state_batches_row_splits2[this_batch_start + i];
+      if (num_states == 0) {
+        if (b == 0) {
+          num_state_batches_data[i] = 0;
+        } else {
+          int32_t prev_batch_start = state_batches_row_splits1[b - 1],
+              prev_num_states = state_batches_row_splits2[prev_batch_start + i + 1] -
+              state_batches_row_splits2[prev_batch_start + i];
+          if (prev_num_states != 0)
+            num_state_batches_data[i] = b;
+        }
+      } else if (b + 1 == max_batches) {
+        num_state_batches_data[i] = max_batches;
+      }
+    });
+
+  // For each FSA, the amount of space we'll need is its num_batches times
+  // the num_paths requested (no path can be longer than num_batches).
+  Array1<int32_t> storage_row_splits(c, num_fsas + 1);
+  Array1<int32_t> num_paths_sum(c, num_fsas + 1);
+
+  const int32_t *num_paths_data = num_paths.Data();
+
+  int32_t *storage_row_splits_data = storage_row_splits.Data(),
+      *num_paths_sum_data = num_paths_sum.Data();
+
+  K2_EVAL(c, num_fsas, lambda_set_storage_sizes, (int32_t i) {
+          int32_t num_paths = num_paths_data[i],
+              num_batches = num_state_batches_data[i];
+          K2_CHECK_NE(num_batches, -1);
+          int32_t space_needed = num_paths * num_batches;
+          storage_row_splits_data[i] = space_needed;
+          num_paths_sum_data[i] = num_paths;
+        });
+  ExclusiveSum(storage_row_splits, &storage_row_splits);
+  // We copied num_paths first to guarantee that there is an extra element at
+  // the end (avoid theoretically possible segfault, as ExclusiveSum would read
+  // that not-needed element).
+  ExclusiveSum(num_paths_sum, &num_paths_sum);
+  int32_t tot_space_needed = storage_row_splits.Back(),
+      tot_num_paths = num_paths_sum.Back();
+
+  Array1<int32_t> paths_row_ids(c, tot_num_paths);
+  RowSplitsToRowIds(num_paths_sum, &paths_row_ids);
+  // (num_paths_sum, paths_row_ids) form respectively the row_splits and row_ids
+  // of a ragged tensor with Dim0() == num_fsas and TotSize(1) == tot_num_paths.
+
+  Array1<int32_t> path_storage(c, tot_space_needed);
+
+  const int32_t *paths_row_ids_data = paths_row_ids.Data(),
+      *paths_row_splits_data = num_paths_sum_data, // an alias..
+      *fsas_row_ids2_data = fsas.RowIds(2).Data(),
+      *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
+      *fsas_row_splits2_data = fsas.RowSplits(2).Data();
+
+  int32_t *path_storage_data = path_storage.Data();
+
+  namespace cg = cooperative_groups;
+  const unsigned int thread_group_size = 1;  // Can tune this.  Power of 2,
+                                             // 1<=thread_group_size<=256
+  const FloatType *arc_cdf_data = arc_cdf.Data();
+  const Arc *arcs = fsas.values.Data();
+
+  if (c->GetDeviceType() == kCuda) {
+    auto lambda_set_paths = [=] __device__ (
+        cg::thread_block_tile<thread_group_size> g, // or auto g..
+        PathState<FloatType> *shared_data,
+        int32_t i) {
+     // First get certain fixed information.  All threads get this, which might
+     // not seem ideal but I think the GPU will consolidate the identical reads.
+     int32_t fsa_idx = paths_row_ids_data[i],
+         state_idx0x = fsas_row_splits1_data[fsa_idx],
+         path_begin = paths_row_splits_data[fsa_idx],
+         path_idx1 = i - path_begin,
+         thread_idx = g.thread_rank(),
+         final_state = fsas_row_splits1_data[fsa_idx + 1] - 1,
+         num_batches = num_state_batches_data[fsa_idx];
+
+     // path_storage_start[0] will contain the path length;
+     // then the arcs in the path.  The maximum num-arcs equals
+     // num_batches - 1.
+     int32_t *path_storage_start = path_storage_data +
+         storage_row_splits_data[fsa_idx] + path_idx1 * num_batches;
+
+     if (thread_idx == 0) {  // Initialize shared_data
+       // Note: FSAs with no states would have num_paths = 0, and we'd never
+       // reach this code.
+       int32_t start_state = state_idx0x,
+           path_end = paths_row_splits_data[fsa_idx + 1],
+           num_paths = path_end - path_begin,
+           begin_arc = fsas_row_splits2_data[start_state],
+           end_arc = fsas_row_splits2_data[start_state + 1];
+       shared_data->begin_arc_idx01x = begin_arc;
+       shared_data->num_arcs = end_arc - begin_arc;
+       K2_CHECK_GT(shared_data->num_arcs, 0);
+       FloatType p = ((FloatType)0.5 + path_idx1) / num_paths;
+       shared_data->p = p;
+     }
+
+     int32_t path_pos = 0;
+     for (; ; path_pos++) {
+       // if the following check fails, we'll have to start debugging: something
+       // went wrong, but could be lots of things, e.g. we reached a state that
+       // we shouldn't have reached (has no arcs) or some other circumstance
+       // meant that no arc was chosen.
+       K2_DCHECK_LT(path_pos, num_batches);
+
+       g.sync();
+
+       FloatType p = shared_data->p;
+       int32_t begin_arc_idx01x = shared_data->begin_arc_idx01x,
+           num_arcs = shared_data->num_arcs;
+
+       if (num_arcs == 0) {
+         // If we reach a state with no arcs leaving it, it should be the final
+         // state; otherwise something went wrong.
+         K2_CHECK_EQ(fsas_row_splits2_data[final_state], begin_arc_idx01x);
+         if (thread_idx == 0) {
+           int32_t path_length = path_pos;
+           path_storage_start[0] = path_length;
+         }
+         return;
+       }
+
+       // Must sync again after read and before potential write..
+       g.sync();
+
+       int32_t arc_idx2 = thread_idx;
+       for (; arc_idx2 < num_arcs; arc_idx2 += g.size()) {
+         int32_t arc_idx012 = begin_arc_idx01x + arc_idx2;
+         FloatType interval_start = arc_cdf_data[arc_idx012],
+             interval_end = (arc_idx2 + 1 == num_arcs ? 1.0 :
+                             arc_cdf_data[arc_idx012 + 1]);
+         K2_DCHECK_GE(interval_end, interval_start);
+         K2_DCHECK_LE(interval_end, 1.0);
+         if (p >= interval_start && p <= interval_end &&
+             interval_end > interval_start &&
+             (p != interval_end || p == 1.0)) {
+           // The above if-statement ensures that any 0.0 <= p <= 1.0 will be
+           // inside exactly one interval.  The edges of the intervals form a
+           // non-decreasing sequence from 0.0 to 1.0.  So every such p is either
+           // completely inside an interval, or:
+           //    - Is 1.0 and is at the upper boundary of one nonempty interval
+           //    - Is 0.0 and is at the lower boundary of one nonempty interval
+           //    - Satisfies 0.0 < p < 1.0 and is at the boundary of two
+           //      nonempty intervals; we assign it to the higher of the two
+           //      intervals.
+           // The reason for the + 1 is that we'll put the path length in
+           // element 0.
+           path_storage_start[path_pos + 1] = arc_idx012;
+
+           // The following will ensure that 0.0 <= p <= 1.0: we know
+           // interval_end - interval_start > 0.0, p - interval_start >= 0.0,
+           // and (interval_end - interval_start) >= (p - interval_start).
+           p = (p - interval_start) / (interval_end - interval_start);
+
+           int32_t next_state_idx01 = arcs[arc_idx012].dest_state + state_idx0x,
+               next_arc_idx01x = fsas_row_splits2_data[next_state_idx01],
+               next_arc_idx01x_next = fsas_row_splits2_data[next_state_idx01 + 1];
+           shared_data->begin_arc_idx01x = next_arc_idx01x;
+           shared_data->num_arcs = next_arc_idx01x_next - next_arc_idx01x;
+           shared_data->p = p;
+         }
+       }
+     }
+    };
+
+
+    EvalGroupDevice<thread_group_size, PathState<FloatType>>(
+        c, tot_num_paths, lambda_set_paths);
+  } else {
+    // CPU.
+    for (int32_t fsa_idx = 0; fsa_idx < num_fsas; fsa_idx++) {
+      int32_t state_idx0x = fsas_row_splits1_data[fsa_idx],
+          final_state = fsas_row_splits1_data[fsa_idx + 1] - 1,
+          num_paths = num_paths_data[fsa_idx],
+          num_batches = num_state_batches_data[fsa_idx];
+      for (int32_t path_idx1 = 0; path_idx1 < num_paths; path_idx1++) {
+
+        int32_t *path_storage_start = path_storage_data +
+            storage_row_splits_data[fsa_idx] + path_idx1 * num_batches;
+
+        int32_t cur_state_idx01 = state_idx0x;  // Start state.  Note: start
+                                                // state is never the final
+                                                // state.
+        FloatType p = ((FloatType)0.5 + path_idx1) / num_paths;
+
+        int32_t path_pos;
+        for (path_pos = 0; path_pos <= num_batches; path_pos++) {
+          // Note: if things are working correctly we should break from this
+          // loop before it naturally terminates.
+          if (cur_state_idx01 == final_state) {  // Finalize..
+            path_storage_start[0] = path_pos;
+            break;
+          }
+          int32_t arc_idx01x = fsas_row_splits2_data[cur_state_idx01],
+              arc_idx01x_next = fsas_row_splits2_data[cur_state_idx01 + 1];
+          K2_CHECK_GT(arc_idx01x_next, arc_idx01x);
+          // std::upper_bound finds the first index i in the range
+          //  [arc_idx01x+1 .. arc_idx01x_next-1] such that
+          // arc_cdf_data[i] > p, and if it doesn't exist gives us
+          // arc_idx01x_next (so p will be in the last interval).
+          const FloatType *begin1 = arc_cdf_data + arc_idx01x + 1,
+              *end = arc_cdf_data + arc_idx01x_next;
+          int32_t arc_idx2 = std::upper_bound(begin1, end, p) - begin1;
+          int32_t arc_idx012 = arc_idx01x + arc_idx2;
+          K2_DCHECK_GE(p, arc_cdf_data[arc_idx012]);
+          K2_DCHECK_LE(p, (arc_idx012 + 1 == arc_idx01x_next ? 1.0 :
+                           arc_cdf_data[arc_idx012 + 1]));
+          // + 1 to leave space to store the path length.
+          path_storage_start[path_pos + 1] = arc_idx012;
+          int32_t next_state_idx01 = arcs[arc_idx012].dest_state + state_idx0x;
+          cur_state_idx01 = next_state_idx01;
+        }
+        if (path_pos > num_batches)
+          K2_LOG(FATAL) << "Bug in RandomPaths, please ask maintainers for help..";
+      }
+    }
+  }
+
+  Array1<int32_t> path_lengths(c, tot_num_paths + 1);
+  int32_t *path_lengths_data = path_lengths.Data();
+  K2_EVAL(c, tot_num_paths, lambda_get_path_lengths, (int32_t i) {
+
+      int32_t fsa_idx = paths_row_ids_data[i],
+          path_begin = paths_row_splits_data[fsa_idx],
+          path_idx1 = i - path_begin,
+          num_batches = num_state_batches_data[fsa_idx];
+     int32_t *path_storage_start = path_storage_data +
+         storage_row_splits_data[fsa_idx] + path_idx1 * num_batches;
+     int32_t path_length = path_storage_start[0];
+     K2_CHECK_GT(path_length, 0);
+     K2_CHECK_LT(path_length, num_batches);
+     path_lengths_data[i] = path_length;
+    });
+
+  ExclusiveSum(path_lengths, &path_lengths);
+  Array1<int32_t> ans_row_splits2(path_lengths);
+
+  Ragged<int32_t> ans(RaggedShape3(&num_paths_sum, &paths_row_ids, tot_num_paths,
+                                   &ans_row_splits2, nullptr, -1));
+  const int32_t *ans_row_ids2_data = ans.RowIds(2).Data(),
+      *ans_row_splits2_data = ans.RowSplits(2).Data(),
+      *ans_row_ids1_data = ans.RowIds(1).Data(),
+      *ans_row_splits1_data = ans.RowSplits(1).Data();
+  int32_t *ans_data = ans.values.Data();
+  int32_t ans_tot_size = ans.shape.NumElements();
+  // TODO: maybe optimize the following for CPU, would be quite slow.
+  K2_EVAL(c, ans_tot_size, lambda_format_ans_data, (int32_t ans_idx012) {
+      int32_t path_idx01 = ans_row_ids2_data[ans_idx012],
+          ans_idx01x = ans_row_splits2_data[path_idx01],
+          path_pos_idx2 = ans_idx012 - ans_idx01x,
+          fsa_idx0 = ans_row_ids1_data[path_idx01],
+          path_idx0x = ans_row_splits1_data[fsa_idx0],
+          path_idx1 = path_idx01 - path_idx0x,
+          num_batches = num_state_batches_data[fsa_idx0];
+
+      int32_t *path_storage_start = path_storage_data +
+          storage_row_splits_data[fsa_idx0] + path_idx1 * num_batches;
+      ans_data[ans_idx012] = path_storage_start[1 + path_pos_idx2];
+    });
+  return ans;
+}
+
+
+template
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            const Array1<float> &arc_cdf,
+                            const Array1<int32_t> &num_paths,
+                            Ragged<int32_t> &state_batches);
+template
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            const Array1<double> &arc_cdf,
+                            const Array1<int32_t> &num_paths,
+                            Ragged<int32_t> &state_batches);
+
+template <typename FloatType>
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            const Array1<FloatType> &arc_cdf,
+                            int32_t num_paths,
+                            const Array1<FloatType> &tot_scores,
+                            Ragged<int32_t> &state_batches) {
+  ContextPtr c = GetContext(fsas, arc_cdf, tot_scores, state_batches);
+  int32_t num_fsas  = fsas.Dim0();
+  Array1<int32_t> num_paths_array(c, num_fsas);
+  int32_t *num_paths_data = num_paths_array.Data();
+  const FloatType *tot_scores_data = tot_scores.Data();
+  // Compiler optimization seems to defeat a comparison with -infinity, on CPU.
+  // using std::numeric_limits<FloatType>::lowest() instead.
+  FloatType minus_inf = -std::numeric_limits<FloatType>::infinity();
+  K2_EVAL(c, num_fsas, lambda_set_num_paths, (int32_t i) {
+      FloatType tot_score = tot_scores_data[i];
+      // use num_paths=0 if tot_scores[i] == 0.
+      int32_t this_num_paths = (tot_score > minus_inf ? num_paths : 0);
+      num_paths_data[i] = this_num_paths;
+    });
+  return RandomPaths(fsas, arc_cdf, num_paths_array, state_batches);
+}
+
+template
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            const Array1<float> &arc_cdf,
+                            int32_t num_paths,
+                            const Array1<float> &tot_scores,
+                            Ragged<int32_t> &state_batches);
+template
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            const Array1<double> &arc_cdf,
+                            int32_t num_paths,
+                            const Array1<double> &tot_scores,
+                            Ragged<int32_t> &state_batches);
 
 }  // namespace k2
