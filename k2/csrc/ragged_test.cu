@@ -2601,18 +2601,18 @@ static void TestSegmentedExclusiveSum() {
 TEST(RaggedOpsTest, SegmentedExclusiveSum) {
   TestSegmentedExclusiveSum<int32_t>();
   TestSegmentedExclusiveSum<float>();
+  TestSegmentedExclusiveSum<double>();
 }
 
 TEST(RaggedOpsTest, TestComputeHash) {
   for (int32_t i = 0; i < 20; i++) {
-    Ragged<int32_t> src = RandomRagged<int32_t>(std::numeric_limits<int32_t>::min(),
-                                                std::numeric_limits<int32_t>::max(),
-                                                2, 4,
-                                                0, 20000),
-        src_gpu = src.To(GetCpuContext());
+    Ragged<int32_t> src = RandomRagged<int32_t>(
+                        std::numeric_limits<int32_t>::min(),
+                        std::numeric_limits<int32_t>::max(), 2, 4, 0, 20000),
+                    src_gpu = src.To(GetCpuContext());
     {
       Array1<int64_t> hash1 = ComputeHash<int64_t>(src),
-          hash2 = ComputeHash<int64_t>(src_gpu).To(GetCpuContext());
+                      hash2 = ComputeHash<int64_t>(src_gpu).To(GetCpuContext());
       /* K2_LOG(INFO) << "src = " << src;
       K2_LOG(INFO) << "hash1 = " << hash1;
       K2_LOG(INFO) << "hash2 = " << hash2; */
@@ -2621,7 +2621,7 @@ TEST(RaggedOpsTest, TestComputeHash) {
 
     {
       Array1<int32_t> hash1 = ComputeHash<int32_t>(src),
-          hash2 = ComputeHash<int32_t>(src_gpu).To(GetCpuContext());
+                      hash2 = ComputeHash<int32_t>(src_gpu).To(GetCpuContext());
       /* K2_LOG(INFO) << "src[32] = " << src;
       K2_LOG(INFO) << "hash1[32] = " << hash1;
       K2_LOG(INFO) << "hash2[32] = " << hash2; */
@@ -2629,6 +2629,5 @@ TEST(RaggedOpsTest, TestComputeHash) {
     }
   }
 }
-
 
 }  // namespace k2
