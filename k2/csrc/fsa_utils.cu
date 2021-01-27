@@ -2308,8 +2308,10 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   // For each FSA, work out the number of batches of states that it has,
   // which will tell us how much memory we need to allocate.
   Array1<int32_t> num_state_batches(c, num_fsas);
-  num_state_batches = -1;  // so we can more easily detect errors..
   int32_t max_batches = state_batches.Dim0();
+  if (max_batches > 0) num_state_batches = -1;  // so we can more easily detect errors..
+  else num_state_batches = 0;   // kernel below won't set them in this case.
+
   const int32_t *state_batches_row_splits1 = state_batches.RowSplits(1).Data(),
       *state_batches_row_splits2 = state_batches.RowSplits(2).Data();
   int32_t *num_state_batches_data = num_state_batches.Data();
