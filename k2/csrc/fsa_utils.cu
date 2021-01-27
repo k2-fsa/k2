@@ -2226,6 +2226,9 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
       }
       arc_inv_tots_data[i] = inv_tot;
     });
+
+  // The next kernel divides by the total, to account for where the sum is not
+  // exactly 1.0.
   K2_EVAL(c, num_arcs, lambda_modify_cdf, (int32_t arc_idx012) {
       int32_t state_idx01 = fsas_row_ids2_data[arc_idx012];
       FloatType cdf_value = arc_cdf_data[arc_idx012],
@@ -2233,7 +2236,33 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
       arc_cdf_data[arc_idx012] = cdf_value_modified;
     });
 
+  // The next kernel ensures that no value (for the arcs leaving a state) is
+  // greater than any subsequent value, by setting it to the smallest of any of
+  // the later values (including an implicit final 1.0).  Typically this will be
+  // a no-op; in certain cases when there are many arcs with small
+  // probabilities, this could have a small effect due to roundoff.
+  K2_EVAL(c, num_arcs, lambda_fix_cdf, (int32_t arc_idx012) {
+      int32_t state_idx01 = fsas_row_ids2_data[arc_idx012],
+          arc_idx01x_next = fsas_row_splits2_data[state_idx01 + 1];
+      FloatType cur_value = arc_cdf_data[arc_idx012],
+          cutoff = cur_value + 0.0001;
+      FloatType smallest_later_value = cur_value;
 
+      for (int32_t next_arc = arc_idx012 + 1; next_arc < arc_idx01x_next; next_arc++) {
+        FloatType next_val = arc_cdf_data[next_arc];
+        if (next_val < smallest_later_value)
+          smallest_later_value = next_val;
+        // any of these errors will only be between values that are very close
+        // together... so we can stop this search after there is a decent gap in
+        // value.
+        if (next_val > cutoff)
+          break;
+      }
+      if (1.0 < smallest_later_value)
+        smallest_later_value = 1.0;
+      if (smallest_later_value != cur_value)
+        arc_cdf_data[arc_idx012] = smallest_later_value;
+    });
   return arc_cdf;
 }
 
