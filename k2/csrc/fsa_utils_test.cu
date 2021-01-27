@@ -961,8 +961,6 @@ void TestBackpropGetForwardScores(FsaVec &fsa_vec_in) {
   }
 }
 
-
-
 TEST_F(StatesBatchSuiteTest, TestBackpropForwardScores) {
   // simple case
   TestBackpropGetForwardScores<float>(fsa_vec_);
@@ -1121,7 +1119,6 @@ TEST_F(StatesBatchSuiteTest, TestBackpropBackwardScores) {
   }
 }
 
-
 template <typename FloatType>
 void TestRandomPaths(FsaVec &fsa_vec_in) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
@@ -1142,75 +1139,80 @@ void TestRandomPaths(FsaVec &fsa_vec_in) {
       bool log_semiring = (i != 0);
 
       Array1<FloatType> forward_scores = GetForwardScores<FloatType>(
-          fsas, state_batches, entering_arc_batches, log_semiring,
-          nullptr);
+          fsas, state_batches, entering_arc_batches, log_semiring, nullptr);
       Array1<FloatType> backward_scores = GetBackwardScores<FloatType>(
           fsas, state_batches, leaving_arc_batches, log_semiring);
 
-      Array1<FloatType> arc_post = GetArcPost(fsas, forward_scores,
-                                              backward_scores);
-
+      Array1<FloatType> arc_post =
+          GetArcPost(fsas, forward_scores, backward_scores);
 
       Array1<FloatType> arc_cdf = GetArcCdf(fsas, arc_post);
       const FloatType *arc_cdf_data = arc_cdf.Data(),
-          *arc_post_data = arc_post.Data();
+                      *arc_post_data = arc_post.Data();
       const int32_t *fsas_row_splits2_data = fsas.RowSplits(2).Data(),
-          *fsas_row_ids2_data = fsas.RowIds(2).Data();
+                    *fsas_row_ids2_data = fsas.RowIds(2).Data();
 
-      K2_EVAL(context, fsas.NumElements(), lambda_check_arc_post, (int32_t arc_idx012) {
-          int32_t state_idx01 = fsas_row_ids2_data[arc_idx012];
-          FloatType cdf_val = arc_cdf_data[arc_idx012];
-          K2_CHECK_GE(cdf_val, 0.0);
-          K2_CHECK_LE(cdf_val, 1.0);
-          if (arc_idx012 > fsas_row_splits2_data[state_idx01]) {
-            K2_CHECK_GE(cdf_val, arc_cdf_data[arc_idx012 - 1]);
-          }
-        });
+      K2_EVAL(
+          context, fsas.NumElements(), lambda_check_arc_post,
+          (int32_t arc_idx012) {
+            int32_t state_idx01 = fsas_row_ids2_data[arc_idx012];
+            FloatType cdf_val = arc_cdf_data[arc_idx012];
+            K2_CHECK_GE(cdf_val, 0.0);
+            K2_CHECK_LE(cdf_val, 1.0);
+            if (arc_idx012 > fsas_row_splits2_data[state_idx01]) {
+              K2_CHECK_GE(cdf_val, arc_cdf_data[arc_idx012 - 1]);
+            }
+          });
 
       Array1<FloatType> tot_scores = GetTotScores(fsas, forward_scores);
 
       int32_t num_paths = 10;
-      Ragged<int32_t> paths = RandomPaths(fsas, arc_cdf, num_paths,
-                                          tot_scores, state_batches);
+      Ragged<int32_t> paths =
+          RandomPaths(fsas, arc_cdf, num_paths, tot_scores, state_batches);
 
       int32_t *paths_row_ids2 = paths.RowIds(2).Data(),
-          *paths_row_splits2 = paths.RowSplits(2).Data(),
-          *paths_data = paths.values.Data(),
-          *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
-          *fsas_row_ids1_data = fsas.RowIds(1).Data();
+              *paths_row_splits2 = paths.RowSplits(2).Data(),
+              *paths_data = paths.values.Data(),
+              *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
+              *fsas_row_ids1_data = fsas.RowIds(1).Data();
       const Arc *arcs_data = fsas.values.Data();
 
-      K2_EVAL(context, paths.NumElements(), lambda_check_arcs, (int32_t path_idx012) {
-          int32_t arc_idx012 = paths_data[path_idx012],
-              state_idx01 = fsas_row_ids2_data[arc_idx012],
-              fsa_idx0 = fsas_row_ids1_data[state_idx01],
-              state_idx0x = fsas_row_splits1_data[fsa_idx0];
-          int32_t path_idx01 = paths_row_ids2[path_idx012],
-              path_idx01x = paths_row_splits2[path_idx01],
-              path_idx2 = path_idx012 - path_idx01x;
-          if (path_idx2 > 0) {
-            int32_t prev_arc_idx012 = paths_data[path_idx012 - 1],
-                prev_dest_state_idx1 = arcs_data[prev_arc_idx012].dest_state,
-                prev_dest_state_idx01 = state_idx0x + prev_dest_state_idx1;
-            K2_CHECK_EQ(state_idx01, prev_dest_state_idx01);
-          } else {
-            K2_CHECK_EQ(state_idx01, state_idx0x);
-          }
-          if (path_idx012 + 1 == paths_row_splits2[path_idx01 + 1]) {
-            int32_t dest_state_idx01 = state_idx0x + arcs_data[arc_idx012].dest_state;
-            K2_CHECK_EQ(dest_state_idx01, fsas_row_splits1_data[fsa_idx0 + 1] - 1);
-          }
-        });
+      K2_EVAL(
+          context, paths.NumElements(), lambda_check_arcs,
+          (int32_t path_idx012) {
+            int32_t arc_idx012 = paths_data[path_idx012],
+                    state_idx01 = fsas_row_ids2_data[arc_idx012],
+                    fsa_idx0 = fsas_row_ids1_data[state_idx01],
+                    state_idx0x = fsas_row_splits1_data[fsa_idx0];
+            int32_t path_idx01 = paths_row_ids2[path_idx012],
+                    path_idx01x = paths_row_splits2[path_idx01],
+                    path_idx2 = path_idx012 - path_idx01x;
+            if (path_idx2 > 0) {
+              int32_t prev_arc_idx012 = paths_data[path_idx012 - 1],
+                      prev_dest_state_idx1 =
+                          arcs_data[prev_arc_idx012].dest_state,
+                      prev_dest_state_idx01 =
+                          state_idx0x + prev_dest_state_idx1;
+              K2_CHECK_EQ(state_idx01, prev_dest_state_idx01);
+            } else {
+              K2_CHECK_EQ(state_idx01, state_idx0x);
+            }
+            if (path_idx012 + 1 == paths_row_splits2[path_idx01 + 1]) {
+              int32_t dest_state_idx01 =
+                  state_idx0x + arcs_data[arc_idx012].dest_state;
+              K2_CHECK_EQ(dest_state_idx01,
+                          fsas_row_splits1_data[fsa_idx0 + 1] - 1);
+            }
+          });
     }
   }
 }
-
 
 TEST_F(StatesBatchSuiteTest, TestRandomPaths) {
   // simple case
   TestRandomPaths<float>(fsa_vec_);
   TestRandomPaths<double>(fsa_vec_);
-  for (int32_t i = 0; i != 2; ++i) {
+  for (int32_t i = 0; i != 50; ++i) {
     // random case
     FsaVec random_fsas = RandomFsaVec();
     // make the fsa connected for easy testing for tropical version, the
@@ -1218,12 +1220,10 @@ TEST_F(StatesBatchSuiteTest, TestRandomPaths) {
     FsaVec connected;
     bool status = Connect(random_fsas, &connected);
     ASSERT_TRUE(status);
-    // TestRandomPaths<float>(connected); For now only testing double, because
-    // there is a roundoff problem in SegmentedExclusiveSum() with float.
+    TestRandomPaths<float>(connected);
     TestRandomPaths<double>(connected);
   }
 }
-
 
 template <typename FloatType>
 void TestBackpropGetArcPost(FsaVec &fsa_vec_in) {

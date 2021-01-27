@@ -571,7 +571,9 @@ void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
   const int32_t *row_ids_data = src.RowIds(src.NumAxes() - 1).Data();
   T *dst_data = dst->Data();
   if (c->GetDeviceType() == kCuda) {
-    if (std::is_floating_point<T>::value) {
+    // there's roundoff problem for float type with the below implementation in
+    // else branch.
+    if (std::is_same<float, T>::value) {
       // flags is similar to `tails` (see concepts in k2/csrc/utils)
       // But it indicates `heads` here. The very first segment always
       // starts at zero, so flags[0] is always 0.
