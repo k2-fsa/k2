@@ -562,7 +562,7 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
                         requested for each Fsa, with num_paths.Dim() ==
                         fsas.Dim0().  Must be zero for any Fsa that
                         is equivalent to the empty Fsa (e.g. its
-                        GetTotScores() entry is zero).
+                        GetTotScores() entry is -infinity).
    @param [in] state_batches  The result of calling GetStateBatches(fsas, true).
                         Is needed so we can know the maximum
                         possible length of each path, to know how much memory to
@@ -606,8 +606,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
 
    @return  Returns a ragged tensor with 3 axes: [fsa][path][arc],
             containing arc-indexes (idx012) into `fsas`,
-             with `ans.Dim0() == fsas.Dim0()`,
-            `ans.TotSize(1) == Sum(num_paths)`.  Each bottom-level
+             with `ans.Dim0() == fsas.Dim0()`.  Each bottom-level
             sub-list is a list of consecutive arcs from the start-state
             to the final-state.
 
@@ -616,7 +615,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   `num_paths` separately for each Fsa.
  */
 template <typename FloatType>
-Ragged<int32_t> RandomPaths(Ragged<FsaVec> &fsas,
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
                             Array1<FloatType> &arc_cdf,
                             int32_t num_paths,
                             Array1<FloatType> &tot_scores,

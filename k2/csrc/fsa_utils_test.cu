@@ -1126,99 +1126,81 @@ template <typename FloatType>
 void TestRandomPaths(FsaVec &fsa_vec_in) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    FsaVec fsa_vec = fsa_vec_in.To(context);
-    int32_t num_fsas = fsa_vec.Dim0(), num_states = fsa_vec.TotSize(1),
-            num_arcs = fsa_vec.NumElements();
+    FsaVec fsas = fsa_vec_in.To(context);
+    int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
+            num_arcs = fsas.NumElements();
 
-    Ragged<int32_t> state_batches = GetStateBatches(fsa_vec, true);
-    Array1<int32_t> dest_states = GetDestStates(fsa_vec, true);
-    Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsa_vec, dest_states);
+    Ragged<int32_t> state_batches = GetStateBatches(fsas, true);
+    Array1<int32_t> dest_states = GetDestStates(fsas, true);
+    Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsas, dest_states);
     Ragged<int32_t> entering_arc_batches =
-        GetEnteringArcIndexBatches(fsa_vec, incoming_arcs, state_batches);
+        GetEnteringArcIndexBatches(fsas, incoming_arcs, state_batches);
     Ragged<int32_t> leaving_arc_batches =
-        GetLeavingArcIndexBatches(fsa_vec, state_batches);
+        GetLeavingArcIndexBatches(fsas, state_batches);
 
-    {
+    for (int32_t i = 0; i < 2; i++) {
+      bool log_semiring = (i != 0);
       // max
       Array1<int32_t> entering_arcs;
       Array1<FloatType> forward_scores = GetForwardScores<FloatType>(
-          fsa_vec, state_batches, entering_arc_batches, false, &entering_arcs);
+          fsas, state_batches, entering_arc_batches, log_semiring, &entering_arcs);
       Array1<FloatType> backward_scores = GetBackwardScores<FloatType>(
-          fsa_vec, state_batches, leaving_arc_batches, false);
-      // set the forward_scores_deriv_in to all zeros except for a 1 at the
-      // final-state. Then the returned derivative will be non-zero values
-      // only for those arcs along the best path.
-      Array1<FloatType> forward_scores_deriv_in(context, num_states, 0);
-      FloatType *forward_scores_deriv_in_data = forward_scores_deriv_in.Data();
-      const int32_t *fsa_row_splits1 = fsa_vec.RowSplits(1).Data();
-      K2_EVAL(
-          context, num_fsas, lambda_set_forward_derivs_in,
-          (int32_t fsa_idx)->void {
-            int32_t start_state = fsa_row_splits1[fsa_idx],
-                    start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
-            if (start_state_next_fsa - start_state > 0)
-              forward_scores_deriv_in_data[start_state_next_fsa - 1] = 1;
-          });
-      Array1<FloatType> arc_derivs = BackpropGetForwardScores(
-          fsa_vec, state_batches, leaving_arc_batches, false, &entering_arcs,
-          forward_scores, forward_scores_deriv_in);
-      entering_arcs = entering_arcs.To(cpu);
-      Array1<FloatType> expected_arc_deriv(cpu, num_arcs, 0);
-      FloatType *expected_arc_deriv_data = expected_arc_deriv.Data();
-      Array1<int32_t> fsa_row_splits1_cpu = fsa_vec.RowSplits(1).To(cpu);
-      Array1<Arc> cpu_arcs = fsa_vec.values.To(cpu);
-      for (int32_t fsa_idx = 0; fsa_idx != num_fsas; ++fsa_idx) {
-        int32_t start_state = fsa_row_splits1_cpu[fsa_idx],
-                start_state_next_fsa = fsa_row_splits1_cpu[fsa_idx + 1];
-        if (start_state_next_fsa > start_state) {
-          for (int32_t state = start_state_next_fsa - 1; state > start_state;) {
-            if (entering_arcs[state] != -1) {
-              int32_t arc_id = entering_arcs[state];
-              const Arc &arc = cpu_arcs[arc_id];
-              int32_t src_state = arc.src_state + start_state;
-              int32_t dst_state = arc.dest_state + start_state;
-              ASSERT_EQ(state, dst_state);
-              expected_arc_deriv_data[arc_id] = 1;
-              state = src_state;
-            }
+          fsas, state_batches, leaving_arc_batches, log_semiring);
+
+      Array1<FloatType> arc_post = GetArcPost(fsas, forward_scores,
+                                              backward_scores);
+
+
+      Array1<FloatType> arc_cdf = GetArcCdf(fsas, arc_post);
+      const FloatType *arc_cdf_data = arc_cdf.Data(),
+          *arc_post_data = arc_post.Data();
+      const int32_t *fsas_row_splits2_data = fsas.RowSplits(2).Data(),
+          *fsas_row_ids2_data = fsas.RowIds(2).Data();
+      K2_LOG(INFO) << "arc_cdf = " << arc_cdf;
+      K2_EVAL(context, fsas.NumElements(), lambda_check_arc_post, (int32_t arc_idx012) {
+          int32_t state_idx01 = fsas_row_ids2_data[arc_idx012];
+          FloatType cdf_val = arc_cdf_data[arc_idx012];
+          K2_CHECK_GE(cdf_val, 0.0);
+          K2_CHECK_LE(cdf_val, 1.0);
+          if (arc_idx012 > fsas_row_splits2_data[state_idx01]) {
+            K2_CHECK_GE(cdf_val, arc_cdf_data[arc_idx012 - 1]);
           }
-        }
-      }
-      ASSERT_EQ(arc_derivs.Dim(), num_arcs);
-      CheckArrayData(arc_derivs, expected_arc_deriv);
-    }
-    {
-      // logsum
-      Array1<FloatType> forward_scores = GetForwardScores<FloatType>(
-          fsa_vec, state_batches, entering_arc_batches, true);
-      Array1<FloatType> backward_scores = GetBackwardScores<FloatType>(
-          fsa_vec, state_batches, leaving_arc_batches, true);
-      // set the forward_scores_deriv_in to all zeros except for a 1 at the
-      // final-state. Then the returned derivative of
-      // BackpropGetForwardScores() should be identical to the posterior as
-      // obtained by doing GetArcPost() and exponentiating
-      Array1<FloatType> forward_scores_deriv_in(context, num_states, 0);
-      FloatType *forward_scores_deriv_in_data = forward_scores_deriv_in.Data();
-      const int32_t *fsa_row_splits1 = fsa_vec.RowSplits(1).Data();
-      K2_EVAL(
-          context, num_fsas, lambda_set_forward_derivs_in,
-          (int32_t fsa_idx)->void {
-            int32_t start_state = fsa_row_splits1[fsa_idx],
-                    start_state_next_fsa = fsa_row_splits1[fsa_idx + 1];
-            if (start_state_next_fsa - start_state > 0)
-              forward_scores_deriv_in_data[start_state_next_fsa - 1] = 1;
-          });
-      Array1<FloatType> arc_derivs = BackpropGetForwardScores(
-          fsa_vec, state_batches, leaving_arc_batches, true, nullptr,
-          forward_scores, forward_scores_deriv_in);
-      ASSERT_EQ(arc_derivs.Dim(), num_arcs);
-      Array1<FloatType> arc_post =
-          GetArcPost(fsa_vec, forward_scores, backward_scores);
-      FloatType *arc_post_data = arc_post.Data();
-      K2_EVAL(
-          context, num_arcs, lambda_exp_arc_post,
-          (int32_t i)->void { arc_post_data[i] = exp(arc_post_data[i]); });
-      CheckArrayData(arc_derivs, arc_post);
+        });
+
+      Array1<FloatType> tot_scores = GetTotScores(fsas, forward_scores);
+
+      int32_t num_paths = 10;
+      Ragged<int32_t> paths = RandomPaths(fsas, arc_cdf, num_paths,
+                                          tot_scores, state_batches);
+      K2_LOG(INFO) << "Paths = " << paths;
+
+      int32_t *paths_row_ids2 = paths.RowIds(2).Data(),
+          *paths_row_splits2 = paths.RowSplits(2).Data(),
+          *paths_data = paths.values.Data(),
+          *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
+          *fsas_row_ids1_data = fsas.RowIds(1).Data();
+      const Arc *arcs_data = fsas.values.Data();
+
+      K2_EVAL(context, paths.NumElements(), lambda_check_arcs, (int32_t path_idx012) {
+          int32_t arc_idx012 = paths_data[path_idx012],
+              state_idx01 = fsas_row_ids2_data[arc_idx012],
+              fsa_idx0 = fsas_row_ids1_data[state_idx01],
+              state_idx0x = fsas_row_splits1_data[fsa_idx0];
+          int32_t path_idx01 = paths_row_ids2[path_idx012],
+              path_idx01x = paths_row_splits2[path_idx01],
+              path_idx2 = path_idx012 - path_idx01x;
+          if (path_idx2 > 0) {
+            int32_t prev_arc_idx012 = paths_data[path_idx012 - 1],
+                prev_dest_state_idx1 = arcs_data[prev_arc_idx012].dest_state,
+                prev_dest_state_idx01 = state_idx0x + prev_dest_state_idx1;
+            K2_CHECK_EQ(state_idx01, prev_dest_state_idx01);
+          } else {
+            K2_CHECK_EQ(state_idx01, state_idx0x);
+          }
+          if (path_idx012 + 1 == paths_row_splits2[path_idx01 + 1]) {
+            K2_CHECK_EQ(state_idx01, fsas_row_splits1_data[fsa_idx0 + 1] - 1);
+          }
+        });
     }
   }
 }

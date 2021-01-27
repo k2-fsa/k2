@@ -51,9 +51,7 @@ void InclusiveSum(ContextPtr c, int32_t n, const SrcPtr src, DestPtr dest) {
   if (d == kCpu) {
     SumType sum = 0;
     for (int32_t i = 0; i != n; ++i) {
-      auto prev = src[i];  // save a copy since src and dest
-                           // may share the underlying memory
-      sum += prev;
+      sum += src[i];
       dest[i] = sum;
     }
   } else {

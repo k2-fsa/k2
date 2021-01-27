@@ -2163,7 +2163,8 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
   // Use lowest() instead of -infinity() to initialize the sum, to avoid
   // -infinity - (-infinity) = NaN; but actually this shouldn't really be an
   // issue as we shouldn't be taking paths with scores equal to -infinity.
-  LogSumPerSublist(fsas,
+  Ragged<FloatType> arc_post_ragged(fsas.shape, arc_post);
+  LogSumPerSublist(arc_post_ragged,
                    std::numeric_limits<FloatType>::lowest(),
                    &state_post);
 
@@ -2185,16 +2186,17 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
 
   Ragged<FloatType> arc_pdf_ragged(fsas.shape, arc_pdf);
 
+  // TODO: make this in-place.
   Array1<FloatType> arc_cdf(c, num_arcs);
-  // TODO: check, the following works with in-place.
-  ExclusiveSumPerSublist(arc_pdf_ragged, 0, &arc_cdf);
+
+  SegmentedExclusiveSum(arc_pdf_ragged, &arc_cdf);
 
   /*
     The remaining code would not be necessary if we didn't have to deal with
     roundoff effects.  The point of the remaining code is to ensure that
     the "implicit last element" is exactly 1.0 and not, say, 1.00001 or 0.9999999.
 
-    Specifically, we ensure that if exp(arc_post[arc_idx012]) == 0, then the the
+    Specifically, we ensure that if exp(arc_post[arc_idx012]) == 0, then the
     cdf value for the next arc (taking it to be 1.0 if this is the last arc
     leaving this state) will be exactly equal to the cdf value for this arc.
 
@@ -2213,8 +2215,7 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
       FloatType inv_tot = 1.0;
       if (end_arc > begin_arc) {
         FloatType this_tot = arc_cdf_data[end_arc - 1] +
-            arc_pdf_data[end_arc - 1],
-            inv_tot;
+            arc_pdf_data[end_arc - 1];
         if (this_tot > 0)
           inv_tot = 1.0 / this_tot;
         // we'll leave inv_tot at 1.0 for states that had zero or NaN
@@ -2232,6 +2233,11 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
   return arc_cdf;
 }
 
+template
+Array1<float> GetArcCdf(FsaOrVec &fsas, Array1<float> &arc_post);
+template
+Array1<double> GetArcCdf(FsaOrVec &fsas, Array1<double> &arc_post);
+
 
 
 namespace random_paths_internal {
@@ -2240,7 +2246,7 @@ namespace random_paths_internal {
 // shared state (the changing part of it) for the algorithm that gets the paths.
 template <typename FloatType>
 struct PathState {
-  int32_t begin_arc_idx01x;  // first arc_idx012 leavng this state..
+  int32_t begin_arc_idx01x;  // first arc_idx012 leaving this state..
   int32_t num_arcs;          // num arcs leaving this state.
 
   // `p` is a number in the interval [0, 1], which you can think of as being
@@ -2262,12 +2268,8 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(fsas.NumElements(), arc_cdf.Dim());
   K2_CHECK_EQ(fsas.Dim0(), num_paths.Dim());
-  K2_CHECK(IsCompatible(fsas, arc_cdf));
-  K2_CHECK(IsCompatible(fsas, num_paths));
-  K2_CHECK(IsCompatible(fsas, state_batches));
 
-
-  ContextPtr c = fsas.Context();
+  ContextPtr c = GetContext(fsas, arc_cdf, num_paths, state_batches);
   int32_t num_fsas = fsas.Dim0();
 
   // For each FSA, work out the number of batches of states that it has,
@@ -2289,7 +2291,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
             prev_num_states = state_batches_row_splits2[prev_batch_start + i + 1] -
               state_batches_row_splits2[prev_batch_start + i];
         if (prev_num_states != 0)
-          num_state_batches_data[i] = 0;
+          num_state_batches_data[i] = b;
       }
     });
 
@@ -2382,7 +2384,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
        // went wrong, but could be lots of things, e.g. we reached a state that
        // we shouldn't have reached (has no arcs) or some other circumstance
        // meant that no arc was chosen.
-       K2_CHECK_LT(path_pos, num_batches);
+       K2_DCHECK_LT(path_pos, num_batches);
 
        g.sync();
 
@@ -2552,5 +2554,37 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
                             const Array1<int32_t> &num_paths,
                             Ragged<int32_t> &state_batches);
 
+template <typename FloatType>
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            Array1<FloatType> &arc_cdf,
+                            int32_t num_paths,
+                            Array1<FloatType> &tot_scores,
+                            Ragged<int32_t> &state_batches) {
+  ContextPtr c = GetContext(fsas, arc_cdf, tot_scores, state_batches);
+  int32_t num_fsas  = fsas.Dim0();
+  Array1<int32_t> num_paths_array(c, num_fsas);
+  int32_t *num_paths_data = num_paths_array.Data();
+  FloatType *tot_scores_data = tot_scores.Data();
+  FloatType minus_infinity = -std::numeric_limits<FloatType>::infinity();
+  K2_EVAL(c, num_fsas, lambda_set_num_paths, (int32_t i) {
+      int32_t tot_score = tot_scores_data[i];
+      int32_t this_num_paths = (tot_score != minus_infinity ? num_paths : 0);
+      num_paths_data[i] = this_num_paths;
+    });
+  return RandomPaths(fsas, arc_cdf, num_paths_array, state_batches);
+}
+
+template
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            Array1<float> &arc_cdf,
+                            int32_t num_paths,
+                            Array1<float> &tot_scores,
+                            Ragged<int32_t> &state_batches);
+template
+Ragged<int32_t> RandomPaths(FsaVec &fsas,
+                            Array1<double> &arc_cdf,
+                            int32_t num_paths,
+                            Array1<double> &tot_scores,
+                            Ragged<int32_t> &state_batches);
 
 }  // namespace k2
