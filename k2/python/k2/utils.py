@@ -10,6 +10,7 @@ from typing import Union
 import torch
 
 import _k2
+import k2.ragged
 from .fsa import Fsa
 from .symbol_table import SymbolTable
 
@@ -229,7 +230,11 @@ def create_fsa_vec(fsas):
         values = []
         for fsa in fsas:
             values.append(getattr(fsa, name))
-        value = torch.cat(values)
+        if isinstance(values[0], torch.Tensor):
+            value = torch.cat(values)
+        else:
+            assert isinstance(values[0], _k2.RaggedInt)
+            value = k2.ragged.append(values, axis=0)
         setattr(fsa_vec, name, value)
 
     non_tensor_attr_names = set(
