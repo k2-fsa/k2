@@ -623,7 +623,6 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
 
 
 
-
 /*
   This function detects if there are any FSAs in an FsaVec that have exactly one
   state (which is not allowed; the empty FSA may have either 0 or 2 states); and
