@@ -1,5 +1,6 @@
 # please sort imported functions alphabetically
 from .autograd import normalize_scores
+from .ops import append
 from .ops import index
 from .ops import remove_axis
 from .ops import remove_values_eq

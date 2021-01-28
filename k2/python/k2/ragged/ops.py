@@ -139,3 +139,18 @@ def sum_per_sublist(src: _k2.RaggedFloat,
       `src.tot_size(src.num_axes() - 2)`.
     '''
     return _k2.sum_per_sublist(src, initial_value)
+
+
+def append(srcs: List[_k2.RaggedInt], axis=0) -> _k2.RaggedInt:
+    '''Concatenate a list of :class:`_k2.RaggedInt` along a given axis.
+
+    Args:
+      srcs:
+        The input.
+      axis:
+        It can be either 0 or 1.
+    Returns:
+      A single ragged tensor.
+    '''
+    assert axis in (0, 1)
+    return _k2.append(srcs, axis)
