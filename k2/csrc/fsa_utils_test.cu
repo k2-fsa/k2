@@ -1135,7 +1135,7 @@ void TestRandomPaths(FsaVec &fsa_vec_in) {
     Ragged<int32_t> leaving_arc_batches =
         GetLeavingArcIndexBatches(fsas, state_batches);
 
-    for (int32_t i = 0; i < 2; i++) {
+    for (int32_t i = 0; i < 2; ++i) {
       bool log_semiring = (i != 0);
 
       Array1<FloatType> forward_scores = GetForwardScores<FloatType>(

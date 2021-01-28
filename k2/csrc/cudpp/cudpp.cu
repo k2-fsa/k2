@@ -272,4 +272,10 @@ template void SegmentedExclusiveSum<float>(ContextPtr context,
                                            const uint32_t *d_iflags,
                                            float *d_out);
 
+template void SegmentedExclusiveSum<double>(ContextPtr context,
+                                            const double *d_in,
+                                            int32_t num_elements,
+                                            const uint32_t *d_iflags,
+                                            double *d_out);
+
 }  // namespace k2

@@ -86,7 +86,7 @@ Array1<T> ExclusiveSum(const Array1<T> &src) {
 
 
 /*
-  Sets 'dest' to exclusive prefix sum of 'src'.
+  Sets 'dest' to inclusive prefix sum of 'src'.
     @param [in] src    Source data, to be summed.
     @param [out] dest  Destination data (possibly &src).  Must satisfy
                        dest.Dim() == src.Dim().
@@ -103,7 +103,7 @@ void InclusiveSum(const Array1<S> &src, Array1<T> *dest) {
 }
 
 
-/*  wrapper for the inclusiveSum above.  Will satisfy
+/*  wrapper for the InclusiveSum above.  Will satisfy
      ans[i] = sum_{j=0}^{i} src[j].
  */
 template <typename T>

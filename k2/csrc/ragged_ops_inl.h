@@ -573,7 +573,7 @@ void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
   if (c->GetDeviceType() == kCuda) {
     // there's roundoff problem for float type with the below implementation in
     // else branch.
-    if (std::is_same<float, T>::value) {
+    if (std::is_same<float, T>::value || std::is_same<double, T>::value) {
       // flags is similar to `tails` (see concepts in k2/csrc/utils)
       // But it indicates `heads` here. The very first segment always
       // starts at zero, so flags[0] is always 0.

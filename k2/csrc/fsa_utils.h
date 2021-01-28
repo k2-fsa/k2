@@ -599,7 +599,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
                       matter).  Is needed so we can know which FSAs
                       had successful paths, i.e. had tot_score not equal to
                       -infinity.
-    @param [in] state_batches  The result of calling GetStateBatches()
+    @param [in] state_batches  The result of calling GetStateBatches(fsas, true)
                       on `fsas`.  Is needed so we can know the maximum
                       possible length of each path, to know how much memory to
                       allocate.

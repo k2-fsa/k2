@@ -2156,7 +2156,7 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
   K2_CHECK_GE(fsas.NumAxes(), 2);
   K2_CHECK_LE(fsas.NumAxes(), 3);
   int32_t state_axis = (fsas.NumAxes() == 3 ? 1 : 0);
-  ContextPtr c = fsas.Context();
+  ContextPtr c = GetContext(fsas, arc_post);
   int32_t num_states = fsas.TotSize(state_axis),
       num_arcs = fsas.NumElements();
   Array1<FloatType> state_post(c, num_states);
@@ -2214,12 +2214,12 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
   K2_EVAL(c, num_states, lambda_set_inv_tots, (int32_t i) {
       int32_t begin_arc = fsas_row_splits2_data[i],
           end_arc = fsas_row_splits2_data[i + 1];
-      FloatType inv_tot = 1.0;
+      FloatType inv_tot = FloatType(1.0);
       if (end_arc > begin_arc) {
         FloatType this_tot = arc_cdf_data[end_arc - 1] +
             arc_pdf_data[end_arc - 1];
         if (this_tot > 0)
-          inv_tot = 1.0 / this_tot;
+          inv_tot = FloatType(1.0) / this_tot;
         // we'll leave inv_tot at 1.0 for states that had zero or NaN
         // `this_tot`, which could happen if those states were not accessible or
         // not coaccessible.
@@ -2245,10 +2245,10 @@ Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
       int32_t state_idx01 = fsas_row_ids2_data[arc_idx012],
           arc_idx01x_next = fsas_row_splits2_data[state_idx01 + 1];
       FloatType cur_value = arc_cdf_data[arc_idx012],
-          cutoff = cur_value + 0.0001;
+          cutoff = cur_value + FloatType(0.0001);
       FloatType smallest_later_value = cur_value;
 
-      for (int32_t next_arc = arc_idx012 + 1; next_arc < arc_idx01x_next; next_arc++) {
+      for (int32_t next_arc = arc_idx012 + 1; next_arc < arc_idx01x_next; ++next_arc) {
         FloatType next_val = arc_cdf_data[next_arc];
         if (next_val < smallest_later_value)
           smallest_later_value = next_val;
@@ -2383,7 +2383,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
     auto lambda_set_paths = [=] __device__ (
         cg::thread_block_tile<thread_group_size> g, // or auto g..
         PathState<FloatType> *shared_data,
-        int32_t i) {
+        int32_t i) ->void {
      // First get certain fixed information.  All threads get this, which might
      // not seem ideal but I think the GPU will consolidate the identical reads.
      int32_t fsa_idx = paths_row_ids_data[i],
