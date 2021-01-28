@@ -40,6 +40,11 @@ struct typeToVector<float, 4> {
 };
 
 template <>
+struct typeToVector<double, 4> {
+  typedef double4 Result;
+};
+
+template <>
 struct typeToVector<int, 3> {
   typedef int3 Result;
 };
@@ -85,6 +90,11 @@ __device__ inline float OperatorMin<float>::identity() const {
   return FLT_MAX;
 }
 
+template <>
+__device__ inline double OperatorMin<double>::identity() const {
+  return DBL_MAX;
+}
+
 template <typename T>
 class OperatorMax {
  public:
@@ -102,6 +112,11 @@ __device__ inline int OperatorMax<int>::identity() const {
 template <>
 __device__ inline float OperatorMax<float>::identity() const {
   return -FLT_MAX;
+}
+
+template <>
+__device__ inline double OperatorMax<double>::identity() const {
+  return -DBL_MAX;
 }
 
 template <typename T>
@@ -127,6 +142,14 @@ struct SharedMemory<float> {
   __device__ float *getPointer() {
     extern __shared__ float s_float[];
     return s_float;
+  }
+};
+
+template <>
+struct SharedMemory<double> {
+  __device__ double *getPointer() {
+    extern __shared__ double s_double[];
+    return s_double;
   }
 };
 
