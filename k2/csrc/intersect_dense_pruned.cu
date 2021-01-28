@@ -718,7 +718,6 @@ class MultiGraphDenseIntersectPruned {
     // them.
     const int32_t *ai_row_ids1 = arc_info.shape.RowIds(1).Data(),
                   *ai_row_ids2 = arc_info.shape.RowIds(2).Data();
-    auto state_map_acc = state_map_.GetAccessor<NUM_KEY_BITS>();
     int64_t state_map_fsa_stride = state_map_fsa_stride_;
 
     // renumber_states will be a renumbering that dictates which of the arcs in
@@ -726,6 +725,16 @@ class MultiGraphDenseIntersectPruned {
     // kept (it doesn't matter which one).
     Renumbering renumber_states(c_, arc_info.NumElements());
     char *keep_this_state_data = renumber_states.Keep().Data();
+
+    int32_t new_hash_size = RoundUpToNearestPowerOfTwo(
+        int32_t(arc_info.NumElements() * 1.0));
+    if (new_hash_size > state_map_.NumBuckets()) {
+      // actually the following does more work than needed; the hash is empty
+      // right now.
+      state_map_.Resize(new_hash_size, NUM_KEY_BITS);
+    }
+
+    auto state_map_acc = state_map_.GetAccessor<NUM_KEY_BITS>();
 
     {
       NVTX_RANGE("LambdaSetStateMap");
