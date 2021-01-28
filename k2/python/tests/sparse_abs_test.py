@@ -101,7 +101,7 @@ class TestSparseAbs(unittest.TestCase):
             major, minor = torch.__version__.split('.')[:2]
             major = int(major)
             minor = int(minor)
-            if major < 1 or (major == 1 and minor < 6):
+            if major < 1 or (major == 1 and minor < 7):
                 print(f'Current PyTorch version is: {torch.__version__}')
                 print('Skip it for version less than 1.7.0')
             else:
