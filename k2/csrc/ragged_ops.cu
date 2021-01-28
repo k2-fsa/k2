@@ -1222,7 +1222,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   return ans;
 #else
   if (src.NumAxes() == 3) {
-    Array1<int3_t> ans = GetTransposeReorderingThreeAxesCuda(src, num_cols);
+    Array1<int32_t> ans = GetTransposeReorderingThreeAxesCuda(src, num_cols);
     // CheckGetTransposeReordering(src, ans);
     return ans;
   }
