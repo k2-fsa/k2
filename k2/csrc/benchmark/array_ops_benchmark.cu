@@ -232,6 +232,42 @@ static BenchmarkStat BenchmarkSpliceRowSplits(int32_t num_array,
   return stat;
 }
 
+static BenchmarkStat BenchmarkSizesToMergeMap(int32_t num_src,
+                                              DeviceType device_type) {
+  ContextPtr context;
+  if (device_type == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(device_type, kCuda);
+    context = GetCudaContext();
+  }
+
+  std::vector<int32_t> sizes(num_src);
+  int32_t tot_size = 0;
+  for (int32_t n = 0; n != num_src; ++n) {
+    int32_t cur_size = RandInt(0, 1000);
+    sizes[n] = cur_size;
+    tot_size += cur_size;
+  }
+
+  BenchmarkStat stat;
+  stat.op_name = "SizesToMergeMap_" + std::to_string(num_src) + "_" +
+                 std::to_string(tot_size) + "_" +
+                 std::to_string(tot_size / num_src);
+  int32_t num_iter = 20;
+  stat.num_iter = num_iter;
+  stat.problem_size = num_src;
+  stat.device_type = device_type;
+
+  stat.eplased_per_iter = BenchmarkOp(
+      num_iter, context,
+      (Array1<uint32_t>(*)(ContextPtr, const std::vector<int32_t> &))(
+          &SizesToMergeMap),
+      context, sizes);
+  stat.eplased_per_iter *= 1e6;  // from seconds to microseconds
+  return stat;
+}
+
 template <typename T>
 static void RegisterBenchmarkExclusiveSum(DeviceType device_type) {
   std::vector<int32_t> problems_sizes = {100,  500,   1000,  2000,
@@ -300,6 +336,21 @@ static void RegisterBenchmarkSpliceRowSplits(DeviceType device_type) {
   }
 }
 
+static void RegisterBenchmarkSizesToMergeMap(DeviceType device_type) {
+  // problem_sizes here is the `sizes.size()` in
+  // SizesToMergeMap(ContextPtr c, const std::vector<int32_t> sizes).
+  std::vector<int32_t> problems_sizes = {3,   5,   10,   20,   50,   100,
+                                         200, 500, 1000, 2000, 5000, 10000};
+  for (auto s : problems_sizes) {
+    std::string name =
+        GenerateBenchmarkName<int32_t>("SizesToMergeMap", device_type) + "_" +
+        std::to_string(s);
+    RegisterBenchmark(name, [s, device_type]() -> BenchmarkStat {
+      return BenchmarkSizesToMergeMap(s, device_type);
+    });
+  }
+}
+
 static void RunArrayOpsBenchmark() {
   PrintEnvironmentInfo();
 
@@ -313,7 +364,10 @@ static void RunArrayOpsBenchmark() {
   RegisterBenchmarkRowIdsToRowSplits(kCuda);
 
   RegisterBenchmarkAppend<int32_t>(kCuda);
+
   RegisterBenchmarkSpliceRowSplits(kCuda);
+
+  RegisterBenchmarkSizesToMergeMap(kCuda);
 
   // Users can set a regular expression via environment
   // variable `K2_BENCHMARK_FILTER` such that only benchmarks
