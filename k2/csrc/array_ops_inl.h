@@ -493,6 +493,29 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
 }
 
 template <typename T>
+bool Equal(const Array1<T> &a, T b) {
+  NVTX_RANGE(K2_FUNC);
+  ContextPtr c = a.Context();
+  const T *a_data = a.Data();
+  int32_t dim = a.Dim();
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i < dim; i++)
+      if (a_data[i] != b)
+        return false;
+    return true;
+  } else {
+    Array1<int32_t> is_same(c, 1, 1);
+    int32_t *is_same_data = is_same.Data();
+    auto lambda_test = [=] __device__(int32_t i) -> void {
+      if (a_data[i] != b) *is_same_data = 0;
+    };
+    EvalDevice(c, a.Dim(), lambda_test);
+    return is_same[0];
+  }
+}
+
+
+template <typename T>
 bool Equal(const Array2<T> &a, const Array2<T> &b) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(a.Dim0(), b.Dim0());

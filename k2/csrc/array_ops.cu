@@ -399,4 +399,18 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c,
   return ans;
 }
 
+bool IsPermutation(const Array1<int32_t> &a) {
+  Array1<int32_t> ones(a.Context(), a.Dim(), 1);
+  int32_t *ones_data = ones.Data();
+  const int32_t *a_data = a.Data();
+  int32_t dim = a.Dim();
+  K2_EVAL(a.Context(), a.Dim(), lambda_set_zero, (int32_t i) -> void {
+      if (static_cast<uint32_t>(a_data[i]) < dim) {
+        ones_data[a_data[i]] = 0;
+      }
+    });
+  return Equal(ones, 0);
+}
+
+
 }  // namespace k2

@@ -1154,6 +1154,17 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   return ans;
 }
 
+
+/*
+// Checks the result of GetTranspoeReordering(), in debug mode and dies if it is wrong.
+static void CheckGetTransposeReordering(Ragged<int32_t> &src,
+                                        Array1<int32_t> &ans) {
+  if (!internal::kDisableDebug && !internal::DisableChecks()) {
+    K2_CHECK(IsPermutation(ans));
+    K2_CHECK(IsMonotonic(src.values[ans]));
+  }
+  }*/
+
 Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &context = src.Context();
@@ -1198,10 +1209,14 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
       src_tmp_out.Data(), order.Data(), ans.Data(), num_elements, 0,
       log_buckets, stream));
 
+  // CheckGetTransposeReordering(src, ans);
   return ans;
 #else
-  if (src.NumAxes() == 3)
-    return GetTransposeReorderingThreeAxesCuda(src, num_cols);
+  if (src.NumAxes() == 3) {
+    Array1<int32_t> ans = GetTransposeReorderingThreeAxesCuda(src, num_cols);
+    // CheckGetTransposeReordering(src, ans);
+    return ans;
+  }
 
   const int32_t *row_splits1_data = src.RowSplits(src.NumAxes() - 1).Data();
   const int32_t *row_ids1_data = src.RowIds(src.NumAxes() - 1).Data();
@@ -1232,6 +1247,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   mgpu::context_t *mgpu_context = GetModernGpuAllocator(context);
 
   K2_CUDA_SAFE_CALL(mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
+  // CheckGetTransposeReordering(src, ans);
   return ans;
 #endif
 }

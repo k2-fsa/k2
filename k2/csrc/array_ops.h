@@ -446,6 +446,15 @@ Array1<T> Minus(const Array1<T> &src, T t) {
 template <typename T>
 bool Equal(const Array1<T> &a, const Array1<T> &b);
 
+
+/*
+  Return true if all elements of the two arrays are equal to the
+  specified constant, false otherwise.
+*/
+template <typename T>
+bool Equal(const Array1<T> &a, T b);
+
+
 /*
   Return true if array `a` is monotonically increasing, i.e.
   a[i+1] >= a[i].
@@ -458,6 +467,14 @@ bool IsMonotonic(const Array1<T> &a);
  */
 template <typename T>
 bool IsMonotonicDecreasing(const Array1<T> &a);
+
+
+/*
+  Return true if array `a` corresponds to the numbers 0, 1, 2.. a.Dim()-1
+  in some order, false otherwise.
+ */
+bool IsPermutation(const Array1<int32_t> &a);
+
 
 /*
   Generalized function inverse for an array viewed as a function which is
