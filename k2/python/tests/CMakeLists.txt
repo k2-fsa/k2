@@ -22,6 +22,7 @@ set(py_test_files
   closure_test.py
   compose_test.py
   connect_test.py
+  create_sparse_test.py
   ctc_gradients_test.py
   dense_fsa_vec_test.py
   determinize_test.py
@@ -46,7 +47,7 @@ set(py_test_files
   ragged_test.py
   remove_epsilon_test.py
   shortest_path_test.py
-  sparse_test.py
+  sparse_abs_test.py
   symbol_table_test.py
   top_sort_test.py
   union_test.py
