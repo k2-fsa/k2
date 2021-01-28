@@ -1430,7 +1430,7 @@ TEST(RaggedShapeOpsTest, TestIndex) {
         std::vector<int32_t> new2old_vec = {2, 1};
         Array1<int32_t> new2old(context, new2old_vec);
         Array1<int32_t> value_indexes_out;
-        RaggedShape result = Index(shape, new2old, &value_indexes_out);
+        RaggedShape result = Index(shape, 0, new2old, &value_indexes_out);
         // fsa 2, state_idx01 {5}, arc_idx012 {7, 8, 9}
         // fsa 1, state_idx01 {2, 3, 4}, arc_idx012 {{3},{4, 5}, {6}}
         CheckArrayData(value_indexes_out,
@@ -1451,7 +1451,7 @@ TEST(RaggedShapeOpsTest, TestIndex) {
             new2old_vec[i] = RandInt(0, dim0 - 1);
           Array1<int32_t> new2old(context, new2old_vec);
           Array1<int32_t> value_indexes;
-          RaggedShape result = Index(shape, new2old, &value_indexes);
+          RaggedShape result = Index(shape, 0, new2old, &value_indexes);
           CheckResultOfIndex(context, shape, new2old, result);
           K2_LOG(INFO) << "Value_indexes = " << value_indexes;
         }
@@ -1459,6 +1459,23 @@ TEST(RaggedShapeOpsTest, TestIndex) {
     }
   }
 }
+
+
+TEST(RaggedShapeOpsTest, TestIndexAxis1) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+
+      Ragged<int32_t> input = Ragged<int32_t>(" [ [ 1 2 ] [ 3 4 5 ] [ 6 7 ] [ ] ]").To(context);
+      Array1<int32_t> indexes = Array1<int32_t>(" [ 1 0 4 2 6 5 ]").To(context);
+      Ragged<int32_t> output = Ragged<int32_t>(" [ [ 2 1 ] [ 5 3 ] [ 7 6 ] [ ] ]").To(context);
+
+      Ragged<int32_t> indexed = Index(input, 1, indexes);
+      EXPECT_EQ(Equal(output, indexed), true);
+    }
+  }
+}
+
+
 
 TEST(GetTransposeReordering, NoDuplicates) {
   //       col0  col1  col2  col3  col4  col5
@@ -2609,25 +2626,63 @@ TEST(RaggedOpsTest, TestComputeHash) {
     Ragged<int32_t> src = RandomRagged<int32_t>(
                         std::numeric_limits<int32_t>::min(),
                         std::numeric_limits<int32_t>::max(), 2, 4, 0, 20000),
-                    src_gpu = src.To(GetCpuContext());
+                    src_gpu = src.To(GetCudaContext());
     {
       Array1<int64_t> hash1 = ComputeHash<int64_t>(src),
                       hash2 = ComputeHash<int64_t>(src_gpu).To(GetCpuContext());
-      /* K2_LOG(INFO) << "src = " << src;
-      K2_LOG(INFO) << "hash1 = " << hash1;
-      K2_LOG(INFO) << "hash2 = " << hash2; */
       EXPECT_EQ(Equal(hash1, hash2), true);
     }
 
     {
       Array1<int32_t> hash1 = ComputeHash<int32_t>(src),
                       hash2 = ComputeHash<int32_t>(src_gpu).To(GetCpuContext());
-      /* K2_LOG(INFO) << "src[32] = " << src;
-      K2_LOG(INFO) << "hash1[32] = " << hash1;
-      K2_LOG(INFO) << "hash2[32] = " << hash2; */
       EXPECT_EQ(Equal(hash1, hash2), true);
     }
   }
 }
+
+
+
+TEST(RaggedOpsTest, TestUniqueSequences) {
+  for (int32_t i = 0; i < 20; i++) {
+    for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+      Ragged<int32_t> src = RandomRagged<int32_t>(0, 3, 2, 4, 0, 20000).To(c);
+
+      Ragged<int32_t> unique = UniqueSequences(src);
+
+      if (src.NumAxes() == 2) {
+        src = Unsqueeze(src, 0);
+        unique = Unsqueeze(unique, 0);
+      }
+
+      ContextPtr cpu = GetCpuContext();
+      Array1<int32_t> hash_src = ComputeHash<int32_t>(src).To(cpu),
+          hash_unique = ComputeHash<int32_t>(unique).To(cpu);
+
+      RaggedShape src_hash_shape = RemoveAxis(src.shape, src.NumAxes() - 1).To(cpu);
+      src_hash_shape = GetLayer(src_hash_shape, src_hash_shape.NumLayers() - 1);
+
+      RaggedShape unique_hash_shape = RemoveAxis(unique.shape, unique.NumAxes() - 1).To(cpu);
+      unique_hash_shape = GetLayer(unique_hash_shape, unique_hash_shape.NumLayers() - 1);
+
+      K2_CHECK_EQ(src_hash_shape.Dim0(), unique_hash_shape.Dim0());
+
+      const int32_t *src_hash_row_splits = src_hash_shape.RowSplits(1).Data(),
+          *unique_hash_row_splits = unique_hash_shape.RowSplits(1).Data();
+      const int32_t *src_hash_data = hash_src.Data(),
+          *unique_hash_data = hash_unique.Data();
+
+      for (int32_t r = 0; r < src_hash_shape.Dim0(); r++) {
+
+        int32_t src_begin = src_hash_row_splits[r], src_end = src_hash_row_splits[r+1],
+            unique_begin = unique_hash_row_splits[r], unique_end = unique_hash_row_splits[r+1];
+        std::set<int32_t> src_set(src_hash_data + src_begin, src_hash_data + src_end),
+            unique_set(unique_hash_data + unique_begin, unique_hash_data + unique_end);
+        EXPECT_EQ((src_set == unique_set), true);
+      }
+    }
+  }
+}
+
 
 }  // namespace k2

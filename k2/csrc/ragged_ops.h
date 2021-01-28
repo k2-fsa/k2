@@ -132,21 +132,6 @@ void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
   SegmentedReduce<T, BitOrOp<T>>(src, initial_value, or_values);
 }
 
-/*
-  Sort each sub-list in `src`, with operator `<`, and output the order to
-  `order`. CAUTION: don't rely on this being a stable sort for now. Will
-  eventually make the operator customizable, in which case this would become a
-  wrapper.
-
-      @param [in] src   Ragged array with 2 axes.
-      @param [out] order   List of indexes that we'll use to give `src`
-                      a sorted order; will be resized if its size is
-                      not src.values.Dim().  If you do
-                        src.values = src.values[*order]
-                      then src.values will be sorted.
- */
-template <typename T, typename Op>
-void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
@@ -428,6 +413,14 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
 RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
 
 /*
+  Version of Unsqueeze() above, that works for ragged tensors.
+  Note: the opposite of this is not Squeeze(); it is ans.RemoveAxis(axis).
+*/
+template <typename T> Ragged<T> Unsqueeze(const Ragged<T> &src, int32_t axis) {
+  return Ragged<T>(Unsqueeze(src.shape, axis), src.values);
+}
+
+/*
   Parallel version of Unsqueeze() that effectively calls Unsqueeze() in parallel
   for `num_srcs` RaggedShapes.  Currently only works for axis == 0
       @param [in] num_srcs  `num_srcs >= 0` is the number of elements of the
@@ -504,10 +497,12 @@ RaggedShape GetLayer(const RaggedShape &src, int32_t layer);
                        0 < axis < src.NumLayers() - 1.  Axis `axis` of
                        the input will correspond to the last axis of
                        `top` and axis 0 of `bottom`.
-     @param [out] top   Top layers of the RaggedShape
+     @param [out] top   Top layers of the RaggedShape, will have
+                        `top->NumAxes() == axis + 1` at exit.
      @param [out] bottom Bottom layers of the RaggedShape; will satisfy
                         `top->NumElements() == bottom->Dim0()` and
-                        `Equal(src, ComposeRaggedShapes(*top, *bottom))`
+                        `Equal(src, ComposeRaggedShapes(*top, *bottom))`,
+                        ans `bottom.NumAxes() == src.NumAxes() - axis`.
  */
 void DecomposeRaggedShape(const RaggedShape &src, int32_t axis,
                           RaggedShape *top, RaggedShape *bottom);
@@ -1022,10 +1017,9 @@ Ragged<T> RandomRagged(T min_value = static_cast<T>(0),
 
      @param [inout]   The input array to be sorted.
                       CAUTION: it is sorted in-place.
-     @param [out]     The indexes mapping from the sorted
-                      array to the input array. If not NULL,
-                      the caller has to pre-allocate memory for
-                      it on the same device as `src`.
+     @param [out]     The indexes mapping from the sorted array to the original
+                      input array. If not NULL, the caller has to pre-allocate
+                      memory for it on the same device as `src`.
  */
 template <typename T, typename Op = LessThan<T>>
 void SortSublists(Ragged<T> *src, Array1<int32_t> *order = nullptr);
@@ -1041,6 +1035,7 @@ inline Ragged<T> RaggedFromTotSizes(ContextPtr &c,
   return Ragged<T>(RaggedShapeFromTotSizes(c, tot_sizes),
                    Array1<T>(c, tot_sizes.back()));
 }
+
 
 /*
   Transpose a ragged tensor as if it were the index information of a CSR-format
@@ -1119,30 +1114,39 @@ bool Equal(const Ragged<T> &a, const Ragged<T> &b) {
 }
 
 /*
-  Indexing operation on ragged tensor's shape (indexing axis 0 with
-  a provided array of indexes)
+  Indexing operation on ragged tensor's shape.
 
       @param [in] src      Source ragged tensor to index
+      @param [in] axis     Axis to index `src` on, must satisfy
+                           0 <= src < src.NumAxes().
       @param [in] indexes  Array of indexes, which will be interpreted
-                           as indexes into axis 0 of `src`,
-                           i.e. with 0 <= indexes[i] < src.Dim0().
-      @param [out]         If non-null, this will be set to a new
+                           as indexes into axis `axis` of `src`,
+                           i.e. with 0 <= indexes[i] < src.TotSize(axis).
+                           CAUTION: these are currently not allowed to
+                           change the order on axes less than `axis`,
+                           i.e. if axis > 0, we require
+                           `IsMonotonic(src.RowIds(axis)[indexes])`.
+      @param [out]         If non-null, this will be set to an
                            Array1<int32_t> containing the indexes
                            into the elements of an array with shape
                            'src', that an array with shape 'ans'
                            would have (a new2old map).  As in:
                            `ans_values = src_values[*elem_indexes]`.
+                           If `axis == src.NumAxes()-1`, this will
+                           be aliased with `indexes`.
 
       @return Returns a ragged shape with
               `ans.NumAxes() == src.NumAxes()`
-              and `ans.Dim0() == indexes.Dim()`.
+              and `ans.TotSize(axis) == indexes.Dim()`.
 
   NOET: if you are looking for something like ReorderRaggedShape(),
   RenumberRaggedShape() or the like, this may be what you want.
   (Reordering/renumbering is a special case of indexing)
 */
-RaggedShape Index(RaggedShape &src, const Array1<int32_t> &indexes,
+RaggedShape Index(RaggedShape &src, int32_t axis,
+                  const Array1<int32_t> &indexes,
                   Array1<int32_t> *elem_indexes = nullptr);
+
 
 /*
   Indexing operation on ragged tensor, returns src[indexes], where
@@ -1150,9 +1154,14 @@ RaggedShape Index(RaggedShape &src, const Array1<int32_t> &indexes,
   of `src`.
 
       @param [in] src      Source ragged tensor to index
+      @param [in] axis     Axis to index `src` on
       @param [in] indexes  Array of indexes, which will be interpreted
-                           as indexes into axis 0 of `src`,
-                           i.e. with 0 <= indexes[i] < src.Dim0().
+                           as indexes into axis `axis` of `src`,
+                           i.e. with 0 <= indexes[i] < src.TotSize(axis).
+                           CAUTION: these are currently not allowed to
+                           change the order on axes less than `axis`,
+                           i.e. if axis > 0, we require
+                           `IsMonotonic(src.RowIds(axis)[indexes])`.
       @param [out]         If non-null, this will be set to a new
                            Array1<int32_t> containing the indexes
                            into src.values that ans.values has,
@@ -1166,10 +1175,11 @@ RaggedShape Index(RaggedShape &src, const Array1<int32_t> &indexes,
 
 */
 template <typename T>
-Ragged<T> Index(Ragged<T> &src, const Array1<int32_t> &indexes,
+Ragged<T> Index(Ragged<T> &src, int32_t axis,
+                const Array1<int32_t> &indexes,
                 Array1<int32_t> *value_indexes_out = nullptr) {
   Array1<int32_t> value_indexes;
-  RaggedShape ans_shape = Index(src.shape, indexes, &value_indexes);
+  RaggedShape ans_shape = Index(src.shape, axis, indexes, &value_indexes);
   Ragged<T> ans(ans_shape, src.values[value_indexes]);
   if (value_indexes_out != nullptr)
     *value_indexes_out = std::move(value_indexes);
@@ -1245,7 +1255,7 @@ Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes) {
 
 /*
    Index ragged tensor with ragged tensor.
-       @param [in] src   Source tensor, to be indexed (on its axis 0)
+       @param [in] src   Source tensor, to be indexed
        @param [in] indexes   Indexes into source array; the values must
                           satisfy `0 <= indexes.values[i] < src.Dim0()`.
        @param [in] remove_axis  If remove_axis == true,
@@ -1319,6 +1329,25 @@ Array1<int32_t> CoveringShapeForwardMap(RaggedShape &src,
   */
 template <typename T>
 Array1<T> ComputeHash(Ragged<int32_t> &src);
+
+
+/*
+  If `src` has two axes, this will return the unique sub-lists (in a possibly
+  different order, but without repeats).  If `src` has 3 axes, it will
+  do the above but separately for each index on axis 0; if more than 3 axes,
+  the earliest axes will be ignored.
+
+     @param [in] src  Source ragged tensor
+
+     @return   Returns a tensor with the same number of axes as `src` and
+            possibly fewer elements due to removing repeated sequences on the
+            last axis (and with the last-but-one indexes possibly in a different
+            order).
+
+  CAUTION: the current implementation does not completely remove the possibility
+  of repeated sequnces, as it relies on a hash and ignores collisions.
+ */
+Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src);
 
 
 /* Compute exclusive sum per sub-list.
