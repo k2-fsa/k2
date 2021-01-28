@@ -1642,13 +1642,26 @@ TEST(OpsTest, Array2Assign) {
 }
 
 TEST(OpsTest, SizesToMergeMapTest) {
-  for (int loop = 0; loop < 2; loop++) {
-    ContextPtr c = ((loop % 2) == 0 ? GetCpuContext() : GetCudaContext());
-    std::vector<int32_t> sizes = {3, 5, 1};
-    Array1<uint32_t> merge_map = SizesToMergeMap(c, sizes);
-    std::vector<uint32_t> expected_map = {0, 3, 6, 1, 4, 7, 10, 13, 2};
-    K2_LOG(INFO) << "merge_map is " << merge_map;
-    CheckArrayData(merge_map, expected_map);
+  // simple test
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    {
+      std::vector<int32_t> sizes = {3, 5, 1};
+      Array1<uint32_t> merge_map = SizesToMergeMap(c, sizes);
+      std::vector<uint32_t> expected_map = {0, 3, 6, 1, 4, 7, 10, 13, 2};
+      CheckArrayData(merge_map, expected_map);
+    }
+  }
+  {
+    // random case (well, I assume cpu implementation is correct and only test
+    // Cuda implementation)
+    for (int32_t i = 0; i != 2; ++i) {
+      int32_t num_srcs = RandInt(0, 100);
+      std::vector<int32_t> sizes(num_srcs);
+      for (int32_t n = 0; n != num_srcs; ++n) sizes[n] = RandInt(0, 1000);
+      Array1<uint32_t> merge_map_cpu = SizesToMergeMap(GetCpuContext(), sizes);
+      Array1<uint32_t> merge_map = SizesToMergeMap(GetCudaContext(), sizes);
+      CheckArrayData(merge_map_cpu, merge_map);
+    }
   }
 }
 

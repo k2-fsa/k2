@@ -349,16 +349,17 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c,
   int32_t *row_splits_cpu_data = row_splits_cpu.Data();
   int32_t tot_size = 0;
   row_splits_cpu_data[0] = 0;
-  for (int32_t i = 0; i < num_srcs; i++) {
+  for (int32_t i = 0; i != num_srcs; ++i) {
     tot_size += sizes[i];
     row_splits_cpu_data[i + 1] = tot_size;
   }
   Array1<uint32_t> ans(c, tot_size);
+  if (tot_size == 0) return ans;
+  uint32_t *ans_data = ans.Data();
 
   if (c->GetDeviceType() == kCpu) {
-    uint32_t *ans_data = ans.Data();
     int32_t cur = 0;
-    for (int32_t src = 0; src < num_srcs; src++) {
+    for (int32_t src = 0; src != num_srcs; ++src) {
       int32_t begin = cur,  // i.e. the previous end.
           end = row_splits_cpu_data[src + 1];
       for (; cur != end; ++cur) {
@@ -368,22 +369,33 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c,
             uint32_t(src) + uint32_t(cur - begin) * uint32_t(num_srcs);
       }
     }
-    return ans;
-  }
-  K2_CHECK_EQ(c->GetDeviceType(), kCuda);
-  Array1<int32_t> row_splits = row_splits_cpu.To(c);
-  int32_t *row_splits_data = row_splits.Data();
-  uint32_t *merge_map_data = ans.Data();
-  int32_t avg_elems_per_row = (tot_size + num_srcs - 1) / num_srcs,
-          threads_per_row = RoundUpToNearestPowerOfTwo(avg_elems_per_row),
-          tot_threads = num_srcs * threads_per_row;
-  int32_t block_size = 256;
-  int32_t grid_size = NumBlocks(tot_threads, block_size);
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    Array1<int32_t> row_splits = row_splits_cpu.To(c);
 
-  K2_CUDA_SAFE_CALL(
-      SizesToMergeMapKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
-          num_srcs, threads_per_row, row_splits_data, tot_size,
-          merge_map_data));
+#if 1
+    int32_t avg_elems_per_row = (tot_size + num_srcs - 1) / num_srcs,
+            threads_per_row = RoundUpToNearestPowerOfTwo(avg_elems_per_row),
+            tot_threads = num_srcs * threads_per_row;
+    int32_t block_size = 256;
+    int32_t grid_size = NumBlocks(tot_threads, block_size);
+    K2_CUDA_SAFE_CALL(
+        SizesToMergeMapKernel<<<grid_size, block_size, 0, c->GetCudaStream()>>>(
+            num_srcs, threads_per_row, row_splits.Data(), tot_size,
+            ans.Data()));
+#else
+    // Below version can be just faster than the above version when
+    // num_srcs > 5000 and tot_size > 1,000,000
+    mgpu::context_t *mgpu_context = GetModernGpuAllocator(c);
+    auto lambda_set_ans = [=] __device__(uint32_t index, uint32_t seg,
+                                         uint32_t rank) {
+      ans_data[index] = seg + rank * static_cast<uint32_t>(num_srcs);
+    };
+    K2_CUDA_SAFE_CALL(mgpu::transform_lbs(lambda_set_ans, tot_size,
+                                          row_splits.Data(),
+                                          row_splits.Dim() - 1, *mgpu_context));
+#endif
+  }
   return ans;
 }
 
