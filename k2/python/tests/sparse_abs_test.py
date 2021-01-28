@@ -41,7 +41,7 @@ class TestSparseAbs(unittest.TestCase):
                 torch.eq(ans._values(),
                          sparse_tensor._values().abs()))
 
-            s = k2.sparse.sum(ans.coalesce())
+            s = torch.sparse.sum(ans)
             assert s.item() == 10
             scale = 2
             (scale * s).backward()
@@ -82,7 +82,7 @@ class TestSparseAbs(unittest.TestCase):
                 torch.eq(ans._values(),
                          sparse_tensor._values().abs()))
 
-            s = k2.sparse.sum(ans.coalesce())
+            s = torch.sparse.sum(ans)
             assert s.item() == 8
             scale = -3
             (scale * s).backward()
@@ -98,33 +98,41 @@ class TestSparseAbs(unittest.TestCase):
             assert torch.allclose(grad1, values.grad)
 
             # minus, abs, sum
-            values.grad = None
-            scale = 10
-            sparse_tensor1 = torch.sparse_coo_tensor(indexes,
-                                                     values=values,
-                                                     size=size).coalesce()
-            sparse_tensor2 = torch.sparse_coo_tensor(indexes,
-                                                     values=values * scale,
-                                                     size=size).coalesce()
-            sparse_tensor = sparse_tensor2 + (-sparse_tensor1)
-            s1 = k2.sparse.sum(
-                k2.sparse.abs(sparse_tensor.coalesce()).coalesce())
-            s1.backward()
+            major, minor = torch.__version__.split('.')[:2]
+            major = int(major)
+            minor = int(minor)
+            if major < 1 or (major == 1 and minor < 6):
+                print(f'Current PyTorch version is: {torch.__version__}')
+                print('Skip it for version less than 1.7.0')
+            else:
+                values.grad = None
+                scale = 10
+                sparse_tensor1 = torch.sparse_coo_tensor(indexes,
+                                                         values=values,
+                                                         size=size).coalesce()
+                sparse_tensor2 = torch.sparse_coo_tensor(indexes,
+                                                         values=values * scale,
+                                                         size=size).coalesce()
+                # this works only for torch >= 1.7.0
+                sparse_tensor = sparse_tensor2 + (-sparse_tensor1)
+                s1 = torch.sparse.sum(k2.sparse.abs(sparse_tensor.coalesce()))
+                s1.backward()
 
-            grad1 = values.grad.clone()
-            values.grad = None
+                grad1 = values.grad.clone()
+                values.grad = None
 
-            sparse_tensor1 = torch.sparse_coo_tensor(indexes,
-                                                     values=values,
-                                                     size=size).coalesce()
-            sparse_tensor2 = torch.sparse_coo_tensor(indexes,
-                                                     values=values * scale,
-                                                     size=size).coalesce()
-            s2 = (sparse_tensor1 + (-sparse_tensor2)).to_dense().abs().sum()
-            s2.backward()
+                sparse_tensor1 = torch.sparse_coo_tensor(indexes,
+                                                         values=values,
+                                                         size=size).coalesce()
+                sparse_tensor2 = torch.sparse_coo_tensor(indexes,
+                                                         values=values * scale,
+                                                         size=size).coalesce()
+                s2 = (sparse_tensor1 +
+                      (-sparse_tensor2)).to_dense().abs().sum()
+                s2.backward()
 
-            assert s1.item() == s2.item()
-            assert torch.allclose(grad1, values.grad)
+                assert s1.item() == s2.item()
+                assert torch.allclose(grad1, values.grad)
 
 
 if __name__ == '__main__':
