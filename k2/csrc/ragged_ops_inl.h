@@ -422,7 +422,7 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
 
 template <typename T>
 Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes, bool remove_axis) {
-  Ragged<T> r = Index(src, indexes.values);
+  Ragged<T> r = Index(src, 0, indexes.values);
   RaggedShape s = ComposeRaggedShapes(indexes.shape, r.shape);
   Ragged<T> ans(s, r.values);
   return (remove_axis ? RemoveAxis(ans, ans.NumAxes() - 2) : ans);

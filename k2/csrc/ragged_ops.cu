@@ -564,27 +564,32 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
     return IndexAxis0(src, indexes, elem_indexes);
   } else if (axis == src.NumAxes() - 1) {
     // This code is related to SubsampleRaggedShape(). `indexes` corresponds to `new2old`.
-
-    Array1<int32_t> last_row_ids = src.RowIds(num_axes - 1),
-        new_last_row_ids = last_row_ids[indexes];
+    Array1<int32_t> last_row_ids = src.RowIds(num_axes - 1)[indexes];
 #ifndef NDEBUG
-    if (!IsMonotonic(new_last_row_ids)) {
+    if (!IsMonotonic(last_row_ids)) {
       K2_LOG(FATAL) << "Invalid indexes used when indexing RaggedShape";
     }
 #endif
     Array1<int32_t> last_row_splits(last_row_ids.Context(),
-                                    src.TotSize(num_axes - 2));
+                                    src.TotSize(num_axes - 2) + 1);
     RowIdsToRowSplits(last_row_ids, &last_row_splits);
     if (elem_indexes)
       *elem_indexes = indexes;
+
+    std::vector<RaggedShapeLayer> axes = src.Layers();
+    axes.back().row_splits = last_row_splits;
+    axes.back().row_ids = last_row_ids;
+    axes.back().cached_tot_size = last_row_ids.Dim();
+    // TODO: disable checking by changing true to false.
+    return RaggedShape(axes, true);
+  } else {
+    RaggedShape top, bottom;
+    DecomposeRaggedShape(src, axis, &top, &bottom);
+
+    RaggedShape top_indexed = Index(top, axis, indexes, nullptr),
+        bottom_indexed = IndexAxis0(bottom, indexes, elem_indexes);
+    return ComposeRaggedShapes(top_indexed, bottom_indexed);
   }
-
-  RaggedShape top, bottom;
-  DecomposeRaggedShape(src, axis, &top, &bottom);
-
-  RaggedShape top_indexed = Index(top, axis, indexes, nullptr),
-      bottom_indexed = IndexAxis0(bottom, indexes, elem_indexes);
-  return ComposeRaggedShapes(top_indexed, bottom_indexed);
 }
 
 
@@ -978,7 +983,7 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
       });
 
   RaggedShape src_no_axis0_renumbered =
-      Index(src_no_axis0, renumbering, value_indexes);
+      Index(src_no_axis0, 0, renumbering, value_indexes);
 
   int32_t num_rows = src_dim1, row_splits_dim = num_rows + 1,
           row_ids_dim = src_tot_size1;
@@ -2078,7 +2083,7 @@ struct HashInputIterator {
   explicit __host__ __device__ __forceinline__ HashInputIterator(const int32_t *i)
       : i_(i) { }
   __device__ __forceinline__ Hash<T> operator[](int32_t idx) const {
-    return Hash<T>{*i_, *i_, 31, 167};
+    return Hash<T>{i_[idx], i_[idx], 31, 167};
   }
   __device__ __forceinline__ HashInputIterator operator+(int32_t offset) {
     return HashInputIterator(i_ + offset);
@@ -2201,7 +2206,7 @@ Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
     Ragged<int32_t> temp = Unsqueeze(src, 0);
     return UniqueSequences(temp).RemoveAxis(0);
   }
-  Array<int64_t> hashes = ComputeHash<int64_t>(src);
+  Array1<int64_t> hashes = ComputeHash<int64_t>(src);
   int32_t hashes_dim = hashes.Dim();
   Array1<int32_t> order(c, hashes_dim);
 
@@ -2210,12 +2215,11 @@ Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
   Ragged<int64_t> ragged_hashes(GetLayer(src.shape, src.shape.NumLayers() - 2),
                                 hashes);
 
-  SortSublists<int64_t, LessThan<int64_t> >(ragged_hashes, &order);
+  SortSublists<int64_t, LessThan<int64_t> >(&ragged_hashes, &order);
 
   Renumbering renumber_lists(c, hashes.Dim());
-  const int32_t *ragged_hashes_row_ids_data = ragged_hashes.RowIds(1),
-      *ragged_hashes_row_splits_data = ragged_hashes.RowSplits(1);
-  const int32_t *order_data = order.Data();
+  const int32_t *ragged_hashes_row_ids_data = ragged_hashes.RowIds(1).Data(),
+      *ragged_hashes_row_splits_data = ragged_hashes.RowSplits(1).Data();
   const int64_t *ragged_hashes_data = ragged_hashes.values.Data();
   char *keep_list_data = renumber_lists.Keep().Data();
   K2_EVAL(c, hashes_dim, lambda_set_keep, (int32_t i) {
@@ -2224,8 +2228,8 @@ Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
         // this is the first element of its sub-list in `ragged_hashes`.
         keep = 1;
       } else {
-        keep = (ragged_hashes_data[order_data[i]] !=
-                ragged_hashes_data[order_data[i - 1]]);
+        keep = (ragged_hashes_data[i] !=
+                ragged_hashes_data[i - 1]);
       }
       keep_list_data[i] = keep;
     });

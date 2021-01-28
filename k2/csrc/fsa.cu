@@ -503,7 +503,7 @@ std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec) {
 
 DenseFsaVec DenseFsaVec::operator[] (const Array1<int32_t> &indexes) {
   Array1<int32_t> elem_indexes;
-  RaggedShape ans_shape = Index(this->shape, indexes,
+  RaggedShape ans_shape = Index(this->shape, 0, indexes,
                                 &elem_indexes);
   bool allow_minus_one = false;
   Array2<float> ans_scores = IndexRows(this->scores, elem_indexes,

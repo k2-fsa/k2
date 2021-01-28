@@ -151,7 +151,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         Array1<int32_t> indexes_array = FromTensor<int32_t>(indexes);
         Array1<int32_t> value_indexes;
 
-        Ragged<T> ans = Index(src, indexes_array,
+        Ragged<T> ans = Index(src, 0, indexes_array,
                               need_value_indexes ? &value_indexes : nullptr);
         torch::optional<torch::Tensor> value_indexes_tensor;
 

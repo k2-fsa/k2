@@ -132,22 +132,6 @@ void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
   SegmentedReduce<T, BitOrOp<T>>(src, initial_value, or_values);
 }
 
-/*
-  Sort each sub-list in `src`, (with operator `<` if Op is LessThan<T>, and
-  '>' if Op is GreaterThan<T>; and output the order to
-  `order`. CAUTION: don't rely on this being a stable sort for now. Will
-  eventually make the operator customizable, in which case this would become a
-  wrapper.
-
-      @param [in] src   Ragged array with 2 axes.
-      @param [out] order   List of indexes that we'll use to give `src`
-                      a sorted order; must already be allocated with size equal
-                      to src.values.Dim().  If you do
-                        src.values = src.values[*order]
-                      then src.values will be sorted (per sublist).
- */
-template <typename T, typename Op>
-void SortSublists(Ragged<T> &src, Array1<int32_t> *order);
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
@@ -1033,10 +1017,9 @@ Ragged<T> RandomRagged(T min_value = static_cast<T>(0),
 
      @param [inout]   The input array to be sorted.
                       CAUTION: it is sorted in-place.
-     @param [out]     The indexes mapping from the sorted
-                      array to the input array. If not NULL,
-                      the caller has to pre-allocate memory for
-                      it on the same device as `src`.
+     @param [out]     The indexes mapping from the sorted array to the original
+                      input array. If not NULL, the caller has to pre-allocate
+                      memory for it on the same device as `src`.
  */
 template <typename T, typename Op = LessThan<T>>
 void SortSublists(Ragged<T> *src, Array1<int32_t> *order = nullptr);
@@ -1052,6 +1035,7 @@ inline Ragged<T> RaggedFromTotSizes(ContextPtr &c,
   return Ragged<T>(RaggedShapeFromTotSizes(c, tot_sizes),
                    Array1<T>(c, tot_sizes.back()));
 }
+
 
 /*
   Transpose a ragged tensor as if it were the index information of a CSR-format
