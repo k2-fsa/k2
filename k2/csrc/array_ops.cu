@@ -405,7 +405,7 @@ bool IsPermutation(const Array1<int32_t> &a) {
   const int32_t *a_data = a.Data();
   int32_t dim = a.Dim();
   K2_EVAL(a.Context(), a.Dim(), lambda_set_zero, (int32_t i) -> void {
-      if (static_cast<uint32_t>(a_data[i]) < dim) {
+      if (static_cast<uint32_t>(a_data[i]) < static_cast<uint32_t>(dim)) {
         ones_data[a_data[i]] = 0;
       }
     });
