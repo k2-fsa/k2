@@ -403,9 +403,8 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   ExclusiveSum(*new_offsets, new_offsets);
 }
 
-RaggedShape Index(RaggedShape &src, const Array1<int32_t> &new2old,
-                  Array1<int32_t> *elem_indexes /*=nullptr*/) {
-  NVTX_RANGE(K2_FUNC);
+static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
+                              Array1<int32_t> *elem_indexes /*=nullptr*/) {
   ContextPtr &c = src.Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
   K2_CHECK(IsCompatible(src, new2old));
@@ -554,6 +553,42 @@ RaggedShape Index(RaggedShape &src, const Array1<int32_t> &new2old,
 #endif
   return ans;
 }
+
+RaggedShape Index(RaggedShape &src, int32_t axis,
+                  const Array1<int32_t> &indexes,
+                  Array1<int32_t> *elem_indexes) {
+  NVTX_RANGE(K2_FUNC);
+  int32_t num_axes = src.NumAxes();
+  K2_CHECK_LT(static_cast<uint32_t>(axis), static_cast<uint32_t>(num_axes));
+  if (axis == 0) {
+    return IndexAxis0(src, indexes, elem_indexes);
+  } else if (axis == src.NumAxes() - 1) {
+    // This code is related to SubsampleRaggedShape(). `indexes` corresponds to `new2old`.
+
+    Array1<int32_t> last_row_ids = src.RowIds(num_axes - 1),
+        new_last_row_ids = last_row_ids[indexes];
+#ifndef NDEBUG
+    if (!IsMonotonic(new_last_row_ids)) {
+      K2_LOG(FATAL) << "Invalid indexes used when indexing RaggedShape";
+    }
+#endif
+    Array1<int32_t> last_row_splits(last_row_ids.Context(),
+                                    src.TotSize(num_axes - 2));
+    RowIdsToRowSplits(last_row_ids, &last_row_splits);
+    if (elem_indexes)
+      *elem_indexes = indexes;
+  }
+
+  RaggedShape top, bottom;
+  DecomposeRaggedShape(src, axis, &top, &bottom);
+
+  RaggedShape top_indexed = Index(top, axis, indexes, nullptr),
+      bottom_indexed = IndexAxis0(bottom, indexes, elem_indexes);
+  return ComposeRaggedShapes(top_indexed, bottom_indexed);
+}
+
+
+
 
 Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
   K2_CHECK_GT(num_srcs, 0);
@@ -2157,6 +2192,48 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
   }
   return ans;
 }
+
+
+Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
+  ContextPtr c = src.Context();
+  if (src.NumAxes() == 2) {
+    // Put 'fake' layer at front, process, then remove.
+    Ragged<int32_t> temp = Unsqueeze(src, 0);
+    return UniqueSequences(temp).RemoveAxis(0);
+  }
+  Array<int64_t> hashes = ComputeHash<int64_t>(src);
+  int32_t hashes_dim = hashes.Dim();
+  Array1<int32_t> order(c, hashes_dim);
+
+  // Using the layer before the last layer of `src` for the shape of
+  // `ragged_hashes`
+  Ragged<int64_t> ragged_hashes(GetLayer(src.shape, src.shape.NumLayers() - 2),
+                                hashes);
+
+  SortSublists<int64_t, LessThan<int64_t> >(ragged_hashes, &order);
+
+  Renumbering renumber_lists(c, hashes.Dim());
+  const int32_t *ragged_hashes_row_ids_data = ragged_hashes.RowIds(1),
+      *ragged_hashes_row_splits_data = ragged_hashes.RowSplits(1);
+  const int32_t *order_data = order.Data();
+  const int64_t *ragged_hashes_data = ragged_hashes.values.Data();
+  char *keep_list_data = renumber_lists.Keep().Data();
+  K2_EVAL(c, hashes_dim, lambda_set_keep, (int32_t i) {
+      char keep;
+      if (i == ragged_hashes_row_splits_data[ragged_hashes_row_ids_data[i]]) {
+        // this is the first element of its sub-list in `ragged_hashes`.
+        keep = 1;
+      } else {
+        keep = (ragged_hashes_data[order_data[i]] !=
+                ragged_hashes_data[order_data[i - 1]]);
+      }
+      keep_list_data[i] = keep;
+    });
+  Array1<int32_t> new2old = renumber_lists.New2Old(),
+      new2unsorted = order[new2old];
+  return Index(src, src.NumAxes() - 2, new2unsorted);
+}
+
 
 // Instantiate template for int64 and int32.
 template

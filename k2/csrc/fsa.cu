@@ -217,10 +217,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 FsaVec FsaToFsaVec(const Fsa &fsa) {
   NVTX_RANGE(K2_FUNC);
   if (fsa.NumAxes() != 2) return fsa;
-  ContextPtr &c = fsa.values.Context();
-  RaggedShape first_axis = TrivialShape(c, fsa.shape.Dim0());
-  RaggedShape fsa_vec_shape = ComposeRaggedShapes(first_axis, fsa.shape);
-  return Ragged<Arc>(fsa_vec_shape, fsa.values);
+  else return Unsqueeze(fsa, 0);
 }
 
 int32_t GetFsaBasicProperties(const Fsa &fsa) {
