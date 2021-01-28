@@ -23,8 +23,8 @@ class _AbsFunction(torch.autograd.Function):
         assert sparse_tensor.is_sparse
         assert sparse_tensor.is_coalesced()
 
-        indices = sparse_tensor._indices().clone()
-        values = sparse_tensor._values()
+        indices = sparse_tensor.indices().clone()
+        values = sparse_tensor.values()
         size = sparse_tensor.size()
 
         values_abs = values.abs()
@@ -42,11 +42,11 @@ class _AbsFunction(torch.autograd.Function):
     def backward(ctx, ans_grad: torch.Tensor) -> torch.Tensor:
         sparse_tensor, = ctx.saved_tensors
 
-        indices = sparse_tensor._indices().clone()
-        values = sparse_tensor._values()
+        indices = sparse_tensor.indices().clone()
+        values = sparse_tensor.values()
         size = sparse_tensor.size()
 
-        sparse_tensor_grad_values = ans_grad._values() * values.sign()
+        sparse_tensor_grad_values = ans_grad.values() * values.sign()
 
         sparse_tensor_grad = torch.sparse_coo_tensor(
             indices=indices,
