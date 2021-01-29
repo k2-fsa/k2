@@ -2690,9 +2690,9 @@ TEST(RaggedIntTest, TestCreateRagged2Int) {
   std::vector<int32_t> expected_values{7, 9, 10, 12, 13};
   std::vector<int32_t> expected_row_splits = {0, 2, 5, 5};
   Ragged<int32_t> r = CreateRagged2(vecs);
-  K2_CHECK_EQ(r.Context()->GetDeviceType(), kCpu);
+  EXPECT_EQ(r.Context()->GetDeviceType(), kCpu);
   CheckArrayData(r.RowSplits(1), expected_row_splits);
-  K2_CHECK_EQ(r.NumAxes(), 2);
+  EXPECT_EQ(r.NumAxes(), 2);
   CheckArrayData(r.values, expected_values);
 
   Ragged<int32_t> r2("[ [7 9] [10 12 13] [] ]");
