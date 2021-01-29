@@ -1122,6 +1122,10 @@ TEST_F(StatesBatchSuiteTest, TestBackpropBackwardScores) {
 template <typename FloatType>
 void TestRandomPaths(FsaVec &fsa_vec_in) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
+
+  Ragged<int32_t> cpu_paths[2];  // indexed by i below.
+
+
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     FsaVec fsas = fsa_vec_in.To(context);
     int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
@@ -1153,7 +1157,7 @@ void TestRandomPaths(FsaVec &fsa_vec_in) {
                     *fsas_row_ids2_data = fsas.RowIds(2).Data();
 
       K2_EVAL(
-          context, fsas.NumElements(), lambda_check_arc_post,
+          context, fsas.NumElements(), lambda_check_cdf,
           (int32_t arc_idx012) {
             int32_t state_idx01 = fsas_row_ids2_data[arc_idx012];
             FloatType cdf_val = arc_cdf_data[arc_idx012];
@@ -1170,8 +1174,20 @@ void TestRandomPaths(FsaVec &fsa_vec_in) {
       Ragged<int32_t> paths =
           RandomPaths(fsas, arc_cdf, num_paths, tot_scores, state_batches);
 
+      if (context->GetDeviceType() == kCpu) {
+        cpu_paths[i] = paths;
+      } else {
+        Ragged<int32_t> other_paths = cpu_paths[i].To(context);
+        if (!Equal(paths, other_paths)) {
+          K2_LOG(WARNING) << "Paths differ: " << other_paths << " vs. " << paths;
+        }
+      }
+
+
       int32_t *paths_row_ids2 = paths.RowIds(2).Data(),
-              *paths_row_splits2 = paths.RowSplits(2).Data(),
+          *paths_row_splits2 = paths.RowSplits(2).Data(),
+          *paths_row_splits1 = paths.RowSplits(1).Data(),
+          *paths_row_ids1 = paths.RowIds(1).Data(),
               *paths_data = paths.values.Data(),
               *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
               *fsas_row_ids1_data = fsas.RowIds(1).Data();
@@ -1202,6 +1218,34 @@ void TestRandomPaths(FsaVec &fsa_vec_in) {
                   state_idx0x + arcs_data[arc_idx012].dest_state;
               K2_CHECK_EQ(dest_state_idx01,
                           fsas_row_splits1_data[fsa_idx0 + 1] - 1);
+            }
+          });
+
+      // the paths (sequences of arcs) should be in lexicographical order.
+      K2_EVAL(
+          context, paths.TotSize(1), lambda_check_order,
+          (int32_t path_idx01) {
+            int32_t fsa_idx0 = paths_row_ids1[path_idx01],
+                path_idx1 = path_idx01 - paths_row_splits1[fsa_idx0];
+            if (path_idx1 > 0) {
+              int32_t path_idx01x_prev = paths_row_splits2[path_idx01 - 1],
+                  path_idx01x = paths_row_splits2[path_idx01],
+                  path_idx01x_next = paths_row_splits2[path_idx01 + 1];
+              int32_t len_prev = path_idx01x - path_idx01x_prev,
+                  len = path_idx01x_next - path_idx01x;
+              int32_t min_len = min(len, len_prev);
+              for (int32_t i = 0; i < min_len; i++) {
+                int32_t prev_arc = paths_data[path_idx01x_prev + i],
+                    arc = paths_data[path_idx01x + i];
+                if (arc > prev_arc) {
+                  break;
+                } else {
+                  // arc should not be < prev_arc.
+                  K2_CHECK_GE(arc, prev_arc) << ", arc_cdf_data[prev_arc,arc] = "
+                                             << arc_cdf_data[prev_arc] << ","
+                                             << arc_cdf_data[arc];
+                }
+              }
             }
           });
     }
