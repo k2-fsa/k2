@@ -9,7 +9,6 @@
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/benchmark/benchmark.h"
 #include "k2/csrc/test_utils.h"
-#include "moderngpu/kernel_scan.hxx"
 
 namespace k2 {
 
