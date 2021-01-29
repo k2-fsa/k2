@@ -177,6 +177,90 @@ TEST(FsaFromString, OpenFstTransducer) {
   }
 }
 
+TEST(FsaFromString, OpenFstAcceptorNonZeroStart) {
+  std::string s = R"(
+    1 0 0 0.1
+    0 0 4 0.3
+    0 0 3 0.2
+    0 0.4
+  )";
+  Fsa fsa = FsaFromString(s, true, nullptr);
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
+}
+
+TEST(FsaFromString, OpenFstAcceptorNonZeroStartCase2) {
+  std::string s = R"(
+    1 3 10 0.1
+    1 3 20 0.2
+    1 0 90 0.8
+    3 0 30 0.3
+    3 0 40 0.4
+    3 1 6 0.33
+    0 4 50 0.5
+    0 3 0 0.55
+    0 1 9 0.9
+    4 0.6
+  )";
+  Fsa fsa = FsaFromString(s, true, nullptr);
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 3, 10, -0.1f}));
+  EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 3, 20, -0.2f}));
+  EXPECT_EQ((fsa[{0, 2}]), (Arc{0, 1, 90, -0.8f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 4, 50, -0.5f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 3, 0, -0.55f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 0, 9, -0.9f}));
+  EXPECT_EQ((fsa[{3, 0}]), (Arc{3, 1, 30, -0.3f}));
+  EXPECT_EQ((fsa[{3, 1}]), (Arc{3, 1, 40, -0.4f}));
+  EXPECT_EQ((fsa[{3, 2}]), (Arc{3, 0, 6, -0.33f}));
+  EXPECT_EQ((fsa[{4, 0}]), (Arc{4, 5, -1, -0.6f}));
+}
+
+TEST(FsaFromString, OpenFstTransducerNonZeroStart) {
+  std::string s = R"(
+    1 0 0 0 0.1
+    0 0 4 40 0.3
+    0 0 3 30 0.2
+    0 0.4
+  )";
+  Array1<int32_t> aux_labels;
+  Fsa fsa = FsaFromString(s, true, &aux_labels);
+  CheckArrayData(aux_labels, {0, 40, 30, -1});
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
+}
+
+TEST(FsaFromString, OpenFstTransducerNonZeroStartCase2) {
+  std::string s = R"(
+    1 3 10 100 0.1
+    1 3 20 200 0.2
+    1 0 90 8 0.8
+    3 0 30 300 0.3
+    3 0 40 400 0.4
+    3 1 6 8 0.33
+    0 4 50 500 0.5
+    0 3 0 3 0.55
+    0 1 9 10 0.9
+    4 0.6
+  )";
+  Array1<int32_t> aux_labels;
+  Fsa fsa = FsaFromString(s, true, &aux_labels);
+  CheckArrayData(aux_labels, {100, 200, 8, 500, 3, 10, 300, 400, 8, -1});
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 3, 10, -0.1f}));
+  EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 3, 20, -0.2f}));
+  EXPECT_EQ((fsa[{0, 2}]), (Arc{0, 1, 90, -0.8f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 4, 50, -0.5f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 3, 0, -0.55f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 0, 9, -0.9f}));
+  EXPECT_EQ((fsa[{3, 0}]), (Arc{3, 1, 30, -0.3f}));
+  EXPECT_EQ((fsa[{3, 1}]), (Arc{3, 1, 40, -0.4f}));
+  EXPECT_EQ((fsa[{3, 2}]), (Arc{3, 0, 6, -0.33f}));
+  EXPECT_EQ((fsa[{4, 0}]), (Arc{4, 5, -1, -0.6f}));
+}
+
 // TODO(fangjun): write code to check the printed
 // strings matching expected ones.
 TEST(FsaToString, Acceptor) {
@@ -876,6 +960,7 @@ void TestBackpropGetForwardScores(FsaVec &fsa_vec_in) {
     }
   }
 }
+
 TEST_F(StatesBatchSuiteTest, TestBackpropForwardScores) {
   // simple case
   TestBackpropGetForwardScores<float>(fsa_vec_);
@@ -1031,6 +1116,112 @@ TEST_F(StatesBatchSuiteTest, TestBackpropBackwardScores) {
     ASSERT_TRUE(status);
     TestBackpropGetBackwardScores<float>(connected);
     TestBackpropGetBackwardScores<double>(connected);
+  }
+}
+
+template <typename FloatType>
+void TestRandomPaths(FsaVec &fsa_vec_in) {
+  ContextPtr cpu = GetCpuContext();  // will be used to copy data
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec fsas = fsa_vec_in.To(context);
+    int32_t num_fsas = fsas.Dim0(), num_states = fsas.TotSize(1),
+            num_arcs = fsas.NumElements();
+
+    Ragged<int32_t> state_batches = GetStateBatches(fsas, true);
+    Array1<int32_t> dest_states = GetDestStates(fsas, true);
+    Ragged<int32_t> incoming_arcs = GetIncomingArcs(fsas, dest_states);
+    Ragged<int32_t> entering_arc_batches =
+        GetEnteringArcIndexBatches(fsas, incoming_arcs, state_batches);
+    Ragged<int32_t> leaving_arc_batches =
+        GetLeavingArcIndexBatches(fsas, state_batches);
+
+    for (int32_t i = 0; i < 2; ++i) {
+      bool log_semiring = (i != 0);
+
+      Array1<FloatType> forward_scores = GetForwardScores<FloatType>(
+          fsas, state_batches, entering_arc_batches, log_semiring, nullptr);
+      Array1<FloatType> backward_scores = GetBackwardScores<FloatType>(
+          fsas, state_batches, leaving_arc_batches, log_semiring);
+
+      Array1<FloatType> arc_post =
+          GetArcPost(fsas, forward_scores, backward_scores);
+
+      Array1<FloatType> arc_cdf = GetArcCdf(fsas, arc_post);
+      const FloatType *arc_cdf_data = arc_cdf.Data(),
+                      *arc_post_data = arc_post.Data();
+      const int32_t *fsas_row_splits2_data = fsas.RowSplits(2).Data(),
+                    *fsas_row_ids2_data = fsas.RowIds(2).Data();
+
+      K2_EVAL(
+          context, fsas.NumElements(), lambda_check_arc_post,
+          (int32_t arc_idx012) {
+            int32_t state_idx01 = fsas_row_ids2_data[arc_idx012];
+            FloatType cdf_val = arc_cdf_data[arc_idx012];
+            K2_CHECK_GE(cdf_val, 0.0);
+            K2_CHECK_LE(cdf_val, 1.0);
+            if (arc_idx012 > fsas_row_splits2_data[state_idx01]) {
+              K2_CHECK_GE(cdf_val, arc_cdf_data[arc_idx012 - 1]);
+            }
+          });
+
+      Array1<FloatType> tot_scores = GetTotScores(fsas, forward_scores);
+
+      int32_t num_paths = 10;
+      Ragged<int32_t> paths =
+          RandomPaths(fsas, arc_cdf, num_paths, tot_scores, state_batches);
+
+      int32_t *paths_row_ids2 = paths.RowIds(2).Data(),
+              *paths_row_splits2 = paths.RowSplits(2).Data(),
+              *paths_data = paths.values.Data(),
+              *fsas_row_splits1_data = fsas.RowSplits(1).Data(),
+              *fsas_row_ids1_data = fsas.RowIds(1).Data();
+      const Arc *arcs_data = fsas.values.Data();
+
+      K2_EVAL(
+          context, paths.NumElements(), lambda_check_arcs,
+          (int32_t path_idx012) {
+            int32_t arc_idx012 = paths_data[path_idx012],
+                    state_idx01 = fsas_row_ids2_data[arc_idx012],
+                    fsa_idx0 = fsas_row_ids1_data[state_idx01],
+                    state_idx0x = fsas_row_splits1_data[fsa_idx0];
+            int32_t path_idx01 = paths_row_ids2[path_idx012],
+                    path_idx01x = paths_row_splits2[path_idx01],
+                    path_idx2 = path_idx012 - path_idx01x;
+            if (path_idx2 > 0) {
+              int32_t prev_arc_idx012 = paths_data[path_idx012 - 1],
+                      prev_dest_state_idx1 =
+                          arcs_data[prev_arc_idx012].dest_state,
+                      prev_dest_state_idx01 =
+                          state_idx0x + prev_dest_state_idx1;
+              K2_CHECK_EQ(state_idx01, prev_dest_state_idx01);
+            } else {
+              K2_CHECK_EQ(state_idx01, state_idx0x);
+            }
+            if (path_idx012 + 1 == paths_row_splits2[path_idx01 + 1]) {
+              int32_t dest_state_idx01 =
+                  state_idx0x + arcs_data[arc_idx012].dest_state;
+              K2_CHECK_EQ(dest_state_idx01,
+                          fsas_row_splits1_data[fsa_idx0 + 1] - 1);
+            }
+          });
+    }
+  }
+}
+
+TEST_F(StatesBatchSuiteTest, TestRandomPaths) {
+  // simple case
+  TestRandomPaths<float>(fsa_vec_);
+  TestRandomPaths<double>(fsa_vec_);
+  for (int32_t i = 0; i != 50; ++i) {
+    // random case
+    FsaVec random_fsas = RandomFsaVec();
+    // make the fsa connected for easy testing for tropical version, the
+    // algorithm should work for non-connected fsa as well.
+    FsaVec connected;
+    bool status = Connect(random_fsas, &connected);
+    ASSERT_TRUE(status);
+    TestRandomPaths<float>(connected);
+    TestRandomPaths<double>(connected);
   }
 }
 

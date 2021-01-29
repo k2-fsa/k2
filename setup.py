@@ -102,8 +102,9 @@ setuptools.setup(
     package_dir={
         'k2': 'k2/python/k2',
         'k2.ragged': 'k2/python/k2/ragged',
+        'k2.sparse': 'k2/python/k2/sparse',
     },
-    packages=['k2', 'k2.ragged'],
+    packages=['k2', 'k2.ragged', 'k2.sparse'],
     install_requires=['torch', 'graphviz'],
     extras_require={
         'dev': dev_requirements

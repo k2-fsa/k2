@@ -15,6 +15,7 @@
 #include <cassert>
 #include <limits>
 #include <memory>
+#include <numeric>
 #include <random>
 #include <type_traits>
 #include <utility>
@@ -24,6 +25,7 @@
 #include "k2/csrc/macros.h"
 #include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/utils.h"
+#include "moderngpu/kernel_load_balance.hxx"
 #include "moderngpu/kernel_mergesort.hxx"
 
 namespace k2 {
@@ -286,8 +288,6 @@ void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis) {
   }
 }
 
-// CAUTION: if you fix bugs in this code, please also fix the same bugs in
-// Splice() in array_ops.cu, since it was modified from this code.
 template <typename T>
 Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   NVTX_RANGE(K2_FUNC);
@@ -295,19 +295,19 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   ContextPtr &c = src[0]->Context();
 
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
-  int32_t sum = 0, max_dim = 0;
+  int32_t sum = 0;
   row_splits_vec[0] = sum;
   for (int32_t i = 0; i < num_arrays; ++i) {
     int32_t dim = src[i]->Dim();
-    if (dim > max_dim) max_dim = dim;
     sum += dim;
     row_splits_vec[i + 1] = sum;
   }
   int32_t ans_size = sum;
 
   Array1<T> ans(c, ans_size);
-  T *ans_data = ans.Data();
+  if (ans_size == 0) return ans;
 
+  T *ans_data = ans.Data();
   if (c->GetDeviceType() == kCpu) {
     // a simple loop is faster, although the other branches should still work on
     // CPU.
@@ -322,71 +322,19 @@ Array1<T> Append(int32_t num_arrays, const Array1<T> **src) {
   } else {
     K2_CHECK_EQ(c->GetDeviceType(), kCuda);
     Array1<int32_t> row_splits(c, row_splits_vec);
-    const int32_t *row_splits_data = row_splits.Data();
     std::vector<const T *> src_ptrs_vec(num_arrays);
     for (int32_t i = 0; i < num_arrays; ++i) src_ptrs_vec[i] = src[i]->Data();
     Array1<const T *> src_ptrs(c, src_ptrs_vec);
     const T **src_ptrs_data = src_ptrs.Data();
-    int32_t avg_input_size = ans_size / num_arrays;
-    if (max_dim < 2 * avg_input_size + 512) {
-      // here, 2 is a heuristic factor. We're saying, "if the max length of any
-      // of the source arrays is not too much larger than the average length of
-      // the source arrays."  The `+ 512` is an additional heuristic factor, as
-      // we care less about launching too many GPU threads if the number of
-      // elements being processed is small. What we're saying is that the
-      // arrays' sizes are fairly balanced, so we launch with a simple
-      // rectangular kernel.
-      K2_EVAL2(
-          c, num_arrays, max_dim, lambda_set_data,
-          (int32_t i, int32_t j)->void {
-            int32_t row_start = row_splits_data[i],
-                    row_end = row_splits_data[i + 1];
-            const T *src_ptr = src_ptrs_data[i];
-            if (j < row_end - row_start) {
-              ans_data[row_start + j] = src_ptr[j];
-            }
-          });
-    } else {
-      int32_t block_dim = 256;
-      while (block_dim * 4 < avg_input_size && block_dim < 8192) block_dim *= 2;
 
-      // `index_map` will map from 'new index' to 'old index', with 0 <=
-      // old_index < num_arrays... we handle each source array with multiple
-      // blocks.
-      //  The elements of `index_map` will be of the form:
-      //    old_index + (block_of_this_array << 32).
-      // where `old_index` is an index into `src` and `block_of_this_array`
-      // tells us which block it is, as in 0, 1, 2, 3...
-      // there won't be very many blocks, so it's not a problem to enumerate
-      // them on CPU.
-      std::vector<uint64_t> index_map;
-      index_map.reserve((2 * ans_size) / block_dim);
-      for (int32_t i = 0; i < num_arrays; ++i) {
-        int32_t this_array_size = src[i]->Dim();
-        int32_t this_num_blocks = NumBlocks(this_array_size, block_dim);
-        for (int32_t j = 0; j < this_num_blocks; ++j) {
-          index_map.push_back((static_cast<uint64_t>(j) << 32) +
-                              static_cast<uint64_t>(i));
-        }
-      }
-      Array1<uint64_t> index_map_gpu(c, index_map);
-      const uint64_t *index_map_data = index_map_gpu.Data();
-
-      K2_EVAL2(
-          c, index_map_gpu.Dim(), block_dim, lambda_set_data_blocks,
-          (int32_t i, int32_t j) {
-            uint64_t index = index_map_data[i];
-            uint32_t orig_i = static_cast<uint32_t>(index),
-                     block_index = static_cast<uint32_t>(index >> 32);
-            int32_t row_start = row_splits_data[orig_i],
-                    row_end = row_splits_data[orig_i + 1],
-                    orig_j = (block_index * block_dim) + j;
-            const T *src_ptr = src_ptrs_data[orig_i];
-            if (orig_j < row_end - row_start) {
-              ans_data[row_start + orig_j] = src_ptr[orig_j];
-            }
-          });
-    }
+    mgpu::context_t *mgpu_context = GetModernGpuAllocator(c);
+    auto lambda_set_ans = [=] __device__(int32_t index, int32_t seg,
+                                         int32_t rank) {
+      ans_data[index] = src_ptrs_data[seg][rank];
+    };
+    K2_CUDA_SAFE_CALL(mgpu::transform_lbs(lambda_set_ans, ans_size,
+                                          row_splits.Data(),
+                                          row_splits.Dim() - 1, *mgpu_context));
   }
   return ans;
 }
@@ -543,6 +491,29 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
     return is_same[0];
   }
 }
+
+template <typename T>
+bool Equal(const Array1<T> &a, T b) {
+  NVTX_RANGE(K2_FUNC);
+  ContextPtr c = a.Context();
+  const T *a_data = a.Data();
+  int32_t dim = a.Dim();
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i < dim; i++)
+      if (a_data[i] != b)
+        return false;
+    return true;
+  } else {
+    Array1<int32_t> is_same(c, 1, 1);
+    int32_t *is_same_data = is_same.Data();
+    auto lambda_test = [=] __device__(int32_t i) -> void {
+      if (a_data[i] != b) *is_same_data = 0;
+    };
+    EvalDevice(c, a.Dim(), lambda_test);
+    return is_same[0];
+  }
+}
+
 
 template <typename T>
 bool Equal(const Array2<T> &a, const Array2<T> &b) {
@@ -921,6 +892,26 @@ Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
         ans_data[i] = src_ptrs_data[src_idx][src_pos];
       });
   return ans;
+}
+
+template <typename T>
+T Sum(ContextPtr c, const T *src, int32_t dim) {
+  if (dim == 0) return 0;
+
+  if (c->GetDeviceType() == kCpu) return std::accumulate(src, src + dim, T(0));
+
+  K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+
+  size_t temp_storage_bytes = 0;
+  Array1<T> out(c, 1);
+  cudaStream_t stream = c->GetCudaStream();
+  K2_CUDA_SAFE_CALL(cub::DeviceReduce::Sum(nullptr, temp_storage_bytes, src,
+                                           out.Data(), dim, stream));
+
+  Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+  K2_CUDA_SAFE_CALL(cub::DeviceReduce::Sum(
+      d_temp_storage.Data(), temp_storage_bytes, src, out.Data(), dim, stream));
+  return out[0];
 }
 
 }  // namespace k2

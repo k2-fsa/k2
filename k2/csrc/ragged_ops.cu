@@ -403,9 +403,8 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   ExclusiveSum(*new_offsets, new_offsets);
 }
 
-RaggedShape Index(RaggedShape &src, const Array1<int32_t> &new2old,
-                  Array1<int32_t> *elem_indexes /*=nullptr*/) {
-  NVTX_RANGE(K2_FUNC);
+static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
+                              Array1<int32_t> *elem_indexes /*=nullptr*/) {
   ContextPtr &c = src.Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
   K2_CHECK(IsCompatible(src, new2old));
@@ -554,6 +553,47 @@ RaggedShape Index(RaggedShape &src, const Array1<int32_t> &new2old,
 #endif
   return ans;
 }
+
+RaggedShape Index(RaggedShape &src, int32_t axis,
+                  const Array1<int32_t> &indexes,
+                  Array1<int32_t> *elem_indexes) {
+  NVTX_RANGE(K2_FUNC);
+  int32_t num_axes = src.NumAxes();
+  K2_CHECK_LT(static_cast<uint32_t>(axis), static_cast<uint32_t>(num_axes));
+  if (axis == 0) {
+    return IndexAxis0(src, indexes, elem_indexes);
+  } else if (axis == src.NumAxes() - 1) {
+    // This code is related to SubsampleRaggedShape(). `indexes` corresponds to `new2old`.
+    Array1<int32_t> last_row_ids = src.RowIds(num_axes - 1)[indexes];
+#ifndef NDEBUG
+    if (!IsMonotonic(last_row_ids)) {
+      K2_LOG(FATAL) << "Invalid indexes used when indexing RaggedShape";
+    }
+#endif
+    Array1<int32_t> last_row_splits(last_row_ids.Context(),
+                                    src.TotSize(num_axes - 2) + 1);
+    RowIdsToRowSplits(last_row_ids, &last_row_splits);
+    if (elem_indexes)
+      *elem_indexes = indexes;
+
+    std::vector<RaggedShapeLayer> axes = src.Layers();
+    axes.back().row_splits = last_row_splits;
+    axes.back().row_ids = last_row_ids;
+    axes.back().cached_tot_size = last_row_ids.Dim();
+    // TODO: disable checking by changing true to false.
+    return RaggedShape(axes, true);
+  } else {
+    RaggedShape top, bottom;
+    DecomposeRaggedShape(src, axis, &top, &bottom);
+
+    RaggedShape top_indexed = Index(top, axis, indexes, nullptr),
+        bottom_indexed = IndexAxis0(bottom, indexes, elem_indexes);
+    return ComposeRaggedShapes(top_indexed, bottom_indexed);
+  }
+}
+
+
+
 
 Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
   K2_CHECK_GT(num_srcs, 0);
@@ -943,7 +983,7 @@ RaggedShape Transpose(RaggedShape &src, Array1<int32_t> *value_indexes) {
       });
 
   RaggedShape src_no_axis0_renumbered =
-      Index(src_no_axis0, renumbering, value_indexes);
+      Index(src_no_axis0, 0, renumbering, value_indexes);
 
   int32_t num_rows = src_dim1, row_splits_dim = num_rows + 1,
           row_ids_dim = src_tot_size1;
@@ -1154,6 +1194,17 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   return ans;
 }
 
+
+/*
+// Checks the result of GetTranspoeReordering(), in debug mode and dies if it is wrong.
+static void CheckGetTransposeReordering(Ragged<int32_t> &src,
+                                        Array1<int32_t> &ans) {
+  if (!internal::kDisableDebug && !internal::DisableChecks()) {
+    K2_CHECK(IsPermutation(ans));
+    K2_CHECK(IsMonotonic(src.values[ans]));
+  }
+  }*/
+
 Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &context = src.Context();
@@ -1198,10 +1249,14 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
       src_tmp_out.Data(), order.Data(), ans.Data(), num_elements, 0,
       log_buckets, stream));
 
+  // CheckGetTransposeReordering(src, ans);
   return ans;
 #else
-  if (src.NumAxes() == 3)
-    return GetTransposeReorderingThreeAxesCuda(src, num_cols);
+  if (src.NumAxes() == 3) {
+    Array1<int32_t> ans = GetTransposeReorderingThreeAxesCuda(src, num_cols);
+    // CheckGetTransposeReordering(src, ans);
+    return ans;
+  }
 
   const int32_t *row_splits1_data = src.RowSplits(src.NumAxes() - 1).Data();
   const int32_t *row_ids1_data = src.RowIds(src.NumAxes() - 1).Data();
@@ -1232,6 +1287,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
   mgpu::context_t *mgpu_context = GetModernGpuAllocator(context);
 
   K2_CUDA_SAFE_CALL(mgpu::mergesort(ans.Data(), n, lambda_comp, *mgpu_context));
+  // CheckGetTransposeReordering(src, ans);
   return ans;
 #endif
 }
@@ -2002,5 +2058,208 @@ RaggedShape RaggedShapeAxis0Splitter::GetElement(int32_t i,
   // TODO: when thoroughly debugged, maybe turn off validation?
   return RaggedShape(out);
 }
+
+
+
+namespace hash_internal {
+// Utilities for hashing strings (actually: sequences of int32_t).
+
+/*
+  T can be int32_t or int64_t.
+  The following code shows what we are computing:
+
+    std::vector<int32_t> input;
+    T hash1 = 13, hash2 = 787;
+    for (size_t i = 0; i < input.size(); i++) {
+      hash1 = 31 * hash1 + input[i];
+      hash2 = 167 * hash2 + input[i];
+    }
+    hash = hash1 + 104729 * hash2;
+
+  I'm not sure that these constants are very optimal, but they are primes.
+
+  The actual calculation is a little different from the above because
+  of the need to do it via a reduction.
+*/
+template <typename T>
+struct Hash {
+  T hash1;
+  T hash2;
+  T product1;
+  T product2;
+
+  // Would like this to be a POD type so not adding the following constructor:
+  // Hash(int32_t i): hash1(i), hash2(i), product1(31), product2(167) { }
+  // .. but implementing it in HashInputIterator.
+
+};
+
+template <typename T>
+struct HashInputIterator {
+  explicit __host__ __device__ __forceinline__ HashInputIterator(const int32_t *i)
+      : i_(i) { }
+  __device__ __forceinline__ Hash<T> operator[](int32_t idx) const {
+    return Hash<T>{i_[idx], i_[idx], 31, 167};
+  }
+  __device__ __forceinline__ HashInputIterator operator+(int32_t offset) {
+    return HashInputIterator(i_ + offset);
+  }
+  const int32_t *i_;
+};
+
+template <typename T>
+struct HashOutputIteratorDeref {  // this is what you get when you dereference
+                                  // HashOutputIterator, it pretends to be a
+                                  // Hash<T> but really only stores the `idx`
+                                  // member.
+  explicit __device__ __forceinline__ HashOutputIteratorDeref(T *t)
+      : t_(t) {}
+  __device__ __forceinline__ HashOutputIteratorDeref &operator=(
+      const Hash<T> &h) {
+    *t_ = h.hash1 + 13 * h.product1 + 104729 * h.hash2 + (104729 * 787) * h.product2;
+    return *this;
+  }
+  T *t_;
+};
+
+template <typename T>
+struct HashOutputIterator {  // outputs just the index of the pair.
+  explicit HashOutputIterator(T *t) : t_(t) {}
+  __device__ __forceinline__ HashOutputIteratorDeref<T> operator[](
+      int32_t idx) const {
+    return HashOutputIteratorDeref<T>(t_ + idx);
+  }
+  __device__ __forceinline__ HashOutputIterator operator+(size_t offset) {
+    return HashOutputIterator{t_ + offset};
+  }
+  T *t_;
+};
+
+template <typename T>
+struct HashCombineOp {
+  __device__ __forceinline__ Hash<T> operator()(const Hash<T> &a,
+                                                const Hash<T> &b) const {
+    return Hash<T>{a.hash1 * b.product1 + b.hash1,
+                   a.hash2 * b.product2 + b.hash2,
+                   a.product1 * b.product1,
+                   a.product2 * b.product2};
+  }
+};
+
+}  // namespace hash_internal
+}  // namespace k2
+
+namespace std {
+// those below typedefs are required by cub::DeviceSegmentedReduce:Reduce
+template <typename T>
+struct iterator_traits<k2::hash_internal::HashInputIterator<T>> {
+  typedef k2::hash_internal::Hash<T> value_type;
+};
+template <typename T>
+struct iterator_traits<k2::hash_internal::HashOutputIterator<T>> {
+  typedef k2::hash_internal::Hash<T> value_type;
+  typedef k2::hash_internal::HashOutputIteratorDeref<T> reference;
+};
+}  // namespace std
+
+namespace k2 {
+template <typename T>
+Array1<T> ComputeHash(Ragged<int32_t> &src) {
+  NVTX_RANGE(K2_FUNC);
+
+  int32_t last_axis = src.NumAxes() - 1;
+  const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
+  int32_t num_rows = row_splits_array.Dim() - 1;
+  ContextPtr c = src.Context();
+  Array1<T> ans(c, num_rows);
+
+  const int32_t *row_splits = row_splits_array.Data();
+  const int32_t *values_data = src.values.Data();
+  T *output_data = ans.Data();
+
+  if (c->GetDeviceType() == kCpu) {
+    int32_t j = row_splits[0];
+    for (int32_t i = 0; i < num_rows; ++i) {
+      T hash1 = 13, hash2 = 787;
+      int32_t row_end = row_splits[i + 1];
+      for (; j < row_end; ++j) {
+        T elem = values_data[j];
+        hash1 = 31 * hash1 + elem;
+        hash2 = 167 * hash2 + elem;
+      }
+      T hash = hash1 + 104729 * hash2;
+      output_data[i] = hash;
+    }
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    hash_internal::HashInputIterator<T> input_iter(values_data);
+    hash_internal::HashOutputIterator<T> output_iter(output_data);
+    hash_internal::HashCombineOp<T> op;
+    hash_internal::Hash<T> initial_hash{ 0, 0, 1, 1 };
+
+    // This code is based on the example here:
+    // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
+    std::size_t temp_storage_bytes = 0;
+
+    // the first time is to determine temporary device storage requirements
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        nullptr, temp_storage_bytes, input_iter, output_iter, num_rows,
+        row_splits, row_splits + 1, op, initial_hash, c->GetCudaStream()));
+    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
+    K2_CUDA_SAFE_CALL(cub::DeviceSegmentedReduce::Reduce(
+        d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
+        num_rows, row_splits, row_splits + 1, op, initial_hash,
+        c->GetCudaStream()));
+  }
+  return ans;
+}
+
+
+Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
+  ContextPtr c = src.Context();
+  if (src.NumAxes() == 2) {
+    // Put 'fake' layer at front, process, then remove.
+    Ragged<int32_t> temp = Unsqueeze(src, 0);
+    return UniqueSequences(temp).RemoveAxis(0);
+  }
+  Array1<int64_t> hashes = ComputeHash<int64_t>(src);
+  int32_t hashes_dim = hashes.Dim();
+  Array1<int32_t> order(c, hashes_dim);
+
+  // Using the layer before the last layer of `src` for the shape of
+  // `ragged_hashes`
+  Ragged<int64_t> ragged_hashes(GetLayer(src.shape, src.shape.NumLayers() - 2),
+                                hashes);
+
+  SortSublists<int64_t, LessThan<int64_t> >(&ragged_hashes, &order);
+
+  Renumbering renumber_lists(c, hashes.Dim());
+  const int32_t *ragged_hashes_row_ids_data = ragged_hashes.RowIds(1).Data(),
+      *ragged_hashes_row_splits_data = ragged_hashes.RowSplits(1).Data();
+  const int64_t *ragged_hashes_data = ragged_hashes.values.Data();
+  char *keep_list_data = renumber_lists.Keep().Data();
+  K2_EVAL(c, hashes_dim, lambda_set_keep, (int32_t i) {
+      char keep;
+      if (i == ragged_hashes_row_splits_data[ragged_hashes_row_ids_data[i]]) {
+        // this is the first element of its sub-list in `ragged_hashes`.
+        keep = 1;
+      } else {
+        keep = (ragged_hashes_data[i] !=
+                ragged_hashes_data[i - 1]);
+      }
+      keep_list_data[i] = keep;
+    });
+  Array1<int32_t> new2old = renumber_lists.New2Old(),
+      new2unsorted = order[new2old];
+  return Index(src, src.NumAxes() - 2, new2unsorted);
+}
+
+
+// Instantiate template for int64 and int32.
+template
+Array1<int64_t> ComputeHash(Ragged<int32_t> &src);
+template
+Array1<int32_t> ComputeHash(Ragged<int32_t> &src);
+
 
 }  // namespace k2

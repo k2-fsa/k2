@@ -31,8 +31,8 @@ void TestHashConstruct() {
                                                0, 10000),
                              success(c, num_elems, 0);
 
-      Array1<int32_t> count_per_key = GetCounts(reinterpret_cast<Array1<int32_t>&>(keys),
-                                                key_bound);
+      Array1<int32_t> count_per_key =
+          GetCounts(reinterpret_cast<Array1<int32_t> &>(keys), key_bound);
 
       if (size <= 2048) {
         K2_LOG(INFO) << "keys = " << keys << ", values = " << values
@@ -75,7 +75,8 @@ void TestHashConstruct() {
             // if this was the key that won the data race, its value should be
             // present.
             K2_CHECK_EQ(val, value);
-            K2_CHECK_EQ(*key_val_addr, ((uint64_t(key) << NUM_VALUE_BITS) | (uint64_t)value));
+            K2_CHECK_EQ(*key_val_addr,
+                        ((uint64_t(key) << NUM_VALUE_BITS) | (uint64_t)value));
           }
         });
 
@@ -108,8 +109,8 @@ void TestHashConstruct2(int32_t num_key_bits) {
                                                0, 10000),
                              success(c, num_elems, 0);
 
-      Array1<int32_t> count_per_key = GetCounts(reinterpret_cast<Array1<int32_t>&>(keys),
-                                                key_bound);
+      Array1<int32_t> count_per_key =
+          GetCounts(reinterpret_cast<Array1<int32_t> &>(keys), key_bound);
 
       if (size <= 2048) {
         K2_LOG(INFO) << "keys = " << keys << ", values = " << values
@@ -157,7 +158,8 @@ void TestHashConstruct2(int32_t num_key_bits) {
             // if this was the key that won the data race, its value should be
             // present.
             K2_CHECK_EQ(val, value);
-            K2_CHECK_EQ(*key_val_addr, ((uint64_t(key) << num_value_bits) | (uint64_t)value));
+            K2_CHECK_EQ(*key_val_addr,
+                        ((uint64_t(key) << num_value_bits) | (uint64_t)value));
           }
         });
 

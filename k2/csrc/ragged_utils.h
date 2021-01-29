@@ -123,7 +123,7 @@ RaggedShape AppendRaggedLayer(int32_t axis,
     be [ 0 2 4 1 6 8 3 5 7 ].
  */
 RaggedShape IntersperseRaggedLayer(int32_t layer,
-                                  int32_t num_srcs,
+                                   int32_t num_srcs,
                                    RaggedShape **src,
                                    Array1<uint32_t> *merge_map = nullptr);
 

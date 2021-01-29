@@ -621,6 +621,25 @@ class TestFsa(unittest.TestCase):
         # the underlying memory is shared!
         assert detached.scores.data_ptr() == fsa.scores.data_ptr()
 
+    def test_create_fsa_vec(self):
+        s1 = '''
+            0 1 1 0.1
+            1 2 -1 0.2
+            2
+        '''
+
+        s2 = '''
+            0 1 -1 10
+            1
+        '''
+        fsa1 = k2.Fsa.from_str(s1)
+        fsa1.aux_labels = k2.RaggedInt('[ [1 0 2] [3 5] ]')
+        fsa2 = k2.Fsa.from_str(s2)
+        fsa2.aux_labels = k2.RaggedInt('[ [5 8 9] ]')
+        fsa = k2.create_fsa_vec([fsa1, fsa2])
+        self.assertEqual(str(fsa.aux_labels),
+                         '[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')
+
 
 if __name__ == '__main__':
     unittest.main()

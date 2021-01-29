@@ -56,7 +56,7 @@ static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
 }
 */
 
-}  // namespace intersect_internal
+}  // namespace intersect_dense_internal
 
 using namespace intersect_dense_internal;  // NOLINT
 

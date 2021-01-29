@@ -263,9 +263,9 @@ class DeviceIntersector {
                 layer3 = RaggedShape2(&row_splits3, &row_ids3, -1);
 
     Array1<int32_t> states_new2old, arcs_new2old;
-    RaggedShape layer2_new = Index(layer2, fsaiter_new2old,
+    RaggedShape layer2_new = Index(layer2, 0, fsaiter_new2old,
                                    &states_new2old),
-                layer3_new = Index(layer3, states_new2old,
+                layer3_new = Index(layer3, 0, states_new2old,
                                    &arcs_new2old);
 
     RaggedShape layer1_new = RegularRaggedShape(c_, num_fsas, num_iters);

@@ -94,16 +94,97 @@ def top_sort(fsa: Fsa) -> Fsa:
     return sorted_fsa
 
 
-def intersect(a_fsa: Fsa,
-              b_fsa: Fsa,
+def intersect_device(a_fsas: Fsa, b_fsas: Fsa,
+                     b_to_a_map: torch.Tensor) -> Fsa:
+    '''Compute the intersection of two FSAs treating epsilons
+    as real, normal symbols.
+
+    This function supports both CPU and GPU. But it is very slow on CPU.
+    That's why this function name ends with `_device`. It is intended for GPU.
+    See :func:`k2.intersect` for intersecting two FSAs on CPU.
+
+    Caution:
+      Epsilons are treated as real, normal symbols.
+
+    Hint:
+      The two inputs do not need to be arc-sorted.
+
+    Refer to :func:`k2.intersect` for how we assign the attributes of the
+    output FsaVec.
+
+    Args:
+      a_fsas:
+        An FsaVec (must have 3 axes, i.e., `len(a_fsas.shape) == 3`.
+      b_fsas:
+        An FsaVec (must have 3 axes) on the same device as `a_fsas`.
+      b_to_a_map:
+        A 1-D torch.Tensor with dtype torch.int32 on the same device
+        as `a_fsas`. Map from FSA-id in `b_fsas` to the corresponding
+        FSA-id in `a_fsas` that we want to compose it with.
+        E.g. might be an identity map, or all-to-zero, or something the
+        user chooses.
+
+        Requires
+            - `b_to_a_map.shape[0] == b_fsas.shape[0]`
+            - `0 <= b_to_a_map[i] < a_fsas.shape[0]`
+
+    Returns:
+      Returns composed FsaVec; will satisfy `ans.shape == b_fsas.shape`.
+    '''
+    need_arc_map = True
+    ragged_arc, a_arc_map, b_arc_map = _k2.intersect_device(
+        a_fsas.arcs, a_fsas.properties, b_fsas.arcs, b_fsas.properties,
+        b_to_a_map, need_arc_map)
+    out_fsas = Fsa(ragged_arc)
+
+    for name, a_value in a_fsas.named_tensor_attr():
+        if hasattr(b_fsas, name):
+            # Both a_fsas and b_fsas have this attribute.
+            # We only support attributes with dtype `torch.float32`.
+            # Other kinds of attributes are discarded.
+            if a_value.dtype != torch.float32:
+                continue
+            b_value = getattr(b_fsas, name)
+            assert b_value.dtype == torch.float32
+
+            value = index_select(a_value, a_arc_map) \
+                    + index_select(b_value, b_arc_map)
+            setattr(out_fsas, name, value)
+        else:
+            # only a_fsas has this attribute, copy it via arc_map
+            value = index(a_value, a_arc_map)
+            setattr(out_fsas, name, value)
+
+    # now copy tensor attributes that are in b_fsas but are not in a_fsas
+    for name, b_value in b_fsas.named_tensor_attr():
+        if not hasattr(out_fsas, name):
+            value = index(b_value, b_arc_map)
+            setattr(out_fsas, name, value)
+
+    for name, a_value in a_fsas.named_non_tensor_attr():
+        setattr(out_fsas, name, a_value)
+
+    for name, b_value in b_fsas.named_non_tensor_attr():
+        if not hasattr(out_fsas, name):
+            setattr(out_fsas, name, b_value)
+
+    return out_fsas
+
+
+def intersect(a_fsa: Fsa, b_fsa: Fsa,
               treat_epsilons_specially: bool = True) -> Fsa:
-    '''Compute the intersection of two FSAs on CPU.
+    '''Compute the intersection of two FSAs.
+
+    When `treat_epsilons_specially` is True, this function works only on CPU.
+    When `treat_epsilons_specially` is False and both `a_fsa` and `b_fsa`
+    are on GPU, then this function works on GPU; in this case, the two
+    input FSAs do not need to be arc sorted.
 
     Args:
       a_fsa:
-        The first input FSA on CPU. It can be either a single FSA or an FsaVec.
+        The first input FSA. It can be either a single FSA or an FsaVec.
       b_fsa:
-        The second input FSA on CPU. it can be either a single FSA or an FsaVec.
+        The second input FSA. it can be either a single FSA or an FsaVec.
       treat_epsilons_specially:
         If True, epsilons will be treated as epsilon, meaning epsilon arcs can
         match with an implicit epsilon self-loop.
@@ -112,7 +193,8 @@ def intersect(a_fsa: Fsa,
         self-loops to whichever of the inputs is naturally epsilon-free).
 
     Caution:
-      The two input FSAs MUST be arc sorted.
+      The two input FSAs MUST be arc sorted if `treat_epsilons_specially`
+      is True.
 
     Caution:
       The rules for assigning the attributes of the output Fsa are as follows:
@@ -132,10 +214,9 @@ def intersect(a_fsa: Fsa,
       if and only if the two input FSAs are single FSAs;
       otherwise, len(out_fsa.shape) is 3.
     '''
-    assert a_fsa.is_cpu()
-    assert b_fsa.is_cpu()
-    assert a_fsa.properties & fsa_properties.ARC_SORTED != 0
-    assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
+    if a_fsa.is_cpu() or b_fsa.is_cpu():
+        assert a_fsa.properties & fsa_properties.ARC_SORTED != 0
+        assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
 
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
@@ -183,6 +264,11 @@ def compose(a_fsa: Fsa,
             inner_labels: str = None) -> Fsa:
     '''Compute the composition of two FSAs (currently on CPU).
 
+    When `treat_epsilons_specially` is True, this function works only on CPU.
+    When `treat_epsilons_specially` is False and both `a_fsa` and `b_fsa`
+    are on GPU, then this function works on GPU; in this case, the two
+    input FSAs do not need to be arc sorted.
+
     Note:
       `a_fsa.aux_labels` is required to be defined.
 
@@ -195,11 +281,14 @@ def compose(a_fsa: Fsa,
       acceptor (as in OpenFST), i.e. its olabels and ilabels are assumed to be
       the same.
 
+    Refer to :func:`k2.intersect` for how we assign the attributes of the
+    output FSA.
+
     Args:
       a_fsa:
-        The first input FSA on CPU. It can be either a single FSA or an FsaVec.
+        The first input FSA. It can be either a single FSA or an FsaVec.
       b_fsa:
-        The second input FSA on CPU. it can be either a single FSA or an FsaVec.
+        The second input FSA. it can be either a single FSA or an FsaVec.
       treat_epsilons_specially:
         If True, epsilons will be treated as epsilon, meaning epsilon arcs can
         match with an implicit epsilon self-loop.
@@ -212,20 +301,7 @@ def compose(a_fsa: Fsa,
         this attribute name.
 
     Caution:
-      `b_fsa` has to be arc sorted.
-
-    Caution:
-      The rules for assigning the attributes of the output Fsa are as follows:
-
-      - (1) For attributes where only one source (a_fsa or b_fsa) has that
-        attribute: Copy via arc_map, or use zero if arc_map has -1. This rule
-        works for both floating point and integer attributes.
-
-      - (2) For attributes where both sources (a_fsa and b_fsa) have that
-        attribute: For floating point attributes: sum via arc_maps, or use zero
-        if arc_map has -1. For integer attributes, it's not supported for now
-        (the attributes will be discarded and will not be kept in the output
-        FSA).
+      `b_fsa` has to be arc sorted if the function runs on CPU.
 
     Returns:
       The result of composing a_fsa and b_fsa. `len(out_fsa.shape)` is 2
@@ -233,15 +309,16 @@ def compose(a_fsa: Fsa,
       otherwise, `len(out_fsa.shape)` is 3.
 
     '''
-    assert a_fsa.is_cpu()
-    assert b_fsa.is_cpu()
     assert hasattr(a_fsa, 'aux_labels')
 
     assert isinstance(a_fsa.aux_labels, torch.Tensor)
 
-    a_fsa_inv = arc_sort(a_fsa.invert())
+    a_fsa_inv = a_fsa.invert()
+    if treat_epsilons_specially is True or a_fsa_inv.is_cpu():
+        a_fsa_inv = arc_sort(a_fsa_inv)
 
-    assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
+    if treat_epsilons_specially is True or b_fsa.is_cpu():
+        assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
 
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
@@ -252,9 +329,13 @@ def compose(a_fsa: Fsa,
     if inner_labels is not None:
         # out_fsa.`inner_labels` = out_fsa.labels
         setattr(out_fsa, inner_labels, out_fsa.labels)
-    out_fsa.aux_labels = (index(b_fsa.aux_labels, b_arc_map)
-                          if hasattr(b_fsa, 'aux_labels')
-                          else out_fsa.labels)
+
+    if hasattr(b_fsa, 'aux_labels'):
+        out_fsa.aux_labels = index(b_fsa.aux_labels, b_arc_map)
+    else:
+        # need a clone here since `Fsa.labels` is a reference
+        out_fsa.aux_labels = out_fsa.labels.clone()
+
     out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
 
     for name, a_value in a_fsa_inv.named_tensor_attr():
@@ -298,7 +379,9 @@ def compose(a_fsa: Fsa,
             setattr(out_fsa, name, a_value)
 
     for name, b_value in b_fsa.named_non_tensor_attr():
-        if not hasattr(out_fsa, name):
+        if name == 'symbols' and not hasattr(b_fsa, 'aux_labels'):
+            setattr(out_fsa, 'aux_symbols', b_value)
+        elif not hasattr(out_fsa, name):
             setattr(out_fsa, name, b_value)
 
     return out_fsa
@@ -308,6 +391,8 @@ def connect(fsa: Fsa) -> Fsa:
     '''Connect an FSA.
 
     Removes states that are neither accessible nor co-accessible.
+
+    It works only on CPU.
 
     Note:
       A state is not accessible if it is not reachable from the start state.
@@ -327,6 +412,8 @@ def connect(fsa: Fsa) -> Fsa:
     if fsa.properties & fsa_properties.ACCESSIBLE != 0 and \
             fsa.properties & fsa_properties.COACCESSIBLE != 0:
         return fsa
+
+    assert fsa.is_cpu()
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.connect(fsa.arcs, need_arc_map=need_arc_map)

@@ -71,6 +71,7 @@ void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
   ExclusiveSum(src.Context(), dest_dim, src.Data(), dest->Data());
 }
 
+
 /*  wrapper for the ExclusiveSum above.  Will satisfy
      ans[i] = sum_{j=0}^{i-1} src[j] for i > 0.
      ans[0] is always 0.
@@ -80,6 +81,36 @@ Array1<T> ExclusiveSum(const Array1<T> &src) {
   NVTX_RANGE(K2_FUNC);
   Array1<T> ans(src.Context(), src.Dim());
   ExclusiveSum(src, &ans);
+  return ans;
+}
+
+
+/*
+  Sets 'dest' to inclusive prefix sum of 'src'.
+    @param [in] src    Source data, to be summed.
+    @param [out] dest  Destination data (possibly &src).  Must satisfy
+                       dest.Dim() == src.Dim().
+                       At exit, will satisfy dest[i] == sum_{j=0}^{i} src[j].
+                       Must be pre-allocated and on the same device as src.
+ */
+template <typename S, typename T>
+void InclusiveSum(const Array1<S> &src, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
+  ContextPtr c = GetContext(src, *dest);
+  int32_t src_dim = src.Dim();
+  K2_CHECK_EQ(src_dim, dest->Dim());
+  InclusiveSum(c, src_dim, src.Data(), dest->Data());
+}
+
+
+/*  wrapper for the InclusiveSum above.  Will satisfy
+     ans[i] = sum_{j=0}^{i} src[j].
+ */
+template <typename T>
+Array1<T> InclusiveSum(const Array1<T> &src) {
+  NVTX_RANGE(K2_FUNC);
+  Array1<T> ans(src.Context(), src.Dim());
+  InclusiveSum(src, &ans);
   return ans;
 }
 
@@ -119,6 +150,8 @@ void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest);
  */
 template <typename T>
 void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis);
+
+
 
 //  wrapper for the ExclusiveSum above with axis = 1
 template <typename T>
@@ -197,6 +230,7 @@ template <typename T>
 T MaxValue(const Array1<T> &src) {
   return MaxValue(src.Context(), src.Dim(), src.Data());
 }
+
 
 /*
   Get the bitwise and reduction of the array `src`, using `default_value` (e.g.
@@ -412,6 +446,15 @@ Array1<T> Minus(const Array1<T> &src, T t) {
 template <typename T>
 bool Equal(const Array1<T> &a, const Array1<T> &b);
 
+
+/*
+  Return true if all elements of the two arrays are equal to the
+  specified constant, false otherwise.
+*/
+template <typename T>
+bool Equal(const Array1<T> &a, T b);
+
+
 /*
   Return true if array `a` is monotonically increasing, i.e.
   a[i+1] >= a[i].
@@ -424,6 +467,14 @@ bool IsMonotonic(const Array1<T> &a);
  */
 template <typename T>
 bool IsMonotonicDecreasing(const Array1<T> &a);
+
+
+/*
+  Return true if array `a` corresponds to the numbers 0, 1, 2.. a.Dim()-1
+  in some order, false otherwise.
+ */
+bool IsPermutation(const Array1<int32_t> &a);
+
 
 /*
   Generalized function inverse for an array viewed as a function which is
@@ -629,7 +680,6 @@ void Assign(Array2<T> &src, Array2<T> *dest);
 template <typename S, typename T>
 void Assign(Array1<S> &src, Array1<T> *dest);
 
-
 /*
   Merge an array of Array1<T> with a `merge_map` which indicates which items
   to get from which positions (doesn't do any checking of the merge_map values!)
@@ -645,14 +695,39 @@ void Assign(Array1<S> &src, Array1<T> *dest);
                           merge_map.Dim()
     @return               Returns array with elements combined from those in
                           `src`.  Will satisfy `ans.Dim() == merge_map.Dim()`
-                          and
-                          `ans[i] = (**src[merge_map[i] % num_srcs])[merge_map[i] / num_srcs]`.
+                          and `ans[i] = (**src[merge_map[i] % num_srcs])
+                          [merge_map[i] / num_srcs]`.
 
    CAUTION: may segfault if merge_map contains invalid values.
  */
 template <typename T>
 Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
                        const Array1<T> **src);
+
+/* Compute the sum of an array.
+ *
+ * @param [in]  c    The context from which `src` is allocated.
+ * @param [in]  src  Starting address of the array.
+ * @param [in]  dim  Number of elements in the array.
+ *
+ * @return  Return `src[0] + src[1] + ... + src[dim-1]`.
+ *          If dim is 0, return 0.
+ */
+template <typename T>
+T Sum(ContextPtr c, const T *src, int32_t dim);
+
+/* Compute the sum of an array.
+ *
+ * @param [in] src Input array. If it is empty, 0 is returned.
+ *
+ * @return Return src[0] + src[1] + ... + src[src.Dim() - 1].
+ *         Return 0 if `src` is empty.
+ */
+template <typename T>
+T Sum(const Array1<T> &src) {
+  if (src.Dim() == 0) return 0;
+  return Sum(src.Context(), src.Data(), src.Dim());
+}
 
 }  // namespace k2
 

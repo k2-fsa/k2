@@ -24,6 +24,7 @@
 #include "k2/csrc/math.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
+#include "k2/csrc/rand.h"
 #include "k2/csrc/test_utils.h"
 #include "k2/csrc/timer.h"
 
@@ -216,9 +217,9 @@ void TestExclusiveSumArray1(int32_t num_elem) {
       S *src_data = src.Data();
       Array1<const S *> src_ptr(context, num_elem);
       const S **src_ptr_data = src_ptr.Data();
-      K2_EVAL(context, num_elem, lambda_set_values, (int32_t i) -> void {
-          src_ptr_data[i] = src_data + i;
-        });
+      K2_EVAL(
+          context, num_elem, lambda_set_values,
+          (int32_t i)->void { src_ptr_data[i] = src_data + i; });
       Array1<S> dest(context, num_elem);
       ExclusiveSumDeref(src_ptr, &dest);
       CheckExclusiveSumArray1Result(data, dest);
@@ -1641,14 +1642,63 @@ TEST(OpsTest, Array2Assign) {
 }
 
 TEST(OpsTest, SizesToMergeMapTest) {
-  for (int loop = 0; loop < 2; loop++) {
-    ContextPtr c = ((loop % 2) == 0 ? GetCpuContext() : GetCudaContext());
-    std::vector<int32_t> sizes = {3, 5, 1};
-    Array1<uint32_t> merge_map = SizesToMergeMap(c, sizes);
-    std::vector<uint32_t> expected_map = {0, 3, 6, 1, 4, 7, 10, 13, 2};
-    K2_LOG(INFO) << "merge_map is " << merge_map;
-    CheckArrayData(merge_map, expected_map);
+  // simple test
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    {
+      std::vector<int32_t> sizes = {3, 5, 1};
+      Array1<uint32_t> merge_map = SizesToMergeMap(c, sizes);
+      std::vector<uint32_t> expected_map = {0, 3, 6, 1, 4, 7, 10, 13, 2};
+      CheckArrayData(merge_map, expected_map);
+    }
   }
+  {
+    // random case (well, I assume cpu implementation is correct and only test
+    // Cuda implementation)
+    for (int32_t i = 0; i != 2; ++i) {
+      int32_t num_srcs = RandInt(0, 100);
+      std::vector<int32_t> sizes(num_srcs);
+      for (int32_t n = 0; n != num_srcs; ++n) sizes[n] = RandInt(0, 1000);
+      Array1<uint32_t> merge_map_cpu = SizesToMergeMap(GetCpuContext(), sizes);
+      Array1<uint32_t> merge_map = SizesToMergeMap(GetCudaContext(), sizes);
+      CheckArrayData(merge_map_cpu, merge_map);
+    }
+  }
+}
+
+template <typename T>
+static T ComputeSum(const T *begin, const T *end) {
+  T s = T(0);
+  for (auto p = begin; p != end; ++p) s += *p;
+  return s;
+}
+
+template <typename T>
+static void TestSum() {
+  std::random_device rd;
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    uint64_t seed = rd();
+    SetSeed(c, seed);
+
+    Array1<T> empty(c, 0);
+    T s = Sum(empty);
+    EXPECT_EQ(s, T(0));
+
+    Array1<int32_t> n(c, 1);
+    Rand(c, 1, 1000, 1, n.Data());
+
+    Array1<T> src(c, n[0]);
+    Rand<T>(c, -1000, 1000, src.Dim(), src.Data());
+
+    s = Sum(src);
+    Array1<T> cpu_src = src.To(GetCpuContext());
+    T gt = ComputeSum(cpu_src.Data(), cpu_src.Data() + cpu_src.Dim());
+    EXPECT_NEAR((abs(s - gt) / abs(gt + 1e-6)), 0, 1e-4);
+  }
+}
+
+TEST(OpsTest, Sum) {
+  TestSum<int32_t>();
+  TestSum<float>();
 }
 
 }  // namespace k2

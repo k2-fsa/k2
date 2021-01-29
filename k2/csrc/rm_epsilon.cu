@@ -94,7 +94,7 @@ static void GetEpsilonClosureMapped(
                   epsilon_closure_mapped, &epsilon_closure_mapped_arc_map1);
   // arc_map from epsilon_closure_mapped back to `src` Fsa.
   *epsilon_closure_mapped_arc_map =
-      Index(epsilon_closure_arc_map, epsilon_closure_mapped_arc_map1);
+      Index(epsilon_closure_arc_map, 0, epsilon_closure_mapped_arc_map1);
 }
 
 /*
@@ -284,7 +284,7 @@ static void CombineWithFollowingNonEpsilonArcs(
   *combined_foll = FsaVec(foll_fsa_shape, arcs);
 
   Ragged<int32_t> epsilon_closure_mapped_arc_map_foll =
-      Index(epsilon_closure_mapped_arc_map, foll_shape.RowIds(1));
+      Index(epsilon_closure_mapped_arc_map, 0, foll_shape.RowIds(1));
   *combined_foll_arc_map =
       AddSuffixToRagged(epsilon_closure_mapped_arc_map_foll,
                         non_epsilon_arc_map[foll_non_eps_arc_idx]);
@@ -418,7 +418,7 @@ static void CombineWithPrecedingNonEpsilonArcs(
   *combined_prec = FsaVec(prec_fsa_shape, arcs);
 
   *epsilon_closure_prec_arc_map_prec =
-      Index(epsilon_closure_prec_arc_map, foll_eps_arc_idx);
+      Index(epsilon_closure_prec_arc_map, 0, foll_eps_arc_idx);
 }
 
 void ComputeEpsilonSubset(FsaVec &src, FsaVec *dest, Array1<int32_t> *state_map,
@@ -780,7 +780,7 @@ void ComputeEpsilonClosure(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
         arc_keep_data[arc_idx012] = (cur_arc.src_state != cur_arc.dest_state);
       });
   *closure_fsa = SubsampleRagged(*closure_fsa, arc_renumbering);
-  *arc_map = Index(*arc_map, arc_renumbering.New2Old());
+  *arc_map = Index(*arc_map, 0, arc_renumbering.New2Old());
 }
 
 void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
@@ -996,7 +996,7 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
   Ragged<int32_t> expand_arc_map(
       RaggedShape2(&expand_arc_map_row_splits, &expand_arc_map_row_ids, -1),
       expand_arc_map_values);
-  *arc_map = Index(expand_arc_map, arc_map_indexes);
+  *arc_map = Index(expand_arc_map, 0, arc_map_indexes);
 }
 
 void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
@@ -1067,7 +1067,7 @@ void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
   FsaVec epsilon_closure_prec =
       SubsampleRagged(epsilon_closure_mapped, epsilon_prec_renumbering);
   Ragged<int32_t> epsilon_closure_prec_arc_map =
-      Index(epsilon_closure_mapped_arc_map, epsilon_prec_renumbering.New2Old());
+      Index(epsilon_closure_mapped_arc_map, 0, epsilon_prec_renumbering.New2Old());
   // `combined_prec` will be set to an FSA, with the same state numbering as
   // `non_epsilon_fsa`, containing the arcs which arose by combining epsilon
   // arcs with non-epsilon arcs preceding them.
@@ -1103,7 +1103,7 @@ void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
         epsilon_closure_prec, epsilon_closure_prec_arc_map, combined_foll,
         &combined_prec_foll, &epsilon_closure_prec_arc_map_prec, &foll_shape);
     Ragged<int32_t> combined_foll_arc_map_prec =
-        Index(combined_foll_arc_map, foll_shape.RowIds(1));
+        Index(combined_foll_arc_map, 0, foll_shape.RowIds(1));
     Ragged<int32_t> *arc_maps[2] = {&combined_foll_arc_map_prec,
                                     &epsilon_closure_prec_arc_map_prec};
     int32_t axis = 1;
@@ -1141,7 +1141,7 @@ void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
     Array1<int32_t> arcsort_arc_map;
     ArcSort(dest_fsa_unsorted, dest_fsa, &arcsort_arc_map);
     if (arc_map_out != nullptr)
-      *arc_map_out = Index(dest_unsorted_arc_map, arcsort_arc_map);
+      *arc_map_out = Index(dest_unsorted_arc_map, 0, arcsort_arc_map);
   } else {
     *dest_fsa = dest_fsa_unsorted;
     if (arc_map_out != nullptr) *arc_map_out = dest_unsorted_arc_map;

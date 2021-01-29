@@ -17,9 +17,11 @@
 #include <limits>
 #include <memory>
 #include <numeric>
+#include <type_traits>
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/cudpp/cudpp.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/moderngpu_allocator.h"
 #include "moderngpu/kernel_segsort.hxx"
@@ -420,7 +422,7 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
 
 template <typename T>
 Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes, bool remove_axis) {
-  Ragged<T> r = Index(src, indexes.values);
+  Ragged<T> r = Index(src, 0, indexes.values);
   RaggedShape s = ComposeRaggedShapes(indexes.shape, r.shape);
   Ragged<T> ans(s, r.values);
   return (remove_axis ? RemoveAxis(ans, ans.NumAxes() - 2) : ans);
@@ -556,6 +558,69 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
         d_temp_storage.Data(), temp_storage_bytes, input_iter, output_iter,
         num_rows, row_splits, row_splits + 1, op, initial_pair,
         c->GetCudaStream()));
+  }
+}
+
+template <typename T>
+void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
+  ContextPtr c = GetContext(src, *dst);
+  int32_t dim = dst->Dim();
+  K2_CHECK_EQ(src.NumElements(), dim);
+
+  const int32_t *row_splits_data = src.RowSplits(src.NumAxes() - 1).Data();
+  const int32_t *row_ids_data = src.RowIds(src.NumAxes() - 1).Data();
+  T *dst_data = dst->Data();
+  if (c->GetDeviceType() == kCuda) {
+    // there's roundoff problem for float type with the below implementation in
+    // else branch.
+    if (std::is_same<float, T>::value || std::is_same<double, T>::value) {
+      // flags is similar to `tails` (see concepts in k2/csrc/utils)
+      // But it indicates `heads` here. The very first segment always
+      // starts at zero, so flags[0] is always 0.
+      Array1<uint32_t> flags(c, dim);
+      uint32_t *flags_data = flags.Data();
+      K2_EVAL(
+          c, dim, set_flags, (int32_t idx01)->void {
+            int32_t idx0 = row_ids_data[idx01];
+            int32_t idx0x = row_splits_data[idx0];
+            int32_t idx0x_next = row_splits_data[idx0 + 1];
+            if (idx0x < idx0x_next) {
+              if (idx01 == idx0x)
+                flags_data[idx01] = idx01 == 0 ? 0 : 1;
+              else
+                flags_data[idx01] = 0;
+            }
+          });
+      SegmentedExclusiveSum(c, src.values.Data(), dim, flags_data, dst->Data());
+    } else {
+      Array1<T> exclusive_sum(c, dim);
+      ExclusiveSum(src.values, &exclusive_sum);
+      const T *exclusive_sum_data = exclusive_sum.Data();
+      K2_EVAL(
+          c, dim, set_ans_values, (int32_t idx01)->void {
+            int32_t idx0 = row_ids_data[idx01];
+            int32_t idx0x = row_splits_data[idx0];
+            dst_data[idx01] =
+                exclusive_sum_data[idx01] - exclusive_sum_data[idx0x];
+          });
+    }
+  } else {
+    // Though the above code for Cuda would be working for cpu as well, we still
+    // add an implementation for cpu here as it only needs one iteration
+    K2_CHECK_EQ(c->GetDeviceType(), kCpu);
+    const T *src_values_data = src.values.Data();
+    int32_t dim0 = src.TotSize(src.NumAxes() - 2);
+    for (int32_t i = 0; i != dim0; ++i) {
+      T sum = 0;
+      int32_t row_begin = row_splits_data[i];
+      int32_t row_end = row_splits_data[i + 1];
+      for (int32_t n = row_begin; n != row_end; ++n) {
+        auto prev = src_values_data[n];  // save a copy since src.values and
+                                         // dest may share the underlying memory
+        dst_data[n] = sum;
+        sum += prev;
+      }
+    }
   }
 }
 

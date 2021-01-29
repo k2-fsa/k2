@@ -217,10 +217,7 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 FsaVec FsaToFsaVec(const Fsa &fsa) {
   NVTX_RANGE(K2_FUNC);
   if (fsa.NumAxes() != 2) return fsa;
-  ContextPtr &c = fsa.values.Context();
-  RaggedShape first_axis = TrivialShape(c, fsa.shape.Dim0());
-  RaggedShape fsa_vec_shape = ComposeRaggedShapes(first_axis, fsa.shape);
-  return Ragged<Arc>(fsa_vec_shape, fsa.values);
+  else return Unsqueeze(fsa, 0);
 }
 
 int32_t GetFsaBasicProperties(const Fsa &fsa) {
@@ -506,7 +503,7 @@ std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec) {
 
 DenseFsaVec DenseFsaVec::operator[] (const Array1<int32_t> &indexes) {
   Array1<int32_t> elem_indexes;
-  RaggedShape ans_shape = Index(this->shape, indexes,
+  RaggedShape ans_shape = Index(this->shape, 0, indexes,
                                 &elem_indexes);
   bool allow_minus_one = false;
   Array2<float> ans_scores = IndexRows(this->scores, elem_indexes,

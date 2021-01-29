@@ -6,3 +6,4 @@ Python tutorials
    :maxdepth: 2
 
    fsa
+   fsa_algo

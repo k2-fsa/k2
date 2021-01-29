@@ -4,11 +4,13 @@
 # See ../../../LICENSE for clarification regarding multiple authors
 
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 import torch
 
 import _k2
+import k2.ragged
 from .fsa import Fsa
 from .symbol_table import SymbolTable
 
@@ -228,7 +230,11 @@ def create_fsa_vec(fsas):
         values = []
         for fsa in fsas:
             values.append(getattr(fsa, name))
-        value = torch.cat(values)
+        if isinstance(values[0], torch.Tensor):
+            value = torch.cat(values)
+        else:
+            assert isinstance(values[0], _k2.RaggedInt)
+            value = k2.ragged.append(values, axis=0)
         setattr(fsa_vec, name, value)
 
     non_tensor_attr_names = set(
@@ -303,6 +309,7 @@ def is_rand_equivalent(a: Fsa,
 def create_sparse(rows: torch.Tensor,
                   cols: torch.Tensor,
                   values: torch.Tensor,
+                  size: Optional[Tuple[int, int]] = None,
                   min_col_index: Optional[int] = None):
     '''This is a utility function that creates a (torch) sparse matrix likely
     intended to represent posteriors.  The likely usage is something like
@@ -325,6 +332,9 @@ def create_sparse(rows: torch.Tensor,
       values:
         Values of the sparse matrix, likely of dtype float or double, with
         the same shape as `rows` and `cols`.
+      size:
+        Optional. If not None, it is assumed to be a tuple containing
+        `(num_frames, highest_phone_plus_one)`
       min_col_index:
         If provided, before the sparse tensor is constructed we will filter out
         elements with `cols[i] < min_col_index`.  Will likely be 0 or 1, if
@@ -345,7 +355,14 @@ def create_sparse(rows: torch.Tensor,
         rows = rows[kept_indexes]
         cols = cols[kept_indexes]
         values = values[kept_indexes]
-    return torch.sparse_coo_tensor(torch.stack([rows, cols]),
-                                   values,
-                                   device=values.device,
-                                   requires_grad=values.requires_grad)
+    if size is not None:
+        return torch.sparse_coo_tensor(torch.stack([rows, cols]),
+                                       values,
+                                       size=size,
+                                       device=values.device,
+                                       requires_grad=values.requires_grad)
+    else:
+        return torch.sparse_coo_tensor(torch.stack([rows, cols]),
+                                       values,
+                                       device=values.device,
+                                       requires_grad=values.requires_grad)

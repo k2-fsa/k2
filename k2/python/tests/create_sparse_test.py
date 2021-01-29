@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R sparse_test_py
+#  ctest --verbose -R create_sparse_test_py
 
 import unittest
 
@@ -43,6 +43,7 @@ class TestCreaseSparse(unittest.TestCase):
             tensor = k2.create_sparse(rows=fsa.seqframes,
                                       cols=fsa.phones,
                                       values=fsa.scores,
+                                      size=(6, 25),
                                       min_col_index=0)
             assert tensor.device == device
             assert tensor.is_sparse

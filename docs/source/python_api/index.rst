@@ -1,5 +1,5 @@
 
-Python API Reference
+Python API reference
 ====================
 
 .. toctree::
