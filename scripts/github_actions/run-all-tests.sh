@@ -4,7 +4,7 @@
 #
 
 cur_dir=$(cd $(dirname $BASH_SOURCE) && pwd)
-k2_dir=$(cd $cur_dir/.. && pwd)
+k2_dir=$(cd $cur_dir/../.. && pwd)
 
 cd $k2_dir/k2/python/tests
 
