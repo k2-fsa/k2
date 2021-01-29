@@ -824,6 +824,7 @@ void TestRaggedShape2(const RaggedShape &shape) {
     }
   }
 }
+
 TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape2) {
   TestRaggedShape2(simple_shape_);
   TestRaggedShape2(random_shape_);
@@ -2682,6 +2683,32 @@ TEST(RaggedOpsTest, TestUniqueSequences) {
       }
     }
   }
+}
+
+TEST(RaggedIntTest, TestCreateRagged2Int) {
+  std::vector<std::vector<int32_t>> vecs{{7, 9}, {10, 12, 13}, {}};
+  std::vector<int32_t> expected_values{7, 9, 10, 12, 13};
+  std::vector<int32_t> expected_row_splits = {0, 2, 5, 5};
+  Ragged<int32_t> r = CreateRagged2(vecs);
+  EXPECT_EQ(r.Context()->GetDeviceType(), kCpu);
+  CheckArrayData(r.RowSplits(1), expected_row_splits);
+  EXPECT_EQ(r.NumAxes(), 2);
+  CheckArrayData(r.values, expected_values);
+
+  Ragged<int32_t> r2("[ [7 9] [10 12 13] [] ]");
+  K2_CHECK(Equal(r, r2));
+}
+
+
+TEST(RaggedFloatTest, TestCreateRagged2Float) {
+  std::vector<std::vector<float>> vecs{{1.2, 2.3}, {}, {3.4, 5.6}};
+  std::vector<float> expected_values{1.2, 2.3, 3.4, 5.6};
+  std::vector<int32_t> expected_row_splits = {0, 2, 2, 4};
+  Ragged<float> r = CreateRagged2(vecs);
+  EXPECT_EQ(r.Context()->GetDeviceType(), kCpu);
+  CheckArrayData(r.RowSplits(1), expected_row_splits);
+  EXPECT_EQ(r.NumAxes(), 2);
+  CheckArrayData(r.values, expected_values);
 }
 
 

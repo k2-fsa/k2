@@ -183,6 +183,16 @@ static void PybindAppend(py::module &m, const char *name) {
       py::arg("srcs"), py::arg("axis"));
 }
 
+template <typename T>
+static void PybindCreateRagged2(py::module &m, const char *name) {
+  m.def(
+      name,
+      [](const std::vector<std::vector<T>> &vecs) -> Ragged<T> {
+        return CreateRagged2(vecs);
+      },
+      py::arg("vecs"));
+}
+
 }  // namespace k2
 
 void PybindRaggedOps(py::module &m) {
@@ -198,4 +208,6 @@ void PybindRaggedOps(py::module &m) {
   PybindAppend<int32_t>(m,
                         "append");  // no need to use append_int or append_float
                                     // since pybind11 supports overloading
+  PybindCreateRagged2<int32_t>(m, "create_ragged2");
+  PybindCreateRagged2<float>(m, "create_ragged2");
 }
