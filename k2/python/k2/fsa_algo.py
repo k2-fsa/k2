@@ -711,6 +711,14 @@ def random_paths(fsas: Fsa, use_double_scores: bool,
     Caution:
       It does not support autograd.
 
+    Caution:
+      Do not be confused by the function name. There is no
+      randomness at all, thus no `seed`. It uses a deterministic algorithm
+      internally, similar to arithmetic coding
+      (see `<https://en.wikipedia.org/wiki/Arithmetic_coding>`_).
+
+      Look into the C++ implementation code for more details.
+
     Args:
       fsas:
         A FsaVec, i.e., `len(fsas.shape) == 3`
