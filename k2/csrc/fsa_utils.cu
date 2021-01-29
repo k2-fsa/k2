@@ -2485,17 +2485,16 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
      }
     };
 
-
     EvalGroupDevice<thread_group_size, PathState<FloatType>>(
         c, tot_num_paths, lambda_set_paths);
   } else {
     // CPU.
-    for (int32_t fsa_idx = 0; fsa_idx < num_fsas; fsa_idx++) {
+    for (int32_t fsa_idx = 0; fsa_idx < num_fsas; ++fsa_idx) {
       int32_t state_idx0x = fsas_row_splits1_data[fsa_idx],
           final_state = fsas_row_splits1_data[fsa_idx + 1] - 1,
           num_paths = num_paths_data[fsa_idx],
           num_batches = num_state_batches_data[fsa_idx];
-      for (int32_t path_idx1 = 0; path_idx1 < num_paths; path_idx1++) {
+      for (int32_t path_idx1 = 0; path_idx1 < num_paths; ++path_idx1) {
 
         int32_t *path_storage_start = path_storage_data +
             storage_row_splits_data[fsa_idx] + path_idx1 * num_batches;
@@ -2503,10 +2502,10 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
         int32_t cur_state_idx01 = state_idx0x;  // Start state.  Note: start
                                                 // state is never the final
                                                 // state.
-        FloatType p = ((FloatType)0.5 + path_idx1) / num_paths;
+        FloatType p = (FloatType(0.5) + path_idx1) / num_paths;
 
         int32_t path_pos;
-        for (path_pos = 0; path_pos <= num_batches; path_pos++) {
+        for (path_pos = 0; path_pos <= num_batches; ++path_pos) {
           // Note: if things are working correctly we should break from this
           // loop before it naturally terminates.
           if (cur_state_idx01 == final_state) {  // Finalize..
@@ -2541,7 +2540,6 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   Array1<int32_t> path_lengths(c, tot_num_paths + 1);
   int32_t *path_lengths_data = path_lengths.Data();
   K2_EVAL(c, tot_num_paths, lambda_get_path_lengths, (int32_t i) {
-
       int32_t fsa_idx = paths_row_ids_data[i],
           path_begin = paths_row_splits_data[fsa_idx],
           path_idx1 = i - path_begin,
