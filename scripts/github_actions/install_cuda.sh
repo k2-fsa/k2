@@ -40,3 +40,6 @@ export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 nvcc --version
+
+sudo ln -sv $CUDA_HOME/targets/x86_64-linux/lib/stubs/libcuda.so \
+  $CUDA_HOME/lib64/libcuda.so
