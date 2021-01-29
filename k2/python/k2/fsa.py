@@ -480,6 +480,20 @@ class Fsa(object):
                 self.arcs, self._get_state_batches())
         return cache[name]
 
+    def _get_arc_cdf(self, use_double_scores: bool,
+                     log_semiring: bool) -> torch.Tensor:
+        name = 'arc_cdf_' + \
+                ('double_' if use_double_scores else 'float_') + \
+                ('log' if log_semiring else 'tropical')
+        cache = self._cache
+        if name not in cache:
+            arc_post = self._get_arc_post(use_double_scores, log_semiring)
+            func = (_k2.get_arc_cdf_double
+                    if use_double_scores else _k2.get_arc_cdf_float)
+            arc_cdf = func(fsas=self.arcs, arc_post=arc_post)
+            cache[name] = arc_cdf
+        return cache[name]
+
     def _get_forward_scores(self, use_double_scores: bool,
                             log_semiring: bool) -> torch.Tensor:
         '''Get (and compute if necessary) cached property

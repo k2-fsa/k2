@@ -134,10 +134,10 @@ struct DenseFsaVec {
   // The following variable was removed and can be obtained as scores.Dim1().
   // int32_t num_cols;
 
-  // `scores` is a contiguous matrix of dimension shape.TotSize1()
-  // by num_cols (where num_cols == num_symbols+1); the indexes into it are
-  // [row_idx, symbol+1], where row_ids is an ind_01 w.r.t. `shape` (see naming
-  // convention explained in utils.h).
+  // `scores` is a matrix of shape (shape.TotSize1(), num_cols), where num_cols
+  // == num_symbols+1); the indexes into it are [row_idx, symbol+1], where
+  // row_ids is an ind_01 w.r.t. `shape` (see naming convention explained in
+  // utils.h).
   //
   //  You can access scores[row_idx,symbol+1] as
   //  scores.Data()[row_ids*scores.Dim1() + symbol+1]

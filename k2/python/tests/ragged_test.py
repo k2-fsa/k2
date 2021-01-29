@@ -22,8 +22,7 @@ class TestRagged(unittest.TestCase):
         '''
         ragged_int = k2.RaggedInt(s)
         print(ragged_int)
-        assert torch.all(torch.eq(ragged_int.values(), torch.tensor([1, 2,
-                                                                     3])))
+        assert torch.all(torch.eq(ragged_int.values(), torch.tensor([1, 2, 3])))
         assert ragged_int.dim0() == 2
         assert torch.all(
             torch.eq(ragged_int.row_splits(1), torch.tensor([0, 2, 3])))

@@ -1361,6 +1361,16 @@ Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src);
 template <typename T>
 void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst);
 
+/*
+  Construct a Ragged with 2 axes.
+    @param [in] vecs  vecs.size() is the number of rows of the returned ans, 
+                      i.e. ans.Dim0() == vecs.sizes(), and vecs[i] contains
+                      the elments for row i in ans.
+    @return   Returns the corresponding ragged array, with a CPU context.
+*/
+template <typename T>
+Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs);
+
 }  // namespace k2
 
 #define IS_IN_K2_CSRC_RAGGED_OPS_H_

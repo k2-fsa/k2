@@ -13,11 +13,12 @@ import torch
 import _k2
 
 
-def index(src: Union[_k2.RaggedArc, _k2.RaggedInt],
-          indexes: torch.Tensor,
-          need_value_indexes: bool = True
-         ) -> Tuple[Union[_k2.RaggedArc, _k2.RaggedInt],  # noqa
-                    Optional[torch.Tensor]]:  # noqa
+def index(
+    src: Union[_k2.RaggedArc, _k2.RaggedInt],
+    indexes: torch.Tensor,
+    need_value_indexes: bool = True
+) -> Tuple[Union[_k2.RaggedArc, _k2.RaggedInt],  # noqa
+           Optional[torch.Tensor]]:  # noqa
     '''Indexing operation on ragged tensor, returns src[indexes], where
     the elements of `indexes` are interpreted as indexes into axis 0 of
     `src`.
@@ -154,3 +155,17 @@ def append(srcs: List[_k2.RaggedInt], axis=0) -> _k2.RaggedInt:
     '''
     assert axis in (0, 1)
     return _k2.append(srcs, axis)
+
+
+def create_ragged2(
+    vecs: Union[List[List[int]], List[List[float]]]
+) -> Union[_k2.RaggedInt, _k2.RaggedFloat]:
+    '''
+    Construct a Ragged with 2 axes.
+    Args:
+      vecs:
+        Input of a list of list
+    Returns:
+      A single ragged array.
+    '''
+    return _k2.create_ragged2(vecs)
