@@ -503,6 +503,36 @@ static void PybindGetTotScoresLogBackward(py::module &m, const char *name) {
         py::arg("tot_scores_grad"));
 }
 
+template <typename T>
+static void PybindGetArcCdf(py::module &m, const char *name) {
+  m.def(
+      name,
+      [](FsaOrVec &fsas, torch::Tensor arc_post) -> torch::Tensor {
+        Array1<T> arc_post_array = FromTensor<T>(arc_post);
+        Array1<T> ans = GetArcCdf(fsas, arc_post_array);
+        return ToTensor(ans);
+      },
+      py::arg("fsas"), py::arg("arc_post"));
+}
+
+template <typename T>
+static void PybindRandomPaths(py::module &m, const char *name) {
+  m.def(
+      name,
+      [](FsaVec fsas, torch::Tensor arc_cdf, int32_t num_paths,
+         torch::Tensor tot_scores,
+         Ragged<int32_t> &state_batches) -> Ragged<int32_t> {
+        Array1<T> arc_cdf_array = FromTensor<T>(arc_cdf);
+        Array1<T> tot_scores_array = FromTensor<T>(tot_scores);
+
+        Ragged<int32_t> ans = RandomPaths(fsas, arc_cdf_array, num_paths,
+                                          tot_scores_array, state_batches);
+        return ans;
+      },
+      py::arg("fsas"), py::arg("arc_cdf"), py::arg("num_paths"),
+      py::arg("tot_scores"), py::arg("state_batches"));
+}
+
 }  // namespace k2
 
 void PybindFsa(py::module &m) {
@@ -536,4 +566,10 @@ void PybindFsa(py::module &m) {
                                            "get_tot_scores_float_log_backward");
   k2::PybindGetTotScoresLogBackward<double>(
       m, "get_tot_scores_double_log_backward");
+
+  k2::PybindGetArcCdf<float>(m, "get_arc_cdf_float");
+  k2::PybindGetArcCdf<double>(m, "get_arc_cdf_double");
+
+  k2::PybindRandomPaths<float>(m, "random_paths_float");
+  k2::PybindRandomPaths<double>(m, "random_paths_double");
 }

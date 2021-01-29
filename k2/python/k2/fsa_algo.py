@@ -9,6 +9,7 @@ from typing import Union
 
 import torch
 import _k2
+import k2
 
 from . import fsa_properties
 from .fsa import Fsa
@@ -695,8 +696,58 @@ def invert(fsa: Fsa) -> Fsa:
     if isinstance(fsa.aux_labels, torch.Tensor):
         return fsa.invert()
     else:
-        assert isinstance(fsa.aux_labels, _k2.RaggedInt)
+        assert isinstance(fsa.aux_labels, k2.RaggedInt)
         need_arc_map = False
         ragged_arc, aux_labels, _ = _k2.invert(fsa.arcs, fsa.aux_labels,
                                                need_arc_map)
         return Fsa(ragged_arc, aux_labels)
+
+
+def random_paths(fsas: Fsa, use_double_scores: bool,
+                 num_paths: int) -> k2.RaggedInt:
+    '''Compute pseudo-random paths through the FSAs in this vector of FSAs
+    (this object must have 3 axes, `self.arcs.num_axes() == 3`)
+
+    Caution:
+      It does not support autograd.
+
+    Caution:
+      Do not be confused by the function name. There is no
+      randomness at all, thus no `seed`. It uses a deterministic algorithm
+      internally, similar to arithmetic coding
+      (see `<https://en.wikipedia.org/wiki/Arithmetic_coding>`_).
+
+      Look into the C++ implementation code for more details.
+
+    Args:
+      fsas:
+        A FsaVec, i.e., `len(fsas.shape) == 3`
+      use_double_scores:
+        If true, do computation with double-precision,
+        else float (single-precision)
+      num_paths:
+        Number of paths requested through each FSA. FSAs that have no successful
+        paths will have zero paths returned.
+    Returns:
+      Returns a k2.RaggedInt with 3 axes: [fsa][path][arc_pos]; the final
+      sub-lists (indexed with arc_pos) are sequences of arcs starting from the
+      start state and terminating in the final state. The values are arc_idx012,
+      i.e. arc indexes.
+    '''
+    log_semiring = True
+    arc_cdf = fsas._get_arc_cdf(use_double_scores=use_double_scores,
+                                log_semiring=log_semiring)
+    tot_scores = fsas._get_tot_scores(use_double_scores=use_double_scores,
+                                      log_semiring=log_semiring)
+    state_batches = fsas._get_state_batches()
+    if use_double_scores:
+        func = _k2.random_paths_double
+    else:
+        func = _k2.random_paths_float
+
+    ans = func(fsas=fsas.arcs,
+               arc_cdf=arc_cdf,
+               num_paths=num_paths,
+               tot_scores=tot_scores,
+               state_batches=state_batches)
+    return ans

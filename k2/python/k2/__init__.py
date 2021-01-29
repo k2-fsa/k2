@@ -26,6 +26,7 @@ from .fsa_algo import intersect_device
 from .fsa_algo import invert
 from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fst
+from .fsa_algo import random_paths
 from .fsa_algo import remove_epsilon
 from .fsa_algo import remove_epsilons_iterative_tropical
 from .fsa_algo import shortest_path
