@@ -37,49 +37,83 @@ class TestRandomPaths(unittest.TestCase):
                 self.assertEqual(str(path), '[ [ [ 0 1 ] [ 0 1 ] ] ]')
 
     def test_single_fsa_case2(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
+        devices = [torch.device('cuda')]
+        #  if torch.cuda.is_available():
+        #      devices.append(torch.device('cuda', 0))
 
         for device in devices:
-            for use_double_scores in (True, False):
+            for use_double_scores in (True,):
                 s = '''
                     0 1 1 1
-                    0 1 2 1.1
+                    0 1 2 1
                     1 2 3 1
-                    1 2 4 1.1
+                    1 2 4 1
                     2 3 -1 1
-                    2 3 -1 1.1
+                    2 3 -1 1
                     3
                 '''
                 fsa = k2.Fsa.from_str(s).to(device)
                 fsa_vec = k2.create_fsa_vec([fsa])
 
-                path = k2.random_paths(fsa_vec,
-                                       use_double_scores=use_double_scores,
-                                       num_paths=1)
-                assert path.num_axes() == 3
-                # p is 0.5, it should select the last leaving arc of each state
-                self.assertEqual(str(path), '[ [ [ 1 3 5 ] ] ]')
+                #  path = k2.random_paths(fsa_vec,
+                #                         use_double_scores=use_double_scores,
+                #                         num_paths=1)
+                #  assert path.num_axes() == 3
+                #  # iter 0, p is 0.5, select the last leaving arc of state 0
+                #  # iter 1, p is 0, select the first leaving arc of state 1
+                #  # iter 2, p is 0, select the first leaving arc of state 2
+                #  self.assertEqual(str(path), '[ [ [ 1 2 4 ] ] ]')
 
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
                                        num_paths=2)
-                # p is [0.25, 0.75], the first path selects the first leaving arc
-                # and the second path selects the second leaving arc of each state
+                print(fsa_vec._get_arc_cdf(True, True))
+                # path 0
+                #  iter 0, p is 0.25, select the first leaving arc of state 0
+                #  iter 1, p is 0.25/0.5 = 0.5, select the second leaving arc
+                #          of state 1
+                #  iter 2, p is (0.5 - 0.5) / (1 - 0.5) = 0, select the first
+                #          leaving arc of state 2
+                # path 1
+                #  iter 0, p is 0.75, select the second leaving arc of state 0
+                #  iter 1, p is (0.75 - 0.5) / (1 - 0.5) = 0.5, select the
+                #          second leaving arc of state 1
+                #  iter 2, p is (0.5 - 0.5) / (1 - 0.5) = 0, select the
+                #          first leaving arc of state 1
                 assert path.num_axes() == 3
-                self.assertEqual(str(path), '[ [ [ 0 2 4 ] [ 1 3 5 ] ] ]')
+                self.assertEqual(str(path), '[ [ [ 0 3 4 ] [ 1 3 4 ] ] ]')
 
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=True,
                                        num_paths=4)
-                # p is [0.125, 0.375, 0.6250, 0.8750],
-                # the first path and second path select the first leaving arc
-                # the third and the fourth select the second leaving arc of each state
+                # path 0
+                #  iter 0, p is 0.125, select the first leaving arc of state 0
+                #  iter 1, p is 0.125/0.5=0.25, select the first leaving arc of
+                #          state 1
+                #  iter 2, p is 0.25/0.5=0.5, select the second leaving arc of
+                #          state 2
+                # path 1
+                #  iter 0, p is 0.375, select the first leaving arc of state 0
+                #  iter 1, p is 0.375/0.5=0.75, select the second leaving arc
+                #          of state 1
+                #  iter 2, p is 0.25/0.5=0.5, select the second leaving arc
+                #          of state 2
+                # path 2
+                #  iter 0, p is 0.625, select the second leaving arc of state 0
+                #  iter 1, p is 0.125/0.5=0.25, select the first leaving arc of
+                #          state 1
+                #  iter 2, p is 0.25/0.5=0.5, select the second leaving arc of
+                #          state 2
+                # path 3
+                #  iter 0, p is 0.875, select the second leaving arc of state 0
+                #  iter 1, p is 0.375/0.5=0.75, select the second leaving arc of
+                #          state 1
+                #  iter 2, p is 0.25/0.5=0.5, select the second leaving arc of
+                #          state 2
                 assert path.num_axes() == 3
                 self.assertEqual(
                     str(path),
-                    '[ [ [ 0 2 4 ] [ 0 2 4 ] [ 1 3 5 ] [ 1 3 5 ] ] ]')
+                    '[ [ [ 0 2 5 ] [ 0 3 5 ] [ 1 2 5 ] [ 1 3 5 ] ] ]')
 
     def test_fsa_vec(self):
         s1 = '''

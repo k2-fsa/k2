@@ -10,9 +10,9 @@
 
 import unittest
 
+import torch
 import _k2
 import k2
-import torch
 
 
 class TestCompose(unittest.TestCase):
