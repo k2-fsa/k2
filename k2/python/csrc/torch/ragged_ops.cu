@@ -209,4 +209,5 @@ void PybindRaggedOps(py::module &m) {
                         "append");  // no need to use append_int or append_float
                                     // since pybind11 supports overloading
   PybindCreateRagged2<int32_t>(m, "create_ragged2");
+  PybindCreateRagged2<float>(m, "create_ragged2");
 }

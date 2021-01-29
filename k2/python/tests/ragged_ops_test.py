@@ -166,9 +166,7 @@ class TestRaggedOps(unittest.TestCase):
         assert fsa.scores.requires_grad is True
 
         # arcs leaving state 0
-        self.assertAlmostEqual(fsa.scores[:3].exp().sum().item(),
-                               1.0,
-                               places=6)
+        self.assertAlmostEqual(fsa.scores[:3].exp().sum().item(), 1.0, places=6)
 
         # arcs leaving state 1
         self.assertAlmostEqual(fsa.scores[3:5].exp().sum().item(),
@@ -224,8 +222,18 @@ class TestRaggedOps(unittest.TestCase):
         assert ragged_int.dim0() == 3
         assert torch.all(
             torch.eq(ragged_int.row_splits(1), torch.tensor([0, 2, 4, 4])))
-
         self.assertEqual([3, 4], ragged_int.tot_sizes())
+
+        float_lst = [[1.2], [], [3.4, 5.6, 7.8]]
+        ragged_float = k2.create_ragged2(float_lst)
+        print(ragged_float.values())
+        assert torch.all(
+            torch.eq(ragged_float.values(),
+                     torch.tensor([1.2, 3.4, 5.6, 7.8])))
+        assert torch.all(
+            torch.eq(ragged_float.row_splits(1), torch.tensor([0, 1, 1, 4])))
+        assert ragged_float.dim0() == 3
+        self.assertEqual([3, 4], ragged_float.tot_sizes())
 
 
 if __name__ == '__main__':

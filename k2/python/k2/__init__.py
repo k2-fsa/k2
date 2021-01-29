@@ -37,6 +37,7 @@ from .ops import index_fsa
 from .ops import index_ragged
 from .ops import index_select
 from .ops import index_tensor
+from .ragged import create_ragged2
 from .ragged import RaggedShape
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec

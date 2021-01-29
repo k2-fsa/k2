@@ -1363,7 +1363,9 @@ void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst);
 
 /*
   Construct a Ragged with 2 axes.
-    @param [in] vecs  Input of a two dimensional list
+    @param [in] vecs  vecs.size() is the number of rows of the returned ans, 
+                      i.e. ans.Dim0() == vecs.sizes(), and vecs[i] contains
+                      the elments for row i in ans.
     @return   Returns the corresponding ragged array, with a CPU context.
 */
 template <typename T>
