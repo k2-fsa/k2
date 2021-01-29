@@ -2523,9 +2523,13 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
               *end = arc_cdf_data + arc_idx01x_next;
           int32_t arc_idx2 = std::upper_bound(begin1, end, p) - begin1;
           int32_t arc_idx012 = arc_idx01x + arc_idx2;
-          K2_DCHECK_GE(p, arc_cdf_data[arc_idx012]);
-          K2_DCHECK_LE(p, (arc_idx012 + 1 == arc_idx01x_next ? 1.0 :
-                           arc_cdf_data[arc_idx012 + 1]));
+          FloatType interval_start = arc_cdf_data[arc_idx012],
+              interval_end = (arc_idx012 + 1 == arc_idx01x_next ? 1.0 :
+                              arc_cdf_data[arc_idx012 + 1]);
+          K2_DCHECK_GE(p, interval_start);
+          K2_DCHECK_LE(p, interval_end);
+          p = (p - interval_start) / (interval_end - interval_start);
+
           // + 1 to leave space to store the path length.
           path_storage_start[path_pos + 1] = arc_idx012;
           int32_t next_state_idx01 = arcs[arc_idx012].dest_state + state_idx0x;
