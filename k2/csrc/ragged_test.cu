@@ -2705,9 +2705,9 @@ TEST(RaggedFloatTest, TestCreateRagged2Float) {
   std::vector<float> expected_values{1.2, 2.3, 3.4, 5.6};
   std::vector<int32_t> expected_row_splits = {0, 2, 2, 4};
   Ragged<float> r = CreateRagged2(vecs);
-  K2_CHECK_EQ(r.Context()->GetDeviceType(), kCpu);
+  EXPECT_EQ(r.Context()->GetDeviceType(), kCpu);
   CheckArrayData(r.RowSplits(1), expected_row_splits);
-  K2_CHECK_EQ(r.NumAxes(), 2);
+  EXPECT_EQ(r.NumAxes(), 2);
   CheckArrayData(r.values, expected_values);
 }
 
