@@ -37,9 +37,9 @@ class TestRandomPaths(unittest.TestCase):
                 self.assertEqual(str(path), '[ [ [ 0 1 ] [ 0 1 ] ] ]')
 
     def test_single_fsa_case2(self):
-        devices = [torch.device('cuda')]
-        #  if torch.cuda.is_available():
-        #      devices.append(torch.device('cuda', 0))
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append(torch.device('cuda', 0))
 
         for device in devices:
             for use_double_scores in (True,):
@@ -55,19 +55,18 @@ class TestRandomPaths(unittest.TestCase):
                 fsa = k2.Fsa.from_str(s).to(device)
                 fsa_vec = k2.create_fsa_vec([fsa])
 
-                #  path = k2.random_paths(fsa_vec,
-                #                         use_double_scores=use_double_scores,
-                #                         num_paths=1)
-                #  assert path.num_axes() == 3
-                #  # iter 0, p is 0.5, select the last leaving arc of state 0
-                #  # iter 1, p is 0, select the first leaving arc of state 1
-                #  # iter 2, p is 0, select the first leaving arc of state 2
-                #  self.assertEqual(str(path), '[ [ [ 1 2 4 ] ] ]')
+                path = k2.random_paths(fsa_vec,
+                                       use_double_scores=use_double_scores,
+                                       num_paths=1)
+                assert path.num_axes() == 3
+                # iter 0, p is 0.5, select the last leaving arc of state 0
+                # iter 1, p is 0, select the first leaving arc of state 1
+                # iter 2, p is 0, select the first leaving arc of state 2
+                self.assertEqual(str(path), '[ [ [ 1 2 4 ] ] ]')
 
                 path = k2.random_paths(fsa_vec,
                                        use_double_scores=use_double_scores,
                                        num_paths=2)
-                print(fsa_vec._get_arc_cdf(True, True))
                 # path 0
                 #  iter 0, p is 0.25, select the first leaving arc of state 0
                 #  iter 1, p is 0.25/0.5 = 0.5, select the second leaving arc

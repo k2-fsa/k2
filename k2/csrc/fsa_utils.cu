@@ -2480,6 +2480,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
            shared_data->begin_arc_idx01x = next_arc_idx01x;
            shared_data->num_arcs = next_arc_idx01x_next - next_arc_idx01x;
            shared_data->p = p;
+           break;
          }
        }
      }
@@ -2514,7 +2515,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
           }
           int32_t arc_idx01x = fsas_row_splits2_data[cur_state_idx01],
               arc_idx01x_next = fsas_row_splits2_data[cur_state_idx01 + 1];
-          K2_CHECK_GT(arc_idx01x_next, arc_idx01x);
+          K2_DCHECK_GT(arc_idx01x_next, arc_idx01x);
           // std::upper_bound finds the first index i in the range
           //  [arc_idx01x+1 .. arc_idx01x_next-1] such that
           // arc_cdf_data[i] > p, and if it doesn't exist gives us
