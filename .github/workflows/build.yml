@@ -74,6 +74,8 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install wheel twine
           python3 -m pip install bs4 requests tqdm
+          python3 -m pip install dataclasses graphviz
+          sudo apt-get -qq install graphviz
 
           ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
@@ -115,3 +117,10 @@ jobs:
         with:
           name: gcc-${{ matrix.gcc }}-cuda-${{ matrix.cuda }}-torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
           path: dist/*.whl
+
+      - name: Run Python Tests
+        shell: bash
+        run: |
+          pip install ./dist/*.whl
+          python3 -m k2.version
+          ./scripts/github_actions/run-all-tests.sh
