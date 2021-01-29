@@ -11,8 +11,8 @@
 
 import unittest
 
-import _k2
 import k2
+import _k2
 import numpy as np
 import torch
 
@@ -166,7 +166,9 @@ class TestRaggedOps(unittest.TestCase):
         assert fsa.scores.requires_grad is True
 
         # arcs leaving state 0
-        self.assertAlmostEqual(fsa.scores[:3].exp().sum().item(), 1.0, places=6)
+        self.assertAlmostEqual(fsa.scores[:3].exp().sum().item(),
+                               1.0,
+                               places=6)
 
         # arcs leaving state 1
         self.assertAlmostEqual(fsa.scores[3:5].exp().sum().item(),
@@ -216,7 +218,6 @@ class TestRaggedOps(unittest.TestCase):
     def test_create_ragged_from_list(self):
         lst = [[7, 9], [12, 13], []]
         ragged_int = k2.create_ragged2(lst)
-        print(ragged_int)
         assert torch.all(
             torch.eq(ragged_int.values(), torch.tensor([7, 9, 12, 13])))
         assert ragged_int.dim0() == 3
@@ -226,10 +227,9 @@ class TestRaggedOps(unittest.TestCase):
 
         float_lst = [[1.2], [], [3.4, 5.6, 7.8]]
         ragged_float = k2.create_ragged2(float_lst)
-        print(ragged_float.values())
         assert torch.all(
-            torch.eq(ragged_float.values(),
-                     torch.tensor([1.2, 3.4, 5.6, 7.8])))
+            torch.eq(ragged_float.values(), torch.tensor([1.2, 3.4, 5.6,
+                                                          7.8])))
         assert torch.all(
             torch.eq(ragged_float.row_splits(1), torch.tensor([0, 1, 1, 4])))
         assert ragged_float.dim0() == 3
