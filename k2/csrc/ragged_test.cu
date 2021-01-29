@@ -128,23 +128,6 @@ TEST(RaggedTest, TestRaggedFromString) {
   }
 }
 
-TEST(RaggedTest, TestRaggedFromVecs) {
-  std::vector<std::vector<int32_t>> vecs;
-  vecs.emplace_back(std::vector<int32_t>{7, 9});
-  vecs.emplace_back(std::vector<int32_t>{10,12,13});
-  vecs.emplace_back(std::vector<int32_t>{});
-  Ragged<int32_t> r(vecs);
-  Array1<int32_t> row_splits(GetCpuContext(), std::vector<int32_t>{0, 2, 5, 5});
-  K2_LOG(INFO) << r.RowSplits(1);
-  K2_CHECK(Equal(r.RowSplits(1), row_splits));
-  K2_CHECK_EQ(r.values.Back(), 13);
-  K2_CHECK_EQ(r.values[0], 7);
-
-  Ragged<int32_t> r2(" [ [7 9] [10 12 13] [] ]");
-  K2_LOG(INFO) << "r2 = " << r2;
-  K2_CHECK(Equal(r, r2));
-}
-
 template <typename T>
 void TestMaxPerSubListTest() {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
@@ -841,6 +824,7 @@ void TestRaggedShape2(const RaggedShape &shape) {
     }
   }
 }
+
 TEST_F(RaggedShapeOpsSuiteTest, TestRaggedShape2) {
   TestRaggedShape2(simple_shape_);
   TestRaggedShape2(random_shape_);
@@ -2699,6 +2683,23 @@ TEST(RaggedOpsTest, TestUniqueSequences) {
       }
     }
   }
+}
+
+TEST(RaggedTest, TestCreateRagged2) {
+  std::vector<std::vector<int32_t>> vecs{{7, 9}, {10, 12, 13}, {}};
+  std::vector<int32_t> expected_values{7, 9, 10, 12, 13};
+  std::vector<int32_t> expected_row_splits = {0,2,5,5};
+  Ragged<int32_t> r = CreateRagged2(vecs);
+  K2_LOG(INFO) << "r = " << r;
+  K2_LOG(INFO) << r.RowSplits(1);
+  K2_CHECK_EQ(r.Context()->GetDeviceType(), kCpu);
+  CheckArrayData(r.RowSplits(1), expected_row_splits);
+  K2_CHECK_EQ(r.NumAxes(), 2);
+  CheckArrayData(r.values, expected_values);
+
+  Ragged<int32_t> r2("[ [7 9] [10 12 13] [] ]");
+  K2_LOG(INFO) << "r2 = " << r2;
+  K2_CHECK(Equal(r, r2));
 }
 
 

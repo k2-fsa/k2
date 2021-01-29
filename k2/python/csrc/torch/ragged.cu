@@ -35,10 +35,6 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
                 return std::make_unique<PyClass>(shape, FromTensor<T>(values));
               }),
               py::arg("shape"), py::arg("values"));
-  pyclass.def(py::init([](
-      const std::vector<std::vector<T>> &vecs) -> std::unique_ptr<PyClass> {
-    return std::make_unique<PyClass>(vecs);
-  }));
   pyclass.def(
       "to",
       [](const PyClass &self, py::object device) -> PyClass {

@@ -317,26 +317,6 @@ struct Ragged {
       K2_LOG(FATAL) << "Failed to construct Ragged array from string: " << src;
   }
 
-  explicit Ragged(const std::vector<std::vector<T>> &vecs) {
-    std::vector<std::vector<int32_t>> row_splits;
-    std::vector<T> elems;
-    row_splits.push_back(std::vector<int32_t>(1, 0));
-    for (const auto &vec : vecs) {
-      for (const auto &val : vec) {
-        elems.push_back(val);
-      }
-      row_splits[0].push_back(elems.size());
-    }
-    std::vector<RaggedShapeLayer> axes(row_splits.size());
-    for (size_t i = 0; i < row_splits.size(); i++) {
-      axes[i].row_splits = Array1<int32_t>(GetCpuContext(), row_splits[i]);
-      axes[i].cached_tot_size = -1;
-    }
-    shape = RaggedShape(axes);
-    values = Array1<T>(GetCpuContext(), elems);
-    K2_CHECK(values.Dim() == shape.NumElements());
-  }
-
   // Construct from context and string.  This uses delegating constructors,
   // (a c++11 feature), and an explicitly constructed Ragged<T>
   // "Ragged<T>(src)"

@@ -624,6 +624,24 @@ void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
   }
 }
 
+template <typename T>
+Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs) {
+  std::vector<T> values;
+  std::vector<int32_t> row_splits;
+  row_splits.reserve(vecs.size() + 1);
+  int32_t tot_size = 0;
+  row_splits.push_back(tot_size);
+  for (const auto &vec : vecs) {
+    tot_size += static_cast<int32_t>(vec.size());
+    row_splits.push_back(tot_size);
+    values.insert(std::end(values), std::begin(vec), std::end(vec));
+  }
+  Array1<int32_t> row_splits_array(GetCpuContext(), row_splits);
+  RaggedShape shape = RaggedShape2(&row_splits_array, nullptr, tot_size);
+  Array1<int32_t> values_array(GetCpuContext(), values);
+  return Ragged<T>(shape, values_array);
+}
+
 }  // namespace k2
 
 #endif  // K2_CSRC_RAGGED_OPS_INL_H_
