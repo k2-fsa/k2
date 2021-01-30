@@ -270,7 +270,7 @@ static void PybindRaggedShapeUtils(py::module &m) {
         py::arg("b"));
 
   m.def(
-      "ragged_shape_remove_axis",
+      "remove_axis",
       [](RaggedShape &src, int32_t axis) -> RaggedShape {
         return RemoveAxis(src, axis);
       },

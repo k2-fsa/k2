@@ -484,7 +484,7 @@ class Fsa(object):
                      log_semiring: bool) -> torch.Tensor:
         name = 'arc_cdf_' + \
                 ('double_' if use_double_scores else 'float_') + \
-                ('log' if log_semiring else 'tropical')
+                ('log' if log_semiring else 'tropical')  # noqa
         cache = self._cache
         if name not in cache:
             arc_post = self._get_arc_post(use_double_scores, log_semiring)

@@ -13,12 +13,11 @@ import torch
 import _k2
 
 
-def index(
-    src: Union[_k2.RaggedArc, _k2.RaggedInt],
-    indexes: torch.Tensor,
-    need_value_indexes: bool = True
-) -> Tuple[Union[_k2.RaggedArc, _k2.RaggedInt],  # noqa
-           Optional[torch.Tensor]]:  # noqa
+def index(src: Union[_k2.RaggedArc, _k2.RaggedInt],
+          indexes: torch.Tensor,
+          need_value_indexes: bool = True
+         ) -> Tuple[Union[_k2.RaggedArc, _k2.RaggedInt],  # noqa
+                    Optional[torch.Tensor]]:  # noqa
     '''Indexing operation on ragged tensor, returns src[indexes], where
     the elements of `indexes` are interpreted as indexes into axis 0 of
     `src`.
@@ -87,7 +86,7 @@ def remove_axis(src: Union[_k2.RaggedInt, _k2.RaggedShape],
 
     Args:
       src:
-        The source ragged tensor.
+        The source ragged tensor or ragged shape. Must have `num_axes() > 2`.
       axis:
         The axis to remove.  If src is a _k2.RaggedShape it must satisfy
         `0 <= axis < src.num_axes()`;
@@ -99,10 +98,7 @@ def remove_axis(src: Union[_k2.RaggedInt, _k2.RaggedShape],
        The vector of `ans.tot_sizes()` will be the same as `src.tot_sizes()`,
        but with element `axis` removed.
     '''
-    if isinstance(src, _k2.RaggedShape):
-        return _k2.ragged_shape_remove_axis(src, axis)
-    else:
-        return _k2.ragged_int_remove_axis(src, axis)
+    return _k2.remove_axis(src, axis)
 
 
 def to_list(src: _k2.RaggedInt) -> List:
@@ -157,9 +153,8 @@ def append(srcs: List[_k2.RaggedInt], axis=0) -> _k2.RaggedInt:
     return _k2.append(srcs, axis)
 
 
-def create_ragged2(
-    vecs: Union[List[List[int]], List[List[float]]]
-) -> Union[_k2.RaggedInt, _k2.RaggedFloat]:
+def create_ragged2(vecs: Union[List[List[int]], List[List[float]]]
+                  ) -> Union[_k2.RaggedInt, _k2.RaggedFloat]:  # noqa
     '''
     Construct a Ragged with 2 axes.
     Args:
@@ -169,3 +164,45 @@ def create_ragged2(
       A single ragged array.
     '''
     return _k2.create_ragged2(vecs)
+
+
+def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
+    '''Returns a `sub-shape` of `src`.
+
+    Args:
+      src:
+        Source RaggedShape.
+      layer:
+        Layer that is desired, from `0 .. src.num_axes() - 2` (inclusive).
+
+    Returns:
+      This returned shape will have `num_axes() == 2`, the minimal case of
+      a RaggedShape.
+    '''
+    return _k2.get_layer(src, layer)
+
+
+def unique_sequences(src: _k2.RaggedInt) -> _k2.RaggedInt:
+    '''Remove repeated sequences.
+
+    If `src` has two axes, this will return the unique sub-lists (in a possibly
+    different order, but without repeats).  If `src` has 3 axes, it will
+    do the above but separately for each index on axis 0; if more than 3 axes,
+    the earliest axes will be ignored.
+
+    Caution:
+      It does not completely guarantee that all unique sequences will be
+      present in the output, as it relies on a hash and ignores collisions.
+      If several sequences have the same hash, only one of them is kept, even
+      if the actual content in the sequence is different.
+
+    Args:
+      src:
+        The input ragged tensor.
+
+    Returns:
+     Returns a tensor with the same number of axes as `src` and possibly fewer
+     elements due to removing repeated sequences on the last axis (and with the
+     last-but-one indexes possibly in a different order).
+    '''
+    return _k2.unique_sequences(src)

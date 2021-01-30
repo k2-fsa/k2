@@ -192,31 +192,39 @@ class TestRandomPaths(unittest.TestCase):
                 #  path 0
                 #    iter 0, p is 0.125, select arc 0
                 #    iter 1, p is 0.125/0.25=0.5, select arc 5
-                #    iter 2, p is (0.5 - 0.3333)/(0.6667-0.3333)=0.4995, select arc 7
-                #            (note p is 0.5 in theory, but there is round-off errors)
+                #    iter 2, p is (0.5 - 0.3333)/(0.6667-0.3333)=0.4995,
+                #            select arc 7
+                #            (note p is 0.5 in theory, but there are round-off
+                #             errors)
                 #    iter 3, p is 0.99911, select arc 9
-                #    path 1 is [0, 5, 7, 9] + 6 = [6, 11, 13, 15]
+                #    path 0 is [0, 5, 7, 9] + 6 = [6, 11, 13, 15]
                 #  path 1
                 #    iter 0, p is 0.375, select arc 1
                 #    iter 1, p is (0.375 - 0.25)/0.25 = 0.5, select arc 5
-                #    iter 2, p is (0.5 - 0.3333)/(0.6667-0.3333)=0.4995, select arc 7
-                #            (note p is 0.5 in theory, but there is round-off errors)
+                #    iter 2, p is (0.5 - 0.3333)/(0.6667-0.3333)=0.4995,
+                #            select arc 7
+                #            (note p is 0.5 in theory, but there are round-off
+                #             errors)
                 #    iter 3, p is 0.99911, select arc 9
                 #    path 1 is [1, 5, 7, 9] + 6 = [7, 11, 13, 15]
                 #  path 2
                 #    iter 0, p is 0.625, select arc 2
                 #    iter 1, p is (0.625 - 0.5)/0.25 = 0.5, select arc 5
-                #    iter 2, p is (0.5 - 0.3333)/(0.6667-0.3333)=0.4995, select arc 7
-                #            (note p is 0.5 in theory, but there is round-off errors)
+                #    iter 2, p is (0.5 - 0.3333)/(0.6667-0.3333)=0.4995,
+                #            select arc 7
+                #            (note p is 0.5 in theory, but there are round-off
+                #             errors)
                 #    iter 3, p is 0.99911, select arc 9
-                #    path 1 is [2, 5, 7, 9] + 6 = [8, 11, 13, 15]
+                #    path 2 is [2, 5, 7, 9] + 6 = [8, 11, 13, 15]
                 #  path 3
                 #    iter 0, p is 0.875, select arc 3
                 #    iter 1, p is (0.875 - 0.75)/0.25 = 0.5, select arc 5
-                #    iter 2, p is (0.5 - 0.3333)/(0.6667-0.3333)=0.4995, select arc 7
-                #            (note p is 0.5 in theory, but there is round-off errors)
+                #    iter 2, p is (0.5 - 0.3333)/(0.6667-0.3333)=0.4995,
+                #            select arc 7
+                #            (note p is 0.5 in theory, but there are round-off
+                #             errors)
                 #    iter 3, p is 0.99911, select arc 9
-                #    path 1 is [3, 5, 7, 9] + 6 = [9, 11, 13, 15]
+                #    path 3 is [3, 5, 7, 9] + 6 = [9, 11, 13, 15]
                 self.assertEqual(
                     str(path),
                     '[ [ [ 0 2 5 ] [ 0 3 5 ] [ 1 2 5 ] [ 1 3 5 ] ] [ [ 6 11 13 15 ] [ 7 11 13 15 ] [ 8 11 13 15 ] [ 9 11 13 15 ] ] ]'  # noqa

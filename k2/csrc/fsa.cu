@@ -216,8 +216,10 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 
 FsaVec FsaToFsaVec(const Fsa &fsa) {
   NVTX_RANGE(K2_FUNC);
-  if (fsa.NumAxes() != 2) return fsa;
-  else return Unsqueeze(fsa, 0);
+  if (fsa.NumAxes() != 2)
+    return fsa;
+  else
+    return Unsqueeze(fsa, 0);
 }
 
 int32_t GetFsaBasicProperties(const Fsa &fsa) {
