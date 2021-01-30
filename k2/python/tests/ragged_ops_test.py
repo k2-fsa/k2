@@ -18,7 +18,7 @@ import torch
 
 class TestRaggedOps(unittest.TestCase):
 
-    def test_remove_axis(self):
+    def test_remove_axis_ragged_array(self):
         s = '''
             [ [ [ 1 2 ] [ 0 ] ] [ [3 0 ] [ 2 ] ] ]
         '''
@@ -29,6 +29,21 @@ class TestRaggedOps(unittest.TestCase):
 
         ans = k2.ragged.remove_axis(src, 1)
         self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] ]')
+
+    def test_remove_axis_ragged_shape(self):
+        shape = k2.RaggedShape('[ [[x x] [] [x]] [[] [x x] [x x x] [x]] ]')
+
+        ans = k2.ragged.remove_axis(shape, 0)
+        expected = k2.RaggedShape('[[x x] [] [x] [] [x x] [x x x] [x]]')
+        self.assertEqual(str(ans), str(expected))
+
+        ans = k2.ragged.remove_axis(shape, 1)
+        expected = k2.RaggedShape('[[x x x] [x x x x x x]]')
+        self.assertEqual(str(ans), str(expected))
+
+        ans = k2.ragged.remove_axis(shape, 2)
+        expected = k2.RaggedShape('[[x x x] [x x x x]]')
+        self.assertEqual(str(ans), str(expected))
 
     def test_to_list(self):
         s = '''

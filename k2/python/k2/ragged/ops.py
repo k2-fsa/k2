@@ -86,7 +86,7 @@ def remove_axis(src: Union[_k2.RaggedInt, _k2.RaggedShape],
 
     Args:
       src:
-        The source ragged tensor.
+        The source ragged tensor or ragged shape. Must have `num_axes() > 2`.
       axis:
         The axis to remove.  If src is a _k2.RaggedShape it must satisfy
         `0 <= axis < src.num_axes()`;
@@ -98,10 +98,7 @@ def remove_axis(src: Union[_k2.RaggedInt, _k2.RaggedShape],
        The vector of `ans.tot_sizes()` will be the same as `src.tot_sizes()`,
        but with element `axis` removed.
     '''
-    if isinstance(src, _k2.RaggedShape):
-        return _k2.ragged_shape_remove_axis(src, axis)
-    else:
-        return _k2.ragged_int_remove_axis(src, axis)
+    return _k2.remove_axis(src, axis)
 
 
 def to_list(src: _k2.RaggedInt) -> List:

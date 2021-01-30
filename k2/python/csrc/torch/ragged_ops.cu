@@ -2,8 +2,8 @@
  * @brief python wrappers for ragged_ops.h
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corp.       (author: Fangjun Kuang
- *                                                  Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corp.       (authors: Fangjun Kuang
+ *                                                   Daniel Povey)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -16,8 +16,11 @@
 namespace k2 {
 
 template <typename T>
-static void PybindRaggedRemoveAxis(py::module &m, const char *name) {
-  m.def(name, &RemoveAxis<T>, py::arg("src"), py::arg("axis"));
+static void PybindRaggedRemoveAxis(py::module &m) {
+  // src is a Ragged<T>
+  //  there is another `remove_axis` in k2/python/csrc/torch/ragged.cu
+  //  taking a RaggedShape as input.
+  m.def("remove_axis", &RemoveAxis<T>, py::arg("src"), py::arg("axis"));
 }
 
 template <typename T>
@@ -191,7 +194,7 @@ static void PybindGetLayer(py::module &m) {
 
 void PybindRaggedOps(py::module &m) {
   using namespace k2;  // NOLINT
-  PybindRaggedRemoveAxis<int32_t>(m, "ragged_int_remove_axis");
+  PybindRaggedRemoveAxis<int32_t>(m);
   PybindRaggedArange<int32_t>(m, "ragged_int_arange");
   PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
   PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
