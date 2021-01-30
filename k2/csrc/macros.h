@@ -1,5 +1,6 @@
 /**
- * Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang
+ *                                                   Haowen Qiu)
  *
  * See LICENSE for clarification regarding multiple authors
  */
@@ -109,8 +110,43 @@ You can replace the above code with `K2_EVAL2` by the following code:
     }                                                                     \
   } while (0)
 
+/*
+`K2_TRANS_EXCSUM`, calls a lambda function (int32_t i) -> int32_t for i in range
+[0, dim), then does an exclusive sum on the returned values and writes them to
+`output`, i.e. it does an operation `transform and then exclusive sum`.
+Noted `output` must have size `dim + 1`. It works for CUDA as well as for CPU.
 
+Here is an example:
 
+@code
+  ContextPtr c = GetCudaContext();
+  int32_t dim = 3;
+  Array1<int32_t> ans(c, dim + 1);
+  int32_t *ans_data = ans.Data();
+  K2_TRANS_EXCSUM(
+      c, dim, ans_data, lambda_multiple2, (int32_t i)->int32_t{ return i*2; });
+@endcode
 
+`ans` will be {0, 2, 6, 12}
+ */
+#define K2_TRANS_EXCSUM(context, dim, ans_data, lambda_name, ...)              \
+  do {                                                                         \
+    if (context->GetDeviceType() == kCpu) {                                    \
+      auto lambda_name = [=] __VA_ARGS__;                                      \
+      int32_t lambda_name##_dim = dim;                                         \
+      ans_data[0] = 0;                                                         \
+      for (int32_t i = 0; i != lambda_name##_dim; ++i) {                       \
+        int32_t value = lambda_name(i);                                        \
+        ans_data[i + 1] = ans_data[i] + value;                                 \
+      }                                                                        \
+    } else {                                                                   \
+      K2_CHECK_EQ(context->GetDeviceType(), kCuda);                            \
+      auto lambda_name = [=] __device__ __VA_ARGS__;                           \
+      mgpu::context_t *mgpu_context = GetModernGpuAllocator(context);          \
+      K2_CUDA_SAFE_CALL(mgpu::transform_scan<int32_t>(                         \
+          lambda_name, dim, ans_data, mgpu::plus_t<int32_t>(), ans_data + dim, \
+          *mgpu_context));                                                     \
+    }                                                                          \
+  } while (0)
 
 #endif  // K2_CSRC_MACROS_H_

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
 # Copyright (c)  2020  Xiaomi Corporation (authors: Fangjun Kuang)
+#                2021  Mobvoi Inc. (authors: Yaguang Hu)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -248,10 +249,21 @@ class TestRaggedOps(unittest.TestCase):
             '[ [x x] [] [x] [x x x] [] [] [x x] [x] [x x] ]')
         self.assertEqual(str(shape1), str(expected_shape1))
 
+    def test_create_ragged2(self):
+        lst = [[7, 9], [12, 13], []]
+        ragged = k2.create_ragged2(lst)
+        expected = k2.RaggedInt('[[7 9] [12 13] []]')
+        self.assertEqual(str(ragged), str(expected))
+
+        float_lst = [[1.2], [], [3.4, 5.6, 7.8]]
+        ragged = k2.create_ragged2(float_lst)
+        expected = _k2.RaggedFloat('[[1.2] [] [3.4 5.6 7.8]]')
+        self.assertEqual(str(ragged), str(expected))
+
     def test_unique_sequences_two_axes(self):
         ragged = k2.RaggedInt('[[1 3] [1 2] [1 2] [1 4] [1 3] [1 2] [1]]')
         unique = k2.ragged.unique_sequences(ragged)
-        # [1, 3] has a larger hash value than [1, 2], after sorting,
+        # [1, 3] has a larger hash value than [1, 2]; after sorting,
         # [1, 3] is placed after [1, 2]
         expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
         self.assertEqual(str(unique), str(expected))

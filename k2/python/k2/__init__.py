@@ -26,6 +26,7 @@ from .fsa_algo import intersect_device
 from .fsa_algo import invert
 from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fst
+from .fsa_algo import random_paths
 from .fsa_algo import remove_epsilon
 from .fsa_algo import remove_epsilons_iterative_tropical
 from .fsa_algo import shortest_path
@@ -37,6 +38,7 @@ from .ops import index_fsa
 from .ops import index_ragged
 from .ops import index_select
 from .ops import index_tensor
+from .ragged import create_ragged2
 from .ragged import RaggedShape
 from .symbol_table import SymbolTable
 from .utils import create_fsa_vec

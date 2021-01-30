@@ -176,14 +176,24 @@ static void PybindOpPerSublist(py::module &m, Op op, const char *name) {
 }
 
 template <typename T>
-static void PybindAppend(py::module &m, const char *name) {
+static void PybindAppend(py::module &m) {
   // py::list is more efficient, but it requires more code
   m.def(
-      name,
+      "append",
       [](std::vector<Ragged<T>> &srcs, int32_t axis) -> Ragged<T> {
         return Append(axis, srcs.size(), &srcs[0]);
       },
       py::arg("srcs"), py::arg("axis"));
+}
+
+template <typename T>
+static void PybindCreateRagged2(py::module &m) {
+  m.def(
+      "create_ragged2",
+      [](const std::vector<std::vector<T>> &vecs) -> Ragged<T> {
+        return CreateRagged2(vecs);
+      },
+      py::arg("vecs"));
 }
 
 static void PybindGetLayer(py::module &m) {
@@ -206,9 +216,9 @@ void PybindRaggedOps(py::module &m) {
   PybindNormalizePerSublist<float>(m, "normalize_per_sublist");
   PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
   PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
-  PybindAppend<int32_t>(m,
-                        "append");  // no need to use append_int or append_float
-                                    // since pybind11 supports overloading
+  PybindAppend<int32_t>(m);
+  PybindCreateRagged2<int32_t>(m);
+  PybindCreateRagged2<float>(m);
   PybindGetLayer(m);
   PybindUniqueSequences(m);
 }

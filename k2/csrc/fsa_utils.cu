@@ -2376,7 +2376,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   int32_t *path_storage_data = path_storage.Data();
 
   namespace cg = cooperative_groups;
-  const unsigned int thread_group_size = 1;  // Can tune this.  Power of 2,
+  const unsigned int thread_group_size = 8;  // Can tune this.  Power of 2,
                                              // 1<=thread_group_size<=256
   const FloatType *arc_cdf_data = arc_cdf.Data();
   const Arc *arcs = fsas.values.Data();
@@ -2412,7 +2412,6 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
            end_arc = fsas_row_splits2_data[start_state + 1];
        shared_data->begin_arc_idx01x = begin_arc;
        shared_data->num_arcs = end_arc - begin_arc;
-       K2_CHECK_GT(shared_data->num_arcs, 0);
        FloatType p = ((FloatType)0.5 + path_idx1) / num_paths;
        shared_data->p = p;
      }
@@ -2480,22 +2479,22 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
            shared_data->begin_arc_idx01x = next_arc_idx01x;
            shared_data->num_arcs = next_arc_idx01x_next - next_arc_idx01x;
            shared_data->p = p;
+           break;
          }
        }
      }
     };
 
-
     EvalGroupDevice<thread_group_size, PathState<FloatType>>(
         c, tot_num_paths, lambda_set_paths);
   } else {
     // CPU.
-    for (int32_t fsa_idx = 0; fsa_idx < num_fsas; fsa_idx++) {
+    for (int32_t fsa_idx = 0; fsa_idx < num_fsas; ++fsa_idx) {
       int32_t state_idx0x = fsas_row_splits1_data[fsa_idx],
           final_state = fsas_row_splits1_data[fsa_idx + 1] - 1,
           num_paths = num_paths_data[fsa_idx],
           num_batches = num_state_batches_data[fsa_idx];
-      for (int32_t path_idx1 = 0; path_idx1 < num_paths; path_idx1++) {
+      for (int32_t path_idx1 = 0; path_idx1 < num_paths; ++path_idx1) {
 
         int32_t *path_storage_start = path_storage_data +
             storage_row_splits_data[fsa_idx] + path_idx1 * num_batches;
@@ -2503,10 +2502,10 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
         int32_t cur_state_idx01 = state_idx0x;  // Start state.  Note: start
                                                 // state is never the final
                                                 // state.
-        FloatType p = ((FloatType)0.5 + path_idx1) / num_paths;
+        FloatType p = (FloatType(0.5) + path_idx1) / num_paths;
 
         int32_t path_pos;
-        for (path_pos = 0; path_pos <= num_batches; path_pos++) {
+        for (path_pos = 0; path_pos <= num_batches; ++path_pos) {
           // Note: if things are working correctly we should break from this
           // loop before it naturally terminates.
           if (cur_state_idx01 == final_state) {  // Finalize..
@@ -2515,7 +2514,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
           }
           int32_t arc_idx01x = fsas_row_splits2_data[cur_state_idx01],
               arc_idx01x_next = fsas_row_splits2_data[cur_state_idx01 + 1];
-          K2_CHECK_GT(arc_idx01x_next, arc_idx01x);
+          K2_DCHECK_GT(arc_idx01x_next, arc_idx01x);
           // std::upper_bound finds the first index i in the range
           //  [arc_idx01x+1 .. arc_idx01x_next-1] such that
           // arc_cdf_data[i] > p, and if it doesn't exist gives us
@@ -2524,9 +2523,13 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
               *end = arc_cdf_data + arc_idx01x_next;
           int32_t arc_idx2 = std::upper_bound(begin1, end, p) - begin1;
           int32_t arc_idx012 = arc_idx01x + arc_idx2;
-          K2_DCHECK_GE(p, arc_cdf_data[arc_idx012]);
-          K2_DCHECK_LE(p, (arc_idx012 + 1 == arc_idx01x_next ? 1.0 :
-                           arc_cdf_data[arc_idx012 + 1]));
+          FloatType interval_start = arc_cdf_data[arc_idx012],
+              interval_end = (arc_idx012 + 1 == arc_idx01x_next ? 1.0 :
+                              arc_cdf_data[arc_idx012 + 1]);
+          K2_DCHECK_GE(p, interval_start);
+          K2_DCHECK_LE(p, interval_end);
+          p = (p - interval_start) / (interval_end - interval_start);
+
           // + 1 to leave space to store the path length.
           path_storage_start[path_pos + 1] = arc_idx012;
           int32_t next_state_idx01 = arcs[arc_idx012].dest_state + state_idx0x;
@@ -2541,7 +2544,6 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   Array1<int32_t> path_lengths(c, tot_num_paths + 1);
   int32_t *path_lengths_data = path_lengths.Data();
   K2_EVAL(c, tot_num_paths, lambda_get_path_lengths, (int32_t i) {
-
       int32_t fsa_idx = paths_row_ids_data[i],
           path_begin = paths_row_splits_data[fsa_idx],
           path_idx1 = i - path_begin,

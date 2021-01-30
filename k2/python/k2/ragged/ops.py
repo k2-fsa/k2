@@ -153,6 +153,19 @@ def append(srcs: List[_k2.RaggedInt], axis=0) -> _k2.RaggedInt:
     return _k2.append(srcs, axis)
 
 
+def create_ragged2(vecs: Union[List[List[int]], List[List[float]]]
+                  ) -> Union[_k2.RaggedInt, _k2.RaggedFloat]:
+    '''
+    Construct a Ragged with 2 axes.
+    Args:
+      vecs:
+        Input of a list of list
+    Returns:
+      A single ragged array.
+    '''
+    return _k2.create_ragged2(vecs)
+
+
 def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
     '''Returns a `sub-shape` of `src`.
 
