@@ -183,6 +183,10 @@ static void PybindAppend(py::module &m, const char *name) {
       py::arg("srcs"), py::arg("axis"));
 }
 
+static void PybindGetLayer(py::module &m) {
+  m.def("get_layer", &GetLayer, py::arg("src"), py::arg("layer"));
+}
+
 }  // namespace k2
 
 void PybindRaggedOps(py::module &m) {
@@ -198,4 +202,5 @@ void PybindRaggedOps(py::module &m) {
   PybindAppend<int32_t>(m,
                         "append");  // no need to use append_int or append_float
                                     // since pybind11 supports overloading
+  PybindGetLayer(m);
 }

@@ -214,6 +214,25 @@ class TestRaggedOps(unittest.TestCase):
         ragged = k2.ragged.append([ragged1, ragged2], axis=1)
         self.assertEqual(str(ragged), '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]')
 
+    def get_layer_two_axes(self):
+        shape = k2.RaggedShape('[ [x x x] [x] [] [x x] ]')
+        subshape = k2.ragged.get_layer(shape, 0)
+        # subshape should contain the same information as shape
+        self.assertEqual(subshape.num_axes(), 2)
+        self.assertEqual(str(subshape), str(shape))
+
+    def get_layer_three_axes(self):
+        shape = k2.RaggedShape(
+            '[ [[x x] [] [x] [x x x]] [[] [] [x x] [x] [x x]] ]')
+        shape0 = k2.ragged.get_layer(shape, 0)
+        expected_shape0 = k2.RaggedShape('[ [x x x x] [x x x x x] ]')
+        self.assertEqual(str(shape0), str(expected_shape0))
+
+        shape1 = k2.ragged.get_layer(shape, 1)
+        expected_shape1 = k2.RaggedShape(
+            '[ [x x] [] [x] [x x x] [] [] [x x] [x] [x x] ]')
+        self.assertEqual(str(shape1), str(expected_shape1))
+
 
 if __name__ == '__main__':
     unittest.main()

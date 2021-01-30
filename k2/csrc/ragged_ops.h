@@ -406,9 +406,9 @@ Ragged<int32_t> AddPrefixToRagged(Ragged<int32_t> &src,
 
   Note: you probably shouldn't be using this very often; if you are using
   this, you may be thinking in a PyTorch-y way but you should be relying on
-  things like Eval() with custom lambdas more.  Read algorithms like in
-  compose.cc to understand why.  Also: axis==0 is probably the only really
-  useful case. See more useful notes in comments in the implementation.
+  things like Eval() with custom lambdas more.  Also: axis==0 is probably
+  the only really useful case. See more useful notes in comments in the
+  implementation.
  */
 RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
 
@@ -1344,8 +1344,10 @@ Array1<T> ComputeHash(Ragged<int32_t> &src);
             last axis (and with the last-but-one indexes possibly in a different
             order).
 
-  CAUTION: the current implementation does not completely remove the possibility
-  of repeated sequnces, as it relies on a hash and ignores collisions.
+  CAUTION: It does not completely guarantee that all unique sequences will
+  be present in the output, as it relies on a hash and ignores collisions.
+  If several sequences have the same hash, only one of them is kept, even
+  if the actual content in the sequence is different.
  */
 Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src);
 

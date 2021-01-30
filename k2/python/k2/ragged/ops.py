@@ -154,3 +154,19 @@ def append(srcs: List[_k2.RaggedInt], axis=0) -> _k2.RaggedInt:
     '''
     assert axis in (0, 1)
     return _k2.append(srcs, axis)
+
+
+def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
+    '''Returns a `sub-shape` of `src`.
+
+    Args:
+      src:
+        Source RaggedShape.
+      layer:
+        Layer that is desired, from `0 .. src.num_axes() - 2` (inclusive).
+
+    Returns:
+      This returned shape will have `num_axes() == 2`, the minimal case of
+      a RaggedShape.
+    '''
+    return _k2.get_layer(src, layer)
