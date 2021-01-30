@@ -1066,8 +1066,8 @@ void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
 
   FsaVec epsilon_closure_prec =
       SubsampleRagged(epsilon_closure_mapped, epsilon_prec_renumbering);
-  Ragged<int32_t> epsilon_closure_prec_arc_map =
-      Index(epsilon_closure_mapped_arc_map, 0, epsilon_prec_renumbering.New2Old());
+  Ragged<int32_t> epsilon_closure_prec_arc_map = Index(
+      epsilon_closure_mapped_arc_map, 0, epsilon_prec_renumbering.New2Old());
   // `combined_prec` will be set to an FSA, with the same state numbering as
   // `non_epsilon_fsa`, containing the arcs which arose by combining epsilon
   // arcs with non-epsilon arcs preceding them.

@@ -10,7 +10,9 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <limits>
 #include <numeric>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -1465,10 +1467,9 @@ TEST(RaggedShapeOpsTest, TestIndex) {
 TEST(RaggedShapeOpsTest, TestIndexAxis1) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     {
-
-      Ragged<int32_t> input = Ragged<int32_t>(" [ [ 1 2 ] [ 3 4 5 ] [ 6 7 ] [ ] ]").To(context);
+      Ragged<int32_t> input = Ragged<int32_t>(" [ [ 1 2 ] [ 3 4 5 ] [ 6 7 ] [ ] ]").To(context);  // NOLINT
       Array1<int32_t> indexes = Array1<int32_t>(" [ 1 0 4 2 6 5 ]").To(context);
-      Ragged<int32_t> output = Ragged<int32_t>(" [ [ 2 1 ] [ 5 3 ] [ 7 6 ] [ ] ]").To(context);
+      Ragged<int32_t> output = Ragged<int32_t>(" [ [ 2 1 ] [ 5 3 ] [ 7 6 ] [ ] ]").To(context);  // NOLINT
 
       Ragged<int32_t> indexed = Index(input, 1, indexes);
       EXPECT_EQ(Equal(output, indexed), true);
@@ -2660,11 +2661,14 @@ TEST(RaggedOpsTest, TestUniqueSequences) {
       Array1<int32_t> hash_src = ComputeHash<int32_t>(src).To(cpu),
           hash_unique = ComputeHash<int32_t>(unique).To(cpu);
 
-      RaggedShape src_hash_shape = RemoveAxis(src.shape, src.NumAxes() - 1).To(cpu);
+      RaggedShape src_hash_shape =
+          RemoveAxis(src.shape, src.NumAxes() - 1).To(cpu);
       src_hash_shape = GetLayer(src_hash_shape, src_hash_shape.NumLayers() - 1);
 
-      RaggedShape unique_hash_shape = RemoveAxis(unique.shape, unique.NumAxes() - 1).To(cpu);
-      unique_hash_shape = GetLayer(unique_hash_shape, unique_hash_shape.NumLayers() - 1);
+      RaggedShape unique_hash_shape =
+          RemoveAxis(unique.shape, unique.NumAxes() - 1).To(cpu);
+      unique_hash_shape =
+          GetLayer(unique_hash_shape, unique_hash_shape.NumLayers() - 1);
 
       K2_CHECK_EQ(src_hash_shape.Dim0(), unique_hash_shape.Dim0());
 
@@ -2674,11 +2678,14 @@ TEST(RaggedOpsTest, TestUniqueSequences) {
           *unique_hash_data = hash_unique.Data();
 
       for (int32_t r = 0; r < src_hash_shape.Dim0(); r++) {
-
-        int32_t src_begin = src_hash_row_splits[r], src_end = src_hash_row_splits[r+1],
-            unique_begin = unique_hash_row_splits[r], unique_end = unique_hash_row_splits[r+1];
-        std::set<int32_t> src_set(src_hash_data + src_begin, src_hash_data + src_end),
-            unique_set(unique_hash_data + unique_begin, unique_hash_data + unique_end);
+        int32_t src_begin = src_hash_row_splits[r],
+                src_end = src_hash_row_splits[r + 1],
+                unique_begin = unique_hash_row_splits[r],
+                unique_end = unique_hash_row_splits[r + 1];
+        std::set<int32_t> src_set(src_hash_data + src_begin,
+                                  src_hash_data + src_end),
+            unique_set(unique_hash_data + unique_begin,
+                       unique_hash_data + unique_end);
         EXPECT_EQ((src_set == unique_set), true);
       }
     }

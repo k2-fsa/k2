@@ -563,7 +563,8 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
   if (axis == 0) {
     return IndexAxis0(src, indexes, elem_indexes);
   } else if (axis == src.NumAxes() - 1) {
-    // This code is related to SubsampleRaggedShape(). `indexes` corresponds to `new2old`.
+    // This code is related to SubsampleRaggedShape(). `indexes` corresponds
+    // to `new2old`.
     Array1<int32_t> last_row_ids = src.RowIds(num_axes - 1)[indexes];
 #ifndef NDEBUG
     if (!IsMonotonic(last_row_ids)) {
@@ -2088,13 +2089,12 @@ struct Hash {
   // Would like this to be a POD type so not adding the following constructor:
   // Hash(int32_t i): hash1(i), hash2(i), product1(31), product2(167) { }
   // .. but implementing it in HashInputIterator.
-
 };
 
 template <typename T>
 struct HashInputIterator {
-  explicit __host__ __device__ __forceinline__ HashInputIterator(const int32_t *i)
-      : i_(i) { }
+  explicit __host__ __device__ __forceinline__ HashInputIterator(const int32_t *i)  // NOLINT
+      : i_(i) {}
   __device__ __forceinline__ Hash<T> operator[](int32_t idx) const {
     return Hash<T>{i_[idx], i_[idx], 31, 167};
   }
@@ -2113,7 +2113,8 @@ struct HashOutputIteratorDeref {  // this is what you get when you dereference
       : t_(t) {}
   __device__ __forceinline__ HashOutputIteratorDeref &operator=(
       const Hash<T> &h) {
-    *t_ = h.hash1 + 13 * h.product1 + 104729 * h.hash2 + (104729 * 787) * h.product2;
+    *t_ = h.hash1 + 13 * h.product1 + 104729 * h.hash2 +
+          (104729 * 787) * h.product2;
     return *this;
   }
   T *t_;
