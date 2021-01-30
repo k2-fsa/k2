@@ -154,7 +154,7 @@ def append(srcs: List[_k2.RaggedInt], axis=0) -> _k2.RaggedInt:
 
 
 def create_ragged2(vecs: Union[List[List[int]], List[List[float]]]
-                  ) -> Union[_k2.RaggedInt, _k2.RaggedFloat]:
+                  ) -> Union[_k2.RaggedInt, _k2.RaggedFloat]:  # noqa
     '''
     Construct a Ragged with 2 axes.
     Args:

@@ -270,7 +270,7 @@ class TestRaggedOps(unittest.TestCase):
 
     def test_unique_sequences_three_axes(self):
         ragged = k2.RaggedInt(
-            '[ [[1] [1 2] [1 3] [1] [1 3]] [[1 4] [1 2] [1 3] [1 3] [1 2] [1]] ]'
+            '[ [[1] [1 2] [1 3] [1] [1 3]] [[1 4] [1 2] [1 3] [1 3] [1 2] [1]] ]'  # noqa
         )
         unique = k2.ragged.unique_sequences(ragged)
         expected = k2.RaggedInt(
