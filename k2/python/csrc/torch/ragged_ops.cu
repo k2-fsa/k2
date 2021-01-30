@@ -190,6 +190,10 @@ static void PybindGetLayer(py::module &m) {
   m.def("get_layer", &GetLayer, py::arg("src"), py::arg("layer"));
 }
 
+static void PybindUniqueSequences(py::module &m) {
+  m.def("unique_sequences", &UniqueSequences, py::arg("src"));
+}
+
 }  // namespace k2
 
 void PybindRaggedOps(py::module &m) {
@@ -206,4 +210,5 @@ void PybindRaggedOps(py::module &m) {
                         "append");  // no need to use append_int or append_float
                                     // since pybind11 supports overloading
   PybindGetLayer(m);
+  PybindUniqueSequences(m);
 }

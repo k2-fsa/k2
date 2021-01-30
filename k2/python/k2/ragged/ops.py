@@ -167,3 +167,29 @@ def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
       a RaggedShape.
     '''
     return _k2.get_layer(src, layer)
+
+
+def unique_sequences(src: _k2.RaggedInt) -> _k2.RaggedInt:
+    '''Remove repeated sequences.
+
+    If `src` has two axes, this will return the unique sub-lists (in a possibly
+    different order, but without repeats).  If `src` has 3 axes, it will
+    do the above but separately for each index on axis 0; if more than 3 axes,
+    the earliest axes will be ignored.
+
+    Caution:
+      It does not completely guarantee that all unique sequences will be
+      present in the output, as it relies on a hash and ignores collisions.
+      If several sequences have the same hash, only one of them is kept, even
+      if the actual content in the sequence is different.
+
+    Args:
+      src:
+        The input ragged tensor.
+
+    Returns:
+     Returns a tensor with the same number of axes as `src` and possibly fewer
+     elements due to removing repeated sequences on the last axis (and with the
+     last-but-one indexes possibly in a different order).
+    '''
+    return _k2.unique_sequences(src)

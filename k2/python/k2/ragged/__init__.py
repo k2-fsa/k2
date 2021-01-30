@@ -8,6 +8,7 @@ from .ops import remove_values_eq
 from .ops import remove_values_leq
 from .ops import sum_per_sublist
 from .ops import to_list
+from .ops import unique_sequences
 from .ragged_shape import RaggedShape
 from .ragged_shape import compose_ragged_shapes
 from .ragged_shape import create_ragged_shape2

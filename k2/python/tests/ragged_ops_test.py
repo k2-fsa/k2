@@ -229,14 +229,14 @@ class TestRaggedOps(unittest.TestCase):
         ragged = k2.ragged.append([ragged1, ragged2], axis=1)
         self.assertEqual(str(ragged), '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]')
 
-    def get_layer_two_axes(self):
+    def test_get_layer_two_axes(self):
         shape = k2.RaggedShape('[ [x x x] [x] [] [x x] ]')
         subshape = k2.ragged.get_layer(shape, 0)
         # subshape should contain the same information as shape
         self.assertEqual(subshape.num_axes(), 2)
         self.assertEqual(str(subshape), str(shape))
 
-    def get_layer_three_axes(self):
+    def test_get_layer_three_axes(self):
         shape = k2.RaggedShape(
             '[ [[x x] [] [x] [x x x]] [[] [] [x x] [x] [x x]] ]')
         shape0 = k2.ragged.get_layer(shape, 0)
@@ -247,6 +247,23 @@ class TestRaggedOps(unittest.TestCase):
         expected_shape1 = k2.RaggedShape(
             '[ [x x] [] [x] [x x x] [] [] [x x] [x] [x x] ]')
         self.assertEqual(str(shape1), str(expected_shape1))
+
+    def test_unique_sequences_two_axes(self):
+        ragged = k2.RaggedInt('[[1 3] [1 2] [1 2] [1 4] [1 3] [1 2] [1]]')
+        unique = k2.ragged.unique_sequences(ragged)
+        # [1, 3] has a larger hash value than [1, 2], after sorting,
+        # [1, 3] is placed after [1, 2]
+        expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
+        self.assertEqual(str(unique), str(expected))
+
+    def test_unique_sequences_three_axes(self):
+        ragged = k2.RaggedInt(
+            '[ [[1] [1 2] [1 3] [1] [1 3]] [[1 4] [1 2] [1 3] [1 3] [1 2] [1]] ]'
+        )
+        unique = k2.ragged.unique_sequences(ragged)
+        expected = k2.RaggedInt(
+            '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4]] ]')
+        self.assertEqual(str(unique), str(expected))
 
 
 if __name__ == '__main__':
