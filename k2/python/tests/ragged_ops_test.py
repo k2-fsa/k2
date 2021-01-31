@@ -19,7 +19,7 @@ import torch
 
 class TestRaggedOps(unittest.TestCase):
 
-    def test_remove_axis(self):
+    def test_remove_axis_ragged_array(self):
         s = '''
             [ [ [ 1 2 ] [ 0 ] ] [ [3 0 ] [ 2 ] ] ]
         '''
@@ -30,6 +30,21 @@ class TestRaggedOps(unittest.TestCase):
 
         ans = k2.ragged.remove_axis(src, 1)
         self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] ]')
+
+    def test_remove_axis_ragged_shape(self):
+        shape = k2.RaggedShape('[ [[x x] [] [x]] [[] [x x] [x x x] [x]] ]')
+
+        ans = k2.ragged.remove_axis(shape, 0)
+        expected = k2.RaggedShape('[[x x] [] [x] [] [x x] [x x x] [x]]')
+        self.assertEqual(str(ans), str(expected))
+
+        ans = k2.ragged.remove_axis(shape, 1)
+        expected = k2.RaggedShape('[[x x x] [x x x x x x]]')
+        self.assertEqual(str(ans), str(expected))
+
+        ans = k2.ragged.remove_axis(shape, 2)
+        expected = k2.RaggedShape('[[x x x] [x x x x]]')
+        self.assertEqual(str(ans), str(expected))
 
     def test_to_list(self):
         s = '''
@@ -215,25 +230,52 @@ class TestRaggedOps(unittest.TestCase):
         ragged = k2.ragged.append([ragged1, ragged2], axis=1)
         self.assertEqual(str(ragged), '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]')
 
-    def test_create_ragged_from_list(self):
+    def test_get_layer_two_axes(self):
+        shape = k2.RaggedShape('[ [x x x] [x] [] [x x] ]')
+        subshape = k2.ragged.get_layer(shape, 0)
+        # subshape should contain the same information as shape
+        self.assertEqual(subshape.num_axes(), 2)
+        self.assertEqual(str(subshape), str(shape))
+
+    def test_get_layer_three_axes(self):
+        shape = k2.RaggedShape(
+            '[ [[x x] [] [x] [x x x]] [[] [] [x x] [x] [x x]] ]')
+        shape0 = k2.ragged.get_layer(shape, 0)
+        expected_shape0 = k2.RaggedShape('[ [x x x x] [x x x x x] ]')
+        self.assertEqual(str(shape0), str(expected_shape0))
+
+        shape1 = k2.ragged.get_layer(shape, 1)
+        expected_shape1 = k2.RaggedShape(
+            '[ [x x] [] [x] [x x x] [] [] [x x] [x] [x x] ]')
+        self.assertEqual(str(shape1), str(expected_shape1))
+
+    def test_create_ragged2(self):
         lst = [[7, 9], [12, 13], []]
-        ragged_int = k2.create_ragged2(lst)
-        assert torch.all(
-            torch.eq(ragged_int.values(), torch.tensor([7, 9, 12, 13])))
-        assert ragged_int.dim0() == 3
-        assert torch.all(
-            torch.eq(ragged_int.row_splits(1), torch.tensor([0, 2, 4, 4])))
-        self.assertEqual([3, 4], ragged_int.tot_sizes())
+        ragged = k2.create_ragged2(lst)
+        expected = k2.RaggedInt('[[7 9] [12 13] []]')
+        self.assertEqual(str(ragged), str(expected))
 
         float_lst = [[1.2], [], [3.4, 5.6, 7.8]]
-        ragged_float = k2.create_ragged2(float_lst)
-        assert torch.all(
-            torch.eq(ragged_float.values(), torch.tensor([1.2, 3.4, 5.6,
-                                                          7.8])))
-        assert torch.all(
-            torch.eq(ragged_float.row_splits(1), torch.tensor([0, 1, 1, 4])))
-        assert ragged_float.dim0() == 3
-        self.assertEqual([3, 4], ragged_float.tot_sizes())
+        ragged = k2.create_ragged2(float_lst)
+        expected = _k2.RaggedFloat('[[1.2] [] [3.4 5.6 7.8]]')
+        self.assertEqual(str(ragged), str(expected))
+
+    def test_unique_sequences_two_axes(self):
+        ragged = k2.RaggedInt('[[1 3] [1 2] [1 2] [1 4] [1 3] [1 2] [1]]')
+        unique = k2.ragged.unique_sequences(ragged)
+        # [1, 3] has a larger hash value than [1, 2]; after sorting,
+        # [1, 3] is placed after [1, 2]
+        expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
+        self.assertEqual(str(unique), str(expected))
+
+    def test_unique_sequences_three_axes(self):
+        ragged = k2.RaggedInt(
+            '[ [[1] [1 2] [1 3] [1] [1 3]] [[1 4] [1 2] [1 3] [1 3] [1 2] [1]] ]'  # noqa
+        )
+        unique = k2.ragged.unique_sequences(ragged)
+        expected = k2.RaggedInt(
+            '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4]] ]')
+        self.assertEqual(str(unique), str(expected))
 
 
 if __name__ == '__main__':

@@ -2,12 +2,14 @@
  * @brief python wrappers for ragged_ops.h
  *
  * @copyright
- * Copyright (c)  2020  Xiaomi Corp.       (author: Fangjun Kuang
- *                                                  Daniel Povey)
+ * Copyright (c)  2020  Xiaomi Corp.       (authors: Fangjun Kuang
+ *                                                   Daniel Povey)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
+
+#include <vector>
 
 #include "k2/csrc/ragged_ops.h"
 #include "k2/python/csrc/torch/ragged_ops.h"
@@ -16,8 +18,11 @@
 namespace k2 {
 
 template <typename T>
-static void PybindRaggedRemoveAxis(py::module &m, const char *name) {
-  m.def(name, &RemoveAxis<T>, py::arg("src"), py::arg("axis"));
+static void PybindRaggedRemoveAxis(py::module &m) {
+  // src is a Ragged<T>
+  //  there is another `remove_axis` in k2/python/csrc/torch/ragged.cu
+  //  taking a RaggedShape as input.
+  m.def("remove_axis", &RemoveAxis<T>, py::arg("src"), py::arg("axis"));
 }
 
 template <typename T>
@@ -173,10 +178,10 @@ static void PybindOpPerSublist(py::module &m, Op op, const char *name) {
 }
 
 template <typename T>
-static void PybindAppend(py::module &m, const char *name) {
+static void PybindAppend(py::module &m) {
   // py::list is more efficient, but it requires more code
   m.def(
-      name,
+      "append",
       [](std::vector<Ragged<T>> &srcs, int32_t axis) -> Ragged<T> {
         return Append(axis, srcs.size(), &srcs[0]);
       },
@@ -184,20 +189,28 @@ static void PybindAppend(py::module &m, const char *name) {
 }
 
 template <typename T>
-static void PybindCreateRagged2(py::module &m, const char *name) {
+static void PybindCreateRagged2(py::module &m) {
   m.def(
-      name,
+      "create_ragged2",
       [](const std::vector<std::vector<T>> &vecs) -> Ragged<T> {
         return CreateRagged2(vecs);
       },
       py::arg("vecs"));
 }
 
+static void PybindGetLayer(py::module &m) {
+  m.def("get_layer", &GetLayer, py::arg("src"), py::arg("layer"));
+}
+
+static void PybindUniqueSequences(py::module &m) {
+  m.def("unique_sequences", &UniqueSequences, py::arg("src"));
+}
+
 }  // namespace k2
 
 void PybindRaggedOps(py::module &m) {
   using namespace k2;  // NOLINT
-  PybindRaggedRemoveAxis<int32_t>(m, "ragged_int_remove_axis");
+  PybindRaggedRemoveAxis<int32_t>(m);
   PybindRaggedArange<int32_t>(m, "ragged_int_arange");
   PybindRemoveValuesLeq<int32_t>(m, "ragged_int_remove_values_leq");
   PybindRemoveValuesEq<int32_t>(m, "ragged_int_remove_values_eq");
@@ -205,9 +218,9 @@ void PybindRaggedOps(py::module &m) {
   PybindNormalizePerSublist<float>(m, "normalize_per_sublist");
   PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
   PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
-  PybindAppend<int32_t>(m,
-                        "append");  // no need to use append_int or append_float
-                                    // since pybind11 supports overloading
-  PybindCreateRagged2<int32_t>(m, "create_ragged2");
-  PybindCreateRagged2<float>(m, "create_ragged2");
+  PybindAppend<int32_t>(m);
+  PybindCreateRagged2<int32_t>(m);
+  PybindCreateRagged2<float>(m);
+  PybindGetLayer(m);
+  PybindUniqueSequences(m);
 }

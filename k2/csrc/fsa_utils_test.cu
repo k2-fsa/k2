@@ -9,6 +9,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <limits>
 #include <numeric>
 #include <vector>
@@ -1179,7 +1180,8 @@ void TestRandomPaths(FsaVec &fsa_vec_in) {
       } else {
         Ragged<int32_t> other_paths = cpu_paths[i].To(context);
         if (!Equal(paths, other_paths)) {
-          K2_LOG(WARNING) << "Paths differ: " << other_paths << " vs. " << paths;
+          K2_LOG(WARNING) << "Paths differ: " << other_paths << " vs. "
+                          << paths;
         }
       }
 
@@ -1241,9 +1243,9 @@ void TestRandomPaths(FsaVec &fsa_vec_in) {
                   break;
                 } else {
                   // arc should not be < prev_arc.
-                  K2_CHECK_GE(arc, prev_arc) << ", arc_cdf_data[prev_arc,arc] = "
-                                             << arc_cdf_data[prev_arc] << ","
-                                             << arc_cdf_data[arc];
+                  K2_CHECK_GE(arc, prev_arc)
+                      << ", arc_cdf_data[prev_arc,arc] = "
+                      << arc_cdf_data[prev_arc] << "," << arc_cdf_data[arc];
                 }
               }
             }
