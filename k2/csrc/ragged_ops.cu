@@ -381,7 +381,8 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
       c, ans_dim0, lambda_set_offsets, (int32_t i)->void {
         // 0 <= i < ans_dim0
         int32_t old_offset = new2old_data[i],
-            old_offset_next = old_offset + 1;
+            old_offset_next = old_offset + 1,
+            offset_diff = 1;
         // The following is a special case that interprets -1 as referring to an
         // empty list.  In this case, old_offset == old_offset_next == 0.
         // The specific value 0 is not necessary; they could be equal
@@ -393,10 +394,11 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
           old_offsets_acc(axis, i) = old_offset;
           // Below, 'new_offsets_acc' currently contains the size rather
           // than the offset; we need to do exclusive-sum.
-          new_offsets_acc(axis, i) = old_offset_next - old_offset;
+          new_offsets_acc(axis, i) = offset_diff;
           if (axis + 1 == num_axes) return;
           old_offset = row_splits_acc(axis)[old_offset];
           old_offset_next = row_splits_acc(axis)[old_offset_next];
+          offset_diff = old_offset_next - old_offset;
         }
       });
   ExclusiveSum(*new_offsets, new_offsets);
@@ -435,6 +437,10 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
                                     // it's how TaskRedirect works..
   Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
   auto task_redirects_acc = task_redirects.Accessor();
+
+
+  ans.Layers()[0].row_splits = new_offsets.Row(1);
+
   for (int32_t axis = 0; axis < num_axes; ++axis) {
     streams[axis] = pr.NewStream();
     With w(streams[axis]);
@@ -444,7 +450,9 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   }
 
   for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
-    {
+    if (axis != 0) {
+      // The following code doesn't work for axis 0, but we handled
+      // it above with ans.Layers()[0].row_splits = new_offsets.Row(1).
       int32_t *this_new_row_splits = ans.RowSplits(axis + 1).Data();
       const int32_t *this_old_row_splits = src.RowSplits(axis + 1).Data();
 

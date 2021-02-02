@@ -186,6 +186,9 @@ class RaggedShape {
   // Layers() is intended for internal-ish use; users shouldn't really have to
   // interact with it.
   const std::vector<RaggedShapeLayer> &Layers() const { return layers_; }
+  // CAUTION: you probably shouldn't use this unless you really know what you
+  // are doing.
+  std::vector<RaggedShapeLayer> &Layers() { return layers_; }
 
   // Check the RaggedShape for consistency; die on failure.
   void Check() {
