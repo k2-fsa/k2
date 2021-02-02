@@ -186,6 +186,9 @@ class RaggedShape {
   // Layers() is intended for internal-ish use; users shouldn't really have to
   // interact with it.
   const std::vector<RaggedShapeLayer> &Layers() const { return layers_; }
+  // CAUTION: you probably shouldn't use this unless you really know what you
+  // are doing.
+  std::vector<RaggedShapeLayer> &Layers() { return layers_; }
 
   // Check the RaggedShape for consistency; die on failure.
   void Check() {
@@ -219,8 +222,10 @@ template <int MAX_LAYERS>
 struct RowSplitsAccessor {
   int32_t *ptrs[MAX_LAYERS] = {nullptr};  // these are indexed by layer, from 0.
 
-  // row_splits_acc(1) == shape.RowSplits(1), for instance.
-  int32_t *operator()(int32_t layer) { return ptrs[layer - 1]; }
+  // row_splits_acc(0) == shape.RowSplits(1), for instance.
+  __host__ __device__ int32_t *operator()(int32_t layer) const {
+    return ptrs[layer];
+  }
 
   explicit RowSplitsAccessor(RaggedShape &src);
 };
@@ -229,8 +234,10 @@ struct RowSplitsAccessor {
 template <int MAX_LAYERS>
 struct RowIdsAccessor {
   int32_t *ptrs[MAX_LAYERS] = {nullptr};  // these are indexed by layer, from 0.
-  // row_ids_acc(1) == shape.RowIds(1), for instance.
-  int32_t *operator()(int32_t layer) { return ptrs[layer - 1]; }
+  // row_ids_acc(0) == shape.RowIds(1), for instance.
+  __host__ __device__ int32_t *operator()(int32_t layer) const {
+    return ptrs[layer];
+  }
 
   explicit RowIdsAccessor(RaggedShape &src);
 };

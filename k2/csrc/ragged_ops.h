@@ -616,15 +616,6 @@ RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
                    Array1<uint32_t> *merge_map = nullptr);
 
 /*
-    Gets an array of pointers to the row_splits of `src`, on the same
-    device as `src`.
-       @param [in] src  Source RaggedShape
-       @return        Returns an array of size src.NumAxes() - 1 containing
-                      pointers to the starts of the row_splits vectors.
-*/
-Array1<int32_t *> GetRowSplitsPtr(RaggedShape &src);
-
-/*
   Extract meta-info from the shape (this will include populating any row_ids and
   row_splits that were not already populated).  This is used inside algorithms
   when we need to transfer meta-info to GPU.
@@ -1122,10 +1113,18 @@ bool Equal(const Ragged<T> &a, const Ragged<T> &b) {
       @param [in] indexes  Array of indexes, which will be interpreted
                            as indexes into axis `axis` of `src`,
                            i.e. with 0 <= indexes[i] < src.TotSize(axis).
+
+                           As a special case, if axis == 0 we also support
+                           -1 as an index, which will result in the
+                           empty list (as if it were the index into
+                           a position in `src` that had an empty list
+                           at that point).
+
                            CAUTION: these are currently not allowed to
                            change the order on axes less than `axis`,
-                           i.e. if axis > 0, we require
+                           i.e. if axis > 0, we require.
                            `IsMonotonic(src.RowIds(axis)[indexes])`.
+
       @param [out]         If non-null, this will be set to an
                            Array1<int32_t> containing the indexes
                            into the elements of an array with shape

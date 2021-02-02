@@ -236,18 +236,6 @@ RaggedShape RaggedShapeFromTotSizes(ContextPtr c, int32_t num_axes,
   return RaggedShape(axes, false);
 }
 
-Array1<int32_t *> GetRowSplitsPtr(RaggedShape &src) {
-  NVTX_RANGE(K2_FUNC);
-  int32_t axes = src.NumAxes();
-  K2_CHECK_GE(axes, 2);
-  std::vector<int32_t *> row_splits_start(axes - 1);
-  for (int32_t i = 1; i != axes; ++i) {
-    Array1<int32_t> &cur_splits = src.RowSplits(i);
-    row_splits_start[i - 1] = cur_splits.Data();
-  }
-  return Array1<int32_t *>(src.Context(), row_splits_start);
-}
-
 // See declaration in ragged.h for documentation of its purpose and interface.
 RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis) {
   // If axis == 0, initial row_splits and row_ids will look like the following,
@@ -353,8 +341,9 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
   Internal function used in Index(), which gets certain arrays used internally.
 
      @param [in] src      Source shape to be indexed
-     @param [in] src_row_splits_ptrs  Result of calling GetRowSplitsPtr(src)
-     @param [in] new2old  Array of indexes into axis 0 of src
+     @param [in] new2old  Array of indexes into axis 0 of src; elements
+                         equal to -1 will be interpreted as referring to
+                         an empty list.
      @param [out] old_offsets   Will be set to new Array2 with dimension
                          (src.NumAxes(), new2old.Dim()), whose (i,j)'th
                          element contains the offset into axis i of `src`
@@ -370,7 +359,6 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
                          ans.Dim0() == new2old.Dim().
  */
 inline void GetOldAndNewOffsets(RaggedShape &src,
-                                const Array1<int32_t *> &src_row_splits_ptrs,
                                 const Array1<int32_t> &new2old,
                                 Array2<int32_t> *old_offsets,
                                 Array2<int32_t> *new_offsets) {
@@ -378,7 +366,10 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   K2_CHECK_GT(src.NumAxes(), 1);
   ContextPtr &c = src.Context();
   int32_t num_axes = src.NumAxes(), ans_dim0 = new2old.Dim();
-  int32_t *const *src_row_splits_ptrs_data = src_row_splits_ptrs.Data();
+
+  // max 5 layers.
+  RowSplitsAccessor<5> row_splits_acc(src);
+
   const int32_t *new2old_data = new2old.Data();
   *old_offsets = Array2<int32_t>(c, num_axes, ans_dim0);
   *new_offsets = Array2<int32_t>(c, num_axes, ans_dim0 + 1);
@@ -389,15 +380,25 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   K2_EVAL(
       c, ans_dim0, lambda_set_offsets, (int32_t i)->void {
         // 0 <= i < ans_dim0
-        int32_t old_offset = new2old_data[i], old_offset_next = old_offset + 1;
+        int32_t old_offset = new2old_data[i],
+            old_offset_next = old_offset + 1,
+            offset_diff = 1;
+        // The following is a special case that interprets -1 as referring to an
+        // empty list.  In this case, old_offset == old_offset_next == 0.
+        // The specific value 0 is not necessary; they could be equal
+        // and have any value in [0, src.Dim0() - 1] and still refer to
+        // the empty list.
+        if (old_offset == -1)
+          old_offset = 0;
         for (int32_t axis = 0;; axis++) {
           old_offsets_acc(axis, i) = old_offset;
           // Below, 'new_offsets_acc' currently contains the size rather
           // than the offset; we need to do exclusive-sum.
-          new_offsets_acc(axis, i) = old_offset_next - old_offset;
+          new_offsets_acc(axis, i) = offset_diff;
           if (axis + 1 == num_axes) return;
-          old_offset = src_row_splits_ptrs_data[axis][old_offset];
-          old_offset_next = src_row_splits_ptrs_data[axis][old_offset_next];
+          old_offset = row_splits_acc(axis)[old_offset];
+          old_offset_next = row_splits_acc(axis)[old_offset_next];
+          offset_diff = old_offset_next - old_offset;
         }
       });
   ExclusiveSum(*new_offsets, new_offsets);
@@ -415,11 +416,10 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     return EmptyRaggedShape(c, num_axes);
   }
 
-  Array1<int32_t *> src_row_splits_ptrs = GetRowSplitsPtr(src);
+
   Array2<int32_t> old_offsets,  // num_axes by ans_dim0
       new_offsets;              // num_axes by (ans_dim0 + 1).
-  GetOldAndNewOffsets(src, src_row_splits_ptrs, new2old, &old_offsets,
-                      &new_offsets);
+  GetOldAndNewOffsets(src, new2old, &old_offsets, &new_offsets);
 
   Array1<int32_t> tot_sizes_out =
       Array1<int32_t>(new_offsets.Col(ans_dim0)).To(GetCpuContext());
@@ -437,6 +437,10 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
                                     // it's how TaskRedirect works..
   Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
   auto task_redirects_acc = task_redirects.Accessor();
+
+
+  ans.Layers()[0].row_splits = new_offsets.Row(1);
+
   for (int32_t axis = 0; axis < num_axes; ++axis) {
     streams[axis] = pr.NewStream();
     With w(streams[axis]);
@@ -446,7 +450,9 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   }
 
   for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
-    {
+    if (axis != 0) {
+      // The following code doesn't work for axis 0, but we handled
+      // it above with ans.Layers()[0].row_splits = new_offsets.Row(1).
       int32_t *this_new_row_splits = ans.RowSplits(axis + 1).Data();
       const int32_t *this_old_row_splits = src.RowSplits(axis + 1).Data();
 
@@ -1492,8 +1498,8 @@ RaggedShape Arange(RaggedShape &src, int32_t axis, int32_t begin, int32_t end,
   // row_begin_axis1, row_end_axis2, etc. axis0, axis1 here are the axis of ans.
   Array1<int32_t> indexes(c, ans_num_axes * 2);
   int32_t *indexes_data = indexes.Data();
-  Array1<int32_t *> src_row_splits_ptr = GetRowSplitsPtr(src);
-  int32_t **src_row_splits_ptr_data = src_row_splits_ptr.Data();
+  RowSplitsAccessor<5> src_row_splits_acc(src);
+
   K2_EVAL(
       c, 1, lambda_set_indexes, (int32_t i)->void {
         // we just start a kernel with only one element here.
@@ -1501,8 +1507,8 @@ RaggedShape Arange(RaggedShape &src, int32_t axis, int32_t begin, int32_t end,
         int32_t row_begin = begin, row_end = end;
         indexes_data[0] = row_begin, indexes_data[1] = row_end;
         for (int32_t cur_axis = axis; cur_axis < num_axes - 1; ++cur_axis) {
-          row_begin = src_row_splits_ptr_data[cur_axis][row_begin];
-          row_end = src_row_splits_ptr_data[cur_axis][row_end];
+          row_begin = src_row_splits_acc(cur_axis)[row_begin];
+          row_end = src_row_splits_acc(cur_axis)[row_end];
           int32_t indexes_pos = ((cur_axis - axis) + 1) * 2;
           indexes_data[indexes_pos] = row_begin;
           indexes_data[indexes_pos + 1] = row_end;

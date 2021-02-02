@@ -753,20 +753,6 @@ TEST(RaggedTest, TestTransposeRagged) {
   TestTransposeRagged<double>();
 }
 
-TEST(RaggedShapeOpsTest, TestRowSplitsPtr) {
-  ContextPtr cpu = GetCpuContext();  // will be used to copy data
-  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    RaggedShape shape = RandomRaggedShape().To(context);
-    ASSERT_GE(shape.NumAxes(), 2);
-    Array1<int32_t *> ptrs = GetRowSplitsPtr(shape);
-    ASSERT_EQ(ptrs.Dim(), shape.NumAxes() - 1);
-    // as num_axes is not so big, access (may copy memory) it in a loop is fine.
-    for (int32_t i = 0; i != ptrs.Dim(); ++i) {
-      EXPECT_EQ(ptrs[i], shape.RowSplits(i + 1).Data());
-    }
-  }
-}
-
 void TestRaggedShape2(const RaggedShape &shape) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
@@ -1349,66 +1335,18 @@ void CheckResultOfIndex(const ContextPtr &context, RaggedShape shape,
   ContextPtr cpu = GetCpuContext();  // will use to copy data
   int32_t num_axes = shape.NumAxes();
   int32_t src_dim0 = shape.Dim0(), result_dim0 = result.Dim0();
-  if (result_dim0 == 0) {
-    std::vector<int32_t> empty_row_splits = {0};
-    for (int32_t i = 0; i < num_axes - 1; ++i) {
-      CheckArrayData(result.RowSplits(i + 1), empty_row_splits);
-      EXPECT_EQ(result.RowIds(i + 1).Dim(), 0);
+  EXPECT_EQ(result_dim0, new2old.Dim());
+
+  result.Check();
+
+  for (int32_t i = 0; i < result_dim0; i++) {
+    RaggedShape result_part = Arange(result, 0, i, i + 1);
+    if (new2old[i] == -1) {
+      K2_CHECK_EQ(0, result_part.TotSize(1));
+    } else {
+      RaggedShape src_part = Arange(shape, 0, new2old[i], new2old[i] + 1);
+      K2_CHECK_EQ(true, Equal(src_part, result_part));
     }
-    return;
-  }
-  Array2<int32_t> old_offsets(context, num_axes, src_dim0 + 1);
-  auto old_offsets_acc = old_offsets.Accessor();
-  Array1<int32_t *> row_splits_ptrs = GetRowSplitsPtr(shape);
-  int32_t **row_splits_ptrs_data = row_splits_ptrs.Data();
-  // Set old_offsets
-  K2_EVAL(
-      context, src_dim0 + 1, lambda_get_old_offsets, (int32_t i)->void {
-        // 0 <= i <= dim0
-        int32_t cur_offset = i;
-        for (int32_t axis = 0; axis < num_axes; axis++) {
-          old_offsets_acc(axis, i) = cur_offset;
-          if (axis + 1 == num_axes) return;
-          cur_offset = row_splits_ptrs_data[axis][cur_offset];
-        }
-      });
-  old_offsets = old_offsets.To(cpu);
-  auto cpu_offsets_acc = old_offsets.Accessor();
-  shape = shape.To(cpu);
-  new2old = new2old.To(cpu);
-  // get result splits with `SpliceRowSplits` and get result row-ids with
-  // `RowSplitsToRowIds``
-  std::vector<Array1<int32_t>> result_splits;
-  std::vector<Array1<int32_t>> result_ids;
-  for (auto axis = 0; axis < num_axes - 1; ++axis) {
-    Array1<int32_t> curr_row_splits = shape.RowSplits(axis + 1);
-    std::vector<Array1<int32_t>> splits_vec(result_dim0);
-    std::vector<const Array1<int32_t> *> splits_vec_ptr(result_dim0);
-    for (int32_t m = 0; m != result_dim0; ++m) {
-      int32_t old_idx = new2old[m];
-      int32_t start = cpu_offsets_acc(axis, old_idx);
-      int32_t end = cpu_offsets_acc(axis, old_idx + 1);
-      Array1<int32_t> sub_list = curr_row_splits.Range(start, end - start + 1);
-      Array1<int32_t> copy_sub_list(cpu, sub_list.Dim());
-      copy_sub_list.CopyFrom(sub_list);
-      int32_t *data = copy_sub_list.Data();
-      int32_t init = data[0];
-      for (int32_t n = 0; n != copy_sub_list.Dim(); ++n) {
-        data[n] -= init;
-      }
-      splits_vec[m] = copy_sub_list;
-      splits_vec_ptr[m] = &splits_vec[m];
-    }
-    Array1<int32_t> result_row_splits =
-        SpliceRowSplits(result_dim0, splits_vec_ptr.data());
-    result_splits.push_back(result_row_splits);
-    Array1<int32_t> result_row_ids(cpu, result_row_splits.Back());
-    RowSplitsToRowIds(result_row_splits, &result_row_ids);
-    result_ids.push_back(result_row_ids);
-  }
-  for (int32_t i = 0; i < num_axes - 1; ++i) {
-    CheckArrayData(result.RowSplits(i + 1), result_splits[i]);
-    CheckArrayData(result.RowIds(i + 1), result_ids[i]);
   }
 }
 
@@ -1451,7 +1389,7 @@ TEST(RaggedShapeOpsTest, TestIndex) {
           if (dim0 == 0) result_dim0 = 0;
           std::vector<int32_t> new2old_vec(result_dim0);
           for (int i = 0; i < result_dim0; i++)
-            new2old_vec[i] = RandInt(0, dim0 - 1);
+            new2old_vec[i] = RandInt(-1, dim0 - 1);
           Array1<int32_t> new2old(context, new2old_vec);
           Array1<int32_t> value_indexes;
           RaggedShape result = Index(shape, 0, new2old, &value_indexes);

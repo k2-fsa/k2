@@ -79,7 +79,9 @@ inline void ExpectEqual<double>(const std::vector<double> &expected,
 template <typename T>
 void CheckArrayData(const Array1<T> &array, const Array1<T> &target,
                     double abs_error = 0.001) {
-  ASSERT_EQ(array.Dim(), target.Dim());
+  if (array.Dim() != target.Dim()) {
+    K2_LOG(ERROR) << "Dims mismatch " << array.Dim() << " vs. " << target.Dim();
+  }
   int32_t dim = array.Dim();
   ContextPtr cpu = GetCpuContext();
   Array1<T> cpu_array = array.To(cpu);
