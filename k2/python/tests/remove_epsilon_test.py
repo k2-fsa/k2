@@ -60,7 +60,7 @@ class TestRemoveEpsilonDevice(unittest.TestCase):
         print(fsa.aux_labels)
         prop = fsa.properties
         self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
-        dest = k2.remove_epsilons_iterative_tropical(fsa)
+        dest = k2.remove_epsilons(fsa)
         prop = dest.properties
         self.assertTrue(prop & k2.fsa_properties.EPSILON_FREE)
         log_semiring = False

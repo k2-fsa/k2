@@ -523,13 +523,15 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
 def remove_epsilon(fsa: Fsa) -> Fsa:
     '''Remove epsilons (symbol zero) in the input Fsa.
 
-    Caution:
-      It only works on for CPU and doesn't support autograd.
-
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
-        Must be top-sorted.
+        Works either for CPU or GPU, but the algorithm is different.
+        We can only use the CPU algorithm if the input is top-sorted,
+        and the GPU algorithm, while it works for CPU, may not be
+        very fast.
+        `fsa` must be free of epsilon loops that have score
+        greater than 0.
     Returns:
         The result Fsa, it's equivalent to the input `fsa` under
         tropical semiring but will be epsilon-free.
@@ -537,16 +539,17 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
         `fsa` is epsilon-free. Otherwise, a new epsilon-free fsa
         is returned and the input `fsa` is NOT modified.
     '''
-    assert fsa.is_cpu()
     assert fsa.requires_grad is False
     if fsa.properties & fsa_properties.EPSILON_FREE != 0:
         return fsa
 
-    ragged_arc, arc_map = _k2.remove_epsilon(fsa.arcs)
-    aux_labels = None
-    if hasattr(fsa, 'aux_labels'):
-        aux_labels = index(fsa.aux_labels, arc_map)
-    out_fsa = Fsa(ragged_arc, aux_labels)
+    ragged_arc, arc_map = _k2.remove_epsilon(fsa.arcs, fsa.properties)
+
+    out_fsa = Fsa(ragged_arc)
+
+    for name, value in fsa.named_tensor_attr():
+        new_value = index(value, arc_map)
+        setattr(out_fsa, name, new_value)
 
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)
@@ -554,8 +557,10 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def remove_epsilons_iterative_tropical(fsa: Fsa) -> Fsa:
-    '''Remove epsilons (symbol zero) in the input Fsa.
+def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
+    '''Remove epsilons (symbol zero) in the input Fsa, and then add
+     epsilon self-loops to all states in the input Fsa (usually as
+     a preparation for intersection with treat_epsilons_specially=0).
 
     Caution:
       It doesn't support autograd for now.
@@ -563,22 +568,23 @@ def remove_epsilons_iterative_tropical(fsa: Fsa) -> Fsa:
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
-        It can be either top-sorted or non-top-sorted.
     Returns:
-        The result Fsa, it's equivalent to the input `fsa` under
-        tropical semiring but will be epsilon-free.
-        It will be the same as the input `fsa` if the input
-        `fsa` is epsilon-free. Otherwise, a new epsilon-free fsa
-        is returned and the input `fsa` is NOT modified.
+        The resulting Fsa.   See remove_epsilon() for details.
+        The only epsilons will be epsilon self-loops on all states.
     '''
-    if fsa.properties & fsa_properties.EPSILON_FREE != 0:
-        return fsa
 
-    ragged_arc, arc_map = _k2.remove_epsilons_iterative_tropical(fsa.arcs)
-    aux_labels = None
-    if hasattr(fsa, 'aux_labels'):
-        aux_labels = index(fsa.aux_labels, arc_map)
-    out_fsa = Fsa(ragged_arc, aux_labels)
+    assert fsa.requires_grad is False
+    if fsa.properties & fsa_properties.EPSILON_FREE != 0:
+        return add_epsilon_self_loops(fsa)
+
+    ragged_arc, arc_map = _k2.remove_epsilon_and_add_self_loops(fsa.arcs,
+                                                                fsa.properties)
+
+    out_fsa = Fsa(ragged_arc)
+
+    for name, value in fsa.named_tensor_attr():
+        new_value = index(value, arc_map)
+        setattr(out_fsa, name, new_value)
 
     for name, value in fsa.named_non_tensor_attr():
         setattr(out_fsa, name, value)

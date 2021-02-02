@@ -348,11 +348,9 @@ void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
     @param [in] src  Fsa or FsaVec (2 or 3 axes).  Must be free of
                      epsilon loops with negative cost (will crash
                      if they exist).
-    @param [in] properties  Properties of `src`.  The properties that
-                     matter are kFsaPropertiesTopSortedAndAcyclic (to
-                     determine whether we can use RemoveEpsilonHost())
-                     and kFsaPropertiesEpsilonFree (to determine whether
-                     we can skip epsilon removal).
+    @param [in] properties  Properties of `src`.  The only property that matters
+                     is kFsaPropertiesTopSortedAndAcyclic (to
+                     determine whether we can use RemoveEpsilonHost()).
     @param [out] dest   The epsilon-removed FSA will be written to here
     @param [out] arc_derivs  If not nullptr, a ragged tensor with 2
                      axes will be written to here, with

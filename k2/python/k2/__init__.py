@@ -28,7 +28,7 @@ from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fst
 from .fsa_algo import random_paths
 from .fsa_algo import remove_epsilon
-from .fsa_algo import remove_epsilons_iterative_tropical
+from .fsa_algo import remove_epsilon_and_add_self_loops
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str

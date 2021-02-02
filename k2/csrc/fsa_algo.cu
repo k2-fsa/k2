@@ -266,7 +266,12 @@ void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
 
 void RemoveEpsilon(FsaOrVec &src, int32_t properties,
                    FsaOrVec *dest,
-                   Ragged<int32_t> *arc_derivs = nullptr) {
+                   Ragged<int32_t> *arc_derivs) {
+  if (properties & kFsaPropertiesEpsilonFree) {
+    return
+
+  }
+
   if ((properties & kFsaPropertiesTopSortedAndAcyclic) != 0 &&
       src.Context()->GetDeviceType() == kCpu) {
     // Host version of the algorithm
@@ -279,7 +284,7 @@ void RemoveEpsilon(FsaOrVec &src, int32_t properties,
 
 void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
                                   FsaOrVec *dest,
-                                  Ragged<int32_t> *arc_derivs = nullptr) {
+                                  Ragged<int32_t> *arc_derivs) {
   Ragged<int32_t> arc_derivs1;
 
   FsaOrVec temp;
@@ -287,8 +292,12 @@ void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
                 (arc_derivs != nullptr ? &arc_derivs1 : nullptr));
 
   Array1<int32_t> arc_derivs2;
-  AddEpsilonSelfLoops(temp, dest, &arc_derivs2);
+  AddEpsilonSelfLoops(temp, dest,
+                      (arc_derivs != nullptr ? &arc_derivs2 : nullptr));
 
+  if (arc_derivs != nullptr) {
+    *arc_derivs = Index(arc_derivs1, 0, arc_derivs2, nullptr);
+  }
 }
 
 
