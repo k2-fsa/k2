@@ -350,7 +350,7 @@ static void PybindRemoveEpsilon(py::module &m) {
         RemoveEpsilon(src, properties, &dest, &arc_map);
         return std::make_pair(dest, arc_map);
       },
-      py::arg("src"));
+      py::arg("src"), py::arg("properties"));
   m.def(
       "remove_epsilon_and_add_self_loops",
       [](FsaOrVec &src, int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {

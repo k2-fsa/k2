@@ -547,7 +547,7 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
 
     out_fsa = Fsa(ragged_arc)
 
-    for name, value in fsa.named_tensor_attr():
+    for name, value in fsa.named_tensor_attr(include_scores=False):
         new_value = index(value, arc_map)
         setattr(out_fsa, name, new_value)
 
@@ -556,6 +556,11 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
 
     return out_fsa
 
+
+def remove_epsilon_iterative_tropical(fsa: Fsa) -> Fsa:
+    '''A wrapper for remove_epsilon(), deprecated but provided
+    for back compatibility'''
+    return remove_epsilon(fsa)
 
 def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
     '''Remove epsilons (symbol zero) in the input Fsa, and then add
@@ -582,7 +587,7 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
 
     out_fsa = Fsa(ragged_arc)
 
-    for name, value in fsa.named_tensor_attr():
+    for name, value in fsa.named_tensor_attr(include_scores=False):
         new_value = index(value, arc_map)
         setattr(out_fsa, name, new_value)
 

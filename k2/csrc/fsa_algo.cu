@@ -267,11 +267,6 @@ void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
 void RemoveEpsilon(FsaOrVec &src, int32_t properties,
                    FsaOrVec *dest,
                    Ragged<int32_t> *arc_derivs) {
-  if (properties & kFsaPropertiesEpsilonFree) {
-    return
-
-  }
-
   if ((properties & kFsaPropertiesTopSortedAndAcyclic) != 0 &&
       src.Context()->GetDeviceType() == kCpu) {
     // Host version of the algorithm
