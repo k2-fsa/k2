@@ -25,16 +25,8 @@
 namespace k2 {
 
 
-template <typename LambdaT>
-__global__ void eval_lambda(int32_t n, LambdaT lambda) {
-  int32_t i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) {
-    lambda(i);
-  }
-}
-
 template <typename T, typename LambdaT>
-__global__ void eval_lambda_large(int32_t n, LambdaT lambda) {
+__global__ void eval_lambda(int32_t n, LambdaT lambda) {
   int32_t i = (blockIdx.y * gridDim.x + blockIdx.x) * blockDim.x + threadIdx.x;
   if (i < n) {
     lambda(i);
@@ -92,19 +84,15 @@ void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
       lambda(i);
     }
   } else {
-    int32_t block_size = 256;
-    int32_t grid_size = NumBlocks(n, block_size);
-    // the loop breaks it up into pieces of size less than 65536.
-    if (grid_size < 65536) {
-      K2_CUDA_SAFE_CALL(eval_lambda<LambdaT>
-                        <<<grid_size, block_size, 0, stream>>>(n, lambda));
-    } else {
-      int32_t x_grid_size = (grid_size < (1 << 20) ? (1 << 10) : 32768),
-              y_grid_size = NumBlocks(grid_size, x_grid_size);
-      dim3 grid_dim(x_grid_size, y_grid_size, 1), block_dim(block_size, 1, 1);
-      K2_CUDA_SAFE_CALL(eval_lambda_large<LambdaT>
-                        <<<grid_dim, block_dim, 0, stream>>>(n, lambda));
-    }
+    const int32_t block_size = 256;
+    int32_t tot_grid_size = NumBlocks(n, block_size);
+    int32_t x_grid_size = (tot_grid_size < (1 << 20) ?
+                           std::min<int32_t>(tot_grid_size, (1 << 10)) :
+                           32768),
+        y_grid_size = NumBlocks(tot_grid_size, x_grid_size);
+    dim3 grid_dim(x_grid_size, y_grid_size, 1), block_dim(block_size, 1, 1);
+    K2_CUDA_SAFE_CALL(eval_lambda<LambdaT>
+                      <<<grid_dim, block_dim, 0, stream>>>(n, lambda));
   }
 }
 
@@ -134,19 +122,16 @@ template <typename LambdaT>
 void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   if (n <= 0) return;  // actually it would be an error if n < 0.
   K2_CHECK(stream != kCudaStreamInvalid);
-  int32_t block_size = 256;
-  int32_t grid_size = NumBlocks(n, block_size);
-  // the loop breaks it up into pieces of size less than 65536.
-  if (grid_size < 65536) {
-    K2_CUDA_SAFE_CALL(eval_lambda<LambdaT>
-                      <<<grid_size, block_size, 0, stream>>>(n, lambda));
-  } else {
-    int32_t x_grid_size = (grid_size < (1 << 20) ? (1 << 10) : 32768),
-            y_grid_size = NumBlocks(grid_size, x_grid_size);
-    dim3 grid_dim(x_grid_size, y_grid_size, 1), block_dim(block_size, 1, 1);
-    K2_CUDA_SAFE_CALL(eval_lambda_large<LambdaT>
-                      <<<grid_dim, block_dim, 0, stream>>>(n, lambda));
-  }
+  const int32_t block_size = 256;
+  int32_t tot_grid_size = NumBlocks(n, block_size);
+  int32_t x_grid_size = (tot_grid_size < (1 << 20) ?
+                         std::min<int32_t>(tot_grid_size, (1 << 10)) :
+                         32768),
+      y_grid_size = NumBlocks(tot_grid_size, x_grid_size);
+  dim3 grid_dim(x_grid_size, y_grid_size, 1), block_dim(block_size, 1, 1);
+
+  K2_CUDA_SAFE_CALL(eval_lambda<LambdaT>
+                    <<<grid_dim, block_dim, 0, stream>>>(n, lambda));
 }
 
 // like Eval() but works only for device.
