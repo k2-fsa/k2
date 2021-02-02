@@ -1341,7 +1341,6 @@ void CheckResultOfIndex(const ContextPtr &context, RaggedShape shape,
 
   for (int32_t i = 0; i < result_dim0; i++) {
     RaggedShape result_part = Arange(result, 0, i, i + 1);
-    K2_LOG(INFO) << "result_part = " << result_part;
     if (new2old[i] == -1) {
       K2_CHECK_EQ(0, result_part.TotSize(1));
     } else {

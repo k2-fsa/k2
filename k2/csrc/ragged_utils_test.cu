@@ -96,7 +96,6 @@ TEST(RaggedUtilsTest, IntersperseRaggedLayerLong) {
     Array1<uint32_t> merge_map;
 
     RaggedShape shape = IntersperseRaggedLayer(layer, 20, shapes, &merge_map);
-    K2_LOG(INFO) << "merge_map = " << merge_map;
 
     ContextPtr cpu = GetCpuContext();
     shape = shape.To(cpu);
