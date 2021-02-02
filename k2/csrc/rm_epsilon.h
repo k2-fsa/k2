@@ -24,17 +24,17 @@ namespace k2 {
   epsilon arcs between pairs of states that can reach each other by epsilons;
   then combining the epsilon and non-epsilon arcs to produce non-epsilon arcs.
 
-  We keep the original numbering of the states.  We'll us capital letters for
+  We keep the original numbering of the states.  We'll use capital letters for
   sets of arcs.  Note: epsilon self-loops can be discarded whenever they appear
   if their score is <= 0; if there is scores is >0 we can abort the algorithm
-  because it woudl imply that the FSA has some paths with infinite score but
+  because it would imply that the FSA has some paths with infinite score but
   finite number of real symbols.
 
 
-     N = set of non-epsilon arcs in thw input
+     N = set of non-epsilon arcs in the input
      E = set of epsilon-arcs e in input
      C = closure of set of epsilon-arcs e in input, i.e. for distinct states
-         a,b,c, if C contains epsilon arc from a->b and b->c, it will alos
+         a,b,c, if C contains epsilon arc from a->b and b->c, it will also
          contain one from a->c.
      C_f = subset of C that we decide, based on heuristics with the goal of
          minimizing the size of the output, to combine with the following
@@ -86,7 +86,7 @@ namespace k2 {
  at least one epsilon arc, there is a path in B with the same "real" symbol sequence
  (i.e. after removing epsilons) and a score that is at least as large.  We
  show this inductively by demonstrating that for any path P in A that has at
- least one epsilon, there is a path P' in A that satisifes the following properties:
+ least one epsilon, there is a path P' in A that satisfies the following properties:
 
     - The score of P' is >= the score of P
     - P' has the same real symbol-sequence as P (i.e. the same sequence after
@@ -114,7 +114,7 @@ namespace k2 {
 
   [[Note regarding epsilon-loops: if a and c are the same state, there are two
   choices: if the score is <=0 then we can remove the epsilon from our path
-  entirely while having the same symnbol sequence and at least as large a score;
+  entirely while having the same symbol sequence and at least as large a score;
   if the score is >0 then the graph contained positive-score epsilon cycles
   which is equivalent to infinite score, which is invalid.]]
 
@@ -123,7 +123,7 @@ namespace k2 {
   letters a,b,c,d for epsilon arcs below.
 
    (ii) Consider an epsilon-arc a in C_f.  This must be followed by a non-epsilon
-     arc (assuing we already reduced via (i)), and this non-epsilon arc must
+     arc (assuming we already reduced via (i)), and this non-epsilon arc must
      be in N, F, P or Q.  Briefly the cases are as follows:
         - following arc n is in N -> we can replace [a,n] by the
                           appropriate arc f in F, leaving us with one fewer epsilon.

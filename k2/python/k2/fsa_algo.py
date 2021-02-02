@@ -5,6 +5,7 @@
 # See ../../../LICENSE for clarification regarding multiple authors
 
 from typing import List
+from typing import Optional
 from typing import Union
 
 import torch
@@ -19,7 +20,8 @@ from .ops import index_select
 # Note: look also in autograd.py, differentiable operations may be there.
 
 
-def linear_fsa(labels: Union[List[int], List[List[int]]]) -> Fsa:
+def linear_fsa(labels: Union[List[int], List[List[int]]],
+               device: Optional[Union[torch.device, str]] = None) -> Fsa:
     '''Construct an linear FSA from labels.
 
     Note:
@@ -28,12 +30,26 @@ def linear_fsa(labels: Union[List[int], List[List[int]]]) -> Fsa:
     Args:
       labels:
         A list of integers or a list of list of integers.
+      device:
+        Optional. It can be either a string (e.g., 'cpu',
+        'cuda:0') or a torch.device.
+        If it is None, then the returned FSA is on CPU.
 
     Returns:
       An FSA if the labels is a list of integers.
-      A vector of FSAs if the input is a list of list of integers.
+      A vector of FSAs (i.e., FsaVec) if the input is a list of list
+      of integers.
     '''
-    ragged_arc = _k2.linear_fsa(labels)
+    if device is not None:
+        device = torch.device(device)
+        if device.type == 'cpu':
+            gpu_id = -1
+        else:
+            assert device.type == 'cuda'
+            gpu_id = getattr(device, 'index', 0)
+    else:
+        gpu_id = -1
+    ragged_arc = _k2.linear_fsa(labels, gpu_id)
     fsa = Fsa(ragged_arc)
     return fsa
 
