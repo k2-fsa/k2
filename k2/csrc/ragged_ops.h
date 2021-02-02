@@ -1149,9 +1149,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
 
 
 /*
-  Indexing operation on ragged tensor, returns src[indexes], where
-  the elements of `indexes` are interpreted as indexes into axis 0
-  of `src`.
+  Index ragged tensor with array, return ragged tensor.
 
       @param [in] src      Source ragged tensor to index
       @param [in] axis     Axis to index `src` on
@@ -1365,7 +1363,7 @@ void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst);
 
 /*
   Construct a Ragged with 2 axes.
-    @param [in] vecs  vecs.size() is the number of rows of the returned ans, 
+    @param [in] vecs  vecs.size() is the number of rows of the returned ans,
                       i.e. ans.Dim0() == vecs.sizes(), and vecs[i] contains
                       the elments for row i in ans.
     @return   Returns the corresponding ragged array, with a CPU context.

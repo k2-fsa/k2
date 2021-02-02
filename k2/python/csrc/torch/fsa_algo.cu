@@ -323,13 +323,13 @@ static void PybindUnion(py::module &m) {
       py::arg("fsas"), py::arg("need_arc_map") = true);
 }
 
-static void PybindRemoveEpsilon(py::module &m) {
+static void PybindRemoveEpsilonHost(py::module &m) {
   m.def(
       "remove_epsilon",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
-        RemoveEpsilon(src, &dest, &arc_map);
+        RemoveEpsilonHost(src, &dest, &arc_map);
         return std::make_pair(dest, arc_map);
       },
       py::arg("src"));
@@ -338,7 +338,7 @@ static void PybindRemoveEpsilon(py::module &m) {
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
-        RemoveEpsilonsIterativeTropical(src, &dest, &arc_map);
+        RemoveEpsilonDevice(src, &dest, &arc_map);
         return std::make_pair(dest, arc_map);
       },
       py::arg("src"));
@@ -405,7 +405,7 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindShortestPath(m);
   k2::PybindAddEpsilonSelfLoops(m);
   k2::PybindUnion(m);
-  k2::PybindRemoveEpsilon(m);
+  k2::PybindRemoveEpsilonHost(m);
   k2::PybindDeterminize(m);
   k2::PybindClosure(m);
   k2::PybindInvert(m);

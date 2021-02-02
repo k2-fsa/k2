@@ -13,7 +13,7 @@ import unittest
 import k2
 
 
-class TestRemoveEpsilon(unittest.TestCase):
+class TestRemoveEpsilonHost(unittest.TestCase):
 
     def test1(self):
         s = '''
@@ -44,7 +44,7 @@ class TestRemoveEpsilon(unittest.TestCase):
         self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
 
 
-class TestRemoveEpsilonsIterativeTropical(unittest.TestCase):
+class TestRemoveEpsilonDevice(unittest.TestCase):
 
     def test1(self):
         s = '''

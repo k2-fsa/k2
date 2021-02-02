@@ -205,7 +205,7 @@ static void DecideCombineWithFollowingOrPreceding(
                        as `non_epsilon_fsa`.
      @param [in] epsilon_closure_mapped_arc_map  Arc map from arcs in
                        epsilon_clousre_mapped to arcs in the original Fsa, i.e.
-                       the src Fsa we call `RemoveEpsilonsIterativeTropical`
+                       the src Fsa we call `RemoveEpsilonDevice`
                        with.
      @param [in] non_epsilon_fsa  Non-epsilon Fsa, returned by
                        ComputeNonEpsilonSubset.
@@ -299,7 +299,7 @@ static void CombineWithFollowingNonEpsilonArcs(
                        It has the same states numbering as `non_epsilon_fsa`.
      @param [in] epsilon_closure_prec_arc_map  Arc map from arcs in
                        epsilon_clousre_prec to arcs in the original Fsa, i.e.
-                       the src Fsa we call `RemoveEpsilonsIterativeTropical`
+                       the src Fsa we call `RemoveEpsilonDevice`
                        with.
      @param [in] non_epsilon_fsa  Non-epsilon Fsa, returned by
                        ComputeNonEpsilonSubset.
@@ -999,8 +999,8 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
   *arc_map = Index(expand_arc_map, 0, arc_map_indexes);
 }
 
-void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
-                                     Ragged<int32_t> *arc_map_out) {
+void RemoveEpsilonDevice(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
+                         Ragged<int32_t> *arc_map_out) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(dest_fsa != nullptr && arc_map_out != nullptr);
   K2_CHECK_GE(src_fsa.NumAxes(), 2);
@@ -1010,7 +1010,7 @@ void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
     Fsa *srcs = &src_fsa;
     FsaVec src_vec = CreateFsaVec(1, &srcs), dest_vec;
     // Recurse..
-    RemoveEpsilonsIterativeTropical(src_vec, &dest_vec, arc_map_out);
+    RemoveEpsilonDevice(src_vec, &dest_vec, arc_map_out);
     *dest_fsa = GetFsaVecElement(dest_vec, 0);
     return;
   }
