@@ -182,9 +182,9 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
   This code is intended to run on GPU (but should also work on CPU).
 
      @param[in] a_fsas   Input FSAs; must have 3 axes.
-     @param[in] b_fsas   Input dense FSAs that likely correspond to neural network
-                  outputs (see documentation in fsa.h).  Must satisfy
-                  b_fsas.shape.Dim0() == a_fsas.Dim0().
+     @param[in] b_fsas   Input dense FSAs that likely correspond to neural
+                  network outputs (see documentation in fsa.h).
+                  Must satisfy b_fsas.shape.Dim0() == a_fsas.Dim0().
      @param[in] output_beam   Beam with which we prune the output (analogous
                   to lattice-beam in Kaldi), e.g. 8.  We discard arcs in
                   the output that are not on a path that's within
@@ -206,9 +206,9 @@ void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas, float output_beam,
                     Array1<int32_t> *arc_map_b);
 
 /*
-  This is 'normal' intersection for CPU (we would call this Compose() for FSTs, but
-  you can do that using Intersect(), by calling this and then Invert()
-  (or just attaching the other aux_labels).
+  This is 'normal' intersection for CPU (we would call this Compose() for FSTs,
+  but you can do that using Intersect(), by calling this and then Invert() (or
+  just attaching the other aux_labels).
 
 
         @param [in] a_fsas  Fsa or FsaVec that is one of the arguments
@@ -262,8 +262,6 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
                int32_t properties_b, bool treat_epsilons_specially, FsaVec *out,
                Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
-
-
 /*
   Device intersection code (does not treat epsilons specially, treats it as
   any other symbol).
@@ -286,7 +284,8 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
                       (a.NumAxes() == 3) even if it contains only one Fsa.
     @param [in] properties_a  Properties of `a_fsas`.  Must include
                       kFsaPropertiesValid.  Currently no other properties are
-                      required but in future we may require labels to be arc-sorted.
+                      required but in future we may require labels to be
+                      arc-sorted.
     @param [in] b_fsas  Second of the inputs to intersect; must be an FsaVec.
     @param [in] properties_b  Properties of `b_fsas`.  Must include
                       kFsaPropertiesValid.
@@ -301,7 +300,8 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
     @param [out,optional] arc_map_b   If not nullptr, will be set to a new
                      array containing a map from arc-index in `out` to arc-index
                      in `b_fsas`; elements will all be >= 0.
-    @return  Returns composed FsaVec; will satisfy `ans.Dim0() == b_fsas.Dim0()`.
+    @return  Returns composed FsaVec;
+             will satisfy `ans.Dim0() == b_fsas.Dim0()`.
 
   CAUTION:
     All states in the result will be accessible except possibly
@@ -309,12 +309,9 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
     coaccessible (i.e. be able to reach the end), so you may want to call
     Connect() afterward if that matters to you.
  */
-FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a,
-                       FsaVec &b_fsas, int32_t properties_b,
-                       const Array1<int32_t> &b_to_a_map,
-                       Array1<int32_t> *arc_map_a,
-                       Array1<int32_t> *arc_map_b);
-
+FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a, FsaVec &b_fsas,
+                       int32_t properties_b, const Array1<int32_t> &b_to_a_map,
+                       Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 /*
     Remove epsilons (symbol zero) in the input Fsas, it works for both

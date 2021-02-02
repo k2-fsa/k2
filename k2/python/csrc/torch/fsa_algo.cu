@@ -45,19 +45,18 @@ static void PybindTopSort(py::module &m) {
 }
 
 static void PybindLinearFsa(py::module &m) {
-  // TODO(fangjun): Replace std::vector<int32_t> with torch::Tensor
   m.def(
       "linear_fsa",
-      [](const std::vector<int32_t> &symbols, int32_t gpu_id = -1) -> Fsa {
+      [](const std::vector<int32_t> &labels, int32_t gpu_id = -1) -> Fsa {
         ContextPtr context;
         if (gpu_id < 0)
           context = GetCpuContext();
         else
           context = GetCudaContext(gpu_id);
-        Array1<int32_t> array(context, symbols);
+        Array1<int32_t> array(context, labels);
         return LinearFsa(array);  //
       },
-      py::arg("symbols"), py::arg("device_id") = -1,
+      py::arg("labels"), py::arg("gpu_id") = -1,
       R"(
   If gpu_id is -1, the returned FSA is on CPU.
   If gpu_id >= 0, the returned FSA is on the specified GPU.
@@ -65,7 +64,7 @@ static void PybindLinearFsa(py::module &m) {
 
   m.def(
       "linear_fsa",
-      [](const std::vector<std::vector<int32_t>> &symbols,
+      [](const std::vector<std::vector<int32_t>> &labels,
          int32_t gpu_id = -1) -> FsaVec {
         ContextPtr context;
         if (gpu_id < 0)
@@ -73,26 +72,10 @@ static void PybindLinearFsa(py::module &m) {
         else
           context = GetCudaContext(gpu_id);
 
-        auto n = static_cast<int32_t>(symbols.size());
-        std::vector<int32_t> sizes;
-        sizes.reserve(n);
-
-        std::vector<int32_t> flatten;
-        for (const auto &s : symbols) {
-          sizes.push_back(static_cast<int32_t>(s.size()));
-          flatten.insert(flatten.end(), s.begin(), s.end());
-        }
-        sizes.push_back(0);  // an extra element for exclusive sum
-
-        Array1<int32_t> row_splits(context, sizes);
-        ExclusiveSum(row_splits, &row_splits);
-        RaggedShape shape = RaggedShape2(&row_splits, nullptr, flatten.size());
-        Array1<int32_t> values(context, flatten);
-        Ragged<int32_t> ragged(shape, values);
-
+        Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
         return LinearFsas(ragged);
       },
-      py::arg("symbols"), py::arg("gpu_id") = -1,
+      py::arg("labels"), py::arg("gpu_id") = -1,
       R"(
   If gpu_id is -1, the returned FsaVec is on CPU.
   If gpu_id >= 0, the returned FsaVec is on the specified GPU.
