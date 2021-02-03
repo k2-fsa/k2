@@ -277,6 +277,97 @@ class TestRaggedOps(unittest.TestCase):
             '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4]] ]')
         self.assertEqual(str(unique), str(expected))
 
+    def test_index_ragged_shape_two_axes(self):
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append(torch.device('cuda', 0))
+
+        for device in devices:
+            shape = k2.RaggedShape('[ [x x] [] [x x x] ]').to(device)
+            indexes = torch.tensor([-1, 0, -1, 0, 1, 2, 0, 2, 1, -1],
+                                   dtype=torch.int32,
+                                   device=device)
+            ans, value_indexes = k2.ragged.index(shape,
+                                                 indexes,
+                                                 axis=0,
+                                                 need_value_indexes=True)
+            expected_ans = k2.RaggedShape(
+                '[ [] [x x] [] [x x] [] [x x x] [x x] [x x x] [] [] ]')
+            self.assertEqual(str(ans), str(expected_ans))
+
+            expected_value_indexes = torch.tensor(
+                [0, 1, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
+                dtype=torch.int32,
+                device=device)
+            assert torch.all(torch.eq(value_indexes, expected_value_indexes))
+
+            # for axis == 1
+            indexes = torch.tensor([0, 0, 0, 1, 2, 2, 2, 3, 3],
+                                   dtype=torch.int32,
+                                   device=device)
+            ans, value_indexes = k2.ragged.index(shape,
+                                                 indexes,
+                                                 axis=1,
+                                                 need_value_indexes=True)
+            expected_ans = k2.RaggedShape('[ [x x x x] [] [x x x x x] ]')
+            self.assertEqual(str(ans), str(expected_ans))
+            assert torch.all(torch.eq(indexes, value_indexes))
+
+    def test_index_ragged_shape_three_axes(self):
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append(torch.device('cuda', 0))
+
+        for device in devices:
+            shape = k2.RaggedShape('[ [[x x x] [x x] []] [[x] [x x x]] ]').to(
+                device)
+            indexes = torch.tensor([-1, 0, 1, 1, -1, 0],
+                                   dtype=torch.int32,
+                                   device=device)
+            ans, value_indexes = k2.ragged.index(shape,
+                                                 indexes,
+                                                 axis=0,
+                                                 need_value_indexes=True)
+            expected_ans = k2.RaggedShape(
+                '[ [] [[x x x] [x x] []] [[x] [x x x]] [[x] [x x x]] [] [[x x x] [x x] []] ]'  # noqa
+            )
+            self.assertEqual(str(ans), str(expected_ans))
+            expected_value_indexes = torch.tensor(
+                [0, 1, 2, 3, 4, 5, 6, 7, 8, 5, 6, 7, 8, 0, 1, 2, 3, 4],
+                dtype=torch.int32,
+                device=device)
+            assert torch.all(torch.eq(value_indexes, expected_value_indexes))
+
+            # for axis == 1
+            indexes = torch.tensor([0, 0, 2, 3, 3, 4],
+                                   dtype=torch.int32,
+                                   device=device)
+            ans, value_indexes = k2.ragged.index(shape,
+                                                 indexes,
+                                                 axis=1,
+                                                 need_value_indexes=True)
+            expected_ans = k2.RaggedShape(
+                '[ [[x x x] [x x x] []] [[x] [x] [x x x]] ]')
+            self.assertEqual(str(ans), str(expected_ans))
+            expected_value_indexes = torch.tensor(
+                [0, 1, 2, 0, 1, 2, 5, 5, 6, 7, 8],
+                dtype=torch.int32,
+                device=device)
+            assert torch.all(torch.eq(value_indexes, expected_value_indexes))
+
+            # for axis == 2
+            indexes = torch.tensor([0, 2, 2, 3, 4, 4, 6, 6, 7],
+                                   dtype=torch.int32,
+                                   device=device)
+            ans, value_indexes = k2.ragged.index(shape,
+                                                 indexes,
+                                                 axis=2,
+                                                 need_value_indexes=True)
+            expected_ans = k2.RaggedShape(
+                '[ [[x x x] [x x x] [] ] [[] [x x x]] ]')
+            self.assertEqual(str(ans), str(expected_ans))
+            assert torch.all(torch.eq(indexes, value_indexes))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -490,7 +490,7 @@ def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
         True to use double.
 
     Returns:
-          FsaVec, it contains the best paths as linear FSAs
+      FsaVec, it contains the best paths as linear FSAs
     '''
     entering_arcs = fsa._get_entering_arcs(use_double_scores)
     ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
@@ -549,11 +549,11 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
         `fsa` must be free of epsilon loops that have score
         greater than 0.
     Returns:
-        The result Fsa, it's equivalent to the input `fsa` under
-        tropical semiring but will be epsilon-free.
-        It will be the same as the input `fsa` if the input
-        `fsa` is epsilon-free. Otherwise, a new epsilon-free fsa
-        is returned and the input `fsa` is NOT modified.
+      The result Fsa, it's equivalent to the input `fsa` under
+      tropical semiring but will be epsilon-free.
+      It will be the same as the input `fsa` if the input
+      `fsa` is epsilon-free. Otherwise, a new epsilon-free fsa
+      is returned and the input `fsa` is NOT modified.
     '''
     assert fsa.requires_grad is False
     if fsa.properties & fsa_properties.EPSILON_FREE != 0:
@@ -578,10 +578,11 @@ def remove_epsilon_iterative_tropical(fsa: Fsa) -> Fsa:
     for back compatibility'''
     return remove_epsilon(fsa)
 
+
 def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
     '''Remove epsilons (symbol zero) in the input Fsa, and then add
-     epsilon self-loops to all states in the input Fsa (usually as
-     a preparation for intersection with treat_epsilons_specially=0).
+    epsilon self-loops to all states in the input Fsa (usually as
+    a preparation for intersection with treat_epsilons_specially=0).
 
     Caution:
       It doesn't support autograd for now.
@@ -590,16 +591,16 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
     Returns:
-        The resulting Fsa.   See remove_epsilon() for details.
-        The only epsilons will be epsilon self-loops on all states.
+      The resulting Fsa.   See :func:`remove_epsilon` for details.
+      The only epsilons will be epsilon self-loops on all states.
     '''
 
     assert fsa.requires_grad is False
     if fsa.properties & fsa_properties.EPSILON_FREE != 0:
         return add_epsilon_self_loops(fsa)
 
-    ragged_arc, arc_map = _k2.remove_epsilon_and_add_self_loops(fsa.arcs,
-                                                                fsa.properties)
+    ragged_arc, arc_map = _k2.remove_epsilon_and_add_self_loops(
+        fsa.arcs, fsa.properties)
 
     out_fsa = Fsa(ragged_arc)
 
@@ -627,12 +628,12 @@ def determinize(fsa: Fsa) -> Fsa:
         but this is not checked; in any case,
         epsilon will be treated as a normal symbol.
     Returns:
-        The result Fsa, it's equivalent to the input `fsa` under
-        tropical semiring but will be deterministic.
-        It will be the same as the input `fsa` if the input
-        `fsa` has property kFsaPropertiesArcSortedAndDeterministic.
-        Otherwise, a new deterministic fsa is returned and the
-        input `fsa` is NOT modified.
+      The result Fsa, it's equivalent to the input `fsa` under
+      tropical semiring but will be deterministic.
+      It will be the same as the input `fsa` if the input
+      `fsa` has property kFsaPropertiesArcSortedAndDeterministic.
+      Otherwise, a new deterministic fsa is returned and the
+      input `fsa` is NOT modified.
     '''
     assert fsa.is_cpu()
     assert fsa.requires_grad is False

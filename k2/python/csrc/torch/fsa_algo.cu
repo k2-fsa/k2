@@ -327,7 +327,8 @@ static void PybindRemoveEpsilon(py::module &m) {
       py::arg("src"));
   m.def(
       "remove_epsilon",
-      [](FsaOrVec &src, int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+      [](FsaOrVec &src,
+         int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilon(src, properties, &dest, &arc_map);
@@ -336,7 +337,8 @@ static void PybindRemoveEpsilon(py::module &m) {
       py::arg("src"), py::arg("properties"));
   m.def(
       "remove_epsilon_and_add_self_loops",
-      [](FsaOrVec &src, int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+      [](FsaOrVec &src,
+         int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonAndAddSelfLoops(src, properties, &dest, &arc_map);
@@ -358,19 +360,17 @@ static void PybindDeterminize(py::module &m) {
 }
 
 static void PybindClosure(py::module &m) {
-  // clang-format off
   m.def(
       "closure",
-      [](Fsa &src, bool need_arc_map = true)
-          -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+      [](Fsa &src, bool need_arc_map =
+                       true) -> std::pair<Fsa, torch::optional<torch::Tensor>> {
         Array1<int32_t> arc_map;
         Fsa out = Closure(src, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> arc_map_tensor;
         if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
         return std::make_pair(out, arc_map_tensor);
       },
-      py::arg("src"), py::arg("need_arc_map"));
-  // clang-format on
+      py::arg("src"), py::arg("need_arc_map") = true);
 }
 
 static void PybindInvert(py::module &m) {

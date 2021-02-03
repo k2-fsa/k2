@@ -203,8 +203,8 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
   return ok;
 }
 
-// Will be used in RemoveEpsilonHost and Determinize below to process FsaVec input
-// recursively.
+// Will be used in RemoveEpsilonHost and Determinize below to process FsaVec
+// input recursively.
 void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *, Ragged<int32_t> *),
                       FsaOrVec &src, FsaOrVec *dest,
                       Ragged<int32_t> *arc_deriv) {

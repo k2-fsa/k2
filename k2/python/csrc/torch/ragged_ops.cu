@@ -9,6 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <utility>
 #include <vector>
 
 #include "k2/csrc/ragged_ops.h"
@@ -206,6 +207,33 @@ static void PybindUniqueSequences(py::module &m) {
   m.def("unique_sequences", &UniqueSequences, py::arg("src"));
 }
 
+static void PybindIndex(py::module &m) {
+  // Note there are several overloads of `index`
+  // in k2/python/csrc/torch/ragged.cu
+
+  // return a pair:
+  //  - ans (RaggedShape)
+  //  - value_indexes (optional)
+  //
+  m.def(
+      "index",
+      [](RaggedShape &src, int32_t axis, torch::Tensor indexes,
+         bool need_value_indexes =
+             true) -> std::pair<RaggedShape, torch::optional<torch::Tensor>> {
+        Array1<int32_t> indexes_array = FromTensor<int32_t>(indexes);
+        Array1<int32_t> value_indexes;
+        RaggedShape ans = Index(src, axis, indexes_array,
+                                need_value_indexes ? &value_indexes : nullptr);
+
+        torch::optional<torch::Tensor> value_indexes_tensor;
+        if (need_value_indexes) value_indexes_tensor = ToTensor(value_indexes);
+
+        return std::make_pair(ans, value_indexes_tensor);
+      },
+      py::arg("src"), py::arg("axis"), py::arg("indexes"),
+      py::arg("need_value_indexes") = true);
+}
+
 }  // namespace k2
 
 void PybindRaggedOps(py::module &m) {
@@ -223,4 +251,5 @@ void PybindRaggedOps(py::module &m) {
   PybindCreateRagged2<float>(m);
   PybindGetLayer(m);
   PybindUniqueSequences(m);
+  PybindIndex(m);
 }

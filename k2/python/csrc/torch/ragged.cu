@@ -146,12 +146,13 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   //     == true, None if need_value_indexes_out == false
   m.def(
       "index",
-      [](PyClass &src, torch::Tensor indexes, bool need_value_indexes = true)
-          -> std::pair<PyClass, torch::optional<torch::Tensor>> {
+      [](PyClass &src, int32_t axis, torch::Tensor indexes,
+         bool need_value_indexes =
+             true) -> std::pair<PyClass, torch::optional<torch::Tensor>> {
         Array1<int32_t> indexes_array = FromTensor<int32_t>(indexes);
         Array1<int32_t> value_indexes;
 
-        Ragged<T> ans = Index(src, 0, indexes_array,
+        Ragged<T> ans = Index(src, axis, indexes_array,
                               need_value_indexes ? &value_indexes : nullptr);
         torch::optional<torch::Tensor> value_indexes_tensor;
 
@@ -159,7 +160,8 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
 
         return std::make_pair(ans, value_indexes_tensor);
       },
-      py::arg("src"), py::arg("indexes"), py::arg("need_value_indexes") = true);
+      py::arg("src"), py::arg("axis"), py::arg("indexes"),
+      py::arg("need_value_indexes") = true);
 
   m.def(
       "index",
