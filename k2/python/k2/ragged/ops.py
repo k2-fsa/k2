@@ -13,11 +13,13 @@ import torch
 import _k2
 
 
-def index(src: Union[_k2.RaggedArc, _k2.RaggedInt],
-          indexes: torch.Tensor,
-          need_value_indexes: bool = True,
-          axis: int = 0) -> Tuple[Union[_k2.RaggedArc, _k2.RaggedInt],  # noqa
-                                  Optional[torch.Tensor]]:  # noqa
+def index(
+        src: Union[_k2.RaggedArc, _k2.RaggedInt, _k2.RaggedShape],
+        indexes: torch.Tensor,
+        need_value_indexes: bool = True,
+        axis: int = 0
+) -> Tuple[Union[_k2.RaggedArc, _k2.RaggedInt, _k2.RaggedShape],  # noqa
+           Optional[torch.Tensor]]:  # noqa
     '''Indexing operation on ragged tensor, returns src[indexes], where
     the elements of `indexes` are interpreted as indexes into axis 0 of
     `src`.
@@ -27,7 +29,7 @@ def index(src: Union[_k2.RaggedArc, _k2.RaggedInt],
 
     Args:
       src:
-        Source ragged tensor to index.
+        Source ragged tensor or ragged shape to index.
       axis:
         The axis to be indexed. Must satisfy 0 <= axis < src.num_axes()
       indexes:
