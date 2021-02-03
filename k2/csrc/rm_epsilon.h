@@ -17,7 +17,7 @@ namespace k2 {
 
 /*
   Notes on our iterative epsilon removal algorithm (for tropical semiring),
-  RemoveEpsilonsIterativeTropical().
+  RemoveEpsilonHostsDevice().
 
   We first separate epsilon and non-epsilon arcs (while leaving the
   state numbering fixed); doing a closure on the epsilon part so we have direct
@@ -281,8 +281,9 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
   tries to minimize the number of arcs in the resulting FSA (epsilons are
   combined with either preceding or following arcs).
 
-    @param [in] src_fsa    FSA to remove epsilons from.  It is an error if
-                        src_fsa has epsilon loops with score greater than zero.
+    @param [in] src_fsa    Fsa or FsaVec (2 or 3 axes) to remove epsilons from.
+                         It is an error if src_fsa has epsilon loops with score
+                         greater than zero.
     @param [out] dest_fsa  Result will be written to here; will be equivalent
                           to `src_fsa` in the tropical semiring, and will be
                           epsilon-free.
@@ -291,10 +292,12 @@ void ComputeEpsilonClosureOneIter(FsaVec &epsilon_fsa, FsaVec *closure_fsa,
                           written here.
 
    For an explanation of how this algorithm works and a proof-sketch, see the
-   comment at the top of this file.
+   comment at the top of this file.  NOTE: although it's called
+   RemoveEpsilonDevice(), it works for both host and device, it's just optimized
+   for GPU.
 */
-void RemoveEpsilonsIterativeTropical(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
-                                     Ragged<int32_t> *arc_map = nullptr);
+void RemoveEpsilonDevice(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
+                         Ragged<int32_t> *arc_map = nullptr);
 }  // namespace k2
 
 #endif  // K2_CSRC_RM_EPSILON_H_

@@ -340,7 +340,7 @@ void CheckArcMap(FsaVec &src, FsaVec &dest, Ragged<int32_t> &arc_map) {
   }
 }
 
-TEST(RmEpsilon, RemoveEpsilonsIterativeTropicalSimple) {
+TEST(RmEpsilon, RemoveEpsilonDeviceSimple) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     std::string s1 = R"(0 1 1 1
     1 2 0 1 
@@ -370,7 +370,7 @@ TEST(RmEpsilon, RemoveEpsilonsIterativeTropicalSimple) {
 
       FsaVec dest;
       Ragged<int32_t> arc_map;
-      RemoveEpsilonsIterativeTropical(fsa, &dest, &arc_map);
+      RemoveEpsilonDevice(fsa, &dest, &arc_map);
       EXPECT_EQ(dest.NumAxes(), 2);
       EXPECT_EQ(arc_map.NumAxes(), 2);
       K2_LOG(INFO) << dest;
@@ -394,7 +394,7 @@ TEST(RmEpsilon, RemoveEpsilonsIterativeTropicalSimple) {
 
       FsaVec dest;
       Ragged<int32_t> arc_map;
-      RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
+      RemoveEpsilonDevice(fsa_vec, &dest, &arc_map);
       EXPECT_EQ(dest.NumAxes(), 3);
       EXPECT_EQ(arc_map.NumAxes(), 2);
       K2_LOG(INFO) << dest;
@@ -414,7 +414,7 @@ TEST(RmEpsilon, RemoveEpsilonsIterativeTropicalSimple) {
   }
 }
 
-TEST(RmEpsilon, TestRemoveEpsilonsIterativeTropicalWithRandomTopSortedFsa) {
+TEST(RmEpsilon, TestRemoveEpsilonDeviceWithRandomTopSortedFsa) {
   for (int32_t i = 0; i != 1; ++i) {
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
       int32_t min_num_fsas = 1;
@@ -431,7 +431,7 @@ TEST(RmEpsilon, TestRemoveEpsilonsIterativeTropicalWithRandomTopSortedFsa) {
 
       FsaVec dest;
       Ragged<int32_t> arc_map;
-      RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
+      RemoveEpsilonDevice(fsa_vec, &dest, &arc_map);
       EXPECT_EQ(dest.NumAxes(), 3);
       EXPECT_EQ(arc_map.NumAxes(), 2);
       Array1<int32_t> properties;
@@ -449,7 +449,7 @@ TEST(RmEpsilon, TestRemoveEpsilonsIterativeTropicalWithRandomTopSortedFsa) {
   }
 }
 
-TEST(RmEpsilon, TestRemoveEpsilonsIterativeTropicalWithRandomNonTopSortedFsa) {
+TEST(RmEpsilon, TestRemoveEpsilonDeviceWithRandomNonTopSortedFsa) {
   for (int32_t i = 0; i != 1; ++i) {
     for (auto &context : {GetCpuContext(), GetCudaContext()}) {
       int32_t min_num_fsas = 1;
@@ -463,7 +463,7 @@ TEST(RmEpsilon, TestRemoveEpsilonsIterativeTropicalWithRandomNonTopSortedFsa) {
       FsaVec fsa_vec = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic,
                                     max_symbol, min_num_arcs, max_num_arcs);
       // convert arcs' scores to negative as we don't allow positive epsilon
-      // cycles in `RemoveEpsilonIterativeTropical`.
+      // cycles in `RemoveEpsilonHostIterativeTropical`.
       Arc *fsa_vec_arcs_data = fsa_vec.values.Data();
       for (int32_t n = 0; n != fsa_vec.NumElements(); ++n) {
         Arc &cur_arc = fsa_vec_arcs_data[n];
@@ -473,7 +473,7 @@ TEST(RmEpsilon, TestRemoveEpsilonsIterativeTropicalWithRandomNonTopSortedFsa) {
 
       FsaVec dest;
       Ragged<int32_t> arc_map;
-      RemoveEpsilonsIterativeTropical(fsa_vec, &dest, &arc_map);
+      RemoveEpsilonDevice(fsa_vec, &dest, &arc_map);
       EXPECT_EQ(dest.NumAxes(), 3);
       EXPECT_EQ(arc_map.NumAxes(), 2);
       Array1<int32_t> properties;

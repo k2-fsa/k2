@@ -314,25 +314,76 @@ FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a, FsaVec &b_fsas,
                        Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
 
 /*
-    Remove epsilons (symbol zero) in the input Fsas, it works for both
-    Fsa and FsaVec.
+    Remove epsilons (symbol zero) in the input Fsas while maintaining
+    equivalence in tropical semiring;t works for both Fsa and FsaVec,
+    and for CPU and GPU.
+
     @param [in] src   Source Fsa or FsaVec. Must be top-sorted as we will
                       compute forward and backward scores on it.
     @param [out] dest Destination; at exit will be equivalent to `src` under
                       tropical semiring but will be epsilon-free, i.e.
                       there's no arc in dest with arc.label==0, its
                       Properties() will contain kFsaPropertiesEpsilonFree.
-    @param [out] arc_derivs  If not nullptr, at exit arc_dervis.NumAxes() == 2,
+    @param [out] arc_derivs  If not nullptr, at exit arc_derivs.NumAxes() == 2,
                       its rows are indexed by arc-indexes in `dest`. Row i in
                       arc_derivs is the sequence of arcs in `src` that arc
                       `i` in `dest` corresponds to; the weight of the arc in
                       `dest` will equal the sum of those input arcs' weights.
     Note we don't support pruning here.
+*/
+void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
+                       Ragged<int32_t> *arc_derivs = nullptr);
 
-    CAUTION: It only works for CPU;
+/*
+  Generic epsilon removal wrapper, that calls either RemoveEpsilonHost()
+  (declared above) or RemoveEpsilonDevice() which is declared in rm_epsilon.h.
+  Note: it calls RemoveEpsilonDevice() even for input on CPU if, according
+  to `properties`, `src` is not top-sorted.  It works for CPU, it just is
+  not optimized for it.
+
+
+    @param [in] src  Fsa or FsaVec (2 or 3 axes).  Must be free of
+                     epsilon loops with negative cost (will crash
+                     if they exist).
+    @param [in] properties  Properties of `src`.  The only property that matters
+                     is kFsaPropertiesTopSortedAndAcyclic (to
+                     determine whether we can use RemoveEpsilonHost()).
+    @param [out] dest   The epsilon-removed FSA will be written to here
+    @param [out] arc_derivs  If not nullptr, a ragged tensor with 2
+                     axes will be written to here, with
+                     `arc_derivs->Dim() == dest->NumElements()`.
+                     Each sub-list is the sequence of arcs in `src`
+                     that the corresponding arc in `dest` is the
+                     product of.
  */
-void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
+void RemoveEpsilon(FsaOrVec &src, int32_t properties,
+                   FsaOrVec *dest,
                    Ragged<int32_t> *arc_derivs = nullptr);
+
+/*
+  This function combines RemoveEpsilon() and AddEpsilonSelfLoops().  Please
+  see documentation of those functions for more details.
+
+      @param [in] src   Source Fsa or FsaVec to have epsilons removed from
+                        and then epsilon self-loops added to.  It is an
+                        error if it has epsilon self-loops with score
+                        greater than 0.
+      @param [in] properties     Properties of `src`.  See RemoveEpsilon()
+                        for details.
+      @param [out] dest  Result will be written to here
+      @param [out] arc_derivs   If not nullptr, a ragged tensor with 2
+                        axes will be written to here, with
+                        `arc_derivs->Dim() == dest->NumElements()`;
+                        each sub-list is the list of arcs in `src`
+                        that this corresponds to (will be empty
+                        for the newly added epsilon self-loops)
+ */
+void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
+                                  FsaOrVec *dest,
+                                  Ragged<int32_t> *arc_derivs = nullptr);
+
+
+
 
 /*
     Determinize the input Fsas, it works for both Fsa and FsaVec.
@@ -430,7 +481,7 @@ Fsa Union(FsaVec &fsas, Array1<int32_t> *arc_map = nullptr);
 
    Note: The output will not be epsilon-free though, so if an epsilon-free
    output is desired, which it generally will be, the caller will need to
-   RemoveEpsilon afterward.
+   RemoveEpsilonHost afterward.
 
    Caution: The caller will have to modify any extra labels (like aux_labels) to
    deal with -1's correctly.

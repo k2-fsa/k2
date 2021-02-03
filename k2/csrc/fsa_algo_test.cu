@@ -458,7 +458,7 @@ TEST(FsaAlgo, UnionRandomFsas) {
   }
 }
 
-TEST(FsaAlgo, RemoveEpsilons) {
+TEST(FsaAlgo, RemoveEpsilonHosts) {
   {
     // simple case
     std::string s = R"(0 4 1 1
@@ -483,7 +483,7 @@ TEST(FsaAlgo, RemoveEpsilons) {
     EXPECT_NE(prop & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
     Fsa dest;
     Ragged<int32_t> arc_derivs;
-    RemoveEpsilon(src, &dest, &arc_derivs);
+    RemoveEpsilonHost(src, &dest, &arc_derivs);
     prop = GetFsaBasicProperties(dest);
     EXPECT_EQ(prop & kFsaPropertiesEpsilonFree, kFsaPropertiesEpsilonFree);
     bool log_semiring = false;
@@ -505,7 +505,7 @@ TEST(FsaAlgo, RemoveEpsilons) {
     FsaVec fsas = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
                                min_num_arcs, max_num_arcs);
     FsaVec dest;
-    RemoveEpsilon(fsas, &dest);
+    RemoveEpsilonHost(fsas, &dest);
     Array1<int32_t> properties;
     int32_t p;
     GetFsaVecBasicProperties(dest, &properties, &p);

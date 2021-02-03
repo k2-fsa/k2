@@ -23,6 +23,8 @@
 #include "k2/csrc/host/topsort.h"
 #include "k2/csrc/host_shim.h"
 #include "k2/csrc/macros.h"
+#include "k2/csrc/rm_epsilon.h"
+
 
 // this contains a subset of the algorithms in fsa_algo.h; currently it just
 // contains one that are wrappings of the corresponding algorithms in
@@ -201,7 +203,7 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
   return ok;
 }
 
-// Will be used in RemoveEpsilon and Determinize below to process FsaVec input
+// Will be used in RemoveEpsilonHost and Determinize below to process FsaVec input
 // recursively.
 void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *, Ragged<int32_t> *),
                       FsaOrVec &src, FsaOrVec *dest,
@@ -227,16 +229,15 @@ void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *, Ragged<int32_t> *),
   if (arc_deriv != nullptr) *arc_deriv = Append(0, num_fsas, arc_derivs.data());
 }
 
-void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
-                   Ragged<int32_t> *arc_derivs /*=nullptr*/) {
+void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
+                       Ragged<int32_t> *arc_derivs /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   int32_t num_axes = src.NumAxes();
   if (num_axes < 2 || num_axes > 3) {
     K2_LOG(FATAL) << "Input has bad num-axes " << num_axes;
   } else if (num_axes == 3) {
-    return RecursionWrapper(RemoveEpsilon, src, dest, arc_derivs);
+    return RecursionWrapper(RemoveEpsilonHost, src, dest, arc_derivs);
   }
-
   k2host::Fsa host_fsa = FsaToHostFsa(src);
   int32_t num_states = host_fsa.NumStates();
   K2_CHECK_EQ(num_states, src.Dim0());
@@ -261,6 +262,41 @@ void RemoveEpsilon(FsaOrVec &src, FsaOrVec *dest,
   *dest = fsa_creator.GetFsa();
   if (arc_derivs != nullptr) *arc_derivs = ragged_creator.GetRagged2();
 }
+
+
+void RemoveEpsilon(FsaOrVec &src, int32_t properties,
+                   FsaOrVec *dest,
+                   Ragged<int32_t> *arc_derivs) {
+  if ((properties & kFsaPropertiesTopSortedAndAcyclic) != 0 &&
+      src.Context()->GetDeviceType() == kCpu) {
+    // Host version of the algorithm
+    RemoveEpsilonHost(src, dest, arc_derivs);
+  } else {
+    RemoveEpsilonDevice(src, dest, arc_derivs);
+  }
+}
+
+
+void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
+                                  FsaOrVec *dest,
+                                  Ragged<int32_t> *arc_derivs) {
+  Ragged<int32_t> arc_derivs1;
+
+  FsaOrVec temp;
+  RemoveEpsilon(src, properties, &temp,
+                (arc_derivs != nullptr ? &arc_derivs1 : nullptr));
+
+  Array1<int32_t> arc_derivs2;
+  AddEpsilonSelfLoops(temp, dest,
+                      (arc_derivs != nullptr ? &arc_derivs2 : nullptr));
+
+  if (arc_derivs != nullptr) {
+    *arc_derivs = Index(arc_derivs1, 0, arc_derivs2, nullptr);
+  }
+}
+
+
+
 
 void Determinize(FsaOrVec &src, FsaOrVec *dest,
                  Ragged<int32_t> *arc_derivs /*=nullptr*/) {

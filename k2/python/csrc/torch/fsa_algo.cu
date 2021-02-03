@@ -308,23 +308,41 @@ static void PybindUnion(py::module &m) {
 
 static void PybindRemoveEpsilon(py::module &m) {
   m.def(
-      "remove_epsilon",
+      "remove_epsilon_host",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
-        RemoveEpsilon(src, &dest, &arc_map);
+        RemoveEpsilonHost(src, &dest, &arc_map);
         return std::make_pair(dest, arc_map);
       },
       py::arg("src"));
   m.def(
-      "remove_epsilons_iterative_tropical",
+      "remove_epsilon_device",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
-        RemoveEpsilonsIterativeTropical(src, &dest, &arc_map);
+        RemoveEpsilonDevice(src, &dest, &arc_map);
         return std::make_pair(dest, arc_map);
       },
       py::arg("src"));
+  m.def(
+      "remove_epsilon",
+      [](FsaOrVec &src, int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        FsaOrVec dest;
+        Ragged<int32_t> arc_map;
+        RemoveEpsilon(src, properties, &dest, &arc_map);
+        return std::make_pair(dest, arc_map);
+      },
+      py::arg("src"), py::arg("properties"));
+  m.def(
+      "remove_epsilon_and_add_self_loops",
+      [](FsaOrVec &src, int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        FsaOrVec dest;
+        Ragged<int32_t> arc_map;
+        RemoveEpsilonAndAddSelfLoops(src, properties, &dest, &arc_map);
+        return std::make_pair(dest, arc_map);
+      },
+      py::arg("src"), py::arg("properties"));
 }
 
 static void PybindDeterminize(py::module &m) {

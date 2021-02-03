@@ -1148,9 +1148,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
 
 
 /*
-  Indexing operation on ragged tensor, returns src[indexes], where
-  the elements of `indexes` are interpreted as indexes into axis 0
-  of `src`.
+  Index ragged tensor with array, return ragged tensor.
 
       @param [in] src      Source ragged tensor to index
       @param [in] axis     Axis to index `src` on

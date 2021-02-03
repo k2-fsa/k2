@@ -13,7 +13,7 @@ import unittest
 import k2
 
 
-class TestRemoveEpsilon(unittest.TestCase):
+class TestRemoveEpsilonHost(unittest.TestCase):
 
     def test1(self):
         s = '''
@@ -44,7 +44,7 @@ class TestRemoveEpsilon(unittest.TestCase):
         self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
 
 
-class TestRemoveEpsilonsIterativeTropical(unittest.TestCase):
+class TestRemoveEpsilonDevice(unittest.TestCase):
 
     def test1(self):
         s = '''
@@ -60,11 +60,23 @@ class TestRemoveEpsilonsIterativeTropical(unittest.TestCase):
         print(fsa.aux_labels)
         prop = fsa.properties
         self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
-        dest = k2.remove_epsilons_iterative_tropical(fsa)
+        dest = k2.remove_epsilon(fsa)
         prop = dest.properties
         self.assertTrue(prop & k2.fsa_properties.EPSILON_FREE)
         log_semiring = False
         self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
+
+        # just make sure that it runs.
+        dest2 = k2.remove_epsilon_and_add_self_loops(fsa)
+        dest3 = k2.remove_epsilon(dest2)
+
+        self.assertTrue(k2.is_rand_equivalent(dest, dest3, log_semiring,
+                                              treat_epsilons_specially=False))
+        self.assertFalse(k2.is_rand_equivalent(dest, dest2, log_semiring,
+                                               treat_epsilons_specially=False,
+                                               npath=10000))
+        self.assertTrue(k2.is_rand_equivalent(dest, dest2, log_semiring,
+                                              treat_epsilons_specially=True))
 
 
 if __name__ == '__main__':
