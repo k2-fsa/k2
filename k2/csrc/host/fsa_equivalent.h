@@ -177,7 +177,6 @@ class RandPath {
   std::vector<Arc> arcs_;             // arcs of fsa_out
   std::vector<int32_t> arc_map_;      // map from element of arcs_ to
                                       // corresponding arc_index of fsa_in
-
 };
 
 }  // namespace k2host
