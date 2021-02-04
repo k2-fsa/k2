@@ -255,8 +255,8 @@ def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
         or `src.dtype == torch.float32`.
       indexes:
         It satisfies -1 <= indexes.values()[i] < src.numel().
-        - If it's a tensor, its values will be interpreted as indexes into `src`;
-        if indexes.values()[i] is -1, then ans[i] is 0.
+        - If it's a tensor, its values will be interpreted as indexes into
+        `src`; if indexes.values()[i] is -1, then ans[i] is 0.
 
         - If it's a ragged tensor, `indexes.values()` will be interpreted as
         indexes into `src`. If src.dtype is torch.int32, it returns
