@@ -26,6 +26,7 @@ set(py_test_files
   ctc_gradients_test.py
   dense_fsa_vec_test.py
   determinize_test.py
+  fsa_from_unary_function_ragged_test.py
   fsa_from_unary_function_tensor_test.py
   fsa_test.py
   get_arc_post_test.py
@@ -33,6 +34,7 @@ set(py_test_files
   get_forward_scores_test.py
   get_tot_scores_test.py
   index_add_test.py
+  index_and_sum_test.py
   index_select_test.py
   index_test.py
   intersect_dense_pruned_test.py

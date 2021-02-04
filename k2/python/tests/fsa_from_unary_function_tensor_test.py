@@ -37,6 +37,7 @@ class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
             src.int_attr = torch.tensor([1, 2, 3],
                                         dtype=torch.int32,
                                         device=device)
+            src.ragged_attr = k2.RaggedInt('[[1 2 3] [5 6] []]').to(device)
             src.attr1 = 'src'
             src.attr2 = 'fsa'
 
@@ -44,11 +45,13 @@ class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
 
             dest = k2.utils.fsa_from_unary_function_tensor(
                 src, ragged_arc, arc_map)
+
             assert torch.allclose(
                 dest.float_attr,
                 torch.tensor([0.2, 0.1, 0.3],
                              dtype=torch.float32,
                              device=device))
+
             assert torch.all(
                 torch.eq(
                     dest.scores,
@@ -61,8 +64,12 @@ class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
                     dest.int_attr,
                     torch.tensor([2, 1, 3], dtype=torch.int32, device=device)))
 
+            expected_ragged_attr = k2.RaggedInt('[ [5 6] [1 2 3] []]')
+            self.assertEqual(str(dest.ragged_attr), str(expected_ragged_attr))
+
             assert dest.attr1 == src.attr1
             assert dest.attr2 == src.attr2
+
             # now for autograd
             scale = torch.tensor([10, 20, 30], device=device)
             (dest.float_attr * scale).sum().backward()
@@ -96,6 +103,7 @@ class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
             src.int_attr = torch.tensor([1, 2, 3],
                                         dtype=torch.int32,
                                         device=device)
+            src.ragged_attr = k2.RaggedInt('[[1 2 3] [5 6] []]').to(device)
             src.attr1 = 'src'
             src.attr2 = 'fsa'
             ragged_arc, arc_map = _k2.add_epsilon_self_loops(src.arcs,
@@ -121,6 +129,9 @@ class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
                     torch.tensor([0, 1, 2, 0, 3],
                                  dtype=torch.int32,
                                  device=device)))
+
+            expected_ragged_attr = k2.RaggedInt('[ [] [1 2 3] [5 6] [] []]')
+            self.assertEqual(str(dest.ragged_attr), str(expected_ragged_attr))
 
             assert dest.attr1 == src.attr1
             assert dest.attr2 == src.attr2
