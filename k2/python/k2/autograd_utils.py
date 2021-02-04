@@ -50,7 +50,7 @@ class _PhantomIndexSelectScoresFunction(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, out_fsa_scores_grad: torch.Tensor
-                ) -> Tuple[None, torch.Tensor, None]:
+                ) -> Tuple[None, torch.Tensor, None]:  # noqa
         unused_in_fsa_scores, arc_map = ctx.saved_tensors
 
         ans = torch.zeros(unused_in_fsa_scores.shape,
