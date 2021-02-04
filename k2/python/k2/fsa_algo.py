@@ -56,7 +56,7 @@ def linear_fsa(labels: Union[List[int], List[List[int]]],
 
 def linear_fst(labels: Union[List[int], List[List[int]]],
                aux_labels: Union[List[int], List[List[int]]]) -> Fsa:
-    '''Construct an linear FST from labels and its corresponding
+    '''Construct a linear FST from labels and its corresponding
     auxiliary labels.
 
     Note:
@@ -70,19 +70,19 @@ def linear_fst(labels: Union[List[int], List[List[int]]],
 
     Returns:
       An FST if the labels is a list of integers.
-      A vector of FSTs if the input is a list of list of integers.
+      A vector of FSTs (FsaVec) if the input is a list of list of integers.
     '''
     ragged_arc = _k2.linear_fsa(labels)
-    aux_labels_tmp = []
     if isinstance(labels[0], List):
         assert isinstance(aux_labels[0],
-                          List), 'aux_labels and labels do not match.'
+                          list), 'aux_labels and labels do not match.'
+        buf = []
         for aux in aux_labels:
-            aux_labels_tmp.extend(aux + [-1])  # -1 == kFinalSymbol
-        aux_labels = torch.IntTensor(aux_labels_tmp)
+            buf.extend(aux + [-1])
+        aux_labels_tmp = torch.tensor(buf, dtype=torch.int32)
     else:
-        aux_labels_tmp = aux_labels + [-1]  # -1 == kFinalSymbol
-    fsa = Fsa(ragged_arc, aux_labels=torch.IntTensor(aux_labels_tmp))
+        aux_labels_tmp = torch.tensor(aux_labels + [-1], dtype=torch.int32)
+    fsa = Fsa(ragged_arc, aux_labels=aux_labels_tmp)
     return fsa
 
 
@@ -102,13 +102,9 @@ def top_sort(fsa: Fsa) -> Fsa:
     '''
     need_arc_map = True
     ragged_arc, arc_map = _k2.top_sort(fsa.arcs, need_arc_map=need_arc_map)
-    sorted_fsa = Fsa(ragged_arc)
-    for name, value in fsa.named_tensor_attr():
-        setattr(sorted_fsa, name, index(value, arc_map))
-    for name, value in fsa.named_non_tensor_attr():
-        setattr(sorted_fsa, name, value)
 
-    return sorted_fsa
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
+    return out_fsa
 
 
 def intersect_device(a_fsas: Fsa, b_fsas: Fsa,
@@ -434,12 +430,8 @@ def connect(fsa: Fsa) -> Fsa:
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.connect(fsa.arcs, need_arc_map=need_arc_map)
-    out_fsa = Fsa(ragged_arc)
-    for name, value in fsa.named_tensor_attr():
-        setattr(out_fsa, name, index(value, arc_map))
-    for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, value)
 
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
     return out_fsa
 
 
@@ -466,12 +458,8 @@ def arc_sort(fsa: Fsa) -> Fsa:
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.arc_sort(fsa.arcs, need_arc_map=need_arc_map)
-    out_fsa = Fsa(ragged_arc)
-    for name, value in fsa.named_tensor_attr():
-        setattr(out_fsa, name, index(value, arc_map))
-    for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, value)
 
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
     return out_fsa
 
 
@@ -494,15 +482,9 @@ def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
     '''
     entering_arcs = fsa._get_entering_arcs(use_double_scores)
     ragged_arc, ragged_int = _k2.shortest_path(fsa.arcs, entering_arcs)
-    out_fsa = Fsa(ragged_arc)
-
     arc_map = ragged_int.values()
-    for name, value in fsa.named_tensor_attr():
-        setattr(out_fsa, name, index(value, arc_map))
 
-    for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, value)
-
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
     return out_fsa
 
 
@@ -525,14 +507,7 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
     ragged_arc, arc_map = _k2.add_epsilon_self_loops(fsa.arcs,
                                                      need_arc_map=need_arc_map)
 
-    out_fsa = Fsa(ragged_arc)
-    for name, value in fsa.named_tensor_attr():
-        new_value = index(value, arc_map)
-        setattr(out_fsa, name, new_value)
-
-    for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, value)
-
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
     return out_fsa
 
 
@@ -549,7 +524,7 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
         `fsa` must be free of epsilon loops that have score
         greater than 0.
     Returns:
-      The result Fsa, it's equivalent to the input `fsa` under
+      The resulting Fsa, it's equivalent to the input `fsa` under
       tropical semiring but will be epsilon-free.
       It will be the same as the input `fsa` if the input
       `fsa` is epsilon-free. Otherwise, a new epsilon-free fsa
@@ -628,7 +603,7 @@ def determinize(fsa: Fsa) -> Fsa:
         but this is not checked; in any case,
         epsilon will be treated as a normal symbol.
     Returns:
-      The result Fsa, it's equivalent to the input `fsa` under
+      The resulting Fsa, it's equivalent to the input `fsa` under
       tropical semiring but will be deterministic.
       It will be the same as the input `fsa` if the input
       `fsa` has property kFsaPropertiesArcSortedAndDeterministic.
@@ -660,7 +635,7 @@ def closure(fsa: Fsa) -> Fsa:
         The input FSA. It has to be a single FSA. That is,
         len(fsa.shape) == 2.
     Returns:
-      The result FSA which is the Kleene closure of the input FSA.
+      The resulting FSA which is the Kleene closure of the input FSA.
     '''
 
     def fix_aux_labels(src_aux_labels: torch.Tensor,

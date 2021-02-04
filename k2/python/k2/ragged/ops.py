@@ -21,7 +21,7 @@ def index(
 ) -> Tuple[Union[_k2.RaggedArc, _k2.RaggedInt, _k2.RaggedShape],  # noqa
            Optional[torch.Tensor]]:  # noqa
     '''Indexing operation on ragged tensor, returns src[indexes], where
-    the elements of `indexes` are interpreted as indexes into axis 0 of
+    the elements of `indexes` are interpreted as indexes into axis `axis` of
     `src`.
 
     Caution:

@@ -9,10 +9,11 @@ from typing import Union
 
 import torch
 
-import _k2
-import k2.ragged
 from .fsa import Fsa
 from .symbol_table import SymbolTable
+import k2
+import k2.ragged
+import _k2
 
 
 def to_str(fsa: Fsa, openfst: bool = False) -> str:
@@ -366,3 +367,36 @@ def create_sparse(rows: torch.Tensor,
                                        values,
                                        device=values.device,
                                        requires_grad=values.requires_grad)
+
+
+def fsa_from_unary_function_tensor(src: Fsa, dest_arcs: _k2.RaggedArc,
+                                   arc_map: torch.Tensor) -> Fsa:
+    '''Create an Fsa object, including autograd logic and propagating
+    properties from the source FSA.
+
+    This is intended to be called from unary functions on FSAs where the arc_map
+    is a Tensor of int32 (i.e. not ragged).
+
+    Args:
+      src:
+        The source Fsa, i.e. the arg to the unary function.
+      dest_arcs:
+        The raw output of the unary function, as output by whatever C++
+        algorithm we used.
+      arc_map:
+        A map from arcs in `dest_arcs` to the corresponding arc-index in `src`,
+        or -1 if the arc had no source arc (e.g. added epsilon self-loops).
+    Returns:
+      Returns the resulting Fsa, with properties propagated appropriately, and
+      autograd handled.
+    '''
+    dest = Fsa(dest_arcs)
+
+    for name, value in src.named_tensor_attr(include_scores=False):
+        setattr(dest, name, k2.index(value, arc_map))
+
+    for name, value in src.named_non_tensor_attr():
+        setattr(dest, name, value)
+
+    k2.autograd_utils.phantom_index_select_scores(dest, src.scores, arc_map)
+    return dest
