@@ -59,7 +59,7 @@ class _IndexSelectFunction(torch.autograd.Function):
         return ans, None
 
 
-# put index_select stead of `auto_grad.py` here to break circular import
+# put index_select here instead of in `auto_grad.py` to break circular import
 def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
     '''Returns a new tensor which indexes the input tensor along dimension 0
     using the entries in `index`.

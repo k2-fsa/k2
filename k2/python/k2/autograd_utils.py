@@ -1,8 +1,12 @@
-# Copyright (c)  2020  Xiaomi Corp.   (author: Daniel Povey)
+# Copyright (c)  2020-2021  Xiaomi Corp.   (authors: Daniel Povey
+#                                                    Fangjun Kuang)
 # See ../../../LICENSE for clarification regarding multiple authors
 
 from typing import Tuple
 import torch
+
+from .fsa import Fsa
+import _k2
 
 
 # This is a trick when we want to set the scores of an Fsa to a certain
@@ -18,10 +22,11 @@ import torch
 class _PhantomSetScoresFunction(torch.autograd.Function):
 
     @staticmethod
-    def forward(ctx, out_fsa,
+    def forward(ctx, out_fsa: Fsa,
                 unused_in_fsa_scores: torch.Tensor) -> torch.Tensor:
-        # TODO(dan): remove the following assertion at some point.
-        assert torch.all(torch.eq(out_fsa.scores, unused_in_fsa_scores))
+        if True:
+            # TODO(dan): remove the following assertion at some point.
+            assert torch.all(torch.eq(out_fsa.scores, unused_in_fsa_scores))
         return out_fsa.scores
 
     @staticmethod
@@ -30,9 +35,44 @@ class _PhantomSetScoresFunction(torch.autograd.Function):
         return None, out_fsa_scores_grad
 
 
-def phantom_set_scores_to(fsa, scores_value) -> None:
+class _PhantomIndexSelectScoresFunction(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, out_fsa: Fsa, unused_in_fsa_scores: torch.Tensor,
+                arc_map: torch.Tensor) -> torch.Tensor:
+        if False:
+            # TODO(fangjun): this is for debugging only. Can be removed.
+            expected_scores = _k2.index_select(unused_in_fsa_scores, arc_map)
+            assert torch.all(torch.eq(out_fsa.scores, expected_scores))
+
+        ctx.save_for_backward(unused_in_fsa_scores, arc_map)
+        return out_fsa.scores
+
+    @staticmethod
+    def backward(ctx, out_fsa_scores_grad: torch.Tensor
+                ) -> Tuple[None, torch.Tensor, None]:  # noqa
+        unused_in_fsa_scores, arc_map = ctx.saved_tensors
+
+        ans = torch.zeros(unused_in_fsa_scores.shape,
+                          dtype=torch.float32,
+                          device=unused_in_fsa_scores.device,
+                          requires_grad=False)
+        _k2.index_add(arc_map, out_fsa_scores_grad, ans)
+        return (
+            None,  # out_fsa
+            ans,  # unused_in_fsa_scores
+            None  # arc_map
+        )
+
+
+def phantom_set_scores_to(fsa: Fsa, scores_value: torch.Tensor) -> None:
     # we don't need the output value of the following call
     # (which is fsa.scores), since it is accessible through `fsa`.
     # The fact that it was returned from a torch.autograd.Function
     # gives it a grad_fn (assuming scores_value had requires_grad == True.)
     _PhantomSetScoresFunction.apply(fsa, scores_value)
+
+
+def phantom_index_select_scores(fsa: Fsa, scores_value: torch.Tensor,
+                                arc_map: torch.Tensor) -> None:
+    _PhantomIndexSelectScoresFunction.apply(fsa, scores_value, arc_map)
