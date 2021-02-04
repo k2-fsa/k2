@@ -12,7 +12,8 @@ Dependencies installation
 k2 supports CUDA as well as CPU. To get the full benefit from k2,
 we recommend that you have installed CUDA on your system before
 installing k2. CUDA 10.1 and 10.2 are known to work. PyTorch
-is also needed. `torch 1.6.0` and `torch 1.7.0` are known to work.
+is also needed. `torch 1.6.0`, `torch 1.7.0`, and `torch 1.7.1`
+are known to work.
 
 If you use pip to install torch, make sure the torch version
 you install is compatible with the CUDA toolkit you are using.
@@ -53,7 +54,7 @@ From PyPI
 
   pip install --pre k2
 
-The wheel packages on PyPI are built using `torch==1.7.0+cu101` on Ubuntu 18.04.
+The wheel packages on PyPI are built using `torch==1.7.1+cu101` on Ubuntu 18.04.
 If you are using other Linux systems or a different PyTorch version,
 the pre-built wheel packages may NOT work on your system, please install
 k2 from source in this case.
