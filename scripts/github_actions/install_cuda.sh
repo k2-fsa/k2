@@ -30,8 +30,11 @@ case "$cuda" in
     ;;
 esac
 
+function retry() {
+  $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
+}
 
-curl -LSs -O $url
+retry curl -LSs -O $url
 chmod +x ./$filename
 sudo ./$filename --toolkit --silent
 

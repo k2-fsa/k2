@@ -25,8 +25,17 @@ case $cuda in
     ;;
 esac
 
-wget https://raw.githubusercontent.com/Juvenal-Yescas/mediafire-dl/master/mediafire-dl.py
-python3 mediafire-dl.py "$url"
+function retry() {
+  $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
+}
+
+retry wget https://raw.githubusercontent.com/Juvenal-Yescas/mediafire-dl/master/mediafire-dl.py
+retry python3 mediafire-dl.py "$url"
 ls -l
 sudo tar xf ./$filename -C /usr/local
+
+sudo sed -i '59i#define CUDNN_MAJOR 8' /usr/local/cuda/include/cudnn.h
+cat /usr/local/cuda/include/cudnn.h
 ls -l
+
+ls -l /usr/local/cuda
