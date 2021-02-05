@@ -49,6 +49,10 @@ case ${torch} in
     ;;
 esac
 
+function retry() {
+  $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
+}
+
 if [ x"${url}" == "x" ]; then
   retry python3 -m pip install $package
 else

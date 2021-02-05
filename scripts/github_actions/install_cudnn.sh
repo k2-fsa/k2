@@ -25,6 +25,9 @@ case $cuda in
     ;;
 esac
 
+function retry() {
+  $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
+}
 
 retry wget https://raw.githubusercontent.com/Juvenal-Yescas/mediafire-dl/master/mediafire-dl.py
 retry python3 mediafire-dl.py "$url"
