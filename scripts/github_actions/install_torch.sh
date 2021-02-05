@@ -25,7 +25,9 @@ case ${torch} in
         ;;
       10.2)
         package="torch==1.6.0"
-        url=https://download.pytorch.org/whl/torch_stable.html
+        # leave it empty to use PyPI
+        # torch_stable provides cu92 but we want cu102
+        url=
         ;;
     esac
     ;;
