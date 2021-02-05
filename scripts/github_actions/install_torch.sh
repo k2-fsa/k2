@@ -3,35 +3,39 @@
 # Copyright (c)  2020  Mobvoi Inc. (authors: Fangjun Kuang)
 
 case ${torch} in
-  1.6.0)
+  1.5.*)
     case ${cuda} in
-      10.0)
-        package="torch==1.6.0+cu100"
+      10.1)
+        package="torch==${torch}+cu101"
         url=https://download.pytorch.org/whl/torch_stable.html
         ;;
+      10.2)
+        package="torch==${torch}+cu102"
+        url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
+    esac
+    ;;
+  1.6.0)
+    case ${cuda} in
       10.1)
         package="torch==1.6.0+cu101"
         url=https://download.pytorch.org/whl/torch_stable.html
         ;;
       10.2)
         package="torch==1.6.0"
-        url=
+        url=https://download.pytorch.org/whl/torch_stable.html
         ;;
     esac
     ;;
   1.7.*)
     case ${cuda} in
-      10.0)
-        package="torch==1.7.0+cu100"
-        url=https://download.pytorch.org/whl/torch_stable.html
-        ;;
       10.1)
-        package="torch==1.7.0+cu101"
+        package="torch==${torch}+cu101"
         url=https://download.pytorch.org/whl/torch_stable.html
         ;;
       10.2)
-        package="torch==1.7.0"
-        url=
+        package="torch==${torch}"
+        url=https://download.pytorch.org/whl/torch_stable.html
         ;;
       11.0)
         package="torch==1.7.0+cu110"

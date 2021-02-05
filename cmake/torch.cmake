@@ -36,3 +36,29 @@ if(NOT CUDA_VERSION VERSION_EQUAL TORCH_CUDA_VERSION)
     "Please try to use the same cuda version for PyTorch and k2.\n"
   )
 endif()
+
+# Solve the following error for NVCC:
+#   unknown option `-Wall`
+#
+# It contains only some -Wno-* flags, so it is OK
+# to set them to empty
+set_property(TARGET torch_cuda
+  PROPERTY
+    INTERFACE_COMPILE_OPTIONS ""
+)
+set_property(TARGET torch_cpu
+  PROPERTY
+    INTERFACE_COMPILE_OPTIONS ""
+)
+
+execute_process(
+  COMMAND "${PYTHON_EXECUTABLE}" -c "import torch; print(torch.__version__.split('.')[0])"
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  OUTPUT_VARIABLE K2_TORCH_VERSION_MAJOR
+)
+
+execute_process(
+  COMMAND "${PYTHON_EXECUTABLE}" -c "import torch; print(torch.__version__.split('.')[1])"
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  OUTPUT_VARIABLE K2_TORCH_VERSION_MINOR
+)

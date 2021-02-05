@@ -188,7 +188,15 @@ RegionPtr NewRegion(torch::Tensor tensor) {
   auto *managed_tensor = new ManagedTensor(tensor);
   ans->data = tensor.data_ptr();
   ans->deleter_context = managed_tensor;
+#if K2_TORCH_VERSION_MAJOR > 1 || \
+    (K2_TORCH_VERSION_MAJOR == 1 && K2_TORCH_VERSION_MINOR > 5)
+  // nbytes() is available only for torch > 1.5
+  // see https://github.com/pytorch/pytorch/pull/37028
   ans->num_bytes = tensor.storage().nbytes();
+#else
+  // capacity() is available only for torch <= 1.5.0
+  ans->num_bytes = tensor.storage().capacity();
+#endif
   ans->bytes_used = ans->num_bytes;
   return ans;
 }
