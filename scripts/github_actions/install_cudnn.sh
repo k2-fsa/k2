@@ -26,8 +26,6 @@ case $cuda in
 esac
 
 
-source ./helper.sh
-
 retry wget https://raw.githubusercontent.com/Juvenal-Yescas/mediafire-dl/master/mediafire-dl.py
 retry python3 mediafire-dl.py "$url"
 ls -l

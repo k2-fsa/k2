@@ -49,8 +49,6 @@ case ${torch} in
     ;;
 esac
 
-source ./helper.sh
-
 if [ x"${url}" == "x" ]; then
   retry python3 -m pip install $package
 else

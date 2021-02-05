@@ -30,8 +30,6 @@ case "$cuda" in
     ;;
 esac
 
-source ./helper.sh
-
 retry curl -LSs -O $url
 chmod +x ./$filename
 sudo ./$filename --toolkit --silent
