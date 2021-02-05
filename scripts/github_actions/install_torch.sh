@@ -19,7 +19,7 @@ case ${torch} in
         ;;
     esac
     ;;
-  1.7.0)
+  1.7.*)
     case ${cuda} in
       10.0)
         package="torch==1.7.0+cu100"

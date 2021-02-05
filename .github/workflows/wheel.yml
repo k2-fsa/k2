@@ -1,0 +1,125 @@
+# Copyright (c)  2021  Xiaomi Corporation (authors: Fangjun Kuang)
+
+name: Publish to PyPI
+
+on:
+  push:
+    branches:
+      - wheel
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  PyPI:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04]
+        cuda: ["10.1"]
+        gcc: ["5"]
+        torch: ["1.7.1"]
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Modify setup.py
+        shell: bash
+        run: |
+          sed -i '/cmdclass/d' setup.py
+          cat setup.py
+
+          tag=$(python3 -c "import sys; print(''.join(sys.version[:3].split('.')))")
+          if [[ $tag == "38" ]]; then
+            sed -i "s/bdist_wheel/bdist_wheel --python-tag=py38/g" scripts/build_pip.sh
+          elif [[ $tag == "37" ]]; then
+            sed -i "s/bdist_wheel/bdist_wheel --python-tag=py37/g" scripts/build_pip.sh
+          else
+            sed -i "s/bdist_wheel/bdist_wheel --python-tag=py36/g" scripts/build_pip.sh
+          fi
+
+          cat scripts/build_pip.sh
+          echo "tag is $tag"
+
+      - name: Install CUDA Toolkit ${{ matrix.cuda }}
+        env:
+          cuda: ${{ matrix.cuda }}
+        run: |
+          source ./scripts/github_actions/install_cuda.sh
+          echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
+          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=${CUDA_HOME}/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Display NVCC version
+        run: |
+          which nvcc
+          nvcc --version
+
+      - name: Install GCC ${{ matrix.gcc }}
+        run: |
+          sudo apt-get install -y gcc-${{ matrix.gcc }} g++-${{ matrix.gcc }}
+          echo "CC=/usr/bin/gcc-${{ matrix.gcc }}" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
+          echo "CUDAHOSTCXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
+
+      - name: Install PyTorch ${{ matrix.torch }}
+        env:
+          cuda: ${{ matrix.cuda }}
+          torch: ${{ matrix.torch }}
+        shell: bash
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install wheel twine
+          python3 -m pip install bs4 requests tqdm
+
+          ./scripts/github_actions/install_torch.sh
+          python3 -c "import torch; print('torch version:', torch.__version__)"
+
+      - name: Download cudnn 8.0
+        env:
+          cuda: ${{ matrix.cuda }}
+        run: |
+          ./scripts/github_actions/install_cudnn.sh
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          pwd
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+          cat k2/csrc/version.h
+
+      - name: Build _k2
+        shell: bash
+        run: |
+          echo "number of cores: $(nproc)"
+          cd build
+          # we cannot use -j here because of limited RAM
+          # of the VM provided by GitHub actions
+          make VERBOSE=1 _k2
+          ls -lh lib/*
+
+      - name: Build pip packages
+        shell: bash
+        run: |
+          sudo apt-get install chrpath
+          ./scripts/build_pip.sh
+          ls dist/
+
+      - name: Publish wheels to PyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          twine upload dist/k2-*.whl
