@@ -29,7 +29,11 @@ jobs:
         python-version: [3.6, 3.7, 3.8]
         exclude:
           - cuda: "11.0"
-            torch: ["1.5.0", "1.5.1", "1.6.0"]
+            torch: "1.5.0"
+          - cuda: "11.0"
+            torch: "1.5.1"
+          - cuda: "11.0"
+            torch: "1.6.0"
 
     steps:
       # refer to https://github.com/actions/checkout
