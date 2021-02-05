@@ -10,7 +10,7 @@ case ${torch} in
         url=https://download.pytorch.org/whl/torch_stable.html
         ;;
       10.2)
-        package="torch==${torch}+cu102"
+        package="torch==${torch}"
         url=https://download.pytorch.org/whl/torch_stable.html
         ;;
     esac
@@ -49,8 +49,10 @@ case ${torch} in
     ;;
 esac
 
+source ./helper.sh
+
 if [ x"${url}" == "x" ]; then
-  python3 -m pip install $package
+  retry python3 -m pip install $package
 else
-  python3 -m pip install $package -f $url
+  retry python3 -m pip install $package -f $url
 fi
