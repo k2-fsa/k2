@@ -400,3 +400,37 @@ def fsa_from_unary_function_tensor(src: Fsa, dest_arcs: _k2.RaggedArc,
 
     k2.autograd_utils.phantom_index_select_scores(dest, src.scores, arc_map)
     return dest
+
+
+def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
+                                   arc_map: _k2.RaggedInt) -> Fsa:
+    '''Create an Fsa object, including autograd logic and propagating
+    properties from the source FSA.
+
+    This is intended to be called from unary functions on FSAs where the arc_map
+    is an instance of _k2.RaggedInt.
+
+    Args:
+      src:
+        The source Fsa, i.e. the arg to the unary function.
+      dest_arcs:
+        The raw output of the unary function, as output by whatever C++
+        algorithm we used.
+      arc_map:
+        A map from arcs in `dest_arcs` to the corresponding arc-index in `src`,
+        or -1 if the arc had no source arc (e.g. :func:`remove_epsilon`).
+    Returns:
+      Returns the resulting Fsa, with properties propagated appropriately, and
+      autograd handled.
+    '''
+    dest = Fsa(dest_arcs)
+
+    for name, value in src.named_tensor_attr(include_scores=False):
+        setattr(dest, name, k2.index(value, arc_map))
+
+    for name, value in src.named_non_tensor_attr():
+        setattr(dest, name, value)
+
+    k2.autograd_utils.phantom_index_and_sum_scores(dest, src.scores, arc_map)
+
+    return dest

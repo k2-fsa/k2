@@ -530,21 +530,12 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
       `fsa` is epsilon-free. Otherwise, a new epsilon-free fsa
       is returned and the input `fsa` is NOT modified.
     '''
-    assert fsa.requires_grad is False
     if fsa.properties & fsa_properties.EPSILON_FREE != 0:
         return fsa
 
     ragged_arc, arc_map = _k2.remove_epsilon(fsa.arcs, fsa.properties)
 
-    out_fsa = Fsa(ragged_arc)
-
-    for name, value in fsa.named_tensor_attr(include_scores=False):
-        new_value = index(value, arc_map)
-        setattr(out_fsa, name, new_value)
-
-    for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, value)
-
+    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map)
     return out_fsa
 
 
@@ -559,9 +550,6 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
     epsilon self-loops to all states in the input Fsa (usually as
     a preparation for intersection with treat_epsilons_specially=0).
 
-    Caution:
-      It doesn't support autograd for now.
-
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
@@ -569,23 +557,13 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
       The resulting Fsa.   See :func:`remove_epsilon` for details.
       The only epsilons will be epsilon self-loops on all states.
     '''
-
-    assert fsa.requires_grad is False
     if fsa.properties & fsa_properties.EPSILON_FREE != 0:
         return add_epsilon_self_loops(fsa)
 
     ragged_arc, arc_map = _k2.remove_epsilon_and_add_self_loops(
         fsa.arcs, fsa.properties)
 
-    out_fsa = Fsa(ragged_arc)
-
-    for name, value in fsa.named_tensor_attr(include_scores=False):
-        new_value = index(value, arc_map)
-        setattr(out_fsa, name, new_value)
-
-    for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, value)
-
+    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map)
     return out_fsa
 
 
@@ -593,8 +571,7 @@ def determinize(fsa: Fsa) -> Fsa:
     '''Determinize the input Fsa.
 
     Caution:
-      It only works on for CPU and doesn't support autograd (for now;
-      this is not a fundamental limitation).
+      It only works on for CPU.
 
     Args:
       fsa:
@@ -616,14 +593,7 @@ def determinize(fsa: Fsa) -> Fsa:
         return fsa
 
     ragged_arc, arc_map = _k2.determinize(fsa.arcs)
-    aux_labels = None
-    if hasattr(fsa, 'aux_labels'):
-        aux_labels = index(fsa.aux_labels, arc_map)
-    out_fsa = Fsa(ragged_arc, aux_labels)
-
-    for name, value in fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, value)
-
+    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map)
     return out_fsa
 
 

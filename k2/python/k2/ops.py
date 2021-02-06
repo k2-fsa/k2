@@ -59,6 +59,47 @@ class _IndexSelectFunction(torch.autograd.Function):
         return ans, None
 
 
+class _IndexAndSumFunction(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx, src: torch.Tensor, indexes: k2.RaggedInt) -> torch.Tensor:
+        '''Index a 1-D tensor with a ragged tensor of indexes, perform
+        a sum-per-sublist operation, and return the resulting 1-D tensor.
+
+        Note:
+          It supports autograd.
+
+        Args:
+          src:
+            1-D tensor with dtype torch.float32. For example, it can
+            be a float tensor attribute of an FSA.
+          indexes:
+            A ragged tensor with two axes. For example, it can be
+            the arc map from :func:`_k2.remove_epsilon`
+        Returns:
+          1-D torch.Tensor with dtype being `torch.float32`.
+        '''
+        assert src.ndim == 1
+        assert src.dtype == torch.float32
+        assert indexes.num_axes() == 2
+        ctx.save_for_backward(src)
+        ctx.indexes = indexes
+        ans = _k2.index_and_sum(src, indexes)
+        return ans
+
+    @staticmethod
+    def backward(ctx, out_grad: torch.Tensor) -> Tuple[torch.Tensor, None]:
+        indexes = ctx.indexes
+        src, = ctx.saved_tensors
+        expanded = _k2.index_select(out_grad, indexes.row_ids(1))
+        ans = torch.zeros(src.shape,
+                          dtype=torch.float32,
+                          device=src.device,
+                          requires_grad=False)
+        _k2.index_add(indexes.values(), expanded, ans)
+        return ans, None
+
+
 # put index_select here instead of in `auto_grad.py` to break circular import
 def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
     '''Returns a new tensor which indexes the input tensor along dimension 0
@@ -126,6 +167,26 @@ def index_add(index: torch.Tensor, value: torch.Tensor,
     _k2.index_add(index, value, in_out)
 
 
+def index_and_sum(src: torch.Tensor, indexes: k2.RaggedInt) -> torch.Tensor:
+    '''Index a 1-D tensor with a ragged tensor of indexes, perform
+    a sum-per-sublist operation, and return the resulting 1-D tensor.
+
+    Note:
+      It supports autograd.
+
+    Args:
+      src:
+        1-D tensor with dtype torch.float32. For example, it can
+        be a float tensor attribute of an FSA.
+      indexes:
+        A ragged tensor with two axes. For example, it can be
+        the arc map from :func:`_k2.remove_epsilon`
+    Returns:
+      1-D torch.Tensor with dtype being `torch.float32`.
+    '''
+    return _IndexAndSumFunction.apply(src, indexes)
+
+
 def index_fsa(src: Fsa, indexes: torch.Tensor) -> Fsa:
     '''Select a list of FSAs from `src` with a 1-D tensor.
 
@@ -166,7 +227,8 @@ def index_ragged(src: _k2.RaggedInt,
         If it's a tensor, it must be a 1-D tensor and
         `indexes.dtype == torch.int32`.
         Values in it will be interpreted as indexes into axis 0 of `src`,
-        i.e. 0 <= indexes[i] < src.dim0().
+        i.e. -1 <= indexes[i] < src.dim0(). If indexes[i] is -1, then
+        the i-th value of ans is empty.
         If it's a ragged tensor, `indexes.values` will be interpreted as
         indexes into axis 0 of `src`, i.e. 0 <= indexes.values[i] < src.dim0();
         Must have num_axes() == 2.
@@ -190,11 +252,16 @@ def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
     Args:
       src:
         Source 1-D tensor to index, must have `src.dtype == torch.int32`
+        or `src.dtype == torch.float32`.
       indexes:
-        If it's a ragged tensor, `indexes.values` will be interpreted as
-        indexes into `src`.
-        i.e. 0 <= indexes.values[i] < src.numel();
-        If it's a tensor, its values will be interpreted as indexes into `src`.
+        It satisfies -1 <= indexes.values()[i] < src.numel().
+        - If it's a tensor, its values will be interpreted as indexes into
+        `src`; if indexes.values()[i] is -1, then ans[i] is 0.
+
+        - If it's a ragged tensor, `indexes.values()` will be interpreted as
+        indexes into `src`. If src.dtype is torch.int32, it returns
+        a _k2.RaggedInt; if src.dtype is torch.float32, it performs an extra
+        sum-per-sublist operation and returns 1-D torch.Tensor.
 
     Returns:
       Returns a tensor or a ragged tensor (depending on the type of `indexes`)
@@ -202,8 +269,12 @@ def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
     if isinstance(indexes, torch.Tensor):
         return index_select(src, indexes)
     else:
-        # TODO(haowen): it does not autograd now.
-        return _k2.index(src, indexes)
+        assert isinstance(indexes, k2.RaggedInt)
+        if src.dtype == torch.int32:
+            return _k2.index(src, indexes)
+        else:
+            assert src.dtype == torch.float32
+            return index_and_sum(src, indexes)
 
 
 def index(src: Union[Fsa, torch.Tensor, _k2.RaggedInt],

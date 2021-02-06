@@ -185,6 +185,18 @@ static void PybindRaggedImpl(py::module &m) {
         return Index(src_array, indexes);
       },
       py::arg("src"), py::arg("indexes"));
+
+  m.def(
+      "index_and_sum",
+      [](torch::Tensor src, Ragged<int32_t> &indexes) -> torch::Tensor {
+        K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
+        Array1<float> src_array = FromTensor<float>(src);
+        Ragged<float> ragged = Index(src_array, indexes);
+        Array1<float> ans_array(ragged.Context(), ragged.Dim0());
+        SumPerSublist<float>(ragged, 0, &ans_array);
+        return ToTensor(ans_array);
+      },
+      py::arg("src"), py::arg("indexes"));
 }
 
 static void PybindRaggedShape(py::module &m) {

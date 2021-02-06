@@ -34,6 +34,7 @@ from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
 from .ops import index
 from .ops import index_add
+from .ops import index_and_sum
 from .ops import index_fsa
 from .ops import index_ragged
 from .ops import index_select
