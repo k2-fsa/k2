@@ -70,11 +70,13 @@ TEST(Intersect, Simple) {
       }
     }
 
+    fsa = FsaToFsaVec(fsa);
     float output_beam = 1000;
 
     FsaVec out_fsas;
     Array1<int32_t> arc_map_a, arc_map_b;
-    IntersectDense(fsa, dfsavec, output_beam, &out_fsas, &arc_map_a,
+    IntersectDense(fsa, dfsavec, nullptr,
+                   output_beam, &out_fsas, &arc_map_a,
                    &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_a = " << arc_map_a
                  << ", arc_map_b = " << arc_map_b;
@@ -92,11 +94,10 @@ TEST(Intersect, Simple) {
     Array1<int32_t> arc_map_a3, arc_map_b3;
 
     {
-      FsaVec fsas = FsaToFsaVec(fsa);
       Array1<int32_t> b_to_a_map = Range<int32_t>(c, fsas_b.Dim0(), 0,
-                                                  (fsas.Dim0() == 1 ? 0 : 1));
+                                                  (fsa.Dim0() == 1 ? 0 : 1));
 
-      out_fsas2b = IntersectDevice(fsas, -1, fsas_b, -1, b_to_a_map,
+      out_fsas2b = IntersectDevice(fsa, -1, fsas_b, -1, b_to_a_map,
                                    &arc_map_a3, &arc_map_b3);
     }
 
@@ -179,6 +180,7 @@ TEST(Intersect, RandomSingle) {
     bool acyclic = false;
     Fsa fsa = RandomFsa(acyclic, max_symbol, min_num_arcs, max_num_arcs);
     ArcSort(&fsa);
+    fsa = FsaToFsaVec(fsa);
 
     int32_t num_fsas = 1;
 
@@ -209,7 +211,8 @@ TEST(Intersect, RandomSingle) {
 
     FsaVec out_fsas;
     float output_beam = 1000.0;
-    IntersectDense(fsa, dfsavec, output_beam, &out_fsas, &arc_map_a,
+    IntersectDense(fsa, dfsavec, nullptr,
+                   output_beam, &out_fsas, &arc_map_a,
                    &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas << ", arc_map_b = " << arc_map_b;
 
@@ -281,7 +284,8 @@ TEST(Intersect, RandomFsaVec) {
 
     FsaVec out_fsas;
     float output_beam = 100000.0;  // TODO(Dan) ...
-    IntersectDense(fsavec, dfsavec, output_beam, &out_fsas, &arc_map_a,
+    IntersectDense(fsavec, dfsavec, nullptr,
+                   output_beam, &out_fsas, &arc_map_a,
                    &arc_map_b);
     K2_LOG(INFO) << "out_fsas = " << out_fsas
                  << ", arc_map_a = " << arc_map_a

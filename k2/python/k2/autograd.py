@@ -542,6 +542,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
         ragged_arc, arc_map_a, arc_map_b = _k2.intersect_dense(
             a_fsas=a_fsas.arcs,
             b_fsas=b_fsas.dense_fsa_vec,
+            a_to_b_map=None,
             output_beam=output_beam)
 
         out_fsa[0] = Fsa(ragged_arc)

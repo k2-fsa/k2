@@ -139,8 +139,9 @@ class MultiGraphDenseIntersect {
 
     int32_t num_seqs = b_fsas.shape.Dim0();
 
-    {  // check that b_fsas are in order of decreasing length.  Calling code
-       // already checked IsMonotonic(a_to_b_map) which is also necessary.
+    {
+      // check that b_fsas are in order of decreasing length.  Calling code
+      // already checked IsMonotonic(a_to_b_map) which is also necessary.
       Array1<int32_t> r = b_fsas.shape.RowSplits(1).To(GetCpuContext());
       int32_t *r_data = r.Data();
       int32_t prev_t = r_data[1] - r_data[0];
@@ -151,10 +152,10 @@ class MultiGraphDenseIntersect {
                            "order from greatest to least length.";
         prev_t = this_t;
       }
+      // Set T_.  Elements of b_fsas_ are longest first, so the length of the first
+      // sequence is the length of the longest sequence.
+      T_ = r_data[1] - r_data[0];
     }
-    // elements of b_fsas_ are longest first, so the length of the first
-    // sequence is the length of the longest sequence.
-    T_ = r_data[1] - r_data[0];
 
     // set up steps_, which contains a bunch of meta-information about the steps
     // of the algorithm.
@@ -503,7 +504,6 @@ class MultiGraphDenseIntersect {
 
     fsa_info_ = Array1<FsaInfo>(c_, num_fsas_ + 1);
     FsaInfo *fsa_info_data = fsa_info_.Data();
-    int32_t num_fsas = num_fsas_;
     K2_EVAL(
         c_, num_fsas_, lambda_set_fsa_info, (int32_t i)->void {
           FsaInfo info;
@@ -723,7 +723,7 @@ class MultiGraphDenseIntersect {
                                                      : tot_score_end);
           K2_CHECK(tot_score_end == tot_score_start ||
                    fabs(tot_score_end - tot_score_start) <
-                       1.0);  // TODO: remove this
+                   1.0) << tot_score_end << " vs " << tot_score_start;  // TODO: remove this
           score_cutoffs_data[fsa_idx0] = tot_score_min - output_beam;
         });
     return score_cutoffs;
@@ -852,9 +852,9 @@ void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                     Array1<int32_t> *arc_map_b) {
   NVTX_RANGE("IntersectDense");
   Array1<int32_t> temp;
-
+  K2_CHECK_EQ(a_fsas.NumAxes(), 3);
   if (a_to_b_map == nullptr) {
-    K2_CHECK_EQ(a_fsas.Dim0(), b_fsas.Dim0());
+    K2_CHECK_EQ(a_fsas.Dim0(), b_fsas.shape.Dim0());
     temp = Arange(a_fsas.Context(), 0, a_fsas.Dim0());
     a_to_b_map = &temp;
   } else {
