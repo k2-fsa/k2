@@ -261,21 +261,40 @@ class TestRaggedOps(unittest.TestCase):
         self.assertEqual(str(ragged), str(expected))
 
     def test_unique_sequences_two_axes(self):
-        ragged = k2.RaggedInt('[[1 3] [1 2] [1 2] [1 4] [1 3] [1 2] [1]]')
-        unique = k2.ragged.unique_sequences(ragged)
-        # [1, 3] has a larger hash value than [1, 2]; after sorting,
-        # [1, 3] is placed after [1, 2]
-        expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
-        self.assertEqual(str(unique), str(expected))
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append(torch.device('cuda', 0))
+
+        for device in devices:
+            ragged = k2.RaggedInt(
+                '[[1 3] [1 2] [1 2] [1 4] [1 3] [1 2] [1]]').to(device)
+            unique, num_repeats = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True)
+            # [1, 3] has a larger hash value than [1, 2]; after sorting,
+            # [1, 3] is placed after [1, 2]
+            expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
+            self.assertEqual(str(unique), str(expected))
+
+            expected_num_repeats = k2.RaggedInt('[[1 3 2 1]]')
+            self.assertEqual(str(num_repeats), str(expected_num_repeats))
 
     def test_unique_sequences_three_axes(self):
-        ragged = k2.RaggedInt(
-            '[ [[1] [1 2] [1 3] [1] [1 3]] [[1 4] [1 2] [1 3] [1 3] [1 2] [1]] ]'  # noqa
-        )
-        unique = k2.ragged.unique_sequences(ragged)
-        expected = k2.RaggedInt(
-            '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4]] ]')
-        self.assertEqual(str(unique), str(expected))
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append(torch.device('cuda', 0))
+
+        for device in devices:
+            ragged = k2.RaggedInt(
+                '[ [[1] [1 2] [1 3] [1] [1 3]] [[1 4] [1 2] [1 3] [1 3] [1 2] [1]] ]'  # noqa
+            ).to(device)
+            unique, num_repeats = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True)
+            expected = k2.RaggedInt(
+                '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4]] ]')
+            self.assertEqual(str(unique), str(expected))
+
+            expected_num_repeats = k2.RaggedInt('[ [2 1 2] [1 2 2 1] ]')
+            self.assertEqual(str(num_repeats), str(expected_num_repeats))
 
     def test_index_ragged_shape_two_axes(self):
         devices = [torch.device('cpu')]

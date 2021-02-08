@@ -2218,13 +2218,13 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
   return ans;
 }
 
-
-Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
+Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src,
+                                Ragged<int32_t> *num_repeats /*=nullptr*/) {
   ContextPtr &c = src.Context();
   if (src.NumAxes() == 2) {
     // Put 'fake' layer at front, process, then remove.
     Ragged<int32_t> temp = Unsqueeze(src, 0);
-    return UniqueSequences(temp).RemoveAxis(0);
+    return UniqueSequences(temp, num_repeats).RemoveAxis(0);
   }
   Array1<int64_t> hashes = ComputeHash<int64_t>(src);
   int32_t hashes_dim = hashes.Dim();
@@ -2255,9 +2255,25 @@ Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
       });
   Array1<int32_t> new2old = renumber_lists.New2Old(),
       new2unsorted = order[new2old];
-  return Index(src, src.NumAxes() - 2, new2unsorted);
+  Ragged<int32_t> ans = Index(src, src.NumAxes() - 2, new2unsorted);
+  if (num_repeats != nullptr) {
+    int32_t new2old_dim = new2old.Dim();
+    Array1<int32_t> num_repeats_array(c, new2old_dim);
+    const int32_t *new2old_data = new2old.Data();
+    int32_t *num_repeats_data = num_repeats_array.Data();
+    K2_EVAL(
+        c, new2old_dim, set_num_repeats, (int32_t i)->void {
+          if (i < new2old_dim - 1) {
+            num_repeats_data[i] = new2old_data[i + 1] - new2old_data[i];
+          } else {
+            num_repeats_data[i] = hashes_dim - new2old_data[i];
+          }
+        });
+    *num_repeats = Ragged<int32_t>(GetLayer(ans.shape, ans.NumAxes() - 3),
+                                   num_repeats_array);
+  }
+  return ans;
 }
-
 
 // Instantiate template for int64 and int32.
 template
