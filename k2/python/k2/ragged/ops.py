@@ -188,7 +188,8 @@ def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
     return _k2.get_layer(src, layer)
 
 
-def unique_sequences(src: _k2.RaggedInt) -> _k2.RaggedInt:
+def unique_sequences(src: _k2.RaggedInt, need_num_repeats: bool = True
+                    ) -> Tuple[_k2.RaggedInt, Optional[_k2.RaggedInt]]:
     '''Remove repeated sequences.
 
     If `src` has two axes, this will return the unique sub-lists (in a possibly
@@ -204,11 +205,22 @@ def unique_sequences(src: _k2.RaggedInt) -> _k2.RaggedInt:
 
     Args:
       src:
-        The input ragged tensor.
+        The input ragged tensor. Must have `src.num_axes() == 2` or `src_num_axes() == 3`
+      need_num_repeats:
+        If True, it also returns the number of repeats of each sequence.
 
     Returns:
-     Returns a tensor with the same number of axes as `src` and possibly fewer
-     elements due to removing repeated sequences on the last axis (and with the
-     last-but-one indexes possibly in a different order).
+     Returns a tuple containing:
+       - ans: A ragged tensor with the same number of axes as `src` and possibly
+         fewer elements due to removing repeated sequences on the last axis
+         (and with the last-but-one indexes possibly in a different order).
+
+       - num_repeats: A tensor containing number of repeats of each returned
+         sequence if `need_num_repeats` is True; it is None otherwise. If it is
+         not None, num_repeats.num_axes() is always 2. If ans.num_axes() is 2,
+         then num_repeats.dim0() == 1 and
+         num_repeats.num_elements() == ans.dim0().
+         If ans.num_axes() is 3, then num_repeats.dim0() == ans.dim0() and
+         num_repeats.num_elements() == ans.tot_size(1).
     '''
-    return _k2.unique_sequences(src)
+    return _k2.unique_sequences(src, need_num_repeats=need_num_repeats)

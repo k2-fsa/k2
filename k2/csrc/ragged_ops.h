@@ -1335,6 +1335,10 @@ Array1<T> ComputeHash(Ragged<int32_t> &src);
   the earliest axes will be ignored.
 
      @param [in] src  Source ragged tensor
+     @param [out] num_repeats  If not NULL, it will contain the number of
+                       repeats (i.e., multiplicity) of each output sequence.
+                       The caller does not need to pre-allocate it. It is
+                       allocated inside the function.
 
      @return   Returns a tensor with the same number of axes as `src` and
             possibly fewer elements due to removing repeated sequences on the
@@ -1346,8 +1350,8 @@ Array1<T> ComputeHash(Ragged<int32_t> &src);
   If several sequences have the same hash, only one of them is kept, even
   if the actual content in the sequence is different.
  */
-Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src);
-
+Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src,
+                                Ragged<int32_t> *num_repeats = nullptr);
 
 /* Compute exclusive sum per sub-list.
  *

@@ -204,7 +204,19 @@ static void PybindGetLayer(py::module &m) {
 }
 
 static void PybindUniqueSequences(py::module &m) {
-  m.def("unique_sequences", &UniqueSequences, py::arg("src"));
+  m.def(
+      "unique_sequences",
+      [](Ragged<int32_t> &src, bool need_num_repeats = true)
+          -> std::pair<Ragged<int32_t>, torch::optional<Ragged<int32_t>>> {
+        Ragged<int32_t> num_repeats;
+        Ragged<int32_t> ans =
+            UniqueSequences(src, need_num_repeats ? &num_repeats : nullptr);
+
+        torch::optional<Ragged<int32_t>> num_repeats_tensor;
+        if (need_num_repeats) num_repeats_tensor = num_repeats;
+        return std::make_pair(ans, num_repeats_tensor);
+      },
+      py::arg("src"), py::arg("need_num_repeats"));
 }
 
 static void PybindIndex(py::module &m) {
