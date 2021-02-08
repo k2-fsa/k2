@@ -83,7 +83,12 @@ class MultiGraphDenseIntersect {
        @param [in] a_fsas  The decoding graphs, one per sequence.  E.g. might
                            just be a linear sequence of phones, or might be
                            something more complicated.  Must have the
-                           same Dim0() as b_fsas.
+                           same Dim0() as a_to_b_map.
+       @param [in] a_to_b_map   Maps from index into `a_fsas` to corresponding
+                           index into b_fsas.  Must satisfy
+                           `a_to_b_map.Dim() == a_fsas.Dim0()` and
+                           `0 <= a_to_b_map[i] < b_fsas.Dim0()` and
+                           `IsMonotonic(a_to_b_map).`
        @param [in] b_fsas  The neural-net output, with each frame containing the
                            log-likes of each phone.  A series of sequences of
                            (in general) different length.  MUST BE SORTED BY
@@ -94,12 +99,14 @@ class MultiGraphDenseIntersect {
                            will not be retained.
    */
   MultiGraphDenseIntersect(FsaVec &a_fsas, DenseFsaVec &b_fsas,
+                           const Array1<int32_t> &a_to_b_map,
                            float output_beam)
-      : a_fsas_(a_fsas), b_fsas_(b_fsas), output_beam_(output_beam) {
+      : a_fsas_(a_fsas), b_fsas_(b_fsas), a_to_b_map_(a_to_b_map),
+        output_beam_(output_beam) {
     NVTX_RANGE(K2_FUNC);
     c_ = GetContext(a_fsas.shape, b_fsas.shape);
 
-    K2_CHECK_EQ(a_fsas_.Dim0(), b_fsas_.shape.Dim0());
+    K2_CHECK_EQ(a_fsas_.Dim0(), a_to_b_map.Dim());
     num_fsas_ = a_fsas_.Dim0();
     K2_CHECK_GT(num_fsas_, 0);
     K2_CHECK_GT(output_beam, 0);
@@ -112,6 +119,8 @@ class MultiGraphDenseIntersect {
     // Set up carcs_
     InitCompressedArcs();
 
+    // combined_shape_, which will be used for arc_scores_, is the result of
+    // appending a_fsas_.shape and incoming_arcs_.shape along axis 1.
     RaggedShape combined_shape;
     {
       int32_t axis = 1, num_srcs = 2;
@@ -130,7 +139,8 @@ class MultiGraphDenseIntersect {
 
     int32_t num_seqs = b_fsas.shape.Dim0();
 
-    {  // check that b_fsas are in order of decreasing length.
+    {  // check that b_fsas are in order of decreasing length.  Calling code
+       // already checked IsMonotonic(a_to_b_map) which is also necessary.
       Array1<int32_t> r = b_fsas.shape.RowSplits(1).To(GetCpuContext());
       int32_t *r_data = r.Data();
       int32_t prev_t = r_data[1] - r_data[0];
@@ -141,9 +151,10 @@ class MultiGraphDenseIntersect {
                            "order from greatest to least length.";
         prev_t = this_t;
       }
-      T_ = r_data[1] - r_data[0];  // longest first, so T_ is the length of the
-                                   // longest sequence.
     }
+    // elements of b_fsas_ are longest first, so the length of the first
+    // sequence is the length of the longest sequence.
+    T_ = r_data[1] - r_data[0];
 
     // set up steps_, which contains a bunch of meta-information about the steps
     // of the algorithm.
@@ -484,27 +495,24 @@ class MultiGraphDenseIntersect {
 
   void InitFsaInfo() {
     NVTX_RANGE(K2_FUNC);
-    int32_t *b_fsas_row_splits1_data = b_fsas_.shape.RowSplits(1).Data(),
-            *a_fsas_row_splits1_data = a_fsas_.shape.RowSplits(1).Data(),
-            *a_fsas_row_splits2_data = a_fsas_.shape.RowSplits(2).Data();
+    const int32_t *a_to_b_map_data = a_to_b_map_.Data(),
+          *b_fsas_row_splits1_data = b_fsas_.shape.RowSplits(1).Data(),
+          *a_fsas_row_splits1_data = a_fsas_.shape.RowSplits(1).Data(),
+          *a_fsas_row_splits2_data = a_fsas_.shape.RowSplits(2).Data();
     int32_t scores_stride = b_fsas_.scores.ElemStride0();
 
     fsa_info_ = Array1<FsaInfo>(c_, num_fsas_ + 1);
     FsaInfo *fsa_info_data = fsa_info_.Data();
     int32_t num_fsas = num_fsas_;
     K2_EVAL(
-        c_, num_fsas_ + 1, lambda_set_fsa_info, (int32_t i)->void {
+        c_, num_fsas_, lambda_set_fsa_info, (int32_t i)->void {
           FsaInfo info;
-          if (i < num_fsas) {
-            info.T = uint16_t(b_fsas_row_splits1_data[i + 1] -
-                              b_fsas_row_splits1_data[i]);
-            info.num_states = uint16_t(a_fsas_row_splits1_data[i + 1] -
-                                       a_fsas_row_splits1_data[i]);
-          } else {
-            info.T = 0;
-            info.num_states = 0;
-          }
-          info.scores_offset = b_fsas_row_splits1_data[i] * scores_stride;
+          int32_t j = a_to_b_map_data[i];
+          info.T = uint16_t(b_fsas_row_splits1_data[j + 1] -
+                            b_fsas_row_splits1_data[j]);
+          info.num_states = uint16_t(a_fsas_row_splits1_data[i + 1] -
+                                     a_fsas_row_splits1_data[i]);
+          info.scores_offset = b_fsas_row_splits1_data[j] * scores_stride;
           info.state_offset = a_fsas_row_splits1_data[i];
           info.arc_offset = a_fsas_row_splits2_data[info.state_offset];
           fsa_info_data[i] = info;
@@ -522,13 +530,15 @@ class MultiGraphDenseIntersect {
     // sequence of log-likes in b_fsas_) + 1.  It is monotonically decreasing
     // (thanks to how we require the FSAs to be sorted).
     Array1<int32_t> num_copies_per_fsa(c_, num_fsas_);
-    const int32_t *b_row_splits_data = b_fsas_.shape.RowSplits(1).Data();
+    const int32_t *a_to_b_map_data = a_to_b_map_.Data(),
+        *b_row_splits_data = b_fsas_.shape.RowSplits(1).Data();
     int32_t *num_copies_per_fsa_data = num_copies_per_fsa.Data();
 
     K2_EVAL(
-        c_, num_fsas_, lambda_set_num_copies, (int32_t i)->void {
+        c_, num_fsas_, lambda_set_num_copies, (int32_t i) {
+          int32_t j = a_to_b_map_data[i];
           num_copies_per_fsa_data[i] =
-              1 + b_row_splits_data[i + 1] - b_row_splits_data[i];
+              1 + b_row_splits_data[j + 1] - b_row_splits_data[j];
         });
 
     std::vector<int32_t> range(num_fsas_);
@@ -725,6 +735,8 @@ class MultiGraphDenseIntersect {
 
   DenseFsaVec &b_fsas_;
 
+  const Array1<int32_t> &a_to_b_map_;
+
   // num_fsas_ equals b_fsas_.shape.Dim0() == a_fsas_.Dim0().
   int32_t num_fsas_;
 
@@ -768,9 +780,11 @@ class MultiGraphDenseIntersect {
   // forward propagation).
   Ragged<float> arc_scores_;
 
+  // there is one FsaInfo object for each FSA in a_fsas_.
   struct FsaInfo {
     // T is the number of frames in b_fsas_.scores that we have for this FSA,
     // i.e. `b_fsas_.shape.RowSplits(1)[i+1] -  b_fsas_.shape.RowSplits(1)[i].`
+    // if i is a_to_b_map_[j] with j the index of this FsaInfo.
     // The number of copies of the states of a_fsas_ that we have in the total
     // state space equals T+1, i.e. we have copies of those states for times
     // 0 <= t <= T.
@@ -788,8 +802,9 @@ class MultiGraphDenseIntersect {
     // arc_offset is the idx0xx corresponding to this FSA in a_fsas_.
     int32_t arc_offset;
   };
-  // fsa_info_ is of dimension num_fsas_ + 1 (the last one is not correct in all
-  // respects, only certain fields make sense).
+  // fsa_info_ is of dimension num_fsas_; it contains static information about
+  // the FSAs in a_fsas_ and the corresponding FSAs in b_fsas_ (mapped
+  // by a_to_b_map_).
   Array1<FsaInfo> fsa_info_;
 
   struct Step {
@@ -830,12 +845,26 @@ class MultiGraphDenseIntersect {
   int32_t T_;  // == b_fsas_.MaxSize(1)
 };
 
-void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas, float output_beam,
+void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
+                    const Array1<int32_t> *a_to_b_map,
+                    float output_beam,
                     FsaVec *out, Array1<int32_t> *arc_map_a,
                     Array1<int32_t> *arc_map_b) {
   NVTX_RANGE("IntersectDense");
-  FsaVec a_vec = FsaToFsaVec(a_fsas);
-  MultiGraphDenseIntersect intersector(a_vec, b_fsas, output_beam);
+  Array1<int32_t> temp;
+
+  if (a_to_b_map == nullptr) {
+    K2_CHECK_EQ(a_fsas.Dim0(), b_fsas.Dim0());
+    temp = Arange(a_fsas.Context(), 0, a_fsas.Dim0());
+    a_to_b_map = &temp;
+  } else {
+    K2_CHECK(IsMonotonic(*a_to_b_map));
+  }
+  K2_CHECK_EQ(a_fsas.Dim0(), a_to_b_map->Dim());
+
+  MultiGraphDenseIntersect intersector(a_fsas, b_fsas,
+                                       *a_to_b_map,
+                                       output_beam);
 
   intersector.Intersect();
   FsaVec ret = intersector.FormatOutput(arc_map_a, arc_map_b);

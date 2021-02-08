@@ -184,15 +184,25 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
      @param[in] a_fsas   Input FSAs; must have 3 axes.
      @param[in] b_fsas   Input dense FSAs that likely correspond to neural
                   network outputs (see documentation in fsa.h).
-                  Must satisfy b_fsas.shape.Dim0() == a_fsas.Dim0().
+                  If a_to_b_map == nullptr, must satisfy
+                  b_fsas.shape.Dim0() == a_fsas.Dim0().
+                  MUST BE SORTED BY DECREASING LENGTH.
+     @param [in] a_to_b_map  If not nullptr, maps from index into a_fsas
+                 (i.e. `0 <= i < a_fsas.Dim0()`) to an index into
+                 b_fsas, i.e. `0 <= (*a_to_b_map)[i] < b_fsas.Dim0()`.
+                 If not nullptr, must satisfy
+                 `a_to_b_map->Dim() == a_fsas.Dim0()` and also
+                 `IsMonotonic(*a_to_b_map)` (this requirement
+                 is related to the length-sorting requirement of
+                 b_fsas).
      @param[in] output_beam   Beam with which we prune the output (analogous
                   to lattice-beam in Kaldi), e.g. 8.  We discard arcs in
                   the output that are not on a path that's within
                  `output_beam` of the best path of the composed output.
      @param[out] out Output vector of composed, pruned FSAs, with same
-                   Dim0() as a_fsas and b_fsas.  Elements of it may be
-                   empty if the composed results was empty.
-                   All states in the output will be accessible and coaccessible.
+                   Dim0() as a_fsas.  Elements of it may be empty if the
+                   composed results was empty.  All states in the output will be
+                   accessible and coaccessible.
      @param[out] arc_map_a  Will be set to a vector with Dim() equal to
                    the number of arcs in `out`, whose elements contain
                    the corresponding arc_idx01 in a_fsas.
@@ -201,7 +211,9 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
                    the corresponding arc-index in b_fsas; this arc-index
                    is the linear offset into b_fsas.scores.
  */
-void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas, float output_beam,
+void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
+                    const Array1<int32_t> *a_to_b_map,
+                    float output_beam,
                     FsaVec *out, Array1<int32_t> *arc_map_a,
                     Array1<int32_t> *arc_map_b);
 
