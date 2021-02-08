@@ -1,0 +1,45 @@
+name: nightly
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  nightly:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04]
+        # cuda: ["10.1", "10.2", "11.0"] # 11.0 is for PyTorch 1.7.x only
+        cuda: ["10.1"] # 11.0 is for PyTorch 1.7.x only
+        gcc: ["7"]
+        torch: ["1.7.1"]
+        # python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8]
+
+    steps:
+      # refer to https://github.com/actions/checkout
+      - uses: actions/checkout@v2
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Test ssh
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.K2_HOST }}
+          username: ${{ secrets.K2_USERNAME }}
+          key: ${{ secrets.K2_KEY }}
+          port: ${{ secrets.K2_PORT }}
+          script: |
+            whoami
+            ls -l
