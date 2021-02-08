@@ -33,13 +33,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Test ssh
-        uses: appleboy/ssh-action@master
+      - name: Copy via ssh
+        uses: garygrossgarten/github-action-scp@v0.7.3
         with:
           host: ${{ secrets.K2_HOST }}
           username: ${{ secrets.K2_USERNAME }}
-          key: ${{ secrets.K2_KEY }}
+          privateKey: ${{ secrets.K2_KEY }}
           port: ${{ secrets.K2_PORT }}
-          script: |
-            whoami
-            ls -l
+          local: scripts
+          remote: ./
