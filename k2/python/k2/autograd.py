@@ -488,6 +488,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
                 output_beam: float,
                 unused_scores_a: torch.Tensor,
                 unused_scores_b: torch.Tensor,
+                a_to_b_map: Optional[torch.Tensor] = None,
                 seqframe_idx_name: Optional[str] = None,
                 frame_idx_name: Optional[str] = None) -> torch.Tensor:
         '''Intersect array of FSAs on CPU/GPU.
@@ -496,36 +497,30 @@ class _IntersectDenseFunction(torch.autograd.Function):
           a_fsas:
             Input FsaVec, i.e., `decoding graphs`, one per sequence. It might
             just be a linear sequence of phones, or might be something more
-            complicated. Must have `a_fsas.shape[0] == b_fsas.dim0()`.
+            complicated. Must have number of FSAs equal to b_fsas.dim0(), if
+            a_to_b_map not specified.
           b_fsas:
             Input FSAs that correspond to neural network output.
           out_fsa:
             A list containing ONLY one entry which will be set to the
             generated FSA on return. We pass it as a list since the return
             value can only be types of torch.Tensor in the `forward` function.
-          search_beam:
-            Decoding beam, e.g. 20.  Smaller is faster, larger is more exact
-            (less pruning). This is the default value; it may be modified by
-            `min_active_states` and `max_active_states`.
           output_beam:
             Pruning beam for the output of intersection (vs. best path);
             equivalent to kaldi's lattice-beam.  E.g. 8.
-          max_active_states:
-            Maximum number of FSA states that are allowed to be active on any
-            given frame for any given intersection/composition task. This is
-            advisory, in that it will try not to exceed that but may not always
-            succeed. You can use a very large number if no constraint is needed.
-          min_active_states:
-            Minimum number of FSA states that are allowed to be active on any
-            given frame for any given intersection/composition task. This is
-            advisory, in that it will try not to have fewer than this number
-            active. Set it to zero if there is no constraint.
           unused_scores_a:
             It equals to `a_fsas.scores` and its sole purpose is for back
             propagation.
           unused_scores_b:
             It equals to `b_fsas.scores` and its sole purpose is for back
             propagation.
+          a_to_b_map:
+            Maps from FSA-index in a to FSA-index in b to use for it.
+            If None, then we expect the number of FSAs in a_fsas to equal
+            b_fsas.dim0().  If set, then it should be a Tensor with ndim=1
+            and dtype=torch.int32, with a_to_b_map.shape[0] equal to the
+            number of FSAs in a_fsas (i.e. a_fsas.shape[0] if
+            len(a_fsas.shape) == 3, else 1); and elements 0 <= i < b_fsas.dim0().
           seqframe_idx_name:
             If set (e.g. to 'seqframe'), an attribute in the output will be
             created that encodes the sequence-index and the frame-index within
@@ -542,6 +537,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
         ragged_arc, arc_map_a, arc_map_b = _k2.intersect_dense(
             a_fsas=a_fsas.arcs,
             b_fsas=b_fsas.dense_fsa_vec,
+            a_to_b_map=a_to_b_map,
             output_beam=output_beam)
 
         out_fsa[0] = Fsa(ragged_arc)
@@ -607,6 +603,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
             None,  # output_beam
             grad_a,  # unused_scores_a
             grad_b,  # unused_scores_b
+            None,   # a_to_b_map
             None,  # seqframe_idx_name
             None  # frame_idx_name
         )
@@ -724,6 +721,7 @@ def intersect_dense_pruned(a_fsas: Fsa,
 def intersect_dense(a_fsas: Fsa,
                     b_fsas: DenseFsaVec,
                     output_beam: float,
+                    a_to_b_map: Optional[torch.Tensor] = None,
                     seqframe_idx_name: Optional[str] = None,
                     frame_idx_name: Optional[str] = None) -> Fsa:
     '''Intersect array of FSAs on CPU/GPU.
@@ -741,6 +739,13 @@ def intersect_dense(a_fsas: Fsa,
       output_beam:
          Beam to prune output, similar to lattice-beam in Kaldi.  Relative
          to best path of output.
+      a_to_b_map:
+         Maps from FSA-index in a to FSA-index in b to use for it.
+         If None, then we expect the number of FSAs in a_fsas to equal
+         b_fsas.dim0().  If set, then it should be a Tensor with ndim=1
+         and dtype=torch.int32, with a_to_b_map.shape[0] equal to the
+         number of FSAs in a_fsas (i.e. a_fsas.shape[0] if
+         len(a_fsas.shape) == 3, else 1); and elements 0 <= i < b_fsas.dim0().
       seqframe_idx_name:
         If set (e.g. to 'seqframe'), an attribute in the output will be created
         that encodes the sequence-index and the frame-index within that
@@ -760,7 +765,7 @@ def intersect_dense(a_fsas: Fsa,
     # in `out_fsa[0].scores`
     _IntersectDenseFunction.apply(a_fsas, b_fsas, out_fsa, output_beam,
                                   a_fsas.scores, b_fsas.scores,
-                                  seqframe_idx_name, frame_idx_name)
+                                  a_to_b_map, seqframe_idx_name, frame_idx_name)
     return out_fsa[0]
 
 

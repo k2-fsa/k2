@@ -204,17 +204,30 @@ static void PybindIntersectDensePruned(py::module &m) {
 static void PybindIntersectDense(py::module &m) {
   m.def(
       "intersect_dense",
-      [](FsaVec &a_fsas, DenseFsaVec &b_fsas, float output_beam)
+      [](FsaVec &a_fsas, DenseFsaVec &b_fsas,
+         torch::optional<torch::Tensor> a_to_b_map, float output_beam)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
         Array1<int32_t> arc_map_a;
         Array1<int32_t> arc_map_b;
         FsaVec out;
 
-        IntersectDense(a_fsas, b_fsas, output_beam, &out, &arc_map_a,
+        // the following is in case a_fsas had 2 not 3 axes.  It happens in some
+        // test code, and IntersectDense() used to support it.
+        FsaVec a_fsa_vec = FsaToFsaVec(a_fsas);
+
+        Array1<int32_t> a_to_b_map_array;
+        if (a_to_b_map.has_value()) {
+          a_to_b_map_array = FromTensor<int32_t>(a_to_b_map.value());
+        } else {
+          a_to_b_map_array = Arange(a_fsa_vec.Context(), 0, a_fsa_vec.Dim0());
+        }
+        IntersectDense(a_fsa_vec, b_fsas, &a_to_b_map_array,
+                       output_beam, &out, &arc_map_a,
                        &arc_map_b);
         return std::make_tuple(out, ToTensor(arc_map_a), ToTensor(arc_map_b));
       },
-      py::arg("a_fsas"), py::arg("b_fsas"), py::arg("output_beam"));
+      py::arg("a_fsas"), py::arg("b_fsas"),
+      py::arg("a_to_b_map"), py::arg("output_beam"));
 }
 
 static void PybindConnect(py::module &m) {
