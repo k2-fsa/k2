@@ -40,7 +40,7 @@ jobs:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
 
-      - uses: actions/set-timezone-action@v1.1
+      - uses: szenius/set-timezone@v1.0
         with:
           timezoneLinux: "Asia/Shanghai"
 
