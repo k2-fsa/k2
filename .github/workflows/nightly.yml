@@ -40,5 +40,5 @@ jobs:
           username: ${{ secrets.K2_USERNAME }}
           privateKey: ${{ secrets.K2_KEY }}
           port: ${{ secrets.K2_PORT }}
-          local: scripts
-          remote: ./
+          local: scripts/*.md
+          remote: ./nightly/whl
