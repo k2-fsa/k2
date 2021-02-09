@@ -16,7 +16,6 @@ on:
 
 jobs:
   build:
-    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
