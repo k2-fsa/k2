@@ -66,52 +66,73 @@ class TestIntersectDense(unittest.TestCase):
             3
         '''
 
-        fsa = k2.Fsa.from_str(s)
-        fsa.requires_grad_(True)
-        fsa_vec = k2.create_fsa_vec([fsa, fsa])
-        log_prob = torch.tensor(
-            [[[0.1, 0.2, 0.3], [0.04, 0.05, 0.06], [0.0, 0.0, 0.0]],
-             [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.0, 0.0, 0.0]]],
-            dtype=torch.float32,
-            requires_grad=True)
+        for use_map in [True, False]:
 
-        supervision_segments = torch.tensor([[0, 0, 3], [1, 0, 2]],
-                                            dtype=torch.int32)
-        dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
-        out_fsa = k2.intersect_dense(fsa_vec,
-                                     dense_fsa_vec,
-                                     output_beam=100000,
-                                     seqframe_idx_name='seqframe',
-                                     frame_idx_name='frame')
+            fsa = k2.Fsa.from_str(s)
+            fsa.requires_grad_(True)
+            fsa_vec = k2.create_fsa_vec([fsa, fsa])
+            log_prob = torch.tensor(
+                [[[0.1, 0.2, 0.3], [0.04, 0.05, 0.06], [0.0, 0.0, 0.0]],
+                 [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6], [0.0, 0.0, 0.0]]],
+                dtype=torch.float32,
+                requires_grad=True)
 
-        assert torch.allclose(
-            out_fsa.seqframe,
-            torch.tensor([0, 1, 2, 3, 4, 5, 6], dtype=torch.int32))
+            if use_map:
+                a_to_b_map = torch.tensor([0,0], dtype=torch.int32)
+            else:
+                a_to_b_map = None
 
-        assert torch.allclose(
-            out_fsa.frame,
-            torch.tensor([0, 1, 2, 3, 0, 1, 2], dtype=torch.int32))
+            supervision_segments = torch.tensor([[0, 0, 3], [1, 0, 2]],
+                                                dtype=torch.int32)
+            dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
+            out_fsa = k2.intersect_dense(fsa_vec,
+                                         dense_fsa_vec,
+                                         output_beam=100000,
+                                         a_to_b_map=a_to_b_map,
+                                         seqframe_idx_name='seqframe',
+                                         frame_idx_name='frame')
 
-        assert out_fsa.shape == (2, None, None), 'There should be two FSAs!'
+            if not use_map:
+                assert torch.allclose(
+                    out_fsa.seqframe,
+                    torch.tensor([0, 1, 2, 3, 4, 5, 6], dtype=torch.int32))
 
-        scores = out_fsa.get_tot_scores(log_semiring=False,
-                                        use_double_scores=False)
-        scores.sum().backward()
+                assert torch.allclose(
+                    out_fsa.frame,
+                    torch.tensor([0, 1, 2, 3, 0, 1, 2], dtype=torch.int32))
+            else:
+                assert torch.allclose(
+                    out_fsa.seqframe,
+                    torch.tensor([0, 1, 2, 3, 0, 1, 2, 3], dtype=torch.int32))
 
-        # `expected` results are computed using gtn.
-        # See https://bit.ly/3oYObeb
-        #  expected_scores_out_fsa = torch.tensor(
-        #      [1.2, 2.06, 3.0, 1.2, 50.5, 2.0, 3.0])
-        expected_grad_fsa = torch.tensor([2.0, 1.0, 2.0, 2.0])
-        #  expected_grad_log_prob = torch.tensor([
-        #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0, 1.0,
-        #      0.0, 0.0, 0.0, 1.0
-        #  ]).reshape_as(log_prob)
+                assert torch.allclose(
+                    out_fsa.frame,
+                    torch.tensor([0, 1, 2, 3, 0, 1, 2, 3], dtype=torch.int32))
 
-        # TODO(dan):: fix this..
-        # assert torch.allclose(out_fsa.scores, expected_scores_out_fsa)
-        assert torch.allclose(expected_grad_fsa, fsa.scores.grad)
-        # assert torch.allclose(expected_grad_log_prob, log_prob.grad)
+            assert out_fsa.shape == (2, None, None), 'There should be two FSAs!'
+
+            scores = out_fsa.get_tot_scores(log_semiring=False,
+                                            use_double_scores=False)
+            scores.sum().backward()
+
+            # `expected` results are computed using gtn.
+            # See https://bit.ly/3oYObeb
+            #  expected_scores_out_fsa = torch.tensor(
+            #      [1.2, 2.06, 3.0, 1.2, 50.5, 2.0, 3.0])
+
+            if not use_map:
+                expected_grad_fsa = torch.tensor([2.0, 1.0, 2.0, 2.0])
+            else:
+                expected_grad_fsa = torch.tensor([2.0, 2.0, 2.0, 2.0])
+
+
+            #  expected_grad_log_prob = torch.tensor([
+            #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0, 1.0,
+            #      0.0, 0.0, 0.0, 1.0
+            #  ]).reshape_as(log_prob)
+
+            assert torch.allclose(expected_grad_fsa, fsa.scores.grad)
+
 
     def test_two_fsas(self):
         s1 = '''
