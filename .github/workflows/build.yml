@@ -40,6 +40,13 @@ jobs:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
 
+      - uses: actions/set-timezone-action@v1.1
+        with:
+          timezoneLinux: "Asia/Shanghai"
+
+      - name: Display date and time
+        run: date
+
       - name: Install CUDA Toolkit ${{ matrix.cuda }}
         env:
           cuda: ${{ matrix.cuda }}
