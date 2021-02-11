@@ -45,7 +45,43 @@ To install other versions of torch, please check the following URLs:
 Install k2 from pre-built wheel packages
 ----------------------------------------
 
-There are two ways to install k2 from pre-built wheel packages.
+There are three ways to install k2 from pre-built wheel packages.
+
+From `<https://k2-fsa.org/nightly>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can find a list of nightly built wheels at `<https://k2-fsa.org/nightly/>`_.
+They are built using PyTorch 1.7.1 and support a combination of Python 3.6,
+3.7, and 3.8 with CUDA 10.1, 10.2, and 11.0.
+
+The following commands install k2 with different CUDA versions:
+
+.. code-block:: bash
+
+  # Install k2 0.3.3 with CUDA 10.2 built on 20210209
+  pip install k2==0.3.3+cu102.dev20210209 -f https://k2-fsa.org/nightly/
+
+  # Install k2 0.3.3 with CUDA 11.0 built on 20210209
+  pip install k2==0.3.3+cu110.dev20210209 -f https://k2-fsa.org/nightly/
+
+  # Install k2 0.3.3 with CUDA 10.1 built on 20210209
+  pip install k2==0.3.3.dev20210209 -f https://k2-fsa.org/nightly/
+
+.. HINT::
+
+  ``cu102`` and ``cu110`` indicate CUDA 10.2 and 11.0, respectively.
+  The default CUDA version is 10.1.
+
+  There is no need to specify which Python version to use. ``pip``
+  will figure it out for you automagically.
+
+  This is the recommended approach to install the **latest** k2 from 
+  pre-built wheels using ``pip``.
+
+.. CAUTION::
+
+  You have to use the option ``-f https://k2-fsa.org/nightly/``
+  in ``pip install``. It is ``https``, not ``http``.
 
 From PyPI
 ~~~~~~~~~
