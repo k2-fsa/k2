@@ -520,7 +520,8 @@ class _IntersectDenseFunction(torch.autograd.Function):
             b_fsas.dim0().  If set, then it should be a Tensor with ndim=1
             and dtype=torch.int32, with a_to_b_map.shape[0] equal to the
             number of FSAs in a_fsas (i.e. a_fsas.shape[0] if
-            len(a_fsas.shape) == 3, else 1); and elements 0 <= i < b_fsas.dim0().
+            len(a_fsas.shape) == 3, else 1); and elements
+            `0 <= i < b_fsas.dim0()`.
           seqframe_idx_name:
             If set (e.g. to 'seqframe'), an attribute in the output will be
             created that encodes the sequence-index and the frame-index within
@@ -603,7 +604,7 @@ class _IntersectDenseFunction(torch.autograd.Function):
             None,  # output_beam
             grad_a,  # unused_scores_a
             grad_b,  # unused_scores_b
-            None,   # a_to_b_map
+            None,  # a_to_b_map
             None,  # seqframe_idx_name
             None  # frame_idx_name
         )
@@ -733,7 +734,8 @@ def intersect_dense(a_fsas: Fsa,
       a_fsas:
         Input FsaVec, i.e., `decoding graphs`, one per sequence. It might just
         be a linear sequence of phones, or might be something more complicated.
-        Must have `a_fsas.shape[0] == b_fsas.dim0()`.
+        Must have `a_fsas.shape[0] == b_fsas.dim0()` if `a_to_b_map` is None.
+        Otherwise, must have `a_fsas.shape[0] == a_to_b_map.shape[0]`
       b_fsas:
         Input FSAs that correspond to neural network output.
       output_beam:
@@ -764,8 +766,8 @@ def intersect_dense(a_fsas: Fsa,
     # the following return value is discarded since it is already contained
     # in `out_fsa[0].scores`
     _IntersectDenseFunction.apply(a_fsas, b_fsas, out_fsa, output_beam,
-                                  a_fsas.scores, b_fsas.scores,
-                                  a_to_b_map, seqframe_idx_name, frame_idx_name)
+                                  a_fsas.scores, b_fsas.scores, a_to_b_map,
+                                  seqframe_idx_name, frame_idx_name)
     return out_fsa[0]
 
 
