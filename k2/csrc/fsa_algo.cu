@@ -350,7 +350,7 @@ Fsa LinearFsa(const Array1<int32_t> &symbols) {
   return Ragged<Arc>(RaggedShape2(&row_splits1, &row_ids1, num_arcs), arcs);
 }
 
-FsaVec LinearFsas(Ragged<int32_t> &symbols) {
+FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(symbols.NumAxes(), 2);
   ContextPtr &c = symbols.Context();

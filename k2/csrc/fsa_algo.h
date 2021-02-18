@@ -177,7 +177,7 @@ void IntersectDensePruned(FsaVec &a_fsas, DenseFsaVec &b_fsas,
    do pruning in the 1st pass.
 
    CAUTION: Unlike `IntersectDensePruned`, it requires that
-   a_fsas.Dim0() == b_fsas.shape.Dim0().
+   a_fsas.Dim0() == b_fsas.shape.Dim0() if a_to_b_map is nullptr.
 
   This code is intended to run on GPU (but should also work on CPU).
 
@@ -446,7 +446,7 @@ Fsa LinearFsa(const Array1<int32_t> &symbols);
                 the i'th row of `symbols` has n elements, the i'th returned FSA
                 will have n+1 arcs (including the final-arc) and n+2 states.
  */
-FsaVec LinearFsas(Ragged<int32_t> &symbols);
+FsaVec LinearFsas(const Ragged<int32_t> &symbols);
 
 /* Compute the forward shortest path in the tropical semiring.
 

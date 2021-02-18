@@ -80,6 +80,13 @@ static void PybindLinearFsa(py::module &m) {
   If gpu_id is -1, the returned FsaVec is on CPU.
   If gpu_id >= 0, the returned FsaVec is on the specified GPU.
       )");
+
+  m.def(
+      "linear_fsa",
+      [](const Ragged<int32_t> &labels, int32_t /*unused_gpu_id*/) -> FsaVec {
+        return LinearFsas(labels);
+      },
+      py::arg("labels"), py::arg("gpu_id"));
 }
 
 static void PybindIntersect(py::module &m) {
@@ -221,13 +228,12 @@ static void PybindIntersectDense(py::module &m) {
         } else {
           a_to_b_map_array = Arange(a_fsa_vec.Context(), 0, a_fsa_vec.Dim0());
         }
-        IntersectDense(a_fsa_vec, b_fsas, &a_to_b_map_array,
-                       output_beam, &out, &arc_map_a,
-                       &arc_map_b);
+        IntersectDense(a_fsa_vec, b_fsas, &a_to_b_map_array, output_beam, &out,
+                       &arc_map_a, &arc_map_b);
         return std::make_tuple(out, ToTensor(arc_map_a), ToTensor(arc_map_b));
       },
-      py::arg("a_fsas"), py::arg("b_fsas"),
-      py::arg("a_to_b_map"), py::arg("output_beam"));
+      py::arg("a_fsas"), py::arg("b_fsas"), py::arg("a_to_b_map"),
+      py::arg("output_beam"));
 }
 
 static void PybindConnect(py::module &m) {

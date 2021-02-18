@@ -20,7 +20,7 @@ from .ops import index_select
 # Note: look also in autograd.py, differentiable operations may be there.
 
 
-def linear_fsa(labels: Union[List[int], List[List[int]]],
+def linear_fsa(labels: Union[List[int], List[List[int]], k2.RaggedInt],
                device: Optional[Union[torch.device, str]] = None) -> Fsa:
     '''Construct an linear FSA from labels.
 
@@ -29,17 +29,25 @@ def linear_fsa(labels: Union[List[int], List[List[int]]],
 
     Args:
       labels:
-        A list of integers or a list of list of integers.
+        It can be one of the following types:
+
+            - A list of integers, e.g., `[1, 2, 3]`
+            - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
+            - An instance of :class:`k2.RaggedInt`
       device:
         Optional. It can be either a string (e.g., 'cpu',
         'cuda:0') or a torch.device.
-        If it is None, then the returned FSA is on CPU.
+        If it is None, then the returned FSA is on CPU. It has to be None
+        if `labels` is an instance of :class:`k2.RaggedInt`.
 
     Returns:
-      An FSA if the labels is a list of integers.
-      A vector of FSAs (i.e., FsaVec) if the input is a list of list
-      of integers.
+      - If `labels` is a list of integers, return an FSA
+      - If `labels` is a list of list-of-integers, return an FsaVec
+      - If `labels` is an instance of :class:`k2.RaggedInt`, return an FsaVec
     '''
+    if isinstance(labels, k2.RaggedInt):
+        assert device is None
+
     if device is not None:
         device = torch.device(device)
         if device.type == 'cpu':

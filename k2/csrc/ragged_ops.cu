@@ -1296,7 +1296,7 @@ Array1<int32_t> GetTransposeReordering(Ragged<int32_t> &src, int32_t num_cols) {
 #endif
 }
 
-RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta) {
+RaggedShape ChangeSublistSize(const RaggedShape &src, int32_t size_delta) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(src.NumAxes(), 2);
   // the result will have the same num-axes as `src` (the NumAxes() of the

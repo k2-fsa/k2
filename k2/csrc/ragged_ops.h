@@ -186,7 +186,7 @@ RaggedShape Stack(int32_t axis, int32_t src_size, RaggedShape **src,
     [ [ x x x ] [ x x x x ] ]
   (using the x as placeholders for the values since these are unknown).
  */
-RaggedShape ChangeSublistSize(RaggedShape &src, int32_t size_delta);
+RaggedShape ChangeSublistSize(const RaggedShape &src, int32_t size_delta);
 
 /*
   A version of ChangeSublistSize() with different behavior for edge

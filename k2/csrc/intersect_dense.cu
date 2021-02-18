@@ -49,11 +49,6 @@ static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
   return os;
 }
 
-static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
-  os << "ArcInfo{" << a.a_fsas_arc_idx012 << "," << a.arc_loglike << ","
-     << a.u.dest_a_fsas_state_idx01 << "," << a.end_loglike << "}";
-  return os;
-}
 */
 
 }  // namespace intersect_dense_internal
@@ -104,7 +99,7 @@ class MultiGraphDenseIntersect {
       : a_fsas_(a_fsas), b_fsas_(b_fsas), a_to_b_map_(a_to_b_map),
         output_beam_(output_beam) {
     NVTX_RANGE(K2_FUNC);
-    c_ = GetContext(a_fsas.shape, b_fsas.shape);
+    c_ = GetContext(a_fsas.shape, b_fsas.shape, a_to_b_map);
 
     K2_CHECK_EQ(a_fsas_.Dim0(), a_to_b_map.Dim());
     num_fsas_ = a_fsas_.Dim0();
@@ -152,8 +147,8 @@ class MultiGraphDenseIntersect {
                            "order from greatest to least length.";
         prev_t = this_t;
       }
-      // Set T_.  Elements of b_fsas_ are longest first, so the length of the first
-      // sequence is the length of the longest sequence.
+      // Set T_.  Elements of b_fsas_ are longest first, so the length of the
+      // first sequence is the length of the longest sequence.
       T_ = r_data[1] - r_data[0];
     }
 
@@ -722,8 +717,9 @@ class MultiGraphDenseIntersect {
                     (tot_score_start < tot_score_end ? tot_score_start
                                                      : tot_score_end);
           K2_CHECK(tot_score_end == tot_score_start ||
-                   fabs(tot_score_end - tot_score_start) <
-                   1.0) << tot_score_end << " vs " << tot_score_start;  // TODO: remove this
+                   fabs(tot_score_end - tot_score_start) < 1.0)
+              << tot_score_end << " vs "
+              << tot_score_start;  // TODO: remove this
           score_cutoffs_data[fsa_idx0] = tot_score_min - output_beam;
         });
     return score_cutoffs;

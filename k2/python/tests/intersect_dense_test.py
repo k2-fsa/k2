@@ -78,7 +78,7 @@ class TestIntersectDense(unittest.TestCase):
                 requires_grad=True)
 
             if use_map:
-                a_to_b_map = torch.tensor([0,0], dtype=torch.int32)
+                a_to_b_map = torch.tensor([0, 0], dtype=torch.int32)
             else:
                 a_to_b_map = None
 
@@ -109,7 +109,8 @@ class TestIntersectDense(unittest.TestCase):
                     out_fsa.frame,
                     torch.tensor([0, 1, 2, 3, 0, 1, 2, 3], dtype=torch.int32))
 
-            assert out_fsa.shape == (2, None, None), 'There should be two FSAs!'
+            assert out_fsa.shape == (2, None,
+                                     None), 'There should be two FSAs!'
 
             scores = out_fsa.get_tot_scores(log_semiring=False,
                                             use_double_scores=False)
@@ -125,14 +126,12 @@ class TestIntersectDense(unittest.TestCase):
             else:
                 expected_grad_fsa = torch.tensor([2.0, 2.0, 2.0, 2.0])
 
-
             #  expected_grad_log_prob = torch.tensor([
-            #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0, 1.0,
-            #      0.0, 0.0, 0.0, 1.0
+            #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0,
+            #      1.0, 0.0, 0.0, 0.0, 1.0
             #  ]).reshape_as(log_prob)
 
             assert torch.allclose(expected_grad_fsa, fsa.scores.grad)
-
 
     def test_two_fsas(self):
         s1 = '''

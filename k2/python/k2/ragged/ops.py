@@ -189,7 +189,7 @@ def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
 
 
 def unique_sequences(src: _k2.RaggedInt, need_num_repeats: bool = True
-                    ) -> Tuple[_k2.RaggedInt, Optional[_k2.RaggedInt]]:
+                    ) -> Tuple[_k2.RaggedInt, Optional[_k2.RaggedInt]]:  # noqa
     '''Remove repeated sequences.
 
     If `src` has two axes, this will return the unique sub-lists (in a possibly
@@ -205,7 +205,8 @@ def unique_sequences(src: _k2.RaggedInt, need_num_repeats: bool = True
 
     Args:
       src:
-        The input ragged tensor. Must have `src.num_axes() == 2` or `src_num_axes() == 3`
+        The input ragged tensor. Must have `src.num_axes() == 2`
+        or `src_num_axes() == 3`
       need_num_repeats:
         If True, it also returns the number of repeats of each sequence.
 
