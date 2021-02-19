@@ -690,6 +690,13 @@ RaggedShape IndexAxis0New(RaggedShape &src, const Array1<int32_t> &new2old,
       return ans;
     }
     mgpu::context_t *mgpu_context = GetModernGpuAllocator(c);
+    // For a lambda called in `mgpu::transform_lbs`
+    // `index` is the index of element (i.e. idx01)
+    // `seg` is the row id (i.e. idx0),
+    // `rank` is the index in current `seg`/row (i.e. idx1)
+    // In the below calling code, `new_offsets` is the segment/row descriptor
+    // (i.e. row_splits for this call), the number of elements is
+    // new_offsets.Back().
     auto lambda_set_ans = [=] __device__(int32_t index, int32_t seg,
                                          int32_t rank) {
       // There are (num_axes-1) * ans_dim0 segments totally, each segment
