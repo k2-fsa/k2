@@ -348,8 +348,8 @@ def compose(a_fsa: Fsa,
 
     out_fsa = Fsa(ragged_arc)
     if inner_labels is not None:
-        # out_fsa.`inner_labels` = out_fsa.labels
-        setattr(out_fsa, inner_labels, out_fsa.labels)
+        # out_fsa.`inner_labels` = out_fsa.labels.clone()
+        setattr(out_fsa, inner_labels, out_fsa.labels.clone())
 
     if hasattr(b_fsa, 'aux_labels'):
         out_fsa.aux_labels = index(b_fsa.aux_labels, b_arc_map)
