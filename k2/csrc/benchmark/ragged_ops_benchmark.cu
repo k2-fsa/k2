@@ -114,6 +114,60 @@ static void RegisterBenchmarkSegmentedExclusiveSum(DeviceType device_type) {
   }
 }
 
+static BenchmarkStat BenchmarkIndexAxis0(int32_t dim, DeviceType device_type) {
+  ContextPtr context;
+  if (device_type == kCpu) {
+    context = GetCpuContext();
+  } else {
+    K2_CHECK_EQ(device_type, kCuda);
+    context = GetCudaContext();
+  }
+
+  int32_t num_iter = 20;
+  int32_t min_num_elems = dim * 10;
+  int32_t max_num_elems = dim * 20;
+
+  int32_t num_axes = 4;
+  RaggedShape shape =
+      RandomRaggedShape(true, num_axes, num_axes, min_num_elems, max_num_elems)
+          .To(context);
+  int32_t dim0 = shape.Dim0(), result_dim0 = RandInt(0, dim0);
+  if (dim0 == 0) result_dim0 = 0;
+  std::vector<int32_t> new2old_vec(result_dim0);
+  for (int i = 0; i < result_dim0; i++) new2old_vec[i] = RandInt(-1, dim0 - 1);
+  Array1<int32_t> new2old(context, new2old_vec);
+  int32_t num_elems = shape.NumElements();
+  Array1<int32_t> value_indexes;
+
+  BenchmarkStat stat;
+  stat.op_name = "IndexAxis0New_" + std::to_string(num_axes) + "_" +
+                 std::to_string(shape.Dim0()) + "_" + std::to_string(num_elems);
+  stat.num_iter = num_iter;
+  stat.problem_size = dim;
+  stat.dtype_name = TraitsOf(DtypeOf<int32_t>::dtype).Name();
+  stat.device_type = device_type;
+
+  stat.eplased_per_iter =
+      BenchmarkOp(num_iter, context,
+                  (RaggedShape(*)(RaggedShape &, const Array1<int32_t> &,
+                                  Array1<int32_t> *))(&IndexAxis0New),
+                  shape, new2old, &value_indexes);
+  stat.eplased_per_iter *= 1e6;  // from seconds to microseconds
+  return stat;
+}
+
+static void RegisterBenchmarkIndexAxis0(DeviceType device_type) {
+  std::vector<int32_t> problems_sizes = {50,    100,   200,    500,   1000,
+                                         10000, 50000, 100000, 200000};
+  for (auto s : problems_sizes) {
+    std::string name =
+        GenerateBenchmarkName<int32_t>("IndexAxis0", device_type);
+    RegisterBenchmark(name, [s, device_type]() -> BenchmarkStat {
+      return BenchmarkIndexAxis0(s, device_type);
+    });
+  }
+}
+
 static void RunRaggedOpsBenchmark() {
   PrintEnvironmentInfo();
 
@@ -121,6 +175,8 @@ static void RunRaggedOpsBenchmark() {
   RegisterBenchmarkGetTransposeReordering(kCuda);
   RegisterBenchmarkSegmentedExclusiveSum<int32_t>(kCpu);
   RegisterBenchmarkSegmentedExclusiveSum<int32_t>(kCuda);
+
+  RegisterBenchmarkIndexAxis0(kCuda);
 
   // Users can set a regular expression via environment
   // variable `K2_BENCHMARK_FILTER` such that only benchmarks

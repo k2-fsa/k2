@@ -64,6 +64,119 @@ class RaggedShapeOpsSuiteTest : public ::testing::Test {
   RaggedShape random_shape_;
 };
 
+TEST(RaggedShapeOpsTest, TestIndex0) {
+  for (auto &context : {GetCudaContext()}) {
+    ContextPtr cpu = GetCpuContext();  // will be used to copy data
+    {
+      // simple case
+      const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+      const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
+      const std::vector<int32_t> row_splits2 = {0, 2, 3, 4, 6, 7, 10};
+      const std::vector<int32_t> row_ids2 = {0, 0, 1, 2, 3, 3, 4, 5, 5, 5};
+
+      Array1<int32_t> splits1(context, row_splits1);
+      Array1<int32_t> ids1(context, row_ids1);
+      Array1<int32_t> splits2(context, row_splits2);
+      Array1<int32_t> ids2(context, row_ids2);
+      RaggedShape shape = RaggedShape3(&splits1, &ids1, ids1.Dim(), &splits2,
+                                       &ids2, ids2.Dim());
+
+      std::vector<int32_t> new2old_vec = {2, 1};
+      Array1<int32_t> new2old(context, new2old_vec);
+      Array1<int32_t> value_indexes_out;
+      RaggedShape result = IndexAxis0New(shape, new2old, &value_indexes_out);
+      // fsa 2, state_idx01 {5}, arc_idx012 {7, 8, 9}
+      // fsa 1, state_idx01 {2, 3, 4}, arc_idx012 {{3},{4, 5}, {6}}
+      CheckArrayData(value_indexes_out,
+                     std::vector<int32_t>{7, 8, 9, 3, 4, 5, 6});
+    }
+
+    {
+      // simple case 1
+      const std::vector<int32_t> row_splits1 = {0, 2, 5, 6};
+      const std::vector<int32_t> row_ids1 = {0, 0, 1, 1, 1, 2};
+
+      Array1<int32_t> splits1(context, row_splits1);
+      Array1<int32_t> ids1(context, row_ids1);
+      RaggedShape shape = RaggedShape2(&splits1, &ids1, ids1.Dim());
+
+      std::vector<int32_t> new2old_vec = {2, 1};
+      Array1<int32_t> new2old(context, new2old_vec);
+      Array1<int32_t> value_indexes_out;
+      RaggedShape result = IndexAxis0New(shape, new2old, &value_indexes_out);
+      CheckArrayData(value_indexes_out, std::vector<int32_t>{5, 2, 3, 4});
+    }
+    // test with random large size
+    for (int32_t i = 0; i < 50; ++i) {
+      int32_t num_axes = RandInt(2, 4);
+      RaggedShape shape =
+          RandomRaggedShape(true, num_axes, num_axes, 0, 1000).To(context);
+      int32_t dim0 = shape.Dim0(), result_dim0 = RandInt(0, 10);
+      if (dim0 == 0) result_dim0 = 0;
+      std::vector<int32_t> new2old_vec(result_dim0);
+      for (int i = 0; i < result_dim0; i++)
+        new2old_vec[i] = RandInt(-1, dim0 - 1);
+      Array1<int32_t> new2old(context, new2old_vec);
+      K2_LOG(INFO) << "new2old=" << new2old;
+
+      for (int32_t i = 0; i != shape.NumAxes() - 1; ++i) {
+        K2_LOG(INFO) << "row_splits=" << shape.RowSplits(i + 1);
+        K2_LOG(INFO) << "row_ids=" << shape.RowIds(i + 1);
+      }
+
+      Array1<int32_t> value_indexes_out_old;
+      RaggedShape result_old =
+          IndexAxis0(shape, new2old, &value_indexes_out_old);
+      Array1<int32_t> value_indexes_out;
+      RaggedShape result = IndexAxis0New(shape, new2old, &value_indexes_out);
+
+      ASSERT_TRUE(Equal(result_old, result));
+      CheckArrayData(value_indexes_out_old, value_indexes_out);
+    }
+  }
+  K2_LOG(FATAL) << "end..........";
+}
+
+TEST(RaggedShapeOpsTest, GetOldAndNewOffsets) {
+  for (int32_t i = 0; i < 1; i++) {
+    for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+      RaggedShape random = RandomRaggedShape(false, 2, 4, 0, 2000).To(context);
+      int32_t dim0 = random.Dim0();
+      int32_t dim = RandInt(0, dim0);
+      K2_LOG(INFO) << "shape=" << random;
+      for (int32_t n = 1; n != random.NumAxes(); ++n)
+        K2_LOG(INFO) << "RowSplits=" << random.RowSplits(n);
+      Array1<int32_t> indexes = RandUniformArray1(context, dim, -1, dim0 - 1);
+      K2_LOG(INFO) << "index=" << indexes;
+      {
+        Array2<int32_t> old_offsets,  // num_axes by ans_dim0
+            new_offsets;              // num_axes by (ans_dim0 + 1).
+        GetOldAndNewOffsets(random, indexes, &old_offsets, &new_offsets);
+        K2_LOG(INFO) << "old_offsets=" << old_offsets;
+        K2_LOG(INFO) << "new_offsets=" << new_offsets;
+        int32_t num_axes = random.NumAxes();
+        std::vector<Array1<int32_t>> arrays_vec(num_axes);
+        std::vector<const Array1<int32_t> *> arrays(num_axes);
+        for (int32_t j = 0; j != num_axes; ++j) {
+          Array1<int32_t> row = new_offsets.Row(j);
+          arrays_vec[j] = row;
+          arrays[j] = &arrays_vec[j];
+        }
+        const Array1<int32_t> **src = arrays.data();
+        Array1<int32_t> dst = SpliceRowSplits(num_axes, src);
+        K2_LOG(INFO) << "splice_offsets=" << dst;
+      }
+      {
+        Array1<int32_t> old_offsets,  // num_axes by ans_dim0
+            new_offsets;              // num_axes by (ans_dim0 + 1).
+        GetOldAndNewOffsets(random, indexes, &old_offsets, &new_offsets);
+        K2_LOG(INFO) << "old_offsets=" << old_offsets;
+        K2_LOG(INFO) << "new_offsets=" << new_offsets;
+      }
+    }
+  }
+}
+
 TEST(RaggedShapeTest, TestConstructFromString) {
   RaggedShape rs(" [ [ x x ] [x] ]");
   Array1<int32_t> row_splits1(GetCpuContext(), std::vector<int32_t>{0, 2, 3});
@@ -1401,21 +1514,22 @@ TEST(RaggedShapeOpsTest, TestIndex) {
   }
 }
 
-
 TEST(RaggedShapeOpsTest, TestIndexAxis1) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     {
-      Ragged<int32_t> input = Ragged<int32_t>(" [ [ 1 2 ] [ 3 4 5 ] [ 6 7 ] [ ] ]").To(context);  // NOLINT
+      Ragged<int32_t> input =
+          Ragged<int32_t>(" [ [ 1 2 ] [ 3 4 5 ] [ 6 7 ] [ ] ]")
+              .To(context);  // NOLINT
       Array1<int32_t> indexes = Array1<int32_t>(" [ 1 0 4 2 6 5 ]").To(context);
-      Ragged<int32_t> output = Ragged<int32_t>(" [ [ 2 1 ] [ 5 3 ] [ 7 6 ] [ ] ]").To(context);  // NOLINT
+      Ragged<int32_t> output =
+          Ragged<int32_t>(" [ [ 2 1 ] [ 5 3 ] [ 7 6 ] [ ] ]")
+              .To(context);  // NOLINT
 
       Ragged<int32_t> indexed = Index(input, 1, indexes);
       EXPECT_EQ(Equal(output, indexed), true);
     }
   }
 }
-
-
 
 TEST(GetTransposeReordering, NoDuplicates) {
   //       col0  col1  col2  col3  col4  col5
@@ -2581,8 +2695,6 @@ TEST(RaggedOpsTest, TestComputeHash) {
   }
 }
 
-
-
 TEST(RaggedOpsTest, TestUniqueSequences) {
   for (int32_t i = 0; i < 20; i++) {
     for (auto &c : {GetCpuContext(), GetCudaContext()}) {
@@ -2597,7 +2709,7 @@ TEST(RaggedOpsTest, TestUniqueSequences) {
 
       ContextPtr cpu = GetCpuContext();
       Array1<int32_t> hash_src = ComputeHash<int32_t>(src).To(cpu),
-          hash_unique = ComputeHash<int32_t>(unique).To(cpu);
+                      hash_unique = ComputeHash<int32_t>(unique).To(cpu);
 
       RaggedShape src_hash_shape =
           RemoveAxis(src.shape, src.NumAxes() - 1).To(cpu);
@@ -2611,9 +2723,10 @@ TEST(RaggedOpsTest, TestUniqueSequences) {
       K2_CHECK_EQ(src_hash_shape.Dim0(), unique_hash_shape.Dim0());
 
       const int32_t *src_hash_row_splits = src_hash_shape.RowSplits(1).Data(),
-          *unique_hash_row_splits = unique_hash_shape.RowSplits(1).Data();
+                    *unique_hash_row_splits =
+                        unique_hash_shape.RowSplits(1).Data();
       const int32_t *src_hash_data = hash_src.Data(),
-          *unique_hash_data = hash_unique.Data();
+                    *unique_hash_data = hash_unique.Data();
 
       for (int32_t r = 0; r < src_hash_shape.Dim0(); r++) {
         int32_t src_begin = src_hash_row_splits[r],
@@ -2644,7 +2757,6 @@ TEST(RaggedIntTest, TestCreateRagged2Int) {
   K2_CHECK(Equal(r, r2));
 }
 
-
 TEST(RaggedFloatTest, TestCreateRagged2Float) {
   std::vector<std::vector<float>> vecs{{1.2, 2.3}, {}, {3.4, 5.6}};
   std::vector<float> expected_values{1.2, 2.3, 3.4, 5.6};
@@ -2655,6 +2767,5 @@ TEST(RaggedFloatTest, TestCreateRagged2Float) {
   EXPECT_EQ(r.NumAxes(), 2);
   CheckArrayData(r.values, expected_values);
 }
-
 
 }  // namespace k2

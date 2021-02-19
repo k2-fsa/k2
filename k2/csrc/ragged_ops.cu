@@ -358,13 +358,12 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
                          Note: `ans` is the result of Index(), with
                          ans.Dim0() == new2old.Dim().
  */
-inline void GetOldAndNewOffsets(RaggedShape &src,
-                                const Array1<int32_t> &new2old,
-                                Array2<int32_t> *old_offsets,
-                                Array2<int32_t> *new_offsets) {
+void GetOldAndNewOffsets(RaggedShape &src, const Array1<int32_t> &new2old,
+                         Array2<int32_t> *old_offsets,
+                         Array2<int32_t> *new_offsets) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(src.NumAxes(), 1);
-  ContextPtr &c = src.Context();
+  ContextPtr c = GetContext(src, new2old);
   int32_t num_axes = src.NumAxes(), ans_dim0 = new2old.Dim();
 
   // max 5 layers.
@@ -380,16 +379,14 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   K2_EVAL(
       c, ans_dim0, lambda_set_offsets, (int32_t i)->void {
         // 0 <= i < ans_dim0
-        int32_t old_offset = new2old_data[i],
-            old_offset_next = old_offset + 1,
-            offset_diff = 1;
+        int32_t old_offset = new2old_data[i], old_offset_next = old_offset + 1,
+                offset_diff = 1;
         // The following is a special case that interprets -1 as referring to an
         // empty list.  In this case, old_offset == old_offset_next == 0.
         // The specific value 0 is not necessary; they could be equal
         // and have any value in [0, src.Dim0() - 1] and still refer to
         // the empty list.
-        if (old_offset == -1)
-          old_offset = 0;
+        if (old_offset == -1) old_offset = 0;
         for (int32_t axis = 0;; axis++) {
           old_offsets_acc(axis, i) = old_offset;
           // Below, 'new_offsets_acc' currently contains the size rather
@@ -404,8 +401,54 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   ExclusiveSum(*new_offsets, new_offsets);
 }
 
-static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
-                              Array1<int32_t> *elem_indexes /*=nullptr*/) {
+void GetOldAndNewOffsets(RaggedShape &src, const Array1<int32_t> &new2old,
+                         Array1<int32_t> *old_offsets,
+                         Array1<int32_t> *new_offsets) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_GT(src.NumAxes(), 1);
+  ContextPtr c = GetContext(src, new2old);
+  int32_t num_axes = src.NumAxes(), ans_dim0 = new2old.Dim();
+
+  // max 5 layers.
+  RowSplitsAccessor<5> row_splits_acc(src);
+
+  const int32_t *new2old_data = new2old.Data();
+  *old_offsets = Array1<int32_t>(c, (num_axes - 1) * ans_dim0);
+  *new_offsets = Array1<int32_t>(c, (num_axes - 1) * ans_dim0 + 1);
+  int32_t *old_offsets_data = old_offsets->Data(),
+          *new_offsets_data = new_offsets->Data();
+  // Set old_offsets; and for now, set new_offsets to the corresponding
+  // sizes of the output slices.
+  K2_EVAL(
+      c, ans_dim0, lambda_set_offsets, (int32_t i)->void {
+        // 0 <= i < ans_dim0
+        int32_t old_offset = new2old_data[i], old_offset_next = old_offset + 1,
+                offset_diff = 1;
+        // The following is a special case that interprets -1 as referring to an
+        // empty list.  In this case, old_offset == old_offset_next == 0.
+        // The specific value 0 is not necessary; they could be equal
+        // and have any value in [0, src.Dim0() - 1] and still refer to
+        // the empty list.
+        if (old_offset == -1) old_offset = 0;
+        old_offset = row_splits_acc(0)[old_offset];
+        old_offset_next = row_splits_acc(0)[old_offset_next];
+        offset_diff = old_offset_next - old_offset;
+        for (int32_t axis = 1;; axis++) {
+          old_offsets_data[(axis - 1) * ans_dim0 + i] = old_offset;
+          // Below, 'new_offsets_acc' currently contains the size rather
+          // than the offset; we need to do exclusive-sum.
+          new_offsets_data[(axis - 1) * ans_dim0 + i] = offset_diff;
+          if (axis + 1 == num_axes) return;
+          old_offset = row_splits_acc(axis)[old_offset];
+          old_offset_next = row_splits_acc(axis)[old_offset_next];
+          offset_diff = old_offset_next - old_offset;
+        }
+      });
+  ExclusiveSum(*new_offsets, new_offsets);
+}
+
+RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
+                       Array1<int32_t> *elem_indexes /*=nullptr*/) {
   ContextPtr &c = src.Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
   K2_CHECK(IsCompatible(src, new2old));
@@ -415,7 +458,6 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     if (elem_indexes) *elem_indexes = Array1<int32_t>(c, 0);
     return EmptyRaggedShape(c, num_axes);
   }
-
 
   Array2<int32_t> old_offsets,  // num_axes by ans_dim0
       new_offsets;              // num_axes by (ans_dim0 + 1).
@@ -437,7 +479,6 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
                                     // it's how TaskRedirect works..
   Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
   auto task_redirects_acc = task_redirects.Accessor();
-
 
   ans.Layers()[0].row_splits = new_offsets.Row(1);
 
@@ -560,6 +601,157 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   return ans;
 }
 
+RaggedShape IndexAxis0New(RaggedShape &src, const Array1<int32_t> &new2old,
+                          Array1<int32_t> *elem_indexes /*=nullptr*/) {
+  ContextPtr c = GetContext(src, new2old);
+  int32_t num_axes = src.NumAxes(), src_dim0 = src.Dim0(),
+          ans_dim0 = new2old.Dim();
+  if (ans_dim0 == 0) {
+    if (elem_indexes) *elem_indexes = Array1<int32_t>(c, 0);
+    return EmptyRaggedShape(c, num_axes);
+  }
+
+  Array1<int32_t> old_offsets,  // (num_axes-1) by ans_dim0
+      new_offsets;              // ((num_axes-1) by ans_dim0) + 1.
+  GetOldAndNewOffsets(src, new2old, &old_offsets, &new_offsets);
+  const int32_t *old_offsets_data = old_offsets.Data(),
+                *new_offsets_data = new_offsets.Data();
+
+  if (num_axes == 2) {
+    if (c->GetDeviceType() == kCpu) {
+    } else {
+      K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+      int32_t ans_num_elems = new_offsets.Back();
+      Array1<int32_t> ans_row_splits(c, ans_num_elems);
+      int32_t *ans_row_splits_data = ans_row_splits.Data();
+      if (elem_indexes != nullptr)
+        *elem_indexes = Array1<int32_t>(c, ans_num_elems);
+      int32_t *elem_indexes_data =
+          elem_indexes != nullptr ? elem_indexes->Data() : nullptr;
+      if (ans_num_elems == 0) return RaggedShape2(&new_offsets, nullptr, 0);
+
+      mgpu::context_t *mgpu_context = GetModernGpuAllocator(c);
+      auto lambda_set_ans = [=] __device__(int32_t index, int32_t seg,
+                                           int32_t rank) {
+        ans_row_splits_data[new_offsets_data[seg] + rank] = seg;
+        if (elem_indexes_data != nullptr) {
+          elem_indexes_data[new_offsets_data[seg] + rank] =
+              old_offsets_data[seg] + rank;
+        }
+      };
+      K2_CUDA_SAFE_CALL(mgpu::transform_lbs(
+          lambda_set_ans, new_offsets.Back(), new_offsets.Data(),
+          new_offsets.Dim() - 1, *mgpu_context));
+      RaggedShape ans =
+          RaggedShape2(&new_offsets, &ans_row_splits, ans_num_elems);
+      return ans;
+    }
+  }
+
+  Array1<int32_t> tot_sizes_out(c, num_axes);
+  int32_t *tot_sizes_out_data = tot_sizes_out.Data();
+  K2_EVAL(
+      c, num_axes, lambda_set_tot_sizes, (int32_t i)->void {
+        if (i == 0)
+          tot_sizes_out_data[0] = ans_dim0;
+        else {
+          tot_sizes_out_data[i] = new_offsets_data[ans_dim0 * i] -
+                                  new_offsets_data[ans_dim0 * (i - 1)];
+        }
+      });
+  tot_sizes_out = tot_sizes_out.To(GetCpuContext());
+
+  if (elem_indexes != nullptr)
+    *elem_indexes = Array1<int32_t>(c, tot_sizes_out.Back());
+  int32_t *elem_indexes_data =
+      elem_indexes != nullptr ? elem_indexes->Data() : nullptr;
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.Data());
+
+  RowSplitsAccessor<5> ans_row_splits_acc(ans);
+  RowIdsAccessor<5> ans_row_ids_acc(ans);
+
+  RowSplitsAccessor<5> src_row_splits_acc(src);
+  RowIdsAccessor<5> src_row_ids_acc(src);
+
+  ans.Layers()[0].row_splits = new_offsets.Arange(0, ans_dim0 + 1);
+
+  if (c->GetDeviceType() == kCpu) {
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+
+    int32_t tot_elems = new_offsets.Back();
+    if (tot_elems == 0) {
+      for (int32_t i = 0; i != num_axes - 1; ++i) {
+        if (i != 0)
+          ans.Layers()[i].row_splits =
+              new_offsets.Arange(ans_dim0 + i, ans_dim0 + i + 1);
+        ans.Layers()[i].row_ids = Array1<int32_t>(c, 0);
+      }
+      return ans;
+    }
+    mgpu::context_t *mgpu_context = GetModernGpuAllocator(c);
+    auto lambda_set_ans = [=] __device__(int32_t index, int32_t seg,
+                                         int32_t rank) {
+      // There are (num_axes-1) * ans_dim0 segments totally, each segment
+      // handles the corresponding row_ids for axis `axis` and
+      // row_splits for axis `axis + 1`.
+      if (index == 0) {
+        for (int32_t i = 1; i != num_axes - 1; ++i) {
+          ans_row_splits_acc(i)[0] = 0;
+        }
+      }
+      // TODO(Haowen): share below variables (including new_offset_prev,
+      // new_offset_next, etc.) in a segment, or at least we can create a kernel
+      // like things in IndexAxis0 to share those variables in 4/8 threads.
+      int32_t axis = seg / ans_dim0;
+      int32_t new_offset_curr =
+                  new_offsets_data[seg] - new_offsets_data[axis * ans_dim0],
+              old_offset_curr = old_offsets_data[seg];
+      if (axis != num_axes - 2) {
+        // set row_splits for the next axis
+
+        int32_t old_offset_next = old_offsets_data[seg + ans_dim0],
+                new_offset_next = new_offsets_data[seg + ans_dim0] -
+                                  new_offsets_data[(axis + 1) * ans_dim0];
+        int32_t value_offset = new_offset_next - old_offset_next;
+        // noted row_splits_acc(axis) is RowSplits(axis + 1);
+        int32_t *ans_row_splits_next_axis = ans_row_splits_acc(axis + 1);
+        const int32_t *src_row_splits_next_axis = src_row_splits_acc(axis + 1);
+        ans_row_splits_next_axis[new_offset_curr + rank] =
+            value_offset + src_row_splits_next_axis[old_offset_curr + rank];
+        // so that we can always set the last element of row_splits for the next
+        // axis even though there are empty rows in current axis.
+        ans_row_splits_next_axis[new_offset_curr + rank + 1] =
+            value_offset + src_row_splits_next_axis[old_offset_curr + rank + 1];
+      }
+      {
+        // set row_id for the current axis
+        if (axis == 0) {
+          ans_row_ids_acc(axis)[new_offset_curr + rank] = seg;
+        } else {
+          int32_t new_offset_prev = new_offsets_data[seg - ans_dim0] -
+                                    new_offsets_data[(axis - 1) * ans_dim0],
+                  old_offset_prev = old_offsets_data[seg - ans_dim0];
+          int32_t value_offset = new_offset_prev - old_offset_prev;
+          ans_row_ids_acc(axis)[new_offset_curr + rank] =
+              value_offset + src_row_ids_acc(axis)[old_offset_curr + rank];
+        }
+      }
+      if (axis == num_axes - 2 && elem_indexes_data != nullptr) {
+        elem_indexes_data[new_offset_curr + rank] = old_offset_curr + rank;
+      }
+    };
+    K2_CUDA_SAFE_CALL(
+        mgpu::transform_lbs(lambda_set_ans, tot_elems, new_offsets.Data(),
+                            new_offsets.Dim() - 1, *mgpu_context));
+  }
+
+#if !defined(NDEBUG)
+  ans.Check();
+#endif
+  return ans;
+}
+
 RaggedShape Index(RaggedShape &src, int32_t axis,
                   const Array1<int32_t> &indexes,
                   Array1<int32_t> *elem_indexes /*=nullptr*/) {
@@ -580,8 +772,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
     Array1<int32_t> last_row_splits(last_row_ids.Context(),
                                     src.TotSize(num_axes - 2) + 1);
     RowIdsToRowSplits(last_row_ids, &last_row_splits);
-    if (elem_indexes)
-      *elem_indexes = indexes;
+    if (elem_indexes) *elem_indexes = indexes;
 
     std::vector<RaggedShapeLayer> axes = src.Layers();
     axes.back().row_splits = last_row_splits;
@@ -594,7 +785,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
     DecomposeRaggedShape(src, axis, &top, &bottom);
 
     RaggedShape top_indexed = Index(top, axis, indexes, nullptr),
-        bottom_indexed = IndexAxis0(bottom, indexes, elem_indexes);
+                bottom_indexed = IndexAxis0(bottom, indexes, elem_indexes);
     return ComposeRaggedShapes(top_indexed, bottom_indexed);
   }
 }
@@ -1198,10 +1389,9 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
   return ans;
 }
 
-
 /*
-// Checks the result of GetTranspoeReordering(), in debug mode and dies if it is wrong.
-static void CheckGetTransposeReordering(Ragged<int32_t> &src,
+// Checks the result of GetTranspoeReordering(), in debug mode and dies if it is
+wrong. static void CheckGetTransposeReordering(Ragged<int32_t> &src,
                                         Array1<int32_t> &ans) {
   if (!internal::kDisableDebug && !internal::DisableChecks()) {
     K2_CHECK(IsPermutation(ans));
@@ -2063,8 +2253,6 @@ RaggedShape RaggedShapeAxis0Splitter::GetElement(int32_t i,
   return RaggedShape(out);
 }
 
-
-
 namespace hash_internal {
 // Utilities for hashing strings (actually: sequences of int32_t).
 
@@ -2099,7 +2287,8 @@ struct Hash {
 
 template <typename T>
 struct HashInputIterator {
-  explicit __host__ __device__ __forceinline__ HashInputIterator(const int32_t *i)  // NOLINT
+  explicit __host__ __device__ __forceinline__
+  HashInputIterator(const int32_t *i)  // NOLINT
       : i_(i) {}
   __device__ __forceinline__ Hash<T> operator[](int32_t idx) const {
     return Hash<T>{i_[idx], i_[idx], 31, 167};
@@ -2115,8 +2304,7 @@ struct HashOutputIteratorDeref {  // this is what you get when you dereference
                                   // HashOutputIterator, it pretends to be a
                                   // Hash<T> but really only stores the `idx`
                                   // member.
-  explicit __device__ __forceinline__ HashOutputIteratorDeref(T *t)
-      : t_(t) {}
+  explicit __device__ __forceinline__ HashOutputIteratorDeref(T *t) : t_(t) {}
   __device__ __forceinline__ HashOutputIteratorDeref &operator=(
       const Hash<T> &h) {
     *t_ = h.hash1 + 13 * h.product1 + 104729 * h.hash2 +
@@ -2144,8 +2332,7 @@ struct HashCombineOp {
   __device__ __forceinline__ Hash<T> operator()(const Hash<T> &a,
                                                 const Hash<T> &b) const {
     return Hash<T>{a.hash1 * b.product1 + b.hash1,
-                   a.hash2 * b.product2 + b.hash2,
-                   a.product1 * b.product1,
+                   a.hash2 * b.product2 + b.hash2, a.product1 * b.product1,
                    a.product2 * b.product2};
   }
 };
@@ -2199,7 +2386,7 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
     hash_internal::HashInputIterator<T> input_iter(values_data);
     hash_internal::HashOutputIterator<T> output_iter(output_data);
     hash_internal::HashCombineOp<T> op;
-    hash_internal::Hash<T> initial_hash{ 0, 0, 1, 1 };
+    hash_internal::Hash<T> initial_hash{0, 0, 1, 1};
 
     // This code is based on the example here:
     // https://nvlabs.github.io/cub/structcub_1_1_device_segmented_reduce.html
@@ -2218,7 +2405,6 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
   return ans;
 }
 
-
 Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
   ContextPtr &c = src.Context();
   if (src.NumAxes() == 2) {
@@ -2235,11 +2421,12 @@ Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
   Ragged<int64_t> ragged_hashes(GetLayer(src.shape, src.shape.NumLayers() - 2),
                                 hashes);
 
-  SortSublists<int64_t, LessThan<int64_t> >(&ragged_hashes, &order);
+  SortSublists<int64_t, LessThan<int64_t>>(&ragged_hashes, &order);
 
   Renumbering renumber_lists(c, hashes.Dim());
   const int32_t *ragged_hashes_row_ids_data = ragged_hashes.RowIds(1).Data(),
-      *ragged_hashes_row_splits_data = ragged_hashes.RowSplits(1).Data();
+                *ragged_hashes_row_splits_data =
+                    ragged_hashes.RowSplits(1).Data();
   const int64_t *ragged_hashes_data = ragged_hashes.values.Data();
   char *keep_list_data = renumber_lists.Keep().Data();
   K2_EVAL(
@@ -2254,16 +2441,12 @@ Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src) {
         keep_list_data[i] = keep;
       });
   Array1<int32_t> new2old = renumber_lists.New2Old(),
-      new2unsorted = order[new2old];
+                  new2unsorted = order[new2old];
   return Index(src, src.NumAxes() - 2, new2unsorted);
 }
 
-
 // Instantiate template for int64 and int32.
-template
-Array1<int64_t> ComputeHash(Ragged<int32_t> &src);
-template
-Array1<int32_t> ComputeHash(Ragged<int32_t> &src);
-
+template Array1<int64_t> ComputeHash(Ragged<int32_t> &src);
+template Array1<int32_t> ComputeHash(Ragged<int32_t> &src);
 
 }  // namespace k2

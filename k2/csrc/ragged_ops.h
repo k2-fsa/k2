@@ -132,7 +132,6 @@ void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
   SegmentedReduce<T, BitOrOp<T>>(src, initial_value, or_values);
 }
 
-
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
   Similar to TF/PyTorch's Stack. The result will have Dim0 == src_size.
@@ -228,6 +227,17 @@ RaggedShape Prefix(RaggedShape &src, int32_t n);
 std::vector<RaggedShape> GetPrefixes(RaggedShape &src,
                                      const std::vector<int32_t> &sizes);
 
+void GetOldAndNewOffsets(RaggedShape &src, const Array1<int32_t> &new2old,
+                         Array2<int32_t> *old_offsets,
+                         Array2<int32_t> *new_offsets);
+void GetOldAndNewOffsets(RaggedShape &src, const Array1<int32_t> &new2old,
+                         Array1<int32_t> *old_offsets,
+                         Array1<int32_t> *new_offsets);
+
+RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
+                       Array1<int32_t> *elem_indexes /*=nullptr*/);
+RaggedShape IndexAxis0New(RaggedShape &src, const Array1<int32_t> &new2old,
+                          Array1<int32_t> *elem_indexes /*=nullptr*/);
 /*
   This object splits a ragged shape on its axis 0, giving you efficient
   axis to the sub-parts of it for each index into its axis0.
@@ -416,7 +426,8 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
   Version of Unsqueeze() above, that works for ragged tensors.
   Note: the opposite of this is not Squeeze(); it is ans.RemoveAxis(axis).
 */
-template <typename T> Ragged<T> Unsqueeze(const Ragged<T> &src, int32_t axis) {
+template <typename T>
+Ragged<T> Unsqueeze(const Ragged<T> &src, int32_t axis) {
   return Ragged<T>(Unsqueeze(src.shape, axis), src.values);
 }
 
@@ -1027,7 +1038,6 @@ inline Ragged<T> RaggedFromTotSizes(ContextPtr &c,
                    Array1<T>(c, tot_sizes.back()));
 }
 
-
 /*
   Transpose a ragged tensor as if it were the index information of a CSR-format
   sparse matrix (but with possibly repeated elements!).  This is easiest to
@@ -1146,7 +1156,6 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
                   const Array1<int32_t> &indexes,
                   Array1<int32_t> *elem_indexes = nullptr);
 
-
 /*
   Index ragged tensor with array, return ragged tensor.
 
@@ -1172,8 +1181,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
 
 */
 template <typename T>
-Ragged<T> Index(Ragged<T> &src, int32_t axis,
-                const Array1<int32_t> &indexes,
+Ragged<T> Index(Ragged<T> &src, int32_t axis, const Array1<int32_t> &indexes,
                 Array1<int32_t> *value_indexes_out = nullptr) {
   Array1<int32_t> value_indexes;
   RaggedShape ans_shape = Index(src.shape, axis, indexes, &value_indexes);
@@ -1327,7 +1335,6 @@ Array1<int32_t> CoveringShapeForwardMap(RaggedShape &src,
 template <typename T>
 Array1<T> ComputeHash(Ragged<int32_t> &src);
 
-
 /*
   If `src` has two axes, this will return the unique sub-lists (in a possibly
   different order, but without repeats).  If `src` has 3 axes, it will
@@ -1347,7 +1354,6 @@ Array1<T> ComputeHash(Ragged<int32_t> &src);
   if the actual content in the sequence is different.
  */
 Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src);
-
 
 /* Compute exclusive sum per sub-list.
  *
