@@ -450,13 +450,13 @@ class _IntersectDensePrunedFunction(torch.autograd.Function):
         arc_map_b = ctx.arc_map_b
 
         grad_a = torch.zeros(a_scores.size(0),
-                             dtype=torch.float32,
+                             dtype=out_fsa_grad.dtype,
                              device=a_scores.device,
                              requires_grad=False)
 
         grad_b = torch.zeros(
             *b_scores.shape,
-            dtype=torch.float32,
+            dtype=out_fsa_grad.dtype,
             device=b_scores.device,
             requires_grad=False).contiguous()  # will use its `view()` later
 

@@ -565,7 +565,7 @@ __host__ __device__ __forceinline__ void AtomicAdd(double *address,
     // (since NaN != NaN)
   } while (assumed != old);
 #else
-  // For host code, we assume single-threaded for now).
+  // For host code, we assume single-threaded for now.
   *address += value;
 #endif
 }

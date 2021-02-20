@@ -22,4 +22,10 @@ const Dtype DtypeOf<int32_t>::dtype;
 const Dtype DtypeOf<int64_t>::dtype;
 const Dtype DtypeOf<uint32_t>::dtype;
 const Dtype DtypeOf<uint64_t>::dtype;
+
+std::ostream &operator<<(std::ostream &os, Dtype dtype) {
+  os << TraitsOf(dtype).Name();
+  return os;
+}
+
 }  // namespace k2

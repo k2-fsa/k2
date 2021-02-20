@@ -51,6 +51,7 @@ struct ToScalarType;
 TO_SCALAR_TYPE(float, torch::kFloat);
 TO_SCALAR_TYPE(double, torch::kDouble);
 TO_SCALAR_TYPE(int32_t, torch::kInt);
+TO_SCALAR_TYPE(int64_t, torch::kLong);
 
 #undef TO_SCALAR_TYPE
 

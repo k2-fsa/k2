@@ -33,7 +33,7 @@ def linear_fsa(labels: Union[List[int], List[List[int]], k2.RaggedInt],
 
             - A list of integers, e.g., `[1, 2, 3]`
             - A list of list-of-integers, e..g, `[ [1, 2], [1, 2, 3] ]`
-            - An instance of :class:`k2.RaggedInt`
+            - An instance of :class:`k2.RaggedInt`. Must have `num_axes() == 2`.
       device:
         Optional. It can be either a string (e.g., 'cpu',
         'cuda:0') or a torch.device.
@@ -47,6 +47,7 @@ def linear_fsa(labels: Union[List[int], List[List[int]], k2.RaggedInt],
     '''
     if isinstance(labels, k2.RaggedInt):
         assert device is None
+        assert labels.num_axes() == 2
 
     if device is not None:
         device = torch.device(device)

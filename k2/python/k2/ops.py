@@ -52,7 +52,7 @@ class _IndexSelectFunction(torch.autograd.Function):
         src, index = ctx.saved_tensors
 
         ans = torch.zeros(src.shape,
-                          dtype=torch.float32,
+                          dtype=out_grad.dtype,
                           device=src.device,
                           requires_grad=False)
         _k2.index_add(index, out_grad, ans)
@@ -113,10 +113,10 @@ def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
 
     Args:
       src:
-        The input tensor. Either 1-D or 2-D with dtype torch.int32 or
-        torch.float32.
+        The input tensor. Either 1-D or 2-D with dtype `torch.int32`,
+        `torch.int64`, `torch.float32`, or `torch.float64`.
       index:
-        1-D tensor of dtype torch.int32 containing the indexes.
+        1-D tensor of dtype `torch.int32` containing the indexes.
         If an entry is -1, the corresponding entry in the returned value
         is 0. The elements of `index` should be in the range
         `[-1..src.shape[0]-1]`.
@@ -140,8 +140,12 @@ def index_add(index: torch.Tensor, value: torch.Tensor,
 
     Caution:
       It has similar semantics with `torch.Tensor.index_add_` except
-      that (1) index.dtype == torch.int32; (2) -1 <= index[i] < in_out.shape[0].
-      index[i] == -1 is ignored.
+      that:
+
+        - `index.dtype == torch.int32`
+        - `-1 <= index[i] < in_out.shape[0]`
+        - `index[i] == -1` is ignored.
+        - `index` has to be a 1-D **contiguous** tensor.
 
     Caution:
       `in_out` is modified **in-place**.
@@ -151,14 +155,15 @@ def index_add(index: torch.Tensor, value: torch.Tensor,
 
     Args:
       index:
-        A 1-D tensor with dtype torch.int32.  -1 <= index[i] < in_out.shape[0]
-        CAUTION: It has to be contiguous.
+        A 1-D **contiguous** tensor with dtype `torch.int32`.
+        Must satisfy `-1 <= index[i] < in_out.shape[0]`
       value:
-        A 1-D or 2-D tensor with dtype torch.float32 or torch.float32.
-        index.shape[0] == value.shape[0]
+        A 1-D or 2-D tensor with dtype `torch.int32`, `torch.float32`,
+        or `torch.float64`.
+        Must satisfy `index.shape[0] == value.shape[0]`
       in_out:
         A 1-D or 2-D tensor with the same dtype as `value`. It satisfies
-        in_out.shape[1] == value.shape[1]
+        `in_out.shape[1] == value.shape[1]` if it is a 2-D tensor.
 
     Returns:
       Return None.
