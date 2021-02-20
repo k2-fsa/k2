@@ -107,8 +107,12 @@ static torch::Tensor IndexSelectWrapper(torch::Tensor src,
     switch (scalar_type) {
       case ToScalarType<int32_t>::value:
         return IndexSelect1D<int32_t>(src, index);
+      case ToScalarType<int64_t>::value:
+        return IndexSelect1D<int64_t>(src, index);
       case ToScalarType<float>::value:
         return IndexSelect1D<float>(src, index);
+      case ToScalarType<double>::value:
+        return IndexSelect1D<double>(src, index);
       default:
         K2_LOG(FATAL) << "Unsupported scalar type: " << scalar_type;
         return {};
@@ -117,8 +121,12 @@ static torch::Tensor IndexSelectWrapper(torch::Tensor src,
     switch (scalar_type) {
       case ToScalarType<int32_t>::value:
         return IndexSelect2D<int32_t>(src, index);
+      case ToScalarType<int64_t>::value:
+        return IndexSelect2D<int64_t>(src, index);
       case ToScalarType<float>::value:
         return IndexSelect2D<float>(src, index);
+      case ToScalarType<double>::value:
+        return IndexSelect2D<double>(src, index);
       default:
         K2_LOG(FATAL) << "Unsupported scalar type: " << scalar_type;
         return {};
@@ -185,7 +193,23 @@ static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
 }
 
 static void IndexSelect(py::module &m) {
-  m.def("index_select", &IndexSelectWrapper, py::arg("src"), py::arg("index"));
+  m.def("index_select", &IndexSelectWrapper, py::arg("src"), py::arg("index"),
+        R"(
+      Args:
+        src:
+          It can be either a 1-D or a 2-D tensor. Supported dtypes are:
+          `torch.int32`, `torch.int64`, `torch.float32`, and `torch.float64`.
+        index:
+          It has to be a 1-D **contiguous** tensor with dtype `torch.int32`.
+          Must satisfy `-1 <= index[i] < src.shape[0]`.
+      Returns:
+        Return a tensor:
+          - `ans.ndim == src.ndim`
+          - `ans.shape[0] == index.shape[0]`
+          - If `ans.ndim == 2`, then `ans.shape[1] == src.shape[1]`
+          - `ans[i] = src[index[i]]` if `index[i] != -1`.
+          - `ans[i] = 0` if `index[i] == -1`
+      )");
   m.def("simple_ragged_index_select", &SimpleRaggedIndexSelectWrapper,
         py::arg("src"), py::arg("indexes"));
 }

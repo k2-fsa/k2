@@ -18,192 +18,246 @@ import torch
 class TestIndexSelect(unittest.TestCase):
 
     def test_1d(self):
-        a = torch.tensor([
-            10,  # 0
-            -1,  # 1
-            100,  # 2
-            0,  # 3
-            3,  # 4
-            9,  # 5
-            12,  # 6
-        ]).to(torch.int32)
-
-        b = torch.tensor([0, -1, 0, 2, 1, 3, 6, -1, 5, 6, 0,
-                          2]).to(torch.int32)
-
-        c = k2.index_select(a, b)
-        assert c.dtype == a.dtype
-        assert c.numel() == b.numel()
-
-        padded_a = torch.cat([torch.tensor([0]).to(a), a])
-        expected = padded_a.index_select(0, (b + 1).to(torch.int64))
-
-        assert torch.allclose(c, expected)
-
+        devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            device = torch.device('cuda', 0)
-            a = a.to(device)
-            b = b.to(device)
-            c = k2.index_select(a, b)
-            assert c.dtype == a.dtype
-            assert c.is_cuda
-            assert c.numel() == b.numel()
-            assert torch.allclose(c, expected.to(c))
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
+            for dtype in [torch.int32, torch.int64]:
+                num_rows = torch.randint(1, 2000, size=(1,)).item()
+                a = torch.randint(-1000,
+                                  1000,
+                                  size=(num_rows,),
+                                  dtype=dtype,
+                                  device=device)
+                assert a.is_contiguous()
+                assert a.dtype == dtype
 
-        # now for float32
-        a = a.to(torch.float32).requires_grad_(True)
-        c = k2.index_select(a, b)
-        assert c.dtype == a.dtype
-        c.sum().backward()
+                num_indexes = torch.randint(1, 200000, size=(1,)).item()
+                b = torch.randint(-1,
+                                  num_rows,
+                                  size=(num_indexes,),
+                                  dtype=torch.int32,
+                                  device=device)
 
-        new_a = a.detach().requires_grad_(True)
-        padded_a = torch.cat([torch.tensor([0]).to(new_a), new_a])
-        expected = padded_a.index_select(0, (b + 1).to(torch.int64))
-        expected.sum().backward()
+                c = k2.index_select(a, b)
+                assert c.dtype == a.dtype
+                assert c.numel() == b.numel()
 
-        assert torch.allclose(a.grad, new_a.grad)
+                padded_a = torch.cat([torch.tensor([0]).to(a), a])
+                expected = padded_a.index_select(0, (b + 1).to(torch.int64))
 
-        # now for cpu
-        a.grad = None
-        c = k2.index_select(a.cpu(), b.cpu())
-        assert c.dtype == a.dtype
-        c.sum().backward()
+                assert torch.allclose(c, expected)
 
-        assert torch.allclose(a.grad, new_a.grad.to(a.grad))
+            for dtype in [torch.float32, torch.float64]:
+                num_rows = torch.randint(1, 2000, size=(1,)).item()
+                a = torch.rand(num_rows,
+                               dtype=dtype,
+                               device=device,
+                               requires_grad=True)
+                assert a.is_contiguous()
+                assert a.dtype == dtype
+
+                num_indexes = torch.randint(1, 200000, size=(1,)).item()
+                b = torch.randint(-1,
+                                  num_rows,
+                                  size=(num_indexes,),
+                                  dtype=torch.int32,
+                                  device=device)
+
+                c = k2.index_select(a, b)
+                assert c.dtype == a.dtype
+                c.sum().backward()
+
+                new_a = a.detach().requires_grad_(True)
+                padded_a = torch.cat([torch.tensor([0]).to(new_a), new_a])
+                expected = padded_a.index_select(0, (b + 1).to(torch.int64))
+                expected.sum().backward()
+
+                assert torch.allclose(c, expected)
+                assert torch.allclose(a.grad, new_a.grad)
 
     def test_1d_non_contiguous(self):
-        a = torch.arange(20).to(torch.int32)[::2]
-        b = torch.tensor([-1, -1, 1, 2, 0, 1, 5, 3, 9, -1, 8, 7, 7,
-                          6]).to(torch.int32)
-        padded_a = torch.cat([torch.tensor([0]).to(a), a])
-        assert a.is_contiguous() is False
-        c = k2.index_select(a, b)
-        expected = padded_a.index_select(0, (b + 1).to(torch.int64))
-        assert torch.allclose(c, expected)
-
-        a = a.to(torch.float32).requires_grad_(True)
-        c = k2.index_select(a, b)
-
-        new_a = a.detach().clone().requires_grad_(True)
-        padded_a = torch.cat([torch.tensor([0]).to(a), new_a])
-        expected = padded_a.index_select(0, (b + 1).to(torch.int64))
-
-        assert torch.allclose(c, expected.to(c))
-
-        c.sum().backward()
-        expected.sum().backward()
-
-        assert torch.allclose(a.grad, new_a.grad)
-
-        # now for cuda
+        devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            device = torch.device('cuda', 0)
-            b = b.to(device)
+            devices.append(torch.device('cuda', 0))
+        for device in devices:
+            for dtype in [torch.int32, torch.int64]:
+                num_rows = torch.randint(20, 2000, size=(1,)).item()
+                stride = torch.randint(2, num_rows // 10 + 1, size=(1,)).item()
 
-            a.requires_grad_(False)
-            a = a.to(device).requires_grad_(True)
-            c = k2.index_select(a, b)
+                a = torch.randint(-1000,
+                                  1000,
+                                  size=(num_rows,),
+                                  dtype=dtype,
+                                  device=device)
+                a = a[::stride]
+                assert a.is_contiguous() is False
+                assert a.dtype == dtype
 
-            new_a.requires_grad_(False)
-            new_a = new_a.to(device).requires_grad_(True)
-            padded_a = torch.cat([torch.tensor([0]).to(a), new_a])
-            expected = padded_a.index_select(0, (b + 1).to(torch.int64))
+                b = torch.randint(-1,
+                                  a.shape[0],
+                                  size=(10000,),
+                                  dtype=torch.int32,
+                                  device=device)
 
-            assert torch.allclose(c, expected.to(c))
+                c = k2.index_select(a, b)
 
-            c.sum().backward()
-            expected.sum().backward()
+                padded_a = torch.cat([torch.tensor([0]).to(a), a])
+                expected = padded_a.index_select(0, (b + 1).to(torch.int64))
 
-            assert torch.allclose(a.grad, new_a.grad)
+                assert torch.allclose(c, expected)
+
+            for dtype in [torch.float32, torch.float64]:
+                num_rows = torch.randint(20, 2000, size=(1,)).item()
+                stride = torch.randint(2, num_rows // 10 + 1, size=(1,)).item()
+
+                a_contiguous = torch.rand(num_rows, dtype=dtype, device=device)
+                a = a_contiguous[::stride]
+                a.requires_grad_(True)
+                assert a.is_contiguous() is False
+                assert a.dtype == dtype
+
+                b = torch.randint(-1,
+                                  a.shape[0],
+                                  size=(10000,),
+                                  dtype=torch.int32,
+                                  device=device)
+
+                c = k2.index_select(a, b)
+
+                new_a = a_contiguous[::stride]
+                new_a.requires_grad_(True)
+                padded_a = torch.cat([torch.tensor([0]).to(a), new_a])
+                expected = padded_a.index_select(0, (b + 1).to(torch.int64))
+
+                c.sum().backward()
+                expected.sum().backward()
+
+                assert torch.allclose(c, expected)
+                assert torch.allclose(a.grad, new_a.grad)
 
     def test_2d(self):
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
             devices.append(torch.device('cuda', 0))
         for device in devices:
-            num_rows = torch.randint(1, 2000, size=(1,)).item()
-            num_cols = torch.randint(1, 2000, size=(1,)).item()
-            a = torch.randint(-1000,
-                              1000,
-                              size=(num_rows, num_cols),
-                              dtype=torch.int32,
-                              device=device).contiguous()
-            b = torch.randint(-1,
-                              num_rows,
-                              size=(10000,),
-                              dtype=torch.int32,
-                              device=device)
-            assert a.is_contiguous()
-            c = k2.index_select(a, b)
-            assert c.dtype == a.dtype
-            assert c.device == a.device
-            assert c.shape[1] == a.shape[1]
-            assert c.shape[0] == b.shape[0]
+            for dtype in [torch.int32, torch.int64]:
+                num_rows = torch.randint(1, 2000, size=(1,)).item()
+                num_cols = torch.randint(1, 2000, size=(1,)).item()
+                a = torch.randint(-1000,
+                                  1000,
+                                  size=(num_rows, num_cols),
+                                  dtype=dtype,
+                                  device=device)
+                b = torch.randint(-1,
+                                  num_rows,
+                                  size=(10000,),
+                                  dtype=torch.int32,
+                                  device=device)
+                assert a.is_contiguous()
+                assert a.dtype == dtype
 
-            padded_a = torch.cat([torch.zeros(1, a.shape[1]).to(a), a])
-            expected = padded_a.index_select(0, (b + 1).to(torch.int64))
+                c = k2.index_select(a, b)
 
-            # now for float32
-            a = a.to(torch.float32).requires_grad_(True)
-            assert a.is_contiguous()
-            assert b.is_contiguous()
-            c = k2.index_select(a, b)
+                assert c.dtype == a.dtype
+                assert c.device == a.device
+                assert c.shape[1] == a.shape[1]
+                assert c.shape[0] == b.shape[0]
 
-            assert c.dtype == a.dtype
-            c.sum().backward()
+                padded_a = torch.cat([torch.zeros(1, a.shape[1]).to(a), a])
+                expected = padded_a.index_select(0, (b + 1).to(torch.int64))
 
-            new_a = a.detach().requires_grad_(True)
-            padded_a = torch.cat([torch.zeros(1, a.shape[1]).to(new_a), new_a])
-            expected = padded_a.index_select(0, (b + 1).to(torch.int64))
-            expected.sum().backward()
+                assert torch.allclose(c, expected)
 
-            assert torch.allclose(a.grad, new_a.grad)
+            for dtype in [torch.float32, torch.float64]:
+                src = a.to(dtype).requires_grad_(True)
+                assert src.is_contiguous()
+                assert b.is_contiguous()
+                c = k2.index_select(src, b)
+
+                assert c.dtype == src.dtype
+                c.sum().backward()
+
+                new_src = src.detach().requires_grad_(True)
+                padded_src = torch.cat(
+                    [torch.zeros(1, src.shape[1]).to(new_src), new_src])
+                expected = padded_src.index_select(0, (b + 1).to(torch.int64))
+                expected.sum().backward()
+
+                assert torch.allclose(c, expected)
+                assert torch.allclose(src.grad, new_src.grad)
 
     def test_2d_non_contiguous(self):
         devices = [torch.device('cpu')]
         if torch.cuda.is_available():
             devices.append(torch.device('cuda', 0))
         for device in devices:
-            num_rows = torch.randint(20, 2000, size=(1,)).item()
-            num_cols = torch.randint(1, 2000, size=(1,)).item()
-            stride = torch.randint(2, num_rows // 10 + 1, size=(1,)).item()
-            a = torch.randint(-1000,
-                              1000,
-                              size=(num_rows, num_cols),
-                              dtype=torch.int32,
-                              device=device).contiguous()
-            a = a[::stride]
-            num_rows = a.shape[0]
-            b = torch.randint(-1,
-                              num_rows,
-                              size=(10000,),
-                              dtype=torch.int32,
-                              device=device)
-            assert a.is_contiguous() is False
-            c = k2.index_select(a, b)
-            assert c.dtype == a.dtype
-            assert c.device == a.device
-            assert c.shape[1] == a.shape[1]
-            assert c.shape[0] == b.shape[0]
+            for dtype in [torch.int32, torch.int64]:
+                num_rows = torch.randint(20, 2000, size=(1,)).item()
+                num_cols = torch.randint(1, 2000, size=(1,)).item()
+                stride = torch.randint(2, num_rows // 10 + 1, size=(1,)).item()
+                a = torch.randint(-1000,
+                                  1000,
+                                  size=(num_rows, num_cols),
+                                  dtype=dtype,
+                                  device=device).contiguous()
+                a = a[::stride]
+                num_rows = a.shape[0]
+                b = torch.randint(-1,
+                                  num_rows,
+                                  size=(10000,),
+                                  dtype=torch.int32,
+                                  device=device)
+                assert a.is_contiguous() is False
+                assert a.dtype == dtype
 
-            padded_a = torch.cat([torch.zeros(1, a.shape[1]).to(a), a])
-            expected = padded_a.index_select(0, (b + 1).to(torch.int64))
+                c = k2.index_select(a, b)
+                assert c.dtype == a.dtype
+                assert c.device == a.device
+                assert c.shape[1] == a.shape[1]
+                assert c.shape[0] == b.shape[0]
 
-            # now for float32
-            a = a.to(torch.float32).requires_grad_(True)
-            assert a.is_contiguous()
-            assert b.is_contiguous()
-            c = k2.index_select(a, b)
+                padded_a = torch.cat([torch.zeros(1, a.shape[1]).to(a), a])
+                expected = padded_a.index_select(0, (b + 1).to(torch.int64))
 
-            assert c.dtype == a.dtype
-            c.sum().backward()
+                assert torch.allclose(c, expected)
 
-            new_a = a.detach().requires_grad_(True)
-            padded_a = torch.cat([torch.zeros(1, a.shape[1]).to(new_a), new_a])
-            expected = padded_a.index_select(0, (b + 1).to(torch.int64))
-            expected.sum().backward()
+            for dtype in [torch.float32, torch.float64]:
+                num_rows = torch.randint(20, 2000, size=(1,)).item()
+                num_cols = torch.randint(1, 2000, size=(1,)).item()
+                stride = torch.randint(2, num_rows // 10 + 1, size=(1,)).item()
+                a = torch.randint(-1000,
+                                  1000,
+                                  size=(num_rows, num_cols),
+                                  dtype=dtype,
+                                  device=device).contiguous()
+                a = a[::stride]
+                num_rows = a.shape[0]
+                b = torch.randint(-1,
+                                  num_rows,
+                                  size=(10000,),
+                                  dtype=torch.int32,
+                                  device=device)
+                assert a.is_contiguous() is False
+                assert a.dtype == dtype
+                a.requires_grad_(True)
 
-            assert torch.allclose(a.grad, new_a.grad)
+                c = k2.index_select(a, b)
+                assert c.dtype == a.dtype
+                assert c.device == a.device
+                assert c.shape[1] == a.shape[1]
+                assert c.shape[0] == b.shape[0]
+
+                c.sum().backward()
+
+                new_a = a.detach().requires_grad_(True)
+                padded_a = torch.cat(
+                    [torch.zeros(1, a.shape[1]).to(new_a), new_a])
+                expected = padded_a.index_select(0, (b + 1).to(torch.int64))
+                expected.sum().backward()
+
+                assert torch.allclose(c, expected)
+                assert torch.allclose(a.grad, new_a.grad)
 
 
 class TestSimpleRaggedIndexSelect(unittest.TestCase):

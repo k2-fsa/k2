@@ -37,6 +37,9 @@
 
 namespace k2 {
 
+enum class Dtype;
+std::ostream &operator<<(std::ostream &os, Dtype dtype);
+
 namespace internal {
 
 #if defined(NDEBUG)

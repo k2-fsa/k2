@@ -54,7 +54,7 @@ class DtypeTraits {
 extern const DtypeTraits g_dtype_traits_array[];
 
 // It's just an enum, we can use TraitsOf(dtype).NumBytes() and so on..
-enum Dtype {
+enum class Dtype {
   kFloatDtype,
   kDoubleDtype,
   kInt8Dtype,
@@ -64,6 +64,17 @@ enum Dtype {
   kUint32Dtype,
   kUint64Dtype,
 };
+
+constexpr Dtype kFloatDtype = Dtype::kFloatDtype;
+constexpr Dtype kDoubleDtype = Dtype::kDoubleDtype;
+constexpr Dtype kInt8Dtype = Dtype::kInt8Dtype;
+constexpr Dtype kInt16Dtype = Dtype::kInt16Dtype;
+constexpr Dtype kInt32Dtype = Dtype::kInt32Dtype;
+constexpr Dtype kInt64Dtype = Dtype::kInt64Dtype;
+constexpr Dtype kUint32Dtype = Dtype::kUint32Dtype;
+constexpr Dtype kUint64Dtype = Dtype::kUint64Dtype;
+
+std::ostream &operator<<(std::ostream &os, Dtype dtype);
 
 inline DtypeTraits TraitsOf(Dtype dtype) {
   return g_dtype_traits_array[static_cast<int32_t>(dtype)];
