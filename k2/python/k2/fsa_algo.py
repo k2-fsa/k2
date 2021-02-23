@@ -361,7 +361,7 @@ def compose(a_fsa: Fsa,
     out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
 
     for name, a_value in a_fsa_inv.named_tensor_attr():
-        if name == 'aux_labels':
+        if name in ('aux_labels', inner_labels):
             continue
         if hasattr(b_fsa, name):
             # Both a_fsa and b_fsa have this attribute.
@@ -385,7 +385,7 @@ def compose(a_fsa: Fsa,
 
     # now copy tensor attributes that are in b_fsa but are not in a_fsa
     for name, b_value in b_fsa.named_tensor_attr():
-        if name == 'aux_labels':
+        if name in ('aux_labels', inner_labels):
             continue
         if not hasattr(out_fsa, name):
             value = index(b_value, b_arc_map)
