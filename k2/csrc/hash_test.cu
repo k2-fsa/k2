@@ -64,8 +64,8 @@ void TestHashConstruct() {
                  value = values_data[i],
                success = success_data[i];
 
-          uint64_t val;
-          uint64_t *key_val_addr;
+          uint64_t val = 0;
+          uint64_t *key_val_addr = nullptr;
           bool ans = acc.Find(key, &val, &key_val_addr),
               ans2 = acc.Find(key + key_bound, &val, &key_val_addr);
           K2_CHECK(ans);  // key should be present.
@@ -147,8 +147,8 @@ void TestHashConstruct2(int32_t num_key_bits) {
                  value = values_data[i],
                success = success_data[i];
 
-          uint64_t val;
-          uint64_t *key_val_addr;
+          uint64_t val = 0;
+          uint64_t *key_val_addr = nullptr;
           bool ans = acc.Find(key, &val, &key_val_addr),
               ans2 = acc.Find(key + key_bound, &val, &key_val_addr);
           K2_CHECK(ans);  // key should be present.
