@@ -191,63 +191,93 @@ class MultiGraphDenseIntersect {
   FsaVec FormatOutput(Array1<int32_t> *arc_map_a_out,
                       Array1<int32_t> *arc_map_b_out) {
     NVTX_RANGE(K2_FUNC);
-    Array1<float> score_cutoffs = GetScoreCutoffs();
-    float *score_cutoffs_data = score_cutoffs.Data();
+
+
+    Array1<float> score_cutoffs;
+    float *score_cutoffs_data;
     int32_t num_states = a_fsas_.TotSize(1);
     int32_t product = ((size_t)(T_ + 1) * (size_t)num_states);
-
-    // We'll do exclusive-sum on the following array, after setting its elements
-    // to 1 if the corresponding state was not pruned away.  The order of
-    // 'counts' is: (T+1) copies of all the states of fsa index 0, (T+1) copies
-    // of all the states of FSA index 1, and so on.  In fact not all FSAs have
-    // this many frames, most of them have fewer copies, but using this regular
-    // structure avoids having to compute any extra row_ids vectors and the
-    // like.  The out-of-range elements will be set to zero.
-
-    Renumbering renumber_states(c_, product);
-    char *keep_state_data = renumber_states.Keep().Data();
-
+    Renumbering renumber_states;
     int32_t T = T_;
     const int32_t *a_fsas_row_ids1_data = a_fsas_.RowIds(1).Data();
     FsaInfo *fsa_info_data = fsa_info_.Data();
-    float **state_scores_data = state_scores_.Data();
 
-    // the following lambda will set elements within `keep_state_data` to 0
-    // or 1.
-    K2_EVAL(
-        c_, product, lambda_set_keep, (int32_t i)->void {
-          // i is actually an idx012 of a state.
+    // 10 million is max_states... this is to avoid out-of-memory conditions
+    // early in training.  Eventually we can make this an option.
+    int32_t max_states = 1000000;
 
-          // the following works because each FSA has (its num-states * T_+1)
-          // states allocated to it.  However (i / (T_+1)) does not directly map
-          // to a state index.
-          int32_t fsa_idx0 = a_fsas_row_ids1_data[(i / (T + 1))];
-          FsaInfo fsa_info = fsa_info_data[fsa_idx0];
-          float cutoff = score_cutoffs_data[fsa_idx0];
+    while (1) {
+      // This code is in a loop is in case we get too many states and have to retry.
+      // The limit `max_states` is to reduce the likelihood of out-of-memory
+      // conditions.
+      renumber_states = Renumbering(c_, product);
+      char *keep_state_data = renumber_states.Keep().Data();
+      score_cutoffs = GetScoreCutoffs();
+      score_cutoffs_data = score_cutoffs.Data();
+      float **state_scores_data = state_scores_.Data();
 
-          int32_t idx_within_fsa = i - (T + 1) * fsa_info.state_offset,
-                  t = idx_within_fsa / fsa_info.num_states,
-                  state_idx1 = idx_within_fsa % fsa_info.num_states;
-          // In the state_scores arrays, there are 2 copies of each FSA's
-          // states, for backward and forward.
-          int32_t backward_state_idx = (2 * fsa_info.state_offset) + state_idx1,
-                  forward_state_idx = backward_state_idx + fsa_info.num_states;
+      // We'll do exclusive-sum on the following array, after setting its elements
+      // to 1 if the corresponding state was not pruned away.  The order of
+      // 'counts' is: (T+1) copies of all the states of fsa index 0, (T+1) copies
+      // of all the states of FSA index 1, and so on.  In fact not all FSAs have
+      // this many frames, most of them have fewer copies, but using this regular
+      // structure avoids having to compute any extra row_ids vectors and the
+      // like.  The out-of-range elements will be set to zero.
 
-          char keep = 0;
-          if (t <= fsa_info.T) {
-            // This time is within the bounds for this FSA..
-            float forward_score = state_scores_data[t][forward_state_idx],
+
+      // the following lambda will set elements within `keep_state_data` to 0
+      // or 1.
+      K2_EVAL(
+          c_, product, lambda_set_keep, (int32_t i)->void {
+            // i is actually an idx012 of a state.
+
+            // the following works because each FSA has (its num-states * T_+1)
+            // states allocated to it.  However (i / (T_+1)) does not directly map
+            // to a state index.
+            int32_t fsa_idx0 = a_fsas_row_ids1_data[(i / (T + 1))];
+            FsaInfo fsa_info = fsa_info_data[fsa_idx0];
+            float cutoff = score_cutoffs_data[fsa_idx0];
+
+            int32_t idx_within_fsa = i - (T + 1) * fsa_info.state_offset,
+                t = idx_within_fsa / fsa_info.num_states,
+                state_idx1 = idx_within_fsa % fsa_info.num_states;
+            // In the state_scores arrays, there are 2 copies of each FSA's
+            // states, for backward and forward.
+            int32_t backward_state_idx = (2 * fsa_info.state_offset) + state_idx1,
+                forward_state_idx = backward_state_idx + fsa_info.num_states;
+
+            char keep = 0;
+            if (t <= fsa_info.T) {
+              // This time is within the bounds for this FSA..
+              float forward_score = state_scores_data[t][forward_state_idx],
                   backward_score =
-                      state_scores_data[fsa_info.T - t][backward_state_idx];
+                  state_scores_data[fsa_info.T - t][backward_state_idx];
 
-            if (forward_score + backward_score > cutoff) keep = 1;
-          }
-          keep_state_data[i] = keep;
-        });
+              if (forward_score + backward_score > cutoff) keep = 1;
+            }
+            keep_state_data[i] = keep;
+          });
+      int32_t tot_states = renumber_states.New2Old().Dim();
+      if (tot_states > max_states) {
+        float cur_beam = output_beam_,
+            next_beam = cur_beam * sqrt(max_states * 1.0 / tot_states);
+        if (next_beam < cur_beam * 0.25)
+          next_beam = cur_beam * 0.25;
+        if (next_beam > cur_beam * 0.75)
+          next_beam = cur_beam * 0.75;
+        K2_LOG(INFO) << "Num-states " << tot_states << " exceeds limit "
+                     << max_states << ", decreasing beam from " << cur_beam
+                     << " to " << next_beam;
+        output_beam_ = next_beam;
+      } else {
+        break;
+      }
+    }
 
     Array1<int32_t> &new2old = renumber_states.New2Old();
     const int32_t *new2old_data = new2old.Data();
     int32_t ans_tot_num_states = new2old.Dim();
+    float **state_scores_data = state_scores_.Data();
 
     // t_per_fsa will be set below to the number of time-steps that each FSA has
     // states active on; if each FSA i has scores for 0 <= t < T_i, then
@@ -285,6 +315,7 @@ class MultiGraphDenseIntersect {
 
     // set ans_row_ids2_data, which contains an ans_idx01 that combines
     // FSA-index and time-index.
+    // also set ans_num_arcs_data.
     K2_EVAL(
         c_, ans_tot_num_states, lambda_set_row_ids2,
         (int32_t ans_idx012)->void {
@@ -316,6 +347,14 @@ class MultiGraphDenseIntersect {
     Array1<int32_t> &ans_row_splits3(ans_num_arcs);
     ExclusiveSum(ans_num_arcs, &ans_row_splits3);
     int32_t tot_arcs = ans_row_splits3.Back();
+
+
+
+    // get Ragged<Arc> states_shape(&ans_row_splits1, &ans_row_ids1, -1, nullptr,
+    //                              &ans_row_ids2, ans_tot_num_states);
+    //
+
+
     Array1<int32_t> ans_row_ids3(c_, tot_arcs);
     RowSplitsToRowIds(ans_row_splits3, &ans_row_ids3);
 
@@ -679,10 +718,12 @@ class MultiGraphDenseIntersect {
   Array1<float> GetScoreCutoffs() {
     std::vector<float *> state_scores_vec(T_ + 1);
     int32_t tot_states = a_fsas_.TotSize(1);
-    for (int32_t t = 0; t <= T_; t++) {
-      state_scores_vec[t] = steps_[t].state_scores.Data();
+    if (state_scores_.Dim() == 0) {
+      for (int32_t t = 0; t <= T_; t++) {
+        state_scores_vec[t] = steps_[t].state_scores.Data();
+      }
+      state_scores_ = Array1<float *>(c_, state_scores_vec);
     }
-    state_scores_ = Array1<float *>(c_, state_scores_vec);
     float **state_scores_data = state_scores_.Data();
 
     FsaInfo *fsa_info_data = fsa_info_.Data();
