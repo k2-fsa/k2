@@ -143,6 +143,52 @@ class Renumbering {
 // elements are not set up.
 Renumbering IdentityRenumbering(ContextPtr c, int32_t size);
 
+
+/**
+   GetNew2Old() is an alternative to a Renumbering object for cases where the
+   temporary arrays it uses might exhaust GPU memory (i.e. when num_old_elems
+   might be extremely large, like more than a million).
+
+      @param [in] c              Context to use
+      @param [in] num_old_elems  Number of elements that we're computing
+                      a subset of.  Presumably this might potentially be
+                      quite large, otherwise it would probably be easier
+                      to use a Renumbering object.
+     @param [in] lambda   Lambda of type like:   "bool keep_this_elem(int32_t index);"
+                      that says whether to keep a particular array element.
+     @return  Returns an Array1<int32_t> that maps from the new indexes
+                      (i.e. those indexes we're keeping) to the old indexes.
+                      Contains elements 0 <= ans[] < num_old_elems.
+ */
+__forceinline__
+template <typename LambdaT> Array1<int32_t> GetNew2Old(
+    ContextPtr c, int32_t num_old_elems, LambdaT &lambda,
+    int32_t max_array_size = (1 << 20)) {
+
+  int32_t max_array_size = (1 << 20),
+              num_arrays = (num_old_elems + max_array_size - 1) / max_array_size;
+  std::vector<Array1<int32_t> > new2old(num_arrays);
+  for (int32_t i = 0; i < num_arrays; i++) {
+    int32_t old_elem_start = i * max_array_size,
+        this_array_size = std::min<int32_t>(max_array_size,
+                                            num_old_elems - old_elem_start);
+    Renumbering renumbering(this_array_size);
+    char *subset_keep = renumbering.Keep().Data();
+
+    auto lambda_offset = [=] __host__ __device__  (int32_t i) {
+      subset_keep[i] = lambda(i + old_elem_start);
+    }
+    new2old[i] = renumbering.New2Old();
+  }
+
+
+}
+
+
+
+
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_ALGORITHMS_H_
