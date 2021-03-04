@@ -697,7 +697,7 @@ class TestFsa(unittest.TestCase):
                     fsa1.ragged_attr, fsa2.ragged_attr, fsa1.ragged_attr,
                     fsa2.ragged_attr, fsa2.ragged_attr
                 ],
-                                 axis=0))
+                                 axis=0))  # noqa
             assert multiples.device == device
 
 
