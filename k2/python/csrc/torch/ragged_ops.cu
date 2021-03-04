@@ -83,19 +83,20 @@ static void PybindRaggedIntToList(py::module &m, const char *name) {
 
 template <typename T>
 static void PybindNormalizePerSublist(py::module &m, const char *name) {
-  m.def(name, &NormalizePerSublist<T>, py::arg("src"));
+  m.def(name, &NormalizePerSublist<T>, py::arg("src"), py::arg("use_log"));
 }
 
 /* Backward propagation for NormalizePerSublist.
 
    @param [in] out      It is the output of `NormalizePerSublist(src)`.
+   @param [in] use_log  It indicates which kind of normalization was used.
    @param [in] out_grad The gradient for `out`; must have same type as `out`
                         (float or double), and shape (out.NumElements(),).
    @return  Return the gradient for `src`.  A torch.Tensor with shape
                         (out.NumElements(),).
  */
 template <typename T>
-static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out,
+static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out, bool use_log,
                                                  torch::Tensor out_grad) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(out_grad.dim(), 1)
@@ -103,6 +104,7 @@ static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out,
   K2_CHECK_EQ(out_grad.scalar_type(), ToScalarType<T>::value)
       << "Expected scalar type: " << ToScalarType<T>::value
       << ". Given: " << out_grad.scalar_type();
+  K2_CHECK(use_log) << "It supports only use_log==True at present";
 
   ContextPtr context = GetContext(out_grad);
   K2_CHECK(context->IsCompatible(*out.Context()));
@@ -163,7 +165,7 @@ static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out,
 template <typename T>
 static void PybindNormalizePerSublistBackward(py::module &m, const char *name) {
   m.def(name, NormalizePerSublistBackward<T>, py::arg("out"),
-        py::arg("out_grad"));
+        py::arg("use_log"), py::arg("out_grad"));
 }
 
 template <typename T, typename Op>

@@ -91,7 +91,7 @@ class TestRaggedOps(unittest.TestCase):
         ans = k2.ragged.remove_values_eq(src, 8)
         self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]')
 
-    def test_normalize_scores_non_zero_stride(self):
+    def test_normalize_scores_use_log_non_zero_stride(self):
         s = '''
             [ [1 -1 0] [2 10] [] [3] [5 8] ]
         '''
@@ -100,7 +100,7 @@ class TestRaggedOps(unittest.TestCase):
         saved.requires_grad_(True)
         src.requires_grad_(True)
 
-        ans = k2.ragged.normalize_scores(src)
+        ans = k2.ragged.normalize_scores(src, use_log=True)
 
         scale = torch.arange(ans.values.numel())
 
@@ -125,7 +125,7 @@ class TestRaggedOps(unittest.TestCase):
 
         self.assertTrue(torch.allclose(saved.grad, src.grad))
 
-    def test_normalize_scores_zero_stride(self):
+    def test_normalize_scores_use_log_zero_stride(self):
         s = '''
             [ [1 3 5] [2 -1] [] [3] [5 2] ]
         '''
@@ -134,7 +134,7 @@ class TestRaggedOps(unittest.TestCase):
         saved.requires_grad_(True)
         src.requires_grad_(True)
 
-        ans = k2.ragged.normalize_scores(src)
+        ans = k2.ragged.normalize_scores(src, use_log=True)
 
         # the stride of grad is 0
         ans.values.sum().backward()
@@ -157,7 +157,7 @@ class TestRaggedOps(unittest.TestCase):
 
         self.assertTrue(torch.allclose(saved.grad, src.grad))
 
-    def test_normalize_scores_from_shape(self):
+    def test_normalize_scores_use_log_from_shape(self):
         s = '''
             0 1 1 0.
             0 1 2 0.
@@ -174,7 +174,8 @@ class TestRaggedOps(unittest.TestCase):
         ragged_scores = k2.ragged.RaggedFloat(fsa.arcs.shape(), scores)
         assert ragged_scores.requires_grad is True
 
-        normalized_scores = k2.ragged.normalize_scores(ragged_scores)
+        normalized_scores = k2.ragged.normalize_scores(ragged_scores,
+                                                       use_log=True)
         assert normalized_scores.requires_grad is True
 
         fsa.scores = normalized_scores.values
@@ -192,6 +193,28 @@ class TestRaggedOps(unittest.TestCase):
 
         # arcs leaving state 2
         self.assertAlmostEqual(fsa.scores[5].exp().sum().item(), 1.0, places=6)
+
+    def test_normalize_scores(self):
+
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append(torch.device('cuda', 0))
+
+        for device in devices:
+            s = '''
+                [ [1 3 5] [2 -1] [] [3] [5 2] ]
+            '''
+            src = k2.ragged.RaggedFloat(s).to(device)
+            saved = src.values
+
+            ans = k2.ragged.normalize_scores(src, use_log=False)
+            expected = saved.new_zeros(*ans.values.shape)
+            expected[:3] = saved[:3] / saved[:3].sum()
+            expected[3:5] = saved[3:5] / saved[3:5].sum()
+            expected[5] = 1
+            expected[6:8] = saved[6:8] / saved[6:8].sum()
+
+            assert torch.allclose(ans.values, expected)
 
     def test_sum_per_sublist(self):
         s = '''

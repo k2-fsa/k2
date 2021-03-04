@@ -76,16 +76,22 @@ void SegmentedReduce(Ragged<T> &src, T initial_value, Array1<T> *dst) {
 }
 
 template <typename T>
-Ragged<T> NormalizePerSublist(Ragged<T> &src) {
+Ragged<T> NormalizePerSublist(Ragged<T> &src, bool use_log) {
   NVTX_RANGE(K2_FUNC);
   K2_STATIC_ASSERT(
       (std::is_same<float, T>::value || std::is_same<double, T>::value));
   T negative_infinity = -std::numeric_limits<T>::infinity();
+  T eps = std::numeric_limits<T>::epsilon();
 
   ContextPtr &context = src.Context();
   int32_t num_axes = src.NumAxes();
   Array1<T> values(context, src.TotSize(num_axes - 2));
-  LogSumPerSublist(src, negative_infinity, &values);
+
+  if (use_log) {
+    LogSumPerSublist<T>(src, negative_infinity, &values);
+  } else {
+    SumPerSublist<T>(src, 0, &values);
+  }
 
   const T *values_data = values.Data();
   const int32_t *row_ids_data = src.RowIds(num_axes - 1).Data();
@@ -96,13 +102,23 @@ Ragged<T> NormalizePerSublist(Ragged<T> &src) {
   T *ans_data = ans.values.Data();
   const T *src_data = src.values.Data();
 
-  K2_EVAL(
-      context, ans_values.Dim(), lambda_do_normalization, (int32_t i)->void {
-        int32_t row = row_ids_data[i];
-        T normalizer = values_data[row];
+  if (use_log) {
+    K2_EVAL(
+        context, ans_values.Dim(), lambda_do_normalization, (int32_t i)->void {
+          int32_t row = row_ids_data[i];
+          T normalizer = values_data[row];
 
-        ans_data[i] = src_data[i] - normalizer;
-      });
+          ans_data[i] = src_data[i] - normalizer;
+        });
+  } else {
+    K2_EVAL(
+        context, ans_values.Dim(), lambda_do_normalization, (int32_t i)->void {
+          int32_t row = row_ids_data[i];
+          T normalizer = values_data[row] + eps;
+
+          ans_data[i] = src_data[i] / normalizer;
+        });
+  }
   return ans;
 }
 

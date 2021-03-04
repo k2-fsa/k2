@@ -96,17 +96,27 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *argmax);
 
 /* Normalize per sublist.
 
-   The normalization per sublist is done as follows:
+   @param [in] src  The source ragged tensor. The normalization
+                    is done on the last axis.
+   @param [in] use_log  Indicate which kind of normalization to use. See
+                        below for detailed description.
+
+   If use_log is true, the normalization per sublist is done as follows:
 
       1. Compute the log sum using LogSumPerSublist
       2. Subtract the log sum from the sublist
       3. Return the resulting sublist
-   @param [in] src  The source ragged tensor. The normalization
-                    is done on the last axis.
+
+   If use_log is false, the normalization per sublist is done as follows:
+
+      1. Compute the sum using SumPerSublist
+      2. Divide the sublist by the above sum
+      3. Return the resulting sublist
+
    @return The normalized ragged tensor.
  */
 template <typename T>
-Ragged<T> NormalizePerSublist(Ragged<T> &src);
+Ragged<T> NormalizePerSublist(Ragged<T> &src, bool use_log);
 
 /*
   Output to an array `and_values` the result of reducing each sub-list along
@@ -131,7 +141,6 @@ template <typename T>
 void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
   SegmentedReduce<T, BitOrOp<T>>(src, initial_value, or_values);
 }
-
 
 /*
   Stack a list of RaggedShape to create a RaggedShape with one more axis.
@@ -416,7 +425,8 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
   Version of Unsqueeze() above, that works for ragged tensors.
   Note: the opposite of this is not Squeeze(); it is ans.RemoveAxis(axis).
 */
-template <typename T> Ragged<T> Unsqueeze(const Ragged<T> &src, int32_t axis) {
+template <typename T>
+Ragged<T> Unsqueeze(const Ragged<T> &src, int32_t axis) {
   return Ragged<T>(Unsqueeze(src.shape, axis), src.values);
 }
 
@@ -1027,7 +1037,6 @@ inline Ragged<T> RaggedFromTotSizes(ContextPtr &c,
                    Array1<T>(c, tot_sizes.back()));
 }
 
-
 /*
   Transpose a ragged tensor as if it were the index information of a CSR-format
   sparse matrix (but with possibly repeated elements!).  This is easiest to
@@ -1146,7 +1155,6 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
                   const Array1<int32_t> &indexes,
                   Array1<int32_t> *elem_indexes = nullptr);
 
-
 /*
   Index ragged tensor with array, return ragged tensor.
 
@@ -1172,8 +1180,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
 
 */
 template <typename T>
-Ragged<T> Index(Ragged<T> &src, int32_t axis,
-                const Array1<int32_t> &indexes,
+Ragged<T> Index(Ragged<T> &src, int32_t axis, const Array1<int32_t> &indexes,
                 Array1<int32_t> *value_indexes_out = nullptr) {
   Array1<int32_t> value_indexes;
   RaggedShape ans_shape = Index(src.shape, axis, indexes, &value_indexes);
@@ -1326,7 +1333,6 @@ Array1<int32_t> CoveringShapeForwardMap(RaggedShape &src,
   */
 template <typename T>
 Array1<T> ComputeHash(Ragged<int32_t> &src);
-
 
 /*
   If `src` has two axes, this will return the unique sub-lists (in a possibly
