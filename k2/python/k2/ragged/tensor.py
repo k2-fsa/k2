@@ -99,3 +99,28 @@ class RaggedFloat(object):
         '''
         self._values.requires_grad_(requires_grad)
         return self
+
+    def to(self, device: Union[torch.device, str]) -> 'RaggedFloat':
+        '''Move the RaggedFloat onto a given device.
+
+        Args:
+          device:
+            An instance of `torch.device` or a string that can be used to
+            construct a `torch.device`, e.g., 'cpu', 'cuda:0'.
+            It supports only cpu and cuda devices.
+
+        Returns:
+          Returns a new RaggedFloat which is this object copied to the given
+          device (or this object itself, if the device was the same).
+        '''
+        if isinstance(device, str):
+            device = torch.device(device)
+
+        assert device.type in ('cpu', 'cuda')
+        if device == self.values.device:
+            return self
+
+        ragged_shape = self.ragged.shape().to(device)
+        values = self.values.to(device)
+
+        return RaggedFloat(ragged_shape, values)

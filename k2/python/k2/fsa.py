@@ -1154,7 +1154,7 @@ class Fsa(object):
 
         ragged_scores = k2.ragged.RaggedFloat(
             self.arcs.shape().to(scores.device), scores)
-        ragged_scores = k2.ragged.normalize_scores(ragged_scores)
+        ragged_scores = k2.ragged.normalize_scores(ragged_scores, use_log=True)
 
         # Note we use `to` here since `scores` and `self.scores` may not
         # be on the same device.
