@@ -176,6 +176,21 @@ Array1<T> Append(int32_t src_size, const Array1<T> **src);
 template <typename T>
 Array1<T> Append(int32_t src_size, const Array1<T> *src);
 
+
+/*
+  Append arrays, adding offsets to each one.
+      @param [in] offsets   Array containing the offsets to add
+      @param [in] src   Array of pointers to arrays to append.  Size is
+                        offsets.Dim().  src[i] contains a pointer
+                        to the i'th array to append
+      @return  Returns the arrays in `src` appended together, with
+               elements of the i'th array having offsets[i] added
+               to them.
+ */
+Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
+                                  const Array1<int32_t> **src);
+
+
 /*
    This is a little like Append(), but with special treatment of the last
    elements (it's intended for use with row_splits vectors, which
@@ -197,6 +212,10 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src);
 
  */
 Array1<int32_t> SpliceRowSplits(int32_t src_size, const Array1<int32_t> **src);
+
+
+
+
 
 /*
   Get the reduction value from the array `src` with a binary operator `Op`,
