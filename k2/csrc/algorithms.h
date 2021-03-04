@@ -8,6 +8,7 @@
 #define K2_CSRC_ALGORITHMS_H_
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/macros.h"
 
@@ -160,28 +161,33 @@ Renumbering IdentityRenumbering(ContextPtr c, int32_t size);
                       (i.e. those indexes we're keeping) to the old indexes.
                       Contains elements 0 <= ans[] < num_old_elems.
  */
-__forceinline__
-template <typename LambdaT> Array1<int32_t> GetNew2Old(
+template <typename LambdaT>
+__forceinline__ Array1<int32_t> GetNew2Old(
     ContextPtr c, int32_t num_old_elems, LambdaT &lambda,
     int32_t max_array_size = (1 << 20)) {
-
-  int32_t max_array_size = (1 << 20),
-              num_arrays = (num_old_elems + max_array_size - 1) / max_array_size;
+  int32_t num_arrays = (num_old_elems + max_array_size - 1) / max_array_size;
   std::vector<Array1<int32_t> > new2old(num_arrays);
   for (int32_t i = 0; i < num_arrays; i++) {
     int32_t old_elem_start = i * max_array_size,
         this_array_size = std::min<int32_t>(max_array_size,
                                             num_old_elems - old_elem_start);
-    Renumbering renumbering(this_array_size);
+    Renumbering renumbering(c, this_array_size);
     char *subset_keep = renumbering.Keep().Data();
 
-    auto lambda_offset = [=] __host__ __device__  (int32_t i) {
+    K2_EVAL(c, this_array_size, lambda_offset, (int32_t i) {
       subset_keep[i] = lambda(i + old_elem_start);
-    }
+      });
     new2old[i] = renumbering.New2Old();
   }
-
-
+  if (num_arrays == 1) {
+    return new2old[0];
+  } else {
+    Array1<int32_t> offsets = Arange(c, 0, num_arrays);
+    std::vector<const Array1<int32_t>* > new2old_ptrs(new2old.size());
+    for (int32_t i = 0; i < new2old.size(); i++)
+      new2old_ptrs[i] = &(new2old[i]);
+    return AppendWithOffsets(offsets, new2old_ptrs.data());
+  }
 }
 
 
