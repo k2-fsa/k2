@@ -178,6 +178,7 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src);
       @param [in] src   Array of pointers to arrays to append.  Size is
                         offsets.Dim().  src[i] contains a pointer
                         to the i'th array to append
+
       @return  Returns the arrays in `src` appended together, with
                elements of the i'th array having offsets[i] added
                to them.
@@ -216,7 +217,9 @@ Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
                           `src[i]` should be valid row_splits, i.e.
                           src[i]->Dim() >= 1 and the elements in it start
                           with 0 and are non-decreasing.
-      @return       Returns the appended array
+                          WARNING: src_size == 0 is not supported
+                          (since we can't work out the context).
+      @return       Returns the appended array.
 
  */
 Array1<int32_t> SpliceRowSplits(int32_t src_size, const Array1<int32_t> **src);

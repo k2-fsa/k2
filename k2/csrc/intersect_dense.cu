@@ -202,9 +202,9 @@ class MultiGraphDenseIntersect {
     const int32_t *a_fsas_row_ids1_data = a_fsas_.RowIds(1).Data();
     FsaInfo *fsa_info_data = fsa_info_.Data();
 
-    // 10 million is max_states... this is to avoid out-of-memory conditions
-    // early in training.  Eventually we can make this an option.
-    int32_t max_states = 1000000;
+    // 15 million is max_states... this is to avoid out-of-memory conditions
+    // Eventually we can make this an option.
+    int32_t max_states = 15000000;
 
     while (1) {
       // This code is in a loop is in case we get too many states and have to retry.
@@ -356,9 +356,6 @@ class MultiGraphDenseIntersect {
     RowSplitsToRowIds(ans_row_splits3, &ans_row_ids3);
 
 
-    Renumbering renumber_arcs(c_, tot_arcs);
-    char *keep_arc_data = renumber_arcs.Keep().Data();
-
     const int32_t *ans_row_ids1_data = ans_row_ids1.Data(),
                   *ans_row_ids3_data = ans_row_ids3.Data(),
                *ans_row_splits2_data = ans_row_splits2.Data(),
@@ -368,10 +365,7 @@ class MultiGraphDenseIntersect {
     int32_t scores_stride = b_fsas_.scores.ElemStride0();
     const float *scores_data = b_fsas_.scores.Data();
 
-    // TODO: make it so we don't need ans_row_ids3_data?  Or do this in chunks.
-
-    K2_EVAL(
-        c_, tot_arcs, lambda_set_keep, (int32_t arc_idx0123)->void {
+    auto lambda_set_keep = [=] __host__ __device__(int32_t arc_idx0123) -> bool {
           int32_t ans_state_idx012 = ans_row_ids3_data[arc_idx0123],
                   ans_idx012x = ans_row_splits3_data[ans_state_idx012],
                   ans_idx01 = ans_row_ids2_data[ans_state_idx012],
@@ -411,7 +405,7 @@ class MultiGraphDenseIntersect {
                       states_old2new_data[unpruned_dest_state_idx],
                   ans_dest_state_idx012_next =
                       states_old2new_data[unpruned_dest_state_idx + 1];
-          char keep_this_arc = 0;
+          bool keep_this_arc = false;
 
           const float *forward_state_scores = state_scores_data[t_idx1];
           // 'next_backward_state_scores' is the state_scores vector for the
@@ -433,13 +427,13 @@ class MultiGraphDenseIntersect {
                 forward_state_scores[forward_src_state_idx] + arc_score +
                 next_backward_state_scores[backward_dest_state_idx];
             if (arc_forward_backward_score > cutoff) {
-              keep_this_arc = 1;
+              keep_this_arc = true;
             }
           }
-          keep_arc_data[arc_idx0123] = keep_this_arc;
-        });
+          return keep_this_arc;
+    };
 
-    Array1<int32_t> arcs_new2old = renumber_arcs.New2Old();
+    Array1<int32_t> arcs_new2old = GetNew2Old(c_, tot_arcs, lambda_set_keep);
 
     int32_t num_arcs_out = arcs_new2old.Dim();
     Array1<Arc> arcs(c_, num_arcs_out);

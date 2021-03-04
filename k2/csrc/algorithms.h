@@ -188,7 +188,7 @@ __forceinline__ Array1<int32_t> GetNew2Old(
   } else {
     Array1<int32_t> offsets = Arange(c, 0, num_arrays);
     std::vector<const Array1<int32_t>* > new2old_ptrs(new2old.size());
-    for (int32_t i = 0; i < new2old.size(); i++)
+    for (size_t i = 0; i < new2old.size(); i++)
       new2old_ptrs[i] = &(new2old[i]);
     return AppendWithOffsets(offsets, new2old_ptrs.data());
   }

@@ -98,8 +98,7 @@ Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
   NVTX_RANGE(K2_FUNC);
 
   int32_t num_arrays = offsets.Dim();
-  K2_CHECK_GT(num_arrays, 0);
-  ContextPtr c = GetContext(offsets, *src[0]);
+  ContextPtr c = offsets.Context();
 
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
   int32_t sum = 0;
