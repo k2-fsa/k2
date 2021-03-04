@@ -223,7 +223,7 @@ void EvalWithRowIds(Array1<int32_t> &row_splits, LambdaT &lambda,
   for (int32_t i = 0; i < num_arrays; i++) {
     int32_t elem_start = i * max_array_size,
        this_array_size = std::min<int32_t>(max_array_size,
-                                           num_old_elems - elem_start);
+                                           num_elements - elem_start);
     Array1<int32_t> row_ids(c, this_array_size);
     RowSplitsToRowIdsRange(row_splits, elem_start, &row_ids);
     const int32_t *row_ids_data = row_ids.Data();
