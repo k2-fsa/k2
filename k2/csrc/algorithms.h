@@ -155,8 +155,12 @@ Renumbering IdentityRenumbering(ContextPtr c, int32_t size);
                       a subset of.  Presumably this might potentially be
                       quite large, otherwise it would probably be easier
                       to use a Renumbering object.
-     @param [in] lambda   Lambda of type like:   "bool keep_this_elem(int32_t index);"
+     @param [in] lambda  A __host__ __device__  lambda of type like:
+                          "bool keep_this_elem(int32_t index);"
                       that says whether to keep a particular array element.
+     @param [in,optional] max_array_size  The chunk size to be used;
+                      an array containing this many int32_t's will be
+                      allocated.
      @return  Returns an Array1<int32_t> that maps from the new indexes
                       (i.e. those indexes we're keeping) to the old indexes.
                       Contains elements 0 <= ans[] < num_old_elems.
@@ -190,11 +194,43 @@ __forceinline__ Array1<int32_t> GetNew2Old(
   }
 }
 
+/*
+  This is a version of Eval(), but for where you need the row_ids to
+  be computed for you.  The purpose of this is so that you can do
+  computations where the row_ids are too large to be computed at
+  one time.
 
+       @param [in] row_splits   A row_splits vector from which we'll be
+                      computing (in chunks) a row_ids vector and giving it
+                      to the lambda.
+       @param [in] lambda  A __host__ __device__  lambda of type:
+                       [=] lambda(int32_t index, int32_t row)->void;
+                      `index` will be in the range [0, row_splits.Back()-1]
+                       and `row` will be the corresponding row in row_splits,
+                       in the range [0,row_splits.Dim()-2]-- i.e.
+                       the `index`'th element in the row_ids vector.
+       @param [in,optional] max_array_size  The chunk size to be used;
+                       an array containing this many int32_t's will be
+                       allocated.
+ */
 template <typename LambdaT>
-void EvalWithRowIds(Array1<int32_t> &row_splits, LambdaT &lambda) {
-  // TODO!!
-  //Eval(c->GetCudaStream(), n, lambda);
+void EvalWithRowIds(Array1<int32_t> &row_splits, LambdaT &lambda,
+                    int32_t max_array_size = (1 << 20)) {
+  ContextPtr c = row_splits.Context();
+
+  int32_t num_elements = row_splits.Back();
+  int32_t num_arrays = (num_elements + max_array_size - 1) / max_array_size;
+  for (int32_t i = 0; i < num_arrays; i++) {
+    int32_t elem_start = i * max_array_size,
+       this_array_size = std::min<int32_t>(max_array_size,
+                                           num_old_elems - elem_start);
+    Array1<int32_t> row_ids(c, this_array_size);
+    RowSplitsToRowIdsRange(row_splits, elem_start, &row_ids);
+    const int32_t *row_ids_data = row_ids.Data();
+    K2_EVAL(c, this_array_size, lambda_offset, (int32_t i) {
+        lambda(i + elem_start, row_ids_data[i]);
+      });
+  }
 }
 
 
