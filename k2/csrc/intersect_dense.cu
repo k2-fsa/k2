@@ -351,13 +351,7 @@ class MultiGraphDenseIntersect {
     ExclusiveSum(ans_num_arcs, &ans_row_splits3);
     int32_t tot_arcs = ans_row_splits3.Back();
 
-
-
-    // get Ragged<Arc> states_shape(&ans_row_splits1, &ans_row_ids1, -1, nullptr,
-    //                              &ans_row_ids2, ans_tot_num_states);
-    //
-
-
+    // TODO: don't create this..
     Array1<int32_t> ans_row_ids3(c_, tot_arcs);
     RowSplitsToRowIds(ans_row_splits3, &ans_row_ids3);
 
