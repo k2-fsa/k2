@@ -640,6 +640,66 @@ class TestFsa(unittest.TestCase):
         self.assertEqual(str(fsa.aux_labels),
                          '[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')
 
+    def test_index_fsa(self):
+        devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            devices.append(torch.device('cuda', 0))
+
+        for device in devices:
+            s1 = '''
+                0 1 1 0.1
+                1 2 -1 0.2
+                2
+            '''
+            s2 = '''
+                0 1 -1 1.0
+                1
+            '''
+            fsa1 = k2.Fsa.from_str(s1)
+            fsa1.tensor_attr = torch.tensor([10, 20], dtype=torch.int32)
+            fsa1.ragged_attr = k2.ragged.create_ragged2([[11, 12],
+                                                         [21, 22, 23]])
+
+            fsa2 = k2.Fsa.from_str(s2)
+            fsa2.tensor_attr = torch.tensor([100], dtype=torch.int32)
+            fsa2.ragged_attr = k2.ragged.create_ragged2([[111]])
+
+            fsa1 = fsa1.to(device)
+            fsa2 = fsa2.to(device)
+
+            fsa_vec = k2.create_fsa_vec([fsa1, fsa2])
+
+            single1 = k2.index_fsa(
+                fsa_vec, torch.tensor([0], dtype=torch.int32, device=device))
+            assert torch.all(torch.eq(fsa1.tensor_attr, single1.tensor_attr))
+            assert str(single1.ragged_attr) == str(fsa1.ragged_attr)
+            assert single1.device == device
+
+            single2 = k2.index_fsa(
+                fsa_vec, torch.tensor([1], dtype=torch.int32, device=device))
+            assert torch.all(torch.eq(fsa2.tensor_attr, single2.tensor_attr))
+            assert str(single2.ragged_attr) == str(fsa2.ragged_attr)
+            assert single2.device == device
+
+            multiples = k2.index_fsa(
+                fsa_vec,
+                torch.tensor([0, 1, 0, 1, 1], dtype=torch.int32,
+                             device=device))
+            assert multiples.shape == (5, None, None)
+            assert torch.all(
+                torch.eq(
+                    multiples.tensor_attr,
+                    torch.cat(
+                        (fsa1.tensor_attr, fsa2.tensor_attr, fsa1.tensor_attr,
+                         fsa2.tensor_attr, fsa2.tensor_attr))))
+            assert str(multiples.ragged_attr) == str(
+                k2.ragged.append([
+                    fsa1.ragged_attr, fsa2.ragged_attr, fsa1.ragged_attr,
+                    fsa2.ragged_attr, fsa2.ragged_attr
+                ],
+                                 axis=0))
+            assert multiples.device == device
+
 
 if __name__ == '__main__':
     unittest.main()

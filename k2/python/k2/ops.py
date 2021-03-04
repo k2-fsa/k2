@@ -211,7 +211,14 @@ def index_fsa(src: Fsa, indexes: torch.Tensor) -> Fsa:
     out_fsa = Fsa(ragged_arc)
 
     for name, value in src.named_tensor_attr():
-        setattr(out_fsa, name, k2.ops.index_select(value, value_indexes))
+        if isinstance(value, torch.Tensor):
+            setattr(out_fsa, name, k2.ops.index_select(value, value_indexes))
+        else:
+            assert isinstance(value, _k2.RaggedInt)
+            ragged_value, _ = k2.ragged.index(value,
+                                              value_indexes,
+                                              need_value_indexes=False)
+            setattr(out_fsa, name, ragged_value)
 
     for name, value in src.named_non_tensor_attr():
         setattr(out_fsa, name, value)
