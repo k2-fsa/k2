@@ -710,6 +710,63 @@ TEST(OpsTest, AppendTest) {
   TestAppend<float>();
 }
 
+TEST(OpsTest, AppendWithOffsets) {
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // a case with small size
+      std::vector<int32_t> data1 = {3, 1, 2};
+      std::vector<int32_t> data2 = {5, 6, 7, 8};
+      std::vector<int32_t> data3 = {};  // empty
+      std::vector<int32_t> data4 = {9};
+      std::vector<int32_t> data_offsets = {1, 2, 3, 4};
+      std::vector<int32_t> expected_data = {4, 2, 3, 7, 8, 9, 10, 13};
+
+      Array1<int32_t> array1(context, data1);
+      Array1<int32_t> array2(context, data2);
+      Array1<int32_t> array3(context, data3);
+      Array1<int32_t> array4(context, data4);
+      Array1<int32_t> offsets(context, data_offsets);
+
+      std::vector<const Array1<int32_t> *> arrays = {&array1, &array2, &array3,
+                                                     &array4};
+      const Array1<int32_t> **src = arrays.data();
+      Array1<int32_t> dst = AppendWithOffsets(offsets, src);
+      CheckArrayData(dst, expected_data);
+    }
+
+    {
+      // test with random large size
+      for (int32_t i = 0; i != 2; ++i) {
+        int32_t num_array = RandInt(10, 1000);
+        Array1<int32_t> offsets = RandUniformArray1(GetCpuContext(), num_array,
+                                                    -num_array, num_array);
+        const int32_t *offsets_data = offsets.Data();
+        std::vector<int32_t> expected_data;
+        std::vector<Array1<int32_t>> arrays_vec(num_array);
+        std::vector<const Array1<int32_t> *> arrays(num_array);
+        int32_t total_size = 0;
+        for (int32_t j = 0; j != num_array; ++j) {
+          int32_t curr_array_size = RandInt(0, 10000);
+          std::vector<int32_t> data(curr_array_size);
+          std::iota(data.begin(), data.end(), total_size);
+          arrays_vec[j] = Array1<int32_t>(context, data);
+          arrays[j] = &arrays_vec[j];
+          std::vector<int32_t> curr_expected_data(curr_array_size);
+          std::iota(curr_expected_data.begin(), curr_expected_data.end(),
+                    total_size + offsets_data[j]);
+          expected_data.insert(expected_data.end(), curr_expected_data.begin(),
+                               curr_expected_data.end());
+          total_size += curr_array_size;
+        }
+        const Array1<int32_t> **src = arrays.data();
+        offsets = offsets.To(context);
+        Array1<int32_t> dst = AppendWithOffsets(offsets, src);
+        CheckArrayData(dst, expected_data);
+      }
+    }
+  }
+}
+
 TEST(OpsTest, SpliceRowSplitsTest) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {

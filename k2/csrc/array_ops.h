@@ -71,7 +71,6 @@ void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
   ExclusiveSum(src.Context(), dest_dim, src.Data(), dest->Data());
 }
 
-
 /*  wrapper for the ExclusiveSum above.  Will satisfy
      ans[i] = sum_{j=0}^{i-1} src[j] for i > 0.
      ans[0] is always 0.
@@ -83,7 +82,6 @@ Array1<T> ExclusiveSum(const Array1<T> &src) {
   ExclusiveSum(src, &ans);
   return ans;
 }
-
 
 /*
   Sets 'dest' to inclusive prefix sum of 'src'.
@@ -101,7 +99,6 @@ void InclusiveSum(const Array1<S> &src, Array1<T> *dest) {
   K2_CHECK_EQ(src_dim, dest->Dim());
   InclusiveSum(c, src_dim, src.Data(), dest->Data());
 }
-
 
 /*  wrapper for the InclusiveSum above.  Will satisfy
      ans[i] = sum_{j=0}^{i} src[j].
@@ -151,8 +148,6 @@ void ExclusiveSumDeref(Array1<const T *> &src, Array1<T> *dest);
 template <typename T>
 void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis);
 
-
-
 //  wrapper for the ExclusiveSum above with axis = 1
 template <typename T>
 void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
@@ -175,6 +170,19 @@ Array1<T> Append(int32_t src_size, const Array1<T> **src);
 // Wrapper for Append() that has one fewer levels of indirection.
 template <typename T>
 Array1<T> Append(int32_t src_size, const Array1<T> *src);
+
+/*
+  Append arrays, adding offsets to each one.
+      @param [in] offsets   Array containing the offsets to add
+      @param [in] src   Array of pointers to arrays to append.  Size is
+                        offsets.Dim().  src[i] contains a pointer
+                        to the i'th array to append
+      @return  Returns the arrays in `src` appended together, with
+               elements of the i'th array having offsets[i] added
+               to them.
+ */
+Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
+                                  const Array1<int32_t> **src);
 
 /*
    This is a little like Append(), but with special treatment of the last
@@ -230,7 +238,6 @@ template <typename T>
 T MaxValue(const Array1<T> &src) {
   return MaxValue(src.Context(), src.Dim(), src.Data());
 }
-
 
 /*
   Get the bitwise and reduction of the array `src`, using `default_value` (e.g.
@@ -446,14 +453,12 @@ Array1<T> Minus(const Array1<T> &src, T t) {
 template <typename T>
 bool Equal(const Array1<T> &a, const Array1<T> &b);
 
-
 /*
   Return true if all elements of the two arrays are equal to the
   specified constant, false otherwise.
 */
 template <typename T>
 bool Equal(const Array1<T> &a, T b);
-
 
 /*
   Return true if array `a` is monotonically increasing, i.e.
@@ -468,13 +473,11 @@ bool IsMonotonic(const Array1<T> &a);
 template <typename T>
 bool IsMonotonicDecreasing(const Array1<T> &a);
 
-
 /*
   Return true if array `a` corresponds to the numbers 0, 1, 2.. a.Dim()-1
   in some order, false otherwise.
  */
 bool IsPermutation(const Array1<int32_t> &a);
-
 
 /*
   Generalized function inverse for an array viewed as a function which is
