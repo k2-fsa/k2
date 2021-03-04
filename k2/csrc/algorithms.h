@@ -191,6 +191,13 @@ __forceinline__ Array1<int32_t> GetNew2Old(
 }
 
 
+template <typename LambdaT>
+void EvalWithRowIds(Array1<int32_t> &row_splits, LambdaT &lambda) {
+  // TODO!!
+  //Eval(c->GetCudaStream(), n, lambda);
+}
+
+
 
 
 

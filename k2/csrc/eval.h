@@ -345,8 +345,8 @@ void EvalGroupDevice(ContextPtr context, int32_t n, LambdaT &lambda) {
                                                             n, lambda);
 }
 
-
-// Also see EvalWithRedirect() in utils.h
+// Also see EvalWithRedirect() in utils.h, and EvalWithRowIds()
+// in algorithms.h
 
 
 }  // namespace k2
