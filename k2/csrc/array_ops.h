@@ -397,6 +397,24 @@ Array1<T> Arange(ContextPtr c, T begin, T end, T inc = 1);
 void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *row_ids);
 
+
+/*
+  This function returns *part* of a row_ids array (it's intended for situations
+  where computing the entire row_ids array would use too much memory).
+    @param [in] row_splits  Input row_splits vector, of dimension num_rows+1
+    @param [in] start_row   The first row that we want the row_id value for,
+                            with 0 <= start_row < row_splits.Back()
+    @param [out] row_ids    row_ids will be written to here.  row_ids->Dim()
+                            at entry indicates the number of items requested,
+                            satisfying start_row + row_ids->Dim() <= row_splits.Back()
+                            (this is not necessarily checked).
+ */
+void RowSplitsToRowIdsRange(const Array1<int32_t> &row_splits,
+                            int32_t start_row,
+                            Array1<int32_t> *row_ids);
+
+
+
 /*
   Given a vector of row_splits, return a vector of sizes.
 
