@@ -93,6 +93,62 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
   return ans;
 }
 
+Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
+                                  const Array1<int32_t> **src) {
+  NVTX_RANGE(K2_FUNC);
+
+  int32_t num_arrays = offsets.Dim();
+  K2_CHECK_GT(num_arrays, 0);
+  ContextPtr c = GetContext(offsets, *src[0]);
+
+  std::vector<int32_t> row_splits_vec(num_arrays + 1);
+  int32_t sum = 0;
+  row_splits_vec[0] = sum;
+  for (int32_t i = 0; i < num_arrays; ++i) {
+    int32_t dim = src[i]->Dim();
+    sum += dim;
+    row_splits_vec[i + 1] = sum;
+  }
+  int32_t ans_size = sum;
+
+  Array1<int32_t> ans(c, ans_size);
+  if (ans_size == 0) return ans;
+
+  int32_t *ans_data = ans.Data();
+  const int32_t *offsets_data = offsets.Data();
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i != num_arrays; ++i) {
+      int32_t this_dim = src[i]->Dim();
+      const int32_t *this_src_data = src[i]->Data();
+      int32_t offset = offsets_data[i];
+      for (int32_t j = 0; j != this_dim; ++j) {
+        ans_data[j] = this_src_data[j] + offset;
+      }
+      ans_data += this_dim;
+    }
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    Array1<int32_t> row_splits(c, row_splits_vec);
+    std::vector<const int32_t *> src_ptrs_vec(num_arrays);
+    for (int32_t i = 0; i < num_arrays; ++i) src_ptrs_vec[i] = src[i]->Data();
+    Array1<const int32_t *> src_ptrs(c, src_ptrs_vec);
+    const int32_t **src_ptrs_data = src_ptrs.Data();
+
+    mgpu::context_t *mgpu_context = GetModernGpuAllocator(c);
+    // `index` is idx01, `seg` is idx0, `rank` is idx1, `value_offsets` is just
+    // a cache for `offsets_data`.
+    auto lambda_set_ans = [=] __device__(int32_t index, int32_t seg,
+                                         int32_t rank,
+                                         mgpu::tuple<int32_t> value_offsets) {
+      ans_data[index] = src_ptrs_data[seg][rank] + mgpu::get<0>(value_offsets);
+    };
+    K2_CUDA_SAFE_CALL(mgpu::transform_lbs(
+        lambda_set_ans, ans_size, row_splits.Data(), row_splits.Dim() - 1,
+        mgpu::make_tuple(offsets_data), *mgpu_context));
+  }
+  return ans;
+}
+
 bool ValidateRowIds(const Array1<int32_t> &row_ids,
                     Array1<int32_t> *temp /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
@@ -404,13 +460,13 @@ bool IsPermutation(const Array1<int32_t> &a) {
   int32_t *ones_data = ones.Data();
   const int32_t *a_data = a.Data();
   int32_t dim = a.Dim();
-  K2_EVAL(a.Context(), a.Dim(), lambda_set_zero, (int32_t i) -> void {
-      if (static_cast<uint32_t>(a_data[i]) < static_cast<uint32_t>(dim)) {
-        ones_data[a_data[i]] = 0;
-      }
-    });
+  K2_EVAL(
+      a.Context(), a.Dim(), lambda_set_zero, (int32_t i)->void {
+        if (static_cast<uint32_t>(a_data[i]) < static_cast<uint32_t>(dim)) {
+          ones_data[a_data[i]] = 0;
+        }
+      });
   return Equal(ones, 0);
 }
-
 
 }  // namespace k2
