@@ -160,16 +160,19 @@ void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
   For now we can just use a simple loop; later there are lots of opportunities
   to optimize this, including multiple streams and using a single kernel making
   use of RaggedShape.
-      @param [in] src_size  Number of arrays to append.  Must be > 0.
+      @param [in] c      Pointer to context.  Provided so it can work with
+                         src_size == 0.
+      @param [in] src_size  Number of arrays to append.
       @param [in] src     Array of pointers to arrays, of size `src_size`.
       @return       Returns the appended array
  */
 template <typename T>
-Array1<T> Append(int32_t src_size, const Array1<T> **src);
+Array1<T> Append(ContextPtr c, int32_t src_size, const Array1<T> **src);
 
 // Wrapper for Append() that has one fewer levels of indirection.
 template <typename T>
-Array1<T> Append(int32_t src_size, const Array1<T> *src);
+Array1<T> Append(ContextPtr c, int32_t src_size, const Array1<T> *src);
+
 
 /*
   Append arrays, adding offsets to each one.
@@ -183,6 +186,8 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src);
  */
 Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
                                   const Array1<int32_t> **src);
+
+
 
 /*
    This is a little like Append(), but with special treatment of the last
@@ -201,10 +206,16 @@ Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
                           `src[i]` should be valid row_splits, i.e.
                           src[i]->Dim() >= 1 and the elements in it start
                           with 0 and are non-decreasing.
-      @return       Returns the appended array
+                          WARNING: src_size == 0 is not supported
+                          (since we can't work out the context).
+      @return       Returns the appended array.
 
  */
 Array1<int32_t> SpliceRowSplits(int32_t src_size, const Array1<int32_t> **src);
+
+
+
+
 
 /*
   Get the reduction value from the array `src` with a binary operator `Op`,
@@ -384,6 +395,28 @@ Array1<T> Arange(ContextPtr c, T begin, T end, T inc = 1);
  */
 void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
                        Array1<int32_t> *row_ids);
+
+
+/*
+  This function returns *part* of a row_ids array (it's intended for situations
+  where computing the entire row_ids array would use too much memory).
+    @param [in] row_splits  Input row_splits vector, of dimension num_rows+1
+    @param [in] start_row   The first row that we want the row_id value for,
+                            with 0 <= start_row < row_splits.Back()
+    @param [out] row_ids    row_ids will be written to here.  row_ids->Dim()
+                            at entry indicates the number of items requested,
+                            satisfying start_row + row_ids->Dim() <= row_splits.Back()
+                            (this is not necessarily checked).
+ */
+inline void RowSplitsToRowIdsRange(const Array1<int32_t> &row_splits,
+                            int32_t start_row,
+                            Array1<int32_t> *row_ids) {
+  Array1<int32_t> all_row_ids(row_splits.Context(),
+                              row_splits.Back());
+  RowSplitsToRowIds(row_splits, &all_row_ids);
+  row_ids->CopyFrom(all_row_ids.Range(start_row, row_ids->Dim()));
+}
+
 
 /*
   Given a vector of row_splits, return a vector of sizes.

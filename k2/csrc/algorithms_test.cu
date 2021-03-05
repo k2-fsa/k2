@@ -85,4 +85,49 @@ TEST(AlgorithmsTest, TestRenumbering) {
   }
 }
 
+void TestGetNew2OldAndRowIds() {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i < 10; i++) {
+      int32_t num_rows = RandInt(0, 2048);
+
+      Array1<int32_t> elems_per_row = RandUniformArray1(c, num_rows + 1, 0, 15);
+      Array1<int32_t> row_splits(c, num_rows + 1);
+      ExclusiveSum(elems_per_row, &row_splits);
+      Array1<int32_t> row_ids(c, row_splits.Back());
+      RowSplitsToRowIds(row_splits, &row_ids);
+      int32_t num_elems = row_ids.Dim();
+      Array1<int32_t> random_keep = RandUniformArray1(c, num_elems, 0, 1);
+      const int32_t *random_keep_data = random_keep.Data();
+
+      Renumbering r(c, num_elems);
+      char *keep_data = r.Keep().Data();
+      K2_EVAL(c, num_elems, lambda_set_keep, (int32_t i) -> void {
+          keep_data[i] = (char)random_keep_data[i];
+        });
+
+      auto lambda_keep = [=] __host__ __device__ (int32_t i, int32_t row) {
+        return random_keep_data[i];
+      };
+
+      Array1<int32_t> new2old,
+          row_ids_subsampled;
+
+      GetNew2OldAndRowIds(row_splits, num_elems, lambda_keep,
+                          &new2old,
+                          &row_ids_subsampled,
+                          256);
+
+      Array1<int32_t> new2old_ref = r.New2Old(),
+           row_ids_subsampled_ref = row_ids[new2old_ref];
+      K2_CHECK_EQ(Equal(new2old, new2old_ref), true);
+      K2_CHECK_EQ(Equal(row_ids_subsampled, row_ids_subsampled_ref), true);
+    }
+  }
+}
+
+TEST(AlgorithmsTest, TestGetNew2OldAndRowIds) {
+  TestGetNew2OldAndRowIds();
+}
+
+
 }  // namespace k2

@@ -689,6 +689,7 @@ RaggedShape RandomRaggedShape(bool set_row_ids = false,
  */
 RaggedShape SubsampleRaggedShape(RaggedShape &src, Renumbering &renumbering);
 
+
 /*
   Return ragged shape with only a subset of the elements on the last
   and one-before-last axes kept.

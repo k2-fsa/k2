@@ -8,6 +8,7 @@
 #define K2_CSRC_ALGORITHMS_H_
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/macros.h"
 
@@ -142,6 +143,181 @@ class Renumbering {
 // returns a Renumbering object that is the identity map.  Caution; its Keep()
 // elements are not set up.
 Renumbering IdentityRenumbering(ContextPtr c, int32_t size);
+
+
+/**
+   GetNew2Old() is an alternative to a Renumbering object for cases where the
+   temporary arrays it uses might exhaust GPU memory (i.e. when num_old_elems
+   might be extremely large, like more than a million).
+
+      @param [in] c              Context to use
+      @param [in] num_old_elems  Number of elements that we're computing
+                      a subset of.  Presumably this might potentially be
+                      quite large, otherwise it would probably be easier
+                      to use a Renumbering object.
+     @param [in] lambda  A __host__ __device__  lambda of type like:
+                          "bool keep_this_elem(int32_t index);"
+                      that says whether to keep a particular array element.
+     @param [in,optional] max_array_size  The chunk size to be used;
+                      an array containing this many int32_t's will be
+                      allocated.
+     @return  Returns an Array1<int32_t> that maps from the new indexes
+                      (i.e. those indexes we're keeping) to the old indexes.
+                      Contains elements 0 <= ans[] < num_old_elems.
+ */
+template <typename LambdaT>
+__forceinline__ Array1<int32_t> GetNew2Old(
+    ContextPtr c, int32_t num_old_elems, LambdaT &lambda,
+    int32_t max_array_size = (1 << 20)) {
+  int32_t num_arrays = (num_old_elems + max_array_size - 1) / max_array_size;
+  std::vector<Array1<int32_t> > new2old(num_arrays);
+  for (int32_t i = 0; i < num_arrays; i++) {
+    int32_t old_elem_start = i * max_array_size,
+        this_array_size = std::min<int32_t>(max_array_size,
+                                            num_old_elems - old_elem_start);
+    Renumbering renumbering(c, this_array_size);
+    char *subset_keep = renumbering.Keep().Data();
+
+    K2_EVAL(c, this_array_size, lambda_offset, (int32_t i) {
+      subset_keep[i] = lambda(i + old_elem_start);
+      });
+    new2old[i] = renumbering.New2Old();
+  }
+  if (num_arrays == 1) {
+    return new2old[0];
+  } else {
+    Array1<int32_t> offsets = Arange(c, 0, num_arrays * max_array_size,
+                                     max_array_size);
+    std::vector<const Array1<int32_t>* > new2old_ptrs(num_arrays);
+    for (int32_t i = 0; i < num_arrays; i++)
+      new2old_ptrs[i] = &(new2old[i]);
+    return AppendWithOffsets(offsets, new2old_ptrs.data());
+  }
+}
+
+
+
+/**
+   GetNew2OldAndRowIds() is a utility for a specific programming pattern
+   that you might want to use when you need to prune indexes associated
+   with a row_ids array that is too large to fit in memory.
+
+
+     @param [in] row_splits   A row_splits vector from which we'll be
+                computing (in chunks) a row_ids vector and then keeping
+                selected elements of the row_ids vector (indexed
+                by a new2old array).
+     @param [in] num_elems   This should equal row_splits.Back().  It's
+                provided in case you already obtained that for another
+                purpose (d2h transfer is slow).
+     @param [in] lambda   Lambda that returns true for elementrs that
+                are to be kept.  It should be of type:
+                 [=] __host__ __device__ lambda(int32_t i, int32_t row) -> bool;
+                where i is the element index with 0 <= i < row_splits.Back(),
+                and row is the index of the row to which this element belongs,
+                with 0 <= row < row_splits.Back() - 1.
+     @param [out] new2old_out  The new2old vector will be output to here;
+                it is as if the return status of the lambda for each i
+                was assigned to the Keep() vector of a Renumbering
+                object and you obtained the New2Old() vector of the
+                Renumbering object.
+     @param [out] new_row_ids_out  The row_ids, subsampled with the
+               renumbering, will be written to here.  It's as if
+               you got the row_ids corresponding to `row_splits` and
+               did: `*new_row_ids_out = row_ids[*new2old_out]`.
+     @param [in,optional] max_array_size  The chunk size to be used;
+                      arrays containing (up to) this many int32_t's will be
+                      allocated.
+*/
+template <typename LambdaT>
+__forceinline__ void GetNew2OldAndRowIds(
+    Array1<int32_t> &row_splits,
+    int32_t num_elems,
+    LambdaT &lambda,
+    Array1<int32_t> *new2old_out,
+    Array1<int32_t> *new_row_ids_out,
+    int32_t max_array_size = (1 << 20)) {
+  ContextPtr c = row_splits.Context();
+  int32_t num_arrays = (num_elems + max_array_size - 1) / max_array_size;
+  std::vector<Array1<int32_t> > new2old(num_arrays),
+      row_ids(num_arrays);
+
+  for (int32_t i = 0; i < num_arrays; i++) {
+    int32_t elem_start = i * max_array_size,
+        this_array_size = std::min<int32_t>(max_array_size,
+                                            num_elems - elem_start);
+    Renumbering renumbering(c, this_array_size);
+    char *subset_keep = renumbering.Keep().Data();
+    Array1<int32_t> row_ids_part(c, this_array_size);
+    RowSplitsToRowIdsRange(row_splits, elem_start, &row_ids_part);
+    const int32_t *row_ids_part_data = row_ids_part.Data();
+
+    K2_EVAL(c, this_array_size, lambda_offset, (int32_t i) {
+        subset_keep[i] = lambda(i + elem_start, row_ids_part_data[i]);
+      });
+    new2old[i] = renumbering.New2Old();
+    row_ids[i] = row_ids_part[new2old[i]];
+  }
+  if (num_arrays == 1) {
+    *new2old_out = new2old[0];
+    *new_row_ids_out = row_ids[0];
+  } else {
+    Array1<int32_t> offsets = Arange(c, 0, num_arrays * max_array_size,
+                                     max_array_size);
+    std::vector<const Array1<int32_t>* > new2old_ptrs(num_arrays),
+        row_ids_ptrs(num_arrays);
+    for (int32_t i = 0; i < num_arrays; i++) {
+      new2old_ptrs[i] = &(new2old[i]);
+      row_ids_ptrs[i] = &(row_ids[i]);
+    }
+    *new2old_out = AppendWithOffsets(offsets, new2old_ptrs.data());
+    *new_row_ids_out = Append(c, num_arrays, row_ids_ptrs.data());
+  }
+}
+
+
+/*
+  This is a version of Eval(), but for where you need the row_ids to
+  be computed for you.  The purpose of this is so that you can do
+  computations where the row_ids are too large to be computed at
+  one time.
+
+       @param [in] row_splits   A row_splits vector from which we'll be
+                      computing (in chunks) a row_ids vector and giving it
+                      to the lambda.
+       @param [in] lambda  A __host__ __device__  lambda of type:
+                       [=] lambda(int32_t index, int32_t row)->void;
+                      `index` will be in the range [0, row_splits.Back()-1]
+                       and `row` will be the corresponding row in row_splits,
+                       in the range [0,row_splits.Dim()-2]-- i.e.
+                       the `index`'th element in the row_ids vector.
+       @param [in,optional] max_array_size  The chunk size to be used;
+                       an array containing this many int32_t's will be
+                       allocated.
+ */
+template <typename LambdaT>
+void EvalWithRowIds(Array1<int32_t> &row_splits, LambdaT &lambda,
+                    int32_t max_array_size = (1 << 20)) {
+  ContextPtr c = row_splits.Context();
+  int32_t num_elements = row_splits.Back();
+  int32_t num_arrays = (num_elements + max_array_size - 1) / max_array_size;
+  for (int32_t i = 0; i < num_arrays; i++) {
+    int32_t elem_start = i * max_array_size,
+       this_array_size = std::min<int32_t>(max_array_size,
+                                           num_elements - elem_start);
+    Array1<int32_t> row_ids(c, this_array_size);
+    RowSplitsToRowIdsRange(row_splits, elem_start, &row_ids);
+    const int32_t *row_ids_data = row_ids.Data();
+    K2_EVAL(c, this_array_size, lambda_offset, (int32_t i) {
+        lambda(i + elem_start, row_ids_data[i]);
+      });
+  }
+}
+
+
+
+
+
 
 }  // namespace k2
 
