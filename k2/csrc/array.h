@@ -98,7 +98,7 @@ class Array1 {
   }
 
   /* Return sub-part of this array (shares the underlying data with this
-     array).  Like PyTorch's arange.  'Range' is deprecated.
+     array).  Like PyTorch's arange.
 
      @param [in] start  First element to cover, 0 <= start <= Dim();
                         If start == Dim(), it just returns an empty array.

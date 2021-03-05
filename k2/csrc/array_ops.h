@@ -398,24 +398,19 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
 
 
 /*
-  This function returns *part* of a row_ids array (it's intended for situations
-  where computing the entire row_ids array would use too much memory).
-    @param [in] row_splits  Input row_splits vector, of dimension num_rows+1
-    @param [in] start_row   The first row that we want the row_id value for,
-                            with 0 <= start_row < row_splits.Back()
-    @param [out] row_ids    row_ids will be written to here.  row_ids->Dim()
-                            at entry indicates the number of items requested,
-                            satisfying start_row + row_ids->Dim() <= row_splits.Back()
-                            (this is not necessarily checked).
- */
-inline void RowSplitsToRowIdsRange(const Array1<int32_t> &row_splits,
-                            int32_t start_row,
-                            Array1<int32_t> *row_ids) {
-  Array1<int32_t> all_row_ids(row_splits.Context(),
-                              row_splits.Back());
-  RowSplitsToRowIds(row_splits, &all_row_ids);
-  row_ids->CopyFrom(all_row_ids.Range(start_row, row_ids->Dim()));
-}
+  This function is like RowSplitsToRowIds() but after subracting
+  the first element of `row_splits_part` from `row_splits_part`.
+
+    @param [in] row_splits_part  May be part or whole of a row_splits
+                       vector (i.e. it's like a normal row_splits vector but
+                       does not have to start from zero.)
+    @param [out] row_ids_part  Part or whole of a row_ids vector.
+                       We require that `row_ids_part->Dim() ==
+                       row_splits_part.Back() - row_splits_part[0]`.
+*/
+void RowSplitsToRowIdsOffset(const Array1<int32_t> &row_splits_part,
+                             Array1<int32_t> *row_ids_part);
+
 
 
 /*

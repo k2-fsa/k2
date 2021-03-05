@@ -468,4 +468,18 @@ bool IsPermutation(const Array1<int32_t> &a) {
   return Equal(ones, 0);
 }
 
+
+void RowSplitsToRowIdsOffset(const Array1<int32_t> &row_splits_part,
+                           Array1<int32_t> *row_ids_part) {
+  ContextPtr c = row_splits_part.Context();
+  Array1<int32_t> row_splits(c, row_splits_part.Dim());
+  int32_t *row_splits_data = row_splits.Data();
+  const int32_t *row_splits_part_data = row_splits_part.Data();
+  K2_EVAL(c, row_splits_part.Dim(), lambda_subtract_offset, (int32_t i) {
+      row_splits_data[i] = row_splits_part_data[i] - row_splits_part_data[0];
+    });
+  RowSplitsToRowIds(row_splits, row_ids_part);
+}
+
+
 }  // namespace k2
