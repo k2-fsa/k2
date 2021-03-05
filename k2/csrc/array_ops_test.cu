@@ -22,13 +22,144 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
+#include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/rand.h"
 #include "k2/csrc/test_utils.h"
 #include "k2/csrc/timer.h"
+#include "moderngpu/kernel_bulkinsert.hxx"
+#include "moderngpu/kernel_sortedsearch.hxx"
 
 namespace k2 {
+
+Array1<int32_t> GenerateRowIds(Array1<int32_t> &row_splits,
+                               int32_t max_array_size = (1 << 8)) {
+  int32_t num_elements = row_splits.Back();
+  int32_t num_arrays = (num_elements + max_array_size - 1) / max_array_size;
+  ContextPtr c = row_splits.Context();
+  if (num_arrays <= 1) {
+    K2_LOG(INFO) << "num_array == 1";
+    Array1<int32_t> row_ids(c, num_elements);
+    RowSplitsToRowIds(row_splits, &row_ids);
+    return row_ids;
+  }
+  std::vector<Array1<int32_t>> arrays_vec(num_arrays);
+  std::vector<const Array1<int32_t> *> arrays(num_arrays);
+  if (c->GetDeviceType() == kCpu) {
+    const int32_t *row_splits_data = row_splits.Data();
+    int32_t idx0 = 0;
+    int32_t idx01 = 0;
+    for (int32_t i = 0; i < num_arrays; i++) {
+      int32_t elem_start = i * max_array_size,
+              this_array_size =
+                  std::min<int32_t>(max_array_size, num_elements - elem_start),
+              elem_end = elem_start + this_array_size;
+      if (this_array_size == 0) break;
+      std::vector<int32_t> row_ids_vec(this_array_size);
+      for (; idx01 != elem_end; ++idx01) {
+        while (idx01 >= row_splits_data[idx0]) ++idx0;
+        row_ids_vec[idx01 - elem_start] = idx0 - 1;
+      }
+      Array1<int32_t> row_ids(c, row_ids_vec);
+      arrays_vec[i] = row_ids;
+      arrays[i] = &arrays_vec[i];
+    }
+  } else {
+    K2_CHECK_EQ(c->GetDeviceType(), kCuda);
+    // `gap` splits `row_ids` array to `num_arrays` sub arrays, values in `gaps`
+    // are idx01.
+    Array1<int32_t> gap =
+        Range(c, num_arrays - 1, max_array_size, max_array_size);
+    Array1<int32_t> storage(c, row_splits.Dim() + 2 * (num_arrays - 1));
+    // For each value in `gap`, we will store the corresponding row index(i.e.
+    // idx0) into `gap_row_index`.
+    Array1<int32_t> gap_row_index = storage.Arange(0, num_arrays - 1);
+    // there are now `num_rows + num_arrays - 1` rows in `new_row_splits` as we
+    // will insert new `num_arrays - 1` rows below.
+    Array1<int32_t> new_row_splits =
+        storage.Arange(num_arrays - 1, storage.Dim());
+
+    mgpu::context_t *mgpu_context = GetModernGpuAllocator(c);
+    // search row index for each value in `gap`
+    K2_CUDA_SAFE_CALL(mgpu::sorted_search<mgpu::bounds_lower>(
+        gap.Data(), gap.Dim(), row_splits.Data(), row_splits.Dim(),
+        gap_row_index.Data(), LessThan<int32_t>(), *mgpu_context));
+    // merge `row_splits` and `gap` to generate `new_old_splits`
+    K2_CUDA_SAFE_CALL(mgpu::bulk_insert(
+        gap.Data(), gap_row_index.Data(), gap.Dim(), row_splits.Data(),
+        row_splits.Dim(), new_row_splits.Data(), *mgpu_context));
+
+    gap_row_index = gap_row_index.To(GetCpuContext());
+    const int32_t *gap_row_index_data = gap_row_index.Data();
+    int32_t row_start = 0;
+    int32_t row_offset = 0;
+    for (int32_t i = 0; i < num_arrays; i++) {
+      int32_t elem_start = i * max_array_size,
+              this_array_size =
+                  std::min<int32_t>(max_array_size, num_elements - elem_start);
+      if (this_array_size == 0) break;
+      int32_t row_end;
+      if (i != num_arrays - 1) {
+        row_end = gap_row_index_data[i] + i + 1;
+      } else {
+        row_end = new_row_splits.Dim();
+      }
+      Array1<int32_t> curr_row_splits =
+          new_row_splits.Arange(row_start, row_end);
+      int32_t *curr_row_splits_data = curr_row_splits.Data();
+      // There is an alternative approach to do this: we compute num-elems per
+      // rows at entry with one kernel and create an Array with
+      // Range(c, old_num_rows, 0, 1), then call mgpu::interval_expand in the
+      // loop, this will save one kernel in the loop, but needs one GPU memory
+      // allocation and two kernels outside the loop, so it may be faster if
+      // `num_arrays` is big.
+      K2_EVAL(
+          c, curr_row_splits.Dim(), lambda_get_valid_row_splits,
+          (int32_t i)->void {
+            curr_row_splits_data[i] = curr_row_splits_data[i] - elem_start;
+          });
+      Array1<int32_t> row_ids(c, this_array_size);
+      int32_t *row_ids_data = row_ids.Data();
+      // `index` is idx01, `seg` is idx0
+      auto lambda_set_row_ids = [=] __device__(int32_t index, int32_t seg,
+                                               int32_t rank) {
+        row_ids_data[index] = seg + row_offset;
+      };
+      K2_CUDA_SAFE_CALL(mgpu::transform_lbs(
+          lambda_set_row_ids, this_array_size, curr_row_splits_data,
+          curr_row_splits.Dim() - 1, *mgpu_context));
+      arrays_vec[i] = row_ids;
+      arrays[i] = &arrays_vec[i];
+      row_start = row_end - 1;
+      if (i != num_arrays - 1) row_offset = gap_row_index_data[i] - 1;
+    }
+  }
+  const Array1<int32_t> **src = arrays.data();
+  Array1<int32_t> dst = Append(num_arrays, src);
+  return dst;
+}
+
+TEST(OpsTest, MGpuTest) {
+  for (auto &c : {GetCpuContext(), GetCudaContext()}) {
+    {
+      // std::vector<int32_t> row_splits_vec = {0};
+      std::vector<int32_t> row_splits_vec = {0, 3, 5, 9, 15};
+      Array1<int32_t> row_splits(c, row_splits_vec);
+      Array1<int32_t> row_ids = GenerateRowIds(row_splits, 4);
+      K2_LOG(INFO) << "row_ids=" << row_ids;
+    }
+    for (int32_t i = 0; i != 100; ++i) {
+      int32_t num_rows = RandInt(1, 1000);
+      Array1<int32_t> row_splits = RandUniformArray1(c, num_rows, 0, 100);
+      ExclusiveSum(row_splits, &row_splits);
+      Array1<int32_t> row_ids = GenerateRowIds(row_splits);
+      Array1<int32_t> expected_row_ids(c, row_splits.Back());
+      RowSplitsToRowIds(row_splits, &expected_row_ids);
+      CheckArrayData(row_ids, expected_row_ids);
+    }
+  }
+}
 
 template <typename T>
 void MatrixTanspose(int32_t num_rows, int32_t num_cols, const T *src, T *dest) {
