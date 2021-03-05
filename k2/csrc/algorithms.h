@@ -7,6 +7,9 @@
 #ifndef K2_CSRC_ALGORITHMS_H_
 #define K2_CSRC_ALGORITHMS_H_
 
+#include <algorithm>
+#include <vector>
+
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/log.h"
