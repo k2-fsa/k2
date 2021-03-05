@@ -186,7 +186,8 @@ __forceinline__ Array1<int32_t> GetNew2Old(
   if (num_arrays == 1) {
     return new2old[0];
   } else {
-    Array1<int32_t> offsets = Arange(c, 0, num_arrays);
+    Array1<int32_t> offsets = Arange(c, 0, num_arrays * max_array_size,
+                                     max_array_size);
     std::vector<const Array1<int32_t>* > new2old_ptrs(num_arrays);
     for (int32_t i = 0; i < num_arrays; i++)
       new2old_ptrs[i] = &(new2old[i]);
@@ -261,7 +262,8 @@ __forceinline__ void GetNew2OldAndRowIds(
     *new2old_out = new2old[0];
     *new_row_ids_out = row_ids[0];
   } else {
-    Array1<int32_t> offsets = Arange(c, 0, num_arrays);
+    Array1<int32_t> offsets = Arange(c, 0, num_arrays * max_array_size,
+                                     max_array_size);
     std::vector<const Array1<int32_t>* > new2old_ptrs(num_arrays),
         row_ids_ptrs(num_arrays);
     for (int32_t i = 0; i < num_arrays; i++) {
