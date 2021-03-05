@@ -364,9 +364,8 @@ class MultiGraphDenseIntersect {
     int32_t scores_stride = b_fsas_.scores.ElemStride0();
     const float *scores_data = b_fsas_.scores.Data();
 
-    auto lambda_set_keep = [=] __host__ __device__(int32_t arc_idx0123, int32_t unused) -> bool {
-          int32_t ans_state_idx012 = ans_row_ids3_data[arc_idx0123],
-                  ans_idx012x = ans_row_splits3_data[ans_state_idx012],
+    auto lambda_set_keep = [=] __host__ __device__(int32_t arc_idx0123, int32_t ans_state_idx012) -> bool {
+          int32_t ans_idx012x = ans_row_splits3_data[ans_state_idx012],
                   ans_idx01 = ans_row_ids2_data[ans_state_idx012],
                   fsa_idx0 = ans_row_ids1_data[ans_idx01],
                   ans_idx0x = ans_row_splits1_data[fsa_idx0],
@@ -434,16 +433,17 @@ class MultiGraphDenseIntersect {
     // Array1<int32_t> arcs_new2old = GetNew2Old(c_, tot_arcs, lambda_set_keep);
 
     Array1<int32_t> arcs_new2old;
-    Array1<int32_t> ans_row_ids3_subsampled_temp;
+    Array1<int32_t> ans_row_ids3_subsampled;
 
     GetNew2OldAndRowIds(ans_row_splits3, tot_arcs, lambda_set_keep,
-                        &arcs_new2old, &ans_row_ids3_subsampled_temp);
+                        &arcs_new2old, &ans_row_ids3_subsampled);
 
     int32_t num_arcs_out = arcs_new2old.Dim();
     Array1<Arc> arcs(c_, num_arcs_out);
     Arc *arcs_data = arcs.Data();
 
-    const int32_t *arcs_new2old_data = arcs_new2old.Data();
+    const int32_t *arcs_new2old_data = arcs_new2old.Data(),
+       *ans_row_ids3_subsampled_data = ans_row_ids3_subsampled.Data();
     int32_t *arc_map_a_data = nullptr,
             *arc_map_b_data = nullptr;
 
@@ -462,7 +462,7 @@ class MultiGraphDenseIntersect {
           // arc_idx0123 below is the same as the arc_idx0123 given to
           // lambda_set_keep above.
           int32_t arc_idx0123 = arcs_new2old_data[arc_idx_out],
-             ans_state_idx012 = ans_row_ids3_data[arc_idx0123],
+             ans_state_idx012 =  ans_row_ids3_subsampled_data[arc_idx_out],
                   ans_idx012x = ans_row_splits3_data[ans_state_idx012],
                   ans_idx01 = ans_row_ids2_data[ans_state_idx012],
                   fsa_idx0 = ans_row_ids1_data[ans_idx01],
