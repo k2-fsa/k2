@@ -178,7 +178,6 @@ Array1<T> Append(int32_t src_size, const Array1<T> *src);
       @param [in] src   Array of pointers to arrays to append.  Size is
                         offsets.Dim().  src[i] contains a pointer
                         to the i'th array to append
-
       @return  Returns the arrays in `src` appended together, with
                elements of the i'th array having offsets[i] added
                to them.
@@ -187,18 +186,6 @@ Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
                                   const Array1<int32_t> **src);
 
 
-/*
-  Append arrays, adding offsets to each one.
-      @param [in] offsets   Array containing the offsets to add
-      @param [in] src   Array of pointers to arrays to append.  Size is
-                        offsets.Dim().  src[i] contains a pointer
-                        to the i'th array to append
-      @return  Returns the arrays in `src` appended together, with
-               elements of the i'th array having offsets[i] added
-               to them.
- */
-Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
-                                  const Array1<int32_t> **src);
 
 /*
    This is a little like Append(), but with special treatment of the last
@@ -419,10 +406,14 @@ void RowSplitsToRowIds(const Array1<int32_t> &row_splits,
                             satisfying start_row + row_ids->Dim() <= row_splits.Back()
                             (this is not necessarily checked).
  */
-void RowSplitsToRowIdsRange(const Array1<int32_t> &row_splits,
+inline void RowSplitsToRowIdsRange(const Array1<int32_t> &row_splits,
                             int32_t start_row,
-                            Array1<int32_t> *row_ids);
-
+                            Array1<int32_t> *row_ids) {
+  Array1<int32_t> all_row_ids(row_splits.Context(),
+                              row_splits.Back());
+  RowSplitsToRowIds(row_splits, &all_row_ids);
+  row_ids->CopyFrom(all_row_ids.Range(start_row, row_ids->Dim()));
+}
 
 
 /*

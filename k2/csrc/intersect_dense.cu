@@ -19,9 +19,8 @@ namespace intersect_dense_internal {
 
 /* Information associated with a state active on a particular frame..  */
 struct StateInfo {
-  /* abs_state_id is the state-index in a_fsas_.  Note: the ind0 in here
-     won't necessarily match the ind0 within FrameInfo::state if
-     a_fsas_stride_ == 0. */
+  /* the state-index in a_fsas_.  The idx0 may not match the idx0 within
+     b_fsas_ if we're using a_to_b_map. */
   int32_t a_fsas_state_idx01;
 
   /* Caution: this is ACTUALLY A FLOAT that has been bit-twiddled using
@@ -432,7 +431,6 @@ class MultiGraphDenseIntersect {
           }
           return keep_this_arc;
     };
-
     Array1<int32_t> arcs_new2old = GetNew2Old(c_, tot_arcs, lambda_set_keep);
 
     int32_t num_arcs_out = arcs_new2old.Dim();
@@ -451,6 +449,7 @@ class MultiGraphDenseIntersect {
       *arc_map_b = Array1<int32_t>(c_, num_arcs_out);
       arc_map_b_data = arc_map_b->Data();
     }
+
 
     K2_EVAL(
         c_, num_arcs_out, lambda_set_arcs_and_maps, (int32_t arc_idx_out)->void {
