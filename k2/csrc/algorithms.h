@@ -264,12 +264,12 @@ __forceinline__ void GetNew2OldAndRowIds(
     Array1<int32_t> offsets = Arange(c, 0, num_arrays);
     std::vector<const Array1<int32_t>* > new2old_ptrs(num_arrays),
         row_ids_ptrs(num_arrays);
-    for (size_t i = 0; i < num_arrays; i++) {
+    for (int32_t i = 0; i < num_arrays; i++) {
       new2old_ptrs[i] = &(new2old[i]);
       row_ids_ptrs[i] = &(row_ids[i]);
     }
     *new2old_out = AppendWithOffsets(offsets, new2old_ptrs.data());
-    *new_row_ids_out = Append(num_arrays, row_ids_ptrs.data());
+    *new_row_ids_out = Append(c, num_arrays, row_ids_ptrs.data());
   }
 }
 

@@ -52,7 +52,7 @@ bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
     }
   }
   *dest = Stack(0, num_fsas, dests.data());
-  if (arc_map != nullptr) *arc_map = Append(num_fsas, arc_maps.data());
+  if (arc_map != nullptr) *arc_map = Append(src.Context(), num_fsas, arc_maps.data());
   return true;
 }
 

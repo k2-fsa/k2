@@ -364,7 +364,7 @@ class MultiGraphDenseIntersect {
     int32_t scores_stride = b_fsas_.scores.ElemStride0();
     const float *scores_data = b_fsas_.scores.Data();
 
-    auto lambda_set_keep = [=] __host__ __device__(int32_t arc_idx0123) -> bool {
+    auto lambda_set_keep = [=] __host__ __device__(int32_t arc_idx0123, int32_t unused) -> bool {
           int32_t ans_state_idx012 = ans_row_ids3_data[arc_idx0123],
                   ans_idx012x = ans_row_splits3_data[ans_state_idx012],
                   ans_idx01 = ans_row_ids2_data[ans_state_idx012],
@@ -431,7 +431,13 @@ class MultiGraphDenseIntersect {
           }
           return keep_this_arc;
     };
-    Array1<int32_t> arcs_new2old = GetNew2Old(c_, tot_arcs, lambda_set_keep);
+    // Array1<int32_t> arcs_new2old = GetNew2Old(c_, tot_arcs, lambda_set_keep);
+
+    Array1<int32_t> arcs_new2old;
+    Array1<int32_t> ans_row_ids3_subsampled_temp;
+
+    GetNew2OldAndRowIds(ans_row_splits3, tot_arcs, lambda_set_keep,
+                        &arcs_new2old, &ans_row_ids3_subsampled_temp);
 
     int32_t num_arcs_out = arcs_new2old.Dim();
     Array1<Arc> arcs(c_, num_arcs_out);

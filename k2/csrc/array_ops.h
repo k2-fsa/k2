@@ -160,16 +160,18 @@ void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
   For now we can just use a simple loop; later there are lots of opportunities
   to optimize this, including multiple streams and using a single kernel making
   use of RaggedShape.
-      @param [in] src_size  Number of arrays to append.  Must be > 0.
+      @param [in] c      Pointer to context.  Provided so it can work with
+                         src_size == 0.
+      @param [in] src_size  Number of arrays to append.
       @param [in] src     Array of pointers to arrays, of size `src_size`.
       @return       Returns the appended array
  */
 template <typename T>
-Array1<T> Append(int32_t src_size, const Array1<T> **src);
+Array1<T> Append(ContextPtr c, int32_t src_size, const Array1<T> **src);
 
 // Wrapper for Append() that has one fewer levels of indirection.
 template <typename T>
-Array1<T> Append(int32_t src_size, const Array1<T> *src);
+Array1<T> Append(ContextPtr c, int32_t src_size, const Array1<T> *src);
 
 
 /*

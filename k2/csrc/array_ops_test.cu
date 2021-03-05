@@ -610,7 +610,7 @@ void TestAppend() {
         std::vector<const Array1<T> *> arrays = {&array1, &array2, &array3,
                                                  &array4};
         const Array1<T> **src = arrays.data();
-        Array1<T> dst = Append(4, src);
+        Array1<T> dst = Append(context, 4, src);
         EXPECT_EQ(dst.Dim(), 8);
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
@@ -623,7 +623,7 @@ void TestAppend() {
         // test Append(int32_t, Array1<T>*)
         std::vector<Array1<T>> arrays = {array1, array2, array3, array4};
         const Array1<T> *src = arrays.data();
-        Array1<T> dst = Append(4, src);
+        Array1<T> dst = Append(context, 4, src);
         EXPECT_EQ(dst.Dim(), 8);
 
         // copy memory from GPU/CPU to CPU
@@ -650,7 +650,7 @@ void TestAppend() {
           arrays[j] = &arrays_vec[j];
         }
         const Array1<T> **src = arrays.data();
-        Array1<T> dst = Append(num_array, src);
+        Array1<T> dst = Append(context, num_array, src);
         EXPECT_EQ(dst.Dim(), total_size);
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
@@ -691,7 +691,7 @@ void TestAppend() {
           arrays[num_array - 1] = &arrays_vec[num_array - 1];
         }
         const Array1<T> **src = arrays.data();
-        Array1<T> dst = Append(num_array, src);
+        Array1<T> dst = Append(context, num_array, src);
         EXPECT_EQ(dst.Dim(), total_size);
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
