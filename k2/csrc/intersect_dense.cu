@@ -350,13 +350,8 @@ class MultiGraphDenseIntersect {
     ExclusiveSum(ans_num_arcs, &ans_row_splits3);
     int32_t tot_arcs = ans_row_splits3.Back();
 
-    // TODO: don't create this..
-    Array1<int32_t> ans_row_ids3(c_, tot_arcs);
-    RowSplitsToRowIds(ans_row_splits3, &ans_row_ids3);
-
 
     const int32_t *ans_row_ids1_data = ans_row_ids1.Data(),
-                  *ans_row_ids3_data = ans_row_ids3.Data(),
                *ans_row_splits2_data = ans_row_splits2.Data(),
                *ans_row_splits3_data = ans_row_splits3.Data(),
                 *states_old2new_data = renumber_states.Old2New().Data();
@@ -435,6 +430,9 @@ class MultiGraphDenseIntersect {
     Array1<int32_t> arcs_new2old;
     Array1<int32_t> ans_row_ids3_subsampled;
 
+    // Note: "ans_row_splits3" is "before subsampling".
+    // "ans_row_ids3_subsampled" is a subsampled version of ans_row_ids3,
+    // keeping only arcs that survived pruning.
     GetNew2OldAndRowIds(ans_row_splits3, tot_arcs, lambda_set_keep,
                         &arcs_new2old, &ans_row_ids3_subsampled);
 
@@ -538,16 +536,20 @@ class MultiGraphDenseIntersect {
           arc.score = arc_score;
           arcs_data[arc_idx_out] = arc;
         });
+
+
+    Array1<int32_t> ans_row_splits3_subsampled(c_, ans_row_splits3.Dim());
+    RowIdsToRowSplits(ans_row_ids3_subsampled, &ans_row_splits3_subsampled);
+
     // subsample the output shape, removing arcs that weren't kept
     // TODO: make this more efficient, avoid constructing and_row_ids3.
-    RaggedShape ans_shape_big = RaggedShape4(&ans_row_splits1, &ans_row_ids1, -1,
-                                             &ans_row_splits2, &ans_row_ids2, -1,
-                                             &ans_row_splits3, &ans_row_ids3, -1);
-    RaggedShape ans_shape_subsampled = Index(ans_shape_big, 3,  // 3 = last axis
-                                             arcs_new2old);
+    RaggedShape ans_shape = RaggedShape4(
+        &ans_row_splits1, &ans_row_ids1, -1,
+        &ans_row_splits2, &ans_row_ids2, -1,
+        &ans_row_splits3_subsampled, &ans_row_ids3_subsampled, -1);
 
-    // .. and remove the 't' axis
-    return Ragged<Arc>(RemoveAxis(ans_shape_subsampled, 1), arcs);
+    // .. remove the 't' axis
+    return Ragged<Arc>(RemoveAxis(ans_shape, 1), arcs);
   }
 
   // We can't actually make the rest private for reasons relating to use of
