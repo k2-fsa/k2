@@ -851,7 +851,7 @@ class MultiGraphDenseIntersect {
 
   const Array1<int32_t> &a_to_b_map_;
 
-  // num_fsas_ equals b_fsas_.shape.Dim0() == a_fsas_.Dim0().
+  // num_fsas_ equals a_fsas_.Dim0().
   int32_t num_fsas_;
 
   // This is just a copy of a_fsas_.arcs, with a couple extra pieces of
