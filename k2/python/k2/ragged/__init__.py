@@ -4,6 +4,7 @@ from .ops import append
 from .ops import create_ragged2
 from .ops import get_layer
 from .ops import index
+from .ops import regular_ragged_shape
 from .ops import remove_axis
 from .ops import remove_values_eq
 from .ops import remove_values_leq
