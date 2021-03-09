@@ -410,6 +410,22 @@ class TestRaggedOps(unittest.TestCase):
             self.assertEqual(str(ans), str(expected_ans))
             assert torch.all(torch.eq(indexes, value_indexes))
 
+    def test_regular_ragged_shape(self):
+        shape = k2.ragged.regular_ragged_shape(1, 2)
+        expected = k2.RaggedShape('[[x x]]')
+        self.assertEqual(str(shape), str(expected))
+
+        shape = k2.ragged.regular_ragged_shape(2, 3)
+        expected = k2.RaggedShape('[[x x x] [x x x]]')
+        self.assertEqual(str(shape), str(expected))
+
+        assert shape.row_splits(1).device.type == 'cpu'
+
+        if torch.cuda.is_available():
+            device = torch.device('cuda', 0)
+            shape = shape.to(device)
+            assert shape.row_splits(1).is_cuda
+
 
 if __name__ == '__main__':
     unittest.main()

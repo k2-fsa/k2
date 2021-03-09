@@ -225,3 +225,23 @@ def unique_sequences(src: _k2.RaggedInt, need_num_repeats: bool = True
          num_repeats.num_elements() == ans.tot_size(1).
     '''
     return _k2.unique_sequences(src, need_num_repeats=need_num_repeats)
+
+
+def regular_ragged_shape(dim0: int, dim1: int) -> _k2.RaggedShape:
+    '''Returns a RaggedShape with dim0() == dim0 and tot_size(1) == dim0 * dim1.
+
+    Require dim0 >= 0 and dim1 >= 0.
+
+    Caution:
+      The returned ragged shape is on CPU. You can use its `to` method to move
+      it to GPU.
+
+    Args:
+      dim0:
+        It equals to ans.dim0()
+      dim1:
+        It equals to ans.tot_size(1) / dim0
+    Returns:
+      Return a ragged shape with 2 axes.
+    '''
+    return _k2.regular_ragged_shape(dim0, dim1)
