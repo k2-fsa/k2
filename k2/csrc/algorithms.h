@@ -252,6 +252,10 @@ __forceinline__ void GetNew2OldAndRowIds(
   int32_t num_arrays = (num_elems + max_array_size - 1) / max_array_size,
             num_rows = row_splits.Dim() - 1,
        num_rows_part = (num_rows + num_arrays - 1) / num_arrays;
+  // the following fixes a kind of edge case that can happen when
+  // num_rows_part is less than num_arrays.
+  if ((num_arrays - 1) * num_rows_part >= num_rows)
+    num_arrays--;
 
   Array1<int32_t> elem_starts;
   Array1<int32_t> elem_starts_cpu;
