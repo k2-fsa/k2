@@ -980,7 +980,7 @@ class Fsa(object):
         # be modified by the user, so this should be safe (i.e. it should
         # be safe to do this without clone(); these are mostly not tensors
         # anyway.
-        for name, value in self._cache:
+        for name, value in self._cache.items():
             ans._cache[name] = value
 
         # The following is a magic invocation to make sure
