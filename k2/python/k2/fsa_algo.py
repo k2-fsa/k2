@@ -292,7 +292,10 @@ def compose(a_fsa: Fsa,
     input FSAs do not need to be arc sorted.
 
     Note:
-      `a_fsa.aux_labels` is required to be defined.
+      `a_fsa.aux_labels` is required to be defined and it can be either
+      a `torch.Tensor` or a ragged tensor of type `k2.RaggedInt`.
+      If it is a ragged tensor, then it requires that a_fsa.requires_grad is
+      False.
 
       For both FSAs, the `aux_labels` attribute is interpreted as output labels,
       (olabels), and the composition involves matching the olabels of a_fsa with
@@ -329,17 +332,24 @@ def compose(a_fsa: Fsa,
       The result of composing a_fsa and b_fsa. `len(out_fsa.shape)` is 2
       if and only if the two input FSAs are single FSAs;
       otherwise, `len(out_fsa.shape)` is 3.
-
     '''
     assert hasattr(a_fsa, 'aux_labels')
 
-    assert isinstance(a_fsa.aux_labels, torch.Tensor)
+    if a_fsa.requires_grad:
+        assert isinstance(a_fsa.aux_labels, torch.Tensor)
+        a_fsa_inv = a_fsa.invert()
+    else:
+        # k2.invert() does not support autograd.
+        # The current use case is for decoding, which does not need autograd.
+        # We may extend it to support autograd if needed.
+        a_fsa_inv = invert(a_fsa)
 
-    a_fsa_inv = a_fsa.invert()
     if treat_epsilons_specially is True or a_fsa_inv.is_cpu():
+        # the GPU version does not need to sort the input FSA
         a_fsa_inv = arc_sort(a_fsa_inv)
 
     if treat_epsilons_specially is True or b_fsa.is_cpu():
+        # the GPU version does not need to sort the input FSA
         assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
 
     need_arc_map = True
@@ -350,6 +360,7 @@ def compose(a_fsa: Fsa,
     out_fsa = Fsa(ragged_arc)
     if inner_labels is not None:
         # out_fsa.`inner_labels` = out_fsa.labels.clone()
+        # need a clone here since `Fsa.labels` is a reference
         setattr(out_fsa, inner_labels, out_fsa.labels.clone())
 
     if hasattr(b_fsa, 'aux_labels'):
@@ -358,7 +369,17 @@ def compose(a_fsa: Fsa,
         # need a clone here since `Fsa.labels` is a reference
         out_fsa.aux_labels = out_fsa.labels.clone()
 
-    out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
+    if isinstance(a_fsa_inv.aux_labels, torch.Tensor):
+        out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
+    else:
+        assert isinstance(a_fsa_inv.aux_labels, k2.RaggedInt)
+        # Refer to the following URLs for an example:
+        # a_fsa:   https://git.io/Jqbob
+        # b_fsa:   https://git.io/JqbKL
+        # out_fsa: https://git.io/JqbK3
+        out_fsa.labels = out_fsa.aux_labels
+        out_fsa.aux_labels = index(a_fsa_inv.aux_labels, a_arc_map)
+        out_fsa = invert(out_fsa)
 
     for name, a_value in a_fsa_inv.named_tensor_attr():
         if name in ('aux_labels', inner_labels):
@@ -673,16 +694,19 @@ def invert(fsa: Fsa) -> Fsa:
     Returns:
       The inverted Fsa, it's top-sorted if `fsa` is top-sorted.
     '''
-    assert fsa.is_cpu()
+    # FIXME(fangjun): support autograd and update k2.compose.
     assert fsa.requires_grad is False
     if isinstance(fsa.aux_labels, torch.Tensor):
         return fsa.invert()
     else:
         assert isinstance(fsa.aux_labels, k2.RaggedInt)
-        need_arc_map = False
-        ragged_arc, aux_labels, _ = _k2.invert(fsa.arcs, fsa.aux_labels,
-                                               need_arc_map)
-        return Fsa(ragged_arc, aux_labels)
+        need_arc_map = True
+        ragged_arc, aux_labels, arc_map = _k2.invert(fsa.arcs, fsa.aux_labels,
+                                                     need_arc_map)
+        out_fsa = k2.utils.fsa_from_unary_function_tensor(
+            fsa, ragged_arc, arc_map)
+        out_fsa.aux_labels = aux_labels
+        return out_fsa
 
 
 def random_paths(fsas: Fsa, use_double_scores: bool,
