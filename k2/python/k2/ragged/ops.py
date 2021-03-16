@@ -245,3 +245,21 @@ def regular_ragged_shape(dim0: int, dim1: int) -> _k2.RaggedShape:
       Return a ragged shape with 2 axes.
     '''
     return _k2.regular_ragged_shape(dim0, dim1)
+
+
+def argmax_per_sublist(src: _k2.RaggedFloat,
+                       initial_value: float = torch.finfo(torch.float32).min
+                      ) -> torch.Tensor:
+    '''Compute the argmax per sublist for a ragged tensor.
+
+    The argmax is computed on the last axis.
+
+    Args:
+      src:
+        The input ragged tensor.
+      initial_value:
+        The initial value used to compute the argmax.
+    Returns:
+      Return a 1-D tensor with dtype torch.int32.
+    '''
+    return _k2.argmax_per_sublist(src, initial_value)

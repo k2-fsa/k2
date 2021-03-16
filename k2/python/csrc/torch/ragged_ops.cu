@@ -263,6 +263,23 @@ static void PybindRegularRaggedShape(py::module &m) {
       py::arg("dim0"), py::arg("dim1"));
 }
 
+template <typename T>
+static void PybindArgMaxPerSublist(py::module &m) {
+  m.def(
+      "argmax_per_sublist",
+      [](Ragged<T> &src, T initial_value) -> torch::Tensor {
+        int32_t last_axis = src.NumAxes() - 1;
+        const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
+        int32_t num_rows = row_splits_array.Dim() - 1;
+
+        Array1<int32_t> indexes(src.Context(), num_rows);
+        ArgMaxPerSublist(src, initial_value, &indexes);
+
+        return ToTensor(indexes);
+      },
+      py::arg("src"), py::arg("initial_value"));
+}
+
 }  // namespace k2
 
 void PybindRaggedOps(py::module &m) {
@@ -282,4 +299,5 @@ void PybindRaggedOps(py::module &m) {
   PybindUniqueSequences(m);
   PybindIndex(m);
   PybindRegularRaggedShape(m);
+  PybindArgMaxPerSublist<float>(m);
 }
