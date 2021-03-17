@@ -288,8 +288,8 @@ class TestRaggedOps(unittest.TestCase):
         for device in self.devices:
             ragged = k2.RaggedInt(
                 '[[1 3] [1 2] [1 2] [1 4] [1 3] [1 2] [1]]').to(device)
-            unique, num_repeats = k2.ragged.unique_sequences(
-                ragged, need_num_repeats=True)
+            unique, num_repeats, new2old = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True, need_new2old_indexes=True)
             # [1, 3] has a larger hash value than [1, 2]; after sorting,
             # [1, 3] is placed after [1, 2]
             expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
@@ -297,20 +297,56 @@ class TestRaggedOps(unittest.TestCase):
 
             expected_num_repeats = k2.RaggedInt('[[1 3 2 1]]')
             self.assertEqual(str(num_repeats), str(expected_num_repeats))
+            expected_new2old = torch.tensor([6, 1, 0, 3]).to(device)
+            assert torch.all(torch.eq(new2old, expected_new2old))
+
+        for device in self.devices:
+            ragged = k2.RaggedInt('[ [1 3] [1 2] [1] [1 4]]').to(device)
+            unique, num_repeats, new2old = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True, need_new2old_indexes=True)
+
+            expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
+            self.assertEqual(str(unique), str(expected))
+
+            expected_num_repeats = k2.RaggedInt('[[1 1 1 1]]')
+            self.assertEqual(str(num_repeats), str(expected_num_repeats))
+
+            # CAUTION: The output sublists are ordered by their hash value!
+            expected_new2old = torch.tensor([2, 1, 0, 3]).to(device)
+            assert torch.all(torch.eq(new2old, expected_new2old))
 
     def test_unique_sequences_three_axes(self):
         for device in self.devices:
             ragged = k2.RaggedInt(
                 '[ [[1] [1 2] [1 3] [1] [1 3]] [[1 4] [1 2] [1 3] [1 3] [1 2] [1]] ]'  # noqa
             ).to(device)
-            unique, num_repeats = k2.ragged.unique_sequences(
-                ragged, need_num_repeats=True)
+            unique, num_repeats, new2old = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True, need_new2old_indexes=True)
             expected = k2.RaggedInt(
                 '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4]] ]')
             self.assertEqual(str(unique), str(expected))
 
             expected_num_repeats = k2.RaggedInt('[ [2 1 2] [1 2 2 1] ]')
             self.assertEqual(str(num_repeats), str(expected_num_repeats))
+            expected_new2old = torch.tensor([0, 1, 2, 10, 6, 7, 5]).to(device)
+            assert torch.all(torch.eq(new2old, expected_new2old))
+
+        for device in self.devices:
+            ragged = k2.RaggedInt(
+                '[ [[1 3] [1] [1 2]] [[1 2] [1 3] [1 4 5] [1]] ]').to(device)
+            unique, num_repeats, new2old = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True, need_new2old_indexes=True)
+
+            expected = k2.RaggedInt(
+                '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4 5]] ]')
+            self.assertEqual(str(unique), str(expected))
+
+            expected_num_repeats = k2.RaggedInt('[[1 1 1 ] [1 1 1 1]]')
+            self.assertEqual(str(num_repeats), str(expected_num_repeats))
+
+            # CAUTION: The output sublists are ordered by their hash value!
+            expected_new2old = torch.tensor([1, 2, 0, 6, 3, 4, 5]).to(device)
+            assert torch.all(torch.eq(new2old, expected_new2old))
 
     def test_index_ragged_shape_two_axes(self):
         for device in self.devices:

@@ -9,6 +9,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -208,17 +209,27 @@ static void PybindGetLayer(py::module &m) {
 static void PybindUniqueSequences(py::module &m) {
   m.def(
       "unique_sequences",
-      [](Ragged<int32_t> &src, bool need_num_repeats = true)
-          -> std::pair<Ragged<int32_t>, torch::optional<Ragged<int32_t>>> {
+      [](Ragged<int32_t> &src, bool need_num_repeats = true,
+         bool need_new2old_indexes = false)
+          -> std::tuple<Ragged<int32_t>, torch::optional<Ragged<int32_t>>,
+                        torch::optional<torch::Tensor>> {
         Ragged<int32_t> num_repeats;
+        Array1<int32_t> new2old_indexes;
         Ragged<int32_t> ans =
-            UniqueSequences(src, need_num_repeats ? &num_repeats : nullptr);
+            UniqueSequences(src, need_num_repeats ? &num_repeats : nullptr,
+                            need_new2old_indexes ? &new2old_indexes : nullptr);
 
         torch::optional<Ragged<int32_t>> num_repeats_tensor;
         if (need_num_repeats) num_repeats_tensor = num_repeats;
-        return std::make_pair(ans, num_repeats_tensor);
+
+        torch::optional<torch::Tensor> new2old_indexes_tensor;
+        if (need_new2old_indexes)
+          new2old_indexes_tensor = ToTensor(new2old_indexes);
+
+        return std::make_tuple(ans, num_repeats_tensor, new2old_indexes_tensor);
       },
-      py::arg("src"), py::arg("need_num_repeats"));
+      py::arg("src"), py::arg("need_num_repeats") = true,
+      py::arg("need_new2old_indexes") = false);
 }
 
 static void PybindIndex(py::module &m) {

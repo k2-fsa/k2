@@ -2219,12 +2219,13 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
 }
 
 Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src,
-                                Ragged<int32_t> *num_repeats /*=nullptr*/) {
+                                Ragged<int32_t> *num_repeats /*=nullptr*/,
+                                Array1<int32_t> *new2old_indexes /*=nullptr*/) {
   ContextPtr &c = src.Context();
   if (src.NumAxes() == 2) {
     // Put 'fake' layer at front, process, then remove.
     Ragged<int32_t> temp = Unsqueeze(src, 0);
-    return UniqueSequences(temp, num_repeats).RemoveAxis(0);
+    return UniqueSequences(temp, num_repeats, new2old_indexes).RemoveAxis(0);
   }
   Array1<int64_t> hashes = ComputeHash<int64_t>(src);
   int32_t hashes_dim = hashes.Dim();
@@ -2271,6 +2272,9 @@ Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src,
         });
     *num_repeats = Ragged<int32_t>(GetLayer(ans.shape, ans.NumAxes() - 3),
                                    num_repeats_array);
+  }
+  if (new2old_indexes != nullptr) {
+    *new2old_indexes = std::move(new2unsorted);
   }
   return ans;
 }

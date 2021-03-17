@@ -1346,6 +1346,9 @@ Array1<T> ComputeHash(Ragged<int32_t> &src);
                        repeats (i.e., multiplicity) of each output sequence.
                        The caller does not need to pre-allocate it. It is
                        allocated inside the function.
+     @param [out] new2old_indexes
+                       If not NULL, on return new2old_indexes[i] contains
+                       the original input sublist for the i-th output sublist.
 
      @return   Returns a tensor with the same number of axes as `src` and
             possibly fewer elements due to removing repeated sequences on the
@@ -1358,7 +1361,8 @@ Array1<T> ComputeHash(Ragged<int32_t> &src);
   if the actual content in the sequence is different.
  */
 Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src,
-                                Ragged<int32_t> *num_repeats = nullptr);
+                                Ragged<int32_t> *num_repeats = nullptr,
+                                Array1<int32_t> *new2old_indexes = nullptr);
 
 /* Compute exclusive sum per sub-list.
  *
