@@ -1351,6 +1351,9 @@ Array1<T> ComputeHash(Ragged<int32_t> &src);
                        the original input sublist for the i-th output sublist.
                        If `src` has 2 axes, this array contains `src_idx0`;
                        if `src` has 3 axes, this array contains `src_idx01`.
+                       CAUTION: For repeated sublists, only one of them is kept.
+                       The choice of which one to keep is **deterministic** and
+                       is an implementation detail.
 
      @return   Returns a tensor with the same number of axes as `src` and
             possibly fewer elements due to removing repeated sequences on the
@@ -1361,6 +1364,10 @@ Array1<T> ComputeHash(Ragged<int32_t> &src);
   be present in the output, as it relies on a hash and ignores collisions.
   If several sequences have the same hash, only one of them is kept, even
   if the actual content in the sequence is different.
+
+  CAUTION: Even if there are no repeated sequences, the output may be different
+  from `src`. That is, `new2old_indexes` may NOT be an identity map even if
+  nothing was removed.
  */
 Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src,
                                 Ragged<int32_t> *num_repeats = nullptr,

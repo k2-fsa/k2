@@ -205,6 +205,11 @@ def unique_sequences(src: _k2.RaggedInt,
       If several sequences have the same hash, only one of them is kept, even
       if the actual content in the sequence is different.
 
+    Caution:
+      Even if there are no repeated sequences, the output may be different
+      from `src`. That is, `new2old_indexes` may NOT be an identity map even if
+      nothing was removed.
+
     Args:
       src:
         The input ragged tensor. Must have `src.num_axes() == 2`
@@ -213,6 +218,14 @@ def unique_sequences(src: _k2.RaggedInt,
         If True, it also returns the number of repeats of each sequence.
       need_new2old_indexes:
         If true, it returns an extra 1-D tensor `new2old_indexes`.
+        If `src` has 2 axes, this tensor contains `src_idx0`;
+        if `src` has 3 axes, this tensor contains `src_idx01`.
+
+        Caution:
+          For repeated sublists, only one of them is kept.
+          The choice of which one to keep is **deterministic** and
+          is an implementation detail.
+
 
     Returns:
      Returns a tuple containing:
