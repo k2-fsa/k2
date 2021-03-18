@@ -11,7 +11,6 @@
 import unittest
 
 import torch
-import _k2
 import k2
 
 
@@ -49,7 +48,77 @@ class TestCompose(unittest.TestCase):
         scores.backward()
         assert torch.allclose(a_fsa.grad, torch.tensor([0., 1., 0., 1.]))
         assert torch.allclose(b_fsa.grad, torch.tensor([0., 1., 0., 1.]))
-        print(ans)
+
+    def test_compose_inner_labels(self):
+        s1 = '''
+            0 1 1 2 0.1
+            0 2 0 2 0.2
+            1 3 3 5 0.3
+            2 3 5 4 0.4
+            3 4 3 3 0.5
+            3 5 2 2 0.6
+            4 6 -1 -1 0.7
+            5 6 -1 -1 0.8
+            6
+        '''
+
+        s2 = '''
+            0 0 2 1 1
+            0 1 4 3 2
+            0 1 6 2 2
+            0 2 -1 -1 0
+            1 1 2 5 3
+            1 2 -1 -1 4
+            2
+        '''
+
+        # https://git.io/JqN2j
+        fsa1 = k2.Fsa.from_str(s1)
+
+        # https://git.io/JqNaJ
+        fsa2 = k2.Fsa.from_str(s2)
+
+        # https://git.io/JqNaT
+        ans = k2.connect(k2.compose(fsa1, fsa2, inner_labels='phones'))
+
+        assert torch.all(torch.eq(ans.labels, torch.tensor([0, 5, 2, -1])))
+        assert torch.all(torch.eq(ans.phones, torch.tensor([2, 4, 2, -1])))
+        assert torch.all(torch.eq(ans.aux_labels, torch.tensor([1, 3, 5, -1])))
+
+    def test_ragged_aux_labels(self):
+        s1 = '''
+            0 1 1 0.1
+            0 2 5 0.6
+            1 2 3 0.3
+            2 3 3 0.5
+            2 4 2 0.6
+            3 5 -1 0.7
+            4 5 -1 0.8
+            5
+        '''
+
+        s2 = '''
+            0 0 2 1 1
+            0 1 4 3 2
+            0 1 6 2 2
+            0 2 -1 -1 0
+            1 1 2 5 3
+            1 2 -1 -1 4
+            2
+        '''
+        # https://git.io/JqNok
+        fsa1 = k2.Fsa.from_str(s1)
+        fsa1.aux_labels = k2.RaggedInt('[[2] [2 4] [5] [3] [2] [-1] [-1]]')
+
+        # https://git.io/JqNaJ
+        fsa2 = k2.Fsa.from_str(s2)
+
+        # https://git.io/JqNon
+        ans = k2.connect(k2.compose(fsa1, fsa2, inner_labels='phones'))
+
+        assert torch.all(torch.eq(ans.labels, torch.tensor([5, 0, 2, -1])))
+        assert torch.all(torch.eq(ans.phones, torch.tensor([2, 4, 2, -1])))
+        assert str(ans.aux_labels) == str(k2.RaggedInt('[[1] [3] [5] [-1]]'))
 
 
 if __name__ == '__main__':

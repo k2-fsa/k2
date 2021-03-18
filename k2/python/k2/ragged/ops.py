@@ -188,7 +188,9 @@ def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
     return _k2.get_layer(src, layer)
 
 
-def unique_sequences(src: _k2.RaggedInt, need_num_repeats: bool = True
+def unique_sequences(src: _k2.RaggedInt,
+                     need_num_repeats: bool = True,
+                     need_new2old_indexes: bool = False
                     ) -> Tuple[_k2.RaggedInt, Optional[_k2.RaggedInt]]:  # noqa
     '''Remove repeated sequences.
 
@@ -203,12 +205,27 @@ def unique_sequences(src: _k2.RaggedInt, need_num_repeats: bool = True
       If several sequences have the same hash, only one of them is kept, even
       if the actual content in the sequence is different.
 
+    Caution:
+      Even if there are no repeated sequences, the output may be different
+      from `src`. That is, `new2old_indexes` may NOT be an identity map even if
+      nothing was removed.
+
     Args:
       src:
         The input ragged tensor. Must have `src.num_axes() == 2`
         or `src_num_axes() == 3`
       need_num_repeats:
         If True, it also returns the number of repeats of each sequence.
+      need_new2old_indexes:
+        If true, it returns an extra 1-D tensor `new2old_indexes`.
+        If `src` has 2 axes, this tensor contains `src_idx0`;
+        if `src` has 3 axes, this tensor contains `src_idx01`.
+
+        Caution:
+          For repeated sublists, only one of them is kept.
+          The choice of which one to keep is **deterministic** and
+          is an implementation detail.
+
 
     Returns:
      Returns a tuple containing:
@@ -223,8 +240,13 @@ def unique_sequences(src: _k2.RaggedInt, need_num_repeats: bool = True
          num_repeats.num_elements() == ans.dim0().
          If ans.num_axes() is 3, then num_repeats.dim0() == ans.dim0() and
          num_repeats.num_elements() == ans.tot_size(1).
+
+       - new2old_indexes: A 1-D tensor whose i-th element specifies the
+         input sublist that the i-th output sublist corresponds to.
     '''
-    return _k2.unique_sequences(src, need_num_repeats=need_num_repeats)
+    return _k2.unique_sequences(src,
+                                need_num_repeats=need_num_repeats,
+                                need_new2old_indexes=need_new2old_indexes)
 
 
 def regular_ragged_shape(dim0: int, dim1: int) -> _k2.RaggedShape:
@@ -245,3 +267,21 @@ def regular_ragged_shape(dim0: int, dim1: int) -> _k2.RaggedShape:
       Return a ragged shape with 2 axes.
     '''
     return _k2.regular_ragged_shape(dim0, dim1)
+
+
+def argmax_per_sublist(src: _k2.RaggedFloat,
+                       initial_value: float = torch.finfo(torch.float32).min
+                      ) -> torch.Tensor:  # noqa
+    '''Compute the argmax per sublist for a ragged tensor.
+
+    The argmax is computed on the last axis.
+
+    Args:
+      src:
+        The input ragged tensor.
+      initial_value:
+        The initial value used to compute the argmax.
+    Returns:
+      Return a 1-D tensor with dtype torch.int32.
+    '''
+    return _k2.argmax_per_sublist(src, initial_value)

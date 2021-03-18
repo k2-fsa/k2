@@ -19,6 +19,12 @@ import torch
 
 class TestRaggedOps(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            cls.devices.append(torch.device('cuda', 0))
+
     def test_remove_axis_ragged_array(self):
         s = '''
             [ [ [ 1 2 ] [ 0 ] ] [ [3 0 ] [ 2 ] ] ]
@@ -195,12 +201,7 @@ class TestRaggedOps(unittest.TestCase):
         self.assertAlmostEqual(fsa.scores[5].exp().sum().item(), 1.0, places=6)
 
     def test_normalize_scores(self):
-
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             s = '''
                 [ [1 3 5] [2 -1] [] [3] [5 2] ]
             '''
@@ -284,15 +285,11 @@ class TestRaggedOps(unittest.TestCase):
         self.assertEqual(str(ragged), str(expected))
 
     def test_unique_sequences_two_axes(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             ragged = k2.RaggedInt(
                 '[[1 3] [1 2] [1 2] [1 4] [1 3] [1 2] [1]]').to(device)
-            unique, num_repeats = k2.ragged.unique_sequences(
-                ragged, need_num_repeats=True)
+            unique, num_repeats, new2old = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True, need_new2old_indexes=True)
             # [1, 3] has a larger hash value than [1, 2]; after sorting,
             # [1, 3] is placed after [1, 2]
             expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
@@ -300,31 +297,59 @@ class TestRaggedOps(unittest.TestCase):
 
             expected_num_repeats = k2.RaggedInt('[[1 3 2 1]]')
             self.assertEqual(str(num_repeats), str(expected_num_repeats))
+            expected_new2old = torch.tensor([6, 1, 0, 3]).to(device)
+            assert torch.all(torch.eq(new2old, expected_new2old))
+
+        for device in self.devices:
+            ragged = k2.RaggedInt('[ [1 3] [1 2] [1] [1 4]]').to(device)
+            unique, num_repeats, new2old = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True, need_new2old_indexes=True)
+
+            expected = k2.RaggedInt('[[1] [1 2] [1 3] [1 4]]')
+            self.assertEqual(str(unique), str(expected))
+
+            expected_num_repeats = k2.RaggedInt('[[1 1 1 1]]')
+            self.assertEqual(str(num_repeats), str(expected_num_repeats))
+
+            # CAUTION: The output sublists are ordered by their hash value!
+            expected_new2old = torch.tensor([2, 1, 0, 3]).to(device)
+            assert torch.all(torch.eq(new2old, expected_new2old))
 
     def test_unique_sequences_three_axes(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             ragged = k2.RaggedInt(
                 '[ [[1] [1 2] [1 3] [1] [1 3]] [[1 4] [1 2] [1 3] [1 3] [1 2] [1]] ]'  # noqa
             ).to(device)
-            unique, num_repeats = k2.ragged.unique_sequences(
-                ragged, need_num_repeats=True)
+            unique, num_repeats, new2old = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True, need_new2old_indexes=True)
             expected = k2.RaggedInt(
                 '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4]] ]')
             self.assertEqual(str(unique), str(expected))
 
             expected_num_repeats = k2.RaggedInt('[ [2 1 2] [1 2 2 1] ]')
             self.assertEqual(str(num_repeats), str(expected_num_repeats))
+            expected_new2old = torch.tensor([0, 1, 2, 10, 6, 7, 5]).to(device)
+            assert torch.all(torch.eq(new2old, expected_new2old))
+
+        for device in self.devices:
+            ragged = k2.RaggedInt(
+                '[ [[1 3] [1] [1 2]] [[1 2] [1 3] [1 4 5] [1]] ]').to(device)
+            unique, num_repeats, new2old = k2.ragged.unique_sequences(
+                ragged, need_num_repeats=True, need_new2old_indexes=True)
+
+            expected = k2.RaggedInt(
+                '[ [[1] [1 2] [1 3]] [[1] [1 2] [1 3] [1 4 5]] ]')
+            self.assertEqual(str(unique), str(expected))
+
+            expected_num_repeats = k2.RaggedInt('[[1 1 1 ] [1 1 1 1]]')
+            self.assertEqual(str(num_repeats), str(expected_num_repeats))
+
+            # CAUTION: The output sublists are ordered by their hash value!
+            expected_new2old = torch.tensor([1, 2, 0, 6, 3, 4, 5]).to(device)
+            assert torch.all(torch.eq(new2old, expected_new2old))
 
     def test_index_ragged_shape_two_axes(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             shape = k2.RaggedShape('[ [x x] [] [x x x] ]').to(device)
             indexes = torch.tensor([-1, 0, -1, 0, 1, 2, 0, 2, 1, -1],
                                    dtype=torch.int32,
@@ -356,11 +381,7 @@ class TestRaggedOps(unittest.TestCase):
             assert torch.all(torch.eq(indexes, value_indexes))
 
     def test_index_ragged_shape_three_axes(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             shape = k2.RaggedShape('[ [[x x x] [x x] []] [[x] [x x x]] ]').to(
                 device)
             indexes = torch.tensor([-1, 0, 1, 1, -1, 0],
@@ -425,6 +446,25 @@ class TestRaggedOps(unittest.TestCase):
             device = torch.device('cuda', 0)
             shape = shape.to(device)
             assert shape.row_splits(1).is_cuda
+
+    def test_argmax_per_sublist_two_axes(self):
+        for device in self.devices:
+            src = k2.RaggedFloat(
+                '[[1 3 -1 -2] [1 0 -1] [3 2 1] [] [1] [2 3]]').to(device)
+            indexes = k2.ragged.argmax_per_sublist(src)
+
+            # -1 for an empty sublist
+            expected = torch.tensor([1, 4, 7, -1, 10, 12], device=device)
+            assert torch.all(torch.eq(indexes, expected))
+
+    def test_argmax_per_sublist_three_axes(self):
+        for device in self.devices:
+            src = k2.RaggedFloat(
+                '[ [[3 2 1] [0 -1] []] [[2 5 3] [1 10 9 8]] ]').to(device)
+            indexes = k2.ragged.argmax_per_sublist(src)
+            # -1 for an empty sublist
+            expected = torch.tensor([0, 3, -1, 6, 9], device=device)
+            assert torch.all(torch.eq(indexes, expected))
 
 
 if __name__ == '__main__':

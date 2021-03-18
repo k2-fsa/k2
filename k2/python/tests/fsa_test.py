@@ -24,6 +24,12 @@ def _remove_leading_spaces(s: str) -> str:
 
 class TestFsa(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            cls.devices.append(torch.device('cuda', 0))
+
     def test_acceptor_from_tensor(self):
         fsa_tensor = torch.tensor([[0, 1, 2, _k2.float_as_int(-1.2)],
                                    [0, 2, 10, _k2.float_as_int(-2.2)],
@@ -174,11 +180,7 @@ class TestFsa(unittest.TestCase):
                 dtype=torch.float32))
 
     def test_transducer_from_tensor(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             fsa_tensor = torch.tensor(
                 [[0, 1, 2, _k2.float_as_int(-1.2)],
                  [0, 2, 10, _k2.float_as_int(-2.2)],
@@ -641,11 +643,7 @@ class TestFsa(unittest.TestCase):
                          '[ [ 1 0 2 ] [ 3 5 ] [ 5 8 9 ] ]')
 
     def test_index_fsa(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             s1 = '''
                 0 1 1 0.1
                 1 2 -1 0.2
@@ -699,6 +697,69 @@ class TestFsa(unittest.TestCase):
                 ],
                                  axis=0))  # noqa
             assert multiples.device == device
+
+    def test_clone(self):
+        for device in self.devices:
+            s = '''
+                0 1 1 0.1
+                1 2 2 0.2
+                2 3 -1 0.3
+                3
+            '''
+            fsa = k2.Fsa.from_str(s).to(device)
+            fsa.non_tensor_attr1 = [10]
+            fsa.tensor_attr1 = torch.tensor([10, 20, 30]).to(device)
+            fsa.ragged_attr1 = k2.RaggedInt('[[100] [] [-1]]').to(device)
+
+            fsa._cache['abc'] = [100]
+
+            cloned = fsa.clone()
+
+            fsa.non_tensor_attr1[0] = 0
+            fsa.tensor_attr1[0] = 0
+            fsa.ragged_attr1 = k2.RaggedInt('[[] [] [-1]]')
+            fsa._cache['abc'][0] = 1
+
+            # we assume that non-tensor attributes are readonly
+            # and are shared
+            self.assertEqual(cloned.non_tensor_attr1, [0])
+            self.assertEqual(cloned._cache['abc'], [1])
+
+            assert torch.all(
+                torch.eq(cloned.tensor_attr1,
+                         torch.tensor([10, 20, 30]).to(device)))
+
+            assert str(cloned.ragged_attr1) == str(
+                k2.RaggedInt('[[100] [] [-1]]'))
+
+    def test_detach_more_attributes(self):
+        for device in self.devices:
+            s = '''
+                0 1 1 0.1
+                1 2 2 0.2
+                2 3 -1 0.3
+                3
+            '''
+
+            fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
+            fsa.non_tensor_attr1 = [10]
+            fsa.tensor_attr1 = torch.tensor([10., 20, 30],
+                                            device=device,
+                                            requires_grad=True)
+            fsa.ragged_attr1 = k2.RaggedInt('[[100] [] [-1]]').to(device)
+            fsa._cache['abc'] = [100]
+
+            detached = fsa.detach()
+            fsa._cache['abc'][0] = 1
+            fsa.non_tensor_attr1[0] = 0
+
+            assert id(detached.non_tensor_attr1) == id(fsa.non_tensor_attr1)
+            assert detached.tensor_attr1.requires_grad is False
+            assert torch.all(torch.eq(fsa.tensor_attr1, detached.tensor_attr1))
+            assert str(fsa.ragged_attr1) == str(detached.ragged_attr1)
+
+            self.assertEqual(detached.non_tensor_attr1, [0])
+            self.assertEqual(detached._cache['abc'], [1])
 
 
 if __name__ == '__main__':

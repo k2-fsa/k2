@@ -973,6 +973,7 @@ class Fsa(object):
             setattr(ans, name, value.clone())
 
         for name, value in self.named_non_tensor_attr():
+            # Caution: We are not using `deepcopy` for `value`!
             setattr(ans, name, value)
 
         # Just copy elements of the _cache that we might already have..
@@ -998,9 +999,16 @@ class Fsa(object):
         ans = Fsa(self.arcs, properties=self.properties)
 
         for name, value in self.named_tensor_attr(include_scores=False):
-            setattr(ans, name, value.detach())
+            if isinstance(value, torch.Tensor):
+                setattr(ans, name, value.detach())
+            else:
+                assert isinstance(value, k2.RaggedInt)
+                # For ragged tensors, they are copied over.
+                # Caution: Deep copy is not used!
+                setattr(ans, name, value)
 
         for name, value in self.named_non_tensor_attr():
+            # Caution: We are not using `deepcopy` for `value`!
             setattr(ans, name, value)
 
         # Just copy elements of the _cache that we might already have..
@@ -1008,7 +1016,7 @@ class Fsa(object):
         # be modified by the user, so this should be safe (i.e. it should
         # be safe to do this without clone(); these are mostly not tensors
         # anyway.
-        for name, value in self._cache:
+        for name, value in self._cache.items():
             ans._cache[name] = value
         return ans
 

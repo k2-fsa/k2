@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <mutex>  // NOLINT
 #include <sstream>
+#include <stdexcept>
 #include <string>
 
 #include "k2/csrc/macros.h"
@@ -128,7 +129,7 @@ class Logger {
     }
   }
 
-  K2_CUDA_HOSTDEV ~Logger() {
+  K2_CUDA_HOSTDEV ~Logger() noexcept(false) {
     printf("\n");
     if (level_ == FATAL) {
 #if defined(__CUDA_ARCH__)
@@ -143,7 +144,11 @@ class Logger {
         printf("\n\n%s\n", stack_trace.c_str());
       }
       fflush(nullptr);
-      abort();
+      // abort();
+      //
+      // NOTE: abort() will terminate the program immediately without
+      // printing the Python stack backtrace.
+      throw std::runtime_error("Some bad things happed.");
 #endif
     }
   }
