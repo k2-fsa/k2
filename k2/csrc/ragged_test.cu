@@ -75,12 +75,12 @@ TEST(RaggedShapeTest, TestConstructFromString) {
 
   K2_CHECK_EQ(RaggedShape("[ ]").Dim0(), 0);
 
-  ASSERT_DEATH(RaggedShape(" [ [ x x ] [x] "), "");
-  ASSERT_DEATH(RaggedShape(" [ [ x x ] [[x]]] "), "");
-  ASSERT_DEATH(RaggedShape(" [ [ x [] x ] "), "");
-  ASSERT_DEATH(RaggedShape(" [ x ] "), "");
-  ASSERT_DEATH(RaggedShape(" [ x ] [ x ] "), "");
-  ASSERT_DEATH(RaggedShape(" [ x | x ] "), "");
+  ASSERT_THROW(RaggedShape(" [ [ x x ] [x] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ [ x x ] [[x]]] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ [ x [] x ] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ x ] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ x ] [ x ] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ x | x ] "), std::runtime_error);
 
   for (int i = 0; i < 5; i++) {
     RaggedShape rs = RandomRaggedShape(true,
@@ -112,12 +112,12 @@ TEST(RaggedTest, TestRaggedFromString) {
   Ragged<int32_t> rs2(" [ [ [ 0 5 ] ] [[10]] ]");
   K2_LOG(INFO) << "rs2 = " << rs2;
 
-  ASSERT_DEATH(RaggedShape(" [ [ 0 0 ] [0] "), "");
-  ASSERT_DEATH(RaggedShape(" [ [ 0 0 ] [[0]]] "), "");
-  ASSERT_DEATH(RaggedShape(" [ [ 0 [] 0 ] "), "");
-  ASSERT_DEATH(RaggedShape(" [ 0 ] "), "");
-  ASSERT_DEATH(RaggedShape(" [ 0 ] [ 0 ] "), "");
-  ASSERT_DEATH(RaggedShape(" [ 0 | 0 ] "), "");
+  ASSERT_THROW(RaggedShape(" [ [ 0 0 ] [0] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ [ 0 0 ] [[0]]] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ [ 0 [] 0 ] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ 0 ] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ 0 ] [ 0 ] "), std::runtime_error);
+  ASSERT_THROW(RaggedShape(" [ 0 | 0 ] "), std::runtime_error);
 
   for (int32_t i = 0; i < 5; i++) {
     Ragged<int32_t> r = RandomRagged<int32_t>();

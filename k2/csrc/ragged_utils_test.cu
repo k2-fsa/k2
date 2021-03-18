@@ -35,7 +35,7 @@ TEST(RaggedUtilsTest, CheckLayerEqual) {
   CheckLayerEqual(layer, 3, array);
 #ifndef NDEBUG
   // this won't actualy die if we compiled with NDEBUG.
-  ASSERT_DEATH(CheckLayerEqual(layer, 4, array), "");
+  ASSERT_THROW(CheckLayerEqual(layer, 4, array), std::runtime_error);
 #endif
   CheckLayerEqual(layer, 2, array + 3);
 }
