@@ -327,7 +327,7 @@ TEST(RaggedShapeTest, RemoveEmptyListsAxis0) {
       Renumbering r(c, 4);
       Assign(keep, &r.Keep());
 #ifndef NDEBUG
-      ASSERT_DEATH(RenumberAxis0Simple(s, r), "");
+      ASSERT_THROW(RenumberAxis0Simple(s, r), std::runtime_error);
 #endif
     }
   }
