@@ -1349,6 +1349,8 @@ Array1<T> ComputeHash(Ragged<int32_t> &src);
      @param [out] new2old_indexes
                        If not NULL, on return new2old_indexes[i] contains
                        the original input sublist for the i-th output sublist.
+                       If `src` has 2 axes, this array contains `src_idx0`;
+                       if `src` has 3 axes, this array contains `src_idx01`.
 
      @return   Returns a tensor with the same number of axes as `src` and
             possibly fewer elements due to removing repeated sequences on the
