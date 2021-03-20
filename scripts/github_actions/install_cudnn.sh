@@ -19,6 +19,10 @@ case $cuda in
     filename=cudnn-11.0-linux-x64-v8.0.5.39.tgz
     url=https://www.mediafire.com/file/abyhnls106ko9kp/cudnn-11.0-linux-x64-v8.0.5.39.tgz/file
     ;;
+  11.1)
+    filename=cudnn-11.1-linux-x64-v8.0.5.39.tgz
+    url=https://www.mediafire.com/file/qx55zd65773xonv/cudnn-11.1-linux-x64-v8.0.5.39.tgz/file
+    ;;
   *)
     echo "Unsupported cuda version: $cuda"
     exit 1
