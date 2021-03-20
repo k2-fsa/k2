@@ -7,6 +7,11 @@ import os
 import torch  # noqa
 import _k2
 
+__build_type__ = _k2.version.build_type
+__git_date__ = _k2.version.git_date
+__git_sha1__ = _k2.version.git_sha1
+__version__ = _k2.version.__version__
+
 
 def main():
     '''Collect the information about the environment in which k2 was built.

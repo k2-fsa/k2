@@ -319,7 +319,8 @@ class Fsa(object):
                 # to integer patterns here.
                 self.arcs.values()[:, -1] = _k2.as_int(value.detach())
         elif isinstance(value, _k2.RaggedInt):
-            assert value.dim0() == self.arcs.values().shape[0]
+            assert value.dim0() == self.arcs.values().shape[0], \
+                    f'value.dim0(): {value.dim0()}, shape[0]: {self.arcs.values().shape[0]}'
             self._tensor_attr[name] = value
         else:
             self._non_tensor_attr[name] = value
