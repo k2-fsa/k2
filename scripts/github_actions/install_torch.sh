@@ -44,7 +44,25 @@ case ${torch} in
         url=
         ;;
       11.0)
-        package="torch==1.7.0+cu110"
+        package="torch==${torch}+cu110"
+        url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
+    esac
+    ;;
+  1.8.0)
+    case ${cuda} in
+      10.1)
+        package="torch==${torch}+cu101"
+        url=https://download.pytorch.org/whl/torch_stable.html
+        ;;
+      10.2)
+        package="torch==${torch}"
+        # Leave it empty to use PyPI.
+        # torch_stable provides cu92 but we want cu102
+        url=
+        ;;
+      11.1)
+        package="torch==1.8.0+cu111"
         url=https://download.pytorch.org/whl/torch_stable.html
         ;;
     esac

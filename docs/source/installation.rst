@@ -12,22 +12,22 @@ Dependencies installation
 k2 supports CUDA as well as CPU. To get the full benefit from k2,
 we recommend that you have installed CUDA on your system before
 installing k2. CUDA 10.1 and 10.2 are known to work. PyTorch
-is also needed. `torch 1.5.x`, `torch 1.6.0`, and `torch 1.7.x`
-are known to work.
+is also needed. `torch 1.5.x`, `torch 1.6.0`, `torch 1.7.x`, and
+`torch 1.8.0` are known to work.
 
 If you use pip to install torch, make sure the torch version
 you install is compatible with the CUDA toolkit you are using.
 For example, if your local CUDA toolkit version is 10.1, and
-you want to install `torch 1.6.0`, you should install it with::
+you want to install `torch 1.7.1`, you should install it with::
 
-  pip install torch==1.6.0+cu101 -f https://download.pytorch.org/whl/torch_stable.html
+  pip install torch==1.7.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
 
 If you use conda to manage packages, you can install those
 dependencies with::
 
   conda create -n k2 python=3.7
   conda activate k2
-  conda install pytorch==1.6.0 cudatoolkit=10.1 -c pytorch
+  conda install pytorch==1.7.1 cudatoolkit=10.1 -c pytorch
 
 To install other versions of torch, please check the following URLs:
 
@@ -52,7 +52,7 @@ From `<https://k2-fsa.org/nightly>`_
 
 You can find a list of nightly built wheels at `<https://k2-fsa.org/nightly/>`_.
 They are built using PyTorch 1.7.1 and support a combination of Python 3.6,
-3.7, and 3.8 with CUDA 10.1, 10.2, and 11.0.
+3.7, 3.8, and 3.9 with CUDA 10.1, 10.2, 11.0, and 11.1.
 
 The following commands install k2 with different CUDA versions:
 
@@ -143,9 +143,9 @@ Before compiling k2, some preparation work has to be done:
 
 - Have a compiler supporting at least C++14, e.g., GCC >= 5.0, Clang >= 3.4.
 - Install CMake. CMake 3.11.0 and 3.18.0 are known to work.
-- Install Python3. Python 3.6, 3.7 and 3.8 are known to work.
-- Install PyTorch. Pytorch 1.5.x, 1.6.0, and 1.7.x are known to work.
-- Install CUDA toolkit. CUDA 10.1, 10.2, and 11.0 are known to work.
+- Install Python3. Python 3.6, 3.7, 3.8, and 3.9 are known to work.
+- Install PyTorch. Pytorch 1.5.x, 1.6.0, 1.7.x, and 1.8.0 are known to work.
+- Install CUDA toolkit. CUDA 10.1, 10.2, 11.0, and 11.1 are known to work.
 - Install cuDNN. Please install a version that is compatible with the
   CUDA toolkit you are using.
 
