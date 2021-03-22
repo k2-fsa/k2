@@ -1100,12 +1100,11 @@ class Fsa(object):
         acceptor = True
         line = s.strip().split('\n', 1)[0]
         fields = line.strip().split()
-        assert len(fields) == 4 or len(fields) == 5
+        assert len(fields) != 0
         if len(fields) == 5:
             acceptor = False
         arcs, aux_labels = _k2.fsa_from_str(s, acceptor, False)
-        ans = Fsa(arcs, aux_labels=aux_labels)
-        return ans
+        return Fsa(arcs, aux_labels=aux_labels)
 
     @classmethod
     def from_openfst(cls, s: str, acceptor: bool = True) -> 'Fsa':
@@ -1139,6 +1138,11 @@ class Fsa(object):
             Optional. If true, interpret the input string as an acceptor;
             otherwise, interpret it as a transducer.
         '''
+        line = s.strip().split('\n', 1)[0]
+        fields = line.strip().split()
+        assert len(fields) != 0
+        if len(fields) == 5:
+            acceptor = False
         arcs, aux_labels = _k2.fsa_from_str(s, acceptor, True)
         return Fsa(arcs, aux_labels=aux_labels)
 

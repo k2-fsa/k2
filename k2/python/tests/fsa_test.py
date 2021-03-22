@@ -23,6 +23,11 @@ def _remove_leading_spaces(s: str) -> str:
 
 
 class TestFsa(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device("cpu")]
+        if torch.cuda.is_available():
+            cls.devices.append(torch.device('cuda', 0))
 
     @classmethod
     def setUpClass(cls):
@@ -126,6 +131,30 @@ class TestFsa(unittest.TestCase):
             torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
                          dtype=torch.float32))
 
+    def test_acceptor_wo_arcs_from_str(self):
+        s1 = '''
+        '''
+
+        s2 = '''
+            0
+            1
+        '''
+
+        s3 = '''
+            1
+        '''
+
+        for device in self.devices:
+            with self.assertRaises(AssertionError):
+                fsa1 = k2.Fsa.from_str(_remove_leading_spaces(s1))
+
+            fsa2 = k2.Fsa.from_str(_remove_leading_spaces(s2))
+            self.assertEqual(_remove_leading_spaces(k2.to_str(fsa2)), "1")
+            self.assertEqual(fsa2.arcs.dim0(), 0)
+
+            fsa3 = k2.Fsa.from_str(_remove_leading_spaces(s3))
+            self.assertEqual(fsa3.arcs.dim0(), 0)
+
     def test_acceptor_from_openfst(self):
         s = '''
             0 1 2 -1.2
@@ -178,6 +207,34 @@ class TestFsa(unittest.TestCase):
             torch.tensor(
                 [-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2, -9.2, 0],
                 dtype=torch.float32))
+
+    def test_acceptor_wo_arcs_from_openfst(self):
+        s1 = '''
+        '''
+
+        s2 = '''
+            1 0.1
+        '''
+
+        s3 = '''
+            1 0.1
+            2 0.2
+        '''
+
+        for device in self.devices:
+            with self.assertRaises(AssertionError):
+                fsa1 = k2.Fsa.from_openfst(_remove_leading_spaces(s1))
+
+            fsa2 = k2.Fsa.from_openfst(_remove_leading_spaces(s2))
+            self.assertEqual(_remove_leading_spaces(
+                k2.to_str(fsa2)),
+                "1 2 -1 -0.1\n2")
+            arcs2 = fsa2.arcs.values()[:, :-1]
+            self.assertTrue(torch.allclose(arcs2,
+                torch.tensor([[1,2,-1]], dtype=torch.int32)))
+
+            fsa3 = k2.Fsa.from_openfst(_remove_leading_spaces(s3))
+            self.assertEqual(fsa3.arcs.dim0(), 4)
 
     def test_transducer_from_tensor(self):
         for device in self.devices:
@@ -441,7 +498,7 @@ class TestFsa(unittest.TestCase):
             0 1 4 1 0.1
             1 2 5 2 0.2
             2 3 -1 -1 0.3
-            1
+            3
         '''
         fsa0 = k2.Fsa.from_str(s0).requires_grad_(True)
         fsa1 = k2.Fsa.from_str(s1).requires_grad_(True)

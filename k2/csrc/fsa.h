@@ -205,8 +205,41 @@ std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec);
 */
 Fsa FsaFromTensor(Tensor &t, bool *error);
 
+/*
+  Create an FSA from a Array1. The Array1 is expected to has N arcs (the format
+  is src_state, dest_state, symbol, cost). The cost is not really an int32_t, it
+  is a float. This code will print an error message and output 'true' to
+  'error', and return an empty FSA (with no states or arcs) if 't' was not
+  interpretable as a valid FSA. These requirements for a valid FSA are:
+    - src_state values on the arcs must be non-decreasing
+    - all arcs with -1 as the label must be to a single state (call this
+      final_state) which has no arcs leaving it
+    - final_state, if not given, it need be calculated in this func. And it
+      must be numerically greater than any state which has arcs leaving it, and
+      >= any state that has arcs entering it.
+  If there are no arcs with -1 on the label, here is how we determine the final
+  state:
+     - If there were no states at all in the FSA we'll return the empty FSA
+       (with no arcs), and set error = true. (As the k2-fsa definition is there
+       at least must be a super final state.)
+     - Else if there were some states but no arcs, we'll return the FSA (with
+       just one implicit super final state (set id = 1) and no arcs), and set
+       error = false.
+     - Otherwise, we'll let `final_state` be the highest-numbered state
+       that has any arcs leaving or entering it, plus one.  (This FSA
+       has no successful paths but still has states.)
 
-Fsa FsaFromArray1(Array1<Arc> &arc, bool *error);
+    @param [in] arcs       Source arcs. Caution: the returned FSA will share
+                            memory with this tensor, so don't modify it
+                            afterward!
+    @param [out] error      Error flag.  On success this function will write
+                            'false' here; on error, it will print an error
+                            message to the standard error and write 'true' here.
+    @param [in] final_state This indicate the final-state ID (with default: -1,
+                            means find it by `arcs` in this func).
+    @return                 The resulting FSA will be returned.
+*/
+Fsa FsaFromArray1(Array1<Arc> &arcs, bool *error, int32_t final_state = -1);
 
 /*
   Returns a single Tensor that represents the FSA; this is just the vector of
