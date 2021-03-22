@@ -7,6 +7,7 @@
 from typing import Any
 from typing import Dict
 from typing import Iterator
+from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -1061,19 +1062,15 @@ class Fsa(object):
             raise ValueError(f'Unsupported num_axes: {self.arcs.num_axes()}')
 
     @classmethod
-    def from_str(cls, s: str) -> 'Fsa':
+    def from_str(cls, s: str, num_aux_labels: int = 0,
+                 aux_label_names: List[string] = ['aux_labels', 'aux_labels2', 'aux_labels3']) -> 'Fsa':
         '''Create an Fsa from a string in the k2 format.
         (See also from_openfst).
 
         The given string `s` consists of lines with the following format:
 
-        (1) When it represents an acceptor::
 
-                src_state dest_state label score
-
-        (2) When it represents a transducer::
-
-                src_state dest_state label aux_label score
+          src_state dest_state label [aux_label1 aux_label2...] score
 
         The line for the final state consists of only one field::
 
@@ -1096,19 +1093,21 @@ class Fsa(object):
           s:
             The input string. Refer to the above comment for its format.
         '''
-        # Figure out acceptor/transducer for k2 fsa.
-        acceptor = True
-        line = s.strip().split('\n', 1)[0]
-        fields = line.strip().split()
-        assert len(fields) != 0
-        if len(fields) == 5:
-            acceptor = False
-        arcs, aux_labels = _k2.fsa_from_str(s, acceptor, False)
-        return Fsa(arcs, aux_labels=aux_labels)
+        arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, False)
+        ans = Fsa(arcs)
+        if aux_labels != None:
+            for i in range(aux_labels.shape[0]):
+                setattr(ans, aux_label_names[i], aux_labels[i,:])
+
+
+
 
     @classmethod
-    def from_openfst(cls, s: str, acceptor: bool = True) -> 'Fsa':
-        '''Create an Fsa from a string in OpenFST format.
+    def from_openfst(cls, s: str, acceptor: bool = True,
+                     num_aux_labels: int = 0,
+                     aux_label_names: Optional[List[string]] = None)  -> 'Fsa':
+        '''Create an Fsa from a string in OpenFST format (or a slightly
+        more general format, if num_aux_labels > 1).
 
         The given string `s` consists of lines with the following format:
 
@@ -1119,6 +1118,10 @@ class Fsa(object):
         (2) When it represents a transducer::
 
                 src_state dest_state label aux_label score
+
+        (3) When it has additional auxiliary labels (2 aux-labels shown):
+
+                src_state dest_state label aux_label aux_label2 score ..
 
         The line for the final state consists of two fields::
 
@@ -1134,17 +1137,26 @@ class Fsa(object):
         Args:
           s:
             The input string. Refer to the above comment for its format.
-          acceptor:
-            Optional. If true, interpret the input string as an acceptor;
-            otherwise, interpret it as a transducer.
+          acceptor [deprecated, prefer to use num_aux_labels]:
+            Set to false to denote transducer format (i.e. num_aux_labels == 1).
+          num_aux_labels:
+            The number of auxiliary labels to expect on each line (in addition to
+            the 'acceptor' label; is 1 for traditional transducers but can be
+            any nonnegative number.
+          aux_label_names:
+            If provided, must be a list of length >= num_aux_labels.  By default
+            the labels are 'aux_labels', 'aux_labels2', 'aux_labels3' and so on.
         '''
-        line = s.strip().split('\n', 1)[0]
-        fields = line.strip().split()
-        assert len(fields) != 0
-        if len(fields) == 5:
-            acceptor = False
-        arcs, aux_labels = _k2.fsa_from_str(s, acceptor, True)
-        return Fsa(arcs, aux_labels=aux_labels)
+        # user should not provide both 'acceptor' and 'num_aux_labels' args.
+        if num_aux_labels != 0 and not acceptor:
+            raise ValueError("Both acceptor and num_aux_labels args should not be provided.")
+        if num_aux_labels == 0 and not acceptor:
+            num_aux_labels = 1
+        arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, True)
+        ans = Fsa(arcs)
+        if aux_labels != None:
+            for i in range(aux_labels.shape[0]):
+                setattr(ans, aux_label_names[i], aux_labels[i,:])
 
     def set_scores_stochastic_(self, scores) -> None:
         '''Normalize the given `scores` and assign it to `self.scores`.
