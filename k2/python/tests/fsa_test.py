@@ -29,12 +29,6 @@ class TestFsa(unittest.TestCase):
         if torch.cuda.is_available():
             cls.devices.append(torch.device('cuda', 0))
 
-    @classmethod
-    def setUpClass(cls):
-        cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            cls.devices.append(torch.device('cuda', 0))
-
     def test_acceptor_from_tensor(self):
         fsa_tensor = torch.tensor([[0, 1, 2, _k2.float_as_int(-1.2)],
                                    [0, 2, 10, _k2.float_as_int(-2.2)],
@@ -146,7 +140,7 @@ class TestFsa(unittest.TestCase):
 
         for device in self.devices:
             with self.assertRaises(AssertionError):
-                fsa1 = k2.Fsa.from_str(_remove_leading_spaces(s1))
+                k2.Fsa.from_str(_remove_leading_spaces(s1))
 
             fsa2 = k2.Fsa.from_str(_remove_leading_spaces(s2))
             self.assertEqual(_remove_leading_spaces(k2.to_str(fsa2)), "1")
@@ -223,7 +217,7 @@ class TestFsa(unittest.TestCase):
 
         for device in self.devices:
             with self.assertRaises(AssertionError):
-                fsa1 = k2.Fsa.from_openfst(_remove_leading_spaces(s1))
+                k2.Fsa.from_openfst(_remove_leading_spaces(s1))
 
             fsa2 = k2.Fsa.from_openfst(_remove_leading_spaces(s2))
             self.assertEqual(_remove_leading_spaces(
@@ -231,7 +225,7 @@ class TestFsa(unittest.TestCase):
                 "1 2 -1 -0.1\n2")
             arcs2 = fsa2.arcs.values()[:, :-1]
             self.assertTrue(torch.allclose(arcs2,
-                torch.tensor([[1,2,-1]], dtype=torch.int32)))
+                torch.tensor([[1, 2, -1]], dtype=torch.int32)))
 
             fsa3 = k2.Fsa.from_openfst(_remove_leading_spaces(s3))
             self.assertEqual(fsa3.arcs.dim0(), 4)
