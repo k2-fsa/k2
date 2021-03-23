@@ -143,7 +143,7 @@ class TestFsa(unittest.TestCase):
             self.assertEqual(k2.to_str(fsa1), '')
 
             with self.assertRaises(ValueError):
-                fsa2_ = k2.Fsa.from_str(_remove_leading_spaces(s2))
+                _ = k2.Fsa.from_str(_remove_leading_spaces(s2))
 
             fsa3 = k2.Fsa.from_str(_remove_leading_spaces(s3))
             self.assertEqual(fsa3.arcs.dim0(), 0)

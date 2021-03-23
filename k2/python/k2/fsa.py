@@ -1063,7 +1063,6 @@ class Fsa(object):
 
     @classmethod
     def from_str(cls, s: str, num_aux_labels: int = 0,
-                 acce
                  aux_label_names: List[str] = ['aux_labels',
                                                'aux_labels2',
                                                'aux_labels3']) -> 'Fsa':
@@ -1101,7 +1100,7 @@ class Fsa(object):
             ans = Fsa(arcs)
             if aux_labels is not None:
                 for i in range(aux_labels.shape[0]):
-                    setattr(ans, aux_label_names[i], aux_labels[i,:])
+                    setattr(ans, aux_label_names[i], aux_labels[i, :])
             return ans
         except Exception:
             raise ValueError(f'The following is not a valid Fsa (with '
@@ -1149,7 +1148,7 @@ class Fsa(object):
         # user should not provide both 'acceptor' and 'num_aux_labels' args.
         if num_aux_labels != 0 and not acceptor:
             raise ValueError("Do not provide both acceptor and "
-                             "num_aux_labels args.");
+                             "num_aux_labels args.")
         if num_aux_labels == 0 and not acceptor:
             num_aux_labels = 1
         arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, True)
