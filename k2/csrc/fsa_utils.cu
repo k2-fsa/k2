@@ -110,13 +110,13 @@ static void SplitStringToVector(const std::string &in, const char *delim,
 
 /* Create an acceptor from a stream, assuming the acceptor is in the k2 format:
 
-   src_state dest_state label [aux_label1 aux_label2 ... ] score
+   src_state dest_state label [aux_label1 aux_label2 ... ] [score]
    ... ...
    final_state
 
    The source states will be in non-descending order, and the final state does
    not bear a cost/score -- we put the cost/score on the arc that connects to
-   the final state and set its label to -1.
+   the final state and set its label to -1.  The score defaults to 0.0.
 
    @param [in]  is    The input stream that contains the acceptor.
    @param  [in]  num_aux_labels  The number of auxiliary labels to expect
@@ -175,8 +175,10 @@ static Fsa K2FsaFromStream(std::istringstream &is,
       }
     } else {
       K2_LOG(FATAL) << "Invalid line: " << line
-                    << "\nk2 acceptor expects a line with 1 (final_state) or "
-                       "4 (src_state dest_state label score) fields";
+                    << "\nk2 FSA with num_aux_labels=" << num_aux_labels
+                    << " expects a line with 1 (final_state) or "
+                    << (num_aux_labels + 3) << " or " << (num_aux_labels + 4)
+                    << " fields.";
     }
   }
 
@@ -233,7 +235,7 @@ static Fsa K2FsaFromStream(std::istringstream &is,
    @param [in]  num_aux_labels  The number of auxiliary labels to expect
                      per arc; 0 == acceptor, 1 == transducer, but may be more.
    @param [out] aux_labels_out  If num_aux_labels > 0, this will be
-                     a new array on CPU of shape (num_arcs, num_aux_labels)
+                     a new array on CPU of shape (num_aux_labels, num_arcs)
                      will be assigned to this location.
 
 

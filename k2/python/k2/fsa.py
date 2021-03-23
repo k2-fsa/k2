@@ -1062,11 +1062,11 @@ class Fsa(object):
             raise ValueError(f'Unsupported num_axes: {self.arcs.num_axes()}')
 
     @classmethod
-    def from_str(cls, s: str, num_aux_labels: int = 0,
-                 aux_label_names: List[str] = ['aux_labels',
-                                               'aux_labels2',
-                                               'aux_labels3']) -> 'Fsa':
-        '''Create an Fsa from a string in the k2 format.
+    def from_str(cls, s: str,
+                 acceptor: Optional[bool] = None,
+                 num_aux_labels: Optional[int] = None,
+                 aux_label_names: Optional[List[str] ] = None) -> 'Fsa':
+        '''Create an Fsa from a string in the k2 or openfst format.
         (See also from_openfst).
 
         The given string `s` consists of lines with the following format:
@@ -1094,7 +1094,24 @@ class Fsa(object):
         Args:
           s:
             The input string. Refer to the above comment for its format.
+        NOTE: at most one of the next 3 args must be supplied; if none are
+        supplied, acceptor format is assumed.
+          acceptor:
+            Set to true to denote acceptor format which is num_aux_labels == 0,
+            or false to denote transducer format (i.e. num_aux_labels == 1
+            with name 'aux_labels').
+          num_aux_labels:
+            The number of auxiliary labels to expect on each line (in addition
+            to the 'acceptor' label; is 1 for traditional transducers but can be
+            any nonnegative number.  The names of the aux_labels default to
+            'aux_labels' then 'aux_labels2', 'aux_labels3' and so on.
+          aux_label_names:
+            If provided, the length of this list dictates the number of aux_labels
+            and this list dicates their names.
         '''
+        (num_aux_labels, aux_label_names) = get_aux_label_info(acceptor,
+                                                               num_aux_labels,
+                                                               aux_label_names)
         try:
             arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, False)
             ans = Fsa(arcs)
@@ -1107,11 +1124,9 @@ class Fsa(object):
                              f'num_aux_labels={num_aux_labels}): {s}')
 
     @classmethod
-    def from_openfst(cls, s: str, acceptor: bool = True,
-                     num_aux_labels: int = 0,
-                     aux_label_names: List[str] = ['aux_labels',
-                                                   'aux_labels2',
-                                                   'aux_labels3']) -> 'Fsa':
+    def from_openfst(cls, s: str, acceptor: Optional[bool] = None,
+                     num_aux_labels: Optional[int] = None,
+                     aux_label_names: Optional[List[str]] = None) -> 'Fsa':
         '''Create an Fsa from a string in OpenFST format (or a slightly
         more general format, if num_aux_labels > 1).
 
@@ -1135,28 +1150,36 @@ class Fsa(object):
         Args:
           s:
             The input string. Refer to the above comment for its format.
-          acceptor [deprecated, prefer to use num_aux_labels]:
-            Set to false to denote transducer format (i.e. num_aux_labels == 1).
+        NOTE: at most one of the next 3 args must be supplied; if none are
+        supplied, acceptor format is assumed.
+          acceptor:
+            Set to true to denote acceptor format which is num_aux_labels == 0,
+            or false to denote transducer format (i.e. num_aux_labels == 1
+            with name 'aux_labels').
           num_aux_labels:
             The number of auxiliary labels to expect on each line (in addition
             to the 'acceptor' label; is 1 for traditional transducers but can be
             any nonnegative number.
           aux_label_names:
-            If provided, must be a list of length >= num_aux_labels.  By default
-            the labels are 'aux_labels', 'aux_labels2', 'aux_labels3' and so on.
+            If provided, the length of this list dictates the number of aux_labels.
+            By default the names are 'aux_labels', 'aux_labels2', 'aux_labels3'
+            and so on.
         '''
-        # user should not provide both 'acceptor' and 'num_aux_labels' args.
-        if num_aux_labels != 0 and not acceptor:
-            raise ValueError("Do not provide both acceptor and "
-                             "num_aux_labels args.")
-        if num_aux_labels == 0 and not acceptor:
-            num_aux_labels = 1
-        arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, True)
-        ans = Fsa(arcs)
-        if aux_labels is not None:
-            for i in range(aux_labels.shape[0]):
-                setattr(ans, aux_label_names[i], aux_labels[i, :])
-        return ans
+
+        (num_aux_labels, aux_label_names) = get_aux_label_info(acceptor,
+                                                               num_aux_labels,
+                                                               aux_label_names)
+        try:
+            arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, True)
+            ans = Fsa(arcs)
+            if num_aux_labels != 0:
+                for i in range(num_aux_labels):
+                    setattr(ans, aux_label_names[i], aux_labels[i, :])
+            return ans
+        except Exception:
+            raise ValueError(f'The following is not a valid Fsa in OpenFst format '
+                             f'(with num_aux_labels={num_aux_labels}): {s}')
+
 
     def set_scores_stochastic_(self, scores) -> None:
         '''Normalize the given `scores` and assign it to `self.scores`.
@@ -1183,3 +1206,40 @@ class Fsa(object):
         # Note we use `to` here since `scores` and `self.scores` may not
         # be on the same device.
         self.scores = ragged_scores.values.to(self.scores.device)
+
+
+def get_aux_label_info(acceptor: Optional[bool],
+                       num_aux_labels: Optional[int],
+                       aux_label_names: Optional[List[str]]) -> Tuple[int, List[str]]:
+    """
+    Given either acceptor or num_aux_labels or aux_label_names, at most
+    one of which should be supplied, returns a pair (num_aux_labels,
+    aux_label_names) specifying the number of auxiliary labels and the
+    names to use for them.
+
+     Args:
+       acceptor:  None, or a bool; False means no aux_labels and True means
+                  one aux_label  with name 'aux_label'.
+       num_aux_labels:  None, or a number >= 0
+       aux_label_names:  None, or a list of names, such as ['aux_labels',
+                                                            'aux_labels2']
+    Returns:
+       Returns a pair (num_aux_labels, aux_label_names).
+       out from the other.  If all inputs are None, we assume there
+       are no aux-labels and return (0, []).
+    """
+    if acceptor is not None:
+        assert num_aux_labels is None and aux_label_names is None
+        return (0, []) if acceptor else (1, ['aux_labels'])
+    elif aux_label_names is not None:
+        assert num_aux_labels is None
+        return len(aux_label_names), aux_label_names
+    elif num_aux_labels is  not None:
+        aux_label_names = []
+        if num_aux_labels != 0:
+            aux_label_names.append('aux_labels')
+        for i in range(1, num_aux_labels):
+            aux_label_names.append(f'aux_labels{i+1}')
+        return num_aux_labels, aux_label_names
+    else:
+        return (0, [])

@@ -107,11 +107,10 @@ static void PybindFsaUtil(py::module &m) {
         if (num_aux_labels != 0) tensor = ToTensor(aux_labels);
         return std::make_pair(fsa, tensor);
       },
-      py::arg("s"), py::arg("acceptor") = true, py::arg("openfst") = false,
+      py::arg("s"), py::arg("num_aux_labels") = 0, py::arg("openfst") = false,
       "It returns a tuple with two elements. Element 0 is the FSA; element 1 "
-      "is a 1-D tensor of dtype torch.int32 containing the aux_labels if the "
-      "returned FSA is a transducer; element 1 is None if the "
-      "returned FSA is an acceptor");
+      "is a 2-D tensor of dtype torch.int32 and shape "
+      "(num_aux_labels, num_arcs) if num_aux_labels > 0; otherwise None.");
 
   // the following methods are for debugging only
   m.def("fsa_to_fsa_vec", &FsaToFsaVec, py::arg("fsa"));
