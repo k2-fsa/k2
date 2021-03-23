@@ -41,7 +41,8 @@ def get_long_description():
 def get_cuda_version():
     import torch
     from torch.utils import collect_env
-    running_cuda_version = collect_env.get_running_cuda_version(collect_env.run)
+    running_cuda_version = collect_env.get_running_cuda_version(
+        collect_env.run)
     cuda_version = torch.version.cuda
     if running_cuda_version is not None:
         assert cuda_version in running_cuda_version, \
@@ -81,12 +82,14 @@ def get_short_description():
     return 'FSA/FST algorithms, intended to (eventually) be interoperable with PyTorch and similar'
 
 
+with open('k2/python/k2/__init__.py', 'a') as f:
+    f.write(f"__dev_version__ = '{get_package_version()}'\n")
+
 dev_requirements = [
     'clang-format==9.0.0',
     'flake8==3.8.3',
     'yapf==0.27.0',
 ]
-
 
 setuptools.setup(
     python_requires='>=3.6',
@@ -106,9 +109,7 @@ setuptools.setup(
     },
     packages=['k2', 'k2.ragged', 'k2.sparse'],
     install_requires=['torch', 'graphviz'],
-    extras_require={
-        'dev': dev_requirements
-    },
+    extras_require={'dev': dev_requirements},
     data_files=[('', ['LICENSE'])],
     cmdclass={'bdist_wheel': bdist_wheel},
     classifiers=[
@@ -120,3 +121,12 @@ setuptools.setup(
         'Operating System :: OS Independent',
     ],
 )
+
+# remove the line __dev_version__ from k2/python/k2/__init__.py
+with open('k2/python/k2/__init__.py', 'r') as f:
+    lines = f.readlines()
+
+with open('k2/python/k2/__init__.py', 'w') as f:
+    for line in lines:
+        if '__dev_version__' not in line:
+            f.write(line)
