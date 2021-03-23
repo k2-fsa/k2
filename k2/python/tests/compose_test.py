@@ -111,7 +111,7 @@ class TestCompose(unittest.TestCase):
         fsa1.aux_labels = k2.RaggedInt('[[2] [2 4] [5] [3] [2] [-1] [-1]]')
 
         # https://git.io/JqNaJ
-        fsa2 = k2.Fsa.from_str(s2, num_aux_labels = 1)
+        fsa2 = k2.Fsa.from_str(s2, num_aux_labels=1)
 
         # https://git.io/JqNon
         ans = k2.connect(k2.compose(fsa1, fsa2, inner_labels='phones'))

@@ -1063,7 +1063,10 @@ class Fsa(object):
 
     @classmethod
     def from_str(cls, s: str, num_aux_labels: int = 0,
-                 aux_label_names: List[str] = ['aux_labels', 'aux_labels2', 'aux_labels3']) -> 'Fsa':
+                 acce
+                 aux_label_names: List[str] = ['aux_labels',
+                                               'aux_labels2',
+                                               'aux_labels3']) -> 'Fsa':
         '''Create an Fsa from a string in the k2 format.
         (See also from_openfst).
 
@@ -1096,20 +1099,20 @@ class Fsa(object):
         try:
             arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, False)
             ans = Fsa(arcs)
-            if aux_labels != None:
+            if aux_labels is not None:
                 for i in range(aux_labels.shape[0]):
                     setattr(ans, aux_label_names[i], aux_labels[i,:])
             return ans
-        except:
+        except Exception:
             raise ValueError(f'The following is not a valid Fsa (with '
                              f'num_aux_labels={num_aux_labels}): {s}')
-
-
 
     @classmethod
     def from_openfst(cls, s: str, acceptor: bool = True,
                      num_aux_labels: int = 0,
-                     aux_label_names: List[str] = ['aux_labels', 'aux_labels2', 'aux_labels3'])  -> 'Fsa':
+                     aux_label_names: List[str] = ['aux_labels',
+                                                   'aux_labels2',
+                                                   'aux_labels3']) -> 'Fsa':
         '''Create an Fsa from a string in OpenFST format (or a slightly
         more general format, if num_aux_labels > 1).
 
@@ -1136,8 +1139,8 @@ class Fsa(object):
           acceptor [deprecated, prefer to use num_aux_labels]:
             Set to false to denote transducer format (i.e. num_aux_labels == 1).
           num_aux_labels:
-            The number of auxiliary labels to expect on each line (in addition to
-            the 'acceptor' label; is 1 for traditional transducers but can be
+            The number of auxiliary labels to expect on each line (in addition
+            to the 'acceptor' label; is 1 for traditional transducers but can be
             any nonnegative number.
           aux_label_names:
             If provided, must be a list of length >= num_aux_labels.  By default
@@ -1145,14 +1148,15 @@ class Fsa(object):
         '''
         # user should not provide both 'acceptor' and 'num_aux_labels' args.
         if num_aux_labels != 0 and not acceptor:
-            raise ValueError("Both acceptor and num_aux_labels args should not be provided.")
+            raise ValueError("Do not provide both acceptor and "
+                             "num_aux_labels args.");
         if num_aux_labels == 0 and not acceptor:
             num_aux_labels = 1
         arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, True)
         ans = Fsa(arcs)
         if aux_labels is not None:
             for i in range(aux_labels.shape[0]):
-                setattr(ans, aux_label_names[i], aux_labels[i,:])
+                setattr(ans, aux_label_names[i], aux_labels[i, :])
         return ans
 
     def set_scores_stochastic_(self, scores) -> None:

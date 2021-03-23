@@ -143,7 +143,7 @@ class TestFsa(unittest.TestCase):
             self.assertEqual(k2.to_str(fsa1), '')
 
             with self.assertRaises(ValueError):
-                fsa2 = k2.Fsa.from_str(_remove_leading_spaces(s2))
+                fsa2_ = k2.Fsa.from_str(_remove_leading_spaces(s2))
 
             fsa3 = k2.Fsa.from_str(_remove_leading_spaces(s3))
             self.assertEqual(fsa3.arcs.dim0(), 0)
@@ -178,8 +178,6 @@ class TestFsa(unittest.TestCase):
             8
         '''
 
-        print(_remove_leading_spaces(expected_str), " VS. ", _remove_leading_spaces(
-            k2.to_str(fsa, openfst=True)))
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
             k2.to_str(fsa, openfst=True))
 
@@ -229,15 +227,15 @@ class TestFsa(unittest.TestCase):
                 k2.to_str(fsa2)),
                 "1 2 -1 -0.1\n2")
             arcs2 = fsa2.arcs.values()[:, :-1]
-            self.assertTrue(torch.allclose(arcs2,
-                torch.tensor([[1, 2, -1]], dtype=torch.int32)))
+            self.assertTrue(
+                torch.allclose(arcs2,
+                               torch.tensor([[1, 2, -1]], dtype=torch.int32)))
 
             fsa3 = k2.Fsa.from_openfst(_remove_leading_spaces(s3))
             self.assertEqual(fsa3.arcs.dim0(), 4)
             self.assertEqual(_remove_leading_spaces(
                 k2.to_str(fsa3)),
                 "1 3 -1 -0.1\n2 3 -1 -0.2\n3")
-
 
     def test_transducer_from_tensor(self):
         for device in self.devices:
