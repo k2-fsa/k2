@@ -98,12 +98,13 @@ static void PybindFsaUtil(py::module &m) {
 
   m.def(
       "fsa_from_str",
-      [](const std::string &s, bool acceptor = true, bool openfst = false)
+      [](const std::string &s, int num_aux_labels = 0, bool openfst = false)
           -> std::pair<Fsa, torch::optional<torch::Tensor>> {
-        Array1<int32_t> aux_labels;
-        Fsa fsa = FsaFromString(s, openfst, acceptor ? nullptr : &aux_labels);
+        Array2<int32_t> aux_labels;
+        Fsa fsa = FsaFromString(s, openfst, num_aux_labels,
+                                &aux_labels);
         torch::optional<torch::Tensor> tensor;
-        if (aux_labels.Dim() > 0) tensor = ToTensor(aux_labels);
+        if (num_aux_labels != 0) tensor = ToTensor(aux_labels);
         return std::make_pair(fsa, tensor);
       },
       py::arg("s"), py::arg("acceptor") = true, py::arg("openfst") = false,

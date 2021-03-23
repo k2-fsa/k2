@@ -103,8 +103,10 @@ TEST(FsaFromString, K2Transducer) {
 )";
 
   {
-    Array1<int32_t> aux_labels;
-    auto fsa = FsaFromString(s, false, &aux_labels);
+    Array2<int32_t> aux_labels_array;
+    int32_t num_aux_labels = 1;
+    auto fsa = FsaFromString(s, false, num_aux_labels, &aux_labels_array);
+    Array1<int32_t> aux_labels = aux_labels_array.Row(0);
     EXPECT_EQ(fsa.Context()->GetDeviceType(), kCpu);
     EXPECT_EQ(aux_labels.Context()->GetDeviceType(), kCpu);
 
@@ -146,10 +148,10 @@ TEST(FsaFromString, OpenFstTransducer) {
 )";
 
   {
-    Array1<int32_t> aux_labels;
-    auto fsa = FsaFromString(s, true, &aux_labels);
+    Array2<int32_t> aux_labels_array;
+    auto fsa = FsaFromString(s, true, 1, &aux_labels_array);
     EXPECT_EQ(fsa.Context()->GetDeviceType(), kCpu);
-    EXPECT_EQ(aux_labels.Context()->GetDeviceType(), kCpu);
+    EXPECT_EQ(aux_labels_array.Context()->GetDeviceType(), kCpu);
 
     EXPECT_EQ(fsa.NumAxes(), 2);
     EXPECT_EQ(fsa.shape.Dim0(), 9);          // there are 9 states
@@ -165,6 +167,7 @@ TEST(FsaFromString, OpenFstTransducer) {
     EXPECT_EQ((fsa[{0, 8}]), (Arc{6, 8, -1, 1.2f}));
     EXPECT_EQ((fsa[{0, 9}]), (Arc{7, 8, -1, 2.3f}));
 
+    Array1<int32_t> aux_labels = aux_labels_array.Row(0);
     EXPECT_EQ(aux_labels[0], 22);
     EXPECT_EQ(aux_labels[1], 100);
     EXPECT_EQ(aux_labels[2], 33);
@@ -185,7 +188,7 @@ TEST(FsaFromString, OpenFstAcceptorNonZeroStart) {
     0 0 3 0.2
     0 0.4
   )";
-  Fsa fsa = FsaFromString(s, true, nullptr);
+  Fsa fsa = FsaFromString(s, true);
   EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
   EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
   EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
@@ -205,7 +208,7 @@ TEST(FsaFromString, OpenFstAcceptorNonZeroStartCase2) {
     0 1 9 0.9
     4 0.6
   )";
-  Fsa fsa = FsaFromString(s, true, nullptr);
+  Fsa fsa = FsaFromString(s, true);
   EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 3, 10, -0.1f}));
   EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 3, 20, -0.2f}));
   EXPECT_EQ((fsa[{0, 2}]), (Arc{0, 1, 90, -0.8f}));
@@ -225,9 +228,9 @@ TEST(FsaFromString, OpenFstTransducerNonZeroStart) {
     0 0 3 30 0.2
     0 0.4
   )";
-  Array1<int32_t> aux_labels;
-  Fsa fsa = FsaFromString(s, true, &aux_labels);
-  CheckArrayData(aux_labels, {0, 40, 30, -1});
+  Array2<int32_t> aux_labels_array;
+  Fsa fsa = FsaFromString(s, true, 1, &aux_labels_array);
+  CheckArrayData(aux_labels_array.Row(0), {0, 40, 30, -1});
   EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
   EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
   EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
@@ -247,9 +250,9 @@ TEST(FsaFromString, OpenFstTransducerNonZeroStartCase2) {
     0 1 9 10 0.9
     4 0.6
   )";
-  Array1<int32_t> aux_labels;
-  Fsa fsa = FsaFromString(s, true, &aux_labels);
-  CheckArrayData(aux_labels, {100, 200, 8, 500, 3, 10, 300, 400, 8, -1});
+  Array2<int32_t> aux_labels;
+  Fsa fsa = FsaFromString(s, true, 1, &aux_labels);
+  CheckArrayData(aux_labels.Row(0), {100, 200, 8, 500, 3, 10, 300, 400, 8, -1});
   EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 3, 10, -0.1f}));
   EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 3, 20, -0.2f}));
   EXPECT_EQ((fsa[{0, 2}]), (Arc{0, 1, 90, -0.8f}));
@@ -286,8 +289,9 @@ TEST(FsaToString, Transducer) {
 1 5  -1 300  -3.2
 5
 )";
-  Array1<int32_t> aux_labels;
-  auto fsa = FsaFromString(s, false, &aux_labels);
+  Array2<int32_t> aux_labels_array;
+  auto fsa = FsaFromString(s, false, 1, &aux_labels_array);
+  Array1<int32_t> aux_labels = aux_labels_array.Row(0);
   auto str = FsaToString(fsa, false, &aux_labels);
   K2_LOG(INFO) << "\n" << str;
 

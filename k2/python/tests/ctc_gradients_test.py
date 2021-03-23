@@ -46,7 +46,7 @@ def build_ctc_topo(tokens: List[int]) -> k2.Fsa:
                 arcs += f'{i} {j} {tokens[j]} {tokens[j]} 0.0\n'
         arcs += f'{i} {final_state} -1 -1 0.0\n'
     arcs += f'{final_state}'
-    ans = k2.Fsa.from_str(arcs)
+    ans = k2.Fsa.from_str(arcs, num_aux_labels=1)
     return ans
 
 

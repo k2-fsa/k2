@@ -19,17 +19,14 @@ namespace k2 {
 /*
   Create an Fsa from string.
 
-  The string `s` consists of lines. Every line, except the line for
-  the final state, has one of the following two formats:
+  The string `s` consists of lines describing arcs or final-states.
+  Arcs are represented as:
 
   (1)
-      src_state dest_state label cost
-  which means the string represents an acceptor.
+      src_state dest_state label [aux_label1 aux_label2...] [cost/score]
 
-  (2)
-      src_state dest_state label aux_label cost
-  which indicates the string is a transducer.
-
+  (the OpenFst format has costs, the k2 format has scores, which are of
+  opposite signs).
   The line for the final state has the following format when `openfst` is false:
 
       final_state
@@ -39,31 +36,38 @@ namespace k2 {
   When `openfst` is true, we expect the more generic OpenFst sytle final state
   format :
 
-      final_state cost
+      final_state [cost]
 
-  And we allow more than one final states when `openfst` is true.
+  And we allow more than one final state when `openfst` is true.
+  Also, in the k2 format we expect arcs to be sorted on src_state, but in
+  the OpenFst format they can appear in arbitrary order, with the
+  src_state or final_state on the first arc indicating the start-state.
 
-  Note that fields are separated by spaces and tabs. There can exist
-  multiple tabs and spaces.
+  Note that fields are separated by whitespace.
 
   CAUTION: The first column has to be in non-decreasing order.
 
   @param [in]   s   The input string. See the above description for its format.
   @param [in]   openfst
-                    If true, the string form has the weights as costs, not
+                    If true, read the OpenFst format the string form has the weights as costs, not
                     scores, so we negate them as we read. We will also allow
                     multiple final states with weights associated with them.
+  @param [in]  num_aux_labels  The number of auxiliary labels to expect on
+                    each line.  In OpenFST terminology, 0 would be an acceptor
+                    and 1 would be a transducer
   @param [out]  aux_labels
-                    If NULL, we treat the input as an acceptor; otherwise we
-                    treat the input as an transducer, and store the
-                    corresponding output labels to it. It is allocated inside
-                    the function and will contain aux_label of each arc.
-                    Note that it is allocated on CPU if needed.
+                    This is ignored if num_aux_labels == 0.  If num_aux_labels > 0,
+                    this will be set to an Array2 (on CPU) of shape
+                    (num_aux_labels, num_arcs).
+                    Note: on final-arcs (which are not explicitly represented in the
+                    OpenFst format), the value of the aux_labels will be -1.
 
   @return It returns an Fsa on CPU.
  */
-Fsa FsaFromString(const std::string &s, bool openfst = false,
-                  Array1<int32_t> *aux_labels = nullptr);
+Fsa FsaFromString(const std::string &s,
+                  bool openfst = false,
+                  int32_t num_aux_labels = 0,
+                  Array2<int32_t> *aux_labels = nullptr);
 
 /* Convert an FSA to a string.
 
@@ -73,7 +77,7 @@ Fsa FsaFromString(const std::string &s, bool openfst = false,
       src_state dest_state label score
 
    If the FSA is a transducer, i.e., aux_labels != nullptr, every arc
-   is converted to a lien with the following form:
+   is converted to a line with the following form:
 
       src_state dest_state label aux_label score
 

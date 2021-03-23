@@ -38,7 +38,7 @@ TEST(FsaIO, FromAndToTensor) {
     3
   )";
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    Fsa fsa = FsaFromString(s);
+    Fsa fsa = FsaFromString(s, false, 0, nullptr);
     fsa = fsa.To(context);
     Tensor tensor = FsaToTensor(fsa);
     int32_t num_arcs = fsa.values.Dim();

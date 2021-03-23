@@ -86,12 +86,12 @@ void CheckComputeSubset(FsaVec &src, FsaVec &dst, Array1<int32_t> &state_map,
 TEST(RmEpsilon, ComputeEpsilonAndNonEpsilonSubsetSimple) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     std::string s1 = R"(0 1 1 1
-    1 2 0 1 
-    1 3 2 1 
-    2 3 3 1 
-    3 4 4 1 
-    3 5 5 1 
-    4 5 6 1 
+    1 2 0 1
+    1 3 2 1
+    2 3 3 1
+    3 4 4 1
+    3 5 5 1
+    4 5 6 1
     4 6 7 1
     5 6 0 1
     5 7 -1 0
@@ -99,10 +99,10 @@ TEST(RmEpsilon, ComputeEpsilonAndNonEpsilonSubsetSimple) {
     7
   )";
     std::string s2 = R"(0 1 0 1
-    1 2 0 1 
-    2 3 0 1 
-    3 4 4 1 
-    3 5 -1 1 
+    1 2 0 1
+    2 3 0 1
+    3 4 4 1
+    3 5 -1 1
     4 5 -1 1
     5
   )";
@@ -191,21 +191,21 @@ TEST(RmEpsilon, ComputeEpsilonAndNonEpsilonSubsetRandom) {
 TEST(RmEpsilon, MapFsaVecStatesSimple) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     std::string s1 = R"(0 1 1 1
-    1 2 0 1 
-    1 3 2 1 
-    2 3 3 1 
-    3 4 4 1 
-    3 5 5 1 
-    4 5 6 1 
+    1 2 0 1
+    1 3 2 1
+    2 3 3 1
+    3 4 4 1
+    3 5 5 1
+    4 5 6 1
     4 6 -1 1
     5 6 -1 1
     6
   )";
     std::string s2 = R"(0 1 0 1
-    1 2 0 1 
-    2 3 0 1 
-    3 4 4 1 
-    3 5 -1 1 
+    1 2 0 1
+    2 3 0 1
+    3 4 4 1
+    3 5 -1 1
     4 5 -1 1
     5
   )";
@@ -247,18 +247,18 @@ TEST(RmEpsilon, MapFsaVecStatesSimple) {
 TEST(RmEpsilon, ComputeEpsilonClosureOneIterSimple) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     std::string s1 = R"(0 1 0 1
-    1 2 0 1 
-    1 3 0 1 
-    2 3 0 1 
-    3 4 0 1 
-    3 5 0 1 
-    4 5 0 1 
+    1 2 0 1
+    1 3 0 1
+    2 3 0 1
+    3 4 0 1
+    3 5 0 1
+    4 5 0 1
     6
   )";
     std::string s2 = R"(0 1 0 1
-    1 2 0 1 
-    2 3 0 1 
-    3 4 0 1 
+    1 2 0 1
+    2 3 0 1
+    3 4 0 1
     5
   )";
     Fsa fsa1 = FsaFromString(s1);
@@ -283,18 +283,18 @@ TEST(RmEpsilon, ComputeEpsilonClosureOneIterSimple) {
 TEST(RmEpsilon, ComputeEpsilonClosureSimple) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     std::string s1 = R"(0 1 0 1
-    1 2 0 1 
-    1 3 0 1 
-    2 3 0 1 
-    3 4 0 1 
-    3 5 0 1 
-    4 5 0 1 
+    1 2 0 1
+    1 3 0 1
+    2 3 0 1
+    3 4 0 1
+    3 5 0 1
+    4 5 0 1
     6
   )";
     std::string s2 = R"(0 1 0 1
-    1 2 0 1 
-    2 3 0 1 
-    3 4 0 1 
+    1 2 0 1
+    2 3 0 1
+    3 4 0 1
     5
   )";
     Fsa fsa1 = FsaFromString(s1);
@@ -343,12 +343,12 @@ void CheckArcMap(FsaVec &src, FsaVec &dest, Ragged<int32_t> &arc_map) {
 TEST(RmEpsilon, RemoveEpsilonDeviceSimple) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     std::string s1 = R"(0 1 1 1
-    1 2 0 1 
-    1 3 2 1 
-    2 3 3 1 
-    3 4 4 1 
-    3 5 5 1 
-    4 5 6 1 
+    1 2 0 1
+    1 3 2 1
+    2 3 3 1
+    3 4 4 1
+    3 5 5 1
+    4 5 6 1
     4 6 7 1
     5 6 0 1
     5 7 -1 0
@@ -356,10 +356,10 @@ TEST(RmEpsilon, RemoveEpsilonDeviceSimple) {
     7
   )";
     std::string s2 = R"(0 1 0 1
-    1 2 0 1 
-    2 3 0 1 
-    3 4 4 1 
-    3 5 -1 1 
+    1 2 0 1
+    2 3 0 1
+    3 4 4 1
+    3 5 -1 1
     4 5 -1 1
     5
   )";

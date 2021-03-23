@@ -24,7 +24,7 @@ class TestCompose(unittest.TestCase):
             2 3 -1 -1 2.5
             3
         '''
-        a_fsa = k2.Fsa.from_str(s).requires_grad_(True)
+        a_fsa = k2.Fsa.from_str(s, num_aux_labels=1).requires_grad_(True)
 
         s = '''
             0 1 1 1 1.0
@@ -33,7 +33,7 @@ class TestCompose(unittest.TestCase):
             2 3 -1 -1 2.0
             3
         '''
-        b_fsa = k2.Fsa.from_str(s).requires_grad_(True)
+        b_fsa = k2.Fsa.from_str(s, num_aux_labels=1).requires_grad_(True)
 
         ans = k2.compose(a_fsa, b_fsa, inner_labels='inner')
         ans = k2.connect(ans)
@@ -73,10 +73,10 @@ class TestCompose(unittest.TestCase):
         '''
 
         # https://git.io/JqN2j
-        fsa1 = k2.Fsa.from_str(s1)
+        fsa1 = k2.Fsa.from_str(s1, num_aux_labels=1)
 
         # https://git.io/JqNaJ
-        fsa2 = k2.Fsa.from_str(s2)
+        fsa2 = k2.Fsa.from_str(s2, num_aux_labels=1)
 
         # https://git.io/JqNaT
         ans = k2.connect(k2.compose(fsa1, fsa2, inner_labels='phones'))
@@ -111,7 +111,7 @@ class TestCompose(unittest.TestCase):
         fsa1.aux_labels = k2.RaggedInt('[[2] [2 4] [5] [3] [2] [-1] [-1]]')
 
         # https://git.io/JqNaJ
-        fsa2 = k2.Fsa.from_str(s2)
+        fsa2 = k2.Fsa.from_str(s2, num_aux_labels = 1)
 
         # https://git.io/JqNon
         ans = k2.connect(k2.compose(fsa1, fsa2, inner_labels='phones'))

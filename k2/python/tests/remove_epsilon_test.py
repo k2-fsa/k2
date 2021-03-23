@@ -80,7 +80,7 @@ class TestRemoveEpsilonDevice(unittest.TestCase):
             4 5 -1 6 1
             5
         '''
-        fsa = k2.Fsa.from_str(s).to(device)
+        fsa = k2.Fsa.from_str(s, num_aux_labels=1).to(device)
         print(fsa.aux_labels)
         prop = fsa.properties
         self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)

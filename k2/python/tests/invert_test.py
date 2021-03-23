@@ -36,7 +36,7 @@ class TestInvert(unittest.TestCase):
             4 5 -1 -1 0
             5
         '''
-        fsa = k2.Fsa.from_str(s)
+        fsa = k2.Fsa.from_str(s, num_aux_labels=1)
         assert fsa.device.type == 'cpu'
         dest = k2.invert(fsa)
         print(dest)
