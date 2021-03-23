@@ -121,7 +121,7 @@ class Logger {
     }
 
     if (cur_level_ <= level_) {
-      printf("%s:%s:%u ", filename, func_name, line_num);
+      printf("%s:%u:%s ", filename, line_num, func_name);
 #if defined(__CUDA_ARCH__)
       printf("block:[%u,%u,%u], thread: [%u,%u,%u] ", blockIdx.x, blockIdx.y,
              blockIdx.z, threadIdx.x, threadIdx.y, threadIdx.z);

@@ -232,67 +232,84 @@ int32_t GetFsaBasicProperties(const Fsa &fsa) {
   return ans;
 }
 
-Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
+Fsa FsaFromArray1(Array1<Arc> &arcs, bool *error, int32_t final_state) {
   NVTX_RANGE(K2_FUNC);
-  const Arc *arcs_data = array.Data();
-  ContextPtr &c = array.Context();
-  int32_t num_arcs = array.Dim();
-  // We choose to return an Fsa with no states and no arcs.  We could also have
-  // chosen to return an Fsa with 2 states and no arcs.
-  if (num_arcs == 0)
-    return Fsa(EmptyRaggedShape(c, 2), Array1<Arc>(c, 0));
+  const Arc *arcs_data = arcs.Data();
+  ContextPtr &c = arcs.Context();
+  int32_t num_arcs = arcs.Dim();
   *error = false;
+
+  if (num_arcs == 0 && final_state == -1) {
+    K2_LOG(WARNING) << "Could not convert Array1 to FSA, "
+                       "there are no states";
+    *error = true;
+    return Fsa();
+  }
 
   // If the FSA has arcs entering the final state, that will
   // tell us what the final-state id is.
   // If there are no arcs entering the final-state, we let the final state be
-  // (highest numbered state that has arcs leaving it) + 1, so num_states
+  // (highest numbered state that has arcs leaving it) + 1, so final_state
   // (highest numbered state that has arcs leaving it) + 2.
 
-  // element 0 is num-states, element 1 is error flag that's set to
+  // element 0 is final-state, element 1 is error flag that's set to
   // 0 on error.
 
-  Array1<int32_t> num_states_array(c, 2, -1);
-  int32_t *num_states_data = num_states_array.Data();
+  Array1<int32_t> final_state_array(c, 2, -1);
+  int32_t *final_state_data = final_state_array.Data();
 
   Array1<int32_t> row_ids1(c, num_arcs);  // maps arc->state.
   int32_t *row_ids1_data = row_ids1.Data();
 
+  // from arcs:
+  // get 1) arc->state maps
+  //     2) final_state,
+  // and 3) check final state
   K2_EVAL(
       c, num_arcs, lambda_misc, (int32_t i)->void {
         row_ids1_data[i] = arcs_data[i].src_state;
         if (arcs_data[i].label == -1) {
-          int32_t final_state = arcs_data[i].dest_state;
-          int32_t old_value = num_states_data[0];
-          if (old_value >= 0 && old_value != final_state + 1)
-            num_states_data[1] = 0;  // set error flag.
-          num_states_data[0] = final_state + 1;
+          int32_t final_state_temp = arcs_data[i].dest_state;
+          int32_t old_value = final_state_data[0];
+          if (old_value >= 0 && old_value != final_state_temp) {
+            final_state_data[1] = 0;  // set error flag.
+          }
+          final_state_data[0] = final_state_temp;
         }
       });
-  num_states_array = num_states_array.To(GetCpuContext());
-  int32_t num_states = num_states_array[0], error_flag = num_states_array[1];
+
+  final_state_array = final_state_array.To(GetCpuContext());
+  int32_t final_state_in_arcs = final_state_array[0],
+          error_flag = final_state_array[1];
+
   if (error_flag == 0) {
     K2_LOG(WARNING) << "Could not convert tensor to FSA, there was a problem "
-                       "working out the num-states in the FSA, num_states="
-                    << num_states;
+                       "working out the final-state in the FSA, final_state="
+                    << final_state_in_arcs;
     *error = true;
     return Fsa();
   }
-  if (num_states == -1) {
-    // there was no final arc, so let the final state be the highest-numbered
-    // state that is referenced, plus one.
 
-    Array1<int32_t> max_state(c, num_arcs);
-    int32_t *max_state_data = max_state.Data();
-    K2_EVAL(
-        c, num_arcs, lambda_get_dest_state, (int32_t i)->void {
-          int32_t dest = arcs_data[i].dest_state, src = arcs_data[i].src_state;
-          max_state_data[i] = (dest > src ? dest : src);
-        });
-    Array1<int32_t> max_state0 = max_state.Range(0, 1);
-    Max(max_state, 0, &max_state0);
-    num_states = max_state[0] + 2;
+  if (final_state_in_arcs <= 0) {  // Cannot get valid final_state from arcs.
+    if (final_state <= 0) {  // Cannot get valid final_state from input also.
+      K2_LOG(WARNING) << "Could not convert tensor to FSA, there was a problem "
+                         "working out the final-state in the FSA. No arcs "
+                         "with label -1, and the input final_state is -1.";
+      *error = true;
+      return Fsa();
+    }
+
+    if (num_arcs == 0) {
+      // Get final_state from input, but no arcs.
+      return Fsa(EmptyRaggedShape(c, 2), Array1<Arc>(c, 0));
+    }
+  } else if (final_state == -1) {  // Get final_state from arcs.
+    final_state = final_state_in_arcs;
   }
+
+  K2_CHECK_LE(final_state_in_arcs, final_state) <<
+    "The final_state get from arcs should <= the input final_state."
+    "(The input one may count dead states)";
 
   if (!ValidateRowIds(row_ids1)) {
     K2_LOG(WARNING) << "Could not convert tensor to FSA, "
@@ -300,8 +317,8 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
     *error = true;
     return Fsa();
   }
-  Array1<int32_t> row_splits1(c, num_states + 1);
-  RowIdsToRowSplits(c, num_arcs, row_ids1_data, false, num_states,
+  Array1<int32_t> row_splits1(c, final_state + 2);
+  RowIdsToRowSplits(c, num_arcs, row_ids1_data, false, final_state + 1,
                     row_splits1.Data());
 #ifndef NDEBUG
   if (!ValidateRowSplitsAndIds(row_splits1, row_ids1, nullptr)) {
@@ -311,7 +328,7 @@ Fsa FsaFromArray1(Array1<Arc> &array, bool *error) {
 
   RaggedShape fsas_shape =
       RaggedShape2(&row_splits1, &row_ids1, row_ids1.Dim());
-  Fsa ans = Ragged<Arc>(fsas_shape, array);
+  Fsa ans = Ragged<Arc>(fsas_shape, arcs);
   int32_t tot_properties = GetFsaBasicProperties(ans);
   // TODO: check properties, at least
   int32_t required_props = (kFsaPropertiesValid | kFsaPropertiesNonempty);
@@ -353,7 +370,6 @@ Fsa FsaFromTensor(Tensor &t, bool *error) {
     return Fsa();  // Invalid, empty FSA
   }
   K2_CHECK_EQ(sizeof(Arc), sizeof(int32_t) * 4);
-  int32_t *tensor_data = t.Data<int32_t>();
 
   Array1<Arc> arc_array(t.Dim(0), t.GetRegion(), t.ByteOffset());
   return FsaFromArray1(arc_array, error);
@@ -488,7 +504,8 @@ Tensor FsaVecToTensor(const FsaVec &fsa_vec) {
 
   Array1<int32_t> *arrays[4] = {&meta_info, &row_splits1, &row_splits12,
                                 &arcs_linearized};
-  return Append(fsa_vec.Context(), 4, (const Array1<int32_t> **)arrays).ToTensor();
+  return Append(fsa_vec.Context(), 4,
+                (const Array1<int32_t> **)arrays).ToTensor();
 }
 
 std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec) {

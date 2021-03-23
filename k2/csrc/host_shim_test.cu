@@ -20,7 +20,7 @@ TEST(HostShim, FsaToHostFsa) {
     2 3 -1 0
     3
   )";
-  Fsa fsa = FsaFromString(s);
+  Fsa fsa = FsaFromString(s, false);
   k2host::Fsa host_fsa = FsaToHostFsa(fsa);
   K2_LOG(INFO) << k2host::FsaToString(host_fsa);
   // TODO(fangjun): check the content of host_fsa

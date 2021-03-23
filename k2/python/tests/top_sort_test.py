@@ -28,7 +28,7 @@ class TestTopSort(unittest.TestCase):
             0 2 2 2
             1 3 -1 3
             2 1 3 4
-            1
+            3
         '''
         fsa = k2.Fsa.from_str(s)
         fsa.requires_grad_(True)

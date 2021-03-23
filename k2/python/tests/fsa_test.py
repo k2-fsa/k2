@@ -23,10 +23,9 @@ def _remove_leading_spaces(s: str) -> str:
 
 
 class TestFsa(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
-        cls.devices = [torch.device('cpu')]
+        cls.devices = [torch.device("cpu")]
         if torch.cuda.is_available():
             cls.devices.append(torch.device('cuda', 0))
 
@@ -126,6 +125,29 @@ class TestFsa(unittest.TestCase):
             torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
                          dtype=torch.float32))
 
+    def test_acceptor_wo_arcs_from_str(self):
+        s1 = '''
+        '''
+
+        s2 = '''
+            0
+            1
+        '''
+
+        s3 = '''
+            1
+        '''
+
+        for device in self.devices:
+            fsa1 = k2.Fsa.from_str(_remove_leading_spaces(s1))
+            self.assertEqual(k2.to_str(fsa1), '')
+
+            with self.assertRaises(ValueError):
+                _ = k2.Fsa.from_str(_remove_leading_spaces(s2))
+
+            fsa3 = k2.Fsa.from_str(_remove_leading_spaces(s3))
+            self.assertEqual(fsa3.arcs.dim0(), 0)
+
     def test_acceptor_from_openfst(self):
         s = '''
             0 1 2 -1.2
@@ -152,9 +174,10 @@ class TestFsa(unittest.TestCase):
             3 6 3 -7.2
             5 0 1 -8.2
             6 8 -1 -9.2
-            7 8 -1 -0
+            7 8 -1 0
             8
         '''
+
         assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
             k2.to_str(fsa, openfst=True))
 
@@ -178,6 +201,41 @@ class TestFsa(unittest.TestCase):
             torch.tensor(
                 [-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2, -9.2, 0],
                 dtype=torch.float32))
+
+    def test_acceptor_wo_arcs_from_openfst(self):
+        s1 = '''
+        '''
+
+        s2 = '''
+            0 Inf
+            1 0.1
+        '''
+
+        s3 = '''
+            0 Inf
+            1 0.1
+            2 0.2
+        '''
+
+        for device in self.devices:
+            fsa1 = k2.Fsa.from_openfst(_remove_leading_spaces(s1))
+            print("fsa1 = ", k2.to_str(fsa1))
+            self.assertEqual('', k2.to_str(fsa1))
+
+            fsa2 = k2.Fsa.from_openfst(_remove_leading_spaces(s2))
+            self.assertEqual(_remove_leading_spaces(
+                k2.to_str(fsa2)),
+                "1 2 -1 -0.1\n2")
+            arcs2 = fsa2.arcs.values()[:, :-1]
+            self.assertTrue(
+                torch.allclose(arcs2,
+                               torch.tensor([[1, 2, -1]], dtype=torch.int32)))
+
+            fsa3 = k2.Fsa.from_openfst(_remove_leading_spaces(s3))
+            self.assertEqual(fsa3.arcs.dim0(), 4)
+            self.assertEqual(_remove_leading_spaces(
+                k2.to_str(fsa3)),
+                "1 3 -1 -0.1\n2 3 -1 -0.2\n3")
 
     def test_transducer_from_tensor(self):
         for device in self.devices:
@@ -227,7 +285,7 @@ class TestFsa(unittest.TestCase):
             5 0  1  50  -8.2
             6
         '''
-        fsa = k2.Fsa.from_str(_remove_leading_spaces(s))
+        fsa = k2.Fsa.from_str(_remove_leading_spaces(s), num_aux_labels=1)
         assert fsa.aux_labels.dtype == torch.int32
         assert fsa.aux_labels.device.type == 'cpu'
         assert torch.allclose(
@@ -278,7 +336,7 @@ class TestFsa(unittest.TestCase):
             2 4 2 22 -6.2
             3 6 3 36 -7.2
             5 0 1 50 -8.2
-            6 8 -1 -1 -0
+            6 8 -1 -1 0
             7 8 -1 -1 -9.2
             8
         '''
@@ -363,7 +421,7 @@ class TestFsa(unittest.TestCase):
             2 3 -1 0 3.5
             3
         '''
-        fsa = k2.Fsa.from_str(_remove_leading_spaces(rules))
+        fsa = k2.Fsa.from_str(_remove_leading_spaces(rules), num_aux_labels=1)
         fsa.symbols = symbols
         fsa.aux_symbols = aux_symbols
 
@@ -441,10 +499,10 @@ class TestFsa(unittest.TestCase):
             0 1 4 1 0.1
             1 2 5 2 0.2
             2 3 -1 -1 0.3
-            1
+            3
         '''
-        fsa0 = k2.Fsa.from_str(s0).requires_grad_(True)
-        fsa1 = k2.Fsa.from_str(s1).requires_grad_(True)
+        fsa0 = k2.Fsa.from_str(s0, num_aux_labels=1).requires_grad_(True)
+        fsa1 = k2.Fsa.from_str(s1, num_aux_labels=1).requires_grad_(True)
 
         fsa0.invert_()
         assert str(fsa0) == str(fsa1)
@@ -465,7 +523,7 @@ class TestFsa(unittest.TestCase):
             a 1
         '''
         symbol_table = k2.SymbolTable.from_str(sym_str)
-        fsa = k2.Fsa.from_str(s)
+        fsa = k2.Fsa.from_str(s, num_aux_labels=1)
         fsa.symbols = symbol_table
         del symbol_table
 
@@ -496,8 +554,8 @@ class TestFsa(unittest.TestCase):
             0 1 -1 30 0.3
             1
         '''
-        fsa1 = k2.Fsa.from_str(s1)
-        fsa2 = k2.Fsa.from_str(s2)
+        fsa1 = k2.Fsa.from_str(s1, num_aux_labels=1)
+        fsa2 = k2.Fsa.from_str(s2, num_aux_labels=1)
         fsa = k2.create_fsa_vec([fsa1, fsa2])
         del fsa1, fsa2
 
