@@ -174,11 +174,11 @@ struct DenseFsaVec {
 std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec);
 
 /*
-  Create an FSA from a Tensor.  The Tensor is expected to be an N by 4 tensor of
+  Create an FSA from a Tensor.  The Tensor t is expected to be an N by 4 tensor of
   int32_t, where N is the number of arcs (the format is src_state, dest_state,
   symbol, cost).  The cost is not really an int32_t, it is a float.  This code
   will print an error message and output 'true' to 'error', and return an empty
-  FSA (with no states or arcs) if 't' was not interpretable as a valid FSA.
+  FSA (with no states or arcs) if t was not interpretable as a valid FSA.
   These requirements for a valid FSA are:
 
     - src_state values on the arcs must be non-decreasing
@@ -235,8 +235,9 @@ Fsa FsaFromTensor(Tensor &t, bool *error);
     @param [out] error      Error flag.  On success this function will write
                             'false' here; on error, it will print an error
                             message to the standard error and write 'true' here.
-    @param [in] final_state This indicate the final-state ID (with default: -1,
-                            means find it by `arcs` in this func).
+    @param [in] final_state This indicates the final-state ID (with default: -1,
+                            means unknown, so it will be figured out by this
+                            function).
     @return                 The resulting FSA will be returned.
 */
 Fsa FsaFromArray1(Array1<Arc> &arcs, bool *error, int32_t final_state = -1);

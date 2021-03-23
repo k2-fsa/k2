@@ -89,9 +89,19 @@ class TestFsa(unittest.TestCase):
             6
         '''
 
-        fsa = k2.Fsa.from_str(_remove_leading_spaces(s))
+        for i in range(4):
+            if i == 0:
+                fsa = k2.Fsa.from_str(_remove_leading_spaces(s))
+            elif i == 1:
+                fsa = k2.Fsa.from_str(_remove_leading_spaces(s), acceptor=True)
+            elif i == 2:
+                fsa = k2.Fsa.from_str(_remove_leading_spaces(s),
+                                          num_aux_labels=0)
+            else:
+                fsa = k2.Fsa.from_str(_remove_leading_spaces(s),
+                                          aux_label_names=[])
 
-        expected_str = '''
+            expected_str = '''
             0 1 2 -1.2
             0 2 10 -2.2
             1 6 -1 -3.2
@@ -101,29 +111,29 @@ class TestFsa(unittest.TestCase):
             3 6 -1 -7.2
             5 0 1 -8.2
             6
-        '''
-        assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            k2.to_str(fsa))
+            '''
+            assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
+                k2.to_str(fsa))
 
-        arcs = fsa.arcs.values()[:, :-1]
-        assert isinstance(arcs, torch.Tensor)
-        assert arcs.dtype == torch.int32
-        assert arcs.device.type == 'cpu'
-        assert arcs.shape == (8, 3), 'there should be 8 arcs'
-        assert torch.allclose(arcs[0],
-                              torch.tensor([0, 1, 2], dtype=torch.int32))
+            arcs = fsa.arcs.values()[:, :-1]
+            assert isinstance(arcs, torch.Tensor)
+            assert arcs.dtype == torch.int32
+            assert arcs.device.type == 'cpu'
+            assert arcs.shape == (8, 3), 'there should be 8 arcs'
+            assert torch.allclose(arcs[0],
+                                  torch.tensor([0, 1, 2], dtype=torch.int32))
 
-        assert torch.allclose(
-            fsa.scores,
-            torch.tensor([-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2],
-                         dtype=torch.float32))
+            assert torch.allclose(
+                fsa.scores,
+                torch.tensor([-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2],
+                             dtype=torch.float32))
 
-        fsa.scores *= -1
+            fsa.scores *= -1
 
-        assert torch.allclose(
-            fsa.scores,
-            torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
-                         dtype=torch.float32))
+            assert torch.allclose(
+                fsa.scores,
+                torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
+                             dtype=torch.float32))
 
     def test_acceptor_wo_arcs_from_str(self):
         s1 = '''
@@ -162,9 +172,19 @@ class TestFsa(unittest.TestCase):
             6 -9.2
         '''
 
-        fsa = k2.Fsa.from_openfst(_remove_leading_spaces(s), acceptor=True)
+        for i in range(4):
+            if i == 0:
+                fsa = k2.Fsa.from_openfst(_remove_leading_spaces(s))
+            elif i == 1:
+                fsa = k2.Fsa.from_openfst(_remove_leading_spaces(s), acceptor=True)
+            elif i == 2:
+                fsa = k2.Fsa.from_openfst(_remove_leading_spaces(s),
+                                          num_aux_labels=0)
+            else:
+                fsa = k2.Fsa.from_openfst(_remove_leading_spaces(s),
+                                          aux_label_names=[])
 
-        expected_str = '''
+            expected_str = '''
             0 1 2 -1.2
             0 2 10 -2.2
             1 6 1 -3.2
@@ -176,31 +196,30 @@ class TestFsa(unittest.TestCase):
             6 8 -1 -9.2
             7 8 -1 0
             8
-        '''
+            '''
+            assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
+                k2.to_str(fsa, openfst=True))
 
-        assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            k2.to_str(fsa, openfst=True))
+            arcs = fsa.arcs.values()[:, :-1]
+            assert isinstance(arcs, torch.Tensor)
+            assert arcs.dtype == torch.int32
+            assert arcs.device.type == 'cpu'
+            assert arcs.shape == (10, 3), 'there should be 10 arcs'
+            assert torch.allclose(arcs[0],
+                                  torch.tensor([0, 1, 2], dtype=torch.int32))
 
-        arcs = fsa.arcs.values()[:, :-1]
-        assert isinstance(arcs, torch.Tensor)
-        assert arcs.dtype == torch.int32
-        assert arcs.device.type == 'cpu'
-        assert arcs.shape == (10, 3), 'there should be 10 arcs'
-        assert torch.allclose(arcs[0],
-                              torch.tensor([0, 1, 2], dtype=torch.int32))
+            assert torch.allclose(
+                fsa.scores,
+                torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2, 9.2, 0],
+                             dtype=torch.float32))
 
-        assert torch.allclose(
-            fsa.scores,
-            torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2, 9.2, 0],
-                         dtype=torch.float32))
+            fsa.scores *= -1
 
-        fsa.scores *= -1
-
-        assert torch.allclose(
-            fsa.scores,
-            torch.tensor(
-                [-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2, -9.2, 0],
-                dtype=torch.float32))
+            assert torch.allclose(
+                fsa.scores,
+                torch.tensor(
+                    [-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2, -9.2, 0],
+                    dtype=torch.float32))
 
     def test_acceptor_wo_arcs_from_openfst(self):
         s1 = '''
@@ -285,14 +304,20 @@ class TestFsa(unittest.TestCase):
             5 0  1  50  -8.2
             6
         '''
-        fsa = k2.Fsa.from_str(_remove_leading_spaces(s), num_aux_labels=1)
-        assert fsa.aux_labels.dtype == torch.int32
-        assert fsa.aux_labels.device.type == 'cpu'
-        assert torch.allclose(
-            fsa.aux_labels,
-            torch.tensor([22, 100, 16, 33, 26, 22, 36, 50], dtype=torch.int32))
+        for i in range(3):
+            if i == 0:
+                fsa = k2.Fsa.from_str(_remove_leading_spaces(s), num_aux_labels=1)
+            elif i == 1:
+                fsa = k2.Fsa.from_str(_remove_leading_spaces(s), acceptor=False)
+            else:
+                fsa = k2.Fsa.from_str(_remove_leading_spaces(s), aux_label_names=['aux_labels'])
+            assert fsa.aux_labels.dtype == torch.int32
+            assert fsa.aux_labels.device.type == 'cpu'
+            assert torch.allclose(
+                fsa.aux_labels,
+                torch.tensor([22, 100, 16, 33, 26, 22, 36, 50], dtype=torch.int32))
 
-        expected_str = '''
+            expected_str = '''
             0 1 2 22 -1.2
             0 2 10 100 -2.2
             1 6 -1 16 -4.2
@@ -302,9 +327,52 @@ class TestFsa(unittest.TestCase):
             3 6 -1 36 -7.2
             5 0 1 50 -8.2
             6
+            '''
+            assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
+                k2.to_str(fsa))
+
+    def test_transducer2_from_str(self):
+        s = '''
+            0 1 2 22 101 -1.2
+            0 2  10 100 102 -2.2
+            1 6 -1  16 103 -4.2
+            1 3  3  33 104 -3.2
+            2 6 -1  26 105 -5.2
+            2 4  2  22 106 -6.2
+            3 6 -1  36 107 -7.2
+            5 0  1  50 108 -8.2
+            6
         '''
-        assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
-            k2.to_str(fsa))
+        for i in range(2):
+            if i == 0:
+                fsa = k2.Fsa.from_str(_remove_leading_spaces(s), num_aux_labels=2)
+            else:
+                fsa = k2.Fsa.from_str(_remove_leading_spaces(s),
+                                      aux_label_names=['aux_labels', 'aux_labels2'])
+            assert fsa.aux_labels.dtype == torch.int32
+            assert fsa.aux_labels.device.type == 'cpu'
+            assert torch.allclose(
+                fsa.aux_labels,
+                torch.tensor([22, 100, 16, 33, 26, 22, 36, 50], dtype=torch.int32))
+            assert torch.allclose(
+                fsa.aux_labels2,
+                torch.tensor([101, 102, 103, 104, 105, 106, 107, 108], dtype=torch.int32))
+
+            # only aux_labels will be printed right now..
+            expected_str = '''
+            0 1 2 22 -1.2
+            0 2 10 100 -2.2
+            1 6 -1 16 -4.2
+            1 3 3 33 -3.2
+            2 6 -1 26 -5.2
+            2 4 2 22 -6.2
+            3 6 -1 36 -7.2
+            5 0 1 50 -8.2
+            6
+            '''
+            assert _remove_leading_spaces(expected_str) == _remove_leading_spaces(
+                k2.to_str(fsa))
+
 
     def test_transducer_from_openfst(self):
         s = '''
