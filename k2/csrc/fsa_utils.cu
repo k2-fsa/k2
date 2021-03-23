@@ -242,7 +242,6 @@ static Fsa K2FsaFromStream(std::istringstream &is,
 static Fsa OpenFstFromStream(std::istringstream &is,
                              int32_t num_aux_labels,
                              Array2<int32_t> *aux_labels_out) {
-
   NVTX_RANGE(K2_FUNC);
   K2_CHECK(num_aux_labels == 0 || aux_labels_out != nullptr);
 
@@ -276,7 +275,8 @@ static Fsa OpenFstFromStream(std::istringstream &is,
       K2_CHECK_GE(src_state, 0);
       K2_CHECK_GE(dest_state, 0);
       if (start_state == -1) start_state = src_state;
-      // Add the arc to "state_to_arcs", and aux_label[s] to "state_to_aux_labels"
+      // Add the arc to "state_to_arcs", and aux_label[s] to
+      // "state_to_aux_labels"
       ++num_arcs;
       max_state = std::max(max_state, std::max(src_state, dest_state));
       if (static_cast<int32_t>(state_to_arcs.size()) <= src_state) {
