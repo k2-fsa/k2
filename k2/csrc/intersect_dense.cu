@@ -206,22 +206,22 @@ class MultiGraphDenseIntersect {
     int32_t max_states = 15000000;
 
     while (1) {
-      // This code is in a loop is in case we get too many states and have to retry.
-      // The limit `max_states` is to reduce the likelihood of out-of-memory
-      // conditions.
+      // This code is in a loop is in case we get too many states and have to
+      // retry.  The limit `max_states` is to reduce the likelihood of
+      // out-of-memory conditions.
       renumber_states = Renumbering(c_, product);
       char *keep_state_data = renumber_states.Keep().Data();
       score_cutoffs = GetScoreCutoffs();
       score_cutoffs_data = score_cutoffs.Data();
       float **state_scores_data = state_scores_.Data();
 
-      // We'll do exclusive-sum on the following array, after setting its elements
-      // to 1 if the corresponding state was not pruned away.  The order of
-      // 'counts' is: (T+1) copies of all the states of fsa index 0, (T+1) copies
-      // of all the states of FSA index 1, and so on.  In fact not all FSAs have
-      // this many frames, most of them have fewer copies, but using this regular
-      // structure avoids having to compute any extra row_ids vectors and the
-      // like.  The out-of-range elements will be set to zero.
+      // We'll do exclusive-sum on the following array, after setting its
+      // elements to 1 if the corresponding state was not pruned away.  The
+      // order of 'counts' is: (T+1) copies of all the states of fsa index 0,
+      // (T+1) copies of all the states of FSA index 1, and so on.  In fact not
+      // all FSAs have this many frames, most of them have fewer copies, but
+      // using this regular structure avoids having to compute any extra row_ids
+      // vectors and the like.  The out-of-range elements will be set to zero.
 
 
       // the following lambda will set elements within `keep_state_data` to 0
@@ -231,8 +231,8 @@ class MultiGraphDenseIntersect {
             // i is actually an idx012 of a state.
 
             // the following works because each FSA has (its num-states * T_+1)
-            // states allocated to it.  However (i / (T_+1)) does not directly map
-            // to a state index.
+            // states allocated to it.  However (i / (T_+1)) does not directly
+            // map to a state index.
             int32_t fsa_idx0 = a_fsas_row_ids1_data[(i / (T + 1))];
             FsaInfo fsa_info = fsa_info_data[fsa_idx0];
             float cutoff = score_cutoffs_data[fsa_idx0];
@@ -359,7 +359,8 @@ class MultiGraphDenseIntersect {
     int32_t scores_stride = b_fsas_.scores.ElemStride0();
     const float *scores_data = b_fsas_.scores.Data();
 
-    auto lambda_set_keep = [=] __host__ __device__(int32_t arc_idx0123, int32_t ans_state_idx012) -> bool {
+    auto lambda_set_keep = [=] __host__ __device__(
+        int32_t arc_idx0123, int32_t ans_state_idx012) -> bool {
           int32_t ans_idx012x = ans_row_splits3_data[ans_state_idx012],
                   ans_idx01 = ans_row_ids2_data[ans_state_idx012],
                   fsa_idx0 = ans_row_ids1_data[ans_idx01],
@@ -456,7 +457,7 @@ class MultiGraphDenseIntersect {
 
 
     K2_EVAL(
-        c_, num_arcs_out, lambda_set_arcs_and_maps, (int32_t arc_idx_out)->void {
+        c_, num_arcs_out, lambda_set_arcs_and_maps, (int32_t arc_idx_out) -> void {
           // arc_idx0123 below is the same as the arc_idx0123 given to
           // lambda_set_keep above.
           int32_t arc_idx0123 = arcs_new2old_data[arc_idx_out],
