@@ -466,6 +466,25 @@ class TestRaggedOps(unittest.TestCase):
             expected = torch.tensor([0, 3, -1, 6, 9], device=device)
             assert torch.all(torch.eq(indexes, expected))
 
+    def test_max_per_sublist_two_axes(self):
+        for device in self.devices:
+            src = k2.RaggedFloat(
+                '[[1 3 -1 -2] [1 0 -1] [3 2 1] [] [1] [2 3]]').to(device)
+            indexes = k2.ragged.max_per_sublist(src, initial_value=0)
+
+            # -1 for an empty sublist
+            expected = torch.tensor([3, 1, 3, 0, 1, 3], device=device)
+            assert torch.all(torch.eq(indexes, expected))
+
+    def test_max_per_sublist_three_axes(self):
+        for device in self.devices:
+            src = k2.RaggedFloat(
+                '[ [[3 2 1] [0 -1] []] [[2 5 3] [1 10 9 8]] ]').to(device)
+            indexes = k2.ragged.max_per_sublist(src, initial_value=0)
+            # -1 for an empty sublist
+            expected = torch.tensor([3, 0, 0, 5, 10], device=device)
+            assert torch.all(torch.eq(indexes, expected))
+
 
 if __name__ == '__main__':
     unittest.main()
