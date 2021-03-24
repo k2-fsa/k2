@@ -663,12 +663,13 @@ class MultiGraphDenseIntersect {
 
     // This vector, of length T_ + 1, tells us, for each frame 0 <= t <= T, how
     // many FSAs have a copy of their decoding-graph states alive on this
-    // time-index.  It equals InvertMonotonicDecreasing(num_copies_per_fsa_)
+    // time-index.  It equals InvertMonotonicDecreasing(num_copies_per_fsa)
     // and it is also the case that InvertMonotonicDecreasing(num_fsas_per_t_)
-    // == num_copies_per_fsa_.
+    // == num_copies_per_fsa.
     Array1<int32_t> num_fsas_per_t =
                         InvertMonotonicDecreasing(num_copies_per_fsa),
                     num_fsas_per_t_cpu = num_fsas_per_t.To(c_cpu);
+    K2_CHECK_EQ(num_fsas_per_t.Dim(), T_ + 1);
 
     Array1<int32_t> a_fsas_row_splits1_cpu = a_fsas_.RowSplits(1).To(c_cpu),
                     a_fsas_row_splits12_cpu =

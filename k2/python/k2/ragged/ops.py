@@ -285,3 +285,24 @@ def argmax_per_sublist(src: _k2.RaggedFloat,
       Return a 1-D tensor with dtype torch.int32.
     '''
     return _k2.argmax_per_sublist(src, initial_value)
+
+
+def max_per_sublist(src: _k2.RaggedFloat,
+                    initial_value: float = torch.finfo(torch.float32).min
+                    ) -> torch.Tensor:  # noqa
+    '''Compute the max per sublist for a ragged tensor (including
+       `initial_value` in the maximum)
+
+    The max is computed on the last layer, ignoring other layers, so it's
+    as if you removed other layers first.
+
+    Args:
+      src:
+        The input ragged tensor.
+      initial_value:
+        The initial value that is included with the elements of each
+        sub-list when computing the maximum.
+    Returns:
+      Return a 1-D tensor with dtype torch.int32.
+    '''
+    return _k2.max_per_sublist(src, initial_value)

@@ -12,6 +12,24 @@ from .fsa import Fsa
 
 class DenseFsaVec(object):
 
+    # Note: you can access members self.scores and self.dense_fsa_vec.
+    # self.scores is a torch.Tensor containing the scores; it will
+    # contain rows of the `log_probs` arg given to __init__ interspersed
+    # with rows representing final-arcs.  The structure is something like:
+    #
+    #  [ [ -inf x x x x x x  ]
+    #    [ -inf x x x x x x  ]
+    #    [ -inf x x x x x x  ]
+    #    [  0 -inf -inf -inf.. ]
+    #    [ -inf x x x x x x  ]
+    #     ...
+    #  ]
+    # where the x's come from the `log_probs` arg, and the 0's and
+    # -inf's are added by this class (those special rows with no x's
+    # correspond to the final-arcs in the FSAs; the 0 corresponds to
+    # symbol -1.)
+
+
     def __init__(self, log_probs: torch.Tensor,
                  supervision_segments: torch.Tensor) -> None:
         '''Construct a DenseFsaVec from neural net log-softmax outputs.

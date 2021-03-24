@@ -339,6 +339,16 @@ Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src) {
       });
 
   MonotonicDecreasingUpperBound(ans, &ans);
+#ifndef NDEBUG
+  K2_EVAL(
+      c, ans_dim, lambda_check_values, (int32_t i) -> void {
+        int32_t j = ans_data[i];
+        K2_CHECK((j == src_dim || src_data[j] <= i) &&
+                 (j == 0 || src_data[j-1] > i));
+      });
+#endif
+
+
   return ans;
 }
 
