@@ -136,19 +136,25 @@ class MultiGraphDenseIntersect {
     {
       // check that b_fsas are in order of decreasing length.  Calling code
       // already checked IsMonotonic(a_to_b_map) which is also necessary.
-      Array1<int32_t> r = b_fsas.shape.RowSplits(1).To(GetCpuContext());
-      int32_t *r_data = r.Data();
-      int32_t prev_t = r_data[1] - r_data[0];
-      for (int32_t i = 1; i + 1 < r.Dim(); i++) {
-        int32_t this_t = r_data[i + 1] - r_data[i];
-        if (this_t > prev_t)
-          K2_LOG(FATAL) << "Sequences (DenseFsaVec) must be in sorted "
-                           "order from greatest to least length.";
-        prev_t = this_t;
-      }
+      Array1<int32_t> seq_len = RowSplitsToSizes(b_fsas.shape.RowSplits(1));
+
+      // here `is_decreasing` is actually `is_non_increasing`
+      bool is_decreasing = IsMonotonicDecreasing(seq_len);
+      K2_CHECK(is_decreasing) << "Sequences (DenseFsaVec) must be in sorted "
+                                 "order from greatest to least length.\n"
+                                 "Current seq_len is:\n"
+                              << seq_len;
+
       // Set T_.  Elements of b_fsas_ are longest first, so the length of the
       // first sequence is the length of the longest sequence.
-      T_ = r_data[1] - r_data[0];
+      //
+      // CAUTION: We use a_to_b_map[0] instead of 0 here since the 0th sequence
+      // may be excluded from a_to_b_map.
+      //
+      // See also https://github.com/k2-fsa/k2/issues/693
+      T_ = seq_len[a_to_b_map_[0]];
+      // CAUTION: The above statement takes two transfers from GPU to CPU if
+      // context is a CudaContext
     }
 
     // set up steps_, which contains a bunch of meta-information about the steps
@@ -974,7 +980,9 @@ void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
     temp = Arange(a_fsas.Context(), 0, a_fsas.Dim0());
     a_to_b_map = &temp;
   } else {
-    K2_CHECK(IsMonotonic(*a_to_b_map));
+    K2_CHECK(IsMonotonic(*a_to_b_map))
+        << "a_to_b_map should be monotonically increasing. Given:\n"
+        << *a_to_b_map;
   }
   K2_CHECK_EQ(a_fsas.Dim0(), a_to_b_map->Dim());
 
