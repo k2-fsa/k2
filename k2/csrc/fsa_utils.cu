@@ -200,8 +200,8 @@ static Fsa K2FsaFromStream(std::istringstream &is,
   auto c = GetCpuContext();
 
   if (num_aux_labels > 0) {
-    *aux_labels_out = Array2<int32_t>(c, num_aux_labels,
-                                      static_cast<int32_t>(arcs.size());
+    *aux_labels_out =
+        Array2<int32_t>(c, num_aux_labels, static_cast<int32_t>(arcs.size()));
     K2_CHECK_EQ(aux_labels.size(), arcs.size() * num_aux_labels);
     auto aux_labels_acc = aux_labels_out->Accessor();
     int32_t arcs_size = static_cast<int32_t>(arcs.size());
