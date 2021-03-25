@@ -33,7 +33,7 @@ namespace k2 {
 
   This is because final state in k2 does not bear a cost. Instead, we put the
   cost on the arc that connects to the final state, and set its label to -1.
-  When `openfst` is true, we expect the more generic OpenFst sytle final state
+  When `openfst` is true, we expect the more generic OpenFst style final state
   format :
 
       final_state [cost]
@@ -45,22 +45,24 @@ namespace k2 {
 
   Note that fields are separated by whitespace.
 
-  CAUTION: The first column has to be in non-decreasing order.
+  CAUTION: The first column has to be in non-decreasing order
+  if `openfst==false`.
 
   @param [in]   s   The input string. See the above description for its format.
   @param [in]   openfst
-                    If true, read the OpenFst format the string form has the weights as costs, not
-                    scores, so we negate them as we read. We will also allow
-                    multiple final states with weights associated with them.
+                    If true, read the OpenFst format. The string form has the
+                    weights as costs, not scores, so we negate them as we read.
+                    We will also allow multiple final states with weights
+                    associated with them.
   @param [in]  num_aux_labels  The number of auxiliary labels to expect on
                     each line.  In OpenFST terminology, 0 would be an acceptor
                     and 1 would be a transducer
   @param [out]  aux_labels
-                    This is ignored if num_aux_labels == 0.  If num_aux_labels > 0,
-                    this will be set to an Array2 (on CPU) of shape
-                    (num_aux_labels, num_arcs).
-                    Note: on final-arcs (which are not explicitly represented in the
-                    OpenFst format), the value of the aux_labels will be -1.
+                    This is ignored if num_aux_labels == 0.
+                    If num_aux_labels > 0, this will be set to an
+                    Array2 (on CPU) of shape (num_aux_labels, num_arcs).
+                    Note: on final-arcs (which are not explicitly represented in
+                    the OpenFst format), the value of the aux_labels will be -1.
 
   @return It returns an Fsa on CPU.
  */

@@ -248,8 +248,10 @@ class MultiGraphDenseIntersect {
                 state_idx1 = idx_within_fsa % fsa_info.num_states;
             // In the state_scores arrays, there are 2 copies of each FSA's
             // states, for backward and forward.
-            int32_t backward_state_idx = (2 * fsa_info.state_offset) + state_idx1,
-                forward_state_idx = backward_state_idx + fsa_info.num_states;
+            int32_t backward_state_idx =
+                        (2 * fsa_info.state_offset) + state_idx1,
+                    forward_state_idx =
+                        backward_state_idx + fsa_info.num_states;
 
             char keep = 0;
             if (t <= fsa_info.T) {
@@ -461,9 +463,9 @@ class MultiGraphDenseIntersect {
       arc_map_b_data = arc_map_b->Data();
     }
 
-
     K2_EVAL(
-        c_, num_arcs_out, lambda_set_arcs_and_maps, (int32_t arc_idx_out) -> void {
+        c_, num_arcs_out, lambda_set_arcs_and_maps,
+        (int32_t arc_idx_out)->void {
           // arc_idx0123 below is the same as the arc_idx0123 given to
           // lambda_set_keep above.
           int32_t arc_idx0123 = arcs_new2old_data[arc_idx_out],
@@ -543,7 +545,6 @@ class MultiGraphDenseIntersect {
           arc.score = arc_score;
           arcs_data[arc_idx_out] = arc;
         });
-
 
     Array1<int32_t> ans_row_splits3_subsampled(c_, ans_row_splits3.Dim());
     RowIdsToRowSplits(ans_row_ids3_subsampled, &ans_row_splits3_subsampled);
