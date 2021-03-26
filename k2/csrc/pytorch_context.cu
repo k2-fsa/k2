@@ -14,6 +14,16 @@
 #include "k2/csrc/pytorch_context.h"
 
 namespace k2 {
+// CAUTION: This is a workaround to free the CUDA memory
+// correctly if `PYTORCH_NO_CUDA_MEMORY_CACHING` is set.
+//
+// We don't use the implementation from PyTorch since
+// this function is not exported.
+bool forceUncachedAllocator() {
+  static bool force_uncached =
+      getenv("PYTORCH_NO_CUDA_MEMORY_CACHING") != nullptr;
+  return force_uncached;
+}
 
 static std::once_flag has_cuda_init_flag;
 static bool has_cuda = false;
@@ -105,6 +115,15 @@ class PytorchCudaContext : public Context {
   }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
+    // NOTE(fangjun): raw_allocate() returns a torch::DataPtr, which is
+    // implicitly converted to a raw pointer. After this statement, the returned
+    // torch::DataPtr object is freed. We could have saved torch::DataPtr's
+    // deleter in `deleter_context`, but we use `deleter_context` already for
+    // `ManagedTensor`. Therefore, we use forceUncachedAllocator() to choose
+    // its deleter.
+    //
+    //
+    // CAUTION: Update this if PyTorch changes its implementation.
     void *p = allocator_->raw_allocate(bytes);
     if (deleter_context != nullptr) *deleter_context = nullptr;
     return p;
@@ -116,7 +135,12 @@ class PytorchCudaContext : public Context {
       // the memory is passed from a `torch::Tensor`
       delete reinterpret_cast<ManagedTensor *>(deleter_context);
     } else {
-      allocator_->raw_deallocate(data);
+      // NOTE: See the comment in `Allocate`
+      if (forceUncachedAllocator()) {
+        K2_CHECK_CUDA_ERROR(cudaFree(data));
+      } else {
+        allocator_->raw_deallocate(data);
+      }
     }
   }
 

@@ -267,13 +267,14 @@ def index_tensor(src: torch.Tensor, indexes: Union[torch.Tensor, _k2.RaggedInt]
         or `src.dtype == torch.float32`.
       indexes:
         It satisfies -1 <= indexes.values()[i] < src.numel().
+
         - If it's a tensor, its values will be interpreted as indexes into
-        `src`; if indexes.values()[i] is -1, then ans[i] is 0.
+          `src`; if indexes.values()[i] is -1, then ans[i] is 0.
 
         - If it's a ragged tensor, `indexes.values()` will be interpreted as
-        indexes into `src`. If src.dtype is torch.int32, it returns
-        a _k2.RaggedInt; if src.dtype is torch.float32, it performs an extra
-        sum-per-sublist operation and returns 1-D torch.Tensor.
+          indexes into `src`. If src.dtype is torch.int32, it returns
+          a _k2.RaggedInt; if src.dtype is torch.float32, it performs an extra
+          sum-per-sublist operation and returns 1-D torch.Tensor.
 
     Returns:
       Returns a tensor or a ragged tensor (depending on the type of `indexes`)
