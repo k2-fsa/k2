@@ -30,6 +30,8 @@ endif()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
 if("${CMAKE_BUILD_TYPE_UPPERCASE}" STREQUAL "DEBUG")
+  # refer to https://docs.nvidia.com/cuda/cuda-memcheck/index.html#compilation-options
+  # The two options is for cuda-memcheck' stack backtrace feature more useful.
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -rdynamic --compiler-options -lineinfo")
 endif()
 
