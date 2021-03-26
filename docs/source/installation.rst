@@ -190,7 +190,7 @@ can be installed with::
   All you need to do is to setup the ``PYTHONPATH`` environment variable so that
   Python can find where k2 resides.
 
-  k2 contains of two parts. The first part consists of pure Python files that are in
+  k2 contains two parts. The first part consists of pure Python files that are in
   ``k2_source_tree/k2/python/k2``. The second part is the C++ part, which has been
   compiled into a bunch of shared libraries that can be invoked from Python. These
   libraries are saved in `k2_build_tree/build/lib`.
