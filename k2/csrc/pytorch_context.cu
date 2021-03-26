@@ -19,6 +19,33 @@ namespace k2 {
 //
 // We don't use the implementation from PyTorch since
 // this function is not exported.
+//
+// Why do we need this function?
+//
+// From
+// https://github.com/pytorch/pytorch/blob/d4045e9aa173b99d1135b4a64473a0fb630758d9/c10/core/Allocator.h#L154
+//
+// > If this returns a non nullptr, it means that allocate()
+// > is guaranteed to return a unique_ptr with this deleter attached;
+// > it means the rawAllocate and rawDeallocate APIs are safe to use.
+// > This function MUST always return the same BoundDeleter.
+//
+// The comment says if `raw_allocate()` returns a non-nullptr, we can
+// always use `raw_deallocate()`. However, this is not the case for
+// CUDACachingAllocator.
+//
+// See
+// https://github.com/pytorch/pytorch/blob/d4045e9aa173b99d1135b4a64473a0fb630758d9/c10/cuda/CUDACachingAllocator.cpp#L1190
+//
+// `CudaCachingAllocator::allocate()` returns a pointer associated with
+// different deleters depending on whether the environment variable
+// `PYTORCH_NO_CUDA_MEMORY_CACHING` is set. Thus, we have to be careful
+// in choosing the deleter during the deallocation.
+// Otherwise, you will be SAD.
+//
+// The environment variable is most useful for cuda-memcheck. It should
+// never be set when cuda-memcheck is not used.
+//
 bool forceUncachedAllocator() {
   static bool force_uncached =
       getenv("PYTORCH_NO_CUDA_MEMORY_CACHING") != nullptr;
