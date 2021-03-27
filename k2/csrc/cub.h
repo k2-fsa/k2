@@ -15,7 +15,7 @@
 // for why we need the following two macros
 //
 // NOTE: We define the following two macros so
-// that k2 and PyTorch share a different copy
+// that k2 and PyTorch use a different copy
 // of CUB.
 
 #define CUB_NS_PREFIX namespace k2 {
