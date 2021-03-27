@@ -108,7 +108,7 @@ static void SplitStringToVector(const std::string &in, const char *delim,
   }
 }
 
-/* Create an acceptor from a stream, assuming the acceptor is in the k2 format:
+/* Create an Fsa from a stream, assuming the Fsa is in k2 format:
 
    src_state dest_state label [aux_label1 aux_label2 ... ] [score]
    ... ...
@@ -118,17 +118,18 @@ static void SplitStringToVector(const std::string &in, const char *delim,
    not bear a cost/score -- we put the cost/score on the arc that connects to
    the final state and set its label to -1.  The score defaults to 0.0.
 
-   @param [in]  is    The input stream that contains the acceptor.
+   @param [in]  is    The input stream that contains the Fsa.
    @param  [in]  num_aux_labels  The number of auxiliary labels to expect
                      per arc; 0 == acceptor, 1 == transducer, but may be more.
    @param [out] aux_labels_out  If num_aux_labels > 0, this will be
                      assigned to,  with a new array on CPU of shape
-                     (num_arcs, num_aux_labels).
+                     (num_aux_labels, num_arcs).
    @return It returns an Fsa on CPU.
 */
 static Fsa K2FsaFromStream(std::istringstream &is,
                            int32_t num_aux_labels,
                            Array2<int32_t> *aux_labels_out) {
+  K2_CHECK(num_aux_labels == 0 || aux_labels_out != nullptr);
   NVTX_RANGE(K2_FUNC);
   std::vector<Arc> arcs;
   std::vector<std::string> splits;
@@ -139,20 +140,27 @@ static Fsa K2FsaFromStream(std::istringstream &is,
 
   bool finished = false;  // when the final state is read, set it to true.
   while (std::getline(is, line)) {
-    SplitStringToVector(line, kDelim,
-                        &splits);  // splits is cleared in the function
+    // `splits` is cleared inside the function, so no need to clear it here.
+    SplitStringToVector(line, kDelim, &splits);
     if (splits.empty()) continue;  // this is an empty line
 
     K2_CHECK_EQ(finished, false);
 
-    int32_t num_fields = splits.size();
+    int32_t num_fields = static_cast<int32_t>(splits.size());
+    // The score field of each arc is optional.
+    // When num_aux_labels is 0
+    //   - num_fields is 3, this means the score field is absent
+    //   - num_fields is 4, this means the score field is present
+    // When num_aux_labels is > 0
+    //   - num_fields is 3 + num_aux_labels, then the score field is absent
+    //   - num_fields is 4 + num_aux_labels, then the score field is present
     if (num_fields == 3 + num_aux_labels || num_fields == 4 + num_aux_labels) {
       //   0            1          2      3            3+num_aux_labels
       // src_state  dest_state   label   aux_label1... score
       int32_t src_state = StringToInt(splits[0]);
       int32_t dest_state = StringToInt(splits[1]);
       int32_t symbol = StringToInt(splits[2]);
-      for (int32_t i = 0; i < num_aux_labels; i++)
+      for (int32_t i = 0; i < num_aux_labels; ++i)
         aux_labels.push_back(StringToInt(splits[3 + i]));
       float score = (num_fields == 4 + num_aux_labels ?
                      StringToFloat(splits[3 + num_aux_labels]) : 0.0f);
@@ -160,7 +168,7 @@ static Fsa K2FsaFromStream(std::istringstream &is,
       K2_CHECK_GE(dest_state, 0);
       arcs.emplace_back(src_state, dest_state, symbol, score);
       max_state = std::max(max_state, std::max(src_state, dest_state));
-    } else if (num_fields == 1u) {
+    } else if (num_fields == 1) {
       if (final_state != -1) {
         K2_LOG(FATAL) << "Invalid line: " << line
                       << ", final state has already been read, value="
@@ -192,17 +200,17 @@ static Fsa K2FsaFromStream(std::istringstream &is,
   auto c = GetCpuContext();
 
   if (num_aux_labels > 0) {
-    *aux_labels_out = Array2<int32_t>(c, num_aux_labels,
-                                      (int32_t)arcs.size());
-    K2_CHECK(aux_labels.size() == arcs.size() * num_aux_labels);
+    *aux_labels_out =
+        Array2<int32_t>(c, num_aux_labels, static_cast<int32_t>(arcs.size()));
+    K2_CHECK_EQ(aux_labels.size(), arcs.size() * num_aux_labels);
     auto aux_labels_acc = aux_labels_out->Accessor();
-    int32_t arcs_size = arcs.size();
-    for (int32_t i = 0; i < arcs_size; i++)
-      for (int32_t j = 0; j < num_aux_labels; j++)
+    int32_t arcs_size = static_cast<int32_t>(arcs.size());
+    for (int32_t i = 0; i < arcs_size; ++i)
+      for (int32_t j = 0; j < num_aux_labels; ++j)
         aux_labels_acc(j, i) = aux_labels[i * num_aux_labels + j];
   }
 
-  if (arcs.size() == 0) {
+  if (arcs.size() == 0u) {
     return Fsa(EmptyRaggedShape(c, 2));
   }
   bool error = true;
@@ -212,7 +220,6 @@ static Fsa K2FsaFromStream(std::istringstream &is,
 
   return fsa;
 }
-
 
 /* Create an Fsa from a stream in OpenFst format.  Supports acceptors
    (num_aux_labels=0) and transducers (num_aux_labels=1)
@@ -231,7 +238,7 @@ static Fsa K2FsaFromStream(std::istringstream &is,
    super final state, with the (negated) old final state cost/score as its
    cost/score, -1 as its label and -1 as its aux_label.
 
-   @param [in]  is    The input stream that contains the transducer.
+   @param [in]  is    The input stream that contains the Fsa.
    @param [in]  num_aux_labels  The number of auxiliary labels to expect
                      per arc; 0 == acceptor, 1 == transducer, but may be more.
    @param [out] aux_labels_out  If num_aux_labels > 0, this will be
@@ -261,11 +268,11 @@ static Fsa OpenFstFromStream(std::istringstream &is,
   std::vector<int32_t> original_final_states;
   std::vector<float> original_final_weights;
   while (std::getline(is, line)) {
-    SplitStringToVector(line, kDelim,
-                        &splits);  // splits is cleared in the function
+    // `splits` is cleared inside the function, so no need to clear it here.
+    SplitStringToVector(line, kDelim, &splits);
     if (splits.empty()) continue;  // this is an empty line
 
-    int32_t num_fields = splits.size();
+    int32_t num_fields = static_cast<int32_t>(splits.size());
     if (num_fields == 3 + num_aux_labels || num_fields == 4 + num_aux_labels) {
       //   0            1          2      3            3+num_aux_labels
       // src_state  dest_state   label   aux_label1... [cost]
@@ -288,7 +295,7 @@ static Fsa OpenFstFromStream(std::istringstream &is,
       }
       state_to_arcs[src_state].emplace_back(src_state, dest_state, symbol,
                                             -cost);
-      for (int32_t i = 0; i < num_aux_labels; i++) {
+      for (int32_t i = 0; i < num_aux_labels; ++i) {
         int32_t aux_label = StringToInt(splits[3 + i]);
         state_to_aux_labels[src_state].push_back(aux_label);
       }
@@ -346,7 +353,7 @@ static Fsa OpenFstFromStream(std::istringstream &is,
           original_final_states[i], super_final_state,
           -1,  // kFinalSymbol
           original_final_weights[i]);
-      for (int32_t j = 0; j < num_aux_labels; j++)
+      for (int32_t j = 0; j < num_aux_labels; ++j)
         state_to_aux_labels[original_final_states[i]].push_back(
             -1);  // kFinalSymbol
       ++num_arcs;
@@ -392,9 +399,9 @@ static Fsa OpenFstFromStream(std::istringstream &is,
     for (std::size_t a = 0; a < state_to_arcs[s].size(); ++a) {
       K2_CHECK_GT(num_arcs, arc_index);
       arcs[arc_index] = state_to_arcs[s][a];
-      for (int32_t i = 0; i < num_aux_labels; i++)
+      for (int32_t i = 0; i < num_aux_labels; ++i)
         aux_labels_acc(i, arc_index) =
-            state_to_aux_labels[s][a*num_aux_labels + i];
+            state_to_aux_labels[s][a * num_aux_labels + i];
       ++arc_index;
     }
   }
@@ -411,9 +418,9 @@ static Fsa OpenFstFromStream(std::istringstream &is,
   return fsa;
 }
 
-Fsa FsaFromString(const std::string &s, bool openfst /*= false*/,
+Fsa FsaFromString(const std::string &s, bool openfst /* = false*/,
                   int32_t num_aux_labels /* = 0*/,
-                  Array2<int32_t> *aux_labels /*= nullptr*/) {
+                  Array2<int32_t> *aux_labels /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   std::istringstream is(s);
   K2_CHECK(is);
