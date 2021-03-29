@@ -449,14 +449,9 @@ Array1<T> Arange(ContextPtr c, T begin, T end, T inc) {
   return Range<T>(c, (end + inc - 1 - begin) / inc, begin, inc);
 }
 
-
+// This will be defined in array_ops.cu
 template <>
-Array2<Any> ToContiguous(const Array2<Any> &src) {
-  Array2<Any> ans;
-  FOR_REAL_AND_INT32_TYPES(src.GetDtype(), T,
-                           ans = ToContiguous(src.Specialize<T>()).Generic());
-  return Array2<Any>();  // Silence warning
-}
+Array2<Any> ToContiguous(const Array2<Any> &src);
 
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src) {
