@@ -92,10 +92,10 @@ namespace k2 {
 
   Index naming scheme
 
-  In a ragged tensor with n axes (say, 3) the actual elements will be written
+  In a ragged tensor t with n axes (say, 3) the actual elements will be written
   in a linear array we'll have various levels of indexes that allow us to
   look up an element given the hierarchical indexes and vice versa.  A 3-d
-  ragged tensor will have RowIds1(), RowSplits1(), RowIds2(), RowSplits2(),
+  ragged tensor will have t.RowIds(1), t.RowSplits(1), t.RowIds(2), t.RowSplits(2),
   and the actual elements.  We have a naming scheme that expresses what
   information is packed into a single integer.
 
@@ -105,22 +105,20 @@ namespace k2 {
        axes), we call idx0, idx1 and idx2
      - The linear index into the elements, we call idx012 because it includes
        all 3 values.
-     - The RowSplits1() would map from an idx0 to an idx0x.  The x here
+     - t.RowSplits(1) would map from an idx0 to an idx0x.  The x here
        takes the place of a 1 and that replacement means "actually the index
        here is definitely zero".  Any specific idx0x that we have will be
        for a particular idx0.
 
    For more details, it's best to use an example.
 
-
-     # below is pseudocode
-     RaggedTensor3 t = [ [ [ 1 2 ] [ 5 ] ] [ [ 7 8 9 ] ] ]
+     Ragged<int32_t> t('[ [ [ 1 2 ] [ 5 ] ] [ [ 7 8 9 ] ] ]')
 
      # which will give us:
-     t.row_splits1 == [ 0 2 3 ]    # indexed by idx0, elements are idx0x
-     t.row_ids1 == [ 0 0 1 ]       # indexed by idx01, elements are idx0
-     t.row_splits2 == [ 0 2 3 6 ]  # indexed by idx01, elements are idx01x
-     t.row_ids2 == [ 0 0 1 2 2 2 ] # indexed by idx012, elements are idx01
+     t.RowSplits(1) == [ 0 2 3 ]    # indexed by idx0, elements are idx0x
+     t.RowIds(1) == [ 0 0 1 ]       # indexed by idx01, elements are idx0
+     t.RowSplits(2) == [ 0 2 3 6 ]  # indexed by idx01, elements are idx01x
+     t.RowIds(2) == [ 0 0 1 2 2 2 ] # indexed by idx012, elements are idx01
      t.values == [ 1 2 5 7 8 9 ]   # indexed by idx012, elements are whatever
                                    # values we're storing.
 
@@ -128,10 +126,10 @@ namespace k2 {
      have a notation for the computations involved in that.  Suppose we want to
      know the number of elements in T[0].  We'll compute:
        int32_t idx0 = 0,
-           idx0x = t.row_splits1[idx0],
-           idx0x_next = t.row_splits1[idx0 + 1],
-           idx0xx = t.row_splits2[idx0x],
-           idx0xx_next = t.row_splits2[idx0x_next],
+           idx0x = t.RowSplits(1)[idx0],
+           idx0x_next = t.RowSplits(1)[idx0 + 1],
+           idx0xx = t.RowSplits(2)[idx0x],
+           idx0xx_next = t.RowSplits(2)[idx0x_next],
            len12 = idx0xx_next - idx0xx
      (The _next suffix is used when we're querying the most specific known index
      plus one, in this case index 0 but for instance, idx01x_next would mean
@@ -143,11 +141,11 @@ namespace k2 {
      relative to the start of the sub-array t[idx0].  We'd do this as
      follows:
         int32_t idx0, idx1, idx2;  # provided
-        int32_t idx0x = t.row_splits1[idx0],
+        int32_t idx0x = t.RowSplits(1)[idx0],
             idx01 = idx0x + idx1,
-            idx01x = t.row_splits2[idx01],
+            idx01x = t.RowSplits(2)[idx01],
             idx012 = idx01x + idx2,
-            idx0xx = t.row_splits2[idx0x],
+            idx0xx = t.RowSplits(2)[idx0x],
             idx12 = idx012 - idx0xx;
      In the last line above, when we subtract idx012 - idx0xx we lose the
      leading "0" because the zeroth index was the same in the two things being
