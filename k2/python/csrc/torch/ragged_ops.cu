@@ -329,5 +329,7 @@ void PybindRaggedOps(py::module &m) {
   PybindIndex(m);
   PybindRegularRaggedShape(m);
   PybindArgMaxPerSublist<float>(m);
+  PybindArgMaxPerSublist<int32_t>(m);
   PybindMaxPerSublist<float>(m);
+  PybindMaxPerSublist<int32_t>(m);
 }

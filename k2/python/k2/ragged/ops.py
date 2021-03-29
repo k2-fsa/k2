@@ -269,7 +269,7 @@ def regular_ragged_shape(dim0: int, dim1: int) -> _k2.RaggedShape:
     return _k2.regular_ragged_shape(dim0, dim1)
 
 
-def argmax_per_sublist(src: _k2.RaggedFloat,
+def argmax_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
                        initial_value: float = torch.finfo(torch.float32).min
                       ) -> torch.Tensor:  # noqa
     '''Compute the argmax per sublist for a ragged tensor.
@@ -287,7 +287,7 @@ def argmax_per_sublist(src: _k2.RaggedFloat,
     return _k2.argmax_per_sublist(src, initial_value)
 
 
-def max_per_sublist(src: _k2.RaggedFloat,
+def max_per_sublist(src: Union[_k2.RaggedFloat,_k2.RaggedInt],
                     initial_value: float = torch.finfo(torch.float32).min
                     ) -> torch.Tensor:  # noqa
     '''Compute the max per sublist for a ragged tensor (including
