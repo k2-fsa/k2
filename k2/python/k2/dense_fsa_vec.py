@@ -29,7 +29,6 @@ class DenseFsaVec(object):
     # correspond to the final-arcs in the FSAs; the 0 corresponds to
     # symbol -1.)
 
-
     def __init__(self, log_probs: torch.Tensor,
                  supervision_segments: torch.Tensor) -> None:
         '''Construct a DenseFsaVec from neural net log-softmax outputs.

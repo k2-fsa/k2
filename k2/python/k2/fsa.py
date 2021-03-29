@@ -1063,15 +1063,15 @@ class Fsa(object):
             raise ValueError(f'Unsupported num_axes: {self.arcs.num_axes()}')
 
     @classmethod
-    def from_str(cls, s: str,
+    def from_str(cls,
+                 s: str,
                  acceptor: Optional[bool] = None,
                  num_aux_labels: Optional[int] = None,
-                 aux_label_names: Optional[List[str] ] = None) -> 'Fsa':
-        '''Create an Fsa from a string in the k2 or openfst format.
-        (See also from_openfst).
+                 aux_label_names: Optional[List[str]] = None) -> 'Fsa':
+        '''Create an Fsa from a string in the k2 or OpenFst format.
+        (See also :func:`from_openfst`).
 
-        The given string `s` consists of lines with the following format:
-
+        The given string `s` consists of lines with the following format::
 
           src_state dest_state label [aux_label1 aux_label2...] [score]
 
@@ -1092,11 +1092,14 @@ class Fsa(object):
           have label -1. If there are aux_labels, they are also -1 for
           arcs entering the final state.
 
+        Note:
+          At most one of `acceptor`, `num_aux_labels`, and `aux_label_names`
+          must be supplied; if none are supplied, acceptor format is assumed.
+
         Args:
           s:
             The input string. Refer to the above comment for its format.
-        NOTE: at most one of the next 3 args must be supplied; if none are
-        supplied, acceptor format is assumed.
+
           acceptor:
             Set to true to denote acceptor format which is num_aux_labels == 0,
             or false to denote transducer format (i.e. num_aux_labels == 1
@@ -1104,11 +1107,11 @@ class Fsa(object):
           num_aux_labels:
             The number of auxiliary labels to expect on each line (in addition
             to the 'acceptor' label; is 1 for traditional transducers but can be
-            any nonnegative number.  The names of the aux_labels default to
+            any non-negative number.  The names of the aux_labels default to
             'aux_labels' then 'aux_labels2', 'aux_labels3' and so on.
           aux_label_names:
-            If provided, the length of this list dictates the number of aux_labels
-            and this list dicates their names.
+            If provided, the length of this list dictates the number of
+            aux_labels and this list dictates their names.
         '''
         (num_aux_labels, aux_label_names) = get_aux_label_info(acceptor,
                                                                num_aux_labels,
@@ -1125,34 +1128,42 @@ class Fsa(object):
                              f'num_aux_labels={num_aux_labels}): {s}')
 
     @classmethod
-    def from_openfst(cls, s: str, acceptor: Optional[bool] = None,
+    def from_openfst(cls,
+                     s: str,
+                     acceptor: Optional[bool] = None,
                      num_aux_labels: Optional[int] = None,
                      aux_label_names: Optional[List[str]] = None) -> 'Fsa':
-        '''Create an Fsa from a string in OpenFST format (or a slightly
-        more general format, if num_aux_labels > 1).
+        '''Create an Fsa from a string in OpenFST format (or a slightly more
+        general format, if num_aux_labels > 1). See also :func:`from_str`.
 
-        The given string `s` consists of lines with the following format:
+        The given string `s` consists of lines with the following format::
 
-           src_state dest_state label [aux_label1 aux_label2...] [score]
+           src_state dest_state label [aux_label1 aux_label2...] [cost]
 
-       (the score defaults to 0.0 if not present).
+       (the cost defaults to 0.0 if not present).
 
         The line for the final state consists of two fields::
 
-           final_state [score]
+           final_state [cost]
 
         Note:
-          Fields are separated by space(s), tab(s) or both. The `score`
+          Fields are separated by space(s), tab(s) or both. The `cost`
           field is a float, while other fields are integers.
 
-          There might be multiple final states. Also, OpenFst may omit the score
+          There might be multiple final states. Also, OpenFst may omit the cost
           if it is 0.0.
+
+        Caution:
+          We use `cost` here to indicate that its value will be negated so that
+          we can get `scores`. That is, `score = -1 * cost`.
+
+        Note:
+          At most one of `acceptor`, `num_aux_labels`, and `aux_label_names`
+          must be supplied; if none are supplied, acceptor format is assumed.
 
         Args:
           s:
             The input string. Refer to the above comment for its format.
-        NOTE: at most one of the next 3 args must be supplied; if none are
-        supplied, acceptor format is assumed.
           acceptor:
             Set to true to denote acceptor format which is num_aux_labels == 0,
             or false to denote transducer format (i.e. num_aux_labels == 1
@@ -1160,11 +1171,11 @@ class Fsa(object):
           num_aux_labels:
             The number of auxiliary labels to expect on each line (in addition
             to the 'acceptor' label; is 1 for traditional transducers but can be
-            any nonnegative number.
+            any non-negative number.
           aux_label_names:
-            If provided, the length of this list dictates the number of aux_labels.
-            By default the names are 'aux_labels', 'aux_labels2', 'aux_labels3'
-            and so on.
+            If provided, the length of this list dictates the number of
+            aux_labels. By default the names are 'aux_labels', 'aux_labels2',
+            'aux_labels3' and so on.
         '''
 
         (num_aux_labels, aux_label_names) = get_aux_label_info(acceptor,
@@ -1178,9 +1189,9 @@ class Fsa(object):
                     setattr(ans, aux_label_names[i], aux_labels[i, :])
             return ans
         except Exception:
-            raise ValueError(f'The following is not a valid Fsa in OpenFst format '
-                             f'(with num_aux_labels={num_aux_labels}): {s}')
-
+            raise ValueError(
+                f'The following is not a valid Fsa in OpenFst format '
+                f'(with num_aux_labels={num_aux_labels}): {s}')
 
     def set_scores_stochastic_(self, scores) -> None:
         '''Normalize the given `scores` and assign it to `self.scores`.
@@ -1209,33 +1220,35 @@ class Fsa(object):
         self.scores = ragged_scores.values.to(self.scores.device)
 
 
-def get_aux_label_info(acceptor: Optional[bool],
-                       num_aux_labels: Optional[int],
-                       aux_label_names: Optional[List[str]]) -> Tuple[int, List[str]]:
-    """
-    Given either acceptor or num_aux_labels or aux_label_names, at most
+def get_aux_label_info(acceptor: Optional[bool], num_aux_labels: Optional[int],
+                       aux_label_names: Optional[List[str]]
+                      ) -> Tuple[int, List[str]]:  # noqa
+    '''Given either acceptor or num_aux_labels or aux_label_names, at most
     one of which should be supplied, returns a pair (num_aux_labels,
     aux_label_names) specifying the number of auxiliary labels and the
     names to use for them.
 
-     Args:
-       acceptor:  None, or a bool; False means no aux_labels and True means
-                  one aux_label  with name 'aux_label'.
-       num_aux_labels:  None, or a number >= 0
-       aux_label_names:  None, or a list of names, such as ['aux_labels',
-                                                            'aux_labels2']
+    Args:
+      acceptor:
+        None, or a bool; False means no aux_labels and True means aux_label
+        with name 'aux_label'.
+      num_aux_labels:
+        None, or a number >= 0
+      aux_label_names:
+        None, or a list of names, such as ['aux_labels', 'aux_labels2']
     Returns:
-       Returns a pair (num_aux_labels, aux_label_names).
+       Returns a tuple (num_aux_labels, aux_label_names).
        out from the other.  If all inputs are None, we assume there
        are no aux-labels and return (0, []).
-    """
+    '''
     if acceptor is not None:
         assert num_aux_labels is None and aux_label_names is None
         return (0, []) if acceptor else (1, ['aux_labels'])
     elif aux_label_names is not None:
         assert num_aux_labels is None
         return len(aux_label_names), aux_label_names
-    elif num_aux_labels is  not None:
+    elif num_aux_labels is not None:
+        assert num_aux_labels >= 0
         aux_label_names = []
         if num_aux_labels != 0:
             aux_label_names.append('aux_labels')
