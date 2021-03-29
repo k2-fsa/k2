@@ -57,8 +57,12 @@ class Array1 {
 
   // Return a reference to this viewed as `Any` type (for when we
   // want a generic array without type informatiopn)
-  Array1<k2::Any> &Any() { return *reinterpret_cast<Array1<Any>*>(this); }
-  Array1<k2::Any> &Any() const { return *reinterpret_cast<const Array1<Any>*>(this); }
+  Array1<Any> &Generic() {
+    return *reinterpret_cast<Array1<Any>*>(this);
+  }
+  Array1<Any> &Generic() const {
+    return *reinterpret_cast<const Array1<Any>*>(this);
+  }
 
 
   // Only if this is a Array1<Any>: convert to a specific type, which must be
@@ -72,13 +76,13 @@ class Array1 {
   template <typename U>
   Array1<U> &Specialize() {
     static_assert(std::is_same<U, Any>::value);
-    K2_CHECK_EQ(dtype_, DtypeOf<U>);
+    K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
     return *reinterpret_cast<Array1<U>*>(this);
   }
   template <typename U>
   Array1<T> &Specialize() const {
     static_assert(std::is_same<U, Any>::value);
-    K2_CHECK_EQ(dtype_, DtypeOf<U>);
+    K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
     return *reinterpret_cast<const Array1<U>*>(this);
   }
 
@@ -107,15 +111,15 @@ class Array1 {
       Array1(Array1<T>(str).To(ctx)) { }  // NOLINT
 
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
-  Array1() : dim_(0), dtype_(DtypeOf<T>), byte_offset_(0), region_(nullptr) {}
+  Array1() : dim_(0), dtype_(DtypeOf<T>::dtype), byte_offset_(0), region_(nullptr) {}
 
   // Return if the array is valid or not. An array is valid if we can call
   // Context() on it.
   bool IsValid() const { return region_ != nullptr; }
 
-  Array1(int32_t dim, Dtype dtype, RegionPtr region, size_t byte_offset)
+  Array1(int32_t dim, RegionPtr region, size_t byte_offset, Dtype dtype=DtypeOf<T>::dtype)
       : dim_(dim), dtype_(dtype), byte_offset_(byte_offset), region_(region) {
-    K2_ASSERT(std::is_same<T, Any>::value || dtype == DtypeOf<T>);
+    K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
   }
 
   Array1(ContextPtr ctx, int32_t size, T elem) {
@@ -141,7 +145,7 @@ class Array1 {
     K2_CHECK_LE(start, Dim());
     K2_CHECK_GE(size, 0);
     K2_CHECK_LE(size, Dim() - start);
-    return Array1(size, dtype_, region_, byte_offset_ + start * ElementSize());
+    return Array1(size, region_, byte_offset_ + start * ElementSize(), dtype_);
   }
 
   /* Return sub-part of this array (shares the underlying data with this
@@ -157,7 +161,8 @@ class Array1 {
     K2_CHECK_LE(start, dim_);
     K2_CHECK_GE(end, start);
     K2_CHECK_LE(end, dim_);
-    return Array1(end - start, dtype_, region_, byte_offset_ + start * ElementSize());
+    return Array1(end - start, region_, byte_offset_ + start * ElementSize(),
+                  dtype_);
   }
 
   /*
@@ -402,8 +407,8 @@ class Array1 {
   explicit Array1(const Tensor &tensor) {
     NVTX_RANGE(K2_FUNC);
     dtype_ = tensor.GetDtype();
-    if (!std::is_same<T, Any>) {
-      K2_CHECK_EQ(DtypeOf<T>, dtype_);
+    if (!std::is_same<T, Any>::value) {
+      K2_CHECK_EQ(DtypeOf<T>::dtype, dtype_);
     }
     if (tensor.IsContiguous()) {
       dim_ = tensor.Nelement();
@@ -432,14 +437,13 @@ class Array1 {
 
   void Init(ContextPtr context, int32_t size) {
     static_assert(!std::is_same<T, Any>::value);
-    dtype_ = DtypeOf<T>;
+    dtype_ = DtypeOf<T>::dtype;
     region_ = NewRegion(context, static_cast<size_t>(size) * ElementSize());
     dim_ = size;
     byte_offset_ = 0;
   }
   void Init(ContextPtr context, Dtype dtype, int32_t size) {
-    K2_ASSERT(std::is_same<T, Any>::value ||
-              dtype == DtypeOf<T>);
+    K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
     dtype_ = dtype;
     region_ = NewRegion(context, static_cast<size_t>(size) * ElementSize());
     dim_ = size;
@@ -513,6 +517,7 @@ class Array2 {
   // call it for now.
   size_t ByteOffset() const { return byte_offset_; }
   const RegionPtr &GetRegion() const { return region_; }
+  Dtype GetDtype() const { return dtype_; }
 
   ContextPtr &Context() const { return region_->context; }
 
@@ -526,12 +531,35 @@ class Array2 {
       with the "no-gaps" semantics if dim0_ <= 1. */
   bool IsContiguous() const { return elem_stride0_ == dim1_; }
 
+  template <typename U>
+  Array2<U> &Specialize() {
+    static_assert(std::is_same<T, Any>::value);
+    K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
+    return *reinterpret_cast<Array2<U>*>(this);
+  }
+  template <typename U>
+  const Array2<U> &Specialize() const {
+    static_assert(std::is_same<T, Any>::value);
+    K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
+    return *reinterpret_cast<const Array2<U>*>(this);
+  }
+
+  // Return a reference to this viewed as `Any` type (for when we
+  // want a generic array without type informatiopn)
+  Array2<Any> &Generic() {
+    return *reinterpret_cast<Array2<Any>*>(this);
+  }
+  Array2<Any> &Generic() const {
+    return *reinterpret_cast<const Array2<Any>*>(this);
+  }
+
+
   /*  returns a flat version of this, appending the rows; will copy the data if
       it was not contiguous. */
   Array1<T> Flatten() {
     NVTX_RANGE(K2_FUNC);
     if (std::is_same<T, Any>::value) {
-      FOR_REAL_AND_INT32_DTYPES(dtype_, U, return Specialize<U>().Flatten());
+      FOR_REAL_AND_INT32_TYPES(dtype_, U, return Specialize<U>().Flatten());
     } else if (dim1_ == elem_stride0_) {
       return Array1<T>(dim0_ * dim1_, dtype_, region_, byte_offset_);
     } else {
@@ -645,14 +673,14 @@ class Array2 {
 
   /* stride on 1st axis is 1 (in elements). */
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
-         RegionPtr region, Dtype dtype=DtypeOf<T>)
+         RegionPtr region, Dtype dtype=DtypeOf<T>::dtype)
       : dtype_(dtype),
         dim0_(dim0),
         elem_stride0_(elem_stride0),
         dim1_(dim1),
         byte_offset_(byte_offset),
         region_(region) {
-    K2_CHECK_NE(dtype, DtypeOf<Any>);
+    K2_CHECK_NE(dtype, kAnyDtype);
     K2_CHECK_GE(dim0_, 0);
     K2_CHECK_GE(dim1_, 0);
     K2_CHECK_GE(elem_stride0_, dim1_);
@@ -773,9 +801,10 @@ class Array2 {
 
   /* Initialize from Array1.  Require dim0 * dim1 == a.Dim() and dim0,dim1 >= 0
    */
-  Array2(Array1<T> &a, int32_t dim0, int32_t dim1, Dtype dtype=DtypeOf<T>::dtype)
+  Array2(Array1<T> &a, int32_t dim0, int32_t dim1,
+         Dtype dtype=DtypeOf<T>::dtype)
       : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1) {
-    K2_CHECK_NE(dtype, DtypeOf<Any>.dtype);
+    K2_CHECK_NE(dtype, kAnyDtype);
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     K2_CHECK_EQ(dim0_ * dim1_, a.Dim());
