@@ -34,7 +34,13 @@ class Array1 {
  public:
   static_assert(std::is_pod<T>::value, "T must be POD");
   using ValueType = T;
-  size_t ElementSize() const { return sizeof(ValueType); }
+  size_t ElementSize() const {
+    if (!std::is_same<T,Any>::value) {
+      return sizeof(ValueType);
+    } else {
+      return TraitsOf(dtype_).NumBytes();
+    }
+  }
   int32_t Dim() const { return dim_; }  // dimension of only axis (axis 0)
 
   // Returns pointer to 1st elem.  Could be a GPU or CPU pointer,
@@ -49,6 +55,35 @@ class Array1 {
                                        byte_offset_);
   }
 
+  // Return a reference to this viewed as `Any` type (for when we
+  // want a generic array without type informatiopn)
+  Array1<k2::Any> &Any() { return *reinterpret_cast<Array1<Any>*>(this); }
+  Array1<k2::Any> &Any() const { return *reinterpret_cast<const Array1<Any>*>(this); }
+
+
+  // Only if this is a Array1<Any>: convert to a specific type, which must be
+  // identical to the actual type stored as dtype_.
+  // You call this as, e.g.
+  //  Array1<Any> a(...);
+  //  if (a.GetDtype() == kInt32Dtype) {
+  //     Array1<int32_t> &b = a.Specialize<int32_t>();
+  //     ...
+  //  }
+  template <typename U>
+  Array1<U> &Specialize() {
+    static_assert(std::is_same<U, Any>::value);
+    K2_CHECK_EQ(dtype_, DtypeOf<U>);
+    return *reinterpret_cast<Array1<U>*>(this);
+  }
+  template <typename U>
+  Array1<T> &Specialize() const {
+    static_assert(std::is_same<U, Any>::value);
+    K2_CHECK_EQ(dtype_, DtypeOf<U>);
+    return *reinterpret_cast<const Array1<U>*>(this);
+  }
+
+  Dtype GetDtype() const { return dtype_; }
+
   // Return a copy of this array that does not share the same underlying data.
   Array1<T> Clone() const;
 
@@ -58,7 +93,11 @@ class Array1 {
   // now.
   const RegionPtr &GetRegion() const { return region_; }
 
+  // This must only be called if T != Any
   Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
+
+  // The following works also for T == Any.
+  Array1(ContextPtr ctx, Dtype dtype, int32_t size) { Init(ctx, dtype, size); }
 
   // read in same format as operator<< and operator>>, i.e. "[ 10 20 30 ]"
   explicit Array1(const std::string &str);
@@ -68,19 +107,27 @@ class Array1 {
       Array1(Array1<T>(str).To(ctx)) { }  // NOLINT
 
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
-  Array1() : dim_(0), byte_offset_(0), region_(nullptr) {}
+  Array1() : dim_(0), dtype_(DtypeOf<T>), byte_offset_(0), region_(nullptr) {}
 
   // Return if the array is valid or not. An array is valid if we can call
   // Context() on it.
   bool IsValid() const { return region_ != nullptr; }
 
-  Array1(int32_t dim, RegionPtr region, size_t byte_offset)
-      : dim_(dim), byte_offset_(byte_offset), region_(region) {}
+  Array1(int32_t dim, Dtype dtype, RegionPtr region, size_t byte_offset)
+      : dim_(dim), dtype_(dtype), byte_offset_(byte_offset), region_(region) {
+    K2_ASSERT(std::is_same<T, Any>::value || dtype == DtypeOf<T>);
+  }
 
   Array1(ContextPtr ctx, int32_t size, T elem) {
     Init(ctx, size);
     *this = elem;
   }
+
+  Array1(ContextPtr ctx, Dtype dtype, int32_t size, T elem) {
+    Init(ctx, dtype, size);
+    *this = elem;
+  }
+
 
   /* Return sub-part of this array (shares the underlying data with this
      array).
@@ -94,7 +141,7 @@ class Array1 {
     K2_CHECK_LE(start, Dim());
     K2_CHECK_GE(size, 0);
     K2_CHECK_LE(size, Dim() - start);
-    return Array1(size, region_, byte_offset_ + start * ElementSize());
+    return Array1(size, dtype_, region_, byte_offset_ + start * ElementSize());
   }
 
   /* Return sub-part of this array (shares the underlying data with this
@@ -110,7 +157,7 @@ class Array1 {
     K2_CHECK_LE(start, dim_);
     K2_CHECK_GE(end, start);
     K2_CHECK_LE(end, dim_);
-    return Array1(end - start, region_, byte_offset_ + start * ElementSize());
+    return Array1(end - start, dtype_, region_, byte_offset_ + start * ElementSize());
   }
 
   /*
@@ -132,11 +179,10 @@ class Array1 {
     K2_CHECK_GE(size, 0);
     K2_CHECK_GT(inc, 0);
     K2_CHECK_LE((size - 1) * inc, Dim() - start);
-    Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {size};
     std::vector<int32_t> strides = {inc};
     Shape shape(dims, strides);
-    return Tensor(type, shape, region_, byte_offset_ + start * ElementSize());
+    return Tensor(dtype_, shape, region_, byte_offset_ + start * ElementSize());
   }
 
   // Note that the returned Tensor is not const, the caller should be careful
@@ -144,10 +190,9 @@ class Array1 {
   // array as they share the memory.
   Tensor ToTensor() const {
     NVTX_RANGE(K2_FUNC);
-    Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {Dim()};
     Shape shape(dims);  // strides == 1
-    return Tensor(type, shape, region_, byte_offset_);
+    return Tensor(dtype_, shape, region_, byte_offset_);
   }
 
   DeviceType Device() const { return Context()->GetDeviceType(); }
@@ -168,7 +213,7 @@ class Array1 {
   Array1 To(ContextPtr ctx) const {
     NVTX_RANGE(K2_FUNC);
     if (ctx->IsCompatible(*Context())) return *this;
-    Array1 ans(ctx, Dim());
+    Array1 ans(ctx, dtype_, Dim());
     ans.CopyFrom(*this);
     return ans;
   }
@@ -176,8 +221,8 @@ class Array1 {
   // Copy from another array of the same dimension and type.
   void CopyFrom(const Array1<T> &src);
 
-  // Convert this array to another array with type S;
-  // if S is same with T, then it just returns *this
+  // Copy this array to another array with type S; but if S == T, then it just
+  // returns *this
   template <typename S>
   Array1<typename std::enable_if<!std::is_same<S, T>::value, S>::type> AsType()
       const {
@@ -259,6 +304,7 @@ class Array1 {
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
   T operator[](int32_t i) const {
+    static_assert(!std::is_same<T, Any>::value);
     NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, Dim());
@@ -286,6 +332,7 @@ class Array1 {
 
   /* Setting all elements to a scalar */
   void operator=(const T t) {
+    static_assert(!std::is_same<T, Any>::value);
     NVTX_RANGE(K2_FUNC);
     T *data = Data();
 
@@ -314,6 +361,7 @@ class Array1 {
   // output array memory allocated by the caller.
   // Must have ans.Dim() == indexes.Dim() and IsCompatible(*ans, *this)
   void Index(const Array1<int32_t> &indexes, Array1<T> *ans) const {
+    static_assert(!std::is_same<T, Any>::value);
     NVTX_RANGE(K2_FUNC);
     K2_CHECK_NE(ans, nullptr);
     const ContextPtr &c = GetContext(*this, indexes, *ans);
@@ -353,20 +401,28 @@ class Array1 {
    */
   explicit Array1(const Tensor &tensor) {
     NVTX_RANGE(K2_FUNC);
-    Dtype type = DtypeOf<ValueType>::dtype;
-    K2_CHECK_EQ(type, tensor.GetDtype());
+    dtype_ = tensor.GetDtype();
+    if (!std::is_same<T, Any>) {
+      K2_CHECK_EQ(DtypeOf<T>, dtype_);
+    }
     if (tensor.IsContiguous()) {
       dim_ = tensor.Nelement();
       byte_offset_ = tensor.ByteOffset();
       region_ = tensor.GetRegion();
       return;
+    } else {
+      *this = Array1(ToContiguous(tensor));
     }
-
-    *this = Array1(ToContiguous(tensor));
   }
 
  private:
   int32_t dim_;
+  Dtype dtype_;   // The dtype of the data that this array points to; this is
+                  // implicit in the type T, but is also stored so that we can
+                  // cast to type Array1<Any> and not lose track of the actual
+                  // type.  Note: is it possible that the underlying memory
+                  // could be viewed as multiple different types by different
+                  // Array1's (if you are doing tricky things...)
   size_t byte_offset_;
   RegionPtr region_;  // Region that `data` is a part of.  Device type is stored
                       // here.  Will be NULL if Array1 was created with default
@@ -375,6 +431,16 @@ class Array1 {
                       // context.
 
   void Init(ContextPtr context, int32_t size) {
+    static_assert(!std::is_same<T, Any>::value);
+    dtype_ = DtypeOf<T>;
+    region_ = NewRegion(context, static_cast<size_t>(size) * ElementSize());
+    dim_ = size;
+    byte_offset_ = 0;
+  }
+  void Init(ContextPtr context, Dtype dtype, int32_t size) {
+    K2_ASSERT(std::is_same<T, Any>::value ||
+              dtype == DtypeOf<T>);
+    dtype_ = dtype;
     region_ = NewRegion(context, static_cast<size_t>(size) * ElementSize());
     dim_ = size;
     byte_offset_ = 0;
@@ -429,7 +495,13 @@ template <typename T>
 class Array2 {
  public:
   using ValueType = T;
-  size_t ElementSize() const { return sizeof(ValueType); }
+  size_t ElementSize() const {
+    if (!std::is_same<T,Any>::value) {
+      return sizeof(ValueType);
+    } else {
+      return TraitsOf(dtype_).NumBytes();
+    }
+  }
 
   /* Could view this as num_rows */
   int32_t Dim0() const { return dim0_; }
@@ -458,13 +530,15 @@ class Array2 {
       it was not contiguous. */
   Array1<T> Flatten() {
     NVTX_RANGE(K2_FUNC);
-    if (dim1_ == elem_stride0_) {
-      return Array1<T>(dim0_ * dim1_, region_, byte_offset_);
+    if (std::is_same<T, Any>::value) {
+      FOR_REAL_AND_INT32_DTYPES(dtype_, U, return Specialize<U>().Flatten());
+    } else if (dim1_ == elem_stride0_) {
+      return Array1<T>(dim0_ * dim1_, dtype_, region_, byte_offset_);
     } else {
       auto region = NewRegion(region_->context, static_cast<size_t>(dim0_) *
                                                     static_cast<size_t>(dim1_) *
                                                     ElementSize());
-      Array1<T> array(dim0_ * dim1_, region, 0);
+      Array1<T> array(dim0_ * dim1_, dtype_, region, 0);
       const T *this_data = Data();
       T *data = array.Data();
       int32_t dim1 = dim1_;
@@ -498,7 +572,7 @@ class Array2 {
     return Array2<T>(num_rows, dim1_, elem_stride0_ * inc,
                      byte_offset_ + elem_stride0_ * static_cast<size_t>(start) *
                                         ElementSize(),
-                     region_);
+                     region_, dtype_);
   }
 
   /*
@@ -549,8 +623,9 @@ class Array2 {
 
   // Create new array2 with given dimensions.  dim0 and dim1 must be >=0.
   // Data will be initialized with `elem`
-  Array2(ContextPtr c, int32_t dim0, int32_t dim1, T elem)
-      : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
+  Array2(ContextPtr c, int32_t dim0, int32_t dim1, T elem,
+         Dtype dtype=DtypeOf<T>::dtype)
+      : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     region_ = NewRegion(c, static_cast<size_t>(dim0_) *
@@ -570,12 +645,14 @@ class Array2 {
 
   /* stride on 1st axis is 1 (in elements). */
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
-         RegionPtr region)
-      : dim0_(dim0),
+         RegionPtr region, Dtype dtype=DtypeOf<T>)
+      : dtype_(dtype),
+        dim0_(dim0),
         elem_stride0_(elem_stride0),
         dim1_(dim1),
         byte_offset_(byte_offset),
         region_(region) {
+    K2_CHECK_NE(dtype, DtypeOf<Any>);
     K2_CHECK_GE(dim0_, 0);
     K2_CHECK_GE(dim1_, 0);
     K2_CHECK_GE(elem_stride0_, dim1_);
@@ -621,11 +698,10 @@ class Array2 {
   // array as they share the memory.
   Tensor ToTensor() {
     NVTX_RANGE(K2_FUNC);
-    Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {dim0_, dim1_};
     std::vector<int32_t> strides = {elem_stride0_, 1};
     Shape shape(dims, strides);
-    return Tensor(type, shape, region_, byte_offset_);
+    return Tensor(dtype_, shape, region_, byte_offset_);
   }
 
   // Return one column of this Array2, as a Tensor.  (Will point to the
@@ -633,15 +709,15 @@ class Array2 {
   Tensor Col(int32_t i) {
     NVTX_RANGE(K2_FUNC);
     K2_CHECK_LT(static_cast<uint32_t>(i), static_cast<uint32_t>(dim1_));
-    Dtype type = DtypeOf<ValueType>::dtype;
     std::vector<int32_t> dims = {dim0_};
     std::vector<int32_t> strides = {elem_stride0_};
     Shape shape(dims, strides);
-    return Tensor(type, shape, region_, byte_offset_ + (ElementSize() * i));
+    return Tensor(dtype_, shape, region_, byte_offset_ + (ElementSize() * i));
   }
 
   // Note: const-ness is w.r.t. the metadata only.
   T *Data() const {
+    static_assert(!std::is_same<T, Any>::value);
     return reinterpret_cast<T *>(reinterpret_cast<char *>(region_->data) +
                                  byte_offset_);
   }
@@ -649,10 +725,12 @@ class Array2 {
   // Note: array1 doesn't need an accessor because its Data() pointer functions
   // as one already.
   Array2Accessor<T> Accessor() {
+    static_assert(!std::is_same<T, Any>::value);
     return Array2Accessor<T>(Data(), elem_stride0_);
   }
 
   ConstArray2Accessor<T> Accessor() const {
+    static_assert(!std::is_same<T, Any>::value);
     return ConstArray2Accessor<T>(Data(), elem_stride0_);
   }
 
@@ -695,8 +773,9 @@ class Array2 {
 
   /* Initialize from Array1.  Require dim0 * dim1 == a.Dim() and dim0,dim1 >= 0
    */
-  Array2(Array1<T> &a, int32_t dim0, int32_t dim1)
-      : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1) {
+  Array2(Array1<T> &a, int32_t dim0, int32_t dim1, Dtype dtype=DtypeOf<T>::dtype)
+      : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1) {
+    K2_CHECK_NE(dtype, DtypeOf<Any>.dtype);
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     K2_CHECK_EQ(dim0_ * dim1_, a.Dim());
@@ -709,6 +788,7 @@ class Array2 {
   // extended __host__ __device__ lambda
   // must have public access.
   void CopyDataFromTensor(const Tensor &t) {
+    static_assert(!std::is_same<T, Any>::value);
     NVTX_RANGE(K2_FUNC);
     T *this_data = Data();
     const T *t_data = t.Data<T>();
@@ -723,6 +803,7 @@ class Array2 {
   }
 
  private:
+  Dtype dtype_;
   int32_t dim0_;  // dimension on 0th (row) axis, i.e. the number of rows.
   int32_t elem_stride0_;  // stride *in elements* on 0th (row) axis, must be >=
                           // dim1_

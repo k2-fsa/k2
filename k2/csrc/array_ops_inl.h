@@ -449,6 +449,12 @@ Array1<T> Arange(ContextPtr c, T begin, T end, T inc) {
   return Range<T>(c, (end + inc - 1 - begin) / inc, begin, inc);
 }
 
+
+template <>
+Array2<Any> ToContiguous(const Array2<Any> &src) {
+  FOR_REAL_AND_INT32_TYPES(src.Dtype(), T, return ToContiguous(src.Specialize<T>)::Any());
+}
+
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src) {
   NVTX_RANGE(K2_FUNC);

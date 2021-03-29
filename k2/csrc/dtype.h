@@ -24,6 +24,7 @@ class DtypeTraits {
  public:
   int32_t NumBytes() const { return num_bytes_; }
   BaseType GetBaseType() const { return static_cast<BaseType>(base_type_); }
+  int32_t NumScalars() const { return num_scalars_; }
   const char *Name() const { return name_; }
 
   DtypeTraits(BaseType base_type, int32_t num_bytes, const char *name,
@@ -55,24 +56,34 @@ extern const DtypeTraits g_dtype_traits_array[];
 
 // It's just an enum, we can use TraitsOf(dtype).NumBytes() and so on..
 enum class Dtype {
+  kAnyDtype,   // for when dtype is unknown
+  kHalfDtype,
   kFloatDtype,
   kDoubleDtype,
   kInt8Dtype,
   kInt16Dtype,
   kInt32Dtype,
   kInt64Dtype,
+  kUint8Dtype,
+  kUint16Dtype,
   kUint32Dtype,
   kUint64Dtype,
+  kArcDtype,
 };
 
+constexpr Dtype kAnyDtype = Dtype::kAnyDtype;
+constexpr Dtype kHalfDtype = Dtype::kHalfDtype;
 constexpr Dtype kFloatDtype = Dtype::kFloatDtype;
 constexpr Dtype kDoubleDtype = Dtype::kDoubleDtype;
 constexpr Dtype kInt8Dtype = Dtype::kInt8Dtype;
 constexpr Dtype kInt16Dtype = Dtype::kInt16Dtype;
 constexpr Dtype kInt32Dtype = Dtype::kInt32Dtype;
 constexpr Dtype kInt64Dtype = Dtype::kInt64Dtype;
+constexpr Dtype kUint8Dtype = Dtype::kUint8Dtype;
+constexpr Dtype kUint16Dtype = Dtype::kUint16Dtype;
 constexpr Dtype kUint32Dtype = Dtype::kUint32Dtype;
 constexpr Dtype kUint64Dtype = Dtype::kUint64Dtype;
+constexpr Dtype kArcDtype = Dtype::kArcDtype;
 
 std::ostream &operator<<(std::ostream &os, Dtype dtype);
 
