@@ -86,7 +86,8 @@ add_library(test_utils SHARED test_utils.cu)
 target_link_libraries(test_utils PUBLIC context gtest)
 
 # please sort the source files alphabetically
-set(  algorithms_test
+set(cuda_tests
+  algorithms_test
   array_ops_test
   array_test
   cuda_tests
