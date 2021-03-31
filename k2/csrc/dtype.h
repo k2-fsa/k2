@@ -38,7 +38,9 @@ class DtypeTraits {
         misc_(misc),
         num_bytes_(num_bytes),
         name_(name) {
-    K2_CHECK_EQ(num_bytes_ % num_scalars_, 0);
+    if (num_scalars_ != 0) {
+      K2_CHECK_EQ(num_bytes_ % num_scalars_, 0);
+    }
   }
 
  private:

@@ -57,6 +57,7 @@ class Array1 {
 
   // Return a reference to this viewed as `Any` type (for when we
   // want a generic array without type informatiopn)
+  // Reverse this with Specialize().
   Array1<Any> &Generic() {
     return *reinterpret_cast<Array1<Any>*>(this);
   }
@@ -97,11 +98,11 @@ class Array1 {
   // now.
   const RegionPtr &GetRegion() const { return region_; }
 
-  // This must only be called if T != Any
-  Array1(ContextPtr ctx, int32_t size) { Init(ctx, size); }
+  // Constructor.  Requires size >= 0, and T == Any or dtype==DtypeOf<T>::dtype.
+  Array1(ContextPtr ctx, int32_t size, Dtype dtype=DtypeOf<T>::dtype) {
+    Init(ctx, size, dtype);
+  }
 
-  // The following works also for T == Any.
-  Array1(ContextPtr ctx, Dtype dtype, int32_t size) { Init(ctx, dtype, size); }
 
   // read in same format as operator<< and operator>>, i.e. "[ 10 20 30 ]"
   explicit Array1(const std::string &str);
@@ -122,16 +123,10 @@ class Array1 {
     K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
   }
 
-  Array1(ContextPtr ctx, int32_t size, T elem) {
-    Init(ctx, size);
+  Array1(ContextPtr ctx, int32_t size, T elem, Dtype dtype=DtypeOf<T>::dtype) {
+    Init(ctx, size, dtype);
     *this = elem;
   }
-
-  Array1(ContextPtr ctx, Dtype dtype, int32_t size, T elem) {
-    Init(ctx, dtype, size);
-    *this = elem;
-  }
-
 
   /* Return sub-part of this array (shares the underlying data with this
      array).
@@ -218,7 +213,7 @@ class Array1 {
   Array1 To(ContextPtr ctx) const {
     NVTX_RANGE(K2_FUNC);
     if (ctx->IsCompatible(*Context())) return *this;
-    Array1 ans(ctx, dtype_, Dim());
+    Array1 ans(ctx, Dim(), dtype_);
     ans.CopyFrom(*this);
     return ans;
   }
@@ -384,7 +379,7 @@ class Array1 {
   // constructor from CPU array (transfers to GPU if necessary)
   Array1(ContextPtr ctx, const std::vector<T> &src) {
     NVTX_RANGE(K2_FUNC);
-    Init(ctx, src.size());
+    Init(ctx, src.size(), DtypeOf<T>::dtype);
     ContextPtr cpu_ctx = GetCpuContext();
     cpu_ctx->CopyDataTo(src.size() * ElementSize(), src.data(), ctx, Data());
   }
@@ -435,14 +430,7 @@ class Array1 {
                       // if dim_ == 0; this allows it to keep track of the
                       // context.
 
-  void Init(ContextPtr context, int32_t size) {
-    static_assert(!std::is_same<T, Any>::value);
-    dtype_ = DtypeOf<T>::dtype;
-    region_ = NewRegion(context, static_cast<size_t>(size) * ElementSize());
-    dim_ = size;
-    byte_offset_ = 0;
-  }
-  void Init(ContextPtr context, Dtype dtype, int32_t size) {
+  void Init(ContextPtr context, int32_t size, Dtype dtype) {
     K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
     dtype_ = dtype;
     region_ = NewRegion(context, static_cast<size_t>(size) * ElementSize());
@@ -546,6 +534,7 @@ class Array2 {
 
   // Return a reference to this viewed as `Any` type (for when we
   // want a generic array without type informatiopn)
+  // Reverse this with Specialize().
   Array2<Any> &Generic() {
     return *reinterpret_cast<Array2<Any>*>(this);
   }
@@ -641,8 +630,10 @@ class Array2 {
         region_(nullptr) {}
   /* Create new array2 with given dimensions.  dim0 and dim1 must be >=0.
      Data will be uninitialized. */
-  Array2(ContextPtr c, int32_t dim0, int32_t dim1)
-      : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
+  Array2(ContextPtr c, int32_t dim0, int32_t dim1,
+         Dtype dtype=DtypeOf<T>::dtype)
+      : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
+    K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     region_ = NewRegion(c, static_cast<size_t>(dim0_) *

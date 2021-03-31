@@ -71,6 +71,7 @@ std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
 
 template <typename T>
 std::istream &operator>>(std::istream &is, Array2<T> &array) {
+  static_assert(!K2_TYPE_IS_ANY(T));
   std::vector<T> vec;
   int32_t row_length = 0, num_rows = 0;
   is >> std::ws;  // eat whitespace
