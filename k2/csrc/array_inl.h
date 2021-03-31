@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "cub/cub.cuh"
+#include "k2/csrc/cub.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/utils.h"
 

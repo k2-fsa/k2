@@ -28,6 +28,13 @@ elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWABLE_BUILD_TYPES)
     choose one from ${ALLOWABLE_BUILD_TYPES}")
 endif()
 
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
+if("${CMAKE_BUILD_TYPE_UPPERCASE}" STREQUAL "DEBUG")
+  # refer to https://docs.nvidia.com/cuda/cuda-memcheck/index.html#compilation-options
+  # The two options are to make cuda-memcheck's stack backtrace feature more useful.
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -rdynamic --compiler-options -lineinfo")
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
@@ -131,6 +138,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(pybind11)
 if(K2_USE_PYTORCH)
   add_definitions(-DK2_USE_PYTORCH)
+  add_definitions(-DTORCH_API_INCLUDE_EXTENSION_H)
   include(torch)
 endif()
 

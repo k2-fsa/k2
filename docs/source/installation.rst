@@ -182,6 +182,41 @@ can be installed with::
 
   You may get a wheel with a different filename.
 
+.. Note::
+
+  [For developers]
+
+  If you are developing k2, you don't need to install k2 to use its Python APIs!
+  All you need to do is to setup the ``PYTHONPATH`` environment variable so that
+  Python can find where k2 resides.
+
+  k2 contains two parts. The first part consists of pure Python files that are in
+  ``k2_source_tree/k2/python/k2``. The second part is the C++ part, which has been
+  compiled into a bunch of shared libraries that can be invoked from Python. These
+  libraries are saved in `k2_build_tree/build/lib`.
+
+  If you set ``PYTHONPATH`` to the following values:
+
+  .. code-block::
+
+    export PYTHONPATH=/path/to/k2/k2/python:$PYTHONPATH
+    export PYTHONPATH=/path/to/k2/build/lib:$PYTHONPATH
+
+  After ``PYTHONPATH`` is set, you can run:
+
+  .. code-block::
+
+    python3 -m k2.version
+    python3 -c 'import k2; print(k2.__file__)'
+    python3 -c 'import _k2; print(_k2.__file__)'
+
+  Whenver you change some files in ``k2/python/k2``, it comes into effect immediately
+  without uninstalling and installing operations.
+
+  Whenever you modify some `*.cu` files, it is also available after issuing ``make _k2``
+  without any installation effort.
+
+
 To run tests, you have to install the following requirements first::
 
   sudo apt-get install graphviz

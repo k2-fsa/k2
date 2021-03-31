@@ -78,7 +78,9 @@ target_link_libraries(context PUBLIC k2_nvtx)
 target_link_libraries(context PUBLIC moderngpu)
 if(K2_USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
+  target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/libtorch_python.so)
 endif()
+target_include_directories(context PUBLIC ${PYTHON_INCLUDE_DIRS})
 
 #---------------------------- Test K2 CUDA sources ----------------------------
 

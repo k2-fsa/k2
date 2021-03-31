@@ -792,7 +792,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
 
   int32_t num_out_states = num_states;
 
-  // An arc from the start state to the final state with label == 0 is added.
+  // An arc from the start state to the final state with label == -1 is added.
   int32_t num_out_arcs = fsa.values.Dim() + 1;
 
   Array1<int32_t> out_row_ids(c, num_out_arcs);
