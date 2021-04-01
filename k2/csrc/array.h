@@ -547,15 +547,15 @@ class Array2 {
       it was not contiguous. */
   Array1<T> Flatten() {
     NVTX_RANGE(K2_FUNC);
-    if (std::is_same<T, Any>::value) {
-      FOR_REAL_AND_INT32_TYPES(dtype_, U, return Specialize<U>().Flatten());
-    } else if (dim1_ == elem_stride0_) {
-      return Array1<T>(dim0_ * dim1_, dtype_, region_, byte_offset_);
+    if (dim1_ == elem_stride0_) {
+      return Array1<T>(dim0_ * dim1_, region_, byte_offset_,
+                       dtype_);
     } else {
       auto region = NewRegion(region_->context, static_cast<size_t>(dim0_) *
-                                                    static_cast<size_t>(dim1_) *
-                                                    ElementSize());
-      Array1<T> array(dim0_ * dim1_, dtype_, region, 0);
+                              static_cast<size_t>(dim1_) *
+                              ElementSize());
+      Array1<T> array(dim0_ * dim1_, region, 0, dtype_);
+      static_assert(!K2_TYPE_IS_ANY(T));
       const T *this_data = Data();
       T *data = array.Data();
       int32_t dim1 = dim1_;
@@ -764,8 +764,9 @@ class Array2 {
   */
   explicit Array2(Tensor &t, bool copy_for_strides = true) {
     NVTX_RANGE(K2_FUNC);
-    auto type = t.GetDtype();
-    K2_CHECK_EQ(type, DtypeOf<T>::dtype);
+    auto dtype = t.GetDtype();
+    K2_CHECK_EQ(dtype, DtypeOf<T>::dtype);
+    dtype_ = dtype;
     const auto &shape = t.GetShape();
     K2_CHECK_EQ(shape.NumAxes(), 2);
     dim0_ = shape.Dim(0);

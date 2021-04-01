@@ -17,13 +17,14 @@
 namespace k2 {
 
 template <typename T> void CheckDtypes() {
-  Dtype d = DtypeOf<T>;
+  Dtype d = DtypeOf<T>::dtype;
   DtypeTraits t = TraitsOf(d);
+  std::cout << "dtype_traitgs.Name() = " << t.Name() << "\n";
   if (std::is_floating_point<T>::value) {
     ASSERT_EQ(t.GetBaseType(), kFloatBase);
     EXPECT_EQ(t.NumScalars(), 1);
   } else if (std::is_integral<T>::value) {
-    if (static_cast<T>(-1) > 0) { // unsigned
+    if (std::is_unsigned<T>::value) {
       ASSERT_EQ(t.GetBaseType(), kUintBase);
     } else {
       ASSERT_EQ(t.GetBaseType(), kIntBase);
@@ -32,12 +33,13 @@ template <typename T> void CheckDtypes() {
   } else {
     ASSERT_EQ(t.GetBaseType(), kUnknownBase);
   }
-  EXPECT_EQ(t.NumBytes(), sizeof(t));
-
+  if (!K2_TYPE_IS_ANY(T)) {
+    EXPECT_EQ(t.NumBytes(), sizeof(T));
+  }
 }
 
 TEST(DtypeTest, CheckDtypes) {
-  CheckDtypes<half>();
+  //CheckDtypes<half>();
   CheckDtypes<float>();
   CheckDtypes<double>();
   CheckDtypes<int8_t>();

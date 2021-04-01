@@ -79,7 +79,8 @@ enum class Dtype {
                  // e.g. the dtype of a pointer.
 };
 
-#define K2_TYPE_IS_NOT_ANY(T)  !std::is_same<T,Any>::value
+// This is needed because the comma in std::is_same<T,Any>::value prevents it
+// from appearing inside macro arguments.
 #define K2_TYPE_IS_ANY(T)  std::is_same<T,Any>::value
 
 constexpr Dtype kAnyDtype = Dtype::kAnyDtype;
@@ -105,6 +106,16 @@ inline DtypeTraits TraitsOf(Dtype dtype) {
 
 template <typename T>
 struct DtypeOf;
+
+template <>
+struct DtypeOf<Any> {
+  static const Dtype dtype = kAnyDtype;
+};
+
+//template <>
+//struct DtypeOf<half> {
+//  static const Dtype dtype = kHalfDtype;
+//};
 
 template <>
 struct DtypeOf<float> {
@@ -142,6 +153,16 @@ struct DtypeOf<int64_t> {
 };
 
 template <>
+struct DtypeOf<uint8_t> {
+  static const Dtype dtype = kUint8Dtype;
+};
+
+template <>
+struct DtypeOf<uint16_t> {
+  static const Dtype dtype = kUint16Dtype;
+};
+
+template <>
 struct DtypeOf<uint32_t> {
   static const Dtype dtype = kUint32Dtype;
 };
@@ -154,11 +175,6 @@ struct DtypeOf<uint64_t> {
 template <>
 struct DtypeOf<Arc> {
   static const Dtype dtype = kArcDtype;
-};
-
-template <>
-struct DtypeOf<Any> {
-  static const Dtype dtype = kAnyDtype;
 };
 
 template <typename T>

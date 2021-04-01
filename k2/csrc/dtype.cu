@@ -13,17 +13,21 @@ const DtypeTraits g_dtype_traits_array[] = {
   {kFloatBase, 4, "half"}, {kFloatBase, 4, "float"}, {kFloatBase, 8, "double"},
   {kIntBase, 1, "int8"}, {kIntBase, 2, "int16"},   {kIntBase, 4, "int32"},  {kIntBase, 8, "int64"},
   {kUintBase, 1, "uint8"}, {kUintBase, 2, "uint16"},  {kUintBase, 4, "uint32"}, {kUintBase, 8, "uint64"},
-  {kUnknownBase, 16, "Arc", 4}
+  {kUnknownBase, 16, "Arc", 4}, {kUnknownBase, 0, "Other", 0}
 };
 
+const Dtype DtypeOf<Any>::dtype;
 const Dtype DtypeOf<float>::dtype;
 const Dtype DtypeOf<double>::dtype;
 const Dtype DtypeOf<int8_t>::dtype;
 const Dtype DtypeOf<int16_t>::dtype;
 const Dtype DtypeOf<int32_t>::dtype;
 const Dtype DtypeOf<int64_t>::dtype;
+const Dtype DtypeOf<uint8_t>::dtype;
+const Dtype DtypeOf<uint16_t>::dtype;
 const Dtype DtypeOf<uint32_t>::dtype;
 const Dtype DtypeOf<uint64_t>::dtype;
+
 
 std::ostream &operator<<(std::ostream &os, Dtype dtype) {
   os << TraitsOf(dtype).Name();
