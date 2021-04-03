@@ -33,11 +33,6 @@ struct ArcInfo {
 };
 
 
-struct RangeStorage {
-  int32_t start;
-  int32_t end;
-};
-
 /*
 static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
   os << "StateInfo{" << s.a_fsas_state_idx01 << ","
@@ -46,8 +41,7 @@ static std::ostream &operator<<(std::ostream &os, const StateInfo &s) {
 }
 
 static std::ostream &operator<<(std::ostream &os, const ArcInfo &a) {
-  os << "ArcInfo{" << a.dest_ostate << ","
-     << a.a_arc_idx012 << "," << a.b_arc_idx012 << "}";
+os << "ArcInfo{" << a.a_arc_idx012 << "," << a.b_arc_idx012 << "}";
   return os;
 }
 */
@@ -323,8 +317,7 @@ class DeviceIntersector {
     auto state_pair_to_state_acc =
         state_pair_to_state_.GetGenericAccessor(key_bits);
 
-
-    // arc_idx012 here is w.r.t. ans_shape that currently has axes, indexed
+    // arc_idx012 here is w.r.t. ans_shape that currently has axes indexed
     // [fsa][state][arc].
     K2_EVAL(c_, num_arcs, lambda_set_output_data, (int32_t new_arc_idx012) -> void {
         int32_t new_src_state_idx01 = ans_shape_row_ids2[new_arc_idx012],
@@ -332,19 +325,21 @@ class DeviceIntersector {
                 old_src_state_idx01 = states_new2old_data[new_src_state_idx01];
 
         ArcInfo info = arc_info_data[old_arc_idx012];
+        int32_t fsa_idx0 = ans_shape_row_ids1[new_src_state_idx01];
         Arc a_arc = a_arcs_data[info.a_arc_idx012],
             b_arc = b_arcs_data[info.b_arc_idx012];
+        if (arc_map_a_data) arc_map_a_data[new_arc_idx012] = info.a_arc_idx012;
+        if (arc_map_b_data) arc_map_b_data[new_arc_idx012] = info.b_arc_idx012;
 
-        int32_t new_dest_state_idx01;
+        int32_t new_dest_state_idx01;  // index of the dest_state w.r.t
+                                       // ans_shape
         if (a_arc.label == -1) {
           new_dest_state_idx01 = ans_shape_row_splits1[fsa_idx0 + 1] - 1;
         } else {
-          // first work out old_dest_state_idx01, which is the index into states_
-          // of the dest-state.
-          int32_t b_dest_state_idx1 = b_arc.dest_state,
-              b_src_state_idx1 = b_arc.src_state,
-              b_src_state_idx01 = b_fsas_row_ids2_data[info.b_arc_idx012],
-              b_dest_state_idx01 = b_dest_state_idx1 + b_src_state_idx01 - b_src_state_idx1,
+          // first work out old_dest_state_idx01, which is the index (into
+          // states_) of the dest-state.
+          int32_t b_src_state_idx01 = b_fsas_row_ids2_data[info.b_arc_idx012],
+              b_dest_state_idx01 = b_src_state_idx01 + b_arc.dest_state - b_arc.src_state,
               a_dest_state_idx1 = a_arc.dest_state;
           uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
               b_dest_state_idx01;
@@ -354,13 +349,9 @@ class DeviceIntersector {
           int32_t old_dest_state_idx01 = static_cast<uint32_t>(value);
           new_dest_state_idx01 = states_old2new_data[old_dest_state_idx01];
         }
-        int32_t fsa_idx0 = ans_shape_row_ids1[new_src_state_idx01];
         int32_t fsa_idx0x = ans_shape_row_splits1[fsa_idx0],
-          dest_state_idx1 = dest_state_idx01 - fsa_idx0x,
-           src_state_idx1 = new_src_state_idx01 - fsa_idx0x;
-
-        if (arc_map_a_data) arc_map_a_data[new_arc_idx012] = info.a_arc_idx012;
-        if (arc_map_b_data) arc_map_b_data[new_arc_idx012] = info.b_arc_idx012;
+            dest_state_idx1 = new_dest_state_idx01 - fsa_idx0x,
+            src_state_idx1 = new_src_state_idx01 - fsa_idx0x;
 
         Arc out_arc;
         out_arc.src_state = src_state_idx1;
@@ -649,9 +640,9 @@ class DeviceIntersector {
             dest_state_idx = static_cast<uint32_t>(value);
           }  // else leave it at -1, it's a final-state and we allocate their
              // state-ids at the end.
-
+          // Actually we no longer need dest_state_idx, it will be obtained
+          // directly from the hash when we format the output.
           ArcInfo info;
-          info.dest_ostate = dest_state_idx;
           info.a_arc_idx012 = a_arc_idx012;
           info.b_arc_idx012 = b_arc_idx012;
           arcs_data[old_num_arcs + new_arc_i] = info;
@@ -1117,8 +1108,6 @@ class DeviceIntersector {
   // leaves from (index into states_).  Actually this may be redu
   Array1<int32_t> arcs_row_ids_;
 
-
-
   // The hash maps from state-pair, as:
   //   state_pair = (a_fsas_state_idx1 << b_state_bits_) + b_fsas_state_idx01
   //
@@ -1132,26 +1121,25 @@ class DeviceIntersector {
 
   // This hash maps from pairs (a_state_idx1, b_state_idx01), encoded
   // as a key
-  //   (((uint64_t)a_state_idx1) << b_state_bits) | b_state_idx01,
+  //   (((uint64_t)a_state_idx1) << b_state_bits_) | b_state_idx01,
   // to output_state_idx01, where a_state_idx1 and b_state_idx01 are indexes
   // into a_fsas_ and b_fsas_ respectively and output_state_idx01 is
-  // an index into states_ (which will be reshaped prior to creating the
-  // output).
-  // This hash will also contain -1 as values in cases where the dest-state
-  // is a final-state; and inside of Forward() and ForwardSortedA() it will
-  // also contain temporary quantities for newly created states, while we are
-  // working out the newly created state-ids.  (These temporary values do
-  // collide with permanent values, but it doesn't matter since we know
-  // which ones contain temporary values).
+  // an index into states_ (with shape given by iter_to_state_row_splits_cpu_).
+  //
+  // This hash will also contain -1 as values in cases where the dest-state is a
+  // final-state (these are allocated right at the beginning); and inside of
+  // Forward() and ForwardSortedA() it will also contain temporary quantities
+  // for newly created states, while we are working out the newly created
+  // state-ids.
   Hash state_pair_to_state_;
 };
 
 
 
 FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a,
-                     FsaVec &b_fsas, int32_t properties_b,
-                     const Array1<int32_t> &b_to_a_map,
-                     Array1<int32_t> *arc_map_a,
+                       FsaVec &b_fsas, int32_t properties_b,
+                       const Array1<int32_t> &b_to_a_map,
+                       Array1<int32_t> *arc_map_a,
                        Array1<int32_t> *arc_map_b,
                        bool sorted_match_a) {
   NVTX_RANGE("IntersectDevice");

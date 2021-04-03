@@ -163,9 +163,11 @@ static void PybindIntersectDevice(py::module &m) {
       "intersect_device",
       [](FsaVec &a_fsas, int32_t properties_a, FsaVec &b_fsas,
          int32_t properties_b, torch::Tensor b_to_a_map,
-         bool need_arc_map =
-             true) -> std::tuple<FsaVec, torch::optional<torch::Tensor>,
-                                 torch::optional<torch::Tensor>> {
+         bool need_arc_map = true,
+         bool sorted_match_a = false) ->
+      std::tuple<FsaVec,
+                 torch::optional<torch::Tensor>,
+                 torch::optional<torch::Tensor>> {
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         Array1<int32_t> b_to_a_map_array = FromTensor<int32_t>(b_to_a_map);
@@ -173,7 +175,8 @@ static void PybindIntersectDevice(py::module &m) {
         FsaVec ans = IntersectDevice(a_fsas, properties_a, b_fsas, properties_b,
                                      b_to_a_map_array,
                                      need_arc_map ? &a_arc_map : nullptr,
-                                     need_arc_map ? &b_arc_map : nullptr);
+                                     need_arc_map ? &b_arc_map : nullptr,
+                                     sorted_match_a);
         torch::optional<torch::Tensor> a_tensor;
         torch::optional<torch::Tensor> b_tensor;
         if (need_arc_map) {
@@ -184,7 +187,8 @@ static void PybindIntersectDevice(py::module &m) {
       },
       py::arg("a_fsas"), py::arg("properties_a"), py::arg("b_fsas"),
       py::arg("properties_b"), py::arg("b_to_a_map"),
-      py::arg("need_arc_map") = true);
+      py::arg("need_arc_map") = true,
+      py::arg("sorted_match_a") = false);
 }
 
 static void PybindIntersectDensePruned(py::module &m) {
