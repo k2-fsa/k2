@@ -169,26 +169,27 @@ class Hash {
     Try to insert pair (key,value) into hash.
       @param [in] key  Key into hash; it is required that no bits except the lowest-order
                        NUM_KEY_BITS may be set.
-
       @param [in] value  Value to set; it is is required that no bits except the
                      lowest-order (NUM_VALUE_BITS = 64 - NUM_KEY_BITS) may be set;
                      it is also an error if ~((key << NUM_VALUE_BITS) | value) == 0,
                      i.e. if all the allowed bits of both `key` and `value` are
                      set.
-
       @param [out] old_value  If not nullptr, this location will be set to
                     the existing value *if this key was already present* in the
                     hash (or set by another thread in this kernel), i.e. only if
                     this function returns false.
-
-       @return  Returns true if this (key,value) pair was inserted, false otherwise.
+      @param [out] key_value_location  If not nullptr, its contents will be
+                    set to the address of the (key,value) pair (either the
+                    existing or newly-written one).
+      @return  Returns true if this (key,value) pair was inserted, false otherwise.
 
       Note: the const is with respect to the metadata only; it is required, to
       avoid compilation errors.
    */
     __forceinline__ __host__ __device__ bool Insert(
         uint64_t key, uint64_t value,
-        uint64_t *old_value = nullptr) const {
+        uint64_t *old_value = nullptr,
+        uint64_t **key_value_location = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
           leftover_index = 1 | (key >> buckets_num_bitsm1_);
       constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
@@ -202,16 +203,21 @@ class Hash {
         uint64_t cur_elem = data_[cur_bucket];
         if ((cur_elem >> NUM_VALUE_BITS) == key) {
           if (old_value) *old_value = cur_elem & VALUE_MASK;
+          if (key_value_location) *key_value_location = data_ + cur_bucket;
           return false;  // key exists in hash
         }
         else if (~cur_elem == 0) {
           // we have a version of AtomicCAS that also works on host.
           uint64_t old_elem = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
                                         cur_elem, new_elem);
-          if (old_elem == cur_elem) return true;  // Successfully inserted.
+          if (old_elem == cur_elem) {
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
+            return true;  // Successfully inserted.
+          }
           cur_elem = old_elem;
           if (cur_elem >> NUM_VALUE_BITS == key) {
             if (old_value) *old_value = cur_elem & VALUE_MASK;
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
             return false;  // Another thread inserted this key
           }
         }
@@ -223,6 +229,8 @@ class Hash {
         cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
       }
     }
+
+
 
     /*
     Looks up this key in this hash; outputs value and optionally the
@@ -349,26 +357,27 @@ class Hash {
     Try to insert pair (key,value) into hash.
       @param [in] key  Key into hash; it is required that no bits except the lowest-order
                     num_key_bits may be set.
-
       @param [in] value  Value to set; it is is required that no bits except the
                      lowest-order num_value_bits = 64 - num_key_bits may be set;
                      it is also an error if ~((key << num_value_bits) | value) == 0,
                      i.e. if all the allowed bits of both `key` and `value` are
                      set.
-
       @param [out] old_value  If not nullptr, this location will be set to
                     the existing value *if this key was already present* in the
                     hash (or set by another thread in this kernel), i.e. only if
                     this function returns false.
-
-       @return  Returns true if this (key,value) pair was inserted, false otherwise.
+      @param [out] key_value_location  If not nullptr, its contents will be
+                    set to the address of the (key,value) pair (either the
+                    existing or newly-written one).
+      @return  Returns true if this (key,value) pair was inserted, false otherwise.
 
       Note: the const is with respect to the metadata only; it is required, to
       avoid compilation errors.
    */
     __forceinline__ __host__ __device__ bool Insert(
         uint64_t key, uint64_t value,
-        uint64_t *old_value = nullptr) const {
+        uint64_t *old_value = nullptr,
+        uint64_t **key_value_location = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
       const uint32_t num_value_bits = num_value_bits_,
@@ -383,16 +392,21 @@ class Hash {
         uint64_t cur_elem = data_[cur_bucket];
         if ((cur_elem >> num_value_bits) == key) {
           if (old_value) *old_value = cur_elem & VALUE_MASK;
+          if (key_value_location) *key_value_location = data_ + cur_bucket;
           return false;  // key exists in hash
         }
         else if (~cur_elem == 0) {
           // we have a version of AtomicCAS that also works on host.
           uint64_t old_elem = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
                                         cur_elem, new_elem);
-          if (old_elem == cur_elem) return true;  // Successfully inserted.
+          if (old_elem == cur_elem) {
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
+            return true;  // Successfully inserted.
+          }
           cur_elem = old_elem;
           if (cur_elem >> num_value_bits == key) {
             if (old_value) *old_value = cur_elem & VALUE_MASK;
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
             return false;  // Another thread inserted this key
           }
         }

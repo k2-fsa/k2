@@ -4,6 +4,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <cooperative_groups.h>
 #include <limits>
 #include <vector>
 
@@ -311,7 +312,7 @@ class DeviceIntersector {
                   *ans_shape_row_ids1 = ans_shape.RowIds(1).Data(),
                *ans_shape_row_splits1 = ans_shape.RowSplits(1).Data();
 
-    const int32_t *b_fsas_row_ids2_data = b_fsas.RowIds(2).Data();
+    const int32_t *b_fsas_row_ids2_data = b_fsas_.RowIds(2).Data();
 
     int32_t key_bits = key_bits_, b_state_bits = b_state_bits_;
     auto state_pair_to_state_acc =
@@ -321,8 +322,7 @@ class DeviceIntersector {
     // [fsa][state][arc].
     K2_EVAL(c_, num_arcs, lambda_set_output_data, (int32_t new_arc_idx012) -> void {
         int32_t new_src_state_idx01 = ans_shape_row_ids2[new_arc_idx012],
-                     old_arc_idx012 = arcs_new2old_data[new_arc_idx012],
-                old_src_state_idx01 = states_new2old_data[new_src_state_idx01];
+              old_arc_idx012 = arcs_new2old_data[new_arc_idx012];
 
         ArcInfo info = arc_info_data[old_arc_idx012];
         int32_t fsa_idx0 = ans_shape_row_ids1[new_src_state_idx01];
@@ -343,7 +343,7 @@ class DeviceIntersector {
               a_dest_state_idx1 = a_arc.dest_state;
           uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
               b_dest_state_idx01;
-          uint64_t value, *key_value_location = nullptr;
+          uint64_t value;
           bool ans = state_pair_to_state_acc.Find(hash_key, &value);
           K2_CHECK_EQ(ans, true);
           int32_t old_dest_state_idx01 = static_cast<uint32_t>(value);
@@ -426,6 +426,8 @@ class DeviceIntersector {
       int32_t tot_ab = row_splits_ab[num_states],
               cutoff = 1 << 30;  // Eventually I'll make cutoff smaller, like 16384,
                            // and implement the other branch.
+
+      K2_LOG(INFO) << "tot_ab = " << tot_ab;
 
       const Arc *a_arcs_data = a_fsas_.values.Data(),
           *b_arcs_data = b_fsas_.values.Data();
@@ -515,6 +517,9 @@ class DeviceIntersector {
                  num_kept_tot = arcs_newstates_renumbering.New2Old().Dim(),
               num_kept_states = num_kept_tot - num_kept_arcs;
 
+        K2_LOG(INFO) << "num_kept_arcs = " << num_kept_arcs
+                     << ", num_kept_states = " << num_kept_states;
+
         int32_t next_state_end = state_end + num_kept_states;
         iter_to_state_row_splits_cpu_.push_back(next_state_end);
         states_.Resize(next_state_end);  // Note: this Resize() won't actually reallocate each time.
@@ -601,8 +606,8 @@ class DeviceIntersector {
             arcs_newstates_renumbering.New2Old().Data();
 
         K2_EVAL(c_, num_kept_arcs, lambda_set_arc_info, (int32_t new_arc_i) -> void {
-          // 0 <= old_arc_i < tot_ab.
-          int32_t old_arc_i = arcs_new2old_data[new_arc_i];
+            // 0 <= old_arc_i < tot_ab.
+            int32_t old_arc_i = arcs_new2old_data[new_arc_i];
 
           // The code below repeats what we did when processing arcs in the
           // previous lambdas (we do this for all arcs that were kept).
@@ -626,7 +631,7 @@ class DeviceIntersector {
               a_arc = a_arcs_data[a_arc_idx012];
           K2_DCHECK_EQ(a_arc.label, b_arc.label);
 
-          int32_t dest_state_idx = -1;
+          //int32_t dest_state_idx = -1;
           if (a_arc.label != -1) {
             int32_t b_dest_state_idx1 = b_arcs_data[b_arc_idx012].dest_state,
                 b_dest_state_idx01 = b_dest_state_idx1 + src_sinfo.b_fsas_state_idx01 -
@@ -637,9 +642,10 @@ class DeviceIntersector {
 
             uint64_t value = 0;
             bool ans = state_pair_to_state_acc.Find(hash_key, &value);
-            dest_state_idx = static_cast<uint32_t>(value);
-          }  // else leave it at -1, it's a final-state and we allocate their
-             // state-ids at the end.
+            // dest_state_idx = static_cast<uint32_t>(value);
+          }  // else leave dest_state_idx at -1; it's a final-state and we
+             // allocate their state-ids at the end.
+
           // Actually we no longer need dest_state_idx, it will be obtained
           // directly from the hash when we format the output.
           ArcInfo info;
@@ -702,7 +708,9 @@ class DeviceIntersector {
 
       ExclusiveSum(num_arcs_b, &num_arcs_b);
       int32_t num_b_arcs = num_arcs_b.Back();
-      Array<int32_t> b_arc_to_state(c_, num_b_arcs);
+      K2_LOG(INFO) << "num_b_arcs = " << num_b_arcs;
+
+      Array1<int32_t> b_arc_to_state(c_, num_b_arcs);
       RowSplitsToRowIds(num_arcs_b, &b_arc_to_state);
       int32_t *b_arc_to_state_data = b_arc_to_state.Data();
 
@@ -727,9 +735,10 @@ class DeviceIntersector {
       uint64_t value_max = ((uint64_t)1) << value_bits;
       auto state_pair_to_state_acc =
           state_pair_to_state_.GetGenericAccessor(key_bits);
+      namespace cg = cooperative_groups;
 
       if (c_->GetDeviceType() == kCuda) {
-        constexpr log_thread_group_size = 2,
+        constexpr int log_thread_group_size = 2,
             thread_group_size = (1 << log_thread_group_size);  // 4
         static_assert(thread_group_size > 1);
         // the "* 2" below is becaus pairs of thread groups handle the
@@ -739,26 +748,29 @@ class DeviceIntersector {
 
         auto lambda_find_ranges = [=] __device__(
             cg::thread_block_tile<thread_group_size> g,  // or auto g..
-            int32_t *shared_data[2],  // points to shared data for this block of 4..
+            int32_t *shared_data,  // points to shared data for this block of
+                                   // threads
             int32_t idx01_doubled) -> void {
 
           // thread_group_type is 0 if we're finding the beginning of the range
           // of matching arcs, and 1 if we're finding the end of the range of
           // matching arcs.
-          int32_t idx01 = idx01_doubled / 2,
-              thread_group_type = idx01 % 2;
+          // 0 <= idx01 < num_b_arcs is an index into the list of arcs we're
+          // processing; the array's shape has (row_splits,row_ids) ==
+          // (num_arcs_b, b_arc_to-state).
+          int32_t arc_idx01 = idx01_doubled / 2,
+              thread_group_type = idx01_doubled % 2;
 
           // the idx01 is into the list of arcs in b that we're processing.
           // 0 <= state_idx0 < num_states.
-          // state_idx is an index into states_.
           int32_t state_idx0 = b_arc_to_state_data[arc_idx01],
-              idx1x = num_arcs_b_data[idx0],
-              arc_idx1 = idx1x - arc_idx01,
-              state_idx = state_begin + state_idx0;
+              arc_idx1x = num_arcs_b_data[state_idx0],
+              arc_idx1 = arc_idx01 - arc_idx1x;
+          // state_idx is an index into states_.
+          int32_t state_idx = state_begin + state_idx0;
           StateInfo info = states_data[state_idx];
-          int32_t
-              b_start_arc_idx01x = b_fsas_row_splits2_data[info.b_fsas_state_idx01],
-              b_arc_idx012 = b_start_arc_idx01x + arc_idx1;
+          int32_t b_begin_arc_idx01x = b_fsas_row_splits2_data[info.b_fsas_state_idx01],
+              b_arc_idx012 = b_begin_arc_idx01x + arc_idx1;
           // ignore the apparent name mismatch setting b_arc_idx012 above;
           // arc_idx1 is an idx1 w.r.t. a different array than b_fsas_.
           K2_DCHECK_LT(b_arc_idx012, b_fsas_row_splits2_data[info.b_fsas_state_idx01+1]);
@@ -774,19 +786,21 @@ class DeviceIntersector {
           // thread_group_size) find the beginning of the range of arcs in a,
           // and odd-numbered thread groups find the end of the range of arcs.
           uint64_t label = static_cast<uint64_t>(static_cast<uint32_t>(
-              b_arcs_data[b_arc_idx012].label)) + thread_group_type;
+                                        b_arcs_data[b_arc_idx012].label)) +
+                           static_cast<uint64_t>(thread_group_type);
 
-
-          // We are now searching for the lowest arc-index i such that
-          // a_begin_arc_idx012 <= i <= a_end_arc_idx012, where that
-          // arc's label is >= `label`, where we treat the label of arcs
+          // We are now searching for the lowest arc-index i in the range
+          // a_begin_arc_idx012 <= i <= a_end_arc_idx012, where
+          // arcs_data[i].label >= `label`, where we treat the labels of arcs
           // indexed i >= a_end_arc_idx012 as infinitely large.
-
           int32_t range_len = a_end_arc_idx012 + 1 - a_begin_arc_idx012,  // > 0
               log_range_len = 31 - __clz(range_len | 2),  // >= 1, because of the "| 2".
               num_iters = (log_range_len + log_thread_group_size - 1) /
                            log_thread_group_size;  // > 0
 
+          if (thread_idx == 0) {
+            printf("thread_idx==0, arc_idx01=%d, num_iters=%d\n", arc_idx01, num_iters);
+          }
           // "per_thread_range" is the length of the interval of arcs that each thread
           // 0 <= thread_idx < num_threads is currently responsible for.
           // At this point, the group of threads is searching an interval
@@ -805,25 +819,29 @@ class DeviceIntersector {
             // this_thread_start is the beginning of the range of arcs that this
             // thread is responsible for searching.
             int32_t this_thread_start = interval_start +
-                (thread_id * per_thread_range);
-            uint64_t start_label = (this_thread_start >= a_end_arc_idx012 ?
+                (thread_idx * per_thread_range),
+                this_thread_last = this_thread_start + per_thread_range - 1;
+            // last_label is the label on the last arc in the range that this
+            // thread is responsible for.  We ensure that the range of arcs
+            // we are searching (which, remember, includes a_end_arc_idx012)
+            // always have at least one arc whose label (taken as +infty
+            // for out-of-range arcs) is >= `label`.  So `last_label` for
+            // the last thread will always be >= `label`.
+            uint64_t last_label = (this_thread_last >= a_end_arc_idx012 ?
                                     static_cast<uint64_t>(-1) :
                                     static_cast<uint64_t>(static_cast<uint32_t>(
-                                        a_arcs_data[this_thread_start].label))),
-                end_label = g.shfl_down((thread_idx == 0 ? static_cast<uint64_t>(-1) :
-                                         this_thread_start), 1);
-            // "end_label" for the last thread in the group will now be UINT64_MAX.
-            // We have ensured that the index we are searching for exists within
-            // the range this group of threads is searching, so this is safe
-            // (i.e. it's not necessary to read from memory the actual label at
-            // that point).
+                                        a_arcs_data[this_thread_last].label))),
+                prev_last_label = g.shfl_up(last_label, 1);
+            // Note: prev_last_label is the last_label for the previous thread,
+            // and it's a don't-care value which will be ignored if this
+            // thread_idx == 0.
 
             // Exactly one thread in the group will satisfy the following
             // conditions.  Note: for the last thread in the thread group,
             // the condition "label < end_label" will always be true, because
             // label < UINT64_MAX.
-            if ((thread_idx == 0 || start_label <= label) &&
-                label < end_label) {
+            if ((thread_idx == 0 || prev_last_label < label) &&
+                last_label >= label) {
               *shared_data = this_thread_start;
             }
             g.sync();
@@ -835,10 +853,19 @@ class DeviceIntersector {
           // the size, so we can broadcast the lower and upper bounds of
           // the range of matching arcs in a (look above for "thread_group_type"
           // for more explanation).
-          thread_block_tile<thread_group_size * 2> g_double(this_thread_block());
+          cg::thread_block_tile<thread_group_size*2>
+            g_double = cg::tiled_partition<thread_group_size*2>(cg::this_thread_block());
           int32_t lower_bound, upper_bound;
           if (thread_idx == 0) {  // only the 1st thread from each of the 2 groups
                                   // participates.
+            printf("thread_idx = %d, idx01_doubled = %d, idx01 = %d, interval_start = %d, "
+                   "a_{begin,end}_arc_idx012=%d,%d, label=%d, reallabel=%d, lbm1label=%d, lblabel=%d, lb1label=%d\n", thread_idx, idx01_doubled, arc_idx01, interval_start,
+                   a_begin_arc_idx012, a_end_arc_idx012, (int)label,
+                   b_arcs_data[b_arc_idx012].label,
+                   a_arcs_data[interval_start-1].label,
+                   a_arcs_data[interval_start].label,
+                   a_arcs_data[interval_start+1].label);
+
             lower_bound = g_double.shfl(interval_start, 0);
             upper_bound = g_double.shfl(interval_start, thread_group_size);
 
@@ -853,14 +880,15 @@ class DeviceIntersector {
               K2_DCHECK(lower_bound == a_begin_arc_idx012 ||
                         a_arcs_data[lower_bound - 1].label < label);
               K2_DCHECK(upper_bound == a_end_arc_idx012 ||
-                        a_arcs_data[upper_bound].label > label);
-              K2_DCHECK(upper_bound <= a_begin_arc_idx012 ||
-                        a_arcs_data[upper_bound - 1].label <= label);
-
-              first_matching_a_arc_idx012_data[idx01] = lower_bound;
+                        uint32_t(a_arcs_data[upper_bound].label) > uint32_t(label));
+              if (upper_bound != a_begin_arc_idx012) {
+                K2_DCHECK_LE(uint32_t(a_arcs_data[upper_bound - 1].label),
+                             uint32_t(label));
+              }
+              first_matching_a_arc_idx012_data[arc_idx01] = lower_bound;
             } else {
               // g_double.thread_rank() == thread_group_size
-              num_matching_a_arcs_data[idx01] = upper_bound - lower_bound;
+              num_matching_a_arcs_data[arc_idx01] = upper_bound - lower_bound;
             }
           }
         };
@@ -868,24 +896,24 @@ class DeviceIntersector {
             c_, num_b_arcs * 2, lambda_find_ranges);
       } else {
         // Use regular binary search.
-        K2_EVAL(c_, num_b_arcs, lambda_find_ranges_cpu, (int32_t idx01) -> void {
+        K2_EVAL(c_, num_b_arcs, lambda_find_ranges_cpu, (int32_t arc_idx01) -> void {
             // the idx01 is into the list of arcs in b that we're processing..
             // 0 <= state_idx0 < num_states.
             // state_idx is an index into states_.
             int32_t state_idx0 = b_arc_to_state_data[arc_idx01],
-                    idx1x = num_arcs_b_data[idx0],
-                    arc_idx1 = idx1x - arc_idx01,
+                arc_idx1x = num_arcs_b_data[state_idx0],
+                arc_idx1 = arc_idx01 - arc_idx1x,
                 state_idx = state_begin + state_idx0;
             StateInfo info = states_data[state_idx];
             int32_t
-                b_start_arc_idx01x = b_fsas_row_splits2_data[info.b_fsas_state_idx01],
-                b_arc_idx012 = b_start_arc_idx01x + arc_idx1;
+                b_begin_arc_idx01x = b_fsas_row_splits2_data[info.b_fsas_state_idx01],
+                b_arc_idx012 = b_begin_arc_idx01x + arc_idx1;
           // ignore the apparent name mismatch setting b_arc_idx012 above;
           // arc_idx1 is an idx1 w.r.t. a different array than b_fsas_.
           K2_DCHECK_LT(b_arc_idx012, b_fsas_row_splits2_data[info.b_fsas_state_idx01 + 1]);
           int32_t a_begin_arc_idx012 = a_fsas_row_splits2_data[info.a_fsas_state_idx01],
               a_end_arc_idx012 = a_fsas_row_splits2_data[info.a_fsas_state_idx01 + 1];
-          unt32_t label = static_cast<uint32_t>(b_arcs_data[b_arc_idx012].label);
+          uint32_t label = static_cast<uint32_t>(b_arcs_data[b_arc_idx012].label);
 
           int32_t begin = a_begin_arc_idx012,
               end = a_end_arc_idx012;
@@ -894,7 +922,7 @@ class DeviceIntersector {
           while (begin < end) {
             int32_t mid = (begin + end) / 2;
             assert(mid < end);  // temp?
-            int32_t a_label = a_arcs_data[mid].label;
+            uint32_t a_label = uint32_t(a_arcs_data[mid].label);
             if (a_label < label) {
               begin = mid + 1;
             } else {
@@ -903,23 +931,24 @@ class DeviceIntersector {
           }
           // "range_begin" is the "begin" of the possibly-empty range of arc-indexes
           // in a that matches `label`
-          range_begin = begin;
-          int32_t range_end = range_begin;
+          int32_t range_begin = begin,
+              range_end = range_begin;
           // The following linear search will probably be faster than
           // logarithmic search in the normal case where there are not many
           // matching arcs.  In the unusual case where there are many matching
           // arcs per setate, it won't dominate the running time of the entire
           // algorithm.
           while (range_end < a_end_arc_idx012 &&
-                 a_arcs_data[range_end] == label)
+                 uint32_t(a_arcs_data[range_end].label) == label)
             range_end++;
-          first_matching_a_arc_idx012_data[idx01] = range_begin;
-          num_matching_a_arcs_data[idx01] = range_end - range_begin;
+          first_matching_a_arc_idx012_data[arc_idx01] = range_begin;
+          num_matching_a_arcs_data[arc_idx01] = range_end - range_begin;
           });
       }
 
       ExclusiveSum(num_matching_a_arcs, &num_matching_a_arcs);
       int32_t tot_matched_arcs = num_matching_a_arcs.Back();
+      K2_LOG(INFO) << "tot_matched_arcs = " << tot_matched_arcs;
       Array1<int32_t> matched_arc_to_b_arc(c_, tot_matched_arcs);
       RowSplitsToRowIds(num_matching_a_arcs, &matched_arc_to_b_arc);
       int32_t *matched_arc_to_b_arc_data = matched_arc_to_b_arc.Data();
@@ -942,7 +971,7 @@ class DeviceIntersector {
       // the key/value location in the hash corresponding to that new
       // state, to which we'll later write the state_id (idx into states_).
       Array1<uint64_t*> hash_key_value_locations(c_, tot_matched_arcs);
-      uint64_t **hash_key_value_locations_data = hash_keys.Data();
+      uint64_t **hash_key_value_locations_data = hash_key_value_locations.Data();
 
       // We'll write to a_state_idx01_temp only for arcs that are
       // responsible for creating new destination-state (i.e. we'll write at
@@ -951,9 +980,6 @@ class DeviceIntersector {
       // dest-state, in a, of the arc.
       Array1<int32_t> a_dest_state_idx01_temp(c_, tot_matched_arcs);
       int32_t *a_dest_state_idx01_temp_data = a_dest_state_idx01_temp.Data();
-
-      K2_CHECK_GT(value_max, (uint64_t)tot_ab) << "Problem size too large "
-          "for hash table... redesign or reduce problem size.";
 
       K2_EVAL(c_, tot_matched_arcs, lambda_set_arcs_and_new_state, (int32_t idx012) -> void {
           // `idx012` is into an ragged tensor that we haven't physically
@@ -966,13 +992,13 @@ class DeviceIntersector {
               matched_arc_idx2 = idx012 - matched_arc_idx01x,
               state_idx0 = b_arc_to_state_data[b_arc_idx01],
               b_arc_idx0x = num_arcs_b_data[state_idx0],
-              b_arc_idx1 = b_arc_idx0x - b_arc_idx01;
+              b_arc_idx1 = b_arc_idx01 - b_arc_idx0x;
 
           int32_t state_idx = state_begin + state_idx0; // into states_
           StateInfo sinfo = states_data[state_idx];
           int32_t b_fsas_state_idx01 = sinfo.b_fsas_state_idx01,
-              b_start_arc_idx01x = b_fsas_row_splits2_data[b_fsas_state_idx01],
-              b_arc_idx012 = b_start_arc_idx01x + arc_idx1;
+              b_begin_arc_idx01x = b_fsas_row_splits2_data[b_fsas_state_idx01],
+              b_arc_idx012 = b_begin_arc_idx01x + b_arc_idx1;
           // ignore the apparent name mismatch setting b_arc_idx012; arc_idx1
           // is an idx1 w.r.t. a different array than b_fsas_.
           int32_t first_matching_a_arc_idx012 =
@@ -984,29 +1010,30 @@ class DeviceIntersector {
           K2_CHECK_EQ(b_arc.label, a_arc.label);
 
           char new_dest_state = 0;
-          int32_t dest_state_idx = -1;
+          // int32_t dest_state_idx = -1;
           if (a_arcs_data[a_arc_idx012].label != -1) {
             // investigate whether the dest-state is new (not currently
             // allocated a state-id).  We don't allocate state-ids for the
             // final-state yet, so skip this if label is -1.
             int32_t b_dest_state_idx1 = b_arc.dest_state,
                 b_dest_state_idx01 = b_dest_state_idx1 +
-                sinfo.b_fsas_state_idx01 - b_arc.src_state,
+                   sinfo.b_fsas_state_idx01 - b_arc.src_state,
                 a_dest_state_idx1 = a_arc.dest_state;
             uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
                 b_dest_state_idx01,
                 hash_value = 0,  // actually it's a don't-care.
                 *hash_key_value_location = nullptr;
+            printf("hash_key = %ld\n", hash_key);
             // If it was successfully inserted, then this arc is assigned
             // responsibility for creating the state-id for its destination
             // state.  We'll assign the value below in
             // lambda_allocate_new_state_ids.
-            if (state_pair_to_state_acc.Insert(hash_key, hash_value,
+            if (state_pair_to_state_acc.Insert(hash_key, hash_value, nullptr,
                                                &hash_key_value_location)) {
               hash_key_value_locations_data[idx012] = hash_key_value_location;
               int32_t a_dest_state_idx01 = a_dest_state_idx1 +
                   (sinfo.a_fsas_state_idx01 - a_arc.src_state);
-              a_state_idx01_temp_data[idx012] = a_dest_state_idx01;
+              a_dest_state_idx01_temp_data[idx012] = a_dest_state_idx01;
               new_dest_state = (char)1;
             }
           }
@@ -1014,12 +1041,14 @@ class DeviceIntersector {
           arc_info.a_arc_idx012 = a_arc_idx012;
           arc_info.b_arc_idx012 = b_arc_idx012;
           new_arcs_data[idx012] = arc_info;
-          new_arcs_row_ids_data[idx012] = state_idx0;
+          new_arcs_row_ids_data[idx012] = state_idx;
           new_state_renumbering_keep_data[idx012] = new_dest_state;
         });
 
 
       int32_t num_new_states = new_state_renumbering.New2Old().Dim();
+      K2_LOG(INFO) << "num_new_states = " << num_new_states;
+
       const int32_t *new_state_renumbering_new2old_data =
           new_state_renumbering.New2Old().Data();
       K2_DCHECK_EQ(states_.Dim(), state_end);
@@ -1046,16 +1075,17 @@ class DeviceIntersector {
           // `arc_idx` below is the index into the matched arcs on this frame,
           // with 0 <= new_arc_idx < tot_matched_arcs.
           int32_t new_arc_idx = new_state_renumbering_new2old_data[i];
-          uint64_t *hash_key_value_location = hash_key_value[new_arc_idx];
+          uint64_t *hash_key_value_location = hash_key_value_locations_data[new_arc_idx];
           // The next assertion depends on knowledge of the implementation of
           // the hash.  If in future we change details of the hash
           // implementation and it fails, it can be removed.
-          K2_DCHECK_EQ(*hash_key_value_location & ((uint64_t(1)<<num_value_bits)-1), 0);
+          // We're checking that we inserted `hash_value = 0` above.
+          K2_DCHECK_EQ(*hash_key_value_location & ((uint64_t(1) << value_bits) - 1), 0);
           uint64_t key = state_pair_to_state_acc.SetValue(hash_key_value_location,
                                                           new_state_idx);
-          uint32_t b_state_idx01 = uint32_t(key) & ((uint32_t(1) << b_state_bits)-1),
+          uint32_t b_state_idx01 = uint32_t(key) & ((uint32_t(1) << b_state_bits) - 1),
               a_state_idx01 = a_dest_state_idx01_temp_data[new_arc_idx];
-          StateInfo info { b_state_idx01, a_state_idx01 };
+          StateInfo info { (int32_t)b_state_idx01, (int32_t)a_state_idx01 };
           states_data[new_state_idx] = info;
         });
     }
@@ -1145,7 +1175,7 @@ FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a,
   NVTX_RANGE("IntersectDevice");
   K2_CHECK_NE(properties_a & kFsaPropertiesValid, 0);
   K2_CHECK_NE(properties_b & kFsaPropertiesValid, 0);
-  if (sorted_match_a && ((properties_a & kFsaArcSorted) == 0)) {
+  if (sorted_match_a && ((properties_a & kFsaPropertiesArcSorted) == 0)) {
     K2_LOG(ERROR) << "If you provide sorted_match_a=true, a_fsas "
         "must be arc-sorted, but (according to the the properties) "
         "it is not.";

@@ -118,10 +118,16 @@ static void PybindIntersect(py::module &m) {
           }
           Array1<int32_t> b_to_a_map(a_fsa_vec.Context(), tmp_b_to_a_map);
 
+          // TODO: should perhaps just always make this false, for
+          // predictability, and let the user call intersect_device
+          // if they want to use sorted matching?
+          bool sorted_match_a =
+              ((properties_a & kFsaPropertiesArcSorted) != 0);
           out =
               IntersectDevice(a_fsa_vec, properties_a, b_fsa_vec, properties_b,
                               b_to_a_map, need_arc_map ? &a_arc_map : nullptr,
-                              need_arc_map ? &b_arc_map : nullptr);
+                              need_arc_map ? &b_arc_map : nullptr,
+                              sorted_match_a);
         } else {
           Intersect(a_fsas, properties_a, b_fsas, properties_b,
                     treat_epsilons_specially, &out,

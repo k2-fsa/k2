@@ -50,11 +50,17 @@ void TestHashConstruct() {
                          success;
           int32_t count = counts_data[key];
 
-          if (acc.Insert(key, value, nullptr)) {
+          uint64_t *key_value_location;
+          if (acc.Insert(key, value, nullptr, &key_value_location)) {
             success = 1;
           } else {
             success = 0;
             K2_CHECK(count > 1) << ", key = " << key << ", i = " << i;
+          }
+          uint64_t keyval = *key_value_location;
+          if (success) {
+            acc.SetValue(key_value_location, key, value);
+            K2_DCHECK_EQ(keyval, *key_value_location);
           }
           success_data[i] = success;
         });
@@ -129,11 +135,17 @@ void TestHashConstruct2(int32_t num_key_bits) {
                          success;
           int32_t count = counts_data[key];
 
-          if (acc.Insert(key, value, nullptr)) {
+          uint64_t *key_value_location;
+          if (acc.Insert(key, value, nullptr, &key_value_location)) {
             success = 1;
           } else {
             success = 0;
             K2_CHECK(count > 1) << ", key = " << key << ", i = " << i;
+          }
+          uint64_t keyval = *key_value_location;
+          if (success) {
+            acc.SetValue(key_value_location, key, value);
+            K2_DCHECK_EQ(keyval, *key_value_location);
           }
           success_data[i] = success;
         });
