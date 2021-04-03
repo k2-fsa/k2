@@ -289,6 +289,8 @@ class Hash {
       *key_value_location = (key << NUM_VALUE_BITS) | value;
     }
 
+
+
     /* Deletes a key from a hash.  Caution: this cannot be combined with other
        operations on a hash; after you delete a key you cannot do Insert() or
        Find() until you have deleted all keys.  This is an open-addressing hash
@@ -465,6 +467,30 @@ class Hash {
     __forceinline__ __host__ __device__ void SetValue(
         uint64_t *key_value_location, uint64_t key, uint64_t value) const {
       *key_value_location = (key << num_value_bits_) | value;
+    }
+
+    /*
+      Overwrite a value in a (key,value) pair whose location was obtained using
+      Find().  This overload does not require the user to specify the old key.
+          @param [in] key_value_location   Location that was obtained from
+                         a successful call to Find().
+          @param [in] value  Value to write; bits of higher order than
+                       (num_value_bits = 64 - num_key_bits) may not be set.
+                       It is also an error if ~((key << num_value_bits) | value) == 0,
+                       where `key` is the existing key-- i.e. if all the allowed bits
+                       of both `key` and `value` are set; but this is not checked.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+     */
+    __forceinline__ __host__ __device__ uint64_t SetValue(
+        uint64_t *key_value_location, uint64_t value) const {
+      uint64_t old_pair = *key_value_location;
+      K2_CHECK_NE(~old_pair, 0);  // Check it was not an empty location.
+      const int64_t VALUE_MASK = (uint64_t(1)<<num_value_bits_)-1;
+      uint64_t new_pair = (old_pair & ~VALUE_MASK) | value;
+      *key_value_location = new_pair;
+      return (old_pair >> num_value_bits_);  // key
     }
 
     /* Deletes a key from a hash.  Caution: this cannot be combined with other

@@ -84,21 +84,25 @@ TEST(Intersect, Simple) {
     FsaVec fsas_b = ConvertDenseToFsaVec(dfsavec);
     K2_LOG(INFO) << "fsas_b = " << fsas_b;
     FsaVec out_fsas2,
-        out_fsas2b;
+        out_fsas2b,
+        out_fsas2c;
     ContextPtr cpu = GetCpuContext();
     Array1<int32_t> arc_map_a2, arc_map_b2;
 
     // IntersectDense() treats epsilons as normal symbols.
     bool treat_epsilons_specially = false;
 
-    Array1<int32_t> arc_map_a3, arc_map_b3;
+    Array1<int32_t> arc_map_a3, arc_map_b3,
+        arc_map_a4, arc_map_b4;
 
     {
       Array1<int32_t> b_to_a_map = Range<int32_t>(c, fsas_b.Dim0(), 0,
                                                   (fsa.Dim0() == 1 ? 0 : 1));
 
       out_fsas2b = IntersectDevice(fsa, -1, fsas_b, -1, b_to_a_map,
-                                   &arc_map_a3, &arc_map_b3);
+                                   &arc_map_a3, &arc_map_b3, false);
+      out_fsas2c = IntersectDevice(fsa, -1, fsas_b, -1, b_to_a_map,
+                                   &arc_map_a3, &arc_map_b3, true);
     }
 
     {
@@ -111,6 +115,8 @@ TEST(Intersect, Simple) {
 
     out_fsas2b = out_fsas2b.To(cpu);
     K2_CHECK(IsRandEquivalentWrapper(out_fsas2, out_fsas2b,
+                                     treat_epsilons_specially));
+    K2_CHECK(IsRandEquivalentWrapper(out_fsas2b, out_fsas2c,
                                      treat_epsilons_specially));
 
     /*
@@ -581,13 +587,21 @@ TEST(IntersectPruned, RandomSingle) {
       fsas_b = fsas_b.To(c);
       Array1<int32_t> arc_map_a3, arc_map_b3;
       FsaVec out_fsas3 = IntersectDevice(fsas, -1, fsas_b, -1, b_to_a_map,
-                                         &arc_map_a3, &arc_map_b3)
+                                         &arc_map_a3, &arc_map_b3, false)
+                             .To(GetCpuContext());
+
+      FsaVec out_fsas4 = IntersectDevice(fsas, -1, fsas_b, -1, b_to_a_map,
+                                         &arc_map_a4, &arc_map_b4, true)
                              .To(GetCpuContext());
 
       K2_LOG(INFO) << "out_fsas3 = " << out_fsas3;
 
       K2_CHECK(IsRandEquivalentWrapper(out_fsas2, out_fsas3,
                                        treat_epsilons_specially));
+      K2_CHECK(IsRandEquivalentWrapper(out_fsas3, out_fsas4,
+                                       treat_epsilons_specially));
+      K2_CHECK_EQ(Equal(arc_map_a3, arc_map_a4), true);
+      K2_CHECK_EQ(Equal(arc_map_b3, arc_map_b4), true);
     }
 
 
