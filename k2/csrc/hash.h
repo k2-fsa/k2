@@ -169,26 +169,27 @@ class Hash {
     Try to insert pair (key,value) into hash.
       @param [in] key  Key into hash; it is required that no bits except the lowest-order
                        NUM_KEY_BITS may be set.
-
       @param [in] value  Value to set; it is is required that no bits except the
                      lowest-order (NUM_VALUE_BITS = 64 - NUM_KEY_BITS) may be set;
                      it is also an error if ~((key << NUM_VALUE_BITS) | value) == 0,
                      i.e. if all the allowed bits of both `key` and `value` are
                      set.
-
       @param [out] old_value  If not nullptr, this location will be set to
                     the existing value *if this key was already present* in the
                     hash (or set by another thread in this kernel), i.e. only if
                     this function returns false.
-
-       @return  Returns true if this (key,value) pair was inserted, false otherwise.
+      @param [out] key_value_location  If not nullptr, its contents will be
+                    set to the address of the (key,value) pair (either the
+                    existing or newly-written one).
+      @return  Returns true if this (key,value) pair was inserted, false otherwise.
 
       Note: the const is with respect to the metadata only; it is required, to
       avoid compilation errors.
    */
     __forceinline__ __host__ __device__ bool Insert(
         uint64_t key, uint64_t value,
-        uint64_t *old_value = nullptr) const {
+        uint64_t *old_value = nullptr,
+        uint64_t **key_value_location = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
           leftover_index = 1 | (key >> buckets_num_bitsm1_);
       constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
@@ -202,16 +203,21 @@ class Hash {
         uint64_t cur_elem = data_[cur_bucket];
         if ((cur_elem >> NUM_VALUE_BITS) == key) {
           if (old_value) *old_value = cur_elem & VALUE_MASK;
+          if (key_value_location) *key_value_location = data_ + cur_bucket;
           return false;  // key exists in hash
         }
         else if (~cur_elem == 0) {
           // we have a version of AtomicCAS that also works on host.
           uint64_t old_elem = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
                                         cur_elem, new_elem);
-          if (old_elem == cur_elem) return true;  // Successfully inserted.
+          if (old_elem == cur_elem) {
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
+            return true;  // Successfully inserted.
+          }
           cur_elem = old_elem;
           if (cur_elem >> NUM_VALUE_BITS == key) {
             if (old_value) *old_value = cur_elem & VALUE_MASK;
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
             return false;  // Another thread inserted this key
           }
         }
@@ -223,6 +229,8 @@ class Hash {
         cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
       }
     }
+
+
 
     /*
     Looks up this key in this hash; outputs value and optionally the
@@ -289,6 +297,8 @@ class Hash {
       *key_value_location = (key << NUM_VALUE_BITS) | value;
     }
 
+
+
     /* Deletes a key from a hash.  Caution: this cannot be combined with other
        operations on a hash; after you delete a key you cannot do Insert() or
        Find() until you have deleted all keys.  This is an open-addressing hash
@@ -347,26 +357,27 @@ class Hash {
     Try to insert pair (key,value) into hash.
       @param [in] key  Key into hash; it is required that no bits except the lowest-order
                     num_key_bits may be set.
-
       @param [in] value  Value to set; it is is required that no bits except the
                      lowest-order num_value_bits = 64 - num_key_bits may be set;
                      it is also an error if ~((key << num_value_bits) | value) == 0,
                      i.e. if all the allowed bits of both `key` and `value` are
                      set.
-
       @param [out] old_value  If not nullptr, this location will be set to
                     the existing value *if this key was already present* in the
                     hash (or set by another thread in this kernel), i.e. only if
                     this function returns false.
-
-       @return  Returns true if this (key,value) pair was inserted, false otherwise.
+      @param [out] key_value_location  If not nullptr, its contents will be
+                    set to the address of the (key,value) pair (either the
+                    existing or newly-written one).
+      @return  Returns true if this (key,value) pair was inserted, false otherwise.
 
       Note: the const is with respect to the metadata only; it is required, to
       avoid compilation errors.
    */
     __forceinline__ __host__ __device__ bool Insert(
         uint64_t key, uint64_t value,
-        uint64_t *old_value = nullptr) const {
+        uint64_t *old_value = nullptr,
+        uint64_t **key_value_location = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
       const uint32_t num_value_bits = num_value_bits_,
@@ -381,16 +392,21 @@ class Hash {
         uint64_t cur_elem = data_[cur_bucket];
         if ((cur_elem >> num_value_bits) == key) {
           if (old_value) *old_value = cur_elem & VALUE_MASK;
+          if (key_value_location) *key_value_location = data_ + cur_bucket;
           return false;  // key exists in hash
         }
         else if (~cur_elem == 0) {
           // we have a version of AtomicCAS that also works on host.
           uint64_t old_elem = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
                                         cur_elem, new_elem);
-          if (old_elem == cur_elem) return true;  // Successfully inserted.
+          if (old_elem == cur_elem) {
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
+            return true;  // Successfully inserted.
+          }
           cur_elem = old_elem;
           if (cur_elem >> num_value_bits == key) {
             if (old_value) *old_value = cur_elem & VALUE_MASK;
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
             return false;  // Another thread inserted this key
           }
         }
@@ -465,6 +481,30 @@ class Hash {
     __forceinline__ __host__ __device__ void SetValue(
         uint64_t *key_value_location, uint64_t key, uint64_t value) const {
       *key_value_location = (key << num_value_bits_) | value;
+    }
+
+    /*
+      Overwrite a value in a (key,value) pair whose location was obtained using
+      Find().  This overload does not require the user to specify the old key.
+          @param [in] key_value_location   Location that was obtained from
+                         a successful call to Find().
+          @param [in] value  Value to write; bits of higher order than
+                       (num_value_bits = 64 - num_key_bits) may not be set.
+                       It is also an error if ~((key << num_value_bits) | value) == 0,
+                       where `key` is the existing key-- i.e. if all the allowed bits
+                       of both `key` and `value` are set; but this is not checked.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+     */
+    __forceinline__ __host__ __device__ uint64_t SetValue(
+        uint64_t *key_value_location, uint64_t value) const {
+      uint64_t old_pair = *key_value_location;
+      K2_CHECK_NE(~old_pair, 0);  // Check it was not an empty location.
+      const int64_t VALUE_MASK = (uint64_t(1)<<num_value_bits_)-1;
+      uint64_t new_pair = (old_pair & ~VALUE_MASK) | value;
+      *key_value_location = new_pair;
+      return (old_pair >> num_value_bits_);  // key
     }
 
     /* Deletes a key from a hash.  Caution: this cannot be combined with other

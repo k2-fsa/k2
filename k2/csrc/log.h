@@ -153,6 +153,14 @@ class Logger {
     }
   }
 
+  K2_CUDA_HOSTDEV const Logger &operator<<(bool b) const {
+    if (cur_level_ <= level_) {
+      printf(b ? "true" : "false");
+    }
+    return *this;
+  }
+
+
   K2_CUDA_HOSTDEV const Logger &operator<<(int8_t i) const {
     if (cur_level_ <= level_) printf("%d", i);
     return *this;
