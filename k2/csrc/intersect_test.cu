@@ -605,8 +605,12 @@ TEST(IntersectPruned, RandomSingle) {
                                        treat_epsilons_specially));
       K2_CHECK(IsRandEquivalentWrapper(out_fsas3, out_fsas4,
                                        treat_epsilons_specially));
-      K2_CHECK_EQ(Equal(arc_map_a3, arc_map_a4), true);
-      K2_CHECK_EQ(Equal(arc_map_b3, arc_map_b4), true);
+      // Arc-maps are mostly equal but not exactly, as the ordering of states
+      // is not deterministic.
+      //K2_LOG(INFO) << "arc_map_a3=" << arc_map_a3 << ", arc_map_a4="
+      //<< arc_map_a4;
+      //K2_LOG(INFO) << "arc_map_b3=" << arc_map_b3 << ", arc_map_b4="
+      //<< arc_map_b4;
     }
 
 

@@ -424,10 +424,14 @@ class DeviceIntersector {
 
       // tot_ab is total of (num-arcs from state a * num-arcs from state b).
       int32_t tot_ab = row_splits_ab[num_states],
-              cutoff = 1 << 30;  // Eventually I'll make cutoff smaller, like 16384,
-                           // and implement the other branch.
+              cutoff = 1 << 30;  // Eventually I'll make cutoff smaller, like
+                                 // 16384, and implement the other branch.
 
-      K2_LOG(INFO) << "tot_ab = " << tot_ab;
+      {
+        auto array =  num_arcs_b.Range(0, num_states);
+        K2_LOG(INFO) << "tot_ab = " << tot_ab << ", tot_b = "
+                     << Sum(array);
+      }
 
       const Arc *a_arcs_data = a_fsas_.values.Data(),
           *b_arcs_data = b_fsas_.values.Data();
@@ -793,14 +797,21 @@ class DeviceIntersector {
           // a_begin_arc_idx012 <= i <= a_end_arc_idx012, where
           // arcs_data[i].label >= `label`, where we treat the labels of arcs
           // indexed i >= a_end_arc_idx012 as infinitely large.
-          int32_t range_len = a_end_arc_idx012 + 1 - a_begin_arc_idx012,  // > 0
-              log_range_len = 31 - __clz(range_len | 2),  // >= 1, because of the "| 2".
-              num_iters = (log_range_len + log_thread_group_size - 1) /
-                           log_thread_group_size;  // > 0
+          int32_t range_len = a_end_arc_idx012 - a_begin_arc_idx012,  // > 0
+              log_range_len = 31 - __clz(range_len | 1),
+                  num_iters = 1 + log_range_len / log_thread_group_size;
 
-          if (thread_idx == 0) {
+          // suppose log_thread_group_size=2, thread_group_size=4.
+          // Then:
+          //  0 <= range_len < 4  -> num_iters is 1
+          //  4 <= range_len < 16  -> num_iters is 2
+          // Note: at 4 and 16, we need num_iters to be (2,3)
+          // respectively because a_end_arc_idx012 is a value we need
+          // to include in the search.
+
+          /*if (thread_idx == 0) {
             printf("thread_idx==0, arc_idx01=%d, num_iters=%d\n", arc_idx01, num_iters);
-          }
+            } */
           // "per_thread_range" is the length of the interval of arcs that each thread
           // 0 <= thread_idx < num_threads is currently responsible for.
           // At this point, the group of threads is searching an interval
@@ -812,8 +823,8 @@ class DeviceIntersector {
           int32_t per_thread_range =  1 << ((num_iters - 1) * log_thread_group_size); // > 0
           int32_t interval_start = a_begin_arc_idx012;
 
-          K2_DCHECK(interval_start + per_thread_range * thread_group_size >
-                    a_end_arc_idx012);
+          K2_DCHECK_GT(interval_start + per_thread_range * thread_group_size,
+                       a_end_arc_idx012);
 
           while (per_thread_range > 0) {
             // this_thread_start is the beginning of the range of arcs that this
@@ -858,13 +869,14 @@ class DeviceIntersector {
           int32_t lower_bound, upper_bound;
           if (thread_idx == 0) {  // only the 1st thread from each of the 2 groups
                                   // participates.
+            /*
             printf("thread_idx = %d, idx01_doubled = %d, idx01 = %d, interval_start = %d, "
                    "a_{begin,end}_arc_idx012=%d,%d, label=%d, reallabel=%d, lbm1label=%d, lblabel=%d, lb1label=%d\n", thread_idx, idx01_doubled, arc_idx01, interval_start,
                    a_begin_arc_idx012, a_end_arc_idx012, (int)label,
                    b_arcs_data[b_arc_idx012].label,
                    a_arcs_data[interval_start-1].label,
                    a_arcs_data[interval_start].label,
-                   a_arcs_data[interval_start+1].label);
+                   a_arcs_data[interval_start+1].label);*/
 
             lower_bound = g_double.shfl(interval_start, 0);
             upper_bound = g_double.shfl(interval_start, thread_group_size);
@@ -908,41 +920,47 @@ class DeviceIntersector {
             int32_t
                 b_begin_arc_idx01x = b_fsas_row_splits2_data[info.b_fsas_state_idx01],
                 b_arc_idx012 = b_begin_arc_idx01x + arc_idx1;
-          // ignore the apparent name mismatch setting b_arc_idx012 above;
-          // arc_idx1 is an idx1 w.r.t. a different array than b_fsas_.
-          K2_DCHECK_LT(b_arc_idx012, b_fsas_row_splits2_data[info.b_fsas_state_idx01 + 1]);
-          int32_t a_begin_arc_idx012 = a_fsas_row_splits2_data[info.a_fsas_state_idx01],
-              a_end_arc_idx012 = a_fsas_row_splits2_data[info.a_fsas_state_idx01 + 1];
-          uint32_t label = static_cast<uint32_t>(b_arcs_data[b_arc_idx012].label);
+            // ignore the apparent name mismatch setting b_arc_idx012 above;
+            // arc_idx1 is an idx1 w.r.t. a different array than b_fsas_.
+            K2_DCHECK_LT(b_arc_idx012, b_fsas_row_splits2_data[info.b_fsas_state_idx01 + 1]);
+            int32_t a_begin_arc_idx012 = a_fsas_row_splits2_data[info.a_fsas_state_idx01],
+                a_end_arc_idx012 = a_fsas_row_splits2_data[info.a_fsas_state_idx01 + 1];
+            uint32_t label = static_cast<uint32_t>(b_arcs_data[b_arc_idx012].label);
 
-          int32_t begin = a_begin_arc_idx012,
-              end = a_end_arc_idx012;
-          // We are looking for the first index begin <= i < end such that
-          //     a_arcs[i].label >= label.
-          while (begin < end) {
-            int32_t mid = (begin + end) / 2;
-            assert(mid < end);  // temp?
-            uint32_t a_label = uint32_t(a_arcs_data[mid].label);
-            if (a_label < label) {
-              begin = mid + 1;
-            } else {
-              end = mid;
+            int32_t begin = a_begin_arc_idx012,
+                end = a_end_arc_idx012;
+            // We are looking for the first index begin <= i < end such that
+            //     a_arcs[i].label >= label.
+            while (begin < end) {
+              int32_t mid = (begin + end) / 2;
+              assert(mid < end);  // temp?
+              uint32_t a_label = uint32_t(a_arcs_data[mid].label);
+              if (a_label < label) {
+                begin = mid + 1;
+              } else {
+                end = mid;
+              }
             }
-          }
-          // "range_begin" is the "begin" of the possibly-empty range of arc-indexes
-          // in a that matches `label`
-          int32_t range_begin = begin,
-              range_end = range_begin;
-          // The following linear search will probably be faster than
-          // logarithmic search in the normal case where there are not many
-          // matching arcs.  In the unusual case where there are many matching
-          // arcs per setate, it won't dominate the running time of the entire
-          // algorithm.
-          while (range_end < a_end_arc_idx012 &&
-                 uint32_t(a_arcs_data[range_end].label) == label)
-            range_end++;
-          first_matching_a_arc_idx012_data[arc_idx01] = range_begin;
-          num_matching_a_arcs_data[arc_idx01] = range_end - range_begin;
+            if (begin < a_end_arc_idx012) {
+              K2_CHECK_GE((uint32_t)a_arcs_data[begin].label, label);
+            }
+            if (begin - 1 > a_begin_arc_idx012) {
+              K2_CHECK_LT((uint32_t)a_arcs_data[begin-1].label, label);
+            }
+
+            // "range_begin" is the "begin" of the possibly-empty range of arc-indexes
+            // in a that matches `label`
+            int32_t range_begin = begin, range_end = begin;
+            // The following linear search will probably be faster than
+            // logarithmic search in the normal case where there are not many
+            // matching arcs.  In the unusual case where there are many matching
+            // arcs per setate, it won't dominate the running time of the entire
+            // algorithm.
+            while (range_end < a_end_arc_idx012 &&
+                   uint32_t(a_arcs_data[range_end].label) == label)
+              range_end++;
+            first_matching_a_arc_idx012_data[arc_idx01] = range_begin;
+            num_matching_a_arcs_data[arc_idx01] = range_end - range_begin;
           });
       }
 
@@ -1023,7 +1041,7 @@ class DeviceIntersector {
                 b_dest_state_idx01,
                 hash_value = 0,  // actually it's a don't-care.
                 *hash_key_value_location = nullptr;
-            printf("hash_key = %ld\n", hash_key);
+            /*printf("hash_key = %ld\n", hash_key);*/
             // If it was successfully inserted, then this arc is assigned
             // responsibility for creating the state-id for its destination
             // state.  We'll assign the value below in
@@ -1085,7 +1103,7 @@ class DeviceIntersector {
                                                           new_state_idx);
           uint32_t b_state_idx01 = uint32_t(key) & ((uint32_t(1) << b_state_bits) - 1),
               a_state_idx01 = a_dest_state_idx01_temp_data[new_arc_idx];
-          StateInfo info { (int32_t)b_state_idx01, (int32_t)a_state_idx01 };
+          StateInfo info { (int32_t)a_state_idx01, (int32_t)b_state_idx01 };
           states_data[new_state_idx] = info;
         });
     }
