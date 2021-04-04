@@ -117,7 +117,8 @@ def top_sort(fsa: Fsa) -> Fsa:
 
 
 def intersect_device(a_fsas: Fsa, b_fsas: Fsa,
-                     b_to_a_map: torch.Tensor) -> Fsa:
+                     b_to_a_map: torch.Tensor,
+                     sorted_match_a: bool = False) -> Fsa:
     '''Compute the intersection of two FSAs treating epsilons
     as real, normal symbols.
 
@@ -156,7 +157,7 @@ def intersect_device(a_fsas: Fsa, b_fsas: Fsa,
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect_device(
         a_fsas.arcs, a_fsas.properties, b_fsas.arcs, b_fsas.properties,
-        b_to_a_map, need_arc_map)
+        b_to_a_map, need_arc_map, sorted_match_a)
     out_fsas = Fsa(ragged_arc)
 
     for name, a_value in a_fsas.named_tensor_attr():
