@@ -427,12 +427,6 @@ class DeviceIntersector {
               cutoff = 1 << 30;  // Eventually I'll make cutoff smaller, like
                                  // 16384, and implement the other branch.
 
-      {
-        auto array =  num_arcs_b.Range(0, num_states);
-        K2_LOG(INFO) << "tot_ab = " << tot_ab << ", tot_b = "
-                     << Sum(array);
-      }
-
       const Arc *a_arcs_data = a_fsas_.values.Data(),
           *b_arcs_data = b_fsas_.values.Data();
 
@@ -520,9 +514,6 @@ class DeviceIntersector {
         int32_t num_kept_arcs = arcs_newstates_renumbering.Old2New(true)[tot_ab],
                  num_kept_tot = arcs_newstates_renumbering.New2Old().Dim(),
               num_kept_states = num_kept_tot - num_kept_arcs;
-
-        K2_LOG(INFO) << "num_kept_arcs = " << num_kept_arcs
-                     << ", num_kept_states = " << num_kept_states;
 
         int32_t next_state_end = state_end + num_kept_states;
         iter_to_state_row_splits_cpu_.push_back(next_state_end);
@@ -712,7 +703,6 @@ class DeviceIntersector {
 
       ExclusiveSum(num_arcs_b, &num_arcs_b);
       int32_t num_b_arcs = num_arcs_b.Back();
-      K2_LOG(INFO) << "num_b_arcs = " << num_b_arcs;
 
       Array1<int32_t> b_arc_to_state(c_, num_b_arcs);
       RowSplitsToRowIds(num_arcs_b, &b_arc_to_state);
@@ -809,9 +799,7 @@ class DeviceIntersector {
           // respectively because a_end_arc_idx012 is a value we need
           // to include in the search.
 
-          /*if (thread_idx == 0) {
-            printf("thread_idx==0, arc_idx01=%d, num_iters=%d\n", arc_idx01, num_iters);
-            } */
+
           // "per_thread_range" is the length of the interval of arcs that each thread
           // 0 <= thread_idx < num_threads is currently responsible for.
           // At this point, the group of threads is searching an interval
@@ -869,21 +857,12 @@ class DeviceIntersector {
           int32_t lower_bound, upper_bound;
           if (thread_idx == 0) {  // only the 1st thread from each of the 2 groups
                                   // participates.
-            /*
-            printf("thread_idx = %d, idx01_doubled = %d, idx01 = %d, interval_start = %d, "
-                   "a_{begin,end}_arc_idx012=%d,%d, label=%d, reallabel=%d, lbm1label=%d, lblabel=%d, lb1label=%d\n", thread_idx, idx01_doubled, arc_idx01, interval_start,
-                   a_begin_arc_idx012, a_end_arc_idx012, (int)label,
-                   b_arcs_data[b_arc_idx012].label,
-                   a_arcs_data[interval_start-1].label,
-                   a_arcs_data[interval_start].label,
-                   a_arcs_data[interval_start+1].label);*/
-
             lower_bound = g_double.shfl(interval_start, 0);
             upper_bound = g_double.shfl(interval_start, thread_group_size);
 
             if (g_double.thread_rank() == 0) {  // equiv. to:
                                                 // (thread_group_type == 0)
-              // TODO: remove the checks below.
+              /*
               K2_DCHECK_LE(lower_bound, upper_bound);
               K2_DCHECK_LE(a_begin_arc_idx012, lower_bound);
               K2_DCHECK_LE(upper_bound, a_end_arc_idx012);
@@ -892,7 +871,7 @@ class DeviceIntersector {
               K2_DCHECK(lower_bound == a_begin_arc_idx012 ||
                         a_arcs_data[lower_bound - 1].label < label);
               K2_DCHECK(upper_bound == a_end_arc_idx012 ||
-                        uint32_t(a_arcs_data[upper_bound].label) > uint32_t(label));
+                uint32_t(a_arcs_data[upper_bound].label) > uint32_t(label)); */
               if (upper_bound != a_begin_arc_idx012) {
                 K2_DCHECK_LE(uint32_t(a_arcs_data[upper_bound - 1].label),
                              uint32_t(label));
@@ -966,7 +945,6 @@ class DeviceIntersector {
 
       ExclusiveSum(num_matching_a_arcs, &num_matching_a_arcs);
       int32_t tot_matched_arcs = num_matching_a_arcs.Back();
-      K2_LOG(INFO) << "tot_matched_arcs = " << tot_matched_arcs;
       Array1<int32_t> matched_arc_to_b_arc(c_, tot_matched_arcs);
       RowSplitsToRowIds(num_matching_a_arcs, &matched_arc_to_b_arc);
       int32_t *matched_arc_to_b_arc_data = matched_arc_to_b_arc.Data();
@@ -1041,7 +1019,6 @@ class DeviceIntersector {
                 b_dest_state_idx01,
                 hash_value = 0,  // actually it's a don't-care.
                 *hash_key_value_location = nullptr;
-            /*printf("hash_key = %ld\n", hash_key);*/
             // If it was successfully inserted, then this arc is assigned
             // responsibility for creating the state-id for its destination
             // state.  We'll assign the value below in
@@ -1065,7 +1042,6 @@ class DeviceIntersector {
 
 
       int32_t num_new_states = new_state_renumbering.New2Old().Dim();
-      K2_LOG(INFO) << "num_new_states = " << num_new_states;
 
       const int32_t *new_state_renumbering_new2old_data =
           new_state_renumbering.New2Old().Data();
