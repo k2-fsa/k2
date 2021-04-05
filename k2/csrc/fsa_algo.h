@@ -630,6 +630,17 @@ void Invert(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
 void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
                 Ragged<int32_t> *dest_aux_labels);
 
+/* Remove epsilon self-loops.
+ *
+ * Unlike RemoveEpsilon, this functions remove only epsilon self-loops.
+ *
+ * @param [in] src  Input Fsa or FsaVec.
+ *
+ * @return Return an Fsa or FsaVec that has no epsilon self-loops.
+ *
+ */
+FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec& src);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_
