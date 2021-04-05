@@ -220,7 +220,7 @@ class Hash {
             return true;  // Successfully inserted.
           }
           cur_elem = old_elem;
-          if (cur_elem & KEY_MASK == key) {
+          if ((cur_elem & KEY_MASK) == key) {
             if (old_value) *old_value = (cur_elem >> NUM_KEY_BITS);
             if (key_value_location) *key_value_location = data_ + cur_bucket;
             return false;  // Another thread inserted this key
@@ -260,7 +260,6 @@ class Hash {
     __forceinline__ __host__ __device__ bool Find(
         uint64_t key, uint64_t *value_out,
         uint64_t **key_value_location = nullptr) const {
-      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       constexpr int64_t KEY_MASK = (uint64_t(1) << NUM_KEY_BITS) - 1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
@@ -298,7 +297,6 @@ class Hash {
      */
     __forceinline__ __host__ __device__ void SetValue(
         uint64_t *key_value_location, uint64_t key, uint64_t value) const {
-      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       *key_value_location = (value << NUM_KEY_BITS) | key;
     }
 
@@ -317,13 +315,12 @@ class Hash {
       compilation errors.
     */
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
-      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
       constexpr int64_t KEY_MASK = (uint64_t(1) << NUM_KEY_BITS) - 1;
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
-        if (old_elem & KEY_MASK == key) {
+        if ((old_elem & KEY_MASK) == key) {
           data_[cur_bucket] = ~((uint64_t)0);
           return;
         } else {
