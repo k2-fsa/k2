@@ -734,11 +734,12 @@ class DeviceIntersector {
       if (c_->GetDeviceType() == kCuda) {
         constexpr int log_thread_group_size = 2,
             thread_group_size = (1 << log_thread_group_size);  // 4
-        static_assert(thread_group_size > 1);
+        static_assert(thread_group_size > 1, "Bad thread_group_size");
         // the "* 2" below is becaus pairs of thread groups handle the
         // (beginning, end) of ranges of arcs in a_fsas_; and we need
         // these groups to be within the same warp so we can sync them.
-        static_assert(thread_group_size * 2 <= 32);
+        static_assert(thread_group_size * 2 <= 32,
+                      "thread_group_size too large");
 
         auto lambda_find_ranges = [=] __device__(
             cg::thread_block_tile<thread_group_size> g,  // or auto g..
