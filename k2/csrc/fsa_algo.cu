@@ -1242,10 +1242,11 @@ void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
   *dest_aux_labels = ragged_creator.GetRagged2();
 }
 
-FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec& src) {
+FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec &src,
+                                Array1<int32_t> *arc_map /* = nullptr */) {
   if (src.NumAxes() == 2) {
     FsaVec temp = FsaToFsaVec(src);
-    return RemoveEpsilonSelfLoops(temp).RemoveAxis(0);
+    return RemoveEpsilonSelfLoops(temp, arc_map).RemoveAxis(0);
   }
   K2_CHECK_EQ(src.NumAxes(), 3);
 
@@ -1254,7 +1255,7 @@ FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec& src) {
   Renumbering renumber_lists(c, num_arcs);
   char *keep_list_data = renumber_lists.Keep().Data();
 
-  const Arc* arcs_data = src.values.Data();
+  const Arc *arcs_data = src.values.Data();
   K2_EVAL(
       c, num_arcs, lambda_set_keep, (int32_t i)->void {
         Arc arc = arcs_data[i];
@@ -1267,7 +1268,7 @@ FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec& src) {
         }
         keep_list_data[i] = keep;
       });
-  FsaVec ans = Index(src, 2, renumber_lists.New2Old());
+  FsaVec ans = Index(src, 2, renumber_lists.New2Old(), arc_map);
   return ans;
 }
 

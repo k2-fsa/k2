@@ -986,6 +986,7 @@ TEST(FsaAlgo, TestRemoveEplsionSelfLoopsSimple) {
     1 1 0 0.5
     2 3 -1 0.6
     3
+
   )";
   for (auto &context : {GetCudaContext(), GetCpuContext()}) {
     Fsa src = FsaFromString(s).To(context);
@@ -994,11 +995,13 @@ TEST(FsaAlgo, TestRemoveEplsionSelfLoopsSimple) {
     EXPECT_NE(prop & kFsaPropertiesTopSortedAndAcyclic,
               kFsaPropertiesTopSortedAndAcyclic);
 
-    Fsa dst = RemoveEpsilonSelfLoops(src);
+    Array1<int32_t> arc_map;
+    Fsa dst = RemoveEpsilonSelfLoops(src, &arc_map);
 
     prop = GetFsaBasicProperties(dst);
     EXPECT_EQ(prop & kFsaPropertiesTopSortedAndAcyclic,
               kFsaPropertiesTopSortedAndAcyclic);
+    CheckArrayData(arc_map, std::vector<int32_t>{0, 1, 3, 5});
   }
 }
 
@@ -1010,26 +1013,29 @@ TEST(FsaAlgo, TestRemoveEplsionSelfRandomFsas) {
   int32_t min_num_arcs = max_num_fsas * 2;
   int32_t max_num_arcs = 10000;
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    FsaVec src = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
-                               min_num_arcs, max_num_arcs);
-    TopSort(src, &src);
-    src = src.To(context);
-    AddEpsilonSelfLoops(src, &src);
+    for (int32_t i = 0; i != 10; ++i) {
+      FsaVec src = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                                min_num_arcs, max_num_arcs);
+      Array1<int32_t> props;
+      int32_t tot_properties;
 
-    int32_t prop = GetFsaBasicProperties(src);
-    K2_LOG(INFO) << FsaPropertiesAsString(prop);
-    EXPECT_NE(prop & kFsaPropertiesTopSortedAndAcyclic,
-              kFsaPropertiesTopSortedAndAcyclic);
+      TopSort(src, &src);
 
-    FsaVec dst = RemoveEpsilonSelfLoops(src);
+      src = src.To(context);
+      AddEpsilonSelfLoops(src, &src);
 
-    prop = GetFsaBasicProperties(dst);
-    K2_LOG(INFO) << FsaPropertiesAsString(prop);
-    EXPECT_EQ(prop & kFsaPropertiesTopSortedAndAcyclic,
-              kFsaPropertiesTopSortedAndAcyclic);
+      GetFsaVecBasicProperties(src, &props, &tot_properties);
 
+      EXPECT_NE(tot_properties & kFsaPropertiesTopSortedAndAcyclic,
+                kFsaPropertiesTopSortedAndAcyclic);
+
+      FsaVec dst = RemoveEpsilonSelfLoops(src);
+      GetFsaVecBasicProperties(dst, &props, &tot_properties);
+
+      EXPECT_EQ(tot_properties & kFsaPropertiesTopSortedAndAcyclic,
+                kFsaPropertiesTopSortedAndAcyclic);
+    }
   }
-
 }
 
 }  // namespace k2

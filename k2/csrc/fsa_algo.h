@@ -632,14 +632,17 @@ void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
 
 /* Remove epsilon self-loops.
  *
- * Unlike RemoveEpsilon, this functions remove only epsilon self-loops.
+ * Unlike RemoveEpsilon, this function removes only epsilon self-loops.
  *
  * @param [in] src  Input Fsa or FsaVec.
+ * @param [out] arc_map  If not NULL, on return arc_map[i] maps the i-th arc
+ *                       in ans to the arc in src.
  *
  * @return Return an Fsa or FsaVec that has no epsilon self-loops.
  *
  */
-FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec& src);
+FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec &src,
+                                Array1<int32_t> *arc_map = nullptr);
 
 }  // namespace k2
 
