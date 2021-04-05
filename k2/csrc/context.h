@@ -353,6 +353,13 @@ RegionPtr NewRegion(ContextPtr context, std::size_t num_bytes);
   region.
  */
 inline RegionPtr NewRegion(Region &region, std::size_t num_bytes) {
+  if (ssize_t(num_bytes) < ssize_t(0)) {
+    K2_LOG(WARNING) << "NewRegion allocating memory of negative size "
+                    << (ssize_t)num_bytes << ", trying to force core dump";
+    int32_t *a = reinterpret_cast<int32_t*>(num_bytes);
+    K2_LOG(FATAL) << "This should cause core dump: "
+                  << *a;
+  }
   return NewRegion(region.context, num_bytes);
 }
 
