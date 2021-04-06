@@ -72,11 +72,29 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
 */
 class Hash {
  public:
-  /* Constructor.  Context can be for CPU or GPU.  num_buckets must be a power of 2
-     with num_buckets >= 128 (an arbitrarily chosen cutoff) */
-  Hash(ContextPtr c, int32_t num_buckets) {
+  /* Constructor.  Context can be for CPU or GPU.
+
+     @param [in] num_buckets   Number of buckets in the hash; must be
+                a power of 2 and >= 128 (this limit was arbitrarily chosen).
+                The number of items in the hash cannot exceed the number of
+                buckets, or the code will loop infinitely when you try to add
+                items; aim for less than 50% occupancy.
+     @param [in] num_key_bits   Number of bits in the key of the hash;
+                must satisfy 0 < num_key_bits < 64, and keys used must
+                be less than (1<<num_key_bits)-1.
+     @param [in] num_value_bits  Number of bits in the value of the hash.
+                If not specified it defaults to 64 - num_key_bits; in future
+                we'll allow more bits than that, by making some bits of
+                the key implicit in the bucket index.
+  */
+  Hash(ContextPtr c,
+       int32_t num_buckets,
+       int32_t num_key_bits,
+       int32_t num_value_bits=-1):
+      num_key_bits_(num_key_bits) {
     std::ostringstream os;
-    os << K2_FUNC << ":num_buckets=" << num_buckets;
+    os << K2_FUNC << ":num_buckets=" << num_buckets << ", num_key_bits="
+       << num_key_bits;
     NVTX_RANGE(os.str().c_str());
     data_ = Array1<uint64_t>(c, num_buckets, ~(uint64_t)0);
     K2_CHECK_GE(num_buckets, 128);
@@ -85,11 +103,20 @@ class Hash {
          n *= 2, buckets_num_bitsm1_++) { }
     K2_CHECK_EQ(num_buckets, 2 << buckets_num_bitsm1_)
         << " num_buckets must be a power of 2.";
+    if (num_value_bits < 0)
+      num_value_bits = 64 - num_key_bits_;
+    num_value_bits_ = num_value_bits;
+    K2_CHECK_LE(num_key_bits_ + num_value_bits_, 64)
+        << "Have not yet implemented key-bits+value-bits>64.";
   }
 
   // Only to be used prior to assignment.
   Hash() = default;
 
+
+  int32_t NumKeyBits() const { return num_key_bits_; }
+
+  int32_t NumValueBits() const { return num_value_bits_; }
 
   int32_t NumBuckets() const { return data_.Dim(); }
 
@@ -103,17 +130,33 @@ class Hash {
                   with 0 < num_key_bits < 64 (number of bits in the values
                   is 64 minus this).  This must be the same as was
                   used to add any values that are currently in the hash.
+       @param [in] num_value_bits  Number of bits in the value of the hash.
+                 If not specified it defaults to 64 - num_key_bits; in future
+                 we'll allow more bits than that, by making some bits of
+                 the key implicit in the bucket index.
 
      CAUTION: Resizing will invalidate any accessor objects you have; you need
      to re-get the accessors before accessing the hash again.
   */
   void Resize(int32_t new_num_buckets,
-              int32_t num_key_bits) {
+              int32_t num_key_bits,
+              int32_t num_value_bits = -1) {
+    K2_CHECK_EQ(num_key_bits, num_key_bits_)
+        << "Need to implement changing num-key-bits...";
+    if (num_value_bits < 0)
+      num_value_bits = 64 - num_key_bits;
+    K2_CHECK_EQ(num_key_bits, num_key_bits_)
+        << "Need to implement changing num-key-bits...";
+    K2_CHECK_EQ(num_value_bits, num_value_bits_)
+        << "Need to implement changing num-value-bits...";
+
     K2_CHECK_GT(new_num_buckets, 0);
     K2_CHECK_EQ(new_num_buckets & (new_num_buckets - 1), 0);  // power of 2.
 
     ContextPtr c = data_.Context();
-    Hash new_hash(c, new_num_buckets);
+    Hash new_hash(c, new_num_buckets,
+                  num_key_bits,
+                  num_value_bits);
 
     int32_t dim = data_.Dim();
     const uint64_t *this_data = data_.Data();
@@ -540,6 +583,7 @@ class Hash {
     // A number satisfying 0 < num_key_bits_ < 64; the number of bits
     // (out of 64) used for the key (rest are used for the value).
     uint32_t num_key_bits_;
+
     // A number satisfying num_buckets == 1 << (1+buckets_num_bitsm1_)
     // the number of bits in `num_buckets` minus one.
     uint32_t buckets_num_bitsm1_;
@@ -567,6 +611,8 @@ class Hash {
    */
   template <int32_t NUM_KEY_BITS>
   Accessor<NUM_KEY_BITS> GetAccessor() {
+    K2_CHECK_EQ(num_key_bits_, NUM_KEY_BITS);
+    K2_CHECK_LE(num_key_bits_ + num_value_bits_, 64);
     return Accessor<NUM_KEY_BITS>(data_.Data(),
                                   uint32_t(data_.Dim()) - 1,
                                   buckets_num_bitsm1_);
@@ -577,6 +623,8 @@ class Hash {
     at run-time rather than compile time.
    */
   GenericAccessor GetGenericAccessor(int32_t num_key_bits) {
+    K2_CHECK_EQ(num_key_bits_, num_key_bits);
+    K2_CHECK_LE(num_key_bits_ + num_value_bits_, 64);
     return GenericAccessor(num_key_bits,
                            buckets_num_bitsm1_,
                            data_.Data(),
@@ -620,6 +668,16 @@ class Hash {
 
  private:
   Array1<uint64_t> data_;
+
+  // A number satisfying 0 < num_key_bits_ < 64; the number of bits
+  // (out of 64) used for the key (rest are used for the value).
+  // Keys are kept in the lower-order bits of the 64-bit hash elements.
+  int32_t num_key_bits_;
+
+  // Currently num_value_bits_ is always 64 - num_key_bits_.
+  int32_t num_value_bits_;
+
+
   // number satisfying data_.Dim() == 1 << (1+buckets_num_bitsm1_)
   int32_t buckets_num_bitsm1_;
 };

@@ -17,7 +17,7 @@ template <int32_t NUM_KEY_BITS>
 void TestHashConstruct() {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     for (int32_t size : {128, 1024, 2048, 65536, 1048576}) {
-      Hash hash(c, size);
+      Hash hash(c, size, NUM_KEY_BITS);
 
       // obviously we're not going to fill it completely... this hash is not
       // resizable.
@@ -100,7 +100,7 @@ void TestHashConstruct() {
 void TestHashConstruct2(int32_t num_key_bits) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     for (int32_t size : {128, 1024, 2048, 65536, 1048576}) {
-      Hash hash(c, size);
+      Hash hash(c, size, num_key_bits);
 
       // obviously we're not going to fill it completely... this hash is not
       // resizable.
@@ -124,7 +124,7 @@ void TestHashConstruct2(int32_t num_key_bits) {
       uint32_t *keys_data = keys.Data(),
             *values_data = values.Data(),
             *success_data = success.Data();
-      int32_t   *counts_data = count_per_key.Data();
+      int32_t *counts_data = count_per_key.Data();
 
       Hash::GenericAccessor acc = hash.GetGenericAccessor(num_key_bits);
       K2_EVAL(c, num_elems, lambda_insert_pairs, (int32_t i) -> void {

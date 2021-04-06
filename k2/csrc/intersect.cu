@@ -90,20 +90,20 @@ class DeviceIntersector {
       sorted_match_a_(sorted_match_a),
       b_fsas_(b_fsas),
       b_to_a_map_(b_to_a_map),
-      b_state_bits_(2 + HighestBitSet(b_fsas_.TotSize(1))),
-      key_bits_(b_state_bits_ + 2 + HighestBitSet(a_fsas_.shape.MaxSize(1))) {
+      b_state_bits_(2 + HighestBitSet(b_fsas_.TotSize(1) + 1)),  // TODO: remove the 2.
+      key_bits_(b_state_bits_ + 2 + HighestBitSet(a_fsas_.shape.MaxSize(1))) {  // TODO: remove the 2.
 
-    if (key_bits_ < 32)  // TEMP!!
+    if (key_bits_ < 32)  // TEMP!!  TODO: remove.
       key_bits_ = 32;
 
-    // We may want to tune this hash size eventually.
-    // Note: the hash size
+    // We may want to tune this default hash size eventually.
+    // We will expand the hash as needed.
     int32_t hash_size = 4 * RoundUpToNearestPowerOfTwo(b_fsas.NumElements()),
         min_hash_size = 1 << 16;
     if (hash_size < min_hash_size)
       hash_size = min_hash_size;
     // caution: also use hash_size in FirstIter() as default size of various arrays.
-    state_pair_to_state_ = Hash(c_, hash_size);
+    state_pair_to_state_ = Hash(c_, hash_size, key_bits_);
 
     K2_CHECK(c_->IsCompatible(*b_fsas.Context()));
     K2_CHECK(c_->IsCompatible(*b_to_a_map.Context()));
