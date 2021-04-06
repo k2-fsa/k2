@@ -1075,7 +1075,7 @@ class DeviceIntersector {
           // the hash.  If in future we change details of the hash
           // implementation and it fails, it can be removed.
           // We're checking that we inserted `hash_value = 0` above.
-          K2_DCHECK_EQ(*hash_key_value_location & ((uint64_t(1) << value_bits) - 1), 0);
+          K2_DCHECK_EQ(*hash_key_value_location >> key_bits, 0);
           uint64_t key = state_pair_to_state_acc.SetValue(hash_key_value_location,
                                                           new_state_idx);
           uint32_t b_state_idx01 = uint32_t(key) & ((uint32_t(1) << b_state_bits) - 1),
