@@ -63,17 +63,17 @@ class _NormalizeScores(torch.autograd.Function):
         assert len(out) == 1
         ans_ragged = _k2.normalize_per_sublist(src.ragged, use_log)
         out[0] = RaggedFloat(ans_ragged)
-        ctx.out = out[0]  # save for backward
+        ctx.out_ragged = out[0].ragged  # save for backward
         ctx.use_log = use_log
         return out[0].values
 
     @staticmethod
     def backward(ctx,
                  out_grad: torch.Tensor) -> Tuple[None, None, torch.Tensor]:
-        out = ctx.out
+        out_ragged = ctx.out_ragged
         use_log = ctx.use_log
         assert use_log is True
-        ans_grad = _k2.normalize_per_sublist_backward(out.ragged, use_log,
+        ans_grad = _k2.normalize_per_sublist_backward(out_ragged, use_log,
                                                       out_grad)
 
         return (
