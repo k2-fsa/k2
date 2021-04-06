@@ -49,6 +49,7 @@ set(py_test_files
   ragged_shape_test.py
   ragged_test.py
   random_paths_test.py
+  remove_epsilon_self_loops_test.py
   remove_epsilon_test.py
   shortest_path_test.py
   sparse_abs_test.py

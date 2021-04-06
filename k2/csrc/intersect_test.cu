@@ -607,10 +607,10 @@ TEST(IntersectPruned, RandomSingle) {
                                        treat_epsilons_specially));
       // Arc-maps are mostly equal but not exactly, as the ordering of states
       // is not deterministic.
-      //K2_LOG(INFO) << "arc_map_a3=" << arc_map_a3 << ", arc_map_a4="
-      //<< arc_map_a4;
-      //K2_LOG(INFO) << "arc_map_b3=" << arc_map_b3 << ", arc_map_b4="
-      //<< arc_map_b4;
+      // K2_LOG(INFO) << "arc_map_a3=" << arc_map_a3 << ", arc_map_a4="
+      // << arc_map_a4;
+      // K2_LOG(INFO) << "arc_map_b3=" << arc_map_b3 << ", arc_map_b4="
+      // << arc_map_b4;
     }
 
 

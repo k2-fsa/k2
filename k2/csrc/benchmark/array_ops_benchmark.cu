@@ -164,7 +164,8 @@ static BenchmarkStat BenchmarkAppend(int32_t num_array,
 
   stat.eplased_per_iter = BenchmarkOp(
       num_iter, context,
-      (Array1<T>(*)(ContextPtr, int32_t, const Array1<T> **))(&Append<T>), context, num_array, src);
+      (Array1<T>(*)(ContextPtr, int32_t, const Array1<T> **))(&Append<T>),
+      context, num_array, src);
   stat.eplased_per_iter *= 1e6;  // from seconds to microseconds
   return stat;
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
-# Copyright (c)  2021  Xiaomi Corp.       (authors: Fangjun Kuang)
+# Copyright (c)  2021  Xiaomi Corp.       (authors: Fangjun Kuang
+#                                                   Daniel Povey)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -22,8 +23,10 @@ class TestIntersectDevice(unittest.TestCase):
             devices.append(torch.device('cuda'))
 
         for device in devices:
-            for use_identity_map,sorted_match_a in [(True,True), (False,True),
-                                                    (True,False), (False,False)]:
+            for use_identity_map, sorted_match_a in [(True, True),
+                                                     (False, True),
+                                                     (True, False),
+                                                     (False, False)]:
                 # recognizes (0|1)(0|2)
                 s1 = '''
                     0 1 0 0.1
