@@ -682,6 +682,22 @@ class Hash {
   int32_t buckets_num_bitsm1_;
 };
 
+/*
+  Returns the number of bits needed for an unsigned integer sufficient to
+  store the nonnegative value `size`.
+
+  Note: `size` might be the size of an array whose indexes we want to store in
+  the hash, i.e. we'll need to store all value 0 <= n < size as possible keys.
+  In this case, you'd never actually need to store the value `size` but we can't
+  call HighestBitSet(size-1) because the hash code needs to keep "all-ones"
+  reserved for "nothing in this hash bin", so if `size` is of the form 2^n we
+  still need n+1 bits to store the indexes, because (2^n-1) is actually reserved
+ */
+inline int32_t GetNumBitsNeededFor(int32_t size) {
+  return 1 + HighestBitSet(size);
+}
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_HASH_H_

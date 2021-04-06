@@ -90,12 +90,8 @@ class DeviceIntersector {
       sorted_match_a_(sorted_match_a),
       b_fsas_(b_fsas),
       b_to_a_map_(b_to_a_map),
-      b_state_bits_(2 + HighestBitSet(b_fsas_.TotSize(1) + 1)),  // TODO: remove the 2.
-      key_bits_(b_state_bits_ + 2 + HighestBitSet(a_fsas_.shape.MaxSize(1))) {  // TODO: remove the 2.
-
-    if (key_bits_ < 32)  // TEMP!!  TODO: remove.
-      key_bits_ = 32;
-
+      b_state_bits_(GetNumBitsNeededFor(b_fsas_.TotSize(1))),
+      key_bits_(b_state_bits_ + GetNumBitsNeededFor(a_fsas_.shape.MaxSize(1))) {
     // We may want to tune this default hash size eventually.
     // We will expand the hash as needed.
     int32_t hash_size = 4 * RoundUpToNearestPowerOfTwo(b_fsas.NumElements()),
@@ -1137,12 +1133,12 @@ class DeviceIntersector {
   //   state_pair = (a_fsas_state_idx1 << b_state_bits_) + b_fsas_state_idx01
   //
   // The number of bits in the key (max bits set in `state_pair`) is
-  // key_bits_ == b_state_bits_ + HighestBitSet(a_fsas_.MaxSize(1)) + 2.
+  // key_bits_ == b_state_bits_ + GetNumBitsNeededFor(a_fsas_.MaxSize(1)) .
   // The number of bits in the value is 64 minus this; we'll crash if
   // the number of states ends up being too large to store in this
   // value.
-  int32_t b_state_bits_;  // == HighestBitSet(b_fsas_.TotSize(1)) + 2.
-  int32_t key_bits_;  // b_state_bits_ + HighestBitSet(a_fsas_.MaxSize(1)) + 2.
+  int32_t b_state_bits_;  // == GetNumBitsNeededFor(b_fsas_.TotSize(1))
+  int32_t key_bits_;  // b_state_bits_ + GetNumBitsNeededFor(a_fsas_.MaxSize(1))
 
   // This hash maps from pairs (a_state_idx1, b_state_idx01), encoded
   // as a key
