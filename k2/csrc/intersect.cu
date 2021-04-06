@@ -90,20 +90,16 @@ class DeviceIntersector {
       sorted_match_a_(sorted_match_a),
       b_fsas_(b_fsas),
       b_to_a_map_(b_to_a_map),
-      b_state_bits_(2 + HighestBitSet(b_fsas_.TotSize(1))),
-      key_bits_(b_state_bits_ + 2 + HighestBitSet(a_fsas_.shape.MaxSize(1))) {
-
-    if (key_bits_ < 32)  // TEMP!!
-      key_bits_ = 32;
-
-    // We may want to tune this hash size eventually.
-    // Note: the hash size
+      b_state_bits_(GetNumBitsNeededFor(b_fsas_.TotSize(1))),
+      key_bits_(b_state_bits_ + GetNumBitsNeededFor(a_fsas_.shape.MaxSize(1))) {
+    // We may want to tune this default hash size eventually.
+    // We will expand the hash as needed.
     int32_t hash_size = 4 * RoundUpToNearestPowerOfTwo(b_fsas.NumElements()),
         min_hash_size = 1 << 16;
     if (hash_size < min_hash_size)
       hash_size = min_hash_size;
     // caution: also use hash_size in FirstIter() as default size of various arrays.
-    state_pair_to_state_ = Hash(c_, hash_size);
+    state_pair_to_state_ = Hash(c_, hash_size, key_bits_);
 
     K2_CHECK(c_->IsCompatible(*b_fsas.Context()));
     K2_CHECK(c_->IsCompatible(*b_to_a_map.Context()));
@@ -1075,7 +1071,7 @@ class DeviceIntersector {
           // the hash.  If in future we change details of the hash
           // implementation and it fails, it can be removed.
           // We're checking that we inserted `hash_value = 0` above.
-          K2_DCHECK_EQ(*hash_key_value_location & ((uint64_t(1) << value_bits) - 1), 0);
+          K2_DCHECK_EQ(*hash_key_value_location >> key_bits, 0);
           uint64_t key = state_pair_to_state_acc.SetValue(hash_key_value_location,
                                                           new_state_idx);
           uint32_t b_state_idx01 = uint32_t(key) & ((uint32_t(1) << b_state_bits) - 1),
@@ -1137,12 +1133,12 @@ class DeviceIntersector {
   //   state_pair = (a_fsas_state_idx1 << b_state_bits_) + b_fsas_state_idx01
   //
   // The number of bits in the key (max bits set in `state_pair`) is
-  // key_bits_ == b_state_bits_ + HighestBitSet(a_fsas_.MaxSize(1)) + 2.
+  // key_bits_ == b_state_bits_ + GetNumBitsNeededFor(a_fsas_.MaxSize(1)) .
   // The number of bits in the value is 64 minus this; we'll crash if
   // the number of states ends up being too large to store in this
   // value.
-  int32_t b_state_bits_;  // == HighestBitSet(b_fsas_.TotSize(1)) + 2.
-  int32_t key_bits_;  // b_state_bits_ + HighestBitSet(a_fsas_.MaxSize(1)) + 2.
+  int32_t b_state_bits_;  // == GetNumBitsNeededFor(b_fsas_.TotSize(1))
+  int32_t key_bits_;  // b_state_bits_ + GetNumBitsNeededFor(a_fsas_.MaxSize(1))
 
   // This hash maps from pairs (a_state_idx1, b_state_idx01), encoded
   // as a key

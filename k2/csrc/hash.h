@@ -51,7 +51,7 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
     - The number of buckets is a power of 2 provided by the user to the constructor;
       currently no resizing is supported.
     - When accessing hash[key], we use bucket_index == key % num_buckets,
-      leftover_index = 1 | ((key * 2) / num_buckets).  This is
+      leftover_index = 1 | ((key * 2) / num_buckets).  This is the
       leftover part of the index times 2, plus 1.
     - If the bucket at `bucket_index` is occupied, we look in locations
       `(bucket_index + n * leftover_index)%num_buckets` for n = 1, 2, ...;
@@ -72,11 +72,29 @@ unsigned long long int __forceinline__ __host__ __device__ AtomicCAS(
 */
 class Hash {
  public:
-  /* Constructor.  Context can be for CPU or GPU.  num_buckets must be a power of 2
-     with num_buckets >= 128 (an arbitrarily chosen cutoff) */
-  Hash(ContextPtr c, int32_t num_buckets) {
+  /* Constructor.  Context can be for CPU or GPU.
+
+     @param [in] num_buckets   Number of buckets in the hash; must be
+                a power of 2 and >= 128 (this limit was arbitrarily chosen).
+                The number of items in the hash cannot exceed the number of
+                buckets, or the code will loop infinitely when you try to add
+                items; aim for less than 50% occupancy.
+     @param [in] num_key_bits   Number of bits in the key of the hash;
+                must satisfy 0 < num_key_bits < 64, and keys used must
+                be less than (1<<num_key_bits)-1.
+     @param [in] num_value_bits  Number of bits in the value of the hash.
+                If not specified it defaults to 64 - num_key_bits; in future
+                we'll allow more bits than that, by making some bits of
+                the key implicit in the bucket index.
+  */
+  Hash(ContextPtr c,
+       int32_t num_buckets,
+       int32_t num_key_bits,
+       int32_t num_value_bits=-1):
+      num_key_bits_(num_key_bits) {
     std::ostringstream os;
-    os << K2_FUNC << ":num_buckets=" << num_buckets;
+    os << K2_FUNC << ":num_buckets=" << num_buckets << ", num_key_bits="
+       << num_key_bits;
     NVTX_RANGE(os.str().c_str());
     data_ = Array1<uint64_t>(c, num_buckets, ~(uint64_t)0);
     K2_CHECK_GE(num_buckets, 128);
@@ -85,11 +103,20 @@ class Hash {
          n *= 2, buckets_num_bitsm1_++) { }
     K2_CHECK_EQ(num_buckets, 2 << buckets_num_bitsm1_)
         << " num_buckets must be a power of 2.";
+    if (num_value_bits < 0)
+      num_value_bits = 64 - num_key_bits_;
+    num_value_bits_ = num_value_bits;
+    K2_CHECK_LE(num_key_bits_ + num_value_bits_, 64)
+        << "Have not yet implemented key-bits+value-bits>64.";
   }
 
   // Only to be used prior to assignment.
   Hash() = default;
 
+
+  int32_t NumKeyBits() const { return num_key_bits_; }
+
+  int32_t NumValueBits() const { return num_value_bits_; }
 
   int32_t NumBuckets() const { return data_.Dim(); }
 
@@ -103,28 +130,45 @@ class Hash {
                   with 0 < num_key_bits < 64 (number of bits in the values
                   is 64 minus this).  This must be the same as was
                   used to add any values that are currently in the hash.
+       @param [in] num_value_bits  Number of bits in the value of the hash.
+                 If not specified it defaults to 64 - num_key_bits; in future
+                 we'll allow more bits than that, by making some bits of
+                 the key implicit in the bucket index.
 
      CAUTION: Resizing will invalidate any accessor objects you have; you need
      to re-get the accessors before accessing the hash again.
   */
-  void Resize(int32_t new_num_buckets, int32_t num_key_bits) {
+  void Resize(int32_t new_num_buckets,
+              int32_t num_key_bits,
+              int32_t num_value_bits = -1) {
+    K2_CHECK_EQ(num_key_bits, num_key_bits_)
+        << "Need to implement changing num-key-bits...";
+    if (num_value_bits < 0)
+      num_value_bits = 64 - num_key_bits;
+    K2_CHECK_EQ(num_key_bits, num_key_bits_)
+        << "Need to implement changing num-key-bits...";
+    K2_CHECK_EQ(num_value_bits, num_value_bits_)
+        << "Need to implement changing num-value-bits...";
+
     K2_CHECK_GT(new_num_buckets, 0);
     K2_CHECK_EQ(new_num_buckets & (new_num_buckets - 1), 0);  // power of 2.
 
     ContextPtr c = data_.Context();
-    Hash new_hash(c, new_num_buckets);
+    Hash new_hash(c, new_num_buckets,
+                  num_key_bits,
+                  num_value_bits);
 
-    int32_t dim = data_.Dim(),
-        num_value_bits = 64 - num_key_bits;
+    int32_t dim = data_.Dim();
     const uint64_t *this_data = data_.Data();
     uint64_t *new_data = new_hash.data_.Data();
+    const uint64_t KEY_MASK = (uint64_t(1) << num_key_bits) - 1;
     size_t new_num_buckets_mask = static_cast<size_t>(new_num_buckets) - 1,
         new_buckets_num_bitsm1 = new_hash.buckets_num_bitsm1_;
 
     K2_EVAL(c, dim, lambda_copy_data, (int32_t i) -> void {
         uint64_t key_value = this_data[i];
         if (~key_value == 0) return;  // equals -1.. nothing there.
-        uint64_t key = key_value >> num_value_bits,
+        uint64_t key = key_value & KEY_MASK,
             leftover_index = 1 | (key >> new_buckets_num_bitsm1);
         size_t cur_bucket = key & new_num_buckets_mask;
         while (1) {
@@ -153,6 +197,10 @@ class Hash {
   // where the number of bits in the key is provided at run-time.
   // We may decide at some point to have a specific version for where the
   // number of bits is 32.
+  //
+  // Be careful with these Accessor objects; you have to be consistent, with
+  // a given Hash object (if it has elements in it), to use only a single type
+  // of Accessor object.
   template <int32_t NUM_KEY_BITS> class Accessor {
    public:
     // constructor of Accessor is for use by class Hash, not by the user.
@@ -192,17 +240,16 @@ class Hash {
         uint64_t **key_value_location = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
           leftover_index = 1 | (key >> buckets_num_bitsm1_);
-      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
-      constexpr int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
+      constexpr int64_t KEY_MASK = (uint64_t(1)<<NUM_KEY_BITS) - 1,
+          VALUE_MASK = (uint64_t(1)<< (64 - NUM_KEY_BITS)) - 1;
 
-      K2_DCHECK_EQ(key & ~((uint64_t(1)<<NUM_KEY_BITS)-1), 0);
-      K2_DCHECK_EQ(value & ~VALUE_MASK, 0);
+      K2_DCHECK_EQ((key & ~KEY_MASK) | (value & ~VALUE_MASK), 0);
 
-      uint64_t new_elem = (key << (64 - NUM_KEY_BITS)) | value;
+      uint64_t new_elem = (value << NUM_KEY_BITS) | key;
       while (1) {
         uint64_t cur_elem = data_[cur_bucket];
-        if ((cur_elem >> NUM_VALUE_BITS) == key) {
-          if (old_value) *old_value = cur_elem & VALUE_MASK;
+        if ((cur_elem & KEY_MASK) == key) {
+          if (old_value) *old_value = (cur_elem >> NUM_KEY_BITS);
           if (key_value_location) *key_value_location = data_ + cur_bucket;
           return false;  // key exists in hash
         }
@@ -215,8 +262,8 @@ class Hash {
             return true;  // Successfully inserted.
           }
           cur_elem = old_elem;
-          if (cur_elem >> NUM_VALUE_BITS == key) {
-            if (old_value) *old_value = cur_elem & VALUE_MASK;
+          if ((cur_elem & KEY_MASK) == key) {
+            if (old_value) *old_value = (cur_elem >> NUM_KEY_BITS);
             if (key_value_location) *key_value_location = data_ + cur_bucket;
             return false;  // Another thread inserted this key
           }
@@ -255,8 +302,7 @@ class Hash {
     __forceinline__ __host__ __device__ bool Find(
         uint64_t key, uint64_t *value_out,
         uint64_t **key_value_location = nullptr) const {
-      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
-      constexpr int64_t VALUE_MASK = (uint64_t(1)<<NUM_VALUE_BITS)-1;
+      constexpr int64_t KEY_MASK = (uint64_t(1) << NUM_KEY_BITS) - 1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
@@ -264,8 +310,8 @@ class Hash {
         uint64_t old_elem = data_[cur_bucket];
         if (~old_elem == 0) {
           return false;
-        } else if ((old_elem >> NUM_VALUE_BITS) == key) {
-          *value_out = old_elem & VALUE_MASK;
+        } else if ((old_elem & KEY_MASK) == key) {
+          *value_out = old_elem >> NUM_KEY_BITS;
           if (key_value_location)
             *key_value_location = data_ + cur_bucket;
           return true;
@@ -293,8 +339,7 @@ class Hash {
      */
     __forceinline__ __host__ __device__ void SetValue(
         uint64_t *key_value_location, uint64_t key, uint64_t value) const {
-      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
-      *key_value_location = (key << NUM_VALUE_BITS) | value;
+      *key_value_location = (value << NUM_KEY_BITS) | key;
     }
 
 
@@ -312,12 +357,12 @@ class Hash {
       compilation errors.
     */
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
-      constexpr int32_t NUM_VALUE_BITS = 64 - NUM_KEY_BITS;
+      constexpr int64_t KEY_MASK = (uint64_t(1) << NUM_KEY_BITS) - 1;
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
-        if (old_elem >> NUM_VALUE_BITS == key) {
+        if ((old_elem & KEY_MASK) == key) {
           data_[cur_bucket] = ~((uint64_t)0);
           return;
         } else {
@@ -346,7 +391,7 @@ class Hash {
                     uint32_t buckets_num_bitsm1,
                     uint64_t *data,
                     uint32_t num_buckets_mask):
-        num_value_bits_(64 - num_key_bits),
+        num_key_bits_(num_key_bits),
         buckets_num_bitsm1_(buckets_num_bitsm1),
         data_(data), num_buckets_mask_(num_buckets_mask) { }
 
@@ -380,18 +425,17 @@ class Hash {
         uint64_t **key_value_location = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
-      const uint32_t num_value_bits = num_value_bits_,
-          num_key_bits = 64 - num_value_bits;
-      const int64_t VALUE_MASK = (uint64_t(1)<<num_value_bits)-1;
+      const uint32_t num_key_bits = num_key_bits_;
+      const uint64_t KEY_MASK = (uint64_t(1) << num_key_bits) - 1,
+          NOT_VALUE_MASK = (uint64_t(-1) << (64 - num_key_bits));
 
-      K2_DCHECK_EQ(key & ~((uint64_t(1)<<num_key_bits)-1), 0);
-      K2_DCHECK_EQ(value & ~VALUE_MASK, 0);
+      K2_DCHECK_EQ((key & ~KEY_MASK) | (value & NOT_VALUE_MASK), 0);
 
-      uint64_t new_elem = (key << (64 - num_key_bits)) | value;
+      uint64_t new_elem =  (value << num_key_bits) | key;
       while (1) {
         uint64_t cur_elem = data_[cur_bucket];
-        if ((cur_elem >> num_value_bits) == key) {
-          if (old_value) *old_value = cur_elem & VALUE_MASK;
+        if ((cur_elem & KEY_MASK) == key) {
+          if (old_value) *old_value = cur_elem >> num_key_bits;
           if (key_value_location) *key_value_location = data_ + cur_bucket;
           return false;  // key exists in hash
         }
@@ -404,8 +448,8 @@ class Hash {
             return true;  // Successfully inserted.
           }
           cur_elem = old_elem;
-          if (cur_elem >> num_value_bits == key) {
-            if (old_value) *old_value = cur_elem & VALUE_MASK;
+          if ((cur_elem & KEY_MASK) == key) {
+            if (old_value) *old_value = cur_elem >> num_key_bits;
             if (key_value_location) *key_value_location = data_ + cur_bucket;
             return false;  // Another thread inserted this key
           }
@@ -442,8 +486,8 @@ class Hash {
     __forceinline__ __host__ __device__ bool Find(
         uint64_t key, uint64_t *value_out,
         uint64_t **key_value_location = nullptr) const {
-      const uint32_t num_value_bits = num_value_bits_;
-      const int64_t VALUE_MASK = (uint64_t(1)<<num_value_bits)-1;
+      const uint32_t num_key_bits = num_key_bits_;
+      const int64_t KEY_MASK = (uint64_t(1) << num_key_bits) - 1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
@@ -451,8 +495,8 @@ class Hash {
         uint64_t old_elem = data_[cur_bucket];
         if (~old_elem == 0) {
           return false;
-        } else if ((old_elem >> num_value_bits) == key) {
-          *value_out = old_elem & VALUE_MASK;
+        } else if ((old_elem & KEY_MASK) == key) {
+          *value_out = old_elem >> num_key_bits;
           if (key_value_location)
             *key_value_location = data_ + cur_bucket;
           return true;
@@ -480,7 +524,7 @@ class Hash {
      */
     __forceinline__ __host__ __device__ void SetValue(
         uint64_t *key_value_location, uint64_t key, uint64_t value) const {
-      *key_value_location = (key << num_value_bits_) | value;
+      *key_value_location = (value << num_key_bits_) | key;
     }
 
     /*
@@ -501,10 +545,11 @@ class Hash {
         uint64_t *key_value_location, uint64_t value) const {
       uint64_t old_pair = *key_value_location;
       K2_CHECK_NE(~old_pair, 0);  // Check it was not an empty location.
-      const int64_t VALUE_MASK = (uint64_t(1)<<num_value_bits_)-1;
-      uint64_t new_pair = (old_pair & ~VALUE_MASK) | value;
+      const int64_t KEY_MASK = (uint64_t(1) << num_key_bits_) - 1;
+      uint64_t key = old_pair & KEY_MASK;
+      uint64_t new_pair = key | (value << num_key_bits_);
       *key_value_location = new_pair;
-      return (old_pair >> num_value_bits_);  // key
+      return key;
     }
 
     /* Deletes a key from a hash.  Caution: this cannot be combined with other
@@ -521,10 +566,11 @@ class Hash {
     */
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
       uint32_t cur_bucket = key & num_buckets_mask_,
-           leftover_index = 1 | (key >> buckets_num_bitsm1_);
+          leftover_index = 1 | (key >> buckets_num_bitsm1_);
+      const uint64_t KEY_MASK = (uint64_t(1) << num_key_bits_) - 1;
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
-        if (old_elem >> num_value_bits_ == key) {
+        if ((old_elem & KEY_MASK) == key) {
           data_[cur_bucket] = ~((uint64_t)0);
           return;
         } else {
@@ -534,9 +580,10 @@ class Hash {
     }
 
    private:
-    // A number satisfying 0 < num_value_bits_ < 64; the number of bits
-    // (out of 64) used for the value (rest are used for the key).
-    uint32_t num_value_bits_;
+    // A number satisfying 0 < num_key_bits_ < 64; the number of bits
+    // (out of 64) used for the key (rest are used for the value).
+    uint32_t num_key_bits_;
+
     // A number satisfying num_buckets == 1 << (1+buckets_num_bitsm1_)
     // the number of bits in `num_buckets` minus one.
     uint32_t buckets_num_bitsm1_;
@@ -564,6 +611,8 @@ class Hash {
    */
   template <int32_t NUM_KEY_BITS>
   Accessor<NUM_KEY_BITS> GetAccessor() {
+    K2_CHECK_EQ(num_key_bits_, NUM_KEY_BITS);
+    K2_CHECK_LE(num_key_bits_ + num_value_bits_, 64);
     return Accessor<NUM_KEY_BITS>(data_.Data(),
                                   uint32_t(data_.Dim()) - 1,
                                   buckets_num_bitsm1_);
@@ -574,6 +623,8 @@ class Hash {
     at run-time rather than compile time.
    */
   GenericAccessor GetGenericAccessor(int32_t num_key_bits) {
+    K2_CHECK_EQ(num_key_bits_, num_key_bits);
+    K2_CHECK_LE(num_key_bits_ + num_value_bits_, 64);
     return GenericAccessor(num_key_bits,
                            buckets_num_bitsm1_,
                            data_.Data(),
@@ -617,9 +668,35 @@ class Hash {
 
  private:
   Array1<uint64_t> data_;
+
+  // A number satisfying 0 < num_key_bits_ < 64; the number of bits
+  // (out of 64) used for the key (rest are used for the value).
+  // Keys are kept in the lower-order bits of the 64-bit hash elements.
+  int32_t num_key_bits_;
+
+  // Currently num_value_bits_ is always 64 - num_key_bits_.
+  int32_t num_value_bits_;
+
+
   // number satisfying data_.Dim() == 1 << (1+buckets_num_bitsm1_)
   int32_t buckets_num_bitsm1_;
 };
+
+/*
+  Returns the number of bits needed for an unsigned integer sufficient to
+  store the nonnegative value `size`.
+
+  Note: `size` might be the size of an array whose indexes we want to store in
+  the hash, i.e. we'll need to store all value 0 <= n < size as possible keys.
+  In this case, you'd never actually need to store the value `size` but we can't
+  call HighestBitSet(size-1) because the hash code needs to keep "all-ones"
+  reserved for "nothing in this hash bin", so if `size` is of the form 2^n we
+  still need n+1 bits to store the indexes, because (2^n-1) is actually reserved
+ */
+inline int32_t GetNumBitsNeededFor(int32_t size) {
+  return 1 + HighestBitSet(size);
+}
+
 
 }  // namespace k2
 
