@@ -90,8 +90,9 @@ class DeviceIntersector {
       sorted_match_a_(sorted_match_a),
       b_fsas_(b_fsas),
       b_to_a_map_(b_to_a_map),
-      b_state_bits_(GetNumBitsNeededFor(b_fsas_.TotSize(1))),
-      key_bits_(b_state_bits_ + GetNumBitsNeededFor(a_fsas_.shape.MaxSize(1))) {
+      b_state_bits_(GetNumBitsNeededFor(b_fsas_.TotSize(1))) {
+
+    int32_t key_bits = b_state_bits_ + GetNumBitsNeededFor(a_fsas_.shape.MaxSize(1));
     // We may want to tune this default hash size eventually.
     // We will expand the hash as needed.
     int32_t hash_size = 4 * RoundUpToNearestPowerOfTwo(b_fsas.NumElements()),
@@ -99,7 +100,7 @@ class DeviceIntersector {
     if (hash_size < min_hash_size)
       hash_size = min_hash_size;
     // caution: also use hash_size in FirstIter() as default size of various arrays.
-    state_pair_to_state_ = Hash(c_, hash_size, key_bits_);
+    state_pair_to_state_ = Hash(c_, hash_size, key_bits);
 
     K2_CHECK(c_->IsCompatible(*b_fsas.Context()));
     K2_CHECK(c_->IsCompatible(*b_to_a_map.Context()));
@@ -369,7 +370,7 @@ class DeviceIntersector {
       if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
         // enlarge hash..
         state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
-                                    key_bits_);
+                                    state_pair_to_state_.NumKeyBits());
       }
 
       K2_CHECK_EQ(t + 2, int32_t(iter_to_state_row_splits_cpu_.size()));
@@ -426,7 +427,8 @@ class DeviceIntersector {
       const Arc *a_arcs_data = a_fsas_.values.Data(),
           *b_arcs_data = b_fsas_.values.Data();
 
-      int32_t key_bits = key_bits_, b_state_bits = b_state_bits_,
+      int32_t key_bits = state_pair_to_state_.NumKeyBits(),
+          b_state_bits = b_state_bits_,
           value_bits = 64 - key_bits;
 
       // `value_max` is the limit for how large values in the hash can be.
@@ -581,7 +583,7 @@ class DeviceIntersector {
         if (static_cast<uint64_t>(tot_ab) >= value_max ||
             static_cast<uint64_t>(next_state_end) >= value_max) {
           K2_LOG(FATAL) << "Problem size is too large for this code: b_state_bits="
-                        << b_state_bits_ << ", key_bits=" << key_bits_
+                        << b_state_bits_ << ", key_bits=" << key_bits
                         << ", value_bits=" << value_bits
                         << ", value_max=" << value_max
                         << ", tot_ab=" << tot_ab
@@ -661,7 +663,8 @@ class DeviceIntersector {
       if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
         // enlarge hash..
         state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
-                                    key_bits_);
+                                    state_pair_to_state_.NumKeyBits());
+
       }
 
       K2_CHECK_EQ(t + 2, int32_t(iter_to_state_row_splits_cpu_.size()));
@@ -719,7 +722,8 @@ class DeviceIntersector {
 
       const Arc *a_arcs_data = a_fsas_.values.Data(),
           *b_arcs_data = b_fsas_.values.Data();
-      int32_t key_bits = key_bits_, b_state_bits = b_state_bits_,
+      int32_t key_bits = state_pair_to_state_.NumKeyBits(),
+          b_state_bits = b_state_bits_,
           value_bits = 64 - key_bits;
       // `value_max` is the limit for how large values in the hash can be.
       uint64_t value_max = ((uint64_t)1) << value_bits;
@@ -1049,7 +1053,7 @@ class DeviceIntersector {
 
       if (value_max <= (uint64_t)next_state_end) {
         K2_LOG(FATAL) << "Problem size is too large for this code: b_state_bits="
-                      << b_state_bits_ << ", key_bits=" << key_bits_
+                      << b_state_bits_ << ", key_bits=" << key_bits
                       << ", value_bits=" << value_bits
                       << ", value_max=" << value_max
                       << ", next_state_end=" << next_state_end;
@@ -1138,7 +1142,8 @@ class DeviceIntersector {
   // the number of states ends up being too large to store in this
   // value.
   int32_t b_state_bits_;  // == GetNumBitsNeededFor(b_fsas_.TotSize(1))
-  int32_t key_bits_;  // b_state_bits_ + GetNumBitsNeededFor(a_fsas_.MaxSize(1))
+  // key_bits is now stored indirectly as state_pair_to_state_.NumKeyBits().
+  //int32_t key_bits_;  // b_state_bits_ + GetNumBitsNeededFor(a_fsas_.MaxSize(1))
 
   // This hash maps from pairs (a_state_idx1, b_state_idx01), encoded
   // as a key

@@ -126,12 +126,13 @@ class Hash {
                   and must be large enough to accommodate all values in the hash
                   (we assume the caller is keeping track of the number of elements
                   in the hash somehow).
-       @param [in] num_key_bits  Number of bits used to store the keys,
-                  with 0 < num_key_bits < 64 (number of bits in the values
-                  is 64 minus this).  This must be the same as was
+       @param [in] num_key_bits  The number of bits used to
+                  store the keys, with 0 < num_key_bits < 64 (number of bits in
+                  the values is 64 minus this).  This must be the same as was
                   used to add any values that are currently in the hash.
        @param [in] num_value_bits  Number of bits in the value of the hash.
-                 If not specified it defaults to 64 - num_key_bits; in future
+                 If not specified it defaults to the current number of value
+                 bits if num_key_bits == -1, else to 64 - num_key_bits; in future
                  we'll allow more bits than that, by making some bits of
                  the key implicit in the bucket index.
 
