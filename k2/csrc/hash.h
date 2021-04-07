@@ -129,6 +129,78 @@ class Hash {
 
   int32_t NumBuckets() const { return data_.Dim(); }
 
+  // Returns data pointer; for testing..
+  uint64_t *Data() { return data_.Data(); }
+
+  /*
+    Copies all data elements from `src` to `*this`.  Requires
+    that num_key_bits_ and num_value_bits_ are the same between *this
+    and src, and that num_key_bits_ + num_value_bits_ == 64
+    (i.e. no packed data).
+
+    See also CopyDataFrom().
+   */
+  void CopyDataFromSimple(Hash &src) {
+    K2_CHECK_EQ(num_key_bits_, src.num_key_bits_);
+    K2_CHECK_EQ(num_value_bits_, src.num_value_bits_);
+    K2_CHECK_EQ(num_key_bits_ + num_value_bits_, 64);
+    int32_t num_buckets = data_.Dim(),
+        src_num_buckets = src.data_.Dim();
+    const uint64_t *src_data = src.data_.Data();
+    uint64_t *data = data_.Data();
+    const uint64_t key_mask = (uint64_t(1) << num_key_bits_) - 1;
+    size_t new_num_buckets_mask = static_cast<size_t>(num_buckets) - 1,
+        new_buckets_num_bitsm1 = buckets_num_bitsm1_;
+    ContextPtr c = data_.Context();
+    K2_EVAL(c, src_num_buckets, lambda_copy_data, (int32_t i) -> void {
+        uint64_t key_value = src_data[i];
+        if (~key_value == 0) return;  // equals -1.. nothing there.
+        uint64_t key = key_value & key_mask,
+            leftover_index = 1 | (key >> new_buckets_num_bitsm1);
+        size_t cur_bucket = key & new_num_buckets_mask;
+        while (1) {
+          uint64_t assumed = ~((uint64_t)0),
+              old_elem = AtomicCAS((unsigned long long*)(data + cur_bucket),
+                                   assumed, key_value);
+          if (old_elem == assumed) return;
+          cur_bucket = (cur_bucket + leftover_index) & new_num_buckets_mask;
+          // Keep iterating until we find a free spot in the new hash...
+        }
+      });
+  }
+
+  /*
+    Copies data from another hash `src`.
+    AccessorT is a suitable accessor type for *this* hash.
+  */
+  template <typename AccessorT> void CopyDataFrom(Hash &src) {
+    AccessorT this_acc(*this);
+    // We handle the general case where `src` may possibly be packed (i.e. we
+    // allow num-(key+value)-bits > 64).  This function is only called while
+    // resizing if key/value bits doin't match, which isn't that common, so
+    // handling this fairly generally shouldn't slow us down much.
+    int32_t src_num_key_bits = src.NumKeyBits(),
+        src_num_value_bits = src.NumValueBits(),
+        src_num_implicit_key_bits = src_num_key_bits + src_num_value_bits - 64,
+        src_num_kept_key_bits = src_num_key_bits - src_num_implicit_key_bits;
+    const int64_t src_implicit_key_mask =
+        (uint64_t(1) << src_num_implicit_key_bits) - 1,
+        src_kept_key_mask = (uint64_t(1) << src_num_kept_key_bits) - 1;
+    uint64_t *src_data = src.data_.Data();
+    ContextPtr c = data_.Context();
+    K2_EVAL(c, src.NumBuckets(), lambda_copy_data, (int32_t i) -> void {
+        uint64_t key_value = src_data[i];
+        if (~key_value != 0) {
+          uint64_t kept_key = key_value & src_kept_key_mask,
+              value = key_value >> src_num_kept_key_bits,
+              key = (kept_key << src_num_implicit_key_bits) |
+              (i & src_implicit_key_mask);
+          bool insert_success = this_acc.Insert(key, value);
+          K2_CHECK_EQ(insert_success, true);
+        }
+      });
+  }
+
   /* Resize the hash to a new number of buckets.
 
        @param [in] new_num_buckets   New number of buckets; must be a power of 2,
@@ -152,14 +224,8 @@ class Hash {
               int32_t num_key_bits,
               int32_t num_value_bits = -1,
               bool copy_data = true) {
-    K2_CHECK_EQ(num_key_bits, num_key_bits_)
-        << "Need to implement changing num-key-bits...";
     if (num_value_bits < 0)
       num_value_bits = 64 - num_key_bits;
-    K2_CHECK_EQ(num_key_bits, num_key_bits_)
-        << "Need to implement changing num-key-bits...";
-    K2_CHECK_EQ(num_value_bits, num_value_bits_)
-        << "Need to implement changing num-value-bits...";
 
     K2_CHECK_GT(new_num_buckets, 0);
     K2_CHECK_EQ(new_num_buckets & (new_num_buckets - 1), 0);  // power of 2.
@@ -169,32 +235,24 @@ class Hash {
                   num_key_bits,
                   num_value_bits);
 
-    int32_t dim = data_.Dim();
-    const uint64_t *this_data = data_.Data();
-    uint64_t *new_data = new_hash.data_.Data();
-    const uint64_t KEY_MASK = (uint64_t(1) << num_key_bits) - 1;
-    size_t new_num_buckets_mask = static_cast<size_t>(new_num_buckets) - 1,
-        new_buckets_num_bitsm1 = new_hash.buckets_num_bitsm1_;
-
     if (copy_data) {
-      K2_EVAL(c, dim, lambda_copy_data, (int32_t i) -> void {
-          uint64_t key_value = this_data[i];
-          if (~key_value == 0) return;  // equals -1.. nothing there.
-          uint64_t key = key_value & KEY_MASK,
-              leftover_index = 1 | (key >> new_buckets_num_bitsm1);
-          size_t cur_bucket = key & new_num_buckets_mask;
-          while (1) {
-            uint64_t assumed = ~((uint64_t)0),
-                old_elem = AtomicCAS((unsigned long long*)(new_data + cur_bucket),
-                                     assumed, key_value);
-            if (old_elem == assumed) return;
-            cur_bucket = (cur_bucket + leftover_index) & new_num_buckets_mask;
-            // Keep iterating until we find a free spot in the new hash...
-          }
-        });
+      if (num_key_bits == num_key_bits_ &&
+          num_value_bits == num_value_bits_ &&
+          num_key_bits + num_value_bits == 64) {
+        new_hash.CopyDataFromSimple(*this);
+      } else {
+        // we instantiate 2 versions of CopyDataFrom().
+        if (new_hash.NumKeyBits() + new_hash.NumValueBits() == 64) {
+          new_hash.CopyDataFrom<GenericAccessor>(*this);
+        } else {
+          new_hash.CopyDataFrom<PackedAccessor>(*this);
+        }
+      }
     }
-    *this = new_hash;
-    new_hash.Destroy();  // avoid failed check in destructor.
+
+   *this = new_hash;
+    new_hash.Destroy();  // avoid failed check in destructor (it would otherwise
+                         // expect the hash to be empty when destroyed).
   }
 
   // Shallow copy
@@ -477,15 +535,15 @@ class Hash {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
       const uint32_t num_key_bits = num_key_bits_;
-      const uint64_t KEY_MASK = (uint64_t(1) << num_key_bits) - 1,
-          NOT_VALUE_MASK = (uint64_t(-1) << (64 - num_key_bits));
+      const uint64_t key_mask = (uint64_t(1) << num_key_bits) - 1,
+          not_value_mask = (uint64_t(-1) << (64 - num_key_bits));
 
-      K2_DCHECK_EQ((key & ~KEY_MASK) | (value & NOT_VALUE_MASK), 0);
+      K2_DCHECK_EQ((key & ~key_mask) | (value & not_value_mask), 0);
 
       uint64_t new_elem =  (value << num_key_bits) | key;
       while (1) {
         uint64_t cur_elem = data_[cur_bucket];
-        if ((cur_elem & KEY_MASK) == key) {
+        if ((cur_elem & key_mask) == key) {
           if (old_value) *old_value = cur_elem >> num_key_bits;
           if (key_value_location) *key_value_location = data_ + cur_bucket;
           return false;  // key exists in hash
@@ -499,7 +557,7 @@ class Hash {
             return true;  // Successfully inserted.
           }
           cur_elem = old_elem;
-          if ((cur_elem & KEY_MASK) == key) {
+          if ((cur_elem & key_mask) == key) {
             if (old_value) *old_value = cur_elem >> num_key_bits;
             if (key_value_location) *key_value_location = data_ + cur_bucket;
             return false;  // Another thread inserted this key
@@ -538,7 +596,7 @@ class Hash {
         uint64_t key, uint64_t *value_out,
         uint64_t **key_value_location = nullptr) const {
       const uint32_t num_key_bits = num_key_bits_;
-      const int64_t KEY_MASK = (uint64_t(1) << num_key_bits) - 1;
+      const int64_t key_mask = (uint64_t(1) << num_key_bits) - 1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
            leftover_index = 1 | (key >> buckets_num_bitsm1_);
@@ -546,7 +604,7 @@ class Hash {
         uint64_t old_elem = data_[cur_bucket];
         if (~old_elem == 0) {
           return false;
-        } else if ((old_elem & KEY_MASK) == key) {
+        } else if ((old_elem & key_mask) == key) {
           *value_out = old_elem >> num_key_bits;
           if (key_value_location)
             *key_value_location = data_ + cur_bucket;
@@ -596,8 +654,8 @@ class Hash {
         uint64_t *key_value_location, uint64_t value) const {
       uint64_t old_pair = *key_value_location;
       K2_CHECK_NE(~old_pair, 0);  // Check it was not an empty location.
-      const int64_t KEY_MASK = (uint64_t(1) << num_key_bits_) - 1;
-      uint64_t key = old_pair & KEY_MASK;
+      const int64_t key_mask = (uint64_t(1) << num_key_bits_) - 1;
+      uint64_t key = old_pair & key_mask;
       uint64_t new_pair = key | (value << num_key_bits_);
       *key_value_location = new_pair;
       return key;
@@ -618,10 +676,10 @@ class Hash {
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
       uint32_t cur_bucket = key & num_buckets_mask_,
           leftover_index = 1 | (key >> buckets_num_bitsm1_);
-      const uint64_t KEY_MASK = (uint64_t(1) << num_key_bits_) - 1;
+      const uint64_t key_mask = (uint64_t(1) << num_key_bits_) - 1;
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
-        if ((old_elem & KEY_MASK) == key) {
+        if ((old_elem & key_mask) == key) {
           data_[cur_bucket] = ~((uint64_t)0);
           return;
         } else {
@@ -651,9 +709,9 @@ class Hash {
 
   /*
     class PackedAccessor is the accessor object that is applicable when
-    hash.NumKeyBits() + hash.NumValueBits() > 64; hash.NumKeyBits() and
-    hash.NumValueBits() do not need to be known at compile time.  See also
-    classes Accessor and GenericAccessor.
+    hash.NumKeyBits() + hash.NumValueBits() >= 64 (i.e. not just for when the
+    sum is 64); hash.NumKeyBits() and hash.NumValueBits() do not need to be
+    known at compile time.  See also classes Accessor and GenericAccessor.
 
     Obviously we can't pack more than 64 bits into a 64-bit value; we let the
     lowest-order (num_implicit_bits = num_key_bits + num_value_bits - 64) bits
@@ -669,9 +727,9 @@ class Hash {
         buckets_num_bitsm1_(hash.buckets_num_bitsm1_),
         data_(hash.data_.Data()),
         num_buckets_mask_(uint32_t(hash.NumBuckets() - 1)) {
-      K2_CHECK_GT(hash.num_key_bits_ + hash.num_value_bits_, 64);
+      K2_CHECK_GE(hash.num_key_bits_ + hash.num_value_bits_, 64);
       K2_CHECK_GT(num_kept_key_bits_, 0);
-      K2_CHECK_GT(num_implicit_key_bits_, 0);
+      K2_CHECK_GE(num_implicit_key_bits_, 0);
     }
 
     // Copy constructor
@@ -711,15 +769,15 @@ class Hash {
           << num_implicit_key_bits_;
       uint64_t kept_key = key >> num_implicit_key_bits_;
 
-      const uint64_t KEPT_KEY_MASK = (uint64_t(1) << num_kept_key_bits_) - 1,
-          NOT_VALUE_MASK = (uint64_t(-1) << (64 - num_kept_key_bits_));
+      const uint64_t kept_key_mask = (uint64_t(1) << num_kept_key_bits_) - 1,
+          not_value_mask = (uint64_t(-1) << (64 - num_kept_key_bits_));
 
-      K2_DCHECK_EQ((kept_key & ~KEPT_KEY_MASK) | (value & NOT_VALUE_MASK), 0);
+      K2_DCHECK_EQ((kept_key & ~kept_key_mask) | (value & not_value_mask), 0);
 
       uint64_t new_elem =  (value << num_kept_key_bits_) | kept_key;
       while (1) {
         uint64_t cur_elem = data_[cur_bucket];
-        if ((cur_elem & KEPT_KEY_MASK) == key) {
+        if ((cur_elem & kept_key_mask) == kept_key) {
           if (old_value) *old_value = cur_elem >> num_kept_key_bits_;
           if (key_value_location) *key_value_location = data_ + cur_bucket;
           return false;  // key exists in hash
@@ -733,7 +791,7 @@ class Hash {
             return true;  // Successfully inserted.
           }
           cur_elem = old_elem;
-          if ((cur_elem & KEPT_KEY_MASK) == key) {
+          if ((cur_elem & kept_key_mask) == kept_key) {
             if (old_value) *old_value = cur_elem >> num_kept_key_bits_;
             if (key_value_location) *key_value_location = data_ + cur_bucket;
             return false;  // Another thread inserted this key
@@ -771,7 +829,7 @@ class Hash {
     __forceinline__ __host__ __device__ bool Find(
         uint64_t key, uint64_t *value_out,
         uint64_t **key_value_location = nullptr) const {
-      const int64_t KEPT_KEY_MASK = (uint64_t(1) << num_kept_key_bits_) - 1;
+      const int64_t kept_key_mask = (uint64_t(1) << num_kept_key_bits_) - 1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
           leftover_index = (1 | (key >> buckets_num_bitsm1_))
@@ -782,7 +840,7 @@ class Hash {
         uint64_t old_elem = data_[cur_bucket];
         if (~old_elem == 0) {
           return false;
-        } else if ((old_elem & KEPT_KEY_MASK) == kept_key) {
+        } else if ((old_elem & kept_key_mask) == kept_key) {
           *value_out = old_elem >> num_kept_key_bits_;
           if (key_value_location)
             *key_value_location = data_ + cur_bucket;
@@ -833,13 +891,13 @@ class Hash {
         uint64_t *key_value_location, uint64_t value) const {
       uint64_t old_pair = *key_value_location;
       K2_CHECK_NE(~old_pair, 0);  // Check it was not an empty location.
-      const int64_t KEPT_KEY_MASK = (uint64_t(1) << num_kept_key_bits_) - 1;
-      uint64_t kept_key = old_pair & KEPT_KEY_MASK;
+      const int64_t kept_key_mask = (uint64_t(1) << num_kept_key_bits_) - 1;
+      uint64_t kept_key = old_pair & kept_key_mask;
       uint64_t new_pair = kept_key | (value << num_kept_key_bits_);
       *key_value_location = new_pair;
-      const int64_t IMPLICIT_KEY_MASK = (uint64_t(1) << num_implicit_key_bits_) - 1;
+      const int64_t implicit_key_mask = (uint64_t(1) << num_implicit_key_bits_) - 1;
       uint64_t key = ((kept_key << num_implicit_key_bits_) |
-              ((key_value_location - data_) & IMPLICIT_KEY_MASK));
+              ((key_value_location - data_) & implicit_key_mask));
       return key;
     }
 
@@ -858,12 +916,12 @@ class Hash {
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
       uint32_t cur_bucket = key & num_buckets_mask_,
           leftover_index = (1 | (key >> buckets_num_bitsm1_))
-          >> num_implicit_key_bits_;
+          << num_implicit_key_bits_;
       uint64_t kept_key = key >> num_implicit_key_bits_;
-      const uint64_t KEPT_KEY_MASK = (uint64_t(1) << num_kept_key_bits_) - 1;
+      const uint64_t kept_key_mask = (uint64_t(1) << num_kept_key_bits_) - 1;
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
-        if ((old_elem & KEPT_KEY_MASK) == kept_key) {
+        if ((old_elem & kept_key_mask) == kept_key) {
           data_[cur_bucket] = ~((uint64_t)0);
           return;
         } else {
@@ -875,20 +933,20 @@ class Hash {
    private:
     // A number satisfying 0 < num_key_bits_ < 64; the number of bits
     // (out of 64) used for the key.
-    uint32_t num_key_bits_;
+    int32_t num_key_bits_;
 
     // This is equal to (num_key_bits_ - num_implicit_key_bits_);
     // it's the number of key bits that are stored in the hash
     // buckets.
     // It will satisfy 0 < num_kept_key_bits_ < num_key_bits_,
     // and num_kept_key_bits_ + num_value_bits. == 64.
-    uint32_t num_kept_key_bits_;
+    int32_t num_kept_key_bits_;
 
     // This is equal to (num_key_bits + num_value_bits - 64); it's the
     // number of key bits that are implicit in the bucket location
     // (because there are not enough bits to store them directly).
     // It will satisfy 0 < num_implicit_key_bits_ < num_key_bits_.
-    uint32_t num_implicit_key_bits_;
+    int32_t num_implicit_key_bits_;
 
     // A number satisfying num_buckets == 1 << (1+buckets_num_bitsm1_)
     // the number of bits in `num_buckets` minus one.

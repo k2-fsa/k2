@@ -16,7 +16,7 @@ namespace k2 {
 template <int32_t NUM_KEY_BITS>
 void TestHashConstruct() {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    for (int32_t size : {128, 1024, 2048, 65536, 1048576}) {
+    for (int32_t size : { 128, 1024, 2048, 65536, 1048576}) {
       Hash hash(c, size, NUM_KEY_BITS);
 
       // obviously we're not going to fill it completely... this hash is not
@@ -188,7 +188,7 @@ void TestHashConstructGeneric(int32_t num_key_bits) {
 void TestHashConstructPacked(int32_t num_key_bits,
                              int32_t num_value_bits) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
-    for (int32_t size : {128, 1024, 2048, 65536, 1048576}) {
+    for (int32_t size : { 2048, 65536, 1048576}) {
       Hash hash(c, size, num_key_bits, num_value_bits);
 
       // obviously we're not going to fill it completely... this hash is not
@@ -237,14 +237,22 @@ void TestHashConstructPacked(int32_t num_key_bits,
           success_data[i] = success;
         });
 
-      hash.Resize(hash.NumBuckets() * 2, num_key_bits);
+      // TODO: changing key+value bits.
+      hash.Resize(hash.NumBuckets() * 2, num_key_bits,
+                  num_value_bits);
 
       acc = hash.GetAccessor<Hash::PackedAccessor>();
+      const uint64_t *hash_data = hash.Data();
 
       K2_EVAL(c, num_elems, lambda_check_find, (int32_t i) -> void {
           uint32_t key = keys_data[i],
                  value = values_data[i],
-               success = success_data[i];
+              success = success_data[i];
+
+          int32_t num_implicit_key_bits = num_key_bits + num_value_bits - 64,
+              num_kept_key_bits = num_key_bits - num_implicit_key_bits;
+          uint64_t implicit_key_bits_mask = (uint64_t(1) << num_implicit_key_bits) - 1;
+
 
           uint64_t val = 0;
           uint64_t *key_val_addr = nullptr;
@@ -258,7 +266,10 @@ void TestHashConstructPacked(int32_t num_key_bits,
             // present.
             K2_CHECK_EQ(val, value);
             K2_CHECK_EQ(*key_val_addr,
-                        ((uint64_t(value) << num_key_bits) | (uint64_t)key));
+                        ((uint64_t(value) << num_kept_key_bits) |
+                         (((uint64_t)key) >> num_implicit_key_bits)));
+            K2_CHECK_EQ(key & implicit_key_bits_mask,
+                        (key_val_addr - hash_data) & implicit_key_bits_mask);
           }
         });
 
