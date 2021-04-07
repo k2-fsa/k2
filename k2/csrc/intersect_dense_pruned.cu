@@ -752,7 +752,7 @@ class MultiGraphDenseIntersectPruned {
       state_map_.Resize(new_hash_size, NUM_KEY_BITS);
     }
 
-    auto state_map_acc = state_map_.GetAccessor<NUM_KEY_BITS>();
+    auto state_map_acc = state_map_.GetAccessor<Hash::Accessor<NUM_KEY_BITS>>();
 
     {
       NVTX_RANGE("LambdaSetStateMap");
