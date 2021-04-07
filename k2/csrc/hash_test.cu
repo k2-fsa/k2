@@ -42,7 +42,7 @@ void TestHashConstruct() {
             *values_data = values.Data(),
             *success_data = success.Data();
       int32_t   *counts_data = count_per_key.Data();
-      Hash::Accessor<NUM_KEY_BITS> acc = hash.GetAccessor<NUM_KEY_BITS>();
+      Hash::Accessor<NUM_KEY_BITS> acc = hash.GetAccessor<Hash::Accessor<NUM_KEY_BITS>>();
       K2_EVAL(c, num_elems, lambda_insert_pairs, (int32_t i) -> void {
           uint32_t key = keys_data[i],
                  value = values_data[i],
