@@ -216,6 +216,21 @@ class DeviceIntersector {
   FsaVec FormatOutput(Array1<int32_t> *arc_map_a_out,
                       Array1<int32_t> *arc_map_b_out) {
     NVTX_RANGE(K2_FUNC);
+    int32_t num_key_bits = state_pair_to_state_.NumKeyBits(),
+        num_value_bits = state_pair_to_state_.NumValueBits();
+    if (num_key_bits + num_value_bits == 64) {
+      return FormatOutputTpl<Hash::GenericAccessor>(arc_map_a_out,
+                                                    arc_map_b_out);
+    } else {
+      return FormatOutputTpl<Hash::PackedAccessor>(arc_map_a_out,
+                                                   arc_map_b_out);
+    }
+  }
+
+  template <typename AccessorT>
+  FsaVec FormatOutputTpl(Array1<int32_t> *arc_map_a_out,
+                         Array1<int32_t> *arc_map_b_out) {
+    NVTX_RANGE(K2_FUNC);
 
     int32_t num_states = iter_to_state_row_splits_cpu_.back(),
              num_iters = iter_to_state_row_splits_cpu_.size() - 1,
@@ -319,8 +334,8 @@ class DeviceIntersector {
     const int32_t *b_fsas_row_ids2_data = b_fsas_.RowIds(2).Data();
 
     int32_t a_states_multiple = a_states_multiple_;
-    auto state_pair_to_state_acc =
-        state_pair_to_state_.GetAccessor<Hash::GenericAccessor>();
+    AccessorT state_pair_to_state_acc =
+        state_pair_to_state_.GetAccessor<AccessorT>();
 
     // arc_idx012 here is w.r.t. ans_shape that currently has axes indexed
     // [fsa][state][arc].
@@ -372,11 +387,16 @@ class DeviceIntersector {
   void Forward() {
     NVTX_RANGE(K2_FUNC);
     for (int32_t t = 0; ; t++) {
-      if (state_pair_to_state_.NumKeyBits() == 32) {
+      int32_t num_key_bits = state_pair_to_state_.NumKeyBits(),
+          num_value_bits = state_pair_to_state_.NumValueBits();
+      if (num_key_bits == 32 && num_value_bits == 32) {
         if (!ForwardOneIter<Hash::Accessor<32> >(t))
           break;
-      } else {
+      } else if (num_key_bits + num_value_bits == 64) {
         if (!ForwardOneIter<Hash::GenericAccessor>(t))
+          break;
+      } else {
+        if (!ForwardOneIter<Hash::PackedAccessor>(t))
           break;
       }
     }
