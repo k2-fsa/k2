@@ -107,8 +107,7 @@ class Hash {
         << " num_buckets must be a power of 2.";
     num_value_bits_ = num_value_bits;
 
-    int32_t num_implicit_bits = 64 - (num_key_bits_ + num_value_bits);
-    K2_CHECK_GE(num_implicit_bits, 0);
+    int32_t num_implicit_bits = num_key_bits_ + num_value_bits - 64;
     K2_CHECK_GE(num_implicit_bits, 0);
 
     // keys that hash to a group of buckets of size (num_buckets >>
