@@ -93,8 +93,10 @@ class Hash {
        int32_t num_value_bits=-1):
       num_key_bits_(num_key_bits) {
     std::ostringstream os;
+    if (num_value_bits < 0)
+      num_value_bits = 64 - num_key_bits;
     os << K2_FUNC << ":num_buckets=" << num_buckets << ", num_key_bits="
-       << num_key_bits;
+       << num_key_bits << ", num_value_bits=" << num_value_bits;
     NVTX_RANGE(os.str().c_str());
     data_ = Array1<uint64_t>(c, num_buckets, ~(uint64_t)0);
     K2_CHECK_GE(num_buckets, 128);
@@ -103,11 +105,19 @@ class Hash {
          n *= 2, buckets_num_bitsm1_++) { }
     K2_CHECK_EQ(num_buckets, 2 << buckets_num_bitsm1_)
         << " num_buckets must be a power of 2.";
-    if (num_value_bits < 0)
-      num_value_bits = 64 - num_key_bits_;
     num_value_bits_ = num_value_bits;
-    K2_CHECK_LE(num_key_bits_ + num_value_bits_, 64)
-        << "Have not yet implemented key-bits+value-bits>64.";
+
+    int32_t num_implicit_bits = 64 - (num_key_bits_ + num_value_bits);
+    K2_CHECK_GE(num_implicit_bits, 0);
+    K2_CHECK_GE(num_implicit_bits, 0);
+
+    // keys that hash to a group of buckets of size (num_buckets >>
+    // num_implicit_bits) always need to stay inside that group, so
+    // it's not good if that group size is too small; even with
+    // a good hashing function, one of those groups may end up
+    // becoming full by chance.
+    K2_CHECK_GE(num_buckets >> num_implicit_bits, 32) <<
+        "Hash being full is too likely; bad configuration.";
   }
 
   // Only to be used prior to assignment.
@@ -195,16 +205,18 @@ class Hash {
 
   ContextPtr &Context() const { return data_.Context(); }
 
+  /*
+     class Acccessor is the accessor object that is applicable when
+     hash.NumKeyBits() + hash.NumValueBits() == 64, and hash.NumKeyBits() is
+     known at compile time.  See also GenericAccessor and PackedAccessor.
 
-  // Note: this is the templated version of class Accessor, usable for any
-  // 0 < NUM_KEY_BITS < 64.  We also have a version called GenericAccessor
-  // where the number of bits in the key is provided at run-time.
-  // We may decide at some point to have a specific version for where the
-  // number of bits is 32.
-  //
-  // Be careful with these Accessor objects; you have to be consistent, with
-  // a given Hash object (if it has elements in it), to use only a single type
-  // of Accessor object.
+     Note: we may decide at some point to have a specific overload of this
+     Accessor template for where the number of bits is 32.
+
+     Be careful with these Accessor objects; you have to be consistent, with
+     a given Hash object (if it has elements in it), to use only a single type
+     of Accessor object.
+  */
   template <int32_t NUM_KEY_BITS> class Accessor {
    public:
     Accessor(Hash &hash):
@@ -212,6 +224,7 @@ class Hash {
         num_buckets_mask_(uint32_t(hash.NumBuckets())-1),
         buckets_num_bitsm1_(hash.buckets_num_bitsm1_) {
       K2_CHECK_EQ(NUM_KEY_BITS, hash.NumKeyBits());
+      K2_CHECK_EQ(hash.NumKeyBits() + hash.NumValueBits(), 64);
     }
 
     // Copy constructor
@@ -284,8 +297,8 @@ class Hash {
 
 
     /*
-    Looks up this key in this hash; outputs value and optionally the
-    location of the (key,value) pair if found.
+     Look up this key in this hash; output the value and optionally the
+     location of the (key,value) pair if found.
 
       @param [in] key    Key to look up; bits other than the lowest-order NUM_KEY_BITS
                       bits must not be set.
@@ -407,7 +420,7 @@ class Hash {
     }
 
    private:
-    // pointer to data (it really contains struct Element)
+    // pointer to data
     uint64_t *data_;
     // num_buckets_mask is num_buckets (i.e. size of `data_` array) minus one;
     // num_buckets is a power of 2 so this can be used as a mask to get a number
@@ -419,13 +432,20 @@ class Hash {
   };
 
 
+  /* class GenericAccessor is the version of the accessor object that is for
+     use when hash.NumKeyBits() + hash.NumValueBits() == 64 and
+     hash.NumKeyBits() is not known at compile time.  See also Accessor
+     and PackedAccessor
+   */
   class GenericAccessor {
    public:
     GenericAccessor(Hash &hash):
         num_key_bits_(hash.num_key_bits_),
         buckets_num_bitsm1_(hash.buckets_num_bitsm1_),
         data_(hash.data_.Data()),
-        num_buckets_mask_(uint32_t(hash.NumBuckets() - 1)) { }
+        num_buckets_mask_(uint32_t(hash.NumBuckets() - 1)) {
+      K2_CHECK_EQ(hash.num_key_bits_ + hash.num_value_bits_, 64);
+    }
 
     // Copy constructor
     GenericAccessor(const GenericAccessor &src) = default;
@@ -496,8 +516,8 @@ class Hash {
     }
 
     /*
-    Looks up this key in this hash; outputs value and optionally the
-    location of the (key,value) pair if found.
+      Look up this key in the hash; output the value and optionally the
+      location of the (key,value) pair if found.
 
       @param [in] key    Key to look up; bits other than the lowest-order num_key_bits_
                       bits must not be set.
@@ -619,7 +639,262 @@ class Hash {
     // A number satisfying num_buckets == 1 << (1+buckets_num_bitsm1_)
     // the number of bits in `num_buckets` minus one.
     uint32_t buckets_num_bitsm1_;
-    // pointer to data (it really contains struct Element)
+
+    // num_buckets_mask is num_buckets (i.e. size of `data_` array) minus one;
+    // num_buckets is a power of 2 so this can be used as a mask to get a number
+    // modulo num_buckets.
+    uint32_t num_buckets_mask_;
+
+    // pointer to data
+    uint64_t *data_;
+  };
+
+
+  /*
+    class PackedAccessor is the accessor object that is applicable when
+    hash.NumKeyBits() + hash.NumValueBits() > 64; hash.NumKeyBits() and
+    hash.NumValueBits() do not need to be known at compile time.  See also
+    classes Accessor and GenericAccessor.
+
+    Obviously we can't pack more than 64 bits into a 64-bit value; we let the
+    lowest-order (num_implicit_bits = num_key_bits + num_value_bits - 64) bits
+    of the key be implicit and equal to the `num_implicit_bits` lowest-order
+    bits of the index of the hash bucket..
+  */
+  class PackedAccessor {
+   public:
+    PackedAccessor(Hash &hash):
+        num_key_bits_(hash.num_key_bits_),
+        num_kept_key_bits_(64 - hash.num_value_bits_),
+        num_implicit_key_bits_(num_key_bits_ - num_kept_key_bits_),
+        buckets_num_bitsm1_(hash.buckets_num_bitsm1_),
+        data_(hash.data_.Data()),
+        num_buckets_mask_(uint32_t(hash.NumBuckets() - 1)) {
+      K2_CHECK_GT(hash.num_key_bits_ + hash.num_value_bits_, 64);
+      K2_CHECK_GT(num_kept_key_bits_, 0);
+      K2_CHECK_GT(num_implicit_key_bits_, 0);
+    }
+
+    // Copy constructor
+    PackedAccessor(const PackedAccessor &src) = default;
+
+
+   /*
+    Try to insert pair (key,value) into hash.
+      @param [in] key  Key into hash; it is required that no bits except the
+                    lowest-order num_key_bits may be set.
+      @param [in] value  Value to set; it is is required that no bits except the
+                    lowest-order num_value_bits may be set; it is also an error
+                    if ~((key << num_value_bits) | value) == 0, i.e. if all the
+                    allowed bits of both `key` and `value` are set.
+      @param [out] old_value  If not nullptr, this location will be set to
+                    the existing value *if this key was already present* in the
+                    hash (or set by another thread in this kernel), i.e. only if
+                    this function returns false.
+      @param [out] key_value_location  If not nullptr, its contents will be
+                    set to the address of the (key,value) pair (either the
+                    existing or newly-written one).
+      @return  Returns true if this (key,value) pair was inserted, false otherwise.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+   */
+    __forceinline__ __host__ __device__ bool Insert(
+        uint64_t key, uint64_t value,
+        uint64_t *old_value = nullptr,
+        uint64_t **key_value_location = nullptr) const {
+      uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_;
+      // Shifting `leftover_index` right by num_implicit_key_bits_ ensures that
+      // the lowest-order `num_implicit_key_bits_` bits of the bucket index will
+      // not change when we fail over to the next location.  Without this, our
+      // scheme would not work.
+      uint32_t leftover_index = (1 | (key >> buckets_num_bitsm1_))
+          << num_implicit_key_bits_;
+      uint64_t kept_key = key >> num_implicit_key_bits_;
+
+      const uint64_t KEPT_KEY_MASK = (uint64_t(1) << num_kept_key_bits_) - 1,
+          NOT_VALUE_MASK = (uint64_t(-1) << (64 - num_kept_key_bits_));
+
+      K2_DCHECK_EQ((kept_key & ~KEPT_KEY_MASK) | (value & NOT_VALUE_MASK), 0);
+
+      uint64_t new_elem =  (value << num_kept_key_bits_) | kept_key;
+      while (1) {
+        uint64_t cur_elem = data_[cur_bucket];
+        if ((cur_elem & KEPT_KEY_MASK) == key) {
+          if (old_value) *old_value = cur_elem >> num_kept_key_bits_;
+          if (key_value_location) *key_value_location = data_ + cur_bucket;
+          return false;  // key exists in hash
+        }
+        else if (~cur_elem == 0) {
+          // we have a version of AtomicCAS that also works on host.
+          uint64_t old_elem = AtomicCAS((unsigned long long*)(data_ + cur_bucket),
+                                        cur_elem, new_elem);
+          if (old_elem == cur_elem) {
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
+            return true;  // Successfully inserted.
+          }
+          cur_elem = old_elem;
+          if ((cur_elem & KEPT_KEY_MASK) == key) {
+            if (old_value) *old_value = cur_elem >> num_kept_key_bits_;
+            if (key_value_location) *key_value_location = data_ + cur_bucket;
+            return false;  // Another thread inserted this key
+          }
+        }
+        // Rotate bucket index until we find a free location.  This will
+        // eventually visit all bucket indexes before it returns to the same
+        // location, because leftover_index is odd (so only satisfies
+        // (n * leftover_index) % num_buckets == 0 for n == num_buckets).
+        // Note: n here is the number of times we went around the loop.
+        cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
+      }
+    }
+
+    /*
+     Look up this key in this hash; output the value and optionally the
+     location of the (key,value) pair if found.
+
+      @param [in] key    Key to look up; bits other than the lowest-order num_key_bits_
+                      bits must not be set.
+      @param [out] value_out  If found, value will be written to here.  This may
+                        seem redundant with key_value_location, but this should
+                        compile to a local variable, and we want to avoid
+                        redundant memory reads.
+      @param [out] key_value_location  (optional) The memory address of the
+                       (key,value) pair, in case the caller wants to overwrite
+                       the value via SetValue(); must be used for no other
+                       purpose.
+      @return          Returns true if an item with this key was found in the
+                       hash, otherwise false.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+    */
+    __forceinline__ __host__ __device__ bool Find(
+        uint64_t key, uint64_t *value_out,
+        uint64_t **key_value_location = nullptr) const {
+      const int64_t KEPT_KEY_MASK = (uint64_t(1) << num_kept_key_bits_) - 1;
+
+      uint32_t cur_bucket = key & num_buckets_mask_,
+          leftover_index = (1 | (key >> buckets_num_bitsm1_))
+          << num_implicit_key_bits_;
+      uint64_t kept_key = key >> num_implicit_key_bits_;
+
+      while (1) {
+        uint64_t old_elem = data_[cur_bucket];
+        if (~old_elem == 0) {
+          return false;
+        } else if ((old_elem & KEPT_KEY_MASK) == kept_key) {
+          *value_out = old_elem >> num_kept_key_bits_;
+          if (key_value_location)
+            *key_value_location = data_ + cur_bucket;
+          return true;
+        } else {
+          cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
+        }
+      }
+    }
+
+    /*
+      Overwrite a value in a (key,value) pair whose location was obtained using
+      Find().
+          @param [in] key_value_location   Location that was obtained from
+                         a successful call to Find().
+          @param [in] key  Required to be the same key that was provided to
+                        Find(); it is an error otherwise.
+          @param [in] value  Value to write; bits of higher order than
+                       (num_value_bits = 64 - num_key_bits) may not be set.
+                       It is also an error if ~((key << num_value_bits) | value) == 0,
+                       i.e. if all the allowed bits of both `key` and `value` are
+                       set; but this is not checked.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+     */
+    __forceinline__ __host__ __device__ void SetValue(
+        uint64_t *key_value_location, uint64_t key, uint64_t value) const {
+      *key_value_location = (value << num_kept_key_bits_) |
+          (key >> num_implicit_key_bits_);
+    }
+
+    /*
+      Overwrite a value in a (key,value) pair whose location was obtained using
+      Find().  This overload does not require the user to specify the old key.
+          @param [in] key_value_location   Location that was obtained from
+                         a successful call to Find().
+          @param [in] value  Value to write; bits of higher order than
+                       (num_value_bits = 64 - num_key_bits) may not be set.
+                       It is also an error if ~((key << num_value_bits) | value) == 0,
+                       where `key` is the existing key-- i.e. if all the allowed bits
+                       of both `key` and `value` are set; but this is not checked.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+     */
+    __forceinline__ __host__ __device__ uint64_t SetValue(
+        uint64_t *key_value_location, uint64_t value) const {
+      uint64_t old_pair = *key_value_location;
+      K2_CHECK_NE(~old_pair, 0);  // Check it was not an empty location.
+      const int64_t KEPT_KEY_MASK = (uint64_t(1) << num_kept_key_bits_) - 1;
+      uint64_t kept_key = old_pair & KEPT_KEY_MASK;
+      uint64_t new_pair = kept_key | (value << num_kept_key_bits_);
+      *key_value_location = new_pair;
+      const int64_t IMPLICIT_KEY_MASK = (uint64_t(1) << num_implicit_key_bits_) - 1;
+      uint64_t key = ((kept_key << num_implicit_key_bits_) |
+              ((key_value_location - data_) & IMPLICIT_KEY_MASK));
+      return key;
+    }
+
+    /* Deletes a key from a hash.  Caution: this cannot be combined with other
+       operations on a hash; after you delete a key you cannot do Insert() or
+       Find() until you have deleted all keys.  This is an open-addressing hash
+       table with no tombstones, which is why this limitation exists).
+
+       @param [in] key   Key to be deleted.   Each key present in the hash must
+                         be deleted  by exactly one thread, or it will loop
+                         forever!
+
+      Note: the const is with respect to the metadata only; required, to avoid
+      compilation errors.
+    */
+    __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
+      uint32_t cur_bucket = key & num_buckets_mask_,
+          leftover_index = (1 | (key >> buckets_num_bitsm1_))
+          >> num_implicit_key_bits_;
+      uint64_t kept_key = key >> num_implicit_key_bits_;
+      const uint64_t KEPT_KEY_MASK = (uint64_t(1) << num_kept_key_bits_) - 1;
+      while (1) {
+        uint64_t old_elem = data_[cur_bucket];
+        if ((old_elem & KEPT_KEY_MASK) == kept_key) {
+          data_[cur_bucket] = ~((uint64_t)0);
+          return;
+        } else {
+          cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
+        }
+      }
+    }
+
+   private:
+    // A number satisfying 0 < num_key_bits_ < 64; the number of bits
+    // (out of 64) used for the key.
+    uint32_t num_key_bits_;
+
+    // This is equal to (num_key_bits_ - num_implicit_key_bits_);
+    // it's the number of key bits that are stored in the hash
+    // buckets.
+    // It will satisfy 0 < num_kept_key_bits_ < num_key_bits_,
+    // and num_kept_key_bits_ + num_value_bits. == 64.
+    uint32_t num_kept_key_bits_;
+
+    // This is equal to (num_key_bits + num_value_bits - 64); it's the
+    // number of key bits that are implicit in the bucket location
+    // (because there are not enough bits to store them directly).
+    // It will satisfy 0 < num_implicit_key_bits_ < num_key_bits_.
+    uint32_t num_implicit_key_bits_;
+
+    // A number satisfying num_buckets == 1 << (1+buckets_num_bitsm1_)
+    // the number of bits in `num_buckets` minus one.
+    uint32_t buckets_num_bitsm1_;
+    // pointer to data
     uint64_t *data_;
     // num_buckets_mask is num_buckets (i.e. size of `data_` array) minus one;
     // num_buckets is a power of 2 so this can be used as a mask to get a number
@@ -635,6 +910,8 @@ class Hash {
        auto acc = hash.GetAccessor<Hash::Accessor<32>>();
     or:
        auto acc = hash.GetAccessor<Hash::GenericAccessor>();
+    or:
+       auto acc = hash.GetAccessor<Hash::PackedAccessor>();
   */
   template <typename AccessorT>
   AccessorT GetAccessor() {
@@ -684,7 +961,8 @@ class Hash {
   // Keys are kept in the lower-order bits of the 64-bit hash elements.
   int32_t num_key_bits_;
 
-  // Currently num_value_bits_ is always 64 - num_key_bits_.
+  // num_value_bits_ + num_key_bits_ is always >= 64.  If it is greater
+  // than 64 we need to use class PackedAccessor as the accessor object.
   int32_t num_value_bits_;
 
 

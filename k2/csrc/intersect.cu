@@ -678,6 +678,14 @@ class DeviceIntersector {
   void ForwardSortedA() {
     NVTX_RANGE(K2_FUNC);
     for (int32_t t = 0; ; t++) {
+      if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
+
+
+        // enlarge hash..
+        state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
+                                    state_pair_to_state_.NumKeyBits());
+
+      }
       if (state_pair_to_state_.NumKeyBits() == 32) {
         if (!ForwardSortedAOneIter<Hash::Accessor<32> >(t))
           break;
@@ -690,13 +698,6 @@ class DeviceIntersector {
   // Returns true if there are more state-pairs to process.
   template <typename HashAccessorT>
   bool ForwardSortedAOneIter(int32_t t) {
-      if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
-        // enlarge hash..
-        state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
-                                    state_pair_to_state_.NumKeyBits());
-
-      }
-
       K2_CHECK_EQ(t + 2, int32_t(iter_to_state_row_splits_cpu_.size()));
 
       int32_t state_begin = iter_to_state_row_splits_cpu_[t],
