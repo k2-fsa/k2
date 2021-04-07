@@ -346,6 +346,37 @@ class Hash {
       *key_value_location = (value << NUM_KEY_BITS) | key;
     }
 
+    /*
+      Overwrite a value in a (key,value) pair whose location was obtained using
+      Find(); this version reads the key from the location rather than accepting
+      it as an argument.  It's more efficient to use the other version where
+      possible, to avoid the memory load.
+
+          @param [in] key_value_location   Location that was obtained from
+                         a successful call to Find().
+          @param [in] key  Required to be the same key that was provided to
+                        Find(); it is an error otherwise.
+          @param [in] value  Value to write; bits of higher order than
+                       (NUM_VALUE_BITS = 64 - NUM_KEY_BITS) may not be set.
+                       It is also an error if ~((key << NUM_VALUE_BITS) | value) == 0,
+                       i.e. if all the allowed bits of both `key` and `value` are
+                       set; but this is not checked.
+          @return     Returns the key value present at this location.
+
+      Note: the const is with respect to the metadata only; it is required, to
+      avoid compilation errors.
+     */
+    __forceinline__ __host__ __device__ int32_t SetValue(
+        uint64_t *key_value_location, uint64_t value) const {
+      uint64_t old_pair = *key_value_location;
+      K2_CHECK_NE(~old_pair, 0);  // Check it was not an empty location.
+      const int64_t KEY_MASK = (uint64_t(1) << NUM_KEY_BITS) - 1;
+      uint64_t key = old_pair & KEY_MASK;
+      uint64_t new_pair = key | (value << NUM_KEY_BITS);
+      *key_value_location = new_pair;
+      return key;
+    }
+
 
 
     /* Deletes a key from a hash.  Caution: this cannot be combined with other

@@ -93,6 +93,12 @@ class DeviceIntersector {
       b_state_bits_(GetNumBitsNeededFor(b_fsas_.TotSize(1))) {
 
     int32_t key_bits = b_state_bits_ + GetNumBitsNeededFor(a_fsas_.shape.MaxSize(1));
+    // in future the accessor for num_key_bits==32 may be more efficient, and
+    // there's no point leaving >32 bits for the value since our arrays don't
+    // support that anyway.
+    if (key_bits < 32)
+      key_bits = 32;
+
     // We may want to tune this default hash size eventually.
     // We will expand the hash as needed.
     int32_t hash_size = 4 * RoundUpToNearestPowerOfTwo(b_fsas.NumElements()),
@@ -365,13 +371,26 @@ class DeviceIntersector {
   void Forward() {
     NVTX_RANGE(K2_FUNC);
     for (int32_t t = 0; ; t++) {
-      NVTX_RANGE("LoopT");
+      if (state_pair_to_state_.NumKeyBits() == 32) {
+        if (!ForwardOneIter<Hash::Accessor<32> >(t))
+          break;
+      } else {
+        if (!ForwardOneIter<Hash::GenericAccessor>(t))
+          break;
+      }
+    }
+  }
+  // Returns true if there is more data to process
+  template <typename HashAccessorT>
+  bool ForwardOneIter(int32_t t) {
+    NVTX_RANGE(K2_FUNC);
 
       if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
         // enlarge hash..
         state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
                                     state_pair_to_state_.NumKeyBits());
       }
+
 
       K2_CHECK_EQ(t + 2, int32_t(iter_to_state_row_splits_cpu_.size()));
 
@@ -383,7 +402,7 @@ class DeviceIntersector {
         // It saves a little processing later to remove the last, empty,
         // iteration-index.
         iter_to_state_row_splits_cpu_.pop_back();
-        break;  // Nothing left to process.
+        return false;  // Nothing left to process.
       }
 
       // We need to process output-states numbered state_begin..state_end-1.
@@ -433,8 +452,8 @@ class DeviceIntersector {
 
       // `value_max` is the limit for how large values in the hash can be.
       uint64_t value_max = ((uint64_t)1) << value_bits;
-      auto state_pair_to_state_acc =
-          state_pair_to_state_.GetAccessor<Hash::GenericAccessor>();
+      HashAccessorT state_pair_to_state_acc =
+          state_pair_to_state_.GetAccessor<HashAccessorT>();
 
       K2_CHECK_GT(value_max, (uint64_t)tot_ab) << "Problem size too large "
           "for hash table... redesign or reduce problem size.";
@@ -652,14 +671,25 @@ class DeviceIntersector {
         // Plan to implement binary search here at some point, to get arc ranges...
         K2_LOG(FATAL) << "Not implemented yet, see code..";
       }
-    }
+      return true;
   }
+
 
   void ForwardSortedA() {
     NVTX_RANGE(K2_FUNC);
     for (int32_t t = 0; ; t++) {
-      NVTX_RANGE("LoopT");
-
+      if (state_pair_to_state_.NumKeyBits() == 32) {
+        if (!ForwardSortedAOneIter<Hash::Accessor<32> >(t))
+          break;
+      } else {
+        if (!ForwardSortedAOneIter<Hash::GenericAccessor>(t))
+          break;
+      }
+    }
+  }
+  // Returns true if there are more state-pairs to process.
+  template <typename HashAccessorT>
+  bool ForwardSortedAOneIter(int32_t t) {
       if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
         // enlarge hash..
         state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
@@ -677,7 +707,7 @@ class DeviceIntersector {
         // It saves a little processing later to remove the last, empty,
         // iteration-index.
         iter_to_state_row_splits_cpu_.pop_back();
-        break;  // Nothing left to process.
+        return false;  // Nothing left to process.
       }
 
       // We need to process output-states numbered state_begin..state_end-1.
@@ -727,8 +757,8 @@ class DeviceIntersector {
           value_bits = 64 - key_bits;
       // `value_max` is the limit for how large values in the hash can be.
       uint64_t value_max = ((uint64_t)1) << value_bits;
-      auto state_pair_to_state_acc =
-          state_pair_to_state_.GetAccessor<Hash::GenericAccessor>();
+      HashAccessorT state_pair_to_state_acc =
+          state_pair_to_state_.GetAccessor<HashAccessorT>();
       namespace cg = cooperative_groups;
 
       if (c_->GetDeviceType() == kCuda) {
@@ -1083,7 +1113,7 @@ class DeviceIntersector {
           StateInfo info { (int32_t)a_state_idx01, (int32_t)b_state_idx01 };
           states_data[new_state_idx] = info;
         });
-    }
+      return true;
   }
 
 
