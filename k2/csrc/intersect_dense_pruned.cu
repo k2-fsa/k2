@@ -747,9 +747,9 @@ class MultiGraphDenseIntersectPruned {
     int32_t new_hash_size = RoundUpToNearestPowerOfTwo(
         int32_t(arc_info.NumElements() * 1.0));
     if (new_hash_size > state_map_.NumBuckets()) {
-      // actually the following does more work than needed; the hash is empty
-      // right now.
-      state_map_.Resize(new_hash_size, NUM_KEY_BITS);
+      bool copy_data = false;  // The hash is empty right now, so there is
+                               // nothing to copy.
+      state_map_.Resize(new_hash_size, NUM_KEY_BITS, -1, copy_data);
     }
 
     auto state_map_acc = state_map_.GetAccessor<Hash::Accessor<NUM_KEY_BITS>>();

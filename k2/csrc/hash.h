@@ -140,7 +140,8 @@ class Hash {
   */
   void Resize(int32_t new_num_buckets,
               int32_t num_key_bits,
-              int32_t num_value_bits = -1) {
+              int32_t num_value_bits = -1,
+              bool copy_data = true) {
     K2_CHECK_EQ(num_key_bits, num_key_bits_)
         << "Need to implement changing num-key-bits...";
     if (num_value_bits < 0)
@@ -165,21 +166,23 @@ class Hash {
     size_t new_num_buckets_mask = static_cast<size_t>(new_num_buckets) - 1,
         new_buckets_num_bitsm1 = new_hash.buckets_num_bitsm1_;
 
-    K2_EVAL(c, dim, lambda_copy_data, (int32_t i) -> void {
-        uint64_t key_value = this_data[i];
-        if (~key_value == 0) return;  // equals -1.. nothing there.
-        uint64_t key = key_value & KEY_MASK,
-            leftover_index = 1 | (key >> new_buckets_num_bitsm1);
-        size_t cur_bucket = key & new_num_buckets_mask;
-        while (1) {
-          uint64_t assumed = ~((uint64_t)0),
-              old_elem = AtomicCAS((unsigned long long*)(new_data + cur_bucket),
-                                   assumed, key_value);
-          if (old_elem == assumed) return;
-          cur_bucket = (cur_bucket + leftover_index) & new_num_buckets_mask;
-          // Keep iterating until we find a free spot in the new hash...
-        }
-      });
+    if (copy_data) {
+      K2_EVAL(c, dim, lambda_copy_data, (int32_t i) -> void {
+          uint64_t key_value = this_data[i];
+          if (~key_value == 0) return;  // equals -1.. nothing there.
+          uint64_t key = key_value & KEY_MASK,
+              leftover_index = 1 | (key >> new_buckets_num_bitsm1);
+          size_t cur_bucket = key & new_num_buckets_mask;
+          while (1) {
+            uint64_t assumed = ~((uint64_t)0),
+                old_elem = AtomicCAS((unsigned long long*)(new_data + cur_bucket),
+                                     assumed, key_value);
+            if (old_elem == assumed) return;
+            cur_bucket = (cur_bucket + leftover_index) & new_num_buckets_mask;
+            // Keep iterating until we find a free spot in the new hash...
+          }
+        });
+    }
     *this = new_hash;
     new_hash.Destroy();  // avoid failed check in destructor.
   }
