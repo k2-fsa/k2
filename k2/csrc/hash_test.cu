@@ -237,7 +237,10 @@ void TestHashConstructPacked(int32_t num_key_bits,
           success_data[i] = success;
         });
 
-      // TODO: changing key+value bits.
+      if (size != 65535) // just for some variety..
+        num_value_bits += 1;  // Try changing the number of value bits, so we
+                              // can test Resize() with changes in that.
+
       hash.Resize(hash.NumBuckets() * 2, num_key_bits,
                   num_value_bits);
 
