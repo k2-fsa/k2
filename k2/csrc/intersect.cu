@@ -679,18 +679,30 @@ class DeviceIntersector {
     NVTX_RANGE(K2_FUNC);
     for (int32_t t = 0; ; t++) {
       if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
-
-
-        // enlarge hash..
+        // CAUTION: this is a heuristic that might fail catastrophically in some
+        // (unusual) circumstances.  We are assuming there won't be an iteration
+        // where states_.Dim() increases by a factor of 2 or more.
+        // If this fails, the code would just hang while trying to insert keys
+        // into the hash.
+        int32_t new_num_buckets = state_pair_to_state_.NumBuckets() * 2,
+            num_value_bits_needed = GetNumBitsNeededFor(new_num_buckets - 1),
+            num_value_bits = std::max<int32_t>(
+                num_value_bits_needed, 64 - state_pair_to_state_.NumKeyBits());
         state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
-                                    state_pair_to_state_.NumKeyBits());
+                                    state_pair_to_state_.NumKeyBits(),
+                                    num_value_bits_needed);
 
       }
-      if (state_pair_to_state_.NumKeyBits() == 32) {
+      int32_t num_key_bits = state_pair_to_state_.NumKeyBits(),
+          num_value_bits = state_pair_to_state_.NumValueBits();
+      if (num_key_bits == 32 && num_value_bits == 32) {
         if (!ForwardSortedAOneIter<Hash::Accessor<32> >(t))
           break;
-      } else {
+      } else if (num_key_bits + num_value_bits == 64) {
         if (!ForwardSortedAOneIter<Hash::GenericAccessor>(t))
+          break;
+      } else {
+        if (!ForwardSortedAOneIter<Hash::PackedAccessor>(t))
           break;
       }
     }
