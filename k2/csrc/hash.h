@@ -223,37 +223,7 @@ class Hash {
   void Resize(int32_t new_num_buckets,
               int32_t num_key_bits,
               int32_t num_value_bits = -1,
-              bool copy_data = true) {
-    if (num_value_bits < 0)
-      num_value_bits = 64 - num_key_bits;
-
-    K2_CHECK_GT(new_num_buckets, 0);
-    K2_CHECK_EQ(new_num_buckets & (new_num_buckets - 1), 0);  // power of 2.
-
-    ContextPtr c = data_.Context();
-    Hash new_hash(c, new_num_buckets,
-                  num_key_bits,
-                  num_value_bits);
-
-    if (copy_data) {
-      if (num_key_bits == num_key_bits_ &&
-          num_value_bits == num_value_bits_ &&
-          num_key_bits + num_value_bits == 64) {
-        new_hash.CopyDataFromSimple(*this);
-      } else {
-        // we instantiate 2 versions of CopyDataFrom().
-        if (new_hash.NumKeyBits() + new_hash.NumValueBits() == 64) {
-          new_hash.CopyDataFrom<GenericAccessor>(*this);
-        } else {
-          new_hash.CopyDataFrom<PackedAccessor>(*this);
-        }
-      }
-    }
-
-   *this = new_hash;
-    new_hash.Destroy();  // avoid failed check in destructor (it would otherwise
-                         // expect the hash to be empty when destroyed).
-  }
+              bool copy_data = true);
 
   // Shallow copy
   Hash &operator=(const Hash &src) = default;
@@ -980,26 +950,7 @@ class Hash {
   // contain values when it is destroyed, to bypass a check.
   void Destroy() { data_ = Array1<uint64_t>(); }
 
-  void CheckEmpty() {
-    if (data_.Dim() == 0) return;
-    ContextPtr c = Context();
-    Array1<int32_t> error(c, 1, -1);
-    int32_t *error_data = error.Data();
-    uint64_t *hash_data = data_.Data();
-
-    K2_EVAL(Context(), data_.Dim(), lambda_check_data, (int32_t i) -> void {
-        if (~(hash_data[i]) != 0) error_data[0] = i;
-      });
-    int32_t i = error[0];
-    if (i >= 0) { // there was an error; i is the index into the hash where
-                  // there was an element.
-      int64_t elem = data_[i];
-      // We don't know the number of bits the user was using for the key vs.
-      // value, so print in hex, maybe they can figure it out.
-      K2_LOG(FATAL) << "Destroying hash: still contains values: position "
-                    << i << ", key,value = " << std::hex << elem;
-    }
-  }
+  void CheckEmpty();
 
   // The destructor checks that the hash is empty, if we are in debug mode.
   // If you don't want this, call Destroy() before the destructor is called.
