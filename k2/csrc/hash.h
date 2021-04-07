@@ -187,7 +187,7 @@ class Hash {
   // Shallow copy
   Hash &operator=(const Hash &src) = default;
   // Copy constructor (shallow copy)
-  Hash(const Hash &src) = default;
+  explicit Hash(const Hash &src) = default;
 
   ContextPtr &Context() const { return data_.Context(); }
 
@@ -203,6 +203,13 @@ class Hash {
   // of Accessor object.
   template <int32_t NUM_KEY_BITS> class Accessor {
    public:
+    Accessor(Hash &hash):
+        data_(hash.data_.Data()),
+        num_buckets_mask_(uint32_t(hash.NumBuckets())-1),
+        buckets_num_bitsm1_(hash.buckets_num_bitsm1_) {
+      K2_CHECK_EQ(NUM_KEY_BITS, hash.NumKeyBits());
+    }
+
     // constructor of Accessor is for use by class Hash, not by the user.
     Accessor(uint64_t *data,
              uint32_t num_buckets_mask,
@@ -386,14 +393,20 @@ class Hash {
 
   class GenericAccessor {
    public:
-    // constructor of GenericAccessor is for use by class Hash, not by the user.
+    GenericAccessor(Hash &hash):
+        num_key_bits_(hash.num_key_bits_),
+        buckets_num_bitsm1_(hash.buckets_num_bitsm1_),
+        data_(hash.data_.Data()),
+        num_buckets_mask_(uint32_t(hash.NumBuckets() - 1)) { }
+
+    /*    // constructor of GenericAccessor is for use by class Hash, not by the user.
     GenericAccessor(uint32_t num_key_bits,
                     uint32_t buckets_num_bitsm1,
                     uint64_t *data,
                     uint32_t num_buckets_mask):
         num_key_bits_(num_key_bits),
         buckets_num_bitsm1_(buckets_num_bitsm1),
-        data_(data), num_buckets_mask_(num_buckets_mask) { }
+        data_(data), num_buckets_mask_(num_buckets_mask) { } */
 
     // Copy constructor
     GenericAccessor(const GenericAccessor &src) = default;
@@ -596,40 +609,18 @@ class Hash {
   };
 
 
-
-
   /*
     Return an Accessor object which can be used in kernel code (or on CPU if the
-    context is a CPU context).
+    context is a CPU context).  This is templated on the accessor type, and is
+    not implemented in general; instead it is implemented via overloads for
+    specific accessor types, which are done outside the class (which C++ seems
+    to require).
+  */
+  template <typename AccessorT>
+  AccessorT GetAccessor();
 
-    Template argument `NUM_KEY_BITS` may be any number in [1,63] but probably
-    will be something like 32 or 40; the number of bits in the key will be 64
-    minus that.  The user must be consistent in the choice of num-key-bits
-    (except it can be changed if needed when the hash is empty).
-
-    See also non-templated function GetGenericAccessor().
-   */
   template <int32_t NUM_KEY_BITS>
-  Accessor<NUM_KEY_BITS> GetAccessor() {
-    K2_CHECK_EQ(num_key_bits_, NUM_KEY_BITS);
-    K2_CHECK_LE(num_key_bits_ + num_value_bits_, 64);
-    return Accessor<NUM_KEY_BITS>(data_.Data(),
-                                  uint32_t(data_.Dim()) - 1,
-                                  buckets_num_bitsm1_);
-  }
-
-  /*
-    Version of accessor object where the number of bits in the key is decided
-    at run-time rather than compile time.
-   */
-  GenericAccessor GetGenericAccessor(int32_t num_key_bits) {
-    K2_CHECK_EQ(num_key_bits_, num_key_bits);
-    K2_CHECK_LE(num_key_bits_ + num_value_bits_, 64);
-    return GenericAccessor(num_key_bits,
-                           buckets_num_bitsm1_,
-                           data_.Data(),
-                           uint32_t(data_.Dim()) - 1);
-  }
+  Accessor<NUM_KEY_BITS> GetAccessor();
 
 
   // You should call this before the destructor is called if the hash will still
@@ -681,6 +672,45 @@ class Hash {
   // number satisfying data_.Dim() == 1 << (1+buckets_num_bitsm1_)
   int32_t buckets_num_bitsm1_;
 };
+
+
+
+/*
+  This is an overload of templated funtion Hash::GetAccessor().
+
+  Returns an Accessor object which can be used in kernel code (or on CPU if
+  the context is a CPU context).
+
+  Template argument `NUM_KEY_BITS` may be any number in [1,63] but probably
+  will be something like 32 or 40; the number of bits in the key will be 64
+  minus that.  The user must be consistent in the choice of num-key-bits
+  (except it can be changed if needed when the hash is empty).
+
+  Invoke this as, e.g., `hash.GetAccessor<Hash::Accessor<32> >()`
+*/
+template <int32_t NUM_KEY_BITS>
+inline Hash::Accessor<NUM_KEY_BITS> Hash::GetAccessor() {
+  return Accessor<NUM_KEY_BITS>(*this);
+}
+
+/*
+  This is an overload of templated funtion Hash::GetAccessor().
+
+  Returns a GenericAccessor, which is the version of accessor object where the
+  number of bits in the key is decided at run-time rather than compile time
+  (it gets it from the hash).
+
+  Invoke this as, e.g., `hash.GetAccessor<Hash::GenericAccessor>()`
+*/
+template<>
+inline Hash::GenericAccessor Hash::GetAccessor<Hash::GenericAccessor>() {
+  return GenericAccessor(*this);/*num_key_bits_,
+                         buckets_num_bitsm1_,
+                         data_.Data(),
+                         uint32_t(data_.Dim()) - 1); */
+}
+
+
 
 /*
   Returns the number of bits needed for an unsigned integer sufficient to

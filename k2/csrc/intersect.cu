@@ -310,9 +310,9 @@ class DeviceIntersector {
 
     const int32_t *b_fsas_row_ids2_data = b_fsas_.RowIds(2).Data();
 
-    int32_t key_bits = key_bits_, b_state_bits = b_state_bits_;
+    int32_t b_state_bits = b_state_bits_;
     auto state_pair_to_state_acc =
-        state_pair_to_state_.GetGenericAccessor(key_bits);
+        state_pair_to_state_.GetAccessor<Hash::GenericAccessor>();
 
     // arc_idx012 here is w.r.t. ans_shape that currently has axes indexed
     // [fsa][state][arc].
@@ -432,7 +432,7 @@ class DeviceIntersector {
       // `value_max` is the limit for how large values in the hash can be.
       uint64_t value_max = ((uint64_t)1) << value_bits;
       auto state_pair_to_state_acc =
-          state_pair_to_state_.GetGenericAccessor(key_bits);
+          state_pair_to_state_.GetAccessor<Hash::GenericAccessor>();
 
       K2_CHECK_GT(value_max, (uint64_t)tot_ab) << "Problem size too large "
           "for hash table... redesign or reduce problem size.";
@@ -724,7 +724,7 @@ class DeviceIntersector {
       // `value_max` is the limit for how large values in the hash can be.
       uint64_t value_max = ((uint64_t)1) << value_bits;
       auto state_pair_to_state_acc =
-          state_pair_to_state_.GetGenericAccessor(key_bits);
+          state_pair_to_state_.GetAccessor<Hash::GenericAccessor>();
       namespace cg = cooperative_groups;
 
       if (c_->GetDeviceType() == kCuda) {

@@ -126,7 +126,7 @@ void TestHashConstruct2(int32_t num_key_bits) {
             *success_data = success.Data();
       int32_t *counts_data = count_per_key.Data();
 
-      Hash::GenericAccessor acc = hash.GetGenericAccessor(num_key_bits);
+      Hash::GenericAccessor acc = hash.GetAccessor<Hash::GenericAccessor>();
       K2_EVAL(c, num_elems, lambda_insert_pairs, (int32_t i) -> void {
           uint32_t key = keys_data[i],
                  value = values_data[i],
@@ -150,7 +150,7 @@ void TestHashConstruct2(int32_t num_key_bits) {
 
       hash.Resize(hash.NumBuckets() * 2, num_key_bits);
 
-      acc = hash.GetGenericAccessor(num_key_bits);
+      acc = hash.GetAccessor<Hash::GenericAccessor>();
 
       K2_EVAL(c, num_elems, lambda_check_find, (int32_t i) -> void {
           uint32_t key = keys_data[i],
