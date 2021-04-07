@@ -449,13 +449,15 @@ class DeviceIntersector {
 
       int32_t key_bits = state_pair_to_state_.NumKeyBits(),
           a_states_multiple = a_states_multiple_,
-          value_bits = 64 - key_bits;
+          value_bits = state_pair_to_state_.NumValueBits();
 
       // `value_max` is the limit for how large values in the hash can be.
       uint64_t value_max = ((uint64_t)1) << value_bits;
       HashAccessorT state_pair_to_state_acc =
           state_pair_to_state_.GetAccessor<HashAccessorT>();
 
+      // Note: we can actually resolve the next failure fairly easily now;
+      // we'll do it when needed.
       K2_CHECK_GT(value_max, (uint64_t)tot_ab) << "Problem size too large "
           "for hash table... redesign or reduce problem size.";
 
@@ -768,7 +770,7 @@ class DeviceIntersector {
           *b_arcs_data = b_fsas_.values.Data();
       int32_t key_bits = state_pair_to_state_.NumKeyBits(),
           a_states_multiple = a_states_multiple_,
-          value_bits = 64 - key_bits;
+          value_bits = state_pair_to_state_.NumValueBits();
       // `value_max` is the limit for how large values in the hash can be.
       uint64_t value_max = ((uint64_t)1) << value_bits;
       HashAccessorT state_pair_to_state_acc =
