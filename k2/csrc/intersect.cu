@@ -90,12 +90,13 @@ class DeviceIntersector {
       sorted_match_a_(sorted_match_a),
       b_fsas_(b_fsas),
       b_to_a_map_(b_to_a_map),
-      b_state_bits_(GetNumBitsNeededFor(b_fsas_.TotSize(1))) {
-
-    int32_t key_bits = b_state_bits_ + GetNumBitsNeededFor(a_fsas_.shape.MaxSize(1));
+      a_states_multiple_(b_fsas_.TotSize(1) | 1) {
+    int32_t key_bits = GetNumBitsNeededFor(a_fsas_.shape.MaxSize(1) *
+                                           (int64_t)a_states_multiple_);
     // in future the accessor for num_key_bits==32 may be more efficient, and
     // there's no point leaving >32 bits for the value since our arrays don't
-    // support that anyway.
+    // support that and also we can't have more values than the #keys
+    // since the values are consecutive.
     if (key_bits < 32)
       key_bits = 32;
 
@@ -317,7 +318,7 @@ class DeviceIntersector {
 
     const int32_t *b_fsas_row_ids2_data = b_fsas_.RowIds(2).Data();
 
-    int32_t b_state_bits = b_state_bits_;
+    int32_t a_states_multiple = a_states_multiple_;
     auto state_pair_to_state_acc =
         state_pair_to_state_.GetAccessor<Hash::GenericAccessor>();
 
@@ -344,7 +345,7 @@ class DeviceIntersector {
           int32_t b_src_state_idx01 = b_fsas_row_ids2_data[info.b_arc_idx012],
               b_dest_state_idx01 = b_src_state_idx01 + b_arc.dest_state - b_arc.src_state,
               a_dest_state_idx1 = a_arc.dest_state;
-          uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
+          uint64_t hash_key = (((uint64_t)a_dest_state_idx1) * a_states_multiple) +
               b_dest_state_idx01;
           uint64_t value;
           bool ans = state_pair_to_state_acc.Find(hash_key, &value);
@@ -447,7 +448,7 @@ class DeviceIntersector {
           *b_arcs_data = b_fsas_.values.Data();
 
       int32_t key_bits = state_pair_to_state_.NumKeyBits(),
-          b_state_bits = b_state_bits_,
+          a_states_multiple = a_states_multiple_,
           value_bits = 64 - key_bits;
 
       // `value_max` is the limit for how large values in the hash can be.
@@ -511,7 +512,7 @@ class DeviceIntersector {
                 b_dest_state_idx01 = b_dest_state_idx1 + sinfo.b_fsas_state_idx01 -
                                      b_arcs_data[b_arc_idx012].src_state,
                 a_dest_state_idx1 = a_arcs_data[a_arc_idx012].dest_state;
-            uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
+            uint64_t hash_key = (((uint64_t)a_dest_state_idx1) * a_states_multiple) +
                    b_dest_state_idx01, hash_value = i;
             // If it was successfully inserted, then this arc is assigned
             // responsibility for creating the state-id for its destination
@@ -580,7 +581,7 @@ class DeviceIntersector {
               a_dest_state_idx1 = a_arcs_data[a_arc_idx012].dest_state,
               a_dest_state_idx01 = a_fsas_row_splits1_data[b_to_a_map_data[b_fsa_idx0]] +
                     a_dest_state_idx1;
-          uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
+          uint64_t hash_key = (((uint64_t)a_dest_state_idx1) * a_states_multiple) +
               b_dest_state_idx01;
           uint64_t value, *key_value_location = nullptr;
           bool ans = state_pair_to_state_acc.Find(hash_key, &value,
@@ -601,8 +602,8 @@ class DeviceIntersector {
             new_num_arcs = old_num_arcs + num_kept_arcs;
         if (static_cast<uint64_t>(tot_ab) >= value_max ||
             static_cast<uint64_t>(next_state_end) >= value_max) {
-          K2_LOG(FATAL) << "Problem size is too large for this code: b_state_bits="
-                        << b_state_bits_ << ", key_bits=" << key_bits
+          K2_LOG(FATAL) << "Problem size is too large for this code: a_states_multiple="
+                        << a_states_multiple_ << ", key_bits=" << key_bits
                         << ", value_bits=" << value_bits
                         << ", value_max=" << value_max
                         << ", tot_ab=" << tot_ab
@@ -649,7 +650,7 @@ class DeviceIntersector {
                 b_dest_state_idx01 = b_dest_state_idx1 + src_sinfo.b_fsas_state_idx01 -
                                      b_arcs_data[b_arc_idx012].src_state,
               a_dest_state_idx1 = a_arcs_data[a_arc_idx012].dest_state;
-            uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) +
+            uint64_t hash_key = (((uint64_t)a_dest_state_idx1) * a_states_multiple) +
                 b_dest_state_idx01;
 
             uint64_t value = 0;
@@ -766,7 +767,7 @@ class DeviceIntersector {
       const Arc *a_arcs_data = a_fsas_.values.Data(),
           *b_arcs_data = b_fsas_.values.Data();
       int32_t key_bits = state_pair_to_state_.NumKeyBits(),
-          b_state_bits = b_state_bits_,
+          a_states_multiple = a_states_multiple_,
           value_bits = 64 - key_bits;
       // `value_max` is the limit for how large values in the hash can be.
       uint64_t value_max = ((uint64_t)1) << value_bits;
@@ -1059,7 +1060,7 @@ class DeviceIntersector {
                 b_dest_state_idx01 = b_dest_state_idx1 +
                    sinfo.b_fsas_state_idx01 - b_arc.src_state,
                 a_dest_state_idx1 = a_arc.dest_state;
-            uint64_t hash_key = (((uint64_t)a_dest_state_idx1) << b_state_bits) |
+            uint64_t hash_key = (((uint64_t)a_dest_state_idx1) * a_states_multiple) +
                 b_dest_state_idx01,
                 hash_value = 0,  // actually it's a don't-care.
                 *hash_key_value_location = nullptr;
@@ -1095,8 +1096,8 @@ class DeviceIntersector {
       states_.Resize(next_state_end);  // Note: this Resize() won't actually reallocate each time.
 
       if (value_max <= (uint64_t)next_state_end) {
-        K2_LOG(FATAL) << "Problem size is too large for this code: b_state_bits="
-                      << b_state_bits_ << ", key_bits=" << key_bits
+        K2_LOG(FATAL) << "Problem size is too large for this code: a_states_multiple="
+                      << a_states_multiple_ << ", key_bits=" << key_bits
                       << ", value_bits=" << value_bits
                       << ", value_max=" << value_max
                       << ", next_state_end=" << next_state_end;
@@ -1121,8 +1122,10 @@ class DeviceIntersector {
           K2_DCHECK_EQ(*hash_key_value_location >> key_bits, 0);
           uint64_t key = state_pair_to_state_acc.SetValue(hash_key_value_location,
                                                           new_state_idx);
-          uint32_t b_state_idx01 = uint32_t(key) & ((uint32_t(1) << b_state_bits) - 1),
+          uint32_t b_state_idx01 = key % a_states_multiple,
               a_state_idx01 = a_dest_state_idx01_temp_data[new_arc_idx];
+          // a_state_idx01 is not stored in `key`, because we store it
+          // as the idx1.
           StateInfo info { (int32_t)a_state_idx01, (int32_t)b_state_idx01 };
           states_data[new_state_idx] = info;
         });
@@ -1177,24 +1180,21 @@ class DeviceIntersector {
   Array1<int32_t> arcs_row_ids_;
 
   // The hash maps from state-pair, as:
-  //   state_pair = (a_fsas_state_idx1 << b_state_bits_) + b_fsas_state_idx01
+  //   state_pair = (a_fsas_state_idx1 * a_states_multiple) + b_fsas_state_idx01
+  // to indexes into the states_ array (numbered 0,1,2,...), or to -1
+  // in cases where the state-pair is a pair of final-states.
   //
-  // The number of bits in the key (max bits set in `state_pair`) is
-  // key_bits_ == b_state_bits_ + GetNumBitsNeededFor(a_fsas_.MaxSize(1)) .
-  // The number of bits in the value is 64 minus this; we'll crash if
-  // the number of states ends up being too large to store in this
-  // value.
-  int32_t b_state_bits_;  // == GetNumBitsNeededFor(b_fsas_.TotSize(1))
-  // key_bits is now stored indirectly as state_pair_to_state_.NumKeyBits().
-  //int32_t key_bits_;  // b_state_bits_ + GetNumBitsNeededFor(a_fsas_.MaxSize(1))
+  // We name the values in the hash, which, as we mentioned, are indexes into
+  // the states_ array, as`output_state_idx01`; the shape of the ragged array
+  // which this is an index into, is given by
+  // row_splits==iter_to_state_row_splits_cpu_.
+  //
+  // We ensure that a_states_multiple_ >= b_fsas_.TotSize(1) in order to ensure
+  // uniqueness of the hashed values; and we also make sure a_states_multiple_
+  // is odd, which ensures the states in a_fsas_ also affect the low bits of the
+  // hash value.
+  int32_t a_states_multiple_;
 
-  // This hash maps from pairs (a_state_idx1, b_state_idx01), encoded
-  // as a key
-  //   (((uint64_t)a_state_idx1) << b_state_bits_) | b_state_idx01,
-  // to output_state_idx01, where a_state_idx1 and b_state_idx01 are indexes
-  // into a_fsas_ and b_fsas_ respectively and output_state_idx01 is
-  // an index into states_ (with shape given by iter_to_state_row_splits_cpu_).
-  //
   // This hash will also contain -1 as values in cases where the dest-state is a
   // final-state (these are allocated right at the beginning); and inside of
   // Forward() and ForwardSortedA() it will also contain temporary quantities

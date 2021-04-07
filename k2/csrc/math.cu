@@ -34,6 +34,23 @@ int32_t HighestBitSet(int32_t i) {
   return 32;
 }
 
+int32_t HighestBitSet(int64_t i) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_GE(i, 0);
+#if defined(__clang__) || defined (__GNUC__)
+  if (i == 0) return -1;
+  return 63 - static_cast<int32_t>(__builtin_clzl(i));
+#else
+  for (int64_t j = 0; j < 64; ++j) {
+    if (i < ((int64_t)1 << j)) {
+      return j - 1;
+    }
+  }
+#endif
+  K2_LOG(FATAL) << "Unreachable code";
+  return 32;
+}
+
 int32_t RoundUpToNearestPowerOfTwo(int32_t n) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(n, 0);

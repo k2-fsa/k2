@@ -1039,7 +1039,7 @@ class Hash {
   reserved for "nothing in this hash bin", so if `size` is of the form 2^n we
   still need n+1 bits to store the indexes, because (2^n-1) is actually reserved
  */
-inline int32_t GetNumBitsNeededFor(int32_t size) {
+inline int32_t GetNumBitsNeededFor(int64_t size) {
   return 1 + HighestBitSet(size);
 }
 
