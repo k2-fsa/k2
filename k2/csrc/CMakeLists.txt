@@ -34,6 +34,7 @@ set(context_srcs
   fsa.cu
   fsa_algo.cu
   fsa_utils.cu
+  hash.cu
   host_shim.cu
   intersect.cu
   intersect_dense.cu

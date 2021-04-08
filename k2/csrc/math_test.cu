@@ -10,17 +10,26 @@
 
 namespace k2 {
 TEST(Math, HighestBitSet) {
-  K2_CHECK_EQ(HighestBitSet(0), -1);
-  K2_CHECK_EQ(HighestBitSet(1), 0);
-  K2_CHECK_EQ(HighestBitSet(2), 1);
-  K2_CHECK_EQ(HighestBitSet(3), 1);
-  K2_CHECK_EQ(HighestBitSet(4), 2);
-  K2_CHECK_EQ(HighestBitSet(5), 2);
+  K2_CHECK_EQ(HighestBitSet(int32_t(0)), -1);
+  K2_CHECK_EQ(HighestBitSet(int32_t(1)), 0);
+  K2_CHECK_EQ(HighestBitSet(int32_t(2)), 1);
+  K2_CHECK_EQ(HighestBitSet(int32_t(3)), 1);
+  K2_CHECK_EQ(HighestBitSet(int32_t(4)), 2);
+  K2_CHECK_EQ(HighestBitSet(int32_t(5)), 2);
 
-  K2_CHECK_EQ(HighestBitSet(1 << 29), 29);
-  K2_CHECK_EQ(HighestBitSet((1 << 29) + 1), 29);
+  K2_CHECK_EQ(HighestBitSet(int32_t(1) << 29), 29);
+  K2_CHECK_EQ(HighestBitSet((int32_t(1) << 29) + 1), 29);
+  K2_CHECK_EQ(HighestBitSet(int32_t(1) << 30), 30);
+  K2_CHECK_EQ(HighestBitSet((int32_t(1) << 30) + 1), 30);
 
-  K2_CHECK_EQ(HighestBitSet(1 << 30), 30);
-  K2_CHECK_EQ(HighestBitSet((1 << 30) + 1), 30);
+  K2_CHECK_EQ(HighestBitSet(int64_t(0)), -1);
+  K2_CHECK_EQ(HighestBitSet(int64_t(1)), 0);
+  K2_CHECK_EQ(HighestBitSet(int64_t(2)), 1);
+  K2_CHECK_EQ(HighestBitSet(int64_t(3)), 1);
+  K2_CHECK_EQ(HighestBitSet(int64_t(4)), 2);
+  K2_CHECK_EQ(HighestBitSet(int64_t(5)), 2);
+
+  K2_CHECK_EQ(HighestBitSet(int64_t(1) << 50), 50);
+  K2_CHECK_EQ(HighestBitSet((int64_t(1) << 50) + 1), 50);
 }
 }  // namespace k2
