@@ -148,7 +148,6 @@ class MultiGraphDenseIntersectPruned {
                                                      max_active);
     if (num_buckets < 128)
       num_buckets = 128;
-    state_map_ = Hash(c_, num_buckets);
     int32_t num_a_copies;
     if (a_fsas.shape.Dim0() == 1) {
       a_fsas_stride_ = 0;
@@ -160,12 +159,27 @@ class MultiGraphDenseIntersectPruned {
       state_map_fsa_stride_ = 0;
       num_a_copies = 1;
     }
-    int64_t num_keys = num_a_copies * (int64_t)a_fsas.TotSize(1);
-    hash_use_40_key_bits_ = (num_keys != (uint32_t)num_keys);
-    if (hash_use_40_key_bits_) {
-      K2_CHECK_EQ(num_keys >> 40, 0)
-          << "Decoding graph * minibatch size too big";
+    // +1, because all-ones is not a valid key.
+    int64_t num_keys = num_a_copies * (int64_t)a_fsas.TotSize(1) + 1;
+
+    // To reduce the number of template instantiations, we limit the
+    // code to use either 32 or 36 or 40 bits.
+    // 32 can be optimized in future so if the num_keys is less than
+    // 1<<32, we favor that value.
+    int32_t num_key_bits;
+    if ((num_keys >> 32) == 0)
+      num_key_bits = 32;
+    else if ((num_keys >> 36) == 0)
+      num_key_bits = 36;
+    else {
+      num_key_bits = 40;
+      if ((num_keys >> 40) != 0) {
+        K2_LOG(FATAL) << "Too many keys for hash, please extend this code "
+            "with more options: num_keys=" << num_keys;
+      }
     }
+    state_map_ = Hash(c_, num_buckets, num_key_bits);
+
 
     { // set up do_pruning_after_ and prune_t_begin_end_.
 
@@ -251,10 +265,14 @@ class MultiGraphDenseIntersectPruned {
     frames_.push_back(InitialFrameInfo());
 
     for (int32_t t = 0; t <= T; t++) {
-      if (hash_use_40_key_bits_)
-        frames_.push_back(PropagateForward<40>(t, frames_.back().get()));
-      else
+      if (state_map_.NumKeyBits() == 32) {
         frames_.push_back(PropagateForward<32>(t, frames_.back().get()));
+      } else if (state_map_.NumKeyBits() == 36) {
+        frames_.push_back(PropagateForward<36>(t, frames_.back().get()));
+      } else {
+        K2_CHECK_EQ(state_map_.NumKeyBits(), 40);
+        frames_.push_back(PropagateForward<40>(t, frames_.back().get()));
+      }
       if (do_pruning_after_[t]) {
         // let a phase of backward-pass pruning commence.
         backward_semaphore_.Signal(c_);
@@ -729,12 +747,12 @@ class MultiGraphDenseIntersectPruned {
     int32_t new_hash_size = RoundUpToNearestPowerOfTwo(
         int32_t(arc_info.NumElements() * 1.0));
     if (new_hash_size > state_map_.NumBuckets()) {
-      // actually the following does more work than needed; the hash is empty
-      // right now.
-      state_map_.Resize(new_hash_size, NUM_KEY_BITS);
+      bool copy_data = false;  // The hash is empty right now, so there is
+                               // nothing to copy.
+      state_map_.Resize(new_hash_size, NUM_KEY_BITS, -1, copy_data);
     }
 
-    auto state_map_acc = state_map_.GetAccessor<NUM_KEY_BITS>();
+    auto state_map_acc = state_map_.GetAccessor<Hash::Accessor<NUM_KEY_BITS>>();
 
     {
       NVTX_RANGE("LambdaSetStateMap");
@@ -1421,14 +1439,6 @@ class MultiGraphDenseIntersectPruned {
                       // value is an arc_idx012 (into cur_frame->arcs), and
                       // then later a state_idx01 into the next frame's `state`
                       // member.
-
-  // if false, NUM_KEY_BITS == 32; if true, NUM_KEY_BITS == 40, for hash code.
-  // We use 40 key bits in cases where the (decoding graph num-states *
-  // minibatch-size) is larger than can fit in 32 bits.  We could probably set
-  // it always to 40, but probably 32 will enable more compiler optimizations
-  // so we use 32 when possible.
-  bool hash_use_40_key_bits_ = false;
-
 
   // The 1st dim is needed because If all the
   // streams share the same FSA in a_fsas_, we need

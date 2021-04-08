@@ -26,6 +26,7 @@ namespace k2 {
   Note we may delete this function later if there's no other usage.
  */
 int32_t HighestBitSet(int32_t i);
+int32_t HighestBitSet(int64_t i);
 
 int32_t RoundUpToNearestPowerOfTwo(int32_t n);
 

@@ -93,7 +93,7 @@ class Array1 {
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, Dim());
     K2_CHECK_GE(size, 0);
-    K2_CHECK_LE(size, Dim() - start);
+    K2_CHECK_LE(size + start, Dim());
     return Array1(size, region_, byte_offset_ + start * ElementSize());
   }
 
