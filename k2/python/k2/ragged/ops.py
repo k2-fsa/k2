@@ -287,7 +287,7 @@ def argmax_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
     return _k2.argmax_per_sublist(src, initial_value)
 
 
-def max_per_sublist(src: Union[_k2.RaggedFloat,_k2.RaggedInt],
+def max_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
                     initial_value: float = torch.finfo(torch.float32).min
                     ) -> torch.Tensor:  # noqa
     '''Compute the max per sublist for a ragged tensor (including

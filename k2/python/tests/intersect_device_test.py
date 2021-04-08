@@ -22,8 +22,8 @@ class TestIntersectDevice(unittest.TestCase):
             devices.append(torch.device('cuda'))
 
         for device in devices:
-            for use_identity_map,sorted_match_a in [(True,True), (False,True),
-                                                    (True,False), (False,False)]:
+            for use_identity_map,sorted_match_a in [ (True, True), (False, True),
+                                                     (True, False), (False, False) ]:
                 # recognizes (0|1)(0|2)
                 s1 = '''
                     0 1 0 0.1
