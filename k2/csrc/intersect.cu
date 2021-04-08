@@ -91,14 +91,14 @@ class DeviceIntersector {
       b_fsas_(b_fsas),
       b_to_a_map_(b_to_a_map),
       a_states_multiple_(b_fsas_.TotSize(1) | 1) {
-    int32_t key_bits = GetNumBitsNeededFor(a_fsas_.shape.MaxSize(1) *
-                                           (int64_t)a_states_multiple_);
+    int32_t num_key_bits = NumBitsNeededFor(a_fsas_.shape.MaxSize(1) *
+                                            (int64_t)a_states_multiple_);
     // in future the accessor for num_key_bits==32 may be more efficient, and
     // there's no point leaving >32 bits for the value since our arrays don't
     // support that and also we can't have more values than the #keys
     // since the values are consecutive.
-    if (key_bits < 32)
-      key_bits = 32;
+    if (num_key_bits < 32)
+      num_key_bits = 32;
 
     // We may want to tune this default hash size eventually.
     // We will expand the hash as needed.
@@ -107,7 +107,11 @@ class DeviceIntersector {
     if (hash_size < min_hash_size)
       hash_size = min_hash_size;
     // caution: also use hash_size in FirstIter() as default size of various arrays.
-    state_pair_to_state_ = Hash(c_, hash_size, key_bits);
+    int32_t num_value_bits = std::max<int32_t>(NumBitsNeededFor(hash_size - 1),
+                                               64 - num_key_bits);
+    state_pair_to_state_ = Hash(c_, hash_size, num_key_bits,
+                                num_value_bits);
+
 
     K2_CHECK(c_->IsCompatible(*b_fsas.Context()));
     K2_CHECK(c_->IsCompatible(*b_to_a_map.Context()));
@@ -387,6 +391,13 @@ class DeviceIntersector {
   void Forward() {
     NVTX_RANGE(K2_FUNC);
     for (int32_t t = 0; ; t++) {
+      if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
+        // enlarge hash..
+        state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
+                                    state_pair_to_state_.NumKeyBits());
+      }
+
+
       int32_t num_key_bits = state_pair_to_state_.NumKeyBits(),
           num_value_bits = state_pair_to_state_.NumValueBits();
       if (num_key_bits == 32 && num_value_bits == 32) {
@@ -405,12 +416,6 @@ class DeviceIntersector {
   template <typename HashAccessorT>
   bool ForwardOneIter(int32_t t) {
     NVTX_RANGE(K2_FUNC);
-
-      if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
-        // enlarge hash..
-        state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
-                                    state_pair_to_state_.NumKeyBits());
-      }
 
 
       K2_CHECK_EQ(t + 2, int32_t(iter_to_state_row_splits_cpu_.size()));
@@ -697,55 +702,62 @@ class DeviceIntersector {
       return true;
   }
 
+  /*
+    This function ensures that the hash `state_pair_to_state_` has an array
+    with at least `min_num_buckets` buckets, and NumValueBits() large enough to contain
+    at least `min_supported_values` values
+
+    The number of bits allocated for the key will not be changed (this was
+    set to the required value in the constructor).
+
+      @param [in] min_num_buckets  The minimum number of buckets required;
+                    the actual number chosen will be a power of 2 that is >=
+                    min_num_buckets.  CAUTION: this number should be
+                    considerably larger than the maximum number of key/value
+                    pairs you might want to store in the hash (or it will get
+                    too full).
+      @param [in] min_supported_values  The user declares that the
+                    hash must have enough bits allocated to values that
+                    it can store values 0 <= v < min_supported_values.
+                    In general this requires that
+                    min_supported_values < (1 << state_pair_to_state_.NumValueBits()),
+                    the strictly-less-than being necessary because (1<<num_value_bits)-1 is not
+                    allowed as a value if (1<<num_key_bits)-1 is allowed as a key,
+                    which condition we are too lazy to check.
+   */
+  void PossiblyResizeHash(int32_t min_num_buckets,
+                          int32_t min_supported_values) {
+    K2_CHECK_GE(min_num_buckets, 0);
+    int32_t cur_num_buckets = state_pair_to_state_.NumBuckets(),
+        cur_num_key_bits = state_pair_to_state_.NumKeyBits(),
+        cur_num_value_bits = state_pair_to_state_.NumValueBits(),
+        num_buckets = std::max<int32_t>(
+            RoundUpToNearestPowerOfTwo(min_num_buckets),
+            cur_num_buckets),
+        num_value_bits = std::max<int32_t>(
+            NumBitsNeededFor(min_supported_values),
+            cur_num_value_bits);
+    if (num_value_bits != cur_num_value_bits ||
+        num_buckets != cur_num_buckets) {
+      state_pair_to_state_.Resize(num_buckets,
+                                  cur_num_key_bits,
+                                  num_value_bits);
+    }
+  }
 
   void ForwardSortedA() {
     NVTX_RANGE(K2_FUNC);
     for (int32_t t = 0; ; t++) {
-      if (states_.Dim() * 4 > state_pair_to_state_.NumBuckets()) {
-        // CAUTION: this is a heuristic that might fail catastrophically in some
-        // (unusual) circumstances.  We are assuming there won't be an iteration
-        // where states_.Dim() increases by a factor of 2 or more.
-        // If this fails, the code would just hang while trying to insert keys
-        // into the hash.
-        int32_t new_num_buckets = state_pair_to_state_.NumBuckets() * 2,
-            num_value_bits_needed = GetNumBitsNeededFor(new_num_buckets - 1),
-            num_value_bits = std::max<int32_t>(
-                num_value_bits_needed, 64 - state_pair_to_state_.NumKeyBits());
-        state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
-                                    state_pair_to_state_.NumKeyBits(),
-                                    num_value_bits);
-
-      }
-      int32_t num_key_bits = state_pair_to_state_.NumKeyBits(),
-          num_value_bits = state_pair_to_state_.NumValueBits();
-      if (num_key_bits == 32 && num_value_bits == 32) {
-        if (!ForwardSortedAOneIter<Hash::Accessor<32> >(t))
-          break;
-      } else if (num_key_bits + num_value_bits == 64) {
-        if (!ForwardSortedAOneIter<Hash::GenericAccessor>(t))
-          break;
-      } else {
-        if (!ForwardSortedAOneIter<Hash::PackedAccessor>(t))
-          break;
-      }
-    }
-  }
-  // Returns true if there are more state-pairs to process.
-  template <typename HashAccessorT>
-  bool ForwardSortedAOneIter(int32_t t) {
       K2_CHECK_EQ(t + 2, int32_t(iter_to_state_row_splits_cpu_.size()));
-
       int32_t state_begin = iter_to_state_row_splits_cpu_[t],
           state_end = iter_to_state_row_splits_cpu_[t + 1],
           num_states = state_end - state_begin;
-
       if (num_states == 0) {
         // It saves a little processing later to remove the last, empty,
         // iteration-index.
         iter_to_state_row_splits_cpu_.pop_back();
-        return false;  // Nothing left to process.
+        break;
       }
-
       // We need to process output-states numbered state_begin..state_end-1.
       // num_arcs_b will contain the number of arcs leaving the state in b_fsas_,
       // i.e. the state with index StateInfo::b_fsas_state_idx01.
@@ -789,12 +801,7 @@ class DeviceIntersector {
       const Arc *a_arcs_data = a_fsas_.values.Data(),
           *b_arcs_data = b_fsas_.values.Data();
       int32_t key_bits = state_pair_to_state_.NumKeyBits(),
-          a_states_multiple = a_states_multiple_,
           value_bits = state_pair_to_state_.NumValueBits();
-      // `value_max` is the limit for how large values in the hash can be.
-      uint64_t value_max = ((uint64_t)1) << value_bits;
-      HashAccessorT state_pair_to_state_acc =
-          state_pair_to_state_.GetAccessor<HashAccessorT>();
       namespace cg = cooperative_groups;
 
       if (c_->GetDeviceType() == kCuda) {
@@ -1012,9 +1019,57 @@ class DeviceIntersector {
 
       ExclusiveSum(num_matching_a_arcs, &num_matching_a_arcs);
       int32_t tot_matched_arcs = num_matching_a_arcs.Back();
+
+      {
+        int32_t max_possible_states = states_.Dim() + tot_matched_arcs;
+        PossiblyResizeHash(2 * max_possible_states,
+                           max_possible_states);
+      }
+
+
+      int32_t num_key_bits = state_pair_to_state_.NumKeyBits(),
+          num_value_bits = state_pair_to_state_.NumValueBits();
+      if (num_key_bits == 32 && num_value_bits == 32) {
+        ForwardSortedAOneIter<Hash::Accessor<32> >(
+            t, num_arcs_b, b_arc_to_state,
+            num_matching_a_arcs, first_matching_a_arc_idx012,
+            tot_matched_arcs);
+      } else if (num_key_bits + num_value_bits == 64) {
+        ForwardSortedAOneIter<Hash::GenericAccessor>(
+            t, num_arcs_b, b_arc_to_state,
+            num_matching_a_arcs, first_matching_a_arc_idx012,
+            tot_matched_arcs);
+      } else {
+        ForwardSortedAOneIter<Hash::PackedAccessor>(
+            t, num_arcs_b, b_arc_to_state,
+            num_matching_a_arcs, first_matching_a_arc_idx012,
+            tot_matched_arcs);
+      }
+    }
+  }
+
+  template <typename HashAccessorT>
+  void ForwardSortedAOneIter(
+      int32_t t,
+      const Array1<int32_t> &num_arcs_b_row_splits,
+      const Array1<int32_t> &b_arc_to_state,
+      const Array1<int32_t> &matching_a_arcs_row_splits,
+      const Array1<int32_t> &first_matching_a_arc_idx012,
+      int32_t tot_matched_arcs) {
+
+      HashAccessorT state_pair_to_state_acc =
+          state_pair_to_state_.GetAccessor<HashAccessorT>();
+      const Arc *a_arcs_data = a_fsas_.values.Data(),
+          *b_arcs_data = b_fsas_.values.Data();
+      int32_t state_begin = iter_to_state_row_splits_cpu_[t],
+          state_end = iter_to_state_row_splits_cpu_[t + 1],
+          a_states_multiple = a_states_multiple_;
+
       Array1<int32_t> matched_arc_to_b_arc(c_, tot_matched_arcs);
-      RowSplitsToRowIds(num_matching_a_arcs, &matched_arc_to_b_arc);
-      int32_t *matched_arc_to_b_arc_data = matched_arc_to_b_arc.Data();
+      RowSplitsToRowIds(matching_a_arcs_row_splits, &matched_arc_to_b_arc);
+      const int32_t *matched_arc_to_b_arc_data = matched_arc_to_b_arc.Data(),
+          *b_arc_to_state_data = b_arc_to_state.Data(),
+          *num_arcs_b_row_splits_data = num_arcs_b_row_splits.Data();
 
       Renumbering new_state_renumbering(c_, tot_matched_arcs);
       // We'll write '1' where the arc-pair leads to a new state (exactly one
@@ -1043,18 +1098,25 @@ class DeviceIntersector {
       // dest-state, in a, of the arc.
       Array1<int32_t> a_dest_state_idx01_temp(c_, tot_matched_arcs);
       int32_t *a_dest_state_idx01_temp_data = a_dest_state_idx01_temp.Data();
+      const int32_t
+          *matching_a_arcs_row_splits_data = matching_a_arcs_row_splits.Data(),
+          *first_matching_a_arc_idx012_data = first_matching_a_arc_idx012.Data(),
+          *a_fsas_row_splits2_data = a_fsas_.RowSplits(2).Data(),
+          *b_fsas_row_splits2_data = b_fsas_.RowSplits(2).Data();
 
+
+      StateInfo *states_data = states_.Data();
       K2_EVAL(c_, tot_matched_arcs, lambda_set_arcs_and_new_state, (int32_t idx012) -> void {
           // `idx012` is into an ragged tensor that we haven't physically
           // constructed, containing the new arcs we are adding on this frame;
           // its shape's 1st layer is formed by (num_arcs_b, b_arc_to_state),
-          // and its 2nd layer is formed by (num_matching_a_arcs,
+          // and its 2nd layer is formed by (matching_a_arcs_row_splits,
           // matched_arc_to_b_arc).
           int32_t b_arc_idx01 = matched_arc_to_b_arc_data[idx012],
-              matched_arc_idx01x = num_matching_a_arcs_data[b_arc_idx01],
+              matched_arc_idx01x = matching_a_arcs_row_splits_data[b_arc_idx01],
               matched_arc_idx2 = idx012 - matched_arc_idx01x,
               state_idx0 = b_arc_to_state_data[b_arc_idx01],
-              b_arc_idx0x = num_arcs_b_data[state_idx0],
+              b_arc_idx0x = num_arcs_b_row_splits_data[state_idx0],
               b_arc_idx1 = b_arc_idx01 - b_arc_idx0x;
 
           int32_t state_idx = state_begin + state_idx0; // into states_
@@ -1107,7 +1169,6 @@ class DeviceIntersector {
           new_state_renumbering_keep_data[idx012] = new_dest_state;
         });
 
-
       int32_t num_new_states = new_state_renumbering.New2Old().Dim();
 
       const int32_t *new_state_renumbering_new2old_data =
@@ -1115,15 +1176,11 @@ class DeviceIntersector {
       K2_DCHECK_EQ(states_.Dim(), state_end);
       int32_t next_state_end = state_end + num_new_states;
       iter_to_state_row_splits_cpu_.push_back(next_state_end);
-      states_.Resize(next_state_end);  // Note: this Resize() won't actually reallocate each time.
-
-      if (value_max <= (uint64_t)next_state_end) {
-        K2_LOG(FATAL) << "Problem size is too large for this code: a_states_multiple="
-                      << a_states_multiple_ << ", key_bits=" << key_bits
-                      << ", value_bits=" << value_bits
-                      << ", value_max=" << value_max
-                      << ", next_state_end=" << next_state_end;
-      }
+      states_.Resize(next_state_end);  // Note: this Resize() won't actually
+                                       // reallocate each time.
+      K2_CHECK_EQ(uint64_t(next_state_end) >>
+                  state_pair_to_state_.NumValueBits(), 0);
+      int32_t num_kept_key_bits = 64 - state_pair_to_state_.NumValueBits();
 
       states_data = states_.Data();  // In case it changed (unlikely)
       const int32_t *b_fsas_row_ids1_data = b_fsas_.RowIds(1).Data(),
@@ -1141,7 +1198,7 @@ class DeviceIntersector {
           // the hash.  If in future we change details of the hash
           // implementation and it fails, it can be removed.
           // We're checking that we inserted `hash_value = 0` above.
-          K2_DCHECK_EQ(*hash_key_value_location >> key_bits, 0);
+          K2_DCHECK_EQ(*hash_key_value_location >> num_kept_key_bits, 0);
           uint64_t key = state_pair_to_state_acc.SetValue(hash_key_value_location,
                                                           new_state_idx);
           uint32_t b_state_idx01 = key % a_states_multiple,
@@ -1151,7 +1208,6 @@ class DeviceIntersector {
           StateInfo info { (int32_t)a_state_idx01, (int32_t)b_state_idx01 };
           states_data[new_state_idx] = info;
         });
-      return true;
   }
 
 
