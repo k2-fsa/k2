@@ -1048,6 +1048,31 @@ class DeviceIntersector {
     }
   }
 
+  /*
+    This is some code that was broken out of ForwardSortedA() because it needed
+    to be templated on the hash accessor type.  Does the last part of a single
+    iteration of the algorithm.
+
+      @param [in] t    The iteration index >= 0, representing the batch of
+                       states that we are processing arcs leaving from.
+      @param [in] num_arcs_b_row_splits   An array of shape equal to
+                       1 + num_states, where num_states is the number of
+                       states we're processing on this iteration (see the
+                       variable in the code), with is the exclusive-sum
+                       of the number of arcs leaving the states in b
+                       (from "b" members of the state-pair we're processing)
+      @param [in] b_arc_to_state   The result of turning `num_arcs_b_row_splits`
+                       into a row-ids array.  Each element corresponds to an arc
+                       in b_fsas_ that we are processing.
+      @param [in] matching_a_arcs_row_splits   An array of size b_arc_to_state.Dim() + 1,
+                       which is the exclusive sum of the number of matching arcs
+                       in a_fsas_ for a particular arc in b_fsas_ that we are
+                       processing.
+      @param [in] first_matching_a_arc_idx012  An array of size b_arc_to-state.Dim(),
+                       giving the index of the first matching arc in a_fsas_ that
+                       matches the corresponding arc in b_fsas_.
+      @param [in] tot_matched_arcs  Must equal matching_a_arcs_row_splits.Back()
+   */
   template <typename HashAccessorT>
   void ForwardSortedAOneIter(
       int32_t t,
