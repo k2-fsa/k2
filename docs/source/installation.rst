@@ -165,6 +165,9 @@ After setting up the environment, we are ready to build k2::
   mkdir build
   cd build
   cmake -DCMAKE_BUILD_TYPE=Release ..
+  # If you installed cudatoolkit using conda install -y -c nvidia cudatoolkit=X cudnn=Y,
+  # source the conda environemt and change the cmake command to:
+  # cmake -DCUDNN_LIBRARY_PATH=$(find $CONDA_PREFIX -name libcudnn.so) -DCUDNN_INCLUDE_PATH=$CONDA_PREFIX/include/ -DCMAKE_BUILD_TYPE=Release ..
   make _k2
   cd ..
   pip3 install wheel twine
