@@ -976,4 +976,66 @@ TEST(FsaAlgo, TestInvertRandom) {
     }
   }
 }
+
+TEST(FsaAlgo, TestRemoveEplsionSelfLoopsSimple) {
+  std::string s = R"(
+    0 1 0 0.1
+    0 2 0 0.2
+    0 0 0 0.3
+    1 2 0 0.4
+    1 1 0 0.5
+    2 3 -1 0.6
+    3
+
+  )";
+  for (auto &context : {GetCudaContext(), GetCpuContext()}) {
+    Fsa src = FsaFromString(s).To(context);
+
+    int32_t prop = GetFsaBasicProperties(src);
+    EXPECT_NE(prop & kFsaPropertiesTopSortedAndAcyclic,
+              kFsaPropertiesTopSortedAndAcyclic);
+
+    Array1<int32_t> arc_map;
+    Fsa dst = RemoveEpsilonSelfLoops(src, &arc_map);
+
+    prop = GetFsaBasicProperties(dst);
+    EXPECT_EQ(prop & kFsaPropertiesTopSortedAndAcyclic,
+              kFsaPropertiesTopSortedAndAcyclic);
+    CheckArrayData(arc_map, std::vector<int32_t>{0, 1, 3, 5});
+  }
+}
+
+TEST(FsaAlgo, TestRemoveEplsionSelfRandomFsas) {
+  int32_t min_num_fsas = 1;
+  int32_t max_num_fsas = 100;
+  bool acyclic = true;
+  int32_t max_symbol = 100;
+  int32_t min_num_arcs = max_num_fsas * 2;
+  int32_t max_num_arcs = 10000;
+  for (auto &context : {GetCpuContext(), GetCudaContext()}) {
+    for (int32_t i = 0; i != 10; ++i) {
+      FsaVec src = RandomFsaVec(min_num_fsas, max_num_fsas, acyclic, max_symbol,
+                                min_num_arcs, max_num_arcs);
+      Array1<int32_t> props;
+      int32_t tot_properties;
+
+      TopSort(src, &src);
+
+      src = src.To(context);
+      AddEpsilonSelfLoops(src, &src);
+
+      GetFsaVecBasicProperties(src, &props, &tot_properties);
+
+      EXPECT_NE(tot_properties & kFsaPropertiesTopSortedAndAcyclic,
+                kFsaPropertiesTopSortedAndAcyclic);
+
+      FsaVec dst = RemoveEpsilonSelfLoops(src);
+      GetFsaVecBasicProperties(dst, &props, &tot_properties);
+
+      EXPECT_EQ(tot_properties & kFsaPropertiesTopSortedAndAcyclic,
+                kFsaPropertiesTopSortedAndAcyclic);
+    }
+  }
+}
+
 }  // namespace k2

@@ -188,10 +188,11 @@ def get_layer(src: _k2.RaggedShape, layer: int) -> _k2.RaggedShape:
     return _k2.get_layer(src, layer)
 
 
-def unique_sequences(src: _k2.RaggedInt,
-                     need_num_repeats: bool = True,
-                     need_new2old_indexes: bool = False
-                    ) -> Tuple[_k2.RaggedInt, Optional[_k2.RaggedInt]]:  # noqa
+def unique_sequences(
+        src: _k2.RaggedInt,
+        need_num_repeats: bool = True,
+        need_new2old_indexes: bool = False) -> \
+                Tuple[_k2.RaggedInt, Optional[_k2.RaggedInt], Optional[torch.Tensor]]:  # noqa
     '''Remove repeated sequences.
 
     If `src` has two axes, this will return the unique sub-lists (in a possibly
@@ -289,7 +290,7 @@ def argmax_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
 
 def max_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
                     initial_value: float = torch.finfo(torch.float32).min
-                    ) -> torch.Tensor:  # noqa
+                   ) -> torch.Tensor:  # noqa
     '''Compute the max per sublist for a ragged tensor (including
        `initial_value` in the maximum)
 
