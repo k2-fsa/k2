@@ -713,7 +713,7 @@ class DeviceIntersector {
                 num_value_bits_needed, 64 - state_pair_to_state_.NumKeyBits());
         state_pair_to_state_.Resize(state_pair_to_state_.NumBuckets() * 2,
                                     state_pair_to_state_.NumKeyBits(),
-                                    num_value_bits_needed);
+                                    num_value_bits);
 
       }
       int32_t num_key_bits = state_pair_to_state_.NumKeyBits(),
