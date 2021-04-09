@@ -115,9 +115,31 @@ endif()
 unset(CMAKE_CUDA_STANDARD CACHE)
 set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
+include(cmake/select_compute_arch.cmake)
+cuda_select_nvcc_arch_flags(K2_COMPUTE_ARCH_FLAGS)
+message(STATUS "K2_COMPUTE_ARCH_FLAGS: ${K2_COMPUTE_ARCH_FLAGS}")
+
 # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
 message(WARNING "arch 62/72 are not supported for now")
-set(K2_COMPUTE_ARCHS 35 50 60 61 70 75)
+
+set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
+set(K2_COMPUTE_ARCHS)
+
+foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
+  if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
+    message(STATUS "Adding arch ${COMPUTE_ARCH}")
+    list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
+  else()
+    message(STATUS "Skipping arch ${COMPUTE_ARCH}")
+  endif()
+endforeach()
+
+if(NOT K2_COMPUTE_ARCHS)
+  set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
+endif()
+
+message(STATUS "K2_COMPUTE_ARCHS: ${K2_COMPUTE_ARCHS}")
+
 foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
   set(CMAKE_CUDA_ARCHITECTURES "${COMPUTE_ARCH}-real;${COMPUTE_ARCH}-virtual;${CMAKE_CUDA_ARCHITECTURES}")
