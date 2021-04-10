@@ -9,6 +9,7 @@
 #include <cooperative_groups.h>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <sstream>
 #include <utility>
@@ -2509,5 +2510,47 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
                             int32_t num_paths,
                             const Array1<double> &tot_scores,
                             Ragged<int32_t> &state_batches);
+
+template <typename FloatType>
+FsaVec PruneOnArcPost(FsaVec &src, const Array1<FloatType> &arc_post,
+                      FloatType threshold_prob,
+                      Array1<int32_t> *arc_map /* = nullptr */) {
+  K2_CHECK_EQ(src.NumAxes(), 3);
+  K2_CHECK_GT(threshold_prob, 0);
+  K2_CHECK_LT(threshold_prob, 1);
+  K2_CHECK_EQ(src.NumElements(), arc_post.Dim());
+
+  ContextPtr c = GetContext(src, arc_post);
+  FloatType threshold_log_prob = std::log(threshold_prob);
+
+  int32_t num_arcs = src.NumElements();
+
+  Renumbering renumber_lists(c, num_arcs);
+  char *keep_list_data = renumber_lists.Keep().Data();
+
+  const FloatType *arc_post_data = arc_post.Data();
+  K2_EVAL(
+      c, num_arcs, lambda_set_keep, (int32_t i)->void {
+        char keep;
+        if (arc_post_data[i] < threshold_log_prob) {
+          // The posterior of this arc is below the threshold,
+          // so remove it.
+          keep = 0;
+        } else {
+          keep = 1;
+        }
+        keep_list_data[i] = keep;
+      });
+  FsaVec ans = Index(src, 2, renumber_lists.New2Old(), arc_map);
+  return ans;
+}
+
+template FsaVec PruneOnArcPost(FsaVec &src, const Array1<float> &arc_post,
+                               float threshold_prob,
+                               Array1<int32_t> *arc_map /* = nullptr */);
+
+template FsaVec PruneOnArcPost(FsaVec &src, const Array1<double> &arc_post,
+                               double threshold_prob,
+                               Array1<int32_t> *arc_map /* = nullptr */);
 
 }  // namespace k2

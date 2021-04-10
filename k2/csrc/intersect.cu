@@ -366,7 +366,7 @@ class DeviceIntersector {
               a_dest_state_idx1 = a_arc.dest_state;
           uint64_t hash_key = (((uint64_t)a_dest_state_idx1) * a_states_multiple) +
               b_dest_state_idx01;
-          uint64_t value;
+          uint64_t value = 0;
           bool ans = state_pair_to_state_acc.Find(hash_key, &value);
           K2_CHECK_EQ(ans, true);
           int32_t old_dest_state_idx01 = static_cast<uint32_t>(value);

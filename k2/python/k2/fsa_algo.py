@@ -781,3 +781,36 @@ def random_paths(fsas: Fsa, use_double_scores: bool,
                tot_scores=tot_scores,
                state_batches=state_batches)
     return ans
+
+
+def prune_on_arc_post(fsas: Fsa, threshold_prob: float,
+                      use_double_scores: bool) -> Fsa:
+    '''Remove arcs whose posteriors are less than the given threshold.
+
+    Args:
+      fsas:
+        An FsaVec. Must have 3 axes.
+      threshold_prob:
+        Arcs whose posteriors are less than this value are removed.
+        Note:
+          0 < threshold_prob < 1
+      use_double_scores:
+        True to use double precision during computation; False to use
+        single precision.
+    Returns:
+      Return a pruned FsaVec.
+    '''
+    arc_post = fsas.get_arc_post(use_double_scores=use_double_scores,
+                                 log_semiring=True)
+    need_arc_map = True
+    if use_double_scores:
+        func = _k2.prune_on_arc_post_double
+    else:
+        func = _k2.prune_on_arc_post_float
+
+    ragged_arc, arc_map = func(fsas.arcs, arc_post, threshold_prob,
+                               need_arc_map)
+
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc,
+                                                      arc_map)
+    return out_fsa
