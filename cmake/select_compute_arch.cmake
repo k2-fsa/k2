@@ -22,7 +22,7 @@
 #      More info on CUDA architectures: https://en.wikipedia.org/wiki/CUDA
 #
 
-if(CMAKE_CUDA_COMPILER_LOADED) # CUDA as a language
+if(CMAKE_CUDA_COMPILER_LOADED OR DEFINED CMAKE_CUDA_COMPILER_ID) # CUDA as a language
   if(CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA"
       AND CMAKE_CUDA_COMPILER_VERSION MATCHES "^([0-9]+\\.[0-9]+)")
     set(CUDA_VERSION "${CMAKE_MATCH_1}")
@@ -114,7 +114,7 @@ endif()
 #
 function(CUDA_DETECT_INSTALLED_GPUS OUT_VARIABLE)
   if(NOT CUDA_GPU_DETECT_OUTPUT)
-    if(CMAKE_CUDA_COMPILER_LOADED) # CUDA as a language
+    if(CMAKE_CUDA_COMPILER_LOADED OR DEFINED CMAKE_CUDA_COMPILER_ID) # CUDA as a language
       set(file "${PROJECT_BINARY_DIR}/detect_cuda_compute_capabilities.cu")
     else()
       set(file "${PROJECT_BINARY_DIR}/detect_cuda_compute_capabilities.cpp")
@@ -137,7 +137,7 @@ function(CUDA_DETECT_INSTALLED_GPUS OUT_VARIABLE)
       "  return 0;\n"
       "}\n")
 
-    if(CMAKE_CUDA_COMPILER_LOADED) # CUDA as a language
+    if(CMAKE_CUDA_COMPILER_LOADED OR DEFINED CMAKE_CUDA_COMPILER_ID) # CUDA as a language
       try_run(run_result compile_result ${PROJECT_BINARY_DIR} ${file}
               RUN_OUTPUT_VARIABLE compute_capabilities)
     else()

@@ -519,7 +519,7 @@ template <typename T>
 static void PybindRandomPaths(py::module &m, const char *name) {
   m.def(
       name,
-      [](FsaVec fsas, torch::Tensor arc_cdf, int32_t num_paths,
+      [](FsaVec &fsas, torch::Tensor arc_cdf, int32_t num_paths,
          torch::Tensor tot_scores,
          Ragged<int32_t> &state_batches) -> Ragged<int32_t> {
         Array1<T> arc_cdf_array = FromTensor<T>(arc_cdf);
@@ -531,6 +531,25 @@ static void PybindRandomPaths(py::module &m, const char *name) {
       },
       py::arg("fsas"), py::arg("arc_cdf"), py::arg("num_paths"),
       py::arg("tot_scores"), py::arg("state_batches"));
+}
+
+template <typename T>
+static void PybindPruneOnArcPost(py::module &m, const char *name) {
+  m.def(
+      name,
+      [](FsaVec &fsas, torch::Tensor arc_post, T threshold_prob,
+         bool need_arc_map =
+             true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        Array1<T> arc_post_array = FromTensor<T>(arc_post);
+        Array1<int32_t> arc_map;
+        FsaVec ans = PruneOnArcPost(fsas, arc_post_array, threshold_prob,
+                                    need_arc_map ? &arc_map : nullptr);
+        torch::optional<torch::Tensor> arc_map_tensor;
+        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        return std::make_pair(ans, arc_map_tensor);
+      },
+      py::arg("fsas"), py::arg("arc_post"), py::arg("threshold_prob"),
+      py::arg("need_arc_map") = true);
 }
 
 }  // namespace k2
@@ -572,4 +591,6 @@ void PybindFsa(py::module &m) {
 
   k2::PybindRandomPaths<float>(m, "random_paths_float");
   k2::PybindRandomPaths<double>(m, "random_paths_double");
+  k2::PybindPruneOnArcPost<float>(m, "prune_on_arc_post_float");
+  k2::PybindPruneOnArcPost<double>(m, "prune_on_arc_post_double");
 }
