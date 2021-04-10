@@ -2528,7 +2528,6 @@ FsaVec PruneOnArcPost(FsaVec &src, const Array1<FloatType> &arc_post,
   Renumbering renumber_lists(c, num_arcs);
   char *keep_list_data = renumber_lists.Keep().Data();
 
-  const Arc *arcs_data = src.values.Data();
   const FloatType *arc_post_data = arc_post.Data();
   K2_EVAL(
       c, num_arcs, lambda_set_keep, (int32_t i)->void {
