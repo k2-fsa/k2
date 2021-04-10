@@ -27,6 +27,7 @@ from .fsa_algo import intersect_device
 from .fsa_algo import invert
 from .fsa_algo import linear_fsa
 from .fsa_algo import linear_fst
+from .fsa_algo import prune_on_arc_post
 from .fsa_algo import random_paths
 from .fsa_algo import remove_epsilon
 from .fsa_algo import remove_epsilon_and_add_self_loops

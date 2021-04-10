@@ -811,5 +811,6 @@ def prune_on_arc_post(fsas: Fsa, threshold_prob: float,
     ragged_arc, arc_map = func(fsas.arcs, arc_post, threshold_prob,
                                need_arc_map)
 
-    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc,
+                                                      arc_map)
     return out_fsa
