@@ -406,7 +406,7 @@ class Hash {
       Note: the const is with respect to the metadata only; it is required, to
       avoid compilation errors.
      */
-    __forceinline__ __host__ __device__ int32_t SetValue(
+    __forceinline__ __host__ __device__ uint64_t SetValue(
         uint64_t *key_value_location, uint64_t value) const {
       uint64_t old_pair = *key_value_location;
       K2_CHECK_NE(~old_pair, 0);  // Check it was not an empty location.

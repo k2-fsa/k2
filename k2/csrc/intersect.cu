@@ -1340,7 +1340,7 @@ FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a,
   K2_CHECK_NE(properties_b & kFsaPropertiesValid, 0);
   if (sorted_match_a && ((properties_a & kFsaPropertiesArcSorted) == 0)) {
     K2_LOG(ERROR) << "If you provide sorted_match_a=true, a_fsas "
-        "must be arc-sorted, but (according to the the properties) "
+        "must be arc-sorted, but (according to the properties) "
         "it is not.";
   }
   K2_CHECK_EQ(a_fsas.NumAxes(), 3);
