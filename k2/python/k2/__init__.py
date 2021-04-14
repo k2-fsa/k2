@@ -35,6 +35,7 @@ from .fsa_algo import remove_epsilon_self_loops
 from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
+from .ops import append
 from .ops import index
 from .ops import index_add
 from .ops import index_and_sum

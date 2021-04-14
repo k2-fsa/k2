@@ -18,6 +18,7 @@ endfunction()
 # please sort the files in alphabetic order
 set(py_test_files
   add_epsilon_self_loops_test.py
+  append_test.py
   arc_sort_test.py
   closure_test.py
   compose_test.py

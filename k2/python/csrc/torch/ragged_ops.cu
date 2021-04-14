@@ -322,6 +322,7 @@ void PybindRaggedOps(py::module &m) {
   PybindNormalizePerSublistBackward<float>(m, "normalize_per_sublist_backward");
   PybindOpPerSublist<float>(m, SumPerSublist<float>, "sum_per_sublist");
   PybindAppend<int32_t>(m);
+  PybindAppend<Arc>(m);
   PybindCreateRagged2<int32_t>(m);
   PybindCreateRagged2<float>(m);
   PybindGetLayer(m);
