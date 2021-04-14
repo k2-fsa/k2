@@ -3,6 +3,7 @@
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
+from typing import List
 from typing import Tuple
 from typing import Union
 import torch
@@ -306,3 +307,53 @@ def index(src: Union[Fsa, torch.Tensor, _k2.RaggedInt],
     else:
         assert isinstance(src, _k2.RaggedInt)
         return index_ragged(src, indexes)
+
+
+def append(srcs: List[Fsa]) -> Fsa:
+    '''Concatenate a list of FsaVec into a single FsaVec.
+
+    CAUTION:
+      Only common tensor attributes are kept in the output FsaVec.
+      For non-tensor attributes, only one copy is kept in the output
+      FsaVec. We choose the first copy of the FsaVec that has the
+      lowest index in `srcs`.
+
+    Args:
+      srcs:
+        A list of FsaVec. Each element MUST be an FsaVec.
+    Returns:
+      Return a single FsaVec concatenated from the input FsaVecs.
+    '''
+    for src in srcs:
+        assert len(src.shape) == 3, f'Expect an FsaVec. Given: {src.shape}'
+
+    src_ragged_arcs = [fsa.arcs for fsa in srcs]
+
+    ans_ragged_arcs = _k2.append(src_ragged_arcs, axis=0)
+    out_fsa = Fsa(ans_ragged_arcs)
+
+    common_tensor_attributes = (
+        set(dict(src.named_tensor_attr()).keys()) for src in srcs)
+
+    common_tensor_attributes = set.intersection(
+        *list(common_tensor_attributes))
+
+    for name in common_tensor_attributes:
+        # We assume that the type of the attributes among
+        # FsaVecs are the same if they share the same name.
+        values = [getattr(src, name) for src in srcs]
+        if isinstance(values[0], torch.Tensor):
+            # NOTE: We assume the shape of elements in values
+            # differ only in shape[0].
+            value = torch.cat(values)
+        else:
+            assert isinstance(values[0], k2.RaggedInt)
+            value = _k2.append(values, axis=0)
+        setattr(out_fsa, name, value)
+
+    for src in srcs:
+        for name, value in src.named_non_tensor_attr():
+            if not hasattr(out_fsa, name):
+                setattr(out_fsa, name, value)
+
+    return out_fsa
