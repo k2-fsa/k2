@@ -38,7 +38,7 @@ static void PybindTopSort(py::module &m) {
         FsaVec sorted;
         TopSort(src, &sorted, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> tensor;
-        if (need_arc_map) tensor = ToTensor(arc_map);
+        if (need_arc_map) tensor = ToTorch(arc_map);
         return std::make_pair(sorted, tensor);
       },
       py::arg("src"), py::arg("need_arc_map") = true);
@@ -140,8 +140,8 @@ static void PybindIntersect(py::module &m) {
         torch::optional<torch::Tensor> a_tensor;
         torch::optional<torch::Tensor> b_tensor;
         if (need_arc_map) {
-          a_tensor = ToTensor(a_arc_map);
-          b_tensor = ToTensor(b_arc_map);
+          a_tensor = ToTorch(a_arc_map);
+          b_tensor = ToTorch(b_arc_map);
         }
         return std::make_tuple(ans, a_tensor, b_tensor);
       },
@@ -173,7 +173,7 @@ static void PybindIntersectDevice(py::module &m) {
                                   torch::optional<torch::Tensor>> {
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
-        Array1<int32_t> b_to_a_map_array = FromTensor<int32_t>(b_to_a_map);
+        Array1<int32_t> b_to_a_map_array = FromTorch<int32_t>(b_to_a_map);
 
         FsaVec ans = IntersectDevice(
             a_fsas, properties_a, b_fsas, properties_b, b_to_a_map_array,
@@ -182,8 +182,8 @@ static void PybindIntersectDevice(py::module &m) {
         torch::optional<torch::Tensor> a_tensor;
         torch::optional<torch::Tensor> b_tensor;
         if (need_arc_map) {
-          a_tensor = ToTensor(a_arc_map);
-          b_tensor = ToTensor(b_arc_map);
+          a_tensor = ToTorch(a_arc_map);
+          b_tensor = ToTorch(b_arc_map);
         }
         return std::make_tuple(ans, a_tensor, b_tensor);
       },
@@ -206,7 +206,7 @@ static void PybindIntersectDensePruned(py::module &m) {
         IntersectDensePruned(a_fsas, b_fsas, search_beam, output_beam,
                              min_active_states, max_active_states, &out,
                              &arc_map_a, &arc_map_b);
-        return std::make_tuple(out, ToTensor(arc_map_a), ToTensor(arc_map_b));
+        return std::make_tuple(out, ToTorch(arc_map_a), ToTorch(arc_map_b));
       },
       py::arg("a_fsas"), py::arg("b_fsas"), py::arg("search_beam"),
       py::arg("output_beam"), py::arg("min_active_states"),
@@ -229,13 +229,13 @@ static void PybindIntersectDense(py::module &m) {
 
         Array1<int32_t> a_to_b_map_array;
         if (a_to_b_map.has_value()) {
-          a_to_b_map_array = FromTensor<int32_t>(a_to_b_map.value());
+          a_to_b_map_array = FromTorch<int32_t>(a_to_b_map.value());
         } else {
           a_to_b_map_array = Arange(a_fsa_vec.Context(), 0, a_fsa_vec.Dim0());
         }
         IntersectDense(a_fsa_vec, b_fsas, &a_to_b_map_array, output_beam, &out,
                        &arc_map_a, &arc_map_b);
-        return std::make_tuple(out, ToTensor(arc_map_a), ToTensor(arc_map_b));
+        return std::make_tuple(out, ToTorch(arc_map_a), ToTorch(arc_map_b));
       },
       py::arg("a_fsas"), py::arg("b_fsas"), py::arg("a_to_b_map"),
       py::arg("output_beam"));
@@ -251,7 +251,7 @@ static void PybindConnect(py::module &m) {
         Connect(src, &out, need_arc_map ? &arc_map : nullptr);
 
         torch::optional<torch::Tensor> tensor;
-        if (need_arc_map) tensor = ToTensor(arc_map);
+        if (need_arc_map) tensor = ToTorch(arc_map);
         return std::make_pair(out, tensor);
       },
       py::arg("src"), py::arg("need_arc_map") = true);
@@ -266,7 +266,7 @@ static void PybindArcSort(py::module &m) {
         FsaOrVec out;
         ArcSort(src, &out, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> tensor;
-        if (need_arc_map) tensor = ToTensor(arc_map);
+        if (need_arc_map) tensor = ToTorch(arc_map);
         return std::make_pair(out, tensor);
       },
       py::arg("src"), py::arg("need_arc_map") = true);
@@ -283,7 +283,7 @@ static void PybindShortestPath(py::module &m) {
       [](FsaVec &fsas,
          torch::Tensor entering_arcs) -> std::pair<Fsa, Ragged<int32_t>> {
         Array1<int32_t> entering_arcs_array =
-            FromTensor<int32_t>(entering_arcs);
+            FromTorch<int32_t>(entering_arcs);
 
         Ragged<int32_t> best_path_arc_indexes =
             ShortestPath(fsas, entering_arcs_array);
@@ -309,7 +309,7 @@ static void PybindAddEpsilonSelfLoops(py::module &m) {
         FsaOrVec out;
         AddEpsilonSelfLoops(src, &out, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> arc_map_tensor;
-        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_pair(out, arc_map_tensor);
       },
       py::arg("src"), py::arg("need_arc_map") = true);
@@ -324,7 +324,7 @@ static void PybindUnion(py::module &m) {
         Fsa out = Union(fsas, need_arc_map ? &arc_map : nullptr);
 
         torch::optional<torch::Tensor> arc_map_tensor;
-        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_pair(out, arc_map_tensor);
       },
       py::arg("fsas"), py::arg("need_arc_map") = true);
@@ -391,7 +391,7 @@ static void PybindClosure(py::module &m) {
         Array1<int32_t> arc_map;
         Fsa out = Closure(src, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> arc_map_tensor;
-        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_pair(out, arc_map_tensor);
       },
       py::arg("src"), py::arg("need_arc_map") = true);
@@ -410,7 +410,7 @@ static void PybindInvert(py::module &m) {
         Invert(src, src_aux_labels, &dest, &dest_aux_labels,
                need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> arc_map_tensor;
-        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_tuple(dest, dest_aux_labels, arc_map_tensor);
       },
       py::arg("src"), py::arg("src_aux_labels"), py::arg("need_arc_map"));
@@ -426,7 +426,7 @@ static void PybindRemoveEpsilonSelfLoops(py::module &m) {
             RemoveEpsilonSelfLoops(src, need_arc_map ? &arc_map : nullptr);
 
         torch::optional<torch::Tensor> arc_map_tensor;
-        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_pair(ans, arc_map_tensor);
       },
       py::arg("src"), py::arg("need_arc_map") = true);
