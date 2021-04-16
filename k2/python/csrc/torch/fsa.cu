@@ -50,7 +50,7 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "fsa_from_tensor",
       [](torch::Tensor tensor) -> FsaOrVec {
-        auto k2_tensor = FromTensor(tensor, TensorTag{});
+        auto k2_tensor = FromTorch(tensor, TensorTag{});
         bool error = true;
         Fsa fsa;
         if (tensor.dim() == 2)
@@ -72,10 +72,10 @@ static void PybindFsaUtil(py::module &m) {
       [](const FsaOrVec &fsa) -> torch::Tensor {
         if (fsa.NumAxes() == 2) {
           Tensor tensor = FsaToTensor(fsa);
-          return ToTensor(tensor);
+          return ToTorch(tensor);
         } else if (fsa.NumAxes() == 3) {
           Tensor tensor = FsaVecToTensor(fsa);
-          return ToTensor(tensor);
+          return ToTorch(tensor);
         } else {
           K2_LOG(FATAL) << "Unsupported num_axes: " << fsa.NumAxes();
           return {};
@@ -90,7 +90,7 @@ static void PybindFsaUtil(py::module &m) {
              torch::nullopt) -> std::string {
         Array1<int32_t> array;
         if (aux_labels.has_value())
-          array = FromTensor<int32_t>(aux_labels.value());
+          array = FromTorch<int32_t>(aux_labels.value());
         return FsaToString(fsa, openfst, aux_labels ? &array : nullptr);
       },
       py::arg("fsa"), py::arg("openfst") = false,
@@ -104,7 +104,7 @@ static void PybindFsaUtil(py::module &m) {
         Fsa fsa = FsaFromString(s, openfst, num_aux_labels,
                                 &aux_labels);
         torch::optional<torch::Tensor> tensor;
-        if (num_aux_labels != 0) tensor = ToTensor(aux_labels);
+        if (num_aux_labels != 0) tensor = ToTorch(aux_labels);
         return std::make_pair(fsa, tensor);
       },
       py::arg("s"), py::arg("num_aux_labels") = 0, py::arg("openfst") = false,
@@ -132,14 +132,14 @@ static void PybindFsaUtil(py::module &m) {
       "get_dest_states",
       [](FsaVec &fsas, bool as_idx01) -> torch::Tensor {
         Array1<int32_t> ans = GetDestStates(fsas, as_idx01);
-        return ToTensor(ans);
+        return ToTorch(ans);
       },
       py::arg("fsas"), py::arg("as_idx01"));
 
   m.def(
       "get_incoming_arcs",
       [](FsaVec &fsas, torch::Tensor dest_states) -> Ragged<int32_t> {
-        Array1<int32_t> dest_states_array = FromTensor<int32_t>(dest_states);
+        Array1<int32_t> dest_states_array = FromTorch<int32_t>(dest_states);
         return GetIncomingArcs(fsas, dest_states_array);
       },
       py::arg("fsas"), py::arg("dest_states"));
@@ -194,9 +194,9 @@ static void PybindGetForwardScores(py::module &m, const char *name) {
             log_semiring ? nullptr : &entering_arcs);
 
         torch::optional<torch::Tensor> entering_arcs_tensor;
-        if (!log_semiring) entering_arcs_tensor = ToTensor(entering_arcs);
+        if (!log_semiring) entering_arcs_tensor = ToTorch(entering_arcs);
 
-        return std::make_pair(ToTensor(scores), entering_arcs_tensor);
+        return std::make_pair(ToTorch(scores), entering_arcs_tensor);
       },
       py::arg("fsas"), py::arg("state_batches"),
       py::arg("entering_arc_batches"), py::arg("log_semiring"));
@@ -212,23 +212,23 @@ static void PybindBackpropGetForwardScores(py::module &m, const char *name) {
          torch::optional<torch::Tensor> entering_arcs,
          torch::Tensor forward_scores,
          torch::Tensor forward_scores_deriv) -> torch::Tensor {
-        Array1<T> forward_scores_array = FromTensor<T>(forward_scores);
+        Array1<T> forward_scores_array = FromTorch<T>(forward_scores);
         Array1<T> forward_scores_deriv_array =
-            FromTensor<T>(forward_scores_deriv);
+            FromTorch<T>(forward_scores_deriv);
         Array1<int32_t> entering_arcs_array;
         const Array1<int32_t> *p_entering_arcs = nullptr;
 
         if (!log_semiring) {
           K2_CHECK(entering_arcs.has_value())
               << "You have to provide entering_arcs for tropical semiring";
-          entering_arcs_array = FromTensor<int32_t>(*entering_arcs);
+          entering_arcs_array = FromTorch<int32_t>(*entering_arcs);
           p_entering_arcs = &entering_arcs_array;
         }
         Array1<T> ans = BackpropGetForwardScores<T>(
             fsas, state_batches, leaving_arc_batches, log_semiring,
             p_entering_arcs, forward_scores_array, forward_scores_deriv_array);
 
-        return ToTensor(ans);
+        return ToTorch(ans);
       },
       py::arg("fsas"), py::arg("state_batches"), py::arg("leaving_arc_batches"),
       py::arg("log_semiring"), py::arg("entering_arcs"),
@@ -245,7 +245,7 @@ static void PybindGetBackwardScores(py::module &m, const char *name) {
         Array1<T> ans = GetBackwardScores<T>(fsas, state_batches,
                                              leaving_arc_batches, log_semiring);
 
-        return ToTensor(ans);
+        return ToTorch(ans);
       },
       py::arg("fsas"), py::arg("state_batches"), py::arg("leaving_arc_batches"),
       py::arg("log_semiring") = true);
@@ -259,15 +259,15 @@ static void PybindBackpropGetBackwardScores(py::module &m, const char *name) {
          Ragged<int32_t> &entering_arc_batches, bool log_semiring,
          torch::Tensor backward_scores,
          torch::Tensor backward_scores_deriv) -> torch::Tensor {
-        Array1<T> backward_scores_array = FromTensor<T>(backward_scores);
+        Array1<T> backward_scores_array = FromTorch<T>(backward_scores);
         Array1<T> backward_scores_deriv_array =
-            FromTensor<T>(backward_scores_deriv);
+            FromTorch<T>(backward_scores_deriv);
 
         Array1<T> ans = BackpropGetBackwardScores<T>(
             fsas, state_batches, entering_arc_batches, log_semiring,
             backward_scores_array, backward_scores_deriv_array);
 
-        return ToTensor(ans);
+        return ToTorch(ans);
       },
       py::arg("fsas"), py::arg("state_batches"),
       py::arg("entering_arc_batches"), py::arg("log_semiring"),
@@ -279,9 +279,9 @@ static void PybindGetTotScores(py::module &m, const char *name) {
   m.def(
       name,
       [](FsaVec &fsas, torch::Tensor forward_scores) -> torch::Tensor {
-        Array1<T> forward_scores_array = FromTensor<T>(forward_scores);
+        Array1<T> forward_scores_array = FromTorch<T>(forward_scores);
         Array1<T> tot_scores = GetTotScores(fsas, forward_scores_array);
-        return ToTensor(tot_scores);
+        return ToTorch(tot_scores);
       },
       py::arg("fsas"), py::arg("forward_scores"));
 }
@@ -299,10 +299,10 @@ static void PybindDenseFsaVec(py::module &m) {
         // https://github.com/k2-fsa/k2/commit/60b8e97b1838033b45b83cc88a58ec91912ce91e#r43174753
         // is resolved.
         K2_CHECK(scores.is_contiguous());
-        Array1<int32_t> row_splits_array = FromTensor<int32_t>(row_splits);
+        Array1<int32_t> row_splits_array = FromTorch<int32_t>(row_splits);
 
         RaggedShape shape = RaggedShape2(&row_splits_array, nullptr, -1);
-        Array2<float> scores_array = FromTensor<float>(scores, Array2Tag{});
+        Array2<float> scores_array = FromTorch<float>(scores, Array2Tag{});
 
         return std::make_unique<DenseFsaVec>(shape, scores_array);
       }),
@@ -351,11 +351,11 @@ static void PybindGetArcPost(py::module &m, const char *name) {
       name,
       [](FsaVec &fsas, torch::Tensor forward_scores,
          torch::Tensor backward_scores) -> torch::Tensor {
-        Array1<T> forward_scores_array = FromTensor<T>(forward_scores);
-        Array1<T> backward_scores_array = FromTensor<T>(backward_scores);
+        Array1<T> forward_scores_array = FromTorch<T>(forward_scores);
+        Array1<T> backward_scores_array = FromTorch<T>(backward_scores);
         Array1<T> arc_post =
             GetArcPost<T>(fsas, forward_scores_array, backward_scores_array);
-        return ToTensor(arc_post);
+        return ToTorch(arc_post);
       },
       py::arg("fsas"), py::arg("forward_scores"), py::arg("backward_scores"));
 }
@@ -370,14 +370,14 @@ static void PybindBackpropGetArcPost(py::module &m, const char *name) {
       [](FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
          torch::Tensor arc_post_deriv)
           -> std::pair<torch::Tensor, torch::Tensor> {
-        Array1<T> arc_post_deriv_array = FromTensor<T>(arc_post_deriv);
+        Array1<T> arc_post_deriv_array = FromTorch<T>(arc_post_deriv);
         Array1<T> forward_scores_deriv;
         Array1<T> backward_scores_deriv;
 
         BackpropGetArcPost<T>(fsas, incoming_arcs, arc_post_deriv_array,
                               &forward_scores_deriv, &backward_scores_deriv);
-        return std::make_pair(ToTensor(forward_scores_deriv),
-                              ToTensor(backward_scores_deriv));
+        return std::make_pair(ToTorch(forward_scores_deriv),
+                              ToTorch(backward_scores_deriv));
       },
       py::arg("fsas"), py::arg("incoming_arcs"), py::arg("arc_post_deriv"));
 }
@@ -508,9 +508,9 @@ static void PybindGetArcCdf(py::module &m, const char *name) {
   m.def(
       name,
       [](FsaOrVec &fsas, torch::Tensor arc_post) -> torch::Tensor {
-        Array1<T> arc_post_array = FromTensor<T>(arc_post);
+        Array1<T> arc_post_array = FromTorch<T>(arc_post);
         Array1<T> ans = GetArcCdf(fsas, arc_post_array);
-        return ToTensor(ans);
+        return ToTorch(ans);
       },
       py::arg("fsas"), py::arg("arc_post"));
 }
@@ -522,8 +522,8 @@ static void PybindRandomPaths(py::module &m, const char *name) {
       [](FsaVec &fsas, torch::Tensor arc_cdf, int32_t num_paths,
          torch::Tensor tot_scores,
          Ragged<int32_t> &state_batches) -> Ragged<int32_t> {
-        Array1<T> arc_cdf_array = FromTensor<T>(arc_cdf);
-        Array1<T> tot_scores_array = FromTensor<T>(tot_scores);
+        Array1<T> arc_cdf_array = FromTorch<T>(arc_cdf);
+        Array1<T> tot_scores_array = FromTorch<T>(tot_scores);
 
         Ragged<int32_t> ans = RandomPaths(fsas, arc_cdf_array, num_paths,
                                           tot_scores_array, state_batches);
@@ -540,12 +540,12 @@ static void PybindPruneOnArcPost(py::module &m, const char *name) {
       [](FsaVec &fsas, torch::Tensor arc_post, T threshold_prob,
          bool need_arc_map =
              true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
-        Array1<T> arc_post_array = FromTensor<T>(arc_post);
+        Array1<T> arc_post_array = FromTorch<T>(arc_post);
         Array1<int32_t> arc_map;
         FsaVec ans = PruneOnArcPost(fsas, arc_post_array, threshold_prob,
                                     need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> arc_map_tensor;
-        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        if (need_arc_map) arc_map_tensor = ToTorch(arc_map);
         return std::make_pair(ans, arc_map_tensor);
       },
       py::arg("fsas"), py::arg("arc_post"), py::arg("threshold_prob"),

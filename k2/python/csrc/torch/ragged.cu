@@ -32,7 +32,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   pyclass.def(py::init([](const RaggedShape &shape,
                           torch::Tensor values) -> std::unique_ptr<PyClass> {
                 K2_CHECK_EQ(shape.NumElements(), values.sizes()[0]);
-                return std::make_unique<PyClass>(shape, FromTensor<T>(values));
+                return std::make_unique<PyClass>(shape, FromTorch<T>(values));
               }),
               py::arg("shape"), py::arg("values"));
   pyclass.def(
@@ -67,7 +67,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
 
   pyclass.def("values", [](PyClass &self) -> torch::Tensor {
     Array1<T> &values = self.values;
-    return ToTensor(values);
+    return ToTorch(values);
   });
 
   pyclass.def("num_elements", &PyClass::NumElements);
@@ -78,7 +78,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       "row_splits",
       [](PyClass &self, int32_t axis) -> torch::Tensor {
         Array1<int32_t> &row_splits = self.RowSplits(axis);
-        return ToTensor(row_splits);
+        return ToTorch(row_splits);
       },
       py::arg("axis"));
 
@@ -86,7 +86,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       "row_ids",
       [](PyClass &self, int32_t axis) -> torch::Tensor {
         Array1<int32_t> &row_ids = self.RowIds(axis);
-        return ToTensor(row_ids);
+        return ToTorch(row_ids);
       },
       py::arg("axis"));
 
@@ -123,17 +123,17 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
         Array1<int32_t> row_splits1 = obj.RowSplits(1);
         Array1<int32_t> row_ids1 = obj.RowIds(1);
         Array1<T> values = obj.values;
-        return py::make_tuple(ToTensor(row_splits1), ToTensor(row_ids1),
-                              ToTensor(values));
+        return py::make_tuple(ToTorch(row_splits1), ToTorch(row_ids1),
+                              ToTorch(values));
       },
       [](py::tuple t) {
         K2_CHECK_EQ(t.size(), 3) << "Invalid state";
         torch::Tensor row_splits1_tensor = t[0].cast<torch::Tensor>();
-        Array1<int32_t> row_splits1 = FromTensor<int32_t>(row_splits1_tensor);
+        Array1<int32_t> row_splits1 = FromTorch<int32_t>(row_splits1_tensor);
         torch::Tensor row_ids1_tensor = t[1].cast<torch::Tensor>();
-        Array1<int32_t> row_ids1 = FromTensor<int32_t>(row_ids1_tensor);
+        Array1<int32_t> row_ids1 = FromTorch<int32_t>(row_ids1_tensor);
         torch::Tensor values_tensor = t[2].cast<torch::Tensor>();
-        Array1<T> values = FromTensor<T>(values_tensor);
+        Array1<T> values = FromTorch<T>(values_tensor);
         RaggedShape shape = RaggedShape2(&row_splits1, &row_ids1, -1);
         PyClass obj(shape, values);
         return obj;
@@ -149,14 +149,14 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       [](PyClass &src, int32_t axis, torch::Tensor indexes,
          bool need_value_indexes =
              true) -> std::pair<PyClass, torch::optional<torch::Tensor>> {
-        Array1<int32_t> indexes_array = FromTensor<int32_t>(indexes);
+        Array1<int32_t> indexes_array = FromTorch<int32_t>(indexes);
         Array1<int32_t> value_indexes;
 
         Ragged<T> ans = Index(src, axis, indexes_array,
                               need_value_indexes ? &value_indexes : nullptr);
         torch::optional<torch::Tensor> value_indexes_tensor;
 
-        if (need_value_indexes) value_indexes_tensor = ToTensor(value_indexes);
+        if (need_value_indexes) value_indexes_tensor = ToTorch(value_indexes);
 
         return std::make_pair(ans, value_indexes_tensor);
       },
@@ -181,7 +181,7 @@ static void PybindRaggedImpl(py::module &m) {
       "index",
       [](torch::Tensor src, Ragged<int32_t> &indexes) -> Ragged<int32_t> {
         K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
-        Array1<int32_t> src_array = FromTensor<int32_t>(src);
+        Array1<int32_t> src_array = FromTorch<int32_t>(src);
         return Index(src_array, indexes);
       },
       py::arg("src"), py::arg("indexes"));
@@ -190,11 +190,11 @@ static void PybindRaggedImpl(py::module &m) {
       "index_and_sum",
       [](torch::Tensor src, Ragged<int32_t> &indexes) -> torch::Tensor {
         K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
-        Array1<float> src_array = FromTensor<float>(src);
+        Array1<float> src_array = FromTorch<float>(src);
         Ragged<float> ragged = Index(src_array, indexes);
         Array1<float> ans_array(ragged.Context(), ragged.Dim0());
         SumPerSublist<float>(ragged, 0, &ans_array);
-        return ToTensor(ans_array);
+        return ToTorch(ans_array);
       },
       py::arg("src"), py::arg("indexes"));
 }
@@ -220,7 +220,7 @@ static void PybindRaggedShape(py::module &m) {
       "row_ids",
       [](PyClass &self, int32_t axis) -> torch::Tensor {
         Array1<int32_t> &row_ids = self.RowIds(axis);
-        return ToTensor(row_ids);
+        return ToTorch(row_ids);
       },
       py::arg("axis"));
 
@@ -228,7 +228,7 @@ static void PybindRaggedShape(py::module &m) {
       "row_splits",
       [](PyClass &self, int32_t axis) -> torch::Tensor {
         Array1<int32_t> &row_splits = self.RowSplits(axis);
-        return ToTensor(row_splits);
+        return ToTorch(row_splits);
       },
       py::arg("axis"));
 
@@ -270,10 +270,10 @@ static void PybindRaggedShapeUtils(py::module &m) {
           K2_LOG(FATAL) << "Both row_splits and row_ids are None";
         Array1<int32_t> array_row_splits;
         if (row_splits.has_value())
-          array_row_splits = FromTensor<int32_t>(row_splits.value());
+          array_row_splits = FromTorch<int32_t>(row_splits.value());
         Array1<int32_t> array_row_ids;
         if (row_ids.has_value())
-          array_row_ids = FromTensor<int32_t>(row_ids.value());
+          array_row_ids = FromTorch<int32_t>(row_ids.value());
         return RaggedShape2(
             row_splits.has_value() ? &array_row_splits : nullptr,
             row_ids.has_value() ? &array_row_ids : nullptr, cached_tot_size);
