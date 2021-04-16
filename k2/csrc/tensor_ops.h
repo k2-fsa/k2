@@ -129,6 +129,28 @@ void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
                      is not contiguous.
  */
 Tensor SimpleRaggedIndexSelect1D(Tensor &src, Ragged<int32_t> &indexes);
+
+/*
+  This is a rather specialized op which is being included here for the convenience
+  of Snowfall developers, it actually has little to do with k2 in general and
+  is more closely related to this https://github.com/toshas/torch-discounted-cumsum
+  (our version has a different discounting factor per element).
+
+  It implements a discounted sum along a sequence.  Suppose we have x_i, gamma_i and
+  y_i, for 0 <= i < T.  Then we do:
+      y_0 = x_0
+      y_i = x_i + y_{i-1} gamma_i
+   for 0 < i < T.  (This is done as a generic inclusive-sum with a special
+   reduction op).
+
+   It supports only 2-d tensors, with the 2nd dimension interpreted as the
+   time dimension and the 1st dimension interpreted as the batch dimension.
+ */
+void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest);
+
+
+
+
 }  // namespace k2
 
 #endif  // K2_CSRC_TENSOR_OPS_H_

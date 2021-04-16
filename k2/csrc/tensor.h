@@ -166,7 +166,7 @@ class Tensor {
   RegionPtr &GetRegion() const { return impl_->data; }
 
   // Forward some functions from the shape.  Will forward more later.
-  inline bool SameDim(const Tensor &other) const {
+  inline bool SameDims(const Tensor &other) const {
     return impl_->shape.SameDims(other.GetShape());
   }
   inline int32_t NumAxes() const { return impl_->shape.NumAxes(); }

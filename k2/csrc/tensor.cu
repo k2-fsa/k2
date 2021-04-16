@@ -68,7 +68,10 @@ int64_t Shape::ComputeStorageSize() const {
 
   int64_t size = 1;
   for (int32_t i = 0; i < num_axes_; ++i) {
-    size += (dims_[i] - 1) * (int64_t)strides_[i];
+    if (dims_[i] == 0)
+      return 0;
+    else
+      size += (dims_[i] - 1) * (int64_t)strides_[i];
   }
   K2_CHECK_GE(size, 0);
   return size;

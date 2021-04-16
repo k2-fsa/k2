@@ -10,6 +10,7 @@
 #include "gtest/gtest.h"
 #include "k2/csrc/tensor_ops.h"
 #include "k2/csrc/test_utils.h"
+#include "k2/csrc/array_ops.h"
 
 namespace k2 {
 
@@ -325,10 +326,57 @@ static void TestSimpleRaggedIndexSelect1D() {
   }
 }
 
+
 TEST(Index, SimpleRaggedIndexSelect1D) {
   TestSimpleRaggedIndexSelect1D<float>();
   TestSimpleRaggedIndexSelect1D<double>();
   TestSimpleRaggedIndexSelect1D<int32_t>();
+}
+
+
+TEST(Tensor, DiscountedCumSum) {
+  for (int32_t i = 0; i < 3; i++) {
+    int32_t M = RandInt(0, 1000),
+        T = RandInt(0, 2000);  // TODO: increase.
+    while (M * T > 10000) {  // don't want test to take too long.
+      M /= 2;
+      T /= 2;
+    }
+    ContextPtr cuda_context = GetCudaContext(),
+        cpu_context = GetCpuContext();
+
+    Array2<float> x = RandUniformArray2<float>(cuda_context, M, T, -2.0, 2.0);
+    Array2<float> gamma = RandUniformArray2<float>(cuda_context, M, T, 0.0, 1.0);
+    Array2<float> y(cuda_context, M, T);
+    y = -10.0;
+
+    Array2<float> x_cpu = x.To(cpu_context),
+        gamma_cpu = gamma.To(cpu_context),
+        y_cpu(cpu_context, M, T);
+
+
+    Tensor x_ten = x.ToTensor(),
+        gamma_ten = gamma.ToTensor(),
+        y_ten = y.ToTensor();
+
+    Tensor x_ten_cpu = x_cpu.ToTensor(),
+        gamma_ten_cpu = gamma_cpu.ToTensor(),
+        y_ten_cpu = y_cpu.ToTensor();
+
+    DiscountedCumSum(x_ten, gamma_ten, &y_ten);
+    DiscountedCumSum(x_ten_cpu, gamma_ten_cpu, &y_ten_cpu);
+
+    Array2<float> y_cpu_copy = y.To(cpu_context);
+
+    /*K2_LOG(INFO) << "x_cpu = " << x_cpu
+           << ", gamma_cpu = " << gamma_cpu
+           << ", y_cpu = " << y_cpu
+           << ", y = " << y_cpu_copy; */
+
+    EXPECT_FLOAT_ARRAY2_APPROX_EQ(y_cpu, y_cpu_copy, 0.01);
+
+  }
+
 }
 
 }  // namespace k2
