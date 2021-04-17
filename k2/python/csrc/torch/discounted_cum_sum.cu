@@ -19,11 +19,18 @@
 namespace k2 {
 
 static void DiscountedCumSumWrapper(torch::Tensor x, torch::Tensor gamma,
-                                    torch::Tensor y) {
+                                    torch::Tensor y, bool flip = false) {
   NVTX_RANGE(K2_FUNC);
   Tensor x_k2 = FromTensor(x, TensorTag{});
   Tensor gamma_k2 = FromTensor(gamma, TensorTag{});
   Tensor y_k2 = FromTensor(y, TensorTag{});
+  if (flip) {
+    // We have to do this in C++ because Torch tensors don't support negative
+    // strides.
+    x_k2 = Flip(x_k2, 1);
+    gamma_k2 = Flip(gamma_k2, 1);
+    y_k2 = Flip(y_k2, 1);
+  }
   DiscountedCumSum(x_k2, gamma_k2, &y_k2);
 }
 
@@ -32,7 +39,7 @@ static void DiscountedCumSumWrapper(torch::Tensor x, torch::Tensor gamma,
 void PybindDiscountedCumSum(py::module &m) {
   // note it supports only 1-D and 2-D tensors.
   m.def("discounted_cum_sum", &k2::DiscountedCumSumWrapper, py::arg("x"), py::arg("gamma"),
-        py::arg("y"),
+        py::arg("y"), py::arg("flip") = false,
         R"(
         Args:
           x:
