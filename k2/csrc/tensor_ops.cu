@@ -118,7 +118,7 @@ Tensor Cast(Tensor src, Dtype new_dtype) {
   K2_DCHECK(ans.IsContiguous());
 
   Dtype old_dtype = src.GetDtype();
-  int32_t dim = ans.Nelement();
+  int32_t dim = ans.NumElements();
 
   FOR_ALL_DTYPES(old_dtype, T,
                  FOR_ALL_DTYPES(new_dtype, U,
@@ -728,14 +728,17 @@ Tensor Flip(Tensor &src, int32_t axis) {
   K2_CHECK_LT(axis, num_axes);
   if (axis < 0)
     axis += num_axes;
-
-  TensorImplPtr src_impl = src.impl_,
-      ans_impl = std::make_shared<TensorImpl>();
-  ans_impl->dtype = src_impl->dtype;
-  ans_impl->shape = src_impl->shape;
-  int32_t elem_offset = ans_impl->shape.Stride(axis)
-  ans
-
+  int32_t old_dim = src.Dim(axis);
+  if (old_dim <= 1)
+    return src;  // No point copying it, it's a no-op.
+  TensorImplPtr src_impl = src.Impl(),
+      ans_impl = std::make_shared<TensorImpl>(*src_impl);
+  int32_t old_stride = ans_impl->shape.Stride(axis);
+  ans_impl->shape.SetStride(axis, -old_stride);
+  int64_t byte_offset = old_stride * static_cast<int64_t>(old_dim - 1) *
+      TraitsOf(ans_impl->dtype).NumBytes();
+  ans_impl->byte_offset += byte_offset;
+  return Tensor(ans_impl);
 }
 
 

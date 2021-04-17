@@ -356,7 +356,7 @@ class Array1 {
     Dtype type = DtypeOf<ValueType>::dtype;
     K2_CHECK_EQ(type, tensor.GetDtype());
     if (tensor.IsContiguous()) {
-      dim_ = tensor.Nelement();
+      dim_ = tensor.NumElements();
       byte_offset_ = tensor.ByteOffset();
       region_ = tensor.GetRegion();
       return;

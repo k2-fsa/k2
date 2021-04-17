@@ -33,9 +33,8 @@ Shape::Shape(const std::vector<int32_t> &dims)
     strides_[i] = strides_[i + 1] * dims_[i + 1];
   }
 
-  num_element_ = ComputeNumElement();
+  num_elements_ = ComputeNumElements();
   is_contiguous_ = true;  // always be true here as we compute strides from dims
-  storage_size_ = ComputeStorageSize();
 }
 
 Shape::Shape(const std::vector<int32_t> &dims,
@@ -46,14 +45,13 @@ Shape::Shape(const std::vector<int32_t> &dims,
   K2_CHECK_EQ(static_cast<int32_t>(strides.size()), num_axes_);
   std::copy(dims.begin(), dims.end(), dims_);
   std::copy(strides.begin(), strides.end(), strides_);
-  num_element_ = ComputeNumElement();
+  num_elements_ = ComputeNumElements();
   is_contiguous_ = ComputeIsContiguous();
-  storage_size_ = ComputeStorageSize();
 }
 
-int64_t Shape::ComputeNumElement() const {
+int64_t Shape::ComputeNumElements() const {
   NVTX_RANGE(K2_FUNC);
-  if (num_axes_ == 0) return 0;
+  if (num_axes_ == 0) return 1;  // scalar
 
   int64_t elements = 1;
   for (int32_t i = 0; i < num_axes_; ++i) {
@@ -62,43 +60,50 @@ int64_t Shape::ComputeNumElement() const {
   return elements;
 }
 
-int64_t Shape::ComputeStorageSize() const {
+void Shape::GetReachableElems(int64_t *begin_out, int64_t *end_out) const {
   NVTX_RANGE(K2_FUNC);
-  if (num_axes_ == 0) return 0;
-
-  int64_t size = 1;
+  int64_t begin = 0,
+      end = 1;
   for (int32_t i = 0; i < num_axes_; ++i) {
-    if (dims_[i] == 0)
-      return 0;
-    else
-      size += (dims_[i] - 1) * (int64_t)strides_[i];
+    if (dims_[i] == 0) {
+      goto empty_output;
+    } else if (strides_[i] > 0) {
+      end += (dims_[i] - 1) * (int64_t)strides_[i];
+    } else {
+      begin += (dims_[i] - 1) * (int64_t)strides_[i];
+    }
   }
-  K2_CHECK_GE(size, 0);
-  return size;
+  *begin_out = begin;
+  *end_out = end;
+  return;
+empty_output:
+  *begin_out = 0;
+  *end_out = 0;
 }
+
+int64_t Shape::StorageSize() const {
+  int64_t begin, end;
+  GetReachableElems(&begin, &end);
+  return end - begin;
+}
+
 
 bool Shape::ComputeIsContiguous() const {
   NVTX_RANGE(K2_FUNC);
-
-  // It may happen that all strides are zero,
-  // i.e., the tensor contains only one element.
-  // In this case, the tensor is contiguous.
-  int32_t s = 0;
-  for (int32_t i = num_axes_ - 1; i >= 0; --i) {
-    K2_CHECK_GE(strides_[i], 0);
-    s += strides_[i];
-  }
-  if (s == 0) return true;
-
   int64_t z = 1;
   for (int32_t i = num_axes_ - 1; i >= 0; --i) {
-    K2_CHECK_GE(strides_[i], z);
     if (dims_[i] != 1) {
       if (strides_[i] != z) return false;
       z *= dims_[i];
     }
   }
   return true;
+}
+
+void Shape::SetStride(int32_t axis, int32_t stride) {
+  K2_CHECK_LT(static_cast<uint32_t>(axis), static_cast<uint32_t>(num_axes_));
+  strides_[axis] = stride;
+  ComputeIsContiguous();
 }
 
 std::ostream &operator<<(std::ostream &os, const Shape &shape) {
@@ -140,14 +145,16 @@ Tensor::Tensor(Dtype type, const Shape &shape, RegionPtr region,
                int32_t byte_offset)
     : impl_(std::make_shared<TensorImpl>()) {
   NVTX_RANGE(K2_FUNC);
-  size_t storage_size = shape.StorageSize();
-  size_t element_size = TraitsOf(type).NumBytes();
+  int64_t begin_elem, end_elem;
+  shape.GetReachableElems(&begin_elem, &end_elem);
+  int64_t element_size = TraitsOf(type).NumBytes();
   impl_->dtype = type;
   impl_->shape = shape;
   impl_->data = region;
   impl_->byte_offset = byte_offset;
-  K2_CHECK_GE(impl_->data->num_bytes - impl_->byte_offset,
-              storage_size * element_size);
+  K2_CHECK_GE(int64_t(impl_->byte_offset) + begin_elem * element_size, 0);
+  K2_CHECK_LE(int64_t(impl_->byte_offset) + end_elem * element_size,
+              int64_t(impl_->data->num_bytes));
 }
 
 Tensor Tensor::Index(int32_t axis, int32_t index) const {
@@ -168,10 +175,13 @@ Tensor Tensor::Index(int32_t axis, int32_t index) const {
 
 void Tensor::Init(ContextPtr c) {
   NVTX_RANGE(K2_FUNC);
-  int32_t storage_size = impl_->shape.StorageSize();
-  int32_t element_size = TraitsOf(impl_->dtype).NumBytes();
-  impl_->data = NewRegion(c, static_cast<size_t>(storage_size * element_size));
-  impl_->byte_offset = 0;
+  int64_t begin_elem, end_elem;
+  impl_->shape.GetReachableElems(&begin_elem, &end_elem);
+  int64_t element_size = TraitsOf(impl_->dtype).NumBytes();
+  int64_t byte_offset = -begin_elem * element_size,
+      storage_size_bytes = byte_offset + end_elem * element_size;
+  impl_->data = NewRegion(c, static_cast<size_t>(storage_size_bytes));
+  impl_->byte_offset = byte_offset;
 }
 
 Tensor::Tensor(TensorImplPtr impl) : impl_(impl) {}
@@ -206,5 +216,6 @@ Tensor Tensor::Clone() const {
       std::make_shared<TensorImpl>(GetShape(), GetDtype(), size_t(0), region);
   return Tensor(impl);
 }
+
 
 }  // namespace k2
