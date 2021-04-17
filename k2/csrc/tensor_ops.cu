@@ -670,7 +670,7 @@ static void DiscountedCumSumCpuImpl(int N, int T,
 }
 
 
-static void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
+void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
   // check contexts compatible:
   if (!(IsCompatible(src, gamma) && IsCompatible(src, *dest))) {
     K2_LOG(ERROR) << "Tensors are on different devices";

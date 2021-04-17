@@ -54,5 +54,7 @@ void PybindDiscountedCumSum(py::module &m) {
             a sequence or time dimensions.  It implements:
                 y(n, 0) = x(n, 0)
                 y(n, t) = x(n, t) + y(n, t-1) * gamma(n, t)   (for 0<t<T)
+         flip:
+           If true, the time sequence is reversed..
         )");
 }
