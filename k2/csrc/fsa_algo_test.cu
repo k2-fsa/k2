@@ -789,7 +789,7 @@ TEST(FsaAlgo, TestExpandArcsRandom) {
 
 TEST(FsaAlgo, InvertHostTest) {
   // top-sorted FSA
-  std::string s1 = R"(0 1 1 0 
+  std::string s1 = R"(0 1 1 0
     0 1 0 0
     0 3 2 0
     1 2 3 0
@@ -801,7 +801,7 @@ TEST(FsaAlgo, InvertHostTest) {
     5
     )";
   // non-top-sorted FSA
-  std::string s2 = R"(0 1 1 0 
+  std::string s2 = R"(0 1 1 0
     0 1 0 0
     0 3 2 0
     1 2 3 0
@@ -899,11 +899,11 @@ TEST(FsaAlgo, InvertTest) {
     Array1<int32_t> expected_arc_map(
         "[ 0 1 2 -1 3 4 5 -1 -1 -1 -1 6 7 -1 8 9 10 11 -1 12 13 -1 -1 14 15 -1 "
         "16 -1 17 -1 ]");
-    CheckArrayData(dest.values, expected_fsa.values);
-    CheckArrayData(dest_aux_labels.RowSplits(1),
-                   expected_aux_labels.RowSplits(1));
-    CheckArrayData(dest_aux_labels.values, expected_aux_labels.values);
-    CheckArrayData(arc_map, expected_arc_map);
+    EXPECT_EQ(true, Equal(dest.values, expected_fsa.values));
+    EXPECT_EQ(true, Equal(dest_aux_labels.RowSplits(1),
+                          expected_aux_labels.RowSplits(1)));
+    EXPECT_EQ(true, Equal(dest_aux_labels.values, expected_aux_labels.values));
+    EXPECT_EQ(true, Equal(arc_map, expected_arc_map));
 
     ContextPtr cpu = GetCpuContext();
     src = src.To(cpu);

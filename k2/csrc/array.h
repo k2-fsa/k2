@@ -61,7 +61,7 @@ class Array1 {
   Array1<Any> &Generic() {
     return *reinterpret_cast<Array1<Any>*>(this);
   }
-  Array1<Any> &Generic() const {
+  const Array1<Any> &Generic() const {
     return *reinterpret_cast<const Array1<Any>*>(this);
   }
 
@@ -71,18 +71,20 @@ class Array1 {
   // You call this as, e.g.
   //  Array1<Any> a(...);
   //  if (a.GetDtype() == kInt32Dtype) {
-  //     Array1<int32_t> &b = a.Specialize<int32_t>();
+  //     Array1<int32_t> &b = a.template Specialize<int32_t>();
   //     ...
   //  }
+  // Note: the '.template' above is only necessary if you are inside
+  // a template definition already.  It is an odd syntax.
   template <typename U>
   Array1<U> &Specialize() {
-    static_assert(std::is_same<U, Any>::value);
+    static_assert(std::is_same<T, Any>::value);
     K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
     return *reinterpret_cast<Array1<U>*>(this);
   }
   template <typename U>
-  Array1<T> &Specialize() const {
-    static_assert(std::is_same<U, Any>::value);
+  Array1<U> &Specialize() const {
+    static_assert(std::is_same<T, Any>::value);
     K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
     return *reinterpret_cast<const Array1<U>*>(this);
   }
@@ -522,6 +524,17 @@ class Array2 {
       with the "no-gaps" semantics if dim0_ <= 1. */
   bool IsContiguous() const { return elem_stride0_ == dim1_; }
 
+
+  // Only if this is a Array2<Any>: convert to a specific type, which must be
+  // identical to the actual type stored as dtype_.
+  // You call this as, e.g.
+  //  Array2<Any> a(...);
+  //  if (a.GetDtype() == kInt32Dtype) {
+  //     Array2<int32_t> &b = a.template Specialize<int32_t>();
+  //     ...
+  //  }
+  // Note: the '.template' above is only necessary if you are inside
+  // a template definition already.  It is an odd syntax.
   template <typename U>
   Array2<U> &Specialize() {
     static_assert(std::is_same<T, Any>::value);
@@ -600,8 +613,9 @@ class Array2 {
     same data.  (c.f. arange in PyTorch).  Calling it ColArange rather than
     ColRange to clarify that the 2nd arg is 'end' not 'dim'.
 
-     @param [in] start  First column of output, 0 <= start < Dim1()
+     @param [in] start  First column of output, 0 <= start <= Dim1()
      @param [in] end    One-past-the-last column that *should not* be included.
+                        Require start <= end <= Dim1()
   */
   Array2<T> ColArange(int32_t start, int32_t end) const {
     NVTX_RANGE(K2_FUNC);

@@ -41,7 +41,7 @@ void CheckArrayData(const Array1<T> &array, const std::vector<T> &target) {
 
 // TODO(haowen): remove the double version in host later?
 template <typename FloatType>
-bool ApproxEqual(FloatType a, FloatType b, double delta = 0.001) {
+bool ApproxEqual(FloatType a, FloatType b, FloatType delta = (FloatType)0.001) {
   K2_STATIC_ASSERT((std::is_same<float, FloatType>::value ||
                     std::is_same<double, FloatType>::value));
   // a==b handles infinities.
@@ -54,7 +54,7 @@ bool ApproxEqual(FloatType a, FloatType b, double delta = 0.001) {
 
 template <typename T>
 void ExpectEqual(const std::vector<T> &expected, const std::vector<T> &actual,
-                 double abs_error = 0.001) {
+                 T abs_error = (T)0.001) {
   // noted abs_error is not used here, but will be used in below instantiation
   // for double and float, so that when we call `ExpectEqual` in below
   // `CheckArrayData` we don't need a if-else branch based on `T`.
@@ -64,7 +64,7 @@ void ExpectEqual(const std::vector<T> &expected, const std::vector<T> &actual,
 template <>
 inline void ExpectEqual<float>(const std::vector<float> &expected,
                                const std::vector<float> &actual,
-                               double abs_error) {
+                               float abs_error) {
   EXPECT_FLOAT_ARRAY_APPROX_EQ(expected, actual, abs_error);
 }
 
@@ -78,7 +78,7 @@ inline void ExpectEqual<double>(const std::vector<double> &expected,
 // check if `array` and `target` have the same values
 template <typename T>
 void CheckArrayData(const Array1<T> &array, const Array1<T> &target,
-                    double abs_error = 0.001) {
+                    T abs_error = (T)0.001) {
   if (array.Dim() != target.Dim()) {
     K2_LOG(ERROR) << "Dims mismatch " << array.Dim() << " vs. " << target.Dim();
   }

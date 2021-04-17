@@ -2548,7 +2548,7 @@ static void TestSegmentedExclusiveSum() {
           Ragged<T> ragged = cpu_ragged.To(c);
           Array1<T> dst(c, dim);
           SegmentedExclusiveSum(ragged, &dst);
-          CheckArrayData(dst, cpu_dst, 0.1);
+          CheckArrayData(dst, cpu_dst, (T)0.1);
         }
       }
     }

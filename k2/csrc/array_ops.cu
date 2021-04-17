@@ -493,9 +493,8 @@ void RowSplitsToRowIdsOffset(const Array1<int32_t> &row_splits_part,
 
 template <>
 Array2<Any> ToContiguous(const Array2<Any> &src) {
-  Array2<Any> ans;
   FOR_REAL_AND_INT32_TYPES(src.GetDtype(), T,
-                           ans = ToContiguous(src.Specialize<T>()).Generic());
+                           return ToContiguous(src.Specialize<T>()).Generic());
   return Array2<Any>();  // Silence warning
 }
 

@@ -1698,6 +1698,42 @@ TEST(OpsTest, Array2Assign) {
   }
 }
 
+
+template <typename T>
+void Array2ContiguousTest() {
+  for (int loop = 0; loop < 10; loop++) {
+    ContextPtr c = ((loop % 2) == 0 ? GetCpuContext() : GetCudaContext());
+
+    int32_t src_dim0 = RandInt(1, 10), src_dim1 = RandInt(1, 10);
+
+    Array2<T> src = RandUniformArray2<T>(c, src_dim0, src_dim1, 0, 100);
+
+
+    int32_t slice_dim1_begin = RandInt(0, src_dim1),
+        slice_dim1_end = RandInt(slice_dim1_begin, src_dim1);
+
+    // Testing that ToContiguous() works the same with generic and specialized
+    // arrays.
+    Array2<T> src_part = src.ColArange(slice_dim1_begin, slice_dim1_end),
+        src_part_contiguous1 = ToContiguous(src_part);
+    Array2<Any> src_part_contiguous_generic2 = ToContiguous(src_part.Generic());
+    Array2<T> src_part_contiguous2 = src_part_contiguous_generic2.Specialize<T>();
+
+    K2_CHECK_EQ(Equal(src_part_contiguous1, src_part_contiguous2),
+                true);
+    // Following two are checking ApproxEqual.
+    K2_CHECK_EQ(ApproxEqual(src_part_contiguous1, src_part_contiguous2),
+                true);
+    K2_CHECK_EQ(ApproxEqual(src_part_contiguous1, src_part_contiguous2, T(-1.0)),
+                false);
+  }
+}
+
+TEST(OpsTest, Array2Contiguous) {
+  Array2ContiguousTest<int32_t>();
+  Array2ContiguousTest<double>();
+}
+
 TEST(OpsTest, SizesToMergeMapTest) {
   // simple test
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
