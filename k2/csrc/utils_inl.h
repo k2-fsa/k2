@@ -9,10 +9,10 @@
 #define K2_CSRC_UTILS_INL_H_
 
 #include <cassert>
-#include <cub/cub.cuh>  // NOLINT
 #include <type_traits>
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/cub.h"
 
 namespace k2 {
 template <typename SrcPtr, typename DestPtr>

@@ -312,6 +312,9 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
     @param [out,optional] arc_map_b   If not nullptr, will be set to a new
                      array containing a map from arc-index in `out` to arc-index
                      in `b_fsas`; elements will all be >= 0.
+    @param [in,optional] sorted_match_a  If true, will use a sorted matching
+                     method on FSAs in `a_fsas`.  This requires that
+                     (properties_a&kFsaPropertiesArcSorted) != 0.
     @return  Returns composed FsaVec;
              will satisfy `ans.Dim0() == b_fsas.Dim0()`.
 
@@ -323,7 +326,8 @@ bool Intersect(FsaOrVec &a_fsas, int32_t properties_a, FsaOrVec &b_fsas,
  */
 FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a, FsaVec &b_fsas,
                        int32_t properties_b, const Array1<int32_t> &b_to_a_map,
-                       Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b);
+                       Array1<int32_t> *arc_map_a, Array1<int32_t> *arc_map_b,
+                       bool sorted_match_a);
 
 /*
     Remove epsilons (symbol zero) in the input Fsas while maintaining
@@ -625,6 +629,20 @@ void Invert(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
  */
 void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
                 Ragged<int32_t> *dest_aux_labels);
+
+/* Remove epsilon self-loops.
+ *
+ * Unlike RemoveEpsilon, this function removes only epsilon self-loops.
+ *
+ * @param [in] src  Input Fsa or FsaVec.
+ * @param [out] arc_map  If not NULL, on return arc_map[i] maps the i-th arc
+ *                       in ans to the arc in src.
+ *
+ * @return Return an Fsa or FsaVec that has no epsilon self-loops.
+ *
+ */
+FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec &src,
+                                Array1<int32_t> *arc_map = nullptr);
 
 }  // namespace k2
 

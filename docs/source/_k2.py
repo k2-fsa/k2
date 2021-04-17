@@ -192,3 +192,10 @@ def _create_fsa_vec():
 
 def _is_rand_equivalent():
     pass
+
+
+class version:
+    build_type = None
+    git_date = None
+    git_sha1 = None
+    __version__ = None

@@ -116,8 +116,10 @@ def top_sort(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def intersect_device(a_fsas: Fsa, b_fsas: Fsa,
-                     b_to_a_map: torch.Tensor) -> Fsa:
+def intersect_device(a_fsas: Fsa,
+                     b_fsas: Fsa,
+                     b_to_a_map: torch.Tensor,
+                     sorted_match_a: bool = False) -> Fsa:
     '''Compute the intersection of two FSAs treating epsilons
     as real, normal symbols.
 
@@ -156,7 +158,7 @@ def intersect_device(a_fsas: Fsa, b_fsas: Fsa,
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect_device(
         a_fsas.arcs, a_fsas.properties, b_fsas.arcs, b_fsas.properties,
-        b_to_a_map, need_arc_map)
+        b_to_a_map, need_arc_map, sorted_match_a)
     out_fsas = Fsa(ragged_arc)
 
     for name, a_value in a_fsas.named_tensor_attr():
@@ -541,6 +543,28 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
+def remove_epsilon_self_loops(fsa: Fsa) -> Fsa:
+    '''Remove epsilon self-loops of an Fsa or an FsaVec.
+
+    Caution:
+      Unlike :func:`remove_epsilon`, this funciton removes only
+      epsilon self-loops.
+
+    Args:
+      fsa:
+        The input FSA. It can be either a single FSA or an FsaVec.
+
+    Returns:
+      An instance of :class:`Fsa` that has no epsilon self-loops on every
+      non-final state.
+    '''
+    need_arc_map = True
+    ragged_arc, arc_map = _k2.remove_epsilon_self_loops(fsa.arcs, need_arc_map)
+
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
+    return out_fsa
+
+
 def remove_epsilon(fsa: Fsa) -> Fsa:
     '''Remove epsilons (symbol zero) in the input Fsa.
 
@@ -757,3 +781,36 @@ def random_paths(fsas: Fsa, use_double_scores: bool,
                tot_scores=tot_scores,
                state_batches=state_batches)
     return ans
+
+
+def prune_on_arc_post(fsas: Fsa, threshold_prob: float,
+                      use_double_scores: bool) -> Fsa:
+    '''Remove arcs whose posteriors are less than the given threshold.
+
+    Args:
+      fsas:
+        An FsaVec. Must have 3 axes.
+      threshold_prob:
+        Arcs whose posteriors are less than this value are removed.
+        Note:
+          0 < threshold_prob < 1
+      use_double_scores:
+        True to use double precision during computation; False to use
+        single precision.
+    Returns:
+      Return a pruned FsaVec.
+    '''
+    arc_post = fsas.get_arc_post(use_double_scores=use_double_scores,
+                                 log_semiring=True)
+    need_arc_map = True
+    if use_double_scores:
+        func = _k2.prune_on_arc_post_double
+    else:
+        func = _k2.prune_on_arc_post_float
+
+    ragged_arc, arc_map = func(fsas.arcs, arc_post, threshold_prob,
+                               need_arc_map)
+
+    out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc,
+                                                      arc_map)
+    return out_fsa

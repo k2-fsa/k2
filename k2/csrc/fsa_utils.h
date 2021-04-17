@@ -642,6 +642,23 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
  */
 void FixNumStates(FsaVec *fsas);
 
+/* Remove arcs whose posteriors are less than a given threshold.
+ *
+ * @param [in] src        The source FsaVec to prune. Must have 3 axes.
+ * @param [in] arc_post   It is the return value of GetArcPost().
+ *                        CAUTION: It is in log scale.
+ * @param [in] threshold_prob  The threshold probability. CAUTION: It is NOT
+ *                             in log scale. Must have 0 < threshold_prob < 1
+ * @param [out] arc_map  If not NULL, on return arc_map[i] maps the i-th arc
+ *                       in ans to the arc in src.
+ *
+ * @return Return a pruned FsaVec.
+ */
+template <typename FloatType>
+FsaVec PruneOnArcPost(FsaVec &src, const Array1<FloatType> &arc_post,
+                      FloatType threshold_prob,
+                      Array1<int32_t> *arc_map = nullptr);
+
 }  // namespace k2
 
 #endif  //  K2_CSRC_FSA_UTILS_H_

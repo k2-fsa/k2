@@ -118,10 +118,14 @@ static void PybindIntersect(py::module &m) {
           }
           Array1<int32_t> b_to_a_map(a_fsa_vec.Context(), tmp_b_to_a_map);
 
-          out =
-              IntersectDevice(a_fsa_vec, properties_a, b_fsa_vec, properties_b,
-                              b_to_a_map, need_arc_map ? &a_arc_map : nullptr,
-                              need_arc_map ? &b_arc_map : nullptr);
+          // TODO: should perhaps just always make this false, for
+          // predictability, and let the user call intersect_device
+          // if they want to use sorted matching?
+          bool sorted_match_a = ((properties_a & kFsaPropertiesArcSorted) != 0);
+          out = IntersectDevice(
+              a_fsa_vec, properties_a, b_fsa_vec, properties_b, b_to_a_map,
+              need_arc_map ? &a_arc_map : nullptr,
+              need_arc_map ? &b_arc_map : nullptr, sorted_match_a);
         } else {
           Intersect(a_fsas, properties_a, b_fsas, properties_b,
                     treat_epsilons_specially, &out,
@@ -163,17 +167,18 @@ static void PybindIntersectDevice(py::module &m) {
       "intersect_device",
       [](FsaVec &a_fsas, int32_t properties_a, FsaVec &b_fsas,
          int32_t properties_b, torch::Tensor b_to_a_map,
-         bool need_arc_map =
-             true) -> std::tuple<FsaVec, torch::optional<torch::Tensor>,
-                                 torch::optional<torch::Tensor>> {
+         bool need_arc_map = true,
+         bool sorted_match_a =
+             false) -> std::tuple<FsaVec, torch::optional<torch::Tensor>,
+                                  torch::optional<torch::Tensor>> {
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         Array1<int32_t> b_to_a_map_array = FromTensor<int32_t>(b_to_a_map);
 
-        FsaVec ans = IntersectDevice(a_fsas, properties_a, b_fsas, properties_b,
-                                     b_to_a_map_array,
-                                     need_arc_map ? &a_arc_map : nullptr,
-                                     need_arc_map ? &b_arc_map : nullptr);
+        FsaVec ans = IntersectDevice(
+            a_fsas, properties_a, b_fsas, properties_b, b_to_a_map_array,
+            need_arc_map ? &a_arc_map : nullptr,
+            need_arc_map ? &b_arc_map : nullptr, sorted_match_a);
         torch::optional<torch::Tensor> a_tensor;
         torch::optional<torch::Tensor> b_tensor;
         if (need_arc_map) {
@@ -184,7 +189,7 @@ static void PybindIntersectDevice(py::module &m) {
       },
       py::arg("a_fsas"), py::arg("properties_a"), py::arg("b_fsas"),
       py::arg("properties_b"), py::arg("b_to_a_map"),
-      py::arg("need_arc_map") = true);
+      py::arg("need_arc_map") = true, py::arg("sorted_match_a") = false);
 }
 
 static void PybindIntersectDensePruned(py::module &m) {
@@ -411,6 +416,22 @@ static void PybindInvert(py::module &m) {
       py::arg("src"), py::arg("src_aux_labels"), py::arg("need_arc_map"));
 }
 
+static void PybindRemoveEpsilonSelfLoops(py::module &m) {
+  m.def(
+      "remove_epsilon_self_loops",
+      [](FsaOrVec &src, bool need_arc_map = true)
+          -> std::pair<FsaOrVec, torch::optional<torch::Tensor>> {
+        Array1<int32_t> arc_map;
+        FsaOrVec ans =
+            RemoveEpsilonSelfLoops(src, need_arc_map ? &arc_map : nullptr);
+
+        torch::optional<torch::Tensor> arc_map_tensor;
+        if (need_arc_map) arc_map_tensor = ToTensor(arc_map);
+        return std::make_pair(ans, arc_map_tensor);
+      },
+      py::arg("src"), py::arg("need_arc_map") = true);
+}
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -429,4 +450,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindDeterminize(m);
   k2::PybindClosure(m);
   k2::PybindInvert(m);
+  k2::PybindRemoveEpsilonSelfLoops(m);
 }

@@ -28,6 +28,13 @@ elseif(NOT CMAKE_BUILD_TYPE IN_LIST ALLOWABLE_BUILD_TYPES)
     choose one from ${ALLOWABLE_BUILD_TYPES}")
 endif()
 
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPERCASE)
+if("${CMAKE_BUILD_TYPE_UPPERCASE}" STREQUAL "DEBUG")
+  # refer to https://docs.nvidia.com/cuda/cuda-memcheck/index.html#compilation-options
+  # The two options are to make cuda-memcheck's stack backtrace feature more useful.
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -rdynamic --compiler-options -lineinfo")
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
@@ -108,9 +115,31 @@ endif()
 unset(CMAKE_CUDA_STANDARD CACHE)
 set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
+include(cmake/select_compute_arch.cmake)
+cuda_select_nvcc_arch_flags(K2_COMPUTE_ARCH_FLAGS)
+message(STATUS "K2_COMPUTE_ARCH_FLAGS: ${K2_COMPUTE_ARCH_FLAGS}")
+
 # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
 message(WARNING "arch 62/72 are not supported for now")
-set(K2_COMPUTE_ARCHS 35 50 60 61 70 75)
+
+set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
+set(K2_COMPUTE_ARCHS)
+
+foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
+  if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
+    message(STATUS "Adding arch ${COMPUTE_ARCH}")
+    list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
+  else()
+    message(STATUS "Skipping arch ${COMPUTE_ARCH}")
+  endif()
+endforeach()
+
+if(NOT K2_COMPUTE_ARCHS)
+  set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
+endif()
+
+message(STATUS "K2_COMPUTE_ARCHS: ${K2_COMPUTE_ARCHS}")
+
 foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
   set(CMAKE_CUDA_ARCHITECTURES "${COMPUTE_ARCH}-real;${COMPUTE_ARCH}-virtual;${CMAKE_CUDA_ARCHITECTURES}")
@@ -131,6 +160,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(pybind11)
 if(K2_USE_PYTORCH)
   add_definitions(-DK2_USE_PYTORCH)
+  add_definitions(-DTORCH_API_INCLUDE_EXTENSION_H)
   include(torch)
 endif()
 

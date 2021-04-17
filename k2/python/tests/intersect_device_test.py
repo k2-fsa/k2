@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #
-# Copyright (c)  2021  Xiaomi Corp.       (authors: Fangjun Kuang)
+# Copyright (c)  2021  Xiaomi Corp.       (authors: Fangjun Kuang
+#                                                   Daniel Povey)
 #
 # See ../../../LICENSE for clarification regarding multiple authors
 
@@ -22,13 +23,16 @@ class TestIntersectDevice(unittest.TestCase):
             devices.append(torch.device('cuda'))
 
         for device in devices:
-            for use_identity_map in [True, False]:
+            for use_identity_map, sorted_match_a in [(True, True),
+                                                     (False, True),
+                                                     (True, False),
+                                                     (False, False)]:
                 # recognizes (0|1)(0|2)
                 s1 = '''
                     0 1 0 0.1
                     0 1 1 0.2
-                    1 2 2 0.3
                     1 2 0 0.4
+                    1 2 2 0.3
                     2 3 -1 0.5
                     3
                 '''
@@ -66,7 +70,8 @@ class TestIntersectDevice(unittest.TestCase):
                     b_to_a_map = torch.tensor([0, 0],
                                               dtype=torch.int32).to(device)
 
-                c_fsas = k2.intersect_device(a_fsas, b_fsas, b_to_a_map)
+                c_fsas = k2.intersect_device(a_fsas, b_fsas, b_to_a_map,
+                                             sorted_match_a)
                 assert c_fsas.shape == (2, None, None)
                 c_fsas = k2.connect(c_fsas.to('cpu'))
                 # c_fsas[0] recognizes: 02

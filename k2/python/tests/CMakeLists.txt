@@ -18,6 +18,7 @@ endfunction()
 # please sort the files in alphabetic order
 set(py_test_files
   add_epsilon_self_loops_test.py
+  append_test.py
   arc_sort_test.py
   closure_test.py
   compose_test.py
@@ -49,6 +50,7 @@ set(py_test_files
   ragged_shape_test.py
   ragged_test.py
   random_paths_test.py
+  remove_epsilon_self_loops_test.py
   remove_epsilon_test.py
   shortest_path_test.py
   sparse_abs_test.py
