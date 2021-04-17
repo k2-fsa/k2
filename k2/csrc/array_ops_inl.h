@@ -449,6 +449,10 @@ Array1<T> Arange(ContextPtr c, T begin, T end, T inc) {
   return Range<T>(c, (end + inc - 1 - begin) / inc, begin, inc);
 }
 
+// This will be defined in array_ops.cu
+template <>
+Array2<Any> ToContiguous(const Array2<Any> &src);
+
 template <typename T>
 Array2<T> ToContiguous(const Array2<T> &src) {
   NVTX_RANGE(K2_FUNC);
@@ -487,6 +491,37 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
     return is_same[0];
   }
 }
+
+
+template <typename T>
+bool ApproxEqual(const Array1<T> &a, const Array1<T> &b, T tol) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(a.Dim(), b.Dim());
+  ContextPtr c = GetContext(a, b);
+  const T *a_data = a.Data(), *b_data = b.Data();
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t i = 0; i < a.Dim(); i++) {
+      T a_val = a_data[i], b_val = b_data[i];
+      // the "a_val != b_val" handles NaNs and infinities.
+      if (a_val != b_val && abs(a_val - b_val) > tol)
+        return false;
+    }
+    return true;
+  } else {
+    Array1<int32_t> is_same(c, 1, 1);
+    int32_t *is_same_data = is_same.Data();
+    auto lambda_test = [=] __device__(int32_t i) -> void {
+      T a_val = a_data[i], b_val = b_data[i];
+      // the "a_val != b_val" handles NaNs and infinities.
+      if (a_val != b_val && abs(a_val - b_val) > tol)
+        *is_same_data = 0;
+    };
+    EvalDevice(c, a.Dim(), lambda_test);
+    return is_same[0];
+  }
+}
+
+
 
 template <typename T>
 bool Equal(const Array1<T> &a, T b) {
@@ -546,6 +581,51 @@ bool Equal(const Array2<T> &a, const Array2<T> &b) {
     return is_same[0];
   }
 }
+
+
+template <typename T>
+bool ApproxEqual(const Array2<T> &a, const Array2<T> &b, T tol) {
+  NVTX_RANGE(K2_FUNC);
+  K2_CHECK_EQ(a.Dim0(), b.Dim0());
+  K2_CHECK_EQ(a.Dim1(), b.Dim1());
+  ContextPtr c = GetContext(a, b);
+  const T *a_data = a.Data(), *b_data = b.Data();
+
+  if (a.IsContiguous() && b.IsContiguous()) {
+    // use simpler code which might be faster.
+    int32_t dim = a.Dim0() * a.Dim1();
+    Array1<T> a1(dim, a.GetRegion(), a.ByteOffset()),
+        b1(dim, b.GetRegion(), b.ByteOffset());
+    return ApproxEqual(a1, b1, tol);
+  }
+
+  auto a_acc = a.Accessor(), b_acc = b.Accessor();
+
+  if (c->GetDeviceType() == kCpu) {
+    size_t row_bytes = a.Dim1() * sizeof(T);
+    for (int32_t row = 0; row < a.Dim0(); row++) {
+      for (int32_t col = 0; col < a.Dim1(); col++) {
+        T a_val = a_acc(row, col), b_val = b_acc(row, col);
+        // the "a_val != b_val" handles NaNs and infinities.
+        if (a_val != b_val && abs(a_val - b_val) > tol)
+          return false;
+      }
+    }
+    return true;
+  } else {
+    Array1<int32_t> is_same(c, 1, 1);
+    int32_t *is_same_data = is_same.Data();
+    auto lambda_test = [=] __device__(int32_t i, int32_t j) -> void {
+      T a_val = a_acc(i, j), b_val = b_acc(i, j);
+      // the "a_val != b_val" handles NaNs and infinities.
+      if (a_val != b_val && abs(a_val - b_val) > tol)
+        *is_same_data = 0;
+    };
+    Eval2Device(c, a.Dim0(), a.Dim1(), lambda_test);
+    return is_same[0];
+  }
+}
+
 
 template <typename T>
 bool IsMonotonic(const Array1<T> &a) {

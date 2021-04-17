@@ -2548,7 +2548,7 @@ static void TestSegmentedExclusiveSum() {
           Ragged<T> ragged = cpu_ragged.To(c);
           Array1<T> dst(c, dim);
           SegmentedExclusiveSum(ragged, &dst);
-          CheckArrayData(dst, cpu_dst, 0.1);
+          CheckArrayData(dst, cpu_dst, (T)0.1);
         }
       }
     }
@@ -2650,9 +2650,14 @@ TEST(RaggedFloatTest, TestCreateRagged2Float) {
   std::vector<float> expected_values{1.2, 2.3, 3.4, 5.6};
   std::vector<int32_t> expected_row_splits = {0, 2, 2, 4};
   Ragged<float> r = CreateRagged2(vecs);
+
+  Ragged<float> &r2 = r.Generic().Specialize<float>();
+
   EXPECT_EQ(r.Context()->GetDeviceType(), kCpu);
+  EXPECT_EQ(r2.Context()->GetDeviceType(), kCpu);
   CheckArrayData(r.RowSplits(1), expected_row_splits);
   EXPECT_EQ(r.NumAxes(), 2);
+  EXPECT_EQ(r2.NumAxes(), 2);
   CheckArrayData(r.values, expected_values);
 }
 

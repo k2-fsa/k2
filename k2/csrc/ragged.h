@@ -313,10 +313,12 @@ struct Ragged {
     K2_CHECK_EQ(shape.NumElements(), values.Dim());
   }
 
-  explicit Ragged(const RaggedShape &shape)
-      : shape(shape), values(shape.Context(), shape.NumElements()) {}
+  explicit Ragged(const RaggedShape &shape, Dtype dtype=DtypeOf<T>::dtype)
+      : shape(shape), values(shape.Context(), shape.NumElements(), dtype) {
+  }
 
   // Defined in ragged_ops_inl.h
+  // This will crash if T == Any.
   explicit Ragged(const std::string &src) {
     std::istringstream is(src);
     is >> *this >> std::ws;
@@ -354,6 +356,7 @@ struct Ragged {
   const Array1<int32_t> &RowSplits(int32_t axis) const {
     return shape.RowSplits(axis);
   }
+  Dtype GetDtype() const { return values.Dtype(); }
   Array1<int32_t> &RowSplits(int32_t axis) { return shape.RowSplits(axis); }
   const Array1<int32_t> &RowIds(int32_t axis) const {
     return shape.RowIds(axis);
@@ -362,6 +365,30 @@ struct Ragged {
   int32_t TotSize(int32_t axis) const { return shape.TotSize(axis); }
   int32_t Dim0() const { return shape.Dim0(); }
   bool Validate(bool print_warnings = true) const;
+
+  template <typename U>
+  Ragged<U> &Specialize() {
+    static_assert(std::is_same<T, Any>::value);
+    K2_CHECK_EQ(values.GetDtype(), DtypeOf<U>::dtype);
+    return *reinterpret_cast<Ragged<U>*>(this);
+  }
+  template <typename U>
+  const Ragged<U> &Specialize() const {
+    static_assert(std::is_same<T, Any>::value);
+    K2_CHECK_EQ(values.GetDtype(), DtypeOf<U>::dtype);
+    return *reinterpret_cast<const Ragged<U>*>(this);
+  }
+
+  // Return a reference to this viewed as `Any` type (for when we
+  // want a generic array without type information).
+  // Reverse this with Specialize().
+  Ragged<Any> &Generic() {
+    return *reinterpret_cast<Ragged<Any>*>(this);
+  }
+  Ragged<Any> &Generic() const {
+    return *reinterpret_cast<const Ragged<Any>*>(this);
+  }
+
 
   /*
     It is an error to call this if this.shape.NumAxes() <= 2.  This will return

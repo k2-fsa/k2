@@ -61,6 +61,13 @@ void TestArray1() {
       for (int32_t i = 0; i < array.Dim(); ++i) {
         EXPECT_EQ(array[i], 2);
       }
+      Array1<T> array_copy = array.Generic().template Specialize<T>();
+      K2_CHECK_EQ(array.Data(), array_copy.Data());
+      // The ". template" below is not the normal way to invoke templates;
+      // it is necessary
+      ASSERT_THROW(array.Generic().template Specialize<unsigned char>(),
+                   std::runtime_error);  // assuming T != unsigned char
+
     }
 
     {
@@ -256,6 +263,9 @@ void TestArray2() {
 
       Array1<T> arr1(context, data);
       Array2<T> array(arr1, kDim0, kDim1);
+      Array2<T> array_copy = array.Generic().template Specialize<T>();
+      K2_CHECK_EQ(true, Equal(array, array_copy));
+      K2_CHECK_EQ(array.Data(), array_copy.Data());
 
       auto cpu_array = array.To(cpu);
       auto cuda_array = array.To(GetCudaContext());

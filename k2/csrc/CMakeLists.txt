@@ -93,6 +93,7 @@ set(cuda_tests
   algorithms_test
   array_ops_test
   array_test
+  dtype_test
   fsa_algo_test
   fsa_test
   fsa_utils_test
