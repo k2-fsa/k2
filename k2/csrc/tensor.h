@@ -230,7 +230,7 @@ class Tensor {
 
   ContextPtr &Context() const { return impl_->data->context; }
 
-  TensorImplPtr Impl() { return impl_; }
+  TensorImplPtr Impl() const { return impl_; }
   // This is for use by implementation code; be careful with it.
   explicit Tensor(TensorImplPtr impl);
  private:

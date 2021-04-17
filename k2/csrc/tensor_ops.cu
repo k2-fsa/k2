@@ -511,7 +511,7 @@ template <typename Real>
 struct DiscountedCumSumElement {
   Real y;      // y is the partial sums of x values.  Initially it is just a
                // single x value.  In general each x is multiplied by all
-               // previous gamms.
+               // previous gammas.
   Real gamma;  // gamma is the product of gammas along a range of elements
 };
 template <typename Real>
@@ -556,8 +556,7 @@ struct BlockPrefixCallbackOp
   do this as an inclusive-sum.
 
   The tensors involved must be 2-dimensional with dimensions (N, T) where N is
-  the batch size and T the time duration, and the stride on the T dim must be 1.
-  (we can later extend this if needed).
+  the batch size and T the time duration.
 
   Each thread-block is of (x,y,z) size (ThreadsPerBlock,1,1), and it processes N
   items.  It processes ThreadsPerBlock items at a time; and if T >
@@ -582,17 +581,17 @@ struct BlockPrefixCallbackOp
                      the stride along the N axis is `y_stride` and the stride along
                      the T axis is 1.  It is acceptable for any of these pointers
                      to be aliased (in particular, y and x may be the same pointer).
-    @param [in] y_stride0  Stride along axis 0 of of the `y` data
+    @param [in] y_stride0  Stride along axis 0 of the `y` data
     @param [in] stride1  Stride along axis 1 of the three arrays (this is expected
                    to be identical, nonzero, and preferably -1 or 1.
 */
 template <typename Real,
           int ThreadsPerBlock>
-__global__ void DiscountedCumSumKernel(int N, int T,
-                                       const Real *x, int x_stride0,
-                                       const Real *gamma, int gamma_stride0,
-                                       Real *y, int y_stride0,
-                                       int stride1) {
+static __global__ void DiscountedCumSumKernel(int N, int T,
+                                              const Real *x, int x_stride0,
+                                              const Real *gamma, int gamma_stride0,
+                                              Real *y, int y_stride0,
+                                              int stride1) {
   int n_idx = blockIdx.y * gridDim.x + blockIdx.x;
   if (n_idx >= N)
     return;
@@ -655,11 +654,11 @@ void DiscountedCumSumCudaImpl(cudaStream_t stream,
 
 
 template <typename Real>
-void DiscountedCumSumCpuImpl(int N, int T,
-                             const Real *x, int x_stride0,
-                             const Real *gamma, int gamma_stride0,
-                             Real *y, int y_stride0,
-                             int stride1) {
+static void DiscountedCumSumCpuImpl(int N, int T,
+                                    const Real *x, int x_stride0,
+                                    const Real *gamma, int gamma_stride0,
+                                    Real *y, int y_stride0,
+                                    int stride1) {
   for (int32_t n = 0; n < N; n++,
            x += x_stride0, gamma += gamma_stride0, y += y_stride0) {
     Real cur_sum = 0.0;
@@ -671,7 +670,7 @@ void DiscountedCumSumCpuImpl(int N, int T,
 }
 
 
-void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
+static void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
   // check contexts compatible:
   if (!(IsCompatible(src, gamma) && IsCompatible(src, *dest))) {
     K2_LOG(ERROR) << "Tensors are on different devices";
@@ -726,8 +725,8 @@ void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
 
     }
   } else {
-        K2_LOG(ERROR) << "This algorithm only instantiated for float and double; type is "
-                      << TraitsOf(src.GetDtype()).Name();
+    K2_LOG(FATAL) << "This algorithm only instantiated for float and double; type is "
+                  << TraitsOf(src.GetDtype()).Name();
   }
 }
 

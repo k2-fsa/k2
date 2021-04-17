@@ -334,7 +334,8 @@ TEST(Index, SimpleRaggedIndexSelect1D) {
 }
 
 
-TEST(Tensor, DiscountedCumSum) {
+template <typename Real>
+void TestDiscountedCumSum() {
   for (int32_t i = 0; i < 4; i++) {
     int32_t M = RandInt(0, 1000),
         T = RandInt(0, 2000);  // TODO: increase.
@@ -346,14 +347,14 @@ TEST(Tensor, DiscountedCumSum) {
     ContextPtr cuda_context = GetCudaContext(),
         cpu_context = GetCpuContext();
 
-    Array2<float> x = RandUniformArray2<float>(cuda_context, M, T, -2.0, 2.0);
-    Array2<float> gamma = RandUniformArray2<float>(cuda_context, M, T, 0.0, 1.0);
-    Array2<float> y(cuda_context, M, T);
+    Array2<Real> x = RandUniformArray2<Real>(cuda_context, M, T, -2.0, 2.0);
+    Array2<Real> gamma = RandUniformArray2<Real>(cuda_context, M, T, 0.0, 1.0);
+    Array2<Real> y(cuda_context, M, T);
     y = -10.0;
 
     bool flip = (i % 2 == 1);
 
-    Array2<float> x_cpu = x.To(cpu_context),
+    Array2<Real> x_cpu = x.To(cpu_context),
         gamma_cpu = gamma.To(cpu_context),
         y_cpu(cpu_context, M, T);
 
@@ -377,7 +378,7 @@ TEST(Tensor, DiscountedCumSum) {
     DiscountedCumSum(x_ten, gamma_ten, &y_ten);
     DiscountedCumSum(x_ten_cpu, gamma_ten_cpu, &y_ten_cpu);
 
-    Array2<float> y_cpu_copy = y.To(cpu_context);
+    Array2<Real> y_cpu_copy = y.To(cpu_context);
 
     /*K2_LOG(INFO) << "x_cpu = " << x_cpu
            << ", gamma_cpu = " << gamma_cpu
@@ -386,9 +387,12 @@ TEST(Tensor, DiscountedCumSum) {
 
     // We are using the CPU and GPU versions to check each other.
     EXPECT_FLOAT_ARRAY2_APPROX_EQ(y_cpu, y_cpu_copy, 0.01);
-
   }
+}
 
+TEST(Tensor, DiscountedCumSum) {
+  TestDiscountedCumSum<float>();
+  TestDiscountedCumSum<double>();
 }
 
 }  // namespace k2
