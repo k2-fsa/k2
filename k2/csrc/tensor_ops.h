@@ -148,8 +148,16 @@ Tensor SimpleRaggedIndexSelect1D(Tensor &src, Ragged<int32_t> &indexes);
  */
 void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest);
 
-
-
+/*
+  Flips a Tensor on axis `axis`, i.e. reversing the order of elements on that
+  axis.  Does this shallowly by modifying the metadata (caution: Torch
+  tensors do not allow negative stride).
+    @param [in] src   Tensor to be flipped (will be unchanged by this
+                      operation)
+    @param [in] axis  Axis to be flipped,  with -src.NumAxes() <= axis < src.NumAxes().
+    @return           Returns flipped Tensor, sharing data with `src`.
+ */
+Tensor Flip(Tensor &src, int32_t axis);
 
 }  // namespace k2
 

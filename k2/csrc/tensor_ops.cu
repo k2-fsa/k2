@@ -702,14 +702,41 @@ void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
                                      dest->Data<float>(), dest_stride);
 
     }
+  } else if (src.GetDtype() == kDoubleDtype) {
+    if (c->GetDeviceType() == kCuda) {
+      DiscountedCumSumCudaImpl<double, 128>(c->GetCudaStream(), N, T,
+                                           src.Data<double>(), src_stride,
+                                           gamma.Data<double>(), gamma_stride,
+                                           dest->Data<double>(), dest_stride);
+    } else {
+      DiscountedCumSumCpuImpl<double>(N, T,
+                                     src.Data<double>(), src_stride,
+                                     gamma.Data<double>(), gamma_stride,
+                                     dest->Data<double>(), dest_stride);
+
+    }
   } else {
-        K2_LOG(ERROR) << "This algorithm only instantiated for float; type is "
+        K2_LOG(ERROR) << "This algorithm only instantiated for float and double; type is "
                       << TraitsOf(src.GetDtype()).Name();
   }
-
-
 }
 
+
+Tensor Flip(Tensor &src, int32_t axis) {
+  int32_t num_axes = src.NumAxes();
+  K2_CHECK_GE(axis, -num_axes);
+  K2_CHECK_LT(axis, num_axes);
+  if (axis < 0)
+    axis += num_axes;
+
+  TensorImplPtr src_impl = src.impl_,
+      ans_impl = std::make_shared<TensorImpl>();
+  ans_impl->dtype = src_impl->dtype;
+  ans_impl->shape = src_impl->shape;
+  int32_t elem_offset = ans_impl->shape.Stride(axis)
+  ans
+
+}
 
 
 }  // namespace k2

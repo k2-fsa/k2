@@ -18,22 +18,22 @@
 
 namespace k2 {
 TEST(TensorTest, Shape) {
-  // empty shape created with the default constructor
+  // scalar shape created with the default constructor
   {
     Shape shape;
     EXPECT_EQ(shape.NumAxes(), 0);
-    EXPECT_EQ(shape.Nelement(), 0);
-    EXPECT_EQ(shape.StorageSize(), 0);
+    EXPECT_EQ(shape.Nelement(), 1);
+    EXPECT_EQ(shape.StorageSize(), 1);
     EXPECT_TRUE(shape.IsContiguous());
   }
 
-  // empty shape created with empty dims
+  // empty shape representing scalar, created with empty dims
   {
     std::vector<int32_t> dims;
     Shape shape(dims);
     EXPECT_EQ(shape.NumAxes(), 0);
-    EXPECT_EQ(shape.Nelement(), 0);
-    EXPECT_EQ(shape.StorageSize(), 0);
+    EXPECT_EQ(shape.Nelement(), 1);
+    EXPECT_EQ(shape.StorageSize(), 1);
     EXPECT_TRUE(shape.IsContiguous());
   }
 
@@ -43,8 +43,8 @@ TEST(TensorTest, Shape) {
     std::vector<int32_t> strides;
     Shape shape(dims, strides);
     EXPECT_EQ(shape.NumAxes(), 0);
-    EXPECT_EQ(shape.Nelement(), 0);
-    EXPECT_EQ(shape.StorageSize(), 0);
+    EXPECT_EQ(shape.Nelement(), 1);
+    EXPECT_EQ(shape.StorageSize(), 1);
     EXPECT_TRUE(shape.IsContiguous());
   }
 
@@ -61,6 +61,21 @@ TEST(TensorTest, Shape) {
     std::vector<int32_t> expected_strides(shape.Strides());
     EXPECT_THAT(expected_strides, ::testing::ElementsAre(10, 5, 1));
   }
+
+  // non-empty shape created with dims, but with zero elements.
+  {
+    std::vector<int32_t> dims = {3, 0, 5};
+    Shape shape(dims);
+    EXPECT_EQ(shape.NumAxes(), 3);
+    EXPECT_EQ(shape.Nelement(), 0);
+    EXPECT_EQ(shape.StorageSize(), 0);
+    EXPECT_TRUE(shape.IsContiguous());
+    std::vector<int32_t> expected_dims(shape.Dims());
+    EXPECT_EQ(expected_dims, dims);
+    std::vector<int32_t> expected_strides(shape.Strides());
+    EXPECT_THAT(expected_strides, ::testing::ElementsAre(10, 5, 1));
+  }
+
 
   // non-empty shape created with dims and strides, contiguous
   {
