@@ -69,7 +69,7 @@ torch::ScalarType ScalarTypeFromDtype(Dtype dtype);
            with the input array.
  */
 template <typename T>
-torch::Tensor ToTensor(Array1<T> &array) {
+torch::Tensor ToTorch(Array1<T> &array) {
   auto device_type = ToTorchDeviceType(array.Context()->GetDeviceType());
   int32_t device_id = array.Context()->GetDeviceId();
   auto device = torch::Device(device_type, device_id);
@@ -101,7 +101,7 @@ torch::Tensor ToTensor(Array1<T> &array) {
            input tensor.
  */
 template <typename T>
-Array1<T> FromTensor(torch::Tensor &tensor) {
+Array1<T> FromTorch(torch::Tensor &tensor) {
   K2_CHECK_EQ(tensor.dim(), 1) << "Expected dim: 1. Given: " << tensor.dim();
   K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<T>::value)
       << "Expected scalar type: " << ToScalarType<T>::value
@@ -128,7 +128,7 @@ Array1<T> FromTensor(torch::Tensor &tensor) {
            num_cols == 4
  */
 template <>
-torch::Tensor ToTensor(Array1<Arc> &array);
+torch::Tensor ToTorch(Array1<Arc> &array);
 
 /* Convert a tensor to an Array1<Arc>.
 
@@ -143,12 +143,12 @@ torch::Tensor ToTensor(Array1<Arc> &array);
           the input tensor.
  */
 template <>
-Array1<Arc> FromTensor<Arc>(torch::Tensor &tensor);
+Array1<Arc> FromTorch<Arc>(torch::Tensor &tensor);
 
 struct Array2Tag {};
 
 template <typename T>
-Array2<T> FromTensor(torch::Tensor &tensor, Array2Tag) {
+Array2<T> FromTorch(torch::Tensor &tensor, Array2Tag) {
   K2_CHECK_EQ(tensor.dim(), 2) << "Expected dim: 2. Given: " << tensor.dim();
   K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<T>::value)
       << "Expected scalar type: " << ToScalarType<T>::value
@@ -167,7 +167,7 @@ Array2<T> FromTensor(torch::Tensor &tensor, Array2Tag) {
 }
 
 template <typename T>
-torch::Tensor ToTensor(Array2<T> &array) {
+torch::Tensor ToTorch(Array2<T> &array) {
   auto device_type = ToTorchDeviceType(array.Context()->GetDeviceType());
   int32_t device_id = array.Context()->GetDeviceId();
   auto device = torch::Device(device_type, device_id);
@@ -184,8 +184,8 @@ torch::Tensor ToTensor(Array2<T> &array) {
 
 struct TensorTag {};
 
-Tensor FromTensor(torch::Tensor &tensor, TensorTag);
-torch::Tensor ToTensor(Tensor &tensor);
+Tensor FromTorch(torch::Tensor &tensor, TensorTag);
+torch::Tensor ToTorch(Tensor &tensor);
 
 /* Transfer an object to a specific device.
 

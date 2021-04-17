@@ -74,7 +74,7 @@ torch::ScalarType ScalarTypeFromDtype(Dtype dtype) {
 }
 
 template <>
-torch::Tensor ToTensor(Array1<Arc> &array) {
+torch::Tensor ToTorch(Array1<Arc> &array) {
   auto device_type = ToTorchDeviceType(array.Context()->GetDeviceType());
   int32_t device_id = array.Context()->GetDeviceId();
   auto device = torch::Device(device_type, device_id);
@@ -94,7 +94,7 @@ torch::Tensor ToTensor(Array1<Arc> &array) {
 }
 
 template <>
-Array1<Arc> FromTensor<Arc>(torch::Tensor &tensor) {
+Array1<Arc> FromTorch<Arc>(torch::Tensor &tensor) {
   K2_CHECK_EQ(tensor.dim(), 2) << "Expected dim: 2. Given: " << tensor.dim();
   K2_CHECK_EQ(tensor.scalar_type(), ToScalarType<int32_t>::value)
       << "Expected scalar type: " << ToScalarType<int32_t>::value
@@ -113,7 +113,7 @@ Array1<Arc> FromTensor<Arc>(torch::Tensor &tensor) {
   return ans;
 }
 
-Tensor FromTensor(torch::Tensor &tensor, TensorTag) {
+Tensor FromTorch(torch::Tensor &tensor, TensorTag) {
   Dtype dtype = ScalarTypeToDtype(tensor.scalar_type());
   torch::IntArrayRef sizes = tensor.sizes();
   torch::IntArrayRef strides = tensor.strides();
@@ -122,7 +122,7 @@ Tensor FromTensor(torch::Tensor &tensor, TensorTag) {
   auto region = NewRegion(tensor);
   return Tensor(dtype, shape, region, 0);
 }
-torch::Tensor ToTensor(Tensor &tensor) {
+torch::Tensor ToTorch(Tensor &tensor) {
   auto device_type = ToTorchDeviceType(tensor.Context()->GetDeviceType());
   int32_t device_id = tensor.Context()->GetDeviceId();
   auto device = torch::Device(device_type, device_id);

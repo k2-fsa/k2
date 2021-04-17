@@ -50,17 +50,17 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
   K2_CHECK(index.is_contiguous());
   K2_CHECK_EQ(src.device(), index.device());
 
-  Array1<int32_t> index_array = FromTensor<int32_t>(index);
+  Array1<int32_t> index_array = FromTorch<int32_t>(index);
   if (src.is_contiguous()) {
-    Array1<T> src_array = FromTensor<T>(src);
+    Array1<T> src_array = FromTorch<T>(src);
     bool allow_minus_one = true;
     Array1<T> ans_array = Index(src_array, index_array, allow_minus_one);
-    return ToTensor(ans_array);
+    return ToTorch(ans_array);
   }
 
-  Tensor tensor = FromTensor(src, TensorTag{});
+  Tensor tensor = FromTorch(src, TensorTag{});
   Tensor ans = Index(tensor, index_array);
-  return ToTensor(ans);
+  return ToTorch(ans);
 }
 
 /* Returns a 2-D tensor which indexes the src tensor using entries
@@ -91,12 +91,12 @@ static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
   K2_CHECK(index.is_contiguous());
   K2_CHECK_EQ(src.device(), index.device());
 
-  Array2<T> src_array = FromTensor<T>(src, Array2Tag{});
-  Array1<int32_t> index_array = FromTensor<int32_t>(index);
+  Array2<T> src_array = FromTorch<T>(src, Array2Tag{});
+  Array1<int32_t> index_array = FromTorch<int32_t>(index);
   bool allow_minus_one = true;
   Array2<T> ans_array = IndexRows(src_array, index_array, allow_minus_one);
 
-  return ToTensor(ans_array);
+  return ToTorch(ans_array);
 }
 
 static torch::Tensor IndexSelectWrapper(torch::Tensor src,
@@ -167,9 +167,9 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
   ContextPtr context = GetContext(src);
   K2_CHECK(context->IsCompatible(*indexes.Context()));
 
-  Tensor tensor = FromTensor(src, TensorTag{});
+  Tensor tensor = FromTorch(src, TensorTag{});
   Tensor ans = SimpleRaggedIndexSelect1D(tensor, indexes);
-  return ToTensor(ans);
+  return ToTorch(ans);
 }
 
 static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,

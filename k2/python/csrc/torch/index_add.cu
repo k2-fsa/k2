@@ -27,9 +27,9 @@ static void PybindIndexAdd(torch::Tensor index, torch::Tensor value,
                            torch::Tensor *in_out) {
   NVTX_RANGE(K2_FUNC);
 
-  Array1<int32_t> indexes = FromTensor<int32_t>(index);
-  Tensor src = FromTensor(value, TensorTag{});
-  Tensor dest = FromTensor(*in_out, TensorTag{});
+  Array1<int32_t> indexes = FromTorch<int32_t>(index);
+  Tensor src = FromTorch(value, TensorTag{});
+  Tensor dest = FromTorch(*in_out, TensorTag{});
   IndexAdd(src, indexes, true, &dest);
 }
 

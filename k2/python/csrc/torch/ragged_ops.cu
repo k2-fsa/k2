@@ -117,7 +117,7 @@ static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out, bool use_log,
 
   int64_t stride = out_grad.strides()[0];
   if (stride != 0) {
-    Array1<T> out_grad_array = FromTensor<T>(out_grad);
+    Array1<T> out_grad_array = FromTorch<T>(out_grad);
     K2_CHECK_EQ(out.values.Dim(), out_grad_array.Dim());
 
     Ragged<T> out_grad_ragged(out.shape, out_grad_array);
@@ -160,7 +160,7 @@ static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out, bool use_log,
               out_grad_data[i * stride] - exp(out_data[i]) * scale;
         });
   }
-  return ToTensor(ans_grad_array);
+  return ToTorch(ans_grad_array);
 }
 
 template <typename T>
@@ -176,7 +176,7 @@ static void PybindOpPerSublist(py::module &m, Op op, const char *name) {
       [op](Ragged<T> &src, T initial_value) -> torch::Tensor {
         Array1<T> values(src.Context(), src.TotSize(src.NumAxes() - 2));
         op(src, initial_value, &values);
-        return ToTensor(values);
+        return ToTorch(values);
       },
       py::arg("src"), py::arg("initial_value"));
 }
@@ -224,7 +224,7 @@ static void PybindUniqueSequences(py::module &m) {
 
         torch::optional<torch::Tensor> new2old_indexes_tensor;
         if (need_new2old_indexes)
-          new2old_indexes_tensor = ToTensor(new2old_indexes);
+          new2old_indexes_tensor = ToTorch(new2old_indexes);
 
         return std::make_tuple(ans, num_repeats_tensor, new2old_indexes_tensor);
       },
@@ -245,13 +245,13 @@ static void PybindIndex(py::module &m) {
       [](RaggedShape &src, int32_t axis, torch::Tensor indexes,
          bool need_value_indexes =
              true) -> std::pair<RaggedShape, torch::optional<torch::Tensor>> {
-        Array1<int32_t> indexes_array = FromTensor<int32_t>(indexes);
+        Array1<int32_t> indexes_array = FromTorch<int32_t>(indexes);
         Array1<int32_t> value_indexes;
         RaggedShape ans = Index(src, axis, indexes_array,
                                 need_value_indexes ? &value_indexes : nullptr);
 
         torch::optional<torch::Tensor> value_indexes_tensor;
-        if (need_value_indexes) value_indexes_tensor = ToTensor(value_indexes);
+        if (need_value_indexes) value_indexes_tensor = ToTorch(value_indexes);
 
         return std::make_pair(ans, value_indexes_tensor);
       },
@@ -286,7 +286,7 @@ static void PybindArgMaxPerSublist(py::module &m) {
         Array1<int32_t> indexes(src.Context(), num_rows);
         ArgMaxPerSublist(src, initial_value, &indexes);
 
-        return ToTensor(indexes);
+        return ToTorch(indexes);
       },
       py::arg("src"), py::arg("initial_value"));
 }
@@ -303,7 +303,7 @@ static void PybindMaxPerSublist(py::module &m) {
         Array1<T> max_values(src.Context(), num_rows);
         MaxPerSublist(src, initial_value, &max_values);
 
-        return ToTensor(max_values);
+        return ToTorch(max_values);
       },
       py::arg("src"), py::arg("initial_value"));
 }
