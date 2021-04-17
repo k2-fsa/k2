@@ -304,7 +304,8 @@ class Array1 {
      this is a CPU array, it would have much less overhead to index the Data()
      pointer. */
   T operator[](int32_t i) const {
-    static_assert(!std::is_same<T, Any>::value);
+    static_assert(!std::is_same<T, Any>::value,
+                  "Operator [] cannot be called with generic arrays");
     NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, Dim());
@@ -332,7 +333,9 @@ class Array1 {
 
   /* Setting all elements to a scalar */
   void operator=(const T t) {
-    static_assert(!std::is_same<T, Any>::value);
+    static_assert(!std::is_same<T, Any>::value,
+                  "Operator == (assignment to scalar) cannot be "
+                  "called with generic arrays");
     NVTX_RANGE(K2_FUNC);
     T *data = Data();
 
