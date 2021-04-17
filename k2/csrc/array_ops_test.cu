@@ -1721,12 +1721,16 @@ void Array2ContiguousTest() {
 
     K2_CHECK_EQ(Equal(src_part_contiguous1, src_part_contiguous2),
                 true);
-    // Following two are checking ApproxEqual.
     K2_CHECK_EQ(ApproxEqual(src_part_contiguous1, src_part_contiguous2),
                 true);
-    K2_CHECK_EQ(ApproxEqual(src_part_contiguous1, src_part_contiguous2, T(-1.0)),
-                false);
   }
+}
+
+TEST(OpsTest, ApproxEqualTest) {
+  Array2<float> array1("[ [ 1 2 3  ] [4 5 6 ]]"),
+      array2("[ [ 1.1 2 3  ] [4 5 6 ]]");
+  K2_CHECK_EQ(ApproxEqual(array1, array2, float(0.2)), true);
+  K2_CHECK_EQ(ApproxEqual(array1, array2, float(0.01)), false);
 }
 
 TEST(OpsTest, Array2Contiguous) {

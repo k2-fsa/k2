@@ -669,6 +669,7 @@ class Array2 {
     *this = elem;
   }
 
+  // format is [[ 1 2 3 ] [4 5 6]] (whitespace does not matter)
   explicit Array2(const std::string &str);
   // copy constructor
   Array2(const Array2 &other) = default;

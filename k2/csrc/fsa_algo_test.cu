@@ -878,7 +878,7 @@ TEST(FsaAlgo, InvertTest) {
     Ragged<int32_t> dest_aux_labels;
     Array1<int32_t> arc_map;
     Invert(src, aux_labels, &dest, &dest_aux_labels, &arc_map);
-    FsaVec expected_fsa(
+    FsaVec expected_fsa = FsaVec(
         "[ [ [ 0 1 1 1 0 2 3 2 0 9 0 3 ] [ 1 2 2 0 ] [ 2 3 5 4 2 9 0 5 2 5 8 6 "
         "] "
         "[ 3 4 6 0 ] [ 4 7 7 0 ] [ 5 6 9 0 ] [ 6 11 -1 0 ] [ 7 9 0 7 7 8 10 8 "
@@ -889,16 +889,16 @@ TEST(FsaAlgo, InvertTest) {
         "-1 "
         "7 ] [ 6 0 9 0 ] [ 7 8 10 8 ] [ 8 2 11 0 ] [ 9 10 12 9 ] [ 10 11 -1 0 "
         "] "
-        "[ ] ] ]");
-    Ragged<int32_t> expected_aux_labels(
+        "[ ] ] ]").To(c);
+    Ragged<int32_t> expected_aux_labels = Ragged<int32_t>(
         "[ [ 1 ] [ ] [ 2 ] [ ] [ 3 ] [ 4 ] [ ] [ ] [ ] [ ] [ -1 ] [ ] [ ] [ -1 "
         "] "
         "[ -1 ] [ 1 ] [ ] [ 2 ] [ ] [ 3 ] [ 4 ] [ ] [ ] [ 5 ] [ -1 ] [ ] [ 6 ] "
         "[ "
-        "] [ ] [ -1 ] ]");
-    Array1<int32_t> expected_arc_map(
+        "] [ ] [ -1 ] ]").To(c);
+    Array1<int32_t> expected_arc_map = Array1<int32_t>(
         "[ 0 1 2 -1 3 4 5 -1 -1 -1 -1 6 7 -1 8 9 10 11 -1 12 13 -1 -1 14 15 -1 "
-        "16 -1 17 -1 ]");
+        "16 -1 17 -1 ]").To(c);
     EXPECT_EQ(true, Equal(dest.values, expected_fsa.values));
     EXPECT_EQ(true, Equal(dest_aux_labels.RowSplits(1),
                           expected_aux_labels.RowSplits(1)));
