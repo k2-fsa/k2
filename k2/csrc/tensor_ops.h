@@ -145,6 +145,9 @@ Tensor SimpleRaggedIndexSelect1D(Tensor &src, Ragged<int32_t> &indexes);
 
    It supports only 2-d tensors, with the 2nd dimension interpreted as the
    time dimension and the 1st dimension interpreted as the batch dimension.
+
+   The strides on axis 1 (the 2nd axis) are expected to be identical, and
+   for efficiency of memory access it's best if the stride is 1 or -1.
  */
 void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest);
 

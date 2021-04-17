@@ -572,29 +572,33 @@ struct BlockPrefixCallbackOp
     @param [in] T    The sequence length.  There is no constraint on the sequence
                      length; the kernel deals with ThreadsPerBlock items at a time,
                      and takes care of T > ThreadsPerBlock by looping.
-    @param [in] x    Pointer to the x input data, which is an array of shape (N,T);
-                     the stride along the N axis is `x_stride` and the stride along
-                     the T axis is 1.
+    @param [in] x    Pointer to the x input data, which is an array of shape (N,T)
+    @param [in] x_stride0  Stride along axis 0 of of the `x` data
     @param [in] gamma   Pointer to the gamma input data, which is an array of shape (N,T);
                      the stride along the N axis is `gamma_stride` and the stride along
                      the T axis is 1.
-    @param [in] y_stride  Pointer to the y output data, which is an array of shape (N,T);
+    @param [in] gamma_stride0  Stride along axis 0 of of the `gamma` data
+    @param [in] y  Pointer to the y output data, which is an array of shape (N,T);
                      the stride along the N axis is `y_stride` and the stride along
                      the T axis is 1.  It is acceptable for any of these pointers
                      to be aliased (in particular, y and x may be the same pointer).
+    @param [in] y_stride0  Stride along axis 0 of of the `y` data
+    @param [in] stride1  Stride along axis 1 of the three arrays (this is expected
+                   to be identical, nonzero, and preferably -1 or 1.
 */
 template <typename Real,
           int ThreadsPerBlock>
 __global__ void DiscountedCumSumKernel(int N, int T,
-                                       const Real *x, int x_stride,
-                                       const Real *gamma, int gamma_stride,
-                                       Real *y, int y_stride) {
+                                       const Real *x, int x_stride0,
+                                       const Real *gamma, int gamma_stride0,
+                                       Real *y, int y_stride0,
+                                       int stride1) {
   int n_idx = blockIdx.y * gridDim.x + blockIdx.x;
   if (n_idx >= N)
     return;
-  x += x_stride * n_idx;
-  gamma += gamma_stride * n_idx;
-  y += y_stride * n_idx;
+  x += x_stride0 * n_idx;
+  gamma += gamma_stride0 * n_idx;
+  y += y_stride0 * n_idx;
 
   int thread_idx = threadIdx.x;
   using Elem = DiscountedCumSumElement<Real>;
@@ -613,8 +617,8 @@ __global__ void DiscountedCumSumKernel(int N, int T,
     // although we spend more time with raking reduction than we really
     // need to).
     if (base_t + thread_idx < T) {
-      elem.y = x[base_t + thread_idx];
-      elem.gamma = gamma[base_t + thread_idx];
+      elem.y = x[(base_t + thread_idx) * stride1];
+      elem.gamma = gamma[(base_t + thread_idx) * stride1];
     }
     CombineCumSumOp<Real> op;
 
@@ -623,17 +627,17 @@ __global__ void DiscountedCumSumKernel(int N, int T,
     BlockScan(temp_storage).InclusiveScan(elem, elem, op, prefix_callback);
 
     if ( base_t + thread_idx < T)
-      y[base_t + thread_idx] = elem.y;
+      y[(base_t + thread_idx) * stride1] = elem.y;
   }
 }
 
 
 template <typename Real, int ThreadsPerBlock>
 void DiscountedCumSumCudaImpl(cudaStream_t stream,
-                      int N, int T,
-                      const Real *x, int x_stride,
-                      const Real *gamma, int gamma_stride,
-                      Real *y, int y_stride) {
+                              int N, int T,
+                              const Real *x, int x_stride0,
+                              const Real *gamma, int gamma_stride0,
+                              Real *y, int y_stride0, int stride1) {
 
   int32_t tot_grid_size = N;
   int32_t x_grid_size = (tot_grid_size < (1 << 20) ?
@@ -644,23 +648,24 @@ void DiscountedCumSumCudaImpl(cudaStream_t stream,
   dim3 grid_dim(x_grid_size, y_grid_size, 1),
       block_dim(ThreadsPerBlock, 1, 1);
   K2_CUDA_SAFE_CALL(DiscountedCumSumKernel<Real, ThreadsPerBlock>
-                    <<<grid_dim, block_dim, 0, stream>>>(N, T, x, x_stride,
-                                                         gamma, gamma_stride,
-                                                         y, y_stride));
+                    <<<grid_dim, block_dim, 0, stream>>>(N, T, x, x_stride0,
+                                                         gamma, gamma_stride0,
+                                                         y, y_stride0, stride1));
 }
 
 
 template <typename Real>
 void DiscountedCumSumCpuImpl(int N, int T,
-                             const Real *x, int x_stride,
-                             const Real *gamma, int gamma_stride,
-                             Real *y, int y_stride) {
+                             const Real *x, int x_stride0,
+                             const Real *gamma, int gamma_stride0,
+                             Real *y, int y_stride0,
+                             int stride1) {
   for (int32_t n = 0; n < N; n++,
-           x += x_stride, gamma += gamma_stride, y += y_stride) {
+           x += x_stride0, gamma += gamma_stride0, y += y_stride0) {
     Real cur_sum = 0.0;
     for (int32_t t = 0; t < T; t++) {
-      cur_sum = x[t] + cur_sum * gamma[t];
-      y[t] = cur_sum;
+      cur_sum = x[t * stride1] + cur_sum * gamma[t * stride1];
+      y[t * stride1] = cur_sum;
     }
   }
 }
@@ -677,42 +682,47 @@ void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
   if (!(src.SameDims(gamma) && src.SameDims(*dest))) {
     K2_LOG(ERROR) << "Expected all args to have the same dim.";
   }
-  if (!(src.Stride(1) == 1 && gamma.Stride(1) == 1 && dest->Stride(1) == 1)) {
-    K2_LOG(ERROR) << "Expected all strides on dim 1 to be 1.";
+  if (!(src.Stride(1) == gamma.Stride(1) && src.Stride(1) == dest->Stride(1))) {
+    K2_LOG(ERROR) << "Expected all strides on dim 1 to be the same.";
   }
   if (!(src.GetDtype() == gamma.GetDtype() && src.GetDtype() == dest->GetDtype())) {
     K2_LOG(ERROR) << "Expected all args to have the same dtype.";
   }
   int32_t N = src.Dim(0),
       T = src.Dim(1),
-      src_stride = src.Stride(0),
-      gamma_stride = gamma.Stride(0),
-      dest_stride = dest->Stride(0);
+      src_stride0 = src.Stride(0),
+      gamma_stride0 = gamma.Stride(0),
+      dest_stride0 = dest->Stride(0),
+      stride1 = src.Stride(1);  // these are all the same.
   ContextPtr c = src.Context();
   if (src.GetDtype() == kFloatDtype) {
     if (c->GetDeviceType() == kCuda) {
       DiscountedCumSumCudaImpl<float, 128>(c->GetCudaStream(), N, T,
-                                           src.Data<float>(), src_stride,
-                                           gamma.Data<float>(), gamma_stride,
-                                           dest->Data<float>(), dest_stride);
+                                           src.Data<float>(), src_stride0,
+                                           gamma.Data<float>(), gamma_stride0,
+                                           dest->Data<float>(), dest_stride0,
+                                           stride1);
     } else {
       DiscountedCumSumCpuImpl<float>(N, T,
-                                     src.Data<float>(), src_stride,
-                                     gamma.Data<float>(), gamma_stride,
-                                     dest->Data<float>(), dest_stride);
+                                     src.Data<float>(), src_stride0,
+                                     gamma.Data<float>(), gamma_stride0,
+                                     dest->Data<float>(), dest_stride0,
+                                     stride1);
 
     }
   } else if (src.GetDtype() == kDoubleDtype) {
     if (c->GetDeviceType() == kCuda) {
       DiscountedCumSumCudaImpl<double, 128>(c->GetCudaStream(), N, T,
-                                           src.Data<double>(), src_stride,
-                                           gamma.Data<double>(), gamma_stride,
-                                           dest->Data<double>(), dest_stride);
+                                            src.Data<double>(), src_stride0,
+                                            gamma.Data<double>(), gamma_stride0,
+                                            dest->Data<double>(), dest_stride0,
+                                            stride1);
     } else {
       DiscountedCumSumCpuImpl<double>(N, T,
-                                     src.Data<double>(), src_stride,
-                                     gamma.Data<double>(), gamma_stride,
-                                     dest->Data<double>(), dest_stride);
+                                      src.Data<double>(), src_stride0,
+                                      gamma.Data<double>(), gamma_stride0,
+                                      dest->Data<double>(), dest_stride0,
+                                      stride1);
 
     }
   } else {

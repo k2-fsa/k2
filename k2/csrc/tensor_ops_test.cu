@@ -335,13 +335,14 @@ TEST(Index, SimpleRaggedIndexSelect1D) {
 
 
 TEST(Tensor, DiscountedCumSum) {
-  for (int32_t i = 0; i < 3; i++) {
+  for (int32_t i = 0; i < 4; i++) {
     int32_t M = RandInt(0, 1000),
         T = RandInt(0, 2000);  // TODO: increase.
     while (M * T > 10000) {  // don't want test to take too long.
       M /= 2;
       T /= 2;
     }
+
     ContextPtr cuda_context = GetCudaContext(),
         cpu_context = GetCpuContext();
 
@@ -350,10 +351,11 @@ TEST(Tensor, DiscountedCumSum) {
     Array2<float> y(cuda_context, M, T);
     y = -10.0;
 
+    bool flip = (i % 2 == 1);
+
     Array2<float> x_cpu = x.To(cpu_context),
         gamma_cpu = gamma.To(cpu_context),
         y_cpu(cpu_context, M, T);
-
 
     Tensor x_ten = x.ToTensor(),
         gamma_ten = gamma.ToTensor(),
@@ -362,6 +364,15 @@ TEST(Tensor, DiscountedCumSum) {
     Tensor x_ten_cpu = x_cpu.ToTensor(),
         gamma_ten_cpu = gamma_cpu.ToTensor(),
         y_ten_cpu = y_cpu.ToTensor();
+
+    if (flip) {
+      x_ten = Flip(x_ten, 1);
+      gamma_ten = Flip(gamma_ten, 1);
+      y_ten = Flip(y_ten, 1);
+      x_ten_cpu = Flip(x_ten_cpu, 1);
+      gamma_ten_cpu = Flip(gamma_ten_cpu, 1);
+      y_ten_cpu = Flip(y_ten_cpu, 1);
+    }
 
     DiscountedCumSum(x_ten, gamma_ten, &y_ten);
     DiscountedCumSum(x_ten_cpu, gamma_ten_cpu, &y_ten_cpu);
@@ -373,6 +384,7 @@ TEST(Tensor, DiscountedCumSum) {
            << ", y_cpu = " << y_cpu
            << ", y = " << y_cpu_copy; */
 
+    // We are using the CPU and GPU versions to check each other.
     EXPECT_FLOAT_ARRAY2_APPROX_EQ(y_cpu, y_cpu_copy, 0.01);
 
   }
