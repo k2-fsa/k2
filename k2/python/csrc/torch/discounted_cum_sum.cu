@@ -21,9 +21,9 @@ namespace k2 {
 static void DiscountedCumSumWrapper(torch::Tensor x, torch::Tensor gamma,
                                     torch::Tensor y, bool flip = false) {
   NVTX_RANGE(K2_FUNC);
-  Tensor x_k2 = FromTensor(x, TensorTag{});
-  Tensor gamma_k2 = FromTensor(gamma, TensorTag{});
-  Tensor y_k2 = FromTensor(y, TensorTag{});
+  Tensor x_k2 = FromTorch(x, TensorTag{});
+  Tensor gamma_k2 = FromTorch(gamma, TensorTag{});
+  Tensor y_k2 = FromTorch(y, TensorTag{});
   if (flip) {
     // We have to do this in C++ because Torch tensors don't support negative
     // strides.
