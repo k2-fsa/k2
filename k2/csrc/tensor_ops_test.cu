@@ -10,6 +10,7 @@
 #include "gtest/gtest.h"
 #include "k2/csrc/tensor_ops.h"
 #include "k2/csrc/test_utils.h"
+#include "k2/csrc/array_ops.h"
 
 namespace k2 {
 
@@ -325,10 +326,73 @@ static void TestSimpleRaggedIndexSelect1D() {
   }
 }
 
+
 TEST(Index, SimpleRaggedIndexSelect1D) {
   TestSimpleRaggedIndexSelect1D<float>();
   TestSimpleRaggedIndexSelect1D<double>();
   TestSimpleRaggedIndexSelect1D<int32_t>();
+}
+
+
+template <typename Real>
+void TestDiscountedCumSum() {
+  for (int32_t i = 0; i < 4; i++) {
+    int32_t M = RandInt(0, 1000),
+        T = RandInt(0, 2000);  // TODO: increase.
+    while (M * T > 10000) {  // don't want test to take too long.
+      M /= 2;
+      T /= 2;
+    }
+
+    ContextPtr cuda_context = GetCudaContext(),
+        cpu_context = GetCpuContext();
+
+    Array2<Real> x = RandUniformArray2<Real>(cuda_context, M, T, -2.0, 2.0);
+    Array2<Real> gamma = RandUniformArray2<Real>(cuda_context, M, T, 0.0, 1.0);
+    Array2<Real> y(cuda_context, M, T);
+    y = -10.0;
+
+    bool flip = (i % 2 == 1);
+
+    Array2<Real> x_cpu = x.To(cpu_context),
+        gamma_cpu = gamma.To(cpu_context),
+        y_cpu(cpu_context, M, T);
+
+    Tensor x_ten = x.ToTensor(),
+        gamma_ten = gamma.ToTensor(),
+        y_ten = y.ToTensor();
+
+    Tensor x_ten_cpu = x_cpu.ToTensor(),
+        gamma_ten_cpu = gamma_cpu.ToTensor(),
+        y_ten_cpu = y_cpu.ToTensor();
+
+    if (flip) {
+      x_ten = Flip(x_ten, 1);
+      gamma_ten = Flip(gamma_ten, 1);
+      y_ten = Flip(y_ten, 1);
+      x_ten_cpu = Flip(x_ten_cpu, 1);
+      gamma_ten_cpu = Flip(gamma_ten_cpu, 1);
+      y_ten_cpu = Flip(y_ten_cpu, 1);
+    }
+
+    DiscountedCumSum(x_ten, gamma_ten, &y_ten);
+    DiscountedCumSum(x_ten_cpu, gamma_ten_cpu, &y_ten_cpu);
+
+    Array2<Real> y_cpu_copy = y.To(cpu_context);
+
+    /*K2_LOG(INFO) << "x_cpu = " << x_cpu
+           << ", gamma_cpu = " << gamma_cpu
+           << ", y_cpu = " << y_cpu
+           << ", y = " << y_cpu_copy; */
+
+    // We are using the CPU and GPU versions to check each other.
+    EXPECT_EQ(true, ApproxEqual(y_cpu, y_cpu_copy, (Real)0.01));
+  }
+}
+
+TEST(Tensor, DiscountedCumSum) {
+  TestDiscountedCumSum<float>();
+  TestDiscountedCumSum<double>();
 }
 
 }  // namespace k2

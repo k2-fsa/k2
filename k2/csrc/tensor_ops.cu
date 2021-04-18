@@ -55,7 +55,7 @@ void CopyTensorElements1d(ContextPtr c, int32_t dim, const T *src_data,
 // about memory loads if it turns out to be a transposition.
 void CopyTensorElements(Tensor src, Tensor dest) {
   NVTX_RANGE(K2_FUNC);
-  K2_CHECK(src.SameDim(dest));
+  K2_CHECK(src.SameDims(dest));
   ContextPtr c = GetContext(src, dest);
   int32_t num_axes = src.NumAxes();
   if (num_axes > 2) {
@@ -118,7 +118,7 @@ Tensor Cast(Tensor src, Dtype new_dtype) {
   K2_DCHECK(ans.IsContiguous());
 
   Dtype old_dtype = src.GetDtype();
-  int32_t dim = ans.Nelement();
+  int32_t dim = ans.NumElements();
 
   FOR_ALL_DTYPES(old_dtype, T,
                  FOR_ALL_DTYPES(new_dtype, U,
@@ -506,5 +506,249 @@ Tensor SimpleRaggedIndexSelect1D(Tensor &src, Ragged<int32_t> &indexes) {
                                                   ans_dim, ans.Data<T>()));
   return ans;
 }
+
+template <typename Real>
+struct DiscountedCumSumElement {
+  Real y;      // y is the partial sums of x values.  Initially it is just a
+               // single x value.  In general each x is multiplied by all
+               // previous gammas.
+  Real gamma;  // gamma is the product of gammas along a range of elements
+};
+template <typename Real>
+struct CombineCumSumOp {
+  __device__ DiscountedCumSumElement<Real> operator() (
+      DiscountedCumSumElement<Real> &a,
+      DiscountedCumSumElement<Real> &b) const {
+    return DiscountedCumSumElement<Real>{b.y +  b.gamma * a.y, a.gamma * b.gamma};
+  }
+};
+
+// A stateful callback functor that maintains a running prefix to be applied
+// during consecutive scan operations.
+template <typename Real>
+struct BlockPrefixCallbackOp
+{
+  using Elem = DiscountedCumSumElement<Real>;
+  Elem running_total;
+  // Constructor
+  __device__ BlockPrefixCallbackOp(): running_total{0.0, 0.0} { }
+  // Callback operator to be entered by the first warp of threads in the block.
+  // Thread-0 is responsible for returning a value for seeding the block-wide scan.
+  __device__ Elem operator()(Elem block_aggregate)
+    {
+      Elem old_prefix = running_total;
+      running_total = block_aggregate;
+      return old_prefix;
+    }
+};
+
+/*
+  Notes for DiscountedCumSum.
+
+    It implements a discounted sum along a sequence.  Suppose we have x_i, gamma_i and
+  y_i, for 0 <= i < T.  Then we do:
+      y_0 = x_0
+      y_i = x_i + y_{i-1} gamma_i
+   for 0 < i < T.  (This is done as a generic inclusive-scan/inclusive-sum with a special
+   reduction op).
+
+  See DiscountedCumSumElement and CombineCumSumOp for how we use a special operator to
+  do this as an inclusive-sum.
+
+  The tensors involved must be 2-dimensional with dimensions (N, T) where N is
+  the batch size and T the time duration.
+
+  Each thread-block is of (x,y,z) size (ThreadsPerBlock,1,1), and it processes N
+  items.  It processes ThreadsPerBlock items at a time; and if T >
+  ThreadsPerBlock it simply loops to cover the remaining items.
+
+  The grid size (x,y,z) is (X,Y,1) where the X and Y together cover the "N"
+  (batch) dimension.  (We can't cover it just in the X dimension because of
+  limits on the size of each time).
+
+    @param [in] N    The batch size, i.e. number of separate sequences.  We expect
+               that N <= gridDim.x * gridDim.y.
+    @param [in] T    The sequence length.  There is no constraint on the sequence
+                     length; the kernel deals with ThreadsPerBlock items at a time,
+                     and takes care of T > ThreadsPerBlock by looping.
+    @param [in] x    Pointer to the x input data, which is an array of shape (N,T)
+    @param [in] x_stride0  Stride along axis 0 of of the `x` data
+    @param [in] gamma   Pointer to the gamma input data, which is an array of shape (N,T);
+                     the stride along the N axis is `gamma_stride` and the stride along
+                     the T axis is 1.
+    @param [in] gamma_stride0  Stride along axis 0 of of the `gamma` data
+    @param [in] y  Pointer to the y output data, which is an array of shape (N,T);
+                     the stride along the N axis is `y_stride` and the stride along
+                     the T axis is 1.  It is acceptable for any of these pointers
+                     to be aliased (in particular, y and x may be the same pointer).
+    @param [in] y_stride0  Stride along axis 0 of the `y` data
+    @param [in] stride1  Stride along axis 1 of the three arrays (this is expected
+                   to be identical, nonzero, and preferably -1 or 1.
+*/
+template <typename Real,
+          int ThreadsPerBlock>
+static __global__ void DiscountedCumSumKernel(int N, int T,
+                                              const Real *x, int x_stride0,
+                                              const Real *gamma, int gamma_stride0,
+                                              Real *y, int y_stride0,
+                                              int stride1) {
+  int n_idx = blockIdx.y * gridDim.x + blockIdx.x;
+  if (n_idx >= N)
+    return;
+  x += x_stride0 * n_idx;
+  gamma += gamma_stride0 * n_idx;
+  y += y_stride0 * n_idx;
+
+  int thread_idx = threadIdx.x;
+  using Elem = DiscountedCumSumElement<Real>;
+
+  BlockPrefixCallbackOp<Real> prefix_callback;
+
+  typedef cub::BlockScan<Elem, ThreadsPerBlock> BlockScan;
+  // shared memory for BlockScan
+  __shared__ typename BlockScan::TempStorage temp_storage;
+
+  for (int base_t = 0; base_t < T; base_t += ThreadsPerBlock) {
+    Elem elem;
+
+    // Load x and gamma from memory.  These reads will be coalesced (which is
+    // the advantage of having each thread process one element at this stage;
+    // although we spend more time with raking reduction than we really
+    // need to).
+    if (base_t + thread_idx < T) {
+      elem.y = x[(base_t + thread_idx) * stride1];
+      elem.gamma = gamma[(base_t + thread_idx) * stride1];
+    }
+    CombineCumSumOp<Real> op;
+
+    // the last arg is a callback functor that provides us the aggregate of this block
+    // and which is expected to return the element that we want to add to
+    BlockScan(temp_storage).InclusiveScan(elem, elem, op, prefix_callback);
+
+    if ( base_t + thread_idx < T)
+      y[(base_t + thread_idx) * stride1] = elem.y;
+  }
+}
+
+
+template <typename Real, int ThreadsPerBlock>
+void DiscountedCumSumCudaImpl(cudaStream_t stream,
+                              int N, int T,
+                              const Real *x, int x_stride0,
+                              const Real *gamma, int gamma_stride0,
+                              Real *y, int y_stride0, int stride1) {
+
+  int32_t tot_grid_size = N;
+  int32_t x_grid_size = (tot_grid_size < (1 << 20) ?
+                         std::min<int32_t>(tot_grid_size, (1 << 10)) :
+                         32768),
+      y_grid_size = NumBlocks(tot_grid_size, x_grid_size);
+
+  dim3 grid_dim(x_grid_size, y_grid_size, 1),
+      block_dim(ThreadsPerBlock, 1, 1);
+  K2_CUDA_SAFE_CALL(DiscountedCumSumKernel<Real, ThreadsPerBlock>
+                    <<<grid_dim, block_dim, 0, stream>>>(N, T, x, x_stride0,
+                                                         gamma, gamma_stride0,
+                                                         y, y_stride0, stride1));
+}
+
+
+template <typename Real>
+static void DiscountedCumSumCpuImpl(int N, int T,
+                                    const Real *x, int x_stride0,
+                                    const Real *gamma, int gamma_stride0,
+                                    Real *y, int y_stride0,
+                                    int stride1) {
+  for (int32_t n = 0; n < N; n++,
+           x += x_stride0, gamma += gamma_stride0, y += y_stride0) {
+    Real cur_sum = 0.0;
+    for (int32_t t = 0; t < T; t++) {
+      cur_sum = x[t * stride1] + cur_sum * gamma[t * stride1];
+      y[t * stride1] = cur_sum;
+    }
+  }
+}
+
+
+void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
+  // check contexts compatible:
+  if (!(IsCompatible(src, gamma) && IsCompatible(src, *dest))) {
+    K2_LOG(ERROR) << "Tensors are on different devices";
+  }
+  if (!(src.NumAxes() == 2 && gamma.NumAxes() == 2 && dest->NumAxes() == 2)) {
+    K2_LOG(ERROR) << "Expected all num-axes to equal 2.";
+  }
+  if (!(src.SameDims(gamma) && src.SameDims(*dest))) {
+    K2_LOG(ERROR) << "Expected all args to have the same dim.";
+  }
+  if (!(src.Stride(1) == gamma.Stride(1) && src.Stride(1) == dest->Stride(1))) {
+    K2_LOG(ERROR) << "Expected all strides on dim 1 to be the same.";
+  }
+  if (!(src.GetDtype() == gamma.GetDtype() && src.GetDtype() == dest->GetDtype())) {
+    K2_LOG(ERROR) << "Expected all args to have the same dtype.";
+  }
+  int32_t N = src.Dim(0),
+      T = src.Dim(1),
+      src_stride0 = src.Stride(0),
+      gamma_stride0 = gamma.Stride(0),
+      dest_stride0 = dest->Stride(0),
+      stride1 = src.Stride(1);  // these are all the same.
+  ContextPtr c = src.Context();
+  if (src.GetDtype() == kFloatDtype) {
+    if (c->GetDeviceType() == kCuda) {
+      DiscountedCumSumCudaImpl<float, 128>(c->GetCudaStream(), N, T,
+                                           src.Data<float>(), src_stride0,
+                                           gamma.Data<float>(), gamma_stride0,
+                                           dest->Data<float>(), dest_stride0,
+                                           stride1);
+    } else {
+      DiscountedCumSumCpuImpl<float>(N, T,
+                                     src.Data<float>(), src_stride0,
+                                     gamma.Data<float>(), gamma_stride0,
+                                     dest->Data<float>(), dest_stride0,
+                                     stride1);
+
+    }
+  } else if (src.GetDtype() == kDoubleDtype) {
+    if (c->GetDeviceType() == kCuda) {
+      DiscountedCumSumCudaImpl<double, 128>(c->GetCudaStream(), N, T,
+                                            src.Data<double>(), src_stride0,
+                                            gamma.Data<double>(), gamma_stride0,
+                                            dest->Data<double>(), dest_stride0,
+                                            stride1);
+    } else {
+      DiscountedCumSumCpuImpl<double>(N, T,
+                                      src.Data<double>(), src_stride0,
+                                      gamma.Data<double>(), gamma_stride0,
+                                      dest->Data<double>(), dest_stride0,
+                                      stride1);
+
+    }
+  } else {
+    K2_LOG(FATAL) << "This algorithm only instantiated for float and double; type is "
+                  << TraitsOf(src.GetDtype()).Name();
+  }
+}
+
+
+Tensor Flip(Tensor &src, int32_t axis) {
+  int32_t num_axes = src.NumAxes();
+  K2_CHECK_GE(axis, -num_axes);
+  K2_CHECK_LT(axis, num_axes);
+  if (axis < 0)
+    axis += num_axes;
+  int32_t old_dim = src.Dim(axis);
+  if (old_dim <= 1)
+    return src;  // No point copying it, it's a no-op.
+  TensorImplPtr src_impl = src.Impl(),
+      ans_impl = std::make_shared<TensorImpl>(*src_impl);
+  int32_t old_stride = ans_impl->shape.Stride(axis);
+  ans_impl->shape.SetStride(axis, -old_stride);
+  int64_t byte_offset = old_stride * static_cast<int64_t>(old_dim - 1) *
+      TraitsOf(ans_impl->dtype).NumBytes();
+  ans_impl->byte_offset += byte_offset;
+  return Tensor(ans_impl);
+}
+
 
 }  // namespace k2

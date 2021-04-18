@@ -414,7 +414,7 @@ class Array1 {
       K2_CHECK_EQ(DtypeOf<T>::dtype, dtype_);
     }
     if (tensor.IsContiguous()) {
-      dim_ = tensor.Nelement();
+      dim_ = tensor.NumElements();
       byte_offset_ = tensor.ByteOffset();
       region_ = tensor.GetRegion();
       return;
