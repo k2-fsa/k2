@@ -444,7 +444,7 @@ class DeviceIntersector {
                              // 16384, and implement the other branch.
 
       if (tot_ab > cutoff) {
-        K2_LOG(ERROR) << "Problem size is too large for un-sorted intersection, "
+        K2_LOG(FATAL) << "Problem size is too large for un-sorted intersection, "
             "please make sure one input is arc-sorted and use sorted_match_a=true.";
       }
       // The following is a bound on how big we might need the hash to be, assuming
@@ -1339,7 +1339,7 @@ FsaVec IntersectDevice(FsaVec &a_fsas, int32_t properties_a,
   K2_CHECK_NE(properties_a & kFsaPropertiesValid, 0);
   K2_CHECK_NE(properties_b & kFsaPropertiesValid, 0);
   if (sorted_match_a && ((properties_a & kFsaPropertiesArcSorted) == 0)) {
-    K2_LOG(ERROR) << "If you provide sorted_match_a=true, a_fsas "
+    K2_LOG(FATAL) << "If you provide sorted_match_a=true, a_fsas "
         "must be arc-sorted, but (according to the properties) "
         "it is not.";
   }

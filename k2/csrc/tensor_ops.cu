@@ -573,14 +573,9 @@ struct BlockPrefixCallbackOp
                      and takes care of T > ThreadsPerBlock by looping.
     @param [in] x    Pointer to the x input data, which is an array of shape (N,T)
     @param [in] x_stride0  Stride along axis 0 of of the `x` data
-    @param [in] gamma   Pointer to the gamma input data, which is an array of shape (N,T);
-                     the stride along the N axis is `gamma_stride` and the stride along
-                     the T axis is 1.
+    @param [in] gamma   Pointer to the gamma input data, which is an array of shape (N,T)
     @param [in] gamma_stride0  Stride along axis 0 of of the `gamma` data
-    @param [in] y  Pointer to the y output data, which is an array of shape (N,T);
-                     the stride along the N axis is `y_stride` and the stride along
-                     the T axis is 1.  It is acceptable for any of these pointers
-                     to be aliased (in particular, y and x may be the same pointer).
+    @param [in] y  Pointer to the y output data, which is an array of shape (N,T)
     @param [in] y_stride0  Stride along axis 0 of the `y` data
     @param [in] stride1  Stride along axis 1 of the three arrays (this is expected
                    to be identical, nonzero, and preferably -1 or 1.
@@ -624,8 +619,9 @@ static __global__ void DiscountedCumSumKernel(int N, int T,
     // the last arg is a callback functor that provides us the aggregate of this block
     // and which is expected to return the element that we want to add to
     BlockScan(temp_storage).InclusiveScan(elem, elem, op, prefix_callback);
+    __syncthreads();
 
-    if ( base_t + thread_idx < T)
+    if (base_t + thread_idx < T)
       y[(base_t + thread_idx) * stride1] = elem.y;
   }
 }
@@ -673,19 +669,19 @@ static void DiscountedCumSumCpuImpl(int N, int T,
 void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
   // check contexts compatible:
   if (!(IsCompatible(src, gamma) && IsCompatible(src, *dest))) {
-    K2_LOG(ERROR) << "Tensors are on different devices";
+    K2_LOG(FATAL) << "Tensors are on different devices";
   }
   if (!(src.NumAxes() == 2 && gamma.NumAxes() == 2 && dest->NumAxes() == 2)) {
-    K2_LOG(ERROR) << "Expected all num-axes to equal 2.";
+    K2_LOG(FATAL) << "Expected all num-axes to equal 2.";
   }
   if (!(src.SameDims(gamma) && src.SameDims(*dest))) {
-    K2_LOG(ERROR) << "Expected all args to have the same dim.";
+    K2_LOG(FATAL) << "Expected all args to have the same dim.";
   }
   if (!(src.Stride(1) == gamma.Stride(1) && src.Stride(1) == dest->Stride(1))) {
-    K2_LOG(ERROR) << "Expected all strides on dim 1 to be the same.";
+    K2_LOG(FATAL) << "Expected all strides on dim 1 to be the same.";
   }
   if (!(src.GetDtype() == gamma.GetDtype() && src.GetDtype() == dest->GetDtype())) {
-    K2_LOG(ERROR) << "Expected all args to have the same dtype.";
+    K2_LOG(FATAL) << "Expected all args to have the same dtype.";
   }
   int32_t N = src.Dim(0),
       T = src.Dim(1),
