@@ -2,7 +2,7 @@
  * @brief python wrapper for DiscountedCumSum
  *
  * @copyright
- * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ * Copyright (c)  2010  Xiaomi Corp.  (authors: Daniel Povey)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
