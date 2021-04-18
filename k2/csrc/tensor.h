@@ -34,7 +34,7 @@ class Shape {
     return strides_[i];
   }
 
-  int32_t Nelement() const { return num_element_; }
+  int32_t NumElements() const { return num_elements_; }
   // storage size in elements
 
   std::vector<int32_t> Dims() const {
@@ -46,8 +46,12 @@ class Shape {
     return std::vector<int32_t>(strides_, strides_ + num_axes_);
   }
 
-  int64_t StorageSize() const { return storage_size_; }
-
+  /*
+    IsContiguous() has essentially the same meaning as in PyTorch, that
+    strides[i] equals the product of dims[i] for j > i; however, we
+    we allow strides[i] to have any value if dims[i] <= 1 (in this
+    case strides[i] is a don't care.
+   */
   bool IsContiguous() const { return is_contiguous_; }
 
   // Returns true if the two shapes have the same dims (but not necessarily
@@ -61,7 +65,7 @@ class Shape {
     return true;
   }
 
-  Shape() = default;
+  Shape(): num_axes_(0), num_elements_(1), is_contiguous_(true) { }
 
   explicit Shape(const std::vector<int32_t> &dims);
 
@@ -70,24 +74,53 @@ class Shape {
 
   Shape(const Shape &other) = default;
 
+  // Set stride on axis `axis`, with 0 <= axis < num_axes_.
+  void SetStride(int32_t axis, int32_t stride);
+
+  /*
+    This function outputs the beginning and end of the range of elements
+    reachable by this tensor.  (Note: this tensor type allows negative stride,
+    so you cannot assume that begin == 0).
+
+     @param [out] begin
+                   At exit, *begin will be set to the most negative element
+                   index reachable from this shape (or zero if this shape
+                   contains no elements)
+     @param [out] end   At exit, *end will be set to one plus the highest index
+                  reachable from this shape (or to zero if this shape contains no
+                  elements).
+   */
+  void GetReachableElems(int64_t *begin, int64_t *end) const;
+
+  /*
+    Be cautious with this function.  It returns the (end - begin) from
+    calling GetReachableElems(), which is the smallest possible
+    size of storage required to store this data, but because we support
+    negative strides you cannot assume that the data starts at the
+    beginning of the region.  Also, it is not cached.
+   */
+  int64_t StorageSize() const;
+
  private:
   static const int32_t kMaxDim = 4;  // Will increase this as needed
 
-  int32_t num_axes_ = 0;  // Must be >= 0
-  int64_t num_element_ = 0;
-  int64_t storage_size_ = 0;
-  bool is_contiguous_ = true;
+  int32_t num_axes_;  // Must be >= 0
+
+  // num_elements_ is the number of distinct tuples of indexes; since strides may
+  // be zero, we do not guarantee that all these elements occupy distinct memory
+  // locations.  See NumElements()
+  int64_t num_elements_;
+  // see documentation for IsContiguous() for its meaning.  This is "derived data";
+  // it is computed by IsContiguous().
+  bool is_contiguous_;
 
   // elements of dims_ and strides_ >= num_axes_ are currently not set;
   // in future we may change this.
   int32_t dims_[kMaxDim];
-  int32_t strides_[kMaxDim];  // Strides in elements
+  int32_t strides_[kMaxDim];  // Strides in elements.  May be negative or zero.
 
   // compute the number of elements
-  int64_t ComputeNumElement() const;
-  // compute the size of storage needed to hold this tensor, in elements.
-  // (different than ComputeNumElements(), because of strides).
-  int64_t ComputeStorageSize() const;
+  int64_t ComputeNumElements() const;
   bool ComputeIsContiguous() const;
 };
 
@@ -166,7 +199,7 @@ class Tensor {
   RegionPtr &GetRegion() const { return impl_->data; }
 
   // Forward some functions from the shape.  Will forward more later.
-  inline bool SameDim(const Tensor &other) const {
+  inline bool SameDims(const Tensor &other) const {
     return impl_->shape.SameDims(other.GetShape());
   }
   inline int32_t NumAxes() const { return impl_->shape.NumAxes(); }
@@ -176,7 +209,7 @@ class Tensor {
   inline int32_t Stride(int32_t i) const { return impl_->shape.Stride(i); }
   // Strides, in elements, not bytes.
   inline std::vector<int32_t> Strides() const { return impl_->shape.Strides(); }
-  inline int32_t Nelement() const { return impl_->shape.Nelement(); }
+  inline int32_t NumElements() const { return impl_->shape.NumElements(); }
   inline bool IsContiguous() const { return impl_->shape.IsContiguous(); }
   inline int32_t ElementSize() const { return TraitsOf(GetDtype()).NumBytes(); }
 
@@ -197,9 +230,13 @@ class Tensor {
 
   ContextPtr &Context() const { return impl_->data->context; }
 
- private:
-  void Init(ContextPtr c);
+  TensorImplPtr Impl() const { return impl_; }
+  // This is for use by implementation code; be careful with it.
   explicit Tensor(TensorImplPtr impl);
+ private:
+  // For use when `shape` and `dtype` are already set up; sets data and
+  // byte_offset.
+  void Init(ContextPtr c);
   TensorImplPtr impl_;  // Must always be non-NULL.
 };
 

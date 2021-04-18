@@ -18,22 +18,28 @@
 
 namespace k2 {
 TEST(TensorTest, Shape) {
-  // empty shape created with the default constructor
+  // scalar shape created with the default constructor
   {
     Shape shape;
     EXPECT_EQ(shape.NumAxes(), 0);
-    EXPECT_EQ(shape.Nelement(), 0);
-    EXPECT_EQ(shape.StorageSize(), 0);
+    EXPECT_EQ(shape.NumElements(), 1);
+    int64_t begin, end;
+    shape.GetReachableElems(&begin, &end);
+    EXPECT_EQ(begin, 0);
+    EXPECT_EQ(end, 1);
     EXPECT_TRUE(shape.IsContiguous());
   }
 
-  // empty shape created with empty dims
+  // empty shape representing scalar, created with empty dims
   {
     std::vector<int32_t> dims;
     Shape shape(dims);
     EXPECT_EQ(shape.NumAxes(), 0);
-    EXPECT_EQ(shape.Nelement(), 0);
-    EXPECT_EQ(shape.StorageSize(), 0);
+    EXPECT_EQ(shape.NumElements(), 1);
+    int64_t begin, end;
+    shape.GetReachableElems(&begin, &end);
+    EXPECT_EQ(begin, 0);
+    EXPECT_EQ(end, 1);
     EXPECT_TRUE(shape.IsContiguous());
   }
 
@@ -43,8 +49,11 @@ TEST(TensorTest, Shape) {
     std::vector<int32_t> strides;
     Shape shape(dims, strides);
     EXPECT_EQ(shape.NumAxes(), 0);
-    EXPECT_EQ(shape.Nelement(), 0);
-    EXPECT_EQ(shape.StorageSize(), 0);
+    EXPECT_EQ(shape.NumElements(), 1);
+    int64_t begin, end;
+    shape.GetReachableElems(&begin, &end);
+    EXPECT_EQ(begin, 0);
+    EXPECT_EQ(end, 1);
     EXPECT_TRUE(shape.IsContiguous());
   }
 
@@ -53,8 +62,11 @@ TEST(TensorTest, Shape) {
     std::vector<int32_t> dims = {3, 2, 5};
     Shape shape(dims);
     EXPECT_EQ(shape.NumAxes(), 3);
-    EXPECT_EQ(shape.Nelement(), 30);
-    EXPECT_EQ(shape.StorageSize(), 30);
+    EXPECT_EQ(shape.NumElements(), 30);
+    int64_t begin, end;
+    shape.GetReachableElems(&begin, &end);
+    EXPECT_EQ(begin, 0);
+    EXPECT_EQ(end, 30);
     EXPECT_TRUE(shape.IsContiguous());
     std::vector<int32_t> expected_dims(shape.Dims());
     EXPECT_EQ(expected_dims, dims);
@@ -62,13 +74,36 @@ TEST(TensorTest, Shape) {
     EXPECT_THAT(expected_strides, ::testing::ElementsAre(10, 5, 1));
   }
 
+  // non-empty shape created with dims, but with zero elements due to one dim is
+  // zero
+  {
+    std::vector<int32_t> dims = {3, 0, 5};
+    Shape shape(dims);
+    EXPECT_EQ(shape.NumAxes(), 3);
+    EXPECT_EQ(shape.NumElements(), 0);
+    int64_t begin, end;
+    shape.GetReachableElems(&begin, &end);
+    EXPECT_EQ(begin, 0);
+    EXPECT_EQ(end, 0);
+    EXPECT_TRUE(shape.IsContiguous());
+    std::vector<int32_t> expected_dims(shape.Dims());
+    EXPECT_EQ(expected_dims, dims);
+    std::vector<int32_t> expected_strides(shape.Strides());
+    EXPECT_THAT(expected_strides, ::testing::ElementsAre(0, 5, 1));
+  }
+
+
   // non-empty shape created with dims and strides, contiguous
   {
     std::vector<int32_t> dims = {3, 2, 5};
     std::vector<int32_t> strides = {10, 5, 1};
     Shape shape(dims, strides);
     EXPECT_EQ(shape.NumAxes(), 3);
-    EXPECT_EQ(shape.Nelement(), 30);
+    EXPECT_EQ(shape.NumElements(), 30);
+    int64_t begin, end;
+    shape.GetReachableElems(&begin, &end);
+    EXPECT_EQ(begin, 0);
+    EXPECT_EQ(end, 30);
     EXPECT_EQ(shape.StorageSize(), 30);
     EXPECT_TRUE(shape.IsContiguous());
     std::vector<int32_t> expected_dims(shape.Dims());
@@ -83,8 +118,11 @@ TEST(TensorTest, Shape) {
     std::vector<int32_t> strides = {10, 8, 1};
     Shape shape(dims, strides);
     EXPECT_EQ(shape.NumAxes(), 3);
-    EXPECT_EQ(shape.Nelement(), 30);
-    EXPECT_EQ(shape.StorageSize(), 33);
+    EXPECT_EQ(shape.NumElements(), 30);
+    int64_t begin, end;
+    shape.GetReachableElems(&begin, &end);
+    EXPECT_EQ(begin, 0);
+    EXPECT_EQ(end, 33);
     EXPECT_FALSE(shape.IsContiguous());
     std::vector<int32_t> expected_dims(shape.Dims());
     EXPECT_EQ(expected_dims, dims);
@@ -100,7 +138,7 @@ TEST(TensorTest, Tensor) {
     Shape shape(dims);
     ContextPtr context = GetCpuContext();
     Tensor tensor(context, kInt32Dtype, shape);
-    std::vector<int32_t> src_data(tensor.GetShape().Nelement());
+    std::vector<int32_t> src_data(tensor.GetShape().NumElements());
     std::iota(src_data.begin(), src_data.end(), 0);
     int32_t *data = tensor.Data<int32_t>();
     std::copy(src_data.begin(), src_data.end(), data);
@@ -167,15 +205,18 @@ TEST(TensorTest, Tensor) {
     std::vector<int32_t> dims = {2, 2, 4};
     std::vector<int32_t> strides = {24, 10, 2};
     Shape shape(dims, strides);
-    EXPECT_EQ(shape.StorageSize(), 41);
+    int64_t begin, end;
+    shape.GetReachableElems(&begin, &end);
+    EXPECT_EQ(begin, 0);
+    EXPECT_EQ(end, 41);
     ContextPtr context = GetCpuContext();
     Tensor tensor(context, kInt32Dtype, shape);
-    // 48 > shape.StorageSize() = 41
+    // 48 > end - begin = 41
     std::vector<int32_t> src_data(48);
     std::iota(src_data.begin(), src_data.end(), 0);
     int32_t *data = tensor.Data<int32_t>();
     std::copy(src_data.begin(),
-              src_data.begin() + tensor.GetShape().StorageSize(), data);
+              src_data.begin() + end, data);
     std::vector<int32_t> expected_data = {0,  2,  4,  6,  10, 12, 14, 16,
                                           24, 26, 28, 30, 34, 36, 38, 40};
     for (int32_t i = 0, j = 0; i < dims[0]; ++i) {
@@ -188,13 +229,24 @@ TEST(TensorTest, Tensor) {
       }
     }
 
+
     // test ToContiguous
     Tensor t = ToContiguous(tensor);
     ASSERT_TRUE(t.IsContiguous());
-    int32_t n = t.Nelement();
+    int32_t n = t.NumElements();
     const int32_t *t_data = t.Data<int32_t>();
-    for (int32_t i = 0; i != t.Nelement(); ++i) {
+    for (int32_t i = 0; i != t.NumElements(); ++i) {
       EXPECT_EQ(t_data[i], expected_data[i]);
+    }
+
+    for (int32_t axis = -3; axis < 3; axis++) {
+      Tensor t_flip = Flip(t, axis);
+      int32_t *t_flip_data = t_flip.Data<int32_t>();
+      int32_t axis_mod = axis;
+      if (axis < 0)
+        axis_mod += 3;
+      K2_CHECK_EQ(t_data,
+                  t_flip_data + t_flip.Stride(axis_mod) * (t.Dim(axis_mod) - 1));
     }
   }
 
