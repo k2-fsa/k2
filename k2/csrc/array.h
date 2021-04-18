@@ -101,7 +101,7 @@ class Array1 {
   const RegionPtr &GetRegion() const { return region_; }
 
   // Constructor.  Requires size >= 0, and T == Any or dtype==DtypeOf<T>::dtype.
-  Array1(ContextPtr ctx, int32_t size, Dtype dtype=DtypeOf<T>::dtype) {
+  Array1(ContextPtr ctx, int32_t size, Dtype dtype = DtypeOf<T>::dtype) {
     Init(ctx, size, dtype);
   }
 
@@ -114,18 +114,21 @@ class Array1 {
       Array1(Array1<T>(str).To(ctx)) { }  // NOLINT
 
   // Creates an array that is not valid, e.g. you cannot call Context() on it.
-  Array1() : dim_(0), dtype_(DtypeOf<T>::dtype), byte_offset_(0), region_(nullptr) {}
+  Array1() : dim_(0), dtype_(DtypeOf<T>::dtype), byte_offset_(0),
+             region_(nullptr) {}
 
   // Return if the array is valid or not. An array is valid if we can call
   // Context() on it.
   bool IsValid() const { return region_ != nullptr; }
 
-  Array1(int32_t dim, RegionPtr region, size_t byte_offset, Dtype dtype=DtypeOf<T>::dtype)
+  Array1(int32_t dim, RegionPtr region, size_t byte_offset,
+         Dtype dtype = DtypeOf<T>::dtype)
       : dim_(dim), dtype_(dtype), byte_offset_(byte_offset), region_(region) {
     K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
   }
 
-  Array1(ContextPtr ctx, int32_t size, T elem, Dtype dtype=DtypeOf<T>::dtype) {
+  Array1(ContextPtr ctx, int32_t size, T elem,
+         Dtype dtype = DtypeOf<T>::dtype) {
     Init(ctx, size, dtype);
     *this = elem;
   }
@@ -648,7 +651,7 @@ class Array2 {
   /* Create new array2 with given dimensions.  dim0 and dim1 must be >=0.
      Data will be uninitialized. */
   Array2(ContextPtr c, int32_t dim0, int32_t dim1,
-         Dtype dtype=DtypeOf<T>::dtype)
+         Dtype dtype = DtypeOf<T>::dtype)
       : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
     K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
     K2_CHECK_GE(dim0, 0);
@@ -660,7 +663,7 @@ class Array2 {
   // Create new array2 with given dimensions.  dim0 and dim1 must be >=0.
   // Data will be initialized with `elem`
   Array2(ContextPtr c, int32_t dim0, int32_t dim1, T elem,
-         Dtype dtype=DtypeOf<T>::dtype)
+         Dtype dtype = DtypeOf<T>::dtype)
       : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
@@ -682,7 +685,7 @@ class Array2 {
 
   /* stride on 1st axis is 1 (in elements). */
   Array2(int32_t dim0, int32_t dim1, int32_t elem_stride0, int32_t byte_offset,
-         RegionPtr region, Dtype dtype=DtypeOf<T>::dtype)
+         RegionPtr region, Dtype dtype = DtypeOf<T>::dtype)
       : dtype_(dtype),
         dim0_(dim0),
         elem_stride0_(elem_stride0),
@@ -812,7 +815,7 @@ class Array2 {
   /* Initialize from Array1.  Require dim0 * dim1 == a.Dim() and dim0,dim1 >= 0
    */
   Array2(Array1<T> &a, int32_t dim0, int32_t dim1,
-         Dtype dtype=DtypeOf<T>::dtype)
+         Dtype dtype = DtypeOf<T>::dtype)
       : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1) {
     K2_CHECK_NE(dtype, kAnyDtype);
     K2_CHECK_GE(dim0, 0);
