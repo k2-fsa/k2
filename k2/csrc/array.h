@@ -78,13 +78,15 @@ class Array1 {
   // a template definition already.  It is an odd syntax.
   template <typename U>
   Array1<U> &Specialize() {
-    static_assert(std::is_same<T, Any>::value);
+    static_assert(std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
     return *reinterpret_cast<Array1<U>*>(this);
   }
   template <typename U>
   Array1<U> &Specialize() const {
-    static_assert(std::is_same<T, Any>::value);
+    static_assert(std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
     return *reinterpret_cast<const Array1<U>*>(this);
   }
@@ -310,7 +312,7 @@ class Array1 {
      pointer. */
   T operator[](int32_t i) const {
     static_assert(!std::is_same<T, Any>::value,
-                  "Operator [] cannot be called with generic arrays");
+                  "generic arrays not supported here");
     NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(i, 0);
     K2_CHECK_LT(i, Dim());
@@ -339,8 +341,7 @@ class Array1 {
   /* Setting all elements to a scalar */
   void operator=(const T t) {
     static_assert(!std::is_same<T, Any>::value,
-                  "Operator == (assignment to scalar) cannot be "
-                  "called with generic arrays");
+                  "generic arrays not supported here");
     NVTX_RANGE(K2_FUNC);
     T *data = Data();
 
@@ -369,7 +370,8 @@ class Array1 {
   // output array memory allocated by the caller.
   // Must have ans.Dim() == indexes.Dim() and IsCompatible(*ans, *this)
   void Index(const Array1<int32_t> &indexes, Array1<T> *ans) const {
-    static_assert(!std::is_same<T, Any>::value);
+    static_assert(!std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     NVTX_RANGE(K2_FUNC);
     K2_CHECK_NE(ans, nullptr);
     const ContextPtr &c = GetContext(*this, indexes, *ans);
@@ -540,13 +542,15 @@ class Array2 {
   // a template definition already.  It is an odd syntax.
   template <typename U>
   Array2<U> &Specialize() {
-    static_assert(std::is_same<T, Any>::value);
+    static_assert(std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
     return *reinterpret_cast<Array2<U>*>(this);
   }
   template <typename U>
   const Array2<U> &Specialize() const {
-    static_assert(std::is_same<T, Any>::value);
+    static_assert(std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
     return *reinterpret_cast<const Array2<U>*>(this);
   }
@@ -574,7 +578,8 @@ class Array2 {
                               static_cast<size_t>(dim1_) *
                               ElementSize());
       Array1<T> array(dim0_ * dim1_, region, 0, dtype_);
-      static_assert(!K2_TYPE_IS_ANY(T));
+      static_assert(!K2_TYPE_IS_ANY(T),
+                    "generic arrays not supported here");
       const T *this_data = Data();
       T *data = array.Data();
       int32_t dim1 = dim1_;
@@ -757,7 +762,8 @@ class Array2 {
 
   // Note: const-ness is w.r.t. the metadata only.
   T *Data() const {
-    static_assert(!std::is_same<T, Any>::value);
+    static_assert(!std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     return reinterpret_cast<T *>(reinterpret_cast<char *>(region_->data) +
                                  byte_offset_);
   }
@@ -765,12 +771,14 @@ class Array2 {
   // Note: array1 doesn't need an accessor because its Data() pointer functions
   // as one already.
   Array2Accessor<T> Accessor() {
-    static_assert(!std::is_same<T, Any>::value);
+    static_assert(!std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     return Array2Accessor<T>(Data(), elem_stride0_);
   }
 
   ConstArray2Accessor<T> Accessor() const {
-    static_assert(!std::is_same<T, Any>::value);
+    static_assert(!std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     return ConstArray2Accessor<T>(Data(), elem_stride0_);
   }
 
@@ -830,7 +838,8 @@ class Array2 {
   // extended __host__ __device__ lambda
   // must have public access.
   void CopyDataFromTensor(const Tensor &t) {
-    static_assert(!std::is_same<T, Any>::value);
+    static_assert(!std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     NVTX_RANGE(K2_FUNC);
     T *this_data = Data();
     const T *t_data = t.Data<T>();

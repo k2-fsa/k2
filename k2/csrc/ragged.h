@@ -368,13 +368,15 @@ struct Ragged {
 
   template <typename U>
   Ragged<U> &Specialize() {
-    static_assert(std::is_same<T, Any>::value);
+    static_assert(std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     K2_CHECK_EQ(values.GetDtype(), DtypeOf<U>::dtype);
     return *reinterpret_cast<Ragged<U>*>(this);
   }
   template <typename U>
   const Ragged<U> &Specialize() const {
-    static_assert(std::is_same<T, Any>::value);
+    static_assert(std::is_same<T, Any>::value,
+                  "generic arrays not supported here");
     K2_CHECK_EQ(values.GetDtype(), DtypeOf<U>::dtype);
     return *reinterpret_cast<const Ragged<U>*>(this);
   }
