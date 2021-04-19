@@ -84,7 +84,7 @@ class Array1 {
     return *reinterpret_cast<Array1<U>*>(this);
   }
   template <typename U>
-  Array1<U> &Specialize() const {
+  const Array1<U> &Specialize() const {
     static_assert(std::is_same<T, Any>::value,
                   "generic arrays not supported here");
     K2_CHECK_EQ(dtype_, DtypeOf<U>::dtype);
@@ -561,7 +561,7 @@ class Array2 {
   Array2<Any> &Generic() {
     return *reinterpret_cast<Array2<Any>*>(this);
   }
-  Array2<Any> &Generic() const {
+  const Array2<Any> &Generic() const {
     return *reinterpret_cast<const Array2<Any>*>(this);
   }
 
