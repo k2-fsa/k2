@@ -172,7 +172,6 @@ class MultiGraphDenseIntersect {
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput(). */
   void Intersect() {
-    NVTX_RANGE(K2_FUNC);
     DoStep0();
     for (int32_t t = 1; t <= T_; t++) DoStep(t);
   }
@@ -196,7 +195,6 @@ class MultiGraphDenseIntersect {
   FsaVec FormatOutput(Array1<int32_t> *arc_map_a,
                       Array1<int32_t> *arc_map_b) {
     NVTX_RANGE(K2_FUNC);
-
 
     Array1<float> score_cutoffs;
     float *score_cutoffs_data;
@@ -802,6 +800,8 @@ class MultiGraphDenseIntersect {
     pick a looser beam if there is significant roundoff).
    */
   Array1<float> GetScoreCutoffs() {
+    NVTX_RANGE(K2_FUNC);
+
     std::vector<float *> state_scores_vec(T_ + 1);
     int32_t tot_states = a_fsas_.TotSize(1);
     if (state_scores_.Dim() == 0) {

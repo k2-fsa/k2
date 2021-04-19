@@ -10,6 +10,7 @@
 #include "k2/csrc/array.h"
 #include "k2/csrc/array_ops.h"
 #include "k2/csrc/macros.h"
+#include "k2/csrc/nvtx.h"
 
 namespace k2 {
 
@@ -312,7 +313,6 @@ Array1<int32_t> GetCounts(ContextPtr c, const int32_t *src_data,
 }
 
 Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
-  NVTX_RANGE(K2_FUNC);
   return GetCounts(src.Context(), src.Data(), src.Dim(), n);
 }
 
@@ -353,6 +353,7 @@ Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src) {
 }
 
 Array1<int32_t> InvertPermutation(const Array1<int32_t> &src) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   int32_t dim = src.Dim();
   Array1<int32_t> ans(c, dim);
@@ -366,6 +367,7 @@ Array1<int32_t> InvertPermutation(const Array1<int32_t> &src) {
 }
 
 Array1<int32_t> RowSplitsToSizes(const Array1<int32_t> &row_splits) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(row_splits.Dim(), 0);
   ContextPtr &c = row_splits.Context();
   int32_t num_rows = row_splits.Dim() - 1;
@@ -407,6 +409,7 @@ __global__ void SizesToMergeMapKernel(int32_t num_rows, int32_t threads_per_row,
 
 Array1<uint32_t> SizesToMergeMap(ContextPtr c,
                                  const std::vector<int32_t> &sizes) {
+  NVTX_RANGE(K2_FUNC);
   int32_t num_srcs = sizes.size();
 
   ContextPtr cpu_context = GetCpuContext();
@@ -465,6 +468,7 @@ Array1<uint32_t> SizesToMergeMap(ContextPtr c,
 }
 
 bool IsPermutation(const Array1<int32_t> &a) {
+  NVTX_RANGE(K2_FUNC);
   Array1<int32_t> ones(a.Context(), a.Dim(), 1);
   int32_t *ones_data = ones.Data();
   const int32_t *a_data = a.Data();
@@ -481,6 +485,7 @@ bool IsPermutation(const Array1<int32_t> &a) {
 
 void RowSplitsToRowIdsOffset(const Array1<int32_t> &row_splits_part,
                            Array1<int32_t> *row_ids_part) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr c = row_splits_part.Context();
   Array1<int32_t> row_splits(c, row_splits_part.Dim());
   int32_t *row_splits_data = row_splits.Data();

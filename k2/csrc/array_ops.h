@@ -77,7 +77,6 @@ void ExclusiveSum(const Array1<S> &src, Array1<T> *dest) {
  */
 template <typename T>
 Array1<T> ExclusiveSum(const Array1<T> &src) {
-  NVTX_RANGE(K2_FUNC);
   Array1<T> ans(src.Context(), src.Dim());
   ExclusiveSum(src, &ans);
   return ans;
@@ -93,7 +92,6 @@ Array1<T> ExclusiveSum(const Array1<T> &src) {
  */
 template <typename S, typename T>
 void InclusiveSum(const Array1<S> &src, Array1<T> *dest) {
-  NVTX_RANGE(K2_FUNC);
   ContextPtr c = GetContext(src, *dest);
   int32_t src_dim = src.Dim();
   K2_CHECK_EQ(src_dim, dest->Dim());
@@ -105,7 +103,6 @@ void InclusiveSum(const Array1<S> &src, Array1<T> *dest) {
  */
 template <typename T>
 Array1<T> InclusiveSum(const Array1<T> &src) {
-  NVTX_RANGE(K2_FUNC);
   Array1<T> ans(src.Context(), src.Dim());
   InclusiveSum(src, &ans);
   return ans;

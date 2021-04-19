@@ -76,6 +76,7 @@ __host__ __device__ __forceinline__ int32_t NumBlocks(int32_t size,
    device (CPU or GPU). */
 template <typename LambdaT>
 void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
+  NVTX_RANGE(K2_FUNC);
   if (n <= 0) return;  // actually it would be an error if n < 0.
   if (stream == kCudaStreamInvalid) {
     // TODO: if n is very large, we'll eventually support running this with
@@ -146,6 +147,7 @@ void EvalDevice(ContextPtrType c, int32_t n, LambdaT &lambda) {
    device (CPU or GPU) */
 template <typename T, typename LambdaT>
 void SetData(cudaStream_t stream, T *data, int32_t n, LambdaT &lambda) {
+  NVTX_RANGE(K2_FUNC);
   if (n <= 0) return;  // actually it would be an error if n < 0.
   if (stream == kCudaStreamInvalid) {
     // TODO: if n is very large, we'll eventually support running this with
@@ -179,6 +181,7 @@ void SetData(ContextPtrType c, T *data, int32_t n, LambdaT &lambda) {
 */
 template <typename LambdaT>
 void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
+  NVTX_RANGE(K2_FUNC);
   if (m <= 0 || n <= 0)
     return;  // actually it would be an error if m < 0 or n < 0.
   if (stream == kCudaStreamInvalid) {
@@ -229,6 +232,7 @@ void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
  */
 template <typename LambdaT>
 void Eval2Device(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
+  NVTX_RANGE(K2_FUNC);
   if (m <= 0 || n <= 0)
     return;  // actually it would be an error if m < 0 or n < 0.
   K2_DCHECK(stream != kCudaStreamInvalid);
@@ -318,6 +322,7 @@ __global__ void eval_lambda_group(int32_t n, LambdaT lambda) {
  */
 template <unsigned int ThreadsPerGroup, typename ThreadGroupDataT, typename LambdaT>
 void EvalGroupDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
+  NVTX_RANGE(K2_FUNC);
   if (n <= 0) return;  // actually it would be an error if n < 0.
 
   K2_CHECK(stream != kCudaStreamInvalid);

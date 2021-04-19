@@ -178,7 +178,6 @@ Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src,
 template <typename T>
 Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src,
                  Array1<uint32_t> *merge_map /* = nullptr*/) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK_GT(num_srcs, 0);
   std::vector<Ragged<T> *> temp(num_srcs);
@@ -210,6 +209,7 @@ Ragged<T> Merge(int32_t num_srcs, Ragged<T> **src,
 
 template <typename T>
 Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   Renumbering r(c, src.NumElements());
   const T *values_data = src.values.Data();
@@ -222,6 +222,7 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
 
 template <typename T>
 Ragged<T> RemoveValuesEq(Ragged<T> &src, T target) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   Renumbering r(c, src.NumElements());
   const T *values_data = src.values.Data();
@@ -237,6 +238,7 @@ Ragged<T> RemoveValuesEq(Ragged<T> &src, T target) {
 template <typename T>
 void PrintRaggedPart(std::ostream &stream, const Ragged<T> &ragged,
                      int32_t axis, int32_t begin_pos, int32_t end_pos) {
+  NVTX_RANGE(K2_FUNC);
   const auto &shape = ragged.shape;
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
            begin_pos <= end_pos && end_pos <= shape.TotSize(axis));
@@ -285,7 +287,6 @@ Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
 // TODO(fangjun): add test cases for `order`
 template <typename T, typename Op>
 static void SortSublistsCpu(Ragged<T> *src, Array1<int32_t> *order) {
-  NVTX_RANGE(K2_FUNC);
   T *p = src->values.Data();
   Op comp = Op();
 
@@ -309,7 +310,6 @@ static void SortSublistsCpu(Ragged<T> *src, Array1<int32_t> *order) {
 
 template <typename T, typename Op /* = LessThan<T> */>
 void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
-  NVTX_RANGE(K2_FUNC);
   if (order) {
     K2_DCHECK(IsCompatible(src->values, *order));
     K2_DCHECK_EQ(src->values.Dim(), order->Dim());
@@ -348,7 +348,6 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
 
 template <typename T>
 bool Ragged<T>::Validate(bool print_warnings) const {
-  NVTX_RANGE(K2_FUNC);
   if (values.Dim() != shape.NumElements()) {
     if (print_warnings) {
       K2_LOG(WARNING) << "Dimension mismatch: values.Dim() == " << values.Dim()
@@ -363,7 +362,6 @@ bool Ragged<T>::Validate(bool print_warnings) const {
 // int).
 template <typename T>
 Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK(NumAxes() > 2 && axis >= 0 && axis < NumAxes() - 1);
   RaggedShape new_shape = ::k2::RemoveAxis(shape, axis);
   return Ragged<T>(new_shape, values);
@@ -579,6 +577,7 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
 
 template <typename T>
 void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr c = GetContext(src, *dst);
   int32_t dim = dst->Dim();
   K2_CHECK_EQ(src.NumElements(), dim);
@@ -642,6 +641,7 @@ void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
 
 template <typename T>
 Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs) {
+  NVTX_RANGE(K2_FUNC);
   std::vector<T> values;
   std::vector<int32_t> row_splits;
   row_splits.reserve(vecs.size() + 1);

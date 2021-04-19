@@ -28,6 +28,7 @@ void CudaStreamOverride::Pop(cudaStream_t stream) {
 }
 
 RegionPtr NewRegion(ContextPtr context, std::size_t num_bytes) {
+  NVTX_RANGE(K2_FUNC);
   // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
   // overwrite if needed.
   auto ans = std::make_shared<Region>();

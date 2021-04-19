@@ -91,6 +91,7 @@ class DeviceIntersector {
       b_fsas_(b_fsas),
       b_to_a_map_(b_to_a_map),
       a_states_multiple_(b_fsas_.TotSize(1) | 1) {
+    NVTX_RANGE(K2_FUNC);
     int32_t num_key_bits = NumBitsNeededFor(a_fsas_.shape.MaxSize(1) *
                                             (int64_t)a_states_multiple_);
     // in future the accessor for num_key_bits==32 may be more efficient, and
@@ -119,6 +120,7 @@ class DeviceIntersector {
 
 
   void FirstIter() {
+    NVTX_RANGE(K2_FUNC);
     int32_t initial_size = state_pair_to_state_.NumBuckets();
     arcs_row_ids_ = Array1<int32_t>(c_, initial_size);
     arcs_row_ids_.Resize(0, true);
@@ -177,6 +179,7 @@ class DeviceIntersector {
     Adds the StateInfo for the final-states to the states_ array.
   */
   void LastIter() {
+    NVTX_RANGE(K2_FUNC);
     int32_t num_final_states = final_states_.Dim();
     int32_t cur_num_states = states_.Dim(),
             tot_num_states = cur_num_states + num_final_states;
@@ -191,8 +194,6 @@ class DeviceIntersector {
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput(). */
   void Intersect() {
-    NVTX_RANGE(K2_FUNC);
-
     FirstIter();
     if (sorted_match_a_)
       ForwardSortedA();
@@ -748,6 +749,7 @@ class DeviceIntersector {
    */
   void PossiblyResizeHash(int32_t min_num_buckets,
                           int32_t min_supported_values) {
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(min_num_buckets, 0);
     int32_t cur_num_buckets = state_pair_to_state_.NumBuckets(),
         cur_num_key_bits = state_pair_to_state_.NumKeyBits(),
@@ -1102,6 +1104,7 @@ class DeviceIntersector {
       const Array1<int32_t> &matching_a_arcs_row_splits,
       const Array1<int32_t> &first_matching_a_arc_idx012,
       int32_t tot_matched_arcs) {
+      NVTX_RANGE(K2_FUNC);
 
       HashAccessorT state_pair_to_state_acc =
           state_pair_to_state_.GetAccessor<HashAccessorT>();

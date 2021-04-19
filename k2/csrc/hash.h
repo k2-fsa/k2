@@ -141,6 +141,7 @@ class Hash {
     See also CopyDataFrom().
    */
   void CopyDataFromSimple(Hash &src) {
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_EQ(num_key_bits_, src.num_key_bits_);
     K2_CHECK_EQ(num_value_bits_, src.num_value_bits_);
     K2_CHECK_EQ(num_key_bits_ + num_value_bits_, 64);
@@ -174,6 +175,7 @@ class Hash {
     AccessorT is a suitable accessor type for *this* hash.
   */
   template <typename AccessorT> void CopyDataFrom(Hash &src) {
+    NVTX_RANGE(K2_FUNC);
     AccessorT this_acc(*this);
     // We handle the general case where `src` may possibly be packed (i.e. we
     // allow num-(key+value)-bits > 64).  This function is only called while

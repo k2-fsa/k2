@@ -31,7 +31,6 @@ std::istream &operator>>(std::istream &is, Arc &arc) {
 }
 
 std::string FsaPropertiesAsString(int32_t properties) {
-  NVTX_RANGE(K2_FUNC);
   static constexpr char kSep = '|';
   std::ostringstream os;
 
@@ -215,7 +214,6 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 }
 
 FsaVec FsaToFsaVec(const Fsa &fsa) {
-  NVTX_RANGE(K2_FUNC);
   if (fsa.NumAxes() != 2)
     return fsa;
   else

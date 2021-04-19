@@ -81,7 +81,9 @@ class RaggedShape {
 
   // Returns the number of elements that a ragged array with this shape would
   // have.
-  int32_t NumElements() const { return TotSize(NumAxes() - 1); }
+  int32_t NumElements() const {
+    return TotSize(NumAxes() - 1);
+  }
 
   /*
     Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.

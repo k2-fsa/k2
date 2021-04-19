@@ -48,7 +48,6 @@ namespace k2 {
 
 void PrintRaggedShapePart(std::ostream &stream, const RaggedShape &shape,
                           int32_t axis, int32_t begin_pos, int32_t end_pos) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
            begin_pos <= end_pos && end_pos <= shape.TotSize(axis));
   for (int32_t d = begin_pos; d < end_pos; ++d) {

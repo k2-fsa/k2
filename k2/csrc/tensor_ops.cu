@@ -94,7 +94,6 @@ void CopyTensorElements(Tensor src, Tensor dest) {
 Tensor ToContiguous(const Tensor &src) {
   // things like this would be more efficient if we supported something like
   // PyTorch's ArrayRef.  not so critical to address that now though.
-  NVTX_RANGE(K2_FUNC);
   Tensor ans(src.Context(), src.GetDtype(), src.GetShape().Dims());
   CopyTensorElements(src, ans);
   return ans;
@@ -133,6 +132,7 @@ static void Index1DImpl(ContextPtr context, const T *src_data,
                         int32_t src_stride, int32_t src_dim,
                         const int32_t *indexes_data, bool allow_minus_one,
                         int32_t ans_dim, T *ans_data) {
+  NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     K2_EVAL(
         context, ans_dim, lambda_set_values, (int32_t i)->void {
@@ -161,6 +161,7 @@ static void Index2DImpl(ContextPtr context, const T *src_data,
                         int32_t src_stride, int32_t src_dim0, int32_t src_dim1,
                         const int32_t *indexes_data, bool allow_minus_one,
                         int32_t ans_dim, int32_t ans_stride, T *ans_data) {
+  NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     if (context->GetDeviceType() == kCpu) {
       for (int32_t i = 0; i != ans_dim; ++i) {
@@ -276,7 +277,6 @@ static Tensor Index2D(Tensor &src, Array1<int32_t> &indexes,
 
 Tensor Index(Tensor &src, Array1<int32_t> &indexes,
              bool allow_minus_one /*= true*/) {
-  NVTX_RANGE(K2_FUNC);
   switch (src.NumAxes()) {
     case 1:
       return Index1D(src, indexes, allow_minus_one);
@@ -295,6 +295,7 @@ static void IndexAdd1DImpl(ContextPtr context, const T *src_data,
                            const int32_t *indexes_data, bool allow_minus_one,
                            int32_t dest_dim, int32_t dest_stride,
                            T *dest_data) {
+  NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     K2_EVAL(
         context, src_dim, lambda_add, (int32_t i)->void {
@@ -326,6 +327,7 @@ static void IndexAdd2DImpl(ContextPtr context, const T *src_data,
                            const int32_t *indexes_data, bool allow_minus_one,
                            int32_t dest_dim, int32_t dest_stride0,
                            int32_t dest_stride1, T *dest_data) {
+  NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     K2_EVAL2(
         context, src_dim0, src_dim1, lambda_add, (int32_t i, int32_t j)->void {
@@ -411,7 +413,6 @@ static void IndexAdd2D(Tensor &src, Array1<int32_t> &indexes,
 
 void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
               Tensor *dest) {
-  NVTX_RANGE(K2_FUNC);
   switch (src.NumAxes()) {
     case 1:
       IndexAdd1D(src, indexes, allow_minus_one, dest);

@@ -172,6 +172,7 @@ template <typename LambdaT>
 __forceinline__ Array1<int32_t> GetNew2Old(
     ContextPtr c, int32_t num_old_elems, LambdaT &lambda,
     int32_t max_array_size = (1 << 20)) {
+  NVTX_RANGE(K2_FUNC);
   int32_t num_arrays = (num_old_elems + max_array_size - 1) / max_array_size;
   std::vector<Array1<int32_t> > new2old(num_arrays);
   for (int32_t i = 0; i < num_arrays; i++) {
@@ -240,6 +241,7 @@ __forceinline__ void GetNew2OldAndRowIds(
     Array1<int32_t> *new2old_out,
     Array1<int32_t> *new_row_ids_out,
     int32_t max_array_size = (1 << 20)) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr c = row_splits.Context();
   if (num_elems == 0) {
     *new2old_out = Array1<int32_t>(c, 0);

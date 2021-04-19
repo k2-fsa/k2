@@ -48,7 +48,6 @@ namespace k2 {
 RaggedShape RandomRaggedShape(bool set_row_ids, int32_t min_num_axes,
                               int32_t max_num_axes, int32_t min_num_elements,
                               int32_t max_num_elements) {
-  NVTX_RANGE(K2_FUNC);
   ContextPtr c = GetCpuContext();
   K2_CHECK(min_num_axes >= 2 && max_num_axes >= min_num_axes &&
            min_num_elements >= 0 && max_num_elements >= min_num_elements);
@@ -406,6 +405,7 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
 
 static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
                               Array1<int32_t> *elem_indexes /*=nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
   K2_CHECK(IsCompatible(src, new2old));
@@ -600,6 +600,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
 }
 
 Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
   int32_t num_axes_in = src[0]->NumAxes();
   ContextPtr &ctx = src[0]->Context();
@@ -806,6 +807,7 @@ static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
 
 RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
                    Array1<uint32_t> *merge_map /* == nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
   if (axis == 0) return AppendAxis0(num_srcs, src, merge_map);
 
@@ -1078,6 +1080,7 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
 RaggedShape Merge(int32_t num_srcs, RaggedShape **src,
                   const Array1<uint32_t> &merge_map,
                   Array1<uint32_t> *merge_map_out) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(num_srcs > 0);
   int32_t num_layers = src[0]->NumAxes() - 1;
 
@@ -1718,6 +1721,7 @@ RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes) {
 }
 
 Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = shape.Context();
 
   Array1<int32_t> sizes = RowSplitsToSizes(shape.RowSplits(1));
@@ -1727,6 +1731,7 @@ Array1<int32_t> GetDecreasingSizeOrder(RaggedShape &shape) {
 }
 
 RaggedShape GetLayer(const RaggedShape &src, int32_t layer) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(layer, 0);
   K2_CHECK_LT(layer, src.NumAxes() - 1);
   std::vector<RaggedShapeLayer> layers;
@@ -1737,6 +1742,7 @@ RaggedShape GetLayer(const RaggedShape &src, int32_t layer) {
 
 void DecomposeRaggedShape(const RaggedShape &src, int32_t axis,
                           RaggedShape *top, RaggedShape *bottom) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(axis, 0);
   K2_CHECK_LT(axis, src.NumAxes() - 1);
   const std::vector<RaggedShapeLayer> &src_layers = src.Layers();
@@ -1752,6 +1758,7 @@ void DecomposeRaggedShape(const RaggedShape &src, int32_t axis,
 
 RaggedShape RemoveEmptyLists(RaggedShape &src_shape, int32_t axis,
                              Renumbering *renumbering_out) {
+  NVTX_RANGE(K2_FUNC);
   if (axis == 0) {
     return RemoveEmptyListsAxis0(src_shape, renumbering_out);
   }
@@ -1767,6 +1774,7 @@ RaggedShape RemoveEmptyLists(RaggedShape &src_shape, int32_t axis,
 
 RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape, int32_t axis,
                                  Renumbering &renumbering) {
+  NVTX_RANGE(K2_FUNC);
   if (axis == 0) {
     return RenumberAxis0Simple(src_shape, renumbering);
   }
@@ -1780,6 +1788,7 @@ RaggedShape RemoveSomeEmptyLists(RaggedShape &src_shape, int32_t axis,
 
 RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
                                   Renumbering *renumbering_out) {
+  NVTX_RANGE(K2_FUNC);
   Renumbering r_temp;
   if (!renumbering_out) renumbering_out = &r_temp;
 
@@ -1797,6 +1806,7 @@ RaggedShape RemoveEmptyListsAxis0(RaggedShape &src_shape,
 
 RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
                                 Renumbering &renumbering) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(renumbering.NumOldElems(), src_shape.Dim0());
   ContextPtr c = src_shape.Context();
   src_shape.RowIds(1);  // make sure RowIds(1) is populated.
@@ -1927,6 +1937,7 @@ Array1<int32_t> CoveringShapeForwardMap(RaggedShape &src,
 }
 
 void RaggedShapeAxis0Splitter::Init(RaggedShape &src) {
+  NVTX_RANGE(K2_FUNC);
   int32_t num_layers = src.NumLayers(), num_layers_out = num_layers - 1,
           dim0 = src.Dim0();
   K2_CHECK_LE(num_layers_out, 4);  // If this fails, add something to the 4s and
@@ -2036,6 +2047,7 @@ void RaggedShapeAxis0Splitter::Init(RaggedShape &src) {
 
 RaggedShape RaggedShapeAxis0Splitter::GetElement(int32_t i,
                                                  int32_t *elem_offset) {
+  NVTX_RANGE(K2_FUNC);
   int32_t num_layers_out = composite_row_splits_.Dim0() - 2;
   std::vector<RaggedShapeLayer> out;
   out.reserve(num_layers_out);
@@ -2221,6 +2233,7 @@ Array1<T> ComputeHash(Ragged<int32_t> &src) {
 Ragged<int32_t> UniqueSequences(Ragged<int32_t> &src,
                                 Ragged<int32_t> *num_repeats /*=nullptr*/,
                                 Array1<int32_t> *new2old_indexes /*=nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   if (src.NumAxes() == 2) {
     // Put 'fake' layer at front, process, then remove.
