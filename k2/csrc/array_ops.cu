@@ -496,5 +496,11 @@ void RowSplitsToRowIdsOffset(const Array1<int32_t> &row_splits_part,
   RowSplitsToRowIds(row_splits, row_ids_part);
 }
 
+template <>
+Array2<Any> ToContiguous(const Array2<Any> &src) {
+  FOR_REAL_AND_INT32_TYPES(src.GetDtype(), T,
+                           return ToContiguous(src.Specialize<T>()).Generic());
+  return Array2<Any>();  // Silence warning
+}
 
 }  // namespace k2

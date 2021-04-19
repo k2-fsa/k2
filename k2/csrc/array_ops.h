@@ -650,6 +650,16 @@ Array2<T> ToContiguous(const Array2<T> &src);
 template <typename T>
 bool Equal(const Array2<T> &a, const Array2<T> &b);
 
+
+
+/*
+  Return true if all elements of the two arrays are equal.
+  Will crash if the sizes differ.
+*/
+template <typename T>
+bool ApproxEqual(const Array2<T> &a, const Array2<T> &b, T tol = T(0.0001));
+
+
 /*
   Index `src` with `indexes`, as in src[indexes].
      @param [in] src   Array whose elements are to be read

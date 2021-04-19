@@ -386,7 +386,7 @@ void TestDiscountedCumSum() {
            << ", y = " << y_cpu_copy; */
 
     // We are using the CPU and GPU versions to check each other.
-    EXPECT_FLOAT_ARRAY2_APPROX_EQ(y_cpu, y_cpu_copy, 0.01);
+    EXPECT_EQ(true, ApproxEqual(y_cpu, y_cpu_copy, (Real)0.01));
   }
 }
 
