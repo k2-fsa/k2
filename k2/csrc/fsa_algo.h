@@ -553,7 +553,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
    @return  Returns the expanded Fsa or FsaVec (will satisfy
                         `ans.NumAxes() == fsas.NumAxes()`, and will be
                         equivalent to `fsas` in both tropical or log-sum
-                        semring.
+                        semiring.
  */
 FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
                     Array1<int32_t> *fsas_arc_map = nullptr,

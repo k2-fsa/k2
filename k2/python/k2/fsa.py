@@ -1113,9 +1113,8 @@ class Fsa(object):
             If provided, the length of this list dictates the number of
             aux_labels and this list dictates their names.
         '''
-        (num_aux_labels, aux_label_names) = get_aux_label_info(acceptor,
-                                                               num_aux_labels,
-                                                               aux_label_names)
+        (num_aux_labels, aux_label_names) = \
+                get_aux_label_info(acceptor, num_aux_labels, aux_label_names)
         try:
             arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, False)
             ans = Fsa(arcs)
@@ -1178,9 +1177,8 @@ class Fsa(object):
             'aux_labels3' and so on.
         '''
 
-        (num_aux_labels, aux_label_names) = get_aux_label_info(acceptor,
-                                                               num_aux_labels,
-                                                               aux_label_names)
+        (num_aux_labels, aux_label_names) = \
+                get_aux_label_info(acceptor, num_aux_labels, aux_label_names)
         try:
             arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, True)
             ans = Fsa(arcs)
@@ -1218,6 +1216,41 @@ class Fsa(object):
         # Note we use `to` here since `scores` and `self.scores` may not
         # be on the same device.
         self.scores = ragged_scores.values.to(self.scores.device)
+
+    def convert_attr_to_ragged_(self, name: str,
+                                remove_eps: bool = True) -> 'Fsa':
+        '''Convert the attribute given by `name` from a 1-D torch.tensor
+        to a k2.RaggedInt.
+
+        Caution:
+          This function ends with an underscore, meaning it changes the FSA
+          **in-place**.
+
+        Args:
+          name:
+            The attribute name. This attribute is expected to be a 1-D tensor
+            with dtype torch.int32.
+          remove_eps:
+            True to remove 0s in the resulting ragged tensor.
+
+        Returns:
+          Return self.
+        '''
+        assert hasattr(self, name)
+        value = getattr(self, name)
+        assert isinstance(value, torch.Tensor)
+        assert value.ndim == 1
+        assert value.dtype == torch.int32
+
+        shape = k2.ragged.regular_ragged_shape(dim0=value.numel(),
+                                               dim1=1).to(value.device)
+        new_value = k2.RaggedInt(shape, value.contiguous())
+        if remove_eps:
+            new_value = k2.ragged.remove_values_eq(new_value, target=0)
+
+        setattr(self, name, new_value)
+
+        return self
 
 
 def get_aux_label_info(acceptor: Optional[bool], num_aux_labels: Optional[int],

@@ -23,6 +23,7 @@ def _remove_leading_spaces(s: str) -> str:
 
 
 class TestFsa(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device("cpu")]
@@ -238,18 +239,16 @@ class TestFsa(unittest.TestCase):
             self.assertEqual('', k2.to_str(fsa1))
 
             fsa2 = k2.Fsa.from_openfst(s2)
-            self.assertEqual(_remove_leading_spaces(
-                k2.to_str(fsa2)),
-                "1 2 -1 -0.1\n2")
+            self.assertEqual(_remove_leading_spaces(k2.to_str(fsa2)),
+                             "1 2 -1 -0.1\n2")
             arcs2 = fsa2.arcs.values()[:, :-1]
             assert torch.all(
                 torch.eq(arcs2, torch.tensor([[1, 2, -1]], dtype=torch.int32)))
 
             fsa3 = k2.Fsa.from_openfst(s3)
             self.assertEqual(fsa3.arcs.dim0(), 4)
-            self.assertEqual(_remove_leading_spaces(
-                k2.to_str(fsa3)),
-                "1 3 -1 -0.1\n2 3 -1 -0.2\n3")
+            self.assertEqual(_remove_leading_spaces(k2.to_str(fsa3)),
+                             "1 3 -1 -0.1\n2 3 -1 -0.2\n3")
 
     def test_transducer_from_tensor(self):
         for device in self.devices:
@@ -984,6 +983,29 @@ class TestFsa(unittest.TestCase):
 
             self.assertEqual(detached.non_tensor_attr1, [0])
             self.assertEqual(detached._cache['abc'], [1])
+
+    def test_convert_attr_to_ragged(self):
+        for device in self.devices:
+            s = '''
+                0 1 1 0.1
+                1 2 2 0.2
+                2 3 -1 0.3
+                3
+            '''
+            fsa = k2.Fsa.from_str(s).to(device)
+            fsa.tensor_attr1 = torch.tensor([1, 2, 3, 4, 0, 6],
+                                            dtype=torch.int32,
+                                            device=device)[::2]
+            fsa.convert_attr_to_ragged_(name='tensor_attr1', remove_eps=False)
+            expected = k2.RaggedInt('[ [1] [3] [0] ]')
+            assert str(fsa.tensor_attr1) == str(expected)
+
+            fsa.tensor_attr2 = torch.tensor([1, 0, -1],
+                                            dtype=torch.int32,
+                                            device=device)
+            fsa.convert_attr_to_ragged_(name='tensor_attr2', remove_eps=True)
+            expected = k2.RaggedInt('[ [1] [] [-1] ]')
+            assert str(fsa.tensor_attr2) == str(expected)
 
 
 if __name__ == '__main__':
