@@ -35,7 +35,7 @@ class Array1 {
   static_assert(std::is_pod<T>::value, "T must be POD");
   using ValueType = T;
   size_t ElementSize() const {
-    if (!std::is_same<T,Any>::value) {
+    if (!std::is_same<T, Any>::value) {
       return sizeof(ValueType);
     } else {
       return TraitsOf(dtype_).NumBytes();
@@ -498,7 +498,7 @@ class Array2 {
  public:
   using ValueType = T;
   size_t ElementSize() const {
-    if (!std::is_same<T,Any>::value) {
+    if (!std::is_same<T, Any>::value) {
       return sizeof(ValueType);
     } else {
       return TraitsOf(dtype_).NumBytes();
@@ -657,7 +657,8 @@ class Array2 {
      Data will be uninitialized. */
   Array2(ContextPtr c, int32_t dim0, int32_t dim1,
          Dtype dtype = DtypeOf<T>::dtype)
-      : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
+      : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1),
+        byte_offset_(0) {
     K2_CHECK(K2_TYPE_IS_ANY(T) || dtype == DtypeOf<T>::dtype);
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
@@ -669,7 +670,8 @@ class Array2 {
   // Data will be initialized with `elem`
   Array2(ContextPtr c, int32_t dim0, int32_t dim1, T elem,
          Dtype dtype = DtypeOf<T>::dtype)
-      : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
+      : dtype_(dtype), dim0_(dim0), elem_stride0_(dim1), dim1_(dim1),
+        byte_offset_(0) {
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     region_ = NewRegion(c, static_cast<size_t>(dim0_) *
