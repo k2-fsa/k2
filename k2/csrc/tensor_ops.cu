@@ -94,7 +94,6 @@ void CopyTensorElements(Tensor src, Tensor dest) {
 Tensor ToContiguous(const Tensor &src) {
   // things like this would be more efficient if we supported something like
   // PyTorch's ArrayRef.  not so critical to address that now though.
-  NVTX_RANGE(K2_FUNC);
   Tensor ans(src.Context(), src.GetDtype(), src.GetShape().Dims());
   CopyTensorElements(src, ans);
   return ans;
@@ -278,7 +277,6 @@ static Tensor Index2D(Tensor &src, Array1<int32_t> &indexes,
 
 Tensor Index(Tensor &src, Array1<int32_t> &indexes,
              bool allow_minus_one /*= true*/) {
-  NVTX_RANGE(K2_FUNC);
   switch (src.NumAxes()) {
     case 1:
       return Index1D(src, indexes, allow_minus_one);
@@ -415,7 +413,6 @@ static void IndexAdd2D(Tensor &src, Array1<int32_t> &indexes,
 
 void IndexAdd(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
               Tensor *dest) {
-  NVTX_RANGE(K2_FUNC);
   switch (src.NumAxes()) {
     case 1:
       IndexAdd1D(src, indexes, allow_minus_one, dest);

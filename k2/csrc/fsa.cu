@@ -17,7 +17,6 @@
 namespace k2 {
 
 std::ostream &operator<<(std::ostream &os, const Arc &arc) {
-  NVTX_RANGE(K2_FUNC);
   static constexpr char kSep = ' ';
   os << arc.src_state << kSep << arc.dest_state << kSep << arc.label << kSep
      << arc.score;
@@ -25,7 +24,6 @@ std::ostream &operator<<(std::ostream &os, const Arc &arc) {
 }
 
 std::istream &operator>>(std::istream &is, Arc &arc) {
-  NVTX_RANGE(K2_FUNC);
   InputFixer<float> score;  // helps deal with infinities correctly
   is >> arc.src_state >> arc.dest_state >> arc.label >> score;
   arc.score = score.t;
@@ -33,7 +31,6 @@ std::istream &operator>>(std::istream &is, Arc &arc) {
 }
 
 std::string FsaPropertiesAsString(int32_t properties) {
-  NVTX_RANGE(K2_FUNC);
   static constexpr char kSep = '|';
   std::ostringstream os;
 
@@ -217,7 +214,6 @@ void GetFsaVecBasicProperties(FsaVec &fsa_vec, Array1<int32_t> *properties_out,
 }
 
 FsaVec FsaToFsaVec(const Fsa &fsa) {
-  NVTX_RANGE(K2_FUNC);
   if (fsa.NumAxes() != 2)
     return fsa;
   else
@@ -511,7 +507,6 @@ Tensor FsaVecToTensor(const FsaVec &fsa_vec) {
 }
 
 std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec) {
-  NVTX_RANGE(K2_FUNC);
   DenseFsaVec d_cpu = dfsavec.To(GetCpuContext());
   int32_t num_fsas = d_cpu.shape.Dim0();
   const int32_t *row_splits = d_cpu.shape.RowSplits(1).Data();

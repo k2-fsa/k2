@@ -10,7 +10,6 @@
 namespace k2 {
 
 void Hash::CheckEmpty() {
-  NVTX_RANGE(K2_FUNC);
   if (data_.Dim() == 0) return;
   ContextPtr c = Context();
   Array1<int32_t> error(c, 1, -1);

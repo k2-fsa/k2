@@ -29,7 +29,6 @@ static constexpr const char *kDelim = " \t";
 
 // Convert a string to an integer. Abort the program on failure.
 static int32_t StringToInt(const std::string &s) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK(!s.empty());
 
   bool ok = false;
@@ -51,7 +50,6 @@ static int32_t StringToInt(const std::string &s) {
 //               decimals. We have to test if the C code will behave the same
 //               w.r.t. locale as Python does.
 static float StringToFloat(const std::string &s) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK(!s.empty());
   char *p = nullptr;
   float f = std::strtof(s.c_str(), &p);
@@ -61,7 +59,6 @@ static float StringToFloat(const std::string &s) {
 
 // Trim leading and trailing spaces of a string.
 static void TrimString(std::string *s) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(s, nullptr);
   auto not_space = [](int32_t c) -> bool { return std::isspace(c) == 0; };
 
@@ -86,7 +83,6 @@ static void TrimString(std::string *s) {
 */
 static void SplitStringToVector(const std::string &in, const char *delim,
                                 std::vector<std::string> *out) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK_NE(delim, nullptr);
   K2_CHECK_NE(out, nullptr);
   out->clear();
@@ -130,8 +126,8 @@ static void SplitStringToVector(const std::string &in, const char *delim,
 static Fsa K2FsaFromStream(std::istringstream &is,
                            int32_t num_aux_labels,
                            Array2<int32_t> *aux_labels_out) {
-  K2_CHECK(num_aux_labels == 0 || aux_labels_out != nullptr);
   NVTX_RANGE(K2_FUNC);
+  K2_CHECK(num_aux_labels == 0 || aux_labels_out != nullptr);
   std::vector<Arc> arcs;
   std::vector<std::string> splits;
   std::vector<int32_t> aux_labels;
@@ -422,7 +418,6 @@ static Fsa OpenFstFromStream(std::istringstream &is,
 Fsa FsaFromString(const std::string &s, bool openfst /* = false*/,
                   int32_t num_aux_labels /* = 0*/,
                   Array2<int32_t> *aux_labels /* = nullptr*/) {
-  NVTX_RANGE(K2_FUNC);
   std::istringstream is(s);
   K2_CHECK(is);
 
@@ -1817,7 +1812,6 @@ FsaVec RandomFsaVec(int32_t min_num_fsas /*=1*/, int32_t max_num_fsas /*=1000*/,
                     bool acyclic /*=true*/, int32_t max_symbol /*=50*/,
                     int32_t min_num_arcs /*=0*/,
                     int32_t max_num_arcs /*=1000*/) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(min_num_fsas, 0);
   K2_CHECK_GE(max_num_fsas, min_num_fsas);
   int32_t num_fsas = RandInt(min_num_fsas, max_num_fsas);
@@ -1985,7 +1979,6 @@ FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes) {
 }
 
 FsaVec GetIncomingFsaVec(FsaVec &fsas) {
-  NVTX_RANGE(K2_FUNC);
   Array1<int32_t> dest_states = GetDestStates(fsas, true);
   Ragged<int32_t> arc_indexes = GetIncomingArcs(fsas, dest_states);
   return FsaVec(arc_indexes.shape, fsas.values[arc_indexes.values]);
@@ -1993,7 +1986,6 @@ FsaVec GetIncomingFsaVec(FsaVec &fsas) {
 
 Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
                                Ragged<int32_t> &step2_arc_map) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(step1_arc_map.NumAxes(), 2);
   K2_CHECK_EQ(step2_arc_map.NumAxes(), 2);
   return Index(step1_arc_map, step2_arc_map, true);

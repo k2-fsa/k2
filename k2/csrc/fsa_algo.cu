@@ -268,7 +268,6 @@ void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
 void RemoveEpsilon(FsaOrVec &src, int32_t properties,
                    FsaOrVec *dest,
                    Ragged<int32_t> *arc_derivs) {
-  NVTX_RANGE(K2_FUNC);
   if ((properties & kFsaPropertiesTopSortedAndAcyclic) != 0 &&
       src.Context()->GetDeviceType() == kCpu) {
     // Host version of the algorithm
@@ -420,7 +419,6 @@ FsaVec LinearFsas(const Ragged<int32_t> &symbols) {
 }
 
 void ArcSort(Fsa *fsa) {
-  NVTX_RANGE(K2_FUNC);
   if (fsa->NumAxes() < 2) return;  // it is empty
   SortSublists<Arc>(fsa);
 }

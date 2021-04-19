@@ -247,7 +247,6 @@ class MultiGraphDenseIntersectPruned {
       1).  So the #states is 2 greater than the actual number of frames in the
       neural-net output.
     */
-    NVTX_RANGE(K2_FUNC);
     int32_t num_fsas = b_fsas_.shape.Dim0(), T = T_;
 
     std::ostringstream os;
@@ -291,7 +290,6 @@ class MultiGraphDenseIntersectPruned {
   }
 
   void BackwardPass() {
-    NVTX_RANGE(K2_FUNC);
     int32_t num_fsas = b_fsas_.shape.Dim0(),
       num_work_items = max_active_ * num_fsas * T_;
     ParallelRunner pr(c_);
@@ -311,7 +309,6 @@ class MultiGraphDenseIntersectPruned {
   }
 
   static void BackwardPassStatic(MultiGraphDenseIntersectPruned *c) {
-    NVTX_RANGE(K2_FUNC);
     c->BackwardPass();
   }
 

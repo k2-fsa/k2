@@ -313,7 +313,6 @@ Array1<int32_t> GetCounts(ContextPtr c, const int32_t *src_data,
 }
 
 Array1<int32_t> GetCounts(const Array1<int32_t> &src, int32_t n) {
-  NVTX_RANGE(K2_FUNC);
   return GetCounts(src.Context(), src.Data(), src.Dim(), n);
 }
 

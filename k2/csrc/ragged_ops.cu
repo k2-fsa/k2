@@ -31,7 +31,6 @@ A helper function used in RaggedShape3;
  */
 static k2::ContextPtr GetContext(const k2::Array1<int32_t> *first,
                                  const k2::Array1<int32_t> *second) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK(first != nullptr || second != nullptr)
       << "At least one of first and second must be non-NULL";
   if (first == nullptr)
@@ -49,7 +48,6 @@ namespace k2 {
 RaggedShape RandomRaggedShape(bool set_row_ids, int32_t min_num_axes,
                               int32_t max_num_axes, int32_t min_num_elements,
                               int32_t max_num_elements) {
-  NVTX_RANGE(K2_FUNC);
   ContextPtr c = GetCpuContext();
   K2_CHECK(min_num_axes >= 2 && max_num_axes >= min_num_axes &&
            min_num_elements >= 0 && max_num_elements >= min_num_elements);

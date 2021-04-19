@@ -332,7 +332,6 @@ void GetTaskRedirect(cudaStream_t stream, int32_t num_tasks,
 
 void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
                      const int32_t *row_splits, TaskRedirect *redirect_out) {
-  NVTX_RANGE(K2_FUNC);
   GetTaskRedirect(c->GetCudaStream(), num_tasks, row_splits, redirect_out);
 }
 

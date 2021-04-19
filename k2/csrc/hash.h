@@ -92,7 +92,6 @@ class Hash {
        int32_t num_key_bits,
        int32_t num_value_bits=-1):
       num_key_bits_(num_key_bits) {
-    NVTX_RANGE(K2_FUNC);
     std::ostringstream os;
     if (num_value_bits < 0)
       num_value_bits = 64 - num_key_bits;

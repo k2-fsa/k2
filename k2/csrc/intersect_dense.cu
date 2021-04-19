@@ -172,7 +172,6 @@ class MultiGraphDenseIntersect {
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput(). */
   void Intersect() {
-    NVTX_RANGE(K2_FUNC);
     DoStep0();
     for (int32_t t = 1; t <= T_; t++) DoStep(t);
   }

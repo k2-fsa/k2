@@ -48,7 +48,6 @@ namespace k2 {
 
 void PrintRaggedShapePart(std::ostream &stream, const RaggedShape &shape,
                           int32_t axis, int32_t begin_pos, int32_t end_pos) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
            begin_pos <= end_pos && end_pos <= shape.TotSize(axis));
   for (int32_t d = begin_pos; d < end_pos; ++d) {
@@ -68,7 +67,6 @@ void PrintRaggedShapePart(std::ostream &stream, const RaggedShape &shape,
 // prints a RaggedShape as e.g. [ [ 0 1 ] [ 2 ] [] ].  Note, the 'values'
 // are just the positions in the array, this is for readability.
 std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
-  NVTX_RANGE(K2_FUNC);
   if (shape.Context()->GetDeviceType() != kCpu) {
     return stream << shape.To(GetCpuContext());
   } else {

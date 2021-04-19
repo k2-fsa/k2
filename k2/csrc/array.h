@@ -90,7 +90,6 @@ class Array1 {
      @param [in] size   Number of elements to include, 0 <= size <= Dim()-start
   */
   Array1<T> Range(int32_t start, int32_t size) const {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, Dim());
     K2_CHECK_GE(size, 0);
@@ -107,7 +106,6 @@ class Array1 {
                         start <= end <= Dim().
   */
   Array1<T> Arange(int32_t start, int32_t end) const {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(start, 0);
     K2_CHECK_LE(start, dim_);
     K2_CHECK_GE(end, start);
@@ -282,7 +280,6 @@ class Array1 {
   // return the last element on CPU of *this if dim >= 1,
   // will crash if *this is empty.
   T Back() const {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(dim_, 1);
     return operator[](dim_ - 1);
   }
@@ -378,7 +375,6 @@ class Array1 {
                       // context.
 
   void Init(ContextPtr context, int32_t size) {
-    NVTX_RANGE(K2_FUNC);
     region_ = NewRegion(context, static_cast<size_t>(size) * ElementSize());
     dim_ = size;
     byte_offset_ = 0;
@@ -545,7 +541,6 @@ class Array2 {
      Data will be uninitialized. */
   Array2(ContextPtr c, int32_t dim0, int32_t dim1)
       : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     region_ = NewRegion(c, static_cast<size_t>(dim0_) *
@@ -556,7 +551,6 @@ class Array2 {
   // Data will be initialized with `elem`
   Array2(ContextPtr c, int32_t dim0, int32_t dim1, T elem)
       : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1), byte_offset_(0) {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     region_ = NewRegion(c, static_cast<size_t>(dim0_) *
@@ -703,7 +697,6 @@ class Array2 {
    */
   Array2(Array1<T> &a, int32_t dim0, int32_t dim1)
       : dim0_(dim0), elem_stride0_(dim1), dim1_(dim1) {
-    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GE(dim0, 0);
     K2_CHECK_GE(dim1, 0);
     K2_CHECK_EQ(dim0_ * dim1_, a.Dim());

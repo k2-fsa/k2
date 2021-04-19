@@ -15,7 +15,6 @@
 namespace k2 {
 
 k2host::Fsa FsaToHostFsa(Fsa &fsa) {
-  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(fsa.NumAxes(), 2);
   K2_CHECK_EQ(fsa.Context()->GetDeviceType(), kCpu);
   // reinterpret_cast works because the arcs have the same members
@@ -117,7 +116,6 @@ k2host::Fsa FsaVecCreator::GetHostFsa(int32_t i) {
 }
 
 FsaVec FsaVecCreator::GetFsaVec() {
-  NVTX_RANGE(K2_FUNC);
   FinalizeRowSplits2();
   return Ragged<Arc>(
       RaggedShape3(&row_splits1_, nullptr, -1, &row_splits2_, nullptr, -1),
@@ -158,43 +156,35 @@ static Array1<bool> CheckProperties(FsaOrVec &fsas,
 }
 
 Array1<bool> IsTopSorted(FsaOrVec &fsas) {
-  NVTX_RANGE(K2_FUNC);
   return CheckProperties(fsas, k2host::IsTopSorted);
 }
 
 Array1<bool> IsArcSorted(FsaOrVec &fsas) {
-  NVTX_RANGE(K2_FUNC);
   return CheckProperties(fsas, k2host::IsArcSorted);
 }
 
 Array1<bool> HasSelfLoops(FsaOrVec &fsas) {
-  NVTX_RANGE(K2_FUNC);
   return CheckProperties(fsas, k2host::HasSelfLoops);
 }
 
 // As k2host::IsAcyclic has two input arguments, we create a wrapper function
 // here so we can pass it to CheckProperties
 static bool IsAcyclicWapper(const k2host::Fsa &fsa) {
-  NVTX_RANGE(K2_FUNC);
   return k2host::IsAcyclic(fsa, nullptr);
 }
 Array1<bool> IsAcyclic(FsaOrVec &fsas) {
-  NVTX_RANGE(K2_FUNC);
   return CheckProperties(fsas, IsAcyclicWapper);
 }
 
 Array1<bool> IsDeterministic(FsaOrVec &fsas) {
-  NVTX_RANGE(K2_FUNC);
   return CheckProperties(fsas, k2host::IsDeterministic);
 }
 
 Array1<bool> IsEpsilonFree(FsaOrVec &fsas) {
-  NVTX_RANGE(K2_FUNC);
   return CheckProperties(fsas, k2host::IsEpsilonFree);
 }
 
 Array1<bool> IsConnected(FsaOrVec &fsas) {
-  NVTX_RANGE(K2_FUNC);
   return CheckProperties(fsas, k2host::IsConnected);
 }
 

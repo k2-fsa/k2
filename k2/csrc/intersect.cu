@@ -194,8 +194,6 @@ class DeviceIntersector {
   /* Does the main work of intersection/composition, but doesn't produce any
      output; the output is provided when you call FormatOutput(). */
   void Intersect() {
-    NVTX_RANGE(K2_FUNC);
-
     FirstIter();
     if (sorted_match_a_)
       ForwardSortedA();

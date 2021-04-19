@@ -116,13 +116,11 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
-  NVTX_RANGE(K2_FUNC);
   Eval(c->GetCudaStream(), n, lambda);
 }
 
 template <typename LambdaT>
 void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
-  NVTX_RANGE(K2_FUNC);
   if (n <= 0) return;  // actually it would be an error if n < 0.
   K2_CHECK(stream != kCudaStreamInvalid);
   const int32_t block_size = 256;
@@ -142,7 +140,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 void EvalDevice(ContextPtrType c, int32_t n, LambdaT &lambda) {
-  NVTX_RANGE(K2_FUNC);
   EvalDevice(c->GetCudaStream(), n, lambda);
 }
 
@@ -170,7 +167,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename T, typename LambdaT>
 void SetData(ContextPtrType c, T *data, int32_t n, LambdaT &lambda) {
-  NVTX_RANGE(K2_FUNC);
   SetData(c->GetCudaStream(), data, n, lambda);
 }
 
@@ -267,7 +263,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
-  NVTX_RANGE(K2_FUNC);
   Eval2(c->GetCudaStream(), m, n, lambda);
 }
 
@@ -278,7 +273,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
           typename LambdaT>
 inline void Eval2Device(ContextPtrType c, int32_t m,
                         int32_t n, LambdaT &lambda) {
-  NVTX_RANGE(K2_FUNC);
   Eval2Device(c->GetCudaStream(), m, n, lambda);
 }
 
@@ -352,7 +346,6 @@ void EvalGroupDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
 
 template <unsigned int ThreadsPerGroup, typename ThreadGroupDataT, typename LambdaT>
 void EvalGroupDevice(ContextPtr context, int32_t n, LambdaT &lambda) {
-  NVTX_RANGE(K2_FUNC);
   EvalGroupDevice<ThreadsPerGroup,ThreadGroupDataT,LambdaT>(context->GetCudaStream(),
                                                             n, lambda);
 }

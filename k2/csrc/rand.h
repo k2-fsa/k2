@@ -62,7 +62,6 @@ void Rand(ContextPtr context, T low, T high, int32_t dim, T *array_data);
  */
 template <typename T>
 void Rand(T low, T high, Array1<T> *array) {
-  NVTX_RANGE(K2_FUNC);
   Rand(array->Context(), low, high, array->Dim(), array->Data());
 }
 
@@ -81,7 +80,6 @@ void Rand(T low, T high, Array1<T> *array) {
  */
 template <typename T>
 Array1<T> Rand(ContextPtr context, T low, T high, int32_t dim) {
-  NVTX_RANGE(K2_FUNC);
   Array1<T> ans(context, dim);
   Rand(low, high, &ans);
   return ans;

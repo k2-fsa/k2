@@ -149,9 +149,8 @@ void ExclusiveSumPerRow(const Array2<T> &src, Array2<T> *dest) {
 // called in RandUniformArray1
 template <typename T, typename std::enable_if<std::is_floating_point<T>::value,
                                               T>::type * = nullptr>
-void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
-                        T *data, int32_t seed = 0) {
-  NVTX_RANGE(K2_FUNC);
+static void RandArray1Internal(int32_t dim, T min_value, T max_value, T *data,
+                               int32_t seed = 0) {
   std::random_device rd;
   std::mt19937 gen(rd());
   if (seed != 0) gen = std::mt19937(seed);
@@ -161,9 +160,8 @@ void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
 
 template <typename T, typename std::enable_if<std::is_integral<T>::value,
                                               T>::type * = nullptr>
-void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
-                        T *data, int32_t seed = 0) {
-  NVTX_RANGE(K2_FUNC);
+static void RandArray1Internal(int32_t dim, T min_value, T max_value, T *data,
+                               int32_t seed = 0) {
   std::random_device rd;
   std::mt19937 gen(rd());
   if (seed != 0) gen = std::mt19937(seed);
@@ -341,7 +339,6 @@ Array1<T> Append(ContextPtr c, int32_t num_arrays, const Array1<T> **src) {
 
 template <typename T>
 Array1<T> Append(ContextPtr c, int32_t src_size, const Array1<T> *src) {
-  NVTX_RANGE(K2_FUNC);
   std::vector<const Array1<T> *> srcs(src_size);
   for (int32_t i = 0; i != src_size; ++i) srcs[i] = src + i;
   return Append(c, src_size, srcs.data());
@@ -404,7 +401,6 @@ void ApplyBinaryOpOnArray1(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
 template <typename T>
 Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value, T max_value,
                             int32_t seed /*= 0*/) {
-  NVTX_RANGE(K2_FUNC);
   static_assert(std::is_floating_point<T>::value || std::is_integral<T>::value,
                 "Only support floating-point and integral type");
   Array1<T> temp(GetCpuContext(), dim);
@@ -414,7 +410,7 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value, T max_value,
   if (max_value == min_value) {
     for (int32_t i = 0; i < dim; ++i) data[i] = min_value;
   } else {
-    internal::RandArray1Internal<T>(c, dim, min_value, max_value, data, seed);
+    internal::RandArray1Internal<T>(dim, min_value, max_value, data, seed);
   }
   return temp.To(c);
 }
@@ -422,7 +418,6 @@ Array1<T> RandUniformArray1(ContextPtr c, int32_t dim, T min_value, T max_value,
 template <typename T>
 Array2<T> RandUniformArray2(ContextPtr c, int32_t dim0, int32_t dim1,
                             T min_value, T max_value) {
-  NVTX_RANGE(K2_FUNC);
   int32_t dim1_extra = RandInt(0, 2),  // make it randomly not contiguous.
       new_dim1 = dim1 + dim1_extra;
   Array1<T> array1temp =
@@ -494,7 +489,7 @@ bool Equal(const Array1<T> &a, const Array1<T> &b) {
 template <typename T>
 bool Equal(const Array1<T> &a, T b) {
   NVTX_RANGE(K2_FUNC);
-  ContextPtr c = a.Context();
+  ContextPtr &c = a.Context();
   const T *a_data = a.Data();
   int32_t dim = a.Dim();
   if (c->GetDeviceType() == kCpu) {
