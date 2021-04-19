@@ -443,7 +443,6 @@ Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc /*=1*/) {
 
 template <typename T>
 Array1<T> Arange(ContextPtr c, T begin, T end, T inc) {
-  NVTX_RANGE(K2_FUNC);
   return Range<T>(c, (end + inc - 1 - begin) / inc, begin, inc);
 }
 
