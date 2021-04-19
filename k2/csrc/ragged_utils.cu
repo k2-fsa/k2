@@ -20,6 +20,7 @@ namespace k2 {
 void CheckLayerEqual(int32_t layer,
                      int32_t num_srcs,
                      RaggedShape **src) {
+  NVTX_RANGE(K2_FUNC);
   if (num_srcs <= 1)
     return;
   K2_CHECK(layer >= 0 && layer + 1 < src[0]->NumAxes());
@@ -71,6 +72,7 @@ RaggedShape IntersperseRaggedLayer(int32_t layer,
                                    int32_t num_srcs,
                                    RaggedShape **src,
                                    Array1<uint32_t> *merge_map) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK_GE(layer, 0);
   K2_CHECK_LT(layer + 1, src[0]->NumAxes());
@@ -177,6 +179,7 @@ RaggedShape MergeRaggedLayer(int32_t layer,
                              RaggedShape **src,
                              const Array1<uint32_t> &merge_map,
                              Array1<uint32_t> *merge_map_out /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
   K2_CHECK_GE(layer, 0);
   K2_CHECK_LT(layer + 1, src[0]->NumAxes());
@@ -238,6 +241,7 @@ RaggedShape MergeRaggedLayer(int32_t layer,
 
 RaggedShape SubsampleRaggedLayer(RaggedShape &src, int32_t layer,
                                  int32_t subsample_factor) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(layer, 0);
   K2_CHECK_LT(layer, src.NumAxes() - 1);
   int32_t num_rows = src.TotSize(layer),

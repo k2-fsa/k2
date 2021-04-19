@@ -63,6 +63,7 @@ static void GetEpsilonClosureMapped(
     Ragged<int32_t> &epsilon_closure_arc_map, FsaVec &non_epsilon_fsa,
     Renumbering &non_epsilon_state_renumbering, FsaVec *epsilon_closure_mapped,
     Ragged<int32_t> *epsilon_closure_mapped_arc_map) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = epsilon_fsa_closure.Context();
   // Combine the info in epsilon_closure_state_map and
   // non_epsilon_state_renumbering.Old2New(), to create a state-map from the
@@ -129,6 +130,7 @@ static void GetEpsilonClosureMapped(
 static void DecideCombineWithFollowingOrPreceding(
     FsaVec &epsilon_closure_mapped, FsaVec &non_epsilon_fsa,
     Renumbering *epsilon_prec_renumbering, RaggedShape *foll_shape) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = epsilon_closure_mapped.Context();
   // we will need the row_splits of this to get the number of non-epsilon arcs
   // entering each state in non_epsilon_fsa.
@@ -228,6 +230,7 @@ static void CombineWithFollowingNonEpsilonArcs(
     Ragged<int32_t> &epsilon_closure_mapped_arc_map, FsaVec &non_epsilon_fsa,
     const Array1<int32_t> &non_epsilon_arc_map, RaggedShape &foll_shape,
     FsaVec *combined_foll, Ragged<int32_t> *combined_foll_arc_map) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = non_epsilon_fsa.Context();
   const int32_t *epsilon_closure_mapped_row_splits1_data =
                     epsilon_closure_mapped.RowSplits(1).Data(),
@@ -331,6 +334,7 @@ static void CombineWithPrecedingNonEpsilonArcs(
     FsaVec &non_epsilon_fsa, FsaVec *combined_prec,
     Ragged<int32_t> *epsilon_closure_prec_arc_map_prec,
     RaggedShape *foll_shape) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = non_epsilon_fsa.Context();
   //  non_epsilon_num_foll_eps[i] tells us, for each arc in non_epsilon_fsa,
   // how many epsilon arcs leave the dest state of this arc.

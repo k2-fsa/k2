@@ -34,6 +34,7 @@ struct CpuRandState {
 };
 
 static CudaRandState &GetCudaRandState(ContextPtr context) {
+  NVTX_RANGE(K2_FUNC);
   int32_t device_id = context->GetDeviceId();
   K2_CHECK_LT(device_id, kMaxNumGpus);
 
@@ -48,6 +49,7 @@ static CpuRandState &GetCpuRandState() {
 
 template <typename T, typename Distribution>
 static void RandCpu(int32_t dim, T low, T high, T *out) {
+  NVTX_RANGE(K2_FUNC);
   Distribution distribution(low, high);
   auto &generator = GetCpuRandState().generator;
 
@@ -59,6 +61,7 @@ static void RandCpu(int32_t dim, T low, T high, T *out) {
 }  // namespace
 
 uint64_t GetSeed(ContextPtr context) {
+  NVTX_RANGE(K2_FUNC);
   DeviceType device_type = context->GetDeviceType();
   if (device_type == kCuda) return GetCudaRandState(context).seed;
 
@@ -67,6 +70,7 @@ uint64_t GetSeed(ContextPtr context) {
 }
 
 void SetSeed(ContextPtr context, uint64_t seed) {
+  NVTX_RANGE(K2_FUNC);
   DeviceType device_type = context->GetDeviceType();
   if (device_type == kCuda) {
     // TODO(fangjun): we may need a lock here
@@ -85,6 +89,7 @@ void SetSeed(ContextPtr context, uint64_t seed) {
 template <>
 void Rand<float>(ContextPtr context, float low, float high, int32_t dim,
                  float *array_data) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_LT(low, high);
   if (dim == 0) return;
 
@@ -122,6 +127,7 @@ void Rand<float>(ContextPtr context, float low, float high, int32_t dim,
 template <>
 void Rand<double>(ContextPtr context, double low, double high, int32_t dim,
                   double *array_data) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_LT(low, high);
   if (dim == 0) return;
 
@@ -154,6 +160,7 @@ void Rand<double>(ContextPtr context, double low, double high, int32_t dim,
 template <>
 void Rand<int32_t>(ContextPtr context, int32_t low, int32_t high, int32_t dim,
                    int32_t *array_data) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_LT(low, high);
 
   if (dim == 0) return;

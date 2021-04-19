@@ -162,6 +162,7 @@ struct DenseFsaVec {
   }
   ContextPtr &Context() const { return shape.Context(); }
   DenseFsaVec To(ContextPtr c) const {
+    NVTX_RANGE(K2_FUNC);
     return DenseFsaVec(shape.To(c), scores.To(c));
   }
   /* Indexing operator that rearranges the sequences, analogous to: RaggedShape
@@ -320,13 +321,17 @@ FsaVec FsaVecFromTensor(Tensor &t, bool *error);
                        refer to a part of the `values` array of
                        the input `vec`.
  */
-inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) { return vec.Index(0, i); }
+inline Fsa GetFsaVecElement(FsaVec &vec, int32_t i) {
+  NVTX_RANGE(K2_FUNC);
+  return vec.Index(0, i);
+}
 
 /*
   Create an FsaVec from a list of Fsas.  Caution: Fsa and FsaVec are really
   the same type, just with different expectations on the number of axes!
  */
 inline FsaVec CreateFsaVec(int32_t num_fsas, Fsa **fsas) {
+  NVTX_RANGE(K2_FUNC);
   // Implementation goes to this template:
   //  template <typename T>
   //  Ragged<T> Stack(int32_t axis, int32_t src_size, const Ragged<T> *src);
@@ -376,10 +381,12 @@ Tensor WeightsOfArcsAsTensor(const Array1<Arc> &arcs);
 // memory location because Array1 does not support a stride.  However
 // it would be possible to get it as an Array2.
 inline Array1<float> WeightsOfArcsAsArray1(const Array1<Arc> &arcs) {
+  NVTX_RANGE(K2_FUNC);
   return Array1<float>(WeightsOfArcsAsTensor(arcs));
 }
 
 inline Array1<float> WeightsOfFsaAsArray1(const Ragged<Arc> &fsa) {
+  NVTX_RANGE(K2_FUNC);
   return Array1<float>(WeightsOfArcsAsTensor(fsa.values));
 }
 

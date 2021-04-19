@@ -197,7 +197,6 @@ class MultiGraphDenseIntersect {
                       Array1<int32_t> *arc_map_b) {
     NVTX_RANGE(K2_FUNC);
 
-
     Array1<float> score_cutoffs;
     float *score_cutoffs_data;
     int32_t num_states = a_fsas_.TotSize(1);
@@ -802,6 +801,8 @@ class MultiGraphDenseIntersect {
     pick a looser beam if there is significant roundoff).
    */
   Array1<float> GetScoreCutoffs() {
+    NVTX_RANGE(K2_FUNC);
+
     std::vector<float *> state_scores_vec(T_ + 1);
     int32_t tot_states = a_fsas_.TotSize(1);
     if (state_scores_.Dim() == 0) {

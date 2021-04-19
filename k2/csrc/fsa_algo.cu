@@ -268,6 +268,7 @@ void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
 void RemoveEpsilon(FsaOrVec &src, int32_t properties,
                    FsaOrVec *dest,
                    Ragged<int32_t> *arc_derivs) {
+  NVTX_RANGE(K2_FUNC);
   if ((properties & kFsaPropertiesTopSortedAndAcyclic) != 0 &&
       src.Context()->GetDeviceType() == kCpu) {
     // Host version of the algorithm
@@ -281,6 +282,7 @@ void RemoveEpsilon(FsaOrVec &src, int32_t properties,
 void RemoveEpsilonAndAddSelfLoops(FsaOrVec &src, int32_t properties,
                                   FsaOrVec *dest,
                                   Ragged<int32_t> *arc_derivs) {
+  NVTX_RANGE(K2_FUNC);
   Ragged<int32_t> arc_derivs1;
 
   FsaOrVec temp;
@@ -875,6 +877,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map /* = nullptr*/) {
 FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
                     Array1<int32_t> *fsas_arc_map /*=nullptr*/,
                     Array1<int32_t> *labels_arc_map /*=nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   if (fsas.NumAxes() == 2) {
     FsaVec fsas_temp = FsaToFsaVec(fsas);
     return ExpandArcs(fsas_temp, labels_shape, fsas_arc_map, labels_arc_map)
@@ -1245,6 +1248,7 @@ void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
 
 FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec &src,
                                 Array1<int32_t> *arc_map /* = nullptr */) {
+  NVTX_RANGE(K2_FUNC);
   if (src.NumAxes() == 2) {
     FsaVec temp = FsaToFsaVec(src);
     return RemoveEpsilonSelfLoops(temp, arc_map).RemoveAxis(0);

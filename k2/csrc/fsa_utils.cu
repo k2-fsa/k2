@@ -1985,6 +1985,7 @@ FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes) {
 }
 
 FsaVec GetIncomingFsaVec(FsaVec &fsas) {
+  NVTX_RANGE(K2_FUNC);
   Array1<int32_t> dest_states = GetDestStates(fsas, true);
   Ragged<int32_t> arc_indexes = GetIncomingArcs(fsas, dest_states);
   return FsaVec(arc_indexes.shape, fsas.values[arc_indexes.values]);
@@ -1999,6 +2000,7 @@ Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
 }
 
 void FixNumStates(FsaVec *fsas) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(fsas->NumAxes(), 3);
   ContextPtr c = fsas->Context();
   int32_t num_fsas = fsas->Dim0(), num_states = fsas->TotSize(1);
@@ -2023,6 +2025,7 @@ void FixNumStates(FsaVec *fsas) {
 template <typename FloatType>
 Array1<FloatType> GetArcCdf(FsaOrVec &fsas,
                             Array1<FloatType> &arc_post) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_GE(fsas.NumAxes(), 2);
   K2_CHECK_LE(fsas.NumAxes(), 3);
   int32_t state_axis = (fsas.NumAxes() == 3 ? 1 : 0);
@@ -2481,6 +2484,7 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
                             int32_t num_paths,
                             const Array1<FloatType> &tot_scores,
                             Ragged<int32_t> &state_batches) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr c = GetContext(fsas, arc_cdf, tot_scores, state_batches);
   int32_t num_fsas  = fsas.Dim0();
   Array1<int32_t> num_paths_array(c, num_fsas);
@@ -2515,6 +2519,7 @@ template <typename FloatType>
 FsaVec PruneOnArcPost(FsaVec &src, const Array1<FloatType> &arc_post,
                       FloatType threshold_prob,
                       Array1<int32_t> *arc_map /* = nullptr */) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 3);
   K2_CHECK_GT(threshold_prob, 0);
   K2_CHECK_LT(threshold_prob, 1);

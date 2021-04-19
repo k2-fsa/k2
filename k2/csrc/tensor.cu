@@ -107,6 +107,7 @@ void Shape::SetStride(int32_t axis, int32_t stride) {
 }
 
 std::ostream &operator<<(std::ostream &os, const Shape &shape) {
+  NVTX_RANGE(K2_FUNC);
   os << "num_axes: " << shape.NumAxes() << "\n";
   os << "dims: ";
   std::string sep;

@@ -41,6 +41,7 @@ constexpr DeviceType kCpu = DeviceType::kCpu;
 
 // Intended for use in debugging
 inline std::ostream &operator<<(std::ostream &stream, const DeviceType type) {
+  NVTX_RANGE(K2_FUNC);
   switch (type) {
     case kUnk:
       stream << "kUnk";
@@ -211,18 +212,21 @@ class BackgroundRunner {
 
 template <typename T1, typename T2>
 bool IsCompatible(const T1 &t1, const T2 &t2) {
+  NVTX_RANGE(K2_FUNC);
   // suppose both T1 and T2 have member method `Context`
   return t1.Context()->IsCompatible(*t2.Context());
 }
 
 template <typename T>
 ContextPtr GetContext(const T &t) {
+  NVTX_RANGE(K2_FUNC);
   // suppose T has member method `Context`
   return t.Context();
 }
 
 template <typename First, typename... Rest>
 ContextPtr GetContext(const First &first, const Rest &... rest) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr ans1 = GetContext(first), ans2 = GetContext(rest...);
   K2_CHECK(ans1->IsCompatible(*ans2)) << "Contexts are not compatible";
   return ans1;
@@ -353,6 +357,7 @@ RegionPtr NewRegion(ContextPtr context, std::size_t num_bytes);
   region.
  */
 inline RegionPtr NewRegion(Region &region, std::size_t num_bytes) {
+  NVTX_RANGE(K2_FUNC);
   if (ssize_t(num_bytes) < ssize_t(0)) {
     K2_LOG(WARNING) << "NewRegion allocating memory of negative size "
                     << (ssize_t)num_bytes << ", trying to force core dump";

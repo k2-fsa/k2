@@ -175,6 +175,7 @@ Array1<bool> HasSelfLoops(FsaOrVec &fsas) {
 // As k2host::IsAcyclic has two input arguments, we create a wrapper function
 // here so we can pass it to CheckProperties
 static bool IsAcyclicWapper(const k2host::Fsa &fsa) {
+  NVTX_RANGE(K2_FUNC);
   return k2host::IsAcyclic(fsa, nullptr);
 }
 Array1<bool> IsAcyclic(FsaOrVec &fsas) {

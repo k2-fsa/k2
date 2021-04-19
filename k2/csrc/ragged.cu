@@ -68,6 +68,7 @@ void PrintRaggedShapePart(std::ostream &stream, const RaggedShape &shape,
 // prints a RaggedShape as e.g. [ [ 0 1 ] [ 2 ] [] ].  Note, the 'values'
 // are just the positions in the array, this is for readability.
 std::ostream &operator<<(std::ostream &stream, const RaggedShape &shape) {
+  NVTX_RANGE(K2_FUNC);
   if (shape.Context()->GetDeviceType() != kCpu) {
     return stream << shape.To(GetCpuContext());
   } else {

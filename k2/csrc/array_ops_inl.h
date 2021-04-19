@@ -151,6 +151,7 @@ template <typename T, typename std::enable_if<std::is_floating_point<T>::value,
                                               T>::type * = nullptr>
 void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
                         T *data, int32_t seed = 0) {
+  NVTX_RANGE(K2_FUNC);
   std::random_device rd;
   std::mt19937 gen(rd());
   if (seed != 0) gen = std::mt19937(seed);
@@ -162,6 +163,7 @@ template <typename T, typename std::enable_if<std::is_integral<T>::value,
                                               T>::type * = nullptr>
 void RandArray1Internal(ContextPtr &c, int32_t dim, T min_value, T max_value,
                         T *data, int32_t seed = 0) {
+  NVTX_RANGE(K2_FUNC);
   std::random_device rd;
   std::mt19937 gen(rd());
   if (seed != 0) gen = std::mt19937(seed);
@@ -446,6 +448,7 @@ Array1<T> Range(ContextPtr c, int32_t dim, T first_value, T inc /*=1*/) {
 
 template <typename T>
 Array1<T> Arange(ContextPtr c, T begin, T end, T inc) {
+  NVTX_RANGE(K2_FUNC);
   return Range<T>(c, (end + inc - 1 - begin) / inc, begin, inc);
 }
 
@@ -774,6 +777,7 @@ Array2<T> IndexRows(const Array2<T> &src, const Array1<int32_t> &indexes,
 
 template <typename T, typename Compare>
 static void SortCpu(Array1<T> *array, Array1<int32_t> *index_map) {
+  NVTX_RANGE(K2_FUNC);
   Compare comp;
   if (index_map != nullptr) {
     Array1<int32_t> tmp_index_map = Range(array->Context(), array->Dim(), 0);
@@ -790,6 +794,7 @@ static void SortCpu(Array1<T> *array, Array1<int32_t> *index_map) {
 
 template <typename T, typename Compare /*= LessThan<T>*/>
 void Sort(Array1<T> *array, Array1<int32_t> *index_map /*= nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   if (!array->IsValid()) return;
 
   ContextPtr &context = array->Context();
@@ -811,6 +816,7 @@ void Sort(Array1<T> *array, Array1<int32_t> *index_map /*= nullptr*/) {
 
 template <typename T>
 void Assign(Array2<T> &src, Array2<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.Dim0(), dest->Dim0());
   K2_CHECK_EQ(src.Dim1(), dest->Dim1());
   int32_t dim0 = src.Dim0(), dim1 = src.Dim1(), src_stride = src.ElemStride0(),
@@ -843,6 +849,7 @@ void Assign(Array2<T> &src, Array2<T> *dest) {
 
 template <typename S, typename T>
 void Assign(Array1<S> &src, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.Dim(), dest->Dim());
   int32_t dim = src.Dim();
   if (std::is_same<S, T>::value) {
@@ -892,6 +899,7 @@ Array1<T> MergeWithMap(const Array1<uint32_t> &merge_map, int32_t num_srcs,
 
 template <typename T>
 T Sum(ContextPtr c, const T *src, int32_t dim) {
+  NVTX_RANGE(K2_FUNC);
   if (dim == 0) return 0;
 
   if (c->GetDeviceType() == kCpu) return std::accumulate(src, src + dim, T(0));

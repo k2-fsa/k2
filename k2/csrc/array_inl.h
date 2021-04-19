@@ -46,6 +46,7 @@ void Array1<T>::CopyFrom(const Array1<T> &src) {
 }
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
+  NVTX_RANGE(K2_FUNC);
   if (array.GetRegion() == nullptr) return stream << "<invalid Array1>";
   stream << "[ ";
   Array1<T> to_print = array.To(GetCpuContext());
@@ -58,6 +59,7 @@ std::ostream &operator<<(std::ostream &stream, const Array1<T> &array) {
 
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
+  NVTX_RANGE(K2_FUNC);
   if (array.GetRegion() == nullptr) return stream << "<invalid Array2>";
   stream << "\n[";
   Array2<T> array_cpu = array.To(GetCpuContext());
@@ -71,6 +73,7 @@ std::ostream &operator<<(std::ostream &stream, const Array2<T> &array) {
 
 template <typename T>
 std::istream &operator>>(std::istream &is, Array2<T> &array) {
+  NVTX_RANGE(K2_FUNC);
   std::vector<T> vec;
   int32_t row_length = 0, num_rows = 0;
   is >> std::ws;  // eat whitespace
@@ -122,6 +125,7 @@ std::istream &operator>>(std::istream &is, Array2<T> &array) {
 
 template <typename T>
 std::istream &operator>>(std::istream &is, Array1<T> &array) {
+  NVTX_RANGE(K2_FUNC);
   std::vector<T> vec;
   is >> std::ws;  // eat whitespace
   int c = is.peek();
@@ -150,6 +154,7 @@ std::istream &operator>>(std::istream &is, Array1<T> &array) {
 
 template <typename T>
 Array1<T>::Array1(const std::string &str) : Array1() {
+  NVTX_RANGE(K2_FUNC);
   std::istringstream is(str);
   is >> *this;
   if (!is.good()) {
@@ -159,6 +164,7 @@ Array1<T>::Array1(const std::string &str) : Array1() {
 
 template <typename T>
 Array2<T>::Array2(const std::string &str) : Array2() {
+  NVTX_RANGE(K2_FUNC);
   std::istringstream is(str);
   is >> *this;
   if (!is.good())

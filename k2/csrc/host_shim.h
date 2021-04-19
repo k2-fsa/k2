@@ -38,10 +38,12 @@ class Ragged2Creator {
     get a Ragged2.
   */
   explicit Ragged2Creator(const k2host::Array2Size<int32_t> &size) {
+    NVTX_RANGE(K2_FUNC);
     Init(size);
   }
 
   void Init(const k2host::Array2Size<int32_t> &size) {
+    NVTX_RANGE(K2_FUNC);
     row_splits1_ = Array1<int32_t>(GetCpuContext(), size.size1 + 1);
     // just for case of empty Ragged or k2host::Array2 object, may be written
     // by the caller
@@ -50,11 +52,13 @@ class Ragged2Creator {
   }
 
   Ragged<T> GetRagged2() {
+    NVTX_RANGE(K2_FUNC);
     RaggedShape shape = RaggedShape2(&row_splits1_, nullptr, values_.Dim());
     return Ragged<T>(shape, values_);
   }
 
   k2host::Array2<T *, int32_t> GetHostArray2() {
+    NVTX_RANGE(K2_FUNC);
     return k2host::Array2<T *, int32_t>(row_splits1_.Dim() - 1, values_.Dim(),
                                         row_splits1_.Data(), values_.Data());
   }
@@ -103,6 +107,7 @@ class FsaCreator {
   explicit FsaCreator(const k2host::Array2Size<int32_t> &size) { Init(size); }
 
   void Init(const k2host::Array2Size<int32_t> &size) {
+    NVTX_RANGE(K2_FUNC);
     arc_indexes_ = Array1<int32_t>(GetCpuContext(), size.size1 + 1);
     // just for case of empty Array2 object, may be written by the caller
     arc_indexes_.Data()[0] = 0;
@@ -121,6 +126,7 @@ class FsaCreator {
    */
   explicit FsaCreator(const std::vector<Arc> &arcs, int32_t final_state)
       : FsaCreator() {
+    NVTX_RANGE(K2_FUNC);
     if (arcs.empty())
       return;  // has created an empty Fsa in the default constructor
     arcs_ = Array1<Arc>(GetCpuContext(), arcs);
@@ -146,6 +152,7 @@ class FsaCreator {
   }
 
   Fsa GetFsa() {
+    NVTX_RANGE(K2_FUNC);
     RaggedShape shape = RaggedShape2(&arc_indexes_, nullptr, arcs_.Dim());
     Fsa ans(shape, arcs_);
     return ans;
@@ -155,6 +162,7 @@ class FsaCreator {
   // use the pointers in k2host::Fsa to write data to, then the user
   // will call GetFsa() to get it as an FSA.
   k2host::Fsa GetHostFsa() {
+    NVTX_RANGE(K2_FUNC);
     return k2host::Fsa(arc_indexes_.Dim() - 1, arcs_.Dim(), arc_indexes_.Data(),
                        reinterpret_cast<k2host::Arc *>(arcs_.Data()));
   }
@@ -179,6 +187,7 @@ class FsaVecCreator {
   */
   explicit FsaVecCreator(
       const std::vector<k2host::Array2Size<int32_t>> &sizes) {
+    NVTX_RANGE(K2_FUNC);
     Init(sizes);
   }
 
@@ -189,6 +198,7 @@ class FsaVecCreator {
   FsaVec GetFsaVec();
 
   int32_t GetArcOffsetFor(int32_t fsa_idx) {
+    NVTX_RANGE(K2_FUNC);
     return row_splits12_.Data()[fsa_idx];
   }
 

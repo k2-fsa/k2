@@ -210,6 +210,7 @@ Ragged<T> Merge(int32_t num_srcs, Ragged<T> **src,
 
 template <typename T>
 Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   Renumbering r(c, src.NumElements());
   const T *values_data = src.values.Data();
@@ -222,6 +223,7 @@ Ragged<T> RemoveValuesLeq(Ragged<T> &src, T cutoff) {
 
 template <typename T>
 Ragged<T> RemoveValuesEq(Ragged<T> &src, T target) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   Renumbering r(c, src.NumElements());
   const T *values_data = src.values.Data();
@@ -237,6 +239,7 @@ Ragged<T> RemoveValuesEq(Ragged<T> &src, T target) {
 template <typename T>
 void PrintRaggedPart(std::ostream &stream, const Ragged<T> &ragged,
                      int32_t axis, int32_t begin_pos, int32_t end_pos) {
+  NVTX_RANGE(K2_FUNC);
   const auto &shape = ragged.shape;
   K2_CHECK(axis >= 0 && axis < shape.NumAxes() && begin_pos >= 0 &&
            begin_pos <= end_pos && end_pos <= shape.TotSize(axis));
@@ -257,6 +260,7 @@ void PrintRaggedPart(std::ostream &stream, const Ragged<T> &ragged,
 // prints a Ragged array as e.g. [ [ 7 9 ] [ 10 ] [] ]
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Ragged<T> &ragged) {
+  NVTX_RANGE(K2_FUNC);
   if (ragged.values.GetRegion() == nullptr)
     return stream << "<invalid Ragged<T> >";
 
@@ -274,6 +278,7 @@ template <typename T>
 Ragged<T> RandomRagged(T min_value, T max_value, int32_t min_num_axes,
                        int32_t max_num_axes, int32_t min_num_elements,
                        int32_t max_num_elements) {
+  NVTX_RANGE(K2_FUNC);
   RaggedShape shape = RandomRaggedShape(true, min_num_axes, max_num_axes,
                                         min_num_elements, max_num_elements);
   ContextPtr c = GetCpuContext();
@@ -371,6 +376,7 @@ Ragged<T> Ragged<T>::RemoveAxis(int32_t axis) {
 
 template <typename T>
 std::istream &operator>>(std::istream &is, Ragged<T> &r) {
+  NVTX_RANGE(K2_FUNC);
   // Note: the top element of 'row_splits' will end up being
   // discarded; the others will become the axes of `r`
   std::vector<std::vector<int32_t>> row_splits;
@@ -438,6 +444,7 @@ std::istream &operator>>(std::istream &is, Ragged<T> &r) {
 
 template <typename T>
 Ragged<T> Index(Ragged<T> &src, Ragged<int32_t> &indexes, bool remove_axis) {
+  NVTX_RANGE(K2_FUNC);
   Ragged<T> r = Index(src, 0, indexes.values);
   RaggedShape s = ComposeRaggedShapes(indexes.shape, r.shape);
   Ragged<T> ans(s, r.values);
@@ -579,6 +586,7 @@ void ArgMaxPerSublist(Ragged<T> &src, T initial_value, Array1<int32_t> *dst) {
 
 template <typename T>
 void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
+  NVTX_RANGE(K2_FUNC);
   ContextPtr c = GetContext(src, *dst);
   int32_t dim = dst->Dim();
   K2_CHECK_EQ(src.NumElements(), dim);
@@ -642,6 +650,7 @@ void SegmentedExclusiveSum(Ragged<T> &src, Array1<T> *dst) {
 
 template <typename T>
 Ragged<T> CreateRagged2(const std::vector<std::vector<T>> &vecs) {
+  NVTX_RANGE(K2_FUNC);
   std::vector<T> values;
   std::vector<int32_t> row_splits;
   row_splits.reserve(vecs.size() + 1);

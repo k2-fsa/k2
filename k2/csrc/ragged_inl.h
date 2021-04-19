@@ -21,6 +21,7 @@ namespace k2 {
 
 template<int MAX_LAYERS>
 RowSplitsAccessor<MAX_LAYERS>::RowSplitsAccessor(RaggedShape &src) {
+  NVTX_RANGE(K2_FUNC);
   int32_t num_layers = src.NumLayers();
   K2_CHECK_LE(src.NumLayers(), MAX_LAYERS);
   for (int i = 0; i < num_layers; i++)
@@ -29,6 +30,7 @@ RowSplitsAccessor<MAX_LAYERS>::RowSplitsAccessor(RaggedShape &src) {
 
 template<int MAX_LAYERS>
 RowIdsAccessor<MAX_LAYERS>::RowIdsAccessor(RaggedShape &src) {
+  NVTX_RANGE(K2_FUNC);
   int32_t num_layers = src.NumLayers();
   K2_CHECK_LE(src.NumLayers(), MAX_LAYERS);
   for (int i = 0; i < num_layers; i++)

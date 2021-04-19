@@ -55,24 +55,28 @@ void SegmentedReduce(Ragged<T> &src, T initial_value, Array1<T> *dst);
  */
 template <typename T>
 void MaxPerSublist(Ragged<T> &src, T initial_value, Array1<T> *max_values) {
+  NVTX_RANGE(K2_FUNC);
   SegmentedReduce<T, MaxOp<T>>(src, initial_value, max_values);
 }
 
 // Same with `MaxPerSubList`, but output the `min_value` in each sub-list.
 template <typename T>
 void MinPerSublist(Ragged<T> &src, T initial_value, Array1<T> *min_values) {
+  NVTX_RANGE(K2_FUNC);
   SegmentedReduce<T, MinOp<T>>(src, initial_value, min_values);
 }
 
 // Same with `MaxPerSubList`, but output the sum of values in each sub-list.
 template <typename T>
 void SumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *sum_values) {
+  NVTX_RANGE(K2_FUNC);
   SegmentedReduce<T, PlusOp<T>>(src, initial_value, sum_values);
 }
 
 // Same with `MaxPerSubList`, but with Op as `LogAdd`.
 template <typename T>
 void LogSumPerSublist(Ragged<T> &src, T initial_value, Array1<T> *dst_values) {
+  NVTX_RANGE(K2_FUNC);
   K2_STATIC_ASSERT(
       (std::is_same<float, T>::value || std::is_same<double, T>::value));
   SegmentedReduce<T, LogAdd<T>>(src, initial_value, dst_values);
@@ -133,12 +137,14 @@ Ragged<T> NormalizePerSublist(Ragged<T> &src, bool use_log);
 */
 template <typename T>
 void AndPerSublist(Ragged<T> &src, T initial_value, Array1<T> *and_values) {
+  NVTX_RANGE(K2_FUNC);
   SegmentedReduce<T, BitAndOp<T>>(src, initial_value, and_values);
 }
 
 // bitwise or
 template <typename T>
 void OrPerSublist(Ragged<T> &src, T initial_value, Array1<T> *or_values) {
+  NVTX_RANGE(K2_FUNC);
   SegmentedReduce<T, BitOrOp<T>>(src, initial_value, or_values);
 }
 
@@ -328,6 +334,7 @@ class RaggedAxis0Splitter : public RaggedShapeAxis0Splitter {
                   the `i`.
   */
   Ragged<T> GetElement(int32_t i, int32_t *elem_offset = nullptr) {
+    NVTX_RANGE(K2_FUNC);
     int32_t temp;
     if (elem_offset == nullptr) elem_offset = &temp;
     RaggedShape shape = RaggedShapeAxis0Splitter::GetElement(i, elem_offset);
@@ -368,6 +375,7 @@ RaggedShape Arange(RaggedShape &src, int32_t axis, int32_t begin, int32_t end,
  */
 template <typename T>
 Ragged<T> Arange(Ragged<T> &src, int32_t axis, int32_t begin, int32_t end) {
+  NVTX_RANGE(K2_FUNC);
   std::pair<int32_t, int32_t> value_range;
   RaggedShape ans_shape = Arange(src.shape, axis, begin, end, &value_range);
   return Ragged<T>(ans_shape,
@@ -427,6 +435,7 @@ RaggedShape Unsqueeze(const RaggedShape &src, int32_t axis);
 */
 template <typename T>
 Ragged<T> Unsqueeze(const Ragged<T> &src, int32_t axis) {
+  NVTX_RANGE(K2_FUNC);
   return Ragged<T>(Unsqueeze(src.shape, axis), src.values);
 }
 
@@ -484,6 +493,7 @@ RaggedShape RemoveAxis(RaggedShape &src, int32_t axis);
   */
 template <typename T>
 Ragged<T> RemoveAxis(Ragged<T> &src, int32_t axis) {
+  NVTX_RANGE(K2_FUNC);
   return src.RemoveAxis(axis);
 }
 
@@ -793,6 +803,7 @@ RaggedShape RenumberAxis0Simple(RaggedShape &src_shape,
  */
 template <typename T>
 Ragged<T> SubsampleRagged(Ragged<T> &src, Renumbering &renumbering) {
+  NVTX_RANGE(K2_FUNC);
   return Ragged<T>(SubsampleRaggedShape(src.shape, renumbering),
                    src.values[renumbering.New2Old()]);
 }
@@ -987,6 +998,7 @@ RaggedShape EmptyRaggedShape(ContextPtr &c, int32_t num_axes);
 
 inline RaggedShape RaggedShapeFromTotSizes(ContextPtr &c,
                                            std::vector<int32_t> &tot_sizes) {
+  NVTX_RANGE(K2_FUNC);
   return RaggedShapeFromTotSizes(c, static_cast<int32_t>(tot_sizes.size()),
                                  tot_sizes.data());
 }
@@ -1034,6 +1046,7 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order = nullptr);
 template <typename T>
 inline Ragged<T> RaggedFromTotSizes(ContextPtr &c,
                                     std::vector<int32_t> &tot_sizes) {
+  NVTX_RANGE(K2_FUNC);
   return Ragged<T>(RaggedShapeFromTotSizes(c, tot_sizes),
                    Array1<T>(c, tot_sizes.back()));
 }
@@ -1111,6 +1124,7 @@ bool Equal(const RaggedShape &a, const RaggedShape &b);
    values.  They must be on the same device. */
 template <typename T>
 bool Equal(const Ragged<T> &a, const Ragged<T> &b) {
+  NVTX_RANGE(K2_FUNC);
   return Equal(a.shape, b.shape) && Equal(a.values, b.values);
 }
 
@@ -1183,6 +1197,7 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
 template <typename T>
 Ragged<T> Index(Ragged<T> &src, int32_t axis, const Array1<int32_t> &indexes,
                 Array1<int32_t> *value_indexes_out = nullptr) {
+  NVTX_RANGE(K2_FUNC);
   Array1<int32_t> value_indexes;
   RaggedShape ans_shape = Index(src.shape, axis, indexes, &value_indexes);
   Ragged<T> ans(ans_shape, src.values[value_indexes]);
@@ -1255,6 +1270,7 @@ Ragged<T> RemoveValuesEq(Ragged<T> &src, T target);
 */
 template <typename T>
 Ragged<T> Index(Array1<T> &src, Ragged<int32_t> &indexes) {
+  NVTX_RANGE(K2_FUNC);
   return Ragged<T>(indexes.shape, src[indexes.values]);
 }
 

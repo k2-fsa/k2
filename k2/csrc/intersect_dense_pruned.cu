@@ -291,6 +291,7 @@ class MultiGraphDenseIntersectPruned {
   }
 
   void BackwardPass() {
+    NVTX_RANGE(K2_FUNC);
     int32_t num_fsas = b_fsas_.shape.Dim0(),
       num_work_items = max_active_ * num_fsas * T_;
     ParallelRunner pr(c_);
@@ -310,6 +311,7 @@ class MultiGraphDenseIntersectPruned {
   }
 
   static void BackwardPassStatic(MultiGraphDenseIntersectPruned *c) {
+    NVTX_RANGE(K2_FUNC);
     c->BackwardPass();
   }
 
@@ -1151,6 +1153,7 @@ class MultiGraphDenseIntersectPruned {
    */
   void PruneTimeRange(int32_t begin_t,
                       int32_t end_t) {
+    NVTX_RANGE(K2_FUNC);
     SetBackwardProbsFinal(frames_[end_t].get());
     ContextPtr cpu = GetCpuContext();
     int32_t num_fsas = b_fsas_.shape.Dim0(),

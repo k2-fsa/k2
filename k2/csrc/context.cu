@@ -11,12 +11,14 @@
 namespace k2 {
 
 void CudaStreamOverride::Push(cudaStream_t stream) {
+  NVTX_RANGE(K2_FUNC);
   if (stream == static_cast<cudaStream_t>(0x0)) return;
   stack_.push_back(stream);
   stream_override_ = stream;
 }
 
 void CudaStreamOverride::Pop(cudaStream_t stream) {
+  NVTX_RANGE(K2_FUNC);
   if (stream == static_cast<cudaStream_t>(0x0)) return;
   K2_DCHECK(!stack_.empty());
   K2_DCHECK_EQ(stack_.back(), stream);
@@ -28,6 +30,7 @@ void CudaStreamOverride::Pop(cudaStream_t stream) {
 }
 
 RegionPtr NewRegion(ContextPtr context, std::size_t num_bytes) {
+  NVTX_RANGE(K2_FUNC);
   // .. fairly straightforward.  Sets bytes_used to num_bytes, caller can
   // overwrite if needed.
   auto ans = std::make_shared<Region>();
@@ -42,6 +45,7 @@ RegionPtr NewRegion(ContextPtr context, std::size_t num_bytes) {
 }
 
 ParallelRunnerActive::ParallelRunnerActive(ContextPtr c) : c_(c) {
+  NVTX_RANGE(K2_FUNC);
   if (c_->GetDeviceType() == kCuda) {
     auto ret = cudaEventCreate(&event_);
     K2_CHECK_CUDA_ERROR(ret);
@@ -52,6 +56,7 @@ ParallelRunnerActive::ParallelRunnerActive(ContextPtr c) : c_(c) {
 }
 cudaStream_t ParallelRunnerActive::NewStream(
     std::size_t num_work_items /*=0*/) {
+  NVTX_RANGE(K2_FUNC);
   DeviceType d = c_->GetDeviceType();
   if (d == kCpu) {
     return kCudaStreamInvalid;
@@ -70,6 +75,7 @@ cudaStream_t ParallelRunnerActive::NewStream(
 }
 
 void ParallelRunnerActive::Finish() {
+  NVTX_RANGE(K2_FUNC);
   if (c_.get() == nullptr) return;
   if (c_->GetDeviceType() == kCuda) {
     for (std::size_t i = 0; i != streams_.size(); ++i) {
@@ -95,6 +101,7 @@ void ParallelRunnerActive::Finish() {
 
 void GetBlockSizesForLambda2(int32_t m, int32_t n, dim3 *block_dim,
                              dim3 *grid_dim, Lambda2KernelType *kernel_type) {
+  NVTX_RANGE(K2_FUNC);
   // Note: 'n' is the 'inner-loop' one, the one which is supposed to vary the
   // fastest.
   int32_t n_block_size = (n <= 256 ? n : 256);
@@ -125,6 +132,7 @@ void GetBlockSizesForLambda2(int32_t m, int32_t n, dim3 *block_dim,
 
 
 void Semaphore::Signal(ContextPtr c) {
+  NVTX_RANGE(K2_FUNC);
   DeviceType device_type = c->GetDeviceType();
   if (device_type_ == kUnk)
     device_type_ = device_type;
@@ -147,6 +155,7 @@ void Semaphore::Signal(ContextPtr c) {
 }
 
 void Semaphore::Wait(ContextPtr c) {
+  NVTX_RANGE(K2_FUNC);
   DeviceType device_type = c->GetDeviceType();
   if (device_type_ == kUnk)
     device_type_ = device_type;

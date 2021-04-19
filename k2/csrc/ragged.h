@@ -57,6 +57,7 @@ std::istream &operator>>(std::istream &stream, RaggedShape &shape);
 class RaggedShape {
  public:
   int32_t Dim0() const {
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GT(layers_.size(), 0);
     return layers_[0].row_splits.Dim() - 1;
   }
@@ -81,7 +82,10 @@ class RaggedShape {
 
   // Returns the number of elements that a ragged array with this shape would
   // have.
-  int32_t NumElements() const { return TotSize(NumAxes() - 1); }
+  int32_t NumElements() const {
+    NVTX_RANGE(K2_FUNC);
+    return TotSize(NumAxes() - 1);
+  }
 
   /*
     Return the row-splits for axis `axis` with `0 < axis < NumAxes()`.
@@ -90,6 +94,7 @@ class RaggedShape {
     on axis `axis+1`
    */
   Array1<int32_t> &RowSplits(int32_t axis) {
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_GT(axis, 0);
     K2_CHECK_LT(axis, NumAxes());
     // Note row_splits is always nonempty for valid RaggedShapeLayer.
@@ -109,6 +114,7 @@ class RaggedShape {
   */
   Array1<int32_t> &RowIds(int32_t axis);
   const Array1<int32_t> &RowIds(int32_t axis) const {
+    NVTX_RANGE(K2_FUNC);
     return const_cast<RaggedShape *>(this)->RowIds(axis);
   }
 
@@ -152,12 +158,14 @@ class RaggedShape {
   explicit RaggedShape(const std::vector<RaggedShapeLayer> &layers,
                        bool check = !internal::kDisableDebug)
       : layers_(layers) {
+    NVTX_RANGE(K2_FUNC);
     // the check can be disabled by settin the environment variable
     // K2_DISABLE_CHECKS.
     if (check && !internal::DisableChecks()) Check();
   }
 
   explicit RaggedShape(const std::string &src) {
+    NVTX_RANGE(K2_FUNC);
     std::istringstream is(src);
     is >> *this >> std::ws;
     if (!is.eof() || is.fail())
@@ -192,6 +200,7 @@ class RaggedShape {
 
   // Check the RaggedShape for consistency; die on failure.
   void Check() {
+    NVTX_RANGE(K2_FUNC);
     if (!Validate(true))
       K2_LOG(FATAL) << "Failed to validate RaggedShape: " << *this;
   }
@@ -258,6 +267,7 @@ class RaggedShapeIndexIterator {
  public:
   const std::vector<int32_t> &Value() const { return idx_; }
   void Next() {
+    NVTX_RANGE(K2_FUNC);
     linear_idx_++;
     if (!Done()) UpdateVec();
   }
@@ -267,6 +277,7 @@ class RaggedShapeIndexIterator {
       : linear_idx_(0),
         idx_(shape.NumAxes()),
         num_elements_(shape.NumElements()) {
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_EQ(shape.Context()->GetDeviceType(), kCpu);
     for (int32_t i = 0; i + 1 < shape.NumAxes(); ++i) {
       row_splits_.push_back(shape.RowSplits(i + 1).Data());
@@ -277,6 +288,7 @@ class RaggedShapeIndexIterator {
 
  private:
   void UpdateVec() {
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK(!Done());
     int32_t idx = linear_idx_,
             num_axes = static_cast<int32_t>(row_splits_.size() + 1);
@@ -309,6 +321,7 @@ struct Ragged {
 
   Ragged(const RaggedShape &shape, const Array1<T> &values)
       : shape(shape), values(values) {
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK(IsCompatible(shape, values));
     K2_CHECK_EQ(shape.NumElements(), values.Dim());
   }
@@ -318,6 +331,7 @@ struct Ragged {
 
   // Defined in ragged_ops_inl.h
   explicit Ragged(const std::string &src) {
+    NVTX_RANGE(K2_FUNC);
     std::istringstream is(src);
     is >> *this >> std::ws;
     if (!is.eof() || is.fail())
@@ -344,6 +358,7 @@ struct Ragged {
   // This will only work on the CPU, and is intended for use in testing code.
   // See also member-function Index().
   T operator[](const std::vector<int32_t> &indexes) {
+    NVTX_RANGE(K2_FUNC);
     K2_CHECK_EQ(Context()->GetDeviceType(), kCpu);
     return values[shape[indexes]];
   }
@@ -352,6 +367,7 @@ struct Ragged {
   int32_t NumAxes() const { return shape.NumAxes(); }
   int32_t NumElements() const { return shape.NumElements(); }
   const Array1<int32_t> &RowSplits(int32_t axis) const {
+    NVTX_RANGE(K2_FUNC);
     return shape.RowSplits(axis);
   }
   Array1<int32_t> &RowSplits(int32_t axis) { return shape.RowSplits(axis); }
@@ -375,6 +391,7 @@ struct Ragged {
       @param [in]  i     Index to select
    */
   Ragged<T> Index(int32_t axis, int32_t i) {
+    NVTX_RANGE(K2_FUNC);
     // Get returned Ragged.shape
     int32_t values_offset;
     RaggedShape sub_shape = shape.Index(axis, i, &values_offset);
@@ -399,6 +416,7 @@ struct Ragged {
   Ragged<T> RemoveAxis(int32_t axis);
 
   Ragged<T> To(ContextPtr ctx) const {
+    NVTX_RANGE(K2_FUNC);
     RaggedShape new_shape = shape.To(ctx);
     Array1<T> new_values = values.To(ctx);
     return Ragged<T>(new_shape, new_values);

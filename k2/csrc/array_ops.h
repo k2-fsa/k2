@@ -151,6 +151,7 @@ void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis);
 //  wrapper for the ExclusiveSum above with axis = 1
 template <typename T>
 void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
   ExclusiveSum(src, dest, 1);
 }
 
@@ -242,11 +243,13 @@ void ApplyOpOnArray1(Array1<T> &src, T default_value, Array1<T> *dest);
  */
 template <typename T>
 void Max(Array1<T> &src, T default_value, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
   ApplyOpOnArray1<T, MaxOp<T>>(src, default_value, dest);
 }
 
 template <typename T>
 T MaxValue(const Array1<T> &src) {
+  NVTX_RANGE(K2_FUNC);
   return MaxValue(src.Context(), src.Dim(), src.Data());
 }
 
@@ -264,6 +267,7 @@ T MaxValue(const Array1<T> &src) {
  */
 template <typename T>
 void And(Array1<T> &src, T default_value, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
   ApplyOpOnArray1<T, BitAndOp<T>>(src, default_value, dest);
 }
 
@@ -271,6 +275,7 @@ void And(Array1<T> &src, T default_value, Array1<T> *dest) {
 // element of `src`.
 template <typename T>
 void Or(Array1<T> &src, T default_value, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
   ApplyOpOnArray1<T, BitOrOp<T>>(src, default_value, dest);
 }
 
@@ -289,12 +294,14 @@ void ApplyBinaryOpOnArray1(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest);
 // i.e. dest[i] = src1[i] + src2[i]
 template <typename T>
 void Plus(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
   ApplyBinaryOpOnArray1<T, PlusOp<T>>(src1, src2, dest);
 }
 
 // A wrapper function for Plus above, ans[i] = src1[i] + src2[i].
 template <typename T>
 Array1<T> Plus(Array1<T> &src1, Array1<T> &src2) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src1.Dim(), src2.Dim());
   Array1<T> ans(GetContext(src1, src2), src1.Dim());
   Plus(src1, src2, &ans);
@@ -304,12 +311,14 @@ Array1<T> Plus(Array1<T> &src1, Array1<T> &src2) {
 // Same with `Plus`, but with `MinusOp`, i.e. dest[i] = src1[i] - src2[i].
 template <typename T>
 void Minus(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
   ApplyBinaryOpOnArray1<T, MinusOp<T>>(src1, src2, dest);
 }
 
 // A wrapper function for Minus above, ans[i] = src1[i] - src2[i].
 template <typename T>
 Array1<T> Minus(Array1<T> &src1, Array1<T> &src2) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src1.Dim(), src2.Dim());
   Array1<T> ans(GetContext(src1, src2), src1.Dim());
   Minus(src1, src2, &ans);
@@ -319,12 +328,14 @@ Array1<T> Minus(Array1<T> &src1, Array1<T> &src2) {
 // Same with `Plus`, but with `TimesOp`, i.e. dest[i] = src1[i] * src2[i].
 template <typename T>
 void Times(Array1<T> &src1, Array1<T> &src2, Array1<T> *dest) {
+  NVTX_RANGE(K2_FUNC);
   ApplyBinaryOpOnArray1<T, TimesOp<T>>(src1, src2, dest);
 }
 
 // A wrapper function for Times above, ans[i] = src1[i] * src2[i].
 template <typename T>
 Array1<T> Times(Array1<T> &src1, Array1<T> &src2) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src1.Dim(), src2.Dim());
   Array1<T> ans(GetContext(src1, src2), src1.Dim());
   Times(src1, src2, &ans);
@@ -471,6 +482,7 @@ Array1<T> Plus(const Array1<T> &src, T t);
 
 template <typename T>
 Array1<T> Minus(const Array1<T> &src, T t) {
+  NVTX_RANGE(K2_FUNC);
   return Plus(src, -t);
 }
 
@@ -756,6 +768,7 @@ T Sum(ContextPtr c, const T *src, int32_t dim);
  */
 template <typename T>
 T Sum(const Array1<T> &src) {
+  NVTX_RANGE(K2_FUNC);
   if (src.Dim() == 0) return 0;
   return Sum(src.Context(), src.Data(), src.Dim());
 }

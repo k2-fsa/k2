@@ -62,6 +62,7 @@ Renumbering::Renumbering(const Array1<char> &keep,
 
 
 Renumbering IdentityRenumbering(ContextPtr c, int32_t size) {
+  NVTX_RANGE(K2_FUNC);
   Array1<char> keep(c, size + 1);  // uninitialized.
   keep = keep.Arange(0, size);
   Array1<int32_t> range = Arange(c, 0, size + 1);

@@ -10,6 +10,7 @@
 namespace k2 {
 
 void Hash::CheckEmpty() {
+  NVTX_RANGE(K2_FUNC);
   if (data_.Dim() == 0) return;
   ContextPtr c = Context();
   Array1<int32_t> error(c, 1, -1);
@@ -34,6 +35,7 @@ void Hash::Resize(int32_t new_num_buckets,
                   int32_t num_key_bits,
                   int32_t num_value_bits, // = -1,
                   bool copy_data) {  // = true
+  NVTX_RANGE(K2_FUNC);
   if (num_value_bits < 0)
     num_value_bits = 64 - num_key_bits;
 
