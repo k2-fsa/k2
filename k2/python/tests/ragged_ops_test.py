@@ -240,18 +240,18 @@ class TestRaggedOps(unittest.TestCase):
         # the final state has no leaving arcs
         assert normalized_scores[-1].item() == 0
 
-    def test_append(self):
+    def test_cat(self):
         ragged1 = k2.RaggedInt('[ [1 2 3] [] [4 5] ]')
         ragged2 = k2.RaggedInt('[ [] [10 20] [30] [40 50] ]')
-        ragged = k2.ragged.append([ragged1, ragged2])
+        ragged = k2.ragged.cat([ragged1, ragged2])
         self.assertEqual(
             str(ragged),
             '[ [ 1 2 3 ] [ ] [ 4 5 ] [ ] [ 10 20 ] [ 30 ] [ 40 50 ] ]')
 
-    def test_append_axis1(self):
+    def test_cat_axis1(self):
         ragged1 = k2.RaggedInt('[ [1 2 3] [] [4 5] ]')
         ragged2 = k2.RaggedInt('[ [10 20] [8] [9 10] ]')
-        ragged = k2.ragged.append([ragged1, ragged2], axis=1)
+        ragged = k2.ragged.cat([ragged1, ragged2], axis=1)
         self.assertEqual(str(ragged), '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]')
 
     def test_get_layer_two_axes(self):

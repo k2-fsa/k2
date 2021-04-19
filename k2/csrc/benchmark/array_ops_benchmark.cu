@@ -111,8 +111,7 @@ static BenchmarkStat BenchmarkRowIdsToRowSplits(int32_t dim,
 }
 
 template <typename T>
-static BenchmarkStat BenchmarkAppend(int32_t num_array,
-                                     DeviceType device_type) {
+static BenchmarkStat BenchmarkCat(int32_t num_array, DeviceType device_type) {
   ContextPtr context;
   if (device_type == kCpu) {
     context = GetCpuContext();
@@ -152,7 +151,7 @@ static BenchmarkStat BenchmarkAppend(int32_t num_array,
   const Array1<T> **src = arrays.data();
 
   BenchmarkStat stat;
-  stat.op_name = "Append_" + std::to_string(num_array) + "_" +
+  stat.op_name = "Cat_" + std::to_string(num_array) + "_" +
                  std::to_string(total_size) + "_" +
                  std::to_string(total_size / num_array) + "_" +
                  std::to_string(max_size) + "_" + std::to_string(is_balanced);
@@ -164,7 +163,7 @@ static BenchmarkStat BenchmarkAppend(int32_t num_array,
 
   stat.eplased_per_iter = BenchmarkOp(
       num_iter, context,
-      (Array1<T>(*)(ContextPtr, int32_t, const Array1<T> **))(&Append<T>),
+      (Array1<T>(*)(ContextPtr, int32_t, const Array1<T> **))(&Cat<T>),
       context, num_array, src);
   stat.eplased_per_iter *= 1e6;  // from seconds to microseconds
   return stat;
@@ -309,15 +308,15 @@ static void RegisterBenchmarkRowIdsToRowSplits(DeviceType device_type) {
 }
 
 template <typename T>
-static void RegisterBenchmarkAppend(DeviceType device_type) {
-  // problem_sizes here is the number of arrays to append
+static void RegisterBenchmarkCat(DeviceType device_type) {
+  // problem_sizes here is the number of arrays to concatenate
   std::vector<int32_t> problems_sizes = {10,   50,   100,  200,  500,
                                          1000, 2000, 5000, 10000};
   for (auto s : problems_sizes) {
-    std::string name = GenerateBenchmarkName<T>("Append", device_type) + "_" +
+    std::string name = GenerateBenchmarkName<T>("Cat", device_type) + "_" +
                        std::to_string(s);
     RegisterBenchmark(name, [s, device_type]() -> BenchmarkStat {
-      return BenchmarkAppend<T>(s, device_type);
+      return BenchmarkCat<T>(s, device_type);
     });
   }
 }
@@ -364,7 +363,7 @@ static void RunArrayOpsBenchmark() {
   RegisterBenchmarkRowIdsToRowSplits(kCpu);
   RegisterBenchmarkRowIdsToRowSplits(kCuda);
 
-  RegisterBenchmarkAppend<int32_t>(kCuda);
+  RegisterBenchmarkCat<int32_t>(kCuda);
 
   RegisterBenchmarkSpliceRowSplits(kCuda);
 

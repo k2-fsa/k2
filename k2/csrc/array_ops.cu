@@ -15,7 +15,7 @@
 namespace k2 {
 
 // See documentation in header of what this is supposed to do.
-// This is similar to the template Append() defined in ops_inl.h,
+// This is similar to the template Cat() defined in ops_inl.h,
 // but with changes largely about adding `data_offsets`, and
 // subtracting one from the dims of all but the last array.
 Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
@@ -94,8 +94,8 @@ Array1<int32_t> SpliceRowSplits(int32_t num_arrays,
   return ans;
 }
 
-Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
-                                  const Array1<int32_t> **src) {
+Array1<int32_t> CatWithOffsets(const Array1<int32_t> &offsets,
+                               const Array1<int32_t> **src) {
   NVTX_RANGE(K2_FUNC);
 
   int32_t num_arrays = offsets.Dim();

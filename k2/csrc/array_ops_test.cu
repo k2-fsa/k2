@@ -589,7 +589,7 @@ void TestArrayMaxAndOr() {
 TEST(OpsTest, ArrayMaxAndOrTest) { TestArrayMaxAndOr<int32_t>(); }
 
 template <typename T>
-void TestAppend() {
+void TestCat() {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     {
@@ -606,11 +606,11 @@ void TestAppend() {
       Array1<T> array4(context, data4);
 
       {
-        // test Append(int32_t, Array1<T>**)
+        // test Cat(int32_t, Array1<T>**)
         std::vector<const Array1<T> *> arrays = {&array1, &array2, &array3,
                                                  &array4};
         const Array1<T> **src = arrays.data();
-        Array1<T> dst = Append(context, 4, src);
+        Array1<T> dst = Cat(context, 4, src);
         EXPECT_EQ(dst.Dim(), 8);
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
@@ -620,10 +620,10 @@ void TestAppend() {
       }
 
       {
-        // test Append(int32_t, Array1<T>*)
+        // test Cat(int32_t, Array1<T>*)
         std::vector<Array1<T>> arrays = {array1, array2, array3, array4};
         const Array1<T> *src = arrays.data();
-        Array1<T> dst = Append(context, 4, src);
+        Array1<T> dst = Cat(context, 4, src);
         EXPECT_EQ(dst.Dim(), 8);
 
         // copy memory from GPU/CPU to CPU
@@ -650,7 +650,7 @@ void TestAppend() {
           arrays[j] = &arrays_vec[j];
         }
         const Array1<T> **src = arrays.data();
-        Array1<T> dst = Append(context, num_array, src);
+        Array1<T> dst = Cat(context, num_array, src);
         EXPECT_EQ(dst.Dim(), total_size);
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
@@ -691,7 +691,7 @@ void TestAppend() {
           arrays[num_array - 1] = &arrays_vec[num_array - 1];
         }
         const Array1<T> **src = arrays.data();
-        Array1<T> dst = Append(context, num_array, src);
+        Array1<T> dst = Cat(context, num_array, src);
         EXPECT_EQ(dst.Dim(), total_size);
         // copy memory from GPU/CPU to CPU
         std::vector<T> cpu_data(dst.Dim());
@@ -705,12 +705,12 @@ void TestAppend() {
   }
 }
 
-TEST(OpsTest, AppendTest) {
-  TestAppend<int32_t>();
-  TestAppend<float>();
+TEST(OpsTest, CatTest) {
+  TestCat<int32_t>();
+  TestCat<float>();
 }
 
-TEST(OpsTest, AppendWithOffsets) {
+TEST(OpsTest, CatWithOffsets) {
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     {
       // a case with small size
@@ -730,7 +730,7 @@ TEST(OpsTest, AppendWithOffsets) {
       std::vector<const Array1<int32_t> *> arrays = {&array1, &array2, &array3,
                                                      &array4};
       const Array1<int32_t> **src = arrays.data();
-      Array1<int32_t> dst = AppendWithOffsets(offsets, src);
+      Array1<int32_t> dst = CatWithOffsets(offsets, src);
       CheckArrayData(dst, expected_data);
     }
 
@@ -760,7 +760,7 @@ TEST(OpsTest, AppendWithOffsets) {
         }
         const Array1<int32_t> **src = arrays.data();
         offsets = offsets.To(context);
-        Array1<int32_t> dst = AppendWithOffsets(offsets, src);
+        Array1<int32_t> dst = CatWithOffsets(offsets, src);
         CheckArrayData(dst, expected_data);
       }
     }

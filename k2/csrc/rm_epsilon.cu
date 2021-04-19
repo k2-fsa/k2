@@ -1111,7 +1111,7 @@ void RemoveEpsilonDevice(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
     Ragged<int32_t> *arc_maps[2] = {&combined_foll_arc_map_prec,
                                     &epsilon_closure_prec_arc_map_prec};
     int32_t axis = 1;
-    combined_prec_foll_arc_map = Append(axis, 2, arc_maps);
+    combined_prec_foll_arc_map = Cat(axis, 2, arc_maps);
   }
 
   // NOTE: important that order matches with `arc_maps` below.
@@ -1119,7 +1119,7 @@ void RemoveEpsilonDevice(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
                      &non_epsilon_fsa};
   int32_t axis = 2;
   Array1<uint32_t> arcs_merge_map;
-  FsaVec dest_fsa_unsorted = Append(axis, 4, vecs, &arcs_merge_map);
+  FsaVec dest_fsa_unsorted = Cat(axis, 4, vecs, &arcs_merge_map);
 
   Ragged<int32_t> non_epsilon_arc_map_ragged(
       RegularRaggedShape(c, non_epsilon_fsa.NumElements(), 1),

@@ -53,7 +53,7 @@ bool RecursionWrapper(bool (*f)(Fsa &, Fsa *, Array1<int32_t> *), Fsa &src,
   }
   *dest = Stack(0, num_fsas, dests.data());
   if (arc_map != nullptr)
-    *arc_map = Append(src.Context(), num_fsas, arc_maps.data());
+    *arc_map = Cat(src.Context(), num_fsas, arc_maps.data());
   return true;
 }
 
@@ -227,7 +227,7 @@ void RecursionWrapper(void (*f)(FsaOrVec &, FsaOrVec *, Ragged<int32_t> *),
     }
   }
   *dest = Stack(0, num_fsas, dests.data());
-  if (arc_deriv != nullptr) *arc_deriv = Append(0, num_fsas, arc_derivs.data());
+  if (arc_deriv != nullptr) *arc_deriv = Cat(0, num_fsas, arc_derivs.data());
 }
 
 void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
@@ -1210,7 +1210,7 @@ void RecursionWrapperAuxLabels(void (*f)(FsaOrVec &, Ragged<int32_t> &,
     tot_num_arcs += cur_num_arcs;
   }
   *dest = Stack(0, num_fsas, dests.data());
-  *dest_aux_labels = Append(0, num_fsas, dest_aux_labels_vec.data());
+  *dest_aux_labels = Cat(0, num_fsas, dest_aux_labels_vec.data());
 }
 
 void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
