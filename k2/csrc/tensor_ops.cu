@@ -537,7 +537,8 @@ struct BlockPrefixCallbackOp
   __device__ Elem operator()(Elem block_aggregate)
     {
       Elem old_prefix = running_total;
-      running_total = block_aggregate;
+      running_total = CombineCumSumOp<Real>()(running_total,
+                                              block_aggregate);
       return old_prefix;
     }
 };
