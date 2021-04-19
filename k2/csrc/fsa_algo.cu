@@ -884,7 +884,7 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(labels_shape.NumAxes(), 2);
   K2_CHECK_EQ(fsas.NumElements(), labels_shape.Dim0());
-  ContextPtr c = fsas.Context();
+  ContextPtr &c = fsas.Context();
   K2_CHECK(c->IsCompatible(*labels_shape.Context()));
 
   RaggedShape state_to_arcs = GetLayer(fsas.shape, 1);

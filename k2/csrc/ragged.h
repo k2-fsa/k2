@@ -26,6 +26,14 @@ namespace k2 {
 // Note: row_splits is of size num_rows + 1 and row_ids is of size
 // num_elements.
 struct RaggedShapeLayer {
+  RaggedShapeLayer() = default;
+
+  RaggedShapeLayer(const RaggedShapeLayer &) = default;
+  RaggedShapeLayer& operator=(const RaggedShapeLayer &) = default;
+
+  RaggedShapeLayer(RaggedShapeLayer &&) = default;
+  RaggedShapeLayer& operator=(RaggedShapeLayer &&) = default;
+
   // Search for "row_splits concept" in utils.h for explanation.  row_splits
   // is required; it must always be nonempty for a RaggedShapeLayer to be valid.
   Array1<int32_t> row_splits;
@@ -180,10 +188,11 @@ class RaggedShape {
   // are populated
   void Populate();
 
-  RaggedShape(const RaggedShape &other) = default;
-  // Move constructor
-  RaggedShape(RaggedShape &&other) : layers_(std::move(other.layers_)) {}
-  RaggedShape &operator=(const RaggedShape &other) = default;
+  RaggedShape(const RaggedShape &) = default;
+  RaggedShape &operator=(const RaggedShape &) = default;
+
+  RaggedShape(RaggedShape &&) = default;
+  RaggedShape &operator=(RaggedShape &&) = default;
 
   // Layers() is intended for internal-ish use; users shouldn't really have to
   // interact with it.
