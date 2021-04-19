@@ -569,6 +569,8 @@ class Array2 {
   /*  returns a flat version of this, appending the rows; will copy the data if
       it was not contiguous. */
   Array1<T> Flatten() {
+    static_assert(!K2_TYPE_IS_ANY(T),
+                  "generic arrays not supported here");
     NVTX_RANGE(K2_FUNC);
     if (dim1_ == elem_stride0_) {
       return Array1<T>(dim0_ * dim1_, region_, byte_offset_,
@@ -578,8 +580,6 @@ class Array2 {
                               static_cast<size_t>(dim1_) *
                               ElementSize());
       Array1<T> array(dim0_ * dim1_, region, 0, dtype_);
-      static_assert(!K2_TYPE_IS_ANY(T),
-                    "generic arrays not supported here");
       const T *this_data = Data();
       T *data = array.Data();
       int32_t dim1 = dim1_;
