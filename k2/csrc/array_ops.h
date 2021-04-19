@@ -152,60 +152,58 @@ void ExclusiveSum(Array2<T> &src, Array2<T> *dest) {
 }
 
 /*
-  Append a list of Array1<T> to create a longer array.
+  Concatenate a list of Array1<T> to create a longer array.
 
   For now we can just use a simple loop; later there are lots of opportunities
   to optimize this, including multiple streams and using a single kernel making
   use of RaggedShape.
       @param [in] c      Pointer to context.  Provided so it can work with
                          src_size == 0.
-      @param [in] src_size  Number of arrays to append.
+      @param [in] src_size  Number of arrays to concatenate.
       @param [in] src     Array of pointers to arrays, of size `src_size`.
-      @return       Returns the appended array
+      @return       Returns the concatenated array
  */
 template <typename T>
-Array1<T> Append(ContextPtr c, int32_t src_size, const Array1<T> **src);
+Array1<T> Cat(ContextPtr c, int32_t src_size, const Array1<T> **src);
 
-// Wrapper for Append() that has one fewer levels of indirection.
+// Wrapper for Cat() that has one fewer levels of indirection.
 template <typename T>
-Array1<T> Append(ContextPtr c, int32_t src_size, const Array1<T> *src);
+Array1<T> Cat(ContextPtr c, int32_t src_size, const Array1<T> *src);
 
 
 /*
-  Append arrays, adding offsets to each one.
+  Concatenate arrays, adding offsets to each one.
       @param [in] offsets   Array containing the offsets to add
-      @param [in] src   Array of pointers to arrays to append.  Size is
+      @param [in] src   Array of pointers to arrays to concatenate.  Size is
                         offsets.Dim().  src[i] contains a pointer
-                        to the i'th array to append
-      @return  Returns the arrays in `src` appended together, with
+                        to the i'th array to concatenate
+      @return  Returns the arrays in `src` concatenated together, with
                elements of the i'th array having offsets[i] added
                to them.
  */
-Array1<int32_t> AppendWithOffsets(const Array1<int32_t> &offsets,
-                                  const Array1<int32_t> **src);
-
-
+Array1<int32_t> CatWithOffsets(const Array1<int32_t> &offsets,
+                               const Array1<int32_t> **src);
 
 /*
-   This is a little like Append(), but with special treatment of the last
+   This is a little like Cat(), but with special treatment of the last
    elements (it's intended for use with row_splits vectors, which
    have a single "extra" last element).
 
-   It appends the arrays with an offset.  Define:
+   It concatenates the arrays with an offset.  Define:
         offset[i] = (sum of last element of src[j] for j < i).
         offset[i] = 0 for i = 0.
-   This function appends the arrays, while leaving out the last element
+   This function concatenates the arrays, while leaving out the last element
    of all but the last of the arrays in `src`, and also adding the
    offsets mentioned above for each array.
 
-      @param [in] src_size  Number of arrays to append
+      @param [in] src_size  Number of arrays to concatenate
       @param [in] src     Array of pointers to arrays, of size `src_size`.
                           `src[i]` should be valid row_splits, i.e.
                           src[i]->Dim() >= 1 and the elements in it start
                           with 0 and are non-decreasing.
                           WARNING: src_size == 0 is not supported
                           (since we can't work out the context).
-      @return       Returns the appended array.
+      @return       Returns the concatenated array.
 
  */
 Array1<int32_t> SpliceRowSplits(int32_t src_size, const Array1<int32_t> **src);
@@ -440,10 +438,10 @@ void RowIdsToRowSplits(const Array1<int32_t> &row_ids,
   gives the index of the source that the i'th element came from,
   and `merge_map[i] / num_srcs` is the index within the i'th source.
 
-  This function is for when the sources are to be appended together.
+  This function is for when the sources are to be concatenated together.
 
      @param [in] c      Context which we want the result to use
-     @param [in] sizes  Sizes of source arrays, which are to be appended.
+     @param [in] sizes  Sizes of source arrays, which are to be concatenated.
                         Must have `sizes[i] > 0`.  `ans.Dim()` will equal
                         the sum of `sizes`.
      @return            Returns the merge map.

@@ -1119,7 +1119,7 @@ TEST(RaggedTest, Ragged) {
   TestSortSublists<double>();
 }
 
-TEST(RaggedShapeOpsTest, TestAppend) {
+TEST(RaggedShapeOpsTest, TestCat) {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
     {
@@ -1162,7 +1162,7 @@ TEST(RaggedShapeOpsTest, TestAppend) {
 
       {
         // axis == 1
-        RaggedShape result = Append(1, 2, shapes_ptr.data());
+        RaggedShape result = Cat(1, 2, shapes_ptr.data());
         std::vector<std::vector<int32_t>> expected_row_splits = {
             {0, 3, 8, 10}, {0, 2, 3, 6, 7, 9, 10, 11, 12, 15, 17}};
         std::vector<std::vector<int32_t>> expected_row_ids = {
@@ -1176,7 +1176,7 @@ TEST(RaggedShapeOpsTest, TestAppend) {
 
       {
         // axis == 0
-        RaggedShape result = Append(0, 2, shapes_ptr.data());
+        RaggedShape result = Cat(0, 2, shapes_ptr.data());
 
         // get result splits with `SpliceRowSplits` and get result row-ids with
         // `RowSplitsToRowIds``
@@ -1213,7 +1213,7 @@ TEST(RaggedShapeOpsTest, TestAppend) {
         }
         // only test case axis == 0, test axis==1 with simple case is good
         // enough as it just calls Stack
-        RaggedShape result = Append(0, num_shape, shapes.data());
+        RaggedShape result = Cat(0, num_shape, shapes.data());
         ASSERT_EQ(result.NumAxes(), num_axes);
 
         // get result splits with `SpliceRowSplits` and get result row-ids with
@@ -1246,12 +1246,12 @@ TEST(RaggedShapeOpsTest, TestAppend) {
 }
 
 template <typename T>
-void TestAppendRagged() {
+void TestCatRagged() {
   ContextPtr cpu = GetCpuContext();  // will be used to copy data
   for (auto &context : {GetCpuContext(), GetCudaContext()}) {
-    // TODO(haowen): remove duplicate code in TestAppend above.
+    // TODO(haowen): remove duplicate code in TestCat above.
     // test with simple case could be good enough, as we have tested
-    // Append(RaggedShape&) already.
+    // Cat(RaggedShape&) already.
     std::vector<Ragged<T>> ragged_vec(2);
     std::vector<Ragged<T> *> ragged(2);
     std::vector<std::vector<Array1<int32_t>>> row_splits_vec(2);
@@ -1291,7 +1291,7 @@ void TestAppendRagged() {
 
     {
       // axis == 0
-      Ragged<T> result = Append(0, 2, ragged.data());
+      Ragged<T> result = Cat(0, 2, ragged.data());
       std::vector<std::vector<int32_t>> expected_row_splits = {
           {0, 2, 5, 6, 7, 9, 10}, {0, 2, 3, 4, 6, 7, 10, 13, 14, 15, 17}};
       std::vector<std::vector<int32_t>> expected_row_ids = {
@@ -1308,7 +1308,7 @@ void TestAppendRagged() {
 
     {
       // axis == 1
-      Ragged<T> result = Append(1, 2, ragged.data());
+      Ragged<T> result = Cat(1, 2, ragged.data());
       std::vector<std::vector<int32_t>> expected_row_splits = {
           {0, 3, 8, 10}, {0, 2, 3, 6, 7, 9, 10, 11, 12, 15, 17}};
       std::vector<std::vector<int32_t>> expected_row_ids = {
@@ -1324,9 +1324,9 @@ void TestAppendRagged() {
     }
   }
 }
-TEST(RaggedTest, TestAppendRagged) {
-  TestAppendRagged<int32_t>();
-  TestAppendRagged<double>();
+TEST(RaggedTest, TestCatRagged) {
+  TestCatRagged<int32_t>();
+  TestCatRagged<double>();
 }
 
 void CheckResultOfIndex(const ContextPtr &context, RaggedShape shape,
@@ -2202,7 +2202,7 @@ TEST(RaggedShapeOpsTest, ArangeTest) {
   }
 }
 
-TEST(RaggedShapeOpsTest, AppendMoreAxes) {
+TEST(RaggedShapeOpsTest, CatMoreAxes) {
   for (auto &c : {GetCpuContext(), GetCudaContext()}) {
     RaggedShape shape1 =
                     RaggedShape("[ [ [ [ x x ] ] [ [x ] ] ] [[[x]]]]").To(c),
@@ -2210,21 +2210,21 @@ TEST(RaggedShapeOpsTest, AppendMoreAxes) {
                     RaggedShape("[ [ [ [x ] ] [ [x ] ] ] [[[x x]]]]").To(c),
                 shape3 = RaggedShape("[ [ [ [ ] ] [ [ x ] ] ] [[[]]]]").To(c);
 
-    RaggedShape appended_axis2_ref =
+    RaggedShape cat_axis2_ref =
         RaggedShape("[ [ [[ x x ][ x ][]] [[x ][x][ x ]] ] [[[x ][ x x][]]]]")
             .To(c);
-    RaggedShape appended_axis3_ref =
+    RaggedShape cat_axis3_ref =
         RaggedShape("[ [ [[ x x x ]] [[x x x ]] ] [[[x x x]]]]").To(c);
     RaggedShape *srcs[] = {&shape1, &shape2, &shape3};
     Array1<uint32_t> merge_map2;
     Array1<uint32_t> merge_map3;
-    RaggedShape appended_axis2 = Append(2, 3, srcs, &merge_map2);
-    RaggedShape appended_axis3 = Append(3, 3, srcs, &merge_map3);
-    K2_LOG(INFO) << "appended_axis2 = " << appended_axis2;
-    K2_LOG(INFO) << "appended_axis3 = " << appended_axis3;
+    RaggedShape cat_axis2 = Cat(2, 3, srcs, &merge_map2);
+    RaggedShape cat_axis3 = Cat(3, 3, srcs, &merge_map3);
+    K2_LOG(INFO) << "cat_axis2 = " << cat_axis2;
+    K2_LOG(INFO) << "cat_axis3 = " << cat_axis3;
 
-    K2_CHECK(Equal(appended_axis2, appended_axis2_ref));
-    K2_CHECK(Equal(appended_axis2, appended_axis2_ref));
+    K2_CHECK(Equal(cat_axis2, cat_axis2_ref));
+    K2_CHECK(Equal(cat_axis2, cat_axis2_ref));
 
     std::vector<uint32_t> merge_values = {0, 3, 1, 6, 4, 2, 9, 7, 10};
     CheckArrayData(merge_map2, merge_values);

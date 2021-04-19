@@ -195,7 +195,7 @@ __forceinline__ Array1<int32_t> GetNew2Old(
     std::vector<const Array1<int32_t>* > new2old_ptrs(num_arrays);
     for (int32_t i = 0; i < num_arrays; i++)
       new2old_ptrs[i] = &(new2old[i]);
-    return AppendWithOffsets(offsets, new2old_ptrs.data());
+    return CatWithOffsets(offsets, new2old_ptrs.data());
   }
 }
 
@@ -323,18 +323,12 @@ __forceinline__ void GetNew2OldAndRowIds(
       new2old_ptrs[i] = &(new2old[i]);
       row_ids_ptrs[i] = &(row_ids[i]);
     }
-    *new2old_out = AppendWithOffsets(elem_starts, new2old_ptrs.data());
+    *new2old_out = CatWithOffsets(elem_starts, new2old_ptrs.data());
     Array1<int32_t> row_offsets = Arange(c, 0, num_arrays * num_rows_part,
                                          num_rows_part);
-    *new_row_ids_out = AppendWithOffsets(row_offsets, row_ids_ptrs.data());
+    *new_row_ids_out = CatWithOffsets(row_offsets, row_ids_ptrs.data());
   }
 }
-
-
-
-
-
-
 
 }  // namespace k2
 

@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R append_test_py
+#  ctest --verbose -R cat_test_py
 
 import unittest
 
@@ -14,7 +14,7 @@ import k2
 import torch
 
 
-class TestAppend(unittest.TestCase):
+class TestCat(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -22,7 +22,7 @@ class TestAppend(unittest.TestCase):
         if torch.cuda.is_available():
             cls.devices.append(torch.device('cuda', 0))
 
-    def test_append_fsa_vec(self):
+    def test_cat_fsa_vec(self):
         for device in self.devices:
             s = '''
                 0 1 1 0.1
@@ -53,7 +53,7 @@ class TestAppend(unittest.TestCase):
 
             fsa_vec1 = k2.create_fsa_vec([fsa1])
             fsa_vec2 = k2.create_fsa_vec([fsa2])
-            fsa_vec = k2.append([fsa_vec1, fsa_vec2])
+            fsa_vec = k2.cat([fsa_vec1, fsa_vec2])
 
             assert str(fsa_vec[0].arcs) == str(fsa1.arcs)
             assert str(fsa_vec[1].arcs) == str(fsa2.arcs)

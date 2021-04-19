@@ -602,7 +602,7 @@ Ragged<T> Transpose(Ragged<T> &src,
 }
 
 /*
-   Append a list of RaggedShape to form a single RaggedShape
+   Concatenate a list of RaggedShape to form a single RaggedShape.
 
       @param [in] axis     Axis to append them on.  Currently
                            we only support axis == 0 or axis == 1.
@@ -621,8 +621,8 @@ Ragged<T> Transpose(Ragged<T> &src,
 
       @return      Returns the appended RaggedShape.
 */
-RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
-                   Array1<uint32_t> *merge_map = nullptr);
+RaggedShape Cat(int32_t axis, int32_t num_srcs, RaggedShape **src,
+                Array1<uint32_t> *merge_map = nullptr);
 
 /*
   Extract meta-info from the shape (this will include populating any row_ids and
@@ -833,7 +833,7 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
                 Array1<uint32_t> *merge_map = nullptr);
 
 /*
-   Append a list of Ragged<T> to form a single Ragged<T>
+   Concatenate a list of Ragged<T> to form a single Ragged<T>.
 
       @param [in] axis     Axis to append them on.  Currently
                            we only support axis == 0 or axis == 1.
@@ -853,16 +853,16 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
       @return      Returns the appended RaggedShape.
 */
 template <typename T>
-Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src,
-                 Array1<uint32_t> *merge_map = nullptr);
+Ragged<T> Cat(int32_t axis, int32_t num_srcs, Ragged<T> **src,
+              Array1<uint32_t> *merge_map = nullptr);
 
 /*
-  This version of Append() has one fewer levels of pointer indirection,
+  This version of Cat() has one fewer levels of pointer indirection,
   it is just a wrapper for the version above.
  */
 template <typename T>
-Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src,
-                 Array1<uint32_t> *merge_map = nullptr);
+Ragged<T> Cat(int32_t axis, int32_t num_srcs, Ragged<T> *src,
+              Array1<uint32_t> *merge_map = nullptr);
 
 /*
   Construct a RaggedShape with 2 axes.

@@ -155,8 +155,8 @@ Ragged<T> Stack(int32_t axis, int32_t num_srcs, Ragged<T> *src,
 }
 
 template <typename T>
-Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src,
-                 Array1<uint32_t> *merge_map /* = nullptr*/) {
+Ragged<T> Cat(int32_t axis, int32_t num_srcs, Ragged<T> **src,
+              Array1<uint32_t> *merge_map /* = nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
   Array1<uint32_t> merge_map_temp;
@@ -168,21 +168,21 @@ Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> **src,
     src_shapes[i] = &(src[i]->shape);
     src_values[i] = &(src[i]->values);
   }
-  RaggedShape ans_shape =
-      Append(axis, num_srcs, src_shapes.data(), merge_map_ptr);
+  RaggedShape ans_shape = Cat(axis, num_srcs, src_shapes.data(), merge_map_ptr);
   Array1<T> ans_values =
       MergeWithMap(*merge_map_ptr, num_srcs, src_values.data());
   return Ragged<T>(ans_shape, ans_values);
 }
 
 template <typename T>
-Ragged<T> Append(int32_t axis, int32_t num_srcs, Ragged<T> *src,
-                 Array1<uint32_t> *merge_map /* = nullptr*/) {
+Ragged<T> Cat(int32_t axis, int32_t num_srcs, Ragged<T> *src,
+              Array1<uint32_t> *merge_map /* = nullptr*/) {
+  NVTX_RANGE(K2_FUNC);
   K2_CHECK(axis == 0 || axis == 1);
   K2_CHECK_GT(num_srcs, 0);
   std::vector<Ragged<T> *> temp(num_srcs);
   for (int32_t i = 0; i != num_srcs; ++i) temp[i] = src + i;
-  return Append(axis, num_srcs, temp.data());
+  return Cat(axis, num_srcs, temp.data());
 }
 
 template <typename T>

@@ -914,11 +914,11 @@ class TestFsa(unittest.TestCase):
                         (fsa1.tensor_attr, fsa2.tensor_attr, fsa1.tensor_attr,
                          fsa2.tensor_attr, fsa2.tensor_attr))))
             assert str(multiples.ragged_attr) == str(
-                k2.ragged.append([
+                k2.ragged.cat([
                     fsa1.ragged_attr, fsa2.ragged_attr, fsa1.ragged_attr,
                     fsa2.ragged_attr, fsa2.ragged_attr
                 ],
-                                 axis=0))  # noqa
+                              axis=0))  # noqa
             assert multiples.device == device
 
     def test_clone(self):

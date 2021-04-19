@@ -119,7 +119,7 @@ class MultiGraphDenseIntersect {
     {
       int32_t axis = 1, num_srcs = 2;
       RaggedShape *vec[2] = {&a_fsas_.shape, &incoming_arcs_.shape};
-      combined_shape = Append(axis, num_srcs, vec);
+      combined_shape = Cat(axis, num_srcs, vec);
     }
 
     int32_t num_arcs = a_fsas_.NumElements();

@@ -289,7 +289,7 @@ void ExclusiveSum(const Array2<T> &src, Array2<T> *dest, int32_t axis) {
 }
 
 template <typename T>
-Array1<T> Append(ContextPtr c, int32_t num_arrays, const Array1<T> **src) {
+Array1<T> Cat(ContextPtr c, int32_t num_arrays, const Array1<T> **src) {
   NVTX_RANGE(K2_FUNC);
 
   std::vector<int32_t> row_splits_vec(num_arrays + 1);
@@ -338,10 +338,11 @@ Array1<T> Append(ContextPtr c, int32_t num_arrays, const Array1<T> **src) {
 }
 
 template <typename T>
-Array1<T> Append(ContextPtr c, int32_t src_size, const Array1<T> *src) {
+Array1<T> Cat(ContextPtr c, int32_t src_size, const Array1<T> *src) {
+  NVTX_RANGE(K2_FUNC);
   std::vector<const Array1<T> *> srcs(src_size);
   for (int32_t i = 0; i != src_size; ++i) srcs[i] = src + i;
-  return Append(c, src_size, srcs.data());
+  return Cat(c, src_size, srcs.data());
 }
 
 template <typename T, typename Op>

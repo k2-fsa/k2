@@ -65,7 +65,7 @@ TEST(Intersect, Simple) {
         Assign(dfsavec.scores, &scores2b);
 
         RaggedShape *dfsavec_shapes[] = {&dfsavec.shape, &dfsavec.shape};
-        RaggedShape stacked_shape = Append(0, 2, dfsavec_shapes);
+        RaggedShape stacked_shape = Cat(0, 2, dfsavec_shapes);
         dfsavec = DenseFsaVec(stacked_shape, scores2);
       }
     }

@@ -309,7 +309,7 @@ def index(src: Union[Fsa, torch.Tensor, _k2.RaggedInt],
         return index_ragged(src, indexes)
 
 
-def append(srcs: List[Fsa]) -> Fsa:
+def cat(srcs: List[Fsa]) -> Fsa:
     '''Concatenate a list of FsaVec into a single FsaVec.
 
     CAUTION:
@@ -329,7 +329,7 @@ def append(srcs: List[Fsa]) -> Fsa:
 
     src_ragged_arcs = [fsa.arcs for fsa in srcs]
 
-    ans_ragged_arcs = _k2.append(src_ragged_arcs, axis=0)
+    ans_ragged_arcs = _k2.cat(src_ragged_arcs, axis=0)
     out_fsa = Fsa(ans_ragged_arcs)
 
     common_tensor_attributes = (
@@ -348,7 +348,7 @@ def append(srcs: List[Fsa]) -> Fsa:
             value = torch.cat(values)
         else:
             assert isinstance(values[0], k2.RaggedInt)
-            value = _k2.append(values, axis=0)
+            value = _k2.cat(values, axis=0)
         setattr(out_fsa, name, value)
 
     for src in srcs:

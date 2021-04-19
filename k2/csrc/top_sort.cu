@@ -403,7 +403,7 @@ class TopSorter {
     std::vector<Ragged<int32_t> *> iters_ptrs(iters.size());
     for (size_t i = 0; i < iters.size(); ++i) iters_ptrs[i] = iters[i].get();
     Ragged<int32_t> all_states =
-        Append(1, static_cast<int32_t>(iters.size()), iters_ptrs.data());
+        Cat(1, static_cast<int32_t>(iters.size()), iters_ptrs.data());
     K2_CHECK_EQ(all_states.NumElements(), fsas_.TotSize(1))
         << "Our current implementation requires that the input Fsa is acyclic, "
            "but it seems there are cycles other than self-loops.";

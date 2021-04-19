@@ -676,8 +676,8 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
   *row_ids = row_ids_ptrs.To(ctx);
 }
 
-static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
-                               Array1<uint32_t> *merge_map /* == nullptr*/) {
+static RaggedShape CatAxis0(int32_t num_srcs, RaggedShape **src,
+                            Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) {
     if (merge_map)
@@ -805,11 +805,11 @@ static RaggedShape AppendAxis0(int32_t num_srcs, RaggedShape **src,
   return ans;
 }
 
-RaggedShape Append(int32_t axis, int32_t num_srcs, RaggedShape **src,
-                   Array1<uint32_t> *merge_map /* == nullptr*/) {
+RaggedShape Cat(int32_t axis, int32_t num_srcs, RaggedShape **src,
+                Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
-  if (axis == 0) return AppendAxis0(num_srcs, src, merge_map);
+  if (axis == 0) return CatAxis0(num_srcs, src, merge_map);
 
   K2_CHECK_LT(static_cast<uint32_t>(axis),
               static_cast<uint32_t>(src[0]->NumAxes()));
@@ -1027,7 +1027,7 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
   ContextPtr c = src[0]->Context();
 
   if (axis == 0) {
-    RaggedShape ans_appended = AppendAxis0(num_srcs, src, merge_map);
+    RaggedShape ans_appended = CatAxis0(num_srcs, src, merge_map);
     ContextPtr cpu = GetCpuContext();
     Array1<int32_t> row_splits(cpu, num_srcs + 1);
     int32_t *row_splits_data = row_splits.Data();

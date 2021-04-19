@@ -235,7 +235,7 @@ def create_fsa_vec(fsas):
             value = torch.cat(values)
         else:
             assert isinstance(values[0], _k2.RaggedInt)
-            value = k2.ragged.append(values, axis=0)
+            value = k2.ragged.cat(values, axis=0)
         setattr(fsa_vec, name, value)
 
     non_tensor_attr_names = set(

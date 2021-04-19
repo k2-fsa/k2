@@ -502,8 +502,8 @@ Tensor FsaVecToTensor(const FsaVec &fsa_vec) {
 
   Array1<int32_t> *arrays[4] = {&meta_info, &row_splits1, &row_splits12,
                                 &arcs_linearized};
-  return Append(fsa_vec.Context(), 4,
-                (const Array1<int32_t> **)arrays).ToTensor();
+
+  return Cat(fsa_vec.Context(), 4, (const Array1<int32_t> **)arrays).ToTensor();
 }
 
 std::ostream &operator<<(std::ostream &os, const DenseFsaVec &dfsavec) {
