@@ -398,7 +398,7 @@ struct Ragged {
   Ragged<Any> &Generic() {
     return *reinterpret_cast<Ragged<Any>*>(this);
   }
-  Ragged<Any> &Generic() const {
+  const Ragged<Any> &Generic() const {
     return *reinterpret_cast<const Ragged<Any>*>(this);
   }
 
