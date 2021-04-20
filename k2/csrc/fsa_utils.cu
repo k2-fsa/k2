@@ -1991,6 +1991,32 @@ Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
   return Index(step1_arc_map, step2_arc_map, true);
 }
 
+Array1<int32_t> ComposeArcMaps(const Array1<int32_t> &step1_arc_map,
+                               const Array1<int32_t> &step2_arc_map) {
+  ContextPtr c = GetContext(step1_arc_map, step2_arc_map);
+
+  int32_t step1_dim = step1_arc_map.Dim();
+  int32_t ans_dim = step2_arc_map.Dim();
+  Array1<int32_t> ans(c, ans_dim);
+
+  const int32_t *step1_data = step1_arc_map.Data();
+  const int32_t *step2_data = step2_arc_map.Data();
+  int32_t *ans_data = ans.Data();
+
+  K2_EVAL(
+      c, ans_dim, set_ans_map, (int32_t i)->void {
+        int32_t arc_idx_in_step1 = step2_data[i];
+        if (arc_idx_in_step1 != -1) {
+          K2_DCHECK_LT(arc_idx_in_step1, step1_dim);
+          ans_data[i] = step1_data[arc_idx_in_step1];
+        } else {
+          ans_data[i] = -1;
+        }
+      });
+
+  return ans;
+}
+
 void FixNumStates(FsaVec *fsas) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(fsas->NumAxes(), 3);

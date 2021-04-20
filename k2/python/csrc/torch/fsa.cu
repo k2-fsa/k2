@@ -552,6 +552,21 @@ static void PybindPruneOnArcPost(py::module &m, const char *name) {
       py::arg("need_arc_map") = true);
 }
 
+static void PybindComposeArcMaps(py::module &m) {
+  m.def(
+      "compose_arc_maps",
+      [](torch::Tensor step1_arc_map,
+         torch::Tensor step2_arc_map) -> torch::Tensor {
+        Array1<int32_t> step1_arc_map_array = FromTorch<int32_t>(step1_arc_map);
+        Array1<int32_t> step2_arc_map_array = FromTorch<int32_t>(step2_arc_map);
+        Array1<int32_t> ans_arc_map_array =
+            ComposeArcMaps(step1_arc_map_array, step2_arc_map_array);
+
+        return ToTorch(ans_arc_map_array);
+      },
+      py::arg("step1_arc_map"), py::arg("step2_arc_map"));
+}
+
 }  // namespace k2
 
 void PybindFsa(py::module &m) {
@@ -593,4 +608,5 @@ void PybindFsa(py::module &m) {
   k2::PybindRandomPaths<double>(m, "random_paths_double");
   k2::PybindPruneOnArcPost<float>(m, "prune_on_arc_post_float");
   k2::PybindPruneOnArcPost<double>(m, "prune_on_arc_post_double");
+  k2::PybindComposeArcMaps(m);
 }

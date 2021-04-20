@@ -119,8 +119,10 @@ def top_sort(fsa: Fsa) -> Fsa:
 def intersect_device(a_fsas: Fsa,
                      b_fsas: Fsa,
                      b_to_a_map: torch.Tensor,
-                     sorted_match_a: bool = False) -> Fsa:
-    '''Compute the intersection of two FSAs treating epsilons
+                     sorted_match_a: bool = False,
+                     ret_arc_maps: bool = False
+                    ) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:
+    '''Compute the intersection of two FsaVecs treating epsilons
     as real, normal symbols.
 
     This function supports both CPU and GPU. But it is very slow on CPU.
@@ -151,9 +153,29 @@ def intersect_device(a_fsas: Fsa,
         Requires
             - `b_to_a_map.shape[0] == b_fsas.shape[0]`
             - `0 <= b_to_a_map[i] < a_fsas.shape[0]`
+      ret_arc_maps:
+        If False, return the resulting Fsa. If True, return a tuple
+        containing three entries:
+
+            - the resulting Fsa
+
+            - a_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+              a_arc_map[i] is the arc index in a_fsas that corresponds
+              to the i-th arc in the resulting Fsa. a_arc_map[i] is -1
+              if the i-th arc in the resulting Fsa has no corresponding
+              arc in a_fsas.
+
+            - b_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+              b_arc_map[i] is the arc index in b_fsas that corresponds
+              to the i-th arc in the resulting Fsa. b_arc_map[i] is -1
+              if the i-th arc in the resulting Fsa has no corresponding
+              arc in b_fsas.
 
     Returns:
-      Returns composed FsaVec; will satisfy `ans.shape == b_fsas.shape`.
+      If ret_arc_maps is False, return intersected FsaVec;
+      will satisfy `ans.shape == b_fsas.shape`.
+      If ret_arc_maps is True, it returns additionally two arc maps:
+      a_arc_map and b_arc_map.
     '''
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect_device(
@@ -192,11 +214,17 @@ def intersect_device(a_fsas: Fsa,
         if not hasattr(out_fsas, name):
             setattr(out_fsas, name, b_value)
 
-    return out_fsas
+    if ret_arc_maps:
+        return out_fsas, a_arc_map, b_arc_map
+    else:
+        return out_fsas
 
 
-def intersect(a_fsa: Fsa, b_fsa: Fsa,
-              treat_epsilons_specially: bool = True) -> Fsa:
+def intersect(a_fsa: Fsa,
+              b_fsa: Fsa,
+              treat_epsilons_specially: bool = True,
+              ret_arc_maps: bool = False
+             ) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:
     '''Compute the intersection of two FSAs.
 
     When `treat_epsilons_specially` is True, this function works only on CPU.
@@ -215,6 +243,23 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa,
         If False, epsilons will be treated as real, normal symbols (to have
         them treated as epsilons in this case you may have to add epsilon
         self-loops to whichever of the inputs is naturally epsilon-free).
+      ret_arc_maps:
+        If False, return the resulting Fsa. If True, return a tuple
+        containing three entries:
+
+            - the resulting Fsa
+
+            - a_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+              a_arc_map[i] is the arc index in a_fsa that corresponds
+              to the i-th arc in the resulting Fsa. a_arc_map[i] is -1
+              if the i-th arc in the resulting Fsa has no corresponding
+              arc in a_fsa.
+
+            - b_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+              b_arc_map[i] is the arc index in b_fsa that corresponds
+              to the i-th arc in the resulting Fsa. b_arc_map[i] is -1
+              if the i-th arc in the resulting Fsa has no corresponding
+              arc in b_fsa.
 
     Caution:
       The two input FSAs MUST be arc sorted if `treat_epsilons_specially`
@@ -234,9 +279,11 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa,
         FSA).
 
     Returns:
-      The result of intersecting a_fsa and b_fsa. len(out_fsa.shape) is 2
-      if and only if the two input FSAs are single FSAs;
-      otherwise, len(out_fsa.shape) is 3.
+      If ret_arc_maps is False, return the result of intersecting a_fsa and
+      b_fsa. len(out_fsa.shape) is 2 if and only if the two input FSAs are
+      single FSAs; otherwise, len(out_fsa.shape) is 3.
+      If ret_arc_maps is True, it returns additionally two arc_maps:
+      a_arc_map and b_arc_map.
     '''
     if a_fsa.is_cpu() or b_fsa.is_cpu():
         assert a_fsa.properties & fsa_properties.ARC_SORTED != 0
@@ -279,14 +326,17 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa,
         if not hasattr(out_fsa, name):
             setattr(out_fsa, name, b_value)
 
-    return out_fsa
+    if ret_arc_maps:
+        return out_fsa, a_arc_map, b_arc_map
+    else:
+        return out_fsa
 
 
 def compose(a_fsa: Fsa,
             b_fsa: Fsa,
             treat_epsilons_specially: bool = True,
             inner_labels: str = None) -> Fsa:
-    '''Compute the composition of two FSAs (currently on CPU).
+    '''Compute the composition of two FSAs.
 
     When `treat_epsilons_specially` is True, this function works only on CPU.
     When `treat_epsilons_specially` is False and both `a_fsa` and `b_fsa`

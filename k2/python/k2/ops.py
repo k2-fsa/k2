@@ -357,3 +357,34 @@ def cat(srcs: List[Fsa]) -> Fsa:
                 setattr(out_fsa, name, value)
 
     return out_fsa
+
+
+def compose_arc_maps(step1_arc_map: torch.Tensor,
+                     step2_arc_map: torch.Tensor) -> torch.Tensor:
+    '''Compose arc maps from two Fsa operations.
+
+    It implements:
+
+        - ans_arc_map[i] = step1_arc_map[step2_arc_map[i]] if
+          step2_arc_map[i] is not -1
+        - ans_arc_map[i] = -1 if step2_arc_map[i] is -1
+
+    for i in 0 to `step2_arc_map.numel() - 1`.
+
+    Args:
+      step1_arc_map:
+        A 1-D tensor with dtype torch.int32 from the first Fsa operation.
+      step2_arc_map:
+        A 1-D tensor with dtype torch.int32 from the second Fsa operation.
+    Returns:
+      Return a 1-D tensor with dtype torch.int32. It has the same number
+      of elements as step2_arc_map. That is,
+      ans_arc_map.shape == step2_arc_map.shape.
+    '''
+    assert step1_arc_map.ndim == 1
+    assert step1_arc_map.dtype == torch.int32
+
+    assert step2_arc_map.ndim == 1
+    assert step2_arc_map.dtype == torch.int32
+
+    return _k2.compose_arc_maps(step1_arc_map, step2_arc_map)

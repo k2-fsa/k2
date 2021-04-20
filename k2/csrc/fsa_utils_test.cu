@@ -1487,6 +1487,69 @@ TEST(FsaUtils, ComposeArcMapsTest) {
         }
       }
     }
+
+    // for 1-D array
+    {
+      // simple case 1, step1_arc_map.Dim() > step2_arc_map.Dim()
+      //                                        0    1  2   3  4,  5
+      std::vector<int32_t> step1_arc_map_vec = {10, -1, 2, -1, 0, -1};
+
+      //                                        0  1   2  3
+      std::vector<int32_t> step2_arc_map_vec = {3, 0, -1, 2};
+
+      Array1<int32_t> step1_arc_map(context, step1_arc_map_vec);
+      Array1<int32_t> step2_arc_map(context, step2_arc_map_vec);
+      Array1<int32_t> ans_arc_map =
+          ComposeArcMaps(step1_arc_map, step2_arc_map);
+      CheckArrayData(ans_arc_map, {-1, 10, -1, 2});
+    }
+
+    {
+      // simple case 2, step1_arc_map.Dim() < step2_arc_map.Dim()
+      //                                        0    1  2   3  4,  5
+      std::vector<int32_t> step1_arc_map_vec = {10, -1, 2, -1, 0, -1};
+
+      //                                        0  1   2  3  4  5  6  7  8
+      std::vector<int32_t> step2_arc_map_vec = {3, 0, -1, 2, 0, 2, 3, 4, -1};
+
+      Array1<int32_t> step1_arc_map(context, step1_arc_map_vec);
+      Array1<int32_t> step2_arc_map(context, step2_arc_map_vec);
+      Array1<int32_t> ans_arc_map =
+          ComposeArcMaps(step1_arc_map, step2_arc_map);
+      CheckArrayData(ans_arc_map, {-1, 10, -1, 2, 10, 2, -1, 0, -1});
+    }
+
+    {
+      // random case
+      int32_t step1_dim = RandInt(1, 100);
+      int32_t step1_min_val = -1;
+      int32_t step1_max_val = RandInt(1, 100);
+      Array1<int32_t> step1_arc_map =
+          RandUniformArray1(context, step1_dim, step1_min_val, step1_max_val);
+
+      int32_t step2_dim = RandInt(1, 100);
+      int32_t step2_min_val = -1;
+      int32_t step2_max_val = step1_dim - 1;
+
+      Array1<int32_t> step2_arc_map =
+          RandUniformArray1(context, step2_dim, step2_min_val, step2_max_val);
+
+      Array1<int32_t> ans_arc_map =
+          ComposeArcMaps(step1_arc_map, step2_arc_map);
+      ASSERT_EQ(ans_arc_map.Dim(), step2_arc_map.Dim());
+
+      ContextPtr cpu = GetCpuContext();
+      step1_arc_map = step1_arc_map.To(cpu);
+      step2_arc_map = step2_arc_map.To(cpu);
+      ans_arc_map = ans_arc_map.To(cpu);
+      for (int32_t i = 0; i != ans_arc_map.Dim(); ++i) {
+        if (step2_arc_map[i] == -1) {
+          EXPECT_EQ(ans_arc_map[i], -1);
+        } else {
+          EXPECT_EQ(ans_arc_map[i], step1_arc_map[step2_arc_map[i]]);
+        }
+      }
+    }
   }
 }
 

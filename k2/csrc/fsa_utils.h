@@ -527,6 +527,21 @@ FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes);
 Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
                                Ragged<int32_t> &step2_arc_map);
 
+/*
+  Compose arc maps from two successive FSA operations which give arc maps as
+  a 1-D array.
+
+  @param [in] step1_arc_map  Arc map from the first Fsa operation.
+  @param [in] step2_arc_map  Arc map from the second Fsa operation.
+
+  @return Returns a 1-D array that has the same number of entries as
+          step2_arc_map. That is, ans.Dim0() == step2_arc_map.Dim0().
+          If step2_arc_map[i] is -1, then ans[i] is also -1;
+          otherwise, ans[i] = step1_arc_map[step2_arc_map[i]]
+          for i in 0 to `step2_arc_map.Dim() - 1`.
+ */
+Array1<int32_t> ComposeArcMaps(const Array1<int32_t> &step1_arc_map,
+                               const Array1<int32_t> &step2_arc_map);
 
 /*
   Return a ragged array that represents the cumulative distribution function

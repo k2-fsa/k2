@@ -36,6 +36,7 @@ from .fsa_algo import shortest_path
 from .fsa_algo import top_sort
 from .fsa_properties import to_str as properties_to_str
 from .ops import cat
+from .ops import compose_arc_maps
 from .ops import index
 from .ops import index_add
 from .ops import index_and_sum
