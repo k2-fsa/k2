@@ -264,16 +264,18 @@ void TestArray2() {
       Array1<T> arr1(context, data);
       Array2<T> array(arr1, kDim0, kDim1);
       Array2<T> array_copy = array.Generic().template Specialize<T>();
-      K2_CHECK_EQ(true, Equal(array, array_copy));
-      K2_CHECK_EQ(array.Data(), array_copy.Data());
+      EXPECT_TRUE(Equal(array, array_copy));
+      EXPECT_EQ(array.Data(), array_copy.Data());
 
       const Array2<T> &array_copy_const = array;
       const Array2<T> &array_copy_const2 = array_copy_const.Generic().template Specialize<T>();
-      K2_CHECK_EQ(array_copy_const.Data(), array_copy.Data());
+      EXPECT_EQ(array_copy_const.Data(), array_copy.Data());
+      EXPECT_EQ(array_copy_const2.Data(), array_copy.Data());
 
       const Array1<T> &array1_copy_const = arr1;
       const Array1<T> &array1_copy_const2 = array1_copy_const.Generic().template Specialize<T>();
-      K2_CHECK_EQ(array1_copy_const.Data(), array1_copy.Data());
+      EXPECT_EQ(array1_copy_const.Data(), arr1.Data());
+      EXPECT_EQ(array1_copy_const2.Data(), arr1.Data());
 
 
       auto cpu_array = array.To(cpu);
