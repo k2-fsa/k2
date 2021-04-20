@@ -271,9 +271,7 @@ bool RaggedShape::Validate(bool print_warnings) const {
   ContextPtr &c = Context();
   int32_t num_axes = layers_.size();
 
-  ParallelRunner pr(c);
   for (int32_t axis = 0; axis < num_axes; ++axis) {
-    With w(pr.NewStream());
     const RaggedShapeLayer &rsd = layers_[axis];
     K2_CHECK_GE(rsd.row_splits.Dim(), 0);
     if (rsd.cached_tot_size >= 0) {
@@ -304,63 +302,47 @@ bool RaggedShape::Validate(bool print_warnings) const {
       }
     }
 
-    int32_t num_elems;
     // Check row_splits.
     {
-      // meta[0] is a bool, ok == 1, not-ok == 0.
-      // meta[1] will contain the number of row_splits.
-      Array1<int32_t> meta(c, 2, 1);
-      int32_t *ok_data = meta.Data(), *num_elems_data = ok_data + 1;
       const int32_t *row_splits_data = rsd.row_splits.Data();
-      int32_t num_rows = rsd.row_splits.Dim() - 1;
-
+      int32_t num_rows = rsd.row_splits.Dim() - 1,
+          cached_tot_size = rsd.cached_tot_size;
       K2_EVAL(
           c, num_rows + 1, lambda_check_row_splits, (int32_t i)->void {
             int32_t this_idx = row_splits_data[i];
-            if (i == 0 && this_idx != 0) *ok_data = 0;
+            if (i == 0 && this_idx != 0) {
+              K2_LOG(FATAL) << "Error validating row-splits, i=0, this_idx="
+                            << this_idx << ", num_rows=" << num_rows
+                            << ", axis=" << axis;
+            }
             if (i < num_rows) {
               int32_t next_idx = row_splits_data[i + 1];
-              if (next_idx < this_idx) *ok_data = 0;
+              if (next_idx < this_idx) {
+                K2_LOG(FATAL) << "Error validating row-splits, i=" << num_rows
+                              << "row_splits[i]=" << this_idx
+                              << "row_splits[i+1]=" << next_idx;
+              }
             } else {
               K2_CHECK(i == num_rows);
-              *num_elems_data = this_idx;
+              if (cached_tot_size != -1 && this_idx != cached_tot_size) {
+                K2_LOG(FATAL) << "Error validating row-splits, i=" << num_rows
+                              << "==num_rows, row_splits[i]=" << this_idx
+                              << " but expected it to equal cached-tot-size="
+                              << cached_tot_size << "; axis="<<axis;
+              }
             }
           });
-      meta = meta.To(GetCpuContext());
-      num_elems = meta[1];
-      int32_t ok = meta[0];
-      if (!ok) {
-        K2_LOG(FATAL) << "Problem validating row-splits: for layers_[" << axis
-                      << "], row_splits = " << rsd.row_splits;
-      }
-      if (rsd.cached_tot_size > 0 && rsd.cached_tot_size != num_elems) {
-        K2_LOG(FATAL) << "Problem validating row-splits: for layers_[" << axis
-                      << "], row_splits[-1] = " << num_elems
-                      << " but cached_tot_size == " << rsd.cached_tot_size;
-      }
     }
-    if (axis + 1 < num_axes) {
-      int32_t next_num_rows = layers_[axis + 1].row_splits.Dim() - 1;
-      if (num_elems != next_num_rows) {
-        K2_LOG(FATAL) << "Ragged shape has num_elems for layers_[" << axis
-                      << "] == " << num_elems << " and num-rows for layers_["
-                      << (axis + 1) << "] == " << next_num_rows;
-      }
-    }
-
     if (rsd.row_ids.Dim() != 0) {  // check row_ids.
       K2_CHECK(IsCompatible(rsd.row_ids, rsd.row_splits));
       // 1st elem is `ok` (1 or 0); 2nd elem is location of bad index
       // into row_splits
-      Array1<int32_t> meta(c, 2, 1);
-      int32_t *ok_data = meta.Data(), *bad_index_data = ok_data + 1;
 
       const int32_t *row_splits_data = rsd.row_splits.Data(),
                     *row_ids_data = rsd.row_ids.Data();
-      int32_t num_elems_from_row_ids = rsd.row_ids.Dim(),
+      int32_t num_elems = rsd.row_ids.Dim(),
               num_rows = rsd.row_splits.Dim() - 1;
 
-      K2_CHECK_EQ(num_elems, num_elems_from_row_ids);
       // TODO: could do this and the other one in separate streams.
       K2_EVAL(
           c, num_elems, lambda_check_row_ids, (int32_t i)->void {
@@ -368,19 +350,36 @@ bool RaggedShape::Validate(bool print_warnings) const {
             if (this_row < 0 || this_row >= num_rows ||
                 i < row_splits_data[this_row] ||
                 i >= row_splits_data[this_row + 1]) {
-              *ok_data = 0;
-              *bad_index_data = i;
+              K2_LOG(FATAL) << "Failed checking row_ids: row_ids[" << i
+                            << "]=" << this_row << ", row_splits_data[n,n+1]="
+                            << row_splits_data[this_row] << ","
+                            << row_splits_data[this_row+1] << ", axis="
+                            << axis;
             }
           });
-      meta = meta.To(GetCpuContext());  // since we have 2 accesses, this should
-                                        // be faster.
-      int32_t ok = meta[0];
-      if (!ok) {
-        K2_LOG(FATAL) << "Problem validating row-ids: for layers_[" << axis
-                      << "], row_splits = " << rsd.row_splits
-                      << ", row_ids = " << rsd.row_ids << ", see index "
-                      << meta[1] << " of row_ids, whose dim is "
-                      << rsd.row_ids.Dim();
+    }
+
+
+    if (axis + 1 < num_axes) {
+      // Check the num-elems on this axis == num_rows on next axis.
+      int32_t next_num_rows = layers_[axis + 1].row_splits.Dim() - 1;
+      if (rsd.cached_tot_size != -1) {
+        int32_t num_elems = rsd.cached_tot_size;
+        if (num_elems != next_num_rows) {
+          K2_LOG(FATAL) << "Ragged shape has num_elems for layers_[" << axis
+                        << "] == " << num_elems << " vs. num-rows for layers_["
+                        << (axis + 1) << "] == " << next_num_rows;
+        }
+      } else {
+        const int32_t *num_elems_ptr = rsd.row_splits.Data() +
+            rsd.row_splits.Dim() - 1;
+        K2_EVAL(c, 1, lambda_check_num_elems, (int32_t i) -> void {
+            if (*num_elems_ptr != next_num_rows) {
+              K2_LOG(FATAL) << "Ragged shape has num_elems=" << *num_elems_ptr
+                            << " for layers_[" << axis
+                            << "], vs. num_rows=" << next_num_rows
+                            << "for the next axis.";
+            }});
       }
     }
     if (axis + 1 < (int32_t)layers_.size()) {
