@@ -327,6 +327,12 @@ class Fsa(object):
             self._non_tensor_attr[name] = value
 
     @property
+    def num_arcs(self) -> int:
+        '''Return the number of arcs in this Fsa.
+        '''
+        return self.arcs.num_elements()
+
+    @property
     def labels(self) -> torch.Tensor:
         '''Return the labels.
 
