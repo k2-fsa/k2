@@ -495,7 +495,7 @@ TEST(RaggedShapeOpsTest, TestUnsqueezeParallel) {
     std::vector<RaggedShape> unsqueezed =
         UnsqueezeParallel(num_shapes, orig_shapes.data(), axis);
     for (int32_t i = 0; i < num_shapes; i++) {
-      ASSERT_EQ(unsqueezed[i].Validate(), true);
+      unsqueezed[i].Check();
       RaggedShape temp = RemoveAxis(unsqueezed[i], axis);
       ASSERT_EQ(Equal(temp, *(orig_shapes[i])), true);
       delete orig_shapes[i];
