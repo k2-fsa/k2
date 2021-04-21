@@ -538,9 +538,10 @@ def arc_sort(fsa: Fsa, ret_arc_map: bool = False
         torch.int32). arc_map[i] is the arc index in the input `fsa` that
         corresponds to the i-th arc in the output Fsa.
     Returns:
-      The sorted FSA. It is the same as the input `fsa` if the input
-      `fsa` is arc sorted. Otherwise, a new sorted fsa is returned
-      and the input `fsa` is NOT modified.
+      If ret_arc_map is False, return the sorted FSA. It is the same as the
+      input `fsa` if the input `fsa` is arc sorted. Otherwise, a new sorted
+      fsa is returned and the input `fsa` is NOT modified.
+      If ret_arc_map is True, an extra arc map is also returned.
     '''
     if fsa.properties & fsa_properties.ARC_SORTED != 0:
         if ret_arc_map:
