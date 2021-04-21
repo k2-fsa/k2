@@ -8,6 +8,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include "k2/python/csrc/torch/discounted_cum_sum.h"
+
 #include "k2/csrc/context.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
@@ -37,8 +39,8 @@ static void DiscountedCumSumWrapper(torch::Tensor x, torch::Tensor gamma,
 
 void PybindDiscountedCumSum(py::module &m) {
   // note it supports only 1-D and 2-D tensors.
-  m.def("discounted_cum_sum", &k2::DiscountedCumSumWrapper, py::arg("x"), py::arg("gamma"),
-        py::arg("y"), py::arg("flip") = false,
+  m.def("discounted_cum_sum", &k2::DiscountedCumSumWrapper, py::arg("x"),
+        py::arg("gamma"), py::arg("y"), py::arg("flip") = false,
         R"(
         Args:
           x:

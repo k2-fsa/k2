@@ -2,7 +2,7 @@
  * @brief python wrapper for DiscountedCumSum
  *
  * @copyright
- * Copyright (c)  2010  Xiaomi Corp.  (authors: Daniel Povey)
+ * Copyright (c)  2021  Xiaomi Corp.  (authors: Daniel Povey)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors
@@ -15,4 +15,4 @@
 
 void PybindDiscountedCumSum(py::module &m);
 
-#endif  // K2_PYTHON_CSRC_TORCH_DISCOUNTED_CUM_SUM_H
+#endif  // K2_PYTHON_CSRC_TORCH_DISCOUNTED_CUM_SUM_H_

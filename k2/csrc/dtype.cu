@@ -11,8 +11,10 @@ namespace k2 {
 const DtypeTraits g_dtype_traits_array[] = {
   {kUnknownBase, 0, "Any", 0},
   {kFloatBase, 4, "half"}, {kFloatBase, 4, "float"}, {kFloatBase, 8, "double"},
-  {kIntBase, 1, "int8"}, {kIntBase, 2, "int16"},   {kIntBase, 4, "int32"},  {kIntBase, 8, "int64"},
-  {kUintBase, 1, "uint8"}, {kUintBase, 2, "uint16"},  {kUintBase, 4, "uint32"}, {kUintBase, 8, "uint64"},
+  {kIntBase, 1, "int8"}, {kIntBase, 2, "int16"},
+  {kIntBase, 4, "int32"},  {kIntBase, 8, "int64"},
+  {kUintBase, 1, "uint8"}, {kUintBase, 2, "uint16"},
+  {kUintBase, 4, "uint32"}, {kUintBase, 8, "uint64"},
   {kUnknownBase, 16, "Arc", 4}, {kUnknownBase, 0, "Other", 0}
 };
 

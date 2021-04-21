@@ -20,7 +20,7 @@ void Hash::CheckEmpty() {
       if (~(hash_data[i]) != 0) error_data[0] = i;
     });
   int32_t i = error[0];
-  if (i >= 0) { // there was an error; i is the index into the hash where
+  if (i >= 0) {  // there was an error; i is the index into the hash where
     // there was an element.
     int64_t elem = data_[i];
     // We don't know the number of bits the user was using for the key vs.
@@ -30,10 +30,9 @@ void Hash::CheckEmpty() {
   }
 }
 
-void Hash::Resize(int32_t new_num_buckets,
-                  int32_t num_key_bits,
-                  int32_t num_value_bits, // = -1,
-                  bool copy_data) {  // = true
+void Hash::Resize(int32_t new_num_buckets, int32_t num_key_bits,
+                  int32_t num_value_bits,  // = -1,
+                  bool copy_data) {        // = true
   NVTX_RANGE(K2_FUNC);
   if (num_value_bits < 0)
     num_value_bits = 64 - num_key_bits;
@@ -65,6 +64,5 @@ void Hash::Resize(int32_t new_num_buckets,
   new_hash.Destroy();  // avoid failed check in destructor (it would otherwise
                        // expect the hash to be empty when destroyed).
 }
-
 
 }  // namespace k2

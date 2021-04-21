@@ -42,7 +42,8 @@ void TestHashConstruct() {
             *values_data = values.Data(),
             *success_data = success.Data();
       int32_t   *counts_data = count_per_key.Data();
-      Hash::Accessor<NUM_KEY_BITS> acc = hash.GetAccessor<Hash::Accessor<NUM_KEY_BITS>>();
+      Hash::Accessor<NUM_KEY_BITS> acc =
+          hash.GetAccessor<Hash::Accessor<NUM_KEY_BITS>>();
       K2_EVAL(c, num_elems, lambda_insert_pairs, (int32_t i) -> void {
           uint32_t key = keys_data[i],
                  value = values_data[i],
@@ -237,7 +238,7 @@ void TestHashConstructPacked(int32_t num_key_bits,
           success_data[i] = success;
         });
 
-      if (size != 65535) // just for some variety..
+      if (size != 65535)      // just for some variety..
         num_value_bits += 1;  // Try changing the number of value bits, so we
                               // can test Resize() with changes in that.
 
@@ -254,8 +255,8 @@ void TestHashConstructPacked(int32_t num_key_bits,
 
           int32_t num_implicit_key_bits = num_key_bits + num_value_bits - 64,
               num_kept_key_bits = num_key_bits - num_implicit_key_bits;
-          uint64_t implicit_key_bits_mask = (uint64_t(1) << num_implicit_key_bits) - 1;
-
+          uint64_t implicit_key_bits_mask =
+              (uint64_t(1) << num_implicit_key_bits) - 1;
 
           uint64_t val = 0;
           uint64_t *key_val_addr = nullptr;

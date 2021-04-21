@@ -1717,7 +1717,8 @@ void Array2ContiguousTest() {
     Array2<T> src_part = src.ColArange(slice_dim1_begin, slice_dim1_end),
         src_part_contiguous1 = ToContiguous(src_part);
     Array2<Any> src_part_contiguous_generic2 = ToContiguous(src_part.Generic());
-    Array2<T> src_part_contiguous2 = src_part_contiguous_generic2.Specialize<T>();
+    Array2<T> src_part_contiguous2 =
+        src_part_contiguous_generic2.Specialize<T>();
 
     K2_CHECK_EQ(Equal(src_part_contiguous1, src_part_contiguous2),
                 true);
@@ -1729,8 +1730,8 @@ void Array2ContiguousTest() {
 TEST(OpsTest, ApproxEqualTest) {
   Array2<float> array1("[ [ 1 2 3  ] [4 5 6 ]]"),
       array2("[ [ 1.1 2 3  ] [4 5 6 ]]");
-  K2_CHECK_EQ(ApproxEqual(array1, array2, float(0.2)), true);
-  K2_CHECK_EQ(ApproxEqual(array1, array2, float(0.01)), false);
+  K2_CHECK_EQ(ApproxEqual(array1, array2, 0.2f), true);
+  K2_CHECK_EQ(ApproxEqual(array1, array2, 0.01f), false);
 }
 
 TEST(OpsTest, Array2Contiguous) {

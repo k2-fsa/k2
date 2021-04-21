@@ -324,9 +324,8 @@ struct Ragged {
     K2_CHECK_EQ(shape.NumElements(), values.Dim());
   }
 
-  explicit Ragged(const RaggedShape &shape, Dtype dtype=DtypeOf<T>::dtype)
-      : shape(shape), values(shape.Context(), shape.NumElements(), dtype) {
-  }
+  explicit Ragged(const RaggedShape &shape, Dtype dtype = DtypeOf<T>::dtype)
+      : shape(shape), values(shape.Context(), shape.NumElements(), dtype) {}
 
   // Defined in ragged_ops_inl.h
   // This will crash if T == Any.

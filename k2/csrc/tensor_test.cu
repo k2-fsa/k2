@@ -245,8 +245,8 @@ TEST(TensorTest, Tensor) {
       int32_t axis_mod = axis;
       if (axis < 0)
         axis_mod += 3;
-      K2_CHECK_EQ(t_data,
-                  t_flip_data + t_flip.Stride(axis_mod) * (t.Dim(axis_mod) - 1));
+      K2_CHECK_EQ(t_data, t_flip_data +
+                              t_flip.Stride(axis_mod) * (t.Dim(axis_mod) - 1));
     }
   }
 
