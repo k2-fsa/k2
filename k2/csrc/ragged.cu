@@ -331,7 +331,7 @@ void RaggedShape::Check() const {
                   K2_LOG(FATAL) << "Error validating row-splits, i=" << num_rows
                                 << "==num_rows, row_splits[i]=" << this_idx
                                 << " but expected it to equal cached-tot-size="
-                                << cached_tot_size << "; layer="<<layer;
+                                << cached_tot_size << "; layer=" << layer;
                 }
               }
             });
@@ -369,9 +369,9 @@ void RaggedShape::Check() const {
         if (rsd.cached_tot_size != -1) {
           int32_t num_elems = rsd.cached_tot_size;
           if (num_elems != next_num_rows) {
-            K2_LOG(FATAL) << "Ragged shape has num_elems for layers_[" << layer
-                          << "] == " << num_elems << " vs. num-rows for layers_["
-                          << (layer + 1) << "] == " << next_num_rows;
+            K2_LOG(FATAL) << "Ragged shape has num_elems for layer " << layer
+                          << " == " << num_elems << " vs. num-rows for layer "
+                          << (layer + 1) << " == " << next_num_rows;
           }
         } else {
           const int32_t *num_elems_ptr = rsd.row_splits.Data() +
@@ -474,14 +474,15 @@ void RaggedShape::Check() const {
               int32_t next_layer_num_rows = layers_info.data[layer+1].num_rows;
               K2_CHECK_EQ(this_elem, next_layer_num_rows)
                   << " layers[" << layer << "]: last elem of row_splits "
-                  << "does not have the expected value vs. next layer's num-rows";
+                  << "does not have the expected value vs. next layer's "
+                  "num-rows";
             }
           } else {
             int32_t next_elem = this_info.row_splits[j+1];
             K2_CHECK_GE(next_elem, this_elem)
                 << " layers[" << layer << "].row_splits is not monotonic.";
           }
-        } else { // Checking row_ids
+        } else {  // Checking row_ids
           if (this_info.row_ids == nullptr)
             return;  // row_ids is not set up.
           if (j >= this_info.num_elems)
