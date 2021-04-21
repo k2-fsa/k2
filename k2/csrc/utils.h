@@ -349,8 +349,8 @@ struct TaskRedirect {
 
    Note: we imagine (hope?) that in general row_splits won't be that large,
    maybe <= 1024, and we'll care more about latency than throughput.  The idea
-   is that this is used to determine allocate threads for a larger number of
-   jobs in a separate kernel.
+   is that this is used to allocate threads for a larger number of jobs in a
+   separate kernel.
  */
 void GetTaskRedirect(ContextPtr &c, int32_t num_tasks,
                      const int32_t *row_splits, TaskRedirect *redirect_out);
@@ -424,7 +424,7 @@ __global__ void eval_lambda_redirect_large(int32_t num_jobs,
                                number of threads per job.  (The number of
                                threads per task will be a multiple of the number
                                of threads per job, at least 1 and on average 2).
-           @param [in] target_num_loops  This will typically be in the range 1
+          @param [in] target_num_loops  This will typically be in the range 1
                                to 4, depending on your concern for latency
                                (->smaller) or throughput (->larger).  Is is
                                the average number of `work items` per thread
