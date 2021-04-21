@@ -1951,7 +1951,7 @@ void RaggedShapeAxis0Splitter::Init(RaggedShape &src) {
 
   RowSplitsAccessor<5> src_row_splits_acc(src);
 
-  ArrayAccessor<int32_t *, 5> row_splits_out_acc;
+  SmallVec<int32_t *, 5> row_splits_out_acc;
   Array1<int32_t> garbage1(c, dim0 + dim0 + 1);  // won't be read.
   row_splits_out_acc.data[0] = garbage1.Data();
   for (int32_t l = 0; l < num_layers_out; l++) {

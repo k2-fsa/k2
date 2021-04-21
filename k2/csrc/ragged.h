@@ -202,14 +202,7 @@ class RaggedShape {
   std::vector<RaggedShapeLayer> &Layers() { return layers_; }
 
   // Check the RaggedShape for consistency; die on failure.
-  void Check() {
-    if (!Validate(true))
-      K2_LOG(FATAL) << "Failed to validate RaggedShape: " << *this;
-  }
-
-  // Validate the RaggedShape; on failure will return false (may also
-  // print warnings).
-  bool Validate(bool print_warnings = true) const;
+  void Check() const;
 
   // Convert to possibly different context.
   RaggedShape To(ContextPtr ctx) const;
@@ -224,7 +217,7 @@ class RaggedShape {
 };
 
 template <typename T, int MAX_DIM>
-struct ArrayAccessor {
+struct SmallVec {
   T data[MAX_DIM];
 };
 
@@ -324,7 +317,7 @@ struct Ragged {
     K2_CHECK_EQ(shape.NumElements(), values.Dim());
   }
 
-  explicit Ragged(const RaggedShape &shape, Dtype dtype=DtypeOf<T>::dtype)
+  explicit Ragged(const RaggedShape &shape, Dtype dtype = DtypeOf<T>::dtype)
       : shape(shape), values(shape.Context(), shape.NumElements(), dtype) {
   }
 
@@ -375,7 +368,12 @@ struct Ragged {
   Array1<int32_t> &RowIds(int32_t axis) { return shape.RowIds(axis); }
   int32_t TotSize(int32_t axis) const { return shape.TotSize(axis); }
   int32_t Dim0() const { return shape.Dim0(); }
-  bool Validate(bool print_warnings = true) const;
+  // Validates ragged shape; crashes if there is a problem.  Note: the error
+  // message may appear later if we are not syncing kernel so the stack trace
+  // won't be informative. You would need to set the environment variable
+  // K2_SYNC_KERNELS=1 before running, to get the correct stack trace and
+  // for use in a debugger.
+  void Check() const;
 
   template <typename U>
   Ragged<U> &Specialize() {
