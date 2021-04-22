@@ -438,36 +438,15 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   // composed_row_ids are row_ids vectors that map to indexes i <= 0 < num_srcs;
   // they are row_ids vectors for each axis composed with all previous axes.
   std::vector<Array1<int32_t> > composed_row_ids(num_axes);
-  for (int32_t axis = 0; axis < num_axes; axis++) {
-    int32_t num_elems = tot_sizes_out_cpu_data[axis];
-    if (axis == 0) {
-      composed_row_ids[axis] = Array1<int32_t>(c, num_elems);
-    } else {
-      // Re-use this same memory although they are logically distinct.
-      composed_row_ids[axis] = ans.RowIds(axis);
-    }
-    RowSplitsToRowIds(new_offsets.Row(axis), &composed_row_ids[axis]);
+  for (int32_t axis = 1; axis < num_axes; axis++) {
+    // we are not creating the actual row_ids here, except for axis 1; we are creating
+    // "composed row_ids" which map to the index on axis 0.
+    Array1<int32_t> row_ids = ans.RowIds(axis);
+    RowSplitsToRowIds(new_offsets.Row(axis), &row_ids);
   }
-
-
-  ParallelRunner pr(c);
-  std::vector<cudaStream_t> streams(num_axes);
-  int32_t num_jobs = ans_dim0 * 2;  // note: this formula is not a heuristic;
-                                    // it's how TaskRedirect works..
-  Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
-  auto task_redirects_acc = task_redirects.Accessor();
 
 
   ans.Layers()[0].row_splits = new_offsets.Row(1);
-
-  for (int32_t axis = 0; axis < num_axes; ++axis) {
-    streams[axis] = pr.NewStream();
-    With w(streams[axis]);
-    const int32_t *new_offsets_ptr = new_offsets_acc.Row(axis);
-    TaskRedirect *task_redirect_ptr = task_redirects_acc.Row(axis);
-    GetTaskRedirect(c, ans_dim0, new_offsets_ptr, task_redirect_ptr);
-  }
-
 
   // Caution: e.g. old_row_splits_acc(i) == src.RowSplits(i+1).
   RowSplitsAccessor<5> old_row_splits_acc(src),
@@ -500,17 +479,23 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     if (axis + 1 < num_axes)
       new_next_offset = new_offsets_acc(axis + 1, ans_idx0);
     if (i < tot_size) {
-      // this_new_row_ids = new_row_ids_acc(axis - 1);
-      int32_t *this_new_row_ids = composed_row_ids_data;
-      const int32_t *this_old_row_ids = old_row_ids_acc(axis - 1);
       // "prev" means for axis - 1
       int32_t new_prev_offset = new_offsets_acc(axis - 1, ans_idx0),
           old_prev_offset = old_offsets_acc(axis - 1, ans_idx0),
           old_offset = old_offsets_acc(axis, ans_idx0),
-          old_idx = old_offset + job_this_idx0,
-          old_row_id = this_old_row_ids[old_idx],
-          new_row_id = old_row_id + new_prev_offset - old_prev_offset;
-      this_new_row_ids[i] = new_row_id;
+          old_idx = old_offset + job_this_idx0;
+
+      if (axis != 1) {
+        // Actually doing this for axis == 1 is harmless, but unnecessary, as it
+        // would write back the same values that were already there.  We avoid
+        // the memory access.
+        // this_new_row_ids = new_row_ids_acc(axis - 1);
+        int32_t *this_new_row_ids = composed_row_ids_data;
+        const int32_t *this_old_row_ids = old_row_ids_acc(axis - 1);
+        int32_t old_row_id = this_old_row_ids[old_idx],
+            new_row_id = old_row_id + new_prev_offset - old_prev_offset;
+        this_new_row_ids[i] = new_row_id;
+      }
 
       if (elem_indexes_data != nullptr && axis == num_axes - 1)
         elem_indexes_data[i] = old_idx;
