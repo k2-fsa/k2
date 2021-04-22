@@ -202,17 +202,14 @@ class RaggedShape {
   std::vector<RaggedShapeLayer> &Layers() { return layers_; }
 
   // Check the RaggedShape for consistency; die on failure.
-  void Check() {
-    if (!Validate(true))
-      K2_LOG(FATAL) << "Failed to validate RaggedShape: " << *this;
-  }
+  void Check() const;
 
-  // Validate the RaggedShape; on failure will return false (may also
-  // print warnings).
-  bool Validate(bool print_warnings = true) const;
-
-  // Convert to possibly different context.
-  RaggedShape To(ContextPtr ctx) const;
+  /*
+    Copy to a possibly different device. If `copy_all == true`, will copy the
+    row_ids rather than reconstructing it on the dest device; this is useful for
+    debug.
+   */
+  RaggedShape To(ContextPtr ctx, bool copy_all = false) const;
 
  private:
   // TODO: could probably do away with the std::vector and have a max size and
@@ -224,8 +221,11 @@ class RaggedShape {
 };
 
 template <typename T, int MAX_DIM>
-struct ArrayAccessor {
+struct SmallVec {
   T data[MAX_DIM];
+  __host__ __device__ T operator()(int32_t i) const {
+    return data[i];
+  }
 };
 
 // call this variable `xxx_row_splits_acc`
@@ -374,7 +374,12 @@ struct Ragged {
   Array1<int32_t> &RowIds(int32_t axis) { return shape.RowIds(axis); }
   int32_t TotSize(int32_t axis) const { return shape.TotSize(axis); }
   int32_t Dim0() const { return shape.Dim0(); }
-  bool Validate(bool print_warnings = true) const;
+  // Validates ragged shape; crashes if there is a problem.  Note: the error
+  // message may appear later if we are not syncing kernel so the stack trace
+  // won't be informative. You would need to set the environment variable
+  // K2_SYNC_KERNELS=1 before running, to get the correct stack trace and
+  // for use in a debugger.
+  void Check() const;
 
   template <typename U>
   Ragged<U> &Specialize() {
@@ -437,8 +442,13 @@ struct Ragged {
   */
   Ragged<T> RemoveAxis(int32_t axis);
 
-  Ragged<T> To(ContextPtr ctx) const {
-    RaggedShape new_shape = shape.To(ctx);
+  /*
+    Copy to a possibly different device. If `copy_all == true`, will copy
+    the cached_tot_size and row_ids rather than reconstructing them on the dest
+    device; this is useful for debug.
+   */
+  Ragged<T> To(ContextPtr ctx, bool copy_all = false) const {
+    RaggedShape new_shape = shape.To(ctx, copy_all);
     Array1<T> new_values = values.To(ctx);
     return Ragged<T>(new_shape, new_values);
   }

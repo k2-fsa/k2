@@ -421,138 +421,119 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
       new_offsets;              // num_axes by (ans_dim0 + 1).
   GetOldAndNewOffsets(src, new2old, &old_offsets, &new_offsets);
 
+  // tot_sizes_out is of dimension (num_axes), tot_sizes_out[i] is ans.TotSize(i)
   Array1<int32_t> tot_sizes_out =
       Array1<int32_t>(new_offsets.Col(ans_dim0)).To(GetCpuContext());
 
-  if (elem_indexes) *elem_indexes = Array1<int32_t>(c, tot_sizes_out.Back());
+  int32_t *tot_sizes_out_cpu_data = tot_sizes_out.Data();
+  if (elem_indexes)
+    *elem_indexes = Array1<int32_t>(c, tot_sizes_out_cpu_data[num_axes - 1]);
 
-  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.Data());
+
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out_cpu_data);
 
   auto old_offsets_acc = old_offsets.Accessor(),
-       new_offsets_acc = new_offsets.Accessor();
+      new_offsets_acc = new_offsets.Accessor();
 
-  ParallelRunner pr(c);
-  std::vector<cudaStream_t> streams(num_axes);
-  int32_t num_jobs = ans_dim0 * 2;  // note: this formula is not a heuristic;
-                                    // it's how TaskRedirect works..
-  Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
-  auto task_redirects_acc = task_redirects.Accessor();
-
+  for (int32_t axis = 1; axis < num_axes; axis++) {
+    // we are not creating the actual row_ids here, except for axis 1; we are creating
+    // "composed row_ids" which map to the index on axis 0.
+    Array1<int32_t> row_ids = ans.RowIds(axis);
+    RowSplitsToRowIds(new_offsets.Row(axis), &row_ids);
+  }
 
   ans.Layers()[0].row_splits = new_offsets.Row(1);
 
-  for (int32_t axis = 0; axis < num_axes; ++axis) {
-    streams[axis] = pr.NewStream();
-    With w(streams[axis]);
-    const int32_t *new_offsets_ptr = new_offsets_acc.Row(axis);
-    TaskRedirect *task_redirect_ptr = task_redirects_acc.Row(axis);
-    GetTaskRedirect(c, ans_dim0, new_offsets_ptr, task_redirect_ptr);
+  // Caution: e.g. old_row_splits_acc(i) == src.RowSplits(i+1).
+  RowSplitsAccessor<5> old_row_splits_acc(src),
+      new_row_splits_acc(ans);
+  RowIdsAccessor<5> old_row_ids_acc(src),
+      new_row_ids_acc(ans);
+  SmallVec<int32_t, 6> tot_sizes;
+  K2_CHECK(num_axes <= 6);
+  int32_t max_tot_size = 0;
+  for (int32_t i = 0; i < num_axes; i++) {
+    tot_sizes.data[i] = tot_sizes_out_cpu_data[i];
+    max_tot_size = std::max<int32_t>(max_tot_size,
+                                     tot_sizes.data[i]);
   }
 
-  for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
-    if (axis != 0) {
-      // The following code doesn't work for axis 0, but we handled
-      // it above with ans.Layers()[0].row_splits = new_offsets.Row(1).
-      int32_t *this_new_row_splits = ans.RowSplits(axis + 1).Data();
-      const int32_t *this_old_row_splits = src.RowSplits(axis + 1).Data();
 
-      auto lambda_set_row_splits = [=] __host__ __device__(
-                                       int32_t ans_idx0, int32_t num_threads,
-                                       int32_t thread_idx) -> void {
-        //  0 <= ans_idx0 < ans_dim0; and 0 <= thread_idx < num_threads,
-        //  num_threads may have any value > 0 as far as this code is concerned.
-        //
-        // Reminder of how row_splits work dimensionally: they are a map
-        // from, e.g. an idx0 to an idx0x.   An offsets_acc(0,n) is
-        // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
-        // The locations in the row_splits array are as given by
-        // the `axis`'th row of `offsets`; the values in the array
-        // are related to those in the `axis+1`'th row.
-        int32_t this_new_offset = new_offsets_acc(axis, ans_idx0),
-                next_new_offset = new_offsets_acc(axis, ans_idx0 + 1),
-                num_rows = next_new_offset - this_new_offset,
-                this_old_offset = old_offsets_acc(axis, ans_idx0),
-                value_offset = new_offsets_acc(axis + 1, ans_idx0) -
-                               old_offsets_acc(axis + 1, ans_idx0);
+  int32_t *elem_indexes_data = (elem_indexes != nullptr ?
+                                elem_indexes->Data() : nullptr);
 
-        // Using <= instead of < below causes threads for different ans_idx0 to
-        // write a single overlapping value, but also ensures that the
-        // terminating value is written.  This only works because row_splits
-        // vectors always start with 0, which is not necessarily the case
-        // for row-ids.
-        for (; thread_idx <= num_rows; thread_idx += num_threads) {
-          this_new_row_splits[this_new_offset + thread_idx] =
-              value_offset + this_old_row_splits[this_old_offset + thread_idx];
-        }
-      };
-      int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
-              target_num_loops = (is_cpu || tot_work > 1000000 ? 8 : 2);
-      EvalWithRedirect(streams[axis], num_jobs, task_redirects_acc.Row(axis),
-                       min_threads_per_job, tot_work, target_num_loops,
-                       lambda_set_row_splits);
-    }
+  // Note, the first row_splits vector was set above, ans.Layers()[0].row_splits
+  // = new_offsets.Row(1).
 
-    {
-      int32_t *this_new_row_ids = ans.RowIds(axis + 1).Data();
-      const int32_t *this_old_row_ids = src.RowIds(axis + 1).Data();
-      int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
-              target_num_loops = (is_cpu || tot_work > 1000000 ? 8 : 2);
+  auto lambda_set_row_splits_and_ids = [=] __host__ __device__ (int32_t axis, int32_t i) -> void {
+    axis++;  // make it one-based.
+    int32_t tot_size = tot_sizes(axis); // == new_offsets_acc(axis, ans_dim0);
+    if (i > tot_size)
+      return;
+    int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
+    int32_t ans_idx0 = (i == tot_size ? ans_dim0 :
+                        composed_row_ids_data[i]),
+    job_begin = new_offsets_acc(axis, ans_idx0),
+    job_this_idx0 = i - job_begin;
+    K2_CHECK_GE(job_this_idx0, 0);
+    int32_t row_split_value, new_next_offset;
+    if (axis + 1 < num_axes)
+      new_next_offset = new_offsets_acc(axis + 1, ans_idx0);
+    if (i < tot_size) {
+      // "prev" means for axis - 1
+      int32_t new_prev_offset = new_offsets_acc(axis - 1, ans_idx0),
+          old_prev_offset = old_offsets_acc(axis - 1, ans_idx0),
+          old_offset = old_offsets_acc(axis, ans_idx0),
+          old_idx = old_offset + job_this_idx0;
 
-      if (elem_indexes == nullptr || axis != num_axes - 2) {
-        // If we don't need to write to `elem_indexes`...  [caution: the next
-        // code block differs from this only by a statement that sets
-        // `elem_indexes` and they should be kept in sync.]
-
-        auto lambda_set_row_ids = [=] __host__ __device__(
-                                      int32_t ans_idx0, int32_t num_threads,
-                                      int32_t thread_idx) -> void {
-          // Reminder of how row_ids work dimensionally: they are a map
-          // from, e.g. an idx01 to an idx0.   An offsets_acc(0,n) is
-          // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
-          // The locations in the row_ids array are as given by
-          // the `axis+1`'th row of `offsets`; the values in the array
-          // are related to those in the `axis`'th row.
-          int32_t this_new_offset = new_offsets_acc(axis + 1, ans_idx0),
-                  next_new_offset = new_offsets_acc(axis + 1, ans_idx0 + 1),
-                  num_elems = next_new_offset - this_new_offset,
-                  this_old_offset = old_offsets_acc(axis + 1, ans_idx0),
-                  value_offset = new_offsets_acc(axis, ans_idx0) -
-                                 old_offsets_acc(axis, ans_idx0);
-          for (; thread_idx < num_elems; thread_idx += num_threads) {
-            this_new_row_ids[this_new_offset + thread_idx] =
-                value_offset + this_old_row_ids[this_old_offset + thread_idx];
-          }
-        };
-        EvalWithRedirect(streams[axis + 1], num_jobs,
-                         task_redirects_acc.Row(axis + 1), min_threads_per_job,
-                         tot_work, target_num_loops, lambda_set_row_ids);
-      } else {
-        int32_t *elem_indexes_data = elem_indexes->Data();
-        // We need to write to `elem_indexes`.  Note: this code block only
-        // differs from the above by an extra statement regarding
-        // `elem_indexes`. Comments have been removed.
-        auto lambda_set_row_ids_and_elem_indexes =
-            [=] __host__ __device__(int32_t ans_idx0, int32_t num_threads,
-                                    int32_t thread_idx) -> void {
-          int32_t this_new_offset = new_offsets_acc(axis + 1, ans_idx0),
-                  next_new_offset = new_offsets_acc(axis + 1, ans_idx0 + 1),
-                  num_elems = next_new_offset - this_new_offset,
-                  this_old_offset = old_offsets_acc(axis + 1, ans_idx0),
-                  value_offset = new_offsets_acc(axis, ans_idx0) -
-                                 old_offsets_acc(axis, ans_idx0);
-          for (; thread_idx < num_elems; thread_idx += num_threads) {
-            this_new_row_ids[this_new_offset + thread_idx] =
-                value_offset + this_old_row_ids[this_old_offset + thread_idx];
-            elem_indexes_data[this_new_offset + thread_idx] =
-                this_old_offset + thread_idx;
-          }
-        };
-        EvalWithRedirect(streams[axis + 1], num_jobs,
-                         task_redirects_acc.Row(axis + 1), min_threads_per_job,
-                         tot_work, target_num_loops,
-                         lambda_set_row_ids_and_elem_indexes);
+      if (axis != 1) {
+        // Write row-ids.
+        // Actually doing this for axis == 1 is harmless, but unnecessary, as it
+        // would write back the same values that were already there.  We avoid
+        // the memory access.
+        // this_new_row_ids = new_row_ids_acc(axis - 1);
+        int32_t *this_new_row_ids = composed_row_ids_data;
+        const int32_t *this_old_row_ids = old_row_ids_acc(axis - 1);
+        int32_t old_row_id = this_old_row_ids[old_idx],
+            new_row_id = old_row_id + new_prev_offset - old_prev_offset;
+        this_new_row_ids[i] = new_row_id;
       }
+
+      if (elem_indexes_data != nullptr && axis == num_axes - 1)
+        elem_indexes_data[i] = old_idx;
+
+      if (axis + 1 < num_axes) {
+        int32_t old_next_offset = old_offsets_acc(axis + 1, ans_idx0),
+            next_offset_diff = new_next_offset - old_next_offset;
+        const int32_t *old_row_splits_data = old_row_splits_acc(axis);
+        row_split_value = next_offset_diff + old_row_splits_data[old_idx];
+      }
+    } else {
+      row_split_value = new_next_offset;
     }
+    if (axis + 1 < num_axes) {
+      int32_t *new_row_splits_data = new_row_splits_acc(axis);
+      new_row_splits_data[i] = row_split_value;
+    }
+  };
+
+  constexpr int32_t cutoff = 50000;
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t axis = 0; axis < num_axes - 1; axis++) {
+      int32_t this_size = tot_sizes(axis + 1);
+      for (int32_t i = 0; i <= this_size; i++)
+        lambda_set_row_splits_and_ids(axis, i);
+    }
+  } else if (max_tot_size * (num_axes - 1) < cutoff) {
+    Eval2Device(c, num_axes - 1, max_tot_size + 1, lambda_set_row_splits_and_ids);
+  } else {
+    // Loop in the kernel rather than submitting an excessive number of threads.
+    auto lambda_loop = [=] __device__ (int32_t i) {
+      for (int32_t axis = 0; axis < num_axes - 1; axis++) {
+          lambda_set_row_splits_and_ids(axis, i);
+      }
+    };
+    EvalDevice(c, max_tot_size + 1, lambda_loop);
   }
 #if !defined(NDEBUG)
   ans.Check();
@@ -599,6 +580,8 @@ RaggedShape Index(RaggedShape &src, int32_t axis,
   }
 }
 
+// returns array of dim (src[0]->NumAxes() + 1) by (num_srcs + 1),
+// see documentation in header.
 Array2<int32_t> GetOffsets(int32_t num_srcs, RaggedShape **src) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
@@ -676,132 +659,161 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
   *row_ids = row_ids_ptrs.To(ctx);
 }
 
-static RaggedShape CatAxis0(int32_t num_srcs, RaggedShape **src,
-                            Array1<uint32_t> *merge_map /* == nullptr*/) {
+static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
+                              Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) {
     if (merge_map)
       *merge_map =
           Arange<uint32_t>(src[0]->Context(), 0, src[0]->NumElements());
-    return **src;
+    RaggedShape top_layer = TrivialShape(src[0]->Context(), src[0]->Dim0());
+    return ComposeRaggedShapes(top_layer, **src);
   }
+  // We can't handle num_srcs == 0 because we won't have a context object.
   K2_CHECK_GT(num_srcs, 1);
 
-  int32_t num_axes = src[0]->NumAxes();
+  int32_t num_axes_in = src[0]->NumAxes(),
+      num_axes_out = num_axes_in + 1;
   ContextPtr c = src[0]->Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
 
   // Check if they have same num-axes and compatible context
   for (int32_t i = 1; i < num_srcs; ++i) {
-    K2_CHECK_EQ(num_axes, src[i]->NumAxes());
+    K2_CHECK_EQ(num_axes_in, src[i]->NumAxes());
     K2_CHECK(IsCompatible(*src[0], *src[i]));
   }
 
   // `offsets` will be on CPU for now.
+  // It shape is (num_axes_in + 1 == num_axes_out, num_srcs + 1).
   Array2<int32_t> offsets = GetOffsets(num_srcs, src);
   auto offsets_acc = offsets.Accessor();
 
-  std::vector<int32_t> tot_sizes_out(num_axes);
-  for (int32_t axis = 0; axis < num_axes; ++axis)
-    tot_sizes_out[axis] = offsets_acc(axis + 1, num_srcs);
 
-  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
+  SmallVec<int32_t, 6> tot_sizes_out;
+  K2_CHECK(num_axes_out <= 6);
+  int32_t max_tot_size = 0;
+  for (int32_t axis = 0; axis < num_axes_out; axis++) {
+    tot_sizes_out.data[axis] = offsets_acc(axis, num_srcs);
+    max_tot_size = std::max<int32_t>(max_tot_size,
+                                     tot_sizes_out.data[axis]);
+  }
 
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes_out,
+                                            tot_sizes_out.data);
+
+  // src_row_splits and src_row_ids are of dim num_axes_in-1 by num_srcs.
   Array2<int32_t *> src_row_splits, src_row_ids;
   GetRowInfoMulti(num_srcs, src, &src_row_splits, &src_row_ids);
   auto src_row_splits_acc = src_row_splits.Accessor(),
        src_row_ids_acc = src_row_ids.Accessor();
+
+
   offsets = offsets.To(c);
-  offsets_acc = offsets.Accessor();  // on GPU now (if we're using one)
+  offsets_acc = offsets.Accessor();
+  for (int32_t axis = 1; axis < num_axes_out; axis++) {
+    // we are not creating the actual row_ids here, except for axis 1; we are creating
+    // "composed row_ids" which map to the index on axis 0.
+    Array1<int32_t> row_ids = ans.RowIds(axis);
+    RowSplitsToRowIds(offsets.Row(axis), &row_ids);
+  }
+  ans.Layers()[0].row_splits = offsets.Row(1);
 
-  ParallelRunner pr(c);
-  std::vector<cudaStream_t> streams(num_axes);
-  int32_t num_jobs = num_srcs * 2;
+  // Caution: e.g. old_row_splits_acc(i) == src.RowSplits(i+1).
+  RowSplitsAccessor<5> new_row_splits_acc(ans);
+  RowIdsAccessor<5> new_row_ids_acc(ans);
 
-  // task_redirects is a device array (if using GPU).
-  // We have `num_axes - 1` different sets of row_splits/row_ids to
-  // populate but they have different sizes; the total number of distinct
-  // sizes is `num_axes`.
-  Array2<TaskRedirect> task_redirects(c, num_axes, num_jobs);
-  auto task_redirects_acc = task_redirects.Accessor();
-  // populate task_redirects (these allocate blocks of threads roughly
-  // proportionally to the amount of data to process from this source.
-  for (int32_t axis = 0; axis < num_axes; ++axis) {
-    streams[axis] = pr.NewStream();
-    With w(streams[axis]);
-    const int32_t *offsets = offsets_acc.Row(axis + 1);
-    // c->GetCudaStream() == stream[axis] as it has been overridden by With
-    GetTaskRedirect(c, num_srcs, offsets, task_redirects_acc.Row(axis));
+
+  uint32_t *merge_map_data;
+  if (merge_map != nullptr) {
+    *merge_map = Array1<uint32_t>(c, tot_sizes_out.data[num_axes_out - 1]);
+    merge_map_data = merge_map->Data();
+  } else {
+    merge_map_data = nullptr;
   }
 
-  for (int32_t axis = 0; axis < num_axes - 1; axis++) {
-    // first set the row-splits.
-    int32_t **this_src_row_splits = src_row_splits_acc.Row(axis),
-            **this_src_row_ids = src_row_ids_acc.Row(axis);
-    int32_t *this_dest_row_splits = ans.RowSplits(axis + 1).Data(),
-            *this_dest_row_ids = ans.RowIds(axis + 1).Data();
-    const int32_t *offsets_this_axis = offsets_acc.Row(axis + 1),
-                  *offsets_next_axis = offsets_acc.Row(axis + 2);
-    auto lambda_set_row_splits = [=] __host__ __device__(
-                                     int32_t src_idx, int32_t num_threads,
-                                     int32_t thread_idx) -> void {
-      // Reminder of how row_splits work dimensionally: they are a map
-      // from, e.g. an idx0 to an idx0x.   An offsets_acc(0,n) is
-      // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
-      int32_t this_offset = offsets_this_axis[src_idx],
-              next_offset = offsets_this_axis[src_idx + 1],
-              this_value_offset = offsets_next_axis[src_idx],
-              num_rows = next_offset - this_offset;
-      int32_t *src_row_splits_ptr = this_src_row_splits[src_idx];
-      // Using <= instead of < below causes threads for different src_idx to
-      // write a single overlapping value, but also ensures that the
-      // terminating value is written.  This only works because row_splits
-      // vectors always start with 0, which is not necessarily the case
-      // for row-ids.
-      for (; thread_idx <= num_rows; thread_idx += num_threads) {
-        this_dest_row_splits[this_offset + thread_idx] =
-            this_value_offset + src_row_splits_ptr[thread_idx];
+  // Note, the first row_splits vector was set above, ans.Layers()[0].row_splits
+  // = new_offsets.Row(1).
+
+  auto lambda_set_row_splits_and_ids = [=] __host__ __device__ (int32_t axis, int32_t i) -> void {
+    ++axis;  // We want this to be called starting with axis == 1, but Eval2
+             // doesn't suppor that.
+
+    // At this point, 1 < axis < num_axes_out.
+
+    // This kernel will be writing one or both of:
+    //    the row-splits for output-layer==`axis`/input-layer==`axis-1`,
+    //    the row-ids for output-layer=`axis-1`/input-layer==`axis-2`.
+
+
+    int32_t tot_size = tot_sizes_out(axis); // == offsets_acc(axis, num_srcs);
+    if (i > tot_size)
+      return;
+    int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
+    int32_t ans_idx0 = (i == tot_size ? num_srcs :
+                        composed_row_ids_data[i]),  // note: ans_idx0 == src_idx.
+        job_begin = offsets_acc(axis, ans_idx0),
+        job_this_idx0 = i - job_begin;
+    K2_CHECK_GE(job_this_idx0, 0);
+    int32_t row_split_value,  new_next_offset;
+    uint32_t *merge_map_data_local = nullptr;
+    if (axis + 1 < num_axes_out) {
+      new_next_offset = offsets_acc(axis + 1, ans_idx0);
+    } else {
+      merge_map_data_local = merge_map_data;
+    }
+    if (i < tot_size) {
+      // "prev" means for axis - 1
+      int32_t new_prev_offset = offsets_acc(axis - 1, ans_idx0);
+      if (axis != 1) {
+        // Write row-ids.
+        // this_new_row_ids = new_row_ids_acc(axis - 1);
+        int32_t *this_new_row_ids = composed_row_ids_data;
+        const int32_t *this_src_row_ids = src_row_ids_acc(axis - 2, ans_idx0);
+        int32_t old_row_id = this_src_row_ids[job_this_idx0],
+            new_row_id = old_row_id + new_prev_offset;
+        this_new_row_ids[i] = new_row_id;
+      }
+
+      if (merge_map_data_local != nullptr) {
+        merge_map_data_local[i] = ans_idx0 + num_srcs * job_this_idx0;
+      }
+
+      if (axis + 1 < num_axes_out) {
+        const int32_t *src_row_splits_data = src_row_splits_acc(axis - 1,
+                                                                ans_idx0);
+        int32_t old_row_split = src_row_splits_data[job_this_idx0];
+        row_split_value = new_next_offset + old_row_split;
+      }
+    } else {
+      row_split_value = new_next_offset;
+    }
+    if (axis + 1 < num_axes_out) {
+      int32_t *new_row_splits_data = new_row_splits_acc(axis);
+      new_row_splits_data[i] = row_split_value;
+    }
+  };
+
+  constexpr int32_t cutoff = 50000;
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t axis = 0; axis < num_axes_out - 1; axis++) {
+      int32_t this_size = tot_sizes_out(axis + 1);
+      for (int32_t i = 0; i <= this_size; i++)
+        lambda_set_row_splits_and_ids(axis, i);
+    }
+  } else if (max_tot_size * (num_axes_out - 1) < cutoff) {
+    Eval2Device(c, num_axes_out - 1, max_tot_size + 1, lambda_set_row_splits_and_ids);
+  } else {
+    // Loop in the kernel rather than submitting an excessive number of threads.
+    auto lambda_loop = [=] __device__ (int32_t i) {
+      for (int32_t axis = 0; axis < num_axes_out - 1; axis++) {
+        lambda_set_row_splits_and_ids(axis, i);
       }
     };
-
-    int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
-            target_num_loops = (is_cpu || tot_work > 1000000 ? 8 : 2);
-    EvalWithRedirect(streams[axis], num_jobs, task_redirects_acc.Row(axis),
-                     min_threads_per_job, tot_work, target_num_loops,
-                     lambda_set_row_splits);
-
-    {  // set the row-ids
-      auto lambda_set_row_ids = [=] __host__ __device__(
-                                    int32_t src_idx, int32_t num_threads,
-                                    int32_t thread_idx) -> void {
-        // Reminder of how row_ids work dimensionally: they are a map
-        // from, e.g. an idx01 to an idx0.   An offsets_acc(0,n) is
-        // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
-        int32_t this_offset = offsets_next_axis[src_idx],
-                next_offset = offsets_next_axis[src_idx + 1],
-                this_value_offset = offsets_this_axis[src_idx],
-                num_elems = next_offset - this_offset;
-        int32_t *src_row_ids_ptr = this_src_row_ids[src_idx];
-        for (; thread_idx < num_elems; thread_idx += num_threads) {
-          this_dest_row_ids[this_offset + thread_idx] =
-              this_value_offset + src_row_ids_ptr[thread_idx];
-        }
-      };
-      int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis + 1],
-              target_num_loops = (tot_work > 1000000 ? 4 : 2);
-      // TODO(haowen): maybe we should launch kernels for row_splits and row_ids
-      // in different streams
-      EvalWithRedirect(streams[axis + 1], num_jobs,
-                       task_redirects_acc.Row(axis + 1), min_threads_per_job,
-                       tot_work, target_num_loops, lambda_set_row_ids);
-    }
+    EvalDevice(c, max_tot_size + 1, lambda_loop);
   }
-  if (merge_map) {
-    std::vector<int32_t> num_elems_out(num_srcs);
-    for (int32_t i = 0; i < num_srcs; ++i)
-      num_elems_out[i] = src[i]->NumElements();
-    *merge_map = SizesToMergeMap(c, num_elems_out);
-  }
+#if !defined(NDEBUG)
+  ans.Check();
+#endif
   return ans;
 }
 
@@ -809,7 +821,12 @@ RaggedShape Cat(int32_t axis, int32_t num_srcs, RaggedShape **src,
                 Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
-  if (axis == 0) return CatAxis0(num_srcs, src, merge_map);
+  if (axis == 0) {
+    RaggedShape temp = StackAxis0(num_srcs, src, merge_map);
+    std::vector<RaggedShapeLayer> ans_layers(
+        temp.Layers().begin() + 1, temp.Layers().end());
+    return RaggedShape(ans_layers, false);
+  }
 
   K2_CHECK_LT(static_cast<uint32_t>(axis),
               static_cast<uint32_t>(src[0]->NumAxes()));
@@ -1027,20 +1044,7 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
   ContextPtr c = src[0]->Context();
 
   if (axis == 0) {
-    RaggedShape ans_appended = CatAxis0(num_srcs, src, merge_map);
-    ContextPtr cpu = GetCpuContext();
-    Array1<int32_t> row_splits(cpu, num_srcs + 1);
-    int32_t *row_splits_data = row_splits.Data();
-    for (int32_t i = 0; i < num_srcs; i++) row_splits_data[i] = src[i]->Dim0();
-    int32_t cutoff = 32;
-    if (num_srcs < cutoff) row_splits = row_splits.To(c);
-    ExclusiveSum(row_splits, &row_splits);
-    if (num_srcs >= cutoff) row_splits = row_splits.To(c);
-    int32_t num_elems = ans_appended.Dim0();
-    Array1<int32_t> row_ids(c, num_elems);
-    RowSplitsToRowIds(row_splits, &row_ids);
-    RaggedShape ans_layer0 = RaggedShape2(&row_splits, &row_ids, num_elems);
-    return ComposeRaggedShapes(ans_layer0, ans_appended);
+    return StackAxis0(num_srcs, src, merge_map);
   }
 
   K2_CHECK_LT(static_cast<uint32_t>(axis),
@@ -1951,7 +1955,8 @@ void RaggedShapeAxis0Splitter::Init(RaggedShape &src) {
 
   RowSplitsAccessor<5> src_row_splits_acc(src);
 
-  ArrayAccessor<int32_t *, 5> row_splits_out_acc;
+  SmallVec<int32_t *, 5> row_splits_out_acc;
+  K2_CHECK(num_layers_out <= 5);
   Array1<int32_t> garbage1(c, dim0 + dim0 + 1);  // won't be read.
   row_splits_out_acc.data[0] = garbage1.Data();
   for (int32_t l = 0; l < num_layers_out; l++) {

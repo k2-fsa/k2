@@ -447,7 +447,7 @@ std::vector<RaggedShape> UnsqueezeParallel(int32_t num_srcs, RaggedShape **src,
                                            int32_t axis);
 
 /*
-   Remove an axis; if it is not the last axis, this is done by appending lists
+   Remove an axis; if it is not the first or last axis, this is done by appending lists
    (effectively the axis is combined with the following axis).  If it is the
    last axis it is just removed and the number of elements may be changed.
    Effectively removes element numbered `axis` from the vector tot_sizes

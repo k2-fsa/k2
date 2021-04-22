@@ -350,10 +350,6 @@ void EvalGroupDevice(ContextPtr context, int32_t n, LambdaT &lambda) {
                                                             n, lambda);
 }
 
-// Also see EvalWithRedirect() in utils.h, and EvalWithRowIds()
-// in algorithms.h
-
-
 }  // namespace k2
 
 #endif  // K2_CSRC_EVAL_H_

@@ -347,15 +347,12 @@ void SortSublists(Ragged<T> *src, Array1<int32_t> *order /* = nullptr */) {
 }
 
 template <typename T>
-bool Ragged<T>::Validate(bool print_warnings) const {
+void Ragged<T>::Check() const {
   if (values.Dim() != shape.NumElements()) {
-    if (print_warnings) {
-      K2_LOG(WARNING) << "Dimension mismatch: values.Dim() == " << values.Dim()
-                      << " vs. shape.NumElements() == " << shape.NumElements();
-    }
-    return false;
+    K2_LOG(FATAL) << "Dimension mismatch: values.Dim() == " << values.Dim()
+                  << " vs. shape.NumElements() == " << shape.NumElements();
   }
-  return shape.Validate(print_warnings);
+  shape.Check();
 }
 
 // Defined here and not in ragged.h because it needs RemoveAxis(RaggedShape&,
