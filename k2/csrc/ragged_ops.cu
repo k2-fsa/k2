@@ -468,13 +468,10 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     GetTaskRedirect(c, ans_dim0, new_offsets_ptr, task_redirect_ptr);
   }
 
-  for (int32_t axis = num_axes - 2; axis >= 0; --axis) {
-    // Go in reverse order over the axes which is necessary because of
-    // how we re-use the row-ids memory for `composed_row_ids`, and the order
-    // in which we access and overwrite that.
-    if (axis != 0) {
-      // The following code doesn't work for axis 0, but we handled
-      // it above with ans.Layers()[0].row_splits = new_offsets.Row(1).
+  for (int32_t axis = 1; axis < num_axes; ++axis) {
+    if (axis < num_axes - 1) {
+      // do the row-splits of axis+1.  The row-splits for axis=1 was
+      // handled above with ans.Layers()[0].row_splits = new_offsets.Row(1).
       int32_t *this_new_row_splits = ans.RowSplits(axis + 1).Data();
       const int32_t *this_old_row_splits = src.RowSplits(axis + 1).Data();
 
@@ -504,22 +501,22 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     }
 
     {
-      int32_t *this_new_row_ids = ans.RowIds(axis + 1).Data();
-      const int32_t *this_old_row_ids = src.RowIds(axis + 1).Data();
+      int32_t *this_new_row_ids = ans.RowIds(axis).Data();
+      const int32_t *this_old_row_ids = src.RowIds(axis).Data();
 
-      // num_elems == tot_sizes_out[axis + 1].
-      int32_t num_elems = composed_row_ids[axis + 1].Dim();
-      const int32_t *composed_row_ids_data = composed_row_ids[axis + 1].Data();
+      // num_elems == tot_sizes_out[axis].
+      int32_t num_elems = composed_row_ids[axis].Dim();
+      const int32_t *composed_row_ids_data = composed_row_ids[axis].Data();
       int32_t *elem_indexes_data =
-          (elem_indexes != nullptr && axis == num_axes - 2 ?
+          (elem_indexes != nullptr && axis == num_axes - 1 ?
            elem_indexes->Data() : nullptr);
       K2_EVAL(c, num_elems, lambda_set_row_ids, (int32_t i) -> void {
           int32_t ans_idx0 = composed_row_ids_data[i],
-              job_begin = new_offsets_acc(axis + 1, ans_idx0),
+              job_begin = new_offsets_acc(axis, ans_idx0),
               job_this_idx0 = i - job_begin,
-              new_value_offset = new_offsets_acc(axis, ans_idx0),
-              old_value_offset = old_offsets_acc(axis, ans_idx0),
-              old_location_offset = old_offsets_acc(axis + 1, ans_idx0),
+              new_value_offset = new_offsets_acc(axis - 1, ans_idx0),
+              old_value_offset = old_offsets_acc(axis - 1, ans_idx0),
+              old_location_offset = old_offsets_acc(axis, ans_idx0),
               old_location = old_location_offset + job_this_idx0,
               old_value = this_old_row_ids[old_location],
               new_value = old_value + new_value_offset - old_value_offset;
