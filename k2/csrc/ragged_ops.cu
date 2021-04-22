@@ -504,102 +504,27 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     {
       int32_t *this_new_row_ids = ans.RowIds(axis + 1).Data();
       const int32_t *this_old_row_ids = src.RowIds(axis + 1).Data();
-      int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
-              target_num_loops = (is_cpu || tot_work > 1000000 ? 8 : 2);
 
-      if (elem_indexes == nullptr || axis != num_axes - 2) {
-        // If we don't need to write to `elem_indexes`...  [caution: the next
-        // code block differs from this only by a statement that sets
-        // `elem_indexes` and they should be kept in sync.]
-
-        auto lambda_set_row_ids = [=] __host__ __device__(
-                                      int32_t ans_idx0, int32_t num_threads,
-                                      int32_t thread_idx) -> void {
-          // Reminder of how row_ids work dimensionally: they are a map
-          // from, e.g. an idx01 to an idx0.   An offsets_acc(0,n) is
-          // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
-          // The locations in the row_ids array are as given by
-          // the `axis+1`'th row of `offsets`; the values in the array
-          // are related to those in the `axis`'th row.
-          int32_t this_new_offset = new_offsets_acc(axis + 1, ans_idx0),
-                  next_new_offset = new_offsets_acc(axis + 1, ans_idx0 + 1),
-                  num_elems = next_new_offset - this_new_offset,
-                  this_old_offset = old_offsets_acc(axis + 1, ans_idx0),
-                  value_offset = new_offsets_acc(axis, ans_idx0) -
-                                 old_offsets_acc(axis, ans_idx0);
-          for (; thread_idx < num_elems; thread_idx += num_threads) {
-            this_new_row_ids[this_new_offset + thread_idx] =
-                value_offset + this_old_row_ids[this_old_offset + thread_idx];
-          }
-        };
-        EvalWithRedirect(streams[axis + 1], num_jobs,
-                         task_redirects_acc.Row(axis + 1), min_threads_per_job,
-                         tot_work, target_num_loops, lambda_set_row_ids);
-
-        // num_elems == tot_sizes_out[axis + 1].
-        int32_t num_elems = composed_row_ids[axis + 1].Dim();
-        const int32_t *composed_row_ids_data = composed_row_ids[axis + 1].Data();
-        K2_EVAL(c, num_elems, lambda_set_row_ids, (int32_t i) -> void {
-            int32_t ans_idx0 = composed_row_ids_data[i],
-                job_begin = new_offsets_acc(axis + 1, ans_idx0),
-                job_this_idx0 = i - job_begin,
-                new_value_offset = new_offsets_acc(axis, ans_idx0),
-                old_value_offset = old_offsets_acc(axis, ans_idx0),
-                old_location_offset = old_offsets_acc(axis + 1, ans_idx0),
-                old_location = old_location_offset + job_this_idx0,
-                old_value = this_old_row_ids[old_location],
-                new_value = old_value + new_value_offset - old_value_offset;
-            K2_CHECK_EQ(this_new_row_ids[i], new_value);
-          });
-
-
-
-      } else {
-        int32_t *elem_indexes_data = elem_indexes->Data();
-        // We need to write to `elem_indexes`.  Note: this code block only
-        // differs from the above by an extra statement regarding
-        // `elem_indexes`. Comments have been removed.
-        auto lambda_set_row_ids_and_elem_indexes =
-            [=] __host__ __device__(int32_t ans_idx0, int32_t num_threads,
-                                    int32_t thread_idx) -> void {
-          int32_t this_new_offset = new_offsets_acc(axis + 1, ans_idx0),
-                  next_new_offset = new_offsets_acc(axis + 1, ans_idx0 + 1),
-                  num_elems = next_new_offset - this_new_offset,
-                  this_old_offset = old_offsets_acc(axis + 1, ans_idx0),
-                  value_offset = new_offsets_acc(axis, ans_idx0) -
-                                 old_offsets_acc(axis, ans_idx0);
-          for (; thread_idx < num_elems; thread_idx += num_threads) {
-            this_new_row_ids[this_new_offset + thread_idx] =
-                value_offset + this_old_row_ids[this_old_offset + thread_idx];
-            elem_indexes_data[this_new_offset + thread_idx] =
-                this_old_offset + thread_idx;
-          }
-        };
-        EvalWithRedirect(streams[axis + 1], num_jobs,
-                         task_redirects_acc.Row(axis + 1), min_threads_per_job,
-                         tot_work, target_num_loops,
-                         lambda_set_row_ids_and_elem_indexes);
-
-        // num_elems == tot_sizes_out[axis + 1].
-        int32_t num_elems = composed_row_ids[axis + 1].Dim();
-        const int32_t *composed_row_ids_data = composed_row_ids[axis + 1].Data();
-        K2_EVAL(c, num_elems, lambda_set_row_ids, (int32_t i) -> void {
-            int32_t ans_idx0 = composed_row_ids_data[i],
-                job_begin = new_offsets_acc(axis + 1, ans_idx0),
-                job_this_idx0 = i - job_begin,
-                new_value_offset = new_offsets_acc(axis, ans_idx0),
-                old_value_offset = old_offsets_acc(axis, ans_idx0),
-                old_location_offset = old_offsets_acc(axis + 1, ans_idx0),
-                old_location = old_location_offset + job_this_idx0,
-                old_value = this_old_row_ids[old_location],
-                new_value = old_value + new_value_offset - old_value_offset;
-            K2_CHECK_EQ(this_new_row_ids[i], new_value);
-            K2_CHECK_EQ(elem_indexes_data[i], old_location);
-          });
-
-
-
-      }
+      // num_elems == tot_sizes_out[axis + 1].
+      int32_t num_elems = composed_row_ids[axis + 1].Dim();
+      const int32_t *composed_row_ids_data = composed_row_ids[axis + 1].Data();
+      int32_t *elem_indexes_data =
+          (elem_indexes != nullptr && axis == num_axes - 2 ?
+           elem_indexes->Data() : nullptr);
+      K2_EVAL(c, num_elems, lambda_set_row_ids, (int32_t i) -> void {
+          int32_t ans_idx0 = composed_row_ids_data[i],
+              job_begin = new_offsets_acc(axis + 1, ans_idx0),
+              job_this_idx0 = i - job_begin,
+              new_value_offset = new_offsets_acc(axis, ans_idx0),
+              old_value_offset = old_offsets_acc(axis, ans_idx0),
+              old_location_offset = old_offsets_acc(axis + 1, ans_idx0),
+              old_location = old_location_offset + job_this_idx0,
+              old_value = this_old_row_ids[old_location],
+              new_value = old_value + new_value_offset - old_value_offset;
+          this_new_row_ids[i] = new_value;
+          if (elem_indexes_data != nullptr)
+            elem_indexes_data[i] = old_location;
+        });
     }
   }
 #if !defined(NDEBUG)
