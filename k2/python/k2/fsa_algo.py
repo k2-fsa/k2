@@ -806,7 +806,6 @@ def invert(fsa: Fsa,
       `fsa` is top-sorted.
       If ret_arc_map is True, return an extra arc map.
     '''
-    assert fsa.requires_grad is False
     if isinstance(fsa.aux_labels, torch.Tensor):
         if ret_arc_map is False:
             return fsa.invert()
