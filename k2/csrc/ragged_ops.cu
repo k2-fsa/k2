@@ -485,16 +485,16 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
                               composed_row_ids_data[i]),
               job_begin = new_offsets_acc(axis, ans_idx0),
               job_this_idx0 = i - job_begin,
-              new_offset = new_offsets_acc(axis + 1, ans_idx0),
+              new_value_offset = new_offsets_acc(axis + 1, ans_idx0),
               row_split_value;
           K2_CHECK_GE(job_this_idx0, 0);
           if (i < num_rows) {
             int32_t old_offset = old_offsets_acc(axis, ans_idx0),
                 old_i = old_offset + job_this_idx0,
-                value_offset = new_offset - old_offsets_acc(axis + 1, ans_idx0);
+                value_offset = new_value_offset - old_offsets_acc(axis + 1, ans_idx0);
             row_split_value = value_offset + this_old_row_splits[old_i];
           } else {
-            row_split_value = new_offset;
+            row_split_value = new_value_offset;
           }
           this_new_row_splits[i] = row_split_value;
         });
@@ -535,6 +535,25 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
         EvalWithRedirect(streams[axis + 1], num_jobs,
                          task_redirects_acc.Row(axis + 1), min_threads_per_job,
                          tot_work, target_num_loops, lambda_set_row_ids);
+
+        // num_elems == tot_sizes_out[axis + 1].
+        int32_t num_elems = composed_row_ids[axis + 1].Dim();
+        const int32_t *composed_row_ids_data = composed_row_ids[axis + 1].Data();
+        K2_EVAL(c, num_elems, lambda_set_row_ids, (int32_t i) -> void {
+            int32_t ans_idx0 = composed_row_ids_data[i],
+                job_begin = new_offsets_acc(axis + 1, ans_idx0),
+                job_this_idx0 = i - job_begin,
+                new_value_offset = new_offsets_acc(axis, ans_idx0),
+                old_value_offset = old_offsets_acc(axis, ans_idx0),
+                old_location_offset = old_offsets_acc(axis + 1, ans_idx0),
+                old_location = old_location_offset + job_this_idx0,
+                old_value = this_old_row_ids[old_location],
+                new_value = old_value + new_value_offset - old_value_offset;
+            K2_CHECK_EQ(this_new_row_ids[i], new_value);
+          });
+
+
+
       } else {
         int32_t *elem_indexes_data = elem_indexes->Data();
         // We need to write to `elem_indexes`.  Note: this code block only
@@ -560,6 +579,26 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
                          task_redirects_acc.Row(axis + 1), min_threads_per_job,
                          tot_work, target_num_loops,
                          lambda_set_row_ids_and_elem_indexes);
+
+        // num_elems == tot_sizes_out[axis + 1].
+        int32_t num_elems = composed_row_ids[axis + 1].Dim();
+        const int32_t *composed_row_ids_data = composed_row_ids[axis + 1].Data();
+        K2_EVAL(c, num_elems, lambda_set_row_ids, (int32_t i) -> void {
+            int32_t ans_idx0 = composed_row_ids_data[i],
+                job_begin = new_offsets_acc(axis + 1, ans_idx0),
+                job_this_idx0 = i - job_begin,
+                new_value_offset = new_offsets_acc(axis, ans_idx0),
+                old_value_offset = old_offsets_acc(axis, ans_idx0),
+                old_location_offset = old_offsets_acc(axis + 1, ans_idx0),
+                old_location = old_location_offset + job_this_idx0,
+                old_value = this_old_row_ids[old_location],
+                new_value = old_value + new_value_offset - old_value_offset;
+            K2_CHECK_EQ(this_new_row_ids[i], new_value);
+            K2_CHECK_EQ(elem_indexes_data[i], old_location);
+          });
+
+
+
       }
     }
   }
