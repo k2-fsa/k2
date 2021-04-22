@@ -666,8 +666,10 @@ static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
     if (merge_map)
       *merge_map =
           Arange<uint32_t>(src[0]->Context(), 0, src[0]->NumElements());
-    return **src;
+    RaggedShape top_layer = TrivialShape(src[0]->Context(), src[0]->Dim0());
+    return ComposeRaggedShapes(top_layer, **src);
   }
+  // We can't handle num_srcs == 0 because we won't have a context object.
   K2_CHECK_GT(num_srcs, 1);
 
   int32_t num_axes_in = src[0]->NumAxes(),

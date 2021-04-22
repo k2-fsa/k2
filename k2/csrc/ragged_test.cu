@@ -1783,6 +1783,9 @@ TEST(RaggedShapeOpsTest, TestStack) {
         for (int32_t i = 0; i != 3; ++i) {
           CheckArrayData(result.RowSplits(i + 1), expected_row_splits[i]);
         }
+        RaggedShape result2 = Stack(axis, 1, shapes_ptr.data());
+        RaggedShape orig = result2.Index(0, 0);
+        EXPECT_TRUE(Equal(orig, shapes[0]));
       }
       {
         // axis == 1
