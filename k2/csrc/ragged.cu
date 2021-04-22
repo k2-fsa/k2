@@ -65,7 +65,8 @@ void PrintRaggedShapePart(std::ostream &stream, const RaggedShape &shape,
 }
 
 
-std::ostream &OutputBadRaggedShape(std::ostream &stream, const RaggedShape &shape) {
+std::ostream &OutputBadRaggedShape(std::ostream &stream,
+                                   const RaggedShape &shape) {
   stream << "Invalid RaggedShape: { ";
   stream << " num-axes = " << shape.NumAxes();
   for (int32_t i = 1; i < shape.NumAxes(); i++) {
@@ -336,17 +337,19 @@ void RaggedShape::Check() const {
                 if (i < num_rows) {
                   int32_t next_idx = row_splits_data[i + 1];
                   if (next_idx < this_idx) {
-                    K2_LOG(FATAL) << "Error validating row-splits, i=" << num_rows
+                    K2_LOG(FATAL) << "Error validating row-splits, i="
+                                  << num_rows
                                   << "row_splits[i]=" << this_idx
                                   << "row_splits[i+1]=" << next_idx;
                   }
                 } else {
                   K2_CHECK(i == num_rows);
                   if (cached_tot_size != -1 && this_idx != cached_tot_size) {
-                    K2_LOG(FATAL) << "Error validating row-splits, i=" << num_rows
+                    K2_LOG(FATAL) << "Error validating row-splits, i="
+                                  << num_rows
                                   << "==num_rows, row_splits[i]=" << this_idx
-                                  << " but expected it to equal cached-tot-size="
-                                  << cached_tot_size << "; layer=" << layer;
+                                  << " but expected it to equal cached-tot-size"
+                                  "=" << cached_tot_size << "; layer=" << layer;
                   }
                 }
               });
@@ -369,7 +372,8 @@ void RaggedShape::Check() const {
                     i < row_splits_data[this_row] ||
                     i >= row_splits_data[this_row + 1]) {
                   K2_LOG(FATAL) << "Failed checking row_ids: row_ids[" << i
-                                << "]=" << this_row << ", row_splits_data[n,n+1]="
+                                << "]=" << this_row
+                                << ", row_splits_data[n,n+1]="
                                 << row_splits_data[this_row] << ","
                                 << row_splits_data[this_row+1] << ", layer="
                                 << layer;
@@ -393,8 +397,8 @@ void RaggedShape::Check() const {
                 rsd.row_splits.Dim() - 1;
             K2_EVAL(c, 1, lambda_check_num_elems, (int32_t i) -> void {
                 if (*num_elems_ptr != next_num_rows) {
-                  K2_LOG(FATAL) << "Ragged shape has num_elems=" << *num_elems_ptr
-                                << " for layers_[" << layer
+                  K2_LOG(FATAL) << "Ragged shape has num_elems="
+                                << *num_elems_ptr << " for layers_[" << layer
                                 << "], vs. num_rows=" << next_num_rows
                                 << "for the next layer.";
                 }});
@@ -466,36 +470,38 @@ void RaggedShape::Check() const {
       // different branches of statements go in different warps.
       max_size = block * ((max_size + block - 1) / block);
       K2_EVAL2(c, 2 * num_layers, max_size, lambda_check_ragged_shape,
-               (int32_t i, int32_t j) -> void {
+             (int32_t i, int32_t j) -> void {
                  int32_t layer = i / 2,
                      job_type = i % 2;
-                 const RaggedShapeLayerInfo &this_info = layers_info.data[layer];
-                 if (job_type == 0) {  // Checking row_splits
-                   if (j > this_info.num_rows)
-                     return;
-                   int32_t this_elem = this_info.row_splits[j];
-                   K2_CHECK_GE(this_elem, 0) << " layers[" << layer
-                                             << "].row_splits should be >= 0.";
+               const RaggedShapeLayerInfo &this_info = layers_info.data[layer];
+               if (job_type == 0) {  // Checking row_splits
+                 if (j > this_info.num_rows)
+                   return;
+                 int32_t this_elem = this_info.row_splits[j];
+                 K2_CHECK_GE(this_elem, 0) << " layers[" << layer
+                                           << "].row_splits should be >= 0.";
                    if (j == 0) {
                      K2_CHECK_EQ(this_elem, 0) << " layers[" << layer
-                                               << "].row_splits[0] should be 0.";
+                                               << "].row_splits[0] != 0";
                    }
                    if (j == this_info.num_rows) {
                      if (this_info.num_elems >= 0) {
                        K2_CHECK_EQ(this_elem, this_info.num_elems)
-                           << " layers[" << layer << "]: last elem of row_splits "
-                           << "does not have the expected value.";
+                           << " layers[" << layer << "]: last elem of "
+                           << "row_splits does not have the expected value.";
                      } else if (layer + 1 < num_layers) {
-                       int32_t next_layer_num_rows = layers_info.data[layer+1].num_rows;
+                       int32_t next_layer_num_rows =
+                           layers_info.data[layer+1].num_rows;
                        K2_CHECK_EQ(this_elem, next_layer_num_rows)
-                           << " layers[" << layer << "]: last elem of row_splits "
-                           << "does not have the expected value vs. next layer's "
-                           "num-rows";
+                           << " layers[" << layer << "]: last elem of "
+                           << "row_splits does not have the expected value "
+                           "vs. next layer's num-rows";
                      }
                    } else {
                      int32_t next_elem = this_info.row_splits[j+1];
                      K2_CHECK_GE(next_elem, this_elem)
-                         << " layers[" << layer << "].row_splits is not monotonic.";
+                         << " layers[" << layer << "].row_splits is not "
+                         "monotonic.";
                    }
                  } else {  // Checking row_ids
                    if (this_info.row_ids == nullptr)
@@ -503,12 +509,14 @@ void RaggedShape::Check() const {
                    if (j >= this_info.num_elems)
                      return;
                    int32_t this_row = this_info.row_ids[j];
-                   K2_CHECK_GE(this_row, 0) << " layers[" << layer << "].row_ids["
-                                            << j << "] < 0.";
+                   K2_CHECK_GE(this_row, 0) << " layers[" << layer
+                                            << "].row_ids[" << j << "] < 0.";
                    K2_CHECK_LT(this_row, this_info.num_rows)
-                       << " layers[" << layer << "].row_ids[" << j << "] >= num_rows.";
+                       << " layers[" << layer << "].row_ids[" << j
+                       << "] >= num_rows.";
                    K2_CHECK_GE(j, this_info.row_splits[this_row])
-                       << " j < layers[" << layer << "].row_splits[" << this_row << "];";
+                       << " j < layers[" << layer << "].row_splits["
+                       << this_row << "];";
                    K2_CHECK_LT(j, this_info.row_splits[this_row+1])
                        << " j >= layers[" << layer << "].row_splits["
                        << this_row << "+1];";
