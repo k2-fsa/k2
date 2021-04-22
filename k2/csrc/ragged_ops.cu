@@ -479,9 +479,6 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     if (axis < num_axes - 1) {
       // do the row-splits of axis+1.  The row-splits for axis=1 was
       // handled above with ans.Layers()[0].row_splits = new_offsets.Row(1).
-      int32_t *this_new_row_splits = ans.RowSplits(axis + 1).Data();
-      const int32_t *this_old_row_splits = src.RowSplits(axis + 1).Data();
-
 
       // num_rows == tot_sizes_out[axis].
       int32_t num_rows = composed_row_ids[axis].Dim();
@@ -491,7 +488,7 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
                               composed_row_ids_data[i]),
               job_begin = new_offsets_acc(axis, ans_idx0),
               job_this_idx0 = i - job_begin,
-              new_value_offset = new_offsets_acc(axis + 1, ans_idx0),
+              new_next_offset = new_offsets_acc(axis + 1, ans_idx0),
               row_split_value;
           const int32_t *old_row_splits_data = old_row_splits_acc(axis);
           int32_t *new_row_splits_data = new_row_splits_acc(axis);
@@ -500,10 +497,10 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
           if (i < num_rows) {
             int32_t old_offset = old_offsets_acc(axis, ans_idx0),
                 old_i = old_offset + job_this_idx0,
-                value_offset = new_value_offset - old_offsets_acc(axis + 1, ans_idx0);
-            row_split_value = value_offset + old_row_splits_data[old_i];
+                next_offset = new_next_offset - old_offsets_acc(axis + 1, ans_idx0);
+            row_split_value = next_offset + old_row_splits_data[old_i];
           } else {
-            row_split_value = new_value_offset;
+            row_split_value = new_next_offset;
           }
           new_row_splits_data[i] = row_split_value;
         });
@@ -525,15 +522,15 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
           int32_t ans_idx0 = composed_row_ids_data[i],
               job_begin = new_offsets_acc(axis, ans_idx0),
               job_this_idx0 = i - job_begin,
-              new_value_offset = new_offsets_acc(axis - 1, ans_idx0),
-              old_value_offset = old_offsets_acc(axis - 1, ans_idx0),
-              old_location_offset = old_offsets_acc(axis, ans_idx0),
-              old_location = old_location_offset + job_this_idx0,
-              old_value = this_old_row_ids[old_location],
-              new_value = old_value + new_value_offset - old_value_offset;
+              new_prev_offset = new_offsets_acc(axis - 1, ans_idx0),
+              old_prev_offset = old_offsets_acc(axis - 1, ans_idx0),
+              old_offset = old_offsets_acc(axis, ans_idx0),
+              old_idx = old_offset + job_this_idx0,
+              old_value = this_old_row_ids[old_idx],
+              new_value = old_value + new_prev_offset - old_prev_offset;
           this_new_row_ids[i] = new_value;
           if (elem_indexes_data != nullptr)
-            elem_indexes_data[i] = old_location;
+            elem_indexes_data[i] = old_idx;
         });
     }
   }
