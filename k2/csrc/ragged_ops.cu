@@ -511,9 +511,6 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     }
 
     {
-      int32_t *this_new_row_ids = ans.RowIds(axis).Data();
-      const int32_t *this_old_row_ids = src.RowIds(axis).Data();
-
       // num_elems == tot_sizes_out[axis].
       int32_t num_elems = composed_row_ids[axis].Dim();
       int32_t *elem_indexes_data =
@@ -521,6 +518,10 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
            elem_indexes->Data() : nullptr);
       K2_EVAL(c, num_elems, lambda_set_row_ids, (int32_t i) -> void {
           const int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
+          int32_t *this_new_row_ids = new_row_ids_acc(axis - 1);
+          const int32_t *this_old_row_ids = old_row_ids_acc(axis - 1);
+
+
           int32_t ans_idx0 = composed_row_ids_data[i],
               job_begin = new_offsets_acc(axis, ans_idx0),
               job_this_idx0 = i - job_begin,
