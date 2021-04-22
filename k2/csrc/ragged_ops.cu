@@ -475,58 +475,69 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   RowIdsAccessor<5> old_row_ids_acc(src),
       new_row_ids_acc(ans);
 
-  for (int32_t axis = 1; axis < num_axes; ++axis) {
+  int32_t *elem_indexes_data = (elem_indexes != nullptr ?
+                                elem_indexes->Data() : nullptr);
 
-      // tot_size == tot_sizes_out[axis].
-      int32_t tot_size = composed_row_ids[axis].Dim();
-      int32_t *elem_indexes_data =
-          (elem_indexes != nullptr && axis == num_axes - 1 ?
-           elem_indexes->Data() : nullptr);
+  auto lambda_set_row_splits_and_ids = [=] __host__ __device__ (int32_t axis, int32_t i) -> void {
+    axis++;  // make it one-based.
+    int32_t tot_size = new_offsets_acc(axis, ans_dim0);
+    if (i > tot_size)
+      return;
+    int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
+    int32_t ans_idx0 = (i == tot_size ? ans_dim0 :
+                        composed_row_ids_data[i]),
+    job_begin = new_offsets_acc(axis, ans_idx0),
+    job_this_idx0 = i - job_begin;
+    K2_CHECK_GE(job_this_idx0, 0);
+    int32_t row_split_value,
+    new_next_offset;
+    if (axis + 1 < num_axes)
+      new_next_offset = new_offsets_acc(axis + 1, ans_idx0);
+    if (i < tot_size) {
+      // this_new_row_ids = new_row_ids_acc(axis - 1);
+      int32_t *this_new_row_ids = composed_row_ids_data;
+      const int32_t *this_old_row_ids = old_row_ids_acc(axis - 1);
+      // "prev" means for axis - 1
+      int32_t new_prev_offset = new_offsets_acc(axis - 1, ans_idx0),
+          old_prev_offset = old_offsets_acc(axis - 1, ans_idx0),
+          old_offset = old_offsets_acc(axis, ans_idx0),
+          old_idx = old_offset + job_this_idx0,
+          old_row_id = this_old_row_ids[old_idx],
+          new_row_id = old_row_id + new_prev_offset - old_prev_offset;
+      this_new_row_ids[i] = new_row_id;
 
-      K2_EVAL(c, tot_size + 1, lambda_set_row_splits_and_ids, (int32_t i) -> void {
-          int32_t tot_size = new_offsets_acc(axis, ans_dim0);
-          int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
-          int32_t ans_idx0 = (i == tot_size ? ans_dim0 :
-                              composed_row_ids_data[i]),
-              job_begin = new_offsets_acc(axis, ans_idx0),
-              job_this_idx0 = i - job_begin;
-          K2_CHECK_GE(job_this_idx0, 0);
-          if (i <= tot_size) {  // i<=tot_size always true for now
-            int32_t row_split_value,
-                new_next_offset;
-            if (axis + 1 < num_axes)
-              new_next_offset = new_offsets_acc(axis + 1, ans_idx0);
-            if (i < tot_size) {
-              // this_new_row_ids = new_row_ids_acc(axis - 1);
-              int32_t *this_new_row_ids = composed_row_ids_data;
-              const int32_t *this_old_row_ids = old_row_ids_acc(axis - 1);
-              // "prev" means for axis - 1
-              int32_t new_prev_offset = new_offsets_acc(axis - 1, ans_idx0),
-                  old_prev_offset = old_offsets_acc(axis - 1, ans_idx0),
-                  old_offset = old_offsets_acc(axis, ans_idx0),
-                  old_idx = old_offset + job_this_idx0,
-                  old_row_id = this_old_row_ids[old_idx],
-                  new_row_id = old_row_id + new_prev_offset - old_prev_offset;
-              this_new_row_ids[i] = new_row_id;
+      if (elem_indexes_data != nullptr && axis == num_axes - 1)
+        elem_indexes_data[i] = old_idx;
 
-              if (elem_indexes_data != nullptr)
-                elem_indexes_data[i] = old_idx;
+      if (axis + 1 < num_axes) {
+        int32_t old_next_offset = old_offsets_acc(axis + 1, ans_idx0),
+            next_offset_diff = new_next_offset - old_next_offset;
+        const int32_t *old_row_splits_data = old_row_splits_acc(axis);
+        row_split_value = next_offset_diff + old_row_splits_data[old_idx];
+      }
+    } else {
+      row_split_value = new_next_offset;
+    }
+    if (axis + 1 < num_axes) {
+      int32_t *new_row_splits_data = new_row_splits_acc(axis);
+      new_row_splits_data[i] = row_split_value;
+    }
+  };
 
-              if (axis + 1 < num_axes) {
-                int32_t old_next_offset = old_offsets_acc(axis + 1, ans_idx0),
-                    next_offset_diff = new_next_offset - old_next_offset;
-                const int32_t *old_row_splits_data = old_row_splits_acc(axis);
-                row_split_value = next_offset_diff + old_row_splits_data[old_idx];
-              }
-            } else {
-              row_split_value = new_next_offset;
-            }
-            if (axis + 1 < num_axes) {
-              int32_t *new_row_splits_data = new_row_splits_acc(axis);
-              new_row_splits_data[i] = row_split_value;
-            }
-          }
-        });
+  int32_t max_tot_size = 0;
+  for (int32_t i = 0; i < num_axes; i++)
+    max_tot_size = std::max<int32_t>(max_tot_size,
+                                     tot_sizes_out_cpu_data[i]);
+  constexpr int32_t cutoff = 50;
+  if (max_tot_size * (num_axes - 1) < cutoff) {
+    Eval2(c, num_axes - 1, max_tot_size + 1, lambda_set_row_splits_and_ids);
+  } else {
+    // Loop in the kernel rather than submitting an excessive number of threads.
+    K2_EVAL(c, max_tot_size + 1, lambda_set_row_splits_and_ids_loop, (int32_t i) -> void {
+        for (int32_t axis = 0; axis < num_axes - 1; axis++) {
+          lambda_set_row_splits_and_ids(i, axis);
+        }
+      });
   }
 #if !defined(NDEBUG)
   ans.Check();
