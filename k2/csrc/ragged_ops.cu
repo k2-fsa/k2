@@ -444,8 +444,7 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
       composed_row_ids[axis] = Array1<int32_t>(c, num_elems);
     } else {
       // Re-use this same memory although they are logically distinct.
-      // TODO: composed_row_ids[axis] = ans.RowIds(axis);
-      composed_row_ids[axis] = Array1<int32_t>(c, num_elems);
+      composed_row_ids[axis] = ans.RowIds(axis);
     }
     RowSplitsToRowIds(new_offsets.Row(axis), &composed_row_ids[axis]);
   }
@@ -469,7 +468,10 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     GetTaskRedirect(c, ans_dim0, new_offsets_ptr, task_redirect_ptr);
   }
 
-  for (int32_t axis = 0; axis < num_axes - 1; ++axis) {
+  for (int32_t axis = num_axes - 2; axis >= 0; --axis) {
+    // Go in reverse order over the axes which is necessary because of
+    // how we re-use the row-ids memory for `composed_row_ids`, and the order
+    // in which we access and overwrite that.
     if (axis != 0) {
       // The following code doesn't work for axis 0, but we handled
       // it above with ans.Layers()[0].row_splits = new_offsets.Row(1).
