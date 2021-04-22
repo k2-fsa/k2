@@ -484,6 +484,7 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
            elem_indexes->Data() : nullptr);
 
       K2_EVAL(c, tot_size + 1, lambda_set_row_splits_and_ids, (int32_t i) -> void {
+          int32_t tot_size = new_offsets_acc(axis, ans_dim0);
           int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
           int32_t ans_idx0 = (i == tot_size ? ans_dim0 :
                               composed_row_ids_data[i]),
