@@ -219,6 +219,9 @@ class RaggedShape {
 template <typename T, int MAX_DIM>
 struct SmallVec {
   T data[MAX_DIM];
+  __host__ __device__ T operator()(int32_t i) const {
+    return data[i];
+  }
 };
 
 // call this variable `xxx_row_splits_acc`

@@ -474,13 +474,19 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
       new_row_splits_acc(ans);
   RowIdsAccessor<5> old_row_ids_acc(src),
       new_row_ids_acc(ans);
+  SmallVec<int32_t, 5> tot_sizes;
+  for (int32_t i = 0; i < num_axes; i++)
+    tot_sizes.data[i] = tot_sizes_out_cpu_data[i];
 
   int32_t *elem_indexes_data = (elem_indexes != nullptr ?
                                 elem_indexes->Data() : nullptr);
 
+  // Note, the first row_splits vector was set above, ans.Layers()[0].row_splits
+  // = new_offsets.Row(1).
+
   auto lambda_set_row_splits_and_ids = [=] __host__ __device__ (int32_t axis, int32_t i) -> void {
     axis++;  // make it one-based.
-    int32_t tot_size = new_offsets_acc(axis, ans_dim0);
+    int32_t tot_size = tot_sizes(axis); // == new_offsets_acc(axis, ans_dim0);
     if (i > tot_size)
       return;
     int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
@@ -528,14 +534,14 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   for (int32_t i = 0; i < num_axes; i++)
     max_tot_size = std::max<int32_t>(max_tot_size,
                                      tot_sizes_out_cpu_data[i]);
-  constexpr int32_t cutoff = 50;
+  constexpr int32_t cutoff = 50000;
   if (max_tot_size * (num_axes - 1) < cutoff) {
     Eval2(c, num_axes - 1, max_tot_size + 1, lambda_set_row_splits_and_ids);
   } else {
     // Loop in the kernel rather than submitting an excessive number of threads.
     K2_EVAL(c, max_tot_size + 1, lambda_set_row_splits_and_ids_loop, (int32_t i) -> void {
         for (int32_t axis = 0; axis < num_axes - 1; axis++) {
-          lambda_set_row_splits_and_ids(i, axis);
+          lambda_set_row_splits_and_ids(axis, i);
         }
       });
   }
