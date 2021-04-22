@@ -216,17 +216,19 @@ void RaggedShape::Populate() {
   }
 }
 
-RaggedShape RaggedShape::To(ContextPtr ctx) const {
+RaggedShape RaggedShape::To(ContextPtr ctx,
+                            bool copy_all) const {
   NVTX_RANGE(K2_FUNC);
   if (ctx->IsCompatible(*Context())) return *this;
-  std::vector<RaggedShapeLayer> axes(layers_.size());
-  int32_t num_axes = NumAxes();
-  for (int32_t i = 1; i < num_axes; ++i) {
-    axes[i - 1].row_splits = layers_[i - 1].row_splits.To(ctx);
-    // leave row_ids and cached_tot_size unset
-    axes[i - 1].cached_tot_size = -1;
+  std::vector<RaggedShapeLayer> layers(layers_.size());
+  int32_t num_layers = layers.size();
+  for (int32_t i = 0; i < num_layers; i++) {
+    layers[i].row_splits = layers_[i].row_splits.To(ctx);
+    layers[i].cached_tot_size = layers_[i].cached_tot_size;
+    if (copy_all && layers_[i].row_ids.IsValid())
+      layers[i].row_ids = layers_[i].row_ids.To(ctx);
   }
-  return RaggedShape(axes);
+  return RaggedShape(layers);
 }
 
 RaggedShapeIndexIterator RaggedShape::Iterator() {
@@ -281,6 +283,14 @@ void RaggedShape::Check() const {
   ContextPtr &c = Context();
   int32_t num_layers = layers_.size();
 
+  /*
+    If debugging ragged-shape validation failures, uncommenting the following may help
+    (although it would be slow).
+  if (c->GetDeviceType() != kCpu) {
+    this->To(GetCpuContext(), true).Check();
+    return;
+  }
+  */
   try {
     if (c->GetDeviceType() == kCpu) {
       // This branch should be more efficient on CPU, although

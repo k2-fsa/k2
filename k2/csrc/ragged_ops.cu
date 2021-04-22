@@ -449,8 +449,8 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
       new_row_splits_acc(ans);
   RowIdsAccessor<5> old_row_ids_acc(src),
       new_row_ids_acc(ans);
-  SmallVec<int32_t, 5> tot_sizes;
-
+  SmallVec<int32_t, 6> tot_sizes;
+  K2_CHECK(num_axes <= 6);
   int32_t max_tot_size = 0;
   for (int32_t i = 0; i < num_axes; i++) {
     tot_sizes.data[i] = tot_sizes_out_cpu_data[i];
@@ -687,7 +687,8 @@ static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
   auto offsets_acc = offsets.Accessor();
 
 
-  SmallVec<int32_t, 5> tot_sizes_out;
+  SmallVec<int32_t, 6> tot_sizes_out;
+  K2_CHECK(num_axes_out <= 6);
   int32_t max_tot_size = 0;
   for (int32_t axis = 0; axis < num_axes_out; axis++) {
     tot_sizes_out.data[axis] = offsets_acc(axis, num_srcs);
@@ -1953,6 +1954,7 @@ void RaggedShapeAxis0Splitter::Init(RaggedShape &src) {
   RowSplitsAccessor<5> src_row_splits_acc(src);
 
   SmallVec<int32_t *, 5> row_splits_out_acc;
+  K2_CHECK(num_layers_out <= 5);
   Array1<int32_t> garbage1(c, dim0 + dim0 + 1);  // won't be read.
   row_splits_out_acc.data[0] = garbage1.Data();
   for (int32_t l = 0; l < num_layers_out; l++) {

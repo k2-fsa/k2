@@ -204,8 +204,12 @@ class RaggedShape {
   // Check the RaggedShape for consistency; die on failure.
   void Check() const;
 
-  // Convert to possibly different context.
-  RaggedShape To(ContextPtr ctx) const;
+  /*
+    Copy to a possibly different device. If `copy_all == true`, will copy the
+    row_ids rather than reconstructing it on the dest device; this is useful for
+    debug.
+   */
+  RaggedShape To(ContextPtr ctx, bool copy_all = false) const;
 
  private:
   // TODO: could probably do away with the std::vector and have a max size and
@@ -439,8 +443,13 @@ struct Ragged {
   */
   Ragged<T> RemoveAxis(int32_t axis);
 
-  Ragged<T> To(ContextPtr ctx) const {
-    RaggedShape new_shape = shape.To(ctx);
+  /*
+    Copy to a possibly different device. If `copy_all == true`, will copy
+    the cached_tot_size and row_ids rather than reconstructing them on the dest
+    device; this is useful for debug.
+   */
+  Ragged<T> To(ContextPtr ctx, bool copy_all = false) const {
+    RaggedShape new_shape = shape.To(ctx, copy_all);
     Array1<T> new_values = values.To(ctx);
     return Ragged<T>(new_shape, new_values);
   }
