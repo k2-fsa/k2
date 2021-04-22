@@ -421,15 +421,35 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
       new_offsets;              // num_axes by (ans_dim0 + 1).
   GetOldAndNewOffsets(src, new2old, &old_offsets, &new_offsets);
 
+  // tot_sizes_out is of dimension (num_axes), tot_sizes_out[i] is ans.TotSize(i)
   Array1<int32_t> tot_sizes_out =
       Array1<int32_t>(new_offsets.Col(ans_dim0)).To(GetCpuContext());
 
-  if (elem_indexes) *elem_indexes = Array1<int32_t>(c, tot_sizes_out.Back());
+  int32_t *tot_sizes_out_cpu_data = tot_sizes_out.Data();
+  if (elem_indexes)
+    *elem_indexes = Array1<int32_t>(c, tot_sizes_out_cpu_data[num_axes - 1]);
 
-  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.Data());
+
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out_cpu_data);
 
   auto old_offsets_acc = old_offsets.Accessor(),
-       new_offsets_acc = new_offsets.Accessor();
+      new_offsets_acc = new_offsets.Accessor();
+
+  // composed_row_ids are row_ids vectors that map to indexes i <= 0 < num_srcs;
+  // they are row_ids vectors for each axis composed with all previous axes.
+  std::vector<Array1<int32_t> > composed_row_ids(num_axes);
+  for (int32_t axis = 0; axis < num_axes; axis++) {
+    int32_t num_elems = tot_sizes_out_cpu_data[axis];
+    if (axis == 0) {
+      composed_row_ids[axis] = Array1<int32_t>(c, num_elems);
+    } else {
+      // Re-use this same memory although they are logically distinct.
+      // TODO: composed_row_ids[axis] = ans.RowIds(axis);
+      composed_row_ids[axis] = Array1<int32_t>(c, num_elems);
+    }
+    RowSplitsToRowIds(new_offsets.Row(axis), &composed_row_ids[axis]);
+  }
+
 
   ParallelRunner pr(c);
   std::vector<cudaStream_t> streams(num_axes);
@@ -456,40 +476,29 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
       int32_t *this_new_row_splits = ans.RowSplits(axis + 1).Data();
       const int32_t *this_old_row_splits = src.RowSplits(axis + 1).Data();
 
-      auto lambda_set_row_splits = [=] __host__ __device__(
-                                       int32_t ans_idx0, int32_t num_threads,
-                                       int32_t thread_idx) -> void {
-        //  0 <= ans_idx0 < ans_dim0; and 0 <= thread_idx < num_threads,
-        //  num_threads may have any value > 0 as far as this code is concerned.
-        //
-        // Reminder of how row_splits work dimensionally: they are a map
-        // from, e.g. an idx0 to an idx0x.   An offsets_acc(0,n) is
-        // dimensionally an idx0; an offsets_acc(1,n) an idx01, and so on.
-        // The locations in the row_splits array are as given by
-        // the `axis`'th row of `offsets`; the values in the array
-        // are related to those in the `axis+1`'th row.
-        int32_t this_new_offset = new_offsets_acc(axis, ans_idx0),
-                next_new_offset = new_offsets_acc(axis, ans_idx0 + 1),
-                num_rows = next_new_offset - this_new_offset,
-                this_old_offset = old_offsets_acc(axis, ans_idx0),
-                value_offset = new_offsets_acc(axis + 1, ans_idx0) -
-                               old_offsets_acc(axis + 1, ans_idx0);
 
-        // Using <= instead of < below causes threads for different ans_idx0 to
-        // write a single overlapping value, but also ensures that the
-        // terminating value is written.  This only works because row_splits
-        // vectors always start with 0, which is not necessarily the case
-        // for row-ids.
-        for (; thread_idx <= num_rows; thread_idx += num_threads) {
-          this_new_row_splits[this_new_offset + thread_idx] =
-              value_offset + this_old_row_splits[this_old_offset + thread_idx];
-        }
-      };
-      int32_t min_threads_per_job = 2, tot_work = tot_sizes_out[axis],
-              target_num_loops = (is_cpu || tot_work > 1000000 ? 8 : 2);
-      EvalWithRedirect(streams[axis], num_jobs, task_redirects_acc.Row(axis),
-                       min_threads_per_job, tot_work, target_num_loops,
-                       lambda_set_row_splits);
+      // num_rows == tot_sizes_out[axis].
+      int32_t num_rows = composed_row_ids[axis].Dim();
+      const int32_t *composed_row_ids_data = composed_row_ids[axis].Data();
+      K2_EVAL(c, num_rows + 1, lambda_set_row_splits, (int32_t i) -> void {
+          int32_t ans_idx0 = (i == num_rows ? ans_dim0 :
+                              composed_row_ids_data[i]),
+              job_begin = new_offsets_acc(axis, ans_idx0),
+              job_this_idx0 = i - job_begin,
+              new_offset = new_offsets_acc(axis + 1, ans_idx0),
+              row_split_value;
+          K2_CHECK_GE(job_this_idx0, 0);
+          if (i < num_rows) {
+            int32_t old_offset = old_offsets_acc(axis, ans_idx0),
+                old_i = old_offset + job_this_idx0,
+                value_offset = new_offset - old_offsets_acc(axis + 1, ans_idx0);
+            row_split_value = value_offset + this_old_row_splits[old_i];
+          } else {
+            row_split_value = new_offset;
+          }
+          this_new_row_splits[i] = row_split_value;
+        });
+
     }
 
     {
@@ -716,8 +725,8 @@ static RaggedShape CatAxis0(int32_t num_srcs, RaggedShape **src,
        src_row_ids_acc = src_row_ids.Accessor();
 
 
-  // meta_row_ids are row_ids vectors that map to indexes i <= 0 < num_srcs;
-  // they are row_ids vectors for each axis composed with all previous axes.
+  // composed_row_ids[axis] is a vector of size ans.TotSize(axis) that maps to
+  // an index i <= 0 < num_srcs, saying which source it comes from.
   std::vector<Array1<int32_t> > composed_row_ids(num_axes);
   for (int32_t axis = 0; axis < num_axes; axis++) {
     int32_t num_elems = offsets_acc(axis + 1, num_srcs);
