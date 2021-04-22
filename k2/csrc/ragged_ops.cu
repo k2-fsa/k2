@@ -435,16 +435,12 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   auto old_offsets_acc = old_offsets.Accessor(),
       new_offsets_acc = new_offsets.Accessor();
 
-  // composed_row_ids are row_ids vectors that map to indexes i <= 0 < num_srcs;
-  // they are row_ids vectors for each axis composed with all previous axes.
-  std::vector<Array1<int32_t> > composed_row_ids(num_axes);
   for (int32_t axis = 1; axis < num_axes; axis++) {
     // we are not creating the actual row_ids here, except for axis 1; we are creating
     // "composed row_ids" which map to the index on axis 0.
     Array1<int32_t> row_ids = ans.RowIds(axis);
     RowSplitsToRowIds(new_offsets.Row(axis), &row_ids);
   }
-
 
   ans.Layers()[0].row_splits = new_offsets.Row(1);
 
@@ -454,8 +450,14 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   RowIdsAccessor<5> old_row_ids_acc(src),
       new_row_ids_acc(ans);
   SmallVec<int32_t, 5> tot_sizes;
-  for (int32_t i = 0; i < num_axes; i++)
+
+  int32_t max_tot_size = 0;
+  for (int32_t i = 0; i < num_axes; i++) {
     tot_sizes.data[i] = tot_sizes_out_cpu_data[i];
+    max_tot_size = std::max<int32_t>(max_tot_size,
+                                     tot_sizes.data[i]);
+  }
+
 
   int32_t *elem_indexes_data = (elem_indexes != nullptr ?
                                 elem_indexes->Data() : nullptr);
@@ -474,8 +476,7 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     job_begin = new_offsets_acc(axis, ans_idx0),
     job_this_idx0 = i - job_begin;
     K2_CHECK_GE(job_this_idx0, 0);
-    int32_t row_split_value,
-    new_next_offset;
+    int32_t row_split_value, new_next_offset;
     if (axis + 1 < num_axes)
       new_next_offset = new_offsets_acc(axis + 1, ans_idx0);
     if (i < tot_size) {
@@ -486,6 +487,7 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
           old_idx = old_offset + job_this_idx0;
 
       if (axis != 1) {
+        // Write row-ids.
         // Actually doing this for axis == 1 is harmless, but unnecessary, as it
         // would write back the same values that were already there.  We avoid
         // the memory access.
@@ -515,20 +517,23 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     }
   };
 
-  int32_t max_tot_size = 0;
-  for (int32_t i = 0; i < num_axes; i++)
-    max_tot_size = std::max<int32_t>(max_tot_size,
-                                     tot_sizes_out_cpu_data[i]);
   constexpr int32_t cutoff = 50000;
-  if (max_tot_size * (num_axes - 1) < cutoff) {
-    Eval2(c, num_axes - 1, max_tot_size + 1, lambda_set_row_splits_and_ids);
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t axis = 0; axis < num_axes - 1; axis++) {
+      int32_t this_size = tot_sizes(axis + 1);
+      for (int32_t i = 0; i <= this_size; i++)
+        lambda_set_row_splits_and_ids(axis, i);
+    }
+  } else if (max_tot_size * (num_axes - 1) < cutoff) {
+    Eval2Device(c, num_axes - 1, max_tot_size + 1, lambda_set_row_splits_and_ids);
   } else {
     // Loop in the kernel rather than submitting an excessive number of threads.
-    K2_EVAL(c, max_tot_size + 1, lambda_set_row_splits_and_ids_loop, (int32_t i) -> void {
-        for (int32_t axis = 0; axis < num_axes - 1; axis++) {
+    auto lambda_loop = [=] __device__ (int32_t i) {
+      for (int32_t axis = 0; axis < num_axes - 1; axis++) {
           lambda_set_row_splits_and_ids(axis, i);
-        }
-      });
+      }
+    };
+    EvalDevice(c, max_tot_size + 1, lambda_loop);
   }
 #if !defined(NDEBUG)
   ans.Check();
@@ -654,8 +659,8 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
   *row_ids = row_ids_ptrs.To(ctx);
 }
 
-static RaggedShape CatAxis0(int32_t num_srcs, RaggedShape **src,
-                            Array1<uint32_t> *merge_map /* == nullptr*/) {
+static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
+                              Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) {
     if (merge_map)
@@ -665,92 +670,147 @@ static RaggedShape CatAxis0(int32_t num_srcs, RaggedShape **src,
   }
   K2_CHECK_GT(num_srcs, 1);
 
-  int32_t num_axes = src[0]->NumAxes();
+  int32_t num_axes_in = src[0]->NumAxes(),
+      num_axes_out = num_axes_in + 1;
   ContextPtr c = src[0]->Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
 
   // Check if they have same num-axes and compatible context
   for (int32_t i = 1; i < num_srcs; ++i) {
-    K2_CHECK_EQ(num_axes, src[i]->NumAxes());
+    K2_CHECK_EQ(num_axes_in, src[i]->NumAxes());
     K2_CHECK(IsCompatible(*src[0], *src[i]));
   }
 
   // `offsets` will be on CPU for now.
-  // It shape is (num_axes, num_srcs+1).
+  // It shape is (num_axes_in + 1 == num_axes_out, num_srcs + 1).
   Array2<int32_t> offsets = GetOffsets(num_srcs, src);
   auto offsets_acc = offsets.Accessor();
 
-  std::vector<int32_t> tot_sizes_out(num_axes);
-  for (int32_t axis = 0; axis < num_axes; ++axis)
-    tot_sizes_out[axis] = offsets_acc(axis + 1, num_srcs);
 
-  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out.data());
+  SmallVec<int32_t, 5> tot_sizes_out;
+  int32_t max_tot_size = 0;
+  for (int32_t axis = 0; axis < num_axes_out; axis++) {
+    tot_sizes_out.data[axis] = offsets_acc(axis, num_srcs);
+    max_tot_size = std::max<int32_t>(max_tot_size,
+                                     tot_sizes_out.data[axis]);
+  }
 
+  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes_out,
+                                            tot_sizes_out.data);
+
+  // src_row_splits and src_row_ids are of dim num_axes_in-1 by num_srcs.
   Array2<int32_t *> src_row_splits, src_row_ids;
   GetRowInfoMulti(num_srcs, src, &src_row_splits, &src_row_ids);
   auto src_row_splits_acc = src_row_splits.Accessor(),
        src_row_ids_acc = src_row_ids.Accessor();
 
 
-  // composed_row_ids[axis] is a vector of size ans.TotSize(axis) that maps to
-  // an index i <= 0 < num_srcs, saying which source it comes from.
-  std::vector<Array1<int32_t> > composed_row_ids(num_axes);
-  for (int32_t axis = 0; axis < num_axes; axis++) {
-    int32_t num_elems = offsets_acc(axis + 1, num_srcs);
-    composed_row_ids[axis] = Array1<int32_t>(c, num_elems);
-  }
-
   offsets = offsets.To(c);
-  offsets_acc = offsets.Accessor();  // on GPU now (if we're using one)
+  offsets_acc = offsets.Accessor();
+  for (int32_t axis = 1; axis < num_axes_out; axis++) {
+    // we are not creating the actual row_ids here, except for axis 1; we are creating
+    // "composed row_ids" which map to the index on axis 0.
+    Array1<int32_t> row_ids = ans.RowIds(axis);
+    RowSplitsToRowIds(offsets.Row(axis), &row_ids);
+  }
+  ans.Layers()[0].row_splits = offsets.Row(1);
 
-  for (int32_t axis = 0; axis < num_axes; axis++) {
-    Array1<int32_t> composed_row_splits = offsets.Row(axis + 1);
-    RowSplitsToRowIds(composed_row_splits, &composed_row_ids[axis]);
+  // Caution: e.g. old_row_splits_acc(i) == src.RowSplits(i+1).
+  RowSplitsAccessor<5> new_row_splits_acc(ans);
+  RowIdsAccessor<5> new_row_ids_acc(ans);
+
+
+  uint32_t *merge_map_data;
+  if (merge_map != nullptr) {
+    *merge_map = Array1<uint32_t>(c, tot_sizes_out.data[num_axes_out - 1]);
+    merge_map_data = merge_map->Data();
+  } else {
+    merge_map_data = nullptr;
   }
 
-  for (int32_t axis = 0; axis < num_axes - 1; axis++) {
-    // first set the row-splits.
-    int32_t **this_src_row_splits = src_row_splits_acc.Row(axis),
-            **this_src_row_ids = src_row_ids_acc.Row(axis);
-    int32_t *this_dest_row_splits = ans.RowSplits(axis + 1).Data(),
-            *this_dest_row_ids = ans.RowIds(axis + 1).Data();
+  // Note, the first row_splits vector was set above, ans.Layers()[0].row_splits
+  // = new_offsets.Row(1).
 
-    int32_t num_rows = composed_row_ids[axis].Dim();
-    const int32_t *composed_row_ids_data = composed_row_ids[axis].Data();
-    K2_EVAL(c, num_rows + 1, lambda_set_row_splits, (int32_t i) -> void {
-        int32_t src_idx = (i == num_rows ? num_srcs :
-                           composed_row_ids_data[i]),
-            job_begin = offsets_acc(axis + 1, src_idx),
-            job_this_src = i - job_begin;
-        K2_CHECK_GE(job_this_src, 0);
-        int32_t this_value_offset = offsets_acc(axis + 2, src_idx);
-        int32_t src_row_split_value = 0;
-        if (i < num_rows) {
-          src_row_split_value = this_src_row_splits[src_idx][job_this_src];
-        }
-        this_dest_row_splits[i] = this_value_offset + src_row_split_value;
-      });
+  auto lambda_set_row_splits_and_ids = [=] __host__ __device__ (int32_t axis, int32_t i) -> void {
+    ++axis;  // We want this to be called starting with axis == 1, but Eval2
+             // doesn't suppor that.
 
-    // set the row-ids
-    int32_t num_elems = composed_row_ids[axis + 1].Dim();
-    composed_row_ids_data = composed_row_ids[axis + 1].Data();
+    // At this point, 1 < axis < num_axes_out.
 
-    K2_EVAL(c, num_elems, lambda_set_row_ids, (int32_t i) -> void {
-        int32_t src_idx = composed_row_ids_data[i],
-            job_begin = offsets_acc(axis + 2, src_idx),
-            job_this_src = i - job_begin;
-        K2_CHECK_GE(job_this_src, 0);
-        int32_t this_value_offset = offsets_acc(axis + 1, src_idx);
-        int32_t *src_row_ids_ptr = this_src_row_ids[src_idx];
-        this_dest_row_ids[i] = this_value_offset + src_row_ids_ptr[job_this_src];
-      });
+    // This kernel will be writing one or both of:
+    //    the row-splits for output-layer==`axis`/input-layer==`axis-1`,
+    //    the row-ids for output-layer=`axis-1`/input-layer==`axis-2`.
+
+
+    int32_t tot_size = tot_sizes_out(axis); // == offsets_acc(axis, num_srcs);
+    if (i > tot_size)
+      return;
+    int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
+    int32_t ans_idx0 = (i == tot_size ? num_srcs :
+                        composed_row_ids_data[i]),  // note: ans_idx0 == src_idx.
+        job_begin = offsets_acc(axis, ans_idx0),
+        job_this_idx0 = i - job_begin;
+    K2_CHECK_GE(job_this_idx0, 0);
+    int32_t row_split_value,  new_next_offset;
+    uint32_t *merge_map_data_local = nullptr;
+    if (axis + 1 < num_axes_out) {
+      new_next_offset = offsets_acc(axis + 1, ans_idx0);
+    } else {
+      merge_map_data_local = merge_map_data;
+    }
+    if (i < tot_size) {
+      // "prev" means for axis - 1
+      int32_t new_prev_offset = offsets_acc(axis - 1, ans_idx0);
+      if (axis != 1) {
+        // Write row-ids.
+        // this_new_row_ids = new_row_ids_acc(axis - 1);
+        int32_t *this_new_row_ids = composed_row_ids_data;
+        const int32_t *this_src_row_ids = src_row_ids_acc(axis - 2, ans_idx0);
+        int32_t old_row_id = this_src_row_ids[job_this_idx0],
+            new_row_id = old_row_id + new_prev_offset;
+        this_new_row_ids[i] = new_row_id;
+      }
+
+      if (merge_map_data_local != nullptr) {
+        merge_map_data_local[i] = ans_idx0 + num_srcs * job_this_idx0;
+      }
+
+      if (axis + 1 < num_axes_out) {
+        const int32_t *src_row_splits_data = src_row_splits_acc(axis - 1,
+                                                                ans_idx0);
+        int32_t old_row_split = src_row_splits_data[job_this_idx0];
+        row_split_value = new_next_offset + old_row_split;
+      }
+    } else {
+      row_split_value = new_next_offset;
+    }
+    if (axis + 1 < num_axes_out) {
+      int32_t *new_row_splits_data = new_row_splits_acc(axis);
+      new_row_splits_data[i] = row_split_value;
+    }
+  };
+
+  constexpr int32_t cutoff = 50000;
+  if (c->GetDeviceType() == kCpu) {
+    for (int32_t axis = 0; axis < num_axes_out - 1; axis++) {
+      int32_t this_size = tot_sizes_out(axis + 1);
+      for (int32_t i = 0; i <= this_size; i++)
+        lambda_set_row_splits_and_ids(axis, i);
+    }
+  } else if (max_tot_size * (num_axes_out - 1) < cutoff) {
+    Eval2Device(c, num_axes_out - 1, max_tot_size + 1, lambda_set_row_splits_and_ids);
+  } else {
+    // Loop in the kernel rather than submitting an excessive number of threads.
+    auto lambda_loop = [=] __device__ (int32_t i) {
+      for (int32_t axis = 0; axis < num_axes_out - 1; axis++) {
+        lambda_set_row_splits_and_ids(axis, i);
+      }
+    };
+    EvalDevice(c, max_tot_size + 1, lambda_loop);
   }
-  if (merge_map) {
-    std::vector<int32_t> num_elems_out(num_srcs);
-    for (int32_t i = 0; i < num_srcs; ++i)
-      num_elems_out[i] = src[i]->NumElements();
-    *merge_map = SizesToMergeMap(c, num_elems_out);
-  }
+#if !defined(NDEBUG)
+  ans.Check();
+#endif
   return ans;
 }
 
@@ -758,7 +818,12 @@ RaggedShape Cat(int32_t axis, int32_t num_srcs, RaggedShape **src,
                 Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_GT(num_srcs, 0);
-  if (axis == 0) return CatAxis0(num_srcs, src, merge_map);
+  if (axis == 0) {
+    RaggedShape temp = StackAxis0(num_srcs, src, merge_map);
+    std::vector<RaggedShapeLayer> ans_layers(
+        temp.Layers().begin() + 1, temp.Layers().end());
+    return RaggedShape(ans_layers, false);
+  }
 
   K2_CHECK_LT(static_cast<uint32_t>(axis),
               static_cast<uint32_t>(src[0]->NumAxes()));
@@ -976,20 +1041,7 @@ RaggedShape Stack(int32_t axis, int32_t num_srcs, RaggedShape **src,
   ContextPtr c = src[0]->Context();
 
   if (axis == 0) {
-    RaggedShape ans_appended = CatAxis0(num_srcs, src, merge_map);
-    ContextPtr cpu = GetCpuContext();
-    Array1<int32_t> row_splits(cpu, num_srcs + 1);
-    int32_t *row_splits_data = row_splits.Data();
-    for (int32_t i = 0; i < num_srcs; i++) row_splits_data[i] = src[i]->Dim0();
-    int32_t cutoff = 32;
-    if (num_srcs < cutoff) row_splits = row_splits.To(c);
-    ExclusiveSum(row_splits, &row_splits);
-    if (num_srcs >= cutoff) row_splits = row_splits.To(c);
-    int32_t num_elems = ans_appended.Dim0();
-    Array1<int32_t> row_ids(c, num_elems);
-    RowSplitsToRowIds(row_splits, &row_ids);
-    RaggedShape ans_layer0 = RaggedShape2(&row_splits, &row_ids, num_elems);
-    return ComposeRaggedShapes(ans_layer0, ans_appended);
+    return StackAxis0(num_srcs, src, merge_map);
   }
 
   K2_CHECK_LT(static_cast<uint32_t>(axis),
