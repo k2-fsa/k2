@@ -304,10 +304,39 @@ Array1<int32_t> GetCounts(ContextPtr c, const int32_t *src_data,
         nullptr, temp_storage_bytes, src_data, ans_data, n + 1, 0, n, src_dim,
         c->GetCudaStream()));  // The first time is to determine temporary
                                // device storage requirements.
-    Array1<int8_t> d_temp_storage(c, temp_storage_bytes);
-    K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
-        d_temp_storage.Data(), temp_storage_bytes, src_data, ans_data, n + 1, 0,
-        n, src_dim, c->GetCudaStream()));
+
+    constexpr std::size_t kTreshold = (static_cast<std::size_t>(1) << 33);
+
+    if (temp_storage_bytes < kTreshold) {
+      RegionPtr temp_storage = NewRegion(c, temp_storage_bytes);
+      K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
+          temp_storage->data, temp_storage_bytes, src_data, ans_data, n + 1, 0,
+          n, src_dim, c->GetCudaStream()));
+    } else {
+      // split the array and do a recursive call
+      //
+      // See https://github.com/NVIDIA/cub/issues/288
+      // for why we split it
+      int32_t first_start = 0;          // inclusive
+      int32_t first_end = src_dim / 2;  // exclusive
+      int32_t first_dim = first_end - first_start;
+
+      int32_t second_start = first_end;  // inclusive
+      int32_t second_end = src_dim;      // exclusive
+      int32_t second_dim = second_end - second_start;
+
+      Array1<int32_t> first_subset =
+          GetCounts(c, src_data + first_start, first_dim, n);
+      Array1<int32_t> second_subset =
+          GetCounts(c, src_data + second_start, second_dim, n);
+
+      const int32_t *first_subset_data = first_subset.Data();
+      const int32_t *second_subset_data = second_subset.Data();
+      K2_EVAL(
+          c, n, set_ans, (int32_t i)->void {
+            ans_data[i] = first_subset_data[i] + second_subset_data[i];
+          });
+    }
   }
   return ans;
 }
@@ -341,13 +370,12 @@ Array1<int32_t> InvertMonotonicDecreasing(const Array1<int32_t> &src) {
   MonotonicDecreasingUpperBound(ans, &ans);
 #ifndef NDEBUG
   K2_EVAL(
-      c, ans_dim, lambda_check_values, (int32_t i) -> void {
+      c, ans_dim, lambda_check_values, (int32_t i)->void {
         int32_t j = ans_data[i];
         K2_CHECK((j == src_dim || src_data[j] <= i) &&
-                 (j == 0 || src_data[j-1] > i));
+                 (j == 0 || src_data[j - 1] > i));
       });
 #endif
-
 
   return ans;
 }
@@ -482,17 +510,17 @@ bool IsPermutation(const Array1<int32_t> &a) {
   return Equal(ones, 0);
 }
 
-
 void RowSplitsToRowIdsOffset(const Array1<int32_t> &row_splits_part,
-                           Array1<int32_t> *row_ids_part) {
+                             Array1<int32_t> *row_ids_part) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr c = row_splits_part.Context();
   Array1<int32_t> row_splits(c, row_splits_part.Dim());
   int32_t *row_splits_data = row_splits.Data();
   const int32_t *row_splits_part_data = row_splits_part.Data();
-  K2_EVAL(c, row_splits_part.Dim(), lambda_subtract_offset, (int32_t i) {
-      row_splits_data[i] = row_splits_part_data[i] - row_splits_part_data[0];
-    });
+  K2_EVAL(
+      c, row_splits_part.Dim(), lambda_subtract_offset, (int32_t i) {
+        row_splits_data[i] = row_splits_part_data[i] - row_splits_part_data[0];
+      });
   RowSplitsToRowIds(row_splits, row_ids_part);
 }
 
