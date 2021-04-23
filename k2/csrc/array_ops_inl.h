@@ -760,7 +760,7 @@ Array1<T> Plus(const Array1<T> &src, T t) {
 
 template <typename T>
 Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
-                bool allow_minus_one) {
+                bool allow_minus_one, T default_value) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   K2_CHECK(c->IsCompatible(*indexes.Context()));
@@ -775,13 +775,13 @@ Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
 #pragma unroll(4)
       for (int32_t i = 0; i < ans_dim; i++) {
         int32_t index = index_data[i];
-        T value = (index < 0 ? T(0) : src_data[index]);
+        T value = (index < 0 ? default_value : src_data[index]);
         ans_data[i] = value;
       }
     } else {
       auto lambda_set_values = [=] __device__(int32_t i) -> void {
         int32_t index = index_data[i];
-        T value = (index < 0 ? T(0) : src_data[index]);
+        T value = (index < 0 ? default_value : src_data[index]);
         ans_data[i] = value;
       };
       EvalDevice(c, ans_dim, lambda_set_values);

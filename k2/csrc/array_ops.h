@@ -665,14 +665,14 @@ bool ApproxEqual(const Array2<T> &a, const Array2<T> &b, T tol = T(0.0001));
                        `0 <= indexes[i] < src.Dim()` if
                        `allow_minus_one == false`,
                        else -1 is also allowed and the corresponding
-                       output element will be zero.
+                       output element will be `default_value`.
      @return  Returns an `Array1<T>` of dimension indexes.Dim(),
-               with `ans[i] = src[indexes[i]]` (or zero if
+               with `ans[i] = src[indexes[i]]` (or `default_value` if
                `allow_minus_one == true` and `indexes[i] == -1`).
  */
 template <typename T>
 Array1<T> Index(const Array1<T> &src, const Array1<int32_t> &indexes,
-                bool allow_minus_one);
+                bool allow_minus_one, T default_value);
 
 /*
   Index src's rows with `indexes` which contains the row indexes.

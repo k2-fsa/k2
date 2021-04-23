@@ -134,7 +134,11 @@ template <typename T>
 static void Index1DImpl(ContextPtr context, const T *src_data,
                         int32_t src_stride, int32_t src_dim,
                         const int32_t *indexes_data, bool allow_minus_one,
-                        int32_t ans_dim, T *ans_data) {
+                        int32_t ans_dim, T *ans_data, double default_value) {
+  if (std::is_integral<T>::value) {
+    K2_CHECK_EQ(static_cast<T>(default_value), default_value);
+  }
+
   NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     K2_EVAL(
@@ -142,7 +146,7 @@ static void Index1DImpl(ContextPtr context, const T *src_data,
           int32_t index = indexes_data[i];
           K2_DCHECK_LT(index, src_dim);
           K2_DCHECK(index >= 0 || index == -1);
-          T value = (index < 0 ? T(0) : src_data[index * src_stride]);
+          T value = (index < 0 ? T(default_value) : src_data[index * src_stride]);
           ans_data[i] = value;
         });
     return;
@@ -227,7 +231,7 @@ static void Index2DImpl(ContextPtr context, const T *src_data,
 // See the documentation for `Index`.
 // This function is for 1-D tensors.
 static Tensor Index1D(Tensor &src, Array1<int32_t> &indexes,
-                      bool allow_minus_one) {
+                      bool allow_minus_one, double default_value) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 1);
   K2_CHECK(IsCompatible(src, indexes));
@@ -244,7 +248,7 @@ static Tensor Index1D(Tensor &src, Array1<int32_t> &indexes,
   FOR_ALL_DTYPES(
       dtype, T,
       Index1DImpl<T>(context, src.Data<T>(), src_stride, src_dim, indexes_data,
-                     allow_minus_one, ans_dim, ans.Data<T>()));
+                     allow_minus_one, ans_dim, ans.Data<T>(), default_value));
 
   return ans;
 }
@@ -278,11 +282,11 @@ static Tensor Index2D(Tensor &src, Array1<int32_t> &indexes,
   return ans;
 }
 
-Tensor Index(Tensor &src, Array1<int32_t> &indexes,
-             bool allow_minus_one /*= true*/) {
+Tensor Index(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
+             double default_value) {
   switch (src.NumAxes()) {
     case 1:
-      return Index1D(src, indexes, allow_minus_one);
+      return Index1D(src, indexes, allow_minus_one, default_value);
     case 2:
       return Index2D(src, indexes, allow_minus_one);
     default:

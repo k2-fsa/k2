@@ -92,12 +92,14 @@ static void TestIndex1D() {
     indexes_dim = RandInt(1, 20000);
     numel = RandInt(1, 20000);
 
+    T default_value = 1 - i;
+
     ContextPtr context = (i & 1) ? GetCpuContext() : GetCudaContext();
     Array1<int32_t> indexes =
         GenerateRandomIndexes(context, allow_minus_one, indexes_dim, numel - 1);
 
     Tensor src = GenerateRandTensor1D<T>(context, numel, stride);
-    Tensor ans = Index(src, indexes, allow_minus_one);
+    Tensor ans = Index(src, indexes, allow_minus_one, default_value);
     ASSERT_TRUE(ans.IsContiguous());
     ASSERT_EQ(ans.NumAxes(), 1);
     ASSERT_EQ(ans.Dim(0), indexes.Dim());
@@ -116,7 +118,7 @@ static void TestIndex1D() {
       if (index != -1)
         EXPECT_EQ(ans_data[i], src_data[index]);
       else
-        EXPECT_EQ(ans_data[i], 0);
+        EXPECT_EQ(ans_data[i], default_value);
     }
   }
 }

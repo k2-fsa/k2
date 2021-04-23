@@ -1519,20 +1519,23 @@ TEST(OpsTest, Array1IndexTest) {
                         RandUniformArray1<int32_t>(c, ans_dim, 0, src_dim - 1),
                     indexes_minus_one =
                         RandUniformArray1<int32_t>(c, ans_dim, -1, src_dim - 1);
-    Array1<T> ans_no_minus_one = Index(src, indexes_no_minus_one, false),
+
+    T default_value = loop - 1;
+
+    Array1<T> ans_no_minus_one = Index(src, indexes_no_minus_one, false, default_value),
               ans_no_minus_one_check = src[indexes_no_minus_one],
-              ans_no_minus_one_check2 = Index(src, indexes_no_minus_one, true);
+              ans_no_minus_one_check2 = Index(src, indexes_no_minus_one, true, default_value);
     ASSERT_TRUE(Equal(ans_no_minus_one, ans_no_minus_one_check));
     ASSERT_TRUE(Equal(ans_no_minus_one, ans_no_minus_one_check2));
 
-    Array1<T> ans_minus_one = Index(src, indexes_minus_one, true);
+    Array1<T> ans_minus_one = Index(src, indexes_minus_one, true, default_value);
 
     ans_minus_one = ans_minus_one.To(cpu_context);
     src = src.To(cpu_context);
     indexes_minus_one = indexes_minus_one.To(cpu_context);
     for (int32_t i = 0; i < indexes_minus_one.Dim(); i++) {
       int32_t index = indexes_minus_one[i];
-      ASSERT_EQ(ans_minus_one[i], (index < 0 ? 0 : src[index]));
+      ASSERT_EQ(ans_minus_one[i], (index < 0 ? default_value : src[index]));
     }
   }
 }
