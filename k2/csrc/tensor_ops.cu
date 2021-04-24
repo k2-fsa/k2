@@ -146,7 +146,8 @@ static void Index1DImpl(ContextPtr context, const T *src_data,
           int32_t index = indexes_data[i];
           K2_DCHECK_LT(index, src_dim);
           K2_DCHECK(index >= 0 || index == -1);
-          T value = (index < 0 ? T(default_value) : src_data[index * src_stride]);
+          T value =
+              (index < 0 ? T(default_value) : src_data[index * src_stride]);
           ans_data[i] = value;
         });
     return;

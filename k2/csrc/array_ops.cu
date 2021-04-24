@@ -305,9 +305,9 @@ Array1<int32_t> GetCounts(ContextPtr c, const int32_t *src_data,
         c->GetCudaStream()));  // The first time is to determine temporary
                                // device storage requirements.
 
-    constexpr std::size_t kTreshold = (static_cast<std::size_t>(1) << 33);
+    constexpr std::size_t kThreshold = (static_cast<std::size_t>(1) << 33);
 
-    if (temp_storage_bytes < kTreshold) {
+    if (temp_storage_bytes < kThreshold) {
       RegionPtr temp_storage = NewRegion(c, temp_storage_bytes);
       K2_CHECK_CUDA_ERROR(cub::DeviceHistogram::HistogramEven(
           temp_storage->data, temp_storage_bytes, src_data, ans_data, n + 1, 0,

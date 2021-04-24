@@ -421,7 +421,8 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
       new_offsets;              // num_axes by (ans_dim0 + 1).
   GetOldAndNewOffsets(src, new2old, &old_offsets, &new_offsets);
 
-  // tot_sizes_out is of dimension (num_axes), tot_sizes_out[i] is ans.TotSize(i)
+  // tot_sizes_out is of dimension (num_axes), tot_sizes_out[i] is
+  // ans.TotSize(i)
   Array1<int32_t> tot_sizes_out =
       Array1<int32_t>(new_offsets.Col(ans_dim0)).To(GetCpuContext());
 
@@ -429,15 +430,15 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   if (elem_indexes)
     *elem_indexes = Array1<int32_t>(c, tot_sizes_out_cpu_data[num_axes - 1]);
 
-
-  RaggedShape ans = RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out_cpu_data);
+  RaggedShape ans =
+      RaggedShapeFromTotSizes(c, num_axes, tot_sizes_out_cpu_data);
 
   auto old_offsets_acc = old_offsets.Accessor(),
       new_offsets_acc = new_offsets.Accessor();
 
   for (int32_t axis = 1; axis < num_axes; axis++) {
-    // we are not creating the actual row_ids here, except for axis 1; we are creating
-    // "composed row_ids" which map to the index on axis 0.
+    // we are not creating the actual row_ids here, except for axis 1; we are
+    // creating "composed row_ids" which map to the index on axis 0.
     Array1<int32_t> row_ids = ans.RowIds(axis);
     RowSplitsToRowIds(new_offsets.Row(axis), &row_ids);
   }
@@ -465,9 +466,10 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
   // Note, the first row_splits vector was set above, ans.Layers()[0].row_splits
   // = new_offsets.Row(1).
 
-  auto lambda_set_row_splits_and_ids = [=] __host__ __device__ (int32_t axis, int32_t i) -> void {
+  auto lambda_set_row_splits_and_ids = [=] __host__ __device__(
+                                           int32_t axis, int32_t i) -> void {
     axis++;  // make it one-based.
-    int32_t tot_size = tot_sizes(axis); // == new_offsets_acc(axis, ans_dim0);
+    int32_t tot_size = tot_sizes(axis);  // == new_offsets_acc(axis, ans_dim0);
     if (i > tot_size)
       return;
     int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
@@ -525,12 +527,13 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
         lambda_set_row_splits_and_ids(axis, i);
     }
   } else if (max_tot_size * (num_axes - 1) < cutoff) {
-    Eval2Device(c, num_axes - 1, max_tot_size + 1, lambda_set_row_splits_and_ids);
+    Eval2Device(c, num_axes - 1, max_tot_size + 1,
+                lambda_set_row_splits_and_ids);
   } else {
     // Loop in the kernel rather than submitting an excessive number of threads.
-    auto lambda_loop = [=] __device__ (int32_t i) {
+    auto lambda_loop = [=] __device__(int32_t i) {
       for (int32_t axis = 0; axis < num_axes - 1; axis++) {
-          lambda_set_row_splits_and_ids(axis, i);
+        lambda_set_row_splits_and_ids(axis, i);
       }
     };
     EvalDevice(c, max_tot_size + 1, lambda_loop);
@@ -711,8 +714,8 @@ static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
   offsets = offsets.To(c);
   offsets_acc = offsets.Accessor();
   for (int32_t axis = 1; axis < num_axes_out; axis++) {
-    // we are not creating the actual row_ids here, except for axis 1; we are creating
-    // "composed row_ids" which map to the index on axis 0.
+    // we are not creating the actual row_ids here, except for axis 1; we are
+    // creating "composed row_ids" which map to the index on axis 0.
     Array1<int32_t> row_ids = ans.RowIds(axis);
     RowSplitsToRowIds(offsets.Row(axis), &row_ids);
   }
@@ -734,7 +737,8 @@ static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
   // Note, the first row_splits vector was set above, ans.Layers()[0].row_splits
   // = new_offsets.Row(1).
 
-  auto lambda_set_row_splits_and_ids = [=] __host__ __device__ (int32_t axis, int32_t i) -> void {
+  auto lambda_set_row_splits_and_ids = [=] __host__ __device__(
+                                           int32_t axis, int32_t i) -> void {
     ++axis;  // We want this to be called starting with axis == 1, but Eval2
              // doesn't suppor that.
 
@@ -744,15 +748,15 @@ static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
     //    the row-splits for output-layer==`axis`/input-layer==`axis-1`,
     //    the row-ids for output-layer=`axis-1`/input-layer==`axis-2`.
 
-
-    int32_t tot_size = tot_sizes_out(axis); // == offsets_acc(axis, num_srcs);
+    int32_t tot_size = tot_sizes_out(axis);  // == offsets_acc(axis, num_srcs);
     if (i > tot_size)
       return;
     int32_t *composed_row_ids_data = new_row_ids_acc(axis - 1);
-    int32_t ans_idx0 = (i == tot_size ? num_srcs :
-                        composed_row_ids_data[i]),  // note: ans_idx0 == src_idx.
-        job_begin = offsets_acc(axis, ans_idx0),
-        job_this_idx0 = i - job_begin;
+    int32_t ans_idx0 =
+                (i == tot_size
+                     ? num_srcs
+                     : composed_row_ids_data[i]),  // note: ans_idx0 == src_idx.
+        job_begin = offsets_acc(axis, ans_idx0), job_this_idx0 = i - job_begin;
     K2_CHECK_GE(job_this_idx0, 0);
     int32_t row_split_value,  new_next_offset;
     uint32_t *merge_map_data_local = nullptr;
@@ -801,10 +805,11 @@ static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
         lambda_set_row_splits_and_ids(axis, i);
     }
   } else if (max_tot_size * (num_axes_out - 1) < cutoff) {
-    Eval2Device(c, num_axes_out - 1, max_tot_size + 1, lambda_set_row_splits_and_ids);
+    Eval2Device(c, num_axes_out - 1, max_tot_size + 1,
+                lambda_set_row_splits_and_ids);
   } else {
     // Loop in the kernel rather than submitting an excessive number of threads.
-    auto lambda_loop = [=] __device__ (int32_t i) {
+    auto lambda_loop = [=] __device__(int32_t i) {
       for (int32_t axis = 0; axis < num_axes_out - 1; axis++) {
         lambda_set_row_splits_and_ids(axis, i);
       }
