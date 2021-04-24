@@ -34,13 +34,15 @@ namespace k2 {
                             -1 <= index[i] < src.numel()
                             for i in [0, index.numel())
                         CAUTION: We require that index.is_contiguous() is true.
+   @param [in] default_value  The value for ans[i] when index[i] is -1.
    @return
       Returns a 1-D contiguous tensor such that:
           ans[i] = src[index[i]] if index[i] > 0
-          ans[i] = 0 if index[i] is -1
+          ans[i] = default_value if index[i] is -1
  */
 template <typename T>
-static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
+static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index,
+                                   T default_value) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
   K2_CHECK_EQ(src.scalar_type(), ToScalarType<T>::value);
@@ -50,16 +52,17 @@ static torch::Tensor IndexSelect1D(torch::Tensor src, torch::Tensor index) {
   K2_CHECK(index.is_contiguous());
   K2_CHECK_EQ(src.device(), index.device());
 
+  bool allow_minus_one = true;
   Array1<int32_t> index_array = FromTorch<int32_t>(index);
   if (src.is_contiguous()) {
     Array1<T> src_array = FromTorch<T>(src);
-    bool allow_minus_one = true;
-    Array1<T> ans_array = Index(src_array, index_array, allow_minus_one);
+    Array1<T> ans_array =
+        Index(src_array, index_array, allow_minus_one, default_value);
     return ToTorch(ans_array);
   }
 
   Tensor tensor = FromTorch(src, TensorTag{});
-  Tensor ans = Index(tensor, index_array);
+  Tensor ans = Index(tensor, index_array, allow_minus_one, default_value);
   return ToTorch(ans);
 }
 
@@ -99,20 +102,26 @@ static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
   return ToTorch(ans_array);
 }
 
-static torch::Tensor IndexSelectWrapper(torch::Tensor src,
-                                        torch::Tensor index) {
+static torch::Tensor IndexSelectWrapper(torch::Tensor src, torch::Tensor index,
+                                        double default_value = 0) {
   NVTX_RANGE(K2_FUNC);
   auto scalar_type = src.scalar_type();
   if (src.dim() == 1) {
     switch (scalar_type) {
-      case ToScalarType<int32_t>::value:
-        return IndexSelect1D<int32_t>(src, index);
-      case ToScalarType<int64_t>::value:
-        return IndexSelect1D<int64_t>(src, index);
+      case ToScalarType<int32_t>::value: {
+        int32_t i = static_cast<int32_t>(default_value);
+        K2_CHECK_EQ(static_cast<double>(i), default_value);
+        return IndexSelect1D<int32_t>(src, index, i);
+      }
+      case ToScalarType<int64_t>::value: {
+        int64_t i = static_cast<int64_t>(default_value);
+        K2_CHECK_EQ(static_cast<double>(i), default_value);
+        return IndexSelect1D<int64_t>(src, index, i);
+      }
       case ToScalarType<float>::value:
-        return IndexSelect1D<float>(src, index);
+        return IndexSelect1D<float>(src, index, default_value);
       case ToScalarType<double>::value:
-        return IndexSelect1D<double>(src, index);
+        return IndexSelect1D<double>(src, index, default_value);
       default:
         K2_LOG(FATAL) << "Unsupported scalar type: " << scalar_type;
         return {};
@@ -194,6 +203,7 @@ static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
 
 static void IndexSelect(py::module &m) {
   m.def("index_select", &IndexSelectWrapper, py::arg("src"), py::arg("index"),
+        py::arg("default_value") = 0,
         R"(
       Args:
         src:
@@ -202,13 +212,16 @@ static void IndexSelect(py::module &m) {
         index:
           It has to be a 1-D **contiguous** tensor with dtype `torch.int32`.
           Must satisfy `-1 <= index[i] < src.shape[0]`.
+        default_value:
+          It is the default value for ans[i] if index[i] is -1.
+          Used only when `src` is a 1-D tensor.
       Returns:
         Return a tensor:
           - `ans.ndim == src.ndim`
           - `ans.shape[0] == index.shape[0]`
           - If `ans.ndim == 2`, then `ans.shape[1] == src.shape[1]`
           - `ans[i] = src[index[i]]` if `index[i] != -1`.
-          - `ans[i] = 0` if `index[i] == -1`
+          - `ans[i] = default_value` if `index[i] == -1`
       )");
   m.def("simple_ragged_index_select", &SimpleRaggedIndexSelectWrapper,
         py::arg("src"), py::arg("indexes"));

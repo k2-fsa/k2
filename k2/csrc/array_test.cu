@@ -67,7 +67,6 @@ void TestArray1() {
       // it is necessary
       ASSERT_THROW(array.Generic().template Specialize<unsigned char>(),
                    std::runtime_error);  // assuming T != unsigned char
-
     }
 
     {
@@ -268,12 +267,14 @@ void TestArray2() {
       EXPECT_EQ(array.Data(), array_copy.Data());
 
       const Array2<T> &array_copy_const = array;
-      const Array2<T> &array_copy_const2 = array_copy_const.Generic().template Specialize<T>();
+      const Array2<T> &array_copy_const2 =
+          array_copy_const.Generic().template Specialize<T>();
       EXPECT_EQ(array_copy_const.Data(), array_copy.Data());
       EXPECT_EQ(array_copy_const2.Data(), array_copy.Data());
 
       const Array1<T> &array1_copy_const = arr1;
-      const Array1<T> &array1_copy_const2 = array1_copy_const.Generic().template Specialize<T>();
+      const Array1<T> &array1_copy_const2 =
+          array1_copy_const.Generic().template Specialize<T>();
       EXPECT_EQ(array1_copy_const.Data(), arr1.Data());
       EXPECT_EQ(array1_copy_const2.Data(), arr1.Data());
 

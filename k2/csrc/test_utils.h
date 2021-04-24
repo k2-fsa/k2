@@ -39,17 +39,18 @@ void CheckArrayData(const Array1<T> &array, const std::vector<T> &target) {
         << ", but actual value is " << (actual)[i];                         \
   }
 
-
 #define EXPECT_FLOAT_ARRAY2_APPROX_EQ(expected, actual, abs_error)           \
   ASSERT_EQ((expected).Dim0(), (actual).Dim0()) << "Different Array2 Size."; \
   ASSERT_EQ((expected).Dim1(), (actual).Dim1()) << "Different Array2 Size."; \
-  for (int32_t i = 0; i != (expected).Dim0(); ++i) {                     \
-    for (int32_t j = 0; j != (expected).Dim1(); ++j) {                   \
-      EXPECT_TRUE(ApproxEqual((expected).Row(i)[j], (actual).Row(i)[j], abs_error)) \
-          << "expected value at index " << i << " is " << (expected).Row(i)[j] \
-          << ", but actual value is " << (actual).Row(i)[j];          \
-    }}
-
+  for (int32_t i = 0; i != (expected).Dim0(); ++i) {                         \
+    for (int32_t j = 0; j != (expected).Dim1(); ++j) {                       \
+      EXPECT_TRUE(                                                           \
+          ApproxEqual((expected).Row(i)[j], (actual).Row(i)[j], abs_error))  \
+          << "expected value at index (" << i << "," << j << ") is "         \
+          << (expected).Row(i)[j] << ", but actual value is "                \
+          << (actual).Row(i)[j];                                             \
+    }                                                                        \
+  }
 
 // TODO(haowen): remove the double version in host later?
 template <typename FloatType>

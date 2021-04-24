@@ -1519,20 +1519,26 @@ TEST(OpsTest, Array1IndexTest) {
                         RandUniformArray1<int32_t>(c, ans_dim, 0, src_dim - 1),
                     indexes_minus_one =
                         RandUniformArray1<int32_t>(c, ans_dim, -1, src_dim - 1);
-    Array1<T> ans_no_minus_one = Index(src, indexes_no_minus_one, false),
+
+    T default_value = loop - 1;
+
+    Array1<T> ans_no_minus_one =
+                  Index(src, indexes_no_minus_one, false, default_value),
               ans_no_minus_one_check = src[indexes_no_minus_one],
-              ans_no_minus_one_check2 = Index(src, indexes_no_minus_one, true);
+              ans_no_minus_one_check2 =
+                  Index(src, indexes_no_minus_one, true, default_value);
     ASSERT_TRUE(Equal(ans_no_minus_one, ans_no_minus_one_check));
     ASSERT_TRUE(Equal(ans_no_minus_one, ans_no_minus_one_check2));
 
-    Array1<T> ans_minus_one = Index(src, indexes_minus_one, true);
+    Array1<T> ans_minus_one =
+        Index(src, indexes_minus_one, true, default_value);
 
     ans_minus_one = ans_minus_one.To(cpu_context);
     src = src.To(cpu_context);
     indexes_minus_one = indexes_minus_one.To(cpu_context);
     for (int32_t i = 0; i < indexes_minus_one.Dim(); i++) {
       int32_t index = indexes_minus_one[i];
-      ASSERT_EQ(ans_minus_one[i], (index < 0 ? 0 : src[index]));
+      ASSERT_EQ(ans_minus_one[i], (index < 0 ? default_value : src[index]));
     }
   }
 }
@@ -1717,7 +1723,8 @@ void Array2ContiguousTest() {
     Array2<T> src_part = src.ColArange(slice_dim1_begin, slice_dim1_end),
         src_part_contiguous1 = ToContiguous(src_part);
     Array2<Any> src_part_contiguous_generic2 = ToContiguous(src_part.Generic());
-    Array2<T> src_part_contiguous2 = src_part_contiguous_generic2.Specialize<T>();
+    Array2<T> src_part_contiguous2 =
+        src_part_contiguous_generic2.Specialize<T>();
 
     K2_CHECK_EQ(Equal(src_part_contiguous1, src_part_contiguous2),
                 true);
@@ -1729,8 +1736,8 @@ void Array2ContiguousTest() {
 TEST(OpsTest, ApproxEqualTest) {
   Array2<float> array1("[ [ 1 2 3  ] [4 5 6 ]]"),
       array2("[ [ 1.1 2 3  ] [4 5 6 ]]");
-  K2_CHECK_EQ(ApproxEqual(array1, array2, float(0.2)), true);
-  K2_CHECK_EQ(ApproxEqual(array1, array2, float(0.01)), false);
+  K2_CHECK_EQ(ApproxEqual(array1, array2, 0.2f), true);
+  K2_CHECK_EQ(ApproxEqual(array1, array2, 0.01f), false);
 }
 
 TEST(OpsTest, Array2Contiguous) {

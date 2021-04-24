@@ -81,7 +81,7 @@ enum class Dtype {
 
 // This is needed because the comma in std::is_same<T,Any>::value prevents it
 // from appearing inside macro arguments.
-#define K2_TYPE_IS_ANY(T)  std::is_same<T,Any>::value
+#define K2_TYPE_IS_ANY(T) (std::is_same<T, Any>::value)
 
 constexpr Dtype kAnyDtype = Dtype::kAnyDtype;
 constexpr Dtype kHalfDtype = Dtype::kHalfDtype;
@@ -112,10 +112,10 @@ struct DtypeOf<Any> {
   static const Dtype dtype = kAnyDtype;
 };
 
-//template <>
-//struct DtypeOf<half> {
+// template <>
+// struct DtypeOf<half> {
 //  static const Dtype dtype = kHalfDtype;
-//};
+// };
 
 template <>
 struct DtypeOf<float> {

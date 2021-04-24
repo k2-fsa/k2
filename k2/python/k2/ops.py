@@ -16,7 +16,8 @@ from .ragged import index as ragged_index
 class _IndexSelectFunction(torch.autograd.Function):
 
     @staticmethod
-    def forward(ctx, src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
+    def forward(ctx, src: torch.Tensor, index: torch.Tensor,
+                default_value: float) -> torch.Tensor:
         '''Returns a new tensor which indexes the input tensor along dimension 0
         using the entries in `index`.
 
@@ -35,6 +36,9 @@ class _IndexSelectFunction(torch.autograd.Function):
             If an entry is -1, the corresponding entry in the returned value
             is 0. The elements of `index` should be in the range
             `[-1..src.shape[0]-1]`.
+          default_value:
+            Used only when `src` is a 1-D tensor. It sets ans[i] to
+            default_value if index[i] is -1.
 
         Returns:
           A tensor with shape (index.numel(), *src.shape[1:]) and dtype the
@@ -46,7 +50,7 @@ class _IndexSelectFunction(torch.autograd.Function):
           entries where `index[i] == -1` which will be zero.
         '''
         ctx.save_for_backward(src, index)
-        return _k2.index_select(src, index)
+        return _k2.index_select(src, index, default_value)
 
     @staticmethod
     def backward(ctx, out_grad) -> Tuple[torch.Tensor, None]:
@@ -57,7 +61,11 @@ class _IndexSelectFunction(torch.autograd.Function):
                           device=src.device,
                           requires_grad=False)
         _k2.index_add(index, out_grad, ans)
-        return ans, None
+        return (
+            ans,  # src
+            None,  # index
+            None  # default_value
+        )
 
 
 class _IndexAndSumFunction(torch.autograd.Function):
@@ -102,7 +110,9 @@ class _IndexAndSumFunction(torch.autograd.Function):
 
 
 # put index_select here instead of in `auto_grad.py` to break circular import
-def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
+def index_select(src: torch.Tensor,
+                 index: torch.Tensor,
+                 default_value: float = 0) -> torch.Tensor:
     '''Returns a new tensor which indexes the input tensor along dimension 0
     using the entries in `index`.
 
@@ -121,6 +131,9 @@ def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
         If an entry is -1, the corresponding entry in the returned value
         is 0. The elements of `index` should be in the range
         `[-1..src.shape[0]-1]`.
+      default_value:
+        Used only when `src` is a 1-D tensor. It sets ans[i] to default_value
+        if index[i] is -1.
 
     Returns:
       A tensor with shape ``(index.numel(), *src.shape[1:])`` and dtype the
@@ -131,7 +144,7 @@ def index_select(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
       or `ans[i, j] == src[index[i], j]` if `src.ndim == 2`, except for
       entries where `index[i] == -1` which will be zero.
     '''
-    ans = _IndexSelectFunction.apply(src, index)
+    ans = _IndexSelectFunction.apply(src, index, default_value)
     return ans
 
 
@@ -357,3 +370,34 @@ def cat(srcs: List[Fsa]) -> Fsa:
                 setattr(out_fsa, name, value)
 
     return out_fsa
+
+
+def compose_arc_maps(step1_arc_map: torch.Tensor,
+                     step2_arc_map: torch.Tensor) -> torch.Tensor:
+    '''Compose arc maps from two Fsa operations.
+
+    It implements:
+
+        - ans_arc_map[i] = step1_arc_map[step2_arc_map[i]] if
+          step2_arc_map[i] is not -1
+        - ans_arc_map[i] = -1 if step2_arc_map[i] is -1
+
+    for i in 0 to `step2_arc_map.numel() - 1`.
+
+    Args:
+      step1_arc_map:
+        A 1-D tensor with dtype torch.int32 from the first Fsa operation.
+      step2_arc_map:
+        A 1-D tensor with dtype torch.int32 from the second Fsa operation.
+    Returns:
+      Return a 1-D tensor with dtype torch.int32. It has the same number
+      of elements as step2_arc_map. That is,
+      ans_arc_map.shape == step2_arc_map.shape.
+    '''
+    assert step1_arc_map.ndim == 1
+    assert step1_arc_map.dtype == torch.int32
+
+    assert step2_arc_map.ndim == 1
+    assert step2_arc_map.dtype == torch.int32
+
+    return _k2.index_select(step1_arc_map, step2_arc_map, default_value=-1)

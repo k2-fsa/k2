@@ -6,20 +6,23 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
+#include "k2/csrc/tensor_ops.h"
+
+#include <algorithm>
+#include <memory>
 #include <vector>
 
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
-#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 
 template <typename T>
-void CopyTensorElements2d(ContextPtr c, int32_t dim0, int32_t dim1,
-                          const T *src_data, int32_t src_stride0,
-                          int32_t src_stride1, T *dest_data,
-                          int32_t dest_stride0, int32_t dest_stride1) {
+static void CopyTensorElements2d(ContextPtr c, int32_t dim0, int32_t dim1,
+                                 const T *src_data, int32_t src_stride0,
+                                 int32_t src_stride1, T *dest_data,
+                                 int32_t dest_stride0, int32_t dest_stride1) {
   NVTX_RANGE(K2_FUNC);
   DeviceType d = c->GetDeviceType();
   if (d == kCpu) {
@@ -131,7 +134,11 @@ template <typename T>
 static void Index1DImpl(ContextPtr context, const T *src_data,
                         int32_t src_stride, int32_t src_dim,
                         const int32_t *indexes_data, bool allow_minus_one,
-                        int32_t ans_dim, T *ans_data) {
+                        int32_t ans_dim, T *ans_data, double default_value) {
+  if (std::is_integral<T>::value) {
+    K2_CHECK_EQ(static_cast<T>(default_value), default_value);
+  }
+
   NVTX_RANGE(K2_FUNC);
   if (allow_minus_one) {
     K2_EVAL(
@@ -139,7 +146,8 @@ static void Index1DImpl(ContextPtr context, const T *src_data,
           int32_t index = indexes_data[i];
           K2_DCHECK_LT(index, src_dim);
           K2_DCHECK(index >= 0 || index == -1);
-          T value = (index < 0 ? T(0) : src_data[index * src_stride]);
+          T value =
+              (index < 0 ? T(default_value) : src_data[index * src_stride]);
           ans_data[i] = value;
         });
     return;
@@ -224,7 +232,7 @@ static void Index2DImpl(ContextPtr context, const T *src_data,
 // See the documentation for `Index`.
 // This function is for 1-D tensors.
 static Tensor Index1D(Tensor &src, Array1<int32_t> &indexes,
-                      bool allow_minus_one) {
+                      bool allow_minus_one, double default_value) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 1);
   K2_CHECK(IsCompatible(src, indexes));
@@ -241,7 +249,7 @@ static Tensor Index1D(Tensor &src, Array1<int32_t> &indexes,
   FOR_ALL_DTYPES(
       dtype, T,
       Index1DImpl<T>(context, src.Data<T>(), src_stride, src_dim, indexes_data,
-                     allow_minus_one, ans_dim, ans.Data<T>()));
+                     allow_minus_one, ans_dim, ans.Data<T>(), default_value));
 
   return ans;
 }
@@ -275,11 +283,11 @@ static Tensor Index2D(Tensor &src, Array1<int32_t> &indexes,
   return ans;
 }
 
-Tensor Index(Tensor &src, Array1<int32_t> &indexes,
-             bool allow_minus_one /*= true*/) {
+Tensor Index(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
+             double default_value) {
   switch (src.NumAxes()) {
     case 1:
-      return Index1D(src, indexes, allow_minus_one);
+      return Index1D(src, indexes, allow_minus_one, default_value);
     case 2:
       return Index2D(src, indexes, allow_minus_one);
     default:
@@ -520,28 +528,27 @@ struct CombineCumSumOp {
   __device__ DiscountedCumSumElement<Real> operator() (
       DiscountedCumSumElement<Real> &a,
       DiscountedCumSumElement<Real> &b) const {
-    return DiscountedCumSumElement<Real>{b.y +  b.gamma * a.y, a.gamma * b.gamma};
+    return DiscountedCumSumElement<Real>{b.y + b.gamma * a.y,
+                                         a.gamma * b.gamma};
   }
 };
 
 // A stateful callback functor that maintains a running prefix to be applied
 // during consecutive scan operations.
 template <typename Real>
-struct BlockPrefixCallbackOp
-{
+struct BlockPrefixCallbackOp {
   using Elem = DiscountedCumSumElement<Real>;
   Elem running_total;
   // Constructor
   __device__ BlockPrefixCallbackOp(): running_total{0.0, 0.0} { }
   // Callback operator to be entered by the first warp of threads in the block.
-  // Thread-0 is responsible for returning a value for seeding the block-wide scan.
-  __device__ Elem operator()(Elem block_aggregate)
-    {
-      Elem old_prefix = running_total;
-      running_total = CombineCumSumOp<Real>()(running_total,
-                                              block_aggregate);
-      return old_prefix;
-    }
+  // Thread-0 is responsible for returning a value for seeding the block-wide
+  // scan.
+  __device__ Elem operator()(Elem block_aggregate) {
+    Elem old_prefix = running_total;
+    running_total = CombineCumSumOp<Real>()(running_total, block_aggregate);
+    return old_prefix;
+  }
 };
 
 /*
@@ -582,13 +589,11 @@ struct BlockPrefixCallbackOp
     @param [in] stride1  Stride along axis 1 of the three arrays (this is expected
                    to be identical, nonzero, and preferably -1 or 1.
 */
-template <typename Real,
-          int ThreadsPerBlock>
-static __global__ void DiscountedCumSumKernel(int N, int T,
-                                              const Real *x, int x_stride0,
-                                              const Real *gamma, int gamma_stride0,
-                                              Real *y, int y_stride0,
-                                              int stride1) {
+template <typename Real, int ThreadsPerBlock>
+static __global__ void DiscountedCumSumKernel(int N, int T, const Real *x,
+                                              int x_stride0, const Real *gamma,
+                                              int gamma_stride0, Real *y,
+                                              int y_stride0, int stride1) {
   int n_idx = blockIdx.y * gridDim.x + blockIdx.x;
   if (n_idx >= N)
     return;
@@ -618,16 +623,14 @@ static __global__ void DiscountedCumSumKernel(int N, int T,
     }
     CombineCumSumOp<Real> op;
 
-    // the last arg is a callback functor that provides us the aggregate of this block
-    // and which is expected to return the element that we want to add to
+    // the last arg is a callback functor that provides us the aggregate of this
+    // block and which is expected to return the element that we want to add to
     BlockScan(temp_storage).InclusiveScan(elem, elem, op, prefix_callback);
     __syncthreads();
 
-    if (base_t + thread_idx < T)
-      y[(base_t + thread_idx) * stride1] = elem.y;
+    if (base_t + thread_idx < T) y[(base_t + thread_idx) * stride1] = elem.y;
   }
 }
-
 
 template <typename Real, int ThreadsPerBlock>
 void DiscountedCumSumCudaImpl(cudaStream_t stream,
@@ -635,19 +638,18 @@ void DiscountedCumSumCudaImpl(cudaStream_t stream,
                               const Real *x, int x_stride0,
                               const Real *gamma, int gamma_stride0,
                               Real *y, int y_stride0, int stride1) {
-
   int32_t tot_grid_size = N;
-  int32_t x_grid_size = (tot_grid_size < (1 << 20) ?
-                         std::min<int32_t>(tot_grid_size, (1 << 10)) :
-                         32768),
-      y_grid_size = NumBlocks(tot_grid_size, x_grid_size);
+  int32_t x_grid_size = (tot_grid_size < (1 << 20)
+                             ? std::min<int32_t>(tot_grid_size, (1 << 10))
+                             : 32768),
+          y_grid_size = NumBlocks(tot_grid_size, x_grid_size);
 
   dim3 grid_dim(x_grid_size, y_grid_size, 1),
       block_dim(ThreadsPerBlock, 1, 1);
-  K2_CUDA_SAFE_CALL(DiscountedCumSumKernel<Real, ThreadsPerBlock>
-                    <<<grid_dim, block_dim, 0, stream>>>(N, T, x, x_stride0,
-                                                         gamma, gamma_stride0,
-                                                         y, y_stride0, stride1));
+  K2_CUDA_SAFE_CALL(
+      DiscountedCumSumKernel<Real, ThreadsPerBlock>
+      <<<grid_dim, block_dim, 0, stream>>>(
+          N, T, x, x_stride0, gamma, gamma_stride0, y, y_stride0, stride1));
 }
 
 
@@ -682,7 +684,8 @@ void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
   if (!(src.Stride(1) == gamma.Stride(1) && src.Stride(1) == dest->Stride(1))) {
     K2_LOG(FATAL) << "Expected all strides on dim 1 to be the same.";
   }
-  if (!(src.GetDtype() == gamma.GetDtype() && src.GetDtype() == dest->GetDtype())) {
+  if (!(src.GetDtype() == gamma.GetDtype() &&
+        src.GetDtype() == dest->GetDtype())) {
     K2_LOG(FATAL) << "Expected all args to have the same dtype.";
   }
   int32_t N = src.Dim(0),
@@ -705,7 +708,6 @@ void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
                                      gamma.Data<float>(), gamma_stride0,
                                      dest->Data<float>(), dest_stride0,
                                      stride1);
-
     }
   } else if (src.GetDtype() == kDoubleDtype) {
     if (c->GetDeviceType() == kCuda) {
@@ -720,11 +722,11 @@ void DiscountedCumSum(const Tensor &src, const Tensor &gamma, Tensor *dest) {
                                       gamma.Data<double>(), gamma_stride0,
                                       dest->Data<double>(), dest_stride0,
                                       stride1);
-
     }
   } else {
-    K2_LOG(FATAL) << "This algorithm only instantiated for float and double; type is "
-                  << TraitsOf(src.GetDtype()).Name();
+    K2_LOG(FATAL)
+        << "This algorithm only instantiated for float and double; type is "
+        << TraitsOf(src.GetDtype()).Name();
   }
 }
 
@@ -739,7 +741,7 @@ Tensor Flip(Tensor &src, int32_t axis) {
   if (old_dim <= 1)
     return src;  // No point copying it, it's a no-op.
   TensorImplPtr src_impl = src.Impl(),
-      ans_impl = std::make_shared<TensorImpl>(*src_impl);
+                ans_impl = std::make_shared<TensorImpl>(*src_impl);
   int32_t old_stride = ans_impl->shape.Stride(axis);
   ans_impl->shape.SetStride(axis, -old_stride);
   int64_t byte_offset = old_stride * static_cast<int64_t>(old_dim - 1) *

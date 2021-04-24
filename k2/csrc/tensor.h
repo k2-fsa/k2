@@ -106,12 +106,12 @@ class Shape {
 
   int32_t num_axes_;  // Must be >= 0
 
-  // num_elements_ is the number of distinct tuples of indexes; since strides may
-  // be zero, we do not guarantee that all these elements occupy distinct memory
-  // locations.  See NumElements()
+  // num_elements_ is the number of distinct tuples of indexes; since strides
+  // may be zero, we do not guarantee that all these elements occupy distinct
+  // memory locations.  See NumElements()
   int64_t num_elements_;
-  // see documentation for IsContiguous() for its meaning.  This is "derived data";
-  // it is computed by IsContiguous().
+  // see documentation for IsContiguous() for its meaning.  This is "derived
+  // data"; it is computed by IsContiguous().
   bool is_contiguous_;
 
   // elements of dims_ and strides_ >= num_axes_ are currently not set;
@@ -233,6 +233,7 @@ class Tensor {
   TensorImplPtr Impl() const { return impl_; }
   // This is for use by implementation code; be careful with it.
   explicit Tensor(TensorImplPtr impl);
+
  private:
   // For use when `shape` and `dtype` are already set up; sets data and
   // byte_offset.

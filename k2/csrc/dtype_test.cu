@@ -39,7 +39,7 @@ template <typename T> void CheckDtypes() {
 }
 
 TEST(DtypeTest, CheckDtypes) {
-  //CheckDtypes<half>();
+  // CheckDtypes<half>();
   CheckDtypes<float>();
   CheckDtypes<double>();
   CheckDtypes<int8_t>();

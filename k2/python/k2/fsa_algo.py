@@ -6,6 +6,7 @@
 
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 import torch
@@ -116,11 +117,14 @@ def top_sort(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def intersect_device(a_fsas: Fsa,
-                     b_fsas: Fsa,
-                     b_to_a_map: torch.Tensor,
-                     sorted_match_a: bool = False) -> Fsa:
-    '''Compute the intersection of two FSAs treating epsilons
+def intersect_device(
+        a_fsas: Fsa,
+        b_fsas: Fsa,
+        b_to_a_map: torch.Tensor,
+        sorted_match_a: bool = False,
+        ret_arc_maps: bool = False
+) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:  # noqa
+    '''Compute the intersection of two FsaVecs treating epsilons
     as real, normal symbols.
 
     This function supports both CPU and GPU. But it is very slow on CPU.
@@ -151,9 +155,29 @@ def intersect_device(a_fsas: Fsa,
         Requires
             - `b_to_a_map.shape[0] == b_fsas.shape[0]`
             - `0 <= b_to_a_map[i] < a_fsas.shape[0]`
+      ret_arc_maps:
+        If False, return the resulting Fsa. If True, return a tuple
+        containing three entries:
+
+            - the resulting Fsa
+
+            - a_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+              a_arc_map[i] is the arc index in a_fsas that corresponds
+              to the i-th arc in the resulting Fsa. a_arc_map[i] is -1
+              if the i-th arc in the resulting Fsa has no corresponding
+              arc in a_fsas.
+
+            - b_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+              b_arc_map[i] is the arc index in b_fsas that corresponds
+              to the i-th arc in the resulting Fsa. b_arc_map[i] is -1
+              if the i-th arc in the resulting Fsa has no corresponding
+              arc in b_fsas.
 
     Returns:
-      Returns composed FsaVec; will satisfy `ans.shape == b_fsas.shape`.
+      If ret_arc_maps is False, return intersected FsaVec;
+      will satisfy `ans.shape == b_fsas.shape`.
+      If ret_arc_maps is True, it returns additionally two arc maps:
+      a_arc_map and b_arc_map.
     '''
     need_arc_map = True
     ragged_arc, a_arc_map, b_arc_map = _k2.intersect_device(
@@ -192,11 +216,17 @@ def intersect_device(a_fsas: Fsa,
         if not hasattr(out_fsas, name):
             setattr(out_fsas, name, b_value)
 
-    return out_fsas
+    if ret_arc_maps:
+        return out_fsas, a_arc_map, b_arc_map
+    else:
+        return out_fsas
 
 
-def intersect(a_fsa: Fsa, b_fsa: Fsa,
-              treat_epsilons_specially: bool = True) -> Fsa:
+def intersect(a_fsa: Fsa,
+              b_fsa: Fsa,
+              treat_epsilons_specially: bool = True,
+              ret_arc_maps: bool = False
+             ) -> Union[Fsa, Tuple[Fsa, torch.Tensor, torch.Tensor]]:  # noqa
     '''Compute the intersection of two FSAs.
 
     When `treat_epsilons_specially` is True, this function works only on CPU.
@@ -215,6 +245,23 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa,
         If False, epsilons will be treated as real, normal symbols (to have
         them treated as epsilons in this case you may have to add epsilon
         self-loops to whichever of the inputs is naturally epsilon-free).
+      ret_arc_maps:
+        If False, return the resulting Fsa. If True, return a tuple
+        containing three entries:
+
+            - the resulting Fsa
+
+            - a_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+              a_arc_map[i] is the arc index in a_fsa that corresponds
+              to the i-th arc in the resulting Fsa. a_arc_map[i] is -1
+              if the i-th arc in the resulting Fsa has no corresponding
+              arc in a_fsa.
+
+            - b_arc_map, a 1-D torch.Tensor with dtype torch.int32.
+              b_arc_map[i] is the arc index in b_fsa that corresponds
+              to the i-th arc in the resulting Fsa. b_arc_map[i] is -1
+              if the i-th arc in the resulting Fsa has no corresponding
+              arc in b_fsa.
 
     Caution:
       The two input FSAs MUST be arc sorted if `treat_epsilons_specially`
@@ -234,9 +281,11 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa,
         FSA).
 
     Returns:
-      The result of intersecting a_fsa and b_fsa. len(out_fsa.shape) is 2
-      if and only if the two input FSAs are single FSAs;
-      otherwise, len(out_fsa.shape) is 3.
+      If ret_arc_maps is False, return the result of intersecting a_fsa and
+      b_fsa. len(out_fsa.shape) is 2 if and only if the two input FSAs are
+      single FSAs; otherwise, len(out_fsa.shape) is 3.
+      If ret_arc_maps is True, it returns additionally two arc_maps:
+      a_arc_map and b_arc_map.
     '''
     if a_fsa.is_cpu() or b_fsa.is_cpu():
         assert a_fsa.properties & fsa_properties.ARC_SORTED != 0
@@ -279,14 +328,17 @@ def intersect(a_fsa: Fsa, b_fsa: Fsa,
         if not hasattr(out_fsa, name):
             setattr(out_fsa, name, b_value)
 
-    return out_fsa
+    if ret_arc_maps:
+        return out_fsa, a_arc_map, b_arc_map
+    else:
+        return out_fsa
 
 
 def compose(a_fsa: Fsa,
             b_fsa: Fsa,
             treat_epsilons_specially: bool = True,
             inner_labels: str = None) -> Fsa:
-    '''Compute the composition of two FSAs (currently on CPU).
+    '''Compute the composition of two FSAs.
 
     When `treat_epsilons_specially` is True, this function works only on CPU.
     When `treat_epsilons_specially` is False and both `a_fsa` and `b_fsa`
@@ -467,7 +519,8 @@ def connect(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def arc_sort(fsa: Fsa) -> Fsa:
+def arc_sort(fsa: Fsa, ret_arc_map: bool = False
+            ) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
     '''Sort arcs of every state.
 
     Note:
@@ -480,19 +533,34 @@ def arc_sort(fsa: Fsa) -> Fsa:
     Args:
       fsa:
         The input FSA.
+      ret_arc_map:
+        True to return an extra arc_map (a 1-D tensor with dtype being
+        torch.int32). arc_map[i] is the arc index in the input `fsa` that
+        corresponds to the i-th arc in the output Fsa.
     Returns:
-      The sorted FSA. It is the same as the input `fsa` if the input
-      `fsa` is arc sorted. Otherwise, a new sorted fsa is returned
-      and the input `fsa` is NOT modified.
+      If ret_arc_map is False, return the sorted FSA. It is the same as the
+      input `fsa` if the input `fsa` is arc sorted. Otherwise, a new sorted
+      fsa is returned and the input `fsa` is NOT modified.
+      If ret_arc_map is True, an extra arc map is also returned.
     '''
     if fsa.properties & fsa_properties.ARC_SORTED != 0:
-        return fsa
+        if ret_arc_map:
+            # in this case, arc_map is an identity map
+            arc_map = torch.arange(fsa.num_arcs,
+                                   dtype=torch.int32,
+                                   device=fsa.device)
+            return fsa, arc_map
+        else:
+            return fsa
 
     need_arc_map = True
     ragged_arc, arc_map = _k2.arc_sort(fsa.arcs, need_arc_map=need_arc_map)
 
     out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
-    return out_fsa
+    if ret_arc_map:
+        return out_fsa, arc_map
+    else:
+        return out_fsa
 
 
 def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
@@ -520,7 +588,8 @@ def shortest_path(fsa: Fsa, use_double_scores: bool) -> Fsa:
     return out_fsa
 
 
-def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
+def add_epsilon_self_loops(fsa: Fsa, ret_arc_map: bool = False
+                          ) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
     '''Add epsilon self-loops to an Fsa or FsaVec.
 
     This is required when composing using a composition method that does not
@@ -529,10 +598,17 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
+      ret_arc_map:
+        If False, return the resulting Fsa.
+        If True, return an extra arc map.
 
     Returns:
-      An instance of :class:`Fsa` that has an epsilon self-loop on every
-      non-final state.
+      If ret_arc_map is False, return an instance of :class:`Fsa` that has an
+      epsilon self-loop on every non-final state.
+      If ret_arc_map is True, it returns an extra arc_map. arc_map[i] is the
+      arc index in the input `fsa` that corresponds to the i-th arc in the
+      resulting Fsa. arc_map[i] is -1 if the i-th arc in the resulting Fsa
+      has no counterpart in the input `fsa`.
     '''
 
     need_arc_map = True
@@ -540,7 +616,10 @@ def add_epsilon_self_loops(fsa: Fsa) -> Fsa:
                                                      need_arc_map=need_arc_map)
 
     out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
-    return out_fsa
+    if ret_arc_map:
+        return out_fsa, arc_map
+    else:
+        return out_fsa
 
 
 def remove_epsilon_self_loops(fsa: Fsa) -> Fsa:
@@ -709,19 +788,32 @@ def closure(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
-def invert(fsa: Fsa) -> Fsa:
+def invert(fsa: Fsa,
+           ret_arc_map: bool = False) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:
     '''Invert an FST, swapping the labels in the FSA with the auxiliary labels.
 
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
+      ret_arc_map:
+        True to return an extra arc map, which is a 1-D tensor with dtype
+        torch.int32. The returned arc_map[i] is the arc index in the input
+        fsa that corresponds to the i-th arc in the returned fsa. arc_map[i]
+        is -1 if the i-th arc in the returned fsa has no counterpart in the
+        input fsa.
     Returns:
-      The inverted Fsa, it's top-sorted if `fsa` is top-sorted.
+      If ret_arc_map is False, return the inverted Fsa, it's top-sorted if
+      `fsa` is top-sorted.
+      If ret_arc_map is True, return an extra arc map.
     '''
-    # FIXME(fangjun): support autograd and update k2.compose.
-    assert fsa.requires_grad is False
     if isinstance(fsa.aux_labels, torch.Tensor):
-        return fsa.invert()
+        if ret_arc_map is False:
+            return fsa.invert()
+        else:
+            arc_map = torch.arange(fsa.num_arcs,
+                                   dtype=torch.int32,
+                                   device=fsa.device)
+            return fsa.invert(), arc_map
     else:
         assert isinstance(fsa.aux_labels, k2.RaggedInt)
         need_arc_map = True
@@ -730,7 +822,11 @@ def invert(fsa: Fsa) -> Fsa:
         out_fsa = k2.utils.fsa_from_unary_function_tensor(
             fsa, ragged_arc, arc_map)
         out_fsa.aux_labels = aux_labels
-        return out_fsa
+
+        if ret_arc_map:
+            return out_fsa, arc_map
+        else:
+            return out_fsa
 
 
 def random_paths(fsas: Fsa, use_double_scores: bool,

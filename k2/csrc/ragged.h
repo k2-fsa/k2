@@ -325,8 +325,7 @@ struct Ragged {
   }
 
   explicit Ragged(const RaggedShape &shape, Dtype dtype = DtypeOf<T>::dtype)
-      : shape(shape), values(shape.Context(), shape.NumElements(), dtype) {
-  }
+      : shape(shape), values(shape.Context(), shape.NumElements(), dtype) {}
 
   // Defined in ragged_ops_inl.h
   // This will crash if T == Any.

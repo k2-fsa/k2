@@ -54,6 +54,8 @@ Tensor Cast(Tensor src, Dtype new_dtype);
      @param [in] allow_minus_one  If true, -1 is allowed as a member
                      of `indexes` and the corresponding output elements
                      will be zero.
+     @param [in] default_value  Used only when `src` is a 1-D tensor.
+                     ans[i] is set to default_value if indexes[i] is -1.
      @return   Returns a Tensor with the same dtype as `src`, and
                      shape (indexes.Dim(), src.Dim(1), src.Dim(2), ...),
                      i.e. with the same num-axes as `src` and
@@ -61,8 +63,8 @@ Tensor Cast(Tensor src, Dtype new_dtype);
                      Noted the ans would be contiguous even though `src`
                      is not contiguous.
  */
-Tensor Index(Tensor &src, Array1<int32_t> &indexes,
-             bool allow_minus_one = true);
+Tensor Index(Tensor &src, Array1<int32_t> &indexes, bool allow_minus_one,
+             double default_value = 0);
 
 /*
   IndexAdd() is the function you would use when doing backprop for Index().

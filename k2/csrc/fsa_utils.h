@@ -527,7 +527,6 @@ FsaVec FsaVecFromArcIndexes(FsaVec &fsas, Ragged<int32_t> &best_arc_indexes);
 Ragged<int32_t> ComposeArcMaps(Ragged<int32_t> &step1_arc_map,
                                Ragged<int32_t> &step2_arc_map);
 
-
 /*
   Return a ragged array that represents the cumulative distribution function
   (cdf) of the probability of arcs leaving each state of `fsas`.
