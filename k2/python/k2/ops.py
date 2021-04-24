@@ -37,8 +37,8 @@ class _IndexSelectFunction(torch.autograd.Function):
             is 0. The elements of `index` should be in the range
             `[-1..src.shape[0]-1]`.
           default_value:
-            Used only when `src` is a 1-D tensor. It sets ans[i] to default_value
-            if index[i] is -1.
+            Used only when `src` is a 1-D tensor. It sets ans[i] to
+            default_value if index[i] is -1.
 
         Returns:
           A tensor with shape (index.numel(), *src.shape[1:]) and dtype the
