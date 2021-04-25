@@ -669,6 +669,11 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
     ragged_arc, arc_map = _k2.remove_epsilon(fsa.arcs, fsa.properties)
 
     out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map)
+
+    if hasattr(out_fsa, 'aux_labels') and \
+            isinstance(out_fsa.aux_labels, k2.RaggedInt):
+        out_fsa.aux_labels = k2.ragged.remove_values_eq(out_fsa.aux_labels, 0)
+
     return out_fsa
 
 
@@ -697,6 +702,11 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
         fsa.arcs, fsa.properties)
 
     out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map)
+
+    if hasattr(out_fsa, 'aux_labels') and \
+            isinstance(out_fsa.aux_labels, k2.RaggedInt):
+        out_fsa.aux_labels = k2.ragged.remove_values_eq(out_fsa.aux_labels, 0)
+
     return out_fsa
 
 
