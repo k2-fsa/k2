@@ -29,8 +29,10 @@ class DenseFsaVec(object):
     # correspond to the final-arcs in the FSAs; the 0 corresponds to
     # symbol -1.)
 
-    def __init__(self, log_probs: torch.Tensor,
-                 supervision_segments: torch.Tensor) -> None:
+    def __init__(self,
+                 log_probs: torch.Tensor,
+                 supervision_segments: torch.Tensor,
+                 allow_truncate: int = 0) -> None:
         '''Construct a DenseFsaVec from neural net log-softmax outputs.
 
         Args:
@@ -47,7 +49,7 @@ class DenseFsaVec(object):
             segment.
 
             Note:
-              - `0 < start_frame + duration <= T`
+              - `0 < start_frame + duration <= T + allow_truncate`
               - `0 <= start_frame < T`
               - `duration > 0`
 
@@ -55,12 +57,16 @@ class DenseFsaVec(object):
               The last column, i.e., the duration column, has to be sorted
               in **decreasing** order. That is, the first supervision_segment
               (the first row) has the largest duration.
+          allow_truncate:
+            If not zero, it truncates at most this number of frames from
+            duration in case start_frame + duration > T.
         '''
         assert log_probs.ndim == 3
         assert log_probs.dtype == torch.float32
         assert supervision_segments.ndim == 2
         assert supervision_segments.dtype == torch.int32
         assert supervision_segments.device.type == 'cpu'
+        assert allow_truncate >= 0
 
         N, T, C = log_probs.shape
 
@@ -72,17 +78,21 @@ class DenseFsaVec(object):
         indexes = []
         last_frame_indexes = []
         cur = 0
-        for segment in supervision_segments:
-            segment_index, start_frame, duration = segment.tolist()
+        for segment in supervision_segments.tolist():
+            segment_index, start_frame, duration = segment
             assert 0 <= segment_index < N
             assert 0 <= start_frame < T
             assert duration > 0
-            assert start_frame + duration <= T
+            assert start_frame + duration <= T + allow_truncate
             offset = segment_index * T
-            indexes.append(
-                torch.arange(start_frame, start_frame + duration) + offset)
+            end_frame = min(start_frame + duration, T)  # exclusive
+
+            # update duration if it's too large
+            duration = end_frame - start_frame
+
+            indexes.append(torch.arange(start_frame, end_frame) + offset)
             indexes.append(placeholder)
-            cur += duration
+            cur += duration  # NOTE: the duration may be updated above
             last_frame_indexes.append(cur)
             cur += 1  # increment for the extra row
 
@@ -106,9 +116,24 @@ class DenseFsaVec(object):
                                  device='cpu',
                                  dtype=torch.int32)
         row_splits[1:] = torch.tensor(last_frame_indexes) + 1
+
+        # minus one to exclude the fake row [0, -inf, -inf, ...]
+        self._duration = row_splits[1:] - row_splits[:-1] - 1
+
         row_splits = row_splits.to(device)
         self.dense_fsa_vec = _k2.DenseFsaVec(scores, row_splits)
         self.scores = scores  # for back propagation
+
+    @property
+    def duration(self) -> torch.Tensor:
+        '''Return the duration (on CPU) of each seq.
+        '''
+        if not hasattr(self, '_duration'):
+            row_splits = self.dense_fsa_vec.shape().row_splits(1)
+            # minus one to exclude the fake row [0, -inf, -inf, ...]
+            duration = row_splits[1:] - row_splits[:-1] - 1
+            self._duration = duration.cpu()
+        return self._duration
 
     @classmethod
     def _from_dense_fsa_vec(cls, dense_fsa_vec: _k2.DenseFsaVec,

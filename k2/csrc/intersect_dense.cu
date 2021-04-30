@@ -993,6 +993,6 @@ void IntersectDense(FsaVec &a_fsas, DenseFsaVec &b_fsas,
 
   intersector.Intersect();
   FsaVec ret = intersector.FormatOutput(arc_map_a, arc_map_b);
-  *out = ret;
+  *out = std::move(ret);
 }
 }  // namespace k2
