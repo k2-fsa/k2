@@ -117,18 +117,22 @@ class DenseFsaVec(object):
                                  dtype=torch.int32)
         row_splits[1:] = torch.tensor(last_frame_indexes) + 1
 
+        # minus one to exclude the fake row [0, -inf, -inf, ...]
+        self._duration = row_splits[1:] - row_splits[:-1] - 1
+
         row_splits = row_splits.to(device)
         self.dense_fsa_vec = _k2.DenseFsaVec(scores, row_splits)
         self.scores = scores  # for back propagation
 
     @property
     def duration(self) -> torch.Tensor:
-        '''Return the duration of each seq.
+        '''Return the duration (on CPU) of each seq.
         '''
         if not hasattr(self, '_duration'):
             row_splits = self.dense_fsa_vec.shape().row_splits(1)
             # minus one to exclude the fake row [0, -inf, -inf, ...]
-            self._duration = row_splits[1:] - row_splits[:-1] - 1
+            duration = row_splits[1:] - row_splits[:-1] - 1
+            self._duration = duration.cpu()
         return self._duration
 
     @classmethod

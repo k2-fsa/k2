@@ -41,14 +41,13 @@ class TestDenseFsaVec(unittest.TestCase):
             dense_fsa_vec = k2.DenseFsaVec(log_prob, supervision_segments)
             assert dense_fsa_vec.dim0() == 5, 'It should contain 5 segments'
             assert dense_fsa_vec.device == device
+            assert dense_fsa_vec.duration.device == torch.device('cpu')
             assert torch.all(
-                torch.eq(dense_fsa_vec.duration.cpu(),
-                         supervision_segments[:, 2]))
+                torch.eq(dense_fsa_vec.duration, supervision_segments[:, 2]))
 
             del dense_fsa_vec._duration
             assert torch.all(
-                torch.eq(dense_fsa_vec.duration.cpu(),
-                         supervision_segments[:, 2]))
+                torch.eq(dense_fsa_vec.duration, supervision_segments[:, 2]))
 
             assert torch.allclose(dense_fsa_vec.scores[:3, 1:],
                                   log_prob[0][0:3])
@@ -89,8 +88,7 @@ class TestDenseFsaVec(unittest.TestCase):
                                            supervision_segments,
                                            allow_truncate=3)
             assert torch.all(
-                torch.eq(dense_fsa_vec.duration,
-                         torch.tensor([3, 1, 2, 4], device=device)))
+                torch.eq(dense_fsa_vec.duration, torch.tensor([3, 1, 2, 4])))
 
             assert torch.allclose(dense_fsa_vec.scores[:3, 1:],
                                   log_prob[0][0:3])
