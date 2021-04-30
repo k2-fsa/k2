@@ -45,6 +45,11 @@ class TestDenseFsaVec(unittest.TestCase):
                 torch.eq(dense_fsa_vec.duration.cpu(),
                          supervision_segments[:, 2]))
 
+            del dense_fsa_vec._duration
+            assert torch.all(
+                torch.eq(dense_fsa_vec.duration.cpu(),
+                         supervision_segments[:, 2]))
+
             assert torch.allclose(dense_fsa_vec.scores[:3, 1:],
                                   log_prob[0][0:3])
 
