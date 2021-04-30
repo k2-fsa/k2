@@ -26,7 +26,7 @@ class TestFsa(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.devices = [torch.device("cpu")]
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available():
             cls.devices.append(torch.device('cuda', 0))
 
