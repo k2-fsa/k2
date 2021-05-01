@@ -1,0 +1,24 @@
+package:
+  name: k2
+  version: "{{ environ.get('BUILD_VERSION') }}"
+
+source:
+  path: "{{ environ.get('K2_ROOT_DIR') }}"
+
+build:
+  number: 0
+  string: cu101+torch1.7.1+py{{py}}
+
+requirements:
+  host:
+    - cmake
+    - python
+    - setuptools
+    - pytorch=1.7.1
+    - cudatoolkit=10.1
+
+about:
+  home: https://github.com/k2-fsa/k2
+  license: Apache V2
+  license_file: LICENSE
+  summary: FSA/FST algorithms, differentiable, with PyTorch compatibility
