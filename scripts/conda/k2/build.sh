@@ -6,6 +6,17 @@ set -ex
 
 CONDA_ROOT=$(conda config --show root_prefix | cut -f2 -d' ')
 CONDA_ENV_DIR=$CONDA_ROOT/envs/k2
+NUM_JOBS="-j"
+if [ ! -d $CONDA_ENV_DIR ]; then
+  # This is for the miniconda used in GitHub actions.
+  # It turns out CONDA_ENV_DIR == CONDA_ROOT in GitHub actions
+  CONDA_ENV_DIR=$CONDA_ROOT
+  NUM_JOBS="-j1"
+fi
+
+find $CONDA_ENV_DIR -name cudnn.h
+
+sed -i '59i#define CUDNN_MAJOR 8' $CONDA_ENV_DIR/include/cudnn.h
 
 rm -rf build
 mkdir build
@@ -21,7 +32,9 @@ cmake \
   -DCUDNN_INCLUDE_PATH=$CONDA_ENV_DIR/include \
   ..
 
-make -j _k2
+
+
+make $NUM_JOBS _k2
 cd ..
 
 python3 setup.py install --single-version-externally-managed --record=record.txt

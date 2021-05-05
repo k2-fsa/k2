@@ -75,26 +75,42 @@ jobs:
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
 
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          activate-environment: k2
+
       - name: Install Dependencies CUDA ${{ matrix.cuda }} PyTorch ${{ matrix.torch }}
+        shell: bash -l {0}
         run: |
-          which conda # print: /usr/bin/conda
-          $CONDA/bin/conda info
-          $CONDA/bin/conda install -y -c conda-forge cudatoolkit-dev=${{ matrix.cuda }}
-          $CONDA/bin/conda install -y -c nvidia cudatoolkit=${{ matrix.cuda }} cudnn=8.0.4
-          $CONDA/bin/conda install -y -c pytorch pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
+          which conda
+          conda info
+          conda env list
+
+          conda install conda-build
+          conda install -y -c conda-forge cudatoolkit-dev=${{ matrix.cuda }}
+          conda install -y -c nvidia cudatoolkit=${{ matrix.cuda }} cudnn=8.0.4
+          conda install -y -c pytorch pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
 
       - name: Display NVCC version
+        shell: bash -l {0}
         run: |
+          echo "which nvcc"
+          which nvcc
           nvcc --version
 
       - name: Display PyTorch version
+        shell: bash -l {0}
         run: |
+          python3 -c "import torch; print(torch.__file__)"
           python3 -m torch.utils.collect_env
 
-      # - name: Build k2
-      #   run: |
-      #     BUILD_VERSION=$(python3 ./get_version.py)
-      #     export BUILD_VERSION
-      #     echo "BUILD_VERSION: $BUILD_VERSION"
-      #
-      #     $CONDA/bin/conda build --no-anaconda-upload -c pytorch ./scripts/conda/k2
+      - name: Build k2
+        shell: bash -l {0}
+        env:
+          K2_CUDA_VERSION_STR: ${{ matrix.cuda }}
+          K2_TORCH_VERSION: ${{ matrix.torch }}
+          K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
+        run: |
+          ./scripts/build_conda.sh
