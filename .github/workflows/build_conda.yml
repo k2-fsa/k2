@@ -39,6 +39,17 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          which conda
+          which conda # print: /usr/bin/conda
           $CONDA/bin/conda info
+          $CONDA/bin/conda install -c conda-forge cudatoolkit-dev=10.1
+          $CONDA/bin/conda install -c nvidia cudatoolkit=10.1 cudnn=8.0.4
+          $CONDA/bin/conda install -c pytorch pytorch=1.7.1 cudatoolkit=10.1
+      - name: Build k2
+        run: |
+
+          BUILD_VERSION=$(python3 ./get_version.py)
+          export BUILD_VERSION
+          echo "BUILD_VERSION: $BUILD_VERSION"
+
+          $CONDA/bin/conda build --no-anaconda-upload -c pytorch ./scripts/conda/k2
 
