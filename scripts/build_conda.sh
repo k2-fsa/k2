@@ -90,15 +90,9 @@ K2_BUILD_VERSION=$(python3 ./get_version.py)
 
 export K2_BUILD_VERSION
 
-export CONDA_BLD_PATH=~/conda-bld
-mkdir -pv $CONDA_BLD_PATH
-
 if [ -z $K2_CONDA_TOKEN ]; then
   echo "Auto upload to anaconda.org is disabled since K2_CONDA_TOKEN is not set"
   conda build --no-anaconda-upload -c pytorch ./scripts/conda/k2
 else
-  # K2_CONDA_TOKEN will be expired 997 years later
-  # conda build -c pytorch --token $K2_CONDA_TOKEN ./scripts/conda/k2
-  conda build --no-anaconda-upload -c pytorch ./scripts/conda/k2
-  anaconda -t $K2_CONDA_TOKEN upload $CONDA_BLD_PATH/linux-64/k2*.tar.bz2 --force
+  conda build -c pytorch --token $K2_CONDA_TOKEN ./scripts/conda/k2
 fi
