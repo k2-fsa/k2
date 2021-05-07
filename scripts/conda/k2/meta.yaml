@@ -10,11 +10,14 @@ build:
   string: cu{{ environ.get('K2_CUDA_VERSION') }}+torch{{ environ.get('K2_TORCH_VERSION') }}+py{{py}}
 
 requirements:
-  host:
+  build:
     - cmake
     - python
-    - setuptools
-    - pytorch={{ environ.get('K2_TORCH_VERSION') }}
+    - pytorch=={{ environ.get('K2_TORCH_VERSION') }}
+    - cudatoolkit={{ environ.get('K2_CUDA_VERSION_STR') }}
+  run:
+    - python
+    - pytorch=={{ environ.get('K2_TORCH_VERSION') }}
     - cudatoolkit={{ environ.get('K2_CUDA_VERSION_STR') }}
 
 about:

@@ -84,14 +84,19 @@ jobs:
       - name: Install Dependencies CUDA ${{ matrix.cuda }} PyTorch ${{ matrix.torch }}
         shell: bash -l {0}
         run: |
-          which conda
-          conda info
-          conda env list
-
-          conda install conda-build
+          conda install -y anaconda
+          conda install -y conda-build
           conda install -y -c conda-forge cudatoolkit-dev=${{ matrix.cuda }}
           conda install -y -c nvidia cudatoolkit=${{ matrix.cuda }} cudnn=8.0.4
           conda install -y -c pytorch pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
+
+      - name: Display conda info
+        shell: bash -l {0}
+        run: |
+          which conda
+          which anaconda
+          conda env list
+          conda info
 
       - name: Display NVCC version
         shell: bash -l {0}
@@ -110,6 +115,7 @@ jobs:
         shell: bash -l {0}
         env:
           K2_CUDA_VERSION_STR: ${{ matrix.cuda }}
+          K2_PYTHON_VERSION: ${{ matrix.python-version}}
           K2_TORCH_VERSION: ${{ matrix.torch }}
           K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
         run: |
