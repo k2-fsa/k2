@@ -82,11 +82,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
           activate-environment: k2
 
-      # - name: Install Dependencies CUDA ${{ matrix.cuda }} PyTorch ${{ matrix.torch }}
-      #   shell: bash -l {0}
-      #   run: |
-      #     # conda install -y anaconda
-      #     conda install -y conda-build
+      - name: Install Dependencies CUDA ${{ matrix.cuda }} PyTorch ${{ matrix.torch }}
+        shell: bash -l {0}
+        run: |
+          # conda install -y anaconda
+          conda install -y conda-build
       #     # GCC 5 results in compilation errors for torch==1.5.0
       #     # so we use GCC 7 here
       #     conda install -c conda-forge gcc_linux-64=7
