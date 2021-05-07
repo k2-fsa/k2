@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 
 import datetime
+import os
 import re
 
 
 def get_cuda_version():
+    ans = os.environ.get('K2_CUDA_VERSION', None)
+    if ans is not None:
+        return str(ans)
     import torch
     from torch.utils import collect_env
     running_cuda_version = collect_env.get_running_cuda_version(
