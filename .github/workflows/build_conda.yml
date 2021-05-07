@@ -80,6 +80,9 @@ jobs:
         run: |
           conda install -y anaconda
           conda install -y conda-build
+          # GCC 5 results in compilation errors for torch==1.5.0
+          # so we use GCC 7 here
+          conda install -c conda-forge gcc_linux-64=7
           conda install -y -c conda-forge cudatoolkit-dev=${{ matrix.cuda }}
           conda install -y -c nvidia cudatoolkit=${{ matrix.cuda }} cudnn=8.0.4
           conda install -y -c pytorch pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
