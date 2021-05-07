@@ -11,6 +11,9 @@ build:
 
 requirements:
   build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+  host:
     - cmake
     - python
     - pytorch=={{ environ.get('K2_TORCH_VERSION') }}

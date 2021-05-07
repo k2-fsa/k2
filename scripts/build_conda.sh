@@ -81,6 +81,16 @@ if false; then
   #
   conda create -n k2 python=$K2_PYTHON_VERSION
   conda activate k2
+  # GCC 5 results in compilation errors for torch==1.5.x
+  # so we use GCC 7 here.
+  conda install -c conda-forge gcc_linux-64=7
+  # After installing gcc_linux-64=7,
+  # "which gcc" still shows the system one.
+  #
+  # We have to use the environment variable $CC
+  #
+  # You can use `export` to list available environment variables
+  # after activating the environment k2
   conda install conda-build
   conda install -c conda-forge cudatoolkit-dev=$K2_CUDA_VERSION_STR
   conda install -c nvidia cudatoolkit=$K2_CUDA_VERSION_STR cudnn=8.0.4
