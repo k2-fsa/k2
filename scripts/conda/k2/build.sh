@@ -6,7 +6,7 @@ set -ex
 
 CONDA_ENV_DIR=$CONDA_PREFIX
 NUM_JOBS="-j1"
-if [ -z $K2_IS_GITHUB_ACTIONS ]; do
+if [ -z $K2_IS_GITHUB_ACTIONS ]; then
   NUM_JOBS="-j"
 fi
 
@@ -20,6 +20,7 @@ cd build
 
 echo "CC is: $CC"
 echo "CXX is: $CXX"
+echo "GXX is: $GXX"
 echo "which nvcc: $(which nvcc)"
 
 cmake \
