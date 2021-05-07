@@ -34,6 +34,7 @@
 #
 
 set -e
+export CONDA_BUILD=1
 
 cur_dir=$(cd $(dirname $BASH_SOURCE) && pwd)
 k2_dir=$(cd $cur_dir/.. && pwd)
@@ -103,7 +104,7 @@ export K2_BUILD_VERSION
 
 if [ -z $K2_CONDA_TOKEN ]; then
   echo "Auto upload to anaconda.org is disabled since K2_CONDA_TOKEN is not set"
-  conda build --no-anaconda-upload -c pytorch ./scripts/conda/k2
+  conda build --no-anaconda-upload -c pytorch -c conda-forge -c nvidia ./scripts/conda/k2
 else
-  conda build --quiet -c pytorch --token $K2_CONDA_TOKEN ./scripts/conda/k2
+  conda build --quiet -c pytorch -c conda-forge -c nvidia --token $K2_CONDA_TOKEN ./scripts/conda/k2
 fi

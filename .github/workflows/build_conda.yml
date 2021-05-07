@@ -82,37 +82,37 @@ jobs:
           python-version: ${{ matrix.python-version }}
           activate-environment: k2
 
-      - name: Install Dependencies CUDA ${{ matrix.cuda }} PyTorch ${{ matrix.torch }}
-        shell: bash -l {0}
-        run: |
-          # conda install -y anaconda
-          conda install -y conda-build
-          # GCC 5 results in compilation errors for torch==1.5.0
-          # so we use GCC 7 here
-          conda install -c conda-forge gcc_linux-64=7
-          conda install -y -c conda-forge cudatoolkit-dev=${{ matrix.cuda }}
-          conda install -y -c nvidia cudatoolkit=${{ matrix.cuda }} cudnn=8.0.4
-          conda install -y -c pytorch pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
-
-      - name: Display conda info
-        shell: bash -l {0}
-        run: |
-          which conda
-          # which anaconda
-          conda env list
-          conda info
-
-      - name: Display NVCC version
-        shell: bash -l {0}
-        run: |
-          which nvcc
-          nvcc --version
-
-      - name: Display PyTorch version
-        shell: bash -l {0}
-        run: |
-          python3 -c "import torch; print(torch.__file__)"
-          python3 -m torch.utils.collect_env
+      # - name: Install Dependencies CUDA ${{ matrix.cuda }} PyTorch ${{ matrix.torch }}
+      #   shell: bash -l {0}
+      #   run: |
+      #     # conda install -y anaconda
+      #     conda install -y conda-build
+      #     # GCC 5 results in compilation errors for torch==1.5.0
+      #     # so we use GCC 7 here
+      #     conda install -c conda-forge gcc_linux-64=7
+      #     conda install -y -c conda-forge cudatoolkit-dev=${{ matrix.cuda }}
+      #     conda install -y -c nvidia cudatoolkit=${{ matrix.cuda }} cudnn=8.0.4
+      #     conda install -y -c pytorch pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
+      #
+      # - name: Display conda info
+      #   shell: bash -l {0}
+      #   run: |
+      #     which conda
+      #     # which anaconda
+      #     conda env list
+      #     conda info
+      #
+      # - name: Display NVCC version
+      #   shell: bash -l {0}
+      #   run: |
+      #     which nvcc
+      #     nvcc --version
+      #
+      # - name: Display PyTorch version
+      #   shell: bash -l {0}
+      #   run: |
+      #     python3 -c "import torch; print(torch.__file__)"
+      #     python3 -m torch.utils.collect_env
 
       - name: Build k2
         shell: bash -l {0}
@@ -121,5 +121,6 @@ jobs:
           K2_PYTHON_VERSION: ${{ matrix.python-version}}
           K2_TORCH_VERSION: ${{ matrix.torch }}
           K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
+          K2_IS_GITHUB_ACTIONS: 1
         run: |
           ./scripts/build_conda.sh

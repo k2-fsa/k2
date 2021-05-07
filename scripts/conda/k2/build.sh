@@ -4,14 +4,10 @@
 
 set -ex
 
-CONDA_ROOT=$(conda config --show root_prefix | cut -f2 -d' ')
-CONDA_ENV_DIR=$CONDA_ROOT/envs/k2
-NUM_JOBS="-j"
-if [ ! -d $CONDA_ENV_DIR ]; then
-  # This is for the miniconda used in GitHub actions.
-  # It turns out CONDA_ENV_DIR == CONDA_ROOT in GitHub actions
-  CONDA_ENV_DIR=$CONDA_ROOT
-  NUM_JOBS="-j1"
+CONDA_ENV_DIR=$CONDA_PREFIX
+NUM_JOBS="-j1"
+if [ -z $K2_IS_GITHUB_ACTIONS ]; do
+  NUM_JOBS="-j"
 fi
 
 find $CONDA_ENV_DIR -name cudnn.h
@@ -23,14 +19,20 @@ mkdir build
 cd build
 
 echo "CC is: $CC"
+echo "CXX is: $CXX"
+echo "which nvcc: $(which nvcc)"
 
 cmake \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CUDA_COMPILER=$(which nvcc) \
-  -DPYTHON_EXECUTABLE=$(which python3) \
-  -DCUDNN_LIBRARY_PATH=$CONDA_ENV_DIR/lib/libcudnn.so \
-  -DCUDNN_INCLUDE_PATH=$CONDA_ENV_DIR/include \
   ..
+
+# cmake \
+#   -DCMAKE_BUILD_TYPE=Release \
+#   -DCMAKE_CUDA_COMPILER=$(which nvcc) \
+#   -DPYTHON_EXECUTABLE=$(which python3) \
+#   -DCUDNN_LIBRARY_PATH=$CONDA_ENV_DIR/lib/libcudnn.so \
+#   -DCUDNN_INCLUDE_PATH=$CONDA_ENV_DIR/include \
+#   ..
 
 make $NUM_JOBS _k2
 cd ..
