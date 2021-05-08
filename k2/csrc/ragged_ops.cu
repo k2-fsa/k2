@@ -478,7 +478,7 @@ static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
     job_begin = new_offsets_acc(axis, ans_idx0),
     job_this_idx0 = i - job_begin;
     K2_CHECK_GE(job_this_idx0, 0);
-    int32_t row_split_value, new_next_offset;
+    int32_t row_split_value = 0, new_next_offset = 0;
     if (axis + 1 < num_axes)
       new_next_offset = new_offsets_acc(axis + 1, ans_idx0);
     if (i < tot_size) {
@@ -758,7 +758,7 @@ static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
                      : composed_row_ids_data[i]),  // note: ans_idx0 == src_idx.
         job_begin = offsets_acc(axis, ans_idx0), job_this_idx0 = i - job_begin;
     K2_CHECK_GE(job_this_idx0, 0);
-    int32_t row_split_value,  new_next_offset;
+    int32_t row_split_value = 0,  new_next_offset = 0;
     uint32_t *merge_map_data_local = nullptr;
     if (axis + 1 < num_axes_out) {
       new_next_offset = offsets_acc(axis + 1, ans_idx0);
