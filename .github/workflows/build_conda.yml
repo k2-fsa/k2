@@ -33,14 +33,20 @@ jobs:
         python-version: [3.6, 3.7, 3.8, 3.9]
         cuda: ["10.1", "10.2", "11.0", "11.1"]
         # from https://download.pytorch.org/whl/torch_stable.html
+        # PyTorch 1.8.1 supports: cuda 10.1, 10.2 (default), 11.1
         # PyTorch 1.8.0 supports: cuda 10.1, 10.2 (default), 11.1
-        # PyTorch 1.7.x supports: cuda 10.1, 10.2 (default), 11.0
-        # PyTorch 1.6.0 supports: cuda 10.1, 10.2 (default)
-        # PyTorch 1.5.x supports: cuda 10.1, 10.2 (default)
+        # PyTorch 1.7.x supports: cuda 10.1, 10.2 (default), 11.0, 9.2 (not included in this setup)
+        # PyTorch 1.6.0 supports: cuda 10.1, 10.2 (default), 9.2 (not included in this setup)
+        # PyTorch 1.5.x supports: cuda 10.1, 10.2 (default), 9.2 (not included in this setup)
+        #
+        # PyTorch 1.8.x and 1.7.1 support 3.6, 3.7, 3.8, 3.9
+        # PyTorch 1.7.0, 1.6.0, and 1.5.x support 3.6, 3.7, 3.8
+        #
         # Other PyTorch versions are not tested
-        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
+        #
+        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"]
         exclude:
-          - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0]
+          - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0, 1.8.1]
             torch: "1.5.0"
           - cuda: "11.0"
             torch: "1.5.1"
@@ -48,6 +54,8 @@ jobs:
             torch: "1.6.0"
           - cuda: "11.0"
             torch: "1.8.0"
+          - cuda: "11.0"
+            torch: "1.8.1"
           - cuda: "11.1" # exclude 11.1 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1]
             torch: "1.5.0"
           - cuda: "11.1"
@@ -90,7 +98,7 @@ jobs:
           conda install -y conda-build
 
           conda install -y bs4 requests tqdm
-          conda install -y -c pytorch pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
+          conda install -y -c pytorch -c conda-forge pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
 
       - name: Display conda info
         shell: bash -l {0}
