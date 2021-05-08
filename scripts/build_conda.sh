@@ -92,6 +92,11 @@ export K2_BUILD_VERSION
 
 export K2_BUILD_TYPE
 
+if [ ! -z $K2_IS_GITHUB_ACTIONS ]; then
+  export K2_IS_GITHUB_ACTIONS
+fi
+
+
 if [ -z $K2_CONDA_TOKEN ]; then
   echo "Auto upload to anaconda.org is disabled since K2_CONDA_TOKEN is not set"
   conda build --no-anaconda-upload -c pytorch -c conda-forge ./scripts/conda/k2
