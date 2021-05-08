@@ -94,7 +94,7 @@ if false; then
   # after activating the environment k2
   conda install conda-build
   conda install -c conda-forge cudatoolkit-dev=$K2_CUDA_VERSION_STR
-  conda install -c nvidia cudatoolkit=$K2_CUDA_VERSION_STR cudnn=8.0.4
+  conda install -c nvidia cudatoolkit=$K2_CUDA_VERSION_STR cudnn=7.6
   conda install -c pytorch pytorch=$K2_TORCH_VERSION cudatoolkit=$K2_CUDA_VERSION_STR
 fi
 

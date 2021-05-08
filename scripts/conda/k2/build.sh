@@ -10,9 +10,6 @@ if [ -z $K2_IS_GITHUB_ACTIONS ]; then
   NUM_JOBS="-j"
 fi
 
-CUDNN_H=$(find $CONDA_ENV_DIR -name cudnn.h)
-
-sed -i '59i#define CUDNN_MAJOR 8' $CUDNN_H
 
 rm -rf build
 mkdir build

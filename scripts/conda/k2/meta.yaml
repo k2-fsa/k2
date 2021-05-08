@@ -20,7 +20,7 @@ requirements:
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
     - cudatoolkit={{ environ.get('K2_CUDA_VERSION_STR') }}
     - cudatoolkit-dev={{ environ.get('K2_CUDA_VERSION_STR') }}
-    - cudnn=8.0.4
+    - cudnn=7.6
   run:
     - python
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
