@@ -15,7 +15,7 @@ build:
     - K2_PYTHON_VERSION
     - K2_PYTHON_VERSION
     - K2_BUILD_TYPE
-
+    - K2_BUILD_VERSION
 requirements:
   build:
     - {{ compiler('c') }}
