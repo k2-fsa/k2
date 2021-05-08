@@ -123,7 +123,6 @@ jobs:
           conda install -y conda-build
 
           conda install -y bs4 requests tqdm
-          conda install -y -c pytorch -c conda-forge pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
 
       - name: Display conda info
         shell: bash -l {0}
@@ -132,7 +131,6 @@ jobs:
           conda env list
           conda info
           nproc
-
 
       - name: Download cudnn 8.0
         shell: bash -l {0}
@@ -144,7 +142,7 @@ jobs:
       - name: Build k2
         shell: bash -l {0}
         env:
-          K2_CUDA_VERSION_STR: ${{ matrix.cuda }}
+          K2_CUDA_VERSION: ${{ matrix.cuda }}
           K2_PYTHON_VERSION: ${{ matrix.python-version}}
           K2_TORCH_VERSION: ${{ matrix.torch }}
           K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}

@@ -112,6 +112,8 @@ jobs:
 
       - name: Build pip packages
         shell: bash
+        env:
+          K2_IS_FOR_PYPI: 1
         run: |
           sudo apt-get install chrpath
           ./scripts/build_pip.sh

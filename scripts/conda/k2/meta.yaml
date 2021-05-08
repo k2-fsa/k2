@@ -7,12 +7,11 @@ source:
 
 build:
   number: 0
-  string: cu{{ environ.get('K2_CUDA_VERSION') }}+torch{{ environ.get('K2_TORCH_VERSION') }}+py{{py}}
+  string: py{{ environ.get('K2_PYTHON_VERSION') }}_torch{{ environ.get('K2_TORCH_VERSION') }}
   script_env:
     - K2_IS_GITHUB_ACTIONS
     - K2_CUDA_VERSION
-    - K2_CUDA_VERSION_STR
-    - K2_PYTHON_VERSION
+    - K2_TORCH_VERSION
     - K2_PYTHON_VERSION
     - K2_BUILD_TYPE
     - K2_BUILD_VERSION
@@ -25,7 +24,7 @@ requirements:
     - cmake=3.18
     - python
     - pytorch=={{ environ.get('K2_TORCH_VERSION') }}
-    - cudatoolkit={{ environ.get('K2_CUDA_VERSION_STR') }}
+    - cudatoolkit={{ environ.get('K2_CUDA_VERSION') }}
     - gcc_linux-64=7
   run:
     - python

@@ -6,7 +6,8 @@ import re
 
 
 def get_cuda_version():
-    import torch
+    import importlib
+    torch = importlib.import_module('torch')
     from torch.utils import collect_env
     running_cuda_version = collect_env.get_running_cuda_version(
         collect_env.run)
@@ -15,10 +16,7 @@ def get_cuda_version():
         assert cuda_version in running_cuda_version, \
                 f'PyTorch is built with CUDA version: {cuda_version}.\n' \
                 f'The current running CUDA version is: {running_cuda_version}'
-    cuda_version = cuda_version.split('.')
-    major, minor = int(cuda_version[0]), int(cuda_version[1])
-    cuda_version = major * 10 + minor
-    return f'{cuda_version}'
+    return cuda_version
 
 
 def get_package_version():
@@ -27,14 +25,19 @@ def get_package_version():
     #
     # `pip install k2==x.x.x+cu100` to install k2 with CUDA 10.0
     #
-    default_cuda_version = '101'  # CUDA 10.1
+    default_cuda_version = '10.1'  # CUDA 10.1
 
     import os
-    cuda_version = get_cuda_version()
-    if default_cuda_version != cuda_version:
-        cuda_version = f'+cu{cuda_version}'
-    else:
+    cuda_version = os.environ.get('K2_CUDA_VERSION', None)
+    if cuda_version is None:
+        cuda_version = get_cuda_version()
+
+    is_for_pypi = os.environ.get('K2_IS_FOR_PYPI', None)
+
+    if is_for_pypi is not None and default_cuda_version == cuda_version:
         cuda_version = ''
+    else:
+        cuda_version = f'_cuda{cuda_version}'
 
     with open('CMakeLists.txt') as f:
         content = f.read()
@@ -43,7 +46,7 @@ def get_package_version():
     latest_version = latest_version.strip('"')
 
     dt = datetime.datetime.utcnow()
-    package_version = f'{latest_version}{cuda_version}.dev{dt.year}{dt.month:02d}{dt.day:02d}'
+    package_version = f'{latest_version}.dev{dt.year}{dt.month:02d}{dt.day:02d}{cuda_version}'
     return package_version
 
 

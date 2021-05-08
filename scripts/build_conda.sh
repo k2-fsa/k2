@@ -9,10 +9,10 @@
 #
 # The following environment variables are supposed to be set by users
 #
-# - K2_CUDA_VERSION_STR
+# - K2_CUDA_VERSION
 #     It represents the cuda version. Example:
 #
-#       export K2_CUDA_VERSION_STR=10.1
+#       export K2_CUDA_VERSION=10.1
 #
 #     Defaults to 10.1 if not set.
 #
@@ -56,12 +56,9 @@ if [ -z $K2_PYTHON_VERSION ]; then
   K2_PYTHON_VERSION=3.8
 fi
 
-if [ -z $K2_CUDA_VERSION_STR ]; then
-  echo "env var K2_CUDA_VERSION_STR is not set, defaults to 10.1"
-  K2_CUDA_VERSION_STR=10.1
-  K2_CUDA_VERSION=101
-else
-  K2_CUDA_VERSION=$(echo $K2_CUDA_VERSION_STR | python3 -c "import sys; ver = sys.stdin.read(); major, minor = ver.strip().split('.'); print(int(major)*10 + int(minor))")
+if [ -z $K2_CUDA_VERSION ]; then
+  echo "env var K2_CUDA_VERSION is not set, defaults to 10.1"
+  K2_CUDA_VERSION=10.1
 fi
 
 if [ -z $K2_TORCH_VERSION ]; then
@@ -80,9 +77,6 @@ K2_BUILD_VERSION=$(python3 ./get_version.py)
 export K2_PYTHON_VERSION
 
 # Example value: 10.1
-export K2_CUDA_VERSION_STR
-
-# Example value: 101
 export K2_CUDA_VERSION
 
 # Example value: 1.7.1
