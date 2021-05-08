@@ -44,32 +44,38 @@ jobs:
         #
         # Other PyTorch versions are not tested
         #
-        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"]
+        # torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"]
+        # Remove 1.5.x because there are compilation errors.
+        #  See
+        #  https://github.com/csukuangfj/k2/runs/2533830771?check_suite_focus=true
+        #  and
+        #  https://github.com/NVIDIA/apex/issues/805
+        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"]
         exclude:
-          - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0, 1.8.1]
-            torch: "1.5.0"
-          - cuda: "11.0"
-            torch: "1.5.1"
+          # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0, 1.8.1]
+          #   torch: "1.5.0"
+          # - cuda: "11.0"
+          #   torch: "1.5.1"
           - cuda: "11.0"
             torch: "1.6.0"
           - cuda: "11.0"
             torch: "1.8.0"
           - cuda: "11.0"
             torch: "1.8.1"
-          - cuda: "11.1" # exclude 11.1 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1]
-            torch: "1.5.0"
-          - cuda: "11.1"
-            torch: "1.5.1"
+          # - cuda: "11.1" # exclude 11.1 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1]
+          #   torch: "1.5.0"
+          # - cuda: "11.1"
+          #   torch: "1.5.1"
           - cuda: "11.1"
             torch: "1.6.0"
           - cuda: "11.1"
             torch: "1.7.0"
           - cuda: "11.1"
             torch: "1.7.1"
-          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-            torch: "1.5.0"
-          - python-version: 3.9
-            torch: "1.5.1"
+          # - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
+          #   torch: "1.5.0"
+          # - python-version: 3.9
+          #   torch: "1.5.1"
           - python-version: 3.9
             torch: "1.6.0"
           - python-version: 3.9
