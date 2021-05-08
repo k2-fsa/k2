@@ -27,7 +27,7 @@ target_link_libraries(fsa PUBLIC k2_nvtx)
 target_include_directories(fsa PUBLIC ${CUDA_TOOLKIT_INCLUDE})
 target_link_libraries(fsa
   PUBLIC
-    -L${CUDA_TOOLKIT_ROOT_DIR}/targets/x86_64-linux/lib  # for /usr/local/cuda
+    -L${CUDA_TOOLKIT_ROOT_DIR}/lib64  # for /usr/local/cuda
     -L${CUDA_TOOLKIT_ROOT_DIR}/lib  # for conda
   nvToolsExt)
 

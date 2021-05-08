@@ -23,15 +23,14 @@ requirements:
     - {{ compiler('cxx') }}
   host:
     - cmake=3.18
-    - python={{ environ.get('K2_PYTHON_VERSION') }}
+    - python
     - pytorch=={{ environ.get('K2_TORCH_VERSION') }}
-    - cudatoolkit=={{ environ.get('K2_CUDA_VERSION_STR') }}
+    - cudatoolkit={{ environ.get('K2_CUDA_VERSION_STR') }}
     - gcc_linux-64=7
   run:
-    - python={{ environ.get('K2_PYTHON_VERSION') }}
+    - python
     - pytorch=={{ environ.get('K2_TORCH_VERSION') }}
-    - cudatoolkit=={{ environ.get('K2_CUDA_VERSION_STR') }}
-    - gcc_linux-64=7
+    - cudatoolkit={{ environ.get('K2_CUDA_VERSION_STR') }}
 
 about:
   home: https://github.com/k2-fsa/k2
