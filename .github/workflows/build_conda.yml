@@ -82,6 +82,22 @@ jobs:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
 
+      - name: Install CUDA Toolkit ${{ matrix.cuda }}
+        shell: bash -l {0}
+        env:
+          cuda: ${{ matrix.cuda }}
+        run: |
+          source ./scripts/github_actions/install_cuda.sh
+          echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
+          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=${CUDA_HOME}/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+
+      - name: Display NVCC version
+        shell: bash -l {0}
+        run: |
+          which nvcc
+          nvcc --version
+
       - uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
@@ -112,21 +128,6 @@ jobs:
           conda info
           nproc
 
-      - name: Install CUDA Toolkit ${{ matrix.cuda }}
-        shell: bash -l {0}
-        env:
-          cuda: ${{ matrix.cuda }}
-        run: |
-          source ./scripts/github_actions/install_cuda.sh
-          echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
-          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
-          echo "LD_LIBRARY_PATH=${CUDA_HOME}/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
-
-      - name: Display NVCC version
-        shell: bash -l {0}
-        run: |
-          which nvcc
-          nvcc --version
 
       - name: Download cudnn 8.0
         shell: bash -l {0}
