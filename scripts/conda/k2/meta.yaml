@@ -17,6 +17,7 @@ requirements:
     - cmake
     - python={{ environ.get('K2_PYTHON_VERSION') }}
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
+    - cudatoolkit={{ environ.get('K2_CUDA_VERSION_STR') }}
     - gcc_linux-64=7
   run:
     - python={{ environ.get('K2_PYTHON_VERSION') }}
