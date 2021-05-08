@@ -20,9 +20,7 @@ echo "CXX is: $CXX"
 echo "GXX is: $GXX"
 echo "which nvcc: $(which nvcc)"
 
-cmake \
-  -DCMAKE_BUILD_TYPE=Release \
-  ..
+cmake -DCMAKE_BUILD_TYPE=$K2_BUILD_TYPE ..
 
 # cmake \
 #   -DCMAKE_BUILD_TYPE=Release \

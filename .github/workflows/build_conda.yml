@@ -22,7 +22,7 @@ on:
 #       - conda
 
 env:
-  BUILD_TYPE: Release
+  K2_BUILD_TYPE: Release
 
 jobs:
   build_conda:
@@ -81,6 +81,7 @@ jobs:
           activate-environment: k2
 
       - name: Display Python version
+        shell: bash -l {0}
         run: |
           python3 -c "import sys; print(sys.version)"
           which python3
@@ -108,6 +109,7 @@ jobs:
           conda info
 
       - name: Install CUDA Toolkit ${{ matrix.cuda }}
+        shell: bash -l {0}
         env:
           cuda: ${{ matrix.cuda }}
         run: |
@@ -115,14 +117,15 @@ jobs:
           echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
           echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
           echo "LD_LIBRARY_PATH=${CUDA_HOME}/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
-        shell: bash
 
       - name: Display NVCC version
+        shell: bash -l {0}
         run: |
           which nvcc
           nvcc --version
 
       - name: Download cudnn 8.0
+        shell: bash -l {0}
         env:
           cuda: ${{ matrix.cuda }}
         run: |

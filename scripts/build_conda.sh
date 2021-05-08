@@ -37,6 +37,8 @@
 #     Its value is from https://anaconda.org/k2-fsa/settings/access
 #      (You need to login as user k2-fsa to see its value)
 #
+# - K2_BUILD_TYPE
+#     If not set, defaults to Release.
 
 set -e
 export CONDA_BUILD=1
@@ -67,6 +69,11 @@ if [ -z $K2_TORCH_VERSION ]; then
   K2_TORCH_VERSION=1.7.1
 fi
 
+if [ -z $K2_BUILD_TYPE ]; then
+  echo "env var K2_BUILD_TYPE is not set, defaults to Release"
+  K2_BUILD_TYPE=Release
+fi
+
 K2_BUILD_VERSION=$(python3 ./get_version.py)
 
 # Example value: 3.8
@@ -82,6 +89,8 @@ export K2_CUDA_VERSION
 export K2_TORCH_VERSION
 
 export K2_BUILD_VERSION
+
+export K2_BUILD_TYPE
 
 if [ -z $K2_CONDA_TOKEN ]; then
   echo "Auto upload to anaconda.org is disabled since K2_CONDA_TOKEN is not set"
