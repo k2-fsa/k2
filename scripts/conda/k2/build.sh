@@ -30,7 +30,7 @@ echo "gcc version: $($CC --version)"
 echo "nvcc version: $(nvcc --version)"
 
 cmake -DCMAKE_BUILD_TYPE=$K2_BUILD_TYPE ..
-cat build/k2/csrc/version.h
+cat k2/csrc/version.h
 
 make $NUM_JOBS _k2
 cd ..
