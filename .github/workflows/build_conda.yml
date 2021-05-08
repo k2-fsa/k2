@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-16.04]
-        gcc: ["5"]
+        gcc: ["7"]
         # anaconda does not support 3.9 as of 2021.05.08
         # python-version: [3.6, 3.7, 3.8, 3.9]
         python-version: [3.6, 3.7, 3.8]
