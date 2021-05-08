@@ -48,6 +48,16 @@ jobs:
             torch: "1.6.0"
           - cuda: "11.0"
             torch: "1.8.0"
+          - cuda: "11.1" # exclude 11.1 for [1.5.0, 1.5.1, 1.6.0, 1.7.0, 1.7.1]
+            torch: "1.5.0"
+          - cuda: "11.1"
+            torch: "1.5.1"
+          - cuda: "11.1"
+            torch: "1.6.0"
+          - cuda: "11.1"
+            torch: "1.7.0"
+          - cuda: "11.1"
+            torch: "1.7.1"
           - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
             torch: "1.5.0"
           - python-version: 3.9
@@ -56,10 +66,7 @@ jobs:
             torch: "1.6.0"
           - python-version: 3.9
             torch: "1.7.0"
-          - cuda: "11.0" # exclude CUDA 11.0 for python [3.6, 3.7] because conda-forge does not support them
-            python-version: 3.7
-          - cuda: "11.0"
-            python-version: 3.6
+
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
