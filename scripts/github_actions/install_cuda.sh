@@ -39,6 +39,7 @@ filename=$(basename $url)
 echo "filename: $filename"
 chmod +x ./$filename
 sudo ./$filename --toolkit --silent
+rm ./$filename
 
 export CUDA_HOME=/usr/local/cuda
 export PATH=$CUDA_HOME/bin:$PATH

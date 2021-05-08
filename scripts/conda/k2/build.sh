@@ -30,14 +30,7 @@ echo "gcc version: $($CC --version)"
 echo "nvcc version: $(nvcc --version)"
 
 cmake -DCMAKE_BUILD_TYPE=$K2_BUILD_TYPE ..
-
-# cmake \
-#   -DCMAKE_BUILD_TYPE=Release \
-#   -DCMAKE_CUDA_COMPILER=$(which nvcc) \
-#   -DPYTHON_EXECUTABLE=$(which python3) \
-#   -DCUDNN_LIBRARY_PATH=$CONDA_ENV_DIR/lib/libcudnn.so \
-#   -DCUDNN_INCLUDE_PATH=$CONDA_ENV_DIR/include \
-#   ..
+cat build/k2/csrc/version.h
 
 make $NUM_JOBS _k2
 cd ..

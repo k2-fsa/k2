@@ -37,6 +37,7 @@ retry wget https://raw.githubusercontent.com/Juvenal-Yescas/mediafire-dl/master/
 retry python3 mediafire-dl.py "$url"
 ls -l
 sudo tar xf ./$filename -C /usr/local
+rm ./$filename
 
 sudo sed -i '59i#define CUDNN_MAJOR 8' /usr/local/cuda/include/cudnn.h
 cat /usr/local/cuda/include/cudnn.h
