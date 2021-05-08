@@ -16,6 +16,7 @@ build:
     - K2_PYTHON_VERSION
     - K2_BUILD_TYPE
     - K2_BUILD_VERSION
+
 requirements:
   build:
     - {{ compiler('c') }}
@@ -34,6 +35,16 @@ requirements:
 
 about:
   home: https://github.com/k2-fsa/k2
+  doc_url: https://k2.readthedocs.io/en/latest/
   license: Apache V2
   license_file: LICENSE
   summary: FSA/FST algorithms, differentiable, with PyTorch compatibility
+  description: |
+    The vision of k2 is to be able to seamlessly integrate Finite State Automaton
+    (FSA) and Finite State Transducer (FST) algorithms into autograd-based machine
+    learning toolkits like PyTorch and TensorFlow.  For speech recognition
+    applications, this should make it easy to interpolate and combine various
+    training objectives such as cross-entropy, CTC and MMI and to jointly optimize a
+    speech recognition system with multiple decoding passes including lattice
+    rescoring and confidence estimation.  We hope k2 will have many other
+    applications as well.

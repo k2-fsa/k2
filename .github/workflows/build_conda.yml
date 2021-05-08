@@ -30,49 +30,39 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-16.04]
-        # python-version: [3.6, 3.7, 3.8, 3.9]
-        python-version: [3.8]
-        # cuda: ["10.1", "10.2", "11.0", "11.1"]
-        cuda: ["10.1"]
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        cuda: ["10.1", "10.2", "11.0", "11.1"]
         # from https://download.pytorch.org/whl/torch_stable.html
         # PyTorch 1.8.0 supports: cuda 10.1, 10.2 (default), 11.1
         # PyTorch 1.7.x supports: cuda 10.1, 10.2 (default), 11.0
         # PyTorch 1.6.0 supports: cuda 10.1, 10.2 (default)
         # PyTorch 1.5.x supports: cuda 10.1, 10.2 (default)
         # Other PyTorch versions are not tested
-        # torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
-        # torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0"]
-        torch: ["1.7.1"]
-        # exclude:
-          # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0]
-          #   torch: "1.5.0"
-          # - cuda: "11.0"
-          #   torch: "1.5.1"
-          # - cuda: "11.0"
-          #   torch: "1.6.0"
-          # - cuda: "11.0"
-          #   torch: "1.8.0"
-          # - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-          #   torch: "1.5.0"
-          # - python-version: 3.9
-          #   torch: "1.5.1"
-          # - python-version: 3.9
-          #   torch: "1.6.0"
-          # - python-version: 3.9
-          #   torch: "1.7.0"
-          # - cuda: "11.0" # exclude CUDA 11.0 for python [3.6, 3.7] because conda-forge does not support them
-          #   python-version: 3.7
-          # - cuda: "11.0"
-          #   python-version: 3.6
+        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
+        exclude:
+          - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0]
+            torch: "1.5.0"
+          - cuda: "11.0"
+            torch: "1.5.1"
+          - cuda: "11.0"
+            torch: "1.6.0"
+          - cuda: "11.0"
+            torch: "1.8.0"
+          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
+            torch: "1.5.0"
+          - python-version: 3.9
+            torch: "1.5.1"
+          - python-version: 3.9
+            torch: "1.6.0"
+          - python-version: 3.9
+            torch: "1.7.0"
+          - cuda: "11.0" # exclude CUDA 11.0 for python [3.6, 3.7] because conda-forge does not support them
+            python-version: 3.7
+          - cuda: "11.0"
+            python-version: 3.6
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
-
-      # - name: Setup Python ${{ matrix.python-version }}
-      #   uses: actions/setup-python@v2
-      #   with:
-      #     python-version: ${{ matrix.python-version }}
-      #
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
@@ -94,17 +84,12 @@ jobs:
 
           conda install -y bs4 requests tqdm
           conda install -y -c pytorch pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
-      #     # GCC 5 results in compilation errors for torch==1.5.0
-      #     # so we use GCC 7 here
-      #     conda install -c conda-forge gcc_linux-64=7
-      #     conda install -y -c conda-forge cudatoolkit-dev=${{ matrix.cuda }}
-      #     conda install -y -c nvidia cudatoolkit=${{ matrix.cuda }} cudnn=8.0.4
-      #
+
       - name: Display conda info
         shell: bash -l {0}
         run: |
           which conda
-          # which anaconda
+          which anaconda
           conda env list
           conda info
           nproc
@@ -131,19 +116,6 @@ jobs:
           cuda: ${{ matrix.cuda }}
         run: |
           ./scripts/github_actions/install_cudnn.sh
-
-      #
-      # - name: Display NVCC version
-      #   shell: bash -l {0}
-      #   run: |
-      #     which nvcc
-      #     nvcc --version
-      #
-      # - name: Display PyTorch version
-      #   shell: bash -l {0}
-      #   run: |
-      #     python3 -c "import torch; print(torch.__file__)"
-      #     python3 -m torch.utils.collect_env
 
       - name: Build k2
         shell: bash -l {0}
