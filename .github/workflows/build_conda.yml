@@ -107,6 +107,7 @@ jobs:
           # which anaconda
           conda env list
           conda info
+          nproc
 
       - name: Install CUDA Toolkit ${{ matrix.cuda }}
         shell: bash -l {0}

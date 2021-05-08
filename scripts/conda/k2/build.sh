@@ -6,7 +6,7 @@ set -ex
 
 CONDA_ENV_DIR=$CONDA_PREFIX
 if [ $K2_IS_GITHUB_ACTIONS -eq 1 ]; then
-  NUM_JOBS="-j1"
+  NUM_JOBS="-j2"
 else
   NUM_JOBS="-j"
 fi
