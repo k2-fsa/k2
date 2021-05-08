@@ -38,7 +38,7 @@
 #      (You need to login as user k2-fsa to see its value)
 #
 
-set -ex
+set -e
 export CONDA_BUILD=1
 
 cur_dir=$(cd $(dirname $BASH_SOURCE) && pwd)
