@@ -16,7 +16,6 @@ requirements:
   host:
     - cmake
     - python
-    - gcc_linux-64=7
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
     - cudatoolkit={{ environ.get('K2_CUDA_VERSION_STR') }}
     - cudatoolkit-dev={{ environ.get('K2_CUDA_VERSION_STR') }}

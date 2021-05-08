@@ -84,7 +84,7 @@ if false; then
   conda activate k2
   # GCC 5 results in compilation errors for torch==1.5.x
   # so we use GCC 7 here.
-  conda install -c conda-forge gcc_linux-64=7
+  # conda install -c conda-forge gcc_linux-64=7
   # After installing gcc_linux-64=7,
   # "which gcc" still shows the system one.
   #

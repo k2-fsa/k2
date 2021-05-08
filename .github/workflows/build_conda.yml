@@ -29,8 +29,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04]
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        os: [ubuntu-16.04]
+        # python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.6, 3.7, 3.8]
         # from https://download.pytorch.org/whl/torch_stable.html
         # PyTorch 1.8.0 supports: cuda 10.1, 10.2 (default), 11.1
         # PyTorch 1.7.x supports: cuda 10.1, 10.2 (default), 11.0
@@ -42,24 +43,25 @@ jobs:
         # conda-forge provides only CUDA 10.1 and 11.0
         # See https://anaconda.org/conda-forge/cudatoolkit-dev/labels
         cuda: ["10.1", "11.0"]
-        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
+        # torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
+        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0"]
         exclude:
-          - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0]
-            torch: "1.5.0"
-          - cuda: "11.0"
-            torch: "1.5.1"
+          # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0]
+          #   torch: "1.5.0"
+          # - cuda: "11.0"
+          #   torch: "1.5.1"
           - cuda: "11.0"
             torch: "1.6.0"
           - cuda: "11.0"
             torch: "1.8.0"
-          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-            torch: "1.5.0"
-          - python-version: 3.9
-            torch: "1.5.1"
-          - python-version: 3.9
-            torch: "1.6.0"
-          - python-version: 3.9
-            torch: "1.7.0"
+          # - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
+          #   torch: "1.5.0"
+          # - python-version: 3.9
+          #   torch: "1.5.1"
+          # - python-version: 3.9
+          #   torch: "1.6.0"
+          # - python-version: 3.9
+          #   torch: "1.7.0"
           - cuda: "11.0" # exclude CUDA 11.0 for python [3.6, 3.7] because conda-forge does not support them
             python-version: 3.7
           - cuda: "11.0"
