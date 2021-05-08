@@ -119,10 +119,9 @@ jobs:
       - name: Install conda dependencies
         shell: bash -l {0}
         run: |
-          conda install -y anaconda
-          conda install -y conda-build
-
-          conda install -y bs4 requests tqdm
+          conda install -y -q anaconda
+          conda install -y -q conda-build
+          conda install -y -q bs4 requests tqdm
 
       - name: Display conda info
         shell: bash -l {0}

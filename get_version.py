@@ -37,7 +37,7 @@ def get_package_version():
     if is_for_pypi is not None and default_cuda_version == cuda_version:
         cuda_version = ''
     else:
-        cuda_version = f'_cuda{cuda_version}'
+        cuda_version = f'-cuda{cuda_version}'
 
     with open('CMakeLists.txt') as f:
         content = f.read()
