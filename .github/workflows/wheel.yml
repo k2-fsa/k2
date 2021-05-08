@@ -107,7 +107,7 @@ jobs:
           cd build
           # we cannot use -j here because of limited RAM
           # of the VM provided by GitHub actions
-          make VERBOSE=1 _k2
+          make VERBOSE=1 -j3 _k2
           ls -lh lib/*
 
       - name: Build pip packages
