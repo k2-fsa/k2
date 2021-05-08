@@ -30,31 +30,28 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-16.04]
-        gcc: ["7"]
         # python-version: [3.6, 3.7, 3.8, 3.9]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.8]
+        # cuda: ["10.1", "10.2", "11.0", "11.1"]
+        cuda: ["10.1"]
         # from https://download.pytorch.org/whl/torch_stable.html
         # PyTorch 1.8.0 supports: cuda 10.1, 10.2 (default), 11.1
         # PyTorch 1.7.x supports: cuda 10.1, 10.2 (default), 11.0
         # PyTorch 1.6.0 supports: cuda 10.1, 10.2 (default)
         # PyTorch 1.5.x supports: cuda 10.1, 10.2 (default)
         # Other PyTorch versions are not tested
-        # cuda: ["10.1", "10.2", "11.0", "11.1"]
-        #
-        # conda-forge provides only CUDA 10.1 and 11.0
-        # See https://anaconda.org/conda-forge/cudatoolkit-dev/labels
-        cuda: ["10.1", "11.0"]
         # torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
-        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0"]
-        exclude:
+        # torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0"]
+        torch: ["1.7.1"]
+        # exclude:
           # - cuda: "11.0" # exclude 11.0 for [1.5.0, 1.5.1, 1.6.0, 1.8.0]
           #   torch: "1.5.0"
           # - cuda: "11.0"
           #   torch: "1.5.1"
-          - cuda: "11.0"
-            torch: "1.6.0"
-          - cuda: "11.0"
-            torch: "1.8.0"
+          # - cuda: "11.0"
+          #   torch: "1.6.0"
+          # - cuda: "11.0"
+          #   torch: "1.8.0"
           # - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
           #   torch: "1.5.0"
           # - python-version: 3.9
@@ -63,28 +60,19 @@ jobs:
           #   torch: "1.6.0"
           # - python-version: 3.9
           #   torch: "1.7.0"
-          - cuda: "11.0" # exclude CUDA 11.0 for python [3.6, 3.7] because conda-forge does not support them
-            python-version: 3.7
-          - cuda: "11.0"
-            python-version: 3.6
+          # - cuda: "11.0" # exclude CUDA 11.0 for python [3.6, 3.7] because conda-forge does not support them
+          #   python-version: 3.7
+          # - cuda: "11.0"
+          #   python-version: 3.6
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
 
-      - name: Install GCC ${{ matrix.gcc }}
-        run: |
-          sudo apt-get install -y gcc-${{ matrix.gcc }} g++-${{ matrix.gcc }}
-          echo "CC=/usr/bin/gcc-${{ matrix.gcc }}" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
-          echo "CUDAHOSTCXX=/usr/bin/g++-${{ matrix.gcc }}" >> $GITHUB_ENV
-
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Display Python version
-        run: python -c "import sys; print(sys.version)"
+      # - name: Setup Python ${{ matrix.python-version }}
+      #   uses: actions/setup-python@v2
+      #   with:
+      #     python-version: ${{ matrix.python-version }}
+      #
 
       - uses: conda-incubator/setup-miniconda@v2
         with:
@@ -92,7 +80,33 @@ jobs:
           python-version: ${{ matrix.python-version }}
           activate-environment: k2
 
-      - name: Install Dependencies CUDA ${{ matrix.cuda }} PyTorch ${{ matrix.torch }}
+      - name: Display Python version
+        run: |
+          python3 -c "import sys; print(sys.version)"
+          which python3
+
+      - name: Install CUDA Toolkit ${{ matrix.cuda }}
+        env:
+          cuda: ${{ matrix.cuda }}
+        run: |
+          source ./scripts/github_actions/install_cuda.sh
+          echo "CUDA_HOME=${CUDA_HOME}" >> $GITHUB_ENV
+          echo "${CUDA_HOME}/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=${CUDA_HOME}/lib:${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Display NVCC version
+        run: |
+          which nvcc
+          nvcc --version
+
+      - name: Download cudnn 8.0
+        env:
+          cuda: ${{ matrix.cuda }}
+        run: |
+          ./scripts/github_actions/install_cudnn.sh
+
+      - name: Install conda dependencies
         shell: bash -l {0}
         run: |
           # conda install -y anaconda

@@ -2,6 +2,11 @@
 #
 # Copyright (c)  2021  Xiaomi Corp.       (author: Fangjun Kuang)
 
+# To use this script, we assume that you have installed cudatoolkit locally.
+# That is, `which nvcc` should give the path to nvcc
+#
+# We also assume that cudnn is installed locally.
+#
 # The following environment variables are supposed to be set by users
 #
 # - K2_CUDA_VERSION_STR
@@ -33,7 +38,7 @@
 #      (You need to login as user k2-fsa to see its value)
 #
 
-set -e
+set -ex
 export CONDA_BUILD=1
 
 cur_dir=$(cd $(dirname $BASH_SOURCE) && pwd)
@@ -62,6 +67,8 @@ if [ -z $K2_TORCH_VERSION ]; then
   K2_TORCH_VERSION=1.7.1
 fi
 
+K2_BUILD_VERSION=$(python3 ./get_version.py)
+
 # Example value: 3.8
 export K2_PYTHON_VERSION
 
@@ -74,37 +81,12 @@ export K2_CUDA_VERSION
 # Example value: 1.7.1
 export K2_TORCH_VERSION
 
-if false; then
-  #
-  # We assume the environment name is k2.
-  # If you choose a different environment name, you have to modify
-  # the variable `CONDA_ENV_DIR` in ./scripts/conda/k2/build.sh
-  #
-  conda create -n k2 python=$K2_PYTHON_VERSION
-  conda activate k2
-  # GCC 5 results in compilation errors for torch==1.5.x
-  # so we use GCC 7 here.
-  # conda install -c conda-forge gcc_linux-64=7
-  # After installing gcc_linux-64=7,
-  # "which gcc" still shows the system one.
-  #
-  # We have to use the environment variable $CC
-  #
-  # You can use `export` to list available environment variables
-  # after activating the environment k2
-  conda install conda-build
-  conda install -c conda-forge cudatoolkit-dev=$K2_CUDA_VERSION_STR
-  conda install -c nvidia cudatoolkit=$K2_CUDA_VERSION_STR cudnn=7.6
-  conda install -c pytorch pytorch=$K2_TORCH_VERSION cudatoolkit=$K2_CUDA_VERSION_STR
-fi
-
-K2_BUILD_VERSION=$(python3 ./get_version.py)
-
 export K2_BUILD_VERSION
 
 if [ -z $K2_CONDA_TOKEN ]; then
   echo "Auto upload to anaconda.org is disabled since K2_CONDA_TOKEN is not set"
-  conda build --no-anaconda-upload -c pytorch -c conda-forge -c nvidia ./scripts/conda/k2
+  conda build --no-anaconda-upload -c pytorch -c conda-forge ./scripts/conda/k2
 else
-  conda build --quiet -c pytorch -c conda-forge -c nvidia --token $K2_CONDA_TOKEN ./scripts/conda/k2
+  # conda build --quiet -c pytorch -c conda-forge -c nvidia --token $K2_CONDA_TOKEN ./scripts/conda/k2
+  conda build -c pytorch -c conda-forge --token $K2_CONDA_TOKEN ./scripts/conda/k2
 fi
