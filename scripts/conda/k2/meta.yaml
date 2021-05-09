@@ -22,10 +22,11 @@ requirements:
     - python
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
     - cudatoolkit={{ environ.get('K2_CUDA_VERSION') }}
+    - gcc_linux-64=7
   run:
     - python
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
-    - cudatoolkit={{ environ.get('K2_CUDA_VERSION_STR') }}
+    - cudatoolkit={{ environ.get('K2_CUDA_VERSION') }}
 
 about:
   home: https://github.com/k2-fsa/k2
