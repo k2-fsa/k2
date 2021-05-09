@@ -65,6 +65,8 @@ jobs:
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - uses: szenius/set-timezone@v1.0
         with:

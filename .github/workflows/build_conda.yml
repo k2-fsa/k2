@@ -87,6 +87,8 @@ jobs:
     steps:
       # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Install CUDA Toolkit ${{ matrix.cuda }}
         shell: bash -l {0}
