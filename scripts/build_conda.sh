@@ -23,14 +23,6 @@
 #
 #     Defaults to 1.7.1 if not set.
 #
-# - K2_PYTHON_VERSION
-#     The Python version. Example:
-#
-#       export K2_PYTHON_VERSION=3.8
-#
-#     Defaults to 3.8 if not set.
-#     It is currently used only when creating the conda environment.
-#
 # - K2_CONDA_TOKEN
 #     If not set, auto upload to anaconda.org is disabled.
 #
@@ -51,10 +43,7 @@ cd $k2_dir
 export K2_ROOT_DIR=$k2_dir
 echo "K2_ROOT_DIR: $K2_ROOT_DIR"
 
-if [ -z $K2_PYTHON_VERSION ]; then
-  echo "env var K2_PYTHON_VERSION is not set, defaults to 3.8"
-  K2_PYTHON_VERSION=3.8
-fi
+K2_PYTHON_VERSION=$(python3 -c "import sys; print(sys.version[:3])")
 
 if [ -z $K2_CUDA_VERSION ]; then
   echo "env var K2_CUDA_VERSION is not set, defaults to 10.1"
@@ -92,11 +81,9 @@ else
   export K2_IS_GITHUB_ACTIONS=0
 fi
 
-
 if [ -z $K2_CONDA_TOKEN ]; then
   echo "Auto upload to anaconda.org is disabled since K2_CONDA_TOKEN is not set"
   conda build --no-test --no-anaconda-upload -c pytorch -c conda-forge ./scripts/conda/k2
 else
-  # conda build --quiet -c pytorch -c conda-forge -c nvidia --token $K2_CONDA_TOKEN ./scripts/conda/k2
   conda build --no-test -c pytorch -c conda-forge --token $K2_CONDA_TOKEN ./scripts/conda/k2
 fi

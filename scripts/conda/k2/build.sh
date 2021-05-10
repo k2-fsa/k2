@@ -23,8 +23,7 @@ echo "K2_BUILD_VERSION: $K2_BUILD_VERSION"
 python3 --version
 
 echo "CC is: $CC"
-echo "CXX is: $CXX"
-echo "GXX is: $GXX"
+echo "GCC is: $GCC"
 echo "which nvcc: $(which nvcc)"
 echo "gcc version: $($CC --version)"
 echo "nvcc version: $(nvcc --version)"

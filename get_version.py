@@ -6,6 +6,10 @@ import re
 
 
 def get_cuda_version():
+    # We use importlib here instead of using `import torch`
+    # because this script is also called from scripts/build_conda.sh,
+    # where PyTorch is not installed. `import torch` will raise
+    # an exception in that case.
     import importlib
     torch = importlib.import_module('torch')
     from torch.utils import collect_env
