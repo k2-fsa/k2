@@ -39,7 +39,7 @@ development of ASR technology.
    :maxdepth: 2
    :caption: Contents:
 
-   installation
+   installation/index
    core_concepts/index
    python_tutorials/index
    python_api/index
