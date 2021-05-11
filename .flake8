@@ -5,6 +5,7 @@ max-line-length=80
 exclude =
   .git,
   setup.py,
+  get_version.py
   build,
   k2/python/host,
   docs

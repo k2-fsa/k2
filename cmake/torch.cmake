@@ -13,6 +13,7 @@ find_package(Torch REQUIRED)
 # set the global CMAKE_CXX_FLAGS so that
 # k2 uses the same abi flag as PyTorch
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${TORCH_CXX_FLAGS}")
 
 execute_process(
   COMMAND "${PYTHON_EXECUTABLE}" -c "import torch; print(torch.__version__)"

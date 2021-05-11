@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(k2 CUDA CXX)
 
-set(K2_VERSION "0.3.3")
+set(K2_VERSION "0.3.4")
 
 # ----------------- Supported build types for K2 project -----------------
 set(ALLOWABLE_BUILD_TYPES Debug Release RelWithDebInfo MinSizeRel)
@@ -56,6 +56,12 @@ if(WIN32 AND BUILD_SHARED_LIBS)
   message(STATUS "Set BUILD_SHARED_LIBS to OFF for Windows")
   set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
+
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(BUILD_RPATH_USE_ORIGIN TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_INSTALL_RPATH "$ORIGIN")
+set(CMAKE_BUILD_RPATH "$ORIGIN")
 
 execute_process(COMMAND
   lsb_release -sd
@@ -172,6 +178,8 @@ endif()
 include(moderngpu)
 include(googletest)
 
-set(CMAKE_CUDA_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CUDA_FLAGS} --compiler-options -Wall --compiler-options -Wno-unknown-pragmas")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -Wall --compiler-options -Wno-unknown-pragmas")
+message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
 
 add_subdirectory(k2)
