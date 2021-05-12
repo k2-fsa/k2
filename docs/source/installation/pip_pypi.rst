@@ -12,12 +12,21 @@ Install using pip (pypi.org)
 
 k2 on PyPI supports the following versions of Python, CUDA, and PyTorch:
 
-  |pypi_python_versions| |pypi_cuda_versions| |pypi_pytorch_versions|
+  - |pypi_python_versions|
+  - |pypi_cuda_versions|
+  - |pypi_pytorch_versions|
 
 .. caution::
 
-  We assume that you have installed PyTorch and cudatoolkit.
+  We assume that you have installed PyTorch **1.7.1** and cudatoolkit **10.1**.
   If not, please install them before proceeding.
+
+.. caution::
+
+  Read this carefully.
+
+  You have to install PyTorch and cudatoolkit with an **exact** version
+  matching the following command that you use to install k2.
 
 .. hint::
 
@@ -26,6 +35,8 @@ k2 on PyPI supports the following versions of Python, CUDA, and PyTorch:
   ``conda install``.
 
 The following command installs k2 from PyPI:
+
+(PyTorch MUST be **1.7.1**. CUDA MUST be **10.1**)
 
 .. code-block:: bash
 

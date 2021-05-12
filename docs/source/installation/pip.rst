@@ -14,12 +14,21 @@ You can find a list of nightly pre-built
 wheel packages at `<https://k2-fsa.org/nightly/index.html>`_ with the following
 versions of Python, CUDA, and PyTorch.
 
-  |pip_python_versions| |pip_cuda_versions| |pip_pytorch_versions|
+  - |pip_python_versions|
+  - |pip_cuda_versions|
+  - |pip_pytorch_versions|
 
 .. caution::
 
-  We assume that you have installed PyTorch and cudatoolkit.
+  We assume that you have installed PyTorch **1.7.1** and cudatoolkit.
   If not, please install them before proceeding.
+
+.. caution::
+
+  Read this carefully.
+
+  You have to install PyTorch and cudatoolkit with an **exact** version
+  matching the following command that you use to install k2.
 
 .. hint::
 
@@ -28,6 +37,8 @@ versions of Python, CUDA, and PyTorch.
   ``conda install``.
 
 The following commands install k2 with different CUDA versions:
+
+(PyTorch MUST be **1.7.1**)
 
 .. code-block:: bash
 
