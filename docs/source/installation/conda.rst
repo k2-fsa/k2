@@ -28,7 +28,9 @@ Supported versions
 .. |conda_pytorch_versions| image:: ./images/pytorch-1.6.0_1.7.0_1.7.1_1.8.0_1.8.1-green.svg
   :alt: Supported pytorch versions
 
-|conda_python_versions| |conda_cuda_versions| |conda_pytorch_versions|
+- |conda_python_versions|
+- |conda_cuda_versions|
+- |conda_pytorch_versions|
 
 The conda package ``k2`` is available from the channel ``k2-fsa``, so
 you have to use ``-c k2-fsa`` or ``--channel k2-fsa`` for ``conda install``.

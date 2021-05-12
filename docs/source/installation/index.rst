@@ -11,21 +11,29 @@ is appropriate for you.
 Available versions of Python, CUDA, and PyTorch of different approaches are listed
 below:
 
-  - From conda
+  - From conda (**recommended**)
 
-    |conda_python_versions| |conda_cuda_versions| |conda_pytorch_versions|
+    - |conda_python_versions|
+    - |conda_cuda_versions|-
+    - |conda_pytorch_versions|
 
   - From pip (k2-fsa.org)
 
-    |pip_python_versions| |pip_cuda_versions| |pip_pytorch_versions|
+    - |pip_python_versions|
+    - |pip_cuda_versions|
+    - |pip_pytorch_versions|
 
   - From pypi (pypi.org)
 
-    |pypi_python_versions| |pypi_cuda_versions| |pypi_pytorch_versions|
+    - |pypi_python_versions|
+    - |pypi_cuda_versions|-
+    - |pypi_pytorch_versions|
 
-  - From source
+  - From source (**for advanced users**)
 
-    |source_python_versions| |source_cuda_versions| |source_pytorch_versions|
+    - |source_python_versions|
+    - |source_cuda_versions|
+    - |source_pytorch_versions|
 
 .. toctree::
    :maxdepth: 1
@@ -65,7 +73,7 @@ below:
 .. |source_python_versions| image:: ./images/source_python-3.6_3.7_3.8_3.9-blue.svg
   :alt: Supported python versions
 
-.. |source_cuda_versions| image:: ./images/source_cuda-10.1_10.2_11.0_11.1-orange.svg
+.. |source_cuda_versions| image:: ./images/source_cuda-10.1_10.2_11.0_11.1_11.2_11.3-orange.svg
   :alt: Supported cuda versions
 
 .. |source_pytorch_versions| image:: ./images/source_pytorch-1.6.0_1.7.0_1.7.1_1.8.0_1.8.1-green.svg

@@ -38,14 +38,18 @@ struct PtrPtr {
 
   explicit PtrPtr(const T **data) : data(data) {}
 
-  // operator[] and operator+ are required by cub::DeviceScan::ExclusiveSum
-  __host__ __device__ __forceinline__ T operator[](int32_t i) const {
+  // operator[], operator+, and operator* are required by
+  // cub::DeviceScan::ExclusiveSum
+  __host__ __device__ __forceinline__ const T &operator[](int32_t i) const {
     return *(data[i]);
   }
   __host__ __device__ __forceinline__ PtrPtr operator+(int32_t n) const {
     PtrPtr tmp(*this);
     tmp.data += n;
     return tmp;
+  }
+  __host__ __device__ __forceinline__ const T &operator*() const {
+    return **data;
   }
 };
 
@@ -59,8 +63,9 @@ struct ConstReversedPtr {
   explicit ConstReversedPtr(const T *data, int32_t size)
       : data(data + size - 1) {}
 
-  // operator[] and operator+ are required by cub::DeviceScan::InclusiveScan
-  __host__ __device__ __forceinline__ T operator[](int32_t i) const {
+  // operator[], operator+, and operator* are required by
+  // cub::DeviceScan::InclusiveScan
+  __host__ __device__ __forceinline__ const T &operator[](int32_t i) const {
     return data[-i];
   }
   __host__ __device__ __forceinline__ ConstReversedPtr
@@ -68,6 +73,9 @@ struct ConstReversedPtr {
     ConstReversedPtr tmp(*this);
     tmp.data -= n;
     return tmp;
+  }
+  __host__ __device__ __forceinline__ const T &operator*() const {
+    return *data;
   }
 };
 
@@ -78,7 +86,8 @@ struct ReversedPtr {
   // data points to the last element now
   explicit ReversedPtr(T *data, int32_t size) : data(data + size - 1) {}
 
-  // operator[] and operator+ are required by cub::DeviceScan::InclusiveScan
+  // operator[], operator+, and operator* are required by
+  // cub::DeviceScan::InclusiveScan
   __host__ __device__ __forceinline__ T &operator[](int32_t i) {
     return data[-i];
   }
@@ -87,6 +96,7 @@ struct ReversedPtr {
     tmp.data -= n;
     return tmp;
   }
+  __host__ __device__ __forceinline__ T &operator*() { return *data; }
 };
 
 // TODO(haowen): manage/load block config with some classes? then we can get

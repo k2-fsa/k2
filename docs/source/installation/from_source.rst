@@ -5,12 +5,14 @@ Install from source
 
 The following versions of Python, CUDA, and PyTorch are known to work.
 
-    |source_python_versions| |source_cuda_versions| |source_pytorch_versions|
+    - |source_python_versions|
+    - |source_cuda_versions|
+    - |source_pytorch_versions|
 
 .. |source_python_versions| image:: ./images/source_python-3.6_3.7_3.8_3.9-blue.svg
   :alt: Supported python versions
 
-.. |source_cuda_versions| image:: ./images/source_cuda-10.1_10.2_11.0_11.1-orange.svg
+.. |source_cuda_versions| image:: ./images/source_cuda-10.1_10.2_11.0_11.1_11.2_11.3-orange.svg
   :alt: Supported cuda versions
 
 .. |source_pytorch_versions| image:: ./images/source_pytorch-1.6.0_1.7.0_1.7.1_1.8.0_1.8.1-green.svg
@@ -18,13 +20,13 @@ The following versions of Python, CUDA, and PyTorch are known to work.
 
 Before compiling k2, some preparation work has to be done:
 
-- Have a compiler supporting at least C++14, e.g., GCC >= 5.0, Clang >= 3.4.
-- Install CMake. CMake 3.11.0 and 3.18.0 are known to work.
-- Install Python3.
-- Install PyTorch.
-- Install CUDA toolkit.
-- Install cuDNN. Please install a version that is compatible with the
-  CUDA toolkit you are using.
+  - Have a compiler supporting at least C++14, e.g., GCC >= 5.0, Clang >= 3.4.
+  - Install CMake. CMake 3.11.0 and 3.18.0 are known to work.
+  - Install Python3.
+  - Install PyTorch.
+  - Install CUDA toolkit.
+  - Install cuDNN. Please install a version that is compatible with the
+    CUDA toolkit you are using.
 
 .. NOTE::
 
