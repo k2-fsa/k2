@@ -1,0 +1,31 @@
+# Copyright (c)  2021  Fangjun Kuang (csukuangfj@gmail.com)
+
+# See ../../LICENSE for clarification regarding multiple authors
+
+# refer to https://github.com/actions/starter-workflows/pull/47/files
+
+name: build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  manylinux:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-16.04]
+    # see https://hub.docker.com/u/pytorch
+    # for available tags
+    container:  pytorch/manylinux-cuda102:latest
+    steps:
+      - name: "Test docker"
+        run: |
+          echo "."
+          pwd
+          lsb_release -a
