@@ -95,7 +95,6 @@ class BuildExtension(build_ext):
         if make_args == '':
             make_args = '-j'
 
-        verbose = 0
         build_cmd = f'''
             cd {self.build_temp}
 
