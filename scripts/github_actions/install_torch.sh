@@ -78,7 +78,7 @@ function retry() {
 }
 
 if [ x"${url}" == "x" ]; then
-  retry python3 -m pip install $package
+  retry python3 -m pip install -q $package
 else
-  retry python3 -m pip install $package -f $url
+  retry python3 -m pip install -q $package -f $url
 fi

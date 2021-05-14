@@ -28,102 +28,61 @@ Before compiling k2, some preparation work has to be done:
   - Install cuDNN. Please install a version that is compatible with the
     CUDA toolkit you are using.
 
-.. NOTE::
+After setting up the environment, we are ready to build k2:
 
-  We need NVCC to build k2, if you use conda to install CUDA toolkit,
-  you may need to install `nvcc_linux-64` or `cudatoolkit-dev` as well since the
-  default installation of CUDA toolkit in conda did not include NVCC.
-  However, `nvcc_linux-64` or `cudatoolkit-dev` may not work well on all platforms,
-  so it's better if you can install CUDA toolkit using a normal way instead of
-  using conda if you want to build k2 from source.)
-
-After setting up the environment, we are ready to build k2::
+.. code-block:: bash
 
   git clone https://github.com/k2-fsa/k2.git
   cd k2
-  mkdir build
-  cd build
+  python3 setup.py install
+
+That is all you need to run.
+
+To test that k2 is installed successfully, you can run:
+
+.. code-block::
+
+  $ python3
+  Python 3.8.6 (default, Dec  2 2020, 15:56:31)
+  [GCC 7.5.0] on linux
+  Type "help", "copyright", "credits" or "license" for more information.
+  >>> import k2
+  >>> s = '''
+  ... 0 1 -1 0.1
+  ... 1
+  ... '''
+  >>> fsa = k2.Fsa.from_str(s)
+  >>> print(fsa)
+  k2.Fsa: 0 1 -1 0.1
+  1
+  properties_str = "Valid|Nonempty|TopSorted|TopSortedAndAcyclic|ArcSorted|ArcSortedAndDeterministic|EpsilonFree|MaybeAccessible|MaybeCoaccessible".
+
+To uninstall k2, run:
+
+.. code-block::
+
+  pip uninstall k2
+
+
+Read more if you want to run the tests.
+
+.. code-block::
+
+  sudo apt-get install graphviz
+  git clone https://github.com/k2-fsa/k2.git
+  cd k2
+  pip3 install -r ./requirements.txt
+  mkdir build_release
+  cd build_release
   cmake -DCMAKE_BUILD_TYPE=Release ..
   # If you installed cudatoolkit using conda install -y -c nvidia cudatoolkit=X cudnn=Y,
   # source the conda environemt and change the cmake command to:
   # cmake -DCUDNN_LIBRARY_PATH=$(find $CONDA_PREFIX -name libcudnn.so) -DCUDNN_INCLUDE_PATH=$CONDA_PREFIX/include/ -DCMAKE_BUILD_TYPE=Release ..
-  make _k2
-  cd ..
-  pip3 install wheel twine
-  ./scripts/build_pip.sh
-
-  # Have a look at the `dist/` directory.
-
-You will find the wheel file in the `dist` directory, e.g.,
-`dist/k2-0.1.1.dev20201125-cp38-cp38-linux_x86_64.whl`, which
-can be installed with::
-
-  pip install dist/k2-0.1.1.dev20201125-cp38-cp38-linux_x86_64.whl
-
-.. HINT::
-
-  You may get a wheel with a different filename.
-
-.. Note::
-
-  [For developers]
-
-  If you are developing k2, you don't need to install k2 to use its Python APIs!
-  All you need to do is to setup the ``PYTHONPATH`` environment variable so that
-  Python can find where k2 resides.
-
-  k2 contains two parts. The first part consists of pure Python files that are in
-  ``k2_source_tree/k2/python/k2``. The second part is the C++ part, which has been
-  compiled into a bunch of shared libraries that can be invoked from Python. These
-  libraries are saved in `k2_build_tree/build/lib`.
-
-  If you set ``PYTHONPATH`` to the following values:
-
-  .. code-block::
-
-    export PYTHONPATH=/path/to/k2/k2/python:$PYTHONPATH
-    export PYTHONPATH=/path/to/k2/build/lib:$PYTHONPATH
-
-  After ``PYTHONPATH`` is set, you can run:
-
-  .. code-block::
-
-    python3 -m k2.version
-    python3 -c 'import k2; print(k2.__file__)'
-    python3 -c 'import _k2; print(_k2.__file__)'
-
-  Whenver you change some files in ``k2/python/k2``, it comes into effect immediately
-  without uninstalling and installing operations.
-
-  Whenever you modify some `*.cu` files, it is also available after issuing ``make _k2``
-  without any installation effort.
-
-
-To run tests, you have to install the following requirements first::
-
-  sudo apt-get install graphviz
-  cd k2
-  pip3 install -r ./requirements.txt
-
-You can run tests with::
-
-  cd build
   make -j
   make test
 
 To run tests in parallel::
 
-  cd build
   make -j
   ctest --output-on-failure --parallel <JOBNUM>
-
-If `valgrind` is installed, you can check heap corruptions and memory leaks by::
-
-  cd build
-  make -j
-  ctest --output-on-failure -R <TESTNAME> -D ExperimentalMemCheck
-
-.. HINT::
-
-  You can install `valgrind` with `sudo apt-get install valgrind`
-  on Ubuntu.
+  # e.g., ctest --output-on-failure --parallel 5

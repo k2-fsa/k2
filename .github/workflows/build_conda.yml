@@ -114,6 +114,7 @@ jobs:
           conda install -y -q anaconda
           conda install -y -q conda-build
           conda install -y -q bs4 requests tqdm
+          conda install -y -q -c pytorch -c conda-forge pytorch=${{ matrix.torch }} cudatoolkit=${{ matrix.cuda }}
 
       - name: Display conda info
         shell: bash -l {0}
@@ -138,5 +139,6 @@ jobs:
           K2_TORCH_VERSION: ${{ matrix.torch }}
           K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
           K2_IS_GITHUB_ACTIONS: 1
+          K2_IS_FOR_CONDA: 1
         run: |
           ./scripts/build_conda.sh
