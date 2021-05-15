@@ -85,31 +85,13 @@ jobs:
         run: |
           ./scripts/github_actions/install_cudnn.sh
 
-      - name: Configure CMake
-        shell: bash
-        run: |
-          pwd
-          mkdir build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
-          cat k2/csrc/version.h
-
-      - name: Build _k2
-        shell: bash
-        run: |
-          echo "number of cores: $(nproc)"
-          cd build
-          # we cannot use -j here because of limited RAM
-          # of the VM provided by GitHub actions
-          make VERBOSE=1 -j3 _k2
-          ls -lh lib/*
-
       - name: Build pip packages
         shell: bash
         run: |
-          sudo apt-get install chrpath
-          ./scripts/build_pip.sh
-          ls dist/
+          export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
+          export K2_MAKE_ARGS="-j2"
+          python3 setup.py bdist_wheel
+          ls -lh dist/
 
       - name: Copy wheels to k2-fsa.org
         uses: horochx/deploy-via-scp@v1.0.1

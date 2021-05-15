@@ -100,7 +100,7 @@ jobs:
           cd build
           # we cannot use -j here because of limited RAM
           # of the VM provided by GitHub actions
-          make
+          make VERBOSE=1 -j2
 
       - name: Display Build Information
         shell: bash

@@ -111,9 +111,9 @@ jobs:
           torch: ${{ matrix.torch }}
         shell: bash
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install wheel twine
-          python3 -m pip install bs4 requests tqdm
+          python3 -m pip install -q --upgrade pip
+          python3 -m pip install -q wheel twine
+          python3 -m pip install -q bs4 requests tqdm
 
           ./scripts/github_actions/install_torch.sh
           python3 -c "import torch; print('torch version:', torch.__version__)"
@@ -133,22 +133,14 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
           cat k2/csrc/version.h
 
-      - name: Build _k2
+      - name: Build k2
         shell: bash
         run: |
-          echo "number of cores: $(nproc)"
-          cd build
-          # we cannot use -j here because of limited RAM
-          # of the VM provided by GitHub actions
-          make VERBOSE=1 -j3 _k2
-          ls -lh lib/*
-
-      - name: Build pip packages
-        shell: bash
-        run: |
-          sudo apt-get install chrpath
-          ./scripts/build_pip.sh
-          ls dist/
+          export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
+          export K2_MAKE_ARGS="-j2"
+          python3 setup.py bdist_wheel
+          ls -lh dist/
+          ls -lh build/*
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2

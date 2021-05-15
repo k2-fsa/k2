@@ -2,7 +2,7 @@
  * @brief
  * This file contains information for building k2, which is helpful
  * for describing the environment in which k2 is used when creating
- * a issue on GitHub.
+ * an issue on GitHub.
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
@@ -40,7 +40,6 @@ static constexpr const char *kCudnnVersion = "@CUDNN_VERSION@";
 // Version of Python used to build k2 Python bindings.
 static constexpr const char *kPythonVersion = "@PYTHON_VERSION_MAJOR@.@PYTHON_VERSION_MINOR@";
 
-static constexpr const char *kPybindVersion ="@PYBIND11_VERSION_MAJOR@.@PYBIND11_VERSION_MINOR@.@PYBIND11_VERSION_PATCH@";
 // clang-format on
 
 // CMake build type, e.g., Release or Debug.

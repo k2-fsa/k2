@@ -21,7 +21,6 @@ void PybindVersion(py::module &m) {
   version.attr("cuda_version") = k2::kCudaVersion;
   version.attr("cudnn_version") = k2::kCudnnVersion;
   version.attr("python_version") = k2::kPythonVersion;
-  version.attr("pybind_version") = k2::kPybindVersion;
   version.attr("build_type") = k2::kBuildType;
   version.attr("os_type") = k2::kOS;
   version.attr("cmake_version") = k2::kCMakeVersion;

@@ -20,15 +20,8 @@ versions of Python, CUDA, and PyTorch.
 
 .. caution::
 
-  We assume that you have installed PyTorch **1.7.1** and cudatoolkit.
+  We assume that you have installed cudatoolkit.
   If not, please install them before proceeding.
-
-.. caution::
-
-  Read this carefully.
-
-  You have to install PyTorch and cudatoolkit with an **exact** version
-  matching the following command that you use to install k2.
 
 .. hint::
 
@@ -37,8 +30,6 @@ versions of Python, CUDA, and PyTorch.
   ``conda install``.
 
 The following commands install k2 with different CUDA versions:
-
-(PyTorch MUST be **1.7.1**)
 
 .. code-block:: bash
 
