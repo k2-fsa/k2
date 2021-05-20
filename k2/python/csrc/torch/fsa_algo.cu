@@ -584,7 +584,35 @@ static void PybindExpandArcs(py::module &m) {
      )");
 }
 
+static void PybindFixFinalLabels(py::module &m) {
+  // See doc-string below.
+  m.def(
+      "fix_final_labels",
+      [](FsaOrVec &fsas, torch::optional<torch::Tensor> labels) -> void {
+        if (labels.has_value()) {
+          Array1<int32_t> labels_array = FromTorch<int32_t>(labels.value());
+          K2_CHECK_EQ(labels_array.Dim(), fsas.NumElements());
+          K2_CHECK(fsas.Context()->IsCompatible(*labels_array.Context()));
+          FixFinalLabels(fsas, labels_array.Data(), 1);
+        } else {
+          // `label` is the 3rd field of struct Arc.
+          FixFinalLabels(fsas, reinterpret_cast<int32_t*>(fsas.values.Data()) + 2, 4);
+        }
+      },
+      py::arg("fsas"), py::arg("labels"),
+      R"(
+       This function modifies, in-place, labels attached to arcs, so
+      that they satisfy constraints on the placement of -1's: namely,
+      that arcs to final-states must have -1's as their label, and
+      that no other arcs can have -1 as their label.
 
+       fsas: the FSA whose labels we want to modify
+      labels: if supplied, must be a tensor of int32 with shape
+            equal to (fsas.Dim0(),); and in this case, these labels
+            will be modified.  If not supplied, the labels on the arcs
+            of `fsas` will be modified.
+     )");
+}
 
 }  // namespace k2
 
@@ -606,4 +634,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindInvert(m);
   k2::PybindRemoveEpsilonSelfLoops(m);
   k2::PybindExpandArcs(m);
+  k2::PybindFixFinalLabels(m);
 }
