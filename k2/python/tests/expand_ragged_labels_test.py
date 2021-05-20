@@ -49,50 +49,48 @@ class TestExpandArcs(unittest.TestCase):
                 else:
                     dest = k2.expand_ragged_labels(src)
 
-            assert torch.allclose(
-                dest.float_attr,
-                torch.tensor([0.1, 0.2, 0.0, 0.0, 0.0, 0.3],
-                             dtype=torch.float32,
-                             device=device))
-
-
-            assert torch.all(
-                torch.eq(
-                    dest.scores,
-                    torch.tensor([10, 20, 0, 0, 0, 30],
+                assert torch.allclose(
+                    dest.float_attr,
+                    torch.tensor([0.1, 0.2, 0.0, 0.0, 0.0, 0.3],
                                  dtype=torch.float32,
-                                 device=device)))
-
-            assert torch.all(
-                torch.eq(
-                    dest.int_attr,
-                    torch.tensor([1, 2, 0, 0, 0, 3], dtype=torch.int32, device=device)))
+                                 device=device))
 
 
+                assert torch.all(
+                    torch.eq(
+                        dest.scores,
+                        torch.tensor([10, 20, 0, 0, 0, 30],
+                                     dtype=torch.float32,
+                                     device=device)))
 
-            assert torch.all(
-                torch.eq(
-                    dest.ragged_attr,
-                    torch.tensor([1, 5, 2, 3, 6, -1],
-                                 dtype=torch.float32,
-                                 device=device)))
+                assert torch.all(
+                    torch.eq(
+                        dest.int_attr,
+                        torch.tensor([1, 2, 0, 0, 0, 3], dtype=torch.int32, device=device)))
 
-            # non-tensor attributes...
-            assert dest.attr1 == src.attr1
-            assert dest.attr2 == src.attr2
+                assert torch.all(
+                    torch.eq(
+                        dest.ragged_attr,
+                        torch.tensor([1, 5, 2, 3, 6, -1],
+                                     dtype=torch.float32,
+                                     device=device)))
 
-            # now for autograd
-            scale = torch.tensor([10, 20, 10, 10, 10, 30], device=device)
-            (dest.float_attr * scale).sum().backward()
-            (dest.scores * scale).sum().backward()
+                # non-tensor attributes...
+                assert dest.attr1 == src.attr1
+                assert dest.attr2 == src.attr2
 
-            expected_grad = torch.tensor([10, 20, 30],
-                                         dtype=torch.float32,
-                                         device=device)
+                # now for autograd
+                scale = torch.tensor([10, 20, 10, 10, 10, 30], device=device)
+                (dest.float_attr * scale).sum().backward()
+                (dest.scores * scale).sum().backward()
 
-            assert torch.all(torch.eq(src.float_attr.grad, expected_grad))
+                expected_grad = torch.tensor([10, 20, 30],
+                                             dtype=torch.float32,
+                                             device=device)
 
-            assert torch.all(torch.eq(src.scores.grad, expected_grad))
+                assert torch.all(torch.eq(src.float_attr.grad, expected_grad))
+
+                assert torch.all(torch.eq(src.scores.grad, expected_grad))
 
     def test_final(self):
         devices = [torch.device('cpu')]
@@ -126,54 +124,53 @@ class TestExpandArcs(unittest.TestCase):
                 else:
                     dest = k2.expand_ragged_labels(src)
 
-            assert torch.allclose(
-                dest.float_attr,
-                torch.tensor([0.1, 0.2, 0.0, 0.0, 0.0, 0.3, 0.0],
-                             dtype=torch.float32,
-                             device=device))
-
-
-            assert torch.all(
-                torch.eq(
-                    dest.scores,
-                    torch.tensor([10, 20, 0, 0, 0, 30, 0],
+                assert torch.allclose(
+                    dest.float_attr,
+                    torch.tensor([0.1, 0.2, 0.0, 0.0, 0.0, 0.3, 0.0],
                                  dtype=torch.float32,
-                                 device=device)))
-
-            print("dest int_attr = ", dest.int_attr)
-            assert torch.all(
-                torch.eq(
-                    dest.int_attr,
-                    torch.tensor([1, 2, 0, 0, 0, 3, 0], dtype=torch.int32, device=device)))
-            _k2.fix_final_labels(dest.arcs, dest.int_attr)
-            assert torch.all(
-                torch.eq(
-                    dest.int_attr,
-                    torch.tensor([1, 2, 0, 0, 0, 3, -1], dtype=torch.int32, device=device)))
+                                 device=device))
 
 
-            assert torch.all(
-                torch.eq(
-                    dest.ragged_attr,
-                    torch.tensor([1, 5, 2, 3, 6, 1, -1],
-                                 dtype=torch.float32,
-                                 device=device)))
+                assert torch.all(
+                    torch.eq(
+                        dest.scores,
+                        torch.tensor([10, 20, 0, 0, 0, 30, 0],
+                                     dtype=torch.float32,
+                                     device=device)))
 
-            # non-tensor attributes...
-            assert dest.attr1 == src.attr1
-            assert dest.attr2 == src.attr2
+                assert torch.all(
+                    torch.eq(
+                        dest.int_attr,
+                        torch.tensor([1, 2, 0, 0, 0, 3, 0], dtype=torch.int32, device=device)))
+                _k2.fix_final_labels(dest.arcs, dest.int_attr)
+                assert torch.all(
+                    torch.eq(
+                        dest.int_attr,
+                        torch.tensor([1, 2, 0, 0, 0, 3, -1], dtype=torch.int32, device=device)))
 
-            # now for autograd
-            scale = torch.tensor([10, 20, 10, 10, 10, 30, 10], device=device)
-            (dest.float_attr * scale).sum().backward()
-            (dest.scores * scale).sum().backward()
 
-            expected_grad = torch.tensor([10, 20, 30],
-                                         dtype=torch.float32,
-                                         device=device)
+                assert torch.all(
+                    torch.eq(
+                        dest.ragged_attr,
+                        torch.tensor([1, 5, 2, 3, 6, 1, -1],
+                                     dtype=torch.float32,
+                                     device=device)))
 
-            assert torch.all(torch.eq(src.float_attr.grad, expected_grad))
-            assert torch.all(torch.eq(src.scores.grad, expected_grad))
+                # non-tensor attributes...
+                assert dest.attr1 == src.attr1
+                assert dest.attr2 == src.attr2
+
+                # now for autograd
+                scale = torch.tensor([10, 20, 10, 10, 10, 30, 10], device=device)
+                (dest.float_attr * scale).sum().backward()
+                (dest.scores * scale).sum().backward()
+
+                expected_grad = torch.tensor([10, 20, 30],
+                                             dtype=torch.float32,
+                                             device=device)
+
+                assert torch.all(torch.eq(src.float_attr.grad, expected_grad))
+                assert torch.all(torch.eq(src.scores.grad, expected_grad))
 
 
 

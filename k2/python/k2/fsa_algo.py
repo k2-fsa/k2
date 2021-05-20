@@ -945,7 +945,7 @@ def expand_ragged_labels(
     if len(ragged_attribute_tensors) == 0:
         if ret_arc_map:
             arc_map = torch.arange(fsas.num_arcs, dtype=torch.int32,
-                                   device=fsa.device)
+                                   device=fsas.device)
             return (fsas, arc_map)
         else:
             return fsas
