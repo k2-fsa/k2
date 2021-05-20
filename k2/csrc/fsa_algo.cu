@@ -1115,6 +1115,61 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
   return FsaVec(RemoveAxis(temp, 1), oarcs);
 }
 
+
+void FixFinalLabels(FsaOrVec &fsas,
+                    int32_t *labels_data,
+                    int32_t labels_stride) {
+  ContextPtr c = fsas.Context();
+  const Arc *arcs_data = fsas.values.Data();
+
+  if (fsas.NumAxes() == 3) {
+    const int32_t *fsas_row_ids2_data = fsas.RowIds(2).Data(),
+        *fsas_row_ids1_data = fsas.RowIds(1).Data(),
+        *fsas_row_splits1_data = fsas.RowSplits(1).Data();
+    int32_t num_arcs = fsas.TotSize(2);
+    K2_EVAL(c, num_arcs, lambda_fix_final_labels_3axis, (int32_t arc_idx012) -> void {
+        const Arc &arc = arcs_data[arc_idx012];
+        int32_t state_idx01 = fsas_row_ids2_data[arc_idx012],
+            fsa_idx0 = fsas_row_ids1_data[state_idx01],
+            state_idx0x = fsas_row_splits1_data[fsa_idx0],
+            next_state_idx0x = fsas_row_splits1_data[fsa_idx0 + 1];
+        // we name this as if it is an aux_label, but it could have any name.
+        int32_t cur_aux_label = labels_data[arc_idx012 * labels_stride];
+        if (arc.dest_state + state_idx0x + 1 == next_state_idx0x) {
+          K2_DCHECK_LE(cur_aux_label, 0);  // Expect it to be either 0 or -1.
+          if (cur_aux_label != -1) {
+            labels_data[arc_idx012 * labels_stride] = -1;
+          }
+        } else if (cur_aux_label == -1) {
+          labels_data[arc_idx012 * labels_stride] = 0;
+        }
+
+      });
+  } else {
+    K2_CHECK_EQ(fsas.NumAxes(), 2);
+    int32_t num_arcs = fsas.TotSize(1), num_states = fsas.Dim0();
+    K2_EVAL(c, num_arcs, lambda_fix_final_labels_2axis, (int32_t arc_idx01) -> void {
+        // we name this as if it is an aux_label, but it could have any name.
+        int32_t cur_aux_label = labels_data[arc_idx01 * labels_stride];
+        const Arc &arc = arcs_data[arc_idx01];
+        if (arc.dest_state + 1 == num_states) {
+          // dest_state is final-state.
+          K2_DCHECK_EQ(arc.label, -1);
+          K2_DCHECK_LE(cur_aux_label, 0);  // Expect it to be either 0 or -1.
+          if (cur_aux_label != -1) {
+            labels_data[arc_idx01 * labels_stride] = -1;
+          }
+        } else {
+          if (cur_aux_label == -1) {
+            labels_data[arc_idx01 * labels_stride] = 0;
+          }
+        }
+      });
+  }
+}
+
+
+
 void Invert(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
             Ragged<int32_t> *dest_aux_labels,
             Array1<int32_t> *arc_map /*= nullptr*/) {

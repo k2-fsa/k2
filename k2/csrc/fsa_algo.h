@@ -547,7 +547,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
    @param [out] labels_arc_map  If not nullptr, will be set to to a new array of
                         size `ans.NumElements()`, whose i'th element is the
                         0 <= j < labels_shape.NumElements() (an idx01) that says
-                        which element of the i'th sequence of `labels_shape`
+                        which element of `labels_shape`
                         this arc corresponds to, or -1 if there was no such
                         element because that sub-list was empty.
    @return  Returns the expanded Fsa or FsaVec (will satisfy
@@ -558,6 +558,28 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
 FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
                     Array1<int32_t> *fsas_arc_map = nullptr,
                     Array1<int32_t> *labels_arc_map = nullptr);
+
+
+/*
+  This function ensures that labels associated with an Fsa or FsaVec have
+  the value -1 in the appropriate places, and only in the appropriate
+  places.
+      @param [in] fsas   The FSAs whose labels (or aux_labels) we want
+                to fix
+      @param [in,out] labels_data   Pointer to data we want to fix,
+               indexed as `labels_data[i * labels_stride]` for
+               0 <= i < fsas.NumElements().
+      @param [in] labels_stride   Stride of `labels_data`; would be
+               1 if it is from an Array1, or 4 if it really points to
+               the labels of `fsas`.
+   It is an error if a label had a value different from 0 and -1 for a
+   position corresponding to a final-arc, and this function will crash
+   if that is detected.
+ */
+void FixFinalLabels(FsaOrVec &fsas,
+                    int32_t *labels_data,
+                    int32_t labels_stride);
+
 /*
   Invert an FST, swapping the labels in the FSA with the auxiliary labels.
   (e.g. swap input and output symbols in FST, but you decide which is which).

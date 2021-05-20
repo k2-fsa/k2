@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
@@ -148,6 +149,44 @@ TEST(ArcSort, NonEmptyFsaVec) {
     EXPECT_EQ(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
   }
 }
+
+
+TEST(FsaAlgo, FixFinalLabels) {
+  // src_state dst_state label cost
+  std::string s = R"(0 1 10 -1.2
+    0 2  6 -2.2
+    0 3  9 -2.2
+    1 2  8  -3.2
+    1 3  6  -4.2
+    2 3  5 -5.2
+    2 4  4  -6.2
+    3 5 -1  -7.2
+    5
+    )";
+  for (auto &context : {GetCudaContext(), GetCpuContext()}) {
+    Fsa fsa = FsaFromString(s);
+    fsa = fsa.To(context);
+    std::vector<Fsa*> fsa_ptrs { &fsa, &fsa };
+    K2_CHECK_EQ(fsa_ptrs.size(), 2);
+    FsaVec fsas = Stack(0, 2, fsa_ptrs.data(), nullptr);
+
+
+    Array1<int32_t> labels(context, "[ 0 -1 1 2 3 4 5 0 ]"),
+        correct_labels(context, "[ 0 0 1 2 3 4 5 -1 ]");
+
+    FixFinalLabels(fsa, labels.Data(), 1);
+    EXPECT_EQ(true, Equal(labels, correct_labels));
+
+
+    std::vector<const Array1<int32_t>*> labels_repeated_ptrs = { &labels, &labels },
+        correct_labels_repeated_ptrs = { &correct_labels, &correct_labels };
+    Array1<int32_t> labels_repeated = Cat(context, 2, labels_repeated_ptrs.data()),
+        correct_labels_repeated = Cat(context, 2, correct_labels_repeated_ptrs.data());
+
+    EXPECT_EQ(true, Equal(labels_repeated, correct_labels_repeated));
+  }
+}
+
 
 TEST(FsaAlgo, LinearFsa) {
   for (auto &context : {GetCudaContext(), GetCpuContext()}) {

@@ -432,6 +432,160 @@ static void PybindRemoveEpsilonSelfLoops(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
+
+static void PybindExpandArcs(py::module &m) {
+  // See doc-string below.
+  m.def(
+      "expand_arcs",
+      [](FsaOrVec &fsas, std::vector<Ragged<int32_t> > &ragged_labels) ->
+      std::tuple<FsaOrVec, std::vector<torch::Tensor>, torch::Tensor> {
+        int32_t ragged_labels_size = ragged_labels.size();
+        K2_CHECK_NE(ragged_labels_size, 0);
+        K2_CHECK_LE(ragged_labels_size, 6);  // see SmallVec<...,6> below.
+        ContextPtr c = fsas.Context();
+        int32_t num_arcs = fsas.NumElements();
+        SmallVec<int32_t*, 6> ragged_labels_row_splits,
+            ragged_labels_data;
+        for (int32_t r = 0; r < ragged_labels_size; r++) {
+          K2_CHECK_EQ(ragged_labels[r].NumAxes(), 2);
+          K2_CHECK_EQ(ragged_labels[r].Dim0(), num_arcs);
+          ragged_labels_row_splits.data[r] = ragged_labels[r].RowSplits(1).Data();
+          ragged_labels_data.data[r] = ragged_labels[r].values.Data();
+        }
+
+        // we'll be using the labels on the arcs of `fsas` (i.e. whether they
+        // are -1 or not) to determine whether arcs are final or not.  The
+        // assumption is that `fsas` is valid.
+        const Arc *fsas_arcs = fsas.values.Data();
+
+        // will be set to the maximum of 1 and the length of the i'th sub-list
+        // of any of the lists in `ragged_labels` (for final-arcs where the last
+        // element of a sub-list was not -1, we imagine that there was an extra
+        // element of the sub-list with the value of -1).
+        Array1<int32_t> combined_size(c, num_arcs + 1);
+        int32_t *combined_size_data = combined_size.Data();
+        K2_EVAL(c, num_arcs, lambda_get_combined_size, (int32_t arc_idx) -> void {
+            int32_t fsa_label = fsas_arcs[arc_idx].label;
+            bool arc_is_final = (fsa_label == -1);
+            int32_t max_num_elems = 1;
+            for (int32_t r = 0; r < ragged_labels_size; r++) {
+              int32_t this_label_idx0x = ragged_labels_row_splits.data[r][arc_idx],
+                  next_label_idx0x = ragged_labels_row_splits.data[r][arc_idx + 1];
+              int32_t size = next_label_idx0x - this_label_idx0x;
+
+              // Adds an extra place for the final-arc's -1 if this is a
+              // final-arc and the ragged label list did not have a -1 as its
+              // last element.  We don't do a memory fetch until we know that
+              // it would make a difference to the result.
+              if (arc_is_final && size >= max_num_elems &&
+                  ragged_labels_data.data[r][next_label_idx0x - 1] != -1)
+                max_num_elems = size + 1;
+              else if (size > max_num_elems)
+                max_num_elems = size;
+            }
+            combined_size_data[arc_idx] = max_num_elems;
+          });
+        ExclusiveSum(combined_size, &combined_size);
+        RaggedShape combined_shape = RaggedShape2(&combined_size, nullptr, -1);
+
+        Array1<int32_t> fsas_arc_map, labels_arc_map;
+        FsaOrVec ans = ExpandArcs(fsas, combined_shape, &fsas_arc_map,
+                                  &labels_arc_map);
+
+        int32_t ans_num_arcs = ans.NumElements();
+        Array2<int32_t> labels(c, ragged_labels_size, ans_num_arcs);
+        auto labels_acc = labels.Accessor();
+
+        // we'll be using the labels on the returned arcs (i.e. whether they are
+        // -1 or not) to determine whether arcs are final or not.  The
+        // assumption is that the answer is valid; since we'll likely be
+        // constructing an Fsa (i.e. a python-level Fsa) from it, the properties
+        // should be checked, so if this assumption is false we'll find out
+        // sooner or later.
+        const Arc *ans_arcs = ans.values.Data();
+
+        K2_CHECK_EQ(labels_arc_map.Dim(), ans_num_arcs);
+        const int32_t *labels_arc_map_data = labels_arc_map.Data();
+        const int32_t *combined_shape_row_ids_data = combined_shape.RowIds(1).Data(),
+            *combined_shape_row_splits_data = combined_shape.RowSplits(1).Data();
+        K2_EVAL2(c, ragged_labels_size, ans_num_arcs, lambda_linearize_labels, (int32_t r, int32_t arc_idx) -> void {
+            int32_t fsa_label = ans_arcs[arc_idx].label;
+            bool arc_is_final = (fsa_label == -1);
+            int32_t combined_shape_idx01 = labels_arc_map_data[arc_idx];
+            // The reason we can assert the following is that `combined_size`
+            // has no empty sub-lists because we initialized `max_num_elems = 1`
+            // when we set up those sizes.
+            K2_CHECK_GE(combined_shape_idx01, 0);
+            // combined_shape_idx0 is also an arc_idx012 into the *original*
+            // fsas; combined_shape_idx1 is the index into the sequence of
+            // ragged labels attached to that arc.
+            int32_t combined_shape_idx0 = combined_shape_row_ids_data[combined_shape_idx01],
+                combined_shape_idx0x = combined_shape_row_splits_data[combined_shape_idx0],
+                combined_shape_idx1 = combined_shape_idx01 - combined_shape_idx0x;
+            K2_CHECK_GE(combined_shape_idx1, 0);
+            int32_t src_idx0x = ragged_labels_row_splits.data[r][combined_shape_idx0],
+                src_idx0x_next = ragged_labels_row_splits.data[r][combined_shape_idx0 + 1],
+                src_idx01 = src_idx0x + combined_shape_idx1;
+            int32_t this_label;
+            if (src_idx01 >= src_idx0x_next) {
+              // We were past the end of the source sub-list of ragged labels.
+              this_label = 0;
+            } else {
+              this_label = ragged_labels_data.data[r][src_idx01];
+            }
+            if (this_label == -1 || this_label == 0)
+              this_label = (arc_is_final ? -1 : 0);
+
+            if (arc_is_final) {
+              // In positions where the source FSA has label -1 (which should be
+              // final-arcs), the ragged labels should have label -1.  If this
+              // fails it will be because final-arcs had labels that were
+              // neither -1 or 0.  If this becomes a problem in future we may
+              // have to revisit this.
+              K2_CHECK_EQ(this_label, fsa_label);
+            }
+            labels_acc(r, arc_idx) = this_label;
+          });
+
+        std::vector<torch::Tensor> ans_labels(ragged_labels_size);
+        for (int32_t r = 0; r < ragged_labels_size; r++) {
+          Array1<int32_t> labels_row = labels.Row(r);
+          ans_labels[r] = ToTorch(labels_row);
+        }
+
+        return std::make_tuple(ans, ans_labels, ToTorch(fsas_arc_map));
+      },
+      py::arg("fsas"), py::arg("ragged_labels"),
+      R"(
+    This function expands the arcs in an Fsa or FsaVec so that we can
+    turn a list of attributes stored as ragged tensors into normal, linear
+    tensors.  It does this by expanding arcs into linear chains of arcs.
+
+   Args:
+        fsas:   The Fsa or FsaVec (ragged tensor of arcs with 2 or 3 axes)
+           whose structure we want to copy and possibly expand chains of arcs
+       ragged_labels:   A list of at least one ragged tensor of
+           ints; must satisfy ragged_labels[i].NumAxes() == 2
+           and ragged_labels[i].Dim0() == fsas.NumElements(),
+           i.e. one sub-list per arc in the input FSAs
+   Returns:   A triplet (ans_fsas, ans_label_list, arc_map), where:
+             ans_fsas is the possibly-modified arcs,
+             ans_label_list is a list of torch::Tensor representing
+             the linearized form of `ragged_labels`
+             arc_map is the map from arcs in `ans_fsas` to arcs
+             in `fsas` where the score came from, or -1 in positions
+             for newly-created arcs
+
+    Caution: the behavior of this function w.r.t. final-arcs and -1's in ragged
+    labels is a little complicated.  We ensure that in the linearized labels,
+    all final-arcs have a label of -1 (we turn final-arcs into longer sequences
+    if necessary to ensure this); and we ensure that no other arcs have -1's
+    (we turn -1's into 0 to ensure this).
+     )");
+}
+
+
+
 }  // namespace k2
 
 void PybindFsaAlgo(py::module &m) {
@@ -451,4 +605,5 @@ void PybindFsaAlgo(py::module &m) {
   k2::PybindClosure(m);
   k2::PybindInvert(m);
   k2::PybindRemoveEpsilonSelfLoops(m);
+  k2::PybindExpandArcs(m);
 }

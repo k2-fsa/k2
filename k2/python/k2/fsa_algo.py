@@ -920,3 +920,60 @@ def prune_on_arc_post(fsas: Fsa, threshold_prob: float,
     out_fsa = k2.utils.fsa_from_unary_function_tensor(fsas, ragged_arc,
                                                       arc_map)
     return out_fsa
+
+
+def expand_ragged_labels(
+        fsas: Fsa,
+        ret_arc_map: bool = False
+) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
+    '''
+    Turn ragged labels attached to this FSA into linear (Tensor) labels, expanding
+    arcs into sequences of arcs as necessary to achieve this.   Supports autograd.
+    If `fsas` had no ragged attributes, returns `fsas` itself.
+
+         ret_arc_map:  if true, will return a pair (new_fsas, arc_map) with `arc_map`
+             a tensor of int32 that maps from arcs in the result to arcs in `fsas`,
+             with -1's for newly created arcs.  If false, just returns new_fsas.
+    '''
+    ragged_attribute_tensors = []
+    ragged_attribute_names = []
+    for name, value in fsas.named_tensor_attr(include_scores=False):
+        if isinstance(value, k2.RaggedInt):
+            ragged_attribute_tensors.append(value)
+            ragged_attribute_names.append(name)
+
+    if len(ragged_attribute_tensors) == 0:
+        if ret_arc_map:
+            arc_map = torch.arange(fsas.num_arcs, dtype=torch.int32,
+                                   device=fsa.device)
+            return (fsas, arc_map)
+        else:
+            return fsas
+
+    (dest_arcs, dest_labels, arc_map) = _k2.expand_arcs(fsas.arcs,
+                                                        ragged_attribute_tensors)
+
+    # The rest of this function is a modified version of
+    # `fsa_from_unary_function_tensor()`.
+    dest = Fsa(dest_arcs)
+
+    # Handle the non-ragged attributes
+    for name, value in fsas.named_tensor_attr(include_scores=False):
+        if not isinstance(value, k2.RaggedInt):
+            setattr(dest, name, k2.index(value, arc_map))
+
+    # Handle the attributes that were ragged but are now linear
+    for name, value in zip(ragged_attribute_names, dest_labels):
+        setattr(dest, name, value)
+
+    # Copy non-tensor attributes
+    for name, value in fsas.named_non_tensor_attr():
+        setattr(dest, name, value)
+
+    # make sure autograd works on the scores
+    k2.autograd_utils.phantom_index_select_scores(dest, fsas.scores, arc_map)
+
+    if ret_arc_map:
+        return dest, arc_map
+    else:
+        return dest
