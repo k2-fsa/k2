@@ -54,4 +54,3 @@ from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
 from .utils import create_sparse
-__dev_version__ = '0.3.4.dev20210521+cuda10.1.torch1.7.0'
