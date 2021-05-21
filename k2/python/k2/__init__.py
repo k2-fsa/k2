@@ -22,7 +22,7 @@ from .fsa_algo import closure
 from .fsa_algo import compose
 from .fsa_algo import connect
 from .fsa_algo import determinize
-from .fsa_algo import expand_ragged_labels
+from .fsa_algo import expand_ragged_attributes
 from .fsa_algo import intersect
 from .fsa_algo import intersect_device
 from .fsa_algo import invert
@@ -54,3 +54,4 @@ from .utils import to_dot
 from .utils import to_str
 from .utils import to_tensor
 from .utils import create_sparse
+__dev_version__ = '0.3.4.dev20210521+cuda10.1.torch1.7.0'

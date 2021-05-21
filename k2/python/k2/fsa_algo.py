@@ -922,7 +922,7 @@ def prune_on_arc_post(fsas: Fsa, threshold_prob: float,
     return out_fsa
 
 
-def expand_ragged_labels(
+def expand_ragged_attributes(
         fsas: Fsa,
         ret_arc_map: bool = False
 ) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa

@@ -6,7 +6,7 @@
 
 # To run this single test, use
 #
-#  ctest --verbose -R  expand_arcs_test_py
+#  ctest --verbose -R  expand_ragged_attributes_tests_py
 
 import unittest
 
@@ -45,9 +45,9 @@ class TestExpandArcs(unittest.TestCase):
                 src.attr2 = 'fsa'
 
                 if need_map:
-                    dest, arc_map = k2.expand_ragged_labels(src, ret_arc_map = True)
+                    dest, arc_map = k2.expand_ragged_attributes(src, ret_arc_map = True)
                 else:
-                    dest = k2.expand_ragged_labels(src)
+                    dest = k2.expand_ragged_attributes(src)
 
                 assert torch.allclose(
                     dest.float_attr,
@@ -120,9 +120,9 @@ class TestExpandArcs(unittest.TestCase):
                 src.attr2 = 'fsa'
 
                 if need_map:
-                    dest, arc_map = k2.expand_ragged_labels(src, ret_arc_map = True)
+                    dest, arc_map = k2.expand_ragged_attributes(src, ret_arc_map = True)
                 else:
-                    dest = k2.expand_ragged_labels(src)
+                    dest = k2.expand_ragged_attributes(src)
 
                 assert torch.allclose(
                     dest.float_attr,
