@@ -40,12 +40,12 @@ class TestExpandArcs(unittest.TestCase):
                                             device=device)
                 src.ragged_attr = k2.RaggedInt('[[1 2 3] [5 6] []]').to(device)
 
-
                 src.attr1 = 'src'
                 src.attr2 = 'fsa'
 
                 if need_map:
-                    dest, arc_map = k2.expand_ragged_attributes(src, ret_arc_map = True)
+                    dest, arc_map = k2.expand_ragged_attributes(
+                        src, ret_arc_map=True)
                 else:
                     dest = k2.expand_ragged_attributes(src)
 
@@ -54,7 +54,6 @@ class TestExpandArcs(unittest.TestCase):
                     torch.tensor([0.1, 0.2, 0.0, 0.0, 0.0, 0.3],
                                  dtype=torch.float32,
                                  device=device))
-
 
                 assert torch.all(
                     torch.eq(
@@ -66,7 +65,8 @@ class TestExpandArcs(unittest.TestCase):
                 assert torch.all(
                     torch.eq(
                         dest.int_attr,
-                        torch.tensor([1, 2, 0, 0, 0, 3], dtype=torch.int32, device=device)))
+                        torch.tensor([1, 2, 0, 0, 0, 3], dtype=torch.int32,
+                                     device=device)))
 
                 assert torch.all(
                     torch.eq(
@@ -115,12 +115,12 @@ class TestExpandArcs(unittest.TestCase):
                                             device=device)
                 src.ragged_attr = k2.RaggedInt('[[1 2 3] [5 6] [1]]').to(device)
 
-
                 src.attr1 = 'src'
                 src.attr2 = 'fsa'
 
                 if need_map:
-                    dest, arc_map = k2.expand_ragged_attributes(src, ret_arc_map = True)
+                    dest, arc_map = k2.expand_ragged_attributes(
+                        src, ret_arc_map=True)
                 else:
                     dest = k2.expand_ragged_attributes(src)
 
@@ -129,25 +129,23 @@ class TestExpandArcs(unittest.TestCase):
                     torch.tensor([0.1, 0.2, 0.0, 0.0, 0.0, 0.3, 0.0],
                                  dtype=torch.float32,
                                  device=device))
-
-
                 assert torch.all(
                     torch.eq(
                         dest.scores,
                         torch.tensor([10, 20, 0, 0, 0, 30, 0],
                                      dtype=torch.float32,
                                      device=device)))
-
                 assert torch.all(
                     torch.eq(
                         dest.int_attr,
-                        torch.tensor([1, 2, 0, 0, 0, 3, 0], dtype=torch.int32, device=device)))
+                        torch.tensor([1, 2, 0, 0, 0, 3, 0], dtype=torch.int32,
+                                     device=device)))
                 _k2.fix_final_labels(dest.arcs, dest.int_attr)
                 assert torch.all(
                     torch.eq(
                         dest.int_attr,
-                        torch.tensor([1, 2, 0, 0, 0, 3, -1], dtype=torch.int32, device=device)))
-
+                        torch.tensor([1, 2, 0, 0, 0, 3, -1], dtype=torch.int32,
+                                     device=device)))
 
                 assert torch.all(
                     torch.eq(
@@ -161,7 +159,8 @@ class TestExpandArcs(unittest.TestCase):
                 assert dest.attr2 == src.attr2
 
                 # now for autograd
-                scale = torch.tensor([10, 20, 10, 10, 10, 30, 10], device=device)
+                scale = torch.tensor([10, 20, 10, 10, 10, 30, 10],
+                                     device=device)
                 (dest.float_attr * scale).sum().backward()
                 (dest.scores * scale).sum().backward()
 
@@ -171,7 +170,6 @@ class TestExpandArcs(unittest.TestCase):
 
                 assert torch.all(torch.eq(src.float_attr.grad, expected_grad))
                 assert torch.all(torch.eq(src.scores.grad, expected_grad))
-
 
 
 if __name__ == '__main__':

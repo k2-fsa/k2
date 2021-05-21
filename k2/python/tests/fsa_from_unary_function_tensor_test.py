@@ -84,6 +84,5 @@ class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
             assert torch.all(torch.eq(src.scores.grad, expected_grad))
 
 
-
 if __name__ == '__main__':
     unittest.main()

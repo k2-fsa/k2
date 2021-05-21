@@ -927,13 +927,15 @@ def expand_ragged_attributes(
         ret_arc_map: bool = False
 ) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
     '''
-    Turn ragged labels attached to this FSA into linear (Tensor) labels, expanding
-    arcs into sequences of arcs as necessary to achieve this.   Supports autograd.
-    If `fsas` had no ragged attributes, returns `fsas` itself.
+    Turn ragged labels attached to this FSA into linear (Tensor) labels,
+    expanding arcs into sequences of arcs as necessary to achieve this.
+    Supports autograd.  If `fsas` had no ragged attributes, returns `fsas`
+    itself.
 
-         ret_arc_map:  if true, will return a pair (new_fsas, arc_map) with `arc_map`
-             a tensor of int32 that maps from arcs in the result to arcs in `fsas`,
-             with -1's for newly created arcs.  If false, just returns new_fsas.
+         ret_arc_map:  if true, will return a pair (new_fsas, arc_map)
+              with `arc_map` a tensor of int32 that maps from arcs in the
+              result to arcs in `fsas`, with -1's for newly created arcs.
+              If false, just returns new_fsas.
     '''
     ragged_attribute_tensors = []
     ragged_attribute_names = []
@@ -950,8 +952,9 @@ def expand_ragged_attributes(
         else:
             return fsas
 
-    (dest_arcs, dest_labels, arc_map) = _k2.expand_arcs(fsas.arcs,
-                                                        ragged_attribute_tensors)
+    (dest_arcs, dest_labels, arc_map) = _k2.expand_arcs(
+        fsas.arcs,
+        ragged_attribute_tensors)
 
     # The rest of this function is a modified version of
     # `fsa_from_unary_function_tensor()`.
