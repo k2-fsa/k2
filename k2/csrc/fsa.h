@@ -360,7 +360,8 @@ int32_t GetFsaBasicProperties(const Fsa &fsa);
 
      @param [in] fsa_vec   FSAs to compute the properties of.  It is an
                            error if fsa_vec.NumAxes() != 3 (will crash).
-     @param [out] properties_out  The properties per FSA will be written to
+     @param [out,optional] properties_out  If provided, the properties per
+                   FSA will be written to
                    here, on the same device as `fsa_vec`.  This array
                    will be assigned to (does not have to be correctly sized at
                    entry).

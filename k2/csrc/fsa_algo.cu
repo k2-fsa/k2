@@ -1136,6 +1136,7 @@ void FixFinalLabels(FsaOrVec &fsas,
         // we name this as if it is an aux_label, but it could have any name.
         int32_t cur_aux_label = labels_data[arc_idx012 * labels_stride];
         if (arc.dest_state + state_idx0x + 1 == next_state_idx0x) {
+          K2_DCHECK_EQ(arc.label, -1);
           K2_DCHECK_LE(cur_aux_label, 0);  // Expect it to be either 0 or -1.
           if (cur_aux_label != -1) {
             labels_data[arc_idx012 * labels_stride] = -1;
