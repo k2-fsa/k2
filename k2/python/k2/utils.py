@@ -17,7 +17,9 @@ import _k2
 
 
 def to_str(fsa: Fsa, openfst: bool = False) -> str:
-    '''Convert an Fsa to a string.
+    '''Convert an Fsa to a string.  This is less complete than Fsa.to_str() or fsa.__str__(),
+    meaning it prints only fsa.aux_labels and no ragged labels, not printing any other
+    attributes.  This is used in testing.
 
     Caution:
       If the input fsa's aux_labels is a ragged tensor, it is ignored.
@@ -33,10 +35,10 @@ def to_str(fsa: Fsa, openfst: bool = False) -> str:
       A string representation of the Fsa.
     '''
     if hasattr(fsa, 'aux_labels') and isinstance(fsa.aux_labels, torch.Tensor):
-        aux_labels = fsa.aux_labels.to(torch.int32)
+        aux_labels = [ fsa.aux_labels.to(torch.int32) ]
     else:
-        aux_labels = None
-    return _k2.fsa_to_str(fsa.arcs, openfst, aux_labels)
+        aux_labels = [ ]
+    return _k2.fsa_to_str(fsa.arcs, openfst, aux_labels, [])
 
 
 def to_tensor(fsa: Fsa) -> torch.Tensor:

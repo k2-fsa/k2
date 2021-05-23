@@ -292,10 +292,10 @@ TEST(FsaToString, Transducer) {
   Array2<int32_t> aux_labels_array;
   auto fsa = FsaFromString(s, false, 1, &aux_labels_array);
   Array1<int32_t> aux_labels = aux_labels_array.Row(0);
-  auto str = FsaToString(fsa, false, &aux_labels);
+  auto str = FsaToString(fsa, false, 1, &aux_labels);
   K2_LOG(INFO) << "\n" << str;
 
-  str = FsaToString(fsa, true, &aux_labels);
+  str = FsaToString(fsa, true, 1, &aux_labels);
   K2_LOG(INFO) << "\n---negating---\n" << str;
 }
 
@@ -1541,7 +1541,7 @@ TEST(FixFinalLabels, FixFinalLabels) {
     EXPECT_EQ(true, Equal(labels_repeated, correct_labels_repeated));
 
     // this test is rather weak as it should not change `fsas`.
-    FixFinalLabels(fsas, static_cast<int32_t>(fsas.values.Data()) + 2, 4);
+    FixFinalLabels(fsas, reinterpret_cast<int32_t*>(fsas.values.Data()) + 2, 4);
     int32_t props;
     GetFsaVecBasicProperties(fsas, nullptr, &props);
     K2_CHECK_NE(0, props & kFsaPropertiesValid);

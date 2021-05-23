@@ -24,86 +24,7 @@
 
 namespace k2 {
 
-// field separator within a line for a text form FSA
-static constexpr const char *kDelim = " \t";
 
-// Convert a string to an integer. Abort the program on failure.
-static int32_t StringToInt(const std::string &s) {
-  K2_CHECK(!s.empty());
-
-  bool ok = false;
-  char *p = nullptr;
-  // std::strtol requires a `long` type
-  long n = std::strtol(s.c_str(), &p, 10);  // NOLINT
-  if (*p == '\0') ok = true;
-
-  auto res = static_cast<int32_t>(n);
-  if (n != res) ok = false;  // out of range
-
-  K2_CHECK(ok) << "Failed to convert " << s << " to an integer";
-
-  return res;
-}
-
-// Convert a string to a float. Abort the program on failure.
-// TODO(guoguo): We may run into locale problems, with comma vs. period for
-//               decimals. We have to test if the C code will behave the same
-//               w.r.t. locale as Python does.
-static float StringToFloat(const std::string &s) {
-  K2_CHECK(!s.empty());
-  char *p = nullptr;
-  float f = std::strtof(s.c_str(), &p);
-  if (*p != '\0') K2_LOG(FATAL) << "Failed to convert " << s << " to a float";
-  return f;
-}
-
-// Trim leading and trailing spaces of a string.
-static void TrimString(std::string *s) {
-  K2_CHECK_NE(s, nullptr);
-  auto not_space = [](int32_t c) -> bool { return std::isspace(c) == 0; };
-
-  s->erase(s->begin(), std::find_if(s->begin(), s->end(), not_space));
-  s->erase(std::find_if(s->rbegin(), s->rend(), not_space).base(), s->end());
-}
-
-/* Split a string to a vector of strings using a set of delimiters.
-
-   Example usage:
-
-   @code
-    std::string in = "1 2 3";
-    const char *delim = " \t";
-    std::vector<std::string> out;
-    SplitStringToVector(in, delim, &out);
-   @endcode
-
-   @param [in]  in    The input string to be split.
-   @param [in]  delim A string of delimiters.
-   @param [out] out   It saves the split result.
-*/
-static void SplitStringToVector(const std::string &in, const char *delim,
-                                std::vector<std::string> *out) {
-  K2_CHECK_NE(delim, nullptr);
-  K2_CHECK_NE(out, nullptr);
-  out->clear();
-  std::size_t start = 0;
-  while (true) {
-    auto pos = in.find_first_of(delim, start);
-    if (pos == std::string::npos) break;
-
-    auto sub = in.substr(start, pos - start);
-    start = pos + 1;
-
-    TrimString(&sub);
-    if (!sub.empty()) out->emplace_back(std::move(sub));
-  }
-
-  if (start < in.size()) {
-    auto sub = in.substr(start);
-    TrimString(&sub);
-    if (!sub.empty()) out->emplace_back(std::move(sub));
-  }
-}
 
 /* Create an Fsa from a stream, assuming the Fsa is in k2 format:
 
@@ -143,10 +64,8 @@ static Fsa K2FsaFromStream(std::istringstream &is,
   std::vector<int32_t> fsa_row_splits;
   std::vector<Arc> arcs;
   std::vector<int32_t> aux_labels;
-
   std::vector<std::vector<int32_t> > ragged_labels(num_ragged_labels);
   std::vector<std::vector<int32_t> > ragged_row_splits(num_ragged_labels);
-
 
   std::string line;
   int32_t max_state = -1;
@@ -169,7 +88,7 @@ static Fsa K2FsaFromStream(std::istringstream &is,
       final_state = src_state;
       if (final_state > max_state)
         max_state = final_state;
-      break;
+      continue;
     }
     int32_t dest_state, label;
     line_is >> dest_state >> label;
@@ -203,15 +122,15 @@ static Fsa K2FsaFromStream(std::istringstream &is,
     if (!line_is.eof()) {  // Score is optional, defaults to 0.0.
       line_is >> score >> std::ws;
     }
-    if (!line_is.eof() || !line_is.fail()) {
+    if (!line_is.eof() || line_is.fail()) {
       K2_LOG(FATAL) << "Bad line " << line;
     }
-    int32_t prev_src_state = static_cast<int32_t>(fsa_row_splits.size());
+    int32_t prev_src_state = static_cast<int32_t>(fsa_row_splits.size()) - 1;
     if (!arcs.empty() && src_state < prev_src_state) {
       K2_LOG(FATAL) << "Bad line " << line << ", arcs are not ordered by "
           "src-state, " << src_state << " < " << prev_src_state;
     }
-    for (int32_t s = prev_src_state; s < src_state; s++)
+    while (fsa_row_splits.size() <= (size_t)src_state)
       fsa_row_splits.push_back(arcs.size());
     arcs.emplace_back(src_state, dest_state, label, score);
     max_state = std::max(max_state, std::max(src_state, dest_state));
@@ -253,7 +172,7 @@ static Fsa K2FsaFromStream(std::istringstream &is,
 #ifndef NDEBUG
     // The FSA is not checked for validity if not in debug mode; user should check this
     // (we do this anyway when constructing Fsa in Python.
-    int32_t props = GetFsaBasicProperties(*fsa_out);
+  int32_t props = GetFsaBasicProperties(ans);
     if (!(props & kFsaPropertiesValid)) {
       K2_LOG(FATAL) << "Fsa is not valid";  // May change this behavior at some
                                             // point.
@@ -276,24 +195,24 @@ void ExpectChar(std::istream &is, char expected) {
 
 class OpenFstStreamReader {
  public:
-  OpenFstStreamReader(std::istringstream &is,
-                      int32_t num_aux_labels,
-                      Fsa *fsa_out,
-                      Array2<int32_t> *aux_labels_out,
-                      int32_t num_ragged_labels,
-                      Ragged<int32_t> *ragged_labels_out):
-      is_(is),
-      num_aux_labels_(num_aux_labels), aux_labels_out_(aux_labels_out),
+  OpenFstStreamReader(int32_t num_aux_labels,
+                      int32_t num_ragged_labels):
+      num_aux_labels_(num_aux_labels),
       num_ragged_labels_(num_ragged_labels),
-      ragged_labels_out_(ragged_labels_out),
       start_state_(-1),
       max_state_(-1),
-      num_arcs_(0) {
+      num_arcs_(0) { }
 
+  // must be called only once.
+  void Read(std::istringstream &is,
+            Fsa *fsa_out,
+            Array2<int32_t> *aux_labels_out,
+            Ragged<int32_t> *ragged_labels_out) {
     std::string line;
     while (std::getline(is, line)) {
       ProcessLine(line);
     }
+    K2_CHECK(is.eof());
     Finalize(fsa_out, aux_labels_out, ragged_labels_out);
   }
 
@@ -360,7 +279,7 @@ class OpenFstStreamReader {
 
   // returns true if we successfully processed the line as final-prob,
   // i.e. state-id [cost], or as empty.
-  bool ProcessFinalProb(std::string &line) {
+  bool ProcessFinalProbOrEmpty(std::string &line) {
     std::istringstream line_is(line);
     line_is >> std::ws;
     if (line_is.eof())
@@ -370,6 +289,13 @@ class OpenFstStreamReader {
     line_is >> final_state >> std::ws;
     if (line_is.eof()) {
       final_cost = 0.0;
+    } else if (line_is.peek() == 'I') {
+      std::string str;
+      line_is >> str;
+      if (str != "Inf" && str != "inf") {
+        return false;
+      }
+      final_cost = std::numeric_limits<float>::infinity();
     } else {
       line_is >> final_cost >> std::ws;
       if (!line_is.eof() || line_is.fail()) {
@@ -379,14 +305,16 @@ class OpenFstStreamReader {
     if (final_state < 0)
       return false;
     SeenState(final_state);
-    if (cost != std::numeric_limits<float>::infinity()) {
-      original_final_states.push_back(final_state);
-      original_final_weights.push_back(-cost);
+    if (final_cost != std::numeric_limits<float>::infinity()) {
+      original_final_states_.push_back(final_state);
+      float final_score = -final_cost;
+      original_final_weights_.push_back(final_score);
     }
+    return true;
   }
   void SeenState(int32_t state) {
     K2_CHECK_GE(state, 0);
-    if (state < max_state_) {
+    if (state > max_state_) {
       max_state_ = state;
       state_to_arcs_.resize(state + 1);
       if (num_aux_labels_ != 0) {
@@ -402,17 +330,23 @@ class OpenFstStreamReader {
   void Finalize(Fsa *fsa_out,
                 Array2<int32_t> *aux_labels_out,
                 Ragged<int32_t> *ragged_labels_out) {
+    ContextPtr c = GetCpuContext();
     if (start_state_ == -1) {
       if (num_aux_labels_ > 0)
-        *aux_labels_out = Array2<int32_t>(c, num_aux_labels, 0);
-      return Fsa(EmptyRaggedShape(c, 2));
+        *aux_labels_out = Array2<int32_t>(c, num_aux_labels_, 0);
+      for (int32_t r = 0; r < num_ragged_labels_; r++)
+        ragged_labels_out[r] = Ragged<int32_t>(EmptyRaggedShape(c, 2));
+      *fsa_out = Fsa(EmptyRaggedShape(c, 2));
+      return;
     }
     ProcessFinalStates();
     FixStartState();
-    ContextPtr c = GetCpuContext();
     Array1<Arc> arcs(c, num_arcs_);
     Arc *arcs_data = arcs.Data();
     Array2<int32_t> aux_labels(c, num_aux_labels_, num_arcs_);
+    if (num_aux_labels_ > 0)
+      *aux_labels_out = aux_labels;  // copies metadata.
+    auto aux_labels_acc = aux_labels.Accessor();
 
     // ragged_labels is indexed by 0 <= r < num_ragged_labels_, then
     // is the contents of the sub-lists appended over all arcs.
@@ -435,23 +369,23 @@ class OpenFstStreamReader {
       int32_t this_num_arcs = state_to_arcs_[state].size();
       if (num_aux_labels_ > 0) {
         K2_CHECK_EQ(this_num_arcs * num_aux_labels_,
-                    state_to_aux_labels_[state].size());
+                    static_cast<int32_t>(state_to_aux_labels_[state].size()));
       }
       if (num_ragged_labels_ > 0) {
         K2_CHECK_EQ(this_num_arcs * num_ragged_labels_,
-                    state_to_ragged_labels_[state].size());
+                    static_cast<int32_t>(state_to_ragged_labels_[state].size()));
       }
       for (int32_t a = 0; a < this_num_arcs; ++a) {
-        K2_CHECK_GT(num_arcs, arc_index);
+        K2_CHECK_LT(arc_index, num_arcs_);
         arcs_data[arc_index] = state_to_arcs_[state][a];
         for (int32_t i = 0; i < num_aux_labels_; ++i)
           aux_labels_acc(i, arc_index) =
-              state_to_aux_labels[state][a * num_aux_labels_ + i];
+              state_to_aux_labels_[state][a * num_aux_labels_ + i];
         for (int32_t r = 0; r < num_ragged_labels_; ++r) {
           ragged_pos[r].push_back(ragged_labels[r].size());
           std::vector<int32_t> &this_ragged =
               state_to_ragged_labels_[state][a * num_ragged_labels_ + r];
-          ragged_labels[r].insert(ragged_labels[r].back(),
+          ragged_labels[r].insert(ragged_labels[r].end(),
                                   this_ragged.begin(),
                                   this_ragged.end());
         }
@@ -468,13 +402,14 @@ class OpenFstStreamReader {
           RaggedShape2(&ragged_row_splits, nullptr, -1),
           this_ragged_labels);
     }
-    *fsa_out = Fsa(RaggedShape2(fsa_row_splits1, nullptr, -1),
+    *fsa_out = Fsa(RaggedShape2(&fsa_row_splits1, nullptr, -1),
                    arcs);
 #ifndef NDEBUG
     // The FSA is not checked for validity if not in debug mode; user should check this
     // (we do this anyway when constructing Fsa in Python.
     int32_t props = GetFsaBasicProperties(*fsa_out);
     if (!(props & kFsaPropertiesValid)) {
+      K2_LOG(INFO) << *fsa_out;
       K2_LOG(FATAL) << "Fsa is not valid";  // May change this behavior at some
                                             // point.
     }
@@ -482,16 +417,9 @@ class OpenFstStreamReader {
   }
 
   void ProcessFinalStates() {
-    // Post processing on final states. If there are final state(s) in the
-    // original FST, we add the super final state as well as arc(s) from
-    // original final state(s) to the super final state. Otherwise, the super
-    // final state will be added by FsaFromArray1 (since there's no arc with
-    // label kFinalSymbol).
-    int32_t super_final_state = std::max<int32_t>(max_state_, 1);
+    int32_t super_final_state = std::max<int32_t>(max_state_ + 1, 1);
     K2_CHECK_EQ(original_final_states_.size(),
                 original_final_weights_.size());
-
-
     std::vector<int32_t> aux_labels(num_aux_labels_, -1);
     std::vector<std::vector<int32_t> > ragged_labels(num_ragged_labels_);
     for (std::size_t i = 0; i != original_final_states_.size(); ++i)
@@ -502,36 +430,32 @@ class OpenFstStreamReader {
     if (start_state_ <= 0)
       return;
     // swap start_state and 0
-    std::swap(state_to_arcs_[0], state_to_arcs_[start_state]);
+    std::swap(state_to_arcs_[0], state_to_arcs_[start_state_]);
     if (num_aux_labels_ > 0)
       std::swap(state_to_aux_labels_[0],
-                state_to_aux_labels_[start_state]);
+                state_to_aux_labels_[start_state_]);
     if (num_ragged_labels_ > 0)
       std::swap(state_to_ragged_labels_[0],
-                state_to_ragged_labels_[start_state]);
+                state_to_ragged_labels_[start_state_]);
 
     // fix source state
     for (auto &a : state_to_arcs_[0]) a.src_state = 0;
-    for (auto &a : state_to_arcs_[start_state]) a.src_state = start_state;
+    for (auto &a : state_to_arcs_[start_state_]) a.src_state = start_state_;
 
     // fix dest state
     for (auto &state_arcs : state_to_arcs_) {
       for (auto &a : state_arcs) {
         if (a.dest_state == 0) {
-          a.dest_state = start_state;
-        } else if (a.dest_state == start_state) {
+          a.dest_state = start_state_;
+        } else if (a.dest_state == start_state_) {
           a.dest_state = 0;
         }
       }
     }
   }
 
-  std::istringstream &is_;
   int32_t num_aux_labels_;
-  Array2<int32_t> *aux_labels_out_;
   int32_t num_ragged_labels_;
-  Ragged<int32_t> *ragged_labels_out_;
-
   // The source state of the 1st line is the start state, in OpenFst.
   int32_t start_state_;
   int32_t max_state_;
@@ -583,115 +507,29 @@ static Fsa OpenFstFromStream(std::istringstream &is,
                              int32_t num_aux_labels,
                              Array2<int32_t> *aux_labels_out,
                              int32_t num_ragged_labels,
-                             Ragged<int32_t> *ragged_labels) {
-  NVTX_RANGE(K2_FUNC);
+                             Ragged<int32_t> *ragged_labels_out) {
   K2_CHECK(num_aux_labels == 0 || aux_labels_out != nullptr);
-  std::vector<std::vector<int32_t>> state_to_aux_labels;  // indexed by states
-  // state_to_ragged_labels is indexed by states, then 0 <= i < num_ragged_labels
-  std::vector<std::vector<std::vector<int32_t>>> state_to_ragged_labels;
-  std::vector<std::vector<Arc>> state_to_arcs;            // indexed by states
-  std::vector<Arc> arcs;
-  std::vector<std::string> splits;
-  std::string line;
-
-  while (std::getline(is, line)) {
-
-
-      max_state = std::max(max_state, std::max(src_state, dest_state));
-      if (static_cast<int32_t>(state_to_arcs.size()) <= src_state) {
-        state_to_arcs.resize(src_state + 1);
-        if (num_aux_labels > 0)
-          state_to_aux_labels.resize(src_state + 1);
-      }
-      state_to_arcs[src_state].emplace_back(src_state, dest_state, symbol,
-                                            -cost);
-      for (int32_t i = 0; i < num_aux_labels; ++i) {
-        int32_t aux_label = StringToInt(splits[3 + i]);
-        state_to_aux_labels[src_state].push_back(aux_label);
-      }
-    } else if (num_fields == 1 || num_fields == 2) {
-      //   0           1
-      // final_state  [cost]
-      // There could be multiple final states, so we first have to collect all
-      // the final states, and then work out the super final state.
-      int32_t original_final_state = StringToInt(splits[0]);
-      if (start_state == -1)
-        start_state = original_final_state;
-      float cost = (num_fields == 2 ?
-                    StringToFloat(splits[1]) : 0.0f);
-      K2_CHECK_GE(original_final_state, 0);
-      max_state = std::max(max_state, original_final_state);
-      if (cost != std::numeric_limits<float>::infinity()) {
-        original_final_states.push_back(original_final_state);
-        original_final_weights.push_back(-cost);
-      }
-    } else {
-      K2_LOG(FATAL) << "Invalid line: " << line
-                    << "\n... num-fields=" << num_fields
-                    << ", expected 1, 2, " << (3+num_aux_labels)
-                    << " or " << (4+num_aux_labels)
-                    << " [given that num_aux_labels="
-                    << num_aux_labels << "]";
-    }
-  }
-
-  K2_CHECK(is.eof());
-
-  auto c = GetCpuContext();
-  if (start_state == -1) {
-    if (num_aux_labels > 0)
-      *aux_labels_out = Array2<int32_t>(c, num_aux_labels, 0);
-    return Fsa(EmptyRaggedShape(c, 2));
-  }
-
-
-  // Move arcs from "state_to_arcs" to "arcs", and aux_labels from
-  // "state_to_aux_labels" to "aux_labels"
-  int32_t arc_index = 0;
-  arcs.resize(num_arcs);
-  Array2<int32_t> aux_labels(c, num_aux_labels, num_arcs);
-  auto aux_labels_acc = aux_labels.Accessor();
-
-  if (num_aux_labels > 0)
-    K2_CHECK_EQ(state_to_arcs.size(), state_to_aux_labels.size());
-  for (std::size_t s = 0; s < state_to_arcs.size(); ++s) {
-    if (num_aux_labels > 0) {
-      K2_CHECK_EQ(state_to_arcs[s].size() * num_aux_labels,
-                  state_to_aux_labels[s].size());
-    }
-    for (std::size_t a = 0; a < state_to_arcs[s].size(); ++a) {
-      K2_CHECK_GT(num_arcs, arc_index);
-      arcs[arc_index] = state_to_arcs[s][a];
-      for (int32_t i = 0; i < num_aux_labels; ++i)
-        aux_labels_acc(i, arc_index) =
-            state_to_aux_labels[s][a * num_aux_labels + i];
-      ++arc_index;
-    }
-  }
-  K2_CHECK_EQ(arc_index, num_arcs);
-
-  if (num_aux_labels != 0)
-    *aux_labels_out = aux_labels;
-  Array1<Arc> array(c, arcs);
-  bool error = true;
-  // FsaFromArray1 will add a super final state if the original FSA
-  // doesn't have a final state.
-  auto fsa = FsaFromArray1(array, &error, super_final_state);
-  K2_CHECK_EQ(error, false);
-  return fsa;
+  K2_CHECK(num_ragged_labels == 0 || ragged_labels_out != nullptr);
+  NVTX_RANGE(K2_FUNC);
+  OpenFstStreamReader reader(num_aux_labels,
+                             num_ragged_labels);
+  Fsa ans;
+  reader.Read(is, &ans, aux_labels_out, ragged_labels_out);
+  return ans;
 }
 
-Fsa FsaFromString(const std::string &s, bool openfst /* = false*/,
-                  int32_t num_aux_labels /* = 0*/,
-                  Array2<int32_t> *aux_labels /* = nullptr*/,
-                  int32_t num_ragged_labels = 0,
-                  Ragged<int32_t> *ragged_labels = nullptr) {
+Fsa FsaFromString(const std::string &s,
+                  bool openfst, /* = false*/
+                  int32_t num_aux_labels, /* = 0*/
+                  Array2<int32_t> *aux_labels, /* = nullptr*/
+                  int32_t num_ragged_labels,  /* = 0 */
+                  Ragged<int32_t> *ragged_labels) { /* = nullptr */
   std::istringstream is(s);
   K2_CHECK(is);
 
   if (openfst) {
     return OpenFstFromStream(is, num_aux_labels, aux_labels,
-                             num_ragged_labels, ragged_labels)
+                             num_ragged_labels, ragged_labels);
   } else {
     return K2FsaFromStream(is, num_aux_labels, aux_labels,
                            num_ragged_labels, ragged_labels);
@@ -709,7 +547,7 @@ std::string FsaToString(const Fsa &fsa, bool openfst, /*= false*/
   if (fsa.Context()->GetDeviceType() != kCpu) {
     ContextPtr c = GetCpuContext();
     Fsa _fsa = fsa.To(c);
-    std::vector,Array1<int32_t>> _aux_labels(num_aux_labels);
+    std::vector<Array1<int32_t>> _aux_labels(num_aux_labels);
     for (int32_t i = 0; i < num_aux_labels; ++i)
       _aux_labels[i] = aux_labels[i].To(c);
     std::vector<Ragged<int32_t> > _ragged_labels(num_ragged_labels);
@@ -724,20 +562,20 @@ std::string FsaToString(const Fsa &fsa, bool openfst, /*= false*/
   const Array1<Arc> &arcs = fsa.values;
 
   K2_CHECK(num_aux_labels <= 10);
-  int32_t aux_labels_data[10];
+  const int32_t *aux_labels_data[10];
   for (int32_t i = 0; i < num_aux_labels; ++i) {
     K2_CHECK(IsCompatible(fsa, aux_labels[i]));
     K2_CHECK_EQ(aux_labels[i].Dim(), arcs.Dim());
     aux_labels_data[i] = aux_labels[i].Data();
   }
   K2_CHECK(num_ragged_labels <= 10);
-  int32_t ragged_labels_row_splits_data[10];
-  int32_t ragged_labels_data[10];
+  int32_t *ragged_labels_row_splits_data[10];
+  int32_t *ragged_labels_data[10];
   for (int32_t i = 0; i < num_ragged_labels; ++i) {
     K2_CHECK(IsCompatible(fsa, ragged_labels[i]));
-    K2_CHECK_EQ(ragged_labels[i].Dim(), arcs.Dim());
+    K2_CHECK_EQ(ragged_labels[i].Dim0(), arcs.Dim());
     K2_CHECK_EQ(ragged_labels[i].NumAxes(), 2);
-    ragged_labels_data[i] = ragged_labels[i].Data();
+    ragged_labels_data[i] = ragged_labels[i].values.Data();
     ragged_labels_row_splits_data[i] = ragged_labels[i].RowSplits(1).Data();
   }
 
@@ -760,13 +598,13 @@ std::string FsaToString(const Fsa &fsa, bool openfst, /*= false*/
       for (int32_t j = ragged_labels_row_splits_data[i][a];
            j < ragged_labels_row_splits_data[i][a+1]; ++j)
         os << ragged_labels_data[i][j] << sep;
-      oss << "] ";
+      os << "] ";
     }
     os << (scale * arc.score) << line_sep;
   }
 
   if (num_arcs > 0) {
-    itn32_t final_state = fsa.shape.Dim0() - 1;
+    int32_t final_state = fsa.shape.Dim0() - 1;
     os << final_state << line_sep;
   } else {
     // Output nothing, the empty string is considered a valid representation

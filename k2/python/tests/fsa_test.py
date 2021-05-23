@@ -155,7 +155,7 @@ class TestFsa(unittest.TestCase):
                 _ = k2.Fsa.from_str(s2)
 
             fsa3 = k2.Fsa.from_str(s3)
-            self.assertEqual(fsa3.arcs.dim0(), 0)
+            self.assertEqual(fsa3.arcs.dim0(), 2)
 
     def test_acceptor_from_openfst(self):
         s = '''

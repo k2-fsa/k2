@@ -68,6 +68,11 @@ namespace k2 {
                     Array2 (on CPU) of shape (num_aux_labels, num_arcs).
                     Note: on final-arcs (which are not explicitly represented in
                     the OpenFst format), the value of the aux_labels will be -1.
+  @param [in]  num_ragged_labels  The number of ragged labels to expect on
+                    each line; they will appeear as lists of integers enclosed
+                    by [ ].
+  @param [out]  ragged_labels  A pointer to an array of Ragged<int32_t> of size
+                   `num_ragged_labels`; may be nullptr if num_ragged_labels == 0.
 
   @return It returns an Fsa on CPU.
  */
@@ -104,22 +109,19 @@ Fsa FsaFromString(const std::string &s,
    @param [in]  openfst
                       If true, the scores will first be negated and
                       then printed.
-   @param in]   aux_labels
-                      If not NULL, the FSA is a transducer and it contains the
-                      aux labels of each arc.
- */
-std::string FsaToString(const Fsa &fsa, bool openfst = false,
-                        const Array1<int32_t> *aux_labels = nullptr);
-
-/*
-  An overload of FsaToString that works for an arbitrary number of aux_labels,
-  and supports ragged labels as well; see FsaFromString() to understand the
-  format.
-    @param [in] fsa    The Fsa or
+   @param [in] num_aux_labels  The number of auxiliary labels attached to
+                      the FSA
+   @param [in]   aux_labels   A pointer to an array of `num_aux_labels`
+                      arrays, indexed by arc.
+   @param [in] num_ragged_labels  The number of ragged labels attached to
+                     the FSA
+   @param [in] ragged_labels   A pointer to an array of `num_ragged_labels`
+                    ragged tensors, each with 2 axes and with
+                    `ragged_labels[i].Dim0() == fsa.NumElements()`.
  */
 std::string FsaToString(const Fsa &fsa, bool openfst = false,
                         int32_t num_aux_labels = 0,
-                        Array1<int32_t> *aux_labels = nullptr,
+                        const Array1<int32_t> *aux_labels = nullptr,
                         int32_t num_ragged_labels = 0,
                         Ragged<int32_t> *ragged_labels = nullptr);
 
