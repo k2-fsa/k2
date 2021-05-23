@@ -130,7 +130,7 @@ To run a specific Python test, use:
       export PYTHONPATH=$K2_ROOT/k2/python:$PYTHONPATH
       export PYTHONPATH=$K2_ROOT/build_release/lib:$PYTHONPATH
 
-  To simpily the debug process, we also recommend to create another bash script,
+  To simpily the debug process, we also recommend you to create another bash script,
   e.g., ``activate_k2_debug.sh``, containing:
 
     .. code-block:: bash
