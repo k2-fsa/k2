@@ -561,26 +561,6 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
 
 
 /*
-  This function ensures that labels associated with an Fsa or FsaVec have
-  the value -1 in the appropriate places, and only in the appropriate
-  places.
-      @param [in] fsas   The FSAs whose labels (or aux_labels) we want
-                to fix
-      @param [in,out] labels_data   Pointer to data we want to fix,
-               indexed as `labels_data[i * labels_stride]` for
-               0 <= i < fsas.NumElements().
-      @param [in] labels_stride   Stride of `labels_data`; would be
-               1 if it is from an Array1, or 4 if it really points to
-               the labels of `fsas`.
-   It is an error if a label had a value different from 0 and -1 for a
-   position corresponding to a final-arc, and this function will crash
-   if that is detected.
- */
-void FixFinalLabels(FsaOrVec &fsas,
-                    int32_t *labels_data,
-                    int32_t labels_stride);
-
-/*
   Invert an FST, swapping the labels in the FSA with the auxiliary labels.
   (e.g. swap input and output symbols in FST, but you decide which is which).
   Because each arc may have more than one auxiliary label, in general
