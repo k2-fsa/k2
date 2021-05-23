@@ -42,6 +42,7 @@ below:
    pip
    pip_pypi
    from_source
+   for_developers
 
 .. |conda_python_versions| image:: ./images/python-3.6_3.7_3.8-blue.svg
   :alt: Supported python versions
