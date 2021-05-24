@@ -27,7 +27,7 @@ class TestArcSort(unittest.TestCase):
         fsa.requires_grad_(True)
         sorted_fsa = k2.arc_sort(fsa)
 
-        actual_str = k2.to_str(sorted_fsa)
+        actual_str = k2.to_str_simple(sorted_fsa)
         expected_str = '\n'.join(['0 1 1 0.2', '0 1 2 0.1', '1 2 -1 0.3', '2'])
         assert actual_str.strip() == expected_str
 

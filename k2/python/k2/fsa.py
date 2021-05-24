@@ -236,8 +236,9 @@ class Fsa(object):
                 end = start + ragged_arc.values().shape[0]
                 ans += 'FsaVec[' + str(i) + ']: ' + _k2.fsa_to_str(
                     ragged_arc, openfst=openfst,
-                    aux_labels=[ x[start:end] for x in aux_labels ],
-                    ragged_labels=[ _k2.ragged_int_arange(x, 0, start, end) for x in ragged_labels ])
+                    aux_labels=[x[start:end] for x in aux_labels],
+                    ragged_labels=[_k2.ragged_int_arange(x, 0, start, end)
+                                   for x in ragged_labels])
         ans += 'properties_str = ' + _k2.fsa_properties_as_str(
             self._properties) + '.'
         for name, value in self.named_tensor_attr(include_scores=False):
@@ -250,7 +251,6 @@ class Fsa(object):
             ans += f'{sep}{name}: {value}'
 
         return ans
-
 
     def __str__(self) -> str:
         '''Return a string representation of this object
@@ -1143,9 +1143,10 @@ class Fsa(object):
                 get_aux_label_info(acceptor, num_aux_labels, aux_label_names)
         num_ragged_labels = len(ragged_label_names)
         try:
-            arcs, aux_labels, ragged_labels = _k2.fsa_from_str(s, num_aux_labels,
-                                                               num_ragged_labels,
-                                                               openfst=openfst)
+            (arcs, aux_labels,
+             ragged_labels) = _k2.fsa_from_str(s, num_aux_labels,
+                                               num_ragged_labels,
+                                               openfst=openfst)
             ans = Fsa(arcs)
             if aux_labels is not None:
                 for i in range(aux_labels.shape[0]):
