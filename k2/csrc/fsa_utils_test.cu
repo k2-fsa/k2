@@ -133,6 +133,108 @@ TEST(FsaFromString, K2Transducer) {
   }
 }
 
+
+TEST(FsaFromString, K2TransducerRagged1) {
+  // src_state dst_state label aux_label cost
+  std::string s = R"(0 1 2 22 [11] -1.2
+0 2  10 100 [12] -2.2
+1 3  3  33  [] -3.2
+1 6 -1  16  [13 14] -4.2
+2 6 -1  26 [15]  -5.2
+2 4  2  22 [] -6.2
+3 6 -1  36 [16 17] -7.2
+5 0  1  50 [18] -8.2
+6
+)";
+
+  {
+    Array2<int32_t> aux_labels_array;
+    Ragged<int32_t> r,
+        r2("[ [11][12][][13 14][15][][16 17][18]]");
+    int32_t num_aux_labels = 1, num_ragged_labels = 1;
+    auto fsa = FsaFromString(s, false, num_aux_labels, &aux_labels_array,
+                             num_ragged_labels, &r);
+    Array1<int32_t> aux_labels = aux_labels_array.Row(0);
+    EXPECT_EQ(fsa.Context()->GetDeviceType(), kCpu);
+    EXPECT_EQ(aux_labels.Context()->GetDeviceType(), kCpu);
+    EXPECT_EQ(Equal(r, r2), true);
+
+    EXPECT_EQ(fsa.NumAxes(), 2);
+    EXPECT_EQ(fsa.shape.Dim0(), 7);         // there are 7 states
+    EXPECT_EQ(fsa.shape.NumElements(), 8);  // there are 8 arcs
+    EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 2, -1.2f}));
+    EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 2, 10, -2.2f}));
+    EXPECT_EQ((fsa[{0, 2}]), (Arc{1, 3, 3, -3.2f}));
+    EXPECT_EQ((fsa[{0, 3}]), (Arc{1, 6, -1, -4.2f}));
+    EXPECT_EQ((fsa[{0, 4}]), (Arc{2, 6, -1, -5.2f}));
+    EXPECT_EQ((fsa[{0, 5}]), (Arc{2, 4, 2, -6.2f}));
+    EXPECT_EQ((fsa[{0, 6}]), (Arc{3, 6, -1, -7.2f}));
+    EXPECT_EQ((fsa[{0, 7}]), (Arc{5, 0, 1, -8.2f}));
+
+    EXPECT_EQ(aux_labels[0], 22);
+    EXPECT_EQ(aux_labels[1], 100);
+    EXPECT_EQ(aux_labels[2], 33);
+    EXPECT_EQ(aux_labels[3], 16);
+    EXPECT_EQ(aux_labels[4], 26);
+    EXPECT_EQ(aux_labels[5], 22);
+    EXPECT_EQ(aux_labels[6], 36);
+    EXPECT_EQ(aux_labels[7], 50);
+  }
+}
+
+TEST(FsaFromString, K2TransducerRagged2) {
+  // src_state dst_state label aux_label cost
+  std::string s = R"(0 1 2 22 [11] []-1.2
+0 2  10 100 [12] []-2.2
+1 3  3  33  [] [101]-3.2
+1 6 -1  16  [13 14] []-4.2
+2 6 -1  26 [15][]  -5.2
+2 4  2  22 [] []-6.2
+3 6 -1  36 [16 17] []-7.2
+5 0  1  50 [18] [] -8.2
+6
+)";
+
+  {
+    Array2<int32_t> aux_labels_array;
+    std::vector<Ragged<int32_t> > r(2);
+    Ragged<int32_t>
+        r1b("[ [11][12][][13 14][15][][16 17][18]]"),
+        r2b("[[][][101][][][][][]]");
+    int32_t num_aux_labels = 1, num_ragged_labels = 2;
+    auto fsa = FsaFromString(s, false, num_aux_labels, &aux_labels_array,
+                             num_ragged_labels, r.data());
+    Array1<int32_t> aux_labels = aux_labels_array.Row(0);
+    EXPECT_EQ(fsa.Context()->GetDeviceType(), kCpu);
+    EXPECT_EQ(aux_labels.Context()->GetDeviceType(), kCpu);
+    EXPECT_EQ(Equal(r[0], r1b), true);
+    EXPECT_EQ(Equal(r[1], r2b), true);
+
+    EXPECT_EQ(fsa.NumAxes(), 2);
+    EXPECT_EQ(fsa.shape.Dim0(), 7);         // there are 7 states
+    EXPECT_EQ(fsa.shape.NumElements(), 8);  // there are 8 arcs
+    EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 2, -1.2f}));
+    EXPECT_EQ((fsa[{0, 1}]), (Arc{0, 2, 10, -2.2f}));
+    EXPECT_EQ((fsa[{0, 2}]), (Arc{1, 3, 3, -3.2f}));
+    EXPECT_EQ((fsa[{0, 3}]), (Arc{1, 6, -1, -4.2f}));
+    EXPECT_EQ((fsa[{0, 4}]), (Arc{2, 6, -1, -5.2f}));
+    EXPECT_EQ((fsa[{0, 5}]), (Arc{2, 4, 2, -6.2f}));
+    EXPECT_EQ((fsa[{0, 6}]), (Arc{3, 6, -1, -7.2f}));
+    EXPECT_EQ((fsa[{0, 7}]), (Arc{5, 0, 1, -8.2f}));
+
+    EXPECT_EQ(aux_labels[0], 22);
+    EXPECT_EQ(aux_labels[1], 100);
+    EXPECT_EQ(aux_labels[2], 33);
+    EXPECT_EQ(aux_labels[3], 16);
+    EXPECT_EQ(aux_labels[4], 26);
+    EXPECT_EQ(aux_labels[5], 22);
+    EXPECT_EQ(aux_labels[6], 36);
+    EXPECT_EQ(aux_labels[7], 50);
+  }
+}
+
+
+
 TEST(FsaFromString, OpenFstTransducer) {
   // src_state dst_state label aux_label cost
   std::string s = R"(0 1 2 22  -1.2
@@ -195,6 +297,45 @@ TEST(FsaFromString, OpenFstAcceptorNonZeroStart) {
   EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
 }
 
+TEST(FsaFromString, OpenFstAcceptorNonZeroStartRagged1) {
+  std::string s = R"(
+    1 0 0 [ 10 ] 0.1
+    0 0 4 [ ] 0.3
+    0 0 3 [ 11 12] 0.2
+    0 0.4
+  )";
+  Ragged<int32_t> r,
+      r2("[ [10] []  [ 11 12 ] [] ]");
+  Fsa fsa = FsaFromString(s, true, 0, nullptr, 1, &r);
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
+  EXPECT_EQ(Equal(r, r2), true) << "r = " << r;
+}
+
+
+TEST(FsaFromString, OpenFstAcceptorNonZeroStartRagged2) {
+  std::string s = R"(
+    1 0 0 [ 10 ] [] 0.1
+    0 0 4 [ ] [ 90 91 ]0.3
+    0 0 3 [ 11 12] [ 92 93 94 ] 0.2
+    0 0.4
+  )";
+  std::vector<Ragged<int32_t>> r(2);
+
+  Ragged<int32_t> r1b("[ [10] []  [ 11 12 ] []  ]"),
+      r2b("[ [] [ 90 91 ] [ 92 93 94 ] [] ]");
+  Fsa fsa = FsaFromString(s, true, 0, nullptr, 2, r.data());
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
+  EXPECT_EQ(Equal(r[0], r1b), true);
+  EXPECT_EQ(Equal(r[1], r2b), true);
+}
+
+
 TEST(FsaFromString, OpenFstAcceptorNonZeroStartCase2) {
   std::string s = R"(
     1 3 10 0.1
@@ -236,6 +377,46 @@ TEST(FsaFromString, OpenFstTransducerNonZeroStart) {
   EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
   EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
 }
+
+TEST(FsaFromString, OpenFstTransducerNonZeroStartRagged1) {
+  std::string s = R"(
+    1 0 0 0 [10] 0.1
+    0 0 4 40 [] 0.3
+    0 0 3 30 [11 12] 0.2
+    0 0.4
+  )";
+  Ragged<int32_t> r,
+      r2("[ [10] []  [ 11 12 ] []]");
+  Array2<int32_t> aux_labels_array;
+  Fsa fsa = FsaFromString(s, true, 1, &aux_labels_array, 1, &r);
+  CheckArrayData(aux_labels_array.Row(0), {0, 40, 30, -1});
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
+  EXPECT_EQ(Equal(r, r2), true);
+}
+
+
+TEST(FsaFromString, OpenFstTransducerZeroStartRagged1) {
+  std::string s = R"(
+    0 1 0 0 [10] 0.1
+    1 1 4 40 [] 0.3
+    1 1 3 30 [11 12] 0.2
+    1 0.4
+  )";
+  Ragged<int32_t> r,
+      r2("[ [10] []  [ 11 12 ] []]");
+  Array2<int32_t> aux_labels_array;
+  Fsa fsa = FsaFromString(s, true, 1, &aux_labels_array, 1, &r);
+  CheckArrayData(aux_labels_array.Row(0), {0, 40, 30, -1});
+  EXPECT_EQ((fsa[{0, 0}]), (Arc{0, 1, 0, -0.1f}));
+  EXPECT_EQ((fsa[{1, 0}]), (Arc{1, 1, 4, -0.3f}));
+  EXPECT_EQ((fsa[{1, 1}]), (Arc{1, 1, 3, -0.2f}));
+  EXPECT_EQ((fsa[{1, 2}]), (Arc{1, 2, -1, -0.4f}));
+  EXPECT_EQ(Equal(r, r2), true);
+}
+
 
 TEST(FsaFromString, OpenFstTransducerNonZeroStartCase2) {
   std::string s = R"(

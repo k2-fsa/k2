@@ -66,6 +66,8 @@ static Fsa K2FsaFromStream(std::istringstream &is,
   std::vector<int32_t> aux_labels;
   std::vector<std::vector<int32_t> > ragged_labels(num_ragged_labels);
   std::vector<std::vector<int32_t> > ragged_row_splits(num_ragged_labels);
+  for (int32_t i = 0; i < num_ragged_labels; i++)
+    ragged_row_splits[i].push_back(0);
 
   std::string line;
   int32_t max_state = -1;
@@ -102,7 +104,6 @@ static Fsa K2FsaFromStream(std::istringstream &is,
       aux_labels.push_back(aux);
     }
     for (int32_t i = 0; i < num_ragged_labels; i++) {
-      ragged_row_splits[i].push_back(ragged_labels[i].size());
       line_is >> std::ws;
       if (line_is.peek() != '[') {
         K2_LOG(FATAL) << "Bad line " << line << ", expected "
@@ -116,6 +117,7 @@ static Fsa K2FsaFromStream(std::istringstream &is,
         ragged_labels[i].push_back(ragged_label);
       }
       line_is >> c;  // eat the ']'
+      ragged_row_splits[i].push_back(ragged_labels[i].size());
     }
     float score = 0.0;
     line_is >> std::ws;
@@ -256,12 +258,13 @@ class OpenFstStreamReader {
       line_is >> aux_labels[i];
     std::vector<std::vector<int32_t> > ragged_labels(num_ragged_labels_);
     for (int32_t i = 0; i < num_ragged_labels_; i++) {
+      line_is >> std::ws;
       ExpectChar(line_is, '[');  // sets failbit if not..
       line_is >> std::ws;
       while (line_is.peek() != ']' && line_is.good()) {
-        int32_t i;
-        line_is >> i;
-        ragged_labels[i].push_back(i);
+        int32_t label;
+        line_is >> label >> std::ws;
+        ragged_labels[i].push_back(label);
       }
       ExpectChar(line_is, ']');  // sets failbit if not..
     }
