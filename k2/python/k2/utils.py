@@ -16,30 +16,62 @@ import k2.ragged
 import _k2
 
 
-def to_str(fsa: Fsa, openfst: bool = False) -> str:
+def to_str(fsa: Fsa,
+           openfst: bool = False) -> str:
     '''Convert an Fsa to a string.  This is less complete than Fsa.to_str() or fsa.__str__(),
     meaning it prints only fsa.aux_labels and no ragged labels, not printing any other
     attributes.  This is used in testing.
 
-    Caution:
-      If the input fsa's aux_labels is a ragged tensor, it is ignored.
-
     Note:
-      The returned string can be used to construct an Fsa.
+      The returned string can be used to construct an Fsa.  See also to_str_full()
+      below.
 
     Args:
       openfst:
-        Optional. If true, we negate the scores during the conversion,
+        Optional. If true, we negate the scores during the conversion.
 
     Returns:
       A string representation of the Fsa.
     '''
+    assert fsa.arcs.num_axes() == 2
     if hasattr(fsa, 'aux_labels') and isinstance(fsa.aux_labels, torch.Tensor):
         aux_labels = [ fsa.aux_labels.to(torch.int32) ]
     else:
         aux_labels = [ ]
     return _k2.fsa_to_str(fsa.arcs, openfst, aux_labels, [])
 
+
+
+def to_str_full(fsa: Fsa,
+                openfst: bool = False) -> str:
+    '''Convert an Fsa to a string.  This version prints out all integer
+    labels and integer ragged labels on the same line as each arc, the
+    same format accepted by Fsa.from_str().
+
+    Note:
+      The returned string can be used to construct an Fsa with Fsa.from_str(),
+      but you would need to know the names of the auxiliary labels and ragged
+      labels.
+
+    Args:
+      openfst:
+        Optional. If true, we negate the scores during the conversion.
+
+    Returns:
+      A string representation of the Fsa.
+    '''
+    assert fsa.arcs.num_axes() == 2
+    aux_labels = []
+    ragged_labels = []
+    for name, value in sorted(fsa.named_tensor_attr(include_scores=False)):
+        if isinstance(value, torch.Tensor) and value.dtype == torch.int32:
+            aux_labels.append(value)
+        elif isinstance(value, _k2.RaggedInt):
+            ragged_labels.append(value)
+
+    return _k2.fsa_to_str(fsa.arcs, openfst=openfst,
+                          aux_labels=aux_labels,
+                          ragged_labels=ragged_labels)
 
 def to_tensor(fsa: Fsa) -> torch.Tensor:
     '''Convert an Fsa to a Tensor.
