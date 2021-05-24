@@ -247,7 +247,7 @@ class TestFsa(unittest.TestCase):
         7 8 -1 [ ] 0
         8
         '''
-        string = _remove_leading_spaces(k2.to_str_full(fsa, openfst=True))
+        string = _remove_leading_spaces(k2.to_str(fsa, openfst=True))
         print("fsa=", string)
         assert _remove_leading_spaces(expected_str) == string
 
@@ -478,9 +478,9 @@ class TestFsa(unittest.TestCase):
         5 0 1 50 108 [ ] [ ] -8.2
         6
         '''
-        print("fsa = ", _remove_leading_spaces(k2.to_str_full(fsa)))
+        print("fsa = ", _remove_leading_spaces(k2.to_str(fsa)))
         assert _remove_leading_spaces(expected_str) == \
-              _remove_leading_spaces(k2.to_str_full(fsa))
+              _remove_leading_spaces(k2.to_str(fsa))
 
     def test_transducer_from_openfst(self):
         s = '''
