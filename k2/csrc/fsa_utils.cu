@@ -164,7 +164,8 @@ static Fsa K2FsaFromStream(std::istringstream &is,
   for (int32_t i = 0; i < num_ragged_labels; i++) {
     Array1<int32_t> this_row_splits(c, ragged_row_splits[i]),
         this_ragged_labels(c, ragged_labels[i]);
-    ragged_labels_out[i] = Ragged<int32_t>(RaggedShape2(&this_row_splits, nullptr, -1),
+    ragged_labels_out[i] = Ragged<int32_t>(RaggedShape2(&this_row_splits,
+                                                        nullptr, -1),
                                            this_ragged_labels);
   }
   Array1<int32_t> fsa_row_splits_array(c, fsa_row_splits);
@@ -246,8 +247,8 @@ class OpenFstStreamReader {
     int32_t src_state, dest_state, label;
     line_is >> src_state >> dest_state >> label;
     if (!line_is.good()) {
-      // Our only hope of parsing othis is that `line` was empty, or a final-state;
-      // try that.
+      // Our only hope of parsing othis is that `line` was empty, or a
+      // final-state; try that.
       if (!ProcessFinalProbOrEmpty(line)) {
         K2_LOG(FATAL) << "Invalid line: " << line;
       }
@@ -375,8 +376,9 @@ class OpenFstStreamReader {
                     static_cast<int32_t>(state_to_aux_labels_[state].size()));
       }
       if (num_ragged_labels_ > 0) {
-        K2_CHECK_EQ(this_num_arcs * num_ragged_labels_,
-                    static_cast<int32_t>(state_to_ragged_labels_[state].size()));
+        K2_CHECK_EQ(
+            this_num_arcs * num_ragged_labels_,
+            static_cast<int32_t>(state_to_ragged_labels_[state].size()));
       }
       for (int32_t a = 0; a < this_num_arcs; ++a) {
         K2_CHECK_LT(arc_index, num_arcs_);
@@ -2706,7 +2708,8 @@ void FixFinalLabels(FsaOrVec &fsas,
         *fsas_row_ids1_data = fsas.RowIds(1).Data(),
         *fsas_row_splits1_data = fsas.RowSplits(1).Data();
     int32_t num_arcs = fsas.TotSize(2);
-    K2_EVAL(c, num_arcs, lambda_fix_final_labels_3axis, (int32_t arc_idx012) -> void {
+    K2_EVAL(c, num_arcs, lambda_fix_final_labels_3axis,
+            (int32_t arc_idx012) -> void {
         const Arc &arc = arcs_data[arc_idx012];
         int32_t state_idx01 = fsas_row_ids2_data[arc_idx012],
             fsa_idx0 = fsas_row_ids1_data[state_idx01],
@@ -2723,12 +2726,11 @@ void FixFinalLabels(FsaOrVec &fsas,
         } else if (cur_aux_label == -1) {
           labels_data[arc_idx012 * labels_stride] = 0;
         }
-
       });
   } else {
     K2_CHECK_EQ(fsas.NumAxes(), 2);
     int32_t num_arcs = fsas.TotSize(1), num_states = fsas.Dim0();
-    K2_EVAL(c, num_arcs, lambda_fix_final_labels_2axis, (int32_t arc_idx01) -> void {
+    K2_EVAL(c, num_arcs, lambda_fix_final_labels_2axis, (int32_t arc_idx01) {
         // we name this as if it is an aux_label, but it could have any name.
         int32_t cur_aux_label = labels_data[arc_idx01 * labels_stride];
         const Arc &arc = arcs_data[arc_idx01];

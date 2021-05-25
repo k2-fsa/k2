@@ -71,6 +71,7 @@ echo "Running cppcheck ......"
 source $k2_dir/scripts/utils.sh
 
 cppcheck \
+  --language=c++ \
   -q \
   --enable=style \
   -i $build_dir/_deps \
