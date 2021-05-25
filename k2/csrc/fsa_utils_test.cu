@@ -1709,11 +1709,13 @@ TEST(FixFinalLabels, FixFinalLabels) {
     Array1<int32_t> labels(context, "[ 0 -1 1 2 3 4 5 0 ]"),
         correct_labels(context, "[ 0 0 1 2 3 4 5 -1 ]");
 
-    std::vector<const Array1<int32_t>*> labels_repeated_ptrs = { &labels, &labels },
+    std::vector<const Array1<int32_t>*> labels_repeated_ptrs = { &labels
+                                                                 , &labels },
         correct_labels_repeated_ptrs = { &correct_labels, &correct_labels };
-    Array1<int32_t> labels_repeated = Cat(context, 2, labels_repeated_ptrs.data()),
-        correct_labels_repeated = Cat(context, 2, correct_labels_repeated_ptrs.data());
-
+    Array1<int32_t> labels_repeated = Cat(context, 2,
+                                          labels_repeated_ptrs.data()),
+        correct_labels_repeated = Cat(context, 2,
+                                      correct_labels_repeated_ptrs.data());
 
     FixFinalLabels(fsa, labels.Data(), 1);
     EXPECT_EQ(true, Equal(labels, correct_labels));
