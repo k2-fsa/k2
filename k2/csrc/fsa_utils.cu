@@ -173,8 +173,8 @@ static Fsa K2FsaFromStream(std::istringstream &is,
   Fsa ans = Fsa(RaggedShape2(&fsa_row_splits_array, nullptr, -1),
                 arcs_array);
 #ifndef NDEBUG
-    // The FSA is not checked for validity if not in debug mode; user should check this
-    // (we do this anyway when constructing Fsa in Python.
+  // The FSA is not checked for validity if not in debug mode; user should check
+  // this (we do this anyway when constructing Fsa in Python.
   int32_t props = GetFsaBasicProperties(ans);
     if (!(props & kFsaPropertiesValid)) {
       K2_LOG(FATAL) << "Fsa is not valid";  // May change this behavior at some
@@ -410,8 +410,8 @@ class OpenFstStreamReader {
     *fsa_out = Fsa(RaggedShape2(&fsa_row_splits1, nullptr, -1),
                    arcs);
 #ifndef NDEBUG
-    // The FSA is not checked for validity if not in debug mode; user should check this
-    // (we do this anyway when constructing Fsa in Python.
+    // The FSA is not checked for validity if not in debug mode; user should
+    // check this (we do this anyway when constructing Fsa in Python.
     int32_t props = GetFsaBasicProperties(*fsa_out);
     if (!(props & kFsaPropertiesValid)) {
       K2_LOG(INFO) << *fsa_out;
