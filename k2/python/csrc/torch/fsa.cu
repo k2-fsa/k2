@@ -13,6 +13,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -86,13 +87,15 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "fsa_to_str",
       [](Fsa &fsa, bool openfst = false,
-         std::vector<torch::Tensor> aux_labels = std::vector<torch::Tensor>(),
-         std::vector<Ragged<int32_t>> ragged_labels = std::vector<Ragged<int32_t>>()) -> std::string {
+    std::vector<torch::Tensor> aux_labels = std::vector<torch::Tensor>(),
+    std::vector<Ragged<int32_t>> ragged_labels = std::vector<Ragged<int32_t>>())
+      -> std::string {
         std::vector<Array1<int32_t>> aux_labels_arrays(aux_labels.size());
         for (size_t i = 0; i < aux_labels.size(); i++) {
           aux_labels_arrays[i] = FromTorch<int32_t>(aux_labels[i]);
         }
-        return FsaToString(fsa, openfst, aux_labels.size(), aux_labels_arrays.data(),
+        return FsaToString(fsa, openfst, aux_labels.size(),
+                           aux_labels_arrays.data(),
                            ragged_labels.size(), ragged_labels.data());
       },
       py::arg("fsa"), py::arg("openfst") = false,
@@ -103,7 +106,8 @@ static void PybindFsaUtil(py::module &m) {
       "fsa_from_str",
       [](const std::string &s, int num_aux_labels = 0,
          int num_ragged_labels = 0, bool openfst = false)
-       -> std::tuple<Fsa, torch::optional<torch::Tensor>, std::vector<Ragged<int32_t> > > {
+       -> std::tuple<Fsa, torch::optional<torch::Tensor>,
+                     std::vector<Ragged<int32_t> > > {
         Array2<int32_t> aux_labels;
         std::vector<Ragged<int32_t> > ragged_labels(num_ragged_labels);
         Fsa fsa = FsaFromString(s, openfst,
