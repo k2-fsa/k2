@@ -38,28 +38,24 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   pyclass.def(
       "to",
       [](const PyClass &self, py::object device) -> PyClass {
+        DeviceGuard guard(self.Context());
         return To(self, device);
       },
       py::arg("device"));
 
-  pyclass.def("to_cpu", [](const PyClass &self) -> PyClass {
+  pyclass.def("cpu", [](const PyClass &self) -> PyClass {
+    DeviceGuard guard(self.Context());
     return self.To(GetCpuContext());
   });
 
-  pyclass.def("clone",
-              [](const PyClass &self) -> PyClass { return self.Clone(); });
+  pyclass.def("clone", [](const PyClass &self) -> PyClass {
+    DeviceGuard guard(self.Context());
+    return self.Clone();
+  });
 
   pyclass.def("is_cpu", [](const PyClass &self) -> bool {
     return self.Context()->GetDeviceType() == kCpu;
   });
-
-  pyclass.def(
-      "to_cuda",
-      [](const PyClass &self, int32_t device_id) -> PyClass {
-        ContextPtr c = GetCudaContext(device_id);
-        return self.To(c);
-      },
-      py::arg("device_id"));
 
   pyclass.def("is_cuda", [](const PyClass &self) -> bool {
     return self.Context()->GetDeviceType() == kCuda;
@@ -77,6 +73,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   pyclass.def(
       "row_splits",
       [](PyClass &self, int32_t axis) -> torch::Tensor {
+        DeviceGuard guard(self.Context());
         Array1<int32_t> &row_splits = self.RowSplits(axis);
         return ToTorch(row_splits);
       },
@@ -85,6 +82,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   pyclass.def(
       "row_ids",
       [](PyClass &self, int32_t axis) -> torch::Tensor {
+        DeviceGuard guard(self.Context());
         Array1<int32_t> &row_ids = self.RowIds(axis);
         return ToTorch(row_ids);
       },
@@ -97,6 +95,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       "index",
       [](PyClass &self, int32_t axis,
          int32_t i) -> std::pair<PyClass, int32_t> {
+        DeviceGuard guard(self.Context());
         Ragged<T> ans = self.Index(axis, i);
         int32_t offset = ans.values.Data() - self.values.Data();
         return std::make_pair(ans, offset);
@@ -104,12 +103,14 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       py::arg("axis"), py::arg("i"));
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
+    DeviceGuard guard(self.Context());
     std::ostringstream os;
     os << self;
     return os.str();
   });
 
   pyclass.def("tot_sizes", [](const PyClass &self) -> py::list {
+    DeviceGuard guard(self.Context());
     int32_t num_axes = self.NumAxes();
     py::list ans(num_axes);
     for (int32_t i = 0; i < self.NumAxes(); i++) ans[i] = self.TotSize(i);
@@ -149,6 +150,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       [](PyClass &src, int32_t axis, torch::Tensor indexes,
          bool need_value_indexes =
              true) -> std::pair<PyClass, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> indexes_array = FromTorch<int32_t>(indexes);
         Array1<int32_t> value_indexes;
 
@@ -166,6 +168,7 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
   m.def(
       "index",
       [](Ragged<T> &src, Ragged<int32_t> &indexes) -> Ragged<T> {
+        DeviceGuard guard(src.Context());
         bool remove_axis = true;
         return Index(src, indexes, remove_axis);
       },
@@ -180,6 +183,7 @@ static void PybindRaggedImpl(py::module &m) {
   m.def(
       "index",
       [](torch::Tensor src, Ragged<int32_t> &indexes) -> Ragged<int32_t> {
+        DeviceGuard guard(GetContext(src));
         K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
         Array1<int32_t> src_array = FromTorch<int32_t>(src);
         return Index(src_array, indexes);
@@ -189,6 +193,7 @@ static void PybindRaggedImpl(py::module &m) {
   m.def(
       "index_and_sum",
       [](torch::Tensor src, Ragged<int32_t> &indexes) -> torch::Tensor {
+        DeviceGuard guard(GetContext(src));
         K2_CHECK_EQ(src.dim(), 1) << "Expected dim: 1. Given: " << src.dim();
         Array1<float> src_array = FromTorch<float>(src);
         Ragged<float> ragged = Index(src_array, indexes);
@@ -212,6 +217,7 @@ static void PybindRaggedShape(py::module &m) {
   pyclass.def(
       "to",
       [](const PyClass &self, py::object device) -> PyClass {
+        DeviceGuard guard(self.Context());
         return To(self, device);
       },
       py::arg("device"));
@@ -219,6 +225,7 @@ static void PybindRaggedShape(py::module &m) {
   pyclass.def(
       "row_ids",
       [](PyClass &self, int32_t axis) -> torch::Tensor {
+        DeviceGuard guard(self.Context());
         Array1<int32_t> &row_ids = self.RowIds(axis);
         return ToTorch(row_ids);
       },
@@ -227,12 +234,14 @@ static void PybindRaggedShape(py::module &m) {
   pyclass.def(
       "row_splits",
       [](PyClass &self, int32_t axis) -> torch::Tensor {
+        DeviceGuard guard(self.Context());
         Array1<int32_t> &row_splits = self.RowSplits(axis);
         return ToTorch(row_splits);
       },
       py::arg("axis"));
 
   pyclass.def("tot_sizes", [](const PyClass &self) -> py::list {
+    DeviceGuard guard(self.Context());
     int32_t num_axes = self.NumAxes();
     py::list ans(num_axes);
     for (int32_t i = 0; i < self.NumAxes(); i++) ans[i] = self.TotSize(i);
@@ -240,6 +249,7 @@ static void PybindRaggedShape(py::module &m) {
   });
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
+    DeviceGuard guard(self.Context());
     std::ostringstream os;
     os << self;
     return os.str();
@@ -249,6 +259,7 @@ static void PybindRaggedShape(py::module &m) {
       "index",
       [](PyClass &self, int32_t axis,
          int32_t i) -> std::pair<PyClass, int32_t> {
+        DeviceGuard guard(self.Context());
         int32_t value_offset;
         RaggedShape ans = self.Index(axis, i, &value_offset);
         return std::make_pair(ans, value_offset);
@@ -286,6 +297,7 @@ static void PybindRaggedShapeUtils(py::module &m) {
   m.def(
       "remove_axis",
       [](RaggedShape &src, int32_t axis) -> RaggedShape {
+        DeviceGuard guard(src.Context());
         return RemoveAxis(src, axis);
       },
       py::arg("src"), py::arg("axis"));

@@ -46,6 +46,7 @@ set(py_test_files
   invert_test.py
   linear_fsa_test.py
   linear_fst_test.py
+  multi_gpu_test.py
   numerical_gradient_check_test.py
   ragged_ops_test.py
   ragged_shape_test.py
