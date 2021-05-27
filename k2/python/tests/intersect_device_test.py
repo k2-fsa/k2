@@ -77,12 +77,12 @@ class TestIntersectDevice(unittest.TestCase):
                 # c_fsas[0] recognizes: 02
                 # c_fsas[1] recognizes: 10
 
-                actual_str_0 = k2.to_str(c_fsas[0])
+                actual_str_0 = k2.to_str_simple(c_fsas[0])
                 expected_str_0 = '\n'.join(
                     ['0 1 0 1.1', '1 2 2 2.3', '2 3 -1 3.5', '3'])
                 assert actual_str_0.strip() == expected_str_0
 
-                actual_str_1 = k2.to_str(c_fsas[1])
+                actual_str_1 = k2.to_str_simple(c_fsas[1])
                 expected_str_1 = '\n'.join(
                     ['0 1 1 10.2', '1 2 0 20.4', '2 3 -1 30.5', '3'])
                 assert actual_str_1.strip() == expected_str_1

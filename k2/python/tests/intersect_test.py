@@ -46,7 +46,7 @@ class TestIntersect(unittest.TestCase):
             # fsa recognizes `1`
             fsa = k2.intersect(a_fsa, b_fsa, treat_epsilons_specially=False)
             assert len(fsa.shape) == 2
-            actual_str = k2.to_str(fsa)
+            actual_str = k2.to_str_simple(fsa)
             expected_str = '\n'.join(['0 1 1 1.2', '1 2 -1 3.4', '2'])
             assert actual_str.strip() == expected_str
 
@@ -97,7 +97,7 @@ class TestIntersect(unittest.TestCase):
         # fsa recognizes 1|2
         fsa = k2.intersect(k2.arc_sort(a_fsa), k2.arc_sort(b_fsa))
         assert len(fsa.shape) == 2
-        actual_str = k2.to_str(fsa)
+        actual_str = k2.to_str_simple(fsa)
         expected_str = '\n'.join(
             ['0 1 0 0.1', '0 2 1 1.2', '1 2 2 2.3', '2 3 -1 3.4', '3'])
         assert actual_str.strip() == expected_str

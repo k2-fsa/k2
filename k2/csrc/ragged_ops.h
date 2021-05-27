@@ -619,7 +619,8 @@ Ragged<T> Transpose(Ragged<T> &src,
                         as `merge_map[i] % num_srcs`) and its element-index
                         within `src[i]` (available as `merge_map[i] / num_srcs`.
 
-      @return      Returns the appended RaggedShape.
+      @return      Returns the appended RaggedShape; will have the same number
+                   of axes as the sources.
 */
 RaggedShape Cat(int32_t axis, int32_t num_srcs, RaggedShape **src,
                 Array1<uint32_t> *merge_map = nullptr);

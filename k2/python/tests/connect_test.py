@@ -26,7 +26,7 @@ class TestConnect(unittest.TestCase):
     fsa.requires_grad_(True)
     expected_str = '\n'.join(['0 1 1 0.1', '1 2 -1 0.3', '2'])
     connected_fsa = k2.connect(fsa)
-    actual_str = k2.to_str(connected_fsa)
+    actual_str = k2.to_str_simple(connected_fsa)
     assert actual_str.strip() == expected_str
 
     loss = connected_fsa.scores.sum()

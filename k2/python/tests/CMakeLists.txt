@@ -28,6 +28,7 @@ set(py_test_files
   ctc_gradients_test.py
   dense_fsa_vec_test.py
   determinize_test.py
+  expand_ragged_attributes_test.py
   fsa_from_unary_function_ragged_test.py
   fsa_from_unary_function_tensor_test.py
   fsa_test.py

@@ -103,6 +103,14 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       },
       py::arg("axis"), py::arg("i"));
 
+  pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
+    return Equal(self, other);
+  });
+
+  pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
+    return !Equal(self, other);
+  });
+
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     std::ostringstream os;
     os << self;
@@ -237,6 +245,14 @@ static void PybindRaggedShape(py::module &m) {
     py::list ans(num_axes);
     for (int32_t i = 0; i < self.NumAxes(); i++) ans[i] = self.TotSize(i);
     return ans;
+  });
+
+  pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
+    return Equal(self, other);
+  });
+
+  pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
+    return !Equal(self, other);
   });
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {

@@ -55,7 +55,7 @@ class TestFsa(unittest.TestCase):
             6
         '''
         assert _remove_leading_spaces(expected_str) == \
-                _remove_leading_spaces(k2.to_str(fsa))
+                _remove_leading_spaces(k2.to_str_simple(fsa))
 
         arcs = fsa.arcs.values()[:, :-1]
         assert isinstance(arcs, torch.Tensor)
@@ -112,7 +112,7 @@ class TestFsa(unittest.TestCase):
             6
             '''
             assert _remove_leading_spaces(expected_str) == \
-                    _remove_leading_spaces(k2.to_str(fsa))
+                    _remove_leading_spaces(k2.to_str_simple(fsa))
 
             arcs = fsa.arcs.values()[:, :-1]
             assert isinstance(arcs, torch.Tensor)
@@ -149,13 +149,13 @@ class TestFsa(unittest.TestCase):
 
         for device in self.devices:
             fsa1 = k2.Fsa.from_str(s1)
-            self.assertEqual(k2.to_str(fsa1), '')
+            self.assertEqual(k2.to_str_simple(fsa1), '')
 
             with self.assertRaises(ValueError):
                 _ = k2.Fsa.from_str(s2)
 
             fsa3 = k2.Fsa.from_str(s3)
-            self.assertEqual(fsa3.arcs.dim0(), 0)
+            self.assertEqual(fsa3.arcs.dim0(), 2)
 
     def test_acceptor_from_openfst(self):
         s = '''
@@ -195,7 +195,7 @@ class TestFsa(unittest.TestCase):
             8
             '''
             assert _remove_leading_spaces(expected_str) == \
-                    _remove_leading_spaces(k2.to_str(fsa, openfst=True))
+                    _remove_leading_spaces(k2.to_str_simple(fsa, openfst=True))
 
             arcs = fsa.arcs.values()[:, :-1]
             assert isinstance(arcs, torch.Tensor)
@@ -218,6 +218,39 @@ class TestFsa(unittest.TestCase):
                     [-1.2, -2.2, -3.2, -4.2, -5.2, -6.2, -7.2, -8.2, -9.2, 0],
                     dtype=torch.float32))
 
+    def test_acceptor_from_openfst_ragged1(self):
+        s = '''
+            0 1  2 [] -1.2
+            0 2  10 [10] -2.2
+            1 6  1 [] -3.2
+            1 3  3 [11 12] -4.2
+            2 6  2 [] -5.2
+            2 4  2 [] -6.2
+            3 6  3 [] -7.2
+            5 0  1 [13]  -8.2
+            7
+            6 -9.2
+        '''
+        fsa = k2.Fsa.from_openfst(s, num_aux_labels=0,
+                                  ragged_label_names=['ragged'])
+
+        expected_str = '''
+        0 1 2 [ ] -1.2
+        0 2 10 [ 10 ] -2.2
+        1 6 1 [ ] -3.2
+        1 3 3 [ 11 12 ] -4.2
+        2 6 2 [ ] -5.2
+        2 4 2 [ ] -6.2
+        3 6 3 [ ] -7.2
+        5 0 1 [ 13 ] -8.2
+        6 8 -1 [ ] -9.2
+        7 8 -1 [ ] 0
+        8
+        '''
+        string = _remove_leading_spaces(k2.to_str(fsa, openfst=True))
+        print("fsa=", string)
+        assert _remove_leading_spaces(expected_str) == string
+
     def test_acceptor_wo_arcs_from_openfst(self):
         s1 = '''
         '''
@@ -235,11 +268,11 @@ class TestFsa(unittest.TestCase):
 
         for device in self.devices:
             fsa1 = k2.Fsa.from_openfst(s1)
-            print("fsa1 = ", k2.to_str(fsa1))
-            self.assertEqual('', k2.to_str(fsa1))
+            print("fsa1 = ", k2.to_str_simple(fsa1))
+            self.assertEqual('', k2.to_str_simple(fsa1))
 
             fsa2 = k2.Fsa.from_openfst(s2)
-            self.assertEqual(_remove_leading_spaces(k2.to_str(fsa2)),
+            self.assertEqual(_remove_leading_spaces(k2.to_str_simple(fsa2)),
                              "1 2 -1 -0.1\n2")
             arcs2 = fsa2.arcs.values()[:, :-1]
             assert torch.all(
@@ -247,7 +280,7 @@ class TestFsa(unittest.TestCase):
 
             fsa3 = k2.Fsa.from_openfst(s3)
             self.assertEqual(fsa3.arcs.dim0(), 4)
-            self.assertEqual(_remove_leading_spaces(k2.to_str(fsa3)),
+            self.assertEqual(_remove_leading_spaces(k2.to_str_simple(fsa3)),
                              "1 3 -1 -0.1\n2 3 -1 -0.2\n3")
 
     def test_transducer_from_tensor(self):
@@ -291,7 +324,7 @@ class TestFsa(unittest.TestCase):
                 6
             '''
             assert _remove_leading_spaces(expected_str) == \
-                    _remove_leading_spaces(k2.to_str(fsa))
+                    _remove_leading_spaces(k2.to_str_simple(fsa))
 
     def test_transducer_from_str(self):
         s = '''
@@ -337,7 +370,7 @@ class TestFsa(unittest.TestCase):
             6
             '''
             assert _remove_leading_spaces(expected_str) == \
-                    _remove_leading_spaces(k2.to_str(fsa))
+                    _remove_leading_spaces(k2.to_str_simple(fsa))
 
     def test_transducer2_from_str(self):
         s = '''
@@ -388,7 +421,66 @@ class TestFsa(unittest.TestCase):
             6
             '''
             assert _remove_leading_spaces(expected_str) == \
-                    _remove_leading_spaces(k2.to_str(fsa))
+                    _remove_leading_spaces(k2.to_str_simple(fsa))
+
+    def test_transducer2_ragged2_from_str(self):
+        s = '''
+            0 1  2  22  101 [] [] -1.2
+            0 2  10 100 102 [] [] -2.2
+            1 6 -1  16  103 [20 30] [40] -4.2
+            1 3  3  33  104 [] [] -3.2
+            2 6 -1  26  105 [] [] -5.2
+            2 4  2  22  106 [] [] -6.2
+            3 6 -1  36  107 [] [] -7.2
+            5 0  1  50  108 [] [] -8.2
+            6
+        '''
+        fsa = k2.Fsa.from_str(
+            s, aux_label_names=['aux_labels', 'aux_labels2'],
+            ragged_label_names=['ragged1', 'ragged2'])
+
+        assert fsa.aux_labels.dtype == torch.int32
+        assert fsa.aux_labels.device.type == 'cpu'
+        assert isinstance(fsa.ragged1, _k2.RaggedInt)
+        assert isinstance(fsa.ragged2, _k2.RaggedInt)
+
+        assert torch.all(
+            torch.eq(
+                fsa.aux_labels,
+                torch.tensor([22, 100, 16, 33, 26, 22, 36, 50],
+                             dtype=torch.int32)))
+
+        assert torch.all(
+            torch.eq(
+                fsa.aux_labels2,
+                torch.tensor([101, 102, 103, 104, 105, 106, 107, 108],
+                             dtype=torch.int32)))
+
+        assert torch.allclose(
+            fsa.scores,
+            torch.tensor([-1.2, -2.2, -4.2, -3.2, -5.2, -6.2, -7.2, -8.2],
+                         dtype=torch.float32))
+
+        print("fsa.ragged1 = ", fsa.ragged1)
+        print("fsa.ragged2 = ", fsa.ragged2)
+        assert fsa.ragged1 == _k2.RaggedInt('[ [] [] [20 30] [] [] [] [] [] ]')
+        assert fsa.ragged2 == _k2.RaggedInt('[ [] [] [40] [] [] [] [] [] ]')
+
+        # only aux_labels will be printed right now..
+        expected_str = '''
+        0 1 2 22 101 [ ] [ ] -1.2
+        0 2 10 100 102 [ ] [ ] -2.2
+        1 6 -1 16 103 [ 20 30 ] [ 40 ] -4.2
+        1 3 3 33 104 [ ] [ ] -3.2
+        2 6 -1 26 105 [ ] [ ] -5.2
+        2 4 2 22 106 [ ] [ ] -6.2
+        3 6 -1 36 107 [ ] [ ] -7.2
+        5 0 1 50 108 [ ] [ ] -8.2
+        6
+        '''
+        print("fsa = ", _remove_leading_spaces(k2.to_str(fsa)))
+        assert _remove_leading_spaces(expected_str) == \
+              _remove_leading_spaces(k2.to_str(fsa))
 
     def test_transducer_from_openfst(self):
         s = '''
@@ -438,7 +530,7 @@ class TestFsa(unittest.TestCase):
                 8
             '''
             assert _remove_leading_spaces(expected_str) == \
-                    _remove_leading_spaces(k2.to_str(fsa, openfst=True))
+                    _remove_leading_spaces(k2.to_str_simple(fsa, openfst=True))
 
     def test_transducer3_from_openfst(self):
         s = '''
@@ -506,7 +598,7 @@ class TestFsa(unittest.TestCase):
                 8
             '''
             assert _remove_leading_spaces(expected_str) == \
-                    _remove_leading_spaces(k2.to_str(fsa, openfst=True))
+                    _remove_leading_spaces(k2.to_str_simple(fsa, openfst=True))
 
     def test_fsa_io(self):
         s = '''

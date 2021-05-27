@@ -13,6 +13,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -86,31 +87,44 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "fsa_to_str",
       [](Fsa &fsa, bool openfst = false,
-         torch::optional<torch::Tensor> aux_labels =
-             torch::nullopt) -> std::string {
-        Array1<int32_t> array;
-        if (aux_labels.has_value())
-          array = FromTorch<int32_t>(aux_labels.value());
-        return FsaToString(fsa, openfst, aux_labels ? &array : nullptr);
+    std::vector<torch::Tensor> aux_labels = std::vector<torch::Tensor>(),
+    std::vector<Ragged<int32_t>> ragged_labels = std::vector<Ragged<int32_t>>())
+      -> std::string {
+        std::vector<Array1<int32_t>> aux_labels_arrays(aux_labels.size());
+        for (size_t i = 0; i < aux_labels.size(); i++) {
+          aux_labels_arrays[i] = FromTorch<int32_t>(aux_labels[i]);
+        }
+        return FsaToString(fsa, openfst, aux_labels.size(),
+                           aux_labels_arrays.data(),
+                           ragged_labels.size(), ragged_labels.data());
       },
       py::arg("fsa"), py::arg("openfst") = false,
-      py::arg("aux_labels") = py::none());
+      py::arg("aux_labels") = py::none(),
+      py::arg("ragged_labels") = py::none());
 
   m.def(
       "fsa_from_str",
-      [](const std::string &s, int num_aux_labels = 0, bool openfst = false)
-          -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+      [](const std::string &s, int num_aux_labels = 0,
+         int num_ragged_labels = 0, bool openfst = false)
+       -> std::tuple<Fsa, torch::optional<torch::Tensor>,
+                     std::vector<Ragged<int32_t> > > {
         Array2<int32_t> aux_labels;
-        Fsa fsa = FsaFromString(s, openfst, num_aux_labels,
-                                &aux_labels);
+        std::vector<Ragged<int32_t> > ragged_labels(num_ragged_labels);
+        Fsa fsa = FsaFromString(s, openfst,
+                                num_aux_labels, &aux_labels,
+                                num_ragged_labels, ragged_labels.data());
         torch::optional<torch::Tensor> tensor;
         if (num_aux_labels != 0) tensor = ToTorch(aux_labels);
-        return std::make_pair(fsa, tensor);
+        return std::make_tuple(fsa, tensor, ragged_labels);
       },
-      py::arg("s"), py::arg("num_aux_labels") = 0, py::arg("openfst") = false,
-      "It returns a tuple with two elements. Element 0 is the FSA; element 1 "
-      "is a 2-D tensor of dtype torch.int32 and shape "
-      "(num_aux_labels, num_arcs) if num_aux_labels > 0; otherwise None.");
+      py::arg("s"), py::arg("num_aux_labels") = 0,
+      py::arg("num_ragged_labels"), py::arg("openfst") = false,
+      "It returns a 3-tuple (fsa, aux_labels, ragged_labels).  "
+      "`fsa` is the Fsa with 2 axes; `aux_labels` is None if num_aux_labels "
+      "is 0, else a 2-D tensor of dtype torch.int32 and shape "
+      "(num_aux_labels, num_arcs) if num_aux_labels > 0; otherwise None; "
+      "`ragged_labels` is a list of Ragged<int32_t> of length "
+      "`num_ragged_labels`");
 
   // the following methods are for debugging only
   m.def("fsa_to_fsa_vec", &FsaToFsaVec, py::arg("fsa"));
