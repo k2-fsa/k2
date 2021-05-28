@@ -128,7 +128,8 @@ class TestRemoveEpsilonDevice(unittest.TestCase):
             # Skip CPU test for autograd
             # The outputs of CPU and CUDA are not the same.
             # This test is for CUDA only
-            if device.type == 'cpu': continue
+            if device.type == 'cpu':
+                continue
             fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
             ans = k2.remove_epsilon(fsa)
             # arc map is [[0 2] [1] [2]]

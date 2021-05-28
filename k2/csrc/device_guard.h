@@ -10,18 +10,6 @@
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 
-namespace {
-
-int32_t GetDevice() {
-  int32_t device;
-  K2_CHECK_CUDA_ERROR(cudaGetDevice(&device));
-  return device;
-}
-
-void SetDevice(int32_t device) { K2_CHECK_CUDA_ERROR(cudaSetDevice(device)); }
-
-}  // namespace
-
 namespace k2 {
 
 // DeviceGuard is an RAII class. Its sole purpose is to restore
@@ -59,6 +47,17 @@ class DeviceGuard {
 
   DeviceGuard(DeviceGuard &&) = delete;
   DeviceGuard &operator=(DeviceGuard &&) = delete;
+
+ private:
+  static int32_t GetDevice() {
+    int32_t device;
+    K2_CHECK_CUDA_ERROR(cudaGetDevice(&device));
+    return device;
+  }
+
+  static void SetDevice(int32_t device) {
+    K2_CHECK_CUDA_ERROR(cudaSetDevice(device));
+  }
 
  private:
   int32_t old_device_ = -1;

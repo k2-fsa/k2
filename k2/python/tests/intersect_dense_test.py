@@ -158,8 +158,8 @@ class TestIntersectDense(unittest.TestCase):
                                                      device=device)
 
                 #  expected_grad_log_prob = torch.tensor([
-                #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0,
-                #      1.0, 0.0, 0.0, 0.0, 1.0
+                #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0,
+                #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0
                 #  ]).reshape_as(log_prob)
 
                 assert torch.allclose(expected_grad_fsa, fsa.scores.grad)
@@ -228,8 +228,8 @@ class TestIntersectDense(unittest.TestCase):
             expected_grad_fsa2 = torch.tensor([1.0, 1.0, 1.0], device=device)
             # TODO(dan):: fix this..
             #  expected_grad_log_prob = torch.tensor([
-            #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0, 1.0,
-            #      0.0, 0.0, 0.0, 1.0
+            #      0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0, 0, 0, 0.0, 1.0, 0.0, 0.0,
+            #      1.0, 0.0, 0.0, 0.0, 1.0
             #  ]).reshape_as(log_prob)
 
             # assert torch.allclose(out_fsa.scores, expected_scores_out_fsa)

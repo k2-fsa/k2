@@ -50,7 +50,8 @@ class TestMultiGPU(unittest.TestCase):
         assert r1.num_elements() == expected_r1.num_elements()
 
         try:
-            # will throw an exception because they two are not on the same device
+            # will throw an exception because they two are not on
+            # the same device
             assert torch.all(
                 torch.eq(r0.row_splits(1), expected_r1.row_splits(1)))
         except RuntimeError as e:

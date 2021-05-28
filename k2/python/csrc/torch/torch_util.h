@@ -12,6 +12,7 @@
 #include <string>
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
