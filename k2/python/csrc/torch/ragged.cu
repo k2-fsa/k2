@@ -119,6 +119,14 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       },
       py::arg("axis"), py::arg("i"));
 
+  pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
+    return Equal(self, other);
+  });
+
+  pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
+    return !Equal(self, other);
+  });
+
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     DeviceGuard guard(self.Context());
     std::ostringstream os;
@@ -286,6 +294,14 @@ static void PybindRaggedShape(py::module &m) {
     std::vector<int32_t> ans(num_axes);
     for (int32_t i = 0; i != num_axes; ++i) ans[i] = self.TotSize(i);
     return ans;
+  });
+
+  pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
+    return Equal(self, other);
+  });
+
+  pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
+    return !Equal(self, other);
   });
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {

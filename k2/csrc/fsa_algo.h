@@ -547,7 +547,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
    @param [out] labels_arc_map  If not nullptr, will be set to to a new array of
                         size `ans.NumElements()`, whose i'th element is the
                         0 <= j < labels_shape.NumElements() (an idx01) that says
-                        which element of the i'th sequence of `labels_shape`
+                        which element of `labels_shape`
                         this arc corresponds to, or -1 if there was no such
                         element because that sub-list was empty.
    @return  Returns the expanded Fsa or FsaVec (will satisfy
@@ -558,6 +558,8 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
 FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
                     Array1<int32_t> *fsas_arc_map = nullptr,
                     Array1<int32_t> *labels_arc_map = nullptr);
+
+
 /*
   Invert an FST, swapping the labels in the FSA with the auxiliary labels.
   (e.g. swap input and output symbols in FST, but you decide which is which).

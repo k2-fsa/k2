@@ -45,7 +45,7 @@ int32_t HighestBitSet(int64_t i) {
   }
 #endif
   K2_LOG(FATAL) << "Unreachable code";
-  return 32;
+  return 64;
 }
 
 int32_t RoundUpToNearestPowerOfTwo(int32_t n) {

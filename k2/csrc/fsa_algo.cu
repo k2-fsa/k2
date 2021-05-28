@@ -1115,6 +1115,7 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
   return FsaVec(RemoveAxis(temp, 1), oarcs);
 }
 
+
 void Invert(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
             Ragged<int32_t> *dest_aux_labels,
             Array1<int32_t> *arc_map /*= nullptr*/) {

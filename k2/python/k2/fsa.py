@@ -215,18 +215,19 @@ class Fsa(object):
         # the FSA is valid.
         _ = self.properties
 
-    def __str__(self) -> str:
-        '''Return a string representation of this object
+    def to_str(self, openfst: bool = False) -> str:
+        aux_labels = []
+        ragged_labels = []
+        for name, value in sorted(self.named_tensor_attr(include_scores=False)):
+            if isinstance(value, torch.Tensor) and value.dtype == torch.int32:
+                aux_labels.append(value)
+            elif isinstance(value, _k2.RaggedInt):
+                ragged_labels.append(value)
 
-        For visualization and debug only.
-        '''
-        if hasattr(self, 'aux_labels') and isinstance(self.aux_labels,
-                                                      torch.Tensor):
-            aux_labels = self.aux_labels.to(torch.int32)
-        else:
-            aux_labels = None
         if self.arcs.num_axes() == 2:
-            ans = 'k2.Fsa: ' + _k2.fsa_to_str(self.arcs, False, aux_labels)
+            ans = 'k2.Fsa: ' + _k2.fsa_to_str(self.arcs, openfst=openfst,
+                                              aux_labels=aux_labels,
+                                              ragged_labels=ragged_labels)
         else:
             ans = 'k2.FsaVec: \n'
             for i in range(self.shape[0]):
@@ -234,8 +235,10 @@ class Fsa(object):
                 ragged_arc, start = self.arcs.index(0, i)
                 end = start + ragged_arc.values().shape[0]
                 ans += 'FsaVec[' + str(i) + ']: ' + _k2.fsa_to_str(
-                    ragged_arc, False,
-                    None if aux_labels is None else aux_labels[start:end])
+                    ragged_arc, openfst=openfst,
+                    aux_labels=[x[start:end] for x in aux_labels],
+                    ragged_labels=[_k2.ragged_int_arange(x, 0, start, end)
+                                   for x in ragged_labels])
         ans += 'properties_str = ' + _k2.fsa_properties_as_str(
             self._properties) + '.'
         for name, value in self.named_tensor_attr(include_scores=False):
@@ -248,6 +251,13 @@ class Fsa(object):
             ans += f'{sep}{name}: {value}'
 
         return ans
+
+    def __str__(self) -> str:
+        '''Return a string representation of this object
+
+        For visualization and debug only.
+        '''
+        return self.to_str(openfst=False)
 
     def draw(self, filename: Optional[str],
              title: Optional[str] = None) -> 'Digraph':  # noqa
@@ -1073,7 +1083,9 @@ class Fsa(object):
                  s: str,
                  acceptor: Optional[bool] = None,
                  num_aux_labels: Optional[int] = None,
-                 aux_label_names: Optional[List[str]] = None) -> 'Fsa':
+                 aux_label_names: Optional[List[str]] = None,
+                 ragged_label_names: List[str] = [],
+                 openfst: bool = False) -> 'Fsa':
         '''Create an Fsa from a string in the k2 or OpenFst format.
         (See also :func:`from_openfst`).
 
@@ -1118,18 +1130,34 @@ class Fsa(object):
           aux_label_names:
             If provided, the length of this list dictates the number of
             aux_labels and this list dictates their names.
+          ragged_label_names:
+            If provided, expect this number of ragged labels, in the order
+            of this list.  It is advisable that this list be in
+            alphabetical order, so that the format when we write back to
+            a string will be unchanged.
+          openfst:
+            If true, will expect the OpenFST format (costs not scores, i.e.
+            negated; final-probs rather than final-state specified).
         '''
         (num_aux_labels, aux_label_names) = \
                 get_aux_label_info(acceptor, num_aux_labels, aux_label_names)
+        num_ragged_labels = len(ragged_label_names)
         try:
-            arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, False)
+            (arcs, aux_labels,
+             ragged_labels) = _k2.fsa_from_str(s, num_aux_labels,
+                                               num_ragged_labels,
+                                               openfst=openfst)
             ans = Fsa(arcs)
             if aux_labels is not None:
                 for i in range(aux_labels.shape[0]):
                     setattr(ans, aux_label_names[i], aux_labels[i, :])
+            for name, value in zip(ragged_label_names, ragged_labels):
+                setattr(ans, name, value)
+
             return ans
         except Exception:
-            raise ValueError(f'The following is not a valid Fsa (with '
+            o = 'in the OpenFst format ' if openfst else ''
+            raise ValueError(f'The following is not a valid Fsa {o}(with '
                              f'num_aux_labels={num_aux_labels}): {s}')
 
     @classmethod
@@ -1137,7 +1165,8 @@ class Fsa(object):
                      s: str,
                      acceptor: Optional[bool] = None,
                      num_aux_labels: Optional[int] = None,
-                     aux_label_names: Optional[List[str]] = None) -> 'Fsa':
+                     aux_label_names: Optional[List[str]] = None,
+                     ragged_label_names: List[str] = []) -> 'Fsa':
         '''Create an Fsa from a string in OpenFST format (or a slightly more
         general format, if num_aux_labels > 1). See also :func:`from_str`.
 
@@ -1181,21 +1210,15 @@ class Fsa(object):
             If provided, the length of this list dictates the number of
             aux_labels. By default the names are 'aux_labels', 'aux_labels2',
             'aux_labels3' and so on.
+          ragged_label_names:
+            If provided, expect this number of ragged labels, in the order
+            of this list.  It is advisable that this list be in
+            alphabetical order, so that the format when we write back to
+            a string will be unchanged.
         '''
-
-        (num_aux_labels, aux_label_names) = \
-                get_aux_label_info(acceptor, num_aux_labels, aux_label_names)
-        try:
-            arcs, aux_labels = _k2.fsa_from_str(s, num_aux_labels, True)
-            ans = Fsa(arcs)
-            if num_aux_labels != 0:
-                for i in range(num_aux_labels):
-                    setattr(ans, aux_label_names[i], aux_labels[i, :])
-            return ans
-        except Exception:
-            raise ValueError(
-                f'The following is not a valid Fsa in OpenFst format '
-                f'(with num_aux_labels={num_aux_labels}): {s}')
+        return Fsa.from_str(s, acceptor, num_aux_labels,
+                            aux_label_names, ragged_label_names,
+                            openfst=True)
 
     def set_scores_stochastic_(self, scores) -> None:
         '''Normalize the given `scores` and assign it to `self.scores`.

@@ -22,8 +22,11 @@ namespace k2 {
   The string `s` consists of lines describing arcs or final-states.
   Arcs are represented as:
 
-  (1)
-      src_state dest_state label [aux_label1 aux_label2...] [cost/score]
+    src_state dest_state label [aux_label1 aux_label2...] [ragged_labels1 raged_labels2...]   [cost/score]
+
+
+  [cost/score] is a float, ragged_labels1 and ragged_labels2 are lists of
+  integers separated by space and enclosed in [ ], and all other fields are integers.
 
   (the OpenFst format has costs, the k2 format has scores, which are of
   opposite signs).
@@ -45,6 +48,8 @@ namespace k2 {
 
   Note that fields are separated by whitespace.
 
+
+
   CAUTION: The first column has to be in non-decreasing order
   if `openfst==false`.
 
@@ -63,13 +68,20 @@ namespace k2 {
                     Array2 (on CPU) of shape (num_aux_labels, num_arcs).
                     Note: on final-arcs (which are not explicitly represented in
                     the OpenFst format), the value of the aux_labels will be -1.
+  @param [in]  num_ragged_labels  The number of ragged labels to expect on
+                    each line; they will appeear as lists of integers enclosed
+                    by [ ].
+  @param [out]  ragged_labels  A pointer to an array of Ragged<int32_t> of size
+                   `num_ragged_labels`; may be nullptr if num_ragged_labels == 0.
 
   @return It returns an Fsa on CPU.
  */
 Fsa FsaFromString(const std::string &s,
                   bool openfst = false,
                   int32_t num_aux_labels = 0,
-                  Array2<int32_t> *aux_labels = nullptr);
+                  Array2<int32_t> *aux_labels = nullptr,
+                  int32_t num_ragged_labels = 0,
+                  Ragged<int32_t> *ragged_labels = nullptr);
 
 /* Convert an FSA to a string.
 
@@ -97,12 +109,22 @@ Fsa FsaFromString(const std::string &s,
    @param [in]  openfst
                       If true, the scores will first be negated and
                       then printed.
-   @param in]   aux_labels
-                      If not NULL, the FSA is a transducer and it contains the
-                      aux labels of each arc.
+   @param [in] num_aux_labels  The number of auxiliary labels attached to
+                      the FSA
+   @param [in]   aux_labels   A pointer to an array of `num_aux_labels`
+                      arrays, indexed by arc.
+   @param [in] num_ragged_labels  The number of ragged labels attached to
+                     the FSA
+   @param [in] ragged_labels   A pointer to an array of `num_ragged_labels`
+                    ragged tensors, each with 2 axes and with
+                    `ragged_labels[i].Dim0() == fsa.NumElements()`.
  */
 std::string FsaToString(const Fsa &fsa, bool openfst = false,
-                        const Array1<int32_t> *aux_labels = nullptr);
+                        int32_t num_aux_labels = 0,
+                        const Array1<int32_t> *aux_labels = nullptr,
+                        int32_t num_ragged_labels = 0,
+                        Ragged<int32_t> *ragged_labels = nullptr);
+
 
 /*  Returns a renumbered version of the FsaVec `src`.
       @param [in] src    An FsaVec, assumed to be valid, with NumAxes() == 3
@@ -640,6 +662,28 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
   situations where it really should be used; think carefully before using it.
  */
 void FixNumStates(FsaVec *fsas);
+
+
+/*
+  This function ensures that labels associated with an Fsa or FsaVec have
+  the value -1 in the appropriate places, and only in the appropriate
+  places.
+      @param [in] fsas   The FSAs whose labels (or aux_labels) we want
+                to fix
+      @param [in,out] labels_data   Pointer to data we want to fix,
+               indexed as `labels_data[i * labels_stride]` for
+               0 <= i < fsas.NumElements().
+      @param [in] labels_stride   Stride of `labels_data`; would be
+               1 if it is from an Array1, or 4 if it really points to
+               the labels of `fsas`.
+   It is an error if a label had a value different from 0 and -1 for a
+   position corresponding to a final-arc, and this function will crash
+   if that is detected.
+ */
+void FixFinalLabels(FsaOrVec &fsas,
+                    int32_t *labels_data,
+                    int32_t labels_stride);
+
 
 /* Remove arcs whose posteriors are less than a given threshold.
  *

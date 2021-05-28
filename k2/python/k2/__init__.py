@@ -22,6 +22,7 @@ from .fsa_algo import closure
 from .fsa_algo import compose
 from .fsa_algo import connect
 from .fsa_algo import determinize
+from .fsa_algo import expand_ragged_attributes
 from .fsa_algo import intersect
 from .fsa_algo import intersect_device
 from .fsa_algo import invert
@@ -51,5 +52,6 @@ from .utils import create_fsa_vec
 from .utils import is_rand_equivalent
 from .utils import to_dot
 from .utils import to_str
+from .utils import to_str_simple
 from .utils import to_tensor
 from .utils import create_sparse

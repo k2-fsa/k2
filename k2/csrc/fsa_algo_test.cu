@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "k2/csrc/array_ops.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
@@ -148,6 +149,8 @@ TEST(ArcSort, NonEmptyFsaVec) {
     EXPECT_EQ(p & kFsaPropertiesArcSorted, kFsaPropertiesArcSorted);
   }
 }
+
+
 
 TEST(FsaAlgo, LinearFsa) {
   for (auto &context : {GetCudaContext(), GetCpuContext()}) {
