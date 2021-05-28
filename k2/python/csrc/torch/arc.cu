@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa.h"
 #include "k2/python/csrc/torch/arc.h"
 #include "k2/python/csrc/torch/torch_util.h"
@@ -63,6 +64,7 @@ static void PybindArcImpl(py::module &m) {
   m.def(
       "as_int",
       [](torch::Tensor tensor) -> torch::Tensor {
+        DeviceGuard guard(GetContext(tensor));
         auto scalar_type = ToScalarType<int32_t>::value;
         if (tensor.numel() == 0)
           return torch::empty(tensor.sizes(),
@@ -76,6 +78,7 @@ static void PybindArcImpl(py::module &m) {
   m.def(
       "as_float",
       [](torch::Tensor tensor) -> torch::Tensor {
+        DeviceGuard guard(GetContext(tensor));
         auto scalar_type = ToScalarType<float>::value;
         if (tensor.numel() == 0)
           return torch::empty(tensor.sizes(),

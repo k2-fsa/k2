@@ -17,12 +17,17 @@ import _k2
 
 class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
 
-    def test_without_negative_1(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
-        for device in devices:
+    def test_without_negative_1(self):
+        for device in self.devices:
             s = '''
                 0 1 2 10
                 0 1 1 20
@@ -84,11 +89,7 @@ class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
             assert torch.all(torch.eq(src.scores.grad, expected_grad))
 
     def test_with_negative_1(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             s = '''
                 0 1 2 10
                 0 1 1 20

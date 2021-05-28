@@ -29,10 +29,7 @@ namespace k2 {
 // current default cuda device.
 class DeviceGuard {
  public:
-  // We use a template here because eval.h uses a
-  // templated type "ContextPtrType"
-  template <typename ContextPtrType>
-  explicit DeviceGuard(ContextPtrType c) {
+  explicit DeviceGuard(ContextPtr c) {
     if (c->GetDeviceType() == kCuda) {
       old_device_ = GetDevice();
       new_device_ = c->GetDeviceId();
@@ -56,6 +53,12 @@ class DeviceGuard {
     // else it was either a CPU context or the device IDs
     // were the same
   }
+
+  DeviceGuard(const DeviceGuard &) = delete;
+  DeviceGuard &operator=(const DeviceGuard &) = delete;
+
+  DeviceGuard(DeviceGuard &&) = delete;
+  DeviceGuard &operator=(DeviceGuard &&) = delete;
 
  private:
   int32_t old_device_ = -1;

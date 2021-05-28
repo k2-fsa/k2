@@ -17,9 +17,7 @@
 #include <vector>
 
 #include <cooperative_groups.h>
-
 #include "k2/csrc/context.h"
-#include "k2/csrc/device_guard.h"
 #include "k2/csrc/log.h"
 
 // Caution: see also utils.h where there is EvalWithRedirect that's very related
@@ -77,7 +75,7 @@ __host__ __device__ __forceinline__ int32_t NumBlocks(int32_t size,
 /* Eval() will evaluate lambda(i) for 0 <= i < n, on the appropriate
    device (CPU or GPU). */
 template <typename LambdaT>
-static void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
+void Eval(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   NVTX_RANGE(K2_FUNC);
   if (n <= 0) return;  // actually it would be an error if n < 0.
   if (stream == kCudaStreamInvalid) {
@@ -118,12 +116,11 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 void Eval(ContextPtrType c, int32_t n, LambdaT &lambda) {
-  DeviceGuard guard(c);
   Eval(c->GetCudaStream(), n, lambda);
 }
 
 template <typename LambdaT>
-static void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
+void EvalDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   if (n <= 0) return;  // actually it would be an error if n < 0.
   K2_CHECK(stream != kCudaStreamInvalid);
   const int32_t block_size = 256;
@@ -143,14 +140,13 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 void EvalDevice(ContextPtrType c, int32_t n, LambdaT &lambda) {
-  DeviceGuard guard(c);
   EvalDevice(c->GetCudaStream(), n, lambda);
 }
 
 /* SetData() will do `data[i] = lambda(i)` for 0 <= i < n, on the appropriate
    device (CPU or GPU) */
 template <typename T, typename LambdaT>
-static void SetData(cudaStream_t stream, T *data, int32_t n, LambdaT &lambda) {
+void SetData(cudaStream_t stream, T *data, int32_t n, LambdaT &lambda) {
   NVTX_RANGE(K2_FUNC);
   if (n <= 0) return;  // actually it would be an error if n < 0.
   if (stream == kCudaStreamInvalid) {
@@ -171,7 +167,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename T, typename LambdaT>
 void SetData(ContextPtrType c, T *data, int32_t n, LambdaT &lambda) {
-  DeviceGuard guard(c);
   SetData(c->GetCudaStream(), data, n, lambda);
 }
 
@@ -185,7 +180,7 @@ void SetData(ContextPtrType c, T *data, int32_t n, LambdaT &lambda) {
   (Of course this doesn't affect the semantics of the operation).
 */
 template <typename LambdaT>
-static void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
+void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
   NVTX_RANGE(K2_FUNC);
   if (m <= 0 || n <= 0)
     return;  // actually it would be an error if m < 0 or n < 0.
@@ -236,7 +231,7 @@ static void Eval2(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
      Eval2Device(c, 10, 20, [=] __device__ (int32_t i, int32_t j) { code here;  });
  */
 template <typename LambdaT>
-static void Eval2Device(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
+void Eval2Device(cudaStream_t stream, int32_t m, int32_t n, LambdaT &lambda) {
   NVTX_RANGE(K2_FUNC);
   if (m <= 0 || n <= 0)
     return;  // actually it would be an error if m < 0 or n < 0.
@@ -268,7 +263,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
                                     // std::shared_ptr<Context>
           typename LambdaT>
 inline void Eval2(ContextPtrType c, int32_t m, int32_t n, LambdaT &lambda) {
-  DeviceGuard guard(c);
   Eval2(c->GetCudaStream(), m, n, lambda);
 }
 
@@ -279,7 +273,6 @@ template <typename ContextPtrType,  // Context*  or ContextPtr ==
           typename LambdaT>
 inline void Eval2Device(ContextPtrType c, int32_t m,
                         int32_t n, LambdaT &lambda) {
-  DeviceGuard guard(c);
   Eval2Device(c->GetCudaStream(), m, n, lambda);
 }
 
@@ -328,7 +321,7 @@ __global__ void eval_lambda_group(int32_t n, LambdaT lambda) {
   EvalGroupDevice<8, group_shared_type>(c->GetCudaStream(), num_groups, lambda_foo);
  */
 template <unsigned int ThreadsPerGroup, typename ThreadGroupDataT, typename LambdaT>
-static void EvalGroupDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
+void EvalGroupDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
   NVTX_RANGE(K2_FUNC);
   if (n <= 0) return;  // actually it would be an error if n < 0.
 
@@ -353,7 +346,6 @@ static void EvalGroupDevice(cudaStream_t stream, int32_t n, LambdaT &lambda) {
 
 template <unsigned int ThreadsPerGroup, typename ThreadGroupDataT, typename LambdaT>
 void EvalGroupDevice(ContextPtr context, int32_t n, LambdaT &lambda) {
-  DeviceGuard guard(context);
   EvalGroupDevice<ThreadsPerGroup,ThreadGroupDataT,LambdaT>(context->GetCudaStream(),
                                                             n, lambda);
 }

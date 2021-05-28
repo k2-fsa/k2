@@ -17,12 +17,17 @@ import torch
 
 class TestIntersectDevice(unittest.TestCase):
 
-    def test(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append(torch.device('cuda'))
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
-        for device in devices:
+    def test(self):
+        for device in self.devices:
             for use_identity_map, sorted_match_a in [(True, True),
                                                      (False, True),
                                                      (True, False),

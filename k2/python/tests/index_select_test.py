@@ -17,11 +17,17 @@ import torch
 
 class TestIndexSelect(unittest.TestCase):
 
-    def test_1d(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
+    def test_1d(self):
+        for device in self.devices:
             for dtype in [torch.int32, torch.int64]:
                 num_rows = torch.randint(1, 2000, size=(1,)).item()
                 a = torch.randint(-1000,
@@ -77,10 +83,7 @@ class TestIndexSelect(unittest.TestCase):
                 assert torch.allclose(a.grad, new_a.grad)
 
     def test_1d_non_contiguous(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             for dtype in [torch.int32, torch.int64]:
                 num_rows = torch.randint(20, 2000, size=(1,)).item()
                 stride = torch.randint(2, num_rows // 10 + 1, size=(1,)).item()
@@ -137,10 +140,7 @@ class TestIndexSelect(unittest.TestCase):
                 assert torch.allclose(a.grad, new_a.grad)
 
     def test_2d(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             for dtype in [torch.int32, torch.int64]:
                 num_rows = torch.randint(1, 2000, size=(1,)).item()
                 num_cols = torch.randint(1, 2000, size=(1,)).item()
@@ -188,10 +188,7 @@ class TestIndexSelect(unittest.TestCase):
                 assert torch.allclose(src.grad, new_src.grad)
 
     def test_2d_non_contiguous(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             for dtype in [torch.int32, torch.int64]:
                 num_rows = torch.randint(20, 2000, size=(1,)).item()
                 num_cols = torch.randint(1, 2000, size=(1,)).item()
@@ -262,11 +259,17 @@ class TestIndexSelect(unittest.TestCase):
 
 class TestSimpleRaggedIndexSelect(unittest.TestCase):
 
-    def test_1d(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
+    def test_1d(self):
+        for device in self.devices:
             row_splits1 = torch.tensor([0, 3, 5, 6, 6, 9],
                                        dtype=torch.int32,
                                        device=device)

@@ -21,6 +21,9 @@ class TestDenseFsaVec(unittest.TestCase):
         cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available():
             cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
     def test_dense_fsa_vec(self):
         for device in self.devices:
@@ -68,6 +71,8 @@ class TestDenseFsaVec(unittest.TestCase):
             assert torch.allclose(dense_fsa_vec.scores[offset:offset + 2, 1:],
                                   log_prob[1][3:5])
 
+            dense_fsa_vec.to('cpu')
+
     def test_duration(self):
         for device in self.devices:
             log_prob = torch.arange(20, dtype=torch.float32,
@@ -104,6 +109,8 @@ class TestDenseFsaVec(unittest.TestCase):
             offset += 2 + 1
             assert torch.allclose(dense_fsa_vec.scores[offset:offset + 4, 1:],
                                   log_prob[1][1:5])
+
+            dense_fsa_vec.to('cpu')
 
 
 if __name__ == '__main__':

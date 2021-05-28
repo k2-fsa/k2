@@ -16,11 +16,17 @@ import torch
 
 class TestLinearFsa(unittest.TestCase):
 
-    def test_single_fsa(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
+    def test_single_fsa(self):
+        for device in self.devices:
             labels = [2, 5, 8]
             fsa = k2.linear_fsa(labels, device)
             assert fsa.device == device
@@ -38,10 +44,7 @@ class TestLinearFsa(unittest.TestCase):
                                  device=device)))
 
     def test_fsa_vec(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             labels = [
                 [1, 3, 5],
                 [2, 6],
@@ -78,10 +81,7 @@ class TestLinearFsa(unittest.TestCase):
                                       torch.zeros_like(fsa.scores)))
 
     def test_from_ragged_int_single_fsa(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             ragged_int = k2.RaggedInt('[ [10 20] ]').to(device)
             fsa = k2.linear_fsa(ragged_int)
             assert fsa.shape == (1, None, None)
@@ -98,10 +98,7 @@ class TestLinearFsa(unittest.TestCase):
                                       torch.zeros_like(fsa.scores)))
 
     def test_from_ragged_int_two_fsas(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             ragged_int = k2.RaggedInt('[ [10 20] [100 200 300] ]').to(device)
             fsa = k2.linear_fsa(ragged_int)
             assert fsa.shape == (2, None, None)

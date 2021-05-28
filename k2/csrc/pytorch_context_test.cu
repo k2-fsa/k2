@@ -9,6 +9,7 @@
 #include "k2/csrc/test_utils.h"
 //
 #include "k2/csrc/array.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/pytorch_context.h"
 
 namespace k2 {
@@ -37,16 +38,22 @@ static void TestImpl() {
   int32_t *a_data = a.Data();
   int32_t *b_data = b.Data();
 
-  // a is on device 0
-  K2_EVAL(
-      a.Context(), 2, set_a, (int32_t i)->void { a_data[i] += 1; });
-  CheckArrayData(a, {2, 3});
+  {
+    DeviceGuard guard(0);
+    // a is on device 0
+    K2_EVAL(
+        a.Context(), 2, set_a, (int32_t i)->void { a_data[i] += 1; });
+    CheckArrayData(a, {2, 3});
+  }
 
-  // b is on device 1
-  K2_EVAL(
-      b.Context(), 2, set_b, (int32_t i)->void { b_data[i] += 2; });
+  {
+    DeviceGuard guard(1);
+    // b is on device 1
+    K2_EVAL(
+        b.Context(), 2, set_b, (int32_t i)->void { b_data[i] += 2; });
 
-  CheckArrayData(b, {12, 22});
+    CheckArrayData(b, {12, 22});
+  }
 }
 
 TEST(PyTorchContext, GetCudaContext) {

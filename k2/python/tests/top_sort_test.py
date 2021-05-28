@@ -16,6 +16,15 @@ import torch
 
 class TestTopSort(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test(self):
         # arc 0: 0 -> 1, weight 1
         # arc 1: 0 -> 2, weight 2
@@ -30,16 +39,19 @@ class TestTopSort(unittest.TestCase):
             2 1 3 4
             3
         '''
-        fsa = k2.Fsa.from_str(s)
-        fsa.requires_grad_(True)
-        sorted_fsa = k2.top_sort(fsa)
+        for device in self.devices:
+            fsa = k2.Fsa.from_str(s).to(device)
+            fsa.requires_grad_(True)
+            sorted_fsa = k2.top_sort(fsa)
 
-        # the shortest path in the sorted fsa is (arc 0) -> (arc 3)
-        loss = (sorted_fsa.scores[0] + sorted_fsa.scores[3]) / 2
-        loss.backward()
-        assert torch.allclose(
-            fsa.scores.grad, torch.tensor([0.5, 0, 0.5, 0],
-                                          dtype=torch.float32))
+            # the shortest path in the sorted fsa is (arc 0) -> (arc 3)
+            loss = (sorted_fsa.scores[0] + sorted_fsa.scores[3]) / 2
+            loss.backward()
+            assert torch.allclose(
+                fsa.scores.grad,
+                torch.tensor([0.5, 0, 0.5, 0],
+                             dtype=torch.float32,
+                             device=device))
 
 
 if __name__ == '__main__':

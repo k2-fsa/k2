@@ -17,6 +17,15 @@ import torch
 
 class TestIndex(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available():
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test(self):
         s0 = '''
             0 1 1 0.1
@@ -36,54 +45,74 @@ class TestIndex(unittest.TestCase):
             2 1 3 0.9
             3
         '''
-        fsa0 = k2.Fsa.from_str(s0).requires_grad_(True)
-        fsa1 = k2.Fsa.from_str(s1).requires_grad_(True)
-        fsa2 = k2.Fsa.from_str(s2).requires_grad_(True)
+        for device in self.devices:
+            fsa0 = k2.Fsa.from_str(s0).to(device).requires_grad_(True)
+            fsa1 = k2.Fsa.from_str(s1).to(device).requires_grad_(True)
+            fsa2 = k2.Fsa.from_str(s2).to(device).requires_grad_(True)
 
-        fsa_vec = k2.create_fsa_vec([fsa0, fsa1, fsa2])
+            fsa_vec = k2.create_fsa_vec([fsa0, fsa1, fsa2])
 
-        new_fsa21 = k2.index(fsa_vec, torch.tensor([2, 1], dtype=torch.int32))
-        assert new_fsa21.shape == (2, None, None)
-        assert torch.allclose(
-            new_fsa21.arcs.values()[:, :3],
-            torch.tensor([
-                # fsa 2
-                [0, 2, 1],
-                [0, 1, 2],
-                [1, 3, -1],
-                [2, 1, 3],
-                # fsa 1
-                [0, 1, -1]
-            ]).to(torch.int32))
+            new_fsa21 = k2.index(
+                fsa_vec, torch.tensor([2, 1], dtype=torch.int32,
+                                      device=device))
+            assert new_fsa21.shape == (2, None, None)
+            assert torch.all(
+                torch.eq(
+                    new_fsa21.arcs.values()[:, :3],
+                    torch.tensor([
+                        # fsa 2
+                        [0, 2, 1],
+                        [0, 1, 2],
+                        [1, 3, -1],
+                        [2, 1, 3],
+                        # fsa 1
+                        [0, 1, -1]
+                    ]).to(torch.int32).to(device)))
 
-        scale = torch.arange(new_fsa21.scores.numel())
-        (new_fsa21.scores * scale).sum().backward()
-        assert torch.allclose(fsa0.scores.grad, torch.tensor([0., 0, 0, 0]))
-        assert torch.allclose(fsa1.scores.grad, torch.tensor([4.]))
-        assert torch.allclose(fsa2.scores.grad, torch.tensor([0., 1., 2., 3.]))
+            scale = torch.arange(new_fsa21.scores.numel(), device=device)
+            (new_fsa21.scores * scale).sum().backward()
+            assert torch.allclose(fsa0.scores.grad,
+                                  torch.tensor([0., 0, 0, 0], device=device))
+            assert torch.allclose(fsa1.scores.grad,
+                                  torch.tensor([4.], device=device))
+            assert torch.allclose(
+                fsa2.scores.grad, torch.tensor([0., 1., 2., 3.],
+                                               device=device))
 
-        # now select only a single FSA
-        fsa0.scores.grad = None
-        fsa1.scores.grad = None
-        fsa2.scores.grad = None
+            # now select only a single FSA
+            fsa0.scores.grad = None
+            fsa1.scores.grad = None
+            fsa2.scores.grad = None
 
-        new_fsa0 = k2.index(fsa_vec, torch.tensor([0], dtype=torch.int32))
-        assert new_fsa0.shape == (1, None, None)
+            new_fsa0 = k2.index(
+                fsa_vec, torch.tensor([0], dtype=torch.int32, device=device))
+            assert new_fsa0.shape == (1, None, None)
 
-        scale = torch.arange(new_fsa0.scores.numel())
-        (new_fsa0.scores * scale).sum().backward()
-        assert torch.allclose(fsa0.scores.grad, torch.tensor([0., 1., 2., 3.]))
-        assert torch.allclose(fsa1.scores.grad, torch.tensor([0.]))
-        assert torch.allclose(fsa2.scores.grad, torch.tensor([0., 0., 0., 0.]))
+            scale = torch.arange(new_fsa0.scores.numel(), device=device)
+            (new_fsa0.scores * scale).sum().backward()
+            assert torch.allclose(
+                fsa0.scores.grad, torch.tensor([0., 1., 2., 3.],
+                                               device=device))
+            assert torch.allclose(fsa1.scores.grad,
+                                  torch.tensor([0.], device=device))
+            assert torch.allclose(
+                fsa2.scores.grad, torch.tensor([0., 0., 0., 0.],
+                                               device=device))
 
 
 class TestIndexRaggedInt(unittest.TestCase):
 
-    def test(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
+    def test(self):
+        for device in self.devices:
             src_row_splits = torch.tensor([0, 2, 3, 3, 6],
                                           dtype=torch.int32,
                                           device=device)
@@ -132,11 +161,17 @@ class TestIndexRaggedInt(unittest.TestCase):
 
 class TestIndexTensorWithRaggedInt(unittest.TestCase):
 
-    def test(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
+    def test(self):
+        for device in self.devices:
             src = torch.tensor([1, 2, 3, 4, 5, 6, 7],
                                dtype=torch.int32,
                                device=device)

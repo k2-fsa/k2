@@ -16,7 +16,7 @@ import torch
 
 class TestMultiGPU(unittest.TestCase):
 
-    def test(self):
+    def _test_ragged(self):
         if torch.cuda.is_available() is False:
             print('skip it since CUDA is not available')
             return
@@ -43,6 +43,12 @@ class TestMultiGPU(unittest.TestCase):
         assert torch.all(torch.eq(r0.row_splits(1), expected_r0.row_splits(1)))
         assert torch.all(torch.eq(r1.row_splits(1), expected_r1.row_splits(1)))
 
+        assert torch.all(torch.eq(r0.row_ids(1), expected_r0.row_ids(1)))
+        assert torch.all(torch.eq(r1.row_ids(1), expected_r1.row_ids(1)))
+
+        assert r0.num_elements() == expected_r0.num_elements()
+        assert r1.num_elements() == expected_r1.num_elements()
+
         try:
             # will throw an exception because they two are not on the same device
             assert torch.all(
@@ -51,6 +57,36 @@ class TestMultiGPU(unittest.TestCase):
             print(e)
 
         assert torch.cuda.current_device() == 1
+
+    def test_fsa(self):
+        if torch.cuda.is_available() is False:
+            print('skip it since CUDA is not available')
+            return
+        if torch.cuda.device_count() < 2:
+            print('skip it since number of GPUs is 1')
+            return
+
+        device0 = torch.device('cuda', 0)
+        device1 = torch.device('cuda', 1)
+
+        torch.cuda.set_device(device1)
+
+        s = '''
+            0 1 1 0.1
+            1 2 -1 0.2
+            2
+        '''
+        fsa0 = k2.Fsa.from_str(s).to(device0).requires_grad_(True)
+        fsa1 = k2.Fsa.from_str(s).to(device1).requires_grad_(True)
+
+        fsa0 = k2.create_fsa_vec([fsa0, fsa0])
+        fsa1 = k2.create_fsa_vec([fsa1, fsa1])
+
+        tot_scores0 = fsa0.get_forward_scores(True, True)
+        (tot_scores0[0] * 2 + tot_scores0[1]).backward()
+
+        tot_scores1 = fsa1.get_forward_scores(True, True)
+        (tot_scores1[0] * 2 + tot_scores1[1]).backward()
 
 
 if __name__ == '__main__':
