@@ -4,8 +4,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#ifndef K2_CSRC_MODERN_GPU_H_
-#define K2_CSRC_MODERN_GPU_H_
+#ifndef K2_CSRC_MODERNGPU_H_
+#define K2_CSRC_MODERNGPU_H_
 
 #ifdef K2_WITH_CUDA
 #include "moderngpu/context.hxx"
@@ -15,4 +15,4 @@
 #include "moderngpu/kernel_sortedsearch.hxx"
 #endif
 
-#endif  // K2_CSRC_MODERN_GPU_H_
+#endif  // K2_CSRC_MODERNGPU_H_

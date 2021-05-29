@@ -330,7 +330,8 @@ ContextPtr GetPinnedContext() {
       has_cuda = true;
     }
 #else
-    K2_LOG(WARNING) << "k2 was not built with CUDA support. Return a CPU context";
+    K2_LOG(WARNING) << "k2 was not built with CUDA support. "
+                       "Return a CPU context";
 #endif
   });
 

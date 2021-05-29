@@ -23,7 +23,7 @@
 #define __shared__
 
 #ifdef __clang__
-// clang does not recoginize __forceinline__
+// clang does not recognize __forceinline__
 #define __forceinline__ inline
 #endif
 
@@ -42,7 +42,7 @@ inline T max(T a, T b) {
 
 #ifndef min
 template <typename T>
-inline T min(T a, T b) {
+inline T min(T a, T b) {  // NOLINT
   return b > a ? a : b;
 }
 #endif
@@ -50,7 +50,7 @@ inline T min(T a, T b) {
 namespace k2 {
 
 struct Dim3 {
-  Dim3(int32_t x = 0, int32_t y = 0, int32_t z = 0) {}
+  /* implicit */ Dim3(int32_t x = 0, int32_t y = 0, int32_t z = 0) {}  // NOLINT
   int32_t x;
   int32_t y;
   int32_t z;
@@ -70,7 +70,6 @@ enum FakedEnum {
   cudaMemcpyHostToDevice = -1,
   cudaMemcpyDeviceToDevice = -1,
   cudaEventDisableTiming = -1,
-
 };
 
 using cudaMemcpyKind = FakedEnum;
@@ -268,10 +267,10 @@ void mergesort(key_t *keys_input, int count, comp_t comp, context_t &context) {
 }
 
 template <typename T>
-struct tuple {};
+struct tuple {};  // NOLINT
 
 template <int32_t I, typename T>
-T get(const tuple<T> &) {
+T get(const tuple<T> &) {  // NOLINT
   K2_NIY;
   return T();
 }
@@ -294,4 +293,4 @@ void sorted_search(needles_it needles, int num_needles, haystack_it haystack,
 
 }  // namespace mgpu
 
-#endif
+#endif  // K2_CSRC_FAKE_CUDA_H_
