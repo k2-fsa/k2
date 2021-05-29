@@ -23,6 +23,10 @@
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/semaphore.h"
 
+#ifndef K2_WITH_CUDA
+#include "k2/csrc/fake_cuda.h"
+#endif
+
 namespace k2 {
 
 // Maximum number of GPUs supported by k2

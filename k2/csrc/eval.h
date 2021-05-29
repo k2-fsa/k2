@@ -16,7 +16,10 @@
 #include <type_traits>
 #include <vector>
 
+#ifdef K2_WITH_CUDA
 #include <cooperative_groups.h>
+#endif
+
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 
@@ -283,15 +286,19 @@ template <unsigned int ThreadsPerBlock,
           unsigned int ThreadsPerGroup,
           typename ThreadGroupDataT, typename LambdaT>
 __global__ void eval_lambda_group(int32_t n, LambdaT lambda) {
-  namespace cg = cooperative_groups;
   int32_t group_idx = threadIdx.x / ThreadsPerGroup;
   int32_t i = (blockIdx.y * gridDim.x + blockIdx.x) * (ThreadsPerBlock / ThreadsPerGroup) + group_idx;
   if (i >= n) return;
+#if K2_WITH_CUDA
+  namespace cg = cooperative_groups;
   cg::thread_block_tile<ThreadsPerGroup> g =
       cg::tiled_partition<ThreadsPerGroup>(cg::this_thread_block());
 
   __shared__ ThreadGroupDataT shared_data[ThreadsPerBlock / ThreadsPerGroup];
   lambda(g, shared_data + group_idx, i);
+#else
+  K2_LOG(FATAL) << "Unreachable code.";
+#endif
 }
 
 

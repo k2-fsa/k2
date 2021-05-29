@@ -7,8 +7,11 @@
 #include <memory>
 #include <mutex>  // NOLINT
 
+#ifdef K2_WITH_CUDA
 #include "c10/cuda/CUDACachingAllocator.h"
 #include "c10/cuda/CUDAFunctions.h"
+#endif
+
 #include "k2/csrc/context.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
@@ -55,10 +58,14 @@ bool forceUncachedAllocator() {
 static std::once_flag has_cuda_init_flag;
 static bool has_cuda = false;
 static void InitHasCuda() {
+#ifdef K2_WITH_CUDA
   if (torch::cuda::is_available())
     has_cuda = true;
   else
     K2_LOG(WARNING) << "CUDA is not available. Return a CPU context.";
+#else
+    K2_LOG(WARNING) << "k2 was not compiled with CUDA. Return a CPU context.";
+#endif
 }
 
 class PytorchCpuContext : public Context {
@@ -117,6 +124,7 @@ class PytorchCpuContext : public Context {
 class PytorchCudaContext : public Context {
  public:
   explicit PytorchCudaContext(int32_t gpu_id) : gpu_id_(gpu_id) {
+#ifdef K2_WITH_CUDA
     K2_CHECK_GE(gpu_id, 0);
     K2_CHECK_LT(gpu_id, c10::cuda::device_count());
 
@@ -130,6 +138,9 @@ class PytorchCudaContext : public Context {
 
     allocator_ = c10::cuda::CUDACachingAllocator::get();
     K2_CHECK(allocator_->raw_deleter() != nullptr);
+#else
+    K2_LOG(FATAL) << "Unreachable code.";
+#endif
   }
 
   DeviceType GetDeviceType() const override { return kCuda; }
@@ -137,8 +148,12 @@ class PytorchCudaContext : public Context {
   int32_t GetDeviceId() const override { return gpu_id_; }
 
   cudaStream_t GetCudaStream() const override {
+#ifdef K2_WITH_CUDA
     return g_stream_override.OverrideStream(
         c10::cuda::getCurrentCUDAStream(gpu_id_));
+#else
+    return cudaStream_t{};
+#endif
   }
 
   void *Allocate(std::size_t bytes, void **deleter_context) override {
@@ -214,8 +229,13 @@ ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
   std::call_once(has_cuda_init_flag, InitHasCuda);
 
   if (has_cuda) {
+#ifdef K2_WITH_CUDA
     if (gpu_id < 0) gpu_id = c10::cuda::current_device();
     return std::make_shared<PytorchCudaContext>(gpu_id);
+#else
+    K2_LOG(FATAL) << "Unreachable code.";
+    return nullptr;
+#endif
   }
 
   return GetCpuContext();

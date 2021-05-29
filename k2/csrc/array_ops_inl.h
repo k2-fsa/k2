@@ -25,8 +25,6 @@
 #include "k2/csrc/macros.h"
 #include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/utils.h"
-#include "moderngpu/kernel_load_balance.hxx"
-#include "moderngpu/kernel_mergesort.hxx"
 
 namespace k2 {
 namespace internal {

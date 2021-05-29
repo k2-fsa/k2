@@ -1140,7 +1140,7 @@ void RemoveEpsilonDevice(FsaOrVec &src_fsa, FsaOrVec *dest_fsa,
   }
 
   int32_t props = GetFsaBasicProperties(dest_fsa_unsorted);
-  if (props & kFsaPropertiesArcSorted == 0) {
+  if ((props & kFsaPropertiesArcSorted) == 0) {
     // `dest_fsa_unsorted` was not arc sorted.
     Array1<int32_t> arcsort_arc_map;
     ArcSort(dest_fsa_unsorted, dest_fsa, &arcsort_arc_map);

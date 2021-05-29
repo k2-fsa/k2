@@ -8,8 +8,11 @@
 #include <random>
 #include <type_traits>
 
+#ifdef K2_WITH_CUDA
 #include "curand.h"         // NOLINT
 #include "curand_kernel.h"  // NOLINT
+#endif
+
 #include "k2/csrc/rand.h"
 
 namespace k2 {
@@ -96,6 +99,7 @@ void Rand<float>(ContextPtr context, float low, float high, int32_t dim,
   }
 
   K2_CHECK_EQ(device_type, kCuda);
+#ifdef K2_WITH_CUDA
   CudaRandState &state = GetCudaRandState(context);
   float range = high - low;
   auto generate_rand_lambda_float = [=] __device__(int32_t i) {
@@ -115,8 +119,10 @@ void Rand<float>(ContextPtr context, float low, float high, int32_t dim,
     array_data[i] = t * range + low;
   };
   EvalDevice(context, dim, generate_rand_lambda_float);
-
   state.offset += 4;
+#else
+  K2_LOG(FATAL) << "Unreachable code";
+#endif
 }
 
 template <>
@@ -131,7 +137,7 @@ void Rand<double>(ContextPtr context, double low, double high, int32_t dim,
                                                             array_data);
     return;
   }
-
+#ifdef K2_WITH_CUDA
   K2_CHECK_EQ(device_type, kCuda);
   CudaRandState &state = GetCudaRandState(context);
   double range = high - low;
@@ -147,8 +153,10 @@ void Rand<double>(ContextPtr context, double low, double high, int32_t dim,
     array_data[i] = t * range + low;
   };
   EvalDevice(context, dim, generate_rand_lambda_double);
-
   state.offset += 4;
+#else
+  K2_LOG(FATAL) << "Unreachable code.";
+#endif
 }
 
 template <>
@@ -165,6 +173,7 @@ void Rand<int32_t>(ContextPtr context, int32_t low, int32_t high, int32_t dim,
     return;
   }
 
+#ifdef K2_WITH_CUDA
   K2_CHECK_EQ(device_type, kCuda);
   CudaRandState &state = GetCudaRandState(context);
   uint32_t range = high - low;
@@ -183,6 +192,9 @@ void Rand<int32_t>(ContextPtr context, int32_t low, int32_t high, int32_t dim,
   EvalDevice(context, dim, generate_rand_lambda_double);
 
   state.offset += 4;
+#else
+  K2_LOG(FATAL) << "Unreachable code.";
+#endif
 }
 
 }  // namespace k2

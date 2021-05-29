@@ -11,7 +11,18 @@ endif()
 
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
-project(k2 CUDA CXX)
+set(languages CXX)
+if (APPLE)
+  message(STATUS "Disable cuda for macOS")
+  set(_K2_WITH_CUDA OFF)
+else()
+  set(languages ${languages} CUDA)
+  set(_K2_WITH_CUDA ON)
+endif()
+
+message(STATUS "Enabled languages: ${languages}")
+
+project(k2 ${languages})
 
 set(K2_VERSION "0.3.4")
 
@@ -39,8 +50,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_SHARED_LIBS "Whether to build shared or static lib" ON)
 option(K2_USE_PYTORCH "Whether to build with PyTorch" ON)
-option(K2_ENABLE_NVTX "Whether to build with the NVTX library" ON)
 option(K2_ENABLE_BENCHMARK "Whether to enable benchmark" ON)
+option(K2_WITH_CUDA "Whether to build k2 with CUDA" ${_K2_WITH_CUDA})
+
+# If K2_WITH_CUDA is ON, then K2_ENABLE_NVTX has a default value ON
+# If K2_WITH_CUDA is OFF, then K2_ENABLE_NVTX is set to OFF
+include(CMakeDependentOption)
+cmake_dependent_option(K2_ENABLE_NVTX "Whether to build with the NVTX library" ON K2_WITH_CUDA OFF)
 
 if(NOT K2_USE_PYTORCH)
   message(FATAL_ERROR "\
@@ -63,11 +79,35 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
 set(CMAKE_BUILD_RPATH "$ORIGIN")
 
-execute_process(COMMAND
-  lsb_release -sd
-  OUTPUT_VARIABLE K2_OS
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+if(UNIX AND NOT APPLE)
+  execute_process(COMMAND
+    lsb_release -sd
+    OUTPUT_VARIABLE K2_OS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+elseif(APPLE)
+  execute_process(COMMAND
+    sw_vers -productName
+    OUTPUT_VARIABLE _product_name
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  execute_process(COMMAND
+    sw_vers -productVersion
+    OUTPUT_VARIABLE _product_version
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+
+  execute_process(COMMAND
+    sw_vers -buildVersion
+    OUTPUT_VARIABLE _build_version
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  set(K2_OS "${_product_name} ${_product_version} ${_build_version}")
+else()
+  set(K2_OS "Unknown")
+endif()
+
 string(REGEX REPLACE "^\"+|\"+$" "" K2_OS "${K2_OS}")
 message(STATUS "K2_OS: ${K2_OS}")
 
@@ -106,51 +146,53 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 message(STATUS "C++ Standard version: ${CMAKE_CXX_STANDARD}")
 
-# Force CUDA C++ standard to be the same as the C++ standard used.
-#
-# Now, CMake is unaligned with reality on standard versions: https://gitlab.kitware.com/cmake/cmake/issues/18597
-# which means that using standard CMake methods, it's impossible to actually sync the CXX and CUDA versions for pre-11
-# versions of C++; CUDA accepts 98 but translates that to 03, while CXX doesn't accept 03 (and doesn't translate that to 03).
-# In case this gives You, dear user, any trouble, please escalate the above CMake bug, so we can support reality properly.
-if(DEFINED CMAKE_CUDA_STANDARD)
-  message(WARNING "You've set CMAKE_CUDA_STANDARD; please note that this variable is ignored, and CMAKE_CXX_STANDARD"
-    " is used as the C++ standard version for both C++ and CUDA.")
-endif()
+if(K2_WITH_CUDA)
+  # Force CUDA C++ standard to be the same as the C++ standard used.
+  #
+  # Now, CMake is unaligned with reality on standard versions: https://gitlab.kitware.com/cmake/cmake/issues/18597
+  # which means that using standard CMake methods, it's impossible to actually sync the CXX and CUDA versions for pre-11
+  # versions of C++; CUDA accepts 98 but translates that to 03, while CXX doesn't accept 03 (and doesn't translate that to 03).
+  # In case this gives You, dear user, any trouble, please escalate the above CMake bug, so we can support reality properly.
+  if(DEFINED CMAKE_CUDA_STANDARD)
+    message(WARNING "You've set CMAKE_CUDA_STANDARD; please note that this variable is ignored, and CMAKE_CXX_STANDARD"
+      " is used as the C++ standard version for both C++ and CUDA.")
+  endif()
 
 
-unset(CMAKE_CUDA_STANDARD CACHE)
-set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
+  unset(CMAKE_CUDA_STANDARD CACHE)
+  set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
-include(cmake/select_compute_arch.cmake)
-cuda_select_nvcc_arch_flags(K2_COMPUTE_ARCH_FLAGS)
-message(STATUS "K2_COMPUTE_ARCH_FLAGS: ${K2_COMPUTE_ARCH_FLAGS}")
+  include(cmake/select_compute_arch.cmake)
+  cuda_select_nvcc_arch_flags(K2_COMPUTE_ARCH_FLAGS)
+  message(STATUS "K2_COMPUTE_ARCH_FLAGS: ${K2_COMPUTE_ARCH_FLAGS}")
 
 # set(K2_COMPUTE_ARCHS 30 32 35 50 52 53 60 61 62 70 72)
-message(WARNING "arch 62/72 are not supported for now")
+  message(WARNING "arch 62/72 are not supported for now")
 
-set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
-set(K2_COMPUTE_ARCHS)
+  set(K2_COMPUTE_ARCH_CANDIDATES 35 50 60 61 70 75)
+  set(K2_COMPUTE_ARCHS)
 
-foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
-  if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
-    message(STATUS "Adding arch ${COMPUTE_ARCH}")
-    list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
-  else()
-    message(STATUS "Skipping arch ${COMPUTE_ARCH}")
+  foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCH_CANDIDATES)
+    if("${K2_COMPUTE_ARCH_FLAGS}" MATCHES ${COMPUTE_ARCH})
+      message(STATUS "Adding arch ${COMPUTE_ARCH}")
+      list(APPEND K2_COMPUTE_ARCHS ${COMPUTE_ARCH})
+    else()
+      message(STATUS "Skipping arch ${COMPUTE_ARCH}")
+    endif()
+  endforeach()
+
+  if(NOT K2_COMPUTE_ARCHS)
+    set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
   endif()
-endforeach()
 
-if(NOT K2_COMPUTE_ARCHS)
-  set(K2_COMPUTE_ARCHS ${K2_COMPUTE_ARCH_CANDIDATES})
-endif()
+  message(STATUS "K2_COMPUTE_ARCHS: ${K2_COMPUTE_ARCHS}")
 
-message(STATUS "K2_COMPUTE_ARCHS: ${K2_COMPUTE_ARCHS}")
-
-foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
-  set(CMAKE_CUDA_ARCHITECTURES "${COMPUTE_ARCH}-real;${COMPUTE_ARCH}-virtual;${CMAKE_CUDA_ARCHITECTURES}")
-endforeach()
+  foreach(COMPUTE_ARCH IN LISTS K2_COMPUTE_ARCHS)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -gencode arch=compute_${COMPUTE_ARCH},code=sm_${COMPUTE_ARCH}")
+    set(CMAKE_CUDA_ARCHITECTURES "${COMPUTE_ARCH}-real;${COMPUTE_ARCH}-virtual;${CMAKE_CUDA_ARCHITECTURES}")
+  endforeach()
 # ========= Settings for CUB end=========
+endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 find_package(Valgrind)
@@ -170,17 +212,27 @@ if(K2_USE_PYTORCH)
   include(torch)
 endif()
 
-if(CUDA_VERSION VERSION_LESS 11.0)
+if(K2_WITH_CUDA)
+  add_definitions(-DK2_WITH_CUDA)
+endif()
+
+if(K2_WITH_CUDA AND CUDA_VERSION VERSION_LESS 11.0)
   # CUB is included in CUDA toolkit 11.0 and above
   include(cub)
 endif()
 
-include(moderngpu)
+if(K2_WITH_CUDA)
+  include(moderngpu)
+endif()
+
 include(googletest)
 
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
+if(K2_WITH_CUDA)
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options -Wall --compiler-options -Wno-unknown-pragmas --compiler-options -Wno-strict-overflow")
+  message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
+endif()
+
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
-message(STATUS "CMAKE_CUDA_FLAGS: ${CMAKE_CUDA_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
 
 add_subdirectory(k2)
