@@ -7,6 +7,18 @@ import re
 import torch
 
 
+def with_cuda():
+    import platform
+    if platform.system == 'Darwin':
+        return False
+
+    cmake_args = os.environ.get('K2_CMAKE_ARGS', '')
+    if 'K2_WITH_CUDA=OFF' in cmake_args:
+        return False
+
+    return True
+
+
 def get_pytorch_version():
     # if it is 1.7.1+cuda101, then strip +cuda101
     return torch.__version__.split('+')[0]
@@ -42,16 +54,21 @@ def get_package_version():
     #
     default_cuda_version = '10.1'  # CUDA 10.1
 
-    cuda_version = get_cuda_version()
-
-    if is_for_pypi() and default_cuda_version == cuda_version:
-        cuda_version = ''
-        pytorch_version = ''
-        local_version = ''
+    if with_cuda():
+        cuda_version = get_cuda_version()
+        if is_for_pypi() and default_cuda_version == cuda_version:
+            cuda_version = ''
+            pytorch_version = ''
+            local_version = ''
+        else:
+            cuda_version = f'+cuda{cuda_version}'
+            pytorch_version = get_pytorch_version()
+            local_version = f'{cuda_version}.torch{pytorch_version}'
     else:
-        cuda_version = f'+cuda{cuda_version}'
-        pytorch_version = get_pytorch_version()
-        local_version = f'{cuda_version}.torch{pytorch_version}'
+        local_version = '+cpu'
+
+    if is_for_conda():
+        local_version = ''
 
     with open('CMakeLists.txt') as f:
         content = f.read()

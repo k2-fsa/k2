@@ -26,6 +26,11 @@
 #
 #       K2_IS_FOR_PYPI=1 python3 setup.py bdist_wheel --python-tag=py38
 #       twine upload ./dist/k2-0.3.4.dev20210512-py38-none-any.whl
+#
+# To build k2 without CUDA support, run
+#
+#       export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF"
+#       python3 setup.py install
 
 import glob
 import os

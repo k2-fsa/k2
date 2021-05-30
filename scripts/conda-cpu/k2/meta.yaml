@@ -7,10 +7,9 @@ source:
 
 build:
   number: 0
-  string: cuda{{ environ.get('K2_CUDA_VERSION') }}_py{{ environ.get('K2_PYTHON_VERSION') }}_torch{{ environ.get('K2_TORCH_VERSION') }}
+  string: py{{ environ.get('K2_PYTHON_VERSION') }}
   script_env:
     - K2_IS_GITHUB_ACTIONS
-    - K2_CUDA_VERSION
     - K2_TORCH_VERSION
     - K2_PYTHON_VERSION
     - K2_BUILD_TYPE
@@ -19,15 +18,16 @@ build:
 
 requirements:
   host:
+    - anaconda-client
     - cmake=3.18
     - python
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
-    - cudatoolkit={{ environ.get('K2_CUDA_VERSION') }}
-    - gcc_linux-64=7
+    - gcc_linux-64=7 # [linux]
+    - cpuonly # to install CPU version of PyTorch
   run:
     - python
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
-    - cudatoolkit={{ environ.get('K2_CUDA_VERSION') }}
+    - cpuonly
 
 about:
   home: https://github.com/k2-fsa/k2

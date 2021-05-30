@@ -11,7 +11,6 @@ __build_type__ = _k2.version.build_type
 __git_date__ = _k2.version.git_date
 __git_sha1__ = _k2.version.git_sha1
 __version__ = _k2.version.__version__
-with_cuda = _k2.with_cuda
 
 
 def main():
