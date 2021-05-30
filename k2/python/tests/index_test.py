@@ -81,7 +81,7 @@ class TestIndexRaggedInt(unittest.TestCase):
 
     def test(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             src_row_splits = torch.tensor([0, 2, 3, 3, 6],
@@ -134,7 +134,7 @@ class TestIndexTensorWithRaggedInt(unittest.TestCase):
 
     def test(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             src = torch.tensor([1, 2, 3, 4, 5, 6, 7],

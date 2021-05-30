@@ -55,3 +55,4 @@ from .utils import to_str
 from .utils import to_str_simple
 from .utils import to_tensor
 from .utils import create_sparse
+from _k2.version import with_cuda

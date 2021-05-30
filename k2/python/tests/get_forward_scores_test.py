@@ -30,7 +30,7 @@ class TestGetForwardScores(unittest.TestCase):
         '''
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda'))
 
         for device in devices:
@@ -89,7 +89,7 @@ class TestGetForwardScores(unittest.TestCase):
         '''
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda'))
 
         for device in devices:
@@ -168,7 +168,7 @@ class TestGetForwardScores(unittest.TestCase):
             4
         '''
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda'))
 
         for device in devices:

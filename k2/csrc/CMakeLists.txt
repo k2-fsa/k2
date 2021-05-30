@@ -17,6 +17,16 @@ if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE log_srcs SRCS ${log_srcs})
 endif()
 add_library(k2_log ${log_srcs})
+if(UNIX AND NOT APPLE AND NOT K2_WITH_CUDA)
+  # Without linking to libpthread.so, it throws
+  # in std::call_once
+  #
+  # It happens only on Linux, that's why
+  # we use the above guard to link against -pthread
+  #
+  # See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=60662
+  target_link_libraries(k2_log -pthread)
+endif()
 
 if(K2_HAVE_EXECINFO_H)
   target_compile_definitions(k2_log PRIVATE K2_HAVE_EXECINFO_H=1)

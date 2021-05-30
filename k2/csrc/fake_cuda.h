@@ -25,6 +25,8 @@
 #ifdef __clang__
 // clang does not recognize __forceinline__
 #define __forceinline__ inline
+#elif defined(__GNUC__)
+#define __forceinline__ __attribute__((always_inline)) inline
 #endif
 
 #define K2_NIY K2_LOG(FATAL) << "Not implemented yet. Don't call me!"

@@ -19,7 +19,7 @@ class TestDenseFsaVec(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
 
     def test_dense_fsa_vec(self):

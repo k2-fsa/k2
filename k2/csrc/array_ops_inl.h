@@ -11,6 +11,8 @@
 #error "this file is supposed to be included only by array_ops.h"
 #endif
 
+#include <string.h>  // for memcpy
+
 #include <algorithm>
 #include <cassert>
 #include <limits>

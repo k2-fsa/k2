@@ -6,6 +6,8 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
+#include <string.h>  // memcpy, memset
+
 #include "k2/csrc/tensor_ops.h"
 
 #include <algorithm>

@@ -29,7 +29,7 @@ class TestGetBackwardScores(unittest.TestCase):
             3
         '''
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda'))
 
         for device in devices:
@@ -94,7 +94,7 @@ class TestGetBackwardScores(unittest.TestCase):
         '''
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda'))
 
         for device in devices:
@@ -171,7 +171,7 @@ class TestGetBackwardScores(unittest.TestCase):
             4
         '''
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda'))
 
         for device in devices:

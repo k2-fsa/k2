@@ -19,7 +19,7 @@ class TestFsaFromUnaryFunctionRagged(unittest.TestCase):
 
     def test_without_empty_list(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:
@@ -123,7 +123,7 @@ class TestFsaFromUnaryFunctionRagged(unittest.TestCase):
 
     def test_with_empty_list(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:

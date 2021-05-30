@@ -22,7 +22,7 @@ class TestRaggedOps(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
 
     def test_remove_axis_ragged_array(self):
@@ -442,7 +442,7 @@ class TestRaggedOps(unittest.TestCase):
 
         assert shape.row_splits(1).device.type == 'cpu'
 
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             device = torch.device('cuda', 0)
             shape = shape.to(device)
             assert shape.row_splits(1).is_cuda

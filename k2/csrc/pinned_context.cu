@@ -4,6 +4,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <string.h>  // memcpy
+
 #include <deque>
 #include <functional>
 #include <mutex>  // NOLINT

@@ -4,6 +4,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <string.h>  // strncmp
+
 #include "k2/csrc/macros.h"
 #include "k2/csrc/math.h"
 
@@ -96,7 +98,7 @@ Real FixedRead(std::istream &is) {
     int pos = 0;
     while (pos < 9 && isalpha(is.peek())) c[pos++] = tolower(is.get());
     c[pos] = '\0';
-    if (strcmp(c, "inf") && strcmp(c, "infinity"))
+    if (strncmp(c, "inf", 3) && strncmp(c, "infinity", 8))
       is.setstate(std::ios::failbit);
     return std::numeric_limits<Real>::infinity();
     // can handle NaN's later, with:

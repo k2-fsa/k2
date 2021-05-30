@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cassert>
 #include <deque>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
