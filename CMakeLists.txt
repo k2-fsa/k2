@@ -131,7 +131,13 @@ check_include_file_cxx(cxxabi.h K2_HAVE_CXXABI_H)
 check_include_file_cxx(execinfo.h K2_HAVE_EXECINFO_H)
 
 include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-std=c++14" K2_COMPILER_SUPPORTS_CXX14)
+if(NOT MSVC)
+  # not windows
+  check_cxx_compiler_flag("-std=c++14" K2_COMPILER_SUPPORTS_CXX14)
+else()
+  # windows
+  check_cxx_compiler_flag("/std:c++14" K2_COMPILER_SUPPORTS_CXX14)
+endif()
 if(NOT K2_COMPILER_SUPPORTS_CXX14)
   message(FATAL_ERROR "
     k2 requires a compiler supporting at least C++14.
