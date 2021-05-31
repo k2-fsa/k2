@@ -121,7 +121,7 @@ jobs:
       - name: Display generated files
         if: startsWith(matrix.os, 'ubuntu')
         run: |
-          ls -lh /usr/local/miniconda/envs/k2/conda-bld/linux-64
+          ls -lh /usr/share/miniconda/envs/k2/conda-bld/linux-64
 
       - name: Display generated files
         if: startsWith(matrix.os, 'macos')
@@ -133,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
-          path: /usr/local/miniconda/envs/k2/conda-bld/linux-64/*.tar.bz2
+          path: /usr/share/miniconda/envs/k2/conda-bld/linux-64/*.tar.bz2
 
       - name: Upload generated files
         if: startsWith(matrix.os, 'macos')
