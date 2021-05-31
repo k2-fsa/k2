@@ -22,12 +22,11 @@ jobs:
     # see https://github.com/actions/virtual-environments/blob/win19/20210525.0/images/win/Windows2019-Readme.md
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest]
-        # python-version: [3.6, 3.7, 3.8, 3.9]
-        python-version: [3.8]
-        # torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
-        torch: ["1.7.1"]
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
 
     steps:
       - uses: actions/checkout@v2
@@ -78,15 +77,21 @@ jobs:
           ls -lh bin/*/*
           ls -lh lib/*/*
 
-      - name: Run tests
-        run: |
-          cd build_release
-          cmake --build . --target ALL_BUILD --config Release
-          cmake --build . --target test --config Release
-
       - name: Build wheel
         shell: bash
         run: |
           export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
           python3 setup.py bdist_wheel
           ls -lh dist/
+
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
+          path: dist/*.whl
+
+      - name: Run tests
+        run: |
+          cd build_release
+          cmake --build . --target ALL_BUILD --config Release
+          cmake --build . --target RUN_TESTS --config Release
