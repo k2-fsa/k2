@@ -7,7 +7,7 @@ source:
 
 build:
   number: 0
-  string: py{{ environ.get('K2_PYTHON_VERSION') }}
+  string: py{{ environ.get('K2_PYTHON_VERSION') }}_torch{{ environ.get('K2_TORCH_VERSION') }}
   script_env:
     - K2_IS_GITHUB_ACTIONS
     - K2_TORCH_VERSION
