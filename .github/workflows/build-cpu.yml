@@ -88,7 +88,7 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
-          python3 -m pip install -q wheel twine
+          python3 -m pip install -q wheel twine delocate
           python3 -m pip install -qq torch==${{ matrix.torch }}
 
       - name: Configure CMake
@@ -108,6 +108,14 @@ jobs:
           python3 setup.py bdist_wheel
           ls -lh dist/
           ls -lh build/*
+
+      - name: Fix wheels
+        if: startsWith(matrix.os, 'macos')
+        shell: bash
+        run: |
+          delocate-listdeps --all ./dist/*.whl
+          delocate-listdeps --depending ./dist/*.whl
+          delocate-wheel ./dist/*.whl
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
