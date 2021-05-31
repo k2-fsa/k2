@@ -20,6 +20,7 @@ jobs:
   nightly-cpu:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-18.04, macos-10.15]
         torch: ["1.7.1"]
@@ -29,10 +30,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - uses: szenius/set-timezone@v1.0
-        with:
-          timezoneLinux: "Asia/Shanghai"
 
       - name: Display date and time
         run: date
@@ -66,6 +63,7 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
+          python3 -m pip install -qq wheel twine
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
           python3 -m pip install -qq dataclasses graphviz
           sudo apt-get -qq install graphviz
@@ -77,6 +75,7 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
+          python3 -m pip install -qq wheel twine
           python3 -m pip install -qq torch==${{ matrix.torch }}
           python3 -m pip install -qq dataclasses graphviz
           brew install graphviz
