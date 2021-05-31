@@ -74,5 +74,11 @@ jobs:
         shell: bash
         run: |
           cd build
-          ls -lh */*
-          ls -lh */*/*
+          ls -lh bin/*/*
+          ls -lh lib/*/*
+
+      - name: run tests
+        run: |
+          cd build
+          cmake --build . --target all --config Release
+          cmake --build . --target test --config Release
