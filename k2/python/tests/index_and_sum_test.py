@@ -41,7 +41,7 @@ class TestIndexAndSum(unittest.TestCase):
             expected_grad[2] = scale[0] + scale[2]
             expected_grad[3] = scale[1] + scale[2] * 2
 
-            assert torch.all(torch.eq(src.grad, expected_grad))
+            assert torch.allclose(src.grad, expected_grad)
 
     def test_with_negative_1(self):
         devices = [torch.device('cpu')]
@@ -68,7 +68,7 @@ class TestIndexAndSum(unittest.TestCase):
             expected_grad[2] = scale[0] + scale[3]
             expected_grad[3] = scale[1] + scale[3] * 2
 
-            assert torch.all(torch.eq(src.grad, expected_grad))
+            assert torch.allclose(src.grad, expected_grad)
 
 
 if __name__ == '__main__':
