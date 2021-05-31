@@ -5,8 +5,6 @@ include_directories(${CMAKE_SOURCE_DIR})
 # it is located in k2/csrc/cmake/transform.cmake
 include(transform)
 
-add_subdirectory(host)
-
 #---------------------------- Build K2 CUDA sources ----------------------------
 
 configure_file(version.h.in ${CMAKE_CURRENT_BINARY_DIR}/version.h @ONLY)
@@ -41,6 +39,8 @@ target_include_directories(k2_nvtx INTERFACE ${CMAKE_SOURCE_DIR})
 if(K2_ENABLE_NVTX)
   target_compile_definitions(k2_nvtx INTERFACE K2_ENABLE_NVTX=1)
 endif()
+
+add_subdirectory(host)
 
 # please keep it sorted
 set(context_srcs
@@ -85,7 +85,7 @@ else()
 endif()
 
 # the target
-add_library(context SHARED ${context_srcs})
+add_library(context ${context_srcs})
 target_compile_definitions(context PUBLIC K2_TORCH_VERSION_MAJOR=${K2_TORCH_VERSION_MAJOR})
 target_compile_definitions(context PUBLIC K2_TORCH_VERSION_MINOR=${K2_TORCH_VERSION_MINOR})
 
@@ -106,9 +106,12 @@ target_link_libraries(context PUBLIC k2_log)
 target_link_libraries(context PUBLIC k2_nvtx)
 if(K2_USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
-  if(NOT APPLE)
-    # It causes errors on macOS.
+  if(UNIX AND NOT APPLE)
+    # It causes errors on macOS 
     target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/libtorch_python.so)
+    target_link_libraries(context PUBLIC ${PYTHON_LIBRARY})
+  elseif(WIN32)
+    target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/torch_python.lib)
     target_link_libraries(context PUBLIC ${PYTHON_LIBRARY})
   endif()
 endif()
@@ -121,7 +124,7 @@ if(NOT K2_WITH_CUDA)
   transform(OUTPUT_VARIABLE test_utils_srcs SRCS ${test_utils_srcs})
 endif()
 
-add_library(test_utils SHARED ${test_utils_srcs})
+add_library(test_utils ${test_utils_srcs})
 target_link_libraries(test_utils PUBLIC context gtest)
 
 # please sort the source files alphabetically
