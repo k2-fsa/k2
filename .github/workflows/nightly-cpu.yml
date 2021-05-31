@@ -65,8 +65,6 @@ jobs:
           python3 -m pip install -qq --upgrade pip
           python3 -m pip install -qq wheel twine
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
-          python3 -m pip install -qq dataclasses graphviz
-          sudo apt-get -qq install graphviz
 
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
@@ -77,8 +75,6 @@ jobs:
           python3 -m pip install -qq --upgrade pip
           python3 -m pip install -qq wheel twine
           python3 -m pip install -qq torch==${{ matrix.torch }}
-          python3 -m pip install -qq dataclasses graphviz
-          brew install graphviz
 
       - name: Build pip packages
         shell: bash

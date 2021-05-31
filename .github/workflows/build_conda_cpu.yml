@@ -78,7 +78,6 @@ jobs:
         run: |
           conda install -y -q anaconda-client
           conda install -y -q conda-build
-          conda install -y -q bs4 requests tqdm
           conda install -y -q -c pytorch pytorch=${{ matrix.torch }} cpuonly
 
       - name: Display conda info
@@ -108,11 +107,7 @@ jobs:
       - name: Display generated files
         if: startsWith(matrix.os, 'macos')
         run: |
-          find /usr/local/miniconda -name conda-bld
-          find /usr/local/miniconda -name "k2-0.3.4.dev20210531-py3.6.tar.bz2"
-          ls -lh /usr/local/miniconda/envs/k2/conda-bld/ || echo $?
-          ls -lh /usr/local/miniconda/conda-bld/ || echo $?
-          ls -lh /usr/local/miniconda/envs/k2/conda-bld/osx-64 || echo $?
+          ls -lh /usr/local/miniconda/envs/k2/conda-bld/osx-64
 
       - name: Upload generated files
         if: startsWith(matrix.os, 'ubuntu')

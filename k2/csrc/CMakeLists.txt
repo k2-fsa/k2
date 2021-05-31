@@ -109,9 +109,8 @@ if(K2_USE_PYTORCH)
   if(NOT APPLE)
     # It causes errors on macOS.
     target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/libtorch_python.so)
+    target_link_libraries(context PUBLIC ${PYTHON_LIBRARY})
   endif()
-
-  target_link_libraries(context PUBLIC ${PYTHON_LIBRARY})
 endif()
 target_include_directories(context PUBLIC ${PYTHON_INCLUDE_DIRS})
 
