@@ -1,0 +1,46 @@
+# Copyright (c)  2021  Fangjun Kuang (csukuangfj@gmail.com)
+
+# See ../../LICENSE for clarification regarding multiple authors
+
+
+name: build-windows
+
+on:
+  push:
+    branches:
+      - master
+      - cpu2
+  pull_request:
+    branches:
+      - master
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-windows:
+    # see https://github.com/actions/virtual-environments/blob/win19/20210525.0/images/win/Windows2019-Readme.md
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest]
+        # python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Display CMake version
+        run: |
+          cmake --version
+          cmake --help
