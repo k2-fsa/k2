@@ -16,9 +16,10 @@ on:
       - master
 
 jobs:
-  build:
+  run-tests-cpu:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-18.04, macos-10.15]
         torch: ["1.7.0"]
@@ -58,6 +59,7 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
+          python3 -m pip install -qq wheel twine
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
           python3 -m pip install -qq dataclasses graphviz
           sudo apt-get -qq install graphviz
@@ -69,6 +71,7 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
+          python3 -m pip install -qq wheel twine
           python3 -m pip install -qq torch==${{ matrix.torch }}
           python3 -m pip install -qq dataclasses graphviz
           brew install graphviz
@@ -85,9 +88,8 @@ jobs:
       - name: ${{ matrix.build_type }} Build
         shell: bash
         run: |
-          echo "number of cores: $(nproc)"
           cd build
-          make -j VERBOSE=1
+          make -j2 VERBOSE=1
 
       - name: Display Build Information
         shell: bash

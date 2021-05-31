@@ -30,20 +30,21 @@ execute_process(
   OUTPUT_VARIABLE K2_TORCH_VERSION_MINOR
 )
 
+execute_process(
+  COMMAND "${PYTHON_EXECUTABLE}" -c "import torch; print(torch.__version__)"
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  OUTPUT_VARIABLE TORCH_VERSION
+)
+
+message(STATUS "PyTorch version: ${TORCH_VERSION}")
+
 if(K2_WITH_CUDA)
-  execute_process(
-    COMMAND "${PYTHON_EXECUTABLE}" -c "import torch; print(torch.__version__)"
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    OUTPUT_VARIABLE TORCH_VERSION
-  )
 
   execute_process(
     COMMAND "${PYTHON_EXECUTABLE}" -c "import torch; print(torch.version.cuda)"
     OUTPUT_STRIP_TRAILING_WHITESPACE
     OUTPUT_VARIABLE TORCH_CUDA_VERSION
   )
-
-  message(STATUS "PyTorch version: ${TORCH_VERSION}")
 
   message(STATUS "PyTorch cuda version: ${TORCH_CUDA_VERSION}")
 

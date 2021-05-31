@@ -1,44 +1,31 @@
-# Copyright (c)  2021  Fangjun Kuang (csukuangfj@gmail.com)
-
-# See ../../LICENSE for clarification regarding multiple authors
-
-# refer to https://github.com/actions/starter-workflows/pull/47/files
-
-name: build-cpu
+name: nightly-cpu
 
 on:
   push:
     branches:
-      - master
       - cpu2
-  pull_request:
-    branches:
-      - master
+  schedule:
+    # minute (0-59)
+    # hour (0-23)
+    # day of the month (1-31)
+    # month (1-12)
+    # day of the week (0-6)
+    # nightly build at 14:00 UTC time every day
+    - cron: "0 14 * * *"
 
 env:
   BUILD_TYPE: Release
 
 jobs:
-  build-cpu:
+  nightly-cpu:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-18.04, macos-10.15]
-        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
-        # Python 3.9 is for PyTorch 1.7.1, 1.8.0
-        python-version: [3.6, 3.7, 3.8, 3.9]
-        exclude:
-          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-            torch: "1.5.0"
-          - python-version: 3.9
-            torch: "1.5.1"
-          - python-version: 3.9
-            torch: "1.6.0"
-          - python-version: 3.9
-            torch: "1.7.0"
+        torch: ["1.7.1"]
+        python-version: [3.6, 3.7, 3.8]
 
     steps:
-      # refer to https://github.com/actions/checkout
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
@@ -50,18 +37,6 @@ jobs:
       - name: Display date and time
         run: date
 
-      - name: Install GCC 7
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt-get install -y gcc-7 g++-7
-          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
-
-      - name: Display clang version
-        if: startsWith(matrix.os, 'macos')
-        run: |
-          clang --version
-
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -70,13 +45,30 @@ jobs:
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
 
+      - name: Install GCC 7
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get install -y gcc-7 g++-7
+          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
+
+      - name: Display GCC version
+        run: |
+          gcc --version
+
+      - name: Display clang version
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          clang --version
+
       - name: Install PyTorch ${{ matrix.torch }}
         if: startsWith(matrix.os, 'ubuntu')
         shell: bash
         run: |
-          python3 -m pip install -q --upgrade pip
-          python3 -m pip install -q wheel twine
+          python3 -m pip install -qq --upgrade pip
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          python3 -m pip install -qq dataclasses graphviz
+          sudo apt-get -qq install graphviz
 
           python3 -c "import torch; print('torch version:', torch.__version__)"
 
@@ -86,27 +78,29 @@ jobs:
         run: |
           python3 -m pip install -qq --upgrade pip
           python3 -m pip install -qq torch==${{ matrix.torch }}
+          python3 -m pip install -qq dataclasses graphviz
+          brew install graphviz
 
-      - name: Configure CMake
-        shell: bash
-        run: |
-          pwd
-          mkdir build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
-          cat k2/csrc/version.h
-
-      - name: Build k2
+      - name: Build pip packages
         shell: bash
         run: |
           export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF"
           export K2_MAKE_ARGS="-j2"
           python3 setup.py bdist_wheel
           ls -lh dist/
-          ls -lh build/*
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
           path: dist/*.whl
+
+      - name: Copy wheels to k2-fsa.org
+        uses: horochx/deploy-via-scp@v1.0.1
+        with:
+          host: ${{ secrets.K2_HOST }}
+          user: ${{ secrets.K2_USERNAME }}
+          key: ${{ secrets.K2_KEY }}
+          port: ${{ secrets.K2_PORT }}
+          local: dist/*.whl
+          remote: nightly/whl

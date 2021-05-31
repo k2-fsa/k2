@@ -45,6 +45,7 @@ import get_version
 get_package_version = get_version.get_package_version
 get_pytorch_version = get_version.get_pytorch_version
 is_for_pypi = get_version.is_for_pypi
+is_macos = get_version.is_macos
 
 if sys.version_info < (3,):
     print('Python 2 has reached end-of-life and is no longer supported by k2.')
@@ -100,6 +101,15 @@ class BuildExtension(build_ext):
         if make_args == '':
             make_args = '-j'
 
+        if is_macos():
+            if not 'K2_WITH_CUDA=OFF' in cmake_args:
+                print('Disable CUDA for macOS')
+                cmake_args += ' -DK2_WITH_CUDA=OFF'
+
+        if 'PYTHON_EXECUTABLE' not in cmake_args:
+            print(f'Setting PYTHON_EXECUTABLE to {sys.executable}')
+            cmake_args += f' -DPYTHON_EXECUTABLE={sys.executable}'
+
         build_cmd = f'''
             cd {self.build_temp}
 
@@ -118,6 +128,11 @@ class BuildExtension(build_ext):
         lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.so')
         for so in lib_so:
             shutil.copy(f'{so}', f'{self.build_lib}/')
+
+        if is_macos():
+            lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.dylib')
+            for so in lib_so:
+                shutil.copy(f'{so}', f'{self.build_lib}/')
 
 
 def get_long_description():

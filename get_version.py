@@ -2,14 +2,16 @@
 
 import datetime
 import os
+import platform
 import re
 
 import torch
 
+def is_macos():
+    return platform.system() == 'Darwin'
 
 def with_cuda():
-    import platform
-    if platform.system == 'Darwin':
+    if is_macos():
         return False
 
     cmake_args = os.environ.get('K2_CMAKE_ARGS', '')

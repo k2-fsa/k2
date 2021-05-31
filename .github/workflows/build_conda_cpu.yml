@@ -20,7 +20,7 @@ env:
   K2_BUILD_TYPE: Release
 
 jobs:
-  build_conda:
+  build_conda_cpu:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -96,3 +96,27 @@ jobs:
         run: |
           export K2_BUILD_TYPE=$K2_BUILD_TYPE
           ./scripts/build_conda_cpu.sh
+
+      - name: Display generated files
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          ls -lh /usr/share/miniconda/envs/k2/conda-bld/linux-64
+
+      - name: Display generated files
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          ls -lh /usr/share/miniconda/envs/k2/conda-bld/osx-64
+
+      - name: Upload generated files
+        if: startsWith(matrix.os, 'ubuntu')
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
+          path: /usr/share/miniconda/envs/k2/conda-bld/linux-64/*.tar.bz2
+
+      - name: Upload generated files
+        if: startsWith(matrix.os, 'macos')
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
+          path: /usr/share/miniconda/envs/k2/conda-bld/osx-64/*.tar.bz2
