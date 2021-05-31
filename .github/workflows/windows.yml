@@ -61,3 +61,14 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
           ls -lh
 
+      - name: Build k2
+        run: |
+          cd build
+          MSBuild.exe k2.sln
+
+      - name: Display generated files
+        shell: bash
+        run: |
+          cd build
+          ls -lh */*
+          ls -lh */*/*
