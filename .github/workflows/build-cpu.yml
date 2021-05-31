@@ -23,22 +23,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # os: [ubuntu-18.04, macos-10.15]
-        os: [macos-10.15]
-        # torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
-        torch: ["1.7.1"]
+        os: [ubuntu-18.04, macos-10.15]
+        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
         # Python 3.9 is for PyTorch 1.7.1, 1.8.0
-        # python-version: [3.6, 3.7, 3.8, 3.9]
-        python-version: [3.6]
-        # exclude:
-          # - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
-          #   torch: "1.5.0"
-          # - python-version: 3.9
-          #   torch: "1.5.1"
-          # - python-version: 3.9
-          #   torch: "1.6.0"
-          # - python-version: 3.9
-          #   torch: "1.7.0"
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        exclude:
+          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
+            torch: "1.5.0"
+          - python-version: 3.9
+            torch: "1.5.1"
+          - python-version: 3.9
+            torch: "1.6.0"
+          - python-version: 3.9
+            torch: "1.7.0"
 
     steps:
       # refer to https://github.com/actions/checkout
@@ -77,8 +74,8 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu')
         shell: bash
         run: |
-          python3 -m pip install -q --upgrade pip
-          python3 -m pip install -q wheel twine
+          python3 -m pip install -qq --upgrade pip
+          python3 -m pip install -qq wheel twine
           python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
 
           python3 -c "import torch; print('torch version:', torch.__version__)"
@@ -88,8 +85,10 @@ jobs:
         shell: bash
         run: |
           python3 -m pip install -qq --upgrade pip
-          python3 -m pip install -q wheel twine delocate
+          python3 -m pip install -qq wheel twine
           python3 -m pip install -qq torch==${{ matrix.torch }}
+
+          python3 -c "import torch; print('torch version:', torch.__version__)"
 
       - name: Configure CMake
         shell: bash
@@ -108,14 +107,6 @@ jobs:
           python3 setup.py bdist_wheel
           ls -lh dist/
           ls -lh build/*
-
-      # - name: Fix wheels
-      #   if: startsWith(matrix.os, 'macos')
-      #   shell: bash
-      #   run: |
-      #     delocate-listdeps --all ./dist/*.whl
-      #     delocate-listdeps --depending ./dist/*.whl
-      #     delocate-wheel ./dist/*.whl
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
