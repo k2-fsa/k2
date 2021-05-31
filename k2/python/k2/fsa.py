@@ -216,18 +216,17 @@ class Fsa(object):
         _ = self.properties
 
     def to_str(self, openfst: bool = False) -> str:
-        aux_labels = []  # actually a list of all integer tensor attributes, not
-                         # just the one named 'aux_labels'
+        extra_labels = []
         ragged_labels = []
         for name, value in sorted(self.named_tensor_attr(include_scores=False)):
             if isinstance(value, torch.Tensor) and value.dtype == torch.int32:
-                aux_labels.append(value)
+                extra_labels.append(value)
             elif isinstance(value, _k2.RaggedInt):
                 ragged_labels.append(value)
 
         if self.arcs.num_axes() == 2:
             ans = 'k2.Fsa: ' + _k2.fsa_to_str(self.arcs, openfst=openfst,
-                                              aux_labels=aux_labels,
+                                              extra_labels=extra_labels,
                                               ragged_labels=ragged_labels)
         else:
             ans = 'k2.FsaVec: \n'
@@ -237,7 +236,7 @@ class Fsa(object):
                 end = start + ragged_arc.values().shape[0]
                 ans += 'FsaVec[' + str(i) + ']: ' + _k2.fsa_to_str(
                     ragged_arc, openfst=openfst,
-                    aux_labels=[x[start:end] for x in aux_labels],
+                    extra_labels=[x[start:end] for x in extra_labels],
                     ragged_labels=[_k2.ragged_int_arange(x, 0, start, end)
                                    for x in ragged_labels])
         ans += 'properties_str = ' + _k2.fsa_properties_as_str(
@@ -344,8 +343,8 @@ class Fsa(object):
                 assert value.dtype == torch.int32
                 self.arcs.values()[:, 2] = value
                 self.__dict__['_properties'] = None
-                # access self.properties which will do a validity check on the modified
-                # FSA after getting the properties
+                # access self.properties which will do a validity check on the
+                # modified FSA after getting the properties
                 self.properties
                 return
 
@@ -818,7 +817,6 @@ class Fsa(object):
         self.scores.requires_grad_(requires_grad)
         return self
 
-
     def rename_tensor_attribute_(self, src_name: str, dest_name: str) -> 'Fsa':
         '''
         Rename a tensor attribute, and also rename non-tensor
@@ -846,12 +844,11 @@ class Fsa(object):
             setattr(self, dest_name, value)
             try:
                 del self._tensor_attr[src_name]
-            except:
+            except KeyError:
                 pass
         except KeyError as e:
             raise ValueError(f'Name {src_name} does not exist as a tensor '
                              'attribute: exception was ' + str(e))
-
 
         src_name_len = len(src_name)
         dest_name_len = len(dest_name)
@@ -860,7 +857,7 @@ class Fsa(object):
             if name[:src_name_len] == src_name:
                 # remove src_name from prefix and replace with dest_name
                 new_name = dest_name + name[src_name_len:]
-                to_move.append( (name, new_name, value ) )
+                to_move.append((name, new_name, value))
             elif name[:dest_name_len] == dest_name:
                 del self._non_tensor_attr[name]
 
@@ -898,9 +895,9 @@ class Fsa(object):
         return self
 
         # TODO(dan), maybe: instead of using the generic approach above, we
-        # could use more specific code like the following (the old code), which might
-        # be more efficient.  Or perhaps create a generic swap_tensor_attribute_
-        # function.
+        # could use more specific code like the following (the old code), which
+        # might be more efficient.  Or perhaps create a generic
+        # swap_tensor_attribute_ function.
         #
         # aux_labels = self.aux_labels
         # self.aux_labels = self.labels.clone()
@@ -917,8 +914,8 @@ class Fsa(object):
         # if aux_labels_sym is not None:
         #     self.labels_sym = aux_labels_sym
         # self.__dict__['_properties'] = None
-        # # access self.properties which will do a validity check on the modified
-        # # FSA after getting the properties
+        # # access self.properties which will do a validity check on the
+        # # modified FSA after getting the properties
         # self.properties
         # return self
 

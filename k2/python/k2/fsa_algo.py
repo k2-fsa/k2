@@ -136,9 +136,10 @@ def _propagate_aux_labels_binary_function(
             # We only support attributes with dtype `torch.float32`.
             # Other kinds of attributes are discarded.
             if a_value.dtype != torch.float32:
-                raise AttributeError("We don't support propagating two attributes "
-                                     "with the same name that are not "
-                                     "real-valued, in intersection: " + name)
+                raise AttributeError("We don't support propagating two "
+                                     "attributes with the same name that are "
+                                     "not real-valued, in intersection: " +
+                                     name)
             b_value = getattr(b_fsa, name)
             assert b_value.dtype == torch.float32
             # The following will actually overwrite `scores` with the same
@@ -166,13 +167,13 @@ def _propagate_aux_labels_binary_function(
                 value = index_ragged(b_value, b_arc_map)
             setattr(out_fsa, name, value)
 
-
     for name, a_value in a_fsa.named_non_tensor_attr():
         setattr(out_fsa, name, a_value)
 
     for name, b_value in b_fsa.named_non_tensor_attr():
         if not hasattr(out_fsa, name):
             setattr(out_fsa, name, b_value)
+
 
 def intersect_device(
         a_fsas: Fsa,
@@ -339,6 +340,7 @@ def intersect(a_fsa: Fsa,
     else:
         return out_fsa
 
+
 def compose(a_fsa: Fsa,
             b_fsa: Fsa,
             treat_epsilons_specially: bool = True,
@@ -394,8 +396,9 @@ def compose(a_fsa: Fsa,
     '''
     try:
         assert isinstance(a_fsa.aux_labels, Tensor)
-    except:
-        raise ValueError("Expected a_fsa to have aux_labels (not ragged)")
+    except Exception as e:
+        raise ValueError("Expected a_fsa to have aux_labels (not ragged): ",
+                         str(e))
     a_fsa_inv = a_fsa.invert()
     a_fsa_inv = arc_sort(a_fsa_inv)
     if treat_epsilons_specially is True or b_fsa.is_cpu():
@@ -411,13 +414,12 @@ def compose(a_fsa: Fsa,
     ans = intersect(a_fsa_inv, b_fsa,
                     treat_epsilons_specially=treat_epsilons_specially)
 
-
-    if inner_labels != None:
+    if inner_labels is not None:
         ans.rename_tensor_attribute_('labels', inner_labels)
 
     if not hasattr(b_fsa, 'aux_labels'):
-        assert inner_labels == None and 'it should not be necessary to set ' \
-                'inner_labels if b has no aux_labels'
+        assert inner_labels is None and 'it should not be necessary to set ' \
+            'inner_labels if b has no aux_labels'
         ans.rename_tensor_attribute_('labels', 'aux_labels')
 
     ans.rename_tensor_attribute_('left_labels', 'labels')
@@ -624,7 +626,8 @@ def remove_epsilon_iterative_tropical(fsa: Fsa) -> Fsa:
     return remove_epsilon(fsa)
 
 
-def remove_epsilon_and_add_self_loops(fsa: Fsa, remove_filler: bool = True) -> Fsa:
+def remove_epsilon_and_add_self_loops(fsa: Fsa,
+                                      remove_filler: bool = True) -> Fsa:
     '''Remove epsilons (symbol zero) in the input Fsa, and then add
     epsilon self-loops to all states in the input Fsa (usually as
     a preparation for intersection with treat_epsilons_specially=0).
@@ -645,8 +648,8 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa, remove_filler: bool = True) -> F
     ragged_arc, arc_map = _k2.remove_epsilon_and_add_self_loops(
         fsa.arcs, fsa.properties)
 
-    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map,
-                                                      remove_filler=remove_filler)
+    out_fsa = k2.utils.fsa_from_unary_function_ragged(
+        fsa, ragged_arc, arc_map, remove_filler=remove_filler)
 
     return out_fsa
 
@@ -767,8 +770,8 @@ def invert(fsa: Fsa,
             return fsa.invert(), arc_map
     else:
         assert isinstance(fsa.aux_labels, k2.RaggedInt)
-        fsa, arc_map = expand_ragged_attributes(fsa, ret_arc_map=True,
-                                                ragged_attribute_names=['aux_labels'])
+        fsa, arc_map = expand_ragged_attributes(
+            fsa, ret_arc_map=True, ragged_attribute_names=['aux_labels'])
         fsa = fsa.invert_()
         if ret_arc_map:
             return fsa, arc_map
@@ -886,10 +889,10 @@ def expand_ragged_attributes(
                 ragged_attribute_tensors.append(value)
                 ragged_attribute_names.append(name)
     else:
-        ragged_attribute_tensors = [ getattr(fsas, name) for name in ragged_attribute_names ]
+        ragged_attribute_tensors = [getattr(fsas, name)
+                                    for name in ragged_attribute_names]
         for t in ragged_attribute_tensors:
             assert isinstance(t, k2.RaggedInt)
-
 
     if len(ragged_attribute_tensors) == 0:
         if ret_arc_map:
@@ -914,9 +917,8 @@ def expand_ragged_attributes(
             filler = float(fsas.get_filler(name))
             setattr(dest, name, index_select(value, arc_map,
                                              default_value=filler))
-        elif not name in ragged_attribute_names:
+        elif name not in ragged_attribute_names:
             setattr(dest, name, index(value, arc_map))
-
 
     # Handle the attributes that were ragged but are now linear
     for name, value in zip(ragged_attribute_names, dest_labels):

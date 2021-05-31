@@ -22,7 +22,7 @@ namespace k2 {
   The string `s` consists of lines describing arcs or final-states.
   Arcs are represented as:
 
-    src_state dest_state label [aux_label1 aux_label2...] [ragged_labels1 raged_labels2...]   [cost/score]
+    src_state dest_state label [extra_label1 extra_label2...] [ragged_labels1 raged_labels2...]   [cost/score]
 
 
   [cost/score] is a float, ragged_labels1 and ragged_labels2 are lists of
@@ -59,15 +59,16 @@ namespace k2 {
                     weights as costs, not scores, so we negate them as we read.
                     We will also allow multiple final states with weights
                     associated with them.
-  @param [in]  num_aux_labels  The number of auxiliary labels to expect on
+  @param [in]  num_extra_labels  The number of auxiliary labels to expect on
                     each line.  In OpenFST terminology, 0 would be an acceptor
                     and 1 would be a transducer
-  @param [out]  aux_labels
-                    This is ignored if num_aux_labels == 0.
-                    If num_aux_labels > 0, this will be set to an
-                    Array2 (on CPU) of shape (num_aux_labels, num_arcs).
+  @param [out]  extra_labels
+                    This is ignored if num_extra_labels == 0.
+                    If num_extra_labels > 0, this will be set to an
+                    Array2 (on CPU) of shape (num_extra_labels, num_arcs).
                     Note: on final-arcs (which are not explicitly represented in
-                    the OpenFst format), the value of the aux_labels will be -1.
+                    the OpenFst format), the value of the extra_labels will
+                    be -1.
   @param [in]  num_ragged_labels  The number of ragged labels to expect on
                     each line; they will appeear as lists of integers enclosed
                     by [ ].
@@ -78,22 +79,22 @@ namespace k2 {
  */
 Fsa FsaFromString(const std::string &s,
                   bool openfst = false,
-                  int32_t num_aux_labels = 0,
-                  Array2<int32_t> *aux_labels = nullptr,
+                  int32_t num_extra_labels = 0,
+                  Array2<int32_t> *extra_labels = nullptr,
                   int32_t num_ragged_labels = 0,
                   Ragged<int32_t> *ragged_labels = nullptr);
 
 /* Convert an FSA to a string.
 
-   If the FSA is an acceptor, i.e., aux_labels == nullptr,  every arc
+   If the FSA is an acceptor, i.e., extra_labels == nullptr,  every arc
    is converted to a line with the following form:
 
       src_state dest_state label score
 
-   If the FSA is a transducer, i.e., aux_labels != nullptr, every arc
+   If the FSA is a transducer, i.e., extra_labels != nullptr, every arc
    is converted to a line with the following form:
 
-      src_state dest_state label aux_label score
+      src_state dest_state label extra_label score
 
    The last line of the resulting string contains:
 
@@ -109,9 +110,9 @@ Fsa FsaFromString(const std::string &s,
    @param [in]  openfst
                       If true, the scores will first be negated and
                       then printed.
-   @param [in] num_aux_labels  The number of auxiliary labels attached to
+   @param [in] num_extra_labels  The number of auxiliary labels attached to
                       the FSA
-   @param [in]   aux_labels   A pointer to an array of `num_aux_labels`
+   @param [in]   extra_labels   A pointer to an array of `num_extra_labels`
                       arrays, indexed by arc.
    @param [in] num_ragged_labels  The number of ragged labels attached to
                      the FSA
@@ -120,8 +121,8 @@ Fsa FsaFromString(const std::string &s,
                     `ragged_labels[i].Dim0() == fsa.NumElements()`.
  */
 std::string FsaToString(const Fsa &fsa, bool openfst = false,
-                        int32_t num_aux_labels = 0,
-                        const Array1<int32_t> *aux_labels = nullptr,
+                        int32_t num_extra_labels = 0,
+                        const Array1<int32_t> *extra_labels = nullptr,
                         int32_t num_ragged_labels = 0,
                         Ragged<int32_t> *ragged_labels = nullptr);
 
@@ -668,7 +669,7 @@ void FixNumStates(FsaVec *fsas);
   This function ensures that labels associated with an Fsa or FsaVec have
   the value -1 in the appropriate places, and only in the appropriate
   places.
-      @param [in] fsas   The FSAs whose labels (or aux_labels) we want
+      @param [in] fsas   The FSAs whose labels (or extra_labels) we want
                 to fix
       @param [in,out] labels_data   Pointer to data we want to fix,
                indexed as `labels_data[i * labels_stride]` for

@@ -37,16 +37,16 @@ def to_str(fsa: Fsa,
       A string representation of the Fsa.
     '''
     assert fsa.arcs.num_axes() == 2
-    aux_labels = []
+    extra_labels = []
     ragged_labels = []
     for name, value in sorted(fsa.named_tensor_attr(include_scores=False)):
         if isinstance(value, torch.Tensor) and value.dtype == torch.int32:
-            aux_labels.append(value)
+            extra_labels.append(value)
         elif isinstance(value, _k2.RaggedInt):
             ragged_labels.append(value)
 
     return _k2.fsa_to_str(fsa.arcs, openfst=openfst,
-                          aux_labels=aux_labels,
+                          extra_labels=extra_labels,
                           ragged_labels=ragged_labels)
 
 
@@ -471,8 +471,8 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
     dest = Fsa(dest_arcs)
 
     for name, value in src.named_tensor_attr(include_scores=False):
-        if (remove_filler and isinstance(value, torch.Tensor) and
-            value.dtype == torch.int32):
+        if remove_filler and isinstance(value, torch.Tensor) and \
+           value.dtype == torch.int32:
             # when removing fillers for `aux_labels`, we need to treat -1 as a
             # filler where it is on a final-arc.  We assume that src has been
             # checked for validity, so -1 always indicates a final-arc.

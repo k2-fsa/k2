@@ -86,6 +86,5 @@ class TestCompose(unittest.TestCase):
         assert torch.all(torch.eq(ans.aux_labels, torch.tensor([1, 3, 5, -1])))
 
 
-
 if __name__ == '__main__':
     unittest.main()
