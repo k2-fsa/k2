@@ -26,6 +26,8 @@ jobs:
         os: [windows-latest]
         # python-version: [3.6, 3.7, 3.8, 3.9]
         python-version: [3.8]
+        # torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0"]
+        torch: ["1.7.1"]
 
     steps:
       - uses: actions/checkout@v2
@@ -39,6 +41,12 @@ jobs:
 
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
+
+      - name: Install PyTorch ${{ matrix.torch }}
+        run: |
+          pip3 install torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+
+          python3 -m torch.utils.collect_env
 
       - name: Display CMake version
         run: |
