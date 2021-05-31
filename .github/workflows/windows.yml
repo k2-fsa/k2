@@ -44,7 +44,7 @@ jobs:
 
       - name: Install PyTorch ${{ matrix.torch }}
         run: |
-          pip3 install torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip3 install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
 
           python3 -m torch.utils.collect_env
 
@@ -52,3 +52,11 @@ jobs:
         run: |
           cmake --version
           cmake --help
+
+      - name: Configure CMake
+        run: |
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
+          ls -lh
+
