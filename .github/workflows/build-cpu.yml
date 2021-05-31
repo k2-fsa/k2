@@ -109,13 +109,13 @@ jobs:
           ls -lh dist/
           ls -lh build/*
 
-      - name: Fix wheels
-        if: startsWith(matrix.os, 'macos')
-        shell: bash
-        run: |
-          delocate-listdeps --all ./dist/*.whl
-          delocate-listdeps --depending ./dist/*.whl
-          delocate-wheel ./dist/*.whl
+      # - name: Fix wheels
+      #   if: startsWith(matrix.os, 'macos')
+      #   shell: bash
+      #   run: |
+      #     delocate-listdeps --all ./dist/*.whl
+      #     delocate-listdeps --depending ./dist/*.whl
+      #     delocate-wheel ./dist/*.whl
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2

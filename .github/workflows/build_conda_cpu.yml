@@ -4,6 +4,27 @@
 
 # refer to https://github.com/actions/starter-workflows/pull/47/files
 
+
+# For macOS, it throws the following error when executing `python3 -m k2.version`
+#
+# $ python3 -m k2.version
+# Fatal Python error: PyMUTEX_LOCK(gil->mutex) failed
+# Python runtime state: unknown
+#
+# Abort trap: 6
+#
+#
+# Until we find an solution to the above error, we disable building conda packages for macOS
+#
+# Note, we have to set
+#
+# export DYLD_FALLBACK_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.8/site-packages:$DYLD_FALLBACK_LIBRARY_PATH
+#
+# before running `python3 -m k2.version`
+#
+# See https://github.com/openPMD/openPMD-api/issues/593#issuecomment-552690470
+
+
 name: build_conda_cpu
 
 on:
@@ -25,11 +46,10 @@ jobs:
     strategy:
       matrix:
         # os: [ubuntu-16.04, macos-10.15]
-        os: [macos-10.15]
+        os: [ubuntu-16.04]
         # anaconda does not support 3.9 as of 2021.05.08
         # python-version: [3.6, 3.7, 3.8, 3.9]
-        # python-version: [3.6, 3.7, 3.8]
-        python-version: [3.8]
+        python-version: [3.6, 3.7, 3.8]
         # from https://download.pytorch.org/whl/torch_stable.html
         #
         # PyTorch 1.8.x and 1.7.1 support 3.6, 3.7, 3.8, 3.9
@@ -43,8 +63,7 @@ jobs:
         #  https://github.com/csukuangfj/k2/runs/2533830771?check_suite_focus=true
         #  and
         #  https://github.com/NVIDIA/apex/issues/805
-        # torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"]
-        torch: ["1.8.1"]
+        torch: ["1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"]
         # exclude:
           # - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
           #   torch: "1.5.0"
