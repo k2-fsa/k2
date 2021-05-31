@@ -49,6 +49,7 @@ jobs:
       - name: Install PyTorch ${{ matrix.torch }}
         run: |
           pip3 install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip3 install -qq wheel twine
 
           python3 -m torch.utils.collect_env
 
@@ -60,25 +61,32 @@ jobs:
       - name: Configure CMake
         shell: bash
         run: |
-          mkdir build
-          cd build
+          mkdir build_release
+          cd build_release
           cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
           ls -lh
 
       - name: Build k2
         run: |
-          cd build
+          cd build_release
           cmake --build . --target _k2 --config Release
 
       - name: Display generated files
         shell: bash
         run: |
-          cd build
+          cd build_release
           ls -lh bin/*/*
           ls -lh lib/*/*
 
-      - name: run tests
+      - name: Run tests
         run: |
-          cd build
-          cmake --build . --target all --config Release
+          cd build_release
+          cmake --build . --target ALL_BUILD --config Release
           cmake --build . --target test --config Release
+
+      - name: Build wheel
+        shell: bash
+        run: |
+          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
+          python3 setup.py bdist_wheel
+          ls -lh dist/

@@ -7,8 +7,14 @@ import re
 
 import torch
 
+
 def is_macos():
     return platform.system() == 'Darwin'
+
+
+def is_windows():
+    return platform.system() == 'Windows'
+
 
 def with_cuda():
     if is_macos():

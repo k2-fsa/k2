@@ -46,6 +46,7 @@ get_package_version = get_version.get_package_version
 get_pytorch_version = get_version.get_pytorch_version
 is_for_pypi = get_version.is_for_pypi
 is_macos = get_version.is_macos
+is_windows = get_version.is_windows
 
 if sys.version_info < (3,):
     print('Python 2 has reached end-of-life and is no longer supported by k2.')
@@ -110,15 +111,24 @@ class BuildExtension(build_ext):
             print(f'Setting PYTHON_EXECUTABLE to {sys.executable}')
             cmake_args += f' -DPYTHON_EXECUTABLE={sys.executable}'
 
-        build_cmd = f'''
-            cd {self.build_temp}
+        if is_windows():
+            build_cmd = f'''
+                cd {self.build_temp}
 
-            cmake {cmake_args} {k2_dir}
+                cmake {cmake_args} {k2_dir}
 
-            cat k2/csrc/version.h
+                cmake --build . --target _k2 --config Release
+            '''
+        else:
+            build_cmd = f'''
+                cd {self.build_temp}
 
-            make {make_args} _k2
-        '''
+                cmake {cmake_args} {k2_dir}
+
+                cat k2/csrc/version.h
+
+                make {make_args} _k2
+            '''
         print(f'build command is:\n{build_cmd}')
 
         ret = os.system(build_cmd)
@@ -131,6 +141,18 @@ class BuildExtension(build_ext):
 
         if is_macos():
             lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.dylib')
+            for so in lib_so:
+                shutil.copy(f'{so}', f'{self.build_lib}/')
+        elif is_windows():
+            # bin/Release/_k2.cp38-win_amd64.pyd
+            lib_so = glob.glob(f'{self.build_temp}/**/*k2*.pyd',
+                               recursive=True)
+            for so in lib_so:
+                shutil.copy(f'{so}', f'{self.build_lib}/')
+
+            # lib/Release/{_k2,k2_log,k2context,k2fsa}.lib
+            lib_so = glob.glob(f'{self.build_temp}/**/*k2*.lib',
+                               recursive=True)
             for so in lib_so:
                 shutil.copy(f'{so}', f'{self.build_lib}/')
 
