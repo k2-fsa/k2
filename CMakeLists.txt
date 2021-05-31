@@ -12,7 +12,7 @@ endif()
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 set(languages CXX)
-if (APPLE OR NOT K2_WITH_CUDA)
+if (APPLE OR (DEFINED K2_WITH_CUDA AND NOT K2_WITH_CUDA))
   message(STATUS "Disable CUDA support")
   set(_K2_WITH_CUDA OFF)
 else()
@@ -131,11 +131,10 @@ check_include_file_cxx(cxxabi.h K2_HAVE_CXXABI_H)
 check_include_file_cxx(execinfo.h K2_HAVE_EXECINFO_H)
 
 include(CheckCXXCompilerFlag)
-if(NOT MSVC)
-  # not windows
+if(NOT WIN32)
   check_cxx_compiler_flag("-std=c++14" K2_COMPILER_SUPPORTS_CXX14)
 else()
-  # windows
+  # windows x86 or x86_64
   check_cxx_compiler_flag("/std:c++14" K2_COMPILER_SUPPORTS_CXX14)
 endif()
 if(NOT K2_COMPILER_SUPPORTS_CXX14)
