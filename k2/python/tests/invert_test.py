@@ -88,10 +88,9 @@ class TestInvert(unittest.TestCase):
             assert torch.all(
                 torch.eq(ans.tensor_attr1,
                          torch.tensor([1, 2, 0, 0, 3, 4, 5], device=device)))
-
-            assert str(ans.aux_labels) == str(
-                k2.RaggedInt('[[1] [2] [] [] [3] [4] [-1]]'))
-
+            assert torch.all(
+                torch.eq(ans.aux_labels,
+                         torch.tensor([1, 2, 0, 0, 3, 4, -1], device=device)))
             assert torch.all(
                 torch.eq(ans.labels,
                          torch.tensor([2, 3, 3, 4, 0, 5, -1], device=device)))

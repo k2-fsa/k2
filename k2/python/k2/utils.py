@@ -10,6 +10,8 @@ from typing import Union
 import torch
 
 from .fsa import Fsa
+from .ops import index
+from .ops import index_select
 from .symbol_table import SymbolTable
 import k2
 import k2.ragged
@@ -216,17 +218,17 @@ def to_dot(fsa: Fsa, title: Optional[str] = None) -> 'Digraph':  # noqa
                 dot.node(dst_state, label=dst_state, **default_node_attr)
             seen.add(dst_state)
         if aux_labels is not None:
-            if hasattr(fsa, 'aux_symbols'):
+            if hasattr(fsa, 'aux_labels_sym'):
                 aux_label = convert_aux_label_to_symbol(
-                    aux_labels, i, fsa.aux_symbols)
+                    aux_labels, i, fsa.aux_labels_sym)
             else:
                 aux_label = convert_aux_label_to_symbol(aux_labels, i, None)
             aux_label = aux_label.replace('<eps>', 'ε')
         else:
             aux_label = ''
 
-        if hasattr(fsa, 'symbols') and label != -1:
-            label = fsa.symbols.get(label)
+        if hasattr(fsa, 'labels_sym') and label != -1:
+            label = fsa.labels_sym.get(label)
             if label == '<eps>':
                 label = 'ε'
 
@@ -430,7 +432,12 @@ def fsa_from_unary_function_tensor(src: Fsa, dest_arcs: _k2.RaggedArc,
     dest = Fsa(dest_arcs)
 
     for name, value in src.named_tensor_attr(include_scores=False):
-        setattr(dest, name, k2.index(value, arc_map))
+        if isinstance(value, torch.Tensor):
+            filler = float(src.get_filler(name))
+            setattr(dest, name, index_select(value, arc_map,
+                                             default_value=filler))
+        else:
+            setattr(dest, name, index(value, arc_map))
 
     for name, value in src.named_non_tensor_attr():
         setattr(dest, name, value)
@@ -440,7 +447,8 @@ def fsa_from_unary_function_tensor(src: Fsa, dest_arcs: _k2.RaggedArc,
 
 
 def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
-                                   arc_map: _k2.RaggedInt) -> Fsa:
+                                   arc_map: _k2.RaggedInt,
+                                   remove_filler: bool = True) -> Fsa:
     '''Create an Fsa object, including autograd logic and propagating
     properties from the source FSA.
 
@@ -463,7 +471,22 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
     dest = Fsa(dest_arcs)
 
     for name, value in src.named_tensor_attr(include_scores=False):
-        setattr(dest, name, k2.index(value, arc_map))
+        if (remove_filler and isinstance(value, torch.Tensor) and
+            value.dtype == torch.int32):
+            # when removing fillers for `aux_labels`, we need to treat -1 as a
+            # filler where it is on a final-arc.  We assume that src has been
+            # checked for validity, so -1 always indicates a final-arc.
+            if name == 'aux_labels':
+                value = value.clone()
+                value[torch.where(src.labels == -1)] = 0
+                filler = 0  # filler is always 0 for aux_labels.
+            else:
+                filler = src.get_filler(name)
+            new_value = index(value, arc_map)
+            setattr(dest, name, k2.ragged.remove_values_eq(new_value, filler))
+        else:
+            new_value = index(value, arc_map)
+            setattr(dest, name, new_value)
 
     for name, value in src.named_non_tensor_attr():
         setattr(dest, name, value)

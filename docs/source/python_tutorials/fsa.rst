@@ -88,8 +88,7 @@ You can also attach a symbol table to the above FSA:
       b 20
       c 30
     '''
-    symbols = k2.SymbolTable.from_str(sym_str)
-    fsa.symbols = symbols
+    fsa.labels_sym = k2.SymbolTable.from_str(sym_str)
     fsa.draw('fsa_symbols.svg', title='An FSA with symbol table')
 
 The visualization result is given in :numref:`tutorial_fsa_symbols`.
@@ -104,7 +103,7 @@ The visualization result is given in :numref:`tutorial_fsa_symbols`.
     Visualization of an FSA with a symbol table.
 
 To attach a symbol table to an FSA, just assign an instance of class :class:`k2.SymbolTable`
-to the ``symbols`` attribute of the FSA.
+to the ``labels_sym`` attribute of the FSA.
 
 Auxiliary labels
 ~~~~~~~~~~~~~~~~
@@ -133,19 +132,19 @@ An example is given below.
 Auxiliary symbol table
 ~~~~~~~~~~~~~~~~~~~~~~
 
-If an FSA is assigned an attribute with name ``aux_symbols``,
+If an FSA is assigned an attribute with name ``aux_labels_sym``,
 its ``aux_labels`` is visualized with human readable strings instead of integer
-IDs.
+IDs (the same
 
 The following is an example.
 
 .. code-block:: python
 
-  aux_symbols = k2.SymbolTable.from_str('''
+  aux_labels_sym = k2.SymbolTable.from_str('''
     A 10
     B 30
   ''')
-  fsa.aux_symbols = aux_symbols
+  fsa.aux_labels_sym = aux_labels_sym
   fsa.draw('fsa_aux_symbols.svg', title='An FSA with aux_symbols')
 
 .. figure:: images/fsa_aux_symbols.svg

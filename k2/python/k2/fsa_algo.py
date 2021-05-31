@@ -17,6 +17,9 @@ from . import fsa_properties
 from .fsa import Fsa
 from .ops import index
 from .ops import index_select
+from .ops import index_ragged
+
+from torch import Tensor
 
 # Note: look also in autograd.py, differentiable operations may be there.
 
@@ -117,6 +120,60 @@ def top_sort(fsa: Fsa) -> Fsa:
     return out_fsa
 
 
+def _propagate_aux_labels_binary_function(
+        a_fsa: Fsa,
+        b_fsa: Fsa,
+        a_arc_map: Tensor,
+        b_arc_map: Tensor,
+        out_fsa: Fsa) -> None:
+
+    for name, a_value in a_fsa.named_tensor_attr():
+        # we include 'scores' in the attributes; this enables the
+        # autograd to work.
+        filler = float(a_fsa.get_filler(name))
+        if hasattr(b_fsa, name):
+            # Both a_fsa and b_fsa have this attribute.
+            # We only support attributes with dtype `torch.float32`.
+            # Other kinds of attributes are discarded.
+            if a_value.dtype != torch.float32:
+                raise AttributeError("We don't support propagating two attributes "
+                                     "with the same name that are not "
+                                     "real-valued, in intersection: " + name)
+            b_value = getattr(b_fsa, name)
+            assert b_value.dtype == torch.float32
+            # The following will actually overwrite `scores` with the same
+            # value it had before; but this enables the autograd to work since
+            # we do it using torch mechanisms.
+            value = index_select(a_value, a_arc_map, default_value=filler) \
+                    + index_select(b_value, b_arc_map, default_value=filler)
+            setattr(out_fsa, name, value)
+        else:
+            # only a_fsa has this attribute, copy it via arc_map
+            if isinstance(a_value, torch.Tensor):
+                value = index_select(a_value, a_arc_map, default_value=filler)
+            else:
+                assert isinstance(a_value, _k2.RaggedInt)
+                value = index_ragged(a_value, a_arc_map)
+            setattr(out_fsa, name, value)
+
+    for name, b_value in b_fsa.named_tensor_attr():
+        if not hasattr(out_fsa, name):
+            if isinstance(b_value, torch.Tensor):
+                filler = float(b_fsa.get_filler(name))
+                value = index_select(b_value, b_arc_map, default_value=filler)
+            else:
+                assert isinstance(b_value, _k2.RaggedInt)
+                value = index_ragged(b_value, b_arc_map)
+            setattr(out_fsa, name, value)
+
+
+    for name, a_value in a_fsa.named_non_tensor_attr():
+        setattr(out_fsa, name, a_value)
+
+    for name, b_value in b_fsa.named_non_tensor_attr():
+        if not hasattr(out_fsa, name):
+            setattr(out_fsa, name, b_value)
+
 def intersect_device(
         a_fsas: Fsa,
         b_fsas: Fsa,
@@ -129,7 +186,9 @@ def intersect_device(
 
     This function supports both CPU and GPU. But it is very slow on CPU.
     That's why this function name ends with `_device`. It is intended for GPU.
-    See :func:`k2.intersect` for intersecting two FSAs on CPU.
+    See :func:`k2.intersect` which is a more general interface
+    (it will call the same underlying code, IntersectDevice(), if
+    the inputs are on GPU and a_fsas is arc-sorted).
 
     Caution:
       Epsilons are treated as real, normal symbols.
@@ -185,36 +244,9 @@ def intersect_device(
         b_to_a_map, need_arc_map, sorted_match_a)
     out_fsas = Fsa(ragged_arc)
 
-    for name, a_value in a_fsas.named_tensor_attr():
-        if hasattr(b_fsas, name):
-            # Both a_fsas and b_fsas have this attribute.
-            # We only support attributes with dtype `torch.float32`.
-            # Other kinds of attributes are discarded.
-            if a_value.dtype != torch.float32:
-                continue
-            b_value = getattr(b_fsas, name)
-            assert b_value.dtype == torch.float32
-
-            value = index_select(a_value, a_arc_map) \
-                    + index_select(b_value, b_arc_map)
-            setattr(out_fsas, name, value)
-        else:
-            # only a_fsas has this attribute, copy it via arc_map
-            value = index(a_value, a_arc_map)
-            setattr(out_fsas, name, value)
-
-    # now copy tensor attributes that are in b_fsas but are not in a_fsas
-    for name, b_value in b_fsas.named_tensor_attr():
-        if not hasattr(out_fsas, name):
-            value = index(b_value, b_arc_map)
-            setattr(out_fsas, name, value)
-
-    for name, a_value in a_fsas.named_non_tensor_attr():
-        setattr(out_fsas, name, a_value)
-
-    for name, b_value in b_fsas.named_non_tensor_attr():
-        if not hasattr(out_fsas, name):
-            setattr(out_fsas, name, b_value)
+    _propagate_aux_labels_binary_function(a_fsas, b_fsas,
+                                          a_arc_map, b_arc_map,
+                                          out_fsas)
 
     if ret_arc_maps:
         return out_fsas, a_arc_map, b_arc_map
@@ -297,47 +329,20 @@ def intersect(a_fsa: Fsa,
         treat_epsilons_specially, need_arc_map)
 
     out_fsa = Fsa(ragged_arc)
-    for name, a_value in a_fsa.named_tensor_attr():
-        if hasattr(b_fsa, name):
-            # Both a_fsa and b_fsa have this attribute.
-            # We only support attributes with dtype `torch.float32`.
-            # Other kinds of attributes are discarded.
-            if a_value.dtype != torch.float32:
-                continue
-            b_value = getattr(b_fsa, name)
-            assert b_value.dtype == torch.float32
 
-            value = index_select(a_value, a_arc_map) \
-                    + index_select(b_value, b_arc_map)
-            setattr(out_fsa, name, value)
-        else:
-            # only a_fsa has this attribute, copy it via arc_map
-            value = index(a_value, a_arc_map)
-            setattr(out_fsa, name, value)
-
-    # now copy tensor attributes that are in b_fsa but are not in a_fsa
-    for name, b_value in b_fsa.named_tensor_attr():
-        if not hasattr(out_fsa, name):
-            value = index(b_value, b_arc_map)
-            setattr(out_fsa, name, value)
-
-    for name, a_value in a_fsa.named_non_tensor_attr():
-        setattr(out_fsa, name, a_value)
-
-    for name, b_value in b_fsa.named_non_tensor_attr():
-        if not hasattr(out_fsa, name):
-            setattr(out_fsa, name, b_value)
+    _propagate_aux_labels_binary_function(a_fsa, b_fsa,
+                                          a_arc_map, b_arc_map,
+                                          out_fsa)
 
     if ret_arc_maps:
         return out_fsa, a_arc_map, b_arc_map
     else:
         return out_fsa
 
-
 def compose(a_fsa: Fsa,
             b_fsa: Fsa,
             treat_epsilons_specially: bool = True,
-            inner_labels: str = None) -> Fsa:
+            inner_labels: Optional[str] = None) -> 'Fsa':
     '''Compute the composition of two FSAs.
 
     When `treat_epsilons_specially` is True, this function works only on CPU.
@@ -387,101 +392,36 @@ def compose(a_fsa: Fsa,
       if and only if the two input FSAs are single FSAs;
       otherwise, `len(out_fsa.shape)` is 3.
     '''
-    assert hasattr(a_fsa, 'aux_labels')
-
-    if a_fsa.requires_grad:
-        assert isinstance(a_fsa.aux_labels, torch.Tensor)
-        a_fsa_inv = a_fsa.invert()
-    else:
-        # k2.invert() does not support autograd.
-        # The current use case is for decoding, which does not need autograd.
-        # We may extend it to support autograd if needed.
-        a_fsa_inv = invert(a_fsa)
-
-    if treat_epsilons_specially is True or a_fsa_inv.is_cpu():
-        # the GPU version does not need to sort the input FSA
-        a_fsa_inv = arc_sort(a_fsa_inv)
-
+    try:
+        assert isinstance(a_fsa.aux_labels, Tensor)
+    except:
+        raise ValueError("Expected a_fsa to have aux_labels (not ragged)")
+    a_fsa_inv = a_fsa.invert()
+    a_fsa_inv = arc_sort(a_fsa_inv)
     if treat_epsilons_specially is True or b_fsa.is_cpu():
-        # the GPU version does not need to sort the input FSA
+        # the GPU version does not need to sort b.
         assert b_fsa.properties & fsa_properties.ARC_SORTED != 0
 
-    need_arc_map = True
-    ragged_arc, a_arc_map, b_arc_map = _k2.intersect(
-        a_fsa_inv.arcs, a_fsa_inv.properties, b_fsa.arcs, b_fsa.properties,
-        treat_epsilons_specially, need_arc_map)
+    a_fsa_inv.rename_tensor_attribute_('aux_labels', 'left_labels')
 
-    out_fsa = Fsa(ragged_arc)
-    if inner_labels is not None:
-        # out_fsa.`inner_labels` = out_fsa.labels.clone()
-        # need a clone here since `Fsa.labels` is a reference
-        setattr(out_fsa, inner_labels, out_fsa.labels.clone())
+    # Internally this will call host intersection, or Intersect(), or
+    # IntersectDevice(), according to various criteria such as CPU vs. GPU
+    # and treat_epsilons_specially == true or not (true not supported
+    # on GPU).
+    ans = intersect(a_fsa_inv, b_fsa,
+                    treat_epsilons_specially=treat_epsilons_specially)
 
-    if hasattr(b_fsa, 'aux_labels'):
-        out_fsa.aux_labels = index(b_fsa.aux_labels, b_arc_map)
-    else:
-        # need a clone here since `Fsa.labels` is a reference
-        out_fsa.aux_labels = out_fsa.labels.clone()
 
-    if isinstance(a_fsa_inv.aux_labels, torch.Tensor):
-        out_fsa.labels = index(a_fsa_inv.aux_labels, a_arc_map)
-    else:
-        assert isinstance(a_fsa_inv.aux_labels, k2.RaggedInt)
-        # Refer to the following URLs for an example:
-        # a_fsa:   https://git.io/Jqbob
-        # b_fsa:   https://git.io/JqbKL
-        # out_fsa: https://git.io/JqbK3
-        out_fsa.labels = out_fsa.aux_labels
-        out_fsa.aux_labels = index(a_fsa_inv.aux_labels, a_arc_map)
-        out_fsa = invert(out_fsa)
+    if inner_labels != None:
+        ans.rename_tensor_attribute_('labels', inner_labels)
 
-    for name, a_value in a_fsa_inv.named_tensor_attr():
-        if name in ('aux_labels', inner_labels):
-            continue
-        if hasattr(b_fsa, name):
-            # Both a_fsa and b_fsa have this attribute.
-            # We only support attributes with dtype `torch.float32`.
-            # Other kinds of attributes are discarded.
-            if a_value.dtype != torch.float32:
-                continue
-            b_value = getattr(b_fsa, name)
-            assert b_value.dtype == torch.float32
+    if not hasattr(b_fsa, 'aux_labels'):
+        assert inner_labels == None and 'it should not be necessary to set ' \
+                'inner_labels if b has no aux_labels'
+        ans.rename_tensor_attribute_('labels', 'aux_labels')
 
-            # The following will actually overwrite `scores` with the same
-            # value it had before; but this enables the autograd to work since
-            # we do it using torch mechanisms.
-            value = index_select(a_value, a_arc_map) + index_select(
-                b_value, b_arc_map)
-            setattr(out_fsa, name, value)
-        else:
-            # only a_fsa has this attribute, copy it via arc_map
-            value = index(a_value, a_arc_map)
-            setattr(out_fsa, name, value)
-
-    # now copy tensor attributes that are in b_fsa but are not in a_fsa
-    for name, b_value in b_fsa.named_tensor_attr():
-        if name in ('aux_labels', inner_labels):
-            continue
-        if not hasattr(out_fsa, name):
-            value = index(b_value, b_arc_map)
-            setattr(out_fsa, name, value)
-
-    for name, a_value in a_fsa_inv.named_non_tensor_attr():
-        if name == 'symbols':
-            continue
-
-        if name == 'aux_symbols':
-            setattr(out_fsa, 'symbols', a_value)
-        else:
-            setattr(out_fsa, name, a_value)
-
-    for name, b_value in b_fsa.named_non_tensor_attr():
-        if name == 'symbols' and not hasattr(b_fsa, 'aux_labels'):
-            setattr(out_fsa, 'aux_symbols', b_value)
-        elif not hasattr(out_fsa, name):
-            setattr(out_fsa, name, b_value)
-
-    return out_fsa
+    ans.rename_tensor_attribute_('left_labels', 'labels')
+    return ans
 
 
 def connect(fsa: Fsa) -> Fsa:
@@ -500,7 +440,7 @@ def connect(fsa: Fsa) -> Fsa:
       Otherwise, a new connected FSA is returned.
 
     Args:
-      fsa:
+     fsa:
         The input FSA to be connected.
 
     Returns:
@@ -668,7 +608,8 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
 
     ragged_arc, arc_map = _k2.remove_epsilon(fsa.arcs, fsa.properties)
 
-    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map)
+    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map,
+                                                      remove_filler=True)
 
     if hasattr(out_fsa, 'aux_labels') and \
             isinstance(out_fsa.aux_labels, k2.RaggedInt):
@@ -683,7 +624,7 @@ def remove_epsilon_iterative_tropical(fsa: Fsa) -> Fsa:
     return remove_epsilon(fsa)
 
 
-def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
+def remove_epsilon_and_add_self_loops(fsa: Fsa, remove_filler: bool = True) -> Fsa:
     '''Remove epsilons (symbol zero) in the input Fsa, and then add
     epsilon self-loops to all states in the input Fsa (usually as
     a preparation for intersection with treat_epsilons_specially=0).
@@ -691,6 +632,9 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
     Args:
       fsa:
         The input FSA. It can be either a single FSA or an FsaVec.
+      remove_filler:
+        If true, we will remove any `filler values` of attributes when
+        converting linear to ragged attributes.
     Returns:
       The resulting Fsa.   See :func:`remove_epsilon` for details.
       The only epsilons will be epsilon self-loops on all states.
@@ -701,11 +645,8 @@ def remove_epsilon_and_add_self_loops(fsa: Fsa) -> Fsa:
     ragged_arc, arc_map = _k2.remove_epsilon_and_add_self_loops(
         fsa.arcs, fsa.properties)
 
-    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map)
-
-    if hasattr(out_fsa, 'aux_labels') and \
-            isinstance(out_fsa.aux_labels, k2.RaggedInt):
-        out_fsa.aux_labels = k2.ragged.remove_values_eq(out_fsa.aux_labels, 0)
+    out_fsa = k2.utils.fsa_from_unary_function_ragged(fsa, ragged_arc, arc_map,
+                                                      remove_filler=remove_filler)
 
     return out_fsa
 
@@ -826,17 +767,13 @@ def invert(fsa: Fsa,
             return fsa.invert(), arc_map
     else:
         assert isinstance(fsa.aux_labels, k2.RaggedInt)
-        need_arc_map = True
-        ragged_arc, aux_labels, arc_map = _k2.invert(fsa.arcs, fsa.aux_labels,
-                                                     need_arc_map)
-        out_fsa = k2.utils.fsa_from_unary_function_tensor(
-            fsa, ragged_arc, arc_map)
-        out_fsa.aux_labels = aux_labels
-
+        fsa, arc_map = expand_ragged_attributes(fsa, ret_arc_map=True,
+                                                ragged_attribute_names=['aux_labels'])
+        fsa = fsa.invert_()
         if ret_arc_map:
-            return out_fsa, arc_map
+            return fsa, arc_map
         else:
-            return out_fsa
+            return fsa
 
 
 def random_paths(fsas: Fsa, use_double_scores: bool,
@@ -924,25 +861,35 @@ def prune_on_arc_post(fsas: Fsa, threshold_prob: float,
 
 def expand_ragged_attributes(
         fsas: Fsa,
-        ret_arc_map: bool = False
+        ret_arc_map: bool = False,
+        ragged_attribute_names: Optional[List[str]] = None
 ) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:  # noqa
     '''
     Turn ragged labels attached to this FSA into linear (Tensor) labels,
     expanding arcs into sequences of arcs as necessary to achieve this.
     Supports autograd.  If `fsas` had no ragged attributes, returns `fsas`
     itself.
-
+         fsas:   The source Fsa
          ret_arc_map:  if true, will return a pair (new_fsas, arc_map)
               with `arc_map` a tensor of int32 that maps from arcs in the
               result to arcs in `fsas`, with -1's for newly created arcs.
               If false, just returns new_fsas.
+         ragged_attribute_names:  If specified, just this list of ragged
+              attributes will be expanded to linear tensor attributes, and
+              the rest will stay ragged.
     '''
-    ragged_attribute_tensors = []
-    ragged_attribute_names = []
-    for name, value in fsas.named_tensor_attr(include_scores=False):
-        if isinstance(value, k2.RaggedInt):
-            ragged_attribute_tensors.append(value)
-            ragged_attribute_names.append(name)
+    if ragged_attribute_names is None:
+        ragged_attribute_tensors = []
+        ragged_attribute_names = []
+        for name, value in fsas.named_tensor_attr(include_scores=False):
+            if isinstance(value, k2.RaggedInt):
+                ragged_attribute_tensors.append(value)
+                ragged_attribute_names.append(name)
+    else:
+        ragged_attribute_tensors = [ getattr(fsas, name) for name in ragged_attribute_names ]
+        for t in ragged_attribute_tensors:
+            assert isinstance(t, k2.RaggedInt)
+
 
     if len(ragged_attribute_tensors) == 0:
         if ret_arc_map:
@@ -960,10 +907,16 @@ def expand_ragged_attributes(
     # `fsa_from_unary_function_tensor()`.
     dest = Fsa(dest_arcs)
 
-    # Handle the non-ragged attributes
+    # Handle the non-ragged attributes, and ragged attributes that
+    # we're not linearizing.
     for name, value in fsas.named_tensor_attr(include_scores=False):
-        if not isinstance(value, k2.RaggedInt):
-            setattr(dest, name, k2.index(value, arc_map))
+        if isinstance(value, torch.Tensor):
+            filler = float(fsas.get_filler(name))
+            setattr(dest, name, index_select(value, arc_map,
+                                             default_value=filler))
+        elif not name in ragged_attribute_names:
+            setattr(dest, name, index(value, arc_map))
+
 
     # Handle the attributes that were ragged but are now linear
     for name, value in zip(ragged_attribute_names, dest_labels):
@@ -975,6 +928,10 @@ def expand_ragged_attributes(
 
     # make sure autograd works on the scores
     k2.autograd_utils.phantom_index_select_scores(dest, fsas.scores, arc_map)
+
+    # Make sure -1's are only on final-arcs, and never on non-final arcs.
+    if hasattr(dest, 'aux_labels'):
+        _k2.fix_final_labels(dest.arcs, dest.aux_labels)
 
     if ret_arc_map:
         return dest, arc_map
