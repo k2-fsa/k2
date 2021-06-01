@@ -1,0 +1,55 @@
+# Copyright (c)  2021  Fangjun Kuang (csukuangfj@gmail.com)
+
+# See ../../LICENSE for clarification regarding multiple authors
+
+
+name: build-windows-conda
+
+on:
+  push:
+    branches:
+      - master
+      - cpu2
+  pull_request:
+    branches:
+      - master
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-windows-conda:
+    # see https://github.com/actions/virtual-environments/blob/win19/20210525.0/images/win/Windows2019-Readme.md
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2019]
+        # Python 3.9 is for PyTorch 1.7.1, 1.8.0, 1.8.1
+        python-version: [3.8]
+        torch: ["1.8.1"]
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          activate-environment: k2
+
+      - name: Install conda dependencies
+        shell: bash -l {0}
+        run: |
+          conda install -y -q anaconda-client
+          conda install -y -q conda-build
+          conda install -y -q -c pytorch pytorch=${{ matrix.torch }} cpuonly
+
+      - name: Display conda info
+        shell: bash -l {0}
+        run: |
+          conda env list
+          conda info
+          which conda
