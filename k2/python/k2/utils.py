@@ -466,7 +466,8 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
         or -1 if the arc had no source arc (e.g. :func:`remove_epsilon`).
     Returns:
       Returns the resulting Fsa, with properties propagated appropriately, and
-      autograd handled.
+      autograd handled.  Fillers in currently-non-ragged integer attributes
+      will have been removed before converting to ragged.
     '''
     dest = Fsa(dest_arcs)
 
@@ -478,6 +479,7 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
             # checked for validity, so -1 always indicates a final-arc.
             if name == 'aux_labels':
                 value = value.clone()
+                # TODO(dan): change this..
                 value[torch.where(src.labels == -1)] = 0
                 filler = 0  # filler is always 0 for aux_labels.
             else:

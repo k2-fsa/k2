@@ -134,5 +134,41 @@ class TestRemoveEpsilonDevice(unittest.TestCase):
         assert torch.all(torch.eq(fsa.grad, expected_grad))
 
 
+class TestRemoveEpsilonDeviceFillers(unittest.TestCase):
+    ''' aim to test code relating to _filler attributres. '''
+
+    def test1(self):
+        if not torch.cuda.is_available():
+            return
+        device = torch.device('cuda', 0)
+        s = '''
+            0 1 0 1 1
+            1 2 0 2 1
+            2 3 0 3 1
+            3 4 4 4 1
+            3 5 -1 5 1
+            4 5 -1 6 1
+            5
+        '''
+        fsa = k2.Fsa.from_str(s, aux_label_names=['foo']).to(device)
+        fsa.foo_filler = 2
+        print("Before removing epsilons: ", fsa)
+        prop = fsa.properties
+        self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
+        dest = k2.remove_epsilon(fsa)
+        prop = dest.properties
+        self.assertTrue(prop & k2.fsa_properties.EPSILON_FREE)
+        log_semiring = False
+        self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
+
+        print("After removing epsilons: ", dest)
+        assert torch.where(dest.foo.values() == 2)[0].numel() == 0
+
+        # just make sure that it runs.
+        dest2 = k2.remove_epsilon_and_add_self_loops(fsa)
+        dest3 = k2.remove_epsilon(dest2)
+
+        # TODO: more checking..
+
 if __name__ == '__main__':
     unittest.main()
