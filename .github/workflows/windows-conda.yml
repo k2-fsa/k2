@@ -47,9 +47,43 @@ jobs:
           conda install -y -q conda-build
           conda install -y -q -c pytorch pytorch=${{ matrix.torch }} cpuonly
 
+      - name: Display Python version
+        shell: bash -l {0}
+        run: |
+          python -c "import sys; print(sys.version)"
+          which python
+
       - name: Display conda info
         shell: bash -l {0}
         run: |
           conda env list
           conda info
           which conda
+          python --version
+          which python
+          python -m torch.utils.collect_env
+
+      - name: Build k2
+        shell: bash -l {0}
+        env:
+          K2_PYTHON_VERSION: ${{ matrix.python-version}}
+          K2_TORCH_VERSION: ${{ matrix.torch }}
+          K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
+          K2_IS_GITHUB_ACTIONS: 1
+          K2_IS_FOR_CONDA: 1
+        run: |
+          export K2_BUILD_TYPE=Release
+          ./scripts/build_conda_cpu.sh
+
+      - name: Display generate results
+        shell: bash -l {0}
+        run: |
+          ls -lh /c/Miniconda/envs/k2/conda-bld
+          ls -lh /c/Miniconda/envs/k2/conda-bld/*/*
+          ls -lh /c/Miniconda/envs/k2/conda-bld/win-64/*
+
+      - name: Upload Wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
+          path: c:/Miniconda/envs/k2/conda-bld/win-64/*.tar.bz2

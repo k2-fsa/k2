@@ -7,7 +7,7 @@ source:
 
 build:
   number: 0
-  string: py{{ environ.get('K2_PYTHON_VERSION') }}_torch{{ environ.get('K2_TORCH_VERSION') }}
+  string: cpu_py{{ environ.get('K2_PYTHON_VERSION') }}_torch{{ environ.get('K2_TORCH_VERSION') }}
   script_env:
     - K2_IS_GITHUB_ACTIONS
     - K2_TORCH_VERSION
@@ -15,8 +15,15 @@ build:
     - K2_BUILD_TYPE
     - K2_BUILD_VERSION
     - K2_IS_FOR_CONDA
+    - K2_CMAKE_ARGS
+    - K2_MAKE_ARGS
+  script: conda install -y -q -c pytorch pytorch=%K2_TORCH_VERSION% cpuonly & {{ PYTHON }} setup.py install --single-version-externally-managed --record=record.txt
 
 requirements:
+  build:
+    - {{ compiler('c') }} # [win]
+    - {{ compiler('cxx') }} # [win]
+
   host:
     - anaconda-client
     - cmake=3.18

@@ -141,23 +141,27 @@ class BuildExtension(build_ext):
 
         lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.so')
         for so in lib_so:
+            print(f'Copying {so} to {self.build_lib}/')
             shutil.copy(f'{so}', f'{self.build_lib}/')
 
         if is_macos():
             lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.dylib')
             for so in lib_so:
+                print(f'Copying {so} to {self.build_lib}/')
                 shutil.copy(f'{so}', f'{self.build_lib}/')
         elif is_windows():
             # bin/Release/_k2.cp38-win_amd64.pyd
             lib_so = glob.glob(f'{self.build_temp}/**/*k2*.pyd',
                                recursive=True)
             for so in lib_so:
+                print(f'Copying {so} to {self.build_lib}/')
                 shutil.copy(f'{so}', f'{self.build_lib}/')
 
             # lib/Release/{_k2,k2_log,k2context,k2fsa}.lib
             lib_so = glob.glob(f'{self.build_temp}/**/*k2*.lib',
                                recursive=True)
             for so in lib_so:
+                print(f'Copying {so} to {self.build_lib}/')
                 shutil.copy(f'{so}', f'{self.build_lib}/')
 
 
