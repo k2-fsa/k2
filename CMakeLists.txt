@@ -272,7 +272,8 @@ if(WIN32)
   # 4819: The file contains a character that cannot be presented in the current code page.
   # 4005: macro redefinition
   # 4722: destructor never returns
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4996 /wd4224 /wd4099 /wd4267 /wd4305 /wd4244 /wd4624 /wd4551 /wd4067 /wd4819 /wd4005 /wd4722")
+  # 4018: signed/unsigned mismatch
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4996 /wd4224 /wd4099 /wd4267 /wd4305 /wd4244 /wd4624 /wd4551 /wd4067 /wd4819 /wd4005 /wd4722 /wd4018")
 endif()
 
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")

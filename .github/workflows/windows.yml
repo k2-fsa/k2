@@ -93,6 +93,7 @@ jobs:
           export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
           python3 setup.py bdist_wheel
           ls -lh dist/
+          pip install dist/*
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
