@@ -35,24 +35,26 @@
  *
  */
 
-#include <unistd.h>
+#include <thread>
 
 #include "gtest/gtest.h"
 #include "k2/csrc/nvtx.h"
 
 namespace k2 {
 
+using namespace std::chrono_literals;
+
 TEST(Nvtx, Sleep) {
   {
     NVTX_RANGE("Sleep 2s");
-    sleep(2);
+    std::this_thread::sleep_for(2000ms);
   }
   {
     NVTX_RANGE("Sleep 1s");
-    sleep(1);
+    std::this_thread::sleep_for(1000ms);
 
     NVTX_RANGE("Sleep 1s");
-    sleep(1);
+    std::this_thread::sleep_for(1000ms);
   }
 }
 

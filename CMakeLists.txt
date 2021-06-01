@@ -12,12 +12,23 @@ endif()
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 set(languages CXX)
-if (APPLE OR (DEFINED K2_WITH_CUDA AND NOT K2_WITH_CUDA))
-  message(STATUS "Disable CUDA support")
+set(_K2_WITH_CUDA ON)
+
+find_program(K2_HAS_NVCC nvcc)
+if(NOT K2_HAS_NVCC)
+  message(STATUS "No NVCC detected. Disable CUDA support")
   set(_K2_WITH_CUDA OFF)
-else()
+endif()
+
+if(APPLE OR (DEFINED K2_WITH_CUDA AND NOT K2_WITH_CUDA))
+  if(_K2_WITH_CUDA)
+    message(STATUS "Disable CUDA support")
+    set(_K2_WITH_CUDA OFF)
+  endif()
+endif()
+
+if(_K2_WITH_CUDA)
   set(languages ${languages} CUDA)
-  set(_K2_WITH_CUDA ON)
 endif()
 
 message(STATUS "Enabled languages: ${languages}")
@@ -243,6 +254,25 @@ endif()
 
 if(NOT WIN32)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
+endif()
+
+if(WIN32)
+  # disable various warnings for MSVC
+  # NOTE: Most of the warnings are from PyTorch C++ APIs
+  # 4068: unknown pragma "unroll"
+  # 4996: "getenv": This function is unsafe
+  # 4224: conversion from 'int64_t' to 'int32_t', possible loss of data
+  # 4099: type name first seen using 'class' now seen using 'struct'
+  # 4267: conversion from 'size_t' to 'I', possible loss of data
+  # 4305: truncation from 'int' to 'bool'
+  # 4244: conversion from 'const M' to 'const FloatType'
+  # 4624: destructor was implicitly defined as deleted
+  # 4551: function call missing argument list 
+  # 4067: unexpected tokens following preprocessor directive
+  # 4819: The file contains a character that cannot be presented in the current code page.
+  # 4005: macro redefinition
+  # 4722: destructor never returns
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4068 /wd4996 /wd4224 /wd4099 /wd4267 /wd4305 /wd4244 /wd4624 /wd4551 /wd4067 /wd4819 /wd4005 /wd4722")
 endif()
 
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")

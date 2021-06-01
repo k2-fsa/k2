@@ -113,12 +113,16 @@ class BuildExtension(build_ext):
 
         if is_windows():
             build_cmd = f'''
-                cd {self.build_temp}
-
-                cmake {cmake_args} {k2_dir}
-
-                cmake --build . --target _k2 --config Release
+                cmake {cmake_args} -B {self.build_temp} -S {k2_dir}
+                cmake --build {self.build_temp} --target _k2 --config Release -- -m
             '''
+            print(f'build command is:\n{build_cmd}')
+            ret = os.system(f'cmake {cmake_args} -B {self.build_temp} -S {k2_dir}')
+            if ret != 0:
+                raise Exception('Failed to build k2')
+            ret = os.system(f'cmake --build {self.build_temp} --target _k2 --config Release -- -m')
+            if ret != 0:
+                raise Exception('Failed to build k2')            
         else:
             build_cmd = f'''
                 cd {self.build_temp}
@@ -129,11 +133,11 @@ class BuildExtension(build_ext):
 
                 make {make_args} _k2
             '''
-        print(f'build command is:\n{build_cmd}')
+            print(f'build command is:\n{build_cmd}')
 
-        ret = os.system(build_cmd)
-        if ret != 0:
-            raise Exception('Failed to build k2')
+            ret = os.system(build_cmd)
+            if ret != 0:
+                raise Exception('Failed to build k2')
 
         lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.so')
         for so in lib_so:

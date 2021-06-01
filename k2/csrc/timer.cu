@@ -28,20 +28,20 @@ class CpuTimerImpl : public TimerImpl {
  public:
   CpuTimerImpl() { Reset(); }
 
-  using steady_clock = std::chrono::steady_clock;
+  using high_resolution_clock = std::chrono::high_resolution_clock;
 
-  void Reset() override { begin_ = steady_clock::now(); }
+  void Reset() override { begin_ = high_resolution_clock::now(); }
 
   // Return time in seconds
   double Elapsed() override {
-    steady_clock::time_point end = steady_clock::now();
+    auto end = high_resolution_clock::now();
     auto diff =
         std::chrono::duration_cast<std::chrono::microseconds>(end - begin_);
     return diff.count() / 1000000.0;
   }
 
  private:
-  steady_clock::time_point begin_;
+  high_resolution_clock::time_point begin_;
 };
 
 class CudaTimerImpl : public TimerImpl {
@@ -66,7 +66,7 @@ class CudaTimerImpl : public TimerImpl {
     K2_CUDA_SAFE_CALL(cudaEventRecord(time_end_, stream_));
     K2_CUDA_SAFE_CALL(cudaEventSynchronize(time_end_));
 
-    float ms_elapsed;
+    float ms_elapsed = 0;
     K2_CUDA_SAFE_CALL(
         cudaEventElapsedTime(&ms_elapsed, time_start_, time_end_));
     return ms_elapsed / 1000;

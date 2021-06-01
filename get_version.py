@@ -4,6 +4,7 @@ import datetime
 import os
 import platform
 import re
+import shutil
 
 import torch
 
@@ -17,6 +18,9 @@ def is_windows():
 
 
 def with_cuda():
+    if shutil.which('nvcc') is None:
+        return False
+
     if is_macos():
         return False
 
