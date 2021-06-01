@@ -134,6 +134,15 @@ class TestFsa(unittest.TestCase):
                 torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
                              dtype=torch.float32))
 
+            # test that assigning to labels calls _k2.fix_final_labels as it
+            # should.
+            fsa.labels = torch.tensor([-1, 10, 0, 1, -1, 1, 0, 2],
+                                      dtype=torch.int32)
+            assert torch.all(
+                torch.eq(fsa.labels,
+                         torch.tensor([0, 10, -1, 1, -1, 1, -1, 2],
+                                      dtype=torch.int32)))
+
     def test_acceptor_wo_arcs_from_str(self):
         s1 = '''
         '''

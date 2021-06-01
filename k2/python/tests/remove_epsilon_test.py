@@ -164,11 +164,6 @@ class TestRemoveEpsilonDeviceFillers(unittest.TestCase):
         print("After removing epsilons: ", dest)
         assert torch.where(dest.foo.values() == 2)[0].numel() == 0
 
-        # just make sure that it runs.
-        dest2 = k2.remove_epsilon_and_add_self_loops(fsa)
-        dest3 = k2.remove_epsilon(dest2)
-
-        # TODO: more checking..
 
 if __name__ == '__main__':
     unittest.main()

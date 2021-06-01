@@ -673,7 +673,9 @@ void FixNumStates(FsaVec *fsas);
                 to fix
       @param [in,out] labels_data   Pointer to data we want to fix,
                indexed as `labels_data[i * labels_stride]` for
-               0 <= i < fsas.NumElements().
+               0 <= i < fsas.NumElements().  It is allowed that
+               labels_data actually points to the labels of `fsas`,
+               in which case we will fix those.
       @param [in] labels_stride   Stride of `labels_data`; would be
                1 if it is from an Array1, or 4 if it really points to
                the labels of `fsas`.

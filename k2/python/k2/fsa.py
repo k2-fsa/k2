@@ -342,6 +342,10 @@ class Fsa(object):
             if name == 'labels':
                 assert value.dtype == torch.int32
                 self.arcs.values()[:, 2] = value
+                # fix_final_labels() will change 0's to -1's and vice versa to
+                # ensure that constraints on where final-labels should appear,
+                # are satisfied.
+                _k2.fix_final_labels(self.arcs, None)
                 self.__dict__['_properties'] = None
                 # access self.properties which will do a validity check on the
                 # modified FSA after getting the properties

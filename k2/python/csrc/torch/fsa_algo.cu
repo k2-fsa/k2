@@ -562,7 +562,7 @@ static void PybindExpandArcs(py::module &m) {
     tensors.  It does this by expanding arcs into linear chains of arcs.
 
    Args:
-        fsas:   The Fsa or FsaVec (ragged tensor of arcs with 2 or 3 axes)
+       fsas:   The Fsa or FsaVec (ragged tensor of arcs with 2 or 3 axes)
            whose structure we want to copy and possibly expand chains of arcs
        ragged_labels:   A list of at least one ragged tensor of
            ints; must satisfy ragged_labels[i].NumAxes() == 2

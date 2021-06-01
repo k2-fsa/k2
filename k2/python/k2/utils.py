@@ -474,16 +474,16 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
     for name, value in src.named_tensor_attr(include_scores=False):
         if remove_filler and isinstance(value, torch.Tensor) and \
            value.dtype == torch.int32:
+            filler = src.get_filler(name)
             # when removing fillers for `aux_labels`, we need to treat -1 as a
-            # filler where it is on a final-arc.  We assume that src has been
-            # checked for validity, so -1 always indicates a final-arc.
-            if name == 'aux_labels':
+            # filler where it is on a final-arc (i.e. turn it into the actual
+            # filler, so it will be later removed by remove_values_eq).  We
+            # assume that `dest` has been checked for validity, so the presence
+            # of -1 as the label precisely indicates final-arcs.
+            if filler != -1:
                 value = value.clone()
-                # TODO(dan): change this..
-                value[torch.where(src.labels == -1)] = 0
-                filler = 0  # filler is always 0 for aux_labels.
-            else:
-                filler = src.get_filler(name)
+                value[torch.where(torch.logical_and(
+                    src.labels == -1, value == -1))] = filler
             new_value = index(value, arc_map)
             setattr(dest, name, k2.ragged.remove_values_eq(new_value, filler))
         else:
