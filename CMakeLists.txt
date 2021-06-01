@@ -11,6 +11,13 @@ endif()
 
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
+# see https://cmake.org/cmake/help/latest/policy/CMP0111.html
+#
+# This is to suppress the warnings for importing PyTorch.
+if(POLICY CMP0111)
+  cmake_policy(set CMP0111 OLD)
+endif()
+
 set(languages CXX)
 set(_K2_WITH_CUDA ON)
 
