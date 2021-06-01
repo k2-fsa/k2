@@ -8,8 +8,6 @@
 
 #include <string.h>  // memcpy, memset
 
-#include "k2/csrc/tensor_ops.h"
-
 #include <algorithm>
 #include <memory>
 #include <vector>
@@ -17,6 +15,7 @@
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
+#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 

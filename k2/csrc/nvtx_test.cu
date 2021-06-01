@@ -35,14 +35,14 @@
  *
  */
 
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
 #include "k2/csrc/nvtx.h"
 
 namespace k2 {
 
-using namespace std::chrono_literals;
+using namespace std::chrono_literals;  // NOLINT
 
 TEST(Nvtx, Sleep) {
   {

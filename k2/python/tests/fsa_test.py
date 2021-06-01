@@ -684,8 +684,8 @@ class TestFsa(unittest.TestCase):
 
         import shutil
         if shutil.which('dot') is not None:
-          fsa.draw(filename='foo.png')
-          os.remove('foo.png')
+            fsa.draw(filename='foo.png')
+            os.remove('foo.png')
 
     def test_to(self):
         s = '''
