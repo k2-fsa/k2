@@ -93,7 +93,7 @@ jobs:
           export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
           python3 setup.py bdist_wheel
           ls -lh dist/
-          pip install dist/*
+          pip install ./dist/*.whl
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
@@ -101,8 +101,9 @@ jobs:
           name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
           path: dist/*.whl
 
-      - name: Run tests
+      - name: Run C++ tests
         run: |
           cd build_release
           cmake --build . --target ALL_BUILD --config Release
-          cmake --build . --target RUN_TESTS --config Release
+	      # disable python tests for k2host
+          ctest -C Release --output-on-failure -E host

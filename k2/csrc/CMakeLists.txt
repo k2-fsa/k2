@@ -179,9 +179,16 @@ function(k2_add_cuda_test source)
     gtest_main
     test_utils
   )
+
+  # NOTE: We set the working directory here so that
+  # it works also on windows. The reason is that
+  # the required DLLs are inside ${TORCH_DIR}/lib
+  # and they can be found by the exe if the current
+  # working directory is ${TORCH_DIR}\lib
   add_test(NAME "Test.Cuda.${target_name}"
     COMMAND
     $<TARGET_FILE:${target_name}>
+    WORKING_DIRECTORY ${TORCH_DIR}/lib
   )
 endfunction()
 
