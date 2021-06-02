@@ -274,7 +274,7 @@ if(WIN32)
   # 4305: truncation from 'int' to 'bool'
   # 4244: conversion from 'const M' to 'const FloatType'
   # 4624: destructor was implicitly defined as deleted
-  # 4551: function call missing argument list 
+  # 4551: function call missing argument list
   # 4067: unexpected tokens following preprocessor directive
   # 4819: The file contains a character that cannot be presented in the current code page.
   # 4005: macro redefinition

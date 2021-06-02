@@ -122,7 +122,7 @@ class BuildExtension(build_ext):
                 raise Exception('Failed to build k2')
             ret = os.system(f'cmake --build {self.build_temp} --target _k2 --config Release -- -m')
             if ret != 0:
-                raise Exception('Failed to build k2')            
+                raise Exception('Failed to build k2')
         else:
             build_cmd = f'''
                 cd {self.build_temp}

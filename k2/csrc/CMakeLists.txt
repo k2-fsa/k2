@@ -107,7 +107,7 @@ target_link_libraries(context PUBLIC k2_nvtx)
 if(K2_USE_PYTORCH)
   target_link_libraries(context PUBLIC ${TORCH_LIBRARIES})
   if(UNIX AND NOT APPLE)
-    # It causes errors on macOS 
+    # It causes errors on macOS
     target_link_libraries(context PUBLIC ${TORCH_DIR}/lib/libtorch_python.so)
     # CAUTION: It is PYTHON_LIBRARY on unix
     target_link_libraries(context PUBLIC ${PYTHON_LIBRARY})
