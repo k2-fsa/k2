@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - wheel
-      - cpu2
 
 env:
   BUILD_TYPE: Release

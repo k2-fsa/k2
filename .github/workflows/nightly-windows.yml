@@ -5,12 +5,6 @@
 name: nightly-windows
 
 on:
-  push:
-    branches:
-      - cpu2
-  pull_request: # TODO(fangjun): remove it
-    branches:
-      - master
   schedule:
     # minute (0-59)
     # hour (0-23)

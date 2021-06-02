@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - master
-      - cpu2
   pull_request:
     branches:
       - master
