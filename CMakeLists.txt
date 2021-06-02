@@ -122,6 +122,17 @@ elseif(APPLE)
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
   set(K2_OS "${_product_name} ${_product_version} ${_build_version}")
+elseif(WIN32)
+  execute_process(COMMAND
+    wmic os get caption,version
+    OUTPUT_VARIABLE K2_OS_TWO_LINES
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  # Now K2_OS_TWO_LINES contains something like
+  #  Caption                          Version
+  #  Microsoft Windows 10 Pro         10.0.18362
+  string(REPLACE "\n" ";" K2_OS_LIST ${K2_OS_TWO_LINES})
+  list(GET K2_OS_LIST 1 K2_OS)
 else()
   set(K2_OS "Unknown")
 endif()
