@@ -14,7 +14,7 @@
 # Abort trap: 6
 #
 #
-# Until we find an solution to the above error, we disable building conda packages for macOS
+# Until we find a solution to the above error, we disable building conda packages for macOS
 #
 # Note, we have to set
 #
