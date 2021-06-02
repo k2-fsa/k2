@@ -2,7 +2,7 @@
 
 # See ../../LICENSE for clarification regarding multiple authors
 
-name: nightly-cpu
+name: nightly-windows
 
 on:
   push:
@@ -24,12 +24,12 @@ env:
   BUILD_TYPE: Release
 
 jobs:
-  nightly-cpu:
+  nightly-windows:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04, macos-10.15]
+        os: [windows-2019]
         torch: ["1.7.1"]
         python-version: [3.6, 3.7, 3.8]
 
@@ -38,8 +38,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Display date and time
-        run: date
+      # see https://github.com/microsoft/setup-msbuild
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.0.2
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -49,55 +50,53 @@ jobs:
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
 
-      - name: Install GCC 7
-        if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt-get install -y gcc-7 g++-7
-          echo "CC=/usr/bin/gcc-7" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/g++-7" >> $GITHUB_ENV
-
-      - name: Display GCC version
-        run: |
-          gcc --version
-
-      - name: Display clang version
-        if: startsWith(matrix.os, 'macos')
-        run: |
-          clang --version
-
       - name: Install PyTorch ${{ matrix.torch }}
-        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          pip3 install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip3 install -qq wheel twine dataclasses
+
+          python3 -m torch.utils.collect_env
+
+      - name: Display CMake version
+        run: |
+          cmake --version
+          cmake --help
+
+      - name: Configure CMake
         shell: bash
         run: |
-          python3 -m pip install -qq --upgrade pip
-          python3 -m pip install -qq wheel twine
-          python3 -m pip install -qq torch==${{ matrix.torch }}+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          mkdir build_release
+          cd build_release
+          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF ..
+          ls -lh
 
-          python3 -c "import torch; print('torch version:', torch.__version__)"
+      - name: Build k2
+        run: |
+          cd build_release
+          cmake --build . --target _k2 --config Release
 
-      - name: Install PyTorch ${{ matrix.torch }}
-        if: startsWith(matrix.os, 'macos')
+      - name: Display generated files
         shell: bash
         run: |
-          python3 -m pip install -qq --upgrade pip
-          python3 -m pip install -qq wheel twine
-          python3 -m pip install -qq torch==${{ matrix.torch }}
+          cd build_release
+          ls -lh bin/*/*
+          ls -lh lib/*/*
 
-      - name: Build pip packages
+      - name: Build wheel
         shell: bash
         run: |
-          export K2_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DK2_WITH_CUDA=OFF"
-          export K2_MAKE_ARGS="-j2"
+          export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF -DCMAKE_BUILD_TYPE=Release"
           python3 setup.py bdist_wheel
           ls -lh dist/
 
       - name: Upload Wheel
         uses: actions/upload-artifact@v2
         with:
-          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}-cpu
           path: dist/*.whl
 
       - name: Copy wheels to k2-fsa.org
+        shell: bash
         run: |
           user=${{ secrets.K2_USERNAME }}
           server=${{ secrets.K2_HOST }}
