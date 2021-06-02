@@ -77,7 +77,8 @@ def get_package_version():
             pytorch_version = get_pytorch_version()
             local_version = f'{cuda_version}.torch{pytorch_version}'
     else:
-        local_version = '+cpu'
+        pytorch_version = get_pytorch_version()
+        local_version = f'+cpu.torch{pytorch_version}'
 
     if is_for_conda():
         local_version = ''
