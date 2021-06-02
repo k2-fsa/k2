@@ -99,7 +99,7 @@ class BuildExtension(build_ext):
         if cmake_args == '':
             cmake_args = '-DCMAKE_BUILD_TYPE=Release'
 
-        if make_args == '':
+        if make_args == '' and os.environ.get('K2_IS_GITHUB_ACTIONS', None) is None:
             make_args = '-j'
 
         if is_macos():
