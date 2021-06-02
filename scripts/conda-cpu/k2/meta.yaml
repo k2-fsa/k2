@@ -17,7 +17,7 @@ build:
     - K2_IS_FOR_CONDA
     - K2_CMAKE_ARGS
     - K2_MAKE_ARGS
-  script: conda install -y -q -c pytorch pytorch=%K2_TORCH_VERSION% cpuonly & {{ PYTHON }} setup.py install --single-version-externally-managed --record=record.txt
+  script: conda install -y -q -c pytorch pytorch={{ environ.get('K2_TORCH_VERSION') }} cpuonly & {{ PYTHON }} setup.py install --single-version-externally-managed --record=record.txt
 
 requirements:
   build:
