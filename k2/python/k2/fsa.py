@@ -275,7 +275,7 @@ class Fsa(object):
         '''
         try:
             ans = getattr(self, attribute_name + '_filler')
-            assert (attribute_name != 'aux_labels' and
+            assert ((attribute_name != 'aux_labels' or ans == 0) and
                     'you cannot set the filler for aux_labels')
             return ans
         except AttributeError:
