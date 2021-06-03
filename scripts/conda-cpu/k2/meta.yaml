@@ -18,6 +18,8 @@ build:
     - K2_CMAKE_ARGS
     - K2_MAKE_ARGS
   script: conda install -y -q -c pytorch pytorch={{ environ.get('K2_TORCH_VERSION') }} cpuonly & {{ PYTHON }} setup.py install --single-version-externally-managed --record=record.txt
+  features:
+    - cpuonly # [not osx]
 
 requirements:
   build:
@@ -30,11 +32,10 @@ requirements:
     - python
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
     - gcc_linux-64=7 # [linux]
-    - cpuonly # to install CPU version of PyTorch
+    - cpuonly
   run:
     - python
     - pytorch={{ environ.get('K2_TORCH_VERSION') }}
-    - cpuonly
 
 about:
   home: https://github.com/k2-fsa/k2
