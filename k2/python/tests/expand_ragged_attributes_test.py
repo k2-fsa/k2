@@ -19,7 +19,7 @@ class TestExpandArcs(unittest.TestCase):
 
     def test(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:
@@ -65,7 +65,8 @@ class TestExpandArcs(unittest.TestCase):
                 assert torch.all(
                     torch.eq(
                         dest.int_attr,
-                        torch.tensor([1, 2, 0, 0, 0, 3], dtype=torch.int32,
+                        torch.tensor([1, 2, 0, 0, 0, 3],
+                                     dtype=torch.int32,
                                      device=device)))
 
                 assert torch.all(
@@ -94,7 +95,7 @@ class TestExpandArcs(unittest.TestCase):
 
     def test_final(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:
@@ -113,7 +114,8 @@ class TestExpandArcs(unittest.TestCase):
                 src.int_attr = torch.tensor([1, 2, 3],
                                             dtype=torch.int32,
                                             device=device)
-                src.ragged_attr = k2.RaggedInt('[[1 2 3] [5 6] [1]]').to(device)
+                src.ragged_attr = k2.RaggedInt('[[1 2 3] [5 6] [1]]').to(
+                    device)
 
                 src.attr1 = 'src'
                 src.attr2 = 'fsa'
@@ -138,13 +140,15 @@ class TestExpandArcs(unittest.TestCase):
                 assert torch.all(
                     torch.eq(
                         dest.int_attr,
-                        torch.tensor([1, 2, 0, 0, 0, 3, 0], dtype=torch.int32,
+                        torch.tensor([1, 2, 0, 0, 0, 3, 0],
+                                     dtype=torch.int32,
                                      device=device)))
                 _k2.fix_final_labels(dest.arcs, dest.int_attr)
                 assert torch.all(
                     torch.eq(
                         dest.int_attr,
-                        torch.tensor([1, 2, 0, 0, 0, 3, -1], dtype=torch.int32,
+                        torch.tensor([1, 2, 0, 0, 0, 3, -1],
+                                     dtype=torch.int32,
                                      device=device)))
 
                 assert torch.all(

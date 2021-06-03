@@ -60,6 +60,7 @@ if [ -z $K2_BUILD_TYPE ]; then
   K2_BUILD_TYPE=Release
 fi
 
+export K2_IS_FOR_CONDA=1
 K2_BUILD_VERSION=$(python3 ./get_version.py)
 
 # Example value: 3.8

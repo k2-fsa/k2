@@ -16,6 +16,15 @@ import torch
 
 class TestNumericalGradientCheck(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test_get_tot_scores(self):
 
         def my_func(scores: torch.Tensor,
@@ -44,11 +53,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
                                               use_double_scores=True)
             return -2 * log_like
 
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             s = torch.randn(12)
             s.requires_grad_(True)
             s = s.to(torch.float64)
@@ -108,11 +113,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
                                               use_double_scores=True)
             return -1.25 * log_like
 
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             s = torch.randn(24)
             s.requires_grad_(True)
             s = s.to(torch.float64)
@@ -127,11 +128,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
             k2.index_add(index, value, saved)
             return src + saved
 
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             num_elements = torch.randint(10, 100, (1,)).item()
             src = torch.rand(num_elements, dtype=torch.float32).to(device)
             src.requires_grad_(True)
@@ -156,11 +153,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
             k2.index_add(index, value, saved)
             return src + saved
 
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             num_elements = torch.randint(100, 10000, (1,)).item()
             src = torch.rand(num_elements, dtype=torch.float32).to(device)
             src.requires_grad_(True)
@@ -194,11 +187,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
         def my_func(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
             return k2.index_select(src.to(torch.float32), index)
 
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             num_elements = torch.randint(10, 100, (1,)).item()
             src = torch.rand(num_elements, dtype=torch.float32).to(device)
             src.requires_grad_(True)
@@ -218,10 +207,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
         def my_func(src: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
             return k2.index_select(src.to(torch.float32), index)
 
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             num_rows = torch.randint(1, 20, size=(1,)).item()
             num_cols = torch.randint(1, 20, size=(1,)).item()
             a = torch.rand((num_rows, num_cols),

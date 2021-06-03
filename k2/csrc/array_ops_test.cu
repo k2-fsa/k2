@@ -109,6 +109,7 @@ TEST(OpsTest, TransposeTest) {
     }
   }
 
+#ifdef K2_WITH_CUDA
   {
     // speed test for different data type
     // TODO(haowen): we may need to allocate different size of shared memory for
@@ -119,6 +120,7 @@ TEST(OpsTest, TransposeTest) {
     TestTranspose<float, kCuda>(1000, 2000, 100, true);
     TestTranspose<double, kCuda>(1000, 2000, 100, true);
   }
+#endif
 }
 
 template <typename S, typename T>

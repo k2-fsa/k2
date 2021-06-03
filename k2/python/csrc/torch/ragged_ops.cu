@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/python/csrc/torch/ragged_ops.h"
 #include "k2/python/csrc/torch/torch_util.h"
@@ -24,7 +25,13 @@ static void PybindRaggedRemoveAxis(py::module &m) {
   // src is a Ragged<T>
   //  there is another `remove_axis` in k2/python/csrc/torch/ragged.cu
   //  taking a RaggedShape as input.
-  m.def("remove_axis", &RemoveAxis<T>, py::arg("src"), py::arg("axis"));
+  m.def(
+      "remove_axis",
+      [](Ragged<T> &src, int32_t axis) -> Ragged<T> {
+        DeviceGuard guard(src.Context());
+        return RemoveAxis<T>(src, axis);
+      },
+      py::arg("src"), py::arg("axis"));
 }
 
 template <typename T>
@@ -32,18 +39,33 @@ static void PybindRaggedArange(py::module &m, const char *name) {
   m.def(
       name,
       [](Ragged<T> &src, int32_t axis, int32_t begin,
-         int32_t end) -> Ragged<T> { return Arange<T>(src, axis, begin, end); },
+         int32_t end) -> Ragged<T> {
+        DeviceGuard guard(src.Context());
+        return Arange<T>(src, axis, begin, end);
+      },
       py::arg("src"), py::arg("axis"), py::arg("begin"), py::arg("end"));
 }
 
 template <typename T>
 static void PybindRemoveValuesLeq(py::module &m, const char *name) {
-  m.def(name, &RemoveValuesLeq<T>, py::arg("src"), py::arg("cutoff"));
+  m.def(
+      name,
+      [](Ragged<T> &src, T cutoff) -> Ragged<T> {
+        DeviceGuard guard(src.Context());
+        return RemoveValuesLeq(src, cutoff);
+      },
+      py::arg("src"), py::arg("cutoff"));
 }
 
 template <typename T>
 static void PybindRemoveValuesEq(py::module &m, const char *name) {
-  m.def(name, &RemoveValuesEq<T>, py::arg("src"), py::arg("target"));
+  m.def(
+      name,
+      [](Ragged<T> &src, T target) -> Ragged<T> {
+        DeviceGuard guard(src.Context());
+        return RemoveValuesEq(src, target);
+      },
+      py::arg("src"), py::arg("target"));
 }
 
 // Recursive implementation function used inside PybindToLists().
@@ -76,6 +98,7 @@ static void PybindRaggedIntToList(py::module &m, const char *name) {
   m.def(
       name,
       [](Ragged<int32_t> &src) -> py::list {
+        DeviceGuard guard(src.Context());
         Ragged<int32_t> r = src.To(GetCpuContext());
         return RaggedInt32ToList(r, 0, 0, r.Dim0());
       },
@@ -84,7 +107,13 @@ static void PybindRaggedIntToList(py::module &m, const char *name) {
 
 template <typename T>
 static void PybindNormalizePerSublist(py::module &m, const char *name) {
-  m.def(name, &NormalizePerSublist<T>, py::arg("src"), py::arg("use_log"));
+  m.def(
+      name,
+      [](Ragged<T> &src, bool use_log) -> Ragged<T> {
+        DeviceGuard guard(src.Context());
+        return NormalizePerSublist(src, use_log);
+      },
+      py::arg("src"), py::arg("use_log"));
 }
 
 /* Backward propagation for NormalizePerSublist.
@@ -100,6 +129,7 @@ template <typename T>
 static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out, bool use_log,
                                                  torch::Tensor out_grad) {
   NVTX_RANGE(K2_FUNC);
+  DeviceGuard guard(out.Context());
   K2_CHECK_EQ(out_grad.dim(), 1)
       << "Expected dim: 1. Given: " << out_grad.dim();
   K2_CHECK_EQ(out_grad.scalar_type(), ToScalarType<T>::value)
@@ -165,6 +195,7 @@ static torch::Tensor NormalizePerSublistBackward(Ragged<T> &out, bool use_log,
 
 template <typename T>
 static void PybindNormalizePerSublistBackward(py::module &m, const char *name) {
+  // the device guard is used inside NormalizePerSublistBackward<T>
   m.def(name, NormalizePerSublistBackward<T>, py::arg("out"),
         py::arg("use_log"), py::arg("out_grad"));
 }
@@ -174,6 +205,7 @@ static void PybindOpPerSublist(py::module &m, Op op, const char *name) {
   m.def(
       name,
       [op](Ragged<T> &src, T initial_value) -> torch::Tensor {
+        DeviceGuard guard(src.Context());
         Array1<T> values(src.Context(), src.TotSize(src.NumAxes() - 2));
         op(src, initial_value, &values);
         return ToTorch(values);
@@ -187,6 +219,7 @@ static void PybindCat(py::module &m) {
   m.def(
       "cat",
       [](std::vector<Ragged<T>> &srcs, int32_t axis) -> Ragged<T> {
+        DeviceGuard guard(srcs[0].Context());
         return Cat(axis, srcs.size(), &srcs[0]);
       },
       py::arg("srcs"), py::arg("axis"));
@@ -213,6 +246,7 @@ static void PybindUniqueSequences(py::module &m) {
          bool need_new2old_indexes = false)
           -> std::tuple<Ragged<int32_t>, torch::optional<Ragged<int32_t>>,
                         torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Ragged<int32_t> num_repeats;
         Array1<int32_t> new2old_indexes;
         Ragged<int32_t> ans =
@@ -245,6 +279,7 @@ static void PybindIndex(py::module &m) {
       [](RaggedShape &src, int32_t axis, torch::Tensor indexes,
          bool need_value_indexes =
              true) -> std::pair<RaggedShape, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> indexes_array = FromTorch<int32_t>(indexes);
         Array1<int32_t> value_indexes;
         RaggedShape ans = Index(src, axis, indexes_array,
@@ -279,6 +314,7 @@ static void PybindArgMaxPerSublist(py::module &m) {
   m.def(
       "argmax_per_sublist",
       [](Ragged<T> &src, T initial_value) -> torch::Tensor {
+        DeviceGuard guard(src.Context());
         int32_t last_axis = src.NumAxes() - 1;
         const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
         int32_t num_rows = row_splits_array.Dim() - 1;
@@ -296,6 +332,7 @@ static void PybindMaxPerSublist(py::module &m) {
   m.def(
       "max_per_sublist",
       [](Ragged<T> &src, T initial_value) -> torch::Tensor {
+        DeviceGuard guard(src.Context());
         int32_t last_axis = src.NumAxes() - 1;
         const Array1<int32_t> &row_splits_array = src.RowSplits(last_axis);
         int32_t num_rows = row_splits_array.Dim() - 1;
@@ -307,7 +344,6 @@ static void PybindMaxPerSublist(py::module &m) {
       },
       py::arg("src"), py::arg("initial_value"));
 }
-
 
 }  // namespace k2
 

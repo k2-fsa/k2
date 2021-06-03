@@ -20,8 +20,11 @@ class TestInvert(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
     def test_aux_as_tensor(self):
         s = '''

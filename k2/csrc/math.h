@@ -70,9 +70,9 @@ class RandIntGeometricGenerator {
   }
 
  private:
+  std::geometric_distribution<int32_t> dis_;
   std::random_device rd_;
   std::mt19937 gen_;
-  std::geometric_distribution<int32_t> dis_;
 };
 
 // returns random int32_t from [min..max]

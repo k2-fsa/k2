@@ -19,7 +19,6 @@
 #include "k2/csrc/ragged.h"
 #include "k2/csrc/ragged_ops.h"
 #include "k2/csrc/ragged_utils.h"
-#include "moderngpu/kernel_mergesort.hxx"
 
 namespace {
 

@@ -16,6 +16,15 @@ import torch
 
 class TestCreaseSparse(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test_create_sparse(self):
         s = '''
             0 1 10 0.1
@@ -27,10 +36,7 @@ class TestCreaseSparse(unittest.TestCase):
             4
         '''
 
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             fsa = k2.Fsa.from_str(s).to(device)
             fsa.phones = torch.tensor([10, 11, 20, 21, 24, -1],
                                       dtype=torch.int32,

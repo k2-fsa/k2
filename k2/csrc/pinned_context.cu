@@ -4,6 +4,8 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#include <string.h>  // memcpy
+
 #include <deque>
 #include <functional>
 #include <mutex>  // NOLINT
@@ -316,6 +318,7 @@ ContextPtr GetPinnedContext() {
   static bool has_cuda = false;
 
   std::call_once(has_cuda_init_flag, []() {
+#ifdef K2_WITH_CUDA
     int32_t count = 0;
     cudaError_t err = cudaGetDeviceCount(&count);
     if (err != cudaSuccess) {
@@ -328,6 +331,10 @@ ContextPtr GetPinnedContext() {
     } else {
       has_cuda = true;
     }
+#else
+    K2_LOG(WARNING) << "k2 was not built with CUDA support. "
+                       "Return a CPU context";
+#endif
   });
 
   if (has_cuda) return std::make_shared<PinnedContext>();

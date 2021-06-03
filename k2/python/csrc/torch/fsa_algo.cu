@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
@@ -34,6 +35,7 @@ static void PybindTopSort(py::module &m) {
       "top_sort",
       [](FsaVec &src, bool need_arc_map = true)
           -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         FsaVec sorted;
         TopSort(src, &sorted, need_arc_map ? &arc_map : nullptr);
@@ -53,6 +55,7 @@ static void PybindLinearFsa(py::module &m) {
           context = GetCpuContext();
         else
           context = GetCudaContext(gpu_id);
+        DeviceGuard guard(context);
         Array1<int32_t> array(context, labels);
         return LinearFsa(array);  //
       },
@@ -72,6 +75,7 @@ static void PybindLinearFsa(py::module &m) {
         else
           context = GetCudaContext(gpu_id);
 
+        DeviceGuard guard(context);
         Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
         return LinearFsas(ragged);
       },
@@ -84,6 +88,7 @@ static void PybindLinearFsa(py::module &m) {
   m.def(
       "linear_fsa",
       [](const Ragged<int32_t> &labels, int32_t /*unused_gpu_id*/) -> FsaVec {
+        DeviceGuard guard(labels.Context());
         return LinearFsas(labels);
       },
       py::arg("labels"), py::arg("gpu_id"));
@@ -103,6 +108,7 @@ static void PybindIntersect(py::module &m) {
          bool need_arc_map =
              true) -> std::tuple<FsaOrVec, torch::optional<torch::Tensor>,
                                  torch::optional<torch::Tensor>> {
+        DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         FsaVec out;
@@ -171,6 +177,7 @@ static void PybindIntersectDevice(py::module &m) {
          bool sorted_match_a =
              false) -> std::tuple<FsaVec, torch::optional<torch::Tensor>,
                                   torch::optional<torch::Tensor>> {
+        DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         Array1<int32_t> b_to_a_map_array = FromTorch<int32_t>(b_to_a_map);
@@ -199,6 +206,7 @@ static void PybindIntersectDensePruned(py::module &m) {
          float output_beam, int32_t min_active_states,
          int32_t max_active_states)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
+        DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> arc_map_a;
         Array1<int32_t> arc_map_b;
         FsaVec out;
@@ -219,6 +227,7 @@ static void PybindIntersectDense(py::module &m) {
       [](FsaVec &a_fsas, DenseFsaVec &b_fsas,
          torch::optional<torch::Tensor> a_to_b_map, float output_beam)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
+        DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> arc_map_a;
         Array1<int32_t> arc_map_b;
         FsaVec out;
@@ -246,6 +255,7 @@ static void PybindConnect(py::module &m) {
       "connect",
       [](Fsa &src, bool need_arc_map =
                        true) -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         Fsa out;
         Connect(src, &out, need_arc_map ? &arc_map : nullptr);
@@ -262,6 +272,7 @@ static void PybindArcSort(py::module &m) {
       "arc_sort",
       [](FsaOrVec &src, bool need_arc_map = true)
           -> std::pair<FsaOrVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         FsaOrVec out;
         ArcSort(src, &out, need_arc_map ? &arc_map : nullptr);
@@ -282,8 +293,8 @@ static void PybindShortestPath(py::module &m) {
       "shortest_path",
       [](FsaVec &fsas,
          torch::Tensor entering_arcs) -> std::pair<Fsa, Ragged<int32_t>> {
-        Array1<int32_t> entering_arcs_array =
-            FromTorch<int32_t>(entering_arcs);
+        DeviceGuard guard(fsas.Context());
+        Array1<int32_t> entering_arcs_array = FromTorch<int32_t>(entering_arcs);
 
         Ragged<int32_t> best_path_arc_indexes =
             ShortestPath(fsas, entering_arcs_array);
@@ -305,6 +316,7 @@ static void PybindAddEpsilonSelfLoops(py::module &m) {
       "add_epsilon_self_loops",
       [](FsaOrVec &src, bool need_arc_map = true)
           -> std::pair<FsaOrVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         FsaOrVec out;
         AddEpsilonSelfLoops(src, &out, need_arc_map ? &arc_map : nullptr);
@@ -320,6 +332,7 @@ static void PybindUnion(py::module &m) {
       "union",
       [](FsaVec &fsas, bool need_arc_map = true)
           -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(fsas.Context());
         Array1<int32_t> arc_map;
         Fsa out = Union(fsas, need_arc_map ? &arc_map : nullptr);
 
@@ -334,6 +347,7 @@ static void PybindRemoveEpsilon(py::module &m) {
   m.def(
       "remove_epsilon_host",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonHost(src, &dest, &arc_map);
@@ -343,6 +357,7 @@ static void PybindRemoveEpsilon(py::module &m) {
   m.def(
       "remove_epsilon_device",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonDevice(src, &dest, &arc_map);
@@ -353,6 +368,7 @@ static void PybindRemoveEpsilon(py::module &m) {
       "remove_epsilon",
       [](FsaOrVec &src,
          int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilon(src, properties, &dest, &arc_map);
@@ -363,6 +379,7 @@ static void PybindRemoveEpsilon(py::module &m) {
       "remove_epsilon_and_add_self_loops",
       [](FsaOrVec &src,
          int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonAndAddSelfLoops(src, properties, &dest, &arc_map);
@@ -375,6 +392,7 @@ static void PybindDeterminize(py::module &m) {
   m.def(
       "determinize",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         Determinize(src, &dest, &arc_map);
@@ -388,6 +406,7 @@ static void PybindClosure(py::module &m) {
       "closure",
       [](Fsa &src, bool need_arc_map =
                        true) -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         Fsa out = Closure(src, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> arc_map_tensor;
@@ -404,6 +423,7 @@ static void PybindInvert(py::module &m) {
          bool need_arc_map =
              true) -> std::tuple<FsaOrVec, Ragged<int32_t>,
                                  torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> dest_aux_labels;
         Array1<int32_t> arc_map;
@@ -421,6 +441,7 @@ static void PybindRemoveEpsilonSelfLoops(py::module &m) {
       "remove_epsilon_self_loops",
       [](FsaOrVec &src, bool need_arc_map = true)
           -> std::pair<FsaOrVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         FsaOrVec ans =
             RemoveEpsilonSelfLoops(src, need_arc_map ? &arc_map : nullptr);
@@ -432,24 +453,23 @@ static void PybindRemoveEpsilonSelfLoops(py::module &m) {
       py::arg("src"), py::arg("need_arc_map") = true);
 }
 
-
 static void PybindExpandArcs(py::module &m) {
   // See doc-string below.
   m.def(
       "expand_arcs",
-      [](FsaOrVec &fsas, std::vector<Ragged<int32_t> > &ragged_labels) ->
-      std::tuple<FsaOrVec, std::vector<torch::Tensor>, torch::Tensor> {
+      [](FsaOrVec &fsas, std::vector<Ragged<int32_t>> &ragged_labels)
+          -> std::tuple<FsaOrVec, std::vector<torch::Tensor>, torch::Tensor> {
         int32_t ragged_labels_size = ragged_labels.size();
         K2_CHECK_NE(ragged_labels_size, 0);
         K2_CHECK_LE(ragged_labels_size, 6);  // see SmallVec<...,6> below.
         ContextPtr c = fsas.Context();
         int32_t num_arcs = fsas.NumElements();
-        SmallVec<int32_t*, 6> ragged_labels_row_splits,
-            ragged_labels_data;
+        SmallVec<int32_t *, 6> ragged_labels_row_splits, ragged_labels_data;
         for (int32_t r = 0; r < ragged_labels_size; r++) {
           K2_CHECK_EQ(ragged_labels[r].NumAxes(), 2);
           K2_CHECK_EQ(ragged_labels[r].Dim0(), num_arcs);
-          ragged_labels_row_splits.data[r] = ragged_labels[r].RowSplits(1).Data();
+          ragged_labels_row_splits.data[r] =
+              ragged_labels[r].RowSplits(1).Data();
           ragged_labels_data.data[r] = ragged_labels[r].values.Data();
         }
 
@@ -464,33 +484,36 @@ static void PybindExpandArcs(py::module &m) {
         // element of the sub-list with the value of -1).
         Array1<int32_t> combined_size(c, num_arcs + 1);
         int32_t *combined_size_data = combined_size.Data();
-        K2_EVAL(c, num_arcs, lambda_get_combined_size, (int32_t arc_idx) -> void {
-            int32_t fsa_label = fsas_arcs[arc_idx].label;
-            bool arc_is_final = (fsa_label == -1);
-            int32_t max_num_elems = 1;
-            for (int32_t r = 0; r < ragged_labels_size; r++) {
-              int32_t this_label_idx0x = ragged_labels_row_splits.data[r][arc_idx],
-                  next_label_idx0x = ragged_labels_row_splits.data[r][arc_idx + 1];
-              int32_t size = next_label_idx0x - this_label_idx0x;
+        K2_EVAL(
+            c, num_arcs, lambda_get_combined_size, (int32_t arc_idx)->void {
+              int32_t fsa_label = fsas_arcs[arc_idx].label;
+              bool arc_is_final = (fsa_label == -1);
+              int32_t max_num_elems = 1;
+              for (int32_t r = 0; r < ragged_labels_size; r++) {
+                int32_t this_label_idx0x =
+                            ragged_labels_row_splits.data[r][arc_idx],
+                        next_label_idx0x =
+                            ragged_labels_row_splits.data[r][arc_idx + 1];
+                int32_t size = next_label_idx0x - this_label_idx0x;
 
-              // Adds an extra place for the final-arc's -1 if this is a
-              // final-arc and the ragged label list did not have a -1 as its
-              // last element.  We don't do a memory fetch until we know that
-              // it would make a difference to the result.
-              if (arc_is_final && size >= max_num_elems &&
-                  ragged_labels_data.data[r][next_label_idx0x - 1] != -1)
-                max_num_elems = size + 1;
-              else if (size > max_num_elems)
-                max_num_elems = size;
-            }
-            combined_size_data[arc_idx] = max_num_elems;
-          });
+                // Adds an extra place for the final-arc's -1 if this is a
+                // final-arc and the ragged label list did not have a -1 as its
+                // last element.  We don't do a memory fetch until we know that
+                // it would make a difference to the result.
+                if (arc_is_final && size >= max_num_elems &&
+                    ragged_labels_data.data[r][next_label_idx0x - 1] != -1)
+                  max_num_elems = size + 1;
+                else if (size > max_num_elems)
+                  max_num_elems = size;
+              }
+              combined_size_data[arc_idx] = max_num_elems;
+            });
         ExclusiveSum(combined_size, &combined_size);
         RaggedShape combined_shape = RaggedShape2(&combined_size, nullptr, -1);
 
         Array1<int32_t> fsas_arc_map, labels_arc_map;
-        FsaOrVec ans = ExpandArcs(fsas, combined_shape, &fsas_arc_map,
-                                  &labels_arc_map);
+        FsaOrVec ans =
+            ExpandArcs(fsas, combined_shape, &fsas_arc_map, &labels_arc_map);
 
         int32_t ans_num_arcs = ans.NumElements();
         Array2<int32_t> labels(c, ragged_labels_size, ans_num_arcs);
@@ -506,46 +529,55 @@ static void PybindExpandArcs(py::module &m) {
 
         K2_CHECK_EQ(labels_arc_map.Dim(), ans_num_arcs);
         const int32_t *labels_arc_map_data = labels_arc_map.Data();
-        const int32_t *combined_shape_row_ids_data = combined_shape.RowIds(1).Data(),
-            *combined_shape_row_splits_data = combined_shape.RowSplits(1).Data();
-        K2_EVAL2(c, ragged_labels_size, ans_num_arcs, lambda_linearize_labels, (int32_t r, int32_t arc_idx) -> void {
-            int32_t fsa_label = ans_arcs[arc_idx].label;
-            bool arc_is_final = (fsa_label == -1);
-            int32_t combined_shape_idx01 = labels_arc_map_data[arc_idx];
-            // The reason we can assert the following is that `combined_size`
-            // has no empty sub-lists because we initialized `max_num_elems = 1`
-            // when we set up those sizes.
-            K2_CHECK_GE(combined_shape_idx01, 0);
-            // combined_shape_idx0 is also an arc_idx012 into the *original*
-            // fsas; combined_shape_idx1 is the index into the sequence of
-            // ragged labels attached to that arc.
-            int32_t combined_shape_idx0 = combined_shape_row_ids_data[combined_shape_idx01],
-                combined_shape_idx0x = combined_shape_row_splits_data[combined_shape_idx0],
-                combined_shape_idx1 = combined_shape_idx01 - combined_shape_idx0x;
-            K2_CHECK_GE(combined_shape_idx1, 0);
-            int32_t src_idx0x = ragged_labels_row_splits.data[r][combined_shape_idx0],
-                src_idx0x_next = ragged_labels_row_splits.data[r][combined_shape_idx0 + 1],
-                src_idx01 = src_idx0x + combined_shape_idx1;
-            int32_t this_label;
-            if (src_idx01 >= src_idx0x_next) {
-              // We were past the end of the source sub-list of ragged labels.
-              this_label = 0;
-            } else {
-              this_label = ragged_labels_data.data[r][src_idx01];
-            }
-            if (this_label == -1 || this_label == 0)
-              this_label = (arc_is_final ? -1 : 0);
+        const int32_t *combined_shape_row_ids_data =
+                          combined_shape.RowIds(1).Data(),
+                      *combined_shape_row_splits_data =
+                          combined_shape.RowSplits(1).Data();
+        K2_EVAL2(
+            c, ragged_labels_size, ans_num_arcs, lambda_linearize_labels,
+            (int32_t r, int32_t arc_idx)->void {
+              int32_t fsa_label = ans_arcs[arc_idx].label;
+              bool arc_is_final = (fsa_label == -1);
+              int32_t combined_shape_idx01 = labels_arc_map_data[arc_idx];
+              // The reason we can assert the following is that `combined_size`
+              // has no empty sub-lists because we initialized `max_num_elems =
+              // 1` when we set up those sizes.
+              K2_CHECK_GE(combined_shape_idx01, 0);
+              // combined_shape_idx0 is also an arc_idx012 into the *original*
+              // fsas; combined_shape_idx1 is the index into the sequence of
+              // ragged labels attached to that arc.
+              int32_t combined_shape_idx0 =
+                          combined_shape_row_ids_data[combined_shape_idx01],
+                      combined_shape_idx0x =
+                          combined_shape_row_splits_data[combined_shape_idx0],
+                      combined_shape_idx1 =
+                          combined_shape_idx01 - combined_shape_idx0x;
+              K2_CHECK_GE(combined_shape_idx1, 0);
+              int32_t src_idx0x =
+                          ragged_labels_row_splits.data[r][combined_shape_idx0],
+                      src_idx0x_next = ragged_labels_row_splits
+                                           .data[r][combined_shape_idx0 + 1],
+                      src_idx01 = src_idx0x + combined_shape_idx1;
+              int32_t this_label;
+              if (src_idx01 >= src_idx0x_next) {
+                // We were past the end of the source sub-list of ragged labels.
+                this_label = 0;
+              } else {
+                this_label = ragged_labels_data.data[r][src_idx01];
+              }
+              if (this_label == -1 || this_label == 0)
+                this_label = (arc_is_final ? -1 : 0);
 
-            if (arc_is_final) {
-              // In positions where the source FSA has label -1 (which should be
-              // final-arcs), the ragged labels should have label -1.  If this
-              // fails it will be because final-arcs had labels that were
-              // neither -1 or 0.  If this becomes a problem in future we may
-              // have to revisit this.
-              K2_CHECK_EQ(this_label, fsa_label);
-            }
-            labels_acc(r, arc_idx) = this_label;
-          });
+              if (arc_is_final) {
+                // In positions where the source FSA has label -1 (which should
+                // be final-arcs), the ragged labels should have label -1.  If
+                // this fails it will be because final-arcs had labels that were
+                // neither -1 or 0.  If this becomes a problem in future we may
+                // have to revisit this.
+                K2_CHECK_EQ(this_label, fsa_label);
+              }
+              labels_acc(r, arc_idx) = this_label;
+            });
 
         std::vector<torch::Tensor> ans_labels(ragged_labels_size);
         for (int32_t r = 0; r < ragged_labels_size; r++) {
@@ -596,7 +628,8 @@ static void PybindFixFinalLabels(py::module &m) {
           FixFinalLabels(fsas, labels_array.Data(), 1);
         } else {
           // `label` is the 3rd field of struct Arc.
-          FixFinalLabels(fsas, reinterpret_cast<int32_t*>(fsas.values.Data()) + 2, 4);
+          FixFinalLabels(
+              fsas, reinterpret_cast<int32_t *>(fsas.values.Data()) + 2, 4);
         }
       },
       py::arg("fsas"), py::arg("labels"),

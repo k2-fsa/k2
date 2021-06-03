@@ -7,10 +7,10 @@
  * @copyright
  * See LICENSE for clarification regarding multiple authors
  */
-
 #include "k2/python/csrc/torch/discounted_cum_sum.h"
 
 #include "k2/csrc/context.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor_ops.h"
@@ -22,6 +22,7 @@ namespace k2 {
 static void DiscountedCumSumWrapper(torch::Tensor x, torch::Tensor gamma,
                                     torch::Tensor y, bool flip = false) {
   NVTX_RANGE(K2_FUNC);
+  DeviceGuard guard(GetContext(x));
   Tensor x_k2 = FromTorch(x, TensorTag{});
   Tensor gamma_k2 = FromTorch(gamma, TensorTag{});
   Tensor y_k2 = FromTorch(y, TensorTag{});

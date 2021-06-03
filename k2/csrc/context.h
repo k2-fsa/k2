@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cassert>
 #include <deque>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -19,9 +20,18 @@
 #include <type_traits>
 #include <vector>
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include "k2/csrc/log.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/semaphore.h"
+
+#ifndef K2_WITH_CUDA
+#include "k2/csrc/fake_cuda.h"
+#endif
 
 namespace k2 {
 

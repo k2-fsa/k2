@@ -231,7 +231,6 @@ cython_debug/
 [Ll]ib
 [Ll]ib64
 [Ll]ocal
-[Ss]cripts
 pyvenv.cfg
 pip-selfcheck.json
 
@@ -584,3 +583,5 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+!.github/**

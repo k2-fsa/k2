@@ -1,0 +1,53 @@
+package:
+  name: k2
+  version: "{{ environ.get('K2_BUILD_VERSION') }}"
+
+source:
+  path: "{{ environ.get('K2_ROOT_DIR') }}"
+
+build:
+  number: 0
+  string: cpu_py{{ environ.get('K2_PYTHON_VERSION') }}_torch{{ environ.get('K2_TORCH_VERSION') }}
+  script_env:
+    - K2_IS_GITHUB_ACTIONS
+    - K2_TORCH_VERSION
+    - K2_PYTHON_VERSION
+    - K2_BUILD_TYPE
+    - K2_BUILD_VERSION
+    - K2_IS_FOR_CONDA
+    - K2_CMAKE_ARGS
+    - K2_MAKE_ARGS
+  script: conda install -y -q -c pytorch pytorch={{ environ.get('K2_TORCH_VERSION') }} cpuonly & {{ PYTHON }} setup.py install --single-version-externally-managed --record=record.txt
+
+requirements:
+  build:
+    - {{ compiler('c') }} # [win]
+    - {{ compiler('cxx') }} # [win]
+
+  host:
+    - anaconda-client
+    - cmake=3.18
+    - python
+    - pytorch={{ environ.get('K2_TORCH_VERSION') }}
+    - gcc_linux-64=7 # [linux]
+    - cpuonly # to install CPU version of PyTorch
+  run:
+    - python
+    - pytorch={{ environ.get('K2_TORCH_VERSION') }}
+    - cpuonly
+
+about:
+  home: https://github.com/k2-fsa/k2
+  doc_url: https://k2.readthedocs.io/en/latest/
+  license: Apache V2
+  license_file: LICENSE
+  summary: FSA/FST algorithms, differentiable, with PyTorch compatibility
+  description: |
+    The vision of k2 is to be able to seamlessly integrate Finite State Automaton
+    (FSA) and Finite State Transducer (FST) algorithms into autograd-based machine
+    learning toolkits like PyTorch and TensorFlow.  For speech recognition
+    applications, this should make it easy to interpolate and combine various
+    training objectives such as cross-entropy, CTC and MMI and to jointly optimize a
+    speech recognition system with multiple decoding passes including lattice
+    rescoring and confidence estimation.  We hope k2 will have many other
+    applications as well.

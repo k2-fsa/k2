@@ -12,6 +12,7 @@
 #include <string>
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
@@ -206,7 +207,11 @@ PyClass To(PyClass &pyclass, py::object device) {
 
   ContextPtr &context = pyclass.Context();
   if (device_type == "cpu") {
+    // CPU to CPU
     if (context->GetDeviceType() == kCpu) return pyclass;
+
+    // CUDA to CPU
+    DeviceGuard guard(context);
     return pyclass.To(GetCpuContext());
   }
 
@@ -216,8 +221,11 @@ PyClass To(PyClass &pyclass, py::object device) {
 
   if (context->GetDeviceType() == kCuda &&
       context->GetDeviceId() == device_index)
+    // CUDA to CUDA
     return pyclass;
 
+  // CPU to CUDA
+  DeviceGuard guard(device_index);
   return pyclass.To(GetCudaContext(device_index));
 }
 

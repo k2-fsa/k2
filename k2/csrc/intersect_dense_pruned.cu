@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "k2/csrc/array_ops.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/hash.h"
@@ -309,6 +310,10 @@ class MultiGraphDenseIntersectPruned {
   }
 
   static void BackwardPassStatic(MultiGraphDenseIntersectPruned *c) {
+    // WARNING(fangjun): this is run in a separate thread, so we have
+    // to reset its default device. Otherwise, it will throw later
+    // if the main thread is using a different device.
+    DeviceGuard guard(c->c_);
     c->BackwardPass();
   }
 

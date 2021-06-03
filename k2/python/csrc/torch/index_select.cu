@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "k2/csrc/context.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/ragged.h"
@@ -105,6 +106,7 @@ static torch::Tensor IndexSelect2D(torch::Tensor src, torch::Tensor index) {
 static torch::Tensor IndexSelectWrapper(torch::Tensor src, torch::Tensor index,
                                         double default_value = 0) {
   NVTX_RANGE(K2_FUNC);
+  DeviceGuard guard(GetContext(src));
   auto scalar_type = src.scalar_type();
   if (src.dim() == 1) {
     switch (scalar_type) {
@@ -183,6 +185,7 @@ static torch::Tensor SimpleRaggedIndexSelect1D(torch::Tensor src,
 
 static torch::Tensor SimpleRaggedIndexSelectWrapper(torch::Tensor src,
                                                     Ragged<int32_t> &indexes) {
+  DeviceGuard guard(GetContext(src));
   auto scalar_type = src.scalar_type();
   if (src.dim() == 1) {
     switch (scalar_type) {
