@@ -109,7 +109,7 @@ class _IndexAndSumFunction(torch.autograd.Function):
         return ans, None
 
 
-# put index_select here instead of in `auto_grad.py` to break circular import
+# put index_select here instead of in `autograd.py` to break circular import
 def index_select(src: torch.Tensor,
                  index: torch.Tensor,
                  default_value: float = 0) -> torch.Tensor:
@@ -310,6 +310,7 @@ def index(src: Union[Fsa, torch.Tensor, _k2.RaggedInt],
     '''Indexing an Fsa or a 1-D tensor with a tensor or a ragged tensor.
     It's a wrapper of above function `index_fsa`, `index_tensor` and
     `index_ragged`.
+    Supports autograd where applicable (e.g. for floating point values)
     '''
     if isinstance(src, Fsa):
         # currently we only support index Fsa with a tensor.

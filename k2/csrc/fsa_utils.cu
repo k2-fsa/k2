@@ -2728,9 +2728,10 @@ void FixFinalLabels(FsaOrVec &fsas,
         // we name this as if it is an aux_label, but it could have any name.
         int32_t cur_aux_label = labels_data[arc_idx012 * labels_stride];
         if (arc.dest_state + state_idx0x + 1 == next_state_idx0x) {
-          K2_DCHECK_EQ(arc.label, -1);
           K2_DCHECK_LE(cur_aux_label, 0);  // Expect it to be either 0 or -1.
           if (cur_aux_label != -1) {
+            K2_CHECK_EQ(cur_aux_label, 0) << "Expected label (or aux-label) on "
+                "final-arc to be -1 or 0.";
             labels_data[arc_idx012 * labels_stride] = -1;
           }
         } else if (cur_aux_label == -1) {
@@ -2746,9 +2747,9 @@ void FixFinalLabels(FsaOrVec &fsas,
         const Arc &arc = arcs_data[arc_idx01];
         if (arc.dest_state + 1 == num_states) {
           // dest_state is final-state.
-          K2_DCHECK_EQ(arc.label, -1);
-          K2_DCHECK_LE(cur_aux_label, 0);  // Expect it to be either 0 or -1.
           if (cur_aux_label != -1) {
+            K2_CHECK_EQ(cur_aux_label, 0) << "Expected label (or aux-label) on "
+                "final-arc to be -1 or 0.";
             labels_data[arc_idx01 * labels_stride] = -1;
           }
         } else {

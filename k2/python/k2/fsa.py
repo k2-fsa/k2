@@ -216,17 +216,17 @@ class Fsa(object):
         _ = self.properties
 
     def to_str(self, openfst: bool = False) -> str:
-        aux_labels = []
+        extra_labels = []
         ragged_labels = []
         for name, value in sorted(self.named_tensor_attr(include_scores=False)):
             if isinstance(value, torch.Tensor) and value.dtype == torch.int32:
-                aux_labels.append(value)
+                extra_labels.append(value)
             elif isinstance(value, _k2.RaggedInt):
                 ragged_labels.append(value)
 
         if self.arcs.num_axes() == 2:
             ans = 'k2.Fsa: ' + _k2.fsa_to_str(self.arcs, openfst=openfst,
-                                              aux_labels=aux_labels,
+                                              extra_labels=extra_labels,
                                               ragged_labels=ragged_labels)
         else:
             ans = 'k2.FsaVec: \n'
@@ -236,7 +236,7 @@ class Fsa(object):
                 end = start + ragged_arc.values().shape[0]
                 ans += 'FsaVec[' + str(i) + ']: ' + _k2.fsa_to_str(
                     ragged_arc, openfst=openfst,
-                    aux_labels=[x[start:end] for x in aux_labels],
+                    extra_labels=[x[start:end] for x in extra_labels],
                     ragged_labels=[_k2.ragged_int_arange(x, 0, start, end)
                                    for x in ragged_labels])
         ans += 'properties_str = ' + _k2.fsa_properties_as_str(
@@ -245,7 +245,7 @@ class Fsa(object):
             sep = '\n'
             ans += f'{sep}{name}: {value}'
         for name, value in self.named_non_tensor_attr():
-            if name == 'symbols':
+            if name == 'labels_sym':
                 continue
             sep = '\n'
             ans += f'{sep}{name}: {value}'
@@ -258,6 +258,26 @@ class Fsa(object):
         For visualization and debug only.
         '''
         return self.to_str(openfst=False)
+
+    def get_filler(self, attribute_name: str) -> Union[int, float]:
+        '''
+        Return the filler value associated with attribute names.  This is
+        0 unless otherwise specified, but you can override this by
+        for example, doing
+            fsa.foo_filler = -1
+        which will mean the "filler" for attribute fsa.foo is -1; and
+        this will get propagated when you do FSA operations, like any
+        other non-tensor attribute.  The filler is the value that means
+        "nothing is here" (like epsilon).
+        Caution: you should use a value that is castable to float and back
+        to integer without loss of precision, because currently the
+        `default_value` parameter of `index_select` in ./ops.py is a float.
+        '''
+
+        ans = getattr(self, attribute_name + '_filler', 0)
+        assert attribute_name != 'aux_labels' or ans == 0, \
+                                 'you cannot set the filler for aux_labels'
+        return ans
 
     def draw(self, filename: Optional[str],
              title: Optional[str] = None) -> 'Digraph':  # noqa
@@ -320,6 +340,14 @@ class Fsa(object):
             if name == 'labels':
                 assert value.dtype == torch.int32
                 self.arcs.values()[:, 2] = value
+                # fix_final_labels() will change 0's to -1's and vice versa to
+                # ensure that constraints on where final-labels should appear,
+                # are satisfied.
+                _k2.fix_final_labels(self.arcs, None)
+                self.__dict__['_properties'] = None
+                # access self.properties which will do a validity check on the
+                # modified FSA after getting the properties
+                self.properties
                 return
 
             self._tensor_attr[name] = value
@@ -426,8 +454,8 @@ class Fsa(object):
 
     def __delattr__(self, name: str) -> None:
         # We won't allow deletion of class attributes such as @property
-        # getters
-        assert name not in Fsa.__dict__
+        # getters, or 'scores' which is special.
+        assert name not in Fsa.__dict__ and name != 'scores'
         # ... or instance attributes such as self._tensor_attr or
         # self._properties
         assert name not in self.__dict__
@@ -791,6 +819,56 @@ class Fsa(object):
         self.scores.requires_grad_(requires_grad)
         return self
 
+    def rename_tensor_attribute_(self, src_name: str, dest_name: str) -> 'Fsa':
+        '''
+        Rename a tensor attribute (or, as a special case 'labels'),
+        and also rename non-tensor attributes that are associated with it,
+        i.e. that have it as a prefix.
+        Args:
+           src_name: The original name, exist as
+                a tensor attribute, e.g. 'aux_labels', or, as a special
+                case, equal 'labels'; special attributes 'labels'
+                and 'scores' are allowed but won't be deleted.
+           dest_name: The new name, that we are renaming it to.
+                If it already existed as a tensor attribute, it will
+                be rewritten; and any previously existing non-tensor
+                attributes that have this as a prefix will be
+                deleted.  As a special case, may equal 'labels'.
+        Returns: `self`
+
+        Note:
+           It is OK if src_name and/or dest_name equals 'labels' or 'scores',
+           but these special attributes won't be deleted.
+        '''
+        assert src_name != dest_name
+        assert src_name in self._tensor_attr or src_name == 'labels'
+        try:
+            value = getattr(self, src_name)
+            if src_name == 'labels':
+                value = value.clone()
+            setattr(self, dest_name, value)
+            if src_name != 'scores' and src_name != 'labels':
+                del self._tensor_attr[src_name]
+        except KeyError as e:
+            raise ValueError(f'Name {src_name} does not exist as a tensor '
+                             'attribute: exception was ' + str(e))
+
+        src_name_len = len(src_name)
+        dest_name_len = len(dest_name)
+        to_move = []
+        for name, value in list(self._non_tensor_attr.items()):
+            if name[:src_name_len] == src_name:
+                # remove src_name from prefix and replace with dest_name
+                new_name = dest_name + name[src_name_len:]
+                to_move.append((name, new_name, value))
+            elif name[:dest_name_len] == dest_name:
+                del self._non_tensor_attr[name]
+
+        for name, new_name, value in to_move:
+            self._non_tensor_attr[new_name] = value
+            del self._non_tensor_attr[name]
+        return self
+
     def invert_(self) -> 'Fsa':
         '''Swap the `labels` and `aux_labels`.
 
@@ -809,29 +887,40 @@ class Fsa(object):
         if not hasattr(self, 'aux_labels'):
             raise RuntimeError(
                 'invert_ cannot be called on acceptors (no aux_labels)')
+
         if not isinstance(self.aux_labels, torch.Tensor):
             raise RuntimeError('current invert_ method only supports case '
                                'where aux_labels is a tensor')
 
-        aux_labels = self.aux_labels
-        self.aux_labels = self.labels.clone()
-        self.labels = aux_labels
-
-        symbols = getattr(self, 'symbols', None)
-        aux_symbols = getattr(self, 'aux_symbols', None)
-        if symbols is not None:
-            del self.symbols
-        if aux_symbols is not None:
-            del self.aux_symbols
-        if symbols is not None:
-            self.aux_symbols = symbols
-        if aux_symbols is not None:
-            self.symbols = aux_symbols
-        self.__dict__['_properties'] = None
-        # access self.properties which will do a validity check on the modified
-        # FSA after getting the properties
-        self.properties
+        self.rename_tensor_attribute_('labels', '__temp')
+        self.rename_tensor_attribute_('aux_labels', 'labels')
+        self.rename_tensor_attribute_('__temp', 'aux_labels')
         return self
+
+        # TODO(dan), maybe: instead of using the generic approach above, we
+        # could use more specific code like the following (the old code), which
+        # might be more efficient.  Or perhaps create a generic
+        # swap_tensor_attribute_ function.
+        #
+        # aux_labels = self.aux_labels
+        # self.aux_labels = self.labels.clone()
+        # self.labels = aux_labels
+
+        # labels_sym = getattr(self, 'labels_sym', None)
+        # aux_labels_sym = getattr(self, 'aux_labels_sym', None)
+        # if labels_sym is not None:
+        #     del self.labels_sym
+        # if aux_labels_sym is not None:
+        #     del self.aux_labels_sym
+        # if labels_sym is not None:
+        #     self.aux_labels_sym = labels_sym
+        # if aux_labels_sym is not None:
+        #     self.labels_sym = aux_labels_sym
+        # self.__dict__['_properties'] = None
+        # # access self.properties which will do a validity check on the
+        # # modified FSA after getting the properties
+        # self.properties
+        # return self
 
     def invert(self) -> 'Fsa':
         '''Swap the `labels` and `aux_labels`.

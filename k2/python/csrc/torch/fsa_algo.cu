@@ -459,6 +459,7 @@ static void PybindExpandArcs(py::module &m) {
       "expand_arcs",
       [](FsaOrVec &fsas, std::vector<Ragged<int32_t>> &ragged_labels)
           -> std::tuple<FsaOrVec, std::vector<torch::Tensor>, torch::Tensor> {
+        DeviceGuard guard(fsas.Context());
         int32_t ragged_labels_size = ragged_labels.size();
         K2_CHECK_NE(ragged_labels_size, 0);
         K2_CHECK_LE(ragged_labels_size, 6);  // see SmallVec<...,6> below.
@@ -594,7 +595,7 @@ static void PybindExpandArcs(py::module &m) {
     tensors.  It does this by expanding arcs into linear chains of arcs.
 
    Args:
-        fsas:   The Fsa or FsaVec (ragged tensor of arcs with 2 or 3 axes)
+       fsas:   The Fsa or FsaVec (ragged tensor of arcs with 2 or 3 axes)
            whose structure we want to copy and possibly expand chains of arcs
        ragged_labels:   A list of at least one ragged tensor of
            ints; must satisfy ragged_labels[i].NumAxes() == 2
@@ -621,6 +622,7 @@ static void PybindFixFinalLabels(py::module &m) {
   m.def(
       "fix_final_labels",
       [](FsaOrVec &fsas, torch::optional<torch::Tensor> labels) -> void {
+        DeviceGuard guard(fsas.Context());
         if (labels.has_value()) {
           Array1<int32_t> labels_array = FromTorch<int32_t>(labels.value());
           K2_CHECK_EQ(labels_array.Dim(), fsas.NumElements());

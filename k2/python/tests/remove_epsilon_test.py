@@ -67,16 +67,10 @@ class TestRemoveEpsilonHost(unittest.TestCase):
 
 class TestRemoveEpsilonDevice(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            cls.devices.append(torch.device('cuda', 0))
-            if torch.cuda.device_count() > 1:
-                torch.cuda.set_device(1)
-                cls.devices.append(torch.device('cuda', 1))
-
     def test1(self):
+        if not torch.cuda.is_available():
+            return
+        device = torch.device('cuda', 0)
         s = '''
             0 1 0 1 1
             1 2 0 2 1
@@ -86,61 +80,92 @@ class TestRemoveEpsilonDevice(unittest.TestCase):
             4 5 -1 6 1
             5
         '''
-        for device in self.devices:
-            fsa = k2.Fsa.from_str(s, num_aux_labels=1).to(device)
-            prop = fsa.properties
-            self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
-            dest = k2.remove_epsilon(fsa)
-            prop = dest.properties
-            self.assertTrue(prop & k2.fsa_properties.EPSILON_FREE)
-            log_semiring = False
-            self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
+        fsa = k2.Fsa.from_str(s, num_aux_labels=1).to(device)
+        print(fsa.aux_labels)
+        prop = fsa.properties
+        self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
+        dest = k2.remove_epsilon(fsa)
+        prop = dest.properties
+        self.assertTrue(prop & k2.fsa_properties.EPSILON_FREE)
+        log_semiring = False
+        self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
 
-            # just make sure that it runs.
-            dest2 = k2.remove_epsilon_and_add_self_loops(fsa)
-            dest3 = k2.remove_epsilon(dest2)
+        # just make sure that it runs.
+        dest2 = k2.remove_epsilon_and_add_self_loops(fsa)
+        dest3 = k2.remove_epsilon(dest2)
 
-            self.assertTrue(
-                k2.is_rand_equivalent(dest,
-                                      dest3,
-                                      log_semiring,
-                                      treat_epsilons_specially=False))
-            self.assertFalse(
-                k2.is_rand_equivalent(dest,
-                                      dest2,
-                                      log_semiring,
-                                      treat_epsilons_specially=False,
-                                      npath=10000))
-            self.assertTrue(
-                k2.is_rand_equivalent(dest,
-                                      dest2,
-                                      log_semiring,
-                                      treat_epsilons_specially=True))
+        self.assertTrue(
+            k2.is_rand_equivalent(dest,
+                                  dest3,
+                                  log_semiring,
+                                  treat_epsilons_specially=False))
+        self.assertFalse(
+            k2.is_rand_equivalent(dest,
+                                  dest2,
+                                  log_semiring,
+                                  treat_epsilons_specially=False,
+                                  npath=10000))
+        self.assertTrue(
+            k2.is_rand_equivalent(dest,
+                                  dest2,
+                                  log_semiring,
+                                  treat_epsilons_specially=True))
 
     def test_autograd(self):
+        if not torch.cuda.is_available():
+            return
+        device = torch.device('cuda', 0)
         s = '''
             0 1 0 0.1
             0 1 1 0.2
             1 2 -1 0.3
             2
         '''
-        for device in self.devices:
-            # Skip CPU test for autograd
-            # The outputs of CPU and CUDA are not the same.
-            # This test is for CUDA only
-            if device.type == 'cpu':
-                continue
-            fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
-            ans = k2.remove_epsilon(fsa)
-            # arc map is [[0 2] [1] [2]]
-            scale = torch.tensor([10, 20, 30]).to(device)
+        fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
+        ans = k2.remove_epsilon(fsa)
+        print("ans = ", ans)
+        # arc map is [[1] [0 2] [2]]
+        scale = torch.tensor([10, 20, 30]).to(device)
 
-            (ans.scores * scale).sum().backward()
-            expected_grad = torch.empty_like(fsa.scores)
-            expected_grad[0] = scale[0]
-            expected_grad[1] = scale[1]
-            expected_grad[2] = scale[0] + scale[2]
-            assert torch.all(torch.eq(fsa.grad, expected_grad))
+        (ans.scores * scale).sum().backward()
+        expected_grad = torch.empty_like(fsa.scores)
+        expected_grad[0] = scale[1]
+        expected_grad[1] = scale[0]
+        expected_grad[2] = scale[1] + scale[2]
+        print("fsa.grad = ", fsa.grad)
+        print("expected_grad = ", expected_grad)
+        assert torch.all(torch.eq(fsa.grad, expected_grad))
+
+
+class TestRemoveEpsilonDeviceFillers(unittest.TestCase):
+    ''' aim to test code relating to _filler attributres. '''
+
+    def test1(self):
+        if not torch.cuda.is_available():
+            return
+        device = torch.device('cuda', 0)
+        s = '''
+            0 1 0 1 1
+            1 2 0 2 1
+            2 3 0 3 1
+            3 4 4 4 1
+            3 5 -1 5 1
+            4 5 -1 6 1
+            5
+        '''
+        fsa = k2.Fsa.from_str(s, aux_label_names=['foo']).to(device)
+        fsa.foo_filler = 2
+        print("Before removing epsilons: ", fsa)
+        prop = fsa.properties
+        self.assertFalse(prop & k2.fsa_properties.EPSILON_FREE)
+        dest = k2.remove_epsilon(fsa)
+        prop = dest.properties
+        self.assertTrue(prop & k2.fsa_properties.EPSILON_FREE)
+        log_semiring = False
+        self.assertTrue(k2.is_rand_equivalent(fsa, dest, log_semiring))
+
+        print("After removing epsilons: ", dest)
+        assert torch.where(dest.foo.values() == 2)[0].numel() == 0
 
 
 if __name__ == '__main__':

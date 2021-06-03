@@ -66,8 +66,8 @@ def _visualize_ctc_topo():
     ''')
     tokens_with_blank = [0] + tokens
     ctc_topo = build_ctc_topo(tokens_with_blank)
-    ctc_topo.symbols = symbols
-    ctc_topo.aux_symbols = aux_symbols
+    ctc_topo.labels_sym = symbols
+    ctc_topo.aux_labels_sym = aux_symbols
     ctc_topo.draw('ctc_topo.pdf')
 
 

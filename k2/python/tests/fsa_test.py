@@ -137,6 +137,15 @@ class TestFsa(unittest.TestCase):
                 torch.tensor([1.2, 2.2, 3.2, 4.2, 5.2, 6.2, 7.2, 8.2],
                              dtype=torch.float32))
 
+            # test that assigning to labels calls _k2.fix_final_labels as it
+            # should.
+            fsa.labels = torch.tensor([-1, 10, 0, 1, -1, 1, 0, 2],
+                                      dtype=torch.int32)
+            assert torch.all(
+                torch.eq(fsa.labels,
+                         torch.tensor([0, 10, -1, 1, -1, 1, -1, 2],
+                                      dtype=torch.int32)))
+
     def test_acceptor_wo_arcs_from_str(self):
         s1 = '''
         '''
@@ -682,8 +691,8 @@ class TestFsa(unittest.TestCase):
             3
         '''
         fsa = k2.Fsa.from_str(rules, num_aux_labels=1)
-        fsa.symbols = symbols
-        fsa.aux_symbols = aux_symbols
+        fsa.labels_sym = symbols
+        fsa.aux_labels_sym = aux_symbols
 
         import shutil
         if shutil.which('dot') is not None:
@@ -767,6 +776,8 @@ class TestFsa(unittest.TestCase):
         fsa1 = k2.Fsa.from_str(s1, num_aux_labels=1).requires_grad_(True)
 
         fsa0.invert_()
+        print("str(fsa0) == ", str(fsa0))
+        print("str(fsa1) == ", str(fsa1))
         assert str(fsa0) == str(fsa1)
         fsa0.invert_()
         fsa1.invert_()
@@ -786,7 +797,7 @@ class TestFsa(unittest.TestCase):
         '''
         symbol_table = k2.SymbolTable.from_str(sym_str)
         fsa = k2.Fsa.from_str(s, num_aux_labels=1)
-        fsa.symbols = symbol_table
+        fsa.labels_sym = symbol_table
         del symbol_table
 
         fsa.tensor_attr1 = torch.tensor([1, 2])
@@ -803,8 +814,8 @@ class TestFsa(unittest.TestCase):
             torch.eq(fsa.tensor_attr2, torch.tensor([[10, 20], [30, 40]])))
         assert fsa.non_tensor_attr1 == 'test-fsa'
         assert fsa.non_tensor_attr2 == 20201208
-        assert fsa.symbols.get('a') == 1
-        assert fsa.symbols.get(1) == 'a'
+        assert fsa.labels_sym.get('a') == 1
+        assert fsa.labels_sym.get(1) == 'a'
 
     def test_fsa_vec_as_dict(self):
         s1 = '''
@@ -825,7 +836,7 @@ class TestFsa(unittest.TestCase):
             a 1
         '''
         symbol_table = k2.SymbolTable.from_str(sym_str)
-        fsa.symbols = symbol_table
+        fsa.labels_sym = symbol_table
         del symbol_table
 
         fsa.tensor_attr1 = torch.tensor([1, 2, 3])
@@ -844,8 +855,8 @@ class TestFsa(unittest.TestCase):
                      torch.tensor([[10, 20], [30, 40], [50, 60]])))
         assert fsa.non_tensor_attr1 == 'test-fsa-vec'
         assert fsa.non_tensor_attr2 == 20201208
-        assert fsa.symbols.get('a') == 1
-        assert fsa.symbols.get(1) == 'a'
+        assert fsa.labels_sym.get('a') == 1
+        assert fsa.labels_sym.get(1) == 'a'
 
     def test_fsa_vec_as_dict_ragged(self):
         r = k2.RaggedInt(k2.RaggedShape('[ [ x x ] [x] [ x x ] [x]]'),
