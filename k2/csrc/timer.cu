@@ -5,8 +5,7 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
-#include <sys/time.h>
-
+#include <chrono>  // NOLINT
 #include <memory>
 
 #include "k2/csrc/context.h"
@@ -29,22 +28,20 @@ class CpuTimerImpl : public TimerImpl {
  public:
   CpuTimerImpl() { Reset(); }
 
-  void Reset() override { gettimeofday(&time_start_, nullptr); }
+  using high_resolution_clock = std::chrono::high_resolution_clock;
+
+  void Reset() override { begin_ = high_resolution_clock::now(); }
 
   // Return time in seconds
   double Elapsed() override {
-    struct timeval time_end;
-    gettimeofday(&time_end, nullptr);
-    double t1, t2;
-    t1 = static_cast<double>(time_start_.tv_sec) +
-         static_cast<double>(time_start_.tv_usec) / (1000 * 1000);
-    t2 = static_cast<double>(time_end.tv_sec) +
-         static_cast<double>(time_end.tv_usec) / (1000 * 1000);
-    return t2 - t1;
+    auto end = high_resolution_clock::now();
+    auto diff =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - begin_);
+    return diff.count() / 1000000.0;
   }
 
  private:
-  struct timeval time_start_;
+  high_resolution_clock::time_point begin_;
 };
 
 class CudaTimerImpl : public TimerImpl {
@@ -69,7 +66,7 @@ class CudaTimerImpl : public TimerImpl {
     K2_CUDA_SAFE_CALL(cudaEventRecord(time_end_, stream_));
     K2_CUDA_SAFE_CALL(cudaEventSynchronize(time_end_));
 
-    float ms_elapsed;
+    float ms_elapsed = 0;
     K2_CUDA_SAFE_CALL(
         cudaEventElapsedTime(&ms_elapsed, time_start_, time_end_));
     return ms_elapsed / 1000;

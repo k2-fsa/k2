@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <random>
 #include <vector>
 
 #include "k2/csrc/fsa.h"
@@ -23,7 +24,9 @@ void ToNotTopSorted(Fsa *fsa) {
   int32_t num_states = fsa->TotSize(0);
   std::vector<int32_t> order(num_states);
   std::iota(order.begin(), order.end(), 0);
-  std::random_shuffle(order.begin() + 1, order.end() - 1);
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(order.begin() + 1, order.end() - 1, g);
 
   Array1<Arc> &arcs = fsa->values;
   Arc *arcs_data = arcs.Data();

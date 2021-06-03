@@ -2,9 +2,33 @@
 
 import datetime
 import os
+import platform
 import re
+import shutil
 
 import torch
+
+
+def is_macos():
+    return platform.system() == 'Darwin'
+
+
+def is_windows():
+    return platform.system() == 'Windows'
+
+
+def with_cuda():
+    if shutil.which('nvcc') is None:
+        return False
+
+    if is_macos():
+        return False
+
+    cmake_args = os.environ.get('K2_CMAKE_ARGS', '')
+    if 'K2_WITH_CUDA=OFF' in cmake_args:
+        return False
+
+    return True
 
 
 def get_pytorch_version():
@@ -42,16 +66,22 @@ def get_package_version():
     #
     default_cuda_version = '10.1'  # CUDA 10.1
 
-    cuda_version = get_cuda_version()
-
-    if is_for_pypi() and default_cuda_version == cuda_version:
-        cuda_version = ''
-        pytorch_version = ''
-        local_version = ''
+    if with_cuda():
+        cuda_version = get_cuda_version()
+        if is_for_pypi() and default_cuda_version == cuda_version:
+            cuda_version = ''
+            pytorch_version = ''
+            local_version = ''
+        else:
+            cuda_version = f'+cuda{cuda_version}'
+            pytorch_version = get_pytorch_version()
+            local_version = f'{cuda_version}.torch{pytorch_version}'
     else:
-        cuda_version = f'+cuda{cuda_version}'
         pytorch_version = get_pytorch_version()
-        local_version = f'{cuda_version}.torch{pytorch_version}'
+        local_version = f'+cpu.torch{pytorch_version}'
+
+    if is_for_conda():
+        local_version = ''
 
     with open('CMakeLists.txt') as f:
         content = f.read()

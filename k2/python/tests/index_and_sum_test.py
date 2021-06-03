@@ -19,7 +19,7 @@ class TestIndexAndSum(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
             if torch.cuda.device_count() > 1:
                 torch.cuda.set_device(1)
@@ -47,7 +47,7 @@ class TestIndexAndSum(unittest.TestCase):
             expected_grad[2] = scale[0] + scale[2]
             expected_grad[3] = scale[1] + scale[2] * 2
 
-            assert torch.all(torch.eq(src.grad, expected_grad))
+            assert torch.allclose(src.grad, expected_grad)
 
     def test_with_negative_1(self):
         for device in self.devices:
@@ -60,7 +60,7 @@ class TestIndexAndSum(unittest.TestCase):
             ans = k2.index_and_sum(src, indexes)
             expected = torch.tensor([1 + 2, 0 + 3, 0, 0 + 2 + 3 + 1 + 3,
                                      0]).to(src)
-            assert torch.all(torch.eq(ans, expected))
+            assert torch.allclose(ans, expected)
 
             # now for autograd
             scale = torch.tensor([10, 20, 30, 40, 50]).to(device)
@@ -71,7 +71,7 @@ class TestIndexAndSum(unittest.TestCase):
             expected_grad[2] = scale[0] + scale[3]
             expected_grad[3] = scale[1] + scale[3] * 2
 
-            assert torch.all(torch.eq(src.grad, expected_grad))
+            assert torch.allclose(src.grad, expected_grad)
 
 
 if __name__ == '__main__':

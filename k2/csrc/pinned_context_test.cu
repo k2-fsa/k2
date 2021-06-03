@@ -121,6 +121,8 @@ static void PinnedContextSpeedTest() {
          (total_bytes / (1 << 30)) / elapsed_pinned);
 }
 
+#ifdef K2_WITH_CUDA
 TEST(PinnedContext, SpeedTest) { PinnedContextSpeedTest(); }
+#endif
 
 }  // namespace k2

@@ -11,10 +11,10 @@
 
 import unittest
 
+import torch
 import _k2
 import k2
 import numpy as np
-import torch
 
 
 class TestRaggedOps(unittest.TestCase):
@@ -22,7 +22,7 @@ class TestRaggedOps(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
             if torch.cuda.device_count() > 1:
                 torch.cuda.set_device(1)
@@ -470,7 +470,7 @@ class TestRaggedOps(unittest.TestCase):
 
         assert shape.row_splits(1).device.type == 'cpu'
 
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             device = torch.device('cuda', 0)
             shape = shape.to(device)
             assert shape.row_splits(1).is_cuda

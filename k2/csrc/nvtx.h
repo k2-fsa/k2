@@ -6,7 +6,9 @@
 #ifndef K2_CSRC_NVTX_H_
 #define K2_CSRC_NVTX_H_
 
+#ifdef K2_ENABLE_NVTX
 #include "nvToolsExt.h"
+#endif
 
 namespace k2 {
 

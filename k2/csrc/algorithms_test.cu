@@ -105,7 +105,7 @@ void TestGetNew2OldAndRowIds() {
           keep_data[i] = (char)random_keep_data[i];
         });
 
-      auto lambda_keep = [=] __host__ __device__ (int32_t i, int32_t row) {
+      auto lambda_keep = [=] __host__ __device__(int32_t i, int32_t row) {
         return random_keep_data[i];
       };
 

@@ -27,7 +27,7 @@ class TestFsa(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
             if torch.cuda.device_count() > 1:
                 torch.cuda.set_device(1)
@@ -685,8 +685,10 @@ class TestFsa(unittest.TestCase):
         fsa.symbols = symbols
         fsa.aux_symbols = aux_symbols
 
-        fsa.draw(filename='foo.png')
-        os.remove('foo.png')
+        import shutil
+        if shutil.which('dot') is not None:
+            fsa.draw(filename='foo.png')
+            os.remove('foo.png')
 
     def test_to(self):
         s = '''
@@ -696,7 +698,7 @@ class TestFsa(unittest.TestCase):
         fsa = k2.Fsa.from_str(s)
         assert fsa.is_cpu()
 
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             fsa = fsa.to('cuda:0')
             assert fsa.is_cuda()
 

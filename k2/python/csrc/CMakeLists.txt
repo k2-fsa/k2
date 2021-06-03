@@ -1,3 +1,6 @@
+# it is located in k2/csrc/cmake/transform.cmake
+include(transform)
+
 # please keep the list sorted
 set(k2_srcs
   k2.cu
@@ -12,7 +15,11 @@ else()
   message(FATAL_ERROR "Please select a framework.")
 endif()
 
-pybind11_add_module(_k2 ${k2_srcs})
+if(NOT K2_WITH_CUDA)
+  transform(OUTPUT_VARIABLE k2_srcs SRCS ${k2_srcs})
+endif()
+
+pybind11_add_module(_k2 ${k2_srcs} SHARED)
 target_link_libraries(_k2 PRIVATE context)
 target_link_libraries(_k2 PRIVATE fsa)
 target_include_directories(_k2 PRIVATE ${CMAKE_SOURCE_DIR})

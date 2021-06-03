@@ -104,8 +104,8 @@ void CheckArrayData(const Array1<T> &array, const Array1<T> &target,
   ExpectEqual(target_data, array_data, abs_error);
 }
 
-void CheckRowSplits(RaggedShape &shape,
-                    const std::vector<std::vector<int32_t>> &target) {
+inline void CheckRowSplits(RaggedShape &shape,
+                           const std::vector<std::vector<int32_t>> &target) {
   for (int32_t i = 1; i < shape.NumAxes(); ++i) {
     Array1<int32_t> curr_row_splits = shape.RowSplits(i);
     CheckArrayData<int32_t>(curr_row_splits, target[i - 1]);

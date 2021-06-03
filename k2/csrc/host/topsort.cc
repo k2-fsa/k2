@@ -32,7 +32,7 @@ void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
   if (!is_acyclic_) return;
 
   auto num_states_out = state_out_to_in.size();
-  arc_indexes_.resize(num_states_out + 1);
+  arc_indexes_.resize(num_states_out + 1, 0);
   arcs_.reserve(fsa_in_.size2);
   arc_map_.reserve(fsa_in_.size2);
 
@@ -62,7 +62,9 @@ void TopSorter::GetSizes(Array2Size<int32_t> *fsa_size) {
       arc_map_.push_back(arc_begin - arc_begin_index);
     }
   }
-  arc_indexes_[num_states_out] = arc_indexes_[num_states_out - 1];
+  if (num_states_out > 1) {
+    arc_indexes_[num_states_out] = arc_indexes_[num_states_out - 1];
+  }
 
   K2_CHECK_EQ(arcs_.size(), arc_map_.size());
   fsa_size->size1 = num_states_out;

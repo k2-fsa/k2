@@ -6,7 +6,7 @@
 
 // See ../../LICENSE for clarification regarding multiple authors
 
-#include "k2/csrc/tensor_ops.h"
+#include <string.h>  // memcpy, memset
 
 #include <algorithm>
 #include <memory>
@@ -15,6 +15,7 @@
 #include "k2/csrc/dtype.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
+#include "k2/csrc/tensor_ops.h"
 
 namespace k2 {
 

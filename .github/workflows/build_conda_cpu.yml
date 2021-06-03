@@ -1,0 +1,121 @@
+# Copyright (c)  2021  Xiaomi Corp.       (author: Fangjun Kuang)
+
+# See ../../LICENSE for clarification regarding multiple authors
+
+# refer to https://github.com/actions/starter-workflows/pull/47/files
+
+
+# Note, we have to set
+#
+# export DYLD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.8/site-packages:$DYLD_LIBRARY_PATH
+#
+# before running `python3 -m k2.version`
+#
+# See https://github.com/openPMD/openPMD-api/issues/593#issuecomment-552690470
+
+
+name: build_conda_cpu
+
+on:
+  push:
+    branches:
+      - conda
+
+env:
+  K2_BUILD_TYPE: Release
+
+jobs:
+  build_conda_cpu:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-16.04, macos-10.15]
+        # anaconda does not support 3.9 as of 2021.05.08
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        # python-version: [3.6, 3.7, 3.8]
+        # from https://download.pytorch.org/whl/torch_stable.html
+        #
+        # PyTorch 1.8.x and 1.7.1 support 3.6, 3.7, 3.8, 3.9
+        # PyTorch 1.7.0, 1.6.0, and 1.5.x support 3.6, 3.7, 3.8
+        #
+        # Other PyTorch versions are not tested
+        #
+        torch: ["1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1", "1.8.0", "1.8.1"]
+        exclude:
+          - python-version: 3.9 # exclude Python 3.9 for [1.5.0, 1.5.1, 1.6.0, 1.7.0]
+            torch: "1.5.0"
+          - python-version: 3.9
+            torch: "1.5.1"
+          - python-version: 3.9
+            torch: "1.6.0"
+          - python-version: 3.9
+            torch: "1.7.0"
+
+    steps:
+      # refer to https://github.com/actions/checkout
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          activate-environment: k2
+
+      - name: Display Python version
+        shell: bash -l {0}
+        run: |
+          python3 -c "import sys; print(sys.version)"
+          which python3
+
+      - name: Install conda dependencies
+        shell: bash -l {0}
+        run: |
+          conda install -y -q anaconda-client
+          conda install -y -q conda-build
+          conda install -y -q -c pytorch pytorch=${{ matrix.torch }} cpuonly
+
+      - name: Display conda info
+        shell: bash -l {0}
+        run: |
+          which conda
+          conda env list
+          conda info
+
+      - name: Build k2
+        shell: bash -l {0}
+        env:
+          K2_PYTHON_VERSION: ${{ matrix.python-version}}
+          K2_TORCH_VERSION: ${{ matrix.torch }}
+          K2_CONDA_TOKEN: ${{ secrets.K2_CONDA_TOKEN}}
+          K2_IS_GITHUB_ACTIONS: 1
+          K2_IS_FOR_CONDA: 1
+        run: |
+          export K2_BUILD_TYPE=$K2_BUILD_TYPE
+          ./scripts/build_conda_cpu.sh
+
+      - name: Display generated files
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          ls -lh /usr/share/miniconda/envs/k2/conda-bld/linux-64
+
+      - name: Display generated files
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          ls -lh /usr/local/miniconda/envs/k2/conda-bld/osx-64
+
+      - name: Upload generated files
+        if: startsWith(matrix.os, 'ubuntu')
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
+          path: /usr/share/miniconda/envs/k2/conda-bld/linux-64/*.tar.bz2
+
+      - name: Upload generated files
+        if: startsWith(matrix.os, 'macos')
+        uses: actions/upload-artifact@v2
+        with:
+          name: torch-${{ matrix.torch }}-python-${{ matrix.python-version }}-${{ matrix.os }}
+          path: /usr/local/miniconda/envs/k2/conda-bld/osx-64/*.tar.bz2

@@ -27,6 +27,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "k2/csrc/macros.h"
 
@@ -40,6 +41,10 @@ namespace k2 {
 
 enum class Dtype;
 std::ostream &operator<<(std::ostream &os, Dtype dtype);
+
+// defined in utils.h
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec);
 
 namespace internal {
 
@@ -335,8 +340,13 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 // Caution: don't do this:
 //     K2_CHECK_CUDA_ERROR(cudaGetLastError())
 // as it will call `cudaGetLastError` twice and reset the error status.
+//
+#ifdef K2_WITH_CUDA
 #define K2_CHECK_CUDA_ERROR(x) \
   K2_CHECK_EQ(x, cudaSuccess) << " Error: " << cudaGetErrorString(x) << ". "
+#else
+#define K2_CHECK_CUDA_ERROR(...) K2_LOG(FATAL) << "Don't call me"
+#endif
 
 // The parameter of `K2_CUDA_SAFE_CALL` should be cuda function call or kernel
 // launch.
@@ -344,6 +354,8 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
 // user can even disable this call for debug mode by setting an environment
 // variable `K2_SYNC_KERNELS` with any non-empty value, see
 // function EnableCudaDeviceSync above.
+//
+#ifdef K2_WITH_CUDA
 #define K2_CUDA_SAFE_CALL(...)                \
   do {                                        \
     __VA_ARGS__;                              \
@@ -353,6 +365,12 @@ inline K2_CUDA_HOSTDEV LogLevel GetCurrentLogLevel() {
     cudaError_t e = cudaGetLastError();       \
     K2_CHECK_CUDA_ERROR(e);                   \
   } while (0)
+#else
+// Use a separate K2_CUDA_SAFE_CALL() for CPU
+// because the kernel invocation syntax <<< >>>
+// is not valid C++
+#define K2_CUDA_SAFE_CALL(...) K2_LOG(FATAL) << "Don't call me!"
+#endif
 
 // ------------------------------------------------------------
 //       For debug check
