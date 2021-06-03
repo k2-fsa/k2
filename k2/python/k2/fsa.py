@@ -273,13 +273,11 @@ class Fsa(object):
         to integer without loss of precision, because currently the
         `default_value` parameter of `index_select` in ./ops.py is a float.
         '''
-        try:
-            ans = getattr(self, attribute_name + '_filler')
-            assert ((attribute_name != 'aux_labels' or ans == 0) and
-                    'you cannot set the filler for aux_labels')
-            return ans
-        except AttributeError:
-            return 0
+
+        ans = getattr(self, attribute_name + '_filler', 0)
+        assert attribute_name != 'aux_labels' or ans == 0, \
+                                 'you cannot set the filler for aux_labels'
+        return ans
 
     def draw(self, filename: Optional[str],
              title: Optional[str] = None) -> 'Digraph':  # noqa
@@ -456,8 +454,8 @@ class Fsa(object):
 
     def __delattr__(self, name: str) -> None:
         # We won't allow deletion of class attributes such as @property
-        # getters
-        assert name not in Fsa.__dict__
+        # getters, or 'scores' which is special.
+        assert name not in Fsa.__dict__ and name != 'scores'
         # ... or instance attributes such as self._tensor_attr or
         # self._properties
         assert name not in self.__dict__
@@ -823,17 +821,19 @@ class Fsa(object):
 
     def rename_tensor_attribute_(self, src_name: str, dest_name: str) -> 'Fsa':
         '''
-        Rename a tensor attribute, and also rename non-tensor
-        attributes that are associated with it, i.e. that have it
-        as a prefix.
+        Rename a tensor attribute (or, as a special case 'labels'),
+        and also rename non-tensor attributes that are associated with it,
+        i.e. that have it as a prefix.
         Args:
-           src_name: The original name, must exist as
-                a tensor attribute, e.g. 'aux_labels'.
+           src_name: The original name, exist as
+                a tensor attribute, e.g. 'aux_labels', or, as a special
+                case, equal 'labels'; special attributes 'labels'
+                and 'scores' are allowed but won't be deleted.
            dest_name: The new name, that we are renaming it to.
                 If it already existed as a tensor attribute, it will
                 be rewritten; and any previously existing non-tensor
                 attributes that have this as a prefix will be
-                deleted.
+                deleted.  As a special case, may equal 'labels'.
         Returns: `self`
 
         Note:
@@ -841,15 +841,14 @@ class Fsa(object):
            but these special attributes won't be deleted.
         '''
         assert src_name != dest_name
+        assert src_name in self._tensor_attr or src_name == 'labels'
         try:
             value = getattr(self, src_name)
             if src_name == 'labels':
                 value = value.clone()
             setattr(self, dest_name, value)
-            try:
+            if src_name != 'scores' and src_name != 'labels':
                 del self._tensor_attr[src_name]
-            except KeyError:
-                pass
         except KeyError as e:
             raise ValueError(f'Name {src_name} does not exist as a tensor '
                              'attribute: exception was ' + str(e))

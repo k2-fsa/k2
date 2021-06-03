@@ -464,10 +464,16 @@ def fsa_from_unary_function_ragged(src: Fsa, dest_arcs: _k2.RaggedArc,
       arc_map:
         A map from arcs in `dest_arcs` to the corresponding arc-index in `src`,
         or -1 if the arc had no source arc (e.g. :func:`remove_epsilon`).
+      remove_filler:
+        If true, for each attribute that is linear in `src` and ragged
+        in the result, after turning it into a ragged tensor we will
+        remove all items that are equal to the filler for that attribute
+        (0 by default; see Fsa.get_filler()).  Attribute values on final-arcs
+        that are equal to -1 will also be treated as fillers and removed,
+        if remove_filler==True.
     Returns:
-      Returns the resulting Fsa, with properties propagated appropriately, and
-      autograd handled.  Fillers in currently-non-ragged integer attributes
-      will have been removed before converting to ragged.
+        Returns the resulting Fsa, with properties propagated appropriately, and
+        autograd handled.
     '''
     dest = Fsa(dest_arcs)
 
