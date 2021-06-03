@@ -84,10 +84,8 @@ class TestInvert(unittest.TestCase):
             fsa.aux_labels = k2.RaggedInt('[[2 3] [3 4] [] [5] [-1]]').to(
                 device)
             fsa.tensor_attr1 = torch.tensor([1, 2, 3, 4, 5]).to(device)
-
             # https://git.io/JqNiw
             ans = k2.invert(fsa)
-
             assert torch.all(
                 torch.eq(ans.tensor_attr1,
                          torch.tensor([1, 2, 0, 0, 3, 4, 5], device=device)))

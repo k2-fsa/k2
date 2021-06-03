@@ -120,12 +120,14 @@ static void PybindRaggedTpl(py::module &m, const char *name) {
       py::arg("axis"), py::arg("i"));
 
   pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
+    DeviceGuard guard(self.Context());
     return Equal(self, other);
-  });
+    }, py::arg("other"));
 
   pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
+    DeviceGuard guard(self.Context());
     return !Equal(self, other);
-  });
+    }, py::arg("other"));
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     DeviceGuard guard(self.Context());
@@ -297,12 +299,14 @@ static void PybindRaggedShape(py::module &m) {
   });
 
   pyclass.def("__eq__", [](const PyClass &self, const PyClass &other) -> bool {
+    DeviceGuard guard(self.Context());
     return Equal(self, other);
-  });
+    }, py::arg("other"));
 
   pyclass.def("__ne__", [](const PyClass &self, const PyClass &other) -> bool {
+    DeviceGuard guard(self.Context());
     return !Equal(self, other);
-  });
+  }, py::arg("other"));
 
   pyclass.def("__str__", [](const PyClass &self) -> std::string {
     DeviceGuard guard(self.Context());
