@@ -16,6 +16,15 @@ import torch
 
 class TestGetForwardScores(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test_simple_fsa_case_1(self):
         # see https://git.io/JtttZ
         s = '''
@@ -28,12 +37,7 @@ class TestGetForwardScores(unittest.TestCase):
             2 3 -1 0.8
             3
         '''
-
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             for use_double_scores in [True, False]:
                 fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
                 fsa_vec = k2.create_fsa_vec([fsa])
@@ -87,12 +91,7 @@ class TestGetForwardScores(unittest.TestCase):
             3 4 -1 0.8
             4
         '''
-
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             for use_double_scores in [True, False]:
                 fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
                 fsa_vec = k2.create_fsa_vec([fsa])
@@ -167,11 +166,7 @@ class TestGetForwardScores(unittest.TestCase):
             3 4 -1 0.8
             4
         '''
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             for use_double_scores in [True, False]:
                 fsa1 = k2.Fsa.from_str(s1).to(device).requires_grad_(True)
                 fsa2 = k2.Fsa.from_str(s2).to(device).requires_grad_(True)

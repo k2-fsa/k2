@@ -16,11 +16,17 @@ import torch
 
 class TestIndexAndSum(unittest.TestCase):
 
-    def test_without_negative_1(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
+    def test_without_negative_1(self):
+        for device in self.devices:
             src = torch.tensor([0, 1, 2, 3],
                                dtype=torch.float32,
                                requires_grad=True,
@@ -44,10 +50,7 @@ class TestIndexAndSum(unittest.TestCase):
             assert torch.allclose(src.grad, expected_grad)
 
     def test_with_negative_1(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             src = torch.tensor([0, 1, 2, 3],
                                dtype=torch.float32,
                                requires_grad=True,

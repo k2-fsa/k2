@@ -81,12 +81,17 @@ def _visualize_ctc_topo():
 # for PyTorch and k2.
 class TestCtcLossGradients(unittest.TestCase):
 
-    def test_case1(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
-        for device in devices:
+    def test_case1(self):
+        for device in self.devices:
             # suppose we have four symbols: <blk>, a, b, c, d
             torch_activation = torch.tensor([0.2, 0.2, 0.2, 0.2,
                                              0.2]).to(device)
@@ -143,11 +148,7 @@ class TestCtcLossGradients(unittest.TestCase):
             assert torch.allclose(torch_activation.grad, k2_activation.grad)
 
     def test_case2(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             # (T, N, C)
             torch_activation = torch.arange(1, 16).reshape(1, 3, 5).permute(
                 1, 0, 2).to(device)
@@ -198,11 +199,7 @@ class TestCtcLossGradients(unittest.TestCase):
             assert torch.allclose(torch_activation.grad, k2_activation.grad)
 
     def test_case3(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             # (T, N, C)
             torch_activation = torch.tensor([[
                 [-5, -4, -3, -2, -1],
@@ -256,11 +253,7 @@ class TestCtcLossGradients(unittest.TestCase):
             assert torch.allclose(torch_activation.grad, k2_activation.grad)
 
     def test_case4(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             # put case3, case2 and case1 into a batch
             torch_activation_1 = torch.tensor(
                 [[0., 0., 0., 0., 0.]]).to(device).requires_grad_(True)
@@ -346,11 +339,7 @@ class TestCtcLossGradients(unittest.TestCase):
 
     def test_random_case1(self):
         # 1 sequence
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             T = torch.randint(10, 100, (1,)).item()
             C = torch.randint(20, 30, (1,)).item()
             torch_activation = torch.rand((1, T + 10, C),
@@ -402,11 +391,7 @@ class TestCtcLossGradients(unittest.TestCase):
 
     def test_random_case2(self):
         # 2 sequences
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             T1 = torch.randint(10, 200, (1,)).item()
             T2 = torch.randint(9, 100, (1,)).item()
             C = torch.randint(20, 30, (1,)).item()

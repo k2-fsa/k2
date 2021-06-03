@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_algo.h"
 #include "k2/csrc/fsa_utils.h"
@@ -34,6 +35,7 @@ static void PybindTopSort(py::module &m) {
       "top_sort",
       [](FsaVec &src, bool need_arc_map = true)
           -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         FsaVec sorted;
         TopSort(src, &sorted, need_arc_map ? &arc_map : nullptr);
@@ -53,6 +55,7 @@ static void PybindLinearFsa(py::module &m) {
           context = GetCpuContext();
         else
           context = GetCudaContext(gpu_id);
+        DeviceGuard guard(context);
         Array1<int32_t> array(context, labels);
         return LinearFsa(array);  //
       },
@@ -72,6 +75,7 @@ static void PybindLinearFsa(py::module &m) {
         else
           context = GetCudaContext(gpu_id);
 
+        DeviceGuard guard(context);
         Ragged<int32_t> ragged = CreateRagged2<int32_t>(labels).To(context);
         return LinearFsas(ragged);
       },
@@ -84,6 +88,7 @@ static void PybindLinearFsa(py::module &m) {
   m.def(
       "linear_fsa",
       [](const Ragged<int32_t> &labels, int32_t /*unused_gpu_id*/) -> FsaVec {
+        DeviceGuard guard(labels.Context());
         return LinearFsas(labels);
       },
       py::arg("labels"), py::arg("gpu_id"));
@@ -103,6 +108,7 @@ static void PybindIntersect(py::module &m) {
          bool need_arc_map =
              true) -> std::tuple<FsaOrVec, torch::optional<torch::Tensor>,
                                  torch::optional<torch::Tensor>> {
+        DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         FsaVec out;
@@ -171,6 +177,7 @@ static void PybindIntersectDevice(py::module &m) {
          bool sorted_match_a =
              false) -> std::tuple<FsaVec, torch::optional<torch::Tensor>,
                                   torch::optional<torch::Tensor>> {
+        DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> a_arc_map;
         Array1<int32_t> b_arc_map;
         Array1<int32_t> b_to_a_map_array = FromTorch<int32_t>(b_to_a_map);
@@ -199,6 +206,7 @@ static void PybindIntersectDensePruned(py::module &m) {
          float output_beam, int32_t min_active_states,
          int32_t max_active_states)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
+        DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> arc_map_a;
         Array1<int32_t> arc_map_b;
         FsaVec out;
@@ -219,6 +227,7 @@ static void PybindIntersectDense(py::module &m) {
       [](FsaVec &a_fsas, DenseFsaVec &b_fsas,
          torch::optional<torch::Tensor> a_to_b_map, float output_beam)
           -> std::tuple<FsaVec, torch::Tensor, torch::Tensor> {
+        DeviceGuard guard(a_fsas.Context());
         Array1<int32_t> arc_map_a;
         Array1<int32_t> arc_map_b;
         FsaVec out;
@@ -246,6 +255,7 @@ static void PybindConnect(py::module &m) {
       "connect",
       [](Fsa &src, bool need_arc_map =
                        true) -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         Fsa out;
         Connect(src, &out, need_arc_map ? &arc_map : nullptr);
@@ -262,6 +272,7 @@ static void PybindArcSort(py::module &m) {
       "arc_sort",
       [](FsaOrVec &src, bool need_arc_map = true)
           -> std::pair<FsaOrVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         FsaOrVec out;
         ArcSort(src, &out, need_arc_map ? &arc_map : nullptr);
@@ -282,6 +293,7 @@ static void PybindShortestPath(py::module &m) {
       "shortest_path",
       [](FsaVec &fsas,
          torch::Tensor entering_arcs) -> std::pair<Fsa, Ragged<int32_t>> {
+        DeviceGuard guard(fsas.Context());
         Array1<int32_t> entering_arcs_array = FromTorch<int32_t>(entering_arcs);
 
         Ragged<int32_t> best_path_arc_indexes =
@@ -304,6 +316,7 @@ static void PybindAddEpsilonSelfLoops(py::module &m) {
       "add_epsilon_self_loops",
       [](FsaOrVec &src, bool need_arc_map = true)
           -> std::pair<FsaOrVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         FsaOrVec out;
         AddEpsilonSelfLoops(src, &out, need_arc_map ? &arc_map : nullptr);
@@ -319,6 +332,7 @@ static void PybindUnion(py::module &m) {
       "union",
       [](FsaVec &fsas, bool need_arc_map = true)
           -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(fsas.Context());
         Array1<int32_t> arc_map;
         Fsa out = Union(fsas, need_arc_map ? &arc_map : nullptr);
 
@@ -333,6 +347,7 @@ static void PybindRemoveEpsilon(py::module &m) {
   m.def(
       "remove_epsilon_host",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonHost(src, &dest, &arc_map);
@@ -342,6 +357,7 @@ static void PybindRemoveEpsilon(py::module &m) {
   m.def(
       "remove_epsilon_device",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonDevice(src, &dest, &arc_map);
@@ -352,6 +368,7 @@ static void PybindRemoveEpsilon(py::module &m) {
       "remove_epsilon",
       [](FsaOrVec &src,
          int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilon(src, properties, &dest, &arc_map);
@@ -362,6 +379,7 @@ static void PybindRemoveEpsilon(py::module &m) {
       "remove_epsilon_and_add_self_loops",
       [](FsaOrVec &src,
          int32_t properties) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         RemoveEpsilonAndAddSelfLoops(src, properties, &dest, &arc_map);
@@ -374,6 +392,7 @@ static void PybindDeterminize(py::module &m) {
   m.def(
       "determinize",
       [](FsaOrVec &src) -> std::pair<FsaOrVec, Ragged<int32_t>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> arc_map;
         Determinize(src, &dest, &arc_map);
@@ -387,6 +406,7 @@ static void PybindClosure(py::module &m) {
       "closure",
       [](Fsa &src, bool need_arc_map =
                        true) -> std::pair<Fsa, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         Fsa out = Closure(src, need_arc_map ? &arc_map : nullptr);
         torch::optional<torch::Tensor> arc_map_tensor;
@@ -403,6 +423,7 @@ static void PybindInvert(py::module &m) {
          bool need_arc_map =
              true) -> std::tuple<FsaOrVec, Ragged<int32_t>,
                                  torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         FsaOrVec dest;
         Ragged<int32_t> dest_aux_labels;
         Array1<int32_t> arc_map;
@@ -420,6 +441,7 @@ static void PybindRemoveEpsilonSelfLoops(py::module &m) {
       "remove_epsilon_self_loops",
       [](FsaOrVec &src, bool need_arc_map = true)
           -> std::pair<FsaOrVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(src.Context());
         Array1<int32_t> arc_map;
         FsaOrVec ans =
             RemoveEpsilonSelfLoops(src, need_arc_map ? &arc_map : nullptr);

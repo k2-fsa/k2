@@ -16,12 +16,17 @@ import torch
 
 class TestSparseAbs(unittest.TestCase):
 
-    def test_no_repeats(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
-        for device in devices:
+    def test_no_repeats(self):
+        for device in self.devices:
             row_indexes = torch.tensor([0, 0, 1, 2, 2]).to(device)
             col_indexes = torch.tensor([0, 1, 0, 1, 0]).to(device)
             indexes = torch.stack([row_indexes, col_indexes])
@@ -58,11 +63,7 @@ class TestSparseAbs(unittest.TestCase):
             assert torch.allclose(grad1, values.grad)
 
     def test_with_repeats(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             row_indexes = torch.tensor([0, 0, 1, 2, 0, 2, 2]).to(device)
             col_indexes = torch.tensor([0, 1, 0, 1, 0, 1, 0]).to(device)
             indexes = torch.stack([row_indexes, col_indexes])

@@ -16,6 +16,15 @@ import torch
 
 class TestUnion(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test(self):
         s0 = '''
             0 1 1 0.1
@@ -37,11 +46,7 @@ class TestUnion(unittest.TestCase):
             1 2 -1 1.0
             2
         '''
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             fsa0 = k2.Fsa.from_str(s0)
             fsa1 = k2.Fsa.from_str(s1)
             fsa2 = k2.Fsa.from_str(s2)
@@ -99,11 +104,7 @@ class TestUnion(unittest.TestCase):
             1 2 -1 1.2
             2
         '''
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             fsa0 = k2.Fsa.from_str(s0).to(device).requires_grad_(True)
             fsa1 = k2.Fsa.from_str(s1).to(device).requires_grad_(True)
             fsa2 = k2.Fsa.from_str(s2).to(device).requires_grad_(True)

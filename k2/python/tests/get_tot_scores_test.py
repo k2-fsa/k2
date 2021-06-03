@@ -16,6 +16,15 @@ import torch
 
 class TestGetTotScores(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test_tropical_single_fsa(self):
         # best path arc indexes are: 1, 3, 5, 10
         s = '''
@@ -33,11 +42,7 @@ class TestGetTotScores(unittest.TestCase):
             8 9 -1 6
             9
         '''
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             fsa = k2.Fsa.from_str(s).to(device)
             fsa = k2.create_fsa_vec([fsa])
             fsa.requires_grad_(True)
@@ -113,12 +118,7 @@ class TestGetTotScores(unittest.TestCase):
             2 3 -1 5.5
             3
         '''
-
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda'))
-
-        for device in devices:
+        for device in self.devices:
             fsa1 = k2.Fsa.from_str(s1).to(device)
             fsa2 = k2.Fsa.from_str(s2).to(device)
             fsa3 = k2.Fsa.from_str(s3).to(device)
@@ -195,11 +195,7 @@ class TestGetTotScores(unittest.TestCase):
             3 4 -1 0
             4
         '''
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             fsa = k2.Fsa.from_str(s).to(device)
             fsa.requires_grad_(True)
             fsa_vec = k2.create_fsa_vec([fsa])
@@ -258,11 +254,7 @@ class TestGetTotScores(unittest.TestCase):
             4 5 -1 1.0
             5
         '''
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             fsa1 = k2.Fsa.from_str(s1).to(device)
             fsa2 = k2.Fsa.from_str(s2).to(device)
 

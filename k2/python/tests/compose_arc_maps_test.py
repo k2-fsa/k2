@@ -21,6 +21,9 @@ class TestComposeArcMaps(unittest.TestCase):
         cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
     def test_simple_case(self):
         for device in self.devices:

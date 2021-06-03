@@ -29,6 +29,9 @@ class TestFsa(unittest.TestCase):
         cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
     def test_acceptor_from_tensor(self):
         fsa_tensor = torch.tensor([[0, 1, 2, _k2.float_as_int(-1.2)],

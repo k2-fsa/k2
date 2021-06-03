@@ -16,6 +16,15 @@ import torch
 
 class TestClosure(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test_simple_fsa(self):
         s = '''
             0 1 1 0.1
@@ -23,11 +32,7 @@ class TestClosure(unittest.TestCase):
             2 3 -1 0.3
             3
         '''
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
             fsa.aux_labels = torch.tensor([10, 20, -1],
                                           dtype=torch.int32).to(device)
@@ -68,11 +73,7 @@ class TestClosure(unittest.TestCase):
             2 3 -1 0.9
             3
         '''
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             fsa = k2.Fsa.from_str(s).to(device).requires_grad_(True)
             fsa.aux_labels = torch.tensor([0, 1, -1, 2, 3, -1, 4, 5, 6, -1],
                                           dtype=torch.int32).to(device)

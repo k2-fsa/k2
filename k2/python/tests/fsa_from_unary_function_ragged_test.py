@@ -17,12 +17,17 @@ import _k2
 
 class TestFsaFromUnaryFunctionRagged(unittest.TestCase):
 
-    def test_without_empty_list(self):
-        devices = [torch.device('cpu')]
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
         if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
-        for device in devices:
+    def test_without_empty_list(self):
+        for device in self.devices:
             s = '''
                 0 1 0 0
                 0 1 1 0
@@ -122,11 +127,7 @@ class TestFsaFromUnaryFunctionRagged(unittest.TestCase):
             assert torch.all(torch.eq(scores.grad, scores_copy.grad))
 
     def test_with_empty_list(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available() and k2.with_cuda:
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             s = '''
                 0 1 0 0
                 0 1 1 0

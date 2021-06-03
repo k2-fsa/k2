@@ -13,6 +13,7 @@
 #endif
 
 #include "k2/csrc/context.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/log.h"
 #include "k2/csrc/pytorch_context.h"
 
@@ -105,6 +106,8 @@ class PytorchCpuContext : public Context {
         memcpy(dst, src, num_bytes);
         break;
       case kCuda: {
+        // CPU -> CUDA
+        DeviceGuard guard(dst_context);
         ContextPtr pinned_context = GetPinnedContext();
         auto region = NewRegion(pinned_context, num_bytes);
         memcpy(region->data, src, num_bytes);
@@ -166,12 +169,14 @@ class PytorchCudaContext : public Context {
     //
     //
     // CAUTION: Update this if PyTorch changes its implementation.
+    DeviceGuard guard(gpu_id_);
     void *p = allocator_->raw_allocate(bytes);
     if (deleter_context != nullptr) *deleter_context = nullptr;
     return p;
   }
 
   void Deallocate(void *data, void *deleter_context) override {
+    DeviceGuard guard(gpu_id_);
     if (deleter_context != nullptr) {
       // a non-empty `deleter_context` indicates that
       // the memory is passed from a `torch::Tensor`
@@ -191,6 +196,7 @@ class PytorchCudaContext : public Context {
   }
 
   void Sync() const override {
+    DeviceGuard guard(gpu_id_);
     auto ret = cudaStreamSynchronize(GetCudaStream());
     K2_CHECK_CUDA_ERROR(ret);
   }
@@ -231,6 +237,7 @@ ContextPtr GetCudaContext(int32_t gpu_id /*= -1*/) {
   if (has_cuda) {
 #ifdef K2_WITH_CUDA
     if (gpu_id < 0) gpu_id = c10::cuda::current_device();
+    DeviceGuard guard(gpu_id);
     return std::make_shared<PytorchCudaContext>(gpu_id);
 #else
     K2_LOG(FATAL) << "Unreachable code.";
