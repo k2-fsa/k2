@@ -24,6 +24,9 @@ class TestMultiGPU(unittest.TestCase):
             print('skip it since number of GPUs is 1')
             return
 
+        if not k2.with_cuda:
+            return
+
         device0 = torch.device('cuda', 0)
         device1 = torch.device('cuda', 1)
 
@@ -65,6 +68,9 @@ class TestMultiGPU(unittest.TestCase):
             return
         if torch.cuda.device_count() < 2:
             print('skip it since number of GPUs is 1')
+            return
+
+        if not k2.with_cuda:
             return
 
         device0 = torch.device('cuda', 0)
