@@ -18,7 +18,7 @@ class TestRandomPaths(unittest.TestCase):
 
     def test_single_fsa_case1(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:
@@ -38,7 +38,7 @@ class TestRandomPaths(unittest.TestCase):
 
     def test_single_fsa_case2(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:
@@ -116,7 +116,7 @@ class TestRandomPaths(unittest.TestCase):
 
     def test_fsa_vec(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:

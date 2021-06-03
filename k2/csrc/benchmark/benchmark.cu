@@ -54,7 +54,7 @@ std::ostream &operator<<(std::ostream &os, const DeviceInfo &info) {
 
 DeviceInfo GetDeviceInfo() {
   DeviceInfo info;
-
+#ifdef K2_WITH_CUDA
   int32_t driver_version;
   K2_CUDA_SAFE_CALL(cudaDriverGetVersion(&driver_version));
   info.driver_version_major = driver_version / 1000;
@@ -83,6 +83,7 @@ DeviceInfo GetDeviceInfo() {
   info.ecc_enabled = prop.ECCEnabled;
   info.num_multiprocessors = prop.multiProcessorCount;
   info.num_cuda_cores = _ConvertSMVer2Cores(prop.major, prop.minor);
+#endif
   return info;
 }
 

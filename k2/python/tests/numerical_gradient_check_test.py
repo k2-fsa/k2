@@ -45,7 +45,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
             return -2 * log_like
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda'))
 
         for device in devices:
@@ -109,7 +109,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
             return -1.25 * log_like
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda'))
 
         for device in devices:
@@ -128,7 +128,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
             return src + saved
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:
@@ -157,7 +157,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
             return src + saved
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:
@@ -195,7 +195,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
             return k2.index_select(src.to(torch.float32), index)
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:
@@ -219,7 +219,7 @@ class TestNumericalGradientCheck(unittest.TestCase):
             return k2.index_select(src.to(torch.float32), index)
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             num_rows = torch.randint(1, 20, size=(1,)).item()

@@ -14,13 +14,20 @@ function(download_pybind11)
   set(double_quotes "\"")
   set(dollar "\$")
   set(semicolon "\;")
-  FetchContent_Declare(pybind11
-    URL               ${pybind11_URL}
-    URL_HASH          ${pybind11_HASH}
-    PATCH_COMMAND
-      sed -i s/\\${double_quotes}-flto\\\\${dollar}/\\${double_quotes}-Xcompiler=-flto${dollar}/g "tools/pybind11Tools.cmake" &&
-      sed -i s/${seimcolon}-fno-fat-lto-objects/${seimcolon}-Xcompiler=-fno-fat-lto-objects/g "tools/pybind11Tools.cmake"
-  )
+  if(NOT WIN32)
+    FetchContent_Declare(pybind11
+      URL               ${pybind11_URL}
+      URL_HASH          ${pybind11_HASH}
+      PATCH_COMMAND
+        sed -i.bak s/\\${double_quotes}-flto\\\\${dollar}/\\${double_quotes}-Xcompiler=-flto${dollar}/g "tools/pybind11Tools.cmake" &&
+        sed -i.bak s/${seimcolon}-fno-fat-lto-objects/${seimcolon}-Xcompiler=-fno-fat-lto-objects/g "tools/pybind11Tools.cmake"
+    )
+  else()
+    FetchContent_Declare(pybind11
+      URL               ${pybind11_URL}
+      URL_HASH          ${pybind11_HASH}
+    )
+  endif()
 
   FetchContent_GetProperties(pybind11)
   if(NOT pybind11_POPULATED)

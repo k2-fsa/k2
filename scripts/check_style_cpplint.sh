@@ -25,7 +25,14 @@ cpplint_src=$build_dir/cpplint-${cpplint_version}/cpplint.py
 
 if [ ! -d "$build_dir/cpplint-${cpplint_version}" ]; then
   pushd $build_dir
-  wget https://github.com/cpplint/cpplint/archive/${cpplint_version}.tar.gz
+  if command -v wget &> /dev/null; then
+    wget https://github.com/cpplint/cpplint/archive/${cpplint_version}.tar.gz
+  elif command -v curl &> /dev/null; then
+    curl -O -SL https://github.com/cpplint/cpplint/archive/${cpplint_version}.tar.gz
+  else
+    echo "Please install wget or curl to download cpplint"
+    exit 1
+  fi
   tar xf ${cpplint_version}.tar.gz
   rm ${cpplint_version}.tar.gz
 

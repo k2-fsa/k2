@@ -4,7 +4,10 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#ifdef K2_WITH_CUDA
 #include <cooperative_groups.h>
+#endif
+
 #include <limits>
 #include <vector>
 
@@ -825,9 +828,10 @@ class DeviceIntersector {
           *b_arcs_data = b_fsas_.values.Data();
       int32_t key_bits = state_pair_to_state_.NumKeyBits(),
           value_bits = state_pair_to_state_.NumValueBits();
-      namespace cg = cooperative_groups;
 
       if (c_->GetDeviceType() == kCuda) {
+#ifdef K2_WITH_CUDA
+        namespace cg = cooperative_groups;
         constexpr int log_thread_group_size = 2,
             thread_group_size = (1 << log_thread_group_size);  // 4
         static_assert(thread_group_size > 1, "Bad thread_group_size");
@@ -982,6 +986,9 @@ class DeviceIntersector {
         };
         EvalGroupDevice<thread_group_size, int32_t>(
             c_, num_b_arcs * 2, lambda_find_ranges);
+#else
+        K2_LOG(FATAL) << "Unreachable code";
+#endif
       } else {
         // Use regular binary search.
         K2_EVAL(c_, num_b_arcs, lambda_find_ranges_cpu, (int32_t arc_idx01) -> void {

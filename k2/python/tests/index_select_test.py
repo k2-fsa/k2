@@ -19,7 +19,7 @@ class TestIndexSelect(unittest.TestCase):
 
     def test_1d(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             for dtype in [torch.int32, torch.int64]:
@@ -78,7 +78,7 @@ class TestIndexSelect(unittest.TestCase):
 
     def test_1d_non_contiguous(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             for dtype in [torch.int32, torch.int64]:
@@ -138,7 +138,7 @@ class TestIndexSelect(unittest.TestCase):
 
     def test_2d(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             for dtype in [torch.int32, torch.int64]:
@@ -189,7 +189,7 @@ class TestIndexSelect(unittest.TestCase):
 
     def test_2d_non_contiguous(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             for dtype in [torch.int32, torch.int64]:
@@ -264,7 +264,7 @@ class TestSimpleRaggedIndexSelect(unittest.TestCase):
 
     def test_1d(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             row_splits1 = torch.tensor([0, 3, 5, 6, 6, 9],

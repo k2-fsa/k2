@@ -18,7 +18,7 @@ class TestLinearFsa(unittest.TestCase):
 
     def test_single_fsa(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             labels = [2, 5, 8]
@@ -39,7 +39,7 @@ class TestLinearFsa(unittest.TestCase):
 
     def test_fsa_vec(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             labels = [
@@ -79,7 +79,7 @@ class TestLinearFsa(unittest.TestCase):
 
     def test_from_ragged_int_single_fsa(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             ragged_int = k2.RaggedInt('[ [10 20] ]').to(device)
@@ -99,7 +99,7 @@ class TestLinearFsa(unittest.TestCase):
 
     def test_from_ragged_int_two_fsas(self):
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             ragged_int = k2.RaggedInt('[ [10 20] [100 200 300] ]').to(device)

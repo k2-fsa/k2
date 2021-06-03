@@ -12,6 +12,11 @@
 #include <utility>
 #include <vector>
 
+#if defined(_MSC_VER)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 #include "k2/csrc/host/fsa.h"
 #include "k2/csrc/host/util.h"
 #include "k2/csrc/log.h"

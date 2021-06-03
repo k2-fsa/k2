@@ -38,7 +38,7 @@ class TestUnion(unittest.TestCase):
             2
         '''
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda'))
 
         for device in devices:
@@ -100,7 +100,7 @@ class TestUnion(unittest.TestCase):
             2
         '''
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
 
         for device in devices:

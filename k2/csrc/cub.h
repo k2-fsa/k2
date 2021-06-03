@@ -21,7 +21,9 @@
 #define CUB_NS_PREFIX namespace k2 {
 #define CUB_NS_POSTFIX }
 
+#ifdef K2_WITH_CUDA
 #include "cub/cub.cuh"  // NOLINT
+#endif
 
 #undef CUB_NS_PREFIX
 #undef CUB_NS_POSTFIX

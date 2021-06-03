@@ -1,8 +1,8 @@
 
 .. _install using conda:
 
-Install using conda
-===================
+Install using conda (Linux/macOS/Windows)
+=========================================
 
 All you need is the following line
 
@@ -13,6 +13,31 @@ All you need is the following line
 to install the **latest** k2 with Python 3.8, CUDA 11.1, and PyTorch 1.8.1.
 
 You can change the versions of Python, CUDA, and PyTorch as you need.
+
+To Install a CPU version, use:
+
+.. code-block:: bash
+
+  conda install -c k2-fsa -c pytorch cpuonly k2 python=3.8 pytorch=1.8.1
+
+.. HINT::
+
+  If you are using macOS and encounter the following error while
+  running ``python3 -m k2.version`` after installation:
+
+  .. code-block:: bash
+
+    ImportError: dlopen(/Users/fangjun/software/miniconda3/envs/foo/lib/python3.8/site-packages/_k2.cpython-38-darwin.so, 2): Library not loaded: @rpath/libk2context.dylib
+      Referenced from: /Users/fangjun/software/miniconda3/envs/foo/lib/python3.8/site-packages/_k2.cpython-38-darwin.so
+      Reason: image not found
+
+  You can use:
+
+    .. code-block:: bash
+
+      export DYLD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.8/site-packages:$DYLD_LIBRARY_PATH
+      python3 -m k2.version  # now it should work
+
 
 Read the following if you want to learn more.
 

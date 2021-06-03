@@ -10,7 +10,7 @@
 #include <memory>
 
 #include "k2/csrc/context.h"
-#include "moderngpu/context.hxx"
+#include "k2/csrc/moderngpu.h"
 
 namespace k2 {
 

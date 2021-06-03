@@ -28,7 +28,7 @@ class TestCreaseSparse(unittest.TestCase):
         '''
 
         devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             devices.append(torch.device('cuda', 0))
         for device in devices:
             fsa = k2.Fsa.from_str(s).to(device)
