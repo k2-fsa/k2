@@ -4,7 +4,7 @@
 
 # refer to https://github.com/actions/starter-workflows/pull/47/files
 
-name: build_conda
+name: build_conda_cuda
 
 on:
   push:
@@ -15,7 +15,7 @@ env:
   K2_BUILD_TYPE: Release
 
 jobs:
-  build_conda:
+  build_conda_cuda:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

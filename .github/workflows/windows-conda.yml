@@ -8,10 +8,7 @@ name: build-windows-conda
 on:
   push:
     branches:
-      - master
-  pull_request:
-    branches:
-      - master
+      - conda
 
 env:
   BUILD_TYPE: Release

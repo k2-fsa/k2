@@ -5,20 +5,9 @@
 # refer to https://github.com/actions/starter-workflows/pull/47/files
 
 
-# For macOS, it throws the following error when executing `python3 -m k2.version`
-#
-# $ python3 -m k2.version
-# Fatal Python error: PyMUTEX_LOCK(gil->mutex) failed
-# Python runtime state: unknown
-#
-# Abort trap: 6
-#
-#
-# Until we find a solution to the above error, we disable building conda packages for macOS
-#
 # Note, we have to set
 #
-# export DYLD_FALLBACK_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.8/site-packages:$DYLD_FALLBACK_LIBRARY_PATH
+# export DYLD_LIBRARY_PATH=$CONDA_PREFIX/lib/python3.8/site-packages:$DYLD_LIBRARY_PATH
 #
 # before running `python3 -m k2.version`
 #
@@ -31,10 +20,6 @@ on:
   push:
     branches:
       - conda
-      - cpu2
-  pull_request:
-    branches:
-      - master
 
 env:
   K2_BUILD_TYPE: Release
