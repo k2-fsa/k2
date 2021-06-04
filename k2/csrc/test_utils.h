@@ -112,8 +112,8 @@ inline void CheckRowSplits(RaggedShape &shape,
   }
 }
 
-// Return a random acyclic FSA that is NOT topo sorted
-Fsa GetRandFsa();
+// Return a random acyclic FSA that is NOT topologically sorted
+Fsa GetRandFsaNotTopSorted();
 
 /* Return 1-D array filled with random values.
 
