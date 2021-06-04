@@ -70,6 +70,10 @@ class TestRemoveEpsilonDevice(unittest.TestCase):
     def test1(self):
         if not torch.cuda.is_available():
             return
+
+        if not k2.with_cuda:
+            return
+
         device = torch.device('cuda', 0)
         s = '''
             0 1 0 1 1
@@ -114,6 +118,10 @@ class TestRemoveEpsilonDevice(unittest.TestCase):
     def test_autograd(self):
         if not torch.cuda.is_available():
             return
+
+        if not k2.with_cuda:
+            return
+
         device = torch.device('cuda', 0)
         s = '''
             0 1 0 0.1
@@ -143,6 +151,10 @@ class TestRemoveEpsilonDeviceFillers(unittest.TestCase):
     def test1(self):
         if not torch.cuda.is_available():
             return
+
+        if not k2.with_cuda:
+            return
+
         device = torch.device('cuda', 0)
         s = '''
             0 1 0 1 1
