@@ -1,0 +1,10 @@
+# this file is copied from
+# https://github.com/pytorch/builder/tree/master/conda/cpuonly
+package:
+  name: cpuonly
+  version: 1.0
+
+build:
+  track_features:
+      - cpuonly
+  noarch: generic
