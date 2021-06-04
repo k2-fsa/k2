@@ -402,8 +402,11 @@ inline void GetOldAndNewOffsets(RaggedShape &src,
   ExclusiveSum(*new_offsets, new_offsets);
 }
 
-static RaggedShape IndexAxis0(RaggedShape &src, const Array1<int32_t> &new2old,
-                              Array1<int32_t> *elem_indexes /*=nullptr*/) {
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
+/*static*/ RaggedShape IndexAxis0(RaggedShape &src,
+                                  const Array1<int32_t> &new2old,
+                                  Array1<int32_t> *elem_indexes /*=nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   ContextPtr &c = src.Context();
   bool is_cpu = (c->GetDeviceType() == kCpu);
@@ -661,8 +664,10 @@ void GetRowInfoMulti(int32_t num_srcs, RaggedShape **src,
   *row_ids = row_ids_ptrs.To(ctx);
 }
 
-static RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
-                              Array1<uint32_t> *merge_map /* == nullptr*/) {
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
+/*static*/ RaggedShape StackAxis0(int32_t num_srcs, RaggedShape **src,
+                                  Array1<uint32_t> *merge_map /* == nullptr*/) {
   NVTX_RANGE(K2_FUNC);
   if (num_srcs == 1) {
     if (merge_map)
@@ -1163,8 +1168,10 @@ static Array1<int32_t> GetTransposeReorderingCpu(Ragged<int32_t> &src,
   return ans;
 }
 
-static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
-                                                           int32_t num_cols) {
+// the static modifier causes an error on Windows for the enclosing lambda
+// since it has an internal linkage
+/*static*/ Array1<int32_t> GetTransposeReorderingThreeAxesCuda(
+    Ragged<int32_t> &src, int32_t num_cols) {
   NVTX_RANGE(K2_FUNC);
   K2_CHECK_EQ(src.NumAxes(), 3);
   ContextPtr &context = src.Context();
@@ -1208,7 +1215,6 @@ static Array1<int32_t> GetTransposeReorderingThreeAxesCuda(Ragged<int32_t> &src,
                                          lambda_comp, *mgpu_context));
   return ans;
 }
-
 
 /*
 // Checks the result of GetTranspoeReordering(), in debug mode and dies if it is wrong.

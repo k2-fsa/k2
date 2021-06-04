@@ -12,6 +12,8 @@
 #include <utility>
 #include <vector>
 
+#include "k2/csrc/types.h"
+
 #include "k2/csrc/host/array.h"
 #include "k2/csrc/host/util.h"
 

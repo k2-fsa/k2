@@ -112,6 +112,8 @@ class BuildExtension(build_ext):
             cmake_args += f' -DPYTHON_EXECUTABLE={sys.executable}'
 
         if is_windows():
+            if '-G' not in cmake_args:
+                cmake_args += ' -G "Visual Studio 15 2017 Win64"'
             build_cmd = f'''
                 cmake {cmake_args} -B {self.build_temp} -S {k2_dir}
                 cmake --build {self.build_temp} --target _k2 --config Release -- -m

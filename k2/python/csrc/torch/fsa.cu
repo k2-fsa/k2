@@ -458,8 +458,10 @@ static void PybindBackpropGetArcPost(py::module &m, const char *name) {
    @param [in] tot_scores_grad  The gradient of total scores.
    @return It returns the gradient of scores of all arcs.
  */
+// The static modifier causes error on Windows when compiled
+// with NVCC because there is a lambda function inside it
 template <typename T>
-static torch::Tensor GetTotScoresTropicalBackward(
+/*static*/ torch::Tensor GetTotScoresTropicalBackward(
     FsaVec &fsas, const Ragged<int32_t> &best_path_arc_indexes,
     torch::Tensor tot_scores_grad) {
   DeviceGuard guard(fsas.Context());
@@ -507,10 +509,11 @@ static torch::Tensor GetTotScoresTropicalBackward(
    @param [in] tot_scores_grad  The gradient of total scores.
    @return It returns the gradient of scores of all arcs.
  */
+// The static modifier causes error on Windows when compiled
+// with NVCC because there is a lambda function inside it
 template <typename T>
-static torch::Tensor GetTotScoresLogBackward(FsaVec &fsas,
-                                             torch::Tensor arc_post,
-                                             torch::Tensor tot_scores_grad) {
+/*static*/ torch::Tensor GetTotScoresLogBackward(
+    FsaVec &fsas, torch::Tensor arc_post, torch::Tensor tot_scores_grad) {
   DeviceGuard guard(fsas.Context());
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(fsas.NumElements(), arc_post.numel());

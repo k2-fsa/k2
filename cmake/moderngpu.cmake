@@ -15,6 +15,7 @@ function(download_moderngpu)
   FetchContent_Declare(moderngpu
     URL               ${moderngpu_URL}
     URL_HASH          ${moderngpu_HASH}
+    PATCH_COMMAND     git init && git apply ${CMAKE_CURRENT_LIST_DIR}/moderngpu.patch
   )
 
   FetchContent_GetProperties(moderngpu)

@@ -20,7 +20,6 @@
 #define K2_CSRC_LOG_H_
 
 #include <cassert>
-#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>  // NOLINT
@@ -30,12 +29,14 @@
 #include <vector>
 
 #include "k2/csrc/macros.h"
+#include "k2/csrc/types.h"
 
 #ifdef __CUDA_ARCH__
 #define K2_CUDA_HOSTDEV __host__ __device__
 #else
 #define K2_CUDA_HOSTDEV
 #endif
+
 
 namespace k2 {
 
@@ -138,11 +139,16 @@ class Logger {
     printf("\n");
     if (level_ == FATAL) {
 #if defined(__CUDA_ARCH__)
+#ifndef _MSC_VER
       // this is usually caused by one of the K2_CHECK macros and the detailed
       // error messages should have already been printed by the macro, so we
       // use an arbitrary string here.
       __assert_fail("Some bad things happened", filename_, line_num_,
                     func_name_);
+#else
+     // __assert_fail() is not defined for MSVC
+      asm("trap;");
+#endif  // K2_IS_WINDOWS
 #else
       std::string stack_trace = GetStackTrace();
       if (!stack_trace.empty()) {

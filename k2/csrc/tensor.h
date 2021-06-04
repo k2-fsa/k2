@@ -34,7 +34,7 @@ class Shape {
     return strides_[i];
   }
 
-  int32_t NumElements() const { return num_elements_; }
+  int32_t NumElements() const { return static_cast<int32_t>(num_elements_); }
   // storage size in elements
 
   std::vector<int32_t> Dims() const {
