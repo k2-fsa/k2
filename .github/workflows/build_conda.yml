@@ -18,6 +18,7 @@ jobs:
   build_conda_cuda:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-16.04]
         # anaconda does not support 3.9 as of 2021.05.08
