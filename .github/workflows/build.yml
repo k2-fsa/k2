@@ -21,6 +21,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-16.04, ubuntu-18.04]
         # from https://download.pytorch.org/whl/torch_stable.html

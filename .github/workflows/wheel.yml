@@ -14,6 +14,7 @@ jobs:
   PyPI:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-18.04]
         cuda: ["10.1"]

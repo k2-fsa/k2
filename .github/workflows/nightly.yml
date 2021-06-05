@@ -17,6 +17,7 @@ jobs:
   nightly:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-18.04]
         cuda: ["10.1", "10.2", "11.0"]
