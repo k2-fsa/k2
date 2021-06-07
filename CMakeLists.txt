@@ -22,7 +22,7 @@ set(languages CXX)
 set(_K2_WITH_CUDA ON)
 
 find_program(K2_HAS_NVCC nvcc)
-if(NOT K2_HAS_NVCC)
+if(NOT K2_HAS_NVCC AND "$ENV{CUDACXX}" STREQUAL "")
   message(STATUS "No NVCC detected. Disable CUDA support")
   set(_K2_WITH_CUDA OFF)
 endif()
