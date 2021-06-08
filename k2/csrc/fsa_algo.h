@@ -646,6 +646,43 @@ void InvertHost(FsaOrVec &src, Ragged<int32_t> &src_aux_labels, FsaOrVec *dest,
 FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec &src,
                                 Array1<int32_t> *arc_map = nullptr);
 
+
+/*
+  Replace, in `index`, `labels symbol_range_begin <= label < symbol_range_begin+src.Dim0()`
+  with the Fsa indexed `label - symbol_range_begin` in `src`, identifying the
+  source and destination states of the arc in `src` with the initial and
+  final states in `src[label - symbol_range_begin]`. Arcs with labels outside
+  this range are just copied.
+  Caution: the result may not be a valid Fsa because labels on final-arcs in
+  `src` (which will be -1) may end up on non-final arcs in the result; you can
+  use FixFinalLabels() to fix this.
+
+    @param [in] src    FsaVec containing individual Fsas that we'll be inserting
+                       into the result.
+    @param [in] index  Fsa or FsaVec (2 or 3 axes) that dictates the overall
+                       structure of the result (the result will have the same
+                       number of axes as`index`.
+
+    @param [in] symbol_range_begin  Beginning of the range (interval) of symbols
+                                    that are to  be replaced with Fsas.
+                                    Symbols numbered `symbol_range_begin <= i < src.Dim0()`
+                                    will be replaced with the Fsa in `src[i - symbol_range_begin]`
+
+    @param [out,optional] arc_map_src  If not nullptr, will be set to a new
+                                       array that maps from arc-indexes in the
+                                       result to the corresponding arc in `src`,
+                                       or -1 if there was no such arc
+                                       (for out-of-range symbols in `index`)
+    @param [out,optional] arc_map_index  If not nullptr, will be set to a new
+                                         array that maps from arc-indexes in
+                                         the result to the arc in `index`
+                                         that it originates from, and -1 
+                                         otherwise.
+ */
+FsaOrVec ReplaceFsa(FsaVec &src, FsaOrVec &index, int32_t symbol_range_begin,
+                    Array1<int32_t> *arc_map_src = nullptr,
+                    Array1<int32_t> *arc_map_index = nullptr);
+
 }  // namespace k2
 
 #endif  // K2_CSRC_FSA_ALGO_H_

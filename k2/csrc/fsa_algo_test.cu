@@ -1041,4 +1041,36 @@ TEST(FsaAlgo, TestRemoveEplsionSelfRandomFsas) {
   }
 }
 
+TEST(FsaAlgo, TestReplaceFsa) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    FsaVec src = FsaVec("[ [ [ 0 1 11 11.0 ] [ 1 2 12 12.0 ] "
+                        "    [ 2 3 -1 0.0] [ ] ] "
+                        "  [ [ 0 1 21 21.0 0 2 22 22.0 ] "
+                        "    [ 1 3 -1 0.0 ] [2 3 -1 0.0] [ ] ] "
+                        "  [ [ 0 1 31 31.0 0 2 33 33.0 ] "
+                        "    [ 1 2 32 32.0 ] [ 2 3 -1 0.0 ] [ ] ] ]").To(c);
+    FsaVec index = FsaVec(" [ [ [ 0 1 1 1.0 0 2 2 2.0 ] [ 1 3 3 3.0 ] "
+                          "     [ 2 4 4 4.0 2 5 -1 0.0 ] [ 3 5 -1 0.0 ] "
+                          "     [ 4 5 -1 0 ] [ ] ] ]").To(c);
+    Array1<int32_t> arc_src_map, arc_index_map;
+    FsaVec replaced_fsa =
+        ReplaceFsa(src, index, 0, &arc_src_map, &arc_index_map);
+
+    Array1<int32_t> arc_src_map_ref(c,
+        "[ -1 -1 3 4 5 6 7 8 9 10 -1 -1 -1 -1 -1 ]"),
+                    arc_index_map_ref(c,
+        "[ 0 1 -1 -1 -1 -1 -1 -1 -1 -1 2 3 4 5 6 ]");
+
+    FsaVec replaced_fsa_ref = FsaVec("[ [ [ 0 1 0 1 0 4 0 2 ] "
+        "    [ 1 2 21 21 1 3 22 22 ] [ 2 7 0 0 ] [ 3 7 0 0 ] "
+        "    [ 4 5 31 31 4 6 33 33 ] [ 5 6 32 32 ] [ 6 8 0 0 ] "
+        "    [ 7 9 3 3 ] [ 8 10 4 4 8 11 -1 0 ] [ 9 11 -1 0 ] "
+        "    [ 10 11 -1 0 ] [ ] ] ]").To(c);
+
+    K2_CHECK(Equal(replaced_fsa, replaced_fsa_ref));
+    K2_CHECK(Equal(arc_src_map, arc_src_map_ref));
+    K2_CHECK(Equal(arc_index_map, arc_index_map_ref));
+  }
+}
+
 }  // namespace k2
