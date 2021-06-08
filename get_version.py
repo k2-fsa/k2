@@ -53,6 +53,11 @@ def is_for_pypi():
     return ans is not None
 
 
+def is_stable():
+    ans = os.environ.get('K2_IS_STABLE', None)
+    return ans is not None
+
+
 def is_for_conda():
     ans = os.environ.get('K2_IS_FOR_CONDA', None)
     return ans is not None
@@ -83,14 +88,20 @@ def get_package_version():
     if is_for_conda():
         local_version = ''
 
+    if is_for_pypi() and is_macos():
+        local_version = ''
+
     with open('CMakeLists.txt') as f:
         content = f.read()
 
     latest_version = re.search(r'set\(K2_VERSION (.*)\)', content).group(1)
     latest_version = latest_version.strip('"')
 
-    dt = datetime.datetime.utcnow()
-    package_version = f'{latest_version}.dev{dt.year}{dt.month:02d}{dt.day:02d}{local_version}'
+    if not is_stable():
+        dt = datetime.datetime.utcnow()
+        package_version = f'{latest_version}.dev{dt.year}{dt.month:02d}{dt.day:02d}{local_version}'
+    else:
+        package_version = f'{latest_version}'
     return package_version
 
 

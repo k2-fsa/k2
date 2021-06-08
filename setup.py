@@ -64,7 +64,7 @@ try:
 
         def finalize_options(self):
             _bdist_wheel.finalize_options(self)
-            if is_for_pypi():
+            if is_for_pypi() and not is_macos():
                 # In this case, the generated wheel has a name in the form
                 # k2-xxx-pyxx-none-any.whl
                 self.root_is_pure = True
