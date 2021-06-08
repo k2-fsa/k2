@@ -20,8 +20,11 @@ class TestInvert(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
     def test_aux_as_tensor(self):
         s = '''
@@ -81,17 +84,14 @@ class TestInvert(unittest.TestCase):
             fsa.aux_labels = k2.RaggedInt('[[2 3] [3 4] [] [5] [-1]]').to(
                 device)
             fsa.tensor_attr1 = torch.tensor([1, 2, 3, 4, 5]).to(device)
-
             # https://git.io/JqNiw
             ans = k2.invert(fsa)
-
             assert torch.all(
                 torch.eq(ans.tensor_attr1,
                          torch.tensor([1, 2, 0, 0, 3, 4, 5], device=device)))
-
-            assert str(ans.aux_labels) == str(
-                k2.RaggedInt('[[1] [2] [] [] [3] [4] [-1]]'))
-
+            assert torch.all(
+                torch.eq(ans.aux_labels,
+                         torch.tensor([1, 2, 0, 0, 3, 4, -1], device=device)))
             assert torch.all(
                 torch.eq(ans.labels,
                          torch.tensor([2, 3, 3, 4, 0, 5, -1], device=device)))

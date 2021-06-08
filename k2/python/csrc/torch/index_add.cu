@@ -14,6 +14,7 @@
  */
 
 #include "k2/csrc/context.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/macros.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/tensor_ops.h"
@@ -26,6 +27,7 @@ namespace k2 {
 static void PybindIndexAdd(torch::Tensor index, torch::Tensor value,
                            torch::Tensor *in_out) {
   NVTX_RANGE(K2_FUNC);
+  DeviceGuard guard(GetContext(index));
 
   Array1<int32_t> indexes = FromTorch<int32_t>(index);
   Tensor src = FromTorch(value, TensorTag{});

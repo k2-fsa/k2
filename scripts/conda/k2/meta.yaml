@@ -15,6 +15,7 @@ build:
     - K2_PYTHON_VERSION
     - K2_BUILD_TYPE
     - K2_BUILD_VERSION
+    - K2_IS_FOR_CONDA
 
 requirements:
   host:

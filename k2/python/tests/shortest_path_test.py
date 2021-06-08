@@ -16,6 +16,15 @@ import torch
 
 class TestShortestPath(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test_single_fsa(self):
         s = '''
             0 4 1 1
@@ -32,19 +41,20 @@ class TestShortestPath(unittest.TestCase):
             8 9 -1 6
             9
         '''
-        fsa = k2.Fsa.from_str(s)
-        fsa = k2.create_fsa_vec([fsa])
-        fsa.requires_grad_(True)
-        best_path = k2.shortest_path(fsa, use_double_scores=False)
+        for device in self.devices:
+            fsa = k2.Fsa.from_str(s).to(device)
+            fsa = k2.create_fsa_vec([fsa])
+            fsa.requires_grad_(True)
+            best_path = k2.shortest_path(fsa, use_double_scores=False)
 
-        # we recompute the total_scores for backprop
-        total_scores = best_path.scores.sum()
+            # we recompute the total_scores for backprop
+            total_scores = best_path.scores.sum()
 
-        assert total_scores == 14
-        expected = torch.zeros(12)
-        expected[torch.tensor([1, 3, 5, 10])] = 1
-        total_scores.backward()
-        assert torch.allclose(fsa.scores.grad, expected)
+            assert total_scores == 14
+            expected = torch.zeros(12)
+            expected[torch.tensor([1, 3, 5, 10])] = 1
+            total_scores.backward()
+            assert torch.allclose(fsa.scores.grad, expected.to(device))
 
     def test_fsa_vec(self):
         # best path:
@@ -92,37 +102,41 @@ class TestShortestPath(unittest.TestCase):
             3
         '''
 
-        fsa1 = k2.Fsa.from_str(s1)
-        fsa2 = k2.Fsa.from_str(s2)
-        fsa3 = k2.Fsa.from_str(s3)
+        for device in self.devices:
+            fsa1 = k2.Fsa.from_str(s1).to(device)
+            fsa2 = k2.Fsa.from_str(s2).to(device)
+            fsa3 = k2.Fsa.from_str(s3).to(device)
 
-        fsa1.requires_grad_(True)
-        fsa2.requires_grad_(True)
-        fsa3.requires_grad_(True)
+            fsa1.requires_grad_(True)
+            fsa2.requires_grad_(True)
+            fsa3.requires_grad_(True)
 
-        fsa_vec = k2.create_fsa_vec([fsa1, fsa2, fsa3])
-        assert fsa_vec.shape == (3, None, None)
+            fsa_vec = k2.create_fsa_vec([fsa1, fsa2, fsa3])
+            assert fsa_vec.shape == (3, None, None)
 
-        best_path = k2.shortest_path(fsa_vec, use_double_scores=False)
+            best_path = k2.shortest_path(fsa_vec, use_double_scores=False)
 
-        # we recompute the total_scores for backprop
-        total_scores = best_path.scores.sum()
-        total_scores.backward()
+            # we recompute the total_scores for backprop
+            total_scores = best_path.scores.sum()
+            total_scores.backward()
 
-        fsa1_best_arc_indexes = torch.tensor([1, 3, 5, 10])
-        assert torch.allclose(fsa1.scores.grad[fsa1_best_arc_indexes],
-                              torch.ones(4, dtype=torch.float32))
-        assert fsa1.scores.grad.sum() == 4
+            fsa1_best_arc_indexes = torch.tensor([1, 3, 5, 10], device=device)
+            assert torch.all(
+                torch.eq(fsa1.scores.grad[fsa1_best_arc_indexes],
+                         torch.ones(4, device=device)))
+            assert fsa1.scores.grad.sum() == 4
 
-        fsa2_best_arc_indexes = torch.tensor([1, 4, 5, 7])
-        assert torch.allclose(fsa2.scores.grad[fsa2_best_arc_indexes],
-                              torch.ones(4, dtype=torch.float32))
-        assert fsa2.scores.grad.sum() == 4
+            fsa2_best_arc_indexes = torch.tensor([1, 4, 5, 7], device=device)
+            assert torch.all(
+                torch.eq(fsa2.scores.grad[fsa2_best_arc_indexes],
+                         torch.ones(4, device=device)))
+            assert fsa2.scores.grad.sum() == 4
 
-        fsa3_best_arc_indexes = torch.tensor([1, 3])
-        assert torch.allclose(fsa3.scores.grad[fsa3_best_arc_indexes],
-                              torch.ones(2, dtype=torch.float32))
-        assert fsa3.scores.grad.sum() == 2
+            fsa3_best_arc_indexes = torch.tensor([1, 3], device=device)
+            assert torch.all(
+                torch.eq(fsa3.scores.grad[fsa3_best_arc_indexes],
+                         torch.ones(2, device=device)))
+            assert fsa3.scores.grad.sum() == 2
 
 
 if __name__ == '__main__':

@@ -26,6 +26,11 @@
 #
 #       K2_IS_FOR_PYPI=1 python3 setup.py bdist_wheel --python-tag=py38
 #       twine upload ./dist/k2-0.3.4.dev20210512-py38-none-any.whl
+#
+# To build k2 without CUDA support, run
+#
+#       export K2_CMAKE_ARGS="-DK2_WITH_CUDA=OFF"
+#       python3 setup.py install
 
 import glob
 import os
@@ -40,6 +45,8 @@ import get_version
 get_package_version = get_version.get_package_version
 get_pytorch_version = get_version.get_pytorch_version
 is_for_pypi = get_version.is_for_pypi
+is_macos = get_version.is_macos
+is_windows = get_version.is_windows
 
 if sys.version_info < (3,):
     print('Python 2 has reached end-of-life and is no longer supported by k2.')
@@ -57,7 +64,7 @@ try:
 
         def finalize_options(self):
             _bdist_wheel.finalize_options(self)
-            if is_for_pypi():
+            if is_for_pypi() and not is_macos():
                 # In this case, the generated wheel has a name in the form
                 # k2-xxx-pyxx-none-any.whl
                 self.root_is_pure = True
@@ -92,27 +99,70 @@ class BuildExtension(build_ext):
         if cmake_args == '':
             cmake_args = '-DCMAKE_BUILD_TYPE=Release'
 
-        if make_args == '':
+        if make_args == '' and os.environ.get('K2_IS_GITHUB_ACTIONS', None) is None:
             make_args = '-j'
 
-        build_cmd = f'''
-            cd {self.build_temp}
+        if is_macos():
+            if not 'K2_WITH_CUDA=OFF' in cmake_args:
+                print('Disable CUDA for macOS')
+                cmake_args += ' -DK2_WITH_CUDA=OFF'
 
-            cmake {cmake_args} {k2_dir}
+        if 'PYTHON_EXECUTABLE' not in cmake_args:
+            print(f'Setting PYTHON_EXECUTABLE to {sys.executable}')
+            cmake_args += f' -DPYTHON_EXECUTABLE={sys.executable}'
 
-            cat k2/csrc/version.h
+        if is_windows():
+            build_cmd = f'''
+                cmake {cmake_args} -B {self.build_temp} -S {k2_dir}
+                cmake --build {self.build_temp} --target _k2 --config Release -- -m
+            '''
+            print(f'build command is:\n{build_cmd}')
+            ret = os.system(f'cmake {cmake_args} -B {self.build_temp} -S {k2_dir}')
+            if ret != 0:
+                raise Exception('Failed to build k2')
+            ret = os.system(f'cmake --build {self.build_temp} --target _k2 --config Release -- -m')
+            if ret != 0:
+                raise Exception('Failed to build k2')
+        else:
+            build_cmd = f'''
+                cd {self.build_temp}
 
-            make {make_args} _k2
-        '''
-        print(f'build command is:\n{build_cmd}')
+                cmake {cmake_args} {k2_dir}
 
-        ret = os.system(build_cmd)
-        if ret != 0:
-            raise Exception('Failed to build k2')
+                cat k2/csrc/version.h
+
+                make {make_args} _k2
+            '''
+            print(f'build command is:\n{build_cmd}')
+
+            ret = os.system(build_cmd)
+            if ret != 0:
+                raise Exception('Failed to build k2')
 
         lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.so')
         for so in lib_so:
+            print(f'Copying {so} to {self.build_lib}/')
             shutil.copy(f'{so}', f'{self.build_lib}/')
+
+        if is_macos():
+            lib_so = glob.glob(f'{self.build_temp}/lib/*k2*.dylib')
+            for so in lib_so:
+                print(f'Copying {so} to {self.build_lib}/')
+                shutil.copy(f'{so}', f'{self.build_lib}/')
+        elif is_windows():
+            # bin/Release/_k2.cp38-win_amd64.pyd
+            lib_so = glob.glob(f'{self.build_temp}/**/*k2*.pyd',
+                               recursive=True)
+            for so in lib_so:
+                print(f'Copying {so} to {self.build_lib}/')
+                shutil.copy(f'{so}', f'{self.build_lib}/')
+
+            # lib/Release/{_k2,k2_log,k2context,k2fsa}.lib
+            lib_so = glob.glob(f'{self.build_temp}/**/*k2*.lib',
+                               recursive=True)
+            for so in lib_so:
+                print(f'Copying {so} to {self.build_lib}/')
+                shutil.copy(f'{so}', f'{self.build_lib}/')
 
 
 def get_long_description():

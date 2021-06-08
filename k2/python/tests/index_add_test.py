@@ -16,12 +16,17 @@ import torch
 
 class TestIndexAdd(unittest.TestCase):
 
-    def test_1d(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
-        for device in devices:
+    def test_1d(self):
+        for device in self.devices:
             for dtype in [torch.int32, torch.float32, torch.float64]:
                 num_elements = torch.randint(10, 1000, (1,)).item()
                 src = torch.randint(-1000,
@@ -59,11 +64,7 @@ class TestIndexAdd(unittest.TestCase):
                 assert torch.all(torch.eq(src, saved[1:]))
 
     def test_1d_non_contiguous(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             for dtype in [torch.int32, torch.float32, torch.float64]:
                 num_elements = torch.randint(20, 1000, (1,)).item()
                 src_stride = torch.randint(2,
@@ -106,11 +107,7 @@ class TestIndexAdd(unittest.TestCase):
                 assert torch.all(torch.eq(src, saved[1:]))
 
     def test_2d(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             for dtype in [torch.int32, torch.float32, torch.float64]:
                 num_rows = torch.randint(10, 1000, (1,)).item()
                 num_cols = torch.randint(10, 1000, (1,)).item()
@@ -150,11 +147,7 @@ class TestIndexAdd(unittest.TestCase):
                 assert torch.all(torch.eq(src, saved[1:]))
 
     def test_2d_non_contiguous(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             for dtype in [torch.int32, torch.float32, torch.float64]:
                 col_stride = torch.randint(2, 8, (1,)).item()
 

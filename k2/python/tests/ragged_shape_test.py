@@ -16,6 +16,15 @@ import torch
 
 class TestRaggedShape(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
+
     def test_ragged_shape(self):
         # test case reference:
         # https://github.com/k2-fsa/k2/blob/f79ce20ce2deeb8f4ed82a0ea028da34cb26e40e/k2/csrc/ragged_shape_test.cu#L60
@@ -26,10 +35,7 @@ class TestRaggedShape(unittest.TestCase):
            [ [[x x] [] [x]] ]
          ]
         '''
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-        for device in devices:
+        for device in self.devices:
             shape = k2.RaggedShape(src)
             shape = shape.to(device)
             assert shape.num_axes() == 4
@@ -88,18 +94,19 @@ class TestRaggedShape(unittest.TestCase):
         assert shape.num_elements() >= 100
 
     def test_compose_ragged_shape(self):
-        a = k2.RaggedInt('[ [ 0 ] [ 1 2 ] ]')
-        b = k2.RaggedInt('[ [ 3 ] [ 4 5 ] [ 6 7 ] ]')
-        prod = k2.RaggedInt('[ [ [ 3 ] ] [ [ 4 5 ] [ 6 7 ] ] ]')
-        ashape = a.shape()
-        bshape = b.shape()
-        abshape = k2.ragged.compose_ragged_shapes(ashape, bshape)
-        # should also be available under k2.ragged.
-        abshape2 = k2.ragged.compose_ragged_shapes(ashape, bshape)
-        self.assertEqual(str(abshape), str(prod.shape()))
-        self.assertEqual(str(abshape2), str(prod.shape()))
-        prod2 = k2.RaggedInt(abshape2, b.values())
-        self.assertEqual(str(prod), str(prod2))
+        for device in self.devices:
+            a = k2.RaggedInt('[ [ 0 ] [ 1 2 ] ]').to(device)
+            b = k2.RaggedInt('[ [ 3 ] [ 4 5 ] [ 6 7 ] ]').to(device)
+            prod = k2.RaggedInt('[ [ [ 3 ] ] [ [ 4 5 ] [ 6 7 ] ] ]')
+            ashape = a.shape()
+            bshape = b.shape()
+            abshape = k2.ragged.compose_ragged_shapes(ashape, bshape)
+            # should also be available under k2.ragged.
+            abshape2 = k2.ragged.compose_ragged_shapes(ashape, bshape)
+            self.assertEqual(str(abshape), str(prod.shape()))
+            self.assertEqual(str(abshape2), str(prod.shape()))
+            prod2 = k2.RaggedInt(abshape2, b.values())
+            self.assertEqual(str(prod), str(prod2))
 
 
 if __name__ == '__main__':

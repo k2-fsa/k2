@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "k2/csrc/array.h"
+#include "k2/csrc/device_guard.h"
 #include "k2/csrc/fsa.h"
 #include "k2/csrc/fsa_utils.h"
 #include "k2/csrc/host_shim.h"
@@ -30,11 +31,18 @@ namespace k2 {
 static void PybindFsaBasicProperties(py::module &m) {
   m.def("fsa_properties_as_str", &FsaPropertiesAsString, py::arg("properties"));
 
-  m.def("get_fsa_basic_properties", &GetFsaBasicProperties, py::arg("fsa"));
+  m.def(
+      "get_fsa_basic_properties",
+      [](const Fsa &fsa) -> int32_t {
+        DeviceGuard guard(fsa.Context());
+        return GetFsaBasicProperties(fsa);
+      },
+      py::arg("fsa"));
 
   m.def(
       "get_fsa_vec_basic_properties",
       [](FsaVec &fsa_vec) -> int32_t {
+        DeviceGuard guard(fsa_vec.Context());
         int32_t tot_properties;
         Array1<int32_t> properties;
         GetFsaVecBasicProperties(fsa_vec, &properties, &tot_properties);
@@ -47,10 +55,11 @@ static void PybindFsaBasicProperties(py::module &m) {
 
 static void PybindFsaUtil(py::module &m) {
   // TODO(fangjun): add docstring in Python describing
-  // the format of the input tensor when it is a FsaVec.
+  // the format of the input tensor when it is an FsaVec.
   m.def(
       "fsa_from_tensor",
       [](torch::Tensor tensor) -> FsaOrVec {
+        DeviceGuard guard(GetContext(tensor));
         auto k2_tensor = FromTorch(tensor, TensorTag{});
         bool error = true;
         Fsa fsa;
@@ -71,6 +80,7 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "fsa_to_tensor",
       [](const FsaOrVec &fsa) -> torch::Tensor {
+        DeviceGuard guard(fsa.Context());
         if (fsa.NumAxes() == 2) {
           Tensor tensor = FsaToTensor(fsa);
           return ToTorch(tensor);
@@ -87,64 +97,84 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "fsa_to_str",
       [](Fsa &fsa, bool openfst = false,
-    std::vector<torch::Tensor> aux_labels = std::vector<torch::Tensor>(),
+    std::vector<torch::Tensor> extra_labels = std::vector<torch::Tensor>(),
     std::vector<Ragged<int32_t>> ragged_labels = std::vector<Ragged<int32_t>>())
       -> std::string {
-        std::vector<Array1<int32_t>> aux_labels_arrays(aux_labels.size());
-        for (size_t i = 0; i < aux_labels.size(); i++) {
-          aux_labels_arrays[i] = FromTorch<int32_t>(aux_labels[i]);
+        DeviceGuard guard(fsa.Context());
+        std::vector<Array1<int32_t>> extra_labels_arrays(extra_labels.size());
+        for (size_t i = 0; i < extra_labels.size(); i++) {
+          extra_labels_arrays[i] = FromTorch<int32_t>(extra_labels[i]);
         }
-        return FsaToString(fsa, openfst, aux_labels.size(),
-                           aux_labels_arrays.data(),
+        return FsaToString(fsa, openfst, extra_labels.size(),
+                           extra_labels_arrays.data(),
                            ragged_labels.size(), ragged_labels.data());
       },
       py::arg("fsa"), py::arg("openfst") = false,
-      py::arg("aux_labels") = py::none(),
+      py::arg("extra_labels") = py::none(),
       py::arg("ragged_labels") = py::none());
 
   m.def(
       "fsa_from_str",
-      [](const std::string &s, int num_aux_labels = 0,
+      [](const std::string &s, int num_extra_labels = 0,
          int num_ragged_labels = 0, bool openfst = false)
        -> std::tuple<Fsa, torch::optional<torch::Tensor>,
                      std::vector<Ragged<int32_t> > > {
-        Array2<int32_t> aux_labels;
+        Array2<int32_t> extra_labels;
         std::vector<Ragged<int32_t> > ragged_labels(num_ragged_labels);
         Fsa fsa = FsaFromString(s, openfst,
-                                num_aux_labels, &aux_labels,
+                                num_extra_labels, &extra_labels,
                                 num_ragged_labels, ragged_labels.data());
         torch::optional<torch::Tensor> tensor;
-        if (num_aux_labels != 0) tensor = ToTorch(aux_labels);
+        if (num_extra_labels != 0) tensor = ToTorch(extra_labels);
         return std::make_tuple(fsa, tensor, ragged_labels);
       },
-      py::arg("s"), py::arg("num_aux_labels") = 0,
+      py::arg("s"), py::arg("num_extra_labels") = 0,
       py::arg("num_ragged_labels"), py::arg("openfst") = false,
-      "It returns a 3-tuple (fsa, aux_labels, ragged_labels).  "
-      "`fsa` is the Fsa with 2 axes; `aux_labels` is None if num_aux_labels "
+      "It returns a 3-tuple (fsa, extra_labels, ragged_labels).  "
+      "`fsa` is the Fsa with 2 axes; `extra_labels` is None if num_extra_labels "
       "is 0, else a 2-D tensor of dtype torch.int32 and shape "
-      "(num_aux_labels, num_arcs) if num_aux_labels > 0; otherwise None; "
+      "(num_extra_labels, num_arcs) if num_extra_labels > 0; otherwise None; "
       "`ragged_labels` is a list of Ragged<int32_t> of length "
       "`num_ragged_labels`");
 
   // the following methods are for debugging only
-  m.def("fsa_to_fsa_vec", &FsaToFsaVec, py::arg("fsa"));
+  m.def(
+      "fsa_to_fsa_vec",
+      [](const Fsa &fsa) -> FsaVec {
+        DeviceGuard guard(fsa.Context());
+        return FsaToFsaVec(fsa);
+      },
+      py::arg("fsa"));
 
-  m.def("get_fsa_vec_element", &GetFsaVecElement, py::arg("vec"), py::arg("i"));
+  m.def(
+      "get_fsa_vec_element",
+      [](FsaVec &vec, int32_t i) -> Fsa {
+        DeviceGuard guard(vec.Context());
+        return GetFsaVecElement(vec, i);
+      },
+      py::arg("vec"), py::arg("i"));
 
   m.def(
       "create_fsa_vec",
       [](std::vector<Fsa *> &fsas) -> FsaVec {
+        DeviceGuard guard(fsas[0]->Context());
         return CreateFsaVec(fsas.size(), fsas.data());
       },
       py::arg("fsas"));
 
   // returns Ragged<int32_t>
-  m.def("get_state_batches", &GetStateBatches, py::arg("fsas"),
-        py::arg("transpose") = true);
+  m.def(
+      "get_state_batches",
+      [](FsaVec &fsas, bool transpose = true) -> Ragged<int32_t> {
+        DeviceGuard guard(fsas.Context());
+        return GetStateBatches(fsas, transpose);
+      },
+      py::arg("fsas"), py::arg("transpose") = true);
 
   m.def(
       "get_dest_states",
       [](FsaVec &fsas, bool as_idx01) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
         Array1<int32_t> ans = GetDestStates(fsas, as_idx01);
         return ToTorch(ans);
       },
@@ -153,18 +183,28 @@ static void PybindFsaUtil(py::module &m) {
   m.def(
       "get_incoming_arcs",
       [](FsaVec &fsas, torch::Tensor dest_states) -> Ragged<int32_t> {
+        DeviceGuard guard(fsas.Context());
         Array1<int32_t> dest_states_array = FromTorch<int32_t>(dest_states);
         return GetIncomingArcs(fsas, dest_states_array);
       },
       py::arg("fsas"), py::arg("dest_states"));
 
-  // returns Ragged<int32_t>
-  m.def("get_entering_arc_index_batches", &GetEnteringArcIndexBatches,
-        py::arg("fsas"), py::arg("incoming_arcs"), py::arg("state_batches"));
+  m.def(
+      "get_entering_arc_index_batches",
+      [](FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
+         Ragged<int32_t> &state_batches) -> Ragged<int32_t> {
+        DeviceGuard guard(fsas.Context());
+        return GetEnteringArcIndexBatches(fsas, incoming_arcs, state_batches);
+      },
+      py::arg("fsas"), py::arg("incoming_arcs"), py::arg("state_batches"));
 
-  // returns Ragged<int32_t>
-  m.def("get_leaving_arc_index_batches", &GetLeavingArcIndexBatches,
-        py::arg("fsas"), py::arg("state_batches"));
+  m.def(
+      "get_leaving_arc_index_batches",
+      [](FsaVec &fsas, Ragged<int32_t> &state_batches) -> Ragged<int32_t> {
+        DeviceGuard guard(fsas.Context());
+        return GetLeavingArcIndexBatches(fsas, state_batches);
+      },
+      py::arg("fsas"), py::arg("state_batches"));
 
   m.def(
       "is_rand_equivalent",
@@ -172,6 +212,7 @@ static void PybindFsaUtil(py::module &m) {
          float beam = k2host::kFloatInfinity,
          bool treat_epsilons_specially = true, float delta = 1e-6,
          int32_t npath = 100) -> bool {
+        DeviceGuard guard(a.Context());
         // if we pass npath as type `std::size_t` here, pybind11 will
         // report warning `pointless comparison of unsigned integer
         // with zero` when instantiating this binding (I guess it's
@@ -202,6 +243,7 @@ static void PybindGetForwardScores(py::module &m, const char *name) {
       [](FsaVec &fsas, Ragged<int32_t> &state_batches,
          Ragged<int32_t> &entering_arc_batches, bool log_semiring)
           -> std::pair<torch::Tensor, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(fsas.Context());
         Array1<int32_t> entering_arcs;
         Array1<T> scores = GetForwardScores<T>(
             fsas, state_batches, entering_arc_batches, log_semiring,
@@ -226,6 +268,7 @@ static void PybindBackpropGetForwardScores(py::module &m, const char *name) {
          torch::optional<torch::Tensor> entering_arcs,
          torch::Tensor forward_scores,
          torch::Tensor forward_scores_deriv) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
         Array1<T> forward_scores_array = FromTorch<T>(forward_scores);
         Array1<T> forward_scores_deriv_array =
             FromTorch<T>(forward_scores_deriv);
@@ -256,6 +299,7 @@ static void PybindGetBackwardScores(py::module &m, const char *name) {
       [](FsaVec &fsas, Ragged<int32_t> &state_batches,
          Ragged<int32_t> &leaving_arc_batches,
          bool log_semiring = true) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
         Array1<T> ans = GetBackwardScores<T>(fsas, state_batches,
                                              leaving_arc_batches, log_semiring);
 
@@ -273,6 +317,7 @@ static void PybindBackpropGetBackwardScores(py::module &m, const char *name) {
          Ragged<int32_t> &entering_arc_batches, bool log_semiring,
          torch::Tensor backward_scores,
          torch::Tensor backward_scores_deriv) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
         Array1<T> backward_scores_array = FromTorch<T>(backward_scores);
         Array1<T> backward_scores_deriv_array =
             FromTorch<T>(backward_scores_deriv);
@@ -293,6 +338,7 @@ static void PybindGetTotScores(py::module &m, const char *name) {
   m.def(
       name,
       [](FsaVec &fsas, torch::Tensor forward_scores) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
         Array1<T> forward_scores_array = FromTorch<T>(forward_scores);
         Array1<T> tot_scores = GetTotScores(fsas, forward_scores_array);
         return ToTorch(tot_scores);
@@ -309,6 +355,7 @@ static void PybindDenseFsaVec(py::module &m) {
   pyclass.def(
       py::init([](torch::Tensor scores,
                   torch::Tensor row_splits) -> std::unique_ptr<DenseFsaVec> {
+        DeviceGuard guard(GetContext(scores));
         // remove the contiguous check once the following comment
         // https://github.com/k2-fsa/k2/commit/60b8e97b1838033b45b83cc88a58ec91912ce91e#r43174753
         // is resolved.
@@ -333,9 +380,11 @@ static void PybindDenseFsaVec(py::module &m) {
 
   // the `to_str` method is for debugging only
   pyclass.def("to_str", [](PyClass &self) -> std::string {
+    DeviceGuard guard(self.Context());
     std::ostringstream os;
     os << "num_axes: " << self.shape.NumAxes() << '\n';
     os << "device_type: " << self.shape.Context()->GetDeviceType() << '\n';
+    os << "device_id: " << self.shape.Context()->GetDeviceId() << '\n';
     os << "row_splits1: " << self.shape.RowSplits(1) << '\n';
     os << "row_ids1: " << self.shape.RowIds(1) << '\n';
     os << "scores:" << self.scores << '\n';
@@ -354,6 +403,7 @@ static void PybindConvertDenseToFsaVec(py::module &m) {
   m.def(
       "convert_dense_to_fsa_vec",
       [](DenseFsaVec &dense_fsa_vec) -> FsaVec {
+        DeviceGuard guard(dense_fsa_vec.Context());
         return ConvertDenseToFsaVec(dense_fsa_vec);
       },
       py::arg("dense_fsa_vec"));
@@ -365,6 +415,7 @@ static void PybindGetArcPost(py::module &m, const char *name) {
       name,
       [](FsaVec &fsas, torch::Tensor forward_scores,
          torch::Tensor backward_scores) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
         Array1<T> forward_scores_array = FromTorch<T>(forward_scores);
         Array1<T> backward_scores_array = FromTorch<T>(backward_scores);
         Array1<T> arc_post =
@@ -384,6 +435,7 @@ static void PybindBackpropGetArcPost(py::module &m, const char *name) {
       [](FsaVec &fsas, Ragged<int32_t> &incoming_arcs,
          torch::Tensor arc_post_deriv)
           -> std::pair<torch::Tensor, torch::Tensor> {
+        DeviceGuard guard(fsas.Context());
         Array1<T> arc_post_deriv_array = FromTorch<T>(arc_post_deriv);
         Array1<T> forward_scores_deriv;
         Array1<T> backward_scores_deriv;
@@ -410,6 +462,7 @@ template <typename T>
 static torch::Tensor GetTotScoresTropicalBackward(
     FsaVec &fsas, const Ragged<int32_t> &best_path_arc_indexes,
     torch::Tensor tot_scores_grad) {
+  DeviceGuard guard(fsas.Context());
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(best_path_arc_indexes.NumAxes(), 2);
 
@@ -458,6 +511,7 @@ template <typename T>
 static torch::Tensor GetTotScoresLogBackward(FsaVec &fsas,
                                              torch::Tensor arc_post,
                                              torch::Tensor tot_scores_grad) {
+  DeviceGuard guard(fsas.Context());
   K2_CHECK_EQ(fsas.NumAxes(), 3);
   K2_CHECK_EQ(fsas.NumElements(), arc_post.numel());
   K2_CHECK(arc_post.is_contiguous())
@@ -522,6 +576,7 @@ static void PybindGetArcCdf(py::module &m, const char *name) {
   m.def(
       name,
       [](FsaOrVec &fsas, torch::Tensor arc_post) -> torch::Tensor {
+        DeviceGuard guard(fsas.Context());
         Array1<T> arc_post_array = FromTorch<T>(arc_post);
         Array1<T> ans = GetArcCdf(fsas, arc_post_array);
         return ToTorch(ans);
@@ -536,6 +591,7 @@ static void PybindRandomPaths(py::module &m, const char *name) {
       [](FsaVec &fsas, torch::Tensor arc_cdf, int32_t num_paths,
          torch::Tensor tot_scores,
          Ragged<int32_t> &state_batches) -> Ragged<int32_t> {
+        DeviceGuard guard(fsas.Context());
         Array1<T> arc_cdf_array = FromTorch<T>(arc_cdf);
         Array1<T> tot_scores_array = FromTorch<T>(tot_scores);
 
@@ -554,6 +610,7 @@ static void PybindPruneOnArcPost(py::module &m, const char *name) {
       [](FsaVec &fsas, torch::Tensor arc_post, T threshold_prob,
          bool need_arc_map =
              true) -> std::pair<FsaVec, torch::optional<torch::Tensor>> {
+        DeviceGuard guard(fsas.Context());
         Array1<T> arc_post_array = FromTorch<T>(arc_post);
         Array1<int32_t> arc_map;
         FsaVec ans = PruneOnArcPost(fsas, arc_post_array, threshold_prob,

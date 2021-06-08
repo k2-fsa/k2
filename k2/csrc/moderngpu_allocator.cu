@@ -9,7 +9,6 @@
 
 #include "k2/csrc/context.h"
 #include "k2/csrc/moderngpu_allocator.h"
-#include "moderngpu/context.hxx"
 
 namespace {
 

@@ -46,7 +46,7 @@ __global__ void DummyKernel(int32_t *b, int32_t a) {
   K2_CHECK_EQ(*b, a);
   K2_DLOG(DEBUG) << "Done";
 }
-
+#ifdef K2_WITH_CUDA
 TEST(Log, Cuda) {
   K2_LOG(TRACE) << "Trace message for cuda";
   K2_LOG(INFO) << "Test log for cuda";
@@ -69,6 +69,7 @@ TEST(Log, Cuda) {
   ret = cudaFree(b);
   K2_CHECK_CUDA_ERROR(ret) << "Failed to free gpu memory";
 }
+#endif
 
 TEST(LogDeathTest, NegativeCases) {
   ASSERT_THROW(K2_LOG(FATAL) << "This will crash the program",
@@ -86,11 +87,13 @@ TEST(LogDeathTest, NegativeCases) {
   ASSERT_THROW(K2_CHECK_GE(a, b), std::runtime_error);
   ASSERT_THROW(K2_CHECK_GT(a, b), std::runtime_error);
 
+#ifdef K2_WITH_CUDA
   auto ret = cudaErrorMemoryAllocation;
   ASSERT_THROW(K2_CHECK_CUDA_ERROR(ret), std::runtime_error);
 
   ret = cudaErrorAssert;
   ASSERT_THROW(K2_CHECK_CUDA_ERROR(ret), std::runtime_error);
+#endif
 
   // NOTE: normally we do not need to
   // check if NDEBUG is defined in order
@@ -113,8 +116,10 @@ TEST(LogDeathTest, NegativeCases) {
   ASSERT_THROW(K2_DCHECK_GE(a, b), std::runtime_error);
   ASSERT_THROW(K2_DCHECK_GT(a, b), std::runtime_error);
 
+#ifdef K2_WITH_CUDA
   ret = cudaErrorInitializationError;
   ASSERT_THROW(K2_DCHECK_CUDA_ERROR(ret), std::runtime_error);
+#endif
 #endif
 }
 

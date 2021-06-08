@@ -552,7 +552,7 @@ Fsa Closure(Fsa &fsa, Array1<int32_t> *arc_map = nullptr);
                         element because that sub-list was empty.
    @return  Returns the expanded Fsa or FsaVec (will satisfy
                         `ans.NumAxes() == fsas.NumAxes()`, and will be
-                        equivalent to `fsas` in both tropical or log-sum
+                        equivalent to `fsas` in both tropical and log-sum
                         semiring.
  */
 FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,

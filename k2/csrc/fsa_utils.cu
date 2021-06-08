@@ -6,7 +6,9 @@
  * See LICENSE for clarification regarding multiple authors
  */
 
+#ifdef K2_WITH_CUDA
 #include <cooperative_groups.h>
+#endif
 
 #include <algorithm>
 #include <cmath>
@@ -74,7 +76,7 @@ static Fsa K2FsaFromStream(std::istringstream &is,
   int32_t final_state = -1;
   while (std::getline(is, line)) {
     std::istringstream line_is(line);
-    line_is >> std::ws;
+    if (!line_is.eof()) line_is >> std::ws;
     if (line_is.eof())
       continue;  // this is an empty line
     if (final_state != -1) {
@@ -82,7 +84,8 @@ static Fsa K2FsaFromStream(std::istringstream &is,
           "been read, expected no more input.";
     }
     int32_t src_state;
-    line_is >> src_state >> std::ws;
+    line_is >> src_state;
+    if (!line_is.eof()) line_is >> std::ws;
     if (line_is.eof()) {
       if (line_is.fail() || src_state < 0) {
         K2_LOG(FATAL) << "Invalid line: " << line;
@@ -122,7 +125,8 @@ static Fsa K2FsaFromStream(std::istringstream &is,
     float score = 0.0;
     line_is >> std::ws;
     if (!line_is.eof()) {  // Score is optional, defaults to 0.0.
-      line_is >> score >> std::ws;
+      line_is >> score;
+      if (!line_is.eof()) line_is >> std::ws;
     }
     if (!line_is.eof() || line_is.fail()) {
       K2_LOG(FATAL) << "Bad line " << line;
@@ -272,7 +276,8 @@ class OpenFstStreamReader {
     line_is >> std::ws;
     float cost = 0.0;
     if (!line_is.eof()) {
-      line_is >> cost >> std::ws;
+      line_is >> cost;
+      if (!line_is.eof()) line_is >> std::ws;
     }
     if (!line_is.eof() || line_is.fail() || src_state < 0 || dest_state < 0) {
       K2_LOG(FATAL) << "Invalid line: " << line;
@@ -301,7 +306,8 @@ class OpenFstStreamReader {
       }
       final_cost = std::numeric_limits<float>::infinity();
     } else {
-      line_is >> final_cost >> std::ws;
+      line_is >> final_cost;
+      if (!line_is.eof()) line_is >> std::ws;
       if (!line_is.eof() || line_is.fail()) {
         return false;
       }
@@ -2392,13 +2398,14 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
 
   int32_t *path_storage_data = path_storage.Data();
 
-  namespace cg = cooperative_groups;
   const unsigned int thread_group_size = 8;  // Can tune this.  Power of 2,
                                              // 1<=thread_group_size<=256
   const FloatType *arc_cdf_data = arc_cdf.Data();
   const Arc *arcs = fsas.values.Data();
 
   if (c->GetDeviceType() == kCuda) {
+#ifdef K2_WITH_CUDA
+    namespace cg = cooperative_groups;
     auto lambda_set_paths = [=] __device__(
         cg::thread_block_tile<thread_group_size> g,  // or auto g..
         PathState<FloatType> *shared_data,
@@ -2505,6 +2512,9 @@ Ragged<int32_t> RandomPaths(FsaVec &fsas,
 
     EvalGroupDevice<thread_group_size, PathState<FloatType>>(
         c, tot_num_paths, lambda_set_paths);
+#else
+    K2_LOG(FATAL) << "Unreachable code!";
+#endif
   } else {
     // CPU.
     for (int32_t fsa_idx = 0; fsa_idx < num_fsas; ++fsa_idx) {
@@ -2718,9 +2728,10 @@ void FixFinalLabels(FsaOrVec &fsas,
         // we name this as if it is an aux_label, but it could have any name.
         int32_t cur_aux_label = labels_data[arc_idx012 * labels_stride];
         if (arc.dest_state + state_idx0x + 1 == next_state_idx0x) {
-          K2_DCHECK_EQ(arc.label, -1);
           K2_DCHECK_LE(cur_aux_label, 0);  // Expect it to be either 0 or -1.
           if (cur_aux_label != -1) {
+            K2_CHECK_EQ(cur_aux_label, 0) << "Expected label (or aux-label) on "
+                "final-arc to be -1 or 0.";
             labels_data[arc_idx012 * labels_stride] = -1;
           }
         } else if (cur_aux_label == -1) {
@@ -2736,9 +2747,9 @@ void FixFinalLabels(FsaOrVec &fsas,
         const Arc &arc = arcs_data[arc_idx01];
         if (arc.dest_state + 1 == num_states) {
           // dest_state is final-state.
-          K2_DCHECK_EQ(arc.label, -1);
-          K2_DCHECK_LE(cur_aux_label, 0);  // Expect it to be either 0 or -1.
           if (cur_aux_label != -1) {
+            K2_CHECK_EQ(cur_aux_label, 0) << "Expected label (or aux-label) on "
+                "final-arc to be -1 or 0.";
             labels_data[arc_idx01 * labels_stride] = -1;
           }
         } else {

@@ -11,10 +11,10 @@
 
 import unittest
 
+import torch
 import _k2
 import k2
 import numpy as np
-import torch
 
 
 class TestRaggedOps(unittest.TestCase):
@@ -22,146 +22,161 @@ class TestRaggedOps(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
     def test_remove_axis_ragged_array(self):
         s = '''
             [ [ [ 1 2 ] [ 0 ] ] [ [3 0 ] [ 2 ] ] ]
         '''
-        src = k2.RaggedInt(s)
+        for device in self.devices:
+            src = k2.RaggedInt(s).to(device)
 
-        ans = k2.ragged.remove_axis(src, 0)
-        self.assertEqual(str(ans), '[ [ 1 2 ] [ 0 ] [ 3 0 ] [ 2 ] ]')
+            ans = k2.ragged.remove_axis(src, 0)
+            self.assertEqual(str(ans), '[ [ 1 2 ] [ 0 ] [ 3 0 ] [ 2 ] ]')
 
-        ans = k2.ragged.remove_axis(src, 1)
-        self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] ]')
+            ans = k2.ragged.remove_axis(src, 1)
+            self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] ]')
 
     def test_remove_axis_ragged_shape(self):
-        shape = k2.RaggedShape('[ [[x x] [] [x]] [[] [x x] [x x x] [x]] ]')
+        for device in self.devices:
+            shape = k2.RaggedShape('[ [[x x] [] [x]] [[] [x x] [x x x] [x]] ]')
+            shape = shape.to(device)
 
-        ans = k2.ragged.remove_axis(shape, 0)
-        expected = k2.RaggedShape('[[x x] [] [x] [] [x x] [x x x] [x]]')
-        self.assertEqual(str(ans), str(expected))
+            ans = k2.ragged.remove_axis(shape, 0)
+            expected = k2.RaggedShape('[[x x] [] [x] [] [x x] [x x x] [x]]')
+            self.assertEqual(str(ans), str(expected))
 
-        ans = k2.ragged.remove_axis(shape, 1)
-        expected = k2.RaggedShape('[[x x x] [x x x x x x]]')
-        self.assertEqual(str(ans), str(expected))
+            ans = k2.ragged.remove_axis(shape, 1)
+            expected = k2.RaggedShape('[[x x x] [x x x x x x]]')
+            self.assertEqual(str(ans), str(expected))
 
-        ans = k2.ragged.remove_axis(shape, 2)
-        expected = k2.RaggedShape('[[x x x] [x x x x]]')
-        self.assertEqual(str(ans), str(expected))
+            ans = k2.ragged.remove_axis(shape, 2)
+            expected = k2.RaggedShape('[[x x x] [x x x x]]')
+            self.assertEqual(str(ans), str(expected))
 
     def test_to_list(self):
         s = '''
             [ [ [ 1 2 ] [ 0 ] ] [ [ 3 0 ] [ 2 ] ] ]
         '''
-        src = k2.RaggedInt(s)
+        for device in self.devices:
+            src = k2.RaggedInt(s).to(device)
 
-        ans = k2.ragged.remove_axis(src, 0)
-        self.assertEqual(k2.ragged.to_list(ans), [[1, 2], [0], [3, 0], [2]])
+            ans = k2.ragged.remove_axis(src, 0)
+            self.assertEqual(k2.ragged.to_list(ans),
+                             [[1, 2], [0], [3, 0], [2]])
 
     def test_remove_values_leq(self):
         s = '''
             [ [1 2 0] [3 0 2] [0 8 0 6 0] [0] ]
         '''
-        src = k2.RaggedInt(s)
+        for device in self.devices:
+            src = k2.RaggedInt(s).to(device)
 
-        ans = k2.ragged.remove_values_leq(src, 0)
-        self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
+            ans = k2.ragged.remove_values_leq(src, 0)
+            self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
 
-        ans = k2.ragged.remove_values_leq(src, 1)
-        self.assertEqual(str(ans), '[ [ 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
+            ans = k2.ragged.remove_values_leq(src, 1)
+            self.assertEqual(str(ans), '[ [ 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
 
-        ans = k2.ragged.remove_values_leq(src, 6)
-        self.assertEqual(str(ans), '[ [ ] [ ] [ 8 ] [ ] ]')
+            ans = k2.ragged.remove_values_leq(src, 6)
+            self.assertEqual(str(ans), '[ [ ] [ ] [ 8 ] [ ] ]')
 
-        ans = k2.ragged.remove_values_leq(src, 8)
-        self.assertEqual(str(ans), '[ [ ] [ ] [ ] [ ] ]')
+            ans = k2.ragged.remove_values_leq(src, 8)
+            self.assertEqual(str(ans), '[ [ ] [ ] [ ] [ ] ]')
 
     def test_remove_values_eq(self):
         s = '''
             [ [1 2 0] [3 0 2] [0 8 0 6 0] [0] ]
         '''
-        src = k2.RaggedInt(s)
+        for device in self.devices:
+            src = k2.RaggedInt(s).to(device)
 
-        ans = k2.ragged.remove_values_eq(src, 0)
-        self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
+            ans = k2.ragged.remove_values_eq(src, 0)
+            self.assertEqual(str(ans), '[ [ 1 2 ] [ 3 2 ] [ 8 6 ] [ ] ]')
 
-        ans = k2.ragged.remove_values_eq(src, 1)
-        self.assertEqual(str(ans), '[ [ 2 0 ] [ 3 0 2 ] [ 0 8 0 6 0 ] [ 0 ] ]')
+            ans = k2.ragged.remove_values_eq(src, 1)
+            self.assertEqual(str(ans),
+                             '[ [ 2 0 ] [ 3 0 2 ] [ 0 8 0 6 0 ] [ 0 ] ]')
 
-        ans = k2.ragged.remove_values_eq(src, 6)
-        self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 8 0 0 ] [ 0 ] ]')
+            ans = k2.ragged.remove_values_eq(src, 6)
+            self.assertEqual(str(ans),
+                             '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 8 0 0 ] [ 0 ] ]')
 
-        ans = k2.ragged.remove_values_eq(src, 8)
-        self.assertEqual(str(ans), '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]')
+            ans = k2.ragged.remove_values_eq(src, 8)
+            self.assertEqual(str(ans),
+                             '[ [ 1 2 0 ] [ 3 0 2 ] [ 0 0 6 0 ] [ 0 ] ]')
 
     def test_normalize_scores_use_log_non_zero_stride(self):
         s = '''
             [ [1 -1 0] [2 10] [] [3] [5 8] ]
         '''
-        src = k2.ragged.RaggedFloat(s)
-        saved = src.values.clone().detach()
-        saved.requires_grad_(True)
-        src.requires_grad_(True)
+        for device in self.devices:
+            src = k2.ragged.RaggedFloat(s).to(device)
+            saved = src.values.clone().detach()
+            saved.requires_grad_(True)
+            src.requires_grad_(True)
 
-        ans = k2.ragged.normalize_scores(src, use_log=True)
+            ans = k2.ragged.normalize_scores(src, use_log=True)
 
-        scale = torch.arange(ans.values.numel())
+            scale = torch.arange(ans.values.numel(), device=device)
 
-        # the stride of grad is not 0
-        (ans.values * scale).sum().backward()
+            # the stride of grad is not 0
+            (ans.values * scale).sum().backward()
 
-        expected = saved.new_zeros(*ans.values.shape)
+            expected = saved.new_zeros(*ans.values.shape)
 
-        normalizer = saved[:3].exp().sum().log()
-        expected[:3] = saved[:3] - normalizer
+            normalizer = saved[:3].exp().sum().log()
+            expected[:3] = saved[:3] - normalizer
 
-        normalizer = saved[3:5].exp().sum().log()
-        expected[3:5] = saved[3:5] - normalizer
+            normalizer = saved[3:5].exp().sum().log()
+            expected[3:5] = saved[3:5] - normalizer
 
-        expected[5] = 0  # it has only one entry
+            expected[5] = 0  # it has only one entry
 
-        normalizer = saved[6:8].exp().sum().log()
-        expected[6:8] = saved[6:8] - normalizer
+            normalizer = saved[6:8].exp().sum().log()
+            expected[6:8] = saved[6:8] - normalizer
 
-        self.assertTrue(torch.allclose(expected, ans.values))
-        (expected * scale).sum().backward()
+            self.assertTrue(torch.allclose(expected, ans.values))
+            (expected * scale).sum().backward()
 
-        self.assertTrue(torch.allclose(saved.grad, src.grad))
+            self.assertTrue(torch.allclose(saved.grad, src.grad))
 
     def test_normalize_scores_use_log_zero_stride(self):
         s = '''
             [ [1 3 5] [2 -1] [] [3] [5 2] ]
         '''
-        src = k2.ragged.RaggedFloat(s)
-        saved = src.values.clone().detach()
-        saved.requires_grad_(True)
-        src.requires_grad_(True)
+        for device in self.devices:
+            src = k2.ragged.RaggedFloat(s).to(device)
+            saved = src.values.clone().detach()
+            saved.requires_grad_(True)
+            src.requires_grad_(True)
 
-        ans = k2.ragged.normalize_scores(src, use_log=True)
+            ans = k2.ragged.normalize_scores(src, use_log=True)
 
-        # the stride of grad is 0
-        ans.values.sum().backward()
+            # the stride of grad is 0
+            ans.values.sum().backward()
 
-        expected = saved.new_zeros(*ans.values.shape)
+            expected = saved.new_zeros(*ans.values.shape)
 
-        normalizer = saved[:3].exp().sum().log()
-        expected[:3] = saved[:3] - normalizer
+            normalizer = saved[:3].exp().sum().log()
+            expected[:3] = saved[:3] - normalizer
 
-        normalizer = saved[3:5].exp().sum().log()
-        expected[3:5] = saved[3:5] - normalizer
+            normalizer = saved[3:5].exp().sum().log()
+            expected[3:5] = saved[3:5] - normalizer
 
-        expected[5] = 0  # it has only one entry
+            expected[5] = 0  # it has only one entry
 
-        normalizer = saved[6:8].exp().sum().log()
-        expected[6:8] = saved[6:8] - normalizer
+            normalizer = saved[6:8].exp().sum().log()
+            expected[6:8] = saved[6:8] - normalizer
 
-        self.assertTrue(torch.allclose(expected, ans.values))
-        expected.sum().backward()
+            self.assertTrue(torch.allclose(expected, ans.values))
+            expected.sum().backward()
 
-        self.assertTrue(torch.allclose(saved.grad, src.grad))
+            self.assertTrue(torch.allclose(saved.grad, src.grad))
 
     def test_normalize_scores_use_log_from_shape(self):
         s = '''
@@ -173,32 +188,37 @@ class TestRaggedOps(unittest.TestCase):
             2 3 -1 0.
             3
         '''
-        fsa = k2.Fsa.from_str(s)
-        scores = torch.arange(fsa.scores.numel(), dtype=torch.float32)
-        scores.requires_grad_(True)
+        for device in self.devices:
+            fsa = k2.Fsa.from_str(s).to(device)
+            scores = torch.arange(fsa.scores.numel(),
+                                  dtype=torch.float32,
+                                  device=device)
+            scores.requires_grad_(True)
 
-        ragged_scores = k2.ragged.RaggedFloat(fsa.arcs.shape(), scores)
-        assert ragged_scores.requires_grad is True
+            ragged_scores = k2.ragged.RaggedFloat(fsa.arcs.shape(), scores)
+            assert ragged_scores.requires_grad is True
 
-        normalized_scores = k2.ragged.normalize_scores(ragged_scores,
-                                                       use_log=True)
-        assert normalized_scores.requires_grad is True
+            normalized_scores = k2.ragged.normalize_scores(ragged_scores,
+                                                           use_log=True)
+            assert normalized_scores.requires_grad is True
 
-        fsa.scores = normalized_scores.values
-        assert fsa.scores.requires_grad is True
+            fsa.scores = normalized_scores.values
+            assert fsa.scores.requires_grad is True
 
-        # arcs leaving state 0
-        self.assertAlmostEqual(fsa.scores[:3].exp().sum().item(),
-                               1.0,
-                               places=6)
+            # arcs leaving state 0
+            self.assertAlmostEqual(fsa.scores[:3].exp().sum().item(),
+                                   1.0,
+                                   places=6)
 
-        # arcs leaving state 1
-        self.assertAlmostEqual(fsa.scores[3:5].exp().sum().item(),
-                               1.0,
-                               places=6)
+            # arcs leaving state 1
+            self.assertAlmostEqual(fsa.scores[3:5].exp().sum().item(),
+                                   1.0,
+                                   places=6)
 
-        # arcs leaving state 2
-        self.assertAlmostEqual(fsa.scores[5].exp().sum().item(), 1.0, places=6)
+            # arcs leaving state 2
+            self.assertAlmostEqual(fsa.scores[5].exp().sum().item(),
+                                   1.0,
+                                   places=6)
 
     def test_normalize_scores(self):
         for device in self.devices:
@@ -227,51 +247,59 @@ class TestRaggedOps(unittest.TestCase):
             2 3 -1 0.
             3
         '''
-        fsa = k2.Fsa.from_str(s)
-        scores = torch.randn_like(fsa.scores)
-        fsa.set_scores_stochastic_(scores)
-        normalized_scores = k2.ragged.sum_per_sublist(
-            _k2.RaggedFloat(fsa.arcs.shape(), fsa.scores.exp()))
-        assert normalized_scores.numel() == fsa.arcs.dim0()
+        for device in self.devices:
+            fsa = k2.Fsa.from_str(s).to(device)
+            scores = torch.randn_like(fsa.scores)
+            fsa.set_scores_stochastic_(scores)
+            normalized_scores = k2.ragged.sum_per_sublist(
+                _k2.RaggedFloat(fsa.arcs.shape(), fsa.scores.exp()))
+            assert normalized_scores.numel() == fsa.arcs.dim0()
 
-        assert torch.allclose(normalized_scores[:-1],
-                              torch.ones(normalized_scores.numel() - 1))
+            assert torch.allclose(
+                normalized_scores[:-1],
+                torch.ones(normalized_scores.numel() - 1, device=device))
 
-        # the final state has no leaving arcs
-        assert normalized_scores[-1].item() == 0
+            # the final state has no leaving arcs
+            assert normalized_scores[-1].item() == 0
 
     def test_cat(self):
-        ragged1 = k2.RaggedInt('[ [1 2 3] [] [4 5] ]')
-        ragged2 = k2.RaggedInt('[ [] [10 20] [30] [40 50] ]')
-        ragged = k2.ragged.cat([ragged1, ragged2])
-        self.assertEqual(
-            str(ragged),
-            '[ [ 1 2 3 ] [ ] [ 4 5 ] [ ] [ 10 20 ] [ 30 ] [ 40 50 ] ]')
+        for device in self.devices:
+            ragged1 = k2.RaggedInt('[ [1 2 3] [] [4 5] ]').to(device)
+            ragged2 = k2.RaggedInt('[ [] [10 20] [30] [40 50] ]').to(device)
+            ragged = k2.ragged.cat([ragged1, ragged2])
+            self.assertEqual(
+                str(ragged),
+                '[ [ 1 2 3 ] [ ] [ 4 5 ] [ ] [ 10 20 ] [ 30 ] [ 40 50 ] ]')
 
     def test_cat_axis1(self):
-        ragged1 = k2.RaggedInt('[ [1 2 3] [] [4 5] ]')
-        ragged2 = k2.RaggedInt('[ [10 20] [8] [9 10] ]')
-        ragged = k2.ragged.cat([ragged1, ragged2], axis=1)
-        self.assertEqual(str(ragged), '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]')
+        for device in self.devices:
+            ragged1 = k2.RaggedInt('[ [1 2 3] [] [4 5] ]').to(device)
+            ragged2 = k2.RaggedInt('[ [10 20] [8] [9 10] ]').to(device)
+            ragged = k2.ragged.cat([ragged1, ragged2], axis=1)
+            self.assertEqual(str(ragged),
+                             '[ [ 1 2 3 10 20 ] [ 8 ] [ 4 5 9 10 ] ]')
 
     def test_get_layer_two_axes(self):
-        shape = k2.RaggedShape('[ [x x x] [x] [] [x x] ]')
-        subshape = k2.ragged.get_layer(shape, 0)
-        # subshape should contain the same information as shape
-        self.assertEqual(subshape.num_axes(), 2)
-        self.assertEqual(str(subshape), str(shape))
+        for device in self.devices:
+            shape = k2.RaggedShape('[ [x x x] [x] [] [x x] ]').to(device)
+            subshape = k2.ragged.get_layer(shape, 0)
+            # subshape should contain the same information as shape
+            self.assertEqual(subshape.num_axes(), 2)
+            self.assertEqual(str(subshape), str(shape))
 
     def test_get_layer_three_axes(self):
-        shape = k2.RaggedShape(
-            '[ [[x x] [] [x] [x x x]] [[] [] [x x] [x] [x x]] ]')
-        shape0 = k2.ragged.get_layer(shape, 0)
-        expected_shape0 = k2.RaggedShape('[ [x x x x] [x x x x x] ]')
-        self.assertEqual(str(shape0), str(expected_shape0))
+        for device in self.devices:
+            shape = k2.RaggedShape(
+                '[ [[x x] [] [x] [x x x]] [[] [] [x x] [x] [x x]] ]')
+            shape = shape.to(device)
+            shape0 = k2.ragged.get_layer(shape, 0)
+            expected_shape0 = k2.RaggedShape('[ [x x x x] [x x x x x] ]')
+            self.assertEqual(str(shape0), str(expected_shape0))
 
-        shape1 = k2.ragged.get_layer(shape, 1)
-        expected_shape1 = k2.RaggedShape(
-            '[ [x x] [] [x] [x x x] [] [] [x x] [x] [x x] ]')
-        self.assertEqual(str(shape1), str(expected_shape1))
+            shape1 = k2.ragged.get_layer(shape, 1)
+            expected_shape1 = k2.RaggedShape(
+                '[ [x x] [] [x] [x x x] [] [] [x x] [x] [x x] ]')
+            self.assertEqual(str(shape1), str(expected_shape1))
 
     def test_create_ragged2(self):
         lst = [[7, 9], [12, 13], []]
@@ -442,7 +470,7 @@ class TestRaggedOps(unittest.TestCase):
 
         assert shape.row_splits(1).device.type == 'cpu'
 
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and k2.with_cuda:
             device = torch.device('cuda', 0)
             shape = shape.to(device)
             assert shape.row_splits(1).is_cuda

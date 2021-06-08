@@ -17,12 +17,17 @@ import _k2
 
 class TestFsaFromUnaryFunctionTensor(unittest.TestCase):
 
-    def test(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
-        for device in devices:
+    def test(self):
+        for device in self.devices:
             s = '''
                 0 1 2 10
                 0 1 1 20

@@ -13,8 +13,6 @@
 #include "k2/csrc/moderngpu_allocator.h"
 #include "k2/csrc/nvtx.h"
 #include "k2/csrc/utils.h"
-#include "moderngpu/kernel_load_balance.hxx"
-#include "moderngpu/kernel_sortedsearch.hxx"
 
 namespace k2 {
 

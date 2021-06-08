@@ -17,12 +17,17 @@ import _k2
 
 class TestFsaFromUnaryFunctionRagged(unittest.TestCase):
 
-    def test_without_empty_list(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
+    @classmethod
+    def setUpClass(cls):
+        cls.devices = [torch.device('cpu')]
+        if torch.cuda.is_available() and k2.with_cuda:
+            cls.devices.append(torch.device('cuda', 0))
+            if torch.cuda.device_count() > 1:
+                torch.cuda.set_device(1)
+                cls.devices.append(torch.device('cuda', 1))
 
-        for device in devices:
+    def test_without_empty_list(self):
+        for device in self.devices:
             s = '''
                 0 1 0 0
                 0 1 1 0
@@ -56,60 +61,31 @@ class TestFsaFromUnaryFunctionRagged(unittest.TestCase):
             assert dest.attr1 == src.attr1
             assert dest.attr2 == src.attr2
 
-            if device.type == 'cpu':
-                expected_arc_map = k2.RaggedInt('[ [1] [0 2] [2] ]')
-                self.assertEqual(str(arc_map), str(expected_arc_map))
+            expected_arc_map = k2.RaggedInt('[ [1] [0 2] [2] ]')
+            self.assertEqual(str(arc_map), str(expected_arc_map))
 
-                expected_int_attr = k2.RaggedInt('[ [2] [1 3] [3] ]')
-                self.assertEqual(str(dest.int_attr), str(expected_int_attr))
+            expected_int_attr = k2.RaggedInt('[ [2] [1 3] [3] ]')
+            self.assertEqual(str(dest.int_attr), str(expected_int_attr))
 
-                expected_ragged_attr = k2.RaggedInt(
-                    '[ [30 40 50] [10 20 60 70] [60 70] ]')
-                self.assertEqual(str(dest.ragged_attr),
-                                 str(expected_ragged_attr))
+            expected_ragged_attr = k2.RaggedInt(
+                '[ [30 40 50] [10 20 60 70] [60 70] ]')
+            self.assertEqual(str(dest.ragged_attr),
+                             str(expected_ragged_attr))
 
-                expected_float_attr = torch.empty_like(dest.float_attr)
-                expected_float_attr[0] = float_attr[1]
-                expected_float_attr[1] = float_attr[0] + float_attr[2]
-                expected_float_attr[2] = float_attr[2]
+            expected_float_attr = torch.empty_like(dest.float_attr)
+            expected_float_attr[0] = float_attr[1]
+            expected_float_attr[1] = float_attr[0] + float_attr[2]
+            expected_float_attr[2] = float_attr[2]
 
-                assert torch.all(torch.eq(dest.float_attr,
-                                          expected_float_attr))
+            assert torch.all(torch.eq(dest.float_attr,
+                                      expected_float_attr))
 
-                expected_scores = torch.empty_like(dest.scores)
-                expected_scores[0] = scores_copy[1]
-                expected_scores[1] = scores_copy[0] + scores_copy[2]
-                expected_scores[2] = scores_copy[2]
+            expected_scores = torch.empty_like(dest.scores)
+            expected_scores[0] = scores_copy[1]
+            expected_scores[1] = scores_copy[0] + scores_copy[2]
+            expected_scores[2] = scores_copy[2]
 
-                assert torch.all(torch.eq(dest.scores, expected_scores))
-            else:
-                # For CUDA, the arc_map differs, but the resulting FSA
-                # is equivalent.
-                expected_arc_map = k2.RaggedInt('[ [0 2] [1] [2] ]')
-                self.assertEqual(str(arc_map), str(expected_arc_map))
-
-                expected_int_attr = k2.RaggedInt('[ [1 3] [2] [3] ]')
-                self.assertEqual(str(dest.int_attr), str(expected_int_attr))
-
-                expected_ragged_attr = k2.RaggedInt(
-                    '[ [10 20 60 70] [30 40 50] [60 70] ]')
-                self.assertEqual(str(dest.ragged_attr),
-                                 str(expected_ragged_attr))
-
-                expected_float_attr = torch.empty_like(dest.float_attr)
-                expected_float_attr[0] = float_attr[0] + float_attr[2]
-                expected_float_attr[1] = float_attr[1]
-                expected_float_attr[2] = float_attr[2]
-
-                assert torch.all(torch.eq(dest.float_attr,
-                                          expected_float_attr))
-
-                expected_scores = torch.empty_like(dest.scores)
-                expected_scores[0] = scores_copy[0] + scores_copy[2]
-                expected_scores[1] = scores_copy[1]
-                expected_scores[2] = scores_copy[2]
-
-                assert torch.all(torch.eq(dest.scores, expected_scores))
+            assert torch.all(torch.eq(dest.scores, expected_scores))
 
             scale = torch.tensor([10, 20, 30]).to(float_attr)
 
@@ -122,11 +98,7 @@ class TestFsaFromUnaryFunctionRagged(unittest.TestCase):
             assert torch.all(torch.eq(scores.grad, scores_copy.grad))
 
     def test_with_empty_list(self):
-        devices = [torch.device('cpu')]
-        if torch.cuda.is_available():
-            devices.append(torch.device('cuda', 0))
-
-        for device in devices:
+        for device in self.devices:
             s = '''
                 0 1 0 0
                 0 1 1 0
@@ -161,66 +133,34 @@ class TestFsaFromUnaryFunctionRagged(unittest.TestCase):
             assert dest.attr1 == src.attr1
             assert dest.attr2 == src.attr2
 
-            if device.type == 'cpu':
-                expected_arc_map = k2.RaggedInt('[ [] [1] [0 2] [] [2] ]')
-                self.assertEqual(str(arc_map), str(expected_arc_map))
+            expected_arc_map = k2.RaggedInt('[ [] [1] [0 2] [] [2] ]')
+            self.assertEqual(str(arc_map), str(expected_arc_map))
 
-                expected_int_attr = k2.RaggedInt('[ [] [2] [1 3] [] [3] ]')
-                self.assertEqual(str(dest.int_attr), str(expected_int_attr))
+            expected_int_attr = k2.RaggedInt('[ [] [2] [1 3] [] [3] ]')
+            self.assertEqual(str(dest.int_attr), str(expected_int_attr))
 
-                expected_ragged_attr = k2.RaggedInt(
-                    '[ [] [30 40 50] [10 20 60 70] [] [60 70] ]')
-                self.assertEqual(str(dest.ragged_attr),
-                                 str(expected_ragged_attr))
+            expected_ragged_attr = k2.RaggedInt(
+                '[ [] [30 40 50] [10 20 60 70] [] [60 70] ]')
+            self.assertEqual(str(dest.ragged_attr),
+                             str(expected_ragged_attr))
 
-                expected_float_attr = torch.empty_like(dest.float_attr)
-                expected_float_attr[0] = 0
-                expected_float_attr[1] = float_attr[1]
-                expected_float_attr[2] = float_attr[0] + float_attr[2]
-                expected_float_attr[3] = 0
-                expected_float_attr[4] = float_attr[2]
+            expected_float_attr = torch.empty_like(dest.float_attr)
+            expected_float_attr[0] = 0
+            expected_float_attr[1] = float_attr[1]
+            expected_float_attr[2] = float_attr[0] + float_attr[2]
+            expected_float_attr[3] = 0
+            expected_float_attr[4] = float_attr[2]
 
-                assert torch.all(torch.eq(dest.float_attr,
-                                          expected_float_attr))
+            assert torch.all(torch.eq(dest.float_attr,
+                                      expected_float_attr))
 
-                expected_scores = torch.empty_like(dest.scores)
-                expected_scores[0] = 0
-                expected_scores[1] = scores_copy[1]
-                expected_scores[2] = scores_copy[0] + scores_copy[2]
-                expected_scores[3] = 0
-                expected_scores[4] = scores_copy[2]
-                assert torch.all(torch.eq(dest.scores, expected_scores))
-            else:
-                expected_arc_map = k2.RaggedInt('[ [] [0 2] [1] [] [2] ]')
-                self.assertEqual(str(arc_map), str(expected_arc_map))
-
-                expected_int_attr = k2.RaggedInt('[ [] [1 3] [2] [] [3] ]')
-                self.assertEqual(str(dest.int_attr), str(expected_int_attr))
-
-                expected_ragged_attr = k2.RaggedInt(
-                    '[ [] [10 20 60 70] [30 40 50] [] [60 70] ]')
-                self.assertEqual(str(dest.ragged_attr),
-                                 str(expected_ragged_attr))
-
-                expected_float_attr = torch.empty_like(dest.float_attr)
-                expected_float_attr[0] = 0
-                expected_float_attr[1] = float_attr[0] + float_attr[2]
-                expected_float_attr[2] = float_attr[1]
-                expected_float_attr[3] = 0
-                expected_float_attr[4] = float_attr[2]
-
-                assert torch.all(torch.eq(dest.float_attr,
-                                          expected_float_attr))
-
-                expected_scores = torch.empty_like(dest.scores)
-                expected_scores[0] = 0
-                expected_scores[1] = scores_copy[0] + scores_copy[2]
-                expected_scores[2] = scores_copy[1]
-                expected_scores[3] = 0
-                expected_scores[4] = scores_copy[2]
-
-                assert torch.all(torch.eq(dest.float_attr,
-                                          expected_float_attr))
+            expected_scores = torch.empty_like(dest.scores)
+            expected_scores[0] = 0
+            expected_scores[1] = scores_copy[1]
+            expected_scores[2] = scores_copy[0] + scores_copy[2]
+            expected_scores[3] = 0
+            expected_scores[4] = scores_copy[2]
+            assert torch.all(torch.eq(dest.scores, expected_scores))
 
             scale = torch.tensor([10, 20, 30, 40, 50]).to(float_attr)
             (dest.float_attr * scale).sum().backward()

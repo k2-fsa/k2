@@ -890,7 +890,8 @@ FsaOrVec ExpandArcs(FsaOrVec &fsas, RaggedShape &labels_shape,
   RaggedShape state_to_arcs = GetLayer(fsas.shape, 1);
 
   // `state_to_foo` is a RaggedShape that, for each state in `fsas`, has a list
-  // of length `tot_arcs + 1`.  Interpret this as: one element for the state
+  // of length `num_arcs + 1`, where `num_arcs` is the number of arcs leaving
+  // this state in `fsas`.  Interpret this as: one element for the state
   // itself, then one for each arc leaving it.  This `foo` is an index that
   // corresponds to num-arcs plus one, but because it is really a placeholder
   // and we want to keep it distinct from other things, we call it `foo`.
