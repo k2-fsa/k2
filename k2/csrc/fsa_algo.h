@@ -364,7 +364,8 @@ void RemoveEpsilonHost(FsaOrVec &src, FsaOrVec *dest,
     @param [in] properties  Properties of `src`.  The only property that matters
                      is kFsaPropertiesTopSortedAndAcyclic (to
                      determine whether we can use RemoveEpsilonHost()).
-    @param [out] dest   The epsilon-removed FSA will be written to here
+    @param [out] dest   The epsilon-removed FSA will be written to here;
+                     it will be equivalent to `src` in the tropical semiring.
     @param [out] arc_derivs  If not nullptr, a ragged tensor with 2
                      axes will be written to here, with
                      `arc_derivs->Dim() == dest->NumElements()`.

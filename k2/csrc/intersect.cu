@@ -454,7 +454,7 @@ class DeviceIntersector {
       // The following is a bound on how big we might need the hash to be, assuming
       // all arc-pairs match, which of course they won't, but it's safe.  For large
       // problems you should be using sorted_match_a=true.
-      PossiblyResizeHash(2 * (states_.Dim() + tot_ab),
+      PossiblyResizeHash(4 * (states_.Dim() + tot_ab),
                          states_.Dim() + tot_ab);
 
       int32_t num_key_bits = state_pair_to_state_.NumKeyBits(),
@@ -1052,7 +1052,7 @@ class DeviceIntersector {
 
       {
         int32_t max_possible_states = states_.Dim() + tot_matched_arcs;
-        PossiblyResizeHash(2 * max_possible_states,
+        PossiblyResizeHash(4 * max_possible_states,
                            max_possible_states);
       }
 
