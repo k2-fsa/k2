@@ -157,7 +157,8 @@ class Hash {
         uint64_t key_value = src_data[i];
         if (~key_value == 0) return;  // equals -1.. nothing there.
         uint64_t key = key_value & key_mask,
-            leftover_index = 1 | (key >> new_buckets_num_bitsm1);
+            leftover_index = 1 |
+            ((key >> new_buckets_num_bitsm1) ^ (key & new_num_buckets_mask));
         size_t cur_bucket = key & new_num_buckets_mask;
         while (1) {
           uint64_t assumed = ~((uint64_t)0),
@@ -285,7 +286,8 @@ class Hash {
         uint64_t *old_value = nullptr,
         uint64_t **key_value_location = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
-          leftover_index = 1 | (key >> buckets_num_bitsm1_);
+          leftover_index =
+          1 | ((key >> buckets_num_bitsm1_) & (key & num_buckets_mask_));
       constexpr int64_t KEY_MASK = (uint64_t(1)<<NUM_KEY_BITS) - 1,
           VALUE_MASK = (uint64_t(1)<< (64 - NUM_KEY_BITS)) - 1;
 
@@ -351,7 +353,8 @@ class Hash {
       constexpr int64_t KEY_MASK = (uint64_t(1) << NUM_KEY_BITS) - 1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
-           leftover_index = 1 | (key >> buckets_num_bitsm1_);
+          leftover_index =
+          1 | ((key >> buckets_num_bitsm1_) ^ (key & num_buckets_mask_));
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
         if (~old_elem == 0) {
@@ -436,7 +439,8 @@ class Hash {
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
       constexpr int64_t KEY_MASK = (uint64_t(1) << NUM_KEY_BITS) - 1;
       uint32_t cur_bucket = key & num_buckets_mask_,
-           leftover_index = 1 | (key >> buckets_num_bitsm1_);
+          leftover_index =
+          1 | ((key >> buckets_num_bitsm1_) ^ (key & num_buckets_mask_));
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
         if ((old_elem & KEY_MASK) == key) {
@@ -505,7 +509,8 @@ class Hash {
         uint64_t *old_value = nullptr,
         uint64_t **key_value_location = nullptr) const {
       uint32_t cur_bucket = static_cast<uint32_t>(key) & num_buckets_mask_,
-           leftover_index = 1 | (key >> buckets_num_bitsm1_);
+           leftover_index =
+          1 | ((key >> buckets_num_bitsm1_) ^ (key & num_buckets_mask_));
       const uint32_t num_key_bits = num_key_bits_;
       const uint64_t key_mask = (uint64_t(1) << num_key_bits) - 1,
           not_value_mask = (uint64_t(-1) << (64 - num_key_bits));
@@ -571,7 +576,8 @@ class Hash {
       const int64_t key_mask = (uint64_t(1) << num_key_bits) - 1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
-           leftover_index = 1 | (key >> buckets_num_bitsm1_);
+          leftover_index =
+          1 | ((key >> buckets_num_bitsm1_) ^ (key & num_buckets_mask_));
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
         if (~old_elem == 0) {
@@ -647,7 +653,8 @@ class Hash {
     */
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
       uint32_t cur_bucket = key & num_buckets_mask_,
-          leftover_index = 1 | (key >> buckets_num_bitsm1_);
+          leftover_index =
+          1 | ((key >> buckets_num_bitsm1_) ^ (key & num_buckets_mask_));
       const uint64_t key_mask = (uint64_t(1) << num_key_bits_) - 1;
       while (1) {
         uint64_t old_elem = data_[cur_bucket];
@@ -737,7 +744,8 @@ class Hash {
       // the lowest-order `num_implicit_key_bits_` bits of the bucket index will
       // not change when we fail over to the next location.  Without this, our
       // scheme would not work.
-      uint32_t leftover_index = (1 | (key >> buckets_num_bitsm1_))
+      uint32_t leftover_index =
+          (1 | ((key >> buckets_num_bitsm1_) ^ (key & num_buckets_mask_)))
           << num_implicit_key_bits_;
       uint64_t kept_key = key >> num_implicit_key_bits_;
 
@@ -746,7 +754,7 @@ class Hash {
 
       K2_DCHECK_EQ((kept_key & ~kept_key_mask) | (value & not_value_mask), 0);
 
-      uint64_t new_elem =  (value << num_kept_key_bits_) | kept_key;
+      uint64_t new_elem = (value << num_kept_key_bits_) | kept_key;
       while (1) {
         uint64_t cur_elem = data_[cur_bucket];
         if ((cur_elem & kept_key_mask) == kept_key) {
@@ -769,11 +777,7 @@ class Hash {
             return false;  // Another thread inserted this key
           }
         }
-        // Rotate bucket index until we find a free location.  This will
-        // eventually visit all bucket indexes before it returns to the same
-        // location, because leftover_index is odd (so only satisfies
-        // (n * leftover_index) % num_buckets == 0 for n == num_buckets).
-        // Note: n here is the number of times we went around the loop.
+        // Rotate bucket index until we find a free location.
         cur_bucket = (cur_bucket + leftover_index) & num_buckets_mask_;
       }
     }
@@ -804,7 +808,8 @@ class Hash {
       const int64_t kept_key_mask = (uint64_t(1) << num_kept_key_bits_) - 1;
 
       uint32_t cur_bucket = key & num_buckets_mask_,
-          leftover_index = (1 | (key >> buckets_num_bitsm1_))
+          leftover_index =
+          (1 | ((key >> buckets_num_bitsm1_) ^ (key & num_buckets_mask_)))
           << num_implicit_key_bits_;
       uint64_t kept_key = key >> num_implicit_key_bits_;
 
@@ -887,7 +892,8 @@ class Hash {
     */
     __forceinline__ __host__ __device__ void Delete(uint64_t key) const {
       uint32_t cur_bucket = key & num_buckets_mask_,
-          leftover_index = (1 | (key >> buckets_num_bitsm1_))
+          leftover_index =
+          (1 | ((key >> buckets_num_bitsm1_) ^ (key & num_buckets_mask_)))
           << num_implicit_key_bits_;
       uint64_t kept_key = key >> num_implicit_key_bits_;
       const uint64_t kept_key_mask = (uint64_t(1) << num_kept_key_bits_) - 1;

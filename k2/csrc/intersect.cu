@@ -1310,7 +1310,7 @@ class DeviceIntersector {
 
   // arcs_row_ids_, which always maintained as having the same size as `arcs_`,
   // maps from the output arc to the corresponding ostate index that the arc
-  // leaves from (index into states_).  Actually this may be redu
+  // leaves from (index into states_).  Actually this may be redundant.
   Array1<int32_t> arcs_row_ids_;
 
   // The hash maps from state-pair, as:
