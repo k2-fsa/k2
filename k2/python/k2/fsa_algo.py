@@ -951,3 +951,35 @@ def expand_ragged_attributes(
         return dest, arc_map
     else:
         return dest
+
+
+def replace_fsa(
+        src: Fsa,
+        index: Fsa,
+        symbol_begin_range: int = 1,
+        ret_arc_map: bool = False
+) -> Union[Fsa, Tuple[Fsa, torch.Tensor]]:
+    '''Replace arcs in FSA with the corresponding fsas in a vector of FSAs.
+
+    Args:
+      src:
+        Fsa that we'll be inserting into the result, MUST have 3 axes.
+      index:
+        The Fsa that is to be replaced, It can be a single FSA or a vector of
+	FSAs.
+      symbol_range_begin:
+        Beginning of the range of symbols that are to be replaced with Fsas.
+      ret_arc_map:  if true, will return a pair (new_fsas, arc_map)
+           with `arc_map` a tensor of int32 that maps from arcs in the
+           result to arcs in `index`, with -1's for newly inserted arcs.
+           If false, just returns new_fsas.
+    '''
+    (dest_arc, arc_map_src, arc_map_index) = _k2.replace_fsa(
+        src.arcs, index.arcs, symbol_begin_range)
+
+    dest = k2.utils.fsa_from_unary_function_tensor(index, dest_arc,
+                                                   arc_map_index)
+    if ret_arc_map:
+        return dest, arc_map_index
+    else:
+        return dest

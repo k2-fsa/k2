@@ -652,10 +652,8 @@ FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec &src,
   with the Fsa indexed `label - symbol_range_begin` in `src`, identifying the
   source and destination states of the arc in `src` with the initial and
   final states in `src[label - symbol_range_begin]`. Arcs with labels outside
-  this range are just copied.
-  Caution: the result may not be a valid Fsa because labels on final-arcs in
-  `src` (which will be -1) may end up on non-final arcs in the result; you can
-  use FixFinalLabels() to fix this.
+  this range are just copied. Labels on final-arcs in `src` (which will be -1)
+  would be set to 0(epsion) in the result.
 
     @param [in] src    FsaVec containing individual Fsas that we'll be inserting
                        into the result.
@@ -665,7 +663,7 @@ FsaOrVec RemoveEpsilonSelfLoops(FsaOrVec &src,
 
     @param [in] symbol_range_begin  Beginning of the range (interval) of symbols
                                     that are to  be replaced with Fsas.
-                                    Symbols numbered `symbol_range_begin <= i < src.Dim0()`
+                                    Symbols numbered `symbol_range_begin <= i < src.Dim0() + symbol_range_begin`
                                     will be replaced with the Fsa in `src[i - symbol_range_begin]`
 
     @param [out,optional] arc_map_src  If not nullptr, will be set to a new
