@@ -1115,6 +1115,24 @@ class TestFsa(unittest.TestCase):
             expected = k2.RaggedInt('[ [1] [] [-1] ]')
             assert str(fsa.tensor_attr2) == str(expected)
 
+    def test_invalidate_cache(self):
+        s = '''
+            0 1 1 0.1
+            1 2 -1 0.2
+            2
+        '''
+        fsa = k2.Fsa.from_str(s)
+        fsa = k2.create_fsa_vec([fsa])
+        fsa.get_tot_scores(True, True)
+
+        assert 'forward_scores_double_log' in fsa._cache
+        assert 'state_batches' in fsa._cache
+
+        fsa.scores *= 2
+
+        assert 'forward_scores_double_log' not in fsa._cache
+        assert 'state_batches' in fsa._cache
+
 
 if __name__ == '__main__':
     unittest.main()
