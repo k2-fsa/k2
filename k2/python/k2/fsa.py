@@ -215,6 +215,17 @@ class Fsa(object):
         # the FSA is valid.
         _ = self.properties
 
+    def _invalidate_cache_(self):
+        '''Intended for internal use only so its
+        name begins with an underline.
+
+        Also, it changes `self` in-place.
+
+        Currently, it is used only when the `scores` field
+        are re-assigned.
+        '''
+        self.__dict__['_cache'] = dict()
+
     def to_str(self, openfst: bool = False) -> str:
         extra_labels = []
         ragged_labels = []
@@ -357,6 +368,7 @@ class Fsa(object):
                 # NOTE: we **reinterpret** the float patterns
                 # to integer patterns here.
                 self.arcs.values()[:, -1] = _k2.as_int(value.detach())
+                self._invalidate_cache_()
         elif isinstance(value, _k2.RaggedInt):
             assert value.dim0() == self.arcs.values().shape[0], \
                     f'value.dim0(): {value.dim0()}, shape[0]: {self.arcs.values().shape[0]}'  # noqa
