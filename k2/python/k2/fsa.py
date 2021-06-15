@@ -13,6 +13,7 @@ from typing import Tuple
 from typing import Union
 
 import os
+import re
 import shutil
 import torch
 
@@ -215,7 +216,7 @@ class Fsa(object):
         # the FSA is valid.
         _ = self.properties
 
-    def _invalidate_cache_(self):
+    def _invalidate_cache_(self, scores_only: bool = True) -> None:
         '''Intended for internal use only so its
         name begins with an underline.
 
@@ -223,8 +224,25 @@ class Fsa(object):
 
         Currently, it is used only when the `scores` field
         are re-assigned.
+
+        Args:
+          scores_only:
+            It True, it invalidates only cached entries related
+            to scores. If False, the whole cache is invalidated.
+
         '''
-        self.__dict__['_cache'] = dict()
+        if scores_only is False:
+            self.__dict__['_cache'] = dict()
+        else:
+            pattern = re.compile('score')
+            to_remove = []
+
+            for key in self.__dict__['_cache']:
+                if pattern.search(key):
+                    to_remove.append(key)
+
+            for key in to_remove:
+                del self.__dict__['_cache'][key]
 
     def to_str(self, openfst: bool = False) -> str:
         extra_labels = []
