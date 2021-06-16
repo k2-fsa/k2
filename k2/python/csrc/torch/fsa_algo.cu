@@ -3,7 +3,7 @@
  *
  * @copyright
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
- *                      Xiaomi Corporation (authors: Haowen Qiu)
+ *                      Xiaomi Corporation (authors: Haowen Qiu, Wei Kang)
  *
  * @copyright
  * See LICENSE for clarification regarding multiple authors

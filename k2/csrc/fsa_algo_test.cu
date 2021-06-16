@@ -1,5 +1,6 @@
 /**
  * Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+ *                2021  Xiaomi Corporation (authors: Wei Kang)
  *
  * See LICENSE for clarification regarding multiple authors
  */

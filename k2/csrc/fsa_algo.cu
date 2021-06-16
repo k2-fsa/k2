@@ -1,5 +1,6 @@
 /**
- * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu)
+ * Copyright (c)  2020  Xiaomi Corporation (authors: Daniel Povey, Haowen Qiu,
+ *                                                   Wei Kang)
  *                      Mobvoi Inc.        (authors: Fangjun Kuang)
  *
  * See LICENSE for clarification regarding multiple authors
