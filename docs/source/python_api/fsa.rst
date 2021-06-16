@@ -8,6 +8,16 @@ __init__
 
 .. automethod:: k2.Fsa.__init__
 
+_invalidate_cache_
+------------------
+
+.. automethod:: k2.Fsa._invalidate_cache_
+
+to_str
+------
+
+.. automethod:: k2.Fsa.to_str
+
 __str__
 --------
 
@@ -22,6 +32,11 @@ __setattr__
 -----------
 
 .. automethod:: k2.Fsa.__setattr__
+
+num_arcs
+--------
+
+.. autoattribute:: k2.Fsa.num_arcs
 
 labels
 ------
@@ -83,6 +98,11 @@ _get_leaving_arc_batches
 
 .. automethod:: k2.Fsa._get_leaving_arc_batches
 
+_get_arc_cdf
+------------
+
+.. automethod:: k2.Fsa._get_arc_cdf
+
 _get_forward_scores
 -------------------
 
@@ -132,6 +152,11 @@ _get_entering_arcs
 ----------------
 
 .. automethod:: k2.Fsa.requires_grad_
+
+rename_tensor_attribute
+-----------------------
+
+.. automethod:: k2.Fsa.rename_tensor_attribute
 
 `invert_`
 ---------

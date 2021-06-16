@@ -591,15 +591,14 @@ def remove_epsilon(fsa: Fsa) -> Fsa:
 
     Args:
       fsa:
+        The input FSA. It can be either a single FSA or an FsaVec.
+        Works either for CPU or GPU, but the algorithm is different.
+        We can only use the CPU algorithm if the input is top-sorted,
+        and the GPU algorithm, while it works for CPU, may not be
+        very fast.
 
-      The input FSA. It can be either a single FSA or an FsaVec.
-      Works either for CPU or GPU, but the algorithm is different.
-      We can only use the CPU algorithm if the input is top-sorted,
-      and the GPU algorithm, while it works for CPU, may not be
-      very fast.
-
-      `fsa` must be free of epsilon loops that have score
-      greater than 0.
+        `fsa` must be free of epsilon loops that have score
+        greater than 0.
 
     Returns:
       The resulting Fsa is equivalent to the input `fsa` under the
@@ -875,23 +874,28 @@ def expand_ragged_attributes(
     Supports autograd.  If `fsas` had no ragged attributes, returns `fsas`
     itself.
 
-    Caution: this function will ensure that for final-arcs in the returned
-    fsa, the corresponding labels for all ragged attributes are -1; it will
-    add an extra arc at the end is necessary to ensure this, if the
-    original ragged attributes did not have -1 as their final element on
-    final-arcs (note: our intention is that -1's on final arcs, like filler
-    symbols, are removed when making attributes ragged; this is what
-    fsa_from_unary_function_ragged() does if remove_filler==True (the
-    default).
+    Caution:
+      This function will ensure that for final-arcs in the returned
+      fsa, the corresponding labels for all ragged attributes are -1; it will
+      add an extra arc at the end is necessary to ensure this, if the
+      original ragged attributes did not have -1 as their final element on
+      final-arcs (note: our intention is that -1's on final arcs, like filler
+      symbols, are removed when making attributes ragged; this is what
+      fsa_from_unary_function_ragged() does if remove_filler==True (the
+      default).
 
-         fsas:   The source Fsa
-         ret_arc_map:  if true, will return a pair (new_fsas, arc_map)
-              with `arc_map` a tensor of int32 that maps from arcs in the
-              result to arcs in `fsas`, with -1's for newly created arcs.
-              If false, just returns new_fsas.
-         ragged_attribute_names:  If specified, just this list of ragged
-              attributes will be expanded to linear tensor attributes, and
-              the rest will stay ragged.
+    Args:
+      fsas:
+        The source Fsa
+      ret_arc_map:
+        If true, will return a pair (new_fsas, arc_map)
+        with `arc_map` a tensor of int32 that maps from arcs in the
+        result to arcs in `fsas`, with -1's for newly created arcs.
+        If false, just returns new_fsas.
+      ragged_attribute_names:
+        If specified, just this list of ragged
+        attributes will be expanded to linear tensor attributes, and
+        the rest will stay ragged.
     '''
     if ragged_attribute_names is None:
         ragged_attribute_tensors = []
