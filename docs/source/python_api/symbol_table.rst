@@ -33,6 +33,11 @@ merge
 
 .. automethod:: k2.SymbolTable.merge
 
+_check_compatible
+-----------------
+
+.. automethod:: k2.SymbolTable._check_compatible
+
 __getitem__
 -----------
 

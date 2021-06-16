@@ -292,7 +292,7 @@ def max_per_sublist(src: Union[_k2.RaggedFloat, _k2.RaggedInt],
                     initial_value: float = torch.finfo(torch.float32).min
                    ) -> torch.Tensor:  # noqa
     '''Compute the max per sublist for a ragged tensor (including
-       `initial_value` in the maximum)
+    `initial_value` in the maximum)
 
     The max is computed on the last layer, ignoring other layers, so it's
     as if you removed other layers first.
