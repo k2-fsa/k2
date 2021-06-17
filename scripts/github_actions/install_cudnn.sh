@@ -45,9 +45,13 @@ function retry() {
   $* || (sleep 1 && $*) || (sleep 2 && $*) || (sleep 4 && $*) || (sleep 8 && $*)
 }
 
-retry wget https://raw.githubusercontent.com/Juvenal-Yescas/mediafire-dl/master/mediafire-dl.py
-sed -i 's/quiet=False/quiet=True/' mediafire-dl.py
-retry python3 mediafire-dl.py "$url"
+# It is forked from https://github.com/Juvenal-Yescas/mediafire-dl
+# https://github.com/Juvenal-Yescas/mediafire-dl/pull/2 changes the filename and breaks the CI.
+# We use a separate fork to keep the link fixed.
+retry wget https://raw.githubusercontent.com/csukuangfj/mediafire-dl/master/mediafire_dl.py
+
+sed -i 's/quiet=False/quiet=True/' mediafire_dl.py
+retry python3 mediafire_dl.py "$url"
 sudo tar xf ./$filename -C /usr/local
 rm -v ./$filename
 
