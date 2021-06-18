@@ -1,6 +1,6 @@
 # Copyright (c)  2021  Xiaomi Corporation (authors: Fangjun Kuang)
 
-name: Publish to PyPI macOS
+name: Publish to PyPI macOS - stable
 
 on:
   push:
