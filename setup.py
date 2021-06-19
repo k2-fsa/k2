@@ -95,12 +95,18 @@ class BuildExtension(build_ext):
 
         cmake_args = os.environ.get('K2_CMAKE_ARGS', '')
         make_args = os.environ.get('K2_MAKE_ARGS', '')
+        system_make_args = os.environ.get('MAKEFLAGS', '')
 
         if cmake_args == '':
             cmake_args = '-DCMAKE_BUILD_TYPE=Release'
 
-        if make_args == '' and os.environ.get('K2_IS_GITHUB_ACTIONS', None) is None:
-            make_args = '-j'
+        if (
+            make_args == ""
+            and system_make_args == ""
+            and os.environ.get("K2_IS_GITHUB_ACTIONS", None) is None
+        ):
+            print("For fast compilation, run:")
+            print('export K2_MAKE_ARGS="-j"; python setup.py install')
 
         if is_macos():
             if not 'K2_WITH_CUDA=OFF' in cmake_args:
