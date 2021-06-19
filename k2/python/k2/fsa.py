@@ -1,8 +1,20 @@
-# Copyright (c)  2020  Mobvoi Inc.        (authors: Fangjun Kuang)
+# Copyright      2020  Mobvoi Inc.        (authors: Fangjun Kuang)
 #                      Xiaomi Corp.       (author: Daniel Povey, Haowen Qiu)
 #                      Guoguo Chen
 #
 # See ../../../LICENSE for clarification regarding multiple authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from typing import Any
 from typing import Dict
@@ -13,6 +25,7 @@ from typing import Tuple
 from typing import Union
 
 import os
+import re
 import shutil
 import torch
 
@@ -215,6 +228,34 @@ class Fsa(object):
         # the FSA is valid.
         _ = self.properties
 
+    def _invalidate_cache_(self, scores_only: bool = True) -> None:
+        '''Intended for internal use only so its
+        name begins with an underline.
+
+        Also, it changes `self` in-place.
+
+        Currently, it is used only when the `scores` field
+        are re-assigned.
+
+        Args:
+          scores_only:
+            It True, it invalidates only cached entries related
+            to scores. If False, the whole cache is invalidated.
+
+        '''
+        if scores_only is False:
+            self.__dict__['_cache'] = dict()
+        else:
+            pattern = re.compile('score')
+            to_remove = []
+
+            for key in self.__dict__['_cache']:
+                if pattern.search(key):
+                    to_remove.append(key)
+
+            for key in to_remove:
+                del self.__dict__['_cache'][key]
+
     def to_str(self, openfst: bool = False) -> str:
         extra_labels = []
         ragged_labels = []
@@ -357,6 +398,7 @@ class Fsa(object):
                 # NOTE: we **reinterpret** the float patterns
                 # to integer patterns here.
                 self.arcs.values()[:, -1] = _k2.as_int(value.detach())
+                self._invalidate_cache_()
         elif isinstance(value, _k2.RaggedInt):
             assert value.dim0() == self.arcs.values().shape[0], \
                     f'value.dim0(): {value.dim0()}, shape[0]: {self.arcs.values().shape[0]}'  # noqa

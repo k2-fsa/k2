@@ -11,6 +11,11 @@ __init__
 
 .. automethod:: k2.DenseFsaVec.__init__
 
+duration
+~~~~~~~~
+
+.. autoattribute:: k2.DenseFsaVec.duration
+
 _from_dense_fsa_vec
 ~~~~~~~~~~~~~~~~~~~
 

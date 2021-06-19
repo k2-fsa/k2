@@ -32,6 +32,11 @@ determinize
 
 .. autofunction:: determinize
 
+expand_ragged_attributes
+------------------------
+
+.. autofunction:: expand_ragged_attributes
+
 intersect
 ---------
 
@@ -57,10 +62,35 @@ linear_fsa
 
 .. autofunction:: linear_fsa
 
+linear_fst
+----------
+
+.. autofunction:: linear_fst
+
+prune_on_arc_post
+-----------------
+
+.. autofunction:: prune_on_arc_post
+
+random_paths
+------------
+
+.. autofunction:: random_paths
+
 remove_epsilon
 --------------
 
 .. autofunction:: remove_epsilon
+
+remove_epsilon_and_add_self_loops
+---------------------------------
+
+.. autofunction:: remove_epsilon_and_add_self_loops
+
+remove_epsilon_self_loops
+-------------------------
+
+.. autofunction:: remove_epsilon_self_loops
 
 shortest_path
 -------------
