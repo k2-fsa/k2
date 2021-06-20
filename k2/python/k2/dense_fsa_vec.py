@@ -17,7 +17,6 @@ from typing import Union
 
 import torch
 import _k2
-import numpy as np
 
 from .fsa import Fsa
 
@@ -120,8 +119,8 @@ class DenseFsaVec(object):
         # The remaining locations contain the neural net output, except
         # scores[j,0] where j is the last row-index for a given FSA-index;
         # this contains zero.
-        scores[:, 0] = np.NINF
-        scores[last_frame_indexes] = torch.tensor([0] + [np.NINF] * C,
+        scores[:, 0] = float('-inf')
+        scores[last_frame_indexes] = torch.tensor([0] + [float('-inf')] * C,
                                                   device=device)
 
         row_splits = torch.zeros(supervision_segments.size(0) + 1,

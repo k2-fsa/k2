@@ -26,7 +26,6 @@ import unittest
 import torch
 import _k2
 import k2
-import numpy as np
 
 
 class TestRaggedOps(unittest.TestCase):
