@@ -47,8 +47,7 @@ class Connecter {
   /*
     Computes the next batch of states
          @param [in] cur_states  Ragged array with 2 axes, containing
-    state-indexes (idx01) into fsas_.  These are states which already have
-    in-degree 0
+    state-indexes (idx01) into fsas_.
          @return   Returns the states which, after processing.
    */
   std::unique_ptr<Ragged<int32_t>> GetNextBatch(Ragged<int32_t> &cur_states) {
@@ -74,7 +73,7 @@ class Connecter {
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
-    // arcs_shape `[fsas][states][arcs]
+    // arcs_shape `[fsas][states cur][arcs]
     RaggedShape arcs_shape = ComposeRaggedShapes(
         cur_states.shape, RaggedShape2(&num_arcs_per_state, nullptr, -1));
 
@@ -83,9 +82,8 @@ class Connecter {
     // idx01 into fsas_).  Other elements will be undefined.
     Array1<int32_t> next_iter_states(c_, arcs_shape.NumElements());
 
-    // We'll be figuring out which of these arcs leads to a state that now has
-    // in-degree 0.  (If >1 arc goes to such a state, only one will 'win',
-    // arbitrarily).
+    // We'll be figuring out which of these arcs leads to a state that are not
+    // accessible yet.
     Renumbering arc_renumbering(c_, arcs_shape.NumElements());
 
     const int32_t *arcs_row_ids1_data = arcs_shape.RowIds(1).Data(),
@@ -153,10 +151,9 @@ class Connecter {
   }
 
   /*
-    Computes the next batch of states
+    Computes the next batch of states in reverse order
          @param [in] cur_states  Ragged array with 2 axes, containing
-    state-indexes (idx01) into fsas_.  These are states which already have
-    in-degree 0
+    state-indexes (idx01) into fsas_.
          @return   Returns the states which, after processing.
    */
   std::unique_ptr<Ragged<int32_t>> GetNextBatchBackward(
@@ -184,7 +181,7 @@ class Connecter {
         });
     ExclusiveSum(num_arcs_per_state, &num_arcs_per_state);
 
-    // arcs_shape `[fsas][states][arcs]
+    // arcs_shape `[fsas][states cur][arcs]
     RaggedShape arcs_shape = ComposeRaggedShapes(
         cur_states.shape, RaggedShape2(&num_arcs_per_state, nullptr, -1));
 
@@ -193,9 +190,8 @@ class Connecter {
     // idx01 into fsas_).  Other elements will be undefined.
     Array1<int32_t> next_iter_states(c_, arcs_shape.NumElements());
 
-    // We'll be figuring out which of these arcs leads to a state that now has
-    // in-degree 0.  (If >1 arc goes to such a state, only one will 'win',
-    // arbitrarily).
+    // We'll be figuring out which of these arcs comes from a state that are
+    // not coaccessible yet.
     Renumbering arc_renumbering(c_, arcs_shape.NumElements());
 
     const int32_t *arcs_row_ids1_data = arcs_shape.RowIds(1).Data(),
@@ -204,6 +200,7 @@ class Connecter {
                   *arcs_row_splits2_data = arcs_shape.RowSplits(2).Data(),
                   *fsas_row_splits1_data = fsas_.RowSplits(1).Data(),
                   *fsas_row_splits2_data = fsas_.RowSplits(2).Data(),
+                  *fsas_row_ids1_data = fsas_.RowIds(1).Data(),
                   *dest_states_data = dest_states_.values.Data(),
                   *incoming_arcs_data = incoming_arcs_.values.Data();
     const Arc *fsas_data = fsas_.values.Data();
@@ -218,10 +215,14 @@ class Connecter {
                   arcs_idx01x = arcs_row_splits2_data[arcs_idx01],
                   arcs_idx2 = arcs_idx012 - arcs_idx01x,
                   fsas_idx01 = states_data[arcs_idx01],  // a state index
+                  fsas_idx0 = fsas_row_ids1_data[fsas_idx01],
                   fsas_idx01x = incoming_arcs_row_splits2_data[fsas_idx01],
                   fsas_idx012 = fsas_idx01x + arcs_idx2,
+                  fsas_src_state_idx1 =
+                    fsas_data[incoming_arcs_data[fsas_idx012]].src_state,
+                  fsas_src_state_idx0x = fsas_row_splits1_data[fsas_idx0],
                   fsas_src_state_idx01 =
-                    fsas_data[incoming_arcs_data[fsas_idx012]].src_state;
+                    fsas_src_state_idx0x + fsas_src_state_idx1;
           // if this arc is a self-loop, just ignore this arc as we have
           // processed the dest_state (==src_state)
           if (fsas_src_state_idx01 == fsas_idx01 ||
@@ -267,11 +268,8 @@ class Connecter {
   }
 
   /*
-    Returns the final batch of states.  This will include all final-states that
-    existed in the original FSAs, i.e. at most one per input.  We treat them
-    specially because we can't afford the final-state to not be the last state
-    (this is only an issue because we support input where not all states were
-    reachable from the start state).
+    Returns the start batch of states.  This will include all start-states that
+    existed in the original FSAs.
    */
   std::unique_ptr<Ragged<int32_t>> GetStartBatch() {
     NVTX_RANGE(K2_FUNC);
@@ -308,10 +306,7 @@ class Connecter {
 
   /*
     Returns the final batch of states.  This will include all final-states that
-    existed in the original FSAs, i.e. at most one per input.  We treat them
-    specially because we can't afford the final-state to not be the last state
-    (this is only an issue because we support input where not all states were
-    reachable from the start state).
+    existed in the original FSAs.
    */
   std::unique_ptr<Ragged<int32_t>> GetFinalBatch() {
     NVTX_RANGE(K2_FUNC);
@@ -345,12 +340,10 @@ class Connecter {
     return ans;
   }
 
-  /* Does the main work of top-sorting and returns the resulting FSAs.
+  /* Does the main work of connecting and returns the resulting FSAs.
         @param [out] arc_map  if non-NULL, the map from (arcs in output)
                      to (corresponding arcs in input) is written to here.
-        @return   Returns the top-sorted FsaVec.  (Note: this may have
-                 fewer states than the input if there were unreachable
-                 states.)
+        @return   Returns the connected FsaVec.
    */
   FsaVec Connect(Array1<int32_t> *arc_map) {
     NVTX_RANGE(K2_FUNC);
@@ -368,49 +361,39 @@ class Connecter {
     while (riter != nullptr)
       riter = GetNextBatchBackward(*riter);
 
-    // Get remaining states
-    //int32_t num_states = fsas_.shape.TotSize(1);
-    //Renumbering states_renumbering(c_, num_states);
-    //char* states_renumbering_data = states_renumbering.Keep().Data();
-    //const char *accessible_data = accessible_.Data(),
-    //           *coaccessible_data = coaccessible_.Data();
-    //K2_EVAL(
-    //    c_, num_states, lambda_set_states_renumbering,
-    //    (int32_t state_idx01)->void {
-    //      if (accessible_data[state_idx01] && coaccessible_data[state_idx01])
-    //        states_renumbering_data[state_idx01] = 1;
-    //      else
-    //        states_renumbering_data[state_idx01] = 0;
-    //    });
-    //Array1<int32_t> new2old_map_states = states_renumbering.New2Old();
-    
     // Get remaining arcs
+    int32_t num_states = fsas_.shape.TotSize(1);
+    const char *accessible_data = accessible_.Data(),
+               *coaccessible_data = coaccessible_.Data();
     int32_t num_arcs = fsas_.NumElements();
     Renumbering arcs_renumbering(c_, num_arcs);
     char* arcs_renumbering_data = arcs_renumbering.Keep().Data();
     const Arc *fsas_data = fsas_.values.Data();
+    const int32_t* fsas_row_ids2_data = fsas_.RowIds(2).Data();
     K2_EVAL(
         c_, num_arcs, lambda_set_arcs_renumbering,
         (int32_t arc_idx012)->void {
           Arc arc = fsas_data[arc_idx012];
-          if (accessible_data[arc.src_state] &&
-              coaccessible_data[arc.src_state] &&
-              accessible_data[arc.dest_state] &&
-              coaccessible_data[arc.dest_state])
+          int32_t fsas_idx01 = fsas_row_ids2_data[arc_idx012],
+                  src_state_idx01 = fsas_idx01,
+                  dest_state_idx01 =
+                    arc.dest_state - arc.src_state + src_state_idx01;
+          if (accessible_data[src_state_idx01] &&
+              coaccessible_data[src_state_idx01] &&
+              accessible_data[dest_state_idx01] &&
+              coaccessible_data[dest_state_idx01])
             arcs_renumbering_data[arc_idx012] = 1;
           else
             arcs_renumbering_data[arc_idx012] = 0;
         });
     Array1<int32_t> new2old_map_arcs = arcs_renumbering.New2Old();
-
     Array1<Arc> remaining_arcs = fsas_.values[new2old_map_arcs];
 
     // Construct result FsaVec
     int32_t remaining_arcs_num = remaining_arcs.Dim();
     Array1<int32_t> new_row_ids2(c_, remaining_arcs_num);
     int32_t *new_row_ids2_data = new_row_ids2.Data();
-    const int32_t *new2old_map_arcs_data = new2old_map_arcs.Data(),
-                  *fsas_row_ids2_data = fsas_.RowIds(2).Data();
+    const int32_t *new2old_map_arcs_data = new2old_map_arcs.Data();
     K2_EVAL(
         c_, remaining_arcs_num, lambda_set_new_row_ids2,
         (int32_t arc_idx012)->void {
@@ -419,13 +402,9 @@ class Connecter {
           new_row_ids2_data[arc_idx012] = new_row_ids2;
         });
 
-    //Array1<int32_t> new_row_splits2(c_, new2old_map_states.Dim() + 1);
     Array1<int32_t> new_row_splits2(c_, num_states + 1);
     RowIdsToRowSplits(new_row_ids2, &new_row_splits2);
 
-    //Array1<int32_t> new_row_ids1 = fsas_.RowIds(1)[new2old_map_states];
-    //Array1<int32_t> new_row_splits1(c_, NumFsas() + 1);
-    //RowIdsToRowSplits(new_row_ids1, &new_row_splits1);
     Array1<int32_t> new_row_ids1 = fsas_.RowIds(1);
     Array1<int32_t> new_row_splits1 = fsas_.RowSplits(1);
     if (arc_map != nullptr)

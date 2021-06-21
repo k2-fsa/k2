@@ -30,62 +30,88 @@
 namespace k2 {
 
 TEST(Connect, SingleFsa) {
-  std::string s = R"(0 2 1 1
-    0 3 3 3
-    1 4 5 5
-    1 6 -1 0
-    2 1 2 2
-    3 1 4 4
-    5 3 6 6
-    6
-  )";
-
-  auto fsa = FsaFromString(s);
-
- // int32_t gt = kFsaPropertiesTopSorted | kFsaPropertiesTopSortedAndAcyclic;
-  int32_t p = GetFsaBasicProperties(fsa);
-  K2_LOG(INFO) << FsaPropertiesAsString(p);
- // EXPECT_NE(p & gt, gt);
-
-  Fsa sorted;
-  Array1<int32_t> arc_map;
-  Connect(fsa, &sorted, &arc_map);
-  p = GetFsaBasicProperties(sorted);
-  K2_LOG(INFO) << FsaPropertiesAsString(p);
-  K2_LOG(INFO) << sorted;
-  K2_LOG(INFO) << arc_map;
-  // p = GetFsaBasicProperties(sorted);
-  // EXPECT_EQ(p & gt, gt);
-  /* top sorted fsa is
-  0 2 1 1    // src arc 0
-  0 1 2 2    // src arc 1
-  1 2 1 21   // src arc 3
-  1 3 -1 23  // src arc 4
-  2 3 -1 13  // src arc 2
-  3
-  */
-
-  //CheckArrayData(arc_map, {0, 1, 3, 4, 2});
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    std::string s = R"(0 2 1 1
+      0 3 3 3
+      1 4 5 5
+      1 6 -1 0
+      2 1 2 2
+      3 1 4 4
+      5 3 6 6
+      6
+    )";
+    auto fsa = FsaFromString(s).To(c);
+    Fsa connected;
+    Array1<int32_t> arc_map;
+    Connect(fsa, &connected, &arc_map);
+    Fsa ref = Fsa("[ [ 0 2 1 1 0 3 3 3 ] [ 1 6 -1 0 ] "
+                  "  [ 2 1 2 2 ] [ 3 1 4 4 ] [ ] [ ] [ ] ]").To(c);
+    Array1<int32_t> arc_map_ref(c, "[ 0 1 3 4 5 ]");
+    K2_CHECK(Equal(connected, ref));
+    K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
 }
 
 TEST(Connect, CycleFsa) {
-  std::string s = R"(0 1 1 1
-    0 2 2 2
-    1 2 3 3
-    2 3 4 4
-    2 4 5 5
-    3 1 6 6
-    3 6 -1 0
-    5 2 7 7
-    6
-  )";
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    std::string s = R"(0 1 1 1
+      0 2 2 2
+      1 2 3 3
+      2 3 4 4
+      2 4 5 5
+      3 1 6 6
+      3 6 -1 0
+      5 2 7 7
+      6
+    )";
+    auto fsa = FsaFromString(s).To(c);
+    Fsa connected;
+    Array1<int32_t> arc_map;
+    Connect(fsa, &connected, &arc_map);
+    Fsa ref = Fsa("[ [ 0 1 1 1 0 2 2 2 ] [ 1 2 3 3 ] [ 2 3 4 4] "
+                  "  [ 3 1 6 6 3 6 -1 0 ] [ ] [ ] [ ] ]").To(c);
+    Array1<int32_t> arc_map_ref(c, "[ 0 1 2 3 5 6 ]");
+    K2_CHECK(Equal(connected, ref));
+    K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
+}
 
-  auto fsa = FsaFromString(s);
+TEST(Connect, FsaVec) {
+  for (const ContextPtr &c : {GetCpuContext(), GetCudaContext()}) {
+    std::string s1 = R"(0 1 1 1
+      0 2 2 2
+      1 3 -1 0
+      3
+    )";
+    auto fsa1 = FsaFromString(s1);
 
-  Fsa sorted;
-  Array1<int32_t> arc_map;
-  Connect(fsa, &sorted, &arc_map);
-  K2_LOG(INFO) << sorted;
+    std::string s2 = R"(0 1 1 1
+      1 3 -1 0
+      2 1 2 2
+      3
+    )";
+    auto fsa2 = FsaFromString(s2);
+
+    std::string s3 = R"(0 1 1 1
+      1 4 -1 0
+      1 3 3 3
+      2 1 2 2
+      4
+    )";
+    auto fsa3 = FsaFromString(s3);
+
+    Fsa *fsa_array[] = {&fsa1, &fsa2, &fsa3};
+    FsaVec fsa_vec = CreateFsaVec(3, &fsa_array[0]).To(c);
+    FsaVec connected;
+    Array1<int32_t> arc_map;
+    Connect(fsa_vec, &connected, &arc_map);
+    FsaVec ref = FsaVec("[ [ [ 0 1 1 1 ] [ 1 3 -1 0 ] [ ] [ ] ] "
+                        "  [ [ 0 1 1 1 ] [ 1 3 -1 0 ] [ ] [ ] ] "
+                        "  [ [ 0 1 1 1 ] [ 1 4 -1 0 ] [ ] [ ] [ ] ] ]").To(c);
+    Array1<int32_t> arc_map_ref(c, "[ 0 2 3 4 6 7 ]");
+    K2_CHECK(Equal(connected, ref));
+    K2_CHECK(Equal(arc_map, arc_map_ref));
+  }
 }
 
 }  // namespace k2
