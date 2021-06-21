@@ -41,7 +41,8 @@ namespace k2 {
 
    CAUTION: for now this only works for CPU.
  */
-bool Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+void Connect(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
+bool ConnectHost(Fsa &src, Fsa *dest, Array1<int32_t> *arc_map = nullptr);
 
 /*
   Sort arcs of an Fsa or FsaVec in-place (this version of the function does not

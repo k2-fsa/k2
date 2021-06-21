@@ -464,11 +464,8 @@ def connect(fsa: Fsa) -> Fsa:
             fsa.properties & fsa_properties.COACCESSIBLE != 0:
         return fsa
 
-    assert fsa.is_cpu()
-
     need_arc_map = True
     ragged_arc, arc_map = _k2.connect(fsa.arcs, need_arc_map=need_arc_map)
-
     out_fsa = k2.utils.fsa_from_unary_function_tensor(fsa, ragged_arc, arc_map)
     return out_fsa
 
